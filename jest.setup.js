@@ -2,9 +2,68 @@
 // テスト実行前に必要な設定を行います
 
 // 環境変数の設定（テスト環境用）
-process.env.NEXT_PUBLIC_SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'http://127.0.0.1:54321'
-process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0'
-process.env.SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImV4cCI6MTk4MzgxMjk5Nn0.EGIM96RAZx35lJzdJsyH-qQwv8Hdp7fsn3W0YpN81IU'
+process.env.NODE_ENV = 'test'
+process.env.NEXT_PUBLIC_SUPABASE_URL = 'http://127.0.0.1:54321'
+process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0'
+process.env.SUPABASE_SERVICE_ROLE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImV4cCI6MTk4MzgxMjk5Nn0.EGIM96RAZx35lJzdJsyH-qQwv8Hdp7fsn3W0YpN81IU'
+
+// Supabaseクライアントのモック設定
+const mockSupabaseClient = {
+  auth: {
+    signInWithPassword: jest.fn(),
+    signUp: jest.fn(),
+    signOut: jest.fn(),
+    resetPasswordForEmail: jest.fn(),
+    updateUser: jest.fn(),
+    getUser: jest.fn(),
+    getSession: jest.fn(),
+    onAuthStateChange: jest.fn(),
+  },
+  from: jest.fn(() => ({
+    select: jest.fn(() => Promise.resolve({ data: [], error: null })),
+    insert: jest.fn(() => Promise.resolve({ data: null, error: null })),
+    update: jest.fn(() => Promise.resolve({ data: null, error: null })),
+    delete: jest.fn(() => Promise.resolve({ data: null, error: null })),
+  })),
+}
+
+// localStorage/sessionStorageのモック（windowオブジェクトが存在する場合のみ）
+if (typeof window !== 'undefined') {
+  Object.defineProperty(window, 'localStorage', {
+    value: {
+      getItem: jest.fn(),
+      setItem: jest.fn(),
+      removeItem: jest.fn(),
+      clear: jest.fn(),
+    },
+    writable: true,
+  })
+
+  Object.defineProperty(window, 'sessionStorage', {
+    value: {
+      getItem: jest.fn(),
+      setItem: jest.fn(),
+      removeItem: jest.fn(),
+      clear: jest.fn(),
+    },
+    writable: true,
+  })
+} else {
+  // Node.js環境でのグローバル設定
+  global.localStorage = {
+    getItem: jest.fn(),
+    setItem: jest.fn(),
+    removeItem: jest.fn(),
+    clear: jest.fn(),
+  };
+
+  global.sessionStorage = {
+    getItem: jest.fn(),
+    setItem: jest.fn(),
+    removeItem: jest.fn(),
+    clear: jest.fn(),
+  };
+}
 
 // テストタイムアウトの設定
 jest.setTimeout(30000)

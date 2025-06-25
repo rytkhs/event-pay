@@ -4,9 +4,17 @@
  */
 
 // 環境変数を事前に設定してモジュール読み込みエラーを防ぐ
-process.env.NODE_ENV = "development";
-delete process.env.RATE_LIMIT_REDIS_URL;
-delete process.env.RATE_LIMIT_REDIS_TOKEN;
+const originalEnv = process.env.NODE_ENV;
+const originalRedisUrl = process.env.RATE_LIMIT_REDIS_URL;
+const originalRedisToken = process.env.RATE_LIMIT_REDIS_TOKEN;
+
+// Jest環境では開発環境として設定
+jest.replaceProperty(process, 'env', { 
+  ...process.env, 
+  NODE_ENV: 'development',
+  RATE_LIMIT_REDIS_URL: undefined,
+  RATE_LIMIT_REDIS_TOKEN: undefined
+});
 
 import { checkRateLimit, createRateLimitMiddleware } from "@/lib/rate-limit";
 
@@ -156,9 +164,12 @@ describe("lib/rate-limit", () => {
 
   describe("環境変数による動作変更", () => {
     test("開発環境でのRedis設定なしの動作", () => {
-      process.env.NODE_ENV = "development";
-      delete process.env.RATE_LIMIT_REDIS_URL;
-      delete process.env.RATE_LIMIT_REDIS_TOKEN;
+      jest.replaceProperty(process, 'env', { 
+        ...process.env, 
+        NODE_ENV: 'development',
+        RATE_LIMIT_REDIS_URL: undefined,
+        RATE_LIMIT_REDIS_TOKEN: undefined
+      });
 
       // モジュールを再読み込みしてテスト
       // 実際の実装では、開発環境での警告メッセージが表示される
@@ -167,9 +178,12 @@ describe("lib/rate-limit", () => {
     });
 
     test("本番環境でのRedis設定必須チェック", () => {
-      process.env.NODE_ENV = "production";
-      delete process.env.RATE_LIMIT_REDIS_URL;
-      delete process.env.RATE_LIMIT_REDIS_TOKEN;
+      jest.replaceProperty(process, 'env', { 
+        ...process.env, 
+        NODE_ENV: 'production',
+        RATE_LIMIT_REDIS_URL: undefined,
+        RATE_LIMIT_REDIS_TOKEN: undefined
+      });
 
       // 本番環境ではRedis設定が必須
       // 実際の実装では、この状況でエラーが投げられる
