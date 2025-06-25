@@ -17,7 +17,7 @@ global.testSupabaseConnection = async () => {
     process.env.NEXT_PUBLIC_SUPABASE_URL,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
   )
-  
+
   try {
     const { data, error } = await supabase.from('pg_type').select('typname').limit(1)
     if (error) {
@@ -34,7 +34,7 @@ global.testSupabaseConnection = async () => {
 // テスト前のクリーンアップ
 beforeAll(async () => {
   console.log('テスト環境の初期化を開始...')
-  
+
   // Supabase接続確認
   const isConnected = await global.testSupabaseConnection()
   if (!isConnected) {
