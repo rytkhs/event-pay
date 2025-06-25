@@ -1,9 +1,5 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  experimental: {
-    // Edge Runtimeの設定（APIルート用）
-    runtime: "edge",
-  },
   // セキュリティヘッダーの設定
   async headers() {
     return [
@@ -37,7 +33,6 @@ const nextConfig = {
         ...config.resolve.fallback,
         fs: false,
         net: false,
-        tls: false,
       };
     }
     return config;
@@ -46,10 +41,6 @@ const nextConfig = {
   images: {
     domains: ["localhost"],
     formats: ["image/webp", "image/avif"],
-  },
-  // 環境変数の公開設定
-  env: {
-    CUSTOM_KEY: process.env.CUSTOM_KEY,
   },
 };
 
