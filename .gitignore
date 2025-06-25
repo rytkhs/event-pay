@@ -65,3 +65,6 @@ Thumbs.db
 
 docs/
 CLAUDE.md
+
+uploads/
+usage_tracking2.json
