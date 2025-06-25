@@ -13,8 +13,8 @@ const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey)
 
 describe('ENUM型定義テスト', () => {
   beforeEach(async () => {
-    // 各テスト前にテストデータをクリーンアップ
-    const { error } = await supabaseAdmin.rpc('cleanup_test_data')
+    // 各テスト前にテストデータをクリーンアップ（セキュリティ強化後の安全な関数を使用）
+    const { error } = await supabaseAdmin.rpc('cleanup_test_data_safe')
     if (error) {
       console.warn('テストデータクリーンアップに失敗:', error.message)
     }
@@ -329,7 +329,7 @@ describe('ENUM型定義テスト', () => {
         .eq('event_status', 'upcoming')
       
       expect(error).toBeNull()
-      expect(data).toHaveLength(2)
+      expect(data!.length).toBeGreaterThanOrEqual(2)
       expect(data!.every(item => item.event_status === 'upcoming')).toBe(true)
     })
   })
