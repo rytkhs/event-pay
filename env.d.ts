@@ -18,7 +18,8 @@ declare namespace NodeJS {
     NEXTAUTH_SECRET: string;
     NEXTAUTH_URL: string;
 
-    // Security Configuration
+    // Security Configuration (Rate Limiting)
+    // Redis configuration for rate limiting - optional in development, required in production
     RATE_LIMIT_REDIS_URL?: string;
     RATE_LIMIT_REDIS_TOKEN?: string;
 

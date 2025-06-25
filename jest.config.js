@@ -14,7 +14,7 @@ module.exports = {
     '^.+\\.mjs$': 'babel-jest'
   },
   transformIgnorePatterns: [
-    'node_modules/(?!(.*\\.mjs$))'
+    'node_modules/(?!(@supabase|@stripe|@upstash)/.*)'
   ],
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/$1'
