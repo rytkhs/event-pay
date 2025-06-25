@@ -6,12 +6,16 @@ module.exports = {
     '**/__tests__/**/*.test.ts',
     '**/__tests__/**/*.test.js'
   ],
-  moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx'],
+  moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'mjs'],
   transform: {
     '^.+\\.(ts|tsx)$': ['ts-jest', {
       tsconfig: 'tsconfig.json'
-    }]
+    }],
+    '^.+\\.mjs$': 'babel-jest'
   },
+  transformIgnorePatterns: [
+    'node_modules/(?!(@supabase|@stripe|@upstash)/.*)'
+  ],
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/$1'
   },
@@ -24,5 +28,5 @@ module.exports = {
     '!**/coverage/**'
   ],
   coverageDirectory: 'coverage',
-  coverageReporters: ['text', 'lcov', 'html']
+  coverageReporters: ['text', 'lcov', 'html'],
 }
