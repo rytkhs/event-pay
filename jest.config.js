@@ -11,10 +11,12 @@ module.exports = {
     '^.+\\.(ts|tsx)$': ['ts-jest', {
       tsconfig: 'tsconfig.json'
     }],
-    '^.+\\.mjs$': 'babel-jest'
+    '^.+\\.mjs$': ['babel-jest', {
+      presets: [['@babel/preset-env', { targets: { node: 'current' } }]]
+    }]
   },
   transformIgnorePatterns: [
-    'node_modules/(?!(@supabase|@stripe|@upstash)/.*)'
+    'node_modules/(?!(@supabase|@stripe|@upstash|@radix-ui)/.*)'
   ],
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/$1'

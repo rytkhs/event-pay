@@ -13,6 +13,9 @@
     "react/prop-types": "off",
     "react/react-in-jsx-scope": "off",
     "@next/next/no-img-element": "error",
-    "jsx-a11y/alt-text": "error"
+    "jsx-a11y/alt-text": ["error", {
+      "elements": ["area", "[role=\"img\"]"],
+      "img": ["Image"]
+    }]
   }
 }

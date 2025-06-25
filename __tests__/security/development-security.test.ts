@@ -40,13 +40,35 @@ describe("開発基盤セキュリティテスト", () => {
           /^[^#]*changeme/im
         ];
         
-        // RESEND_API_KEYのプレースホルダーは開発環境では許可（実際のキーでない場合）
+        // RESEND_API_KEYのプレースホルダーチェック（本番環境では致命的エラー）
         if (envLocal.includes('RESEND_API_KEY=re_your-resend-api-key')) {
-          console.warn('⚠️ RESEND_API_KEYにプレースホルダー値が設定されています。実際のキーに変更してください。');
+          if (process.env.NODE_ENV === 'production') {
+            fail('🚨 本番環境でRESEND_API_KEYにプレースホルダー値が設定されています。実際のキーに変更してください。');
+          } else {
+            console.warn('⚠️ RESEND_API_KEYにプレースホルダー値が設定されています。実際のキーに変更してください。');
+          }
         }
         
+        // 危険なパターンのチェック（テスト失敗）
         dangerousPatterns.forEach(pattern => {
           expect(envLocal).not.toMatch(pattern);
+        });
+
+        // 重要な環境変数のプレースホルダーチェック（追加セキュリティ）
+        const criticalEnvChecks = [
+          { key: 'STRIPE_SECRET_KEY', placeholder: 'sk_test_your-stripe-secret-key' },
+          { key: 'SUPABASE_SERVICE_ROLE_KEY', placeholder: 'your-supabase-service-role-key' },
+          { key: 'NEXTAUTH_SECRET', placeholder: 'your-nextauth-secret-min-32-chars' }
+        ];
+
+        criticalEnvChecks.forEach(({ key, placeholder }) => {
+          if (envLocal.includes(`${key}=${placeholder}`)) {
+            if (process.env.NODE_ENV === 'production') {
+              fail(`🚨 本番環境で${key}にプレースホルダー値が設定されています。`);
+            } else {
+              console.warn(`⚠️ ${key}にプレースホルダー値が設定されています。実際の値に変更してください。`);
+            }
+          }
         });
       }
     });
@@ -83,7 +105,7 @@ describe("開発基盤セキュリティテスト", () => {
       // CSPヘッダーの設定確認
       expect(configContent).toContain('"Content-Security-Policy"');
       expect(configContent).toContain("default-src 'self'");
-      expect(configContent).toContain("frame-src 'none'");
+      expect(configContent).toContain("frame-src 'self'"); // Stripe対応のため、noneではなくselfとStripeドメイン
     });
   });
 
