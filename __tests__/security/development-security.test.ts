@@ -15,17 +15,15 @@ describe("開発基盤セキュリティテスト", () => {
       expect(gitignore).toContain("!.env.example");
     });
 
-    test(".env.localにプレーンテキストで機密情報が含まれていない（例外的確認）", () => {
+    test(".env.localが存在する場合、適切な設定形式になっている", () => {
       if (fs.existsSync(".env.local")) {
         const envLocal = fs.readFileSync(".env.local", "utf8");
-        // 実際のキーが設定されている場合の最低限チェック
-        if (envLocal.includes("SUPABASE_SERVICE_ROLE_KEY=")) {
-          const serviceRoleKey = envLocal.match(/SUPABASE_SERVICE_ROLE_KEY=([^\n]*)/)?.[1];
-          if (serviceRoleKey && serviceRoleKey !== "your-supabase-service-role-key") {
-            // 実際のキーが設定されている場合、最低限の形式チェック
-            expect(serviceRoleKey).toMatch(/^eyJ/); // JWTの開始部分
-          }
-        }
+        // 基本的な形式チェックのみ（実際の値は検証しない）
+        expect(envLocal).toMatch(/NEXT_PUBLIC_SUPABASE_URL=/);
+        expect(envLocal).toMatch(/SUPABASE_SERVICE_ROLE_KEY=/);
+        // プレースホルダー値のままでないことを確認（セキュリティ上詳細は検証しない）
+        expect(envLocal).not.toContain("your-supabase-url");
+        expect(envLocal).not.toContain("your-supabase-service-role-key");
       }
     });
 
