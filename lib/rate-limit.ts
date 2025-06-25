@@ -31,13 +31,13 @@ const createRateLimiter = () => {
   const redis = createRedisClient();
 
   if (!redis) {
-    // Redis が利用できない場合のモックレート制限
+    // Redis が利用できない場合のモックレート制限（実際の制限値と同じ）
     return {
       limit: async () => ({
         success: true,
-        limit: 1000,
-        remaining: 999,
-        reset: new Date(Date.now() + 60000),
+        limit: 10,
+        remaining: 9,
+        reset: new Date(Date.now() + 10 * 1000), // 10秒後
       }),
     };
   }
@@ -62,7 +62,7 @@ export const authRateLimit = (() => {
         success: true,
         limit: 5,
         remaining: 4,
-        reset: new Date(Date.now() + 300000),
+        reset: new Date(Date.now() + 5 * 60 * 1000), // 5分後
       }),
     };
   }

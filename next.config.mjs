@@ -26,12 +26,17 @@ const nextConfig = {
             key: "Content-Security-Policy",
             value: [
               "default-src 'self'",
-              "script-src 'self' 'unsafe-eval' 'unsafe-inline'",
-              "style-src 'self' 'unsafe-inline'",
-              "img-src 'self' data: https:",
-              "font-src 'self'",
-              "connect-src 'self' https://*.supabase.co https://api.stripe.com",
-              "frame-src 'none'"
+              "script-src 'self' https://js.stripe.com https://maps.googleapis.com",
+              "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+              "img-src 'self' data: https: blob:",
+              "font-src 'self' https://fonts.gstatic.com",
+              "connect-src 'self' https://*.supabase.co https://api.stripe.com https://checkout.stripe.com wss://*.supabase.co",
+              "frame-src 'self' https://js.stripe.com https://hooks.stripe.com",
+              "object-src 'none'",
+              "base-uri 'self'",
+              "form-action 'self' https://checkout.stripe.com",
+              "frame-ancestors 'none'",
+              "upgrade-insecure-requests"
             ].join("; ")
           },
         ],
