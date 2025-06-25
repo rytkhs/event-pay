@@ -21,9 +21,33 @@ describe("開発基盤セキュリティテスト", () => {
         // 基本的な形式チェックのみ（実際の値は検証しない）
         expect(envLocal).toMatch(/NEXT_PUBLIC_SUPABASE_URL=/);
         expect(envLocal).toMatch(/SUPABASE_SERVICE_ROLE_KEY=/);
-        // プレースホルダー値のままでないことを確認（セキュリティ上詳細は検証しない）
-        expect(envLocal).not.toContain("your-supabase-url");
-        expect(envLocal).not.toContain("your-supabase-service-role-key");
+        
+        // プレースホルダー値のチェック（コメント行以外の危険なデフォルト値を検出）
+        const dangerousPatterns = [
+          /^[^#]*your-supabase-project-url(?!\w)/im,
+          /^[^#]*your-supabase-anon-key(?!\w)/im,
+          /^[^#]*your-supabase-service-role-key(?!\w)/im,
+          /^[^#]*your-stripe-secret-key(?!\w)/im,
+          /^[^#]*your-webhook-secret(?!\w)/im,
+          /^[^#]*your-stripe-publishable-key(?!\w)/im,
+          /^[^#]*your-upstash-redis-url(?!\w)/im,
+          /^[^#]*your-upstash-redis-token(?!\w)/im,
+          /^[^#]*your-github-token(?!\w)/im,
+          /^[^#]*your-nextauth-secret-min-32-chars(?!\w)/im,
+          /^[^#]*example\.com/im,
+          /^[^#]*test[_-]?123/im,
+          /^[^#]*placeholder/im,
+          /^[^#]*changeme/im
+        ];
+        
+        // RESEND_API_KEYのプレースホルダーは開発環境では許可（実際のキーでない場合）
+        if (envLocal.includes('RESEND_API_KEY=re_your-resend-api-key')) {
+          console.warn('⚠️ RESEND_API_KEYにプレースホルダー値が設定されています。実際のキーに変更してください。');
+        }
+        
+        dangerousPatterns.forEach(pattern => {
+          expect(envLocal).not.toMatch(pattern);
+        });
       }
     });
 
@@ -37,7 +61,6 @@ describe("開発基盤セキュリティテスト", () => {
 
   describe("Next.jsセキュリティ設定", () => {
     test("next.config.mjsファイルが存在し、基本設定がある", () => {
-      const fs = require("fs");
       expect(fs.existsSync("next.config.mjs")).toBe(true);
       
       const configContent = fs.readFileSync("next.config.mjs", "utf8");
@@ -47,7 +70,6 @@ describe("開発基盤セキュリティテスト", () => {
     });
 
     test("セキュリティヘッダーの設定内容が適切である", () => {
-      const fs = require("fs");
       const configContent = fs.readFileSync("next.config.mjs", "utf8");
       
       // セキュリティヘッダーの設定確認
@@ -57,12 +79,17 @@ describe("開発基盤セキュリティテスト", () => {
       expect(configContent).toContain('"nosniff"');
       expect(configContent).toContain('"Referrer-Policy"');
       expect(configContent).toContain('"X-XSS-Protection"');
+      
+      // CSPヘッダーの設定確認
+      expect(configContent).toContain('"Content-Security-Policy"');
+      expect(configContent).toContain("default-src 'self'");
+      expect(configContent).toContain("frame-src 'none'");
     });
   });
 
   describe("依存関係セキュリティ", () => {
     test("セキュリティ関連ライブラリが正しくインストールされている", () => {
-      const packageJson = require("../../package.json");
+      const packageJson = JSON.parse(fs.readFileSync("package.json", "utf8"));
       
       // 入力検証
       expect(packageJson.dependencies.zod).toBeDefined();
@@ -76,7 +103,7 @@ describe("開発基盤セキュリティテスト", () => {
     });
 
     test("開発用依存関係に本番で不要なパッケージが含まれていない", () => {
-      const packageJson = require("../../package.json");
+      const packageJson = JSON.parse(fs.readFileSync("package.json", "utf8"));
       
       // 本番では不要な開発用パッケージがdevDependenciesに配置されている
       expect(packageJson.devDependencies["@types/jest"]).toBeDefined();
@@ -90,13 +117,13 @@ describe("開発基盤セキュリティテスト", () => {
 
   describe("TypeScriptセキュリティ設定", () => {
     test("strict modeが有効化されている", () => {
-      const tsConfig = require("../../tsconfig.json");
+      const tsConfig = JSON.parse(fs.readFileSync("tsconfig.json", "utf8"));
       expect(tsConfig.compilerOptions.strict).toBe(true);
       expect(tsConfig.compilerOptions.noEmit).toBe(true);
     });
 
     test("危険なTypeScript設定が無効化されている", () => {
-      const tsConfig = require("../../tsconfig.json");
+      const tsConfig = JSON.parse(fs.readFileSync("tsconfig.json", "utf8"));
       // allowJsが有効な場合、skipLibCheckも有効になっているべき
       if (tsConfig.compilerOptions.allowJs) {
         expect(tsConfig.compilerOptions.skipLibCheck).toBe(true);
@@ -106,7 +133,7 @@ describe("開発基盤セキュリティテスト", () => {
 
   describe("ESLintセキュリティルール", () => {
     test("セキュリティに関するESLintルールが設定されている", () => {
-      const eslintConfig = require("../../.eslintrc.json");
+      const eslintConfig = JSON.parse(fs.readFileSync(".eslintrc.json", "utf8"));
       
       // TypeScriptの安全性ルール
       expect(eslintConfig.rules["@typescript-eslint/no-explicit-any"]).toBe("warn");
