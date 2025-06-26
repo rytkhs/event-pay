@@ -60,16 +60,16 @@ export const authRateLimit = (() => {
     return {
       limit: async () => ({
         success: true,
-        limit: 5,
-        remaining: 4,
-        reset: new Date(Date.now() + 5 * 60 * 1000), // 5分後
+        limit: 10,
+        remaining: 9,
+        reset: new Date(Date.now() + 15 * 60 * 1000), // 15分後
       }),
     };
   }
 
   return new Ratelimit({
     redis,
-    limiter: Ratelimit.slidingWindow(5, "5 m"), // 5分間に5回まで
+    limiter: Ratelimit.slidingWindow(10, "15 m"), // 15分間に10回まで
     analytics: true,
   });
 })();
@@ -77,10 +77,7 @@ export const authRateLimit = (() => {
 /**
  * IPアドレスベースのレート制限チェック
  */
-export async function checkRateLimit(
-  identifier: string,
-  limiter = apiRateLimit
-) {
+export async function checkRateLimit(identifier: string, limiter = apiRateLimit) {
   try {
     const result = await limiter.limit(identifier);
     return {
@@ -117,7 +114,10 @@ export function createRateLimitMiddleware(limiter = apiRateLimit) {
       headers: {
         "X-RateLimit-Limit": result.limit.toString(),
         "X-RateLimit-Remaining": result.remaining.toString(),
-        "X-RateLimit-Reset": (typeof result.reset === 'number' ? result.reset : result.reset.getTime()).toString(),
+        "X-RateLimit-Reset": (typeof result.reset === "number"
+          ? result.reset
+          : result.reset.getTime()
+        ).toString(),
       },
     };
   };

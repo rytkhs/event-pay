@@ -3,8 +3,8 @@
  * 本番環境Redis設定前提でのレート制限実装
  */
 
-import { Ratelimit } from '@upstash/ratelimit';
-import { Redis } from '@upstash/redis';
+import { Ratelimit } from "@upstash/ratelimit";
+import { Redis } from "@upstash/redis";
 
 // レート制限設定の型定義
 export interface RateLimitConfig {
@@ -28,18 +28,21 @@ export function validateRateLimitEnvironment(): {
 
   // 必須環境変数のチェック
   if (!process.env.RATE_LIMIT_REDIS_URL) {
-    missing.push('RATE_LIMIT_REDIS_URL');
+    missing.push("RATE_LIMIT_REDIS_URL");
   }
 
   // Redis URLの形式チェック
-  if (process.env.RATE_LIMIT_REDIS_URL && !process.env.RATE_LIMIT_REDIS_URL.startsWith('redis://')) {
+  if (
+    process.env.RATE_LIMIT_REDIS_URL &&
+    !process.env.RATE_LIMIT_REDIS_URL.startsWith("redis://")
+  ) {
     warnings.push('RATE_LIMIT_REDIS_URL should start with "redis://"');
   }
 
   // トークンの存在チェック（Upstash使用時）
-  if (process.env.RATE_LIMIT_REDIS_URL && process.env.RATE_LIMIT_REDIS_URL.includes('upstash')) {
+  if (process.env.RATE_LIMIT_REDIS_URL && process.env.RATE_LIMIT_REDIS_URL.includes("upstash")) {
     if (!process.env.RATE_LIMIT_REDIS_TOKEN) {
-      missing.push('RATE_LIMIT_REDIS_TOKEN');
+      missing.push("RATE_LIMIT_REDIS_TOKEN");
     }
   }
 
@@ -55,16 +58,16 @@ export function createRateLimitInstance(): RateLimitConfig {
   const validation = validateRateLimitEnvironment();
 
   // 本番環境では必須
-  if (process.env.NODE_ENV === 'production' && !validation.isValid) {
+  if (process.env.NODE_ENV === "production" && !validation.isValid) {
     throw new Error(
-      `本番環境でレート制限設定が不完全です: ${validation.missing.join(', ')} が不足しています`
+      `本番環境でレート制限設定が不完全です: ${validation.missing.join(", ")} が不足しています`
     );
   }
 
   // 開発環境では警告のみ
-  if (process.env.NODE_ENV === 'development' && !validation.isValid) {
+  if (process.env.NODE_ENV === "development" && !validation.isValid) {
     console.warn(
-      `⚠️ 開発環境: レート制限が無効です。本番環境では以下の環境変数を設定してください: ${validation.missing.join(', ')}`
+      `⚠️ 開発環境: レート制限が無効です。本番環境では以下の環境変数を設定してください: ${validation.missing.join(", ")}`
     );
   }
 
@@ -83,19 +86,19 @@ export function createRateLimitInstance(): RateLimitConfig {
 
       rateLimitInstance = new Ratelimit({
         redis: new Redis(redisConfig),
-        limiter: Ratelimit.slidingWindow(5, '5 m'), // 5分間に5回
+        limiter: Ratelimit.slidingWindow(10, "15 m"), // 15分間に10回
         analytics: true,
       });
 
-      console.log('✅ レート制限が有効化されました');
+      console.log("✅ レート制限が有効化されました");
     } catch (error) {
-      console.error('❌ レート制限の初期化に失敗しました:', error);
-      
+      console.error("❌ レート制限の初期化に失敗しました:", error);
+
       // 本番環境ではエラーを投げる
-      if (process.env.NODE_ENV === 'production') {
+      if (process.env.NODE_ENV === "production") {
         throw new Error(`レート制限の初期化に失敗しました: ${error}`);
       }
-      
+
       // 開発環境では無効化
       rateLimitInstance = null;
     }
@@ -105,9 +108,9 @@ export function createRateLimitInstance(): RateLimitConfig {
     enabled: rateLimitInstance !== null,
     instance: rateLimitInstance,
     limits: {
-      login: { requests: 5, window: '5 m' },
-      register: { requests: 3, window: '10 m' },
-      passwordReset: { requests: 3, window: '15 m' },
+      login: { requests: 10, window: "15 m" },
+      register: { requests: 3, window: "10 m" },
+      passwordReset: { requests: 3, window: "15 m" },
     },
   };
 }
@@ -133,13 +136,13 @@ export async function executeRateLimit(
     const { success, limit, reset, remaining } = await rateLimit.limit(identifier);
 
     const headers: Record<string, string> = {
-      'X-RateLimit-Limit': limit.toString(),
-      'X-RateLimit-Remaining': remaining.toString(),
-      'X-RateLimit-Reset': reset.toString(),
+      "X-RateLimit-Limit": limit.toString(),
+      "X-RateLimit-Remaining": remaining.toString(),
+      "X-RateLimit-Reset": reset.toString(),
     };
 
     if (!success) {
-      headers['Retry-After'] = Math.round((reset - Date.now()) / 1000).toString();
+      headers["Retry-After"] = Math.round((reset - Date.now()) / 1000).toString();
     }
 
     return {
@@ -148,16 +151,16 @@ export async function executeRateLimit(
       reset,
     };
   } catch (error) {
-    console.error('レート制限の実行に失敗しました:', error);
-    
+    console.error("レート制限の実行に失敗しました:", error);
+
     // Redis接続エラーの場合、本番環境では厳格に、開発環境では通す
-    if (process.env.NODE_ENV === 'production') {
+    if (process.env.NODE_ENV === "production") {
       return {
         success: false,
         headers: {},
       };
     } else {
-      console.warn('⚠️ 開発環境: Redis接続エラーのため、レート制限をスキップします');
+      console.warn("⚠️ 開発環境: Redis接続エラーのため、レート制限をスキップします");
       return {
         success: true,
         headers: {},
@@ -169,9 +172,9 @@ export async function executeRateLimit(
 // IP アドレスの取得（プロキシ対応）
 export function getClientIP(request: Request): string {
   // VercelなどのホスティングサービスでのIP取得
-  const forwarded = request.headers.get('x-forwarded-for');
-  const realIP = request.headers.get('x-real-ip');
-  const cfConnectingIP = request.headers.get('cf-connecting-ip'); // Cloudflare
+  const forwarded = request.headers.get("x-forwarded-for");
+  const realIP = request.headers.get("x-real-ip");
+  const cfConnectingIP = request.headers.get("cf-connecting-ip"); // Cloudflare
 
   if (cfConnectingIP) {
     return cfConnectingIP;
@@ -183,17 +186,17 @@ export function getClientIP(request: Request): string {
 
   if (forwarded) {
     // X-Forwarded-Forは複数のIPが含まれる可能性があるため、最初のIPを使用
-    const firstIP = forwarded.split(',')[0].trim();
+    const firstIP = forwarded.split(",")[0].trim();
     return firstIP;
   }
 
   // フォールバック
-  return '127.0.0.1';
+  return "127.0.0.1";
 }
 
 // レート制限のテスト用ヘルパー
 export function createTestRateLimit(): Ratelimit | null {
-  if (process.env.NODE_ENV === 'test') {
+  if (process.env.NODE_ENV === "test") {
     // テスト環境では常にnullを返す（レート制限無効）
     return null;
   }
@@ -205,7 +208,7 @@ export function createTestRateLimit(): Ratelimit | null {
         // メモリ内のRedisモック
         eval: async () => ({ result: [1, Date.now() + 300000] }),
       } as any,
-      limiter: Ratelimit.slidingWindow(10, '1 m'), // テスト用に緩い制限
+      limiter: Ratelimit.slidingWindow(10, "1 m"), // テスト用に緩い制限
     });
   } catch {
     return null;
@@ -214,18 +217,18 @@ export function createTestRateLimit(): Ratelimit | null {
 
 // 設定状況の診断レポート
 export function generateRateLimitDiagnostics(): {
-  status: 'ok' | 'warning' | 'error';
+  status: "ok" | "warning" | "error";
   message: string;
   details: any;
 } {
   const validation = validateRateLimitEnvironment();
   const config = createRateLimitInstance();
 
-  if (process.env.NODE_ENV === 'production') {
+  if (process.env.NODE_ENV === "production") {
     if (!validation.isValid) {
       return {
-        status: 'error',
-        message: '本番環境でレート制限設定が不完全です',
+        status: "error",
+        message: "本番環境でレート制限設定が不完全です",
         details: {
           missing: validation.missing,
           warnings: validation.warnings,
@@ -236,8 +239,8 @@ export function generateRateLimitDiagnostics(): {
 
     if (!config.enabled) {
       return {
-        status: 'error',
-        message: 'レート制限の初期化に失敗しました',
+        status: "error",
+        message: "レート制限の初期化に失敗しました",
         details: {
           validation,
           config,
@@ -246,8 +249,8 @@ export function generateRateLimitDiagnostics(): {
     }
 
     return {
-      status: 'ok',
-      message: 'レート制限が正常に設定されています',
+      status: "ok",
+      message: "レート制限が正常に設定されています",
       details: {
         enabled: config.enabled,
         limits: config.limits,
@@ -257,14 +260,14 @@ export function generateRateLimitDiagnostics(): {
   } else {
     // 開発/テスト環境
     return {
-      status: validation.isValid ? 'ok' : 'warning',
-      message: validation.isValid 
-        ? 'レート制限が設定されています（開発環境）'
-        : 'レート制限が無効です（開発環境）',
+      status: validation.isValid ? "ok" : "warning",
+      message: validation.isValid
+        ? "レート制限が設定されています（開発環境）"
+        : "レート制限が無効です（開発環境）",
       details: {
         validation,
         config,
-        note: '開発環境ではレート制限は必須ではありません',
+        note: "開発環境ではレート制限は必須ではありません",
       },
     };
   }
