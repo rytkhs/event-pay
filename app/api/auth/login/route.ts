@@ -5,9 +5,18 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient, createServiceClient } from '@/lib/supabase/server';
-import { Ratelimit } from '@upstash/ratelimit';
-import { Redis } from '@upstash/redis';
 import { z } from 'zod';
+import { 
+  ERROR_CODES, 
+  createErrorResponse, 
+  createSuccessResponse, 
+  getHTTPStatusFromErrorCode 
+} from '@/lib/api/error-codes';
+import { 
+  createRateLimitInstance, 
+  executeRateLimit, 
+  getClientIP 
+} from '@/lib/security/rate-limit-config';
 
 // 入力値バリデーションスキーマ
 const loginSchema = z.object({
@@ -22,63 +31,35 @@ const loginSchema = z.object({
 });
 
 // レート制限の設定（IP単位で5分間に5回まで）
-const ratelimit = process.env.RATE_LIMIT_REDIS_URL ? new Ratelimit({
-  redis: new Redis({
-    url: process.env.RATE_LIMIT_REDIS_URL!,
-    token: process.env.RATE_LIMIT_REDIS_TOKEN!,
-  }),
-  limiter: Ratelimit.slidingWindow(5, '5 m'),
-  analytics: true,
-}) : null;
+const rateLimitConfig = createRateLimitInstance();
 
 export async function POST(request: NextRequest) {
   try {
     // レート制限チェック
-    if (ratelimit) {
-      const ip = request.ip ?? request.headers.get('x-forwarded-for') ?? '127.0.0.1';
-      const { success, limit, reset, remaining } = await ratelimit.limit(`login_${ip}`);
+    const clientIP = getClientIP(request);
+    const rateLimitResult = await executeRateLimit(
+      rateLimitConfig.instance,
+      `login_${clientIP}`
+    );
 
-      if (!success) {
-        return NextResponse.json(
-          {
-            success: false,
-            error: {
-              code: 'RATE_LIMIT_EXCEEDED',
-              message: 'レート制限に達しました。しばらく待ってから再試行してください。',
-            },
-          },
-          {
-            status: 429,
-            headers: {
-              'X-RateLimit-Limit': limit.toString(),
-              'X-RateLimit-Remaining': remaining.toString(),
-              'X-RateLimit-Reset': reset.toString(),
-              'Retry-After': Math.round((reset - Date.now()) / 1000).toString(),
-            },
-          }
-        );
-      }
-
-      // レート制限ヘッダーを設定
-      const headers = {
-        'X-RateLimit-Limit': limit.toString(),
-        'X-RateLimit-Remaining': remaining.toString(),
-        'X-RateLimit-Reset': reset.toString(),
-      };
+    if (!rateLimitResult.success) {
+      const errorResponse = createErrorResponse(ERROR_CODES.SECURITY.RATE_LIMIT_EXCEEDED);
+      return NextResponse.json(
+        errorResponse,
+        {
+          status: getHTTPStatusFromErrorCode(ERROR_CODES.SECURITY.RATE_LIMIT_EXCEEDED),
+          headers: rateLimitResult.headers,
+        }
+      );
     }
 
     // リクエストボディの解析
     const body = await request.json().catch(() => null);
     if (!body) {
+      const errorResponse = createErrorResponse(ERROR_CODES.VALIDATION.INVALID_JSON);
       return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: 'INVALID_REQUEST',
-            message: '有効なJSONを送信してください',
-          },
-        },
-        { status: 400 }
+        errorResponse,
+        { status: getHTTPStatusFromErrorCode(ERROR_CODES.VALIDATION.INVALID_JSON) }
       );
     }
 
@@ -86,15 +67,14 @@ export async function POST(request: NextRequest) {
     const validationResult = loginSchema.safeParse(body);
     if (!validationResult.success) {
       const firstError = validationResult.error.errors[0];
+      const errorCode = firstError.path[0] === 'email' 
+        ? ERROR_CODES.VALIDATION.INVALID_EMAIL 
+        : ERROR_CODES.VALIDATION.WEAK_PASSWORD;
+      
+      const errorResponse = createErrorResponse(errorCode, firstError.message);
       return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: firstError.path[0] === 'email' ? 'INVALID_EMAIL' : 'WEAK_PASSWORD',
-            message: firstError.message,
-          },
-        },
-        { status: 400 }
+        errorResponse,
+        { status: getHTTPStatusFromErrorCode(errorCode) }
       );
     }
 
@@ -111,29 +91,19 @@ export async function POST(request: NextRequest) {
 
     if (error || !data.user) {
       // セキュリティ上、具体的なエラー内容は隠す（ユーザー列挙攻撃対策）
+      const errorResponse = createErrorResponse(ERROR_CODES.AUTH.INVALID_CREDENTIALS);
       return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: 'INVALID_CREDENTIALS',
-            message: 'メールアドレスまたはパスワードが正しくありません',
-          },
-        },
-        { status: 401 }
+        errorResponse,
+        { status: getHTTPStatusFromErrorCode(ERROR_CODES.AUTH.INVALID_CREDENTIALS) }
       );
     }
 
     // メール未確認の場合
     if (!data.user.email_confirmed_at) {
+      const errorResponse = createErrorResponse(ERROR_CODES.AUTH.EMAIL_NOT_CONFIRMED);
       return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: 'EMAIL_NOT_CONFIRMED',
-            message: 'メールアドレスの確認が完了していません。確認メールをご確認ください。',
-          },
-        },
-        { status: 403 }
+        errorResponse,
+        { status: getHTTPStatusFromErrorCode(ERROR_CODES.AUTH.EMAIL_NOT_CONFIRMED) }
       );
     }
 
@@ -158,21 +128,22 @@ export async function POST(request: NextRequest) {
     }
 
     // セッションCookieの設定
-    const response = NextResponse.json(
+    const successResponse = createSuccessResponse(
       {
-        success: true,
-        data: {
-          user: {
-            id: data.user.id,
-            email: data.user.email,
-            name: data.user.user_metadata?.full_name || data.user.email!.split('@')[0],
-          },
-          session: data.session,
+        user: {
+          id: data.user.id,
+          email: data.user.email,
+          name: data.user.user_metadata?.full_name || data.user.email!.split('@')[0],
         },
-        message: 'ログインに成功しました',
+        session: data.session,
       },
-      { status: 200 }
+      'ログインに成功しました'
     );
+    
+    const response = NextResponse.json(successResponse, { 
+      status: 200,
+      headers: rateLimitResult.headers, // レート制限ヘッダーを含める
+    });
 
     // HTTPOnly Cookieの設定
     if (data.session) {
@@ -194,15 +165,14 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('Login error:', error);
 
+    const errorResponse = createErrorResponse(
+      ERROR_CODES.SERVER.INTERNAL_ERROR,
+      'サーバーエラーが発生しました。しばらく時間をおいて再試行してください。'
+    );
+    
     return NextResponse.json(
-      {
-        success: false,
-        error: {
-          code: 'INTERNAL_ERROR',
-          message: 'サーバーエラーが発生しました。しばらく時間をおいて再試行してください。',
-        },
-      },
-      { status: 500 }
+      errorResponse,
+      { status: getHTTPStatusFromErrorCode(ERROR_CODES.SERVER.INTERNAL_ERROR) }
     );
   }
 }

@@ -5,6 +5,15 @@
 
 import { NextResponse, type NextRequest } from 'next/server';
 import { createClient } from '@/lib/supabase/middleware';
+import { clearAllSupabaseCookies } from '@/lib/auth/cookie-manager';
+import { 
+  isStateChangingRequest, 
+  getCSRFTokenFromRequest, 
+  validateCSRFToken,
+  generateCSRFToken,
+  setCSRFTokenCookie,
+  createCSRFErrorResponse 
+} from '@/lib/security/csrf';
 
 // 認証が必要なルートのパターン
 const protectedRoutes = [
@@ -41,6 +50,12 @@ const skipMiddleware = [
   '/.well-known',
 ];
 
+// CSRF検証から除外するルート
+const csrfExemptRoutes = [
+  '/api/auth',      // 認証API（初回ログイン時にはトークンがない）
+  '/api/webhooks',  // Webhook（外部からの呼び出し）
+];
+
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
@@ -56,8 +71,29 @@ export async function middleware(request: NextRequest) {
     const response = supabaseResponse || NextResponse.next();
     setSecurityHeaders(response);
 
+    // CSRF保護チェック（状態変更操作の場合）
+    if (isStateChangingRequest(request) && !isCsrfExemptRoute(pathname)) {
+      const { headerToken, cookieToken } = getCSRFTokenFromRequest(request);
+      
+      // CSRFトークンが提供されていない場合
+      if (!headerToken || !cookieToken) {
+        return createCSRFErrorResponse('CSRF token is required for state-changing operations');
+      }
+      
+      // CSRFトークンの検証
+      if (!validateCSRFToken(headerToken, cookieToken)) {
+        return createCSRFErrorResponse('Invalid CSRF token');
+      }
+    }
+
     // 現在のユーザーを取得
     const { data: { user }, error } = await supabase.auth.getUser();
+
+    // CSRFトークンの設定（認証済みユーザーで、まだトークンがない場合）
+    if (user && !request.cookies.get('csrf-token')) {
+      const csrfToken = generateCSRFToken();
+      setCSRFTokenCookie(response, csrfToken);
+    }
 
     // 公開ルートの場合、認証チェックをスキップ
     if (isPublicRoute(pathname)) {
@@ -74,7 +110,7 @@ export async function middleware(request: NextRequest) {
       if (!user || error) {
         // セッションが無効な場合、認証Cookieを削除
         if (error) {
-          response.cookies.delete('supabase-auth-token');
+          clearAllSupabaseCookies(response);
         }
 
         // APIルートの場合は401を返す
@@ -153,6 +189,13 @@ function isPublicRoute(pathname: string): boolean {
  */
 function isProtectedRoute(pathname: string): boolean {
   return protectedRoutes.some(route => pathname.startsWith(route));
+}
+
+/**
+ * CSRF検証から除外するルートかどうかを判定
+ */
+function isCsrfExemptRoute(pathname: string): boolean {
+  return csrfExemptRoutes.some(route => pathname.startsWith(route));
 }
 
 /**

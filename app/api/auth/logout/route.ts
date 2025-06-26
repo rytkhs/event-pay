@@ -5,6 +5,13 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { createResponseWithCookieCleanup } from '@/lib/auth/cookie-manager';
+import { 
+  ERROR_CODES, 
+  createErrorResponse, 
+  createSuccessResponse, 
+  getHTTPStatusFromErrorCode 
+} from '@/lib/api/error-codes';
 
 export async function POST(request: NextRequest) {
   try {
@@ -14,15 +21,10 @@ export async function POST(request: NextRequest) {
     const { data: { user }, error: userError } = await supabase.auth.getUser();
 
     if (!user || userError) {
+      const errorResponse = createErrorResponse(ERROR_CODES.AUTH.NOT_AUTHENTICATED);
       return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: 'NOT_AUTHENTICATED',
-            message: '認証が必要です',
-          },
-        },
-        { status: 401 }
+        errorResponse,
+        { status: getHTTPStatusFromErrorCode(ERROR_CODES.AUTH.NOT_AUTHENTICATED) }
       );
     }
 
@@ -31,70 +33,31 @@ export async function POST(request: NextRequest) {
 
     if (error) {
       console.error('Logout error:', error);
+      const errorResponse = createErrorResponse(ERROR_CODES.AUTH.LOGOUT_FAILED);
       return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: 'LOGOUT_FAILED',
-            message: 'ログアウトに失敗しました。再試行してください。',
-          },
-        },
-        { status: 500 }
+        errorResponse,
+        { status: getHTTPStatusFromErrorCode(ERROR_CODES.AUTH.LOGOUT_FAILED) }
       );
     }
 
-    // レスポンスの作成
-    const response = NextResponse.json(
-      {
-        success: true,
-        message: 'ログアウトしました',
-      },
-      { status: 200 }
+    // レスポンスの作成（Cookie削除を含む）
+    const successResponse = createSuccessResponse(
+      {},
+      'ログアウトしました'
     );
-
-    // 認証関連のCookieを削除
-    const cookieOptions = {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax' as const,
-      path: '/',
-      maxAge: 0, // 即座に削除
-    };
-
-    response.cookies.set('supabase-auth-token', '', cookieOptions);
-    response.cookies.set('supabase-refresh-token', '', cookieOptions);
     
-    // その他の認証関連Cookieも削除
-    response.cookies.set('supabase-auth-token-code-verifier', '', cookieOptions);
-
-    return response;
+    return createResponseWithCookieCleanup(
+      successResponse,
+      200
+    );
   } catch (error) {
     console.error('Logout error:', error);
 
     // エラーが発生してもCookieは削除する（セキュリティ重視）
-    const response = NextResponse.json(
-      {
-        success: false,
-        error: {
-          code: 'INTERNAL_ERROR',
-          message: 'サーバーエラーが発生しました',
-        },
-      },
-      { status: 500 }
+    const errorResponse = createErrorResponse(ERROR_CODES.SERVER.INTERNAL_ERROR);
+    return createResponseWithCookieCleanup(
+      errorResponse,
+      getHTTPStatusFromErrorCode(ERROR_CODES.SERVER.INTERNAL_ERROR)
     );
-
-    // エラー時でもCookieを削除
-    const cookieOptions = {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax' as const,
-      path: '/',
-      maxAge: 0,
-    };
-
-    response.cookies.set('supabase-auth-token', '', cookieOptions);
-    response.cookies.set('supabase-refresh-token', '', cookieOptions);
-
-    return response;
   }
 }
