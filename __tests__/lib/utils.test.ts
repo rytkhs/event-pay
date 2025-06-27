@@ -48,8 +48,8 @@ describe("lib/utils", () => {
     });
 
     test("複雑な組み合わせが正しく動作する", () => {
-      const variant = "primary";
-      const size = "lg";
+      const variant = "primary" as "primary" | "secondary";
+      const size = "lg" as "sm" | "lg";
       const disabled = false;
       
       const result = cn(
