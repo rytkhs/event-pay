@@ -5,12 +5,9 @@ import {
   deleteUserById,
   checkUserProfileExists,
 } from "@/lib/supabase/admin";
-import { getClientIP } from "@/lib/utils/network";
-import { createRateLimitStore, checkRateLimit as checkRateLimitV2 } from "@/lib/rate-limit";
-import { RATE_LIMIT_CONFIG, PASSWORD_CONFIG } from "@/config/security";
+import { checkRateLimit, RATE_LIMIT_CONFIGS } from "@/lib/rate-limit";
+import { PASSWORD_CONFIG } from "@/config/security";
 import { z } from "zod";
-
-const rateLimitStore = createRateLimitStore();
 
 export const registrationSchema = z.object({
   email: z.string().email("有効なメールアドレスを入力してください"),
@@ -28,7 +25,7 @@ export const registrationSchema = z.object({
 
 export type RegistrationData = z.infer<typeof registrationSchema>;
 
-export interface RateLimitResult {
+export interface RegistrationRateLimitResult {
   allowed: boolean;
   retryAfter?: number;
 }
@@ -40,11 +37,15 @@ export interface RegistrationResult {
 }
 
 export class RegistrationService {
-  static async checkRateLimit(request: NextRequest): Promise<RateLimitResult> {
-    const clientIP = getClientIP(request);
-    const key = `register:${clientIP}`;
+  static async checkRateLimit(request: NextRequest): Promise<RegistrationRateLimitResult> {
+    console.log("RegistrationService.checkRateLimit called");
+    const result = await checkRateLimit(request, RATE_LIMIT_CONFIGS.userRegistration, "register");
+    console.log("Rate limit result:", result);
 
-    return await checkRateLimitV2(rateLimitStore, key, RATE_LIMIT_CONFIG.register);
+    return {
+      allowed: result.success,
+      retryAfter: result.success ? undefined : Math.ceil((result.reset - Date.now()) / 1000),
+    };
   }
 
   static async validateInput(request: NextRequest): Promise<RegistrationData> {
@@ -109,7 +110,7 @@ export class RegistrationService {
       } catch (deleteError) {
         // 「User not found」エラーの場合はログ出力を抑制（テスト環境では正常なケース）
         const errorMessage = (deleteError as Error).message;
-        if (!errorMessage.includes('User not found')) {
+        if (!errorMessage.includes("User not found")) {
           // eslint-disable-next-line no-console
           console.error("Failed to cleanup user after registration failure:", deleteError);
         }
@@ -197,7 +198,7 @@ export class PasswordResetService {
     // メール列挙攻撃（存在しないメールアドレスの判別）を防ぐため
     if (error) {
       // ログには詳細なエラーを記録（監視用）
-      if (process.env.NODE_ENV === 'development') {
+      if (process.env.NODE_ENV === "development") {
         // eslint-disable-next-line no-console
         console.warn("Password reset email send failed:", {
           email: email.replace(/(.{2}).*(@.*)/, "$1***$2"), // メールアドレスを部分的にマスク
