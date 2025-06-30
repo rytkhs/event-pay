@@ -42,7 +42,7 @@ describe("lib/utils", () => {
       const result = cn({
         "text-red-500": true,
         "text-green-500": false,
-        "font-semibold": true
+        "font-semibold": true,
       });
       expect(result).toBe("text-red-500 font-semibold");
     });
@@ -51,7 +51,7 @@ describe("lib/utils", () => {
       const variant = "primary" as "primary" | "secondary";
       const size = "lg" as "sm" | "lg";
       const disabled = false;
-      
+
       const result = cn(
         "btn",
         variant === "primary" && "btn-primary",
@@ -60,7 +60,7 @@ describe("lib/utils", () => {
         size === "lg" && "btn-lg",
         disabled && "btn-disabled"
       );
-      
+
       expect(result).toBe("btn btn-primary btn-lg");
     });
 
@@ -80,7 +80,7 @@ describe("lib/utils", () => {
       // より具体的な競合例
       const result4 = cn("p-4", "p-6"); // 同レベルの競合
       expect(result4).toBe("p-6");
-      
+
       const result5 = cn("text-red-500", "text-blue-500", "text-green-500");
       expect(result5).toBe("text-green-500");
     });
