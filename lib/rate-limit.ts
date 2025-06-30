@@ -94,7 +94,10 @@ export function createRateLimit(config: RateLimitConfig): Ratelimit {
       prefix: "eventpay_rate_limit",
     });
   } catch (error) {
-    console.error("Failed to create rate limit instance:", error);
+    // 本番環境では適切なログシステムに出力
+    if (process.env.NODE_ENV === "development") {
+      console.error("Failed to create rate limit instance:", error);
+    }
     throw new Error("Rate limit initialization failed");
   }
 }
@@ -108,7 +111,10 @@ function normalizeIP(ip: string): string {
 
   // 不正なIPの場合はデフォルトを返す
   if (!ipv4Regex.test(normalizedIp)) {
-    console.warn(`Invalid IP address detected: ${ip}, using default`);
+    // 本番環境では適切なログシステムに出力
+    if (process.env.NODE_ENV === "development") {
+      console.warn(`Invalid IP address detected: ${ip}, using default`);
+    }
     return "127.0.0.1";
   }
 
@@ -196,15 +202,17 @@ export async function checkRateLimit(
     // レート制限チェック
     const result = await rateLimit.limit(key);
 
-    // セキュリティログ（レート制限に達した場合）
+    // セキュリティログ（レート制限に達した場合）- 本番環境では適切なログシステムに出力
     if (!result.success) {
-      console.warn("Rate limit exceeded:", {
-        key: keyPrefix,
-        identifier: config.identifier,
-        ip: getClientIP(request),
-        userAgent: request.headers.get("user-agent"),
-        timestamp: new Date().toISOString(),
-      });
+      if (process.env.NODE_ENV === "development") {
+        console.warn("Rate limit exceeded:", {
+          key: keyPrefix,
+          identifier: config.identifier,
+          ip: getClientIP(request),
+          userAgent: request.headers.get("user-agent"),
+          timestamp: new Date().toISOString(),
+        });
+      }
     }
 
     return {
@@ -214,14 +222,16 @@ export async function checkRateLimit(
       reset: result.reset,
     };
   } catch (error) {
-    // エラーログを記録
-    console.error("Rate limit check failed:", {
-      error: error instanceof Error ? error.message : error,
-      config,
-      keyPrefix,
-      ip: getClientIP(request),
-      timestamp: new Date().toISOString(),
-    });
+    // エラーログを記録 - 本番環境では適切なログシステムに出力
+    if (process.env.NODE_ENV === "development") {
+      console.error("Rate limit check failed:", {
+        error: error instanceof Error ? error.message : error,
+        config,
+        keyPrefix,
+        ip: getClientIP(request),
+        timestamp: new Date().toISOString(),
+      });
+    }
 
     // フェイルオープン（制限なしで通す）
     return {
@@ -269,6 +279,12 @@ export const RATE_LIMIT_CONFIGS = {
   userRegistration: {
     requests: 6,
     window: "5 m",
+    identifier: "ip" as const,
+  },
+  // POST /api/auth/login: IP単位で15分間に5回
+  userLogin: {
+    requests: 5,
+    window: "15 m",
     identifier: "ip" as const,
   },
   // POST /api/attendances/register: IP単位で5分間に10回
