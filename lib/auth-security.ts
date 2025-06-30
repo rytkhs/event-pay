@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { Redis } from "@upstash/redis";
+import { getClientIP } from "@/lib/utils/ip-detection";
 
 // アカウントロックアウト設定
 export const ACCOUNT_LOCKOUT_CONFIG = {
@@ -274,25 +275,3 @@ export class InputSanitizer {
   }
 }
 
-/**
- * クライアントIPアドレスを安全に取得
- * @param request NextRequestオブジェクト
- * @returns クライアントのIPアドレス
- */
-export function getClientIP(request: NextRequest): string {
-  const ipSources = [
-    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim(),
-    request.headers.get("x-real-ip"),
-    request.headers.get("cf-connecting-ip"),
-    request.headers.get("x-client-ip"),
-    request.ip,
-  ];
-
-  for (const source of ipSources) {
-    if (source && source !== "::1" && source !== "localhost") {
-      return source;
-    }
-  }
-
-  return "127.0.0.1";
-}
