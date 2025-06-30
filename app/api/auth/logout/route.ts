@@ -1,7 +1,10 @@
+import { NextRequest } from "next/server";
 import { ApiResponseHelper } from "@/lib/api/response";
 import { LogoutService } from "@/lib/services/registration";
+import { withCSRFProtection } from "@/lib/middleware/csrf-protection";
 
-export async function POST() {
+export async function POST(request: NextRequest) {
+  return withCSRFProtection(request, async (req) => {
   try {
     const result = await LogoutService.logout();
     return ApiResponseHelper.success(undefined, result.message);
@@ -11,4 +14,5 @@ export async function POST() {
     }
     return ApiResponseHelper.internalError("Internal server error", "SERVER_ERROR");
   }
+  });
 }

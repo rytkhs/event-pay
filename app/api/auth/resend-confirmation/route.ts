@@ -4,6 +4,7 @@ import { cookies } from "next/headers";
 import { z } from "zod";
 import { Ratelimit } from "@upstash/ratelimit";
 import { Redis } from "@upstash/redis";
+import { getClientIP } from "@/lib/utils/ip-detection";
 
 // バリデーションスキーマ（より厳密）
 const resendSchema = z.object({
@@ -129,12 +130,8 @@ export async function POST(request: NextRequest) {
 
     const { email } = validation.data;
 
-    // IPアドレス取得（プロキシ環境対応）
-    const ip =
-      request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
-      request.headers.get("x-real-ip") ||
-      request.ip ||
-      "127.0.0.1";
+    // IPアドレス取得（統一実装使用）
+    const ip = getClientIP(request);
 
     // レート制限チェック（IP別）
     const ipRateLimitKey = `resend_ip_${ip}`;

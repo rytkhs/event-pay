@@ -1,10 +1,12 @@
 import { NextRequest } from "next/server";
 import { ApiResponseHelper } from "@/lib/api/response";
 import { LoginService } from "@/lib/services/registration";
-import { getClientIP } from "@/lib/auth-security";
+import { getClientIP } from "@/lib/utils/ip-detection";
+import { withCSRFProtection } from "@/lib/middleware/csrf-protection";
 import { z } from "zod";
 
 export async function POST(request: NextRequest) {
+  return withCSRFProtection(request, async (req) => {
   const clientIP = getClientIP(request);
 
   try {
@@ -61,6 +63,9 @@ export async function POST(request: NextRequest) {
       return ApiResponseHelper.unauthorized(error.message, "LOGIN_FAILED");
     }
 
-    return ApiResponseHelper.badRequest("Invalid input data", "VALIDATION_ERROR");
+    // 予期しない例外の場合は500系エラーを返す
+    console.error("Unexpected error in login API:", error);
+    return ApiResponseHelper.internalError("ログイン処理中にエラーが発生しました", "INTERNAL_ERROR");
   }
+  });
 }

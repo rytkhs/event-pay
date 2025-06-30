@@ -1,9 +1,11 @@
 import { NextRequest } from "next/server";
 import { ApiResponseHelper } from "@/lib/api/response";
 import { PasswordResetService } from "@/lib/services/registration";
+import { withCSRFProtection } from "@/lib/middleware/csrf-protection";
 import { z } from "zod";
 
 export async function POST(request: NextRequest) {
+  return withCSRFProtection(request, async (req) => {
   try {
     // 入力値検証
     const validatedData = await PasswordResetService.validateInput(request);
@@ -23,4 +25,5 @@ export async function POST(request: NextRequest) {
 
     return ApiResponseHelper.badRequest("Invalid input data", "VALIDATION_ERROR");
   }
+  });
 }
