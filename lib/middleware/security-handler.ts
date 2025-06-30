@@ -61,6 +61,60 @@ export class SecurityHandler {
   }
 
   /**
+   * CSRF保護の統合検証
+   */
+  static async validateCSRFProtection(request: NextRequest): Promise<boolean> {
+    const origin = request.headers.get("origin");
+    const referer = request.headers.get("referer");
+    const xRequestedWith = request.headers.get("x-requested-with");
+    const csrfToken = request.headers.get("x-csrf-token");
+
+    // Origin/Refererチェック
+    const allowedOrigins = [
+      process.env.NEXT_PUBLIC_SITE_URL,
+      "http://localhost:3000",
+      "https://localhost:3000"
+    ].filter(Boolean);
+
+    const isOriginValid = origin && allowedOrigins.some(allowed => 
+      allowed && (origin === allowed || origin.startsWith(allowed))
+    );
+
+    const isRefererValid = referer && allowedOrigins.some(allowed => 
+      allowed && referer.startsWith(allowed)
+    );
+
+    // XMLHttpRequestヘッダーチェック
+    const isXRequestedWithValid = xRequestedWith === "XMLHttpRequest";
+
+    // CSRFトークンチェック
+    const isTokenValid = csrfToken ? this.validateCSRFToken(csrfToken) : false;
+
+    // 少なくとも2つの検証が通る必要がある
+    const validationCount = [
+      isOriginValid,
+      isRefererValid,
+      isXRequestedWithValid,
+      isTokenValid
+    ].filter(Boolean).length;
+
+    return validationCount >= 2;
+  }
+
+  /**
+   * CSRFトークンをCookieに設定
+   */
+  static setCSRFToken(response: NextResponse): string {
+    const token = this.generateCSRFToken();
+    response.cookies.set("csrf-token", token, {
+      ...COOKIE_CONFIG,
+      httpOnly: false, // フロントエンドからアクセス可能にする
+      sameSite: "strict"
+    });
+    return token;
+  }
+
+  /**
    * セキュリティヘッダーとCookie処理の統合
    */
   static apply(request: NextRequest, response: NextResponse): void {

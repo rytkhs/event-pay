@@ -21,6 +21,11 @@ export async function middleware(request: NextRequest) {
   SecurityHandler.apply(request, response);
   SecurityHandler.applyPathSpecificSecurity(pathname, response);
 
+  // 認証が必要なページでCSRFトークンを自動生成
+  if (AuthHandler.isAuthRequired(pathname)) {
+    SecurityHandler.setCSRFToken(response);
+  }
+
   return response;
 }
 

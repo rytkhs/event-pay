@@ -62,6 +62,13 @@ export class AuthHandler {
   }
 
   /**
+   * 認証が必要なパスかチェック（エイリアス）
+   */
+  static isAuthRequired(pathname: string): boolean {
+    return this.requiresAuth(pathname);
+  }
+
+  /**
    * 認証済みユーザーがアクセス不可なパスかチェック
    */
   static isUnauthenticatedOnlyPath(pathname: string): boolean {
