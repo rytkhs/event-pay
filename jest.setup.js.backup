@@ -1,0 +1,196 @@
+// Jest DOM matchers for Testing Library
+import "@testing-library/jest-dom";
+
+// Load environment variables for testing
+import dotenv from "dotenv";
+dotenv.config({ path: ".env.local" });
+
+// Global test timeout (handled by jest.config.mjs testTimeout setting)
+
+// Mock next/headers for SSR testing
+jest.mock("next/headers", () => {
+  const cookieStore = new Map();
+  const headerStore = new Map();
+
+  return {
+    cookies: jest.fn(() => ({
+      get: jest.fn((name) => {
+        const value = cookieStore.get(name);
+        return value ? { name, value } : undefined;
+      }),
+      set: jest.fn((name, value) => {
+        cookieStore.set(name, value);
+      }),
+      has: jest.fn((name) => cookieStore.has(name)),
+      delete: jest.fn((name) => cookieStore.delete(name)),
+      getAll: jest.fn(() =>
+        Array.from(cookieStore.entries()).map(([name, value]) => ({ name, value }))
+      ),
+      clear: jest.fn(() => cookieStore.clear()),
+    })),
+    headers: jest.fn(() => ({
+      get: jest.fn((name) => headerStore.get(name.toLowerCase())),
+      has: jest.fn((name) => headerStore.has(name.toLowerCase())),
+      set: jest.fn((name, value) => headerStore.set(name.toLowerCase(), value)),
+      delete: jest.fn((name) => headerStore.delete(name.toLowerCase())),
+      entries: jest.fn(() => headerStore.entries()),
+      keys: jest.fn(() => headerStore.keys()),
+      values: jest.fn(() => headerStore.values()),
+    })),
+  };
+});
+
+// Mock next/navigation for client components
+jest.mock("next/navigation", () => ({
+  useRouter: jest.fn(() => ({
+    push: jest.fn(),
+    replace: jest.fn(),
+    back: jest.fn(),
+    forward: jest.fn(),
+    refresh: jest.fn(),
+    prefetch: jest.fn(),
+  })),
+  usePathname: jest.fn(() => "/"),
+  useSearchParams: jest.fn(() => new URLSearchParams()),
+  redirect: jest.fn(),
+  notFound: jest.fn(),
+}));
+
+// Mock Resend for email testing
+jest.mock("resend", () => {
+  const mockSend = jest.fn().mockResolvedValue({
+    data: { id: "mock-email-id" },
+    error: null,
+  });
+
+  return {
+    Resend: jest.fn().mockImplementation(() => ({
+      emails: { send: mockSend },
+    })),
+  };
+});
+
+// Mock Stripe for payment testing
+jest.mock("stripe", () => {
+  return jest.fn().mockImplementation(() => ({
+    charges: {
+      create: jest.fn().mockResolvedValue({
+        id: "ch_mock",
+        status: "succeeded",
+      }),
+    },
+    paymentIntents: {
+      create: jest.fn().mockResolvedValue({
+        id: "pi_mock",
+        client_secret: "pi_mock_secret",
+      }),
+      confirm: jest.fn().mockResolvedValue({
+        id: "pi_mock",
+        status: "succeeded",
+      }),
+    },
+    customers: {
+      create: jest.fn().mockResolvedValue({
+        id: "cus_mock",
+      }),
+    },
+    accounts: {
+      create: jest.fn().mockResolvedValue({
+        id: "acct_mock",
+      }),
+    },
+    webhooks: {
+      constructEvent: jest.fn(),
+    },
+  }));
+});
+
+// Mock @upstash/ratelimit
+jest.mock("@upstash/ratelimit", () => ({
+  Ratelimit: jest.fn().mockImplementation(() => ({
+    limit: jest.fn().mockResolvedValue({
+      success: true,
+      remaining: 10,
+      reset: Date.now() + 60000,
+    }),
+  })),
+}));
+
+// Mock @upstash/redis
+jest.mock("@upstash/redis", () => ({
+  Redis: jest.fn().mockImplementation(() => ({
+    get: jest.fn().mockResolvedValue(null),
+    set: jest.fn().mockResolvedValue("OK"),
+    del: jest.fn().mockResolvedValue(1),
+    exists: jest.fn().mockResolvedValue(0),
+    expire: jest.fn().mockResolvedValue(1),
+  })),
+}));
+
+// Global test utilities
+global.testUtils = {
+  // Mock user for authenticated tests
+  mockUser: {
+    id: "test-user-id",
+    email: "test@example.com",
+    user_metadata: {
+      full_name: "Test User",
+    },
+  },
+
+  // Mock event data
+  mockEvent: {
+    id: "test-event-id",
+    title: "Test Event",
+    description: "A test event",
+    date: "2024-12-31T23:59:59Z",
+    location: "Test Location",
+    price: 1000,
+    capacity: 100,
+    organizer_id: "test-user-id",
+  },
+
+  // Helper to reset all mocks
+  resetAllMocks: () => {
+    if (typeof jest !== 'undefined') {
+      jest.clearAllMocks();
+    }
+  },
+};
+
+// Mock Supabase connection test function
+global.testSupabaseConnection = typeof jest !== 'undefined' 
+  ? jest.fn().mockResolvedValue(true)
+  : () => Promise.resolve(true);
+
+// Setup before each test
+beforeEach(() => {
+  // Clear all mocks before each test
+  if (typeof jest !== 'undefined') {
+    jest.clearAllMocks();
+  }
+});
+
+// Cleanup after tests
+afterAll(() => {
+  // Final cleanup
+  if (typeof jest !== 'undefined') {
+    jest.restoreAllMocks();
+  }
+});
+
+// Silence console warnings in tests (optional)
+const originalConsoleWarn = console.warn;
+const originalConsoleError = console.error;
+
+beforeAll(() => {
+  if (typeof jest !== 'undefined') {
+    console.warn = jest.fn();
+    console.error = jest.fn();
+  }
+});
+
+afterAll(() => {
+  console.warn = originalConsoleWarn;
+  console.error = originalConsoleError;
+});
