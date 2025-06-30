@@ -30,24 +30,23 @@ const LoginSchema = z.object({
   rememberMe: z.boolean().optional(),
 });
 
-const RegisterSchema = z.object({
-  name: z
-    .string()
-    .min(1, "名前は必須です")
-    .max(100, "名前は100文字以内で入力してください"),
-  email: z
-    .string()
-    .email("有効なメールアドレスを入力してください") 
-    .max(255, "メールアドレスは255文字以内で入力してください"),
-  password: z
-    .string()
-    .min(8, "パスワードは8文字以上である必要があります")
-    .max(128, "パスワードは128文字以内で入力してください"),
-  confirmPassword: z.string(),
-}).refine((data) => data.password === data.confirmPassword, {
-  message: "パスワードが一致しません",
-  path: ["confirmPassword"],
-});
+const RegisterSchema = z
+  .object({
+    name: z.string().min(1, "名前は必須です").max(100, "名前は100文字以内で入力してください"),
+    email: z
+      .string()
+      .email("有効なメールアドレスを入力してください")
+      .max(255, "メールアドレスは255文字以内で入力してください"),
+    password: z
+      .string()
+      .min(8, "パスワードは8文字以上である必要があります")
+      .max(128, "パスワードは128文字以内で入力してください"),
+    confirmPassword: z.string(),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: "パスワードが一致しません",
+    path: ["confirmPassword"],
+  });
 
 const ResetPasswordSchema = z.object({
   email: z
@@ -132,7 +131,7 @@ describe("認証Server Actions (TDD Red Phase)", () => {
 
     test("レート制限による失敗", async () => {
       const credentials: LoginInput = {
-        email: "ratelimit@eventpay.test", 
+        email: "ratelimit@eventpay.test",
         password: "WrongPassword123!",
       };
 
@@ -143,7 +142,7 @@ describe("認証Server Actions (TDD Red Phase)", () => {
       // 連続ログイン試行でレート制限に到達
       for (let i = 0; i < 6; i++) {
         const result = await loginAction(formData);
-        
+
         if (i >= 5) {
           expect(result.success).toBe(false);
           expect(result.error).toContain("ログイン試行回数が上限に達しました");
@@ -336,7 +335,7 @@ describe("認証Server Actions (TDD Red Phase)", () => {
       // 連続リセット試行でレート制限に到達
       for (let i = 0; i < 4; i++) {
         const result = await resetPasswordAction(formData);
-        
+
         if (i >= 3) {
           expect(result.success).toBe(false);
           expect(result.error).toContain("パスワードリセット要求の上限に達しました");
@@ -355,7 +354,7 @@ describe("認証Server Actions (TDD Red Phase)", () => {
 
       // Server Actions実行時にCSRF検証が自動で行われることを確認
       const result = await loginAction(formData);
-      
+
       // CSRF検証エラーまたは正常処理のいずれかが行われることを確認
       expect(result).toBeDefined();
     });

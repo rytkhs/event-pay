@@ -156,4 +156,3 @@ export class RegistrationService {
     return false;
   }
 }
-

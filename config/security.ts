@@ -47,6 +47,7 @@ export const COOKIE_CONFIG = {
   sameSite: "lax" as const, // 決済アプリケーションでの最適バランス（セキュリティ + UX）
   domain: process.env.NODE_ENV === "production" ? process.env.COOKIE_DOMAIN : undefined,
   path: "/",
+  maxAge: 24 * 60 * 60, // 24時間（秒単位）
 } as const;
 
 // 動的Cookie設定（リクエスト時にHTTPS判定を考慮）
@@ -124,6 +125,14 @@ export const SUPABASE_CONFIG = {
   },
 } as const;
 
+// Server Actions専用設定（自動CSRF保護）
+export const SERVER_ACTIONS_CONFIG = {
+  // Server Actionsは自動的にCSRF保護される
+  autoProtection: true,
+  // API Routesは使用しない（全てServer Actionsで実装）
+  apiRoutesDisabled: true,
+} as const;
+
 // EventPay固有のセキュリティ設定
 export const EVENTPAY_SECURITY = {
   // 決済情報保護
@@ -167,3 +176,4 @@ export type SecurityConfig = typeof RATE_LIMIT_CONFIG;
 export type CookieConfig = typeof COOKIE_CONFIG;
 export type AuthConfig = typeof AUTH_CONFIG;
 export type PasswordConfig = typeof PASSWORD_CONFIG;
+export type ServerActionsConfig = typeof SERVER_ACTIONS_CONFIG;

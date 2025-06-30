@@ -86,7 +86,9 @@ export class SupabaseClientFactory {
             maxAge:
               name === AUTH_CONFIG.cookieNames.session
                 ? AUTH_CONFIG.session.maxAge
-                : options.maxAge != null ? options.maxAge : undefined,
+                : options.maxAge != null
+                  ? options.maxAge
+                  : undefined,
           });
         },
         remove(name: string) {

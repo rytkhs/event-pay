@@ -74,8 +74,11 @@ function formDataToObject(formData: FormData): Record<string, string | boolean> 
 /**
  * ログインServer Action
  */
-export async function loginAction(formData: FormData): Promise<ServerActionResult> {
-  let result: ServerActionResult = { success: false, error: "処理中にエラーが発生しました" };
+export async function loginAction(formData: FormData): Promise<ServerActionResult<{ user: any }>> {
+  let result: ServerActionResult<{ user: any }> = {
+    success: false,
+    error: "処理中にエラーが発生しました",
+  };
 
   // タイミング攻撃対策でレスポンス時間を正規化
   await TimingAttackProtection.normalizeResponseTime(async () => {
@@ -142,7 +145,9 @@ export async function loginAction(formData: FormData): Promise<ServerActionResul
 /**
  * 登録Server Action
  */
-export async function registerAction(formData: FormData): Promise<ServerActionResult> {
+export async function registerAction(
+  formData: FormData
+): Promise<ServerActionResult<{ user: { id: string; email: string; name?: string } }>> {
   try {
     // FormDataを解析
     const rawData = formDataToObject(formData);
@@ -188,7 +193,7 @@ export async function registerAction(formData: FormData): Promise<ServerActionRe
     return {
       success: true,
       data: {
-        user: { id: result.userId!, email: email },
+        user: { id: result.userId!, email: email, name: name },
       },
       needsEmailConfirmation: true,
       redirectUrl: "/auth/verify-email",

@@ -15,7 +15,7 @@ import {
 export default function RegisterPage() {
   // 共通認証フォームフック
   const { state, formAction, isPending } = useAuthForm(registerAction);
-  
+
   // パスワード確認カスタムフック
   const passwordConfirmation = usePasswordConfirmation();
 
@@ -88,7 +88,11 @@ export default function RegisterPage() {
           onBlur={passwordConfirmation.actions.validateMatch}
           autoComplete="new-password"
           disabled={isPending}
-          error={passwordConfirmation.validation.hasError ? passwordConfirmation.state.error : state.fieldErrors?.confirmPassword?.[0]}
+          error={
+            passwordConfirmation.validation.hasError
+              ? passwordConfirmation.state.error
+              : state.fieldErrors?.confirmPassword?.[0]
+          }
           required
         />
 
@@ -99,21 +103,14 @@ export default function RegisterPage() {
           <PasswordStatusIcon type="error" message={passwordConfirmation.state.error} />
         )}
 
-        <div className="text-xs text-gray-500">
-          上記と同じパスワードを入力してください
-        </div>
+        <div className="text-xs text-gray-500">上記と同じパスワードを入力してください</div>
       </div>
 
-      <AuthSubmitButton isPending={isPending}>
-        登録
-      </AuthSubmitButton>
+      <AuthSubmitButton isPending={isPending}>登録</AuthSubmitButton>
 
       <div className="text-center text-sm text-gray-600">
         既にアカウントをお持ちの方は{" "}
-        <Link
-          href="/auth/login"
-          className="text-blue-600 hover:text-blue-500 hover:underline"
-        >
+        <Link href="/auth/login" className="text-blue-600 hover:text-blue-500 hover:underline">
           ログイン
         </Link>
       </div>

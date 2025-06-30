@@ -1,10 +1,9 @@
 "use client";
 
-import { CSRFTokenManager } from "@/lib/utils/csrf-token";
 import { ApiResponse } from "@/lib/types/api";
 
 /**
- * 統一APIクライアント - CSRF保護付き
+ * 統一APIクライアント - edge-csrf対応
  */
 export class ApiClient {
   private static baseUrl = process.env.NEXT_PUBLIC_API_URL || "";
@@ -12,22 +11,24 @@ export class ApiClient {
   /**
    * 安全なAPIリクエスト実行
    */
-  private static async request<T = any>(
+  private static async request<T = unknown>(
     endpoint: string,
     options: RequestInit = {}
   ): Promise<ApiResponse<T>> {
-    // CSRF保護チェック
-    if (options.method && options.method !== "GET") {
-      if (!CSRFTokenManager.validateBeforeCall()) {
-        throw new Error("CSRF token validation failed");
-      }
-    }
-
     const url = `${this.baseUrl}${endpoint}`;
-    
+
+    const defaultHeaders = {
+      "Content-Type": "application/json",
+      ...options.headers,
+    };
+
     try {
-      const response = await CSRFTokenManager.safeFetch(url, options);
-      
+      const response = await fetch(url, {
+        ...options,
+        headers: defaultHeaders,
+        credentials: "same-origin",
+      });
+
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
         throw new Error(errorData.message || `HTTP ${response.status}`);
@@ -35,7 +36,9 @@ export class ApiClient {
 
       return await response.json();
     } catch (error) {
-      console.error("API request failed:", error);
+      if (process.env.NODE_ENV === "development") {
+        console.error("API request failed:", error);
+      }
       throw error;
     }
   }
@@ -43,17 +46,14 @@ export class ApiClient {
   /**
    * GETリクエスト
    */
-  static async get<T = any>(endpoint: string): Promise<ApiResponse<T>> {
+  static async get<T = unknown>(endpoint: string): Promise<ApiResponse<T>> {
     return this.request<T>(endpoint, { method: "GET" });
   }
 
   /**
    * POSTリクエスト
    */
-  static async post<T = any>(
-    endpoint: string,
-    data?: any
-  ): Promise<ApiResponse<T>> {
+  static async post<T = unknown>(endpoint: string, data?: unknown): Promise<ApiResponse<T>> {
     return this.request<T>(endpoint, {
       method: "POST",
       body: data ? JSON.stringify(data) : undefined,
@@ -63,10 +63,7 @@ export class ApiClient {
   /**
    * PUTリクエスト
    */
-  static async put<T = any>(
-    endpoint: string,
-    data?: any
-  ): Promise<ApiResponse<T>> {
+  static async put<T = unknown>(endpoint: string, data?: unknown): Promise<ApiResponse<T>> {
     return this.request<T>(endpoint, {
       method: "PUT",
       body: data ? JSON.stringify(data) : undefined,
@@ -76,61 +73,15 @@ export class ApiClient {
   /**
    * DELETEリクエスト
    */
-  static async delete<T = any>(endpoint: string): Promise<ApiResponse<T>> {
+  static async delete<T = unknown>(endpoint: string): Promise<ApiResponse<T>> {
     return this.request<T>(endpoint, { method: "DELETE" });
   }
-
-  /**
-   * 認証関連API
-   */
-  static auth = {
-    /**
-     * ログイン
-     */
-    login: async (email: string, password: string) => {
-      return this.post<{ user: any }>("/api/auth/login", { email, password });
-    },
-
-    /**
-     * ユーザー登録
-     */
-    register: async (userData: {
-      name: string;
-      email: string;
-      password: string;
-      confirmPassword: string;
-    }) => {
-      return this.post("/api/auth/register", userData);
-    },
-
-    /**
-     * ログアウト
-     */
-    logout: async () => {
-      return this.post("/api/auth/logout");
-    },
-
-    /**
-     * パスワードリセット
-     */
-    resetPassword: async (email: string) => {
-      return this.post("/api/auth/reset-password", { email });
-    },
-
-    /**
-     * メール認証再送信
-     */
-    resendConfirmation: async (email: string) => {
-      return this.post("/api/auth/resend-confirmation", { email });
-    },
-  };
 }
 
 /**
  * レガシーサポート用のヘルパー関数
  */
 export const api = {
-  auth: ApiClient.auth,
   get: ApiClient.get,
   post: ApiClient.post,
   put: ApiClient.put,

@@ -4,19 +4,20 @@ import { createHash } from "crypto";
 /**
  * IPアドレス検証用の正規表現
  */
-const IPv4_REGEX = /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
+const IPv4_REGEX =
+  /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
 
 /**
  * プライベートIPアドレスの範囲
  */
 const PRIVATE_IP_RANGES = [
-  /^127\./,        // 127.0.0.0/8 (localhost)
-  /^10\./,         // 10.0.0.0/8
+  /^127\./, // 127.0.0.0/8 (localhost)
+  /^10\./, // 10.0.0.0/8
   /^172\.1[6-9]\./, // 172.16.0.0/12
   /^172\.2[0-9]\./, // 172.16.0.0/12
   /^172\.3[0-1]\./, // 172.16.0.0/12
-  /^192\.168\./,   // 192.168.0.0/16
-  /^169\.254\./,   // 169.254.0.0/16 (link-local)
+  /^192\.168\./, // 192.168.0.0/16
+  /^169\.254\./, // 169.254.0.0/16 (link-local)
 ];
 
 /**
@@ -27,20 +28,20 @@ function isValidIPv6(ip: string): boolean {
   if (ip === "::1" || ip === "::") {
     return true;
   }
-  
+
   // 基本的なIPv6形式チェック（コロンを含み、16進数文字のみ）
   if (ip.includes(":") && /^[0-9a-fA-F:]+$/.test(ip)) {
     // 完全なIPv6アドレス（例：2001:0db8:85a3:0000:0000:8a2e:0370:7334）
     if (/^[0-9a-fA-F]{1,4}(:[0-9a-fA-F]{1,4}){7}$/.test(ip)) {
       return true;
     }
-    
+
     // 圧縮形式のIPv6アドレス（::を含む）
     if (ip.includes("::")) {
       return true;
     }
   }
-  
+
   return false;
 }
 
@@ -53,7 +54,7 @@ export function isValidIP(ip: string): boolean {
   }
 
   const trimmedIP = ip.trim();
-  
+
   // 基本的な長さチェック
   if (trimmedIP.length < 2 || trimmedIP.length > 45) {
     return false;
@@ -77,7 +78,7 @@ export function isPrivateIP(ip: string): boolean {
   }
 
   // IPv4のプライベートIPチェック
-  return PRIVATE_IP_RANGES.some(range => range.test(ip));
+  return PRIVATE_IP_RANGES.some((range) => range.test(ip));
 }
 
 /**
@@ -93,7 +94,7 @@ export function normalizeIP(ip: string): string {
   // 基本的な検証
   if (!isValidIP(trimmedIP)) {
     // 本番環境では適切なログシステムに出力
-    if (process.env.NODE_ENV === "development") {
+    if ((process.env.NODE_ENV as string) === "development") {
       console.warn(`Invalid IP address detected: ${ip}, using fallback`);
     }
     return "127.0.0.1";
@@ -118,11 +119,11 @@ export function generateFallbackIdentifier(request: NextRequest): string {
 
   // SHA-256ハッシュの最初の16文字を使用（IP形式に近づける）
   const hash = createHash("sha256").update(sessionData).digest("hex").substring(0, 16);
-  
+
   // 擬似IPアドレス形式に変換（識別しやすくするため）
   const segments = [
     parseInt(hash.substring(0, 2), 16) % 255,
-    parseInt(hash.substring(2, 4), 16) % 255, 
+    parseInt(hash.substring(2, 4), 16) % 255,
     parseInt(hash.substring(4, 6), 16) % 255,
     parseInt(hash.substring(6, 8), 16) % 255,
   ];
@@ -132,7 +133,7 @@ export function generateFallbackIdentifier(request: NextRequest): string {
 
 /**
  * クライアントIPアドレスを取得する（Edge Runtime互換版）
- * 
+ *
  * @param request - Next.js Request オブジェクト
  * @returns クライアントのIPアドレス
  */
@@ -142,20 +143,20 @@ export function getClientIP(request: NextRequest): string {
   const ipSources = [
     // Vercel固有のヘッダー（最優先）
     request.headers.get("x-vercel-forwarded-for")?.split(",")[0]?.trim(),
-    
+
     // 標準的なプロキシヘッダー
     request.headers.get("x-forwarded-for")?.split(",")[0]?.trim(),
-    
+
     // CDN固有のヘッダー
     request.headers.get("cf-connecting-ip"), // Cloudflare
-    request.headers.get("x-real-ip"),        // Nginx
-    request.headers.get("x-client-ip"),      // Apache
-    
+    request.headers.get("x-real-ip"), // Nginx
+    request.headers.get("x-client-ip"), // Apache
+
     // その他のプロキシヘッダー
     request.headers.get("x-cluster-client-ip"),
     request.headers.get("x-forwarded"),
     request.headers.get("forwarded-for"),
-    
+
     // 最後の手段（Edge Runtimeでは常にundefined）
     request.ip,
   ];
@@ -164,12 +165,12 @@ export function getClientIP(request: NextRequest): string {
   for (const source of ipSources) {
     if (source && isValidIP(source)) {
       const normalizedIP = normalizeIP(source);
-      
+
       // プライベートIPでない場合は採用
       if (!isPrivateIP(normalizedIP)) {
         return normalizedIP;
       }
-      
+
       // 明示的にlocalhostの場合は採用（開発環境用）
       if (source === "127.0.0.1" || source === "::1") {
         return normalizedIP;
@@ -178,22 +179,22 @@ export function getClientIP(request: NextRequest): string {
   }
 
   // 全てのプロキシヘッダーが存在しない場合のフォールバック戦略
-  if (process.env.NODE_ENV === "development") {
+  if ((process.env.NODE_ENV as string) === "development") {
     // 開発環境ではlocalhostを返す
     return "127.0.0.1";
   } else {
     // 本番環境では擬似IPを生成（レート制限機能を維持するため）
     const fallbackIP = generateFallbackIdentifier(request);
-    
+
     // 本番環境では適切なログシステムに出力
-    if (process.env.NODE_ENV === "development") {
+    if ((process.env.NODE_ENV as string) === "development") {
       console.warn("No valid client IP found, using fallback identifier", {
         fallbackIP,
         userAgent: request.headers.get("user-agent"),
         timestamp: new Date().toISOString(),
       });
     }
-    
+
     return fallbackIP;
   }
 }

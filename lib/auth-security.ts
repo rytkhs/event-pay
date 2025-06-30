@@ -1,6 +1,4 @@
-import { NextRequest } from "next/server";
 import { Redis } from "@upstash/redis";
-import { getClientIP } from "@/lib/utils/ip-detection";
 
 // アカウントロックアウト設定
 export const ACCOUNT_LOCKOUT_CONFIG = {
@@ -274,4 +272,3 @@ export class InputSanitizer {
     return password;
   }
 }
-
