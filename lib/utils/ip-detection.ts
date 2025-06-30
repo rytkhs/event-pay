@@ -186,11 +186,13 @@ export function getClientIP(request: NextRequest): string {
     const fallbackIP = generateFallbackIdentifier(request);
     
     // 本番環境では適切なログシステムに出力
-    console.warn("No valid client IP found, using fallback identifier", {
-      fallbackIP,
-      userAgent: request.headers.get("user-agent"),
-      timestamp: new Date().toISOString(),
-    });
+    if (process.env.NODE_ENV === "development") {
+      console.warn("No valid client IP found, using fallback identifier", {
+        fallbackIP,
+        userAgent: request.headers.get("user-agent"),
+        timestamp: new Date().toISOString(),
+      });
+    }
     
     return fallbackIP;
   }
