@@ -1,9 +1,5 @@
 {
-  "extends": [
-    "next/core-web-vitals",
-    "next/typescript",
-    "prettier"
-  ],
+  "extends": ["next/core-web-vitals", "next/typescript", "prettier"],
   "rules": {
     "@typescript-eslint/no-unused-vars": "error",
     "@typescript-eslint/no-explicit-any": "warn",
@@ -13,9 +9,12 @@
     "react/prop-types": "off",
     "react/react-in-jsx-scope": "off",
     "@next/next/no-img-element": "error",
-    "jsx-a11y/alt-text": ["error", {
-      "elements": ["area", "[role=\"img\"]"],
-      "img": ["Image"]
-    }]
+    "jsx-a11y/alt-text": [
+      "error",
+      {
+        "elements": ["area", "[role=\"img\"]"],
+        "img": ["Image"]
+      }
+    ]
   }
 }
