@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { ApiResponse, getErrorMessage } from "@/lib/types/api";
+import { getErrorMessage } from "@/lib/types/api";
+import { ApiClient } from "@/lib/api/client";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -17,13 +18,7 @@ export default function LoginPage() {
     setError("");
 
     try {
-      const response = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
-      });
-
-      const data: ApiResponse = await response.json();
+      const data = await ApiClient.auth.login(email, password);
 
       if (data.success) {
         router.push("/dashboard");

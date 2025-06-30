@@ -2,10 +2,11 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { ApiResponse, getErrorMessage } from "@/lib/types/api";
+import { getErrorMessage } from "@/lib/types/api";
 import { usePasswordConfirmation } from "@/lib/hooks/usePasswordConfirmation";
 import { PasswordStatusIcon } from "@/components/ui/PasswordStatusIcon";
 import { FormField } from "@/components/ui/FormField";
+import { ApiClient } from "@/lib/api/client";
 
 export default function RegisterPage() {
   const [formData, setFormData] = useState({
@@ -46,13 +47,7 @@ export default function RegisterPage() {
     };
 
     try {
-      const response = await fetch("/api/auth/register", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(submitData),
-      });
-
-      const data: ApiResponse = await response.json();
+      const data = await ApiClient.auth.register(submitData);
 
       if (data.success) {
         router.push(`/auth/confirm?email=${encodeURIComponent(formData.email)}`);
