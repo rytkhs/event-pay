@@ -1,164 +1,122 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { getErrorMessage } from "@/lib/types/api";
+import Link from "next/link";
 import { usePasswordConfirmation } from "@/lib/hooks/usePasswordConfirmation";
 import { PasswordStatusIcon } from "@/components/ui/PasswordStatusIcon";
-import { FormField } from "@/components/ui/FormField";
-import { ApiClient } from "@/lib/api/client";
+import { registerAction } from "@/app/auth/actions";
+import {
+  useAuthForm,
+  AuthFormWrapper,
+  AuthFormField,
+  AuthEmailField,
+  AuthSubmitButton,
+} from "@/components/auth";
 
 export default function RegisterPage() {
-  const [formData, setFormData] = useState({
-    name: "",
-    email: "",
-  });
-  const [error, setError] = useState("");
-  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
-  const [loading, setLoading] = useState(false);
-  const router = useRouter();
-
+  // 共通認証フォームフック
+  const { state, formAction, isPending } = useAuthForm(registerAction);
+  
   // パスワード確認カスタムフック
   const passwordConfirmation = usePasswordConfirmation();
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setError("");
-    setFieldErrors({});
-
+  const handleSubmit = async (formData: FormData) => {
     // パスワード確認バリデーション
     if (!passwordConfirmation.actions.validateMatch()) {
-      setLoading(false);
       return;
     }
 
     // 確認パスワードが空の場合
     if (passwordConfirmation.validation.isEmpty) {
-      setLoading(false);
       return;
     }
 
-    // 送信用データの構築
-    const submitData = {
-      ...formData,
-      password: passwordConfirmation.state.password,
-      confirmPassword: passwordConfirmation.state.confirmPassword,
-    };
+    // フォームデータにパスワードを追加
+    formData.set("password", passwordConfirmation.state.password);
+    formData.set("confirmPassword", passwordConfirmation.state.confirmPassword);
 
-    try {
-      const data = await ApiClient.auth.register(submitData);
-
-      if (data.success) {
-        router.push(`/auth/confirm?email=${encodeURIComponent(formData.email)}`);
-      } else {
-        // フィールド固有のエラーがある場合
-        if (data.details) {
-          setFieldErrors(data.details);
-          setError("入力内容を確認してください");
-        } else {
-          setError(getErrorMessage(data.error, "登録に失敗しました"));
-        }
-      }
-    } catch {
-      setError("登録に失敗しました");
-    } finally {
-      setLoading(false);
-    }
+    // Server Actionを実行
+    return formAction(formData);
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center">
-      <form onSubmit={handleSubmit} className="w-full max-w-md space-y-4">
-        <h1 className="text-2xl font-bold text-center">ユーザー登録</h1>
+    <AuthFormWrapper
+      title="ユーザー登録"
+      subtitle="EventPayアカウントを作成してください"
+      state={state}
+      isPending={isPending}
+      formAction={handleSubmit}
+    >
+      <AuthFormField
+        type="text"
+        name="name"
+        label="名前"
+        placeholder="名前を入力してください"
+        fieldErrors={state.fieldErrors?.name}
+        required
+      />
 
-        {error && <div className="text-red-600 text-sm">{error}</div>}
+      <AuthEmailField
+        name="email"
+        label="メールアドレス"
+        placeholder="example@mail.com"
+        fieldErrors={state.fieldErrors?.email}
+        autoComplete="email"
+        required
+      />
 
-        <FormField label="名前" error={fieldErrors.name} required>
-          <input
-            type="text"
-            placeholder="名前を入力してください"
-            value={formData.name}
-            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-            required
-            className={`w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 transition-colors ${
-              fieldErrors.name ? "border-red-500" : "border-gray-300"
-            }`}
-          />
-        </FormField>
+      <AuthFormField
+        type="password"
+        name="password"
+        label="パスワード"
+        placeholder="英数字を含む8文字以上"
+        value={passwordConfirmation.state.password}
+        onChange={(e) => passwordConfirmation.actions.setPassword(e.target.value)}
+        autoComplete="new-password"
+        disabled={isPending}
+        fieldErrors={state.fieldErrors?.password}
+        required
+      />
 
-        <FormField label="メールアドレス" error={fieldErrors.email} required>
-          <input
-            type="email"
-            placeholder="example@mail.com"
-            value={formData.email}
-            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-            required
-            className={`w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 transition-colors ${
-              fieldErrors.email ? "border-red-500" : "border-gray-300"
-            }`}
-          />
-        </FormField>
+      <div className="space-y-2">
+        <AuthFormField
+          type="password"
+          name="confirmPassword"
+          label="パスワード（確認）"
+          placeholder="上記と同じパスワードを入力"
+          value={passwordConfirmation.state.confirmPassword}
+          onChange={(e) => passwordConfirmation.actions.setConfirmPassword(e.target.value)}
+          onBlur={passwordConfirmation.actions.validateMatch}
+          autoComplete="new-password"
+          disabled={isPending}
+          error={passwordConfirmation.validation.hasError ? passwordConfirmation.state.error : state.fieldErrors?.confirmPassword?.[0]}
+          required
+        />
 
-        <FormField label="パスワード" error={fieldErrors.password} required>
-          <input
-            type="password"
-            placeholder="英数字を含む8文字以上"
-            value={passwordConfirmation.state.password}
-            onChange={(e) => passwordConfirmation.actions.setPassword(e.target.value)}
-            required
-            className={`w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 transition-colors ${
-              fieldErrors.password ? "border-red-500" : "border-gray-300"
-            }`}
-          />
-        </FormField>
+        {passwordConfirmation.validation.iconType === "success" && (
+          <PasswordStatusIcon type="success" message="パスワードが一致しています" />
+        )}
+        {passwordConfirmation.validation.iconType === "error" && (
+          <PasswordStatusIcon type="error" message={passwordConfirmation.state.error} />
+        )}
 
-        <div className="space-y-1">
-          <input
-            type="password"
-            placeholder="パスワード（確認）"
-            value={passwordConfirmation.state.confirmPassword}
-            onChange={(e) => passwordConfirmation.actions.setConfirmPassword(e.target.value)}
-            onBlur={passwordConfirmation.actions.validateMatch}
-            required
-            aria-label="パスワード確認入力"
-            aria-describedby="password-confirm-help"
-            aria-invalid={passwordConfirmation.validation.hasError ? "true" : "false"}
-            className={passwordConfirmation.validation.className}
-          />
-
-          {/* エラーメッセージ */}
-          {passwordConfirmation.validation.hasError && (
-            <div role="alert" aria-live="polite" className="text-red-600 text-sm">
-              {passwordConfirmation.state.error}
-            </div>
-          )}
-          {fieldErrors.confirmPassword && (
-            <div className="text-red-600 text-sm">{fieldErrors.confirmPassword}</div>
-          )}
-
-          {/* ステータスアイコンとメッセージ */}
-          {passwordConfirmation.validation.iconType === "success" && (
-            <PasswordStatusIcon type="success" message="パスワードが一致しています" />
-          )}
-          {passwordConfirmation.validation.iconType === "error" && (
-            <PasswordStatusIcon type="error" message={passwordConfirmation.state.error} />
-          )}
-
-          {/* ヘルプテキスト */}
-          <div id="password-confirm-help" className="text-xs text-gray-500">
-            上記と同じパスワードを入力してください
-          </div>
+        <div className="text-xs text-gray-500">
+          上記と同じパスワードを入力してください
         </div>
+      </div>
 
-        <button
-          type="submit"
-          disabled={loading}
-          className="w-full p-2 bg-blue-600 text-white rounded disabled:opacity-50"
+      <AuthSubmitButton isPending={isPending}>
+        登録
+      </AuthSubmitButton>
+
+      <div className="text-center text-sm text-gray-600">
+        既にアカウントをお持ちの方は{" "}
+        <Link
+          href="/auth/login"
+          className="text-blue-600 hover:text-blue-500 hover:underline"
         >
-          {loading ? "登録中..." : "登録"}
-        </button>
-      </form>
-    </div>
+          ログイン
+        </Link>
+      </div>
+    </AuthFormWrapper>
   );
 }

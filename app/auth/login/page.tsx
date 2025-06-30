@@ -1,70 +1,76 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { getErrorMessage } from "@/lib/types/api";
-import { ApiClient } from "@/lib/api/client";
+import Link from "next/link";
+import { loginAction } from "@/app/auth/actions";
+import {
+  useAuthForm,
+  AuthFormWrapper,
+  AuthEmailField,
+  AuthPasswordField,
+  AuthSubmitButton,
+} from "@/components/auth";
 
 export default function LoginPage() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
-  const router = useRouter();
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setError("");
-
-    try {
-      const data = await ApiClient.auth.login(email, password);
-
-      if (data.success) {
-        router.push("/dashboard");
-      } else {
-        setError(getErrorMessage(data.error, "ログインに失敗しました"));
-      }
-    } catch {
-      setError("ログインに失敗しました");
-    } finally {
-      setLoading(false);
-    }
-  };
+  const { state, formAction, isPending } = useAuthForm(loginAction);
 
   return (
-    <div className="min-h-screen flex items-center justify-center">
-      <form onSubmit={handleSubmit} className="w-full max-w-md space-y-4">
-        <h1 className="text-2xl font-bold text-center">ログイン</h1>
+    <AuthFormWrapper
+      title="ログイン"
+      subtitle="EventPayアカウントにログインしてください"
+      state={state}
+      isPending={isPending}
+      formAction={formAction}
+    >
+      <AuthEmailField
+        name="email"
+        label="メールアドレス"
+        placeholder="example@mail.com"
+        fieldErrors={state.fieldErrors?.email}
+        required
+      />
 
-        {error && <div className="text-red-600 text-sm">{error}</div>}
+      <AuthPasswordField
+        name="password"
+        label="パスワード"
+        placeholder="パスワードを入力"
+        fieldErrors={state.fieldErrors?.password}
+        autoComplete="current-password"
+        required
+      />
 
-        <input
-          type="email"
-          placeholder="メールアドレス"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          required
-          className="w-full p-2 border rounded"
-        />
-
-        <input
-          type="password"
-          placeholder="パスワード"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-          className="w-full p-2 border rounded"
-        />
-
-        <button
-          type="submit"
-          disabled={loading}
-          className="w-full p-2 bg-blue-600 text-white rounded disabled:opacity-50"
+      <div className="flex items-center justify-between text-sm">
+        <div className="flex items-center space-x-2">
+          <input
+            type="checkbox"
+            id="rememberMe"
+            name="rememberMe"
+            className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+          />
+          <label htmlFor="rememberMe" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+            ログイン状態を保持
+          </label>
+        </div>
+        <Link
+          href="/auth/reset-password"
+          className="text-blue-600 hover:text-blue-500 hover:underline"
         >
-          {loading ? "ログイン中..." : "ログイン"}
-        </button>
-      </form>
-    </div>
+          パスワードを忘れた方
+        </Link>
+      </div>
+
+      <AuthSubmitButton isPending={isPending}>
+        ログイン
+      </AuthSubmitButton>
+
+      <div className="text-center text-sm text-gray-600">
+        アカウントをお持ちでない方は{" "}
+        <Link
+          href="/auth/register"
+          className="text-blue-600 hover:text-blue-500 hover:underline"
+        >
+          新規登録
+        </Link>
+      </div>
+    </AuthFormWrapper>
   );
 }
