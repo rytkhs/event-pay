@@ -1,7 +1,84 @@
 /**
+ * @jest-environment node
+ */
+
+/**
  * @file 実際のAPI統合テスト - ユーザー登録
  * @description 実際の /api/auth/register エンドポイントをテスト
  */
+
+import { jest } from "@jest/globals";
+
+// Jest mock（ESM対応）
+const mockRedisStore: Record<string, number> = {};
+
+const mockRedis = {
+  get: (key: string) => Promise.resolve(mockRedisStore[key] || 0),
+  incr: (key: string) => {
+    mockRedisStore[key] = (mockRedisStore[key] || 0) + 1;
+    return Promise.resolve(mockRedisStore[key]);
+  },
+  expire: () => Promise.resolve("OK"),
+};
+
+class MockRatelimit {
+  constructor(config: any) {
+    this.redis = config.redis;
+    this.limiter = config.limiter;
+  }
+
+  redis: any;
+  limiter: any;
+
+  async limit(identifier: string) {
+    console.log("🔧 MockRatelimit.limit called for", identifier);
+    const key = `ratelimit:${identifier}`;
+    const current = await this.redis.get(key);
+    const limit = this.limiter.tokens || 10;
+    console.log(`🔧 current=${current}, limit=${limit}`);
+
+    // 制限チェック：現在のカウントが制限値以上なら拒否
+    if (current >= limit) {
+      console.log("🔧 Rate limit exceeded!");
+      return {
+        success: false,
+        limit,
+        remaining: 0,
+        reset: Date.now() + 60000,
+      };
+    }
+
+    // カウントを増加
+    await this.redis.incr(key);
+    await this.redis.expire(key, 60);
+
+    const newCurrent = current + 1;
+    const remaining = Math.max(0, limit - newCurrent);
+    console.log(`🔧 newCurrent=${newCurrent}, remaining=${remaining}`);
+
+    return {
+      success: true,
+      limit,
+      remaining,
+      reset: Date.now() + 60000,
+    };
+  }
+
+  static slidingWindow(tokens: number, window: string) {
+    return { tokens, window, type: "sliding-window" };
+  }
+}
+
+// Jest mock設定
+jest.mock("@upstash/ratelimit", () => ({
+  Ratelimit: MockRatelimit,
+}));
+
+jest.mock("@upstash/redis", () => ({
+  Redis: function () {
+    return mockRedis;
+  },
+}));
 
 import { POST } from "@/app/api/auth/register/route";
 import { NextRequest } from "next/server";
@@ -30,22 +107,16 @@ describe("実際のAPI統合テスト - /api/auth/register", () => {
           name: "レート制限テストユーザー",
           email: `ratetest-${Date.now()}-${i}@example.com`, // 毎回ユニークなメール
           password: "SecurePass123!",
+          confirmPassword: "SecurePass123!", // 必須フィールドを追加
         };
 
         const request = createTestRequest(testData, { "x-forwarded-for": testIP });
         const response = await POST(request);
 
         const responseText = await response.text();
-        console.log(`Request ${i + 1}: Status ${response.status}, Body:`, responseText);
 
         if (i < 5) {
           // 1-5回目は成功かバリデーションエラー
-          if (![200, 201, 400, 500].includes(response.status)) {
-            console.log(
-              `Unexpected status ${response.status} on request ${i + 1}, body:`,
-              responseText
-            );
-          }
           expect([200, 201, 400, 500].includes(response.status)).toBe(true);
         } else {
           // 6回目はレート制限

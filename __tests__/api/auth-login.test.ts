@@ -1,4 +1,8 @@
 /**
+ * @jest-environment node
+ */
+
+/**
  * @file ログインAPIテストスイート
  * @description `/api/auth/login` エンドポイントの認証とセキュリティテスト（AUTH-001）
  */
