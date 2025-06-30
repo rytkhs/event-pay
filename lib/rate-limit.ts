@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { Ratelimit } from "@upstash/ratelimit";
 import { Redis } from "@upstash/redis";
+import { getClientIP, getClientIdentifier } from "@/lib/utils/ip-detection";
 
 // レート制限設定の型定義
 export interface RateLimitConfig {
@@ -102,49 +103,6 @@ export function createRateLimit(config: RateLimitConfig): Ratelimit {
   }
 }
 
-// IPアドレスの正規化と検証
-function normalizeIP(ip: string): string {
-  // IPv4アドレスの基本的な検証
-  const ipv4Regex = /^(\d{1,3}\.){3}\d{1,3}$/;
-
-  const normalizedIp = ip.trim().toLowerCase();
-
-  // 不正なIPの場合はデフォルトを返す
-  if (!ipv4Regex.test(normalizedIp)) {
-    // 本番環境では適切なログシステムに出力
-    if (process.env.NODE_ENV === "development") {
-      console.warn(`Invalid IP address detected: ${ip}, using default`);
-    }
-    return "127.0.0.1";
-  }
-
-  return normalizedIp;
-}
-
-// IPアドレスを取得する関数（セキュリティ強化版）
-function getClientIP(request: NextRequest): string {
-  // 複数のヘッダーからIPを取得し、最初の有効なIPを使用
-  const ipSources = [
-    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim(),
-    request.headers.get("x-real-ip"),
-    request.headers.get("cf-connecting-ip"), // Cloudflare
-    request.headers.get("x-client-ip"),
-    request.ip,
-  ];
-
-  for (const source of ipSources) {
-    if (source) {
-      const normalizedIp = normalizeIP(source);
-      if (normalizedIp !== "127.0.0.1" || source === "127.0.0.1") {
-        return normalizedIp;
-      }
-    }
-  }
-
-  // フォールバック
-  return "127.0.0.1";
-}
-
 // ユーザーIDを取得する関数（認証済みユーザー用）
 function getUserID(request: NextRequest): string {
   // 認証ミドルウェアによってセットされるヘッダーから取得
@@ -154,8 +112,8 @@ function getUserID(request: NextRequest): string {
     return userId.trim().replace(/[^a-zA-Z0-9_-]/g, "");
   }
 
-  // 認証情報がない場合はIPアドレスを使用
-  return `ip_${getClientIP(request)}`;
+  // 認証情報がない場合はgetClientIdentifierを使用（統一実装）
+  return getClientIdentifier(request);
 }
 
 // レート制限キーを生成する関数
@@ -321,7 +279,6 @@ export const RATE_LIMIT_CONFIGS = {
 
 // テスト用のヘルパー関数
 export const __testing__ = {
-  normalizeIP,
   validateConfig,
   parseWindowToMs,
   isValidWindowFormat,
