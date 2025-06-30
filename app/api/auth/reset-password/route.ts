@@ -8,7 +8,7 @@ export async function POST(request: NextRequest) {
   return withCSRFProtection(request, async (req) => {
   try {
     // 入力値検証
-    const validatedData = await PasswordResetService.validateInput(request);
+    const validatedData = await PasswordResetService.validateInput(req);
 
     // パスワードリセットメール送信
     const result = await PasswordResetService.sendResetEmail(validatedData.email);

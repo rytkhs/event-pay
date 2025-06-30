@@ -7,11 +7,11 @@ import { z } from "zod";
 
 export async function POST(request: NextRequest) {
   return withCSRFProtection(request, async (req) => {
-  const clientIP = getClientIP(request);
+  const clientIP = getClientIP(req);
 
   try {
     // レート制限チェック
-    const rateLimitResult = await LoginService.checkRateLimit(request);
+    const rateLimitResult = await LoginService.checkRateLimit(req);
     if (!rateLimitResult.allowed) {
       return ApiResponseHelper.rateLimit(
         "ログイン試行回数が上限に達しました。しばらく時間をおいてから再試行してください。",
@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 入力値検証
-    const validatedData = await LoginService.validateInput(request);
+    const validatedData = await LoginService.validateInput(req);
 
     // ログイン処理
     const result = await LoginService.login(validatedData.email, validatedData.password);
@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
       console.log("Login successful:", {
         email: validatedData.email.replace(/(.{2}).*(@.*)/, "$1***$2"),
         ip: clientIP,
-        userAgent: request.headers.get("user-agent"),
+        userAgent: req.headers.get("user-agent"),
         timestamp: new Date().toISOString(),
       });
     }
@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
     if (process.env.NODE_ENV === "development") {
       console.warn("Login failed:", {
         ip: clientIP,
-        userAgent: request.headers.get("user-agent"),
+        userAgent: req.headers.get("user-agent"),
         error: error instanceof Error ? error.message : "Unknown error",
         timestamp: new Date().toISOString(),
       });

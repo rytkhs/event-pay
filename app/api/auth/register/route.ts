@@ -8,7 +8,7 @@ export async function POST(request: NextRequest) {
   return withCSRFProtection(request, async (req) => {
   try {
     // レート制限チェック
-    const rateLimitResult = await RegistrationService.checkRateLimit(request);
+    const rateLimitResult = await RegistrationService.checkRateLimit(req);
     if (!rateLimitResult.allowed) {
       const errorMessage = rateLimitResult.retryAfter
         ? `レート制限に達しました。${rateLimitResult.retryAfter}秒後に再試行してください。`
@@ -17,7 +17,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 入力値検証
-    const validatedData = await RegistrationService.validateInput(request);
+    const validatedData = await RegistrationService.validateInput(req);
 
     // ユーザー登録処理
     const result = await RegistrationService.register(validatedData);
