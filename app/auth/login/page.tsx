@@ -46,7 +46,10 @@ export default function LoginPage() {
             name="rememberMe"
             className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
           />
-          <label htmlFor="rememberMe" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+          <label
+            htmlFor="rememberMe"
+            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+          >
             ログイン状態を保持
           </label>
         </div>
@@ -58,16 +61,11 @@ export default function LoginPage() {
         </Link>
       </div>
 
-      <AuthSubmitButton isPending={isPending}>
-        ログイン
-      </AuthSubmitButton>
+      <AuthSubmitButton isPending={isPending}>ログイン</AuthSubmitButton>
 
       <div className="text-center text-sm text-gray-600">
         アカウントをお持ちでない方は{" "}
-        <Link
-          href="/auth/register"
-          className="text-blue-600 hover:text-blue-500 hover:underline"
-        >
+        <Link href="/auth/register" className="text-blue-600 hover:text-blue-500 hover:underline">
           新規登録
         </Link>
       </div>

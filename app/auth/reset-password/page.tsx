@@ -2,12 +2,7 @@
 
 import Link from "next/link";
 import { resetPasswordAction } from "@/app/auth/actions";
-import {
-  useAuthForm,
-  AuthFormWrapper,
-  AuthEmailField,
-  AuthSubmitButton,
-} from "@/components/auth";
+import { useAuthForm, AuthFormWrapper, AuthEmailField, AuthSubmitButton } from "@/components/auth";
 
 export default function ResetPasswordPage() {
   const { state, formAction, isPending } = useAuthForm(resetPasswordAction, {
@@ -30,25 +25,17 @@ export default function ResetPasswordPage() {
         required
       />
 
-      <AuthSubmitButton isPending={isPending}>
-        リセットメール送信
-      </AuthSubmitButton>
+      <AuthSubmitButton isPending={isPending}>リセットメール送信</AuthSubmitButton>
 
       <div className="text-center space-y-2">
         <div className="text-sm text-gray-600">
-          <Link
-            href="/auth/login"
-            className="text-blue-600 hover:text-blue-500 hover:underline"
-          >
+          <Link href="/auth/login" className="text-blue-600 hover:text-blue-500 hover:underline">
             ログインページに戻る
           </Link>
         </div>
         <div className="text-sm text-gray-600">
           アカウントをお持ちでない方は{" "}
-          <Link
-            href="/auth/register"
-            className="text-blue-600 hover:text-blue-500 hover:underline"
-          >
+          <Link href="/auth/register" className="text-blue-600 hover:text-blue-500 hover:underline">
             新規登録
           </Link>
         </div>

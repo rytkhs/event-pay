@@ -1,5 +1,10 @@
 import { createMocks } from "../../helpers/mock-factory.mjs";
 
+// Set Supabase environment variables for testing
+process.env.NEXT_PUBLIC_SUPABASE_URL = "http://127.0.0.1:54321";
+process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = "SUPABASE_ANON_KEY_REDACTED";
+process.env.SUPABASE_SERVICE_ROLE_KEY = "SUPABASE_SERVICE_ROLE_KEY_REDACTED";
+
 // Security test setup - full security mocks
 beforeEach(() => {
   const mocks = createMocks({

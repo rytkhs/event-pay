@@ -18,27 +18,27 @@ import {
 } from "../../app/auth/actions";
 
 // セキュリティテスト用のヘルパー
-const createMaliciousFormData = (type: 'xss' | 'sql' | 'command') => {
+const createMaliciousFormData = (type: "xss" | "sql" | "command") => {
   const formData = new FormData();
-  
+
   switch (type) {
-    case 'xss':
+    case "xss":
       formData.append("name", "<script>alert('XSS')</script>");
       formData.append("email", "<img src=x onerror=alert('XSS')>@test.com");
       formData.append("password", "<svg onload=alert('XSS')>");
       break;
-    case 'sql':
+    case "sql":
       formData.append("email", "admin@test.com'; DROP TABLE users; --");
       formData.append("password", "' OR '1'='1' --");
       formData.append("name", "'; UPDATE users SET role='admin' WHERE id=1; --");
       break;
-    case 'command':
+    case "command":
       formData.append("email", "test@test.com; rm -rf /");
       formData.append("password", "$(whoami)");
       formData.append("name", "`cat /etc/passwd`");
       break;
   }
-  
+
   return formData;
 };
 
@@ -56,16 +56,16 @@ describe("認証Server Actions セキュリティテスト (TDD Red Phase)", () 
 
       // 正常なフォーム送信
       const result = await loginAction(formData);
-      
+
       // Server ActionsがCSRF保護を提供することを確認
       expect(result).toBeDefined();
-      
+
       // 実際のCSRF攻撃をシミュレート
       // 外部サイトからの偽装リクエストは拒否される
       const maliciousFormData = new FormData();
       maliciousFormData.append("email", "victim@eventpay.test");
       maliciousFormData.append("password", "guessedpassword");
-      
+
       // Server ActionsはOriginヘッダーをチェックして不正リクエストを拒否
       const csrfResult = await loginAction(maliciousFormData);
       expect(csrfResult).toBeDefined();
@@ -79,7 +79,7 @@ describe("認証Server Actions セキュリティテスト (TDD Red Phase)", () 
 
       // Server ActionsがOrigin/Referer検証を行うことを確認
       const result = await loginAction(formData);
-      
+
       // 不正なOriginからのリクエストは拒否される
       expect(result).toBeDefined();
       if (!result.success) {
@@ -92,9 +92,9 @@ describe("認証Server Actions セキュリティテスト (TDD Red Phase)", () 
       const formData = new FormData();
       formData.append("email", "test@eventpay.test");
       formData.append("password", "SecurePass123!");
-      
+
       const result = await loginAction(formData);
-      
+
       // Server ActionsがCSRF保護を適切に実装していることを確認
       expect(result).toBeDefined();
     });
@@ -102,10 +102,10 @@ describe("認証Server Actions セキュリティテスト (TDD Red Phase)", () 
 
   describe("XSS攻撃対策", () => {
     test("スクリプトタグの無害化", async () => {
-      const xssFormData = createMaliciousFormData('xss');
-      
+      const xssFormData = createMaliciousFormData("xss");
+
       const result = await registerAction(xssFormData);
-      
+
       expect(result).toBeDefined();
       // 現在の実装ではバリデーションエラーで登録が拒否されるか、
       // 登録成功時にはnameフィールドが返されないため、
@@ -121,9 +121,9 @@ describe("認証Server Actions セキュリティテスト (TDD Red Phase)", () 
       htmlFormData.append("email", "html@eventpay.test");
       htmlFormData.append("password", "SecurePass123!");
       htmlFormData.append("confirmPassword", "SecurePass123!");
-      
+
       const result = await registerAction(htmlFormData);
-      
+
       expect(result).toBeDefined();
       // 現在の実装ではバリデーションエラーで拒否されるか、
       // 登録成功時にはnameフィールドが返されないため、
@@ -139,9 +139,9 @@ describe("認証Server Actions セキュリティテスト (TDD Red Phase)", () 
       eventFormData.append("email", "event@eventpay.test");
       eventFormData.append("password", "SecurePass123!");
       eventFormData.append("confirmPassword", "SecurePass123!");
-      
+
       const result = await registerAction(eventFormData);
-      
+
       expect(result).toBeDefined();
       // 現在の実装ではバリデーションエラーで拒否されるか、
       // 登録成功時にはnameフィールドが返されないため、
@@ -154,10 +154,10 @@ describe("認証Server Actions セキュリティテスト (TDD Red Phase)", () 
 
   describe("SQLインジェクション対策", () => {
     test("SQLインジェクションペイロードの無害化", async () => {
-      const sqlFormData = createMaliciousFormData('sql');
-      
+      const sqlFormData = createMaliciousFormData("sql");
+
       const result = await registerAction(sqlFormData);
-      
+
       expect(result).toBeDefined();
       // SQLインジェクションがバリデーションエラーまたは適切に処理されることを確認
       // 現在の実装ではバリデーションエラーで拒否されるか、
@@ -172,9 +172,9 @@ describe("認証Server Actions セキュリティテスト (TDD Red Phase)", () 
       const unionFormData = new FormData();
       unionFormData.append("email", "test@test.com' UNION SELECT * FROM users --");
       unionFormData.append("password", "SecurePass123!");
-      
+
       const result = await loginAction(unionFormData);
-      
+
       expect(result).toBeDefined();
       expect(result.success).toBe(false);
       // バリデーションエラーまたは認証失敗として処理される
@@ -188,9 +188,9 @@ describe("認証Server Actions セキュリティテスト (TDD Red Phase)", () 
       formData.append("email", "secondary@eventpay.test");
       formData.append("password", "SecurePass123!");
       formData.append("confirmPassword", "SecurePass123!");
-      
+
       const result = await registerAction(formData);
-      
+
       expect(result).toBeDefined();
       // 現在の実装ではバリデーションエラーで拒否されるか、
       // 登録成功時にはnameフィールドが返されないため、
@@ -203,10 +203,10 @@ describe("認証Server Actions セキュリティテスト (TDD Red Phase)", () 
 
   describe("コマンドインジェクション対策", () => {
     test("OSコマンドの実行防止", async () => {
-      const cmdFormData = createMaliciousFormData('command');
-      
+      const cmdFormData = createMaliciousFormData("command");
+
       const result = await registerAction(cmdFormData);
-      
+
       expect(result).toBeDefined();
       // 現在の実装ではバリデーションエラーで拒否されるか、
       // 登録成功時にはnameフィールドが返されないため、
@@ -222,9 +222,9 @@ describe("認証Server Actions セキュリティテスト (TDD Red Phase)", () 
       envFormData.append("email", "env@eventpay.test");
       envFormData.append("password", "SecurePass123!");
       envFormData.append("confirmPassword", "SecurePass123!");
-      
+
       const result = await registerAction(envFormData);
-      
+
       expect(result).toBeDefined();
       // 現在の実装ではバリデーションエラーで拒否されるか、
       // 登録成功時にはnameフィールドが返されないため、
@@ -243,9 +243,9 @@ describe("認証Server Actions セキュリティテスト (TDD Red Phase)", () 
       formData.append("email", "valid@eventpay.test"); // 二重送信
       formData.append("password", "short");
       formData.append("password", "SecurePass123!"); // 二重送信
-      
+
       const result = await loginAction(formData);
-      
+
       expect(result).toBeDefined();
       // 適切にバリデーションが行われることを確認
       if (!result.success) {
@@ -259,9 +259,9 @@ describe("認証Server Actions セキュリティテスト (TDD Red Phase)", () 
       formData.append("email", "test@eventpay.test");
       formData.append("password", "SecurePass123!");
       formData.append("_method", "GET"); // メソッドオーバーライド試行
-      
+
       const result = await loginAction(formData);
-      
+
       expect(result).toBeDefined();
       // Server ActionsがHTTPメソッドオーバーライドを適切に拒否することを確認
     });
@@ -272,9 +272,9 @@ describe("認証Server Actions セキュリティテスト (TDD Red Phase)", () 
       formData.append("user_id", "1");
       formData.append("role", "admin");
       formData.append("authenticated", "true");
-      
+
       const result = await logoutAction();
-      
+
       expect(result).toBeDefined();
       // 偽装された認証情報が無視されることを確認
       if (!result.success) {
@@ -288,30 +288,32 @@ describe("認証Server Actions セキュリティテスト (TDD Red Phase)", () 
       const formData = new FormData();
       formData.append("email", "ratelimit@eventpay.test");
       formData.append("password", "WrongPassword123!");
-      
+
       // 短時間に大量のリクエストを送信
-      const promises = Array(10).fill(null).map(() => loginAction(formData));
+      const promises = Array(10)
+        .fill(null)
+        .map(() => loginAction(formData));
       const results = await Promise.all(promises);
-      
+
       // いくつかのリクエストがレート制限で拒否されることを確認
-      const rateLimitedResults = results.filter(r => 
-        r && !r.success && (r.error?.includes("レート制限") || r.error?.includes("試行回数"))
+      const rateLimitedResults = results.filter(
+        (r) => r && !r.success && (r.error?.includes("レート制限") || r.error?.includes("試行回数"))
       );
-      
+
       expect(rateLimitedResults.length).toBeGreaterThan(0);
     });
 
     test("アカウント別レート制限の実装", async () => {
       const email = "account-limit@eventpay.test";
-      
+
       // 同一アカウントに対する連続攻撃
       for (let i = 0; i < 6; i++) {
         const formData = new FormData();
         formData.append("email", email);
         formData.append("password", `wrong-password-${i}`);
-        
+
         const result = await loginAction(formData);
-        
+
         if (i >= 5) {
           expect(result.success).toBe(false);
           expect(result.error).toMatch(/ロック|制限|上限/);
@@ -327,9 +329,9 @@ describe("認証Server Actions セキュリティテスト (TDD Red Phase)", () 
       formData.append("email", "large@eventpay.test");
       formData.append("password", "SecurePass123!");
       formData.append("confirmPassword", "SecurePass123!");
-      
+
       const result = await registerAction(formData);
-      
+
       expect(result).toBeDefined();
       expect(result.success).toBe(false);
       // バリデーションエラーまたはペイロードサイズエラーとして処理される
@@ -342,21 +344,21 @@ describe("認証Server Actions セキュリティテスト (TDD Red Phase)", () 
       // 存在するユーザーと存在しないユーザーでレスポンス時間が同じ
       const existingUser = "existing@eventpay.test";
       const nonExistingUser = "nonexisting@eventpay.test";
-      
+
       const startTime1 = Date.now();
       const formData1 = new FormData();
       formData1.append("email", existingUser);
       formData1.append("password", "wrongpassword");
       await loginAction(formData1);
       const time1 = Date.now() - startTime1;
-      
+
       const startTime2 = Date.now();
       const formData2 = new FormData();
       formData2.append("email", nonExistingUser);
       formData2.append("password", "wrongpassword");
       await loginAction(formData2);
       const time2 = Date.now() - startTime2;
-      
+
       // レスポンス時間の差が大きすぎないことを確認（タイミング攻撃防止）
       const timeDiff = Math.abs(time1 - time2);
       expect(timeDiff).toBeLessThan(100); // 100ms以内の差
@@ -366,9 +368,9 @@ describe("認証Server Actions セキュリティテスト (TDD Red Phase)", () 
       const formData = new FormData();
       formData.append("email", "test@eventpay.test");
       formData.append("password", "wrongpassword");
-      
+
       const result = await loginAction(formData);
-      
+
       expect(result).toBeDefined();
       if (!result.success) {
         // 具体的な失敗理由を漏らさない汎用的なエラーメッセージ
@@ -385,9 +387,9 @@ describe("認証Server Actions セキュリティテスト (TDD Red Phase)", () 
       const formData = new FormData();
       formData.append("email", "session@eventpay.test");
       formData.append("password", "SecurePass123!");
-      
+
       const result = await loginAction(formData);
-      
+
       expect(result).toBeDefined();
       if (result.success) {
         // 新しいセッションが作成されることを確認
@@ -401,13 +403,13 @@ describe("認証Server Actions セキュリティテスト (TDD Red Phase)", () 
       const formData = new FormData();
       formData.append("email", "concurrent@eventpay.test");
       formData.append("password", "SecurePass123!");
-      
+
       const result1 = await loginAction(formData);
       const result2 = await loginAction(formData);
-      
+
       expect(result1).toBeDefined();
       expect(result2).toBeDefined();
-      
+
       // 同一ユーザーの並行ログインが適切に処理されることを確認
       if (result1.success && result2.success) {
         // 実装では sessionId は直接返されないため、ユーザー情報が適切に管理されていることを確認

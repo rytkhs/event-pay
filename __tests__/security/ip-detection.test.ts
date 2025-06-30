@@ -16,7 +16,7 @@ function createMockRequest(headers: Record<string, string> = {}, ip?: string): N
     method: "POST",
     headers: new Headers(headers),
   });
-  
+
   // request.ipをモック
   if (ip !== undefined) {
     Object.defineProperty(request, "ip", {
@@ -24,7 +24,7 @@ function createMockRequest(headers: Record<string, string> = {}, ip?: string): N
       writable: true,
     });
   }
-  
+
   return request;
 }
 
@@ -96,7 +96,7 @@ describe("IP Detection System", () => {
         "user-agent": "Mozilla/5.0 Test Browser",
         "accept-language": "en-US,en;q=0.9",
       });
-      
+
       const request2 = createMockRequest({
         "user-agent": "Mozilla/5.0 Different Browser",
         "accept-language": "ja-JP,ja;q=0.9",
@@ -115,7 +115,7 @@ describe("IP Detection System", () => {
         "user-agent": "Mozilla/5.0 Test Browser",
         "accept-language": "en-US,en;q=0.9",
       };
-      
+
       const request1 = createMockRequest(headers);
       const request2 = createMockRequest(headers);
 
@@ -175,42 +175,45 @@ describe("IP Detection System", () => {
 
       // プライベートIPは開発環境では受け入れられる
       const originalEnv = process.env.NODE_ENV;
-      Object.defineProperty(process.env, 'NODE_ENV', { value: 'development', writable: true });
-      
+      Object.defineProperty(process.env, "NODE_ENV", { value: "development", writable: true });
+
       expect(getClientIP(request)).toBe("127.0.0.1");
-      
-      Object.defineProperty(process.env, 'NODE_ENV', { value: originalEnv, writable: true });
+
+      Object.defineProperty(process.env, "NODE_ENV", { value: originalEnv, writable: true });
     });
 
     it("開発環境でlocalhostを返す（全ヘッダー不在）", () => {
       const originalEnv = process.env.NODE_ENV;
-      Object.defineProperty(process.env, 'NODE_ENV', { value: 'development', writable: true });
-      
+      Object.defineProperty(process.env, "NODE_ENV", { value: "development", writable: true });
+
       const request = createMockRequest({});
       expect(getClientIP(request)).toBe("127.0.0.1");
-      
-      Object.defineProperty(process.env, 'NODE_ENV', { value: originalEnv, writable: true });
+
+      Object.defineProperty(process.env, "NODE_ENV", { value: originalEnv, writable: true });
     });
 
     it("本番環境でフォールバック識別子を生成する（全ヘッダー不在）", () => {
       const originalEnv = process.env.NODE_ENV;
-      Object.defineProperty(process.env, 'NODE_ENV', { value: 'production', writable: true });
-      
+      Object.defineProperty(process.env, "NODE_ENV", { value: "production", writable: true });
+
       const request = createMockRequest({
         "user-agent": "Mozilla/5.0 Test Browser",
       });
-      
+
       const ip = getClientIP(request);
       expect(ip).toMatch(/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/);
       expect(ip).not.toBe("127.0.0.1");
-      
-      Object.defineProperty(process.env, 'NODE_ENV', { value: originalEnv, writable: true });
+
+      Object.defineProperty(process.env, "NODE_ENV", { value: originalEnv, writable: true });
     });
 
     it("Edge Runtime環境をシミュレーション（request.ip = undefined）", () => {
-      const request = createMockRequest({
-        "x-forwarded-for": "203.0.113.1",
-      }, undefined);
+      const request = createMockRequest(
+        {
+          "x-forwarded-for": "203.0.113.1",
+        },
+        undefined
+      );
 
       expect(getClientIP(request)).toBe("203.0.113.1");
     });
@@ -229,14 +232,14 @@ describe("IP Detection System", () => {
     it("ユーザーIDが提供された場合はuser_prefixを使用する", () => {
       const request = createMockRequest({});
       const identifier = getClientIdentifier(request, "user123");
-      
+
       expect(identifier).toBe("user_user123");
     });
 
     it("ユーザーIDのサニタイゼーションを行う", () => {
       const request = createMockRequest({});
       const identifier = getClientIdentifier(request, "user@123!#$");
-      
+
       expect(identifier).toBe("user_user123");
     });
 
@@ -244,7 +247,7 @@ describe("IP Detection System", () => {
       const request = createMockRequest({
         "x-forwarded-for": "203.0.113.1",
       });
-      
+
       const identifier = getClientIdentifier(request);
       expect(identifier).toBe("ip_203.0.113.1");
     });
@@ -256,7 +259,7 @@ describe("IP Detection System", () => {
         "x-forwarded-for": "203.0.113.1",
         "user-agent": "Mozilla/5.0 Test Browser",
         "accept-language": "en-US,en;q=0.9",
-        "referer": "https://example.com",
+        referer: "https://example.com",
         "x-real-ip": "203.0.113.2",
         "cf-connecting-ip": "203.0.113.3",
       });
@@ -334,9 +337,12 @@ describe("IP Detection System", () => {
 
   describe("Edge Runtime 互換性テスト", () => {
     it("request.ipがundefinedの場合でも正常に動作する", () => {
-      const request = createMockRequest({
-        "x-forwarded-for": "203.0.113.1",
-      }, undefined);
+      const request = createMockRequest(
+        {
+          "x-forwarded-for": "203.0.113.1",
+        },
+        undefined
+      );
 
       expect(() => getClientIP(request)).not.toThrow();
       expect(getClientIP(request)).toBe("203.0.113.1");
@@ -344,19 +350,22 @@ describe("IP Detection System", () => {
 
     it("全てのプロキシヘッダーが不在でrequest.ipもundefinedの場合", () => {
       const originalEnv = process.env.NODE_ENV;
-      
+
       // 本番環境での動作をテスト
-      Object.defineProperty(process.env, 'NODE_ENV', { value: 'production', writable: true });
-      
-      const request = createMockRequest({
-        "user-agent": "Mozilla/5.0 Test Browser",
-      }, undefined);
+      Object.defineProperty(process.env, "NODE_ENV", { value: "production", writable: true });
+
+      const request = createMockRequest(
+        {
+          "user-agent": "Mozilla/5.0 Test Browser",
+        },
+        undefined
+      );
 
       const ip = getClientIP(request);
       expect(ip).toMatch(/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/);
       expect(ip).not.toBe("127.0.0.1");
-      
-      Object.defineProperty(process.env, 'NODE_ENV', { value: originalEnv, writable: true });
+
+      Object.defineProperty(process.env, "NODE_ENV", { value: originalEnv, writable: true });
     });
   });
 
@@ -365,7 +374,7 @@ describe("IP Detection System", () => {
       const client1 = createMockRequest({
         "x-forwarded-for": "203.0.113.1",
       });
-      
+
       const client2 = createMockRequest({
         "x-forwarded-for": "203.0.113.2",
       });

@@ -90,7 +90,10 @@ export function createRateLimit(config: RateLimitConfig): Ratelimit {
     const redis = getRedisInstance();
     return new Ratelimit({
       redis,
-      limiter: Ratelimit.slidingWindow(config.requests, config.window as any),
+      limiter: Ratelimit.slidingWindow(
+        config.requests,
+        config.window as `${number} ${"s" | "m" | "h"}`
+      ),
       analytics: true,
       prefix: "eventpay_rate_limit",
     });

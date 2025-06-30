@@ -1,34 +1,27 @@
 import { NextRequest, NextResponse } from "next/server";
 import { AuthHandler } from "@/lib/middleware/auth-handler";
-import { SecurityHandler } from "@/lib/middleware/security-handler";
 
 export async function middleware(request: NextRequest) {
-  const response = NextResponse.next();
   const pathname = request.nextUrl.pathname;
 
-  // 最も効率的な早期リターン
+  // 認証チェックをスキップするパス
   if (AuthHandler.shouldSkipAuth(pathname)) {
-    return response;
+    return NextResponse.next();
   }
 
-  // 認証処理（キャッシュ活用 + 並列処理）
+  // 認証処理（Server Actionsは自動CSRF保護）
+  const response = NextResponse.next();
   const authRedirect = await AuthHandler.handleAuth(request, response);
   if (authRedirect) {
     return authRedirect;
-  }
-
-  // セキュリティ設定を並列で適用
-  SecurityHandler.apply(request, response);
-  SecurityHandler.applyPathSpecificSecurity(pathname, response);
-
-  // 認証が必要なページでCSRFトークンを自動生成
-  if (AuthHandler.isAuthRequired(pathname)) {
-    SecurityHandler.setCSRFToken(response);
   }
 
   return response;
 }
 
 export const config = {
-  matcher: ["/((?!api|_next/static|_next/image|favicon.ico).*)"],
+  matcher: [
+    // 認証が必要なページのみ
+    "/((?!_next/static|_next/image|favicon.ico|api/webhooks|health).*)",
+  ],
 };
