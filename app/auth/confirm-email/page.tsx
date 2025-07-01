@@ -21,18 +21,10 @@ export default function ConfirmEmailPage() {
       }
 
       try {
-        const response = await fetch(`/api/auth/confirm-email?token=${token}&email=${encodeURIComponent(email)}`, {
-          redirect: 'manual'
-        });
+        const response = await fetch(`/api/auth/confirm-email?token=${encodeURIComponent(token)}&email=${encodeURIComponent(email)}`);
 
-        if (response.status === 302) {
-          // リダイレクトが返された場合は成功
-          setStatus("success");
-          setTimeout(() => {
-            router.push("/dashboard");
-          }, 2000);
-        } else if (response.ok) {
-          // 200系レスポンスも成功として扱う
+        if (response.ok) {
+          // 成功レスポンス
           setStatus("success");
           setTimeout(() => {
             router.push("/dashboard");
