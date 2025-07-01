@@ -10,7 +10,9 @@ export type PublicProfile = Tables<"public_profiles">;
 /**
  * PublicProfileの完全性チェック
  */
-export function isCompleteProfile(profile: PublicProfile | null): profile is NonNullable<PublicProfile> & {
+export function isCompleteProfile(
+  profile: PublicProfile | null
+): profile is NonNullable<PublicProfile> & {
   id: string;
   name: string;
 } {
@@ -47,10 +49,12 @@ export function getProfileDisplayData(profile: PublicProfile | null) {
 /**
  * プロフィール配列のフィルタリング
  */
-export function filterCompleteProfiles(profiles: (PublicProfile | null)[]): Array<NonNullable<PublicProfile> & {
-  id: string;
-  name: string;
-}> {
+export function filterCompleteProfiles(profiles: (PublicProfile | null)[]): Array<
+  NonNullable<PublicProfile> & {
+    id: string;
+    name: string;
+  }
+> {
   return profiles.filter(isCompleteProfile);
 }
 
