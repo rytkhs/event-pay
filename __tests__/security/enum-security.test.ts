@@ -30,8 +30,8 @@ describe("ENUM型セキュリティテスト", () => {
 
   beforeEach(() => {
     // グローバルモックの設定
-    if ((global as any).mockSupabase?.auth?.getUser) {
-      (global as any).mockSupabase.auth.getUser.mockResolvedValue({
+    if ((globalThis as any).mockSupabase?.auth?.getUser) {
+      (globalThis as any).mockSupabase.auth.getUser.mockResolvedValue({
         data: {
           user: {
             id: "test-user-id",
@@ -52,8 +52,8 @@ describe("ENUM型セキュリティテスト", () => {
   describe("🚨 高リスク: 動的SQL実行関数のセキュリティ", () => {
     beforeEach(() => {
       // 新しいモックファクトリーではグローバルmockSupabaseを使用
-      if (global.mockSupabase?.auth?.getUser) {
-        global.mockSupabase.auth.getUser.mockResolvedValue({
+      if (globalThis.mockSupabase?.auth?.getUser) {
+        globalThis.mockSupabase.auth.getUser.mockResolvedValue({
           data: { user: { id: "admin-user", role: "service_role" } },
           error: null,
         });
@@ -113,8 +113,8 @@ describe("ENUM型セキュリティテスト", () => {
   describe("🟡 中リスク: 権限昇格の防止", () => {
     beforeEach(() => {
       // 新しいモックファクトリーではグローバルmockSupabaseを使用
-      if (global.mockSupabase?.auth?.getUser) {
-        global.mockSupabase.auth.getUser.mockResolvedValue({
+      if (globalThis.mockSupabase?.auth?.getUser) {
+        globalThis.mockSupabase.auth.getUser.mockResolvedValue({
           data: { user: { id: "admin-user", role: "service_role" } },
           error: null,
         });
@@ -185,8 +185,8 @@ describe("ENUM型セキュリティテスト", () => {
   describe("🔒 データ整合性とENUM型検証", () => {
     beforeEach(() => {
       // 新しいモックファクトリーではグローバルmockSupabaseを使用
-      if (global.mockSupabase?.auth?.getUser) {
-        global.mockSupabase.auth.getUser.mockResolvedValue({
+      if (globalThis.mockSupabase?.auth?.getUser) {
+        globalThis.mockSupabase.auth.getUser.mockResolvedValue({
           data: { user: { id: "admin-user", role: "service_role" } },
           error: null,
         });
@@ -305,8 +305,8 @@ describe("ENUM型セキュリティテスト", () => {
     test("匿名ユーザーの権限制限", async () => {
       // 未認証状態に設定
       // 新しいモックファクトリーで匿名ユーザーに設定
-      if (global.mockSupabase?.auth?.getUser) {
-        global.mockSupabase.auth.getUser.mockResolvedValue({
+      if (globalThis.mockSupabase?.auth?.getUser) {
+        globalThis.mockSupabase.auth.getUser.mockResolvedValue({
           data: { user: null },
           error: null,
         });
@@ -336,8 +336,8 @@ describe("ENUM型セキュリティテスト", () => {
     test("管理者権限が必要な操作の制限", async () => {
       // 未認証状態に設定
       // 新しいモックファクトリーで匿名ユーザーに設定
-      if (global.mockSupabase?.auth?.getUser) {
-        global.mockSupabase.auth.getUser.mockResolvedValue({
+      if (globalThis.mockSupabase?.auth?.getUser) {
+        globalThis.mockSupabase.auth.getUser.mockResolvedValue({
           data: { user: null },
           error: null,
         });
@@ -364,8 +364,8 @@ describe("ENUM型セキュリティテスト", () => {
     test("認証済みユーザーの権限範囲確認", async () => {
       // 一般認証ユーザー
       // 新しいモックファクトリーで一般ユーザーに設定
-      if (global.mockSupabase?.auth?.getUser) {
-        global.mockSupabase.auth.getUser.mockResolvedValue({
+      if (globalThis.mockSupabase?.auth?.getUser) {
+        globalThis.mockSupabase.auth.getUser.mockResolvedValue({
           data: { user: { id: "regular-user", role: "authenticated" } },
           error: null,
         });
@@ -392,8 +392,8 @@ describe("ENUM型セキュリティテスト", () => {
   describe("🔍 セキュリティ境界テスト", () => {
     beforeEach(() => {
       // 新しいモックファクトリーではグローバルmockSupabaseを使用
-      if (global.mockSupabase?.auth?.getUser) {
-        global.mockSupabase.auth.getUser.mockResolvedValue({
+      if (globalThis.mockSupabase?.auth?.getUser) {
+        globalThis.mockSupabase.auth.getUser.mockResolvedValue({
           data: { user: { id: "admin-user", role: "service_role" } },
           error: null,
         });
@@ -463,8 +463,8 @@ describe("ENUM型セキュリティテスト", () => {
   describe("🎯 実用性テスト", () => {
     beforeEach(() => {
       // 新しいモックファクトリーではグローバルmockSupabaseを使用
-      if (global.mockSupabase?.auth?.getUser) {
-        global.mockSupabase.auth.getUser.mockResolvedValue({
+      if (globalThis.mockSupabase?.auth?.getUser) {
+        globalThis.mockSupabase.auth.getUser.mockResolvedValue({
           data: { user: { id: "admin-user", role: "service_role" } },
           error: null,
         });
@@ -566,8 +566,8 @@ describe("ENUM型セキュリティテスト", () => {
   describe("権限ベースのenum アクセス制御", () => {
     test("認証ユーザーのみがenum値を取得可能", async () => {
       // 認証済みユーザーのモック
-      if ((global as any).mockSupabase?.auth?.getUser) {
-        (global as any).mockSupabase.auth.getUser.mockResolvedValue({
+      if ((globalThis as any).mockSupabase?.auth?.getUser) {
+        (globalThis as any).mockSupabase.auth.getUser.mockResolvedValue({
           data: {
             user: {
               id: "authenticated-user",
@@ -596,8 +596,8 @@ describe("ENUM型セキュリティテスト", () => {
 
     test("未認証ユーザーはenum値にアクセス不可", async () => {
       // 未認証ユーザーのモック
-      if ((global as any).mockSupabase?.auth?.getUser) {
-        (global as any).mockSupabase.auth.getUser.mockResolvedValue({
+      if ((globalThis as any).mockSupabase?.auth?.getUser) {
+        (globalThis as any).mockSupabase.auth.getUser.mockResolvedValue({
           data: { user: null },
           error: { message: "User not authenticated" },
         });
@@ -661,8 +661,8 @@ describe("ENUM型セキュリティテスト", () => {
       (process.env as any).NODE_ENV = "production";
 
       // 本番環境では厳格な検証を実施
-      if ((global as any).mockSupabase?.auth?.getUser) {
-        (global as any).mockSupabase.auth.getUser.mockResolvedValue({
+      if ((globalThis as any).mockSupabase?.auth?.getUser) {
+        (globalThis as any).mockSupabase.auth.getUser.mockResolvedValue({
           data: {
             user: {
               id: "prod-user",
@@ -732,8 +732,8 @@ describe("ENUM型セキュリティテスト", () => {
   describe("enum値の変更検出", () => {
     test("予期しないenum値の変更を検出", async () => {
       // データベースのenum値が予期せず変更されていないかテスト
-      if ((global as any).mockSupabase?.auth?.getUser) {
-        (global as any).mockSupabase.auth.getUser.mockResolvedValue({
+      if ((globalThis as any).mockSupabase?.auth?.getUser) {
+        (globalThis as any).mockSupabase.auth.getUser.mockResolvedValue({
           data: {
             user: {
               id: "monitor-user",
