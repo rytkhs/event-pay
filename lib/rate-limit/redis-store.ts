@@ -76,8 +76,8 @@ export async function createRedisClient(): Promise<RedisClient> {
       );
     } else {
       console.warn("Redis環境変数が未設定です。開発環境ではメモリベースのレート制限を使用します。");
-      // 非本番環境では例外を投げずにnullを返すか、メモリベースの実装を返す
-      throw new Error("Redis environment variables not configured");
+      // 非本番環境では例外を投げずにnullを返して、呼び出し元でメモリベースの実装にフォールバック
+      return null as any;
     }
   }
 
