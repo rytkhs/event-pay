@@ -1,5 +1,5 @@
 import { SupabaseClient, Session } from "@supabase/supabase-js";
-import { AUTH_CONFIG } from "@/config/security";
+import { SESSION_CONFIG, type SessionUpdatePriority } from "./config";
 
 /**
  * 最適化されたセッション管理クラス
@@ -18,7 +18,7 @@ export class SessionManager {
     }
 
     const timeSinceLastCheck = Date.now() - lastCheck;
-    return timeSinceLastCheck > AUTH_CONFIG.session.updateAge * 1000;
+    return timeSinceLastCheck > SESSION_CONFIG.updateAge * 1000;
   }
 
   /**
@@ -90,17 +90,14 @@ export class SessionManager {
   /**
    * セッション更新の優先度判定
    */
-  getUpdatePriority(session: Session | null): "high" | "medium" | "low" | "none" {
+  getUpdatePriority(session: Session | null): SessionUpdatePriority {
     const timeRemaining = this.getSessionTimeRemaining(session);
 
-    if (timeRemaining <= 300) {
-      // 5分以内
+    if (timeRemaining <= SESSION_CONFIG.refreshThreshold.high) {
       return "high";
-    } else if (timeRemaining <= 900) {
-      // 15分以内
+    } else if (timeRemaining <= SESSION_CONFIG.refreshThreshold.medium) {
       return "medium";
-    } else if (timeRemaining <= 1800) {
-      // 30分以内
+    } else if (timeRemaining <= SESSION_CONFIG.refreshThreshold.low) {
       return "low";
     }
 
