@@ -303,4 +303,265 @@ describe("Rate Limit Security Tests", () => {
       );
     });
   });
+
+  describe("🎯 Server Actions レート制限統合テスト", () => {
+    // Server Actions専用のモック設定
+    let mockServerActionCheckRateLimit: jest.MockedFunction<any>;
+    let mockHeaders: jest.MockedFunction<any>;
+
+    beforeEach(() => {
+      // Server Actions用のレート制限チェック関数のモック
+      mockServerActionCheckRateLimit = jest.fn();
+      
+      // headers()関数のモック
+      mockHeaders = jest.fn().mockReturnValue({
+        get: jest.fn().mockImplementation((header: string) => {
+          if (header === "x-forwarded-for") return "192.168.1.100";
+          if (header === "x-real-ip") return null;
+          if (header === "cf-connecting-ip") return null;
+          return null;
+        })
+      });
+
+      // Server Actions用モジュールモック
+      jest.doMock("@/lib/rate-limit", () => ({
+        checkRateLimit: mockServerActionCheckRateLimit,
+        RATE_LIMIT_CONFIGS: {
+          userLogin: { requests: 5, window: "15 m", identifier: "ip" },
+          userRegistration: { requests: 6, window: "5 m", identifier: "ip" },
+          default: { requests: 60, window: "1 m", identifier: "ip" }
+        }
+      }));
+
+      jest.doMock("next/headers", () => ({
+        headers: mockHeaders
+      }));
+
+      // その他の依存関係のモック
+      jest.doMock("@/lib/auth-security", () => ({
+        InputSanitizer: {
+          sanitizeEmail: jest.fn((email: string) => email),
+          sanitizePassword: jest.fn((password: string) => password)
+        },
+        TimingAttackProtection: {
+          normalizeResponseTime: jest.fn(async (fn: () => Promise<void>) => await fn())
+        }
+      }));
+
+      jest.doMock("@/lib/services/login", () => ({
+        LoginService: {
+          login: jest.fn().mockResolvedValue({
+            success: true,
+            user: { id: "test-user-id", email: "test@example.com" },
+            sessionToken: "mock-token"
+          })
+        }
+      }));
+
+      jest.doMock("@/lib/services/registration", () => ({
+        RegistrationService: {
+          register: jest.fn().mockResolvedValue({
+            success: true,
+            userId: "test-user-id"
+          })
+        }
+      }));
+
+      jest.doMock("@/lib/services/password-reset", () => ({
+        PasswordResetService: {
+          sendResetEmail: jest.fn().mockResolvedValue(undefined)
+        }
+      }));
+
+      jest.doMock("@/lib/supabase/server", () => ({
+        createClient: jest.fn()
+      }));
+
+      jest.doMock("next/cache", () => ({
+        revalidatePath: jest.fn()
+      }));
+    });
+
+    afterEach(() => {
+      jest.resetAllMocks();
+      jest.resetModules();
+    });
+
+    test("loginAction: レート制限内では正常にログイン処理される", async () => {
+      // レート制限チェックが成功を返すよう設定
+      mockServerActionCheckRateLimit.mockResolvedValue({ success: true });
+
+      // loginActionの動的インポート
+      const { loginAction } = await import("@/app/auth/actions");
+
+      // テスト用FormDataの作成
+      const formData = new FormData();
+      formData.append("email", "test@example.com");
+      formData.append("password", "password123");
+      formData.append("rememberMe", "false");
+
+      const result = await loginAction(formData);
+
+      expect(mockServerActionCheckRateLimit).toHaveBeenCalledWith("userLogin", "192.168.1.100");
+      expect(result.success).toBe(true);
+    });
+
+    test("loginAction: レート制限超過時は適切なエラーメッセージで拒否される", async () => {
+      // レート制限チェックが失敗を返すよう設定
+      mockServerActionCheckRateLimit.mockResolvedValue({
+        success: false,
+        retryAfter: 900 // 15分後
+      });
+
+      const { loginAction } = await import("@/app/auth/actions");
+
+      const formData = new FormData();
+      formData.append("email", "test@example.com");
+      formData.append("password", "password123");
+
+      const result = await loginAction(formData);
+
+      expect(mockServerActionCheckRateLimit).toHaveBeenCalledWith("userLogin", "192.168.1.100");
+      expect(result.success).toBe(false);
+      expect(result.error).toContain("ログイン試行回数が上限に達しました");
+      expect(result.error).toContain("15分後に再試行");
+    });
+
+    test("registerAction: レート制限内では正常にユーザー登録される", async () => {
+      mockServerActionCheckRateLimit.mockResolvedValue({ success: true });
+
+      const { registerAction } = await import("@/app/auth/actions");
+
+      const formData = new FormData();
+      formData.append("name", "Test User");
+      formData.append("email", "test@example.com");
+      formData.append("password", "password123A");
+      formData.append("confirmPassword", "password123A");
+
+      const result = await registerAction(formData);
+
+      expect(mockServerActionCheckRateLimit).toHaveBeenCalledWith("userRegistration", "192.168.1.100");
+      expect(result.success).toBe(true);
+    });
+
+    test("registerAction: レート制限超過時は適切なエラーメッセージで拒否される", async () => {
+      mockServerActionCheckRateLimit.mockResolvedValue({
+        success: false,
+        retryAfter: 300 // 5分後
+      });
+
+      const { registerAction } = await import("@/app/auth/actions");
+
+      const formData = new FormData();
+      formData.append("name", "Test User");
+      formData.append("email", "test@example.com");
+      formData.append("password", "password123A");
+      formData.append("confirmPassword", "password123A");
+
+      const result = await registerAction(formData);
+
+      expect(mockServerActionCheckRateLimit).toHaveBeenCalledWith("userRegistration", "192.168.1.100");
+      expect(result.success).toBe(false);
+      expect(result.error).toContain("ユーザー登録試行回数が上限に達しました");
+      expect(result.error).toContain("5分後に再試行");
+    });
+
+    test("resetPasswordAction: レート制限内では正常にパスワードリセットメールが送信される", async () => {
+      mockServerActionCheckRateLimit.mockResolvedValue({ success: true });
+
+      const { resetPasswordAction } = await import("@/app/auth/actions");
+
+      const formData = new FormData();
+      formData.append("email", "test@example.com");
+
+      const result = await resetPasswordAction(formData);
+
+      expect(mockServerActionCheckRateLimit).toHaveBeenCalledWith("default", "192.168.1.100");
+      expect(result.success).toBe(true);
+      expect(result.message).toContain("パスワードリセットメールを送信しました");
+    });
+
+    test("resetPasswordAction: レート制限超過時は適切なエラーメッセージで拒否される", async () => {
+      mockServerActionCheckRateLimit.mockResolvedValue({
+        success: false,
+        retryAfter: 60 // 1分後
+      });
+
+      const { resetPasswordAction } = await import("@/app/auth/actions");
+
+      const formData = new FormData();
+      formData.append("email", "test@example.com");
+
+      const result = await resetPasswordAction(formData);
+
+      expect(mockServerActionCheckRateLimit).toHaveBeenCalledWith("default", "192.168.1.100");
+      expect(result.success).toBe(false);
+      expect(result.error).toContain("パスワードリセット試行回数が上限に達しました");
+      expect(result.error).toContain("1分後に再試行");
+    });
+
+    describe("IP取得機能テスト", () => {
+      test("x-forwarded-forヘッダーから正しくIPを取得", async () => {
+        mockHeaders.mockReturnValue({
+          get: jest.fn().mockImplementation((header: string) => {
+            if (header === "x-forwarded-for") return "203.0.113.195, 192.168.1.100";
+            return null;
+          })
+        });
+
+        mockServerActionCheckRateLimit.mockResolvedValue({ success: true });
+
+        const { loginAction } = await import("@/app/auth/actions");
+
+        const formData = new FormData();
+        formData.append("email", "test@example.com");
+        formData.append("password", "password123");
+
+        await loginAction(formData);
+
+        // 最初のIPアドレス（実際のクライアントIP）が使用されることを確認
+        expect(mockServerActionCheckRateLimit).toHaveBeenCalledWith("userLogin", "203.0.113.195");
+      });
+
+      test("x-real-ipヘッダーからIPを取得", async () => {
+        mockHeaders.mockReturnValue({
+          get: jest.fn().mockImplementation((header: string) => {
+            if (header === "x-forwarded-for") return null;
+            if (header === "x-real-ip") return "198.51.100.178";
+            return null;
+          })
+        });
+
+        mockServerActionCheckRateLimit.mockResolvedValue({ success: true });
+
+        const { loginAction } = await import("@/app/auth/actions");
+
+        const formData = new FormData();
+        formData.append("email", "test@example.com");
+        formData.append("password", "password123");
+
+        await loginAction(formData);
+
+        expect(mockServerActionCheckRateLimit).toHaveBeenCalledWith("userLogin", "198.51.100.178");
+      });
+
+      test("IPヘッダーが無い場合はデフォルトIPを使用", async () => {
+        mockHeaders.mockReturnValue({
+          get: jest.fn().mockReturnValue(null)
+        });
+
+        mockServerActionCheckRateLimit.mockResolvedValue({ success: true });
+
+        const { loginAction } = await import("@/app/auth/actions");
+
+        const formData = new FormData();
+        formData.append("email", "test@example.com");
+        formData.append("password", "password123");
+
+        await loginAction(formData);
+
+        expect(mockServerActionCheckRateLimit).toHaveBeenCalledWith("userLogin", "127.0.0.1");
+      });
+    });
+  });
 });
