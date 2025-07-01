@@ -306,4 +306,62 @@ describe("認証システム基盤 - RLS（Row Level Security）テスト", () =
       expect(error).toBeNull(); // エラーではなく、結果が空であることを期待
     });
   });
+
+  describe("セキュリティ監査ログアクセス制御テスト", () => {
+    test("security_audit_logテーブルへの直接アクセスは拒否される", async () => {
+      // authenticated ユーザーによる security_audit_log への直接SELECT試行
+      const { data, error } = await user1Client
+        .from("security_audit_log")
+        .select("*");
+
+      // RLSポリシーにより、authenticatedロールからの直接アクセスは拒否される
+      expect(error).toBeTruthy();
+      expect(data).toBeNull();
+      expect(error?.message).toContain("insufficient privilege");
+    });
+
+    test("security_audit_logテーブルへのINSERT試行は拒否される", async () => {
+      // authenticated ユーザーによる security_audit_log への直接INSERT試行
+      const { data, error } = await user1Client
+        .from("security_audit_log")
+        .insert({
+          event_type: "unauthorized_access_attempt",
+          user_role: "authenticated",
+          query_attempted: "SELECT * FROM security_audit_log",
+          blocked_reason: "RLS policy violation"
+        });
+
+      // RLSポリシーにより、authenticatedロールからの直接INSERTは拒否される
+      expect(error).toBeTruthy();
+      expect(data).toBeNull();
+      expect(error?.message).toContain("insufficient privilege");
+    });
+
+    test("anon ユーザーによるセキュリティ監査ログアクセス試行は拒否される", async () => {
+      // 匿名クライアントによる security_audit_log への直接アクセス試行
+      const { data, error } = await anonClient
+        .from("security_audit_log")
+        .select("*");
+
+      // RLSポリシーにより、匿名ユーザーからの直接アクセスは拒否される
+      expect(error).toBeTruthy();
+      expect(data).toBeNull();
+      expect(error?.message).toContain("insufficient privilege");
+    });
+
+    test("log_security_event関数は認証済みユーザーから実行可能", async () => {
+      // log_security_event関数の実行テスト（認証済みユーザー）
+      const { data, error } = await user1Client.rpc("log_security_event", {
+        p_event_type: "test_event",
+        p_user_role: "authenticated",
+        p_query_attempted: "SELECT test",
+        p_blocked_reason: "test_block"
+      });
+
+      // 関数実行は成功し、エラーは発生しない
+      expect(error).toBeNull();
+      // RETURNS VOIDなので、dataは null または undefined
+      expect(data).toBeNull();
+    });
+  });
 });

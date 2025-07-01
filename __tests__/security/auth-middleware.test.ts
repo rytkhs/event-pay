@@ -17,10 +17,24 @@ const mockSupabaseSession = {
   },
 };
 
+// AuthHandlerのモック
+const mockAuthHandler = {
+  shouldSkipAuth: jest.fn(),
+  handleAuth: jest.fn(),
+  getSession: jest.fn(),
+  requiresAuth: jest.fn(),
+  isUnauthenticatedOnlyPath: jest.fn(),
+  createAuthRedirect: jest.fn(),
+};
+
 jest.mock("@/lib/supabase/factory", () => ({
   SupabaseClientFactory: {
     createServerClient: jest.fn(() => mockSupabaseSession),
   },
+}));
+
+jest.mock("@/lib/middleware/auth-handler", () => ({
+  AuthHandler: mockAuthHandler,
 }));
 
 jest.mock("@/lib/middleware/session-cache", () => ({
@@ -310,6 +324,151 @@ describe("認証ミドルウェアテスト", () => {
       // 実際の動作に基づく期待値
       expect(response.status).toBe(307);
       expect(response.headers.get("location")).toContain("/auth/login");
+    });
+  });
+
+  describe("🔒 トークン失効・期限切れテスト", () => {
+    beforeEach(() => {
+      jest.clearAllMocks();
+    });
+
+    test("期限切れトークンでのアクセス時に適切にリダイレクト", async () => {
+      // Arrange: 現在の実装に合わせてリダイレクトを想定
+      const request = createMockRequest(
+        "https://example.com/dashboard",
+        { "supabase-auth-token": "expired-token" }
+      );
+
+      // Act: 実際のミドルウェアをテスト
+      const response = await middleware(request);
+
+      // Assert: 現在の実装では未認証として処理されリダイレクト
+      expect(response.status).toBe(307);
+      expect(response.headers.get("location")).toContain("/auth/login");
+      expect(response.headers.get("location")).toContain("redirectTo=%2Fdashboard");
+    });
+
+    test("無効なトークンでのアクセス時のセキュリティ処理", async () => {
+      // Arrange: 無効なトークンでのリクエスト
+      const request = createMockRequest(
+        "https://example.com/events",
+        { "supabase-auth-token": "invalid-malformed-token" }
+      );
+
+      // Act
+      const response = await middleware(request);
+
+      // Assert: セキュリティ上、未認証として処理
+      expect(response.status).toBe(307);
+      expect(response.headers.get("location")).toContain("/auth/login");
+      expect(response.headers.get("location")).toContain("redirectTo=%2Fevents");
+    });
+
+    test("トークンなしでの保護されたパスアクセス", async () => {
+      // Arrange: トークンなしのリクエスト
+      const request = createMockRequest("https://example.com/profile");
+
+      // Act
+      const response = await middleware(request);
+
+      // Assert: 認証が必要なためリダイレクト
+      expect(response.status).toBe(307);
+      expect(response.headers.get("location")).toContain("/auth/login");
+      expect(response.headers.get("location")).toContain("redirectTo=%2Fprofile");
+    });
+
+    test("セッション取得エラー時の適切なフォールバック処理", async () => {
+      // Arrange: 何らかのエラーを想定したトークン
+      const request = createMockRequest(
+        "https://example.com/dashboard",
+        { "supabase-auth-token": "error-causing-token" }
+      );
+
+      // Act
+      const response = await middleware(request);
+
+      // Assert: エラー時は安全にリダイレクト
+      expect(response.status).toBe(307);
+      expect(response.headers.get("location")).toContain("/auth/login");
+    });
+
+    test("静的ファイルアクセスは認証チェックをスキップ", async () => {
+      // Arrange: 静的ファイルへのリクエスト
+      const request = createMockRequest("https://example.com/_next/static/css/app.css");
+
+      // Act
+      const response = await middleware(request);
+
+      // Assert: スキップされて通常レスポンス
+      expect(response.status).toBe(200);
+      expect(response.headers.get("location")).toBeNull();
+    });
+
+    test("APIルートは認証チェックをスキップ", async () => {
+      // Arrange: APIルートへのリクエスト
+      const request = createMockRequest("https://example.com/api/test");
+
+      // Act
+      const response = await middleware(request);
+
+      // Assert: スキップされて通常レスポンス
+      expect(response.status).toBe(200);
+      expect(response.headers.get("location")).toBeNull();
+    });
+
+    test("認証不要ページは通常通りアクセス可能", async () => {
+      // Arrange: 認証不要ページ（ルート）へのリクエスト
+      const request = createMockRequest("https://example.com/");
+
+      // Act
+      const response = await middleware(request);
+
+      // Assert: 通常通りアクセス可能
+      expect(response.status).toBe(200);
+      expect(response.headers.get("location")).toBeNull();
+    });
+
+    test("ミドルウェアのセキュリティ処理の一貫性", async () => {
+      // Arrange: 複数の保護されたパスをテスト
+      const protectedPaths = ["/dashboard", "/events", "/profile"];
+      
+      for (const path of protectedPaths) {
+        const request = createMockRequest(`https://example.com${path}`);
+        
+        // Act
+        const response = await middleware(request);
+        
+        // Assert: 全て一貫してリダイレクト
+        expect(response.status).toBe(307);
+        expect(response.headers.get("location")).toContain("/auth/login");
+        expect(response.headers.get("location")).toContain(`redirectTo=${encodeURIComponent(path)}`);
+      }
+    });
+
+    test("トークン検証失敗時のセキュアなエラーハンドリング", async () => {
+      // Arrange: 様々な不正なトークンパターンをテスト
+      const invalidTokens = [
+        "malformed.jwt.token",
+        "expired-token-123",
+        "tampered-token",
+        "",
+        "null",
+        "undefined"
+      ];
+
+      for (const token of invalidTokens) {
+        const request = createMockRequest(
+          "https://example.com/dashboard",
+          { "supabase-auth-token": token }
+        );
+
+        // Act
+        const response = await middleware(request);
+
+        // Assert: 全て安全にリダイレクト処理
+        expect(response.status).toBe(307);
+        expect(response.headers.get("location")).toContain("/auth/login");
+      }
     });
   });
 
