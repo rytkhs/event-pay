@@ -334,10 +334,9 @@ describe("認証ミドルウェアテスト", () => {
 
     test("期限切れトークンでのアクセス時に適切にリダイレクト", async () => {
       // Arrange: 現在の実装に合わせてリダイレクトを想定
-      const request = createMockRequest(
-        "https://example.com/dashboard",
-        { "supabase-auth-token": "expired-token" }
-      );
+      const request = createMockRequest("https://example.com/dashboard", {
+        "supabase-auth-token": "expired-token",
+      });
 
       // Act: 実際のミドルウェアをテスト
       const response = await middleware(request);
@@ -350,10 +349,9 @@ describe("認証ミドルウェアテスト", () => {
 
     test("無効なトークンでのアクセス時のセキュリティ処理", async () => {
       // Arrange: 無効なトークンでのリクエスト
-      const request = createMockRequest(
-        "https://example.com/events",
-        { "supabase-auth-token": "invalid-malformed-token" }
-      );
+      const request = createMockRequest("https://example.com/events", {
+        "supabase-auth-token": "invalid-malformed-token",
+      });
 
       // Act
       const response = await middleware(request);
@@ -379,10 +377,9 @@ describe("認証ミドルウェアテスト", () => {
 
     test("セッション取得エラー時の適切なフォールバック処理", async () => {
       // Arrange: 何らかのエラーを想定したトークン
-      const request = createMockRequest(
-        "https://example.com/dashboard",
-        { "supabase-auth-token": "error-causing-token" }
-      );
+      const request = createMockRequest("https://example.com/dashboard", {
+        "supabase-auth-token": "error-causing-token",
+      });
 
       // Act
       const response = await middleware(request);
@@ -431,17 +428,19 @@ describe("認証ミドルウェアテスト", () => {
     test("ミドルウェアのセキュリティ処理の一貫性", async () => {
       // Arrange: 複数の保護されたパスをテスト
       const protectedPaths = ["/dashboard", "/events", "/profile"];
-      
+
       for (const path of protectedPaths) {
         const request = createMockRequest(`https://example.com${path}`);
-        
+
         // Act
         const response = await middleware(request);
-        
+
         // Assert: 全て一貫してリダイレクト
         expect(response.status).toBe(307);
         expect(response.headers.get("location")).toContain("/auth/login");
-        expect(response.headers.get("location")).toContain(`redirectTo=${encodeURIComponent(path)}`);
+        expect(response.headers.get("location")).toContain(
+          `redirectTo=${encodeURIComponent(path)}`
+        );
       }
     });
 
@@ -453,14 +452,13 @@ describe("認証ミドルウェアテスト", () => {
         "tampered-token",
         "",
         "null",
-        "undefined"
+        "undefined",
       ];
 
       for (const token of invalidTokens) {
-        const request = createMockRequest(
-          "https://example.com/dashboard",
-          { "supabase-auth-token": token }
-        );
+        const request = createMockRequest("https://example.com/dashboard", {
+          "supabase-auth-token": token,
+        });
 
         // Act
         const response = await middleware(request);

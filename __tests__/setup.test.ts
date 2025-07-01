@@ -13,10 +13,10 @@ import {
 describe("Test Environment Setup", () => {
   describe("Jest Configuration", () => {
     it("should have access to global test utilities", () => {
-      expect(global.testUtils).toBeDefined();
-      expect(global.testUtils.mockUser).toBeDefined();
-      expect(global.testUtils.mockEvent).toBeDefined();
-      expect(global.testUtils.resetAllMocks).toBeDefined();
+      expect(globalThis.testUtils).toBeDefined();
+      expect(globalThis.testUtils.mockUser).toBeDefined();
+      expect(globalThis.testUtils.mockEvent).toBeDefined();
+      expect(globalThis.testUtils.resetAllMocks).toBeDefined();
     });
 
     it("should clear mocks between tests", () => {

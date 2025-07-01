@@ -5,13 +5,13 @@
 describe("Security Test Example", () => {
   it("should have security-focused mocks", () => {
     // セキュリティテスト用のモックが設定される
-    expect(global.mockSupabase).toBeDefined();
-    expect(global.mockRateLimit).toBeDefined();
-    expect(global.mockRedis).toBeDefined();
+    expect(globalThis.mockSupabase).toBeDefined();
+    expect(globalThis.mockRateLimit).toBeDefined();
+    expect(globalThis.mockRedis).toBeDefined();
   });
 
   it("should test rate limiting", async () => {
-    const result = await global.mockRateLimit.limit("test-key");
+    const result = await globalThis.mockRateLimit.limit("test-key");
 
     expect(result).toEqual({
       success: true,
@@ -20,11 +20,11 @@ describe("Security Test Example", () => {
       reset: expect.any(Number),
     });
 
-    expect(global.mockRateLimit.limit).toHaveBeenCalledWith("test-key");
+    expect(globalThis.mockRateLimit.limit).toHaveBeenCalledWith("test-key");
   });
 
   it("should test authentication", async () => {
-    const user = await global.mockSupabase.auth.getUser();
+    const user = await globalThis.mockSupabase.auth.getUser();
 
     expect(user.data.user).toEqual({
       id: "test-user-id",
@@ -33,10 +33,10 @@ describe("Security Test Example", () => {
   });
 
   it("should test Redis operations", async () => {
-    await global.mockRedis.set("key", "value");
-    const value = await global.mockRedis.get("key");
+    await globalThis.mockRedis.set("key", "value");
+    const value = await globalThis.mockRedis.get("key");
 
-    expect(global.mockRedis.set).toHaveBeenCalledWith("key", "value");
-    expect(global.mockRedis.get).toHaveBeenCalledWith("key");
+    expect(globalThis.mockRedis.set).toHaveBeenCalledWith("key", "value");
+    expect(globalThis.mockRedis.get).toHaveBeenCalledWith("key");
   });
 });

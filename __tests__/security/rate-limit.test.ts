@@ -312,7 +312,7 @@ describe("Rate Limit Security Tests", () => {
     beforeEach(() => {
       // Server Actions用のレート制限チェック関数のモック
       mockServerActionCheckRateLimit = jest.fn();
-      
+
       // headers()関数のモック
       mockHeaders = jest.fn().mockReturnValue({
         get: jest.fn().mockImplementation((header: string) => {
@@ -320,7 +320,7 @@ describe("Rate Limit Security Tests", () => {
           if (header === "x-real-ip") return null;
           if (header === "cf-connecting-ip") return null;
           return null;
-        })
+        }),
       });
 
       // Server Actions用モジュールモック
@@ -329,23 +329,23 @@ describe("Rate Limit Security Tests", () => {
         RATE_LIMIT_CONFIGS: {
           userLogin: { requests: 5, window: "15 m", identifier: "ip" },
           userRegistration: { requests: 6, window: "5 m", identifier: "ip" },
-          default: { requests: 60, window: "1 m", identifier: "ip" }
-        }
+          default: { requests: 60, window: "1 m", identifier: "ip" },
+        },
       }));
 
       jest.doMock("next/headers", () => ({
-        headers: mockHeaders
+        headers: mockHeaders,
       }));
 
       // その他の依存関係のモック
       jest.doMock("@/lib/auth-security", () => ({
         InputSanitizer: {
           sanitizeEmail: jest.fn((email: string) => email),
-          sanitizePassword: jest.fn((password: string) => password)
+          sanitizePassword: jest.fn((password: string) => password),
         },
         TimingAttackProtection: {
-          normalizeResponseTime: jest.fn(async (fn: () => Promise<void>) => await fn())
-        }
+          normalizeResponseTime: jest.fn(async (fn: () => Promise<void>) => await fn()),
+        },
       }));
 
       jest.doMock("@/lib/services/login", () => ({
@@ -353,32 +353,32 @@ describe("Rate Limit Security Tests", () => {
           login: jest.fn().mockResolvedValue({
             success: true,
             user: { id: "test-user-id", email: "test@example.com" },
-            sessionToken: "mock-token"
-          })
-        }
+            sessionToken: "mock-token",
+          }),
+        },
       }));
 
       jest.doMock("@/lib/services/registration", () => ({
         RegistrationService: {
           register: jest.fn().mockResolvedValue({
             success: true,
-            userId: "test-user-id"
-          })
-        }
+            userId: "test-user-id",
+          }),
+        },
       }));
 
       jest.doMock("@/lib/services/password-reset", () => ({
         PasswordResetService: {
-          sendResetEmail: jest.fn().mockResolvedValue(undefined)
-        }
+          sendResetEmail: jest.fn().mockResolvedValue(undefined),
+        },
       }));
 
       jest.doMock("@/lib/supabase/server", () => ({
-        createClient: jest.fn()
+        createClient: jest.fn(),
       }));
 
       jest.doMock("next/cache", () => ({
-        revalidatePath: jest.fn()
+        revalidatePath: jest.fn(),
       }));
     });
 
@@ -410,7 +410,7 @@ describe("Rate Limit Security Tests", () => {
       // レート制限チェックが失敗を返すよう設定
       mockServerActionCheckRateLimit.mockResolvedValue({
         success: false,
-        retryAfter: 900 // 15分後
+        retryAfter: 900, // 15分後
       });
 
       const { loginAction } = await import("@/app/auth/actions");
@@ -440,14 +440,17 @@ describe("Rate Limit Security Tests", () => {
 
       const result = await registerAction(formData);
 
-      expect(mockServerActionCheckRateLimit).toHaveBeenCalledWith("userRegistration", "192.168.1.100");
+      expect(mockServerActionCheckRateLimit).toHaveBeenCalledWith(
+        "userRegistration",
+        "192.168.1.100"
+      );
       expect(result.success).toBe(true);
     });
 
     test("registerAction: レート制限超過時は適切なエラーメッセージで拒否される", async () => {
       mockServerActionCheckRateLimit.mockResolvedValue({
         success: false,
-        retryAfter: 300 // 5分後
+        retryAfter: 300, // 5分後
       });
 
       const { registerAction } = await import("@/app/auth/actions");
@@ -460,7 +463,10 @@ describe("Rate Limit Security Tests", () => {
 
       const result = await registerAction(formData);
 
-      expect(mockServerActionCheckRateLimit).toHaveBeenCalledWith("userRegistration", "192.168.1.100");
+      expect(mockServerActionCheckRateLimit).toHaveBeenCalledWith(
+        "userRegistration",
+        "192.168.1.100"
+      );
       expect(result.success).toBe(false);
       expect(result.error).toContain("ユーザー登録試行回数が上限に達しました");
       expect(result.error).toContain("5分後に再試行");
@@ -484,7 +490,7 @@ describe("Rate Limit Security Tests", () => {
     test("resetPasswordAction: レート制限超過時は適切なエラーメッセージで拒否される", async () => {
       mockServerActionCheckRateLimit.mockResolvedValue({
         success: false,
-        retryAfter: 60 // 1分後
+        retryAfter: 60, // 1分後
       });
 
       const { resetPasswordAction } = await import("@/app/auth/actions");
@@ -506,7 +512,7 @@ describe("Rate Limit Security Tests", () => {
           get: jest.fn().mockImplementation((header: string) => {
             if (header === "x-forwarded-for") return "203.0.113.195, 192.168.1.100";
             return null;
-          })
+          }),
         });
 
         mockServerActionCheckRateLimit.mockResolvedValue({ success: true });
@@ -529,7 +535,7 @@ describe("Rate Limit Security Tests", () => {
             if (header === "x-forwarded-for") return null;
             if (header === "x-real-ip") return "198.51.100.178";
             return null;
-          })
+          }),
         });
 
         mockServerActionCheckRateLimit.mockResolvedValue({ success: true });
@@ -547,7 +553,7 @@ describe("Rate Limit Security Tests", () => {
 
       test("IPヘッダーが無い場合はデフォルトIPを使用", async () => {
         mockHeaders.mockReturnValue({
-          get: jest.fn().mockReturnValue(null)
+          get: jest.fn().mockReturnValue(null),
         });
 
         mockServerActionCheckRateLimit.mockResolvedValue({ success: true });
