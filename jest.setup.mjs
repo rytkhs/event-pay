@@ -1,6 +1,9 @@
 // Jest DOM matchers for Testing Library
 import "@testing-library/jest-dom";
 
+// Jest専用型定義を読み込み
+import "./types/test.d.ts";
+
 // Load environment variables for testing
 import dotenv from "dotenv";
 dotenv.config({ path: ".env.local" });
