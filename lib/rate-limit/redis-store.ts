@@ -3,8 +3,23 @@ import { RateLimitStore, RateLimitData } from "./types";
 // Redis接続の型定義（本番環境で使用）
 interface RedisClient {
   get(key: string): Promise<string | null>;
-  set(key: string, value: string, options?: { PX?: number }): Promise<void>;
-  del(key: string): Promise<number>;
+  /**
+   * When interacting with Upstash Redis we sometimes pass an expiration in seconds (SETEX)
+   * instead of the PX option used by ioredis compatible clients. Allow both signatures
+   * so that the concrete implementation can decide which command to execute.
+   */
+  set(
+    key: string,
+    value: string,
+    optionsOrExpireInSeconds?: { PX?: number } | number
+  ): Promise<void>;
+  /**
+   * Some Redis libraries return the number of keys removed (`number`) while others return
+   * nothing (`void`). Accept both for broader compatibility.
+   */
+  del(key: string): Promise<void | number>;
+  incr(key: string): Promise<number>;
+  expire(key: string, seconds: number): Promise<void | number>;
 }
 
 export class RedisRateLimitStore implements RateLimitStore {
@@ -60,9 +75,7 @@ export function createRedisClient(): RedisClient {
         "RATE_LIMIT_REDIS_URL and RATE_LIMIT_REDIS_TOKEN environment variables are required in production"
       );
     } else {
-      console.warn(
-        "Redis環境変数が未設定です。開発環境ではメモリベースのレート制限を使用します。"
-      );
+      console.warn("Redis環境変数が未設定です。開発環境ではメモリベースのレート制限を使用します。");
       throw new Error("Redis environment variables not configured");
     }
   }
@@ -71,7 +84,7 @@ export function createRedisClient(): RedisClient {
     // @upstash/redisを使用してRedisクライアントを作成
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     const { Redis } = require("@upstash/redis");
-    
+
     const redis = new Redis({
       url: redisUrl,
       token: redisToken,
@@ -92,10 +105,19 @@ export function createRedisClient(): RedisClient {
           throw error;
         }
       },
-      set: async (key: string, value: string, expireInSeconds?: number): Promise<void> => {
+      set: async (key: string, value: string, optionsOrExpireInSeconds?: { PX?: number } | number): Promise<void> => {
         try {
-          if (expireInSeconds) {
-            await redis.setex(key, expireInSeconds, value);
+          if (optionsOrExpireInSeconds) {
+            if (typeof optionsOrExpireInSeconds === 'object' && optionsOrExpireInSeconds.PX) {
+              // PXオプション（ミリ秒）を秒に変換してSETEXを使用
+              const expireInSeconds = Math.ceil(optionsOrExpireInSeconds.PX / 1000);
+              await redis.setex(key, expireInSeconds, value);
+            } else if (typeof optionsOrExpireInSeconds === 'number') {
+              // 直接秒数が指定された場合
+              await redis.setex(key, optionsOrExpireInSeconds, value);
+            } else {
+              await redis.set(key, value);
+            }
           } else {
             await redis.set(key, value);
           }

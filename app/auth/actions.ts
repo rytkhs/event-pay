@@ -10,6 +10,7 @@ import { LoginService } from "@/lib/services/login";
 import { PasswordResetService } from "@/lib/services/password-reset";
 import { LogoutService } from "@/lib/services/logout";
 import { createClient } from "@/lib/supabase/server";
+import { NextRequest } from "next/server";
 
 // Zodバリデーションスキーマ
 const loginSchema = z.object({
@@ -70,26 +71,26 @@ function getClientIP(): string {
   try {
     // Next.js 14 App Router Server Actionsでのヘッダー取得
     const headersList = headers();
-    
+
     // プロキシ経由の場合のIP取得を優先
     const forwardedFor = headersList.get("x-forwarded-for");
     if (forwardedFor) {
       // 複数のIPがある場合は最初のもの（クライアントIP）を使用
       return forwardedFor.split(",")[0].trim();
     }
-    
+
     // Cloudflareなどの場合
     const realIP = headersList.get("x-real-ip");
     if (realIP) {
       return realIP.trim();
     }
-    
+
     // CF-Connecting-IP (Cloudflare)
     const cfConnectingIP = headersList.get("cf-connecting-ip");
     if (cfConnectingIP) {
       return cfConnectingIP.trim();
     }
-    
+
     // デフォルト値
     return "127.0.0.1";
   } catch (error) {
@@ -102,17 +103,46 @@ function getClientIP(): string {
 async function getCurrentUserId(): Promise<string | null> {
   try {
     const supabase = createClient();
-    const { data: { user }, error } = await supabase.auth.getUser();
-    
+    const {
+      data: { user },
+      error,
+    } = await supabase.auth.getUser();
+
     if (error || !user) {
       return null;
     }
-    
+
     return user.id;
   } catch (error) {
     console.warn("Failed to get current user ID:", error);
     return null;
   }
+}
+
+// Server Action 用レート制限ラッパー
+async function checkRateLimitForServerAction(
+  key: keyof typeof RATE_LIMIT_CONFIGS,
+  clientIP: string
+): Promise<{ success: boolean; retryAfter?: number }> {
+  // RATE_LIMIT_CONFIGS から対象設定を取得
+  const config = RATE_LIMIT_CONFIGS[key] ?? RATE_LIMIT_CONFIGS.default;
+
+  // ダミーの NextRequest を生成してヘッダーに IP を埋め込む
+  const request = new NextRequest("http://localhost", {
+    headers: {
+      "x-forwarded-for": clientIP,
+    },
+  });
+
+  const result = await checkRateLimit(request, config, key);
+
+  return {
+    success: result.success,
+    // reset はエポック秒(ms) なので現在時刻との差を算出
+    retryAfter: result.success
+      ? undefined
+      : Math.max(0, Math.ceil((result.reset - Date.now()) / 1000)),
+  };
 }
 
 /**
@@ -149,8 +179,8 @@ export async function loginAction(formData: FormData): Promise<ServerActionResul
 
       // レート制限チェック
       const clientIP = getClientIP();
-      const rateLimit = await checkRateLimit("userLogin", clientIP);
-      
+      const rateLimit = await checkRateLimitForServerAction("userLogin", clientIP);
+
       if (!rateLimit.success) {
         result = {
           success: false,
@@ -218,8 +248,8 @@ export async function registerAction(
 
     // レート制限チェック
     const clientIP = getClientIP();
-    const rateLimit = await checkRateLimit("userRegistration", clientIP);
-    
+    const rateLimit = await checkRateLimitForServerAction("userRegistration", clientIP);
+
     if (!rateLimit.success) {
       return {
         success: false,
@@ -329,8 +359,8 @@ export async function resetPasswordAction(formData: FormData): Promise<ServerAct
 
     // レート制限チェック（パスワードリセットはdefault設定を使用）
     const clientIP = getClientIP();
-    const rateLimit = await checkRateLimit("default", clientIP);
-    
+    const rateLimit = await checkRateLimitForServerAction("default", clientIP);
+
     if (!rateLimit.success) {
       return {
         success: false,
