@@ -2,13 +2,14 @@
 
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
+import { headers } from "next/headers";
 import { InputSanitizer, TimingAttackProtection } from "@/lib/auth-security";
-// TODO: Server Actionsでのレート制限実装時に追加
-// import { checkRateLimit, RATE_LIMIT_CONFIGS } from "@/lib/rate-limit";
+import { checkRateLimit, RATE_LIMIT_CONFIGS } from "@/lib/rate-limit";
 import { RegistrationService } from "@/lib/services/registration";
 import { LoginService } from "@/lib/services/login";
 import { PasswordResetService } from "@/lib/services/password-reset";
 import { LogoutService } from "@/lib/services/logout";
+import { createClient } from "@/lib/supabase/server";
 
 // Zodバリデーションスキーマ
 const loginSchema = z.object({
@@ -64,12 +65,55 @@ function formDataToObject(formData: FormData): Record<string, string | boolean> 
   return data;
 }
 
-// IPアドレス取得ヘルパー（現在未使用だが将来の実装のために保持）
-// function getClientIP(): string {
-//   // Server Actionsでは直接リクエストオブジェクトにアクセスできないため、
-//   // ヘッダーからIPを取得する処理をスキップし、デフォルト値を使用
-//   return "127.0.0.1";
-// }
+// IPアドレス取得ヘルパー
+function getClientIP(): string {
+  try {
+    // Next.js 14 App Router Server Actionsでのヘッダー取得
+    const headersList = headers();
+    
+    // プロキシ経由の場合のIP取得を優先
+    const forwardedFor = headersList.get("x-forwarded-for");
+    if (forwardedFor) {
+      // 複数のIPがある場合は最初のもの（クライアントIP）を使用
+      return forwardedFor.split(",")[0].trim();
+    }
+    
+    // Cloudflareなどの場合
+    const realIP = headersList.get("x-real-ip");
+    if (realIP) {
+      return realIP.trim();
+    }
+    
+    // CF-Connecting-IP (Cloudflare)
+    const cfConnectingIP = headersList.get("cf-connecting-ip");
+    if (cfConnectingIP) {
+      return cfConnectingIP.trim();
+    }
+    
+    // デフォルト値
+    return "127.0.0.1";
+  } catch (error) {
+    console.warn("Failed to get client IP:", error);
+    return "127.0.0.1";
+  }
+}
+
+// 認証済みユーザーID取得ヘルパー
+async function getCurrentUserId(): Promise<string | null> {
+  try {
+    const supabase = createClient();
+    const { data: { user }, error } = await supabase.auth.getUser();
+    
+    if (error || !user) {
+      return null;
+    }
+    
+    return user.id;
+  } catch (error) {
+    console.warn("Failed to get current user ID:", error);
+    return null;
+  }
+}
 
 /**
  * ログインServer Action
@@ -103,9 +147,17 @@ export async function loginAction(formData: FormData): Promise<ServerActionResul
       const sanitizedEmail = InputSanitizer.sanitizeEmail(email);
       const sanitizedPassword = InputSanitizer.sanitizePassword(password);
 
-      // TODO: Server Actionsでのレート制限実装
-      // 現在は一時的にスキップ（Server ActionsではRequestオブジェクトに直接アクセスできないため）
-      // 将来的にはheaders()やcookies()を使用して実装予定
+      // レート制限チェック
+      const clientIP = getClientIP();
+      const rateLimit = await checkRateLimit("userLogin", clientIP);
+      
+      if (!rateLimit.success) {
+        result = {
+          success: false,
+          error: `ログイン試行回数が上限に達しました。${Math.ceil(rateLimit.retryAfter! / 60)}分後に再試行してください。`,
+        };
+        return;
+      }
 
       // ログイン処理（セキュリティ機能は LoginService.login 内で処理される）
       const loginResult = await LoginService.login(sanitizedEmail, sanitizedPassword);
@@ -164,9 +216,16 @@ export async function registerAction(
 
     const { name, email, password } = validation.data;
 
-    // TODO: Server Actionsでのレート制限実装
-    // 現在は一時的にスキップ（Server ActionsではRequestオブジェクトに直接アクセスできないため）
-    // 将来的にはheaders()やcookies()を使用して実装予定
+    // レート制限チェック
+    const clientIP = getClientIP();
+    const rateLimit = await checkRateLimit("userRegistration", clientIP);
+    
+    if (!rateLimit.success) {
+      return {
+        success: false,
+        error: `ユーザー登録試行回数が上限に達しました。${Math.ceil(rateLimit.retryAfter! / 60)}分後に再試行してください。`,
+      };
+    }
 
     // 登録処理
     const result = await RegistrationService.register({
@@ -268,9 +327,16 @@ export async function resetPasswordAction(formData: FormData): Promise<ServerAct
 
     const { email } = validation.data;
 
-    // TODO: Server Actionsでのレート制限実装
-    // 現在は一時的にスキップ（Server ActionsではRequestオブジェクトに直接アクセスできないため）
-    // 将来的にはheaders()やcookies()を使用して実装予定
+    // レート制限チェック（パスワードリセットはdefault設定を使用）
+    const clientIP = getClientIP();
+    const rateLimit = await checkRateLimit("default", clientIP);
+    
+    if (!rateLimit.success) {
+      return {
+        success: false,
+        error: `パスワードリセット試行回数が上限に達しました。${Math.ceil(rateLimit.retryAfter! / 60)}分後に再試行してください。`,
+      };
+    }
 
     // パスワードリセット処理
     await PasswordResetService.sendResetEmail(InputSanitizer.sanitizeEmail(email));
