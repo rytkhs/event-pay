@@ -63,7 +63,7 @@ export class RedisRateLimitStore implements RateLimitStore {
 }
 
 // 本番環境用のRedis接続ファクトリー
-export function createRedisClient(): RedisClient {
+export async function createRedisClient(): Promise<RedisClient> {
   // 環境変数から接続情報を取得
   const redisUrl = process.env.RATE_LIMIT_REDIS_URL;
   const redisToken = process.env.RATE_LIMIT_REDIS_TOKEN;
@@ -76,14 +76,14 @@ export function createRedisClient(): RedisClient {
       );
     } else {
       console.warn("Redis環境変数が未設定です。開発環境ではメモリベースのレート制限を使用します。");
+      // 非本番環境では例外を投げずにnullを返すか、メモリベースの実装を返す
       throw new Error("Redis environment variables not configured");
     }
   }
 
   try {
     // @upstash/redisを使用してRedisクライアントを作成
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const { Redis } = require("@upstash/redis");
+    const { Redis } = await import("@upstash/redis");
 
     const redis = new Redis({
       url: redisUrl,
@@ -105,14 +105,18 @@ export function createRedisClient(): RedisClient {
           throw error;
         }
       },
-      set: async (key: string, value: string, optionsOrExpireInSeconds?: { PX?: number } | number): Promise<void> => {
+      set: async (
+        key: string,
+        value: string,
+        optionsOrExpireInSeconds?: { PX?: number } | number
+      ): Promise<void> => {
         try {
           if (optionsOrExpireInSeconds) {
-            if (typeof optionsOrExpireInSeconds === 'object' && optionsOrExpireInSeconds.PX) {
+            if (typeof optionsOrExpireInSeconds === "object" && optionsOrExpireInSeconds.PX) {
               // PXオプション（ミリ秒）を秒に変換してSETEXを使用
               const expireInSeconds = Math.ceil(optionsOrExpireInSeconds.PX / 1000);
               await redis.setex(key, expireInSeconds, value);
-            } else if (typeof optionsOrExpireInSeconds === 'number') {
+            } else if (typeof optionsOrExpireInSeconds === "number") {
               // 直接秒数が指定された場合
               await redis.setex(key, optionsOrExpireInSeconds, value);
             } else {
