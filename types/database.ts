@@ -126,13 +126,6 @@ export type Database = {
             foreignKeyName: "events_created_by_fkey";
             columns: ["created_by"];
             isOneToOne: false;
-            referencedRelation: "public_profiles";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "events_created_by_fkey";
-            columns: ["created_by"];
-            isOneToOne: false;
             referencedRelation: "users";
             referencedColumns: ["id"];
           },
@@ -252,13 +245,6 @@ export type Database = {
             foreignKeyName: "payouts_user_id_fkey";
             columns: ["user_id"];
             isOneToOne: false;
-            referencedRelation: "public_profiles";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "payouts_user_id_fkey";
-            columns: ["user_id"];
-            isOneToOne: false;
             referencedRelation: "users";
             referencedColumns: ["id"];
           },
@@ -323,13 +309,6 @@ export type Database = {
           user_id?: string;
         };
         Relationships: [
-          {
-            foreignKeyName: "stripe_connect_accounts_user_id_fkey";
-            columns: ["user_id"];
-            isOneToOne: true;
-            referencedRelation: "public_profiles";
-            referencedColumns: ["id"];
-          },
           {
             foreignKeyName: "stripe_connect_accounts_user_id_fkey";
             columns: ["user_id"];
