@@ -1,6 +1,5 @@
 -- EventPay データベーステーブル作成マイグレーション
 -- DB-002～005: データベース基盤実装（テーブル作成・RLS・シードデータ）
--- 作成日: 2025-06-25
 
 -- ====================================================================
 -- DB-002: 基本テーブル作成
@@ -139,7 +138,7 @@ ALTER TABLE public.attendances ADD CONSTRAINT attendances_nickname_not_empty
     CHECK (LENGTH(TRIM(nickname)) >= 1);
 
 ALTER TABLE public.attendances ADD CONSTRAINT attendances_email_format
-    CHECK (email IS NULL OR email ~* '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$');
+    CHECK (email IS NULL OR email ~* '^[A-Za-z0-9\._%\+\-]+@[A-Za-z0-9\.\-]+\.[A-Za-z]{2,}$');
 
 -- 同一イベントでの重複防止（メールアドレスがある場合）
 CREATE UNIQUE INDEX attendances_event_email_unique

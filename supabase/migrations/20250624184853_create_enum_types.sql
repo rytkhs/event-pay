@@ -1,6 +1,5 @@
 -- EventPay ENUM型定義マイグレーション
 -- DB-001: ENUM型定義（イベントステータス、決済方法など）
--- 作成日: 2025-06-24
 
 -- ====================================================================
 -- イベントステータスENUM
@@ -101,17 +100,17 @@ DO $$
 DECLARE
     enum_count integer;
 BEGIN
-    SELECT COUNT(*) INTO enum_count 
-    FROM pg_type 
+    SELECT COUNT(*) INTO enum_count
+    FROM pg_type
     WHERE typname IN (
         'event_status_enum',
-        'payment_method_enum', 
+        'payment_method_enum',
         'payment_status_enum',
         'attendance_status_enum',
         'stripe_account_status_enum',
         'payout_status_enum'
     ) AND typtype = 'e';
-    
+
     IF enum_count = 6 THEN
         RAISE NOTICE 'EventPay ENUM型の作成が完了しました。作成された型数: %', enum_count;
         RAISE NOTICE '次のENUM型が正常に作成されました:';
