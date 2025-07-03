@@ -77,8 +77,6 @@ export function AuthEmailField(props: Omit<AuthFormFieldProps, "type">) {
       type="email"
       autoComplete="email"
       inputMode="email"
-      // メールアドレスのバリデーション属性
-      pattern="[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$"
     />
   );
 }
