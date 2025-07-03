@@ -9,8 +9,11 @@ export class OptimizedMemoryRateLimitStore implements RateLimitStore {
   private cleanupInterval: NodeJS.Timeout | null = null;
   private readonly CLEANUP_INTERVAL_MS = 5 * 60 * 1000; // 5分間隔でクリーンアップ
   private readonly MAX_ENTRIES = 10000; // メモリ制限
+  private static instances = new Set<OptimizedMemoryRateLimitStore>(); // 全インスタンス管理
+  private static listenersRegistered = false; // 重複登録防止フラグ
 
   constructor() {
+    OptimizedMemoryRateLimitStore.instances.add(this);
     this.startPeriodicCleanup();
   }
 
@@ -56,10 +59,23 @@ export class OptimizedMemoryRateLimitStore implements RateLimitStore {
       this.cleanup();
     }, this.CLEANUP_INTERVAL_MS);
 
-    // プロセス終了時のクリーンアップ
-    process.on("exit", () => this.stopPeriodicCleanup());
-    process.on("SIGINT", () => this.stopPeriodicCleanup());
-    process.on("SIGTERM", () => this.stopPeriodicCleanup());
+    // プロセス終了時のクリーンアップ（重複登録防止）
+    if (!OptimizedMemoryRateLimitStore.listenersRegistered) {
+      OptimizedMemoryRateLimitStore.listenersRegistered = true;
+      
+      const cleanup = () => {
+        // 全インスタンスのクリーンアップ
+        OptimizedMemoryRateLimitStore.instances.forEach(instance => {
+          instance.stopPeriodicCleanup();
+        });
+        OptimizedMemoryRateLimitStore.instances.clear();
+        OptimizedMemoryRateLimitStore.listenersRegistered = false;
+      };
+      
+      process.on("exit", cleanup);
+      process.on("SIGINT", cleanup);
+      process.on("SIGTERM", cleanup);
+    }
   }
 
   private stopPeriodicCleanup(): void {
@@ -169,5 +185,6 @@ export class OptimizedMemoryRateLimitStore implements RateLimitStore {
   clear(): void {
     this.store.clear();
     this.stopPeriodicCleanup();
+    OptimizedMemoryRateLimitStore.instances.delete(this);
   }
 }
