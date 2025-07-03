@@ -22,7 +22,12 @@ const config = {
   ],
   moduleNameMapper: {
     "^@/(.*)$": "<rootDir>/$1",
+    "^@supabase/supabase-js$": "<rootDir>/__mocks__/@supabase/supabase-js.js",
+    "^@supabase/ssr$": "<rootDir>/__mocks__/@supabase/ssr.js",
   },
+  transformIgnorePatterns: [
+    "node_modules/(?!(@supabase|@babel|babel))",
+  ],
 };
 
 export default createJestConfig(config);
