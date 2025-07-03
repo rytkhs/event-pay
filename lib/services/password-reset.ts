@@ -16,7 +16,7 @@ export class PasswordResetService {
     const supabase = createSupabaseServerClient();
 
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/reset-password/confirm`,
+      redirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/auth/reset-password/confirm`,
     });
 
     // セキュリティ上、エラーの有無に関わらず同じメッセージを返す

@@ -52,7 +52,7 @@ export function useAuthForm<T extends ServerActionResult>(
     defaultInitialState as Awaited<T>
   );
 
-  // 成功時の処理
+  // 成功時・リダイレクト必要時の処理
   useEffect(() => {
     if (state.success) {
       // カスタム成功ハンドラーがあれば実行
@@ -64,6 +64,9 @@ export function useAuthForm<T extends ServerActionResult>(
       if (options.redirectOnSuccess !== false && state.redirectUrl) {
         router.push(state.redirectUrl);
       }
+    } else if (state.redirectUrl) {
+      // 失敗時でもリダイレクトが必要な場合（例：未確認ユーザー）
+      router.push(state.redirectUrl);
     }
   }, [state, router, options]);
 

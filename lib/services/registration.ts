@@ -61,14 +61,16 @@ export class RegistrationService {
   static async register(data: RegistrationData): Promise<RegistrationResult> {
     const adminClient = createSupabaseAdminClient();
 
-    // Supabase Authでユーザー作成（Admin権限で実行）
-    const { data: authData, error: authError } = await adminClient.auth.admin.createUser({
+    // 標準的なSupabase登録フローを使用（メール確認付き）
+    const { data: authData, error: authError } = await adminClient.auth.signUp({
       email: data.email,
       password: data.password,
-      user_metadata: {
-        name: data.name,
+      options: {
+        data: {
+          name: data.name,
+        },
+        emailRedirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/auth/confirm`,
       },
-      email_confirm: false, // 後でメール確認を送信
     });
 
     if (authError) {
@@ -89,21 +91,6 @@ export class RegistrationService {
 
       if (profileError) {
         throw new Error(`Failed to create user profile: ${profileError.message}`);
-      }
-
-      // メール確認送信
-      const { error: emailError } = await adminClient.auth.admin.generateLink({
-        type: "signup",
-        email: data.email,
-        password: data.password, // Supabase requirementを満たすため必要
-      });
-
-      if (emailError) {
-        // 本番環境では適切なログシステムに出力
-        if (process.env.NODE_ENV === "development") {
-          console.warn("Email confirmation send failed:", emailError);
-        }
-        // メール送信失敗は警告に留める（ユーザー登録自体は成功）
       }
 
       return {
