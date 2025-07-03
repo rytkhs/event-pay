@@ -4,21 +4,18 @@ import { OptimizedMemoryRateLimitStore } from "./optimized-memory-store";
 import { RedisRateLimitStore, createRedisClient } from "./redis-store";
 import { RATE_LIMIT_CONFIG } from "@/config/security";
 
-// デフォルト設定（後方互換性のため）
-export const DEFAULT_RATE_LIMIT_CONFIG: RateLimitConfig = RATE_LIMIT_CONFIG.general;
-
 // シングルトンストア
 let rateLimitStoreInstance: RateLimitStore | null = null;
 
 // ストアファクトリー
-export function createRateLimitStore(): RateLimitStore {
+export async function createRateLimitStore(): Promise<RateLimitStore> {
   if (rateLimitStoreInstance) {
     return rateLimitStoreInstance;
   }
 
   if (process.env.NODE_ENV === "production" && process.env.REDIS_URL) {
     try {
-      const redisClient = createRedisClient();
+      const redisClient = await createRedisClient();
       rateLimitStoreInstance = new RedisRateLimitStore(redisClient);
       return rateLimitStoreInstance;
     } catch (error) {
@@ -49,7 +46,7 @@ export function resetMemoryStore(): void {
 export async function checkRateLimit(
   store: RateLimitStore,
   key: string,
-  config: RateLimitConfig = DEFAULT_RATE_LIMIT_CONFIG
+  config: RateLimitConfig = RATE_LIMIT_CONFIG.general
 ): Promise<RateLimitResult> {
   const now = Date.now();
   const existing = await store.get(key);
