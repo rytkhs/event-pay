@@ -3,7 +3,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { type EmailOtpType } from "@supabase/supabase-js";
 import { headers } from "next/headers";
-import { redirect } from "next/navigation";
 import { z } from "zod";
 import { randomDelay } from "@/lib/security/crypto";
 
@@ -45,6 +44,7 @@ export async function verifyOtpAction(payload: { otp: string; email: string; typ
           email: validatedData.email.replace(/(.{2}).*(@.*)/, "$1***$2"),
           ip,
           error: error.message,
+          errorCode: error.message,
           timestamp: new Date().toISOString(),
         });
       }
@@ -61,6 +61,15 @@ export async function verifyOtpAction(payload: { otp: string; email: string; typ
         errorMessage = "無効な確認コードです。正しいコードを入力してください。";
       } else if (error.message.includes("too many attempts")) {
         errorMessage = "試行回数が上限に達しました。新しいコードを取得してください。";
+      } else if (error.message.includes("Token has expired")) {
+        errorMessage = "確認コードの有効期限が切れています。";
+      } else if (error.message.includes("Email not confirmed")) {
+        errorMessage = "メールアドレスが確認されていません。登録からやり直してください。";
+      } else {
+        // 開発環境では詳細なエラーメッセージを表示
+        if (process.env.NODE_ENV === "development") {
+          errorMessage = `認証エラー: ${error.message}`;
+        }
       }
 
       return { error: errorMessage };
@@ -75,8 +84,12 @@ export async function verifyOtpAction(payload: { otp: string; email: string; typ
       });
     }
 
-    // 成功時はダッシュボードにリダイレクト
-    redirect("/dashboard?status=email_confirmed");
+    // 成功レスポンスを返す（リダイレクトはクライアント側で処理）
+    return {
+      success: true,
+      message: "メールアドレスが確認されました。",
+      redirectUrl: "/dashboard?status=email_confirmed",
+    };
   } catch (error) {
     if (error instanceof z.ZodError) {
       await randomDelay(300, 700);
