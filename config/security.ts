@@ -28,6 +28,13 @@ export const RATE_LIMIT_CONFIG = {
     blockDurationMs: 24 * 60 * 60 * 1000, // 24時間ブロック
   } as RateLimitConfig,
 
+  // メール再送信API（未確認ユーザーログイン時）
+  emailResend: {
+    windowMs: 60 * 1000, // 1分
+    maxAttempts: 2, // 2回まで
+    blockDurationMs: 5 * 60 * 1000, // 5分ブロック
+  } as RateLimitConfig,
+
   // 一般API（将来拡張用）
   general: {
     windowMs: 60 * 1000, // 1分
@@ -42,7 +49,7 @@ export const COOKIE_CONFIG = {
   // HTTPS接続時は常にsecure=trueを設定（Preview環境でも安全性確保）
   secure:
     process.env.NODE_ENV === "production" ||
-    process.env.NEXT_PUBLIC_SITE_URL?.startsWith("https://") ||
+    process.env.NEXT_PUBLIC_APP_URL?.startsWith("https://") ||
     false,
   sameSite: "lax" as const, // 決済アプリケーションでの最適バランス（セキュリティ + UX）
   domain: process.env.NODE_ENV === "production" ? process.env.COOKIE_DOMAIN : undefined,
@@ -88,9 +95,13 @@ export const AUTH_CONFIG = {
     updateAge: 60 * 60, // 1時間ごとに更新（秒単位）
   },
 
-  // Cookie名設定
+  // Cookie名設定（Supabaseの実際のCookie名パターンに対応）
   cookieNames: {
-    session: "supabase-auth-token",
+    // SupabaseのCookie名は"sb-<project-ref>-auth-token"の形式
+    // 動的に検出するためのパターン
+    sessionPattern: /^sb-.+-auth-token$/,
+    // フォールバック用
+    session: "sb-auth-token", // 実際のCookie名は動的に検出
     csrf: "csrf-token",
   },
 } as const;

@@ -2,7 +2,7 @@ import { Redis } from "@upstash/redis";
 
 // アカウントロックアウト設定
 export const ACCOUNT_LOCKOUT_CONFIG = {
-  maxFailedAttempts: 5,
+  maxFailedAttempts: 10,
   lockoutDurationMs: 30 * 60 * 1000, // 30分
 } as const;
 
@@ -241,10 +241,10 @@ export class InputSanitizer {
       throw new Error("Email address is too long");
     }
 
-    // 基本的な形式チェック（SQLインジェクション対策も含む）
-    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
-    if (!emailRegex.test(email)) {
-      throw new Error("Invalid email format");
+    // 基本的なフォーマットチェックはZodバリデーションに依存
+    // ここでは最低限のSQLインジェクション対策のみ実行
+    if (email.includes("\0") || email.includes("\x1a")) {
+      throw new Error("Invalid characters in email");
     }
 
     return email.toLowerCase().trim();

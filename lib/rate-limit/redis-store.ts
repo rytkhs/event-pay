@@ -99,7 +99,7 @@ export async function createRedisClient(): Promise<RedisClient> {
       get: async (key: string): Promise<string | null> => {
         try {
           const result = await redis.get(key);
-          return result;
+          return result as string | null;
         } catch (error) {
           console.error(`Redis GET error for key ${key}:`, error);
           throw error;
