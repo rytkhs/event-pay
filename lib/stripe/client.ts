@@ -23,11 +23,7 @@ export const stripeConnect = {
     });
   },
 
-  createAccountLink: async (
-    accountId: string,
-    refreshUrl: string,
-    returnUrl: string
-  ) => {
+  createAccountLink: async (accountId: string, refreshUrl: string, returnUrl: string) => {
     return await stripe.accountLinks.create({
       account: accountId,
       refresh_url: refreshUrl,

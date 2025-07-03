@@ -1,6 +1,5 @@
 -- セキュリティ強化マイグレーション
 -- Issue #16: #8のセキュリティ強化
--- 作成日: 2025-06-25
 
 -- ====================================================================
 -- 🚨 高リスク対応: 危険な関数の完全削除と置き換え
@@ -90,14 +89,14 @@ SECURITY INVOKER  -- 🔒 呼び出し元の権限で実行
 AS $$
 BEGIN
     -- 環境チェック（より厳格な制御）
-    IF current_setting('app.environment', true) = 'production' 
+    IF current_setting('app.environment', true) = 'production'
        OR current_setting('app.environment', true) = '' THEN
         RAISE EXCEPTION 'この関数は本番環境では使用できません。app.environment=testに設定してください。';
     END IF;
 
     -- 削除可能テーブルの制限（ホワイトリスト方式）
     DELETE FROM test_enum_validation WHERE TRUE;
-    
+
     RAISE NOTICE 'テストデータが安全に削除されました';
 EXCEPTION
     WHEN OTHERS THEN
@@ -120,7 +119,7 @@ DECLARE
     enum_values TEXT[];
     allowed_enums TEXT[] := ARRAY[
         'event_status_enum',
-        'payment_method_enum', 
+        'payment_method_enum',
         'payment_status_enum',
         'attendance_status_enum',
         'stripe_account_status_enum',
@@ -190,7 +189,7 @@ BEGIN
     IF EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'exec_sql_dev_only') THEN
         REVOKE ALL ON FUNCTION exec_sql_dev_only(TEXT) FROM PUBLIC, authenticated, service_role;
     END IF;
-    
+
     -- cleanup_test_data_dev_only関数の権限取り消し（存在する場合のみ）
     IF EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'cleanup_test_data_dev_only') THEN
         REVOKE ALL ON FUNCTION cleanup_test_data_dev_only() FROM PUBLIC, authenticated, service_role;
@@ -274,7 +273,7 @@ DECLARE
     cleanup_summary TEXT := '';
 BEGIN
     -- 本番環境での危険要素の完全削除
-    
+
     -- 開発用テーブルの削除
     IF EXISTS (SELECT 1 FROM pg_tables WHERE schemaname = 'public' AND tablename = 'test_enum_validation') THEN
         DROP TABLE test_enum_validation;
@@ -317,9 +316,9 @@ BEGIN
     security_status := security_status || '✅ 最小権限の原則を適用しました' || E'\n';
     security_status := security_status || '✅ セキュリティ監査ログを実装しました' || E'\n';
     security_status := security_status || '✅ 本番環境クリーンアップ機能を実装しました' || E'\n';
-    
+
     RAISE NOTICE E'ENUM型セキュリティ強化が完了しました:\n%', security_status;
-    
+
     -- 環境情報の表示
     RAISE NOTICE '現在の環境設定: %', current_setting('app.environment', true);
     RAISE NOTICE 'セキュリティ強化マイグレーション適用完了: 20250625000000_security_enhancement';

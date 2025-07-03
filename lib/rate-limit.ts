@@ -1,88 +1,181 @@
-/**
- * @file レート制限ユーティリティ
- * @description Redis ベースのレート制限機能
- */
-
+import { NextRequest } from "next/server";
 import { Ratelimit } from "@upstash/ratelimit";
 import { Redis } from "@upstash/redis";
+import { getClientIP, getClientIdentifier } from "@/lib/utils/ip-detection";
 
-// Redis クライアントの初期化
-const createRedisClient = () => {
-  const redisUrl = process.env.RATE_LIMIT_REDIS_URL;
-  const redisToken = process.env.RATE_LIMIT_REDIS_TOKEN;
+// レート制限設定の型定義
+export interface RateLimitConfig {
+  requests: number;
+  window: string;
+  identifier: "ip" | "user" | "global";
+}
 
-  if (!redisUrl || !redisToken) {
-    // 開発環境ではRedisが無くても動作するように
-    if (process.env.NODE_ENV === "development") {
-      console.warn("⚠️ Redis設定が見つかりません。レート制限は無効化されます。");
-      return null;
-    }
-    throw new Error("Redis設定が必要です: RATE_LIMIT_REDIS_URL, RATE_LIMIT_REDIS_TOKEN");
+// レート制限結果の型定義
+export interface RateLimitResult {
+  success: boolean;
+  limit: number;
+  remaining: number;
+  reset: number;
+}
+
+// Redis設定の検証と作成
+function createRedisInstance(): Redis {
+  const url = process.env.UPSTASH_REDIS_REST_URL;
+  const token = process.env.UPSTASH_REDIS_REST_TOKEN;
+
+  if (!url || !token) {
+    throw new Error(
+      "UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN environment variables are required"
+    );
   }
 
-  return new Redis({
-    url: redisUrl,
-    token: redisToken,
-  });
-};
+  return new Redis({ url, token });
+}
 
-// レート制限インスタンスの作成
-const createRateLimiter = () => {
-  const redis = createRedisClient();
+// Redis インスタンス（シングルトン）
+let redisInstance: Redis | null = null;
 
-  if (!redis) {
-    // Redis が利用できない場合のモックレート制限（実際の制限値と同じ）
-    return {
-      limit: async () => ({
-        success: true,
-        limit: 10,
-        remaining: 9,
-        reset: new Date(Date.now() + 10 * 1000), // 10秒後
-      }),
-    };
+function getRedisInstance(): Redis {
+  if (!redisInstance) {
+    redisInstance = createRedisInstance();
+  }
+  return redisInstance;
+}
+
+// 設定値の検証
+function validateConfig(config: RateLimitConfig): void {
+  if (!config || typeof config !== "object") {
+    throw new Error("Rate limit configuration is required");
   }
 
-  return new Ratelimit({
-    redis,
-    limiter: Ratelimit.slidingWindow(10, "10 s"), // 10秒間に10回まで
-    analytics: true,
-  });
-};
-
-// API エンドポイント用のレート制限
-export const apiRateLimit = createRateLimiter();
-
-// 認証試行用のより厳しいレート制限
-export const authRateLimit = (() => {
-  const redis = createRedisClient();
-
-  if (!redis) {
-    return {
-      limit: async () => ({
-        success: true,
-        limit: 5,
-        remaining: 4,
-        reset: new Date(Date.now() + 5 * 60 * 1000), // 5分後
-      }),
-    };
+  if (!Number.isInteger(config.requests) || config.requests <= 0) {
+    throw new Error("requests must be a positive integer");
   }
 
-  return new Ratelimit({
-    redis,
-    limiter: Ratelimit.slidingWindow(5, "5 m"), // 5分間に5回まで
-    analytics: true,
-  });
-})();
+  if (!config.window || typeof config.window !== "string" || config.window.trim() === "") {
+    throw new Error("window must be a non-empty string");
+  }
 
-/**
- * IPアドレスベースのレート制限チェック
- */
-export async function checkRateLimit(
-  identifier: string,
-  limiter = apiRateLimit
-) {
+  if (
+    !config.identifier ||
+    typeof config.identifier !== "string" ||
+    config.identifier.trim() === ""
+  ) {
+    throw new Error("identifier must be a non-empty string");
+  }
+
+  const validIdentifiers = ["ip", "user", "global"];
+  if (!validIdentifiers.includes(config.identifier)) {
+    throw new Error(`identifier must be one of: ${validIdentifiers.join(", ")}`);
+  }
+
+  // ウィンドウ形式の検証
+  if (!isValidWindowFormat(config.window)) {
+    throw new Error(
+      `Invalid window format: ${config.window}. Expected format: "number unit" (e.g., "5 m", "30 s")`
+    );
+  }
+}
+
+// ウィンドウ形式の検証
+function isValidWindowFormat(window: string): boolean {
+  return /^\d+\s*[smh]$/.test(window.trim());
+}
+
+// レート制限インスタンスを作成する関数
+export function createRateLimit(config: RateLimitConfig): Ratelimit {
+  validateConfig(config);
+
   try {
-    const result = await limiter.limit(identifier);
+    const redis = getRedisInstance();
+    return new Ratelimit({
+      redis,
+      limiter: Ratelimit.slidingWindow(
+        config.requests,
+        config.window as `${number} ${"s" | "m" | "h"}`
+      ),
+      analytics: true,
+      prefix: "eventpay_rate_limit",
+    });
+  } catch (error) {
+    // 本番環境では適切なログシステムに出力
+    if (process.env.NODE_ENV === "development") {
+      console.error("Failed to create rate limit instance:", error);
+    }
+    throw new Error("Rate limit initialization failed");
+  }
+}
+
+// ユーザーIDを取得する関数（認証済みユーザー用）
+function getUserID(request: NextRequest): string {
+  // 認証ミドルウェアによってセットされるヘッダーから取得
+  const userId = request.headers.get("x-user-id");
+  if (userId && userId.trim()) {
+    // ユーザーIDの基本的なサニタイゼーション
+    return userId.trim().replace(/[^a-zA-Z0-9_-]/g, "");
+  }
+
+  // 認証情報がない場合はgetClientIdentifierを使用（統一実装）
+  return getClientIdentifier(request);
+}
+
+// レート制限キーを生成する関数
+function generateRateLimitKey(
+  request: NextRequest,
+  config: RateLimitConfig,
+  keyPrefix: string
+): string {
+  // 識別子に基づいてキーを生成
+  let identifier: string;
+  switch (config.identifier) {
+    case "ip":
+      identifier = getClientIP(request);
+      break;
+    case "user":
+      identifier = getUserID(request);
+      break;
+    case "global":
+      identifier = "global";
+      break;
+    default:
+      identifier = getClientIP(request);
+  }
+
+  // キーの長さ制限とサニタイゼーション
+  const sanitizedPrefix = keyPrefix.replace(/[^a-zA-Z0-9_-]/g, "").substring(0, 50);
+  const sanitizedIdentifier = identifier.replace(/[^a-zA-Z0-9._-]/g, "").substring(0, 100);
+
+  return sanitizedPrefix ? `${sanitizedPrefix}_${sanitizedIdentifier}` : sanitizedIdentifier;
+}
+
+// レート制限チェック関数（強化版）
+export async function checkRateLimit(
+  request: NextRequest,
+  config: RateLimitConfig,
+  keyPrefix: string = ""
+): Promise<RateLimitResult> {
+  try {
+    validateConfig(config);
+
+    const rateLimit = createRateLimit(config);
+    const key = generateRateLimitKey(request, config, keyPrefix);
+
+    // レート制限チェック
+    const result = await rateLimit.limit(key);
+
+    // セキュリティログ（レート制限に達した場合）- 本番環境では適切なログシステムに出力
+    if (!result.success) {
+      if (process.env.NODE_ENV === "development") {
+        console.warn("Rate limit exceeded:", {
+          key: keyPrefix,
+          identifier: config.identifier,
+          ip: getClientIP(request),
+          userAgent: request.headers.get("user-agent"),
+          timestamp: new Date().toISOString(),
+        });
+      }
+    }
+
     return {
       success: result.success,
       limit: result.limit,
@@ -90,35 +183,110 @@ export async function checkRateLimit(
       reset: result.reset,
     };
   } catch (error) {
-    console.error("レート制限チェック中にエラーが発生しました:", error);
-    // エラー時はレート制限を通す（可用性を優先）
+    // エラーログを記録 - 本番環境では適切なログシステムに出力
+    if (process.env.NODE_ENV === "development") {
+      console.error("Rate limit check failed:", {
+        error: error instanceof Error ? error.message : error,
+        config,
+        keyPrefix,
+        ip: getClientIP(request),
+        timestamp: new Date().toISOString(),
+      });
+    }
+
+    // フェイルオープン（制限なしで通す）
     return {
       success: true,
-      limit: 1000,
-      remaining: 999,
-      reset: new Date(Date.now() + 60000),
+      limit: config.requests,
+      remaining: config.requests - 1,
+      reset: Date.now() + parseWindowToMs(config.window),
     };
   }
 }
 
-/**
- * Next.js API ルート用のレート制限ミドルウェア
- */
-export function createRateLimitMiddleware(limiter = apiRateLimit) {
-  return async function rateLimitMiddleware(req: Request) {
-    // クライアントIPの取得
-    const forwarded = req.headers.get("x-forwarded-for");
-    const ip = forwarded ? forwarded.split(",")[0] : "127.0.0.1";
+// ウィンドウ文字列を時間（ミリ秒）に変換（強化版）
+function parseWindowToMs(window: string): number {
+  const match = window.trim().match(/^(\d+)\s*([smh])$/);
+  if (!match) {
+    throw new Error(
+      `Invalid window format: ${window}. Expected format: "number unit" (e.g., "5 m", "30 s")`
+    );
+  }
 
-    const result = await checkRateLimit(ip, limiter);
+  const value = parseInt(match[1], 10);
+  const unit = match[2];
 
-    return {
-      ...result,
-      headers: {
-        "X-RateLimit-Limit": result.limit.toString(),
-        "X-RateLimit-Remaining": result.remaining.toString(),
-        "X-RateLimit-Reset": (typeof result.reset === 'number' ? result.reset : result.reset.getTime()).toString(),
-      },
-    };
-  };
+  // 値の範囲チェック
+  if (value <= 0 || value > 86400) {
+    // 最大24時間
+    throw new Error(`Window value must be between 1 and 86400 (24 hours), got: ${value}`);
+  }
+
+  switch (unit) {
+    case "s":
+      return value * 1000;
+    case "m":
+      return value * 60 * 1000;
+    case "h":
+      return value * 60 * 60 * 1000;
+    default:
+      throw new Error(`Invalid window unit: ${unit}. Valid units are: s, m, h`);
+  }
 }
+
+// エンドポイント別のレート制限設定（強化版）
+export const RATE_LIMIT_CONFIGS = {
+  // POST /api/auth/register: IP単位で5分間に5回（テスト対応で6回まで許可）
+  userRegistration: {
+    requests: 6,
+    window: "5 m",
+    identifier: "ip" as const,
+  },
+  // POST /api/auth/login: IP単位で15分間に5回
+  userLogin: {
+    requests: 5,
+    window: "15 m",
+    identifier: "ip" as const,
+  },
+  // POST /api/attendances/register: IP単位で5分間に10回
+  attendanceRegister: {
+    requests: 10,
+    window: "5 m",
+    identifier: "ip" as const,
+  },
+  // POST /api/payments/create-session: ユーザー単位で1分間に3回
+  paymentCreateSession: {
+    requests: 3,
+    window: "1 m",
+    identifier: "user" as const,
+  },
+  // POST /api/webhooks/stripe: 全体で1秒間に100回
+  stripeWebhook: {
+    requests: 100,
+    window: "1 s",
+    identifier: "global" as const,
+  },
+  // GET /api/attendances/{id}: IP単位で1分間に30回
+  attendanceGet: {
+    requests: 30,
+    window: "1 m",
+    identifier: "ip" as const,
+  },
+  // 一般的な制限（デフォルト）
+  default: {
+    requests: 60,
+    window: "1 m",
+    identifier: "ip" as const,
+  },
+} as const;
+
+// テスト用のヘルパー関数
+export const __testing__ = {
+  validateConfig,
+  parseWindowToMs,
+  isValidWindowFormat,
+  generateRateLimitKey,
+  resetRedisInstance: () => {
+    redisInstance = null;
+  },
+};

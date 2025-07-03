@@ -1,6 +1,35 @@
 # EventPay - イベント参加費用管理システム
 
-EventPay は、Next.js、TypeScript、Supabase、Stripe を使用して構築されたイベント参加費用管理システムです。
+EventPay は、Next.js、TypeScript、Supabase、Stripe を使用して構築されたイベント参加費用管理システムです。大学サークルや社会人サークルなどの小規模コミュニティにおける会計担当者の負担を軽減することを目的としています。
+
+## 主な機能
+
+### 運営者向け
+
+- **イベント管理**: イベントの作成、編集、削除、招待リンクの発行
+- **参加者管理**: 参加状況・決済状況のリアルタイム確認、現金決済のステータス更新
+- **収益管理**: イベント売上の確認、Stripe Connect オンボーディング、送金履歴の表示
+
+### 参加者向け
+
+- **簡単な参加表明**: 招待リンクからニックネーム入力のみで参加登録
+- **柔軟な決済**: Stripe（クレジットカード）または現金での支払い選択
+- **参加情報の確認・変更**: 専用URLから自身の参加状況を管理
+
+
+### 技術スタック
+
+| カテゴリ              | 技術・サービス  | 備考                                  |
+| --------------------- | --------------- | ------------------------------------- |
+| **フレームワーク**    | Next.js (React) | App Router を利用したフルスタック開発 |
+| **言語**              | TypeScript      | 型安全性の確保                        |
+| **BaaS**              | Supabase        | 認証、データベース(PostgreSQL)        |
+| **決済**              | Stripe          | Stripe Connect Express を利用         |
+| **UI**                | Tailwind CSS    | スタイリング                          |
+| **UI コンポーネント** | Shadcn/ui       | アクセシビリティの高いコンポーネント  |
+| **状態管理**          | Zustand         | シンプルなクライアント状態管理        |
+| **ホスティング**      | Vercel          |                                       |
+| **メール配信**        | Resend          | トランザクションメール送信            |
 
 ## 開発環境のセットアップ
 
@@ -89,14 +118,104 @@ EventPay は、Next.js、TypeScript、Supabase、Stripe を使用して構築さ
 
 ```
 event-pay/
-├── app/                # Next.js App Routerディレクトリ
-├── lib/                # ユーティリティとクライアント設定
-│   ├── stripe/         # Stripe関連の設定
-│   └── supabase/       # Supabase関連の設定
-├── types/              # TypeScript型定義
-├── __tests__/          # テストファイル
-├── supabase/           # Supabaseマイグレーションとシード
-└── docs/               # ドキュメント
+├── app/                  # Next.js App Router
+│   ├── (auth)/           # 認証関連ページ
+│   ├── (dashboard)/      # 認証後ダッシュボード
+│   └── api/              # APIエンドポイント
+├── components/           # UIコンポーネント
+├── lib/                  # ライブラリ、ユーティリティ
+│   ├── supabase/         # Supabaseクライアント設定
+│   └── stripe/           # Stripeクライアント設定
+├── docs/                 # プロジェクトドキュメント
+│   └── v2/               # 最新ドキュメント
+└── supabase/             # Supabaseマイグレーション
+```
+
+## データベース設計 (ER図)
+
+```mermaid
+erDiagram
+    users {
+        uuid id PK "REFERENCES auth.users(id)"
+        string email UK
+        string name
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    events {
+        uuid id PK
+        uuid created_by FK "REFERENCES users(id)"
+        string title
+        timestamp date
+        string location
+        integer fee
+        integer capacity
+        text description
+        timestamp registration_deadline
+        timestamp payment_deadline
+        payment_method_enum[] payment_methods
+        string invite_token UK
+        string status
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    attendances {
+        uuid id PK
+        uuid event_id FK "REFERENCES events(id)"
+        string nickname
+        string email
+        string status
+        string guest_token UK
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    payments {
+        uuid id PK
+        uuid attendance_id FK, UK "REFERENCES attendances(id)"
+        string method
+        integer amount
+        string status
+        string stripe_payment_intent_id UK
+        timestamp paid_at
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    stripe_connect_accounts {
+        uuid user_id PK, FK "REFERENCES users(id)"
+        string stripe_account_id UK
+        string status
+        boolean charges_enabled
+        boolean payouts_enabled
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    payouts {
+        uuid id PK
+        uuid event_id FK "REFERENCES events(id)"
+        uuid user_id FK "REFERENCES users(id)"
+        integer total_stripe_sales
+        integer total_stripe_fee
+        integer platform_fee
+        integer net_payout_amount
+        string status
+        string stripe_transfer_id UK
+        timestamp processed_at
+        text notes
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    users ||--o{ events : "creates"
+    users ||--|| stripe_connect_accounts : "owns"
+    users ||--o{ payouts : "receives"
+    events ||--o{ attendances : "has"
+    events ||--o{ payouts : "generates"
+    attendances ||--|| payments : "has one"
 ```
 
 ## 環境変数
@@ -118,6 +237,11 @@ event-pay/
 ### アプリケーション設定
 
 - `NEXT_PUBLIC_APP_URL` - アプリケーションの URL（デフォルト：http://localhost:3000）
+- `NEXT_PUBLIC_SITE_URL` - アプリケーションのURL
+- `STRIPE_SECRET_KEY` - Stripeのシークレットキー
+- `STRIPE_WEBHOOK_SECRET` - StripeのWebhookシークレットキー
+- `RESEND_API_KEY` - ResendのAPIキー
+- `COOKIE_SECRET` - Cookieの署名・暗号化に使用する32文字以上の秘密鍵
 
 ## Learn More
 

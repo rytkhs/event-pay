@@ -26,7 +26,10 @@ const nextConfig = {
             key: "Content-Security-Policy",
             value: [
               "default-src 'self'",
-              "script-src 'self' https://js.stripe.com https://maps.googleapis.com",
+              // 開発環境では 'unsafe-inline' 'unsafe-eval' を許可
+              process.env.NODE_ENV === 'development' 
+                ? "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://maps.googleapis.com"
+                : "script-src 'self' https://js.stripe.com https://maps.googleapis.com",
               "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
               "img-src 'self' data: https: blob:",
               "font-src 'self' https://fonts.gstatic.com",

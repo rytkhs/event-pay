@@ -1,6 +1,5 @@
 -- EventPay データベーステーブル作成マイグレーション
 -- DB-002～005: データベース基盤実装（テーブル作成・RLS・シードデータ）
--- 作成日: 2025-06-25
 
 -- ====================================================================
 -- DB-002: 基本テーブル作成
@@ -10,7 +9,6 @@
 -- 運営者情報を管理。Supabase auth.usersテーブルと同期
 CREATE TABLE public.users (
     id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
-    email VARCHAR(255) UNIQUE NOT NULL,
     name VARCHAR(255) NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL
@@ -102,83 +100,82 @@ CREATE TABLE public.payouts (
 -- ====================================================================
 
 -- usersテーブルの制約
-ALTER TABLE public.users ADD CONSTRAINT users_email_check 
-    CHECK (email ~* '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$');
+-- (email関連の制約は削除済み - メール管理はauth.usersに一元化)
 
 -- eventsテーブルの制約
-ALTER TABLE public.events ADD CONSTRAINT events_fee_positive 
+ALTER TABLE public.events ADD CONSTRAINT events_fee_positive
     CHECK (fee >= 0);
 
-ALTER TABLE public.events ADD CONSTRAINT events_date_future 
+ALTER TABLE public.events ADD CONSTRAINT events_date_future
     CHECK (date > created_at);
 
-ALTER TABLE public.events ADD CONSTRAINT events_capacity_positive 
+ALTER TABLE public.events ADD CONSTRAINT events_capacity_positive
     CHECK (capacity IS NULL OR capacity > 0);
 
-ALTER TABLE public.events ADD CONSTRAINT events_registration_deadline_before_event 
+ALTER TABLE public.events ADD CONSTRAINT events_registration_deadline_before_event
     CHECK (registration_deadline IS NULL OR registration_deadline < date);
 
-ALTER TABLE public.events ADD CONSTRAINT events_payment_deadline_before_event 
+ALTER TABLE public.events ADD CONSTRAINT events_payment_deadline_before_event
     CHECK (payment_deadline IS NULL OR payment_deadline < date);
 
-ALTER TABLE public.events ADD CONSTRAINT events_payment_deadline_after_registration 
-    CHECK (payment_deadline IS NULL OR registration_deadline IS NULL 
+ALTER TABLE public.events ADD CONSTRAINT events_payment_deadline_after_registration
+    CHECK (payment_deadline IS NULL OR registration_deadline IS NULL
            OR payment_deadline >= registration_deadline);
 
 -- 決済方法と参加費の整合性
-ALTER TABLE public.events ADD CONSTRAINT events_payment_methods_fee_consistency 
+ALTER TABLE public.events ADD CONSTRAINT events_payment_methods_fee_consistency
     CHECK (
         (fee = 0 AND 'free' = ANY(payment_methods)) OR
         (fee > 0 AND NOT ('free' = ANY(payment_methods)))
     );
 
 -- 決済方法の妥当性
-ALTER TABLE public.events ADD CONSTRAINT events_payment_methods_not_empty 
+ALTER TABLE public.events ADD CONSTRAINT events_payment_methods_not_empty
     CHECK (array_length(payment_methods, 1) > 0);
 
 -- attendancesテーブルの制約
-ALTER TABLE public.attendances ADD CONSTRAINT attendances_nickname_not_empty 
+ALTER TABLE public.attendances ADD CONSTRAINT attendances_nickname_not_empty
     CHECK (LENGTH(TRIM(nickname)) >= 1);
 
-ALTER TABLE public.attendances ADD CONSTRAINT attendances_email_format 
-    CHECK (email IS NULL OR email ~* '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$');
+ALTER TABLE public.attendances ADD CONSTRAINT attendances_email_format
+    CHECK (email IS NULL OR email ~* '^[A-Za-z0-9\._%\+\-]+@[A-Za-z0-9\.\-]+\.[A-Za-z]{2,}$');
 
 -- 同一イベントでの重複防止（メールアドレスがある場合）
-CREATE UNIQUE INDEX attendances_event_email_unique 
-    ON public.attendances(event_id, email) 
+CREATE UNIQUE INDEX attendances_event_email_unique
+    ON public.attendances(event_id, email)
     WHERE email IS NOT NULL;
 
 -- paymentsテーブルの制約
-ALTER TABLE public.payments ADD CONSTRAINT payments_amount_non_negative 
+ALTER TABLE public.payments ADD CONSTRAINT payments_amount_non_negative
     CHECK (amount >= 0);
 
 -- Stripe決済の場合、stripe_payment_intent_idは必須
-ALTER TABLE public.payments ADD CONSTRAINT payments_stripe_intent_required 
+ALTER TABLE public.payments ADD CONSTRAINT payments_stripe_intent_required
     CHECK (
         (method = 'stripe' AND stripe_payment_intent_id IS NOT NULL) OR
         (method != 'stripe' AND stripe_payment_intent_id IS NULL)
     );
 
 -- 無料決済の場合、金額は0円
-ALTER TABLE public.payments ADD CONSTRAINT payments_free_amount_zero 
+ALTER TABLE public.payments ADD CONSTRAINT payments_free_amount_zero
     CHECK (
         (method = 'free' AND amount = 0) OR
         (method != 'free')
     );
 
 -- 決済完了時刻の妥当性
-ALTER TABLE public.payments ADD CONSTRAINT payments_paid_at_when_completed 
+ALTER TABLE public.payments ADD CONSTRAINT payments_paid_at_when_completed
     CHECK (
         (status IN ('paid', 'received', 'completed') AND paid_at IS NOT NULL) OR
         (status NOT IN ('paid', 'received', 'completed'))
     );
 
 -- payoutsテーブルの制約
-ALTER TABLE public.payouts ADD CONSTRAINT payouts_amounts_non_negative 
-    CHECK (total_stripe_sales >= 0 AND total_stripe_fee >= 0 
+ALTER TABLE public.payouts ADD CONSTRAINT payouts_amounts_non_negative
+    CHECK (total_stripe_sales >= 0 AND total_stripe_fee >= 0
            AND platform_fee >= 0 AND net_payout_amount >= 0);
 
-ALTER TABLE public.payouts ADD CONSTRAINT payouts_calculation_valid 
+ALTER TABLE public.payouts ADD CONSTRAINT payouts_calculation_valid
     CHECK (net_payout_amount = total_stripe_sales - total_stripe_fee - platform_fee);
 
 -- ====================================================================
@@ -220,12 +217,8 @@ ALTER TABLE public.stripe_connect_accounts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.payouts ENABLE ROW LEVEL SECURITY;
 
 -- usersテーブルのRLSポリシー
--- ユーザーは自身の情報のみ閲覧・更新可能
-CREATE POLICY "Users can view own profile only" ON public.users
-    FOR SELECT
-    TO authenticated
-    USING (auth.uid() = id);
-
+-- 注意: 具体的なポリシーは後続のマイグレーションで定義される
+-- ここでは基本的な更新権限のみ設定
 CREATE POLICY "Users can update own profile" ON public.users
     FOR UPDATE
     TO authenticated
@@ -305,20 +298,10 @@ CREATE POLICY "Users can view own payouts" ON public.payouts
     USING (auth.uid() = user_id);
 
 -- ====================================================================
--- public_profilesビューとget_event_creator_name関数の作成
+-- get_event_creator_name関数の作成
 -- ====================================================================
 
--- public_profilesビュー（メールアドレスを除外した安全なプロファイル）
-CREATE VIEW public.public_profiles AS
-SELECT
-    id,
-    name,
-    created_at,
-    updated_at
-FROM public.users;
-
--- ビューはベースとなるテーブル（users）のRLSポリシーを継承するため、
--- 個別のRLS設定は不要
+-- 注意: public_profilesビューは後続のマイグレーションで作成される
 
 -- get_event_creator_name関数（安全なイベント作成者名取得）
 CREATE OR REPLACE FUNCTION public.get_event_creator_name(creator_id UUID)
@@ -347,28 +330,28 @@ END;
 $$ language 'plpgsql';
 
 -- 各テーブルにupdated_at自動更新トリガーを設定
-CREATE TRIGGER update_users_updated_at 
-    BEFORE UPDATE ON public.users 
+CREATE TRIGGER update_users_updated_at
+    BEFORE UPDATE ON public.users
     FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 
-CREATE TRIGGER update_events_updated_at 
-    BEFORE UPDATE ON public.events 
+CREATE TRIGGER update_events_updated_at
+    BEFORE UPDATE ON public.events
     FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 
-CREATE TRIGGER update_attendances_updated_at 
-    BEFORE UPDATE ON public.attendances 
+CREATE TRIGGER update_attendances_updated_at
+    BEFORE UPDATE ON public.attendances
     FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 
-CREATE TRIGGER update_payments_updated_at 
-    BEFORE UPDATE ON public.payments 
+CREATE TRIGGER update_payments_updated_at
+    BEFORE UPDATE ON public.payments
     FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 
-CREATE TRIGGER update_stripe_connect_accounts_updated_at 
-    BEFORE UPDATE ON public.stripe_connect_accounts 
+CREATE TRIGGER update_stripe_connect_accounts_updated_at
+    BEFORE UPDATE ON public.stripe_connect_accounts
     FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 
-CREATE TRIGGER update_payouts_updated_at 
-    BEFORE UPDATE ON public.payouts 
+CREATE TRIGGER update_payouts_updated_at
+    BEFORE UPDATE ON public.payouts
     FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 
 -- ====================================================================
@@ -383,34 +366,34 @@ DECLARE
     policy_count INTEGER;
 BEGIN
     -- テーブル数確認
-    SELECT COUNT(*) INTO table_count 
-    FROM pg_tables 
-    WHERE schemaname = 'public' 
+    SELECT COUNT(*) INTO table_count
+    FROM pg_tables
+    WHERE schemaname = 'public'
     AND tablename IN ('users', 'events', 'attendances', 'payments', 'stripe_connect_accounts', 'payouts');
-    
+
     -- 制約数確認
-    SELECT COUNT(*) INTO constraint_count 
-    FROM pg_constraint 
+    SELECT COUNT(*) INTO constraint_count
+    FROM pg_constraint
     WHERE conname LIKE 'events_%' OR conname LIKE 'payments_%' OR conname LIKE 'attendances_%' OR conname LIKE 'payouts_%';
-    
+
     -- インデックス数確認
-    SELECT COUNT(*) INTO index_count 
-    FROM pg_indexes 
-    WHERE schemaname = 'public' 
+    SELECT COUNT(*) INTO index_count
+    FROM pg_indexes
+    WHERE schemaname = 'public'
     AND indexname LIKE 'idx_%';
-    
+
     -- RLSポリシー数確認
-    SELECT COUNT(*) INTO policy_count 
-    FROM pg_policies 
+    SELECT COUNT(*) INTO policy_count
+    FROM pg_policies
     WHERE schemaname = 'public';
-    
+
     RAISE NOTICE 'EventPay データベース基盤の作成が完了しました:';
     RAISE NOTICE '- 作成されたテーブル数: %', table_count;
     RAISE NOTICE '- 作成された制約数: %', constraint_count;
     RAISE NOTICE '- 作成されたインデックス数: %', index_count;
     RAISE NOTICE '- 作成されたRLSポリシー数: %', policy_count;
-    RAISE NOTICE 'public_profilesビューとget_event_creator_name関数を作成しました';
-    
+    RAISE NOTICE 'get_event_creator_name関数を作成しました';
+
     IF table_count = 6 THEN
         RAISE NOTICE '✅ DB-002: 基本テーブル作成完了';
         RAISE NOTICE '✅ DB-003: 制約とインデックス設定完了';
