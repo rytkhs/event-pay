@@ -261,6 +261,20 @@ describe("RLSポリシーテスト（DB-004）", () => {
       expect(data).toBeDefined();
       expect(Array.isArray(data)).toBe(true);
     });
+
+    it("get_event_creator_name関数が正常に動作すること", async () => {
+      setMockAuthContext("admin-user", true, "service_role");
+
+      // テスト用のUUIDで関数を実行
+      const testUuid = "00000000-0000-0000-0000-000000000001";
+      const { data, error } = await supabaseAdmin.rpc("get_event_creator_name", {
+        event_creator_id: testUuid,
+      });
+
+      expect(error).toBeNull();
+      expect(data).toBeDefined();
+      expect(typeof data).toBe("string");
+    });
   });
 });
 
@@ -316,6 +330,66 @@ describe("テーブル作成の完了確認", () => {
     const enumNames = data?.map((item: any) => item.enum_name) || [];
     expectedEnums.forEach((expectedEnum) => {
       expect(enumNames).toContain(expectedEnum);
+    });
+  });
+});
+
+// 新しいセキュリティ機能のテスト
+describe("統合セキュリティ機能テスト", () => {
+  beforeEach(() => {
+    resetSupabaseMocks();
+    setMockAuthContext("admin-user", true, "service_role");
+  });
+
+  describe("システム管理テーブル", () => {
+    it("system_logsテーブルが存在すること", async () => {
+      const { data, error } = await supabaseAdmin.from("system_logs").select("*").limit(0);
+
+      expect(error).toBeNull();
+      expect(data).toBeDefined();
+      expect(Array.isArray(data)).toBe(true);
+    });
+
+    it("security_audit_logテーブルが存在すること", async () => {
+      const { data, error } = await supabaseAdmin.from("security_audit_log").select("*").limit(0);
+
+      expect(error).toBeNull();
+      expect(data).toBeDefined();
+      expect(Array.isArray(data)).toBe(true);
+    });
+  });
+
+  describe("セキュリティ機能関数", () => {
+    it("detect_orphaned_users関数が正常に動作すること", async () => {
+      const { data, error } = await supabaseAdmin.rpc("detect_orphaned_users");
+
+      expect(error).toBeNull();
+      expect(data).toBeDefined();
+      expect(Array.isArray(data)).toBe(true);
+    });
+
+    it("get_user_statistics関数が正常に動作すること", async () => {
+      const { data, error } = await supabaseAdmin.rpc("get_user_statistics");
+
+      expect(error).toBeNull();
+      expect(data).toBeDefined();
+      expect(Array.isArray(data)).toBe(true);
+    });
+
+    it("check_database_health関数が正常に動作すること", async () => {
+      const { data, error } = await supabaseAdmin.rpc("check_database_health");
+
+      expect(error).toBeNull();
+      expect(data).toBeDefined();
+      expect(Array.isArray(data)).toBe(true);
+    });
+
+    it("test_security_features関数が正常に動作すること", async () => {
+      const { data, error } = await supabaseAdmin.rpc("test_security_features");
+
+      expect(error).toBeNull();
+      expect(data).toBeDefined();
+      expect(Array.isArray(data)).toBe(true);
     });
   });
 });
