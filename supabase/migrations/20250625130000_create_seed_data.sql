@@ -16,22 +16,22 @@ DECLARE
 BEGIN
     -- 環境設定の確認
     current_env := current_setting('app.environment', true);
-    
+
     -- 本番環境ではシードデータを作成しない
     IF current_env = 'production' THEN
         RAISE NOTICE 'シードデータの作成をスキップしました（本番環境）';
         RETURN;
     END IF;
-    
+
     RAISE NOTICE 'シードデータの作成を開始します（環境: %）', COALESCE(current_env, 'development');
-    
+
     -- ====================================================================
     -- テスト用ユーザーデータ
     -- ====================================================================
-    
+
     -- テスト用のauth.usersレコードのIDを使用（存在しない場合は新規作成）
     test_user_id := '550e8400-e29b-41d4-a716-446655440000';
-    
+
     -- auth.usersテーブルにテストユーザーが存在しない場合は作成
     -- 注意: 実際の環境では、Supabase Authを通じてユーザーを作成する必要があります
     IF NOT EXISTS (SELECT 1 FROM auth.users WHERE id = test_user_id) THEN
@@ -70,10 +70,10 @@ BEGIN
             '',
             ''
         );
-        
+
         RAISE NOTICE 'テスト用auth.usersレコードを作成しました: %', test_user_id;
     END IF;
-    
+
     -- usersテーブルにテストデータを挿入
     INSERT INTO public.users (
         id,
@@ -87,13 +87,13 @@ BEGIN
         email = EXCLUDED.email,
         name = EXCLUDED.name,
         updated_at = NOW();
-    
+
     RAISE NOTICE 'テスト用ユーザーデータを作成しました';
-    
+
     -- ====================================================================
     -- サンプルイベントデータ
     -- ====================================================================
-    
+
     -- 無料イベントのサンプル（created_atを明示的に過去に設定）
     INSERT INTO public.events (
         id,
@@ -129,7 +129,7 @@ BEGIN
         NOW() - INTERVAL '1 hour'
     )
     RETURNING id INTO test_event_id;
-    
+
     -- 有料イベントのサンプル
     INSERT INTO public.events (
         created_by,
@@ -162,7 +162,7 @@ BEGIN
         NOW() - INTERVAL '2 hours',  -- created_atを2時間前に設定
         NOW() - INTERVAL '2 hours'
     );
-    
+
     -- 過去イベントのサンプル（送金テスト用）
     INSERT INTO public.events (
         created_by,
@@ -191,13 +191,13 @@ BEGIN
         NOW() - INTERVAL '35 days',  -- created_atを35日前に設定
         NOW() - INTERVAL '35 days'
     );
-    
+
     RAISE NOTICE 'サンプルイベントデータを作成しました';
-    
+
     -- ====================================================================
     -- 参加者・決済データのサンプル（無料イベント用）
     -- ====================================================================
-    
+
     -- 無料イベントの参加者
     INSERT INTO public.attendances (
         id,
@@ -213,7 +213,7 @@ BEGIN
         'attending'
     )
     RETURNING id INTO test_attendance_id;
-    
+
     -- 無料イベントの決済レコード
     INSERT INTO public.payments (
         attendance_id,
@@ -228,7 +228,7 @@ BEGIN
         'completed',
         NOW()
     );
-    
+
     -- 追加の参加者（未定ステータス）
     INSERT INTO public.attendances (
         event_id,
@@ -240,7 +240,7 @@ BEGIN
         'maybe'
     );
     -- 未定の場合は決済レコードを作成しない
-    
+
     -- 不参加者のサンプル
     INSERT INTO public.attendances (
         event_id,
@@ -254,13 +254,13 @@ BEGIN
         'not_attending'
     );
     -- 不参加の場合も決済レコードを作成しない
-    
+
     RAISE NOTICE '参加者・決済データのサンプルを作成しました';
-    
+
     -- ====================================================================
     -- Stripe Connect アカウントサンプル（テスト用）
     -- ====================================================================
-    
+
     -- テスト用のStripe Connectアカウント
     INSERT INTO public.stripe_connect_accounts (
         user_id,
@@ -280,13 +280,13 @@ BEGIN
         charges_enabled = EXCLUDED.charges_enabled,
         payouts_enabled = EXCLUDED.payouts_enabled,
         updated_at = NOW();
-    
+
     RAISE NOTICE 'Stripe Connectアカウントサンプルを作成しました';
-    
+
     -- ====================================================================
     -- 送金履歴サンプル（過去イベント用）
     -- ====================================================================
-    
+
     -- 過去イベントの送金履歴サンプル
     INSERT INTO public.payouts (
         event_id,
@@ -311,13 +311,13 @@ BEGIN
         NOW() - INTERVAL '25 days',
         '2024年忘年会の送金完了'
     );
-    
+
     RAISE NOTICE '送金履歴サンプルを作成しました';
-    
+
     -- ====================================================================
     -- シードデータ作成完了の報告
     -- ====================================================================
-    
+
     RAISE NOTICE '✅ DB-005: シードデータ作成が完了しました';
     RAISE NOTICE '作成されたデータ:';
     RAISE NOTICE '- テスト用ユーザー: 1名';
@@ -326,7 +326,7 @@ BEGIN
     RAISE NOTICE '- 決済データ: 1件（無料）';
     RAISE NOTICE '- Stripe Connectアカウント: 1件';
     RAISE NOTICE '- 送金履歴: 1件';
-    
+
 EXCEPTION
     WHEN OTHERS THEN
         RAISE WARNING 'シードデータ作成中にエラーが発生しました: %', SQLERRM;
@@ -350,47 +350,47 @@ SECURITY INVOKER
 AS $$
 BEGIN
     RETURN QUERY
-    SELECT 
+    SELECT
         'users'::TEXT as table_name,
         COUNT(*)::BIGINT as record_count,
         CASE WHEN COUNT(*) > 0 THEN 'データあり' ELSE 'データなし' END::TEXT as status
     FROM public.users
-    
+
     UNION ALL
-    
-    SELECT 
+
+    SELECT
         'events'::TEXT,
         COUNT(*)::BIGINT,
         CASE WHEN COUNT(*) > 0 THEN 'データあり' ELSE 'データなし' END::TEXT
     FROM public.events
-    
+
     UNION ALL
-    
-    SELECT 
+
+    SELECT
         'attendances'::TEXT,
         COUNT(*)::BIGINT,
         CASE WHEN COUNT(*) > 0 THEN 'データあり' ELSE 'データなし' END::TEXT
     FROM public.attendances
-    
+
     UNION ALL
-    
-    SELECT 
+
+    SELECT
         'payments'::TEXT,
         COUNT(*)::BIGINT,
         CASE WHEN COUNT(*) > 0 THEN 'データあり' ELSE 'データなし' END::TEXT
     FROM public.payments
-    
+
     UNION ALL
-    
-    SELECT 
+
+    SELECT
         'stripe_connect_accounts'::TEXT,
         COUNT(*)::BIGINT,
         CASE WHEN COUNT(*) > 0 THEN 'データあり' ELSE 'データなし' END::TEXT
     FROM public.stripe_connect_accounts
-    
+
     UNION ALL
-    
-    SELECT 
+
+    SELECT
         'payouts'::TEXT,
         COUNT(*)::BIGINT,
         CASE WHEN COUNT(*) > 0 THEN 'データあり' ELSE 'データなし' END::TEXT
@@ -407,11 +407,11 @@ DECLARE
     verification_results RECORD;
 BEGIN
     RAISE NOTICE 'シードデータ検証結果:';
-    
-    FOR verification_results IN 
+
+    FOR verification_results IN
         SELECT * FROM public.verify_seed_data()
     LOOP
-        RAISE NOTICE '- %: %件 (%)', 
+        RAISE NOTICE '- %: %件 (%)',
             verification_results.table_name,
             verification_results.record_count,
             verification_results.status;
