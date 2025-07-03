@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useEffect } from "react";
 
 interface PasswordConfirmationState {
   password: string;
@@ -48,47 +48,31 @@ export function usePasswordConfirmation(): UsePasswordConfirmationReturn {
     }
   }, [password, confirmPassword]);
 
-  // パスワード設定（バリデーション付き）
-  const setPassword = useCallback(
-    (newPassword: string) => {
-      setPasswordState(newPassword);
-      // 確認パスワードが入力済みの場合は再バリデーション
-      if (confirmPassword !== "") {
-        // 次のレンダリングサイクルでバリデーションを実行
-        setTimeout(() => {
-          if (confirmPassword !== newPassword) {
-            setError("パスワードが一致しません");
-          } else {
-            setError("");
-          }
-        }, 0);
-      }
-    },
-    [confirmPassword]
-  );
+  // パスワード設定
+  const setPassword = useCallback((newPassword: string) => {
+    setPasswordState(newPassword);
+  }, []);
 
-  // 確認パスワード設定（バリデーション付き）
-  const setConfirmPassword = useCallback(
-    (newConfirmPassword: string) => {
-      setConfirmPasswordState(newConfirmPassword);
-      // リアルタイムバリデーション
-      setTimeout(() => {
-        if (newConfirmPassword === "") {
-          setError("");
-        } else if (password !== newConfirmPassword) {
-          setError("パスワードが一致しません");
-        } else {
-          setError("");
-        }
-      }, 0);
-    },
-    [password]
-  );
+  // 確認パスワード設定
+  const setConfirmPassword = useCallback((newConfirmPassword: string) => {
+    setConfirmPasswordState(newConfirmPassword);
+  }, []);
 
   // エラークリア
   const clearError = useCallback(() => {
     setError("");
   }, []);
+
+  // リアルタイムバリデーション - 状態変更時の自動実行
+  useEffect(() => {
+    if (confirmPassword === "") {
+      setError("");
+    } else if (password !== confirmPassword) {
+      setError("パスワードが一致しません");
+    } else {
+      setError("");
+    }
+  }, [password, confirmPassword]);
 
   // バリデーション状態の計算（メモ化）
   const validation = useMemo((): PasswordConfirmationValidation => {
