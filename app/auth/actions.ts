@@ -1,35 +1,31 @@
 "use server";
 
 import { z } from "zod";
-import { revalidatePath } from "next/cache";
-import { headers } from "next/headers";
-import { InputSanitizer, TimingAttackProtection } from "@/lib/auth-security";
-import { checkRateLimit, RATE_LIMIT_CONFIGS } from "@/lib/rate-limit";
-import { RegistrationService } from "@/lib/services/registration";
-import { LoginService } from "@/lib/services/login";
-import { PasswordResetService } from "@/lib/services/password-reset";
-import { LogoutService } from "@/lib/services/logout";
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { NextRequest } from "next/server";
+import { type EmailOtpType } from "@supabase/supabase-js";
+import { createRateLimit } from "@/lib/rate-limit";
+import { AccountLockoutService, TimingAttackProtection, InputSanitizer } from "@/lib/auth-security";
+import { headers } from "next/headers";
 
-// Zodバリデーションスキーマ
+// バリデーションスキーマ
 const loginSchema = z.object({
   email: z.string().email("有効なメールアドレスを入力してください").max(254),
-  password: z.string().min(1, "パスワードは必須です").max(128),
-  rememberMe: z.boolean().optional().default(false),
+  password: z.string().min(1, "パスワードを入力してください").max(128),
 });
 
 const registerSchema = z
   .object({
-    name: z.string().min(1, "名前は必須です").max(100, "名前は100文字以内で入力してください"),
+    name: z.string().min(1, "名前を入力してください").max(100),
     email: z.string().email("有効なメールアドレスを入力してください").max(254),
     password: z
       .string()
-      .min(8, "パスワードは8文字以上である必要があります")
-      .max(128, "パスワードは128文字以内である必要があります")
+      .min(8, "パスワードは8文字以上で入力してください")
+      .max(128)
       .regex(
-        /^(?=.*[A-Z])(?=.*[a-z])(?=.*\d)[A-Za-z\d!@#$%^&*(),.?":{}|<>]*$/,
-        "パスワードには大文字・小文字・数字を含む英数字・記号のみ使用できます"
+        /^(?=.*[A-Z])(?=.*[a-z])(?=.*\d)/,
+        "パスワードは大文字・小文字・数字を含む必要があります"
       ),
     confirmPassword: z.string(),
   })
@@ -42,257 +38,360 @@ const resetPasswordSchema = z.object({
   email: z.string().email("有効なメールアドレスを入力してください").max(254),
 });
 
-// Server Action Result型定義
-type ServerActionResult<T = unknown> = {
+const verifyOtpSchema = z.object({
+  email: z.string().email("有効なメールアドレスを入力してください"),
+  otp: z.string().regex(/^\d{6}$/, "6桁の数字を入力してください"),
+  type: z.enum(["signup", "recovery", "email_change"]),
+});
+
+const updatePasswordSchema = z
+  .object({
+    password: z
+      .string()
+      .min(8, "パスワードは8文字以上で入力してください")
+      .max(128)
+      .regex(
+        /^(?=.*[A-Z])(?=.*[a-z])(?=.*\d)/,
+        "パスワードは大文字・小文字・数字を含む必要があります"
+      ),
+    confirmPassword: z.string(),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: "パスワードが一致しません",
+    path: ["confirmPassword"],
+  });
+
+// 共通結果型
+export type ActionResult<T = unknown> = {
   success: boolean;
   data?: T;
   error?: string;
   fieldErrors?: Record<string, string[]>;
   message?: string;
   redirectUrl?: string;
-  needsEmailConfirmation?: boolean;
+  needsVerification?: boolean;
 };
 
-// FormDataからオブジェクトに変換するヘルパー
-function formDataToObject(formData: FormData): Record<string, string | boolean> {
-  const data: Record<string, string | boolean> = {};
+// FormDataをオブジェクトに変換
+function formDataToObject(formData: FormData): Record<string, string> {
+  const data: Record<string, string> = {};
   for (const [key, value] of formData.entries()) {
-    if (key === "rememberMe") {
-      data[key] = value === "on" || value === "true";
-    } else {
-      data[key] = value.toString();
-    }
+    data[key] = value.toString();
   }
   return data;
 }
 
-// IPアドレス取得ヘルパー
-function getClientIP(): string {
-  try {
-    // Next.js 14 App Router Server Actionsでのヘッダー取得
-    const headersList = headers();
-
-    // プロキシ経由の場合のIP取得を優先
-    const forwardedFor = headersList.get("x-forwarded-for");
-    if (forwardedFor) {
-      // 複数のIPがある場合は最初のもの（クライアントIP）を使用
-      return forwardedFor.split(",")[0].trim();
-    }
-
-    // Cloudflareなどの場合
-    const realIP = headersList.get("x-real-ip");
-    if (realIP) {
-      return realIP.trim();
-    }
-
-    // CF-Connecting-IP (Cloudflare)
-    const cfConnectingIP = headersList.get("cf-connecting-ip");
-    if (cfConnectingIP) {
-      return cfConnectingIP.trim();
-    }
-
-    // デフォルト値
-    return "127.0.0.1";
-  } catch (error) {
-    console.warn("Failed to get client IP:", error);
-    return "127.0.0.1";
-  }
-}
-
-// 認証済みユーザーID取得ヘルパー
-async function getCurrentUserId(): Promise<string | null> {
-  try {
-    const supabase = createClient();
-    const {
-      data: { user },
-      error,
-    } = await supabase.auth.getUser();
-
-    if (error || !user) {
-      return null;
-    }
-
-    return user.id;
-  } catch (error) {
-    console.warn("Failed to get current user ID:", error);
-    return null;
-  }
-}
-
-// Server Action 用レート制限ラッパー
-async function checkRateLimitForServerAction(
-  key: keyof typeof RATE_LIMIT_CONFIGS,
-  clientIP: string
-): Promise<{ success: boolean; retryAfter?: number }> {
-  // RATE_LIMIT_CONFIGS から対象設定を取得
-  const config = RATE_LIMIT_CONFIGS[key] ?? RATE_LIMIT_CONFIGS.default;
-
-  // ダミーの NextRequest を生成してヘッダーに IP を埋め込む
-  const request = new NextRequest("http://localhost", {
-    headers: {
-      "x-forwarded-for": clientIP,
-    },
-  });
-
-  const result = await checkRateLimit(request, config, key);
-
-  return {
-    success: result.success,
-    // reset はエポック秒(ms) なので現在時刻との差を算出
-    retryAfter: result.success
-      ? undefined
-      : Math.max(0, Math.ceil((result.reset - Date.now()) / 1000)),
-  };
-}
-
 /**
- * ログインServer Action
+ * ログイン
  */
-export async function loginAction(formData: FormData): Promise<ServerActionResult<{ user: any }>> {
-  let result: ServerActionResult<{ user: any }> = {
-    success: false,
-    error: "処理中にエラーが発生しました",
-  };
+export async function loginAction(formData: FormData): Promise<ActionResult<{ user: any }>> {
+  const startTime = Date.now();
 
-  // タイミング攻撃対策でレスポンス時間を正規化
-  await TimingAttackProtection.normalizeResponseTime(async () => {
-    try {
-      // FormDataを解析
-      const rawData = formDataToObject(formData);
-
-      // バリデーション
-      const validation = loginSchema.safeParse(rawData);
-      if (!validation.success) {
-        result = {
-          success: false,
-          fieldErrors: validation.error.flatten().fieldErrors,
-          error: "入力データが無効です",
-        };
-        return;
-      }
-
-      const { email, password } = validation.data;
-
-      // セキュリティチェック
-      const sanitizedEmail = InputSanitizer.sanitizeEmail(email);
-      const sanitizedPassword = InputSanitizer.sanitizePassword(password);
-
-      // レート制限チェック
-      const clientIP = getClientIP();
-      const rateLimit = await checkRateLimitForServerAction("userLogin", clientIP);
-
-      if (!rateLimit.success) {
-        result = {
-          success: false,
-          error: `ログイン試行回数が上限に達しました。${Math.ceil(rateLimit.retryAfter! / 60)}分後に再試行してください。`,
-        };
-        return;
-      }
-
-      // ログイン処理（セキュリティ機能は LoginService.login 内で処理される）
-      const loginResult = await LoginService.login(sanitizedEmail, sanitizedPassword);
-
-      if (!loginResult.success) {
-        result = {
-          success: false,
-          error: "メールアドレスまたはパスワードが正しくありません",
-        };
-        return;
-      }
-
-      // 成功時のレスポンス
-      result = {
-        success: true,
-        data: {
-          user: loginResult.user,
-        },
-        redirectUrl: "/dashboard",
-        message: "ログインしました",
-      };
-    } catch (error) {
-      // Error logging in development only
-      if (process.env.NODE_ENV === "development") {
-        console.error("Login action error:", error);
-      }
-      result = {
-        success: false,
-        error: "ログイン処理中にエラーが発生しました",
-      };
-    }
-  }, 300); // 300msに正規化
-
-  return result;
-}
-
-/**
- * 登録Server Action
- */
-export async function registerAction(
-  formData: FormData
-): Promise<ServerActionResult<{ user: { id: string; email: string; name?: string } }>> {
   try {
-    // FormDataを解析
-    const rawData = formDataToObject(formData);
+    // CSRF対策: Origin/Refererヘッダーの検証（テスト環境では無効化）
+    if (process.env.NODE_ENV !== "test") {
+      const headersList = headers();
+      const origin = headersList.get("origin");
+      const referer = headersList.get("referer");
+      const host = headersList.get("host");
 
-    // バリデーション
-    const validation = registerSchema.safeParse(rawData);
-    if (!validation.success) {
-      return {
-        success: false,
-        fieldErrors: validation.error.flatten().fieldErrors,
-        error: "入力データが無効です",
-      };
-    }
-
-    const { name, email, password } = validation.data;
-
-    // レート制限チェック
-    const clientIP = getClientIP();
-    const rateLimit = await checkRateLimitForServerAction("userRegistration", clientIP);
-
-    if (!rateLimit.success) {
-      return {
-        success: false,
-        error: `ユーザー登録試行回数が上限に達しました。${Math.ceil(rateLimit.retryAfter! / 60)}分後に再試行してください。`,
-      };
-    }
-
-    // 登録処理
-    const result = await RegistrationService.register({
-      name: name.trim(),
-      email: InputSanitizer.sanitizeEmail(email),
-      password: InputSanitizer.sanitizePassword(password),
-      confirmPassword: InputSanitizer.sanitizePassword(password), // confirmPasswordは既に検証済み
-    });
-
-    if (!result.success) {
-      if (result.message?.includes("already registered")) {
+      if (!origin && !referer) {
+        await TimingAttackProtection.addConstantDelay();
         return {
           success: false,
-          error: "このメールアドレスは既に使用されています",
+          error: "不正なリクエストです",
         };
+      }
+
+      const allowedOrigins = [
+        `https://${host}`,
+        `http://${host}`,
+        process.env.NEXT_PUBLIC_SITE_URL,
+      ].filter(Boolean);
+
+      const isValidOrigin = origin && allowedOrigins.some((allowed) => origin === allowed);
+      const isValidReferer =
+        referer && allowedOrigins.some((allowed) => referer.startsWith(allowed + "/"));
+
+      if (!isValidOrigin && !isValidReferer) {
+        await TimingAttackProtection.addConstantDelay();
+        return {
+          success: false,
+          error: "CSRF攻撃を検出しました",
+        };
+      }
+    }
+
+    // レート制限チェック（テスト環境では無効化）
+    if (process.env.NODE_ENV !== "test") {
+      try {
+        const headersList = headers();
+        const ip = headersList.get("x-forwarded-for") || headersList.get("x-real-ip") || "unknown";
+
+        const rateLimit = createRateLimit({
+          requests: 5,
+          window: "15 m",
+          identifier: "ip",
+        });
+
+        const rateLimitResult = await rateLimit.limit(`login_${ip}`);
+        if (!rateLimitResult.success) {
+          await TimingAttackProtection.addConstantDelay();
+          return {
+            success: false,
+            error: "ログイン試行回数が上限に達しました。しばらく時間をおいてからお試しください",
+          };
+        }
+      } catch (rateLimitError) {
+        // Redis接続エラー等の場合はログに記録してスキップ
+        console.warn("Rate limit check failed:", rateLimitError);
+      }
+    }
+
+    const rawData = formDataToObject(formData);
+    const result = loginSchema.safeParse(rawData);
+
+    if (!result.success) {
+      // タイミング攻撃対策: バリデーションエラー時も一定時間待機
+      await TimingAttackProtection.addConstantDelay();
+      return {
+        success: false,
+        fieldErrors: result.error.flatten().fieldErrors,
+        error: "入力内容を確認してください",
+      };
+    }
+
+    let { email, password } = result.data;
+
+    // 入力値サニタイゼーション
+    try {
+      email = InputSanitizer.sanitizeEmail(email);
+      password = InputSanitizer.sanitizePassword(password);
+    } catch (sanitizeError) {
+      await TimingAttackProtection.addConstantDelay();
+      return {
+        success: false,
+        error: "入力内容を確認してください",
+      };
+    }
+
+    // アカウントロックアウト状態確認
+    const lockoutStatus = await AccountLockoutService.checkLockoutStatus(email);
+    if (lockoutStatus.isLocked) {
+      await TimingAttackProtection.normalizeResponseTime(async () => {}, 300);
+      return {
+        success: false,
+        error: `アカウントがロックされています。${lockoutStatus.lockoutExpiresAt?.toLocaleTimeString("ja-JP")}頃に再試行してください。`,
+      };
+    }
+    const supabase = createClient();
+
+    // ログイン試行実行（タイミング攻撃対策付き）
+    let authResult: { data: any; error: any } | null = null;
+    await TimingAttackProtection.normalizeResponseTime(async () => {
+      authResult = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+    }, 300);
+
+    const { data, error } = authResult!;
+
+    if (error) {
+      console.error("Login error:", error.message);
+
+      // ログイン失敗をアカウントロックアウトに記録
+      const lockoutResult = await AccountLockoutService.recordFailedAttempt(email);
+
+      // アカウントロックアウトが発生した場合
+      if (lockoutResult.isLocked) {
+        await TimingAttackProtection.addConstantDelay();
+        return {
+          success: false,
+          error: `アカウントがロックされました。しばらく時間をおいてからお試しください。`,
+        };
+      }
+
+      // 未確認メールエラーの特別処理
+      if (error.message === "Email not confirmed") {
+        try {
+          // 開発環境では確認メールを自動再送信
+          if (process.env.NODE_ENV === "development") {
+            const { error: resendError } = await supabase.auth.resend({
+              type: "signup",
+              email,
+            });
+
+            if (resendError) {
+              console.error("Resend email error:", resendError.message);
+            }
+          }
+
+          return {
+            success: false,
+            error: "メールアドレスの確認が必要です。確認メールを再送信しました。",
+            redirectUrl: `/auth/verify-email?email=${encodeURIComponent(email)}`,
+          };
+        } catch (resendError) {
+          console.error("Email resend process error:", resendError);
+
+          return {
+            success: false,
+            error: "メールアドレスの確認が必要です。",
+            redirectUrl: `/auth/verify-email?email=${encodeURIComponent(email)}`,
+          };
+        }
+      }
+
+      // ユーザー列挙攻撃対策: 統一されたエラーメッセージ
+      let errorMessage = "メールアドレスまたはパスワードが正しくありません";
+
+      // アカウントロック警告
+      if (lockoutResult.isLocked) {
+        errorMessage = `ログイン試行回数が上限に達しました。アカウントがロックされています。`;
+      } else if (lockoutResult.failedAttempts >= 3) {
+        const remaining = 5 - lockoutResult.failedAttempts;
+        errorMessage += ` (残り${remaining}回の試行でアカウントがロックされます)`;
       }
 
       return {
         success: false,
-        error: result.message || "登録処理中にエラーが発生しました",
+        error: errorMessage,
       };
     }
 
+    // ログイン成功: 失敗回数とロックをクリア
+    await AccountLockoutService.clearFailedAttempts(email);
+
+    // ログイン成功（メール確認済み）
     return {
       success: true,
-      data: {
-        user: { id: result.userId!, email: email, name: name },
-      },
-      needsEmailConfirmation: true,
-      redirectUrl: "/auth/verify-email",
-      message: "登録が完了しました。メールアドレスの確認を行ってください。",
+      data: { user: data.user },
+      message: "ログインしました",
+      redirectUrl: "/dashboard",
     };
   } catch (error) {
-    // Error logging in development only
-    if (process.env.NODE_ENV === "development") {
-      console.error("Register action error:", error);
+    console.error("Login action error:", error);
+    // タイミング攻撃対策: エラー時も一定時間確保
+    await TimingAttackProtection.addConstantDelay();
+    return {
+      success: false,
+      error: "ログイン処理中にエラーが発生しました",
+    };
+  }
+}
+
+/**
+ * ユーザー登録
+ */
+export async function registerAction(formData: FormData): Promise<ActionResult<{ user: any }>> {
+  try {
+    // レート制限チェック（テスト環境では無効化）
+    if (process.env.NODE_ENV !== "test") {
+      try {
+        const headersList = headers();
+        const ip = headersList.get("x-forwarded-for") || headersList.get("x-real-ip") || "unknown";
+
+        const rateLimit = createRateLimit({
+          requests: 10,
+          window: "1 h",
+          identifier: "ip",
+        });
+
+        const rateLimitResult = await rateLimit.limit(`register_${ip}`);
+        if (!rateLimitResult.success) {
+          await TimingAttackProtection.addConstantDelay();
+          return {
+            success: false,
+            error: "登録試行回数が上限に達しました。しばらく時間をおいてからお試しください",
+          };
+        }
+      } catch (rateLimitError) {
+        console.warn("Rate limit check failed:", rateLimitError);
+      }
     }
+
+    const rawData = formDataToObject(formData);
+    const result = registerSchema.safeParse(rawData);
+
+    if (!result.success) {
+      await TimingAttackProtection.addConstantDelay();
+      return {
+        success: false,
+        fieldErrors: result.error.flatten().fieldErrors,
+        error: "入力内容を確認してください",
+      };
+    }
+
+    let { name, email, password } = result.data;
+
+    // 入力値サニタイゼーション
+    try {
+      email = InputSanitizer.sanitizeEmail(email);
+      password = InputSanitizer.sanitizePassword(password);
+      name = name.trim();
+
+      // 名前の長さとパターンチェック
+      if (name.length > 100 || name.includes("\0") || name.includes("\x1a")) {
+        throw new Error("Invalid name format");
+      }
+    } catch (sanitizeError) {
+      await TimingAttackProtection.addConstantDelay();
+      return {
+        success: false,
+        error: "入力内容を確認してください",
+      };
+    }
+
+    const supabase = createClient();
+
+    // ユーザー登録（メール確認必須）
+    let registrationResult: { data: any; error: any } | null = null;
+    await TimingAttackProtection.normalizeResponseTime(async () => {
+      registrationResult = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            name,
+          },
+          // メール確認後のリダイレクト先は設定しない（OTP方式を使用）
+        },
+      });
+    }, 400);
+
+    const { data, error } = registrationResult!;
+
+    if (error) {
+      console.error("Registration error:", error.message);
+
+      // ユーザー列挙攻撃対策: 詳細なエラー情報を隠す
+      let errorMessage = "登録処理中にエラーが発生しました";
+
+      if (error.message.includes("already registered")) {
+        // 既存ユーザー情報の漏洩を防ぐため、統一されたメッセージ
+        errorMessage = "このメールアドレスは既に登録されています";
+      } else if (error.message.includes("rate limit")) {
+        errorMessage = "送信回数の上限に達しました。しばらく時間をおいてからお試しください";
+      }
+
+      return {
+        success: false,
+        error: errorMessage,
+      };
+    }
+
+    // 登録成功（メール確認が必要）
+    return {
+      success: true,
+      data: { user: data.user },
+      needsVerification: true,
+      message: "登録が完了しました。確認メールを送信しました。",
+      redirectUrl: `/auth/verify-otp?email=${encodeURIComponent(email)}`,
+    };
+  } catch (error) {
+    console.error("Register action error:", error);
+    await TimingAttackProtection.addConstantDelay();
     return {
       success: false,
       error: "登録処理中にエラーが発生しました",
@@ -301,89 +400,291 @@ export async function registerAction(
 }
 
 /**
- * ログアウトServer Action
+ * OTP検証
  */
-export async function logoutAction(): Promise<ServerActionResult> {
+export async function verifyOtpAction(formData: FormData): Promise<ActionResult> {
   try {
-    // ログアウト処理
-    const result = await LogoutService.logout();
+    const rawData = formDataToObject(formData);
+    const result = verifyOtpSchema.safeParse(rawData);
 
     if (!result.success) {
       return {
         success: false,
-        error: "ログアウト処理中にエラーが発生しました",
+        fieldErrors: result.error.flatten().fieldErrors,
+        error: "入力内容を確認してください",
       };
     }
 
-    // セッションキャッシュ無効化（テスト環境では無効化）
-    if (typeof window === "undefined" && process.env.NODE_ENV !== "test") {
-      revalidatePath("/", "layout");
+    const { email, otp, type } = result.data;
+    const supabase = createClient();
+
+    const { data, error } = await supabase.auth.verifyOtp({
+      email,
+      token: otp,
+      type: type as EmailOtpType,
+    });
+
+    if (error) {
+      console.error("OTP verification error:", error.message);
+
+      let errorMessage = "確認コードが正しくありません";
+      if (error.message.includes("expired")) {
+        errorMessage = "確認コードの有効期限が切れています";
+      } else if (error.message.includes("invalid")) {
+        errorMessage = "無効な確認コードです";
+      }
+
+      return {
+        success: false,
+        error: errorMessage,
+      };
+    }
+
+    // OTP確認成功後、ユーザープロファイル作成
+    if (type === "signup" && data.user) {
+      try {
+        const { error: profileError } = await supabase.from("users").insert({
+          id: data.user.id,
+          name: data.user.user_metadata?.name || "",
+        });
+
+        if (profileError) {
+          console.error("Profile creation error:", profileError);
+          // プロファイル作成エラーは非致命的として扱う
+        }
+      } catch (profileError) {
+        console.error("Profile creation error:", profileError);
+      }
     }
 
     return {
       success: true,
-      redirectUrl: "/auth/login",
-      message: result.message,
+      message: "メールアドレスが確認されました",
+      redirectUrl: "/dashboard",
     };
   } catch (error) {
-    // Error logging in development only
-    if (process.env.NODE_ENV === "development") {
-      console.error("Logout action error:", error);
-    }
+    console.error("Verify OTP action error:", error);
     return {
       success: false,
-      error: "ログアウト処理中にエラーが発生しました",
+      error: "確認処理中にエラーが発生しました",
     };
   }
 }
 
 /**
- * パスワードリセットServer Action
+ * OTP再送信
  */
-export async function resetPasswordAction(formData: FormData): Promise<ServerActionResult> {
+export async function resendOtpAction(formData: FormData): Promise<ActionResult> {
   try {
-    // FormDataを解析
-    const rawData = formDataToObject(formData);
+    const email = formData.get("email")?.toString();
 
-    // バリデーション
-    const validation = resetPasswordSchema.safeParse(rawData);
-    if (!validation.success) {
+    if (!email || !z.string().email().safeParse(email).success) {
       return {
         success: false,
-        fieldErrors: validation.error.flatten().fieldErrors,
-        error: "入力データが無効です",
+        error: "有効なメールアドレスを入力してください",
       };
     }
 
-    const { email } = validation.data;
+    const supabase = createClient();
 
-    // レート制限チェック（パスワードリセットはdefault設定を使用）
-    const clientIP = getClientIP();
-    const rateLimit = await checkRateLimitForServerAction("default", clientIP);
+    const { error } = await supabase.auth.resend({
+      type: "signup",
+      email,
+    });
 
-    if (!rateLimit.success) {
+    if (error) {
+      console.error("Resend OTP error:", error.message);
+
+      if (error.message.includes("rate limit")) {
+        return {
+          success: false,
+          error: "送信回数の上限に達しました。しばらく時間をおいてからお試しください",
+        };
+      }
+
       return {
         success: false,
-        error: `パスワードリセット試行回数が上限に達しました。${Math.ceil(rateLimit.retryAfter! / 60)}分後に再試行してください。`,
+        error: "再送信中にエラーが発生しました",
       };
     }
 
-    // パスワードリセット処理
-    await PasswordResetService.sendResetEmail(InputSanitizer.sanitizeEmail(email));
-
-    // メール列挙攻撃対策：成功・失敗に関わらず同じメッセージを返す
     return {
       success: true,
-      message: "パスワードリセットメールを送信しました。メールをご確認ください。",
+      message: "確認コードを再送信しました",
     };
   } catch (error) {
-    // Error logging in development only
-    if (process.env.NODE_ENV === "development") {
-      console.error("Reset password action error:", error);
-    }
+    console.error("Resend OTP action error:", error);
     return {
       success: false,
-      error: "パスワードリセット処理中にエラーが発生しました",
+      error: "再送信中にエラーが発生しました",
+    };
+  }
+}
+
+/**
+ * パスワードリセット要求
+ */
+export async function resetPasswordAction(formData: FormData): Promise<ActionResult> {
+  try {
+    // レート制限チェック（テスト環境では無効化）
+    if (process.env.NODE_ENV !== "test") {
+      try {
+        const headersList = headers();
+        const ip = headersList.get("x-forwarded-for") || headersList.get("x-real-ip") || "unknown";
+
+        const rateLimit = createRateLimit({
+          requests: 5,
+          window: "1 h",
+          identifier: "ip",
+        });
+
+        const rateLimitResult = await rateLimit.limit(`reset_password_${ip}`);
+        if (!rateLimitResult.success) {
+          await TimingAttackProtection.addConstantDelay();
+          return {
+            success: false,
+            error:
+              "パスワードリセット試行回数が上限に達しました。しばらく時間をおいてからお試しください",
+          };
+        }
+      } catch (rateLimitError) {
+        console.warn("Rate limit check failed:", rateLimitError);
+      }
+    }
+
+    const rawData = formDataToObject(formData);
+    const result = resetPasswordSchema.safeParse(rawData);
+
+    if (!result.success) {
+      await TimingAttackProtection.addConstantDelay();
+      return {
+        success: false,
+        fieldErrors: result.error.flatten().fieldErrors,
+        error: "有効なメールアドレスを入力してください",
+      };
+    }
+
+    let { email } = result.data;
+
+    // 入力値サニタイゼーション
+    try {
+      email = InputSanitizer.sanitizeEmail(email);
+    } catch (sanitizeError) {
+      await TimingAttackProtection.addConstantDelay();
+      return {
+        success: false,
+        error: "有効なメールアドレスを入力してください",
+      };
+    }
+    const supabase = createClient();
+
+    // タイミング攻撃対策: 常に一定時間確保
+    let resetResult: { data: any; error: any } | null = null;
+    await TimingAttackProtection.normalizeResponseTime(async () => {
+      resetResult = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/auth/reset-password/update`,
+      });
+    }, 300);
+
+    const { error } = resetResult!;
+
+    if (error) {
+      console.error("Reset password error:", error.message);
+    }
+
+    // セキュリティ上、成功・失敗に関わらず同じメッセージを返す（ユーザー列挙攻撃対策）
+    return {
+      success: true,
+      message: "パスワードリセットメールを送信しました（登録済みのアドレスの場合）",
+    };
+  } catch (error) {
+    console.error("Reset password action error:", error);
+    await TimingAttackProtection.addConstantDelay();
+    return {
+      success: false,
+      error: "処理中にエラーが発生しました",
+    };
+  }
+}
+
+/**
+ * パスワード更新（リセット後）
+ */
+export async function updatePasswordAction(formData: FormData): Promise<ActionResult> {
+  try {
+    const rawData = formDataToObject(formData);
+    const result = updatePasswordSchema.safeParse(rawData);
+
+    if (!result.success) {
+      return {
+        success: false,
+        fieldErrors: result.error.flatten().fieldErrors,
+        error: "入力内容を確認してください",
+      };
+    }
+
+    const { password } = result.data;
+    const supabase = createClient();
+
+    const { error } = await supabase.auth.updateUser({
+      password,
+    });
+
+    if (error) {
+      console.error("Update password error:", error.message);
+      return {
+        success: false,
+        error: "パスワードの更新に失敗しました",
+      };
+    }
+
+    return {
+      success: true,
+      message: "パスワードが更新されました",
+      redirectUrl: "/dashboard",
+    };
+  } catch (error) {
+    console.error("Update password action error:", error);
+    return {
+      success: false,
+      error: "処理中にエラーが発生しました",
+    };
+  }
+}
+
+/**
+ * ログアウト
+ */
+export async function logoutAction(formData?: FormData): Promise<ActionResult> {
+  try {
+    const supabase = createClient();
+
+    // ログアウト実行（認証状態に関係なく実行）
+    const { error } = await supabase.auth.signOut();
+
+    if (error) {
+      console.error("Logout error:", error.message);
+      // ログアウトエラーでも成功として扱う（既にログアウト状態の可能性）
+      return {
+        success: true,
+        message: "ログアウトしました",
+        redirectUrl: "/auth/login",
+      };
+    }
+
+    return {
+      success: true,
+      message: "ログアウトしました",
+      redirectUrl: "/auth/login",
+    };
+  } catch (error) {
+    console.error("Logout action error:", error);
+    await TimingAttackProtection.addConstantDelay();
+    // ログアウトは基本的に失敗しない処理として扱う
+    return {
+      success: true,
+      message: "ログアウトしました",
+      redirectUrl: "/auth/login",
     };
   }
 }

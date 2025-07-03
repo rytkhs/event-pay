@@ -1,36 +1,14 @@
-import { createClient } from "@/lib/supabase/server";
-import { type EmailOtpType } from "@supabase/supabase-js";
-import { redirect } from "next/navigation";
 import Link from "next/link";
 
 interface ConfirmPageProps {
   searchParams: {
-    token_hash?: string;
-    type?: string;
     email?: string;
     error?: string;
   };
 }
 
 export default async function ConfirmPage({ searchParams }: ConfirmPageProps) {
-  const { token_hash, type, email, error } = searchParams;
-
-  // Magic Link処理（token_hashがある場合）
-  if (token_hash && type) {
-    const supabase = createClient();
-
-    const { error: verifyError } = await supabase.auth.verifyOtp({
-      type: type as EmailOtpType,
-      token_hash,
-    });
-
-    if (verifyError) {
-      redirect(`/auth/error?message=${encodeURIComponent(verifyError.message)}`);
-    }
-
-    // 成功時はダッシュボードにリダイレクト
-    redirect("/dashboard?status=email_confirmed");
-  }
+  const { email, error } = searchParams;
 
   // エラーがある場合の表示
   if (error) {

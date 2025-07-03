@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { verifyOtpAction, resendOtpAction } from "./actions";
+import { verifyOtpAction, resendOtpAction } from "../actions";
 import Link from "next/link";
 
 export default function VerifyOtpPage() {
@@ -43,19 +43,25 @@ export default function VerifyOtpPage() {
     setError(null);
 
     try {
-      const result = await verifyOtpAction({
-        otp: otp.trim(),
-        email,
-        type: "signup",
-      });
+      const formData = new FormData();
+      formData.append("email", email);
+      formData.append("otp", otp.trim());
+      formData.append("type", "signup");
 
-      if (result.error) {
+      const result = await verifyOtpAction(formData);
+
+      if (result?.error) {
         setError(result.error);
-      } else {
+      } else if (result?.success && result?.redirectUrl) {
         setSuccess(true);
-        // Server Actionが成功した場合、自動的にリダイレクトされる
+        // 成功時はセッション状態を更新してからダッシュボードにリダイレクト
+        router.refresh(); // クライアント側のセッション状態を更新
+        setTimeout(() => {
+          router.push(result.redirectUrl!);
+        }, 1500);
       }
-    } catch {
+    } catch (error) {
+      console.error("OTP verification error:", error);
       setError("認証に失敗しました。再度お試しください。");
     } finally {
       setLoading(false);
@@ -69,7 +75,10 @@ export default function VerifyOtpPage() {
     setError(null);
 
     try {
-      const result = await resendOtpAction({ email });
+      const formData = new FormData();
+      formData.append("email", email);
+
+      const result = await resendOtpAction(formData);
 
       if (result.error) {
         setError(result.error);
@@ -111,6 +120,7 @@ export default function VerifyOtpPage() {
             </div>
             <h1 className="text-2xl font-bold text-gray-900 mb-2">認証完了</h1>
             <p className="text-gray-600">メールアドレスが確認されました</p>
+            <p className="text-sm text-gray-500 mt-2">ダッシュボードに移動中...</p>
           </div>
         </div>
       </div>
