@@ -50,4 +50,6 @@ export interface DebounceValidationOptions {
   immediate?: boolean;
 }
 
-export type DebouncedFunction<T extends (...args: any[]) => any> = (...args: Parameters<T>) => void;
+export type DebouncedFunction<T extends (...args: unknown[]) => unknown> = (
+  ...args: Parameters<T>
+) => void;
