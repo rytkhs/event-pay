@@ -2,7 +2,7 @@
 
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
-import { type EmailOtpType } from "@supabase/supabase-js";
+import { type EmailOtpType, type AuthResponse } from "@supabase/supabase-js";
 import { createRateLimit } from "@/lib/rate-limit";
 import { AccountLockoutService, TimingAttackProtection, InputSanitizer } from "@/lib/auth-security";
 import { headers } from "next/headers";
@@ -86,7 +86,6 @@ function formDataToObject(formData: FormData): Record<string, string> {
  * ログイン
  */
 export async function loginAction(formData: FormData): Promise<ActionResult<{ user: unknown }>> {
-
   try {
     // CSRF対策: Origin/Refererヘッダーの検証（テスト環境では無効化）
     if (process.env.NODE_ENV !== "test") {
@@ -169,7 +168,8 @@ export async function loginAction(formData: FormData): Promise<ActionResult<{ us
     try {
       sanitizedEmail = InputSanitizer.sanitizeEmail(email);
       sanitizedPassword = InputSanitizer.sanitizePassword(password);
-    } catch {  // sanitizeError
+    } catch {
+      // sanitizeError
       await TimingAttackProtection.addConstantDelay();
       return {
         success: false,
@@ -189,7 +189,7 @@ export async function loginAction(formData: FormData): Promise<ActionResult<{ us
     const supabase = createClient();
 
     // ログイン試行実行（タイミング攻撃対策付き）
-    let authResult: { data: unknown; error: unknown } | null = null;
+    let authResult: AuthResponse | null = null;
     await TimingAttackProtection.normalizeResponseTime(async () => {
       authResult = await supabase.auth.signInWithPassword({
         email: sanitizedEmail,
@@ -215,7 +215,13 @@ export async function loginAction(formData: FormData): Promise<ActionResult<{ us
       }
 
       // 未確認メールエラーの特別処理
-      if (error && typeof error === 'object' && 'message' in error && typeof error.message === 'string' && error.message === "Email not confirmed") {
+      if (
+        error &&
+        typeof error === "object" &&
+        "message" in error &&
+        typeof error.message === "string" &&
+        error.message === "Email not confirmed"
+      ) {
         try {
           // 開発環境では確認メールを自動再送信
           if (process.env.NODE_ENV === "development") {
@@ -268,7 +274,7 @@ export async function loginAction(formData: FormData): Promise<ActionResult<{ us
     // ログイン成功（メール確認済み）
     return {
       success: true,
-      data: { user: (data as any)?.user },
+      data: { user: data?.user },
       message: "ログインしました",
       redirectUrl: "/dashboard",
     };
@@ -349,10 +355,15 @@ export async function registerAction(formData: FormData): Promise<ActionResult<{
       sanitizedName = name.trim();
 
       // 名前の長さとパターンチェック
-      if (sanitizedName.length > 100 || sanitizedName.includes("\0") || sanitizedName.includes("\x1a")) {
+      if (
+        sanitizedName.length > 100 ||
+        sanitizedName.includes("\0") ||
+        sanitizedName.includes("\x1a")
+      ) {
         throw new Error("Invalid name format");
       }
-    } catch {  // sanitizeError
+    } catch {
+      // sanitizeError
       await TimingAttackProtection.addConstantDelay();
       return {
         success: false,
@@ -363,7 +374,7 @@ export async function registerAction(formData: FormData): Promise<ActionResult<{
     const supabase = createClient();
 
     // ユーザー登録（メール確認必須）
-    let registrationResult: { data: unknown; error: unknown } | null = null;
+    let registrationResult: AuthResponse | null = null;
     await TimingAttackProtection.normalizeResponseTime(async () => {
       registrationResult = await supabase.auth.signUp({
         email: sanitizedEmail,
@@ -386,7 +397,12 @@ export async function registerAction(formData: FormData): Promise<ActionResult<{
       // ユーザー列挙攻撃対策: 詳細なエラー情報を隠す
       let errorMessage = "登録処理中にエラーが発生しました";
 
-      if (error && typeof error === 'object' && 'message' in error && typeof error.message === 'string') {
+      if (
+        error &&
+        typeof error === "object" &&
+        "message" in error &&
+        typeof error.message === "string"
+      ) {
         if (error.message.includes("already registered")) {
           // 既存ユーザー情報の漏洩を防ぐため、統一されたメッセージ
           errorMessage = "このメールアドレスは既に登録されています";
@@ -404,7 +420,7 @@ export async function registerAction(formData: FormData): Promise<ActionResult<{
     // 登録成功（メール確認が必要）
     return {
       success: true,
-      data: { user: (data as any)?.user },
+      data: { user: data?.user },
       needsVerification: true,
       message: "登録が完了しました。確認メールを送信しました。",
       redirectUrl: `/auth/verify-otp?email=${encodeURIComponent(sanitizedEmail)}`,
@@ -589,7 +605,8 @@ export async function resetPasswordAction(formData: FormData): Promise<ActionRes
     // 入力値サニタイゼーション
     try {
       email = InputSanitizer.sanitizeEmail(email);
-    } catch {  // sanitizeError
+    } catch {
+      // sanitizeError
       await TimingAttackProtection.addConstantDelay();
       return {
         success: false,

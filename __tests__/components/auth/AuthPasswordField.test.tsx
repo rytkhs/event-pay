@@ -14,7 +14,7 @@ describe("AuthPasswordField - パスワード表示切り替え", () => {
       render(<AuthPasswordField name="password" label="Password" />);
 
       const passwordInput = screen.getByLabelText("Password");
-      const toggleButton = screen.getByRole("button", { name: /password/i });
+      const toggleButton = screen.getByRole("button", { name: /パスワード/i });
 
       expect(passwordInput).toBeInTheDocument();
       expect(passwordInput).toHaveAttribute("type", "password");
@@ -24,7 +24,7 @@ describe("AuthPasswordField - パスワード表示切り替え", () => {
     it("切り替えボタンに目のアイコンをレンダリングする", () => {
       render(<AuthPasswordField name="password" label="Password" />);
 
-      const toggleButton = screen.getByRole("button", { name: /password/i });
+      const toggleButton = screen.getByRole("button", { name: /パスワード/i });
       const eyeIcon = screen.getByTestId("password-toggle-icon");
 
       expect(toggleButton).toContainElement(eyeIcon);
@@ -44,7 +44,7 @@ describe("AuthPasswordField - パスワード表示切り替え", () => {
       render(<AuthPasswordField name="password" label="Password" />);
 
       const passwordInput = screen.getByLabelText("Password");
-      const toggleButton = screen.getByRole("button", { name: /password/i });
+      const toggleButton = screen.getByRole("button", { name: /パスワード/i });
 
       // 初期状態: パスワード非表示
       expect(passwordInput).toHaveAttribute("type", "password");
@@ -62,20 +62,20 @@ describe("AuthPasswordField - パスワード表示切り替え", () => {
       const user = userEvent.setup();
       render(<AuthPasswordField name="password" label="Password" />);
 
-      const toggleButton = screen.getByRole("button", { name: /password/i });
+      const toggleButton = screen.getByRole("button", { name: /パスワード/i });
 
       // 初期状態
-      expect(toggleButton).toHaveAttribute("aria-label", "Show password");
+      expect(toggleButton).toHaveAttribute("aria-label", "パスワードを表示");
       expect(toggleButton).toHaveAttribute("aria-pressed", "false");
 
       // 表示に切り替え後
       await user.click(toggleButton);
-      expect(toggleButton).toHaveAttribute("aria-label", "Hide password");
+      expect(toggleButton).toHaveAttribute("aria-label", "パスワードを非表示");
       expect(toggleButton).toHaveAttribute("aria-pressed", "true");
 
       // 非表示に切り替え後
       await user.click(toggleButton);
-      expect(toggleButton).toHaveAttribute("aria-label", "Show password");
+      expect(toggleButton).toHaveAttribute("aria-label", "パスワードを表示");
       expect(toggleButton).toHaveAttribute("aria-pressed", "false");
     });
 
@@ -83,7 +83,7 @@ describe("AuthPasswordField - パスワード表示切り替え", () => {
       const user = userEvent.setup();
       render(<AuthPasswordField name="password" label="Password" />);
 
-      const toggleButton = screen.getByRole("button", { name: /password/i });
+      const toggleButton = screen.getByRole("button", { name: /パスワード/i });
 
       // 初期状態: 目のアイコン（パスワード非表示）
       expect(screen.getByTestId("password-toggle-icon")).toHaveAttribute("data-state", "hidden");
@@ -104,7 +104,7 @@ describe("AuthPasswordField - パスワード表示切り替え", () => {
       render(<AuthPasswordField name="password" label="Password" />);
 
       const passwordInput = screen.getByLabelText("Password");
-      const toggleButton = screen.getByRole("button", { name: /password/i });
+      const toggleButton = screen.getByRole("button", { name: /パスワード/i });
 
       // Tabでパスワード入力欄にフォーカス
       await user.tab();
@@ -120,7 +120,7 @@ describe("AuthPasswordField - パスワード表示切り替え", () => {
       render(<AuthPasswordField name="password" label="Password" />);
 
       const passwordInput = screen.getByLabelText("Password");
-      const toggleButton = screen.getByRole("button", { name: /password/i });
+      const toggleButton = screen.getByRole("button", { name: /パスワード/i });
 
       // 切り替えボタンにフォーカス
       toggleButton.focus();
@@ -138,7 +138,7 @@ describe("AuthPasswordField - パスワード表示切り替え", () => {
       render(<AuthPasswordField name="password" label="Password" />);
 
       const passwordInput = screen.getByLabelText("Password");
-      const toggleButton = screen.getByRole("button", { name: /password/i });
+      const toggleButton = screen.getByRole("button", { name: /パスワード/i });
 
       // 切り替えボタンにフォーカス
       toggleButton.focus();
@@ -157,10 +157,10 @@ describe("AuthPasswordField - パスワード表示切り替え", () => {
       render(<AuthPasswordField name="password" label="Password" />);
 
       const passwordInput = screen.getByLabelText("Password");
-      const toggleButton = screen.getByRole("button", { name: /password/i });
+      const toggleButton = screen.getByRole("button", { name: /パスワード/i });
 
       // 切り替えボタンが適切なARIA属性を持つ
-      expect(toggleButton).toHaveAttribute("aria-label", "Show password");
+      expect(toggleButton).toHaveAttribute("aria-label", "パスワードを表示");
       expect(toggleButton).toHaveAttribute("aria-pressed", "false");
       expect(toggleButton).toHaveAttribute("aria-controls", "password");
       expect(toggleButton).toHaveAttribute("type", "button");
@@ -175,7 +175,7 @@ describe("AuthPasswordField - パスワード表示切り替え", () => {
       render(<AuthPasswordField name="password" label="Password" />);
 
       const passwordInput = screen.getByLabelText("Password");
-      const toggleButton = screen.getByRole("button", { name: /password/i });
+      const toggleButton = screen.getByRole("button", { name: /パスワード/i });
 
       // パスワード入力欄にフォーカス後、切り替えボタンをクリック
       await user.click(passwordInput);
@@ -210,7 +210,7 @@ describe("AuthPasswordField - パスワード表示切り替え", () => {
 
       const passwordInput = screen.getByLabelText("Password");
       const errorMessage = screen.getByText("Password is required");
-      const toggleButton = screen.getByRole("button", { name: /password/i });
+      const toggleButton = screen.getByRole("button", { name: /パスワード/i });
 
       expect(passwordInput).toHaveClass("border-red-500");
       expect(errorMessage).toBeInTheDocument();
@@ -227,7 +227,7 @@ describe("AuthPasswordField - パスワード表示切り替え", () => {
       );
 
       const errorMessage = screen.getByText("Password must be at least 8 characters");
-      const toggleButton = screen.getByRole("button", { name: /password/i });
+      const toggleButton = screen.getByRole("button", { name: /パスワード/i });
 
       expect(errorMessage).toBeInTheDocument();
       expect(toggleButton).toBeInTheDocument();
@@ -238,7 +238,7 @@ describe("AuthPasswordField - パスワード表示切り替え", () => {
     it("入力フィールド内で切り替えボタンを正しく配置する", () => {
       render(<AuthPasswordField name="password" label="Password" />);
 
-      const toggleButton = screen.getByRole("button", { name: /password/i });
+      const toggleButton = screen.getByRole("button", { name: /パスワード/i });
 
       // 切り替えボタンは入力欄に対して相対的に配置される
       expect(toggleButton).toHaveClass("absolute", "right-3", "top-1/2");

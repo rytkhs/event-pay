@@ -42,10 +42,16 @@ export function AuthFormField({
         id={inputProps.name}
         className={`${hasError ? "border-red-500 focus-visible:ring-red-500" : ""} ${inputClassName}`}
         aria-invalid={hasError}
+        aria-required={inputProps.required}
         aria-describedby={hasError ? `${inputProps.name}-error` : undefined}
       />
       {hasError && (
-        <p id={`${inputProps.name}-error`} className="text-sm text-red-600">
+        <p
+          id={`${inputProps.name}-error`}
+          className="text-sm text-red-600"
+          role="alert"
+          aria-live="polite"
+        >
           {fieldError}
         </p>
       )}
@@ -99,13 +105,14 @@ export function AuthPasswordField(props: Omit<AuthFormFieldProps, "type">) {
           autoComplete={autoCompleteValue}
           className={`${hasError ? "border-red-500 focus-visible:ring-red-500" : ""} ${props.inputClassName || ""} pr-10`}
           aria-invalid={hasError}
+          aria-required={props.required}
           aria-describedby={hasError ? `${props.name}-error` : `${props.name}-toggle`}
         />
         <button
           type="button"
           onClick={togglePasswordVisibility}
           className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-sm transition-colors duration-200 disabled:pointer-events-none disabled:opacity-50"
-          aria-label={showPassword ? "Hide password" : "Show password"}
+          aria-label={showPassword ? "パスワードを非表示" : "パスワードを表示"}
           aria-pressed={showPassword}
           aria-controls={props.name}
           tabIndex={0}
@@ -151,7 +158,12 @@ export function AuthPasswordField(props: Omit<AuthFormFieldProps, "type">) {
         </button>
       </div>
       {hasError && (
-        <p id={`${props.name}-error`} className="text-sm text-red-600">
+        <p
+          id={`${props.name}-error`}
+          className="text-sm text-red-600"
+          role="alert"
+          aria-live="polite"
+        >
           {fieldError}
         </p>
       )}

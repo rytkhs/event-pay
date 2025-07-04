@@ -132,7 +132,10 @@ export default function RegisterPage() {
             aria-describedby="terms-description"
             disabled={isPending}
           />
-          <label htmlFor="terms-agreement" className="text-sm text-gray-700 leading-5 cursor-pointer">
+          <label
+            htmlFor="terms-agreement"
+            className="text-sm text-gray-700 leading-5 cursor-pointer"
+          >
             <Link
               href="/terms"
               target="_blank"
@@ -144,17 +147,13 @@ export default function RegisterPage() {
             に同意する
           </label>
         </div>
-        
+
         <div id="terms-description" className="text-xs text-gray-500">
           EventPayをご利用いただくには利用規約への同意が必要です
         </div>
-        
+
         {termsError && (
-          <div 
-            data-testid="terms-error"
-            className="text-red-500 text-sm"
-            role="alert"
-          >
+          <div data-testid="terms-error" className="text-red-500 text-sm" role="alert">
             {termsError}
           </div>
         )}

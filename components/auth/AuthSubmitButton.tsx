@@ -29,10 +29,12 @@ export function AuthSubmitButton({
       size={size}
       className={`w-full ${className}`}
       aria-describedby={isPending ? "loading-description" : undefined}
+      aria-busy={isPending}
+      aria-live="polite"
     >
       {isPending ? (
         <>
-          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          <Loader2 className="mr-2 h-4 w-4 animate-spin" role="status" aria-hidden="true" />
           <span id="loading-description">処理中...</span>
         </>
       ) : (
