@@ -93,7 +93,7 @@ export function useRealTimeValidation(
 
   // デバウンス付きバリデーション
   const debouncedValidation = useCallback(
-    (value: string) => debounceValidation(runValidation, debounceMs)(value),
+    debounceValidation(runValidation, debounceMs),
     [runValidation, debounceMs]
   );
 

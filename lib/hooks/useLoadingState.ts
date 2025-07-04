@@ -1,6 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 
-// 型定義を強化
 interface LoadingTask {
   readonly id: string;
   readonly message: string;
@@ -170,10 +169,16 @@ export function useLoadingState(
         if (process.env.NODE_ENV !== "test") {
           console.error("Progress update failed:", error);
         }
-        setError(error instanceof Error ? error.message : "Invalid progress value");
+        setState((prev) => ({
+          ...prev,
+          isLoading: false,
+          error: error instanceof Error ? error.message : "Invalid progress value",
+          activeTasks: [],
+          estimatedTimeRemaining: undefined,
+        }));
       }
     },
-    [calculateEstimatedTime, setError]
+    [calculateEstimatedTime]
   );
 
   const stopLoading = useCallback((taskIdOrMessage?: string) => {
