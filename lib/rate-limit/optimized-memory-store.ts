@@ -62,16 +62,16 @@ export class OptimizedMemoryRateLimitStore implements RateLimitStore {
     // プロセス終了時のクリーンアップ（重複登録防止）
     if (!OptimizedMemoryRateLimitStore.listenersRegistered) {
       OptimizedMemoryRateLimitStore.listenersRegistered = true;
-      
+
       const cleanup = () => {
         // 全インスタンスのクリーンアップ
-        OptimizedMemoryRateLimitStore.instances.forEach(instance => {
+        OptimizedMemoryRateLimitStore.instances.forEach((instance) => {
           instance.stopPeriodicCleanup();
         });
         OptimizedMemoryRateLimitStore.instances.clear();
         OptimizedMemoryRateLimitStore.listenersRegistered = false;
       };
-      
+
       process.on("exit", cleanup);
       process.on("SIGINT", cleanup);
       process.on("SIGTERM", cleanup);

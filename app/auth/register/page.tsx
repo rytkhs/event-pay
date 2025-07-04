@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
 import { usePasswordConfirmation } from "@/lib/hooks/usePasswordConfirmation";
 import { PasswordStatusIcon } from "@/components/ui/PasswordStatusIcon";
 import { registerAction } from "@/app/auth/actions";
@@ -19,7 +20,18 @@ export default function RegisterPage() {
   // パスワード確認カスタムフック
   const passwordConfirmation = usePasswordConfirmation();
 
+  // 利用規約同意状態
+  const [termsAgreed, setTermsAgreed] = useState(false);
+  const [termsError, setTermsError] = useState("");
+
   const handleSubmit = async (formData: FormData) => {
+    // 利用規約同意バリデーション
+    if (!termsAgreed) {
+      setTermsError("利用規約に同意してください");
+      return;
+    }
+    setTermsError("");
+
     // パスワード確認バリデーション
     if (!passwordConfirmation.actions.validateMatch()) {
       return;
@@ -30,9 +42,10 @@ export default function RegisterPage() {
       return;
     }
 
-    // フォームデータにパスワードを追加
+    // フォームデータにパスワードと利用規約同意を追加
     formData.set("password", passwordConfirmation.state.password);
     formData.set("confirmPassword", passwordConfirmation.state.confirmPassword);
+    formData.set("termsAgreed", termsAgreed.toString());
 
     // Server Actionを実行
     return formAction(formData);
@@ -104,6 +117,47 @@ export default function RegisterPage() {
         )}
 
         <div className="text-xs text-gray-500">上記と同じパスワードを入力してください</div>
+      </div>
+
+      {/* 利用規約同意チェックボックス */}
+      <div className="space-y-2">
+        <div className="flex items-start space-x-2">
+          <input
+            type="checkbox"
+            id="terms-agreement"
+            checked={termsAgreed}
+            onChange={(e) => setTermsAgreed(e.target.checked)}
+            className="mt-1 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+            aria-required="true"
+            aria-describedby="terms-description"
+            disabled={isPending}
+          />
+          <label htmlFor="terms-agreement" className="text-sm text-gray-700 leading-5 cursor-pointer">
+            <Link
+              href="/terms"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-blue-600 hover:text-blue-500 hover:underline focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 rounded"
+            >
+              利用規約
+            </Link>
+            に同意する
+          </label>
+        </div>
+        
+        <div id="terms-description" className="text-xs text-gray-500">
+          EventPayをご利用いただくには利用規約への同意が必要です
+        </div>
+        
+        {termsError && (
+          <div 
+            data-testid="terms-error"
+            className="text-red-500 text-sm"
+            role="alert"
+          >
+            {termsError}
+          </div>
+        )}
       </div>
 
       <AuthSubmitButton isPending={isPending}>登録</AuthSubmitButton>

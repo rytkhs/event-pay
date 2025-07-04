@@ -16,7 +16,7 @@ export default async function DashboardPage() {
 
   // デバッグ情報を追加
   if (process.env.NODE_ENV === "development") {
-    console.info("Dashboard: Checking authentication...");
+    // console.info("Dashboard: Checking authentication...");
   }
 
   const {
@@ -26,18 +26,18 @@ export default async function DashboardPage() {
 
   // デバッグ情報を追加
   if (process.env.NODE_ENV === "development") {
-    console.info("Dashboard: Auth check result:", {
-      hasUser: !!user,
-      userId: user?.id || "none",
-      userEmail: user?.email || "none",
-      error: error?.message || "none",
-      timestamp: new Date().toISOString(),
-    });
+    // console.info("Dashboard: Auth check result:", {
+    //   hasUser: !!user,
+    //   userId: user?.id || "none",
+    //   userEmail: user?.email || "none",
+    //   error: error?.message || "none",
+    //   timestamp: new Date().toISOString(),
+    // });
   }
 
   if (error || !user) {
     if (process.env.NODE_ENV === "development") {
-      console.warn("Dashboard: Redirecting to login due to auth failure");
+      // console.warn("Dashboard: Redirecting to login due to auth failure");
     }
     redirect("/auth/login?redirectTo=/dashboard");
   }

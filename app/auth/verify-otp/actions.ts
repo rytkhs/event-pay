@@ -2,7 +2,6 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { type EmailOtpType } from "@supabase/supabase-js";
-import { headers } from "next/headers";
 import { z } from "zod";
 import { randomDelay } from "@/lib/security/crypto";
 
@@ -23,11 +22,10 @@ export async function verifyOtpAction(payload: { otp: string; email: string; typ
     const validatedData = verifyOtpSchema.parse(payload);
 
     // IPアドレス取得（セキュリティログ用）
-    const headersList = headers();
-    const ip =
-      headersList.get("x-forwarded-for")?.split(",")[0]?.trim() ||
-      headersList.get("x-real-ip") ||
-      "127.0.0.1";
+    // const headersList = headers();
+    // headersList.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+    //   headersList.get("x-real-ip") ||
+    //   "127.0.0.1";
 
     const supabase = createClient();
 
@@ -40,13 +38,13 @@ export async function verifyOtpAction(payload: { otp: string; email: string; typ
     if (error) {
       // セキュリティログ（失敗）- 本番環境では適切なログシステムに出力
       if (process.env.NODE_ENV === "development") {
-        console.warn("OTP verification failed:", {
-          email: validatedData.email.replace(/(.{2}).*(@.*)/, "$1***$2"),
-          ip,
-          error: error.message,
-          errorCode: error.message,
-          timestamp: new Date().toISOString(),
-        });
+        // console.warn("OTP verification failed:", {
+        //   email: validatedData.email.replace(/(.{2}).*(@.*)/, "$1***$2"),
+        //   ip,
+        //   error: error.message,
+        //   errorCode: error.message,
+        //   timestamp: new Date().toISOString(),
+        // });
       }
 
       // タイミング攻撃防止のための遅延
@@ -77,11 +75,11 @@ export async function verifyOtpAction(payload: { otp: string; email: string; typ
 
     // セキュリティログ（成功）- 本番環境では適切なログシステムに出力
     if (process.env.NODE_ENV === "development") {
-      console.info("OTP verification successful:", {
-        email: validatedData.email.replace(/(.{2}).*(@.*)/, "$1***$2"),
-        ip,
-        timestamp: new Date().toISOString(),
-      });
+      // console.info("OTP verification successful:", {
+      //   email: validatedData.email.replace(/(.{2}).*(@.*)/, "$1***$2"),
+      //   ip,
+      //   timestamp: new Date().toISOString(),
+      // });
     }
 
     // 成功レスポンスを返す（リダイレクトはクライアント側で処理）
@@ -98,7 +96,7 @@ export async function verifyOtpAction(payload: { otp: string; email: string; typ
 
     // 本番環境では適切なログシステムに出力
     if (process.env.NODE_ENV === "development") {
-      console.error("OTP verification error:", error);
+      // console.error("OTP verification error:", error);
     }
     await randomDelay(300, 700);
     return { error: "認証に失敗しました。再度お試しください。" };
@@ -138,7 +136,7 @@ export async function resendOtpAction(payload: { email: string }) {
 
     // 本番環境では適切なログシステムに出力
     if (process.env.NODE_ENV === "development") {
-      console.error("OTP resend error:", error);
+      // console.error("OTP resend error:", error);
     }
     return { error: "再送信に失敗しました。" };
   }

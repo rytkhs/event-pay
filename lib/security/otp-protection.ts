@@ -96,10 +96,10 @@ export async function checkOtpAttemptLimit(
       allowed: true,
       remainingAttempts: BRUTE_FORCE_CONFIG.MAX_ATTEMPTS - attempts,
     };
-  } catch (error) {
+  } catch {
     // 本番環境では適切なログシステムに出力
     if (process.env.NODE_ENV === "development") {
-      console.error("OTP attempt limit check failed:", error);
+      // console.error("OTP attempt limit check failed:", _);
     }
     // エラー時はフェイルセーフ（厳格にブロック）
     return {
@@ -127,17 +127,17 @@ export async function recordOtpAttempt(identifier: string, tokenOrEmail: string)
 
     // セキュリティログ - 本番環境では適切なログシステムに出力
     if (process.env.NODE_ENV === "development") {
-      console.warn("OTP verification failed:", {
-        identifier,
-        tokenOrEmail: tokenOrEmail.replace(/(.{2}).*(@.*)?/, "$1***$2"),
-        attempts: newCount,
-        timestamp: new Date().toISOString(),
-      });
+      // console.warn("OTP verification failed:", {
+      //   identifier,
+      //   tokenOrEmail: tokenOrEmail.replace(/(.{2}).*(@.*)?/, "$1***$2"),
+      //   attempts: newCount,
+      //   timestamp: new Date().toISOString(),
+      // });
     }
-  } catch (error) {
+  } catch {
     // 本番環境では適切なログシステムに出力
     if (process.env.NODE_ENV === "development") {
-      console.error("Failed to record OTP attempt:", error);
+      // console.error("Failed to record OTP attempt:", _);
     }
   }
 }
@@ -151,10 +151,10 @@ export async function resetOtpAttempts(identifier: string, tokenOrEmail: string)
 
   try {
     await redis.del(attemptKey);
-  } catch (error) {
+  } catch {
     // 本番環境では適切なログシステムに出力
     if (process.env.NODE_ENV === "development") {
-      console.error("Failed to reset OTP attempts:", error);
+      // console.error("Failed to reset OTP attempts:", _);
     }
   }
 }
@@ -227,10 +227,10 @@ export async function verifyOtpSecure(
         error: "コードが正しくありません。",
       };
     }
-  } catch (error) {
+  } catch {
     // 本番環境では適切なログシステムに出力
     if (process.env.NODE_ENV === "development") {
-      console.error("OTP verification error:", error);
+      // console.error("OTP verification error:", _);
     }
 
     // タイミング正規化
