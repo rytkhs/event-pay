@@ -95,7 +95,7 @@ export function normalizeIP(ip: string): string {
   if (!isValidIP(trimmedIP)) {
     // 本番環境では適切なログシステムに出力
     if ((process.env.NODE_ENV as string) === "development") {
-      console.warn(`Invalid IP address detected: ${ip}, using fallback`);
+      // console.warn(`Invalid IP address detected: ${ip}, using fallback`);
     }
     return "127.0.0.1";
   }
@@ -188,11 +188,11 @@ export function getClientIP(request: NextRequest): string {
 
     // 本番環境では適切なログシステムに出力
     if ((process.env.NODE_ENV as string) === "development") {
-      console.warn("No valid client IP found, using fallback identifier", {
-        fallbackIP,
-        userAgent: request.headers.get("user-agent"),
-        timestamp: new Date().toISOString(),
-      });
+      // console.warn("No valid client IP found, using fallback identifier", {
+      //   fallbackIP,
+      //   userAgent: request.headers.get("user-agent"),
+      //   timestamp: new Date().toISOString(),
+      // });
     }
 
     return fallbackIP;

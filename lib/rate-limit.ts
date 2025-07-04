@@ -97,10 +97,10 @@ export function createRateLimit(config: RateLimitConfig): Ratelimit {
       analytics: true,
       prefix: "eventpay_rate_limit",
     });
-  } catch (error) {
+  } catch {
     // 本番環境では適切なログシステムに出力
     if (process.env.NODE_ENV === "development") {
-      console.error("Failed to create rate limit instance:", error);
+      // console.error("Failed to create rate limit instance:", _);
     }
     throw new Error("Rate limit initialization failed");
   }
@@ -166,13 +166,13 @@ export async function checkRateLimit(
     // セキュリティログ（レート制限に達した場合）- 本番環境では適切なログシステムに出力
     if (!result.success) {
       if (process.env.NODE_ENV === "development") {
-        console.warn("Rate limit exceeded:", {
-          key: keyPrefix,
-          identifier: config.identifier,
-          ip: getClientIP(request),
-          userAgent: request.headers.get("user-agent"),
-          timestamp: new Date().toISOString(),
-        });
+        // console.warn("Rate limit exceeded:", {
+        //   key: keyPrefix,
+        //   identifier: config.identifier,
+        //   ip: getClientIP(request),
+        //   userAgent: request.headers.get("user-agent"),
+        //   timestamp: new Date().toISOString(),
+        // });
       }
     }
 
@@ -182,16 +182,16 @@ export async function checkRateLimit(
       remaining: result.remaining,
       reset: result.reset,
     };
-  } catch (error) {
+  } catch {
     // エラーログを記録 - 本番環境では適切なログシステムに出力
     if (process.env.NODE_ENV === "development") {
-      console.error("Rate limit check failed:", {
-        error: error instanceof Error ? error.message : error,
-        config,
-        keyPrefix,
-        ip: getClientIP(request),
-        timestamp: new Date().toISOString(),
-      });
+      // console.error("Rate limit check failed:", {
+      //   error: error instanceof Error ? error.message : error,
+      //   config,
+      //   keyPrefix,
+      //   ip: getClientIP(request),
+      //   timestamp: new Date().toISOString(),
+      // });
     }
 
     // フェイルオープン（制限なしで通す）

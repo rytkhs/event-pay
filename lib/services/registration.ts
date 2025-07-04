@@ -102,13 +102,13 @@ export class RegistrationService {
       // 何らかのエラーが発生した場合、auth.usersからも削除
       try {
         await deleteUserById(userId);
-      } catch (deleteError) {
+      } catch (cleanupError) {
         // 「User not found」エラーの場合はログ出力を抑制（テスト環境では正常なケース）
-        const errorMessage = (deleteError as Error).message;
+        const errorMessage = (cleanupError as Error).message;
         if (!errorMessage.includes("User not found")) {
           // 本番環境では適切なログシステムに出力
           if (process.env.NODE_ENV === "development") {
-            console.error("Failed to cleanup user after registration failure:", deleteError);
+            // console.error("Failed to cleanup user after registration failure:", cleanupError);
           }
         }
       }
@@ -129,10 +129,10 @@ export class RegistrationService {
         if (exists) {
           return true;
         }
-      } catch (error) {
+      } catch {
         // 本番環境では適切なログシステムに出力
         if (process.env.NODE_ENV === "development") {
-          console.warn("Profile check failed during polling:", error);
+          // console.warn("Profile check failed during polling:", _);
         }
       }
 

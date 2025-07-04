@@ -70,10 +70,10 @@ export class LoginService {
         allowed: result.success,
         retryAfter: result.success ? undefined : Math.ceil((result.reset - Date.now()) / 1000),
       };
-    } catch (error) {
+    } catch {
       // 本番環境では適切なログシステムに出力
       if (process.env.NODE_ENV === "development") {
-        console.error("Rate limit check failed:", error);
+        // console.error("Rate limit check failed:", _);
       }
       // フェイルオープン（エラー時は制限しない）
       return { allowed: true };

@@ -70,10 +70,10 @@ export async function addRateLimitHeaders(
     response.headers.set("X-RateLimit-Reset", result.reset.toString());
 
     return response;
-  } catch (error) {
+  } catch {
     // 本番環境では適切なログシステムに出力
     if (process.env.NODE_ENV === "development") {
-      console.error("Failed to add rate limit headers:", error);
+      // console.error("Failed to add rate limit headers:", _);
     }
     return response;
   }
