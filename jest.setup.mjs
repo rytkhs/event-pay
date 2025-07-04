@@ -1,12 +1,18 @@
 // Jest DOM matchers for Testing Library
 import "@testing-library/jest-dom";
 
+// Jest Axe for accessibility testing
+import { toHaveNoViolations } from 'jest-axe';
+
 // Jest専用型定義を読み込み
 import "./types/test.d.ts";
 
 // Load environment variables for testing
 import dotenv from "dotenv";
 dotenv.config({ path: ".env.local" });
+
+// Extend Jest matchers with accessibility testing
+expect.extend(toHaveNoViolations);
 
 // Global test utilities (preserved from original setup)
 global.testUtils = {

@@ -1,7 +1,7 @@
 import { ReactNode } from "react";
 import { AuthFormMessages } from "./AuthFormMessages";
 import { ServerActionResult } from "@/lib/hooks/useAuthForm";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
 
 interface AuthFormWrapperProps {
   title: string;
@@ -10,6 +10,7 @@ interface AuthFormWrapperProps {
   isPending: boolean;
   children: ReactNode;
   formAction: (formData: FormData) => void;
+  action?: string | ((formData: FormData) => void);
   className?: string;
   maxWidth?: "sm" | "md" | "lg" | "xl";
 }
@@ -25,6 +26,7 @@ export function AuthFormWrapper({
   isPending,
   children,
   formAction,
+  action,
   className = "",
   maxWidth = "md",
 }: AuthFormWrapperProps) {
@@ -37,28 +39,35 @@ export function AuthFormWrapper({
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className={`w-full ${maxWidthStyles[maxWidth]} space-y-8`}>
-        <Card>
-          <CardHeader className="text-center">
-            <CardTitle className="text-3xl font-bold">{title}</CardTitle>
-            {subtitle && <CardDescription className="text-sm">{subtitle}</CardDescription>}
-          </CardHeader>
-          <CardContent>
-            <form action={formAction} className={`space-y-6 ${className}`} noValidate>
-              <AuthFormMessages state={state} />
+    <>
+      <main className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+        <div className={`w-full ${maxWidthStyles[maxWidth]} space-y-8`}>
+          <Card>
+            <CardHeader className="text-center">
+              <h1 className="text-3xl font-bold">{title}</h1>
+              {subtitle && <CardDescription className="text-sm">{subtitle}</CardDescription>}
+            </CardHeader>
+            <CardContent>
+              <form
+                action={action || formAction}
+                className={`space-y-6 ${className}`}
+                noValidate
+                role="form"
+              >
+                <AuthFormMessages state={state} />
 
-              <fieldset disabled={isPending} className="space-y-4">
-                {children}
-              </fieldset>
-            </form>
-          </CardContent>
-        </Card>
-
-        <div className="text-center text-sm text-gray-600">
-          <p>EventPay - 小規模コミュニティ向けイベント出欠管理・集金ツール</p>
+                <fieldset disabled={isPending} className="space-y-4">
+                  {children}
+                </fieldset>
+              </form>
+            </CardContent>
+          </Card>
         </div>
-      </div>
-    </div>
+      </main>
+
+      <footer className="text-center text-sm text-gray-600 py-4" role="contentinfo">
+        <p>EventPay - 小規模コミュニティ向けイベント出欠管理・集金ツール</p>
+      </footer>
+    </>
   );
 }
