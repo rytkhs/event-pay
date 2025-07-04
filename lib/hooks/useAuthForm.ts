@@ -3,6 +3,7 @@
 import { useFormState } from "react-dom";
 import { useRouter } from "next/navigation";
 import { useEffect, useTransition } from "react";
+import { useFocusManagement } from "@/lib/hooks/useFocusManagement";
 
 // Server Action結果の共通型
 export interface ServerActionResult<T = unknown> {
@@ -20,15 +21,17 @@ interface UseAuthFormOptions<T extends ServerActionResult> {
   onSuccess?: (result: T) => void;
   redirectOnSuccess?: boolean;
   initialState?: Partial<T>;
+  enableFocusManagement?: boolean;
 }
 
 /**
  * 認証フォーム用カスタムフック
  * Server Actionsを使った認証フォームの共通処理を提供
+ * オプションでフォーカス管理機能を統合
  *
  * @param action - Server Action関数
  * @param options - フック動作のオプション
- * @returns フォーム状態とアクション、ペンディング状態
+ * @returns フォーム状態とアクション、ペンディング状態、フォーカス管理関数
  */
 export function useAuthForm<T extends ServerActionResult>(
   action: (formData: FormData) => Promise<T>,
@@ -36,6 +39,7 @@ export function useAuthForm<T extends ServerActionResult>(
 ) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
+  const { focusFirstError } = useFocusManagement();
 
   // デフォルト初期状態
   const defaultInitialState = {
@@ -70,6 +74,19 @@ export function useAuthForm<T extends ServerActionResult>(
     }
   }, [state, router, options]);
 
+  // フォーカス管理（オプション有効時）
+  useEffect(() => {
+    if (
+      options.enableFocusManagement !== false &&
+      !state.success &&
+      state.fieldErrors &&
+      Object.keys(state.fieldErrors).length > 0
+    ) {
+      const errorFields = Object.keys(state.fieldErrors);
+      focusFirstError(errorFields);
+    }
+  }, [state.fieldErrors, state.success, focusFirstError, options.enableFocusManagement]);
+
   // ペンディング状態付きフォームアクション
   const enhancedFormAction = (formData: FormData) => {
     startTransition(() => {
@@ -81,6 +98,7 @@ export function useAuthForm<T extends ServerActionResult>(
     state,
     formAction: enhancedFormAction,
     isPending,
+    focusFirstError,
   };
 }
 
