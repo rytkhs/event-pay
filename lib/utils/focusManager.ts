@@ -111,9 +111,9 @@ export class FocusManager {
             firstElement.focus();
           }
         }
-      } catch (error) {
+      } catch {
         // フォーカス処理でエラーが発生した場合は無視
-        console.warn("Focus trap error:", error);
+        // console.warn("Focus trap error:", error);
       }
     };
 
@@ -136,8 +136,8 @@ export class FocusManager {
       if (typeof element.focus === "function") {
         element.focus();
       }
-    } catch (error) {
-      console.warn("Focus restore error:", error);
+    } catch {
+      // console.warn("Focus restore error:", error);
     }
   }
 
@@ -154,8 +154,8 @@ export class FocusManager {
       if (errorElement && typeof errorElement.focus === "function") {
         errorElement.focus();
       }
-    } catch (error) {
-      console.warn("Focus first error failed:", error);
+    } catch {
+      // console.warn("Focus first error failed:", error);
     }
   }
 

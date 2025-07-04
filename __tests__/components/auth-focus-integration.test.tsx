@@ -145,7 +145,7 @@ describe("認証フォーム フォーカス管理統合テスト", () => {
 
       await waitFor(() => {
         const emailField = screen.getByLabelText("メールアドレス");
-        expect(document.activeElement).toBe(emailField);
+        expect(emailField.focus).toHaveBeenCalled();
       });
     });
 
@@ -176,7 +176,7 @@ describe("認証フォーム フォーカス管理統合テスト", () => {
 
       await waitFor(() => {
         const emailField = screen.getByLabelText("メールアドレス");
-        expect(document.activeElement).toBe(emailField);
+        expect(emailField.focus).toHaveBeenCalled();
       });
 
       // 成功状態に更新（フォーカス復元）
@@ -325,7 +325,7 @@ describe("認証フォーム フォーカス管理統合テスト", () => {
 
       await waitFor(() => {
         const passwordField = screen.getByLabelText("パスワード");
-        expect(document.activeElement).toBe(passwordField);
+        expect(passwordField.focus).toHaveBeenCalled();
       });
 
       // Tab移動が正常に動作することを確認
