@@ -8,7 +8,7 @@ describe("SkeletonLoader コンポーネント", () => {
     test("デフォルトのスケルトンローダーが正しく表示される", () => {
       render(<SkeletonLoader />);
 
-      const skeleton = screen.getByRole("presentation");
+      const skeleton = screen.getByRole("presentation", { hidden: true });
       expect(skeleton).toBeInTheDocument();
       expect(skeleton).toHaveClass("skeleton-loader");
     });
@@ -16,7 +16,7 @@ describe("SkeletonLoader コンポーネント", () => {
     test("デフォルトのサイズが正しく設定される", () => {
       render(<SkeletonLoader />);
 
-      const skeleton = screen.getByRole("presentation");
+      const skeleton = screen.getByRole("presentation", { hidden: true });
       expect(skeleton).toHaveStyle({ width: "100%", height: "20px" });
     });
   });
@@ -25,14 +25,14 @@ describe("SkeletonLoader コンポーネント", () => {
     test("数値での幅と高さが正しく設定される", () => {
       render(<SkeletonLoader width={200} height={40} />);
 
-      const skeleton = screen.getByRole("presentation");
+      const skeleton = screen.getByRole("presentation", { hidden: true });
       expect(skeleton).toHaveStyle({ width: "200px", height: "40px" });
     });
 
     test("文字列での幅と高さが正しく設定される", () => {
       render(<SkeletonLoader width="50%" height="2rem" />);
 
-      const skeleton = screen.getByRole("presentation");
+      const skeleton = screen.getByRole("presentation", { hidden: true });
       expect(skeleton).toHaveStyle({ width: "50%", height: "2rem" });
     });
 
@@ -56,21 +56,21 @@ describe("SkeletonLoader コンポーネント", () => {
     test("アニメーションが有効な場合にシマーエフェクトが適用される", () => {
       render(<SkeletonLoader animate={true} />);
 
-      const skeleton = screen.getByRole("presentation");
+      const skeleton = screen.getByRole("presentation", { hidden: true });
       expect(skeleton).toHaveClass("skeleton-loader--animated");
     });
 
     test("アニメーションが無効な場合にシマーエフェクトが適用されない", () => {
       render(<SkeletonLoader animate={false} />);
 
-      const skeleton = screen.getByRole("presentation");
+      const skeleton = screen.getByRole("presentation", { hidden: true });
       expect(skeleton).not.toHaveClass("skeleton-loader--animated");
     });
 
     test("デフォルトでアニメーションが有効になっている", () => {
       render(<SkeletonLoader />);
 
-      const skeleton = screen.getByRole("presentation");
+      const skeleton = screen.getByRole("presentation", { hidden: true });
       expect(skeleton).toHaveClass("skeleton-loader--animated");
     });
   });
@@ -79,28 +79,28 @@ describe("SkeletonLoader コンポーネント", () => {
     test("テキストバリアントが正しく表示される", () => {
       render(<SkeletonLoader variant="text" />);
 
-      const skeleton = screen.getByRole("presentation");
+      const skeleton = screen.getByRole("presentation", { hidden: true });
       expect(skeleton).toHaveClass("skeleton-loader--text");
     });
 
     test("イメージバリアントが正しく表示される", () => {
       render(<SkeletonLoader variant="image" />);
 
-      const skeleton = screen.getByRole("presentation");
+      const skeleton = screen.getByRole("presentation", { hidden: true });
       expect(skeleton).toHaveClass("skeleton-loader--image");
     });
 
     test("ボタンバリアントが正しく表示される", () => {
       render(<SkeletonLoader variant="button" />);
 
-      const skeleton = screen.getByRole("presentation");
+      const skeleton = screen.getByRole("presentation", { hidden: true });
       expect(skeleton).toHaveClass("skeleton-loader--button");
     });
 
     test("カードバリアントが正しく表示される", () => {
       render(<SkeletonLoader variant="card" />);
 
-      const skeleton = screen.getByRole("presentation");
+      const skeleton = screen.getByRole("presentation", { hidden: true });
       expect(skeleton).toHaveClass("skeleton-loader--card");
     });
   });
@@ -109,20 +109,29 @@ describe("SkeletonLoader コンポーネント", () => {
     test("レスポンシブ設定が有効な場合に適切なクラスが適用される", () => {
       render(<SkeletonLoader responsive />);
 
-      const skeleton = screen.getByRole("presentation");
+      const skeleton = screen.getByRole("presentation", { hidden: true });
       expect(skeleton).toHaveClass("skeleton-loader--responsive");
     });
 
     test("モバイル画面でのサイズ調整が適用される", () => {
       // モバイル画面をシミュレート
-      Object.defineProperty(window, "innerWidth", {
+      Object.defineProperty(window, "matchMedia", {
         writable: true,
-        value: 375,
+        value: jest.fn().mockImplementation((query) => ({
+          matches: query === "(max-width: 768px)",
+          media: query,
+          onchange: null,
+          addListener: jest.fn(),
+          removeListener: jest.fn(),
+          addEventListener: jest.fn(),
+          removeEventListener: jest.fn(),
+          dispatchEvent: jest.fn(),
+        })),
       });
 
       render(<SkeletonLoader responsive width={200} height={40} />);
 
-      const skeleton = screen.getByRole("presentation");
+      const skeleton = screen.getByRole("presentation", { hidden: true });
       expect(skeleton).toHaveClass("skeleton-loader--mobile");
     });
   });
@@ -131,14 +140,14 @@ describe("SkeletonLoader コンポーネント", () => {
     test("カスタムクラスが正しく適用される", () => {
       render(<SkeletonLoader className="custom-skeleton" />);
 
-      const skeleton = screen.getByRole("presentation");
+      const skeleton = screen.getByRole("presentation", { hidden: true });
       expect(skeleton).toHaveClass("custom-skeleton");
     });
 
     test("カスタムスタイルが正しく適用される", () => {
       render(<SkeletonLoader style={{ borderRadius: "8px" }} />);
 
-      const skeleton = screen.getByRole("presentation");
+      const skeleton = screen.getByRole("presentation", { hidden: true });
       expect(skeleton).toHaveStyle({ borderRadius: "8px" });
     });
   });
@@ -147,7 +156,7 @@ describe("SkeletonLoader コンポーネント", () => {
     test("適切なARIA属性が設定される", () => {
       render(<SkeletonLoader />);
 
-      const skeleton = screen.getByRole("presentation");
+      const skeleton = screen.getByRole("presentation", { hidden: true });
       expect(skeleton).toHaveAttribute("role", "presentation");
       expect(skeleton).toHaveAttribute("aria-hidden", "true");
     });
@@ -170,7 +179,7 @@ describe("SkeletonLoader コンポーネント", () => {
 
       render(<SkeletonLoader />);
 
-      const skeleton = screen.getByRole("presentation");
+      const skeleton = screen.getByRole("presentation", { hidden: true });
       expect(skeleton).toHaveClass("skeleton-loader--reduced-motion");
     });
   });
@@ -179,7 +188,7 @@ describe("SkeletonLoader コンポーネント", () => {
     test("will-changeプロパティが正しく設定される", () => {
       render(<SkeletonLoader />);
 
-      const skeleton = screen.getByRole("presentation");
+      const skeleton = screen.getByRole("presentation", { hidden: true });
       const computedStyle = window.getComputedStyle(skeleton);
       expect(computedStyle.willChange).toBe("transform");
     });
@@ -187,7 +196,7 @@ describe("SkeletonLoader コンポーネント", () => {
     test("transform3dによるGPUアクセラレーションが適用される", () => {
       render(<SkeletonLoader />);
 
-      const skeleton = screen.getByRole("presentation");
+      const skeleton = screen.getByRole("presentation", { hidden: true });
       const computedStyle = window.getComputedStyle(skeleton);
       expect(computedStyle.transform).toContain("translateZ(0)");
     });
@@ -234,7 +243,7 @@ describe("SkeletonLoader コンポーネント", () => {
       // @ts-ignore - テスト用に無効な型を渡す
       render(<SkeletonLoader variant="invalid" />);
 
-      const skeleton = screen.getByRole("presentation");
+      const skeleton = screen.getByRole("presentation", { hidden: true });
       expect(skeleton).toHaveClass("skeleton-loader");
       expect(skeleton).not.toHaveClass("skeleton-loader--invalid");
     });
@@ -242,7 +251,7 @@ describe("SkeletonLoader コンポーネント", () => {
     test("負の値のサイズが渡された場合はデフォルトが使用される", () => {
       render(<SkeletonLoader width={-100} height={-20} />);
 
-      const skeleton = screen.getByRole("presentation");
+      const skeleton = screen.getByRole("presentation", { hidden: true });
       expect(skeleton).toHaveStyle({ width: "100%", height: "20px" });
     });
   });

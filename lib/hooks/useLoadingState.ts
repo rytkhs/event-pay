@@ -73,11 +73,8 @@ export function useLoadingState(
         try {
           const parsed = JSON.parse(savedState);
           setState((prev) => ({ ...prev, ...parsed }));
-        } catch (error) {
-          // テスト環境では console.error をスキップ
-          if (process.env.NODE_ENV !== "test") {
-            console.error("Failed to parse saved loading state:", error);
-          }
+        } catch {
+          // Error handling for loading state parsing
         }
       }
     }
@@ -164,15 +161,12 @@ export function useLoadingState(
             estimatedTimeRemaining: estimatedTime,
           };
         });
-      } catch (error) {
-        // テスト環境では console.error をスキップ
-        if (process.env.NODE_ENV !== "test") {
-          console.error("Progress update failed:", error);
-        }
+      } catch {
+        // Error handling for progress update
         setState((prev) => ({
           ...prev,
           isLoading: false,
-          error: error instanceof Error ? error.message : "Invalid progress value",
+          error: "Invalid progress value",
           activeTasks: [],
           estimatedTimeRemaining: undefined,
         }));

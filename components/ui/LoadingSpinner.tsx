@@ -37,8 +37,7 @@ export function LoadingSpinner(props: LoadingSpinnerProps) {
       size: "md" as const,
       variant: "spinner" as const,
       animationDuration: "1s",
-    },
-    process.env.NODE_ENV !== "test" ? "LoadingSpinner props validation failed" : undefined
+    }
   );
 
   const {
@@ -47,6 +46,7 @@ export function LoadingSpinner(props: LoadingSpinnerProps) {
     className,
     color,
     "aria-label": ariaLabel = "読み込み中",
+    "data-testid": dataTestId,
     responsive = false,
     animate = true,
     animationDuration = "1s",
@@ -95,6 +95,7 @@ export function LoadingSpinner(props: LoadingSpinnerProps) {
       aria-label={ariaLabel}
       aria-live="polite"
       aria-busy="true"
+      data-testid={dataTestId}
       className={classes}
       style={styles}
     >

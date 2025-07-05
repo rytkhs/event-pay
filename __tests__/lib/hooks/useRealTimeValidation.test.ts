@@ -159,9 +159,6 @@ describe("useRealTimeValidation", () => {
 
       act(() => {
         result.current.setValue("test");
-      });
-
-      act(() => {
         jest.advanceTimersByTime(300);
       });
 
@@ -176,6 +173,7 @@ describe("useRealTimeValidation", () => {
 
       act(() => {
         result.current.setValue("test");
+        jest.advanceTimersByTime(300);
       });
 
       await act(async () => {
