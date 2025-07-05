@@ -24,6 +24,14 @@ export default function RegisterPage() {
   const [termsAgreed, setTermsAgreed] = useState(false);
   const [termsError, setTermsError] = useState("");
 
+  // Terms checkbox handler with Safari compatibility
+  const handleTermsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const checked = e.target.checked;
+    // Use React's flushSync to ensure immediate state update for Safari
+    setTermsAgreed(checked);
+    setTermsError(""); // Clear error when terms are agreed
+  };
+
   const handleSubmit = async (formData: FormData) => {
     // 利用規約同意バリデーション
     if (!termsAgreed) {
@@ -44,7 +52,7 @@ export default function RegisterPage() {
 
     // フォームデータにパスワードと利用規約同意を追加
     formData.set("password", passwordConfirmation.state.password);
-    formData.set("confirmPassword", passwordConfirmation.state.confirmPassword);
+    formData.set("passwordConfirm", passwordConfirmation.state.confirmPassword);
     formData.set("termsAgreed", termsAgreed.toString());
 
     // Server Actionを実行
@@ -93,7 +101,7 @@ export default function RegisterPage() {
       <div className="space-y-2">
         <AuthFormField
           type="password"
-          name="confirmPassword"
+          name="passwordConfirm"
           label="パスワード（確認）"
           placeholder="上記と同じパスワードを入力"
           value={passwordConfirmation.state.confirmPassword}
@@ -104,7 +112,7 @@ export default function RegisterPage() {
           error={
             passwordConfirmation.validation.hasError
               ? passwordConfirmation.state.error
-              : state.fieldErrors?.confirmPassword?.[0]
+              : state.fieldErrors?.passwordConfirm?.[0]
           }
           required
         />
@@ -126,7 +134,7 @@ export default function RegisterPage() {
             type="checkbox"
             id="terms-agreement"
             checked={termsAgreed}
-            onChange={(e) => setTermsAgreed(e.target.checked)}
+            onChange={handleTermsChange}
             className="mt-1 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
             aria-required="true"
             aria-describedby="terms-description"
@@ -140,6 +148,7 @@ export default function RegisterPage() {
               href="/terms"
               target="_blank"
               rel="noopener noreferrer"
+              tabIndex={-1}
               className="text-blue-600 hover:text-blue-500 hover:underline focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 rounded"
             >
               利用規約
@@ -159,11 +168,16 @@ export default function RegisterPage() {
         )}
       </div>
 
-      <AuthSubmitButton isPending={isPending}>登録</AuthSubmitButton>
+      <AuthSubmitButton isPending={isPending} disabled={!termsAgreed}>
+        登録
+      </AuthSubmitButton>
 
       <div className="text-center text-sm text-gray-600">
         既にアカウントをお持ちの方は{" "}
-        <Link href="/auth/login" className="text-blue-600 hover:text-blue-500 hover:underline">
+        <Link
+          href="/auth/login"
+          className="text-blue-600 hover:text-blue-500 underline focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 rounded"
+        >
           ログイン
         </Link>
       </div>

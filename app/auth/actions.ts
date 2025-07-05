@@ -25,14 +25,14 @@ const registerSchema = z
         /^(?=.*[A-Z])(?=.*[a-z])(?=.*\d)/,
         "パスワードは大文字・小文字・数字を含む必要があります"
       ),
-    confirmPassword: z.string(),
+    passwordConfirm: z.string(),
     termsAgreed: z.string().refine((value) => value === "true", {
       message: "利用規約に同意してください",
     }),
   })
-  .refine((data) => data.password === data.confirmPassword, {
+  .refine((data) => data.password === data.passwordConfirm, {
     message: "パスワードが一致しません",
-    path: ["confirmPassword"],
+    path: ["passwordConfirm"],
   });
 
 const resetPasswordSchema = z.object({

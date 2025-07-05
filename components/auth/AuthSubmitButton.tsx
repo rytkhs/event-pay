@@ -10,6 +10,7 @@ interface AuthSubmitButtonProps {
   className?: string;
   variant?: "default" | "destructive" | "outline" | "secondary" | "ghost" | "link";
   size?: "default" | "sm" | "lg" | "icon";
+  disabled?: boolean;
   // 新機能
   loadingVariant?: "spinner" | "dots" | "pulse";
   showProgress?: boolean;
@@ -36,6 +37,7 @@ export function AuthSubmitButton({
   className = "",
   variant = "default",
   size = "default",
+  disabled = false,
   loadingVariant = "spinner",
   showProgress = false,
   progress = 0,
@@ -95,7 +97,7 @@ export function AuthSubmitButton({
     : "spinner";
 
   const buttonClasses = cn(
-    `w-full`,
+    `w-full h-12 min-h-12`,
     {
       [`auth-submit-button--${safeLoadingVariant}`]: isPending,
       "auth-submit-button--reduced-motion": prefersReducedMotion,
@@ -115,7 +117,7 @@ export function AuthSubmitButton({
     <div className="relative">
       <Button
         type="submit"
-        disabled={isPending}
+        disabled={isPending || disabled}
         variant={variant}
         size={size}
         className={buttonClasses}

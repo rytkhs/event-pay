@@ -92,10 +92,11 @@ export function useRealTimeValidation(
   );
 
   // デバウンス付きバリデーション
-  const debouncedValidation = useCallback(
-    debounceValidation(runValidation, debounceMs),
-    [runValidation, debounceMs]
-  );
+  const debouncedValidation = useRef(debounceValidation(runValidation, debounceMs));
+  
+  useEffect(() => {
+    debouncedValidation.current = debounceValidation(runValidation, debounceMs);
+  }, [runValidation, debounceMs]);
 
   // 値が変更されたかどうかをチェック
   const shouldSkipValidation = useCallback((prevValue: string, newValue: string) => {
@@ -117,12 +118,12 @@ export function useRealTimeValidation(
         };
 
         // デバウンス付きでバリデーション実行
-        debouncedValidation(newValue);
+        debouncedValidation.current(newValue);
 
         return newState;
       });
     },
-    [debouncedValidation, shouldSkipValidation]
+    [shouldSkipValidation]
   );
 
   // 手動バリデーション（フォーカス移動時など）
@@ -132,9 +133,9 @@ export function useRealTimeValidation(
       runValidation(state.value);
     } else {
       // デバウンス付きでバリデーション実行
-      debouncedValidation(state.value);
+      debouncedValidation.current(state.value);
     }
-  }, [state.value, runValidation, debouncedValidation, validateOnBlur]);
+  }, [state.value, runValidation, validateOnBlur]);
 
   return {
     state,

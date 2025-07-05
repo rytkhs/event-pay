@@ -56,6 +56,18 @@
   body {
     @apply bg-background text-foreground;
   }
+  
+  /* Safari button appearance reset for proper touch target sizing */
+  button {
+    -webkit-appearance: none;
+    appearance: none;
+  }
+  
+  /* Ensure buttons in disabled fieldsets maintain proper height on Safari */
+  fieldset[disabled] button {
+    -webkit-appearance: none;
+    appearance: none;
+  }
 }
 
 /* バリデーションフィードバック用のアニメーション */

@@ -41,16 +41,25 @@ export function AuthFormField({
         {...inputProps}
         id={inputProps.name}
         className={`${hasError ? "border-red-500 focus-visible:ring-red-500" : ""} ${inputClassName}`}
-        aria-invalid={hasError}
+        aria-invalid={hasError ? "true" : "false"}
         aria-required={inputProps.required}
-        aria-describedby={hasError ? `${inputProps.name}-error` : undefined}
+        aria-describedby={hasError ? `${inputProps.name}-error` : `${inputProps.name}-description`}
       />
+      {/* 常に説明文を提供 */}
+      <div
+        id={`${inputProps.name}-description`}
+        className="text-xs text-gray-500"
+        aria-live="polite"
+      >
+        {inputProps.placeholder || `${label}を入力してください`}
+      </div>
       {hasError && (
         <p
           id={`${inputProps.name}-error`}
           className="text-sm text-red-600"
           role="alert"
           aria-live="polite"
+          data-testid={`${inputProps.name}-error`}
         >
           {fieldError}
         </p>
@@ -104,7 +113,7 @@ export function AuthPasswordField(props: Omit<AuthFormFieldProps, "type">) {
           type={showPassword ? "text" : "password"}
           autoComplete={autoCompleteValue}
           className={`${hasError ? "border-red-500 focus-visible:ring-red-500" : ""} ${props.inputClassName || ""} pr-10`}
-          aria-invalid={hasError}
+          aria-invalid={hasError ? "true" : "false"}
           aria-required={props.required}
           aria-describedby={hasError ? `${props.name}-error` : `${props.name}-toggle`}
         />
@@ -163,6 +172,7 @@ export function AuthPasswordField(props: Omit<AuthFormFieldProps, "type">) {
           className="text-sm text-red-600"
           role="alert"
           aria-live="polite"
+          data-testid={`${props.name}-error`}
         >
           {fieldError}
         </p>

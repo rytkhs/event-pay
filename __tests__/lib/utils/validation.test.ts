@@ -137,6 +137,9 @@ describe("validation utilities", () => {
     });
 
     test("エラーメッセージ付きで失敗をログ出力すること", () => {
+      const originalEnv = process.env.NODE_ENV;
+      process.env.NODE_ENV = "development";
+
       const consoleSpy = jest.spyOn(console, "error").mockImplementation();
       const validator = () => {
         throw new Error("Validation failed");
@@ -147,6 +150,7 @@ describe("validation utilities", () => {
       expect(consoleSpy).toHaveBeenCalledWith("Custom error message", expect.any(Error));
 
       consoleSpy.mockRestore();
+      process.env.NODE_ENV = originalEnv;
     });
 
     test("エラーメッセージなしの場合、ログ出力しないこと", () => {

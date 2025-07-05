@@ -80,7 +80,7 @@ describe("LoadingSpinner コンポーネント", () => {
       render(<LoadingSpinner color="red" />);
 
       const spinner = screen.getByRole("status");
-      expect(spinner).toHaveStyle({ color: "red" });
+      expect(spinner).toHaveStyle({ color: "rgb(255, 0, 0)" });
     });
   });
 

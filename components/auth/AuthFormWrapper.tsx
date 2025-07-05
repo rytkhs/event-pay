@@ -81,7 +81,7 @@ export function AuthFormWrapper({
             <CardContent>
               <form
                 ref={formRef}
-                action={action || formAction}
+                action={typeof action === "string" ? action : formAction}
                 className={`space-y-6 ${className}`}
                 noValidate
                 role="form"
@@ -89,9 +89,7 @@ export function AuthFormWrapper({
               >
                 <AuthFormMessages state={state} />
 
-                <fieldset disabled={isPending} className="space-y-4">
-                  {children}
-                </fieldset>
+                <fieldset className="space-y-4">{children}</fieldset>
               </form>
             </CardContent>
           </Card>
