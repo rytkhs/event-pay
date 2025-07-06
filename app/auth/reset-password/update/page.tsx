@@ -38,7 +38,7 @@ export default function UpdatePasswordPage() {
       subtitle="パスワードリセット用の新しいパスワードを設定してください"
       state={state}
       isPending={isPending}
-      formAction={handleSubmit}
+      action={handleSubmit}
     >
       <AuthFormField
         type="password"

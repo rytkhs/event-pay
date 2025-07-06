@@ -38,13 +38,13 @@ jest.mock("@/components/auth", () => ({
     formAction: jest.fn(),
     isPending: false,
   }),
-  AuthFormWrapper: ({ children, formAction, ...props }: any) => (
+  AuthFormWrapper: ({ children, action, ...props }: any) => (
     <form
       data-testid="register-form"
       onSubmit={(e) => {
         e.preventDefault();
         const formData = new FormData(e.currentTarget);
-        formAction(formData);
+        action(formData);
       }}
     >
       {children}

@@ -65,7 +65,7 @@ export default function RegisterPage() {
       subtitle="EventPayアカウントを作成してください"
       state={state}
       isPending={isPending}
-      formAction={handleSubmit}
+      action={handleSubmit}
       testId="register-form"
     >
       <AuthFormField
