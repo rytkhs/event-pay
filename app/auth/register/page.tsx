@@ -66,6 +66,7 @@ export default function RegisterPage() {
       state={state}
       isPending={isPending}
       formAction={handleSubmit}
+      testId="register-form"
     >
       <AuthFormField
         type="text"

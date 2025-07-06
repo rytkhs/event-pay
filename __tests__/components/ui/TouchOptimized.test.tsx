@@ -418,6 +418,9 @@ describe("TouchOptimized", () => {
     });
 
     it("イベントハンドラーでエラーが発生してもアプリケーションが続行される", () => {
+      const originalEnv = process.env.NODE_ENV;
+      process.env.NODE_ENV = "development";
+
       const consoleSpy = jest.spyOn(console, "error").mockImplementation(() => {});
       const errorHandler = jest.fn(() => {
         throw new Error("テストエラー");
@@ -443,6 +446,7 @@ describe("TouchOptimized", () => {
       expect(consoleSpy).toHaveBeenCalledWith("TouchOptimized onClick error:", expect.any(Error));
 
       consoleSpy.mockRestore();
+      process.env.NODE_ENV = originalEnv;
     });
   });
 });

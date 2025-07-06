@@ -16,6 +16,7 @@ export default function ResetPasswordPage() {
       state={state}
       isPending={isPending}
       formAction={formAction}
+      testId="reset-password-form"
     >
       <AuthEmailField
         name="email"

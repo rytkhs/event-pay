@@ -20,6 +20,7 @@ export default function LoginPage() {
       state={state}
       isPending={isPending}
       formAction={formAction}
+      testId="login-form"
     >
       <AuthEmailField
         name="email"

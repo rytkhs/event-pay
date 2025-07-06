@@ -23,7 +23,9 @@ describe("useRealTimeValidation", () => {
   });
 
   afterEach(() => {
-    jest.runOnlyPendingTimers();
+    act(() => {
+      jest.runOnlyPendingTimers();
+    });
     jest.useRealTimers();
   });
 
@@ -152,7 +154,13 @@ describe("useRealTimeValidation", () => {
 
   describe("非同期バリデーション", () => {
     it("非同期バリデーション中は isValidating が true になる", async () => {
-      const asyncValidator = jest.fn().mockResolvedValue(true);
+      let resolveValidator: (value: boolean) => void;
+      const asyncValidator = jest.fn().mockImplementation(() => {
+        return new Promise((resolve) => {
+          resolveValidator = resolve;
+        });
+      });
+
       const { result } = renderHook(() =>
         useRealTimeValidation("", () => true, { asyncValidator })
       );
@@ -160,13 +168,29 @@ describe("useRealTimeValidation", () => {
       act(() => {
         result.current.setValue("test");
         jest.advanceTimersByTime(300);
+      });
+
+      // 非同期バリデーション開始を待つ
+      await act(async () => {
+        await Promise.resolve();
       });
 
       expect(result.current.state.isValidating).toBe(true);
+
+      // 非同期バリデーションを完了させる
+      await act(async () => {
+        resolveValidator!(true);
+      });
     });
 
     it("非同期バリデーション完了後に状態が更新される", async () => {
-      const asyncValidator = jest.fn().mockResolvedValue(false);
+      let resolveValidator: (value: boolean) => void;
+      const asyncValidator = jest.fn().mockImplementation(() => {
+        return new Promise((resolve) => {
+          resolveValidator = resolve;
+        });
+      });
+
       const { result } = renderHook(() =>
         useRealTimeValidation("", () => true, { asyncValidator })
       );
@@ -176,9 +200,16 @@ describe("useRealTimeValidation", () => {
         jest.advanceTimersByTime(300);
       });
 
+      // 非同期バリデーション開始を待つ
       await act(async () => {
-        jest.advanceTimersByTime(300);
-        await asyncValidator.mock.results[0].value;
+        await Promise.resolve();
+      });
+
+      expect(result.current.state.isValidating).toBe(true);
+
+      // 非同期バリデーションを完了させる
+      await act(async () => {
+        resolveValidator!(false);
       });
 
       expect(result.current.state.isValidating).toBe(false);
@@ -186,13 +217,35 @@ describe("useRealTimeValidation", () => {
     });
 
     it.skip("非同期バリデーションでエラーが発生した場合の処理", async () => {
-      // 非同期エラーハンドリングは実装済みだが、テストが複雑なためスキップ
-      expect(true).toBe(true);
+      const asyncValidator = jest.fn().mockRejectedValue(new Error("Async validation failed"));
+
+      const { result } = renderHook(() =>
+        useRealTimeValidation("", () => true, { asyncValidator })
+      );
+
+      act(() => {
+        result.current.setValue("test");
+        jest.advanceTimersByTime(300);
+      });
+
+      // 非同期バリデーション完了を待つ
+      await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 0));
+      });
+
+      // エラーハンドリングのため少し待つ
+      await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 10));
+      });
+
+      expect(result.current.state.isValidating).toBe(false);
+      expect(result.current.state.isValid).toBe(false);
+      expect(result.current.state.error).toBe("Async validation failed");
     });
   });
 
   describe("フォーカス移動時のバリデーション", () => {
-    it("validateOnBlur が true の場合、validate() 呼び出し時に即座にバリデーションが実行される", () => {
+    it("validateOnBlur が true の場合、validate() 呼び出し時に即座にバリデーションが実行される", async () => {
       const validator = jest.fn((value: string) => value.length >= 3);
       const { result } = renderHook(() =>
         useRealTimeValidation("", validator, { validateOnBlur: true })
@@ -203,7 +256,7 @@ describe("useRealTimeValidation", () => {
       });
 
       // 手動でバリデーション実行
-      act(() => {
+      await act(async () => {
         result.current.validate();
       });
 
@@ -212,7 +265,7 @@ describe("useRealTimeValidation", () => {
       expect(result.current.state.isValid).toBe(false);
     });
 
-    it("validateOnBlur が false の場合、validate() 呼び出しでもデバウンスが適用される", () => {
+    it("validateOnBlur が false の場合、validate() 呼び出しでもデバウンスが適用される", async () => {
       const validator = jest.fn((value: string) => value.length >= 3);
       const { result } = renderHook(() =>
         useRealTimeValidation("", validator, { validateOnBlur: false })
@@ -277,6 +330,11 @@ describe("useRealTimeValidation", () => {
 
       act(() => {
         jest.advanceTimersByTime(300);
+      });
+
+      // 非同期処理が開始されるまで待つ
+      await act(async () => {
+        await Promise.resolve();
       });
 
       // アンマウント

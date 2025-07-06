@@ -354,11 +354,15 @@ export async function registerAction(formData: FormData): Promise<ActionResult<{
       sanitizedPassword = InputSanitizer.sanitizePassword(password);
       sanitizedName = name.trim();
 
-      // 名前の長さとパターンチェック
+      // 名前の長さとパターンチェック（コマンドインジェクション対策強化）
       if (
         sanitizedName.length > 100 ||
         sanitizedName.includes("\0") ||
-        sanitizedName.includes("\x1a")
+        sanitizedName.includes("\x1a") ||
+        /[;&|`$(){}[\]<>'"\\]/.test(sanitizedName) ||
+        /^\s*(rm|cat|echo|whoami|id|ls|pwd|sudo|su|curl|wget|nc|nmap|chmod|chown|kill|ps|top|netstat|find|grep|awk|sed|tail|head|sort|uniq)\s*/.test(
+          sanitizedName
+        )
       ) {
         throw new Error("Invalid name format");
       }

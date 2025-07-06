@@ -10,10 +10,10 @@ interface AuthFormWrapperProps {
   state: ServerActionResult;
   isPending: boolean;
   children: ReactNode;
-  formAction: (formData: FormData) => void;
   action?: string | ((formData: FormData) => void);
   className?: string;
   maxWidth?: "sm" | "md" | "lg" | "xl";
+  testId?: string;
 }
 
 /**
@@ -27,10 +27,10 @@ export function AuthFormWrapper({
   state,
   isPending,
   children,
-  formAction,
   action,
   className = "",
   maxWidth = "md",
+  testId,
 }: AuthFormWrapperProps) {
   const formRef = useRef<HTMLFormElement>(null);
   const { focusFirstError, restoreFocus } = useFocusManagement();
@@ -81,11 +81,12 @@ export function AuthFormWrapper({
             <CardContent>
               <form
                 ref={formRef}
-                action={typeof action === "string" ? action : formAction}
+                action={typeof action === "string" ? action : undefined}
                 className={`space-y-6 ${className}`}
                 noValidate
                 role="form"
                 aria-describedby={state.error ? "form-error" : undefined}
+                data-testid={testId}
               >
                 <AuthFormMessages state={state} />
 

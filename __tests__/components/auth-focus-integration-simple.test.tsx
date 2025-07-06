@@ -17,6 +17,7 @@ function SimpleTestForm({ state }: { state: ServerActionResult }) {
       state={state}
       isPending={false}
       formAction={mockFormAction}
+      action="/test-action"
     >
       <AuthFormField name="email" label="メール" type="email" required error={emailError} />
       <AuthFormField
