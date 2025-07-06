@@ -155,7 +155,7 @@ export function AuthSubmitButton({
       {/* 推定残り時間 */}
       {isPending && estimatedTimeRemaining && (
         <span className="absolute top-0 right-0 text-xs text-gray-500">
-          残り約{Math.floor(estimatedTimeRemaining / 1000)}秒
+          残り約{estimatedTimeRemaining}秒
         </span>
       )}
 

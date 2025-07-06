@@ -1,8 +1,6 @@
 // Jest DOM matchers for Testing Library
 import "@testing-library/jest-dom";
 
-// Jest Axe for accessibility testing
-import { toHaveNoViolations } from 'jest-axe';
 
 // Jest専用型定義を読み込み
 import "./types/test.d.ts";
@@ -11,8 +9,6 @@ import "./types/test.d.ts";
 import dotenv from "dotenv";
 dotenv.config({ path: ".env.local" });
 
-// Extend Jest matchers with accessibility testing
-expect.extend(toHaveNoViolations);
 
 // Global test utilities (preserved from original setup)
 global.testUtils = {
@@ -62,6 +58,28 @@ Object.defineProperty(window, 'matchMedia', {
     removeEventListener: jest.fn(),
     dispatchEvent: jest.fn(),
   })),
+});
+
+// Mock HTMLFormElement.prototype.requestSubmit for JSDOM compatibility
+Object.defineProperty(HTMLFormElement.prototype, 'requestSubmit', {
+  value: function(submitter) {
+    // Create a submit event
+    const event = new Event('submit', { bubbles: true, cancelable: true });
+    
+    // If submitter is provided, add it to the event
+    if (submitter) {
+      Object.defineProperty(event, 'submitter', {
+        value: submitter,
+        writable: false,
+        configurable: true
+      });
+    }
+    
+    // Dispatch the event
+    this.dispatchEvent(event);
+  },
+  writable: true,
+  configurable: true
 });
 
 // Setup before each test

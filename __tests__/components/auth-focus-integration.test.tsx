@@ -1,4 +1,4 @@
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor, act } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { AuthFormWrapper } from "@/components/auth/AuthFormWrapper";
 import { AuthFormField } from "@/components/auth/AuthFormField";
@@ -30,6 +30,7 @@ function TestAuthForm({
         type="email"
         required
         placeholder="example@test.com"
+        fieldErrors={state.fieldErrors?.email}
       />
       <AuthFormField
         name="password"
@@ -37,6 +38,7 @@ function TestAuthForm({
         type="password"
         required
         placeholder="パスワードを入力"
+        fieldErrors={state.fieldErrors?.password}
       />
       <AuthFormField
         name="confirmPassword"
@@ -44,11 +46,19 @@ function TestAuthForm({
         type="password"
         required
         placeholder="パスワードを再入力"
+        fieldErrors={state.fieldErrors?.confirmPassword}
       />
       <AuthSubmitButton isPending={isPending}>登録</AuthSubmitButton>
     </AuthFormWrapper>
   );
 }
+
+// フォーカス追跡用のモック
+const focusTracker = {
+  focusedElement: null as HTMLElement | null,
+  focusCalls: [] as HTMLElement[],
+  lastFocusedElement: null as HTMLElement | null,
+};
 
 // DOM メソッドのモックユーティリティ
 const createMockElement = (tagName: string = "input") => {
@@ -73,6 +83,8 @@ const createMockElement = (tagName: string = "input") => {
 describe("認証フォーム フォーカス管理統合テスト", () => {
   let originalFocus: typeof HTMLElement.prototype.focus;
   let originalBlur: typeof HTMLElement.prototype.blur;
+  let mockFocus: jest.Mock;
+  let mockBlur: jest.Mock;
 
   beforeAll(() => {
     // 元のメソッドを保存
@@ -81,14 +93,43 @@ describe("認証フォーム フォーカス管理統合テスト", () => {
   });
 
   beforeEach(() => {
+    // フォーカス追跡をリセット
+    focusTracker.focusedElement = null;
+    focusTracker.focusCalls = [];
+    focusTracker.lastFocusedElement = null;
+
+    // モック関数を作成
+    mockFocus = jest.fn(function (this: HTMLElement) {
+      // フォーカス追跡
+      focusTracker.focusedElement = this;
+      focusTracker.focusCalls.push(this);
+      focusTracker.lastFocusedElement = this;
+
+      // JSDOMでactiveElementを設定
+      Object.defineProperty(document, "activeElement", {
+        value: this,
+        writable: true,
+        configurable: true,
+      });
+    });
+
+    mockBlur = jest.fn(function (this: HTMLElement) {
+      // JSDOMでactiveElementをリセット
+      Object.defineProperty(document, "activeElement", {
+        value: document.body,
+        writable: true,
+        configurable: true,
+      });
+    });
+
     // モック関数で上書き
     Object.defineProperty(HTMLElement.prototype, "focus", {
-      value: jest.fn(),
+      value: mockFocus,
       writable: true,
       configurable: true,
     });
     Object.defineProperty(HTMLElement.prototype, "blur", {
-      value: jest.fn(),
+      value: mockBlur,
       writable: true,
       configurable: true,
     });
@@ -123,7 +164,8 @@ describe("認証フォーム フォーカス管理統合テスト", () => {
 
       await waitFor(() => {
         const emailField = screen.getByLabelText("メールアドレス");
-        expect(emailField.focus).toHaveBeenCalled();
+        expect(mockFocus).toHaveBeenCalled();
+        expect(focusTracker.lastFocusedElement).toBe(emailField);
       });
     });
 
@@ -145,7 +187,8 @@ describe("認証フォーム フォーカス管理統合テスト", () => {
 
       await waitFor(() => {
         const emailField = screen.getByLabelText("メールアドレス");
-        expect(emailField.focus).toHaveBeenCalled();
+        expect(mockFocus).toHaveBeenCalled();
+        expect(focusTracker.lastFocusedElement).toBe(emailField);
       });
     });
 
@@ -176,7 +219,8 @@ describe("認証フォーム フォーカス管理統合テスト", () => {
 
       await waitFor(() => {
         const emailField = screen.getByLabelText("メールアドレス");
-        expect(emailField.focus).toHaveBeenCalled();
+        expect(mockFocus).toHaveBeenCalled();
+        expect(focusTracker.lastFocusedElement).toBe(emailField);
       });
 
       // 成功状態に更新（フォーカス復元）
@@ -184,7 +228,7 @@ describe("認証フォーム フォーカス管理統合テスト", () => {
 
       await waitFor(() => {
         // フォーカスが適切に復元されること
-        expect(HTMLElement.prototype.focus).toHaveBeenCalled();
+        expect(mockFocus).toHaveBeenCalled();
       });
     });
   });
@@ -230,7 +274,7 @@ describe("認証フォーム フォーカス管理統合テスト", () => {
 
       await waitFor(() => {
         // フォーカス復元が呼ばれることを確認
-        expect(HTMLElement.prototype.focus).toHaveBeenCalled();
+        expect(mockFocus).toHaveBeenCalled();
       });
     });
   });
@@ -248,15 +292,18 @@ describe("認証フォーム フォーカス管理統合テスト", () => {
       const { rerender } = render(<TestAuthForm state={{ success: false }} />);
 
       // エラー状態に更新
-      rerender(<TestAuthForm state={errorState} />);
+      act(() => {
+        rerender(<TestAuthForm state={errorState} />);
+      });
 
       await waitFor(() => {
         const emailField = screen.getByLabelText("メールアドレス");
         expect(emailField).toHaveAttribute("aria-invalid", "true");
-        expect(emailField).toHaveAttribute("aria-describedby");
+        expect(emailField).toHaveAttribute("aria-describedby", "email-error");
 
-        const errorMessage = screen.getByRole("alert");
+        const errorMessage = screen.getByText("無効なメールアドレスです");
         expect(errorMessage).toBeInTheDocument();
+        expect(errorMessage).toHaveAttribute("role", "alert");
       });
     });
 
@@ -325,7 +372,8 @@ describe("認証フォーム フォーカス管理統合テスト", () => {
 
       await waitFor(() => {
         const passwordField = screen.getByLabelText("パスワード");
-        expect(passwordField.focus).toHaveBeenCalled();
+        expect(mockFocus).toHaveBeenCalled();
+        expect(focusTracker.lastFocusedElement).toBe(passwordField);
       });
 
       // Tab移動が正常に動作することを確認

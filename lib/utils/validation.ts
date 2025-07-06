@@ -117,11 +117,14 @@ export function validateStringLength(
  * 安全なバリデーション実行
  * エラーをキャッチしてログに記録し、デフォルト値を返す
  */
-export function safeValidate<T>(validator: () => T, defaultValue: T): T {
+export function safeValidate<T>(validator: () => T, defaultValue: T, errorMessage?: string): T {
   try {
     return validator();
-  } catch {
+  } catch (error) {
     // Error handling for validation
+    if (process.env.NODE_ENV === "development" && errorMessage) {
+      console.error(errorMessage, error);
+    }
     return defaultValue;
   }
 }
