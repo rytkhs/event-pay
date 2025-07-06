@@ -19,7 +19,7 @@ export default function LoginPage() {
       subtitle="EventPayアカウントにログインしてください"
       state={state}
       isPending={isPending}
-      formAction={formAction}
+      action={formAction}
       testId="login-form"
     >
       <AuthEmailField

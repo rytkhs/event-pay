@@ -15,7 +15,7 @@ export default function ResetPasswordPage() {
       subtitle="登録されたメールアドレスにリセット用のリンクを送信します"
       state={state}
       isPending={isPending}
-      formAction={formAction}
+      action={formAction}
       testId="reset-password-form"
     >
       <AuthEmailField
