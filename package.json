@@ -12,6 +12,7 @@
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\"",
     "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md}\"",
     "typecheck": "tsc --noEmit",
+    "type-check": "tsc --noEmit",
     "test": "npm run test:unit && npm run test:api && npm run test:security && npm run test:integration",
     "test:unit": "jest --config jest.config.unit.mjs",
     "test:api": "jest --config jest.config.api.mjs",
