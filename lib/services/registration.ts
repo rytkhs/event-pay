@@ -4,7 +4,7 @@ import {
   deleteUserById,
   checkUserProfileExists,
 } from "@/lib/supabase/admin";
-import { checkRateLimit, createRateLimitStore, type RateLimitResult } from "@/lib/rate-limit/index";
+import { checkRateLimit, createRateLimitStore } from "@/lib/rate-limit/index";
 import { RATE_LIMIT_CONFIG } from "@/config/security";
 import { PASSWORD_CONFIG } from "@/config/security";
 import { z } from "zod";
@@ -57,7 +57,7 @@ export class RegistrationService {
         allowed: result.allowed,
         retryAfter: result.retryAfter,
       };
-    } catch (error) {
+    } catch {
       // 本番環境では適切なログシステムに出力
       if (process.env.NODE_ENV === "development") {
         // console.error("Rate limit check failed:", error);

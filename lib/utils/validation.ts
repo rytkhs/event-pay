@@ -3,16 +3,7 @@
  * コンポーネント間で重複するバリデーションロジックを統一
  */
 
-export class ValidationError extends Error {
-  constructor(
-    message: string,
-    public readonly field?: string,
-    public readonly code?: string
-  ) {
-    super(message);
-    this.name = "ValidationError";
-  }
-}
+import { ValidationError } from "./errorHandling";
 
 /**
  * 数値の範囲をバリデート
@@ -120,10 +111,10 @@ export function validateStringLength(
 export function safeValidate<T>(validator: () => T, defaultValue: T, errorMessage?: string): T {
   try {
     return validator();
-  } catch (error) {
+  } catch {
     // Error handling for validation
     if (process.env.NODE_ENV === "development" && errorMessage) {
-      console.error(errorMessage, error);
+      // console.error(errorMessage, error);
     }
     return defaultValue;
   }
