@@ -13,20 +13,21 @@ export async function createRateLimitStore(): Promise<RateLimitStore> {
     return rateLimitStoreInstance;
   }
 
-  if (process.env.NODE_ENV === "production" && process.env.REDIS_URL) {
+  // 環境変数の存在確認（Upstash Redis環境変数を使用）
+  if (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) {
     try {
       const redisClient = await createRedisClient();
-      rateLimitStoreInstance = new RedisRateLimitStore(redisClient);
-      return rateLimitStoreInstance;
+      if (redisClient) {
+        rateLimitStoreInstance = new RedisRateLimitStore(redisClient);
+        return rateLimitStoreInstance;
+      }
     } catch (error) {
       // eslint-disable-next-line no-console
       console.warn("Failed to create Redis store, falling back to optimized memory store:", error);
-      rateLimitStoreInstance = new OptimizedMemoryRateLimitStore();
-      return rateLimitStoreInstance;
     }
   }
 
-  // 最適化されたメモリストアを使用
+  // 最適化されたメモリストアを使用（環境変数未設定またはRedis接続失敗時）
   rateLimitStoreInstance = new OptimizedMemoryRateLimitStore();
   return rateLimitStoreInstance;
 }

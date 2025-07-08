@@ -35,10 +35,9 @@ jest.mock("@/lib/auth-security", () => ({
 }));
 
 // レート制限をモック
-jest.mock("@/lib/rate-limit", () => ({
-  createRateLimit: jest.fn(() => ({
-    limit: jest.fn().mockResolvedValue({ success: true }),
-  })),
+jest.mock("@/lib/rate-limit/index", () => ({
+  checkRateLimit: jest.fn().mockResolvedValue({ allowed: true }),
+  createRateLimitStore: jest.fn().mockResolvedValue({}),
 }));
 
 // ヘッダーをモック

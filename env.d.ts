@@ -34,13 +34,13 @@ declare namespace NodeJS {
      * - 開発環境: オプショナル（未設定時はモックレート制限を使用）
      * - 本番環境: 必須（セキュリティ確保のため）
      */
-    RATE_LIMIT_REDIS_URL?: string;
+    UPSTASH_REDIS_REST_URL?: string;
     /**
      * Upstash Redis トークン（レート制限用）
-     * - RATE_LIMIT_REDIS_URLと合わせて設定が必要
+     * - UPSTASH_REDIS_REST_URLと合わせて設定が必要
      * - 未設定時はレート制限が無効化される（開発環境のみ）
      */
-    RATE_LIMIT_REDIS_TOKEN?: string;
+    UPSTASH_REDIS_REST_TOKEN?: string;
 
     // ===========================
     // MCP Configuration（開発支援用、オプショナル）

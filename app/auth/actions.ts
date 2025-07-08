@@ -3,7 +3,8 @@
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { type EmailOtpType, type AuthResponse } from "@supabase/supabase-js";
-import { createRateLimit } from "@/lib/rate-limit";
+import { checkRateLimit, createRateLimitStore, type RateLimitResult } from "@/lib/rate-limit/index";
+import { RATE_LIMIT_CONFIG } from "@/config/security";
 import { AccountLockoutService, TimingAttackProtection, InputSanitizer } from "@/lib/auth-security";
 import { headers } from "next/headers";
 
@@ -127,14 +128,9 @@ export async function loginAction(formData: FormData): Promise<ActionResult<{ us
         const headersList = headers();
         const ip = headersList.get("x-forwarded-for") || headersList.get("x-real-ip") || "unknown";
 
-        const rateLimit = createRateLimit({
-          requests: 5,
-          window: "15 m",
-          identifier: "ip",
-        });
-
-        const rateLimitResult = await rateLimit.limit(`login_${ip}`);
-        if (!rateLimitResult.success) {
+        const store = await createRateLimitStore();
+        const rateLimitResult = await checkRateLimit(store, `login_${ip}`, RATE_LIMIT_CONFIG.login);
+        if (!rateLimitResult.allowed) {
           await TimingAttackProtection.addConstantDelay();
           return {
             success: false,
@@ -300,14 +296,9 @@ export async function registerAction(formData: FormData): Promise<ActionResult<{
         const headersList = headers();
         const ip = headersList.get("x-forwarded-for") || headersList.get("x-real-ip") || "unknown";
 
-        const rateLimit = createRateLimit({
-          requests: 10,
-          window: "1 h",
-          identifier: "ip",
-        });
-
-        const rateLimitResult = await rateLimit.limit(`register_${ip}`);
-        if (!rateLimitResult.success) {
+        const store = await createRateLimitStore();
+        const rateLimitResult = await checkRateLimit(store, `register_${ip}`, RATE_LIMIT_CONFIG.register);
+        if (!rateLimitResult.allowed) {
           await TimingAttackProtection.addConstantDelay();
           return {
             success: false,
@@ -572,14 +563,9 @@ export async function resetPasswordAction(formData: FormData): Promise<ActionRes
         const headersList = headers();
         const ip = headersList.get("x-forwarded-for") || headersList.get("x-real-ip") || "unknown";
 
-        const rateLimit = createRateLimit({
-          requests: 5,
-          window: "1 h",
-          identifier: "ip",
-        });
-
-        const rateLimitResult = await rateLimit.limit(`reset_password_${ip}`);
-        if (!rateLimitResult.success) {
+        const store = await createRateLimitStore();
+        const rateLimitResult = await checkRateLimit(store, `reset_password_${ip}`, RATE_LIMIT_CONFIG.passwordReset);
+        if (!rateLimitResult.allowed) {
           await TimingAttackProtection.addConstantDelay();
           return {
             success: false,
