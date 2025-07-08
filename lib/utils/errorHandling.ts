@@ -71,6 +71,18 @@ export function createAsyncValidationErrorHandler() {
       return error.message;
     }
 
-    return formatValidationError(error, DEFAULT_ERROR_MESSAGES.ASYNC_ERROR);
+    if (error instanceof ValidationError) {
+      return error.message;
+    }
+
+    if (error instanceof Error) {
+      return error.message;
+    }
+
+    if (typeof error === "string") {
+      return error;
+    }
+
+    return DEFAULT_ERROR_MESSAGES.ASYNC_ERROR;
   };
 }
