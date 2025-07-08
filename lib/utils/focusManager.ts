@@ -17,7 +17,7 @@ export class FocusManager {
    * コンテナ内のフォーカス可能要素を取得
    */
   static getFocusableElements(container: HTMLElement): FocusableElement[] {
-    if (!container || !container.nodeType) {
+    if (!(container instanceof HTMLElement)) {
       return [];
     }
 
@@ -79,7 +79,7 @@ export class FocusManager {
    * フォーカストラップを作成
    */
   static createFocusTrap(container: HTMLElement): () => void {
-    if (!container || !container.nodeType) {
+    if (!(container instanceof HTMLElement)) {
       return () => {};
     }
 
@@ -128,7 +128,7 @@ export class FocusManager {
    * フォーカスを復元
    */
   static restoreFocus(element: HTMLElement): void {
-    if (!element || !element.nodeType) {
+    if (!(element instanceof HTMLElement)) {
       return;
     }
 
@@ -145,7 +145,7 @@ export class FocusManager {
    * 最初のエラーフィールドにフォーカス
    */
   static focusFirstError(container: HTMLElement): void {
-    if (!container || !container.nodeType) {
+    if (!(container instanceof HTMLElement)) {
       return;
     }
 
@@ -164,8 +164,7 @@ export class FocusManager {
    */
   static isFocusable(element: HTMLElement): element is FocusableElement {
     return (
-      element &&
-      element.nodeType === Node.ELEMENT_NODE &&
+      element instanceof HTMLElement &&
       !element.hasAttribute("disabled") &&
       element.tabIndex !== -1 &&
       typeof element.focus === "function"
