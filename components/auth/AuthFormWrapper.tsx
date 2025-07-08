@@ -82,6 +82,11 @@ export function AuthFormWrapper({
               <form
                 ref={formRef}
                 action={typeof action === "string" ? action : undefined}
+                onSubmit={typeof action === "function" ? (e) => {
+                  e.preventDefault();
+                  const formData = new FormData(e.currentTarget);
+                  action(formData);
+                } : undefined}
                 className={`space-y-6 ${className}`}
                 noValidate
                 role="form"
