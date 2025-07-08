@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { checkRateLimit, createRateLimitStore, type RateLimitResult } from "@/lib/rate-limit/index";
+import { checkRateLimit, createRateLimitStore } from "@/lib/rate-limit/index";
 import { RATE_LIMIT_CONFIG } from "@/config/security";
 import { AccountLockoutService, TimingAttackProtection, InputSanitizer } from "@/lib/auth-security";
 import { z } from "zod";

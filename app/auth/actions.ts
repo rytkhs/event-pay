@@ -3,7 +3,7 @@
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { type EmailOtpType, type AuthResponse } from "@supabase/supabase-js";
-import { checkRateLimit, createRateLimitStore, type RateLimitResult } from "@/lib/rate-limit/index";
+import { checkRateLimit, createRateLimitStore } from "@/lib/rate-limit/index";
 import { RATE_LIMIT_CONFIG } from "@/config/security";
 import { AccountLockoutService, TimingAttackProtection, InputSanitizer } from "@/lib/auth-security";
 import { headers } from "next/headers";
