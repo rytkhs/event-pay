@@ -16,7 +16,25 @@ const loginSchema = z.object({
 
 const registerSchema = z
   .object({
-    name: z.string().min(1, "名前を入力してください").max(100),
+    name: z
+      .string()
+      .min(1, "名前を入力してください")
+      .max(100, "名前は100文字以内で入力してください")
+      .refine(
+        (name) => {
+          const trimmed = name.trim();
+          // NULL文字やcontrol文字のチェック
+          if (trimmed.includes("\0") || trimmed.includes("\x1a")) return false;
+          // 危険な特殊文字のチェック（アポストロフィと引用符は許可）
+          if (/[;&|`$(){}[\]<>\\]/.test(trimmed)) return false;
+          // コマンドインジェクション対策（完全なコマンド形式のみ拒否）
+          if (/^\s*(rm|cat|echo|whoami|id|ls|pwd|sudo|su|curl|wget|nc|nmap|chmod|chown|kill|ps|top|netstat|find|grep|awk|sed|tail|head|sort|uniq)\s+/.test(trimmed)) return false;
+          return true;
+        },
+        {
+          message: "名前に無効な文字が含まれています",
+        }
+      ),
     email: z.string().email("有効なメールアドレスを入力してください").max(254),
     password: z
       .string()
@@ -56,11 +74,11 @@ const updatePasswordSchema = z
         /^(?=.*[A-Z])(?=.*[a-z])(?=.*\d)/,
         "パスワードは大文字・小文字・数字を含む必要があります"
       ),
-    confirmPassword: z.string(),
+    passwordConfirm: z.string(),
   })
-  .refine((data) => data.password === data.confirmPassword, {
+  .refine((data) => data.password === data.passwordConfirm, {
     message: "パスワードが一致しません",
-    path: ["confirmPassword"],
+    path: ["passwordConfirm"],
   });
 
 // 共通結果型
@@ -336,35 +354,10 @@ export async function registerAction(formData: FormData): Promise<ActionResult<{
       };
     }
 
-    // 入力値サニタイゼーション
-    let sanitizedEmail: string;
-    let sanitizedPassword: string;
-    let sanitizedName: string;
-    try {
-      sanitizedEmail = InputSanitizer.sanitizeEmail(email);
-      sanitizedPassword = InputSanitizer.sanitizePassword(password);
-      sanitizedName = name.trim();
-
-      // 名前の長さとパターンチェック（コマンドインジェクション対策強化）
-      if (
-        sanitizedName.length > 100 ||
-        sanitizedName.includes("\0") ||
-        sanitizedName.includes("\x1a") ||
-        /[;&|`$(){}[\]<>'"\\]/.test(sanitizedName) ||
-        /^\s*(rm|cat|echo|whoami|id|ls|pwd|sudo|su|curl|wget|nc|nmap|chmod|chown|kill|ps|top|netstat|find|grep|awk|sed|tail|head|sort|uniq)\s*/.test(
-          sanitizedName
-        )
-      ) {
-        throw new Error("Invalid name format");
-      }
-    } catch {
-      // sanitizeError
-      await TimingAttackProtection.addConstantDelay();
-      return {
-        success: false,
-        error: "入力内容を確認してください",
-      };
-    }
+    // 入力値サニタイゼーション（Zodバリデーション後なので基本的なサニタイゼーションのみ）
+    const sanitizedEmail = InputSanitizer.sanitizeEmail(email);
+    const sanitizedPassword = InputSanitizer.sanitizePassword(password);
+    const sanitizedName = name.trim();
 
     const supabase = createClient();
 
