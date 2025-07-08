@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { checkRateLimit, RateLimitConfig } from "./rate-limit";
+import { checkRateLimit, createRateLimitStore, type RateLimitConfig } from "@/lib/rate-limit/index";
 
 // レート制限エラーレスポンス用の型定義
 interface RateLimitErrorResponse {
@@ -14,27 +14,26 @@ interface RateLimitErrorResponse {
 // レート制限ミドルウェア
 export function withRateLimit(config: RateLimitConfig, keyPrefix?: string) {
   return async function (request: NextRequest) {
-    const result = await checkRateLimit(request, config, keyPrefix);
+    const ip = request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip") || "unknown";
+    const store = await createRateLimitStore();
+    const result = await checkRateLimit(store, `${keyPrefix || "api"}_${ip}`, config);
 
-    if (!result.success) {
-      const retryAfter = Math.round((result.reset - Date.now()) / 1000);
+    if (!result.allowed) {
+      const retryAfter = result.retryAfter || 60;
 
       const errorResponse: RateLimitErrorResponse = {
         success: false,
         error: {
           code: "RATE_LIMIT_EXCEEDED",
           message: "レート制限に達しました。しばらく待ってから再試行してください。",
-          retryAfter: retryAfter > 0 ? retryAfter : 60, // デフォルト60秒
+          retryAfter,
         },
       };
 
       return NextResponse.json(errorResponse, {
         status: 429,
         headers: {
-          "X-RateLimit-Limit": result.limit.toString(),
-          "X-RateLimit-Remaining": result.remaining.toString(),
-          "X-RateLimit-Reset": result.reset.toString(),
-          "Retry-After": (retryAfter > 0 ? retryAfter : 60).toString(),
+          "Retry-After": retryAfter.toString(),
         },
       });
     }
@@ -52,29 +51,4 @@ export async function handleRateLimit(
 ): Promise<NextResponse | null> {
   const middleware = withRateLimit(config, keyPrefix);
   return await middleware(request);
-}
-
-// 成功レスポンスにレート制限ヘッダーを追加
-export async function addRateLimitHeaders(
-  request: NextRequest,
-  response: NextResponse,
-  config: RateLimitConfig,
-  keyPrefix?: string
-): Promise<NextResponse> {
-  try {
-    const result = await checkRateLimit(request, config, keyPrefix);
-
-    // 既存のヘッダーを保持してレート制限ヘッダーを追加
-    response.headers.set("X-RateLimit-Limit", result.limit.toString());
-    response.headers.set("X-RateLimit-Remaining", result.remaining.toString());
-    response.headers.set("X-RateLimit-Reset", result.reset.toString());
-
-    return response;
-  } catch {
-    // 本番環境では適切なログシステムに出力
-    if (process.env.NODE_ENV === "development") {
-      // console.error("Failed to add rate limit headers:", _);
-    }
-    return response;
-  }
 }

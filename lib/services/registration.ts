@@ -4,7 +4,8 @@ import {
   deleteUserById,
   checkUserProfileExists,
 } from "@/lib/supabase/admin";
-import { checkRateLimit, RATE_LIMIT_CONFIGS } from "@/lib/rate-limit";
+import { checkRateLimit, createRateLimitStore, type RateLimitResult } from "@/lib/rate-limit/index";
+import { RATE_LIMIT_CONFIG } from "@/config/security";
 import { PASSWORD_CONFIG } from "@/config/security";
 import { z } from "zod";
 
@@ -45,12 +46,25 @@ export interface RegistrationResult {
 
 export class RegistrationService {
   static async checkRateLimit(request: NextRequest): Promise<RegistrationRateLimitResult> {
-    const result = await checkRateLimit(request, RATE_LIMIT_CONFIGS.userRegistration, "register");
+    try {
+      // IPアドレス取得
+      const ip = request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip") || "unknown";
+      
+      const store = await createRateLimitStore();
+      const result = await checkRateLimit(store, `register_${ip}`, RATE_LIMIT_CONFIG.register);
 
-    return {
-      allowed: result.success,
-      retryAfter: result.success ? undefined : Math.ceil((result.reset - Date.now()) / 1000),
-    };
+      return {
+        allowed: result.allowed,
+        retryAfter: result.retryAfter,
+      };
+    } catch (error) {
+      // 本番環境では適切なログシステムに出力
+      if (process.env.NODE_ENV === "development") {
+        // console.error("Rate limit check failed:", error);
+      }
+      // フェイルオープン（エラー時は制限しない）
+      return { allowed: true };
+    }
   }
 
   static async validateInput(request: NextRequest): Promise<RegistrationData> {
