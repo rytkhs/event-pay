@@ -8,7 +8,7 @@ module.exports = {
         "http://localhost:3000/auth/reset-password",
       ],
       startServerCommand: "npm start",
-      startServerReadyPattern: "ready",
+      startServerReadyPattern: "- Local:",
       startServerReadyTimeout: 30000,
     },
     assert: {
