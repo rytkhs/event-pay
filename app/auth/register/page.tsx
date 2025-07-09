@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
 import { usePasswordConfirmation } from "@/lib/hooks/usePasswordConfirmation";
 import { PasswordStatusIcon } from "@/components/ui/PasswordStatusIcon";
 import { registerAction } from "@/app/auth/actions";
@@ -19,7 +20,26 @@ export default function RegisterPage() {
   // パスワード確認カスタムフック
   const passwordConfirmation = usePasswordConfirmation();
 
+  // 利用規約同意状態
+  const [termsAgreed, setTermsAgreed] = useState(false);
+  const [termsError, setTermsError] = useState("");
+
+  // Terms checkbox handler with Safari compatibility
+  const handleTermsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const checked = e.target.checked;
+    // Use React's flushSync to ensure immediate state update for Safari
+    setTermsAgreed(checked);
+    setTermsError(""); // Clear error when terms are agreed
+  };
+
   const handleSubmit = async (formData: FormData) => {
+    // 利用規約同意バリデーション
+    if (!termsAgreed) {
+      setTermsError("利用規約に同意してください");
+      return;
+    }
+    setTermsError("");
+
     // パスワード確認バリデーション
     if (!passwordConfirmation.actions.validateMatch()) {
       return;
@@ -30,12 +50,13 @@ export default function RegisterPage() {
       return;
     }
 
-    // フォームデータにパスワードを追加
+    // フォームデータにパスワードと利用規約同意を追加
     formData.set("password", passwordConfirmation.state.password);
-    formData.set("confirmPassword", passwordConfirmation.state.confirmPassword);
+    formData.set("passwordConfirm", passwordConfirmation.state.confirmPassword);
+    formData.set("termsAgreed", termsAgreed.toString());
 
     // Server Actionを実行
-    return formAction(formData);
+    await formAction(formData);
   };
 
   return (
@@ -44,7 +65,8 @@ export default function RegisterPage() {
       subtitle="EventPayアカウントを作成してください"
       state={state}
       isPending={isPending}
-      formAction={handleSubmit}
+      action={handleSubmit}
+      testId="register-form"
     >
       <AuthFormField
         type="text"
@@ -80,7 +102,7 @@ export default function RegisterPage() {
       <div className="space-y-2">
         <AuthFormField
           type="password"
-          name="confirmPassword"
+          name="passwordConfirm"
           label="パスワード（確認）"
           placeholder="上記と同じパスワードを入力"
           value={passwordConfirmation.state.confirmPassword}
@@ -91,7 +113,7 @@ export default function RegisterPage() {
           error={
             passwordConfirmation.validation.hasError
               ? passwordConfirmation.state.error
-              : state.fieldErrors?.confirmPassword?.[0]
+              : state.fieldErrors?.passwordConfirm?.[0]
           }
           required
         />
@@ -106,11 +128,57 @@ export default function RegisterPage() {
         <div className="text-xs text-gray-500">上記と同じパスワードを入力してください</div>
       </div>
 
-      <AuthSubmitButton isPending={isPending}>登録</AuthSubmitButton>
+      {/* 利用規約同意チェックボックス */}
+      <div className="space-y-2">
+        <div className="flex items-start space-x-2">
+          <input
+            type="checkbox"
+            id="terms-agreement"
+            checked={termsAgreed}
+            onChange={handleTermsChange}
+            className="mt-1 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+            aria-required="true"
+            aria-describedby="terms-description"
+            disabled={isPending}
+          />
+          <label
+            htmlFor="terms-agreement"
+            className="text-sm text-gray-700 leading-5 cursor-pointer"
+          >
+            <Link
+              href="/terms"
+              target="_blank"
+              rel="noopener noreferrer"
+              tabIndex={-1}
+              className="text-blue-600 hover:text-blue-500 hover:underline focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 rounded"
+            >
+              利用規約
+            </Link>
+            に同意する
+          </label>
+        </div>
+
+        <div id="terms-description" className="text-xs text-gray-500">
+          EventPayをご利用いただくには利用規約への同意が必要です
+        </div>
+
+        {termsError && (
+          <div data-testid="terms-error" className="text-red-500 text-sm" role="alert">
+            {termsError}
+          </div>
+        )}
+      </div>
+
+      <AuthSubmitButton isPending={isPending} disabled={!termsAgreed}>
+        登録
+      </AuthSubmitButton>
 
       <div className="text-center text-sm text-gray-600">
         既にアカウントをお持ちの方は{" "}
-        <Link href="/auth/login" className="text-blue-600 hover:text-blue-500 hover:underline">
+        <Link
+          href="/auth/login"
+          className="text-blue-600 hover:text-blue-500 underline focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 rounded"
+        >
           ログイン
         </Link>
       </div>

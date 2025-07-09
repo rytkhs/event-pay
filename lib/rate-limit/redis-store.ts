@@ -23,15 +23,19 @@ interface RedisClient {
 }
 
 export class RedisRateLimitStore implements RateLimitStore {
-  constructor(private redis: RedisClient) {}
+  constructor(private redis: RedisClient) {
+    if (!redis) {
+      throw new Error("RedisClient is required for RedisRateLimitStore");
+    }
+  }
 
   async get(key: string): Promise<RateLimitData | null> {
     try {
       const data = await this.redis.get(key);
       return data ? JSON.parse(data) : null;
-    } catch (error) {
+    } catch {
       // eslint-disable-next-line no-console
-      console.error("Redis get error:", error);
+      // console.error("Redis get error:", _);
       return null;
     }
   }
@@ -46,7 +50,7 @@ export class RedisRateLimitStore implements RateLimitStore {
       }
     } catch (error) {
       // eslint-disable-next-line no-console
-      console.error("Redis set error:", error);
+      // console.error("Redis set error:", error);
       throw error;
     }
   }
@@ -56,28 +60,28 @@ export class RedisRateLimitStore implements RateLimitStore {
       await this.redis.del(key);
     } catch (error) {
       // eslint-disable-next-line no-console
-      console.error("Redis delete error:", error);
+      // console.error("Redis delete error:", error);
       throw error;
     }
   }
 }
 
 // 本番環境用のRedis接続ファクトリー
-export async function createRedisClient(): Promise<RedisClient> {
+export async function createRedisClient(): Promise<RedisClient | null> {
   // 環境変数から接続情報を取得
-  const redisUrl = process.env.RATE_LIMIT_REDIS_URL;
-  const redisToken = process.env.RATE_LIMIT_REDIS_TOKEN;
+  const redisUrl = process.env.UPSTASH_REDIS_REST_URL;
+  const redisToken = process.env.UPSTASH_REDIS_REST_TOKEN;
 
-  // 開発環境では環境変数が未設定の場合はエラーを投げずに警告のみ
+  // 環境変数が未設定の場合はnullを返す（型安全）
   if (!redisUrl || !redisToken) {
     if (process.env.NODE_ENV === "production") {
       throw new Error(
-        "RATE_LIMIT_REDIS_URL and RATE_LIMIT_REDIS_TOKEN environment variables are required in production"
+        "UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN environment variables are required in production"
       );
     } else {
-      console.warn("Redis環境変数が未設定です。開発環境ではメモリベースのレート制限を使用します。");
-      // 非本番環境では例外を投げずにnullを返して、呼び出し元でメモリベースの実装にフォールバック
-      return null as any;
+      // console.warn("Redis環境変数が未設定です。開発環境ではメモリベースのレート制限を使用します。");
+      // 開発環境では型安全にnullを返す
+      return null;
     }
   }
 
@@ -91,8 +95,8 @@ export async function createRedisClient(): Promise<RedisClient> {
     });
 
     // 接続テスト用のpingコマンドを実行
-    redis.ping().catch((error: Error) => {
-      console.error("Redis接続テストに失敗しました:", error);
+    redis.ping().catch(() => {
+      // console.error("Redis接続テストに失敗しました:", error);
     });
 
     return {
@@ -101,7 +105,7 @@ export async function createRedisClient(): Promise<RedisClient> {
           const result = await redis.get(key);
           return result as string | null;
         } catch (error) {
-          console.error(`Redis GET error for key ${key}:`, error);
+          // console.error(`Redis GET error for key ${key}:`, error);
           throw error;
         }
       },
@@ -126,7 +130,7 @@ export async function createRedisClient(): Promise<RedisClient> {
             await redis.set(key, value);
           }
         } catch (error) {
-          console.error(`Redis SET error for key ${key}:`, error);
+          // console.error(`Redis SET error for key ${key}:`, error);
           throw error;
         }
       },
@@ -134,7 +138,7 @@ export async function createRedisClient(): Promise<RedisClient> {
         try {
           await redis.del(key);
         } catch (error) {
-          console.error(`Redis DEL error for key ${key}:`, error);
+          // console.error(`Redis DEL error for key ${key}:`, error);
           throw error;
         }
       },
@@ -143,7 +147,7 @@ export async function createRedisClient(): Promise<RedisClient> {
           const result = await redis.incr(key);
           return result;
         } catch (error) {
-          console.error(`Redis INCR error for key ${key}:`, error);
+          // console.error(`Redis INCR error for key ${key}:`, error);
           throw error;
         }
       },
@@ -151,13 +155,13 @@ export async function createRedisClient(): Promise<RedisClient> {
         try {
           await redis.expire(key, seconds);
         } catch (error) {
-          console.error(`Redis EXPIRE error for key ${key}:`, error);
+          // console.error(`Redis EXPIRE error for key ${key}:`, error);
           throw error;
         }
       },
     };
   } catch (error) {
-    console.error("Redis client initialization failed:", error);
+    // console.error("Redis client initialization failed:", error);
     throw new Error(`Failed to create Redis client: ${error}`);
   }
 }

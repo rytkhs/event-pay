@@ -66,6 +66,9 @@ Thumbs.db
 
 docs/
 CLAUDE.md
+GEMINI.md
 
 uploads/
 usage_tracking2.json
+
+scripts/

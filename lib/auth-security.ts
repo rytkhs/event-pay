@@ -85,12 +85,12 @@ export class AccountLockoutService {
 
         // セキュリティログ - 本番環境では適切なログシステムに出力
         if (process.env.NODE_ENV === "development") {
-          console.warn("Account locked due to failed attempts:", {
-            email: email.replace(/(.{2}).*(@.*)/, "$1***$2"),
-            attempts: newAttempts,
-            lockoutExpiresAt: lockoutExpiresAt.toISOString(),
-            timestamp: new Date().toISOString(),
-          });
+          // console.warn("Account locked due to failed attempts:", {
+          //   email: email.replace(/(.{2}).*(@.*)/, "$1***$2"),
+          //   attempts: newAttempts,
+          //   lockoutExpiresAt: lockoutExpiresAt.toISOString(),
+          //   timestamp: new Date().toISOString(),
+          // });
         }
 
         return {
@@ -104,10 +104,10 @@ export class AccountLockoutService {
         failedAttempts: newAttempts,
         isLocked: false,
       };
-    } catch (error) {
+    } catch {
       // 本番環境では適切なログシステムに出力
       if (process.env.NODE_ENV === "development") {
-        console.error("Failed to record failed attempt:", error);
+        // console.error("Failed to record failed attempt:", _);
       }
       // フェイルオープン（エラー時は制限しない）
       return {
@@ -153,10 +153,10 @@ export class AccountLockoutService {
         isLocked: false,
         remainingAttempts,
       };
-    } catch (error) {
+    } catch {
       // 本番環境では適切なログシステムに出力
       if (process.env.NODE_ENV === "development") {
-        console.error("Failed to check lockout status:", error);
+        // console.error("Failed to check lockout status:", _);
       }
       // フェイルオープン（エラー時は制限しない）
       return {
@@ -177,10 +177,10 @@ export class AccountLockoutService {
       const lockoutKey = this.getLockoutKey(email);
 
       await Promise.all([redis.del(failedKey), redis.del(lockoutKey)]);
-    } catch (error) {
+    } catch {
       // 本番環境では適切なログシステムに出力
       if (process.env.NODE_ENV === "development") {
-        console.error("Failed to clear failed attempts:", error);
+        // console.error("Failed to clear failed attempts:", _);
       }
       // エラーは記録するが、処理は継続
     }

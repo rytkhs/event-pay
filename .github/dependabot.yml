@@ -1,0 +1,73 @@
+version: 2
+updates:
+  # Package dependencies
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "daily"
+    # Group minor and patch updates together
+    groups:
+      dev-dependencies:
+        patterns:
+          - "@types/*"
+          - "eslint*"
+          - "prettier*"
+          - "jest*"
+          - "playwright*"
+          - "typescript"
+        update-types:
+          - "minor"
+          - "patch"
+      production-dependencies:
+        patterns:
+          - "next"
+          - "react*"
+          - "@supabase/*"
+          - "stripe"
+        update-types:
+          - "minor"
+          - "patch"
+    # Security updates for critical vulnerabilities
+    open-pull-requests-limit: 10
+    allow:
+      - dependency-type: "direct"
+      - dependency-type: "indirect"
+    # Automatically merge security updates
+    auto-merge: true
+    reviewers:
+      - "tkhs"
+    labels:
+      - "dependencies"
+      - "security"
+
+  # GitHub Actions dependencies
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    groups:
+      actions:
+        patterns:
+          - "actions/*"
+          - "github/*"
+        update-types:
+          - "minor"
+          - "patch"
+    open-pull-requests-limit: 5
+    reviewers:
+      - "tkhs"
+    labels:
+      - "github-actions"
+      - "dependencies"
+
+  # Docker dependencies (if any)
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    reviewers:
+      - "rytkhs"
+    labels:
+      - "docker"
+      - "dependencies"

@@ -24,11 +24,11 @@ export class PasswordResetService {
     if (error) {
       // ログには詳細なエラーを記録（監視用）- 本番環境では適切なログシステムに出力
       if (process.env.NODE_ENV === "development") {
-        console.warn("Password reset email send failed:", {
-          email: email.replace(/(.{2}).*(@.*)/, "$1***$2"), // メールアドレスを部分的にマスク
-          error: error.message,
-          timestamp: new Date().toISOString(),
-        });
+        // console.warn("Password reset email send failed:", {
+        //   email: email.replace(/(.{2}).*(@.*)/, "$1***$2"), // メールアドレスを部分的にマスク
+        //   error: error.message,
+        //   timestamp: new Date().toISOString(),
+        // });
       }
     }
 

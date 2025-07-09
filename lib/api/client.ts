@@ -37,7 +37,7 @@ export class ApiClient {
       return await response.json();
     } catch (error) {
       if (process.env.NODE_ENV === "development") {
-        console.error("API request failed:", error);
+        // console.error("API request failed:", error);
       }
       throw error;
     }
