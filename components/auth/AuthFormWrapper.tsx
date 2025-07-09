@@ -10,7 +10,7 @@ interface AuthFormWrapperProps {
   state: ServerActionResult;
   isPending: boolean;
   children: ReactNode;
-  action?: string | ((formData: FormData) => void);
+  action?: string | ((formData: FormData) => void | Promise<void>);
   className?: string;
   maxWidth?: "sm" | "md" | "lg" | "xl";
   testId?: string;
@@ -82,10 +82,10 @@ export function AuthFormWrapper({
               <form
                 ref={formRef}
                 action={typeof action === "string" ? action : undefined}
-                onSubmit={typeof action === "function" ? (e) => {
+                onSubmit={typeof action === "function" ? async (e) => {
                   e.preventDefault();
                   const formData = new FormData(e.currentTarget);
-                  action(formData);
+                  await action(formData);
                 } : undefined}
                 className={`space-y-6 ${className}`}
                 noValidate
