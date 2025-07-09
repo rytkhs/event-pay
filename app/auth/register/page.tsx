@@ -56,7 +56,7 @@ export default function RegisterPage() {
     formData.set("termsAgreed", termsAgreed.toString());
 
     // Server Actionを実行
-    return formAction(formData);
+    await formAction(formData);
   };
 
   return (
