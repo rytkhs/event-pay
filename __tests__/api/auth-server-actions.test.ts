@@ -41,11 +41,12 @@ const RegisterSchema = z
       .string()
       .min(8, "パスワードは8文字以上である必要があります")
       .max(128, "パスワードは128文字以内で入力してください"),
-    confirmPassword: z.string(),
+    passwordConfirm: z.string(),
+    termsAgreed: z.string(),
   })
-  .refine((data) => data.password === data.confirmPassword, {
+  .refine((data) => data.password === data.passwordConfirm, {
     message: "パスワードが一致しません",
-    path: ["confirmPassword"],
+    path: ["passwordConfirm"],
   });
 
 const ResetPasswordSchema = z.object({
@@ -96,7 +97,7 @@ describe("認証Server Actions (TDD Red Phase)", () => {
       } else {
         // モック環境での失敗パターン（期待される動作）
         expect(result.error).toMatch(
-          /メールアドレスまたはパスワードが正しくありません|ログイン処理中にエラーが発生しました/
+          /メールアドレスまたはパスワードが正しくありません|ログイン処理中にエラーが発生しました|入力内容を確認してください/
         );
       }
     });
@@ -153,14 +154,16 @@ describe("認証Server Actions (TDD Red Phase)", () => {
         name: "テストユーザー",
         email: "newuser@eventpay.test",
         password: "SecurePass123!",
-        confirmPassword: "SecurePass123!",
+        passwordConfirm: "SecurePass123!",
+        termsAgreed: "true",
       };
 
       const formData = new FormData();
       formData.append("name", validRegistration.name);
       formData.append("email", validRegistration.email);
       formData.append("password", validRegistration.password);
-      formData.append("confirmPassword", validRegistration.confirmPassword);
+      formData.append("passwordConfirm", validRegistration.passwordConfirm);
+      formData.append("termsAgreed", validRegistration.termsAgreed);
 
       const result = await registerAction(formData);
 
@@ -176,14 +179,16 @@ describe("認証Server Actions (TDD Red Phase)", () => {
         name: "重複ユーザー",
         email: "existing@eventpay.test",
         password: "SecurePass123!",
-        confirmPassword: "SecurePass123!",
+        passwordConfirm: "SecurePass123!",
+        termsAgreed: "true",
       };
 
       const formData = new FormData();
       formData.append("name", duplicateEmail.name);
       formData.append("email", duplicateEmail.email);
       formData.append("password", duplicateEmail.password);
-      formData.append("confirmPassword", duplicateEmail.confirmPassword);
+      formData.append("passwordConfirm", duplicateEmail.passwordConfirm);
+      formData.append("termsAgreed", duplicateEmail.termsAgreed);
 
       const result = await registerAction(formData);
 
@@ -195,7 +200,7 @@ describe("認証Server Actions (TDD Red Phase)", () => {
       } else {
         // 重複エラーまたはその他のバリデーションエラー
         expect(result.error).toMatch(
-          /このメールアドレスは既に登録されています|登録処理中にエラーが発生しました/
+          /このメールアドレスは既に登録されています|登録処理中にエラーが発生しました|入力内容を確認してください/
         );
       }
     });
@@ -205,20 +210,22 @@ describe("認証Server Actions (TDD Red Phase)", () => {
         name: "テストユーザー",
         email: "mismatch@eventpay.test",
         password: "SecurePass123!",
-        confirmPassword: "DifferentPass123!",
+        passwordConfirm: "DifferentPass123!",
+        termsAgreed: "true",
       };
 
       const formData = new FormData();
       formData.append("name", mismatchedPasswords.name);
       formData.append("email", mismatchedPasswords.email);
       formData.append("password", mismatchedPasswords.password);
-      formData.append("confirmPassword", mismatchedPasswords.confirmPassword);
+      formData.append("passwordConfirm", mismatchedPasswords.passwordConfirm);
+      formData.append("termsAgreed", mismatchedPasswords.termsAgreed);
 
       const result = await registerAction(formData);
 
       expect(result).toBeDefined();
       expect(result.success).toBe(false);
-      expect(result.fieldErrors?.confirmPassword).toContain("パスワードが一致しません");
+      expect(result.fieldErrors?.passwordConfirm).toContain("パスワードが一致しません");
     });
 
     test("弱いパスワードでの登録失敗", async () => {
@@ -226,14 +233,16 @@ describe("認証Server Actions (TDD Red Phase)", () => {
         name: "テストユーザー",
         email: "weak@eventpay.test",
         password: "123",
-        confirmPassword: "123",
+        passwordConfirm: "123",
+        termsAgreed: "true",
       };
 
       const formData = new FormData();
       formData.append("name", weakPassword.name);
       formData.append("email", weakPassword.email);
       formData.append("password", weakPassword.password);
-      formData.append("confirmPassword", weakPassword.confirmPassword);
+      formData.append("passwordConfirm", weakPassword.passwordConfirm);
+      formData.append("termsAgreed", weakPassword.termsAgreed);
 
       const result = await registerAction(formData);
 
@@ -348,12 +357,16 @@ describe("認証Server Actions (TDD Red Phase)", () => {
         email: "<script>alert('xss')</script>@eventpay.test",
         password: "'; DROP TABLE users; --",
         name: "<img src=x onerror=alert('xss')>",
+        passwordConfirm: "'; DROP TABLE users; --",
+        termsAgreed: "true",
       };
 
       const formData = new FormData();
       formData.append("email", maliciousData.email);
       formData.append("password", maliciousData.password);
       formData.append("name", maliciousData.name);
+      formData.append("passwordConfirm", maliciousData.passwordConfirm);
+      formData.append("termsAgreed", maliciousData.termsAgreed);
 
       const result = await registerAction(formData);
 

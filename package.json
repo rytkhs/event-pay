@@ -19,6 +19,9 @@
     "test:integration": "jest --config jest.config.integration.mjs",
     "test:watch": "jest --config jest.config.unit.mjs --watch",
     "test:coverage": "jest --config jest.config.unit.mjs --coverage",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:performance": "playwright test --config=playwright.config.performance.ts",
     "test:old": "jest --testPathPattern=security",
     "db:reset": "npx supabase db reset",
     "db:migrate": "npx supabase migration up",
@@ -54,6 +57,7 @@
     "@babel/preset-env": "^7.27.2",
     "@babel/preset-react": "^7.27.1",
     "@babel/preset-typescript": "^7.27.1",
+    "@playwright/test": "^1.53.2",
     "@swc/jest": "^0.2.38",
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.3.0",
@@ -77,6 +81,7 @@
     "prettier": "^3.6.1",
     "tailwindcss": "^3.4.1",
     "ts-jest": "^29.1.2",
-    "typescript": "^5"
+    "typescript": "^5",
+    "wait-on": "^7.2.0"
   }
 }

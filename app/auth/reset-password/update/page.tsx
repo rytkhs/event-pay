@@ -26,7 +26,7 @@ export default function UpdatePasswordPage() {
 
     // フォームデータにパスワードを追加
     formData.set("password", passwordConfirmation.state.password);
-    formData.set("confirmPassword", passwordConfirmation.state.confirmPassword);
+    formData.set("passwordConfirm", passwordConfirmation.state.confirmPassword);
 
     // Server Actionを実行
     return formAction(formData);
@@ -38,7 +38,7 @@ export default function UpdatePasswordPage() {
       subtitle="パスワードリセット用の新しいパスワードを設定してください"
       state={state}
       isPending={isPending}
-      formAction={handleSubmit}
+      action={handleSubmit}
     >
       <AuthFormField
         type="password"
@@ -56,7 +56,7 @@ export default function UpdatePasswordPage() {
       <div className="space-y-2">
         <AuthFormField
           type="password"
-          name="confirmPassword"
+          name="passwordConfirm"
           label="新しいパスワード（確認）"
           placeholder="上記と同じパスワードを入力"
           value={passwordConfirmation.state.confirmPassword}
@@ -67,7 +67,7 @@ export default function UpdatePasswordPage() {
           error={
             passwordConfirmation.validation.hasError
               ? passwordConfirmation.state.error
-              : state.fieldErrors?.confirmPassword?.[0]
+              : state.fieldErrors?.passwordConfirm?.[0]
           }
           required
         />

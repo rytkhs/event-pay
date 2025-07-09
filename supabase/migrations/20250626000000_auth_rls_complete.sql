@@ -284,32 +284,9 @@ BEGIN
     JOIN pg_namespace n ON p.pronamespace = n.oid
     WHERE n.nspname = 'public' AND p.proname = 'get_event_creator_name';
 
-    RAISE NOTICE '======================================================================';
-    RAISE NOTICE '✅ EventPay 認証・RLS設定統合が完了しました';
-    RAISE NOTICE '======================================================================';
-    RAISE NOTICE '📊 統合結果:';
-    RAISE NOTICE '  - RLSポリシー数: % 個', policy_count;
-    RAISE NOTICE '  - public_profilesビュー: % 個作成', view_count;
-    RAISE NOTICE '  - get_event_creator_name関数: % 個作成', function_count;
-    RAISE NOTICE '======================================================================';
-    RAISE NOTICE '🔐 セキュリティ強化項目:';
-    RAISE NOTICE '  ✅ usersテーブルへの直接アクセス制限';
-    RAISE NOTICE '  ✅ public_profilesビューによる安全な情報公開';
-    RAISE NOTICE '  ✅ 全テーブルのRLSポリシー統合・最適化';
-    RAISE NOTICE '  ✅ SECURITY INVOKER による権限制御';
-    RAISE NOTICE '======================================================================';
-    RAISE NOTICE '📋 統合されたファイル:';
-    RAISE NOTICE '  - 20250626000000_auth_rls_fixes.sql（削除予定）';
-    RAISE NOTICE '  - 20250626000001_restrict_email_access.sql（削除予定）';
-    RAISE NOTICE '  - 20250626000002_email_access_complete_restriction.sql（削除予定）';
-    RAISE NOTICE '  → 20250626000000_auth_rls_complete.sql（統合完了）';
-    RAISE NOTICE '======================================================================';
-
     IF policy_count >= 8 AND view_count = 1 AND function_count = 1 THEN
-        RAISE NOTICE '🎉 統合マイグレーション適用成功！';
+        RAISE NOTICE '🎉 EventPay 認証・RLS設定統合マイグレーション適用成功！';
     ELSE
-        RAISE WARNING '⚠️ 統合マイグレーションの適用に問題がある可能性があります';
-        RAISE WARNING '   期待値: RLS=8以上, ビュー=1, 関数=1';
-        RAISE WARNING '   実際値: RLS=%, ビュー=%, 関数=%', policy_count, view_count, function_count;
+        RAISE WARNING '⚠️ 認証・RLS設定統合マイグレーションの適用に問題がある可能性があります。手動での確認が必要です。';
     END IF;
 END $$;

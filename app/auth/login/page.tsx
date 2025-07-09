@@ -19,7 +19,8 @@ export default function LoginPage() {
       subtitle="EventPayアカウントにログインしてください"
       state={state}
       isPending={isPending}
-      formAction={formAction}
+      action={formAction}
+      testId="login-form"
     >
       <AuthEmailField
         name="email"
@@ -55,7 +56,7 @@ export default function LoginPage() {
         </div>
         <Link
           href="/auth/reset-password"
-          className="text-blue-600 hover:text-blue-500 hover:underline"
+          className="text-blue-600 hover:text-blue-500 underline focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 rounded"
         >
           パスワードを忘れた方
         </Link>
@@ -65,7 +66,10 @@ export default function LoginPage() {
 
       <div className="text-center text-sm text-gray-600">
         アカウントをお持ちでない方は{" "}
-        <Link href="/auth/register" className="text-blue-600 hover:text-blue-500 hover:underline">
+        <Link
+          href="/auth/register"
+          className="text-blue-600 hover:text-blue-500 underline focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 rounded"
+        >
           新規登録
         </Link>
       </div>
