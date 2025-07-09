@@ -15,6 +15,7 @@ const config = {
     "<rootDir>/__tests__/examples/simple-*.test.{js,ts}",
     "<rootDir>/__tests__/accessibility/**/*.test.{js,ts,tsx}",
     "<rootDir>/__tests__/mobile/**/*.test.{js,ts,tsx}",
+    "<rootDir>/__tests__/events/**/*.test.{js,ts}",
   ],
   collectCoverageFrom: [
     "lib/**/*.{js,ts}",
