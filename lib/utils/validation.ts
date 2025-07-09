@@ -5,6 +5,9 @@
 
 import { ValidationError } from "./errorHandling";
 
+// ValidationErrorクラスを再エクスポート
+export { ValidationError };
+
 /**
  * 数値の範囲をバリデート
  */
@@ -111,10 +114,10 @@ export function validateStringLength(
 export function safeValidate<T>(validator: () => T, defaultValue: T, errorMessage?: string): T {
   try {
     return validator();
-  } catch {
+  } catch (error) {
     // Error handling for validation
     if (process.env.NODE_ENV === "development" && errorMessage) {
-      // console.error(errorMessage, error);
+      console.error(errorMessage, error);
     }
     return defaultValue;
   }
