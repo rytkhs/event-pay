@@ -232,10 +232,12 @@ BEGIN
     INSERT INTO public.attendances (
         event_id,
         nickname,
+        email,
         status
     ) VALUES (
         test_event_id,
         'テスト参加者B（未定）',
+        'participant-b@example.com',
         'maybe'
     );
     -- 未定の場合は決済レコードを作成しない

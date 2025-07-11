@@ -31,7 +31,7 @@ export type Database = {
       attendances: {
         Row: {
           created_at: string;
-          email: string | null;
+          email: string;
           event_id: string;
           guest_token: string | null;
           id: string;
@@ -41,7 +41,7 @@ export type Database = {
         };
         Insert: {
           created_at?: string;
-          email?: string | null;
+          email: string;
           event_id: string;
           guest_token?: string | null;
           id?: string;
@@ -51,7 +51,7 @@ export type Database = {
         };
         Update: {
           created_at?: string;
-          email?: string | null;
+          email?: string;
           event_id?: string;
           guest_token?: string | null;
           id?: string;
