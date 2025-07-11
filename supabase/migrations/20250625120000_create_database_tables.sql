@@ -40,7 +40,7 @@ CREATE TABLE public.attendances (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     event_id UUID NOT NULL REFERENCES public.events(id) ON DELETE CASCADE,
     nickname VARCHAR(50) NOT NULL,
-    email VARCHAR(255),
+    email VARCHAR(255) NOT NULL,
     status attendance_status_enum NOT NULL,
     guest_token VARCHAR(32) UNIQUE DEFAULT substring(md5(random()::text) from 1 for 32),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL,
@@ -138,12 +138,11 @@ ALTER TABLE public.attendances ADD CONSTRAINT attendances_nickname_not_empty
     CHECK (LENGTH(TRIM(nickname)) >= 1);
 
 ALTER TABLE public.attendances ADD CONSTRAINT attendances_email_format
-    CHECK (email IS NULL OR email ~* '^[A-Za-z0-9\._%\+\-]+@[A-Za-z0-9\.\-]+\.[A-Za-z]{2,}$');
+    CHECK (email ~* '^[A-Za-z0-9\._%\+\-]+@[A-Za-z0-9\.\-]+\.[A-Za-z]{2,}$');
 
--- 同一イベントでの重複防止（メールアドレスがある場合）
+-- 同一イベントでの重複防止
 CREATE UNIQUE INDEX attendances_event_email_unique
-    ON public.attendances(event_id, email)
-    WHERE email IS NOT NULL;
+    ON public.attendances(event_id, email);
 
 -- paymentsテーブルの制約
 ALTER TABLE public.payments ADD CONSTRAINT payments_amount_non_negative
