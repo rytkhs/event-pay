@@ -1,0 +1,14 @@
+import type { Database } from "./database";
+
+export interface Event {
+  id: string;
+  title: string;
+  date: string;
+  location: string;
+  fee: number;
+  capacity: number;
+  status: Database["public"]["Enums"]["event_status_enum"];
+  creator_name: string;
+  // 実際のSupabaseクエリから取得される参加者数
+  attendances_count?: number;
+}
