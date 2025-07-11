@@ -16,6 +16,7 @@ const config = {
     "<rootDir>/__tests__/accessibility/**/*.test.{js,ts,tsx}",
     "<rootDir>/__tests__/mobile/**/*.test.{js,ts,tsx}",
     "<rootDir>/__tests__/events/**/*.test.{js,ts}",
+    "<rootDir>/__tests__/calculations/**/*.test.{js,ts}",
   ],
   collectCoverageFrom: [
     "lib/**/*.{js,ts}",
@@ -25,12 +26,14 @@ const config = {
   ],
   moduleNameMapper: {
     "^@/(.*)$": "<rootDir>/$1",
-    "^@supabase/supabase-js$": "<rootDir>/__mocks__/@supabase/supabase-js.js",
-    "^@supabase/ssr$": "<rootDir>/__mocks__/@supabase/ssr.js",
   },
   transformIgnorePatterns: [
     "node_modules/(?!(@supabase|@babel|babel))",
   ],
+  moduleNameMapper: {
+    "^@/(.*)$": "<rootDir>/$1",
+    "^@supabase/(.*)$": "<rootDir>/__tests__/mocks/supabase/$1.js",
+  },
 };
 
 export default createJestConfig(config);

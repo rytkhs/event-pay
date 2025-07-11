@@ -26,6 +26,8 @@ type FormDataFields = {
   location?: string;
   description?: string;
   capacity?: string;
+  registration_deadline?: string;
+  payment_deadline?: string;
 };
 
 export async function createEventAction(formData: FormData): Promise<CreateEventResult> {
@@ -127,6 +129,8 @@ function extractFormData(formData: FormData): FormDataFields {
     location: (formData.get("location") as string) || undefined,
     description: (formData.get("description") as string) || undefined,
     capacity: (formData.get("capacity") as string) || undefined,
+    registration_deadline: (formData.get("registration_deadline") as string) || undefined,
+    payment_deadline: (formData.get("payment_deadline") as string) || undefined,
   };
 }
 
@@ -138,15 +142,54 @@ function generateInviteToken(): string {
   return randomBytes(16).toString("hex");
 }
 
+/**
+ * 定員の値を適切に処理する
+ * 空文字列または未定義の場合は無制限（null）
+ * "0"の場合も無制限として扱う（参加不可能を避けるため）
+ */
+function parseCapacity(capacity: string | undefined): number | null {
+  if (!capacity || capacity.trim() === "") {
+    return null;
+  }
+  
+  const parsed = parseInt(capacity);
+  if (isNaN(parsed) || parsed <= 0) {
+    return null;
+  }
+  
+  return parsed;
+}
+
+/**
+ * 日付文字列をJSTのISO文字列として保存用に変換する
+ * フロントエンドからの日付文字列をJSTのまま保存する
+ */
+function convertToJSTISO(dateString: string): string {
+  // フロントエンドからのdatetime-localはJSTとして扱う
+  // 既に秒が含まれている場合は秒を保持、含まれていない場合は:00を付与
+  const hasSeconds = dateString.includes(':') && dateString.split(':').length === 3;
+  const timezoneSuffix = '+09:00';
+  
+  if (hasSeconds) {
+    // 既に秒が含まれている場合はタイムゾーン情報のみ付与
+    return dateString + timezoneSuffix;
+  } else {
+    // 秒が含まれていない場合は:00を付与してからタイムゾーン情報を付与
+    return dateString + ':00' + timezoneSuffix;
+  }
+}
+
 function buildEventData(validatedData: CreateEventInput, userId: string, inviteToken: string) {
   return {
     title: validatedData.title,
-    date: validatedData.date,
+    date: convertToJSTISO(validatedData.date),
     fee: parseInt(validatedData.fee),
-    payment_methods: validatedData.payment_methods,
+    payment_methods: validatedData.payment_methods as Database["public"]["Enums"]["payment_method_enum"][],
     location: validatedData.location || null,
     description: validatedData.description || null,
-    capacity: validatedData.capacity ? parseInt(validatedData.capacity) : null,
+    capacity: parseCapacity(validatedData.capacity),
+    registration_deadline: validatedData.registration_deadline ? convertToJSTISO(validatedData.registration_deadline) : null,
+    payment_deadline: validatedData.payment_deadline ? convertToJSTISO(validatedData.payment_deadline) : null,
     created_by: userId,
     invite_token: inviteToken,
   };
