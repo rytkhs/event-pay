@@ -2,6 +2,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { EventFormData, ValidationErrors } from "@/lib/validation/client-validation";
+import { getMinDatetimeLocal } from "@/lib/utils/timezone";
 
 interface BasicFieldsProps {
   formData: EventFormData;
@@ -60,7 +61,7 @@ export default function BasicFields({ formData, errors, onInputChange }: BasicFi
           value={formData.date}
           onChange={(e) => onInputChange("date", e.target.value)}
           className={errors.date ? "border-red-500" : ""}
-          min={new Date(Date.now() + 60 * 60 * 1000).toISOString().slice(0, 16)}
+          min={getMinDatetimeLocal()}
           required
         />
         <p className="text-xs text-gray-500">イベントの開催日時を選択してください</p>

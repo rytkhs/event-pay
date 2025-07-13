@@ -12,13 +12,13 @@ const mockEvent: Event = {
   status: "upcoming",
   creator_name: "テスト太郎",
   attendances_count: 5,
+  created_at: "2023-12-01T10:00:00Z",
 };
 
 describe("EventCard Component - Red Phase Tests", () => {
   test("イベントの基本情報が正しく表示される", () => {
     render(<EventCard event={mockEvent} />);
 
-    // このテストは失敗するはず（まだ実装されていない）
     expect(screen.getByText("テストイベント")).toBeInTheDocument();
     expect(screen.getByText("東京会議室")).toBeInTheDocument();
     expect(screen.getByText("¥1,000")).toBeInTheDocument();
@@ -30,14 +30,12 @@ describe("EventCard Component - Red Phase Tests", () => {
     const freeEvent = { ...mockEvent, fee: 0 };
     render(<EventCard event={freeEvent} />);
 
-    // このテストは失敗するはず（まだ実装されていない）
     expect(screen.getByText("無料")).toBeInTheDocument();
   });
 
   test("イベント詳細ページへのリンクが機能する", () => {
     render(<EventCard event={mockEvent} />);
 
-    // このテストは失敗するはず（まだ実装されていない）
     const link = screen.getByRole("link");
     expect(link).toHaveAttribute("href", "/events/event-1");
   });
@@ -45,7 +43,6 @@ describe("EventCard Component - Red Phase Tests", () => {
   test("イベントステータスに応じたスタイルが適用される", () => {
     render(<EventCard event={mockEvent} />);
 
-    // このテストは失敗するはず（まだ実装されていない）
     const statusBadge = screen.getByText("開催予定");
     expect(statusBadge).toHaveClass("bg-green-100", "text-green-800");
   });
@@ -54,7 +51,6 @@ describe("EventCard Component - Red Phase Tests", () => {
     const pastEvent = { ...mockEvent, status: "past" };
     render(<EventCard event={pastEvent} />);
 
-    // このテストは失敗するはず（まだ実装されていない）
     const statusBadge = screen.getByText("終了");
     expect(statusBadge).toHaveClass("bg-gray-100", "text-gray-800");
   });
@@ -63,7 +59,6 @@ describe("EventCard Component - Red Phase Tests", () => {
     const cancelledEvent = { ...mockEvent, status: "cancelled" };
     render(<EventCard event={cancelledEvent} />);
 
-    // このテストは失敗するはず（まだ実装されていない）
     const statusBadge = screen.getByText("キャンセル");
     expect(statusBadge).toHaveClass("bg-red-100", "text-red-800");
   });
@@ -72,7 +67,6 @@ describe("EventCard Component - Red Phase Tests", () => {
     const ongoingEvent = { ...mockEvent, status: "ongoing" };
     render(<EventCard event={ongoingEvent} />);
 
-    // このテストは失敗するはず（まだ実装されていない）
     const statusBadge = screen.getByText("開催中");
     expect(statusBadge).toHaveClass("bg-blue-100", "text-blue-800");
   });

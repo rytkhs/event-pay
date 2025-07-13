@@ -1,6 +1,5 @@
 /**
  * debounceValidation ユーティリティのテスト
- * TDD Red Phase - 失敗するテストを最初に書く
  */
 
 import { debounceValidation } from "@/lib/utils/debounceValidation";

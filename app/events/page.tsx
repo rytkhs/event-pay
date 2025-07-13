@@ -1,14 +1,53 @@
 import React, { Suspense } from "react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { EventList } from "@/components/events/event-list";
+import { EventListWithFilters } from "@/components/events/event-list-with-filters";
 import { EventLoading } from "@/components/events/event-loading";
 import { EventError } from "@/components/events/event-error";
 import { Button } from "@/components/ui/button";
 import { getEventsAction } from "./actions";
+import type { SortBy, SortOrder, StatusFilter, PaymentFilter } from "./actions/get-events";
 
-async function EventsContent() {
-  const result = await getEventsAction();
+interface EventsContentProps {
+  searchParams: { [key: string]: string | string[] | undefined };
+}
+
+async function EventsContent({ searchParams }: EventsContentProps) {
+  // URLパラメータから検索・ソート条件を抽出
+  const sortBy = (Array.isArray(searchParams.sortBy) 
+    ? searchParams.sortBy[0] 
+    : searchParams.sortBy) as SortBy || 'date';
+  
+  const sortOrder = (Array.isArray(searchParams.sortOrder) 
+    ? searchParams.sortOrder[0] 
+    : searchParams.sortOrder) as SortOrder || 'asc';
+  
+  const statusFilter = (Array.isArray(searchParams.status) 
+    ? searchParams.status[0] 
+    : searchParams.status) as StatusFilter || 'all';
+  
+  const paymentFilter = (Array.isArray(searchParams.payment) 
+    ? searchParams.payment[0] 
+    : searchParams.payment) as PaymentFilter || 'all';
+  
+  const dateStart = Array.isArray(searchParams.dateStart) 
+    ? searchParams.dateStart[0] 
+    : searchParams.dateStart;
+  
+  const dateEnd = Array.isArray(searchParams.dateEnd) 
+    ? searchParams.dateEnd[0] 
+    : searchParams.dateEnd;
+
+  const result = await getEventsAction({
+    sortBy,
+    sortOrder,
+    statusFilter,
+    paymentFilter,
+    dateFilter: {
+      start: dateStart,
+      end: dateEnd,
+    }
+  });
   
   if (!result.success) {
     console.error("イベント一覧取得エラー:", result.error);
@@ -27,10 +66,23 @@ async function EventsContent() {
     );
   }
   
-  return <EventList events={result.data} />;
+  return (
+    <EventListWithFilters 
+      events={result.data} 
+      initialSortBy={sortBy}
+      initialSortOrder={sortOrder}
+      initialStatusFilter={statusFilter}
+      initialPaymentFilter={paymentFilter}
+      initialDateFilter={{ start: dateStart, end: dateEnd }}
+    />
+  );
 }
 
-export default async function EventsPage() {
+interface EventsPageProps {
+  searchParams: { [key: string]: string | string[] | undefined };
+}
+
+export default async function EventsPage({ searchParams }: EventsPageProps) {
   return (
     <div data-testid="events-page-container" className="container mx-auto px-4 py-8">
       <div data-testid="events-page-header" className="mb-8">
@@ -43,7 +95,7 @@ export default async function EventsPage() {
       </div>
       
       <Suspense fallback={<EventLoading />}>
-        <EventsContent />
+        <EventsContent searchParams={searchParams} />
       </Suspense>
     </div>
   );

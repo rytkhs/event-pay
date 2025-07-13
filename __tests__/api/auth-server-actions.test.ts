@@ -3,8 +3,8 @@
  */
 
 /**
- * @file 認証Server Actionsテストスイート (TDD Red Phase)
- * @description Server Actions (`loginAction`, `registerAction`, `logoutAction`, `resetPasswordAction`) の失敗テスト
+ * @file 認証Server Actionsテストスイート
+ * @description Server Actions (`loginAction`, `registerAction`, `logoutAction`, `resetPasswordAction`)
  */
 
 import { z } from "zod";
@@ -60,7 +60,7 @@ type LoginInput = z.infer<typeof LoginSchema>;
 type RegisterInput = z.infer<typeof RegisterSchema>;
 type ResetPasswordInput = z.infer<typeof ResetPasswordSchema>;
 
-describe("認証Server Actions (TDD Red Phase)", () => {
+describe("認証Server Actions", () => {
   beforeEach(() => {
     // モック関数をリセット
     jest.clearAllMocks();

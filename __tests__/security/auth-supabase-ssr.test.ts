@@ -131,7 +131,6 @@ describe("Supabase SSR設定テスト", () => {
       );
 
       // 認証処理をシミュレートしてCookie設定をテスト
-      // 注意: この時点では認証機能が実装されていないため、これらのテストは失敗します
       expect(supabase).toBeDefined();
     });
 

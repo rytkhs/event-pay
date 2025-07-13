@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import type { Database } from '@/types/database';
+import { isUtcDateFuture } from '@/lib/utils/timezone';
 
 // 決済方法の定数
 const PAYMENT_METHODS = ['stripe', 'cash', 'free'] as const;
@@ -12,13 +13,13 @@ function isValidPaymentMethod(method: string): method is Database['public']['Enu
 // バリデーション用のヘルパー関数
 const validateFutureDate = (val: string) => {
   const date = new Date(val);
-  return !isNaN(date.getTime()) && date > new Date();
+  return !isNaN(date.getTime()) && isUtcDateFuture(date);
 };
 
 const validateOptionalFutureDate = (val: string) => {
   if (!val) return true;
   const date = new Date(val);
-  return !isNaN(date.getTime()) && date > new Date();
+  return !isNaN(date.getTime()) && isUtcDateFuture(date);
 };
 
 const validatePositiveNumber = (val: string) => {
@@ -119,3 +120,44 @@ export const createEventSchema = z.object({
 
 export type CreateEventInput = z.infer<typeof createEventSchema>;
 export type PaymentMethod = typeof PAYMENT_METHODS[number];
+
+// 日付フィルター用のバリデーションスキーマ
+const dateFormatRegex = /^\d{4}-\d{2}-\d{2}$/;
+
+export const dateFilterSchema = z.object({
+  start: z.string()
+    .optional()
+    .refine((val) => {
+      if (!val) return true;
+      return dateFormatRegex.test(val);
+    }, '開始日はYYYY-MM-DD形式で入力してください')
+    .refine((val) => {
+      if (!val) return true;
+      const date = new Date(val);
+      return !isNaN(date.getTime());
+    }, '有効な開始日を入力してください'),
+  
+  end: z.string()
+    .optional()
+    .refine((val) => {
+      if (!val) return true;
+      return dateFormatRegex.test(val);
+    }, '終了日はYYYY-MM-DD形式で入力してください')
+    .refine((val) => {
+      if (!val) return true;
+      const date = new Date(val);
+      return !isNaN(date.getTime());
+    }, '有効な終了日を入力してください'),
+})
+.refine((data) => {
+  // 開始日が終了日より前であることを確認
+  if (data.start && data.end) {
+    return new Date(data.start) <= new Date(data.end);
+  }
+  return true;
+}, {
+  message: '開始日は終了日以前に設定してください',
+  path: ['start'],
+});
+
+export type DateFilterInput = z.infer<typeof dateFilterSchema>;

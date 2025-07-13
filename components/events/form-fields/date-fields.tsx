@@ -1,6 +1,7 @@
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { EventFormData, ValidationErrors } from "@/lib/validation/client-validation";
+import { getMinDatetimeLocal } from "@/lib/utils/timezone";
 
 interface DateFieldsProps {
   formData: EventFormData;
@@ -9,10 +10,8 @@ interface DateFieldsProps {
 }
 
 export default function DateFields({ formData, errors, onInputChange }: DateFieldsProps) {
-  // 現在時刻から1時間後を最小値として設定
-  const now = new Date();
-  now.setHours(now.getHours() + 1);
-  const minDateTime = now.toISOString().slice(0, 16);
+  // 現在のJST時刻から1時間後を最小値として設定
+  const minDateTime = getMinDatetimeLocal();
 
   return (
     <>

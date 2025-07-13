@@ -47,7 +47,7 @@ export const EventCard = memo(function EventCard({ event }: EventCardProps) {
     <Card data-testid="event-card" className="hover:shadow-lg transition-shadow">
       <Link href={`/events/${event.id}`}>
         <CardHeader className="pb-2">
-          <CardTitle className="text-xl">{event.title}</CardTitle>
+          <CardTitle className="text-xl" data-testid="event-title">{event.title}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-2">
           <p className="text-muted-foreground">{formattedDate}</p>

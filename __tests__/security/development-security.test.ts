@@ -57,7 +57,7 @@ describe("開発基盤セキュリティテスト", () => {
           }
         }
 
-        // 危険なパターンのチェック（テスト失敗）
+        // 危険なパターンのチェック
         dangerousPatterns.forEach((pattern) => {
           expect(envLocal).not.toMatch(pattern);
         });
