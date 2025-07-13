@@ -2,6 +2,7 @@ import React from "react";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { jest } from "@jest/globals";
 import EventCreateForm from "@/components/events/event-form";
+import { getFutureDatetimeLocalForTest, getPastDatetimeLocalForTest } from "@/lib/utils/test-helpers";
 
 // Mock Server Action
 const mockCreateEventAction = jest.fn() as jest.MockedFunction<
@@ -132,7 +133,7 @@ describe("EventCreateForm", () => {
 
       const dateInput = screen.getByLabelText(/開催日時/i);
       const futureDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
-      fireEvent.change(dateInput, { target: { value: futureDate.toISOString().slice(0, 16) } });
+      fireEvent.change(dateInput, { target: { value: getFutureDatetimeLocalForTest(24) } }); // 24時間後
 
       const feeInput = screen.getByLabelText(/参加費/i);
       fireEvent.change(feeInput, { target: { value: "1000" } });
@@ -204,7 +205,7 @@ describe("EventCreateForm", () => {
 
       const dateInput = screen.getByLabelText(/開催日時/i);
       const pastDate = new Date(Date.now() - 24 * 60 * 60 * 1000); // 昨日
-      const formattedDate = pastDate.toISOString().slice(0, 16); // YYYY-MM-DDTHH:mm形式
+      const formattedDate = getPastDatetimeLocalForTest(24); // 24時間前
 
       fireEvent.change(dateInput, { target: { value: formattedDate } });
 
@@ -249,7 +250,7 @@ describe("EventCreateForm", () => {
 
       const dateInput = screen.getByLabelText(/開催日時/i);
       const futureDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
-      fireEvent.change(dateInput, { target: { value: futureDate.toISOString().slice(0, 16) } });
+      fireEvent.change(dateInput, { target: { value: getFutureDatetimeLocalForTest(24) } }); // 24時間後
 
       const feeInput = screen.getByLabelText(/参加費/i);
       fireEvent.change(feeInput, { target: { value: "1000" } });
@@ -275,7 +276,7 @@ describe("EventCreateForm", () => {
 
       const dateInput = screen.getByLabelText(/開催日時/i);
       const futureDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
-      fireEvent.change(dateInput, { target: { value: futureDate.toISOString().slice(0, 16) } });
+      fireEvent.change(dateInput, { target: { value: getFutureDatetimeLocalForTest(24) } }); // 24時間後
 
       const feeInput = screen.getByLabelText(/参加費/i);
       fireEvent.change(feeInput, { target: { value: "1000" } });
@@ -360,7 +361,7 @@ describe("EventCreateForm", () => {
 
       const eventDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
       fireEvent.change(screen.getByLabelText(/開催日時/i), {
-        target: { value: eventDate.toISOString().slice(0, 16) },
+        target: { value: getFutureDatetimeLocalForTest(168) }, // 7日後
       });
 
       const stripeCheckbox = screen.getByLabelText("💳 Stripe決済");
@@ -405,7 +406,7 @@ describe("EventCreateForm", () => {
 
       const eventDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
       fireEvent.change(screen.getByLabelText(/開催日時/i), {
-        target: { value: eventDate.toISOString().slice(0, 16) },
+        target: { value: getFutureDatetimeLocalForTest(168) }, // 7日後
       });
 
       const stripeCheckbox = screen.getByLabelText("💳 Stripe決済");
@@ -446,7 +447,7 @@ describe("EventCreateForm", () => {
 
       const eventDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
       fireEvent.change(screen.getByLabelText(/開催日時/i), {
-        target: { value: eventDate.toISOString().slice(0, 16) },
+        target: { value: getFutureDatetimeLocalForTest(168) }, // 7日後
       });
 
       const stripeCheckbox = screen.getByLabelText("💳 Stripe決済");
@@ -484,7 +485,7 @@ describe("EventCreateForm", () => {
 
       const eventDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
       fireEvent.change(screen.getByLabelText(/開催日時/i), {
-        target: { value: eventDate.toISOString().slice(0, 16) },
+        target: { value: getFutureDatetimeLocalForTest(168) }, // 7日後
       });
 
       const stripeCheckbox = screen.getByLabelText("💳 Stripe決済");

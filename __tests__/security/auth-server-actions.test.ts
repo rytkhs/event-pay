@@ -3,7 +3,7 @@
  */
 
 /**
- * @file 認証Server Actionsセキュリティテストスイート (TDD Red Phase)
+ * @file 認証Server Actionsセキュリティテストスイート
  * @description CSRF、XSS、認証バイパス等のセキュリティ要件テスト
  */
 
@@ -42,7 +42,7 @@ const createMaliciousFormData = (type: "xss" | "sql" | "command") => {
   return formData;
 };
 
-describe("認証Server Actions セキュリティテスト (TDD Red Phase)", () => {
+describe("認証Server Actions セキュリティテスト", () => {
   let consoleSpy: jest.SpyInstance;
 
   beforeEach(() => {

@@ -2,6 +2,7 @@ import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { jest } from '@jest/globals';
 import EventCreateForm from '@/components/events/event-form';
+import { getFutureDatetimeLocalForTest } from '@/lib/utils/test-helpers';
 
 // Mock Server Action
 jest.mock('@/app/events/actions', () => ({
@@ -70,9 +71,8 @@ describe('EventCreateForm Security Tests', () => {
 
       fireEvent.change(titleInput, { target: { value: sqlInjection } });
 
-      const eventDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
       fireEvent.change(screen.getByLabelText('開催日時'), {
-        target: { value: eventDate.toISOString().slice(0, 16) }
+        target: { value: getFutureDatetimeLocalForTest(168) } // 7日後
       });
 
       fireEvent.click(screen.getByLabelText('Stripe決済'));
@@ -244,9 +244,8 @@ describe('EventCreateForm Security Tests', () => {
       const titleInput = screen.getByLabelText('タイトル');
       fireEvent.change(titleInput, { target: { value: 'テストイベント' } });
 
-      const eventDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
       fireEvent.change(screen.getByLabelText('開催日時'), {
-        target: { value: eventDate.toISOString().slice(0, 16) }
+        target: { value: getFutureDatetimeLocalForTest(168) } // 7日後
       });
 
       fireEvent.click(screen.getByLabelText('Stripe決済'));

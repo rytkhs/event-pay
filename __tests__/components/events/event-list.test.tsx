@@ -13,6 +13,7 @@ const mockEvents: Event[] = [
     status: 'upcoming',
     creator_name: 'テスト太郎',
     attendances_count: 5,
+    created_at: '2023-12-01T10:00:00Z',
   },
   {
     id: 'event-2',
@@ -24,6 +25,7 @@ const mockEvents: Event[] = [
     status: 'upcoming',
     creator_name: 'テスト太郎',
     attendances_count: 3,
+    created_at: '2023-12-02T10:00:00Z',
   },
 ];
 
@@ -31,7 +33,6 @@ describe('EventList Component - Red Phase Tests', () => {
   test('イベントリストが正しく表示される', () => {
     render(<EventList events={mockEvents} />);
 
-    // このテストは失敗するはず（まだ実装されていない）
     expect(screen.getByText('テストイベント1')).toBeInTheDocument();
     expect(screen.getByText('テストイベント2')).toBeInTheDocument();
   });
@@ -39,7 +40,6 @@ describe('EventList Component - Red Phase Tests', () => {
   test('空のイベントリストの場合、適切なメッセージが表示される', () => {
     render(<EventList events={[]} />);
 
-    // このテストは失敗するはず（まだ実装されていない）
     expect(screen.getByText('イベントがまだありません')).toBeInTheDocument();
     expect(screen.getByText('新しいイベントを作成してみましょう')).toBeInTheDocument();
   });
@@ -55,7 +55,6 @@ describe('EventList Component - Red Phase Tests', () => {
   test('複数のイベントが適切にレンダリングされる', () => {
     render(<EventList events={mockEvents} />);
 
-    // このテストは失敗するはず（まだ実装されていない）
     const eventCards = screen.getAllByTestId('event-card');
     expect(eventCards).toHaveLength(2);
   });
@@ -63,7 +62,6 @@ describe('EventList Component - Red Phase Tests', () => {
   test('イベントカードがグリッドレイアウトで表示される', () => {
     render(<EventList events={mockEvents} />);
 
-    // このテストは失敗するはず（まだ実装されていない）
     const eventGrid = screen.getByTestId('event-grid');
     expect(eventGrid).toHaveClass('grid', 'grid-cols-1', 'md:grid-cols-2', 'lg:grid-cols-3');
   });

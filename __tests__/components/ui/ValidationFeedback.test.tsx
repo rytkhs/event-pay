@@ -1,6 +1,5 @@
 /**
  * ValidationFeedback コンポーネントのテスト
- * TDD Red Phase - 失敗するテストを最初に書く
  */
 
 import { render, screen } from "@testing-library/react";

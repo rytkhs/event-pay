@@ -6,9 +6,21 @@ import { Button } from "@/components/ui/button";
 
 interface EventListProps {
   events: Event[];
+  isLoading?: boolean;
+  isFiltered?: boolean;
 }
 
-function EmptyEventList() {
+function EmptyEventList({ isFiltered = false }: { isFiltered?: boolean }) {
+  if (isFiltered) {
+    return (
+      <div className="text-center py-12">
+        <div className="text-gray-400 text-6xl mb-4">🔍</div>
+        <p className="text-gray-600 text-lg mb-2">条件に合うイベントが見つかりません</p>
+        <p className="text-gray-500 mb-6">フィルター条件を変更してお試しください</p>
+      </div>
+    );
+  }
+
   return (
     <div className="text-center py-12">
       <div className="text-gray-400 text-6xl mb-4">📅</div>
@@ -23,9 +35,9 @@ function EmptyEventList() {
   );
 }
 
-export const EventList = memo(function EventList({ events }: EventListProps) {
+export const EventList = memo(function EventList({ events, isLoading = false, isFiltered = false }: EventListProps) {
   if (events.length === 0) {
-    return <EmptyEventList />;
+    return <EmptyEventList isFiltered={isFiltered} />;
   }
 
   return (

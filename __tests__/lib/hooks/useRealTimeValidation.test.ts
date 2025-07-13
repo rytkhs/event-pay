@@ -1,6 +1,5 @@
 /**
  * useRealTimeValidation フックのテスト
- * TDD Red Phase - 失敗するテストを最初に書く
  */
 
 import { renderHook, act } from "@testing-library/react";
