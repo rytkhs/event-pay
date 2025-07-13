@@ -67,7 +67,9 @@ export const validateField = (
   
   // 関連フィールドとの相関バリデーション（日付フィールドのみ）
   if (name === 'date' || name === 'registrationDeadline' || name === 'paymentDeadline') {
-    return validateDateRelations(name, formData);
+    // フォームデータを最新の値で更新
+    const updatedFormData = { ...formData, [name]: value };
+    return validateDateRelations(name, updatedFormData);
   }
   
   // 支払方法の特殊バリデーション

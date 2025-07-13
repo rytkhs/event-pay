@@ -272,7 +272,7 @@ describe("統合セキュリティ機能テスト", () => {
       // テスト用のUUID
       const testUuid = "00000000-0000-0000-0000-000000000001";
       const { data, error } = await supabaseAdmin.rpc("get_event_creator_name", {
-        user_id: testUuid,
+        event_creator_id: testUuid,
       });
 
       expect(error).toBeNull();

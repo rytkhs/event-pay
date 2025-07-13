@@ -123,21 +123,72 @@ class MockFactory {
 
     // Enhanced query builder with data simulation
     const createEnhancedQueryBuilder = (table) => {
-      const baseBuilder = baseMock.from(table);
+      // チェーン可能なクエリビルダーを作成
+      const createChainableBuilder = (customMethods = {}) => {
+        const builder = {
+          select: jest.fn().mockReturnThis(),
+          insert: jest.fn().mockReturnThis(),
+          update: jest.fn().mockReturnThis(),
+          delete: jest.fn().mockReturnThis(),
+          eq: jest.fn().mockReturnThis(),
+          neq: jest.fn().mockReturnThis(),
+          gt: jest.fn().mockReturnThis(),
+          gte: jest.fn().mockReturnThis(),
+          lt: jest.fn().mockReturnThis(),
+          lte: jest.fn().mockReturnThis(),
+          like: jest.fn().mockReturnThis(),
+          ilike: jest.fn().mockReturnThis(),
+          is: jest.fn().mockReturnThis(),
+          in: jest.fn().mockReturnThis(),
+          contains: jest.fn().mockReturnThis(),
+          containedBy: jest.fn().mockReturnThis(),
+          rangeGt: jest.fn().mockReturnThis(),
+          rangeGte: jest.fn().mockReturnThis(),
+          rangeLt: jest.fn().mockReturnThis(),
+          rangeLte: jest.fn().mockReturnThis(),
+          rangeAdjacent: jest.fn().mockReturnThis(),
+          overlaps: jest.fn().mockReturnThis(),
+          textSearch: jest.fn().mockReturnThis(),
+          match: jest.fn().mockReturnThis(),
+          not: jest.fn().mockReturnThis(),
+          or: jest.fn().mockReturnThis(),
+          filter: jest.fn().mockReturnThis(),
+          order: jest.fn().mockReturnThis(),
+          limit: jest.fn().mockReturnThis(),
+          range: jest.fn().mockReturnThis(),
+          abortSignal: jest.fn().mockReturnThis(),
+          single: jest.fn().mockReturnThis(),
+          maybeSingle: jest.fn().mockReturnThis(),
+          csv: jest.fn().mockReturnThis(),
+          geojson: jest.fn().mockReturnThis(),
+          explain: jest.fn().mockReturnThis(),
+          rollback: jest.fn().mockReturnThis(),
+          returns: jest.fn().mockReturnThis(),
+          then: jest.fn((resolve) => {
+            const tableData = mockData.get(table) || [];
+            
+            // selectが{ count: "exact", head: true }で呼ばれた場合はcountのみを返す
+            const selectCall = builder.select.mock.calls[0];
+            if (selectCall && selectCall[1] && selectCall[1].count === "exact" && selectCall[1].head === true) {
+              return resolve({ count: tableData.length, error: null });
+            }
+            
+            return resolve({ data: tableData, error: null });
+          }),
+          ...customMethods,
+        };
 
-      // Override the then method to return actual test data
-      baseBuilder.then = jest.fn((resolve) => {
-        const tableData = mockData.get(table) || [];
-        return resolve({ data: tableData, error: null });
-      });
+        // 全てのメソッドがbuilderを返すように設定（カスタムメソッド以外）
+        Object.keys(builder).forEach(key => {
+          if (typeof builder[key] === 'function' && !customMethods[key] && key !== 'then') {
+            builder[key].mockReturnValue(builder);
+          }
+        });
 
-      // Override select to return data immediately for testing
-      baseBuilder.select = jest.fn(() => {
-        const tableData = mockData.get(table) || [];
-        return Promise.resolve({ data: tableData, error: null });
-      });
+        return builder;
+      };
 
-      return baseBuilder;
+      return createChainableBuilder();
     };
 
     return {
