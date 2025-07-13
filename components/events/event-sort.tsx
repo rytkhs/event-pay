@@ -61,7 +61,7 @@ export function EventSort({ sortBy, sortOrder, onSortChange, onOrderChange }: Ev
         <div className="flex-1">
           <Label htmlFor="sort-by">並び順</Label>
           <Select value={sortBy} onValueChange={handleSortChange}>
-            <SelectTrigger aria-label="並び順">
+            <SelectTrigger data-testid="sort-by-select" aria-label="並び順">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>

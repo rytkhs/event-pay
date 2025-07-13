@@ -12,6 +12,7 @@ const mockFilterProps = {
   onDateFilterChange: jest.fn(),
   onPaymentFilterChange: jest.fn(),
   onClearFilters: jest.fn(),
+  isFiltered: true,
 };
 
 describe('EventFilters Component', () => {
@@ -101,6 +102,22 @@ describe('EventFilters Component', () => {
     expect(screen.getByText('フィルターをクリア')).toBeInTheDocument();
   });
 
+  test('フィルターが設定されていない時はクリアボタンが無効化される', () => {
+    render(<EventFilters {...mockFilterProps} isFiltered={false} />);
+
+    const clearButton = screen.getByText('フィルターをクリア');
+    expect(clearButton).toBeDisabled();
+    expect(clearButton).toHaveAttribute('aria-label', 'フィルターが設定されていません');
+  });
+
+  test('フィルターが設定されている時はクリアボタンが有効化される', () => {
+    render(<EventFilters {...mockFilterProps} isFiltered={true} />);
+
+    const clearButton = screen.getByText('フィルターをクリア');
+    expect(clearButton).not.toBeDisabled();
+    expect(clearButton).toHaveAttribute('aria-label', 'フィルターをクリア');
+  });
+
   test('フィルタークリアボタンクリック時にコールバックが呼ばれる', async () => {
     const user = userEvent.setup();
     render(<EventFilters {...mockFilterProps} />);
@@ -175,13 +192,14 @@ describe('EventFilters Component', () => {
         {...mockFilterProps}
         dateFilter={{ start: '2024-12-31', end: '2024-01-01' }}
         onClearFilters={mockOnClearFilters}
+        isFiltered={true}
       />
     );
 
     // 日付エラーメッセージが表示されることを確認
     expect(screen.getByText('終了日は開始日より後の日付を選択してください')).toBeInTheDocument();
 
-    const clearButton = screen.getByRole('button', { name: /フィルターをクリア/i });
+    const clearButton = screen.getByText('フィルターをクリア');
     await user.click(clearButton);
 
     expect(mockOnClearFilters).toHaveBeenCalled();

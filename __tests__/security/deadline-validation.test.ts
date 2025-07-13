@@ -11,7 +11,7 @@ describe("締切フィールドバリデーション", () => {
     capacity: "100",
     registrationDeadline: "",
     paymentDeadline: "",
-    paymentMethods: "stripe",
+    payment_methods: "stripe",
     fee: "1000",
   };
 

@@ -239,7 +239,7 @@ describe("認証システム基盤 - RLS（Row Level Security）テスト", () =
     test("get_event_creator_name関数で安全に名前取得", async () => {
       // get_event_creator_name関数を使用してユーザー名を取得
       const { data: nameData, error: nameError } = await user1Client.rpc("get_event_creator_name", {
-        user_id: testUser2!.id,
+        event_creator_id: testUser2!.id,
       });
 
       if (nameError && nameError.message.includes("Could not find the function")) {
@@ -253,7 +253,7 @@ describe("認証システム基盤 - RLS（Row Level Security）テスト", () =
       // 存在しないユーザーIDの場合はnullを返すことを確認
       const { data: noUserData, error: noUserError } = await user1Client.rpc(
         "get_event_creator_name",
-        { user_id: "00000000-0000-0000-0000-000000000000" }
+        { event_creator_id: "00000000-0000-0000-0000-000000000000" }
       );
 
       expect(noUserError).toBeNull();
