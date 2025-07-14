@@ -7,6 +7,12 @@ import { EventError } from "@/components/events/event-error";
 import { Button } from "@/components/ui/button";
 import { getEventsAction } from "./actions";
 import type { SortBy, SortOrder, StatusFilter, PaymentFilter } from "./actions/get-events";
+import {
+  DEFAULT_SORT_BY,
+  DEFAULT_SORT_ORDER,
+  DEFAULT_STATUS_FILTER,
+  DEFAULT_PAYMENT_FILTER,
+} from "@/lib/constants/event-filters";
 
 interface EventsContentProps {
   searchParams: { [key: string]: string | string[] | undefined };
@@ -16,19 +22,19 @@ async function EventsContent({ searchParams }: EventsContentProps) {
   // URLパラメータから検索・ソート条件を抽出
   const sortBy = (Array.isArray(searchParams.sortBy) 
     ? searchParams.sortBy[0] 
-    : searchParams.sortBy) as SortBy || 'date';
+    : searchParams.sortBy) as SortBy || DEFAULT_SORT_BY;
   
   const sortOrder = (Array.isArray(searchParams.sortOrder) 
     ? searchParams.sortOrder[0] 
-    : searchParams.sortOrder) as SortOrder || 'asc';
+    : searchParams.sortOrder) as SortOrder || DEFAULT_SORT_ORDER;
   
   const statusFilter = (Array.isArray(searchParams.status) 
     ? searchParams.status[0] 
-    : searchParams.status) as StatusFilter || 'all';
+    : searchParams.status) as StatusFilter || DEFAULT_STATUS_FILTER;
   
   const paymentFilter = (Array.isArray(searchParams.payment) 
     ? searchParams.payment[0] 
-    : searchParams.payment) as PaymentFilter || 'all';
+    : searchParams.payment) as PaymentFilter || DEFAULT_PAYMENT_FILTER;
   
   const dateStart = Array.isArray(searchParams.dateStart) 
     ? searchParams.dateStart[0] 

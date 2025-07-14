@@ -35,7 +35,7 @@ export const EventCard = memo(function EventCard({ event }: EventCardProps) {
 
   // 料金表示をメモ化
   const formattedFee = useMemo(() => {
-    return event.fee === 0 ? '無料' : `¥${event.fee.toLocaleString()}`;
+    return event.fee === 0 ? '無料' : `${event.fee.toLocaleString()}円`;
   }, [event.fee]);
 
   // 参加者数表示をメモ化

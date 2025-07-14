@@ -2,6 +2,14 @@ import { useState, useMemo, useCallback } from 'react';
 import { Event } from '@/types/event';
 import { StatusFilter, PaymentFilter, DateFilter } from '@/app/events/actions/get-events';
 import { convertJstDateToUtcRange } from '@/lib/utils/timezone';
+import {
+  STATUS_FILTER_OPTIONS,
+  PAYMENT_FILTER_OPTIONS,
+  DEFAULT_STATUS_FILTER,
+  DEFAULT_PAYMENT_FILTER,
+  isValidStatusFilter,
+  isValidPaymentFilter,
+} from '@/lib/constants/event-filters';
 
 export interface Filters {
   status: StatusFilter;
@@ -20,8 +28,8 @@ export function useEventFilter(options: UseEventFilterOptions = {}) {
   const { events = [], onFiltersChange, enableClientSideFiltering = false, initialFilters } = options;
   
   const [filters, setFilters] = useState<Filters>({
-    status: initialFilters?.status || 'all',
-    payment: initialFilters?.payment || 'all',
+    status: initialFilters?.status || DEFAULT_STATUS_FILTER,
+    payment: initialFilters?.payment || DEFAULT_PAYMENT_FILTER,
     dateRange: initialFilters?.dateRange || {},
   });
 
@@ -71,20 +79,18 @@ export function useEventFilter(options: UseEventFilterOptions = {}) {
   }, [onFiltersChange]);
 
   const setStatusFilter = useCallback((status: StatusFilter) => {
-    const validStatuses: StatusFilter[] = ['all', 'upcoming', 'ongoing', 'past', 'cancelled'];
-    if (!validStatuses.includes(status)) {
+    if (!isValidStatusFilter(status)) {
       console.warn('無効なステータスフィルターです。全件表示に設定します。');
-      status = 'all';
+      status = DEFAULT_STATUS_FILTER;
     }
     const newFilters = { ...filters, status };
     updateFilters(newFilters);
   }, [filters, updateFilters]);
 
   const setPaymentFilter = useCallback((payment: PaymentFilter) => {
-    const validPayments: PaymentFilter[] = ['all', 'free', 'paid'];
-    if (!validPayments.includes(payment)) {
+    if (!isValidPaymentFilter(payment)) {
       console.warn('無効な決済フィルターです。全件表示に設定します。');
-      payment = 'all';
+      payment = DEFAULT_PAYMENT_FILTER;
     }
     const newFilters = { ...filters, payment };
     updateFilters(newFilters);
@@ -105,8 +111,8 @@ export function useEventFilter(options: UseEventFilterOptions = {}) {
 
   const clearFilters = useCallback(() => {
     const newFilters: Filters = {
-      status: 'all',
-      payment: 'all',
+      status: DEFAULT_STATUS_FILTER,
+      payment: DEFAULT_PAYMENT_FILTER,
       dateRange: {},
     };
     updateFilters(newFilters);

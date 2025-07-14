@@ -8,6 +8,12 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  STATUS_FILTER_OPTIONS,
+  PAYMENT_FILTER_OPTIONS,
+  STATUS_FILTER_LABELS,
+  PAYMENT_FILTER_LABELS,
+} from '@/lib/constants/event-filters';
 
 interface EventFiltersProps {
   statusFilter: StatusFilter;
@@ -111,11 +117,11 @@ export function EventFilters({
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">全て表示</SelectItem>
-              <SelectItem value="upcoming">開催予定</SelectItem>
-              <SelectItem value="ongoing">開催中</SelectItem>
-              <SelectItem value="past">終了済み</SelectItem>
-              <SelectItem value="cancelled">キャンセル</SelectItem>
+              {STATUS_FILTER_OPTIONS.map((option) => (
+                <SelectItem key={option} value={option}>
+                  {STATUS_FILTER_LABELS[option]}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>
@@ -128,9 +134,11 @@ export function EventFilters({
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">全て</SelectItem>
-              <SelectItem value="free">無料</SelectItem>
-              <SelectItem value="paid">有料</SelectItem>
+              {PAYMENT_FILTER_OPTIONS.map((option) => (
+                <SelectItem key={option} value={option}>
+                  {PAYMENT_FILTER_LABELS[option]}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>
