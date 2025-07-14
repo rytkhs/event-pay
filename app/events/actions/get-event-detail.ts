@@ -22,7 +22,7 @@ export async function getEventDetailAction(eventId: string) {
 
     if (authError || !user) {
       redirect("/auth/login");
-      return; // redirectは例外を投げるが、TypeScriptの型安全性のために明示的にreturn
+      return; // TypeScriptの型チェックのため、実際には到達しない
     }
 
     // イベント詳細取得（RLSで自分のイベントのみ取得可能）

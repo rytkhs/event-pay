@@ -1,4 +1,5 @@
 import { getEventDetailAction } from "@/app/events/actions/get-event-detail";
+import { redirect } from "next/navigation";
 
 // Mock Supabase
 const mockFrom = jest.fn();
@@ -69,12 +70,13 @@ describe("getEventDetailAction", () => {
         error: { message: "Not authenticated" },
       });
 
-      // redirectがモックされていることを確認
-      const { redirect } = require("next/navigation");
-
-      // 実際にはリダイレクトされるが、テスト環境ではモックされるため正常終了する
-      await getEventDetailAction("11111111-1111-1111-1111-111111111111");
+      // redirectがモックされているため、実際には処理が継続される
+      // redirectが呼ばれることを確認するためのテスト
+      const result = await getEventDetailAction("11111111-1111-1111-1111-111111111111");
       expect(redirect).toHaveBeenCalledWith("/auth/login");
+
+      // redirectが呼ばれた後、関数は早期returnするため、undefinedが返される
+      expect(result).toBeUndefined();
     });
 
     test("他ユーザーのイベントにアクセスした場合、アクセス拒否エラーを返す", async () => {
@@ -163,9 +165,10 @@ describe("getEventDetailAction", () => {
       });
 
       const result = await getEventDetailAction("44444444-4444-4444-4444-444444444444");
-      expect(result.id).toBe("event123");
-      expect(result.title).toBe("テストイベント");
-      expect(result.creator_name).toBe("テストユーザー");
+      expect(result).toBeDefined();
+      expect(result!.id).toBe("event123");
+      expect(result!.title).toBe("テストイベント");
+      expect(result!.creator_name).toBe("テストユーザー");
     });
   });
 });
