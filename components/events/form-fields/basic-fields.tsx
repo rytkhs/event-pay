@@ -169,15 +169,15 @@ export default function BasicFields({ formData, errors, onInputChange }: BasicFi
           <div className="text-xs text-gray-600 space-y-1">
             <div className="flex justify-between">
               <span>参加費：</span>
-              <span>¥{feeValue.toLocaleString()}</span>
+              <span>{feeValue.toLocaleString()}円</span>
             </div>
             <div className="flex justify-between">
               <span>サービス手数料（3.6%）：</span>
-              <span>-¥{serviceFee.toLocaleString()}</span>
+              <span>-{serviceFee.toLocaleString()}円</span>
             </div>
             <div className="border-t pt-1 flex justify-between font-medium">
               <span>あなたの受取額：</span>
-              <span>¥{netAmount.toLocaleString()}</span>
+              <span>{netAmount.toLocaleString()}円</span>
             </div>
           </div>
           <p className="text-xs text-gray-500">💡 決済方法によらず、参加者は同じ金額を支払います</p>

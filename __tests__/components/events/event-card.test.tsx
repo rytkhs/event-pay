@@ -21,7 +21,7 @@ describe("EventCard Component - Red Phase Tests", () => {
 
     expect(screen.getByText("テストイベント")).toBeInTheDocument();
     expect(screen.getByText("東京会議室")).toBeInTheDocument();
-    expect(screen.getByText("¥1,000")).toBeInTheDocument();
+    expect(screen.getByText("1,000円")).toBeInTheDocument();
     expect(screen.getByText("5/20名")).toBeInTheDocument();
     expect(screen.getByText("開催予定")).toBeInTheDocument();
   });

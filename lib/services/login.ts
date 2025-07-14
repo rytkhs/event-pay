@@ -102,7 +102,7 @@ export class LoginService {
       const lockoutStatus = await AccountLockoutService.checkLockoutStatus(email);
       if (lockoutStatus.isLocked) {
         throw new Error(
-          `アカウントがロックされています。${lockoutStatus.lockoutExpiresAt?.toLocaleString("ja-JP")}に解除されます。`
+          `アカウントがロックされています。${lockoutStatus.lockoutExpiresAt ? new Intl.DateTimeFormat('ja-JP', { timeZone: 'Asia/Tokyo', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }).format(lockoutStatus.lockoutExpiresAt) : ''}に解除されます。`
         );
       }
 
@@ -119,7 +119,7 @@ export class LoginService {
 
         if (failureResult.isLocked) {
           throw new Error(
-            `ログイン失敗回数が上限に達しました。アカウントが${failureResult.lockoutExpiresAt?.toLocaleString("ja-JP")}まで30分間ロックされます。`
+            `ログイン失敗回数が上限に達しました。アカウントが${failureResult.lockoutExpiresAt ? new Intl.DateTimeFormat('ja-JP', { timeZone: 'Asia/Tokyo', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }).format(failureResult.lockoutExpiresAt) : ''}まで30分間ロックされます。`
           );
         }
 

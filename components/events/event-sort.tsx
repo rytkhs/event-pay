@@ -13,6 +13,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import {
+  SORT_BY_OPTIONS,
+  SORT_ORDER_OPTIONS,
+  SORT_BY_LABELS,
+  isValidSortBy,
+  isValidSortOrder,
+} from "@/lib/constants/event-filters";
 
 interface EventSortProps {
   sortBy: SortBy;
@@ -22,19 +29,16 @@ interface EventSortProps {
 }
 
 export function EventSort({ sortBy, sortOrder, onSortChange, onOrderChange }: EventSortProps) {
-  const validSortOptions: SortBy[] = ["date", "created_at", "attendances_count", "fee"];
-  const validOrderOptions: SortOrder[] = ["asc", "desc"];
-
-  // Zodスキーマによるバリデーション
-  const sortBySchema = z.enum(["date", "created_at", "attendances_count", "fee"]);
-  const sortOrderSchema = z.enum(["asc", "desc"]);
+  // Zodスキーマによるバリデーション  
+  const sortBySchema = z.enum(['date', 'created_at', 'attendances_count', 'fee']);
+  const sortOrderSchema = z.enum(['asc', 'desc']);
 
   // 無効な値の検証とデフォルト値の適用
   useEffect(() => {
-    if (!validSortOptions.includes(sortBy)) {
+    if (!isValidSortBy(sortBy)) {
       console.warn("無効なソート条件です。デフォルトソートを適用します。");
     }
-    if (!validOrderOptions.includes(sortOrder)) {
+    if (!isValidSortOrder(sortOrder)) {
       console.warn("無効なソート順序です。昇順を適用します。");
     }
   }, [sortBy, sortOrder]);
@@ -42,14 +46,14 @@ export function EventSort({ sortBy, sortOrder, onSortChange, onOrderChange }: Ev
   const handleSortChange = (value: string) => {
     const validation = sortBySchema.safeParse(value);
     if (validation.success) {
-      onSortChange(validation.data);
+      onSortChange(validation.data as SortBy);
     }
   };
 
   const handleOrderChange = (value: string) => {
     const validation = sortOrderSchema.safeParse(value);
     if (validation.success) {
-      onOrderChange(validation.data);
+      onOrderChange(validation.data as SortOrder);
     }
   };
   return (
@@ -65,10 +69,11 @@ export function EventSort({ sortBy, sortOrder, onSortChange, onOrderChange }: Ev
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="date">開催日時</SelectItem>
-              <SelectItem value="created_at">作成日時</SelectItem>
-              <SelectItem value="attendances_count">参加者数</SelectItem>
-              <SelectItem value="fee">参加費</SelectItem>
+              {SORT_BY_OPTIONS.map((option) => (
+                <SelectItem key={option} value={option}>
+                  {SORT_BY_LABELS[option]}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>

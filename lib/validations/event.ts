@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import type { Database } from '@/types/database';
 import { isUtcDateFuture } from '@/lib/utils/timezone';
+import { sanitizeHtml } from '@/lib/utils/sanitize';
 
 // 決済方法の定数
 const PAYMENT_METHODS = ['stripe', 'cash', 'free'] as const;
@@ -36,7 +37,8 @@ const validateCapacity = (val: string) => {
 export const createEventSchema = z.object({
   title: z.string()
     .min(1, 'タイトルは必須です')
-    .max(100, 'タイトルは100文字以内で入力してください'),
+    .max(100, 'タイトルは100文字以内で入力してください')
+    .transform((val) => sanitizeHtml(val)),
   
   date: z.string()
     .min(1, '開催日時は必須です')
@@ -69,10 +71,12 @@ export const createEventSchema = z.object({
   
   location: z.string()
     .max(200, '場所は200文字以内で入力してください')
+    .transform((val) => val ? sanitizeHtml(val) : val)
     .optional(),
   
   description: z.string()
     .max(1000, '説明は1000文字以内で入力してください')
+    .transform((val) => val ? sanitizeHtml(val) : val)
     .optional(),
   
   capacity: z.string()
