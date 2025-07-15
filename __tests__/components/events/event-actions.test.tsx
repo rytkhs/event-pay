@@ -12,9 +12,11 @@ jest.mock("next/navigation", () => ({
   }),
 }));
 
-// Mock delete action (not implemented yet)
+// Mock delete action
+const mockDeleteEventAction = jest.fn();
+
 jest.mock("@/app/events/actions/delete-event", () => ({
-  deleteEventAction: jest.fn(),
+  deleteEventAction: (...args: any[]) => mockDeleteEventAction(...args),
 }));
 
 describe("EventActions Component", () => {
@@ -82,7 +84,6 @@ describe("EventActions Component", () => {
     });
 
     test("削除確認ダイアログで確認を選択した場合、削除処理が実行される", async () => {
-      const mockDeleteEventAction = require("@/app/events/actions/delete-event").deleteEventAction;
       mockDeleteEventAction.mockResolvedValue({ success: true });
 
       render(<EventActions eventId={mockEventId} />);
@@ -102,7 +103,6 @@ describe("EventActions Component", () => {
     });
 
     test("削除処理が成功した場合、イベント一覧ページにリダイレクトする", async () => {
-      const mockDeleteEventAction = require("@/app/events/actions/delete-event").deleteEventAction;
       mockDeleteEventAction.mockResolvedValue({ success: true });
 
       render(<EventActions eventId={mockEventId} />);
@@ -114,15 +114,14 @@ describe("EventActions Component", () => {
 
       await act(async () => {
         fireEvent.click(confirmButton);
-      });
-
-      await waitFor(() => {
-        expect(mockPush).toHaveBeenCalledWith("/events");
+        // 状態更新の完了を待つ
+        await waitFor(() => {
+          expect(mockPush).toHaveBeenCalledWith("/events");
+        });
       });
     });
 
     test("削除処理が失敗した場合、エラーメッセージが表示される", async () => {
-      const mockDeleteEventAction = require("@/app/events/actions/delete-event").deleteEventAction;
       mockDeleteEventAction.mockRejectedValue(new Error("Delete failed"));
 
       render(<EventActions eventId={mockEventId} />);
@@ -132,19 +131,16 @@ describe("EventActions Component", () => {
 
       const confirmButton = screen.getByRole("button", { name: /削除する/ });
 
-      await act(async () => {
-        fireEvent.click(confirmButton);
-        // 非同期処理の完了を待つ
-        await new Promise((resolve) => setTimeout(resolve, 0));
-      });
+      // クリックイベントを発生させる
+      fireEvent.click(confirmButton);
 
+      // エラー状態の更新を待つ
       await waitFor(() => {
         expect(screen.getByText(/削除に失敗しました/)).toBeInTheDocument();
       });
     });
 
     test("ローディング状態の時、ボタンが無効化される", async () => {
-      const mockDeleteEventAction = require("@/app/events/actions/delete-event").deleteEventAction;
       // 処理が遅いことをシミュレート
       let resolvePromise: (value: any) => void;
       const promise = new Promise((resolve) => {
@@ -159,21 +155,17 @@ describe("EventActions Component", () => {
 
       const confirmButton = screen.getByRole("button", { name: /削除する/ });
 
-      await act(async () => {
-        fireEvent.click(confirmButton);
-      });
+      // クリックイベントを発生させる
+      fireEvent.click(confirmButton);
 
       // 非同期処理中はボタンが無効化される
       await waitFor(() => {
         expect(confirmButton).toBeDisabled();
       });
 
-      // Promiseを解決して清理（状態更新をact()でラップ）
-      await act(async () => {
-        resolvePromise!({ success: true });
-        // 状態更新の完了を待つ
-        await new Promise(resolve => setTimeout(resolve, 0));
-      });
+      // Promiseを解決して清理
+      resolvePromise!({ success: true });
+      await promise; // Promiseの完了を待つ
     });
   });
 });

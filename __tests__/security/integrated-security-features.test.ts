@@ -15,7 +15,6 @@ const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
 describe("統合セキュリティ機能テスト", () => {
   beforeEach(async () => {
     // テスト前にクリーンアップ（モック環境対応）
-    console.log("統合セキュリティ機能テスト: モック環境でのテスト実行");
   });
 
   describe("孤立ユーザー管理機能", () => {

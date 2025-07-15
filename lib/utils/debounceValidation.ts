@@ -27,7 +27,7 @@ export function debounceValidation<T extends (...args: any[]) => any>(fn: T, del
  * 戻り値としてキャンセル関数も提供する
  */
 export function debounceValidationWithCancel<T extends (...args: any[]) => any>(
-  fn: T, 
+  fn: T,
   delay: number
 ): { debouncedFn: T; cancel: () => void } {
   let timeoutId: NodeJS.Timeout | null = null;

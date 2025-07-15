@@ -19,10 +19,9 @@ export async function getEventDetailAction(eventId: string) {
       data: { user },
       error: authError,
     } = await supabase.auth.getUser();
-
     if (authError || !user) {
       redirect("/auth/login");
-      return; // TypeScriptの型チェックのため、実際には到達しない
+      return; // redirect後の処理を防ぐため早期return
     }
 
     // イベント詳細取得（RLSで自分のイベントのみ取得可能）

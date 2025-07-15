@@ -1,14 +1,17 @@
-import EventCreateForm from '@/components/events/event-form';
-import { createClient } from '@/lib/supabase/server';
-import { redirect } from 'next/navigation';
+import EventCreateForm from "@/components/events/event-form";
+import { createClient } from "@/lib/supabase/server";
+import { redirect } from "next/navigation";
 
 export default async function CreateEventPage() {
   const supabase = await createClient();
-  
-  const { data: { user }, error } = await supabase.auth.getUser();
-  
+
+  const {
+    data: { user },
+    error,
+  } = await supabase.auth.getUser();
+
   if (error || !user) {
-    redirect('/auth/login');
+    redirect("/auth/login");
   }
 
   return (

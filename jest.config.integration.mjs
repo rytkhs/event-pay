@@ -22,6 +22,9 @@ const config = {
   moduleNameMapper: {
     "^@/(.*)$": "<rootDir>/$1",
   },
+  transformIgnorePatterns: [
+    "node_modules/(?!(@supabase|@types|@babel))",
+  ],
 };
 
 export default createJestConfig(config);

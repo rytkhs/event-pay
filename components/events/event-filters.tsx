@@ -1,19 +1,25 @@
-'use client';
+"use client";
 
-import { useState, useEffect, useRef } from 'react';
-import { z } from 'zod';
-import { StatusFilter, PaymentFilter, DateFilter } from '@/app/events/actions/get-events';
-import { Button } from '@/components/ui/button';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { Label } from '@/components/ui/label';
-import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useState, useEffect, useRef } from "react";
+import { z } from "zod";
+import { StatusFilter, PaymentFilter, DateFilter } from "@/app/events/actions/get-events";
+import { Button } from "@/components/ui/button";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   STATUS_FILTER_OPTIONS,
   PAYMENT_FILTER_OPTIONS,
   STATUS_FILTER_LABELS,
   PAYMENT_FILTER_LABELS,
-} from '@/lib/constants/event-filters';
+} from "@/lib/constants/event-filters";
 
 interface EventFiltersProps {
   statusFilter: StatusFilter;
@@ -36,55 +42,60 @@ export function EventFilters({
   onClearFilters,
   isFiltered = false,
 }: EventFiltersProps) {
-  const [dateError, setDateError] = useState<string>('');
+  const [dateError, setDateError] = useState<string>("");
   const startDateRef = useRef<HTMLInputElement>(null);
   const endDateRef = useRef<HTMLInputElement>(null);
 
   // Zodスキーマによる日付バリデーション
-  const dateSchema = z.object({
-    start: z.string().optional(),
-    end: z.string().optional()
-  }).refine((data) => {
-    if (data.start && data.end) {
-      const startDate = new Date(data.start);
-      const endDate = new Date(data.end);
-      return endDate > startDate;
-    }
-    return true;
-  }, {
-    message: '終了日は開始日より後の日付を選択してください'
-  });
+  const dateSchema = z
+    .object({
+      start: z.string().optional(),
+      end: z.string().optional(),
+    })
+    .refine(
+      (data) => {
+        if (data.start && data.end) {
+          const startDate = new Date(data.start);
+          const endDate = new Date(data.end);
+          return endDate > startDate;
+        }
+        return true;
+      },
+      {
+        message: "終了日は開始日より後の日付を選択してください",
+      }
+    );
 
   // 初期レンダリング時のバリデーション
   useEffect(() => {
     // 日付フィルターの初期バリデーション
     const validation = dateSchema.safeParse(dateFilter);
     if (!validation.success) {
-      setDateError(validation.error.issues[0]?.message || '日付の形式が正しくありません');
+      setDateError(validation.error.issues[0]?.message || "日付の形式が正しくありません");
     } else {
-      setDateError('');
+      setDateError("");
     }
   }, [dateFilter]);
 
-  const handleDateChange = (field: 'start' | 'end', value: string) => {
+  const handleDateChange = (field: "start" | "end", value: string) => {
     const newDateFilter = { ...dateFilter, [field]: value };
-    
+
     // Zodによるバリデーション
     const validation = dateSchema.safeParse(newDateFilter);
     if (!validation.success) {
-      setDateError(validation.error.issues[0]?.message || '日付の形式が正しくありません');
-      
+      setDateError(validation.error.issues[0]?.message || "日付の形式が正しくありません");
+
       // バリデーションエラー時は入力値を元の値にロールバック
-      if (field === 'start' && startDateRef.current) {
-        startDateRef.current.value = dateFilter.start || '';
+      if (field === "start" && startDateRef.current) {
+        startDateRef.current.value = dateFilter.start || "";
       }
-      if (field === 'end' && endDateRef.current) {
-        endDateRef.current.value = dateFilter.end || '';
+      if (field === "end" && endDateRef.current) {
+        endDateRef.current.value = dateFilter.end || "";
       }
       return;
     }
-    
-    setDateError('');
+
+    setDateError("");
     onDateFilterChange(newDateFilter);
   };
 
@@ -99,7 +110,7 @@ export function EventFilters({
   };
 
   const handleClearFilters = () => {
-    setDateError('');
+    setDateError("");
     onClearFilters();
   };
 
@@ -155,8 +166,8 @@ export function EventFilters({
                 ref={startDateRef}
                 id="start-date"
                 type="date"
-                value={dateFilter.start || ''}
-                onChange={(e) => handleDateChange('start', e.target.value)}
+                value={dateFilter.start || ""}
+                onChange={(e) => handleDateChange("start", e.target.value)}
               />
             </div>
             <div>
@@ -167,16 +178,13 @@ export function EventFilters({
                 ref={endDateRef}
                 id="end-date"
                 type="date"
-                value={dateFilter.end || ''}
-                onChange={(e) => handleDateChange('end', e.target.value)}
+                value={dateFilter.end || ""}
+                onChange={(e) => handleDateChange("end", e.target.value)}
               />
             </div>
-            {dateError && (
-              <p className="text-destructive text-sm mt-1">{dateError}</p>
-            )}
+            {dateError && <p className="text-destructive text-sm mt-1">{dateError}</p>}
           </div>
         </div>
-
 
         {/* フィルター解除 */}
         <Button

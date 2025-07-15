@@ -1,12 +1,12 @@
-import { useState, useMemo, useCallback } from 'react';
-import { Event } from '@/types/event';
-import { SortBy, SortOrder } from '@/app/events/actions/get-events';
+import { useState, useMemo, useCallback } from "react";
+import { Event } from "@/types/event";
+import { SortBy, SortOrder } from "@/app/events/actions/get-events";
 import {
   DEFAULT_SORT_BY,
   DEFAULT_SORT_ORDER,
   isValidSortBy,
   isValidSortOrder,
-} from '@/lib/constants/event-filters';
+} from "@/lib/constants/event-filters";
 
 export interface SortOptions {
   sortBy: SortBy;
@@ -22,7 +22,7 @@ interface UseEventSortOptions {
 
 export function useEventSort(options: UseEventSortOptions = {}) {
   const { events = [], onSortChange, enableClientSideSort = false, initialSort } = options;
-  
+
   const [sortOptions, setSortOptions] = useState<SortOptions>({
     sortBy: initialSort?.sortBy || DEFAULT_SORT_BY,
     sortOrder: initialSort?.sortOrder || DEFAULT_SORT_ORDER,
@@ -35,56 +35,65 @@ export function useEventSort(options: UseEventSortOptions = {}) {
     }
 
     if (!events || !Array.isArray(events)) return [];
-    
+
     return [...events].sort((a, b) => {
       let comparison = 0;
-      
+
       switch (sortOptions.sortBy) {
-        case 'date':
+        case "date":
           comparison = new Date(a.date).getTime() - new Date(b.date).getTime();
           break;
-        case 'created_at':
+        case "created_at":
           comparison = new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
           break;
-        case 'attendances_count':
+        case "attendances_count":
           // 参加者数はクライアントサイドで計算（集計値のため）
           const aCount = a.attendances_count || 0;
           const bCount = b.attendances_count || 0;
           comparison = aCount - bCount;
           break;
-        case 'fee':
+        case "fee":
           comparison = (a.fee || 0) - (b.fee || 0);
           break;
         default:
           return 0;
       }
-      
-      return sortOptions.sortOrder === 'desc' ? -comparison : comparison;
+
+      return sortOptions.sortOrder === "desc" ? -comparison : comparison;
     });
   }, [events, events.length, sortOptions, enableClientSideSort]);
 
-  const updateSort = useCallback((newSortOptions: SortOptions) => {
-    setSortOptions(newSortOptions);
-    onSortChange?.(newSortOptions);
-  }, [onSortChange]);
+  const updateSort = useCallback(
+    (newSortOptions: SortOptions) => {
+      setSortOptions(newSortOptions);
+      onSortChange?.(newSortOptions);
+    },
+    [onSortChange]
+  );
 
-  const setSortBy = useCallback((sortBy: SortBy) => {
-    if (!isValidSortBy(sortBy)) {
-      console.warn('無効なソート条件です。開催日時ソートに設定します。');
-      sortBy = DEFAULT_SORT_BY;
-    }
-    const newSortOptions = { ...sortOptions, sortBy };
-    updateSort(newSortOptions);
-  }, [sortOptions, updateSort]);
+  const setSortBy = useCallback(
+    (sortBy: SortBy) => {
+      if (!isValidSortBy(sortBy)) {
+        console.warn("無効なソート条件です。開催日時ソートに設定します。");
+        sortBy = DEFAULT_SORT_BY;
+      }
+      const newSortOptions = { ...sortOptions, sortBy };
+      updateSort(newSortOptions);
+    },
+    [sortOptions, updateSort]
+  );
 
-  const setSortOrder = useCallback((sortOrder: SortOrder) => {
-    if (!isValidSortOrder(sortOrder)) {
-      console.warn('無効なソート順序です。昇順に設定します。');
-      sortOrder = DEFAULT_SORT_ORDER;
-    }
-    const newSortOptions = { ...sortOptions, sortOrder };
-    updateSort(newSortOptions);
-  }, [sortOptions, updateSort]);
+  const setSortOrder = useCallback(
+    (sortOrder: SortOrder) => {
+      if (!isValidSortOrder(sortOrder)) {
+        console.warn("無効なソート順序です。昇順に設定します。");
+        sortOrder = DEFAULT_SORT_ORDER;
+      }
+      const newSortOptions = { ...sortOptions, sortOrder };
+      updateSort(newSortOptions);
+    },
+    [sortOptions, updateSort]
+  );
 
   const resetSort = useCallback(() => {
     const newSortOptions: SortOptions = {

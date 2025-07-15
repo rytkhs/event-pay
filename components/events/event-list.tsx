@@ -27,15 +27,17 @@ function EmptyEventList({ isFiltered = false }: { isFiltered?: boolean }) {
       <p className="text-gray-600 text-lg mb-2">イベントがまだありません</p>
       <p className="text-gray-500 mb-6">新しいイベントを作成してみましょう</p>
       <Button asChild>
-        <Link href="/events/create">
-          新しいイベントを作成
-        </Link>
+        <Link href="/events/create">新しいイベントを作成</Link>
       </Button>
     </div>
   );
 }
 
-export const EventList = memo(function EventList({ events, isLoading = false, isFiltered = false }: EventListProps) {
+export const EventList = memo(function EventList({
+  events,
+  isLoading = false,
+  isFiltered = false,
+}: EventListProps) {
   if (events.length === 0) {
     return <EmptyEventList isFiltered={isFiltered} />;
   }

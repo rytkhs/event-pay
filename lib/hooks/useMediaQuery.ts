@@ -12,7 +12,7 @@ export function useMediaQuery(query: string): boolean {
 
     const mediaQuery = window.matchMedia(query);
     if (!mediaQuery) return;
-    
+
     setMatches(mediaQuery.matches || false);
 
     const handleChange = (event: MediaQueryListEvent) => {

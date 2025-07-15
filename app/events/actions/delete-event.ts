@@ -61,7 +61,7 @@ export async function deleteEventAction(eventId: string) {
     }
 
     // キャッシュを無効化
-    revalidatePath('/events');
+    revalidatePath("/events");
     revalidatePath(`/events/${validation.data}`);
 
     return { success: true };

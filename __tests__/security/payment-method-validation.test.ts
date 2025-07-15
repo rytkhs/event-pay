@@ -17,17 +17,23 @@ describe("決済方法バリデーション", () => {
   describe("クライアントサイドバリデーション", () => {
     it("無料と有料決済方法の組み合わせはエラーとなる", () => {
       const errors = validateField("paymentMethods", "free,stripe", mockFormData);
-      expect(errors.paymentMethods).toBe("無料イベントと有料決済方法を同時に選択することはできません");
+      expect(errors.paymentMethods).toBe(
+        "無料イベントと有料決済方法を同時に選択することはできません"
+      );
     });
 
     it("無料と現金決済方法の組み合わせはエラーとなる", () => {
       const errors = validateField("paymentMethods", "free,cash", mockFormData);
-      expect(errors.paymentMethods).toBe("無料イベントと有料決済方法を同時に選択することはできません");
+      expect(errors.paymentMethods).toBe(
+        "無料イベントと有料決済方法を同時に選択することはできません"
+      );
     });
 
     it("無料とStripe・現金決済方法の組み合わせはエラーとなる", () => {
       const errors = validateField("paymentMethods", "free,stripe,cash", mockFormData);
-      expect(errors.paymentMethods).toBe("無料イベントと有料決済方法を同時に選択することはできません");
+      expect(errors.paymentMethods).toBe(
+        "無料イベントと有料決済方法を同時に選択することはできません"
+      );
     });
 
     it("無料のみの場合は正常", () => {
@@ -64,7 +70,9 @@ describe("決済方法バリデーション", () => {
       });
       expect(result.success).toBe(false);
       if (!result.success) {
-        expect(result.error.issues[0].message).toBe("無料イベントと有料決済方法を同時に選択することはできません");
+        expect(result.error.issues[0].message).toBe(
+          "無料イベントと有料決済方法を同時に選択することはできません"
+        );
       }
     });
 

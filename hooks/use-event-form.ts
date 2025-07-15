@@ -34,17 +34,17 @@ export const useEventForm = () => {
     // エラー状態を効率的に更新
     setErrors((prev) => {
       const newErrors = { ...prev };
-      
+
       // 該当フィールドのエラーをクリア
       delete newErrors[name as keyof ValidationErrors];
-      
+
       // 新しいエラーがあれば設定
       Object.entries(fieldErrors).forEach(([key, errorMessage]) => {
         if (errorMessage) {
           newErrors[key as keyof ValidationErrors] = errorMessage;
         }
       });
-      
+
       return newErrors;
     });
   };

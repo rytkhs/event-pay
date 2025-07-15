@@ -20,28 +20,32 @@ interface EventsContentProps {
 
 async function EventsContent({ searchParams }: EventsContentProps) {
   // URLパラメータから検索・ソート条件を抽出
-  const sortBy = (Array.isArray(searchParams.sortBy) 
-    ? searchParams.sortBy[0] 
-    : searchParams.sortBy) as SortBy || DEFAULT_SORT_BY;
-  
-  const sortOrder = (Array.isArray(searchParams.sortOrder) 
-    ? searchParams.sortOrder[0] 
-    : searchParams.sortOrder) as SortOrder || DEFAULT_SORT_ORDER;
-  
-  const statusFilter = (Array.isArray(searchParams.status) 
-    ? searchParams.status[0] 
-    : searchParams.status) as StatusFilter || DEFAULT_STATUS_FILTER;
-  
-  const paymentFilter = (Array.isArray(searchParams.payment) 
-    ? searchParams.payment[0] 
-    : searchParams.payment) as PaymentFilter || DEFAULT_PAYMENT_FILTER;
-  
-  const dateStart = Array.isArray(searchParams.dateStart) 
-    ? searchParams.dateStart[0] 
+  const sortBy =
+    ((Array.isArray(searchParams.sortBy)
+      ? searchParams.sortBy[0]
+      : searchParams.sortBy) as SortBy) || DEFAULT_SORT_BY;
+
+  const sortOrder =
+    ((Array.isArray(searchParams.sortOrder)
+      ? searchParams.sortOrder[0]
+      : searchParams.sortOrder) as SortOrder) || DEFAULT_SORT_ORDER;
+
+  const statusFilter =
+    ((Array.isArray(searchParams.status)
+      ? searchParams.status[0]
+      : searchParams.status) as StatusFilter) || DEFAULT_STATUS_FILTER;
+
+  const paymentFilter =
+    ((Array.isArray(searchParams.payment)
+      ? searchParams.payment[0]
+      : searchParams.payment) as PaymentFilter) || DEFAULT_PAYMENT_FILTER;
+
+  const dateStart = Array.isArray(searchParams.dateStart)
+    ? searchParams.dateStart[0]
     : searchParams.dateStart;
-  
-  const dateEnd = Array.isArray(searchParams.dateEnd) 
-    ? searchParams.dateEnd[0] 
+
+  const dateEnd = Array.isArray(searchParams.dateEnd)
+    ? searchParams.dateEnd[0]
     : searchParams.dateEnd;
 
   const result = await getEventsAction({
@@ -52,29 +56,24 @@ async function EventsContent({ searchParams }: EventsContentProps) {
     dateFilter: {
       start: dateStart,
       end: dateEnd,
-    }
+    },
   });
-  
+
   if (!result.success) {
     console.error("イベント一覧取得エラー:", result.error);
-    
+
     // 認証エラーの場合はログインページにリダイレクト
     if (result.error.includes("認証")) {
-      redirect('/auth/login');
+      redirect("/auth/login");
     }
-    
+
     // その他のエラー
-    return (
-      <EventError 
-        error={new Error(result.error)}
-        reset={() => window.location.reload()}
-      />
-    );
+    return <EventError error={new Error(result.error)} reset={() => window.location.reload()} />;
   }
-  
+
   return (
-    <EventListWithFilters 
-      events={result.data} 
+    <EventListWithFilters
+      events={result.data}
       initialSortBy={sortBy}
       initialSortOrder={sortOrder}
       initialStatusFilter={statusFilter}
@@ -94,12 +93,10 @@ export default async function EventsPage({ searchParams }: EventsPageProps) {
       <div data-testid="events-page-header" className="mb-8">
         <h1 className="text-3xl font-bold">イベント一覧</h1>
         <Button asChild className="mt-4">
-          <Link href="/events/create">
-            新しいイベントを作成
-          </Link>
+          <Link href="/events/create">新しいイベントを作成</Link>
         </Button>
       </div>
-      
+
       <Suspense fallback={<EventLoading />}>
         <EventsContent searchParams={searchParams} />
       </Suspense>

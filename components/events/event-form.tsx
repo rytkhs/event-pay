@@ -52,9 +52,9 @@ export default function EventCreateForm() {
           <Button type="submit" disabled={isPending} className="w-full" size="lg">
             {isPending ? (
               <>
-                <div 
-                  className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" 
-                  role="status" 
+                <div
+                  className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"
+                  role="status"
                   aria-label="作成中"
                 ></div>
                 作成中...
