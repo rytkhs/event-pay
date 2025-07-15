@@ -1,15 +1,21 @@
-'use client';
+"use client";
 
-import { useState, useCallback, useTransition } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { z } from 'zod';
-import { Event } from '@/types/event';
-import { EventList } from './event-list';
-import { EventFilters } from './event-filters';
-import { EventSort } from './event-sort';
-import { useEventFilter, Filters } from '@/lib/hooks/useEventFilter';
-import { getEventsAction } from '@/app/events/actions/get-events';
-import type { SortBy, SortOrder, StatusFilter, PaymentFilter, DateFilter } from '@/app/events/actions/get-events';
+import { useState, useCallback, useTransition } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { z } from "zod";
+import { Event } from "@/types/event";
+import { EventList } from "./event-list";
+import { EventFilters } from "./event-filters";
+import { EventSort } from "./event-sort";
+import { useEventFilter, Filters } from "@/lib/hooks/useEventFilter";
+import { getEventsAction } from "@/app/events/actions/get-events";
+import type {
+  SortBy,
+  SortOrder,
+  StatusFilter,
+  PaymentFilter,
+  DateFilter,
+} from "@/app/events/actions/get-events";
 
 interface EventListWithFiltersProps {
   events: Event[];
@@ -21,14 +27,14 @@ interface EventListWithFiltersProps {
   initialDateFilter?: DateFilter;
 }
 
-export function EventListWithFilters({ 
+export function EventListWithFilters({
   events,
   isLoading: initialLoading = false,
-  initialSortBy = 'date',
-  initialSortOrder = 'asc',
-  initialStatusFilter = 'all',
-  initialPaymentFilter = 'all',
-  initialDateFilter = {}
+  initialSortBy = "date",
+  initialSortOrder = "asc",
+  initialStatusFilter = "all",
+  initialPaymentFilter = "all",
+  initialDateFilter = {},
 }: EventListWithFiltersProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -45,89 +51,100 @@ export function EventListWithFilters({
   const [sortOrder, setSortOrder] = useState<SortOrder>(initialSortOrder);
 
   // URLパラメータ更新関数（レースコンディション対策）
-  const updateUrlParams = useCallback((updates: Record<string, string | undefined>) => {
-    const params = new URLSearchParams(window.location.search);
-    
-    Object.entries(updates).forEach(([key, value]) => {
-      if (value === undefined || value === '' || value === 'all') {
-        params.delete(key);
-      } else {
-        params.set(key, value);
-      }
-    });
-    
-    router.replace(`/events?${params.toString()}`);
-  }, [router]);
+  const updateUrlParams = useCallback(
+    (updates: Record<string, string | undefined>) => {
+      const params = new URLSearchParams(window.location.search);
+
+      Object.entries(updates).forEach(([key, value]) => {
+        if (value === undefined || value === "" || value === "all") {
+          params.delete(key);
+        } else {
+          params.set(key, value);
+        }
+      });
+
+      router.replace(`/events?${params.toString()}`);
+    },
+    [router]
+  );
 
   // フィルター変更時にURLパラメータを更新
-  const handleFiltersChange = useCallback(async (newFilters: Filters) => {
-    updateUrlParams({
-      status: newFilters.status,
-      payment: newFilters.payment,
-      dateStart: newFilters.dateRange.start,
-      dateEnd: newFilters.dateRange.end,
-      sortBy,
-      sortOrder,
-    });
-  }, [updateUrlParams, sortBy, sortOrder]);
+  const handleFiltersChange = useCallback(
+    async (newFilters: Filters) => {
+      updateUrlParams({
+        status: newFilters.status,
+        payment: newFilters.payment,
+        dateStart: newFilters.dateRange.start,
+        dateEnd: newFilters.dateRange.end,
+        sortBy,
+        sortOrder,
+      });
+    },
+    [updateUrlParams, sortBy, sortOrder]
+  );
 
   // ソート変更時にURLパラメータを更新
-  const handleSortChange = useCallback((newSortBy: SortBy, newSortOrder: SortOrder, currentFilters: Filters) => {
-    setSortBy(newSortBy);
-    setSortOrder(newSortOrder);
-    
-    updateUrlParams({
-      sortBy: newSortBy,
-      sortOrder: newSortOrder,
-      status: currentFilters.status,
-      payment: currentFilters.payment,
-      dateStart: currentFilters.dateRange.start,
-      dateEnd: currentFilters.dateRange.end,
-    });
-  }, [updateUrlParams]);
+  const handleSortChange = useCallback(
+    (newSortBy: SortBy, newSortOrder: SortOrder, currentFilters: Filters) => {
+      setSortBy(newSortBy);
+      setSortOrder(newSortOrder);
+
+      updateUrlParams({
+        sortBy: newSortBy,
+        sortOrder: newSortOrder,
+        status: currentFilters.status,
+        payment: currentFilters.payment,
+        dateStart: currentFilters.dateRange.start,
+        dateEnd: currentFilters.dateRange.end,
+      });
+    },
+    [updateUrlParams]
+  );
 
   // フィルター適用（サーバーサイドのため状態管理のみ）
-  const { 
-    filters, 
-    setStatusFilter, 
-    setPaymentFilter, 
-    setDateRangeFilter, 
-    clearFilters 
-  } = useEventFilter({
-    events,
-    onFiltersChange: handleFiltersChange,
-    enableClientSideFiltering: false,
-    initialFilters: {
-      status: initialStatusFilter,
-      payment: initialPaymentFilter,
-      dateRange: initialDateFilter,
-    },
-  });
+  const { filters, setStatusFilter, setPaymentFilter, setDateRangeFilter, clearFilters } =
+    useEventFilter({
+      events,
+      onFiltersChange: handleFiltersChange,
+      enableClientSideFiltering: false,
+      initialFilters: {
+        status: initialStatusFilter,
+        payment: initialPaymentFilter,
+        dateRange: initialDateFilter,
+      },
+    });
 
   // ソート変更ハンドラー（Zodバリデーション付き）
-  const customSetSortBy = useCallback((newSortBy: SortBy) => {
-    const validation = sortBySchema.safeParse(newSortBy);
-    if (validation.success) {
-      handleSortChange(validation.data, sortOrder, filters);
-    } else {
-      console.warn('無効なソート条件です。変更を無視します:', newSortBy);
-    }
-  }, [handleSortChange, sortOrder, filters, sortBySchema]);
+  const customSetSortBy = useCallback(
+    (newSortBy: SortBy) => {
+      const validation = sortBySchema.safeParse(newSortBy);
+      if (validation.success) {
+        handleSortChange(validation.data, sortOrder, filters);
+      } else {
+        console.warn("無効なソート条件です。変更を無視します:", newSortBy);
+      }
+    },
+    [handleSortChange, sortOrder, filters, sortBySchema]
+  );
 
-  const customSetSortOrder = useCallback((newSortOrder: SortOrder) => {
-    const validation = sortOrderSchema.safeParse(newSortOrder);
-    if (validation.success) {
-      handleSortChange(sortBy, validation.data, filters);
-    } else {
-      console.warn('無効なソート順序です。変更を無視します:', newSortOrder);
-    }
-  }, [handleSortChange, sortBy, filters, sortOrderSchema]);
+  const customSetSortOrder = useCallback(
+    (newSortOrder: SortOrder) => {
+      const validation = sortOrderSchema.safeParse(newSortOrder);
+      if (validation.success) {
+        handleSortChange(sortBy, validation.data, filters);
+      } else {
+        console.warn("無効なソート順序です。変更を無視します:", newSortOrder);
+      }
+    },
+    [handleSortChange, sortBy, filters, sortOrderSchema]
+  );
 
   // フィルターが適用されているかどうかを判定
-  const isFiltered = filters.status !== 'all' || 
-                    filters.payment !== 'all' || 
-                    !!filters.dateRange.start || 
-                    !!filters.dateRange.end;
+  const isFiltered =
+    filters.status !== "all" ||
+    filters.payment !== "all" ||
+    !!filters.dateRange.start ||
+    !!filters.dateRange.end;
 
   // 表示するイベントはサーバーから取得したもの
   const displayEvents = events;
@@ -164,11 +181,9 @@ export function EventListWithFilters({
 
           {/* イベント一覧 */}
           <EventList events={displayEvents} isLoading={isDisplayLoading} isFiltered={isFiltered} />
-          
+
           {/* 結果件数表示 */}
-          <div className="text-sm text-gray-600 mt-4">
-            {displayEvents.length}件を表示
-          </div>
+          <div className="text-sm text-gray-600 mt-4">{displayEvents.length}件を表示</div>
         </div>
       </div>
     </div>

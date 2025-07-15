@@ -29,9 +29,9 @@ interface EventSortProps {
 }
 
 export function EventSort({ sortBy, sortOrder, onSortChange, onOrderChange }: EventSortProps) {
-  // Zodスキーマによるバリデーション  
-  const sortBySchema = z.enum(['date', 'created_at', 'attendances_count', 'fee']);
-  const sortOrderSchema = z.enum(['asc', 'desc']);
+  // Zodスキーマによるバリデーション
+  const sortBySchema = z.enum(["date", "created_at", "attendances_count", "fee"]);
+  const sortOrderSchema = z.enum(["asc", "desc"]);
 
   // 無効な値の検証とデフォルト値の適用
   useEffect(() => {

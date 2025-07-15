@@ -66,6 +66,12 @@ class MockFactory {
       mocks.redis = mockUpstashRedis();
     }
 
+    if (features.auth) {
+      mocks.supabase.auth.getUser = jest.fn(() =>
+        Promise.resolve({ data: { user: null }, error: null })
+      );
+    }
+
     this.mocks.set("current", mocks);
     return mocks;
   }
@@ -166,21 +172,26 @@ class MockFactory {
           returns: jest.fn().mockReturnThis(),
           then: jest.fn((resolve) => {
             const tableData = mockData.get(table) || [];
-            
+
             // selectが{ count: "exact", head: true }で呼ばれた場合はcountのみを返す
             const selectCall = builder.select.mock.calls[0];
-            if (selectCall && selectCall[1] && selectCall[1].count === "exact" && selectCall[1].head === true) {
+            if (
+              selectCall &&
+              selectCall[1] &&
+              selectCall[1].count === "exact" &&
+              selectCall[1].head === true
+            ) {
               return resolve({ count: tableData.length, error: null });
             }
-            
+
             return resolve({ data: tableData, error: null });
           }),
           ...customMethods,
         };
 
         // 全てのメソッドがbuilderを返すように設定（カスタムメソッド以外）
-        Object.keys(builder).forEach(key => {
-          if (typeof builder[key] === 'function' && !customMethods[key] && key !== 'then') {
+        Object.keys(builder).forEach((key) => {
+          if (typeof builder[key] === "function" && !customMethods[key] && key !== "then") {
             builder[key].mockReturnValue(builder);
           }
         });

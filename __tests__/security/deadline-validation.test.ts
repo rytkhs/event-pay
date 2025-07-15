@@ -17,12 +17,20 @@ describe("締切フィールドバリデーション", () => {
 
   describe("クライアントサイドバリデーション", () => {
     it("参加申込締切が開催日時より後の場合はエラーとなる", () => {
-      const errors = validateField("registrationDeadline", `${futureYear + 1}-01-01T12:00`, baseFormData);
+      const errors = validateField(
+        "registrationDeadline",
+        `${futureYear + 1}-01-01T12:00`,
+        baseFormData
+      );
       expect(errors.registrationDeadline).toBe("参加申込締切は開催日時より前に設定してください");
     });
 
     it("参加申込締切が開催日時より前の場合は正常", () => {
-      const errors = validateField("registrationDeadline", `${futureYear}-12-30T23:59`, baseFormData);
+      const errors = validateField(
+        "registrationDeadline",
+        `${futureYear}-12-30T23:59`,
+        baseFormData
+      );
       expect(errors.registrationDeadline).toBeUndefined();
     });
 
@@ -60,7 +68,9 @@ describe("締切フィールドバリデーション", () => {
       });
       expect(result.success).toBe(false);
       if (!result.success) {
-        expect(result.error.issues[0].message).toBe("参加申込締切は開催日時より前に設定してください");
+        expect(result.error.issues[0].message).toBe(
+          "参加申込締切は開催日時より前に設定してください"
+        );
       }
     });
 
@@ -112,7 +122,9 @@ describe("締切フィールドバリデーション", () => {
       });
       expect(result.success).toBe(false);
       if (!result.success) {
-        expect(result.error.issues[0].message).toBe("参加申込締切は現在時刻より後である必要があります");
+        expect(result.error.issues[0].message).toBe(
+          "参加申込締切は現在時刻より後である必要があります"
+        );
       }
     });
   });

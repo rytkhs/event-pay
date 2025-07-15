@@ -28,17 +28,23 @@ export interface EventFormData {
 
 // 個別フィールドのバリデーションスキーマ
 const fieldSchemas = {
-  title: z.string().min(1, 'タイトルは必須です').max(100, 'タイトルは100文字以内で入力してください'),
-  description: z.string().max(1000, '説明は1000文字以内で入力してください').optional(),
-  location: z.string().max(200, '場所は200文字以内で入力してください').optional(),
-  date: z.string().min(1, '開催日時は必須です'),
-  capacity: z.string().optional().refine((val) => {
-    if (!val) return true;
-    const capacity = parseInt(val);
-    return !isNaN(capacity) && capacity >= 1 && capacity <= 10000;
-  }, '定員は1以上10000以下である必要があります'),
-  fee: z.string().min(1, '参加費は必須です'),
-  payment_methods: z.string().min(1, '決済方法を選択してください'),
+  title: z
+    .string()
+    .min(1, "タイトルは必須です")
+    .max(100, "タイトルは100文字以内で入力してください"),
+  description: z.string().max(1000, "説明は1000文字以内で入力してください").optional(),
+  location: z.string().max(200, "場所は200文字以内で入力してください").optional(),
+  date: z.string().min(1, "開催日時は必須です"),
+  capacity: z
+    .string()
+    .optional()
+    .refine((val) => {
+      if (!val) return true;
+      const capacity = Number(val);
+      return Number.isFinite(capacity) && capacity >= 1 && capacity <= 10000;
+    }, "定員は1以上10000以下である必要があります"),
+  fee: z.string().min(1, "参加費は必須です"),
+  payment_methods: z.string().min(1, "決済方法を選択してください"),
 };
 
 // フィールド名の変換マップ（camelCase → snake_case）
@@ -62,30 +68,30 @@ export const validateField = (
   formData: EventFormData
 ): ValidationErrors => {
   const errors: ValidationErrors = {};
-  
+
   // 1. 特殊バリデーション（基本バリデーションより優先）
-  
+
   // 関連フィールドとの相関バリデーション（日付フィールドのみ）
-  if (name === 'date' || name === 'registrationDeadline' || name === 'paymentDeadline') {
+  if (name === "date" || name === "registrationDeadline" || name === "paymentDeadline") {
     // フォームデータを最新の値で更新
     const updatedFormData = { ...formData, [name]: value };
     return validateDateRelations(name, updatedFormData);
   }
-  
+
   // 支払方法の特殊バリデーション
-  if (name === 'paymentMethods') {
+  if (name === "paymentMethods") {
     return validatePaymentMethods(value);
   }
-  
+
   // 参加費の特殊バリデーション（決済方法によって制約が変わる）
-  if (name === 'fee') {
+  if (name === "fee") {
     return validateFee(value, formData.paymentMethods);
   }
-  
+
   // 2. 単一フィールドの基本バリデーション
   const mappedFieldName = fieldNameMap[name] || name;
   const schema = fieldSchemas[mappedFieldName as keyof typeof fieldSchemas];
-  
+
   if (schema) {
     try {
       schema.parse(value || undefined);
@@ -97,116 +103,116 @@ export const validateField = (
       }
     }
   }
-  
+
   return errors;
 };
 
 // 日付関連の相関バリデーション
 function validateDateRelations(changedField: string, formData: EventFormData): ValidationErrors {
   const errors: ValidationErrors = {};
-  
+
   // 開催日時が空の場合は必須エラーを返す
-  if (changedField === 'date' && !formData.date) {
-    errors.date = '開催日時は必須です';
+  if (changedField === "date" && !formData.date) {
+    errors.date = "開催日時は必須です";
     return errors;
   }
-  
+
   if (!formData.date) return errors;
-  
+
   const eventDate = new Date(formData.date);
   const now = new Date();
-  
+
   // 開催日時が未来かチェック
-  if (changedField === 'date' && eventDate <= now) {
-    errors.date = '開催日時は現在時刻より後である必要があります';
+  if (changedField === "date" && eventDate <= now) {
+    errors.date = "開催日時は現在時刻より後である必要があります";
     return errors;
   }
-  
+
   // 参加申込締切の相関チェック
   if (formData.registrationDeadline) {
     const regDeadline = new Date(formData.registrationDeadline);
     if (regDeadline <= now) {
-      errors.registrationDeadline = '参加申込締切は現在時刻より後である必要があります';
+      errors.registrationDeadline = "参加申込締切は現在時刻より後である必要があります";
     } else if (regDeadline >= eventDate) {
-      errors.registrationDeadline = '参加申込締切は開催日時より前に設定してください';
+      errors.registrationDeadline = "参加申込締切は開催日時より前に設定してください";
     }
   }
-  
+
   // 決済締切の相関チェック
   if (formData.paymentDeadline) {
     const payDeadline = new Date(formData.paymentDeadline);
     if (payDeadline <= now) {
-      errors.paymentDeadline = '決済締切は現在時刻より後である必要があります';
+      errors.paymentDeadline = "決済締切は現在時刻より後である必要があります";
     } else if (payDeadline >= eventDate) {
-      errors.paymentDeadline = '決済締切は開催日時より前に設定してください';
+      errors.paymentDeadline = "決済締切は開催日時より前に設定してください";
     } else if (formData.registrationDeadline) {
       const regDeadline = new Date(formData.registrationDeadline);
       if (payDeadline < regDeadline) {
-        errors.paymentDeadline = '決済締切は参加申込締切以降に設定してください';
+        errors.paymentDeadline = "決済締切は参加申込締切以降に設定してください";
       }
     }
   }
-  
+
   return errors;
 }
 
 // 支払方法の特殊バリデーション
 function validatePaymentMethods(value: string): ValidationErrors {
   const errors: ValidationErrors = {};
-  
+
   if (!value) {
-    errors.paymentMethods = '決済方法を選択してください';
+    errors.paymentMethods = "決済方法を選択してください";
     return errors;
   }
-  
-  const methods = value.split(',').map(method => method.trim());
-  const validMethods = ['stripe', 'cash', 'free'];
-  
-  const invalidMethods = methods.filter(method => !validMethods.includes(method));
+
+  const methods = value.split(",").map((method) => method.trim());
+  const validMethods = ["stripe", "cash", "free"];
+
+  const invalidMethods = methods.filter((method) => !validMethods.includes(method));
   if (invalidMethods.length > 0) {
-    errors.paymentMethods = '有効な決済方法を選択してください';
+    errors.paymentMethods = "有効な決済方法を選択してください";
     return errors;
   }
-  
-  if (methods.includes('free') && methods.length > 1) {
-    errors.paymentMethods = '無料イベントと有料決済方法を同時に選択することはできません';
+
+  if (methods.includes("free") && methods.length > 1) {
+    errors.paymentMethods = "無料イベントと有料決済方法を同時に選択することはできません";
   }
-  
+
   return errors;
 }
 
 // 参加費の特殊バリデーション
 function validateFee(value: string, paymentMethods: string): ValidationErrors {
   const errors: ValidationErrors = {};
-  
+
   if (!paymentMethods) {
     // 決済方法が選択されていない場合は基本バリデーションのみ
     if (!value) {
-      errors.fee = '参加費は必須です';
+      errors.fee = "参加費は必須です";
     }
     return errors;
   }
-  
-  const methods = paymentMethods.split(',').map(method => method.trim());
-  const isFreeEvent = methods.includes('free');
-  
+
+  const methods = paymentMethods.split(",").map((method) => method.trim());
+  const isFreeEvent = methods.includes("free");
+
   if (isFreeEvent) {
     // 無料イベントの場合は参加費は0円でなければならない
-    if (value !== '0' && value !== '') {
-      errors.fee = '無料イベントの参加費は0円である必要があります';
+    if (value !== "0" && value !== "") {
+      errors.fee = "無料イベントの参加費は0円である必要があります";
     }
   } else {
     // 有料イベントの場合は参加費は必須
     if (!value) {
-      errors.fee = '参加費は必須です';
+      errors.fee = "参加費は必須です";
     } else {
-      const fee = parseInt(value);
-      if (isNaN(fee) || fee < 0 || fee > 1000000) {
-        errors.fee = '参加費は0以上1000000以下である必要があります';
+      const fee = Number(value);
+      if (!Number.isFinite(fee) || fee < 0 || fee > 1000000) {
+        errors.fee = "参加費は0以上1000000以下である必要があります";
       }
     }
   }
-  
+
   return errors;
 }
 
@@ -230,13 +236,13 @@ export const validateAllFields = (formData: EventFormData): ValidationErrors => 
   } catch (error) {
     if (error instanceof ZodError) {
       const errors: ValidationErrors = {};
-      
+
       error.errors.forEach((err) => {
         const fieldPath = err.path[0] as string;
         const errorFieldName = errorFieldMap[fieldPath] || fieldPath;
         errors[errorFieldName as keyof ValidationErrors] = err.message;
       });
-      
+
       return errors;
     }
     return { general: "予期しないエラーが発生しました" };

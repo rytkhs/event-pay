@@ -1,7 +1,7 @@
 "use client";
 
-import { PaymentMethod, PAYMENT_METHOD_LABELS } from '@/lib/constants/payment-methods';
-import { sanitizeEventDescription } from '@/lib/utils/sanitize';
+import { PaymentMethod, PAYMENT_METHOD_LABELS } from "@/lib/constants/payment-methods";
+import { sanitizeEventDescription } from "@/lib/utils/sanitize";
 
 interface EventDetailProps {
   event: {
@@ -11,7 +11,7 @@ interface EventDetailProps {
     location: string;
     fee: number;
     capacity: number;
-    status: 'upcoming' | 'ongoing' | 'past' | 'cancelled';
+    status: "upcoming" | "ongoing" | "past" | "cancelled";
     description?: string;
     registration_deadline?: string;
     payment_deadline?: string;
@@ -29,13 +29,13 @@ export function EventDetail({ event }: EventDetailProps) {
   }
 
   const formatDate = (dateString: string) => {
-    return new Intl.DateTimeFormat('ja-JP', {
-      timeZone: 'Asia/Tokyo',
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit'
+    return new Intl.DateTimeFormat("ja-JP", {
+      timeZone: "Asia/Tokyo",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
     }).format(new Date(dateString));
   };
 
@@ -45,11 +45,16 @@ export function EventDetail({ event }: EventDetailProps) {
 
   const getStatusText = (status: string) => {
     switch (status) {
-      case 'upcoming': return '開催予定';
-      case 'ongoing': return '開催中';
-      case 'past': return '終了';
-      case 'cancelled': return 'キャンセル';
-      default: return status;
+      case "upcoming":
+        return "開催予定";
+      case "ongoing":
+        return "開催中";
+      case "past":
+        return "終了";
+      case "cancelled":
+        return "キャンセル";
+      default:
+        return status;
     }
   };
 
@@ -89,7 +94,9 @@ export function EventDetail({ event }: EventDetailProps) {
           {event.registration_deadline && (
             <div>
               <h3 className="text-sm font-medium text-gray-700">申込締切</h3>
-              <p className="mt-1 text-sm text-gray-900">{formatDate(event.registration_deadline)}</p>
+              <p className="mt-1 text-sm text-gray-900">
+                {formatDate(event.registration_deadline)}
+              </p>
             </div>
           )}
 
@@ -103,7 +110,7 @@ export function EventDetail({ event }: EventDetailProps) {
           <div>
             <h3 className="text-sm font-medium text-gray-700">決済方法</h3>
             <p className="mt-1 text-sm text-gray-900">
-              {event.payment_methods.map(method => PAYMENT_METHOD_LABELS[method]).join(', ')}
+              {event.payment_methods.map((method) => PAYMENT_METHOD_LABELS[method]).join(", ")}
             </p>
           </div>
         </div>
@@ -112,7 +119,9 @@ export function EventDetail({ event }: EventDetailProps) {
       {event.description && (
         <div>
           <h3 className="text-sm font-medium text-gray-700">詳細説明</h3>
-          <p className="mt-1 text-sm text-gray-900 whitespace-pre-wrap">{sanitizeEventDescription(event.description)}</p>
+          <p className="mt-1 text-sm text-gray-900 whitespace-pre-wrap">
+            {sanitizeEventDescription(event.description)}
+          </p>
         </div>
       )}
 

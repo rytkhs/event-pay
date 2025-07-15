@@ -2,7 +2,10 @@ import React from "react";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { jest } from "@jest/globals";
 import EventCreateForm from "@/components/events/event-form";
-import { getFutureDatetimeLocalForTest, getPastDatetimeLocalForTest } from "@/lib/utils/test-helpers";
+import {
+  getFutureDatetimeLocalForTest,
+  getPastDatetimeLocalForTest,
+} from "@/lib/utils/test-helpers";
 
 // Mock Server Action
 const mockCreateEventAction = jest.fn() as jest.MockedFunction<
@@ -48,18 +51,18 @@ describe("EventCreateForm", () => {
     jest.clearAllMocks();
     mockPush.mockClear();
     mockStartTransition.mockClear();
-    
+
     // 認証済みユーザーとしてmock設定
     mockGetUser.mockResolvedValue({
       data: { user: { id: "test-user-id", email: "test@example.com" } },
       error: null,
     });
-    
+
     // Server Actionが実行されないようにする（クライアントサイドバリデーションでブロックされるはず）
     mockCreateEventAction.mockResolvedValue({ success: true, data: { id: "test-event-id" } });
-    
+
     // DOM要素をクリア
-    document.body.innerHTML = '';
+    document.body.innerHTML = "";
   });
 
   describe("必須フィールドバリデーション", () => {
@@ -72,7 +75,7 @@ describe("EventCreateForm", () => {
       // タイトルフィールドを明示的に空にする
       const titleInput = screen.getByLabelText(/タイトル/i) as HTMLInputElement;
       fireEvent.change(titleInput, { target: { value: "" } });
-      
+
       // 値が確実にクリアされているか確認
       expect(titleInput.value).toBe("");
 
@@ -101,14 +104,14 @@ describe("EventCreateForm", () => {
       // 他のフィールドも空にして、日時フィールドだけの問題に絞る
       const titleInput = screen.getByLabelText(/タイトル/i) as HTMLInputElement;
       fireEvent.change(titleInput, { target: { value: "" } });
-      
+
       const feeInput = screen.getByLabelText(/参加費/i) as HTMLInputElement;
       fireEvent.change(feeInput, { target: { value: "" } });
 
       // 開催日時フィールドを明示的に空にし、確実にクリアする
       const dateInput = screen.getByLabelText(/開催日時/i) as HTMLInputElement;
       fireEvent.change(dateInput, { target: { value: "" } });
-      
+
       expect(dateInput.value).toBe("");
 
       const form = document.querySelector("form");
@@ -116,7 +119,9 @@ describe("EventCreateForm", () => {
 
       await waitFor(
         () => {
-          expect(screen.getByText("開催日時は現在時刻より後である必要があります")).toBeInTheDocument();
+          expect(
+            screen.getByText("開催日時は現在時刻より後である必要があります")
+          ).toBeInTheDocument();
         },
         { timeout: 3000 }
       );
@@ -330,7 +335,6 @@ describe("EventCreateForm", () => {
       // 決済方法を選択
       const stripeCheckbox = screen.getByLabelText(/Stripe決済/);
       fireEvent.click(stripeCheckbox);
-
 
       const form = document.querySelector("form");
       fireEvent.submit(form!);

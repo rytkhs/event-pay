@@ -1,8 +1,8 @@
 "use client";
 
-import { useRouter } from 'next/navigation';
-import { useState } from 'react';
-import { deleteEventAction } from '@/app/events/actions/delete-event';
+import { useRouter } from "next/navigation";
+import { useState } from "react";
+import { deleteEventAction } from "@/app/events/actions/delete-event";
 import {
   Dialog,
   DialogContent,
@@ -22,7 +22,7 @@ export function EventActions({ eventId }: EventActionsProps) {
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
-  const isDisabled = !eventId || eventId === '';
+  const isDisabled = !eventId || eventId === "";
 
   const handleEdit = () => {
     if (isDisabled) return;
@@ -43,14 +43,14 @@ export function EventActions({ eventId }: EventActionsProps) {
     try {
       const result = await deleteEventAction(eventId);
       if (result.success) {
-        router.push('/events');
+        router.push("/events");
         router.refresh(); // ページ遷移後にキャッシュを更新
       } else {
         // Server Actionから返される詳細なエラーメッセージを表示
-        setDeleteError(result.error?.message || '削除に失敗しました');
+        setDeleteError(result.error?.message || "削除に失敗しました");
       }
     } catch (error) {
-      setDeleteError('削除に失敗しました');
+      setDeleteError("削除に失敗しました");
     } finally {
       setIsDeleting(false);
     }
@@ -88,9 +88,7 @@ export function EventActions({ eventId }: EventActionsProps) {
             </DialogDescription>
           </DialogHeader>
 
-          {deleteError && (
-            <div className="text-red-600 text-sm">{deleteError}</div>
-          )}
+          {deleteError && <div className="text-red-600 text-sm">{deleteError}</div>}
 
           <DialogFooter>
             <button

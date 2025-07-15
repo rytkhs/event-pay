@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 import { EventError } from "@/components/events/event-error";
 

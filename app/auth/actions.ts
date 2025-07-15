@@ -28,7 +28,12 @@ const registerSchema = z
           // 危険な特殊文字のチェック（アポストロフィと引用符は許可）
           if (/[;&|`$(){}[\]<>\\]/.test(trimmed)) return false;
           // コマンドインジェクション対策（完全なコマンド形式のみ拒否）
-          if (/^\s*(rm|cat|echo|whoami|id|ls|pwd|sudo|su|curl|wget|nc|nmap|chmod|chown|kill|ps|top|netstat|find|grep|awk|sed|tail|head|sort|uniq)\s+/.test(trimmed)) return false;
+          if (
+            /^\s*(rm|cat|echo|whoami|id|ls|pwd|sudo|su|curl|wget|nc|nmap|chmod|chown|kill|ps|top|netstat|find|grep|awk|sed|tail|head|sort|uniq)\s+/.test(
+              trimmed
+            )
+          )
+            return false;
           return true;
         },
         {
@@ -315,7 +320,11 @@ export async function registerAction(formData: FormData): Promise<ActionResult<{
         const ip = headersList.get("x-forwarded-for") || headersList.get("x-real-ip") || "unknown";
 
         const store = await createRateLimitStore();
-        const rateLimitResult = await checkRateLimit(store, `register_${ip}`, RATE_LIMIT_CONFIG.register);
+        const rateLimitResult = await checkRateLimit(
+          store,
+          `register_${ip}`,
+          RATE_LIMIT_CONFIG.register
+        );
         if (!rateLimitResult.allowed) {
           await TimingAttackProtection.addConstantDelay();
           return {
@@ -557,7 +566,11 @@ export async function resetPasswordAction(formData: FormData): Promise<ActionRes
         const ip = headersList.get("x-forwarded-for") || headersList.get("x-real-ip") || "unknown";
 
         const store = await createRateLimitStore();
-        const rateLimitResult = await checkRateLimit(store, `reset_password_${ip}`, RATE_LIMIT_CONFIG.passwordReset);
+        const rateLimitResult = await checkRateLimit(
+          store,
+          `reset_password_${ip}`,
+          RATE_LIMIT_CONFIG.passwordReset
+        );
         if (!rateLimitResult.allowed) {
           await TimingAttackProtection.addConstantDelay();
           return {
