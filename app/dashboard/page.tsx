@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { logoutAction } from "@/app/auth/actions";
+import { formatUtcToJst } from "@/lib/utils/timezone";
 
 async function handleLogout() {
   "use server";
@@ -87,14 +88,7 @@ export default async function DashboardPage() {
                     <div className="flex justify-between">
                       <span className="text-sm text-gray-600">登録日時:</span>
                       <span className="text-sm text-gray-900">
-                        {new Intl.DateTimeFormat("ja-JP", {
-                          timeZone: "Asia/Tokyo",
-                          year: "numeric",
-                          month: "2-digit",
-                          day: "2-digit",
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        }).format(new Date(user.created_at))}
+                        {formatUtcToJst(user.created_at, "yyyy/MM/dd HH:mm")}
                       </span>
                     </div>
                     <div className="flex justify-between">

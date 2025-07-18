@@ -126,11 +126,40 @@ export async function loginAction(formData: FormData): Promise<ActionResult<{ us
         };
       }
 
-      const allowedOrigins = [
-        `https://${host}`,
-        `http://${host}`,
-        process.env.NEXT_PUBLIC_SITE_URL,
-      ].filter(Boolean);
+      // 複数環境に対応した許可オリジン設定
+      const getAllowedOrigins = () => {
+        const origins = [];
+
+        // ホストベースのオリジン
+        if (host) {
+          origins.push(`https://${host}`);
+          origins.push(`http://${host}`);
+        }
+
+        // 本番環境URL
+        if (process.env.NEXT_PUBLIC_SITE_URL) {
+          origins.push(process.env.NEXT_PUBLIC_SITE_URL);
+        }
+
+        // 開発環境URL
+        origins.push("http://localhost:3000");
+        origins.push("https://localhost:3000");
+
+        // Vercel Preview環境URL
+        if (process.env.VERCEL_URL) {
+          origins.push(`https://${process.env.VERCEL_URL}`);
+        }
+
+        // 追加の許可オリジン
+        if (process.env.ALLOWED_ORIGINS) {
+          const additionalOrigins = process.env.ALLOWED_ORIGINS.split(",").map(o => o.trim());
+          origins.push(...additionalOrigins);
+        }
+
+        return [...new Set(origins.filter(Boolean))]; // 重複と空文字を除去
+      };
+
+      const allowedOrigins = getAllowedOrigins();
 
       const isValidOrigin = origin && allowedOrigins.some((allowed) => origin === allowed);
       const isValidReferer =

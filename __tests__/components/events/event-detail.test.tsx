@@ -102,6 +102,24 @@ describe("EventDetail Component", () => {
       expect(screen.getByText(/決済方法/)).toBeInTheDocument();
     });
 
+    test("無料イベントの場合、参加費が「無料」と表示される", () => {
+      const freeEvent = {
+        ...mockEventDetail,
+        fee: 0,
+      };
+      render(<EventDetail event={freeEvent} />);
+      expect(screen.getByText("無料")).toBeInTheDocument();
+    });
+
+    test("無料イベントの場合、決済方法が表示されない", () => {
+      const freeEvent = {
+        ...mockEventDetail,
+        fee: 0,
+      };
+      render(<EventDetail event={freeEvent} />);
+      expect(screen.queryByText(/決済方法/)).not.toBeInTheDocument();
+    });
+
     test("作成日時が正しく表示される", () => {
       render(<EventDetail event={mockEventDetail} />);
       expect(screen.getByText(/作成日時/)).toBeInTheDocument();

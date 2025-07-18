@@ -35,7 +35,6 @@ function EmptyEventList({ isFiltered = false }: { isFiltered?: boolean }) {
 
 export const EventList = memo(function EventList({
   events,
-  isLoading = false,
   isFiltered = false,
 }: EventListProps) {
   if (events.length === 0) {

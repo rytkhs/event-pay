@@ -48,7 +48,7 @@ CREATE TABLE public.attendances (
 );
 
 -- paymentsテーブル作成
--- 全ての決済情報（Stripe, 現金, 無料）を一元管理
+-- 全ての決済情報（Stripe, 現金）を一元管理
 CREATE TABLE public.payments (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     attendance_id UUID NOT NULL UNIQUE REFERENCES public.attendances(id) ON DELETE CASCADE,
@@ -122,12 +122,9 @@ ALTER TABLE public.events ADD CONSTRAINT events_payment_deadline_after_registrat
     CHECK (payment_deadline IS NULL OR registration_deadline IS NULL
            OR payment_deadline >= registration_deadline);
 
--- 決済方法と参加費の整合性
-ALTER TABLE public.events ADD CONSTRAINT events_payment_methods_fee_consistency
-    CHECK (
-        (fee = 0 AND 'free' = ANY(payment_methods)) OR
-        (fee > 0 AND NOT ('free' = ANY(payment_methods)))
-    );
+-- 決済方法の妥当性（参加費に関係なく stripe または cash を選択）
+ALTER TABLE public.events ADD CONSTRAINT events_payment_methods_valid
+    CHECK (payment_methods <@ ARRAY['stripe', 'cash']::payment_method_enum[]);
 
 -- 決済方法の妥当性
 ALTER TABLE public.events ADD CONSTRAINT events_payment_methods_not_empty
@@ -155,12 +152,9 @@ ALTER TABLE public.payments ADD CONSTRAINT payments_stripe_intent_required
         (method != 'stripe' AND stripe_payment_intent_id IS NULL)
     );
 
--- 無料決済の場合、金額は0円
-ALTER TABLE public.payments ADD CONSTRAINT payments_free_amount_zero
-    CHECK (
-        (method = 'free' AND amount = 0) OR
-        (method != 'free')
-    );
+-- 決済レコードは1円以上の場合のみ作成（無料イベントは決済レコード不要）
+ALTER TABLE public.payments ADD CONSTRAINT payments_amount_positive
+    CHECK (amount > 0);
 
 -- 決済完了時刻の妥当性
 ALTER TABLE public.payments ADD CONSTRAINT payments_paid_at_when_completed
@@ -314,6 +308,90 @@ $$;
 
 -- 関数の実行権限設定
 GRANT EXECUTE ON FUNCTION public.get_event_creator_name(UUID) TO authenticated, service_role;
+
+-- ====================================================================
+-- capacity制約強化
+-- ====================================================================
+
+-- capacity設定時の整合性チェック関数
+-- 参加者数が定員を超えないことを保証
+CREATE OR REPLACE FUNCTION check_event_capacity_consistency()
+RETURNS TRIGGER AS $$
+DECLARE
+    attending_count INTEGER;
+BEGIN
+    -- 定員が設定されている場合のみチェック
+    IF NEW.capacity IS NOT NULL THEN
+        -- 現在の「参加」ステータスの参加者数を取得
+        SELECT COUNT(*) INTO attending_count
+        FROM public.attendances
+        WHERE event_id = NEW.id AND status = 'attending';
+
+        -- 定員が参加者数未満の場合はエラー
+        IF NEW.capacity < attending_count THEN
+            RAISE EXCEPTION 'イベントの定員（%）は現在の参加者数（%）未満には設定できません',
+                NEW.capacity, attending_count;
+        END IF;
+    END IF;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- 参加者追加時の定員チェック関数
+-- 新しい参加者が定員を超えないことを保証
+CREATE OR REPLACE FUNCTION check_attendance_capacity_limit()
+RETURNS TRIGGER AS $$
+DECLARE
+    event_capacity INTEGER;
+    current_attending_count INTEGER;
+BEGIN
+    -- 「参加」ステータスの場合のみチェック
+    IF NEW.status = 'attending' THEN
+        -- イベントの定員を取得
+        SELECT capacity INTO event_capacity
+        FROM public.events
+        WHERE id = NEW.event_id;
+
+        -- 定員が設定されている場合のみチェック
+        IF event_capacity IS NOT NULL THEN
+            -- 現在の「参加」ステータスの参加者数を取得
+            SELECT COUNT(*) INTO current_attending_count
+            FROM public.attendances
+            WHERE event_id = NEW.event_id AND status = 'attending';
+
+            -- 定員を超える場合はエラー
+            IF current_attending_count >= event_capacity THEN
+                RAISE EXCEPTION 'イベントの定員（%名）に達しています。参加登録できません',
+                    event_capacity;
+            END IF;
+        END IF;
+    END IF;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- eventsテーブルの更新時にcapacity制約をチェック
+CREATE TRIGGER check_event_capacity_before_update
+    BEFORE UPDATE ON public.events
+    FOR EACH ROW
+    EXECUTE FUNCTION check_event_capacity_consistency();
+
+-- attendancesテーブルの挿入・更新時に定員制限をチェック
+CREATE TRIGGER check_attendance_capacity_before_insert
+    BEFORE INSERT ON public.attendances
+    FOR EACH ROW
+    EXECUTE FUNCTION check_attendance_capacity_limit();
+
+CREATE TRIGGER check_attendance_capacity_before_update
+    BEFORE UPDATE ON public.attendances
+    FOR EACH ROW
+    EXECUTE FUNCTION check_attendance_capacity_limit();
+
+-- capacity制約関数の実行権限設定
+GRANT EXECUTE ON FUNCTION check_event_capacity_consistency() TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION check_attendance_capacity_limit() TO authenticated, service_role;
 
 -- ====================================================================
 -- updated_atカラムの自動更新設定

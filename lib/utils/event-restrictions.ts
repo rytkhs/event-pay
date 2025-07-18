@@ -13,73 +13,249 @@ export interface EditRestrictionViolation {
 }
 
 /**
- * 参加者がいる場合のイベント編集制限をチェック
+ * 制限チェックのコンテキスト情報
  */
-export function checkEditRestrictions(
+export interface RestrictionContext {
+  operation: "update" | "delete" | "payment_change" | "capacity_change";
+  attendeeCount: number;
+  hasPayments?: boolean;
+  hasActivePayments?: boolean;
+}
+
+/**
+ * 制限ルールの定義
+ */
+export interface RestrictionRule {
+  field: string;
+  check: (existingValue: any, newValue: any, context: RestrictionContext) => boolean;
+  message: string | ((context: RestrictionContext) => string);
+}
+
+/**
+ * 型安全なフィールド値取得ヘルパー
+ */
+function getFieldValue(obj: any, fieldName: string): any {
+  switch (fieldName) {
+    case "title":
+      return obj.title;
+    case "description":
+      return obj.description;
+    case "location":
+      return obj.location;
+    case "date":
+      return obj.date;
+    case "fee":
+      return obj.fee;
+    case "capacity":
+      return obj.capacity;
+    case "payment_methods":
+      return obj.payment_methods;
+    case "registration_deadline":
+      return obj.registration_deadline;
+    case "payment_deadline":
+      return obj.payment_deadline;
+    case "event":
+      return obj; // 削除操作用
+    default:
+      return undefined;
+  }
+}
+
+/**
+ * 汎用的なイベント制限チェック機能
+ */
+export function checkEventRestrictions(
   existingEvent: EventWithAttendances,
-  newData: Partial<EventRow>
+  newData: Partial<EventRow>,
+  context: RestrictionContext
 ): EditRestrictionViolation[] {
   const violations: EditRestrictionViolation[] = [];
-  const hasAttendees = existingEvent.attendances && existingEvent.attendances.length > 0;
 
-  if (!hasAttendees) {
+  if (context.attendeeCount === 0) {
     return violations; // 参加者がいない場合は制限なし
   }
 
-  // タイトル変更チェック
-  if (newData.title && newData.title !== existingEvent.title) {
-    violations.push({
-      field: "title",
-      message: "参加者がいるため、タイトルは変更できません",
-    });
-  }
+  // 操作別の制限ルール
+  const rules = getRestrictionRules(context.operation);
 
-  // 日時変更チェック
-  if (newData.date && newData.date !== existingEvent.date) {
-    violations.push({
-      field: "date",
-      message: "参加者がいるため、開催日時は変更できません",
-    });
-  }
+  for (const rule of rules) {
+    // 型安全なフィールドアクセス
+    const existingValue = getFieldValue(existingEvent, rule.field);
+    const newValue = getFieldValue(newData, rule.field);
 
-  // 参加費変更チェック
-  if (newData.fee !== undefined && newData.fee !== existingEvent.fee) {
-    violations.push({
-      field: "fee",
-      message: "参加者がいるため、参加費は変更できません",
-    });
-  }
+    // 削除操作の場合は newValue が undefined でもチェックを実行
+    const shouldCheck =
+      context.operation === "delete" ? rule.field === "event" : newValue !== undefined;
 
-  // 定員変更チェック（減少のみ禁止）
-  if (newData.capacity !== undefined) {
-    const currentCapacity = existingEvent.capacity || 999999;
-    if (newData.capacity !== null && newData.capacity < currentCapacity) {
+    if (shouldCheck && rule.check(existingValue, newValue, context)) {
       violations.push({
-        field: "capacity",
-        message: "参加者がいるため、定員を減らすことはできません",
-      });
-    }
-  }
-
-  // 決済方法変更チェック
-  if (newData.payment_methods) {
-    const currentMethods = existingEvent.payment_methods || [];
-    const newMethods = newData.payment_methods;
-
-    // 配列の比較（順序を考慮しない）
-    const hasChanged =
-      newMethods.length !== currentMethods.length ||
-      !newMethods.every((method) => currentMethods.includes(method));
-
-    if (hasChanged) {
-      violations.push({
-        field: "payment_methods",
-        message: "参加者がいるため、決済方法は変更できません",
+        field: rule.field,
+        message: typeof rule.message === "function" ? rule.message(context) : rule.message,
       });
     }
   }
 
   return violations;
+}
+
+/**
+ * 操作別の制限ルールを取得
+ */
+function getRestrictionRules(operation: string): RestrictionRule[] {
+  const commonRules: RestrictionRule[] = [
+    {
+      field: "title",
+      check: (existing, updated) => existing !== updated,
+      message: "参加者がいるため、タイトルは変更できません",
+    },
+    {
+      field: "fee",
+      check: (existing, updated) => existing !== updated,
+      message: "参加者がいるため、参加費は変更できません",
+    },
+    {
+      field: "payment_methods",
+      check: (existing, updated) => {
+        const currentMethods = existing || [];
+        const newMethods = updated || [];
+        return (
+          newMethods.length !== currentMethods.length ||
+          !newMethods.every((method: string) => currentMethods.includes(method))
+        );
+      },
+      message: "参加者がいるため、決済方法は変更できません",
+    },
+  ];
+
+  const updateRules: RestrictionRule[] = [
+    ...commonRules,
+    {
+      field: "date",
+      check: (existing, updated) => existing !== updated,
+      message: "参加者がいるため、開催日時は変更できません",
+    },
+    {
+      field: "capacity",
+      check: (existing, updated, context) => {
+        const currentCapacity = existing || 999999;
+        return updated !== null && updated < currentCapacity && updated < context.attendeeCount;
+      },
+      message: (context) =>
+        `参加者が${context.attendeeCount}名いるため、定員を${context.attendeeCount}名未満に減らすことはできません`,
+    },
+  ];
+
+  const deleteRules: RestrictionRule[] = [
+    {
+      field: "event",
+      check: (existing, updated, context) => context.attendeeCount > 0,
+      message: (context) => `参加者が${context.attendeeCount}名いるため、イベントを削除できません`,
+    },
+  ];
+
+  const paymentChangeRules: RestrictionRule[] = [
+    {
+      field: "fee",
+      check: (existing, updated, context) =>
+        existing !== updated && (context.hasActivePayments || false),
+      message: "決済済みの参加者がいるため、参加費は変更できません",
+    },
+    {
+      field: "payment_methods",
+      check: (existing, updated, context) => {
+        if (!(context.hasActivePayments || false)) return false;
+        const currentMethods = existing || [];
+        const newMethods = updated || [];
+        return (
+          newMethods.length !== currentMethods.length ||
+          !newMethods.every((method: string) => currentMethods.includes(method))
+        );
+      },
+      message: "決済済みの参加者がいるため、決済方法は変更できません",
+    },
+  ];
+
+  switch (operation) {
+    case "update":
+      return updateRules;
+    case "delete":
+      return deleteRules;
+    case "payment_change":
+      return paymentChangeRules;
+    case "capacity_change":
+      return updateRules.filter((rule) => rule.field === "capacity");
+    default:
+      return commonRules;
+  }
+}
+
+/**
+ * 参加者がいる場合のイベント編集制限をチェック（既存API互換）
+ */
+export function checkEditRestrictions(
+  existingEvent: EventWithAttendances,
+  newData: Partial<EventRow>
+): EditRestrictionViolation[] {
+  const attendeeCount = existingEvent.attendances?.length || 0;
+
+  return checkEventRestrictions(existingEvent, newData, {
+    operation: "update",
+    attendeeCount,
+  });
+}
+
+/**
+ * イベント削除制限をチェック
+ */
+export function checkDeleteRestrictions(
+  existingEvent: EventWithAttendances
+): EditRestrictionViolation[] {
+  const attendeeCount = existingEvent.attendances?.length || 0;
+
+  return checkEventRestrictions(
+    existingEvent,
+    {},
+    {
+      operation: "delete",
+      attendeeCount,
+    }
+  );
+}
+
+/**
+ * 決済関連変更制限をチェック
+ */
+export function checkPaymentChangeRestrictions(
+  existingEvent: EventWithAttendances,
+  newData: Partial<EventRow>,
+  hasActivePayments: boolean
+): EditRestrictionViolation[] {
+  const attendeeCount = existingEvent.attendances?.length || 0;
+
+  return checkEventRestrictions(existingEvent, newData, {
+    operation: "payment_change",
+    attendeeCount,
+    hasActivePayments,
+  });
+}
+
+/**
+ * 定員変更制限をチェック
+ */
+export function checkCapacityChangeRestrictions(
+  existingEvent: EventWithAttendances,
+  newCapacity: number
+): EditRestrictionViolation[] {
+  const attendeeCount = existingEvent.attendances?.length || 0;
+
+  return checkEventRestrictions(
+    existingEvent,
+    { capacity: newCapacity },
+    {
+      operation: "capacity_change",
+      attendeeCount,
+    }
+  );
 }
 
 /**
@@ -105,6 +281,11 @@ export function filterEditableFields(
 
   if (newData.location !== undefined) {
     editableFields.location = newData.location;
+  }
+
+  // 開催日時も編集可能
+  if (newData.date !== undefined) {
+    editableFields.date = newData.date;
   }
 
   // 定員は増加のみ可能

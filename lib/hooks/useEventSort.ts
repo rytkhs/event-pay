@@ -41,10 +41,12 @@ export function useEventSort(options: UseEventSortOptions = {}) {
 
       switch (sortOptions.sortBy) {
         case "date":
-          comparison = new Date(a.date).getTime() - new Date(b.date).getTime();
+          // 日付文字列を直接比較（ISO文字列、date-fns-tz統一）
+          comparison = a.date.localeCompare(b.date);
           break;
         case "created_at":
-          comparison = new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+          // 日付文字列を直接比較（ISO文字列、date-fns-tz統一）
+          comparison = a.created_at.localeCompare(b.created_at);
           break;
         case "attendances_count":
           // 参加者数はクライアントサイドで計算（集計値のため）
@@ -74,7 +76,6 @@ export function useEventSort(options: UseEventSortOptions = {}) {
   const setSortBy = useCallback(
     (sortBy: SortBy) => {
       if (!isValidSortBy(sortBy)) {
-        console.warn("無効なソート条件です。開催日時ソートに設定します。");
         sortBy = DEFAULT_SORT_BY;
       }
       const newSortOptions = { ...sortOptions, sortBy };
@@ -86,7 +87,6 @@ export function useEventSort(options: UseEventSortOptions = {}) {
   const setSortOrder = useCallback(
     (sortOrder: SortOrder) => {
       if (!isValidSortOrder(sortOrder)) {
-        console.warn("無効なソート順序です。昇順に設定します。");
         sortOrder = DEFAULT_SORT_ORDER;
       }
       const newSortOptions = { ...sortOptions, sortOrder };

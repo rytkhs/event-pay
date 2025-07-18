@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { validateEventId } from "@/lib/validations/event-id";
+import { checkDeleteRestrictions } from "@/lib/utils/event-restrictions";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 
@@ -25,6 +26,38 @@ export async function deleteEventAction(eventId: string) {
     } = await supabase.auth.getUser();
     if (authError || !user) {
       redirect("/auth/login");
+    }
+
+    // イベント情報を取得（削除制限チェック用）
+    const { data: event, error: fetchError } = await supabase
+      .from("events")
+      .select(
+        `
+        *,
+        attendances(id, status)
+      `
+      )
+      .eq("id", validation.data)
+      .eq("created_by", user.id)
+      .single();
+
+    if (fetchError || !event) {
+      return {
+        success: false,
+        error: { message: "Event not found" },
+      };
+    }
+
+    // 削除制限チェック
+    const restrictions = checkDeleteRestrictions(event);
+    if (restrictions.length > 0) {
+      return {
+        success: false,
+        error: {
+          message: restrictions[0].message,
+          violations: restrictions,
+        },
+      };
     }
 
     // イベント削除（RLSで自分のイベントのみ削除可能）

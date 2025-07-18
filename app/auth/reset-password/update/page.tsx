@@ -1,5 +1,6 @@
 "use client";
 
+import { Suspense } from "react";
 import Link from "next/link";
 import { usePasswordConfirmation } from "@/lib/hooks/usePasswordConfirmation";
 import { PasswordStatusIcon } from "@/components/ui/PasswordStatusIcon";

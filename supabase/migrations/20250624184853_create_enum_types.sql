@@ -21,8 +21,7 @@ CREATE TYPE event_status_enum AS ENUM (
 -- 決済統合設計により、全ての決済方法を統一管理
 CREATE TYPE payment_method_enum AS ENUM (
     'stripe',       -- オンライン決済（Stripe）
-    'cash',         -- 現金決済（当日支払い）
-    'free'          -- 無料イベント
+    'cash'          -- 現金決済（当日支払い）
 );
 
 -- ====================================================================
@@ -80,7 +79,7 @@ CREATE TYPE payout_status_enum AS ENUM (
 -- ====================================================================
 -- ENUM型が正しく作成されたことを確認するためのコメント
 COMMENT ON TYPE event_status_enum IS 'イベントの進行状況を管理するENUM型。MVPで使用する基本ステータス。';
-COMMENT ON TYPE payment_method_enum IS '決済方法を統一管理するENUM型。Stripe/現金/無料の3種類をサポート。';
+COMMENT ON TYPE payment_method_enum IS '決済方法を統一管理するENUM型。Stripe/現金の2種類をサポート。無料イベントは参加費0円で判定。';
 COMMENT ON TYPE payment_status_enum IS '決済状況の詳細管理用ENUM型。決済方法ごとに適切なステータスを設定。';
 COMMENT ON TYPE attendance_status_enum IS '参加意思表明用ENUM型。maybeは定員対象外で決済も発生しない。';
 COMMENT ON TYPE stripe_account_status_enum IS 'Stripe Connectアカウント状況管理用ENUM型。決済受付可否の判定に使用。';
@@ -115,7 +114,7 @@ BEGIN
         RAISE NOTICE 'EventPay ENUM型の作成が完了しました。作成された型数: %', enum_count;
         RAISE NOTICE '次のENUM型が正常に作成されました:';
         RAISE NOTICE '- event_status_enum (4値)';
-        RAISE NOTICE '- payment_method_enum (3値)';
+        RAISE NOTICE '- payment_method_enum (2値)';
         RAISE NOTICE '- payment_status_enum (7値)';
         RAISE NOTICE '- attendance_status_enum (3値)';
         RAISE NOTICE '- stripe_account_status_enum (4値)';

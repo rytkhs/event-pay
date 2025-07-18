@@ -3,8 +3,6 @@ import { Event } from "@/types/event";
 import { StatusFilter, PaymentFilter, DateFilter } from "@/app/events/actions/get-events";
 import { convertJstDateToUtcRange } from "@/lib/utils/timezone";
 import {
-  STATUS_FILTER_OPTIONS,
-  PAYMENT_FILTER_OPTIONS,
   DEFAULT_STATUS_FILTER,
   DEFAULT_PAYMENT_FILTER,
   isValidStatusFilter,
@@ -61,7 +59,7 @@ export function useEventFilter(options: UseEventFilterOptions = {}) {
         if (filters.payment === "paid" && isFree) return false;
       }
 
-      // 日付範囲フィルター
+      // 日付範囲フィルター（date-fns-tz統一）
       if (filters.dateRange.start) {
         const eventDate = new Date(event.date);
         const { startOfDay } = convertJstDateToUtcRange(filters.dateRange.start);
@@ -76,7 +74,7 @@ export function useEventFilter(options: UseEventFilterOptions = {}) {
 
       return true;
     });
-  }, [events, events.length, filters, enableClientSideFiltering]);
+  }, [events, filters, enableClientSideFiltering]);
 
   const updateFilters = useCallback(
     (newFilters: Filters) => {
@@ -89,7 +87,6 @@ export function useEventFilter(options: UseEventFilterOptions = {}) {
   const setStatusFilter = useCallback(
     (status: StatusFilter) => {
       if (!isValidStatusFilter(status)) {
-        console.warn("無効なステータスフィルターです。全件表示に設定します。");
         status = DEFAULT_STATUS_FILTER;
       }
       const newFilters = { ...filters, status };
@@ -101,7 +98,6 @@ export function useEventFilter(options: UseEventFilterOptions = {}) {
   const setPaymentFilter = useCallback(
     (payment: PaymentFilter) => {
       if (!isValidPaymentFilter(payment)) {
-        console.warn("無効な決済フィルターです。全件表示に設定します。");
         payment = DEFAULT_PAYMENT_FILTER;
       }
       const newFilters = { ...filters, payment };
@@ -113,10 +109,8 @@ export function useEventFilter(options: UseEventFilterOptions = {}) {
   const setDateRangeFilter = useCallback(
     (dateRange: DateFilter) => {
       if (dateRange.start && dateRange.end) {
-        const startDate = new Date(dateRange.start);
-        const endDate = new Date(dateRange.end);
-        if (endDate < startDate) {
-          console.warn("終了日は開始日より前の日付は指定できません。日付範囲をクリアします。");
+        // 日付文字列を直接比較（YYYY-MM-DD形式、date-fns-tz統一）
+        if (dateRange.end < dateRange.start) {
           dateRange = {};
         }
       }

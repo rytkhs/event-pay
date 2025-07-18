@@ -4,6 +4,16 @@
 
 import { getEventsAction } from "@/app/events/actions/get-events";
 import { createMocks } from "../helpers/mock-factory.mjs";
+import { createMockSupabaseResponse } from "../utils/test-helpers.util";
+
+interface MockSupabaseClient {
+  from: jest.MockedFunction<(table: string) => any>;
+  auth: {
+    getUser: jest.MockedFunction<() => Promise<any>>;
+  };
+}
+
+let mockSupabase: MockSupabaseClient;
 
 // タイムゾーンユーティリティのモック
 jest.mock("@/lib/utils/timezone", () => ({
@@ -14,8 +24,6 @@ jest.mock("@/lib/utils/timezone", () => ({
 }));
 
 // 新モック戦略を使用
-let mockSupabase: any;
-
 jest.mock("@/lib/supabase/server", () => ({
   createClient: () => mockSupabase,
 }));

@@ -55,9 +55,12 @@ export function EventFilters({
     .refine(
       (data) => {
         if (data.start && data.end) {
-          const startDate = new Date(data.start);
-          const endDate = new Date(data.end);
-          return endDate > startDate;
+          try {
+            // 日付文字列を直接比較（YYYY-MM-DD形式）
+            return data.end > data.start;
+          } catch {
+            return false;
+          }
         }
         return true;
       },
@@ -75,7 +78,7 @@ export function EventFilters({
     } else {
       setDateError("");
     }
-  }, [dateFilter]);
+  }, [dateFilter, dateSchema]);
 
   const handleDateChange = (field: "start" | "end", value: string) => {
     const newDateFilter = { ...dateFilter, [field]: value };

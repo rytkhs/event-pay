@@ -1,14 +1,13 @@
 "use client";
 
 import { useState, useCallback, useTransition } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { z } from "zod";
 import { Event } from "@/types/event";
 import { EventList } from "./event-list";
 import { EventFilters } from "./event-filters";
 import { EventSort } from "./event-sort";
 import { useEventFilter, Filters } from "@/lib/hooks/useEventFilter";
-import { getEventsAction } from "@/app/events/actions/get-events";
 import type {
   SortBy,
   SortOrder,
@@ -37,10 +36,7 @@ export function EventListWithFilters({
   initialDateFilter = {},
 }: EventListWithFiltersProps) {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const [stateEvents, setStateEvents] = useState<Event[]>(events);
-  const [isLoading, setIsLoading] = useState(initialLoading);
-  const [isPending, startTransition] = useTransition();
+  const [isPending] = useTransition();
 
   // Zodスキーマによるバリデーション
   const sortBySchema = z.enum(["date", "created_at", "attendances_count", "fee"]);
@@ -121,7 +117,6 @@ export function EventListWithFilters({
       if (validation.success) {
         handleSortChange(validation.data, sortOrder, filters);
       } else {
-        console.warn("無効なソート条件です。変更を無視します:", newSortBy);
       }
     },
     [handleSortChange, sortOrder, filters, sortBySchema]
@@ -133,7 +128,6 @@ export function EventListWithFilters({
       if (validation.success) {
         handleSortChange(sortBy, validation.data, filters);
       } else {
-        console.warn("無効なソート順序です。変更を無視します:", newSortOrder);
       }
     },
     [handleSortChange, sortBy, filters, sortOrderSchema]
@@ -150,7 +144,7 @@ export function EventListWithFilters({
   const displayEvents = events;
 
   // ローディング状態
-  const isDisplayLoading = isLoading || isPending || initialLoading;
+  const isDisplayLoading = isPending || initialLoading;
 
   return (
     <div className="space-y-6" data-testid="event-list-with-filters">

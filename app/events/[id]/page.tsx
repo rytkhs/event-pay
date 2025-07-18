@@ -11,21 +11,6 @@ interface EventDetailPageProps {
   };
 }
 
-// 型定義の改善
-interface EventDetailData {
-  id: string;
-  title: string;
-  description: string;
-  date: string;
-  location: string;
-  participation_fee: number;
-  max_participants: number;
-  current_participants: number;
-  status: string;
-  created_at: string;
-  updated_at: string;
-  creator_name: string;
-}
 
 // React.cacheの適切な初期化
 const getCachedEventDetail =

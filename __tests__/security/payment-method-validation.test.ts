@@ -15,32 +15,6 @@ describe("決済方法バリデーション", () => {
   };
 
   describe("クライアントサイドバリデーション", () => {
-    it("無料と有料決済方法の組み合わせはエラーとなる", () => {
-      const errors = validateField("paymentMethods", "free,stripe", mockFormData);
-      expect(errors.paymentMethods).toBe(
-        "無料イベントと有料決済方法を同時に選択することはできません"
-      );
-    });
-
-    it("無料と現金決済方法の組み合わせはエラーとなる", () => {
-      const errors = validateField("paymentMethods", "free,cash", mockFormData);
-      expect(errors.paymentMethods).toBe(
-        "無料イベントと有料決済方法を同時に選択することはできません"
-      );
-    });
-
-    it("無料とStripe・現金決済方法の組み合わせはエラーとなる", () => {
-      const errors = validateField("paymentMethods", "free,stripe,cash", mockFormData);
-      expect(errors.paymentMethods).toBe(
-        "無料イベントと有料決済方法を同時に選択することはできません"
-      );
-    });
-
-    it("無料のみの場合は正常", () => {
-      const errors = validateField("paymentMethods", "free", mockFormData);
-      expect(errors.paymentMethods).toBeUndefined();
-    });
-
     it("Stripeのみの場合は正常", () => {
       const errors = validateField("paymentMethods", "stripe", mockFormData);
       expect(errors.paymentMethods).toBeUndefined();
@@ -60,26 +34,19 @@ describe("決済方法バリデーション", () => {
       const errors = validateField("paymentMethods", "invalid", mockFormData);
       expect(errors.paymentMethods).toBe("有効な決済方法を選択してください");
     });
+
+    it("freeは無効な決済方法としてエラーとなる", () => {
+      const errors = validateField("paymentMethods", "free", mockFormData);
+      expect(errors.paymentMethods).toBe("有効な決済方法を選択してください");
+    });
   });
 
   describe("サーバーサイドバリデーション", () => {
-    it("無料と有料決済方法の組み合わせはエラーとなる", () => {
+    it("参加費0円の場合は無料イベントとして扱われる", () => {
       const result = createEventSchema.safeParse({
         ...mockFormData,
-        payment_methods: "free,stripe",
-      });
-      expect(result.success).toBe(false);
-      if (!result.success) {
-        expect(result.error.issues[0].message).toBe(
-          "無料イベントと有料決済方法を同時に選択することはできません"
-        );
-      }
-    });
-
-    it("無料のみの場合は正常", () => {
-      const result = createEventSchema.safeParse({
-        ...mockFormData,
-        payment_methods: "free",
+        fee: "0",
+        payment_methods: "stripe,cash",
       });
       expect(result.success).toBe(true);
     });
@@ -112,6 +79,17 @@ describe("決済方法バリデーション", () => {
       const result = createEventSchema.safeParse({
         ...mockFormData,
         payment_methods: "invalid",
+      });
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.issues[0].message).toBe("有効な決済方法を選択してください");
+      }
+    });
+
+    it("freeは無効な決済方法としてエラーとなる", () => {
+      const result = createEventSchema.safeParse({
+        ...mockFormData,
+        payment_methods: "free",
       });
       expect(result.success).toBe(false);
       if (!result.success) {
