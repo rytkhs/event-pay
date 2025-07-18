@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { createEventSchema, type CreateEventInput } from "@/lib/validations/event";
+import { extractEventCreateFormData } from "@/lib/utils/form-data-extractors";
 import { z } from "zod";
 import { randomBytes } from "crypto";
 import type { Database } from "@/types/database";
@@ -49,7 +50,6 @@ export async function createEventAction(formData: FormData): Promise<CreateEvent
     }
 
     if (!user) {
-      console.warn("未認証ユーザーによるアクセス試行");
       return {
         success: false,
         error: "認証が必要です",
@@ -91,22 +91,12 @@ export async function createEventAction(formData: FormData): Promise<CreateEvent
       };
     }
 
-    console.info("イベント作成成功:", {
-      eventId: createdEvent.id,
-      userId: user.id,
-      title: createdEvent.title,
-    });
-
     return {
       success: true,
       data: createdEvent,
     };
   } catch (error) {
     if (error instanceof z.ZodError) {
-      console.warn("バリデーションエラー:", {
-        errors: error.errors,
-        formData: Object.fromEntries(formData.entries()),
-      });
       return {
         success: false,
         error: error.errors[0].message,
@@ -122,17 +112,8 @@ export async function createEventAction(formData: FormData): Promise<CreateEvent
 }
 
 function extractFormData(formData: FormData): FormDataFields {
-  return {
-    title: (formData.get("title") as string) || "",
-    date: (formData.get("date") as string) || "",
-    fee: (formData.get("fee") as string) || "",
-    payment_methods: (formData.get("payment_methods") as string) || "",
-    location: (formData.get("location") as string) || undefined,
-    description: (formData.get("description") as string) || undefined,
-    capacity: (formData.get("capacity") as string) || undefined,
-    registration_deadline: (formData.get("registration_deadline") as string) || undefined,
-    payment_deadline: (formData.get("payment_deadline") as string) || undefined,
-  };
+  // 共通ユーティリティを使用して型安全なFormData抽出
+  return extractEventCreateFormData(formData);
 }
 
 /**
@@ -144,26 +125,56 @@ function generateInviteToken(): string {
 }
 
 /**
- * 定員の値を適切に処理する
+ * 定員の値を適切に処理する（型が異なる場合対応）
  * 空文字列または未定義の場合は無制限（null）
  * "0"の場合も無制限として扱う（参加不可能を避けるため）
  */
+function parseCapacityLocal(capacity: string | number | null | undefined): number | null {
+  if (!capacity || capacity === null) {
+    return null;
+  }
+
+  if (typeof capacity === "string") {
+    if (capacity.trim() === "") return null;
+    const parsed = Number(capacity);
+    if (!Number.isFinite(parsed) || parsed <= 0) {
+      return null;
+    }
+    return parsed;
+  }
+
+  if (typeof capacity === "number") {
+    if (capacity <= 0) return null;
+    return capacity;
+  }
+
+  return null;
+}
+
+/**
+ * datetime-local形式の文字列をUTCに変換してISO文字列として返す
+ * date-fns-tzを使用した統一的なタイムゾーン処理
+ */
+function convertDatetimeLocalToIso(dateString: string): string {
+  const utcDate = convertDatetimeLocalToUtc(dateString);
+  return utcDate.toISOString();
+}
 
 function buildEventData(validatedData: CreateEventInput, userId: string, inviteToken: string) {
   return {
     title: validatedData.title,
-    date: convertDatetimeLocalToUtc(validatedData.date).toISOString(),
+    date: convertDatetimeLocalToIso(validatedData.date),
     fee: Number(validatedData.fee),
     payment_methods:
       validatedData.payment_methods as Database["public"]["Enums"]["payment_method_enum"][],
     location: validatedData.location || null,
     description: validatedData.description || null,
-    capacity: validatedData.capacity,
+    capacity: parseCapacityLocal(validatedData.capacity),
     registration_deadline: validatedData.registration_deadline
-      ? convertDatetimeLocalToUtc(validatedData.registration_deadline).toISOString()
+      ? convertDatetimeLocalToIso(validatedData.registration_deadline)
       : null,
     payment_deadline: validatedData.payment_deadline
-      ? convertDatetimeLocalToUtc(validatedData.payment_deadline).toISOString()
+      ? convertDatetimeLocalToIso(validatedData.payment_deadline)
       : null,
     created_by: userId,
     invite_token: inviteToken,

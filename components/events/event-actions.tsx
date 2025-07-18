@@ -49,7 +49,7 @@ export function EventActions({ eventId }: EventActionsProps) {
         // Server Actionから返される詳細なエラーメッセージを表示
         setDeleteError(result.error?.message || "削除に失敗しました");
       }
-    } catch (error) {
+    } catch {
       setDeleteError("削除に失敗しました");
     } finally {
       setIsDeleting(false);

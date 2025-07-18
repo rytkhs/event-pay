@@ -89,7 +89,9 @@ describe("EventCreateForm", () => {
       // DOM更新を待つ
       await waitFor(
         () => {
-          expect(screen.getByText("タイトルは必須です")).toBeInTheDocument();
+          expect(
+            screen.getByText("タイトルは1文字以上100文字以内で入力してください")
+          ).toBeInTheDocument();
         },
         { timeout: 5000 }
       );
@@ -169,7 +171,9 @@ describe("EventCreateForm", () => {
 
       await waitFor(
         () => {
-          expect(screen.getByText("タイトルは100文字以内で入力してください")).toBeInTheDocument();
+          expect(
+            screen.getByText("タイトルは1文字以上100文字以内で入力してください")
+          ).toBeInTheDocument();
         },
         { timeout: 3000 }
       );

@@ -146,7 +146,6 @@ export async function getEventsAction(options: GetEventsOptions = {}): Promise<G
     }
 
     if (!user) {
-      console.warn("未認証ユーザーによるアクセス試行");
       return {
         success: false,
         error: "認証が必要です",

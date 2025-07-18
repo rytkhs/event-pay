@@ -1,5 +1,10 @@
 import { createEventSchema } from "@/lib/validations/event";
 import { ZodError, z } from "zod";
+import {
+  convertDatetimeLocalToUtc,
+  isUtcDateFuture,
+  DateConversionError,
+} from "@/lib/utils/timezone";
 
 export interface ValidationErrors {
   title?: string;
@@ -85,7 +90,7 @@ export const validateField = (
 
   // 参加費の特殊バリデーション（決済方法によって制約が変わる）
   if (name === "fee") {
-    return validateFee(value, formData.paymentMethods);
+    return validateFee(value);
   }
 
   // 2. 単一フィールドの基本バリデーション
@@ -119,37 +124,62 @@ function validateDateRelations(changedField: string, formData: EventFormData): V
 
   if (!formData.date) return errors;
 
-  const eventDate = new Date(formData.date);
-  const now = new Date();
-
-  // 開催日時が未来かチェック
-  if (changedField === "date" && eventDate <= now) {
-    errors.date = "開催日時は現在時刻より後である必要があります";
-    return errors;
-  }
-
-  // 参加申込締切の相関チェック
-  if (formData.registrationDeadline) {
-    const regDeadline = new Date(formData.registrationDeadline);
-    if (regDeadline <= now) {
-      errors.registrationDeadline = "参加申込締切は現在時刻より後である必要があります";
-    } else if (regDeadline >= eventDate) {
-      errors.registrationDeadline = "参加申込締切は開催日時より前に設定してください";
+  // 開催日時が未来かチェック（date-fns-tz統一）
+  if (changedField === "date") {
+    try {
+      const eventUtcDate = convertDatetimeLocalToUtc(formData.date);
+      if (!isUtcDateFuture(eventUtcDate)) {
+        errors.date = "開催日時は現在時刻より後である必要があります";
+        return errors;
+      }
+    } catch (error) {
+      if (error instanceof DateConversionError) {
+        errors.date = error.message;
+      } else {
+        errors.date = "無効な日時形式です";
+      }
+      return errors;
     }
   }
 
-  // 決済締切の相関チェック
-  if (formData.paymentDeadline) {
-    const payDeadline = new Date(formData.paymentDeadline);
-    if (payDeadline <= now) {
-      errors.paymentDeadline = "決済締切は現在時刻より後である必要があります";
-    } else if (payDeadline >= eventDate) {
-      errors.paymentDeadline = "決済締切は開催日時より前に設定してください";
-    } else if (formData.registrationDeadline) {
-      const regDeadline = new Date(formData.registrationDeadline);
-      if (payDeadline < regDeadline) {
-        errors.paymentDeadline = "決済締切は参加申込締切以降に設定してください";
+  // 参加申込締切の相関チェック（date-fns-tz統一）
+  if (formData.registrationDeadline) {
+    try {
+      const regUtcDate = convertDatetimeLocalToUtc(formData.registrationDeadline);
+      const eventUtcDate = convertDatetimeLocalToUtc(formData.date);
+
+      if (!isUtcDateFuture(regUtcDate)) {
+        errors.registrationDeadline = "参加申込締切は現在時刻より後である必要があります";
+      } else if (regUtcDate >= eventUtcDate) {
+        errors.registrationDeadline = "参加申込締切は開催日時より前に設定してください";
       }
+    } catch (error) {
+      if (error instanceof DateConversionError) {
+        errors.registrationDeadline = `参加申込締切: ${error.message}`;
+      } else {
+        errors.registrationDeadline = "無効な日時形式です";
+      }
+    }
+  }
+
+  // 決済締切の相関チェック（date-fns-tz統一）
+  if (formData.paymentDeadline) {
+    try {
+      const payUtcDate = convertDatetimeLocalToUtc(formData.paymentDeadline);
+      const eventUtcDate = convertDatetimeLocalToUtc(formData.date);
+
+      if (!isUtcDateFuture(payUtcDate)) {
+        errors.paymentDeadline = "決済締切は現在時刻より後である必要があります";
+      } else if (payUtcDate >= eventUtcDate) {
+        errors.paymentDeadline = "決済締切は開催日時より前に設定してください";
+      } else if (formData.registrationDeadline) {
+        const regUtcDate = convertDatetimeLocalToUtc(formData.registrationDeadline);
+        if (payUtcDate < regUtcDate) {
+          errors.paymentDeadline = "決済締切は参加申込締切以降に設定してください";
+        }
+      }
+    } catch {
+      errors.paymentDeadline = "無効な日時形式です";
     }
   }
 
@@ -166,7 +196,7 @@ function validatePaymentMethods(value: string): ValidationErrors {
   }
 
   const methods = value.split(",").map((method) => method.trim());
-  const validMethods = ["stripe", "cash", "free"];
+  const validMethods = ["stripe", "cash"];
 
   const invalidMethods = methods.filter((method) => !validMethods.includes(method));
   if (invalidMethods.length > 0) {
@@ -174,43 +204,22 @@ function validatePaymentMethods(value: string): ValidationErrors {
     return errors;
   }
 
-  if (methods.includes("free") && methods.length > 1) {
-    errors.paymentMethods = "無料イベントと有料決済方法を同時に選択することはできません";
-  }
-
   return errors;
 }
 
 // 参加費の特殊バリデーション
-function validateFee(value: string, paymentMethods: string): ValidationErrors {
+function validateFee(value: string): ValidationErrors {
   const errors: ValidationErrors = {};
 
-  if (!paymentMethods) {
-    // 決済方法が選択されていない場合は基本バリデーションのみ
-    if (!value) {
-      errors.fee = "参加費は必須です";
-    }
+  // 参加費は必須
+  if (!value) {
+    errors.fee = "参加費は必須です";
     return errors;
   }
 
-  const methods = paymentMethods.split(",").map((method) => method.trim());
-  const isFreeEvent = methods.includes("free");
-
-  if (isFreeEvent) {
-    // 無料イベントの場合は参加費は0円でなければならない
-    if (value !== "0" && value !== "") {
-      errors.fee = "無料イベントの参加費は0円である必要があります";
-    }
-  } else {
-    // 有料イベントの場合は参加費は必須
-    if (!value) {
-      errors.fee = "参加費は必須です";
-    } else {
-      const fee = Number(value);
-      if (!Number.isFinite(fee) || fee < 0 || fee > 1000000) {
-        errors.fee = "参加費は0以上1000000以下である必要があります";
-      }
-    }
+  const fee = Number(value);
+  if (!Number.isFinite(fee) || fee < 0 || fee > 1000000) {
+    errors.fee = "参加費は0以上1000000以下である必要があります";
   }
 
   return errors;

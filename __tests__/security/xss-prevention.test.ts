@@ -1,4 +1,4 @@
-import { sanitizeHtml, sanitizeEventDescription } from "@/lib/utils/sanitize";
+import { sanitizeForEventPay, sanitizeEventDescription } from "@/lib/utils/sanitize";
 import { createEventSchema } from "@/lib/validations/event";
 
 describe("XSS防止統合テスト", () => {
@@ -77,19 +77,19 @@ describe("XSS防止統合テスト", () => {
   describe("エッジケース", () => {
     it("ネストしたタグを適切に処理する", () => {
       const input = '<div><span><script>alert("nested")</script></span></div>Content';
-      const result = sanitizeHtml(input);
+      const result = sanitizeForEventPay(input);
       expect(result).toBe("Content");
     });
 
     it("不正なHTMLタグを適切に処理する", () => {
       const input = '<script<script>alert("XSS")</script>';
-      const result = sanitizeHtml(input);
+      const result = sanitizeForEventPay(input);
       expect(result).toBe("");
     });
 
     it("HTMLエンティティは保持される", () => {
       const input = '&lt;script&gt;alert("XSS")&lt;/script&gt;';
-      const result = sanitizeHtml(input);
+      const result = sanitizeForEventPay(input);
       expect(result).toBe('&lt;script&gt;alert("XSS")&lt;/script&gt;');
     });
   });
@@ -98,7 +98,7 @@ describe("XSS防止統合テスト", () => {
     it("大量のHTMLタグを効率的に処理する", () => {
       const largeInput = Array(1000).fill("<div><span>test</span></div>").join("");
       const start = performance.now();
-      const result = sanitizeHtml(largeInput);
+      const result = sanitizeForEventPay(largeInput);
       const end = performance.now();
 
       expect(result).toBe("test".repeat(1000));

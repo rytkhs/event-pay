@@ -6,6 +6,12 @@ import {
   mockUpstashRateLimit,
   mockUpstashRedis,
 } from "../mocks/base/external-services.mjs";
+import {
+  mockUseEventEditForm,
+  mockUseEventForm,
+  mockUseRouter,
+  mockUseSearchParams,
+} from "../mocks/base/hooks.mjs";
 
 class MockFactory {
   static instance = null;
@@ -72,6 +78,14 @@ class MockFactory {
       );
     }
 
+    // フック用モック
+    mocks.hooks = {
+      useEventEditForm: mockUseEventEditForm,
+      useEventForm: mockUseEventForm,
+      useRouter: mockUseRouter,
+      useSearchParams: mockUseSearchParams,
+    };
+
     this.mocks.set("current", mocks);
     return mocks;
   }
@@ -113,8 +127,40 @@ class MockFactory {
     mocks.router = mockRouter();
     mocks.searchParams = mockSearchParams();
 
+    // Server Actions Mocks for integration testing
+    if (features.serverActions) {
+      mocks.serverActions = this.createServerActionsMocks();
+    }
+
     this.mocks.set("current", mocks);
     return mocks;
+  }
+
+  /**
+   * Server Actions用の型安全なMockを作成
+   */
+  createServerActionsMocks() {
+    const createMockAction = (name) => {
+      // Jest Mock関数として完全に機能するMockを作成
+      const mockFn = jest.fn();
+      
+      // デフォルトの成功レスポンス
+      mockFn.mockResolvedValue({
+        success: true,
+        message: `${name} completed successfully`
+      });
+
+      return mockFn;
+    };
+
+    return {
+      loginAction: createMockAction('login'),
+      registerAction: createMockAction('register'), 
+      resetPasswordAction: createMockAction('resetPassword'),
+      createEventAction: createMockAction('createEvent'),
+      updateEventAction: createMockAction('updateEvent'),
+      deleteEventAction: createMockAction('deleteEvent'),
+    };
   }
 
   createEnhancedSupabaseMock(data = {}) {

@@ -66,9 +66,14 @@ export const customRender = (ui: ReactElement, options?: CustomRenderOptions) =>
 };
 
 // Helper to create mock API responses
-export const createMockSupabaseResponse = <T>(data: T | null = null, error: any = null) => ({
+export const createMockSupabaseResponse = <T>(
+  data: T | null = null,
+  error: Error | null = null
+) => ({
   data,
   error,
+  status: error ? 400 : 200,
+  statusText: error ? "Bad Request" : "OK",
 });
 
 // Helper to create mock Stripe responses

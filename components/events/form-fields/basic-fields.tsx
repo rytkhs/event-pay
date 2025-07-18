@@ -126,7 +126,7 @@ export default function BasicFields({ formData, errors, onInputChange }: BasicFi
               円
             </span>
           </div>
-          <p className="text-xs text-gray-500">参加者が支払う金額（0円の場合は無料イベント）</p>
+          <p className="text-xs text-gray-500">参加者が支払う金額</p>
           {errors.fee && (
             <p className="text-sm text-red-500 flex items-center gap-1">
               <span>⚠️</span>

@@ -21,7 +21,7 @@ export function useMediaQuery(query: string): boolean {
 
     try {
       mediaQuery.addEventListener("change", handleChange);
-    } catch (error) {
+    } catch {
       // Fallback for older browsers or test environments
       if (mediaQuery.addListener) {
         mediaQuery.addListener(handleChange);
@@ -31,7 +31,7 @@ export function useMediaQuery(query: string): boolean {
     return () => {
       try {
         mediaQuery.removeEventListener("change", handleChange);
-      } catch (error) {
+      } catch {
         // Fallback for older browsers or test environments
         if (mediaQuery.removeListener) {
           mediaQuery.removeListener(handleChange);

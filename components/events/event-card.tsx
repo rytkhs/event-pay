@@ -2,6 +2,8 @@ import Link from "next/link";
 import { Event } from "@/types/event";
 import { memo, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { formatUtcToJapaneseDisplay } from "@/lib/utils/timezone";
+import { sanitizeForEventPay } from "@/lib/utils/sanitize";
 
 interface EventCardProps {
   event: Event;
@@ -16,16 +18,9 @@ const STATUS_CONFIG = {
 } as const;
 
 export const EventCard = memo(function EventCard({ event }: EventCardProps) {
-  // 日付フォーマットをメモ化（タイムゾーンを明示的に指定）
+  // 日付フォーマットをメモ化（date-fns-tz統一）
   const formattedDate = useMemo(() => {
-    return new Date(event.date).toLocaleDateString("ja-JP", {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-      timeZone: "Asia/Tokyo",
-    });
+    return formatUtcToJapaneseDisplay(event.date);
   }, [event.date]);
 
   // ステータス情報をメモ化
@@ -45,17 +40,26 @@ export const EventCard = memo(function EventCard({ event }: EventCardProps) {
     return `${event.attendances_count || 0}/${event.capacity}名`;
   }, [event.attendances_count, event.capacity]);
 
+  // XSS対策: タイトルと場所をサニタイズ
+  const sanitizedTitle = useMemo(() => {
+    return sanitizeForEventPay(event.title);
+  }, [event.title]);
+
+  const sanitizedLocation = useMemo(() => {
+    return sanitizeForEventPay(event.location || "");
+  }, [event.location]);
+
   return (
     <Card data-testid="event-card" className="hover:shadow-lg transition-shadow">
       <Link href={`/events/${event.id}`}>
         <CardHeader className="pb-2">
           <CardTitle className="text-xl" data-testid="event-title">
-            {event.title}
+            {sanitizedTitle}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-2">
           <p className="text-muted-foreground">{formattedDate}</p>
-          <p className="text-muted-foreground">{event.location}</p>
+          <p className="text-muted-foreground">{sanitizedLocation}</p>
           <div className="flex justify-between items-center">
             <span className="text-lg font-bold">{formattedFee}</span>
             <span className="text-sm text-muted-foreground">{attendanceText}</span>

@@ -60,8 +60,6 @@ async function EventsContent({ searchParams }: EventsContentProps) {
   });
 
   if (!result.success) {
-    console.error("イベント一覧取得エラー:", result.error);
-
     // 認証エラーの場合はログインページにリダイレクト
     if (result.error.includes("認証")) {
       redirect("/auth/login");

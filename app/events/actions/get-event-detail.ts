@@ -50,7 +50,6 @@ export async function getEventDetailAction(eventId: string) {
       .single();
 
     if (error) {
-      // デバッグのため詳細なエラー情報をログ出力
       console.error("Database error details:", {
         code: error.code,
         message: error.message,
