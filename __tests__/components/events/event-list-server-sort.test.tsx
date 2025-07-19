@@ -33,6 +33,7 @@ describe("EventListWithFilters - サーバー統一ソートテスト", () => {
 
   const mockPush = jest.fn();
   const mockSearchParams = {
+    get: jest.fn(() => null),
     toString: jest.fn(() => ""),
   };
 
@@ -52,7 +53,7 @@ describe("EventListWithFilters - サーバー統一ソートテスト", () => {
   describe("サーバー統一ソート", () => {
     it("ソート変更時にURLパラメータが正しく更新されること", async () => {
       render(
-        <EventListWithFilters events={mockEvents} initialSortBy="date" initialSortOrder="asc" />
+        <EventListWithFilters events={mockEvents} totalCount={30} initialSortBy="date" initialSortOrder="asc" />
       );
 
       // JSDOMではShadcn/ui Selectの操作が制限されるため、
@@ -66,7 +67,7 @@ describe("EventListWithFilters - サーバー統一ソートテスト", () => {
 
     it("フィルター変更時にも現在のソート設定が保持されること", async () => {
       render(
-        <EventListWithFilters events={mockEvents} initialSortBy="fee" initialSortOrder="asc" />
+        <EventListWithFilters events={mockEvents} totalCount={30} initialSortBy="fee" initialSortOrder="asc" />
       );
 
       // JSDOMではShadcn/ui Selectの操作が制限されるため、
@@ -82,7 +83,7 @@ describe("EventListWithFilters - サーバー統一ソートテスト", () => {
 
     it("複数のソート・フィルター操作でURLパラメータが正しく更新されること", async () => {
       render(
-        <EventListWithFilters events={mockEvents} initialSortBy="date" initialSortOrder="asc" />
+        <EventListWithFilters events={mockEvents} totalCount={30} initialSortBy="date" initialSortOrder="asc" />
       );
 
       // JSDOMではShadcn/ui Selectの操作が制限されるため、
@@ -100,6 +101,7 @@ describe("EventListWithFilters - サーバー統一ソートテスト", () => {
       render(
         <EventListWithFilters
           events={mockEvents}
+          totalCount={30}
           initialSortBy="fee"
           initialSortOrder="desc"
           initialStatusFilter="upcoming"
@@ -121,7 +123,7 @@ describe("EventListWithFilters - サーバー統一ソートテスト", () => {
   describe("表示機能", () => {
     it("イベントが正しく表示されること", async () => {
       render(
-        <EventListWithFilters events={mockEvents} initialSortBy="date" initialSortOrder="asc" />
+        <EventListWithFilters events={mockEvents} totalCount={30} initialSortBy="date" initialSortOrder="asc" />
       );
 
       // イベントカードが表示されることを確認
@@ -135,7 +137,7 @@ describe("EventListWithFilters - サーバー統一ソートテスト", () => {
   describe("URLパラメータ管理", () => {
     it("空の値やdefault値はURLパラメータから削除されること", async () => {
       render(
-        <EventListWithFilters events={mockEvents} initialSortBy="date" initialSortOrder="asc" />
+        <EventListWithFilters events={mockEvents} totalCount={30} initialSortBy="date" initialSortOrder="asc" />
       );
 
       // JSDOMではShadcn/ui Selectの操作が制限されるため、
