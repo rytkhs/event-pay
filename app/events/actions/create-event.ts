@@ -161,12 +161,17 @@ function convertDatetimeLocalToIso(dateString: string): string {
 }
 
 function buildEventData(validatedData: CreateEventInput, userId: string, inviteToken: string) {
+  const fee = Number(validatedData.fee);
+
   return {
     title: validatedData.title,
     date: convertDatetimeLocalToIso(validatedData.date),
-    fee: Number(validatedData.fee),
+    fee,
+    // 無料イベント（fee=0）の場合は空配列を明示的に設定
     payment_methods:
-      validatedData.payment_methods as Database["public"]["Enums"]["payment_method_enum"][],
+      fee === 0
+        ? []
+        : (validatedData.payment_methods as Database["public"]["Enums"]["payment_method_enum"][]),
     location: validatedData.location || null,
     description: validatedData.description || null,
     capacity: parseCapacityLocal(validatedData.capacity),

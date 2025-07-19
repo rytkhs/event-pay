@@ -67,13 +67,13 @@ export function useEventChanges({
       {
         field: "registration_deadline",
         oldValue: formatUtcToDatetimeLocal(event.registration_deadline || ""),
-        newValue: formData.registration_deadline,
+        newValue: formData.registration_deadline || "",
         fieldName: "参加申込締切",
       },
       {
         field: "payment_deadline",
         oldValue: formatUtcToDatetimeLocal(event.payment_deadline || ""),
-        newValue: formData.payment_deadline,
+        newValue: formData.payment_deadline || "",
         fieldName: "支払い締切",
       },
     ];

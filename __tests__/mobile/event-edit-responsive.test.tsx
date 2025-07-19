@@ -62,6 +62,34 @@ describe("イベント編集フォーム - レスポンシブデザインテス�
   beforeEach(() => {
     // 各テストで必要に応じてモックをカスタマイズ
     mockUseEventEditForm.mockReturnValue({
+      // React Hook Form
+      form: {
+        formState: {
+          errors: {},
+          isSubmitting: false,
+          isDirty: false,
+          isValid: true,
+        },
+        getValues: jest.fn(() => ({
+          title: "テストイベント",
+          description: "テストイベントの説明",
+          location: "東京都渋谷区",
+          date: "2024-01-01T10:00",
+          fee: "1000",
+          capacity: "50",
+          payment_methods: ["stripe"],
+          registration_deadline: "2023-12-31T23:59",
+          payment_deadline: "2023-12-31T23:59",
+        })),
+        setValue: jest.fn(),
+        reset: jest.fn(),
+        handleSubmit: jest.fn((fn) => fn),
+        watch: jest.fn(() => ({})),
+      },
+      onSubmit: jest.fn(),
+      isPending: false,
+
+      // フォーム状態
       formData: {
         title: "テストイベント",
         description: "テストイベントの説明",
@@ -73,17 +101,45 @@ describe("イベント編集フォーム - レスポンシブデザインテス�
         registration_deadline: "2023-12-31T23:59",
         payment_deadline: "2023-12-31T23:59",
       },
-      errors: {},
       hasAttendees: false,
+
+      // バリデーション
+      validation: {
+        errors: {},
+        hasErrors: false,
+        isValid: true,
+        isDirty: false,
+      },
+
+      // 編集制限
+      restrictions: {
+        isFieldRestricted: mockIsFieldRestricted,
+        isFieldEditable: jest.fn(() => true),
+        getFieldDisplayName: mockGetFieldDisplayName,
+        getRestrictionReason: jest.fn(() => ""),
+        getRestrictedFields: jest.fn(() => []),
+        getRestrictedFieldNames: jest.fn(() => []),
+      },
+
+      // 変更検出
+      changes: {
       hasChanges: false,
-      isFieldRestricted: mockIsFieldRestricted,
-      handleInputChange: mockHandleInputChange,
-      validateField: mockValidateField,
       detectChanges: mockDetectChanges,
+        hasFieldChanged: jest.fn(() => false),
+        getChangedFieldNames: jest.fn(() => []),
+        getChangeCount: jest.fn(() => 0),
+        getChangeSummary: jest.fn(() => ""),
+        getChangesByType: jest.fn(() => ({})),
+        hasCriticalChanges: jest.fn(() => false),
+        getRevertData: jest.fn(() => ({})),
+      },
+
+      // フォーム操作
+      actions: {
       resetForm: mockResetForm,
       submitForm: mockSubmitForm,
-      setErrors: mockSetErrors,
-      getFieldDisplayName: mockGetFieldDisplayName,
+        submitFormWithChanges: jest.fn(() => Promise.resolve({ success: true })),
+      },
     });
 
     // モック関数をリセット

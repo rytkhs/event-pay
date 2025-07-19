@@ -34,7 +34,7 @@ export default function LoginPage() {
             </CardHeader>
             <CardContent>
               <Form {...form}>
-                <form onSubmit={onSubmit} className="space-y-6" noValidate>
+                <form onSubmit={onSubmit} className="space-y-6" noValidate data-testid="login-form">
                   {/* メールアドレス */}
                   <FormField
                     control={form.control}
@@ -50,6 +50,7 @@ export default function LoginPage() {
                             disabled={isPending}
                             autoComplete="email"
                             required
+                            name="email"
                           />
                         </FormControl>
                         <FormMessage />
@@ -72,6 +73,7 @@ export default function LoginPage() {
                             disabled={isPending}
                             autoComplete="current-password"
                             required
+                            name="password"
                           />
                         </FormControl>
                         <FormMessage />
@@ -113,17 +115,16 @@ export default function LoginPage() {
 
                   {/* 全体エラーメッセージ */}
                   {form.formState.errors.root && (
-                    <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
+                    <div
+                      className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded"
+                      data-testid="error-message"
+                    >
                       {form.formState.errors.root.message}
                     </div>
                   )}
 
                   {/* 送信ボタン */}
-                  <Button
-                    type="submit"
-                    className="w-full"
-                    disabled={isPending}
-                  >
+                  <Button type="submit" className="w-full" disabled={isPending}>
                     {isPending ? "ログイン中..." : "ログイン"}
                   </Button>
 

@@ -51,7 +51,7 @@ export default async function DashboardPage() {
             <div className="flex items-center">
               <h1 className="text-xl font-semibold text-gray-900">EventPay ダッシュボード</h1>
             </div>
-            <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-4" data-testid="user-menu">
               <span className="text-sm text-gray-700">ようこそ、{user.email}さん</span>
               <form action={handleLogout}>
                 <button

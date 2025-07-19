@@ -51,6 +51,15 @@ afterEach(() => {
   cleanupTestEnvironment();
 });
 
+// global.createSupabaseClient の実装
+global.createSupabaseClient = () => {
+  const { createClient } = require("@supabase/supabase-js");
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL || "http://localhost:54321",
+    process.env.SUPABASE_SERVICE_KEY || "test-service-key"
+  );
+};
+
 // 統合テスト用の基本的なDOM polyfills
 Object.defineProperty(window, "matchMedia", {
   writable: true,
@@ -117,14 +126,17 @@ jest.mock("@/lib/supabase/server", () => ({
         error: null,
       }),
     },
-    from: jest.fn(() => ({
-      select: jest.fn().mockReturnThis(),
-      insert: jest.fn().mockReturnThis(),
-      update: jest.fn().mockReturnThis(),
-      delete: jest.fn().mockReturnThis(),
-      eq: jest.fn().mockReturnThis(),
-      single: jest.fn(),
-    })),
+    from: jest.fn(() => {
+      const mockQueryBuilder = {
+        select: jest.fn().mockReturnThis(),
+        insert: jest.fn().mockReturnThis(),
+        update: jest.fn().mockReturnThis(),
+        delete: jest.fn().mockReturnThis(),
+        eq: jest.fn().mockReturnThis(),
+        single: jest.fn(() => Promise.resolve({ data: null, error: null })),
+      };
+      return mockQueryBuilder;
+    }),
   })),
 }));
 

@@ -46,11 +46,23 @@ export const RATE_LIMIT_CONFIG = {
 // Cookie設定
 export const COOKIE_CONFIG = {
   httpOnly: true,
-  // HTTPS接続時は常にsecure=trueを設定（Preview環境でも安全性確保）
-  secure:
-    process.env.NODE_ENV === "production" ||
-    process.env.NEXT_PUBLIC_APP_URL?.startsWith("https://") ||
-    false,
+  // 強制セキュア設定: 環境変数で明示的に無効化されない限り、HTTPS環境では常にsecure=true
+  secure: (() => {
+    // 環境変数でセキュア設定を強制する場合
+    if (process.env.FORCE_SECURE_COOKIES === "true") {
+      return true;
+    }
+    // 環境変数で明示的に無効化されている場合（開発環境のみ）
+    if (process.env.FORCE_SECURE_COOKIES === "false" && process.env.NODE_ENV === "development") {
+      return false;
+    }
+    // デフォルト: 本番環境またはHTTPS URLの場合はsecure=true
+    return (
+      process.env.NODE_ENV === "production" ||
+      process.env.NEXT_PUBLIC_APP_URL?.startsWith("https://") ||
+      false
+    );
+  })(),
   sameSite: "lax" as const, // 決済アプリケーションでの最適バランス（セキュリティ + UX）
   domain: process.env.NODE_ENV === "production" ? process.env.COOKIE_DOMAIN : undefined,
   path: "/",

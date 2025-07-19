@@ -72,6 +72,15 @@ export async function updateEventAction(
     const headersList = headers();
     const requestOrigin = headersList.get("origin");
     const referer = headersList.get("referer");
+    const requestMethod = headersList.get("x-http-method-override") || "POST";
+
+    // OPTIONS リクエストの場合は追加検証を実行
+    if (requestMethod === "OPTIONS") {
+      // プリフライトリクエストでは Origin ヘッダーが必須
+      if (!requestOrigin) {
+        return createErrorResponse(ERROR_CODES.UNAUTHORIZED, "無効なリクエストです");
+      }
+    }
 
     // オリジンの正規化関数（末尾スラッシュを除去）
     const normalizeOrigin = (origin: string) => origin.replace(/\/$/, "");
@@ -83,7 +92,8 @@ export async function updateEventAction(
     const isValidReferer =
       referer && allowedOrigins.some((allowed) => referer.startsWith(normalizeOrigin(allowed)));
 
-    if (!isValidOrigin && !isValidReferer) {
+    // より厳密なチェック: 少なくとも一つのヘッダーが存在し、有効である必要がある
+    if ((!requestOrigin && !referer) || (!isValidOrigin && !isValidReferer)) {
       return createErrorResponse(ERROR_CODES.UNAUTHORIZED, "無効なリクエストです");
     }
 
@@ -264,11 +274,23 @@ function buildUpdateData(
     }
   }
 
-  if (validatedData.payment_methods) {
+  if (validatedData.payment_methods !== undefined) {
     // 配列の深い比較を実装（順序に依存しない比較）
     const existingMethods = existingEvent.payment_methods || [];
-    const newMethods =
+    let newMethods =
       validatedData.payment_methods as Database["public"]["Enums"]["payment_method_enum"][];
+
+    // 無料イベント（fee=0）の場合は決済方法を空配列に設定
+    const newFee =
+      validatedData.fee !== undefined
+        ? typeof validatedData.fee === "number"
+          ? validatedData.fee
+          : Number(validatedData.fee || 0)
+        : existingEvent.fee;
+
+    if (newFee === 0) {
+      newMethods = [];
+    }
 
     // 配列の内容が異なる場合のみ更新（Set使用で簡略化）
     const existingSet = new Set(existingMethods);

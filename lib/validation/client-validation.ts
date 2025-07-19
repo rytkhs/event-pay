@@ -90,7 +90,7 @@ export const validateField = (
 
   // 参加費の特殊バリデーション（決済方法によって制約が変わる）
   if (name === "fee") {
-    return validateFee(value);
+    return validateFee(value, formData);
   }
 
   // 2. 単一フィールドの基本バリデーション
@@ -208,10 +208,24 @@ function validatePaymentMethods(value: string): ValidationErrors {
 }
 
 // 参加費の特殊バリデーション
-function validateFee(value: string): ValidationErrors {
+function validateFee(value: string, formData?: EventFormData): ValidationErrors {
   const errors: ValidationErrors = {};
 
-  // 参加費は必須
+  // 無料イベントの場合の特殊処理
+  if (formData?.paymentMethods === "free") {
+    // 無料イベントでは参加費が空文字または0の場合は正常
+    if (!value || value === "0") {
+      return errors;
+    }
+    // 無料イベントで0以外の参加費が設定されている場合はエラー
+    const fee = Number(value);
+    if (fee !== 0) {
+      errors.fee = "無料イベントの参加費は0円である必要があります";
+    }
+    return errors;
+  }
+
+  // 通常のイベントの場合は参加費は必須
   if (!value) {
     errors.fee = "参加費は必須です";
     return errors;

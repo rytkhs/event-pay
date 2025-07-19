@@ -50,10 +50,10 @@ export type ErrorCode = (typeof ERROR_CODES)[keyof typeof ERROR_CODES];
  */
 export const ERROR_MESSAGES = {
   [ERROR_CODES.UNAUTHORIZED]: "認証が必要です",
-  [ERROR_CODES.FORBIDDEN]: "権限がありません",
+  [ERROR_CODES.FORBIDDEN]: "このイベントを編集する権限がありません",
   [ERROR_CODES.VALIDATION_ERROR]: "入力値が無効です",
   [ERROR_CODES.INVALID_INPUT]: "入力形式が正しくありません",
-  [ERROR_CODES.NOT_FOUND]: "データが見つかりません",
+  [ERROR_CODES.NOT_FOUND]: "イベントが見つかりません",
   [ERROR_CODES.CONFLICT]: "データが競合しています",
   [ERROR_CODES.DATABASE_ERROR]: "データベースエラーが発生しました",
   [ERROR_CODES.BUSINESS_RULE_VIOLATION]: "ビジネスルール違反です",
