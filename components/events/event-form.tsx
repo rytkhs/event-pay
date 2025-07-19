@@ -18,10 +18,9 @@ import { useEventForm } from "@/hooks/use-event-form";
 
 /**
  * react-hook-formを使用したイベント作成フォーム
- * セキュリティファースト設計を維持しながら、パフォーマンスと開発効率を向上
  */
 export default function EventCreateForm() {
-  const { form, onSubmit, isPending, hasErrors, validationRules } = useEventForm();
+  const { form, onSubmit, isPending, hasErrors, isFreeEvent } = useEventForm();
 
   return (
     <Card className="w-full max-w-2xl mx-auto">
@@ -42,7 +41,6 @@ export default function EventCreateForm() {
               <FormField
                 control={form.control}
                 name="title"
-                rules={validationRules.title}
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>イベントタイトル *</FormLabel>
@@ -66,7 +64,6 @@ export default function EventCreateForm() {
               <FormField
                 control={form.control}
                 name="date"
-                rules={validationRules.date}
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>開催日時 *</FormLabel>
@@ -218,7 +215,6 @@ export default function EventCreateForm() {
               <FormField
                 control={form.control}
                 name="fee"
-                rules={validationRules.fee}
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>参加費 *</FormLabel>
@@ -238,65 +234,75 @@ export default function EventCreateForm() {
                 )}
               />
 
-              {/* 決済方法選択 */}
-              <FormField
-                control={form.control}
-                name="payment_methods"
-                rules={validationRules.payment_methods}
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>利用可能な決済方法 *</FormLabel>
-                    <div className="space-y-2">
-                      <div className="flex items-center space-x-2">
-                        <Checkbox
-                          id="stripe"
-                          checked={field.value?.includes("stripe")}
-                          onCheckedChange={(checked) => {
-                            const currentMethods = field.value || [];
-                            if (checked) {
-                              field.onChange([...currentMethods, "stripe"]);
-                            } else {
-                              field.onChange(
-                                currentMethods.filter((method) => method !== "stripe")
-                              );
-                            }
-                          }}
-                          disabled={isPending}
-                        />
-                        <label
-                          htmlFor="stripe"
-                          className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                        >
-                          オンライン決済（Stripe）
-                        </label>
+              {/* 決済方法選択 - 条件付き表示 */}
+              {!isFreeEvent && (
+                <FormField
+                  control={form.control}
+                  name="payment_methods"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>利用可能な決済方法 *</FormLabel>
+                      <div className="space-y-2" data-testid="payment-methods">
+                        <div className="flex items-center space-x-2">
+                          <Checkbox
+                            id="stripe"
+                            checked={field.value?.includes("stripe")}
+                            onCheckedChange={(checked) => {
+                              const currentMethods = field.value || [];
+                              if (checked) {
+                                field.onChange([...currentMethods, "stripe"]);
+                              } else {
+                                field.onChange(
+                                  currentMethods.filter((method) => method !== "stripe")
+                                );
+                              }
+                            }}
+                            disabled={isPending}
+                          />
+                          <label
+                            htmlFor="stripe"
+                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                          >
+                            オンライン決済（Stripe）
+                          </label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <Checkbox
+                            id="cash"
+                            checked={field.value?.includes("cash")}
+                            onCheckedChange={(checked) => {
+                              const currentMethods = field.value || [];
+                              if (checked) {
+                                field.onChange([...currentMethods, "cash"]);
+                              } else {
+                                field.onChange(
+                                  currentMethods.filter((method) => method !== "cash")
+                                );
+                              }
+                            }}
+                            disabled={isPending}
+                          />
+                          <label
+                            htmlFor="cash"
+                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                          >
+                            現金決済
+                          </label>
+                        </div>
                       </div>
-                      <div className="flex items-center space-x-2">
-                        <Checkbox
-                          id="cash"
-                          checked={field.value?.includes("cash")}
-                          onCheckedChange={(checked) => {
-                            const currentMethods = field.value || [];
-                            if (checked) {
-                              field.onChange([...currentMethods, "cash"]);
-                            } else {
-                              field.onChange(currentMethods.filter((method) => method !== "cash"));
-                            }
-                          }}
-                          disabled={isPending}
-                        />
-                        <label
-                          htmlFor="cash"
-                          className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                        >
-                          現金決済
-                        </label>
-                      </div>
-                    </div>
-                    <FormDescription>参加者が利用できる決済方法を選択してください</FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                      <FormDescription>有料イベントでは決済方法の選択が必要です</FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
+
+              {/* 無料イベント用の説明 */}
+              {isFreeEvent && (
+                <div className="bg-blue-50 border border-blue-200 text-blue-700 px-4 py-3 rounded">
+                  <p className="text-sm">ℹ️ 参加費が0円のため、決済方法の設定は不要です。</p>
+                </div>
+              )}
             </div>
 
             {/* 全体のエラーメッセージ */}

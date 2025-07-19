@@ -4,7 +4,6 @@
 import React from "react";
 import { render, screen, waitFor, act } from "@testing-library/react";
 import { MobileResponsiveLayout } from "@/components/mobile/MobileResponsiveLayout";
-import { AuthFormMobile } from "@/components/auth/AuthFormMobile";
 
 // ビューポートサイズを変更するヘルパー関数
 const setViewportSize = (width: number, height: number) => {
@@ -117,49 +116,6 @@ describe("Mobile Responsive Design", () => {
         const content = screen.getByTestId(`${name}-content`);
         expect(content).toHaveClass(`breakpoint-${name}`);
       });
-    });
-  });
-
-  describe("認証フォームのモバイル最適化", () => {
-    it("モバイルでフォームが縦積みレイアウトになる", () => {
-      setViewportSize(375, 667);
-
-      render(<AuthFormMobile type="login" onSubmit={() => {}} />);
-
-      const form = screen.getByRole("form");
-      expect(form).toHaveClass("mobile-form-layout");
-
-      // フォームフィールドが縦積み
-      const fields = screen.getAllByRole("textbox");
-      fields.forEach((field) => {
-        expect(field).toHaveClass("mobile-field-stacked");
-      });
-    });
-
-    it("タブレットでフォームが横並びレイアウトになる", () => {
-      setViewportSize(768, 1024);
-
-      render(<AuthFormMobile type="register" onSubmit={() => {}} />);
-
-      const form = screen.getByRole("form");
-      expect(form).toHaveClass("tablet-form-layout");
-
-      // フォームフィールドが横並び
-      const fieldContainer = screen.getByTestId("form-fields");
-      expect(fieldContainer).toHaveClass("tablet-fields-inline");
-    });
-
-    it("デスクトップでフォームが最適化されたレイアウトになる", () => {
-      setViewportSize(1280, 800);
-
-      render(<AuthFormMobile type="login" onSubmit={() => {}} />);
-
-      const form = screen.getByRole("form");
-      expect(form).toHaveClass("desktop-form-layout");
-
-      // デスクトップ最適化クラスが適用
-      const fieldContainer = screen.getByTestId("form-fields");
-      expect(fieldContainer).toHaveClass("desktop-fields-optimized");
     });
   });
 

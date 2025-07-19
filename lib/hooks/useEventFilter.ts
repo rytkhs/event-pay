@@ -87,6 +87,7 @@ export function useEventFilter(options: UseEventFilterOptions = {}) {
   const setStatusFilter = useCallback(
     (status: StatusFilter) => {
       if (!isValidStatusFilter(status)) {
+        console.warn("無効なステータスフィルターです。全件表示に設定します。");
         status = DEFAULT_STATUS_FILTER;
       }
       const newFilters = { ...filters, status };
@@ -98,6 +99,7 @@ export function useEventFilter(options: UseEventFilterOptions = {}) {
   const setPaymentFilter = useCallback(
     (payment: PaymentFilter) => {
       if (!isValidPaymentFilter(payment)) {
+        console.warn("無効な決済フィルターです。全件表示に設定します。");
         payment = DEFAULT_PAYMENT_FILTER;
       }
       const newFilters = { ...filters, payment };
@@ -111,6 +113,7 @@ export function useEventFilter(options: UseEventFilterOptions = {}) {
       if (dateRange.start && dateRange.end) {
         // 日付文字列を直接比較（YYYY-MM-DD形式、date-fns-tz統一）
         if (dateRange.end < dateRange.start) {
+          console.warn("終了日は開始日より前の日付は指定できません。日付範囲をクリアします。");
           dateRange = {};
         }
       }

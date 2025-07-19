@@ -10,30 +10,30 @@ const baseConfig = {
   testEnvironment: "jsdom",
   moduleNameMapper: {
     "^@/(.*)$": "<rootDir>/$1",
-    "^@supabase/(.*)$": "<rootDir>/__tests__/mocks/supabase/$1.js",
   },
-  transformIgnorePatterns: [
-    "node_modules/(?!(@supabase|@types|@babel|@radix-ui|@hookform))",
-  ],
+  transformIgnorePatterns: ["node_modules/(?!(@supabase|@types|@babel|@radix-ui|@hookform))"],
   transform: {
-    "^.+\\.(js|jsx|ts|tsx)$": ["@swc/jest", {
-      jsc: {
-        target: "es2020",
-        parser: {
-          syntax: "typescript",
-          tsx: true,
-          decorators: true,
-        },
-        transform: {
-          react: {
-            runtime: "automatic",
+    "^.+\\.(js|jsx|ts|tsx)$": [
+      "@swc/jest",
+      {
+        jsc: {
+          target: "es2020",
+          parser: {
+            syntax: "typescript",
+            tsx: true,
+            decorators: true,
+          },
+          transform: {
+            react: {
+              runtime: "automatic",
+            },
           },
         },
+        module: {
+          type: "commonjs",
+        },
       },
-      module: {
-        type: "commonjs",
-      },
-    }],
+    ],
   },
 };
 
@@ -63,11 +63,14 @@ const configs = {
   },
   integration: {
     ...baseConfig,
-    setupFilesAfterEnv: ["<rootDir>/__tests__/config/jest-profiles/simplified-integration.setup.mjs"],
+    setupFilesAfterEnv: [
+      "<rootDir>/__tests__/config/jest-profiles/simplified-integration.setup.mjs",
+    ],
     setupFiles: ["<rootDir>/__tests__/config/jest-profiles/integration.env.mjs"],
     testMatch: [
       "<rootDir>/__tests__/pages/**/*.test.{js,ts,tsx}",
       "<rootDir>/__tests__/integration/**/*.test.{js,ts,tsx}",
+      "<rootDir>/__tests__/security/**/*.test.{js,ts,tsx}",
     ],
     collectCoverageFrom: [
       "app/**/*.{js,ts,tsx}",
@@ -80,9 +83,7 @@ const configs = {
   e2e: {
     ...baseConfig,
     setupFilesAfterEnv: ["<rootDir>/__tests__/config/jest-profiles/simplified-e2e.setup.mjs"],
-    testMatch: [
-      "<rootDir>/__tests__/e2e/**/*.test.{js,ts}",
-    ],
+    testMatch: ["<rootDir>/__tests__/e2e/**/*.test.{js,ts}"],
     collectCoverageFrom: [
       "app/**/*.{js,ts,tsx}",
       "components/**/*.{js,ts,tsx}",
@@ -94,7 +95,7 @@ const configs = {
 };
 
 // 環境変数でテストタイプを選択
-const testType = process.env.TEST_TYPE || 'unit';
+const testType = process.env.TEST_TYPE || "unit";
 const config = configs[testType] || configs.unit;
 
 export default createJestConfig(config);

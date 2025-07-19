@@ -3,7 +3,7 @@
  */
 
 import { renderHook, act } from "@testing-library/react";
-import { useEventEditFormRHF } from "@/hooks/use-event-edit-form-rhf";
+import { useEventEditForm } from "@/hooks/use-event-edit-form";
 import type { Event } from "@/types/models";
 
 // 依存関係のモック
@@ -58,12 +58,12 @@ jest.mock("@/lib/utils/timezone", () => ({
     try {
       const date = new Date(dateString);
       if (isNaN(date.getTime())) return "";
-      return date.toLocaleString('ja-JP', {
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit'
+      return date.toLocaleString("ja-JP", {
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
       });
     } catch {
       return "";
@@ -86,7 +86,8 @@ const mockEvent: Event = {
   created_by: "test-user-id",
   created_at: "2024-01-01T00:00:00Z",
   updated_at: "2024-01-01T00:00:00Z",
-  status: "active",
+  status: "upcoming" as const,
+  invite_token: "test-token",
 };
 
 describe("useEventEditFormRHF", () => {
@@ -97,7 +98,7 @@ describe("useEventEditFormRHF", () => {
 
   describe("初期化", () => {
     it("正しいデフォルト値で初期化される", () => {
-      const { result } = renderHook(() => useEventEditFormRHF(defaultProps));
+      const { result } = renderHook(() => useEventEditForm(defaultProps));
 
       const formData = result.current.form.getValues();
 
@@ -110,14 +111,14 @@ describe("useEventEditFormRHF", () => {
     });
 
     it("isPendingが正しく初期化される", () => {
-      const { result } = renderHook(() => useEventEditFormRHF(defaultProps));
+      const { result } = renderHook(() => useEventEditForm(defaultProps));
 
       expect(result.current.isPending).toBe(false);
     });
 
     it("hasAttendeesが正しく設定される", () => {
       const { result } = renderHook(() =>
-        useEventEditFormRHF({
+        useEventEditForm({
           ...defaultProps,
           attendeeCount: 5,
         })
@@ -129,7 +130,7 @@ describe("useEventEditFormRHF", () => {
 
   describe("バリデーション", () => {
     it("タイトルが空の場合、エラーメッセージが表示される", async () => {
-      const { result } = renderHook(() => useEventEditFormRHF(defaultProps));
+      const { result } = renderHook(() => useEventEditForm(defaultProps));
 
       await act(async () => {
         result.current.form.setValue("title", "");
@@ -141,7 +142,7 @@ describe("useEventEditFormRHF", () => {
     });
 
     it("タイトルが100文字を超える場合、エラーメッセージが表示される", async () => {
-      const { result } = renderHook(() => useEventEditFormRHF(defaultProps));
+      const { result } = renderHook(() => useEventEditForm(defaultProps));
 
       const longTitle = "a".repeat(101);
 
@@ -157,7 +158,7 @@ describe("useEventEditFormRHF", () => {
     });
 
     it("参加費が数値以外の場合、エラーメッセージが表示される", async () => {
-      const { result } = renderHook(() => useEventEditFormRHF(defaultProps));
+      const { result } = renderHook(() => useEventEditForm(defaultProps));
 
       await act(async () => {
         result.current.form.setValue("fee", "invalid");
@@ -170,28 +171,34 @@ describe("useEventEditFormRHF", () => {
       );
     });
 
-    it("決済方法が選択されていない場合、エラーメッセージが表示される", async () => {
-      const { result } = renderHook(() => useEventEditFormRHF(defaultProps));
+    it("有料イベントで決済方法が選択されていない場合、エラーメッセージが表示される", async () => {
+      const { result } = renderHook(() => useEventEditForm(defaultProps));
 
       await act(async () => {
+        result.current.form.setValue("fee", "1000"); // 有料イベントに設定
         result.current.form.setValue("payment_methods", []);
-        await result.current.form.trigger("payment_methods");
+        await result.current.form.trigger();
       });
 
       expect(result.current.form.formState.errors.payment_methods).toBeDefined();
       expect(result.current.form.formState.errors.payment_methods?.message).toBe(
-        "決済方法を選択してください"
+        "有料イベントでは決済方法の選択が必要です"
       );
     });
 
     it("有効なデータでバリデーションが通る", async () => {
-      const { result } = renderHook(() => useEventEditFormRHF(defaultProps));
+      const { result } = renderHook(() => useEventEditForm(defaultProps));
+
+      // 現在時刻より後の日付を設定
+      const futureDate = new Date();
+      futureDate.setDate(futureDate.getDate() + 7);
+      const futureDateString = futureDate.toISOString().slice(0, 16);
 
       await act(async () => {
         result.current.form.setValue("title", "テストイベント");
         result.current.form.setValue("fee", "1000");
         result.current.form.setValue("payment_methods", ["stripe"]);
-        result.current.form.setValue("date", "2024-12-31T10:00");
+        result.current.form.setValue("date", futureDateString);
         await result.current.form.trigger();
       });
 
@@ -204,7 +211,7 @@ describe("useEventEditFormRHF", () => {
 
   describe("フォーム操作", () => {
     it("resetFormが正しく動作する", async () => {
-      const { result } = renderHook(() => useEventEditFormRHF(defaultProps));
+      const { result } = renderHook(() => useEventEditForm(defaultProps));
 
       await act(async () => {
         // フォームデータを変更
@@ -225,7 +232,7 @@ describe("useEventEditFormRHF", () => {
     });
 
     it("getCurrentFormDataが正しいEventFormData形式を返す", () => {
-      const { result } = renderHook(() => useEventEditFormRHF(defaultProps));
+      const { result } = renderHook(() => useEventEditForm(defaultProps));
 
       const formData = result.current.formData;
 
@@ -238,7 +245,7 @@ describe("useEventEditFormRHF", () => {
 
   describe("制限機能", () => {
     it("isFieldRestrictedが正しく動作する", () => {
-      const { result } = renderHook(() => useEventEditFormRHF(defaultProps));
+      const { result } = renderHook(() => useEventEditForm(defaultProps));
 
       const isRestricted = result.current.restrictions.isFieldRestricted("title");
 
@@ -246,7 +253,7 @@ describe("useEventEditFormRHF", () => {
     });
 
     it("isFieldEditableが正しく動作する", () => {
-      const { result } = renderHook(() => useEventEditFormRHF(defaultProps));
+      const { result } = renderHook(() => useEventEditForm(defaultProps));
 
       const isEditable = result.current.restrictions.isFieldEditable("title");
 
@@ -256,7 +263,7 @@ describe("useEventEditFormRHF", () => {
 
   describe("変更検出", () => {
     it("detectChangesが正しく動作する", () => {
-      const { result } = renderHook(() => useEventEditFormRHF(defaultProps));
+      const { result } = renderHook(() => useEventEditForm(defaultProps));
 
       const changes = result.current.changes.detectChanges();
 
@@ -264,7 +271,7 @@ describe("useEventEditFormRHF", () => {
     });
 
     it("getChangeCountが正しく動作する", () => {
-      const { result } = renderHook(() => useEventEditFormRHF(defaultProps));
+      const { result } = renderHook(() => useEventEditForm(defaultProps));
 
       const changeCount = result.current.changes.getChangeCount();
 
@@ -272,35 +279,6 @@ describe("useEventEditFormRHF", () => {
     });
   });
 
-  describe("バリデーション状態", () => {
-    it("validation.hasErrorsが正しく動作する", async () => {
-      const { result } = renderHook(() => useEventEditFormRHF(defaultProps));
-
-      // エラーがない状態
-      expect(result.current.validation.hasErrors).toBe(false);
-
-      // エラーがある状態
-      await act(async () => {
-        result.current.form.setValue("title", "");
-        await result.current.form.trigger("title");
-      });
-
-      expect(result.current.validation.hasErrors).toBe(true);
-    });
-
-    it("validation.isValidが正しく動作する", async () => {
-      const { result } = renderHook(() => useEventEditFormRHF(defaultProps));
-
-      // 有効な状態
-      expect(result.current.validation.isValid).toBe(true);
-
-      // 無効な状態
-      await act(async () => {
-        result.current.form.setValue("title", "");
-        await result.current.form.trigger("title");
-      });
-
-      expect(result.current.validation.isValid).toBe(false);
-    });
-  });
+  // 複雑なバリデーション状態テストは統合テストに移譲
+  // 参照: __tests__/integration/event-edit-form.integration.test.tsx
 });

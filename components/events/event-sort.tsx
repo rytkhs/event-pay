@@ -17,6 +17,7 @@ import {
   SORT_BY_OPTIONS,
   SORT_BY_LABELS,
   isValidSortBy,
+  isValidSortOrder,
 } from "@/lib/constants/event-filters";
 
 interface EventSortProps {
@@ -34,6 +35,10 @@ export function EventSort({ sortBy, sortOrder, onSortChange, onOrderChange }: Ev
   // 無効な値の検証とデフォルト値の適用
   useEffect(() => {
     if (!isValidSortBy(sortBy)) {
+      console.warn("無効なソート条件です。デフォルトソートを適用します。");
+    }
+    if (!isValidSortOrder(sortOrder)) {
+      console.warn("無効なソート順序です。昇順を適用します。");
     }
   }, [sortBy, sortOrder]);
 

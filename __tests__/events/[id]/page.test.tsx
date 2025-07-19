@@ -30,6 +30,9 @@ jest.mock("next/navigation", () => ({
 const mockGetEventDetailAction =
   require("@/app/events/actions/get-event-detail").getEventDetailAction;
 
+// Next.js navigationモックの型定義
+const mockNotFound = jest.mocked(require("next/navigation").notFound);
+
 describe("EventDetailPage (/events/[id]/page.tsx)", () => {
   const mockParams = { id: "event123" };
 
@@ -155,13 +158,13 @@ describe("EventDetailPage (/events/[id]/page.tsx)", () => {
     });
 
     test("URLパラメータの検証が正しく行われる", async () => {
-      const { notFound } = require("next/navigation");
-      // 無効なUUID形式
+      // 無効なUUID形式でgetEventDetailActionがnullを返すようにモック
       const invalidParams = { id: "invalid-uuid" };
+      mockGetEventDetailAction.mockResolvedValueOnce(null);
 
       await EventDetailPage({ params: invalidParams });
 
-      expect(notFound).toHaveBeenCalled();
+      expect(mockNotFound).toHaveBeenCalled();
     });
   });
 });

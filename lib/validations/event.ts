@@ -212,7 +212,7 @@ export const createEventSchema = z
       return true;
     },
     {
-      message: "参加費が設定されている場合は決済方法を選択してください",
+      message: "有料イベントでは決済方法の選択が必要です",
       path: ["payment_methods"],
     }
   );
@@ -242,7 +242,6 @@ export const updateEventSchema = z
 
     payment_methods: z
       .array(z.string())
-      .min(1, "決済方法を選択してください")
       .refine(
         (methods) => {
           const result = validatePaymentMethodsWithMessage(methods);
@@ -352,6 +351,23 @@ export const updateEventSchema = z
     {
       message: "決済締切は参加申込締切以降に設定してください",
       path: ["payment_deadline"],
+    }
+  )
+  .refine(
+    (data) => {
+      // 参加費が設定されている場合のみチェック（編集では部分更新）
+      if (data.fee !== undefined && data.payment_methods !== undefined) {
+        const fee = typeof data.fee === "number" ? data.fee : Number(data.fee || 0);
+        // 無料イベント（fee=0）の場合は決済方法不要
+        if (fee === 0) return true;
+        // 有料イベント（fee≥1）の場合は決済方法必須
+        return data.payment_methods.length > 0;
+      }
+      return true;
+    },
+    {
+      message: "有料イベントでは決済方法の選択が必要です",
+      path: ["payment_methods"],
     }
   );
 

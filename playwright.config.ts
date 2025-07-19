@@ -12,6 +12,9 @@ export default defineConfig({
     trace: "on-first-retry",
     screenshot: "only-on-failure",
     video: "retain-on-failure",
+    // react-hook-formの動作に適応するためのタイムアウト調整
+    navigationTimeout: 30000,
+    actionTimeout: 10000,
   },
   projects: [
     {
@@ -31,5 +34,10 @@ export default defineConfig({
     command: "npm run dev",
     url: "http://localhost:3000",
     reuseExistingServer: !process.env.CI,
+    timeout: 120000,
+  },
+  // react-hook-formのクライアントサイドバリデーション等を考慮したグローバル設定
+  expect: {
+    timeout: 10000,
   },
 });

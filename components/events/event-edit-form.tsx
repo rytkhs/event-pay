@@ -42,6 +42,7 @@ export function EventEditForm({ event, attendeeCount, onSubmit, serverError }: E
     restrictions,
     changes,
     actions,
+    isFreeEvent, // 無料イベント判定フラグ
   } = useEventEditForm({
     event,
     attendeeCount,
@@ -283,52 +284,62 @@ export function EventEditForm({ event, attendeeCount, onSubmit, serverError }: E
                     )}
                   />
 
-                  {/* 決済方法 */}
-                  <FormField
-                    control={form.control}
-                    name="payment_methods"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>
-                          決済方法 <span className="text-red-500">*</span>
-                          {restrictions.isFieldRestricted("payment_methods") && (
-                            <span className="ml-2 text-sm text-gray-500">(編集制限)</span>
-                          )}
-                        </FormLabel>
-                        <div className="space-y-2">
-                          {[
-                            { value: "stripe", label: "クレジットカード" },
-                            { value: "cash", label: "現金" },
-                            { value: "free", label: "無料" },
-                          ].map((option) => (
-                            <div key={option.value} className="flex items-center space-x-2">
-                              <Checkbox
-                                id={`payment-${option.value}`}
-                                checked={field.value?.includes(option.value)}
-                                onCheckedChange={(checked) => {
-                                  if (checked) {
-                                    field.onChange([...field.value, option.value]);
-                                  } else {
-                                    field.onChange(field.value?.filter((v) => v !== option.value));
+                  {/* 決済方法選択 - 条件付き表示 */}
+                  {!isFreeEvent && (
+                    <FormField
+                      control={form.control}
+                      name="payment_methods"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>
+                            決済方法 <span className="text-red-500">*</span>
+                            {restrictions.isFieldRestricted("payment_methods") && (
+                              <span className="ml-2 text-sm text-gray-500">(編集制限)</span>
+                            )}
+                          </FormLabel>
+                          <div className="space-y-2">
+                            {[
+                              { value: "stripe", label: "クレジットカード" },
+                              { value: "cash", label: "現金" },
+                            ].map((option) => (
+                              <div key={option.value} className="flex items-center space-x-2">
+                                <Checkbox
+                                  id={`payment-${option.value}`}
+                                  checked={field.value?.includes(option.value)}
+                                  onCheckedChange={(checked) => {
+                                    if (checked) {
+                                      field.onChange([...field.value, option.value]);
+                                    } else {
+                                      field.onChange(
+                                        field.value?.filter((v) => v !== option.value)
+                                      );
+                                    }
+                                  }}
+                                  disabled={
+                                    isPending || restrictions.isFieldRestricted("payment_methods")
                                   }
-                                }}
-                                disabled={
-                                  isPending || restrictions.isFieldRestricted("payment_methods")
-                                }
-                              />
-                              <label
-                                htmlFor={`payment-${option.value}`}
-                                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                              >
-                                {option.label}
-                              </label>
-                            </div>
-                          ))}
-                        </div>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                                />
+                                <label
+                                  htmlFor={`payment-${option.value}`}
+                                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                                >
+                                  {option.label}
+                                </label>
+                              </div>
+                            ))}
+                          </div>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  )}
+
+                  {/* 無料イベント用の説明 */}
+                  {isFreeEvent && (
+                    <div className="bg-blue-50 border border-blue-200 text-blue-700 px-4 py-3 rounded">
+                      <p className="text-sm">ℹ️ 参加費が0円のため、決済方法の設定は不要です。</p>
+                    </div>
+                  )}
                 </div>
               </div>
 

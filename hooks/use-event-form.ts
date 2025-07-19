@@ -2,12 +2,126 @@
 
 import { useForm } from "react-hook-form";
 import { useRouter } from "next/navigation";
-import { useTransition } from "react";
+import { useTransition, useEffect } from "react";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import { createEventAction } from "@/app/events/actions";
-import type { EventFormDataRHF } from "@/types/models";
+
+// フロントエンド専用バリデーションスキーマ
+const eventFormSchema = z
+  .object({
+    title: z
+      .string()
+      .min(1, "タイトルは必須です")
+      .max(100, "タイトルは100文字以内で入力してください"),
+    date: z
+      .string()
+      .min(1, "開催日時は必須です")
+      .refine((val) => {
+        if (!val) return false;
+        const selectedDate = new Date(val);
+        const now = new Date();
+        return selectedDate > now;
+      }, "開催日時は現在時刻より後である必要があります"),
+    fee: z
+      .string()
+      .min(1, "参加費は必須です")
+      .refine((val) => {
+        const num = Number(val);
+        return Number.isFinite(num) && num >= 0 && num <= 1000000;
+      }, "参加費は0以上1000000以下である必要があります"),
+    payment_methods: z.array(z.string()),
+    location: z.string().max(200, "場所は200文字以内で入力してください"),
+    description: z.string().max(1000, "説明は1000文字以内で入力してください"),
+    capacity: z.string().refine((val) => {
+      if (!val || val.trim() === "") return true;
+      const num = Number(val);
+      return Number.isFinite(num) && num >= 1 && num <= 10000;
+    }, "定員は1以上10000以下である必要があります"),
+    registration_deadline: z.string(),
+    payment_deadline: z.string(),
+  })
+  .refine(
+    (data) => {
+      // 参加費に基づく決済方法バリデーション
+      const fee = Number(data.fee);
+      if (fee > 0) {
+        return data.payment_methods && data.payment_methods.length > 0;
+      }
+      return true;
+    },
+    {
+      message: "有料イベントでは決済方法の選択が必要です",
+      path: ["payment_methods"],
+    }
+  )
+  .refine(
+    (data) => {
+      // 参加申込締切が開催日時より前であることを確認（空文字列は無視）
+      if (data.registration_deadline && data.registration_deadline.trim() !== "" && data.date) {
+        try {
+          const regDate = new Date(data.registration_deadline);
+          const eventDate = new Date(data.date);
+          return regDate < eventDate;
+        } catch {
+          return false;
+        }
+      }
+      return true;
+    },
+    {
+      message: "参加申込締切は開催日時より前に設定してください",
+      path: ["registration_deadline"],
+    }
+  )
+  .refine(
+    (data) => {
+      // 決済締切が開催日時より前であることを確認（空文字列は無視）
+      if (data.payment_deadline && data.payment_deadline.trim() !== "" && data.date) {
+        try {
+          const payDate = new Date(data.payment_deadline);
+          const eventDate = new Date(data.date);
+          return payDate < eventDate;
+        } catch {
+          return false;
+        }
+      }
+      return true;
+    },
+    {
+      message: "決済締切は開催日時より前に設定してください",
+      path: ["payment_deadline"],
+    }
+  )
+  .refine(
+    (data) => {
+      // 決済締切が参加申込締切以降であることを確認（空文字列は無視）
+      if (
+        data.registration_deadline &&
+        data.registration_deadline.trim() !== "" &&
+        data.payment_deadline &&
+        data.payment_deadline.trim() !== ""
+      ) {
+        try {
+          const payDate = new Date(data.payment_deadline);
+          const regDate = new Date(data.registration_deadline);
+          return payDate >= regDate;
+        } catch {
+          return false;
+        }
+      }
+      return true;
+    },
+    {
+      message: "決済締切は参加申込締切以降に設定してください",
+      path: ["payment_deadline"],
+    }
+  );
+
+type EventFormData = z.infer<typeof eventFormSchema>;
 
 // react-hook-form用のデフォルト値
-const defaultValues: EventFormDataRHF = {
+const defaultValues: EventFormData = {
   title: "",
   description: "",
   location: "",
@@ -19,67 +133,6 @@ const defaultValues: EventFormDataRHF = {
   fee: "",
 };
 
-// 基本的なバリデーションルール
-const validationRules = {
-  title: {
-    required: "タイトルは必須です",
-    maxLength: {
-      value: 100,
-      message: "タイトルは100文字以内で入力してください",
-    },
-  },
-  date: {
-    required: "開催日時は必須です",
-    validate: (value: string) => {
-      if (!value) return "開催日時は必須です";
-      const selectedDate = new Date(value);
-      const now = new Date();
-      return selectedDate > now || "開催日時は現在時刻より後である必要があります";
-    },
-  },
-  fee: {
-    required: "参加費は必須です",
-    min: {
-      value: 0,
-      message: "参加費は0以上である必要があります",
-    },
-    max: {
-      value: 1000000,
-      message: "参加費は1000000以下である必要があります",
-    },
-  },
-  payment_methods: {
-    validate: (value: string[]) => {
-      if (!value || value.length === 0) {
-        return "決済方法を選択してください";
-      }
-      return true;
-    },
-  },
-  location: {
-    maxLength: {
-      value: 200,
-      message: "場所は200文字以内で入力してください",
-    },
-  },
-  description: {
-    maxLength: {
-      value: 1000,
-      message: "説明は1000文字以内で入力してください",
-    },
-  },
-  capacity: {
-    min: {
-      value: 1,
-      message: "定員は1以上である必要があります",
-    },
-    max: {
-      value: 10000,
-      message: "定員は10000以下である必要があります",
-    },
-  },
-};
-
 /**
  * react-hook-formを使用したイベント作成フォーム用フック
  * セキュリティファースト設計を維持しながら、パフォーマンスと開発効率を向上
@@ -89,14 +142,28 @@ export const useEventForm = () => {
   const [isPending, startTransition] = useTransition();
 
   // react-hook-formの初期化
-  const form = useForm<EventFormDataRHF>({
+  const form = useForm<EventFormData>({
+    resolver: zodResolver(eventFormSchema),
     defaultValues,
-    mode: "onChange", // リアルタイムバリデーション
+    mode: "all", // 全フィールドのリアルタイムバリデーション（相関バリデーション対応）
     reValidateMode: "onChange",
   });
 
+  // 参加費をリアルタイムで監視
+  const watchedFee = form.watch("fee");
+  // 空文字列や未入力の場合は無料イベントとして扱わない
+  const currentFee = watchedFee && watchedFee.trim() !== "" ? parseInt(watchedFee, 10) : null;
+  const isFreeEvent = currentFee === 0;
+
+  // 無料イベントの場合は決済方法をクリア
+  useEffect(() => {
+    if (isFreeEvent) {
+      form.setValue("payment_methods", []);
+    }
+  }, [isFreeEvent, form]);
+
   // フォーム送信処理
-  const onSubmit = async (data: EventFormDataRHF) => {
+  const onSubmit = async (data: EventFormData) => {
     startTransition(async () => {
       try {
         // フォームデータをFormDataオブジェクトに変換
@@ -155,14 +222,27 @@ export const useEventForm = () => {
 
   // フォーム状態の取得
   const { formState } = form;
-  const hasErrors = !formState.isValid || !!formState.errors.root;
+  // カスタムルールではなく、実際のエラーの存在で判定
+  const hasErrors = Object.keys(formState.errors).length > 0;
+
+  // デバッグ用：フォーム状態をログ出力
+  if (process.env.NODE_ENV === "development") {
+    console.log("🔍 Form Debug:", {
+      errors: formState.errors,
+      hasErrors,
+      isValid: formState.isValid,
+      isDirty: formState.isDirty,
+      isSubmitting: formState.isSubmitting,
+      currentValues: form.watch(),
+    });
+  }
 
   return {
     form,
     onSubmit: form.handleSubmit(onSubmit),
     isPending,
     hasErrors,
-    validationRules,
+    isFreeEvent, // ✨ 新規追加
     // 既存実装との互換性のため
     formData: form.watch(),
     errors: {

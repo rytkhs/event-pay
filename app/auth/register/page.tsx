@@ -73,7 +73,12 @@ export default function RegisterPage() {
             </CardHeader>
             <CardContent>
               <Form {...form}>
-                <form onSubmit={onSubmit} className="space-y-6" noValidate>
+                <form
+                  onSubmit={onSubmit}
+                  className="space-y-6"
+                  noValidate
+                  data-testid="register-form"
+                >
                   {/* 名前 */}
                   <FormField
                     control={form.control}
@@ -89,6 +94,7 @@ export default function RegisterPage() {
                             disabled={isPending}
                             autoComplete="name"
                             required
+                            data-testid="name-input"
                           />
                         </FormControl>
                         <FormMessage />
@@ -111,6 +117,7 @@ export default function RegisterPage() {
                             disabled={isPending}
                             autoComplete="email"
                             required
+                            data-testid="email-input"
                           />
                         </FormControl>
                         <FormMessage />
@@ -133,6 +140,7 @@ export default function RegisterPage() {
                             disabled={isPending}
                             autoComplete="new-password"
                             required
+                            data-testid="password-input"
                           />
                         </FormControl>
                         {password && (
@@ -167,12 +175,11 @@ export default function RegisterPage() {
                             disabled={isPending}
                             autoComplete="new-password"
                             required
+                            data-testid="password-confirm-input"
                           />
                         </FormControl>
                         {passwordConfirm && password && passwordConfirm !== password && (
-                          <div className="text-sm text-red-500">
-                            パスワードが一致しません
-                          </div>
+                          <div className="text-sm text-red-500">パスワードが一致しません</div>
                         )}
                         <FormMessage />
                       </FormItem>
@@ -190,6 +197,9 @@ export default function RegisterPage() {
                             checked={field.value}
                             onCheckedChange={field.onChange}
                             disabled={isPending}
+                            aria-required="true"
+                            aria-describedby="terms-description"
+                            data-testid="terms-checkbox"
                           />
                         </FormControl>
                         <div className="space-y-1 leading-none">
@@ -204,6 +214,9 @@ export default function RegisterPage() {
                             </Link>
                             に同意します
                           </FormLabel>
+                          <div id="terms-description" className="text-xs text-gray-600">
+                            EventPayをご利用いただくには利用規約への同意が必要です
+                          </div>
                         </div>
                       </FormItem>
                     )}
@@ -216,11 +229,22 @@ export default function RegisterPage() {
                     </div>
                   )}
 
+                  {/* 利用規約エラーメッセージ */}
+                  {form.formState.errors.termsAgreed && (
+                    <div
+                      className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded"
+                      data-testid="terms-error"
+                    >
+                      {form.formState.errors.termsAgreed.message}
+                    </div>
+                  )}
+
                   {/* 送信ボタン */}
                   <Button
                     type="submit"
                     className="w-full"
                     disabled={isPending}
+                    data-testid="submit-button"
                   >
                     {isPending ? "登録中..." : "アカウントを作成"}
                   </Button>
