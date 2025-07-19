@@ -48,7 +48,19 @@ async function EventsContent({ searchParams }: EventsContentProps) {
     ? searchParams.dateEnd[0]
     : searchParams.dateEnd;
 
+  // ページネーション用のパラメータ
+  const page = parseInt(
+    Array.isArray(searchParams.page) ? searchParams.page[0] : searchParams.page || "1",
+    10
+  );
+  const limit = parseInt(
+    Array.isArray(searchParams.limit) ? searchParams.limit[0] : searchParams.limit || "10",
+    10
+  );
+
   const result = await getEventsAction({
+    limit,
+    offset: (page - 1) * limit,
     sortBy,
     sortOrder,
     statusFilter,
@@ -72,6 +84,7 @@ async function EventsContent({ searchParams }: EventsContentProps) {
   return (
     <EventListWithFilters
       events={result.data}
+      totalCount={result.totalCount}
       initialSortBy={sortBy}
       initialSortOrder={sortOrder}
       initialStatusFilter={statusFilter}
