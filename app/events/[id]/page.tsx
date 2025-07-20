@@ -1,9 +1,11 @@
 import { getEventDetailAction } from "@/app/events/actions/get-event-detail";
 import { EventDetail } from "@/components/events/event-detail";
 import { EventActions } from "@/components/events/event-actions";
+import { InviteLink } from "@/components/events/invite-link";
 import { notFound, redirect } from "next/navigation";
 import { cache } from "react";
 import { sanitizeEventDescription } from "@/lib/utils/sanitize";
+import { getCurrentUser } from "@/lib/auth/auth-utils";
 
 interface EventDetailPageProps {
   params: {
@@ -28,6 +30,10 @@ export default async function EventDetailPage({ params }: EventDetailPageProps) 
       notFound();
     }
 
+    // 現在のユーザーを取得して主催者かどうか判定
+    const currentUser = await getCurrentUser();
+    const isOrganizer = currentUser && currentUser.id === eventDetail.organizer_id;
+
     return (
       <div className="container mx-auto px-4 py-8">
         <div className="max-w-4xl mx-auto space-y-6">
@@ -39,6 +45,14 @@ export default async function EventDetailPage({ params }: EventDetailPageProps) 
           </div>
 
           <EventDetail event={eventDetail} />
+
+          {/* 主催者のみに招待リンクを表示 */}
+          {isOrganizer && (
+            <InviteLink 
+              eventId={params.id} 
+              initialInviteToken={eventDetail.invite_token || undefined}
+            />
+          )}
         </div>
       </div>
     );
