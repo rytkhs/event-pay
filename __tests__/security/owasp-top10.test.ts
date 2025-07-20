@@ -20,7 +20,7 @@ describe("OWASP Top 10 Security Tests", () => {
   describe("A01:2021 - Broken Access Control", () => {
     test("should enforce proper authentication for protected routes", async () => {
       // Server Actionsでの認証チェック
-      const { loginAction } = await import("../../app/auth/actions");
+      const { loginAction } = await import("../../app/(auth)/actions");
       const formData = new FormData();
       formData.append("email", "invalid@example.com");
       formData.append("password", "wrongpassword");
@@ -32,7 +32,7 @@ describe("OWASP Top 10 Security Tests", () => {
 
     test("should prevent privilege escalation", async () => {
       // Server Actionsでの権限チェック
-      const { loginAction } = await import("../../app/auth/actions");
+      const { loginAction } = await import("../../app/(auth)/actions");
       const formData = new FormData();
       formData.append("email", "user@example.com");
       formData.append("password", "userpassword");
@@ -100,7 +100,7 @@ describe("OWASP Top 10 Security Tests", () => {
 
     test("should use secure session management", async () => {
       // Server ActionsではSupabaseの@supabase/ssrがHTTPOnly Cookieを管理
-      const { loginAction } = await import("../../app/auth/actions");
+      const { loginAction } = await import("../../app/(auth)/actions");
       const formData = new FormData();
       formData.append("email", "test@example.com");
       formData.append("password", "password");
@@ -122,7 +122,7 @@ describe("OWASP Top 10 Security Tests", () => {
       ];
 
       for (const input of maliciousInputs) {
-        const { loginAction } = await import("../../app/auth/actions");
+        const { loginAction } = await import("../../app/(auth)/actions");
         const formData = new FormData();
         formData.append("email", input);
         formData.append("password", "test");
@@ -137,7 +137,7 @@ describe("OWASP Top 10 Security Tests", () => {
       const maliciousInputs = ['{ "$ne": null }', '{ "$gt": "" }', '{ "$regex": ".*" }'];
 
       for (const input of maliciousInputs) {
-        const { loginAction } = await import("../../app/auth/actions");
+        const { loginAction } = await import("../../app/(auth)/actions");
         const formData = new FormData();
         formData.append("email", input);
         formData.append("password", "test");
@@ -152,7 +152,7 @@ describe("OWASP Top 10 Security Tests", () => {
 
       for (const input of maliciousInputs) {
         // ファイルアップロード機能は未実装だが、入力サニタイゼーションをテスト
-        const { registerAction } = await import("../../app/auth/actions");
+        const { registerAction } = await import("../../app/(auth)/actions");
         const formData = new FormData();
         formData.append("name", input);
         formData.append("email", "test@example.com");
@@ -170,7 +170,7 @@ describe("OWASP Top 10 Security Tests", () => {
   describe("A04:2021 - Insecure Design", () => {
     test("should implement proper business logic validation", async () => {
       // 決済機能は未実装だが、入力バリデーションロジックをテスト
-      const { registerAction } = await import("../../app/auth/actions");
+      const { registerAction } = await import("../../app/(auth)/actions");
       const formData = new FormData();
       formData.append("name", "Test User");
       formData.append("email", "invalid-email"); // 無効なメール形式
@@ -185,7 +185,7 @@ describe("OWASP Top 10 Security Tests", () => {
 
     test("should enforce proper workflow validation", async () => {
       // パスワード確認のワークフロー検証
-      const { registerAction } = await import("../../app/auth/actions");
+      const { registerAction } = await import("../../app/(auth)/actions");
       const formData = new FormData();
       formData.append("name", "Test User");
       formData.append("email", "test@example.com");
@@ -240,7 +240,7 @@ describe("OWASP Top 10 Security Tests", () => {
       const weakPasswords = ["password", "123456", "qwerty", "abc123", "password123"];
 
       for (const password of weakPasswords) {
-        const { registerAction } = await import("../../app/auth/actions");
+        const { registerAction } = await import("../../app/(auth)/actions");
         const formData = new FormData();
         formData.append("name", "Test User");
         formData.append("email", "test@example.com");
@@ -256,7 +256,7 @@ describe("OWASP Top 10 Security Tests", () => {
 
     test("should implement account lockout", async () => {
       const attempts = 6;
-      const { loginAction } = await import("../../app/auth/actions");
+      const { loginAction } = await import("../../app/(auth)/actions");
 
       for (let i = 0; i < attempts; i++) {
         const formData = new FormData();
@@ -275,7 +275,7 @@ describe("OWASP Top 10 Security Tests", () => {
 
     test("should implement proper session management", async () => {
       // Supabase SSRでHTTPOnly Cookieによるセッション管理が実装済み
-      const { loginAction } = await import("../../app/auth/actions");
+      const { loginAction } = await import("../../app/(auth)/actions");
       const formData = new FormData();
       formData.append("email", "test@example.com");
       formData.append("password", "ValidPass123!");
@@ -290,7 +290,7 @@ describe("OWASP Top 10 Security Tests", () => {
   describe("A09:2021 - Security Logging and Monitoring Failures", () => {
     test("should log security events", async () => {
       // Server Actionsでのログ記録をテスト
-      const { loginAction } = await import("../../app/auth/actions");
+      const { loginAction } = await import("../../app/(auth)/actions");
       const formData = new FormData();
       formData.append("email", "test@example.com");
       formData.append("password", "wrong-password");
@@ -302,7 +302,7 @@ describe("OWASP Top 10 Security Tests", () => {
 
     test("should not log sensitive information", async () => {
       // Server ActionsではZodバリデーションによりセンシティブ情報の漏洩を防止
-      const { loginAction } = await import("../../app/auth/actions");
+      const { loginAction } = await import("../../app/(auth)/actions");
       const formData = new FormData();
       formData.append("email", "test@example.com");
       formData.append("password", "secret-password");

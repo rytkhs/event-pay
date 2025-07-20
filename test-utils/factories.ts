@@ -1,21 +1,18 @@
 import type { Event } from "@/types/event";
+import { EVENT_STATUS } from "@/types/enums";
 
 export function createMockEvent(overrides: Partial<Event> = {}): Event {
   const baseEvent: Event = {
     id: `event-${Date.now()}`,
     title: "テストイベント",
-    description: "テスト用のイベントです",
     date: new Date(Date.now() + 86400000).toISOString(), // 明日
     location: "テスト会場",
     fee: 1000,
     capacity: 50,
-    status: "draft",
-    payment_methods: ["stripe"],
-    creator_id: "test-creator-id",
+    status: EVENT_STATUS.UPCOMING,
     creator_name: "テスト作成者",
     attendances_count: 0,
     created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
     ...overrides,
   };
 

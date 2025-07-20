@@ -14,7 +14,7 @@ describe("Penetration Testing Suite", () => {
       ];
 
       for (const payload of unicodePayloads) {
-        const { loginAction } = await import("../../app/auth/actions");
+        const { loginAction } = await import("../../app/(auth)/actions");
         const formData = new FormData();
         formData.append("email", payload);
         formData.append("password", "test");
@@ -36,7 +36,7 @@ describe("Penetration Testing Suite", () => {
       ];
 
       for (const payload of polyglotPayloads) {
-        const { registerAction } = await import("../../app/auth/actions");
+        const { registerAction } = await import("../../app/(auth)/actions");
         const formData = new FormData();
         formData.append("name", payload);
         formData.append("email", "test@example.com");
@@ -60,7 +60,7 @@ describe("Penetration Testing Suite", () => {
       ];
 
       for (const payload of encodedPayloads) {
-        const { registerAction } = await import("../../app/auth/actions");
+        const { registerAction } = await import("../../app/(auth)/actions");
         const formData = new FormData();
         formData.append("name", payload);
         formData.append("email", "test@example.com");
@@ -79,7 +79,7 @@ describe("Penetration Testing Suite", () => {
   describe("Authentication Bypass Attempts", () => {
     test("should prevent JWT manipulation", async () => {
       // Supabase SSRはHTTPOnly Cookieを使用するためJWT操作は不可能
-      const { loginAction } = await import("../../app/auth/actions");
+      const { loginAction } = await import("../../app/(auth)/actions");
       const formData = new FormData();
       formData.append("email", "test@example.com");
       formData.append("password", "invalid");
@@ -91,7 +91,7 @@ describe("Penetration Testing Suite", () => {
 
     test("should prevent session fixation", async () => {
       // Supabase SSRがセッション管理を自動処理、固定化攻撃を防止
-      const { loginAction } = await import("../../app/auth/actions");
+      const { loginAction } = await import("../../app/(auth)/actions");
       const formData = new FormData();
       formData.append("email", "test@example.com");
       formData.append("password", "ValidPass123!");
@@ -110,7 +110,7 @@ describe("Penetration Testing Suite", () => {
       const invalidUserTimes = [];
 
       for (let i = 0; i < 3; i++) {
-        const { loginAction } = await import("../../app/auth/actions");
+        const { loginAction } = await import("../../app/(auth)/actions");
         const formData = new FormData();
         formData.append("email", validUser);
         formData.append("password", "wrong-password");
@@ -121,7 +121,7 @@ describe("Penetration Testing Suite", () => {
       }
 
       for (let i = 0; i < 3; i++) {
-        const { loginAction } = await import("../../app/auth/actions");
+        const { loginAction } = await import("../../app/(auth)/actions");
         const formData = new FormData();
         formData.append("email", invalidUser);
         formData.append("password", "wrong-password");

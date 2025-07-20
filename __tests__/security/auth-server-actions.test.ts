@@ -15,7 +15,7 @@ import {
   registerAction,
   logoutAction,
   resetPasswordAction,
-} from "../../app/auth/actions";
+} from "../../app/(auth)/actions";
 
 // セキュリティテスト用のヘルパー
 const createMaliciousFormData = (type: "xss" | "sql" | "command") => {

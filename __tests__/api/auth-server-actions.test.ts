@@ -15,7 +15,7 @@ import {
   registerAction,
   logoutAction,
   resetPasswordAction,
-} from "../../app/auth/actions";
+} from "../../app/(auth)/actions";
 
 // テスト用スキーマ（実装想定）
 const LoginSchema = z.object({

@@ -1,23 +1,24 @@
-import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/supabase/server";
 import type { Event } from "@/types/event";
+import { EVENT_STATUS } from "@/types/enums";
 
 export class TestDataManager {
   private supabase: any;
 
   constructor(supabaseClient?: any) {
-    this.supabase = supabaseClient || createServerSupabaseClient();
+    this.supabase = supabaseClient || createClient();
   }
 
   async createTestEvent(eventData: Partial<Event> = {}): Promise<Event> {
     const defaultEvent = {
       title: "テストイベント",
-      description: "テスト用のイベントです",
       date: new Date(Date.now() + 86400000).toISOString(), // 明日
       location: "テスト会場",
       fee: 1000,
       capacity: 50,
-      status: "draft" as const,
-      payment_methods: ["stripe"],
+      status: EVENT_STATUS.UPCOMING,
+      creator_name: "テスト作成者",
+      created_at: new Date().toISOString(),
       ...eventData,
     };
 
@@ -103,7 +104,7 @@ export class TestDataManager {
   async setupEventWithAttendees(eventData: any = {}, attendeeCount: number = 1): Promise<any> {
     // イベント作成者を作成
     const creator = await this.createTestUser();
-    
+
     // イベントを作成
     const event = await this.createTestEvent({
       ...eventData,
@@ -141,7 +142,7 @@ export class TestDataManager {
 
   async createAuthenticatedUser(userData: any = {}): Promise<any> {
     const user = await this.createTestUser(userData);
-    
+
     // テスト環境では認証状態をシミュレート
     if (user.user) {
       await this.supabase.auth.setSession({
@@ -168,7 +169,7 @@ export class TestDataManager {
     if (user.user) {
       await this.supabase.auth.setSession({
         access_token: 'test-token',
-        refresh_token: 'test-refresh-token', 
+        refresh_token: 'test-refresh-token',
         user: user.user,
       });
     }
