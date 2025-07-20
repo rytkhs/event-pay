@@ -42,7 +42,9 @@ export async function getEventDetailAction(eventId: string) {
         payment_methods,
         created_at,
         updated_at,
-        created_by
+        created_by,
+        invite_token,
+        organizer_id:created_by
       `
       )
       .eq("id", validation.data)
