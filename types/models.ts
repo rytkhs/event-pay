@@ -86,12 +86,12 @@ export interface EventFormDataRHF {
 export interface Attendance {
   id: string;
   event_id: string;
-  participant_name: string;
-  participant_email: string;
+  nickname: string;
+  email: string;
   status: Database["public"]["Enums"]["attendance_status_enum"];
+  guest_token: string | null;
   created_at: string;
   updated_at: string;
-  guest_token: string;
 }
 
 // ====================================================================
