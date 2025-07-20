@@ -93,7 +93,7 @@ describe("認証Server Actions", () => {
       if (result.success) {
         // 本番環境での成功パターン
         expect(result.data?.user).toBeDefined();
-        expect(result.redirectUrl).toBe("/dashboard");
+        expect(result.redirectUrl).toBe("/home");
       } else {
         // モック環境での失敗パターン（期待される動作）
         expect(result.error).toMatch(

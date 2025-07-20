@@ -114,7 +114,7 @@ export class AuthHandler {
 
     // 認証済みユーザーが認証不要ページにアクセスした場合
     if (session && isUnauthOnly) {
-      return this.createAuthRedirect(request, "/dashboard", false);
+      return this.createAuthRedirect(request, "/home", false);
     }
 
     return null; // リダイレクト不要

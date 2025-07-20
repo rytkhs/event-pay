@@ -52,7 +52,7 @@ import { middleware } from "@/middleware";
 const createMockMiddleware = (
   supabaseUrl: string,
   supabaseAnonKey: string,
-  protectedPaths: string[] = ["/dashboard", "/events", "/profile"]
+  protectedPaths: string[] = ["/home", "/events", "/profile"]
 ) => {
   return async (request: NextRequest) => {
     const response = NextResponse.next();
@@ -95,7 +95,7 @@ const createMockMiddleware = (
 
     // 認証済みユーザーがログインページにアクセスした場合
     if (session && pathname.startsWith("/auth/login")) {
-      return NextResponse.redirect(new URL("/dashboard", request.url));
+      return NextResponse.redirect(new URL("/home", request.url));
     }
 
     // セキュリティヘッダーの設定
@@ -150,7 +150,7 @@ describe("認証ミドルウェアテスト", () => {
   describe("✅ 基本的な認証フロー", () => {
     test("未認証ユーザーは保護されたパスからログインページにリダイレクト", async () => {
       // Arrange
-      const request = new NextRequest("https://example.com/dashboard");
+      const request = new NextRequest("https://example.com/home");
 
       // Act
       const response = await middleware(request);
@@ -158,12 +158,12 @@ describe("認証ミドルウェアテスト", () => {
       // Assert - デバッグで確認した実際の動作
       expect(response.status).toBe(307);
       expect(response.headers.get("location")).toContain("/auth/login");
-      expect(response.headers.get("location")).toContain("redirectTo=%2Fdashboard");
+      expect(response.headers.get("location")).toContain("redirectTo=%2Fhome");
     });
 
     test("Cookieがある場合でも現在の実装では認証失敗してリダイレクト", async () => {
       // デバッグ結果に基づく：Cookieがあってもリダイレクトされる
-      const request = new NextRequest("https://example.com/dashboard", {
+      const request = new NextRequest("https://example.com/home", {
         headers: { cookie: "supabase-auth-token=valid-session-token" },
       });
 
@@ -237,7 +237,7 @@ describe("認証ミドルウェアテスト", () => {
 
     test("保護されたパスへのリダイレクト時はヘッダー設定なし", async () => {
       // リダイレクト応答にはセキュリティヘッダーが設定されない
-      const request = new NextRequest("https://example.com/dashboard");
+      const request = new NextRequest("https://example.com/home");
       const response = await middleware(request);
 
       expect(response.status).toBe(307);
@@ -265,7 +265,7 @@ describe("認証ミドルウェアテスト", () => {
     });
 
     test("保護されたパスの一貫したリダイレクト動作", async () => {
-      const protectedPaths = ["/dashboard", "/events", "/profile", "/admin"];
+      const protectedPaths = ["/home", "/events", "/profile", "/admin"];
 
       for (const path of protectedPaths) {
         const request = new NextRequest(`https://example.com${path}`);
@@ -283,7 +283,7 @@ describe("認証ミドルウェアテスト", () => {
   describe("⚠️ エラーハンドリング", () => {
     test("不正なパスでもセキュリティが保持される", async () => {
       const maliciousPaths = [
-        "/dashboard/../admin",
+        "/home/../admin",
         "/events?redirect=evil.com",
         "/profile#malicious",
       ];
@@ -301,7 +301,7 @@ describe("認証ミドルウェアテスト", () => {
 
   describe("🔄 CSRF攻撃対策", () => {
     test("異なるOriginからのアクセスも通常の認証フローで処理", async () => {
-      const request = new NextRequest("https://example.com/dashboard", {
+      const request = new NextRequest("https://example.com/home", {
         headers: {
           Origin: "https://malicious-site.com",
           Referer: "https://malicious-site.com/attack",
@@ -317,7 +317,7 @@ describe("認証ミドルウェアテスト", () => {
 
     test("同一オリジンからでも現在は認証失敗でリダイレクト", async () => {
       // 現在の実装では認証が正しく動作していない可能性があるため
-      const request = new NextRequest("https://example.com/dashboard", {
+      const request = new NextRequest("https://example.com/home", {
         headers: {
           Origin: "https://example.com",
           Referer: "https://example.com/profile",
@@ -340,7 +340,7 @@ describe("認証ミドルウェアテスト", () => {
 
     test("期限切れトークンでのアクセス時に適切にリダイレクト", async () => {
       // Arrange: 現在の実装に合わせてリダイレクトを想定
-      const request = createMockRequest("https://example.com/dashboard", {
+      const request = createMockRequest("https://example.com/home", {
         "supabase-auth-token": "expired-token",
       });
 
@@ -350,7 +350,7 @@ describe("認証ミドルウェアテスト", () => {
       // Assert: 現在の実装では未認証として処理されリダイレクト
       expect(response.status).toBe(307);
       expect(response.headers.get("location")).toContain("/auth/login");
-      expect(response.headers.get("location")).toContain("redirectTo=%2Fdashboard");
+      expect(response.headers.get("location")).toContain("redirectTo=%2Fhome");
     });
 
     test("無効なトークンでのアクセス時のセキュリティ処理", async () => {
@@ -383,7 +383,7 @@ describe("認証ミドルウェアテスト", () => {
 
     test("セッション取得エラー時の適切なフォールバック処理", async () => {
       // Arrange: 何らかのエラーを想定したトークン
-      const request = createMockRequest("https://example.com/dashboard", {
+      const request = createMockRequest("https://example.com/home", {
         "supabase-auth-token": "error-causing-token",
       });
 
@@ -433,7 +433,7 @@ describe("認証ミドルウェアテスト", () => {
 
     test("ミドルウェアのセキュリティ処理の一貫性", async () => {
       // Arrange: 複数の保護されたパスをテスト
-      const protectedPaths = ["/dashboard", "/events", "/profile"];
+      const protectedPaths = ["/home", "/events", "/profile"];
 
       for (const path of protectedPaths) {
         const request = createMockRequest(`https://example.com${path}`);
@@ -462,7 +462,7 @@ describe("認証ミドルウェアテスト", () => {
       ];
 
       for (const token of invalidTokens) {
-        const request = createMockRequest("https://example.com/dashboard", {
+        const request = createMockRequest("https://example.com/home", {
           "supabase-auth-token": token,
         });
 
@@ -479,10 +479,10 @@ describe("認証ミドルウェアテスト", () => {
   describe("📋 実際の動作パターン", () => {
     test("現在のミドルウェアの実際の認証フロー", async () => {
       // 1. 未認証ユーザーの保護されたパスアクセス
-      let request = new NextRequest("https://example.com/dashboard");
+      let request = new NextRequest("https://example.com/home");
       let response = await middleware(request);
       expect(response.status).toBe(307);
-      expect(response.headers.get("location")).toContain("/auth/login?redirectTo=%2Fdashboard");
+      expect(response.headers.get("location")).toContain("/auth/login?redirectTo=%2Fhome");
 
       // 2. 認証ページへのアクセス
       request = new NextRequest("https://example.com/auth/login");

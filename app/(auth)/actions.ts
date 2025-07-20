@@ -324,7 +324,7 @@ export async function loginAction(formData: FormData): Promise<ActionResult<{ us
       success: true,
       data: { user: data?.user },
       message: "ログインしました",
-      redirectUrl: "/dashboard",
+      redirectUrl: "/home",
     };
   } catch {
     // console.error("Login action error:", error);
@@ -522,7 +522,7 @@ export async function verifyOtpAction(formData: FormData): Promise<ActionResult>
     return {
       success: true,
       message: "メールアドレスが確認されました",
-      redirectUrl: "/dashboard",
+      redirectUrl: "/home",
     };
   } catch {
     // console.error("Verify OTP action error:", error);
@@ -703,7 +703,7 @@ export async function updatePasswordAction(formData: FormData): Promise<ActionRe
     return {
       success: true,
       message: "パスワードが更新されました",
-      redirectUrl: "/dashboard",
+      redirectUrl: "/home",
     };
   } catch {
     // console.error("Update password action error:", error);

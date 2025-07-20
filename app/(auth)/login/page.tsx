@@ -14,7 +14,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { useLoginFormRHF } from "@/lib/hooks/useAuthForm";
-import { loginAction } from "@/app/auth/actions";
+import { loginAction } from "@/app/(auth)/actions";
 
 export default function LoginPage() {
   const { form, onSubmit, isPending } = useLoginFormRHF(loginAction, {

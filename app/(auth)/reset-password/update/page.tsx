@@ -1,10 +1,10 @@
 "use client";
 
-import { Suspense } from "react";
+
 import Link from "next/link";
 import { usePasswordConfirmation } from "@/lib/hooks/usePasswordConfirmation";
 import { PasswordStatusIcon } from "@/components/ui/PasswordStatusIcon";
-import { updatePasswordAction } from "@/app/auth/actions";
+import { updatePasswordAction } from "@/app/(auth)/actions";
 import { useAuthForm, AuthFormWrapper, AuthFormField, AuthSubmitButton } from "@/components/auth";
 
 export default function UpdatePasswordPage() {

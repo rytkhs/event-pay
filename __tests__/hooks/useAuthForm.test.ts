@@ -56,7 +56,7 @@ describe("useLoginFormRHF", () => {
     it("成功時にリダイレクトが実行される", async () => {
       mockLoginAction.mockResolvedValue({
         success: true,
-        redirectUrl: "/dashboard",
+        redirectUrl: "/home",
       });
 
       const { result } = renderHook(() => useLoginFormRHF(mockLoginAction));
@@ -69,7 +69,7 @@ describe("useLoginFormRHF", () => {
       });
 
       await waitFor(() => {
-        expect(mockPush).toHaveBeenCalledWith("/dashboard");
+        expect(mockPush).toHaveBeenCalledWith("/home");
       });
     });
 
@@ -107,7 +107,7 @@ describe("useRegisterFormRHF", () => {
     it("成功時にリダイレクトが実行される", async () => {
       mockRegisterAction.mockResolvedValue({
         success: true,
-        redirectUrl: "/dashboard",
+        redirectUrl: "/home",
       });
 
       const { result } = renderHook(() => useRegisterFormRHF(mockRegisterAction));
@@ -123,7 +123,7 @@ describe("useRegisterFormRHF", () => {
       });
 
       await waitFor(() => {
-        expect(mockPush).toHaveBeenCalledWith("/dashboard");
+        expect(mockPush).toHaveBeenCalledWith("/home");
       });
     });
 

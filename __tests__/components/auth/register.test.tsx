@@ -1,10 +1,10 @@
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { useState } from "react";
-import { registerAction } from "@/app/auth/actions";
-import RegisterPage from "@/app/auth/register/page";
+import { registerAction } from "@/app/(auth)/actions";
+import RegisterPage from "@/app/(auth)/register/page";
 
 // サーバーアクションをモック
-jest.mock("@/app/auth/actions", () => ({
+jest.mock("@/app/(auth)/actions", () => ({
   registerAction: jest.fn(),
 }));
 
