@@ -63,7 +63,7 @@ jest.mock("react", () => ({
 }));
 
 // Server Actionsのモック
-jest.mock("@/app/auth/actions", () => {
+jest.mock("@/app/(auth)/actions", () => {
   const mockActions = require("./mocks/server-actions.js");
   return mockActions;
 });
