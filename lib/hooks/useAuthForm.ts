@@ -147,24 +147,35 @@ export function hasFieldError(
 
 // バリデーションスキーマ
 const loginSchema = z.object({
-  email: z.string().min(1, "メールアドレスを入力してください").email("有効なメールアドレスを入力してください"),
+  email: z
+    .string()
+    .min(1, "メールアドレスを入力してください")
+    .email("有効なメールアドレスを入力してください"),
   password: z.string().min(1, "パスワードを入力してください"),
   rememberMe: z.boolean().optional(),
 });
 
-const registerSchema = z.object({
-  name: z.string().min(1, "名前を入力してください").max(50, "名前は50文字以内で入力してください"),
-  email: z.string().min(1, "メールアドレスを入力してください").email("有効なメールアドレスを入力してください"),
-  password: z
-    .string()
-    .min(8, "パスワードは8文字以上で入力してください")
-    .regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/, "パスワードは大文字、小文字、数字を含む必要があります"),
-  passwordConfirm: z.string().min(1, "パスワード確認を入力してください"),
-  termsAgreed: z.boolean().refine((val) => val === true, "利用規約に同意してください"),
-}).refine((data) => data.password === data.passwordConfirm, {
-  message: "パスワードが一致しません",
-  path: ["passwordConfirm"],
-});
+const registerSchema = z
+  .object({
+    name: z.string().min(1, "名前を入力してください").max(50, "名前は50文字以内で入力してください"),
+    email: z
+      .string()
+      .min(1, "メールアドレスを入力してください")
+      .email("有効なメールアドレスを入力してください"),
+    password: z
+      .string()
+      .min(8, "パスワードは8文字以上で入力してください")
+      .regex(
+        /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/,
+        "パスワードは大文字、小文字、数字を含む必要があります"
+      ),
+    passwordConfirm: z.string().min(1, "パスワード確認を入力してください"),
+    termsAgreed: z.boolean().refine((val) => val === true, "利用規約に同意してください"),
+  })
+  .refine((data) => data.password === data.passwordConfirm, {
+    message: "パスワードが一致しません",
+    path: ["passwordConfirm"],
+  });
 
 type LoginFormDataRHF = z.infer<typeof loginSchema>;
 type RegisterFormDataRHF = z.infer<typeof registerSchema>;
@@ -211,7 +222,7 @@ export function useLoginFormRHF<T extends ServerActionResult>(
             options.onSuccess(result);
           }
 
-          const redirectUrl = result.redirectUrl || "/dashboard";
+          const redirectUrl = result.redirectUrl || "/home";
           router.push(redirectUrl);
         } else {
           // サーバーエラーをフォームエラーとして設定
@@ -246,7 +257,6 @@ export function useLoginFormRHF<T extends ServerActionResult>(
       }
     });
   });
-
 
   return {
     form,
@@ -296,7 +306,7 @@ export function useRegisterFormRHF<T extends ServerActionResult>(
           if (result.needsEmailConfirmation) {
             router.push("/auth/verify-email");
           } else {
-            const redirectUrl = result.redirectUrl || "/dashboard";
+            const redirectUrl = result.redirectUrl || "/home";
             router.push(redirectUrl);
           }
         } else {
@@ -332,7 +342,6 @@ export function useRegisterFormRHF<T extends ServerActionResult>(
       }
     });
   });
-
 
   return {
     form,

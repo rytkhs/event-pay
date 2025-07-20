@@ -26,7 +26,7 @@ export const loginAction = jest.fn().mockImplementation(async (formData) => {
       success: true,
       data: { user: { id: "test-user-id", email: "valid@example.com" } },
       message: "ログインしました",
-      redirectUrl: "/dashboard",
+      redirectUrl: "/home",
     };
   }
 

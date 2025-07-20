@@ -86,7 +86,7 @@ export async function verifyOtpAction(payload: { otp: string; email: string; typ
     return {
       success: true,
       message: "メールアドレスが確認されました。",
-      redirectUrl: "/dashboard?status=email_confirmed",
+      redirectUrl: "/home?status=email_confirmed",
     };
   } catch (error) {
     if (error instanceof z.ZodError) {

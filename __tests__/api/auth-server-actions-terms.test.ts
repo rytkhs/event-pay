@@ -1,4 +1,4 @@
-import { registerAction } from "@/app/auth/actions";
+import { registerAction } from "@/app/(auth)/actions";
 
 // Supabaseクライアントをモック
 jest.mock("@/lib/supabase/server", () => ({

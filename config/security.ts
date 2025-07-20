@@ -96,7 +96,7 @@ export const SECURITY_HEADERS = {
 // 認証関連設定
 export const AUTH_CONFIG = {
   // 保護されたパス
-  protectedPaths: ["/dashboard", "/events", "/profile", "/admin"],
+  protectedPaths: ["/home", "/events", "/profile", "/admin"],
 
   // 認証済みユーザーがアクセス不可なパス
   unauthenticatedOnlyPaths: ["/auth/login", "/auth/register"],

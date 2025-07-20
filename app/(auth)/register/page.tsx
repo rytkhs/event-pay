@@ -4,7 +4,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Textarea } from "@/components/ui/textarea";
+
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import {
   Form,
@@ -15,7 +15,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { useRegisterFormRHF } from "@/lib/hooks/useAuthForm";
-import { registerAction } from "@/app/auth/actions";
+import { registerAction } from "@/app/(auth)/actions";
 
 export default function RegisterPage() {
   const { form, onSubmit, isPending } = useRegisterFormRHF(registerAction, {
@@ -30,7 +30,7 @@ export default function RegisterPage() {
     if (!password) return { level: 0, text: "", color: "text-gray-500", feedback: "" };
 
     let score = 0;
-    let feedback = [];
+    const feedback = [];
 
     if (password.length >= 8) score += 1;
     else feedback.push("8文字以上");

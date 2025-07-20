@@ -12,7 +12,7 @@ export default async function Home() {
 
   // 認証済みユーザーはダッシュボードにリダイレクト
   if (user && !error) {
-    redirect("/dashboard");
+    redirect("/home");
   }
 
   return (

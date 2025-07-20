@@ -59,7 +59,7 @@ export async function middleware(request: NextRequest) {
   // 認証済みユーザーが認証ページにアクセス
   const isAuthRoute = authRoutes.some((route) => pathname.startsWith(route));
   if (isAuthRoute && user) {
-    return NextResponse.redirect(new URL("/dashboard", request.url));
+    return NextResponse.redirect(new URL("/home", request.url));
   }
 
   // 公開ルート以外で未認証の場合はすべて保護されたルートとして扱う
