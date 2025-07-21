@@ -32,13 +32,13 @@ export default function AuthErrorPage({ searchParams }: ErrorPageProps) {
 
           <div className="text-center space-y-3">
             <Link
-              href="/auth/login"
+              href="/login"
               className="inline-block w-full px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
             >
               ログインページに戻る
             </Link>
             <Link
-              href="/auth/register"
+              href="/register"
               className="inline-block text-blue-600 underline hover:text-blue-800"
             >
               アカウント登録

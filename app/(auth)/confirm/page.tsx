@@ -23,7 +23,7 @@ export default async function ConfirmPage({ searchParams }: ConfirmPageProps) {
               {decodeURIComponent(error)}
             </div>
             <div className="text-center">
-              <Link href="/auth/register" className="text-blue-600 underline hover:text-blue-800">
+              <Link href="/register" className="text-blue-600 underline hover:text-blue-800">
                 登録ページに戻る
               </Link>
             </div>
@@ -69,7 +69,7 @@ export default async function ConfirmPage({ searchParams }: ConfirmPageProps) {
 
             {email && (
               <Link
-                href={`/auth/verify-otp?email=${encodeURIComponent(email)}`}
+                href={`/verify-otp?email=${encodeURIComponent(email)}`}
                 className="inline-block px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
               >
                 確認コードで認証する
@@ -81,7 +81,7 @@ export default async function ConfirmPage({ searchParams }: ConfirmPageProps) {
         {/* フッター情報 */}
         <footer className="text-center space-y-2">
           <div className="text-xs text-gray-400">
-            <Link href="/auth/login" className="hover:text-gray-600 underline">
+            <Link href="/login" className="hover:text-gray-600 underline">
               ログインページに戻る
             </Link>
           </div>

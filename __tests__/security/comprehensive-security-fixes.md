@@ -102,7 +102,7 @@ describe("認証ミドルウェア", () => {
 
     // Assert: 具体的な結果検証
     expect(response.status).toBe(307);
-    expect(response.headers.get('location')).toContain('/auth/login');
+    expect(response.headers.get('location')).toContain('/login');
   });
 });
 ```

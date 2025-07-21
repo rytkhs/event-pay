@@ -210,7 +210,7 @@ describe("EventCreateForm Security Tests", () => {
 
       // 未認証の場合、ログインページにリダイレクトされることを確認
       await waitFor(() => {
-        expect(mockPush).toHaveBeenCalledWith("/auth/login");
+        expect(mockPush).toHaveBeenCalledWith("/login");
       });
     });
 

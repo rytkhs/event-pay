@@ -85,7 +85,7 @@ export class AuthHandler {
   ): NextResponse {
     const redirectUrl = new URL(targetPath, request.url);
 
-    if (preserveOriginal && targetPath === "/auth/login") {
+    if (preserveOriginal && targetPath === "/login") {
       redirectUrl.searchParams.set("redirectTo", request.nextUrl.pathname);
     }
 
@@ -109,7 +109,7 @@ export class AuthHandler {
 
     // 認証が必要なパスで未認証の場合
     if (requiresAuth && !session) {
-      return this.createAuthRedirect(request, "/auth/login");
+      return this.createAuthRedirect(request, "/login");
     }
 
     // 認証済みユーザーが認証不要ページにアクセスした場合

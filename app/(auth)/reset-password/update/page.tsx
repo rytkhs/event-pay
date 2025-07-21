@@ -86,7 +86,7 @@ export default function UpdatePasswordPage() {
       <AuthSubmitButton isPending={isPending}>パスワード更新</AuthSubmitButton>
 
       <div className="text-center text-sm text-gray-600">
-        <Link href="/auth/login" className="text-blue-600 hover:text-blue-500 hover:underline">
+        <Link href="/login" className="text-blue-600 hover:text-blue-500 hover:underline">
           ログインページに戻る
         </Link>
       </div>

@@ -87,14 +87,14 @@ const createMockMiddleware = (
     if (protectedPaths.some((path) => pathname.startsWith(path))) {
       if (!session) {
         // 未認証の場合、ログインページにリダイレクト
-        const redirectUrl = new URL("/auth/login", request.url);
+        const redirectUrl = new URL("/login", request.url);
         redirectUrl.searchParams.set("redirectTo", pathname);
         return NextResponse.redirect(redirectUrl);
       }
     }
 
     // 認証済みユーザーがログインページにアクセスした場合
-    if (session && pathname.startsWith("/auth/login")) {
+    if (session && pathname.startsWith("/login")) {
       return NextResponse.redirect(new URL("/home", request.url));
     }
 
@@ -157,7 +157,7 @@ describe("認証ミドルウェアテスト", () => {
 
       // Assert - デバッグで確認した実際の動作
       expect(response.status).toBe(307);
-      expect(response.headers.get("location")).toContain("/auth/login");
+      expect(response.headers.get("location")).toContain("/login");
       expect(response.headers.get("location")).toContain("redirectTo=%2Fhome");
     });
 
@@ -171,12 +171,12 @@ describe("認証ミドルウェアテスト", () => {
 
       // 実際の動作に基づく期待値
       expect(response.status).toBe(307);
-      expect(response.headers.get("location")).toContain("/auth/login");
+      expect(response.headers.get("location")).toContain("/login");
     });
 
     test("認証関連ページは通常通りアクセス可能", async () => {
       // ログインページは認証チェックなしでアクセス可能
-      const request = new NextRequest("https://example.com/auth/login");
+      const request = new NextRequest("https://example.com/login");
 
       const response = await middleware(request);
 
@@ -195,7 +195,7 @@ describe("認証ミドルウェアテスト", () => {
     });
 
     test("APIルートはミドルウェア処理をスキップ", async () => {
-      const request = new NextRequest("https://example.com/api/auth/login");
+      const request = new NextRequest("https://example.com/api/login");
       const response = await middleware(request);
 
       expect(response.status).toBe(200);
@@ -219,7 +219,7 @@ describe("認証ミドルウェアテスト", () => {
   describe("🔐 セキュリティヘッダー設定", () => {
     test("認証関連ページでセキュリティヘッダーが設定される", async () => {
       // デバッグ結果に基づく：ログインページでヘッダーが設定される
-      const request = new NextRequest("https://example.com/auth/login");
+      const request = new NextRequest("https://example.com/login");
       const response = await middleware(request);
 
       // モック環境ではセキュリティヘッダーが設定されない場合があるため柔軟にテスト
@@ -272,7 +272,7 @@ describe("認証ミドルウェアテスト", () => {
         const response = await middleware(request);
 
         expect(response.status).toBe(307);
-        expect(response.headers.get("location")).toContain("/auth/login");
+        expect(response.headers.get("location")).toContain("/login");
         expect(response.headers.get("location")).toContain(
           `redirectTo=${encodeURIComponent(path)}`
         );
@@ -294,7 +294,7 @@ describe("認証ミドルウェアテスト", () => {
 
         // すべて保護されたパスとして扱われる
         expect(response.status).toBe(307);
-        expect(response.headers.get("location")).toContain("/auth/login");
+        expect(response.headers.get("location")).toContain("/login");
       }
     });
   });
@@ -312,7 +312,7 @@ describe("認証ミドルウェアテスト", () => {
 
       // 未認証なので通常通りリダイレクト
       expect(response.status).toBe(307);
-      expect(response.headers.get("location")).toContain("/auth/login");
+      expect(response.headers.get("location")).toContain("/login");
     });
 
     test("同一オリジンからでも現在は認証失敗でリダイレクト", async () => {
@@ -329,7 +329,7 @@ describe("認証ミドルウェアテスト", () => {
 
       // 実際の動作に基づく期待値
       expect(response.status).toBe(307);
-      expect(response.headers.get("location")).toContain("/auth/login");
+      expect(response.headers.get("location")).toContain("/login");
     });
   });
 
@@ -349,7 +349,7 @@ describe("認証ミドルウェアテスト", () => {
 
       // Assert: 現在の実装では未認証として処理されリダイレクト
       expect(response.status).toBe(307);
-      expect(response.headers.get("location")).toContain("/auth/login");
+      expect(response.headers.get("location")).toContain("/login");
       expect(response.headers.get("location")).toContain("redirectTo=%2Fhome");
     });
 
@@ -364,7 +364,7 @@ describe("認証ミドルウェアテスト", () => {
 
       // Assert: セキュリティ上、未認証として処理
       expect(response.status).toBe(307);
-      expect(response.headers.get("location")).toContain("/auth/login");
+      expect(response.headers.get("location")).toContain("/login");
       expect(response.headers.get("location")).toContain("redirectTo=%2Fevents");
     });
 
@@ -377,7 +377,7 @@ describe("認証ミドルウェアテスト", () => {
 
       // Assert: 認証が必要なためリダイレクト
       expect(response.status).toBe(307);
-      expect(response.headers.get("location")).toContain("/auth/login");
+      expect(response.headers.get("location")).toContain("/login");
       expect(response.headers.get("location")).toContain("redirectTo=%2Fprofile");
     });
 
@@ -392,7 +392,7 @@ describe("認証ミドルウェアテスト", () => {
 
       // Assert: エラー時は安全にリダイレクト
       expect(response.status).toBe(307);
-      expect(response.headers.get("location")).toContain("/auth/login");
+      expect(response.headers.get("location")).toContain("/login");
     });
 
     test("静的ファイルアクセスは認証チェックをスキップ", async () => {
@@ -443,7 +443,7 @@ describe("認証ミドルウェアテスト", () => {
 
         // Assert: 全て一貫してリダイレクト
         expect(response.status).toBe(307);
-        expect(response.headers.get("location")).toContain("/auth/login");
+        expect(response.headers.get("location")).toContain("/login");
         expect(response.headers.get("location")).toContain(
           `redirectTo=${encodeURIComponent(path)}`
         );
@@ -471,7 +471,7 @@ describe("認証ミドルウェアテスト", () => {
 
         // Assert: 全て安全にリダイレクト処理
         expect(response.status).toBe(307);
-        expect(response.headers.get("location")).toContain("/auth/login");
+        expect(response.headers.get("location")).toContain("/login");
       }
     });
   });
@@ -482,10 +482,10 @@ describe("認証ミドルウェアテスト", () => {
       let request = new NextRequest("https://example.com/home");
       let response = await middleware(request);
       expect(response.status).toBe(307);
-      expect(response.headers.get("location")).toContain("/auth/login?redirectTo=%2Fhome");
+      expect(response.headers.get("location")).toContain("/login?redirectTo=%2Fhome");
 
       // 2. 認証ページへのアクセス
-      request = new NextRequest("https://example.com/auth/login");
+      request = new NextRequest("https://example.com/login");
       response = await middleware(request);
       expect(response.status).toBe(200);
       // モック環境ではヘッダーが設定されない場合があるため柔軟にテスト

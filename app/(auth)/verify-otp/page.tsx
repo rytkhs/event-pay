@@ -31,7 +31,7 @@ function VerifyOtpContent() {
   // メールアドレスがない場合はリダイレクト
   useEffect(() => {
     if (!email) {
-      router.push("/auth/register");
+      router.push("/register");
     }
   }, [email, router]);
 
@@ -234,7 +234,7 @@ function VerifyOtpContent() {
         {/* フッター */}
         <footer className="text-center">
           <div className="text-xs text-gray-400">
-            <Link href="/auth/login" className="hover:text-gray-600 underline">
+            <Link href="/login" className="hover:text-gray-600 underline">
               ログインページに戻る
             </Link>
           </div>

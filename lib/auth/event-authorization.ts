@@ -39,7 +39,7 @@ export async function verifyEventAccess(eventId: string): Promise<EventAccessRes
   } = await supabase.auth.getUser();
 
   if (authError || !user) {
-    redirect("/auth/login");
+    redirect("/login");
     // TypeScriptの型エラーを防ぐため、redirectの後でもthrowする
     throw new Error("Authentication required");
   }
