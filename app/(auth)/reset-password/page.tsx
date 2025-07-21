@@ -30,13 +30,13 @@ export default function ResetPasswordPage() {
 
       <div className="text-center space-y-2">
         <div className="text-sm text-gray-600">
-          <Link href="/auth/login" className="text-blue-600 hover:text-blue-500 hover:underline">
+          <Link href="/login" className="text-blue-600 hover:text-blue-500 hover:underline">
             ログインページに戻る
           </Link>
         </div>
         <div className="text-sm text-gray-600">
           アカウントをお持ちでない方は{" "}
-          <Link href="/auth/register" className="text-blue-600 hover:text-blue-500 hover:underline">
+          <Link href="/register" className="text-blue-600 hover:text-blue-500 hover:underline">
             新規登録
           </Link>
         </div>

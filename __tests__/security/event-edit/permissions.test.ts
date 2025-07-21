@@ -56,7 +56,7 @@ describe('イベント編集権限テスト', () => {
       await expect(EventEditPage({ params: { id: mockEventId } })).rejects.toThrow('REDIRECT_TO_LOGIN');
 
       // 認証ページにリダイレクトされることを確認
-      expect(redirect).toHaveBeenCalledWith('/auth/login');
+      expect(redirect).toHaveBeenCalledWith('/login');
     });
 
     it('認証エラーが発生した場合、適切にハンドリングされる', async () => {
@@ -74,7 +74,7 @@ describe('イベント編集権限テスト', () => {
       // ページコンポーネントを実行（認証失敗時はeventクエリは実行されない）
       await expect(EventEditPage({ params: { id: mockEventId } })).rejects.toThrow('REDIRECT_TO_LOGIN');
 
-      expect(redirect).toHaveBeenCalledWith('/auth/login');
+      expect(redirect).toHaveBeenCalledWith('/login');
     });
   });
 
@@ -102,7 +102,7 @@ describe('イベント編集権限テスト', () => {
           }),
         }),
       };
-      
+
       globalThis.mockSupabase.from.mockReturnValue(mockQueryBuilder);
 
       // redirect関数がthrowするようにして、テストが早期終了するようにする
@@ -118,11 +118,11 @@ describe('イベント編集権限テスト', () => {
 
     it('自分のイベントは編集可能', async () => {
       const currentUserId = 'user-123';
-      
+
       // redirectをリセットして、正常ケースでthrowしないようにする
       (redirect as jest.Mock).mockImplementation(jest.fn());
       (notFound as jest.Mock).mockImplementation(jest.fn());
-      
+
       // 認証済みユーザーをモック
       globalThis.mockSupabase.auth.getUser.mockResolvedValue({
         data: { user: { id: currentUserId, email: 'user@example.com' } },
@@ -145,7 +145,7 @@ describe('イベント編集権限テスト', () => {
           }),
         }),
       };
-      
+
       globalThis.mockSupabase.from.mockReturnValue(mockQueryBuilder);
 
       // ページが正常にレンダリングされることを確認
@@ -174,7 +174,7 @@ describe('イベント編集権限テスト', () => {
           }),
         }),
       };
-      
+
       globalThis.mockSupabase.from.mockReturnValue(mockQueryBuilder);
 
       // notFound関数がthrowするようにして、テストが早期終了するようにする
@@ -206,7 +206,7 @@ describe('イベント編集権限テスト', () => {
           }),
         }),
       };
-      
+
       globalThis.mockSupabase.from.mockReturnValue(mockQueryBuilder);
 
       // notFound関数がthrowするようにして、テストが早期終了するようにする
@@ -237,7 +237,7 @@ describe('イベント編集権限テスト', () => {
       // ページコンポーネントを実行（認証失敗時はeventクエリは実行されない）
       await expect(EventEditPage({ params: { id: mockEventId } })).rejects.toThrow('REDIRECT_TO_LOGIN');
 
-      expect(redirect).toHaveBeenCalledWith('/auth/login');
+      expect(redirect).toHaveBeenCalledWith('/login');
     });
 
     it('セッションが期限切れの場合、再認証が必要', async () => {
@@ -255,7 +255,7 @@ describe('イベント編集権限テスト', () => {
       // ページコンポーネントを実行（認証失敗時はeventクエリは実行されない）
       await expect(EventEditPage({ params: { id: mockEventId } })).rejects.toThrow('REDIRECT_TO_LOGIN');
 
-      expect(redirect).toHaveBeenCalledWith('/auth/login');
+      expect(redirect).toHaveBeenCalledWith('/login');
     });
   });
 });

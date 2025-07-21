@@ -29,7 +29,7 @@ function VerifyEmailContent() {
   // メールアドレスがない場合はリダイレクト
   useEffect(() => {
     if (!email) {
-      router.push("/auth/login");
+      router.push("/login");
     }
   }, [email, router]);
 
@@ -119,7 +119,7 @@ function VerifyEmailContent() {
               <li>メール内の6桁の確認コードをコピーしてください</li>
               <li>
                 <Link
-                  href={`/auth/verify-otp?email=${encodeURIComponent(email)}`}
+                  href={`/verify-otp?email=${encodeURIComponent(email)}`}
                   className="text-blue-600 hover:text-blue-800 underline"
                 >
                   確認コード入力ページ
@@ -199,14 +199,14 @@ function VerifyEmailContent() {
           <div className="text-xs text-gray-400 space-y-2">
             <div>
               <Link
-                href={`/auth/verify-otp?email=${encodeURIComponent(email)}`}
+                href={`/verify-otp?email=${encodeURIComponent(email)}`}
                 className="text-blue-600 hover:text-blue-800 underline"
               >
                 確認コードをお持ちの場合はこちら
               </Link>
             </div>
             <div>
-              <Link href="/auth/login" className="text-gray-600 hover:text-gray-800 underline">
+              <Link href="/login" className="text-gray-600 hover:text-gray-800 underline">
                 ログインページに戻る
               </Link>
             </div>

@@ -103,7 +103,7 @@ describe("EventDetailPage (/events/[id]/page.tsx)", () => {
       // 認証エラーは Server Action 内で redirect が呼ばれる
       mockGetEventDetailAction.mockImplementation(() => {
         const { redirect } = require("next/navigation");
-        redirect("/auth/login");
+        redirect("/login");
         return Promise.resolve(null); // 実際はここには到達しない
       });
 
@@ -113,7 +113,7 @@ describe("EventDetailPage (/events/[id]/page.tsx)", () => {
         // redirect が呼ばれた後のエラーを期待
       }
 
-      expect(redirect).toHaveBeenCalledWith("/auth/login");
+      expect(redirect).toHaveBeenCalledWith("/login");
     });
 
     test("正常ケース: イベント詳細が正しく表示される", async () => {

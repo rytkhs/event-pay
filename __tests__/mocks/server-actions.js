@@ -65,7 +65,7 @@ export const registerAction = jest.fn().mockImplementation(async (formData) => {
     success: true,
     data: { user: { id: "new-user-id", email } },
     message: "ユーザー登録が完了しました。確認メールを送信しました。",
-    redirectUrl: "/auth/verify-email",
+    redirectUrl: "/verify-email",
   };
 });
 
@@ -74,7 +74,7 @@ export const logoutAction = jest.fn().mockImplementation(async () => {
   return {
     success: true,
     message: "ログアウトしました",
-    redirectUrl: "/auth/login",
+    redirectUrl: "/login",
   };
 });
 

@@ -11,7 +11,7 @@ export default async function CreateEventPage() {
   } = await supabase.auth.getUser();
 
   if (error || !user) {
-    redirect("/auth/login");
+    redirect("/login");
   }
 
   return (

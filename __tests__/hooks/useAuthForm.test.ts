@@ -134,7 +134,7 @@ describe("useRegisterFormRHF", () => {
       mockRegisterAction.mockResolvedValue({
         success: true,
         needsEmailConfirmation: true,
-        redirectUrl: "/auth/verify-email",
+        redirectUrl: "/verify-email",
       });
 
       const { result } = renderHook(() => useRegisterFormRHF(mockRegisterAction));
@@ -150,7 +150,7 @@ describe("useRegisterFormRHF", () => {
       });
 
       await waitFor(() => {
-        expect(mockPush).toHaveBeenCalledWith("/auth/verify-email");
+        expect(mockPush).toHaveBeenCalledWith("/verify-email");
       });
     });
   });

@@ -20,7 +20,7 @@ export async function getEventDetailAction(eventId: string) {
       error: authError,
     } = await supabase.auth.getUser();
     if (authError || !user) {
-      redirect("/auth/login");
+      redirect("/login");
       return; // redirect後の処理を防ぐため早期return
     }
 

@@ -252,7 +252,7 @@ export default function RegisterPage() {
                   <div className="text-center text-sm text-gray-600">
                     すでにアカウントをお持ちの方は{" "}
                     <Link
-                      href="/auth/login"
+                      href="/login"
                       className="text-blue-600 hover:text-blue-500 underline focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 rounded"
                     >
                       ログイン

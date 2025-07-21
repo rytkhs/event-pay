@@ -25,7 +25,7 @@ export async function deleteEventAction(eventId: string) {
       error: authError,
     } = await supabase.auth.getUser();
     if (authError || !user) {
-      redirect("/auth/login");
+      redirect("/login");
     }
 
     // イベント情報を取得（削除制限チェック用）

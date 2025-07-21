@@ -74,7 +74,7 @@ describe("getEventDetailAction", () => {
 
       // 実際にはリダイレクトされるが、テスト環境ではモックされるため正常終了する
       await getEventDetailAction("11111111-1111-1111-1111-111111111111");
-      expect(redirect).toHaveBeenCalledWith("/auth/login");
+      expect(redirect).toHaveBeenCalledWith("/login");
     });
 
     test("他ユーザーのイベントにアクセスした場合、アクセス拒否エラーを返す", async () => {

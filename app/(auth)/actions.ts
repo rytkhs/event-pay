@@ -286,7 +286,7 @@ export async function loginAction(formData: FormData): Promise<ActionResult<{ us
           return {
             success: false,
             error: "メールアドレスの確認が必要です。確認メールを再送信しました。",
-            redirectUrl: `/auth/verify-email?email=${encodeURIComponent(sanitizedEmail)}`,
+            redirectUrl: `/verify-email?email=${encodeURIComponent(sanitizedEmail)}`,
           };
         } catch {
           // console.error("Email resend process error:", resendError);
@@ -294,7 +294,7 @@ export async function loginAction(formData: FormData): Promise<ActionResult<{ us
           return {
             success: false,
             error: "メールアドレスの確認が必要です。",
-            redirectUrl: `/auth/verify-email?email=${encodeURIComponent(sanitizedEmail)}`,
+            redirectUrl: `/verify-email?email=${encodeURIComponent(sanitizedEmail)}`,
           };
         }
       }
@@ -449,7 +449,7 @@ export async function registerAction(formData: FormData): Promise<ActionResult<{
       data: { user: data?.user },
       needsVerification: true,
       message: "登録が完了しました。確認メールを送信しました。",
-      redirectUrl: `/auth/verify-otp?email=${encodeURIComponent(sanitizedEmail)}`,
+      redirectUrl: `/verify-otp?email=${encodeURIComponent(sanitizedEmail)}`,
     };
   } catch {
     // console.error("Register action error:", error);
@@ -644,7 +644,7 @@ export async function resetPasswordAction(formData: FormData): Promise<ActionRes
     let resetResult: { data: unknown; error: unknown } | null = null;
     await TimingAttackProtection.normalizeResponseTime(async () => {
       resetResult = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/auth/reset-password/update`,
+        redirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/reset-password/update`,
       });
     }, 300);
 
@@ -730,14 +730,14 @@ export async function logoutAction(): Promise<ActionResult> {
       return {
         success: true,
         message: "ログアウトしました",
-        redirectUrl: "/auth/login",
+        redirectUrl: "/login",
       };
     }
 
     return {
       success: true,
       message: "ログアウトしました",
-      redirectUrl: "/auth/login",
+      redirectUrl: "/login",
     };
   } catch {
     // console.error("Logout action error:", error);
@@ -746,7 +746,7 @@ export async function logoutAction(): Promise<ActionResult> {
     return {
       success: true,
       message: "ログアウトしました",
-      redirectUrl: "/auth/login",
+      redirectUrl: "/login",
     };
   }
 }

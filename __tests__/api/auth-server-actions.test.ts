@@ -266,7 +266,7 @@ describe("認証Server Actions", () => {
       expect(result).toBeDefined();
       expect(result.success).toBe(true);
       expect(result.message).toBeDefined();
-      expect(result.redirectUrl).toBe("/auth/login");
+      expect(result.redirectUrl).toBe("/login");
     });
 
     test("未認証ユーザーのログアウト試行", async () => {

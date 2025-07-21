@@ -74,7 +74,7 @@ async function EventsContent({ searchParams }: EventsContentProps) {
   if (!result.success) {
     // 認証エラーの場合はログインページにリダイレクト
     if (result.error.includes("認証")) {
-      redirect("/auth/login");
+      redirect("/login");
     }
 
     // その他のエラー
