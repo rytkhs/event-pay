@@ -199,7 +199,7 @@ export async function getEventsAction(options: GetEventsOptions = {}): Promise<G
     }
 
     // 型安全なフィルター条件を適用する関数
-    const applyFilters = (query: ReturnType<typeof supabase.from<"events">>) => {
+    const applyFilters = (query: any) => {
       let result = query;
 
       // 等価フィルターを適用
