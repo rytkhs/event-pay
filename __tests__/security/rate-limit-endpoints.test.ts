@@ -4,7 +4,7 @@
 // import * as attendanceGetHandler from "@/app/api/attendances/[id]/route";
 
 // レート制限ミドルウェア
-// import { withRateLimit } from "../../lib/rate-limit-middleware";
+// import { withRateLimit } from "@/lib/rate-limit-middleware";
 
 /**
  * 統合テスト: APIエンドポイントとレート制限の統合
@@ -14,63 +14,63 @@
  */
 describe.skip("API Endpoints Rate Limiting Integration Tests", () => {
   describe("POST /api/attendances/register", () => {
-    test("should allow 10 requests per 5 minutes from same IP", async () => {
+    it("should allow 10 requests per 5 minutes from same IP", async () => {
       // TODO: attendanceRegisterHandler実装後にテスト有効化
       expect(true).toBe(true); // プレースホルダー
     });
 
-    test("should block 11th request within 5 minutes from same IP", async () => {
+    it("should block 11th request within 5 minutes from same IP", async () => {
       // TODO: attendanceRegisterHandler実装後にテスト有効化
       expect(true).toBe(true); // プレースホルダー
     });
 
-    test("should include proper rate limit headers in response", async () => {
+    it("should include proper rate limit headers in response", async () => {
       // TODO: attendanceRegisterHandler実装後にテスト有効化
       expect(true).toBe(true); // プレースホルダー
     });
 
-    test("should handle different IPs independently", async () => {
+    it("should handle different IPs independently", async () => {
       // TODO: attendanceRegisterHandler実装後にテスト有効化
       expect(true).toBe(true); // プレースホルダー
     });
   });
 
   describe("POST /api/payments/create-session", () => {
-    test("should allow 3 requests per minute for authenticated user", async () => {
+    it("should allow 3 requests per minute for authenticated user", async () => {
       // TODO: paymentCreateSessionHandler実装後にテスト有効化
       expect(true).toBe(true); // プレースホルダー
     });
 
-    test("should block 4th request within minute for same user", async () => {
+    it("should block 4th request within minute for same user", async () => {
       // TODO: paymentCreateSessionHandler実装後にテスト有効化
       expect(true).toBe(true); // プレースホルダー
     });
 
-    test("should handle different users independently", async () => {
+    it("should handle different users independently", async () => {
       // TODO: paymentCreateSessionHandler実装後にテスト有効化
       expect(true).toBe(true); // プレースホルダー
     });
   });
 
   describe("GET /api/attendances/[id]", () => {
-    test("should allow 30 requests per minute from same IP", async () => {
+    it("should allow 30 requests per minute from same IP", async () => {
       // TODO: attendanceGetHandler実装後にテスト有効化
       expect(true).toBe(true); // プレースホルダー
     });
 
-    test("should block 31st request within minute from same IP", async () => {
+    it("should block 31st request within minute from same IP", async () => {
       // TODO: attendanceGetHandler実装後にテスト有効化
       expect(true).toBe(true); // プレースホルダー
     });
   });
 
   describe("Rate Limit Security", () => {
-    test("should prevent rate limit bypass with header manipulation", async () => {
+    it("should prevent rate limit bypass with header manipulation", async () => {
       // TODO: 実際のAPIエンドポイント実装後にテスト有効化
       expect(true).toBe(true); // プレースホルダー
     });
 
-    test("should handle concurrent requests properly", async () => {
+    it("should handle concurrent requests properly", async () => {
       // TODO: 実際のAPIエンドポイント実装後にテスト有効化
       expect(true).toBe(true); // プレースホルダー
     });

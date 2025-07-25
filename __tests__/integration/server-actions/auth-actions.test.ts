@@ -1,19 +1,14 @@
 /**
- * 認証関連Server Actions統合テスト
- * EventPay 認証機能のServer Actions単体テスト
+ * @file 認証関連Server Actions統合テスト
+ * @description EventPay 認証機能のServer Actions統合テスト
+ * @author EventPay Team
+ * @version 1.0.0
  */
 
-import { createClient } from "@supabase/supabase-js";
+import { UnifiedMockFactory } from "@/__tests__/helpers/unified-mock-factory";
 
-// Supabase クライアントのモック
-jest.mock("@supabase/supabase-js", () => ({
-  createClient: jest.fn(),
-}));
-
-// Server Actions のモック
-jest.mock("@/lib/supabase/server", () => ({
-  createClient: jest.fn(),
-}));
+// 統一モック設定を適用
+UnifiedMockFactory.setupCommonMocks();
 
 // FormData用のヘルパー関数
 const createFormData = (data: Record<string, string>) => {
@@ -25,41 +20,20 @@ const createFormData = (data: Record<string, string>) => {
 };
 
 describe("認証Server Actions統合テスト", () => {
-  let mockSupabase: any;
-
-  beforeAll(() => {
-    // Supabaseクライアントモックの設定
-    mockSupabase = {
-      auth: {
-        signInWithPassword: jest.fn(),
-        signUp: jest.fn(),
-        signOut: jest.fn(),
-        resetPasswordForEmail: jest.fn(),
-        getSession: jest.fn(),
-        getUser: jest.fn(),
-        refreshSession: jest.fn(),
-      },
-      from: jest.fn(),
-    };
-
-    // createClientモックの設定
-    (createClient as jest.Mock).mockReturnValue(mockSupabase);
-
-    // Server用createClientモックの設定
-    const serverSupabase = require("@/lib/supabase/server");
-    serverSupabase.createClient.mockReturnValue(mockSupabase);
-  });
-
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
   describe("ログイン機能", () => {
-    test("正常なログイン処理が動作する", async () => {
+    it("正常なログイン処理が動作する", async () => {
       const formData = createFormData({
         email: "test@eventpay.test",
         password: "testpassword123",
       });
+
+      // 統一モックから取得したSupabaseクライアントを使用
+      const { createClient } = require("@/lib/supabase/server");
+      const mockSupabase = createClient();
 
       // 正常なログイン結果をモック
       mockSupabase.auth.signInWithPassword.mockResolvedValue({
@@ -82,11 +56,14 @@ describe("認証Server Actions統合テスト", () => {
       expect(data.session).toBeDefined();
     });
 
-    test("無効な認証情報でログインが失敗する", async () => {
+    it("無効な認証情報でログインが失敗する", async () => {
       const formData = createFormData({
         email: "invalid@example.com",
         password: "wrongpassword",
       });
+
+      const { createClient } = require("@/lib/supabase/server");
+      const mockSupabase = createClient();
 
       // 無効な認証情報でのログイン失敗結果をモック
       mockSupabase.auth.signInWithPassword.mockResolvedValue({
@@ -106,11 +83,14 @@ describe("認証Server Actions統合テスト", () => {
       expect(data.session).toBeNull();
     });
 
-    test("バリデーションエラーが適切に処理される", async () => {
+    it("バリデーションエラーが適切に処理される", async () => {
       const formData = createFormData({
         email: "invalid-email",
         password: "testpassword123",
       });
+
+      const { createClient } = require("@/lib/supabase/server");
+      const mockSupabase = createClient();
 
       // バリデーションエラーをモック
       mockSupabase.auth.signInWithPassword.mockResolvedValue({
@@ -132,12 +112,15 @@ describe("認証Server Actions統合テスト", () => {
   });
 
   describe("ユーザー登録機能", () => {
-    test("正常なユーザー登録処理が動作する", async () => {
+    it("正常なユーザー登録処理が動作する", async () => {
       const formData = createFormData({
         email: "newuser@eventpay.test",
         password: "SecurePass123!",
         name: "New User",
       });
+
+      const { createClient } = require("@/lib/supabase/server");
+      const mockSupabase = createClient();
 
       // 正常なユーザー登録結果をモック
       mockSupabase.auth.signUp.mockResolvedValue({
@@ -164,12 +147,15 @@ describe("認証Server Actions統合テスト", () => {
       expect(data.user?.email).toBe("newuser@eventpay.test");
     });
 
-    test("重複メールアドレスで登録が失敗する", async () => {
+    it("重複メールアドレスで登録が失敗する", async () => {
       const formData = createFormData({
         email: "existing@eventpay.test",
         password: "SecurePass123!",
         name: "Existing User",
       });
+
+      const { createClient } = require("@/lib/supabase/server");
+      const mockSupabase = createClient();
 
       // 重複メールアドレスエラーをモック
       mockSupabase.auth.signUp.mockResolvedValue({
@@ -191,12 +177,15 @@ describe("認証Server Actions統合テスト", () => {
       expect(error).toBeTruthy();
     });
 
-    test("パスワード強度チェックが適切に動作する", async () => {
+    it("パスワード強度チェックが適切に動作する", async () => {
       const formData = createFormData({
         email: "weakpass@eventpay.test",
         password: "weak",
         name: "Weak Pass User",
       });
+
+      const { createClient } = require("@/lib/supabase/server");
+      const mockSupabase = createClient();
 
       // パスワード強度エラーをモック
       mockSupabase.auth.signUp.mockResolvedValue({
@@ -221,10 +210,13 @@ describe("認証Server Actions統合テスト", () => {
   });
 
   describe("パスワードリセット機能", () => {
-    test("正常なパスワードリセット処理が動作する", async () => {
+    it("正常なパスワードリセット処理が動作する", async () => {
       const formData = createFormData({
         email: "reset@eventpay.test",
       });
+
+      const { createClient } = require("@/lib/supabase/server");
+      const mockSupabase = createClient();
 
       // 正常なパスワードリセット結果をモック
       mockSupabase.auth.resetPasswordForEmail.mockResolvedValue({
@@ -239,10 +231,13 @@ describe("認証Server Actions統合テスト", () => {
       expect(data).toBeDefined();
     });
 
-    test("存在しないメールアドレスでリセットが失敗する", async () => {
+    it("存在しないメールアドレスでリセットが失敗する", async () => {
       const formData = createFormData({
         email: "nonexistent@eventpay.test",
       });
+
+      const { createClient } = require("@/lib/supabase/server");
+      const mockSupabase = createClient();
 
       // 存在しないメールアドレスエラーをモック
       mockSupabase.auth.resetPasswordForEmail.mockResolvedValue({
@@ -260,7 +255,10 @@ describe("認証Server Actions統合テスト", () => {
   });
 
   describe("ログアウト機能", () => {
-    test("正常なログアウト処理が動作する", async () => {
+    it("正常なログアウト処理が動作する", async () => {
+      const { createClient } = require("@/lib/supabase/server");
+      const mockSupabase = createClient();
+
       // ログアウト処理をモック
       mockSupabase.auth.signOut.mockResolvedValue({
         error: null,
@@ -283,7 +281,10 @@ describe("認証Server Actions統合テスト", () => {
   });
 
   describe("セッション管理", () => {
-    test("有効なセッションが適切に管理される", async () => {
+    it("有効なセッションが適切に管理される", async () => {
+      const { createClient } = require("@/lib/supabase/server");
+      const mockSupabase = createClient();
+
       // 有効なセッションをモック
       mockSupabase.auth.getSession.mockResolvedValue({
         data: { session: { access_token: "valid-token", user: { id: "user-123" } } },
@@ -298,7 +299,10 @@ describe("認証Server Actions統合テスト", () => {
       expect(data.session?.access_token).toBe("valid-token");
     });
 
-    test("期限切れセッションが適切に処理される", async () => {
+    it("期限切れセッションが適切に処理される", async () => {
+      const { createClient } = require("@/lib/supabase/server");
+      const mockSupabase = createClient();
+
       // 期限切れセッションをモック
       mockSupabase.auth.getSession.mockResolvedValue({
         data: { session: null },
@@ -311,7 +315,10 @@ describe("認証Server Actions統合テスト", () => {
       expect(session.session).toBeNull();
     });
 
-    test("セッションリフレッシュが適切に動作する", async () => {
+    it("セッションリフレッシュが適切に動作する", async () => {
+      const { createClient } = require("@/lib/supabase/server");
+      const mockSupabase = createClient();
+
       // セッションリフレッシュをモック
       mockSupabase.auth.refreshSession.mockResolvedValue({
         data: {
@@ -331,9 +338,12 @@ describe("認証Server Actions統合テスト", () => {
   });
 
   describe("プロフィール管理", () => {
-    test("ユーザープロフィールが適切に作成される", async () => {
-      // プロフィール作成をモック
-      const mockProfileBuilder = {
+    it("ユーザープロフィールが適切に作成される", async () => {
+      const { createClient } = require("@/lib/supabase/server");
+      const mockSupabase = createClient();
+
+      // fromメソッドチェーンのモック設定
+      const mockBuilder = {
         insert: jest.fn().mockReturnThis(),
         select: jest.fn().mockReturnThis(),
         single: jest.fn().mockResolvedValue({
@@ -346,7 +356,7 @@ describe("認証Server Actions統合テスト", () => {
         }),
       };
 
-      mockSupabase.from.mockReturnValue(mockProfileBuilder);
+      mockSupabase.from.mockReturnValue(mockBuilder);
 
       const { data: profile, error } = await mockSupabase
         .from("users")
@@ -365,8 +375,11 @@ describe("認証Server Actions統合テスト", () => {
       }
     });
 
-    test("プロフィール更新が適切に動作する", async () => {
-      // プロフィール更新をモック
+    it("プロフィール更新が適切に動作する", async () => {
+      const { createClient } = require("@/lib/supabase/server");
+      const mockSupabase = createClient();
+
+      // fromメソッドチェーンのモック設定
       const mockUpdateBuilder = {
         update: jest.fn().mockReturnThis(),
         eq: jest.fn().mockReturnThis(),

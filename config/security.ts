@@ -99,7 +99,7 @@ export const AUTH_CONFIG = {
   protectedPaths: ["/home", "/events", "/profile", "/admin"],
 
   // 認証済みユーザーがアクセス不可なパス
-  unauthenticatedOnlyPaths: ["/auth/login", "/auth/register"],
+  unauthenticatedOnlyPaths: ["/login", "/register"],
 
   // セッション設定
   session: {

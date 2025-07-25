@@ -1,5 +1,5 @@
-import { useMemo } from 'react';
-import { sanitizeForEventPay, sanitizeEventDescription } from '@/lib/utils/sanitize';
+import { useMemo } from "react";
+import { sanitizeForEventPay, sanitizeEventDescription } from "@/lib/utils/sanitize";
 
 interface UseSafeHTMLOptions {
   preserveLineBreaks?: boolean;
@@ -9,16 +9,11 @@ interface UseSafeHTMLOptions {
  * 型安全なHTMLサニタイズフック
  * EventPay特化のDOMPurify設定を使用してXSS攻撃を防ぎます
  */
-export function useSafeHTML(
-  unsafeHTML: string,
-  options: UseSafeHTMLOptions = {}
-) {
+export function useSafeHTML(unsafeHTML: string, options: UseSafeHTMLOptions = {}) {
   return useMemo(() => {
-    if (!unsafeHTML) return { __html: '' };
+    if (!unsafeHTML) return { __html: "" };
 
-    const sanitizer = options.preserveLineBreaks
-      ? sanitizeEventDescription
-      : sanitizeForEventPay;
+    const sanitizer = options.preserveLineBreaks ? sanitizeEventDescription : sanitizeForEventPay;
 
     return { __html: sanitizer(unsafeHTML) };
   }, [unsafeHTML, options.preserveLineBreaks]);
@@ -40,7 +35,7 @@ export function useSafeEventTitle(title: string) {
  */
 export function useSafeEventLocation(location: string) {
   return useMemo(() => {
-    return sanitizeForEventPay(location || '');
+    return sanitizeForEventPay(location || "");
   }, [location]);
 }
 

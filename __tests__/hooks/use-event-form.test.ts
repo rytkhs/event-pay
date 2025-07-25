@@ -2,19 +2,13 @@
  * @jest-environment jsdom
  */
 
+import { UnifiedMockFactory } from "@/__tests__/helpers/unified-mock-factory";
 import { renderHook, act } from "@testing-library/react";
 import { useRouter } from "next/navigation";
 import { useEventForm } from "@/hooks/use-event-form";
 
-// Next.js router のモック
-jest.mock("next/navigation", () => ({
-  useRouter: jest.fn(),
-}));
-
-// Server Action のモック
-jest.mock("@/app/events/actions", () => ({
-  createEventAction: jest.fn(),
-}));
+// 統一モック設定を適用
+UnifiedMockFactory.setupCommonMocks();
 
 const mockPush = jest.fn();
 (useRouter as jest.Mock).mockReturnValue({
@@ -74,7 +68,9 @@ describe("useEventForm", () => {
         await result.current.form.trigger("title");
       });
 
-      expect(result.current.form.formState.errors.title?.message).toBe("タイトルは100文字以内で入力してください");
+      expect(result.current.form.formState.errors.title?.message).toBe(
+        "タイトルは100文字以内で入力してください"
+      );
     });
 
     it("日付が過去の場合、エラーメッセージが表示される", async () => {
@@ -88,7 +84,9 @@ describe("useEventForm", () => {
         await result.current.form.trigger("date");
       });
 
-      expect(result.current.form.formState.errors.date?.message).toBe("開催日時は現在時刻より後である必要があります");
+      expect(result.current.form.formState.errors.date?.message).toBe(
+        "開催日時は現在時刻より後である必要があります"
+      );
     });
 
     it("有料イベントで決済方法が選択されていない場合、エラーメッセージが表示される", async () => {
@@ -100,7 +98,9 @@ describe("useEventForm", () => {
         await result.current.form.trigger();
       });
 
-      expect(result.current.form.formState.errors.payment_methods?.message).toBe("有料イベントでは決済方法の選択が必要です");
+      expect(result.current.form.formState.errors.payment_methods?.message).toBe(
+        "有料イベントでは決済方法の選択が必要です"
+      );
     });
 
     it("参加費が負の数の場合、エラーメッセージが表示される", async () => {
@@ -111,7 +111,9 @@ describe("useEventForm", () => {
         await result.current.form.trigger("fee");
       });
 
-      expect(result.current.form.formState.errors.fee?.message).toBe("参加費は0以上1000000以下である必要があります");
+      expect(result.current.form.formState.errors.fee?.message).toBe(
+        "参加費は0以上1000000以下である必要があります"
+      );
     });
   });
 

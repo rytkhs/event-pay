@@ -37,23 +37,91 @@ export const loginAction = jest.fn().mockImplementation(async (formData) => {
   };
 });
 
-// 登録アクション
+// 登録アクション（セキュリティバリデーション付き）
 export const registerAction = jest.fn().mockImplementation(async (formData) => {
   const email = formData.get("email");
   const password = formData.get("password");
   const name = formData.get("name");
+  const passwordConfirm = formData.get("passwordConfirm");
   const termsAgreed = formData.get("termsAgreed");
 
-  if (!termsAgreed) {
+  // バリデーションエラーを格納
+  const fieldErrors = {};
+
+  // 名前のバリデーション（実際のZodバリデーションロジックを模倣）
+  if (!name || typeof name !== "string") {
+    fieldErrors.name = ["名前を入力してください"];
+  } else {
+    const trimmedName = name.trim();
+
+    // 空白のみの場合
+    if (trimmedName.length === 0) {
+      fieldErrors.name = ["名前を入力してください"];
+    }
+    // 長さチェック
+    else if (trimmedName.length > 100) {
+      fieldErrors.name = ["名前は100文字以内で入力してください"];
+    }
+    // 危険文字チェック
+    else if (/[;&|`$(){}[\]<>\\]/.test(trimmedName)) {
+      fieldErrors.name = ["名前に無効な文字が含まれています"];
+    }
+    // コマンドインジェクション対策
+    else if (
+      /^\s*(rm|cat|echo|whoami|id|ls|pwd|sudo|su|curl|wget|nc|nmap|chmod|chown|kill|ps|top|netstat|find|grep|awk|sed|tail|head|sort|uniq)\s+/.test(
+        trimmedName
+      )
+    ) {
+      fieldErrors.name = ["名前に無効な文字が含まれています"];
+    }
+    // NULL文字・制御文字チェック
+    else if (trimmedName.includes("\0") || trimmedName.includes("\x1a")) {
+      fieldErrors.name = ["名前に無効な文字が含まれています"];
+    }
+  }
+
+  // メールのバリデーション
+  if (!email || typeof email !== "string") {
+    fieldErrors.email = ["有効なメールアドレスを入力してください"];
+  } else if (!/^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/.test(email)) {
+    fieldErrors.email = ["有効なメールアドレスを入力してください"];
+  } else if (email.length > 254) {
+    fieldErrors.email = ["メールアドレスが長すぎます"];
+  }
+
+  // パスワードのバリデーション
+  if (!password || typeof password !== "string") {
+    fieldErrors.password = ["パスワードを入力してください"];
+  } else if (password.length < 8) {
+    fieldErrors.password = ["パスワードは8文字以上で入力してください"];
+  } else if (password.length > 128) {
+    fieldErrors.password = ["パスワードが長すぎます"];
+  } else if (!/^(?=.*[A-Z])(?=.*[a-z])(?=.*\d)/.test(password)) {
+    fieldErrors.password = ["パスワードは大文字・小文字・数字を含む必要があります"];
+  }
+
+  // パスワード確認のバリデーション
+  if (!passwordConfirm || typeof passwordConfirm !== "string") {
+    fieldErrors.passwordConfirm = ["パスワード確認を入力してください"];
+  } else if (password !== passwordConfirm) {
+    fieldErrors.passwordConfirm = ["パスワードが一致しません"];
+  }
+
+  // 利用規約同意のバリデーション
+  if (!termsAgreed || termsAgreed !== "true") {
+    fieldErrors.termsAgreed = ["利用規約に同意してください"];
+  }
+
+  // バリデーションエラーがある場合は失敗
+  if (Object.keys(fieldErrors).length > 0) {
     return {
       success: false,
-      fieldErrors: {
-        termsAgreed: ["利用規約に同意してください"],
-      },
-      error: "利用規約に同意してください",
+      fieldErrors,
+      error: "入力内容を確認してください",
     };
   }
 
+  // 既存メールアドレスチェック
   if (email === "existing@example.com") {
     return {
       success: false,
@@ -64,8 +132,9 @@ export const registerAction = jest.fn().mockImplementation(async (formData) => {
   return {
     success: true,
     data: { user: { id: "new-user-id", email } },
-    message: "ユーザー登録が完了しました。確認メールを送信しました。",
-    redirectUrl: "/verify-email",
+    needsVerification: true,
+    message: "登録が完了しました。確認メールを送信しました。",
+    redirectUrl: `/verify-otp?email=${encodeURIComponent(email)}`,
   };
 });
 

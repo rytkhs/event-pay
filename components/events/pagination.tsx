@@ -1,7 +1,7 @@
-import React from 'react';
-import { Button } from '@/components/ui/button';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import React from "react";
+import { Button } from "@/components/ui/button";
+import { ChevronLeft, ChevronRight } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface PaginationProps {
   currentPage: number;
@@ -16,15 +16,15 @@ export function Pagination({
   totalCount,
   pageSize,
   onPageChange,
-  className
+  className,
 }: PaginationProps) {
   const totalPages = Math.ceil(totalCount / pageSize);
-  
+
   // 表示するページ番号を計算
   const getVisiblePages = () => {
     const pages: number[] = [];
     const maxVisible = 5; // 表示する最大ページ数
-    
+
     if (totalPages <= maxVisible) {
       // 総ページ数が少ない場合は全て表示
       for (let i = 1; i <= totalPages; i++) {
@@ -33,18 +33,18 @@ export function Pagination({
     } else {
       // 多い場合は現在のページを中心に表示
       let start = Math.max(1, currentPage - Math.floor(maxVisible / 2));
-      let end = Math.min(totalPages, start + maxVisible - 1);
-      
+      const end = Math.min(totalPages, start + maxVisible - 1);
+
       // 末尾に合わせて開始位置を調整
       if (end - start + 1 < maxVisible) {
         start = Math.max(1, end - maxVisible + 1);
       }
-      
+
       for (let i = start; i <= end; i++) {
         pages.push(i);
       }
     }
-    
+
     return pages;
   };
 
@@ -57,8 +57,8 @@ export function Pagination({
   }
 
   return (
-    <nav 
-      className={cn('flex items-center justify-center space-x-2', className)}
+    <nav
+      className={cn("flex items-center justify-center space-x-2", className)}
       aria-label="ページネーション"
     >
       {/* 前のページボタン */}
@@ -80,10 +80,7 @@ export function Pagination({
           size="sm"
           onClick={() => onPageChange(page)}
           aria-current={page === currentPage ? "page" : undefined}
-          className={cn(
-            "min-w-10",
-            page === currentPage && "bg-primary text-primary-foreground"
-          )}
+          className={cn("min-w-10", page === currentPage && "bg-primary text-primary-foreground")}
         >
           {page}
         </Button>

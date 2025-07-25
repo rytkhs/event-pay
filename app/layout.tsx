@@ -30,9 +30,7 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
         suppressHydrationWarning={true}
       >
-        <ToastProvider>
-          {children}
-        </ToastProvider>
+        <ToastProvider>{children}</ToastProvider>
       </body>
     </html>
   );

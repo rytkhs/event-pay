@@ -248,8 +248,7 @@ export function useLoginFormRHF<T extends ServerActionResult>(
             }
           }
         }
-      } catch (error) {
-        console.error("Login form submission error:", error);
+      } catch (_) {
         form.setError("root", {
           type: "manual",
           message: "ログイン中にエラーが発生しました。もう一度お試しください。",
@@ -333,8 +332,7 @@ export function useRegisterFormRHF<T extends ServerActionResult>(
             }
           }
         }
-      } catch (error) {
-        console.error("Register form submission error:", error);
+      } catch (_) {
         form.setError("root", {
           type: "manual",
           message: "会員登録中にエラーが発生しました。もう一度お試しください。",

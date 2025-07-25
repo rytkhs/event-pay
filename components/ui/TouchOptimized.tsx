@@ -108,11 +108,8 @@ const TouchOptimized = forwardRef<
       if (wasActive && onClick) {
         try {
           onClick();
-        } catch (error) {
-          // Error handling for onClick
-          if (process.env.NODE_ENV === "development") {
-            console.error("TouchOptimized onClick error:", error);
-          }
+        } catch (_) {
+          // Error handling for onClick - continue silently
         }
       }
     }, [disabled, isTouchActive, onClick, cleanupTouchState]);
@@ -138,11 +135,8 @@ const TouchOptimized = forwardRef<
           if (onClick) {
             try {
               onClick();
-            } catch (error) {
-              // Error handling for onClick
-              if (process.env.NODE_ENV === "development") {
-                console.error("TouchOptimized onClick error:", error);
-              }
+            } catch (_) {
+              // Error handling for onClick - continue silently
             }
           }
         }

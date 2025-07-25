@@ -8,7 +8,12 @@ const createJestConfig = nextJest({
 const jestConfig = {
   // 基本設定
   testEnvironment: "jsdom",
-  setupFilesAfterEnv: ["<rootDir>/__tests__/setup.js"],
+  // 統合テストと単体テストで異なるセットアップファイルを使用
+  setupFilesAfterEnv: [
+    process.env.TEST_TYPE === "integration"
+      ? "<rootDir>/__tests__/integration-setup.js"
+      : "<rootDir>/__tests__/setup.js",
+  ],
 
   // モジュール解決設定
   moduleNameMapper: {
@@ -57,7 +62,8 @@ const jestConfig = {
     "node_modules/(?!(@supabase|@types|@babel|@radix-ui|@hookform|@stripe|@upstash|@resend))",
   ],
 
-  // カバレッジ設定
+  // カバレッジ設定（開発時は無効化でパフォーマンス向上）
+  collectCoverage: process.env.NODE_ENV === "production" || process.env.CI === "true",
   collectCoverageFrom: [
     "app/**/*.{js,ts,tsx}",
     "components/**/*.{js,ts,tsx}",
@@ -70,8 +76,8 @@ const jestConfig = {
     "!**/.next/**",
   ],
 
-  // テストタイムアウト
-  testTimeout: 10000,
+  // テストタイムアウト（統合テストは少し長めに）
+  testTimeout: process.env.TEST_TYPE === "integration" ? 10000 : 5000,
 
   // 並列実行設定
   maxWorkers: "50%",

@@ -52,7 +52,7 @@ const EMERGENCY_DISABLE_SANITIZATION = process.env.EMERGENCY_DISABLE_XSS_PROTECT
  */
 export function sanitizeForEventPay(input: string): string {
   if (EMERGENCY_DISABLE_SANITIZATION) {
-    console.warn("🚨 XSS保護が緊急無効化されています");
+    // XSS保護が緊急無効化されています
     return input;
   }
 
@@ -66,7 +66,7 @@ export function sanitizeForEventPay(input: string): string {
  */
 export function sanitizeEventDescription(description: string): string {
   if (EMERGENCY_DISABLE_SANITIZATION) {
-    console.warn("🚨 XSS保護が緊急無効化されています");
+    // XSS保護が緊急無効化されています
     return description;
   }
 

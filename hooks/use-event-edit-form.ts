@@ -84,7 +84,7 @@ const eventEditFormSchema = z
   );
 
 // フォームデータ型（react-hook-form用）
-type EventEditFormDataRHF = z.infer<typeof eventEditFormSchema>;
+export type EventEditFormDataRHF = z.infer<typeof eventEditFormSchema>;
 
 export function useEventEditForm({ event, attendeeCount, onSubmit }: UseEventEditFormProps) {
   const hasAttendees = attendeeCount > 0;

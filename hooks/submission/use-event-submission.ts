@@ -88,7 +88,7 @@ export function useEventSubmission({ eventId, onSubmit }: UseEventSubmissionProp
     changes.forEach((change) => {
       const field = change.field as keyof EventFormData;
       const value = formData[field];
-      
+
       // 型安全なフィールドアクセス
       switch (field) {
         case "title":

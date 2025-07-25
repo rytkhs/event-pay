@@ -5,8 +5,8 @@
  */
 export const AUTH_CONFIG = {
   /** Bearerトークンのプレフィックス */
-  BEARER_PREFIX: 'Bearer ',
-  
+  BEARER_PREFIX: "Bearer ",
+
   /** Bearerプレフィックスの文字数（"Bearer ".length） */
   BEARER_PREFIX_LENGTH: 7,
 } as const;

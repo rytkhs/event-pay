@@ -12,7 +12,7 @@ export interface ServerActionError {
   success: false;
   error: string;
   code?: string;
-  details?: Record<string, any>;
+  details?: Record<string, unknown>;
 }
 
 export type ServerActionResult<T = unknown> = ServerActionSuccess<T> | ServerActionError;
@@ -68,7 +68,7 @@ export const ERROR_MESSAGES = {
 export function createErrorResponse(
   code: ErrorCode,
   customMessage?: string,
-  details?: Record<string, any>
+  details?: Record<string, unknown>
 ): ServerActionError {
   return {
     success: false,
@@ -92,7 +92,7 @@ export function createSuccessResponse<T>(data: T, message?: string): ServerActio
 /**
  * Zodエラーをレスポンスに変換するヘルパー関数
  */
-export function zodErrorToResponse(error: any): ServerActionError {
+export function zodErrorToResponse(error: import("zod").ZodError): ServerActionError {
   const firstError = error.errors?.[0];
   return createErrorResponse(
     ERROR_CODES.VALIDATION_ERROR,

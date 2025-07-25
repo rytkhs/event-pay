@@ -42,7 +42,6 @@ export async function createEventAction(formData: FormData): Promise<CreateEvent
     } = await supabase.auth.getUser();
 
     if (authError) {
-      console.error("認証エラー:", authError);
       return {
         success: false,
         error: "認証が必要です",
@@ -69,11 +68,6 @@ export async function createEventAction(formData: FormData): Promise<CreateEvent
       .single();
 
     if (dbError) {
-      console.error("データベースエラー:", {
-        error: dbError,
-        userId: user.id,
-        eventData: { ...eventData, invite_token: "[REDACTED]" },
-      });
       return {
         success: false,
         error: "イベントの作成に失敗しました",
@@ -81,10 +75,6 @@ export async function createEventAction(formData: FormData): Promise<CreateEvent
     }
 
     if (!createdEvent) {
-      console.error("イベント作成後にデータが返されませんでした:", {
-        userId: user.id,
-        eventData: { ...eventData, invite_token: "[REDACTED]" },
-      });
       return {
         success: false,
         error: "イベントの作成に失敗しました",
@@ -103,7 +93,6 @@ export async function createEventAction(formData: FormData): Promise<CreateEvent
       };
     }
 
-    console.error("予期しないエラー:", error);
     return {
       success: false,
       error: "予期しないエラーが発生しました",

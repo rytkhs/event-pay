@@ -14,34 +14,34 @@ describe("Event Calculations", () => {
   ];
 
   describe("calculateAttendeeCount", () => {
-    test("参加者数を正しく計算する", () => {
+    it("参加者数を正しく計算する", () => {
       const result = calculateAttendeeCount(mockAttendances);
       expect(result).toBe(3); // "attending" が3人
     });
 
-    test("空の配列の場合、0を返す", () => {
+    it("空の配列の場合、0を返す", () => {
       const result = calculateAttendeeCount([]);
       expect(result).toBe(0);
     });
 
-    test("undefinedの場合、0を返す", () => {
+    it("undefinedの場合、0を返す", () => {
       const result = calculateAttendeeCount(undefined);
       expect(result).toBe(0);
     });
 
-    test("nullの場合、0を返す", () => {
+    it("nullの場合、0を返す", () => {
       const result = calculateAttendeeCount(null as any);
       expect(result).toBe(0);
     });
 
-    test("配列以外の場合、0を返す", () => {
+    it("配列以外の場合、0を返す", () => {
       const result = calculateAttendeeCount("not an array" as any);
       expect(result).toBe(0);
     });
   });
 
   describe("calculateAttendanceSummary", () => {
-    test("参加状況のサマリーを正しく計算する", () => {
+    it("参加状況のサマリーを正しく計算する", () => {
       const result = calculateAttendanceSummary(mockAttendances);
       expect(result).toEqual({
         attending: 3,
@@ -51,7 +51,7 @@ describe("Event Calculations", () => {
       });
     });
 
-    test("空の配列の場合、全て0を返す", () => {
+    it("空の配列の場合、全て0を返す", () => {
       const result = calculateAttendanceSummary([]);
       expect(result).toEqual({
         attending: 0,
@@ -61,7 +61,7 @@ describe("Event Calculations", () => {
       });
     });
 
-    test("undefinedの場合、全て0を返す", () => {
+    it("undefinedの場合、全て0を返す", () => {
       const result = calculateAttendanceSummary(undefined);
       expect(result).toEqual({
         attending: 0,
@@ -73,32 +73,32 @@ describe("Event Calculations", () => {
   });
 
   describe("calculateAttendanceRate", () => {
-    test("参加率を正しく計算する", () => {
+    it("参加率を正しく計算する", () => {
       const result = calculateAttendanceRate(mockAttendances, 10);
       expect(result).toBe(0.3); // 3/10 = 0.3
     });
 
-    test("定員が0の場合、0を返す", () => {
+    it("定員が0の場合、0を返す", () => {
       const result = calculateAttendanceRate(mockAttendances, 0);
       expect(result).toBe(0);
     });
 
-    test("定員がnullの場合、0を返す", () => {
+    it("定員がnullの場合、0を返す", () => {
       const result = calculateAttendanceRate(mockAttendances, null);
       expect(result).toBe(0);
     });
 
-    test("参加者数が定員を超える場合、1を返す", () => {
+    it("参加者数が定員を超える場合、1を返す", () => {
       const result = calculateAttendanceRate(mockAttendances, 2);
       expect(result).toBe(1); // 3/2 = 1.5 -> 1にクリップ
     });
 
-    test("参加者数が定員と同じ場合、1を返す", () => {
+    it("参加者数が定員と同じ場合、1を返す", () => {
       const result = calculateAttendanceRate(mockAttendances, 3);
       expect(result).toBe(1); // 3/3 = 1
     });
 
-    test("attendancesがundefinedの場合、0を返す", () => {
+    it("attendancesがundefinedの場合、0を返す", () => {
       const result = calculateAttendanceRate(undefined, 10);
       expect(result).toBe(0);
     });

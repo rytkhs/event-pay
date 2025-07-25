@@ -3,37 +3,55 @@ import { EventListWithFilters } from "@/components/events/event-list-with-filter
 import { Event } from "@/types/event";
 import React from "react";
 
+import { UnifiedMockFactory } from "@/__tests__/helpers/unified-mock-factory";
+
+// 統一モック設定を適用
+UnifiedMockFactory.setupCommonMocks();
+
 // Next.jsのuseRouterとuseSearchParamsをモック
+const mockPush = jest.fn();
+const mockGet = jest.fn();
+
 jest.mock("next/navigation", () => ({
-  useRouter: () => ({
-    push: jest.fn(),
-  }),
-  useSearchParams: () => ({
-    toString: () => "",
-    get: jest.fn(),
-  }),
+  useRouter: () => ({ push: mockPush }),
+  useSearchParams: () => ({ get: mockGet }),
 }));
 
-describe("EventListWithFilters バリデーション修正", () => {
-  const mockEvents: Event[] = [
-    {
-      id: "1",
-      title: "テストイベント1",
-      description: "テスト",
-      date: "2024-02-01T10:00:00Z",
-      status: "upcoming",
-      fee: 1000,
-      max_participants: 10,
-      attendances_count: 5,
-      location: "東京",
-      created_at: "2024-01-01T00:00:00Z",
-      creator_id: "user1",
-    },
-  ];
+// モックイベントデータ
+const mockEvents: Event[] = [
+  {
+    id: "1",
+    title: "Test Event 1",
+    date: "2024-01-15T00:00:00Z",
+    location: "Test Location 1",
+    fee: 1000,
+    capacity: 50,
+    status: "upcoming" as any,
+    creator_name: "Test Creator",
+    attendances_count: 10,
+    created_at: "2024-01-01T00:00:00Z",
+  },
+  {
+    id: "2",
+    title: "Test Event 2",
+    date: "2024-01-20T00:00:00Z",
+    location: "Test Location 2",
+    fee: 0,
+    capacity: 30,
+    status: "upcoming" as any,
+    creator_name: "Test Creator 2",
+    attendances_count: 5,
+    created_at: "2024-01-02T00:00:00Z",
+  },
+];
 
+// console.warnをモック
+const mockConsoleWarn = jest.spyOn(console, "warn").mockImplementation(() => {});
+
+describe("EventListWithFilters", () => {
   beforeEach(() => {
-    // コンソールの警告をスパイ
-    jest.spyOn(console, "warn").mockImplementation(() => {});
+    jest.clearAllMocks();
+    mockConsoleWarn.mockClear();
   });
 
   afterEach(() => {
@@ -61,7 +79,7 @@ describe("EventListWithFilters バリデーション修正", () => {
     );
 
     // 正常な初期値では警告は出力されない
-    expect(console.warn).not.toHaveBeenCalled();
+    expect(mockConsoleWarn).not.toHaveBeenCalled();
   });
 
   it("不正なソート順序が渡された場合の動作確認", () => {

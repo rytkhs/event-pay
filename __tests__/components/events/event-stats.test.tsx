@@ -67,21 +67,23 @@ describe("EventStats", () => {
   }
 
   // ヘルパー関数: 複数の参加データを一括作成
-  function createMultipleAttendances(configs: Array<{ status: "attending" | "not_attending" | "maybe"; count: number }>): MockAttendanceData[] {
+  function createMultipleAttendances(
+    configs: Array<{ status: "attending" | "not_attending" | "maybe"; count: number }>
+  ): MockAttendanceData[] {
     const attendances: MockAttendanceData[] = [];
     let idCounter = 1;
-    
+
     configs.forEach(({ status, count }) => {
       for (let i = 0; i < count; i++) {
         attendances.push(createMockAttendance(`att-${idCounter}`, status));
         idCounter++;
       }
     });
-    
+
     return attendances;
   }
   // テストリスト項目1: EventStatsコンポーネントが正常にレンダリングされること
-  test("EventStatsコンポーネントが正常にレンダリングされること", () => {
+  it("EventStatsコンポーネントが正常にレンダリングされること", () => {
     const eventData = createMockEventData({
       attendances_count: 4,
       registration_deadline: "2024-01-14T23:59:59Z",
@@ -107,7 +109,7 @@ describe("EventStats", () => {
   });
 
   // テストリスト項目4: 参加予定者数が正確に表示されること
-  test("参加予定者数が正確に表示されること", () => {
+  it("参加予定者数が正確に表示されること", () => {
     const eventData = createMockEventData({ attendances_count: 5 });
     const attendances = createMultipleAttendances([
       { status: "attending", count: 3 },
@@ -122,7 +124,7 @@ describe("EventStats", () => {
   });
 
   // テストリスト項目5: 不参加者数が正確に表示されること
-  test("不参加者数が正確に表示されること", () => {
+  it("不参加者数が正確に表示されること", () => {
     const eventData = createMockEventData({ attendances_count: 5 });
     const attendances = createMultipleAttendances([
       { status: "attending", count: 2 },
@@ -137,7 +139,7 @@ describe("EventStats", () => {
   });
 
   // テストリスト項目6: 未定者数が正確に表示されること
-  test("未定者数が正確に表示されること", () => {
+  it("未定者数が正確に表示されること", () => {
     const eventData = createMockEventData({ attendances_count: 5 });
     const attendances = createMultipleAttendances([
       { status: "attending", count: 1 },
@@ -152,7 +154,7 @@ describe("EventStats", () => {
   });
 
   // テストリスト項目9: 売上合計が正確に計算されること
-  test("売上合計が正確に計算されること", () => {
+  it("売上合計が正確に計算されること", () => {
     const eventData = createMockEventData({ fee: 3000, attendances_count: 3 });
     const attendances = createMultipleAttendances([
       { status: "attending", count: 2 },
@@ -171,7 +173,7 @@ describe("EventStats", () => {
   });
 
   // テストリスト項目10: Stripe決済分が正確に表示されること
-  test("Stripe決済分が正確に表示されること", () => {
+  it("Stripe決済分が正確に表示されること", () => {
     const eventData = createMockEventData({ fee: 3000, attendances_count: 2 });
     const attendances = createMultipleAttendances([{ status: "attending", count: 2 }]);
     const payments = [
@@ -188,7 +190,7 @@ describe("EventStats", () => {
   });
 
   // テストリスト項目11: 現金決済分が正確に表示されること
-  test("現金決済分が正確に表示されること", () => {
+  it("現金決済分が正確に表示されること", () => {
     const eventData = createMockEventData({ fee: 3000, attendances_count: 2 });
     const attendances = createMultipleAttendances([{ status: "attending", count: 2 }]);
     const payments = [
@@ -205,7 +207,7 @@ describe("EventStats", () => {
   });
 
   // テストリスト項目12: 未決済金額が正確に表示されること
-  test("未決済金額が正確に表示されること", () => {
+  it("未決済金額が正確に表示されること", () => {
     const eventData = createMockEventData({ fee: 3000, attendances_count: 2 });
     const attendances = createMultipleAttendances([{ status: "attending", count: 2 }]);
     const payments = [
@@ -222,7 +224,7 @@ describe("EventStats", () => {
   });
 
   // テストリスト項目13: 期待売上が正確に表示されること
-  test("期待売上が正確に表示されること", () => {
+  it("期待売上が正確に表示されること", () => {
     const eventData = createMockEventData({ fee: 2500, attendances_count: 5 });
     const attendances = createMultipleAttendances([
       { status: "attending", count: 3 },
@@ -237,7 +239,7 @@ describe("EventStats", () => {
   });
 
   // テストリスト項目14: 決済完了率が正確に表示されること
-  test("決済完了率が正確に表示されること", () => {
+  it("決済完了率が正確に表示されること", () => {
     const eventData = createMockEventData({ fee: 3000, attendances_count: 5 });
     const attendances = createMultipleAttendances([
       { status: "attending", count: 4 },
@@ -257,7 +259,7 @@ describe("EventStats", () => {
   });
 
   // テストリスト項目15: 参加率が正確に表示されること
-  test("参加率が正確に表示されること", () => {
+  it("参加率が正確に表示されること", () => {
     const eventData = createMockEventData({ fee: 3000, capacity: 10, attendances_count: 5 });
     const attendances = createMultipleAttendances([
       { status: "attending", count: 3 },
@@ -272,7 +274,7 @@ describe("EventStats", () => {
   });
 
   // テストリスト項目16: 定員超過状態が正確に表示されること
-  test("定員超過状態が正確に表示されること", () => {
+  it("定員超過状態が正確に表示されること", () => {
     const eventData = createMockEventData({ fee: 3000, capacity: 5, attendances_count: 8 });
     const attendances = createMultipleAttendances([
       { status: "attending", count: 7 },
@@ -286,7 +288,7 @@ describe("EventStats", () => {
   });
 
   // テストリスト項目17: 空のデータでゼロ値が正確に表示されること
-  test("空のデータでゼロ値が正確に表示されること", () => {
+  it("空のデータでゼロ値が正確に表示されること", () => {
     const eventData = createMockEventData({
       fee: 1000,
       capacity: 10,
@@ -310,7 +312,7 @@ describe("EventStats", () => {
   });
 
   // Phase 1修正: completedステータスが売上合計に含まれること
-  test("completedステータスが売上合計に含まれること", () => {
+  it("completedステータスが売上合計に含まれること", () => {
     const eventData = createMockEventData({
       title: "無料イベント",
       fee: 0,
@@ -332,7 +334,7 @@ describe("EventStats", () => {
   });
 
   // Phase 1修正: 決済完了率でfailedとrefundedが分母から除外されること
-  test("決済完了率でfailedとrefundedが分母から除外されること", () => {
+  it("決済完了率でfailedとrefundedが分母から除外されること", () => {
     const eventData = createMockEventData({ fee: 3000, attendances_count: 6 });
     const attendances = createMultipleAttendances([{ status: "attending", count: 6 }]);
     const payments = [
@@ -351,7 +353,7 @@ describe("EventStats", () => {
   });
 
   // Phase 2修正: 無料イベントでも期待売上が正しく0円となること
-  test("無料イベントでも期待売上が正しく0円となること", () => {
+  it("無料イベントでも期待売上が正しく0円となること", () => {
     const eventData = createMockEventData({ title: "無料イベント", fee: 0, attendances_count: 5 });
     const attendances = createMultipleAttendances([{ status: "attending", count: 5 }]);
 
@@ -362,7 +364,7 @@ describe("EventStats", () => {
   });
 
   // 返金・完了情報が表示されること
-  test("返金・完了情報が表示されること", () => {
+  it("返金・完了情報が表示されること", () => {
     const eventData = createMockEventData({ fee: 1000, attendances_count: 4 });
     const attendances = createMultipleAttendances([{ status: "attending", count: 4 }]);
     const payments = [

@@ -18,7 +18,7 @@ import {
   ChangeConfirmationDialog,
   type ChangeItem,
 } from "@/components/ui/change-confirmation-dialog";
-import { useEventEditForm } from "@/hooks/use-event-edit-form";
+import { useEventEditForm, type EventEditFormDataRHF } from "@/hooks/use-event-edit-form";
 import { sanitizeForEventPay } from "@/lib/utils/sanitize";
 import type { Event } from "@/types/models";
 
@@ -35,7 +35,6 @@ export function EventEditForm({ event, attendeeCount, onSubmit, serverError }: E
 
   const {
     form,
-    onSubmit: handleFormSubmit,
     isPending,
     hasAttendees,
     validation,
@@ -49,7 +48,7 @@ export function EventEditForm({ event, attendeeCount, onSubmit, serverError }: E
     onSubmit,
   });
 
-  const handleSubmit = async (data: any) => {
+  const handleSubmit = async (data: EventEditFormDataRHF) => {
     // 変更検出
     const detectedChanges = changes.detectChanges();
 
@@ -72,8 +71,7 @@ export function EventEditForm({ event, attendeeCount, onSubmit, serverError }: E
     try {
       const formData = form.getValues();
       await actions.submitFormWithChanges(formData, confirmedChanges);
-    } catch (error) {
-      console.error("Form submission failed:", error);
+    } catch (_) {
       form.setError("root", {
         type: "manual",
         message: "更新に失敗しました。もう一度お試しください。",

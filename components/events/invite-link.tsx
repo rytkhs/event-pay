@@ -25,7 +25,7 @@ export function InviteLink({ eventId, initialInviteToken }: InviteLinkProps) {
       setInviteUrl(`${window.location.origin}/invite/${initialInviteToken}`);
     }
   }, [initialInviteToken]);
-  
+
   const { toast } = useToast();
   const { copyToClipboard, isCopied } = useClipboard();
 
@@ -33,18 +33,18 @@ export function InviteLink({ eventId, initialInviteToken }: InviteLinkProps) {
     setIsGenerating(true);
     try {
       const result = await generateInviteTokenAction(eventId, { forceRegenerate });
-      
+
       if (result.success && result.data) {
         setInviteToken(result.data.inviteToken);
         setInviteUrl(result.data.inviteUrl);
-        
-        const message = forceRegenerate 
-          ? "新しい招待リンクを生成しました" 
+
+        const message = forceRegenerate
+          ? "新しい招待リンクを生成しました"
           : "招待リンクを生成しました";
-        const description = forceRegenerate 
+        const description = forceRegenerate
           ? "旧リンクは無効になりました。新しいリンクを参加者に共有してください。"
           : "参加者に共有してイベントに招待しましょう。";
-          
+
         toast({
           title: message,
           description,
@@ -56,7 +56,7 @@ export function InviteLink({ eventId, initialInviteToken }: InviteLinkProps) {
           variant: "destructive",
         });
       }
-    } catch (error) {
+    } catch {
       toast({
         title: "エラー",
         description: "招待リンクの生成中にエラーが発生しました",
@@ -87,13 +87,15 @@ export function InviteLink({ eventId, initialInviteToken }: InviteLinkProps) {
 
   const handleShare = () => {
     if (typeof navigator !== "undefined" && navigator.share && inviteUrl) {
-      navigator.share({
-        title: "イベントに参加しませんか？",
-        url: inviteUrl,
-      }).catch(() => {
-        // ネイティブ共有に失敗した場合はコピーにフォールバック
-        handleCopy();
-      });
+      navigator
+        .share({
+          title: "イベントに参加しませんか？",
+          url: inviteUrl,
+        })
+        .catch(() => {
+          // ネイティブ共有に失敗した場合はコピーにフォールバック
+          handleCopy();
+        });
     } else {
       handleCopy();
     }
@@ -113,8 +115,8 @@ export function InviteLink({ eventId, initialInviteToken }: InviteLinkProps) {
             <p className="text-muted-foreground">
               参加者が簡単にイベントにアクセスできる招待リンクを生成します。
             </p>
-            <Button 
-              onClick={() => handleGenerateToken(false)} 
+            <Button
+              onClick={() => handleGenerateToken(false)}
               disabled={isGenerating}
               className="w-full"
             >
@@ -148,10 +150,10 @@ export function InviteLink({ eventId, initialInviteToken }: InviteLinkProps) {
                 {isCopied ? "コピー済み" : "コピー"}
               </Button>
             </div>
-            
+
             <div className="flex gap-2">
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 className="flex-1"
                 onClick={handleShare}
                 data-testid="share-button"
@@ -162,7 +164,11 @@ export function InviteLink({ eventId, initialInviteToken }: InviteLinkProps) {
               <Button
                 variant="outline"
                 onClick={() => {
-                  if (confirm("招待リンクを再生成しますか？\n\n現在のリンクは無効になり、参加者に新しいリンクを共有する必要があります。")) {
+                  if (
+                    confirm(
+                      "招待リンクを再生成しますか？\n\n現在のリンクは無効になり、参加者に新しいリンクを共有する必要があります。"
+                    )
+                  ) {
                     handleGenerateToken(true);
                   }
                 }}

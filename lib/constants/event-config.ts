@@ -6,9 +6,9 @@
 export const EVENT_CONFIG = {
   /** イベント自動終了時間（時間） */
   AUTO_END_HOURS: 24,
-  
+
   /** ステータス更新対象のステータス */
-  UPDATABLE_STATUSES: ['upcoming', 'ongoing'] as const,
+  UPDATABLE_STATUSES: ["upcoming", "ongoing"] as const,
 } as const;
 
 /**

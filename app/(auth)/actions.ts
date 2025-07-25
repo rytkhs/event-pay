@@ -5,7 +5,13 @@ import { createClient } from "@/lib/supabase/server";
 import { type EmailOtpType, type AuthResponse } from "@supabase/supabase-js";
 import { checkRateLimit, createRateLimitStore } from "@/lib/rate-limit/index";
 import { RATE_LIMIT_CONFIG } from "@/config/security";
-import { AccountLockoutService, TimingAttackProtection, InputSanitizer } from "@/lib/auth-security";
+import {
+  AccountLockoutService,
+  TimingAttackProtection,
+  InputSanitizer,
+  ACCOUNT_LOCKOUT_CONFIG,
+  TEST_ACCOUNT_LOCKOUT_CONFIG,
+} from "@/lib/auth-security";
 import { headers } from "next/headers";
 
 // バリデーションスキーマ
@@ -18,11 +24,15 @@ const registerSchema = z
   .object({
     name: z
       .string()
-      .min(1, "名前を入力してください")
-      .max(100, "名前は100文字以内で入力してください")
+      .transform((str) => str.trim()) // 最初にトリム
+      .refine((trimmed) => trimmed.length >= 1, {
+        message: "名前を入力してください",
+      })
+      .refine((trimmed) => trimmed.length <= 100, {
+        message: "名前は100文字以内で入力してください",
+      })
       .refine(
-        (name) => {
-          const trimmed = name.trim();
+        (trimmed) => {
           // NULL文字やcontrol文字のチェック
           if (trimmed.includes("\0") || trimmed.includes("\x1a")) return false;
           // 危険な特殊文字のチェック（アポストロフィと引用符は許可）
@@ -152,7 +162,7 @@ export async function loginAction(formData: FormData): Promise<ActionResult<{ us
 
         // 追加の許可オリジン
         if (process.env.ALLOWED_ORIGINS) {
-          const additionalOrigins = process.env.ALLOWED_ORIGINS.split(",").map(o => o.trim());
+          const additionalOrigins = process.env.ALLOWED_ORIGINS.split(",").map((o) => o.trim());
           origins.push(...additionalOrigins);
         }
 
@@ -306,7 +316,9 @@ export async function loginAction(formData: FormData): Promise<ActionResult<{ us
       if (lockoutResult.isLocked) {
         errorMessage = `ログイン試行回数が上限に達しました。アカウントがロックされています。`;
       } else if (lockoutResult.failedAttempts >= 3) {
-        const remaining = 5 - lockoutResult.failedAttempts;
+        const config =
+          process.env.NODE_ENV === "test" ? TEST_ACCOUNT_LOCKOUT_CONFIG : ACCOUNT_LOCKOUT_CONFIG;
+        const remaining = config.maxFailedAttempts - lockoutResult.failedAttempts;
         errorMessage += ` (残り${remaining}回の試行でアカウントがロックされます)`;
       }
 

@@ -1,9 +1,11 @@
 /**
- * EventEditForm 統合テスト
- * 複雑なフォーム状態管理、バリデーション、送信処理を実際のフックと連携してテスト
- * 単体テストでは困難な複雑なMockが必要な機能をここで検証
+ * @file EventEditForm統合テスト
+ * @description 複雑なフォーム状態管理、バリデーション、送信処理を実際のフックと連携してテスト
+ * @author EventPay Team
+ * @version 1.0.0
  */
 
+import { UnifiedMockFactory } from "@/__tests__/helpers/unified-mock-factory";
 import React from "react";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -11,10 +13,8 @@ import { EventEditForm } from "@/components/events/event-edit-form";
 import { createMockEvent } from "@/test-utils/factories";
 import type { Event } from "@/types/models";
 
-// 統合テストのため、実際のフックを使用し、必要最小限のMockのみ適用
-jest.mock("@/app/events/actions/update-event", () => ({
-  updateEventAction: jest.fn().mockResolvedValue({ success: true }),
-}));
+// 統一モック設定を適用
+UnifiedMockFactory.setupCommonMocks();
 
 const mockEvent: Event = createMockEvent({
   id: "integration-test-event",
@@ -36,7 +36,7 @@ describe("EventEditForm - 統合テスト", () => {
   });
 
   describe("フォーム状態管理", () => {
-    test("フォームが正しく初期化される", async () => {
+    it("フォームが正しく初期化される", async () => {
       render(<EventEditForm event={mockEvent} attendeeCount={0} />);
 
       // フォーム要素の初期値が正しく設定されることを確認
@@ -47,7 +47,7 @@ describe("EventEditForm - 統合テスト", () => {
       });
     });
 
-    test("フォーム入力時に変更検出が動作する", async () => {
+    it("フォーム入力時に変更検出が動作する", async () => {
       const user = userEvent.setup();
       render(<EventEditForm event={mockEvent} attendeeCount={0} />);
 
@@ -62,7 +62,7 @@ describe("EventEditForm - 統合テスト", () => {
       });
     });
 
-    test("バリデーションエラーが表示される", async () => {
+    it("バリデーションエラーが表示される", async () => {
       const user = userEvent.setup();
       render(<EventEditForm event={mockEvent} attendeeCount={0} />);
 
@@ -80,7 +80,7 @@ describe("EventEditForm - 統合テスト", () => {
       });
     });
 
-    test("無効な日付形式でバリデーションエラーが表示される", async () => {
+    it("無効な日付形式でバリデーションエラーが表示される", async () => {
       const user = userEvent.setup();
       render(<EventEditForm event={mockEvent} attendeeCount={0} />);
 
@@ -100,7 +100,7 @@ describe("EventEditForm - 統合テスト", () => {
   });
 
   describe("決済方法の選択", () => {
-    test("決済方法の選択が正しく動作する", async () => {
+    it("決済方法の選択が正しく動作する", async () => {
       const user = userEvent.setup();
       render(<EventEditForm event={mockEvent} attendeeCount={0} />);
 
@@ -114,7 +114,7 @@ describe("EventEditForm - 統合テスト", () => {
       });
     });
 
-    test("無料イベント（参加費0円）の場合に決済方法選択が非表示になる", async () => {
+    it("無料イベント（参加費0円）の場合に決済方法選択が非表示になる", async () => {
       const freeEvent = createMockEvent({
         ...mockEvent,
         fee: 0,
@@ -123,10 +123,12 @@ describe("EventEditForm - 統合テスト", () => {
 
       // 参加費が0円であることを確認
       expect(screen.getByDisplayValue("0")).toBeInTheDocument();
-      
+
       // 無料イベント用の説明が表示されることを確認
       await waitFor(() => {
-        expect(screen.getByText("ℹ️ 参加費が0円のため、決済方法の設定は不要です。")).toBeInTheDocument();
+        expect(
+          screen.getByText("ℹ️ 参加費が0円のため、決済方法の設定は不要です。")
+        ).toBeInTheDocument();
       });
 
       // 決済方法のチェックボックスが表示されないことを確認
@@ -136,7 +138,7 @@ describe("EventEditForm - 統合テスト", () => {
   });
 
   describe("レスポンシブデザイン", () => {
-    test("モバイル表示で適切なレイアウトが適用される", async () => {
+    it("モバイル表示で適切なレイアウトが適用される", async () => {
       const { container } = render(<EventEditForm event={mockEvent} attendeeCount={0} />);
 
       // フォームが存在することを確認
@@ -148,7 +150,7 @@ describe("EventEditForm - 統合テスト", () => {
       expect(screen.getByDisplayValue("統合テストイベント")).toBeInTheDocument();
     });
 
-    test("デスクトップ表示で適切なレイアウトが適用される", async () => {
+    it("デスクトップ表示で適切なレイアウトが適用される", async () => {
       const { container } = render(<EventEditForm event={mockEvent} attendeeCount={0} />);
 
       // フォームが存在することを確認
@@ -162,7 +164,7 @@ describe("EventEditForm - 統合テスト", () => {
   });
 
   describe("参加者制限", () => {
-    test("参加者がいる場合の編集制限が動作する", async () => {
+    it("参加者がいる場合の編集制限が動作する", async () => {
       const { container } = render(<EventEditForm event={mockEvent} attendeeCount={5} />);
 
       // 参加者がいる場合の制限メッセージが表示されることを確認
@@ -178,7 +180,7 @@ describe("EventEditForm - 統合テスト", () => {
   });
 
   describe("フォーム送信", () => {
-    test("フォーム送信時に変更確認ダイアログが表示される", async () => {
+    it("フォーム送信時に変更確認ダイアログが表示される", async () => {
       const user = userEvent.setup();
       render(<EventEditForm event={mockEvent} attendeeCount={0} />);
 
@@ -199,7 +201,7 @@ describe("EventEditForm - 統合テスト", () => {
   });
 
   describe("リセット機能", () => {
-    test("リセットボタンが存在し、基本的な UI 要素が正常に動作する", async () => {
+    it("リセットボタンが存在し、基本的な UI 要素が正常に動作する", async () => {
       const user = userEvent.setup();
       render(<EventEditForm event={mockEvent} attendeeCount={0} />);
 

@@ -49,9 +49,7 @@ export default function PaymentFields({ formData, errors, onInputChange }: Payme
           {(selectedMethods.includes("stripe") || selectedMethods.includes("cash")) && (
             <p>参加者は選択された決済方法の中から好みの方法を選択できます</p>
           )}
-          {selectedMethods.length === 0 && (
-            <p>決済方法を選択してください</p>
-          )}
+          {selectedMethods.length === 0 && <p>決済方法を選択してください</p>}
         </div>
       </div>
     );
@@ -65,10 +63,9 @@ export default function PaymentFields({ formData, errors, onInputChange }: Payme
             決済方法 {!isFreeEvent && <span className="text-red-500">*</span>}
           </Label>
           <p className="text-xs text-gray-500 mt-1">
-            {isFreeEvent 
-              ? "参加費0円のため決済方法の選択は不要です（無料イベント）" 
-              : "参加者が利用できる決済方法を選択してください（複数選択可）"
-            }
+            {isFreeEvent
+              ? "参加費0円のため決済方法の選択は不要です（無料イベント）"
+              : "参加者が利用できる決済方法を選択してください（複数選択可）"}
           </p>
         </div>
 

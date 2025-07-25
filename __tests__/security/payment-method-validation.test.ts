@@ -82,7 +82,7 @@ describe("決済方法バリデーション", () => {
       });
       expect(result.success).toBe(false);
       if (!result.success) {
-        expect(result.error.issues[0].message).toBe("有効な決済方法を選択してください");
+        expect(result.error.issues[0].message).toBe("有料イベントでは決済方法の選択が必要です");
       }
     });
 
@@ -93,7 +93,7 @@ describe("決済方法バリデーション", () => {
       });
       expect(result.success).toBe(false);
       if (!result.success) {
-        expect(result.error.issues[0].message).toBe("有効な決済方法を選択してください");
+        expect(result.error.issues[0].message).toBe("有料イベントでは決済方法の選択が必要です");
       }
     });
   });

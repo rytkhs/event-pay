@@ -4,7 +4,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 describe("Penetration Testing Suite", () => {
   describe("Input Validation Bypass Attempts", () => {
-    test("should handle unicode normalization attacks", async () => {
+    it("should handle unicode normalization attacks", async () => {
       const unicodePayloads = [
         "admin\u0000",
         "admin\u00A0",
@@ -25,7 +25,7 @@ describe("Penetration Testing Suite", () => {
       }
     });
 
-    test("should prevent polyglot payloads", async () => {
+    it("should prevent polyglot payloads", async () => {
       const polyglotPayloads = [
         "javascript:/*--></title></style></textarea></script></xmp><svg/onload=alert(1)>",
         '"><svg/onload=alert(1)>',
@@ -51,7 +51,7 @@ describe("Penetration Testing Suite", () => {
       }
     });
 
-    test("should handle encoding bypass attempts", async () => {
+    it("should handle encoding bypass attempts", async () => {
       const encodedPayloads = [
         "%3Cscript%3Ealert(1)%3C/script%3E",
         "&lt;script&gt;alert(1)&lt;/script&gt;",
@@ -77,7 +77,7 @@ describe("Penetration Testing Suite", () => {
   });
 
   describe("Authentication Bypass Attempts", () => {
-    test("should prevent JWT manipulation", async () => {
+    it("should prevent JWT manipulation", async () => {
       // Supabase SSRはHTTPOnly Cookieを使用するためJWT操作は不可能
       const { loginAction } = await import("../../app/(auth)/actions");
       const formData = new FormData();
@@ -89,7 +89,7 @@ describe("Penetration Testing Suite", () => {
       // JWTはクライアントからアクセスできないため操作不可
     });
 
-    test("should prevent session fixation", async () => {
+    it("should prevent session fixation", async () => {
       // Supabase SSRがセッション管理を自動処理、固定化攻撃を防止
       const { loginAction } = await import("../../app/(auth)/actions");
       const formData = new FormData();
@@ -101,7 +101,7 @@ describe("Penetration Testing Suite", () => {
       expect(result).toBeDefined();
     });
 
-    test("should prevent timing attacks", async () => {
+    it("should prevent timing attacks", async () => {
       const validUser = "valid@example.com";
       const invalidUser = "invalid@example.com";
 

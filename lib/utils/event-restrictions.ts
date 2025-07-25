@@ -27,14 +27,17 @@ export interface RestrictionContext {
  */
 export interface RestrictionRule {
   field: string;
-  check: (existingValue: any, newValue: any, context: RestrictionContext) => boolean;
+  check: (existingValue: unknown, newValue: unknown, context: RestrictionContext) => boolean;
   message: string | ((context: RestrictionContext) => string);
 }
 
 /**
  * 型安全なフィールド値取得ヘルパー
  */
-function getFieldValue(obj: any, fieldName: string): any {
+function getFieldValue(
+  obj: EventRow | Partial<EventRow> | EventWithAttendances,
+  fieldName: string
+): any {
   switch (fieldName) {
     case "title":
       return obj.title;
@@ -101,7 +104,7 @@ export function checkEventRestrictions(
 /**
  * 操作別の制限ルールを取得
  */
-function getRestrictionRules(operation: string): RestrictionRule[] {
+function getRestrictionRules(operation: RestrictionContext["operation"]): RestrictionRule[] {
   const commonRules: RestrictionRule[] = [
     {
       field: "title",
@@ -116,11 +119,12 @@ function getRestrictionRules(operation: string): RestrictionRule[] {
     {
       field: "payment_methods",
       check: (existing, updated) => {
-        const currentMethods = existing || [];
-        const newMethods = updated || [];
+        const currentMethods =
+          (existing as Database["public"]["Enums"]["payment_method_enum"][]) || [];
+        const newMethods = (updated as Database["public"]["Enums"]["payment_method_enum"][]) || [];
         return (
           newMethods.length !== currentMethods.length ||
-          !newMethods.every((method: string) => currentMethods.includes(method))
+          !newMethods.every((method) => currentMethods.includes(method))
         );
       },
       message: "参加者がいるため、決済方法は変更できません",
@@ -137,8 +141,13 @@ function getRestrictionRules(operation: string): RestrictionRule[] {
     {
       field: "capacity",
       check: (existing, updated, context) => {
-        const currentCapacity = existing || 999999;
-        return updated !== null && updated < currentCapacity && updated < context.attendeeCount;
+        const currentCapacity = (existing as number) || 999999;
+        const newCapacity = updated as number;
+        return (
+          newCapacity !== null &&
+          newCapacity < currentCapacity &&
+          newCapacity < context.attendeeCount
+        );
       },
       message: (context) =>
         `参加者が${context.attendeeCount}名いるため、定員を${context.attendeeCount}名未満に減らすことはできません`,
@@ -164,11 +173,12 @@ function getRestrictionRules(operation: string): RestrictionRule[] {
       field: "payment_methods",
       check: (existing, updated, context) => {
         if (!(context.hasActivePayments || false)) return false;
-        const currentMethods = existing || [];
-        const newMethods = updated || [];
+        const currentMethods =
+          (existing as Database["public"]["Enums"]["payment_method_enum"][]) || [];
+        const newMethods = (updated as Database["public"]["Enums"]["payment_method_enum"][]) || [];
         return (
           newMethods.length !== currentMethods.length ||
-          !newMethods.every((method: string) => currentMethods.includes(method))
+          !newMethods.every((method) => currentMethods.includes(method))
         );
       },
       message: "決済済みの参加者がいるため、決済方法は変更できません",
@@ -290,7 +300,7 @@ export function filterEditableFields(
 
   // 定員は増加のみ可能
   if (newData.capacity !== undefined) {
-    const currentCapacity = existingEvent.capacity || 999999;
+    const currentCapacity = (existingEvent as EventRow).capacity || 999999;
     if (newData.capacity !== null && newData.capacity >= currentCapacity) {
       editableFields.capacity = newData.capacity;
     }

@@ -13,8 +13,8 @@ export function useClipboard() {
         setIsCopied(true);
         setTimeout(() => setIsCopied(false), 2000);
         return true;
-      } 
-      
+      }
+
       // フォールバック: 古いブラウザ対応
       const textArea = document.createElement("textarea");
       textArea.value = text;
@@ -24,16 +24,16 @@ export function useClipboard() {
       document.body.appendChild(textArea);
       textArea.focus();
       textArea.select();
-      
+
       const successful = document.execCommand("copy");
       document.body.removeChild(textArea);
-      
+
       if (successful) {
         setIsCopied(true);
         setTimeout(() => setIsCopied(false), 2000);
         return true;
       }
-      
+
       return false;
     } catch (error) {
       console.error("Failed to copy text: ", error);

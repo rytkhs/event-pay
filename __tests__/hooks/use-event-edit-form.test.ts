@@ -2,74 +2,13 @@
  * @jest-environment jsdom
  */
 
+import { UnifiedMockFactory } from "@/__tests__/helpers/unified-mock-factory";
 import { renderHook, act } from "@testing-library/react";
 import { useEventEditForm } from "@/hooks/use-event-edit-form";
 import type { Event } from "@/types/models";
 
-// 依存関係のモック
-jest.mock("@/hooks/restrictions/use-event-restrictions", () => ({
-  useEventRestrictions: () => ({
-    isFieldRestricted: jest.fn(() => false),
-    isFieldEditable: jest.fn(() => true),
-    getFieldDisplayName: jest.fn((field: string) => field),
-    getRestrictionReason: jest.fn(() => ""),
-    getRestrictedFields: jest.fn(() => []),
-    getRestrictedFieldNames: jest.fn(() => []),
-  }),
-}));
-
-jest.mock("@/hooks/changes/use-event-changes", () => ({
-  useEventChanges: () => ({
-    hasChanges: false,
-    detectChanges: jest.fn(() => []),
-    hasFieldChanged: jest.fn(() => false),
-    getChangedFieldNames: jest.fn(() => []),
-    getChangeCount: jest.fn(() => 0),
-    getChangeSummary: jest.fn(() => ""),
-    getChangesByType: jest.fn(() => ({ basic: [], pricing: [], deadlines: [] })),
-    hasCriticalChanges: jest.fn(() => false),
-    getRevertData: jest.fn(() => ({})),
-  }),
-}));
-
-jest.mock("@/hooks/submission/use-event-submission", () => ({
-  useEventSubmission: () => ({
-    submitForm: jest.fn(() => Promise.resolve({ success: true })),
-  }),
-}));
-
-// タイムゾーンユーティリティのモック
-jest.mock("@/lib/utils/timezone", () => ({
-  formatUtcToJst: jest.fn((date: Date, format: string) => {
-    return date.toISOString().slice(0, 16); // datetime-local形式
-  }),
-  formatUtcToDatetimeLocal: jest.fn((dateString: string) => {
-    if (!dateString) return "";
-    try {
-      const date = new Date(dateString);
-      if (isNaN(date.getTime())) return "";
-      return date.toISOString().slice(0, 16); // datetime-local形式
-    } catch {
-      return "";
-    }
-  }),
-  formatUtcToJapaneseDisplay: jest.fn((dateString: string) => {
-    if (!dateString) return "";
-    try {
-      const date = new Date(dateString);
-      if (isNaN(date.getTime())) return "";
-      return date.toLocaleString("ja-JP", {
-        year: "numeric",
-        month: "2-digit",
-        day: "2-digit",
-        hour: "2-digit",
-        minute: "2-digit",
-      });
-    } catch {
-      return "";
-    }
-  }),
-}));
+// 統一モック設定を適用
+UnifiedMockFactory.setupCommonMocks();
 
 // テスト用のイベントデータ
 const mockEvent: Event = {

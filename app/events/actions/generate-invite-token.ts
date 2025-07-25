@@ -2,6 +2,7 @@
 
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
+import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { getCurrentUser } from "@/lib/auth/auth-utils";
 import { generateInviteToken } from "@/lib/utils/invite-token";
 
@@ -12,7 +13,7 @@ interface GenerateInviteTokenOptions {
 }
 
 export async function generateInviteTokenAction(
-  eventId: string, 
+  eventId: string,
   options: GenerateInviteTokenOptions = {}
 ) {
   try {
@@ -28,7 +29,14 @@ export async function generateInviteTokenAction(
       };
     }
 
-    const supabase = createClient();
+    // テスト環境ではservice_roleクライアントを使用
+    const supabase =
+      process.env.NODE_ENV === "test"
+        ? createSupabaseClient(
+            process.env.NEXT_PUBLIC_SUPABASE_URL!,
+            process.env.SUPABASE_SERVICE_ROLE_KEY!
+          )
+        : createClient();
 
     // イベントの存在確認と権限チェック
     const { data: event, error: eventError } = await supabase
@@ -52,8 +60,8 @@ export async function generateInviteTokenAction(
     }
 
     // 既に招待トークンがある場合の処理
-    if (event.invite_token && !options.forceRegenerate) {
-      // forceRegenerate=falseの場合は既存トークンを返す
+    if (event.invite_token && options.forceRegenerate !== true) {
+      // forceRegenerate=trueでない場合は既存トークンを返す
       return {
         success: true,
         data: {
@@ -115,11 +123,6 @@ export async function generateInviteTokenAction(
         success: false,
         error: "Invalid event ID",
       };
-    }
-
-    // ログ出力（本番環境では適切なログシステムに記録）
-    if (process.env.NODE_ENV === "development") {
-      console.error("Error generating invite token:", error);
     }
 
     return {

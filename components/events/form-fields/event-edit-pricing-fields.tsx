@@ -64,7 +64,9 @@ export function EventEditPricingFields({
             onChange={(e) => onInputChange("fee", e.target.value)}
             disabled={isFieldRestricted("fee")}
             aria-disabled={isFieldRestricted("fee")}
-            aria-describedby={isFieldRestricted("fee") ? "fee-restriction" : errors.fee ? "fee-error" : undefined}
+            aria-describedby={
+              isFieldRestricted("fee") ? "fee-restriction" : errors.fee ? "fee-error" : undefined
+            }
             className={isFieldRestricted("fee") ? "bg-gray-100" : ""}
           />
           {isFieldRestricted("fee") && (
@@ -72,7 +74,11 @@ export function EventEditPricingFields({
               参加者がいるため編集できません
             </p>
           )}
-          {errors.fee && <p id="fee-error" className="text-sm text-red-600">{errors.fee}</p>}
+          {errors.fee && (
+            <p id="fee-error" className="text-sm text-red-600">
+              {errors.fee}
+            </p>
+          )}
         </div>
 
         <div className="space-y-2">
@@ -90,9 +96,11 @@ export function EventEditPricingFields({
             value={formData.capacity}
             onChange={(e) => onInputChange("capacity", e.target.value)}
             aria-describedby={
-              isFieldRestricted("capacity") ? "capacity-restriction" : 
-              errors.capacity ? "capacity-error" : 
-              "capacity-help"
+              isFieldRestricted("capacity")
+                ? "capacity-restriction"
+                : errors.capacity
+                  ? "capacity-error"
+                  : "capacity-help"
             }
             className={isFieldRestricted("capacity") ? "border-yellow-300 bg-yellow-50" : ""}
             placeholder="未設定（制限なし）"
@@ -105,7 +113,11 @@ export function EventEditPricingFields({
               現在の参加者数未満には設定できません。増加は可能です。
             </p>
           )}
-          {errors.capacity && <p id="capacity-error" className="text-sm text-red-600">{errors.capacity}</p>}
+          {errors.capacity && (
+            <p id="capacity-error" className="text-sm text-red-600">
+              {errors.capacity}
+            </p>
+          )}
         </div>
       </div>
 
@@ -116,15 +128,17 @@ export function EventEditPricingFields({
             <span className="text-yellow-600 text-sm ml-2">(参加者がいるため編集不可)</span>
           )}
         </Label>
-        
-        <div 
+
+        <div
           className="space-y-2"
           role="group"
           aria-labelledby="payment-methods-label"
           aria-describedby={
-            isFieldRestricted("payment_methods") ? "payment-methods-restriction" : 
-            errors.payment_methods ? "payment-methods-error" : 
-            undefined
+            isFieldRestricted("payment_methods")
+              ? "payment-methods-restriction"
+              : errors.payment_methods
+                ? "payment-methods-error"
+                : undefined
           }
         >
           <div className="flex items-center space-x-2">
@@ -157,7 +171,11 @@ export function EventEditPricingFields({
             参加者がいるため編集できません
           </p>
         )}
-        {errors.payment_methods && <p id="payment-methods-error" className="text-sm text-red-600">{errors.payment_methods}</p>}
+        {errors.payment_methods && (
+          <p id="payment-methods-error" className="text-sm text-red-600">
+            {errors.payment_methods}
+          </p>
+        )}
       </div>
     </div>
   );

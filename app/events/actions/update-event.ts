@@ -115,7 +115,6 @@ export async function updateEventAction(
     } = await supabase.auth.getUser();
 
     if (authError || !user) {
-      console.error("認証エラー:", authError);
       return createErrorResponse(ERROR_CODES.UNAUTHORIZED);
     }
 
@@ -175,7 +174,6 @@ export async function updateEventAction(
         .eq("status", "attending");
 
       if (attendanceError) {
-        console.error("参加者数取得エラー:", attendanceError);
         return createErrorResponse(ERROR_CODES.DATABASE_ERROR, "参加者数の確認に失敗しました");
       }
 
@@ -202,7 +200,6 @@ export async function updateEventAction(
       .single();
 
     if (updateError) {
-      console.error("データベース更新エラー:", updateError);
       return createErrorResponse(ERROR_CODES.DATABASE_ERROR, "イベントの更新に失敗しました", {
         databaseError: updateError,
       });
@@ -222,7 +219,6 @@ export async function updateEventAction(
       return zodErrorToResponse(error);
     }
 
-    console.error("予期しないエラー:", error);
     return createErrorResponse(ERROR_CODES.INTERNAL_ERROR, "予期しないエラーが発生しました", {
       originalError: error,
     });

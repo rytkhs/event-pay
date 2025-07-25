@@ -1,20 +1,22 @@
 // EventPay 統合テスト用のシンプルなsetupファイル
 import "@testing-library/jest-dom";
 
-// 基本的なDOM polyfills
-Object.defineProperty(window, "matchMedia", {
-  writable: true,
-  value: jest.fn().mockImplementation((query) => ({
-    matches: false,
-    media: query,
-    onchange: null,
-    addListener: jest.fn(),
-    removeListener: jest.fn(),
-    addEventListener: jest.fn(),
-    removeEventListener: jest.fn(),
-    dispatchEvent: jest.fn(),
-  })),
-});
+// 基本的なDOM polyfills - windowが存在する場合のみ実行
+if (typeof window !== "undefined") {
+  Object.defineProperty(window, "matchMedia", {
+    writable: true,
+    value: jest.fn().mockImplementation((query) => ({
+      matches: false,
+      media: query,
+      onchange: null,
+      addListener: jest.fn(),
+      removeListener: jest.fn(),
+      addEventListener: jest.fn(),
+      removeEventListener: jest.fn(),
+      dispatchEvent: jest.fn(),
+    })),
+  });
+}
 
 // ResizeObserver polyfill
 global.ResizeObserver = class ResizeObserver {
@@ -36,19 +38,27 @@ global.IntersectionObserver = class IntersectionObserver {
   unobserve() {}
 };
 
-// Next.js関連のモック
+// Next.js関連のモック - 統一された設定
+const mockRouterFunctions = {
+  push: jest.fn(),
+  replace: jest.fn(),
+  prefetch: jest.fn(),
+  back: jest.fn(),
+  forward: jest.fn(),
+  refresh: jest.fn(),
+};
+
+const mockUseRouter = jest.fn(() => mockRouterFunctions);
+
 jest.mock("next/navigation", () => ({
-  useRouter: () => ({
-    push: jest.fn(),
-    replace: jest.fn(),
-    prefetch: jest.fn(),
-    back: jest.fn(),
-    forward: jest.fn(),
-    refresh: jest.fn(),
-  }),
+  useRouter: mockUseRouter,
   usePathname: () => "/test-path",
   useSearchParams: () => new URLSearchParams(),
 }));
+
+// グローバルでアクセス可能にする
+global.mockRouterFunctions = mockRouterFunctions;
+global.mockUseRouter = mockUseRouter;
 
 jest.mock("next/cache", () => ({
   revalidatePath: jest.fn(),
@@ -132,11 +142,8 @@ global.createSupabaseClient = () => {
     // サービスロールクライアントをテスト用に追加
     supabase.serviceRole = serviceRoleClient;
 
-    console.log("🔧 Using real Supabase client for test:", testPath);
     return supabase;
   } else {
-    // モック版のSupabaseクライアント（既存のモック）
-    console.log("🔧 Using mock Supabase client for test:", testPath);
     return {
       auth: {
         getUser: jest.fn().mockResolvedValue({
@@ -223,7 +230,8 @@ console.warn = (...args) => {
   // 既知の警告を抑制
   if (
     args[0]?.includes?.("Warning: componentWillReceiveProps") ||
-    args[0]?.includes?.("Warning: Legacy")
+    args[0]?.includes?.("Warning: Legacy") ||
+    args[0]?.includes?.("Multiple GoTrueClient instances detected")
   ) {
     return;
   }
@@ -379,8 +387,3 @@ global.waitForLoadingToFinish = async () => {
     // ローディング要素が見つからない場合は何もしない
   }
 };
-
-// テストの実行環境を標準出力に表示
-console.log("🧪 EventPay Integration Test Environment Initialized");
-console.log("📍 Test Environment:", process.env.NODE_ENV);
-console.log("🔧 Supabase URL:", process.env.NEXT_PUBLIC_SUPABASE_URL);

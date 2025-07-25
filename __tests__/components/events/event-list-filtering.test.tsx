@@ -55,7 +55,7 @@ const mockEvents: Event[] = [
 ];
 
 describe("EventListWithFilters Component - Red Phase Tests", () => {
-  test("フィルター・ソート・イベントリストが統合表示される", () => {
+  it("フィルター・ソート・イベントリストが統合表示される", () => {
     render(<EventListWithFilters events={mockEvents} />);
 
     expect(screen.getByTestId("event-list-with-filters")).toBeInTheDocument();
@@ -64,7 +64,7 @@ describe("EventListWithFilters Component - Red Phase Tests", () => {
     expect(screen.getByTestId("event-grid")).toBeInTheDocument();
   });
 
-  test("ステータスフィルター要素が表示される", async () => {
+  it("ステータスフィルター要素が表示される", async () => {
     render(<EventListWithFilters events={mockEvents} />);
 
     // JSDOMではShadcn/ui Selectの操作が制限されるため、
@@ -75,7 +75,7 @@ describe("EventListWithFilters Component - Red Phase Tests", () => {
     // Note: 実際のフィルター適用テストはE2Eテスト環境で実行
   });
 
-  test("決済フィルター要素が表示される", async () => {
+  it("決済フィルター要素が表示される", async () => {
     render(<EventListWithFilters events={mockEvents} />);
 
     // JSDOMではShadcn/ui Selectの操作が制限されるため、
@@ -86,7 +86,7 @@ describe("EventListWithFilters Component - Red Phase Tests", () => {
     // Note: 実際のフィルター適用テストはE2Eテスト環境で実行
   });
 
-  test("ソート要素が表示される", async () => {
+  it("ソート要素が表示される", async () => {
     render(<EventListWithFilters events={mockEvents} />);
 
     // JSDOMではShadcn/ui Selectの操作が制限されるため、
@@ -97,7 +97,7 @@ describe("EventListWithFilters Component - Red Phase Tests", () => {
     // Note: 実際のソート機能テストはE2Eテスト環境で実行
   });
 
-  test("フィルタークリアボタンが表示される", async () => {
+  it("フィルタークリアボタンが表示される", async () => {
     render(<EventListWithFilters events={mockEvents} />);
 
     // JSDOMではShadcn/ui Selectの操作が制限されるため、
@@ -108,7 +108,7 @@ describe("EventListWithFilters Component - Red Phase Tests", () => {
     // Note: 実際のフィルタークリア機能テストはE2Eテスト環境で実行
   });
 
-  test("空の検索結果時でも基本コンポーネント構造は表示される", async () => {
+  it("空の検索結果時でも基本コンポーネント構造は表示される", async () => {
     render(<EventListWithFilters events={[]} />);
 
     // 空のイベントリストでも基本的なフィルター・ソート要素は表示される
@@ -120,7 +120,7 @@ describe("EventListWithFilters Component - Red Phase Tests", () => {
     // Note: 実際の空メッセージ表示テストはE2Eテスト環境で実行
   });
 
-  test("日付フィルター入力フィールドが表示される", async () => {
+  it("日付フィルター入力フィールドが表示される", async () => {
     render(<EventListWithFilters events={mockEvents} />);
 
     // JSDOMではuser.typeでReact DOMエラーが発生するため、
