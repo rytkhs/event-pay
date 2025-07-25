@@ -79,7 +79,8 @@ export class AccountLockoutService {
       const config = this.getConfig();
 
       // 現在の失敗回数を取得
-      const currentAttempts = ((await redis.get(failedKey)) as number) || 0;
+      const rawAttempts = await redis.get<number>(failedKey);
+      const currentAttempts = rawAttempts || 0;
       const newAttempts = currentAttempts + 1;
 
       // 失敗回数を更新（24時間のTTL）
@@ -154,7 +155,8 @@ export class AccountLockoutService {
       }
 
       // 現在の失敗回数を確認
-      const failedAttempts = ((await redis.get(failedKey)) as number) || 0;
+      const rawAttempts = await redis.get<number>(failedKey);
+      const failedAttempts = rawAttempts || 0;
       const config = this.getConfig();
       const remainingAttempts = Math.max(0, config.maxFailedAttempts - failedAttempts);
 
