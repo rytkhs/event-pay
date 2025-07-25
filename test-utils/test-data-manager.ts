@@ -13,7 +13,7 @@ export class TestDataManager {
       createClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL || "http://127.0.0.1:54321",
         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
-          "SUPABASE_ANON_KEY_REDACTED",
+        "SUPABASE_ANON_KEY_REDACTED",
         {
           auth: {
             autoRefreshToken: false,
@@ -26,7 +26,7 @@ export class TestDataManager {
     this.adminSupabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL || "http://127.0.0.1:54321",
       process.env.SUPABASE_SERVICE_ROLE_KEY ||
-        "SUPABASE_SERVICE_ROLE_KEY_REDACTED",
+      "SUPABASE_SERVICE_ROLE_KEY_REDACTED",
       {
         auth: {
           autoRefreshToken: false,
@@ -243,15 +243,30 @@ export class TestDataManager {
   }
 
   async setupEventWithAttendees(eventData: any = {}, attendeeCount: number = 1): Promise<any> {
-    // 既存のシードデータユーザーを使用
+    // イベント作成者（運営者）を動的に作成
+    const uniqueId = `creator-${Date.now()}`;
+    const { data: authUser, error: createError } = await this.adminSupabase.auth.admin.createUser(
+      {
+        email: `test-creator-${uniqueId}@example.com`,
+        password: "TestPassword123!",
+        email_confirm: true,
+      }
+    );
+
+    if (createError || !authUser?.user) {
+      throw new Error(`Failed to create creator user: ${createError?.message}`);
+    }
+
+    await this.adminSupabase.from("users").insert({
+      id: authUser.user.id,
+      name: "動的作成された運営者",
+    });
+
     const creator = {
-      id: "a0000000-0000-0000-0000-000000000001",
-      email: "creator@test.com",
-      name: "認証済み運営者",
-      user: {
-        id: "a0000000-0000-0000-0000-000000000001",
-        email: "creator@test.com",
-      },
+      id: authUser.user.id,
+      email: authUser.user.email,
+      name: "動的作成された運営者",
+      user: authUser.user,
     };
 
     // イベントを作成
@@ -260,32 +275,57 @@ export class TestDataManager {
       created_by: creator.id,
     });
 
-    // 参加者として既存のユーザーを使用
-    const attendances = [];
-    const attendeeIds = [
-      "b0000000-0000-0000-0000-000000000001", // 参加者アリス
-      "b0000000-0000-0000-0000-000000000002", // 参加者ボブ
-    ];
+    // 参加者も動的に作成
+    const attendeeCreationPromises = [];
+    for (let i = 0; i < attendeeCount; i++) {
+      attendeeCreationPromises.push(
+        (async () => {
+          const attendeeId = `attendee-${i}-${Date.now()}-${Math.random()}`;
+          const { data: attendeeAuthUser, error: attendeeCreateError } =
+            await this.adminSupabase.auth.admin.createUser({
+              email: `test-attendee-${attendeeId}@example.com`,
+              password: "TestPassword123!",
+              email_confirm: true,
+            });
 
-    for (let i = 0; i < Math.min(attendeeCount, attendeeIds.length); i++) {
-      const attendance = await this.createTestAttendance({
-        event_id: event.id,
-        nickname: `参加者${i + 1}`,
-        email: `attendee${i + 1}@test.com`,
-        status: "attending",
-      });
-      attendances.push(attendance);
+          if (attendeeCreateError || !attendeeAuthUser?.user) {
+            throw new Error(`Failed to create attendee user ${i}: ${attendeeCreateError?.message}`);
+          }
+
+          await this.adminSupabase.from("users").insert({
+            id: attendeeAuthUser.user.id,
+            name: `動的作成された参加者${i + 1}`,
+          });
+
+          const attendance = await this.createTestAttendance({
+            event_id: event.id,
+            nickname: `参加者${i + 1}`,
+            email: attendeeAuthUser.user.email,
+            status: "attending",
+          });
+
+          return {
+            attendance,
+            attendee: {
+              id: attendeeAuthUser.user.id,
+              name: `動的作成された参加者${i + 1}`,
+              email: attendeeAuthUser.user.email,
+              user: attendeeAuthUser.user,
+            },
+          };
+        })()
+      );
     }
+
+    const results = await Promise.all(attendeeCreationPromises);
+    const attendances = results.map((r) => r.attendance);
+    const attendees = results.map((r) => r.attendee);
 
     return {
       creator,
       event,
       attendances,
-      attendees: attendances.map((a, i) => ({
-        id: attendeeIds[i],
-        name: `参加者${i + 1}`,
-        email: `attendee${i + 1}@test.com`,
-      })),
+      attendees,
     };
   }
 
@@ -301,8 +341,14 @@ export class TestDataManager {
       const { data: testUsers } = await this.adminSupabase.auth.admin.listUsers();
       if (testUsers?.users) {
         for (const user of testUsers.users) {
-          if (user.email?.startsWith("test-user-") && user.email.endsWith("@example.com")) {
-            await this.adminSupabase.auth.admin.deleteUser(user.id);
+          if (
+            user.email?.startsWith("test-user-") ||
+            user.email?.startsWith("test-creator-") ||
+            user.email?.startsWith("test-attendee-")
+          ) {
+            if (user.email.endsWith("@example.com")) {
+              await this.adminSupabase.auth.admin.deleteUser(user.id);
+            }
           }
         }
       }
