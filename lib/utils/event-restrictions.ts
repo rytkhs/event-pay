@@ -58,7 +58,7 @@ function getFieldValue(
     case "payment_deadline":
       return obj.payment_deadline;
     case "event":
-      return obj; // 削除操作用
+      return obj as EventRow; // 削除操作用
     default:
       return undefined;
   }
