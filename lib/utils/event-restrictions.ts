@@ -37,7 +37,7 @@ export interface RestrictionRule {
 function getFieldValue(
   obj: EventRow | Partial<EventRow> | EventWithAttendances,
   fieldName: string
-): any {
+): EventRow[keyof EventRow] | EventRow | undefined {
   switch (fieldName) {
     case "title":
       return obj.title;

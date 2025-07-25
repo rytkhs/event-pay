@@ -35,10 +35,10 @@ export function EventSort({ sortBy, sortOrder, onSortChange, onOrderChange }: Ev
   // 無効な値の検証とデフォルト値の適用
   useEffect(() => {
     if (!isValidSortBy(sortBy)) {
-      // 無効なソート条件 - デフォルトソートを適用
+      console.warn("無効なソート条件です。デフォルトソートを適用します。");
     }
     if (!isValidSortOrder(sortOrder)) {
-      // 無効なソート順序 - 昇順を適用
+      console.warn("無効なソート順序です。昇順を適用します。");
     }
   }, [sortBy, sortOrder]);
 

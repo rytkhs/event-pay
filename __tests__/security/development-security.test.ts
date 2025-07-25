@@ -162,7 +162,14 @@ describe("開発基盤セキュリティテスト", () => {
 
       // TypeScriptの安全性ルール
       expect(eslintConfig.rules["@typescript-eslint/no-explicit-any"]).toBe("warn");
-      expect(eslintConfig.rules["@typescript-eslint/no-unused-vars"]).toBe("error");
+
+      // no-unused-varsルールは配列形式で設定されている場合があるため、適切にチェック
+      const noUnusedVarsRule = eslintConfig.rules["@typescript-eslint/no-unused-vars"];
+      if (Array.isArray(noUnusedVarsRule)) {
+        expect(noUnusedVarsRule[0]).toBe("error");
+      } else {
+        expect(noUnusedVarsRule).toBe("error");
+      }
 
       // コンソール出力の警告（本番で機密情報が漏洩しないため）
       expect(eslintConfig.rules["no-console"]).toBe("warn");

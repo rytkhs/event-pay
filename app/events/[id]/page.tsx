@@ -40,8 +40,8 @@ export default async function EventDetailPage({ params }: EventDetailPageProps) 
     const isOrganizer = currentUser && currentUser.id === eventDetail.organizer_id;
 
     // 主催者の場合のみ統計データを取得
-    let attendances: any[] = [];
-    let payments: any[] = [];
+    let attendances: Awaited<ReturnType<typeof cachedActions.getEventAttendances>> = [];
+    let payments: Awaited<ReturnType<typeof cachedActions.getEventPayments>> = [];
 
     if (isOrganizer) {
       try {

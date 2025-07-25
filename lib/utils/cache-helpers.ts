@@ -9,20 +9,20 @@ import { cache } from "react";
  * 本番環境でのみReact.cache()を適用するヘルパー関数
  * 開発環境では元の関数をそのまま返すことで、デバッグを容易にする
  */
-export function conditionalCache<T extends (...args: any[]) => any>(fn: T): T {
+export function conditionalCache<T extends (...args: never[]) => unknown>(fn: T): T {
   return (process.env.NODE_ENV === "production" ? cache(fn) : fn) as T;
 }
 
 /**
  * 複数の関数に対して一括でキャッシュを適用するヘルパー関数
  */
-export function createCachedActions<T extends Record<string, (...args: any[]) => any>>(
+export function createCachedActions<T extends Record<string, (...args: never[]) => unknown>>(
   actions: T
 ): T {
   const cachedActions = {} as T;
 
   for (const [key, action] of Object.entries(actions)) {
-    (cachedActions as any)[key] = conditionalCache(action);
+    (cachedActions as Record<string, never>)[key] = conditionalCache(action);
   }
 
   return cachedActions;
