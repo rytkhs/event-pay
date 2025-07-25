@@ -1,7 +1,6 @@
 // Jest DOM matchers for Testing Library
 import "@testing-library/jest-dom";
 
-
 // Jest専用型定義を読み込み
 import "./types/test.d.ts";
 
@@ -9,8 +8,7 @@ import "./types/test.d.ts";
 import dotenv from "dotenv";
 dotenv.config({ path: ".env.local" });
 
-
-// Global test utilities (preserved from original setup)
+// Global test utilities
 global.testUtils = {
   // Mock user for authenticated tests
   mockUser: {
@@ -41,32 +39,29 @@ global.testUtils = {
   },
 };
 
-// Mock Supabase connection test function (preserved)
+// Mock Supabase connection test function
 global.testSupabaseConnection =
   typeof jest !== "undefined" ? jest.fn().mockResolvedValue(true) : () => Promise.resolve(true);
 
-// Mock window.matchMedia
+// Essential JSDOM polyfills for modern web APIs
 Object.defineProperty(window, 'matchMedia', {
   writable: true,
   value: jest.fn().mockImplementation(query => ({
     matches: false,
     media: query,
     onchange: null,
-    addListener: jest.fn(), // deprecated
-    removeListener: jest.fn(), // deprecated
+    addListener: jest.fn(),
+    removeListener: jest.fn(),
     addEventListener: jest.fn(),
     removeEventListener: jest.fn(),
     dispatchEvent: jest.fn(),
   })),
 });
 
-// Mock HTMLFormElement.prototype.requestSubmit for JSDOM compatibility
+// HTMLFormElement.prototype.requestSubmit polyfill for JSDOM
 Object.defineProperty(HTMLFormElement.prototype, 'requestSubmit', {
   value: function(submitter) {
-    // Create a submit event
     const event = new Event('submit', { bubbles: true, cancelable: true });
-    
-    // If submitter is provided, add it to the event
     if (submitter) {
       Object.defineProperty(event, 'submitter', {
         value: submitter,
@@ -74,42 +69,79 @@ Object.defineProperty(HTMLFormElement.prototype, 'requestSubmit', {
         configurable: true
       });
     }
-    
-    // Dispatch the event
     this.dispatchEvent(event);
   },
   writable: true,
   configurable: true
 });
 
-// Setup before each test
+// Comprehensive JSDOM polyfills for Radix UI pointer capture
+const addPointerCaptureMethods = (target) => {
+  if (!target.hasPointerCapture) {
+    Object.defineProperty(target, 'hasPointerCapture', {
+      value: () => false,
+      writable: true,
+      configurable: true
+    });
+  }
+  if (!target.setPointerCapture) {
+    Object.defineProperty(target, 'setPointerCapture', {
+      value: () => {},
+      writable: true,
+      configurable: true
+    });
+  }
+  if (!target.releasePointerCapture) {
+    Object.defineProperty(target, 'releasePointerCapture', {
+      value: () => {},
+      writable: true,
+      configurable: true
+    });
+  }
+};
+
+// Apply to core prototypes
+[Element.prototype, HTMLElement.prototype, EventTarget.prototype].forEach(addPointerCaptureMethods);
+
+// Global error suppression for specific JSDOM issues
+const originalError = console.error;
+console.error = (...args) => {
+  const message = args[0];
+  if (typeof message === 'string' && 
+      (message.includes('hasPointerCapture') || 
+       message.includes('setPointerCapture') ||
+       message.includes('releasePointerCapture'))) {
+    return; // Suppress pointer capture errors
+  }
+  originalError.apply(console, args);
+};
+
+// Mock modern web APIs for Radix UI components
+global.PointerEvent = global.PointerEvent || function(type, init) {
+  return new Event(type, init);
+};
+
+global.IntersectionObserver = global.IntersectionObserver || class {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+};
+
+global.ResizeObserver = global.ResizeObserver || class {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+};
+
+// Setup and cleanup
 beforeEach(() => {
-  // Clear all mocks before each test
   if (typeof jest !== "undefined") {
     jest.clearAllMocks();
   }
 });
 
-// Cleanup after tests
 afterAll(() => {
-  // Final cleanup
   if (typeof jest !== "undefined") {
     jest.restoreAllMocks();
   }
-});
-
-// Silence console warnings in tests (optional)
-const originalConsoleWarn = console.warn;
-const originalConsoleError = console.error;
-
-beforeAll(() => {
-  if (typeof jest !== "undefined") {
-    console.warn = jest.fn();
-    console.error = jest.fn();
-  }
-});
-
-afterAll(() => {
-  console.warn = originalConsoleWarn;
-  console.error = originalConsoleError;
 });

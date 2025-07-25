@@ -14,7 +14,8 @@ interface RateLimitErrorResponse {
 // レート制限ミドルウェア
 export function withRateLimit(config: RateLimitConfig, keyPrefix?: string) {
   return async function (request: NextRequest) {
-    const ip = request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip") || "unknown";
+    const ip =
+      request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip") || "unknown";
     const store = await createRateLimitStore();
     const result = await checkRateLimit(store, `${keyPrefix || "api"}_${ip}`, config);
 

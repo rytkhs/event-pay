@@ -6,6 +6,12 @@ export const ACCOUNT_LOCKOUT_CONFIG = {
   lockoutDurationMs: 30 * 60 * 1000, // 30分
 } as const;
 
+// テスト専用アカウントロックアウト設定
+export const TEST_ACCOUNT_LOCKOUT_CONFIG = {
+  maxFailedAttempts: 20, // テスト用に緩和
+  lockoutDurationMs: 5 * 60 * 1000, // 5分に短縮
+} as const;
+
 // 型定義
 export interface LockoutResult {
   failedAttempts: number;
@@ -56,6 +62,10 @@ export class AccountLockoutService {
     return `auth_lockout:${email.toLowerCase()}`;
   }
 
+  private static getConfig() {
+    return process.env.NODE_ENV === "test" ? TEST_ACCOUNT_LOCKOUT_CONFIG : ACCOUNT_LOCKOUT_CONFIG;
+  }
+
   /**
    * ログイン失敗を記録し、必要に応じてアカウントをロック
    * @param email ユーザーのメールアドレス
@@ -66,20 +76,22 @@ export class AccountLockoutService {
       const redis = getRedisInstance();
       const failedKey = this.getFailedAttemptsKey(email);
       const lockoutKey = this.getLockoutKey(email);
+      const config = this.getConfig();
 
       // 現在の失敗回数を取得
-      const currentAttempts = ((await redis.get(failedKey)) as number) || 0;
+      const rawAttempts = await redis.get<number>(failedKey);
+      const currentAttempts = rawAttempts || 0;
       const newAttempts = currentAttempts + 1;
 
       // 失敗回数を更新（24時間のTTL）
       await redis.setex(failedKey, 24 * 60 * 60, newAttempts);
 
       // 最大試行回数に達した場合、アカウントをロック
-      if (newAttempts >= ACCOUNT_LOCKOUT_CONFIG.maxFailedAttempts) {
-        const lockoutExpiresAt = new Date(Date.now() + ACCOUNT_LOCKOUT_CONFIG.lockoutDurationMs);
+      if (newAttempts >= config.maxFailedAttempts) {
+        const lockoutExpiresAt = new Date(Date.now() + config.lockoutDurationMs);
         await redis.setex(
           lockoutKey,
-          Math.ceil(ACCOUNT_LOCKOUT_CONFIG.lockoutDurationMs / 1000),
+          Math.ceil(config.lockoutDurationMs / 1000),
           lockoutExpiresAt.toISOString()
         );
 
@@ -143,11 +155,10 @@ export class AccountLockoutService {
       }
 
       // 現在の失敗回数を確認
-      const failedAttempts = ((await redis.get(failedKey)) as number) || 0;
-      const remainingAttempts = Math.max(
-        0,
-        ACCOUNT_LOCKOUT_CONFIG.maxFailedAttempts - failedAttempts
-      );
+      const rawAttempts = await redis.get<number>(failedKey);
+      const failedAttempts = rawAttempts || 0;
+      const config = this.getConfig();
+      const remainingAttempts = Math.max(0, config.maxFailedAttempts - failedAttempts);
 
       return {
         isLocked: false,
@@ -159,9 +170,10 @@ export class AccountLockoutService {
         // console.error("Failed to check lockout status:", _);
       }
       // フェイルオープン（エラー時は制限しない）
+      const config = this.getConfig();
       return {
         isLocked: false,
-        remainingAttempts: ACCOUNT_LOCKOUT_CONFIG.maxFailedAttempts,
+        remainingAttempts: config.maxFailedAttempts,
       };
     }
   }

@@ -1,11 +1,14 @@
 "use client";
 
-import { useFormState } from "react-dom";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
-import { useEffect, useTransition } from "react";
+import { useTransition, useEffect } from "react";
+import { useFormState } from "react-dom";
 import { useFocusManagement } from "@/lib/hooks/useFocusManagement";
+import { z } from "zod";
 
-// Server Action結果の共通型
+// Server Action結果の共通型（既存と同じ）
 export interface ServerActionResult<T = unknown> {
   success: boolean;
   data?: T;
@@ -15,6 +18,24 @@ export interface ServerActionResult<T = unknown> {
   redirectUrl?: string;
   needsEmailConfirmation?: boolean;
 }
+
+// ログインフォームデータ型
+export interface LoginFormData {
+  email: string;
+  password: string;
+  rememberMe?: boolean;
+}
+
+// 会員登録フォームデータ型
+export interface RegisterFormData {
+  name: string;
+  email: string;
+  password: string;
+  passwordConfirm: string;
+  termsAgreed: boolean;
+}
+
+// 旧useAuthForm実装（パスワードリセット等で使用）
 
 // useAuthFormのオプション型
 interface UseAuthFormOptions<T extends ServerActionResult> {
@@ -120,4 +141,209 @@ export function hasFieldError(
   fieldName: string
 ): boolean {
   return Boolean(fieldErrors?.[fieldName]?.length);
+}
+
+// === react-hook-form実装（新実装） ===
+
+// バリデーションスキーマ
+const loginSchema = z.object({
+  email: z
+    .string()
+    .min(1, "メールアドレスを入力してください")
+    .email("有効なメールアドレスを入力してください"),
+  password: z.string().min(1, "パスワードを入力してください"),
+  rememberMe: z.boolean().optional(),
+});
+
+const registerSchema = z
+  .object({
+    name: z.string().min(1, "名前を入力してください").max(50, "名前は50文字以内で入力してください"),
+    email: z
+      .string()
+      .min(1, "メールアドレスを入力してください")
+      .email("有効なメールアドレスを入力してください"),
+    password: z
+      .string()
+      .min(8, "パスワードは8文字以上で入力してください")
+      .regex(
+        /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/,
+        "パスワードは大文字、小文字、数字を含む必要があります"
+      ),
+    passwordConfirm: z.string().min(1, "パスワード確認を入力してください"),
+    termsAgreed: z.boolean().refine((val) => val === true, "利用規約に同意してください"),
+  })
+  .refine((data) => data.password === data.passwordConfirm, {
+    message: "パスワードが一致しません",
+    path: ["passwordConfirm"],
+  });
+
+type LoginFormDataRHF = z.infer<typeof loginSchema>;
+type RegisterFormDataRHF = z.infer<typeof registerSchema>;
+
+interface UseAuthFormRHFOptions<T> {
+  enableFocusManagement?: boolean;
+  onSuccess?: (result: T) => void;
+  onError?: (error: string) => void;
+}
+
+// ログインフォーム用react-hook-formフック
+export function useLoginFormRHF<T extends ServerActionResult>(
+  action: (formData: FormData) => Promise<T>,
+  options: UseAuthFormRHFOptions<T> = {}
+) {
+  const [isPending, startTransition] = useTransition();
+  const router = useRouter();
+
+  const form = useForm<LoginFormDataRHF>({
+    resolver: zodResolver(loginSchema),
+    defaultValues: {
+      email: "",
+      password: "",
+      rememberMe: false,
+    },
+    mode: "onBlur",
+  });
+
+  const onSubmit = form.handleSubmit((data) => {
+    startTransition(async () => {
+      try {
+        // FormDataオブジェクトに変換
+        const formData = new FormData();
+        formData.append("email", data.email);
+        formData.append("password", data.password);
+        if (data.rememberMe) {
+          formData.append("rememberMe", "true");
+        }
+
+        const result = await action(formData);
+
+        if (result.success) {
+          if (options.onSuccess) {
+            options.onSuccess(result);
+          }
+
+          const redirectUrl = result.redirectUrl || "/home";
+          router.push(redirectUrl);
+        } else {
+          // サーバーエラーをフォームエラーとして設定
+          if (result.fieldErrors) {
+            Object.entries(result.fieldErrors).forEach(([field, errors]) => {
+              if (errors && errors.length > 0) {
+                form.setError(field as keyof LoginFormDataRHF, {
+                  type: "server",
+                  message: errors[0],
+                });
+              }
+            });
+          }
+
+          if (result.error) {
+            form.setError("root", {
+              type: "server",
+              message: result.error,
+            });
+
+            if (options.onError) {
+              options.onError(result.error);
+            }
+          }
+        }
+      } catch (_) {
+        form.setError("root", {
+          type: "manual",
+          message: "ログイン中にエラーが発生しました。もう一度お試しください。",
+        });
+      }
+    });
+  });
+
+  return {
+    form,
+    onSubmit,
+    isPending,
+  };
+}
+
+// 会員登録フォーム用react-hook-formフック
+export function useRegisterFormRHF<T extends ServerActionResult>(
+  action: (formData: FormData) => Promise<T>,
+  options: UseAuthFormRHFOptions<T> = {}
+) {
+  const [isPending, startTransition] = useTransition();
+  const router = useRouter();
+
+  const form = useForm<RegisterFormDataRHF>({
+    resolver: zodResolver(registerSchema),
+    defaultValues: {
+      name: "",
+      email: "",
+      password: "",
+      passwordConfirm: "",
+      termsAgreed: false,
+    },
+    mode: "onBlur",
+  });
+
+  const onSubmit = form.handleSubmit((data) => {
+    startTransition(async () => {
+      try {
+        // FormDataオブジェクトに変換
+        const formData = new FormData();
+        formData.append("name", data.name);
+        formData.append("email", data.email);
+        formData.append("password", data.password);
+        formData.append("passwordConfirm", data.passwordConfirm);
+        formData.append("termsAgreed", data.termsAgreed.toString());
+
+        const result = await action(formData);
+
+        if (result.success) {
+          if (options.onSuccess) {
+            options.onSuccess(result);
+          }
+
+          if (result.needsEmailConfirmation) {
+            router.push("/auth/verify-email");
+          } else {
+            const redirectUrl = result.redirectUrl || "/home";
+            router.push(redirectUrl);
+          }
+        } else {
+          // サーバーエラーをフォームエラーとして設定
+          if (result.fieldErrors) {
+            Object.entries(result.fieldErrors).forEach(([field, errors]) => {
+              if (errors && errors.length > 0) {
+                form.setError(field as keyof RegisterFormDataRHF, {
+                  type: "server",
+                  message: errors[0],
+                });
+              }
+            });
+          }
+
+          if (result.error) {
+            form.setError("root", {
+              type: "server",
+              message: result.error,
+            });
+
+            if (options.onError) {
+              options.onError(result.error);
+            }
+          }
+        }
+      } catch (_) {
+        form.setError("root", {
+          type: "manual",
+          message: "会員登録中にエラーが発生しました。もう一度お試しください。",
+        });
+      }
+    });
+  });
+
+  return {
+    form,
+    onSubmit,
+    isPending,
+  };
 }

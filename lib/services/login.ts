@@ -4,6 +4,7 @@ import { checkRateLimit, createRateLimitStore } from "@/lib/rate-limit/index";
 import { RATE_LIMIT_CONFIG } from "@/config/security";
 import { AccountLockoutService, TimingAttackProtection, InputSanitizer } from "@/lib/auth-security";
 import { z } from "zod";
+import { formatUtcToJst } from "@/lib/utils/timezone";
 
 // ログイン関連の型定義
 export interface LoginInput {
@@ -67,8 +68,9 @@ export class LoginService {
   static async checkRateLimit(request: NextRequest): Promise<RateLimitCheckResult> {
     try {
       // IPアドレス取得
-      const ip = request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip") || "unknown";
-      
+      const ip =
+        request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip") || "unknown";
+
       const store = await createRateLimitStore();
       const result = await checkRateLimit(store, `login_${ip}`, RATE_LIMIT_CONFIG.login);
       return {
@@ -102,7 +104,7 @@ export class LoginService {
       const lockoutStatus = await AccountLockoutService.checkLockoutStatus(email);
       if (lockoutStatus.isLocked) {
         throw new Error(
-          `アカウントがロックされています。${lockoutStatus.lockoutExpiresAt?.toLocaleString("ja-JP")}に解除されます。`
+          `アカウントがロックされています。${lockoutStatus.lockoutExpiresAt ? formatUtcToJst(lockoutStatus.lockoutExpiresAt, "yyyy/MM/dd HH:mm") : ""}に解除されます。`
         );
       }
 
@@ -119,7 +121,7 @@ export class LoginService {
 
         if (failureResult.isLocked) {
           throw new Error(
-            `ログイン失敗回数が上限に達しました。アカウントが${failureResult.lockoutExpiresAt?.toLocaleString("ja-JP")}まで30分間ロックされます。`
+            `ログイン失敗回数が上限に達しました。アカウントが${failureResult.lockoutExpiresAt ? formatUtcToJst(failureResult.lockoutExpiresAt, "yyyy/MM/dd HH:mm") : ""}まで30分間ロックされます。`
           );
         }
 

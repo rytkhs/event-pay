@@ -6,6 +6,12 @@ import {
   mockUpstashRateLimit,
   mockUpstashRedis,
 } from "../mocks/base/external-services.mjs";
+import {
+  mockUseEventEditForm,
+  mockUseEventForm,
+  mockUseRouter,
+  mockUseSearchParams,
+} from "../mocks/base/hooks.mjs";
 
 class MockFactory {
   static instance = null;
@@ -66,6 +72,20 @@ class MockFactory {
       mocks.redis = mockUpstashRedis();
     }
 
+    if (features.auth) {
+      mocks.supabase.auth.getUser = jest.fn(() =>
+        Promise.resolve({ data: { user: null }, error: null })
+      );
+    }
+
+    // フック用モック
+    mocks.hooks = {
+      useEventEditForm: mockUseEventEditForm,
+      useEventForm: mockUseEventForm,
+      useRouter: mockUseRouter,
+      useSearchParams: mockUseSearchParams,
+    };
+
     this.mocks.set("current", mocks);
     return mocks;
   }
@@ -107,8 +127,40 @@ class MockFactory {
     mocks.router = mockRouter();
     mocks.searchParams = mockSearchParams();
 
+    // Server Actions Mocks for integration testing
+    if (features.serverActions) {
+      mocks.serverActions = this.createServerActionsMocks();
+    }
+
     this.mocks.set("current", mocks);
     return mocks;
+  }
+
+  /**
+   * Server Actions用の型安全なMockを作成
+   */
+  createServerActionsMocks() {
+    const createMockAction = (name) => {
+      // Jest Mock関数として完全に機能するMockを作成
+      const mockFn = jest.fn();
+      
+      // デフォルトの成功レスポンス
+      mockFn.mockResolvedValue({
+        success: true,
+        message: `${name} completed successfully`
+      });
+
+      return mockFn;
+    };
+
+    return {
+      loginAction: createMockAction('login'),
+      registerAction: createMockAction('register'), 
+      resetPasswordAction: createMockAction('resetPassword'),
+      createEventAction: createMockAction('createEvent'),
+      updateEventAction: createMockAction('updateEvent'),
+      deleteEventAction: createMockAction('deleteEvent'),
+    };
   }
 
   createEnhancedSupabaseMock(data = {}) {
@@ -123,21 +175,77 @@ class MockFactory {
 
     // Enhanced query builder with data simulation
     const createEnhancedQueryBuilder = (table) => {
-      const baseBuilder = baseMock.from(table);
+      // チェーン可能なクエリビルダーを作成
+      const createChainableBuilder = (customMethods = {}) => {
+        const builder = {
+          select: jest.fn().mockReturnThis(),
+          insert: jest.fn().mockReturnThis(),
+          update: jest.fn().mockReturnThis(),
+          delete: jest.fn().mockReturnThis(),
+          eq: jest.fn().mockReturnThis(),
+          neq: jest.fn().mockReturnThis(),
+          gt: jest.fn().mockReturnThis(),
+          gte: jest.fn().mockReturnThis(),
+          lt: jest.fn().mockReturnThis(),
+          lte: jest.fn().mockReturnThis(),
+          like: jest.fn().mockReturnThis(),
+          ilike: jest.fn().mockReturnThis(),
+          is: jest.fn().mockReturnThis(),
+          in: jest.fn().mockReturnThis(),
+          contains: jest.fn().mockReturnThis(),
+          containedBy: jest.fn().mockReturnThis(),
+          rangeGt: jest.fn().mockReturnThis(),
+          rangeGte: jest.fn().mockReturnThis(),
+          rangeLt: jest.fn().mockReturnThis(),
+          rangeLte: jest.fn().mockReturnThis(),
+          rangeAdjacent: jest.fn().mockReturnThis(),
+          overlaps: jest.fn().mockReturnThis(),
+          textSearch: jest.fn().mockReturnThis(),
+          match: jest.fn().mockReturnThis(),
+          not: jest.fn().mockReturnThis(),
+          or: jest.fn().mockReturnThis(),
+          filter: jest.fn().mockReturnThis(),
+          order: jest.fn().mockReturnThis(),
+          limit: jest.fn().mockReturnThis(),
+          range: jest.fn().mockReturnThis(),
+          abortSignal: jest.fn().mockReturnThis(),
+          single: jest.fn().mockReturnThis(),
+          maybeSingle: jest.fn().mockReturnThis(),
+          csv: jest.fn().mockReturnThis(),
+          geojson: jest.fn().mockReturnThis(),
+          explain: jest.fn().mockReturnThis(),
+          rollback: jest.fn().mockReturnThis(),
+          returns: jest.fn().mockReturnThis(),
+          then: jest.fn((resolve) => {
+            const tableData = mockData.get(table) || [];
 
-      // Override the then method to return actual test data
-      baseBuilder.then = jest.fn((resolve) => {
-        const tableData = mockData.get(table) || [];
-        return resolve({ data: tableData, error: null });
-      });
+            // selectが{ count: "exact", head: true }で呼ばれた場合はcountのみを返す
+            const selectCall = builder.select.mock.calls[0];
+            if (
+              selectCall &&
+              selectCall[1] &&
+              selectCall[1].count === "exact" &&
+              selectCall[1].head === true
+            ) {
+              return resolve({ count: tableData.length, error: null });
+            }
 
-      // Override select to return data immediately for testing
-      baseBuilder.select = jest.fn(() => {
-        const tableData = mockData.get(table) || [];
-        return Promise.resolve({ data: tableData, error: null });
-      });
+            return resolve({ data: tableData, error: null });
+          }),
+          ...customMethods,
+        };
 
-      return baseBuilder;
+        // 全てのメソッドがbuilderを返すように設定（カスタムメソッド以外）
+        Object.keys(builder).forEach((key) => {
+          if (typeof builder[key] === "function" && !customMethods[key] && key !== "then") {
+            builder[key].mockReturnValue(builder);
+          }
+        });
+
+        return builder;
+      };
+
+      return createChainableBuilder();
     };
 
     return {

@@ -3,9 +3,9 @@ module.exports = {
     collect: {
       url: [
         "http://localhost:3000/",
-        "http://localhost:3000/auth/login",
-        "http://localhost:3000/auth/register",
-        "http://localhost:3000/auth/reset-password",
+        "http://localhost:3000/login",
+        "http://localhost:3000/register",
+        "http://localhost:3000/reset-password",
       ],
       startServerCommand: "npm start",
       startServerReadyPattern: "- Local:",

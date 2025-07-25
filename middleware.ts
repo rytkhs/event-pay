@@ -42,16 +42,16 @@ export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
 
   // 認証が必要なルート
-  const protectedRoutes = ["/dashboard", "/events", "/profile", "/admin"];
+  const protectedRoutes = ["/home", "/events", "/profile", "/admin"];
   // 認証済みユーザーがアクセスできないルート
-  const authRoutes = ["/auth/login", "/auth/register"];
+  const authRoutes = ["/login", "/register"];
   // 公開ルート（認証不要）
   const publicRoutes = ["/auth", "/api/auth", "/", "/favicon.ico", "/_next"];
 
   // 保護されたルートへの未認証アクセス
   const isProtectedRoute = protectedRoutes.some((route) => pathname.startsWith(route));
   if (isProtectedRoute && !user) {
-    const redirectUrl = new URL("/auth/login", request.url);
+    const redirectUrl = new URL("/login", request.url);
     redirectUrl.searchParams.set("redirectTo", pathname);
     return NextResponse.redirect(redirectUrl);
   }
@@ -59,13 +59,13 @@ export async function middleware(request: NextRequest) {
   // 認証済みユーザーが認証ページにアクセス
   const isAuthRoute = authRoutes.some((route) => pathname.startsWith(route));
   if (isAuthRoute && user) {
-    return NextResponse.redirect(new URL("/dashboard", request.url));
+    return NextResponse.redirect(new URL("/home", request.url));
   }
 
   // 公開ルート以外で未認証の場合はすべて保護されたルートとして扱う
   const isPublicRoute = publicRoutes.some((route) => pathname.startsWith(route));
   if (!isPublicRoute && !user) {
-    const redirectUrl = new URL("/auth/login", request.url);
+    const redirectUrl = new URL("/login", request.url);
     redirectUrl.searchParams.set("redirectTo", pathname);
     return NextResponse.redirect(redirectUrl);
   }

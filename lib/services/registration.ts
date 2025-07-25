@@ -48,8 +48,9 @@ export class RegistrationService {
   static async checkRateLimit(request: NextRequest): Promise<RegistrationRateLimitResult> {
     try {
       // IPアドレス取得
-      const ip = request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip") || "unknown";
-      
+      const ip =
+        request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip") || "unknown";
+
       const store = await createRateLimitStore();
       const result = await checkRateLimit(store, `register_${ip}`, RATE_LIMIT_CONFIG.register);
 
