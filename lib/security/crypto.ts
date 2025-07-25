@@ -11,13 +11,23 @@ export function generateSecureToken(length: number = 32): string {
 
 /**
  * 6桁の数字OTPコードを生成
+ * リジェクションサンプリングを使用して統計的バイアスを除去
  * @returns 6桁の数字文字列
  */
 export function generateOtpCode(): string {
-  // 暗号学的に安全な乱数で6桁のコードを生成
-  const buffer = randomBytes(4);
-  const num = buffer.readUInt32BE(0);
-  return (num % 1000000).toString().padStart(6, "0");
+  const max = 1000000; // 10^6
+  const maxValidValue = Math.floor(0xFFFFFFFF / max) * max; // バイアス除去のための閾値
+  let randomNumber: number;
+
+  // リジェクションサンプリング：バイアス除去のため安全な範囲まで再試行
+  do {
+    // 4バイト（32ビット）の暗号学的に安全な乱数を生成
+    const buffer = randomBytes(4);
+    randomNumber = buffer.readUInt32BE(0);
+  } while (randomNumber >= maxValidValue);
+
+  const otp = randomNumber % max;
+  return otp.toString().padStart(6, "0");
 }
 
 /**

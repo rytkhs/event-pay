@@ -9,21 +9,47 @@ describe("EventCreateForm Security Tests", () => {
   describe("XSS防止テスト", () => {
     it("sanitizeForEventPay関数がXSS攻撃を防ぐ", () => {
       const maliciousInputs = [
-        '<script>alert("XSS")</script>',
-        '<img src=x onerror=alert("XSS")>',
-        '<svg onload=alert("XSS")>',
-        'javascript:alert("XSS")',
+        {
+          input: '<script>alert("XSS")</script>',
+          shouldNotContain: ["<script>", "alert"],
+        },
+        {
+          input: '<img src=x onerror=alert("XSS")>',
+          shouldNotContain: ["<img", "onerror", "alert"],
+        },
+        {
+          input: '<svg onload=alert("XSS")>',
+          shouldNotContain: ["<svg", "onload", "alert"],
+        },
+        {
+          input: 'javascript:alert("XSS")',
+          // URLスキームはテキストとして残るが、HTMLコンテキストでは無害
+          shouldNotContain: [],
+        },
+        {
+          input: 'data:text/html,<script>alert("XSS")</script>',
+          // HTMLタグは除去されるが、data:スキーム自体は残る
+          shouldNotContain: ["<script>"],
+        },
+        {
+          input: 'vbscript:msgbox("XSS")',
+          // vbscriptスキームはテキストとして残るが、HTMLコンテキストでは無害
+          shouldNotContain: [],
+        },
       ];
 
-      maliciousInputs.forEach((input) => {
+      maliciousInputs.forEach(({ input, shouldNotContain }) => {
         const sanitized = sanitizeForEventPay(input);
+
+        // 共通のHTMLタグ除去チェック
         expect(sanitized).not.toContain("<script>");
         expect(sanitized).not.toContain("<img");
         expect(sanitized).not.toContain("<svg");
-        // javascript:スキームは文字列として残るが、HTMLコンテキストでは無害
-        if (!input.startsWith("javascript:")) {
-          expect(sanitized).not.toContain("alert");
-        }
+
+        // 個別の除去チェック
+        shouldNotContain.forEach((forbidden) => {
+          expect(sanitized).not.toContain(forbidden);
+        });
       });
     });
 
