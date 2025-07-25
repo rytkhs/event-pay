@@ -48,7 +48,7 @@ export function EventEditForm({ event, attendeeCount, onSubmit, serverError }: E
     onSubmit,
   });
 
-  const handleSubmit = async (data: EventEditFormDataRHF) => {
+  const handleSubmit = async (_data: EventEditFormDataRHF) => {
     // 変更検出
     const detectedChanges = changes.detectChanges();
 
@@ -71,7 +71,7 @@ export function EventEditForm({ event, attendeeCount, onSubmit, serverError }: E
     try {
       const formData = form.getValues();
       await actions.submitFormWithChanges(formData, confirmedChanges);
-    } catch (_) {
+    } catch (_error) {
       form.setError("root", {
         type: "manual",
         message: "更新に失敗しました。もう一度お試しください。",

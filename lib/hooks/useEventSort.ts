@@ -76,7 +76,7 @@ export function useEventSort(options: UseEventSortOptions = {}) {
   const setSortBy = useCallback(
     (sortBy: SortBy) => {
       if (!isValidSortBy(sortBy)) {
-        // 無効なソート条件 - 開催日時ソートに設定
+        console.warn("無効なソート条件です。開催日時ソートに設定します。");
         sortBy = DEFAULT_SORT_BY;
       }
       const newSortOptions = { ...sortOptions, sortBy };
@@ -88,7 +88,7 @@ export function useEventSort(options: UseEventSortOptions = {}) {
   const setSortOrder = useCallback(
     (sortOrder: SortOrder) => {
       if (!isValidSortOrder(sortOrder)) {
-        // 無効なソート順序 - 昇順に設定
+        console.warn("無効なソート順序です。昇順に設定します。");
         sortOrder = DEFAULT_SORT_ORDER;
       }
       const newSortOptions = { ...sortOptions, sortOrder };
