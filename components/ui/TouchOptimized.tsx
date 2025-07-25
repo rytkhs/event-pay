@@ -109,7 +109,6 @@ const TouchOptimized = forwardRef<
         try {
           onClick();
         } catch (error) {
-          // Error handling for onClick
           if (process.env.NODE_ENV === "development") {
             console.error("TouchOptimized onClick error:", error);
           }
@@ -139,7 +138,6 @@ const TouchOptimized = forwardRef<
             try {
               onClick();
             } catch (error) {
-              // Error handling for onClick
               if (process.env.NODE_ENV === "development") {
                 console.error("TouchOptimized onClick error:", error);
               }

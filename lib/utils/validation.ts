@@ -115,8 +115,7 @@ export function safeValidate<T>(validator: () => T, defaultValue: T, errorMessag
   try {
     return validator();
   } catch (error) {
-    // Error handling for validation
-    if (process.env.NODE_ENV === "development" && errorMessage) {
+    if (errorMessage && process.env.NODE_ENV === "development") {
       console.error(errorMessage, error);
     }
     return defaultValue;

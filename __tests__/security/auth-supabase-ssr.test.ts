@@ -58,7 +58,7 @@ describe("Supabase SSR設定テスト", () => {
   });
 
   describe("2.2.1 @supabase/ssr設定テスト", () => {
-    test("サーバークライアントが正しく初期化される", () => {
+    it("サーバークライアントが正しく初期化される", () => {
       // createServerClient()の設定テスト
       expect(() => {
         const supabase = createServerClient(
@@ -86,7 +86,7 @@ describe("Supabase SSR設定テスト", () => {
       }).not.toThrow();
     });
 
-    test("クライアントクライアントが正しく初期化される", () => {
+    it("クライアントクライアントが正しく初期化される", () => {
       // createBrowserClient()の設定テスト
       expect(() => {
         const supabase = createBrowserClient(
@@ -101,7 +101,7 @@ describe("Supabase SSR設定テスト", () => {
       }).not.toThrow();
     });
 
-    test("HTTPOnly Cookieが正しく設定される", () => {
+    it("HTTPOnly Cookieが正しく設定される", () => {
       const supabase = createServerClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -131,11 +131,10 @@ describe("Supabase SSR設定テスト", () => {
       );
 
       // 認証処理をシミュレートしてCookie設定をテスト
-      // 注意: この時点では認証機能が実装されていないため、これらのテストは失敗します
       expect(supabase).toBeDefined();
     });
 
-    test("セッション有効期限が24時間に設定される", () => {
+    it("セッション有効期限が24時間に設定される", () => {
       const supabase = createServerClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -165,7 +164,7 @@ describe("Supabase SSR設定テスト", () => {
   });
 
   describe("Cookie設定の詳細検証", () => {
-    test("セキュアCookie属性の検証", () => {
+    it("セキュアCookie属性の検証", () => {
       const supabase = createServerClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -195,7 +194,7 @@ describe("Supabase SSR設定テスト", () => {
       expect(supabase).toBeDefined();
     });
 
-    test("Cookie名の標準化確認", () => {
+    it("Cookie名の標準化確認", () => {
       const cookieNames: string[] = [];
 
       const supabase = createServerClient(
@@ -223,7 +222,7 @@ describe("Supabase SSR設定テスト", () => {
   });
 
   describe("エラーハンドリングテスト", () => {
-    test("無効な環境変数でのクライアント初期化エラー", () => {
+    it("無効な環境変数でのクライアント初期化エラー", () => {
       expect(() => {
         createServerClient(
           "", // 無効なURL
@@ -239,7 +238,7 @@ describe("Supabase SSR設定テスト", () => {
       }).toThrow();
     });
 
-    test("無効なAnonキーでのクライアント初期化エラー", () => {
+    it("無効なAnonキーでのクライアント初期化エラー", () => {
       expect(() => {
         createServerClient(
           process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -255,7 +254,7 @@ describe("Supabase SSR設定テスト", () => {
       }).toThrow();
     });
 
-    test("Cookie操作エラーのハンドリング", () => {
+    it("Cookie操作エラーのハンドリング", () => {
       // Phase 6修正: エラーハンドリング改善（ログ出力を抑制）
       const errorHandlingCookieHandler = {
         get: (name: string) => {
@@ -286,7 +285,7 @@ describe("Supabase SSR設定テスト", () => {
   });
 
   describe("Next.js App Router統合テスト", () => {
-    test("Server Componentsでの使用想定", async () => {
+    it("Server Componentsでの使用想定", async () => {
       // Server Components環境をシミュレート
       const getCookies = jest.fn(() => mockCookieStore.getAll());
 
@@ -313,7 +312,7 @@ describe("Supabase SSR設定テスト", () => {
       expect(getCookies).toBeDefined();
     });
 
-    test("Client Componentsでの使用想定", () => {
+    it("Client Componentsでの使用想定", () => {
       // Client Components環境をシミュレート
       const supabase = createBrowserClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -324,7 +323,7 @@ describe("Supabase SSR設定テスト", () => {
       expect(supabase.auth.onAuthStateChange).toBeDefined();
     });
 
-    test("Route Handlerでの使用想定", () => {
+    it("Route Handlerでの使用想定", () => {
       // Route Handler環境をシミュレート
       const mockRequest = {
         cookies: mockCookieStore,

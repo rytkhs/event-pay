@@ -12,7 +12,7 @@ export default async function Home() {
 
   // 認証済みユーザーはダッシュボードにリダイレクト
   if (user && !error) {
-    redirect("/dashboard");
+    redirect("/home");
   }
 
   return (
@@ -33,14 +33,14 @@ export default async function Home() {
 
             <div className="space-y-4">
               <Link
-                href="/auth/login"
+                href="/login"
                 className="w-full flex items-center justify-center px-4 py-3 border border-transparent text-base font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
               >
                 ログイン
               </Link>
 
               <Link
-                href="/auth/register"
+                href="/register"
                 className="w-full flex items-center justify-center px-4 py-3 border border-gray-300 text-base font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
               >
                 新規登録

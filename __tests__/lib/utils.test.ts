@@ -7,38 +7,38 @@ import { cn } from "@/lib/utils";
 
 describe("lib/utils", () => {
   describe("cn function", () => {
-    test("基本的なクラス名結合が正しく動作する", () => {
+    it("基本的なクラス名結合が正しく動作する", () => {
       const result = cn("bg-red-500", "text-white");
       expect(result).toBe("bg-red-500 text-white");
     });
 
-    test("条件付きクラス名が正しく処理される", () => {
+    it("条件付きクラス名が正しく処理される", () => {
       const isActive = true;
       const result = cn("base-class", isActive && "active-class", !isActive && "inactive-class");
       expect(result).toBe("base-class active-class");
     });
 
-    test("重複するクラス名がマージされる", () => {
+    it("重複するクラス名がマージされる", () => {
       const result = cn("p-4", "p-2"); // Tailwindの競合クラス
       expect(result).toBe("p-2"); // 後の方が優先される
     });
 
-    test("空の入力でも正しく動作する", () => {
+    it("空の入力でも正しく動作する", () => {
       const result = cn();
       expect(result).toBe("");
     });
 
-    test("nullやundefinedが正しく無視される", () => {
+    it("nullやundefinedが正しく無視される", () => {
       const result = cn("text-blue-500", null, undefined, false, "font-bold");
       expect(result).toBe("text-blue-500 font-bold");
     });
 
-    test("配列形式の入力が正しく処理される", () => {
+    it("配列形式の入力が正しく処理される", () => {
       const result = cn(["bg-white", "border"], "rounded-lg");
       expect(result).toBe("bg-white border rounded-lg");
     });
 
-    test("オブジェクト形式の条件付きクラスが正しく処理される", () => {
+    it("オブジェクト形式の条件付きクラスが正しく処理される", () => {
       const result = cn({
         "text-red-500": true,
         "text-green-500": false,
@@ -47,7 +47,7 @@ describe("lib/utils", () => {
       expect(result).toBe("text-red-500 font-semibold");
     });
 
-    test("複雑な組み合わせが正しく動作する", () => {
+    it("複雑な組み合わせが正しく動作する", () => {
       const variant = "primary" as "primary" | "secondary";
       const size = "lg" as "sm" | "lg";
       const disabled = false;
@@ -64,7 +64,7 @@ describe("lib/utils", () => {
       expect(result).toBe("btn btn-primary btn-lg");
     });
 
-    test("Tailwindクラスの競合解決が正しく動作する", () => {
+    it("Tailwindクラスの競合解決が正しく動作する", () => {
       // marginの競合
       const result1 = cn("m-2", "m-4");
       expect(result1).toBe("m-4");

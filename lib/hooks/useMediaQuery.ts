@@ -11,16 +11,32 @@ export function useMediaQuery(query: string): boolean {
     if (typeof window === "undefined" || !window.matchMedia) return;
 
     const mediaQuery = window.matchMedia(query);
-    setMatches(mediaQuery.matches);
+    if (!mediaQuery) return;
+
+    setMatches(mediaQuery.matches || false);
 
     const handleChange = (event: MediaQueryListEvent) => {
       setMatches(event.matches);
     };
 
-    mediaQuery.addEventListener("change", handleChange);
+    try {
+      mediaQuery.addEventListener("change", handleChange);
+    } catch {
+      // Fallback for older browsers or test environments
+      if (mediaQuery.addListener) {
+        mediaQuery.addListener(handleChange);
+      }
+    }
 
     return () => {
-      mediaQuery.removeEventListener("change", handleChange);
+      try {
+        mediaQuery.removeEventListener("change", handleChange);
+      } catch {
+        // Fallback for older browsers or test environments
+        if (mediaQuery.removeListener) {
+          mediaQuery.removeListener(handleChange);
+        }
+      }
     };
   }, [query]);
 
