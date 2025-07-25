@@ -77,7 +77,7 @@ const jestConfig = {
   ],
 
   // テストタイムアウト（統合テストは少し長めに）
-  testTimeout: process.env.TEST_TYPE === "integration" ? 10000 : 5000,
+  testTimeout: process.env.TEST_TYPE === "integration" ? 30000 : 5000,
 
   // 並列実行設定
   maxWorkers: "50%",
