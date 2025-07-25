@@ -279,8 +279,16 @@ jobs:
       - name: Run database migrations
         run: npx supabase db reset
 
+      - name: Set Supabase environment variables
+        run: |
+          echo "NEXT_PUBLIC_SUPABASE_URL=$(npx supabase status --format json | jq -r '.api_url')" >> $GITHUB_ENV
+          echo "NEXT_PUBLIC_SUPABASE_ANON_KEY=$(npx supabase status --format json | jq -r '.anon_key')" >> $GITHUB_ENV
+
       - name: Run integration tests
         run: npm run test:integration
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ env.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ env.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
 
   # 7. E2Eテスト (Playwright)
   e2e-tests:
