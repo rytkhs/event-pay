@@ -7,8 +7,12 @@
  * @description Next.js認証ミドルウェアとCSRF保護テスト（AUTH-001）
  */
 
+import { UnifiedMockFactory } from "@/__tests__/helpers/unified-mock-factory";
 import { jest } from "@jest/globals";
 import { NextRequest, NextResponse } from "next/server";
+
+// 統一モック設定を適用
+UnifiedMockFactory.setupCommonMocks();
 
 // Supabaseクライアントのモック
 const mockSupabaseSession = {
@@ -148,7 +152,7 @@ describe("認証ミドルウェアテスト", () => {
   });
 
   describe("✅ 基本的な認証フロー", () => {
-    test("未認証ユーザーは保護されたパスからログインページにリダイレクト", async () => {
+    it("未認証ユーザーは保護されたパスからログインページにリダイレクト", async () => {
       // Arrange
       const request = new NextRequest("https://example.com/home");
 
@@ -161,7 +165,7 @@ describe("認証ミドルウェアテスト", () => {
       expect(response.headers.get("location")).toContain("redirectTo=%2Fhome");
     });
 
-    test("Cookieがある場合でも現在の実装では認証失敗してリダイレクト", async () => {
+    it("Cookieがある場合でも現在の実装では認証失敗してリダイレクト", async () => {
       // デバッグ結果に基づく：Cookieがあってもリダイレクトされる
       const request = new NextRequest("https://example.com/home", {
         headers: { cookie: "supabase-auth-token=valid-session-token" },
@@ -174,7 +178,7 @@ describe("認証ミドルウェアテスト", () => {
       expect(response.headers.get("location")).toContain("/login");
     });
 
-    test("認証関連ページは通常通りアクセス可能", async () => {
+    it("認証関連ページは通常通りアクセス可能", async () => {
       // ログインページは認証チェックなしでアクセス可能
       const request = new NextRequest("https://example.com/login");
 
@@ -186,7 +190,7 @@ describe("認証ミドルウェアテスト", () => {
   });
 
   describe("🛡️ パスベースアクセス制御", () => {
-    test("静的ファイルはミドルウェア処理をスキップ", async () => {
+    it("静的ファイルはミドルウェア処理をスキップ", async () => {
       const request = new NextRequest("https://example.com/favicon.ico");
       const response = await middleware(request);
 
@@ -194,21 +198,21 @@ describe("認証ミドルウェアテスト", () => {
       expect(response.headers.get("location")).toBeNull();
     });
 
-    test("APIルートはミドルウェア処理をスキップ", async () => {
+    it("APIルートはミドルウェア処理をスキップ", async () => {
       const request = new NextRequest("https://example.com/api/login");
       const response = await middleware(request);
 
       expect(response.status).toBe(200);
     });
 
-    test("Next.js内部パスはスキップ", async () => {
+    it("Next.js内部パスはスキップ", async () => {
       const request = new NextRequest("https://example.com/_next/static/chunk.js");
       const response = await middleware(request);
 
       expect(response.status).toBe(200);
     });
 
-    test("保護されていないパス（ルート）は認証チェックなしでアクセス可能", async () => {
+    it("保護されていないパス（ルート）は認証チェックなしでアクセス可能", async () => {
       const request = new NextRequest("https://example.com/");
       const response = await middleware(request);
 
@@ -217,7 +221,7 @@ describe("認証ミドルウェアテスト", () => {
   });
 
   describe("🔐 セキュリティヘッダー設定", () => {
-    test("認証関連ページでセキュリティヘッダーが設定される", async () => {
+    it("認証関連ページでセキュリティヘッダーが設定される", async () => {
       // デバッグ結果に基づく：ログインページでヘッダーが設定される
       const request = new NextRequest("https://example.com/login");
       const response = await middleware(request);
@@ -235,7 +239,7 @@ describe("認証ミドルウェアテスト", () => {
       if (xssProtection) expect(xssProtection).toBe("1; mode=block");
     });
 
-    test("保護されたパスへのリダイレクト時はヘッダー設定なし", async () => {
+    it("保護されたパスへのリダイレクト時はヘッダー設定なし", async () => {
       // リダイレクト応答にはセキュリティヘッダーが設定されない
       const request = new NextRequest("https://example.com/home");
       const response = await middleware(request);
@@ -246,7 +250,7 @@ describe("認証ミドルウェアテスト", () => {
   });
 
   describe("🚀 パフォーマンス最適化", () => {
-    test("早期リターン条件が正しく動作", async () => {
+    it("早期リターン条件が正しく動作", async () => {
       const testCases = [
         "/_next/static/css/app.css",
         "/_next/image/logo.png",
@@ -264,7 +268,7 @@ describe("認証ミドルウェアテスト", () => {
       }
     });
 
-    test("保護されたパスの一貫したリダイレクト動作", async () => {
+    it("保護されたパスの一貫したリダイレクト動作", async () => {
       const protectedPaths = ["/home", "/events", "/profile", "/admin"];
 
       for (const path of protectedPaths) {
@@ -281,12 +285,8 @@ describe("認証ミドルウェアテスト", () => {
   });
 
   describe("⚠️ エラーハンドリング", () => {
-    test("不正なパスでもセキュリティが保持される", async () => {
-      const maliciousPaths = [
-        "/home/../admin",
-        "/events?redirect=evil.com",
-        "/profile#malicious",
-      ];
+    it("不正なパスでもセキュリティが保持される", async () => {
+      const maliciousPaths = ["/home/../admin", "/events?redirect=evil.com", "/profile#malicious"];
 
       for (const path of maliciousPaths) {
         const request = new NextRequest(`https://example.com${path}`);
@@ -300,7 +300,7 @@ describe("認証ミドルウェアテスト", () => {
   });
 
   describe("🔄 CSRF攻撃対策", () => {
-    test("異なるOriginからのアクセスも通常の認証フローで処理", async () => {
+    it("異なるOriginからのアクセスも通常の認証フローで処理", async () => {
       const request = new NextRequest("https://example.com/home", {
         headers: {
           Origin: "https://malicious-site.com",
@@ -315,7 +315,7 @@ describe("認証ミドルウェアテスト", () => {
       expect(response.headers.get("location")).toContain("/login");
     });
 
-    test("同一オリジンからでも現在は認証失敗でリダイレクト", async () => {
+    it("同一オリジンからでも現在は認証失敗でリダイレクト", async () => {
       // 現在の実装では認証が正しく動作していない可能性があるため
       const request = new NextRequest("https://example.com/home", {
         headers: {
@@ -338,7 +338,7 @@ describe("認証ミドルウェアテスト", () => {
       jest.clearAllMocks();
     });
 
-    test("期限切れトークンでのアクセス時に適切にリダイレクト", async () => {
+    it("期限切れトークンでのアクセス時に適切にリダイレクト", async () => {
       // Arrange: 現在の実装に合わせてリダイレクトを想定
       const request = createMockRequest("https://example.com/home", {
         "supabase-auth-token": "expired-token",
@@ -353,7 +353,7 @@ describe("認証ミドルウェアテスト", () => {
       expect(response.headers.get("location")).toContain("redirectTo=%2Fhome");
     });
 
-    test("無効なトークンでのアクセス時のセキュリティ処理", async () => {
+    it("無効なトークンでのアクセス時のセキュリティ処理", async () => {
       // Arrange: 無効なトークンでのリクエスト
       const request = createMockRequest("https://example.com/events", {
         "supabase-auth-token": "invalid-malformed-token",
@@ -368,7 +368,7 @@ describe("認証ミドルウェアテスト", () => {
       expect(response.headers.get("location")).toContain("redirectTo=%2Fevents");
     });
 
-    test("トークンなしでの保護されたパスアクセス", async () => {
+    it("トークンなしでの保護されたパスアクセス", async () => {
       // Arrange: トークンなしのリクエスト
       const request = createMockRequest("https://example.com/profile");
 
@@ -381,7 +381,7 @@ describe("認証ミドルウェアテスト", () => {
       expect(response.headers.get("location")).toContain("redirectTo=%2Fprofile");
     });
 
-    test("セッション取得エラー時の適切なフォールバック処理", async () => {
+    it("セッション取得エラー時の適切なフォールバック処理", async () => {
       // Arrange: 何らかのエラーを想定したトークン
       const request = createMockRequest("https://example.com/home", {
         "supabase-auth-token": "error-causing-token",
@@ -395,7 +395,7 @@ describe("認証ミドルウェアテスト", () => {
       expect(response.headers.get("location")).toContain("/login");
     });
 
-    test("静的ファイルアクセスは認証チェックをスキップ", async () => {
+    it("静的ファイルアクセスは認証チェックをスキップ", async () => {
       // Arrange: 静的ファイルへのリクエスト
       const request = createMockRequest("https://example.com/_next/static/css/app.css");
 
@@ -407,7 +407,7 @@ describe("認証ミドルウェアテスト", () => {
       expect(response.headers.get("location")).toBeNull();
     });
 
-    test("APIルートは認証チェックをスキップ", async () => {
+    it("APIルートは認証チェックをスキップ", async () => {
       // Arrange: APIルートへのリクエスト
       const request = createMockRequest("https://example.com/api/test");
 
@@ -419,7 +419,7 @@ describe("認証ミドルウェアテスト", () => {
       expect(response.headers.get("location")).toBeNull();
     });
 
-    test("認証不要ページは通常通りアクセス可能", async () => {
+    it("認証不要ページは通常通りアクセス可能", async () => {
       // Arrange: 認証不要ページ（ルート）へのリクエスト
       const request = createMockRequest("https://example.com/");
 
@@ -431,7 +431,7 @@ describe("認証ミドルウェアテスト", () => {
       expect(response.headers.get("location")).toBeNull();
     });
 
-    test("ミドルウェアのセキュリティ処理の一貫性", async () => {
+    it("ミドルウェアのセキュリティ処理の一貫性", async () => {
       // Arrange: 複数の保護されたパスをテスト
       const protectedPaths = ["/home", "/events", "/profile"];
 
@@ -450,7 +450,7 @@ describe("認証ミドルウェアテスト", () => {
       }
     });
 
-    test("トークン検証失敗時のセキュアなエラーハンドリング", async () => {
+    it("トークン検証失敗時のセキュアなエラーハンドリング", async () => {
       // Arrange: 様々な不正なトークンパターンをテスト
       const invalidTokens = [
         "malformed.jwt.token",
@@ -477,7 +477,7 @@ describe("認証ミドルウェアテスト", () => {
   });
 
   describe("📋 実際の動作パターン", () => {
-    test("現在のミドルウェアの実際の認証フロー", async () => {
+    it("現在のミドルウェアの実際の認証フロー", async () => {
       // 1. 未認証ユーザーの保護されたパスアクセス
       let request = new NextRequest("https://example.com/home");
       let response = await middleware(request);

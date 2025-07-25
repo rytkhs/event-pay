@@ -23,7 +23,7 @@ const MockRegisterPage = () => {
 };
 
 describe("ユーザー登録フォーム - バリデーションエラー表示", () => {
-  test("基本的な登録フォームがレンダリングされる", () => {
+  it("基本的な登録フォームがレンダリングされる", () => {
     render(<MockRegisterPage />);
 
     // フォーム要素の存在確認
@@ -35,7 +35,7 @@ describe("ユーザー登録フォーム - バリデーションエラー表示"
     expect(screen.getByRole("button", { name: "登録" })).toBeInTheDocument();
   });
 
-  test("フォーム入力フィールドがアクセシブルである", () => {
+  it("フォーム入力フィールドがアクセシブルである", () => {
     render(<MockRegisterPage />);
 
     // 入力フィールドがフォーカス可能であることを確認

@@ -16,19 +16,19 @@ describe("EventSort Component", () => {
     jest.clearAllMocks();
   });
 
-  test("ソートコンポーネントが正しくレンダリングされる", () => {
+  it("ソートコンポーネントが正しくレンダリングされる", () => {
     render(<EventSort {...mockSortProps} />);
 
     expect(screen.getByTestId("event-sort")).toBeInTheDocument();
   });
 
-  test("ソート項目のセレクトボックスが表示される", () => {
+  it("ソート項目のセレクトボックスが表示される", () => {
     render(<EventSort {...mockSortProps} />);
 
     expect(screen.getByLabelText("並び順")).toBeInTheDocument();
   });
 
-  test("全てのソートオプションが表示される", async () => {
+  it("全てのソートオプションが表示される", async () => {
     render(<EventSort {...mockSortProps} />);
 
     // Shadcn/ui Selectコンポーネントが存在することを確認（JSDOM制約のためオプション展開はスキップ）
@@ -40,7 +40,7 @@ describe("EventSort Component", () => {
     expect(sortTrigger).toHaveAttribute("aria-label", "並び順");
   });
 
-  test("capacityオプションがUIから除外されている", () => {
+  it("capacityオプションがUIから除外されている", () => {
     render(<EventSort {...mockSortProps} />);
 
     // capacityが含まれたSelectItemがDOM内に存在しないことを確認
@@ -53,7 +53,7 @@ describe("EventSort Component", () => {
     expect(screen.queryByText("定員")).not.toBeInTheDocument();
   });
 
-  test("昇順・降順の切り替えボタンが表示される", () => {
+  it("昇順・降順の切り替えボタンが表示される", () => {
     render(<EventSort {...mockSortProps} />);
 
     // Shadcn/ui RadioGroupコンポーネント用のテスト
@@ -61,7 +61,7 @@ describe("EventSort Component", () => {
     expect(screen.getByRole("radio", { name: "降順" })).toBeInTheDocument();
   });
 
-  test("ソート項目変更時にコールバックが呼ばれる", async () => {
+  it("ソート項目変更時にコールバックが呼ばれる", async () => {
     render(<EventSort {...mockSortProps} />);
 
     // Shadcn/ui Selectコンポーネント用のテスト - JSDOM制約のため基本検証のみ
@@ -73,7 +73,7 @@ describe("EventSort Component", () => {
     expect(sortTrigger).toHaveAttribute("aria-label", "並び順");
   });
 
-  test("ソート順序変更時にコールバックが呼ばれる", async () => {
+  it("ソート順序変更時にコールバックが呼ばれる", async () => {
     const user = userEvent.setup();
     render(<EventSort {...mockSortProps} />);
 
@@ -84,7 +84,7 @@ describe("EventSort Component", () => {
     expect(mockSortProps.onOrderChange).toHaveBeenCalledWith("desc");
   });
 
-  test("現在のソート項目が選択されている", () => {
+  it("現在のソート項目が選択されている", () => {
     render(<EventSort {...mockSortProps} sortBy="date" />);
 
     // Selectコンポーネントの値を確認
@@ -92,7 +92,7 @@ describe("EventSort Component", () => {
     expect(sortTrigger).toHaveAttribute("data-state", "closed");
   });
 
-  test("現在のソート順序が選択されている", () => {
+  it("現在のソート順序が選択されている", () => {
     render(<EventSort {...mockSortProps} sortOrder="desc" />);
 
     // RadioGroupコンポーネントの選択状態を確認
@@ -100,7 +100,7 @@ describe("EventSort Component", () => {
     expect(descRadio).toBeChecked();
   });
 
-  test("無効なソート項目が渡された場合、デフォルトソートが適用される", () => {
+  it("無効なソート項目が渡された場合、デフォルトソートが適用される", () => {
     const consoleWarnSpy = jest.spyOn(console, "warn").mockImplementation();
 
     render(<EventSort {...mockSortProps} sortBy={"invalid-sort" as any} />);
@@ -112,7 +112,7 @@ describe("EventSort Component", () => {
     consoleWarnSpy.mockRestore();
   });
 
-  test("無効なソート順序が渡された場合、昇順がデフォルトで適用される", () => {
+  it("無効なソート順序が渡された場合、昇順がデフォルトで適用される", () => {
     const consoleWarnSpy = jest.spyOn(console, "warn").mockImplementation();
 
     render(<EventSort {...mockSortProps} sortOrder={"invalid-order" as any} />);
@@ -122,19 +122,19 @@ describe("EventSort Component", () => {
     consoleWarnSpy.mockRestore();
   });
 
-  test("ソートアイコンが適切に表示される", () => {
+  it("ソートアイコンが適切に表示される", () => {
     render(<EventSort {...mockSortProps} sortOrder="asc" />);
 
     expect(screen.getByTestId("sort-arrow-up")).toBeInTheDocument();
   });
 
-  test("降順の場合、下向きのソートアイコンが表示される", () => {
+  it("降順の場合、下向きのソートアイコンが表示される", () => {
     render(<EventSort {...mockSortProps} sortOrder="desc" />);
 
     expect(screen.getByTestId("sort-arrow-down")).toBeInTheDocument();
   });
 
-  test("アクセシビリティ属性が適切に設定されている", () => {
+  it("アクセシビリティ属性が適切に設定されている", () => {
     render(<EventSort {...mockSortProps} />);
 
     const sortRegion = screen.getByRole("region", { name: "イベントソート設定" });

@@ -20,13 +20,13 @@ describe("EventFilters Component", () => {
     jest.clearAllMocks();
   });
 
-  test("フィルターコンポーネントが正しくレンダリングされる", () => {
+  it("フィルターコンポーネントが正しくレンダリングされる", () => {
     render(<EventFilters {...mockFilterProps} />);
 
     expect(screen.getByTestId("event-filters")).toBeInTheDocument();
   });
 
-  test("ステータスフィルターが全てのオプションを表示する", () => {
+  it("ステータスフィルターが全てのオプションを表示する", () => {
     render(<EventFilters {...mockFilterProps} />);
 
     // JSDOM制約によりSelect内オプションは閉じた状態では見えない
@@ -38,14 +38,14 @@ describe("EventFilters Component", () => {
     // Note: JSDOMでSelectオプションの展開テストは制限される
   });
 
-  test("日付範囲フィルターが開始日と終了日の入力欄を表示する", () => {
+  it("日付範囲フィルターが開始日と終了日の入力欄を表示する", () => {
     render(<EventFilters {...mockFilterProps} />);
 
     expect(screen.getByLabelText("開始日")).toBeInTheDocument();
     expect(screen.getByLabelText("終了日")).toBeInTheDocument();
   });
 
-  test("決済状況フィルターが表示される", () => {
+  it("決済状況フィルターが表示される", () => {
     render(<EventFilters {...mockFilterProps} />);
 
     // JSDOM制約によりSelect内オプションは閉じた状態では見えない
@@ -57,7 +57,7 @@ describe("EventFilters Component", () => {
     // Note: JSDOMでSelectオプションの展開テストは制限される
   });
 
-  test("ステータスフィルター変更時にコールバックが呼ばれる", async () => {
+  it("ステータスフィルター変更時にコールバックが呼ばれる", async () => {
     const user = userEvent.setup();
     render(<EventFilters {...mockFilterProps} />);
 
@@ -70,7 +70,7 @@ describe("EventFilters Component", () => {
     // 実際のブラウザ環境（E2E）でのテストが必要
   });
 
-  test("日付フィルター変更時にコールバックが呼ばれる", async () => {
+  it("日付フィルター変更時にコールバックが呼ばれる", async () => {
     const user = userEvent.setup();
     render(<EventFilters {...mockFilterProps} />);
 
@@ -83,7 +83,7 @@ describe("EventFilters Component", () => {
     });
   });
 
-  test("決済フィルター変更時にコールバックが呼ばれる", async () => {
+  it("決済フィルター変更時にコールバックが呼ばれる", async () => {
     const user = userEvent.setup();
     render(<EventFilters {...mockFilterProps} />);
 
@@ -96,13 +96,13 @@ describe("EventFilters Component", () => {
     // 実際のブラウザ環境（E2E）でのテストが必要
   });
 
-  test("フィルタークリアボタンが表示される", () => {
+  it("フィルタークリアボタンが表示される", () => {
     render(<EventFilters {...mockFilterProps} />);
 
     expect(screen.getByText("フィルターをクリア")).toBeInTheDocument();
   });
 
-  test("フィルターが設定されていない時はクリアボタンが無効化される", () => {
+  it("フィルターが設定されていない時はクリアボタンが無効化される", () => {
     render(<EventFilters {...mockFilterProps} isFiltered={false} />);
 
     const clearButton = screen.getByText("フィルターをクリア");
@@ -110,7 +110,7 @@ describe("EventFilters Component", () => {
     expect(clearButton).toHaveAttribute("aria-label", "フィルターが設定されていません");
   });
 
-  test("フィルターが設定されている時はクリアボタンが有効化される", () => {
+  it("フィルターが設定されている時はクリアボタンが有効化される", () => {
     render(<EventFilters {...mockFilterProps} isFiltered={true} />);
 
     const clearButton = screen.getByText("フィルターをクリア");
@@ -118,7 +118,7 @@ describe("EventFilters Component", () => {
     expect(clearButton).toHaveAttribute("aria-label", "フィルターをクリア");
   });
 
-  test("フィルタークリアボタンクリック時にコールバックが呼ばれる", async () => {
+  it("フィルタークリアボタンクリック時にコールバックが呼ばれる", async () => {
     const user = userEvent.setup();
     render(<EventFilters {...mockFilterProps} />);
 
@@ -128,7 +128,7 @@ describe("EventFilters Component", () => {
     expect(mockFilterProps.onClearFilters).toHaveBeenCalled();
   });
 
-  test("無効なステータスが渡された場合、コンポーネントは正常にレンダリングされる", () => {
+  it("無効なステータスが渡された場合、コンポーネントは正常にレンダリングされる", () => {
     // 無効な値がpropsとして渡されても、コンポーネントはクラッシュしない
     render(<EventFilters {...mockFilterProps} statusFilter={"invalid-status" as any} />);
 
@@ -137,7 +137,7 @@ describe("EventFilters Component", () => {
     expect(screen.getByTestId("status-filter")).toBeInTheDocument();
   });
 
-  test("不正な日付範囲が入力された場合、警告メッセージが表示される", () => {
+  it("不正な日付範囲が入力された場合、警告メッセージが表示される", () => {
     render(
       <EventFilters {...mockFilterProps} dateFilter={{ start: "2024-12-31", end: "2024-01-01" }} />
     );
@@ -145,7 +145,7 @@ describe("EventFilters Component", () => {
     expect(screen.getByText("終了日は開始日より後の日付を選択してください")).toBeInTheDocument();
   });
 
-  test("無効なステータスフィルター選択時のエラーハンドリング", async () => {
+  it("無効なステータスフィルター選択時のエラーハンドリング", async () => {
     const user = userEvent.setup();
     const mockOnStatusChange = jest.fn();
 
@@ -157,7 +157,7 @@ describe("EventFilters Component", () => {
     expect(filtersContainer).toBeInTheDocument();
   });
 
-  test("無効な決済フィルターが渡された場合、コンポーネントは正常にレンダリングされる", () => {
+  it("無効な決済フィルターが渡された場合、コンポーネントは正常にレンダリングされる", () => {
     render(<EventFilters {...mockFilterProps} paymentFilter={"invalid-payment" as any} />);
 
     // コンポーネントが正常にレンダリングされることを確認
@@ -165,7 +165,7 @@ describe("EventFilters Component", () => {
     expect(paymentFilter).toBeInTheDocument();
   });
 
-  test("フィルタークリア時にコールバックが呼ばれる", async () => {
+  it("フィルタークリア時にコールバックが呼ばれる", async () => {
     const user = userEvent.setup();
     const mockOnClearFilters = jest.fn();
 

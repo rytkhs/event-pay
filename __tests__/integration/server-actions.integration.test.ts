@@ -1,19 +1,24 @@
 /**
- * Server Actions 統合テスト
- * 複雑なデータベース操作とビジネスロジックを実際のSupabase接続でテスト
- * 単体テストでは困難な複雑なMockが必要な機能をここで検証
+ * @file Server Actions統合テスト
+ * @description 複雑なデータベース操作とビジネスロジックを実際のSupabase接続でテスト
+ * @author EventPay Team
+ * @version 1.0.0
  */
 
+import { UnifiedMockFactory } from "@/__tests__/helpers/unified-mock-factory";
 import { updateEventAction } from "@/app/events/actions/update-event";
 import { createMockEvent } from "@/test-utils/factories";
-import { createServerSupabaseClient } from "@/lib/supabase/server";
 
-// 統合テストのため、実際のSupabaseクライアントを使用
-// テスト環境では専用のテストデータベースを使用することを想定
+// 統一モック設定を適用
+UnifiedMockFactory.setupCommonMocks();
 
 describe("Server Actions - 統合テスト", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
   describe("updateEventAction", () => {
-    test("基本的な更新処理が動作する", async () => {
+    it("基本的な更新処理が動作する", async () => {
       const mockEvent = createMockEvent({
         id: "test-event-id",
         title: "テストイベント",
@@ -38,7 +43,7 @@ describe("Server Actions - 統合テスト", () => {
       // 認証状態の模擬が必要
     });
 
-    test("バリデーションエラーが適切に処理される", async () => {
+    it("バリデーションエラーが適切に処理される", async () => {
       const formData = new FormData();
       formData.append("eventId", "invalid-uuid");
       formData.append("title", "");
@@ -50,7 +55,7 @@ describe("Server Actions - 統合テスト", () => {
       expect(result.code).toBeTruthy();
     });
 
-    test("権限エラーが適切に処理される", async () => {
+    it("権限エラーが適切に処理される", async () => {
       const formData = new FormData();
       formData.append("eventId", "other-user-event-id");
       formData.append("title", "更新されたタイトル");
@@ -64,12 +69,12 @@ describe("Server Actions - 統合テスト", () => {
   });
 
   describe("その他のServer Actions", () => {
-    test("createEventAction - 基本的な作成処理", async () => {
+    it("createEventAction - 基本的な作成処理", async () => {
       // 実装が完了したら追加
       expect(true).toBe(true);
     });
 
-    test("deleteEventAction - 基本的な削除処理", async () => {
+    it("deleteEventAction - 基本的な削除処理", async () => {
       // 実装が完了したら追加
       expect(true).toBe(true);
     });

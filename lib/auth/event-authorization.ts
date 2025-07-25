@@ -65,14 +65,6 @@ export async function verifyEventAccess(eventId: string): Promise<EventAccessRes
  * @param context - エラー発生時のコンテキスト情報
  * @throws Error - データベースエラーメッセージ
  */
-export function handleDatabaseError(error: any, context: { eventId: string; userId: string }) {
-  console.error("Database error details:", {
-    code: error.code,
-    message: error.message,
-    details: error.details,
-    hint: error.hint,
-    eventId: context.eventId,
-    userId: context.userId,
-  });
+export function handleDatabaseError(error: any, _: { eventId: string; userId: string }) {
   throw new Error(`Database error: ${error.message} (Code: ${error.code})`);
 }

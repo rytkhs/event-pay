@@ -68,13 +68,6 @@ export async function deleteEventAction(eventId: string) {
       .eq("created_by", user.id);
 
     if (error) {
-      console.error("Delete event error:", {
-        code: error.code,
-        message: error.message,
-        eventId: validation.data,
-        userId: user.id,
-      });
-
       if (error.code === "PGRST116") {
         return {
           success: false,
@@ -98,8 +91,7 @@ export async function deleteEventAction(eventId: string) {
     revalidatePath(`/events/${validation.data}`);
 
     return { success: true };
-  } catch (error) {
-    console.error("Unexpected error in deleteEventAction:", error);
+  } catch (_) {
     return {
       success: false,
       error: { message: "An unexpected error occurred" },

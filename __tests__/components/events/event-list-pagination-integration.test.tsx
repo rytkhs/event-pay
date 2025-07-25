@@ -1,48 +1,48 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { EventListWithFilters } from '@/components/events/event-list-with-filters';
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { EventListWithFilters } from "@/components/events/event-list-with-filters";
+
+import { UnifiedMockFactory } from "@/__tests__/helpers/unified-mock-factory";
+
+// 統一モック設定を適用
+UnifiedMockFactory.setupCommonMocks();
 
 // Mock Next.js navigation hooks
-jest.mock('next/navigation', () => ({
-  useRouter: jest.fn(),
+const mockPush = jest.fn();
+const mockUseSearchParams = useSearchParams as jest.MockedFunction<typeof useSearchParams>;
+
+jest.mock("next/navigation", () => ({
+  useRouter: () => ({
+    push: mockPush,
+  }),
   useSearchParams: jest.fn(),
 }));
 
-const mockPush = jest.fn();
-const mockReplace = jest.fn();
-const mockUseRouter = useRouter as jest.MockedFunction<typeof useRouter>;
-const mockUseSearchParams = useSearchParams as jest.MockedFunction<typeof useSearchParams>;
-
-// Mock data
-const createMockEvents = (count: number, startIndex: number = 1) => 
-  Array.from({ length: count }, (_, i) => ({
+// Helper function to create mock events
+const createMockEvents = (count: number, startIndex: number = 1) => {
+  return Array.from({ length: count }, (_, i) => ({
     id: `event-${startIndex + i}`,
     title: `イベント ${startIndex + i}`,
-    datetime: new Date('2024-12-25T19:00:00Z').toISOString(),
-    location: '東京都',
+    description: `説明 ${startIndex + i}`,
+    date: new Date(2024, 0, startIndex + i).toISOString(),
     fee: 1000,
-    status: 'draft' as const,
+    capacity: 50,
+    location: "テスト会場",
+    status: "active" as const,
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
   }));
+};
 
-describe('EventListWithFilters - ページネーション統合テスト', () => {
+describe("EventList Pagination Integration", () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    mockUseRouter.mockReturnValue({
-      push: mockPush,
-      replace: mockReplace,
-      prefetch: jest.fn(),
-      back: jest.fn(),
-      forward: jest.fn(),
-      refresh: jest.fn(),
-    } as any);
   });
 
-  describe('ページネーション表示統合', () => {
-    it('複数ページのデータがある場合、ページネーションが表示される', async () => {
+  describe("ページネーション表示統合", () => {
+    it("複数ページのデータがある場合、ページネーションが表示される", async () => {
       // 25件のデータで10件ずつ表示の場合、3ページになる
-      mockUseSearchParams.mockReturnValue(new URLSearchParams('page=1&limit=10') as any);
+      mockUseSearchParams.mockReturnValue(new URLSearchParams("page=1&limit=10") as any);
 
       const mockEvents = createMockEvents(10);
 
@@ -50,15 +50,15 @@ describe('EventListWithFilters - ページネーション統合テスト', () =>
 
       await waitFor(() => {
         // ページネーションコンポーネントが表示されることを確認
-        expect(screen.getByRole('navigation')).toBeInTheDocument();
-        expect(screen.getByRole('button', { name: '1' })).toBeInTheDocument();
-        expect(screen.getByRole('button', { name: '2' })).toBeInTheDocument();
-        expect(screen.getByRole('button', { name: '3' })).toBeInTheDocument();
+        expect(screen.getByRole("navigation")).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "1" })).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "2" })).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "3" })).toBeInTheDocument();
       });
     });
 
-    it('1ページ以下のデータの場合、ページネーションが表示されない', async () => {
-      mockUseSearchParams.mockReturnValue(new URLSearchParams('page=1&limit=10') as any);
+    it("1ページ以下のデータの場合、ページネーションが表示されない", async () => {
+      mockUseSearchParams.mockReturnValue(new URLSearchParams("page=1&limit=10") as any);
 
       const mockEvents = createMockEvents(5);
 
@@ -66,35 +66,35 @@ describe('EventListWithFilters - ページネーション統合テスト', () =>
 
       await waitFor(() => {
         // イベントは表示されているがページネーションは表示されない
-        expect(screen.getByText('イベント 1')).toBeInTheDocument();
-        expect(screen.queryByRole('navigation')).not.toBeInTheDocument();
+        expect(screen.getByText("イベント 1")).toBeInTheDocument();
+        expect(screen.queryByRole("navigation")).not.toBeInTheDocument();
       });
     });
   });
 
-  describe('ページネーション操作統合', () => {
-    it('ページ番号をクリックしてURLパラメータが更新される', async () => {
-      mockUseSearchParams.mockReturnValue(new URLSearchParams('page=1&limit=10') as any);
+  describe("ページネーション操作統合", () => {
+    it("ページ番号をクリックしてURLパラメータが更新される", async () => {
+      mockUseSearchParams.mockReturnValue(new URLSearchParams("page=1&limit=10") as any);
 
       const mockEvents = createMockEvents(10);
 
       render(<EventListWithFilters events={mockEvents} totalCount={25} />);
 
       await waitFor(() => {
-        expect(screen.getByRole('button', { name: '2' })).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "2" })).toBeInTheDocument();
       });
 
       // ページ2をクリック
-      fireEvent.click(screen.getByRole('button', { name: '2' }));
+      fireEvent.click(screen.getByRole("button", { name: "2" }));
 
       await waitFor(() => {
         // URLパラメータが更新されることを確認
-        expect(mockPush).toHaveBeenCalledWith(expect.stringContaining('page=2'));
+        expect(mockPush).toHaveBeenCalledWith(expect.stringContaining("page=2"));
       });
     });
 
-    it('フィルター変更時にページ番号が1にリセットされる', async () => {
-      mockUseSearchParams.mockReturnValue(new URLSearchParams('page=2&status=draft') as any);
+    it("フィルター変更時にページ番号が1にリセットされる", async () => {
+      mockUseSearchParams.mockReturnValue(new URLSearchParams("page=2&status=draft") as any);
 
       const mockEvents = createMockEvents(10);
 
@@ -103,7 +103,7 @@ describe('EventListWithFilters - ページネーション統合テスト', () =>
       await waitFor(() => {
         // JSDOMではShadcn/ui Selectの操作が制限されるため、
         // 基本要素の存在確認のみ行う
-        const statusSelect = screen.getByTestId('status-filter');
+        const statusSelect = screen.getByTestId("status-filter");
         expect(statusSelect).toBeInTheDocument();
       });
 
@@ -111,10 +111,10 @@ describe('EventListWithFilters - ページネーション統合テスト', () =>
     });
   });
 
-  describe('URLパラメータとの同期', () => {
-    it('URLパラメータからページ番号を読み取って表示する', async () => {
+  describe("URLパラメータとの同期", () => {
+    it("URLパラメータからページ番号を読み取って表示する", async () => {
       // URLパラメータでページ3を指定
-      mockUseSearchParams.mockReturnValue(new URLSearchParams('page=3&limit=10') as any);
+      mockUseSearchParams.mockReturnValue(new URLSearchParams("page=3&limit=10") as any);
 
       const mockEvents = createMockEvents(10, 21); // 3ページ目なので21-30番のイベント
 
@@ -122,15 +122,15 @@ describe('EventListWithFilters - ページネーション統合テスト', () =>
 
       await waitFor(() => {
         // ページ3が選択状態であることを確認
-        expect(screen.getByRole('button', { name: '3' })).toHaveAttribute('aria-current', 'page');
+        expect(screen.getByRole("button", { name: "3" })).toHaveAttribute("aria-current", "page");
         // 3ページ目のデータが表示されていることを確認
-        expect(screen.getByText('イベント 21')).toBeInTheDocument();
+        expect(screen.getByText("イベント 21")).toBeInTheDocument();
       });
     });
 
-    it('無効なページ番号の場合、1ページ目にフォールバックする', async () => {
+    it("無効なページ番号の場合、1ページ目にフォールバックする", async () => {
       // 存在しないページ番号を指定
-      mockUseSearchParams.mockReturnValue(new URLSearchParams('page=999&limit=10') as any);
+      mockUseSearchParams.mockReturnValue(new URLSearchParams("page=999&limit=10") as any);
 
       const mockEvents = createMockEvents(10);
 
@@ -138,16 +138,16 @@ describe('EventListWithFilters - ページネーション統合テスト', () =>
 
       await waitFor(() => {
         // ページネーションが正常に表示されることを確認
-        expect(screen.getByRole('navigation')).toBeInTheDocument();
+        expect(screen.getByRole("navigation")).toBeInTheDocument();
         // 1ページ目のデータが表示されていることを確認
-        expect(screen.getByText('イベント 1')).toBeInTheDocument();
+        expect(screen.getByText("イベント 1")).toBeInTheDocument();
       });
     });
   });
 
-  describe('結果件数表示', () => {
-    it('ページネーションと連動した結果件数が表示される', async () => {
-      mockUseSearchParams.mockReturnValue(new URLSearchParams('page=2&limit=10') as any);
+  describe("結果件数表示", () => {
+    it("ページネーションと連動した結果件数が表示される", async () => {
+      mockUseSearchParams.mockReturnValue(new URLSearchParams("page=2&limit=10") as any);
 
       const mockEvents = createMockEvents(10, 11); // 2ページ目なので11-20番のイベント
 
@@ -155,12 +155,12 @@ describe('EventListWithFilters - ページネーション統合テスト', () =>
 
       await waitFor(() => {
         // 2ページ目の件数表示が正しく表示される
-        expect(screen.getByText('11〜20件 / 全25件を表示')).toBeInTheDocument();
+        expect(screen.getByText("11〜20件 / 全25件を表示")).toBeInTheDocument();
       });
     });
 
-    it('最後のページの件数表示が正しく表示される', async () => {
-      mockUseSearchParams.mockReturnValue(new URLSearchParams('page=3&limit=10') as any);
+    it("最後のページの件数表示が正しく表示される", async () => {
+      mockUseSearchParams.mockReturnValue(new URLSearchParams("page=3&limit=10") as any);
 
       const mockEvents = createMockEvents(5, 21); // 3ページ目（最後）なので21-25番のイベント
 
@@ -168,7 +168,7 @@ describe('EventListWithFilters - ページネーション統合テスト', () =>
 
       await waitFor(() => {
         // 最後のページの件数表示が正しく表示される
-        expect(screen.getByText('21〜25件 / 全25件を表示')).toBeInTheDocument();
+        expect(screen.getByText("21〜25件 / 全25件を表示")).toBeInTheDocument();
       });
     });
   });

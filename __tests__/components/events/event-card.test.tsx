@@ -1,3 +1,9 @@
+/**
+ * @file EventCard コンポーネント単体テスト
+ * @description イベントカード表示コンポーネントのテスト
+ * @author EventPay Team
+ */
+
 import { render, screen } from "@testing-library/react";
 import { EventCard } from "@/components/events/event-card";
 import { Event } from "@/types/event";
@@ -16,7 +22,7 @@ const mockEvent: Event = {
 };
 
 describe("EventCard Component - Red Phase Tests", () => {
-  test("イベントの基本情報が正しく表示される", () => {
+  it("イベントの基本情報が正しく表示される", () => {
     render(<EventCard event={mockEvent} />);
 
     expect(screen.getByText("テストイベント")).toBeInTheDocument();
@@ -26,28 +32,28 @@ describe("EventCard Component - Red Phase Tests", () => {
     expect(screen.getByText("開催予定")).toBeInTheDocument();
   });
 
-  test("無料イベントの場合、料金が「無料」と表示される", () => {
+  it("無料イベントの場合、料金が「無料」と表示される", () => {
     const freeEvent = { ...mockEvent, fee: 0 };
     render(<EventCard event={freeEvent} />);
 
     expect(screen.getByText("無料")).toBeInTheDocument();
   });
 
-  test("イベント詳細ページへのリンクが機能する", () => {
+  it("イベント詳細ページへのリンクが機能する", () => {
     render(<EventCard event={mockEvent} />);
 
     const link = screen.getByRole("link");
     expect(link).toHaveAttribute("href", "/events/event-1");
   });
 
-  test("イベントステータスに応じたスタイルが適用される", () => {
+  it("イベントステータスに応じたスタイルが適用される", () => {
     render(<EventCard event={mockEvent} />);
 
     const statusBadge = screen.getByText("開催予定");
     expect(statusBadge).toHaveClass("bg-green-100", "text-green-800");
   });
 
-  test("過去のイベントには適切なスタイルが適用される", () => {
+  it("過去のイベントには適切なスタイルが適用される", () => {
     const pastEvent = { ...mockEvent, status: "past" };
     render(<EventCard event={pastEvent} />);
 
@@ -55,7 +61,7 @@ describe("EventCard Component - Red Phase Tests", () => {
     expect(statusBadge).toHaveClass("bg-gray-100", "text-gray-800");
   });
 
-  test("キャンセルされたイベントには適切なスタイルが適用される", () => {
+  it("キャンセルされたイベントには適切なスタイルが適用される", () => {
     const cancelledEvent = { ...mockEvent, status: "cancelled" };
     render(<EventCard event={cancelledEvent} />);
 
@@ -63,7 +69,7 @@ describe("EventCard Component - Red Phase Tests", () => {
     expect(statusBadge).toHaveClass("bg-red-100", "text-red-800");
   });
 
-  test("開催中のイベントには適切なスタイルが適用される", () => {
+  it("開催中のイベントには適切なスタイルが適用される", () => {
     const ongoingEvent = { ...mockEvent, status: "ongoing" };
     render(<EventCard event={ongoingEvent} />);
 

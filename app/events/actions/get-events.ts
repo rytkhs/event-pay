@@ -27,11 +27,16 @@ export interface DateFilter {
 interface FilterCondition {
   field: string;
   operator: "eq" | "gt" | "gte" | "lte";
-  value: any;
+  value: string | number | boolean | null;
 }
 
 interface EqualityFilter {
-  [key: string]: any;
+  [key: string]:
+    | string
+    | number
+    | boolean
+    | null
+    | Database["public"]["Enums"]["event_status_enum"];
 }
 
 type GetEventsOptions = {
@@ -138,7 +143,6 @@ export async function getEventsAction(options: GetEventsOptions = {}): Promise<G
     } = await supabase.auth.getUser();
 
     if (authError) {
-      console.error("認証エラー:", authError);
       return {
         success: false,
         error: "認証が必要です",
@@ -265,16 +269,9 @@ export async function getEventsAction(options: GetEventsOptions = {}): Promise<G
     ]);
 
     const { count: totalCount, error: countError } = countResult;
-    const { data: events, error: dbError } = eventsResult as {
-      data: EventWithAttendancesCount[] | null;
-      error: any;
-    };
+    const { data: events, error: dbError } = eventsResult;
 
     if (countError) {
-      console.error("総件数取得エラー:", {
-        error: countError,
-        userId: user.id,
-      });
       return {
         success: false,
         error: "イベントの取得に失敗しました",
@@ -282,10 +279,6 @@ export async function getEventsAction(options: GetEventsOptions = {}): Promise<G
     }
 
     if (dbError) {
-      console.error("イベント取得エラー:", {
-        error: dbError,
-        userId: user.id,
-      });
       return {
         success: false,
         error: "イベントの取得に失敗しました",
@@ -293,7 +286,7 @@ export async function getEventsAction(options: GetEventsOptions = {}): Promise<G
     }
 
     // JOINで取得した作成者名を使用（N+1問題を解決）
-    let eventsData = (events || []).map((event) => {
+    let eventsData = (events || []).map((event: EventWithAttendancesCount) => {
       const creator_name = event.public_profiles?.name || "不明";
 
       return {
@@ -312,9 +305,9 @@ export async function getEventsAction(options: GetEventsOptions = {}): Promise<G
 
     // 参加者数ソートの場合はクライアントサイドでソートとページネーション
     if (sortBy === "attendances_count") {
-      eventsData = eventsData.sort((a, b) => {
-        const aCount = a.attendances_count;
-        const bCount = b.attendances_count;
+      eventsData = eventsData.sort((a: Event, b: Event) => {
+        const aCount = a.attendances_count || 0;
+        const bCount = b.attendances_count || 0;
         return sortOrder === "asc" ? aCount - bCount : bCount - aCount;
       });
 
@@ -330,8 +323,7 @@ export async function getEventsAction(options: GetEventsOptions = {}): Promise<G
       totalCount: totalCount || 0,
       hasMore,
     };
-  } catch (error) {
-    console.error("予期しないエラー:", error);
+  } catch (_) {
     return {
       success: false,
       error: "予期しないエラーが発生しました",

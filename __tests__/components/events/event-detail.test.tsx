@@ -41,7 +41,7 @@ describe("EventDetail Component", () => {
   };
 
   describe("Green Phase - 機能テスト", () => {
-    test("無効なeventデータが渡された場合、エラーフォールバックが表示される", () => {
+    it("無効なeventデータが渡された場合、エラーフォールバックが表示される", () => {
       const invalidEvent = {
         // 必須フィールドが不足
         id: "",
@@ -52,57 +52,57 @@ describe("EventDetail Component", () => {
       expect(screen.getByText("イベント情報が正しく読み込まれませんでした。")).toBeInTheDocument();
     });
 
-    test("イベントタイトルが正しく表示される", () => {
+    it("イベントタイトルが正しく表示される", () => {
       render(<EventDetail event={mockEventDetail} />);
       expect(screen.getByText("テストイベント")).toBeInTheDocument();
     });
 
-    test("イベント開催日が正しく表示される", () => {
+    it("イベント開催日が正しく表示される", () => {
       render(<EventDetail event={mockEventDetail} />);
       expect(screen.getByText(/開催日/)).toBeInTheDocument();
     });
 
-    test("開催場所が正しく表示される", () => {
+    it("開催場所が正しく表示される", () => {
       render(<EventDetail event={mockEventDetail} />);
       expect(screen.getByText("テスト会場")).toBeInTheDocument();
     });
 
-    test("参加費が正しく表示される", () => {
+    it("参加費が正しく表示される", () => {
       render(<EventDetail event={mockEventDetail} />);
       expect(screen.getByText(/1,000円/)).toBeInTheDocument();
     });
 
-    test("定員が正しく表示される", () => {
+    it("定員が正しく表示される", () => {
       render(<EventDetail event={mockEventDetail} />);
       expect(screen.getByText(/定員.*50人/)).toBeInTheDocument();
     });
 
-    test("イベントステータスが正しく表示される", () => {
+    it("イベントステータスが正しく表示される", () => {
       render(<EventDetail event={mockEventDetail} />);
       expect(screen.getByText(/開催予定/)).toBeInTheDocument();
     });
 
-    test("イベント説明が正しく表示される", () => {
+    it("イベント説明が正しく表示される", () => {
       render(<EventDetail event={mockEventDetail} />);
       expect(screen.getByText("テストイベントの詳細説明です。")).toBeInTheDocument();
     });
 
-    test("申込締切が正しく表示される", () => {
+    it("申込締切が正しく表示される", () => {
       render(<EventDetail event={mockEventDetail} />);
       expect(screen.getByText(/申込締切/)).toBeInTheDocument();
     });
 
-    test("決済締切が正しく表示される", () => {
+    it("決済締切が正しく表示される", () => {
       render(<EventDetail event={mockEventDetail} />);
       expect(screen.getByText(/決済締切/)).toBeInTheDocument();
     });
 
-    test("利用可能決済方法が正しく表示される", () => {
+    it("利用可能決済方法が正しく表示される", () => {
       render(<EventDetail event={mockEventDetail} />);
       expect(screen.getByText(/決済方法/)).toBeInTheDocument();
     });
 
-    test("無料イベントの場合、参加費が「無料」と表示される", () => {
+    it("無料イベントの場合、参加費が「無料」と表示される", () => {
       const freeEvent = {
         ...mockEventDetail,
         fee: 0,
@@ -111,7 +111,7 @@ describe("EventDetail Component", () => {
       expect(screen.getByText("無料")).toBeInTheDocument();
     });
 
-    test("無料イベントの場合、決済方法が表示されない", () => {
+    it("無料イベントの場合、決済方法が表示されない", () => {
       const freeEvent = {
         ...mockEventDetail,
         fee: 0,
@@ -120,12 +120,12 @@ describe("EventDetail Component", () => {
       expect(screen.queryByText(/決済方法/)).not.toBeInTheDocument();
     });
 
-    test("作成日時が正しく表示される", () => {
+    it("作成日時が正しく表示される", () => {
       render(<EventDetail event={mockEventDetail} />);
       expect(screen.getByText(/作成日時/)).toBeInTheDocument();
     });
 
-    test("最終更新日時が正しく表示される", () => {
+    it("最終更新日時が正しく表示される", () => {
       render(<EventDetail event={mockEventDetail} />);
       expect(screen.getByText(/最終更新/)).toBeInTheDocument();
     });

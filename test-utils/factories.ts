@@ -20,7 +20,7 @@ export function createMockEvent(overrides: Partial<Event> = {}): Event {
 }
 
 export function createMockEvents(count: number, startIndex: number = 1): Event[] {
-  return Array.from({ length: count }, (_, i) => 
+  return Array.from({ length: count }, (_, i) =>
     createMockEvent({
       id: `event-${startIndex + i}`,
       title: `テストイベント ${startIndex + i}`,
@@ -45,11 +45,11 @@ export function createMockUser(overrides: any = {}) {
 
 export function createMockFormData(data: Record<string, any>): FormData {
   const formData = new FormData();
-  
+
   Object.entries(data).forEach(([key, value]) => {
     if (value !== null && value !== undefined) {
       if (Array.isArray(value)) {
-        value.forEach(item => formData.append(key, item));
+        value.forEach((item) => formData.append(key, item));
       } else {
         formData.append(key, value.toString());
       }

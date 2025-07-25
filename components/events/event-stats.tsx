@@ -47,20 +47,21 @@ export function EventStats({ eventData, attendances, payments }: EventStatsProps
   );
 
   // 売上合計を計算（paid + received + completed）
-  const totalRevenue = (paymentStats.paid || 0) + (paymentStats.received || 0) + (paymentStats.completed || 0);
-  
+  const totalRevenue =
+    (paymentStats.paid || 0) + (paymentStats.received || 0) + (paymentStats.completed || 0);
+
   // Stripe決済分を計算
   const stripeRevenue = paymentStats.paid_stripe || 0;
-  
+
   // 現金決済分を計算
   const cashRevenue = paymentStats.received_cash || 0;
-  
+
   // 返金済み金額を計算
   const refundedAmount = paymentStats.refunded || 0;
-  
+
   // 無料イベント完了分を計算
   const completedAmount = paymentStats.completed || 0;
-  
+
   // 未決済金額を計算
   const pendingAmount = paymentStats.pending || 0;
 
@@ -72,13 +73,14 @@ export function EventStats({ eventData, attendances, payments }: EventStatsProps
   const validPaymentsCount = Object.entries(paymentStats.count)
     .filter(([status]) => !["failed", "refunded"].includes(status))
     .reduce((sum, [, count]) => sum + count, 0);
-  
-  const completedPaymentsCount = (paymentStats.count.paid || 0) + (paymentStats.count.received || 0) + (paymentStats.count.completed || 0);
-  
+
+  const completedPaymentsCount =
+    (paymentStats.count.paid || 0) +
+    (paymentStats.count.received || 0) +
+    (paymentStats.count.completed || 0);
+
   const paymentCompletionRate =
-    validPaymentsCount > 0
-      ? Math.round((completedPaymentsCount / validPaymentsCount) * 100)
-      : 0;
+    validPaymentsCount > 0 ? Math.round((completedPaymentsCount / validPaymentsCount) * 100) : 0;
 
   // 参加率を計算（参加予定者数 / 定員 × 100）
   const attendanceRate =

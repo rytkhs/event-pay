@@ -33,10 +33,7 @@ function EmptyEventList({ isFiltered = false }: { isFiltered?: boolean }) {
   );
 }
 
-export const EventList = memo(function EventList({
-  events,
-  isFiltered = false,
-}: EventListProps) {
+export const EventList = memo(function EventList({ events, isFiltered = false }: EventListProps) {
   if (events.length === 0) {
     return <EmptyEventList isFiltered={isFiltered} />;
   }

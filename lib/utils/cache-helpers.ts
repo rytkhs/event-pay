@@ -22,7 +22,7 @@ export function createCachedActions<T extends Record<string, (...args: any[]) =>
   const cachedActions = {} as T;
 
   for (const [key, action] of Object.entries(actions)) {
-    cachedActions[key as keyof T] = conditionalCache(action);
+    (cachedActions as any)[key] = conditionalCache(action);
   }
 
   return cachedActions;

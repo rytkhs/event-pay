@@ -1,9 +1,26 @@
+/**
+ * @file Server Actions FormData統合テスト（進化版）
+ * @description INTEGRATION_SECURITY_TEST_EVOLUTION_PLAN.md準拠のハイブリッドテスト
+ * @author EventPay Team
+ * @version 2.0.0 - Phase C-2対応
+ */
+
+import { UnifiedMockFactory } from "@/__tests__/helpers/unified-mock-factory";
 import {
   extractEventCreateFormData,
   extractEventUpdateFormData,
 } from "@/lib/utils/form-data-extractors";
 
-describe("Server Actions FormData統合テスト", () => {
+describe("Server Actions FormData統合テスト（進化版）", () => {
+  beforeAll(async () => {
+    // 統合テスト用モック設定（外部依存のみモック）
+    UnifiedMockFactory.setupIntegrationMocks();
+  });
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
   describe("extractEventCreateFormData統合テスト", () => {
     it("実際のFormDataでイベント作成データが正しく抽出される", () => {
       // 実際のFormDataを作成

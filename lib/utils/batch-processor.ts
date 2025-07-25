@@ -22,7 +22,7 @@ export interface BatchProcessOptions {
 
 /**
  * 項目のリストに対してバッチ処理を実行
- * 
+ *
  * @param items 処理対象の項目リスト
  * @param processor 各項目に対する処理関数
  * @param options バッチ処理オプション
@@ -40,44 +40,44 @@ export async function processBatch<T, R>(
   // 並列処理の場合
   if (maxConcurrency > 1) {
     const chunks = chunkArray(items, maxConcurrency);
-    
+
     for (const chunk of chunks) {
       const promises = chunk.map(async (item) => {
         try {
           const result = await processor(item);
           return { success: true as const, item, result };
         } catch (error) {
-          return { 
-            success: false as const, 
-            item, 
-            error: error instanceof Error ? error : new Error(String(error))
+          return {
+            success: false as const,
+            item,
+            error: error instanceof Error ? error : new Error(String(error)),
           };
         }
       });
 
       const results = await Promise.allSettled(promises);
-      
+
       for (const result of results) {
-        if (result.status === 'fulfilled') {
+        if (result.status === "fulfilled") {
           const processResult = result.value;
           if (processResult.success) {
-            successful.push({ 
-              item: processResult.item, 
-              result: processResult.result 
+            successful.push({
+              item: processResult.item,
+              result: processResult.result,
             });
           } else {
-            failed.push({ 
-              item: processResult.item, 
-              error: processResult.error 
+            failed.push({
+              item: processResult.item,
+              error: processResult.error,
             });
-            
+
             if (!continueOnError) {
               return { successful, failed };
             }
           }
         } else {
           // Promise.allSettled で rejected になることは通常ないが、念のため
-          console.error('Unexpected promise rejection:', result.reason);
+          // Unexpected promise rejection - continue processing
         }
       }
     }
@@ -88,11 +88,11 @@ export async function processBatch<T, R>(
         const result = await processor(item);
         successful.push({ item, result });
       } catch (error) {
-        failed.push({ 
-          item, 
-          error: error instanceof Error ? error : new Error(String(error))
+        failed.push({
+          item,
+          error: error instanceof Error ? error : new Error(String(error)),
         });
-        
+
         if (!continueOnError) {
           break;
         }
@@ -117,7 +117,9 @@ function chunkArray<T>(array: T[], chunkSize: number): T[][] {
 /**
  * バッチ処理結果のサマリーを生成
  */
-export function getBatchSummary<T, R>(result: BatchResult<T, R>): {
+export function getBatchSummary<T, R>(
+  result: BatchResult<T, R>
+): {
   total: number;
   successCount: number;
   failureCount: number;

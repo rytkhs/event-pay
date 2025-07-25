@@ -6,6 +6,10 @@ import {
   getFutureDatetimeLocalForTest,
   getPastDatetimeLocalForTest,
 } from "@/lib/utils/test-helpers";
+import { UnifiedMockFactory } from "@/__tests__/helpers/unified-mock-factory";
+
+// 統一モック設定を適用
+UnifiedMockFactory.setupCommonMocks();
 
 // Mock Server Action
 const mockCreateEventAction = jest.fn() as jest.MockedFunction<
@@ -32,13 +36,11 @@ jest.mock("@/hooks/use-event-form", () => ({
   useEventForm: mockUseEventForm,
 }));
 
-// Mock useRouter
+// Mock useRouter - 統一モックから取得
 const mockPush = jest.fn();
-jest.mock("next/navigation", () => ({
-  useRouter: () => ({
-    push: mockPush,
-  }),
-}));
+
+// Mock useTransition - React 18
+const mockStartTransition = jest.fn();
 
 // Mock react-hook-form
 const mockReset = jest.fn();
@@ -56,38 +58,6 @@ const mockHandleSubmit = jest.fn((onSubmit) => (event) => {
   event.preventDefault();
   onSubmit(mockGetValues());
 });
-
-jest.mock("react-hook-form", () => ({
-  useForm: () => ({
-    register: jest.fn((name) => ({
-      name,
-      onBlur: jest.fn(),
-      onChange: jest.fn(),
-      ref: jest.fn(),
-    })),
-    handleSubmit: mockHandleSubmit,
-    formState: mockFormState,
-    watch: mockWatch,
-    setValue: mockSetValue,
-    getValues: mockGetValues,
-    reset: mockReset,
-    setError: mockSetError,
-    clearErrors: mockClearErrors,
-  }),
-}));
-
-// Mock useTransition
-const mockStartTransition = jest.fn((callback: () => void) => {
-  callback();
-});
-jest.mock("react", () => {
-  const actual = jest.requireActual("react") as any;
-  return {
-    ...actual,
-    useTransition: () => [false, mockStartTransition],
-  };
-});
-
 describe("EventCreateForm", () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -152,9 +122,7 @@ describe("EventCreateForm", () => {
       // DOM更新を待つ
       await waitFor(
         () => {
-          expect(
-            screen.getByText("タイトルは必須です")
-          ).toBeInTheDocument();
+          expect(screen.getByText("タイトルは必須です")).toBeInTheDocument();
         },
         { timeout: 1000 }
       );
@@ -184,9 +152,7 @@ describe("EventCreateForm", () => {
 
       await waitFor(
         () => {
-          expect(
-            screen.getByText("開催日時は必須です")
-          ).toBeInTheDocument();
+          expect(screen.getByText("開催日時は必須です")).toBeInTheDocument();
         },
         { timeout: 1000 }
       );
@@ -234,9 +200,7 @@ describe("EventCreateForm", () => {
 
       await waitFor(
         () => {
-          expect(
-            screen.getByText("タイトルは100文字以内で入力してください")
-          ).toBeInTheDocument();
+          expect(screen.getByText("タイトルは100文字以内で入力してください")).toBeInTheDocument();
         },
         { timeout: 1000 }
       );

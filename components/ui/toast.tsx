@@ -52,9 +52,7 @@ function ToastComponent({ toast, onClose }: ToastProps) {
       <div className="flex justify-between items-start">
         <div className="flex-1">
           <div className="font-semibold text-sm">{toast.title}</div>
-          {toast.description && (
-            <div className="text-sm mt-1 opacity-90">{toast.description}</div>
-          )}
+          {toast.description && <div className="text-sm mt-1 opacity-90">{toast.description}</div>}
         </div>
         <button
           onClick={() => onClose(toast.id)}
@@ -77,16 +75,9 @@ export function Toaster({ toasts, onClose }: ToasterProps) {
   if (toasts.length === 0) return null;
 
   return (
-    <div
-      className="fixed top-4 right-4 z-50 flex flex-col"
-      aria-label="通知"
-    >
+    <div className="fixed top-4 right-4 z-50 flex flex-col" aria-label="通知">
       {toasts.map((toast) => (
-        <ToastComponent
-          key={toast.id}
-          toast={toast}
-          onClose={onClose}
-        />
+        <ToastComponent key={toast.id} toast={toast} onClose={onClose} />
       ))}
     </div>
   );

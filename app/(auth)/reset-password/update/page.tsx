@@ -1,6 +1,5 @@
 "use client";
 
-
 import Link from "next/link";
 import { usePasswordConfirmation } from "@/lib/hooks/usePasswordConfirmation";
 import { PasswordStatusIcon } from "@/components/ui/PasswordStatusIcon";

@@ -53,7 +53,10 @@ export function ChangeConfirmationDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-[600px]" aria-describedby="change-confirmation-description">
+      <DialogContent
+        className="sm:max-w-[600px]"
+        aria-describedby="change-confirmation-description"
+      >
         <DialogHeader>
           <DialogTitle>変更内容を確認</DialogTitle>
           <DialogDescription>
@@ -73,9 +76,7 @@ export function ChangeConfirmationDialog({
                     className="bg-gray-50 p-3 rounded-lg border"
                     data-testid={`change-item-${change.field}`}
                   >
-                    <div className="font-medium text-sm text-gray-700">
-                      {change.fieldName}
-                    </div>
+                    <div className="font-medium text-sm text-gray-700">{change.fieldName}</div>
                     <div className="mt-1 text-sm">
                       <span className="text-red-600">変更前: </span>
                       <span className="font-mono">{change.oldValue}</span>
@@ -96,9 +97,7 @@ export function ChangeConfirmationDialog({
               <div className="flex items-start gap-3">
                 <span className="text-yellow-600 text-lg">⚠️</span>
                 <div>
-                  <h4 className="font-medium text-yellow-800">
-                    参加者への影響について
-                  </h4>
+                  <h4 className="font-medium text-yellow-800">参加者への影響について</h4>
                   <p className="text-sm text-yellow-700 mt-1">
                     {attendeeCount}人の参加者に変更が通知されます。
                   </p>
@@ -108,23 +107,22 @@ export function ChangeConfirmationDialog({
           )}
 
           {/* 制限項目の警告 */}
-          {hasAttendees && changes.some(change =>
-            ['title', 'fee', 'payment_methods', 'capacity'].includes(change.field)
-          ) && (
-            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-              <div className="flex items-start gap-3">
-                <span className="text-red-600 text-lg">🚫</span>
-                <div>
-                  <h4 className="font-medium text-red-800">
-                    制限項目の変更
-                  </h4>
-                  <p className="text-sm text-red-700 mt-1">
-                    参加者がいる場合、通常は変更できない項目が含まれています。
-                  </p>
+          {hasAttendees &&
+            changes.some((change) =>
+              ["title", "fee", "payment_methods", "capacity"].includes(change.field)
+            ) && (
+              <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                <div className="flex items-start gap-3">
+                  <span className="text-red-600 text-lg">🚫</span>
+                  <div>
+                    <h4 className="font-medium text-red-800">制限項目の変更</h4>
+                    <p className="text-sm text-red-700 mt-1">
+                      参加者がいる場合、通常は変更できない項目が含まれています。
+                    </p>
+                  </div>
                 </div>
               </div>
-            </div>
-          )}
+            )}
 
           {/* 通知メールの送信について */}
           {hasAttendees && (
@@ -132,9 +130,7 @@ export function ChangeConfirmationDialog({
               <div className="flex items-start gap-3">
                 <span className="text-blue-600 text-lg">📧</span>
                 <div>
-                  <h4 className="font-medium text-blue-800">
-                    通知メールの送信
-                  </h4>
+                  <h4 className="font-medium text-blue-800">通知メールの送信</h4>
                   <p className="text-sm text-blue-700 mt-1">
                     変更内容について参加者に自動で通知メールが送信されます。
                   </p>

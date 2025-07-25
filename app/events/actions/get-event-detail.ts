@@ -52,15 +52,6 @@ export async function getEventDetailAction(eventId: string) {
       .single();
 
     if (error) {
-      console.error("Database error details:", {
-        code: error.code,
-        message: error.message,
-        details: error.details,
-        hint: error.hint,
-        eventId: validation.data,
-        userId: user.id,
-      });
-
       if (error.code === "PGRST116") {
         throw new Error("Event not found");
       }
@@ -77,11 +68,11 @@ export async function getEventDetailAction(eventId: string) {
     // セキュリティ強化：get_event_creator_name()関数を使用してcreator_nameを取得
     const { data: creatorName, error: creatorError } = await supabase.rpc(
       "get_event_creator_name",
-      { event_id: validation.data }
+      { p_creator_id: eventDetail.created_by }
     );
 
     if (creatorError) {
-      console.error("Creator name fetch error:", creatorError);
+      // Creator name fetch error - continue with fallback
     }
 
     const result = {

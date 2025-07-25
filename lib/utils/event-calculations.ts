@@ -17,9 +17,7 @@ export function calculateAttendeeCount(attendances?: Attendance[]): number {
     return 0;
   }
 
-  return attendances.filter(
-    (attendance) => attendance.status === "attending"
-  ).length;
+  return attendances.filter((attendance) => attendance.status === "attending").length;
 }
 
 /**
@@ -60,7 +58,10 @@ export function calculateAttendanceSummary(attendances?: Attendance[]) {
  * @param capacity 定員
  * @returns 参加率（0-1の範囲）
  */
-export function calculateAttendanceRate(attendances?: Attendance[], capacity?: number | null): number {
+export function calculateAttendanceRate(
+  attendances?: Attendance[],
+  capacity?: number | null
+): number {
   if (!capacity || capacity <= 0) {
     return 0;
   }

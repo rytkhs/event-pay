@@ -3,62 +3,59 @@ import { useState } from "react";
 import { registerAction } from "@/app/(auth)/actions";
 import RegisterPage from "@/app/(auth)/register/page";
 
+import { UnifiedMockFactory } from "@/__tests__/helpers/unified-mock-factory";
+
+// 統一モック設定を適用
+UnifiedMockFactory.setupCommonMocks();
+
 // サーバーアクションをモック
 jest.mock("@/app/(auth)/actions", () => ({
   registerAction: jest.fn(),
 }));
 
-// React Hook Formをモック
-jest.mock("react-hook-form", () => ({
-  useForm: () => ({
-    control: {},
-    handleSubmit: jest.fn((fn) => (e) => {
-      e.preventDefault();
-      fn();
-    }),
-    formState: { errors: {} },
-    watch: jest.fn(() => ""),
-    setValue: jest.fn(),
-    getValues: jest.fn(),
-    trigger: jest.fn(),
-  }),
-}));
+// useRegisterFormRHFフックをモック
+const mockForm = {
+  control: {},
+  watch: jest.fn(() => ""),
+  formState: {
+    errors: {},
+    isSubmitting: false,
+    isValid: true,
+  },
+};
 
-// useRegisterFormRHFをモック
+const mockOnSubmit = jest.fn();
+
 jest.mock("@/lib/hooks/useAuthForm", () => ({
-  useRegisterFormRHF: () => ({
-    form: {
-      control: {},
-      handleSubmit: jest.fn((fn) => (e) => {
-        e.preventDefault();
-        fn();
-      }),
-      formState: { errors: {} },
-      watch: jest.fn(() => ""),
-      setValue: jest.fn(),
-      getValues: jest.fn(),
-      trigger: jest.fn(),
-    },
-    onSubmit: jest.fn(),
+  useRegisterFormRHF: jest.fn(() => ({
+    form: mockForm,
+    onSubmit: mockOnSubmit,
     isPending: false,
-  }),
+  })),
 }));
 
-// Shadcn/ui コンポーネントをモック
+// React Hook Formをモック
+const TestComponent = () => {
+  const [formState, setFormState] = useState({
+    errors: {},
+    isSubmitting: false,
+    isValid: true,
+  });
+
+  return <div data-testid="register-form">Register Form Mock</div>;
+};
+
+// UI ライブラリのモック
 jest.mock("@/components/ui/form", () => ({
-  Form: ({ children }: any) => <div>{children}</div>,
-  FormField: ({ render, name }: any) => {
-    const TestComponent = () => {
-      const [value, setValue] = useState(name === "termsAgreed" ? false : "");
-      const mockField = {
-        value,
-        onChange: (newValue: any) => setValue(newValue),
-        onBlur: jest.fn(),
-        name,
-      };
-      return render({ field: mockField });
+  Form: ({ children }: any) => <div data-testid="form-wrapper">{children}</div>,
+  FormField: ({ name, render }: any) => {
+    const mockField = {
+      name,
+      value: name === "termsAgreed" ? false : "",
+      onChange: jest.fn(),
+      onBlur: jest.fn(),
     };
-    return <TestComponent />;
+    return render({ field: mockField });
   },
   FormItem: ({ children }: any) => <div>{children}</div>,
   FormLabel: ({ children }: any) => <label>{children}</label>,
@@ -93,12 +90,21 @@ jest.mock("@/components/ui/card", () => ({
   CardDescription: ({ children }: any) => <p>{children}</p>,
 }));
 
+// Next.js Linkをモック
+jest.mock("next/link", () => {
+  return ({ children, href, ...props }: any) => (
+    <a href={href} {...props}>
+      {children}
+    </a>
+  );
+});
+
 describe("利用規約同意機能", () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  test("利用規約同意チェックボックスが表示される", () => {
+  it("利用規約同意チェックボックスが表示される", () => {
     render(<RegisterPage />);
 
     const termsCheckbox = screen.getByTestId("terms-checkbox");
@@ -106,7 +112,7 @@ describe("利用規約同意機能", () => {
     expect(termsCheckbox).not.toBeChecked();
   });
 
-  test("登録時に利用規約同意が必要である", async () => {
+  it("登録時に利用規約同意が必要である", async () => {
     render(<RegisterPage />);
 
     // フォームに入力
@@ -121,7 +127,7 @@ describe("利用規約同意機能", () => {
     expect(registerAction).not.toHaveBeenCalled();
   });
 
-  test("利用規約に同意した場合、登録が有効になる", async () => {
+  it("利用規約に同意した場合、登録が有効になる", async () => {
     render(<RegisterPage />);
 
     // フォームに入力
@@ -145,7 +151,7 @@ describe("利用規約同意機能", () => {
     });
   });
 
-  test("利用規約リンクが新しいタブで開く", () => {
+  it("利用規約リンクが新しいタブで開く", () => {
     render(<RegisterPage />);
 
     const termsLink = screen.getByRole("link", { name: /利用規約/i });
@@ -155,7 +161,7 @@ describe("利用規約同意機能", () => {
     expect(termsLink).toHaveAttribute("rel", "noopener noreferrer");
   });
 
-  test("適切なアクセシビリティ属性が設定されている", () => {
+  it("適切なアクセシビリティ属性が設定されている", () => {
     render(<RegisterPage />);
 
     const termsCheckbox = screen.getByTestId("terms-checkbox");

@@ -49,8 +49,7 @@ export default async function EventDetailPage({ params }: EventDetailPageProps) 
           cachedActions.getEventAttendances(params.id),
           cachedActions.getEventPayments(params.id),
         ]);
-      } catch (error) {
-        console.error("Failed to fetch event statistics data:", error);
+      } catch (_) {
         // エラーが発生してもページ表示は継続
       }
     }

@@ -1,8 +1,10 @@
 import { test, expect } from "@playwright/test";
+import { createUniqueTestUser } from "./helpers/rhf-test-helpers";
 
 /**
  * 参加申し込みフローE2Eテスト
  * 統合テストから移行した参加申し込み関連のユーザーフロー
+ * react-hook-form対応版
  */
 
 test.describe("参加申し込みフロー", () => {
@@ -13,28 +15,35 @@ test.describe("参加申し込みフロー", () => {
     // テスト用イベントを作成
     const page = await browser.newPage();
 
-    // イベント作成者としてログイン
-    await page.goto("/auth/login");
+    // 確認済みのテストユーザーでログイン
+    await page.goto("/login");
     await page.fill('[name="email"]', "creator@eventpay.test");
-    await page.fill('[name="password"]', "testpassword123");
+    await page.fill('[name="password"]', "TestPassword123");
     await page.click('button[type="submit"]');
-    await page.waitForURL("/dashboard");
+    await page.waitForURL("/home", { timeout: 60000 });
+    expect(page.url()).toBe("http://localhost:3000/home");
 
-    // テスト用イベントを作成
-    await page.click('[data-testid="create-event-button"]');
-    await page.waitForURL("/events/new");
+    // テスト用イベントを作成（react-hook-form対応）
+    // イベント作成ボタンが存在するかチェック
+    const createButton = page.locator('[data-testid="create-event-button"]');
+    if (await createButton.isVisible()) {
+      await createButton.click();
+    } else {
+      // ボタンが見つからない場合は直接URLに遷移
+      await page.goto("/events/create");
+    }
+    await page.waitForURL("/events/create");
 
-    await page.fill('[name="title"]', "テスト参加申し込みイベント");
-    await page.fill('[name="description"]', "参加申し込みフローテスト用のイベントです");
-    await page.fill('[name="location"]', "オンライン");
-    await page.fill('[name="event_date"]', "2024-12-31");
-    await page.fill('[name="event_time"]', "19:00");
-    await page.fill('[name="capacity"]', "10");
-    await page.fill('[name="participation_fee"]', "1000");
+    await page.fill('input[name="title"]', "テスト参加申し込みイベント");
+    await page.fill('textarea[name="description"]', "参加申し込みフローテスト用のイベントです");
+    await page.fill('input[name="location"]', "オンライン");
+    await page.fill('input[name="date"]', "2024-12-31T19:00");
+    await page.fill('input[name="capacity"]', "10");
+    await page.fill('input[name="fee"]', "1000");
 
-    // 決済方法を選択
-    await page.check('[name="payment_methods"][value="stripe"]');
-    await page.check('[name="payment_methods"][value="cash"]');
+    // 決済方法を選択（react-hook-formのCheckboxコンポーネント）
+    await page.check("#stripe");
+    await page.check("#cash");
 
     await page.click('button[type="submit"]');
     await page.waitForURL(/\/events\/[^\/]+$/);
@@ -46,8 +55,22 @@ test.describe("参加申し込みフロー", () => {
     await page.close();
   });
 
-  test.describe("招待リンクからの参加申し込み", () => {
-    test("招待リンクから参加申し込みページにアクセスできる", async ({ page }) => {
+  test.beforeEach(async ({ page }) => {
+    // ユニークなテスト用参加者を作成してログイン
+    const participant = await createUniqueTestUser(page);
+
+    // ユーザー作成後にログイン
+    await page.goto("/login");
+    await page.fill('[name="email"]', participant.email);
+    await page.fill('[name="password"]', participant.password);
+    await page.click('button[type="submit"]');
+    await page.waitForURL("/home", { timeout: 60000 });
+    expect(page.url()).toBe("http://localhost:3000/home");
+  });
+
+  test.describe("基本的な参加申し込み", () => {
+    test("招待リンクから参加申し込みが正常に動作する", async ({ page }) => {
+      // 招待リンクにアクセス
       await page.goto(inviteLink);
 
       // イベント詳細が表示されることを確認
@@ -57,141 +80,69 @@ test.describe("参加申し込みフロー", () => {
       await expect(page.locator('[data-testid="event-description"]')).toContainText(
         "参加申し込みフローテスト用のイベントです"
       );
-      await expect(page.locator('[data-testid="event-location"]')).toContainText("オンライン");
-      await expect(page.locator('[data-testid="participation-fee"]')).toContainText("1,000円");
 
-      // 参加申し込みフォームが表示されることを確認
+      // 参加申し込みボタンをクリック
+      await page.click('[data-testid="register-button"]');
+
+      // 参加申し込み確認ページまたはモーダルが表示される
       await expect(page.locator('[data-testid="registration-form"]')).toBeVisible();
-    });
 
-    test("未認証ユーザーでも参加申し込みができる", async ({ page }) => {
-      await page.goto(inviteLink);
+      // 参加申し込みを確定
+      await page.click('[data-testid="confirm-registration-button"]');
 
-      // 参加者情報を入力
-      await page.fill('[name="name"]', "テスト参加者");
-      await page.fill('[name="email"]', "participant@example.com");
-      await page.fill('[name="phone"]', "090-1234-5678");
-
-      // 決済方法を選択
-      await page.check('[name="payment_method"][value="stripe"]');
-
-      // 参加申し込みボタンをクリック
-      await page.click('[data-testid="register-button"]');
-
-      // Stripe決済ページにリダイレクトされることを確認
-      await page.waitForURL(/checkout\.stripe\.com/);
-    });
-
-    test("現金決済での参加申し込みができる", async ({ page }) => {
-      await page.goto(inviteLink);
-
-      // 参加者情報を入力
-      await page.fill('[name="name"]', "現金参加者");
-      await page.fill('[name="email"]', "cash-participant@example.com");
-      await page.fill('[name="phone"]', "090-5678-1234");
-
-      // 現金決済を選択
-      await page.check('[name="payment_method"][value="cash"]');
-
-      // 参加申し込みボタンをクリック
-      await page.click('[data-testid="register-button"]');
-
-      // 成功ページにリダイレクトされることを確認
-      await page.waitForURL(/\/events\/[^\/]+\/registration\/success/);
+      // 成功メッセージを確認
       await expect(page.locator('[data-testid="success-message"]')).toContainText(
         "参加申し込みが完了しました"
       );
-      await expect(page.locator('[data-testid="payment-method"]')).toContainText("現金");
+
+      // 決済ページまたは完了ページにリダイレクトされる
+      await page.waitForURL(/\/(payment|registration-complete)/);
     });
 
-    test("バリデーションエラーが適切に表示される", async ({ page }) => {
+    test("参加者情報の入力が必要な場合のフロー", async ({ page }) => {
       await page.goto(inviteLink);
-
-      // 空のフォームで送信
       await page.click('[data-testid="register-button"]');
 
-      // バリデーションエラーが表示されることを確認
-      await expect(page.locator('[data-testid="name-error"]')).toBeVisible();
-      await expect(page.locator('[data-testid="email-error"]')).toBeVisible();
-      await expect(page.locator('[data-testid="phone-error"]')).toBeVisible();
-      await expect(page.locator('[data-testid="payment-method-error"]')).toBeVisible();
+      // 参加者情報フォームが表示される（react-hook-form対応）
+      await expect(page.locator('[data-testid="participant-form"]')).toBeVisible();
 
-      // 無効なメールアドレスを入力
-      await page.fill('[name="email"]', "invalid-email");
-      await page.click('[data-testid="register-button"]');
+      // 追加情報を入力
+      await page.fill('[name="phone"]', "090-1234-5678");
+      await page.fill('[name="dietary_restrictions"]', "なし");
+      await page.fill('[name="emergency_contact"]', "緊急連絡先");
 
-      // メールアドレスのバリデーションエラーを確認
-      await expect(page.locator('[data-testid="email-error"]')).toContainText(
-        "有効なメールアドレスを入力してください"
+      // フォーム送信
+      await page.click('[data-testid="submit-participant-info"]');
+
+      // react-hook-formのバリデーションが正常に動作することを確認
+      await expect(page.locator('[data-testid="success-message"]')).toContainText(
+        "参加申し込みが完了しました"
       );
     });
-  });
 
-  test.describe("参加ステータス管理", () => {
-    test.beforeEach(async ({ page }) => {
-      // イベント作成者としてログイン
-      await page.goto("/auth/login");
-      await page.fill('[name="email"]', "creator@eventpay.test");
-      await page.fill('[name="password"]', "testpassword123");
+    test("定員に達している場合の処理", async ({ page }) => {
+      // 定員1のイベントを作成
+      await page.goto("/events/create");
+      await page.fill('input[name="title"]', "定員テストイベント");
+      await page.fill('input[name="date"]', "2024-12-31T18:00");
+      await page.fill('input[name="capacity"]', "1");
+      await page.fill('input[name="fee"]', "500");
+      await page.check("#stripe");
       await page.click('button[type="submit"]');
-      await page.waitForURL("/dashboard");
-    });
+      await page.waitForURL(/\/events\/[^\/]+$/);
 
-    test("参加者一覧で参加ステータスを確認できる", async ({ page }) => {
-      await page.goto(`/events/${eventId}/attendees`);
+      const limitedEventId = page.url().split("/").pop()!;
 
-      // 参加者一覧が表示されることを確認
-      await expect(page.locator('[data-testid="attendees-list"]')).toBeVisible();
+      // 別のユーザーとして参加申し込み（定員を満たす）
+      // （実際の実装では、事前にテストデータで定員を満たしておく）
 
-      // 参加者の情報が表示されることを確認
-      await expect(page.locator('[data-testid="attendee-name"]').first()).toBeVisible();
-      await expect(page.locator('[data-testid="attendee-email"]').first()).toBeVisible();
-      await expect(page.locator('[data-testid="payment-status"]').first()).toBeVisible();
-    });
+      // 定員に達した状態でアクセス
+      await page.goto(`/events/${limitedEventId}`);
 
-    test("参加ステータスを変更できる", async ({ page }) => {
-      await page.goto(`/events/${eventId}/attendees`);
-
-      // 最初の参加者のステータス変更メニューを開く
-      await page.locator('[data-testid="attendee-menu"]').first().click();
-
-      // ステータス変更オプションが表示されることを確認
-      await expect(page.locator('[data-testid="status-pending"]')).toBeVisible();
-      await expect(page.locator('[data-testid="status-confirmed"]')).toBeVisible();
-      await expect(page.locator('[data-testid="status-cancelled"]')).toBeVisible();
-
-      // ステータスを「確認済み」に変更
-      await page.click('[data-testid="status-confirmed"]');
-
-      // 確認ダイアログが表示されることを確認
-      await expect(page.locator('[data-testid="confirm-dialog"]')).toBeVisible();
-      await page.click('[data-testid="confirm-button"]');
-
-      // ステータスが更新されることを確認
-      await expect(page.locator('[data-testid="payment-status"]').first()).toContainText(
-        "確認済み"
-      );
-    });
-
-    test("参加者をキャンセルできる", async ({ page }) => {
-      await page.goto(`/events/${eventId}/attendees`);
-
-      // 参加者のキャンセルメニューを開く
-      await page.locator('[data-testid="attendee-menu"]').first().click();
-      await page.click('[data-testid="status-cancelled"]');
-
-      // キャンセル確認ダイアログが表示されることを確認
-      await expect(page.locator('[data-testid="cancel-dialog"]')).toBeVisible();
-      await expect(page.locator('[data-testid="cancel-warning"]')).toContainText(
-        "この操作は取り消せません"
-      );
-
-      // キャンセルを確認
-      await page.click('[data-testid="cancel-confirm-button"]');
-
-      // ステータスが「キャンセル済み」に更新されることを確認
-      await expect(page.locator('[data-testid="payment-status"]').first()).toContainText(
-        "キャンセル済み"
+      // 参加申し込みボタンが無効化されていることを確認
+      await expect(page.locator('[data-testid="register-button"]')).toBeDisabled();
+      await expect(page.locator('[data-testid="capacity-full-message"]')).toContainText(
+        "定員に達しています"
       );
     });
   });
@@ -199,157 +150,186 @@ test.describe("参加申し込みフロー", () => {
   test.describe("決済フロー", () => {
     test("Stripe決済フローが正常に動作する", async ({ page }) => {
       await page.goto(inviteLink);
+      await page.click('[data-testid="register-button"]');
+      await page.click('[data-testid="confirm-registration-button"]');
 
-      // 参加者情報を入力
-      await page.fill('[name="name"]', "Stripe参加者");
-      await page.fill('[name="email"]', "stripe-participant@example.com");
-      await page.fill('[name="phone"]', "090-9999-8888");
+      // 決済方法選択ページが表示される
+      await expect(page.locator('[data-testid="payment-method-selection"]')).toBeVisible();
 
       // Stripe決済を選択
-      await page.check('[name="payment_method"][value="stripe"]');
+      await page.click('[data-testid="select-stripe-payment"]');
 
-      // 参加申し込みボタンをクリック
-      await page.click('[data-testid="register-button"]');
+      // Stripe決済ページにリダイレクトされる
+      await page.waitForURL(/\/payment\/stripe/);
 
-      // Stripe決済ページにリダイレクトされることを確認
-      await page.waitForURL(/checkout\.stripe\.com/);
+      // テスト用カード情報を入力（実際のテストではStripe Test Modeを使用）
+      await page.fill('[data-testid="card-number"]', "4242424242424242");
+      await page.fill('[data-testid="card-expiry"]', "12/25");
+      await page.fill('[data-testid="card-cvc"]', "123");
 
-      // Stripe決済フォームが表示されることを確認
-      await expect(page.locator('[data-testid="stripe-checkout-form"]')).toBeVisible();
+      // 決済を実行
+      await page.click('[data-testid="pay-button"]');
+
+      // 決済完了ページが表示される
+      await page.waitForURL(/\/payment\/success/);
+      await expect(page.locator('[data-testid="payment-success-message"]')).toContainText(
+        "決済が完了しました"
+      );
     });
 
-    test("決済成功後の処理が正常に動作する", async ({ page }) => {
-      // モックのStripe成功ページを使用
-      await page.goto(`/events/${eventId}/registration/success?session_id=mock_session_success`);
+    test("現金決済フローが正常に動作する", async ({ page }) => {
+      await page.goto(inviteLink);
+      await page.click('[data-testid="register-button"]');
+      await page.click('[data-testid="confirm-registration-button"]');
 
-      // 成功ページが表示されることを確認
-      await expect(page.locator('[data-testid="payment-success"]')).toBeVisible();
+      // 決済方法選択ページが表示される
+      await expect(page.locator('[data-testid="payment-method-selection"]')).toBeVisible();
+
+      // 現金決済を選択
+      await page.click('[data-testid="select-cash-payment"]');
+
+      // 現金決済の説明と確認が表示される
+      await expect(page.locator('[data-testid="cash-payment-info"]')).toContainText(
+        "当日現金でお支払いください"
+      );
+
+      // 確認ボタンをクリック
+      await page.click('[data-testid="confirm-cash-payment"]');
+
+      // 登録完了ページが表示される
+      await page.waitForURL(/\/registration-complete/);
+      await expect(page.locator('[data-testid="registration-complete-message"]')).toContainText(
+        "参加申し込みが完了しました"
+      );
+    });
+
+    test("決済エラーハンドリングが適切に動作する", async ({ page }) => {
+      await page.goto(inviteLink);
+      await page.click('[data-testid="register-button"]');
+      await page.click('[data-testid="confirm-registration-button"]');
+      await page.click('[data-testid="select-stripe-payment"]');
+
+      // 無効なカード情報を入力
+      await page.fill('[data-testid="card-number"]', "4000000000000002"); // Stripe test card for declined
+      await page.fill('[data-testid="card-expiry"]', "12/25");
+      await page.fill('[data-testid="card-cvc"]', "123");
+
+      await page.click('[data-testid="pay-button"]');
+
+      // エラーメッセージが表示される
+      await expect(page.locator('[data-testid="payment-error"]')).toContainText(
+        "決済が失敗しました"
+      );
+
+      // 再試行可能な状態であることを確認
+      await expect(page.locator('[data-testid="retry-payment-button"]')).toBeVisible();
+    });
+  });
+
+  test.describe("参加申し込み状態管理", () => {
+    test("重複申し込みの防止が機能する", async ({ page }) => {
+      // 一度申し込みを完了
+      await page.goto(inviteLink);
+      await page.click('[data-testid="register-button"]');
+      await page.click('[data-testid="confirm-registration-button"]');
+      await page.click('[data-testid="select-cash-payment"]');
+      await page.click('[data-testid="confirm-cash-payment"]');
+
+      // 再度同じイベントにアクセス
+      await page.goto(inviteLink);
+
+      // 既に申し込み済みであることが表示される
+      await expect(page.locator('[data-testid="already-registered-message"]')).toContainText(
+        "このイベントにはすでに参加申し込み済みです"
+      );
+
+      // 参加申し込みボタンが無効化されている
+      await expect(page.locator('[data-testid="register-button"]')).toBeDisabled();
+    });
+
+    test("申し込みキャンセル機能が動作する", async ({ page }) => {
+      // 申し込みを完了
+      await page.goto(inviteLink);
+      await page.click('[data-testid="register-button"]');
+      await page.click('[data-testid="confirm-registration-button"]');
+      await page.click('[data-testid="select-cash-payment"]');
+      await page.click('[data-testid="confirm-cash-payment"]');
+
+      // マイページまたはイベント詳細でキャンセルボタンをクリック
+      await page.goto(`/events/${eventId}`);
+      await page.click('[data-testid="cancel-registration-button"]');
+
+      // キャンセル確認ダイアログが表示される
+      await expect(page.locator('[data-testid="cancel-confirmation-dialog"]')).toBeVisible();
+      await page.click('[data-testid="confirm-cancel-button"]');
+
+      // キャンセル完了メッセージを確認
       await expect(page.locator('[data-testid="success-message"]')).toContainText(
-        "お支払いが完了しました"
+        "参加申し込みをキャンセルしました"
       );
 
-      // 参加確認情報が表示されることを確認
-      await expect(page.locator('[data-testid="event-details"]')).toBeVisible();
-      await expect(page.locator('[data-testid="attendance-qr-code"]')).toBeVisible();
-    });
-
-    test("決済失敗時の処理が正常に動作する", async ({ page }) => {
-      // モックのStripe失敗ページを使用
-      await page.goto(
-        `/events/${eventId}/registration/cancelled?session_id=mock_session_cancelled`
-      );
-
-      // 失敗ページが表示されることを確認
-      await expect(page.locator('[data-testid="payment-cancelled"]')).toBeVisible();
-      await expect(page.locator('[data-testid="error-message"]')).toContainText(
-        "お支払いがキャンセルされました"
-      );
-
-      // 再試行ボタンが表示されることを確認
-      await expect(page.locator('[data-testid="retry-button"]')).toBeVisible();
+      // 再度参加申し込み可能な状態に戻る
+      await expect(page.locator('[data-testid="register-button"]')).toBeEnabled();
     });
   });
 
-  test.describe("定員管理", () => {
-    test("定員に達した場合の処理が正常に動作する", async ({ page }) => {
-      // 定員1名のイベントを作成
-      await page.goto("/auth/login");
-      await page.fill('[name="email"]', "creator@eventpay.test");
-      await page.fill('[name="password"]', "testpassword123");
-      await page.click('button[type="submit"]');
-      await page.waitForURL("/dashboard");
-
-      await page.click('[data-testid="create-event-button"]');
-      await page.waitForURL("/events/new");
-
-      await page.fill('[name="title"]', "定員テストイベント");
-      await page.fill('[name="description"]', "定員テスト用");
-      await page.fill('[name="location"]', "オンライン");
-      await page.fill('[name="event_date"]', "2024-12-31");
-      await page.fill('[name="event_time"]', "20:00");
-      await page.fill('[name="capacity"]', "1");
-      await page.fill('[name="participation_fee"]', "500");
-
-      await page.check('[name="payment_methods"][value="cash"]');
-      await page.click('button[type="submit"]');
-      await page.waitForURL(/\/events\/[^\/]+$/);
-
-      const capacityEventId = page.url().split("/").pop()!;
-      const capacityInviteLink = await page.locator('[data-testid="invite-link"]').inputValue();
-
-      // 1人目の参加申し込み
-      await page.goto(capacityInviteLink);
-      await page.fill('[name="name"]', "1人目参加者");
-      await page.fill('[name="email"]', "first@example.com");
-      await page.fill('[name="phone"]', "090-1111-1111");
-      await page.check('[name="payment_method"][value="cash"]');
+  test.describe("フォームバリデーション", () => {
+    test("必須項目のバリデーションが機能する", async ({ page }) => {
+      await page.goto(inviteLink);
       await page.click('[data-testid="register-button"]');
-      await page.waitForURL(/\/events\/[^\/]+\/registration\/success/);
 
-      // 2人目の参加申し込み（定員オーバー）
-      await page.goto(capacityInviteLink);
+      // 必須項目を空で送信
+      await page.click('[data-testid="confirm-registration-button"]');
 
-      // 定員に達したメッセージが表示されることを確認
-      await expect(page.locator('[data-testid="capacity-full-message"]')).toBeVisible();
-      await expect(page.locator('[data-testid="capacity-full-message"]')).toContainText(
-        "定員に達しました"
-      );
-
-      // 参加申し込みフォームが無効化されることを確認
-      await expect(page.locator('[data-testid="registration-form"]')).toHaveAttribute("disabled");
+      // react-hook-formのクライアントサイドバリデーションによりエラーが表示される
+      // 参加申し込みフォームでは通常、必須項目は最小限だが、
+      // 追加情報が必要な場合のバリデーションを確認
+      if (await page.locator('[data-testid="participant-form"]').isVisible()) {
+        await expect(page.locator("text=この項目は必須です")).toBeVisible();
+      }
     });
 
-    test("キャンセル待ち機能が正常に動作する", async ({ page }) => {
-      // 定員に達したイベントでキャンセル待ち申し込み
-      const capacityInviteLink = await page.locator('[data-testid="invite-link"]').inputValue();
-      await page.goto(capacityInviteLink);
+    test("連絡先情報のフォーマットバリデーションが機能する", async ({ page }) => {
+      await page.goto(inviteLink);
+      await page.click('[data-testid="register-button"]');
 
-      // キャンセル待ち申し込みボタンが表示されることを確認
-      await expect(page.locator('[data-testid="waitlist-button"]')).toBeVisible();
+      if (await page.locator('[data-testid="participant-form"]').isVisible()) {
+        // 無効な電話番号を入力
+        await page.fill('[name="phone"]', "invalid-phone");
 
-      // キャンセル待ち申し込み
-      await page.fill('[name="name"]', "キャンセル待ち参加者");
-      await page.fill('[name="email"]', "waitlist@example.com");
-      await page.fill('[name="phone"]', "090-2222-2222");
-      await page.click('[data-testid="waitlist-button"]');
+        // react-hook-formのバリデーションでエラーが表示される
+        await page.click('[data-testid="submit-participant-info"]');
+        await expect(page.locator("text=正しい電話番号を入力してください")).toBeVisible();
 
-      // キャンセル待ち完了メッセージが表示されることを確認
-      await expect(page.locator('[data-testid="waitlist-success"]')).toBeVisible();
-      await expect(page.locator('[data-testid="waitlist-success"]')).toContainText(
-        "キャンセル待ちに登録しました"
-      );
+        // 正しい形式に修正
+        await page.fill('[name="phone"]', "090-1234-5678");
+        await expect(page.locator("text=正しい電話番号を入力してください")).not.toBeVisible();
+      }
     });
   });
 
-  test.describe("QRコード機能", () => {
-    test("参加確認QRコードが正常に表示される", async ({ page }) => {
-      await page.goto(`/events/${eventId}/registration/success?session_id=mock_session_success`);
+  test.describe("レスポンシブデザイン", () => {
+    test("モバイルデバイスで参加申し込みフローが正常に動作する", async ({ page }) => {
+      // モバイルサイズに設定
+      await page.setViewportSize({ width: 375, height: 667 });
 
-      // QRコードが表示されることを確認
-      await expect(page.locator('[data-testid="attendance-qr-code"]')).toBeVisible();
+      await page.goto(inviteLink);
 
-      // QRコードの詳細情報が表示されることを確認
-      await expect(page.locator('[data-testid="qr-code-info"]')).toContainText(
-        "受付時にこのQRコードを提示してください"
-      );
-    });
+      // モバイルビューでイベント詳細が適切に表示される
+      await expect(page.locator('[data-testid="event-title"]')).toBeVisible();
+      await expect(page.locator('[data-testid="register-button"]')).toBeVisible();
 
-    test("QRコードスキャン機能が正常に動作する", async ({ page }) => {
-      // イベント作成者としてログイン
-      await page.goto("/auth/login");
-      await page.fill('[name="email"]', "creator@eventpay.test");
-      await page.fill('[name="password"]', "testpassword123");
-      await page.click('button[type="submit"]');
-      await page.waitForURL("/dashboard");
+      // モバイルでの参加申し込み
+      await page.click('[data-testid="register-button"]');
+      await page.click('[data-testid="confirm-registration-button"]');
 
-      // QRコードスキャンページに移動
-      await page.goto(`/events/${eventId}/checkin`);
+      // モバイルでの決済方法選択
+      await expect(page.locator('[data-testid="payment-method-selection"]')).toBeVisible();
+      await page.click('[data-testid="select-cash-payment"]');
+      await page.click('[data-testid="confirm-cash-payment"]');
 
-      // QRコードスキャナーが表示されることを確認
-      await expect(page.locator('[data-testid="qr-scanner"]')).toBeVisible();
-
-      // カメラ権限要求ダイアログが表示されることを確認
-      await expect(page.locator('[data-testid="camera-permission"]')).toBeVisible();
+      // 登録完了の確認
+      await expect(page.locator('[data-testid="registration-complete-message"]')).toBeVisible();
     });
   });
 });

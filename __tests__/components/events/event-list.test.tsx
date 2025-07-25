@@ -30,21 +30,21 @@ const mockEvents: Event[] = [
 ];
 
 describe("EventList Component - Red Phase Tests", () => {
-  test("イベントリストが正しく表示される", () => {
+  it("イベントリストが正しく表示される", () => {
     render(<EventList events={mockEvents} />);
 
     expect(screen.getByText("テストイベント1")).toBeInTheDocument();
     expect(screen.getByText("テストイベント2")).toBeInTheDocument();
   });
 
-  test("空のイベントリストの場合、適切なメッセージが表示される", () => {
+  it("空のイベントリストの場合、適切なメッセージが表示される", () => {
     render(<EventList events={[]} />);
 
     expect(screen.getByText("イベントがまだありません")).toBeInTheDocument();
     expect(screen.getByText("新しいイベントを作成してみましょう")).toBeInTheDocument();
   });
 
-  test("イベント作成ボタンが表示される", () => {
+  it("イベント作成ボタンが表示される", () => {
     render(<EventList events={[]} />);
 
     // Linkコンポーネントは'link'ロールとして認識される
@@ -52,14 +52,14 @@ describe("EventList Component - Red Phase Tests", () => {
     expect(createButton).toBeInTheDocument();
   });
 
-  test("複数のイベントが適切にレンダリングされる", () => {
+  it("複数のイベントが適切にレンダリングされる", () => {
     render(<EventList events={mockEvents} />);
 
     const eventCards = screen.getAllByTestId("event-card");
     expect(eventCards).toHaveLength(2);
   });
 
-  test("イベントカードがグリッドレイアウトで表示される", () => {
+  it("イベントカードがグリッドレイアウトで表示される", () => {
     render(<EventList events={mockEvents} />);
 
     const eventGrid = screen.getByTestId("event-grid");
