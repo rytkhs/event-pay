@@ -35,6 +35,20 @@ export const RATE_LIMIT_CONFIG = {
     blockDurationMs: 5 * 60 * 1000, // 5分ブロック
   } as RateLimitConfig,
 
+  // 招待リンク関連API
+  invite: {
+    windowMs: 5 * 60 * 1000, // 5分
+    maxAttempts: 10, // 10回まで
+    blockDurationMs: 15 * 60 * 1000, // 15分ブロック
+  } as RateLimitConfig,
+
+  // 参加登録API
+  participation: {
+    windowMs: 5 * 60 * 1000, // 5分
+    maxAttempts: 10, // 10回まで
+    blockDurationMs: 15 * 60 * 1000, // 15分ブロック
+  } as RateLimitConfig,
+
   // 一般API（将来拡張用）
   general: {
     windowMs: 60 * 1000, // 1分
