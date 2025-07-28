@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { checkRateLimit, createRateLimitStore, type RateLimitConfig } from "@/lib/rate-limit/index";
 
 // レート制限エラーレスポンス用の型定義
-interface RateLimitErrorResponse {
+export interface RateLimitErrorResponse {
   success: false;
   error: {
     code: string;
