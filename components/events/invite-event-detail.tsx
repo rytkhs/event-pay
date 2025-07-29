@@ -5,15 +5,17 @@ import { EventDetail } from "@/lib/utils/invite-token";
 import { sanitizeEventDescription, sanitizeForEventPay } from "@/lib/utils/sanitize";
 import { formatUtcToJapaneseDisplay } from "@/lib/utils/timezone";
 import { PAYMENT_METHOD_LABELS } from "@/lib/constants/payment-methods";
+import { type ParticipationFormData } from "@/lib/validations/participation";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { ParticipationForm } from "./participation-form";
 
 interface InviteEventDetailProps {
   event: EventDetail;
   inviteToken: string;
 }
 
-export function InviteEventDetail({ event, inviteToken: _inviteToken }: InviteEventDetailProps) {
+export function InviteEventDetail({ event, inviteToken }: InviteEventDetailProps) {
   const [showForm, setShowForm] = useState(false);
 
   const formatCurrency = (amount: number) => {
@@ -45,6 +47,19 @@ export function InviteEventDetail({ event, inviteToken: _inviteToken }: InviteEv
 
   const canRegister =
     !isCapacityReached && !isRegistrationDeadlinePassed && event.status === "upcoming";
+
+  const handleParticipationSubmit = async (data: ParticipationFormData) => {
+    try {
+      // TODO: 次のタスクで実装される参加登録サーバーアクション
+      console.log("参加申し込みデータ:", data);
+
+      // 仮の成功処理
+      alert("参加申し込みが完了しました！（実装は次のタスクで行われます）");
+      setShowForm(false);
+    } catch (error) {
+      alert("参加申し込み中にエラーが発生しました");
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -166,16 +181,14 @@ export function InviteEventDetail({ event, inviteToken: _inviteToken }: InviteEv
         )}
       </div>
 
-      {/* 参加申し込みフォーム（今後のタスクで実装） */}
+      {/* 参加申し込みフォーム */}
       {showForm && (
-        <Card className="p-6">
-          <div className="text-center text-gray-600">
-            <p>参加申し込みフォームは次のタスクで実装されます</p>
-            <Button onClick={() => setShowForm(false)} variant="outline" className="mt-4">
-              閉じる
-            </Button>
-          </div>
-        </Card>
+        <ParticipationForm
+          event={event}
+          inviteToken={inviteToken}
+          onSubmit={handleParticipationSubmit}
+          onCancel={() => setShowForm(false)}
+        />
       )}
     </div>
   );
