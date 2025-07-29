@@ -23,7 +23,7 @@ export async function GET(
   // レート制限を適用
   const rateLimitResponse = await handleRateLimit(request, RATE_LIMIT_CONFIG.invite, "invite");
   if (rateLimitResponse) {
-    return rateLimitResponse;
+    return rateLimitResponse as NextResponse<RateLimitErrorResponse>;
   }
 
   try {
