@@ -1,0 +1,211 @@
+"use server";
+
+import { z } from "zod";
+import { createClient } from "@/lib/supabase/server";
+import { generateSecureToken } from "@/lib/security/crypto";
+import { validateInviteToken, checkEventCapacity, checkDuplicateEmail } from "@/lib/utils/invite-token";
+import { participationFormSchema, type ParticipationFormData } from "@/lib/validations/participation";
+import { sanitizeForEventPay } from "@/lib/utils/sanitize";
+import {
+  type ServerActionResult,
+  createErrorResponse,
+  createSuccessResponse,
+  zodErrorToResponse,
+  ERROR_CODES,
+} from "@/lib/types/server-actions";
+import type { Database } from "@/types/database";
+
+// 参加登録結果の型定義
+export interface RegisterParticipationData {
+  attendanceId: string;
+  guestToken: string;
+  requiresPayment: boolean;
+  eventTitle: string;
+  participantNickname: string;
+  participantEmail: string;
+  attendanceStatus: Database["public"]["Enums"]["attendance_status_enum"];
+  paymentMethod?: Database["public"]["Enums"]["payment_method_enum"];
+}
+
+/**
+ * ゲストトークンを生成する関数
+ * 24バイトのランダムデータをURLセーフなBase64でエンコード（32文字）
+ */
+function generateGuestToken(): string {
+  // randomBytesを直接使用してURLセーフなBase64エンコード
+  const { randomBytes } = require("crypto");
+  return randomBytes(24)
+    .toString("base64")
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=/g, "");
+}
+
+/**
+ * 参加登録を処理するサーバーアクション
+ * 容量チェック、重複チェック、ゲストトークン生成を含む
+ */
+export async function registerParticipationAction(
+  formData: FormData
+): Promise<ServerActionResult<RegisterParticipationData>> {
+  try {
+    // FormDataから参加データを抽出
+    const rawData = {
+      inviteToken: formData.get("inviteToken") as string,
+      nickname: formData.get("nickname") as string,
+      email: formData.get("email") as string,
+      attendanceStatus: formData.get("attendanceStatus") as string,
+      paymentMethod: formData.get("paymentMethod") as string | undefined,
+    };
+
+    // 基本的な入力検証
+    let participationData: ParticipationFormData;
+    try {
+      participationData = participationFormSchema.parse(rawData);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return zodErrorToResponse(error);
+      }
+      return createErrorResponse(ERROR_CODES.VALIDATION_ERROR, "入力データが無効です");
+    }
+
+    // 招待トークンの検証とイベント情報の取得
+    const inviteValidation = await validateInviteToken(participationData.inviteToken);
+
+    if (!inviteValidation.isValid || !inviteValidation.event) {
+      return createErrorResponse(
+        ERROR_CODES.NOT_FOUND,
+        inviteValidation.errorMessage || "無効な招待リンクです"
+      );
+    }
+
+    if (!inviteValidation.canRegister) {
+      return createErrorResponse(
+        ERROR_CODES.BUSINESS_RULE_VIOLATION,
+        inviteValidation.errorMessage || "このイベントには参加登録できません"
+      );
+    }
+
+    const event = inviteValidation.event;
+
+    // 参加ステータスが"attending"の場合の容量チェック
+    if (participationData.attendanceStatus === "attending") {
+      const isCapacityReached = await checkEventCapacity(event.id, event.capacity);
+      if (isCapacityReached) {
+        return createErrorResponse(
+          ERROR_CODES.BUSINESS_RULE_VIOLATION,
+          "このイベントは定員に達しています"
+        );
+      }
+    }
+
+    // メールアドレスの重複チェック
+    const sanitizedEmail = sanitizeForEventPay(participationData.email.trim().toLowerCase());
+    const isDuplicateEmail = await checkDuplicateEmail(event.id, sanitizedEmail);
+    if (isDuplicateEmail) {
+      return createErrorResponse(
+        ERROR_CODES.CONFLICT,
+        "このメールアドレスは既に登録されています"
+      );
+    }
+
+    // Supabaseクライアントの作成
+    const supabase = createClient();
+
+    // ゲストトークンの生成
+    const guestToken = generateGuestToken();
+
+    // 参加記録の作成
+    const sanitizedNickname = sanitizeForEventPay(participationData.nickname.trim());
+
+    const { data: attendance, error: attendanceError } = await supabase
+      .from("attendances")
+      .insert({
+        event_id: event.id,
+        nickname: sanitizedNickname,
+        email: sanitizedEmail,
+        status: participationData.attendanceStatus,
+        guest_token: guestToken,
+      })
+      .select("id")
+      .single();
+
+    if (attendanceError || !attendance) {
+      console.error("参加記録作成エラー:", attendanceError);
+      return createErrorResponse(
+        ERROR_CODES.DATABASE_ERROR,
+        "参加登録の処理中にエラーが発生しました"
+      );
+    }
+
+    // 決済が必要な場合（参加ステータスが"attending"かつ有料イベント）の決済記録作成
+    let requiresPayment = false;
+    if (participationData.attendanceStatus === "attending" && event.fee > 0 && participationData.paymentMethod) {
+      requiresPayment = true;
+
+      const { error: paymentError } = await supabase
+        .from("payments")
+        .insert({
+          attendance_id: attendance.id,
+          amount: event.fee,
+          method: participationData.paymentMethod,
+          status: "pending", // 初期状態はpending
+        });
+
+      if (paymentError) {
+        console.error("決済記録作成エラー:", paymentError);
+        // 参加記録は作成済みなので、決済記録のエラーは警告として扱う
+        // 実際のプロダクションでは、この状況をモニタリングする必要がある
+      }
+    }
+
+    // 成功レスポンスの作成
+    const responseData: RegisterParticipationData = {
+      attendanceId: attendance.id,
+      guestToken,
+      requiresPayment,
+      eventTitle: event.title,
+      participantNickname: sanitizedNickname,
+      participantEmail: sanitizedEmail,
+      attendanceStatus: participationData.attendanceStatus,
+      paymentMethod: participationData.paymentMethod,
+    };
+
+    return createSuccessResponse(responseData, "参加登録が完了しました");
+
+  } catch (error) {
+    console.error("参加登録アクションのエラー:", error);
+    return createErrorResponse(
+      ERROR_CODES.INTERNAL_ERROR,
+      "参加登録の処理中にエラーが発生しました"
+    );
+  }
+}
+
+/**
+ * 参加登録データの直接処理版（FormDataではなく型安全なオブジェクトを受け取る）
+ * テストやAPIエンドポイントから使用される
+ */
+export async function registerParticipationDirectAction(
+  participationData: ParticipationFormData
+): Promise<ServerActionResult<RegisterParticipationData>> {
+  try {
+    // FormDataを模擬してメインの処理を再利用
+    const formData = new FormData();
+    formData.append("inviteToken", participationData.inviteToken);
+    formData.append("nickname", participationData.nickname);
+    formData.append("email", participationData.email);
+    formData.append("attendanceStatus", participationData.attendanceStatus);
+    if (participationData.paymentMethod) {
+      formData.append("paymentMethod", participationData.paymentMethod);
+    }
+
+    return await registerParticipationAction(formData);
+  } catch (error) {
+    console.error("参加登録直接アクションのエラー:", error);
+    return createErrorResponse(
+      ERROR_CODES.INTERNAL_ERROR,
+      "参加登録の処理中にエラーが発生しました"
+    );
+  }
+}
