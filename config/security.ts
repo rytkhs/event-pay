@@ -42,7 +42,7 @@ export const RATE_LIMIT_CONFIG = {
     blockDurationMs: 15 * 60 * 1000, // 15分ブロック
   } as RateLimitConfig,
 
-  // 参加登録API
+  // 参加登録関連（将来のAPI拡張用）
   participation: {
     windowMs: 5 * 60 * 1000, // 5分
     maxAttempts: 10, // 10回まで
