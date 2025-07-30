@@ -143,19 +143,28 @@ export async function registerParticipationAction(
     if (participationData.attendanceStatus === "attending" && event.fee > 0 && participationData.paymentMethod) {
       requiresPayment = true;
 
+      // StripeとCashの両方でpendingステータスの決済レコードを作成
       const { error: paymentError } = await supabase
         .from("payments")
         .insert({
           attendance_id: attendance.id,
           amount: event.fee,
           method: participationData.paymentMethod,
-          status: "pending", // 初期状態はpending
+          status: "pending", // 初期状態は常にpending（StripeもCashも）
         });
 
       if (paymentError) {
         console.error("決済記録作成エラー:", paymentError);
-        // 参加記録は作成済みなので、決済記録のエラーは警告として扱う
-        // 実際のプロダクションでは、この状況をモニタリングする必要がある
+        // 決済記録の作成に失敗した場合、参加記録も削除してロールバック
+        await supabase
+          .from("attendances")
+          .delete()
+          .eq("id", attendance.id);
+
+        return createErrorResponse(
+          ERROR_CODES.DATABASE_ERROR,
+          "決済記録の作成中にエラーが発生しました"
+        );
       }
     }
 
