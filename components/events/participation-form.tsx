@@ -58,8 +58,10 @@ export function ParticipationForm({
   const watchedAttendanceStatus = form.watch("attendanceStatus");
   const showPaymentMethod = watchedAttendanceStatus === "attending" && event.fee > 0;
 
-  // フィールドレベルのリアルタイムバリデーション
+  // フィールドレベルのリアルタイムバリデーション（セキュリティ対策強化版）
   const handleFieldChange = (fieldName: keyof ParticipationFormData, value: string) => {
+    // クライアントサイドでは詳細なセキュリティログは記録しない
+    // （サーバーサイドで包括的にログ記録される）
     const errors = validateParticipationField(fieldName, value, form.getValues());
 
     // エラーがある場合は表示、ない場合はクリア
@@ -74,7 +76,8 @@ export function ParticipationForm({
     try {
       setInternalIsSubmitting(true);
 
-      // 入力データのサニタイゼーション
+      // 入力データのサニタイゼーション（クライアントサイド）
+      // サーバーサイドでも再度サニタイゼーションが実行される
       const sanitizedData: ParticipationFormData = {
         ...data,
         nickname: sanitizeParticipationInput.nickname(data.nickname),

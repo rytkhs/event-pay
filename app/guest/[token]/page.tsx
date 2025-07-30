@@ -1,4 +1,5 @@
 import { Metadata } from "next";
+import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import { validateGuestToken } from "@/lib/utils/guest-token";
 import { sanitizeForEventPay } from "@/lib/utils/sanitize";
@@ -7,6 +8,8 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { AlertCircle, ArrowLeft } from "lucide-react";
 import Link from "next/link";
+import { logInvalidTokenAccess } from "@/lib/security/security-logger";
+import { getClientIP } from "@/lib/utils/ip-detection";
 
 interface GuestPageProps {
   params: { token: string };
@@ -37,11 +40,18 @@ export async function generateMetadata({ params }: GuestPageProps): Promise<Meta
 export default async function GuestPage({ params }: GuestPageProps) {
   const { token } = params;
 
+  // リクエスト情報を取得（セキュリティログ用）
+  const headersList = headers();
+  const userAgent = headersList.get("user-agent") || undefined;
+  const ip = getClientIP(headersList);
+
   // ゲストトークンの検証
   const validation = await validateGuestToken(token);
 
   // 無効なトークンの場合は404を返す
   if (!validation.isValid || !validation.attendance) {
+    // 無効なゲストトークンアクセスをログに記録
+    logInvalidTokenAccess(token, "guest", { userAgent, ip });
     notFound();
   }
 
