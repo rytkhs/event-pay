@@ -2,6 +2,11 @@ import { z } from "zod";
 import type { Database } from "@/types/database";
 import { sanitizeForEventPay } from "@/lib/utils/sanitize";
 import { checkDuplicateEmail } from "@/lib/utils/invite-token";
+import {
+  logSanitizationEvent,
+  logValidationFailure,
+  logDuplicateRegistrationAttempt,
+} from "@/lib/security/security-logger";
 
 // 参加ステータスの型定義
 type AttendanceStatus = Database["public"]["Enums"]["attendance_status_enum"];
@@ -78,16 +83,22 @@ export interface ParticipationValidationErrors {
 }
 
 /**
- * 参加フォームの個別フィールド検証
+ * 参加フォームの個別フィールド検証（セキュリティログ付き）
  * @param name フィールド名
  * @param value フィールドの値
  * @param formData 全体のフォームデータ（相関チェック用）
+ * @param request リクエスト情報（ログ用）
  * @returns 検証エラー
  */
 export const validateParticipationField = (
   name: keyof ParticipationFormData,
   value: string,
-  formData?: Partial<ParticipationFormData>
+  formData?: Partial<ParticipationFormData>,
+  request?: {
+    userAgent?: string;
+    ip?: string;
+    eventId?: string;
+  }
 ): ParticipationValidationErrors => {
   const errors: ParticipationValidationErrors = {};
 
@@ -117,7 +128,13 @@ export const validateParticipationField = (
     }
   } catch (error) {
     if (error instanceof z.ZodError) {
-      errors[name] = error.errors[0].message;
+      const errorMessage = error.errors[0].message;
+      errors[name] = errorMessage;
+
+      // バリデーション失敗をログに記録
+      if (request) {
+        logValidationFailure(name, errorMessage, value, request);
+      }
     }
   }
 
@@ -125,12 +142,18 @@ export const validateParticipationField = (
 };
 
 /**
- * 参加フォーム全体の検証
+ * 参加フォーム全体の検証（セキュリティログ付き）
  * @param formData フォームデータ
+ * @param request リクエスト情報（ログ用）
  * @returns 検証エラー
  */
 export const validateParticipationForm = (
-  formData: ParticipationFormData
+  formData: ParticipationFormData,
+  request?: {
+    userAgent?: string;
+    ip?: string;
+    eventId?: string;
+  }
 ): ParticipationValidationErrors => {
   try {
     participationFormSchema.parse(formData);
@@ -140,7 +163,19 @@ export const validateParticipationForm = (
       const errors: ParticipationValidationErrors = {};
       error.errors.forEach((err) => {
         const fieldPath = err.path[0] as keyof ParticipationFormData;
-        errors[fieldPath] = err.message;
+        const errorMessage = err.message;
+        errors[fieldPath] = errorMessage;
+
+        // バリデーション失敗をログに記録
+        if (request) {
+          const fieldValue = formData[fieldPath];
+          logValidationFailure(
+            fieldPath,
+            errorMessage,
+            typeof fieldValue === "string" ? fieldValue : undefined,
+            request
+          );
+        }
       });
       return errors;
     }
@@ -149,17 +184,25 @@ export const validateParticipationForm = (
 };
 
 /**
- * メールアドレスの重複チェック付き検証
+ * メールアドレスの重複チェック付き検証（セキュリティログ付き）
  * @param formData フォームデータ
  * @param eventId イベントID
+ * @param request リクエスト情報（ログ用）
  * @returns 検証エラー（重複チェック含む）
  */
 export const validateParticipationFormWithDuplicateCheck = async (
   formData: ParticipationFormData,
-  eventId: string
+  eventId: string,
+  request?: {
+    userAgent?: string;
+    ip?: string;
+  }
 ): Promise<ParticipationValidationErrors> => {
   // 基本検証
-  const errors = validateParticipationForm(formData);
+  const errors = validateParticipationForm(formData, {
+    ...request,
+    eventId,
+  });
 
   // 基本検証でエラーがある場合は重複チェックをスキップ
   if (Object.keys(errors).length > 0) {
@@ -168,10 +211,18 @@ export const validateParticipationFormWithDuplicateCheck = async (
 
   // メールアドレスの重複チェック（正規化されたメールアドレスを使用）
   try {
-    const normalizedEmail = sanitizeParticipationInput.email(formData.email);
+    const normalizedEmail = sanitizeParticipationInput.email(formData.email, {
+      ...request,
+      eventId,
+    });
     const isDuplicate = await checkDuplicateEmail(eventId, normalizedEmail);
     if (isDuplicate) {
       errors.email = "このメールアドレスは既に登録されています";
+
+      // 重複登録試行をログに記録
+      if (request) {
+        logDuplicateRegistrationAttempt(normalizedEmail, eventId, request);
+      }
     }
   } catch (_error) {
     errors.general = "登録の確認中にエラーが発生しました";
@@ -183,23 +234,57 @@ export const validateParticipationFormWithDuplicateCheck = async (
 // 入力サニタイゼーション用のユーティリティ関数
 export const sanitizeParticipationInput = {
   /**
-   * ニックネームのサニタイゼーション
+   * ニックネームのサニタイゼーション（セキュリティログ付き）
    * @param nickname 入力されたニックネーム
+   * @param request リクエスト情報（ログ用）
    * @returns サニタイズされたニックネーム
    */
-  nickname: (nickname: string): string => {
+  nickname: (
+    nickname: string,
+    request?: {
+      userAgent?: string;
+      ip?: string;
+      eventId?: string;
+    }
+  ): string => {
     if (!nickname) return "";
-    return sanitizeForEventPay(nickname.trim());
+
+    const trimmed = nickname.trim();
+    const sanitized = sanitizeForEventPay(trimmed);
+
+    // サニタイゼーションログを記録
+    if (request) {
+      logSanitizationEvent(trimmed, sanitized, "nickname", request);
+    }
+
+    return sanitized;
   },
 
   /**
-   * メールアドレスのサニタイゼーション
+   * メールアドレスのサニタイゼーション（セキュリティログ付き）
    * @param email 入力されたメールアドレス
+   * @param request リクエスト情報（ログ用）
    * @returns サニタイズされたメールアドレス
    */
-  email: (email: string): string => {
+  email: (
+    email: string,
+    request?: {
+      userAgent?: string;
+      ip?: string;
+      eventId?: string;
+    }
+  ): string => {
     if (!email) return "";
-    return sanitizeForEventPay(email.trim().toLowerCase());
+
+    const normalized = email.trim().toLowerCase();
+    const sanitized = sanitizeForEventPay(normalized);
+
+    // サニタイゼーションログを記録
+    if (request) {
+      logSanitizationEvent(normalized, sanitized, "email", request);
+    }
+
+    return sanitized;
   },
 };
 

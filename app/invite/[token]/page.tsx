@@ -1,8 +1,11 @@
+import { headers } from "next/headers";
 import { validateInviteToken } from "@/lib/utils/invite-token";
 import { InviteEventDetail } from "@/components/events/invite-event-detail";
 import { InviteError } from "@/components/events/invite-error";
 import { notFound } from "next/navigation";
 import { sanitizeEventDescription } from "@/lib/utils/sanitize";
+import { logInvalidTokenAccess } from "@/lib/security/security-logger";
+import { getClientIP } from "@/lib/utils/ip-detection";
 
 interface InvitePageProps {
   params: {
@@ -11,6 +14,11 @@ interface InvitePageProps {
 }
 
 export default async function InvitePage({ params }: InvitePageProps) {
+  // リクエスト情報を取得（セキュリティログ用）
+  const headersList = headers();
+  const userAgent = headersList.get("user-agent") || undefined;
+  const ip = getClientIP(headersList);
+
   try {
     if (!params?.token) {
       notFound();
@@ -21,6 +29,9 @@ export default async function InvitePage({ params }: InvitePageProps) {
 
     // 無効なトークンの場合はエラーページを表示
     if (!validationResult.isValid || !validationResult.event) {
+      // 無効なトークンアクセスをログに記録
+      logInvalidTokenAccess(params.token, "invite", { userAgent, ip });
+
       return (
         <InviteError
           errorMessage={validationResult.errorMessage || "無効な招待リンクです"}
@@ -53,8 +64,8 @@ export default async function InvitePage({ params }: InvitePageProps) {
         </div>
       </div>
     );
-  } catch (error) {
-    console.error("招待ページエラー:", error);
+  } catch (_error) {
+    // 予期しないエラーは詳細なログ記録を避ける（セキュリティ上の理由）
     return <InviteError errorMessage="招待リンクの処理中にエラーが発生しました" showRetry={true} />;
   }
 }
