@@ -1,5 +1,3 @@
-"use server";
-
 import { z } from "zod";
 import { randomBytes } from "crypto";
 import { createClient } from "@/lib/supabase/server";

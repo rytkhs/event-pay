@@ -2,7 +2,7 @@
 
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
-import { generateSecureToken } from "@/lib/security/crypto";
+
 import { validateInviteToken, checkEventCapacity, checkDuplicateEmail } from "@/lib/utils/invite-token";
 import { participationFormSchema, type ParticipationFormData } from "@/lib/validations/participation";
 import { sanitizeForEventPay } from "@/lib/utils/sanitize";
@@ -33,7 +33,7 @@ export interface RegisterParticipationData {
  */
 function generateGuestToken(): string {
   // randomBytesを直接使用してURLセーフなBase64エンコード
-  const { randomBytes } = require("crypto");
+  const { randomBytes } = require("node:crypto");
   return randomBytes(24)
     .toString("base64")
     .replace(/\+/g, "-")
@@ -211,7 +211,7 @@ export async function registerParticipationDirectAction(
 
     return await registerParticipationAction(formData);
   } catch (error) {
-    console.error("参加登録直接アクションのエラー:", error);
+
     return createErrorResponse(
       ERROR_CODES.INTERNAL_ERROR,
       "参加登録の処理中にエラーが発生しました"
