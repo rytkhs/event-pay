@@ -49,6 +49,13 @@ export const RATE_LIMIT_CONFIG = {
     blockDurationMs: 15 * 60 * 1000, // 15分ブロック
   } as RateLimitConfig,
 
+  // ゲスト管理API
+  guest: {
+    windowMs: 5 * 60 * 1000, // 5分
+    maxAttempts: 15, // 15回まで（自己管理のため少し多め）
+    blockDurationMs: 15 * 60 * 1000, // 15分ブロック
+  } as RateLimitConfig,
+
   // 一般API（将来拡張用）
   general: {
     windowMs: 60 * 1000, // 1分
