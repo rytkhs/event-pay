@@ -6,9 +6,14 @@ import { sanitizeEventDescription, sanitizeForEventPay } from "@/lib/utils/sanit
 import { formatUtcToJapaneseDisplay } from "@/lib/utils/timezone";
 import { PAYMENT_METHOD_LABELS } from "@/lib/constants/payment-methods";
 import { type ParticipationFormData } from "@/lib/validations/participation";
+import {
+  registerParticipationAction,
+  type RegisterParticipationData,
+} from "@/app/events/actions/register-participation";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ParticipationForm } from "./participation-form";
+import { ParticipationConfirmation } from "./participation-confirmation";
 
 interface InviteEventDetailProps {
   event: EventDetail;
@@ -17,6 +22,9 @@ interface InviteEventDetailProps {
 
 export function InviteEventDetail({ event, inviteToken }: InviteEventDetailProps) {
   const [showForm, setShowForm] = useState(false);
+  const [registrationData, setRegistrationData] = useState<RegisterParticipationData | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const formatCurrency = (amount: number) => {
     return amount === 0 ? "無料" : `${amount.toLocaleString()}円`;
@@ -50,19 +58,54 @@ export function InviteEventDetail({ event, inviteToken }: InviteEventDetailProps
 
   const handleParticipationSubmit = async (data: ParticipationFormData) => {
     try {
-      // TODO: 次のタスクで実装される参加登録サーバーアクション
-      console.log("参加申し込みデータ:", data);
+      setIsSubmitting(true);
+      setError(null);
 
-      // 仮の成功処理
-      alert("参加申し込みが完了しました！（実装は次のタスクで行われます）");
-      setShowForm(false);
+      // FormDataを作成
+      const formData = new FormData();
+      formData.append("inviteToken", data.inviteToken);
+      formData.append("nickname", data.nickname);
+      formData.append("email", data.email);
+      formData.append("attendanceStatus", data.attendanceStatus);
+      if (data.paymentMethod) {
+        formData.append("paymentMethod", data.paymentMethod);
+      }
+
+      // 参加登録サーバーアクションを実行
+      const result = await registerParticipationAction(formData);
+
+      if (result.success && result.data) {
+        // 成功時は確認ページを表示
+        setRegistrationData(result.data);
+        setShowForm(false);
+      } else {
+        // エラー時はエラーメッセージを表示
+        setError(result.error || "参加申し込み中にエラーが発生しました");
+      }
     } catch (error) {
-      alert("参加申し込み中にエラーが発生しました");
+      console.error("参加申し込みエラー:", error);
+      setError("参加申し込み中にエラーが発生しました");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
+  // 確認ページが表示される場合
+  if (registrationData) {
+    return <ParticipationConfirmation registrationData={registrationData} event={event} />;
+  }
+
   return (
     <div className="space-y-6">
+      {/* エラーメッセージ */}
+      {error && (
+        <Card className="p-4 bg-red-50 border-red-200">
+          <div className="text-sm text-red-800">
+            <strong>エラー:</strong> {error}
+          </div>
+        </Card>
+      )}
+
       {/* イベント詳細カード */}
       <Card className="p-6">
         <div className="space-y-6">
@@ -162,10 +205,11 @@ export function InviteEventDetail({ event, inviteToken }: InviteEventDetailProps
         {canRegister ? (
           <Button
             onClick={() => setShowForm(true)}
+            disabled={isSubmitting}
             className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 text-lg"
             size="lg"
           >
-            参加申し込みをする
+            {isSubmitting ? "処理中..." : "参加申し込みをする"}
           </Button>
         ) : (
           <div className="space-y-2">
@@ -187,7 +231,11 @@ export function InviteEventDetail({ event, inviteToken }: InviteEventDetailProps
           event={event}
           inviteToken={inviteToken}
           onSubmit={handleParticipationSubmit}
-          onCancel={() => setShowForm(false)}
+          onCancel={() => {
+            setShowForm(false);
+            setError(null);
+          }}
+          isSubmitting={isSubmitting}
         />
       )}
     </div>

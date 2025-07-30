@@ -30,6 +30,7 @@ interface ParticipationFormProps {
   inviteToken: string;
   onSubmit: (data: ParticipationFormData) => Promise<void>;
   onCancel: () => void;
+  isSubmitting?: boolean;
 }
 
 export function ParticipationForm({
@@ -37,8 +38,10 @@ export function ParticipationForm({
   inviteToken,
   onSubmit,
   onCancel,
+  isSubmitting: externalIsSubmitting = false,
 }: ParticipationFormProps) {
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [internalIsSubmitting, setInternalIsSubmitting] = useState(false);
+  const isSubmitting = externalIsSubmitting || internalIsSubmitting;
 
   const form = useForm<ParticipationFormData>({
     resolver: zodResolver(participationFormSchema),
@@ -69,7 +72,7 @@ export function ParticipationForm({
 
   const handleFormSubmit = async (data: ParticipationFormData) => {
     try {
-      setIsSubmitting(true);
+      setInternalIsSubmitting(true);
 
       // 入力データのサニタイゼーション
       const sanitizedData: ParticipationFormData = {
@@ -80,10 +83,9 @@ export function ParticipationForm({
 
       await onSubmit(sanitizedData);
     } catch (error) {
-      console.error("参加申し込みエラー:", error);
       // エラーハンドリングは親コンポーネントで行う
     } finally {
-      setIsSubmitting(false);
+      setInternalIsSubmitting(false);
     }
   };
 
