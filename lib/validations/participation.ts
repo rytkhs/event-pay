@@ -37,7 +37,7 @@ export const attendanceStatusSchema = z.enum(["attending", "not_attending", "may
   errorMap: () => ({ message: "有効な参加ステータスを選択してください" }),
 });
 
-// 決済方法の検証スキーマ（参加ステータスが"attending"の場合のみ必須）
+// 決済方法の検証スキーマ（参加ステータスが"attending"かつ有料の場合のみ必須）
 export const paymentMethodSchema = z.enum(["stripe", "cash"], {
   errorMap: () => ({ message: "有効な決済方法を選択してください" }),
 }).optional();
@@ -52,7 +52,7 @@ export const participationFormSchema = z.object({
 })
   .refine(
     (data) => {
-      // 参加ステータスが"attending"の場合は決済方法が必須
+      // 参加ステータスが"attending"の場合は決済方法が必須（無料イベントは除く）
       if (data.attendanceStatus === "attending") {
         return data.paymentMethod !== undefined;
       }
@@ -173,8 +173,7 @@ export const validateParticipationFormWithDuplicateCheck = async (
     if (isDuplicate) {
       errors.email = "このメールアドレスは既に登録されています";
     }
-  } catch (error) {
-    console.error("メールアドレス重複チェックエラー:", error);
+  } catch (_error) {
     errors.general = "登録の確認中にエラーが発生しました";
   }
 

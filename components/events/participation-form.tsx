@@ -209,7 +209,7 @@ export function ParticipationForm({
               )}
             />
 
-            {/* 決済方法選択（参加選択時のみ表示） */}
+            {/* 決済方法選択（参加選択時かつ有料イベントの場合のみ表示） */}
             {showPaymentMethod && (
               <FormField
                 control={form.control}
@@ -227,26 +227,37 @@ export function ParticipationForm({
                           handleFieldChange("paymentMethod", value);
                         }}
                         className="space-y-3"
+                        aria-label="決済方法"
                       >
-                        {event.payment_methods.map((method) => (
-                          <div key={method} className="flex items-center space-x-2">
-                            <RadioGroupItem value={method} id={method} />
-                            <Label htmlFor={method} className="text-sm font-normal cursor-pointer">
-                              {PAYMENT_METHOD_LABELS[method]}
-                              {method === "stripe" && (
-                                <span className="text-xs text-gray-500 ml-1">
-                                  (クレジットカード決済)
-                                </span>
-                              )}
-                              {method === "cash" && (
-                                <span className="text-xs text-gray-500 ml-1">(当日現金支払い)</span>
-                              )}
-                            </Label>
-                          </div>
-                        ))}
+                        {event.payment_methods
+                          .filter((method) => method !== "free") // 無料決済方法は除外
+                          .map((method) => (
+                            <div key={method} className="flex items-center space-x-2">
+                              <RadioGroupItem value={method} id={method} />
+                              <Label
+                                htmlFor={method}
+                                className="text-sm font-normal cursor-pointer"
+                              >
+                                {PAYMENT_METHOD_LABELS[method]}
+                                {method === "stripe" && (
+                                  <span className="text-xs text-gray-500 ml-1">
+                                    (クレジットカード決済)
+                                  </span>
+                                )}
+                                {method === "cash" && (
+                                  <span className="text-xs text-gray-500 ml-1">
+                                    (当日現金支払い)
+                                  </span>
+                                )}
+                              </Label>
+                            </div>
+                          ))}
                       </RadioGroup>
                     </FormControl>
                     <FormMessage />
+                    <div className="text-xs text-gray-500 mt-2">
+                      決済方法を選択してください。決済は後ほど処理されます。
+                    </div>
                   </FormItem>
                 )}
               />

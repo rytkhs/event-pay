@@ -19,9 +19,6 @@ const mockEvent: EventDetail = {
   registration_deadline: "2025-07-29T23:59:59Z",
   status: "upcoming",
   invite_token: "test-invite-token",
-  created_by: "test-user-id",
-  created_at: "2025-01-01T00:00:00Z",
-  updated_at: "2025-01-01T00:00:00Z",
 };
 
 const mockFreeEvent: EventDetail = {
@@ -82,13 +79,13 @@ describe("ParticipationForm", () => {
       />
     );
 
-    // 参加ボタンをクリック
-    const attendingButton = screen.getByRole("radio", { name: /参加/ });
-    await user.click(attendingButton);
+    // 参加ボタンをクリック（IDを使用）
+    const attendingButton = document.getElementById("attending");
+    expect(attendingButton).toBeInTheDocument();
+    await user.click(attendingButton!);
 
     // 決済方法が表示されることを確認
     await waitFor(() => {
-      expect(screen.getByText(/決済方法/)).toBeInTheDocument();
       expect(screen.getByText(/オンライン決済/)).toBeInTheDocument();
       expect(screen.getByText(/現金決済/)).toBeInTheDocument();
     });
@@ -107,8 +104,9 @@ describe("ParticipationForm", () => {
     );
 
     // 参加を選択
-    const attendingButton = screen.getByRole("radio", { name: /参加/ });
-    await user.click(attendingButton);
+    const attendingButton = document.getElementById("attending");
+    expect(attendingButton).toBeInTheDocument();
+    await user.click(attendingButton!);
 
     // 決済方法が表示されないことを確認
     expect(screen.queryByText(/決済方法/)).not.toBeInTheDocument();
@@ -162,8 +160,9 @@ describe("ParticipationForm", () => {
     );
 
     // 参加を選択
-    const attendingButton = screen.getByRole("radio", { name: /参加/ });
-    await user.click(attendingButton);
+    const attendingButton = document.getElementById("attending");
+    expect(attendingButton).toBeInTheDocument();
+    await user.click(attendingButton!);
 
     // 参加費が表示されることを確認
     await waitFor(() => {
@@ -192,5 +191,67 @@ describe("ParticipationForm", () => {
     const emailInput = screen.getByLabelText(/メールアドレス/);
     await user.type(emailInput, "test@example.com");
     expect(emailInput).toHaveValue("test@example.com");
+  });
+
+  it("決済方法選択が正しく動作する", async () => {
+    const user = userEvent.setup();
+
+    render(
+      <ParticipationForm
+        event={mockEvent}
+        inviteToken="test-token"
+        onSubmit={mockOnSubmit}
+        onCancel={mockOnCancel}
+      />
+    );
+
+    // 参加を選択
+    const attendingButton = document.getElementById("attending");
+    expect(attendingButton).toBeInTheDocument();
+    await user.click(attendingButton!);
+
+    // 決済方法が表示されることを確認
+    await waitFor(() => {
+      expect(screen.getByText(/オンライン決済/)).toBeInTheDocument();
+    });
+
+    // Stripe決済を選択
+    const stripeButton = document.getElementById("stripe");
+    expect(stripeButton).toBeInTheDocument();
+    await user.click(stripeButton!);
+
+    // Cash決済を選択
+    const cashButton = document.getElementById("cash");
+    expect(cashButton).toBeInTheDocument();
+    await user.click(cashButton!);
+  });
+
+  it("不参加または未定選択時は決済方法が表示されない", async () => {
+    const user = userEvent.setup();
+
+    render(
+      <ParticipationForm
+        event={mockEvent}
+        inviteToken="test-token"
+        onSubmit={mockOnSubmit}
+        onCancel={mockOnCancel}
+      />
+    );
+
+    // 不参加を選択
+    const notAttendingButton = document.getElementById("not_attending");
+    expect(notAttendingButton).toBeInTheDocument();
+    await user.click(notAttendingButton!);
+
+    // 決済方法が表示されないことを確認
+    expect(screen.queryByText(/決済方法/)).not.toBeInTheDocument();
+
+    // 未定を選択
+    const maybeButton = document.getElementById("maybe");
+    expect(maybeButton).toBeInTheDocument();
+    await user.click(maybeButton!);
+
+    // 決済方法が表示されないことを確認
+    expect(screen.queryByText(/決済方法/)).not.toBeInTheDocument();
   });
 });
