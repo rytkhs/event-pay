@@ -24,6 +24,9 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import { ErrorBoundary, ParticipationErrorFallback } from "./error-boundary";
+import { useParticipationErrorHandler } from "@/hooks/use-error-handler";
+import { AlertTriangle } from "lucide-react";
 
 interface ParticipationFormProps {
   event: EventDetail;
@@ -42,6 +45,7 @@ export function ParticipationForm({
 }: ParticipationFormProps) {
   const [internalIsSubmitting, setInternalIsSubmitting] = useState(false);
   const isSubmitting = externalIsSubmitting || internalIsSubmitting;
+  const { handleError, isError, error, clearError } = useParticipationErrorHandler();
 
   const form = useForm<ParticipationFormData>({
     resolver: zodResolver(participationFormSchema),
@@ -75,6 +79,7 @@ export function ParticipationForm({
   const handleFormSubmit = async (data: ParticipationFormData) => {
     try {
       setInternalIsSubmitting(true);
+      clearError(); // 前回のエラーをクリア
 
       // 入力データのサニタイゼーション（クライアントサイド）
       // サーバーサイドでも再度サニタイゼーションが実行される
@@ -85,233 +90,267 @@ export function ParticipationForm({
       };
 
       await onSubmit(sanitizedData);
-    } catch (error) {
-      // エラーハンドリングは親コンポーネントで行う
+    } catch (submitError) {
+      // エラーハンドリング
+      handleError(submitError, {
+        eventId: event.id,
+        action: "participation_submit",
+        additionalData: {
+          attendanceStatus: data.attendanceStatus,
+          paymentMethod: data.paymentMethod,
+          eventTitle: event.title,
+        },
+      });
     } finally {
       setInternalIsSubmitting(false);
     }
   };
 
   return (
-    <Card className="p-6">
-      <div className="space-y-6">
-        <div>
-          <h3 className="text-xl font-semibold text-gray-900">参加申し込み</h3>
-          <p className="text-sm text-gray-600 mt-1">
-            以下の情報を入力して参加申し込みを完了してください
-          </p>
-        </div>
+    <ErrorBoundary fallback={ParticipationErrorFallback}>
+      <Card className="p-6">
+        <div className="space-y-6">
+          <div>
+            <h3 className="text-xl font-semibold text-gray-900">参加申し込み</h3>
+            <p className="text-sm text-gray-600 mt-1">
+              以下の情報を入力して参加申し込みを完了してください
+            </p>
+          </div>
 
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-6">
-            {/* ニックネーム入力 */}
-            <FormField
-              control={form.control}
-              name="nickname"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="text-sm font-medium text-gray-700">
-                    ニックネーム <span className="text-red-500">*</span>
-                  </FormLabel>
-                  <FormControl>
-                    <Input
-                      {...field}
-                      placeholder="表示名を入力してください"
-                      maxLength={50}
-                      onChange={(e) => {
-                        field.onChange(e);
-                        handleFieldChange("nickname", e.target.value);
-                      }}
-                      className="w-full"
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            {/* メールアドレス入力 */}
-            <FormField
-              control={form.control}
-              name="email"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="text-sm font-medium text-gray-700">
-                    メールアドレス <span className="text-red-500">*</span>
-                  </FormLabel>
-                  <FormControl>
-                    <Input
-                      {...field}
-                      type="email"
-                      placeholder="example@email.com"
-                      maxLength={255}
-                      onChange={(e) => {
-                        field.onChange(e);
-                        handleFieldChange("email", e.target.value);
-                      }}
-                      className="w-full"
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            {/* 参加ステータス選択 */}
-            <FormField
-              control={form.control}
-              name="attendanceStatus"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="text-sm font-medium text-gray-700">
-                    参加ステータス <span className="text-red-500">*</span>
-                  </FormLabel>
-                  <FormControl>
-                    <RadioGroup
-                      value={field.value}
-                      onValueChange={(value) => {
-                        field.onChange(value);
-                        handleFieldChange("attendanceStatus", value);
-
-                        // 参加ステータスが変更された時の処理
-                        if (value !== "attending") {
-                          form.setValue("paymentMethod", undefined);
-                          form.clearErrors("paymentMethod");
-                        }
-                      }}
-                      className="space-y-3"
+          {/* エラー表示 */}
+          {isError && error && (
+            <Card className="p-4 border-red-200 bg-red-50">
+              <div className="flex items-start space-x-3">
+                <AlertTriangle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
+                <div className="flex-1">
+                  <h4 className="font-medium text-red-800 mb-1">申し込みでエラーが発生しました</h4>
+                  <p className="text-red-700 text-sm">{error.userMessage}</p>
+                  {error.retryable && (
+                    <Button
+                      onClick={clearError}
+                      size="sm"
+                      variant="outline"
+                      className="mt-2 border-red-300 text-red-700 hover:bg-red-100"
                     >
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="attending" id="attending" />
-                        <Label htmlFor="attending" className="text-sm font-normal cursor-pointer">
-                          参加
-                          {event.capacity && (
-                            <span className="text-xs text-gray-500 ml-1">
-                              (定員: {event.attendances_count}/{event.capacity}人)
-                            </span>
-                          )}
-                        </Label>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="not_attending" id="not_attending" />
-                        <Label
-                          htmlFor="not_attending"
-                          className="text-sm font-normal cursor-pointer"
-                        >
-                          不参加
-                        </Label>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="maybe" id="maybe" />
-                        <Label htmlFor="maybe" className="text-sm font-normal cursor-pointer">
-                          未定
-                        </Label>
-                      </div>
-                    </RadioGroup>
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+                      再試行
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </Card>
+          )}
 
-            {/* 決済方法選択（参加選択時かつ有料イベントの場合のみ表示） */}
-            {showPaymentMethod && (
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-6">
+              {/* ニックネーム入力 */}
               <FormField
                 control={form.control}
-                name="paymentMethod"
+                name="nickname"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel className="text-sm font-medium text-gray-700">
-                      決済方法 <span className="text-red-500">*</span>
+                      ニックネーム <span className="text-red-500">*</span>
+                    </FormLabel>
+                    <FormControl>
+                      <Input
+                        {...field}
+                        placeholder="表示名を入力してください"
+                        maxLength={50}
+                        onChange={(e) => {
+                          field.onChange(e);
+                          handleFieldChange("nickname", e.target.value);
+                        }}
+                        className="w-full"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {/* メールアドレス入力 */}
+              <FormField
+                control={form.control}
+                name="email"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-sm font-medium text-gray-700">
+                      メールアドレス <span className="text-red-500">*</span>
+                    </FormLabel>
+                    <FormControl>
+                      <Input
+                        {...field}
+                        type="email"
+                        placeholder="example@email.com"
+                        maxLength={255}
+                        onChange={(e) => {
+                          field.onChange(e);
+                          handleFieldChange("email", e.target.value);
+                        }}
+                        className="w-full"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {/* 参加ステータス選択 */}
+              <FormField
+                control={form.control}
+                name="attendanceStatus"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-sm font-medium text-gray-700">
+                      参加ステータス <span className="text-red-500">*</span>
                     </FormLabel>
                     <FormControl>
                       <RadioGroup
                         value={field.value}
                         onValueChange={(value) => {
                           field.onChange(value);
-                          handleFieldChange("paymentMethod", value);
+                          handleFieldChange("attendanceStatus", value);
+
+                          // 参加ステータスが変更された時の処理
+                          if (value !== "attending") {
+                            form.setValue("paymentMethod", undefined);
+                            form.clearErrors("paymentMethod");
+                          }
                         }}
                         className="space-y-3"
-                        aria-label="決済方法"
                       >
-                        {event.payment_methods
-                          .filter((method) => method !== "free") // 無料決済方法は除外
-                          .map((method) => (
-                            <div key={method} className="flex items-center space-x-2">
-                              <RadioGroupItem value={method} id={method} />
-                              <Label
-                                htmlFor={method}
-                                className="text-sm font-normal cursor-pointer"
-                              >
-                                {PAYMENT_METHOD_LABELS[method]}
-                                {method === "stripe" && (
-                                  <span className="text-xs text-gray-500 ml-1">
-                                    (クレジットカード決済)
-                                  </span>
-                                )}
-                                {method === "cash" && (
-                                  <span className="text-xs text-gray-500 ml-1">
-                                    (当日現金支払い)
-                                  </span>
-                                )}
-                              </Label>
-                            </div>
-                          ))}
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value="attending" id="attending" />
+                          <Label htmlFor="attending" className="text-sm font-normal cursor-pointer">
+                            参加
+                            {event.capacity && (
+                              <span className="text-xs text-gray-500 ml-1">
+                                (定員: {event.attendances_count}/{event.capacity}人)
+                              </span>
+                            )}
+                          </Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value="not_attending" id="not_attending" />
+                          <Label
+                            htmlFor="not_attending"
+                            className="text-sm font-normal cursor-pointer"
+                          >
+                            不参加
+                          </Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value="maybe" id="maybe" />
+                          <Label htmlFor="maybe" className="text-sm font-normal cursor-pointer">
+                            未定
+                          </Label>
+                        </div>
                       </RadioGroup>
                     </FormControl>
                     <FormMessage />
-                    <div className="text-xs text-gray-500 mt-2">
-                      決済方法を選択してください。決済は後ほど処理されます。
-                    </div>
                   </FormItem>
                 )}
               />
-            )}
 
-            {/* 参加費表示 */}
-            {watchedAttendanceStatus === "attending" && event.fee > 0 && (
-              <div className="bg-blue-50 p-4 rounded-lg">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium text-gray-700">参加費</span>
-                  <span className="text-lg font-semibold text-blue-600">
-                    {event.fee.toLocaleString()}円
-                  </span>
+              {/* 決済方法選択（参加選択時かつ有料イベントの場合のみ表示） */}
+              {showPaymentMethod && (
+                <FormField
+                  control={form.control}
+                  name="paymentMethod"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-sm font-medium text-gray-700">
+                        決済方法 <span className="text-red-500">*</span>
+                      </FormLabel>
+                      <FormControl>
+                        <RadioGroup
+                          value={field.value}
+                          onValueChange={(value) => {
+                            field.onChange(value);
+                            handleFieldChange("paymentMethod", value);
+                          }}
+                          className="space-y-3"
+                          aria-label="決済方法"
+                        >
+                          {event.payment_methods
+                            .filter((method) => method !== "free") // 無料決済方法は除外
+                            .map((method) => (
+                              <div key={method} className="flex items-center space-x-2">
+                                <RadioGroupItem value={method} id={method} />
+                                <Label
+                                  htmlFor={method}
+                                  className="text-sm font-normal cursor-pointer"
+                                >
+                                  {PAYMENT_METHOD_LABELS[method]}
+                                  {method === "stripe" && (
+                                    <span className="text-xs text-gray-500 ml-1">
+                                      (クレジットカード決済)
+                                    </span>
+                                  )}
+                                  {method === "cash" && (
+                                    <span className="text-xs text-gray-500 ml-1">
+                                      (当日現金支払い)
+                                    </span>
+                                  )}
+                                </Label>
+                              </div>
+                            ))}
+                        </RadioGroup>
+                      </FormControl>
+                      <FormMessage />
+                      <div className="text-xs text-gray-500 mt-2">
+                        決済方法を選択してください。決済は後ほど処理されます。
+                      </div>
+                    </FormItem>
+                  )}
+                />
+              )}
+
+              {/* 参加費表示 */}
+              {watchedAttendanceStatus === "attending" && event.fee > 0 && (
+                <div className="bg-blue-50 p-4 rounded-lg">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-gray-700">参加費</span>
+                    <span className="text-lg font-semibold text-blue-600">
+                      {event.fee.toLocaleString()}円
+                    </span>
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
 
-            {/* 無料イベントの場合の表示 */}
-            {watchedAttendanceStatus === "attending" && event.fee === 0 && (
-              <div className="bg-green-50 p-4 rounded-lg">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium text-gray-700">参加費</span>
-                  <span className="text-lg font-semibold text-green-600">無料</span>
+              {/* 無料イベントの場合の表示 */}
+              {watchedAttendanceStatus === "attending" && event.fee === 0 && (
+                <div className="bg-green-50 p-4 rounded-lg">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-gray-700">参加費</span>
+                    <span className="text-lg font-semibold text-green-600">無料</span>
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
 
-            {/* フォームボタン */}
-            <div className="flex space-x-4 pt-4">
-              <Button
-                type="submit"
-                disabled={isSubmitting || !form.formState.isValid}
-                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
-              >
-                {isSubmitting ? "申し込み中..." : "参加申し込みを完了する"}
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={onCancel}
-                disabled={isSubmitting}
-                className="flex-1"
-              >
-                キャンセル
-              </Button>
-            </div>
-          </form>
-        </Form>
-      </div>
-    </Card>
+              {/* フォームボタン */}
+              <div className="flex space-x-4 pt-4">
+                <Button
+                  type="submit"
+                  disabled={isSubmitting || !form.formState.isValid}
+                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
+                >
+                  {isSubmitting ? "申し込み中..." : "参加申し込みを完了する"}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={onCancel}
+                  disabled={isSubmitting}
+                  className="flex-1"
+                >
+                  キャンセル
+                </Button>
+              </div>
+            </form>
+          </Form>
+        </div>
+      </Card>
+    </ErrorBoundary>
   );
 }
