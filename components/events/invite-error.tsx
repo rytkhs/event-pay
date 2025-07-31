@@ -1,45 +1,90 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
+import {
+  InvalidInviteError,
+  EventEndedError,
+  CapacityReachedError,
+  RegistrationDeadlineError,
+  NetworkError,
+  ServerError,
+  RateLimitError,
+  GenericError,
+} from "./error-pages";
+import { getErrorDetails } from "@/lib/utils/error-handler";
 
 interface InviteErrorProps {
   errorMessage: string;
+  errorCode?: string;
   showRetry?: boolean;
+  eventTitle?: string;
+  capacity?: number;
+  deadline?: string;
 }
 
-export function InviteError({ errorMessage, showRetry = false }: InviteErrorProps) {
+export function InviteError({
+  errorMessage,
+  errorCode,
+  showRetry = false,
+  eventTitle,
+  capacity,
+  deadline,
+}: InviteErrorProps) {
   const handleRetry = () => {
     window.location.reload();
   };
 
-  const handleGoHome = () => {
-    window.location.href = "/";
-  };
+  // エラーコードに基づいて適切なエラーページを表示
+  switch (errorCode) {
+    case "INVALID_TOKEN":
+    case "TOKEN_NOT_FOUND":
+    case "TOKEN_EXPIRED":
+      return <InvalidInviteError onRetry={showRetry ? handleRetry : undefined} />;
 
-  return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="max-w-md mx-auto">
-        <Card className="p-8 text-center">
-          <div className="text-red-500 text-6xl mb-4">⚠️</div>
-          <h2 className="text-2xl font-bold text-gray-800 mb-4">アクセスできません</h2>
-          <p className="text-gray-600 mb-6">{errorMessage}</p>
+    case "EVENT_ENDED":
+      return <EventEndedError eventTitle={eventTitle} />;
 
-          <div className="space-y-3">
-            {showRetry && (
-              <Button
-                onClick={handleRetry}
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white"
-              >
-                再試行
-              </Button>
-            )}
-            <Button onClick={handleGoHome} variant="outline" className="w-full">
-              ホームに戻る
-            </Button>
-          </div>
-        </Card>
-      </div>
-    </div>
-  );
+    case "CAPACITY_REACHED":
+      return (
+        <CapacityReachedError eventTitle={eventTitle} capacity={capacity} onRetry={handleRetry} />
+      );
+
+    case "REGISTRATION_DEADLINE_PASSED":
+      return <RegistrationDeadlineError eventTitle={eventTitle} deadline={deadline} />;
+
+    case "NETWORK_ERROR":
+      return <NetworkError onRetry={handleRetry} />;
+
+    case "INTERNAL_SERVER_ERROR":
+    case "DATABASE_ERROR":
+      return <ServerError onRetry={showRetry ? handleRetry : undefined} />;
+
+    case "RATE_LIMIT_EXCEEDED":
+      return <RateLimitError onRetry={handleRetry} />;
+
+    default:
+      // エラーコードが指定されていない場合は、メッセージから推測
+      if (errorMessage.includes("無効") || errorMessage.includes("期限切れ")) {
+        return <InvalidInviteError onRetry={showRetry ? handleRetry : undefined} />;
+      }
+      if (errorMessage.includes("終了") || errorMessage.includes("過ぎ")) {
+        return <EventEndedError eventTitle={eventTitle} />;
+      }
+      if (errorMessage.includes("定員")) {
+        return (
+          <CapacityReachedError eventTitle={eventTitle} capacity={capacity} onRetry={handleRetry} />
+        );
+      }
+      if (errorMessage.includes("ネットワーク") || errorMessage.includes("接続")) {
+        return <NetworkError onRetry={handleRetry} />;
+      }
+
+      // 汎用エラーページを表示
+      return (
+        <GenericError
+          title="アクセスできません"
+          message={errorMessage}
+          onRetry={showRetry ? handleRetry : undefined}
+        />
+      );
+  }
 }

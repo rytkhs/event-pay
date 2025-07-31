@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { validateInviteToken, type EventDetail, checkEventCapacity } from "@/lib/utils/invite-token";
 import { handleRateLimit, type RateLimitErrorResponse } from "@/lib/rate-limit-middleware";
 import { RATE_LIMIT_CONFIG } from "@/config/security";
+import { logParticipationSecurityEvent } from "@/lib/security/security-logger";
 
 export interface InviteValidationResponse {
   success: boolean;
@@ -164,9 +165,23 @@ export async function GET(
 
   } catch (error) {
     // エラーログ（本番環境では適切なログシステムを使用）
-    if (process.env.NODE_ENV === 'development') {
+    console.error("Invite API error:", error);
 
-    }
+    // セキュリティログに記録
+    const userAgent = request.headers.get("user-agent") || undefined;
+    const ip = request.headers.get("x-forwarded-for") ||
+      request.headers.get("x-real-ip") ||
+      "unknown";
+
+    logParticipationSecurityEvent(
+      "SUSPICIOUS_ACTIVITY",
+      "Unexpected error in invite API",
+      {
+        error: error instanceof Error ? error.message : "Unknown error",
+        token: params.token,
+      },
+      { userAgent, ip }
+    );
 
     return NextResponse.json(
       {
