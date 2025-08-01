@@ -25,6 +25,11 @@ export interface MockConfig {
 export class UnifiedMockFactory {
   private static instance: UnifiedMockFactory;
   private mocks: Map<string, any> = new Map();
+  public supabaseMock: any;
+
+  constructor() {
+    this.supabaseMock = this.createMinimalSupabaseMock();
+  }
 
   static getInstance(): UnifiedMockFactory {
     if (!UnifiedMockFactory.instance) {
@@ -238,6 +243,29 @@ export class UnifiedMockFactory {
   }
 
   private createMinimalSupabaseMock() {
+    const mockChain = {
+      select: jest.fn().mockReturnThis(),
+      insert: jest.fn().mockReturnThis(),
+      update: jest.fn().mockReturnThis(),
+      delete: jest.fn().mockReturnThis(),
+      eq: jest.fn().mockReturnThis(),
+      neq: jest.fn().mockReturnThis(),
+      gt: jest.fn().mockReturnThis(),
+      gte: jest.fn().mockReturnThis(),
+      lt: jest.fn().mockReturnThis(),
+      lte: jest.fn().mockReturnThis(),
+      like: jest.fn().mockReturnThis(),
+      ilike: jest.fn().mockReturnThis(),
+      is: jest.fn().mockReturnThis(),
+      in: jest.fn().mockReturnThis(),
+      order: jest.fn().mockReturnThis(),
+      limit: jest.fn().mockReturnThis(),
+      range: jest.fn().mockReturnThis(),
+      count: jest.fn(() => Promise.resolve({ data: null, count: 0, error: null })),
+      single: jest.fn(() => Promise.resolve({ data: null, error: { message: "Not found" } })),
+      maybeSingle: jest.fn(() => Promise.resolve({ data: null, error: null })),
+    };
+
     return {
       auth: {
         // 基本認証メソッド
@@ -262,32 +290,7 @@ export class UnifiedMockFactory {
         // イベントリスナー
         onAuthStateChange: jest.fn(() => ({ data: { subscription: { unsubscribe: jest.fn() } } })),
       },
-      from: jest.fn(() => ({
-        select: jest.fn().mockReturnThis(),
-        insert: jest.fn().mockReturnThis(),
-        update: jest.fn().mockReturnThis(),
-        delete: jest.fn().mockReturnThis(),
-        eq: jest.fn().mockReturnThis(),
-        neq: jest.fn().mockReturnThis(),
-        gt: jest.fn().mockReturnThis(),
-        gte: jest.fn().mockReturnThis(),
-        lt: jest.fn().mockReturnThis(),
-        lte: jest.fn().mockReturnThis(),
-        like: jest.fn().mockReturnThis(),
-        ilike: jest.fn().mockReturnThis(),
-        is: jest.fn().mockReturnThis(),
-        in: jest.fn().mockReturnThis(),
-        order: jest.fn().mockReturnThis(),
-        limit: jest.fn().mockReturnThis(),
-        range: jest.fn().mockReturnThis(),
-        single: jest.fn(() =>
-          Promise.resolve({
-            data: null,
-            error: { message: "Test environment - using fallback mock" },
-          })
-        ),
-        maybeSingle: jest.fn(() => Promise.resolve({ data: null, error: null })),
-      })),
+      from: jest.fn(() => mockChain),
       rpc: jest.fn(() => Promise.resolve({ data: null, error: null })),
       storage: {
         from: jest.fn(() => ({
@@ -633,6 +636,94 @@ export class UnifiedMockFactory {
           Consumer: ({ children }: any) => children,
         })),
       };
+    });
+  }
+
+  /**
+   * 統合テスト用のイベントモック作成
+   */
+  createMockEvent(overrides: any = {}) {
+    return {
+      id: "test-event-id",
+      title: "テストイベント",
+      description: "テスト用のイベントです",
+      date: new Date(Date.now() + 86400000).toISOString(), // 翌日
+      location: "テストロケーション",
+      fee: 1000,
+      capacity: 50,
+      payment_methods: ["stripe", "cash"],
+      registration_deadline: new Date(Date.now() + 43200000).toISOString(), // 12時間後
+      payment_deadline: new Date(Date.now() + 43200000).toISOString(),
+      status: "upcoming",
+      invite_token: "test-invite-token-123456789012",
+      created_by: "test-user-id",
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      attendances: [],
+      ...overrides,
+    };
+  }
+
+  /**
+   * EventDetailへの変換
+   */
+  convertToEventDetail(event: any) {
+    return {
+      ...event,
+      attendances: event.attendances || [],
+    };
+  }
+
+  /**
+   * 招待トークン検証のモック
+   */
+  mockValidateInviteToken(token: string, result: any) {
+    this.supabaseMock.from.mockReturnValue({
+      select: jest.fn().mockReturnValue({
+        eq: jest.fn().mockReturnValue({
+          single: jest.fn().mockResolvedValue({
+            data: result.isValid ? result.event : null,
+            error: result.isValid ? null : { message: result.errorMessage || "Not found" },
+          }),
+        }),
+      }),
+    });
+  }
+
+  /**
+   * 重複メールチェックのモック
+   */
+  mockCheckDuplicateEmail(eventId: string, email: string, isDuplicate: boolean) {
+    this.supabaseMock.from.mockReturnValue({
+      select: jest.fn().mockReturnValue({
+        eq: jest.fn().mockReturnValue({
+          eq: jest.fn().mockReturnValue({
+            single: jest.fn().mockResolvedValue({
+              data: isDuplicate ? { id: "existing-attendance" } : null,
+              error: isDuplicate ? null : { message: "Not found" },
+            }),
+          }),
+        }),
+      }),
+    });
+  }
+
+  /**
+   * イベント容量チェックのモック
+   */
+  mockCheckEventCapacity(eventId: string, isCapacityReached: boolean) {
+    this.supabaseMock.from.mockReturnValue({
+      select: jest.fn().mockReturnValue({
+        eq: jest.fn().mockReturnValue({
+          eq: jest.fn().mockReturnValue({
+            count: jest.fn().mockResolvedValue({
+              data: null,
+              count: isCapacityReached ? 999 : 5, // 大きな数値で容量オーバーをシミュレート
+              error: null,
+            }),
+          }),
+        }),
+      }),
     });
   }
 
