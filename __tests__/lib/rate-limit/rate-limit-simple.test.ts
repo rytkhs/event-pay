@@ -160,7 +160,7 @@ describe("Rate Limit Simple Tests", () => {
       const results = await Promise.all(promises);
 
       // 全て許可される
-      results.forEach(result => {
+      results.forEach((result) => {
         expect(result.allowed).toBe(true);
       });
     });

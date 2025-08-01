@@ -18,7 +18,7 @@ const createMockRequest = (url: string, headers: Record<string, string> = {}) =>
   // NextRequestのメソッドを模擬
   request.headers = {
     get: (name: string) => headers[name] || null,
-  } as NextRequest['headers'];
+  } as NextRequest["headers"];
 
   return request as NextRequest;
 };
@@ -30,7 +30,9 @@ jest.mock("@/lib/rate-limit/index", () => ({
 }));
 
 const mockCheckRateLimit = checkRateLimit as jest.MockedFunction<typeof checkRateLimit>;
-const mockCreateRateLimitStore = createRateLimitStore as jest.MockedFunction<typeof createRateLimitStore>;
+const mockCreateRateLimitStore = createRateLimitStore as jest.MockedFunction<
+  typeof createRateLimitStore
+>;
 
 describe("Rate Limit Middleware", () => {
   const testConfig: RateLimitConfig = {
@@ -59,11 +61,7 @@ describe("Rate Limit Middleware", () => {
       const middleware = withRateLimit(testConfig, "test");
       const result = await middleware(request);
       expect(result).toBeNull();
-      expect(mockCheckRateLimit).toHaveBeenCalledWith(
-        mockStore,
-        "test_192.168.1.1",
-        testConfig
-      );
+      expect(mockCheckRateLimit).toHaveBeenCalledWith(mockStore, "test_192.168.1.1", testConfig);
     });
 
     it("レート制限に達した場合、429エラーレスポンスを返すこと", async () => {
@@ -104,11 +102,7 @@ describe("Rate Limit Middleware", () => {
       const middleware = withRateLimit(testConfig, "test");
       await middleware(request);
 
-      expect(mockCheckRateLimit).toHaveBeenCalledWith(
-        mockStore,
-        "test_unknown",
-        testConfig
-      );
+      expect(mockCheckRateLimit).toHaveBeenCalledWith(mockStore, "test_unknown", testConfig);
     });
   });
 
@@ -125,11 +119,7 @@ describe("Rate Limit Middleware", () => {
       const result = await handleRateLimit(request, testConfig, "test");
 
       expect(result).toBeNull();
-      expect(mockCheckRateLimit).toHaveBeenCalledWith(
-        mockStore,
-        "test_192.168.1.1",
-        testConfig
-      );
+      expect(mockCheckRateLimit).toHaveBeenCalledWith(mockStore, "test_192.168.1.1", testConfig);
     });
   });
 });

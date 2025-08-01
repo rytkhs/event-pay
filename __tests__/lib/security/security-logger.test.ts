@@ -120,12 +120,9 @@ describe("セキュリティログ記録システム", () => {
       process.env.NODE_ENV = "development";
 
       // サニタイゼーションが実行された場合
-      logSanitizationEvent(
-        "<script>alert('xss')</script>Hello",
-        "Hello",
-        "nickname",
-        { ip: "127.0.0.1" }
-      );
+      logSanitizationEvent("<script>alert('xss')</script>Hello", "Hello", "nickname", {
+        ip: "127.0.0.1",
+      });
 
       expect(mockConsoleWarn).toHaveBeenCalledWith(
         "[SECURITY LOW] SANITIZATION_TRIGGERED:",
@@ -143,12 +140,7 @@ describe("セキュリティログ記録システム", () => {
       mockConsoleWarn.mockClear();
 
       // サニタイゼーションが不要だった場合
-      logSanitizationEvent(
-        "Hello World",
-        "Hello World",
-        "nickname",
-        { ip: "127.0.0.1" }
-      );
+      logSanitizationEvent("Hello World", "Hello World", "nickname", { ip: "127.0.0.1" });
 
       // ログは記録されない
       expect(mockConsoleWarn).not.toHaveBeenCalled();
@@ -162,11 +154,10 @@ describe("セキュリティログ記録システム", () => {
       const originalEnv = process.env.NODE_ENV;
       process.env.NODE_ENV = "development";
 
-      logDuplicateRegistrationAttempt(
-        "test@example.com",
-        "event-123",
-        { userAgent: "Mozilla/5.0", ip: "192.168.1.1" }
-      );
+      logDuplicateRegistrationAttempt("test@example.com", "event-123", {
+        userAgent: "Mozilla/5.0",
+        ip: "192.168.1.1",
+      });
 
       expect(mockConsoleWarn).toHaveBeenCalledWith(
         "[SECURITY MEDIUM] DUPLICATE_REGISTRATION:",
@@ -189,12 +180,7 @@ describe("セキュリティログ記録システム", () => {
       const originalEnv = process.env.NODE_ENV;
       process.env.NODE_ENV = "development";
 
-      logValidationFailure(
-        "email",
-        "Invalid email format",
-        "invalid-email",
-        { ip: "10.0.0.1" }
-      );
+      logValidationFailure("email", "Invalid email format", "invalid-email", { ip: "10.0.0.1" });
 
       expect(mockConsoleWarn).toHaveBeenCalledWith(
         "[SECURITY LOW] VALIDATION_FAILURE:",
@@ -218,11 +204,10 @@ describe("セキュリティログ記録システム", () => {
       const originalEnv = process.env.NODE_ENV;
       process.env.NODE_ENV = "development";
 
-      logInvalidTokenAccess(
-        "invalid-token-12345678",
-        "invite",
-        { userAgent: "Mozilla/5.0", ip: "172.16.0.1" }
-      );
+      logInvalidTokenAccess("invalid-token-12345678", "invite", {
+        userAgent: "Mozilla/5.0",
+        ip: "172.16.0.1",
+      });
 
       expect(mockConsoleWarn).toHaveBeenCalledWith(
         "[SECURITY MEDIUM] INVALID_TOKEN:",

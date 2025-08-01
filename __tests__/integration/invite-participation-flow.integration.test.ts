@@ -131,14 +131,16 @@ describe("招待リンク参加フロー統合テスト", () => {
       mockSupabaseClient.from.mockReturnValueOnce({
         insert: jest.fn().mockReturnValue({
           select: jest.fn().mockResolvedValue({
-            data: [{
-              id: "test-attendance-id",
-              guest_token: "test-guest-token",
-              event_id: mockEvent.id,
-              nickname: participationData.nickname,
-              email: participationData.email,
-              attendance_status: participationData.attendanceStatus,
-            }],
+            data: [
+              {
+                id: "test-attendance-id",
+                guest_token: "test-guest-token",
+                event_id: mockEvent.id,
+                nickname: participationData.nickname,
+                email: participationData.email,
+                attendance_status: participationData.attendanceStatus,
+              },
+            ],
             error: null,
           }),
         }),
@@ -148,14 +150,16 @@ describe("招待リンク参加フロー統合テスト", () => {
       mockSupabaseClient.from.mockReturnValueOnce({
         insert: jest.fn().mockReturnValue({
           select: jest.fn().mockResolvedValue({
-            data: [{
-              id: "test-payment-id",
-              event_id: mockEvent.id,
-              attendance_id: "test-attendance-id",
-              method: participationData.paymentMethod,
-              status: "pending",
-              amount: mockEvent.fee,
-            }],
+            data: [
+              {
+                id: "test-payment-id",
+                event_id: mockEvent.id,
+                attendance_id: "test-attendance-id",
+                method: participationData.paymentMethod,
+                status: "pending",
+                amount: mockEvent.fee,
+              },
+            ],
             error: null,
           }),
         }),
@@ -298,14 +302,16 @@ describe("招待リンク参加フロー統合テスト", () => {
       mockSupabaseClient.from.mockReturnValue({
         insert: jest.fn().mockReturnValue({
           select: jest.fn().mockResolvedValue({
-            data: [{
-              method: "stripe",
-              status: "pending",
-              amount: 3000,
-              event_id: mockEvent.id,
-              stripe_payment_intent_id: null,
-              paid_at: null,
-            }],
+            data: [
+              {
+                method: "stripe",
+                status: "pending",
+                amount: 3000,
+                event_id: mockEvent.id,
+                stripe_payment_intent_id: null,
+                paid_at: null,
+              },
+            ],
             error: null,
           }),
         }),
@@ -409,7 +415,9 @@ describe("招待リンク参加フロー統合テスト", () => {
         nickname: "大文字参加者",
       };
 
-      expect(firstParticipation.email.toLowerCase()).toBe(duplicateParticipation.email.toLowerCase());
+      expect(firstParticipation.email.toLowerCase()).toBe(
+        duplicateParticipation.email.toLowerCase()
+      );
     });
   });
 

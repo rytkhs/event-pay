@@ -148,7 +148,7 @@ describe("Rate Limit Core Functions", () => {
       expect(blockedResult.allowed).toBe(false);
 
       // ウィンドウ期間を待つ
-      await new Promise(resolve => setTimeout(resolve, 150));
+      await new Promise((resolve) => setTimeout(resolve, 150));
 
       // リセットされて再び許可される
       const resetResult = await checkRateLimit(memoryStore, identifier, shortConfig);
@@ -169,7 +169,7 @@ describe("Rate Limit Core Functions", () => {
       expect(blockedResult1.allowed).toBe(false);
 
       // 少し待ってもまだブロック中
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise((resolve) => setTimeout(resolve, 100));
       const blockedResult2 = await checkRateLimit(memoryStore, identifier, shortConfig);
       expect(blockedResult2.allowed).toBe(false);
     });
@@ -342,7 +342,7 @@ describe("Rate Limit Core Functions", () => {
       expect(blockedResult.allowed).toBe(false);
 
       // 即座に解除される（次のアクセスで新しいウィンドウ）
-      await new Promise(resolve => setTimeout(resolve, 1));
+      await new Promise((resolve) => setTimeout(resolve, 1));
       const unblocked = await checkRateLimit(memoryStore, "no_block_user", noBlockConfig);
       expect(unblocked.allowed).toBe(true);
     });
@@ -383,7 +383,7 @@ describe("Rate Limit Core Functions", () => {
 
       const results = await Promise.all(promises);
       expect(results).toHaveLength(1000);
-      expect(results.every(r => r.allowed)).toBe(true);
+      expect(results.every((r) => r.allowed)).toBe(true);
     });
 
     it("同時アクセスを正しく処理する", async () => {
@@ -396,8 +396,8 @@ describe("Rate Limit Core Functions", () => {
       }
 
       const results = await Promise.all(promises);
-      const allowedCount = results.filter(r => r.allowed).length;
-      const blockedCount = results.filter(r => !r.allowed).length;
+      const allowedCount = results.filter((r) => r.allowed).length;
+      const blockedCount = results.filter((r) => !r.allowed).length;
 
       // 制限は10回なので、10回は許可、10回は拒否されるはず
       expect(allowedCount).toBeLessThanOrEqual(10);

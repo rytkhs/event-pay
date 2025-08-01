@@ -57,14 +57,16 @@ describe("決済方法記録統合テスト", () => {
       mockSupabaseClient.from.mockReturnValue({
         insert: jest.fn().mockReturnValue({
           select: jest.fn().mockResolvedValue({
-            data: [{
-              method: "stripe",
-              status: "pending",
-              amount: 2500,
-              event_id: mockEvent.id,
-              stripe_payment_intent_id: null,
-              paid_at: null,
-            }],
+            data: [
+              {
+                method: "stripe",
+                status: "pending",
+                amount: 2500,
+                event_id: mockEvent.id,
+                stripe_payment_intent_id: null,
+                paid_at: null,
+              },
+            ],
             error: null,
           }),
         }),
@@ -116,14 +118,16 @@ describe("決済方法記録統合テスト", () => {
       mockSupabaseClient.from.mockReturnValue({
         insert: jest.fn().mockReturnValue({
           select: jest.fn().mockResolvedValue({
-            data: [{
-              method: "cash",
-              status: "pending",
-              amount: 1800,
-              event_id: mockEvent.id,
-              stripe_payment_intent_id: null,
-              paid_at: null,
-            }],
+            data: [
+              {
+                method: "cash",
+                status: "pending",
+                amount: 1800,
+                event_id: mockEvent.id,
+                stripe_payment_intent_id: null,
+                paid_at: null,
+              },
+            ],
             error: null,
           }),
         }),

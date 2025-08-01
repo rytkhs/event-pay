@@ -102,10 +102,7 @@ export function useErrorHandler(options: UseErrorHandlerOptions = {}) {
    * @returns 実行結果
    */
   const executeWithErrorHandling = useCallback(
-    async <T>(
-      asyncFn: () => Promise<T>,
-      context?: Partial<ErrorContext>
-    ): Promise<T | null> => {
+    async <T>(asyncFn: () => Promise<T>, context?: Partial<ErrorContext>): Promise<T | null> => {
       try {
         clearError();
         return await asyncFn();

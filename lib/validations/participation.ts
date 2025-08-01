@@ -1,35 +1,33 @@
 import { z } from "zod";
 import type { Database } from "@/types/database";
 import { sanitizeForEventPay } from "@/lib/utils/sanitize";
-import {
-  logSanitizationEvent,
-  logValidationFailure,
-} from "@/lib/security/security-logger";
+import { logSanitizationEvent, logValidationFailure } from "@/lib/security/security-logger";
 
 // 参加ステータスの型定義
 type AttendanceStatus = Database["public"]["Enums"]["attendance_status_enum"];
 type PaymentMethod = Database["public"]["Enums"]["payment_method_enum"];
 
 // 招待トークンの検証スキーマ
-export const inviteTokenSchema = z.string()
+export const inviteTokenSchema = z
+  .string()
   .length(32, "無効な招待トークンの形式です")
   .regex(/^[a-zA-Z0-9_-]+$/, "無効な招待トークンの文字です");
 
 // ニックネームの検証スキーマ
-export const nicknameSchema = z.string()
+export const nicknameSchema = z
+  .string()
   .min(1, "ニックネームを入力してください")
   .max(50, "ニックネームは50文字以内で入力してください")
-  .refine(
-    (val) => val.trim().length > 0,
-    "ニックネームを入力してください"
-  )
+  .refine((val) => val.trim().length > 0, "ニックネームを入力してください")
   .transform((val) => sanitizeForEventPay(val.trim()));
 
 // メールアドレスの検証スキーマ
-export const emailSchema = z.string()
+export const emailSchema = z
+  .string()
   .transform((val) => val.trim().toLowerCase())
   .pipe(
-    z.string()
+    z
+      .string()
       .email("有効なメールアドレスを入力してください")
       .max(255, "メールアドレスは255文字以内で入力してください")
       .transform((val) => sanitizeForEventPay(val))
@@ -41,18 +39,21 @@ export const attendanceStatusSchema = z.enum(["attending", "not_attending", "may
 });
 
 // 決済方法の検証スキーマ（参加ステータスが"attending"かつ有料の場合のみ必須）
-export const paymentMethodSchema = z.enum(["stripe", "cash"], {
-  errorMap: () => ({ message: "有効な決済方法を選択してください" }),
-}).optional();
+export const paymentMethodSchema = z
+  .enum(["stripe", "cash"], {
+    errorMap: () => ({ message: "有効な決済方法を選択してください" }),
+  })
+  .optional();
 
 // 参加フォームの基本検証スキーマ
-export const participationFormSchema = z.object({
-  inviteToken: inviteTokenSchema,
-  nickname: nicknameSchema,
-  email: emailSchema,
-  attendanceStatus: attendanceStatusSchema,
-  paymentMethod: paymentMethodSchema,
-})
+export const participationFormSchema = z
+  .object({
+    inviteToken: inviteTokenSchema,
+    nickname: nicknameSchema,
+    email: emailSchema,
+    attendanceStatus: attendanceStatusSchema,
+    paymentMethod: paymentMethodSchema,
+  })
   .refine(
     (data) => {
       // 参加ステータスが"attending"の場合は決済方法が必須（無料イベントは除く）
@@ -271,7 +272,4 @@ export const sanitizeParticipationInput = {
 };
 
 // エクスポート用の型定義
-export type {
-  AttendanceStatus,
-  PaymentMethod,
-};
+export type { AttendanceStatus, PaymentMethod };

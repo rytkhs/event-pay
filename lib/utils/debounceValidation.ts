@@ -2,7 +2,10 @@
  * バリデーション用のデバウンス関数
  * 指定された遅延時間後に関数を実行し、連続呼び出しは最後のもののみ実行される
  */
-export function debounceValidation<T extends (...args: never[]) => unknown>(fn: T, delay: number): T {
+export function debounceValidation<T extends (...args: never[]) => unknown>(
+  fn: T,
+  delay: number
+): T {
   let timeoutId: NodeJS.Timeout | null = null;
 
   return ((...args: Parameters<T>) => {

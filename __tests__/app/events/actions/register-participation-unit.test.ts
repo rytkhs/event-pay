@@ -4,7 +4,11 @@
  */
 
 import { registerParticipationAction } from "@/app/events/actions/register-participation";
-import { validateInviteToken, checkEventCapacity, checkDuplicateEmail } from "@/lib/utils/invite-token";
+import {
+  validateInviteToken,
+  checkEventCapacity,
+  checkDuplicateEmail,
+} from "@/lib/utils/invite-token";
 import { generateGuestToken } from "@/lib/utils/guest-token";
 import { createClient } from "@/lib/supabase/server";
 import { sanitizeParticipationInput } from "@/lib/validations/participation";
@@ -37,9 +41,13 @@ jest.mock("next/headers", () => ({
   })),
 }));
 
-const mockValidateInviteToken = validateInviteToken as jest.MockedFunction<typeof validateInviteToken>;
+const mockValidateInviteToken = validateInviteToken as jest.MockedFunction<
+  typeof validateInviteToken
+>;
 const mockCheckEventCapacity = checkEventCapacity as jest.MockedFunction<typeof checkEventCapacity>;
-const mockCheckDuplicateEmail = checkDuplicateEmail as jest.MockedFunction<typeof checkDuplicateEmail>;
+const mockCheckDuplicateEmail = checkDuplicateEmail as jest.MockedFunction<
+  typeof checkDuplicateEmail
+>;
 const mockGenerateGuestToken = generateGuestToken as jest.MockedFunction<typeof generateGuestToken>;
 const mockCreateClient = createClient as jest.MockedFunction<typeof createClient>;
 
@@ -523,7 +531,8 @@ describe("registerParticipationAction", () => {
 
       await registerParticipationAction(formData);
 
-      expect(mockSupabase.rpc).toHaveBeenCalledWith("register_participation",
+      expect(mockSupabase.rpc).toHaveBeenCalledWith(
+        "register_participation",
         expect.objectContaining({
           p_guest_token: "generated-guest-token-123456789012",
         })

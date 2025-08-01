@@ -1,6 +1,10 @@
 "use server";
 
-import { validateInviteToken, type InviteValidationResult, type EventDetail } from "@/lib/utils/invite-token";
+import {
+  validateInviteToken,
+  type InviteValidationResult,
+  type EventDetail,
+} from "@/lib/utils/invite-token";
 
 export interface ServerActionResult<T> {
   success: boolean;
@@ -17,7 +21,9 @@ export interface ValidateInviteTokenData {
 /**
  * 招待トークンを検証し、イベントデータを取得するサーバーアクション
  */
-export async function validateInviteTokenAction(token: string): Promise<ServerActionResult<ValidateInviteTokenData>> {
+export async function validateInviteTokenAction(
+  token: string
+): Promise<ServerActionResult<ValidateInviteTokenData>> {
   try {
     // 入力検証
     if (!token || typeof token !== "string") {
@@ -54,7 +60,9 @@ export async function validateInviteTokenAction(token: string): Promise<ServerAc
       },
     };
   } catch (error) {
-    console.error("招待トークン検証アクションのエラー:", error);
+    if (process.env.NODE_ENV === "development") {
+      console.error("招待トークン検証アクションのエラー:", error);
+    }
     return {
       success: false,
       error: "招待リンクの検証中にエラーが発生しました",

@@ -1,5 +1,5 @@
 import { Page, expect } from "@playwright/test";
-import { AccountLockoutService } from "@/lib/auth-security";
+import { AccountLockoutService } from "../../lib/auth-security";
 
 /**
  * react-hook-form特有の動作に対応するE2Eテストヘルパー関数
@@ -12,8 +12,8 @@ export async function clearAccountLockout(email: string): Promise<void> {
   if (process.env.NODE_ENV === "test") {
     try {
       await AccountLockoutService.clearFailedAttempts(email);
-    } catch (error) {
-      console.warn(`Failed to clear account lockout for ${email}:`, error);
+    } catch (_error) {
+      // エラーを無視（テスト環境でのアカウントロッククリアは必須ではない）
     }
   }
 }
@@ -132,7 +132,7 @@ export async function createUniqueTestUser(page: Page) {
   // 登録完了またはメール確認ページに遷移するのを待つ
   try {
     await page.waitForURL(/\/(auth\/verify-otp|home)/, { timeout: 10000 });
-  } catch (error) {
+  } catch (_error) {
     // メール確認が必要な場合もあるのでエラーを無視
   }
 
@@ -270,7 +270,7 @@ export function getByTestId(page: Page, testId: string) {
  * react-hook-formエラーメッセージの確認
  */
 export async function expectValidationErrors(page: Page, errors: Record<string, string>) {
-  for (const [field, message] of Object.entries(errors)) {
+  for (const [_field, message] of Object.entries(errors)) {
     await waitForValidationError(page, message);
   }
 }

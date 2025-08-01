@@ -2,12 +2,12 @@ import { test, expect } from "@playwright/test";
 
 /**
  * 招待リンク参加機能 基本E2Eテスト
- * 
+ *
  * アプリケーションのビルドエラーを回避して基本的な機能をテストします
  */
 
 test.describe("招待リンク参加機能 - 基本テスト", () => {
-  test.describe.configure({ mode: 'serial' });
+  test.describe.configure({ mode: "serial" });
 
   test("招待リンクページが正常に表示される", async ({ page }) => {
     // 実際の招待トークンの代わりにダミートークンを使用
@@ -16,7 +16,7 @@ test.describe("招待リンク参加機能 - 基本テスト", () => {
     await page.goto(`/invite/${dummyToken}`);
 
     // ページが読み込まれることを確認（エラーページでも可）
-    await expect(page.locator('body')).toBeVisible();
+    await expect(page.locator("body")).toBeVisible();
 
     // タイトルが設定されていることを確認
     const title = await page.title();
@@ -27,7 +27,7 @@ test.describe("招待リンク参加機能 - 基本テスト", () => {
     await page.goto("/invite/invalid-token");
 
     // エラーメッセージまたはエラーページが表示されることを確認
-    const bodyText = await page.textContent('body');
+    const bodyText = await page.textContent("body");
     expect(bodyText).toMatch(/(無効|エラー|見つかりません|Invalid)/i);
   });
 
@@ -37,7 +37,7 @@ test.describe("招待リンク参加機能 - 基本テスト", () => {
     await page.goto(`/guest/${dummyGuestToken}`);
 
     // ページが読み込まれることを確認
-    await expect(page.locator('body')).toBeVisible();
+    await expect(page.locator("body")).toBeVisible();
 
     const title = await page.title();
     expect(title).toContain("EventPay");
@@ -49,9 +49,9 @@ test.describe("招待リンク参加機能 - 基本テスト", () => {
     await page.goto(`/invite/${dummyToken}`);
 
     // フォーム要素が存在するかチェック（エラーページでない場合）
-    const hasForm = await page.locator('form').count() > 0;
-    const hasNicknameInput = await page.locator('[name="nickname"]').count() > 0;
-    const hasEmailInput = await page.locator('[name="email"]').count() > 0;
+    const hasForm = (await page.locator("form").count()) > 0;
+    const hasNicknameInput = (await page.locator('[name="nickname"]').count()) > 0;
+    const hasEmailInput = (await page.locator('[name="email"]').count()) > 0;
 
     if (hasForm) {
       // フォームが存在する場合は基本要素をチェック
@@ -59,7 +59,7 @@ test.describe("招待リンク参加機能 - 基本テスト", () => {
       expect(hasEmailInput).toBeTruthy();
     } else {
       // フォームが存在しない場合はエラーページとして扱う
-      const bodyText = await page.textContent('body');
+      const bodyText = await page.textContent("body");
       expect(bodyText).toMatch(/(無効|エラー|見つかりません)/i);
     }
   });
@@ -69,7 +69,7 @@ test.describe("招待リンク参加機能 - 基本テスト", () => {
     await page.goto(`/invite/${dummyToken}`);
 
     // フォームが存在する場合のみテスト実行
-    const formExists = await page.locator('form').count() > 0;
+    const formExists = (await page.locator("form").count()) > 0;
 
     if (formExists) {
       // 空のフォームで送信ボタンをクリック
@@ -79,7 +79,7 @@ test.describe("招待リンク参加機能 - 基本テスト", () => {
 
         // バリデーションエラーまたは何らかの反応があることを確認
         await page.waitForTimeout(1000);
-        const bodyText = await page.textContent('body');
+        const bodyText = await page.textContent("body");
 
         // エラーメッセージまたはバリデーション反応があることを確認
         expect(bodyText).toMatch(/(必須|入力|選択|エラー|Invalid|Required)/i);
@@ -95,7 +95,7 @@ test.describe("招待リンク参加機能 - 基本テスト", () => {
     await page.goto(`/invite/${dummyToken}`);
 
     // ページが読み込まれることを確認
-    await expect(page.locator('body')).toBeVisible();
+    await expect(page.locator("body")).toBeVisible();
 
     // モバイルビューでもコンテンツが表示されることを確認
     const viewport = page.viewportSize();
@@ -108,23 +108,23 @@ test.describe("招待リンク参加機能 - 基本テスト", () => {
     await page.goto(`/invite/${dummyToken}`);
 
     // フォームが存在する場合のアクセシビリティチェック
-    const formExists = await page.locator('form').count() > 0;
+    const formExists = (await page.locator("form").count()) > 0;
 
     if (formExists) {
       // 基本的なフォーム要素のアクセシビリティ属性をチェック
       const nicknameInput = page.locator('[name="nickname"]');
       const emailInput = page.locator('[name="email"]');
 
-      if (await nicknameInput.count() > 0) {
+      if ((await nicknameInput.count()) > 0) {
         // aria-required属性が設定されていることを確認
-        const hasAriaRequired = await nicknameInput.getAttribute('aria-required');
+        const hasAriaRequired = await nicknameInput.getAttribute("aria-required");
         expect(hasAriaRequired).toBeTruthy();
       }
 
-      if (await emailInput.count() > 0) {
+      if ((await emailInput.count()) > 0) {
         // type="email"が設定されていることを確認
-        const inputType = await emailInput.getAttribute('type');
-        expect(inputType).toBe('email');
+        const inputType = await emailInput.getAttribute("type");
+        expect(inputType).toBe("email");
       }
     }
   });
@@ -140,9 +140,9 @@ test.describe("招待リンク参加機能 - 基本テスト", () => {
     if (headers) {
       // X-Frame-Optionsまたは他のセキュリティヘッダーが設定されていることを確認
       const hasSecurityHeaders =
-        headers['x-frame-options'] ||
-        headers['content-security-policy'] ||
-        headers['x-content-type-options'];
+        headers["x-frame-options"] ||
+        headers["content-security-policy"] ||
+        headers["x-content-type-options"];
 
       expect(hasSecurityHeaders).toBeTruthy();
     }
@@ -152,7 +152,7 @@ test.describe("招待リンク参加機能 - 基本テスト", () => {
     const startTime = Date.now();
 
     await page.goto("/invite/test-token");
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState("networkidle");
 
     const loadTime = Date.now() - startTime;
 

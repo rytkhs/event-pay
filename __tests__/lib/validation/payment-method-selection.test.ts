@@ -111,7 +111,11 @@ describe("決済方法選択のバリデーション", () => {
         paymentMethod: undefined,
       };
 
-      const errors = validateParticipationField("attendanceStatus", "attending", formDataWithoutPayment);
+      const errors = validateParticipationField(
+        "attendanceStatus",
+        "attending",
+        formDataWithoutPayment
+      );
       expect(errors.paymentMethod).toBe("参加を選択した場合は決済方法を選択してください");
     });
   });

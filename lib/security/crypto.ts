@@ -16,7 +16,7 @@ export function generateSecureToken(length: number = 32): string {
  */
 export function generateOtpCode(): string {
   const max = 1000000; // 10^6
-  const maxValidValue = Math.floor(0xFFFFFFFF / max) * max; // バイアス除去のための閾値
+  const maxValidValue = Math.floor(0xffffffff / max) * max; // バイアス除去のための閾値
   let randomNumber: number;
 
   // リジェクションサンプリング：バイアス除去のため安全な範囲まで再試行
