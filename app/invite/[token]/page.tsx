@@ -73,16 +73,18 @@ export default async function InvitePage({ params }: InvitePageProps) {
       <div className="min-h-screen bg-gray-50">
         <div className="container mx-auto px-4 py-6 sm:py-8">
           <div className="max-w-2xl mx-auto">
-            <div className="mb-4 sm:mb-6">
+            <header className="mb-4 sm:mb-6">
               <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 text-center">
                 イベント参加申し込み
               </h1>
               <p className="text-sm sm:text-base text-gray-600 text-center mt-2">
                 以下のイベントに参加申し込みをしてください
               </p>
-            </div>
+            </header>
 
-            <InviteEventDetail event={validationResult.event} inviteToken={params.token} />
+            <main role="main">
+              <InviteEventDetail event={validationResult.event} inviteToken={params.token} />
+            </main>
           </div>
         </div>
       </div>

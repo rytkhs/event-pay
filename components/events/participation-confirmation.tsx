@@ -23,6 +23,10 @@ export function ParticipationConfirmation({
   const [showGuestUrl, setShowGuestUrl] = useState(false);
   const { copyToClipboard, isCopied } = useClipboard();
 
+  // アクセシビリティ用のID生成
+  const confirmationId = "participation-confirmation";
+  const guestUrlSectionId = "guest-url-section";
+
   // ゲスト管理URLの生成
   const guestManagementUrl = `${process.env.NEXT_PUBLIC_APP_URL || window.location.origin}/guest/${registrationData.guestToken}`;
 
@@ -61,13 +65,19 @@ export function ParticipationConfirmation({
   };
 
   return (
-    <div className="space-y-4 sm:space-y-6">
+    <div className="space-y-4 sm:space-y-6" role="main" aria-labelledby={`${confirmationId}-title`}>
       {/* 成功メッセージ */}
-      <Card className="p-4 sm:p-6 bg-green-50 border-green-200">
+      <Card className="p-4 sm:p-6 bg-green-50 border-green-200" role="status" aria-live="polite">
         <div className="flex items-start sm:items-center space-x-3">
-          <CheckCircle className="h-6 w-6 sm:h-8 sm:w-8 text-green-600 flex-shrink-0 mt-0.5 sm:mt-0" />
+          <CheckCircle
+            className="h-6 w-6 sm:h-8 sm:w-8 text-green-600 flex-shrink-0 mt-0.5 sm:mt-0"
+            aria-hidden="true"
+          />
           <div className="min-w-0 flex-1">
-            <h2 className="text-lg sm:text-xl font-semibold text-green-900">
+            <h2
+              id={`${confirmationId}-title`}
+              className="text-lg sm:text-xl font-semibold text-green-900"
+            >
               参加申し込みが完了しました！
             </h2>
             <p className="text-sm text-green-700 mt-1">ご登録いただいた内容を確認してください</p>
@@ -79,10 +89,19 @@ export function ParticipationConfirmation({
       <Card className="p-4 sm:p-6">
         <div className="space-y-4 sm:space-y-6">
           <div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-3 sm:mb-4">登録内容</h3>
+            <h3
+              className="text-lg font-semibold text-gray-900 mb-3 sm:mb-4"
+              id="registration-details"
+            >
+              登録内容
+            </h3>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
+          <div
+            className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6"
+            role="region"
+            aria-labelledby="registration-details"
+          >
             <div className="space-y-3 sm:space-y-4">
               <div>
                 <h4 className="text-sm font-medium text-gray-700">イベント名</h4>
@@ -118,6 +137,8 @@ export function ParticipationConfirmation({
                           ? "bg-red-100 text-red-800"
                           : "bg-yellow-100 text-yellow-800"
                     }`}
+                    role="status"
+                    aria-label={`参加ステータス: ${getAttendanceStatusText(registrationData.attendanceStatus)}`}
                   >
                     {getAttendanceStatusText(registrationData.attendanceStatus)}
                   </span>
@@ -128,7 +149,9 @@ export function ParticipationConfirmation({
                 <div>
                   <h4 className="text-sm font-medium text-gray-700">決済方法</h4>
                   <p className="mt-1 text-sm text-gray-900 flex items-center space-x-2">
-                    {getPaymentMethodIcon(registrationData.paymentMethod)}
+                    <span aria-hidden="true">
+                      {getPaymentMethodIcon(registrationData.paymentMethod)}
+                    </span>
                     <span>{PAYMENT_METHOD_LABELS[registrationData.paymentMethod]}</span>
                   </p>
                 </div>
@@ -137,7 +160,10 @@ export function ParticipationConfirmation({
               {registrationData.attendanceStatus === "attending" && event.fee > 0 && (
                 <div>
                   <h4 className="text-sm font-medium text-gray-700">参加費</h4>
-                  <p className="mt-1 text-base sm:text-sm text-gray-900 font-semibold">
+                  <p
+                    className="mt-1 text-base sm:text-sm text-gray-900 font-semibold"
+                    aria-label={`参加費 ${event.fee.toLocaleString()}円`}
+                  >
                     {event.fee.toLocaleString()}円
                   </p>
                 </div>
@@ -149,11 +175,17 @@ export function ParticipationConfirmation({
 
       {/* 決済情報（参加かつ有料の場合） */}
       {registrationData.requiresPayment && (
-        <Card className="p-4 sm:p-6 bg-blue-50 border-blue-200">
+        <Card
+          className="p-4 sm:p-6 bg-blue-50 border-blue-200"
+          role="region"
+          aria-labelledby="payment-info-title"
+        >
           <div className="space-y-3 sm:space-y-4">
             <div className="flex items-center space-x-3">
-              {getPaymentMethodIcon(registrationData.paymentMethod)}
-              <h3 className="text-lg font-semibold text-blue-900">決済について</h3>
+              <span aria-hidden="true">{getPaymentMethodIcon(registrationData.paymentMethod)}</span>
+              <h3 id="payment-info-title" className="text-lg font-semibold text-blue-900">
+                決済について
+              </h3>
             </div>
 
             {registrationData.paymentMethod === "stripe" && (
@@ -176,7 +208,11 @@ export function ParticipationConfirmation({
               </div>
             )}
 
-            <div className="bg-white p-3 rounded-lg border border-blue-200">
+            <div
+              className="bg-white p-3 rounded-lg border border-blue-200"
+              role="note"
+              aria-label="決済に関する重要な注意事項"
+            >
               <p className="text-xs sm:text-xs text-blue-600 leading-relaxed">
                 <strong>注意:</strong>
                 決済が完了するまで参加登録は仮登録状態となります。
@@ -188,10 +224,12 @@ export function ParticipationConfirmation({
       )}
 
       {/* ゲスト管理URL */}
-      <Card className="p-4 sm:p-6">
+      <Card className="p-4 sm:p-6" role="region" aria-labelledby={guestUrlSectionId}>
         <div className="space-y-3 sm:space-y-4">
           <div>
-            <h3 className="text-lg font-semibold text-gray-900">参加状況の管理</h3>
+            <h3 id={guestUrlSectionId} className="text-lg font-semibold text-gray-900">
+              参加状況の管理
+            </h3>
             <p className="text-sm text-gray-600 mt-1">
               以下のURLから参加状況の確認・変更ができます。ブックマークしておくことをお勧めします。
             </p>
@@ -201,16 +239,24 @@ export function ParticipationConfirmation({
             <Button
               onClick={() => setShowGuestUrl(!showGuestUrl)}
               variant="outline"
-              className="w-full justify-center h-11 sm:h-10 text-base sm:text-sm"
+              className="w-full justify-center h-11 sm:h-10 text-base sm:text-sm focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+              aria-expanded={showGuestUrl}
+              aria-controls="guest-url-content"
             >
               {showGuestUrl ? "URLを非表示" : "管理URLを表示"}
             </Button>
 
             {showGuestUrl && (
-              <div className="space-y-3">
+              <div id="guest-url-content" className="space-y-3">
                 <div className="p-3 bg-gray-50 rounded-lg border">
                   <p className="text-xs text-gray-600 mb-2">管理URL:</p>
-                  <p className="text-xs sm:text-sm font-mono text-gray-900 break-all leading-relaxed">
+                  <p
+                    className="text-xs sm:text-sm font-mono text-gray-900 break-all leading-relaxed"
+                    role="textbox"
+                    aria-readonly="true"
+                    aria-label="ゲスト管理URL"
+                    tabIndex={0}
+                  >
                     {guestManagementUrl}
                   </p>
                 </div>
@@ -220,18 +266,24 @@ export function ParticipationConfirmation({
                     onClick={handleCopyGuestUrl}
                     variant="outline"
                     size="sm"
-                    className="flex-1 h-11 sm:h-9 text-base sm:text-sm"
+                    className="flex-1 h-11 sm:h-9 text-base sm:text-sm focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                    aria-describedby={isCopied ? "copy-status" : undefined}
                   >
-                    <Copy className="h-4 w-4 mr-2" />
+                    <Copy className="h-4 w-4 mr-2" aria-hidden="true" />
                     {isCopied ? "コピー済み" : "URLをコピー"}
+                    {isCopied && (
+                      <span id="copy-status" className="sr-only" aria-live="polite">
+                        URLがクリップボードにコピーされました
+                      </span>
+                    )}
                   </Button>
                   <Button
                     onClick={handleOpenGuestUrl}
                     variant="outline"
                     size="sm"
-                    className="flex-1 h-11 sm:h-9 text-base sm:text-sm"
+                    className="flex-1 h-11 sm:h-9 text-base sm:text-sm focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
                   >
-                    <ExternalLink className="h-4 w-4 mr-2" />
+                    <ExternalLink className="h-4 w-4 mr-2" aria-hidden="true" />
                     新しいタブで開く
                   </Button>
                 </div>
@@ -239,7 +291,11 @@ export function ParticipationConfirmation({
             )}
           </div>
 
-          <div className="bg-yellow-50 p-3 rounded-lg border border-yellow-200">
+          <div
+            className="bg-yellow-50 p-3 rounded-lg border border-yellow-200"
+            role="alert"
+            aria-label="セキュリティに関する重要な警告"
+          >
             <p className="text-xs text-yellow-800 leading-relaxed">
               <strong>重要:</strong>
               この管理URLは他の人と共有しないでください。
@@ -250,9 +306,11 @@ export function ParticipationConfirmation({
       </Card>
 
       {/* イベント詳細情報 */}
-      <Card className="p-4 sm:p-6">
+      <Card className="p-4 sm:p-6" role="region" aria-labelledby="event-details-title">
         <div className="space-y-3 sm:space-y-4">
-          <h3 className="text-lg font-semibold text-gray-900">イベント詳細</h3>
+          <h3 id="event-details-title" className="text-lg font-semibold text-gray-900">
+            イベント詳細
+          </h3>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             <div>
@@ -291,14 +349,19 @@ export function ParticipationConfirmation({
       </Card>
 
       {/* 次のステップ */}
-      <Card className="p-4 sm:p-6 bg-gray-50">
+      <Card className="p-4 sm:p-6 bg-gray-50" role="region" aria-labelledby="next-steps-title">
         <div className="space-y-3 sm:space-y-4">
-          <h3 className="text-lg font-semibold text-gray-900">次のステップ</h3>
+          <h3 id="next-steps-title" className="text-lg font-semibold text-gray-900">
+            次のステップ
+          </h3>
 
-          <div className="space-y-3 sm:space-y-4">
+          <ol className="space-y-3 sm:space-y-4" role="list">
             {registrationData.requiresPayment && (
-              <div className="flex items-start space-x-3">
-                <div className="flex-shrink-0 w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center text-xs font-medium">
+              <li className="flex items-start space-x-3">
+                <div
+                  className="flex-shrink-0 w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center text-xs font-medium"
+                  aria-hidden="true"
+                >
                   1
                 </div>
                 <div className="min-w-0 flex-1">
@@ -307,11 +370,14 @@ export function ParticipationConfirmation({
                     登録されたメールアドレスに決済案内をお送りします
                   </p>
                 </div>
-              </div>
+              </li>
             )}
 
-            <div className="flex items-start space-x-3">
-              <div className="flex-shrink-0 w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center text-xs font-medium">
+            <li className="flex items-start space-x-3">
+              <div
+                className="flex-shrink-0 w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center text-xs font-medium"
+                aria-hidden="true"
+              >
                 {registrationData.requiresPayment ? "2" : "1"}
               </div>
               <div className="min-w-0 flex-1">
@@ -320,10 +386,13 @@ export function ParticipationConfirmation({
                   開催場所にお越しください。楽しいイベントをお待ちしています！
                 </p>
               </div>
-            </div>
+            </li>
 
-            <div className="flex items-start space-x-3">
-              <div className="flex-shrink-0 w-6 h-6 bg-gray-400 text-white rounded-full flex items-center justify-center text-xs font-medium">
+            <li className="flex items-start space-x-3">
+              <div
+                className="flex-shrink-0 w-6 h-6 bg-gray-400 text-white rounded-full flex items-center justify-center text-xs font-medium"
+                aria-hidden="true"
+              >
                 ?
               </div>
               <div className="min-w-0 flex-1">
@@ -332,8 +401,8 @@ export function ParticipationConfirmation({
                   上記の管理URLから参加状況を変更できます
                 </p>
               </div>
-            </div>
-          </div>
+            </li>
+          </ol>
         </div>
       </Card>
     </div>
