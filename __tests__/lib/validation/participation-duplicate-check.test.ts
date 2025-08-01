@@ -7,7 +7,9 @@ jest.mock("@/lib/utils/invite-token", () => ({
   checkDuplicateEmail: jest.fn(),
 }));
 
-const mockCheckDuplicateEmail = checkDuplicateEmail as jest.MockedFunction<typeof checkDuplicateEmail>;
+const mockCheckDuplicateEmail = checkDuplicateEmail as jest.MockedFunction<
+  typeof checkDuplicateEmail
+>;
 
 describe("Participation Form Duplicate Email Check", () => {
   beforeEach(() => {

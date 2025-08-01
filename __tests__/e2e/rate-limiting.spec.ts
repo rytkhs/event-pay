@@ -2,12 +2,12 @@
  * レート制限のE2Eテスト
  */
 
-import { test, expect } from '@playwright/test';
+import { test, expect } from "@playwright/test";
 
-test.describe('レート制限', () => {
-  test('招待リンクAPIのレート制限', async ({ page }) => {
+test.describe("レート制限", () => {
+  test("招待リンクAPIのレート制限", async ({ page }) => {
     // 無効なトークンで複数回リクエストを送信
-    const invalidToken = 'invalid-token-12345';
+    const invalidToken = "invalid-token-12345";
 
     // 最初のリクエストは通常のエラー（404）
     const response1 = await page.request.get(`/api/invite/${invalidToken}`);
@@ -26,10 +26,8 @@ test.describe('レート制限', () => {
     if (lastResponse.status() === 429) {
       const body = await lastResponse.json();
       expect(body.success).toBe(false);
-      expect(body.error.code).toBe('RATE_LIMIT_EXCEEDED');
-      expect(lastResponse.headers()['retry-after']).toBeDefined();
+      expect(body.error.code).toBe("RATE_LIMIT_EXCEEDED");
+      expect(lastResponse.headers()["retry-after"]).toBeDefined();
     }
   });
-
-
 });

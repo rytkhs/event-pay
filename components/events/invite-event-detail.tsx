@@ -82,7 +82,7 @@ export function InviteEventDetail({ event, inviteToken }: InviteEventDetailProps
         // エラー時はエラーメッセージを表示
         setError(!result.success ? result.error : "参加申し込み中にエラーが発生しました");
       }
-    } catch (error) {
+    } catch (_error) {
       setError("参加申し込み中にエラーが発生しました");
     } finally {
       setIsSubmitting(false);

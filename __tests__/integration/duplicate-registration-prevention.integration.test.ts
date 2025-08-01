@@ -135,7 +135,9 @@ describe("重複登録防止統合テスト", () => {
         paymentMethod: "cash" as const,
       };
 
-      expect(firstParticipation.email.toLowerCase()).toBe(duplicateParticipation.email.toLowerCase());
+      expect(firstParticipation.email.toLowerCase()).toBe(
+        duplicateParticipation.email.toLowerCase()
+      );
     });
 
     it("混合ケースでも重複を検出する", async () => {
@@ -162,7 +164,9 @@ describe("重複登録防止統合テスト", () => {
         paymentMethod: "cash" as const,
       };
 
-      expect(firstParticipation.email.toLowerCase()).toBe(duplicateParticipation.email.toLowerCase());
+      expect(firstParticipation.email.toLowerCase()).toBe(
+        duplicateParticipation.email.toLowerCase()
+      );
     });
   });
 
@@ -398,11 +402,14 @@ describe("重複登録防止統合テスト", () => {
         select: jest.fn().mockReturnValue({
           eq: jest.fn().mockReturnValue({
             eq: jest.fn().mockReturnValue({
-              single: jest.fn().mockImplementation(() =>
-                new Promise((_, reject) =>
-                  setTimeout(() => reject(new Error("Request timeout")), 100)
-                )
-              ),
+              single: jest
+                .fn()
+                .mockImplementation(
+                  () =>
+                    new Promise((_, reject) =>
+                      setTimeout(() => reject(new Error("Request timeout")), 100)
+                    )
+                ),
             }),
           }),
         }),

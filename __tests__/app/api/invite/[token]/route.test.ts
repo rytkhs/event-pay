@@ -7,15 +7,17 @@ import { validateInviteToken, checkEventCapacity } from "@/lib/utils/invite-toke
 import { handleRateLimit } from "@/lib/rate-limit-middleware";
 
 // Next.js環境のモック
-Object.defineProperty(globalThis, 'Request', {
-  value: global.Request || class MockRequest { },
+Object.defineProperty(globalThis, "Request", {
+  value: global.Request || class MockRequest {},
 });
 
 // モック設定
 jest.mock("@/lib/utils/invite-token");
 jest.mock("@/lib/rate-limit-middleware");
 
-const mockValidateInviteToken = validateInviteToken as jest.MockedFunction<typeof validateInviteToken>;
+const mockValidateInviteToken = validateInviteToken as jest.MockedFunction<
+  typeof validateInviteToken
+>;
 const mockCheckEventCapacity = checkEventCapacity as jest.MockedFunction<typeof checkEventCapacity>;
 const mockHandleRateLimit = handleRateLimit as jest.MockedFunction<typeof handleRateLimit>;
 
@@ -182,13 +184,14 @@ describe("/api/invite/[token] GET", () => {
   describe("レート制限", () => {
     it("レート制限に達した場合429エラーを返す", async () => {
       const rateLimitResponse = {
-        json: () => Promise.resolve({
-          success: false,
-          error: {
-            code: "RATE_LIMIT_EXCEEDED",
-            message: "レート制限に達しました",
-          },
-        }),
+        json: () =>
+          Promise.resolve({
+            success: false,
+            error: {
+              code: "RATE_LIMIT_EXCEEDED",
+              message: "レート制限に達しました",
+            },
+          }),
         status: 429,
       };
       mockHandleRateLimit.mockResolvedValue(rateLimitResponse as any);

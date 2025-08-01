@@ -32,7 +32,9 @@ describe("Error Handler", () => {
   describe("getUserErrorMessage", () => {
     it("should return user message for string error code", () => {
       const message = getUserErrorMessage("NETWORK_ERROR");
-      expect(message).toBe("ネットワークエラーが発生しました。インターネット接続をご確認ください。");
+      expect(message).toBe(
+        "ネットワークエラーが発生しました。インターネット接続をご確認ください。"
+      );
     });
 
     it("should return user message for error object with code", () => {

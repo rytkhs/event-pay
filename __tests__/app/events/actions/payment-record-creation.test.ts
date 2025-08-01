@@ -1,6 +1,10 @@
 import { registerParticipationDirectAction } from "@/app/events/actions/register-participation";
 import { createClient } from "@/lib/supabase/server";
-import { validateInviteToken, checkEventCapacity, checkDuplicateEmail } from "@/lib/utils/invite-token";
+import {
+  validateInviteToken,
+  checkEventCapacity,
+  checkDuplicateEmail,
+} from "@/lib/utils/invite-token";
 import type { ParticipationFormData } from "@/lib/validations/participation";
 
 // Supabaseクライアントのモック
@@ -12,9 +16,13 @@ const mockSupabase = {
 };
 
 const mockCreateClient = createClient as jest.MockedFunction<typeof createClient>;
-const mockValidateInviteToken = validateInviteToken as jest.MockedFunction<typeof validateInviteToken>;
+const mockValidateInviteToken = validateInviteToken as jest.MockedFunction<
+  typeof validateInviteToken
+>;
 const mockCheckEventCapacity = checkEventCapacity as jest.MockedFunction<typeof checkEventCapacity>;
-const mockCheckDuplicateEmail = checkDuplicateEmail as jest.MockedFunction<typeof checkDuplicateEmail>;
+const mockCheckDuplicateEmail = checkDuplicateEmail as jest.MockedFunction<
+  typeof checkDuplicateEmail
+>;
 
 describe("決済レコード作成のテスト", () => {
   beforeEach(() => {

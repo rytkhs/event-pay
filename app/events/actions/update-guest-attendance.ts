@@ -119,7 +119,8 @@ export async function updateGuestAttendanceAction(
     });
 
     // 決済が必要かどうかの判定
-    const requiresPayment = validatedStatus === "attending" &&
+    const requiresPayment =
+      validatedStatus === "attending" &&
       attendance.event.fee > 0 &&
       validatedPaymentMethod !== undefined;
 
@@ -133,7 +134,9 @@ export async function updateGuestAttendanceAction(
       },
     };
   } catch (error) {
-    console.error("ゲスト参加状況更新エラー:", error);
+    if (process.env.NODE_ENV === "development") {
+      console.error("ゲスト参加状況更新エラー:", error);
+    }
     return {
       success: false,
       error: "参加状況の更新中にエラーが発生しました",
@@ -193,7 +196,9 @@ async function checkEventCapacity(eventId: string): Promise<{
       capacity: event.capacity,
     };
   } catch (error) {
-    console.error("定員チェックエラー:", error);
+    if (process.env.NODE_ENV === "development") {
+      console.error("定員チェックエラー:", error);
+    }
     // エラーの場合は安全側に倒して参加不可とする
     return {
       canRegister: false,

@@ -18,7 +18,9 @@ jest.mock("@/lib/utils/invite-token", () => ({
   checkDuplicateEmail: jest.fn(),
 }));
 
-const mockCheckDuplicateEmail = checkDuplicateEmail as jest.MockedFunction<typeof checkDuplicateEmail>;
+const mockCheckDuplicateEmail = checkDuplicateEmail as jest.MockedFunction<
+  typeof checkDuplicateEmail
+>;
 
 describe("Participation Form Validation", () => {
   beforeEach(() => {
@@ -34,11 +36,15 @@ describe("Participation Form Validation", () => {
 
       it("無効な長さの招待トークンを拒否する", () => {
         expect(() => inviteTokenSchema.parse("short")).toThrow("無効な招待トークンの形式です");
-        expect(() => inviteTokenSchema.parse("toolongtoken123456789012345678901234567890")).toThrow();
+        expect(() =>
+          inviteTokenSchema.parse("toolongtoken123456789012345678901234567890")
+        ).toThrow();
       });
 
       it("無効な文字を含む招待トークンを拒否する", () => {
-        expect(() => inviteTokenSchema.parse("invalid@token#with$special%chars")).toThrow("無効な招待トークンの文字です");
+        expect(() => inviteTokenSchema.parse("invalid@token#with$special%chars")).toThrow(
+          "無効な招待トークンの文字です"
+        );
       });
     });
 
@@ -55,7 +61,9 @@ describe("Participation Form Validation", () => {
 
       it("長すぎるニックネームを拒否する", () => {
         const longNickname = "a".repeat(51);
-        expect(() => nicknameSchema.parse(longNickname)).toThrow("ニックネームは50文字以内で入力してください");
+        expect(() => nicknameSchema.parse(longNickname)).toThrow(
+          "ニックネームは50文字以内で入力してください"
+        );
       });
 
       it("前後の空白を除去する", () => {
@@ -71,14 +79,18 @@ describe("Participation Form Validation", () => {
       });
 
       it("無効なメールアドレスを拒否する", () => {
-        expect(() => emailSchema.parse("invalid-email")).toThrow("有効なメールアドレスを入力してください");
+        expect(() => emailSchema.parse("invalid-email")).toThrow(
+          "有効なメールアドレスを入力してください"
+        );
         expect(() => emailSchema.parse("@example.com")).toThrow();
         expect(() => emailSchema.parse("test@")).toThrow();
       });
 
       it("長すぎるメールアドレスを拒否する", () => {
         const longEmail = "a".repeat(250) + "@example.com";
-        expect(() => emailSchema.parse(longEmail)).toThrow("メールアドレスは255文字以内で入力してください");
+        expect(() => emailSchema.parse(longEmail)).toThrow(
+          "メールアドレスは255文字以内で入力してください"
+        );
       });
 
       it("メールアドレスを小文字に変換する", () => {
@@ -95,7 +107,9 @@ describe("Participation Form Validation", () => {
       });
 
       it("無効な参加ステータスを拒否する", () => {
-        expect(() => attendanceStatusSchema.parse("invalid")).toThrow("有効な参加ステータスを選択してください");
+        expect(() => attendanceStatusSchema.parse("invalid")).toThrow(
+          "有効な参加ステータスを選択してください"
+        );
       });
     });
 
@@ -110,7 +124,9 @@ describe("Participation Form Validation", () => {
       });
 
       it("無効な決済方法を拒否する", () => {
-        expect(() => paymentMethodSchema.parse("invalid")).toThrow("有効な決済方法を選択してください");
+        expect(() => paymentMethodSchema.parse("invalid")).toThrow(
+          "有効な決済方法を選択してください"
+        );
       });
     });
   });
@@ -134,7 +150,9 @@ describe("Participation Form Validation", () => {
         attendanceStatus: "attending" as const,
         paymentMethod: undefined,
       };
-      expect(() => participationFormSchema.parse(formData)).toThrow("参加を選択した場合は決済方法を選択してください");
+      expect(() => participationFormSchema.parse(formData)).toThrow(
+        "参加を選択した場合は決済方法を選択してください"
+      );
     });
 
     it("参加ステータスがnot_attendingの場合は決済方法は不要", () => {
@@ -257,7 +275,9 @@ describe("Participation Form Validation", () => {
       });
 
       it("HTMLタグを除去する", () => {
-        const result = sanitizeParticipationInput.nickname("<script>alert('xss')</script>テストユーザー");
+        const result = sanitizeParticipationInput.nickname(
+          "<script>alert('xss')</script>テストユーザー"
+        );
         expect(result).toBe("テストユーザー");
       });
     });
@@ -274,7 +294,9 @@ describe("Participation Form Validation", () => {
       });
 
       it("HTMLタグを除去する", () => {
-        const result = sanitizeParticipationInput.email("<script>alert('xss')</script>test@example.com");
+        const result = sanitizeParticipationInput.email(
+          "<script>alert('xss')</script>test@example.com"
+        );
         expect(result).toBe("test@example.com");
       });
     });

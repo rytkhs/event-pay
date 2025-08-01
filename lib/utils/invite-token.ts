@@ -4,7 +4,8 @@ import { createClient } from "@/lib/supabase/server";
 import type { Database } from "@/types/database";
 
 // 招待トークンの検証スキーマ
-export const inviteTokenSchema = z.string()
+export const inviteTokenSchema = z
+  .string()
   .length(32, "無効な招待トークンの形式です")
   .regex(/^[a-zA-Z0-9_-]+$/, "無効な招待トークンの文字です");
 
@@ -15,10 +16,10 @@ export const inviteTokenSchema = z.string()
  */
 export function generateInviteToken(): string {
   return randomBytes(24)
-    .toString('base64')
-    .replace(/\+/g, '-')
-    .replace(/\//g, '_')
-    .replace(/=/g, '');
+    .toString("base64")
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=/g, "");
 }
 
 /**
@@ -90,7 +91,8 @@ export async function validateInviteToken(token: string): Promise<InviteValidati
     // 招待トークンで参加者数と共にイベントを取得
     const { data: event, error } = await supabase
       .from("events")
-      .select(`
+      .select(
+        `
         id,
         title,
         date,
@@ -104,7 +106,8 @@ export async function validateInviteToken(token: string): Promise<InviteValidati
         status,
         invite_token,
         attendances!inner(id)
-      `)
+      `
+      )
       .eq("invite_token", token)
       .single();
 
@@ -164,7 +167,9 @@ export async function validateInviteToken(token: string): Promise<InviteValidati
       canRegister: true,
     };
   } catch (error) {
-    console.error("招待トークンの検証エラー:", error);
+    if (process.env.NODE_ENV === "development") {
+      console.error("招待トークンの検証エラー:", error);
+    }
     return {
       isValid: false,
       canRegister: false,
@@ -179,7 +184,10 @@ export async function validateInviteToken(token: string): Promise<InviteValidati
  * @param {number | null} capacity - イベントの定員
  * @returns {Promise<boolean>} 定員に達している場合はtrue
  */
-export async function checkEventCapacity(eventId: string, capacity: number | null): Promise<boolean> {
+export async function checkEventCapacity(
+  eventId: string,
+  capacity: number | null
+): Promise<boolean> {
   if (!capacity) {
     return false; // 定員制限なし
   }
@@ -195,13 +203,17 @@ export async function checkEventCapacity(eventId: string, capacity: number | nul
       .eq("status", "attending");
 
     if (error) {
-      console.error("定員チェックエラー:", error);
+      if (process.env.NODE_ENV === "development") {
+        console.error("定員チェックエラー:", error);
+      }
       return true; // 安全のため、エラー時は定員超過とみなす
     }
 
     return (count || 0) >= capacity;
   } catch (error) {
-    console.error("定員チェックエラー:", error);
+    if (process.env.NODE_ENV === "development") {
+      console.error("定員チェックエラー:", error);
+    }
     return true; // 安全のため、エラー時は定員超過とみなす
   }
 }
@@ -224,7 +236,9 @@ export async function checkDuplicateEmail(eventId: string, email: string): Promi
       .limit(1);
 
     if (error) {
-      console.error("メールアドレスの重複チェックエラー:", error);
+      if (process.env.NODE_ENV === "development") {
+        console.error("メールアドレスの重複チェックエラー:", error);
+      }
       return true; // 安全のため、エラー時は重複とみなす
     }
 

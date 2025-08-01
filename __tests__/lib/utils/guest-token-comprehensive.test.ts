@@ -59,7 +59,7 @@ describe("Guest Token Comprehensive Tests", () => {
 
       // 文字の分布をチェック
       const charCounts = new Map();
-      tokens.forEach(token => {
+      tokens.forEach((token) => {
         for (const char of token) {
           charCounts.set(char, (charCounts.get(char) || 0) + 1);
         }
@@ -241,10 +241,7 @@ describe("Guest Token Comprehensive Tests", () => {
     });
 
     it("複数の結果が返された場合は最初のものを使用する", async () => {
-      const multipleData = [
-        mockAttendanceData,
-        { ...mockAttendanceData, id: "attendance-789" },
-      ];
+      const multipleData = [mockAttendanceData, { ...mockAttendanceData, id: "attendance-789" }];
 
       mockSupabase.from.mockReturnValue({
         select: jest.fn().mockReturnValue({

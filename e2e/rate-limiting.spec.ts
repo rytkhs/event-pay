@@ -25,7 +25,7 @@ test.describe("Rate Limiting E2E Tests", () => {
       const responses = await Promise.all(promises);
 
       // 少なくとも1つのリクエストが429エラーになることを確認
-      const rateLimitedResponses = responses.filter(r => r.status() === 429);
+      const rateLimitedResponses = responses.filter((r) => r.status() === 429);
       expect(rateLimitedResponses.length).toBeGreaterThan(0);
 
       // 429エラーのレスポンスにRetry-Afterヘッダーが含まれることを確認
@@ -81,7 +81,7 @@ test.describe("Rate Limiting E2E Tests", () => {
       const responses = await Promise.all(promises);
 
       // 少なくとも1つのリクエストが429エラーになることを確認
-      const rateLimitedResponses = responses.filter(r => r.status() === 429);
+      const rateLimitedResponses = responses.filter((r) => r.status() === 429);
       expect(rateLimitedResponses.length).toBeGreaterThan(0);
 
       // 429エラーのレスポンスにRetry-Afterヘッダーが含まれることを確認
@@ -110,11 +110,11 @@ test.describe("Rate Limiting E2E Tests", () => {
       }
 
       const initialResponses = await Promise.all(initialPromises);
-      const rateLimited = initialResponses.some(r => r.status() === 429);
+      const rateLimited = initialResponses.some((r) => r.status() === 429);
 
       if (rateLimited) {
         // 少し待ってから再度リクエスト（実際のテストでは短時間で済むようにモック環境を使用）
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        await new Promise((resolve) => setTimeout(resolve, 1000));
 
         const recoveryResponse = await request.get("/api/invite/test-token");
         // レート制限が解除されていれば、404（無効なトークン）または200が返される
@@ -132,7 +132,7 @@ test.describe("Rate Limiting E2E Tests", () => {
       }
 
       const responses = await Promise.all(promises);
-      const rateLimitedResponse = responses.find(r => r.status() === 429);
+      const rateLimitedResponse = responses.find((r) => r.status() === 429);
 
       if (rateLimitedResponse) {
         // レスポンスヘッダーの確認

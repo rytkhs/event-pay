@@ -4,12 +4,12 @@ import {
   createTestEvent,
   setupMobileView,
   setupTabletView,
-  clearAccountLockout
+  clearAccountLockout,
 } from "./helpers/rhf-test-helpers";
 
 /**
  * 招待リンク参加機能 E2Eテスト
- * 
+ *
  * テスト対象:
  * - 招待リンクから参加確認までの完全なユーザージャーニー
  * - エラーシナリオとエッジケース
@@ -37,18 +37,20 @@ test.describe("招待リンク参加機能", () => {
       date: "2024-12-31T19:00",
       fee: "1500",
       capacity: "10",
-      paymentMethods: ["stripe", "cash"]
+      paymentMethods: ["stripe", "cash"],
     });
 
     // 招待トークンを取得（実際の実装に合わせて調整）
     await page.goto(`/events/${eventId}`);
     // 招待リンクまたはトークンを取得する方法を実装に合わせて調整
-    const inviteElement = page.locator('[data-testid="invite-link"], [data-testid="invite-token"], input[readonly]').first();
+    const inviteElement = page
+      .locator('[data-testid="invite-link"], [data-testid="invite-token"], input[readonly]')
+      .first();
     const inviteValue = await inviteElement.inputValue().catch(() => inviteElement.textContent());
 
-    if (inviteValue?.includes('/invite/')) {
+    if (inviteValue?.includes("/invite/")) {
       inviteUrl = inviteValue;
-      inviteToken = inviteValue.split('/invite/')[1];
+      inviteToken = inviteValue.split("/invite/")[1];
     } else {
       inviteToken = inviteValue || "";
       inviteUrl = `http://localhost:3000/invite/${inviteToken}`;
@@ -63,7 +65,9 @@ test.describe("招待リンク参加機能", () => {
       await page.goto(inviteUrl);
 
       // イベント詳細が表示されることを確認
-      await expect(page.locator('h1, h2, [role="heading"]')).toContainText("招待リンクテストイベント");
+      await expect(page.locator('h1, h2, [role="heading"]')).toContainText(
+        "招待リンクテストイベント"
+      );
       await expect(page.getByText("招待リンク参加機能のE2Eテスト用イベント")).toBeVisible();
       await expect(page.getByText("テスト会場")).toBeVisible();
       await expect(page.getByText("1,500")).toBeVisible();
@@ -73,13 +77,13 @@ test.describe("招待リンク参加機能", () => {
       await page.fill('[name="email"]', `test-${Date.now()}@example.com`);
 
       // 3. 参加ステータスを選択
-      await page.click('#attending');
+      await page.click("#attending");
 
       // 4. 支払い方法が表示されることを確認
       await expect(page.locator('label[for="stripe"]')).toBeVisible();
 
       // 5. クレジットカード支払いを選択
-      await page.click('#stripe');
+      await page.click("#stripe");
 
       // 6. フォーム送信
       await page.click('button[type="submit"]:has-text("参加申し込みを完了する")');
@@ -103,8 +107,8 @@ test.describe("招待リンク参加機能", () => {
 
       await page.fill('[name="nickname"]', "現金支払い参加者");
       await page.fill('[name="email"]', `cash-${Date.now()}@example.com`);
-      await page.click('#attending');
-      await page.click('#cash');
+      await page.click("#attending");
+      await page.click("#cash");
       await page.click('button[type="submit"]:has-text("参加申し込みを完了する")');
 
       await expect(page.getByText("参加申し込みが完了しました")).toBeVisible();
@@ -116,7 +120,7 @@ test.describe("招待リンク参加機能", () => {
 
       await page.fill('[name="nickname"]', "不参加者");
       await page.fill('[name="email"]', `not-attending-${Date.now()}@example.com`);
-      await page.click('#not_attending');
+      await page.click("#not_attending");
 
       // 支払い方法セクションが非表示になることを確認
       await expect(page.locator('label[for="stripe"]')).not.toBeVisible();
@@ -132,7 +136,7 @@ test.describe("招待リンク参加機能", () => {
 
       await page.fill('[name="nickname"]', "未定参加者");
       await page.fill('[name="email"]', `maybe-${Date.now()}@example.com`);
-      await page.click('#maybe');
+      await page.click("#maybe");
 
       // 支払い方法セクションが非表示になることを確認
       await expect(page.locator('label[for="stripe"]')).not.toBeVisible();
@@ -145,7 +149,6 @@ test.describe("招待リンク参加機能", () => {
   });
 
   test.describe("ゲスト管理機能", () => {
-    let guestToken: string;
     let guestUrl: string;
 
     test.beforeEach(async ({ page }) => {
@@ -153,15 +156,14 @@ test.describe("招待リンク参加機能", () => {
       await page.goto(inviteUrl);
       await page.fill('[name="nickname"]', "ゲスト管理テスト");
       await page.fill('[name="email"]', `guest-${Date.now()}@example.com`);
-      await page.click('#attending');
-      await page.click('#cash');
+      await page.click("#attending");
+      await page.click("#cash");
       await page.click('button[type="submit"]:has-text("参加申し込みを完了する")');
 
       // ゲスト管理URLを取得
       await page.click('button:has-text("管理URLを表示")');
       const guestUrlElement = page.locator('p[role="textbox"]');
-      guestUrl = await guestUrlElement.textContent() || "";
-      guestToken = guestUrl.split('/guest/')[1];
+      guestUrl = (await guestUrlElement.textContent()) || "";
     });
 
     test("ゲスト管理ページでの参加状況確認が動作する", async ({ page }) => {
@@ -181,7 +183,7 @@ test.describe("招待リンク参加機能", () => {
       const editButton = page.locator('button:has-text("編集"), button:has-text("変更")').first();
       if (await editButton.isVisible()) {
         await editButton.click();
-        await page.click('#maybe');
+        await page.click("#maybe");
         await page.click('button[type="submit"]');
       }
 
@@ -209,16 +211,18 @@ test.describe("招待リンク参加機能", () => {
         title: "期限切れテストイベント",
         date: "2020-01-01T19:00", // 過去の日付
         fee: "1000",
-        paymentMethods: ["cash"]
+        paymentMethods: ["cash"],
       });
 
       await page.goto(`/events/${expiredEventId}`);
       // 招待トークンを取得（実際の実装に合わせて調整）
-      const inviteElement = page.locator('[data-testid="invite-link"], [data-testid="invite-token"], input[readonly]').first();
+      const inviteElement = page
+        .locator('[data-testid="invite-link"], [data-testid="invite-token"], input[readonly]')
+        .first();
       const inviteValue = await inviteElement.inputValue().catch(() => inviteElement.textContent());
       let expiredToken = "";
-      if (inviteValue?.includes('/invite/')) {
-        expiredToken = inviteValue.split('/invite/')[1];
+      if (inviteValue?.includes("/invite/")) {
+        expiredToken = inviteValue.split("/invite/")[1];
       } else {
         expiredToken = inviteValue || "";
       }
@@ -240,16 +244,18 @@ test.describe("招待リンク参加機能", () => {
         date: "2024-12-31T19:00",
         fee: "1000",
         capacity: "1",
-        paymentMethods: ["cash"]
+        paymentMethods: ["cash"],
       });
 
       await page.goto(`/events/${limitedEventId}`);
       // 招待トークンを取得
-      const inviteElement = page.locator('[data-testid="invite-link"], [data-testid="invite-token"], input[readonly]').first();
+      const inviteElement = page
+        .locator('[data-testid="invite-link"], [data-testid="invite-token"], input[readonly]')
+        .first();
       const inviteValue = await inviteElement.inputValue().catch(() => inviteElement.textContent());
       let limitedToken = "";
-      if (inviteValue?.includes('/invite/')) {
-        limitedToken = inviteValue.split('/invite/')[1];
+      if (inviteValue?.includes("/invite/")) {
+        limitedToken = inviteValue.split("/invite/")[1];
       } else {
         limitedToken = inviteValue || "";
       }
@@ -259,16 +265,16 @@ test.describe("招待リンク参加機能", () => {
       await page.goto(`/invite/${limitedToken}`);
       await page.fill('[name="nickname"]', "1人目");
       await page.fill('[name="email"]', `first-${Date.now()}@example.com`);
-      await page.click('#attending');
-      await page.click('#cash');
+      await page.click("#attending");
+      await page.click("#cash");
       await page.click('button[type="submit"]:has-text("参加申し込みを完了する")');
 
       // 2人目がアクセスした場合
       await page.goto(`/invite/${limitedToken}`);
       await page.fill('[name="nickname"]', "2人目");
       await page.fill('[name="email"]', `second-${Date.now()}@example.com`);
-      await page.click('#attending');
-      await page.click('#cash');
+      await page.click("#attending");
+      await page.click("#cash");
       await page.click('button[type="submit"]:has-text("参加申し込みを完了する")');
 
       // 定員超過エラーが表示されることを確認
@@ -282,16 +288,16 @@ test.describe("招待リンク参加機能", () => {
       await page.goto(inviteUrl);
       await page.fill('[name="nickname"]', "1回目登録");
       await page.fill('[name="email"]', duplicateEmail);
-      await page.click('#attending');
-      await page.click('#cash');
+      await page.click("#attending");
+      await page.click("#cash");
       await page.click('button[type="submit"]:has-text("参加申し込みを完了する")');
 
       // 2回目の登録（同じメールアドレス）
       await page.goto(inviteUrl);
       await page.fill('[name="nickname"]', "2回目登録");
       await page.fill('[name="email"]', duplicateEmail);
-      await page.click('#attending');
-      await page.click('#cash');
+      await page.click("#attending");
+      await page.click("#cash");
       await page.click('button[type="submit"]:has-text("参加申し込みを完了する")');
 
       // 重複エラーが表示されることを確認
@@ -316,8 +322,8 @@ test.describe("招待リンク参加機能", () => {
 
       await page.fill('[name="nickname"]', "テスト");
       await page.fill('[name="email"]', "invalid-email");
-      await page.click('#attending');
-      await page.click('#cash');
+      await page.click("#attending");
+      await page.click("#cash");
       await page.click('button[type="submit"]:has-text("参加申し込みを完了する")');
 
       await expect(page.getByText("有効なメールアドレス")).toBeVisible();
@@ -330,8 +336,8 @@ test.describe("招待リンク参加機能", () => {
       const longNickname = "a".repeat(51);
       await page.fill('[name="nickname"]', longNickname);
       await page.fill('[name="email"]', "test@example.com");
-      await page.click('#attending');
-      await page.click('#cash');
+      await page.click("#attending");
+      await page.click("#cash");
       await page.click('button[type="submit"]:has-text("参加申し込みを完了する")');
 
       await expect(page.getByText("50文字以内")).toBeVisible();
@@ -342,7 +348,7 @@ test.describe("招待リンク参加機能", () => {
 
       await page.fill('[name="nickname"]', "テスト");
       await page.fill('[name="email"]', "test@example.com");
-      await page.click('#attending');
+      await page.click("#attending");
       // 支払い方法を選択せずに送信
       await page.click('button[type="submit"]:has-text("参加申し込みを完了する")');
 
@@ -356,7 +362,7 @@ test.describe("招待リンク参加機能", () => {
       const promises = [];
       for (let i = 0; i < 12; i++) {
         promises.push(
-          page.goto(inviteUrl).catch(() => { }) // エラーを無視
+          page.goto(inviteUrl).catch(() => {}) // エラーを無視
         );
       }
 
@@ -373,13 +379,13 @@ test.describe("招待リンク参加機能", () => {
       const xssPayload = '<script>alert("XSS")</script>';
       await page.fill('[name="nickname"]', xssPayload);
       await page.fill('[name="email"]', "test@example.com");
-      await page.click('#attending');
-      await page.click('#cash');
+      await page.click("#attending");
+      await page.click("#cash");
       await page.click('button[type="submit"]:has-text("参加申し込みを完了する")');
 
       // スクリプトが実行されないことを確認
-      const alerts = [];
-      page.on('dialog', dialog => {
+      const alerts: string[] = [];
+      page.on("dialog", (dialog) => {
         alerts.push(dialog.message());
         dialog.dismiss();
       });
@@ -388,8 +394,8 @@ test.describe("招待リンク参加機能", () => {
       expect(alerts).toHaveLength(0);
 
       // サニタイズされた値が表示されることを確認
-      const nicknameText = await page.textContent('body');
-      expect(nicknameText).not.toContain('<script>');
+      const nicknameText = await page.textContent("body");
+      expect(nicknameText).not.toContain("<script>");
     });
 
     test("無効なゲストトークンでのアクセス防止", async ({ page }) => {
@@ -406,7 +412,7 @@ test.describe("招待リンク参加機能", () => {
       await page.goto(inviteUrl);
 
       // モバイルビューでのレイアウト確認（フォームが表示されることを確認）
-      await expect(page.locator('form')).toBeVisible();
+      await expect(page.locator("form")).toBeVisible();
 
       // タッチ操作での入力
       await page.tap('[name="nickname"]');
@@ -416,8 +422,8 @@ test.describe("招待リンク参加機能", () => {
       await page.fill('[name="email"]', `mobile-${Date.now()}@example.com`);
 
       // タッチでの選択操作
-      await page.tap('#attending');
-      await page.tap('#stripe');
+      await page.tap("#attending");
+      await page.tap("#stripe");
 
       // モバイルでの送信
       await page.tap('button[type="submit"]:has-text("参加申し込みを完了する")');
@@ -432,12 +438,12 @@ test.describe("招待リンク参加機能", () => {
       await page.goto(inviteUrl);
 
       // タブレットビューでのレイアウト確認
-      await expect(page.locator('form')).toBeVisible();
+      await expect(page.locator("form")).toBeVisible();
 
       await page.fill('[name="nickname"]', "タブレットユーザー");
       await page.fill('[name="email"]', `tablet-${Date.now()}@example.com`);
-      await page.click('#attending');
-      await page.click('#cash');
+      await page.click("#attending");
+      await page.click("#cash");
       await page.click('button[type="submit"]:has-text("参加申し込みを完了する")');
 
       await expect(page.getByText("参加申し込みが完了しました")).toBeVisible();
@@ -456,7 +462,7 @@ test.describe("招待リンク参加機能", () => {
       await expect(page.locator('[name="nickname"]')).toHaveValue("回転テスト");
 
       // レイアウトが適切に調整されることを確認（フォームが表示されることを確認）
-      await expect(page.locator('form')).toBeVisible();
+      await expect(page.locator("form")).toBeVisible();
     });
   });
 
@@ -465,22 +471,22 @@ test.describe("招待リンク参加機能", () => {
       await page.goto(inviteUrl);
 
       // Tabキーでのフォーカス移動
-      await page.keyboard.press('Tab');
+      await page.keyboard.press("Tab");
       await expect(page.locator('[name="nickname"]')).toBeFocused();
 
-      await page.keyboard.press('Tab');
+      await page.keyboard.press("Tab");
       await expect(page.locator('[name="email"]')).toBeFocused();
 
-      await page.keyboard.press('Tab');
-      await expect(page.locator('#attending')).toBeFocused();
+      await page.keyboard.press("Tab");
+      await expect(page.locator("#attending")).toBeFocused();
     });
 
     test("スクリーンリーダー対応のARIA属性が設定されている", async ({ page }) => {
       await page.goto(inviteUrl);
 
       // ARIA属性の確認（実際の実装に合わせて調整）
-      await expect(page.locator('[name="nickname"]')).toHaveAttribute('aria-required', 'true');
-      await expect(page.locator('[name="email"]')).toHaveAttribute('aria-required', 'true');
+      await expect(page.locator('[name="nickname"]')).toHaveAttribute("aria-required", "true");
+      await expect(page.locator('[name="email"]')).toHaveAttribute("aria-required", "true");
       await expect(page.locator('[role="radiogroup"]')).toBeVisible();
     });
 
@@ -498,7 +504,7 @@ test.describe("招待リンク参加機能", () => {
     test("ページ読み込み時間が適切である", async ({ page }) => {
       const startTime = Date.now();
       await page.goto(inviteUrl);
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState("networkidle");
       const loadTime = Date.now() - startTime;
 
       // 3秒以内に読み込まれることを確認
@@ -510,12 +516,12 @@ test.describe("招待リンク参加機能", () => {
 
       await page.fill('[name="nickname"]', "パフォーマンステスト");
       await page.fill('[name="email"]', `perf-${Date.now()}@example.com`);
-      await page.click('#attending');
-      await page.click('#cash');
+      await page.click("#attending");
+      await page.click("#cash");
 
       const startTime = Date.now();
       await page.click('button[type="submit"]:has-text("参加申し込みを完了する")');
-      await page.waitForSelector('text=参加申し込みが完了しました');
+      await page.waitForSelector("text=参加申し込みが完了しました");
       const responseTime = Date.now() - startTime;
 
       // 5秒以内にレスポンスが返ることを確認

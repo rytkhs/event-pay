@@ -59,7 +59,9 @@ export async function GET(
       },
     });
   } catch (error) {
-    console.error("ゲスト検証APIエラー:", error);
+    if (process.env.NODE_ENV === "development") {
+      console.error("ゲスト検証APIエラー:", error);
+    }
     return NextResponse.json(
       {
         success: false,

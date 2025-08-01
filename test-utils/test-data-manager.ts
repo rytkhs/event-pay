@@ -13,7 +13,7 @@ export class TestDataManager {
       createClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL || "http://127.0.0.1:54321",
         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
-        "SUPABASE_ANON_KEY_REDACTED",
+          "SUPABASE_ANON_KEY_REDACTED",
         {
           auth: {
             autoRefreshToken: false,
@@ -26,7 +26,7 @@ export class TestDataManager {
     this.adminSupabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL || "http://127.0.0.1:54321",
       process.env.SUPABASE_SERVICE_ROLE_KEY ||
-      "SUPABASE_SERVICE_ROLE_KEY_REDACTED",
+        "SUPABASE_SERVICE_ROLE_KEY_REDACTED",
       {
         auth: {
           autoRefreshToken: false,
@@ -245,13 +245,11 @@ export class TestDataManager {
   async setupEventWithAttendees(eventData: any = {}, attendeeCount: number = 1): Promise<any> {
     // イベント作成者（運営者）を動的に作成
     const uniqueId = `creator-${Date.now()}`;
-    const { data: authUser, error: createError } = await this.adminSupabase.auth.admin.createUser(
-      {
-        email: `test-creator-${uniqueId}@example.com`,
-        password: "TestPassword123!",
-        email_confirm: true,
-      }
-    );
+    const { data: authUser, error: createError } = await this.adminSupabase.auth.admin.createUser({
+      email: `test-creator-${uniqueId}@example.com`,
+      password: "TestPassword123!",
+      email_confirm: true,
+    });
 
     if (createError || !authUser?.user) {
       throw new Error(`Failed to create creator user: ${createError?.message}`);

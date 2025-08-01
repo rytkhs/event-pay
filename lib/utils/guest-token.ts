@@ -71,7 +71,8 @@ export async function validateGuestToken(guestToken: string): Promise<GuestToken
     // ゲストトークンで参加データを取得
     const { data: attendance, error } = await supabase
       .from("attendances")
-      .select(`
+      .select(
+        `
         id,
         nickname,
         email,
@@ -98,7 +99,8 @@ export async function validateGuestToken(guestToken: string): Promise<GuestToken
           status,
           created_at
         )
-      `)
+      `
+      )
       .eq("guest_token", guestToken)
       .single();
 
@@ -110,8 +112,16 @@ export async function validateGuestToken(guestToken: string): Promise<GuestToken
       };
     }
 
-    // イベントデータの存在確認
-    if (!attendance.event) {
+    // イベントデータの存在確認と正規化
+    // Supabaseクエリの関連データは配列として返される場合がある
+    let eventData;
+    if (Array.isArray(attendance.event)) {
+      eventData = attendance.event[0];
+    } else {
+      eventData = attendance.event;
+    }
+
+    if (!eventData) {
       return {
         isValid: false,
         errorMessage: "イベントデータが見つかりません",
@@ -119,8 +129,18 @@ export async function validateGuestToken(guestToken: string): Promise<GuestToken
       };
     }
 
+    // 支払いデータの正規化
+    let paymentData = null;
+    if (attendance.payment) {
+      if (Array.isArray(attendance.payment)) {
+        paymentData = attendance.payment[0] || null;
+      } else {
+        paymentData = attendance.payment;
+      }
+    }
+
     // 変更可能かどうかの判定
-    const canModify = checkCanModifyAttendance(attendance.event);
+    const canModify = checkCanModifyAttendance(eventData);
 
     return {
       isValid: true,
@@ -128,20 +148,19 @@ export async function validateGuestToken(guestToken: string): Promise<GuestToken
         ...attendance,
         nickname: sanitizeForEventPay(attendance.nickname),
         event: {
-          ...attendance.event,
-          title: sanitizeForEventPay(attendance.event.title),
-          description: attendance.event.description
-            ? sanitizeForEventPay(attendance.event.description)
-            : null,
-          location: attendance.event.location
-            ? sanitizeForEventPay(attendance.event.location)
-            : null,
+          ...eventData,
+          title: sanitizeForEventPay(eventData.title),
+          description: eventData.description ? sanitizeForEventPay(eventData.description) : null,
+          location: eventData.location ? sanitizeForEventPay(eventData.location) : null,
         },
+        payment: paymentData,
       } as GuestAttendanceData,
       canModify,
     };
   } catch (error) {
-    console.error("ゲストトークン検証エラー:", error);
+    if (process.env.NODE_ENV === "development") {
+      console.error("ゲストトークン検証エラー:", error);
+    }
     return {
       isValid: false,
       errorMessage: "参加データの取得中にエラーが発生しました",

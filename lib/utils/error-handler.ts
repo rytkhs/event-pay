@@ -256,8 +256,8 @@ export function logError(error: ErrorDetails, context?: ErrorContext): void {
     });
   } else {
     // 一般的なエラーログ
-    const logLevel = error.severity === "high" || error.severity === "critical" ? "error" : "warn";
-
+    const _logLevel = error.severity === "high" || error.severity === "critical" ? "error" : "warn";
+    // TODO: ログレベルに応じた適切なログ出力を実装
   }
 }
 

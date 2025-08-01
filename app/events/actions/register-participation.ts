@@ -5,7 +5,11 @@ import { randomBytes } from "crypto";
 import { headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 
-import { validateInviteToken, checkEventCapacity, checkDuplicateEmail as _checkDuplicateEmail } from "@/lib/utils/invite-token";
+import {
+  validateInviteToken,
+  checkEventCapacity,
+  checkDuplicateEmail as _checkDuplicateEmail,
+} from "@/lib/utils/invite-token";
 import {
   participationFormSchema,
   type ParticipationFormData,
@@ -83,7 +87,7 @@ export async function registerParticipationAction(
           "VALIDATION_FAILURE",
           "Participation form validation failed",
           {
-            errors: error.errors.map(e => ({
+            errors: error.errors.map((e) => ({
               field: e.path.join("."),
               message: e.message,
             })),
@@ -174,14 +178,16 @@ export async function registerParticipationAction(
     const guestToken = generateGuestToken();
 
     // 入力データのサニタイゼーション（セキュリティログ付き）
-    const sanitizedNickname = sanitizeParticipationInput.nickname(
-      participationData.nickname,
-      { userAgent, ip, eventId: event.id }
-    );
-    const sanitizedEmail = sanitizeParticipationInput.email(
-      participationData.email,
-      { userAgent, ip, eventId: event.id }
-    );
+    const sanitizedNickname = sanitizeParticipationInput.nickname(participationData.nickname, {
+      userAgent,
+      ip,
+      eventId: event.id,
+    });
+    const sanitizedEmail = sanitizeParticipationInput.email(participationData.email, {
+      userAgent,
+      ip,
+      eventId: event.id,
+    });
 
     // 参加記録の作成
     const { data: attendance, error: attendanceError } = await supabase
@@ -216,18 +222,20 @@ export async function registerParticipationAction(
 
     // 決済が必要な場合（参加ステータスが"attending"かつ有料イベント）の決済記録作成
     let requiresPayment = false;
-    if (participationData.attendanceStatus === "attending" && event.fee > 0 && participationData.paymentMethod) {
+    if (
+      participationData.attendanceStatus === "attending" &&
+      event.fee > 0 &&
+      participationData.paymentMethod
+    ) {
       requiresPayment = true;
 
       // StripeとCashの両方でpendingステータスの決済レコードを作成
-      const { error: paymentError } = await supabase
-        .from("payments")
-        .insert({
-          attendance_id: attendance.id,
-          amount: event.fee,
-          method: participationData.paymentMethod,
-          status: "pending", // 初期状態は常にpending（StripeもCashも）
-        });
+      const { error: paymentError } = await supabase.from("payments").insert({
+        attendance_id: attendance.id,
+        amount: event.fee,
+        method: participationData.paymentMethod,
+        status: "pending", // 初期状態は常にpending（StripeもCashも）
+      });
 
       if (paymentError) {
         // 決済記録作成エラーをセキュリティログに記録
@@ -243,10 +251,7 @@ export async function registerParticipationAction(
         );
 
         // 決済記録の作成に失敗した場合、参加記録も削除してロールバック
-        await supabase
-          .from("attendances")
-          .delete()
-          .eq("id", attendance.id);
+        await supabase.from("attendances").delete().eq("id", attendance.id);
 
         return createErrorResponse(
           ERROR_CODES.DATABASE_ERROR,
@@ -268,7 +273,6 @@ export async function registerParticipationAction(
     };
 
     return createSuccessResponse(responseData, "参加登録が完了しました");
-
   } catch (error) {
     // 予期しないエラーをセキュリティログに記録
     logParticipationSecurityEvent(

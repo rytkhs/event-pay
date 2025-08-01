@@ -141,7 +141,7 @@ export function getClientIP(request: NextRequest): string;
 export function getClientIP(headers: Headers): string;
 export function getClientIP(requestOrHeaders: NextRequest | Headers): string {
   // NextRequestかHeadersかを判定
-  const headers = 'headers' in requestOrHeaders ? requestOrHeaders.headers : requestOrHeaders;
+  const headers = "headers" in requestOrHeaders ? requestOrHeaders.headers : requestOrHeaders;
 
   // Vercel本番環境でのプロキシヘッダー優先順位
   // Edge Runtimeの制約を考慮し、request.ipへの依存を最小化
@@ -163,7 +163,7 @@ export function getClientIP(requestOrHeaders: NextRequest | Headers): string {
     headers.get("forwarded-for"),
 
     // 最後の手段（Edge Runtimeでは常にundefined）
-    'ip' in requestOrHeaders ? requestOrHeaders.ip : undefined,
+    "ip" in requestOrHeaders ? requestOrHeaders.ip : undefined,
   ];
 
   // 有効なIPアドレスを順番に探す
@@ -189,7 +189,9 @@ export function getClientIP(requestOrHeaders: NextRequest | Headers): string {
     return "127.0.0.1";
   } else {
     // 本番環境では擬似IPを生成（レート制限機能を維持するため）
-    const fallbackIP = generateFallbackIdentifier(request);
+    // NextRequestの場合のみfallback identifierを生成可能
+    const fallbackIP =
+      "headers" in requestOrHeaders ? generateFallbackIdentifier(requestOrHeaders) : "0.0.0.0"; // Headersのみの場合は固定値を使用
 
     // 本番環境では適切なログシステムに出力
     if ((process.env.NODE_ENV as string) === "development") {

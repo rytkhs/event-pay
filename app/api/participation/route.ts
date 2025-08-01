@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { registerParticipationDirectAction } from "@/app/events/actions/register-participation";
-import { participationFormSchema, type ParticipationFormData } from "@/lib/validations/participation";
+import {
+  participationFormSchema,
+  type ParticipationFormData,
+} from "@/lib/validations/participation";
 import { handleRateLimit, type RateLimitErrorResponse } from "@/lib/rate-limit-middleware";
 import { RATE_LIMIT_CONFIG } from "@/config/security";
 import { logParticipationSecurityEvent } from "@/lib/security/security-logger";
@@ -29,7 +32,7 @@ export interface ParticipationResponse {
 
 /**
  * POST /api/participation - 参加登録フォームの送信を処理
- * 
+ *
  * 要件3.1: 参加ステータス選択と記録
  * 要件3.2: 参加者の容量計算への含有
  * 要件3.3: 不参加・未定の記録（容量計算外）
@@ -40,7 +43,11 @@ export async function POST(
   request: NextRequest
 ): Promise<NextResponse<ParticipationResponse | RateLimitErrorResponse>> {
   // レート制限を適用（要件6.1）
-  const rateLimitResponse = await handleRateLimit(request, RATE_LIMIT_CONFIG.participation, "participation");
+  const rateLimitResponse = await handleRateLimit(
+    request,
+    RATE_LIMIT_CONFIG.participation,
+    "participation"
+  );
   if (rateLimitResponse) {
     return rateLimitResponse as NextResponse<RateLimitErrorResponse>;
   }
@@ -88,7 +95,7 @@ export async function POST(
           "VALIDATION_FAILURE",
           "Participation API validation failed",
           {
-            errors: error.errors.map(e => ({
+            errors: error.errors.map((e) => ({
               field: e.path.join("."),
               message: e.message,
             })),
@@ -179,7 +186,6 @@ export async function POST(
       success: true,
       data: responseData,
     });
-
   } catch (error) {
     // 予期しないエラーをセキュリティログに記録
     logParticipationSecurityEvent(

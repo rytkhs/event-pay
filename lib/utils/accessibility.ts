@@ -9,7 +9,7 @@ export function focusElement(element: HTMLElement | null, options?: FocusOptions
   if (!element) return;
 
   // フォーカス可能な要素かチェック
-  if (element.tabIndex < 0 && !element.hasAttribute('tabindex')) {
+  if (element.tabIndex < 0 && !element.hasAttribute("tabindex")) {
     element.tabIndex = -1;
   }
 
@@ -19,11 +19,14 @@ export function focusElement(element: HTMLElement | null, options?: FocusOptions
 /**
  * スクリーンリーダー用のライブリージョンにメッセージを送信
  */
-export function announceToScreenReader(message: string, priority: 'polite' | 'assertive' = 'polite'): void {
-  const announcement = document.createElement('div');
-  announcement.setAttribute('aria-live', priority);
-  announcement.setAttribute('aria-atomic', 'true');
-  announcement.className = 'sr-only';
+export function announceToScreenReader(
+  message: string,
+  priority: "polite" | "assertive" = "polite"
+): void {
+  const announcement = document.createElement("div");
+  announcement.setAttribute("aria-live", priority);
+  announcement.setAttribute("aria-atomic", "true");
+  announcement.className = "sr-only";
   announcement.textContent = message;
 
   document.body.appendChild(announcement);
@@ -38,7 +41,7 @@ export function announceToScreenReader(message: string, priority: 'polite' | 'as
  * キーボードイベントがEnterまたはSpaceキーかチェック
  */
 export function isActivationKey(event: KeyboardEvent): boolean {
-  return event.key === 'Enter' || event.key === ' ';
+  return event.key === "Enter" || event.key === " ";
 }
 
 /**
@@ -46,11 +49,11 @@ export function isActivationKey(event: KeyboardEvent): boolean {
  */
 export function isFocusable(element: HTMLElement): boolean {
   if (element.tabIndex < 0) return false;
-  if (element.hasAttribute('disabled')) return false;
-  if (element.getAttribute('aria-hidden') === 'true') return false;
+  if (element.hasAttribute("disabled")) return false;
+  if (element.getAttribute("aria-hidden") === "true") return false;
 
   const style = window.getComputedStyle(element);
-  if (style.display === 'none' || style.visibility === 'hidden') return false;
+  if (style.display === "none" || style.visibility === "hidden") return false;
 
   return true;
 }
@@ -60,14 +63,14 @@ export function isFocusable(element: HTMLElement): boolean {
  */
 export function getFocusableElements(container: HTMLElement): HTMLElement[] {
   const focusableSelectors = [
-    'button:not([disabled])',
-    'input:not([disabled])',
-    'select:not([disabled])',
-    'textarea:not([disabled])',
-    'a[href]',
+    "button:not([disabled])",
+    "input:not([disabled])",
+    "select:not([disabled])",
+    "textarea:not([disabled])",
+    "a[href]",
     '[tabindex]:not([tabindex="-1"])',
-    '[contenteditable="true"]'
-  ].join(', ');
+    '[contenteditable="true"]',
+  ].join(", ");
 
   const elements = Array.from(container.querySelectorAll(focusableSelectors)) as HTMLElement[];
   return elements.filter(isFocusable);
@@ -84,7 +87,7 @@ export function createFocusTrap(container: HTMLElement): {
   let previousActiveElement: HTMLElement | null = null;
 
   const handleKeyDown = (event: KeyboardEvent) => {
-    if (!isActive || event.key !== 'Tab') return;
+    if (!isActive || event.key !== "Tab") return;
 
     const focusableElements = getFocusableElements(container);
     if (focusableElements.length === 0) return;
@@ -114,7 +117,7 @@ export function createFocusTrap(container: HTMLElement): {
       isActive = true;
       previousActiveElement = document.activeElement as HTMLElement;
 
-      document.addEventListener('keydown', handleKeyDown);
+      document.addEventListener("keydown", handleKeyDown);
 
       // 最初のフォーカス可能な要素にフォーカス
       const focusableElements = getFocusableElements(container);
@@ -127,20 +130,24 @@ export function createFocusTrap(container: HTMLElement): {
       if (!isActive) return;
 
       isActive = false;
-      document.removeEventListener('keydown', handleKeyDown);
+      document.removeEventListener("keydown", handleKeyDown);
 
       // 前のフォーカス位置に戻す
       if (previousActiveElement) {
         previousActiveElement.focus();
       }
-    }
+    },
   };
 }
 
 /**
  * ARIA属性を安全に設定
  */
-export function setAriaAttribute(element: HTMLElement, attribute: string, value: string | boolean | null): void {
+export function setAriaAttribute(
+  element: HTMLElement,
+  attribute: string,
+  value: string | boolean | null
+): void {
   if (value === null || value === undefined) {
     element.removeAttribute(attribute);
   } else {
@@ -159,7 +166,7 @@ export function calculateContrastRatio(color1: string, color2: string): number {
     if (!rgb || rgb.length < 3) return 0;
 
     const [r, g, b] = rgb.map(Number);
-    const [rs, gs, bs] = [r, g, b].map(c => {
+    const [rs, gs, bs] = [r, g, b].map((c) => {
       c = c / 255;
       return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
     });
@@ -181,15 +188,15 @@ export function calculateContrastRatio(color1: string, color2: string): number {
 export function getAccessibilityPreferences(): {
   prefersReducedMotion: boolean;
   prefersHighContrast: boolean;
-  prefersColorScheme: 'light' | 'dark' | 'no-preference';
+  prefersColorScheme: "light" | "dark" | "no-preference";
 } {
   return {
-    prefersReducedMotion: window.matchMedia('(prefers-reduced-motion: reduce)').matches,
-    prefersHighContrast: window.matchMedia('(prefers-contrast: high)').matches,
-    prefersColorScheme: window.matchMedia('(prefers-color-scheme: dark)').matches
-      ? 'dark'
-      : window.matchMedia('(prefers-color-scheme: light)').matches
-        ? 'light'
-        : 'no-preference'
+    prefersReducedMotion: window.matchMedia("(prefers-reduced-motion: reduce)").matches,
+    prefersHighContrast: window.matchMedia("(prefers-contrast: high)").matches,
+    prefersColorScheme: window.matchMedia("(prefers-color-scheme: dark)").matches
+      ? "dark"
+      : window.matchMedia("(prefers-color-scheme: light)").matches
+        ? "light"
+        : "no-preference",
   };
 }

@@ -278,9 +278,7 @@ function maskEmail(email: string): string {
   if (!email.includes("@")) return "***";
 
   const [local, domain] = email.split("@");
-  const maskedLocal = local.length > 2
-    ? local.substring(0, 2) + "***"
-    : "***";
+  const maskedLocal = local.length > 2 ? local.substring(0, 2) + "***" : "***";
 
   return `${maskedLocal}@${domain}`;
 }

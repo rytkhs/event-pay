@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { validateInviteToken, type EventDetail, checkEventCapacity } from "@/lib/utils/invite-token";
+import {
+  validateInviteToken,
+  type EventDetail,
+  checkEventCapacity,
+} from "@/lib/utils/invite-token";
 import { handleRateLimit, type RateLimitErrorResponse } from "@/lib/rate-limit-middleware";
 import { RATE_LIMIT_CONFIG } from "@/config/security";
 import { logParticipationSecurityEvent } from "@/lib/security/security-logger";
@@ -20,7 +24,7 @@ export interface InviteValidationResponse {
 
 /**
  * GET /api/invite/[token] - 招待トークンを検証し、イベントデータを返す
- * 
+ *
  * 要件1.1: 招待トークンの検証とイベント詳細の表示
  * 要件1.2: 無効・期限切れトークンのエラーハンドリング
  * 要件1.3: 定員到達時の登録防止
@@ -40,7 +44,7 @@ export async function GET(
     const { token } = params;
 
     // トークンパラメータの検証
-    if (!token || typeof token !== 'string') {
+    if (!token || typeof token !== "string") {
       return NextResponse.json(
         {
           success: false,
@@ -162,16 +166,16 @@ export async function GET(
         isRegistrationOpen: result.canRegister && !isCapacityReached,
       },
     });
-
   } catch (error) {
     // エラーログ（本番環境では適切なログシステムを使用）
-    console.error("Invite API error:", error);
+    if (process.env.NODE_ENV === "development") {
+      console.error("Invite API error:", error);
+    }
 
     // セキュリティログに記録
     const userAgent = request.headers.get("user-agent") || undefined;
-    const ip = request.headers.get("x-forwarded-for") ||
-      request.headers.get("x-real-ip") ||
-      "unknown";
+    const ip =
+      request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip") || "unknown";
 
     logParticipationSecurityEvent(
       "SUSPICIOUS_ACTIVITY",
