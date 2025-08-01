@@ -47,6 +47,12 @@ export function ParticipationForm({
   const isSubmitting = externalIsSubmitting || internalIsSubmitting;
   const { handleError, isError, error, clearError } = useParticipationErrorHandler();
 
+  // アクセシビリティ用のID生成
+  const formId = "participation-form";
+  const errorId = "participation-error";
+  const attendanceGroupId = "attendance-status-group";
+  const paymentGroupId = "payment-method-group";
+
   const form = useForm<ParticipationFormData>({
     resolver: zodResolver(participationFormSchema),
     defaultValues: {
@@ -111,17 +117,27 @@ export function ParticipationForm({
       <Card className="p-4 sm:p-6">
         <div className="space-y-4 sm:space-y-6">
           <div>
-            <h3 className="text-lg sm:text-xl font-semibold text-gray-900">参加申し込み</h3>
-            <p className="text-sm text-gray-600 mt-1">
+            <h3 id={`${formId}-title`} className="text-lg sm:text-xl font-semibold text-gray-900">
+              参加申し込み
+            </h3>
+            <p id={`${formId}-description`} className="text-sm text-gray-600 mt-1">
               以下の情報を入力して参加申し込みを完了してください
             </p>
           </div>
 
           {/* エラー表示 */}
           {isError && error && (
-            <Card className="p-3 sm:p-4 border-red-200 bg-red-50">
+            <Card
+              className="p-3 sm:p-4 border-red-200 bg-red-50"
+              role="alert"
+              aria-live="polite"
+              id={errorId}
+            >
               <div className="flex items-start space-x-2 sm:space-x-3">
-                <AlertTriangle className="h-4 w-4 sm:h-5 sm:w-5 text-red-600 flex-shrink-0 mt-0.5" />
+                <AlertTriangle
+                  className="h-4 w-4 sm:h-5 sm:w-5 text-red-600 flex-shrink-0 mt-0.5"
+                  aria-hidden="true"
+                />
                 <div className="flex-1 min-w-0">
                   <h4 className="font-medium text-red-800 mb-1 text-sm sm:text-base">
                     申し込みでエラーが発生しました
@@ -133,6 +149,7 @@ export function ParticipationForm({
                       size="sm"
                       variant="outline"
                       className="mt-2 border-red-300 text-red-700 hover:bg-red-100 text-xs sm:text-sm"
+                      aria-describedby={errorId}
                     >
                       再試行
                     </Button>
@@ -143,15 +160,25 @@ export function ParticipationForm({
           )}
 
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-4 sm:space-y-6">
+            <form
+              id={formId}
+              onSubmit={form.handleSubmit(handleFormSubmit)}
+              className="space-y-4 sm:space-y-6"
+              aria-labelledby={`${formId}-title`}
+              aria-describedby={`${formId}-description ${isError ? errorId : ""}`}
+              noValidate
+            >
               {/* ニックネーム入力 */}
               <FormField
                 control={form.control}
                 name="nickname"
-                render={({ field }) => (
+                render={({ field, fieldState }) => (
                   <FormItem>
                     <FormLabel className="text-sm font-medium text-gray-700">
-                      ニックネーム <span className="text-red-500">*</span>
+                      ニックネーム{" "}
+                      <span className="text-red-500" aria-label="必須項目">
+                        *
+                      </span>
                     </FormLabel>
                     <FormControl>
                       <Input
@@ -165,9 +192,16 @@ export function ParticipationForm({
                         className="w-full h-11 sm:h-10 text-base sm:text-sm"
                         autoComplete="name"
                         inputMode="text"
+                        aria-required="true"
+                        aria-invalid={fieldState.invalid}
+                        aria-describedby={fieldState.error ? `${field.name}-error` : undefined}
                       />
                     </FormControl>
-                    <FormMessage className="text-xs sm:text-sm" />
+                    <FormMessage
+                      className="text-xs sm:text-sm"
+                      id={fieldState.error ? `${field.name}-error` : undefined}
+                      role={fieldState.error ? "alert" : undefined}
+                    />
                   </FormItem>
                 )}
               />
@@ -176,10 +210,13 @@ export function ParticipationForm({
               <FormField
                 control={form.control}
                 name="email"
-                render={({ field }) => (
+                render={({ field, fieldState }) => (
                   <FormItem>
                     <FormLabel className="text-sm font-medium text-gray-700">
-                      メールアドレス <span className="text-red-500">*</span>
+                      メールアドレス{" "}
+                      <span className="text-red-500" aria-label="必須項目">
+                        *
+                      </span>
                     </FormLabel>
                     <FormControl>
                       <Input
@@ -194,9 +231,16 @@ export function ParticipationForm({
                         className="w-full h-11 sm:h-10 text-base sm:text-sm"
                         autoComplete="email"
                         inputMode="email"
+                        aria-required="true"
+                        aria-invalid={fieldState.invalid}
+                        aria-describedby={fieldState.error ? `${field.name}-error` : undefined}
                       />
                     </FormControl>
-                    <FormMessage className="text-xs sm:text-sm" />
+                    <FormMessage
+                      className="text-xs sm:text-sm"
+                      id={fieldState.error ? `${field.name}-error` : undefined}
+                      role={fieldState.error ? "alert" : undefined}
+                    />
                   </FormItem>
                 )}
               />
@@ -205,10 +249,13 @@ export function ParticipationForm({
               <FormField
                 control={form.control}
                 name="attendanceStatus"
-                render={({ field }) => (
+                render={({ field, fieldState }) => (
                   <FormItem>
-                    <FormLabel className="text-sm font-medium text-gray-700">
-                      参加ステータス <span className="text-red-500">*</span>
+                    <FormLabel className="text-sm font-medium text-gray-700" id={attendanceGroupId}>
+                      参加ステータス{" "}
+                      <span className="text-red-500" aria-label="必須項目">
+                        *
+                      </span>
                     </FormLabel>
                     <FormControl>
                       <RadioGroup
@@ -224,12 +271,17 @@ export function ParticipationForm({
                           }
                         }}
                         className="space-y-3 sm:space-y-4"
+                        aria-labelledby={attendanceGroupId}
+                        aria-required="true"
+                        aria-invalid={fieldState.invalid}
+                        role="radiogroup"
                       >
-                        <div className="flex items-center space-x-3 p-3 sm:p-2 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors">
+                        <div className="flex items-center space-x-3 p-3 sm:p-2 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-blue-500">
                           <RadioGroupItem
                             value="attending"
                             id="attending"
                             className="h-5 w-5 sm:h-4 sm:w-4"
+                            aria-describedby="attending-description"
                           />
                           <Label
                             htmlFor="attending"
@@ -237,13 +289,16 @@ export function ParticipationForm({
                           >
                             参加
                             {event.capacity && (
-                              <span className="text-xs text-gray-500 ml-1 block sm:inline">
+                              <span
+                                id="attending-description"
+                                className="text-xs text-gray-500 ml-1 block sm:inline"
+                              >
                                 (定員: {event.attendances_count}/{event.capacity}人)
                               </span>
                             )}
                           </Label>
                         </div>
-                        <div className="flex items-center space-x-3 p-3 sm:p-2 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors">
+                        <div className="flex items-center space-x-3 p-3 sm:p-2 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-blue-500">
                           <RadioGroupItem
                             value="not_attending"
                             id="not_attending"
@@ -256,7 +311,7 @@ export function ParticipationForm({
                             不参加
                           </Label>
                         </div>
-                        <div className="flex items-center space-x-3 p-3 sm:p-2 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors">
+                        <div className="flex items-center space-x-3 p-3 sm:p-2 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-blue-500">
                           <RadioGroupItem
                             value="maybe"
                             id="maybe"
@@ -271,7 +326,11 @@ export function ParticipationForm({
                         </div>
                       </RadioGroup>
                     </FormControl>
-                    <FormMessage className="text-xs sm:text-sm" />
+                    <FormMessage
+                      className="text-xs sm:text-sm"
+                      id={fieldState.error ? `${field.name}-error` : undefined}
+                      role={fieldState.error ? "alert" : undefined}
+                    />
                   </FormItem>
                 )}
               />
@@ -281,10 +340,13 @@ export function ParticipationForm({
                 <FormField
                   control={form.control}
                   name="paymentMethod"
-                  render={({ field }) => (
+                  render={({ field, fieldState }) => (
                     <FormItem>
-                      <FormLabel className="text-sm font-medium text-gray-700">
-                        決済方法 <span className="text-red-500">*</span>
+                      <FormLabel className="text-sm font-medium text-gray-700" id={paymentGroupId}>
+                        決済方法{" "}
+                        <span className="text-red-500" aria-label="必須項目">
+                          *
+                        </span>
                       </FormLabel>
                       <FormControl>
                         <RadioGroup
@@ -294,19 +356,23 @@ export function ParticipationForm({
                             handleFieldChange("paymentMethod", value);
                           }}
                           className="space-y-3 sm:space-y-4"
-                          aria-label="決済方法"
+                          aria-labelledby={paymentGroupId}
+                          aria-required="true"
+                          aria-invalid={fieldState.invalid}
+                          role="radiogroup"
                         >
                           {event.payment_methods
                             .filter((method) => method !== "free") // 無料決済方法は除外
                             .map((method) => (
                               <div
                                 key={method}
-                                className="flex items-start space-x-3 p-3 sm:p-2 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors"
+                                className="flex items-start space-x-3 p-3 sm:p-2 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-blue-500"
                               >
                                 <RadioGroupItem
                                   value={method}
                                   id={method}
                                   className="h-5 w-5 sm:h-4 sm:w-4 mt-0.5"
+                                  aria-describedby={`${method}-description`}
                                 />
                                 <Label
                                   htmlFor={method}
@@ -314,20 +380,36 @@ export function ParticipationForm({
                                 >
                                   <div className="font-medium">{PAYMENT_METHOD_LABELS[method]}</div>
                                   {method === "stripe" && (
-                                    <div className="text-xs text-gray-500 mt-1">
+                                    <div
+                                      id={`${method}-description`}
+                                      className="text-xs text-gray-500 mt-1"
+                                    >
                                       クレジットカード決済
                                     </div>
                                   )}
                                   {method === "cash" && (
-                                    <div className="text-xs text-gray-500 mt-1">当日現金支払い</div>
+                                    <div
+                                      id={`${method}-description`}
+                                      className="text-xs text-gray-500 mt-1"
+                                    >
+                                      当日現金支払い
+                                    </div>
                                   )}
                                 </Label>
                               </div>
                             ))}
                         </RadioGroup>
                       </FormControl>
-                      <FormMessage className="text-xs sm:text-sm" />
-                      <div className="text-xs text-gray-500 mt-2 p-2 bg-blue-50 rounded-lg">
+                      <FormMessage
+                        className="text-xs sm:text-sm"
+                        id={fieldState.error ? `${field.name}-error` : undefined}
+                        role={fieldState.error ? "alert" : undefined}
+                      />
+                      <div
+                        className="text-xs text-gray-500 mt-2 p-2 bg-blue-50 rounded-lg"
+                        role="note"
+                        aria-label="決済方法についての注意事項"
+                      >
                         決済方法を選択してください。決済は後ほど処理されます。
                       </div>
                     </FormItem>
@@ -337,10 +419,17 @@ export function ParticipationForm({
 
               {/* 参加費表示 */}
               {watchedAttendanceStatus === "attending" && event.fee > 0 && (
-                <div className="bg-blue-50 p-3 sm:p-4 rounded-lg">
+                <div
+                  className="bg-blue-50 p-3 sm:p-4 rounded-lg"
+                  role="region"
+                  aria-label="参加費情報"
+                >
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-medium text-gray-700">参加費</span>
-                    <span className="text-lg sm:text-xl font-semibold text-blue-600">
+                    <span
+                      className="text-lg sm:text-xl font-semibold text-blue-600"
+                      aria-label={`参加費 ${event.fee.toLocaleString()}円`}
+                    >
                       {event.fee.toLocaleString()}円
                     </span>
                   </div>
@@ -349,10 +438,19 @@ export function ParticipationForm({
 
               {/* 無料イベントの場合の表示 */}
               {watchedAttendanceStatus === "attending" && event.fee === 0 && (
-                <div className="bg-green-50 p-3 sm:p-4 rounded-lg">
+                <div
+                  className="bg-green-50 p-3 sm:p-4 rounded-lg"
+                  role="region"
+                  aria-label="参加費情報"
+                >
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-medium text-gray-700">参加費</span>
-                    <span className="text-lg sm:text-xl font-semibold text-green-600">無料</span>
+                    <span
+                      className="text-lg sm:text-xl font-semibold text-green-600"
+                      aria-label="参加費 無料"
+                    >
+                      無料
+                    </span>
                   </div>
                 </div>
               )}
@@ -362,16 +460,22 @@ export function ParticipationForm({
                 <Button
                   type="submit"
                   disabled={isSubmitting || !form.formState.isValid}
-                  className="w-full sm:flex-1 bg-blue-600 hover:bg-blue-700 text-white h-12 sm:h-10 text-base sm:text-sm font-medium"
+                  className="w-full sm:flex-1 bg-blue-600 hover:bg-blue-700 text-white h-12 sm:h-10 text-base sm:text-sm font-medium focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                  aria-describedby={isSubmitting ? "submit-status" : undefined}
                 >
                   {isSubmitting ? "申し込み中..." : "参加申し込みを完了する"}
+                  {isSubmitting && (
+                    <span id="submit-status" className="sr-only" aria-live="polite">
+                      申し込みを処理中です。しばらくお待ちください。
+                    </span>
+                  )}
                 </Button>
                 <Button
                   type="button"
                   variant="outline"
                   onClick={onCancel}
                   disabled={isSubmitting}
-                  className="w-full sm:flex-1 h-12 sm:h-10 text-base sm:text-sm"
+                  className="w-full sm:flex-1 h-12 sm:h-10 text-base sm:text-sm focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
                 >
                   キャンセル
                 </Button>
