@@ -1,3 +1,4 @@
+import { randomBytes } from "crypto";
 import { createClient } from "@/lib/supabase/server";
 import { sanitizeForEventPay } from "@/lib/utils/sanitize";
 import type { Database } from "@/types/database";
@@ -179,7 +180,6 @@ function checkCanModifyAttendance(event: GuestAttendanceData["event"]): boolean 
  * @returns 32文字のURL安全なゲストトークン
  */
 export function generateGuestToken(): string {
-  const { randomBytes } = require("crypto");
   return randomBytes(24)
     .toString("base64")
     .replace(/\+/g, "-")

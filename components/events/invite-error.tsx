@@ -10,7 +10,7 @@ import {
   RateLimitError,
   GenericError,
 } from "./error-pages";
-import { getErrorDetails } from "@/lib/utils/error-handler";
+import { getErrorDetails as _getErrorDetails } from "@/lib/utils/error-handler";
 
 interface InviteErrorProps {
   errorMessage: string;

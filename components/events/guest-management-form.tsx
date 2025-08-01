@@ -95,13 +95,13 @@ export function GuestManagementForm({ attendance, canModify }: GuestManagementFo
       paymentMethod !== attendance.payment?.method);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* 現在の参加状況表示 */}
-      <Card className="p-6">
-        <div className="space-y-4">
+      <Card className="p-4 sm:p-6">
+        <div className="space-y-3 sm:space-y-4">
           <h3 className="text-lg font-semibold text-gray-900">現在の参加状況</h3>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             <div>
               <h4 className="text-sm font-medium text-gray-700">参加ステータス</h4>
               <p className="mt-1">
@@ -168,10 +168,10 @@ export function GuestManagementForm({ attendance, canModify }: GuestManagementFo
 
       {/* 参加状況変更フォーム */}
       {canModify && (
-        <Card className="p-6">
-          <form onSubmit={handleSubmit} className="space-y-6">
+        <Card className="p-4 sm:p-6">
+          <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
             <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">参加状況の変更</h3>
+              <h3 className="text-lg font-semibold text-gray-900 mb-3 sm:mb-4">参加状況の変更</h3>
             </div>
 
             {/* エラー・成功メッセージ */}
@@ -196,24 +196,38 @@ export function GuestManagementForm({ attendance, canModify }: GuestManagementFo
               </Label>
               <RadioGroup
                 value={attendanceStatus}
-                onValueChange={setAttendanceStatus}
-                className="space-y-2"
+                onValueChange={(value) => setAttendanceStatus(value as typeof attendanceStatus)}
+                className="space-y-3 sm:space-y-2"
               >
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="attending" id="attending" />
-                  <Label htmlFor="attending" className="text-sm text-gray-700">
+                <div className="flex items-center space-x-3 p-3 sm:p-2 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors">
+                  <RadioGroupItem
+                    value="attending"
+                    id="attending"
+                    className="h-5 w-5 sm:h-4 sm:w-4"
+                  />
+                  <Label
+                    htmlFor="attending"
+                    className="text-sm text-gray-700 cursor-pointer flex-1"
+                  >
                     参加
                   </Label>
                 </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="not_attending" id="not_attending" />
-                  <Label htmlFor="not_attending" className="text-sm text-gray-700">
+                <div className="flex items-center space-x-3 p-3 sm:p-2 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors">
+                  <RadioGroupItem
+                    value="not_attending"
+                    id="not_attending"
+                    className="h-5 w-5 sm:h-4 sm:w-4"
+                  />
+                  <Label
+                    htmlFor="not_attending"
+                    className="text-sm text-gray-700 cursor-pointer flex-1"
+                  >
                     不参加
                   </Label>
                 </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="maybe" id="maybe" />
-                  <Label htmlFor="maybe" className="text-sm text-gray-700">
+                <div className="flex items-center space-x-3 p-3 sm:p-2 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors">
+                  <RadioGroupItem value="maybe" id="maybe" className="h-5 w-5 sm:h-4 sm:w-4" />
+                  <Label htmlFor="maybe" className="text-sm text-gray-700 cursor-pointer flex-1">
                     未定
                   </Label>
                 </div>
@@ -228,42 +242,56 @@ export function GuestManagementForm({ attendance, canModify }: GuestManagementFo
                 </Label>
                 <RadioGroup
                   value={paymentMethod}
-                  onValueChange={setPaymentMethod}
-                  className="space-y-2"
+                  onValueChange={(value) => setPaymentMethod(value as typeof paymentMethod)}
+                  className="space-y-3 sm:space-y-2"
                 >
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="stripe" id="stripe" />
+                  <div className="flex items-start space-x-3 p-3 sm:p-2 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors">
+                    <RadioGroupItem
+                      value="stripe"
+                      id="stripe"
+                      className="h-5 w-5 sm:h-4 sm:w-4 mt-0.5"
+                    />
                     <Label
                       htmlFor="stripe"
-                      className="text-sm text-gray-700 flex items-center space-x-2"
+                      className="text-sm text-gray-700 cursor-pointer flex-1 flex items-start space-x-2"
                     >
-                      <CreditCard className="h-4 w-4" />
-                      <span>{PAYMENT_METHOD_LABELS.stripe}</span>
+                      <CreditCard className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                      <div>
+                        <div className="font-medium">{PAYMENT_METHOD_LABELS.stripe}</div>
+                        <div className="text-xs text-gray-500 mt-1">クレジットカード決済</div>
+                      </div>
                     </Label>
                   </div>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="cash" id="cash" />
+                  <div className="flex items-start space-x-3 p-3 sm:p-2 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors">
+                    <RadioGroupItem
+                      value="cash"
+                      id="cash"
+                      className="h-5 w-5 sm:h-4 sm:w-4 mt-0.5"
+                    />
                     <Label
                       htmlFor="cash"
-                      className="text-sm text-gray-700 flex items-center space-x-2"
+                      className="text-sm text-gray-700 cursor-pointer flex-1 flex items-start space-x-2"
                     >
-                      <Banknote className="h-4 w-4" />
-                      <span>{PAYMENT_METHOD_LABELS.cash}</span>
+                      <Banknote className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                      <div>
+                        <div className="font-medium">{PAYMENT_METHOD_LABELS.cash}</div>
+                        <div className="text-xs text-gray-500 mt-1">当日現金支払い</div>
+                      </div>
                     </Label>
                   </div>
                 </RadioGroup>
 
                 <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
-                  <p className="text-xs text-blue-800">
-                    <strong>参加費:</strong> {attendance.event.fee.toLocaleString()}円
+                  <p className="text-xs text-blue-800 font-medium">
+                    参加費: {attendance.event.fee.toLocaleString()}円
                   </p>
                   {paymentMethod === "stripe" && (
-                    <p className="text-xs text-blue-700 mt-1">
+                    <p className="text-xs text-blue-700 mt-1 leading-relaxed">
                       クレジットカード決済の場合、決済手続きのご案内をメールでお送りします。
                     </p>
                   )}
                   {paymentMethod === "cash" && (
-                    <p className="text-xs text-blue-700 mt-1">
+                    <p className="text-xs text-blue-700 mt-1 leading-relaxed">
                       現金決済の場合、イベント当日に会場でお支払いください。
                     </p>
                   )}
@@ -272,11 +300,11 @@ export function GuestManagementForm({ attendance, canModify }: GuestManagementFo
             )}
 
             {/* 送信ボタン */}
-            <div className="flex justify-end">
+            <div className="flex justify-center sm:justify-end">
               <Button
                 type="submit"
                 disabled={isSubmitting || !hasChanges}
-                className="min-w-[120px]"
+                className="w-full sm:w-auto min-w-[120px] h-12 sm:h-10 text-base sm:text-sm font-medium"
               >
                 {isSubmitting ? (
                   <>
@@ -296,28 +324,28 @@ export function GuestManagementForm({ attendance, canModify }: GuestManagementFo
       )}
 
       {/* イベント詳細情報 */}
-      <Card className="p-6">
-        <div className="space-y-4">
+      <Card className="p-4 sm:p-6">
+        <div className="space-y-3 sm:space-y-4">
           <h3 className="text-lg font-semibold text-gray-900">イベント詳細</h3>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             <div>
               <h4 className="text-sm font-medium text-gray-700">イベント名</h4>
-              <p className="mt-1 text-sm text-gray-900">
+              <p className="mt-1 text-sm text-gray-900 break-words">
                 {sanitizeForEventPay(attendance.event.title)}
               </p>
             </div>
 
             <div>
               <h4 className="text-sm font-medium text-gray-700">開催日時</h4>
-              <p className="mt-1 text-sm text-gray-900">
+              <p className="mt-1 text-sm text-gray-900 break-words">
                 {formatUtcToJapaneseDisplay(attendance.event.date)}
               </p>
             </div>
 
             <div>
               <h4 className="text-sm font-medium text-gray-700">開催場所</h4>
-              <p className="mt-1 text-sm text-gray-900">
+              <p className="mt-1 text-sm text-gray-900 break-words">
                 {sanitizeForEventPay(attendance.event.location || "未定")}
               </p>
             </div>
@@ -325,7 +353,7 @@ export function GuestManagementForm({ attendance, canModify }: GuestManagementFo
             {attendance.event.fee > 0 && (
               <div>
                 <h4 className="text-sm font-medium text-gray-700">参加費</h4>
-                <p className="mt-1 text-sm text-gray-900 font-semibold">
+                <p className="mt-1 text-base sm:text-sm text-gray-900 font-semibold">
                   {attendance.event.fee.toLocaleString()}円
                 </p>
               </div>
@@ -334,7 +362,7 @@ export function GuestManagementForm({ attendance, canModify }: GuestManagementFo
             {attendance.event.registration_deadline && (
               <div>
                 <h4 className="text-sm font-medium text-gray-700">申込締切</h4>
-                <p className="mt-1 text-sm text-gray-900">
+                <p className="mt-1 text-sm text-gray-900 break-words">
                   {formatUtcToJapaneseDisplay(attendance.event.registration_deadline)}
                 </p>
               </div>
@@ -343,7 +371,7 @@ export function GuestManagementForm({ attendance, canModify }: GuestManagementFo
             {attendance.event.payment_deadline && (
               <div>
                 <h4 className="text-sm font-medium text-gray-700">決済締切</h4>
-                <p className="mt-1 text-sm text-gray-900">
+                <p className="mt-1 text-sm text-gray-900 break-words">
                   {formatUtcToJapaneseDisplay(attendance.event.payment_deadline)}
                 </p>
               </div>
@@ -353,7 +381,7 @@ export function GuestManagementForm({ attendance, canModify }: GuestManagementFo
           {attendance.event.description && (
             <div>
               <h4 className="text-sm font-medium text-gray-700">イベント詳細</h4>
-              <p className="mt-1 text-sm text-gray-900 whitespace-pre-wrap">
+              <p className="mt-1 text-sm text-gray-900 whitespace-pre-wrap break-words">
                 {sanitizeForEventPay(attendance.event.description)}
               </p>
             </div>
@@ -362,26 +390,26 @@ export function GuestManagementForm({ attendance, canModify }: GuestManagementFo
       </Card>
 
       {/* 参加者情報 */}
-      <Card className="p-6">
-        <div className="space-y-4">
+      <Card className="p-4 sm:p-6">
+        <div className="space-y-3 sm:space-y-4">
           <h3 className="text-lg font-semibold text-gray-900">登録情報</h3>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             <div>
               <h4 className="text-sm font-medium text-gray-700">ニックネーム</h4>
-              <p className="mt-1 text-sm text-gray-900">
+              <p className="mt-1 text-sm text-gray-900 break-words">
                 {sanitizeForEventPay(attendance.nickname)}
               </p>
             </div>
 
             <div>
               <h4 className="text-sm font-medium text-gray-700">メールアドレス</h4>
-              <p className="mt-1 text-sm text-gray-900">{attendance.email}</p>
+              <p className="mt-1 text-sm text-gray-900 break-all">{attendance.email}</p>
             </div>
 
             <div>
               <h4 className="text-sm font-medium text-gray-700">登録日時</h4>
-              <p className="mt-1 text-sm text-gray-900">
+              <p className="mt-1 text-sm text-gray-900 break-words">
                 {formatUtcToJapaneseDisplay(attendance.created_at)}
               </p>
             </div>
@@ -389,7 +417,7 @@ export function GuestManagementForm({ attendance, canModify }: GuestManagementFo
             {attendance.updated_at !== attendance.created_at && (
               <div>
                 <h4 className="text-sm font-medium text-gray-700">最終更新</h4>
-                <p className="mt-1 text-sm text-gray-900">
+                <p className="mt-1 text-sm text-gray-900 break-words">
                   {formatUtcToJapaneseDisplay(attendance.updated_at)}
                 </p>
               </div>

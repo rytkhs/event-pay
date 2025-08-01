@@ -14,7 +14,6 @@ import {
   Wifi,
   Server,
 } from "lucide-react";
-import Link from "next/link";
 
 interface ErrorPageProps {
   title: string;

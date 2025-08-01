@@ -137,28 +137,33 @@ export function generateFallbackIdentifier(request: NextRequest): string {
  * @param request - Next.js Request オブジェクト
  * @returns クライアントのIPアドレス
  */
-export function getClientIP(request: NextRequest): string {
+export function getClientIP(request: NextRequest): string;
+export function getClientIP(headers: Headers): string;
+export function getClientIP(requestOrHeaders: NextRequest | Headers): string {
+  // NextRequestかHeadersかを判定
+  const headers = 'headers' in requestOrHeaders ? requestOrHeaders.headers : requestOrHeaders;
+
   // Vercel本番環境でのプロキシヘッダー優先順位
   // Edge Runtimeの制約を考慮し、request.ipへの依存を最小化
   const ipSources = [
     // Vercel固有のヘッダー（最優先）
-    request.headers.get("x-vercel-forwarded-for")?.split(",")[0]?.trim(),
+    headers.get("x-vercel-forwarded-for")?.split(",")[0]?.trim(),
 
     // 標準的なプロキシヘッダー
-    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim(),
+    headers.get("x-forwarded-for")?.split(",")[0]?.trim(),
 
     // CDN固有のヘッダー
-    request.headers.get("cf-connecting-ip"), // Cloudflare
-    request.headers.get("x-real-ip"), // Nginx
-    request.headers.get("x-client-ip"), // Apache
+    headers.get("cf-connecting-ip"), // Cloudflare
+    headers.get("x-real-ip"), // Nginx
+    headers.get("x-client-ip"), // Apache
 
     // その他のプロキシヘッダー
-    request.headers.get("x-cluster-client-ip"),
-    request.headers.get("x-forwarded"),
-    request.headers.get("forwarded-for"),
+    headers.get("x-cluster-client-ip"),
+    headers.get("x-forwarded"),
+    headers.get("forwarded-for"),
 
     // 最後の手段（Edge Runtimeでは常にundefined）
-    request.ip,
+    'ip' in requestOrHeaders ? requestOrHeaders.ip : undefined,
   ];
 
   // 有効なIPアドレスを順番に探す

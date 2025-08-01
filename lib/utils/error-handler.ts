@@ -257,10 +257,7 @@ export function logError(error: ErrorDetails, context?: ErrorContext): void {
   } else {
     // 一般的なエラーログ
     const logLevel = error.severity === "high" || error.severity === "critical" ? "error" : "warn";
-    console[logLevel](`[${error.code}] ${error.message}`, {
-      context,
-      timestamp: new Date().toISOString(),
-    });
+
   }
 }
 
@@ -301,13 +298,11 @@ export function getUserErrorMessage(
  */
 export async function handleApiError(response: Response): Promise<ErrorDetails> {
   let errorCode = "UNKNOWN_ERROR";
-  let errorMessage = "Unknown API error";
 
   try {
     const errorData = await response.json();
     if (errorData.error?.code) {
       errorCode = errorData.error.code;
-      errorMessage = errorData.error.message || errorMessage;
     }
   } catch {
     // JSONパースに失敗した場合はHTTPステータスコードから推測

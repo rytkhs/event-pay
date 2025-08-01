@@ -2,7 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { validateGuestToken } from "@/lib/utils/guest-token";
-import { sanitizeForEventPay } from "@/lib/utils/sanitize";
+import { sanitizeForEventPay as _sanitizeForEventPay } from "@/lib/utils/sanitize";
 import { attendanceStatusSchema, paymentMethodSchema } from "@/lib/validations/participation";
 import type { Database } from "@/types/database";
 

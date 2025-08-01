@@ -80,10 +80,9 @@ export function InviteEventDetail({ event, inviteToken }: InviteEventDetailProps
         setShowForm(false);
       } else {
         // エラー時はエラーメッセージを表示
-        setError(result.error || "参加申し込み中にエラーが発生しました");
+        setError(!result.success ? result.error : "参加申し込み中にエラーが発生しました");
       }
     } catch (error) {
-      console.error("参加申し込みエラー:", error);
       setError("参加申し込み中にエラーが発生しました");
     } finally {
       setIsSubmitting(false);
@@ -96,10 +95,10 @@ export function InviteEventDetail({ event, inviteToken }: InviteEventDetailProps
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* エラーメッセージ */}
       {error && (
-        <Card className="p-4 bg-red-50 border-red-200">
+        <Card className="p-3 sm:p-4 bg-red-50 border-red-200">
           <div className="text-sm text-red-800">
             <strong>エラー:</strong> {error}
           </div>
@@ -107,34 +106,38 @@ export function InviteEventDetail({ event, inviteToken }: InviteEventDetailProps
       )}
 
       {/* イベント詳細カード */}
-      <Card className="p-6">
-        <div className="space-y-6">
+      <Card className="p-4 sm:p-6">
+        <div className="space-y-4 sm:space-y-6">
           <div>
-            <h2 className="text-2xl font-bold text-gray-900">{sanitizeForEventPay(event.title)}</h2>
+            <h2 className="text-xl sm:text-2xl font-bold text-gray-900 break-words">
+              {sanitizeForEventPay(event.title)}
+            </h2>
             <div className="mt-2 text-sm text-gray-600">
               ステータス: <span className="font-medium">{getStatusText(event.status)}</span>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
+            <div className="space-y-3 sm:space-y-4">
               <div>
                 <h3 className="text-sm font-medium text-gray-700">開催日</h3>
-                <p className="mt-1 text-sm text-gray-900">
+                <p className="mt-1 text-sm text-gray-900 break-words">
                   {formatUtcToJapaneseDisplay(event.date)}
                 </p>
               </div>
 
               <div>
                 <h3 className="text-sm font-medium text-gray-700">開催場所</h3>
-                <p className="mt-1 text-sm text-gray-900">
+                <p className="mt-1 text-sm text-gray-900 break-words">
                   {sanitizeForEventPay(event.location || "未定")}
                 </p>
               </div>
 
               <div>
                 <h3 className="text-sm font-medium text-gray-700">参加費</h3>
-                <p className="mt-1 text-sm text-gray-900">{formatCurrency(event.fee)}</p>
+                <p className="mt-1 text-sm text-gray-900 font-semibold">
+                  {formatCurrency(event.fee)}
+                </p>
               </div>
 
               <div>
@@ -144,7 +147,9 @@ export function InviteEventDetail({ event, inviteToken }: InviteEventDetailProps
                     <>
                       {event.attendances_count}/{event.capacity}人
                       {isCapacityReached && (
-                        <span className="ml-2 text-red-600 font-medium">（満員）</span>
+                        <span className="ml-2 text-red-600 font-medium block sm:inline">
+                          （満員）
+                        </span>
                       )}
                     </>
                   ) : (
@@ -154,14 +159,16 @@ export function InviteEventDetail({ event, inviteToken }: InviteEventDetailProps
               </div>
             </div>
 
-            <div className="space-y-4">
+            <div className="space-y-3 sm:space-y-4">
               {event.registration_deadline && (
                 <div>
                   <h3 className="text-sm font-medium text-gray-700">申込締切</h3>
-                  <p className="mt-1 text-sm text-gray-900">
+                  <p className="mt-1 text-sm text-gray-900 break-words">
                     {formatUtcToJapaneseDisplay(event.registration_deadline)}
                     {isRegistrationDeadlinePassed && (
-                      <span className="ml-2 text-red-600 font-medium">（締切済み）</span>
+                      <span className="ml-2 text-red-600 font-medium block sm:inline">
+                        （締切済み）
+                      </span>
                     )}
                   </p>
                 </div>
@@ -170,7 +177,7 @@ export function InviteEventDetail({ event, inviteToken }: InviteEventDetailProps
               {event.payment_deadline && (
                 <div>
                   <h3 className="text-sm font-medium text-gray-700">決済締切</h3>
-                  <p className="mt-1 text-sm text-gray-900">
+                  <p className="mt-1 text-sm text-gray-900 break-words">
                     {formatUtcToJapaneseDisplay(event.payment_deadline)}
                   </p>
                 </div>
@@ -192,7 +199,7 @@ export function InviteEventDetail({ event, inviteToken }: InviteEventDetailProps
           {event.description && (
             <div>
               <h3 className="text-sm font-medium text-gray-700">詳細説明</h3>
-              <p className="mt-1 text-sm text-gray-900 whitespace-pre-wrap">
+              <p className="mt-1 text-sm text-gray-900 whitespace-pre-wrap break-words">
                 {sanitizeEventDescription(event.description)}
               </p>
             </div>
@@ -206,21 +213,25 @@ export function InviteEventDetail({ event, inviteToken }: InviteEventDetailProps
           <Button
             onClick={() => setShowForm(true)}
             disabled={isSubmitting}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 text-lg"
+            className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white px-6 sm:px-8 py-3 sm:py-3 text-base sm:text-lg font-medium h-12 sm:h-auto"
             size="lg"
           >
             {isSubmitting ? "処理中..." : "参加申し込みをする"}
           </Button>
         ) : (
-          <div className="space-y-2">
-            <Button disabled className="px-8 py-3 text-lg" size="lg">
+          <div className="space-y-3">
+            <Button
+              disabled
+              className="w-full sm:w-auto px-6 sm:px-8 py-3 text-base sm:text-lg h-12 sm:h-auto"
+              size="lg"
+            >
               参加申し込み不可
             </Button>
-            <p className="text-sm text-red-600">
-              {isCapacityReached && "定員に達しています"}
-              {isRegistrationDeadlinePassed && "申込期限が過ぎています"}
-              {event.status !== "upcoming" && "このイベントは申し込みを受け付けていません"}
-            </p>
+            <div className="text-sm text-red-600 space-y-1">
+              {isCapacityReached && <p>定員に達しています</p>}
+              {isRegistrationDeadlinePassed && <p>申込期限が過ぎています</p>}
+              {event.status !== "upcoming" && <p>このイベントは申し込みを受け付けていません</p>}
+            </div>
           </div>
         )}
       </div>

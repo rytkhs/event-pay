@@ -45,7 +45,6 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
     });
 
     // エラーログを記録
-    console.error("Error Boundary caught an error:", error, errorInfo);
 
     // 本番環境では外部ログサービスに送信
     if (process.env.NODE_ENV === "production") {
@@ -121,7 +120,7 @@ function DefaultErrorFallback({ error, resetError }: ErrorFallbackProps) {
 /**
  * 参加フォーム専用のエラーフォールバック
  */
-export function ParticipationErrorFallback({ error, resetError }: ErrorFallbackProps) {
+export function ParticipationErrorFallback({ error: _error, resetError }: ErrorFallbackProps) {
   return (
     <Card className="p-6 border-red-200 bg-red-50">
       <div className="flex items-start space-x-3">
