@@ -677,7 +677,7 @@ export class UnifiedMockFactory {
   /**
    * 招待トークン検証のモック
    */
-  mockValidateInviteToken(token: string, result: any) {
+  mockValidateInviteToken(token: string, result: unknown) {
     this.supabaseMock.from.mockReturnValue({
       select: jest.fn().mockReturnValue({
         eq: jest.fn().mockReturnValue({

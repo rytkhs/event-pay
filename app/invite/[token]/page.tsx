@@ -63,23 +63,27 @@ export default async function InvitePage({ params }: InvitePageProps) {
           errorCode={errorCode}
           showRetry={false}
           eventTitle={validationResult.event?.title}
-          capacity={validationResult.event?.capacity}
-          deadline={validationResult.event?.registration_deadline}
+          capacity={validationResult.event?.capacity ?? undefined}
+          deadline={validationResult.event?.registration_deadline ?? undefined}
         />
       );
     }
 
     return (
-      <div className="container mx-auto px-4 py-8">
-        <div className="max-w-2xl mx-auto">
-          <div className="mb-6">
-            <h1 className="text-3xl font-bold text-gray-900 text-center">イベント参加申し込み</h1>
-            <p className="text-gray-600 text-center mt-2">
-              以下のイベントに参加申し込みをしてください
-            </p>
-          </div>
+      <div className="min-h-screen bg-gray-50">
+        <div className="container mx-auto px-4 py-6 sm:py-8">
+          <div className="max-w-2xl mx-auto">
+            <div className="mb-4 sm:mb-6">
+              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 text-center">
+                イベント参加申し込み
+              </h1>
+              <p className="text-sm sm:text-base text-gray-600 text-center mt-2">
+                以下のイベントに参加申し込みをしてください
+              </p>
+            </div>
 
-          <InviteEventDetail event={validationResult.event} inviteToken={params.token} />
+            <InviteEventDetail event={validationResult.event} inviteToken={params.token} />
+          </div>
         </div>
       </div>
     );

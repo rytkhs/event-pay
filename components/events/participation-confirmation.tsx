@@ -61,51 +61,55 @@ export function ParticipationConfirmation({
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* 成功メッセージ */}
-      <Card className="p-6 bg-green-50 border-green-200">
-        <div className="flex items-center space-x-3">
-          <CheckCircle className="h-8 w-8 text-green-600" />
-          <div>
-            <h2 className="text-xl font-semibold text-green-900">参加申し込みが完了しました！</h2>
+      <Card className="p-4 sm:p-6 bg-green-50 border-green-200">
+        <div className="flex items-start sm:items-center space-x-3">
+          <CheckCircle className="h-6 w-6 sm:h-8 sm:w-8 text-green-600 flex-shrink-0 mt-0.5 sm:mt-0" />
+          <div className="min-w-0 flex-1">
+            <h2 className="text-lg sm:text-xl font-semibold text-green-900">
+              参加申し込みが完了しました！
+            </h2>
             <p className="text-sm text-green-700 mt-1">ご登録いただいた内容を確認してください</p>
           </div>
         </div>
       </Card>
 
       {/* 登録内容確認 */}
-      <Card className="p-6">
-        <div className="space-y-6">
+      <Card className="p-4 sm:p-6">
+        <div className="space-y-4 sm:space-y-6">
           <div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">登録内容</h3>
+            <h3 className="text-lg font-semibold text-gray-900 mb-3 sm:mb-4">登録内容</h3>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
+            <div className="space-y-3 sm:space-y-4">
               <div>
                 <h4 className="text-sm font-medium text-gray-700">イベント名</h4>
-                <p className="mt-1 text-sm text-gray-900">
+                <p className="mt-1 text-sm text-gray-900 break-words">
                   {sanitizeForEventPay(registrationData.eventTitle)}
                 </p>
               </div>
 
               <div>
                 <h4 className="text-sm font-medium text-gray-700">ニックネーム</h4>
-                <p className="mt-1 text-sm text-gray-900">
+                <p className="mt-1 text-sm text-gray-900 break-words">
                   {sanitizeForEventPay(registrationData.participantNickname)}
                 </p>
               </div>
 
               <div>
                 <h4 className="text-sm font-medium text-gray-700">メールアドレス</h4>
-                <p className="mt-1 text-sm text-gray-900">{registrationData.participantEmail}</p>
+                <p className="mt-1 text-sm text-gray-900 break-all">
+                  {registrationData.participantEmail}
+                </p>
               </div>
             </div>
 
-            <div className="space-y-4">
+            <div className="space-y-3 sm:space-y-4">
               <div>
                 <h4 className="text-sm font-medium text-gray-700">参加ステータス</h4>
-                <p className="mt-1 text-sm text-gray-900">
+                <p className="mt-1">
                   <span
                     className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                       registrationData.attendanceStatus === "attending"
@@ -133,7 +137,7 @@ export function ParticipationConfirmation({
               {registrationData.attendanceStatus === "attending" && event.fee > 0 && (
                 <div>
                   <h4 className="text-sm font-medium text-gray-700">参加費</h4>
-                  <p className="mt-1 text-sm text-gray-900 font-semibold">
+                  <p className="mt-1 text-base sm:text-sm text-gray-900 font-semibold">
                     {event.fee.toLocaleString()}円
                   </p>
                 </div>
@@ -145,8 +149,8 @@ export function ParticipationConfirmation({
 
       {/* 決済情報（参加かつ有料の場合） */}
       {registrationData.requiresPayment && (
-        <Card className="p-6 bg-blue-50 border-blue-200">
-          <div className="space-y-4">
+        <Card className="p-4 sm:p-6 bg-blue-50 border-blue-200">
+          <div className="space-y-3 sm:space-y-4">
             <div className="flex items-center space-x-3">
               {getPaymentMethodIcon(registrationData.paymentMethod)}
               <h3 className="text-lg font-semibold text-blue-900">決済について</h3>
@@ -173,7 +177,7 @@ export function ParticipationConfirmation({
             )}
 
             <div className="bg-white p-3 rounded-lg border border-blue-200">
-              <p className="text-xs text-blue-600">
+              <p className="text-xs sm:text-xs text-blue-600 leading-relaxed">
                 <strong>注意:</strong>
                 決済が完了するまで参加登録は仮登録状態となります。
                 決済期限までに手続きを完了してください。
@@ -184,8 +188,8 @@ export function ParticipationConfirmation({
       )}
 
       {/* ゲスト管理URL */}
-      <Card className="p-6">
-        <div className="space-y-4">
+      <Card className="p-4 sm:p-6">
+        <div className="space-y-3 sm:space-y-4">
           <div>
             <h3 className="text-lg font-semibold text-gray-900">参加状況の管理</h3>
             <p className="text-sm text-gray-600 mt-1">
@@ -197,7 +201,7 @@ export function ParticipationConfirmation({
             <Button
               onClick={() => setShowGuestUrl(!showGuestUrl)}
               variant="outline"
-              className="w-full justify-center"
+              className="w-full justify-center h-11 sm:h-10 text-base sm:text-sm"
             >
               {showGuestUrl ? "URLを非表示" : "管理URLを表示"}
             </Button>
@@ -206,15 +210,17 @@ export function ParticipationConfirmation({
               <div className="space-y-3">
                 <div className="p-3 bg-gray-50 rounded-lg border">
                   <p className="text-xs text-gray-600 mb-2">管理URL:</p>
-                  <p className="text-sm font-mono text-gray-900 break-all">{guestManagementUrl}</p>
+                  <p className="text-xs sm:text-sm font-mono text-gray-900 break-all leading-relaxed">
+                    {guestManagementUrl}
+                  </p>
                 </div>
 
-                <div className="flex space-x-2">
+                <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2">
                   <Button
                     onClick={handleCopyGuestUrl}
                     variant="outline"
                     size="sm"
-                    className="flex-1"
+                    className="flex-1 h-11 sm:h-9 text-base sm:text-sm"
                   >
                     <Copy className="h-4 w-4 mr-2" />
                     {isCopied ? "コピー済み" : "URLをコピー"}
@@ -223,7 +229,7 @@ export function ParticipationConfirmation({
                     onClick={handleOpenGuestUrl}
                     variant="outline"
                     size="sm"
-                    className="flex-1"
+                    className="flex-1 h-11 sm:h-9 text-base sm:text-sm"
                   >
                     <ExternalLink className="h-4 w-4 mr-2" />
                     新しいタブで開く
@@ -234,7 +240,7 @@ export function ParticipationConfirmation({
           </div>
 
           <div className="bg-yellow-50 p-3 rounded-lg border border-yellow-200">
-            <p className="text-xs text-yellow-800">
+            <p className="text-xs text-yellow-800 leading-relaxed">
               <strong>重要:</strong>
               この管理URLは他の人と共有しないでください。
               URLを知っている人は誰でもあなたの参加状況を変更できます。
@@ -244,19 +250,21 @@ export function ParticipationConfirmation({
       </Card>
 
       {/* イベント詳細情報 */}
-      <Card className="p-6">
-        <div className="space-y-4">
+      <Card className="p-4 sm:p-6">
+        <div className="space-y-3 sm:space-y-4">
           <h3 className="text-lg font-semibold text-gray-900">イベント詳細</h3>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             <div>
               <h4 className="text-sm font-medium text-gray-700">開催日時</h4>
-              <p className="mt-1 text-sm text-gray-900">{formatUtcToJapaneseDisplay(event.date)}</p>
+              <p className="mt-1 text-sm text-gray-900 break-words">
+                {formatUtcToJapaneseDisplay(event.date)}
+              </p>
             </div>
 
             <div>
               <h4 className="text-sm font-medium text-gray-700">開催場所</h4>
-              <p className="mt-1 text-sm text-gray-900">
+              <p className="mt-1 text-sm text-gray-900 break-words">
                 {sanitizeForEventPay(event.location || "未定")}
               </p>
             </div>
@@ -264,7 +272,7 @@ export function ParticipationConfirmation({
             {event.registration_deadline && (
               <div>
                 <h4 className="text-sm font-medium text-gray-700">申込締切</h4>
-                <p className="mt-1 text-sm text-gray-900">
+                <p className="mt-1 text-sm text-gray-900 break-words">
                   {formatUtcToJapaneseDisplay(event.registration_deadline)}
                 </p>
               </div>
@@ -273,7 +281,7 @@ export function ParticipationConfirmation({
             {event.payment_deadline && (
               <div>
                 <h4 className="text-sm font-medium text-gray-700">決済締切</h4>
-                <p className="mt-1 text-sm text-gray-900">
+                <p className="mt-1 text-sm text-gray-900 break-words">
                   {formatUtcToJapaneseDisplay(event.payment_deadline)}
                 </p>
               </div>
@@ -283,19 +291,19 @@ export function ParticipationConfirmation({
       </Card>
 
       {/* 次のステップ */}
-      <Card className="p-6 bg-gray-50">
-        <div className="space-y-4">
+      <Card className="p-4 sm:p-6 bg-gray-50">
+        <div className="space-y-3 sm:space-y-4">
           <h3 className="text-lg font-semibold text-gray-900">次のステップ</h3>
 
-          <div className="space-y-3">
+          <div className="space-y-3 sm:space-y-4">
             {registrationData.requiresPayment && (
               <div className="flex items-start space-x-3">
                 <div className="flex-shrink-0 w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center text-xs font-medium">
                   1
                 </div>
-                <div>
+                <div className="min-w-0 flex-1">
                   <p className="text-sm font-medium text-gray-900">決済手続き</p>
-                  <p className="text-xs text-gray-600">
+                  <p className="text-xs text-gray-600 leading-relaxed">
                     登録されたメールアドレスに決済案内をお送りします
                   </p>
                 </div>
@@ -306,9 +314,9 @@ export function ParticipationConfirmation({
               <div className="flex-shrink-0 w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center text-xs font-medium">
                 {registrationData.requiresPayment ? "2" : "1"}
               </div>
-              <div>
+              <div className="min-w-0 flex-1">
                 <p className="text-sm font-medium text-gray-900">イベント当日</p>
-                <p className="text-xs text-gray-600">
+                <p className="text-xs text-gray-600 leading-relaxed">
                   開催場所にお越しください。楽しいイベントをお待ちしています！
                 </p>
               </div>
@@ -318,9 +326,11 @@ export function ParticipationConfirmation({
               <div className="flex-shrink-0 w-6 h-6 bg-gray-400 text-white rounded-full flex items-center justify-center text-xs font-medium">
                 ?
               </div>
-              <div>
+              <div className="min-w-0 flex-1">
                 <p className="text-sm font-medium text-gray-900">参加状況の変更</p>
-                <p className="text-xs text-gray-600">上記の管理URLから参加状況を変更できます</p>
+                <p className="text-xs text-gray-600 leading-relaxed">
+                  上記の管理URLから参加状況を変更できます
+                </p>
               </div>
             </div>
           </div>

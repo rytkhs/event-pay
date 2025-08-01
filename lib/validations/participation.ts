@@ -1,11 +1,9 @@
 import { z } from "zod";
 import type { Database } from "@/types/database";
 import { sanitizeForEventPay } from "@/lib/utils/sanitize";
-import { checkDuplicateEmail } from "@/lib/utils/invite-token";
 import {
   logSanitizationEvent,
   logValidationFailure,
-  logDuplicateRegistrationAttempt,
 } from "@/lib/security/security-logger";
 
 // 参加ステータスの型定義
@@ -209,24 +207,8 @@ export const validateParticipationFormWithDuplicateCheck = async (
     return errors;
   }
 
-  // メールアドレスの重複チェック（正規化されたメールアドレスを使用）
-  try {
-    const normalizedEmail = sanitizeParticipationInput.email(formData.email, {
-      ...request,
-      eventId,
-    });
-    const isDuplicate = await checkDuplicateEmail(eventId, normalizedEmail);
-    if (isDuplicate) {
-      errors.email = "このメールアドレスは既に登録されています";
-
-      // 重複登録試行をログに記録
-      if (request) {
-        logDuplicateRegistrationAttempt(normalizedEmail, eventId, request);
-      }
-    }
-  } catch (_error) {
-    errors.general = "登録の確認中にエラーが発生しました";
-  }
+  // 重複チェックはサーバーサイドで実行される
+  // クライアントサイドでは実行しない
 
   return errors;
 };

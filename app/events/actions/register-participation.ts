@@ -5,7 +5,7 @@ import { randomBytes } from "crypto";
 import { headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 
-import { validateInviteToken, checkEventCapacity, checkDuplicateEmail } from "@/lib/utils/invite-token";
+import { validateInviteToken, checkEventCapacity, checkDuplicateEmail as _checkDuplicateEmail } from "@/lib/utils/invite-token";
 import {
   participationFormSchema,
   type ParticipationFormData,
