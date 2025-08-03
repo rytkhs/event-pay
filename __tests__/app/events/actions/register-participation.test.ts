@@ -13,8 +13,11 @@ jest.mock("@/lib/utils/invite-token", () => ({
   checkDuplicateEmail: mockCheckDuplicateEmail,
 }));
 
-jest.mock("crypto", () => ({
-  randomBytes: jest.fn(() => Buffer.from("test-random-bytes-for-token")),
+jest.mock("@/lib/security/crypto", () => ({
+  generateRandomBytes: jest.fn(() => new Uint8Array([
+    116, 101, 115, 116, 45, 114, 97, 110, 100, 111, 109, 45, 98, 121, 116, 101, 115, 45, 102, 111, 114, 45, 116, 111, 107, 101, 110
+  ])), // "test-random-bytes-for-token" をUint8Arrayで表現
+  toBase64UrlSafe: jest.fn(() => "dGVzdC1yYW5kb20tYnl0ZXMtZm9yLXRva2Vu"), // テスト用固定値
 }));
 
 // テスト用のモックデータ

@@ -1,12 +1,51 @@
 import { randomBytes, createHash, timingSafeEqual } from "crypto";
 
 /**
+ * Web Crypto API使用の暗号学的に安全なランダムバイト生成
+ * Edge runtimeとNode.js両方で動作
+ * @param length バイト長
+ * @returns Uint8Array
+ */
+export function generateRandomBytes(length: number): Uint8Array {
+  // Web Crypto APIが利用可能かチェック
+  if (typeof crypto !== "undefined" && crypto.getRandomValues) {
+    const bytes = new Uint8Array(length);
+    crypto.getRandomValues(bytes);
+    return bytes;
+  }
+
+  // フォールバック: Node.js crypto.randomBytes
+  if (typeof randomBytes === "function") {
+    return new Uint8Array(randomBytes(length));
+  }
+
+  throw new Error("No secure random number generator available");
+}
+
+/**
+ * バイト配列をBase64URL安全な文字列に変換
+ * @param bytes Uint8Array
+ * @returns URL安全なBase64文字列
+ */
+export function toBase64UrlSafe(bytes: Uint8Array): string {
+  // Base64エンコード
+  const base64 = btoa(String.fromCharCode(...bytes));
+
+  // URL安全な形式に変換
+  return base64
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=/g, "");
+}
+
+/**
  * 暗号学的に安全な乱数生成器を使用してトークンを生成
  * @param length バイト長（デフォルト: 32バイト = 64文字の16進数）
  * @returns 16進数文字列のトークン
  */
 export function generateSecureToken(length: number = 32): string {
-  return randomBytes(length).toString("hex");
+  const bytes = generateRandomBytes(length);
+  return Array.from(bytes, byte => byte.toString(16).padStart(2, "0")).join("");
 }
 
 /**
@@ -22,8 +61,11 @@ export function generateOtpCode(): string {
   // リジェクションサンプリング：バイアス除去のため安全な範囲まで再試行
   do {
     // 4バイト（32ビット）の暗号学的に安全な乱数を生成
-    const buffer = randomBytes(4);
-    randomNumber = buffer.readUInt32BE(0);
+    const bytes = generateRandomBytes(4);
+    // Uint8Arrayからunsigned 32bit integerを作成（big-endian）
+    randomNumber = (bytes[0] << 24) | (bytes[1] << 16) | (bytes[2] << 8) | bytes[3];
+    // >>> 0 で符号なし32ビット整数に変換
+    randomNumber = randomNumber >>> 0;
   } while (randomNumber >= maxValidValue);
 
   const otp = randomNumber % max;
@@ -109,8 +151,11 @@ export function secureRandomInt(min: number, max: number): number {
 
   let randomValue;
   do {
-    const buffer = randomBytes(byteCount);
-    randomValue = buffer.readUIntBE(0, byteCount);
+    const bytes = generateRandomBytes(byteCount);
+    randomValue = 0;
+    for (let i = 0; i < byteCount; i++) {
+      randomValue = (randomValue << 8) | bytes[i];
+    }
   } while (randomValue > maxValid);
 
   return min + (randomValue % range);
@@ -121,14 +166,14 @@ export function secureRandomInt(min: number, max: number): number {
  * @returns UUID v4文字列
  */
 export function generateSecureUuid(): string {
-  const bytes = randomBytes(16);
+  const bytes = generateRandomBytes(16);
 
   // バージョン4を設定
   bytes[6] = (bytes[6] & 0x0f) | 0x40;
   // バリアント2を設定
   bytes[8] = (bytes[8] & 0x3f) | 0x80;
 
-  const hex = bytes.toString("hex");
+  const hex = Array.from(bytes, byte => byte.toString(16).padStart(2, "0")).join("");
   return [
     hex.substring(0, 8),
     hex.substring(8, 12),
