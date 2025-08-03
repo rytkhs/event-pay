@@ -1,9 +1,9 @@
 "use server";
 
 import { z } from "zod";
-import { randomBytes } from "crypto";
 import { headers } from "next/headers";
-import { createClient } from "@/lib/supabase/server";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { generateGuestToken } from "@/lib/utils/guest-token";
 
 import {
   validateInviteToken,
@@ -27,7 +27,7 @@ import {
   logParticipationSecurityEvent,
   logInvalidTokenAccess,
 } from "@/lib/security/security-logger";
-import { getClientIP } from "@/lib/utils/ip-detection";
+import { getClientIPFromHeaders } from "@/lib/utils/ip-detection";
 import type { Database } from "@/types/database";
 
 // 参加登録結果の型定義
@@ -43,18 +43,6 @@ export interface RegisterParticipationData {
 }
 
 /**
- * ゲストトークンを生成する関数
- * 24バイトのランダムデータをURLセーフなBase64でエンコード（32文字）
- */
-function generateGuestToken(): string {
-  return randomBytes(24)
-    .toString("base64")
-    .replace(/\+/g, "-")
-    .replace(/\//g, "_")
-    .replace(/=/g, "");
-}
-
-/**
  * 参加登録を処理するサーバーアクション
  * セキュリティ対策強化版：容量チェック、重複チェック、ゲストトークン生成、セキュリティログ記録を含む
  */
@@ -64,16 +52,18 @@ export async function registerParticipationAction(
   // リクエスト情報を取得（セキュリティログ用）
   const headersList = headers();
   const userAgent = headersList.get("user-agent") || undefined;
-  const ip = getClientIP(headersList);
+  const ip = getClientIPFromHeaders(headersList);
 
   try {
     // FormDataから参加データを抽出
+    const rawPaymentMethod = formData.get("paymentMethod") as string | null;
     const rawData = {
       inviteToken: formData.get("inviteToken") as string,
       nickname: formData.get("nickname") as string,
       email: formData.get("email") as string,
       attendanceStatus: formData.get("attendanceStatus") as string,
-      paymentMethod: formData.get("paymentMethod") as string | undefined,
+      // 空文字やnullの場合はundefinedに変換
+      paymentMethod: rawPaymentMethod && rawPaymentMethod.trim() ? rawPaymentMethod : undefined,
     };
 
     // 基本的な入力検証
@@ -171,11 +161,8 @@ export async function registerParticipationAction(
       );
     }
 
-    // Supabaseクライアントの作成
-    const supabase = createClient();
-
-    // ゲストトークンの生成
-    const guestToken = generateGuestToken();
+    // Supabaseクライアントの作成（service roleでRLSを回避）
+    const supabase = createSupabaseAdminClient();
 
     // 入力データのサニタイゼーション（セキュリティログ付き）
     const sanitizedNickname = sanitizeParticipationInput.nickname(participationData.nickname, {
@@ -189,27 +176,65 @@ export async function registerParticipationAction(
       eventId: event.id,
     });
 
-    // 参加記録の作成
-    const { data: attendance, error: attendanceError } = await supabase
-      .from("attendances")
-      .insert({
-        event_id: event.id,
-        nickname: sanitizedNickname,
-        email: sanitizedEmail,
-        status: participationData.attendanceStatus,
-        guest_token: guestToken,
-      })
-      .select("id")
-      .single();
+    // ゲストトークンの生成
 
-    if (attendanceError || !attendance) {
+    let guestToken: string;
+    try {
+      guestToken = generateGuestToken();
+    } catch (tokenError) {
+      // トークン生成失敗をセキュリティログに記録
+      logParticipationSecurityEvent(
+        "SUSPICIOUS_ACTIVITY",
+        "Guest token generation failed",
+        {
+          eventId: event.id,
+          error: tokenError instanceof Error ? tokenError.message : "Unknown error",
+        },
+        { userAgent, ip, eventId: event.id }
+      );
+
+      return createErrorResponse(
+        ERROR_CODES.INTERNAL_ERROR,
+        "参加登録の処理中にエラーが発生しました"
+      );
+    }
+
+    // 参加記録と決済記録の作成（RPC経由）
+
+    let newAttendanceId: string | null = null;
+    let rpcError: { message: string; code?: string; details?: string } | null = null;
+
+    try {
+      const rpcResult = await supabase
+        .rpc("register_attendance_with_payment", {
+          p_event_id: event.id,
+          p_nickname: sanitizedNickname,
+          p_email: sanitizedEmail,
+          p_status: participationData.attendanceStatus,
+          p_guest_token: guestToken,
+          p_payment_method: participationData.paymentMethod,
+          p_event_fee: event.fee,
+        })
+        .single();
+
+      newAttendanceId = rpcResult.data as string | null;
+      rpcError = rpcResult.error as { message: string; code?: string; details?: string } | null;
+    } catch (rpcCallError) {
+      rpcError = rpcCallError as { message: string; code?: string; details?: string };
+    }
+
+    if (rpcError || !newAttendanceId) {
       // データベースエラーをセキュリティログに記録
       logParticipationSecurityEvent(
         "SUSPICIOUS_ACTIVITY",
-        "Database error during attendance creation",
+        "Database error during attendance creation via RPC",
         {
           eventId: event.id,
-          error: attendanceError?.message,
+          error: rpcError?.message || "RPC call failed",
+          errorCode: rpcError?.code,
+          errorDetails: rpcError?.details,
+          guestTokenProvided: !!guestToken,
+          guestTokenLength: guestToken?.length,
         },
         { userAgent, ip, eventId: event.id }
       );
@@ -220,49 +245,48 @@ export async function registerParticipationAction(
       );
     }
 
-    // 決済が必要な場合（参加ステータスが"attending"かつ有料イベント）の決済記録作成
-    let requiresPayment = false;
-    if (
-      participationData.attendanceStatus === "attending" &&
-      event.fee > 0 &&
-      participationData.paymentMethod
-    ) {
-      requiresPayment = true;
+    // ゲストトークンが正しく保存されたかを検証
 
-      // StripeとCashの両方でpendingステータスの決済レコードを作成
-      const { error: paymentError } = await supabase.from("payments").insert({
-        attendance_id: attendance.id,
-        amount: event.fee,
-        method: participationData.paymentMethod,
-        status: "pending", // 初期状態は常にpending（StripeもCashも）
-      });
+    try {
+      const { data: savedAttendance, error: verifyError } = await supabase
+        .from("attendances")
+        .select("id, guest_token")
+        .eq("id", newAttendanceId)
+        .single();
 
-      if (paymentError) {
-        // 決済記録作成エラーをセキュリティログに記録
+      if (verifyError || !savedAttendance) {
         logParticipationSecurityEvent(
           "SUSPICIOUS_ACTIVITY",
-          "Database error during payment record creation",
+          "Failed to verify guest token storage",
           {
             eventId: event.id,
-            attendanceId: attendance.id,
-            error: paymentError.message,
+            attendanceId: newAttendanceId,
+            error: verifyError?.message || "Attendance record not found",
           },
           { userAgent, ip, eventId: event.id }
         );
-
-        // 決済記録の作成に失敗した場合、参加記録も削除してロールバック
-        await supabase.from("attendances").delete().eq("id", attendance.id);
-
-        return createErrorResponse(
-          ERROR_CODES.DATABASE_ERROR,
-          "決済記録の作成中にエラーが発生しました"
+      } else if (savedAttendance.guest_token !== guestToken) {
+        logParticipationSecurityEvent(
+          "SUSPICIOUS_ACTIVITY",
+          "Guest token mismatch after storage",
+          {
+            eventId: event.id,
+            attendanceId: newAttendanceId,
+            expectedTokenLength: guestToken.length,
+            savedTokenLength: savedAttendance.guest_token?.length,
+          },
+          { userAgent, ip, eventId: event.id }
         );
+      } else {
       }
-    }
+    } catch (_verifyException) {}
+
+    // 決済が必要かどうかの判定
+    const requiresPayment = participationData.attendanceStatus === "attending" && event.fee > 0;
 
     // 成功レスポンスの作成
     const responseData: RegisterParticipationData = {
-      attendanceId: attendance.id,
+      attendanceId: newAttendanceId as string,
       guestToken,
       requiresPayment,
       eventTitle: event.title,

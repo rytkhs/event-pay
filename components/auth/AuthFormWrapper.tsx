@@ -1,3 +1,5 @@
+"use client";
+
 import { ReactNode, useEffect, useRef } from "react";
 import { AuthFormMessages } from "./AuthFormMessages";
 import { ServerActionResult } from "@/lib/hooks/useAuthForm";

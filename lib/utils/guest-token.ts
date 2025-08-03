@@ -1,9 +1,19 @@
 import { randomBytes } from "crypto";
-import { createClient } from "@/lib/supabase/server";
 import { sanitizeForEventPay } from "@/lib/utils/sanitize";
 import type { Database } from "@/types/database";
 
-// ゲスト参加データの型定義
+/**
+ * ゲスト管理機能のためのユーティリティ関数
+ *
+ * 主な機能:
+ * - ゲストトークンの生成・検証
+ * - 参加データの取得・整形
+ * - 参加状況変更可能性の判定
+ */
+
+/**
+ * ゲスト参加データの型定義
+ */
 export interface GuestAttendanceData {
   id: string;
   nickname: string;
@@ -22,7 +32,7 @@ export interface GuestAttendanceData {
     capacity: number | null;
     registration_deadline: string | null;
     payment_deadline: string | null;
-    organizer_id: string;
+    created_by: string;
   };
   payment?: {
     id: string;
@@ -33,7 +43,9 @@ export interface GuestAttendanceData {
   } | null;
 }
 
-// ゲストトークン検証結果の型定義
+/**
+ * ゲストトークン検証結果の型定義
+ */
 export interface GuestTokenValidationResult {
   isValid: boolean;
   attendance?: GuestAttendanceData;
@@ -43,7 +55,11 @@ export interface GuestTokenValidationResult {
 
 /**
  * ゲストトークンを検証し、参加データを取得する
- * @param guestToken ゲストトークン
+ *
+ * 注意: Row Level Security (RLS) のため、管理者権限でクエリを実行する
+ * ゲスト認証では通常のRLSポリシーでは制限されるため、この処理は妥当である
+ *
+ * @param guestToken - 32文字のBase64エンコードされたゲストトークン
  * @returns 検証結果と参加データ
  */
 export async function validateGuestToken(guestToken: string): Promise<GuestTokenValidationResult> {
@@ -57,8 +73,10 @@ export async function validateGuestToken(guestToken: string): Promise<GuestToken
       };
     }
 
-    // トークンの形式チェック（32文字のURL安全な文字列）
-    if (guestToken.length !== 32 || !/^[a-zA-Z0-9_-]+$/.test(guestToken)) {
+    // トークンの形式チェック（32文字のBase64エンコード形式のみ）
+    const isBase64Format = /^[a-zA-Z0-9_-]{32}$/.test(guestToken);
+
+    if (guestToken.length !== 32 || !isBase64Format) {
       return {
         isValid: false,
         errorMessage: "無効なゲストトークンの形式です",
@@ -66,7 +84,10 @@ export async function validateGuestToken(guestToken: string): Promise<GuestToken
       };
     }
 
-    const supabase = createClient();
+    // 管理者権限でクエリを実行（RLSを回避）
+    // 注意: ゲスト認証では通常のRLSポリシーでは制限されるため、管理者権限を使用
+    const { createSupabaseAdminClient } = await import("@/lib/supabase/admin");
+    const supabase = createSupabaseAdminClient();
 
     // ゲストトークンで参加データを取得
     const { data: attendance, error } = await supabase
@@ -90,7 +111,7 @@ export async function validateGuestToken(guestToken: string): Promise<GuestToken
           capacity,
           registration_deadline,
           payment_deadline,
-          organizer_id
+          created_by
         ),
         payment:payments (
           id,
@@ -104,7 +125,20 @@ export async function validateGuestToken(guestToken: string): Promise<GuestToken
       .eq("guest_token", guestToken)
       .single();
 
-    if (error || !attendance) {
+    if (error) {
+      // 開発環境でのみエラー詳細をログ出力
+      if (process.env.NODE_ENV === "development") {
+        // eslint-disable-next-line no-console
+        console.error("ゲストトークン検証エラー:", error);
+      }
+      return {
+        isValid: false,
+        errorMessage: "参加データの取得中にエラーが発生しました",
+        canModify: false,
+      };
+    }
+
+    if (!attendance) {
       return {
         isValid: false,
         errorMessage: "参加データが見つかりません",
@@ -159,6 +193,7 @@ export async function validateGuestToken(guestToken: string): Promise<GuestToken
     };
   } catch (error) {
     if (process.env.NODE_ENV === "development") {
+      // eslint-disable-next-line no-console
       console.error("ゲストトークン検証エラー:", error);
     }
     return {
@@ -196,7 +231,11 @@ function checkCanModifyAttendance(event: GuestAttendanceData["event"]): boolean 
 
 /**
  * ゲストトークンを生成する
- * @returns 32文字のURL安全なゲストトークン
+ *
+ * 24バイト（192ビット）のランダムデータをURLセーフなBase64でエンコードし、
+ * 32文字の一意なトークンを生成する
+ *
+ * @returns 32文字のURL安全なゲストトークン (Base64形式: [a-zA-Z0-9_-]{32})
  */
 export function generateGuestToken(): string {
   return randomBytes(24)

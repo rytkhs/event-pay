@@ -5,7 +5,7 @@ import { InviteError } from "@/components/events/invite-error";
 import { notFound } from "next/navigation";
 import { sanitizeEventDescription } from "@/lib/utils/sanitize";
 import { logInvalidTokenAccess } from "@/lib/security/security-logger";
-import { getClientIP } from "@/lib/utils/ip-detection";
+import { getClientIPFromHeaders } from "@/lib/utils/ip-detection";
 
 interface InvitePageProps {
   params: {
@@ -17,7 +17,7 @@ export default async function InvitePage({ params }: InvitePageProps) {
   // リクエスト情報を取得（セキュリティログ用）
   const headersList = headers();
   const userAgent = headersList.get("user-agent") || undefined;
-  const ip = getClientIP(headersList);
+  const ip = getClientIPFromHeaders(headersList);
 
   try {
     if (!params?.token) {
