@@ -147,13 +147,8 @@ export async function validateGuestToken(guestToken: string): Promise<GuestToken
     }
 
     // イベントデータの存在確認と正規化
-    // Supabaseクエリの関連データは配列として返される場合がある
-    let eventData;
-    if (Array.isArray(attendance.event)) {
-      eventData = attendance.event[0];
-    } else {
-      eventData = attendance.event;
-    }
+    // Supabaseの型システム上、関連データは配列として型定義されている
+    const eventData = Array.isArray(attendance.event) ? attendance.event[0] : attendance.event;
 
     if (!eventData) {
       return {
@@ -164,14 +159,9 @@ export async function validateGuestToken(guestToken: string): Promise<GuestToken
     }
 
     // 支払いデータの正規化
-    let paymentData = null;
-    if (attendance.payment) {
-      if (Array.isArray(attendance.payment)) {
-        paymentData = attendance.payment[0] || null;
-      } else {
-        paymentData = attendance.payment;
-      }
-    }
+    const paymentData = attendance.payment
+      ? (Array.isArray(attendance.payment) ? attendance.payment[0] : attendance.payment)
+      : null;
 
     // 変更可能かどうかの判定
     const canModify = checkCanModifyAttendance(eventData);
