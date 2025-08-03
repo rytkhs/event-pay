@@ -104,6 +104,36 @@ describe("Rate Limit Middleware", () => {
 
       expect(mockCheckRateLimit).toHaveBeenCalledWith(mockStore, "test_unknown", testConfig);
     });
+
+    it("x-forwarded-forに複数IPが含まれる場合、最初のIPを使用すること", async () => {
+      mockCheckRateLimit.mockResolvedValueOnce({
+        allowed: true,
+      });
+
+      const request = createMockRequest("http://localhost:3000/api/test", {
+        "x-forwarded-for": "192.168.1.1, 10.0.0.1, 203.0.113.1",
+      });
+
+      const middleware = withRateLimit(testConfig, "test");
+      await middleware(request);
+
+      expect(mockCheckRateLimit).toHaveBeenCalledWith(mockStore, "test_192.168.1.1", testConfig);
+    });
+
+    it("x-forwarded-forの先頭IPに空白が含まれる場合、trimして使用すること", async () => {
+      mockCheckRateLimit.mockResolvedValueOnce({
+        allowed: true,
+      });
+
+      const request = createMockRequest("http://localhost:3000/api/test", {
+        "x-forwarded-for": "  192.168.1.1  , 10.0.0.1",
+      });
+
+      const middleware = withRateLimit(testConfig, "test");
+      await middleware(request);
+
+      expect(mockCheckRateLimit).toHaveBeenCalledWith(mockStore, "test_192.168.1.1", testConfig);
+    });
   });
 
   describe("handleRateLimit", () => {
