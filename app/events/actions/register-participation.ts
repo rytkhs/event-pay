@@ -2,7 +2,7 @@
 
 import { z } from "zod";
 import { headers } from "next/headers";
-import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { createClient } from "@/lib/supabase/server";
 import { generateGuestToken } from "@/lib/utils/guest-token";
 
 import {
@@ -161,8 +161,8 @@ export async function registerParticipationAction(
       );
     }
 
-    // Supabaseクライアントの作成（service roleでRLSを回避）
-    const supabase = createSupabaseAdminClient();
+    // Supabaseクライアントの作成（認証済みユーザーコンテキスト）
+    const supabase = createClient();
 
     // 入力データのサニタイゼーション（セキュリティログ付き）
     const sanitizedNickname = sanitizeParticipationInput.nickname(participationData.nickname, {
@@ -279,7 +279,7 @@ export async function registerParticipationAction(
         );
       } else {
       }
-    } catch (_verifyException) {}
+    } catch (_verifyException) { }
 
     // 決済が必要かどうかの判定
     const requiresPayment = participationData.attendanceStatus === "attending" && event.fee > 0;
