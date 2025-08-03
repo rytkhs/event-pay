@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { randomBytes } from "crypto";
+import { generateRandomBytes, toBase64UrlSafe } from "@/lib/security/crypto";
 import { createClient } from "@/lib/supabase/server";
 import type { Database } from "@/types/database";
 
@@ -12,14 +12,12 @@ export const inviteTokenSchema = z
 /**
  * 暗号学的に安全な招待トークンを生成します。
  * 24バイトのランダムデータをURLセーフなBase64でエンコードします（32文字）。
+ * Edge runtimeとNode.js両方で動作。
  * @returns {string} 生成された招待トークン
  */
 export function generateInviteToken(): string {
-  return randomBytes(24)
-    .toString("base64")
-    .replace(/\+/g, "-")
-    .replace(/\//g, "_")
-    .replace(/=/g, "");
+  const bytes = generateRandomBytes(24);
+  return toBase64UrlSafe(bytes);
 }
 
 /**

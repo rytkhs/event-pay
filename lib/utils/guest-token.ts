@@ -1,4 +1,4 @@
-import { randomBytes } from "crypto";
+import { generateRandomBytes, toBase64UrlSafe } from "@/lib/security/crypto";
 import { sanitizeForEventPay } from "@/lib/utils/sanitize";
 import type { Database } from "@/types/database";
 
@@ -234,13 +234,11 @@ function checkCanModifyAttendance(event: GuestAttendanceData["event"]): boolean 
  *
  * 24バイト（192ビット）のランダムデータをURLセーフなBase64でエンコードし、
  * 32文字の一意なトークンを生成する
+ * Edge runtimeとNode.js両方で動作
  *
  * @returns 32文字のURL安全なゲストトークン (Base64形式: [a-zA-Z0-9_-]{32})
  */
 export function generateGuestToken(): string {
-  return randomBytes(24)
-    .toString("base64")
-    .replace(/\+/g, "-")
-    .replace(/\//g, "_")
-    .replace(/=/g, "");
+  const bytes = generateRandomBytes(24);
+  return toBase64UrlSafe(bytes);
 }
