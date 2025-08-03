@@ -143,7 +143,13 @@ export function InviteEventDetail({ event, inviteToken }: InviteEventDetailProps
               <div>
                 <h3 className="text-sm font-medium text-gray-700">定員</h3>
                 <p className="mt-1 text-sm text-gray-900">
-                  {event.capacity ? (
+                  {event.capacity === null ? (
+                    "制限なし"
+                  ) : event.capacity === 0 ? (
+                    "0人（募集停止）"
+                  ) : event.capacity < 0 ? (
+                    "無効な定員"
+                  ) : (
                     <>
                       {event.attendances_count}/{event.capacity}人
                       {isCapacityReached && (
@@ -152,8 +158,6 @@ export function InviteEventDetail({ event, inviteToken }: InviteEventDetailProps
                         </span>
                       )}
                     </>
-                  ) : (
-                    "制限なし"
                   )}
                 </p>
               </div>

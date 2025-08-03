@@ -52,6 +52,8 @@ export interface InviteValidationResult {
   event?: EventDetail;
   canRegister: boolean;
   errorMessage?: string;
+  errorCode?: 'INVALID_TOKEN' | 'TOKEN_NOT_FOUND' | 'EVENT_CANCELLED' | 'EVENT_ENDED' |
+  'REGISTRATION_DEADLINE_PASSED' | 'CAPACITY_REACHED' | 'UNKNOWN_ERROR';
 }
 
 /**
@@ -80,6 +82,7 @@ export async function validateInviteToken(token: string): Promise<InviteValidati
       isValid: false,
       canRegister: false,
       errorMessage: "無効な招待リンクです",
+      errorCode: "INVALID_TOKEN",
     };
   }
 
@@ -113,6 +116,7 @@ export async function validateInviteToken(token: string): Promise<InviteValidati
         isValid: false,
         canRegister: false,
         errorMessage: "招待リンクが見つかりません",
+        errorCode: "TOKEN_NOT_FOUND",
       };
     }
 
@@ -122,8 +126,30 @@ export async function validateInviteToken(token: string): Promise<InviteValidati
       .select("*", { count: "exact", head: true })
       .eq("event_id", event.id);
 
-    // カウントエラーは無視して0とする（新しいイベントの場合）
-    const actualAttendancesCount = countError ? 0 : attendances_count || 0;
+    // DBエラー時は安全のため参加者数を取得できないとして処理
+    if (countError) {
+      if (process.env.NODE_ENV === "development") {
+        // eslint-disable-next-line no-console
+        console.error("参加者数取得エラー:", countError);
+      }
+      // セキュリティのため、エラー時は定員超過扱いとする
+      const actualAttendancesCount = event.capacity || 0;
+
+      const eventDetail: EventDetail = {
+        ...event,
+        attendances_count: actualAttendancesCount,
+      };
+
+      return {
+        isValid: true,
+        event: eventDetail,
+        canRegister: false,
+        errorMessage: "現在参加登録を受け付けることができません。しばらく後にお試しください。",
+        errorCode: "UNKNOWN_ERROR",
+      };
+    }
+
+    const actualAttendancesCount = attendances_count || 0;
 
     const eventDetail: EventDetail = {
       ...event,
@@ -137,6 +163,7 @@ export async function validateInviteToken(token: string): Promise<InviteValidati
         event: eventDetail,
         canRegister: false,
         errorMessage: "このイベントはキャンセルされました",
+        errorCode: "EVENT_CANCELLED",
       };
     }
 
@@ -147,6 +174,7 @@ export async function validateInviteToken(token: string): Promise<InviteValidati
         event: eventDetail,
         canRegister: false,
         errorMessage: "このイベントは終了しています",
+        errorCode: "EVENT_ENDED",
       };
     }
 
@@ -160,6 +188,7 @@ export async function validateInviteToken(token: string): Promise<InviteValidati
           event: eventDetail,
           canRegister: false,
           errorMessage: "参加申込期限が過ぎています",
+          errorCode: "REGISTRATION_DEADLINE_PASSED",
         };
       }
     }
@@ -171,12 +200,14 @@ export async function validateInviteToken(token: string): Promise<InviteValidati
     };
   } catch (error) {
     if (process.env.NODE_ENV === "development") {
+      // eslint-disable-next-line no-console
       console.error("招待トークンの検証エラー:", error);
     }
     return {
       isValid: false,
       canRegister: false,
       errorMessage: "招待リンクの検証中にエラーが発生しました",
+      errorCode: "UNKNOWN_ERROR",
     };
   }
 }
@@ -207,6 +238,7 @@ export async function checkEventCapacity(
 
     if (error) {
       if (process.env.NODE_ENV === "development") {
+        // eslint-disable-next-line no-console
         console.error("定員チェックエラー:", error);
       }
       return true; // 安全のため、エラー時は定員超過とみなす
@@ -215,6 +247,7 @@ export async function checkEventCapacity(
     return (count || 0) >= capacity;
   } catch (error) {
     if (process.env.NODE_ENV === "development") {
+      // eslint-disable-next-line no-console
       console.error("定員チェックエラー:", error);
     }
     return true; // 安全のため、エラー時は定員超過とみなす
@@ -240,6 +273,7 @@ export async function checkDuplicateEmail(eventId: string, email: string): Promi
 
     if (error) {
       if (process.env.NODE_ENV === "development") {
+        // eslint-disable-next-line no-console
         console.error("メールアドレスの重複チェックエラー:", error);
       }
       return true; // 安全のため、エラー時は重複とみなす

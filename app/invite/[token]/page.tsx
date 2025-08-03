@@ -43,19 +43,8 @@ export default async function InvitePage({ params }: InvitePageProps) {
 
     // 登録不可の場合はエラーページを表示
     if (!validationResult.canRegister) {
-      // エラーメッセージからエラーコードを推測
-      let errorCode = "UNKNOWN_ERROR";
       const errorMessage = validationResult.errorMessage || "現在参加申し込みを受け付けていません";
-
-      if (errorMessage.includes("定員")) {
-        errorCode = "CAPACITY_REACHED";
-      } else if (errorMessage.includes("期限")) {
-        errorCode = "REGISTRATION_DEADLINE_PASSED";
-      } else if (errorMessage.includes("終了")) {
-        errorCode = "EVENT_ENDED";
-      } else if (errorMessage.includes("キャンセル")) {
-        errorCode = "EVENT_CANCELLED";
-      }
+      const errorCode = validationResult.errorCode || "UNKNOWN_ERROR";
 
       return (
         <InviteError
