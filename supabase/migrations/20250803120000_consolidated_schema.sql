@@ -361,10 +361,35 @@ BEGIN
     RAISE EXCEPTION 'Guest token must be exactly 32 characters long, got: %', COALESCE(LENGTH(p_guest_token), 0);
   END IF;
 
-  -- イベントの存在確認
-  SELECT EXISTS(SELECT 1 FROM public.events WHERE id = p_event_id) INTO v_event_exists;
+  -- イベントの存在確認と定員チェック（排他ロック付き）
+  SELECT EXISTS(SELECT 1 FROM public.events WHERE id = p_event_id FOR UPDATE) INTO v_event_exists;
   IF NOT v_event_exists THEN
     RAISE EXCEPTION 'Event with ID % does not exist', p_event_id;
+  END IF;
+
+  -- 定員チェック（attending状態の場合のみ）
+  IF p_status = 'attending' THEN
+    DECLARE
+      v_capacity INTEGER;
+      v_current_attendees INTEGER;
+    BEGIN
+      -- イベントの定員を取得
+      SELECT capacity INTO v_capacity FROM public.events WHERE id = p_event_id;
+
+      -- 定員が設定されている場合のみチェック
+      IF v_capacity IS NOT NULL THEN
+        -- 現在の参加者数を取得（排他ロック付き）
+        SELECT COUNT(*) INTO v_current_attendees
+        FROM public.attendances
+        WHERE event_id = p_event_id AND status = 'attending'
+        FOR UPDATE;
+
+        -- 定員超過チェック
+        IF v_current_attendees >= v_capacity THEN
+          RAISE EXCEPTION 'Event capacity (%) has been reached. Current attendees: %', v_capacity, v_current_attendees;
+        END IF;
+      END IF;
+    END;
   END IF;
 
   -- ゲストトークンの重複チェック
