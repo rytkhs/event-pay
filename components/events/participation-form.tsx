@@ -93,6 +93,8 @@ export function ParticipationForm({
         ...data,
         nickname: sanitizeParticipationInput.nickname(data.nickname),
         email: sanitizeParticipationInput.email(data.email),
+        // 不参加・未定の場合はpaymentMethodをundefinedに確実に設定
+        paymentMethod: data.attendanceStatus === "attending" ? data.paymentMethod : undefined,
       };
 
       await onSubmit(sanitizedData);

@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { AlertCircle, ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { logInvalidTokenAccess } from "@/lib/security/security-logger";
-import { getClientIP } from "@/lib/utils/ip-detection";
+import { getClientIPFromHeaders } from "@/lib/utils/ip-detection";
 
 interface GuestPageProps {
   params: { token: string };
@@ -44,19 +44,44 @@ export default async function GuestPage({ params }: GuestPageProps) {
     // リクエスト情報を取得（セキュリティログ用）
     const headersList = headers();
     const userAgent = headersList.get("user-agent") || undefined;
-    const ip = getClientIP(headersList);
+    const ip = getClientIPFromHeaders(headersList);
+
+    console.log("[DEBUG] ゲストページ: アクセス開始", {
+      tokenLength: token.length,
+      maskedToken: `${token.slice(0, 8)}...${token.slice(-8)}`,
+      userAgent: userAgent?.slice(0, 50) + "...",
+      ip,
+    });
 
     // ゲストトークンの検証
     const validation = await validateGuestToken(token);
 
+    console.log("[DEBUG] ゲストページ: トークン検証結果", {
+      isValid: validation.isValid,
+      hasAttendance: !!validation.attendance,
+      errorMessage: validation.errorMessage,
+      canModify: validation.canModify,
+    });
+
     // 無効なトークンの場合は404を返す
     if (!validation.isValid || !validation.attendance) {
+      console.log("[DEBUG] ゲストページ: 無効なトークンのためnotFound()を呼び出し", {
+        errorMessage: validation.errorMessage,
+        maskedToken: `${token.slice(0, 8)}...${token.slice(-8)}`,
+      });
+
       // 無効なゲストトークンアクセスをログに記録
       logInvalidTokenAccess(token, "guest", { userAgent, ip });
       notFound();
     }
 
     const { attendance, canModify } = validation;
+
+    console.log("[DEBUG] ゲストページ: 正常にページを表示", {
+      attendanceId: attendance.id,
+      eventTitle: attendance.event.title,
+      canModify,
+    });
 
     return (
       <div className="min-h-screen bg-gray-50">
@@ -124,7 +149,13 @@ export default async function GuestPage({ params }: GuestPageProps) {
         </main>
       </div>
     );
-  } catch (_error) {
+  } catch (error) {
+    console.error("[ERROR] ゲストページ: 予期しないエラー", {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+      maskedToken: `${token.slice(0, 8)}...${token.slice(-8)}`,
+    });
+
     // 予期しないエラーの場合は404を返す
     notFound();
   }

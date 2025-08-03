@@ -88,7 +88,7 @@ export async function validateInviteToken(token: string): Promise<InviteValidati
   try {
     const supabase = createClient();
 
-    // 招待トークンで参加者数と共にイベントを取得
+    // 招待トークンでイベントを取得
     const { data: event, error } = await supabase
       .from("events")
       .select(
@@ -104,8 +104,7 @@ export async function validateInviteToken(token: string): Promise<InviteValidati
         registration_deadline,
         payment_deadline,
         status,
-        invite_token,
-        attendances!inner(id)
+        invite_token
       `
       )
       .eq("invite_token", token)
@@ -119,12 +118,18 @@ export async function validateInviteToken(token: string): Promise<InviteValidati
       };
     }
 
-    // 参加者数をカウント
-    const attendances_count = Array.isArray(event.attendances) ? event.attendances.length : 0;
+    // 参加者数を別途取得
+    const { count: attendances_count, error: countError } = await supabase
+      .from("attendances")
+      .select("*", { count: "exact", head: true })
+      .eq("event_id", event.id);
+
+    // カウントエラーは無視して0とする（新しいイベントの場合）
+    const actualAttendancesCount = countError ? 0 : attendances_count || 0;
 
     const eventDetail: EventDetail = {
       ...event,
-      attendances_count,
+      attendances_count: actualAttendancesCount,
     };
 
     // イベントがキャンセルされているか確認

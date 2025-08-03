@@ -198,10 +198,14 @@ export class TestDataManager {
   }
 
   async createTestAttendance(attendanceData: any = {}): Promise<any> {
+    // ゲストトークンを生成（マイグレーション後はNOT NULL制約があるため必須）
+    const { generateGuestToken } = await import("@/lib/utils/guest-token");
+
     const defaultAttendance = {
       status: "attending" as const,
       nickname: "テスト参加者",
       email: `test-attendee-${Date.now()}@example.com`,
+      guest_token: generateGuestToken(),
       ...attendanceData,
     };
 

@@ -1,3 +1,5 @@
+"use client";
+
 import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { useViewportSize } from "@/lib/hooks/useViewportSize";
 import { cn } from "@/lib/utils";

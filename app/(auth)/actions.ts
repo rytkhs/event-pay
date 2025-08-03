@@ -455,6 +455,8 @@ export async function registerAction(formData: FormData): Promise<ActionResult<{
       };
     }
 
+    // Database Triggerがpublic.usersプロファイルを自動作成
+
     // 登録成功（メール確認が必要）
     return {
       success: true,

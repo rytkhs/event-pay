@@ -25,9 +25,9 @@ export async function GET(
     return rateLimitResponse as NextResponse<RateLimitErrorResponse>;
   }
 
-  try {
-    const { token } = params;
+  const { token } = params;
 
+  try {
     if (!token) {
       return NextResponse.json(
         {
@@ -60,8 +60,10 @@ export async function GET(
     });
   } catch (error) {
     if (process.env.NODE_ENV === "development") {
+      // eslint-disable-next-line no-console
       console.error("ゲスト検証APIエラー:", error);
     }
+
     return NextResponse.json(
       {
         success: false,

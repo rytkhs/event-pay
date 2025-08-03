@@ -2,6 +2,14 @@ import { NextRequest } from "next/server";
 import { createHash } from "crypto";
 
 /**
+ * ヘッダーアクセス用のインターフェース
+ * NextRequest.headers、Web API Headers、Next.js ReadonlyHeaders すべてに対応
+ */
+interface HeaderLike {
+  get(name: string): string | null;
+}
+
+/**
  * IPアドレス検証用の正規表現
  */
 const IPv4_REGEX =
@@ -138,9 +146,9 @@ export function generateFallbackIdentifier(request: NextRequest): string {
  * @returns クライアントのIPアドレス
  */
 export function getClientIP(request: NextRequest): string;
-export function getClientIP(headers: Headers): string;
-export function getClientIP(requestOrHeaders: NextRequest | Headers): string {
-  // NextRequestかHeadersかを判定
+export function getClientIP(headers: HeaderLike): string;
+export function getClientIP(requestOrHeaders: NextRequest | HeaderLike): string {
+  // NextRequestかHeaderLikeかを判定
   const headers = "headers" in requestOrHeaders ? requestOrHeaders.headers : requestOrHeaders;
 
   // Vercel本番環境でのプロキシヘッダー優先順位
@@ -191,19 +199,64 @@ export function getClientIP(requestOrHeaders: NextRequest | Headers): string {
     // 本番環境では擬似IPを生成（レート制限機能を維持するため）
     // NextRequestの場合のみfallback identifierを生成可能
     const fallbackIP =
-      "headers" in requestOrHeaders ? generateFallbackIdentifier(requestOrHeaders) : "0.0.0.0"; // Headersのみの場合は固定値を使用
+      "headers" in requestOrHeaders ? generateFallbackIdentifier(requestOrHeaders) : "127.0.0.1"; // Headersのみの場合はlocalhostを使用
 
     // 本番環境では適切なログシステムに出力
     if ((process.env.NODE_ENV as string) === "development") {
       // console.warn("No valid client IP found, using fallback identifier", {
       //   fallbackIP,
-      //   userAgent: request.headers.get("user-agent"),
+      //   userAgent: headers.get("user-agent"),
       //   timestamp: new Date().toISOString(),
       // });
     }
 
     return fallbackIP;
   }
+}
+
+/**
+ * Server Component/Server Actions用のIPアドレス取得関数
+ * Next.js の headers() 関数から取得したオブジェクトに特化
+ */
+export function getClientIPFromHeaders(headersList: HeaderLike): string {
+  // Vercel本番環境でのプロキシヘッダー優先順位
+  const ipSources = [
+    // Vercel固有のヘッダー（最優先）
+    headersList.get("x-vercel-forwarded-for")?.split(",")[0]?.trim(),
+
+    // 標準的なプロキシヘッダー
+    headersList.get("x-forwarded-for")?.split(",")[0]?.trim(),
+
+    // CDN固有のヘッダー
+    headersList.get("cf-connecting-ip"), // Cloudflare
+    headersList.get("x-real-ip"), // Nginx
+    headersList.get("x-client-ip"), // Apache
+
+    // その他のプロキシヘッダー
+    headersList.get("x-cluster-client-ip"),
+    headersList.get("x-forwarded"),
+    headersList.get("forwarded-for"),
+  ];
+
+  // 有効なIPアドレスを順番に探す
+  for (const source of ipSources) {
+    if (source && isValidIP(source)) {
+      const normalizedIP = normalizeIP(source);
+
+      // プライベートIPでない場合は採用
+      if (!isPrivateIP(normalizedIP)) {
+        return normalizedIP;
+      }
+
+      // 明示的にlocalhostの場合は採用（開発環境用）
+      if (source === "127.0.0.1" || source === "::1") {
+        return normalizedIP;
+      }
+    }
+  }
+
+  // 全てのプロキシヘッダーが存在しない場合は開発環境想定のlocalhostを返す
+  return "127.0.0.1";
 }
 
 /**
