@@ -70,14 +70,14 @@ describe("Invite Token Validation", () => {
     const mockEventData = {
       id: "event-123",
       title: "テストイベント",
-      date: "2024-12-31T18:00:00Z",
+      date: "2025-12-31T18:00:00Z",
       location: "テスト会場",
       description: "テストイベントの説明",
       fee: 1000,
       capacity: 50,
       payment_methods: ["stripe", "cash"],
-      registration_deadline: "2024-12-30T23:59:59Z",
-      payment_deadline: "2024-12-31T17:00:00Z",
+      registration_deadline: "2025-12-30T23:59:59Z",
+      payment_deadline: "2025-12-31T17:00:00Z",
       status: "upcoming",
       invite_token: "abcdefghijklmnopqrstuvwxyz123456",
       attendances: [{ id: "att1" }, { id: "att2" }],
@@ -85,15 +85,29 @@ describe("Invite Token Validation", () => {
 
     beforeEach(() => {
       // デフォルトのモック設定
-      mockSupabase.from.mockReturnValue({
-        select: jest.fn().mockReturnValue({
-          eq: jest.fn().mockReturnValue({
-            single: jest.fn().mockResolvedValue({
-              data: mockEventData,
-              error: null,
+      mockSupabase.from.mockImplementation((table: string) => {
+        if (table === "events") {
+          return {
+            select: jest.fn().mockReturnValue({
+              eq: jest.fn().mockReturnValue({
+                single: jest.fn().mockResolvedValue({
+                  data: mockEventData,
+                  error: null,
+                }),
+              }),
             }),
-          }),
-        }),
+          };
+        } else if (table === "attendances") {
+          return {
+            select: jest.fn().mockReturnValue({
+              eq: jest.fn().mockResolvedValue({
+                count: 2,
+                error: null,
+              }),
+            }),
+          };
+        }
+        return {};
       });
     });
 
@@ -118,18 +132,23 @@ describe("Invite Token Validation", () => {
     });
 
     it("存在しないトークンを拒否する", async () => {
-      mockSupabase.from.mockReturnValue({
-        select: jest.fn().mockReturnValue({
-          eq: jest.fn().mockReturnValue({
-            single: jest.fn().mockResolvedValue({
-              data: null,
-              error: { message: "No rows returned" },
+      mockSupabase.from.mockImplementation((table: string) => {
+        if (table === "events") {
+          return {
+            select: jest.fn().mockReturnValue({
+              eq: jest.fn().mockReturnValue({
+                single: jest.fn().mockResolvedValue({
+                  data: null,
+                  error: { message: "No rows returned" },
+                }),
+              }),
             }),
-          }),
-        }),
+          };
+        }
+        return {};
       });
 
-      const result = await validateInviteToken("nonexistenttoken123456789012345678");
+      const result = await validateInviteToken("abcdefghijklmnopqrstuvwxyz123456");
 
       expect(result.isValid).toBe(false);
       expect(result.canRegister).toBe(false);
@@ -264,25 +283,29 @@ describe("Invite Token Validation", () => {
     });
 
     it("参加者数が正しくカウントされる", async () => {
-      const eventWithManyAttendances = {
-        ...mockEventData,
-        attendances: [
-          { id: "att1" },
-          { id: "att2" },
-          { id: "att3" },
-          { id: "att4" },
-          { id: "att5" },
-        ],
-      };
-      mockSupabase.from.mockReturnValue({
-        select: jest.fn().mockReturnValue({
-          eq: jest.fn().mockReturnValue({
-            single: jest.fn().mockResolvedValue({
-              data: eventWithManyAttendances,
-              error: null,
+      mockSupabase.from.mockImplementation((table: string) => {
+        if (table === "events") {
+          return {
+            select: jest.fn().mockReturnValue({
+              eq: jest.fn().mockReturnValue({
+                single: jest.fn().mockResolvedValue({
+                  data: mockEventData,
+                  error: null,
+                }),
+              }),
             }),
-          }),
-        }),
+          };
+        } else if (table === "attendances") {
+          return {
+            select: jest.fn().mockReturnValue({
+              eq: jest.fn().mockResolvedValue({
+                count: 5,
+                error: null,
+              }),
+            }),
+          };
+        }
+        return {};
       });
 
       const result = await validateInviteToken("abcdefghijklmnopqrstuvwxyz123456");
@@ -291,24 +314,70 @@ describe("Invite Token Validation", () => {
     });
 
     it("参加者がいない場合は0をカウントする", async () => {
-      const eventWithNoAttendances = {
-        ...mockEventData,
-        attendances: [],
-      };
-      mockSupabase.from.mockReturnValue({
-        select: jest.fn().mockReturnValue({
-          eq: jest.fn().mockReturnValue({
-            single: jest.fn().mockResolvedValue({
-              data: eventWithNoAttendances,
-              error: null,
+      mockSupabase.from.mockImplementation((table: string) => {
+        if (table === "events") {
+          return {
+            select: jest.fn().mockReturnValue({
+              eq: jest.fn().mockReturnValue({
+                single: jest.fn().mockResolvedValue({
+                  data: mockEventData,
+                  error: null,
+                }),
+              }),
             }),
-          }),
-        }),
+          };
+        } else if (table === "attendances") {
+          return {
+            select: jest.fn().mockReturnValue({
+              eq: jest.fn().mockResolvedValue({
+                count: 0,
+                error: null,
+              }),
+            }),
+          };
+        }
+        return {};
       });
 
       const result = await validateInviteToken("abcdefghijklmnopqrstuvwxyz123456");
 
       expect(result.event?.attendances_count).toBe(0);
+    });
+
+    it("参加者数取得エラー時は安全のため参加登録を拒否する", async () => {
+      // イベント取得は成功するが、参加者数取得でエラーが発生
+      mockSupabase.from.mockImplementation((table: string) => {
+        if (table === "events") {
+          return {
+            select: jest.fn().mockReturnValue({
+              eq: jest.fn().mockReturnValue({
+                single: jest.fn().mockResolvedValue({
+                  data: mockEventData,
+                  error: null,
+                }),
+              }),
+            }),
+          };
+        } else if (table === "attendances") {
+          return {
+            select: jest.fn().mockReturnValue({
+              eq: jest.fn().mockResolvedValue({
+                count: null,
+                error: { message: "Database connection error" },
+              }),
+            }),
+          };
+        }
+        return {};
+      });
+
+      const result = await validateInviteToken("abcdefghijklmnopqrstuvwxyz123456");
+
+      expect(result.isValid).toBe(true);
+      expect(result.canRegister).toBe(false);
+      expect(result.errorMessage).toBe("現在参加登録を受け付けることができません。しばらく後にお試しください。");
+      expect(result.errorCode).toBe("UNKNOWN_ERROR");
+      expect(result.event?.attendances_count).toBe(mockEventData.capacity);
     });
   });
 
