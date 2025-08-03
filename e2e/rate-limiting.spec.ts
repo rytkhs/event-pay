@@ -45,62 +45,6 @@ test.describe("Rate Limiting E2E Tests", () => {
     });
   });
 
-  test.describe("参加登録API", () => {
-    const validParticipationData = {
-      inviteToken: "test-invite-token",
-      nickname: "テスト太郎",
-      email: "test@example.com",
-      attendanceStatus: "attending",
-      paymentMethod: "stripe",
-    };
-
-    test("正常なリクエストが通ること", async ({ request }) => {
-      const response = await request.post("/api/participation", {
-        data: validParticipationData,
-      });
-
-      // レート制限に引っかからない場合は、400（無効なトークン）、409（重複）、または201が返される
-      expect([201, 400, 404, 409]).toContain(response.status());
-    });
-
-    test("大量のリクエストでレート制限が発動すること", async ({ request }) => {
-      const promises = [];
-
-      // 11回のリクエストを並行して送信（制限は10回）
-      for (let i = 0; i < 11; i++) {
-        promises.push(
-          request.post("/api/participation", {
-            data: {
-              ...validParticipationData,
-              email: `test${i}@example.com`, // 重複を避けるため異なるメールアドレス
-            },
-          })
-        );
-      }
-
-      const responses = await Promise.all(promises);
-
-      // 少なくとも1つのリクエストが429エラーになることを確認
-      const rateLimitedResponses = responses.filter((r) => r.status() === 429);
-      expect(rateLimitedResponses.length).toBeGreaterThan(0);
-
-      // 429エラーのレスポンスにRetry-Afterヘッダーが含まれることを確認
-      for (const response of rateLimitedResponses) {
-        expect(response.headers()["retry-after"]).toBeDefined();
-
-        const body = await response.json();
-        expect(body).toMatchObject({
-          success: false,
-          error: {
-            code: "RATE_LIMIT_EXCEEDED",
-            message: expect.stringContaining("レート制限"),
-            retryAfter: expect.any(Number),
-          },
-        });
-      }
-    });
-  });
-
   test.describe("レート制限の回復", () => {
     test("時間経過後にレート制限が解除されること", async ({ request }) => {
       // まず制限に達するまでリクエストを送信

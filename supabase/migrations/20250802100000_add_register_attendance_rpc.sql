@@ -10,7 +10,7 @@ CREATE OR REPLACE FUNCTION public.register_attendance_with_payment(
 RETURNS UUID -- 新しく作成されたattendanceのIDを返す
 LANGUAGE plpgsql
 SECURITY DEFINER
-AS $
+AS $$
 DECLARE
   v_attendance_id UUID;
   v_event_exists BOOLEAN;
@@ -19,19 +19,19 @@ BEGIN
   IF p_event_id IS NULL THEN
     RAISE EXCEPTION 'Event ID cannot be null';
   END IF;
-  
+
   IF p_nickname IS NULL OR LENGTH(TRIM(p_nickname)) = 0 THEN
     RAISE EXCEPTION 'Nickname cannot be null or empty';
   END IF;
-  
+
   IF p_email IS NULL OR LENGTH(TRIM(p_email)) = 0 THEN
     RAISE EXCEPTION 'Email cannot be null or empty';
   END IF;
-  
+
   IF p_status IS NULL THEN
     RAISE EXCEPTION 'Status cannot be null';
   END IF;
-  
+
   IF p_guest_token IS NULL OR LENGTH(p_guest_token) != 32 THEN
     RAISE EXCEPTION 'Guest token must be exactly 32 characters long, got: %', COALESCE(LENGTH(p_guest_token), 0);
   END IF;
@@ -52,12 +52,12 @@ BEGIN
     INSERT INTO public.attendances (event_id, nickname, email, status, guest_token)
     VALUES (p_event_id, p_nickname, p_email, p_status, p_guest_token)
     RETURNING id INTO v_attendance_id;
-    
+
     -- 挿入が成功したかを確認
     IF v_attendance_id IS NULL THEN
       RAISE EXCEPTION 'Failed to insert attendance record';
     END IF;
-    
+
   EXCEPTION
     WHEN unique_violation THEN
       -- 重複エラーの詳細を提供
@@ -85,4 +85,4 @@ BEGIN
 
   RETURN v_attendance_id;
 END;
-$;
+$$;
