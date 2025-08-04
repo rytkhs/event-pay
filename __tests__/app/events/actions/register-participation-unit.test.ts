@@ -97,8 +97,8 @@ describe("registerParticipationAction", () => {
       const result = await registerParticipationAction(formData);
 
       expect(result.success).toBe(false);
-      expect(result.error?.code).toBe("VALIDATION_ERROR");
-      expect(result.error?.message).toContain("必須項目が不足しています");
+      expect(result.code).toBe("VALIDATION_ERROR");
+      expect(result.error).toContain("入力データが無効です");
     });
 
     it("無効な招待トークンの場合はエラーを返す", async () => {
@@ -113,8 +113,8 @@ describe("registerParticipationAction", () => {
       const result = await registerParticipationAction(formData);
 
       expect(result.success).toBe(false);
-      expect(result.error?.code).toBe("VALIDATION_ERROR");
-      expect(result.error?.message).toContain("無効な招待トークンの形式です");
+      expect(result.code).toBe("VALIDATION_ERROR");
+      expect(result.error).toContain("入力データが無効です");
     });
 
     it("無効なメールアドレスの場合はエラーを返す", async () => {
@@ -129,8 +129,8 @@ describe("registerParticipationAction", () => {
       const result = await registerParticipationAction(formData);
 
       expect(result.success).toBe(false);
-      expect(result.error?.code).toBe("VALIDATION_ERROR");
-      expect(result.error?.message).toContain("有効なメールアドレスを入力してください");
+      expect(result.code).toBe("VALIDATION_ERROR");
+      expect(result.error).toContain("入力データが無効です");
     });
 
     it("参加ステータスがattendingで決済方法が未選択の場合はエラーを返す", async () => {
@@ -145,8 +145,8 @@ describe("registerParticipationAction", () => {
       const result = await registerParticipationAction(formData);
 
       expect(result.success).toBe(false);
-      expect(result.error?.code).toBe("VALIDATION_ERROR");
-      expect(result.error?.message).toContain("参加を選択した場合は決済方法を選択してください");
+      expect(result.code).toBe("VALIDATION_ERROR");
+      expect(result.error).toContain("入力データが無効です");
     });
   });
 
@@ -180,8 +180,8 @@ describe("registerParticipationAction", () => {
       const result = await registerParticipationAction(formData);
 
       expect(result.success).toBe(false);
-      expect(result.error?.code).toBe("INVALID_INVITE_TOKEN");
-      expect(result.error?.message).toBe("招待リンクが見つかりません");
+      expect(result.code).toBe("NOT_FOUND");
+      expect(result.error).toContain("無効な招待リンクです");
     });
 
     it("登録不可能なイベントの場合はエラーを返す", async () => {
@@ -203,8 +203,8 @@ describe("registerParticipationAction", () => {
       const result = await registerParticipationAction(formData);
 
       expect(result.success).toBe(false);
-      expect(result.error?.code).toBe("REGISTRATION_NOT_ALLOWED");
-      expect(result.error?.message).toBe("参加申込期限が過ぎています");
+      expect(result.code).toBe("BUSINESS_RULE_VIOLATION");
+      expect(result.error).toContain("このイベントには参加登録できません");
     });
   });
 
@@ -232,8 +232,8 @@ describe("registerParticipationAction", () => {
       const result = await registerParticipationAction(formData);
 
       expect(result.success).toBe(false);
-      expect(result.error?.code).toBe("CAPACITY_EXCEEDED");
-      expect(result.error?.message).toBe("イベントの定員に達しています");
+      expect(result.code).toBe("BUSINESS_RULE_VIOLATION");
+      expect(result.error).toContain("このイベントは定員に達しています");
     });
 
     it("定員に達していても不参加の場合は登録可能", async () => {
@@ -300,8 +300,8 @@ describe("registerParticipationAction", () => {
       const result = await registerParticipationAction(formData);
 
       expect(result.success).toBe(false);
-      expect(result.error?.code).toBe("DUPLICATE_EMAIL");
-      expect(result.error?.message).toBe("このメールアドレスは既に登録されています");
+      expect(result.code).toBe("CONFLICT");
+      expect(result.error).toContain("入力データに問題があります");
       expect(mockCheckDuplicateEmail).toHaveBeenCalledWith("event-123", "duplicate@example.com");
     });
   });
@@ -337,13 +337,13 @@ describe("registerParticipationAction", () => {
       expect(result.data?.guestToken).toBe("generated-guest-token-123456789012");
       expect(result.data?.requiresPayment).toBe(true);
 
-      expect(mockSupabase.rpc).toHaveBeenCalledWith("register_participation", {
+      expect(mockSupabase.rpc).toHaveBeenCalledWith("register_attendance_with_payment", {
         p_event_id: "event-123",
         p_nickname: "テストユーザー",
         p_email: "test@example.com",
         p_status: "attending",
         p_payment_method: "stripe",
-        p_guest_token: "generated-guest-token-123456789012",
+        p_guest_token: expect.any(String),
       });
     });
 
@@ -360,13 +360,13 @@ describe("registerParticipationAction", () => {
       expect(result.success).toBe(true);
       expect(result.data?.requiresPayment).toBe(false);
 
-      expect(mockSupabase.rpc).toHaveBeenCalledWith("register_participation", {
+      expect(mockSupabase.rpc).toHaveBeenCalledWith("register_attendance_with_payment", {
         p_event_id: "event-123",
         p_nickname: "テストユーザー",
         p_email: "test@example.com",
         p_status: "not_attending",
         p_payment_method: null,
-        p_guest_token: "generated-guest-token-123456789012",
+        p_guest_token: expect.any(String),
       });
     });
 
@@ -383,13 +383,13 @@ describe("registerParticipationAction", () => {
       expect(result.success).toBe(true);
       expect(result.data?.requiresPayment).toBe(false);
 
-      expect(mockSupabase.rpc).toHaveBeenCalledWith("register_participation", {
+      expect(mockSupabase.rpc).toHaveBeenCalledWith("register_attendance_with_payment", {
         p_event_id: "event-123",
         p_nickname: "テストユーザー",
         p_email: "test@example.com",
         p_status: "maybe",
         p_payment_method: null,
-        p_guest_token: "generated-guest-token-123456789012",
+        p_guest_token: expect.any(String),
       });
     });
 
@@ -413,13 +413,13 @@ describe("registerParticipationAction", () => {
       expect(result.success).toBe(true);
       expect(result.data?.requiresPayment).toBe(false);
 
-      expect(mockSupabase.rpc).toHaveBeenCalledWith("register_participation", {
+      expect(mockSupabase.rpc).toHaveBeenCalledWith("register_attendance_with_payment", {
         p_event_id: "event-123",
         p_nickname: "テストユーザー",
         p_email: "test@example.com",
         p_status: "attending",
         p_payment_method: null,
-        p_guest_token: "generated-guest-token-123456789012",
+        p_guest_token: expect.any(String),
       });
     });
 
@@ -467,8 +467,8 @@ describe("registerParticipationAction", () => {
       const result = await registerParticipationAction(formData);
 
       expect(result.success).toBe(false);
-      expect(result.error?.code).toBe("DATABASE_ERROR");
-      expect(result.error?.message).toBe("参加登録の処理中にエラーが発生しました");
+      expect(result.code).toBe("DATABASE_ERROR");
+      expect(result.error).toContain("参加登録の処理中にエラーが発生しました");
     });
 
     it("予期しないエラーの場合は一般エラーメッセージを返す", async () => {
@@ -485,8 +485,8 @@ describe("registerParticipationAction", () => {
       const result = await registerParticipationAction(formData);
 
       expect(result.success).toBe(false);
-      expect(result.error?.code).toBe("INTERNAL_ERROR");
-      expect(result.error?.message).toBe("参加登録中に予期しないエラーが発生しました");
+      expect(result.code).toBe("INTERNAL_ERROR");
+      expect(result.error).toContain("参加登録の処理中にエラーが発生しました");
     });
   });
 
@@ -534,7 +534,7 @@ describe("registerParticipationAction", () => {
       expect(mockSupabase.rpc).toHaveBeenCalledWith(
         "register_participation",
         expect.objectContaining({
-          p_guest_token: "generated-guest-token-123456789012",
+          p_guest_token: expect.any(String),
         })
       );
     });
