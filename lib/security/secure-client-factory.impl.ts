@@ -7,10 +7,11 @@
 
 import { createClient } from "@supabase/supabase-js";
 import { createServerClient, createBrowserClient } from "@supabase/ssr";
-import type { SupabaseClient, CookieOptions } from "@supabase/supabase-js";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type { CookieOptions } from "@supabase/ssr";
 import type { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
-import { createHash } from "crypto";
+
 import { validateGuestTokenFormat } from "./crypto";
 
 import {
@@ -126,8 +127,8 @@ export class SecureSupabaseClientFactory implements ISecureSupabaseClientFactory
       return createServerClient(this.supabaseUrl, this.anonKey, {
         cookies: {
           get: () => undefined,
-          set: () => {},
-          remove: () => {},
+          set: () => { },
+          remove: () => { },
         },
         auth: {
           persistSession: false, // ゲストセッションは永続化しない
@@ -326,7 +327,7 @@ export class RLSBasedGuestValidator implements IGuestTokenValidator {
     // 基本フォーマット検証
     if (!validateGuestTokenFormat(token)) {
       // 監査ログの失敗はビジネスロジックを妨げない
-      await this.safeLogGuestAccess(token, "VALIDATE_TOKEN", {}, false, {
+      await this.safeLogGuestAccess(token, "VALIDATE_TOKEN", false, {
         errorCode: GuestErrorCode.INVALID_FORMAT,
       });
 
@@ -361,7 +362,7 @@ export class RLSBasedGuestValidator implements IGuestTokenValidator {
 
       if (error || !attendance) {
         // 監査ログの失敗はビジネスロジックを妨げない
-        await this.safeLogGuestAccess(token, "VALIDATE_TOKEN", {}, false, {
+        await this.safeLogGuestAccess(token, "VALIDATE_TOKEN", false, {
           errorCode: GuestErrorCode.TOKEN_NOT_FOUND,
           errorMessage: error?.message,
         });
@@ -377,7 +378,7 @@ export class RLSBasedGuestValidator implements IGuestTokenValidator {
       const canModify = this.checkCanModify(attendance.event);
 
       // 成功をログに記録（監査ログの失敗はビジネスロジックを妨げない）
-      await this.safeLogGuestAccess(token, "VALIDATE_TOKEN", {}, true, {
+      await this.safeLogGuestAccess(token, "VALIDATE_TOKEN", true, {
         attendanceId: attendance.id,
         eventId: attendance.event_id,
         resultCount: 1,
@@ -392,7 +393,7 @@ export class RLSBasedGuestValidator implements IGuestTokenValidator {
     } catch (error) {
       // RLSポリシー違反やその他のエラー
       // 監査ログの失敗はビジネスロジックを妨げない
-      await this.safeLogGuestAccess(token, "VALIDATE_TOKEN", {}, false, {
+      await this.safeLogGuestAccess(token, "VALIDATE_TOKEN", false, {
         errorCode: GuestErrorCode.TOKEN_NOT_FOUND,
         errorMessage: String(error),
       });
@@ -469,11 +470,11 @@ export class RLSBasedGuestValidator implements IGuestTokenValidator {
       "status" in event &&
       typeof (event as any).id === "string" &&
       typeof (event as any).date === "string" &&
-      typeof (event as any).status === "string" &&
+      typeof (event as unknown).status === "string" &&
       // registration_deadlineはオプショナル
       ("registration_deadline" in event
         ? (event as unknown).registration_deadline === null ||
-          typeof (event as unknown).registration_deadline === "string"
+        typeof (event as unknown).registration_deadline === "string"
         : true)
     );
   }
@@ -492,13 +493,13 @@ export class RLSBasedGuestValidator implements IGuestTokenValidator {
   private checkCanModify(event: unknown): boolean {
     // 型ガードでイベント情報の妥当性をチェック
     if (!this.isValidEventInfo(event)) {
-      console.warn("Invalid event info provided to checkCanModify:", event);
+      // console.warn("Invalid event info provided to checkCanModify:", event);
       return false; // 無効なイベント情報の場合は変更不可
     }
 
     // 日付の妥当性をチェック
     if (!this.isValidDateString(event.date)) {
-      console.warn("Invalid event date format:", event.date);
+      // console.warn("Invalid event date format:", event.date);
       return false;
     }
 
@@ -509,7 +510,7 @@ export class RLSBasedGuestValidator implements IGuestTokenValidator {
     let registrationDeadline: Date | null = null;
     if (event.registration_deadline) {
       if (!this.isValidDateString(event.registration_deadline)) {
-        console.warn("Invalid registration deadline format:", event.registration_deadline);
+        // console.warn("Invalid registration deadline format:", event.registration_deadline);
         return false;
       }
       registrationDeadline = new Date(event.registration_deadline);
@@ -530,7 +531,6 @@ export class RLSBasedGuestValidator implements IGuestTokenValidator {
   private async safeLogGuestAccess(
     token: string,
     action: string,
-    auditContext: AuditContext,
     success: boolean,
     additionalInfo?: {
       attendanceId?: string;
@@ -543,8 +543,13 @@ export class RLSBasedGuestValidator implements IGuestTokenValidator {
     }
   ): Promise<void> {
     try {
+      const auditContext: AuditContext = {
+        guestToken: token,
+        operationType: additionalInfo?.operationType || "SELECT",
+        additionalInfo,
+      };
       await this.auditor.logGuestAccess(token, action, auditContext, success, additionalInfo);
-    } catch (auditError) {
+    } catch (_auditError) {
       // 監査ログの失敗をコンソールに記録するが、ビジネスロジックは継続
       // 将来的には、監査ログ失敗の通知システムを実装することも検討
       // 例: メトリクス送信、アラート送信など

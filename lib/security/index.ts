@@ -16,6 +16,25 @@ export {
   getGuestTokenValidator,
 } from "./secure-client-factory.impl";
 
+// ゲストトークンバリデーター
+export {
+  RLSGuestTokenValidator,
+  getRLSGuestTokenValidator,
+  validateGuestTokenRLS,
+  type RLSGuestAttendanceData,
+  type RLSGuestTokenValidationResult,
+} from "./guest-token-validator";
+
+// エラーハンドリング
+export {
+  GuestTokenErrorFactory,
+  GuestTokenErrorHandler,
+  GuestTokenErrorCollector,
+  ErrorSeverity,
+  type GuestErrorContext,
+  type ErrorStatistics,
+} from "./guest-token-errors";
+
 // セキュリティ監査
 export { SecurityAuditorImpl } from "./security-auditor.impl";
 
@@ -27,19 +46,20 @@ export {
   AdminAccessError,
   AdminAccessErrorCode,
   GuestPermission,
-  EventInfo,
 } from "./secure-client-factory.types";
+
+export type { EventInfo } from "./secure-client-factory.types";
 
 /**
  * デフォルトのセキュアクライアントファクトリーインスタンスを取得する関数
  */
 export function createSecureSupabaseClient() {
-  return getSecureClientFactory();
+  return SecureSupabaseClientFactory.getInstance();
 }
 
 /**
  * デフォルトのゲストトークンバリデーターインスタンスを取得する関数
  */
 export function createGuestTokenValidator() {
-  return getGuestTokenValidator();
+  return new RLSGuestTokenValidator();
 }

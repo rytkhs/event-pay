@@ -1,5 +1,11 @@
 import { generateRandomBytes, toBase64UrlSafe } from "@/lib/security/crypto";
 import { sanitizeForEventPay } from "@/lib/utils/sanitize";
+import {
+  getRLSGuestTokenValidator,
+  validateGuestTokenRLS,
+  type RLSGuestAttendanceData,
+  type RLSGuestTokenValidationResult
+} from "@/lib/security/guest-token-validator";
 import type { Database } from "@/types/database";
 
 /**
@@ -56,132 +62,23 @@ export interface GuestTokenValidationResult {
 /**
  * ゲストトークンを検証し、参加データを取得する
  *
- * 注意: Row Level Security (RLS) のため、管理者権限でクエリを実行する
- * ゲスト認証では通常のRLSポリシーでは制限されるため、この処理は妥当である
+ * 新しいRLSベースの実装を使用し、管理者権限を使用しない
+ * セキュアなアクセス制御を提供する
  *
- * @param guestToken - 32文字のBase64エンコードされたゲストトークン
+ * @param guestToken - 36文字のプレフィックス付きゲストトークン
  * @returns 検証結果と参加データ
  */
 export async function validateGuestToken(guestToken: string): Promise<GuestTokenValidationResult> {
   try {
-    // トークンの基本検証
-    if (!guestToken || typeof guestToken !== "string") {
-      return {
-        isValid: false,
-        errorMessage: "無効なゲストトークンです",
-        canModify: false,
-      };
-    }
+    // 新しいRLSベースのバリデーターを使用
+    const rlsResult = await validateGuestTokenRLS(guestToken);
 
-    // トークンの形式チェック（プレフィックス付き36文字形式）
-    const isValidFormat = /^gst_[a-zA-Z0-9_-]{32}$/.test(guestToken);
-
-    if (guestToken.length !== 36 || !isValidFormat) {
-      return {
-        isValid: false,
-        errorMessage: "無効なゲストトークンの形式です",
-        canModify: false,
-      };
-    }
-
-    // 管理者権限でクエリを実行（RLSを回避）
-    // 注意: ゲスト認証では通常のRLSポリシーでは制限されるため、管理者権限を使用
-    const { createSupabaseAdminClient } = await import("@/lib/supabase/admin");
-    const supabase = createSupabaseAdminClient();
-
-    // ゲストトークンで参加データを取得
-    const { data: attendance, error } = await supabase
-      .from("attendances")
-      .select(
-        `
-        id,
-        nickname,
-        email,
-        status,
-        guest_token,
-        created_at,
-        updated_at,
-        event:events (
-          id,
-          title,
-          description,
-          date,
-          location,
-          fee,
-          capacity,
-          registration_deadline,
-          payment_deadline,
-          created_by
-        ),
-        payment:payments (
-          id,
-          amount,
-          method,
-          status,
-          created_at
-        )
-      `
-      )
-      .eq("guest_token", guestToken)
-      .single();
-
-    if (error) {
-      // 開発環境でのみエラー詳細をログ出力
-      if (process.env.NODE_ENV === "development") {
-        // eslint-disable-next-line no-console
-        console.error("ゲストトークン検証エラー:", error);
-      }
-      return {
-        isValid: false,
-        errorMessage: "参加データの取得中にエラーが発生しました",
-        canModify: false,
-      };
-    }
-
-    if (!attendance) {
-      return {
-        isValid: false,
-        errorMessage: "参加データが見つかりません",
-        canModify: false,
-      };
-    }
-
-    // イベントデータの存在確認と正規化
-    // Supabaseの型システム上、関連データは配列として型定義されている
-    const eventData = Array.isArray(attendance.event) ? attendance.event[0] : attendance.event;
-
-    if (!eventData) {
-      return {
-        isValid: false,
-        errorMessage: "イベントデータが見つかりません",
-        canModify: false,
-      };
-    }
-
-    // 支払いデータの正規化
-    const paymentData = attendance.payment
-      ? Array.isArray(attendance.payment)
-        ? attendance.payment[0]
-        : attendance.payment
-      : null;
-
-    // 変更可能かどうかの判定
-    const canModify = checkCanModifyAttendance(eventData);
-
+    // 従来の形式に変換
     return {
-      isValid: true,
-      attendance: {
-        ...attendance,
-        nickname: sanitizeForEventPay(attendance.nickname),
-        event: {
-          ...eventData,
-          title: sanitizeForEventPay(eventData.title),
-          description: eventData.description ? sanitizeForEventPay(eventData.description) : null,
-          location: eventData.location ? sanitizeForEventPay(eventData.location) : null,
-        },
-        payment: paymentData,
-      } as GuestAttendanceData,
-      canModify,
+      isValid: rlsResult.isValid,
+      attendance: rlsResult.attendance ? convertToLegacyFormat(rlsResult.attendance) : undefined,
+      errorMessage: rlsResult.errorMessage,
+      canModify: rlsResult.canModify,
     };
   } catch (error) {
     if (process.env.NODE_ENV === "development") {
@@ -197,7 +94,26 @@ export async function validateGuestToken(guestToken: string): Promise<GuestToken
 }
 
 /**
- * 参加状況を変更可能かどうかを判定する
+ * RLS形式のデータを従来形式に変換
+ */
+function convertToLegacyFormat(rlsData: RLSGuestAttendanceData): GuestAttendanceData {
+  return {
+    ...rlsData,
+    event: {
+      ...rlsData.event,
+      // statusフィールドを除外（従来形式には含まれていない）
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      status: undefined,
+    } as GuestAttendanceData["event"],
+  };
+}
+
+/**
+ * 参加状況を変更可能かどうかを判定する（従来互換）
+ * 
+ * 注意: この関数は後方互換性のために残されています。
+ * 新しいコードではRLSGuestTokenValidatorの使用を推奨します。
+ * 
  * @param event イベントデータ
  * @returns 変更可能かどうか
  */
@@ -222,6 +138,18 @@ function checkCanModifyAttendance(event: GuestAttendanceData["event"]): boolean 
 }
 
 /**
+ * RLSベースのゲストトークンバリデーターを取得
+ * 
+ * 新しいコードではこの関数を使用してバリデーターを取得し、
+ * 直接RLSベースの機能を使用することを推奨します。
+ * 
+ * @returns RLSベースのゲストトークンバリデーター
+ */
+export function getGuestTokenValidator() {
+  return getRLSGuestTokenValidator();
+}
+
+/**
  * ゲストトークンを生成する
  *
  * 24バイト（192ビット）のランダムデータをURLセーフなBase64でエンコードし、
@@ -235,3 +163,26 @@ export function generateGuestToken(): string {
   const baseToken = toBase64UrlSafe(bytes);
   return `gst_${baseToken}`;
 }
+
+// ====================================================================
+// マイグレーション情報
+// ====================================================================
+
+/**
+ * このファイルは段階的にRLSベースの新しいシステムに移行されています。
+ * 
+ * 移行状況:
+ * ✅ validateGuestToken() - RLSベースの実装に移行済み
+ * ✅ generateGuestToken() - 変更なし（既に安全）
+ * ✅ checkCanModifyAttendance() - 後方互換性のために保持
+ * 
+ * 新しいコードでの推奨事項:
+ * - getRLSGuestTokenValidator()を使用してバリデーターを取得
+ * - 直接RLSベースのメソッドを使用
+ * - 新しいエラーハンドリングシステムを活用
+ * 
+ * 廃止予定:
+ * - checkCanModifyAttendance() - RLSGuestTokenValidatorのメソッドを使用
+ * - GuestAttendanceData型 - RLSGuestAttendanceData型を使用
+ * - GuestTokenValidationResult型 - RLSGuestTokenValidationResult型を使用
+ */
