@@ -32,10 +32,7 @@ export function toBase64UrlSafe(bytes: Uint8Array): string {
   const base64 = btoa(String.fromCharCode(...bytes));
 
   // URL安全な形式に変換
-  return base64
-    .replace(/\+/g, "-")
-    .replace(/\//g, "_")
-    .replace(/=/g, "");
+  return base64.replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "");
 }
 
 /**
@@ -45,7 +42,7 @@ export function toBase64UrlSafe(bytes: Uint8Array): string {
  */
 export function generateSecureToken(length: number = 32): string {
   const bytes = generateRandomBytes(length);
-  return Array.from(bytes, byte => byte.toString(16).padStart(2, "0")).join("");
+  return Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
 /**
@@ -173,7 +170,7 @@ export function generateSecureUuid(): string {
   // バリアント2を設定
   bytes[8] = (bytes[8] & 0x3f) | 0x80;
 
-  const hex = Array.from(bytes, byte => byte.toString(16).padStart(2, "0")).join("");
+  const hex = Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
   return [
     hex.substring(0, 8),
     hex.substring(8, 12),

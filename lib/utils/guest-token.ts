@@ -160,7 +160,9 @@ export async function validateGuestToken(guestToken: string): Promise<GuestToken
 
     // 支払いデータの正規化
     const paymentData = attendance.payment
-      ? (Array.isArray(attendance.payment) ? attendance.payment[0] : attendance.payment)
+      ? Array.isArray(attendance.payment)
+        ? attendance.payment[0]
+        : attendance.payment
       : null;
 
     // 変更可能かどうかの判定

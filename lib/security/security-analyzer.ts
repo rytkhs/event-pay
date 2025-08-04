@@ -1,19 +1,19 @@
 /**
  * EventPay セキュリティ監査システム - セキュリティ分析機能
- * 
+ *
  * アクセスパターンの分析、脅威レベルの評価、RLS違反リスクの分析を行う
  */
 
-import { SupabaseClient, createClient } from '@supabase/supabase-js';
-import { SecurityAnalyzer } from './security-auditor.interface';
+import { SupabaseClient, createClient } from "@supabase/supabase-js";
+import { SecurityAnalyzer } from "./security-auditor.interface";
 import {
   TimeRange,
   SecuritySeverity,
   SuspiciousActivityEntry,
   SuspiciousActivityType,
   AuditError,
-  AuditErrorCode
-} from './audit-types';
+  AuditErrorCode,
+} from "./audit-types";
 
 /**
  * セキュリティ分析機能の実装
@@ -28,8 +28,8 @@ export class SecurityAnalyzerImpl implements SecurityAnalyzer {
       {
         auth: {
           autoRefreshToken: false,
-          persistSession: false
-        }
+          persistSession: false,
+        },
       }
     );
   }
@@ -51,7 +51,7 @@ export class SecurityAnalyzerImpl implements SecurityAnalyzer {
       const patterns = await Promise.all([
         this.analyzeAdminAccessPatterns(timeRange),
         this.analyzeGuestAccessPatterns(timeRange),
-        this.analyzeSuspiciousActivityPatterns(timeRange)
+        this.analyzeSuspiciousActivityPatterns(timeRange),
       ]);
 
       const unusualPatterns = patterns.flat();
@@ -59,7 +59,7 @@ export class SecurityAnalyzerImpl implements SecurityAnalyzer {
 
       return {
         unusualPatterns,
-        recommendations
+        recommendations,
       };
     } catch (error) {
       throw new AuditError(
@@ -79,9 +79,13 @@ export class SecurityAnalyzerImpl implements SecurityAnalyzer {
     highPriorityIssues: number;
     requiresImmediateAction: boolean;
   }> {
-    const criticalIssues = activities.filter(a => a.severity === SecuritySeverity.CRITICAL).length;
-    const highPriorityIssues = activities.filter(a => a.severity === SecuritySeverity.HIGH).length;
-    const mediumIssues = activities.filter(a => a.severity === SecuritySeverity.MEDIUM).length;
+    const criticalIssues = activities.filter(
+      (a) => a.severity === SecuritySeverity.CRITICAL
+    ).length;
+    const highPriorityIssues = activities.filter(
+      (a) => a.severity === SecuritySeverity.HIGH
+    ).length;
+    const mediumIssues = activities.filter((a) => a.severity === SecuritySeverity.MEDIUM).length;
 
     // 脅威レベルの計算
     let overallThreatLevel: SecuritySeverity;
@@ -95,15 +99,14 @@ export class SecurityAnalyzerImpl implements SecurityAnalyzer {
       overallThreatLevel = SecuritySeverity.LOW;
     }
 
-    const requiresImmediateAction = criticalIssues > 0 ||
-      highPriorityIssues > 5 ||
-      this.hasRecentSecurityBreach(activities);
+    const requiresImmediateAction =
+      criticalIssues > 0 || highPriorityIssues > 5 || this.hasRecentSecurityBreach(activities);
 
     return {
       overallThreatLevel,
       criticalIssues,
       highPriorityIssues,
-      requiresImmediateAction
+      requiresImmediateAction,
     };
   }
 
@@ -120,21 +123,24 @@ export class SecurityAnalyzerImpl implements SecurityAnalyzer {
     try {
       // 空の結果セットの頻度を分析
       const { data: emptyResultSets, error } = await this.supabase
-        .from('suspicious_activity_log')
-        .select('table_name, context, created_at')
-        .eq('activity_type', SuspiciousActivityType.EMPTY_RESULT_SET)
-        .gte('created_at', timeRange.start.toISOString())
-        .lte('created_at', timeRange.end.toISOString());
+        .from("suspicious_activity_log")
+        .select("table_name, context, created_at")
+        .eq("activity_type", SuspiciousActivityType.EMPTY_RESULT_SET)
+        .gte("created_at", timeRange.start.toISOString())
+        .lte("created_at", timeRange.end.toISOString());
 
       if (error) {
-        throw new AuditError(AuditErrorCode.DATABASE_ERROR, `Failed to analyze RLS violation risk: ${error.message}`);
+        throw new AuditError(
+          AuditErrorCode.DATABASE_ERROR,
+          `Failed to analyze RLS violation risk: ${error.message}`
+        );
       }
 
       // テーブル別の空の結果セット頻度を計算
       const emptyResultSetFrequency: Record<string, number> = {};
       const suspiciousTables: string[] = [];
 
-      emptyResultSets?.forEach(entry => {
+      emptyResultSets?.forEach((entry) => {
         if (entry.table_name) {
           emptyResultSetFrequency[entry.table_name] =
             (emptyResultSetFrequency[entry.table_name] || 0) + 1;
@@ -143,20 +149,24 @@ export class SecurityAnalyzerImpl implements SecurityAnalyzer {
 
       // 疑わしいテーブルを特定（頻度が高いもの）
       Object.entries(emptyResultSetFrequency).forEach(([tableName, frequency]) => {
-        if (frequency > 5) { // 閾値は設定可能
+        if (frequency > 5) {
+          // 閾値は設定可能
           suspiciousTables.push(tableName);
         }
       });
 
       // リスクレベルの計算
       const riskLevel = this.calculateRlsRiskLevel(emptyResultSetFrequency, suspiciousTables);
-      const recommendations = this.generateRlsRecommendations(suspiciousTables, emptyResultSetFrequency);
+      const recommendations = this.generateRlsRecommendations(
+        suspiciousTables,
+        emptyResultSetFrequency
+      );
 
       return {
         riskLevel,
         suspiciousTables,
         emptyResultSetFrequency,
-        recommendations
+        recommendations,
       };
     } catch (error) {
       if (error instanceof AuditError) {
@@ -175,44 +185,48 @@ export class SecurityAnalyzerImpl implements SecurityAnalyzer {
 
   private async analyzeAdminAccessPatterns(timeRange: TimeRange) {
     const { data, error } = await this.supabase
-      .from('admin_access_audit')
-      .select('reason, user_id, created_at, success')
-      .gte('created_at', timeRange.start.toISOString())
-      .lte('created_at', timeRange.end.toISOString());
+      .from("admin_access_audit")
+      .select("reason, user_id, created_at, success")
+      .gte("created_at", timeRange.start.toISOString())
+      .lte("created_at", timeRange.end.toISOString());
 
     if (error) {
-      throw new AuditError(AuditErrorCode.DATABASE_ERROR, `Failed to analyze admin access patterns: ${error.message}`);
+      throw new AuditError(
+        AuditErrorCode.DATABASE_ERROR,
+        `Failed to analyze admin access patterns: ${error.message}`
+      );
     }
 
     const patterns = [];
 
     // 頻繁な管理者アクセスの検知
     const accessCounts: Record<string, number> = {};
-    data?.forEach(entry => {
+    data?.forEach((entry) => {
       if (entry.user_id) {
         accessCounts[entry.user_id] = (accessCounts[entry.user_id] || 0) + 1;
       }
     });
 
     Object.entries(accessCounts).forEach(([userId, count]) => {
-      if (count > 20) { // 閾値
+      if (count > 20) {
+        // 閾値
         patterns.push({
           pattern: `FREQUENT_ADMIN_ACCESS_${userId}`,
           frequency: count,
           severity: SecuritySeverity.MEDIUM,
-          description: `User ${userId} has ${count} admin access attempts in the time range`
+          description: `User ${userId} has ${count} admin access attempts in the time range`,
         });
       }
     });
 
     // 失敗した管理者アクセスの検知
-    const failures = data?.filter(entry => !entry.success).length || 0;
+    const failures = data?.filter((entry) => !entry.success).length || 0;
     if (failures > 5) {
       patterns.push({
-        pattern: 'HIGH_ADMIN_ACCESS_FAILURES',
+        pattern: "HIGH_ADMIN_ACCESS_FAILURES",
         frequency: failures,
         severity: SecuritySeverity.HIGH,
-        description: `${failures} failed admin access attempts detected`
+        description: `${failures} failed admin access attempts detected`,
       });
     }
 
@@ -221,45 +235,50 @@ export class SecurityAnalyzerImpl implements SecurityAnalyzer {
 
   private async analyzeGuestAccessPatterns(timeRange: TimeRange) {
     const { data, error } = await this.supabase
-      .from('guest_access_audit')
-      .select('guest_token_hash, action, success, created_at')
-      .gte('created_at', timeRange.start.toISOString())
-      .lte('created_at', timeRange.end.toISOString());
+      .from("guest_access_audit")
+      .select("guest_token_hash, action, success, created_at")
+      .gte("created_at", timeRange.start.toISOString())
+      .lte("created_at", timeRange.end.toISOString());
 
     if (error) {
-      throw new AuditError(AuditErrorCode.DATABASE_ERROR, `Failed to analyze guest access patterns: ${error.message}`);
+      throw new AuditError(
+        AuditErrorCode.DATABASE_ERROR,
+        `Failed to analyze guest access patterns: ${error.message}`
+      );
     }
 
     const patterns = [];
 
     // 同一トークンからの大量アクセス
     const tokenCounts: Record<string, number> = {};
-    data?.forEach(entry => {
+    data?.forEach((entry) => {
       tokenCounts[entry.guest_token_hash] = (tokenCounts[entry.guest_token_hash] || 0) + 1;
     });
 
     Object.entries(tokenCounts).forEach(([tokenHash, count]) => {
-      if (count > 50) { // 閾値
+      if (count > 50) {
+        // 閾値
         patterns.push({
           pattern: `BULK_GUEST_ACCESS_${tokenHash.substring(0, 8)}`,
           frequency: count,
           severity: SecuritySeverity.MEDIUM,
-          description: `Guest token ${tokenHash.substring(0, 8)}... has ${count} access attempts`
+          description: `Guest token ${tokenHash.substring(0, 8)}... has ${count} access attempts`,
         });
       }
     });
 
     // ゲストアクセス失敗率の分析
     const totalAccess = data?.length || 0;
-    const failures = data?.filter(entry => !entry.success).length || 0;
+    const failures = data?.filter((entry) => !entry.success).length || 0;
     const failureRate = totalAccess > 0 ? failures / totalAccess : 0;
 
-    if (failureRate > 0.3) { // 30%以上の失敗率
+    if (failureRate > 0.3) {
+      // 30%以上の失敗率
       patterns.push({
-        pattern: 'HIGH_GUEST_ACCESS_FAILURE_RATE',
+        pattern: "HIGH_GUEST_ACCESS_FAILURE_RATE",
         frequency: failures,
         severity: SecuritySeverity.HIGH,
-        description: `High guest access failure rate: ${(failureRate * 100).toFixed(1)}%`
+        description: `High guest access failure rate: ${(failureRate * 100).toFixed(1)}%`,
       });
     }
 
@@ -268,30 +287,34 @@ export class SecurityAnalyzerImpl implements SecurityAnalyzer {
 
   private async analyzeSuspiciousActivityPatterns(timeRange: TimeRange) {
     const { data, error } = await this.supabase
-      .from('suspicious_activity_log')
-      .select('activity_type, severity, table_name, created_at')
-      .gte('created_at', timeRange.start.toISOString())
-      .lte('created_at', timeRange.end.toISOString());
+      .from("suspicious_activity_log")
+      .select("activity_type, severity, table_name, created_at")
+      .gte("created_at", timeRange.start.toISOString())
+      .lte("created_at", timeRange.end.toISOString());
 
     if (error) {
-      throw new AuditError(AuditErrorCode.DATABASE_ERROR, `Failed to analyze suspicious activity patterns: ${error.message}`);
+      throw new AuditError(
+        AuditErrorCode.DATABASE_ERROR,
+        `Failed to analyze suspicious activity patterns: ${error.message}`
+      );
     }
 
     const patterns = [];
 
     // 活動タイプ別の集計
     const activityCounts: Record<string, number> = {};
-    data?.forEach(entry => {
+    data?.forEach((entry) => {
       activityCounts[entry.activity_type] = (activityCounts[entry.activity_type] || 0) + 1;
     });
 
     Object.entries(activityCounts).forEach(([activityType, count]) => {
-      if (count > 10) { // 閾値
+      if (count > 10) {
+        // 閾値
         patterns.push({
           pattern: `FREQUENT_${activityType}`,
           frequency: count,
           severity: SecuritySeverity.MEDIUM,
-          description: `${count} instances of ${activityType} detected`
+          description: `${count} instances of ${activityType} detected`,
         });
       }
     });
@@ -299,26 +322,32 @@ export class SecurityAnalyzerImpl implements SecurityAnalyzer {
     return patterns;
   }
 
-  private generatePatternRecommendations(patterns: Array<{
-    pattern: string;
-    frequency: number;
-    severity: SecuritySeverity;
-    description: string;
-  }>): string[] {
+  private generatePatternRecommendations(
+    patterns: Array<{
+      pattern: string;
+      frequency: number;
+      severity: SecuritySeverity;
+      description: string;
+    }>
+  ): string[] {
     const recommendations: string[] = [];
 
-    patterns.forEach(pattern => {
-      if (pattern.pattern.includes('FREQUENT_ADMIN_ACCESS')) {
-        recommendations.push('Review admin access policies and consider implementing time-based restrictions');
+    patterns.forEach((pattern) => {
+      if (pattern.pattern.includes("FREQUENT_ADMIN_ACCESS")) {
+        recommendations.push(
+          "Review admin access policies and consider implementing time-based restrictions"
+        );
       }
-      if (pattern.pattern.includes('HIGH_ADMIN_ACCESS_FAILURES')) {
-        recommendations.push('Investigate failed admin access attempts and strengthen authentication');
+      if (pattern.pattern.includes("HIGH_ADMIN_ACCESS_FAILURES")) {
+        recommendations.push(
+          "Investigate failed admin access attempts and strengthen authentication"
+        );
       }
-      if (pattern.pattern.includes('BULK_GUEST_ACCESS')) {
-        recommendations.push('Implement rate limiting for guest token access');
+      if (pattern.pattern.includes("BULK_GUEST_ACCESS")) {
+        recommendations.push("Implement rate limiting for guest token access");
       }
-      if (pattern.pattern.includes('HIGH_GUEST_ACCESS_FAILURE_RATE')) {
-        recommendations.push('Review guest token validation logic and improve error handling');
+      if (pattern.pattern.includes("HIGH_GUEST_ACCESS_FAILURE_RATE")) {
+        recommendations.push("Review guest token validation logic and improve error handling");
       }
     });
 
@@ -329,15 +358,17 @@ export class SecurityAnalyzerImpl implements SecurityAnalyzer {
   private hasRecentSecurityBreach(activities: SuspiciousActivityEntry[]): boolean {
     const recentBreachTypes = [
       SuspiciousActivityType.UNAUTHORIZED_RLS_BYPASS,
-      SuspiciousActivityType.ADMIN_ACCESS_ATTEMPT
+      SuspiciousActivityType.ADMIN_ACCESS_ATTEMPT,
     ];
 
     const recentTime = new Date(Date.now() - 24 * 60 * 60 * 1000); // 24時間前
 
-    return activities.some(activity =>
-      recentBreachTypes.includes(activity.activityType) &&
-      activity.severity === SecuritySeverity.CRITICAL &&
-      activity.createdAt && activity.createdAt > recentTime
+    return activities.some(
+      (activity) =>
+        recentBreachTypes.includes(activity.activityType) &&
+        activity.severity === SecuritySeverity.CRITICAL &&
+        activity.createdAt &&
+        activity.createdAt > recentTime
     );
   }
 
@@ -345,7 +376,10 @@ export class SecurityAnalyzerImpl implements SecurityAnalyzer {
     emptyResultSetFrequency: Record<string, number>,
     suspiciousTables: string[]
   ): SecuritySeverity {
-    const totalEmptyResults = Object.values(emptyResultSetFrequency).reduce((sum, count) => sum + count, 0);
+    const totalEmptyResults = Object.values(emptyResultSetFrequency).reduce(
+      (sum, count) => sum + count,
+      0
+    );
 
     if (suspiciousTables.length > 3 || totalEmptyResults > 50) {
       return SecuritySeverity.CRITICAL;
@@ -365,8 +399,10 @@ export class SecurityAnalyzerImpl implements SecurityAnalyzer {
     const recommendations: string[] = [];
 
     if (suspiciousTables.length > 0) {
-      recommendations.push(`Review RLS policies for tables: ${suspiciousTables.join(', ')}`);
-      recommendations.push('Audit application code accessing these tables for potential RLS bypasses');
+      recommendations.push(`Review RLS policies for tables: ${suspiciousTables.join(", ")}`);
+      recommendations.push(
+        "Audit application code accessing these tables for potential RLS bypasses"
+      );
     }
 
     const highFrequencyTables = Object.entries(emptyResultSetFrequency)
@@ -374,12 +410,14 @@ export class SecurityAnalyzerImpl implements SecurityAnalyzer {
       .map(([tableName]) => tableName);
 
     if (highFrequencyTables.length > 0) {
-      recommendations.push(`Investigate frequent empty result sets for: ${highFrequencyTables.join(', ')}`);
-      recommendations.push('Consider adding additional monitoring for these tables');
+      recommendations.push(
+        `Investigate frequent empty result sets for: ${highFrequencyTables.join(", ")}`
+      );
+      recommendations.push("Consider adding additional monitoring for these tables");
     }
 
     if (recommendations.length === 0) {
-      recommendations.push('RLS violation risk appears low, continue monitoring');
+      recommendations.push("RLS violation risk appears low, continue monitoring");
     }
 
     return recommendations;

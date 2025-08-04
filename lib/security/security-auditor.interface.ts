@@ -1,6 +1,6 @@
 /**
  * EventPay セキュリティ監査システム - インターフェース定義
- * 
+ *
  * セキュリティ監査機能の抽象インターフェース
  */
 
@@ -17,8 +17,8 @@ import {
   PredefinedTimeRange,
   SuspiciousActivityType,
   SecuritySeverity,
-  DetectionMethod
-} from './audit-types';
+  DetectionMethod,
+} from "./audit-types";
 
 // ====================================================================
 // 1. メインインターフェース
@@ -26,7 +26,7 @@ import {
 
 /**
  * セキュリティ監査システムのメインインターフェース
- * 
+ *
  * データベースアクセスの監査、セキュリティ違反の検知、
  * レポート生成機能を提供する
  */
@@ -37,7 +37,7 @@ export interface SecurityAuditor {
 
   /**
    * 管理者権限使用を記録
-   * 
+   *
    * @param reason 使用理由
    * @param context 操作コンテキスト
    * @param auditContext 監査コンテキスト
@@ -52,7 +52,7 @@ export interface SecurityAuditor {
 
   /**
    * 管理者操作の完了を記録（成功/失敗、実行時間など）
-   * 
+   *
    * @param auditId 監査ログID
    * @param success 操作成功フラグ
    * @param durationMs 実行時間（ミリ秒）
@@ -73,7 +73,7 @@ export interface SecurityAuditor {
 
   /**
    * ゲストトークンアクセスを記録
-   * 
+   *
    * @param token ゲストトークン（ハッシュ化される）
    * @param action 実行アクション
    * @param auditContext 監査コンテキスト
@@ -89,7 +89,7 @@ export interface SecurityAuditor {
       attendanceId?: string;
       eventId?: string;
       tableName?: string;
-      operationType?: 'SELECT' | 'INSERT' | 'UPDATE' | 'DELETE';
+      operationType?: "SELECT" | "INSERT" | "UPDATE" | "DELETE";
       resultCount?: number;
       errorCode?: string;
       errorMessage?: string;
@@ -102,25 +102,22 @@ export interface SecurityAuditor {
 
   /**
    * 疑わしい活動を記録
-   * 
+   *
    * @param activity 疑わしい活動の詳細
    */
   logSuspiciousActivity(activity: SuspiciousActivityEntry): Promise<void>;
 
   /**
    * 空の結果セットを分析し、疑わしい活動として記録
-   * 
+   *
    * @param analysis 結果セット分析情報
    * @param auditContext 監査コンテキスト
    */
-  analyzeEmptyResultSet(
-    analysis: ResultSetAnalysis,
-    auditContext: AuditContext
-  ): Promise<void>;
+  analyzeEmptyResultSet(analysis: ResultSetAnalysis, auditContext: AuditContext): Promise<void>;
 
   /**
    * RLS違反の間接的指標を検知
-   * 
+   *
    * @param tableName テーブル名
    * @param expectedCount 期待される結果数
    * @param actualCount 実際の結果数
@@ -139,14 +136,14 @@ export interface SecurityAuditor {
 
   /**
    * 不正アクセス試行を記録
-   * 
+   *
    * @param entry 不正アクセス試行の詳細
    */
   logUnauthorizedAccess(entry: UnauthorizedAccessEntry): Promise<void>;
 
   /**
    * 権限チェック失敗を記録
-   * 
+   *
    * @param resource アクセス試行されたリソース
    * @param requiredPermission 必要な権限
    * @param auditContext 監査コンテキスト
@@ -165,21 +162,21 @@ export interface SecurityAuditor {
 
   /**
    * セキュリティレポートを生成
-   * 
+   *
    * @param timeRange 対象時間範囲
    */
   generateSecurityReport(timeRange: TimeRange): Promise<SecurityReport>;
 
   /**
    * 事前定義された時間範囲でセキュリティレポートを生成
-   * 
+   *
    * @param range 事前定義された時間範囲
    */
   generateSecurityReportForRange(range: PredefinedTimeRange): Promise<SecurityReport>;
 
   /**
    * 管理者アクセス統計を取得
-   * 
+   *
    * @param timeRange 対象時間範囲
    */
   getAdminAccessStats(timeRange: TimeRange): Promise<{
@@ -191,7 +188,7 @@ export interface SecurityAuditor {
 
   /**
    * ゲストアクセス統計を取得
-   * 
+   *
    * @param timeRange 対象時間範囲
    */
   getGuestAccessStats(timeRange: TimeRange): Promise<{
@@ -208,7 +205,7 @@ export interface SecurityAuditor {
 
   /**
    * 古い監査ログをクリーンアップ
-   * 
+   *
    * @param retentionDays 保持日数（デフォルト: 90日）
    */
   cleanupOldAuditLogs(retentionDays?: number): Promise<number>;
@@ -233,42 +230,30 @@ export interface SecurityAuditor {
 export interface AuditContextBuilder {
   /**
    * HTTPリクエストから監査コンテキストを作成
-   * 
+   *
    * @param request HTTPリクエスト
    * @param userId ユーザーID（オプション）
    * @param guestToken ゲストトークン（オプション）
    */
-  fromRequest(
-    request: Request,
-    userId?: string,
-    guestToken?: string
-  ): AuditContext;
+  fromRequest(request: Request, userId?: string, guestToken?: string): AuditContext;
 
   /**
    * Next.jsのヘッダーから監査コンテキストを作成
-   * 
+   *
    * @param headers Next.jsヘッダー
    * @param userId ユーザーID（オプション）
    * @param guestToken ゲストトークン（オプション）
    */
-  fromNextHeaders(
-    headers: Headers,
-    userId?: string,
-    guestToken?: string
-  ): AuditContext;
+  fromNextHeaders(headers: Headers, userId?: string, guestToken?: string): AuditContext;
 
   /**
    * 基本的な監査コンテキストを作成
-   * 
+   *
    * @param sessionId セッションID
    * @param userId ユーザーID（オプション）
    * @param guestToken ゲストトークン（オプション）
    */
-  create(
-    sessionId: string,
-    userId?: string,
-    guestToken?: string
-  ): AuditContext;
+  create(sessionId: string, userId?: string, guestToken?: string): AuditContext;
 }
 
 /**
@@ -277,7 +262,7 @@ export interface AuditContextBuilder {
 export interface SecurityAnalyzer {
   /**
    * アクセスパターンを分析
-   * 
+   *
    * @param timeRange 分析対象時間範囲
    */
   analyzeAccessPatterns(timeRange: TimeRange): Promise<{
@@ -292,7 +277,7 @@ export interface SecurityAnalyzer {
 
   /**
    * 脅威レベルを評価
-   * 
+   *
    * @param activities 疑わしい活動一覧
    */
   assessThreatLevel(activities: SuspiciousActivityEntry[]): Promise<{
@@ -304,7 +289,7 @@ export interface SecurityAnalyzer {
 
   /**
    * RLS違反の可能性を分析
-   * 
+   *
    * @param timeRange 分析対象時間範囲
    */
   analyzeRlsViolationRisk(timeRange: TimeRange): Promise<{

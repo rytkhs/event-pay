@@ -375,7 +375,9 @@ describe("Invite Token Validation", () => {
 
       expect(result.isValid).toBe(true);
       expect(result.canRegister).toBe(false);
-      expect(result.errorMessage).toBe("現在参加登録を受け付けることができません。しばらく後にお試しください。");
+      expect(result.errorMessage).toBe(
+        "現在参加登録を受け付けることができません。しばらく後にお試しください。"
+      );
       expect(result.errorCode).toBe("UNKNOWN_ERROR");
       expect(result.event?.attendances_count).toBe(mockEventData.capacity);
     });

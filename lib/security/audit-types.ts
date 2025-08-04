@@ -1,10 +1,10 @@
 /**
  * EventPay セキュリティ監査システム - 型定義
- * 
+ *
  * データベースアクセスの監査とセキュリティ違反の検知に使用される型定義
  */
 
-import { AdminReason } from './secure-client-factory.types';
+import { AdminReason } from "./secure-client-factory.types";
 
 // ====================================================================
 // 1. 基本型定義
@@ -15,31 +15,31 @@ export { AdminReason };
 
 /** 疑わしい活動の種類 */
 export enum SuspiciousActivityType {
-  EMPTY_RESULT_SET = 'EMPTY_RESULT_SET',
-  ADMIN_ACCESS_ATTEMPT = 'ADMIN_ACCESS_ATTEMPT',
-  INVALID_TOKEN_PATTERN = 'INVALID_TOKEN_PATTERN',
-  RATE_LIMIT_EXCEEDED = 'RATE_LIMIT_EXCEEDED',
-  UNAUTHORIZED_RLS_BYPASS = 'UNAUTHORIZED_RLS_BYPASS',
-  BULK_DATA_ACCESS = 'BULK_DATA_ACCESS',
-  UNUSUAL_ACCESS_PATTERN = 'UNUSUAL_ACCESS_PATTERN'
+  EMPTY_RESULT_SET = "EMPTY_RESULT_SET",
+  ADMIN_ACCESS_ATTEMPT = "ADMIN_ACCESS_ATTEMPT",
+  INVALID_TOKEN_PATTERN = "INVALID_TOKEN_PATTERN",
+  RATE_LIMIT_EXCEEDED = "RATE_LIMIT_EXCEEDED",
+  UNAUTHORIZED_RLS_BYPASS = "UNAUTHORIZED_RLS_BYPASS",
+  BULK_DATA_ACCESS = "BULK_DATA_ACCESS",
+  UNUSUAL_ACCESS_PATTERN = "UNUSUAL_ACCESS_PATTERN",
 }
 
 /** セキュリティレベル */
 export enum SecuritySeverity {
-  LOW = 'LOW',
-  MEDIUM = 'MEDIUM',
-  HIGH = 'HIGH',
-  CRITICAL = 'CRITICAL'
+  LOW = "LOW",
+  MEDIUM = "MEDIUM",
+  HIGH = "HIGH",
+  CRITICAL = "CRITICAL",
 }
 
 /** 検知方法 */
 export enum DetectionMethod {
-  EMPTY_RESULT = 'EMPTY_RESULT',
-  PERMISSION_CHECK = 'PERMISSION_CHECK',
-  RATE_LIMIT = 'RATE_LIMIT',
-  RLS_POLICY = 'RLS_POLICY',
-  PATTERN_ANALYSIS = 'PATTERN_ANALYSIS',
-  MANUAL_REPORT = 'MANUAL_REPORT'
+  EMPTY_RESULT = "EMPTY_RESULT",
+  PERMISSION_CHECK = "PERMISSION_CHECK",
+  RATE_LIMIT = "RATE_LIMIT",
+  RLS_POLICY = "RLS_POLICY",
+  PATTERN_ANALYSIS = "PATTERN_ANALYSIS",
+  MANUAL_REPORT = "MANUAL_REPORT",
 }
 
 // ====================================================================
@@ -71,7 +71,7 @@ export interface GuestAccessAuditEntry {
   eventId?: string;
   action: string;
   tableName?: string;
-  operationType?: 'SELECT' | 'INSERT' | 'UPDATE' | 'DELETE';
+  operationType?: "SELECT" | "INSERT" | "UPDATE" | "DELETE";
   success: boolean;
   resultCount?: number;
   ipAddress?: string;
@@ -197,7 +197,7 @@ export interface RlsViolationIndicator {
 /** セキュリティ推奨事項 */
 export interface SecurityRecommendation {
   priority: SecuritySeverity;
-  category: 'ACCESS_CONTROL' | 'MONITORING' | 'POLICY_UPDATE' | 'INVESTIGATION';
+  category: "ACCESS_CONTROL" | "MONITORING" | "POLICY_UPDATE" | "INVESTIGATION";
   title: string;
   description: string;
   actionRequired: boolean;
@@ -215,11 +215,11 @@ export interface TimeRange {
 
 /** 事前定義された時間範囲 */
 export enum PredefinedTimeRange {
-  LAST_HOUR = 'LAST_HOUR',
-  LAST_24_HOURS = 'LAST_24_HOURS',
-  LAST_7_DAYS = 'LAST_7_DAYS',
-  LAST_30_DAYS = 'LAST_30_DAYS',
-  LAST_90_DAYS = 'LAST_90_DAYS'
+  LAST_HOUR = "LAST_HOUR",
+  LAST_24_HOURS = "LAST_24_HOURS",
+  LAST_7_DAYS = "LAST_7_DAYS",
+  LAST_30_DAYS = "LAST_30_DAYS",
+  LAST_90_DAYS = "LAST_90_DAYS",
 }
 
 // ====================================================================
@@ -228,11 +228,11 @@ export enum PredefinedTimeRange {
 
 /** 監査エラーコード */
 export enum AuditErrorCode {
-  AUDIT_LOG_FAILED = 'AUDIT_LOG_FAILED',
-  INVALID_CONTEXT = 'INVALID_CONTEXT',
-  DATABASE_ERROR = 'DATABASE_ERROR',
-  PERMISSION_DENIED = 'PERMISSION_DENIED',
-  INVALID_TOKEN_HASH = 'INVALID_TOKEN_HASH'
+  AUDIT_LOG_FAILED = "AUDIT_LOG_FAILED",
+  INVALID_CONTEXT = "INVALID_CONTEXT",
+  DATABASE_ERROR = "DATABASE_ERROR",
+  PERMISSION_DENIED = "PERMISSION_DENIED",
+  INVALID_TOKEN_HASH = "INVALID_TOKEN_HASH",
 }
 
 /** 監査エラー */
@@ -243,6 +243,6 @@ export class AuditError extends Error {
     public context?: AuditContext
   ) {
     super(message);
-    this.name = 'AuditError';
+    this.name = "AuditError";
   }
 }

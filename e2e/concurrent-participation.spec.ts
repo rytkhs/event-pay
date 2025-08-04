@@ -1,9 +1,5 @@
 import { test, expect, Browser } from "@playwright/test";
-import {
-  loginAsTestUser,
-  createTestEvent,
-  clearAccountLockout,
-} from "./helpers/rhf-test-helpers";
+import { loginAsTestUser, createTestEvent, clearAccountLockout } from "./helpers/rhf-test-helpers";
 
 /**
  * 大量同時参加競合テスト
@@ -92,13 +88,24 @@ test.describe("大量同時参加競合テスト", () => {
         // 結果を判定
         try {
           // 成功パターン：確認ページが表示される
-          await expect(page.getByText("参加申し込みが完了しました")).toBeVisible({ timeout: 15000 });
+          await expect(page.getByText("参加申し込みが完了しました")).toBeVisible({
+            timeout: 15000,
+          });
           results.push({ success: true, email });
         } catch {
           // 失敗パターン：エラーメッセージが表示される
-          const errorVisible = await page.getByText("定員に達しているため").isVisible({ timeout: 5000 }).catch(() => false);
-          const capacityErrorVisible = await page.getByText("参加できません").isVisible({ timeout: 5000 }).catch(() => false);
-          const alreadyRegisteredVisible = await page.getByText("既に登録されています").isVisible({ timeout: 5000 }).catch(() => false);
+          const errorVisible = await page
+            .getByText("定員に達しているため")
+            .isVisible({ timeout: 5000 })
+            .catch(() => false);
+          const capacityErrorVisible = await page
+            .getByText("参加できません")
+            .isVisible({ timeout: 5000 })
+            .catch(() => false);
+          const alreadyRegisteredVisible = await page
+            .getByText("既に登録されています")
+            .isVisible({ timeout: 5000 })
+            .catch(() => false);
 
           if (errorVisible || capacityErrorVisible || alreadyRegisteredVisible) {
             results.push({ success: false, error: "capacity_exceeded", email });
@@ -123,14 +130,14 @@ test.describe("大量同時参加競合テスト", () => {
     console.log("競合テスト結果:", results);
 
     // 成功したリクエストがちょうど1つであることを確認
-    const successfulRequests = results.filter(r => r.success);
-    const failedRequests = results.filter(r => !r.success);
+    const successfulRequests = results.filter((r) => r.success);
+    const failedRequests = results.filter((r) => !r.success);
 
     expect(successfulRequests.length).toBe(1); // 1人のみ成功
     expect(failedRequests.length).toBe(concurrentRequests - 1); // 残り4人は失敗
 
     // 失敗理由が適切であることを確認
-    const capacityErrors = failedRequests.filter(r => r.error === "capacity_exceeded");
+    const capacityErrors = failedRequests.filter((r) => r.error === "capacity_exceeded");
     expect(capacityErrors.length).toBeGreaterThan(0); // 定員オーバーエラーが発生している
 
     // 成功した参加者の情報を出力
@@ -161,11 +168,19 @@ test.describe("大量同時参加競合テスト", () => {
         await page.click('button[type="submit"]:has-text("参加申し込みを完了する")');
 
         try {
-          await expect(page.getByText("参加申し込みが完了しました")).toBeVisible({ timeout: 15000 });
+          await expect(page.getByText("参加申し込みが完了しました")).toBeVisible({
+            timeout: 15000,
+          });
           results.push({ success: true });
         } catch {
-          const duplicateErrorVisible = await page.getByText("既に登録されています").isVisible({ timeout: 5000 }).catch(() => false);
-          const capacityErrorVisible = await page.getByText("定員に達しているため").isVisible({ timeout: 5000 }).catch(() => false);
+          const duplicateErrorVisible = await page
+            .getByText("既に登録されています")
+            .isVisible({ timeout: 5000 })
+            .catch(() => false);
+          const capacityErrorVisible = await page
+            .getByText("定員に達しているため")
+            .isVisible({ timeout: 5000 })
+            .catch(() => false);
 
           if (duplicateErrorVisible) {
             results.push({ success: false, error: "duplicate_email" });
@@ -187,12 +202,12 @@ test.describe("大量同時参加競合テスト", () => {
     console.log("重複メールテスト結果:", results);
 
     // 成功は最大1つまで
-    const successfulRequests = results.filter(r => r.success);
+    const successfulRequests = results.filter((r) => r.success);
     expect(successfulRequests.length).toBeLessThanOrEqual(1);
 
     // UNIQUE制約違反または適切なエラーが発生していることを確認
-    const duplicateErrors = results.filter(r => r.error === "duplicate_email");
-    const capacityErrors = results.filter(r => r.error === "capacity_exceeded");
+    const duplicateErrors = results.filter((r) => r.error === "duplicate_email");
+    const capacityErrors = results.filter((r) => r.error === "capacity_exceeded");
 
     // 重複エラーまたは定員エラーが適切に発生していることを確認
     expect(duplicateErrors.length + capacityErrors.length).toBeGreaterThan(0);
@@ -223,7 +238,9 @@ test.describe("大量同時参加競合テスト", () => {
         const responseTime = Date.now() - startTime;
 
         try {
-          await expect(page.getByText("参加申し込みが完了しました")).toBeVisible({ timeout: 20000 });
+          await expect(page.getByText("参加申し込みが完了しました")).toBeVisible({
+            timeout: 20000,
+          });
           results.push({ success: true, responseTime });
         } catch {
           const responseTime = Date.now() - startTime;
@@ -242,15 +259,16 @@ test.describe("大量同時参加競合テスト", () => {
     console.log("高負荷テスト結果:", results);
 
     // パフォーマンス検証
-    const averageResponseTime = results.reduce((sum, r) => sum + r.responseTime, 0) / results.length;
+    const averageResponseTime =
+      results.reduce((sum, r) => sum + r.responseTime, 0) / results.length;
     console.log(`平均レスポンス時間: ${averageResponseTime}ms`);
 
     // レスポンス時間が妥当であることを確認（30秒以内）
-    const slowRequests = results.filter(r => r.responseTime > 30000);
+    const slowRequests = results.filter((r) => r.responseTime > 30000);
     expect(slowRequests.length).toBe(0);
 
     // 成功は最大1つまで
-    const successfulRequests = results.filter(r => r.success);
+    const successfulRequests = results.filter((r) => r.success);
     expect(successfulRequests.length).toBeLessThanOrEqual(1);
 
     // 高負荷でもアプリケーションがクラッシュしていないことを確認

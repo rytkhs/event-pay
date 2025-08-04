@@ -4,24 +4,24 @@ import type { SupabaseClient } from "@supabase/supabase-js";
  * 管理者権限使用の理由を定義するエナム
  */
 export enum AdminReason {
-  USER_CLEANUP = 'user_cleanup',
-  TEST_DATA_SETUP = 'test_data_setup',
-  SYSTEM_MAINTENANCE = 'system_maintenance',
-  EMERGENCY_ACCESS = 'emergency_access',
-  DATA_MIGRATION = 'data_migration',
-  SECURITY_INVESTIGATION = 'security_investigation'
+  USER_CLEANUP = "user_cleanup",
+  TEST_DATA_SETUP = "test_data_setup",
+  SYSTEM_MAINTENANCE = "system_maintenance",
+  EMERGENCY_ACCESS = "emergency_access",
+  DATA_MIGRATION = "data_migration",
+  SECURITY_INVESTIGATION = "security_investigation",
 }
 
 /**
  * ゲストトークンエラーコード
  */
 export enum GuestErrorCode {
-  INVALID_FORMAT = 'INVALID_FORMAT',
-  TOKEN_NOT_FOUND = 'TOKEN_NOT_FOUND',
-  TOKEN_EXPIRED = 'TOKEN_EXPIRED',
-  MODIFICATION_NOT_ALLOWED = 'MODIFICATION_NOT_ALLOWED',
-  EVENT_NOT_FOUND = 'EVENT_NOT_FOUND',
-  RATE_LIMIT_EXCEEDED = 'RATE_LIMIT_EXCEEDED'
+  INVALID_FORMAT = "INVALID_FORMAT",
+  TOKEN_NOT_FOUND = "TOKEN_NOT_FOUND",
+  TOKEN_EXPIRED = "TOKEN_EXPIRED",
+  MODIFICATION_NOT_ALLOWED = "MODIFICATION_NOT_ALLOWED",
+  EVENT_NOT_FOUND = "EVENT_NOT_FOUND",
+  RATE_LIMIT_EXCEEDED = "RATE_LIMIT_EXCEEDED",
 }
 
 /**
@@ -34,7 +34,7 @@ export class GuestTokenError extends Error {
     public context?: Record<string, any>
   ) {
     super(message);
-    this.name = 'GuestTokenError';
+    this.name = "GuestTokenError";
   }
 }
 
@@ -42,10 +42,10 @@ export class GuestTokenError extends Error {
  * 管理者アクセスエラーコード
  */
 export enum AdminAccessErrorCode {
-  UNAUTHORIZED_REASON = 'UNAUTHORIZED_REASON',
-  MISSING_CONTEXT = 'MISSING_CONTEXT',
-  AUDIT_LOG_FAILED = 'AUDIT_LOG_FAILED',
-  EMERGENCY_ACCESS_REQUIRED = 'EMERGENCY_ACCESS_REQUIRED'
+  UNAUTHORIZED_REASON = "UNAUTHORIZED_REASON",
+  MISSING_CONTEXT = "MISSING_CONTEXT",
+  AUDIT_LOG_FAILED = "AUDIT_LOG_FAILED",
+  EMERGENCY_ACCESS_REQUIRED = "EMERGENCY_ACCESS_REQUIRED",
 }
 
 /**
@@ -58,7 +58,7 @@ export class AdminAccessError extends Error {
     public auditContext?: Record<string, unknown>
   ) {
     super(message);
-    this.name = 'AdminAccessError';
+    this.name = "AdminAccessError";
   }
 }
 
@@ -77,10 +77,10 @@ export interface GuestSession {
  * ゲストの権限
  */
 export enum GuestPermission {
-  READ_ATTENDANCE = 'read_attendance',
-  UPDATE_ATTENDANCE = 'update_attendance',
-  READ_EVENT = 'read_event',
-  READ_PAYMENT = 'read_payment'
+  READ_ATTENDANCE = "read_attendance",
+  UPDATE_ATTENDANCE = "update_attendance",
+  READ_EVENT = "read_event",
+  READ_PAYMENT = "read_payment",
 }
 
 /**
@@ -103,7 +103,7 @@ export interface AuditContext {
   ipAddress?: string;
   userAgent?: string;
   accessedTables?: string[];
-  operationType?: 'SELECT' | 'INSERT' | 'UPDATE' | 'DELETE';
+  operationType?: "SELECT" | "INSERT" | "UPDATE" | "DELETE";
   additionalInfo?: Record<string, unknown>;
 }
 
@@ -129,7 +129,11 @@ export interface SecureSupabaseClient {
    * @param context 監査コンテキスト
    * @returns 監査付き管理者クライアント
    */
-  createAuditedAdminClient(reason: AdminReason, context: string, auditContext?: AuditContext): Promise<SupabaseClient>;
+  createAuditedAdminClient(
+    reason: AdminReason,
+    context: string,
+    auditContext?: AuditContext
+  ): Promise<SupabaseClient>;
 
   /**
    * 読み取り専用クライアントを作成

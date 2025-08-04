@@ -109,9 +109,7 @@ const TouchOptimized = forwardRef<
         try {
           onClick();
         } catch (error) {
-          if (process.env.NODE_ENV === "development") {
-            console.error("TouchOptimized onClick error:", error);
-          }
+          // エラーログは本番環境では適切なログシステムを使用
         }
       }
     }, [disabled, isTouchActive, onClick, cleanupTouchState]);
@@ -138,9 +136,7 @@ const TouchOptimized = forwardRef<
             try {
               onClick();
             } catch (error) {
-              if (process.env.NODE_ENV === "development") {
-                console.error("TouchOptimized onClick error:", error);
-              }
+              // エラーログは本番環境では適切なログシステムを使用
             }
           }
         }

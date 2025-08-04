@@ -2,31 +2,31 @@
 
 // 管理者権限使用理由
 export enum AdminReason {
-  USER_CLEANUP = 'user_cleanup',
-  TEST_DATA_SETUP = 'test_data_setup',
-  SYSTEM_MAINTENANCE = 'system_maintenance',
-  EMERGENCY_ACCESS = 'emergency_access',
-  DATA_MIGRATION = 'data_migration',
-  SECURITY_INVESTIGATION = 'security_investigation'
+  USER_CLEANUP = "user_cleanup",
+  TEST_DATA_SETUP = "test_data_setup",
+  SYSTEM_MAINTENANCE = "system_maintenance",
+  EMERGENCY_ACCESS = "emergency_access",
+  DATA_MIGRATION = "data_migration",
+  SECURITY_INVESTIGATION = "security_investigation",
 }
 
 // 疑わしい活動の種類
 export enum SuspiciousActivityType {
-  EMPTY_RESULT_SET = 'EMPTY_RESULT_SET',
-  ADMIN_ACCESS_ATTEMPT = 'ADMIN_ACCESS_ATTEMPT',
-  INVALID_TOKEN_PATTERN = 'INVALID_TOKEN_PATTERN',
-  RATE_LIMIT_EXCEEDED = 'RATE_LIMIT_EXCEEDED',
-  UNAUTHORIZED_RLS_BYPASS = 'UNAUTHORIZED_RLS_BYPASS',
-  BULK_DATA_ACCESS = 'BULK_DATA_ACCESS',
-  UNUSUAL_ACCESS_PATTERN = 'UNUSUAL_ACCESS_PATTERN'
+  EMPTY_RESULT_SET = "EMPTY_RESULT_SET",
+  ADMIN_ACCESS_ATTEMPT = "ADMIN_ACCESS_ATTEMPT",
+  INVALID_TOKEN_PATTERN = "INVALID_TOKEN_PATTERN",
+  RATE_LIMIT_EXCEEDED = "RATE_LIMIT_EXCEEDED",
+  UNAUTHORIZED_RLS_BYPASS = "UNAUTHORIZED_RLS_BYPASS",
+  BULK_DATA_ACCESS = "BULK_DATA_ACCESS",
+  UNUSUAL_ACCESS_PATTERN = "UNUSUAL_ACCESS_PATTERN",
 }
 
 // セキュリティレベル
 export enum SecuritySeverity {
-  LOW = 'LOW',
-  MEDIUM = 'MEDIUM',
-  HIGH = 'HIGH',
-  CRITICAL = 'CRITICAL'
+  LOW = "LOW",
+  MEDIUM = "MEDIUM",
+  HIGH = "HIGH",
+  CRITICAL = "CRITICAL",
 }
 
 // GuestErrorCode は lib/security/secure-client-factory.types.ts で定義済み
@@ -56,7 +56,7 @@ export interface GuestAccessAuditLog {
   eventId?: string;
   action: string;
   tableName?: string;
-  operationType?: 'SELECT' | 'INSERT' | 'UPDATE' | 'DELETE';
+  operationType?: "SELECT" | "INSERT" | "UPDATE" | "DELETE";
   success: boolean;
   resultCount?: number;
   ipAddress?: string;
@@ -99,7 +99,7 @@ export interface UnauthorizedAccessContext {
   userContext?: Record<string, any>;
   userId?: string;
   guestTokenHash?: string;
-  detectionMethod: 'EMPTY_RESULT' | 'PERMISSION_CHECK' | 'RATE_LIMIT' | 'RLS_POLICY';
+  detectionMethod: "EMPTY_RESULT" | "PERMISSION_CHECK" | "RATE_LIMIT" | "RLS_POLICY";
   blockedByRls?: boolean;
   ipAddress?: string;
   userAgent?: string;
@@ -148,16 +148,16 @@ export class GuestTokenError extends Error {
     public context?: Record<string, any>
   ) {
     super(message);
-    this.name = 'GuestTokenError';
+    this.name = "GuestTokenError";
   }
 }
 
 // 管理者権限エラー
 export enum AdminAccessErrorCode {
-  UNAUTHORIZED_REASON = 'UNAUTHORIZED_REASON',
-  MISSING_CONTEXT = 'MISSING_CONTEXT',
-  AUDIT_LOG_FAILED = 'AUDIT_LOG_FAILED',
-  EMERGENCY_ACCESS_REQUIRED = 'EMERGENCY_ACCESS_REQUIRED'
+  UNAUTHORIZED_REASON = "UNAUTHORIZED_REASON",
+  MISSING_CONTEXT = "MISSING_CONTEXT",
+  AUDIT_LOG_FAILED = "AUDIT_LOG_FAILED",
+  EMERGENCY_ACCESS_REQUIRED = "EMERGENCY_ACCESS_REQUIRED",
 }
 
 export interface AuditContext {
@@ -174,7 +174,7 @@ export class AdminAccessError extends Error {
     public auditContext?: AuditContext
   ) {
     super(message);
-    this.name = 'AdminAccessError';
+    this.name = "AdminAccessError";
   }
 }
 

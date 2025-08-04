@@ -12,13 +12,13 @@ type EventRow = Database["public"]["Tables"]["events"]["Row"];
 
 type CreateEventResult =
   | {
-    success: true;
-    data: EventRow;
-  }
+      success: true;
+      data: EventRow;
+    }
   | {
-    success: false;
-    error: string;
-  };
+      success: false;
+      error: string;
+    };
 
 type FormDataFields = {
   title: string;
@@ -104,8 +104,6 @@ function extractFormData(formData: FormData): FormDataFields {
   // 共通ユーティリティを使用して型安全なFormData抽出
   return extractEventCreateFormData(formData);
 }
-
-
 
 /**
  * 定員の値を適切に処理する（型が異なる場合対応）

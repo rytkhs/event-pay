@@ -1,6 +1,6 @@
 /**
  * EventPay セキュアSupabaseクライアント - 移行ヘルパー
- * 
+ *
  * 既存のSupabaseクライアント作成を新しいセキュアファクトリーに移行するためのヘルパー関数
  * 段階的な移行を可能にし、後方互換性を保持
  */
@@ -12,7 +12,7 @@ import {
   guestTokenValidator,
   AdminReason,
   AuditContext,
-  ClientCreationOptions
+  ClientCreationOptions,
 } from "@/lib/security";
 
 /**
@@ -118,11 +118,7 @@ export class AdminOperationHelper {
     context: string,
     auditContext?: AuditContext
   ): Promise<SupabaseClient> {
-    return createSecureAdminClient(
-      AdminReason.TEST_DATA_SETUP,
-      context,
-      auditContext
-    );
+    return createSecureAdminClient(AdminReason.TEST_DATA_SETUP, context, auditContext);
   }
 
   /**
@@ -132,11 +128,7 @@ export class AdminOperationHelper {
     context: string,
     auditContext?: AuditContext
   ): Promise<SupabaseClient> {
-    return createSecureAdminClient(
-      AdminReason.USER_CLEANUP,
-      context,
-      auditContext
-    );
+    return createSecureAdminClient(AdminReason.USER_CLEANUP, context, auditContext);
   }
 
   /**
@@ -146,11 +138,7 @@ export class AdminOperationHelper {
     context: string,
     auditContext?: AuditContext
   ): Promise<SupabaseClient> {
-    return createSecureAdminClient(
-      AdminReason.SYSTEM_MAINTENANCE,
-      context,
-      auditContext
-    );
+    return createSecureAdminClient(AdminReason.SYSTEM_MAINTENANCE, context, auditContext);
   }
 
   /**
@@ -160,11 +148,7 @@ export class AdminOperationHelper {
     context: string,
     auditContext?: AuditContext
   ): Promise<SupabaseClient> {
-    return createSecureAdminClient(
-      AdminReason.EMERGENCY_ACCESS,
-      context,
-      auditContext
-    );
+    return createSecureAdminClient(AdminReason.EMERGENCY_ACCESS, context, auditContext);
   }
 
   /**
@@ -174,11 +158,7 @@ export class AdminOperationHelper {
     context: string,
     auditContext?: AuditContext
   ): Promise<SupabaseClient> {
-    return createSecureAdminClient(
-      AdminReason.SECURITY_INVESTIGATION,
-      context,
-      auditContext
-    );
+    return createSecureAdminClient(AdminReason.SECURITY_INVESTIGATION, context, auditContext);
   }
 
   /**
@@ -188,11 +168,7 @@ export class AdminOperationHelper {
     context: string,
     auditContext?: AuditContext
   ): Promise<SupabaseClient> {
-    return createSecureAdminClient(
-      AdminReason.DATA_MIGRATION,
-      context,
-      auditContext
-    );
+    return createSecureAdminClient(AdminReason.DATA_MIGRATION, context, auditContext);
   }
 }
 
@@ -226,7 +202,7 @@ export class GuestOperationHelper {
     return {
       client,
       isValid: validation.isValid,
-      canModify: validation.canModify
+      canModify: validation.canModify,
     };
   }
 }

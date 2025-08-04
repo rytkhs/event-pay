@@ -1,73 +1,60 @@
 /**
  * EventPay セキュリティ監査システム - 監査コンテキストビルダー
- * 
+ *
  * HTTPリクエストやNext.jsヘッダーから監査コンテキストを作成するヘルパー
  */
 
-import { headers } from 'next/headers';
-import { generateSecureUuid } from './crypto';
-import { AuditContextBuilder, AuditContext } from './security-auditor.interface';
+import { headers } from "next/headers";
+import { generateSecureUuid } from "./crypto";
+import { AuditContextBuilder, AuditContext } from "./security-auditor.interface";
 
 /**
  * 監査コンテキスト作成ヘルパーの実装
  */
 export class AuditContextBuilderImpl implements AuditContextBuilder {
-
   /**
    * HTTPリクエストから監査コンテキストを作成
    */
-  fromRequest(
-    request: Request,
-    userId?: string,
-    guestToken?: string
-  ): AuditContext {
+  fromRequest(request: Request, userId?: string, guestToken?: string): AuditContext {
     const url = new URL(request.url);
 
     return {
       sessionId: this.generateSessionId(),
       ipAddress: this.extractIpAddress(request),
-      userAgent: request.headers.get('user-agent') || undefined,
+      userAgent: request.headers.get("user-agent") || undefined,
       requestPath: url.pathname,
       requestMethod: request.method,
       userId,
       guestToken,
-      operationStartTime: new Date()
+      operationStartTime: new Date(),
     };
   }
 
   /**
    * Next.jsのヘッダーから監査コンテキストを作成
    */
-  fromNextHeaders(
-    headersList: Headers,
-    userId?: string,
-    guestToken?: string
-  ): AuditContext {
+  fromNextHeaders(headersList: Headers, userId?: string, guestToken?: string): AuditContext {
     return {
       sessionId: this.generateSessionId(),
       ipAddress: this.extractIpFromNextHeaders(headersList),
-      userAgent: headersList.get('user-agent') || undefined,
-      requestPath: headersList.get('x-pathname') || undefined,
-      requestMethod: headersList.get('x-method') || undefined,
+      userAgent: headersList.get("user-agent") || undefined,
+      requestPath: headersList.get("x-pathname") || undefined,
+      requestMethod: headersList.get("x-method") || undefined,
       userId,
       guestToken,
-      operationStartTime: new Date()
+      operationStartTime: new Date(),
     };
   }
 
   /**
    * 基本的な監査コンテキストを作成
    */
-  create(
-    sessionId: string,
-    userId?: string,
-    guestToken?: string
-  ): AuditContext {
+  create(sessionId: string, userId?: string, guestToken?: string): AuditContext {
     return {
       sessionId,
       userId,
       guestToken,
-      operationStartTime: new Date()
+      operationStartTime: new Date(),
     };
   }
 
@@ -88,11 +75,7 @@ export class AuditContextBuilderImpl implements AuditContextBuilder {
   /**
    * API Routeから監査コンテキストを作成
    */
-  fromApiRoute(
-    request: Request,
-    userId?: string,
-    guestToken?: string
-  ): AuditContext {
+  fromApiRoute(request: Request, userId?: string, guestToken?: string): AuditContext {
     return this.fromRequest(request, userId, guestToken);
   }
 
@@ -105,7 +88,7 @@ export class AuditContextBuilderImpl implements AuditContextBuilder {
     return {
       ...baseContext,
       ...additionalContext,
-      guestToken // 確実にゲストトークンを設定
+      guestToken, // 確実にゲストトークンを設定
     };
   }
 
@@ -118,7 +101,7 @@ export class AuditContextBuilderImpl implements AuditContextBuilder {
     return {
       ...baseContext,
       ...additionalContext,
-      userId // 確実にユーザーIDを設定
+      userId, // 確実にユーザーIDを設定
     };
   }
 
@@ -132,40 +115,40 @@ export class AuditContextBuilderImpl implements AuditContextBuilder {
 
   private extractIpAddress(request: Request): string | undefined {
     // Vercelやその他のプラットフォームでのIP取得
-    const forwardedFor = request.headers.get('x-forwarded-for');
+    const forwardedFor = request.headers.get("x-forwarded-for");
     if (forwardedFor) {
-      return forwardedFor.split(',')[0].trim();
+      return forwardedFor.split(",")[0].trim();
     }
 
-    const realIp = request.headers.get('x-real-ip');
+    const realIp = request.headers.get("x-real-ip");
     if (realIp) {
       return realIp;
     }
 
-    const cfConnectingIp = request.headers.get('cf-connecting-ip');
+    const cfConnectingIp = request.headers.get("cf-connecting-ip");
     if (cfConnectingIp) {
       return cfConnectingIp;
     }
 
     // フォールバック
-    return request.headers.get('x-forwarded-for') ||
-      request.headers.get('remote-addr') ||
-      undefined;
+    return (
+      request.headers.get("x-forwarded-for") || request.headers.get("remote-addr") || undefined
+    );
   }
 
   private extractIpFromNextHeaders(headersList: Headers): string | undefined {
     // Next.jsヘッダーからIP取得
-    const forwardedFor = headersList.get('x-forwarded-for');
+    const forwardedFor = headersList.get("x-forwarded-for");
     if (forwardedFor) {
-      return forwardedFor.split(',')[0].trim();
+      return forwardedFor.split(",")[0].trim();
     }
 
-    const realIp = headersList.get('x-real-ip');
+    const realIp = headersList.get("x-real-ip");
     if (realIp) {
       return realIp;
     }
 
-    const cfConnectingIp = headersList.get('cf-connecting-ip');
+    const cfConnectingIp = headersList.get("cf-connecting-ip");
     if (cfConnectingIp) {
       return cfConnectingIp;
     }

@@ -53,8 +53,14 @@ export interface InviteValidationResult {
   event?: EventDetail;
   canRegister: boolean;
   errorMessage?: string;
-  errorCode?: 'INVALID_TOKEN' | 'TOKEN_NOT_FOUND' | 'EVENT_CANCELLED' | 'EVENT_ENDED' |
-  'REGISTRATION_DEADLINE_PASSED' | 'CAPACITY_REACHED' | 'UNKNOWN_ERROR';
+  errorCode?:
+    | "INVALID_TOKEN"
+    | "TOKEN_NOT_FOUND"
+    | "EVENT_CANCELLED"
+    | "EVENT_ENDED"
+    | "REGISTRATION_DEADLINE_PASSED"
+    | "CAPACITY_REACHED"
+    | "UNKNOWN_ERROR";
 }
 
 /**
