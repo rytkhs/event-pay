@@ -59,7 +59,7 @@ const jestConfig = {
 
   // 変換を無視するパターン
   transformIgnorePatterns: [
-    "node_modules/(?!(@supabase|@types|@babel|@radix-ui|@hookform|@stripe|@upstash|@resend))",
+    "node_modules/(?!(@supabase|@types|@babel|@radix-ui|@hookform|@stripe|@upstash|@resend|uuid))",
   ],
 
   // カバレッジ設定（開発時は無効化でパフォーマンス向上）
