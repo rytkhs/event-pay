@@ -4,19 +4,14 @@
  * データベースアクセスの監査とセキュリティ違反の検知に使用される型定義
  */
 
+import { AdminReason } from './secure-client-factory.types';
+
 // ====================================================================
 // 1. 基本型定義
 // ====================================================================
 
-/** 管理者権限使用理由 */
-export enum AdminReason {
-  USER_CLEANUP = 'user_cleanup',
-  TEST_DATA_SETUP = 'test_data_setup',
-  SYSTEM_MAINTENANCE = 'system_maintenance',
-  EMERGENCY_ACCESS = 'emergency_access',
-  DATA_MIGRATION = 'data_migration',
-  SECURITY_INVESTIGATION = 'security_investigation'
-}
+// AdminReason は lib/security/secure-client-factory.types.ts で定義済み
+export { AdminReason };
 
 /** 疑わしい活動の種類 */
 export enum SuspiciousActivityType {
