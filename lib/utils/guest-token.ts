@@ -73,10 +73,10 @@ export async function validateGuestToken(guestToken: string): Promise<GuestToken
       };
     }
 
-    // トークンの形式チェック（32文字のBase64エンコード形式のみ）
-    const isBase64Format = /^[a-zA-Z0-9_-]{32}$/.test(guestToken);
+    // トークンの形式チェック（プレフィックス付き36文字形式）
+    const isValidFormat = /^gst_[a-zA-Z0-9_-]{32}$/.test(guestToken);
 
-    if (guestToken.length !== 32 || !isBase64Format) {
+    if (guestToken.length !== 36 || !isValidFormat) {
       return {
         isValid: false,
         errorMessage: "無効なゲストトークンの形式です",
@@ -223,12 +223,13 @@ function checkCanModifyAttendance(event: GuestAttendanceData["event"]): boolean 
  * ゲストトークンを生成する
  *
  * 24バイト（192ビット）のランダムデータをURLセーフなBase64でエンコードし、
- * 32文字の一意なトークンを生成する
+ * プレフィックス付きの36文字の一意なトークンを生成する
  * Edge runtimeとNode.js両方で動作
  *
- * @returns 32文字のURL安全なゲストトークン (Base64形式: [a-zA-Z0-9_-]{32})
+ * @returns 36文字のURL安全なゲストトークン (形式: gst_[32文字])
  */
 export function generateGuestToken(): string {
   const bytes = generateRandomBytes(24);
-  return toBase64UrlSafe(bytes);
+  const baseToken = toBase64UrlSafe(bytes);
+  return `gst_${baseToken}`;
 }

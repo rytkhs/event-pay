@@ -3,21 +3,22 @@ import { generateRandomBytes, toBase64UrlSafe } from "@/lib/security/crypto";
 import { createClient } from "@/lib/supabase/server";
 import type { Database } from "@/types/database";
 
-// 招待トークンの検証スキーマ
+// 招待トークンの検証スキーマ（プレフィックス付き）
 export const inviteTokenSchema = z
   .string()
-  .length(32, "無効な招待トークンの形式です")
-  .regex(/^[a-zA-Z0-9_-]+$/, "無効な招待トークンの文字です");
+  .length(36, "無効な招待トークンの形式です")
+  .regex(/^inv_[a-zA-Z0-9_-]{32}$/, "無効な招待トークンの形式です");
 
 /**
  * 暗号学的に安全な招待トークンを生成します。
- * 24バイトのランダムデータをURLセーフなBase64でエンコードします（32文字）。
+ * 24バイトのランダムデータをURLセーフなBase64でエンコードし、プレフィックスを追加します（36文字）。
  * Edge runtimeとNode.js両方で動作。
- * @returns {string} 生成された招待トークン
+ * @returns {string} 生成された招待トークン（形式: inv_[32文字]）
  */
 export function generateInviteToken(): string {
   const bytes = generateRandomBytes(24);
-  return toBase64UrlSafe(bytes);
+  const baseToken = toBase64UrlSafe(bytes);
+  return `inv_${baseToken}`;
 }
 
 /**

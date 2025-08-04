@@ -1,6 +1,6 @@
 /**
  * EventPay セキュアSupabaseクライアントファクトリー実装
- * 
+ *
  * 最小権限原則に基づいて設計されたSupabaseクライアントファクトリー
  * 管理者権限の使用を監査し、ゲストトークンによる透過的なアクセス制御を提供
  */
@@ -113,7 +113,7 @@ export class SecureSupabaseClientFactory implements ISecureSupabaseClientFactory
     if (!validateGuestTokenFormat(token)) {
       throw new GuestTokenError(
         GuestErrorCode.INVALID_FORMAT,
-        'Invalid guest token format. Token must be 32 characters long and contain only alphanumeric characters.',
+        'Invalid guest token format. Token must be 36 characters long with gst_ prefix.',
         { tokenLength: token.length }
       );
     }

@@ -9,7 +9,7 @@ describe("参加登録サーバーアクション統合テスト", () => {
 
   it("バリデーションエラーが正しく処理される", async () => {
     const formData = new FormData();
-    formData.append("inviteToken", "invalid-short-token"); // 32文字未満の無効なトークン
+    formData.append("inviteToken", "invalid-short-token"); // 36文字未満の無効なトークン
     formData.append("nickname", "テストユーザー");
     formData.append("email", "test@example.com");
     formData.append("attendanceStatus", "attending");
