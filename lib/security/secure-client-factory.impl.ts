@@ -1,0 +1,487 @@
+/**
+ * EventPay セキュアSupabaseクライアントファクトリー実装
+ * 
+ * 最小権限原則に基づいて設計されたSupabaseクライアントファクトリー
+ * 管理者権限の使用を監査し、ゲストトークンによる透過的なアクセス制御を提供
+ */
+
+import { createClient } from "@supabase/supabase-js";
+import { createServerClient, createBrowserClient } from "@supabase/ssr";
+import type { SupabaseClient, CookieOptions } from "@supabase/supabase-js";
+import type { NextRequest, NextResponse } from "next/server";
+import { cookies } from "next/headers";
+import { createHash } from "crypto";
+
+import {
+  ISecureSupabaseClientFactory,
+  IGuestTokenValidator,
+  ISecurityAuditor
+} from "./secure-client-factory.interface";
+import {
+  AdminReason,
+  GuestErrorCode,
+  GuestTokenError,
+  AdminAccessError,
+  AdminAccessErrorCode,
+  AuditContext,
+  ClientCreationOptions,
+  GuestValidationResult,
+  GuestSession,
+  GuestPermission
+} from "./secure-client-factory.types";
+import { SecurityAuditorImpl } from "./security-auditor.impl";
+import { COOKIE_CONFIG, AUTH_CONFIG, getCookieConfig } from "@/config/security";
+
+/**
+ * セキュアSupabaseクライアントファクトリーの実装
+ */
+export class SecureSupabaseClientFactory implements ISecureSupabaseClientFactory {
+  private static instance: SecureSupabaseClientFactory;
+  private readonly supabaseUrl: string;
+  private readonly anonKey: string;
+  private readonly serviceRoleKey: string;
+  private readonly auditor: ISecurityAuditor;
+
+  private constructor() {
+    this.supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+    this.anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+    this.serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+
+    if (!this.supabaseUrl || !this.anonKey || !this.serviceRoleKey) {
+      throw new Error("Supabase environment variables are not configured");
+    }
+
+    this.auditor = new SecurityAuditorImpl();
+  }
+
+  /**
+   * シングルトンインスタンスを取得
+   */
+  public static getInstance(): SecureSupabaseClientFactory {
+    if (!SecureSupabaseClientFactory.instance) {
+      SecureSupabaseClientFactory.instance = new SecureSupabaseClientFactory();
+    }
+    return SecureSupabaseClientFactory.instance;
+  }
+
+  /**
+   * 通常の認証済みクライアントを作成
+   */
+  createAuthenticatedClient(options?: ClientCreationOptions): SupabaseClient {
+    const cookieStore = cookies();
+
+    return createServerClient(this.supabaseUrl, this.anonKey, {
+      cookies: {
+        get(name: string) {
+          return cookieStore.get(name)?.value;
+        },
+        set(name: string, value: string, cookieOptions: CookieOptions) {
+          cookieStore.set(name, value, {
+            ...cookieOptions,
+            ...COOKIE_CONFIG,
+            maxAge:
+              name === AUTH_CONFIG.cookieNames.session
+                ? AUTH_CONFIG.session.maxAge
+                : cookieOptions.maxAge != null
+                  ? cookieOptions.maxAge
+                  : undefined,
+          });
+        },
+        remove(name: string) {
+          cookieStore.delete(name);
+        },
+      },
+      auth: {
+        persistSession: options?.persistSession ?? true,
+        autoRefreshToken: options?.autoRefreshToken ?? true,
+      },
+      global: {
+        headers: options?.headers || {},
+      },
+    });
+  }
+
+  /**
+   * ゲストトークン認証クライアントを作成
+   * X-Guest-Tokenヘッダーを自動設定し、RLSポリシーベースのアクセス制御を実現
+   */
+  createGuestClient(token: string, options?: ClientCreationOptions): SupabaseClient {
+    // トークンの基本フォーマット検証
+    if (!this.validateTokenFormat(token)) {
+      throw new GuestTokenError(
+        GuestErrorCode.INVALID_FORMAT,
+        'Invalid guest token format. Token must be 32 characters long and contain only alphanumeric characters.',
+        { tokenLength: token.length }
+      );
+    }
+
+    return createClient(this.supabaseUrl, this.anonKey, {
+      auth: {
+        persistSession: options?.persistSession ?? false, // ゲストセッションは永続化しない
+        autoRefreshToken: options?.autoRefreshToken ?? false,
+      },
+      global: {
+        headers: {
+          'X-Guest-Token': token, // カスタムヘッダーでトークンを自動設定
+          ...options?.headers,
+        },
+      },
+    });
+  }
+
+  /**
+   * 監査付き管理者クライアントを作成
+   * 管理者権限の使用を記録し、適切な理由と共に監査ログに記録
+   */
+  async createAuditedAdminClient(
+    reason: AdminReason,
+    context: string,
+    auditContext?: AuditContext,
+    options?: ClientCreationOptions
+  ): Promise<SupabaseClient> {
+    // 理由の妥当性をチェック
+    if (!Object.values(AdminReason).includes(reason)) {
+      throw new AdminAccessError(
+        AdminAccessErrorCode.UNAUTHORIZED_REASON,
+        `Invalid admin reason: ${reason}`,
+        auditContext
+      );
+    }
+
+    // コンテキストが提供されているかチェック
+    if (!context || context.trim().length === 0) {
+      throw new AdminAccessError(
+        AdminAccessErrorCode.MISSING_CONTEXT,
+        'Admin access context is required',
+        auditContext
+      );
+    }
+
+    // 監査ログを記録
+    try {
+      const fullAuditContext: AuditContext = {
+        userId: auditContext?.userId,
+        ipAddress: auditContext?.ipAddress,
+        userAgent: auditContext?.userAgent,
+        accessedTables: auditContext?.accessedTables,
+        operationType: auditContext?.operationType,
+        additionalInfo: {
+          reason,
+          context,
+          timestamp: new Date().toISOString(),
+          ...auditContext?.additionalInfo,
+        },
+      };
+
+      await this.auditor.logAdminAccess(reason, context, fullAuditContext);
+    } catch (error) {
+      throw new AdminAccessError(
+        AdminAccessErrorCode.AUDIT_LOG_FAILED,
+        `Failed to log admin access: ${error}`,
+        auditContext
+      );
+    }
+
+    // 管理者クライアントを作成
+    return createClient(this.supabaseUrl, this.serviceRoleKey, {
+      auth: {
+        autoRefreshToken: options?.autoRefreshToken ?? false,
+        persistSession: options?.persistSession ?? false,
+      },
+      global: {
+        headers: {
+          'X-Admin-Reason': reason,
+          'X-Admin-Context': context,
+          'X-Admin-User-Id': auditContext?.userId || 'unknown',
+          ...options?.headers,
+        },
+      },
+    });
+  }
+
+  /**
+   * 読み取り専用クライアントを作成
+   */
+  createReadOnlyClient(options?: ClientCreationOptions): SupabaseClient {
+    return createClient(this.supabaseUrl, this.anonKey, {
+      auth: {
+        persistSession: options?.persistSession ?? false,
+        autoRefreshToken: options?.autoRefreshToken ?? false,
+      },
+      global: {
+        headers: {
+          'X-Read-Only': 'true',
+          ...options?.headers,
+        },
+      },
+    });
+  }
+
+  /**
+   * ミドルウェア用クライアントを作成
+   */
+  createMiddlewareClient(
+    request: NextRequest,
+    response: NextResponse,
+    options?: ClientCreationOptions
+  ): SupabaseClient {
+    // HTTPS接続を動的に検出
+    const isHttps =
+      request.url.startsWith("https://") ||
+      request.headers.get("x-forwarded-proto") === "https";
+
+    const cookieConfig = getCookieConfig(isHttps);
+
+    return createServerClient(this.supabaseUrl, this.anonKey, {
+      cookies: {
+        get(name: string) {
+          return request.cookies.get(name)?.value;
+        },
+        set(name: string, value: string, cookieOptions: CookieOptions) {
+          response.cookies.set(name, value, {
+            ...cookieOptions,
+            ...cookieConfig,
+          });
+        },
+        remove(name: string, cookieOptions: CookieOptions) {
+          response.cookies.delete({ name, ...cookieOptions });
+        },
+      },
+      auth: {
+        persistSession: options?.persistSession ?? true,
+        autoRefreshToken: options?.autoRefreshToken ?? true,
+      },
+      global: {
+        headers: {
+          'X-Middleware-Client': 'true',
+          ...options?.headers,
+        },
+      },
+    });
+  }
+
+  /**
+   * ブラウザ用クライアントを作成
+   */
+  createBrowserClient(options?: ClientCreationOptions): SupabaseClient {
+    return createBrowserClient(this.supabaseUrl, this.anonKey, {
+      auth: {
+        persistSession: options?.persistSession ?? true,
+        autoRefreshToken: options?.autoRefreshToken ?? true,
+      },
+      global: {
+        headers: {
+          'X-Browser-Client': 'true',
+          ...options?.headers,
+        },
+      },
+    });
+  }
+
+  /**
+   * トークンの基本フォーマットを検証
+   */
+  private validateTokenFormat(token: string): boolean {
+    // 32文字の英数字であることを確認
+    return /^[a-zA-Z0-9]{32}$/.test(token);
+  }
+}
+
+/**
+ * RLSポリシーベースのゲストトークンバリデーター実装
+ */
+export class RLSBasedGuestValidator implements IGuestTokenValidator {
+  private readonly clientFactory: SecureSupabaseClientFactory;
+  private readonly auditor: ISecurityAuditor;
+
+  constructor() {
+    this.clientFactory = SecureSupabaseClientFactory.getInstance();
+    this.auditor = new SecurityAuditorImpl();
+  }
+
+  /**
+   * ゲストトークンを検証
+   * RLSポリシーを使用してトークンの有効性を確認
+   */
+  async validateToken(token: string): Promise<GuestValidationResult> {
+    // 基本フォーマット検証
+    if (!this.validateTokenFormat(token)) {
+      await this.auditor.logGuestAccess(
+        token,
+        'VALIDATE_TOKEN',
+        {},
+        false,
+        { errorCode: GuestErrorCode.INVALID_FORMAT }
+      );
+
+      return {
+        isValid: false,
+        errorCode: GuestErrorCode.INVALID_FORMAT,
+        canModify: false,
+      };
+    }
+
+    try {
+      // ゲストクライアントを作成（X-Guest-Tokenヘッダー自動設定）
+      const guestClient = this.clientFactory.createGuestClient(token);
+
+      // RLSポリシーにより、該当するattendanceのみ取得される
+      const { data: attendance, error } = await guestClient
+        .from('attendances')
+        .select(`
+          id,
+          event_id,
+          status,
+          event:events (
+            id,
+            date,
+            registration_deadline,
+            status
+          )
+        `)
+        .single(); // トークンが有効なら必ず1件のみ取得される
+
+      if (error || !attendance) {
+        await this.auditor.logGuestAccess(
+          token,
+          'VALIDATE_TOKEN',
+          {},
+          false,
+          {
+            errorCode: GuestErrorCode.TOKEN_NOT_FOUND,
+            errorMessage: error?.message
+          }
+        );
+
+        return {
+          isValid: false,
+          errorCode: GuestErrorCode.TOKEN_NOT_FOUND,
+          canModify: false,
+        };
+      }
+
+      // 変更可能性をチェック
+      const canModify = this.checkCanModify(attendance.event);
+
+      // 成功をログに記録
+      await this.auditor.logGuestAccess(
+        token,
+        'VALIDATE_TOKEN',
+        {},
+        true,
+        {
+          attendanceId: attendance.id,
+          eventId: attendance.event_id,
+          resultCount: 1,
+        }
+      );
+
+      return {
+        isValid: true,
+        attendanceId: attendance.id,
+        eventId: attendance.event_id,
+        canModify,
+      };
+    } catch (error) {
+      // RLSポリシー違反やその他のエラー
+      await this.auditor.logGuestAccess(
+        token,
+        'VALIDATE_TOKEN',
+        {},
+        false,
+        {
+          errorCode: GuestErrorCode.TOKEN_NOT_FOUND,
+          errorMessage: String(error)
+        }
+      );
+
+      return {
+        isValid: false,
+        errorCode: GuestErrorCode.TOKEN_NOT_FOUND,
+        canModify: false,
+      };
+    }
+  }
+
+  /**
+   * ゲストセッションを作成
+   */
+  async createGuestSession(token: string): Promise<GuestSession> {
+    const validationResult = await this.validateToken(token);
+
+    if (!validationResult.isValid || !validationResult.attendanceId || !validationResult.eventId) {
+      throw new GuestTokenError(
+        validationResult.errorCode || GuestErrorCode.TOKEN_NOT_FOUND,
+        'Cannot create session for invalid token'
+      );
+    }
+
+    // セッション有効期限を設定（イベント開始時刻まで、または24時間後のいずれか短い方）
+    const expiresAt = new Date();
+    expiresAt.setHours(expiresAt.getHours() + 24); // デフォルト24時間
+
+    // 基本的な権限を設定
+    const permissions: GuestPermission[] = [
+      GuestPermission.READ_ATTENDANCE,
+      GuestPermission.READ_EVENT,
+      GuestPermission.READ_PAYMENT,
+    ];
+
+    if (validationResult.canModify) {
+      permissions.push(GuestPermission.UPDATE_ATTENDANCE);
+    }
+
+    return {
+      token,
+      attendanceId: validationResult.attendanceId,
+      eventId: validationResult.eventId,
+      expiresAt,
+      permissions,
+    };
+  }
+
+  /**
+   * 変更権限をチェック
+   */
+  async checkModificationPermissions(token: string): Promise<boolean> {
+    const validationResult = await this.validateToken(token);
+    return validationResult.canModify;
+  }
+
+  /**
+   * トークンの基本フォーマットを検証
+   */
+  validateTokenFormat(token: string): boolean {
+    return /^[a-zA-Z0-9]{32}$/.test(token);
+  }
+
+  /**
+   * イベント情報から変更可能性を判定
+   */
+  private checkCanModify(event: unknown): boolean {
+    const now = new Date();
+    const eventDate = new Date(event.date);
+    const registrationDeadline = event.registration_deadline
+      ? new Date(event.registration_deadline)
+      : null;
+
+    // イベント開始前かつ登録締切前
+    return eventDate > now &&
+      (registrationDeadline === null || registrationDeadline > now) &&
+      event.status === 'active'; // イベントがアクティブ状態
+  }
+}
+
+/**
+ * セキュアクライアントファクトリーのシングルトンインスタンスを取得
+ */
+export function getSecureClientFactory(): SecureSupabaseClientFactory {
+  return SecureSupabaseClientFactory.getInstance();
+}
+
+/**
+ * ゲストトークンバリデーターのインスタンスを取得
+ */
+export function getGuestTokenValidator(): IGuestTokenValidator {
+  return new RLSBasedGuestValidator();
+}
