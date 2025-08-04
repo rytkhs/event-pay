@@ -6,7 +6,7 @@
 -- ====================================================================
 
 -- ゲストトークン取得のヘルパー関数（複数の方法をフォールバック）
-CREATE OR REPLACE FUNCTION get_guest_token() 
+CREATE OR REPLACE FUNCTION public.get_guest_token() 
 RETURNS TEXT 
 LANGUAGE plpgsql 
 SECURITY DEFINER
@@ -28,7 +28,7 @@ BEGIN
 
   -- 2. カスタムヘッダーから取得（現在の実装）
   BEGIN
-    SELECT current_setting('request.headers.guest_token', true) INTO token;
+    SELECT current_setting('request.headers.x-guest-token', true) INTO token;
     IF token IS NOT NULL AND token != '' THEN
       RETURN token;
     END IF;
@@ -65,10 +65,10 @@ END;
 $$;
 
 -- 関数の実行権限を設定
-GRANT EXECUTE ON FUNCTION get_guest_token() TO anon, authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.get_guest_token() TO anon, authenticated, service_role;
 
 -- テスト用のヘルパー関数：ゲストトークンを設定
-CREATE OR REPLACE FUNCTION set_test_guest_token(token TEXT)
+CREATE OR REPLACE FUNCTION public.set_test_guest_token(token TEXT)
 RETURNS VOID
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -80,10 +80,10 @@ END;
 $$;
 
 -- テスト用関数の実行権限を設定
-GRANT EXECUTE ON FUNCTION set_test_guest_token(TEXT) TO anon, authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.set_test_guest_token(TEXT) TO anon, authenticated, service_role;
 
 -- テスト用のヘルパー関数：ゲストトークンをクリア
-CREATE OR REPLACE FUNCTION clear_test_guest_token()
+CREATE OR REPLACE FUNCTION public.clear_test_guest_token()
 RETURNS VOID
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -95,10 +95,10 @@ END;
 $$;
 
 -- テスト用関数の実行権限を設定
-GRANT EXECUTE ON FUNCTION clear_test_guest_token() TO anon, authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.clear_test_guest_token() TO anon, authenticated, service_role;
 
 -- 関数にコメントを追加
-COMMENT ON FUNCTION get_guest_token() IS 
+COMMENT ON FUNCTION public.get_guest_token() IS 
 'ゲストトークンを複数の方法（JWTクレーム、ヘッダー、設定）から取得するヘルパー関数。フォールバック機能付き。';
 
 -- ====================================================================
@@ -119,7 +119,7 @@ FOR SELECT
 TO anon, authenticated 
 USING (
   guest_token IS NOT NULL 
-  AND guest_token = get_guest_token()
+  AND guest_token = public.get_guest_token()
 );
 
 -- ゲストトークンによる更新アクセス（期限内のみ）
@@ -129,7 +129,7 @@ FOR UPDATE
 TO anon, authenticated 
 USING (
   guest_token IS NOT NULL 
-  AND guest_token = get_guest_token()
+  AND guest_token = public.get_guest_token()
   AND EXISTS (
     SELECT 1 FROM public.events e 
     WHERE e.id = attendances.event_id 
@@ -140,7 +140,7 @@ USING (
 WITH CHECK (
   -- 更新時も同じ条件をチェック
   guest_token IS NOT NULL 
-  AND guest_token = get_guest_token()
+  AND guest_token = public.get_guest_token()
   AND EXISTS (
     SELECT 1 FROM public.events e 
     WHERE e.id = attendances.event_id 
@@ -184,7 +184,7 @@ USING (
     SELECT 1 FROM public.attendances a 
     WHERE a.event_id = events.id 
     AND a.guest_token IS NOT NULL
-    AND a.guest_token = get_guest_token()
+    AND a.guest_token = public.get_guest_token()
   )
 );
 
@@ -202,7 +202,7 @@ USING (
     SELECT 1 FROM public.attendances a 
     WHERE a.id = payments.attendance_id 
     AND a.guest_token IS NOT NULL
-    AND a.guest_token = get_guest_token()
+    AND a.guest_token = public.get_guest_token()
   )
 );
 
@@ -217,7 +217,7 @@ USING (
     JOIN public.events e ON a.event_id = e.id
     WHERE a.id = payments.attendance_id 
     AND a.guest_token IS NOT NULL
-    AND a.guest_token = get_guest_token()
+    AND a.guest_token = public.get_guest_token()
     AND (e.payment_deadline IS NULL OR e.payment_deadline > NOW())
     AND e.date > NOW()
   )
@@ -229,7 +229,7 @@ WITH CHECK (
     JOIN public.events e ON a.event_id = e.id
     WHERE a.id = payments.attendance_id 
     AND a.guest_token IS NOT NULL
-    AND a.guest_token = get_guest_token()
+    AND a.guest_token = public.get_guest_token()
     AND (e.payment_deadline IS NULL OR e.payment_deadline > NOW())
     AND e.date > NOW()
   )
@@ -269,7 +269,7 @@ DO $$
 BEGIN
   -- 統計情報の収集を有効化（エラーが発生しても続行）
   BEGIN
-    ALTER FUNCTION get_guest_token() SET track_functions = 'all';
+    ALTER FUNCTION public.get_guest_token() SET track_functions = 'all';
   EXCEPTION
     WHEN OTHERS THEN
       RAISE NOTICE 'Function tracking not available in this PostgreSQL version';
