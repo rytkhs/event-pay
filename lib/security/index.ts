@@ -32,13 +32,13 @@ export {
 /**
  * デフォルトのセキュアクライアントファクトリーインスタンスを取得する関数
  */
-export function getDefaultSecureClientFactory() {
+export function createSecureSupabaseClient() {
   return getSecureClientFactory();
 }
 
 /**
  * デフォルトのゲストトークンバリデーターインスタンスを取得する関数
  */
-export function getDefaultGuestTokenValidator() {
+export function createGuestTokenValidator() {
   return getGuestTokenValidator();
 }
