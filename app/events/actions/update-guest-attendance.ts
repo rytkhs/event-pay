@@ -97,26 +97,26 @@ export async function updateGuestAttendanceAction(
       validatedPaymentMethod = paymentValidation.data;
     }
 
-    // 定員チェック（参加に変更する場合）
-    if (validatedStatus === "attending" && attendance.status !== "attending") {
-      const capacityCheck = await checkEventCapacity(attendance.event.id);
-      if (!capacityCheck.canRegister) {
-        return {
-          success: false,
-          error: "イベントの定員に達しているため参加できません",
-        };
-      }
-    }
-
     const supabase = createClient();
 
-    // データベース更新の実行
-    await supabase.rpc("update_guest_attendance_with_payment", {
+    // データベース更新の実行（定員チェックはRPC関数内で実行される）
+    const { error } = await supabase.rpc("update_guest_attendance_with_payment", {
       p_attendance_id: attendance.id,
       p_status: validatedStatus,
       p_payment_method: validatedPaymentMethod || null,
       p_event_fee: attendance.event.fee,
     });
+
+    if (error) {
+      // RPC関数からのエラーメッセージを適切に処理
+      if (error.message.includes("Event capacity") && error.message.includes("has been reached")) {
+        return {
+          success: false,
+          error: "イベントの定員に達しているため参加できません",
+        };
+      }
+      throw error;
+    }
 
     // 決済が必要かどうかの判定
     const requiresPayment =
@@ -133,77 +133,10 @@ export async function updateGuestAttendanceAction(
         requiresPayment,
       },
     };
-  } catch (error) {
-    if (process.env.NODE_ENV === "development") {
-      console.error("ゲスト参加状況更新エラー:", error);
-    }
+  } catch (_error) {
     return {
       success: false,
       error: "参加状況の更新中にエラーが発生しました",
-    };
-  }
-}
-
-/**
- * イベントの定員状況をチェックする
- * @param eventId イベントID
- * @returns 定員チェック結果
- */
-async function checkEventCapacity(eventId: string): Promise<{
-  canRegister: boolean;
-  currentCount: number;
-  capacity: number | null;
-}> {
-  try {
-    const supabase = createClient();
-
-    // イベント情報と現在の参加者数を取得
-    const { data: event, error: eventError } = await supabase
-      .from("events")
-      .select("capacity")
-      .eq("id", eventId)
-      .single();
-
-    if (eventError || !event) {
-      throw new Error("イベント情報の取得に失敗しました");
-    }
-
-    // 定員が設定されていない場合は常に参加可能
-    if (!event.capacity) {
-      return {
-        canRegister: true,
-        currentCount: 0,
-        capacity: null,
-      };
-    }
-
-    // 現在の参加者数を取得
-    const { count: currentCount, error: countError } = await supabase
-      .from("attendances")
-      .select("*", { count: "exact", head: true })
-      .eq("event_id", eventId)
-      .eq("status", "attending");
-
-    if (countError) {
-      throw new Error("参加者数の取得に失敗しました");
-    }
-
-    const attendingCount = currentCount || 0;
-
-    return {
-      canRegister: attendingCount < event.capacity,
-      currentCount: attendingCount,
-      capacity: event.capacity,
-    };
-  } catch (error) {
-    if (process.env.NODE_ENV === "development") {
-      console.error("定員チェックエラー:", error);
-    }
-    // エラーの場合は安全側に倒して参加不可とする
-    return {
-      canRegister: false,
-      currentCount: 0,
-      capacity: null,
     };
   }
 }

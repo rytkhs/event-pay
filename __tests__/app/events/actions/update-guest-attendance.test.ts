@@ -154,31 +154,16 @@ describe("updateGuestAttendanceAction", () => {
       });
     });
 
-    it("定員に達している場合は参加不可", async () => {
-      // イベント情報の取得をモック
-      const mockSelect = jest.fn().mockReturnValue({
-        eq: jest.fn().mockReturnValue({
-          single: jest.fn().mockResolvedValue({
-            data: { capacity: 2 },
-            error: null,
-          }),
-        }),
+    it("RPC関数が定員エラーを返した場合は適切なエラーメッセージを返す", async () => {
+      // RPC関数が定員エラーを返すようにモック
+      const mockRpc = jest.fn().mockResolvedValue({
+        data: null,
+        error: {
+          message: "Event capacity (2) has been reached. Current attendees: 2",
+        },
       });
 
-      // 参加者数の取得をモック（定員に達している）
-      const mockCount = jest.fn().mockResolvedValue({
-        count: 2,
-        error: null,
-      });
-
-      mockSupabase.from.mockImplementation((table: string) => {
-        if (table === "events") {
-          return { select: mockSelect };
-        } else if (table === "attendances") {
-          return { select: mockCount };
-        }
-        return {};
-      });
+      mockSupabase.rpc = mockRpc;
 
       const formData = new FormData();
       formData.append("guestToken", "test-guest-token-123456789012");
@@ -189,6 +174,12 @@ describe("updateGuestAttendanceAction", () => {
 
       expect(result.success).toBe(false);
       expect(result.error).toBe("イベントの定員に達しているため参加できません");
+      expect(mockRpc).toHaveBeenCalledWith("update_guest_attendance_with_payment", {
+        p_attendance_id: "attendance-123",
+        p_status: "attending",
+        p_payment_method: "stripe",
+        p_event_fee: 1000,
+      });
     });
   });
 

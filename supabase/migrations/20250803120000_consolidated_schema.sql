@@ -261,6 +261,8 @@ DECLARE
   v_event_id UUID;
   v_payment_id UUID;
   v_current_status public.attendance_status_enum;
+  v_capacity INTEGER;
+  v_current_attendees INTEGER;
 BEGIN
   -- 参加記録の存在確認と現在のステータス取得
   SELECT event_id, status INTO v_event_id, v_current_status
@@ -269,6 +271,25 @@ BEGIN
 
   IF NOT FOUND THEN
     RAISE EXCEPTION 'Attendance record not found';
+  END IF;
+
+  -- 定員チェック（attendingに変更する場合のみ）
+  IF p_status = 'attending' AND v_current_status != 'attending' THEN
+    -- イベントの定員を取得（排他ロック付き）
+    SELECT capacity INTO v_capacity FROM public.events WHERE id = v_event_id FOR UPDATE;
+
+    -- 定員が設定されている場合のみチェック
+    IF v_capacity IS NOT NULL THEN
+      -- 現在の参加者数を取得（現在更新中のレコードは除外）
+      SELECT COUNT(*) INTO v_current_attendees
+      FROM public.attendances
+      WHERE event_id = v_event_id AND status = 'attending' AND id != p_attendance_id;
+
+      -- 定員超過チェック
+      IF v_current_attendees >= v_capacity THEN
+        RAISE EXCEPTION 'Event capacity (%) has been reached. Current attendees: %', v_capacity, v_current_attendees;
+      END IF;
+    END IF;
   END IF;
 
   -- 参加ステータスを更新
