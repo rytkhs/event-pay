@@ -26,7 +26,8 @@ export {
   GuestTokenError,
   AdminAccessError,
   AdminAccessErrorCode,
-  GuestPermission
+  GuestPermission,
+  EventInfo
 } from './secure-client-factory.types';
 
 /**

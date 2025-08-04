@@ -168,14 +168,14 @@ export class AdminOperationHelper {
   }
 
   /**
-   * セキュリティ監査用の管理者クライアント
+   * セキュリティ調査用の管理者クライアント
    */
-  static async createSecurityAuditClient(
+  static async createSecurityInvestigationClient(
     context: string,
     auditContext?: AuditContext
   ): Promise<SupabaseClient> {
     return createSecureAdminClient(
-      AdminReason.SECURITY_AUDIT,
+      AdminReason.SECURITY_INVESTIGATION,
       context,
       auditContext
     );

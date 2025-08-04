@@ -184,6 +184,16 @@ export function generateSecureUuid(): string {
 }
 
 /**
+ * ゲストトークンの基本フォーマットを検証
+ * @param token 検証するトークン
+ * @returns フォーマットが有効かどうか
+ */
+export function validateGuestTokenFormat(token: string): boolean {
+  // 32文字の英数字（Base64URL安全文字）であることを確認
+  return /^[a-zA-Z0-9_-]{32}$/.test(token);
+}
+
+/**
  * テスト用のヘルパー関数
  */
 export const __testing__ = {

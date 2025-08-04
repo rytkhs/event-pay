@@ -81,7 +81,7 @@ describe('セキュアクライアントファクトリー統合テスト', () =
       expect(AdminReason.SYSTEM_MAINTENANCE).toBe('system_maintenance');
       expect(AdminReason.EMERGENCY_ACCESS).toBe('emergency_access');
       expect(AdminReason.DATA_MIGRATION).toBe('data_migration');
-      expect(AdminReason.SECURITY_AUDIT).toBe('security_audit');
+      expect(AdminReason.SECURITY_INVESTIGATION).toBe('security_investigation');
     });
   });
 
