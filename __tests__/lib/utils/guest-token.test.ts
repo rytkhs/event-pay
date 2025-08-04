@@ -62,7 +62,7 @@ describe("validateGuestToken", () => {
       expect(result.canModify).toBe(false);
     });
 
-    it("32文字でないトークンは無効", async () => {
+    it("36文字でないトークンまたはプレフィックスなしは無効", async () => {
       const result = await validateGuestToken("short-token");
 
       expect(result.isValid).toBe(false);
@@ -71,7 +71,7 @@ describe("validateGuestToken", () => {
     });
 
     it("無効な文字を含むトークンは無効", async () => {
-      const result = await validateGuestToken("invalid@token#with$special%chars");
+      const result = await validateGuestToken("gst_invalid@token#with$special%");
 
       expect(result.isValid).toBe(false);
       expect(result.errorMessage).toBe("無効なゲストトークンの形式です");
@@ -298,14 +298,15 @@ describe("validateGuestToken", () => {
 });
 
 describe("generateGuestToken", () => {
-  it("32文字のトークンが生成される", () => {
+  it("36文字のgst_プレフィックス付きトークンが生成される", () => {
     const token = generateGuestToken();
-    expect(token).toHaveLength(32);
+    expect(token).toHaveLength(36);
+    expect(token).toMatch(/^gst_[a-zA-Z0-9_-]{32}$/);
   });
 
   it("URL安全な文字のみが使用される", () => {
     const token = generateGuestToken();
-    expect(token).toMatch(/^[a-zA-Z0-9_-]+$/);
+    expect(token).toMatch(/^gst_[a-zA-Z0-9_-]{32}$/);
   });
 
   it("毎回異なるトークンが生成される", () => {

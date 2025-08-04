@@ -240,7 +240,7 @@ describe("参加登録セキュリティ対策統合テスト", () => {
   describe("バリデーションエラー", () => {
     it("不正な形式の入力を拒否する", async () => {
       const invalidData = {
-        inviteToken: "short", // 32文字未満
+        inviteToken: "short", // 36文字未満
         nickname: "", // 空文字
         email: "invalid-email", // 無効なメール形式
         attendanceStatus: "invalid_status", // 無効なステータス
