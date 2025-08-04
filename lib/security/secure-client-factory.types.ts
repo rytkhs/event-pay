@@ -55,7 +55,7 @@ export class AdminAccessError extends Error {
   constructor(
     public code: AdminAccessErrorCode,
     message: string,
-    public auditContext?: Record<string, any>
+    public auditContext?: Record<string, unknown>
   ) {
     super(message);
     this.name = 'AdminAccessError';
@@ -104,7 +104,7 @@ export interface AuditContext {
   userAgent?: string;
   accessedTables?: string[];
   operationType?: 'SELECT' | 'INSERT' | 'UPDATE' | 'DELETE';
-  additionalInfo?: Record<string, any>;
+  additionalInfo?: Record<string, unknown>;
 }
 
 /**
@@ -193,4 +193,14 @@ export interface ClientCreationOptions {
    * 監査情報
    */
   auditInfo?: AuditContext;
+}
+
+/**
+ * イベント情報の型定義（Supabaseから取得される形式）
+ */
+export interface EventInfo {
+  id: string;
+  date: string; // ISO 8601 文字列
+  registration_deadline?: string | null; // ISO 8601 文字列またはnull
+  status: string;
 }

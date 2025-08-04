@@ -11,6 +11,7 @@ import type { SupabaseClient, CookieOptions } from "@supabase/supabase-js";
 import type { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { createHash } from "crypto";
+import { validateGuestTokenFormat } from "./crypto";
 
 import {
   ISecureSupabaseClientFactory,
@@ -27,7 +28,8 @@ import {
   ClientCreationOptions,
   GuestValidationResult,
   GuestSession,
-  GuestPermission
+  GuestPermission,
+  EventInfo
 } from "./secure-client-factory.types";
 import { SecurityAuditorImpl } from "./security-auditor.impl";
 import { COOKIE_CONFIG, AUTH_CONFIG, getCookieConfig } from "@/config/security";
@@ -104,10 +106,11 @@ export class SecureSupabaseClientFactory implements ISecureSupabaseClientFactory
   /**
    * ゲストトークン認証クライアントを作成
    * X-Guest-Tokenヘッダーを自動設定し、RLSポリシーベースのアクセス制御を実現
+   * SSR環境でも安全に動作するよう環境を考慮
    */
   createGuestClient(token: string, options?: ClientCreationOptions): SupabaseClient {
     // トークンの基本フォーマット検証
-    if (!this.validateTokenFormat(token)) {
+    if (!validateGuestTokenFormat(token)) {
       throw new GuestTokenError(
         GuestErrorCode.INVALID_FORMAT,
         'Invalid guest token format. Token must be 32 characters long and contain only alphanumeric characters.',
@@ -115,18 +118,43 @@ export class SecureSupabaseClientFactory implements ISecureSupabaseClientFactory
       );
     }
 
-    return createClient(this.supabaseUrl, this.anonKey, {
-      auth: {
-        persistSession: options?.persistSession ?? false, // ゲストセッションは永続化しない
-        autoRefreshToken: options?.autoRefreshToken ?? false,
-      },
-      global: {
-        headers: {
-          'X-Guest-Token': token, // カスタムヘッダーでトークンを自動設定
-          ...options?.headers,
+    // SSR環境（サーバーサイド）かどうかを判定
+    const isServerSide = typeof window === 'undefined';
+
+    if (isServerSide) {
+      // サーバーサイドでは createServerClient を使用（ただしcookiesは不要）
+      return createServerClient(this.supabaseUrl, this.anonKey, {
+        cookies: {
+          get: () => undefined,
+          set: () => { },
+          remove: () => { },
         },
-      },
-    });
+        auth: {
+          persistSession: false, // ゲストセッションは永続化しない
+          autoRefreshToken: false,
+        },
+        global: {
+          headers: {
+            'X-Guest-Token': token, // カスタムヘッダーでトークンを自動設定
+            ...options?.headers,
+          },
+        },
+      });
+    } else {
+      // クライアントサイドでは createClient を使用
+      return createClient(this.supabaseUrl, this.anonKey, {
+        auth: {
+          persistSession: options?.persistSession ?? false, // ゲストセッションは永続化しない
+          autoRefreshToken: options?.autoRefreshToken ?? false,
+        },
+        global: {
+          headers: {
+            'X-Guest-Token': token, // カスタムヘッダーでトークンを自動設定
+            ...options?.headers,
+          },
+        },
+      });
+    }
   }
 
   /**
@@ -278,13 +306,7 @@ export class SecureSupabaseClientFactory implements ISecureSupabaseClientFactory
     });
   }
 
-  /**
-   * トークンの基本フォーマットを検証
-   */
-  private validateTokenFormat(token: string): boolean {
-    // 32文字の英数字であることを確認
-    return /^[a-zA-Z0-9]{32}$/.test(token);
-  }
+
 }
 
 /**
@@ -305,7 +327,7 @@ export class RLSBasedGuestValidator implements IGuestTokenValidator {
    */
   async validateToken(token: string): Promise<GuestValidationResult> {
     // 基本フォーマット検証
-    if (!this.validateTokenFormat(token)) {
+    if (!validateGuestTokenFormat(token)) {
       // 監査ログの失敗はビジネスロジックを妨げない
       await this.safeLogGuestAccess(
         token,
@@ -455,23 +477,73 @@ export class RLSBasedGuestValidator implements IGuestTokenValidator {
    * トークンの基本フォーマットを検証
    */
   validateTokenFormat(token: string): boolean {
-    return /^[a-zA-Z0-9]{32}$/.test(token);
+    return validateGuestTokenFormat(token);
+  }
+
+  /**
+   * イベント情報の型ガード
+   */
+  private isValidEventInfo(event: unknown): event is EventInfo {
+    return (
+      typeof event === 'object' &&
+      event !== null &&
+      'id' in event &&
+      'date' in event &&
+      'status' in event &&
+      typeof (event as any).id === 'string' &&
+      typeof (event as any).date === 'string' &&
+      typeof (event as any).status === 'string' &&
+      // registration_deadlineはオプショナル
+      ('registration_deadline' in event ?
+        ((event as unknown).registration_deadline === null ||
+          typeof (event as unknown).registration_deadline === 'string') :
+        true)
+    );
+  }
+
+  /**
+   * 日付文字列の有効性をチェック
+   */
+  private isValidDateString(dateStr: string): boolean {
+    const date = new Date(dateStr);
+    return !isNaN(date.getTime()) && dateStr === date.toISOString();
   }
 
   /**
    * イベント情報から変更可能性を判定
    */
   private checkCanModify(event: unknown): boolean {
+    // 型ガードでイベント情報の妥当性をチェック
+    if (!this.isValidEventInfo(event)) {
+      console.warn('Invalid event info provided to checkCanModify:', event);
+      return false; // 無効なイベント情報の場合は変更不可
+    }
+
+    // 日付の妥当性をチェック
+    if (!this.isValidDateString(event.date)) {
+      console.warn('Invalid event date format:', event.date);
+      return false;
+    }
+
     const now = new Date();
     const eventDate = new Date(event.date);
-    const registrationDeadline = event.registration_deadline
-      ? new Date(event.registration_deadline)
-      : null;
 
-    // イベント開始前かつ登録締切前
-    return eventDate > now &&
-      (registrationDeadline === null || registrationDeadline > now) &&
-      event.status === 'active'; // イベントがアクティブ状態
+    // 登録締切の処理
+    let registrationDeadline: Date | null = null;
+    if (event.registration_deadline) {
+      if (!this.isValidDateString(event.registration_deadline)) {
+        console.warn('Invalid registration deadline format:', event.registration_deadline);
+        return false;
+      }
+      registrationDeadline = new Date(event.registration_deadline);
+    }
+
+    // イベント開始前かつ登録締切前かつアクティブ状態
+    const isBeforeEventStart = eventDate > now;
+    const isBeforeDeadline = registrationDeadline === null || registrationDeadline > now;
+    const isActive = event.status === 'active';
+
+    return isBeforeEventStart && isBeforeDeadline && isActive;
   }
 
   /**
