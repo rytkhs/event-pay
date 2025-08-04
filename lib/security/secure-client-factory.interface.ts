@@ -155,22 +155,38 @@ export interface ISecurityAuditor {
    * @param reason 使用理由
    * @param context 使用コンテキスト
    * @param auditContext 監査情報
+   * @param operationDetails 操作詳細
    */
-  logAdminAccess(reason: AdminReason, context: string, auditContext?: AuditContext): Promise<void>;
+  logAdminAccess(
+    reason: AdminReason,
+    context: string,
+    auditContext: AuditContext,
+    operationDetails?: Record<string, unknown>
+  ): Promise<void>;
 
   /**
    * ゲストアクセスをログに記録
    *
    * @param token ゲストトークン（ハッシュ化して記録）
    * @param action 実行されたアクション
-   * @param success 成功/失敗
    * @param auditContext 監査情報
+   * @param success 成功/失敗
+   * @param additionalInfo 追加情報
    */
   logGuestAccess(
     token: string,
     action: string,
+    auditContext: AuditContext,
     success: boolean,
-    auditContext?: AuditContext
+    additionalInfo?: {
+      attendanceId?: string;
+      eventId?: string;
+      tableName?: string;
+      operationType?: "SELECT" | "INSERT" | "UPDATE" | "DELETE";
+      resultCount?: number;
+      errorCode?: string;
+      errorMessage?: string;
+    }
   ): Promise<void>;
 
   /**
@@ -182,7 +198,7 @@ export interface ISecurityAuditor {
    */
   logSuspiciousActivity(
     activityType: string,
-    context: Record<string, any>,
+    context: Record<string, unknown>,
     severity?: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL"
   ): Promise<void>;
 }

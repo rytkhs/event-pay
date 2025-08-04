@@ -12,31 +12,15 @@ export enum AdminReason {
   SECURITY_INVESTIGATION = "security_investigation",
 }
 
-/**
- * ゲストトークンエラーコード
- */
-export enum GuestErrorCode {
-  INVALID_FORMAT = "INVALID_FORMAT",
-  TOKEN_NOT_FOUND = "TOKEN_NOT_FOUND",
-  TOKEN_EXPIRED = "TOKEN_EXPIRED",
-  MODIFICATION_NOT_ALLOWED = "MODIFICATION_NOT_ALLOWED",
-  EVENT_NOT_FOUND = "EVENT_NOT_FOUND",
-  RATE_LIMIT_EXCEEDED = "RATE_LIMIT_EXCEEDED",
-}
-
-/**
- * ゲストトークンエラークラス
- */
-export class GuestTokenError extends Error {
-  constructor(
-    public code: GuestErrorCode,
-    message: string,
-    public context?: Record<string, any>
-  ) {
-    super(message);
-    this.name = "GuestTokenError";
-  }
-}
+// エラーハンドリングは専用ファイルから再エクスポート
+export {
+  GuestErrorCode,
+  GuestTokenError,
+  GuestTokenErrorFactory,
+  GuestTokenErrorHandler,
+  ErrorSeverity,
+  type GuestErrorContext,
+} from "./guest-token-errors";
 
 /**
  * 管理者アクセスエラーコード
@@ -91,17 +75,21 @@ export interface GuestValidationResult {
   attendanceId?: string;
   eventId?: string;
   canModify: boolean;
-  errorCode?: GuestErrorCode;
+  errorCode?: string;
   session?: GuestSession;
 }
 
 /**
  * 監査コンテキスト
  */
-export interface AuditContext {
+export interface AuditContext extends Record<string, unknown> {
   userId?: string;
   ipAddress?: string;
   userAgent?: string;
+  sessionId?: string;
+  requestPath?: string;
+  requestMethod?: string;
+  guestToken?: string;
   accessedTables?: string[];
   operationType?: "SELECT" | "INSERT" | "UPDATE" | "DELETE";
   additionalInfo?: Record<string, unknown>;
