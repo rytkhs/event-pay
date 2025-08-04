@@ -1,23 +1,23 @@
 /**
  * EventPay セキュリティモジュール - エクスポートインデックス
- * 
+ *
  * セキュアクライアントファクトリーと関連機能の統一エクスポート
  */
 
 // 型定義
-export * from './secure-client-factory.types';
-export * from './secure-client-factory.interface';
+export * from "./secure-client-factory.types";
+export * from "./secure-client-factory.interface";
 
 // 実装
 export {
   SecureSupabaseClientFactory,
   RLSBasedGuestValidator,
   getSecureClientFactory,
-  getGuestTokenValidator
-} from './secure-client-factory.impl';
+  getGuestTokenValidator,
+} from "./secure-client-factory.impl";
 
 // セキュリティ監査
-export { SecurityAuditorImpl } from './security-auditor.impl';
+export { SecurityAuditorImpl } from "./security-auditor.impl";
 
 // 便利な関数
 export {
@@ -27,8 +27,8 @@ export {
   AdminAccessError,
   AdminAccessErrorCode,
   GuestPermission,
-  EventInfo
-} from './secure-client-factory.types';
+  EventInfo,
+} from "./secure-client-factory.types";
 
 /**
  * デフォルトのセキュアクライアントファクトリーインスタンスを取得する関数

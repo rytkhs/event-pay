@@ -5,19 +5,19 @@ import {
   AuditContext,
   ClientCreationOptions,
   GuestValidationResult,
-  GuestSession
+  GuestSession,
 } from "./secure-client-factory.types";
 
 /**
  * セキュアSupabaseクライアントファクトリーのインターフェース
- * 
+ *
  * このインターフェースは最小権限原則に基づいて設計されており、
  * 各種クライアントの作成時に適切な権限制御と監査機能を提供します。
  */
 export interface ISecureSupabaseClientFactory {
   /**
    * 通常の認証済みクライアントを作成
-   * 
+   *
    * @param options クライアント作成オプション
    * @returns 認証済みSupabaseクライアント
    */
@@ -25,10 +25,10 @@ export interface ISecureSupabaseClientFactory {
 
   /**
    * ゲストトークン認証クライアントを作成
-   * 
+   *
    * X-Guest-Tokenヘッダーを自動設定し、RLSポリシーベースの
    * アクセス制御を透過的に実現します。
-   * 
+   *
    * @param token ゲストトークン（32文字の英数字）
    * @param options クライアント作成オプション
    * @returns ゲスト用Supabaseクライアント
@@ -38,9 +38,9 @@ export interface ISecureSupabaseClientFactory {
 
   /**
    * 監査付き管理者クライアントを作成
-   * 
+   *
    * 管理者権限の使用を記録し、適切な理由と共に監査ログに記録します。
-   * 
+   *
    * @param reason 管理者権限使用理由
    * @param context 使用コンテキスト（詳細な説明）
    * @param auditContext 監査情報
@@ -57,9 +57,9 @@ export interface ISecureSupabaseClientFactory {
 
   /**
    * 読み取り専用クライアントを作成
-   * 
+   *
    * 読み取り操作のみに制限されたクライアントを作成します。
-   * 
+   *
    * @param options クライアント作成オプション
    * @returns 読み取り専用Supabaseクライアント
    */
@@ -67,9 +67,9 @@ export interface ISecureSupabaseClientFactory {
 
   /**
    * ミドルウェア用クライアントを作成
-   * 
+   *
    * Next.jsミドルウェア内でのクッキー操作に対応したクライアントを作成します。
-   * 
+   *
    * @param request NextRequest オブジェクト
    * @param response NextResponse オブジェクト
    * @param options クライアント作成オプション
@@ -83,9 +83,9 @@ export interface ISecureSupabaseClientFactory {
 
   /**
    * ブラウザ用クライアントを作成
-   * 
+   *
    * クライアントサイドでの使用に最適化されたクライアントを作成します。
-   * 
+   *
    * @param options クライアント作成オプション
    * @returns ブラウザ用Supabaseクライアント
    */
@@ -94,17 +94,17 @@ export interface ISecureSupabaseClientFactory {
 
 /**
  * ゲストトークンバリデーターのインターフェース
- * 
+ *
  * RLSポリシーベースのトークン検証を提供し、
  * 管理者権限を使用しない安全なアクセス制御を実現します。
  */
 export interface IGuestTokenValidator {
   /**
    * ゲストトークンを検証
-   * 
+   *
    * RLSポリシーを使用してトークンの有効性を確認し、
    * 関連する参加情報とイベント情報を取得します。
-   * 
+   *
    * @param token ゲストトークン
    * @returns 検証結果
    */
@@ -112,9 +112,9 @@ export interface IGuestTokenValidator {
 
   /**
    * ゲストセッションを作成
-   * 
+   *
    * 検証済みのトークンからゲストセッション情報を作成します。
-   * 
+   *
    * @param token ゲストトークン
    * @returns ゲストセッション情報
    */
@@ -122,10 +122,10 @@ export interface IGuestTokenValidator {
 
   /**
    * 変更権限をチェック
-   * 
+   *
    * イベントの開始時刻と登録締切を確認し、
    * ゲストが参加情報を変更可能かどうかを判定します。
-   * 
+   *
    * @param token ゲストトークン
    * @returns 変更可能かどうか
    */
@@ -133,9 +133,9 @@ export interface IGuestTokenValidator {
 
   /**
    * トークンの基本フォーマットを検証
-   * 
+   *
    * トークンの長さと文字種をチェックします。
-   * 
+   *
    * @param token ゲストトークン
    * @returns フォーマットが有効かどうか
    */
@@ -144,14 +144,14 @@ export interface IGuestTokenValidator {
 
 /**
  * セキュリティ監査機能のインターフェース
- * 
+ *
  * 管理者権限の使用やゲストアクセスを監査し、
  * セキュリティインシデントの検出と対応を支援します。
  */
 export interface ISecurityAuditor {
   /**
    * 管理者アクセスをログに記録
-   * 
+   *
    * @param reason 使用理由
    * @param context 使用コンテキスト
    * @param auditContext 監査情報
@@ -160,7 +160,7 @@ export interface ISecurityAuditor {
 
   /**
    * ゲストアクセスをログに記録
-   * 
+   *
    * @param token ゲストトークン（ハッシュ化して記録）
    * @param action 実行されたアクション
    * @param success 成功/失敗
@@ -175,7 +175,7 @@ export interface ISecurityAuditor {
 
   /**
    * 疑わしい活動をログに記録
-   * 
+   *
    * @param activityType 活動タイプ
    * @param context 活動コンテキスト
    * @param severity 重要度
@@ -183,6 +183,6 @@ export interface ISecurityAuditor {
   logSuspiciousActivity(
     activityType: string,
     context: Record<string, any>,
-    severity?: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL'
+    severity?: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL"
   ): Promise<void>;
 }

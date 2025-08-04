@@ -41,7 +41,7 @@ export class DatabaseSecurityAuditor implements SecurityAuditor {
 
     try {
       const supabase = createClient();
-      
+
       const { error } = await supabase
         .from('admin_access_audit')
         .insert({
@@ -77,7 +77,7 @@ export class DatabaseSecurityAuditor implements SecurityAuditor {
 
     try {
       const supabase = createClient();
-      
+
       const { error } = await supabase
         .from('guest_access_audit')
         .insert({
@@ -135,7 +135,7 @@ export class DatabaseSecurityAuditor implements SecurityAuditor {
 
     try {
       const supabase = createClient();
-      
+
       const { error } = await supabase
         .from('suspicious_activity_log')
         .insert({
@@ -173,7 +173,7 @@ export class DatabaseSecurityAuditor implements SecurityAuditor {
 
     try {
       const supabase = createClient();
-      
+
       const { error } = await supabase
         .from('unauthorized_access_log')
         .insert({

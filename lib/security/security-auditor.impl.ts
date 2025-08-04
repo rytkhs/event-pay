@@ -1,18 +1,18 @@
 /**
  * EventPay セキュリティ監査システム - 基本実装
- * 
+ *
  * SecurityAuditorインターフェースの基本実装
  * Supabaseを使用してセキュリティ監査ログを記録・分析する
  */
 
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import { createHash } from 'crypto';
+import { createClient, SupabaseClient } from "@supabase/supabase-js";
+import { createHash } from "crypto";
 import {
   SecurityAuditor,
   AuditContextBuilder,
   SecurityAnalyzer,
-  SecurityAuditConfig
-} from './security-auditor.interface';
+  SecurityAuditConfig,
+} from "./security-auditor.interface";
 import {
   AdminReason,
   AdminAccessAuditEntry,
@@ -28,8 +28,8 @@ import {
   SecuritySeverity,
   DetectionMethod,
   AuditError,
-  AuditErrorCode
-} from './audit-types';
+  AuditErrorCode,
+} from "./audit-types";
 
 // ====================================================================
 // 1. メイン実装クラス
@@ -37,7 +37,7 @@ import {
 
 /**
  * SecurityAuditorの基本実装
- * 
+ *
  * Supabaseのservice_roleクライアントを使用して
  * セキュリティ監査ログの記録と分析を行う
  */
@@ -53,8 +53,8 @@ export class SecurityAuditorImpl implements SecurityAuditor {
       {
         auth: {
           autoRefreshToken: false,
-          persistSession: false
-        }
+          persistSession: false,
+        },
       }
     );
 
@@ -66,14 +66,14 @@ export class SecurityAuditorImpl implements SecurityAuditor {
       alertSettings: {
         enableEmailAlerts: false,
         emailRecipients: [],
-        enableSlackAlerts: false
+        enableSlackAlerts: false,
       },
       performance: {
         batchSize: 100,
         maxConcurrentOperations: 10,
-        enableAsyncLogging: true
+        enableAsyncLogging: true,
       },
-      ...config
+      ...config,
     };
   }
 
@@ -97,12 +97,10 @@ export class SecurityAuditorImpl implements SecurityAuditor {
         userAgent: auditContext.userAgent,
         sessionId: auditContext.sessionId,
         success: true, // 初期値、後でcompleteAdminOperationで更新
-        createdAt: new Date()
+        createdAt: new Date(),
       };
 
-      const { error } = await this.supabase
-        .from('admin_access_audit')
-        .insert(entry);
+      const { error } = await this.supabase.from("admin_access_audit").insert(entry);
 
       if (error) {
         throw new AuditError(
@@ -123,7 +121,7 @@ export class SecurityAuditorImpl implements SecurityAuditor {
           ipAddress: auditContext.ipAddress,
           userAgent: auditContext.userAgent,
           sessionId: auditContext.sessionId,
-          detectionMethod: 'ADMIN_ACCESS_MONITORING'
+          detectionMethod: "ADMIN_ACCESS_MONITORING",
         });
       }
     } catch (error) {
@@ -147,14 +145,14 @@ export class SecurityAuditorImpl implements SecurityAuditor {
   ): Promise<void> {
     try {
       const { error } = await this.supabase
-        .from('admin_access_audit')
+        .from("admin_access_audit")
         .update({
           success,
           durationMs,
           errorMessage,
-          accessedTables
+          accessedTables,
         })
-        .eq('id', auditId);
+        .eq("id", auditId);
 
       if (error) {
         throw new AuditError(
@@ -186,7 +184,7 @@ export class SecurityAuditorImpl implements SecurityAuditor {
       attendanceId?: string;
       eventId?: string;
       tableName?: string;
-      operationType?: 'SELECT' | 'INSERT' | 'UPDATE' | 'DELETE';
+      operationType?: "SELECT" | "INSERT" | "UPDATE" | "DELETE";
       resultCount?: number;
       errorCode?: string;
       errorMessage?: string;
@@ -209,12 +207,10 @@ export class SecurityAuditorImpl implements SecurityAuditor {
         sessionId: auditContext.sessionId,
         errorCode: additionalInfo?.errorCode,
         errorMessage: additionalInfo?.errorMessage,
-        createdAt: new Date()
+        createdAt: new Date(),
       };
 
-      const { error } = await this.supabase
-        .from('guest_access_audit')
-        .insert(entry);
+      const { error } = await this.supabase.from("guest_access_audit").insert(entry);
 
       if (error) {
         throw new AuditError(
@@ -236,13 +232,13 @@ export class SecurityAuditorImpl implements SecurityAuditor {
             tokenHash,
             success,
             errorCode: additionalInfo?.errorCode,
-            resultCount: additionalInfo?.resultCount
+            resultCount: additionalInfo?.resultCount,
           },
           severity: success ? SecuritySeverity.MEDIUM : SecuritySeverity.HIGH,
           ipAddress: auditContext.ipAddress,
           userAgent: auditContext.userAgent,
           sessionId: auditContext.sessionId,
-          detectionMethod: 'GUEST_ACCESS_MONITORING'
+          detectionMethod: "GUEST_ACCESS_MONITORING",
         });
       }
     } catch (error) {
@@ -263,24 +259,22 @@ export class SecurityAuditorImpl implements SecurityAuditor {
 
   async logSuspiciousActivity(activity: SuspiciousActivityEntry): Promise<void> {
     try {
-      const { error } = await this.supabase
-        .from('suspicious_activity_log')
-        .insert({
-          activity_type: activity.activityType,
-          table_name: activity.tableName,
-          user_role: activity.userRole,
-          user_id: activity.userId,
-          attempted_action: activity.attemptedAction,
-          expected_result_count: activity.expectedResultCount,
-          actual_result_count: activity.actualResultCount,
-          context: activity.context,
-          severity: activity.severity || SecuritySeverity.MEDIUM,
-          ip_address: activity.ipAddress,
-          user_agent: activity.userAgent,
-          session_id: activity.sessionId,
-          detection_method: activity.detectionMethod,
-          created_at: activity.createdAt || new Date()
-        });
+      const { error } = await this.supabase.from("suspicious_activity_log").insert({
+        activity_type: activity.activityType,
+        table_name: activity.tableName,
+        user_role: activity.userRole,
+        user_id: activity.userId,
+        attempted_action: activity.attemptedAction,
+        expected_result_count: activity.expectedResultCount,
+        actual_result_count: activity.actualResultCount,
+        context: activity.context,
+        severity: activity.severity || SecuritySeverity.MEDIUM,
+        ip_address: activity.ipAddress,
+        user_agent: activity.userAgent,
+        session_id: activity.sessionId,
+        detection_method: activity.detectionMethod,
+        created_at: activity.createdAt || new Date(),
+      });
 
       if (error) {
         throw new AuditError(
@@ -290,8 +284,10 @@ export class SecurityAuditorImpl implements SecurityAuditor {
       }
 
       // 重要度が高い場合はアラートを送信（将来実装）
-      if (activity.severity === SecuritySeverity.CRITICAL ||
-        activity.severity === SecuritySeverity.HIGH) {
+      if (
+        activity.severity === SecuritySeverity.CRITICAL ||
+        activity.severity === SecuritySeverity.HIGH
+      ) {
         await this.sendSecurityAlert(activity);
       }
     } catch (error) {
@@ -321,14 +317,14 @@ export class SecurityAuditorImpl implements SecurityAuditor {
       actualResultCount: analysis.actualCount,
       context: {
         ...analysis.context,
-        isUnexpectedlyEmpty: true
+        isUnexpectedlyEmpty: true,
       },
       severity: this.calculateEmptyResultSeverity(analysis),
       userId: auditContext.userId,
       ipAddress: auditContext.ipAddress,
       userAgent: auditContext.userAgent,
       sessionId: auditContext.sessionId,
-      detectionMethod: 'EMPTY_RESULT_SET_ANALYSIS'
+      detectionMethod: "EMPTY_RESULT_SET_ANALYSIS",
     });
   }
 
@@ -341,23 +337,24 @@ export class SecurityAuditorImpl implements SecurityAuditor {
     // 期待される結果数と実際の結果数の差が大きい場合、RLS違反の可能性
     const discrepancyRatio = expectedCount > 0 ? actualCount / expectedCount : 0;
 
-    if (discrepancyRatio < 0.5 && expectedCount > 0) { // 50%以上の結果が欠落
+    if (discrepancyRatio < 0.5 && expectedCount > 0) {
+      // 50%以上の結果が欠落
       await this.logSuspiciousActivity({
         activityType: SuspiciousActivityType.UNAUTHORIZED_RLS_BYPASS,
         tableName,
-        attemptedAction: 'DATA_ACCESS',
+        attemptedAction: "DATA_ACCESS",
         expectedResultCount: expectedCount,
         actualResultCount: actualCount,
         context: {
           discrepancyRatio,
-          potentialRlsViolation: true
+          potentialRlsViolation: true,
         },
         severity: SecuritySeverity.HIGH,
         userId: auditContext.userId,
         ipAddress: auditContext.ipAddress,
         userAgent: auditContext.userAgent,
         sessionId: auditContext.sessionId,
-        detectionMethod: 'RLS_VIOLATION_DETECTION'
+        detectionMethod: "RLS_VIOLATION_DETECTION",
       });
     }
   }
@@ -368,25 +365,23 @@ export class SecurityAuditorImpl implements SecurityAuditor {
 
   async logUnauthorizedAccess(entry: UnauthorizedAccessEntry): Promise<void> {
     try {
-      const { error } = await this.supabase
-        .from('unauthorized_access_log')
-        .insert({
-          attempted_resource: entry.attemptedResource,
-          required_permission: entry.requiredPermission,
-          user_context: entry.userContext,
-          user_id: entry.userId,
-          guest_token_hash: entry.guestTokenHash,
-          detection_method: entry.detectionMethod,
-          blocked_by_rls: entry.blockedByRls,
-          ip_address: entry.ipAddress,
-          user_agent: entry.userAgent,
-          session_id: entry.sessionId,
-          request_path: entry.requestPath,
-          request_method: entry.requestMethod,
-          request_headers: entry.requestHeaders,
-          response_status: entry.responseStatus,
-          created_at: entry.createdAt || new Date()
-        });
+      const { error } = await this.supabase.from("unauthorized_access_log").insert({
+        attempted_resource: entry.attemptedResource,
+        required_permission: entry.requiredPermission,
+        user_context: entry.userContext,
+        user_id: entry.userId,
+        guest_token_hash: entry.guestTokenHash,
+        detection_method: entry.detectionMethod,
+        blocked_by_rls: entry.blockedByRls,
+        ip_address: entry.ipAddress,
+        user_agent: entry.userAgent,
+        session_id: entry.sessionId,
+        request_path: entry.requestPath,
+        request_method: entry.requestMethod,
+        request_headers: entry.requestHeaders,
+        response_status: entry.responseStatus,
+        created_at: entry.createdAt || new Date(),
+      });
 
       if (error) {
         throw new AuditError(
@@ -418,16 +413,18 @@ export class SecurityAuditorImpl implements SecurityAuditor {
         userId: auditContext.userId,
         sessionId: auditContext.sessionId,
         requestPath: auditContext.requestPath,
-        requestMethod: auditContext.requestMethod
+        requestMethod: auditContext.requestMethod,
       },
       userId: auditContext.userId,
-      guestTokenHash: auditContext.guestToken ? this.hashGuestToken(auditContext.guestToken) : undefined,
+      guestTokenHash: auditContext.guestToken
+        ? this.hashGuestToken(auditContext.guestToken)
+        : undefined,
       detectionMethod,
       ipAddress: auditContext.ipAddress,
       userAgent: auditContext.userAgent,
       sessionId: auditContext.sessionId,
       requestPath: auditContext.requestPath,
-      requestMethod: auditContext.requestMethod
+      requestMethod: auditContext.requestMethod,
     });
   }
 
@@ -442,7 +439,7 @@ export class SecurityAuditorImpl implements SecurityAuditor {
           this.getAdminAccessStats(timeRange),
           this.getGuestAccessStats(timeRange),
           this.getSuspiciousActivitiesInRange(timeRange),
-          this.getUnauthorizedAttemptsInRange(timeRange)
+          this.getUnauthorizedAttemptsInRange(timeRange),
         ]);
 
       return {
@@ -452,7 +449,7 @@ export class SecurityAuditorImpl implements SecurityAuditor {
         suspiciousActivities: suspiciousActivities,
         unauthorizedAttempts: unauthorizedAttempts,
         rlsViolationIndicators: await this.analyzeRlsViolationIndicators(timeRange),
-        recommendations: await this.generateSecurityRecommendations(timeRange)
+        recommendations: await this.generateSecurityRecommendations(timeRange),
       };
     } catch (error) {
       throw new AuditError(
@@ -474,13 +471,16 @@ export class SecurityAuditorImpl implements SecurityAuditor {
     failureRate: number;
   }> {
     const { data, error } = await this.supabase
-      .from('admin_access_audit')
-      .select('reason, user_id, success')
-      .gte('created_at', timeRange.start.toISOString())
-      .lte('created_at', timeRange.end.toISOString());
+      .from("admin_access_audit")
+      .select("reason, user_id, success")
+      .gte("created_at", timeRange.start.toISOString())
+      .lte("created_at", timeRange.end.toISOString());
 
     if (error) {
-      throw new AuditError(AuditErrorCode.DATABASE_ERROR, `Failed to get admin access stats: ${error.message}`);
+      throw new AuditError(
+        AuditErrorCode.DATABASE_ERROR,
+        `Failed to get admin access stats: ${error.message}`
+      );
     }
 
     const totalAccess = data.length;
@@ -488,7 +488,7 @@ export class SecurityAuditorImpl implements SecurityAuditor {
     const byUser: Record<string, number> = {};
     let failures = 0;
 
-    data.forEach(entry => {
+    data.forEach((entry) => {
       byReason[entry.reason] = (byReason[entry.reason] || 0) + 1;
       if (entry.user_id) {
         byUser[entry.user_id] = (byUser[entry.user_id] || 0) + 1;
@@ -502,7 +502,7 @@ export class SecurityAuditorImpl implements SecurityAuditor {
       totalAccess,
       byReason,
       byUser,
-      failureRate: totalAccess > 0 ? failures / totalAccess : 0
+      failureRate: totalAccess > 0 ? failures / totalAccess : 0,
     };
   }
 
@@ -514,22 +514,25 @@ export class SecurityAuditorImpl implements SecurityAuditor {
     topEvents: Array<{ eventId: string; accessCount: number }>;
   }> {
     const { data, error } = await this.supabase
-      .from('guest_access_audit')
-      .select('guest_token_hash, action, success, event_id')
-      .gte('created_at', timeRange.start.toISOString())
-      .lte('created_at', timeRange.end.toISOString());
+      .from("guest_access_audit")
+      .select("guest_token_hash, action, success, event_id")
+      .gte("created_at", timeRange.start.toISOString())
+      .lte("created_at", timeRange.end.toISOString());
 
     if (error) {
-      throw new AuditError(AuditErrorCode.DATABASE_ERROR, `Failed to get guest access stats: ${error.message}`);
+      throw new AuditError(
+        AuditErrorCode.DATABASE_ERROR,
+        `Failed to get guest access stats: ${error.message}`
+      );
     }
 
     const totalAccess = data.length;
-    const uniqueTokens = new Set(data.map(entry => entry.guest_token_hash)).size;
+    const uniqueTokens = new Set(data.map((entry) => entry.guest_token_hash)).size;
     const byAction: Record<string, number> = {};
     const eventCounts: Record<string, number> = {};
     let failures = 0;
 
-    data.forEach(entry => {
+    data.forEach((entry) => {
       byAction[entry.action] = (byAction[entry.action] || 0) + 1;
       if (entry.event_id) {
         eventCounts[entry.event_id] = (eventCounts[entry.event_id] || 0) + 1;
@@ -549,7 +552,7 @@ export class SecurityAuditorImpl implements SecurityAuditor {
       uniqueTokens,
       byAction,
       failureRate: totalAccess > 0 ? failures / totalAccess : 0,
-      topEvents
+      topEvents,
     };
   }
 
@@ -559,8 +562,9 @@ export class SecurityAuditorImpl implements SecurityAuditor {
 
   async cleanupOldAuditLogs(retentionDays: number = this.config.retentionDays): Promise<number> {
     try {
-      const { data, error } = await this.supabase
-        .rpc('cleanup_old_audit_logs', { retention_days: retentionDays });
+      const { data, error } = await this.supabase.rpc("cleanup_old_audit_logs", {
+        retention_days: retentionDays,
+      });
 
       if (error) {
         throw new AuditError(
@@ -594,10 +598,10 @@ export class SecurityAuditorImpl implements SecurityAuditor {
       const checks = await Promise.all([
         this.checkMissingAuditEntries(),
         this.checkDuplicateEntries(),
-        this.checkOrphanedEntries()
+        this.checkOrphanedEntries(),
       ]);
 
-      checks.forEach(check => {
+      checks.forEach((check) => {
         issues.push(...check.issues);
         recommendations.push(...check.recommendations);
       });
@@ -605,13 +609,13 @@ export class SecurityAuditorImpl implements SecurityAuditor {
       return {
         isValid: issues.length === 0,
         issues,
-        recommendations
+        recommendations,
       };
     } catch (error) {
       return {
         isValid: false,
         issues: [`Integrity check failed: ${error}`],
-        recommendations: ['Run manual database integrity check']
+        recommendations: ["Run manual database integrity check"],
       };
     }
   }
@@ -621,7 +625,7 @@ export class SecurityAuditorImpl implements SecurityAuditor {
   // ====================================================================
 
   private hashGuestToken(token: string): string {
-    return createHash('sha256').update(token).digest('hex');
+    return createHash("sha256").update(token).digest("hex");
   }
 
   private isAnomalousGuestAccess(additionalInfo?: {
@@ -633,8 +637,12 @@ export class SecurityAuditorImpl implements SecurityAuditor {
       return true; // 大量データアクセス
     }
 
-    if (additionalInfo?.errorCode &&
-      ['PERMISSION_DENIED', 'INVALID_TOKEN', 'RATE_LIMIT_EXCEEDED'].includes(additionalInfo.errorCode)) {
+    if (
+      additionalInfo?.errorCode &&
+      ["PERMISSION_DENIED", "INVALID_TOKEN", "RATE_LIMIT_EXCEEDED"].includes(
+        additionalInfo.errorCode
+      )
+    ) {
       return true; // セキュリティ関連エラー
     }
 
@@ -653,10 +661,10 @@ export class SecurityAuditorImpl implements SecurityAuditor {
 
   private async sendSecurityAlert(activity: SuspiciousActivityEntry): Promise<void> {
     // 将来実装: メール/Slack通知
-    console.warn('Security Alert:', {
+    console.warn("Security Alert:", {
       type: activity.activityType,
       severity: activity.severity,
-      context: activity.context
+      context: activity.context,
     });
   }
 

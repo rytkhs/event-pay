@@ -205,7 +205,7 @@ export class TestDataManager {
       status: "attending" as const,
       nickname: "テスト参加者",
       email: `test-attendee-${Date.now()}@example.com`,
-      guest_token: generateGuestToken(),
+      guest_token: generateGuestToken(), // gst_プレフィックス付き36文字
       ...attendanceData,
     };
 

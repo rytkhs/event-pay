@@ -16,7 +16,7 @@ import { validateGuestTokenFormat } from "./crypto";
 import {
   ISecureSupabaseClientFactory,
   IGuestTokenValidator,
-  ISecurityAuditor
+  ISecurityAuditor,
 } from "./secure-client-factory.interface";
 import {
   AdminReason,
@@ -29,7 +29,7 @@ import {
   GuestValidationResult,
   GuestSession,
   GuestPermission,
-  EventInfo
+  EventInfo,
 } from "./secure-client-factory.types";
 import { SecurityAuditorImpl } from "./security-auditor.impl";
 import { COOKIE_CONFIG, AUTH_CONFIG, getCookieConfig } from "@/config/security";
@@ -113,21 +113,21 @@ export class SecureSupabaseClientFactory implements ISecureSupabaseClientFactory
     if (!validateGuestTokenFormat(token)) {
       throw new GuestTokenError(
         GuestErrorCode.INVALID_FORMAT,
-        'Invalid guest token format. Token must be 36 characters long with gst_ prefix.',
+        "Invalid guest token format. Token must be 36 characters long with gst_ prefix.",
         { tokenLength: token.length }
       );
     }
 
     // SSR環境（サーバーサイド）かどうかを判定
-    const isServerSide = typeof window === 'undefined';
+    const isServerSide = typeof window === "undefined";
 
     if (isServerSide) {
       // サーバーサイドでは createServerClient を使用（ただしcookiesは不要）
       return createServerClient(this.supabaseUrl, this.anonKey, {
         cookies: {
           get: () => undefined,
-          set: () => { },
-          remove: () => { },
+          set: () => {},
+          remove: () => {},
         },
         auth: {
           persistSession: false, // ゲストセッションは永続化しない
@@ -135,7 +135,7 @@ export class SecureSupabaseClientFactory implements ISecureSupabaseClientFactory
         },
         global: {
           headers: {
-            'X-Guest-Token': token, // カスタムヘッダーでトークンを自動設定
+            "X-Guest-Token": token, // カスタムヘッダーでトークンを自動設定
             ...options?.headers,
           },
         },
@@ -149,7 +149,7 @@ export class SecureSupabaseClientFactory implements ISecureSupabaseClientFactory
         },
         global: {
           headers: {
-            'X-Guest-Token': token, // カスタムヘッダーでトークンを自動設定
+            "X-Guest-Token": token, // カスタムヘッダーでトークンを自動設定
             ...options?.headers,
           },
         },
@@ -180,7 +180,7 @@ export class SecureSupabaseClientFactory implements ISecureSupabaseClientFactory
     if (!context || context.trim().length === 0) {
       throw new AdminAccessError(
         AdminAccessErrorCode.MISSING_CONTEXT,
-        'Admin access context is required',
+        "Admin access context is required",
         auditContext
       );
     }
@@ -218,9 +218,9 @@ export class SecureSupabaseClientFactory implements ISecureSupabaseClientFactory
       },
       global: {
         headers: {
-          'X-Admin-Reason': reason,
-          'X-Admin-Context': context,
-          'X-Admin-User-Id': auditContext?.userId || 'unknown',
+          "X-Admin-Reason": reason,
+          "X-Admin-Context": context,
+          "X-Admin-User-Id": auditContext?.userId || "unknown",
           ...options?.headers,
         },
       },
@@ -238,7 +238,7 @@ export class SecureSupabaseClientFactory implements ISecureSupabaseClientFactory
       },
       global: {
         headers: {
-          'X-Read-Only': 'true',
+          "X-Read-Only": "true",
           ...options?.headers,
         },
       },
@@ -255,8 +255,7 @@ export class SecureSupabaseClientFactory implements ISecureSupabaseClientFactory
   ): SupabaseClient {
     // HTTPS接続を動的に検出
     const isHttps =
-      request.url.startsWith("https://") ||
-      request.headers.get("x-forwarded-proto") === "https";
+      request.url.startsWith("https://") || request.headers.get("x-forwarded-proto") === "https";
 
     const cookieConfig = getCookieConfig(isHttps);
 
@@ -281,7 +280,7 @@ export class SecureSupabaseClientFactory implements ISecureSupabaseClientFactory
       },
       global: {
         headers: {
-          'X-Middleware-Client': 'true',
+          "X-Middleware-Client": "true",
           ...options?.headers,
         },
       },
@@ -299,14 +298,12 @@ export class SecureSupabaseClientFactory implements ISecureSupabaseClientFactory
       },
       global: {
         headers: {
-          'X-Browser-Client': 'true',
+          "X-Browser-Client": "true",
           ...options?.headers,
         },
       },
     });
   }
-
-
 }
 
 /**
@@ -329,13 +326,9 @@ export class RLSBasedGuestValidator implements IGuestTokenValidator {
     // 基本フォーマット検証
     if (!validateGuestTokenFormat(token)) {
       // 監査ログの失敗はビジネスロジックを妨げない
-      await this.safeLogGuestAccess(
-        token,
-        'VALIDATE_TOKEN',
-        {},
-        false,
-        { errorCode: GuestErrorCode.INVALID_FORMAT }
-      );
+      await this.safeLogGuestAccess(token, "VALIDATE_TOKEN", {}, false, {
+        errorCode: GuestErrorCode.INVALID_FORMAT,
+      });
 
       return {
         isValid: false,
@@ -350,8 +343,9 @@ export class RLSBasedGuestValidator implements IGuestTokenValidator {
 
       // RLSポリシーにより、該当するattendanceのみ取得される
       const { data: attendance, error } = await guestClient
-        .from('attendances')
-        .select(`
+        .from("attendances")
+        .select(
+          `
           id,
           event_id,
           status,
@@ -361,21 +355,16 @@ export class RLSBasedGuestValidator implements IGuestTokenValidator {
             registration_deadline,
             status
           )
-        `)
+        `
+        )
         .single(); // トークンが有効なら必ず1件のみ取得される
 
       if (error || !attendance) {
         // 監査ログの失敗はビジネスロジックを妨げない
-        await this.safeLogGuestAccess(
-          token,
-          'VALIDATE_TOKEN',
-          {},
-          false,
-          {
-            errorCode: GuestErrorCode.TOKEN_NOT_FOUND,
-            errorMessage: error?.message
-          }
-        );
+        await this.safeLogGuestAccess(token, "VALIDATE_TOKEN", {}, false, {
+          errorCode: GuestErrorCode.TOKEN_NOT_FOUND,
+          errorMessage: error?.message,
+        });
 
         return {
           isValid: false,
@@ -388,17 +377,11 @@ export class RLSBasedGuestValidator implements IGuestTokenValidator {
       const canModify = this.checkCanModify(attendance.event);
 
       // 成功をログに記録（監査ログの失敗はビジネスロジックを妨げない）
-      await this.safeLogGuestAccess(
-        token,
-        'VALIDATE_TOKEN',
-        {},
-        true,
-        {
-          attendanceId: attendance.id,
-          eventId: attendance.event_id,
-          resultCount: 1,
-        }
-      );
+      await this.safeLogGuestAccess(token, "VALIDATE_TOKEN", {}, true, {
+        attendanceId: attendance.id,
+        eventId: attendance.event_id,
+        resultCount: 1,
+      });
 
       return {
         isValid: true,
@@ -409,16 +392,10 @@ export class RLSBasedGuestValidator implements IGuestTokenValidator {
     } catch (error) {
       // RLSポリシー違反やその他のエラー
       // 監査ログの失敗はビジネスロジックを妨げない
-      await this.safeLogGuestAccess(
-        token,
-        'VALIDATE_TOKEN',
-        {},
-        false,
-        {
-          errorCode: GuestErrorCode.TOKEN_NOT_FOUND,
-          errorMessage: String(error)
-        }
-      );
+      await this.safeLogGuestAccess(token, "VALIDATE_TOKEN", {}, false, {
+        errorCode: GuestErrorCode.TOKEN_NOT_FOUND,
+        errorMessage: String(error),
+      });
 
       return {
         isValid: false,
@@ -437,7 +414,7 @@ export class RLSBasedGuestValidator implements IGuestTokenValidator {
     if (!validationResult.isValid || !validationResult.attendanceId || !validationResult.eventId) {
       throw new GuestTokenError(
         validationResult.errorCode || GuestErrorCode.TOKEN_NOT_FOUND,
-        'Cannot create session for invalid token'
+        "Cannot create session for invalid token"
       );
     }
 
@@ -485,19 +462,19 @@ export class RLSBasedGuestValidator implements IGuestTokenValidator {
    */
   private isValidEventInfo(event: unknown): event is EventInfo {
     return (
-      typeof event === 'object' &&
+      typeof event === "object" &&
       event !== null &&
-      'id' in event &&
-      'date' in event &&
-      'status' in event &&
-      typeof (event as any).id === 'string' &&
-      typeof (event as any).date === 'string' &&
-      typeof (event as any).status === 'string' &&
+      "id" in event &&
+      "date" in event &&
+      "status" in event &&
+      typeof (event as any).id === "string" &&
+      typeof (event as any).date === "string" &&
+      typeof (event as any).status === "string" &&
       // registration_deadlineはオプショナル
-      ('registration_deadline' in event ?
-        ((event as unknown).registration_deadline === null ||
-          typeof (event as unknown).registration_deadline === 'string') :
-        true)
+      ("registration_deadline" in event
+        ? (event as unknown).registration_deadline === null ||
+          typeof (event as unknown).registration_deadline === "string"
+        : true)
     );
   }
 
@@ -515,13 +492,13 @@ export class RLSBasedGuestValidator implements IGuestTokenValidator {
   private checkCanModify(event: unknown): boolean {
     // 型ガードでイベント情報の妥当性をチェック
     if (!this.isValidEventInfo(event)) {
-      console.warn('Invalid event info provided to checkCanModify:', event);
+      console.warn("Invalid event info provided to checkCanModify:", event);
       return false; // 無効なイベント情報の場合は変更不可
     }
 
     // 日付の妥当性をチェック
     if (!this.isValidDateString(event.date)) {
-      console.warn('Invalid event date format:', event.date);
+      console.warn("Invalid event date format:", event.date);
       return false;
     }
 
@@ -532,7 +509,7 @@ export class RLSBasedGuestValidator implements IGuestTokenValidator {
     let registrationDeadline: Date | null = null;
     if (event.registration_deadline) {
       if (!this.isValidDateString(event.registration_deadline)) {
-        console.warn('Invalid registration deadline format:', event.registration_deadline);
+        console.warn("Invalid registration deadline format:", event.registration_deadline);
         return false;
       }
       registrationDeadline = new Date(event.registration_deadline);
@@ -541,7 +518,7 @@ export class RLSBasedGuestValidator implements IGuestTokenValidator {
     // イベント開始前かつ登録締切前かつアクティブ状態
     const isBeforeEventStart = eventDate > now;
     const isBeforeDeadline = registrationDeadline === null || registrationDeadline > now;
-    const isActive = event.status === 'active';
+    const isActive = event.status === "active";
 
     return isBeforeEventStart && isBeforeDeadline && isActive;
   }
@@ -559,24 +536,16 @@ export class RLSBasedGuestValidator implements IGuestTokenValidator {
       attendanceId?: string;
       eventId?: string;
       tableName?: string;
-      operationType?: 'SELECT' | 'INSERT' | 'UPDATE' | 'DELETE';
+      operationType?: "SELECT" | "INSERT" | "UPDATE" | "DELETE";
       resultCount?: number;
       errorCode?: string;
       errorMessage?: string;
     }
   ): Promise<void> {
     try {
-      await this.auditor.logGuestAccess(
-        token,
-        action,
-        auditContext,
-        success,
-        additionalInfo
-      );
+      await this.auditor.logGuestAccess(token, action, auditContext, success, additionalInfo);
     } catch (auditError) {
       // 監査ログの失敗をコンソールに記録するが、ビジネスロジックは継続
-
-
       // 将来的には、監査ログ失敗の通知システムを実装することも検討
       // 例: メトリクス送信、アラート送信など
     }
