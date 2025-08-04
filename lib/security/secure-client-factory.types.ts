@@ -9,7 +9,7 @@ export enum AdminReason {
   SYSTEM_MAINTENANCE = 'system_maintenance',
   EMERGENCY_ACCESS = 'emergency_access',
   DATA_MIGRATION = 'data_migration',
-  SECURITY_AUDIT = 'security_audit'
+  SECURITY_INVESTIGATION = 'security_investigation'
 }
 
 /**
@@ -141,7 +141,7 @@ export interface SecureSupabaseClient {
    * @param request NextRequest
    * @param response NextResponse
    */
-  createMiddlewareClient(request: any, response: unknown): SupabaseClient;
+  createMiddlewareClient(request: unknown, response: unknown): SupabaseClient;
 }
 
 /**

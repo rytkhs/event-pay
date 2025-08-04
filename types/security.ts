@@ -29,15 +29,7 @@ export enum SecuritySeverity {
   CRITICAL = 'CRITICAL'
 }
 
-// ゲストエラーコード
-export enum GuestErrorCode {
-  INVALID_FORMAT = 'INVALID_FORMAT',
-  TOKEN_NOT_FOUND = 'TOKEN_NOT_FOUND',
-  TOKEN_EXPIRED = 'TOKEN_EXPIRED',
-  MODIFICATION_NOT_ALLOWED = 'MODIFICATION_NOT_ALLOWED',
-  EVENT_NOT_FOUND = 'EVENT_NOT_FOUND',
-  RATE_LIMIT_EXCEEDED = 'RATE_LIMIT_EXCEEDED'
-}
+// GuestErrorCode は lib/security/secure-client-factory.types.ts で定義済み
 
 // 管理者アクセス監査ログ
 export interface AdminAccessAuditLog {
