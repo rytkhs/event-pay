@@ -306,7 +306,8 @@ export class RLSBasedGuestValidator implements IGuestTokenValidator {
   async validateToken(token: string): Promise<GuestValidationResult> {
     // 基本フォーマット検証
     if (!this.validateTokenFormat(token)) {
-      await this.auditor.logGuestAccess(
+      // 監査ログの失敗はビジネスロジックを妨げない
+      await this.safeLogGuestAccess(
         token,
         'VALIDATE_TOKEN',
         {},
@@ -342,7 +343,8 @@ export class RLSBasedGuestValidator implements IGuestTokenValidator {
         .single(); // トークンが有効なら必ず1件のみ取得される
 
       if (error || !attendance) {
-        await this.auditor.logGuestAccess(
+        // 監査ログの失敗はビジネスロジックを妨げない
+        await this.safeLogGuestAccess(
           token,
           'VALIDATE_TOKEN',
           {},
@@ -363,8 +365,8 @@ export class RLSBasedGuestValidator implements IGuestTokenValidator {
       // 変更可能性をチェック
       const canModify = this.checkCanModify(attendance.event);
 
-      // 成功をログに記録
-      await this.auditor.logGuestAccess(
+      // 成功をログに記録（監査ログの失敗はビジネスロジックを妨げない）
+      await this.safeLogGuestAccess(
         token,
         'VALIDATE_TOKEN',
         {},
@@ -384,7 +386,8 @@ export class RLSBasedGuestValidator implements IGuestTokenValidator {
       };
     } catch (error) {
       // RLSポリシー違反やその他のエラー
-      await this.auditor.logGuestAccess(
+      // 監査ログの失敗はビジネスロジックを妨げない
+      await this.safeLogGuestAccess(
         token,
         'VALIDATE_TOKEN',
         {},
@@ -469,6 +472,42 @@ export class RLSBasedGuestValidator implements IGuestTokenValidator {
     return eventDate > now &&
       (registrationDeadline === null || registrationDeadline > now) &&
       event.status === 'active'; // イベントがアクティブ状態
+  }
+
+  /**
+   * 安全な監査ログ記録
+   * 監査ログの失敗がビジネスロジックを妨げないようにエラーをキャッチ
+   */
+  private async safeLogGuestAccess(
+    token: string,
+    action: string,
+    auditContext: AuditContext,
+    success: boolean,
+    additionalInfo?: {
+      attendanceId?: string;
+      eventId?: string;
+      tableName?: string;
+      operationType?: 'SELECT' | 'INSERT' | 'UPDATE' | 'DELETE';
+      resultCount?: number;
+      errorCode?: string;
+      errorMessage?: string;
+    }
+  ): Promise<void> {
+    try {
+      await this.auditor.logGuestAccess(
+        token,
+        action,
+        auditContext,
+        success,
+        additionalInfo
+      );
+    } catch (auditError) {
+      // 監査ログの失敗をコンソールに記録するが、ビジネスロジックは継続
+
+
+      // 将来的には、監査ログ失敗の通知システムを実装することも検討
+      // 例: メトリクス送信、アラート送信など
+    }
   }
 }
 
