@@ -6,6 +6,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 export enum AdminReason {
   USER_CLEANUP = "user_cleanup",
   TEST_DATA_SETUP = "test_data_setup",
+  TEST_DATA_CLEANUP = "test_data_cleanup",
   SYSTEM_MAINTENANCE = "system_maintenance",
   EMERGENCY_ACCESS = "emergency_access",
   DATA_MIGRATION = "data_migration",
