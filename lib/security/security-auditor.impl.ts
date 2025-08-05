@@ -29,6 +29,10 @@ import {
   DetectionMethod,
   AuditError,
   AuditErrorCode,
+  SuspiciousActivitySummary,
+  UnauthorizedAttemptSummary,
+  RlsViolationIndicator,
+  SecurityRecommendation,
 } from "./audit-types";
 
 // ====================================================================
@@ -85,7 +89,7 @@ export class SecurityAuditorImpl implements SecurityAuditor {
     reason: AdminReason,
     context: string,
     auditContext: AuditContext,
-    operationDetails?: Record<string, any>
+    operationDetails?: Record<string, unknown>
   ): Promise<void> {
     try {
       const entry: AdminAccessAuditEntry = {
@@ -693,25 +697,258 @@ export class SecurityAuditorImpl implements SecurityAuditor {
     return { start, end };
   }
 
-  // 以下のメソッドは基本実装のスタブ（将来詳細実装）
-  private async getSuspiciousActivitiesInRange(timeRange: TimeRange) {
-    // 実装スタブ
-    return [];
+  // ====================================================================
+  // 詳細実装メソッド
+  // ====================================================================
+
+  private async getSuspiciousActivitiesInRange(timeRange: TimeRange): Promise<SuspiciousActivitySummary[]> {
+    const { data, error } = await this.supabase
+      .from("suspicious_activity_log")
+      .select("activity_type, severity, table_name, created_at")
+      .gte("created_at", timeRange.start.toISOString())
+      .lte("created_at", timeRange.end.toISOString())
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      throw new AuditError(
+        AuditErrorCode.DATABASE_ERROR,
+        `Failed to get suspicious activities: ${error.message}`
+      );
+    }
+
+    // 活動タイプ別にグループ化
+    const groupedActivities: Record<string, {
+      count: number;
+      severity: SecuritySeverity;
+      lastOccurrence: Date;
+      affectedTables: Set<string>;
+    }> = {};
+
+    data?.forEach((activity) => {
+      const key = activity.activity_type;
+      if (!groupedActivities[key]) {
+        groupedActivities[key] = {
+          count: 0,
+          severity: activity.severity as SecuritySeverity,
+          lastOccurrence: new Date(activity.created_at),
+          affectedTables: new Set(),
+        };
+      }
+
+      groupedActivities[key].count++;
+      if (activity.table_name) {
+        groupedActivities[key].affectedTables.add(activity.table_name);
+      }
+
+      const currentDate = new Date(activity.created_at);
+      if (currentDate > groupedActivities[key].lastOccurrence) {
+        groupedActivities[key].lastOccurrence = currentDate;
+      }
+    });
+
+    return Object.entries(groupedActivities).map(([activityType, data]) => ({
+      activityType: activityType as SuspiciousActivityType,
+      count: data.count,
+      severity: data.severity,
+      lastOccurrence: data.lastOccurrence,
+      affectedTables: Array.from(data.affectedTables),
+    }));
   }
 
-  private async getUnauthorizedAttemptsInRange(timeRange: TimeRange) {
-    // 実装スタブ
-    return [];
+  private async getUnauthorizedAttemptsInRange(timeRange: TimeRange): Promise<UnauthorizedAttemptSummary[]> {
+    const { data, error } = await this.supabase
+      .from("unauthorized_access_log")
+      .select("detection_method, attempted_resource, ip_address, created_at")
+      .gte("created_at", timeRange.start.toISOString())
+      .lte("created_at", timeRange.end.toISOString())
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      throw new AuditError(
+        AuditErrorCode.DATABASE_ERROR,
+        `Failed to get unauthorized attempts: ${error.message}`
+      );
+    }
+
+    // 検知方法別にグループ化
+    const groupedAttempts: Record<string, {
+      count: number;
+      uniqueIpAddresses: Set<string>;
+      resourceCounts: Record<string, number>;
+      lastAttempt: Date;
+    }> = {};
+
+    data?.forEach((attempt) => {
+      const key = attempt.detection_method;
+      if (!groupedAttempts[key]) {
+        groupedAttempts[key] = {
+          count: 0,
+          uniqueIpAddresses: new Set(),
+          resourceCounts: {},
+          lastAttempt: new Date(attempt.created_at),
+        };
+      }
+
+      groupedAttempts[key].count++;
+      if (attempt.ip_address) {
+        groupedAttempts[key].uniqueIpAddresses.add(attempt.ip_address);
+      }
+
+      const resource = attempt.attempted_resource;
+      groupedAttempts[key].resourceCounts[resource] =
+        (groupedAttempts[key].resourceCounts[resource] || 0) + 1;
+
+      const currentDate = new Date(attempt.created_at);
+      if (currentDate > groupedAttempts[key].lastAttempt) {
+        groupedAttempts[key].lastAttempt = currentDate;
+      }
+    });
+
+    return Object.entries(groupedAttempts).map(([detectionMethod, data]) => {
+      const mostTargetedResource = Object.entries(data.resourceCounts)
+        .sort(([, a], [, b]) => b - a)[0]?.[0] || "unknown";
+
+      return {
+        detectionMethod: detectionMethod as DetectionMethod,
+        count: data.count,
+        uniqueIpAddresses: data.uniqueIpAddresses.size,
+        mostTargetedResource,
+        lastAttempt: data.lastAttempt,
+      };
+    });
   }
 
-  private async analyzeRlsViolationIndicators(timeRange: TimeRange) {
-    // 実装スタブ
-    return [];
+  private async analyzeRlsViolationIndicators(timeRange: TimeRange): Promise<RlsViolationIndicator[]> {
+    const indicators: RlsViolationIndicator[] = [];
+
+    // 空の結果セットの頻度分析
+    const { data: emptyResultData, error: emptyError } = await this.supabase
+      .from("suspicious_activity_log")
+      .select("table_name, context, created_at")
+      .eq("activity_type", SuspiciousActivityType.EMPTY_RESULT_SET)
+      .gte("created_at", timeRange.start.toISOString())
+      .lte("created_at", timeRange.end.toISOString());
+
+    if (!emptyError && emptyResultData) {
+      const tableFrequency: Record<string, number> = {};
+      emptyResultData.forEach((entry) => {
+        if (entry.table_name) {
+          tableFrequency[entry.table_name] = (tableFrequency[entry.table_name] || 0) + 1;
+        }
+      });
+
+      Object.entries(tableFrequency).forEach(([tableName, frequency]) => {
+        if (frequency >= this.config.emptyResultSetThreshold) {
+          indicators.push({
+            tableName,
+            emptyResultSetFrequency: frequency,
+            suspiciousPatternCount: frequency,
+            severity: frequency > 10 ? SecuritySeverity.HIGH : SecuritySeverity.MEDIUM,
+            description: `テーブル「${tableName}」で空の結果セットが${frequency}回検出されました。RLS違反の可能性があります。`,
+          });
+        }
+      });
+    }
+
+    // RLSバイパス試行の分析
+    const { data: bypassData, error: bypassError } = await this.supabase
+      .from("suspicious_activity_log")
+      .select("table_name, context, created_at")
+      .eq("activity_type", SuspiciousActivityType.UNAUTHORIZED_RLS_BYPASS)
+      .gte("created_at", timeRange.start.toISOString())
+      .lte("created_at", timeRange.end.toISOString());
+
+    if (!bypassError && bypassData && bypassData.length > 0) {
+      const tableBypassCounts: Record<string, number> = {};
+      bypassData.forEach((entry) => {
+        if (entry.table_name) {
+          tableBypassCounts[entry.table_name] = (tableBypassCounts[entry.table_name] || 0) + 1;
+        }
+      });
+
+      Object.entries(tableBypassCounts).forEach(([tableName, count]) => {
+        indicators.push({
+          tableName,
+          emptyResultSetFrequency: 0,
+          suspiciousPatternCount: count,
+          severity: SecuritySeverity.CRITICAL,
+          description: `テーブル「${tableName}」でRLSバイパス試行が${count}回検出されました。緊急対応が必要です。`,
+        });
+      });
+    }
+
+    return indicators;
   }
 
-  private async generateSecurityRecommendations(timeRange: TimeRange) {
-    // 実装スタブ
-    return [];
+  private async generateSecurityRecommendations(timeRange: TimeRange): Promise<SecurityRecommendation[]> {
+    const recommendations: SecurityRecommendation[] = [];
+
+    // 疑わしい活動の分析
+    const suspiciousActivities = await this.getSuspiciousActivitiesInRange(timeRange);
+    const unauthorizedAttempts = await this.getUnauthorizedAttemptsInRange(timeRange);
+    const rlsIndicators = await this.analyzeRlsViolationIndicators(timeRange);
+
+    // 高優先度の推奨事項
+    const criticalActivities = suspiciousActivities.filter(
+      a => a.severity === SecuritySeverity.CRITICAL
+    );
+    if (criticalActivities.length > 0) {
+      recommendations.push({
+        priority: SecuritySeverity.CRITICAL,
+        category: "INVESTIGATION",
+        title: "緊急セキュリティ調査が必要",
+        description: `${criticalActivities.length}件の重大なセキュリティ問題が検出されました。即座に調査を開始してください。`,
+        actionRequired: true,
+      });
+    }
+
+    // RLS違反の推奨事項
+    if (rlsIndicators.length > 0) {
+      recommendations.push({
+        priority: SecuritySeverity.HIGH,
+        category: "POLICY_UPDATE",
+        title: "RLSポリシーの見直しが必要",
+        description: `${rlsIndicators.length}個のテーブルでRLS違反の可能性が検出されました。ポリシーの強化を検討してください。`,
+        actionRequired: true,
+      });
+    }
+
+    // 不正アクセス試行の推奨事項
+    const highVolumeAttempts = unauthorizedAttempts.filter(a => a.count > 10);
+    if (highVolumeAttempts.length > 0) {
+      recommendations.push({
+        priority: SecuritySeverity.HIGH,
+        category: "ACCESS_CONTROL",
+        title: "アクセス制御の強化が必要",
+        description: `大量の不正アクセス試行が検出されました。レート制限やIP制限の強化を検討してください。`,
+        actionRequired: true,
+      });
+    }
+
+    // 監視強化の推奨事項
+    const totalSuspiciousCount = suspiciousActivities.reduce((sum, a) => sum + a.count, 0);
+    if (totalSuspiciousCount > 50) {
+      recommendations.push({
+        priority: SecuritySeverity.MEDIUM,
+        category: "MONITORING",
+        title: "監視システムの強化",
+        description: "疑わしい活動の頻度が高いため、監視システムの強化と自動アラートの設定を推奨します。",
+        actionRequired: false,
+      });
+    }
+
+    // 基本的な推奨事項（問題が少ない場合）
+    if (recommendations.length === 0) {
+      recommendations.push({
+        priority: SecuritySeverity.LOW,
+        category: "MONITORING",
+        title: "継続的な監視の維持",
+        description: "現在のセキュリティ状況は良好です。継続的な監視を維持してください。",
+        actionRequired: false,
+      });
+    }
+
+    return recommendations;
   }
 
   private async checkMissingAuditEntries() {
