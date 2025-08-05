@@ -38,6 +38,14 @@ export {
 // セキュリティ監査
 export { SecurityAuditorImpl } from "./security-auditor.impl";
 
+// 管理者操作（セキュア）
+export {
+  deleteUserById,
+  checkUserProfileExists,
+  createEmergencyAdminClient,
+  createMaintenanceAdminClient,
+} from "./admin-operations";
+
 // 便利な関数
 export {
   AdminReason,
