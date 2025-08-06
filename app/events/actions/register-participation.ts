@@ -167,6 +167,23 @@ async function validateCapacityAndDuplication(
     }
   }
 
+  // メールアドレスの重複チェック（ユーザビリティ改善のため事前チェック）
+  const isDuplicate = await _checkDuplicateEmail(event.id, participationData.email);
+  if (isDuplicate) {
+    // 重複エラー試行をログに記録
+    logParticipationSecurityEvent(
+      "DUPLICATE_REGISTRATION",
+      "Attempt to register with a duplicate email",
+      { eventId: event.id, email: participationData.email },
+      { ...securityContext, eventId: event.id }
+    );
+
+    throw createErrorResponse(
+      ERROR_CODES.CONFLICT,
+      "このメールアドレスは既にこのイベントに登録されています"
+    );
+  }
+
   // 包括的なバリデーションと重複チェック（セキュリティログ付き）
   const validationErrors = await validateParticipationFormWithDuplicateCheck(
     participationData,
