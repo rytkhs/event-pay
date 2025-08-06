@@ -35,6 +35,27 @@ export const RATE_LIMIT_CONFIG = {
     blockDurationMs: 5 * 60 * 1000, // 5分ブロック
   } as RateLimitConfig,
 
+  // 招待リンク関連API（GET リクエストが頻繁に発生するため緩い設定）
+  invite: {
+    windowMs: 1 * 60 * 1000, // 1分
+    maxAttempts: 20, // 20回まで（頻繁な検証を許容）
+    blockDurationMs: 5 * 60 * 1000, // 5分ブロック（短めに設定）
+  } as RateLimitConfig,
+
+  // 参加登録関連（将来のAPI拡張用）
+  participation: {
+    windowMs: 5 * 60 * 1000, // 5分
+    maxAttempts: 10, // 10回まで
+    blockDurationMs: 15 * 60 * 1000, // 15分ブロック
+  } as RateLimitConfig,
+
+  // ゲスト管理API
+  guest: {
+    windowMs: 5 * 60 * 1000, // 5分
+    maxAttempts: 15, // 15回まで（自己管理のため少し多め）
+    blockDurationMs: 15 * 60 * 1000, // 15分ブロック
+  } as RateLimitConfig,
+
   // 一般API（将来拡張用）
   general: {
     windowMs: 60 * 1000, // 1分

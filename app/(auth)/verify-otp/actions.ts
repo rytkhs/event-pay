@@ -50,25 +50,32 @@ export async function verifyOtpAction(payload: { otp: string; email: string; typ
       // タイミング攻撃防止のための遅延
       await randomDelay(300, 700);
 
-      // エラーメッセージの適切な変換
+      // エラーコードに基づく適切なエラーメッセージの取得
       let errorMessage = "コードが正しくありません";
+      let errorCode = "INVALID_OTP";
 
-      if (error.message.includes("expired")) {
+      // Supabaseエラーコードに基づく分類
+      if (error.message.includes("expired") || error.message.includes("Token has expired")) {
         errorMessage = "確認コードの有効期限が切れています。新しいコードを取得してください。";
+        errorCode = "OTP_EXPIRED";
       } else if (error.message.includes("invalid")) {
         errorMessage = "無効な確認コードです。正しいコードを入力してください。";
+        errorCode = "INVALID_OTP";
       } else if (error.message.includes("too many attempts")) {
         errorMessage = "試行回数が上限に達しました。新しいコードを取得してください。";
-      } else if (error.message.includes("Token has expired")) {
-        errorMessage = "確認コードの有効期限が切れています。";
+        errorCode = "RATE_LIMIT_EXCEEDED";
       } else if (error.message.includes("Email not confirmed")) {
         errorMessage = "メールアドレスが確認されていません。登録からやり直してください。";
+        errorCode = "EMAIL_NOT_CONFIRMED";
       } else {
         // 開発環境では詳細なエラーメッセージを表示
         if (process.env.NODE_ENV === "development") {
-          errorMessage = `認証エラー: ${error.message}`;
+          errorMessage = `認証エラー [${errorCode}]: ${error.message}`;
         }
       }
+
+      // TODO: 将来的にはSupabaseからエラーコードを直接取得するようにリファクタリング
+      // 現在は文字列解析で対応、将来的にはSupabase側でエラーコードを統一
 
       return { error: errorMessage };
     }

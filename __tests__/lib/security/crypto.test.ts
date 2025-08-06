@@ -3,7 +3,14 @@
  * @description 暗号学的関数のセキュリティとバイアステスト
  */
 
-import { generateOtpCode, generateSecureToken, hashToken, verifyHashedToken, verifyOtpCode, constantTimeCompare } from "@/lib/security/crypto";
+import {
+  generateOtpCode,
+  generateSecureToken,
+  hashToken,
+  verifyHashedToken,
+  verifyOtpCode,
+  constantTimeCompare,
+} from "@/lib/security/crypto";
 
 describe("Crypto Security Tests", () => {
   describe("generateOtpCode - 統計的バイアステスト", () => {
@@ -66,7 +73,7 @@ describe("Crypto Security Tests", () => {
       }
 
       // 統計的に先頭が0の値が含まれることを確認
-      const zeroStartOtps = otps.filter(otp => otp.startsWith('0'));
+      const zeroStartOtps = otps.filter((otp) => otp.startsWith("0"));
       expect(zeroStartOtps.length).toBeGreaterThan(50); // 約10%期待値の半分以上
     });
   });
@@ -132,7 +139,7 @@ describe("Crypto Security Tests", () => {
       // 異なる長さの間違ったトークンでも実行時間が一定であることを確認
       const wrongTokens = ["a", "wrong", "very-long-wrong-token"];
 
-      wrongTokens.forEach(wrongToken => {
+      wrongTokens.forEach((wrongToken) => {
         const startTime = process.hrtime.bigint();
         const result = verifyHashedToken(wrongToken, hash);
         const endTime = process.hrtime.bigint();
@@ -167,7 +174,7 @@ describe("Crypto Security Tests", () => {
       const correctOtp = "123456";
       const wrongOtps = ["000000", "999999", "123455"];
 
-      wrongOtps.forEach(wrongOtp => {
+      wrongOtps.forEach((wrongOtp) => {
         const startTime = process.hrtime.bigint();
         const result = verifyOtpCode(wrongOtp, correctOtp);
         const endTime = process.hrtime.bigint();

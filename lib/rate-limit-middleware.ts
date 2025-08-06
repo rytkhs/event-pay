@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { checkRateLimit, createRateLimitStore, type RateLimitConfig } from "@/lib/rate-limit/index";
+import { getClientIP } from "@/lib/utils/ip-detection";
 
 // レート制限エラーレスポンス用の型定義
-interface RateLimitErrorResponse {
+export interface RateLimitErrorResponse {
   success: false;
   error: {
     code: string;
@@ -12,10 +13,11 @@ interface RateLimitErrorResponse {
 }
 
 // レート制限ミドルウェア
+
 export function withRateLimit(config: RateLimitConfig, keyPrefix?: string) {
   return async function (request: NextRequest) {
-    const ip =
-      request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip") || "unknown";
+    // 信頼度ベースでの安全なIPアドレス取得
+    const ip = getClientIP(request);
     const store = await createRateLimitStore();
     const result = await checkRateLimit(store, `${keyPrefix || "api"}_${ip}`, config);
 
