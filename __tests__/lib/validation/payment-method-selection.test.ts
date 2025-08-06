@@ -7,7 +7,7 @@ import {
 
 describe("決済方法選択のバリデーション", () => {
   const baseFormData: ParticipationFormData = {
-    inviteToken: "abcdefghijklmnopqrstuvwxyz123456", // 32文字の有効なトークン
+    inviteToken: "inv_abcdefghijklmnopqrstuvwxyz123456", // 36文字の有効なトークン
     nickname: "テストユーザー",
     email: "test@example.com",
     attendanceStatus: "attending",

@@ -30,7 +30,8 @@ describe("Guest Token Comprehensive Tests", () => {
   describe("generateGuestToken", () => {
     it("32文字のトークンを生成する", () => {
       const token = generateGuestToken();
-      expect(token).toHaveLength(32);
+      expect(token).toHaveLength(36);
+      expect(token).toMatch(/^gst_[a-zA-Z0-9_-]{32}$/);
     });
 
     it("URL安全な文字のみを使用する", () => {
@@ -463,7 +464,8 @@ describe("Guest Token Comprehensive Tests", () => {
         const token = generateGuestToken();
 
         // 長さチェック
-        expect(token).toHaveLength(32);
+        expect(token).toHaveLength(36);
+        expect(token).toMatch(/^gst_[a-zA-Z0-9_-]{32}$/);
 
         // 文字チェック
         expect(token).toMatch(/^[a-zA-Z0-9_-]+$/);

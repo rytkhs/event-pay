@@ -87,9 +87,7 @@ export function useEventFilter(options: UseEventFilterOptions = {}) {
   const setStatusFilter = useCallback(
     (status: StatusFilter) => {
       if (!isValidStatusFilter(status)) {
-        if (process.env.NODE_ENV === "development") {
-          console.warn("無効なステータスフィルターです。全件表示に設定します。");
-        }
+        // 無効なステータスフィルターの場合はデフォルトを適用
         status = DEFAULT_STATUS_FILTER;
       }
       const newFilters = { ...filters, status };
@@ -101,9 +99,7 @@ export function useEventFilter(options: UseEventFilterOptions = {}) {
   const setPaymentFilter = useCallback(
     (payment: PaymentFilter) => {
       if (!isValidPaymentFilter(payment)) {
-        if (process.env.NODE_ENV === "development") {
-          console.warn("無効な決済フィルターです。全件表示に設定します。");
-        }
+        // 無効な決済フィルターの場合はデフォルトを適用
         payment = DEFAULT_PAYMENT_FILTER;
       }
       const newFilters = { ...filters, payment };

@@ -28,12 +28,12 @@ describe("Edge Runtime Compatible Crypto Functions", () => {
       });
 
       // グローバルcryptoを明示的に上書き
-      Object.defineProperty(global, 'crypto', {
+      Object.defineProperty(global, "crypto", {
         value: {
           getRandomValues: mockGetRandomValues,
         },
         writable: true,
-        configurable: true
+        configurable: true,
       });
 
       const bytes = generateRandomBytes(16);
@@ -49,10 +49,10 @@ describe("Edge Runtime Compatible Crypto Functions", () => {
 
       // 元のcryptoを復元
       if (originalCrypto) {
-        Object.defineProperty(global, 'crypto', {
+        Object.defineProperty(global, "crypto", {
           value: originalCrypto,
           writable: true,
-          configurable: true
+          configurable: true,
         });
       } else {
         delete (global as any).crypto;

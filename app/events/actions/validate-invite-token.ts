@@ -59,10 +59,8 @@ export async function validateInviteTokenAction(
         canRegister: result.canRegister,
       },
     };
-  } catch (error) {
-    if (process.env.NODE_ENV === "development") {
-      console.error("招待トークン検証アクションのエラー:", error);
-    }
+  } catch (_error) {
+    // エラーログは本番環境では適切なログシステムを使用
     return {
       success: false,
       error: "招待リンクの検証中にエラーが発生しました",

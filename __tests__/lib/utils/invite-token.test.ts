@@ -2,14 +2,15 @@ import { generateInviteToken, isValidInviteToken } from "@/lib/utils/invite-toke
 
 describe("Invite Token Utils", () => {
   describe("generateInviteToken", () => {
-    it("should generate a 32-character token", () => {
+    it("should generate a 36-character token with inv_ prefix", () => {
       const token = generateInviteToken();
-      expect(token).toHaveLength(32);
+      expect(token).toHaveLength(36);
+      expect(token).toMatch(/^inv_[a-zA-Z0-9_-]{32}$/);
     });
 
     it("should generate URL-safe characters only", () => {
       const token = generateInviteToken();
-      expect(token).toMatch(/^[a-zA-Z0-9_-]+$/);
+      expect(token).toMatch(/^inv_[a-zA-Z0-9_-]{32}$/);
     });
 
     it("should generate unique tokens", () => {
@@ -25,8 +26,8 @@ describe("Invite Token Utils", () => {
   });
 
   describe("isValidInviteToken", () => {
-    it("should return true for valid tokens", () => {
-      const validToken = "abcdefghijklmnopqrstuvwxyz123456";
+    it("should return true for valid tokens with inv_ prefix", () => {
+      const validToken = "inv_abcdefghijklmnopqrstuvwxyz123456";
       expect(isValidInviteToken(validToken)).toBe(true);
     });
 

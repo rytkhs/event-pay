@@ -32,10 +32,7 @@ export function toBase64UrlSafe(bytes: Uint8Array): string {
   const base64 = btoa(String.fromCharCode(...bytes));
 
   // URL安全な形式に変換
-  return base64
-    .replace(/\+/g, "-")
-    .replace(/\//g, "_")
-    .replace(/=/g, "");
+  return base64.replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "");
 }
 
 /**
@@ -45,7 +42,7 @@ export function toBase64UrlSafe(bytes: Uint8Array): string {
  */
 export function generateSecureToken(length: number = 32): string {
   const bytes = generateRandomBytes(length);
-  return Array.from(bytes, byte => byte.toString(16).padStart(2, "0")).join("");
+  return Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
 /**
@@ -173,7 +170,7 @@ export function generateSecureUuid(): string {
   // バリアント2を設定
   bytes[8] = (bytes[8] & 0x3f) | 0x80;
 
-  const hex = Array.from(bytes, byte => byte.toString(16).padStart(2, "0")).join("");
+  const hex = Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
   return [
     hex.substring(0, 8),
     hex.substring(8, 12),
@@ -181,6 +178,16 @@ export function generateSecureUuid(): string {
     hex.substring(16, 20),
     hex.substring(20, 32),
   ].join("-");
+}
+
+/**
+ * ゲストトークンの基本フォーマットを検証
+ * @param token 検証するトークン
+ * @returns フォーマットが有効かどうか
+ */
+export function validateGuestTokenFormat(token: string): boolean {
+  // 36文字のプレフィックス付きBase64URL形式をチェック（gst_プレフィックス + 32文字）
+  return /^gst_[a-zA-Z0-9_-]{32}$/.test(token);
 }
 
 /**
