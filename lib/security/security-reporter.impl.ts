@@ -13,6 +13,7 @@ import {
 } from "./audit-types";
 import { SecurityAuditor } from "./security-auditor.interface";
 import { AnomalyDetector, RlsViolationIndicator } from "./anomaly-detector";
+import { isObject, isString, isNumber, isArray } from "./type-guards";
 import {
   SecurityReporter,
   ComprehensiveSecurityReport,
@@ -250,7 +251,7 @@ export class SecurityReporterImpl implements SecurityReporter {
     const timeRange = this.calculatePeriodTimeRange(period);
     const previousTimeRange = this.calculatePreviousPeriodTimeRange(period, timeRange);
 
-    let data: SecurityReport | ComprehensiveSecurityReport;
+    let data: SecurityReport | ComprehensiveSecurityReport | ThreatAnalysisReport;
 
     switch (reportType) {
       case ReportType.SECURITY_OVERVIEW:
@@ -435,17 +436,28 @@ export class SecurityReporterImpl implements SecurityReporter {
     return actionItems;
   }
 
-  private analyzeAccessByReason(adminAccessData: any[]): Record<AdminReason, AdminAccessStats> {
+  private analyzeAccessByReason(adminAccessData: unknown[]): Record<AdminReason, AdminAccessStats> {
     const stats: Record<AdminReason, AdminAccessStats> = {} as Record<AdminReason, AdminAccessStats>;
 
     Object.values(AdminReason).forEach(reason => {
-      const reasonData = adminAccessData.filter(a => a.reason === reason);
-      const failures = reasonData.filter(a => !a.success).length;
+      const reasonData = adminAccessData.filter(a =>
+        isObject(a) && 'reason' in a && a.reason === reason
+      );
+      const failures = reasonData.filter(a =>
+        isObject(a) && 'success' in a && a.success === false
+      ).length;
 
       stats[reason] = {
         count: reasonData.length,
-        uniqueUsers: new Set(reasonData.map(a => a.user_id).filter(Boolean)).size,
-        averageDuration: reasonData.reduce((sum, a) => sum + (a.duration_ms || 0), 0) / reasonData.length || 0,
+        uniqueUsers: new Set(
+          reasonData
+            .map(a => isObject(a) && 'user_id' in a && isString(a.user_id) ? a.user_id : null)
+            .filter(Boolean)
+        ).size,
+        averageDuration: reasonData.reduce((sum: number, a) => {
+          const duration = isObject(a) && 'duration_ms' in a && isNumber(a.duration_ms) ? a.duration_ms : 0;
+          return sum + duration;
+        }, 0) / reasonData.length || 0,
         failureRate: reasonData.length > 0 ? failures / reasonData.length : 0,
       };
     });
@@ -453,26 +465,31 @@ export class SecurityReporterImpl implements SecurityReporter {
     return stats;
   }
 
-  private analyzeAccessByUser(adminAccessData: any[]): UserAccessStats[] {
+  private analyzeAccessByUser(adminAccessData: unknown[]): UserAccessStats[] {
     const userStats: Record<string, UserAccessStats> = {};
 
     adminAccessData.forEach(access => {
-      if (!access.user_id) return;
+      if (!isObject(access) || !('user_id' in access) || !isString(access.user_id)) return;
 
-      if (!userStats[access.user_id]) {
-        userStats[access.user_id] = {
-          userId: access.user_id,
+      const userId = access.user_id;
+      if (!userStats[userId]) {
+        userStats[userId] = {
+          userId,
           accessCount: 0,
-          lastAccess: new Date(access.created_at),
+          lastAccess: ('created_at' in access && isString(access.created_at))
+            ? new Date(access.created_at)
+            : new Date(),
           riskScore: 0,
           unusualActivity: false,
         };
       }
 
-      userStats[access.user_id].accessCount++;
-      const accessDate = new Date(access.created_at);
-      if (accessDate > userStats[access.user_id].lastAccess) {
-        userStats[access.user_id].lastAccess = accessDate;
+      userStats[userId].accessCount++;
+      if ('created_at' in access && isString(access.created_at)) {
+        const accessDate = new Date(access.created_at);
+        if (accessDate > userStats[userId].lastAccess) {
+          userStats[userId].lastAccess = accessDate;
+        }
       }
     });
 
@@ -485,11 +502,14 @@ export class SecurityReporterImpl implements SecurityReporter {
     return Object.values(userStats).sort((a, b) => b.riskScore - a.riskScore);
   }
 
-  private async detectUnusualAdminPatterns(adminAccessData: any[]): Promise<UnusualAccessPattern[]> {
+  private async detectUnusualAdminPatterns(adminAccessData: unknown[]): Promise<UnusualAccessPattern[]> {
     const patterns: UnusualAccessPattern[] = [];
 
     // 時間外アクセスパターンの検出
     const afterHoursAccess = adminAccessData.filter(access => {
+      if (!isObject(access) || !('created_at' in access) || !isString(access.created_at)) {
+        return false;
+      }
       const hour = new Date(access.created_at).getHours();
       return hour < 8 || hour > 18; // 8時前または18時後
     });
@@ -506,11 +526,15 @@ export class SecurityReporterImpl implements SecurityReporter {
     return patterns;
   }
 
-  private checkAdminAccessCompliance(adminAccessData: any[]): ComplianceIssue[] {
+  private checkAdminAccessCompliance(adminAccessData: unknown[]): ComplianceIssue[] {
     const issues: ComplianceIssue[] = [];
 
     // 理由が記録されていないアクセスをチェック
-    const missingReasonAccess = adminAccessData.filter(a => !a.reason || !a.context);
+    const missingReasonAccess = adminAccessData.filter(a => {
+      if (!isObject(a)) return true;
+      return !('reason' in a && isString(a.reason)) || !('context' in a && isString(a.context));
+    });
+
     if (missingReasonAccess.length > 0) {
       issues.push({
         type: "MISSING_JUSTIFICATION",
@@ -554,7 +578,7 @@ export class SecurityReporterImpl implements SecurityReporter {
   }
 
   private analyzeAccessByEvent(guestAccessData: any[]): EventAccessStats[] {
-    const eventStats: Record<string, EventAccessStats> = {};
+    const eventStats: Record<string, EventAccessStats & { uniqueTokensSet: Set<string> }> = {};
 
     guestAccessData.forEach(access => {
       if (!access.event_id) return;
@@ -563,26 +587,28 @@ export class SecurityReporterImpl implements SecurityReporter {
         eventStats[access.event_id] = {
           eventId: access.event_id,
           accessCount: 0,
-          uniqueTokens: new Set(),
+          uniqueTokens: 0,
+          uniqueTokensSet: new Set(),
           failureRate: 0,
         };
       }
 
       eventStats[access.event_id].accessCount++;
       if (access.guest_token_hash) {
-        eventStats[access.event_id].uniqueTokens.add(access.guest_token_hash);
+        eventStats[access.event_id].uniqueTokensSet.add(access.guest_token_hash);
       }
     });
 
-    // 失敗率の計算
+    // 失敗率とuniqueTokens数の計算
     Object.values(eventStats).forEach(stats => {
       const eventAccess = guestAccessData.filter(a => a.event_id === stats.eventId);
       const failures = eventAccess.filter(a => !a.success).length;
       stats.failureRate = eventAccess.length > 0 ? failures / eventAccess.length : 0;
-      stats.uniqueTokens = stats.uniqueTokens.size;
+      stats.uniqueTokens = stats.uniqueTokensSet.size;
     });
 
-    return Object.values(eventStats).sort((a, b) => b.accessCount - a.accessCount);
+    // uniqueTokensSetを除いてEventAccessStats[]として返す
+    return Object.values(eventStats).map(({ uniqueTokensSet, ...stats }) => stats).sort((a, b) => b.accessCount - a.accessCount);
   }
 
   private analyzeGuestFailures(guestAccessData: any[]): FailureAnalysis {
@@ -741,7 +767,7 @@ export class SecurityReporterImpl implements SecurityReporter {
   }
 
   private summarizeRlsViolations(indicators: RlsViolationIndicator[]): RlsViolationSummary {
-    const totalViolations = indicators.reduce((sum, ind) => sum + ind.suspiciousPatternCount, 0);
+    const totalViolations = indicators.reduce((sum, ind) => sum + ind.frequency, 0);
     const violationsByType: Record<string, number> = {};
     const severityDistribution: Record<SecuritySeverity, number> = {
       [SecuritySeverity.LOW]: 0,
@@ -766,7 +792,7 @@ export class SecurityReporterImpl implements SecurityReporter {
   private analyzeAffectedTables(indicators: RlsViolationIndicator[]): AffectedTableAnalysis[] {
     return indicators.map(indicator => ({
       tableName: indicator.tableName,
-      violationCount: indicator.suspiciousPatternCount,
+      violationCount: indicator.frequency,
       violationTypes: ["EMPTY_RESULT_SET"],
       riskLevel: indicator.severity,
       recommendedActions: [

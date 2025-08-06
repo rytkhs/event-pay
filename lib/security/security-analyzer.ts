@@ -14,6 +14,7 @@ import {
   AuditError,
   AuditErrorCode,
 } from "./audit-types";
+import { isTimeRange, isString, isNumber, isObject, isNotNullOrUndefined } from "./type-guards";
 
 /**
  * セキュリティ分析機能の実装
@@ -47,6 +48,14 @@ export class SecurityAnalyzerImpl implements SecurityAnalyzer {
     }>;
     recommendations: string[];
   }> {
+    // 型ガードでTimeRangeの妥当性を確認
+    if (!isTimeRange(timeRange)) {
+      throw new AuditError(
+        AuditErrorCode.VALIDATION_ERROR,
+        "Invalid time range provided for access pattern analysis"
+      );
+    }
+
     try {
       const patterns = await Promise.all([
         this.analyzeAdminAccessPatterns(timeRange),
@@ -62,9 +71,10 @@ export class SecurityAnalyzerImpl implements SecurityAnalyzer {
         recommendations,
       };
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
       throw new AuditError(
         AuditErrorCode.DATABASE_ERROR,
-        `Failed to analyze access patterns: ${error}`
+        `Failed to analyze access patterns: ${errorMessage}`
       );
     }
   }
@@ -140,12 +150,14 @@ export class SecurityAnalyzerImpl implements SecurityAnalyzer {
       const emptyResultSetFrequency: Record<string, number> = {};
       const suspiciousTables: string[] = [];
 
-      emptyResultSets?.forEach((entry) => {
-        if (entry.table_name) {
-          emptyResultSetFrequency[entry.table_name] =
-            (emptyResultSetFrequency[entry.table_name] || 0) + 1;
-        }
-      });
+      if (emptyResultSets && Array.isArray(emptyResultSets)) {
+        emptyResultSets.forEach((entry) => {
+          if (isObject(entry) && 'table_name' in entry && isString(entry.table_name)) {
+            const tableName = entry.table_name;
+            emptyResultSetFrequency[tableName] = (emptyResultSetFrequency[tableName] || 0) + 1;
+          }
+        });
+      }
 
       // 疑わしいテーブルを特定（頻度が高いもの）
       Object.entries(emptyResultSetFrequency).forEach(([tableName, frequency]) => {
@@ -183,7 +195,12 @@ export class SecurityAnalyzerImpl implements SecurityAnalyzer {
   // プライベートヘルパーメソッド
   // ====================================================================
 
-  private async analyzeAdminAccessPatterns(timeRange: TimeRange) {
+  private async analyzeAdminAccessPatterns(timeRange: TimeRange): Promise<Array<{
+    pattern: string;
+    frequency: number;
+    severity: SecuritySeverity;
+    description: string;
+  }>> {
     const { data, error } = await this.supabase
       .from("admin_access_audit")
       .select("reason, user_id, created_at, success")
@@ -197,18 +214,28 @@ export class SecurityAnalyzerImpl implements SecurityAnalyzer {
       );
     }
 
-    const patterns = [];
+    const patterns: Array<{
+      pattern: string;
+      frequency: number;
+      severity: SecuritySeverity;
+      description: string;
+    }> = [];
+
+    // データが存在しない場合は空の配列を返す
+    if (!data || !Array.isArray(data)) {
+      return patterns;
+    }
 
     // 頻繁な管理者アクセスの検知
     const accessCounts: Record<string, number> = {};
-    data?.forEach((entry) => {
-      if (entry.user_id) {
+    data.forEach((entry) => {
+      if (isObject(entry) && 'user_id' in entry && isString(entry.user_id)) {
         accessCounts[entry.user_id] = (accessCounts[entry.user_id] || 0) + 1;
       }
     });
 
     Object.entries(accessCounts).forEach(([userId, count]) => {
-      if (count > 20) {
+      if (isNumber(count) && count > 20) {
         // 閾値
         patterns.push({
           pattern: `FREQUENT_ADMIN_ACCESS_${userId}`,
@@ -220,7 +247,10 @@ export class SecurityAnalyzerImpl implements SecurityAnalyzer {
     });
 
     // 失敗した管理者アクセスの検知
-    const failures = data?.filter((entry) => !entry.success).length || 0;
+    const failures = data.filter((entry) =>
+      isObject(entry) && 'success' in entry && entry.success === false
+    ).length;
+
     if (failures > 5) {
       patterns.push({
         pattern: "HIGH_ADMIN_ACCESS_FAILURES",
@@ -233,7 +263,12 @@ export class SecurityAnalyzerImpl implements SecurityAnalyzer {
     return patterns;
   }
 
-  private async analyzeGuestAccessPatterns(timeRange: TimeRange) {
+  private async analyzeGuestAccessPatterns(timeRange: TimeRange): Promise<Array<{
+    pattern: string;
+    frequency: number;
+    severity: SecuritySeverity;
+    description: string;
+  }>> {
     const { data, error } = await this.supabase
       .from("guest_access_audit")
       .select("guest_token_hash, action, success, created_at")
@@ -247,16 +282,29 @@ export class SecurityAnalyzerImpl implements SecurityAnalyzer {
       );
     }
 
-    const patterns = [];
+    const patterns: Array<{
+      pattern: string;
+      frequency: number;
+      severity: SecuritySeverity;
+      description: string;
+    }> = [];
+
+    // データが存在しない場合は空の配列を返す
+    if (!data || !Array.isArray(data)) {
+      return patterns;
+    }
 
     // 同一トークンからの大量アクセス
     const tokenCounts: Record<string, number> = {};
-    data?.forEach((entry) => {
-      tokenCounts[entry.guest_token_hash] = (tokenCounts[entry.guest_token_hash] || 0) + 1;
+    data.forEach((entry) => {
+      if (isObject(entry) && 'guest_token_hash' in entry && isString(entry.guest_token_hash)) {
+        const tokenHash = entry.guest_token_hash;
+        tokenCounts[tokenHash] = (tokenCounts[tokenHash] || 0) + 1;
+      }
     });
 
     Object.entries(tokenCounts).forEach(([tokenHash, count]) => {
-      if (count > 50) {
+      if (isNumber(count) && count > 50) {
         // 閾値
         patterns.push({
           pattern: `BULK_GUEST_ACCESS_${tokenHash.substring(0, 8)}`,
@@ -268,8 +316,11 @@ export class SecurityAnalyzerImpl implements SecurityAnalyzer {
     });
 
     // ゲストアクセス失敗率の分析
-    const totalAccess = data?.length || 0;
-    const failures = data?.filter((entry) => !entry.success).length || 0;
+    const totalAccess = data.length;
+    const failures = data.filter((entry) =>
+      isObject(entry) && 'success' in entry && entry.success === false
+    ).length;
+
     const failureRate = totalAccess > 0 ? failures / totalAccess : 0;
 
     if (failureRate > 0.3) {
@@ -285,7 +336,12 @@ export class SecurityAnalyzerImpl implements SecurityAnalyzer {
     return patterns;
   }
 
-  private async analyzeSuspiciousActivityPatterns(timeRange: TimeRange) {
+  private async analyzeSuspiciousActivityPatterns(timeRange: TimeRange): Promise<Array<{
+    pattern: string;
+    frequency: number;
+    severity: SecuritySeverity;
+    description: string;
+  }>> {
     const { data, error } = await this.supabase
       .from("suspicious_activity_log")
       .select("activity_type, severity, table_name, created_at")
@@ -299,16 +355,29 @@ export class SecurityAnalyzerImpl implements SecurityAnalyzer {
       );
     }
 
-    const patterns = [];
+    const patterns: Array<{
+      pattern: string;
+      frequency: number;
+      severity: SecuritySeverity;
+      description: string;
+    }> = [];
+
+    // データが存在しない場合は空の配列を返す
+    if (!data || !Array.isArray(data)) {
+      return patterns;
+    }
 
     // 活動タイプ別の集計
     const activityCounts: Record<string, number> = {};
-    data?.forEach((entry) => {
-      activityCounts[entry.activity_type] = (activityCounts[entry.activity_type] || 0) + 1;
+    data.forEach((entry) => {
+      if (isObject(entry) && 'activity_type' in entry && isString(entry.activity_type)) {
+        const activityType = entry.activity_type;
+        activityCounts[activityType] = (activityCounts[activityType] || 0) + 1;
+      }
     });
 
     Object.entries(activityCounts).forEach(([activityType, count]) => {
-      if (count > 10) {
+      if (isNumber(count) && count > 10) {
         // 閾値
         patterns.push({
           pattern: `FREQUENT_${activityType}`,

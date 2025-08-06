@@ -163,7 +163,6 @@ describe("セキュアクライアントファクトリー統合テスト", () =
 
       expect(() => {
         // 新しいインスタンスを作成しようとする
-        // プライベートコンストラクタなので、リフレクションを使用
         const SecureSupabaseClientFactory =
           require("@/lib/security/secure-client-factory.impl").SecureSupabaseClientFactory;
         new SecureSupabaseClientFactory();

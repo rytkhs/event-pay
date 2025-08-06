@@ -17,6 +17,7 @@ import {
   SuspiciousActivityEntry,
 } from "./audit-types";
 import { SecurityAuditor } from "./security-auditor.interface";
+import { isObject, isString, isNumber } from "./type-guards";
 
 // ====================================================================
 // 1. 異常検知システムのインターフェース
@@ -585,8 +586,8 @@ export class AnomalyDetectorImpl implements AnomalyDetector {
   }
 
   private async detectAnomalousPatterns(
-    guestAccess: any[],
-    adminAccess: any[],
+    guestAccess: unknown[],
+    adminAccess: unknown[],
     timeRange: TimeRange
   ): Promise<AnomalousPattern[]> {
     const patterns: AnomalousPattern[] = [];
@@ -614,24 +615,28 @@ export class AnomalyDetectorImpl implements AnomalyDetector {
     return patterns;
   }
 
-  private groupAccessByHour(guestAccess: any[], adminAccess: any[]): Record<string, number> {
+  private groupAccessByHour(guestAccess: unknown[], adminAccess: unknown[]): Record<string, number> {
     const hourlyCount: Record<string, number> = {};
 
     [...guestAccess, ...adminAccess].forEach(access => {
-      const hour = new Date(access.created_at).toISOString().slice(0, 13); // YYYY-MM-DDTHH
-      hourlyCount[hour] = (hourlyCount[hour] || 0) + 1;
+      if (isObject(access) && 'created_at' in access && isString(access.created_at)) {
+        const hour = new Date(access.created_at).toISOString().slice(0, 13); // YYYY-MM-DDTHH
+        hourlyCount[hour] = (hourlyCount[hour] || 0) + 1;
+      }
     });
 
     return hourlyCount;
   }
 
-  private analyzeTokenAccessPatterns(guestAccess: any[]): AnomalousPattern[] {
+  private analyzeTokenAccessPatterns(guestAccess: unknown[]): AnomalousPattern[] {
     const patterns: AnomalousPattern[] = [];
     const tokenCounts: Record<string, number> = {};
 
     guestAccess.forEach(access => {
-      const token = access.guest_token_hash;
-      tokenCounts[token] = (tokenCounts[token] || 0) + 1;
+      if (isObject(access) && 'guest_token_hash' in access && isString(access.guest_token_hash)) {
+        const token = access.guest_token_hash;
+        tokenCounts[token] = (tokenCounts[token] || 0) + 1;
+      }
     });
 
     // 異常に多いアクセスを持つトークンを検出

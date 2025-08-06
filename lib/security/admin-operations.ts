@@ -1,5 +1,5 @@
-import { getSecureClientFactory } from "@/lib/security";
-import { AdminReason } from "@/lib/security/secure-client-factory.types";
+import { AdminReason } from "./secure-client-factory.types";
+import type { AdminOperationResult, AdminOperationContext } from "./admin-operations.types";
 
 /**
  * セキュアな管理者操作ユーティリティ
@@ -21,14 +21,33 @@ export async function deleteUserById(
   userId: string,
   reason: AdminReason = AdminReason.USER_CLEANUP,
   context: string = "User deletion for compensation transaction"
-): Promise<void> {
-  const secureFactory = getSecureClientFactory();
-  const adminClient = await secureFactory.createAuditedAdminClient(reason, context);
+): Promise<AdminOperationResult<void>> {
+  try {
+    // 循環インポートを避けるため、動的インポートを使用
+    const { getSecuritySystem } = await import("./index");
+    const secureFactory = getSecuritySystem().getClientFactory();
+    const adminClient = await secureFactory.createAuditedAdminClient(reason, context);
 
-  const { error } = await adminClient.auth.admin.deleteUser(userId);
+    const { error } = await adminClient.auth.admin.deleteUser(userId);
 
-  if (error) {
-    throw new Error(`Failed to delete user: ${error.message}`);
+    if (error) {
+      return {
+        success: false,
+        error: `Failed to delete user: ${error.message}`,
+        timestamp: new Date(),
+      };
+    }
+
+    return {
+      success: true,
+      timestamp: new Date(),
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error: String(error),
+      timestamp: new Date(),
+    };
   }
 }
 
@@ -44,22 +63,40 @@ export async function checkUserProfileExists(
   userId: string,
   reason: AdminReason = AdminReason.SYSTEM_MAINTENANCE,
   context: string = "User profile existence check"
-): Promise<boolean> {
-  const secureFactory = getSecureClientFactory();
-  const adminClient = await secureFactory.createAuditedAdminClient(reason, context);
+): Promise<AdminOperationResult<boolean>> {
+  try {
+    // 循環インポートを避けるため、動的インポートを使用
+    const { getSecuritySystem } = await import("./index");
+    const secureFactory = getSecuritySystem().getClientFactory();
+    const adminClient = await secureFactory.createAuditedAdminClient(reason, context);
 
-  const { data, error } = await adminClient
-    .from("users")
-    .select("id")
-    .eq("id", userId)
-    .single();
+    const { data, error } = await adminClient
+      .from("users")
+      .select("id")
+      .eq("id", userId)
+      .single();
 
-  if (error && error.code !== "PGRST116") {
-    // PGRST116 = No rows returned
-    throw new Error(`Failed to check user profile: ${error.message}`);
+    if (error && error.code !== "PGRST116") {
+      // PGRST116 = No rows returned
+      return {
+        success: false,
+        error: `Failed to check user profile: ${error.message}`,
+        timestamp: new Date(),
+      };
+    }
+
+    return {
+      success: true,
+      data: !!data,
+      timestamp: new Date(),
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error: String(error),
+      timestamp: new Date(),
+    };
   }
-
-  return !!data;
 }
 
 /**
@@ -73,7 +110,9 @@ export async function createEmergencyAdminClient(
   userId: string,
   emergencyReason: string
 ) {
-  const secureFactory = getSecureClientFactory();
+  // 循環インポートを避けるため、動的インポートを使用
+  const { getSecuritySystem } = await import("./index");
+  const secureFactory = getSecuritySystem().getClientFactory();
   return await secureFactory.createAuditedAdminClient(
     AdminReason.EMERGENCY_ACCESS,
     `Emergency access for user ${userId}: ${emergencyReason}`
@@ -87,7 +126,9 @@ export async function createEmergencyAdminClient(
  * @returns 管理者クライアント（メンテナンス用）
  */
 export async function createMaintenanceAdminClient(maintenanceTask: string) {
-  const secureFactory = getSecureClientFactory();
+  // 循環インポートを避けるため、動的インポートを使用
+  const { getSecuritySystem } = await import("./index");
+  const secureFactory = getSecuritySystem().getClientFactory();
   return await secureFactory.createAuditedAdminClient(
     AdminReason.SYSTEM_MAINTENANCE,
     `System maintenance: ${maintenanceTask}`
@@ -126,3 +167,53 @@ export async function createMaintenanceAdminClient(maintenanceTask: string) {
  * - createMaintenanceAdminClient() - メンテナンス用アクセス
  * - 全操作の監査ログ記録
  */
+/**
+ *
+ 管理者操作クラス
+ * 
+ * 関数群をクラスとしてラップし、統一されたインターフェースを提供
+ */
+export class AdminOperations {
+  /**
+   * ユーザー削除（補償トランザクション用）
+   */
+  async deleteUser(
+    userId: string,
+    reason: AdminReason = AdminReason.USER_CLEANUP,
+    context: string = "User deletion for compensation transaction"
+  ): Promise<AdminOperationResult<void>> {
+    return deleteUserById(userId, reason, context);
+  }
+
+  /**
+   * ユーザープロファイル存在確認
+   */
+  async checkUserExists(
+    userId: string,
+    reason: AdminReason = AdminReason.SYSTEM_MAINTENANCE,
+    context: string = "User profile existence check"
+  ): Promise<AdminOperationResult<boolean>> {
+    return checkUserProfileExists(userId, reason, context);
+  }
+
+  /**
+   * 緊急時の管理者クライアント作成
+   */
+  async createEmergencyClient(userId: string, emergencyReason: string) {
+    return createEmergencyAdminClient(userId, emergencyReason);
+  }
+
+  /**
+   * メンテナンス用の管理者クライアント作成
+   */
+  async createMaintenanceClient(maintenanceTask: string) {
+    return createMaintenanceAdminClient(maintenanceTask);
+  }
+}
+
+/**
+ * デフォルトのAdminOperationsインスタンスを取得
+ */
+export function getAdminOperations(): AdminOperations {
+  return new AdminOperations();
+}

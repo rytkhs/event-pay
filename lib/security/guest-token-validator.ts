@@ -157,7 +157,7 @@ export class RLSGuestTokenValidator implements IGuestTokenValidator {
       // 成功をログに記録
       await this.safeLogGuestAccess(token, "VALIDATE_TOKEN", true, {
         attendanceId: attendance.id,
-        eventId: attendance.event?.id || "",
+        eventId: (Array.isArray(attendance.event) && attendance.event.length > 0) ? attendance.event[0].id : "",
         tableName: "attendances",
         operationType: "SELECT",
         resultCount: 1,
@@ -166,7 +166,7 @@ export class RLSGuestTokenValidator implements IGuestTokenValidator {
       return {
         isValid: true,
         attendanceId: attendance.id,
-        eventId: attendance.event?.id || "",
+        eventId: (Array.isArray(attendance.event) && attendance.event.length > 0) ? attendance.event[0].id : "",
         canModify,
       };
     } catch (error) {
@@ -291,7 +291,7 @@ export class RLSGuestTokenValidator implements IGuestTokenValidator {
       // 成功をログに記録
       await this.safeLogGuestAccess(token, "VALIDATE_TOKEN_DETAILS", true, {
         attendanceId: attendance.id,
-        eventId: attendance.event?.id || "",
+        eventId: (Array.isArray(attendance.event) && attendance.event.length > 0) ? attendance.event[0].id : "",
         tableName: "attendances",
         operationType: "SELECT",
         resultCount: 1,

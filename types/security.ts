@@ -1,5 +1,15 @@
 // セキュリティ監査システムの型定義
 
+// ゲストトークンエラー関連の型をインポート
+export {
+  GuestErrorCode,
+  GuestTokenError,
+  GuestTokenErrorFactory,
+  GuestTokenErrorHandler,
+  ErrorSeverity,
+  type GuestErrorContext,
+} from "../lib/security/guest-token-errors";
+
 // 管理者権限使用理由
 export enum AdminReason {
   USER_CLEANUP = "user_cleanup",
@@ -28,8 +38,6 @@ export enum SecuritySeverity {
   HIGH = "HIGH",
   CRITICAL = "CRITICAL",
 }
-
-// GuestErrorCode は lib/security/secure-client-factory.types.ts で定義済み
 
 // 管理者アクセス監査ログ
 export interface AdminAccessAuditLog {
@@ -132,25 +140,28 @@ export interface SecurityReport {
     emptyResultCount: number;
     suspicionLevel: SecuritySeverity;
   }>;
+  recommendations?: SecurityRecommendation[];
+}
+
+// セキュリティ推奨事項
+export interface SecurityRecommendation {
+  priority: SecuritySeverity;
+  category: "ACCESS_CONTROL" | "MONITORING" | "POLICY_UPDATE" | "INVESTIGATION";
+  title: string;
+  description: string;
+  actionRequired: boolean;
 }
 
 // 時間範囲
 export interface TimeRange {
-  startDate: Date;
-  endDate: Date;
+  start: Date;
+  end: Date;
 }
 
-// ゲストトークンエラー
-export class GuestTokenError extends Error {
-  constructor(
-    public code: GuestErrorCode,
-    message: string,
-    public context?: Record<string, any>
-  ) {
-    super(message);
-    this.name = "GuestTokenError";
-  }
-}
+
+
+// AuditContext型をaudit-types.tsから再エクスポート
+export type { AuditContext } from "../lib/security/audit-types";
 
 // 管理者権限エラー
 export enum AdminAccessErrorCode {
@@ -160,18 +171,11 @@ export enum AdminAccessErrorCode {
   EMERGENCY_ACCESS_REQUIRED = "EMERGENCY_ACCESS_REQUIRED",
 }
 
-export interface AuditContext {
-  operation: string;
-  tableName?: string;
-  recordId?: string;
-  additionalInfo?: Record<string, any>;
-}
-
 export class AdminAccessError extends Error {
   constructor(
     public code: AdminAccessErrorCode,
     message: string,
-    public auditContext?: AuditContext
+    public auditContext?: Record<string, unknown>
   ) {
     super(message);
     this.name = "AdminAccessError";

@@ -6,7 +6,8 @@
 
 import { headers } from "next/headers";
 import { generateSecureUuid } from "./crypto";
-import { AuditContextBuilder, AuditContext } from "./security-auditor.interface";
+import { AuditContextBuilder } from "./security-auditor.interface";
+import { AuditContext } from "./audit-types";
 
 /**
  * 監査コンテキスト作成ヘルパーの実装
