@@ -93,7 +93,7 @@ export interface SuspiciousActivityEntry {
   attemptedAction?: string;
   expectedResultCount?: number;
   actualResultCount?: number;
-  context?: Record<string, any>;
+  context?: Record<string, unknown>;
   severity?: SecuritySeverity;
   ipAddress?: string;
   userAgent?: string;
@@ -111,7 +111,7 @@ export interface UnauthorizedAccessEntry {
   id?: string;
   attemptedResource: string;
   requiredPermission?: string;
-  userContext?: Record<string, any>;
+  userContext?: Record<string, unknown>;
   userId?: string;
   guestTokenHash?: string;
   detectionMethod: DetectionMethod;
@@ -121,7 +121,7 @@ export interface UnauthorizedAccessEntry {
   sessionId?: string;
   requestPath?: string;
   requestMethod?: string;
-  requestHeaders?: Record<string, any>;
+  requestHeaders?: Record<string, unknown>;
   responseStatus?: number;
   createdAt?: Date;
 }
@@ -150,7 +150,7 @@ export interface ResultSetAnalysis {
   actualCount: number;
   isEmpty: boolean;
   isUnexpectedlyEmpty: boolean;
-  context?: Record<string, any>;
+  context?: Record<string, unknown>;
 }
 
 /** セキュリティレポート */

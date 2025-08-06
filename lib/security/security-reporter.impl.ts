@@ -547,7 +547,7 @@ export class SecurityReporterImpl implements SecurityReporter {
   }
 
   private generateAdminAccessRecommendations(
-    adminStats: any,
+    adminStats: Record<string, unknown>,
     unusualPatterns: UnusualAccessPattern[],
     complianceIssues: ComplianceIssue[]
   ): SecurityRecommendation[] {
@@ -576,7 +576,7 @@ export class SecurityReporterImpl implements SecurityReporter {
     return recommendations;
   }
 
-  private analyzeAccessByEvent(guestAccessData: any[]): EventAccessStats[] {
+  private analyzeAccessByEvent(guestAccessData: Record<string, unknown>[]): EventAccessStats[] {
     const eventStats: Record<string, EventAccessStats & { uniqueTokensSet: Set<string> }> = {};
 
     guestAccessData.forEach(access => {
@@ -610,7 +610,7 @@ export class SecurityReporterImpl implements SecurityReporter {
     return Object.values(eventStats).map(({ uniqueTokensSet: _uniqueTokensSet, ...stats }) => stats).sort((a, b) => b.accessCount - a.accessCount);
   }
 
-  private analyzeGuestFailures(guestAccessData: any[]): FailureAnalysis {
+  private analyzeGuestFailures(guestAccessData: Record<string, unknown>[]): FailureAnalysis {
     const failures = guestAccessData.filter(a => !a.success);
     const failuresByType: Record<string, number> = {};
 
@@ -631,7 +631,7 @@ export class SecurityReporterImpl implements SecurityReporter {
     };
   }
 
-  private async identifyGuestSecurityConcerns(guestAccessData: any[]): Promise<SecurityConcern[]> {
+  private async identifyGuestSecurityConcerns(guestAccessData: Record<string, unknown>[]): Promise<SecurityConcern[]> {
     const concerns: SecurityConcern[] = [];
 
     // 高頻度アクセストークンの検出
@@ -656,7 +656,7 @@ export class SecurityReporterImpl implements SecurityReporter {
   }
 
   private generateGuestAccessRecommendations(
-    guestStats: any,
+    guestStats: Record<string, unknown>,
     failureAnalysis: FailureAnalysis,
     securityConcerns: SecurityConcern[]
   ): SecurityRecommendation[] {
@@ -685,7 +685,7 @@ export class SecurityReporterImpl implements SecurityReporter {
     return recommendations;
   }
 
-  private calculateOverallThreatLevel(suspiciousData: any[]): SecuritySeverity {
+  private calculateOverallThreatLevel(suspiciousData: Record<string, unknown>[]): SecuritySeverity {
     const criticalCount = suspiciousData.filter(d => d.severity === SecuritySeverity.CRITICAL).length;
     const highCount = suspiciousData.filter(d => d.severity === SecuritySeverity.HIGH).length;
 
@@ -695,7 +695,7 @@ export class SecurityReporterImpl implements SecurityReporter {
     return SecuritySeverity.LOW;
   }
 
-  private identifyThreats(suspiciousData: any[]): IdentifiedThreat[] {
+  private identifyThreats(suspiciousData: Record<string, unknown>[]): IdentifiedThreat[] {
     const threatMap: Record<string, IdentifiedThreat> = {};
 
     suspiciousData.forEach(activity => {
@@ -729,7 +729,7 @@ export class SecurityReporterImpl implements SecurityReporter {
     return Object.values(threatMap);
   }
 
-  private analyzeAttackVectors(_suspiciousData: any[]): AttackVector[] {
+  private analyzeAttackVectors(_suspiciousData: Record<string, unknown>[]): AttackVector[] {
     // 簡略化された実装
     return [
       {

@@ -134,14 +134,8 @@ export {
 // ====================================================================
 // 7. 管理者操作
 // ====================================================================
-export {
-  AdminOperations,
-  deleteUserById,
-  checkUserProfileExists,
-  createEmergencyAdminClient,
-  createMaintenanceAdminClient,
-  getAdminOperations,
-} from "./admin-operations";
+// 循環依存を回避するため、admin-operationsは直接インポートしてください:
+// import { AdminOperations, deleteUserById } from "@/lib/security/admin-operations";
 export type {
   AdminOperationResult,
   AdminOperationContext,
