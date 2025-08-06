@@ -8,7 +8,6 @@ import {
   SecuritySeverity,
   AdminReason,
   SecurityRecommendation,
-  DetectionMethod,
 } from "./audit-types";
 
 // ====================================================================

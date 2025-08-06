@@ -246,7 +246,7 @@ export class GuestTokenError extends Error {
   /**
    * ユーザー向けメッセージを生成
    */
-  private generateUserMessage(code: GuestErrorCode, context: GuestErrorContext): string {
+  private generateUserMessage(code: GuestErrorCode, _context: GuestErrorContext): string {
     switch (code) {
       case GuestErrorCode.INVALID_FORMAT:
         return "無効なゲストトークンの形式です。正しいリンクからアクセスしてください。";

@@ -108,7 +108,7 @@ const TouchOptimized = forwardRef<
       if (wasActive && onClick) {
         try {
           onClick();
-        } catch (error) {
+        } catch (_error) {
           // エラーログは本番環境では適切なログシステムを使用
         }
       }
@@ -135,7 +135,7 @@ const TouchOptimized = forwardRef<
           if (onClick) {
             try {
               onClick();
-            } catch (error) {
+            } catch (_error) {
               // エラーログは本番環境では適切なログシステムを使用
             }
           }

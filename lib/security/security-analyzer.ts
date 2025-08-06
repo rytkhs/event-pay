@@ -14,7 +14,7 @@ import {
   AuditError,
   AuditErrorCode,
 } from "./audit-types";
-import { isTimeRange, isString, isNumber, isObject, isNotNullOrUndefined } from "./type-guards";
+import { isTimeRange, isString, isNumber, isObject } from "./type-guards";
 
 /**
  * セキュリティ分析機能の実装

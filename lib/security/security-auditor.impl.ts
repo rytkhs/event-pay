@@ -9,8 +9,6 @@ import { createClient, SupabaseClient } from "@supabase/supabase-js";
 import { createHash } from "crypto";
 import {
   SecurityAuditor,
-  AuditContextBuilder,
-  SecurityAnalyzer,
   SecurityAuditConfig,
 } from "./security-auditor.interface";
 import {
