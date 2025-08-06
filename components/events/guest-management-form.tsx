@@ -79,10 +79,8 @@ export function GuestManagementForm({ attendance, canModify }: GuestManagementFo
       } else {
         setError(result.error || "更新に失敗しました");
       }
-    } catch (err) {
-      if (process.env.NODE_ENV === "development") {
-        console.error("更新エラー:", err);
-      }
+    } catch (_err) {
+      // エラーログは本番環境では適切なログシステムを使用
       setError("予期しないエラーが発生しました");
     } finally {
       setIsSubmitting(false);

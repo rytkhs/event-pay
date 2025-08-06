@@ -216,10 +216,7 @@ async function sanitizeAndPrepareData(
       { ...securityContext, eventId: event.id }
     );
 
-    throw createErrorResponse(
-      ERROR_CODES.INTERNAL_ERROR,
-      "参加登録の処理中にエラーが発生しました"
-    );
+    throw createErrorResponse(ERROR_CODES.INTERNAL_ERROR, "参加登録の処理中にエラーが発生しました");
   }
 
   return {
@@ -278,10 +275,7 @@ async function executeRegistration(
       { ...securityContext, eventId: event.id }
     );
 
-    throw createErrorResponse(
-      ERROR_CODES.DATABASE_ERROR,
-      "参加登録の処理中にエラーが発生しました"
-    );
+    throw createErrorResponse(ERROR_CODES.DATABASE_ERROR, "参加登録の処理中にエラーが発生しました");
   }
 
   // ゲストトークンが正しく保存されたかを検証

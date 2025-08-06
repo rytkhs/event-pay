@@ -168,9 +168,7 @@ export async function GET(
     });
   } catch (error) {
     // エラーログ（本番環境では適切なログシステムを使用）
-    if (process.env.NODE_ENV === "development") {
-      console.error("Invite API error:", error);
-    }
+    // 開発環境でのデバッグ用ログは削除
 
     // セキュリティログに記録
     const userAgent = request.headers.get("user-agent") || undefined;

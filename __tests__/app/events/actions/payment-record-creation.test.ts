@@ -33,7 +33,7 @@ describe("決済レコード作成のテスト", () => {
   });
 
   const baseParticipationData: ParticipationFormData = {
-    inviteToken: "abcdefghijklmnopqrstuvwxyz123456", // 32文字の有効なトークン
+    inviteToken: "inv_abcdefghijklmnopqrstuvwxyz123456", // 36文字の有効なトークン
     nickname: "テストユーザー",
     email: "test@example.com",
     attendanceStatus: "attending",

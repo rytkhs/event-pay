@@ -158,53 +158,53 @@ export function getClientIP(requestOrHeaders: NextRequest | HeaderLike): string 
     {
       ip: headers.get("x-vercel-forwarded-for")?.split(",")[0]?.trim(),
       trust: "high",
-      source: "Vercel"
+      source: "Vercel",
     },
     {
       ip: headers.get("cf-connecting-ip"),
       trust: "high",
-      source: "Cloudflare"
+      source: "Cloudflare",
     },
 
     // 🟡 MEDIUM: CDN/プロキシ固有ヘッダー（中程度の信頼度）
     {
       ip: headers.get("x-real-ip"),
       trust: "medium",
-      source: "Nginx"
+      source: "Nginx",
     },
     {
       ip: headers.get("x-client-ip"),
       trust: "medium",
-      source: "Apache"
+      source: "Apache",
     },
 
     // 🔴 LOW: 偽装可能な汎用ヘッダー（注意深い使用）
     {
       ip: headers.get("x-forwarded-for")?.split(",")[0]?.trim(),
       trust: "low",
-      source: "X-Forwarded-For"
+      source: "X-Forwarded-For",
     },
     {
       ip: headers.get("x-cluster-client-ip"),
       trust: "low",
-      source: "Cluster"
+      source: "Cluster",
     },
     {
       ip: headers.get("x-forwarded"),
       trust: "low",
-      source: "Forwarded"
+      source: "Forwarded",
     },
     {
       ip: headers.get("forwarded-for"),
       trust: "low",
-      source: "Forwarded-For"
+      source: "Forwarded-For",
     },
 
     // 最後の手段（Edge Runtimeでは常にundefined）
     {
       ip: "ip" in requestOrHeaders ? requestOrHeaders.ip : undefined,
       trust: "low",
-      source: "Request.ip"
+      source: "Request.ip",
     },
   ];
 
@@ -243,7 +243,9 @@ export function getClientIP(requestOrHeaders: NextRequest | HeaderLike): string 
     // セキュリティログ: 低信頼度ヘッダーの使用を警告
     if (selectedTrust === "low" && process.env.NODE_ENV === "development") {
       // eslint-disable-next-line no-console
-      console.warn(`⚠️ Using low-trust IP header: ${selectedSource} (${selectedIP}). Consider security implications.`);
+      console.warn(
+        `⚠️ Using low-trust IP header: ${selectedSource} (${selectedIP}). Consider security implications.`
+      );
     }
     return selectedIP;
   }
@@ -282,46 +284,46 @@ export function getClientIPFromHeaders(headersList: HeaderLike): string {
     {
       ip: headersList.get("x-vercel-forwarded-for")?.split(",")[0]?.trim(),
       trust: "high",
-      source: "Vercel"
+      source: "Vercel",
     },
     {
       ip: headersList.get("cf-connecting-ip"),
       trust: "high",
-      source: "Cloudflare"
+      source: "Cloudflare",
     },
 
     // 🟡 MEDIUM: CDN/プロキシ固有ヘッダー（中程度の信頼度）
     {
       ip: headersList.get("x-real-ip"),
       trust: "medium",
-      source: "Nginx"
+      source: "Nginx",
     },
     {
       ip: headersList.get("x-client-ip"),
       trust: "medium",
-      source: "Apache"
+      source: "Apache",
     },
 
     // 🔴 LOW: 偽装可能な汎用ヘッダー（注意深い使用）
     {
       ip: headersList.get("x-forwarded-for")?.split(",")[0]?.trim(),
       trust: "low",
-      source: "X-Forwarded-For"
+      source: "X-Forwarded-For",
     },
     {
       ip: headersList.get("x-cluster-client-ip"),
       trust: "low",
-      source: "Cluster"
+      source: "Cluster",
     },
     {
       ip: headersList.get("x-forwarded"),
       trust: "low",
-      source: "Forwarded"
+      source: "Forwarded",
     },
     {
       ip: headersList.get("forwarded-for"),
       trust: "low",
-      source: "Forwarded-For"
+      source: "Forwarded-For",
     },
   ];
 
@@ -360,7 +362,9 @@ export function getClientIPFromHeaders(headersList: HeaderLike): string {
     // セキュリティログ: 低信頼度ヘッダーの使用を警告
     if (selectedTrust === "low" && process.env.NODE_ENV === "development") {
       // eslint-disable-next-line no-console
-      console.warn(`⚠️ [Server Component] Using low-trust IP header: ${selectedSource} (${selectedIP}). Consider security implications.`);
+      console.warn(
+        `⚠️ [Server Component] Using low-trust IP header: ${selectedSource} (${selectedIP}). Consider security implications.`
+      );
     }
     return selectedIP;
   }

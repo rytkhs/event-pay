@@ -17,8 +17,6 @@ interface ErrorPageProps {
 export default function ErrorPage({ error, reset }: ErrorPageProps) {
   useEffect(() => {
     // エラーをログに記録
-    console.error("Application error:", error);
-
     // 本番環境では外部ログサービスに送信
     if (process.env.NODE_ENV === "production") {
       // TODO: 外部ログサービスに送信
