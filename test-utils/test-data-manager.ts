@@ -2,14 +2,46 @@ import type { Event } from "@/types/event";
 import { EVENT_STATUS } from "@/types/enums";
 import { SecureSupabaseClientFactory } from "@/lib/security/secure-client-factory.impl";
 import { AdminReason } from "@/lib/security/secure-client-factory.types";
-import type { SupabaseClient } from "@supabase/supabase-js";
+import type { SupabaseClient, Session, User } from "@supabase/supabase-js";
+
+/**
+ * テスト用の認証セッション型
+ * setSessionメソッドに渡すための最小限の情報
+ */
+interface TestAuthSession {
+  access_token: string;
+  refresh_token: string;
+}
+
+/**
+ * テスト用の完全なセッション情報
+ * テストデータ管理で使用する拡張情報
+ */
+interface TestSessionData {
+  user: User;
+  session: Session;
+  // テスト用の追加プロパティ
+  id: string;
+  email: string;
+  name: string;
+}
+
+/**
+ * テスト用の認証セッションを作成
+ */
+function createTestAuthSession(userId: string): TestAuthSession {
+  return {
+    access_token: `test-token-${userId}`,
+    refresh_token: "test-refresh-token",
+  };
+}
 
 export class TestDataManager {
   private secureClientFactory: SecureSupabaseClientFactory;
   private authenticatedClient: SupabaseClient;
 
   constructor(supabaseClient?: SupabaseClient) {
-    this.secureClientFactory = new SecureSupabaseClientFactory();
+    this.secureClientFactory = SecureSupabaseClientFactory.create();
 
     // 通常のクライアント（RLS有効）
     this.authenticatedClient = supabaseClient || this.secureClientFactory.createAuthenticatedClient();
@@ -34,11 +66,7 @@ export class TestDataManager {
     const user = await this.createTestUser({ email: userEmail });
 
     // 認証状態を設定
-    await this.authenticatedClient.auth.setSession({
-      access_token: `test-token-${user.id}`,
-      refresh_token: "test-refresh-token",
-      user: user,
-    });
+    await this.authenticatedClient.auth.setSession(createTestAuthSession(user.id));
 
     const defaultEvent = {
       title: "テストイベント",
@@ -72,7 +100,7 @@ export class TestDataManager {
   ): Promise<Event> {
     // created_byが指定されていない場合は、認証ユーザーを作成
     let createdBy = eventData.created_by;
-    let authenticatedClient = this.authenticatedClient;
+    const authenticatedClient = this.authenticatedClient;
 
     if (!createdBy) {
       // 管理者権限でユーザー作成（テストデータセットアップのため）
@@ -105,11 +133,7 @@ export class TestDataManager {
       createdBy = authUser.user.id;
 
       // 作成したユーザーとして認証
-      await authenticatedClient.auth.setSession({
-        access_token: `test-token-${authUser.user.id}`,
-        refresh_token: "test-refresh-token",
-        user: authUser.user,
-      });
+      await authenticatedClient.auth.setSession(createTestAuthSession(authUser.user.id));
     }
 
     const futureDate = new Date(Date.now() + 86400000); // 明日
@@ -170,18 +194,13 @@ export class TestDataManager {
     }
 
     // データベース統合テストのために適切な構造を返す
-    if (data.user) {
-      const userResult = {
-        user: {
-          id: data.user.id,
-          email: data.user.email,
-          user_metadata: data.user.user_metadata,
-          app_metadata: data.user.app_metadata,
-        },
+    if (data.user && data.session) {
+      const userResult: TestSessionData = {
+        user: data.user,
         session: data.session,
         // テスト用の追加プロパティ
         id: data.user.id,
-        email: data.user.email,
+        email: data.user.email || defaultUser.email,
         name: defaultUser.name,
       };
       return userResult;
@@ -261,11 +280,7 @@ export class TestDataManager {
     }
 
     // 作成者として認証してpublic.usersレコードを作成（RLSポリシーを尊重）
-    await this.authenticatedClient.auth.setSession({
-      access_token: `test-token-${authUser.user.id}`,
-      refresh_token: "test-refresh-token",
-      user: authUser.user,
-    });
+    await this.authenticatedClient.auth.setSession(createTestAuthSession(authUser.user.id));
 
     await this.authenticatedClient.from("users").insert({
       id: authUser.user.id,
@@ -304,11 +319,7 @@ export class TestDataManager {
 
           // 参加者として一時的に認証してpublic.usersレコードを作成
           const tempClient = this.secureClientFactory.createAuthenticatedClient();
-          await tempClient.auth.setSession({
-            access_token: `test-token-${attendeeAuthUser.user.id}`,
-            refresh_token: "test-refresh-token",
-            user: attendeeAuthUser.user,
-          });
+          await tempClient.auth.setSession(createTestAuthSession(attendeeAuthUser.user.id));
 
           await tempClient.from("users").insert({
             id: attendeeAuthUser.user.id,
@@ -316,11 +327,7 @@ export class TestDataManager {
           });
 
           // 作成者として再認証してattendanceを作成
-          await this.authenticatedClient.auth.setSession({
-            access_token: `test-token-${authUser.user.id}`,
-            refresh_token: "test-refresh-token",
-            user: authUser.user,
-          });
+          await this.authenticatedClient.auth.setSession(createTestAuthSession(authUser.user.id));
 
           const attendance = await this.createTestAttendance({
             event_id: event.id,
@@ -392,7 +399,10 @@ export class TestDataManager {
 
     // テスト環境では認証状態をシミュレート
     if (user.user && user.session) {
-      await this.authenticatedClient.auth.setSession(user.session);
+      await this.authenticatedClient.auth.setSession({
+        access_token: user.session.access_token,
+        refresh_token: user.session.refresh_token,
+      });
     }
 
     // 統合テストで直接アクセスできるユーザー情報を返す
@@ -423,11 +433,7 @@ export class TestDataManager {
     }
 
     // 作成したユーザーとして認証してpublic.usersレコードを作成（RLSポリシーを尊重）
-    await this.authenticatedClient.auth.setSession({
-      access_token: `test-token-${authUser.user.id}`,
-      refresh_token: "test-refresh-token",
-      user: authUser.user,
-    });
+    await this.authenticatedClient.auth.setSession(createTestAuthSession(authUser.user.id));
 
     const { error: publicUserError } = await this.authenticatedClient.from("users").insert({
       id: authUser.user.id,
@@ -475,11 +481,7 @@ export class TestDataManager {
     }
 
     // 作成したユーザーとして認証してpublic.usersレコードを作成（RLSポリシーを尊重）
-    await this.authenticatedClient.auth.setSession({
-      access_token: `test-token-${authUser.user.id}`,
-      refresh_token: "test-refresh-token",
-      user: authUser.user,
-    });
+    await this.authenticatedClient.auth.setSession(createTestAuthSession(authUser.user.id));
 
     const { error: publicUserError } = await this.authenticatedClient.from("users").insert({
       id: authUser.user.id,
@@ -512,7 +514,6 @@ export class TestDataManager {
       await this.authenticatedClient.auth.setSession({
         access_token: "test-token",
         refresh_token: "test-refresh-token",
-        user: user.user,
       });
     }
   }

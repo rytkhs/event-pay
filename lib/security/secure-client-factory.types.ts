@@ -1,4 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import type { NextRequest, NextResponse } from "next/server";
+import { GuestErrorCode } from "@/types/security";
 
 /**
  * 管理者権限使用の理由を定義するエナム
@@ -76,7 +78,7 @@ export interface GuestValidationResult {
   attendanceId?: string;
   eventId?: string;
   canModify: boolean;
-  errorCode?: string;
+  errorCode?: GuestErrorCode;
   session?: GuestSession;
 }
 
@@ -134,7 +136,7 @@ export interface SecureSupabaseClient {
    * @param request NextRequest
    * @param response NextResponse
    */
-  createMiddlewareClient(request: unknown, response: unknown): SupabaseClient;
+  createMiddlewareClient(request: NextRequest, response: NextResponse): SupabaseClient;
 }
 
 /**

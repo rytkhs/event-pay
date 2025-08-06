@@ -12,7 +12,7 @@ describe("権限昇格攻撃防御テスト", () => {
   let secureClientFactory: SecureSupabaseClientFactory;
 
   beforeEach(() => {
-    secureClientFactory = new SecureSupabaseClientFactory();
+    secureClientFactory = SecureSupabaseClientFactory.create();
   });
 
   describe("ゲストトークン権限昇格攻撃", () => {

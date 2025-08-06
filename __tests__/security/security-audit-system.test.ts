@@ -13,7 +13,7 @@ describe("セキュリティ監査システムテスト", () => {
   let secureClientFactory: SecureSupabaseClientFactory;
 
   beforeEach(() => {
-    secureClientFactory = new SecureSupabaseClientFactory();
+    secureClientFactory = SecureSupabaseClientFactory.create();
   });
 
   describe("管理者アクセス監査", () => {

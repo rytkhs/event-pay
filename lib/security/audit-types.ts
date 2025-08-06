@@ -52,7 +52,7 @@ export interface AdminAccessAuditEntry {
   userId?: string;
   reason: AdminReason;
   context: string;
-  operationDetails?: Record<string, any>;
+  operationDetails?: Record<string, unknown>;
   ipAddress?: string;
   userAgent?: string;
   accessedTables?: string[];
@@ -233,6 +233,7 @@ export enum AuditErrorCode {
   DATABASE_ERROR = "DATABASE_ERROR",
   PERMISSION_DENIED = "PERMISSION_DENIED",
   INVALID_TOKEN_HASH = "INVALID_TOKEN_HASH",
+  VALIDATION_ERROR = "VALIDATION_ERROR",
 }
 
 /** 監査エラー */

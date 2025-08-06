@@ -493,7 +493,10 @@ export class SecurityAuditorImpl implements SecurityAuditor {
     let failures = 0;
 
     data.forEach((entry) => {
-      byReason[entry.reason] = (byReason[entry.reason] || 0) + 1;
+      if (entry.reason && Object.values(AdminReason).includes(entry.reason as AdminReason)) {
+        const reason = entry.reason as AdminReason;
+        byReason[reason] = (byReason[reason] || 0) + 1;
+      }
       if (entry.user_id) {
         byUser[entry.user_id] = (byUser[entry.user_id] || 0) + 1;
       }

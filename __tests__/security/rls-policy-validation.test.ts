@@ -13,7 +13,7 @@ describe("RLSポリシー検証テスト", () => {
   let secureClientFactory: SecureSupabaseClientFactory;
 
   beforeEach(() => {
-    secureClientFactory = new SecureSupabaseClientFactory();
+    secureClientFactory = SecureSupabaseClientFactory.create();
   });
 
   describe("ゲストトークンRLSポリシー", () => {

@@ -226,7 +226,7 @@ export interface PeriodicSecurityReport {
   reportType: ReportType;
   generatedAt: Date;
   timeRange: TimeRange;
-  data: SecurityReport | ComprehensiveSecurityReport;
+  data: SecurityReport | ComprehensiveSecurityReport | ThreatAnalysisReport;
   previousPeriodComparison?: PeriodComparison;
 }
 

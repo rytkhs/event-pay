@@ -33,6 +33,7 @@ import {
   EventInfo,
 } from "./secure-client-factory.types";
 import { SecurityAuditorImpl } from "./security-auditor.impl";
+import { isValidEventInfo, isString, isObject, isNotNullOrUndefined } from "./type-guards";
 import { COOKIE_CONFIG, AUTH_CONFIG, getCookieConfig } from "@/config/security";
 
 /**
@@ -45,7 +46,7 @@ export class SecureSupabaseClientFactory implements ISecureSupabaseClientFactory
   private readonly serviceRoleKey: string;
   private readonly auditor: ISecurityAuditor;
 
-  private constructor() {
+  constructor() {
     this.supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
     this.anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
     this.serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
@@ -65,6 +66,13 @@ export class SecureSupabaseClientFactory implements ISecureSupabaseClientFactory
       SecureSupabaseClientFactory.instance = new SecureSupabaseClientFactory();
     }
     return SecureSupabaseClientFactory.instance;
+  }
+
+  /**
+   * 新しいインスタンスを作成（テスト用）
+   */
+  public static create(): SecureSupabaseClientFactory {
+    return new SecureSupabaseClientFactory();
   }
 
   /**
@@ -221,7 +229,7 @@ export class SecureSupabaseClientFactory implements ISecureSupabaseClientFactory
         headers: {
           "X-Admin-Reason": reason,
           "X-Admin-Context": context,
-          "X-Admin-User-Id": auditContext?.userId || "unknown",
+          "X-Admin-User-Id": auditContext?.userId || "system",
           ...options?.headers,
         },
       },
@@ -459,24 +467,10 @@ export class RLSBasedGuestValidator implements IGuestTokenValidator {
   }
 
   /**
-   * イベント情報の型ガード
+   * イベント情報の型ガード（型ガードファイルの関数を使用）
    */
   private isValidEventInfo(event: unknown): event is EventInfo {
-    return (
-      typeof event === "object" &&
-      event !== null &&
-      "id" in event &&
-      "date" in event &&
-      "status" in event &&
-      typeof (event as any).id === "string" &&
-      typeof (event as any).date === "string" &&
-      typeof (event as unknown).status === "string" &&
-      // registration_deadlineはオプショナル
-      ("registration_deadline" in event
-        ? (event as unknown).registration_deadline === null ||
-        typeof (event as unknown).registration_deadline === "string"
-        : true)
-    );
+    return isValidEventInfo(event);
   }
 
   /**
@@ -492,7 +486,7 @@ export class RLSBasedGuestValidator implements IGuestTokenValidator {
    */
   private checkCanModify(event: unknown): boolean {
     // 型ガードでイベント情報の妥当性をチェック
-    if (!this.isValidEventInfo(event)) {
+    if (!isValidEventInfo(event)) {
       // console.warn("Invalid event info provided to checkCanModify:", event);
       return false; // 無効なイベント情報の場合は変更不可
     }
@@ -562,6 +556,14 @@ export class RLSBasedGuestValidator implements IGuestTokenValidator {
  */
 export function getSecureClientFactory(): SecureSupabaseClientFactory {
   return SecureSupabaseClientFactory.getInstance();
+}
+
+/**
+ * セキュアクライアントファクトリーの新しいインスタンスを作成
+ * テスト環境や特別な用途で使用
+ */
+export function createSecureClientFactory(): SecureSupabaseClientFactory {
+  return SecureSupabaseClientFactory.create();
 }
 
 /**

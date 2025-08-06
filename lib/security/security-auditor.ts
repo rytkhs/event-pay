@@ -6,6 +6,7 @@ import {
   SuspiciousActivity,
   UnauthorizedAccessContext,
   SecurityReport,
+  SecurityRecommendation,
   TimeRange,
   SuspiciousActivityType,
   SecuritySeverity,
@@ -228,6 +229,29 @@ export class DatabaseSecurityAuditor implements SecurityAuditor {
   }
 
   /**
+   * 空の結果セット違反を検知（SecurityAuditorインターフェース準拠）
+   */
+  async detectEmptyResultSetViolation(
+    tableName: string,
+    expectedCount: number,
+    actualCount: number,
+    context: Record<string, any>
+  ): Promise<void> {
+    if (actualCount === 0 && expectedCount > 0) {
+      await this.logSuspiciousActivity({
+        activityType: SuspiciousActivityType.EMPTY_RESULT_SET,
+        tableName,
+        attemptedAction: 'DATA_ACCESS',
+        expectedResultCount: expectedCount,
+        actualResultCount: actualCount,
+        context,
+        severity: expectedCount > this.config.emptyResultSetThreshold ? SecuritySeverity.HIGH : SecuritySeverity.MEDIUM,
+        detectionMethod: 'empty_result_set_violation_detection'
+      });
+    }
+  }
+
+  /**
    * セキュリティレポートを生成
    */
   async generateSecurityReport(timeRange: TimeRange): Promise<SecurityReport> {
@@ -270,6 +294,8 @@ export class DatabaseSecurityAuditor implements SecurityAuditor {
         guestAccessCount: guestAccess?.length ?? 0,
         suspiciousActivities: suspiciousActivities ?? [],
         unauthorizedAttempts: unauthorizedAttempts ?? [],
+        topFailedActions: this.analyzeTopFailedActions(suspiciousActivities ?? []),
+        topSuspiciousIPs: this.analyzeTopSuspiciousIPs(suspiciousActivities ?? [], unauthorizedAttempts ?? []),
         rlsViolationIndicators: await this.analyzeRlsViolationIndicators(timeRange),
         recommendations: this.generateRecommendations(suspiciousActivities ?? [], unauthorizedAttempts ?? [])
       };
@@ -283,9 +309,9 @@ export class DatabaseSecurityAuditor implements SecurityAuditor {
    * RLS違反の指標を分析
    */
   private async analyzeRlsViolationIndicators(timeRange: TimeRange): Promise<Array<{
-    indicator: string;
-    count: number;
-    severity: SecuritySeverity;
+    tableName: string;
+    emptyResultCount: number;
+    suspicionLevel: SecuritySeverity;
   }>> {
     const supabase = createClient();
 
@@ -298,13 +324,28 @@ export class DatabaseSecurityAuditor implements SecurityAuditor {
         .gte('created_at', timeRange.start.toISOString())
         .lte('created_at', timeRange.end.toISOString());
 
-      const indicators = [];
+      const indicators: Array<{
+        tableName: string;
+        emptyResultCount: number;
+        suspicionLevel: SecuritySeverity;
+      }> = [];
 
       if (emptyResults && emptyResults.length > 0) {
-        indicators.push({
-          indicator: 'Frequent empty result sets',
-          count: emptyResults.length,
-          severity: emptyResults.length > 10 ? SecuritySeverity.HIGH : SecuritySeverity.MEDIUM
+        // テーブル別に集計
+        const tableStats: Record<string, number> = {};
+        emptyResults.forEach((result: any) => {
+          const tableName = result.table_name || 'unknown';
+          tableStats[tableName] = (tableStats[tableName] || 0) + 1;
+        });
+
+        // 各テーブルの指標を作成
+        Object.entries(tableStats).forEach(([tableName, count]) => {
+          indicators.push({
+            tableName,
+            emptyResultCount: count,
+            suspicionLevel: count > 10 ? SecuritySeverity.HIGH :
+              count > 5 ? SecuritySeverity.MEDIUM : SecuritySeverity.LOW
+          });
         });
       }
 
@@ -321,19 +362,37 @@ export class DatabaseSecurityAuditor implements SecurityAuditor {
   private generateRecommendations(
     suspiciousActivities: Array<unknown>,
     unauthorizedAttempts: Array<unknown>
-  ): string[] {
-    const recommendations = [];
+  ): SecurityRecommendation[] {
+    const recommendations: SecurityRecommendation[] = [];
 
     if (suspiciousActivities.length > 10) {
-      recommendations.push('High number of suspicious activities detected. Review RLS policies and access patterns.');
+      recommendations.push({
+        priority: SecuritySeverity.HIGH,
+        category: 'MONITORING',
+        title: '疑わしい活動の高頻度検出',
+        description: 'RLSポリシーとアクセスパターンの見直しが必要です。',
+        actionRequired: true
+      });
     }
 
     if (unauthorizedAttempts.length > 5) {
-      recommendations.push('Multiple unauthorized access attempts detected. Consider implementing additional rate limiting.');
+      recommendations.push({
+        priority: SecuritySeverity.MEDIUM,
+        category: 'ACCESS_CONTROL',
+        title: '不正アクセス試行の検出',
+        description: '追加のレート制限の実装を検討してください。',
+        actionRequired: true
+      });
     }
 
     if (recommendations.length === 0) {
-      recommendations.push('No immediate security concerns detected.');
+      recommendations.push({
+        priority: SecuritySeverity.LOW,
+        category: 'MONITORING',
+        title: 'セキュリティ状況良好',
+        description: '現在、緊急のセキュリティ懸念は検出されていません。',
+        actionRequired: false
+      });
     }
 
     return recommendations;
@@ -357,5 +416,53 @@ export class DatabaseSecurityAuditor implements SecurityAuditor {
    */
   hashGuestToken(token: string): string {
     return crypto.createHash('sha256').update(token).digest('hex');
+  }
+  /**
+   * 失敗したアクションの上位を分析
+   */
+  private analyzeTopFailedActions(suspiciousActivities: Array<unknown>): Array<{
+    action: string;
+    count: number;
+  }> {
+    const actionCounts: Record<string, number> = {};
+
+    suspiciousActivities.forEach((activity: any) => {
+      const action = activity?.attempted_action || 'unknown';
+      actionCounts[action] = (actionCounts[action] || 0) + 1;
+    });
+
+    return Object.entries(actionCounts)
+      .map(([action, count]) => ({ action, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 5); // 上位5件
+  }
+
+  /**
+   * 疑わしいIPアドレスの上位を分析
+   */
+  private analyzeTopSuspiciousIPs(
+    suspiciousActivities: Array<unknown>,
+    unauthorizedAttempts: Array<unknown>
+  ): Array<{
+    ipAddress: string;
+    count: number;
+    severity: SecuritySeverity;
+  }> {
+    const ipCounts: Record<string, number> = {};
+
+    [...suspiciousActivities, ...unauthorizedAttempts].forEach((activity: any) => {
+      const ip = activity?.ip_address || 'unknown';
+      ipCounts[ip] = (ipCounts[ip] || 0) + 1;
+    });
+
+    return Object.entries(ipCounts)
+      .map(([ipAddress, count]) => ({
+        ipAddress,
+        count,
+        severity: count > 10 ? SecuritySeverity.HIGH :
+          count > 5 ? SecuritySeverity.MEDIUM : SecuritySeverity.LOW
+      }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 5); // 上位5件
   }
 }

@@ -7,8 +7,8 @@
 // ====================================================================
 // 1. セキュアクライアントファクトリー
 // ====================================================================
-export { SecureSupabaseClientImpl } from "./secure-client-factory.impl";
-export type { SecureSupabaseClient } from "./secure-client-factory.interface";
+export { SecureSupabaseClientFactory, RLSBasedGuestValidator } from "./secure-client-factory.impl";
+export type { ISecureSupabaseClientFactory, IGuestTokenValidator, ISecurityAuditor } from "./secure-client-factory.interface";
 export {
   AdminReason,
   GuestErrorCode,
@@ -31,7 +31,7 @@ export {
 // ====================================================================
 // 2. ゲストトークンバリデーター
 // ====================================================================
-export { GuestTokenValidatorImpl } from "./guest-token-validator";
+export { RLSGuestTokenValidator } from "./guest-token-validator";
 
 // ====================================================================
 // 3. セキュリティ監査システム
@@ -105,33 +105,55 @@ export {
 export {
   generateSecureToken,
   hashToken,
-  verifyToken,
-  encryptData,
-  decryptData,
-  generateKeyPair,
-  signData,
-  verifySignature,
-  type EncryptionResult,
-  type KeyPair,
-  type SignatureResult,
+  verifyHashedToken,
+  generateOtpCode,
+  verifyOtpCode,
+  constantTimeCompare,
+  randomDelay,
+  secureRandomInt,
+  generateSecureUuid,
+  validateGuestTokenFormat,
+  generateRandomBytes,
+  toBase64UrlSafe,
+  // 将来実装予定の関数（現在は未実装）
+  // verifyToken,
+  // encryptData,
+  // decryptData,
+  // generateKeyPair,
+  // signData,
+  // verifySignature,
 } from "./crypto";
+
+// 将来実装予定の型（現在は未実装）
+// export type {
+//   EncryptionResult,
+//   KeyPair,
+//   SignatureResult,
+// } from "./crypto";
 
 // ====================================================================
 // 7. 管理者操作
 // ====================================================================
 export {
   AdminOperations,
-  type AdminOperationResult,
-  type AdminOperationContext,
+  deleteUserById,
+  checkUserProfileExists,
+  createEmergencyAdminClient,
+  createMaintenanceAdminClient,
+  getAdminOperations,
 } from "./admin-operations";
+export type {
+  AdminOperationResult,
+  AdminOperationContext,
+} from "./admin-operations.types";
 
 // ====================================================================
 // 8. 統合セキュリティファクトリー
 // ====================================================================
 
 import { SecurityAuditorImpl } from "./security-auditor.impl";
-import { SecureSupabaseClientImpl } from "./secure-client-factory.impl";
-import { GuestTokenValidatorImpl } from "./guest-token-validator";
+import { SecureSupabaseClientFactory } from "./secure-client-factory.impl";
+import { RLSGuestTokenValidator } from "./guest-token-validator";
 import { AdminOperations } from "./admin-operations";
 import { AnomalyDetectorImpl } from "./anomaly-detector";
 import { SecurityReporterImpl } from "./security-reporter.impl";
@@ -145,8 +167,8 @@ import { SecurityReporterImpl } from "./security-reporter.impl";
 export class SecuritySystemFactory {
   private static instance: SecuritySystemFactory;
   private auditor: SecurityAuditorImpl;
-  private clientFactory: SecureSupabaseClientImpl;
-  private guestValidator: GuestTokenValidatorImpl;
+  private clientFactory: SecureSupabaseClientFactory;
+  private guestValidator: RLSGuestTokenValidator;
   private adminOps: AdminOperations;
   private anomalyDetector: AnomalyDetectorImpl;
   private reporter: SecurityReporterImpl;
@@ -156,13 +178,13 @@ export class SecuritySystemFactory {
     this.auditor = new SecurityAuditorImpl();
 
     // セキュアクライアントファクトリーを初期化
-    this.clientFactory = new SecureSupabaseClientImpl(this.auditor);
+    this.clientFactory = SecureSupabaseClientFactory.create();
 
     // ゲストトークンバリデーターを初期化
-    this.guestValidator = new GuestTokenValidatorImpl(this.clientFactory);
+    this.guestValidator = new RLSGuestTokenValidator();
 
     // 管理者操作を初期化
-    this.adminOps = new AdminOperations(this.clientFactory, this.auditor);
+    this.adminOps = new AdminOperations();
 
     // 異常検知システムを初期化
     this.anomalyDetector = new AnomalyDetectorImpl(this.auditor);
@@ -191,14 +213,14 @@ export class SecuritySystemFactory {
   /**
    * セキュアクライアントファクトリーを取得
    */
-  public getClientFactory(): SecureSupabaseClientImpl {
+  public getClientFactory(): SecureSupabaseClientFactory {
     return this.clientFactory;
   }
 
   /**
    * ゲストトークンバリデーターを取得
    */
-  public getGuestValidator(): GuestTokenValidatorImpl {
+  public getGuestValidator(): RLSGuestTokenValidator {
     return this.guestValidator;
   }
 
@@ -277,13 +299,13 @@ export function getSecuritySystem(): SecuritySystemFactory {
 /**
  * デフォルトのセキュアクライアントファクトリーインスタンスを取得する関数
  */
-export function createSecureSupabaseClient(): SecureSupabaseClientImpl {
+export function createSecureSupabaseClient(): SecureSupabaseClientFactory {
   return getSecuritySystem().getClientFactory();
 }
 
 /**
  * デフォルトのゲストトークンバリデーターインスタンスを取得する関数
  */
-export function createGuestTokenValidator(): GuestTokenValidatorImpl {
+export function createGuestTokenValidator(): RLSGuestTokenValidator {
   return getSecuritySystem().getGuestValidator();
 }
