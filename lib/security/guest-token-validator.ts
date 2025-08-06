@@ -14,7 +14,6 @@ import {
 } from "./secure-client-factory.interface";
 import {
   GuestErrorCode,
-  GuestTokenError,
   GuestTokenErrorFactory,
   GuestValidationResult,
   GuestSession,

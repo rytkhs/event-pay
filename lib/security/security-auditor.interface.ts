@@ -6,8 +6,6 @@
 
 import {
   AdminReason,
-  AdminAccessAuditEntry,
-  GuestAccessAuditEntry,
   SuspiciousActivityEntry,
   UnauthorizedAccessEntry,
   AuditContext,
@@ -15,7 +13,6 @@ import {
   SecurityReport,
   TimeRange,
   PredefinedTimeRange,
-  SuspiciousActivityType,
   SecuritySeverity,
   DetectionMethod,
 } from "./audit-types";

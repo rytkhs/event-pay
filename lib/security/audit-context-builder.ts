@@ -67,7 +67,7 @@ export class AuditContextBuilderImpl implements AuditContextBuilder {
     try {
       const headersList = headers();
       return this.fromNextHeaders(headersList, userId, guestToken);
-    } catch (error) {
+    } catch (_error) {
       // headers()が使用できない環境（例：静的生成時）の場合
       return this.create(this.generateSessionId(), userId, guestToken);
     }

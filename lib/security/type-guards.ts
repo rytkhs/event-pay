@@ -5,7 +5,6 @@
 
 import type { TimeRange, SecuritySeverity, AdminReason, SuspiciousActivityType } from "@/types/security";
 import type { Event } from "@/types/models";
-import type { Database } from "@/types/database";
 
 // ====================================================================
 // 基本型ガード
@@ -317,7 +316,7 @@ export function isErrorContext(value: unknown): value is Record<string, unknown>
 /**
  * 値が空でないことを確認（null, undefined, 空文字列, 空配列, 空オブジェクトを除外）
  */
-export function isNotEmpty<T>(value: T | null | undefined | '' | [] | {}): value is T {
+export function isNotEmpty<T>(value: T | null | undefined | '' | [] | object): value is T {
   if (value === null || value === undefined) return false;
   if (isString(value) && value === '') return false;
   if (isArray(value) && value.length === 0) return false;

@@ -33,7 +33,7 @@ import {
   EventInfo,
 } from "./secure-client-factory.types";
 import { SecurityAuditorImpl } from "./security-auditor.impl";
-import { isValidEventInfo, isString, isObject, isNotNullOrUndefined } from "./type-guards";
+import { isValidEventInfo } from "./type-guards";
 import { COOKIE_CONFIG, AUTH_CONFIG, getCookieConfig } from "@/config/security";
 
 /**

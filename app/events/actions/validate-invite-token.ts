@@ -59,7 +59,7 @@ export async function validateInviteTokenAction(
         canRegister: result.canRegister,
       },
     };
-  } catch (error) {
+  } catch (_error) {
     // エラーログは本番環境では適切なログシステムを使用
     return {
       success: false,

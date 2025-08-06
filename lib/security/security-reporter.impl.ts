@@ -9,11 +9,10 @@ import {
   SecuritySeverity,
   AdminReason,
   SecurityRecommendation,
-  SuspiciousActivityType,
 } from "./audit-types";
 import { SecurityAuditor } from "./security-auditor.interface";
 import { AnomalyDetector, RlsViolationIndicator } from "./anomaly-detector";
-import { isObject, isString, isNumber, isArray } from "./type-guards";
+import { isObject, isString, isNumber } from "./type-guards";
 import {
   SecurityReporter,
   ComprehensiveSecurityReport,
@@ -310,7 +309,7 @@ export class SecurityReporterImpl implements SecurityReporter {
 
   private async generateExecutiveSummary(
     baseReport: SecurityReport,
-    timeRange: TimeRange
+    _timeRange: TimeRange
   ): Promise<ExecutiveSummary> {
     const criticalIssues = baseReport.suspiciousActivities.filter(
       a => a.severity === SecuritySeverity.CRITICAL
@@ -343,7 +342,7 @@ export class SecurityReporterImpl implements SecurityReporter {
     };
   }
 
-  private async generateDetailedAnalysis(timeRange: TimeRange): Promise<DetailedAnalysis> {
+  private async generateDetailedAnalysis(_timeRange: TimeRange): Promise<DetailedAnalysis> {
     // 簡略化された実装
     return {
       accessPatterns: {
@@ -375,7 +374,7 @@ export class SecurityReporterImpl implements SecurityReporter {
     };
   }
 
-  private async generateTrendAnalysis(timeRange: TimeRange): Promise<TrendAnalysis> {
+  private async generateTrendAnalysis(_timeRange: TimeRange): Promise<TrendAnalysis> {
     // 簡略化された実装
     return {
       securityTrends: [],
@@ -384,7 +383,7 @@ export class SecurityReporterImpl implements SecurityReporter {
     };
   }
 
-  private async generateComplianceStatus(timeRange: TimeRange): Promise<ComplianceStatus> {
+  private async generateComplianceStatus(_timeRange: TimeRange): Promise<ComplianceStatus> {
     // 簡略化された実装
     return {
       gdprCompliance: {
@@ -608,7 +607,7 @@ export class SecurityReporterImpl implements SecurityReporter {
     });
 
     // uniqueTokensSetを除いてEventAccessStats[]として返す
-    return Object.values(eventStats).map(({ uniqueTokensSet, ...stats }) => stats).sort((a, b) => b.accessCount - a.accessCount);
+    return Object.values(eventStats).map(({ uniqueTokensSet: _uniqueTokensSet, ...stats }) => stats).sort((a, b) => b.accessCount - a.accessCount);
   }
 
   private analyzeGuestFailures(guestAccessData: any[]): FailureAnalysis {
@@ -730,7 +729,7 @@ export class SecurityReporterImpl implements SecurityReporter {
     return Object.values(threatMap);
   }
 
-  private analyzeAttackVectors(suspiciousData: any[]): AttackVector[] {
+  private analyzeAttackVectors(_suspiciousData: any[]): AttackVector[] {
     // 簡略化された実装
     return [
       {
@@ -803,7 +802,7 @@ export class SecurityReporterImpl implements SecurityReporter {
     }));
   }
 
-  private async analyzeViolationPatterns(timeRange: TimeRange): Promise<ViolationPattern[]> {
+  private async analyzeViolationPatterns(_timeRange: TimeRange): Promise<ViolationPattern[]> {
     // 簡略化された実装
     return [
       {

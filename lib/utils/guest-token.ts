@@ -1,10 +1,8 @@
 import { generateRandomBytes, toBase64UrlSafe } from "@/lib/security/crypto";
-import { sanitizeForEventPay } from "@/lib/utils/sanitize";
 import {
   getRLSGuestTokenValidator,
   validateGuestTokenRLS,
-  type RLSGuestAttendanceData,
-  type RLSGuestTokenValidationResult
+  type RLSGuestAttendanceData
 } from "@/lib/security/guest-token-validator";
 import type { Database } from "@/types/database";
 
@@ -117,7 +115,7 @@ function convertToLegacyFormat(rlsData: RLSGuestAttendanceData): GuestAttendance
  * @param event イベントデータ
  * @returns 変更可能かどうか
  */
-function checkCanModifyAttendance(event: GuestAttendanceData["event"]): boolean {
+function _checkCanModifyAttendance(event: GuestAttendanceData["event"]): boolean {
   const now = new Date();
 
   // 登録締切が設定されている場合、締切を過ぎていれば変更不可
@@ -174,7 +172,7 @@ export function generateGuestToken(): string {
  * 移行状況:
  * ✅ validateGuestToken() - RLSベースの実装に移行済み
  * ✅ generateGuestToken() - 変更なし（既に安全）
- * ✅ checkCanModifyAttendance() - 後方互換性のために保持
+ * ✅ _checkCanModifyAttendance() - 後方互換性のために保持
  * 
  * 新しいコードでの推奨事項:
  * - getRLSGuestTokenValidator()を使用してバリデーターを取得
@@ -182,7 +180,7 @@ export function generateGuestToken(): string {
  * - 新しいエラーハンドリングシステムを活用
  * 
  * 廃止予定:
- * - checkCanModifyAttendance() - RLSGuestTokenValidatorのメソッドを使用
+ * - _checkCanModifyAttendance() - RLSGuestTokenValidatorのメソッドを使用
  * - GuestAttendanceData型 - RLSGuestAttendanceData型を使用
  * - GuestTokenValidationResult型 - RLSGuestTokenValidationResult型を使用
  */

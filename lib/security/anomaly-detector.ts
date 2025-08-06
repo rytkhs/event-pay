@@ -13,11 +13,9 @@ import {
   AuditContext,
   ResultSetAnalysis,
   TimeRange,
-  PredefinedTimeRange,
-  SuspiciousActivityEntry,
 } from "./audit-types";
 import { SecurityAuditor } from "./security-auditor.interface";
-import { isObject, isString, isNumber } from "./type-guards";
+import { isObject, isString } from "./type-guards";
 
 // ====================================================================
 // 1. 異常検知システムのインターフェース
@@ -485,7 +483,7 @@ export class AnomalyDetectorImpl implements AnomalyDetector {
 
   private async getHistoricalEmptyResultPattern(
     tableName: string,
-    operation: string
+    _operation: string
   ): Promise<{
     frequency: number;
     averagePerDay: number;
@@ -588,7 +586,7 @@ export class AnomalyDetectorImpl implements AnomalyDetector {
   private async detectAnomalousPatterns(
     guestAccess: unknown[],
     adminAccess: unknown[],
-    timeRange: TimeRange
+    _timeRange: TimeRange
   ): Promise<AnomalousPattern[]> {
     const patterns: AnomalousPattern[] = [];
 
@@ -658,8 +656,8 @@ export class AnomalyDetectorImpl implements AnomalyDetector {
   }
 
   private async calculateBaselineMetrics(
-    timeRange: TimeRange,
-    tableName?: string
+    _timeRange: TimeRange,
+    _tableName?: string
   ): Promise<BaselineMetrics> {
     // 簡略化された実装 - 実際にはより詳細な統計分析が必要
     return {
