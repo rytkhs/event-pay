@@ -53,7 +53,8 @@ describe("Invite Link Generation", () => {
         // 異なるトークンが生成される
         expect(token1).not.toBe(token2);
         // 正しい形式
-        expect(token1).toHaveLength(32);
+        expect(token1).toHaveLength(36);
+        expect(token1).toMatch(/^inv_[a-zA-Z0-9_-]{32}$/);
         expect(token1).toMatch(/^[a-zA-Z0-9_-]+$/);
       });
     });

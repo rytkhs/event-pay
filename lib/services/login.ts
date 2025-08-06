@@ -3,6 +3,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { checkRateLimit, createRateLimitStore } from "@/lib/rate-limit/index";
 import { RATE_LIMIT_CONFIG } from "@/config/security";
 import { AccountLockoutService, TimingAttackProtection, InputSanitizer } from "@/lib/auth-security";
+import { getClientIP } from "@/lib/utils/ip-detection";
 import { z } from "zod";
 import { formatUtcToJst } from "@/lib/utils/timezone";
 
@@ -67,9 +68,8 @@ export class LoginService {
    */
   static async checkRateLimit(request: NextRequest): Promise<RateLimitCheckResult> {
     try {
-      // IPアドレス取得
-      const ip =
-        request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip") || "unknown";
+      // 信頼度ベースでの安全なIPアドレス取得
+      const ip = getClientIP(request);
 
       const store = await createRateLimitStore();
       const result = await checkRateLimit(store, `login_${ip}`, RATE_LIMIT_CONFIG.login);

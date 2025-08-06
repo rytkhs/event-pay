@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createEventSchema, type CreateEventInput } from "@/lib/validations/event";
 import { extractEventCreateFormData } from "@/lib/utils/form-data-extractors";
 import { z } from "zod";
-import { randomBytes } from "crypto";
+import { generateInviteToken } from "@/lib/utils/invite-token";
 import type { Database } from "@/types/database";
 import { convertDatetimeLocalToUtc } from "@/lib/utils/timezone";
 
@@ -103,14 +103,6 @@ export async function createEventAction(formData: FormData): Promise<CreateEvent
 function extractFormData(formData: FormData): FormDataFields {
   // 共通ユーティリティを使用して型安全なFormData抽出
   return extractEventCreateFormData(formData);
-}
-
-/**
- * Cryptographically secure invite token generation
- * 16バイトのランダムデータを32文字の16進数文字列に変換
- */
-function generateInviteToken(): string {
-  return randomBytes(16).toString("hex");
 }
 
 /**

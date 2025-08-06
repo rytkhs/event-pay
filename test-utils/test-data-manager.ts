@@ -1,48 +1,62 @@
-import { createClient } from "@supabase/supabase-js";
 import type { Event } from "@/types/event";
 import { EVENT_STATUS } from "@/types/enums";
+import { SecureSupabaseClientFactory } from "@/lib/security/secure-client-factory.impl";
+import { AdminReason } from "@/lib/security/secure-client-factory.types";
+import type { SupabaseClient, Session, User } from "@supabase/supabase-js";
+
+/**
+ * テスト用の認証セッション型
+ * setSessionメソッドに渡すための最小限の情報
+ */
+interface TestAuthSession {
+  access_token: string;
+  refresh_token: string;
+}
+
+/**
+ * テスト用の完全なセッション情報
+ * テストデータ管理で使用する拡張情報
+ */
+interface TestSessionData {
+  user: User;
+  session: Session;
+  // テスト用の追加プロパティ
+  id: string;
+  email: string;
+  name: string;
+}
+
+/**
+ * テスト用の認証セッションを作成
+ */
+function createTestAuthSession(userId: string): TestAuthSession {
+  return {
+    access_token: `test-token-${userId}`,
+    refresh_token: "test-refresh-token",
+  };
+}
 
 export class TestDataManager {
-  private supabase: any;
-  private adminSupabase: any;
+  private secureClientFactory: SecureSupabaseClientFactory;
+  private authenticatedClient: SupabaseClient;
 
-  constructor(supabaseClient?: any) {
+  constructor(supabaseClient?: SupabaseClient) {
+    this.secureClientFactory = SecureSupabaseClientFactory.create();
+
     // 通常のクライアント（RLS有効）
-    this.supabase =
-      supabaseClient ||
-      createClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL || "http://127.0.0.1:54321",
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
-        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0",
-        {
-          auth: {
-            autoRefreshToken: false,
-            persistSession: false,
-          },
-        }
-      );
-
-    // 管理者クライアント（RLSバイパス用）
-    this.adminSupabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL || "http://127.0.0.1:54321",
-      process.env.SUPABASE_SERVICE_ROLE_KEY ||
-      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImV4cCI6MTk4MzgxMjk5Nn0.EGIM96RAZx35lJzdJsyH-qQwv8Hdp7fsn3W0YpN81IU",
-      {
-        auth: {
-          autoRefreshToken: false,
-          persistSession: false,
-        },
-      }
-    );
-  }
-
-  // 管理者クライアントへのアクセサー
-  get adminClient() {
-    return this.adminSupabase;
+    this.authenticatedClient = supabaseClient || this.secureClientFactory.createAuthenticatedClient();
   }
 
   /**
-   * 認証済みユーザーとしてイベントを作成
+   * 管理者権限が真に必要な場合のみ使用（監査付き）
+   * テストデータのクリーンアップなど限定的な用途のみ
+   */
+  private async getAuditedAdminClient(reason: AdminReason, context: string): Promise<SupabaseClient> {
+    return await this.secureClientFactory.createAuditedAdminClient(reason, context);
+  }
+
+  /**
+   * 認証済みユーザーとしてイベントを作成（RLSポリシーを尊重）
    */
   async createTestEventWithAuth(
     eventData: Partial<Event> & { invite_token?: string } = {},
@@ -52,11 +66,7 @@ export class TestDataManager {
     const user = await this.createTestUser({ email: userEmail });
 
     // 認証状態を設定
-    await this.supabase.auth.setSession({
-      access_token: `test-token-${user.id}`,
-      refresh_token: "test-refresh-token",
-      user: user,
-    });
+    await this.authenticatedClient.auth.setSession(createTestAuthSession(user.id));
 
     const defaultEvent = {
       title: "テストイベント",
@@ -71,7 +81,8 @@ export class TestDataManager {
       ...eventData,
     };
 
-    const { data, error } = await this.supabase
+    // RLSポリシーを尊重してイベント作成
+    const { data, error } = await this.authenticatedClient
       .from("events")
       .insert(defaultEvent)
       .select()
@@ -89,23 +100,28 @@ export class TestDataManager {
   ): Promise<Event> {
     // created_byが指定されていない場合は、認証ユーザーを作成
     let createdBy = eventData.created_by;
+    const authenticatedClient = this.authenticatedClient;
+
     if (!createdBy) {
-      // auth.usersテーブルに実際のユーザーを作成
-      const uniqueId = `${Date.now()}-${Math.random().toString(36).substring(7)}`;
-      const { data: authUser, error: createError } = await this.adminSupabase.auth.admin.createUser(
-        {
-          email: `test-user-${uniqueId}@example.com`,
-          password: "TestPassword123!",
-          email_confirm: true,
-        }
+      // 管理者権限でユーザー作成（テストデータセットアップのため）
+      const adminClient = await this.getAuditedAdminClient(
+        AdminReason.TEST_DATA_SETUP,
+        "Creating test user for event creation"
       );
+
+      const uniqueId = `${Date.now()}-${Math.random().toString(36).substring(7)}`;
+      const { data: authUser, error: createError } = await adminClient.auth.admin.createUser({
+        email: `test-user-${uniqueId}@example.com`,
+        password: "TestPassword123!",
+        email_confirm: true,
+      });
 
       if (createError || !authUser?.user) {
         throw new Error(`Failed to create auth user: ${createError?.message}`);
       }
 
-      // public.usersテーブルにも対応するレコードを作成
-      const { error: publicUserError } = await this.adminSupabase.from("users").insert({
+      // public.usersテーブルにも対応するレコードを作成（RLSポリシーを尊重）
+      const { error: publicUserError } = await this.authenticatedClient.from("users").insert({
         id: authUser.user.id,
         name: "テストユーザー",
       });
@@ -115,6 +131,9 @@ export class TestDataManager {
       }
 
       createdBy = authUser.user.id;
+
+      // 作成したユーザーとして認証
+      await authenticatedClient.auth.setSession(createTestAuthSession(authUser.user.id));
     }
 
     const futureDate = new Date(Date.now() + 86400000); // 明日
@@ -127,14 +146,12 @@ export class TestDataManager {
       status: EVENT_STATUS.UPCOMING,
       payment_methods: ["stripe"],
       created_by: createdBy,
-      // invite_tokenは明示的に設定されない限りnullにする
-      // これによりgenerateInviteTokenAction()が正しく新しいトークンを生成する
       invite_token: eventData.invite_token || null,
       ...eventData,
     };
 
-    // 管理者権限でイベント作成（RLSバイパス）
-    const { data, error } = await this.adminSupabase
+    // RLSポリシーを尊重してイベント作成
+    const { data, error } = await authenticatedClient
       .from("events")
       .insert(defaultEvent)
       .select()
@@ -145,7 +162,6 @@ export class TestDataManager {
         error,
         defaultEvent,
         createdBy,
-        adminSupabaseCheck: this.adminSupabase ? "initialized" : "not initialized",
       });
       throw new Error(`Failed to create test event: ${error.message} (Code: ${error.code})`);
     }
@@ -158,11 +174,12 @@ export class TestDataManager {
       email: `test-${Date.now()}@example.com`,
       password: "TestPassword123!",
       display_name: "テストユーザー",
-      name: "テストユーザー", // テスト用のname追加
+      name: "テストユーザー",
       ...userData,
     };
 
-    const { data, error } = await this.supabase.auth.signUp({
+    // 通常のサインアップ（RLSポリシーを尊重）
+    const { data, error } = await this.authenticatedClient.auth.signUp({
       email: defaultUser.email,
       password: defaultUser.password,
       options: {
@@ -177,18 +194,13 @@ export class TestDataManager {
     }
 
     // データベース統合テストのために適切な構造を返す
-    if (data.user) {
-      const userResult = {
-        user: {
-          id: data.user.id,
-          email: data.user.email,
-          user_metadata: data.user.user_metadata,
-          app_metadata: data.user.app_metadata,
-        },
+    if (data.user && data.session) {
+      const userResult: TestSessionData = {
+        user: data.user,
         session: data.session,
         // テスト用の追加プロパティ
         id: data.user.id,
-        email: data.user.email,
+        email: data.user.email || defaultUser.email,
         name: defaultUser.name,
       };
       return userResult;
@@ -198,14 +210,20 @@ export class TestDataManager {
   }
 
   async createTestAttendance(attendanceData: any = {}): Promise<any> {
+    // ゲストトークンを生成（マイグレーション後はNOT NULL制約があるため必須）
+    const { generateGuestToken } = await import("@/lib/utils/guest-token");
+
     const defaultAttendance = {
       status: "attending" as const,
       nickname: "テスト参加者",
       email: `test-attendee-${Date.now()}@example.com`,
+      guest_token: generateGuestToken(), // gst_プレフィックス付き36文字
       ...attendanceData,
     };
 
-    const { data, error } = await this.adminSupabase
+    // 通常のクライアントでattendance作成（RLSポリシーを尊重）
+    // イベント作成者として認証されている場合、attendanceを作成可能
+    const { data, error } = await this.authenticatedClient
       .from("attendances")
       .insert(defaultAttendance)
       .select()
@@ -228,8 +246,9 @@ export class TestDataManager {
       ...paymentData,
     };
 
-    // RLSポリシーを回避するためadminSupabaseを使用
-    const { data, error } = await this.adminSupabase
+    // RLSポリシーを尊重してpayment作成
+    // attendance_idが指定されている場合、そのattendanceに関連するpaymentとして作成
+    const { data, error } = await this.authenticatedClient
       .from("payments")
       .insert(defaultPayment)
       .select()
@@ -243,21 +262,27 @@ export class TestDataManager {
   }
 
   async setupEventWithAttendees(eventData: any = {}, attendeeCount: number = 1): Promise<any> {
-    // イベント作成者（運営者）を動的に作成
-    const uniqueId = `creator-${Date.now()}`;
-    const { data: authUser, error: createError } = await this.adminSupabase.auth.admin.createUser(
-      {
-        email: `test-creator-${uniqueId}@example.com`,
-        password: "TestPassword123!",
-        email_confirm: true,
-      }
+    // イベント作成者（運営者）を動的に作成（管理者権限でユーザー作成のみ）
+    const adminClient = await this.getAuditedAdminClient(
+      AdminReason.TEST_DATA_SETUP,
+      `Creating test creator and ${attendeeCount} attendees for event setup`
     );
+
+    const uniqueId = `creator-${Date.now()}`;
+    const { data: authUser, error: createError } = await adminClient.auth.admin.createUser({
+      email: `test-creator-${uniqueId}@example.com`,
+      password: "TestPassword123!",
+      email_confirm: true,
+    });
 
     if (createError || !authUser?.user) {
       throw new Error(`Failed to create creator user: ${createError?.message}`);
     }
 
-    await this.adminSupabase.from("users").insert({
+    // 作成者として認証してpublic.usersレコードを作成（RLSポリシーを尊重）
+    await this.authenticatedClient.auth.setSession(createTestAuthSession(authUser.user.id));
+
+    await this.authenticatedClient.from("users").insert({
       id: authUser.user.id,
       name: "動的作成された運営者",
     });
@@ -269,7 +294,7 @@ export class TestDataManager {
       user: authUser.user,
     };
 
-    // イベントを作成
+    // イベントを作成（RLSポリシーを尊重）
     const event = await this.createTestEvent({
       ...eventData,
       created_by: creator.id,
@@ -282,7 +307,7 @@ export class TestDataManager {
         (async () => {
           const attendeeId = `attendee-${i}-${Date.now()}-${Math.random()}`;
           const { data: attendeeAuthUser, error: attendeeCreateError } =
-            await this.adminSupabase.auth.admin.createUser({
+            await adminClient.auth.admin.createUser({
               email: `test-attendee-${attendeeId}@example.com`,
               password: "TestPassword123!",
               email_confirm: true,
@@ -292,10 +317,17 @@ export class TestDataManager {
             throw new Error(`Failed to create attendee user ${i}: ${attendeeCreateError?.message}`);
           }
 
-          await this.adminSupabase.from("users").insert({
+          // 参加者として一時的に認証してpublic.usersレコードを作成
+          const tempClient = this.secureClientFactory.createAuthenticatedClient();
+          await tempClient.auth.setSession(createTestAuthSession(attendeeAuthUser.user.id));
+
+          await tempClient.from("users").insert({
             id: attendeeAuthUser.user.id,
             name: `動的作成された参加者${i + 1}`,
           });
+
+          // 作成者として再認証してattendanceを作成
+          await this.authenticatedClient.auth.setSession(createTestAuthSession(authUser.user.id));
 
           const attendance = await this.createTestAttendance({
             event_id: event.id,
@@ -330,15 +362,20 @@ export class TestDataManager {
   }
 
   async cleanup(): Promise<void> {
-    // テストデータのクリーンアップ
+    // テストデータのクリーンアップ（管理者権限が真に必要）
+    const adminClient = await this.getAuditedAdminClient(
+      AdminReason.TEST_DATA_CLEANUP,
+      "Cleaning up test data after test execution"
+    );
+
     try {
       // 関連するテーブルから削除（外部キー制約の順序を考慮）
-      await this.adminSupabase.from("payments").delete().neq("id", "");
-      await this.adminSupabase.from("attendances").delete().neq("id", "");
-      await this.adminSupabase.from("events").delete().neq("id", "");
+      await adminClient.from("payments").delete().neq("id", "");
+      await adminClient.from("attendances").delete().neq("id", "");
+      await adminClient.from("events").delete().neq("id", "");
 
       // テスト用のauth.usersも削除（email patternで識別）
-      const { data: testUsers } = await this.adminSupabase.auth.admin.listUsers();
+      const { data: testUsers } = await adminClient.auth.admin.listUsers();
       if (testUsers?.users) {
         for (const user of testUsers.users) {
           if (
@@ -347,7 +384,7 @@ export class TestDataManager {
             user.email?.startsWith("test-attendee-")
           ) {
             if (user.email.endsWith("@example.com")) {
-              await this.adminSupabase.auth.admin.deleteUser(user.id);
+              await adminClient.auth.admin.deleteUser(user.id);
             }
           }
         }
@@ -362,10 +399,13 @@ export class TestDataManager {
 
     // テスト環境では認証状態をシミュレート
     if (user.user && user.session) {
-      await this.supabase.auth.setSession(user.session);
+      await this.authenticatedClient.auth.setSession({
+        access_token: user.session.access_token,
+        refresh_token: user.session.refresh_token,
+      });
     }
 
-    //統合テストで直接アクセスできるユーザー情報を返す
+    // 統合テストで直接アクセスできるユーザー情報を返す
     return {
       ...user,
       id: user.user?.id,
@@ -375,9 +415,14 @@ export class TestDataManager {
   }
 
   async setupAuthenticatedEventTest(eventData: any = {}): Promise<any> {
-    // auth.usersテーブルに実際のユーザーを作成
+    // auth.usersテーブルに実際のユーザーを作成（管理者権限でユーザー作成のみ）
+    const adminClient = await this.getAuditedAdminClient(
+      AdminReason.TEST_DATA_SETUP,
+      "Creating authenticated user for event test"
+    );
+
     const uniqueId = `${Date.now()}-${Math.random().toString(36).substring(7)}`;
-    const { data: authUser, error: createError } = await this.adminSupabase.auth.admin.createUser({
+    const { data: authUser, error: createError } = await adminClient.auth.admin.createUser({
       email: `test-user-${uniqueId}@example.com`,
       password: "TestPassword123!",
       email_confirm: true,
@@ -387,8 +432,10 @@ export class TestDataManager {
       throw new Error(`Failed to create auth user: ${createError?.message}`);
     }
 
-    // public.usersテーブルにも対応するレコードを作成
-    const { error: publicUserError } = await this.adminSupabase.from("users").insert({
+    // 作成したユーザーとして認証してpublic.usersレコードを作成（RLSポリシーを尊重）
+    await this.authenticatedClient.auth.setSession(createTestAuthSession(authUser.user.id));
+
+    const { error: publicUserError } = await this.authenticatedClient.from("users").insert({
       id: authUser.user.id,
       name: "テストユーザー",
     });
@@ -416,9 +463,14 @@ export class TestDataManager {
    * 認証済みユーザーとしてイベントを作成（トークンなし）
    */
   async setupAuthenticatedEventTestWithoutToken(eventData: any = {}): Promise<any> {
-    // auth.usersテーブルに実際のユーザーを作成
+    // auth.usersテーブルに実際のユーザーを作成（管理者権限でユーザー作成のみ）
+    const adminClient = await this.getAuditedAdminClient(
+      AdminReason.TEST_DATA_SETUP,
+      "Creating authenticated user for event test without token"
+    );
+
     const uniqueId = `${Date.now()}-${Math.random().toString(36).substring(7)}`;
-    const { data: authUser, error: createError } = await this.adminSupabase.auth.admin.createUser({
+    const { data: authUser, error: createError } = await adminClient.auth.admin.createUser({
       email: `test-user-${uniqueId}@example.com`,
       password: "TestPassword123!",
       email_confirm: true,
@@ -428,8 +480,10 @@ export class TestDataManager {
       throw new Error(`Failed to create auth user: ${createError?.message}`);
     }
 
-    // public.usersテーブルにも対応するレコードを作成
-    const { error: publicUserError } = await this.adminSupabase.from("users").insert({
+    // 作成したユーザーとして認証してpublic.usersレコードを作成（RLSポリシーを尊重）
+    await this.authenticatedClient.auth.setSession(createTestAuthSession(authUser.user.id));
+
+    const { error: publicUserError } = await this.authenticatedClient.from("users").insert({
       id: authUser.user.id,
       name: "テストユーザー",
     });
@@ -457,16 +511,21 @@ export class TestDataManager {
 
   async authenticateAsUser(user: any): Promise<void> {
     if (user.user) {
-      await this.supabase.auth.setSession({
+      await this.authenticatedClient.auth.setSession({
         access_token: "test-token",
         refresh_token: "test-refresh-token",
-        user: user.user,
       });
     }
   }
 
   async authenticateTestUser(userId: string): Promise<void> {
-    const { error } = await this.supabase.auth.admin.generateLink({
+    // 管理者権限でマジックリンク生成（テスト認証のため）
+    const adminClient = await this.getAuditedAdminClient(
+      AdminReason.TEST_DATA_SETUP,
+      `Generating magic link for test user: ${userId}`
+    );
+
+    const { error } = await adminClient.auth.admin.generateLink({
       type: "magiclink",
       email: `test-user-${userId}@example.com`,
     });
@@ -474,5 +533,19 @@ export class TestDataManager {
     if (error) {
       throw new Error(`Failed to authenticate test user: ${error.message}`);
     }
+  }
+
+  /**
+   * ゲストトークンを使用したクライアントを作成
+   */
+  createGuestClient(guestToken: string): SupabaseClient {
+    return this.secureClientFactory.createGuestClient(guestToken);
+  }
+
+  /**
+   * 読み取り専用クライアントを作成
+   */
+  createReadOnlyClient(): SupabaseClient {
+    return this.secureClientFactory.createReadOnlyClient();
   }
 }

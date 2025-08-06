@@ -2,6 +2,14 @@ import { NextRequest } from "next/server";
 import { createHash } from "crypto";
 
 /**
+ * ヘッダーアクセス用のインターフェース
+ * NextRequest.headers、Web API Headers、Next.js ReadonlyHeaders すべてに対応
+ */
+interface HeaderLike {
+  get(name: string): string | null;
+}
+
+/**
  * IPアドレス検証用の正規表現
  */
 const IPv4_REGEX =
@@ -137,45 +145,109 @@ export function generateFallbackIdentifier(request: NextRequest): string {
  * @param request - Next.js Request オブジェクト
  * @returns クライアントのIPアドレス
  */
-export function getClientIP(request: NextRequest): string {
-  // Vercel本番環境でのプロキシヘッダー優先順位
-  // Edge Runtimeの制約を考慮し、request.ipへの依存を最小化
+export function getClientIP(request: NextRequest): string;
+export function getClientIP(headers: HeaderLike): string;
+export function getClientIP(requestOrHeaders: NextRequest | HeaderLike): string {
+  // NextRequestかHeaderLikeかを判定
+  const headers = "headers" in requestOrHeaders ? requestOrHeaders.headers : requestOrHeaders;
+
+  // 信頼度ベースでのIPヘッダー優先順位
+  // セキュリティ重要度: HIGH > MEDIUM > LOW
   const ipSources = [
-    // Vercel固有のヘッダー（最優先）
-    request.headers.get("x-vercel-forwarded-for")?.split(",")[0]?.trim(),
+    // 🟢 HIGH: 偽装が困難な信頼できるヘッダー
+    {
+      ip: headers.get("x-vercel-forwarded-for")?.split(",")[0]?.trim(),
+      trust: "high",
+      source: "Vercel",
+    },
+    {
+      ip: headers.get("cf-connecting-ip"),
+      trust: "high",
+      source: "Cloudflare",
+    },
 
-    // 標準的なプロキシヘッダー
-    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim(),
+    // 🟡 MEDIUM: CDN/プロキシ固有ヘッダー（中程度の信頼度）
+    {
+      ip: headers.get("x-real-ip"),
+      trust: "medium",
+      source: "Nginx",
+    },
+    {
+      ip: headers.get("x-client-ip"),
+      trust: "medium",
+      source: "Apache",
+    },
 
-    // CDN固有のヘッダー
-    request.headers.get("cf-connecting-ip"), // Cloudflare
-    request.headers.get("x-real-ip"), // Nginx
-    request.headers.get("x-client-ip"), // Apache
-
-    // その他のプロキシヘッダー
-    request.headers.get("x-cluster-client-ip"),
-    request.headers.get("x-forwarded"),
-    request.headers.get("forwarded-for"),
+    // 🔴 LOW: 偽装可能な汎用ヘッダー（注意深い使用）
+    {
+      ip: headers.get("x-forwarded-for")?.split(",")[0]?.trim(),
+      trust: "low",
+      source: "X-Forwarded-For",
+    },
+    {
+      ip: headers.get("x-cluster-client-ip"),
+      trust: "low",
+      source: "Cluster",
+    },
+    {
+      ip: headers.get("x-forwarded"),
+      trust: "low",
+      source: "Forwarded",
+    },
+    {
+      ip: headers.get("forwarded-for"),
+      trust: "low",
+      source: "Forwarded-For",
+    },
 
     // 最後の手段（Edge Runtimeでは常にundefined）
-    request.ip,
+    {
+      ip: "ip" in requestOrHeaders ? requestOrHeaders.ip : undefined,
+      trust: "low",
+      source: "Request.ip",
+    },
   ];
 
-  // 有効なIPアドレスを順番に探す
-  for (const source of ipSources) {
-    if (source && isValidIP(source)) {
-      const normalizedIP = normalizeIP(source);
+  // 信頼度の高いIPアドレスを優先して探す
+  let selectedIP: string | null = null;
+  let selectedTrust: string | null = null;
+  let selectedSource: string | null = null;
 
-      // プライベートIPでない場合は採用
+  for (const { ip, trust, source } of ipSources) {
+    if (ip && isValidIP(ip)) {
+      const normalizedIP = normalizeIP(ip);
+
+      // プライベートIPでない場合は採用候補
       if (!isPrivateIP(normalizedIP)) {
-        return normalizedIP;
+        selectedIP = normalizedIP;
+        selectedTrust = trust;
+        selectedSource = source;
+
+        // 高信頼度の場合は即座に採用
+        if (trust === "high") {
+          break;
+        }
       }
 
-      // 明示的にlocalhostの場合は採用（開発環境用）
-      if (source === "127.0.0.1" || source === "::1") {
-        return normalizedIP;
+      // 明示的にlocalhostの場合は開発環境用として採用
+      if ((ip === "127.0.0.1" || ip === "::1") && !selectedIP) {
+        selectedIP = normalizedIP;
+        selectedTrust = trust;
+        selectedSource = source;
       }
     }
+  }
+
+  // 選択されたIPアドレスがある場合
+  if (selectedIP) {
+    // セキュリティログ: 低信頼度ヘッダーの使用を警告
+    if (selectedTrust === "low" && process.env.NODE_ENV === "development") {
+      // eslint-disable-next-line no-console
+      console.warn(
+        `⚠️ Using low-trust IP header: ${selectedSource} (${selectedIP}). Consider security implications.`
+      );
+    }
+    return selectedIP;
   }
 
   // 全てのプロキシヘッダーが存在しない場合のフォールバック戦略
@@ -184,19 +256,121 @@ export function getClientIP(request: NextRequest): string {
     return "127.0.0.1";
   } else {
     // 本番環境では擬似IPを生成（レート制限機能を維持するため）
-    const fallbackIP = generateFallbackIdentifier(request);
+    // NextRequestの場合のみfallback identifierを生成可能
+    const fallbackIP =
+      "headers" in requestOrHeaders ? generateFallbackIdentifier(requestOrHeaders) : "127.0.0.1"; // Headersのみの場合はlocalhostを使用
 
     // 本番環境では適切なログシステムに出力
     if ((process.env.NODE_ENV as string) === "development") {
       // console.warn("No valid client IP found, using fallback identifier", {
       //   fallbackIP,
-      //   userAgent: request.headers.get("user-agent"),
+      //   userAgent: headers.get("user-agent"),
       //   timestamp: new Date().toISOString(),
       // });
     }
 
     return fallbackIP;
   }
+}
+
+/**
+ * Server Component/Server Actions用のIPアドレス取得関数
+ * Next.js の headers() 関数から取得したオブジェクトに特化
+ */
+export function getClientIPFromHeaders(headersList: HeaderLike): string {
+  // 信頼度ベースでのIPヘッダー優先順位（Server Components用）
+  const ipSources = [
+    // 🟢 HIGH: 偽装が困難な信頼できるヘッダー
+    {
+      ip: headersList.get("x-vercel-forwarded-for")?.split(",")[0]?.trim(),
+      trust: "high",
+      source: "Vercel",
+    },
+    {
+      ip: headersList.get("cf-connecting-ip"),
+      trust: "high",
+      source: "Cloudflare",
+    },
+
+    // 🟡 MEDIUM: CDN/プロキシ固有ヘッダー（中程度の信頼度）
+    {
+      ip: headersList.get("x-real-ip"),
+      trust: "medium",
+      source: "Nginx",
+    },
+    {
+      ip: headersList.get("x-client-ip"),
+      trust: "medium",
+      source: "Apache",
+    },
+
+    // 🔴 LOW: 偽装可能な汎用ヘッダー（注意深い使用）
+    {
+      ip: headersList.get("x-forwarded-for")?.split(",")[0]?.trim(),
+      trust: "low",
+      source: "X-Forwarded-For",
+    },
+    {
+      ip: headersList.get("x-cluster-client-ip"),
+      trust: "low",
+      source: "Cluster",
+    },
+    {
+      ip: headersList.get("x-forwarded"),
+      trust: "low",
+      source: "Forwarded",
+    },
+    {
+      ip: headersList.get("forwarded-for"),
+      trust: "low",
+      source: "Forwarded-For",
+    },
+  ];
+
+  // 信頼度の高いIPアドレスを優先して探す
+  let selectedIP: string | null = null;
+  let selectedTrust: string | null = null;
+  let selectedSource: string | null = null;
+
+  for (const { ip, trust, source } of ipSources) {
+    if (ip && isValidIP(ip)) {
+      const normalizedIP = normalizeIP(ip);
+
+      // プライベートIPでない場合は採用候補
+      if (!isPrivateIP(normalizedIP)) {
+        selectedIP = normalizedIP;
+        selectedTrust = trust;
+        selectedSource = source;
+
+        // 高信頼度の場合は即座に採用
+        if (trust === "high") {
+          break;
+        }
+      }
+
+      // 明示的にlocalhostの場合は開発環境用として採用
+      if ((ip === "127.0.0.1" || ip === "::1") && !selectedIP) {
+        selectedIP = normalizedIP;
+        selectedTrust = trust;
+        selectedSource = source;
+      }
+    }
+  }
+
+  // 選択されたIPアドレスがある場合
+  if (selectedIP) {
+    // セキュリティログ: 低信頼度ヘッダーの使用を警告
+    if (selectedTrust === "low" && process.env.NODE_ENV === "development") {
+      // eslint-disable-next-line no-console
+      console.warn(
+        `⚠️ [Server Component] Using low-trust IP header: ${selectedSource} (${selectedIP}). Consider security implications.`
+      );
+    }
+    return selectedIP;
+  }
+
+  // 全てのプロキシヘッダーが存在しない場合は開発環境想定のlocalhostを返す
+  return "127.0.0.1";
 }
 
 /**

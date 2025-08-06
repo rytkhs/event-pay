@@ -45,7 +45,8 @@ describe("Invite Link Regeneration Integration Tests", () => {
 
       expect(result.success).toBe(true);
       expect(result.data?.inviteToken).toBeDefined();
-      expect(result.data?.inviteToken).toHaveLength(32);
+      expect(result.data?.inviteToken).toHaveLength(36);
+      expect(result.data?.inviteToken).toMatch(/^inv_[a-zA-Z0-9_-]{32}$/);
       expect(result.data?.inviteUrl).toContain(result.data.inviteToken);
     });
 
@@ -76,7 +77,8 @@ describe("Invite Link Regeneration Integration Tests", () => {
       expect(secondResult.success).toBe(true);
       expect(secondResult.data?.inviteToken).toBeDefined();
       expect(secondResult.data?.inviteToken).not.toBe(originalToken);
-      expect(secondResult.data?.inviteToken).toHaveLength(32);
+      expect(secondResult.data?.inviteToken).toHaveLength(36);
+      expect(secondResult.data?.inviteToken).toMatch(/^inv_[a-zA-Z0-9_-]{32}$/);
     });
 
     it("should invalidate old token after regeneration", async () => {
@@ -91,7 +93,8 @@ describe("Invite Link Regeneration Integration Tests", () => {
       const newToken = secondResult.data?.inviteToken;
 
       expect(newToken).not.toBe(originalToken);
-      expect(newToken).toHaveLength(32);
+      expect(newToken).toHaveLength(36);
+      expect(newToken).toMatch(/^inv_[a-zA-Z0-9_-]{32}$/);
     });
   });
 });

@@ -1,5 +1,3 @@
-"use client";
-
 interface EditRestrictionsNoticeProps {
   hasAttendees: boolean;
   attendeeCount: number;
