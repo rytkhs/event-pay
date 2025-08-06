@@ -44,7 +44,7 @@ export interface SecurityAuditor {
     reason: AdminReason,
     context: string,
     auditContext: AuditContext,
-    operationDetails?: Record<string, any>
+    operationDetails?: Record<string, unknown>
   ): Promise<void>;
 
   /**

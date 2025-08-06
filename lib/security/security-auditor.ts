@@ -235,7 +235,7 @@ export class DatabaseSecurityAuditor implements SecurityAuditor {
     tableName: string,
     expectedCount: number,
     actualCount: number,
-    context: Record<string, any>
+    context: Record<string, unknown>
   ): Promise<void> {
     if (actualCount === 0 && expectedCount > 0) {
       await this.logSuspiciousActivity({
@@ -333,8 +333,8 @@ export class DatabaseSecurityAuditor implements SecurityAuditor {
       if (emptyResults && emptyResults.length > 0) {
         // テーブル別に集計
         const tableStats: Record<string, number> = {};
-        emptyResults.forEach((result: any) => {
-          const tableName = result.table_name || 'unknown';
+        emptyResults.forEach((result: Record<string, unknown>) => {
+          const tableName = String(result.table_name || 'unknown');
           tableStats[tableName] = (tableStats[tableName] || 0) + 1;
         });
 
@@ -420,14 +420,14 @@ export class DatabaseSecurityAuditor implements SecurityAuditor {
   /**
    * 失敗したアクションの上位を分析
    */
-  private analyzeTopFailedActions(suspiciousActivities: Array<unknown>): Array<{
+  private analyzeTopFailedActions(suspiciousActivities: Array<Record<string, unknown>>): Array<{
     action: string;
     count: number;
   }> {
     const actionCounts: Record<string, number> = {};
 
-    suspiciousActivities.forEach((activity: any) => {
-      const action = activity?.attempted_action || 'unknown';
+    suspiciousActivities.forEach((activity: Record<string, unknown>) => {
+      const action = String(activity?.attempted_action || 'unknown');
       actionCounts[action] = (actionCounts[action] || 0) + 1;
     });
 
@@ -441,8 +441,8 @@ export class DatabaseSecurityAuditor implements SecurityAuditor {
    * 疑わしいIPアドレスの上位を分析
    */
   private analyzeTopSuspiciousIPs(
-    suspiciousActivities: Array<unknown>,
-    unauthorizedAttempts: Array<unknown>
+    suspiciousActivities: Array<Record<string, unknown>>,
+    unauthorizedAttempts: Array<Record<string, unknown>>
   ): Array<{
     ipAddress: string;
     count: number;
@@ -450,8 +450,8 @@ export class DatabaseSecurityAuditor implements SecurityAuditor {
   }> {
     const ipCounts: Record<string, number> = {};
 
-    [...suspiciousActivities, ...unauthorizedAttempts].forEach((activity: any) => {
-      const ip = activity?.ip_address || 'unknown';
+    [...suspiciousActivities, ...unauthorizedAttempts].forEach((activity: Record<string, unknown>) => {
+      const ip = String(activity?.ip_address || 'unknown');
       ipCounts[ip] = (ipCounts[ip] || 0) + 1;
     });
 
