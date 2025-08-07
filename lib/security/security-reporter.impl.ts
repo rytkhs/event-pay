@@ -583,11 +583,12 @@ export class SecurityReporterImpl implements SecurityReporter {
     const eventStats: Record<string, EventAccessStats & { uniqueTokensSet: Set<string> }> = {};
 
     guestAccessData.forEach((access) => {
-      if (!access.event_id) return;
+      if (!access.event_id || !isString(access.event_id)) return;
+      const eventId = access.event_id as string;
 
-      if (!eventStats[access.event_id]) {
-        eventStats[access.event_id] = {
-          eventId: access.event_id,
+      if (!eventStats[eventId]) {
+        eventStats[eventId] = {
+          eventId: eventId,
           accessCount: 0,
           uniqueTokens: 0,
           uniqueTokensSet: new Set(),
@@ -595,9 +596,9 @@ export class SecurityReporterImpl implements SecurityReporter {
         };
       }
 
-      eventStats[access.event_id].accessCount++;
-      if (access.guest_token_hash) {
-        eventStats[access.event_id].uniqueTokensSet.add(access.guest_token_hash);
+      eventStats[eventId].accessCount++;
+      if (access.guest_token_hash && isString(access.guest_token_hash)) {
+        eventStats[eventId].uniqueTokensSet.add(access.guest_token_hash as string);
       }
     });
 
@@ -620,7 +621,7 @@ export class SecurityReporterImpl implements SecurityReporter {
     const failuresByType: Record<string, number> = {};
 
     failures.forEach((failure) => {
-      const errorCode = failure.error_code || "UNKNOWN";
+      const errorCode = isString(failure.error_code) ? failure.error_code as string : "UNKNOWN";
       failuresByType[errorCode] = (failuresByType[errorCode] || 0) + 1;
     });
 
@@ -646,8 +647,9 @@ export class SecurityReporterImpl implements SecurityReporter {
     // 高頻度アクセストークンの検出
     const tokenCounts: Record<string, number> = {};
     guestAccessData.forEach((access) => {
-      if (access.guest_token_hash) {
-        tokenCounts[access.guest_token_hash] = (tokenCounts[access.guest_token_hash] || 0) + 1;
+      if (access.guest_token_hash && isString(access.guest_token_hash)) {
+        const tokenHash = access.guest_token_hash as string;
+        tokenCounts[tokenHash] = (tokenCounts[tokenHash] || 0) + 1;
       }
     });
 
@@ -671,7 +673,8 @@ export class SecurityReporterImpl implements SecurityReporter {
   ): SecurityRecommendation[] {
     const recommendations: SecurityRecommendation[] = [];
 
-    if (failureAnalysis.totalFailures > guestStats.totalAccess * 0.1) {
+    const totalAccess = isNumber(guestStats.totalAccess) ? guestStats.totalAccess as number : 0;
+    if (failureAnalysis.totalFailures > totalAccess * 0.1) {
       recommendations.push({
         priority: SecuritySeverity.MEDIUM,
         category: "ACCESS_CONTROL",
@@ -712,20 +715,24 @@ export class SecurityReporterImpl implements SecurityReporter {
     const threatMap: Record<string, IdentifiedThreat> = {};
 
     suspiciousData.forEach((activity) => {
-      const threatType = activity.activity_type;
+      if (!isString(activity.activity_type) || !isString(activity.created_at)) return;
+
+      const threatType = activity.activity_type as string;
+      const createdAt = activity.created_at as string;
+
       if (!threatMap[threatType]) {
         threatMap[threatType] = {
           type: threatType,
           severity: activity.severity as SecuritySeverity,
           description: `${threatType}タイプの脅威が検出されました`,
           indicators: [],
-          firstDetected: new Date(activity.created_at),
-          lastSeen: new Date(activity.created_at),
+          firstDetected: new Date(createdAt),
+          lastSeen: new Date(createdAt),
         };
       }
 
       const threat = threatMap[threatType];
-      const activityDate = new Date(activity.created_at);
+      const activityDate = new Date(createdAt);
 
       if (activityDate < threat.firstDetected) {
         threat.firstDetected = activityDate;
@@ -734,8 +741,11 @@ export class SecurityReporterImpl implements SecurityReporter {
         threat.lastSeen = activityDate;
       }
 
-      if (activity.table_name && !threat.indicators.includes(activity.table_name)) {
-        threat.indicators.push(activity.table_name);
+      if (activity.table_name && isString(activity.table_name)) {
+        const tableName = activity.table_name as string;
+        if (!threat.indicators.includes(tableName)) {
+          threat.indicators.push(tableName);
+        }
       }
     });
 
