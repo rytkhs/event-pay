@@ -95,8 +95,8 @@ describe("SecurityReporterImpl", () => {
           [AdminReason.SYSTEM_MAINTENANCE]: 2,
         } as Record<AdminReason, number>,
         byUser: {
-          "user1": 5,
-          "user2": 5,
+          user1: 5,
+          user2: 5,
         },
         failureRate: 0.1,
       };
@@ -134,8 +134,8 @@ describe("SecurityReporterImpl", () => {
         totalAccess: 100,
         uniqueTokens: 20,
         byAction: {
-          "view_attendance": 50,
-          "update_attendance": 30,
+          view_attendance: 50,
+          update_attendance: 30,
         },
         failureRate: 0.05,
         topEvents: [

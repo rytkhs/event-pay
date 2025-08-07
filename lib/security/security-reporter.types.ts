@@ -54,10 +54,7 @@ export interface SecurityReporter {
   /**
    * レポートをエクスポート（JSON、CSV、PDF）
    */
-  exportReport(
-    report: SecurityReport,
-    format: ExportFormat
-  ): Promise<ExportedReport>;
+  exportReport(report: SecurityReport, format: ExportFormat): Promise<ExportedReport>;
 }
 
 // ====================================================================

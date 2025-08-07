@@ -44,14 +44,18 @@ export class TestDataManager {
     this.secureClientFactory = SecureSupabaseClientFactory.create();
 
     // 通常のクライアント（RLS有効）
-    this.authenticatedClient = supabaseClient || this.secureClientFactory.createAuthenticatedClient();
+    this.authenticatedClient =
+      supabaseClient || this.secureClientFactory.createAuthenticatedClient();
   }
 
   /**
    * 管理者権限が真に必要な場合のみ使用（監査付き）
    * テストデータのクリーンアップなど限定的な用途のみ
    */
-  private async getAuditedAdminClient(reason: AdminReason, context: string): Promise<SupabaseClient> {
+  private async getAuditedAdminClient(
+    reason: AdminReason,
+    context: string
+  ): Promise<SupabaseClient> {
     return await this.secureClientFactory.createAuditedAdminClient(reason, context);
   }
 

@@ -2,7 +2,7 @@ import { generateRandomBytes, toBase64UrlSafe } from "@/lib/security/crypto";
 import {
   getRLSGuestTokenValidator,
   validateGuestTokenRLS,
-  type RLSGuestAttendanceData
+  type RLSGuestAttendanceData,
 } from "@/lib/security/guest-token-validator";
 import type { Database } from "@/types/database";
 
@@ -108,10 +108,10 @@ function convertToLegacyFormat(rlsData: RLSGuestAttendanceData): GuestAttendance
 
 /**
  * 参加状況を変更可能かどうかを判定する（従来互換）
- * 
+ *
  * 注意: この関数は後方互換性のために残されています。
  * 新しいコードではRLSGuestTokenValidatorの使用を推奨します。
- * 
+ *
  * @param event イベントデータ
  * @returns 変更可能かどうか
  */
@@ -137,10 +137,10 @@ function _checkCanModifyAttendance(event: GuestAttendanceData["event"]): boolean
 
 /**
  * RLSベースのゲストトークンバリデーターを取得
- * 
+ *
  * 新しいコードではこの関数を使用してバリデーターを取得し、
  * 直接RLSベースの機能を使用することを推奨します。
- * 
+ *
  * @returns RLSベースのゲストトークンバリデーター
  */
 export function getGuestTokenValidator() {
@@ -168,17 +168,17 @@ export function generateGuestToken(): string {
 
 /**
  * このファイルは段階的にRLSベースの新しいシステムに移行されています。
- * 
+ *
  * 移行状況:
  * ✅ validateGuestToken() - RLSベースの実装に移行済み
  * ✅ generateGuestToken() - 変更なし（既に安全）
  * ✅ _checkCanModifyAttendance() - 後方互換性のために保持
- * 
+ *
  * 新しいコードでの推奨事項:
  * - getRLSGuestTokenValidator()を使用してバリデーターを取得
  * - 直接RLSベースのメソッドを使用
  * - 新しいエラーハンドリングシステムを活用
- * 
+ *
  * 廃止予定:
  * - _checkCanModifyAttendance() - RLSGuestTokenValidatorのメソッドを使用
  * - GuestAttendanceData型 - RLSGuestAttendanceData型を使用
