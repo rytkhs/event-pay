@@ -4,6 +4,7 @@
 
 import { createClient } from "@supabase/supabase-js";
 import { Database } from "@/types/database";
+import { stripe } from "@/lib/stripe/client";
 import { IPaymentService, IPaymentErrorHandler } from "./interface";
 import {
   Payment,
@@ -24,6 +25,7 @@ import {
  */
 export class PaymentService implements IPaymentService {
   private supabase: ReturnType<typeof createClient<Database>>;
+  private stripe = stripe;
   private errorHandler: IPaymentErrorHandler;
 
   constructor(supabaseUrl: string, supabaseKey: string, errorHandler: IPaymentErrorHandler) {
@@ -33,7 +35,6 @@ export class PaymentService implements IPaymentService {
 
   /**
    * Stripe決済セッションを作成する
-   * 注意: この実装はプレースホルダーです。実際のStripe統合は後のタスクで実装されます。
    */
   async createStripeSession(params: CreateStripeSessionParams): Promise<CreateStripeSessionResult> {
     try {
@@ -57,15 +58,69 @@ export class PaymentService implements IPaymentService {
         );
       }
 
-      // TODO: 実際のStripe Checkout Session作成は後のタスクで実装
-      // 現在はモックレスポンスを返す
+      // Stripe Checkout Sessionを作成
+      const session = await this.stripe.checkout.sessions.create({
+        payment_method_types: ["card"],
+        line_items: [
+          {
+            price_data: {
+              currency: "jpy",
+              product_data: {
+                name: params.eventTitle,
+                description: "イベント参加費",
+              },
+              unit_amount: params.amount,
+            },
+            quantity: 1,
+          },
+        ],
+        mode: "payment",
+        success_url: params.successUrl,
+        cancel_url: params.cancelUrl,
+        metadata: {
+          payment_id: payment.id,
+          attendance_id: params.attendanceId,
+        },
+        payment_intent_data: {
+          metadata: {
+            payment_id: payment.id,
+            attendance_id: params.attendanceId,
+          },
+        },
+        expires_at: Math.floor(Date.now() / 1000) + 30 * 60, // 30分後に期限切れ
+      });
+
+      // 決済レコードにセッションIDを更新
+      const { error: updateError } = await this.supabase
+        .from("payments")
+        .update({
+          stripe_session_id: session.id,
+        })
+        .eq("id", payment.id);
+
+      if (updateError) {
+        // セッションは作成されたが、DBの更新に失敗した場合はログに記録
+        console.error("Failed to update payment record with session ID:", updateError);
+        // セッションは有効なので処理は続行
+      }
+
       return {
-        sessionUrl: `https://checkout.stripe.com/pay/mock_session_${payment.id}`,
-        sessionId: `cs_mock_${payment.id}`,
+        sessionUrl: session.url!,
+        sessionId: session.id,
       };
     } catch (error) {
       if (error instanceof PaymentError) {
         throw error;
+      }
+
+      // Stripeエラーの詳細を判定
+      if (error && typeof error === "object" && "type" in error) {
+        const stripeError = error as any;
+        throw new PaymentError(
+          PaymentErrorType.STRIPE_API_ERROR,
+          `Stripe決済セッションの作成に失敗しました: ${stripeError.message || "不明なエラー"}`,
+          error as unknown as Error
+        );
       }
 
       throw new PaymentError(

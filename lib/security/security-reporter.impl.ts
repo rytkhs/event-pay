@@ -621,7 +621,7 @@ export class SecurityReporterImpl implements SecurityReporter {
     const failuresByType: Record<string, number> = {};
 
     failures.forEach((failure) => {
-      const errorCode = isString(failure.error_code) ? failure.error_code as string : "UNKNOWN";
+      const errorCode = isString(failure.error_code) ? (failure.error_code as string) : "UNKNOWN";
       failuresByType[errorCode] = (failuresByType[errorCode] || 0) + 1;
     });
 
@@ -673,7 +673,7 @@ export class SecurityReporterImpl implements SecurityReporter {
   ): SecurityRecommendation[] {
     const recommendations: SecurityRecommendation[] = [];
 
-    const totalAccess = isNumber(guestStats.totalAccess) ? guestStats.totalAccess as number : 0;
+    const totalAccess = isNumber(guestStats.totalAccess) ? (guestStats.totalAccess as number) : 0;
     if (failureAnalysis.totalFailures > totalAccess * 0.1) {
       recommendations.push({
         priority: SecuritySeverity.MEDIUM,

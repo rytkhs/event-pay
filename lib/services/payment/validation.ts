@@ -17,7 +17,7 @@ import {
 } from "./types";
 
 // Zodスキーマ定義
-const paymentMethodSchema = z.enum(["stripe", "cash", "free"]);
+const paymentMethodSchema = z.enum(["stripe", "cash"]);
 const paymentStatusSchema = z.enum([
   "pending",
   "paid",
@@ -28,6 +28,7 @@ const paymentStatusSchema = z.enum([
   "waived",
 ]);
 
+// サービス層（Stripeに渡す直前の最終パラメータ）用スキーマ
 const createStripeSessionParamsSchema = z.object({
   attendanceId: z.string().uuid("参加記録IDは有効なUUIDである必要があります"),
   amount: z
@@ -38,6 +39,17 @@ const createStripeSessionParamsSchema = z.object({
     .string()
     .min(1, "イベントタイトルは必須です")
     .max(200, "イベントタイトルは200文字以内である必要があります"),
+  successUrl: z.string().url("成功時URLは有効なURLである必要があります"),
+  cancelUrl: z.string().url("キャンセル時URLは有効なURLである必要があります"),
+});
+
+// APIルートの入力用スキーマ（eventTitleはサーバー側で取得するため不要）
+const createStripeSessionRequestSchema = z.object({
+  attendanceId: z.string().uuid("参加記録IDは有効なUUIDである必要があります"),
+  amount: z
+    .number()
+    .int("金額は整数である必要があります")
+    .positive("金額は正の数である必要があります"),
   successUrl: z.string().url("成功時URLは有効なURLである必要があります"),
   cancelUrl: z.string().url("キャンセル時URLは有効なURLである必要があります"),
 });
@@ -426,6 +438,7 @@ export const validateUrl = (value: string, fieldName: string): void => {
 // Zodスキーマのエクスポート
 export {
   createStripeSessionParamsSchema,
+  createStripeSessionRequestSchema,
   createCashPaymentParamsSchema,
   updatePaymentStatusParamsSchema,
   paymentMethodSchema,
