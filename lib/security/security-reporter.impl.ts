@@ -82,19 +82,14 @@ export class SecurityReporterImpl implements SecurityReporter {
     const baseReport = await this.auditor.generateSecurityReport(timeRange);
 
     // 追加の分析データを収集
-    const [
-      executiveSummary,
-      detailedAnalysis,
-      trendAnalysis,
-      complianceStatus,
-      actionItems,
-    ] = await Promise.all([
-      this.generateExecutiveSummary(baseReport, timeRange),
-      this.generateDetailedAnalysis(timeRange),
-      this.generateTrendAnalysis(timeRange),
-      this.generateComplianceStatus(timeRange),
-      this.generateActionItems(baseReport),
-    ]);
+    const [executiveSummary, detailedAnalysis, trendAnalysis, complianceStatus, actionItems] =
+      await Promise.all([
+        this.generateExecutiveSummary(baseReport, timeRange),
+        this.generateDetailedAnalysis(timeRange),
+        this.generateTrendAnalysis(timeRange),
+        this.generateComplianceStatus(timeRange),
+        this.generateActionItems(baseReport),
+      ]);
 
     return {
       ...baseReport,
@@ -282,10 +277,7 @@ export class SecurityReporterImpl implements SecurityReporter {
   // レポートエクスポート
   // ====================================================================
 
-  async exportReport(
-    report: SecurityReport,
-    format: ExportFormat
-  ): Promise<ExportedReport> {
+  async exportReport(report: SecurityReport, format: ExportFormat): Promise<ExportedReport> {
     const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, "-");
     const filename = `security-report-${timestamp}`;
 
@@ -312,19 +304,22 @@ export class SecurityReporterImpl implements SecurityReporter {
     _timeRange: TimeRange
   ): Promise<ExecutiveSummary> {
     const criticalIssues = baseReport.suspiciousActivities.filter(
-      a => a.severity === SecuritySeverity.CRITICAL
+      (a) => a.severity === SecuritySeverity.CRITICAL
     ).length;
 
     const highIssues = baseReport.suspiciousActivities.filter(
-      a => a.severity === SecuritySeverity.HIGH
+      (a) => a.severity === SecuritySeverity.HIGH
     ).length;
 
     // セキュリティスコアの計算（簡略化）
-    const overallSecurityScore = Math.max(0, 100 - (criticalIssues * 20) - (highIssues * 10));
+    const overallSecurityScore = Math.max(0, 100 - criticalIssues * 20 - highIssues * 10);
 
-    const riskLevel = criticalIssues > 0 ? SecuritySeverity.CRITICAL :
-      highIssues > 0 ? SecuritySeverity.HIGH :
-        SecuritySeverity.MEDIUM;
+    const riskLevel =
+      criticalIssues > 0
+        ? SecuritySeverity.CRITICAL
+        : highIssues > 0
+          ? SecuritySeverity.HIGH
+          : SecuritySeverity.MEDIUM;
 
     return {
       overallSecurityScore,
@@ -348,8 +343,8 @@ export class SecurityReporterImpl implements SecurityReporter {
       accessPatterns: {
         peakHours: [9, 10, 14, 15],
         averageSessionDuration: 300, // 5分
-        geographicDistribution: { "JP": 80, "US": 15, "Other": 5 },
-        deviceTypes: { "Desktop": 60, "Mobile": 35, "Tablet": 5 },
+        geographicDistribution: { JP: 80, US: 15, Other: 5 },
+        deviceTypes: { Desktop: 60, Mobile: 35, Tablet: 5 },
         anomalousPatterns: [],
       },
       securityIncidents: {
@@ -436,27 +431,32 @@ export class SecurityReporterImpl implements SecurityReporter {
   }
 
   private analyzeAccessByReason(adminAccessData: unknown[]): Record<AdminReason, AdminAccessStats> {
-    const stats: Record<AdminReason, AdminAccessStats> = {} as Record<AdminReason, AdminAccessStats>;
+    const stats: Record<AdminReason, AdminAccessStats> = {} as Record<
+      AdminReason,
+      AdminAccessStats
+    >;
 
-    Object.values(AdminReason).forEach(reason => {
-      const reasonData = adminAccessData.filter(a =>
-        isObject(a) && 'reason' in a && a.reason === reason
+    Object.values(AdminReason).forEach((reason) => {
+      const reasonData = adminAccessData.filter(
+        (a) => isObject(a) && "reason" in a && a.reason === reason
       );
-      const failures = reasonData.filter(a =>
-        isObject(a) && 'success' in a && a.success === false
+      const failures = reasonData.filter(
+        (a) => isObject(a) && "success" in a && a.success === false
       ).length;
 
       stats[reason] = {
         count: reasonData.length,
         uniqueUsers: new Set(
           reasonData
-            .map(a => isObject(a) && 'user_id' in a && isString(a.user_id) ? a.user_id : null)
+            .map((a) => (isObject(a) && "user_id" in a && isString(a.user_id) ? a.user_id : null))
             .filter(Boolean)
         ).size,
-        averageDuration: reasonData.reduce((sum: number, a) => {
-          const duration = isObject(a) && 'duration_ms' in a && isNumber(a.duration_ms) ? a.duration_ms : 0;
-          return sum + duration;
-        }, 0) / reasonData.length || 0,
+        averageDuration:
+          reasonData.reduce((sum: number, a) => {
+            const duration =
+              isObject(a) && "duration_ms" in a && isNumber(a.duration_ms) ? a.duration_ms : 0;
+            return sum + duration;
+          }, 0) / reasonData.length || 0,
         failureRate: reasonData.length > 0 ? failures / reasonData.length : 0,
       };
     });
@@ -467,24 +467,25 @@ export class SecurityReporterImpl implements SecurityReporter {
   private analyzeAccessByUser(adminAccessData: unknown[]): UserAccessStats[] {
     const userStats: Record<string, UserAccessStats> = {};
 
-    adminAccessData.forEach(access => {
-      if (!isObject(access) || !('user_id' in access) || !isString(access.user_id)) return;
+    adminAccessData.forEach((access) => {
+      if (!isObject(access) || !("user_id" in access) || !isString(access.user_id)) return;
 
       const userId = access.user_id;
       if (!userStats[userId]) {
         userStats[userId] = {
           userId,
           accessCount: 0,
-          lastAccess: ('created_at' in access && isString(access.created_at))
-            ? new Date(access.created_at)
-            : new Date(),
+          lastAccess:
+            "created_at" in access && isString(access.created_at)
+              ? new Date(access.created_at)
+              : new Date(),
           riskScore: 0,
           unusualActivity: false,
         };
       }
 
       userStats[userId].accessCount++;
-      if ('created_at' in access && isString(access.created_at)) {
+      if ("created_at" in access && isString(access.created_at)) {
         const accessDate = new Date(access.created_at);
         if (accessDate > userStats[userId].lastAccess) {
           userStats[userId].lastAccess = accessDate;
@@ -493,7 +494,7 @@ export class SecurityReporterImpl implements SecurityReporter {
     });
 
     // リスクスコアの計算
-    Object.values(userStats).forEach(stats => {
+    Object.values(userStats).forEach((stats) => {
       stats.riskScore = this.calculateUserRiskScore(stats.accessCount);
       stats.unusualActivity = stats.accessCount > 20; // 簡略化された判定
     });
@@ -501,12 +502,14 @@ export class SecurityReporterImpl implements SecurityReporter {
     return Object.values(userStats).sort((a, b) => b.riskScore - a.riskScore);
   }
 
-  private async detectUnusualAdminPatterns(adminAccessData: unknown[]): Promise<UnusualAccessPattern[]> {
+  private async detectUnusualAdminPatterns(
+    adminAccessData: unknown[]
+  ): Promise<UnusualAccessPattern[]> {
     const patterns: UnusualAccessPattern[] = [];
 
     // 時間外アクセスパターンの検出
-    const afterHoursAccess = adminAccessData.filter(access => {
-      if (!isObject(access) || !('created_at' in access) || !isString(access.created_at)) {
+    const afterHoursAccess = adminAccessData.filter((access) => {
+      if (!isObject(access) || !("created_at" in access) || !isString(access.created_at)) {
         return false;
       }
       const hour = new Date(access.created_at).getHours();
@@ -529,9 +532,9 @@ export class SecurityReporterImpl implements SecurityReporter {
     const issues: ComplianceIssue[] = [];
 
     // 理由が記録されていないアクセスをチェック
-    const missingReasonAccess = adminAccessData.filter(a => {
+    const missingReasonAccess = adminAccessData.filter((a) => {
       if (!isObject(a)) return true;
-      return !('reason' in a && isString(a.reason)) || !('context' in a && isString(a.context));
+      return !("reason" in a && isString(a.reason)) || !("context" in a && isString(a.context));
     });
 
     if (missingReasonAccess.length > 0) {
@@ -579,7 +582,7 @@ export class SecurityReporterImpl implements SecurityReporter {
   private analyzeAccessByEvent(guestAccessData: Record<string, unknown>[]): EventAccessStats[] {
     const eventStats: Record<string, EventAccessStats & { uniqueTokensSet: Set<string> }> = {};
 
-    guestAccessData.forEach(access => {
+    guestAccessData.forEach((access) => {
       if (!access.event_id) return;
 
       if (!eventStats[access.event_id]) {
@@ -599,22 +602,24 @@ export class SecurityReporterImpl implements SecurityReporter {
     });
 
     // 失敗率とuniqueTokens数の計算
-    Object.values(eventStats).forEach(stats => {
-      const eventAccess = guestAccessData.filter(a => a.event_id === stats.eventId);
-      const failures = eventAccess.filter(a => !a.success).length;
+    Object.values(eventStats).forEach((stats) => {
+      const eventAccess = guestAccessData.filter((a) => a.event_id === stats.eventId);
+      const failures = eventAccess.filter((a) => !a.success).length;
       stats.failureRate = eventAccess.length > 0 ? failures / eventAccess.length : 0;
       stats.uniqueTokens = stats.uniqueTokensSet.size;
     });
 
     // uniqueTokensSetを除いてEventAccessStats[]として返す
-    return Object.values(eventStats).map(({ uniqueTokensSet: _uniqueTokensSet, ...stats }) => stats).sort((a, b) => b.accessCount - a.accessCount);
+    return Object.values(eventStats)
+      .map(({ uniqueTokensSet: _uniqueTokensSet, ...stats }) => stats)
+      .sort((a, b) => b.accessCount - a.accessCount);
   }
 
   private analyzeGuestFailures(guestAccessData: Record<string, unknown>[]): FailureAnalysis {
-    const failures = guestAccessData.filter(a => !a.success);
+    const failures = guestAccessData.filter((a) => !a.success);
     const failuresByType: Record<string, number> = {};
 
-    failures.forEach(failure => {
+    failures.forEach((failure) => {
       const errorCode = failure.error_code || "UNKNOWN";
       failuresByType[errorCode] = (failuresByType[errorCode] || 0) + 1;
     });
@@ -622,7 +627,9 @@ export class SecurityReporterImpl implements SecurityReporter {
     return {
       totalFailures: failures.length,
       failuresByType,
-      commonCauses: Object.keys(failuresByType).sort((a, b) => failuresByType[b] - failuresByType[a]),
+      commonCauses: Object.keys(failuresByType).sort(
+        (a, b) => failuresByType[b] - failuresByType[a]
+      ),
       resolutionSuggestions: [
         "トークンの有効性を確認してください",
         "RLSポリシーの設定を見直してください",
@@ -631,12 +638,14 @@ export class SecurityReporterImpl implements SecurityReporter {
     };
   }
 
-  private async identifyGuestSecurityConcerns(guestAccessData: Record<string, unknown>[]): Promise<SecurityConcern[]> {
+  private async identifyGuestSecurityConcerns(
+    guestAccessData: Record<string, unknown>[]
+  ): Promise<SecurityConcern[]> {
     const concerns: SecurityConcern[] = [];
 
     // 高頻度アクセストークンの検出
     const tokenCounts: Record<string, number> = {};
-    guestAccessData.forEach(access => {
+    guestAccessData.forEach((access) => {
       if (access.guest_token_hash) {
         tokenCounts[access.guest_token_hash] = (tokenCounts[access.guest_token_hash] || 0) + 1;
       }
@@ -667,7 +676,8 @@ export class SecurityReporterImpl implements SecurityReporter {
         priority: SecuritySeverity.MEDIUM,
         category: "ACCESS_CONTROL",
         title: "ゲストアクセス失敗率の改善",
-        description: "ゲストアクセスの失敗率が高いため、トークン管理とエラーハンドリングを改善してください",
+        description:
+          "ゲストアクセスの失敗率が高いため、トークン管理とエラーハンドリングを改善してください",
         actionRequired: true,
       });
     }
@@ -677,7 +687,8 @@ export class SecurityReporterImpl implements SecurityReporter {
         priority: SecuritySeverity.HIGH,
         category: "MONITORING",
         title: "ゲストアクセスのセキュリティ強化",
-        description: "異常なゲストアクセスパターンが検出されました。監視とレート制限を強化してください",
+        description:
+          "異常なゲストアクセスパターンが検出されました。監視とレート制限を強化してください",
         actionRequired: true,
       });
     }
@@ -686,8 +697,10 @@ export class SecurityReporterImpl implements SecurityReporter {
   }
 
   private calculateOverallThreatLevel(suspiciousData: Record<string, unknown>[]): SecuritySeverity {
-    const criticalCount = suspiciousData.filter(d => d.severity === SecuritySeverity.CRITICAL).length;
-    const highCount = suspiciousData.filter(d => d.severity === SecuritySeverity.HIGH).length;
+    const criticalCount = suspiciousData.filter(
+      (d) => d.severity === SecuritySeverity.CRITICAL
+    ).length;
+    const highCount = suspiciousData.filter((d) => d.severity === SecuritySeverity.HIGH).length;
 
     if (criticalCount > 0) return SecuritySeverity.CRITICAL;
     if (highCount > 3) return SecuritySeverity.HIGH;
@@ -698,7 +711,7 @@ export class SecurityReporterImpl implements SecurityReporter {
   private identifyThreats(suspiciousData: Record<string, unknown>[]): IdentifiedThreat[] {
     const threatMap: Record<string, IdentifiedThreat> = {};
 
-    suspiciousData.forEach(activity => {
+    suspiciousData.forEach((activity) => {
       const threatType = activity.activity_type;
       if (!threatMap[threatType]) {
         threatMap[threatType] = {
@@ -748,7 +761,7 @@ export class SecurityReporterImpl implements SecurityReporter {
   }
 
   private generateMitigationStrategies(threats: IdentifiedThreat[]): MitigationStrategy[] {
-    return threats.map(threat => ({
+    return threats.map((threat) => ({
       threat: threat.type,
       strategy: `${threat.type}に対する対策を実装`,
       effectiveness: 0.8,
@@ -775,7 +788,7 @@ export class SecurityReporterImpl implements SecurityReporter {
       [SecuritySeverity.CRITICAL]: 0,
     };
 
-    indicators.forEach(indicator => {
+    indicators.forEach((indicator) => {
       violationsByType["RLS_VIOLATION"] = (violationsByType["RLS_VIOLATION"] || 0) + 1;
       severityDistribution[indicator.severity]++;
     });
@@ -789,16 +802,12 @@ export class SecurityReporterImpl implements SecurityReporter {
   }
 
   private analyzeAffectedTables(indicators: RlsViolationIndicator[]): AffectedTableAnalysis[] {
-    return indicators.map(indicator => ({
+    return indicators.map((indicator) => ({
       tableName: indicator.tableName,
       violationCount: indicator.frequency,
       violationTypes: ["EMPTY_RESULT_SET"],
       riskLevel: indicator.severity,
-      recommendedActions: [
-        "RLSポリシーの見直し",
-        "アクセスパターンの調査",
-        "監視の強化",
-      ],
+      recommendedActions: ["RLSポリシーの見直し", "アクセスパターンの調査", "監視の強化"],
     }));
   }
 
@@ -815,15 +824,14 @@ export class SecurityReporterImpl implements SecurityReporter {
   }
 
   private createRemediationPlan(indicators: RlsViolationIndicator[]): RemediationPlan {
-    const hasHighSeverity = indicators.some(i => i.severity === SecuritySeverity.HIGH || i.severity === SecuritySeverity.CRITICAL);
+    const hasHighSeverity = indicators.some(
+      (i) => i.severity === SecuritySeverity.HIGH || i.severity === SecuritySeverity.CRITICAL
+    );
 
     return {
-      immediateActions: hasHighSeverity ? [
-        "重要度の高いRLS違反を緊急調査",
-        "影響を受けるテーブルのアクセスを一時制限",
-      ] : [
-        "RLS違反の詳細調査を開始",
-      ],
+      immediateActions: hasHighSeverity
+        ? ["重要度の高いRLS違反を緊急調査", "影響を受けるテーブルのアクセスを一時制限"]
+        : ["RLS違反の詳細調査を開始"],
       shortTermActions: [
         "RLSポリシーの見直しと強化",
         "監視システムの改善",
@@ -860,7 +868,10 @@ export class SecurityReporterImpl implements SecurityReporter {
     return { start, end };
   }
 
-  private calculatePreviousPeriodTimeRange(period: ReportPeriod, currentRange: TimeRange): TimeRange {
+  private calculatePreviousPeriodTimeRange(
+    period: ReportPeriod,
+    currentRange: TimeRange
+  ): TimeRange {
     const duration = currentRange.end.getTime() - currentRange.start.getTime();
     return {
       start: new Date(currentRange.start.getTime() - duration),
@@ -890,10 +901,10 @@ export class SecurityReporterImpl implements SecurityReporter {
     const data = JSON.stringify(report, null, 2);
     return Promise.resolve({
       format: ExportFormat.JSON,
-      data: Buffer.from(data, 'utf-8'),
+      data: Buffer.from(data, "utf-8"),
       filename: `${filename}.json`,
-      mimeType: 'application/json',
-      size: Buffer.byteLength(data, 'utf-8'),
+      mimeType: "application/json",
+      size: Buffer.byteLength(data, "utf-8"),
     });
   }
 
@@ -904,10 +915,10 @@ ${report.timeRange.start.toISOString()}-${report.timeRange.end.toISOString()},${
 
     return Promise.resolve({
       format: ExportFormat.CSV,
-      data: Buffer.from(csvData, 'utf-8'),
+      data: Buffer.from(csvData, "utf-8"),
       filename: `${filename}.csv`,
-      mimeType: 'text/csv',
-      size: Buffer.byteLength(csvData, 'utf-8'),
+      mimeType: "text/csv",
+      size: Buffer.byteLength(csvData, "utf-8"),
     });
   }
 
@@ -917,10 +928,10 @@ ${report.timeRange.start.toISOString()}-${report.timeRange.end.toISOString()},${
 
     return Promise.resolve({
       format: ExportFormat.PDF,
-      data: Buffer.from(pdfContent, 'utf-8'),
+      data: Buffer.from(pdfContent, "utf-8"),
       filename: `${filename}.pdf`,
-      mimeType: 'application/pdf',
-      size: Buffer.byteLength(pdfContent, 'utf-8'),
+      mimeType: "application/pdf",
+      size: Buffer.byteLength(pdfContent, "utf-8"),
     });
   }
 
@@ -930,10 +941,10 @@ ${report.timeRange.start.toISOString()}-${report.timeRange.end.toISOString()},${
 
     return Promise.resolve({
       format: ExportFormat.XLSX,
-      data: Buffer.from(xlsxContent, 'utf-8'),
+      data: Buffer.from(xlsxContent, "utf-8"),
       filename: `${filename}.xlsx`,
-      mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      size: Buffer.byteLength(xlsxContent, 'utf-8'),
+      mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      size: Buffer.byteLength(xlsxContent, "utf-8"),
     });
   }
 

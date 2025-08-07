@@ -8,7 +8,11 @@
 // 1. セキュアクライアントファクトリー
 // ====================================================================
 export { SecureSupabaseClientFactory, RLSBasedGuestValidator } from "./secure-client-factory.impl";
-export type { ISecureSupabaseClientFactory, IGuestTokenValidator, ISecurityAuditor } from "./secure-client-factory.interface";
+export type {
+  ISecureSupabaseClientFactory,
+  IGuestTokenValidator,
+  ISecurityAuditor,
+} from "./secure-client-factory.interface";
 export {
   AdminReason,
   GuestErrorCode,
@@ -136,10 +140,7 @@ export {
 // ====================================================================
 // 循環依存を回避するため、admin-operationsは直接インポートしてください:
 // import { AdminOperations, deleteUserById } from "@/lib/security/admin-operations";
-export type {
-  AdminOperationResult,
-  AdminOperationContext,
-} from "./admin-operations.types";
+export type { AdminOperationResult, AdminOperationContext } from "./admin-operations.types";
 
 // ====================================================================
 // 8. 統合セキュリティファクトリー

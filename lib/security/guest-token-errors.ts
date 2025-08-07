@@ -7,7 +7,7 @@
 
 /**
  * ゲストトークンエラーコード
- * 
+ *
  * 各エラーコードは特定のエラー状況を表し、
  * 適切なユーザーメッセージとログ記録を可能にします。
  */
@@ -82,7 +82,7 @@ export interface GuestErrorContext {
 
 /**
  * ゲストトークンエラークラス
- * 
+ *
  * 構造化されたエラー情報を提供し、
  * 適切なログ記録と監査を可能にします。
  */
@@ -307,7 +307,7 @@ export class GuestTokenError extends Error {
 
 /**
  * エラーファクトリー関数
- * 
+ *
  * 一般的なエラーパターンに対する便利な作成関数を提供
  */
 export class GuestTokenErrorFactory {
@@ -315,22 +315,18 @@ export class GuestTokenErrorFactory {
    * 無効なフォーマットエラーを作成
    */
   static invalidFormat(tokenLength?: number): GuestTokenError {
-    return new GuestTokenError(
-      GuestErrorCode.INVALID_FORMAT,
-      "Invalid guest token format",
-      { tokenLength }
-    );
+    return new GuestTokenError(GuestErrorCode.INVALID_FORMAT, "Invalid guest token format", {
+      tokenLength,
+    });
   }
 
   /**
    * トークンが見つからないエラーを作成
    */
   static tokenNotFound(tokenHash?: string): GuestTokenError {
-    return new GuestTokenError(
-      GuestErrorCode.TOKEN_NOT_FOUND,
-      "Guest token not found",
-      { tokenHash }
-    );
+    return new GuestTokenError(GuestErrorCode.TOKEN_NOT_FOUND, "Guest token not found", {
+      tokenHash,
+    });
   }
 
   /**
@@ -348,11 +344,10 @@ export class GuestTokenErrorFactory {
    * レート制限エラーを作成
    */
   static rateLimitExceeded(ipAddress?: string, retryAfter?: number): GuestTokenError {
-    return new GuestTokenError(
-      GuestErrorCode.RATE_LIMIT_EXCEEDED,
-      "Rate limit exceeded",
-      { ipAddress, additionalInfo: { retryAfter } }
-    );
+    return new GuestTokenError(GuestErrorCode.RATE_LIMIT_EXCEEDED, "Rate limit exceeded", {
+      ipAddress,
+      additionalInfo: { retryAfter },
+    });
   }
 
   /**
@@ -366,8 +361,8 @@ export class GuestTokenErrorFactory {
         operation,
         additionalInfo: {
           originalError: originalError.name,
-          originalMessage: originalError.message
-        }
+          originalMessage: originalError.message,
+        },
       }
     );
   }
@@ -536,8 +531,8 @@ export class GuestTokenErrorCollector {
   generateStatistics(timeRange?: { start: Date; end: Date }): ErrorStatistics {
     const filteredErrors = timeRange
       ? this.errors.filter(
-        (error) => error.timestamp >= timeRange.start && error.timestamp <= timeRange.end
-      )
+          (error) => error.timestamp >= timeRange.start && error.timestamp <= timeRange.end
+        )
       : this.errors;
 
     const errorsByCode: Record<GuestErrorCode, number> = {} as Record<GuestErrorCode, number>;

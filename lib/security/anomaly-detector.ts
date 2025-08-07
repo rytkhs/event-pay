@@ -36,31 +36,22 @@ export interface AnomalyDetector {
   /**
    * アクセスパターンの統計的分析
    */
-  analyzeAccessPatterns(
-    timeRange: TimeRange,
-    tableName?: string
-  ): Promise<AccessPatternAnalysis>;
+  analyzeAccessPatterns(timeRange: TimeRange, tableName?: string): Promise<AccessPatternAnalysis>;
 
   /**
    * RLS違反の間接的指標を検知
    */
-  detectPotentialRlsViolations(
-    timeRange: TimeRange
-  ): Promise<RlsViolationIndicator[]>;
+  detectPotentialRlsViolations(timeRange: TimeRange): Promise<RlsViolationIndicator[]>;
 
   /**
    * 疑わしい活動の統計的分析
    */
-  analyzeSuspiciousActivityTrends(
-    timeRange: TimeRange
-  ): Promise<SuspiciousActivityTrend[]>;
+  analyzeSuspiciousActivityTrends(timeRange: TimeRange): Promise<SuspiciousActivityTrend[]>;
 
   /**
    * 異常検知の閾値を動的に調整
    */
-  calibrateDetectionThresholds(
-    timeRange: TimeRange
-  ): Promise<DetectionThresholds>;
+  calibrateDetectionThresholds(timeRange: TimeRange): Promise<DetectionThresholds>;
 }
 
 /**
@@ -349,15 +340,16 @@ export class AnomalyDetectorImpl implements AnomalyDetector {
 
     // 統計計算
     const totalAccess = (guestAccess?.length || 0) + (adminAccess?.length || 0);
-    const uniqueUsers = new Set(adminAccess?.map(a => a.user_id).filter(Boolean)).size;
-    const uniqueTokens = new Set(guestAccess?.map(a => a.guest_token_hash)).size;
+    const uniqueUsers = new Set(adminAccess?.map((a) => a.user_id).filter(Boolean)).size;
+    const uniqueTokens = new Set(guestAccess?.map((a) => a.guest_token_hash)).size;
 
-    const resultCounts = guestAccess?.map(a => a.result_count || 0).filter(c => c > 0) || [];
-    const averageResultSize = resultCounts.length > 0
-      ? resultCounts.reduce((sum, count) => sum + count, 0) / resultCounts.length
-      : 0;
+    const resultCounts = guestAccess?.map((a) => a.result_count || 0).filter((c) => c > 0) || [];
+    const averageResultSize =
+      resultCounts.length > 0
+        ? resultCounts.reduce((sum, count) => sum + count, 0) / resultCounts.length
+        : 0;
 
-    const emptyResults = guestAccess?.filter(a => a.result_count === 0).length || 0;
+    const emptyResults = guestAccess?.filter((a) => a.result_count === 0).length || 0;
     const emptyResultFrequency = totalAccess > 0 ? emptyResults / totalAccess : 0;
 
     // 異常パターンの検知
@@ -392,9 +384,7 @@ export class AnomalyDetectorImpl implements AnomalyDetector {
   // RLS違反検知
   // ====================================================================
 
-  async detectPotentialRlsViolations(
-    timeRange: TimeRange
-  ): Promise<RlsViolationIndicator[]> {
+  async detectPotentialRlsViolations(timeRange: TimeRange): Promise<RlsViolationIndicator[]> {
     const indicators: RlsViolationIndicator[] = [];
 
     // 各テーブルについてRLS違反の可能性を分析
@@ -414,9 +404,7 @@ export class AnomalyDetectorImpl implements AnomalyDetector {
   // 疑わしい活動のトレンド分析
   // ====================================================================
 
-  async analyzeSuspiciousActivityTrends(
-    timeRange: TimeRange
-  ): Promise<SuspiciousActivityTrend[]> {
+  async analyzeSuspiciousActivityTrends(timeRange: TimeRange): Promise<SuspiciousActivityTrend[]> {
     const trends: SuspiciousActivityTrend[] = [];
 
     // 現在の期間と前の期間を比較
@@ -447,9 +435,7 @@ export class AnomalyDetectorImpl implements AnomalyDetector {
   // 検知閾値の動的調整
   // ====================================================================
 
-  async calibrateDetectionThresholds(
-    timeRange: TimeRange
-  ): Promise<DetectionThresholds> {
+  async calibrateDetectionThresholds(timeRange: TimeRange): Promise<DetectionThresholds> {
     // 過去のデータを基に閾値を調整
     const accessPatterns = await this.analyzeAccessPatterns(timeRange);
     const suspiciousActivities = await this.analyzeSuspiciousActivityTrends(timeRange);
@@ -465,10 +451,7 @@ export class AnomalyDetectorImpl implements AnomalyDetector {
         50,
         Math.ceil(accessPatterns.baselineMetrics.averageAccessPerHour * 3)
       ),
-      suspiciousPatternThreshold: Math.max(
-        2,
-        Math.ceil(suspiciousActivities.length * 0.1)
-      ),
+      suspiciousPatternThreshold: Math.max(2, Math.ceil(suspiciousActivities.length * 0.1)),
       lastCalibrated: new Date(),
       calibrationPeriod: timeRange,
     };
@@ -571,7 +554,9 @@ export class AnomalyDetectorImpl implements AnomalyDetector {
     }
 
     if (analysis.expectedCount && analysis.expectedCount > 10) {
-      recommendations.push("大量のデータアクセスが期待されていました。権限設定を確認してください。");
+      recommendations.push(
+        "大量のデータアクセスが期待されていました。権限設定を確認してください。"
+      );
     }
 
     if (analysis.isUnexpectedlyEmpty) {
@@ -613,11 +598,14 @@ export class AnomalyDetectorImpl implements AnomalyDetector {
     return patterns;
   }
 
-  private groupAccessByHour(guestAccess: unknown[], adminAccess: unknown[]): Record<string, number> {
+  private groupAccessByHour(
+    guestAccess: unknown[],
+    adminAccess: unknown[]
+  ): Record<string, number> {
     const hourlyCount: Record<string, number> = {};
 
-    [...guestAccess, ...adminAccess].forEach(access => {
-      if (isObject(access) && 'created_at' in access && isString(access.created_at)) {
+    [...guestAccess, ...adminAccess].forEach((access) => {
+      if (isObject(access) && "created_at" in access && isString(access.created_at)) {
         const hour = new Date(access.created_at).toISOString().slice(0, 13); // YYYY-MM-DDTHH
         hourlyCount[hour] = (hourlyCount[hour] || 0) + 1;
       }
@@ -630,8 +618,8 @@ export class AnomalyDetectorImpl implements AnomalyDetector {
     const patterns: AnomalousPattern[] = [];
     const tokenCounts: Record<string, number> = {};
 
-    guestAccess.forEach(access => {
-      if (isObject(access) && 'guest_token_hash' in access && isString(access.guest_token_hash)) {
+    guestAccess.forEach((access) => {
+      if (isObject(access) && "guest_token_hash" in access && isString(access.guest_token_hash)) {
         const token = access.guest_token_hash;
         tokenCounts[token] = (tokenCounts[token] || 0) + 1;
       }
@@ -639,7 +627,8 @@ export class AnomalyDetectorImpl implements AnomalyDetector {
 
     // 異常に多いアクセスを持つトークンを検出
     Object.entries(tokenCounts).forEach(([token, count]) => {
-      if (count > 50) { // 閾値: 50回以上のアクセス
+      if (count > 50) {
+        // 閾値: 50回以上のアクセス
         patterns.push({
           type: AnomalyType.SUSPICIOUS_TOKEN_USAGE,
           frequency: count,
@@ -668,7 +657,7 @@ export class AnomalyDetectorImpl implements AnomalyDetector {
       normalUserBehaviorPatterns: [
         "morning_access",
         "afternoon_access",
-        "event_registration_period"
+        "event_registration_period",
       ],
     };
   }
@@ -681,11 +670,15 @@ export class AnomalyDetectorImpl implements AnomalyDetector {
     const recommendations: string[] = [];
 
     if (anomalousPatterns.length > 0) {
-      recommendations.push(`${anomalousPatterns.length}個の異常パターンが検出されました。詳細な調査を推奨します。`);
+      recommendations.push(
+        `${anomalousPatterns.length}個の異常パターンが検出されました。詳細な調査を推奨します。`
+      );
     }
 
     if (emptyResultFrequency > 0.3) {
-      recommendations.push("空の結果セットの頻度が高すぎます（30%以上）。RLSポリシーの見直しを検討してください。");
+      recommendations.push(
+        "空の結果セットの頻度が高すぎます（30%以上）。RLSポリシーの見直しを検討してください。"
+      );
     }
 
     if (totalAccess > 1000) {
@@ -693,7 +686,9 @@ export class AnomalyDetectorImpl implements AnomalyDetector {
     }
 
     if (recommendations.length === 0) {
-      recommendations.push("現在のアクセスパターンは正常範囲内です。継続的な監視を維持してください。");
+      recommendations.push(
+        "現在のアクセスパターンは正常範囲内です。継続的な監視を維持してください。"
+      );
     }
 
     return recommendations;
@@ -710,7 +705,7 @@ export class AnomalyDetectorImpl implements AnomalyDetector {
       .eq("table_name", tableName)
       .in("activity_type", [
         SuspiciousActivityType.EMPTY_RESULT_SET,
-        SuspiciousActivityType.UNAUTHORIZED_RLS_BYPASS
+        SuspiciousActivityType.UNAUTHORIZED_RLS_BYPASS,
       ])
       .gte("created_at", timeRange.start.toISOString())
       .lte("created_at", timeRange.end.toISOString());
@@ -720,25 +715,30 @@ export class AnomalyDetectorImpl implements AnomalyDetector {
     }
 
     const emptyResultCount = data.filter(
-      d => d.activity_type === SuspiciousActivityType.EMPTY_RESULT_SET
+      (d) => d.activity_type === SuspiciousActivityType.EMPTY_RESULT_SET
     ).length;
 
     const bypassAttempts = data.filter(
-      d => d.activity_type === SuspiciousActivityType.UNAUTHORIZED_RLS_BYPASS
+      (d) => d.activity_type === SuspiciousActivityType.UNAUTHORIZED_RLS_BYPASS
     ).length;
 
     if (emptyResultCount < this.thresholds.emptyResultSetThreshold && bypassAttempts === 0) {
       return null;
     }
 
-    const severity = bypassAttempts > 0 ? SecuritySeverity.HIGH :
-      emptyResultCount > 10 ? SecuritySeverity.MEDIUM : SecuritySeverity.LOW;
+    const severity =
+      bypassAttempts > 0
+        ? SecuritySeverity.HIGH
+        : emptyResultCount > 10
+          ? SecuritySeverity.MEDIUM
+          : SecuritySeverity.LOW;
 
     return {
       tableName,
-      violationType: bypassAttempts > 0 ?
-        RlsViolationType.POLICY_BYPASS_ATTEMPT :
-        RlsViolationType.EMPTY_RESULT_ANOMALY,
+      violationType:
+        bypassAttempts > 0
+          ? RlsViolationType.POLICY_BYPASS_ATTEMPT
+          : RlsViolationType.EMPTY_RESULT_ANOMALY,
       severity,
       frequency: data.length,
       description: `テーブル「${tableName}」でRLS違反の可能性（空の結果セット: ${emptyResultCount}回、バイパス試行: ${bypassAttempts}回）`,
@@ -746,8 +746,8 @@ export class AnomalyDetectorImpl implements AnomalyDetector {
         emptyResultSetCount: emptyResultCount,
         expectedResultCount: 0, // 実際の実装では計算が必要
         actualResultCount: 0,
-        suspiciousAccessPatterns: data.map(d => d.activity_type),
-        timelineOfEvents: data.map(d => ({
+        suspiciousAccessPatterns: data.map((d) => d.activity_type),
+        timelineOfEvents: data.map((d) => ({
           timestamp: new Date(d.created_at),
           event: d.activity_type,
           context: d.context || {},
@@ -792,9 +792,12 @@ export class AnomalyDetectorImpl implements AnomalyDetector {
       return null;
     }
 
-    const changePercentage = previousFrequency > 0
-      ? ((currentFrequency - previousFrequency) / previousFrequency) * 100
-      : currentFrequency > 0 ? 100 : 0;
+    const changePercentage =
+      previousFrequency > 0
+        ? ((currentFrequency - previousFrequency) / previousFrequency) * 100
+        : currentFrequency > 0
+          ? 100
+          : 0;
 
     let trend: TrendDirection;
     if (Math.abs(changePercentage) < 10) {
@@ -807,8 +810,12 @@ export class AnomalyDetectorImpl implements AnomalyDetector {
       trend = TrendDirection.DECREASING;
     }
 
-    const severity = currentFrequency > 10 ? SecuritySeverity.HIGH :
-      currentFrequency > 5 ? SecuritySeverity.MEDIUM : SecuritySeverity.LOW;
+    const severity =
+      currentFrequency > 10
+        ? SecuritySeverity.HIGH
+        : currentFrequency > 5
+          ? SecuritySeverity.MEDIUM
+          : SecuritySeverity.LOW;
 
     return {
       activityType,
