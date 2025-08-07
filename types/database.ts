@@ -28,12 +28,60 @@ export type Database = {
   };
   public: {
     Tables: {
+      admin_access_audit: {
+        Row: {
+          accessed_tables: string[] | null;
+          context: string;
+          created_at: string;
+          duration_ms: number | null;
+          error_message: string | null;
+          id: string;
+          ip_address: unknown | null;
+          operation_details: Json | null;
+          reason: Database["public"]["Enums"]["admin_reason_enum"];
+          session_id: string | null;
+          success: boolean | null;
+          user_agent: string | null;
+          user_id: string | null;
+        };
+        Insert: {
+          accessed_tables?: string[] | null;
+          context: string;
+          created_at?: string;
+          duration_ms?: number | null;
+          error_message?: string | null;
+          id?: string;
+          ip_address?: unknown | null;
+          operation_details?: Json | null;
+          reason: Database["public"]["Enums"]["admin_reason_enum"];
+          session_id?: string | null;
+          success?: boolean | null;
+          user_agent?: string | null;
+          user_id?: string | null;
+        };
+        Update: {
+          accessed_tables?: string[] | null;
+          context?: string;
+          created_at?: string;
+          duration_ms?: number | null;
+          error_message?: string | null;
+          id?: string;
+          ip_address?: unknown | null;
+          operation_details?: Json | null;
+          reason?: Database["public"]["Enums"]["admin_reason_enum"];
+          session_id?: string | null;
+          success?: boolean | null;
+          user_agent?: string | null;
+          user_id?: string | null;
+        };
+        Relationships: [];
+      };
       attendances: {
         Row: {
           created_at: string;
           email: string;
           event_id: string;
-          guest_token: string | null;
+          guest_token: string;
           id: string;
           nickname: string;
           status: Database["public"]["Enums"]["attendance_status_enum"];
@@ -43,7 +91,7 @@ export type Database = {
           created_at?: string;
           email: string;
           event_id: string;
-          guest_token?: string | null;
+          guest_token: string;
           id?: string;
           nickname: string;
           status: Database["public"]["Enums"]["attendance_status_enum"];
@@ -53,7 +101,7 @@ export type Database = {
           created_at?: string;
           email?: string;
           event_id?: string;
-          guest_token?: string | null;
+          guest_token?: string;
           id?: string;
           nickname?: string;
           status?: Database["public"]["Enums"]["attendance_status_enum"];
@@ -78,7 +126,7 @@ export type Database = {
           description: string | null;
           fee: number;
           id: string;
-          invite_token: string;
+          invite_token: string | null;
           location: string | null;
           payment_deadline: string | null;
           payment_methods: Database["public"]["Enums"]["payment_method_enum"][];
@@ -95,7 +143,7 @@ export type Database = {
           description?: string | null;
           fee?: number;
           id?: string;
-          invite_token: string;
+          invite_token?: string | null;
           location?: string | null;
           payment_deadline?: string | null;
           payment_methods: Database["public"]["Enums"]["payment_method_enum"][];
@@ -112,7 +160,7 @@ export type Database = {
           description?: string | null;
           fee?: number;
           id?: string;
-          invite_token?: string;
+          invite_token?: string | null;
           location?: string | null;
           payment_deadline?: string | null;
           payment_methods?: Database["public"]["Enums"]["payment_method_enum"][];
@@ -126,7 +174,130 @@ export type Database = {
             foreignKeyName: "events_created_by_fkey";
             columns: ["created_by"];
             isOneToOne: false;
+            referencedRelation: "public_profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "events_created_by_fkey";
+            columns: ["created_by"];
+            isOneToOne: false;
             referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      guest_access_audit: {
+        Row: {
+          action: string;
+          attendance_id: string | null;
+          created_at: string;
+          duration_ms: number | null;
+          error_code: string | null;
+          error_message: string | null;
+          event_id: string | null;
+          guest_token_hash: string;
+          id: string;
+          ip_address: unknown | null;
+          operation_type: string | null;
+          result_count: number | null;
+          session_id: string | null;
+          success: boolean;
+          table_name: string | null;
+          user_agent: string | null;
+        };
+        Insert: {
+          action: string;
+          attendance_id?: string | null;
+          created_at?: string;
+          duration_ms?: number | null;
+          error_code?: string | null;
+          error_message?: string | null;
+          event_id?: string | null;
+          guest_token_hash: string;
+          id?: string;
+          ip_address?: unknown | null;
+          operation_type?: string | null;
+          result_count?: number | null;
+          session_id?: string | null;
+          success: boolean;
+          table_name?: string | null;
+          user_agent?: string | null;
+        };
+        Update: {
+          action?: string;
+          attendance_id?: string | null;
+          created_at?: string;
+          duration_ms?: number | null;
+          error_code?: string | null;
+          error_message?: string | null;
+          event_id?: string | null;
+          guest_token_hash?: string;
+          id?: string;
+          ip_address?: unknown | null;
+          operation_type?: string | null;
+          result_count?: number | null;
+          session_id?: string | null;
+          success?: boolean;
+          table_name?: string | null;
+          user_agent?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "guest_access_audit_attendance_id_fkey";
+            columns: ["attendance_id"];
+            isOneToOne: false;
+            referencedRelation: "attendances";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "guest_access_audit_event_id_fkey";
+            columns: ["event_id"];
+            isOneToOne: false;
+            referencedRelation: "events";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      invite_links: {
+        Row: {
+          created_at: string | null;
+          created_by: string | null;
+          current_uses: number | null;
+          event_id: string;
+          expires_at: string;
+          id: string;
+          max_uses: number | null;
+          token: string;
+          updated_at: string | null;
+        };
+        Insert: {
+          created_at?: string | null;
+          created_by?: string | null;
+          current_uses?: number | null;
+          event_id: string;
+          expires_at: string;
+          id?: string;
+          max_uses?: number | null;
+          token: string;
+          updated_at?: string | null;
+        };
+        Update: {
+          created_at?: string | null;
+          created_by?: string | null;
+          current_uses?: number | null;
+          event_id?: string;
+          expires_at?: string;
+          id?: string;
+          max_uses?: number | null;
+          token?: string;
+          updated_at?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "invite_links_event_id_fkey";
+            columns: ["event_id"];
+            isOneToOne: false;
+            referencedRelation: "events";
             referencedColumns: ["id"];
           },
         ];
@@ -140,20 +311,24 @@ export type Database = {
           method: Database["public"]["Enums"]["payment_method_enum"];
           paid_at: string | null;
           status: Database["public"]["Enums"]["payment_status_enum"];
+          stripe_account_id: string | null;
           stripe_payment_intent_id: string | null;
+          stripe_session_id: string | null;
           updated_at: string;
           webhook_event_id: string | null;
           webhook_processed_at: string | null;
         };
         Insert: {
-          amount?: number;
+          amount: number;
           attendance_id: string;
           created_at?: string;
           id?: string;
           method: Database["public"]["Enums"]["payment_method_enum"];
           paid_at?: string | null;
           status?: Database["public"]["Enums"]["payment_status_enum"];
+          stripe_account_id?: string | null;
           stripe_payment_intent_id?: string | null;
+          stripe_session_id?: string | null;
           updated_at?: string;
           webhook_event_id?: string | null;
           webhook_processed_at?: string | null;
@@ -166,7 +341,9 @@ export type Database = {
           method?: Database["public"]["Enums"]["payment_method_enum"];
           paid_at?: string | null;
           status?: Database["public"]["Enums"]["payment_status_enum"];
+          stripe_account_id?: string | null;
           stripe_payment_intent_id?: string | null;
+          stripe_session_id?: string | null;
           updated_at?: string;
           webhook_event_id?: string | null;
           webhook_processed_at?: string | null;
@@ -186,14 +363,18 @@ export type Database = {
           created_at: string;
           event_id: string;
           id: string;
+          last_error: string | null;
           net_payout_amount: number;
           notes: string | null;
           platform_fee: number;
           processed_at: string | null;
+          retry_count: number;
           status: Database["public"]["Enums"]["payout_status_enum"];
+          stripe_account_id: string;
           stripe_transfer_id: string | null;
           total_stripe_fee: number;
           total_stripe_sales: number;
+          transfer_group: string | null;
           updated_at: string;
           user_id: string;
           webhook_event_id: string | null;
@@ -203,14 +384,18 @@ export type Database = {
           created_at?: string;
           event_id: string;
           id?: string;
+          last_error?: string | null;
           net_payout_amount?: number;
           notes?: string | null;
           platform_fee?: number;
           processed_at?: string | null;
+          retry_count?: number;
           status?: Database["public"]["Enums"]["payout_status_enum"];
+          stripe_account_id: string;
           stripe_transfer_id?: string | null;
           total_stripe_fee?: number;
           total_stripe_sales?: number;
+          transfer_group?: string | null;
           updated_at?: string;
           user_id: string;
           webhook_event_id?: string | null;
@@ -220,14 +405,18 @@ export type Database = {
           created_at?: string;
           event_id?: string;
           id?: string;
+          last_error?: string | null;
           net_payout_amount?: number;
           notes?: string | null;
           platform_fee?: number;
           processed_at?: string | null;
+          retry_count?: number;
           status?: Database["public"]["Enums"]["payout_status_enum"];
+          stripe_account_id?: string;
           stripe_transfer_id?: string | null;
           total_stripe_fee?: number;
           total_stripe_sales?: number;
+          transfer_group?: string | null;
           updated_at?: string;
           user_id?: string;
           webhook_event_id?: string | null;
@@ -245,6 +434,13 @@ export type Database = {
             foreignKeyName: "payouts_user_id_fkey";
             columns: ["user_id"];
             isOneToOne: false;
+            referencedRelation: "public_profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "payouts_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
             referencedRelation: "users";
             referencedColumns: ["id"];
           },
@@ -252,29 +448,26 @@ export type Database = {
       };
       security_audit_log: {
         Row: {
-          blocked_reason: string | null;
+          details: Json | null;
           event_type: string;
           id: number;
           ip_address: unknown | null;
-          query_attempted: string | null;
           timestamp: string | null;
           user_role: string | null;
         };
         Insert: {
-          blocked_reason?: string | null;
+          details?: Json | null;
           event_type: string;
           id?: number;
           ip_address?: unknown | null;
-          query_attempted?: string | null;
           timestamp?: string | null;
           user_role?: string | null;
         };
         Update: {
-          blocked_reason?: string | null;
+          details?: Json | null;
           event_type?: string;
           id?: number;
           ip_address?: unknown | null;
-          query_attempted?: string | null;
           timestamp?: string | null;
           user_role?: string | null;
         };
@@ -313,41 +506,159 @@ export type Database = {
             foreignKeyName: "stripe_connect_accounts_user_id_fkey";
             columns: ["user_id"];
             isOneToOne: true;
+            referencedRelation: "public_profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "stripe_connect_accounts_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: true;
             referencedRelation: "users";
             referencedColumns: ["id"];
           },
         ];
       };
-      test_enum_validation: {
+      suspicious_activity_log: {
         Row: {
-          attendance_status: Database["public"]["Enums"]["attendance_status_enum"] | null;
-          created_at: string | null;
-          event_status: Database["public"]["Enums"]["event_status_enum"] | null;
-          id: number;
-          payment_method: Database["public"]["Enums"]["payment_method_enum"] | null;
-          payment_status: Database["public"]["Enums"]["payment_status_enum"] | null;
-          payout_status: Database["public"]["Enums"]["payout_status_enum"] | null;
-          stripe_account_status: Database["public"]["Enums"]["stripe_account_status_enum"] | null;
+          activity_type: Database["public"]["Enums"]["suspicious_activity_type_enum"];
+          actual_result_count: number | null;
+          attempted_action: string | null;
+          context: Json | null;
+          created_at: string;
+          detection_method: string | null;
+          expected_result_count: number | null;
+          false_positive: boolean | null;
+          id: string;
+          investigated_at: string | null;
+          investigated_by: string | null;
+          investigation_notes: string | null;
+          ip_address: unknown | null;
+          session_id: string | null;
+          severity: Database["public"]["Enums"]["security_severity_enum"] | null;
+          table_name: string | null;
+          user_agent: string | null;
+          user_id: string | null;
+          user_role: string | null;
         };
         Insert: {
-          attendance_status?: Database["public"]["Enums"]["attendance_status_enum"] | null;
-          created_at?: string | null;
-          event_status?: Database["public"]["Enums"]["event_status_enum"] | null;
-          id?: number;
-          payment_method?: Database["public"]["Enums"]["payment_method_enum"] | null;
-          payment_status?: Database["public"]["Enums"]["payment_status_enum"] | null;
-          payout_status?: Database["public"]["Enums"]["payout_status_enum"] | null;
-          stripe_account_status?: Database["public"]["Enums"]["stripe_account_status_enum"] | null;
+          activity_type: Database["public"]["Enums"]["suspicious_activity_type_enum"];
+          actual_result_count?: number | null;
+          attempted_action?: string | null;
+          context?: Json | null;
+          created_at?: string;
+          detection_method?: string | null;
+          expected_result_count?: number | null;
+          false_positive?: boolean | null;
+          id?: string;
+          investigated_at?: string | null;
+          investigated_by?: string | null;
+          investigation_notes?: string | null;
+          ip_address?: unknown | null;
+          session_id?: string | null;
+          severity?: Database["public"]["Enums"]["security_severity_enum"] | null;
+          table_name?: string | null;
+          user_agent?: string | null;
+          user_id?: string | null;
+          user_role?: string | null;
         };
         Update: {
-          attendance_status?: Database["public"]["Enums"]["attendance_status_enum"] | null;
-          created_at?: string | null;
-          event_status?: Database["public"]["Enums"]["event_status_enum"] | null;
+          activity_type?: Database["public"]["Enums"]["suspicious_activity_type_enum"];
+          actual_result_count?: number | null;
+          attempted_action?: string | null;
+          context?: Json | null;
+          created_at?: string;
+          detection_method?: string | null;
+          expected_result_count?: number | null;
+          false_positive?: boolean | null;
+          id?: string;
+          investigated_at?: string | null;
+          investigated_by?: string | null;
+          investigation_notes?: string | null;
+          ip_address?: unknown | null;
+          session_id?: string | null;
+          severity?: Database["public"]["Enums"]["security_severity_enum"] | null;
+          table_name?: string | null;
+          user_agent?: string | null;
+          user_id?: string | null;
+          user_role?: string | null;
+        };
+        Relationships: [];
+      };
+      system_logs: {
+        Row: {
+          details: Json | null;
+          executed_at: string;
+          id: number;
+          operation_type: string;
+        };
+        Insert: {
+          details?: Json | null;
+          executed_at?: string;
           id?: number;
-          payment_method?: Database["public"]["Enums"]["payment_method_enum"] | null;
-          payment_status?: Database["public"]["Enums"]["payment_status_enum"] | null;
-          payout_status?: Database["public"]["Enums"]["payout_status_enum"] | null;
-          stripe_account_status?: Database["public"]["Enums"]["stripe_account_status_enum"] | null;
+          operation_type: string;
+        };
+        Update: {
+          details?: Json | null;
+          executed_at?: string;
+          id?: number;
+          operation_type?: string;
+        };
+        Relationships: [];
+      };
+      unauthorized_access_log: {
+        Row: {
+          attempted_resource: string;
+          blocked_by_rls: boolean | null;
+          created_at: string;
+          detection_method: string;
+          guest_token_hash: string | null;
+          id: string;
+          ip_address: unknown | null;
+          request_headers: Json | null;
+          request_method: string | null;
+          request_path: string | null;
+          required_permission: string | null;
+          response_status: number | null;
+          session_id: string | null;
+          user_agent: string | null;
+          user_context: Json | null;
+          user_id: string | null;
+        };
+        Insert: {
+          attempted_resource: string;
+          blocked_by_rls?: boolean | null;
+          created_at?: string;
+          detection_method: string;
+          guest_token_hash?: string | null;
+          id?: string;
+          ip_address?: unknown | null;
+          request_headers?: Json | null;
+          request_method?: string | null;
+          request_path?: string | null;
+          required_permission?: string | null;
+          response_status?: number | null;
+          session_id?: string | null;
+          user_agent?: string | null;
+          user_context?: Json | null;
+          user_id?: string | null;
+        };
+        Update: {
+          attempted_resource?: string;
+          blocked_by_rls?: boolean | null;
+          created_at?: string;
+          detection_method?: string;
+          guest_token_hash?: string | null;
+          id?: string;
+          ip_address?: unknown | null;
+          request_headers?: Json | null;
+          request_method?: string | null;
+          request_path?: string | null;
+          required_permission?: string | null;
+          response_status?: number | null;
+          session_id?: string | null;
+          user_agent?: string | null;
+          user_context?: Json | null;
+          user_id?: string | null;
         };
         Relationships: [];
       };
@@ -394,86 +705,105 @@ export type Database = {
       };
     };
     Functions: {
-      cleanup_test_data_safe: {
+      cleanup_old_audit_logs: {
+        Args: { retention_days?: number };
+        Returns: number;
+      };
+      cleanup_test_tables_dev_only: {
         Args: Record<PropertyKey, never>;
         Returns: undefined;
       };
-      execute_safe_test_query: {
-        Args: { test_query: string };
-        Returns: {
-          result: Json;
-        }[];
-      };
-      get_enum_types: {
+      clear_test_guest_token: {
         Args: Record<PropertyKey, never>;
-        Returns: {
-          enum_name: string;
-          enum_values: string[];
-        }[];
+        Returns: undefined;
       };
-      get_enum_values: {
-        Args: { enum_type_name: string };
-        Returns: string[];
-      };
-      get_enum_values_secure: {
-        Args: { enum_type_name: string };
-        Returns: string[];
-      };
-      get_event_creator_name: {
-        Args: { user_id: string };
+      create_attendance_with_validation: {
+        Args: {
+          p_email: string;
+          p_event_id: string;
+          p_guest_token: string;
+          p_nickname: string;
+          p_status: Database["public"]["Enums"]["attendance_status_enum"];
+        };
         Returns: string;
       };
-
-      log_security_event: {
+      create_payment_record: {
         Args: {
-          p_query_attempted?: string;
-          p_blocked_reason?: string;
-          p_user_role?: string;
-          p_event_type: string;
+          p_amount: number;
+          p_attendance_id: string;
+          p_method: Database["public"]["Enums"]["payment_method_enum"];
+        };
+        Returns: string;
+      };
+      detect_orphaned_users: {
+        Args: Record<PropertyKey, never>;
+        Returns: {
+          user_id: string;
+          email: string;
+          days_since_creation: number;
+        }[];
+      };
+      get_event_creator_name: {
+        Args: { p_creator_id: string };
+        Returns: string;
+      };
+      get_guest_token: {
+        Args: Record<PropertyKey, never>;
+        Returns: string;
+      };
+      hash_guest_token: {
+        Args: { token: string };
+        Returns: string;
+      };
+      log_security_event: {
+        Args: { p_details: Json; p_event_type: string };
+        Returns: undefined;
+      };
+      process_event_payout: {
+        Args: { p_event_id: string; p_user_id: string };
+        Returns: string;
+      };
+      register_attendance_with_payment: {
+        Args: {
+          p_email: string;
+          p_event_fee?: number;
+          p_event_id: string;
+          p_guest_token: string;
+          p_nickname: string;
+          p_payment_method?: Database["public"]["Enums"]["payment_method_enum"];
+          p_status: Database["public"]["Enums"]["attendance_status_enum"];
+        };
+        Returns: string;
+      };
+      set_test_guest_token: {
+        Args: { token: string };
+        Returns: undefined;
+      };
+      update_guest_attendance_with_payment: {
+        Args: {
+          p_attendance_id: string;
+          p_event_fee?: number;
+          p_payment_method?: Database["public"]["Enums"]["payment_method_enum"];
+          p_status: Database["public"]["Enums"]["attendance_status_enum"];
         };
         Returns: undefined;
       };
-      production_security_cleanup: {
-        Args: Record<PropertyKey, never>;
-        Returns: string;
-      };
-      test_attendance_status_enum: {
-        Args: { test_value: string };
-        Returns: boolean;
-      };
-      test_event_status_enum: {
-        Args: { test_value: string };
-        Returns: boolean;
-      };
-      test_payment_method_enum: {
-        Args: { test_value: string };
-        Returns: boolean;
-      };
-      test_payment_status_enum: {
-        Args: { test_value: string };
-        Returns: boolean;
-      };
-      test_payout_status_enum: {
-        Args: { test_value: string };
-        Returns: boolean;
-      };
-      test_stripe_account_status_enum: {
-        Args: { test_value: string };
-        Returns: boolean;
-      };
-      verify_seed_data: {
-        Args: Record<PropertyKey, never>;
-        Returns: {
-          record_count: number;
-          status: string;
-          table_name: string;
-        }[];
+      update_revenue_summary: {
+        Args: { p_event_id: string };
+        Returns: Json;
       };
     };
     Enums: {
+      admin_reason_enum:
+        | "user_cleanup"
+        | "test_data_setup"
+        | "system_maintenance"
+        | "emergency_access"
+        | "data_migration"
+        | "security_investigation";
       attendance_status_enum: "attending" | "not_attending" | "maybe";
       event_status_enum: "upcoming" | "ongoing" | "past" | "cancelled";
-      payment_method_enum: "stripe" | "cash" | "free";
+      payment_method_enum: "stripe" | "cash";
       payment_status_enum:
         | "pending"
         | "paid"
@@ -483,7 +813,16 @@ export type Database = {
         | "refunded"
         | "waived";
       payout_status_enum: "pending" | "processing" | "completed" | "failed";
+      security_severity_enum: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
       stripe_account_status_enum: "unverified" | "onboarding" | "verified" | "restricted";
+      suspicious_activity_type_enum:
+        | "EMPTY_RESULT_SET"
+        | "ADMIN_ACCESS_ATTEMPT"
+        | "INVALID_TOKEN_PATTERN"
+        | "RATE_LIMIT_EXCEEDED"
+        | "UNAUTHORIZED_RLS_BYPASS"
+        | "BULK_DATA_ACCESS"
+        | "UNUSUAL_ACCESS_PATTERN";
     };
     CompositeTypes: {
       [_ in never]: never;
@@ -491,21 +830,25 @@ export type Database = {
   };
 };
 
-type DefaultSchema = Database[Extract<keyof Database, "public">];
+type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">;
+
+type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">];
 
 export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
-    | { schema: keyof Database },
+    | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
-    schema: keyof Database;
+    schema: keyof DatabaseWithoutInternals;
   }
-    ? keyof (Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
-        Database[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
+    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
     : never = never,
-> = DefaultSchemaTableNameOrOptions extends { schema: keyof Database }
-  ? (Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
-      Database[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals;
+}
+  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
       Row: infer R;
     }
     ? R
@@ -521,14 +864,16 @@ export type Tables<
 export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
-    | { schema: keyof Database },
+    | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
-    schema: keyof Database;
+    schema: keyof DatabaseWithoutInternals;
   }
-    ? keyof Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
     : never = never,
-> = DefaultSchemaTableNameOrOptions extends { schema: keyof Database }
-  ? Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals;
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
       Insert: infer I;
     }
     ? I
@@ -544,14 +889,16 @@ export type TablesInsert<
 export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
-    | { schema: keyof Database },
+    | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
-    schema: keyof Database;
+    schema: keyof DatabaseWithoutInternals;
   }
-    ? keyof Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
     : never = never,
-> = DefaultSchemaTableNameOrOptions extends { schema: keyof Database }
-  ? Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals;
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
       Update: infer U;
     }
     ? U
@@ -565,14 +912,18 @@ export type TablesUpdate<
     : never;
 
 export type Enums<
-  DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"] | { schema: keyof Database },
+  DefaultSchemaEnumNameOrOptions extends
+    | keyof DefaultSchema["Enums"]
+    | { schema: keyof DatabaseWithoutInternals },
   EnumName extends DefaultSchemaEnumNameOrOptions extends {
-    schema: keyof Database;
+    schema: keyof DatabaseWithoutInternals;
   }
-    ? keyof Database[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
+    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
     : never = never,
-> = DefaultSchemaEnumNameOrOptions extends { schema: keyof Database }
-  ? Database[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
+> = DefaultSchemaEnumNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals;
+}
+  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
   : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
     ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
     : never;
@@ -580,14 +931,16 @@ export type Enums<
 export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
-    | { schema: keyof Database },
+    | { schema: keyof DatabaseWithoutInternals },
   CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
-    schema: keyof Database;
+    schema: keyof DatabaseWithoutInternals;
   }
-    ? keyof Database[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
     : never = never,
-> = PublicCompositeTypeNameOrOptions extends { schema: keyof Database }
-  ? Database[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+> = PublicCompositeTypeNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals;
+}
+  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
   : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
     ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
     : never;
@@ -598,9 +951,17 @@ export const Constants = {
   },
   public: {
     Enums: {
+      admin_reason_enum: [
+        "user_cleanup",
+        "test_data_setup",
+        "system_maintenance",
+        "emergency_access",
+        "data_migration",
+        "security_investigation",
+      ],
       attendance_status_enum: ["attending", "not_attending", "maybe"],
       event_status_enum: ["upcoming", "ongoing", "past", "cancelled"],
-      payment_method_enum: ["stripe", "cash", "free"],
+      payment_method_enum: ["stripe", "cash"],
       payment_status_enum: [
         "pending",
         "paid",
@@ -611,7 +972,17 @@ export const Constants = {
         "waived",
       ],
       payout_status_enum: ["pending", "processing", "completed", "failed"],
+      security_severity_enum: ["LOW", "MEDIUM", "HIGH", "CRITICAL"],
       stripe_account_status_enum: ["unverified", "onboarding", "verified", "restricted"],
+      suspicious_activity_type_enum: [
+        "EMPTY_RESULT_SET",
+        "ADMIN_ACCESS_ATTEMPT",
+        "INVALID_TOKEN_PATTERN",
+        "RATE_LIMIT_EXCEEDED",
+        "UNAUTHORIZED_RLS_BYPASS",
+        "BULK_DATA_ACCESS",
+        "UNUSUAL_ACCESS_PATTERN",
+      ],
     },
   },
 } as const;
