@@ -1,4 +1,4 @@
-import { stripe, testStripeConnection, stripeConfig } from "@/lib/stripe/client";
+import { stripe, testStripeConnection, stripeConfig, getWebhookSecret } from "@/lib/stripe/client";
 
 // Stripeモック
 jest.mock("stripe", () => {
@@ -21,9 +21,13 @@ describe("Stripe Client", () => {
   describe("環境変数の検証", () => {
     it("必要な環境変数が設定されている場合、stripeConfigが正しく初期化される", () => {
       expect(stripeConfig.secretKey).toBeDefined();
-      expect(stripeConfig.webhookSecret).toBeDefined();
       expect(stripeConfig.publishableKey).toBeDefined();
       expect(stripeConfig.appUrl).toBeDefined();
+    });
+
+    it("WebhookシークレットはgetWebhookSecret経由で取得する", () => {
+      const secret = getWebhookSecret();
+      expect(secret).toBeDefined();
     });
   });
 

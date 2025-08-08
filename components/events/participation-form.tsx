@@ -364,7 +364,7 @@ export function ParticipationForm({
                           role="radiogroup"
                         >
                           {event.payment_methods
-                            .filter((method) => method !== "free") // 無料決済方法は除外
+                            // DBのEnumに"free"は存在しないためフィルタを削除
                             .map((method) => (
                               <div
                                 key={method}

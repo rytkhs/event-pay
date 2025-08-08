@@ -74,6 +74,88 @@ export class SecurityReporterImpl implements SecurityReporter {
   }
 
   // ====================================================================
+  // Webhook関連のセキュリティログ
+  // ====================================================================
+
+  async logSuspiciousActivity(params: {
+    type: string;
+    details: Record<string, unknown>;
+    ip?: string;
+    userAgent?: string;
+  }): Promise<void> {
+    try {
+      const mappedType = this.mapActivityType(params.type);
+
+      const { error } = await this.supabase.from("suspicious_activity_log").insert({
+        activity_type: mappedType,
+        // 詳細情報は context に格納（テーブル仕様に合わせる）
+        context: params.details,
+        ip_address: params.ip,
+        user_agent: params.userAgent,
+        severity: this.determineSeverity(params.type),
+        created_at: new Date().toISOString(),
+      });
+
+      if (error) {
+        // eslint-disable-next-line no-console
+        console.error("Failed to log suspicious activity:", error);
+      }
+    } catch (_error) {
+      // swallow logging error
+    }
+  }
+
+  async logSecurityEvent(params: {
+    type: string;
+    details: Record<string, unknown>;
+    userId?: string;
+  }): Promise<void> {
+    try {
+      // データベースのRPCを利用して監査ログへ記録
+      const { error } = await this.supabase.rpc("log_security_event", {
+        p_details: params.details,
+        p_event_type: params.type,
+      });
+
+      if (error) {
+        // eslint-disable-next-line no-console
+        console.error("Failed to log security event:", error);
+      }
+    } catch (_error) { }
+  }
+
+  private determineSeverity(activityType: string): SecuritySeverity {
+    const criticalTypes = ["webhook_signature_invalid", "webhook_timestamp_invalid"];
+    const highTypes = ["webhook_processing_error", "webhook_processing_failed"];
+    const mediumTypes = ["webhook_signature_verified"];
+
+    if (criticalTypes.includes(activityType)) return SecuritySeverity.CRITICAL;
+    if (highTypes.includes(activityType)) return SecuritySeverity.HIGH;
+    if (mediumTypes.includes(activityType)) return SecuritySeverity.MEDIUM;
+    return SecuritySeverity.LOW;
+  }
+
+  private mapActivityType(activityType: string): "EMPTY_RESULT_SET" | "ADMIN_ACCESS_ATTEMPT" | "INVALID_TOKEN_PATTERN" | "RATE_LIMIT_EXCEEDED" | "UNAUTHORIZED_RLS_BYPASS" | "BULK_DATA_ACCESS" | "UNUSUAL_ACCESS_PATTERN" {
+    switch (activityType) {
+      case "webhook_rate_limit_exceeded":
+        return "RATE_LIMIT_EXCEEDED";
+      case "webhook_signature_invalid":
+        // 署名異常はトークン/シグネチャの不正として扱う
+        return "INVALID_TOKEN_PATTERN";
+      case "webhook_timestamp_invalid":
+        return "UNUSUAL_ACCESS_PATTERN";
+      case "webhook_processing_failed":
+        return "UNUSUAL_ACCESS_PATTERN";
+      case "webhook_processing_error":
+      case "webhook_missing_signature":
+      case "webhook_unexpected_error":
+        return "UNUSUAL_ACCESS_PATTERN";
+      default:
+        return "UNUSUAL_ACCESS_PATTERN";
+    }
+  }
+
+  // ====================================================================
   // 包括的なセキュリティレポート生成
   // ====================================================================
 

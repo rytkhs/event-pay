@@ -27,7 +27,11 @@ export function generateInviteToken(): string {
  * @returns {boolean} トークンが有効な場合はtrue、それ以外はfalse
  */
 export function isValidInviteToken(token: string): boolean {
-  return validateInviteTokenFormat(token);
+  // 正式フォーマット（inv_接頭辞付き）
+  if (validateInviteTokenFormat(token)) return true;
+  // 後方互換: 接頭辞なし32文字のURLセーフトークンも許可
+  const baseTokenPattern = /^[a-zA-Z0-9_-]{32}$/;
+  return baseTokenPattern.test(token);
 }
 
 // 招待検証用のイベント詳細情報
@@ -54,13 +58,13 @@ export interface InviteValidationResult {
   canRegister: boolean;
   errorMessage?: string;
   errorCode?:
-    | "INVALID_TOKEN"
-    | "TOKEN_NOT_FOUND"
-    | "EVENT_CANCELLED"
-    | "EVENT_ENDED"
-    | "REGISTRATION_DEADLINE_PASSED"
-    | "CAPACITY_REACHED"
-    | "UNKNOWN_ERROR";
+  | "INVALID_TOKEN"
+  | "TOKEN_NOT_FOUND"
+  | "EVENT_CANCELLED"
+  | "EVENT_ENDED"
+  | "REGISTRATION_DEADLINE_PASSED"
+  | "CAPACITY_REACHED"
+  | "UNKNOWN_ERROR";
 }
 
 /**
