@@ -446,6 +446,33 @@ export type Database = {
           },
         ];
       };
+      webhook_events: {
+        Row: {
+          id: string;
+          stripe_event_id: string;
+          event_type: string;
+          processing_result: Json | null;
+          processed_at: string;
+          created_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          stripe_event_id: string;
+          event_type: string;
+          processing_result?: Json | null;
+          processed_at: string;
+          created_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          stripe_event_id?: string;
+          event_type?: string;
+          processing_result?: Json | null;
+          processed_at?: string;
+          created_at?: string | null;
+        };
+        Relationships: [];
+      };
       security_audit_log: {
         Row: {
           details: Json | null;

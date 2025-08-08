@@ -3,7 +3,6 @@ import Stripe from "stripe";
 // 環境変数の検証
 const requiredEnvVars = {
   STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY,
-  STRIPE_WEBHOOK_SECRET: process.env.STRIPE_WEBHOOK_SECRET,
   NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY,
 } as const;
 
@@ -19,7 +18,7 @@ if (!isTestEnv) {
 
 // Stripeクライアントの初期化
 export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "sk_test_placeholder", {
-  apiVersion: "2025-05-28.basil",
+  apiVersion: process.env.STRIPE_API_VERSION as Stripe.LatestApiVersion | undefined,
   typescript: true,
   appInfo: {
     name: "EventPay",
@@ -27,10 +26,22 @@ export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "sk_test_place
   },
 });
 
+/**
+ * Webhook用のシークレット取得関数。
+ * Webhook処理ルート以外では参照しないこと。
+ * 未設定時は例外を投げる（起動時ではなく実行時に検出する）。
+ */
+export const getWebhookSecret = (): string => {
+  const secret = process.env.STRIPE_WEBHOOK_SECRET;
+  if (!secret) {
+    throw new Error("STRIPE_WEBHOOK_SECRET is required for webhook processing");
+  }
+  return secret;
+};
+
 // Stripe設定の取得
 export const stripeConfig = {
   secretKey: process.env.STRIPE_SECRET_KEY!,
-  webhookSecret: process.env.STRIPE_WEBHOOK_SECRET!,
   publishableKey: process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!,
   appUrl: process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000",
 } as const;
