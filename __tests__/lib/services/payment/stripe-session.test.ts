@@ -17,16 +17,27 @@ jest.mock("@/lib/stripe/client", () => ({
 const mockInsert = jest.fn();
 const mockUpdate = jest.fn();
 const mockEq = jest.fn();
-const mockSelect = jest.fn();
+const mockSelectAfterInsert = jest.fn();
 const mockSingle = jest.fn();
+
+// 検索チェーン（.select().eq().order().order().limit()）
+let chainSelect: jest.Mock;
+let chainEq: jest.Mock;
+let chainOrder1: jest.Mock;
+let chainOrder2: jest.Mock;
+let chainLimit: jest.Mock;
 
 const mockSupabase = {
   from: jest.fn(() => ({
+    // 既存検索用のselectチェーン
+    select: chainSelect,
+    // 挿入後の select().single()
     insert: mockInsert.mockReturnValue({
-      select: mockSelect.mockReturnValue({
+      select: mockSelectAfterInsert.mockReturnValue({
         single: mockSingle,
       }),
     }),
+    // 更新用
     update: mockUpdate.mockReturnValue({
       eq: mockEq,
     }),
@@ -46,11 +57,18 @@ describe("PaymentService - Stripe Session Creation", () => {
     mockInsert.mockClear();
     mockUpdate.mockClear();
     mockEq.mockClear();
-    mockSelect.mockClear();
+    mockSelectAfterInsert.mockClear();
     mockSingle.mockClear();
 
     errorHandler = new PaymentErrorHandler();
     paymentService = new PaymentService("test-url", "test-key", errorHandler);
+
+    // 既存検索は空配列を返す（=既存なし）
+    chainLimit = jest.fn().mockResolvedValue({ data: [], error: null });
+    chainOrder2 = jest.fn(() => ({ limit: chainLimit }));
+    chainOrder1 = jest.fn(() => ({ order: chainOrder2 }));
+    chainEq = jest.fn(() => ({ order: chainOrder1 }));
+    chainSelect = jest.fn(() => ({ eq: chainEq }));
   });
 
   describe("createStripeSession", () => {
@@ -77,10 +95,11 @@ describe("PaymentService - Stripe Session Creation", () => {
         url: "https://checkout.stripe.com/pay/cs_test_123",
       };
 
-      mockSingle.mockResolvedValue({
-        data: mockPayment,
-        error: null,
-      });
+      // 既存検索: 既存なし
+      chainLimit.mockResolvedValueOnce({ data: [], error: null });
+
+      // INSERT -> select().single()
+      mockSingle.mockResolvedValueOnce({ data: mockPayment, error: null });
 
       mockEq.mockResolvedValue({
         error: null,
@@ -153,10 +172,11 @@ describe("PaymentService - Stripe Session Creation", () => {
         status: "pending",
       };
 
-      mockSingle.mockResolvedValue({
-        data: mockPayment,
-        error: null,
-      });
+      // 既存検索: 既存なし
+      chainLimit.mockResolvedValueOnce({ data: [], error: null });
+
+      // INSERT -> select().single()
+      mockSingle.mockResolvedValueOnce({ data: mockPayment, error: null });
 
       const stripeError = {
         type: "card_error",
@@ -182,10 +202,11 @@ describe("PaymentService - Stripe Session Creation", () => {
         url: "https://checkout.stripe.com/pay/cs_test_123",
       };
 
-      mockSingle.mockResolvedValue({
-        data: mockPayment,
-        error: null,
-      });
+      // 既存検索: 既存なし
+      chainLimit.mockResolvedValueOnce({ data: [], error: null });
+
+      // INSERT -> select().single()
+      mockSingle.mockResolvedValueOnce({ data: mockPayment, error: null });
 
       // セッションID更新は失敗するが、セッション作成は成功
       mockEq.mockResolvedValue({
@@ -201,8 +222,17 @@ describe("PaymentService - Stripe Session Creation", () => {
 
       expect(result.sessionUrl).toBe("https://checkout.stripe.com/pay/cs_test_123");
       expect(result.sessionId).toBe("cs_test_123");
-      expect(consoleSpy).toHaveBeenCalledWith("Failed to update payment record with session ID:", {
-        message: "Update failed",
+      // ErrorHandler経由の構造化ログ
+      expect(consoleSpy).toHaveBeenCalled();
+      const firstCallArgs = (consoleSpy as unknown as jest.Mock).mock.calls[0];
+      expect(firstCallArgs[0]).toBe("PaymentError:");
+      expect(firstCallArgs[1]).toMatchObject({
+        errorType: PaymentErrorType.DATABASE_ERROR,
+        context: {
+          operation: "updateStripeSessionId",
+          paymentId: expect.any(String),
+          sessionId: "cs_test_123",
+        },
       });
 
       consoleSpy.mockRestore();

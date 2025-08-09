@@ -179,13 +179,12 @@ describe("決済セッション作成 統合テスト", () => {
       expect(payment?.stripe_session_id).toBe("cs_test_123");
     });
 
-    it("重複する決済レコード作成を防ぐ", async () => {
-      // 最初の決済レコードを作成
+    it("重複作成リクエストでも既存レコードを再利用してセッションを再発行する", async () => {
+      // 1回目
       const mockSession1 = {
         id: "cs_test_first",
         url: "https://checkout.stripe.com/pay/cs_test_first",
       };
-
       (stripe.checkout.sessions.create as jest.Mock).mockResolvedValue(mockSession1);
 
       await paymentService.createStripeSession({
@@ -196,25 +195,31 @@ describe("決済セッション作成 統合テスト", () => {
         cancelUrl: "https://example.com/cancel",
       });
 
-      // 2回目の作成を試行 - 重複エラーが発生することを確認
-      await expect(
-        paymentService.createStripeSession({
-          attendanceId: testAttendanceId,
-          amount: 1000,
-          eventTitle: "決済テストイベント",
-          successUrl: "https://example.com/success",
-          cancelUrl: "https://example.com/cancel",
-        })
-      ).rejects.toThrow();
+      // 2回目（直後の重複要求）
+      const mockSession2 = {
+        id: "cs_test_second",
+        url: "https://checkout.stripe.com/pay/cs_test_second",
+      };
+      (stripe.checkout.sessions.create as jest.Mock).mockResolvedValue(mockSession2);
 
-      // データベースには最初のレコードのみ存在することを確認
+      const result2 = await paymentService.createStripeSession({
+        attendanceId: testAttendanceId,
+        amount: 1000,
+        eventTitle: "決済テストイベント",
+        successUrl: "https://example.com/success",
+        cancelUrl: "https://example.com/cancel",
+      });
+
+      expect(result2.sessionId).toBe("cs_test_second");
+
+      // DBは単一レコードのまま、最新セッションIDで更新されている
       const { data: payments } = await supabase
         .from("payments")
         .select("*")
         .eq("attendance_id", testAttendanceId);
 
       expect(payments).toHaveLength(1);
-      expect(payments?.[0]?.stripe_session_id).toBe("cs_test_first");
+      expect(payments?.[0]?.stripe_session_id).toBe("cs_test_second");
     });
 
     it("Stripe APIエラーを適切に処理する", async () => {

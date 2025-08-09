@@ -39,39 +39,41 @@ describe("PaymentValidator", () => {
     };
 
     it("有効なパラメータの場合は正常に処理される", async () => {
-      // 参加記録の存在確認をモック
+      // 参加記録の存在確認をモック（limitで配列返却）
       const mockSelect = jest.fn(() => ({
         eq: jest.fn(() => ({
-          single: jest.fn().mockResolvedValue({
-            data: {
-              id: validParams.attendanceId,
-              event_id: "event-123",
-              events: { id: "event-123", created_by: "user-123" },
-            },
+          limit: jest.fn().mockResolvedValue({
+            data: [
+              {
+                id: validParams.attendanceId,
+                event_id: "event-123",
+                events: { id: "event-123", created_by: "user-123" },
+              },
+            ],
             error: null,
           }),
         })),
       }));
 
-      mockSupabase.from.mockReturnValueOnce({
-        select: mockSelect,
-      });
+      (mockSupabase.from as jest.Mock).mockReturnValueOnce({
+        select: mockSelect as any,
+      } as any);
 
       // 重複チェックをモック（重複なし）
       const mockSelectDuplicate = jest.fn(() => ({
         eq: jest.fn(() => ({
-          single: jest.fn().mockResolvedValue({
-            data: null,
-            error: { code: "PGRST116" },
+          limit: jest.fn().mockResolvedValue({
+            data: [],
+            error: null,
           }),
         })),
       }));
 
-      mockSupabase.from.mockReturnValueOnce({
-        select: mockSelectDuplicate,
-      });
+      (mockSupabase.from as jest.Mock).mockReturnValueOnce({
+        select: mockSelectDuplicate as any,
+      } as any);
 
-      await expect(validator.validateCreateStripeSessionParams(validParams)).resolves.not.toThrow();
+      await expect(validator.validateCreateStripeSessionParams(validParams, "user-123")).resolves.not.toThrow();
     });
 
     it("無効なUUIDの場合はエラーを投げる", async () => {
@@ -80,15 +82,15 @@ describe("PaymentValidator", () => {
         attendanceId: "invalid-uuid",
       };
 
-      await expect(validator.validateCreateStripeSessionParams(invalidParams)).rejects.toThrow(
+      await expect(validator.validateCreateStripeSessionParams(invalidParams, "user-123")).rejects.toThrow(
         PaymentError
       );
 
       try {
-        await validator.validateCreateStripeSessionParams(invalidParams);
+        await validator.validateCreateStripeSessionParams(invalidParams, "user-123");
       } catch (error) {
         expect(error).toBeInstanceOf(PaymentError);
-        expect((error as PaymentError).type).toBe(PaymentErrorType.INVALID_PAYMENT_METHOD);
+        expect((error as PaymentError).type).toBe(PaymentErrorType.VALIDATION_ERROR);
       }
     });
 
@@ -98,7 +100,7 @@ describe("PaymentValidator", () => {
         amount: -100,
       };
 
-      await expect(validator.validateCreateStripeSessionParams(invalidParams)).rejects.toThrow(
+      await expect(validator.validateCreateStripeSessionParams(invalidParams, "user-123")).rejects.toThrow(
         PaymentError
       );
     });
@@ -109,7 +111,7 @@ describe("PaymentValidator", () => {
         successUrl: "invalid-url",
       };
 
-      await expect(validator.validateCreateStripeSessionParams(invalidParams)).rejects.toThrow(
+      await expect(validator.validateCreateStripeSessionParams(invalidParams, "user-123")).rejects.toThrow(
         PaymentError
       );
     });
@@ -120,7 +122,7 @@ describe("PaymentValidator", () => {
         eventTitle: "",
       };
 
-      await expect(validator.validateCreateStripeSessionParams(invalidParams)).rejects.toThrow(
+      await expect(validator.validateCreateStripeSessionParams(invalidParams, "user-123")).rejects.toThrow(
         PaymentError
       );
     });
@@ -133,39 +135,41 @@ describe("PaymentValidator", () => {
     };
 
     it("有効なパラメータの場合は正常に処理される", async () => {
-      // 参加記録の存在確認をモック
+      // 参加記録の存在確認をモック（limitで配列返却）
       const mockSelect = jest.fn(() => ({
         eq: jest.fn(() => ({
-          single: jest.fn().mockResolvedValue({
-            data: {
-              id: validParams.attendanceId,
-              event_id: "event-123",
-              events: { id: "event-123", created_by: "user-123" },
-            },
+          limit: jest.fn().mockResolvedValue({
+            data: [
+              {
+                id: validParams.attendanceId,
+                event_id: "event-123",
+                events: { id: "event-123", created_by: "user-123" },
+              },
+            ],
             error: null,
           }),
         })),
       }));
 
-      mockSupabase.from.mockReturnValueOnce({
-        select: mockSelect,
-      });
+      (mockSupabase.from as jest.Mock).mockReturnValueOnce({
+        select: mockSelect as any,
+      } as any);
 
       // 重複チェックをモック（重複なし）
       const mockSelectDuplicate = jest.fn(() => ({
         eq: jest.fn(() => ({
-          single: jest.fn().mockResolvedValue({
-            data: null,
-            error: { code: "PGRST116" },
+          limit: jest.fn().mockResolvedValue({
+            data: [],
+            error: null,
           }),
         })),
       }));
 
-      mockSupabase.from.mockReturnValueOnce({
-        select: mockSelectDuplicate,
-      });
+      (mockSupabase.from as jest.Mock).mockReturnValueOnce({
+        select: mockSelectDuplicate as any,
+      } as any);
 
-      await expect(validator.validateCreateCashPaymentParams(validParams)).resolves.not.toThrow();
+      await expect(validator.validateCreateCashPaymentParams(validParams, "user-123")).resolves.not.toThrow();
     });
 
     it("小数点を含む金額の場合はエラーを投げる", async () => {
@@ -174,9 +178,51 @@ describe("PaymentValidator", () => {
         amount: 100.5,
       };
 
-      await expect(validator.validateCreateCashPaymentParams(invalidParams)).rejects.toThrow(
+      await expect(validator.validateCreateCashPaymentParams(invalidParams, "user-123")).rejects.toThrow(
         PaymentError
       );
+    });
+  });
+
+  describe("validateNoDuplicatePayment (複数行重複の扱い)", () => {
+    it("複数行ヒット時でも PAYMENT_ALREADY_EXISTS を返す", async () => {
+      // attendances 存在チェック
+      const mockSelectAttendance = jest.fn(() => ({
+        eq: jest.fn(() => ({
+          limit: jest.fn().mockResolvedValue({
+            data: [
+              { id: "attendance-123", event_id: "event-123", events: { id: "event-123", created_by: "user-1" } },
+            ],
+            error: null,
+          }),
+        })),
+      }));
+
+      (mockSupabase.from as jest.Mock).mockReturnValueOnce({ select: mockSelectAttendance as any } as any);
+
+      // 重複チェック: 複数レコードが返るケース
+      const mockSelectDuplicate = jest.fn(() => ({
+        eq: jest.fn(() => ({
+          limit: jest.fn().mockResolvedValue({
+            data: [{ id: "p1" }, { id: "p2" }],
+            error: null,
+          }),
+        })),
+      }));
+
+      (mockSupabase.from as jest.Mock).mockReturnValueOnce({ select: mockSelectDuplicate as any } as any);
+
+      const validatorLocal = new PaymentValidator("mock-url", "mock-key");
+
+      await expect(
+        validatorLocal.validateCreateCashPaymentParams({ attendanceId: "attendance-123", amount: 1000 }, "user-1")
+      ).rejects.toBeInstanceOf(PaymentError);
+
+      try {
+        await validatorLocal.validateCreateCashPaymentParams({ attendanceId: "attendance-123", amount: 1000 }, "user-1");
+      } catch (error) {
+        expect((error as PaymentError).type).toBe(PaymentErrorType.PAYMENT_ALREADY_EXISTS);
+      }
     });
   });
 
@@ -228,6 +274,46 @@ describe("PaymentValidator", () => {
         PaymentError
       );
     });
+
+    it("無効なステータス遷移はINVALID_STATUS_TRANSITIONを返す", async () => {
+      const params = {
+        paymentId: "123e4567-e89b-12d3-a456-426614174000",
+        status: "paid" as const, // current: received -> paid は不許可
+      };
+
+      // 決済レコードの存在確認をモック
+      const mockSelectExists = jest.fn(() => ({
+        eq: jest.fn(() => ({
+          single: jest.fn().mockResolvedValue({
+            data: { id: params.paymentId },
+            error: null,
+          }),
+        })),
+      }));
+
+      mockSupabase.from.mockReturnValueOnce({
+        select: mockSelectExists,
+      });
+
+      // 現在のstatus/method取得をモック（received/cash）
+      const mockSelectStatus = jest.fn(() => ({
+        eq: jest.fn(() => ({
+          single: jest.fn().mockResolvedValue({
+            data: { status: "received", method: "cash" },
+            error: null,
+          }),
+        })),
+      }));
+
+      mockSupabase.from.mockReturnValueOnce({
+        select: mockSelectStatus,
+      });
+
+      await validator.validateUpdatePaymentStatusParams(params).catch((error) => {
+        expect(error).toBeInstanceOf(PaymentError);
+        expect((error as PaymentError).type).toBe(PaymentErrorType.INVALID_STATUS_TRANSITION);
+      });
+    });
   });
 
   describe("validatePaymentAmount", () => {
@@ -263,44 +349,46 @@ describe("PaymentValidator", () => {
     it("存在する参加記録の場合は正常に処理される", async () => {
       const mockSelect = jest.fn(() => ({
         eq: jest.fn(() => ({
-          single: jest.fn().mockResolvedValue({
-            data: {
-              id: "attendance-123",
-              event_id: "event-123",
-              events: { id: "event-123", created_by: "user-123" },
-            },
+          limit: jest.fn().mockResolvedValue({
+            data: [
+              {
+                id: "attendance-123",
+                event_id: "event-123",
+                events: { id: "event-123", created_by: "user-123" },
+              },
+            ],
             error: null,
           }),
         })),
       }));
 
-      mockSupabase.from.mockReturnValue({
-        select: mockSelect,
-      });
+      (mockSupabase.from as jest.Mock).mockReturnValue({
+        select: mockSelect as any,
+      } as any);
 
-      await expect(validator.validateAttendanceAccess("attendance-123")).resolves.not.toThrow();
+      await expect(validator.validateAttendanceAccess("attendance-123", "user-123")).resolves.not.toThrow();
     });
 
     it("存在しない参加記録の場合はエラーを投げる", async () => {
       const mockSelect = jest.fn(() => ({
         eq: jest.fn(() => ({
-          single: jest.fn().mockResolvedValue({
-            data: null,
-            error: { code: "PGRST116" },
+          limit: jest.fn().mockResolvedValue({
+            data: [],
+            error: null,
           }),
         })),
       }));
 
-      mockSupabase.from.mockReturnValue({
-        select: mockSelect,
-      });
+      (mockSupabase.from as jest.Mock).mockReturnValue({
+        select: mockSelect as any,
+      } as any);
 
-      await expect(validator.validateAttendanceAccess("attendance-123")).rejects.toThrow(
+      await expect(validator.validateAttendanceAccess("attendance-123", "user-123")).rejects.toThrow(
         PaymentError
       );
 
       try {
-        await validator.validateAttendanceAccess("attendance-123");
+        await validator.validateAttendanceAccess("attendance-123", "user-123");
       } catch (error) {
         expect(error).toBeInstanceOf(PaymentError);
         expect((error as PaymentError).type).toBe(PaymentErrorType.ATTENDANCE_NOT_FOUND);

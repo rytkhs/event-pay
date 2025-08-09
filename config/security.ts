@@ -62,6 +62,20 @@ export const RATE_LIMIT_CONFIG = {
     maxAttempts: 60, // 60回まで
     blockDurationMs: 5 * 60 * 1000, // 5分ブロック
   } as RateLimitConfig,
+
+  // 決済: Stripeセッション作成（内部UI）
+  paymentCreateSession: {
+    windowMs: 10 * 1000, // 10秒
+    maxAttempts: 3, // 最大3回
+    blockDurationMs: 20 * 1000, // 20秒ブロック
+  } as RateLimitConfig,
+
+  // 決済: 現金ステータス更新（内部UI）
+  paymentStatusUpdate: {
+    windowMs: 5 * 1000, // 5秒
+    maxAttempts: 10, // 最大10回
+    blockDurationMs: 20 * 1000, // 20秒ブロック
+  } as RateLimitConfig,
 } as const;
 
 // Cookie設定
