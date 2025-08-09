@@ -9,11 +9,11 @@ export interface ApiSuccessResponse<T = unknown> {
 export interface ApiErrorResponse {
   success: false;
   error:
-    | string
-    | {
-        code: string;
-        message: string;
-      };
+  | string
+  | {
+    code: string;
+    message: string;
+  };
   details?: Record<string, string>;
   retryAfter?: number;
 }
@@ -35,3 +35,12 @@ export function getErrorMessage(
   }
   return error?.message || fallback;
 }
+
+// ====================================================================
+// Payments: create-cash 専用レスポンス型（0円時の成功も型で表現）
+// ====================================================================
+
+export type CreateCashPaymentResponse =
+  | ApiSuccessResponse<{ paymentId: string }>
+  | ApiSuccessResponse<{ noPaymentRequired: true; paymentId: null }>
+  | ApiErrorResponse;

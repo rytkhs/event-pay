@@ -82,19 +82,20 @@ export class PaymentValidator implements IPaymentValidator {
   /**
    * Stripe決済セッション作成パラメータを検証する
    */
-  async validateCreateStripeSessionParams(params: CreateStripeSessionParams): Promise<void> {
+  async validateCreateStripeSessionParams(params: CreateStripeSessionParams, userId: string): Promise<void> {
     try {
       // Zodスキーマによる基本検証
       createStripeSessionParamsSchema.parse(params);
 
       // ビジネスルール検証
-      await this.validateAttendanceAccess(params.attendanceId);
+      await this.validateAttendanceAccess(params.attendanceId, userId);
       await this.validatePaymentAmount(params.amount);
-      await this.validateNoDuplicatePayment(params.attendanceId);
+      // 注意: 重複作成ガードの最終責務は PaymentService.createStripeSession に集約する。
+      // ここでは重複チェックは行わない（pending/failed の再利用を阻害しないため）。
     } catch (error) {
       if (error instanceof z.ZodError) {
         throw new PaymentError(
-          PaymentErrorType.INVALID_PAYMENT_METHOD,
+          PaymentErrorType.VALIDATION_ERROR,
           `入力検証エラー: ${error.errors.map((e) => e.message).join(", ")}`,
           error
         );
@@ -115,19 +116,19 @@ export class PaymentValidator implements IPaymentValidator {
   /**
    * 現金決済作成パラメータを検証する
    */
-  async validateCreateCashPaymentParams(params: CreateCashPaymentParams): Promise<void> {
+  async validateCreateCashPaymentParams(params: CreateCashPaymentParams, userId: string): Promise<void> {
     try {
       // Zodスキーマによる基本検証
       createCashPaymentParamsSchema.parse(params);
 
       // ビジネスルール検証
-      await this.validateAttendanceAccess(params.attendanceId);
+      await this.validateAttendanceAccess(params.attendanceId, userId);
       await this.validatePaymentAmount(params.amount);
       await this.validateNoDuplicatePayment(params.attendanceId);
     } catch (error) {
       if (error instanceof z.ZodError) {
         throw new PaymentError(
-          PaymentErrorType.INVALID_PAYMENT_METHOD,
+          PaymentErrorType.VALIDATION_ERROR,
           `入力検証エラー: ${error.errors.map((e) => e.message).join(", ")}`,
           error
         );
@@ -159,7 +160,7 @@ export class PaymentValidator implements IPaymentValidator {
     } catch (error) {
       if (error instanceof z.ZodError) {
         throw new PaymentError(
-          PaymentErrorType.INVALID_PAYMENT_METHOD,
+          PaymentErrorType.VALIDATION_ERROR,
           `入力検証エラー: ${error.errors.map((e) => e.message).join(", ")}`,
           error
         );
@@ -180,18 +181,15 @@ export class PaymentValidator implements IPaymentValidator {
   /**
    * 参加記録の存在と権限を検証する
    */
-  async validateAttendanceAccess(attendanceId: string, userId?: string): Promise<void> {
+  async validateAttendanceAccess(attendanceId: string, userId: string): Promise<void> {
     try {
-      let query = this.supabase
+      const baseQuery = this.supabase
         .from("attendances")
         .select("id, event_id, events!inner(id, created_by)")
-        .eq("id", attendanceId);
+        .eq("id", attendanceId)
+        .limit(2);
 
-      if (userId) {
-        query = query.eq("events.created_by", userId);
-      }
-
-      const { data, error } = await query.single();
+      const { data, error } = await baseQuery;
 
       if (error) {
         if (error.code === "PGRST116") {
@@ -208,11 +206,34 @@ export class PaymentValidator implements IPaymentValidator {
         );
       }
 
-      if (!data) {
+      if (!data || (Array.isArray(data) && data.length === 0)) {
         throw new PaymentError(
           PaymentErrorType.ATTENDANCE_NOT_FOUND,
           "指定された参加記録が見つかりません"
         );
+      }
+
+      // 複数件ヒットはデータ不整合
+      if (Array.isArray(data) && data.length > 1) {
+        throw new PaymentError(
+          PaymentErrorType.DATABASE_ERROR,
+          "参加記録の整合性エラー: 複数件のレコードが見つかりました"
+        );
+      }
+
+      // userId は必須引数。created_by を確認
+      if (userId) {
+        type EventLite = { id: string; created_by: string };
+        type AttendanceWithEvent = { id: string; event_id: string; events: EventLite | EventLite[] };
+        const record = (Array.isArray(data) ? data[0] : data) as unknown as AttendanceWithEvent;
+        const events = Array.isArray(record.events) ? record.events : [record.events];
+        const createdBy = events[0]?.created_by;
+        if (!createdBy || createdBy !== userId) {
+          throw new PaymentError(
+            PaymentErrorType.FORBIDDEN,
+            "この操作を実行する権限がありません"
+          );
+        }
       }
     } catch (error) {
       if (error instanceof PaymentError) {
@@ -264,13 +285,14 @@ export class PaymentValidator implements IPaymentValidator {
    */
   private async validateNoDuplicatePayment(attendanceId: string): Promise<void> {
     try {
+      // .single() は 0件/複数件で例外が分かれるため、limit(1) で存在のみ判定
       const { data, error } = await this.supabase
         .from("payments")
         .select("id")
         .eq("attendance_id", attendanceId)
-        .single();
+        .limit(1);
 
-      if (error && error.code !== "PGRST116") {
+      if (error) {
         throw new PaymentError(
           PaymentErrorType.DATABASE_ERROR,
           `重複チェック中にエラーが発生しました: ${error.message}`,
@@ -278,7 +300,7 @@ export class PaymentValidator implements IPaymentValidator {
         );
       }
 
-      if (data) {
+      if (Array.isArray(data) && data.length > 0) {
         throw new PaymentError(
           PaymentErrorType.PAYMENT_ALREADY_EXISTS,
           "この参加記録に対する決済は既に存在します"
@@ -311,7 +333,7 @@ export class PaymentValidator implements IPaymentValidator {
       if (error) {
         if (error.code === "PGRST116") {
           throw new PaymentError(
-            PaymentErrorType.ATTENDANCE_NOT_FOUND,
+            PaymentErrorType.PAYMENT_NOT_FOUND,
             "指定された決済レコードが見つかりません"
           );
         }
@@ -325,7 +347,7 @@ export class PaymentValidator implements IPaymentValidator {
 
       if (!data) {
         throw new PaymentError(
-          PaymentErrorType.ATTENDANCE_NOT_FOUND,
+          PaymentErrorType.PAYMENT_NOT_FOUND,
           "指定された決済レコードが見つかりません"
         );
       }
@@ -380,7 +402,7 @@ export class PaymentValidator implements IPaymentValidator {
 
       if (!validTransitions[currentStatus]?.includes(newStatus)) {
         throw new PaymentError(
-          PaymentErrorType.INVALID_PAYMENT_METHOD,
+          PaymentErrorType.INVALID_STATUS_TRANSITION,
           `ステータス「${currentStatus}」から「${newStatus}」への変更はできません`
         );
       }
@@ -388,14 +410,14 @@ export class PaymentValidator implements IPaymentValidator {
       // 決済方法別の制限
       if (method === "stripe" && newStatus === "received") {
         throw new PaymentError(
-          PaymentErrorType.INVALID_PAYMENT_METHOD,
+          PaymentErrorType.INVALID_STATUS_TRANSITION,
           "Stripe決済では「received」ステータスは使用できません"
         );
       }
 
       if (method === "cash" && newStatus === "paid") {
         throw new PaymentError(
-          PaymentErrorType.INVALID_PAYMENT_METHOD,
+          PaymentErrorType.INVALID_STATUS_TRANSITION,
           "現金決済では「paid」ステータスは使用できません"
         );
       }
@@ -418,7 +440,7 @@ export const validateUUID = (value: string, fieldName: string): void => {
   const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
   if (!uuidRegex.test(value)) {
     throw new PaymentError(
-      PaymentErrorType.INVALID_PAYMENT_METHOD,
+      PaymentErrorType.VALIDATION_ERROR,
       `${fieldName}は有効なUUIDである必要があります`
     );
   }
@@ -429,7 +451,7 @@ export const validateUrl = (value: string, fieldName: string): void => {
     new URL(value);
   } catch {
     throw new PaymentError(
-      PaymentErrorType.INVALID_PAYMENT_METHOD,
+      PaymentErrorType.VALIDATION_ERROR,
       `${fieldName}は有効なURLである必要があります`
     );
   }

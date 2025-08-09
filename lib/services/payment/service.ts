@@ -3,6 +3,7 @@
  */
 
 import { createClient } from "@supabase/supabase-js";
+// import type { PostgrestError } from "@supabase/supabase-js";
 import { Database } from "@/types/database";
 import { stripe } from "@/lib/stripe/client";
 import { IPaymentService, IPaymentErrorHandler } from "./interface";
@@ -19,6 +20,7 @@ import {
   PaymentErrorType,
   ErrorHandlingResult,
 } from "./types";
+import { ERROR_HANDLING_BY_TYPE } from "./error-mapping";
 
 /**
  * PaymentServiceの実装クラス
@@ -35,27 +37,148 @@ export class PaymentService implements IPaymentService {
 
   /**
    * Stripe決済セッションを作成する
+   *
+   * 重複作成ガードについて:
+   * - 重複検知と一意性の最終責務は本メソッド（Service）に集約する。
+   * - 振る舞い:
+   *   - 参加に紐づく既存決済が支払完了系（paid/received/completed）の場合は
+   *     PaymentErrorType.PAYMENT_ALREADY_EXISTS を投げる。
+   *   - それ以外（pending/failed など）は再試行として既存レコードを pending に戻し再利用。
+   *   - DB一意制約違反（23505）は PAYMENT_ALREADY_EXISTS にマッピング。
+   * - Action 層では重複チェックを省略してよい（最終判断は本メソッド）。
    */
   async createStripeSession(params: CreateStripeSessionParams): Promise<CreateStripeSessionResult> {
     try {
-      // まず決済レコードを作成
-      const { data: payment, error: insertError } = await this.supabase
+      // 既存の決済レコードを確認（attendanceごとに一意）
+      const { data: existingList, error: findError } = await this.supabase
         .from("payments")
-        .insert({
-          attendance_id: params.attendanceId,
-          method: "stripe",
-          amount: params.amount,
-          status: "pending",
-        })
-        .select()
-        .single();
+        .select(
+          "id, status, method, stripe_session_id, stripe_payment_intent_id, updated_at, created_at"
+        )
+        .eq("attendance_id", params.attendanceId)
+        .order("updated_at", { ascending: false })
+        .order("created_at", { ascending: false })
+        .limit(2);
 
-      if (insertError) {
+      if (findError) {
         throw new PaymentError(
           PaymentErrorType.DATABASE_ERROR,
-          `決済レコードの作成に失敗しました: ${insertError.message}`,
-          insertError
+          `決済レコードの検索に失敗しました: ${findError.message}`,
+          findError
         );
+      }
+
+      // 既存の扱い: 支払完了系はブロック、それ以外は再試行として再利用
+      let targetPaymentId: string;
+      const existingCount = Array.isArray(existingList) ? existingList.length : 0;
+      if (existingCount > 1) {
+        throw new PaymentError(
+          PaymentErrorType.DATABASE_ERROR,
+          "決済レコードの整合性エラー: 複数のレコードが存在します"
+        );
+      }
+
+      const existing = existingCount === 1 ? existingList![0] : null;
+      if (existing) {
+        const status = existing.status as PaymentStatus;
+        if (["paid", "received", "completed"].includes(status)) {
+          throw new PaymentError(
+            PaymentErrorType.PAYMENT_ALREADY_EXISTS,
+            "この参加に対する決済は既に完了済みです"
+          );
+        }
+
+        // 再試行: 既存レコードを pending に戻し、セッションは後段で新規発行して更新
+        const { error: reuseError } = await this.supabase
+          .from("payments")
+          .update({
+            amount: params.amount,
+            status: "pending",
+            // 古いIntentは無効化される前提でクリア（Webhookとの整合は別途担保）
+            stripe_payment_intent_id: null,
+            // 旧セッションIDは明示的に一旦nullにしてから新規をセット（障害時解析性の向上）
+            stripe_session_id: null,
+          })
+          .eq("id", existing.id);
+
+        if (reuseError) {
+          throw new PaymentError(
+            PaymentErrorType.DATABASE_ERROR,
+            `既存決済の更新に失敗しました: ${reuseError.message}`,
+            reuseError
+          );
+        }
+        targetPaymentId = existing.id as string;
+      } else {
+        // 新規作成
+        const { data: payment, error: insertError } = await this.supabase
+          .from("payments")
+          .insert({
+            attendance_id: params.attendanceId,
+            method: "stripe",
+            amount: params.amount,
+            status: "pending",
+          })
+          .select()
+          .single();
+
+        if (insertError) {
+          // 一意制約違反（同時実行レース）時は既存を再取得して再利用にフォールバック
+          if (insertError.code === "23505") {
+            const { data: dupExisting, error: dupFindError } = await this.supabase
+              .from("payments")
+              .select("id, status")
+              .eq("attendance_id", params.attendanceId)
+              .single();
+
+            if (dupFindError || !dupExisting) {
+              // 既存取得に失敗した場合は保守的に「既に存在」として返す
+              throw new PaymentError(
+                PaymentErrorType.PAYMENT_ALREADY_EXISTS,
+                "この参加記録に対する決済レコードは既に存在します",
+                insertError
+              );
+            }
+
+            const dupStatus = dupExisting.status as PaymentStatus;
+            if (["paid", "received", "completed"].includes(dupStatus)) {
+              throw new PaymentError(
+                PaymentErrorType.PAYMENT_ALREADY_EXISTS,
+                "この参加に対する決済は既に完了済みです",
+                insertError
+              );
+            }
+
+            // 未完了なら既存を再利用（pendingへ戻す）
+            const { error: dupReuseError } = await this.supabase
+              .from("payments")
+              .update({
+                amount: params.amount,
+                status: "pending",
+                stripe_payment_intent_id: null,
+                stripe_session_id: null,
+              })
+              .eq("id", dupExisting.id as string);
+
+            if (dupReuseError) {
+              throw new PaymentError(
+                PaymentErrorType.DATABASE_ERROR,
+                `既存決済の更新に失敗しました: ${dupReuseError.message}`,
+                dupReuseError
+              );
+            }
+
+            targetPaymentId = dupExisting.id as string;
+          } else {
+            throw new PaymentError(
+              PaymentErrorType.DATABASE_ERROR,
+              `決済レコードの作成に失敗しました: ${insertError.message}`,
+              insertError
+            );
+          }
+        } else {
+          targetPaymentId = payment!.id as string;
+        }
       }
 
       // Stripe Checkout Sessionを作成
@@ -78,12 +201,12 @@ export class PaymentService implements IPaymentService {
         success_url: params.successUrl,
         cancel_url: params.cancelUrl,
         metadata: {
-          payment_id: payment.id,
+          payment_id: targetPaymentId,
           attendance_id: params.attendanceId,
         },
         payment_intent_data: {
           metadata: {
-            payment_id: payment.id,
+            payment_id: targetPaymentId,
             attendance_id: params.attendanceId,
           },
         },
@@ -96,11 +219,18 @@ export class PaymentService implements IPaymentService {
         .update({
           stripe_session_id: session.id,
         })
-        .eq("id", payment.id);
+        .eq("id", targetPaymentId);
 
       if (updateError) {
-        // セッションは作成されたが、DBの更新に失敗した場合はログに記録
-        console.error("Failed to update payment record with session ID:", updateError);
+        // セッションは作成されたが、DBの更新に失敗した場合はハンドラに記録
+        await this.errorHandler.logError(
+          new PaymentError(
+            PaymentErrorType.DATABASE_ERROR,
+            `Failed to update payment record with session ID: ${updateError.message}`,
+            updateError as unknown as Error
+          ),
+          { operation: "updateStripeSessionId", paymentId: targetPaymentId, sessionId: session.id }
+        );
         // セッションは有効なので処理は続行
       }
 
@@ -114,8 +244,8 @@ export class PaymentService implements IPaymentService {
       }
 
       // Stripeエラーの詳細を判定
-      if (error && typeof error === "object" && "type" in error) {
-        const stripeError = error as any;
+      if (error && typeof error === "object" && (error as { type?: string }).type) {
+        const stripeError = error as { message?: string };
         throw new PaymentError(
           PaymentErrorType.STRIPE_API_ERROR,
           `Stripe決済セッションの作成に失敗しました: ${stripeError.message || "不明なエラー"}`,
@@ -185,7 +315,12 @@ export class PaymentService implements IPaymentService {
    */
   async updatePaymentStatus(params: UpdatePaymentStatusParams): Promise<void> {
     try {
-      const updateData: any = {
+      const updateData: {
+        status: PaymentStatus;
+        updated_at: string;
+        paid_at?: string;
+        stripe_payment_intent_id?: string | null;
+      } = {
         status: params.status,
         updated_at: new Date().toISOString(),
       };
@@ -198,16 +333,34 @@ export class PaymentService implements IPaymentService {
         updateData.stripe_payment_intent_id = params.stripePaymentIntentId;
       }
 
-      const { error } = await this.supabase
+      const { data, error } = await this.supabase
         .from("payments")
         .update(updateData)
-        .eq("id", params.paymentId);
+        .eq("id", params.paymentId)
+        .select("id")
+        .single();
 
       if (error) {
+        // 対象レコードが存在しない
+        if (error.code === "PGRST116") {
+          throw new PaymentError(
+            PaymentErrorType.PAYMENT_NOT_FOUND,
+            "指定された決済レコードが見つかりません",
+            error
+          );
+        }
+
         throw new PaymentError(
           PaymentErrorType.DATABASE_ERROR,
           `決済ステータスの更新に失敗しました: ${error.message}`,
           error
+        );
+      }
+
+      if (!data) {
+        throw new PaymentError(
+          PaymentErrorType.PAYMENT_NOT_FOUND,
+          "指定された決済レコードが見つかりません"
         );
       }
     } catch (error) {
@@ -393,66 +546,11 @@ export class PaymentErrorHandler implements IPaymentErrorHandler {
    * 決済エラーを処理し、適切な対応を決定する
    */
   async handlePaymentError(error: PaymentError): Promise<ErrorHandlingResult> {
-    switch (error.type) {
-      case PaymentErrorType.INVALID_PAYMENT_METHOD:
-      case PaymentErrorType.INVALID_AMOUNT:
-        return {
-          userMessage: "入力内容に誤りがあります。確認して再度お試しください。",
-          shouldRetry: false,
-          logLevel: "warn",
-        };
-
-      case PaymentErrorType.PAYMENT_ALREADY_EXISTS:
-        return {
-          userMessage: "この参加に対する決済は既に作成されています。",
-          shouldRetry: false,
-          logLevel: "info",
-        };
-
-      case PaymentErrorType.ATTENDANCE_NOT_FOUND:
-      case PaymentErrorType.EVENT_NOT_FOUND:
-        return {
-          userMessage: "指定された情報が見つかりません。",
-          shouldRetry: false,
-          logLevel: "warn",
-        };
-
-      case PaymentErrorType.INSUFFICIENT_FUNDS:
-      case PaymentErrorType.CARD_DECLINED:
-        return {
-          userMessage: "決済が承認されませんでした。カード情報を確認してください。",
-          shouldRetry: true,
-          logLevel: "info",
-        };
-
-      case PaymentErrorType.STRIPE_API_ERROR:
-        return {
-          userMessage: "決済処理中にエラーが発生しました。しばらく待ってから再度お試しください。",
-          shouldRetry: true,
-          logLevel: "error",
-        };
-
-      case PaymentErrorType.DATABASE_ERROR:
-        return {
-          userMessage: "システムエラーが発生しました。管理者にお問い合わせください。",
-          shouldRetry: false,
-          logLevel: "error",
-        };
-
-      case PaymentErrorType.WEBHOOK_PROCESSING_ERROR:
-        return {
-          userMessage: "決済処理の確認中です。しばらくお待ちください。",
-          shouldRetry: false,
-          logLevel: "error",
-        };
-
-      default:
-        return {
-          userMessage: "予期しないエラーが発生しました。管理者にお問い合わせください。",
-          shouldRetry: false,
-          logLevel: "error",
-        };
-    }
+    return ERROR_HANDLING_BY_TYPE[error.type] ?? {
+      userMessage: "予期しないエラーが発生しました。管理者にお問い合わせください。",
+      shouldRetry: false,
+      logLevel: "error",
+    };
   }
 
   /**
@@ -469,6 +567,7 @@ export class PaymentErrorHandler implements IPaymentErrorHandler {
     };
 
     // TODO: 実際のログシステムとの連携は後で実装
+    // eslint-disable-next-line no-console
     console.error("PaymentError:", logData);
   }
 }

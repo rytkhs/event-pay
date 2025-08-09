@@ -160,15 +160,12 @@ describe("PaymentService", () => {
 
   describe("updatePaymentStatus", () => {
     it("決済ステータスを正常に更新できる", async () => {
-      const mockUpdate = jest.fn(() => ({
-        eq: jest.fn().mockResolvedValue({
-          error: null,
-        }),
-      }));
+      const mockSingle = jest.fn().mockResolvedValue({ data: { id: "payment-123" }, error: null });
+      const mockSelect = jest.fn(() => ({ single: mockSingle }));
+      const mockEq = jest.fn(() => ({ select: mockSelect }));
+      const mockUpdate = jest.fn(() => ({ eq: mockEq }));
 
-      mockSupabase.from.mockReturnValue({
-        update: mockUpdate,
-      });
+      mockSupabase.from.mockReturnValue({ update: mockUpdate });
 
       await paymentService.updatePaymentStatus({
         paymentId: "payment-123",
@@ -184,28 +181,40 @@ describe("PaymentService", () => {
         paid_at: "2024-01-01T00:00:00.000Z",
         stripe_payment_intent_id: "pi_123",
       });
+      expect(mockEq).toHaveBeenCalledWith("id", "payment-123");
+      expect(mockSelect).toHaveBeenCalledWith("id");
+      expect(mockSingle).toHaveBeenCalled();
+    });
+
+    it("対象が存在しない場合はPAYMENT_NOT_FOUNDを投げる", async () => {
+      const mockSingle = jest.fn().mockResolvedValue({ data: null, error: { code: "PGRST116" } });
+      const mockSelect = jest.fn(() => ({ single: mockSingle }));
+      const mockEq = jest.fn(() => ({ select: mockSelect }));
+      const mockUpdate = jest.fn(() => ({ eq: mockEq }));
+
+      mockSupabase.from.mockReturnValue({ update: mockUpdate });
+
+      await expect(
+        paymentService.updatePaymentStatus({ paymentId: "payment-404", status: "paid" })
+      ).rejects.toThrow(PaymentError);
+
+      try {
+        await paymentService.updatePaymentStatus({ paymentId: "payment-404", status: "paid" });
+      } catch (error) {
+        expect((error as PaymentError).type).toBe(PaymentErrorType.PAYMENT_NOT_FOUND);
+      }
     });
 
     it("データベースエラーの場合は適切なエラーを投げる", async () => {
-      const mockError = {
-        message: "update failed",
-      };
+      const mockSingle = jest.fn().mockResolvedValue({ data: null, error: { code: "XXERR", message: "update failed" } });
+      const mockSelect = jest.fn(() => ({ single: mockSingle }));
+      const mockEq = jest.fn(() => ({ select: mockSelect }));
+      const mockUpdate = jest.fn(() => ({ eq: mockEq }));
 
-      const mockUpdate = jest.fn(() => ({
-        eq: jest.fn().mockResolvedValue({
-          error: mockError,
-        }),
-      }));
-
-      mockSupabase.from.mockReturnValue({
-        update: mockUpdate,
-      });
+      mockSupabase.from.mockReturnValue({ update: mockUpdate });
 
       await expect(
-        paymentService.updatePaymentStatus({
-          paymentId: "payment-123",
-          status: "paid",
-        })
+        paymentService.updatePaymentStatus({ paymentId: "payment-123", status: "paid" })
       ).rejects.toThrow(PaymentError);
     });
   });
@@ -337,6 +346,20 @@ describe("PaymentErrorHandler", () => {
   });
 
   describe("handlePaymentError", () => {
+    it("INVALID_STATUS_TRANSITIONエラーを適切に処理する", async () => {
+      const error = new PaymentError(
+        PaymentErrorType.INVALID_STATUS_TRANSITION,
+        "Invalid status transition"
+      );
+
+      const result = await errorHandler.handlePaymentError(error);
+
+      expect(result).toEqual({
+        userMessage: "指定の状態に変更できません。操作内容をご確認ください。",
+        shouldRetry: false,
+        logLevel: "warn",
+      });
+    });
     it("INVALID_PAYMENT_METHODエラーを適切に処理する", async () => {
       const error = new PaymentError(
         PaymentErrorType.INVALID_PAYMENT_METHOD,
