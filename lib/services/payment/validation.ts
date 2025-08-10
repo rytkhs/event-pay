@@ -192,13 +192,6 @@ export class PaymentValidator implements IPaymentValidator {
       const { data, error } = await baseQuery;
 
       if (error) {
-        if (error.code === "PGRST116") {
-          throw new PaymentError(
-            PaymentErrorType.ATTENDANCE_NOT_FOUND,
-            "指定された参加記録が見つかりません"
-          );
-        }
-
         throw new PaymentError(
           PaymentErrorType.DATABASE_ERROR,
           `参加記録の検証に失敗しました: ${error.message}`,
@@ -328,16 +321,9 @@ export class PaymentValidator implements IPaymentValidator {
         .from("payments")
         .select("id")
         .eq("id", paymentId)
-        .single();
+        .maybeSingle();
 
       if (error) {
-        if (error.code === "PGRST116") {
-          throw new PaymentError(
-            PaymentErrorType.PAYMENT_NOT_FOUND,
-            "指定された決済レコードが見つかりません"
-          );
-        }
-
         throw new PaymentError(
           PaymentErrorType.DATABASE_ERROR,
           `決済レコードの検証に失敗しました: ${error.message}`,

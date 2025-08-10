@@ -39,7 +39,7 @@ export async function deleteEventAction(eventId: string) {
       )
       .eq("id", validation.data)
       .eq("created_by", user.id)
-      .single();
+      .maybeSingle();
 
     if (fetchError || !event) {
       return {
@@ -68,12 +68,6 @@ export async function deleteEventAction(eventId: string) {
       .eq("created_by", user.id);
 
     if (error) {
-      if (error.code === "PGRST116") {
-        return {
-          success: false,
-          error: { message: "Event not found" },
-        };
-      }
       if (error.code === "23503") {
         return {
           success: false,

@@ -11,14 +11,21 @@ const mockSupabase = {
     insert: jest.fn(() => ({
       select: jest.fn(() => ({
         single: jest.fn(),
+        maybeSingle: jest.fn(),
       })),
     })),
     update: jest.fn(() => ({
-      eq: jest.fn(),
+      eq: jest.fn(() => ({
+        select: jest.fn(() => ({
+          single: jest.fn(),
+          maybeSingle: jest.fn(),
+        })),
+      })),
     })),
     select: jest.fn(() => ({
       eq: jest.fn(() => ({
         single: jest.fn(),
+        maybeSingle: jest.fn(),
       })),
     })),
     delete: jest.fn(() => ({
@@ -52,17 +59,14 @@ describe("PaymentService", () => {
         status: "pending",
       };
 
-      const mockInsert = jest.fn(() => ({
-        select: jest.fn(() => ({
-          single: jest.fn().mockResolvedValue({
-            data: mockPayment,
-            error: null,
-          }),
-        })),
-      }));
+      const mockSingle = jest.fn().mockResolvedValue({ data: mockPayment, error: null });
+      const mockInsert = jest.fn(() => ({ select: jest.fn(() => ({ single: mockSingle, maybeSingle: mockSingle })) }));
 
       mockSupabase.from.mockReturnValue({
         insert: mockInsert,
+        update: jest.fn(),
+        select: jest.fn(),
+        delete: jest.fn(),
       });
 
       const result = await paymentService.createCashPayment({
@@ -89,17 +93,14 @@ describe("PaymentService", () => {
         message: "duplicate key value violates unique constraint",
       };
 
-      const mockInsert = jest.fn(() => ({
-        select: jest.fn(() => ({
-          single: jest.fn().mockResolvedValue({
-            data: null,
-            error: mockError,
-          }),
-        })),
-      }));
+      const mockSingle = jest.fn().mockResolvedValue({ data: null, error: mockError });
+      const mockInsert = jest.fn(() => ({ select: jest.fn(() => ({ single: mockSingle, maybeSingle: mockSingle })) }));
 
       mockSupabase.from.mockReturnValue({
         insert: mockInsert,
+        update: jest.fn(),
+        select: jest.fn(),
+        delete: jest.fn(),
       });
 
       await expect(
@@ -126,17 +127,14 @@ describe("PaymentService", () => {
         message: 'relation "payments" does not exist',
       };
 
-      const mockInsert = jest.fn(() => ({
-        select: jest.fn(() => ({
-          single: jest.fn().mockResolvedValue({
-            data: null,
-            error: mockError,
-          }),
-        })),
-      }));
+      const mockSingle = jest.fn().mockResolvedValue({ data: null, error: mockError });
+      const mockInsert = jest.fn(() => ({ select: jest.fn(() => ({ single: mockSingle, maybeSingle: mockSingle })) }));
 
       mockSupabase.from.mockReturnValue({
         insert: mockInsert,
+        update: jest.fn(),
+        select: jest.fn(),
+        delete: jest.fn(),
       });
 
       await expect(
@@ -161,11 +159,11 @@ describe("PaymentService", () => {
   describe("updatePaymentStatus", () => {
     it("決済ステータスを正常に更新できる", async () => {
       const mockSingle = jest.fn().mockResolvedValue({ data: { id: "payment-123" }, error: null });
-      const mockSelect = jest.fn(() => ({ single: mockSingle }));
+      const mockSelect = jest.fn(() => ({ single: mockSingle, maybeSingle: mockSingle }));
       const mockEq = jest.fn(() => ({ select: mockSelect }));
       const mockUpdate = jest.fn(() => ({ eq: mockEq }));
 
-      mockSupabase.from.mockReturnValue({ update: mockUpdate });
+      mockSupabase.from.mockReturnValue({ update: mockUpdate, insert: jest.fn(), select: jest.fn(), delete: jest.fn() });
 
       await paymentService.updatePaymentStatus({
         paymentId: "payment-123",
@@ -187,12 +185,12 @@ describe("PaymentService", () => {
     });
 
     it("対象が存在しない場合はPAYMENT_NOT_FOUNDを投げる", async () => {
-      const mockSingle = jest.fn().mockResolvedValue({ data: null, error: { code: "PGRST116" } });
-      const mockSelect = jest.fn(() => ({ single: mockSingle }));
+      const mockSingle = jest.fn().mockResolvedValue({ data: null, error: null });
+      const mockSelect = jest.fn(() => ({ single: mockSingle, maybeSingle: mockSingle }));
       const mockEq = jest.fn(() => ({ select: mockSelect }));
       const mockUpdate = jest.fn(() => ({ eq: mockEq }));
 
-      mockSupabase.from.mockReturnValue({ update: mockUpdate });
+      mockSupabase.from.mockReturnValue({ update: mockUpdate, insert: jest.fn(), select: jest.fn(), delete: jest.fn() });
 
       await expect(
         paymentService.updatePaymentStatus({ paymentId: "payment-404", status: "paid" })
@@ -207,11 +205,11 @@ describe("PaymentService", () => {
 
     it("データベースエラーの場合は適切なエラーを投げる", async () => {
       const mockSingle = jest.fn().mockResolvedValue({ data: null, error: { code: "XXERR", message: "update failed" } });
-      const mockSelect = jest.fn(() => ({ single: mockSingle }));
+      const mockSelect = jest.fn(() => ({ single: mockSingle, maybeSingle: mockSingle }));
       const mockEq = jest.fn(() => ({ select: mockSelect }));
       const mockUpdate = jest.fn(() => ({ eq: mockEq }));
 
-      mockSupabase.from.mockReturnValue({ update: mockUpdate });
+      mockSupabase.from.mockReturnValue({ update: mockUpdate, insert: jest.fn(), select: jest.fn(), delete: jest.fn() });
 
       await expect(
         paymentService.updatePaymentStatus({ paymentId: "payment-123", status: "paid" })
@@ -231,17 +229,19 @@ describe("PaymentService", () => {
         updated_at: "2024-01-01T00:00:00Z",
       };
 
+      const mockSingle = jest.fn().mockResolvedValue({ data: mockPayment, error: null });
       const mockSelect = jest.fn(() => ({
         eq: jest.fn(() => ({
-          single: jest.fn().mockResolvedValue({
-            data: mockPayment,
-            error: null,
-          }),
+          single: mockSingle,
+          maybeSingle: mockSingle,
         })),
       }));
 
       mockSupabase.from.mockReturnValue({
         select: mockSelect,
+        insert: jest.fn(),
+        update: jest.fn(),
+        delete: jest.fn(),
       });
 
       const result = await paymentService.getPaymentByAttendance("attendance-123");
@@ -252,22 +252,21 @@ describe("PaymentService", () => {
     });
 
     it("レコードが見つからない場合はnullを返す", async () => {
-      const mockError = {
-        code: "PGRST116",
-        message: "The result contains 0 rows",
-      };
-
       const mockSelect = jest.fn(() => ({
         eq: jest.fn(() => ({
           single: jest.fn().mockResolvedValue({
             data: null,
-            error: mockError,
+            error: null,
           }),
+          maybeSingle: jest.fn().mockResolvedValue({ data: null, error: null }),
         })),
       }));
 
       mockSupabase.from.mockReturnValue({
         select: mockSelect,
+        insert: jest.fn(),
+        update: jest.fn(),
+        delete: jest.fn(),
       });
 
       const result = await paymentService.getPaymentByAttendance("attendance-123");
@@ -281,17 +280,19 @@ describe("PaymentService", () => {
         message: 'relation "payments" does not exist',
       };
 
+      const mockSingle = jest.fn().mockResolvedValue({ data: null, error: mockError });
       const mockSelect = jest.fn(() => ({
         eq: jest.fn(() => ({
-          single: jest.fn().mockResolvedValue({
-            data: null,
-            error: mockError,
-          }),
+          single: mockSingle,
+          maybeSingle: mockSingle,
         })),
       }));
 
       mockSupabase.from.mockReturnValue({
         select: mockSelect,
+        insert: jest.fn(),
+        update: jest.fn(),
+        delete: jest.fn(),
       });
 
       await expect(paymentService.getPaymentByAttendance("attendance-123")).rejects.toThrow(
@@ -310,6 +311,9 @@ describe("PaymentService", () => {
 
       mockSupabase.from.mockReturnValue({
         delete: mockDelete,
+        insert: jest.fn(),
+        select: jest.fn(),
+        update: jest.fn(),
       });
 
       await paymentService.deletePayment("payment-123");
@@ -331,6 +335,9 @@ describe("PaymentService", () => {
 
       mockSupabase.from.mockReturnValue({
         delete: mockDelete,
+        insert: jest.fn(),
+        select: jest.fn(),
+        update: jest.fn(),
       });
 
       await expect(paymentService.deletePayment("payment-123")).rejects.toThrow(PaymentError);

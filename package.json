@@ -52,7 +52,7 @@
     "react": "^18",
     "react-dom": "^18",
     "react-hook-form": "^7.59.0",
-    "resend": "^4.6.0",
+    "resend": "^4.8.0",
     "stripe": "^18.2.1",
     "tailwind-merge": "^3.3.1",
     "tailwindcss-animate": "^1.0.7",

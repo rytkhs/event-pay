@@ -4,7 +4,7 @@
 
 import { createClient } from "@supabase/supabase-js";
 import { Database } from "@/types/database";
-import { PaymentService, PaymentErrorHandler, PaymentError } from "@/lib/services/payment";
+import { PaymentService, PaymentErrorHandler } from "@/lib/services/payment";
 
 // テスト用のSupabaseクライアント
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;

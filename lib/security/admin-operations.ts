@@ -69,10 +69,9 @@ export async function checkUserProfileExists(
     const secureFactory = SecureSupabaseClientFactory.getInstance();
     const adminClient = await secureFactory.createAuditedAdminClient(reason, context);
 
-    const { data, error } = await adminClient.from("users").select("id").eq("id", userId).single();
+    const { data, error } = await adminClient.from("users").select("id").eq("id", userId).maybeSingle();
 
-    if (error && error.code !== "PGRST116") {
-      // PGRST116 = No rows returned
+    if (error) {
       return {
         success: false,
         error: `Failed to check user profile: ${error.message}`,

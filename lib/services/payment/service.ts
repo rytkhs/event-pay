@@ -338,18 +338,9 @@ export class PaymentService implements IPaymentService {
         .update(updateData)
         .eq("id", params.paymentId)
         .select("id")
-        .single();
+        .maybeSingle();
 
       if (error) {
-        // 対象レコードが存在しない
-        if (error.code === "PGRST116") {
-          throw new PaymentError(
-            PaymentErrorType.PAYMENT_NOT_FOUND,
-            "指定された決済レコードが見つかりません",
-            error
-          );
-        }
-
         throw new PaymentError(
           PaymentErrorType.DATABASE_ERROR,
           `決済ステータスの更新に失敗しました: ${error.message}`,
@@ -385,14 +376,9 @@ export class PaymentService implements IPaymentService {
         .from("payments")
         .select("*")
         .eq("attendance_id", attendanceId)
-        .single();
+        .maybeSingle();
 
       if (error) {
-        // レコードが見つからない場合はnullを返す
-        if (error.code === "PGRST116") {
-          return null;
-        }
-
         throw new PaymentError(
           PaymentErrorType.DATABASE_ERROR,
           `決済情報の取得に失敗しました: ${error.message}`,
@@ -400,6 +386,7 @@ export class PaymentService implements IPaymentService {
         );
       }
 
+      if (!data) return null;
       return data as Payment;
     } catch (error) {
       if (error instanceof PaymentError) {
@@ -423,14 +410,9 @@ export class PaymentService implements IPaymentService {
         .from("payments")
         .select("*")
         .eq("id", paymentId)
-        .single();
+        .maybeSingle();
 
       if (error) {
-        // レコードが見つからない場合はnullを返す
-        if (error.code === "PGRST116") {
-          return null;
-        }
-
         throw new PaymentError(
           PaymentErrorType.DATABASE_ERROR,
           `決済情報の取得に失敗しました: ${error.message}`,
@@ -438,6 +420,7 @@ export class PaymentService implements IPaymentService {
         );
       }
 
+      if (!data) return null;
       return data as Payment;
     } catch (error) {
       if (error instanceof PaymentError) {

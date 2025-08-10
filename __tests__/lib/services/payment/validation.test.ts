@@ -56,8 +56,8 @@ describe("PaymentValidator", () => {
       }));
 
       (mockSupabase.from as jest.Mock).mockReturnValueOnce({
-        select: mockSelect as any,
-      } as any);
+        select: mockSelect,
+      });
 
       // 重複チェックをモック（重複なし）
       const mockSelectDuplicate = jest.fn(() => ({
@@ -70,8 +70,8 @@ describe("PaymentValidator", () => {
       }));
 
       (mockSupabase.from as jest.Mock).mockReturnValueOnce({
-        select: mockSelectDuplicate as any,
-      } as any);
+        select: mockSelectDuplicate,
+      });
 
       await expect(validator.validateCreateStripeSessionParams(validParams, "user-123")).resolves.not.toThrow();
     });
@@ -152,8 +152,8 @@ describe("PaymentValidator", () => {
       }));
 
       (mockSupabase.from as jest.Mock).mockReturnValueOnce({
-        select: mockSelect as any,
-      } as any);
+        select: mockSelect,
+      });
 
       // 重複チェックをモック（重複なし）
       const mockSelectDuplicate = jest.fn(() => ({
@@ -166,8 +166,8 @@ describe("PaymentValidator", () => {
       }));
 
       (mockSupabase.from as jest.Mock).mockReturnValueOnce({
-        select: mockSelectDuplicate as any,
-      } as any);
+        select: mockSelectDuplicate,
+      });
 
       await expect(validator.validateCreateCashPaymentParams(validParams, "user-123")).resolves.not.toThrow();
     });
@@ -198,7 +198,7 @@ describe("PaymentValidator", () => {
         })),
       }));
 
-      (mockSupabase.from as jest.Mock).mockReturnValueOnce({ select: mockSelectAttendance as any } as any);
+      (mockSupabase.from as jest.Mock).mockReturnValueOnce({ select: mockSelectAttendance });
 
       // 重複チェック: 複数レコードが返るケース
       const mockSelectDuplicate = jest.fn(() => ({
@@ -210,7 +210,7 @@ describe("PaymentValidator", () => {
         })),
       }));
 
-      (mockSupabase.from as jest.Mock).mockReturnValueOnce({ select: mockSelectDuplicate as any } as any);
+      (mockSupabase.from as jest.Mock).mockReturnValueOnce({ select: mockSelectDuplicate });
 
       const validatorLocal = new PaymentValidator("mock-url", "mock-key");
 
@@ -267,7 +267,7 @@ describe("PaymentValidator", () => {
     it("無効なステータスの場合はエラーを投げる", async () => {
       const invalidParams = {
         ...validParams,
-        status: "invalid-status" as any,
+        status: "invalid-status" as never, // invalid status for testing
       };
 
       await expect(validator.validateUpdatePaymentStatusParams(invalidParams)).rejects.toThrow(
@@ -363,8 +363,8 @@ describe("PaymentValidator", () => {
       }));
 
       (mockSupabase.from as jest.Mock).mockReturnValue({
-        select: mockSelect as any,
-      } as any);
+        select: mockSelect,
+      });
 
       await expect(validator.validateAttendanceAccess("attendance-123", "user-123")).resolves.not.toThrow();
     });
@@ -380,8 +380,8 @@ describe("PaymentValidator", () => {
       }));
 
       (mockSupabase.from as jest.Mock).mockReturnValue({
-        select: mockSelect as any,
-      } as any);
+        select: mockSelect,
+      });
 
       await expect(validator.validateAttendanceAccess("attendance-123", "user-123")).rejects.toThrow(
         PaymentError

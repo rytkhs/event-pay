@@ -76,7 +76,11 @@ describe("SupabaseWebhookIdempotencyService", () => {
             eq: jest.fn(() => ({
               single: jest.fn().mockResolvedValue({
                 data: null,
-                error: { code: "PGRST116", message: "No rows returned" },
+                error: null,
+              }),
+              maybeSingle: jest.fn().mockResolvedValue({
+                data: null,
+                error: null,
               }),
             })),
           })),
@@ -221,7 +225,11 @@ describe("SupabaseWebhookIdempotencyService", () => {
             eq: jest.fn(() => ({
               single: jest.fn().mockResolvedValue({
                 data: null,
-                error: { code: "PGRST116", message: "No rows returned" },
+                error: null,
+              }),
+              maybeSingle: jest.fn().mockResolvedValue({
+                data: null,
+                error: null,
               }),
             })),
           })),
