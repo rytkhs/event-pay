@@ -135,8 +135,8 @@ export class SecureSupabaseClientFactory implements ISecureSupabaseClientFactory
       return createServerClient(this.supabaseUrl, this.anonKey, {
         cookies: {
           get: () => undefined,
-          set: () => {},
-          remove: () => {},
+          set: () => { },
+          remove: () => { },
         },
         auth: {
           persistSession: false, // ゲストセッションは永続化しない

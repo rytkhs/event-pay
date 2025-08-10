@@ -102,7 +102,11 @@ describe("Admin Operations", () => {
     it("should return false when user profile does not exist", async () => {
       mockAdminClient.single.mockResolvedValue({
         data: null,
-        error: { code: "PGRST116" }, // No rows returned
+        error: null,
+      });
+      mockAdminClient.maybeSingle.mockResolvedValue({
+        data: null,
+        error: null,
       });
 
       const result = await checkUserProfileExists("user-123");

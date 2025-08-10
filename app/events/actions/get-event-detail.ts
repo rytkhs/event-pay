@@ -49,12 +49,9 @@ export async function getEventDetailAction(eventId: string) {
       )
       .eq("id", validation.data)
       .eq("created_by", user.id)
-      .single();
+      .maybeSingle();
 
     if (error) {
-      if (error.code === "PGRST116") {
-        throw new Error("Event not found");
-      }
       if (error.code === "PGRST301") {
         throw new Error("Access denied");
       }
@@ -73,6 +70,9 @@ export async function getEventDetailAction(eventId: string) {
 
     if (creatorError) {
       // Creator name fetch error - continue with fallback
+      // ログのみ（UXを阻害しない）
+      // eslint-disable-next-line no-console
+      console.warn("Failed to fetch creator name:", creatorError.message);
     }
 
     const result = {

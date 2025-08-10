@@ -126,10 +126,8 @@ export class SupabaseWebhookIdempotencyService<T extends Json = Json>
         .from("webhook_events")
         .select("processing_result")
         .eq("stripe_event_id", eventId)
-        .single();
-
-      if (error && error.code !== "PGRST116") {
-        // PGRST116 = No rows returned
+        .maybeSingle();
+      if (error) {
         throw new Error(`Failed to check event processing status: ${error.message}`);
       }
 
@@ -188,10 +186,8 @@ export class SupabaseWebhookIdempotencyService<T extends Json = Json>
         .from("webhook_events")
         .select("processing_result")
         .eq("stripe_event_id", eventId)
-        .single();
-
-      if (error && error.code !== "PGRST116") {
-        // PGRST116 = No rows returned
+        .maybeSingle();
+      if (error) {
         throw new Error(`Failed to get processing result: ${error.message}`);
       }
 
