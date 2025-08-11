@@ -209,6 +209,9 @@ export class PaymentService implements IPaymentService {
             payment_id: targetPaymentId,
             attendance_id: params.attendanceId,
           },
+          ...(params.transferGroup
+            ? { transfer_group: params.transferGroup }
+            : {}),
         },
         expires_at: Math.floor(Date.now() / 1000) + 30 * 60, // 30分後に期限切れ
       });

@@ -149,27 +149,6 @@ export async function POST(request: NextRequest) {
 
 // GET メソッドも作成（ヘルスチェック用）
 export async function GET(request: NextRequest) {
-  try {
-    // 認証チェック
-    const authResult = validateCronSecret(request);
-    if (!authResult.isValid) {
-      const error = createApiError(
-        ERROR_CODES.UNAUTHORIZED,
-        authResult.error || "Authentication failed"
-      );
-      return createErrorResponse(error, 401);
-    }
-
-    const data = {
-      message: "Event status update cron endpoint is healthy",
-      timestamp: new Date().toISOString(),
-    };
-    return createSuccessResponse(data);
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : "Unknown error";
-    const apiError = createApiError(ERROR_CODES.INTERNAL_ERROR, "Health check failed", {
-      originalError: errorMessage,
-    });
-    return createErrorResponse(apiError, 500);
-  }
+  // Vercel CronはGETで叩くため、GETでも本処理を実行する
+  return POST(request);
 }

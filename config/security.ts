@@ -76,6 +76,13 @@ export const RATE_LIMIT_CONFIG = {
     maxAttempts: 10, // 最大10回
     blockDurationMs: 20 * 1000, // 20秒ブロック
   } as RateLimitConfig,
+
+  // 送金: 手動送金実行（内部UI）
+  manualPayout: {
+    windowMs: 60 * 1000, // 1分
+    maxAttempts: 3, // 最大3回（慎重な操作のため制限）
+    blockDurationMs: 5 * 60 * 1000, // 5分ブロック
+  } as RateLimitConfig,
 } as const;
 
 // Cookie設定

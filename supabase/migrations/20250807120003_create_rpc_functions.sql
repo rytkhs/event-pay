@@ -18,26 +18,26 @@ BEGIN
     IF p_attendance_id IS NULL THEN
         RAISE EXCEPTION 'attendance_id cannot be null';
     END IF;
-    
+
     IF p_amount < 0 THEN
         RAISE EXCEPTION 'amount must be non-negative, got: %', p_amount;
     END IF;
-    
+
     -- 重複チェック
     IF EXISTS (SELECT 1 FROM public.payments WHERE attendance_id = p_attendance_id) THEN
         RAISE EXCEPTION 'Payment record already exists for attendance_id: %', p_attendance_id;
     END IF;
-    
+
     -- attendanceレコードの存在確認
     IF NOT EXISTS (SELECT 1 FROM public.attendances WHERE id = p_attendance_id) THEN
         RAISE EXCEPTION 'Attendance record not found for id: %', p_attendance_id;
     END IF;
-    
+
     -- 決済レコード作成
     INSERT INTO public.payments (attendance_id, method, amount, status)
     VALUES (p_attendance_id, p_method, p_amount, 'pending')
     RETURNING id INTO payment_id;
-    
+
     RETURN payment_id;
 END;
 $$;
@@ -62,67 +62,67 @@ BEGIN
     IF p_event_id IS NULL THEN
         RAISE EXCEPTION 'event_id cannot be null';
     END IF;
-    
+
     IF p_user_id IS NULL THEN
         RAISE EXCEPTION 'user_id cannot be null';
     END IF;
-    
+
     -- イベントの存在確認と権限チェック
     IF NOT EXISTS (
-        SELECT 1 FROM public.events 
+        SELECT 1 FROM public.events
         WHERE id = p_event_id AND created_by = p_user_id
     ) THEN
         RAISE EXCEPTION 'Event not found or user not authorized for event_id: %', p_event_id;
     END IF;
-    
+
     -- 既存の送金レコードチェック
     IF EXISTS (
-        SELECT 1 FROM public.payouts 
+        SELECT 1 FROM public.payouts
         WHERE event_id = p_event_id AND status IN ('pending', 'processing', 'completed')
     ) THEN
         RAISE EXCEPTION 'Payout already exists or in progress for event_id: %', p_event_id;
     END IF;
-    
+
     -- Stripe Connectアカウント取得
     SELECT stripe_account_id INTO stripe_account
     FROM public.stripe_connect_accounts
     WHERE user_id = p_user_id AND payouts_enabled = true;
-    
+
     IF stripe_account IS NULL THEN
         RAISE EXCEPTION 'No verified Stripe Connect account found for user: %', p_user_id;
     END IF;
-    
+
     -- 売上集計
-    SELECT 
+    SELECT
         COALESCE(SUM(p.amount), 0),
         COALESCE(SUM(ROUND(p.amount * 0.036)), 0), -- Stripe手数料 3.6%
         0 -- MVP段階はプラットフォーム手数料0円
     INTO stripe_sales, stripe_fees, platform_fees
     FROM public.payments p
     JOIN public.attendances a ON p.attendance_id = a.id
-    WHERE a.event_id = p_event_id 
-    AND p.method = 'stripe' 
+    WHERE a.event_id = p_event_id
+    AND p.method = 'stripe'
     AND p.status = 'paid';
-    
+
     net_amount := stripe_sales - stripe_fees - platform_fees;
-    
+
     -- 送金金額が0以下の場合はエラー
     IF net_amount <= 0 THEN
         RAISE EXCEPTION 'Net payout amount must be positive, calculated: %', net_amount;
     END IF;
-    
+
     -- 送金レコード作成（transfer_groupを生成）
     INSERT INTO public.payouts (
-        event_id, user_id, total_stripe_sales, total_stripe_fee, 
+        event_id, user_id, total_stripe_sales, total_stripe_fee,
         platform_fee, net_payout_amount, stripe_account_id, status, transfer_group
     )
     VALUES (
         p_event_id, p_user_id, stripe_sales, stripe_fees,
-        platform_fees, net_amount, stripe_account, 'pending', 
-        'EVENT_' || REPLACE(p_event_id::text, '-', '')
+        platform_fees, net_amount, stripe_account, 'pending',
+        'event_' || p_event_id::text || '_payout'
     )
     RETURNING id INTO payout_id;
-    
+
     RETURN payout_id;
 END;
 $$;
@@ -148,14 +148,14 @@ BEGIN
     IF p_event_id IS NULL THEN
         RAISE EXCEPTION 'event_id cannot be null';
     END IF;
-    
+
     -- イベントの存在確認
     IF NOT EXISTS (SELECT 1 FROM public.events WHERE id = p_event_id) THEN
         RAISE EXCEPTION 'Event not found for id: %', p_event_id;
     END IF;
-    
+
     -- 売上集計計算
-    SELECT 
+    SELECT
         COALESCE(SUM(CASE WHEN p.status IN ('paid', 'received', 'completed') THEN p.amount ELSE 0 END), 0),
         COALESCE(SUM(CASE WHEN p.method = 'stripe' AND p.status = 'paid' THEN p.amount ELSE 0 END), 0),
         COALESCE(SUM(CASE WHEN p.method = 'cash' AND p.status IN ('received', 'completed') THEN p.amount ELSE 0 END), 0),
@@ -165,17 +165,17 @@ BEGIN
     FROM public.payments p
     JOIN public.attendances a ON p.attendance_id = a.id
     WHERE a.event_id = p_event_id;
-    
-    -- 手数料計算（Stripe決済のみ: 各決済ごとに3.6% + 30円固定）
+
+    -- 手数料計算（Stripe決済のみ: 各決済ごとに3.6%）
     SELECT COALESCE(SUM(ROUND(p.amount * 0.036)), 0)
     INTO total_fees
     FROM public.payments p
     JOIN public.attendances a ON p.attendance_id = a.id
-    WHERE a.event_id = p_event_id 
-    AND p.method = 'stripe' 
+    WHERE a.event_id = p_event_id
+    AND p.method = 'stripe'
     AND p.status = 'paid';
     net_revenue := total_revenue - total_fees;
-    
+
     -- 結果をJSONで返す
     result := json_build_object(
         'event_id', p_event_id,
@@ -188,7 +188,7 @@ BEGIN
         'net_revenue', net_revenue,
         'updated_at', NOW()
     );
-    
+
     RETURN result;
 END;
 $$;
