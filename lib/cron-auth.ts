@@ -11,6 +11,9 @@ interface RequestWithHeaders {
   headers: {
     get: (key: string) => string | null;
   };
+  // NextRequest互換: ランタイムで存在する可能性がある
+  url?: string;
+  nextUrl?: { searchParams: URLSearchParams };
 }
 
 /**
@@ -26,25 +29,47 @@ export function validateCronSecret(request: RequestWithHeaders): AuthResult {
     };
   }
 
-  // AuthorizationヘッダーからBearer トークンを取得
+  // 優先順でトークンを取得: Authorization Bearer -> x-cron-secret ヘッダー -> ?secret= クエリ
+  let token: string | null = null;
+
+  // 1) Authorization: Bearer <token>
   const authHeader = request.headers.get("authorization");
-  if (!authHeader) {
+  if (authHeader) {
+    if (!authHeader.startsWith(AUTH_CONFIG.BEARER_PREFIX)) {
+      return {
+        isValid: false,
+        error: "Invalid Authorization format (expected Bearer token)",
+      };
+    }
+    token = authHeader.slice(AUTH_CONFIG.BEARER_PREFIX_LENGTH);
+  }
+
+  // 2) X-Cron-Secret: <token>
+  if (!token) {
+    const headerToken = request.headers.get("x-cron-secret");
+    if (headerToken) token = headerToken;
+  }
+
+  // 3) ?secret=<token>
+  if (!token) {
+    try {
+      if (request.nextUrl) {
+        token = request.nextUrl.searchParams.get("secret");
+      } else if (request.url) {
+        const url = new URL(request.url);
+        token = url.searchParams.get("secret");
+      }
+    } catch {
+      // URL解析に失敗した場合は無視
+    }
+  }
+
+  if (!token) {
     return {
       isValid: false,
       error: "Missing Authorization header",
     };
   }
-
-  // Bearer形式かチェック
-  if (!authHeader.startsWith(AUTH_CONFIG.BEARER_PREFIX)) {
-    return {
-      isValid: false,
-      error: "Invalid Authorization format (expected Bearer token)",
-    };
-  }
-
-  // トークンを抽出
-  const token = authHeader.slice(AUTH_CONFIG.BEARER_PREFIX_LENGTH);
 
   // トークンが期待値と一致するかチェック
   if (token !== expectedSecret) {

@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { PaymentService, PaymentErrorHandler, PaymentValidator } from "@/lib/services/payment";
+import { getTransferGroupForEvent } from "@/lib/utils/stripe";
 import { createRateLimitStore, checkRateLimit } from "@/lib/rate-limit";
 import { RATE_LIMIT_CONFIG } from "@/config/security";
 import { createStripeSessionRequestSchema } from "@/lib/services/payment/validation";
@@ -143,12 +144,16 @@ export async function createStripeSessionAction(
       errorHandler
     );
 
+    // Separate charges and transfers の推奨: 課金(PaymentIntent)と送金(Transfer)を同一グループで関連付け
+    const transferGroup = getTransferGroupForEvent(event.id);
+
     const result = await paymentService.createStripeSession({
       attendanceId: params.attendanceId,
       amount: params.amount,
       eventTitle: event.title,
       successUrl: params.successUrl,
       cancelUrl: params.cancelUrl,
+      transferGroup,
     });
 
     return createSuccessResponse({ sessionUrl: result.sessionUrl, sessionId: result.sessionId });

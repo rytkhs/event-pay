@@ -410,4 +410,417 @@ describe("StripeWebhookEventHandler", () => {
       });
     });
   });
+
+  describe("handleTransferCreated", () => {
+    const mockTransferCreated = {
+      id: "evt_test",
+      type: "transfer.created",
+      data: {
+        object: {
+          id: "tr_test_123",
+          amount: 1000,
+          currency: "jpy",
+          destination: "acct_test_123",
+        },
+      },
+    } as Stripe.TransferCreatedEvent;
+
+    it("送金作成イベントを正常に処理する", async () => {
+      const mockPayout = {
+        id: "payout_test_123",
+        status: "pending",
+        stripe_transfer_id: null,
+      };
+
+      mockSupabase.from
+        .mockReturnValueOnce({
+          select: jest.fn(() => ({
+            limit: jest.fn(() => ({
+              eq: jest.fn(() => ({
+                maybeSingle: jest.fn().mockResolvedValue({
+                  data: mockPayout,
+                  error: null,
+                }),
+              })),
+            })),
+          })),
+        })
+        .mockReturnValueOnce({
+          update: jest.fn(() => ({
+            eq: jest.fn().mockResolvedValue({
+              error: null,
+            }),
+          })),
+        });
+
+      const result = await handler.handleEvent(mockTransferCreated);
+
+      expect(result.success).toBe(true);
+      expect(mockSecurityReporter.logSecurityEvent).toHaveBeenCalledWith({
+        type: "webhook_transfer_created_processed",
+        details: {
+          eventId: "evt_test",
+          payoutId: "payout_test_123",
+          transferId: "tr_test_123",
+          amount: 1000,
+          currency: "jpy",
+        },
+      });
+    });
+
+    it("既に完了済みの送金の重複処理を防ぐ", async () => {
+      const mockPayout = {
+        id: "payout_test_123",
+        status: "completed", // 既に完了済み
+        stripe_transfer_id: "tr_test_123",
+      };
+
+      mockSupabase.from.mockReturnValue({
+        select: jest.fn(() => ({
+          limit: jest.fn(() => ({
+            eq: jest.fn(() => ({
+              maybeSingle: jest.fn().mockResolvedValue({
+                data: mockPayout,
+                error: null,
+              }),
+            })),
+          })),
+        })),
+      });
+
+      const result = await handler.handleEvent(mockTransferCreated);
+
+      expect(result.success).toBe(true);
+      expect(mockSecurityReporter.logSecurityEvent).toHaveBeenCalledWith({
+        type: "webhook_duplicate_processing_prevented",
+        details: {
+          eventId: "evt_test",
+          payoutId: "payout_test_123",
+          currentStatus: "completed",
+        },
+      });
+    });
+
+    it("関連する送金レコードが見つからない場合", async () => {
+      mockSupabase.from.mockReturnValue({
+        select: jest.fn(() => ({
+          limit: jest.fn(() => ({
+            eq: jest.fn(() => ({
+              maybeSingle: jest.fn().mockResolvedValue({
+                data: null,
+                error: null,
+              }),
+            })),
+          })),
+        })),
+      });
+
+      const result = await handler.handleEvent(mockTransferCreated);
+
+      expect(result.success).toBe(true);
+      expect(mockSecurityReporter.logSecurityEvent).toHaveBeenCalledWith({
+        type: "webhook_transfer_no_payout_record",
+        details: {
+          eventId: "evt_test",
+          transferId: "tr_test_123",
+          transferGroup: undefined,
+        },
+      });
+    });
+  });
+
+  describe("handleTransferUpdated", () => {
+    const mockTransferUpdated = {
+      id: "evt_test",
+      type: "transfer.updated",
+      data: {
+        object: {
+          id: "tr_test_123",
+          amount: 1000,
+          currency: "jpy",
+        },
+      },
+    } as Stripe.TransferUpdatedEvent;
+
+    it("送金更新イベントを正常に処理する", async () => {
+      const mockPayout = {
+        id: "payout_test_123",
+        status: "completed",
+      };
+
+      mockSupabase.from.mockReturnValue({
+        select: jest.fn(() => ({
+          eq: jest.fn(() => ({
+            maybeSingle: jest.fn().mockResolvedValue({
+              data: mockPayout,
+              error: null,
+            }),
+          })),
+        })),
+      });
+
+      const result = await handler.handleEvent(mockTransferUpdated);
+
+      expect(result.success).toBe(true);
+      expect(mockSecurityReporter.logSecurityEvent).toHaveBeenCalledWith({
+        type: "webhook_transfer_updated_processed",
+        details: {
+          eventId: "evt_test",
+          payoutId: "payout_test_123",
+          transferId: "tr_test_123",
+          currentPayoutStatus: "completed",
+        },
+      });
+    });
+
+    it("関連する送金レコードが見つからない場合", async () => {
+      mockSupabase.from.mockReturnValue({
+        select: jest.fn(() => ({
+          eq: jest.fn(() => ({
+            maybeSingle: jest.fn().mockResolvedValue({
+              data: null,
+              error: null,
+            }),
+          })),
+        })),
+      });
+
+      const result = await handler.handleEvent(mockTransferUpdated);
+
+      expect(result.success).toBe(true);
+      expect(mockSecurityReporter.logSecurityEvent).toHaveBeenCalledWith({
+        type: "webhook_transfer_updated_no_payout",
+        details: {
+          eventId: "evt_test",
+          transferId: "tr_test_123",
+        },
+      });
+    });
+  });
+
+  describe("handleTransferReversed", () => {
+    const mockTransferReversed = {
+      id: "evt_test",
+      type: "transfer.reversed",
+      data: {
+        object: {
+          id: "tr_test_123",
+          amount: 1000,
+          currency: "jpy",
+          reversals: {
+            data: [
+              {
+                reason: "fraudulent",
+              },
+            ],
+          },
+        },
+      },
+    } as Stripe.TransferReversedEvent;
+
+    it("送金リバーサルイベントを正常に処理する", async () => {
+      const mockPayout = {
+        id: "payout_test_123",
+        status: "completed",
+      };
+
+      mockSupabase.from
+        .mockReturnValueOnce({
+          select: jest.fn(() => ({
+            eq: jest.fn(() => ({
+              maybeSingle: jest.fn().mockResolvedValue({
+                data: mockPayout,
+                error: null,
+              }),
+            })),
+          })),
+        })
+        .mockReturnValueOnce({
+          update: jest.fn(() => ({
+            eq: jest.fn().mockResolvedValue({
+              error: null,
+            }),
+          })),
+        });
+
+      const result = await handler.handleEvent(mockTransferReversed);
+
+      expect(result.success).toBe(true);
+      expect(mockSecurityReporter.logSecurityEvent).toHaveBeenCalledWith({
+        type: "webhook_transfer_reversed_processed",
+        details: {
+          eventId: "evt_test",
+          payoutId: "payout_test_123",
+          transferId: "tr_test_123",
+          reversalReason: "fraudulent",
+          amount: 1000,
+          currency: "jpy",
+        },
+      });
+    });
+
+    it("既に失敗済みの送金の重複処理を防ぐ", async () => {
+      const mockPayout = {
+        id: "payout_test_123",
+        status: "failed", // 既に失敗済み
+      };
+
+      mockSupabase.from.mockReturnValue({
+        select: jest.fn(() => ({
+          eq: jest.fn(() => ({
+            maybeSingle: jest.fn().mockResolvedValue({
+              data: mockPayout,
+              error: null,
+            }),
+          })),
+        })),
+      });
+
+      const result = await handler.handleEvent(mockTransferReversed);
+
+      expect(result.success).toBe(true);
+      expect(mockSecurityReporter.logSecurityEvent).toHaveBeenCalledWith({
+        type: "webhook_duplicate_processing_prevented",
+        details: {
+          eventId: "evt_test",
+          payoutId: "payout_test_123",
+          currentStatus: "failed",
+        },
+      });
+    });
+
+    it("関連する送金レコードが見つからない場合", async () => {
+      mockSupabase.from.mockReturnValue({
+        select: jest.fn(() => ({
+          eq: jest.fn(() => ({
+            maybeSingle: jest.fn().mockResolvedValue({
+              data: null,
+              error: null,
+            }),
+          })),
+        })),
+      });
+
+      const result = await handler.handleEvent(mockTransferReversed);
+
+      expect(result.success).toBe(true);
+      expect(mockSecurityReporter.logSecurityEvent).toHaveBeenCalledWith({
+        type: "webhook_transfer_reversed_no_payout",
+        details: {
+          eventId: "evt_test",
+          transferId: "tr_test_123",
+        },
+      });
+    });
+  });
+
+  describe("handleTransferFailed", () => {
+    const mockTransferFailed = {
+      id: "evt_test",
+      type: "transfer.failed",
+      data: {
+        object: {
+          id: "tr_test_123",
+          amount: 1000,
+          currency: "jpy",
+          failure_reason: "insufficient_funds",
+        },
+      },
+    } as Stripe.Event;
+
+    it("送金失敗イベントを正常に処理する", async () => {
+      const mockPayout = {
+        id: "payout_test_123",
+        status: "processing",
+      };
+
+      mockSupabase.from
+        .mockReturnValueOnce({
+          select: jest.fn(() => ({
+            eq: jest.fn(() => ({
+              maybeSingle: jest.fn().mockResolvedValue({
+                data: mockPayout,
+                error: null,
+              }),
+            })),
+          })),
+        })
+        .mockReturnValueOnce({
+          update: jest.fn(() => ({
+            eq: jest.fn().mockResolvedValue({
+              error: null,
+            }),
+          })),
+        });
+
+      const result = await handler.handleEvent(mockTransferFailed);
+
+      expect(result.success).toBe(true);
+      expect(mockSecurityReporter.logSecurityEvent).toHaveBeenCalledWith({
+        type: "webhook_transfer_failed_processed",
+        details: {
+          eventId: "evt_test",
+          payoutId: "payout_test_123",
+          transferId: "tr_test_123",
+          failureReason: "insufficient_funds",
+          amount: 1000,
+          currency: "jpy",
+        },
+      });
+    });
+
+    it("既に失敗済みの送金の重複処理を防ぐ", async () => {
+      const mockPayout = {
+        id: "payout_test_123",
+        status: "failed", // 既に失敗済み
+      };
+
+      mockSupabase.from.mockReturnValue({
+        select: jest.fn(() => ({
+          eq: jest.fn(() => ({
+            maybeSingle: jest.fn().mockResolvedValue({
+              data: mockPayout,
+              error: null,
+            }),
+          })),
+        })),
+      });
+
+      const result = await handler.handleEvent(mockTransferFailed);
+
+      expect(result.success).toBe(true);
+      expect(mockSecurityReporter.logSecurityEvent).toHaveBeenCalledWith({
+        type: "webhook_duplicate_processing_prevented",
+        details: {
+          eventId: "evt_test",
+          payoutId: "payout_test_123",
+          currentStatus: "failed",
+        },
+      });
+    });
+
+    it("関連する送金レコードが見つからない場合", async () => {
+      mockSupabase.from.mockReturnValue({
+        select: jest.fn(() => ({
+          eq: jest.fn(() => ({
+            maybeSingle: jest.fn().mockResolvedValue({
+              data: null,
+              error: null,
+            }),
+          })),
+        })),
+      });
+
+      const result = await handler.handleEvent(mockTransferFailed);
+
+      expect(result.success).toBe(true);
+      expect(mockSecurityReporter.logSecurityEvent).toHaveBeenCalledWith({
+        type: "webhook_transfer_failed_no_payout",
+        details: {
+          eventId: "evt_test",
+          transferId: "tr_test_123",
+        },
+      });
+    });
+  });
 });

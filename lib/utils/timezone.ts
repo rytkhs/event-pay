@@ -7,7 +7,7 @@
  * - datetime-local入力値はJSTとして解釈してUTCに変換
  */
 
-import { parseISO } from "date-fns";
+import { parseISO, differenceInCalendarDays } from "date-fns";
 import { fromZonedTime, toZonedTime, format } from "date-fns-tz";
 
 export const JST_TIMEZONE = "Asia/Tokyo";
@@ -207,4 +207,41 @@ export function formatUtcToJstByType(dateString: string, type: DateFormatType): 
   };
 
   return formatUtcToJstSafe(dateString, formatMap[type]);
+}
+
+// Phase 2: JST基準の暦日ユーティリティ
+
+/**
+ * 任意のUTC日時をJSTに変換して 'yyyy-MM-dd' 形式で返す
+ */
+export function formatDateToJstYmd(date: Date | string): string {
+  const d = typeof date === "string" ? new Date(date) : date;
+  const jst = toZonedTime(d, JST_TIMEZONE);
+  return format(jst, "yyyy-MM-dd", { timeZone: JST_TIMEZONE });
+}
+
+/**
+ * JSTにおける暦日差（now - since）を返す
+ */
+export function getElapsedCalendarDaysInJst(since: Date | string, now: Date = new Date()): number {
+  const sinceDate = typeof since === "string" ? new Date(since) : since;
+  const sinceJst = toZonedTime(sinceDate, JST_TIMEZONE);
+  const nowJst = toZonedTime(now, JST_TIMEZONE);
+  return differenceInCalendarDays(nowJst, sinceJst);
+}
+
+/**
+ * JSTにおける暦日差が指定日数以上かどうか
+ */
+export function hasElapsedDaysInJst(since: Date | string, days: number, now: Date = new Date()): boolean {
+  return getElapsedCalendarDaysInJst(since, now) >= days;
+}
+
+/**
+ * 現在から指定日数前のJST日付（yyyy-MM-dd）を返す
+ */
+export function getJstYmdDaysAgo(days: number, now: Date = new Date()): string {
+  const jst = toZonedTime(now, JST_TIMEZONE);
+  jst.setDate(jst.getDate() - days);
+  return format(jst, "yyyy-MM-dd", { timeZone: JST_TIMEZONE });
 }
