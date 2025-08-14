@@ -1,9 +1,8 @@
 "use server";
 
 import { z } from "zod";
-import { createClient as createServerClient } from "@/lib/supabase/server";
-import { createClient as createAdminClient } from "@supabase/supabase-js";
-import type { Database } from "@/types/database";
+import { SecureSupabaseClientFactory } from "@/lib/security/secure-client-factory.impl";
+import { AdminReason } from "@/lib/security/secure-client-factory.types";
 import { PaymentService, PaymentValidator, PaymentErrorHandler } from "@/lib/services/payment";
 import { PaymentError, PaymentErrorType } from "@/lib/services/payment/types";
 import {
@@ -61,7 +60,8 @@ export async function createCashAction(
     }
     const { attendanceId } = parsed.data;
 
-    const supabase = createServerClient();
+    const factory = SecureSupabaseClientFactory.getInstance();
+    const supabase = await factory.createAuthenticatedClient();
     const {
       data: { user },
       error: authError,
@@ -116,26 +116,19 @@ export async function createCashAction(
       return createErrorResponse(ERROR_CODES.BUSINESS_RULE_VIOLATION, "イベントの参加費が不正です。");
     }
 
-    // バリデーション
-    const validator = new PaymentValidator(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    );
+    // バリデーション（RLS 下の認証クライアントで実行）
+    const validator = new PaymentValidator(supabase);
     await validator.validateCreateCashPaymentParams({ attendanceId, amount }, user.id);
 
     // 作成
-    const service = new PaymentService(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-      new PaymentErrorHandler()
+    const admin = await factory.createAuditedAdminClient(
+      AdminReason.PAYMENT_PROCESSING,
+      "app/payments/actions/create-cash"
     );
+    const service = new PaymentService(admin, new PaymentErrorHandler());
     const result = await service.createCashPayment({ attendanceId, amount });
 
     // 監査ログ
-    const admin = createAdminClient<Database>(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    );
     await admin.from("system_logs").insert({
       operation_type: "cash_payment_created",
       details: { attendanceId, amount, paymentId: result.paymentId, userId: user.id },

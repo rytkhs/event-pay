@@ -10,6 +10,7 @@ import { createClient as createServerClient } from "@/lib/supabase/server";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { createRateLimitStore, checkRateLimit } from "@/lib/rate-limit";
 import { ERROR_CODES } from "@/lib/types/server-actions";
+import { AdminReason } from "@/lib/security/secure-client-factory.types";
 
 // モック設定
 jest.mock("@/lib/supabase/server");
@@ -17,6 +18,15 @@ jest.mock("@supabase/supabase-js");
 jest.mock("@/lib/services/payout");
 jest.mock("@/lib/services/stripe-connect");
 jest.mock("@/lib/rate-limit");
+jest.mock("@/lib/security/secure-client-factory.impl", () => {
+  const createAuditedAdminClient = jest.fn();
+  const instance = { createAuditedAdminClient };
+  return {
+    SecureSupabaseClientFactory: {
+      getInstance: jest.fn(() => instance),
+    },
+  };
+});
 
 const mockCreateServerClient = createServerClient as jest.MockedFunction<typeof createServerClient>;
 const mockCreateAdminClient = createAdminClient as jest.MockedFunction<typeof createAdminClient>;
@@ -69,14 +79,17 @@ describe("processManualPayoutAction", () => {
 
     mockCreateServerClient.mockReturnValue(mockSupabaseClient);
     mockCreateAdminClient.mockReturnValue(mockAdminClient);
+    const { SecureSupabaseClientFactory } = require("@/lib/security/secure-client-factory.impl");
+    (SecureSupabaseClientFactory.getInstance().createAuditedAdminClient as jest.Mock).mockResolvedValue(
+      mockAdminClient
+    );
 
     // レート制限のモック
     mockCreateRateLimitStore.mockResolvedValue({} as any);
     mockCheckRateLimit.mockResolvedValue({
       allowed: true,
-      remaining: 2,
       resetTime: Date.now() + 60000,
-    });
+    } as any);
 
     // PayoutServiceのモック
     mockPayoutServiceInstance = {
@@ -90,8 +103,17 @@ describe("processManualPayoutAction", () => {
     mockPayoutValidator.mockImplementation(() => mockValidatorInstance);
 
     // その他のサービスのモック
-    mockPayoutErrorHandler.mockImplementation(() => ({}));
-    mockStripeConnectService.mockImplementation(() => ({}));
+    mockPayoutErrorHandler.mockImplementation(
+      () =>
+        ({
+          handlePayoutError: jest.fn(),
+          logError: jest.fn(),
+          mapStripeError: jest.fn(),
+          mapDatabaseError: jest.fn(),
+          mapGenericError: jest.fn(),
+        } as unknown as PayoutErrorHandler)
+    );
+    mockStripeConnectService.mockImplementation((..._args: any[]) => ({} as any));
   });
 
   describe("正常系", () => {
@@ -270,10 +292,9 @@ describe("processManualPayoutAction", () => {
     it("レート制限に達した場合エラーが返される", async () => {
       mockCheckRateLimit.mockResolvedValue({
         allowed: false,
-        remaining: 0,
         resetTime: Date.now() + 300000,
         retryAfter: 300,
-      });
+      } as any);
 
       const result = await processManualPayoutAction({
         eventId: mockEventId,
@@ -409,21 +430,25 @@ describe("processManualPayoutAction", () => {
         eventId: mockEventId,
       });
 
-      // サービスクラスが正しい環境変数で初期化されることを確認
+      // 監査付き管理者クライアントが生成され、DIされていることを確認
+      const { SecureSupabaseClientFactory } = require("@/lib/security/secure-client-factory.impl");
+      expect(SecureSupabaseClientFactory.getInstance().createAuditedAdminClient).toHaveBeenCalledWith(
+        AdminReason.PAYOUT_PROCESSING,
+        "server-actions/process-manual-payout"
+      );
+
       expect(mockStripeConnectService).toHaveBeenCalledWith(
-        "https://test.supabase.co",
-        "test-service-role-key"
+        expect.any(Object),
+        expect.any(Object)
       );
 
       expect(mockPayoutValidator).toHaveBeenCalledWith(
-        "https://test.supabase.co",
-        "test-service-role-key",
+        expect.any(Object),
         expect.any(Object)
       );
 
       expect(mockPayoutService).toHaveBeenCalledWith(
-        "https://test.supabase.co",
-        "test-service-role-key",
+        expect.any(Object),
         expect.any(Object),
         expect.any(Object),
         expect.any(Object)

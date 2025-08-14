@@ -33,7 +33,7 @@ describe("決済セッション作成 統合テスト", () => {
   beforeAll(async () => {
     // テストデータの準備
     const errorHandler = new PaymentErrorHandler();
-    paymentService = new PaymentService(supabaseUrl, supabaseServiceKey, errorHandler);
+    paymentService = new PaymentService(supabase as any, errorHandler);
 
     // テストユーザー作成
     const { data: userData, error: userError } = await supabase.auth.admin.createUser({

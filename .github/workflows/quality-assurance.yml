@@ -73,6 +73,12 @@ jobs:
       - name: Run type check
         run: npm run typecheck
 
+      - name: Check Enum Consistency
+        run: npm run check:enum-consistency
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL || vars.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+
   # 3. 単体テスト
   unit-tests:
     name: Unit Tests

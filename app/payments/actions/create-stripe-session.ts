@@ -1,6 +1,7 @@
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
+import { SecureSupabaseClientFactory } from "@/lib/security/secure-client-factory.impl";
+import { AdminReason } from "@/lib/security/secure-client-factory.types";
 import { PaymentService, PaymentErrorHandler, PaymentValidator } from "@/lib/services/payment";
 import { getTransferGroupForEvent } from "@/lib/utils/stripe";
 import { createRateLimitStore, checkRateLimit } from "@/lib/rate-limit";
@@ -56,8 +57,9 @@ export async function createStripeSessionAction(
 
     const params = parsed.data;
 
-    // 認証
-    const supabase = createClient();
+    // 認証（RLS 下の認証クライアント）
+    const factory = SecureSupabaseClientFactory.getInstance();
+    const supabase = await factory.createAuthenticatedClient();
     const {
       data: { user },
       error: authError,
@@ -85,11 +87,8 @@ export async function createStripeSessionAction(
       // レート制限でのストア初期化失敗時はスキップ（安全側）
     }
 
-    // 参加記録の存在確認と権限チェック、金額妥当性は Validator に集約
-    const validator = new PaymentValidator(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    );
+    // 参加記録の存在確認と権限チェック、金額妥当性は Validator に集約（認証クライアント）
+    const validator = new PaymentValidator(supabase);
     await validator.validateAttendanceAccess(params.attendanceId, user.id);
     await validator.validatePaymentAmount(params.amount);
 
@@ -138,11 +137,11 @@ export async function createStripeSessionAction(
     }
 
     const errorHandler = new PaymentErrorHandler();
-    const paymentService = new PaymentService(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-      errorHandler
+    const admin = await factory.createAuditedAdminClient(
+      AdminReason.PAYMENT_PROCESSING,
+      "app/payments/actions/create-stripe-session"
     );
+    const paymentService = new PaymentService(admin, errorHandler);
 
     // Separate charges and transfers の推奨: 課金(PaymentIntent)と送金(Transfer)を同一グループで関連付け
     const transferGroup = getTransferGroupForEvent(event.id);

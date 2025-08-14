@@ -2,7 +2,7 @@
  * PaymentServiceの基本実装
  */
 
-import { createClient } from "@supabase/supabase-js";
+import type { SupabaseClient } from "@supabase/supabase-js";
 // import type { PostgrestError } from "@supabase/supabase-js";
 import { Database } from "@/types/database";
 import { stripe } from "@/lib/stripe/client";
@@ -26,12 +26,12 @@ import { ERROR_HANDLING_BY_TYPE } from "./error-mapping";
  * PaymentServiceの実装クラス
  */
 export class PaymentService implements IPaymentService {
-  private supabase: ReturnType<typeof createClient<Database>>;
+  private supabase: SupabaseClient<Database>;
   private stripe = stripe;
   private errorHandler: IPaymentErrorHandler;
 
-  constructor(supabaseUrl: string, supabaseKey: string, errorHandler: IPaymentErrorHandler) {
-    this.supabase = createClient<Database>(supabaseUrl, supabaseKey);
+  constructor(supabaseClient: SupabaseClient<Database>, errorHandler: IPaymentErrorHandler) {
+    this.supabase = supabaseClient;
     this.errorHandler = errorHandler;
   }
 

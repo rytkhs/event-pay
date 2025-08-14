@@ -61,7 +61,7 @@ describe("PaymentService - Stripe Session Creation", () => {
     mockSingle.mockClear();
 
     errorHandler = new PaymentErrorHandler();
-    paymentService = new PaymentService("test-url", "test-key", errorHandler);
+    paymentService = new PaymentService(mockSupabase as any, errorHandler);
 
     // 既存検索は空配列を返す（=既存なし）
     chainLimit = jest.fn().mockResolvedValue({ data: [], error: null });

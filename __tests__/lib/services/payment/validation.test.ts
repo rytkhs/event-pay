@@ -5,16 +5,18 @@
 import { PaymentValidator, validateUUID, validateUrl } from "@/lib/services/payment/validation";
 import { PaymentError, PaymentErrorType } from "@/lib/services/payment/types";
 
-// Supabaseクライアントのモック
+// Supabaseクライアントのモック（single/ maybeSingle / limit を含めて型の不一致を防止）
 const mockSupabase = {
   from: jest.fn(() => ({
     select: jest.fn(() => ({
       eq: jest.fn(() => ({
         single: jest.fn(),
+        maybeSingle: jest.fn(),
+        limit: jest.fn(),
       })),
     })),
   })),
-};
+} as any;
 
 // createClientのモック
 jest.mock("@supabase/supabase-js", () => ({
@@ -26,7 +28,7 @@ describe("PaymentValidator", () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    validator = new PaymentValidator("mock-url", "mock-key");
+    validator = new PaymentValidator(mockSupabase as any);
   });
 
   describe("validateCreateStripeSessionParams", () => {
@@ -186,12 +188,13 @@ describe("PaymentValidator", () => {
 
   describe("validateNoDuplicatePayment (複数行重複の扱い)", () => {
     it("複数行ヒット時でも PAYMENT_ALREADY_EXISTS を返す", async () => {
+      const attendanceUUID = "123e4567-e89b-12d3-a456-426614174000";
       // attendances 存在チェック
       const mockSelectAttendance = jest.fn(() => ({
         eq: jest.fn(() => ({
           limit: jest.fn().mockResolvedValue({
             data: [
-              { id: "attendance-123", event_id: "event-123", events: { id: "event-123", created_by: "user-1" } },
+              { id: attendanceUUID, event_id: "event-123", events: { id: "event-123", created_by: "user-1" } },
             ],
             error: null,
           }),
@@ -212,14 +215,14 @@ describe("PaymentValidator", () => {
 
       (mockSupabase.from as jest.Mock).mockReturnValueOnce({ select: mockSelectDuplicate });
 
-      const validatorLocal = new PaymentValidator("mock-url", "mock-key");
+      const validatorLocal = new PaymentValidator(mockSupabase as any);
 
       await expect(
-        validatorLocal.validateCreateCashPaymentParams({ attendanceId: "attendance-123", amount: 1000 }, "user-1")
+        validatorLocal.validateCreateCashPaymentParams({ attendanceId: attendanceUUID, amount: 1000 }, "user-1")
       ).rejects.toBeInstanceOf(PaymentError);
 
       try {
-        await validatorLocal.validateCreateCashPaymentParams({ attendanceId: "attendance-123", amount: 1000 }, "user-1");
+        await validatorLocal.validateCreateCashPaymentParams({ attendanceId: attendanceUUID, amount: 1000 }, "user-1");
       } catch (error) {
         expect((error as PaymentError).type).toBe(PaymentErrorType.PAYMENT_ALREADY_EXISTS);
       }
@@ -233,13 +236,14 @@ describe("PaymentValidator", () => {
     };
 
     it("有効なパラメータの場合は正常に処理される", async () => {
-      // 決済レコードの存在確認をモック
+      // 決済レコードの存在確認をモック (maybeSingle)
       const mockSelect = jest.fn(() => ({
         eq: jest.fn(() => ({
-          single: jest.fn().mockResolvedValue({
+          maybeSingle: jest.fn().mockResolvedValue({
             data: { id: validParams.paymentId },
             error: null,
           }),
+          single: jest.fn(),
         })),
       }));
 
@@ -284,10 +288,11 @@ describe("PaymentValidator", () => {
       // 決済レコードの存在確認をモック
       const mockSelectExists = jest.fn(() => ({
         eq: jest.fn(() => ({
-          single: jest.fn().mockResolvedValue({
+          maybeSingle: jest.fn().mockResolvedValue({
             data: { id: params.paymentId },
             error: null,
           }),
+          single: jest.fn(),
         })),
       }));
 
@@ -362,9 +367,7 @@ describe("PaymentValidator", () => {
         })),
       }));
 
-      (mockSupabase.from as jest.Mock).mockReturnValue({
-        select: mockSelect,
-      });
+      (mockSupabase.from as jest.Mock).mockReturnValueOnce({ select: mockSelect });
 
       await expect(validator.validateAttendanceAccess("attendance-123", "user-123")).resolves.not.toThrow();
     });
@@ -379,9 +382,7 @@ describe("PaymentValidator", () => {
         })),
       }));
 
-      (mockSupabase.from as jest.Mock).mockReturnValue({
-        select: mockSelect,
-      });
+      (mockSupabase.from as jest.Mock).mockReturnValueOnce({ select: mockSelect });
 
       await expect(validator.validateAttendanceAccess("attendance-123", "user-123")).rejects.toThrow(
         PaymentError

@@ -171,8 +171,8 @@ export class PlatformFeeCalculator {
     }
 
     // 基本手数料計算
-    let rateFee = Math.round(totalSales * this.config.rate);
-    let fixedFee = paymentCount * this.config.fixedFee;
+    const rateFee = Math.round(totalSales * this.config.rate);
+    const fixedFee = paymentCount * this.config.fixedFee;
     let totalFee = rateFee + fixedFee;
 
     let minimumFeeApplied = false;
@@ -318,8 +318,14 @@ export class PayoutCalculator {
 }
 
 /**
- * デフォルトの手数料設定
+ * @deprecated PayoutCalculator は廃止予定です
+ * 新しいコードでは calc_total_stripe_fee() RPC と FeeConfigService を使用してください
+ *
+ * このファイル全体は下位互換性のためにのみ残されており、
+ * 将来のバージョンで削除される予定です。
  */
+
+// 廃止予定の定数 - FeeConfigService を使用してください
 export const DEFAULT_STRIPE_FEE_CONFIG: StripeFeeConfig = {
   baseRate: 0.036, // 3.6%
   fixedFee: 0, // 0円
@@ -333,9 +339,11 @@ export const DEFAULT_PLATFORM_FEE_CONFIG: PlatformFeeConfig = {
 };
 
 /**
- * デフォルト設定での送金計算インスタンスを作成
+ * @deprecated createDefaultPayoutCalculator は廃止予定です
+ * FeeConfigService + RPC を使用してください
  */
 export function createDefaultPayoutCalculator(): PayoutCalculator {
+  console.warn("⚠️  createDefaultPayoutCalculator is deprecated. Use FeeConfigService + RPC instead.");
   return new PayoutCalculator(
     DEFAULT_STRIPE_FEE_CONFIG,
     DEFAULT_PLATFORM_FEE_CONFIG

@@ -237,11 +237,75 @@ erDiagram
 ### アプリケーション設定
 
 - `NEXT_PUBLIC_APP_URL` - アプリケーションの URL（デフォルト：http://localhost:3000）
+- `NEXT_PUBLIC_MIN_PAYOUT_AMOUNT` - 最小送金金額（円）。デフォルト 100 円。変更すると送金条件が一括で更新されます。
 - `NEXT_PUBLIC_SITE_URL` - アプリケーションのURL
 - `STRIPE_SECRET_KEY` - Stripeのシークレットキー
 - `STRIPE_WEBHOOK_SECRET` - StripeのWebhookシークレットキー
 - `RESEND_API_KEY` - ResendのAPIキー
 - `COOKIE_SECRET` - Cookieの署名・暗号化に使用する32文字以上の秘密鍵
+
+## 開発ガイド
+
+### Enum型管理
+
+EventPayでは、データベースのEnum型とTypeScriptの型定義の整合性を保つため、自動チェック機能を提供しています。
+
+#### 整合性チェックの実行
+
+```bash
+# Enum型の整合性をチェック
+npm run check:enum-consistency
+```
+
+#### Enum型の変更手順
+
+1. **データベース側の変更（マイグレーション）**
+   ```sql
+   -- 例: payment_status_enum に新しいステータスを追加
+   ALTER TYPE public.payment_status_enum ADD VALUE 'new_status';
+   ```
+
+2. **TypeScript側の変更**
+   ```typescript
+   // types/enums.ts を更新
+   export type PaymentStatus =
+     | "pending"
+     | "paid"
+     | "failed"
+     | "received"
+     | "completed"
+     | "refunded"
+     | "waived"
+     | "new_status"; // 新しい値を追加
+   ```
+
+3. **整合性の確認**
+   ```bash
+   npm run check:enum-consistency
+   ```
+
+#### CI/CDでの自動チェック
+
+GitHub ActionsのQuality Assuranceワークフローで、Enum型の整合性が自動的にチェックされます。不整合がある場合、CIが失敗してプルリクエストのマージがブロックされます。
+
+#### 対象のEnum型
+
+- `event_status_enum` - イベントステータス
+- `payment_method_enum` - 決済方法
+- `payment_status_enum` - 決済ステータス
+- `attendance_status_enum` - 参加ステータス
+- `stripe_account_status_enum` - Stripe Connectアカウントステータス
+- `payout_status_enum` - 送金ステータス
+
+### 手数料・設定管理
+
+EventPayの手数料計算と設定は、`fee_config`テーブルで一元管理されています。
+
+#### 設定変更時の注意事項
+
+1. **手数料設定の変更**: 必ず`fee_config`テーブルのレコードを更新してください
+2. **最小送金額の変更**: `fee_config.min_payout_amount`を更新してください
+3. **整合性確認**: 変更後は`npm run test __tests__/lib/services/payout/fee-consistency.test.ts`を実行してください
 
 ## Learn More
 

@@ -1,8 +1,7 @@
 "use server";
 
 import { z } from "zod";
-import { createClient } from "@/lib/supabase/server";
-import { createClient as createSupabaseClient } from "@supabase/supabase-js";
+import { SecureSupabaseClientFactory } from "@/lib/security/secure-client-factory.impl";
 import { getCurrentUser } from "@/lib/auth/auth-utils";
 import { generateInviteToken } from "@/lib/utils/invite-token";
 
@@ -29,14 +28,9 @@ export async function generateInviteTokenAction(
       };
     }
 
-    // テスト環境ではservice_roleクライアントを使用
-    const supabase =
-      process.env.NODE_ENV === "test"
-        ? createSupabaseClient(
-            process.env.NEXT_PUBLIC_SUPABASE_URL!,
-            process.env.SUPABASE_SERVICE_ROLE_KEY!
-          )
-        : createClient();
+    // RLS 下の認証クライアントを利用
+    const factory = SecureSupabaseClientFactory.getInstance();
+    const supabase = await factory.createAuthenticatedClient();
 
     // イベントの存在確認と権限チェック
     const { data: event, error: eventError } = await supabase

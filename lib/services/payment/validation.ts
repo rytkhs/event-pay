@@ -3,7 +3,7 @@
  */
 
 import { z } from "zod";
-import { createClient } from "@supabase/supabase-js";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { Database } from "@/types/database";
 import { IPaymentValidator } from "./interface";
 import {
@@ -73,10 +73,10 @@ const updatePaymentStatusParamsSchema = z.object({
  * PaymentValidatorの実装クラス
  */
 export class PaymentValidator implements IPaymentValidator {
-  private supabase: ReturnType<typeof createClient<Database>>;
+  private supabase: SupabaseClient<Database>;
 
-  constructor(supabaseUrl: string, supabaseKey: string) {
-    this.supabase = createClient<Database>(supabaseUrl, supabaseKey);
+  constructor(supabaseClient: SupabaseClient<Database>) {
+    this.supabase = supabaseClient;
   }
 
   /**

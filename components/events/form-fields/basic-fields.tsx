@@ -4,6 +4,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { EventFormData, ValidationErrors } from "@/lib/validation/client-validation";
 import { getMinDatetimeLocal } from "@/lib/utils/timezone";
 
+/** 開発・本番いずれでも参照できるよう NEXT_PUBLIC_ で値を注入 */
+const STRIPE_FEE_RATE = Number(process.env.NEXT_PUBLIC_STRIPE_FEE_RATE ?? 0.036);
+const STRIPE_FIXED_FEE = Number(process.env.NEXT_PUBLIC_STRIPE_FIXED_FEE ?? 0);
+
 interface BasicFieldsProps {
   formData: EventFormData;
   errors: ValidationErrors;
@@ -17,7 +21,7 @@ export default function BasicFields({ formData, errors, onInputChange }: BasicFi
 
   // 参加費の計算（表示用）
   const feeValue = formData.fee ? parseInt(formData.fee) : 0;
-  const serviceFee = Math.round(feeValue * 0.036);
+  const serviceFee = Math.round(feeValue * STRIPE_FEE_RATE + STRIPE_FIXED_FEE);
   const netAmount = feeValue - serviceFee;
 
   return (
@@ -172,7 +176,9 @@ export default function BasicFields({ formData, errors, onInputChange }: BasicFi
               <span>{feeValue.toLocaleString()}円</span>
             </div>
             <div className="flex justify-between">
-              <span>サービス手数料（3.6%）：</span>
+              <span>
+                サービス手数料（{(STRIPE_FEE_RATE * 100).toFixed(1)}% + {STRIPE_FIXED_FEE}円）：
+              </span>
               <span>-{serviceFee.toLocaleString()}円</span>
             </div>
             <div className="border-t pt-1 flex justify-between font-medium">

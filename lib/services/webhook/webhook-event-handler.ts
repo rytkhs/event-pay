@@ -378,6 +378,20 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
         return { success: true };
       }
 
+      // processing_errorステータスからの復旧処理
+      if (payout.status === "processing_error") {
+        await this.securityReporter.logSecurityEvent({
+          type: "webhook_processing_error_recovery",
+          details: {
+            eventId: event.id,
+            payoutId: payout.id,
+            transferId,
+            previousStatus: payout.status,
+            recoveryAction: "transfer.created webhook processing",
+          },
+        });
+      }
+
       // 送金ステータスを完了に更新
       const { error: updateError } = await this.supabase
         .from("payouts")

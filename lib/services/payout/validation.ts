@@ -2,7 +2,7 @@
  * PayoutValidator の実装
  */
 
-import { createClient } from "@supabase/supabase-js";
+import { type SupabaseClient } from "@supabase/supabase-js";
 import { Database } from "@/types/database";
 import { IPayoutValidator } from "./interface";
 import { getElapsedCalendarDaysInJst } from "@/lib/utils/timezone";
@@ -15,21 +15,25 @@ import {
   ValidateManualPayoutParams,
   ManualPayoutEligibilityResult,
 } from "./types";
+import { MAX_PAYOUT_AMOUNT } from "./constants";
+import { FeeConfigService } from "../fee-config/service";
+// PayoutCalculator は削除 - RPC の calc_total_stripe_fee() を使用
 
 /**
  * PayoutValidatorの実装クラス
  */
 export class PayoutValidator implements IPayoutValidator {
-  private supabase: ReturnType<typeof createClient<Database>>;
+  private supabase: SupabaseClient<Database>;
   private stripeConnectService: IStripeConnectService;
+  private feeConfigService: FeeConfigService;
 
   constructor(
-    supabaseUrl: string,
-    supabaseKey: string,
+    supabaseClient: SupabaseClient<Database>,
     stripeConnectService: IStripeConnectService
   ) {
-    this.supabase = createClient<Database>(supabaseUrl, supabaseKey);
+    this.supabase = supabaseClient;
     this.stripeConnectService = stripeConnectService;
+    this.feeConfigService = new FeeConfigService(supabaseClient);
   }
 
   /**
@@ -272,19 +276,22 @@ export class PayoutValidator implements IPayoutValidator {
       );
     }
 
-    // 最小金額チェック（100円以上）
-    if (amount < 100) {
+    // 最小金額取得 (キャッシュ付き)
+    const { minPayoutAmount } = await this.feeConfigService.getConfig();
+
+    // 最小金額チェック
+    if (amount < minPayoutAmount) {
       throw new PayoutError(
         PayoutErrorType.VALIDATION_ERROR,
-        "送金金額は100円以上である必要があります"
+        `送金金額は${minPayoutAmount}円以上である必要があります`
       );
     }
 
-    // 最大金額チェック（1億円以下）
-    if (amount > 100_000_000) {
+    // 最大金額チェック
+    if (amount > MAX_PAYOUT_AMOUNT) {
       throw new PayoutError(
         PayoutErrorType.VALIDATION_ERROR,
-        "送金金額は1億円以下である必要があります"
+        `送金金額は${MAX_PAYOUT_AMOUNT.toLocaleString()}円以下である必要があります`
       );
     }
   }
@@ -297,7 +304,7 @@ export class PayoutValidator implements IPayoutValidator {
       pending: ["processing", "failed"],
       processing: ["completed", "failed"],
       completed: [], // 完了状態からは遷移不可
-      failed: ["pending"], // 失敗状態からは再試行でpendingに戻せる
+      failed: ["pending", "processing"], // 失敗状態からは再試行でpendingまたはprocessingに遷移可能
     };
 
     const current = currentStatus as PayoutStatus;
@@ -341,9 +348,14 @@ export class PayoutValidator implements IPayoutValidator {
     const {
       eventId,
       userId,
-      minimumAmount = 100,
+      minimumAmount,
       daysAfterEvent = 5,
     } = params;
+
+    // 最小送金額（デフォルト）を取得
+    const { minPayoutAmount } = await this.feeConfigService.getConfig();
+
+    const effectiveMinAmount = minimumAmount ?? minPayoutAmount;
 
     const result: ManualPayoutEligibilityResult = {
       eligible: false,
@@ -466,11 +478,13 @@ export class PayoutValidator implements IPayoutValidator {
 
       // 5. 送金対象金額の検証（要件8.3）
       try {
-        // Stripe決済の売上を集計
+        // Stripe決済の売上を取得（決済データは後で計算にそのまま渡す）
         const { data: stripePayments, error: paymentsError } = await this.supabase
           .from("payments")
           .select(`
             amount,
+            method,
+            status,
             attendances!inner (
               event_id
             )
@@ -487,19 +501,40 @@ export class PayoutValidator implements IPayoutValidator {
           );
         }
 
-        const totalStripeSales = (stripePayments || []).reduce((sum, payment) => sum + payment.amount, 0);
+        // ---- RPC による手数料計算 ----
+        // Stripe売上の集計
+        const totalStripeSales = (stripePayments || []).reduce((sum: number, p: any) => sum + p.amount, 0);
 
-        // 簡易的な手数料計算（詳細計算は別途PayoutCalculatorで実行）
-        const estimatedStripeFee = Math.round(totalStripeSales * 0.036); // 3.6%
-        const estimatedNetAmount = totalStripeSales - estimatedStripeFee;
+        // Stripe手数料は calc_total_stripe_fee() RPC で計算
+        const { data: totalStripeFee, error: feeError } = await (this.supabase as any)
+          .rpc("calc_total_stripe_fee", { p_event_id: eventId });
 
-        result.details.estimatedAmount = estimatedNetAmount;
-        result.details.minimumAmountMet = estimatedNetAmount >= minimumAmount;
+        if (feeError) {
+          throw new PayoutError(
+            PayoutErrorType.DATABASE_ERROR,
+            `Stripe手数料の計算に失敗しました: ${feeError.message}`,
+            feeError
+          );
+        }
 
-        if (totalStripeSales === 0) {
+        // プラットフォーム手数料（現在は0）
+        const platformFee = 0;
+        const netPayoutAmount = totalStripeSales - (totalStripeFee || 0) - platformFee;
+
+        const calculation = {
+          totalStripeSales,
+          totalStripeFee: totalStripeFee || 0,
+          platformFee,
+          netPayoutAmount,
+        };
+
+        result.details.estimatedAmount = calculation.netPayoutAmount;
+        result.details.minimumAmountMet = calculation.netPayoutAmount >= effectiveMinAmount;
+
+        if (calculation.totalStripeSales === 0) {
           result.reasons.push("このイベントには送金対象となるStripe決済がありません");
         } else if (!result.details.minimumAmountMet) {
-          result.reasons.push(`送金金額が最小金額（${minimumAmount}円）を下回っています（推定: ${estimatedNetAmount}円）`);
+          result.reasons.push(`送金金額が最小金額（${effectiveMinAmount}円）を下回っています（推定: ${calculation.netPayoutAmount}円）`);
         }
       } catch (_calculationError) {
         result.reasons.push("送金金額の計算に失敗しました");

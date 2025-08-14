@@ -6,6 +6,7 @@
 import Stripe from "stripe";
 import { stripe } from "@/lib/stripe/client";
 import { PayoutError, PayoutErrorType } from "./types";
+import { MIN_STRIPE_TRANSFER_AMOUNT, MAX_STRIPE_TRANSFER_AMOUNT } from "./constants";
 
 /**
  * Stripe Transfer作成パラメータ
@@ -42,6 +43,11 @@ export interface CreateTransferResult {
   status: string;
   created: number;
   estimatedArrival?: Date;
+  rateLimitInfo?: {
+    hitRateLimit: boolean;
+    suggestedDelayMs?: number;
+    retriedCount: number;
+  };
 }
 
 /**
@@ -85,7 +91,7 @@ export class StripeTransferService {
       const idempotencyKey = this.generateIdempotencyKey(params);
 
       // Stripe Transfer作成（リトライ機能付き）
-      const transfer = await this.createTransferWithRetry(params, idempotencyKey);
+      const { transfer, rateLimitInfo } = await this.createTransferWithRetry(params, idempotencyKey);
 
       // 結果を整形して返す
       return {
@@ -95,6 +101,7 @@ export class StripeTransferService {
         status: (transfer as any).status || "pending",
         created: transfer.created,
         estimatedArrival: this.calculateEstimatedArrival(transfer.created),
+        rateLimitInfo,
       };
 
     } catch (error) {
@@ -131,7 +138,7 @@ export class StripeTransferService {
     try {
       // Stripe APIではTransferの直接キャンセルはサポートされていない
       // 代わりにTransfer Reversalを作成する
-      const reversal = await this.stripe.transfers.createReversal(transferId);
+      await this.stripe.transfers.createReversal(transferId);
 
       // 元のTransfer情報を取得して返す
       return await this.getTransfer(transferId);
@@ -147,22 +154,22 @@ export class StripeTransferService {
    */
   private validateTransferParams(params: CreateTransferParams): void {
     // 金額検証
-    if (!params.amount || params.amount <= 0) {
+    if (!params.amount || params.amount < MIN_STRIPE_TRANSFER_AMOUNT) {
       throw new PayoutError(
         PayoutErrorType.VALIDATION_ERROR,
-        "送金金額は1円以上である必要があります",
+        `送金金額は${MIN_STRIPE_TRANSFER_AMOUNT}円以上である必要があります`,
         undefined,
         { amount: params.amount }
       );
     }
 
     // 最大金額チェック（Stripeの制限: 1回あたり最大999,999,999円）
-    if (params.amount > 999999999) {
+    if (params.amount > MAX_STRIPE_TRANSFER_AMOUNT) {
       throw new PayoutError(
         PayoutErrorType.VALIDATION_ERROR,
         "送金金額が上限を超えています",
         undefined,
-        { amount: params.amount, maxAmount: 999999999 }
+        { amount: params.amount, maxAmount: MAX_STRIPE_TRANSFER_AMOUNT }
       );
     }
 
@@ -199,35 +206,48 @@ export class StripeTransferService {
 
   /**
    * 冪等性キーを生成する
+   * Race condition対策として、payout_id + destinationベースの冪等性キーを使用
+   * これにより、万一DBで重複レコードが作成されても、Stripe側で重複Transferを防ぐ
    * @param params Transfer作成パラメータ
    * @returns 冪等性キー
    */
   private generateIdempotencyKey(params: CreateTransferParams): string {
     const keyComponents = [
       "transfer",
-      params.metadata.payout_id,
-      params.amount.toString(),
+      params.metadata.payout_id,  // payout_id をベースに変更
       params.destination,
     ];
 
+    // transfer_groupが指定されている場合は追加（より強固な重複防止）
     if (params.transferGroup) {
       keyComponents.push(params.transferGroup);
     }
 
-    return keyComponents.join(":");
+    // Stripe の Idempotency-Key は 1〜255 文字の ASCII に制限されているため安全側で truncate
+    return keyComponents.join(":").slice(0, 255);
   }
 
   /**
    * リトライ機能付きでStripe Transferを作成する
    * @param params Transfer作成パラメータ
    * @param idempotencyKey 冪等性キー
-   * @returns 作成されたTransfer
+   * @returns 作成されたTransferとレート制限情報
    */
   private async createTransferWithRetry(
     params: CreateTransferParams,
     idempotencyKey: string
-  ): Promise<Stripe.Transfer> {
+  ): Promise<{
+    transfer: Stripe.Transfer;
+    rateLimitInfo: {
+      hitRateLimit: boolean;
+      suggestedDelayMs?: number;
+      retriedCount: number;
+    };
+  }> {
     let lastError: Error | null = null;
+    let hitRateLimit = false;
+    let suggestedDelayMs: number | undefined;
+    let retriedCount = 0;
 
     for (let attempt = 0; attempt <= this.retryConfig.maxRetries; attempt++) {
       try {
@@ -256,11 +276,27 @@ export class StripeTransferService {
           ? {}
           : { idempotencyKey };
 
-        return await this.stripe.transfers.create(transferParams, requestOptions);
+        const transfer = await this.stripe.transfers.create(transferParams, requestOptions);
+
+        return {
+          transfer,
+          rateLimitInfo: {
+            hitRateLimit,
+            suggestedDelayMs,
+            retriedCount,
+          },
+        };
 
       } catch (error) {
         lastError = error as Error;
         const stripeError = error as any;
+
+        // レート制限エラーかチェック
+        const isRateLimitError = stripeError.statusCode === 429 || stripeError.code === "rate_limit";
+        if (isRateLimitError) {
+          hitRateLimit = true;
+          retriedCount = attempt + 1;
+        }
 
         // リトライ可能なエラーかチェック
         if (attempt < this.retryConfig.maxRetries && this.isRetryableError(stripeError)) {
@@ -276,6 +312,8 @@ export class StripeTransferService {
               if (Number.isFinite(retryAfterSec) && retryAfterSec > 0) {
                 const retryAfterMs = retryAfterSec * 1000;
                 delay = Math.min(retryAfterMs, this.retryConfig.maxDelayMs);
+                // スケジューラーレベルでの活用のため、最終的な推奨遅延を記録
+                suggestedDelayMs = delay;
               }
             }
           } catch (_e) {
@@ -321,6 +359,25 @@ export class StripeTransferService {
     // Stripeエラーコードによる判定
     if (error.code && this.retryConfig.retryableErrorCodes.includes(error.code)) {
       return true;
+    }
+
+    // Stripeエラー type による判定（code が空文字の場合のカバレッジ）
+    //   - Stripe SDK v10 では API エラー時に `type: 'StripeAPIError'` / `'StripeConnectionError'`
+    //   - 一部バージョンやラッパーでは `type: 'api_error'` が設定され code が空になるケースがある
+    //   いずれもネットワーク起因または Stripe 側の一時的障害であり再試行で解決する可能性が高い
+    if (typeof error.type === "string") {
+      const retryableTypes = [
+        "StripeAPIError", // node-stripe 標準
+        "StripeConnectionError", // 接続系
+        "StripeRateLimitError", // レート制限（補足）
+        "api_error", // 古い/一部ラッパー表記
+        "api_connection_error", // 古い/一部ラッパー表記
+        "rate_limit",
+      ];
+
+      if (retryableTypes.includes(error.type)) {
+        return true;
+      }
     }
 
     return false;
