@@ -5,25 +5,31 @@
  */
 
 import { PayoutSchedulerConfig } from "./types";
+import {
+  DEFAULT_PAYOUT_DAYS_AFTER_EVENT,
+  DEFAULT_PAYOUT_MAX_EVENTS_PER_RUN,
+  DEFAULT_PAYOUT_MAX_CONCURRENCY,
+  DEFAULT_PAYOUT_DELAY_BETWEEN_BATCHES,
+} from "./constants";
 
 /**
  * デフォルトのスケジューラー設定
  */
 export const DEFAULT_SCHEDULER_CONFIG: PayoutSchedulerConfig = {
-  // イベント終了から5日後に送金対象とする
-  daysAfterEvent: 5,
+  // イベント終了から規定日数後に送金対象とする
+  daysAfterEvent: DEFAULT_PAYOUT_DAYS_AFTER_EVENT,
 
-  // 最小売上金額100円（これ以下は送金しない）
-  minimumAmount: 100,
+  // 最小売上金額（これ以下は送金しない）- 実際の値はFeeConfigServiceから取得
+  minimumAmount: 100, // デフォルト値、実行時に上書きされる
 
   // 1回の実行で処理する最大イベント数
-  maxEventsPerRun: 100,
+  maxEventsPerRun: DEFAULT_PAYOUT_MAX_EVENTS_PER_RUN,
 
   // 最大並行処理数（Stripe API制限を考慮）
-  maxConcurrency: 3,
+  maxConcurrency: DEFAULT_PAYOUT_MAX_CONCURRENCY,
 
   // バッチ間の遅延（ミリ秒）
-  delayBetweenBatches: 1000,
+  delayBetweenBatches: DEFAULT_PAYOUT_DELAY_BETWEEN_BATCHES,
 
   // 失敗した送金の再試行を行うか（現在は無効）
   retryFailedPayouts: false,
@@ -152,6 +158,14 @@ export function validateSchedulerConfig(config: PayoutSchedulerConfig): {
 
   if (config.delayBetweenBatches > 60000) {
     errors.push("delayBetweenBatches should not exceed 60000ms (1 minute)");
+  }
+
+  // Stripe レート制限対応: 並列実行時は最低1秒の遅延を必須とする
+  if (config.maxConcurrency > 1 && config.delayBetweenBatches < 1000) {
+    errors.push(
+      "delayBetweenBatches must be at least 1000ms when maxConcurrency > 1 to avoid Stripe rate limits. " +
+      "Same Connect account transfers should be spaced at least 1 second apart."
+    );
   }
 
   return {

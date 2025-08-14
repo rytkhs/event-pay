@@ -46,7 +46,7 @@ describe("PaymentService", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     errorHandler = new PaymentErrorHandler();
-    paymentService = new PaymentService("mock-url", "mock-key", errorHandler);
+    paymentService = new PaymentService(mockSupabase as any, errorHandler);
   });
 
   describe("createCashPayment", () => {

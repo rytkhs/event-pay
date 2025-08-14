@@ -11,6 +11,12 @@ import {
   getConfigDiff,
 } from "@/lib/services/payout/scheduler-config";
 import { PayoutSchedulerConfig } from "@/lib/services/payout/types";
+import {
+  DEFAULT_PAYOUT_DAYS_AFTER_EVENT,
+  DEFAULT_PAYOUT_MAX_EVENTS_PER_RUN,
+  DEFAULT_PAYOUT_MAX_CONCURRENCY,
+  DEFAULT_PAYOUT_DELAY_BETWEEN_BATCHES,
+} from "@/lib/services/payout/constants";
 
 describe("PayoutScheduler設定管理", () => {
   // 環境変数のバックアップ
@@ -30,11 +36,11 @@ describe("PayoutScheduler設定管理", () => {
   describe("DEFAULT_SCHEDULER_CONFIG", () => {
     it("デフォルト設定が正しく定義されている", () => {
       expect(DEFAULT_SCHEDULER_CONFIG).toEqual({
-        daysAfterEvent: 5,
+        daysAfterEvent: DEFAULT_PAYOUT_DAYS_AFTER_EVENT,
         minimumAmount: 100,
-        maxEventsPerRun: 100,
-        maxConcurrency: 3,
-        delayBetweenBatches: 1000,
+        maxEventsPerRun: DEFAULT_PAYOUT_MAX_EVENTS_PER_RUN,
+        maxConcurrency: DEFAULT_PAYOUT_MAX_CONCURRENCY,
+        delayBetweenBatches: DEFAULT_PAYOUT_DELAY_BETWEEN_BATCHES,
         retryFailedPayouts: false,
         enableLogging: true,
         logRetentionDays: 30,
@@ -166,6 +172,63 @@ describe("PayoutScheduler設定管理", () => {
       expect(result.errors).toContain("maxEventsPerRun should not exceed 1000 for performance reasons");
       expect(result.errors).toContain("maxConcurrency should not exceed 10 to avoid API rate limits");
       expect(result.errors).toContain("delayBetweenBatches should not exceed 60000ms (1 minute)");
+    });
+
+    it("Stripe レート制限対応: 並列実行時の遅延チェック", () => {
+      const invalidConfig: PayoutSchedulerConfig = {
+        daysAfterEvent: 5,
+        minimumAmount: 100,
+        maxEventsPerRun: 50,
+        maxConcurrency: 3, // 並列実行
+        delayBetweenBatches: 0, // 遅延なし（危険）
+        retryFailedPayouts: false,
+        enableLogging: true,
+        logRetentionDays: 30,
+      };
+
+      const result = validateSchedulerConfig(invalidConfig);
+
+      expect(result.isValid).toBe(false);
+      expect(result.errors).toContain(
+        "delayBetweenBatches must be at least 1000ms when maxConcurrency > 1 to avoid Stripe rate limits. " +
+        "Same Connect account transfers should be spaced at least 1 second apart."
+      );
+    });
+
+    it("Stripe レート制限対応: 並列実行でも適切な遅延があれば有効", () => {
+      const validConfig: PayoutSchedulerConfig = {
+        daysAfterEvent: 5,
+        minimumAmount: 100,
+        maxEventsPerRun: 50,
+        maxConcurrency: 3, // 並列実行
+        delayBetweenBatches: 1000, // 1秒遅延
+        retryFailedPayouts: false,
+        enableLogging: true,
+        logRetentionDays: 30,
+      };
+
+      const result = validateSchedulerConfig(validConfig);
+
+      expect(result.isValid).toBe(true);
+      expect(result.errors).toHaveLength(0);
+    });
+
+    it("Stripe レート制限対応: 並列実行数1の場合は遅延0でも有効", () => {
+      const validConfig: PayoutSchedulerConfig = {
+        daysAfterEvent: 5,
+        minimumAmount: 100,
+        maxEventsPerRun: 50,
+        maxConcurrency: 1, // 逐次実行
+        delayBetweenBatches: 0, // 遅延なし（OK）
+        retryFailedPayouts: false,
+        enableLogging: true,
+        logRetentionDays: 30,
+      };
+
+      const result = validateSchedulerConfig(validConfig);
+
+      expect(result.isValid).toBe(true);
+      expect(result.errors).toHaveLength(0);
     });
   });
 

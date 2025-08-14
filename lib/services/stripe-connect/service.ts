@@ -2,7 +2,7 @@
  * StripeConnectServiceの基本実装
  */
 
-import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { type SupabaseClient } from "@supabase/supabase-js";
 import Stripe from "stripe";
 import { Database } from "@/types/database";
 import { stripe } from "@/lib/stripe/client";
@@ -34,23 +34,12 @@ export class StripeConnectService implements IStripeConnectService {
   private stripe = stripe;
   private errorHandler: IStripeConnectErrorHandler;
 
-  // 後方互換のため 2 形式のコンストラクタを許可
-  // 1) (supabaseClient, errorHandler)
-  // 2) (supabaseUrl, supabaseServiceKey, errorHandler)
   constructor(
-    supabaseClientOrUrl: SupabaseClient<Database> | string,
-    errorHandlerOrKey: IStripeConnectErrorHandler | string,
-    maybeErrorHandler?: IStripeConnectErrorHandler
+    supabaseClient: SupabaseClient<Database>,
+    errorHandler: IStripeConnectErrorHandler
   ) {
-    if (typeof supabaseClientOrUrl === "string") {
-      const supabaseUrl = supabaseClientOrUrl;
-      const supabaseKey = errorHandlerOrKey as string;
-      this.supabase = createClient<Database>(supabaseUrl, supabaseKey);
-      this.errorHandler = maybeErrorHandler as IStripeConnectErrorHandler;
-    } else {
-      this.supabase = supabaseClientOrUrl as SupabaseClient<Database>;
-      this.errorHandler = errorHandlerOrKey as IStripeConnectErrorHandler;
-    }
+    this.supabase = supabaseClient;
+    this.errorHandler = errorHandler;
   }
 
   /**
@@ -514,6 +503,32 @@ export class StripeConnectService implements IStripeConnectService {
       throw new StripeConnectError(
         StripeConnectErrorType.UNKNOWN_ERROR,
         "アカウント認証状態チェック中にエラーが発生しました",
+        error as Error,
+        { userId }
+      );
+    }
+  }
+
+  /**
+   * アカウントが送金実行に必要な全条件を満たしているかチェックする
+   *   - status === 'verified'
+   *   - charges_enabled === true
+   *   - payouts_enabled === true
+   */
+  async isAccountReadyForPayout(userId: string): Promise<boolean> {
+    try {
+      const account = await this.getConnectAccountByUser(userId);
+      if (!account) return false;
+      const charges = account.charges_enabled ?? false;
+      const payouts = account.payouts_enabled ?? false;
+      return account.status === "verified" && charges && payouts;
+    } catch (error) {
+      if (error instanceof StripeConnectError) {
+        throw error;
+      }
+      throw new StripeConnectError(
+        StripeConnectErrorType.UNKNOWN_ERROR,
+        "送金実行条件チェック中にエラーが発生しました",
         error as Error,
         { userId }
       );

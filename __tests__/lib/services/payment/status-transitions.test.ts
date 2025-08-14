@@ -1,16 +1,17 @@
 import { PaymentValidator } from "@/lib/services/payment/validation";
 import { PaymentError, PaymentErrorType, PaymentStatus } from "@/lib/services/payment/types";
 
-// Supabaseクライアントのモック
+// Supabaseクライアントのモック（maybeSingle/single両方を用意）
 const mockSupabase = {
   from: jest.fn(() => ({
     select: jest.fn(() => ({
       eq: jest.fn(() => ({
         single: jest.fn(),
+        maybeSingle: jest.fn(),
       })),
     })),
   })),
-};
+} as any;
 
 jest.mock("@supabase/supabase-js", () => ({
   createClient: jest.fn(() => mockSupabase),
@@ -21,7 +22,7 @@ describe("Payment status transitions", () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    validator = new PaymentValidator("mock-url", "mock-key");
+    validator = new PaymentValidator(mockSupabase as any);
   });
 
   const all: PaymentStatus[] = [
@@ -45,11 +46,15 @@ describe("Payment status transitions", () => {
   };
 
   function mockExistsAndCurrent(status: PaymentStatus, method: "cash" | "stripe") {
-    // validateUpdatePaymentStatusParams 内で最初に存在チェック(single) → 次に status/method 取得(single)
-    const firstSingle = jest.fn().mockResolvedValue({ data: { id: "pay_1" }, error: null });
+    // 1回目: 存在チェック → maybeSingle
+    const firstMaybeSingle = jest.fn().mockResolvedValue({
+      data: { id: "123e4567-e89b-12d3-a456-426614174000" },
+      error: null,
+    });
+    // 2回目: 現在の status/method 取得 → single
     const secondSingle = jest.fn().mockResolvedValue({ data: { status, method }, error: null });
     (mockSupabase.from as jest.Mock).mockReturnValueOnce({
-      select: jest.fn(() => ({ eq: jest.fn(() => ({ single: firstSingle })) })),
+      select: jest.fn(() => ({ eq: jest.fn(() => ({ maybeSingle: firstMaybeSingle })) })),
     });
     (mockSupabase.from as jest.Mock).mockReturnValueOnce({
       select: jest.fn(() => ({ eq: jest.fn(() => ({ single: secondSingle })) })),
@@ -61,7 +66,7 @@ describe("Payment status transitions", () => {
       for (const to of all) {
         if (from === to) continue;
         mockExistsAndCurrent(from, "cash");
-        const params = { paymentId: "pay_1", status: to } as const;
+        const params = { paymentId: "123e4567-e89b-12d3-a456-426614174000", status: to } as const;
 
         const shouldAllow = validTransitions[from].includes(to) && !(to === "paid");
 
@@ -81,7 +86,7 @@ describe("Payment status transitions", () => {
 
   it("Stripeでは received への遷移は不許可", async () => {
     mockExistsAndCurrent("pending", "stripe");
-    const params = { paymentId: "pay_1", status: "received" as const };
+    const params = { paymentId: "123e4567-e89b-12d3-a456-426614174000", status: "received" as const };
     await expect(validator.validateUpdatePaymentStatusParams(params)).rejects.toBeInstanceOf(
       PaymentError
     );

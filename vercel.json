@@ -6,7 +6,8 @@
     },
     {
       "path": "/api/cron/process-payouts",
-      "schedule": "*/15 * * * *"
+      "schedule": "*/15 * * * *",
+      "concurrency": "single"
     }
   ]
 }

@@ -57,6 +57,11 @@ export interface ProcessPayoutResult {
   transferId: string | null;
   netAmount: number;
   estimatedArrival?: string;
+  rateLimitInfo?: {
+    hitRateLimit: boolean;
+    suggestedDelayMs?: number;
+    retriedCount: number;
+  };
 }
 
 // 送金金額計算結果
@@ -117,6 +122,8 @@ export enum PayoutErrorType {
   // 外部サービスエラー
   STRIPE_CONNECT_ERROR = "STRIPE_CONNECT_ERROR",
   TRANSFER_CREATION_FAILED = "TRANSFER_CREATION_FAILED",
+  // Stripe 失敗後にステータス更新も失敗
+  UPDATE_STATUS_FAILED = "UPDATE_STATUS_FAILED",
 }
 
 // 送金エラークラス
@@ -129,6 +136,23 @@ export class PayoutError extends Error {
   ) {
     super(message);
     this.name = "PayoutError";
+  }
+}
+
+/**
+ * Stripe Transfer 失敗 と updatePayoutStatus 失敗の両方を保持する複合エラー
+ */
+export class AggregatePayoutError extends PayoutError {
+  constructor(
+    public readonly original: Error, // Stripe Transfer 失敗
+    public readonly statusUpdateError: Error // updatePayoutStatus 失敗
+  ) {
+    super(
+      PayoutErrorType.UPDATE_STATUS_FAILED,
+      `Stripe Transfer 失敗後、ステータス更新も失敗: ${original.message} / ${statusUpdateError.message}`,
+      original
+    );
+    this.name = "AggregatePayoutError";
   }
 }
 
@@ -213,6 +237,7 @@ export interface SchedulerExecutionResult {
     amount?: number;
     estimatedArrival?: string;
     error?: string;
+    note?: string; // 競合処理などの特記事項
     dryRun?: boolean;
   }>;
   summary?: {

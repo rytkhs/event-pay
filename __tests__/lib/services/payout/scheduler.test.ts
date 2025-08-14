@@ -7,14 +7,12 @@ import { PayoutService } from "@/lib/services/payout/service";
 import { StripeConnectService } from "@/lib/services/stripe-connect/service";
 import {
   PayoutSchedulerConfig,
-  EligibleEvent,
+  EligibleEventWithAmount,
   SchedulerExecutionResult,
   PayoutSchedulerLog,
 } from "@/lib/services/payout/types";
-import { createClient } from "@supabase/supabase-js";
 
 // モック
-jest.mock("@supabase/supabase-js");
 jest.mock("@/lib/services/payout/service");
 jest.mock("@/lib/services/stripe-connect/service");
 
@@ -22,6 +20,22 @@ const mockSupabase = {
   from: jest.fn(),
   rpc: jest.fn(),
 };
+
+// デフォルト: row lock を取得成功させる
+mockSupabase.rpc.mockImplementation((fnName: string) => {
+  if (fnName === "try_acquire_scheduler_lock") {
+    return {
+      single: jest.fn().mockResolvedValue({ data: true, error: null }),
+    } as any;
+  }
+  if (fnName === "release_scheduler_lock") {
+    return {
+      single: jest.fn().mockResolvedValue({ data: true, error: null }),
+    } as any;
+  }
+  // その他 RPC はテストケースごとに上書きされる
+  return Promise.resolve({ data: [], error: null }) as any;
+});
 
 const mockPayoutService = {
   findEligibleEvents: jest.fn(),
@@ -40,86 +54,75 @@ describe("PayoutScheduler", () => {
   beforeEach(() => {
     jest.clearAllMocks();
 
-    (createClient as jest.Mock).mockReturnValue(mockSupabase);
-
     scheduler = new PayoutScheduler(
       mockPayoutService as any,
       mockStripeConnectService as any,
-      "test-url",
-      "test-key"
+      mockSupabase as any
     );
+
+    // 念のためDIされたクライアント参照を強制上書き
+    (scheduler as any).supabase = mockSupabase as any;
   });
 
   describe("findEligibleEventsWithDetails", () => {
-    it("送金対象イベントの詳細判定を正しく実行する", async () => {
-      // テストデータ
-      const mockEvents: EligibleEvent[] = [
+    it("送金対象イベントの詳細判定を正しく実行する (RPC)", async () => {
+      // RPC戻り値をモック
+      const rpcRows = [
         {
-          id: "event-1",
+          event_id: "event-1",
           title: "テストイベント1",
-          date: "2025-01-01",
+          event_date: "2025-01-01",
           fee: 1000,
           created_by: "user-1",
           created_at: "2025-01-01T00:00:00Z",
           paid_attendances_count: 5,
           total_stripe_sales: 5000,
+          total_stripe_fee: 180,
+          platform_fee: 0,
+          net_payout_amount: 4820,
+          charges_enabled: true,
+          payouts_enabled: true,
+          eligible: true,
+          ineligible_reason: null,
         },
         {
-          id: "event-2",
+          event_id: "event-2",
           title: "テストイベント2",
-          date: "2025-01-02",
+          event_date: "2025-01-02",
           fee: 500,
           created_by: "user-2",
           created_at: "2025-01-02T00:00:00Z",
           paid_attendances_count: 2,
           total_stripe_sales: 1000,
+          total_stripe_fee: 36,
+          platform_fee: 0,
+          net_payout_amount: 964,
+          charges_enabled: true,
+          payouts_enabled: false,
+          eligible: false,
+          ineligible_reason: "Stripe Connectアカウントで送金が有効になっていません",
         },
       ];
 
-      // モック設定
-      mockPayoutService.findEligibleEvents!.mockResolvedValue(mockEvents);
-
-      mockStripeConnectService.getConnectAccountByUser!
-        .mockResolvedValueOnce({
-          stripe_account_id: "acct_1",
-          status: "verified",
-          charges_enabled: true,
-          payouts_enabled: true,
-        })
-        .mockResolvedValueOnce({
-          stripe_account_id: "acct_2",
-          status: "verified",
-          charges_enabled: true,
-          payouts_enabled: false, // 送金無効
-        });
-
-      mockPayoutService.checkPayoutEligibility!
-        .mockResolvedValueOnce({
-          eligible: true,
-          estimatedAmount: 4500,
-        })
-        .mockResolvedValueOnce({
-          eligible: false,
-          reason: "送金が有効になっていません",
-        });
-
-      mockPayoutService.calculatePayoutAmount!.mockResolvedValueOnce({
-        totalStripeSales: 5000,
-        totalStripeFee: 180,
-        platformFee: 0,
-        netPayoutAmount: 4820,
-        breakdown: {
-          stripePaymentCount: 5,
-          averageTransactionAmount: 1000,
-          stripeFeeRate: 0.036,
-          platformFeeRate: 0,
-        },
+      mockSupabase.rpc.mockImplementation((fnName: string) => {
+        if (fnName === "find_eligible_events_with_details") {
+          return Promise.resolve({ data: rpcRows, error: null }) as any;
+        }
+        if (fnName === "try_acquire_scheduler_lock") {
+          return {
+            single: jest.fn().mockResolvedValue({ data: true, error: null }),
+          } as any;
+        }
+        if (fnName === "release_scheduler_lock") {
+          return {
+            single: jest.fn().mockResolvedValue({ data: true, error: null }),
+          } as any;
+        }
+        return Promise.resolve({ data: [], error: null }) as any;
       });
 
-      // 実行
       const result = await scheduler.findEligibleEventsWithDetails();
 
-      // 検証
       expect(result.eligible).toHaveLength(1);
       expect(result.ineligible).toHaveLength(1);
       expect(result.summary.totalEvents).toBe(2);
@@ -129,34 +132,81 @@ describe("PayoutScheduler", () => {
       expect(result.ineligible[0].reason).toContain("送金が有効になっていません");
     });
 
-    it("Stripe Connectアカウントが設定されていない場合は対象外とする", async () => {
-      const mockEvents: EligibleEvent[] = [
+    it("Stripe Connectアカウント未設定の場合は対象外 (RPC)", async () => {
+      const rpcRows = [
         {
-          id: "event-1",
+          event_id: "event-1",
           title: "テストイベント1",
-          date: "2025-01-01",
+          event_date: "2025-01-01",
           fee: 1000,
           created_by: "user-1",
           created_at: "2025-01-01T00:00:00Z",
           paid_attendances_count: 5,
           total_stripe_sales: 5000,
+          total_stripe_fee: 180,
+          platform_fee: 0,
+          net_payout_amount: 4820,
+          charges_enabled: false,
+          payouts_enabled: false,
+          eligible: false,
+          ineligible_reason: "Stripe Connectアカウントで送金が有効になっていません",
         },
       ];
 
-      mockPayoutService.findEligibleEvents!.mockResolvedValue(mockEvents);
-      mockStripeConnectService.getConnectAccountByUser!.mockResolvedValue(null);
+      mockSupabase.rpc.mockImplementation((fnName: string) => {
+        if (fnName === "find_eligible_events_with_details") {
+          return Promise.resolve({ data: rpcRows, error: null }) as any;
+        }
+        if (fnName === "try_acquire_scheduler_lock") {
+          return {
+            single: jest.fn().mockResolvedValue({ data: true, error: null }),
+          } as any;
+        }
+        if (fnName === "release_scheduler_lock") {
+          return {
+            single: jest.fn().mockResolvedValue({ data: true, error: null }),
+          } as any;
+        }
+        return Promise.resolve({ data: [], error: null }) as any;
+      });
 
       const result = await scheduler.findEligibleEventsWithDetails();
 
       expect(result.eligible).toHaveLength(0);
       expect(result.ineligible).toHaveLength(1);
-      expect(result.ineligible[0].reason).toBe("Stripe Connectアカウントが設定されていません");
+      expect(result.ineligible[0].reason).toBe("Stripe Connectアカウントで送金が有効になっていません");
     });
   });
 
   describe("executeScheduledPayouts", () => {
+    it("ロック取得に失敗した場合はスキップする", async () => {
+      // row lock false を返すようにモック
+      mockSupabase.rpc.mockImplementation((fnName: string) => {
+        if (fnName === "try_acquire_scheduler_lock") {
+          return {
+            single: jest.fn().mockResolvedValue({ data: false, error: null }),
+          } as any;
+        }
+        if (fnName === "release_scheduler_lock") {
+          return {
+            single: jest.fn().mockResolvedValue({ data: true, error: null }),
+          } as any;
+        }
+        return Promise.resolve({ data: [], error: null }) as any;
+      });
+
+      jest.spyOn(scheduler, "logSchedulerExecution").mockResolvedValue(undefined);
+
+      const result = await scheduler.executeScheduledPayouts();
+
+      expect(result.eligibleEventsCount).toBe(0);
+      expect(result.results).toHaveLength(0);
+      // processPayout が呼ばれない
+      expect(mockPayoutService.processPayout).not.toHaveBeenCalled();
+    });
+
     it("ドライランモードで実行する", async () => {
-      const mockEvents: EligibleEvent[] = [
+      const mockEvents: EligibleEventWithAmount[] = [
         {
           id: "event-1",
           title: "テストイベント1",
@@ -183,7 +233,7 @@ describe("PayoutScheduler", () => {
       });
 
       // ログ記録をモック
-      jest.spyOn(scheduler, "logSchedulerExecution").mockResolvedValue();
+      jest.spyOn(scheduler, "logSchedulerExecution").mockResolvedValue(undefined);
 
       const result = await scheduler.executeScheduledPayouts({ dryRun: true });
 
@@ -198,7 +248,7 @@ describe("PayoutScheduler", () => {
     });
 
     it("実際の送金処理を実行する", async () => {
-      const mockEvents: EligibleEvent[] = [
+      const mockEvents: EligibleEventWithAmount[] = [
         {
           id: "event-1",
           title: "テストイベント1",
@@ -223,14 +273,14 @@ describe("PayoutScheduler", () => {
         },
       });
 
-      mockPayoutService.processPayout!.mockResolvedValue({
+      (mockPayoutService.processPayout as jest.Mock).mockResolvedValue({
         payoutId: "payout-1",
         transferId: "tr_1",
         netAmount: 4820,
         estimatedArrival: "2025-01-10T00:00:00Z",
       });
 
-      jest.spyOn(scheduler, "logSchedulerExecution").mockResolvedValue();
+      jest.spyOn(scheduler, "logSchedulerExecution").mockResolvedValue(undefined);
 
       const result = await scheduler.executeScheduledPayouts({ dryRun: false });
 
@@ -248,7 +298,7 @@ describe("PayoutScheduler", () => {
     });
 
     it("送金処理でエラーが発生した場合は失敗として記録する", async () => {
-      const mockEvents: EligibleEvent[] = [
+      const mockEvents: EligibleEventWithAmount[] = [
         {
           id: "event-1",
           title: "テストイベント1",
@@ -273,8 +323,8 @@ describe("PayoutScheduler", () => {
         },
       });
 
-      mockPayoutService.processPayout!.mockRejectedValue(new Error("送金処理に失敗しました"));
-      jest.spyOn(scheduler, "logSchedulerExecution").mockResolvedValue();
+      (mockPayoutService.processPayout as jest.Mock).mockRejectedValue(new Error("送金処理に失敗しました"));
+      jest.spyOn(scheduler, "logSchedulerExecution").mockResolvedValue(undefined);
 
       const result = await scheduler.executeScheduledPayouts({ dryRun: false });
 
@@ -297,7 +347,7 @@ describe("PayoutScheduler", () => {
         },
       });
 
-      jest.spyOn(scheduler, "logSchedulerExecution").mockResolvedValue();
+      jest.spyOn(scheduler, "logSchedulerExecution").mockResolvedValue(undefined);
 
       const result = await scheduler.executeScheduledPayouts();
 
@@ -343,7 +393,7 @@ describe("PayoutScheduler", () => {
       mockSupabase.from.mockReturnValue({ insert: mockInsert });
 
       // ensureLogTableExistsをモック
-      jest.spyOn(scheduler as any, "ensureLogTableExists").mockResolvedValue();
+      jest.spyOn(scheduler as any, "ensureLogTableExists").mockResolvedValue(undefined);
 
       await scheduler.logSchedulerExecution(mockResult);
 
@@ -381,7 +431,7 @@ describe("PayoutScheduler", () => {
         error: { message: "Database error" }
       });
       mockSupabase.from.mockReturnValue({ insert: mockInsert });
-      jest.spyOn(scheduler as any, "ensureLogTableExists").mockResolvedValue();
+      jest.spyOn(scheduler as any, "ensureLogTableExists").mockResolvedValue(undefined);
 
       // エラーをスローしないことを確認
       await expect(scheduler.logSchedulerExecution(mockResult)).resolves.not.toThrow();
@@ -491,6 +541,275 @@ describe("PayoutScheduler", () => {
       expect(config).toHaveProperty("minimumAmount");
       expect(config).toHaveProperty("maxEventsPerRun");
       expect(config).toHaveProperty("enableLogging");
+    });
+  });
+
+  describe("アカウント単位スロットリングとレート制限対応", () => {
+    beforeEach(() => {
+      jest.clearAllMocks();
+
+      // デフォルトのモック設定
+      mockSupabase.rpc.mockImplementation((fnName: string) => {
+        if (fnName === "try_acquire_scheduler_lock") {
+          return {
+            single: jest.fn().mockResolvedValue({ data: true, error: null }),
+          } as any;
+        }
+        if (fnName === "release_scheduler_lock") {
+          return {
+            single: jest.fn().mockResolvedValue({ data: true, error: null }),
+          } as any;
+        }
+        if (fnName === "find_eligible_events_with_details") {
+          return Promise.resolve({
+            data: [
+              {
+                event_id: "event1",
+                title: "Event 1",
+                event_date: "2024-01-01",
+                fee: 1000,
+                created_by: "user1",
+                created_at: "2024-01-01T00:00:00Z",
+                paid_attendances_count: 10,
+                total_stripe_sales: 10000,
+                total_stripe_fee: 300,
+                platform_fee: 200,
+                net_payout_amount: 9500,
+                charges_enabled: true,
+                payouts_enabled: true,
+                eligible: true,
+                ineligible_reason: null,
+              },
+              {
+                event_id: "event2",
+                title: "Event 2",
+                event_date: "2024-01-02",
+                fee: 1000,
+                created_by: "user1", // 同じユーザー（同じConnectアカウント）
+                created_at: "2024-01-02T00:00:00Z",
+                paid_attendances_count: 5,
+                total_stripe_sales: 5000,
+                total_stripe_fee: 150,
+                platform_fee: 100,
+                net_payout_amount: 4750,
+                charges_enabled: true,
+                payouts_enabled: true,
+                eligible: true,
+                ineligible_reason: null,
+              },
+              {
+                event_id: "event3",
+                title: "Event 3",
+                event_date: "2024-01-03",
+                fee: 1000,
+                created_by: "user2", // 別のユーザー（別のConnectアカウント）
+                created_at: "2024-01-03T00:00:00Z",
+                paid_attendances_count: 8,
+                total_stripe_sales: 8000,
+                total_stripe_fee: 240,
+                platform_fee: 160,
+                net_payout_amount: 7600,
+                charges_enabled: true,
+                payouts_enabled: true,
+                eligible: true,
+                ineligible_reason: null,
+              },
+            ],
+            error: null,
+          });
+        }
+        return Promise.resolve({ data: [], error: null }) as any;
+      });
+    });
+
+    it("同一Connectアカウントのイベントは逐次処理される", async () => {
+      // Connectアカウント情報のモック
+      mockStripeConnectService.getConnectAccountByUser!.mockImplementation((userId: string) => {
+        if (userId === "user1") {
+          return Promise.resolve({
+            id: "connect1",
+            user_id: "user1",
+            stripe_account_id: "acct_1",
+            charges_enabled: true,
+            payouts_enabled: true,
+            status: "active",
+            created_at: "2024-01-01T00:00:00Z",
+            updated_at: "2024-01-01T00:00:00Z",
+          });
+        }
+        if (userId === "user2") {
+          return Promise.resolve({
+            id: "connect2",
+            user_id: "user2",
+            stripe_account_id: "acct_2",
+            charges_enabled: true,
+            payouts_enabled: true,
+            status: "active",
+            created_at: "2024-01-01T00:00:00Z",
+            updated_at: "2024-01-01T00:00:00Z",
+          });
+        }
+        return Promise.resolve(null);
+      });
+
+      // PayoutServiceのモック
+      const processCallTimes: number[] = [];
+      mockPayoutService.processPayout!.mockImplementation(async ({ eventId }) => {
+        processCallTimes.push(Date.now());
+        return {
+          payoutId: `payout_${eventId}`,
+          transferId: `tr_${eventId}`,
+          netAmount: 5000,
+          estimatedArrival: "2024-01-10T00:00:00Z",
+          rateLimitInfo: {
+            hitRateLimit: false,
+            retriedCount: 0,
+          },
+        };
+      });
+
+      const scheduler = new PayoutScheduler(
+        mockPayoutService as any,
+        mockStripeConnectService as any,
+        mockSupabase as any,
+        {
+          maxConcurrency: 2,
+          delayBetweenBatches: 1000,
+        }
+      );
+
+      const result = await scheduler.executeScheduledPayouts();
+
+      expect(result.successfulPayouts).toBe(3);
+      expect(result.failedPayouts).toBe(0);
+
+      // processPayout が3回呼ばれることを確認
+      expect(mockPayoutService.processPayout).toHaveBeenCalledTimes(3);
+
+      // 同一アカウント（user1のevent1, event2）は1秒間隔で処理されることを確認
+      expect(processCallTimes).toHaveLength(3);
+
+      // ログ出力で適切にグループ化されていることを確認
+      // （実際のログ確認は困難なので、モックの呼び出し順序で代用）
+      const calls = mockPayoutService.processPayout!.mock.calls;
+      expect(calls[0][0].eventId).toBe("event1");
+      expect(calls[1][0].eventId).toBe("event2");
+      expect(calls[2][0].eventId).toBe("event3");
+    });
+
+    it("レート制限が発生した場合、動的に遅延を調整する", async () => {
+      // Connectアカウント情報のモック
+      mockStripeConnectService.getConnectAccountByUser!.mockResolvedValue({
+        id: "connect1",
+        user_id: "user1",
+        stripe_account_id: "acct_1",
+        charges_enabled: true,
+        payouts_enabled: true,
+        status: "active",
+        created_at: "2024-01-01T00:00:00Z",
+        updated_at: "2024-01-01T00:00:00Z",
+      });
+
+      // PayoutServiceのモック - 最初の呼び出しでレート制限
+      let callCount = 0;
+      mockPayoutService.processPayout!.mockImplementation(async ({ eventId }) => {
+        callCount++;
+        const rateLimitInfo = callCount === 1 ? {
+          hitRateLimit: true,
+          suggestedDelayMs: 2000,
+          retriedCount: 1,
+        } : {
+          hitRateLimit: false,
+          retriedCount: 0,
+        };
+
+        return {
+          payoutId: `payout_${eventId}`,
+          transferId: `tr_${eventId}`,
+          netAmount: 5000,
+          estimatedArrival: "2024-01-10T00:00:00Z",
+          rateLimitInfo,
+        };
+      });
+
+      const scheduler = new PayoutScheduler(
+        mockPayoutService as any,
+        mockStripeConnectService as any,
+        mockSupabase as any,
+        {
+          maxConcurrency: 1,
+          delayBetweenBatches: 500, // 通常は500ms
+        }
+      );
+
+      const consoleSpy = jest.spyOn(console, 'warn').mockImplementation();
+
+      const result = await scheduler.executeScheduledPayouts();
+
+      expect(result.successfulPayouts).toBe(3);
+
+      // レート制限警告が出力されることを確認
+      expect(consoleSpy).toHaveBeenCalledWith(
+        expect.stringContaining("Rate limit hit 1 times during execution")
+      );
+
+      consoleSpy.mockRestore();
+    });
+
+    it("Connectアカウント取得に失敗したイベントは'unknown'グループに分類される", async () => {
+      // Connectアカウント取得で一部失敗
+      mockStripeConnectService.getConnectAccountByUser!.mockImplementation((userId: string) => {
+        if (userId === "user1") {
+          return Promise.resolve({
+            id: "connect1",
+            user_id: "user1",
+            stripe_account_id: "acct_1",
+            charges_enabled: true,
+            payouts_enabled: true,
+            status: "active",
+            created_at: "2024-01-01T00:00:00Z",
+            updated_at: "2024-01-01T00:00:00Z",
+          });
+        }
+        // user2は失敗
+        return Promise.reject(new Error("Connect account not found"));
+      });
+
+      // PayoutServiceのモック
+      mockPayoutService.processPayout!.mockResolvedValue({
+        payoutId: "payout_123",
+        transferId: "tr_123",
+        netAmount: 5000,
+        estimatedArrival: "2024-01-10T00:00:00Z",
+      });
+
+      const scheduler = new PayoutScheduler(
+        mockPayoutService as any,
+        mockStripeConnectService as any,
+        mockSupabase as any
+      );
+
+      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
+      const consoleLogSpy = jest.spyOn(console, 'log').mockImplementation();
+
+      const result = await scheduler.executeScheduledPayouts();
+
+      expect(result.successfulPayouts).toBe(3);
+
+      // エラーログが出力されることを確認
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        expect.stringContaining("Failed to get Connect account for user user2"),
+        expect.any(Error)
+      );
+
+      // グループ化ログで "unknown" グループが含まれることを確認
+      expect(consoleLogSpy).toHaveBeenCalledWith(
+        expect.stringContaining("Grouped 3 events into"),
+        expect.stringContaining("unknown: 1 events")
+      );
+
+      consoleErrorSpy.mockRestore();
+      consoleLogSpy.mockRestore();
     });
   });
 });

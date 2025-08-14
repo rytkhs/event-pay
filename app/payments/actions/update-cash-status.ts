@@ -1,9 +1,8 @@
 "use server";
 
 import { z } from "zod";
-import { createClient as createServerClient } from "@/lib/supabase/server";
-import { createClient as createAdminClient } from "@supabase/supabase-js";
-import type { Database } from "@/types/database";
+import { SecureSupabaseClientFactory } from "@/lib/security/secure-client-factory.impl";
+import { AdminReason } from "@/lib/security/secure-client-factory.types";
 import { PaymentService, PaymentValidator, PaymentErrorHandler } from "@/lib/services/payment";
 import { PaymentError, PaymentErrorType } from "@/lib/services/payment/types";
 import { createRateLimitStore, checkRateLimit } from "@/lib/rate-limit";
@@ -61,7 +60,8 @@ export async function updateCashStatusAction(
     }
     const { paymentId, status, notes } = parsed.data;
 
-    const supabase = createServerClient();
+    const factory = SecureSupabaseClientFactory.getInstance();
+    const supabase = await factory.createAuthenticatedClient();
     const {
       data: { user },
       error: authError,
@@ -100,11 +100,11 @@ export async function updateCashStatusAction(
       return createErrorResponse(ERROR_CODES.NOT_FOUND, "決済レコードが見つかりません。");
     }
 
-    // 主催者権限を Validator で検証
-    await new PaymentValidator(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    ).validateAttendanceAccess(paymentWithEvent.attendance_id, user.id);
+    // 主催者権限を Validator で検証（RLS 下の認証クライアントで実行）
+    await new PaymentValidator(supabase).validateAttendanceAccess(
+      paymentWithEvent.attendance_id,
+      user.id
+    );
 
     if (paymentWithEvent.method !== "cash") {
       return createErrorResponse(
@@ -113,17 +113,14 @@ export async function updateCashStatusAction(
       );
     }
 
-    const validator = new PaymentValidator(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    );
+    const validator = new PaymentValidator(supabase);
     await validator.validateUpdatePaymentStatusParams({ paymentId, status });
 
-    const service = new PaymentService(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-      new PaymentErrorHandler()
+    const admin = await factory.createAuditedAdminClient(
+      AdminReason.PAYMENT_PROCESSING,
+      "app/payments/actions/update-cash-status"
     );
+    const service = new PaymentService(admin, new PaymentErrorHandler());
     await service.updatePaymentStatus({
       paymentId,
       status,
@@ -131,10 +128,6 @@ export async function updateCashStatusAction(
     });
 
     // 監査ログ
-    const admin = createAdminClient<Database>(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    );
     await admin.from("system_logs").insert({
       operation_type: "payment_status_update",
       details: { paymentId, newStatus: status, userId: user.id, notes: notes || null },

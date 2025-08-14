@@ -2,7 +2,7 @@
  * PayoutServiceの基本実装
  */
 
-import { createClient } from "@supabase/supabase-js";
+import { type SupabaseClient } from "@supabase/supabase-js";
 import { Database } from "@/types/database";
 import { stripe } from "@/lib/stripe/client";
 import { IPayoutService, IPayoutErrorHandler, IPayoutValidator } from "./interface";
@@ -19,172 +19,97 @@ import {
   FindEligibleEventsParams,
   PayoutError,
   PayoutErrorType,
-  StripeFeeConfig,
-  PlatformFeeConfig,
+  AggregatePayoutError,
+
   ValidateManualPayoutParams,
   ManualPayoutEligibilityResult,
 } from "./types";
-import { PayoutCalculator } from "./calculation";
-import { getJstYmdDaysAgo, hasElapsedDaysInJst } from "@/lib/utils/timezone";
+// PayoutCalculator は削除 - RPC の calc_total_stripe_fee() を使用
+import { hasElapsedDaysInJst } from "@/lib/utils/timezone";
 import { getTransferGroupForEvent } from "@/lib/utils/stripe";
 import { StripeTransferService } from "./stripe-transfer";
+import { FeeConfigService } from "../fee-config/service";
+// MIN_PAYOUT_AMOUNT, isPayoutAmountEligible は削除済み
 
 /**
  * PayoutServiceの実装クラス
  */
 export class PayoutService implements IPayoutService {
-  private supabase: ReturnType<typeof createClient<Database>>;
+  private supabase: SupabaseClient<Database>;
   private stripe = stripe;
   private errorHandler: IPayoutErrorHandler;
   private stripeConnectService: IStripeConnectService;
   private stripeTransferService: StripeTransferService;
   private validator: IPayoutValidator;
+  private feeConfigService: FeeConfigService;
 
-  // 手数料設定（設定ファイルから読み込むことも可能）
-  private stripeFeeConfig: StripeFeeConfig = {
-    baseRate: 0.036, // 3.6%
-    fixedFee: 0, // 0円
-  };
-
-  private platformFeeConfig: PlatformFeeConfig = {
-    rate: 0, // MVP段階では0%
-    fixedFee: 0,
-    minimumFee: 0,
-    maximumFee: 0,
-  };
-
+  // コンストラクタ
   constructor(
-    supabaseUrl: string,
-    supabaseKey: string,
+    supabaseClient: SupabaseClient<Database>,
     errorHandler: IPayoutErrorHandler,
     stripeConnectService: IStripeConnectService,
     validator: IPayoutValidator,
     stripeTransferService?: StripeTransferService
   ) {
-    this.supabase = createClient<Database>(supabaseUrl, supabaseKey);
+    this.supabase = supabaseClient;
     this.errorHandler = errorHandler;
     this.stripeConnectService = stripeConnectService;
     this.validator = validator;
     this.stripeTransferService = stripeTransferService || new StripeTransferService();
+    this.feeConfigService = new FeeConfigService(supabaseClient);
   }
+
+  // loadFeeConfigIfNeeded は削除 - FeeConfigService を使用
 
   /**
    * 送金対象イベントを検索する
    */
   async findEligibleEvents(params: FindEligibleEventsParams = {}): Promise<EligibleEvent[]> {
     try {
+      // FeeConfigServiceから最小送金額を取得
+      const { minPayoutAmount } = await this.feeConfigService.getConfig();
+
       const {
         daysAfterEvent = 5,
-        minimumAmount = 100, // 最小100円
+        minimumAmount = minPayoutAmount,
         userId,
         limit = 50,
       } = params;
 
-      // イベント終了日の計算（現在日時から指定日数前）
-      // JSTの暦日差で daysAfterEvent 日前の YYYY-MM-DD を生成
-      const cutoffDateString = getJstYmdDaysAgo(daysAfterEvent);
+      // find_eligible_events_basic RPC を権威データとして使用
+      const { data: rpcData, error: rpcErr } = await (this.supabase as any).rpc(
+        "find_eligible_events_basic",
+        {
+          p_days_after_event: daysAfterEvent,
+          p_minimum_amount: minimumAmount,
+          p_limit: limit,
+          p_user_id: userId ?? null,
+        }
+      );
 
-      // 送金対象イベントを検索するクエリ
-      let query = this.supabase
-        .from("events")
-        .select(`
-          id,
-          title,
-          date,
-          fee,
-          created_by,
-          created_at,
-          attendances!inner (
-            id,
-            status,
-            payments!inner (
-              id,
-              method,
-              status,
-              amount
-            )
-          )
-        `)
-        .eq("status", "past")
-        .lte("date", cutoffDateString)
-        .eq("attendances.status", "attending")
-        .eq("attendances.payments.method", "stripe")
-        .eq("attendances.payments.status", "paid");
-
-      // 特定ユーザーのイベントのみ検索
-      if (userId) {
-        query = query.eq("created_by", userId);
-      }
-
-      query = query.limit(limit);
-
-      const { data: eventsData, error } = await query;
-
-      if (error) {
+      if (rpcErr) {
         throw new PayoutError(
           PayoutErrorType.DATABASE_ERROR,
-          `送金対象イベントの検索に失敗しました: ${error.message}`,
-          error
+          `送金対象イベントの検索に失敗しました: ${rpcErr.message}`,
+          rpcErr
         );
       }
 
-      if (!eventsData || eventsData.length === 0) {
+      if (!Array.isArray(rpcData)) {
         return [];
       }
 
-      // 既に送金済みのイベントを除外
-      const eventIds = eventsData.map(event => event.id);
-      const { data: existingPayouts, error: payoutError } = await this.supabase
-        .from("payouts")
-        .select("event_id")
-        .in("event_id", eventIds)
-        .in("status", ["pending", "processing", "completed"]);
+      return (rpcData as any[]).map((r) => ({
+        id: r.event_id,
+        title: r.title,
+        date: r.event_date,
+        fee: r.fee,
+        created_by: r.created_by,
+        created_at: r.created_at,
+        paid_attendances_count: r.paid_attendances_count,
+        total_stripe_sales: r.total_stripe_sales,
+      })) as EligibleEvent[];
 
-      if (payoutError) {
-        throw new PayoutError(
-          PayoutErrorType.DATABASE_ERROR,
-          `既存送金レコードの確認に失敗しました: ${payoutError.message}`,
-          payoutError
-        );
-      }
-
-      const processedEventIds = new Set(existingPayouts?.map(p => p.event_id) || []);
-
-      // 結果を整形し、最小金額以上のイベントのみ返す
-      const eligibleEvents: EligibleEvent[] = [];
-
-      for (const event of eventsData) {
-        // 既に送金済みのイベントはスキップ
-        if (processedEventIds.has(event.id)) {
-          continue;
-        }
-
-        // Stripe決済の売上を集計
-        const stripePayments = event.attendances
-          .flatMap(attendance => attendance.payments)
-          .filter(payment => payment.method === "stripe" && payment.status === "paid");
-
-        const totalStripeSales = stripePayments.reduce((sum, payment) => sum + payment.amount, 0);
-        const paidAttendancesCount = stripePayments.length;
-
-        // 最小金額チェック
-        if (totalStripeSales < minimumAmount) {
-          continue;
-        }
-
-        eligibleEvents.push({
-          id: event.id,
-          title: event.title,
-          date: event.date,
-          fee: event.fee,
-          created_by: event.created_by,
-          created_at: event.created_at,
-          paid_attendances_count: paidAttendancesCount,
-          total_stripe_sales: totalStripeSales,
-        });
-      }
-
-      return eligibleEvents;
     } catch (error) {
       if (error instanceof PayoutError) {
         throw error;
@@ -192,63 +117,86 @@ export class PayoutService implements IPayoutService {
 
       throw new PayoutError(
         PayoutErrorType.DATABASE_ERROR,
-        "送金対象イベントの検索に失敗しました",
+        "送金対象イベントの検索中にエラーが発生しました",
         error as Error
       );
     }
   }
+
+  // loadEligibleEventsFromDB は削除 - RPC のみ使用
+
+
 
   /**
    * 送金金額を計算する
    */
   async calculatePayoutAmount(eventId: string): Promise<PayoutCalculation> {
     try {
-      // イベントのStripe決済データを取得
-      const { data: paymentsData, error } = await this.supabase
-        .from("payments")
-        .select(`
-          amount,
-          method,
-          status,
-          attendances!inner (
-            event_id
-          )
-        `)
-        .eq("attendances.event_id", eventId)
-        .eq("method", "stripe")
-        .eq("status", "paid");
+      // 新RPC calc_payout_amount で売上・手数料・件数を一括取得
+      const { data: rpcRow, error: rpcError } = await (this.supabase as any)
+        .rpc("calc_payout_amount", { p_event_id: eventId })
+        .single();
 
-      if (error) {
+      if (rpcError) {
         throw new PayoutError(
           PayoutErrorType.DATABASE_ERROR,
-          `決済データの取得に失敗しました: ${error.message}`,
-          error
+          `送金金額の計算に失敗しました: ${rpcError.message}`,
+          rpcError
         );
       }
 
-      // 決済データを計算用の形式に変換
-      const payments = (paymentsData || []).map(p => ({
-        amount: p.amount,
-        method: p.method,
-        status: p.status,
-      }));
+      const row = rpcRow as
+        | {
+          total_stripe_sales: number | null;
+          total_stripe_fee: number | null;
+          platform_fee: number | null;
+          net_payout_amount: number | null;
+          stripe_payment_count: number | null;
+        }
+        | null;
 
-      // 新しい計算ロジックを使用
-      const calculator = new PayoutCalculator(this.stripeFeeConfig, this.platformFeeConfig);
-      const result = calculator.calculateBasicPayout(payments);
+      // デフォルト値を補完
+      const totalStripeSales = row?.total_stripe_sales ?? 0;
+      const totalStripeFee = row?.total_stripe_fee ?? 0;
+      const platformFee = row?.platform_fee ?? 0;
+      const netPayoutAmount = row?.net_payout_amount ?? 0;
+      const stripePaymentCount = row?.stripe_payment_count ?? 0;
 
       // バリデーション: 負の値チェック
-      if (result.netPayoutAmount < 0) {
+      if (netPayoutAmount < 0) {
         throw new PayoutError(
           PayoutErrorType.CALCULATION_ERROR,
           "送金金額の計算結果が負の値になりました。手数料設定を確認してください。",
           undefined,
           {
-            totalStripeSales: result.totalStripeSales,
-            totalStripeFee: result.totalStripeFee,
-            platformFee: result.platformFee,
-            netPayoutAmount: result.netPayoutAmount,
+            totalStripeSales,
+            totalStripeFee,
+            platformFee,
+            netPayoutAmount,
           }
+        );
+      }
+
+      const result: PayoutCalculation = {
+        totalStripeSales,
+        totalStripeFee,
+        platformFee,
+        netPayoutAmount,
+        breakdown: {
+          stripePaymentCount,
+          averageTransactionAmount:
+            stripePaymentCount > 0 ? Math.round(totalStripeSales / stripePaymentCount) : 0,
+          stripeFeeRate: 0, // 詳細は RPC では返さない
+          platformFeeRate: 0,
+        },
+      };
+
+      // 最小送金額チェック
+      const { minPayoutAmount } = await this.feeConfigService.getConfig();
+      if (result.netPayoutAmount < minPayoutAmount) {
+        throw new PayoutError(
+          PayoutErrorType.INSUFFICIENT_BALANCE,
+          "送金可能な金額がありません"
         );
       }
 
@@ -277,7 +225,15 @@ export class PayoutService implements IPayoutService {
         await validateProcessParams(params);
       }
 
+      // Stripe Connect アカウントの総合バリデーション（status / chargesEnabled / payoutsEnabled）
+      const validateStripeAccount = this.validator?.validateStripeConnectAccount?.bind(this.validator);
+      if (typeof validateStripeAccount === "function") {
+        await validateStripeAccount(params.userId);
+      }
+
       const { eventId, userId } = params;
+
+      const { minPayoutAmount } = await this.feeConfigService.getConfig();
 
       // Stripe Connectアカウントの確認
       const connectAccount = await this.stripeConnectService.getConnectAccountByUser(userId);
@@ -288,17 +244,20 @@ export class PayoutService implements IPayoutService {
         );
       }
 
-      if (!connectAccount.payouts_enabled) {
+      // フェイルセーフ: バリデーション後にアカウント状態が変化していないか再確認
+      // charges_enabled と payouts_enabled の双方が true であることを保証する
+      if (!(connectAccount.charges_enabled && connectAccount.payouts_enabled)) {
         throw new PayoutError(
           PayoutErrorType.STRIPE_ACCOUNT_NOT_READY,
-          "Stripe Connectアカウントで送金が有効になっていません"
+          "Stripe Connectアカウントの決済または送金が有効になっていません"
         );
       }
 
       // 送金金額を計算
       const calculation = await this.calculatePayoutAmount(eventId);
 
-      if (calculation.netPayoutAmount <= 0) {
+      // 最小送金額チェック（FeeConfig は既に取得済み）
+      if (calculation.netPayoutAmount < minPayoutAmount) {
         throw new PayoutError(
           PayoutErrorType.INSUFFICIENT_BALANCE,
           "送金可能な金額がありません"
@@ -370,13 +329,60 @@ export class PayoutService implements IPayoutService {
 
       const payoutId = createdPayoutId as unknown as string;
 
+      // DB確定値を取得して送金金額に使用
+      const { data: payoutRow, error: fetchPayoutError } = await this.supabase
+        .from("payouts")
+        .select("id, net_payout_amount")
+        .eq("id", payoutId)
+        .maybeSingle();
+
+      if (fetchPayoutError) {
+        throw new PayoutError(
+          PayoutErrorType.DATABASE_ERROR,
+          `送金レコードの取得に失敗しました: ${fetchPayoutError.message}`,
+          fetchPayoutError
+        );
+      }
+
+      if (!payoutRow) {
+        throw new PayoutError(
+          PayoutErrorType.PAYOUT_NOT_FOUND,
+          "作成された送金レコードが見つかりません"
+        );
+      }
+
+      // ------------------------------
+      // 最小送金額の2段階チェック
+      // RPC 側で get_min_payout_amount() による検証があるが、
+      // JS と SQL で設定が乖離しないよう再検証を行う。
+      // ------------------------------
+      // 2段階目の最小送金額チェックも同一変数を利用
+      if (payoutRow.net_payout_amount < minPayoutAmount) {
+        // 送金レコードを failed に更新
+        try {
+          await this.updatePayoutStatus({
+            payoutId: payoutId,
+            status: "failed",
+            lastError: `送金金額が最小金額を下回っています (${payoutRow.net_payout_amount}円)`,
+          });
+        } catch (_) {
+          // ステータス更新失敗はログのみ（上位で再試行される想定）
+        }
+
+        throw new PayoutError(
+          PayoutErrorType.INSUFFICIENT_BALANCE,
+          "送金金額が最小金額を下回っているため Stripe Transfer を中止しました"
+        );
+      }
+
       // Stripe Transferを実行
       let transferId: string | null = null;
       let estimatedArrival: string | undefined;
+      let rateLimitInfo: any = undefined;
 
       try {
         const transferParams = {
-          amount: calculation.netPayoutAmount,
+          amount: payoutRow.net_payout_amount,
           currency: "jpy" as const,
           destination: connectAccount.stripe_account_id,
           metadata: {
@@ -393,28 +399,96 @@ export class PayoutService implements IPayoutService {
 
         transferId = transferResult.transferId;
         estimatedArrival = transferResult.estimatedArrival?.toISOString();
+        rateLimitInfo = transferResult.rateLimitInfo;
 
         // 送金レコードを更新（processing状態に）
-        await this.updatePayoutStatus({
-          payoutId: payoutId,
-          status: "processing",
-          stripeTransferId: transferId,
-          transferGroup: getTransferGroupForEvent(eventId),
-        });
+        // Webhook 先着で既に completed になっている可能性があるためガードを入れる
+        try {
+          await this.updatePayoutStatus({
+            payoutId: payoutId,
+            status: "processing",
+            stripeTransferId: transferId,
+            transferGroup: getTransferGroupForEvent(eventId),
+          });
+        } catch (updateErr) {
+          // すでに Webhook が completed に遷移させていた場合は処理成功として許容
+          if (
+            updateErr instanceof PayoutError &&
+            updateErr.type === PayoutErrorType.INVALID_STATUS_TRANSITION
+          ) {
+            const latest = await this.getPayoutById(payoutId);
+            if (latest && latest.status === "completed") {
+              // 競合により完了済み。エラーを無視して続行
+            } else {
+              throw updateErr;
+            }
+          } else {
+            // Transfer成功後のDB更新失敗 -> processing_errorに設定
+            // Webhookによる最終的整合性に期待し、failedには落とさない
+            try {
+              await this.updatePayoutStatus({
+                payoutId: payoutId,
+                status: "processing_error",
+                stripeTransferId: transferId,
+                transferGroup: getTransferGroupForEvent(eventId),
+                lastError: `Transfer成功後のDB更新失敗: ${updateErr instanceof Error ? updateErr.message : String(updateErr)}`,
+                notes: "Webhook処理による自動復旧待ち",
+              });
+
+              // processing_errorステータス設定成功時は、処理成功として返す
+              // Webhookで最終的にcompletedに更新される
+              console.warn("Transfer成功後のDB更新失敗をprocessing_errorで記録", {
+                payoutId,
+                transferId,
+                updateError: updateErr instanceof Error ? updateErr.message : String(updateErr),
+              });
+            } catch (secondUpdateErr) {
+              // processing_error設定も失敗した場合のみAggregatePayoutErrorを投げる
+              console.error("processing_error設定も失敗", {
+                payoutId,
+                transferId,
+                originalError: updateErr,
+                secondUpdateError: secondUpdateErr,
+              });
+
+              throw new AggregatePayoutError(
+                updateErr instanceof Error ? updateErr : new Error(String(updateErr)),
+                secondUpdateErr as Error
+              );
+            }
+          }
+        }
 
       } catch (stripeError) {
-        // Stripe Transfer失敗時は送金レコードをfailedに更新
-        const errorMessage = stripeError instanceof PayoutError
-          ? stripeError.message
-          : (stripeError as Error).message;
+        // Stripe Transfer失敗時は送金レコードをfailedに更新。
+        const errorMessage =
+          stripeError instanceof PayoutError
+            ? stripeError.message
+            : (stripeError as Error).message;
 
-        await this.updatePayoutStatus({
-          payoutId: payoutId,
-          status: "failed",
-          lastError: errorMessage,
-        });
+        try {
+          await this.updatePayoutStatus({
+            payoutId: payoutId,
+            status: "failed",
+            lastError: errorMessage,
+          });
+        } catch (updateErr) {
+          // ステータス更新に失敗した場合は複合エラーとして再throw
+          console.error("updatePayoutStatus failed", {
+            payoutId,
+            stripeError,
+            updateErr,
+          });
 
-        // PayoutErrorの場合はそのまま再スロー、それ以外は新しいPayoutErrorでラップ
+          throw new AggregatePayoutError(
+            stripeError instanceof Error
+              ? stripeError
+              : new Error(String(stripeError)),
+            updateErr as Error
+          );
+        }
+
+        // update 成功時は従来通りエラーを再送出
         if (stripeError instanceof PayoutError) {
           throw stripeError;
         }
@@ -429,8 +503,9 @@ export class PayoutService implements IPayoutService {
       return {
         payoutId: payoutId,
         transferId,
-        netAmount: calculation.netPayoutAmount,
+        netAmount: payoutRow.net_payout_amount,
         estimatedArrival,
+        rateLimitInfo,
       };
 
     } catch (_error) {
@@ -500,88 +575,69 @@ export class PayoutService implements IPayoutService {
     try {
       // 状態遷移バリデーションが利用可能な場合のみ、現在のステータスを取得して検証
       const validateTransition = this.validator?.validateStatusTransition?.bind(this.validator);
-      if (typeof validateTransition === "function") {
-        const { data: currentRow, error: fetchError } = await this.supabase
-          .from("payouts")
-          .select("status")
-          .eq("id", params.payoutId)
-          .maybeSingle();
-
-        if (fetchError) {
-          throw new PayoutError(
-            PayoutErrorType.DATABASE_ERROR,
-            `送金レコードの取得に失敗しました: ${fetchError.message}`,
-            fetchError
-          );
-        }
-
-        if (!currentRow) {
-          throw new PayoutError(
-            PayoutErrorType.PAYOUT_NOT_FOUND,
-            "指定された送金レコードが見つかりません"
-          );
-        }
-
-        await validateTransition(
-          (currentRow as { status: PayoutStatus }).status,
-          params.status
-        );
-      }
-
-      const updateData: {
-        status: PayoutStatus;
-        updated_at: string;
-        processed_at?: string;
-        stripe_transfer_id?: string;
-        transfer_group?: string;
-        last_error?: string;
-        notes?: string;
-      } = {
-        status: params.status,
-        updated_at: new Date().toISOString(),
-      };
-
-      if (params.processedAt) {
-        updateData.processed_at = params.processedAt.toISOString();
-      }
-
-      if (params.stripeTransferId) {
-        updateData.stripe_transfer_id = params.stripeTransferId;
-      }
-
-      if (params.transferGroup) {
-        updateData.transfer_group = params.transferGroup;
-      }
-
-      if (params.lastError) {
-        updateData.last_error = params.lastError;
-      }
-
-      if (params.notes) {
-        updateData.notes = params.notes;
-      }
-
-      const { data, error } = await this.supabase
+      // 現在ステータス取得（楽観ロック & バリデーション用）
+      const { data: statusRow, error: fetchError } = await this.supabase
         .from("payouts")
-        .update(updateData)
+        .select("status")
         .eq("id", params.payoutId)
-        .select("id")
         .maybeSingle();
 
-      if (error) {
+      if (fetchError) {
         throw new PayoutError(
           PayoutErrorType.DATABASE_ERROR,
-          `送金ステータスの更新に失敗しました: ${error.message}`,
-          error
+          `送金レコードの取得に失敗しました: ${fetchError.message}`,
+          fetchError
         );
       }
 
-      if (!data) {
+      if (!statusRow) {
         throw new PayoutError(
           PayoutErrorType.PAYOUT_NOT_FOUND,
           "指定された送金レコードが見つかりません"
         );
       }
+
+      const currentStatus = (statusRow as { status: PayoutStatus }).status;
+
+      // 状態遷移バリデーション（存在する場合のみ）
+      if (typeof validateTransition === "function") {
+        await validateTransition(currentStatus, params.status);
+      }
+
+      // --- ここから RPC 化による TOCTOU 対策 ---
+      const rpcPayload = {
+        _payout_id: params.payoutId,
+        _from_status: currentStatus,
+        _to_status: params.status,
+        _processed_at: params.processedAt ? params.processedAt.toISOString() : null,
+        _stripe_transfer_id: params.stripeTransferId ?? null,
+        _transfer_group: params.transferGroup ?? null,
+        _last_error: params.lastError ?? null,
+        _notes: params.notes ?? null,
+      };
+
+      const { error: rpcError } = await (this.supabase as any).rpc(
+        "update_payout_status_safe",
+        rpcPayload
+      );
+
+      if (rpcError) {
+        // 競合エラーを特定
+        if (rpcError.code === "40001") {
+          throw new PayoutError(
+            PayoutErrorType.INVALID_STATUS_TRANSITION,
+            "送金ステータスが競合しました。他プロセスで更新された可能性があります。",
+            rpcError
+          );
+        }
+
+        throw new PayoutError(
+          PayoutErrorType.DATABASE_ERROR,
+          `送金ステータスの更新に失敗しました: ${rpcError.message}`,
+          rpcError
+        );
+      }
+      // --- RPC 化ここまで ---
     } catch (error) {
       if (error instanceof PayoutError) {
         throw error;
@@ -667,6 +723,7 @@ export class PayoutService implements IPayoutService {
    */
   async retryPayout(payoutId: string): Promise<ProcessPayoutResult> {
     try {
+      // 既存 payout レコード取得
       const payout = await this.getPayoutById(payoutId);
       if (!payout) {
         throw new PayoutError(
@@ -675,19 +732,113 @@ export class PayoutService implements IPayoutService {
         );
       }
 
-      if (payout.status !== "failed") {
+      if (payout.status !== "failed" && payout.status !== "pending") {
         throw new PayoutError(
           PayoutErrorType.INVALID_STATUS_TRANSITION,
-          "失敗状態の送金のみ再実行可能です"
+          "失敗または保留状態の送金のみ再実行可能です"
         );
       }
 
-      // 再実行として新しい送金処理を実行
-      return await this.processPayout({
-        eventId: payout.event_id,
-        userId: payout.user_id,
-        notes: `再実行: ${payout.notes || ""}`,
+      // pending で既に Stripe Transfer が存在する場合は再処理不要と判断
+      if (payout.status === "pending" && payout.stripe_transfer_id) {
+        return {
+          payoutId: payout.id,
+          transferId: payout.stripe_transfer_id,
+          netAmount: payout.net_payout_amount,
+          estimatedArrival: undefined,
+        };
+      }
+
+      // Stripe Connect アカウントの総合バリデーション
+      const validateStripeAccount = this.validator?.validateStripeConnectAccount?.bind(this.validator);
+      if (typeof validateStripeAccount === "function") {
+        await validateStripeAccount(payout.user_id);
+      }
+
+      const connectAccount = await this.stripeConnectService.getConnectAccountByUser(
+        payout.user_id
+      );
+      // validateStripeConnectAccount で網羅チェック済みだが、null 念のためガード
+      if (!connectAccount) {
+        throw new PayoutError(
+          PayoutErrorType.STRIPE_ACCOUNT_NOT_READY,
+          "Stripe Connectアカウントが取得できませんでした"
+        );
+      }
+
+      // failed -> processing へ遷移 (last_error クリア)
+      await this.updatePayoutStatus({
+        payoutId,
+        status: "processing",
+        lastError: undefined,
+        notes: `手動リトライ実行: ${payout.notes || ""}`,
       });
+
+      const transferParams = {
+        amount: payout.net_payout_amount,
+        currency: "jpy" as const,
+        destination: connectAccount.stripe_account_id,
+        metadata: {
+          payout_id: payout.id,
+          event_id: payout.event_id,
+          user_id: payout.user_id,
+        },
+        description: `EventPay payout retry for event ${payout.event_id}`,
+        transferGroup: getTransferGroupForEvent(payout.event_id),
+      } as const;
+
+      let transferId: string | null = null;
+      let estimatedArrival: string | undefined;
+      let rateLimitInfo: any = undefined;
+
+      try {
+        const transferResult = await this.stripeTransferService.createTransfer(
+          transferParams
+        );
+
+        transferId = transferResult.transferId;
+        estimatedArrival = transferResult.estimatedArrival?.toISOString();
+        rateLimitInfo = transferResult.rateLimitInfo;
+
+        // processing 状態は既に設定済み。transfer 情報だけ上書き
+        await this.updatePayoutStatus({
+          payoutId,
+          status: "processing",
+          stripeTransferId: transferId,
+          transferGroup: getTransferGroupForEvent(payout.event_id),
+        });
+
+      } catch (stripeError) {
+        const errorMessage =
+          stripeError instanceof PayoutError
+            ? stripeError.message
+            : (stripeError as Error).message;
+
+        // 失敗したら failed に戻す
+        await this.updatePayoutStatus({
+          payoutId,
+          status: "failed",
+          lastError: errorMessage,
+        });
+
+        if (stripeError instanceof PayoutError) {
+          throw stripeError;
+        }
+
+        throw new PayoutError(
+          PayoutErrorType.TRANSFER_CREATION_FAILED,
+          `Stripe Transferの作成に失敗しました: ${errorMessage}`,
+          stripeError as Error
+        );
+      }
+
+      return {
+        payoutId,
+        transferId,
+        netAmount: payout.net_payout_amount,
+        estimatedArrival,
+        rateLimitInfo,
+      };
 
     } catch (error) {
       if (error instanceof PayoutError) {
@@ -737,9 +888,53 @@ export class PayoutService implements IPayoutService {
         status: p.status,
       }));
 
-      // 詳細計算を実行
-      const calculator = new PayoutCalculator(this.stripeFeeConfig, this.platformFeeConfig);
-      return calculator.calculateDetailedPayout(payments);
+      // Stripe決済のみを抽出
+      const stripePayments = payments.filter(p => p.method === "stripe" && p.status === "paid");
+
+      // Stripe売上の集計
+      const totalStripeSales = stripePayments.reduce((sum: number, p: any) => sum + p.amount, 0);
+
+      // Stripe手数料は calc_total_stripe_fee() RPC で計算
+      const { data: totalStripeFee, error: feeError } = await (this.supabase as any)
+        .rpc("calc_total_stripe_fee", { p_event_id: eventId });
+
+      if (feeError) {
+        throw new PayoutError(
+          PayoutErrorType.DATABASE_ERROR,
+          `Stripe手数料の計算に失敗しました: ${feeError.message}`,
+          feeError
+        );
+      }
+
+      // プラットフォーム手数料（現在は0）
+      const platformFee = 0;
+      const netPayoutAmount = totalStripeSales - (totalStripeFee || 0) - platformFee;
+
+      // 詳細な計算結果を返す
+      return {
+        totalStripeSales,
+        totalStripeFee: totalStripeFee || 0,
+        platformFee,
+        netPayoutAmount,
+        breakdown: {
+          stripePaymentCount: stripePayments.length,
+          averageTransactionAmount: stripePayments.length > 0 ? Math.round(totalStripeSales / stripePayments.length) : 0,
+          stripeFeeRate: 0, // RPC計算なので割合は不明
+          platformFeeRate: 0,
+          stripeFeeBreakdown: [], // RPC計算なので個別詳細は不明
+          platformFeeBreakdown: {
+            rateFee: 0,
+            fixedFee: 0,
+            minimumFeeApplied: false,
+            maximumFeeApplied: false,
+          },
+        },
+        validation: {
+          isValid: netPayoutAmount >= 0,
+          warnings: netPayoutAmount < 100 ? ["送金金額が最小金額を下回る可能性があります"] : [],
+          errors: netPayoutAmount < 0 ? ["純送金額が負の値になりました"] : [],
+        },
+      };
 
     } catch (error) {
       if (error instanceof PayoutError) {
@@ -897,18 +1092,32 @@ export class PayoutService implements IPayoutService {
         };
       }
 
-      // Stripe Connectアカウントチェック
-      const connectAccount = await this.stripeConnectService.getConnectAccountByUser(userId);
-      if (!connectAccount || !connectAccount.payouts_enabled) {
+      // Stripe Connectアカウントチェック（Validatorに委譲）
+      try {
+        const validateStripeAccount = this.validator?.validateStripeConnectAccount?.bind(this.validator);
+        if (typeof validateStripeAccount === "function") {
+          await validateStripeAccount(userId);
+        } else {
+          // フォールバック: 簡易チェック
+          const isReady = await this.stripeConnectService.isAccountReadyForPayout?.(userId);
+          if (!isReady) {
+            return {
+              eligible: false,
+              reason: "Stripe Connectアカウントの設定が完了していません",
+            };
+          }
+        }
+      } catch (err) {
         return {
           eligible: false,
-          reason: "Stripe Connectアカウントの設定が完了していません",
+          reason: (err as Error).message || "Stripe Connectアカウントの設定が完了していません",
         };
       }
 
       // 送金金額計算
       const calculation = await this.calculatePayoutAmount(eventId);
-      if (calculation.netPayoutAmount <= 0) {
+      const { minPayoutAmount } = await this.feeConfigService.getConfig();
+      if (calculation.netPayoutAmount < minPayoutAmount) {
         return {
           eligible: false,
           reason: "送金可能な金額がありません",

@@ -5,6 +5,7 @@
 
 import { StripeTransferService } from "@/lib/services/payout/stripe-transfer";
 import { PayoutError, PayoutErrorType } from "@/lib/services/payout/types";
+import { MIN_STRIPE_TRANSFER_AMOUNT } from "../../../../lib/services/payout/constants";
 import Stripe from "stripe";
 
 // Stripeクライアントのモック
@@ -84,7 +85,7 @@ describe("StripeTransferService", () => {
       await expect(service.createTransfer(invalidParams)).rejects.toThrow(
         new PayoutError(
           PayoutErrorType.VALIDATION_ERROR,
-          "送金金額は1円以上である必要があります"
+          `送金金額は${MIN_STRIPE_TRANSFER_AMOUNT}円以上である必要があります`
         )
       );
 
@@ -346,17 +347,56 @@ describe("StripeTransferService", () => {
         await service.createTransfer(params1);
         await service.createTransfer(params2);
 
-        // 異なる冪等性キーで2回呼び出されることを確認
+        // 2回呼び出される（モックは2回分呼ばれる）が、冪等性キーは同一であること
         expect(mockStripe.transfers.create).toHaveBeenCalledTimes(2);
 
         const firstCall = mockStripe.transfers.create.mock.calls[0];
         const secondCall = mockStripe.transfers.create.mock.calls[1];
 
-        // 冪等性キーが異なることを確認
-        expect(firstCall[1]?.idempotencyKey).not.toBe(secondCall[1]?.idempotencyKey);
+        // 金額が異なっても冪等性キーは同一（payout_id + destination [+ transferGroup] ベース）
+        expect(firstCall[1]?.idempotencyKey).toBe(secondCall[1]?.idempotencyKey);
       } finally {
         process.env.NODE_ENV = originalNodeEnv;
       }
+    });
+
+    it("冪等性キーの長さが255文字以内である", () => {
+      const service = new StripeTransferService();
+
+      const params = {
+        amount: 1000,
+        currency: "jpy" as const,
+        destination: "acct_" + "x".repeat(230), // destination を長めにして境界を試す
+        metadata: {
+          payout_id: "payout_" + "y".repeat(100),
+          event_id: "event_test",
+          user_id: "user_test",
+        },
+        transferGroup: "grp_" + "z".repeat(100),
+      } as const;
+
+      // private メソッドを直接呼べないため any キャストでアクセス
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const key: string = (service as any).generateIdempotencyKey(params);
+
+      expect(key.length).toBeLessThanOrEqual(255);
+    });
+  });
+
+  describe("isRetryableError - type 判定", () => {
+    it("type が api_error で code/ statusCode がない場合 true を返す", () => {
+      const service = new StripeTransferService();
+
+      const stripeError = new Error("Internal error") as Stripe.StripeError;
+      // code と statusCode を意図的に空 / undefined
+      stripeError.code = "" as any;
+      stripeError.type = "api_error" as any;
+
+      // private メソッドアクセス
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const result = (service as any).isRetryableError(stripeError);
+
+      expect(result).toBe(true);
     });
   });
 });

@@ -2,10 +2,10 @@
 
 import { z } from "zod";
 import { createClient as createServerClient } from "@/lib/supabase/server";
-import { createClient as createAdminClient } from "@supabase/supabase-js";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/database";
 import { PayoutService, PayoutValidator, PayoutErrorHandler } from "@/lib/services/payout";
-import { StripeConnectService } from "@/lib/services/stripe-connect";
+import { StripeConnectService, StripeConnectErrorHandler } from "@/lib/services/stripe-connect";
 import { PayoutError, PayoutErrorType } from "@/lib/services/payout/types";
 import { createRateLimitStore, checkRateLimit } from "@/lib/rate-limit";
 import { RATE_LIMIT_CONFIG } from "@/config/security";
@@ -16,6 +16,10 @@ import {
   ERROR_CODES,
   type ErrorCode,
 } from "@/lib/types/server-actions";
+import { SecureSupabaseClientFactory } from "@/lib/security/secure-client-factory.impl";
+import { AdminReason } from "@/lib/security/secure-client-factory.types";
+import { getUserSession } from "@/lib/auth/session";
+import { DEFAULT_PAYOUT_DAYS_AFTER_EVENT } from "@/lib/services/payout/constants";
 
 const inputSchema = z.object({
   eventId: z.string().uuid(),
@@ -105,23 +109,24 @@ export async function processManualPayoutAction(
       // レート制限でのストア初期化失敗時はスキップ（安全側）
     }
 
-    // 4. サービスクラスの初期化
+    // 4. サービスクラスの初期化（監査付き管理者クライアントを使用）
+    const secureFactory = SecureSupabaseClientFactory.getInstance();
+    const adminClient = (await secureFactory.createAuditedAdminClient(
+      AdminReason.PAYOUT_PROCESSING,
+      "server-actions/process-manual-payout"
+    )) as SupabaseClient<Database>;
+
     const stripeConnectService = new StripeConnectService(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
+      adminClient,
+      new StripeConnectErrorHandler()
     );
 
-    const validator = new PayoutValidator(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-      stripeConnectService
-    );
+    const validator = new PayoutValidator(adminClient, stripeConnectService);
 
     const errorHandler = new PayoutErrorHandler();
 
     const payoutService = new PayoutService(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      adminClient,
       errorHandler,
       stripeConnectService,
       validator
@@ -131,8 +136,7 @@ export async function processManualPayoutAction(
     const eligibilityResult = await payoutService.validateManualPayoutEligibility({
       eventId,
       userId: user.id,
-      minimumAmount: 100,
-      daysAfterEvent: 5,
+      daysAfterEvent: DEFAULT_PAYOUT_DAYS_AFTER_EVENT,
     });
 
     if (!eligibilityResult.eligible) {
@@ -154,13 +158,8 @@ export async function processManualPayoutAction(
     });
 
     // 7. 手動実行フラグの記録（要件8.7）
-    const admin = createAdminClient<Database>(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    );
-
     // 送金レコードに手動実行フラグを追加
-    await admin
+    await adminClient
       .from("payouts")
       .update({
         notes: notes ? `手動実行: ${notes}` : "手動実行",
@@ -169,7 +168,7 @@ export async function processManualPayoutAction(
       .eq("id", result.payoutId);
 
     // 8. 監査ログの記録
-    await admin.from("system_logs").insert({
+    await adminClient.from("system_logs").insert({
       operation_type: "manual_payout_execution",
       details: {
         payoutId: result.payoutId,
@@ -201,11 +200,12 @@ export async function processManualPayoutAction(
 
     // 予期しないエラーの場合は監査ログに記録
     try {
-      const admin = createAdminClient<Database>(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.SUPABASE_SERVICE_ROLE_KEY!
-      );
-      await admin.from("system_logs").insert({
+      const secureFactory = SecureSupabaseClientFactory.getInstance();
+      const adminClient = (await secureFactory.createAuditedAdminClient(
+        AdminReason.PAYOUT_PROCESSING,
+        "server-actions/process-manual-payout:error"
+      )) as SupabaseClient<Database>;
+      await adminClient.from("system_logs").insert({
         operation_type: "manual_payout_error",
         details: {
           eventId: (input as any)?.eventId,

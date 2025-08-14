@@ -3,7 +3,10 @@
 import { z } from "zod";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 import { PayoutService, PayoutValidator, PayoutErrorHandler } from "@/lib/services/payout";
-import { StripeConnectService } from "@/lib/services/stripe-connect";
+import { StripeConnectService, StripeConnectErrorHandler } from "@/lib/services/stripe-connect";
+import { SecureSupabaseClientFactory } from "@/lib/security/secure-client-factory.impl";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import { Database } from "@/types/database";
 import { PayoutError, PayoutErrorType, type Payout } from "@/lib/services/payout/types";
 import {
   type ServerActionResult,
@@ -59,20 +62,19 @@ export async function getPayoutsHistoryAction(
       return createErrorResponse(ERROR_CODES.UNAUTHORIZED, "認証が必要です。");
     }
 
-    // 3) サービス初期化（読み取りのみだが、既存実装に合わせ service_role を使用）
+    // 3) サービス初期化（RLS適用: 認証済みクライアントを使用）
+    const secureFactory = SecureSupabaseClientFactory.getInstance();
+    const userClient = secureFactory.createAuthenticatedClient();
+
     const stripeConnectService = new StripeConnectService(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
+      userClient as SupabaseClient<Database>,
+      new StripeConnectErrorHandler()
     );
-    const validator = new PayoutValidator(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-      stripeConnectService
-    );
+
+    const validator = new PayoutValidator(userClient as SupabaseClient<Database>, stripeConnectService);
     const errorHandler = new PayoutErrorHandler();
     const payoutService = new PayoutService(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      userClient as SupabaseClient<Database>,
       errorHandler,
       stripeConnectService,
       validator
