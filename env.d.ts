@@ -74,5 +74,11 @@ declare namespace NodeJS {
     // ===========================
     /** Node.js実行環境 */
     NODE_ENV: "development" | "production" | "test";
+    /**
+     * Destination charges 機能フラグ
+     * - "true" で Destination charges を有効化
+     * - 未設定またはその他の値の場合は無効
+     */
+    USE_DESTINATION_CHARGES?: "true" | "false";
   }
 }
