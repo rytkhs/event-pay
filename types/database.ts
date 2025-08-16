@@ -195,33 +195,39 @@ export type Database = {
       fee_config: {
         Row: {
           id: number
+          is_tax_included: boolean
           max_platform_fee: number
           min_payout_amount: number
           min_platform_fee: number
           platform_fee_rate: number
           platform_fixed_fee: number
+          platform_tax_rate: number
           stripe_base_rate: number
           stripe_fixed_fee: number
           updated_at: string
         }
         Insert: {
           id?: number
+          is_tax_included?: boolean
           max_platform_fee: number
           min_payout_amount?: number
           min_platform_fee: number
           platform_fee_rate: number
           platform_fixed_fee: number
+          platform_tax_rate?: number
           stripe_base_rate: number
           stripe_fixed_fee: number
           updated_at?: string
         }
         Update: {
           id?: number
+          is_tax_included?: boolean
           max_platform_fee?: number
           min_payout_amount?: number
           min_platform_fee?: number
           platform_fee_rate?: number
           platform_fixed_fee?: number
+          platform_tax_rate?: number
           stripe_base_rate?: number
           stripe_fixed_fee?: number
           updated_at?: string
@@ -348,9 +354,12 @@ export type Database = {
         Row: {
           amount: number
           application_fee_amount: number
+          application_fee_excl_tax: number
           application_fee_id: string | null
           application_fee_refund_id: string | null
           application_fee_refunded_amount: number
+          application_fee_tax_amount: number
+          application_fee_tax_rate: number
           attendance_id: string
           created_at: string
           destination_account_id: string | null
@@ -366,6 +375,7 @@ export type Database = {
           stripe_payment_intent_id: string | null
           stripe_session_id: string | null
           stripe_transfer_id: string | null
+          tax_included: boolean
           transfer_group: string | null
           updated_at: string
           webhook_event_id: string | null
@@ -374,9 +384,12 @@ export type Database = {
         Insert: {
           amount: number
           application_fee_amount?: number
+          application_fee_excl_tax?: number
           application_fee_id?: string | null
           application_fee_refund_id?: string | null
           application_fee_refunded_amount?: number
+          application_fee_tax_amount?: number
+          application_fee_tax_rate?: number
           attendance_id: string
           created_at?: string
           destination_account_id?: string | null
@@ -392,6 +405,7 @@ export type Database = {
           stripe_payment_intent_id?: string | null
           stripe_session_id?: string | null
           stripe_transfer_id?: string | null
+          tax_included?: boolean
           transfer_group?: string | null
           updated_at?: string
           webhook_event_id?: string | null
@@ -400,9 +414,12 @@ export type Database = {
         Update: {
           amount?: number
           application_fee_amount?: number
+          application_fee_excl_tax?: number
           application_fee_id?: string | null
           application_fee_refund_id?: string | null
           application_fee_refunded_amount?: number
+          application_fee_tax_amount?: number
+          application_fee_tax_rate?: number
           attendance_id?: string
           created_at?: string
           destination_account_id?: string | null
@@ -418,6 +435,7 @@ export type Database = {
           stripe_payment_intent_id?: string | null
           stripe_session_id?: string | null
           stripe_transfer_id?: string | null
+          tax_included?: boolean
           transfer_group?: string | null
           updated_at?: string
           webhook_event_id?: string | null
