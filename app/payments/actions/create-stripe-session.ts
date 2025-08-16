@@ -149,6 +149,8 @@ export async function createStripeSessionAction(
     const result = await paymentService.createStripeSession({
       attendanceId: params.attendanceId,
       amount: params.amount,
+      eventId: event.id,
+      userId: user.id,
       eventTitle: event.title,
       successUrl: params.successUrl,
       cancelUrl: params.cancelUrl,

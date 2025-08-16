@@ -185,10 +185,11 @@ export class PaymentService implements IPaymentService {
 
       // Stripe Checkout Sessionを作成 (Idempotency-Key 対応)
 
+      // 統一フォーマット: checkout:<eventId>:<userId>:<amount>:<currency>
       const idemKey = generateIdempotencyKey(
         "checkout",
-        params.attendanceId,
-        targetPaymentId,
+        params.eventId,
+        params.userId,
         { amount: params.amount, currency: "jpy" }
       );
 
