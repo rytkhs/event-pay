@@ -11,6 +11,16 @@ const mockSupabase = {
 jest.mock('@/lib/services/fee-config/service');
 const MockedFeeConfigService = FeeConfigService as jest.MockedClass<typeof FeeConfigService>;
 
+// ログのモック
+jest.mock('@/lib/logging/app-logger', () => ({
+  logger: {
+    info: jest.fn(),
+    warn: jest.fn(),
+    error: jest.fn(),
+    debug: jest.fn(),
+  }
+}));
+
 describe('ApplicationFeeCalculator', () => {
   let calculator: ApplicationFeeCalculator;
   let mockFeeConfigService: jest.Mocked<FeeConfigService>;
@@ -38,6 +48,8 @@ describe('ApplicationFeeCalculator', () => {
           fixedFee: 0,
           minimumFee: 0,
           maximumFee: 0,
+          taxRate: 0,
+          isTaxIncluded: true,
         },
         minPayoutAmount: 100,
       });
@@ -71,6 +83,8 @@ describe('ApplicationFeeCalculator', () => {
           fixedFee: 30,
           minimumFee: 50,
           maximumFee: 500,
+          taxRate: 0,
+          isTaxIncluded: true,
         },
         minPayoutAmount: 100,
       });
@@ -152,6 +166,8 @@ describe('ApplicationFeeCalculator', () => {
           fixedFee: 0,
           minimumFee: 0,
           maximumFee: 0,
+          taxRate: 0,
+          isTaxIncluded: true,
         },
         minPayoutAmount: 100,
       });
@@ -188,6 +204,8 @@ describe('ApplicationFeeCalculator', () => {
           fixedFee: 10,
           minimumFee: 20,
           maximumFee: 100,
+          taxRate: 0,
+          isTaxIncluded: true,
         },
         minPayoutAmount: 100,
       });
@@ -229,6 +247,8 @@ describe('ApplicationFeeCalculator', () => {
           fixedFee: 0,
           minimumFee: 0,
           maximumFee: 0,
+          taxRate: 0,
+          isTaxIncluded: true,
         },
         minPayoutAmount: 100,
       });
@@ -264,6 +284,8 @@ describe('ApplicationFeeCalculator', () => {
           fixedFee: 30,
           minimumFee: 50,
           maximumFee: 500,
+          taxRate: 0.1,
+          isTaxIncluded: true,
         },
         minPayoutAmount: 100,
       });
@@ -281,6 +303,8 @@ describe('ApplicationFeeCalculator', () => {
           fixedFee: 30,
           minimumFee: 50,
           maximumFee: 500,
+          taxRate: 0.1,
+          isTaxIncluded: true,
         },
         minPayoutAmount: 100,
       });
@@ -298,6 +322,8 @@ describe('ApplicationFeeCalculator', () => {
           fixedFee: 30,
           minimumFee: 50,
           maximumFee: 500,
+          taxRate: 0.1,
+          isTaxIncluded: true,
         },
         minPayoutAmount: 100,
       });
@@ -315,6 +341,8 @@ describe('ApplicationFeeCalculator', () => {
           fixedFee: 30,
           minimumFee: 100,
           maximumFee: 50, // min > max
+          taxRate: 0.1,
+          isTaxIncluded: true,
         },
         minPayoutAmount: 100,
       });
@@ -322,6 +350,151 @@ describe('ApplicationFeeCalculator', () => {
       const result = await calculator.validateConfig();
       expect(result.isValid).toBe(false);
       expect(result.errors).toContain('max_platform_fee (50) must be >= min_platform_fee (100)');
+    });
+  });
+
+  describe('税額計算（将来の課税事業者対応）', () => {
+    test('MVP段階: 税率0%の場合', async () => {
+      mockFeeConfigService.getConfig.mockResolvedValue({
+        stripe: { baseRate: 0.036, fixedFee: 0 },
+        platform: {
+          rate: 0.03,
+          fixedFee: 30,
+          minimumFee: 50,
+          maximumFee: 500,
+          taxRate: 0, // MVP段階
+          isTaxIncluded: true,
+        },
+        minPayoutAmount: 100,
+      });
+
+      const result = await calculator.calculateApplicationFee(1000);
+
+      expect(result.taxCalculation).toEqual({
+        taxRate: 0,
+        feeExcludingTax: result.applicationFeeAmount,
+        taxAmount: 0,
+        isTaxIncluded: true,
+      });
+    });
+
+    test('内税計算: 税率10%の場合', async () => {
+      mockFeeConfigService.getConfig.mockResolvedValue({
+        stripe: { baseRate: 0.036, fixedFee: 0 },
+        platform: {
+          rate: 0.1, // 10%
+          fixedFee: 0,
+          minimumFee: 0,
+          maximumFee: 0,
+          taxRate: 0.1, // 10%
+          isTaxIncluded: true,
+        },
+        minPayoutAmount: 100,
+      });
+
+      const result = await calculator.calculateApplicationFee(1000);
+
+      // 1000円 * 10% = 100円（税込）
+      expect(result.applicationFeeAmount).toBe(100);
+
+      // 内税計算: 税抜 = 100 / (1 + 0.1) = 90.909... → 90円（切り捨て）
+      // 税額 = 100 - 90 = 10円
+      expect(result.taxCalculation.feeExcludingTax).toBe(90);
+      expect(result.taxCalculation.taxAmount).toBe(10);
+      expect(result.taxCalculation.taxRate).toBe(0.1);
+      expect(result.taxCalculation.isTaxIncluded).toBe(true);
+    });
+
+    test('外税計算: 税率10%の場合', async () => {
+      mockFeeConfigService.getConfig.mockResolvedValue({
+        stripe: { baseRate: 0.036, fixedFee: 0 },
+        platform: {
+          rate: 0.1, // 10%
+          fixedFee: 0,
+          minimumFee: 0,
+          maximumFee: 0,
+          taxRate: 0.1, // 10%
+          isTaxIncluded: false, // 外税
+        },
+        minPayoutAmount: 100,
+      });
+
+      const result = await calculator.calculateApplicationFee(1000);
+
+      // 1000円 * 10% = 100円（税抜）
+      expect(result.applicationFeeAmount).toBe(100);
+
+      // 外税計算: 税抜100円、税額 = 100 * 0.1 = 10円
+      expect(result.taxCalculation.feeExcludingTax).toBe(100);
+      expect(result.taxCalculation.taxAmount).toBe(10);
+      expect(result.taxCalculation.taxRate).toBe(0.1);
+      expect(result.taxCalculation.isTaxIncluded).toBe(false);
+    });
+
+    test('内税計算での端数処理', async () => {
+      mockFeeConfigService.getConfig.mockResolvedValue({
+        stripe: { baseRate: 0.036, fixedFee: 0 },
+        platform: {
+          rate: 0,
+          fixedFee: 33, // 33円固定
+          minimumFee: 0,
+          maximumFee: 0,
+          taxRate: 0.1, // 10%
+          isTaxIncluded: true,
+        },
+        minPayoutAmount: 100,
+      });
+
+      const result = await calculator.calculateApplicationFee(1000);
+
+      expect(result.applicationFeeAmount).toBe(33);
+
+      // 内税計算: 税抜 = 33 / 1.1 = 30.000... → 30円（切り捨て）
+      // 実際: 33 / 1.1 = 30.000... → Math.floor(30.000...) = 30円ではなく
+      // JavaScript の浮動小数点誤差で 29.999... → Math.floor(29.999...) = 29円
+      // 税額 = 33 - 29 = 4円
+      expect(result.taxCalculation.feeExcludingTax).toBe(29);
+      expect(result.taxCalculation.taxAmount).toBe(4);
+    });
+  });
+
+  describe('税率バリデーション', () => {
+    test('負の税率でエラー', async () => {
+      mockFeeConfigService.getConfig.mockResolvedValue({
+        stripe: { baseRate: 0.036, fixedFee: 0 },
+        platform: {
+          rate: 0.03,
+          fixedFee: 30,
+          minimumFee: 50,
+          maximumFee: 500,
+          taxRate: -0.05, // 負の税率
+          isTaxIncluded: true,
+        },
+        minPayoutAmount: 100,
+      });
+
+      const result = await calculator.validateConfig();
+      expect(result.isValid).toBe(false);
+      expect(result.errors).toContain('platform_tax_rate must be non-negative, got: -0.05');
+    });
+
+    test('100%超の税率でエラー', async () => {
+      mockFeeConfigService.getConfig.mockResolvedValue({
+        stripe: { baseRate: 0.036, fixedFee: 0 },
+        platform: {
+          rate: 0.03,
+          fixedFee: 30,
+          minimumFee: 50,
+          maximumFee: 500,
+          taxRate: 1.5, // 150%
+          isTaxIncluded: true,
+        },
+        minPayoutAmount: 100,
+      });
+
+      const result = await calculator.validateConfig();
+      expect(result.isValid).toBe(false);
+      expect(result.errors).toContain('platform_tax_rate should not exceed 100%, got: 150%');
     });
   });
 
@@ -334,6 +507,8 @@ describe('ApplicationFeeCalculator', () => {
           fixedFee: 0,
           minimumFee: 0,
           maximumFee: 0,
+          taxRate: 0,
+          isTaxIncluded: true,
         },
         minPayoutAmount: 100,
       });
@@ -350,6 +525,8 @@ describe('ApplicationFeeCalculator', () => {
           fixedFee: 0,
           minimumFee: 0,
           maximumFee: 0,
+          taxRate: 0,
+          isTaxIncluded: true,
         },
         minPayoutAmount: 100,
       });

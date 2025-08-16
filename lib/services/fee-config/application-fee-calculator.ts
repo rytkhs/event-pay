@@ -26,6 +26,17 @@ export interface ApplicationFeeCalculation {
     /** max適用後（最終値） */
     afterMaximum: number;
   };
+  /** 税額詳細（将来の課税事業者対応） */
+  taxCalculation: {
+    /** 税率 */
+    taxRate: number;
+    /** 税抜手数料 */
+    feeExcludingTax: number;
+    /** 税額 */
+    taxAmount: number;
+    /** 内税かどうか */
+    isTaxIncluded: boolean;
+  };
 }
 
 /**
@@ -36,6 +47,11 @@ export interface ApplicationFeeCalculation {
  * 2. 最小値適用: max(計算値, min_platform_fee)
  * 3. 最大値適用: min(計算値, max_platform_fee)
  * 4. 決済金額上限: min(計算値, amount) - application_fee_amountは決済金額を超えられない
+ *
+ * 税額計算（将来の課税事業者対応）:
+ * - 内税の場合: 手数料総額から税抜金額と税額を逆算
+ * - 外税の場合: 税抜手数料に税率を掛けて税額を算出（現在未使用）
+ * - MVP段階: 税率0%のため税額は常に0円
  */
 export class ApplicationFeeCalculator {
   private feeConfigService: FeeConfigService;
@@ -64,6 +80,7 @@ export class ApplicationFeeCalculator {
 
     // 計算実行
     const calculation = this.performCalculation(amount, platform);
+    const taxCalculation = this.calculateTax(calculation.afterMaximum, platform);
 
     logger.info('Application fee calculated', {
       tag: 'feeCalculated',
@@ -74,6 +91,10 @@ export class ApplicationFeeCalculator {
       fixedFee: calculation.fixedFee,
       minimumApplied: calculation.afterMinimum > calculation.beforeClipping,
       maximumApplied: calculation.afterMaximum < calculation.afterMinimum,
+      taxRate: taxCalculation.taxRate,
+      feeExcludingTax: taxCalculation.feeExcludingTax,
+      taxAmount: taxCalculation.taxAmount,
+      isTaxIncluded: taxCalculation.isTaxIncluded,
     });
 
     return {
@@ -81,6 +102,7 @@ export class ApplicationFeeCalculator {
       applicationFeeAmount: calculation.afterMaximum,
       config: platform,
       calculation,
+      taxCalculation,
     };
   }
 
@@ -114,11 +136,13 @@ export class ApplicationFeeCalculator {
     // 各金額に対して計算実行
     const results = amounts.map(amount => {
       const calculation = this.performCalculation(amount, platform);
+      const taxCalculation = this.calculateTax(calculation.afterMaximum, platform);
       return {
         amount,
         applicationFeeAmount: calculation.afterMaximum,
         config: platform,
         calculation,
+        taxCalculation,
       };
     });
 
@@ -171,6 +195,52 @@ export class ApplicationFeeCalculator {
   }
 
   /**
+   * 税額計算
+   * @param totalFeeAmount 税込手数料額（円）
+   * @param config プラットフォーム手数料設定
+   * @returns 税額詳細
+   */
+  private calculateTax(
+    totalFeeAmount: number,
+    config: PlatformFeeConfig
+  ): ApplicationFeeCalculation['taxCalculation'] {
+    // MVP段階では税率0%なので、すべて0で返す
+    if (config.taxRate === 0) {
+      return {
+        taxRate: 0,
+        feeExcludingTax: totalFeeAmount,
+        taxAmount: 0,
+        isTaxIncluded: config.isTaxIncluded,
+      };
+    }
+
+    if (config.isTaxIncluded) {
+      // 内税の場合: 税込金額から税抜金額と税額を逆算
+      // 税抜金額 = 税込金額 / (1 + 税率)
+      const feeExcludingTax = Math.floor(totalFeeAmount / (1 + config.taxRate));
+      const taxAmount = totalFeeAmount - feeExcludingTax;
+
+      return {
+        taxRate: config.taxRate,
+        feeExcludingTax,
+        taxAmount,
+        isTaxIncluded: true,
+      };
+    } else {
+      // 外税の場合: 税抜手数料に税率を掛けて税額を算出
+      // 税額 = 税抜金額 * 税率（四捨五入）
+      const taxAmount = Math.round(totalFeeAmount * config.taxRate);
+
+      return {
+        taxRate: config.taxRate,
+        feeExcludingTax: totalFeeAmount,
+        taxAmount,
+        isTaxIncluded: false,
+      };
+    }
+  }
+
+  /**
    * 設定値の妥当性チェック
    * @param forceRefresh fee_configを強制再取得するか
    * @returns 設定値とバリデーション結果
@@ -201,6 +271,12 @@ export class ApplicationFeeCalculator {
     }
     if (platform.maximumFee > 0 && platform.maximumFee < platform.minimumFee) {
       errors.push(`max_platform_fee (${platform.maximumFee}) must be >= min_platform_fee (${platform.minimumFee})`);
+    }
+    if (platform.taxRate < 0) {
+      errors.push(`platform_tax_rate must be non-negative, got: ${platform.taxRate}`);
+    }
+    if (platform.taxRate > 1) {
+      errors.push(`platform_tax_rate should not exceed 100%, got: ${platform.taxRate * 100}%`);
     }
 
     if (errors.length > 0) {

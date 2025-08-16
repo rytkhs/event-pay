@@ -21,6 +21,10 @@ export interface PlatformFeeConfig {
   minimumFee: number;
   /** 手数料の上限金額 (円) */
   maximumFee: number;
+  /** 消費税率 (0.10 = 10%) */
+  taxRate: number;
+  /** 内税かどうか (true=内税, false=外税) */
+  isTaxIncluded: boolean;
 }
 
 /**
@@ -106,7 +110,7 @@ export class FeeConfigService {
     const { data, error } = await this.supabase
       .from("fee_config")
       .select(
-        "stripe_base_rate, stripe_fixed_fee, platform_fee_rate, platform_fixed_fee, min_platform_fee, max_platform_fee, min_payout_amount"
+        "stripe_base_rate, stripe_fixed_fee, platform_fee_rate, platform_fixed_fee, min_platform_fee, max_platform_fee, min_payout_amount, platform_tax_rate, is_tax_included"
       )
       .limit(1)
       .maybeSingle();
@@ -134,6 +138,8 @@ export class FeeConfigService {
       fixedFee: Number(data.platform_fixed_fee ?? 0),
       minimumFee: Number(data.min_platform_fee ?? 0),
       maximumFee: Number(data.max_platform_fee ?? 0),
+      taxRate: Number(data.platform_tax_rate ?? 10) / 100, // DB保存は10.00、使用時は0.10に変換
+      isTaxIncluded: data.is_tax_included ?? true,
     };
 
     return { stripe, platform, minPayoutAmount: Number(data.min_payout_amount) };
