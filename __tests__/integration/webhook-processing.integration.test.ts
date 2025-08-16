@@ -2,8 +2,8 @@ import { NextRequest } from "next/server";
 import Stripe from "stripe";
 import { POST } from "@/app/api/webhooks/stripe/route";
 
-// テスト用のStripeクライアント（バージョン固定は不要）
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "sk_test_fake");
+// テスト用Stripeクライアントは beforeEach で初期化
+let stripe: Stripe;
 
 // 実際のWebhookペイロードを生成するヘルパー
 function createWebhookPayload(event: any): string {
@@ -30,6 +30,9 @@ describe("Webhook Processing Integration", () => {
     process.env.STRIPE_WEBHOOK_SECRET = webhookSecret;
     process.env.NEXT_PUBLIC_SUPABASE_URL = "https://test.supabase.co";
     process.env.SUPABASE_SERVICE_ROLE_KEY = "test_service_role_key";
+
+    // Stripeクライアント初期化
+    stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string);
   });
 
   it("payment_intent.succeeded Webhookの完全な処理フロー", async () => {

@@ -98,7 +98,7 @@ export const STRIPE_ERROR_CODE_MAPPING: Record<string, StripeConnectErrorType> =
 
   // パラメータ関連
   'invalid_request_error': StripeConnectErrorType.VALIDATION_ERROR,
-  'idempotency_error': StripeConnectErrorType.VALIDATION_ERROR,
+  'idempotency_key_in_use': StripeConnectErrorType.VALIDATION_ERROR,
 };
 
 /**

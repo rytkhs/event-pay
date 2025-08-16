@@ -49,7 +49,7 @@ export class StripeConnectService implements IStripeConnectService {
     try {
       // パラメータバリデーション
       const validatedParams = validateCreateExpressAccountParams(params);
-      const { userId, email, country, businessType, businessProfile } = validatedParams;
+      const { userId, email, country, businessProfile } = validatedParams;
 
       // 既存アカウントの重複チェック（DB）
       const existingAccount = await this.getConnectAccountByUser(userId);
@@ -91,7 +91,6 @@ export class StripeConnectService implements IStripeConnectService {
           card_payments: { requested: true },
           transfers: { requested: true },
         },
-        business_type: businessType,
         metadata: {
           user_id: userId,
           created_by: "EventPay",

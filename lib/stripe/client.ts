@@ -1,4 +1,5 @@
 import Stripe from "stripe";
+import { logger } from "@/lib/logging/app-logger";
 
 // 環境変数の検証
 const requiredEnvVars = {
@@ -6,25 +7,58 @@ const requiredEnvVars = {
   NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY,
 } as const;
 
-// 環境変数の存在チェック（テスト環境では厳格チェックをスキップ）
-const isTestEnv = process.env.NODE_ENV === "test";
-if (!isTestEnv) {
-  for (const [key, value] of Object.entries(requiredEnvVars)) {
-    if (!value) {
-      throw new Error(`Missing required environment variable: ${key}`);
-    }
+// 環境変数の存在チェック（環境・テスト問わず必須）
+for (const [key, value] of Object.entries(requiredEnvVars)) {
+  if (!value) {
+    throw new Error(`Missing required environment variable: ${key}`);
   }
 }
 
-// Stripeクライアントの初期化
-export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "sk_test_placeholder", {
-  apiVersion: process.env.STRIPE_API_VERSION as Stripe.LatestApiVersion | undefined,
-  typescript: true,
+// Stripeクライアントの初期化（Destination charges対応）
+const stripeSecretKey = process.env.STRIPE_SECRET_KEY!;
+export const stripe = new Stripe(stripeSecretKey, {
+  // API バージョンを固定（Destination charges対応）
+  apiVersion: "2025-07-30.basil",
+  // 自動リトライ設定（429/5xx/接続エラー対応）
+  maxNetworkRetries: 3,
+  // タイムアウト設定（30秒）
+  timeout: 30000,
   appInfo: {
     name: "EventPay",
     version: "1.0.0",
   },
 });
+
+// We'll insert event hooks once to avoid duplicate registration in hot reload environments.
+const hasRegisteredHooks = (global as unknown as { __stripeHooks?: boolean }).__stripeHooks;
+if (!hasRegisteredHooks) {
+  (global as unknown as { __stripeHooks?: boolean }).__stripeHooks = true;
+
+  // Stripe request hook
+  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+  // @ts-ignore - stripe typings don't expose "request" event yet
+  stripe.on("request", (req: Record<string, unknown>) => {
+    logger.info("stripe_request", {
+      request_id: req.requestId as string | undefined,
+      idempotency_key: req.idempotencyKey as string | undefined,
+      method: req.method as string | undefined,
+      path: req.path as string | undefined,
+      stripe_account: req.stripeAccount as string | undefined,
+    });
+  });
+
+  // Stripe response hook
+  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+  // @ts-ignore - stripe typings don't expose "response" event yet
+  stripe.on("response", (res: Record<string, unknown>) => {
+    logger.info("stripe_response", {
+      request_id: res.requestId as string | undefined,
+      status: res.statusCode as number | undefined,
+      latency_ms: res.elapsed as number | undefined,
+      stripe_should_retry: (res.headers as Record<string, unknown> | undefined)?.["stripe-should-retry"] as string | undefined,
+    });
+  });
+}
 
 /**
  * Webhook用のシークレット取得関数。
@@ -46,6 +80,58 @@ export const stripeConfig = {
   appUrl: process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000",
 } as const;
 
+/**
+ * Idempotency Key生成関数
+ * Destination charges対応でCheckout/PaymentIntents作成時の二重作成防止
+ */
+export const generateIdempotencyKey = (
+  type: 'checkout' | 'payment_intent' | 'refund',
+  primaryId: string, // eventId or paymentIntentId / chargeId depending on type
+  secondaryId?: string | number, // userId or amount/full etc. optional
+  opts?: {
+    amount?: number;
+    currency?: string;
+  }
+): string => {
+  // Stripe Idempotency-Key は 1〜255 文字 (ASCII) に制限されるため、
+  // keyComponent をコロンスプリットで連結した後に slice で truncate する。
+
+  const prefix =
+    type === 'payment_intent' ? 'pi' : type === 'refund' ? 'refund' : type; // 明示的に refund を保持
+
+  const components: (string | number | undefined)[] = [prefix, primaryId];
+
+  if (secondaryId !== undefined && secondaryId !== '') {
+    components.push(secondaryId);
+  }
+
+  // 可変パラメータ（amount/currency）が指定されていれば追加
+  if (opts?.amount !== undefined) {
+    components.push(opts.amount);
+  }
+  if (opts?.currency) {
+    components.push(opts.currency);
+  }
+
+  return components.join(':').slice(0, 255);
+};
+
+/**
+ * Stripe API呼び出し用のオプション生成
+ * idempotency_keyを含む共通オプションを提供
+ */
+export const createStripeRequestOptions = (
+  idempotencyKey?: string
+): Stripe.RequestOptions => {
+  const options: Stripe.RequestOptions = {};
+
+  if (idempotencyKey) {
+    options.idempotencyKey = idempotencyKey;
+  }
+
+  return options;
+};
+
 // Stripe接続テスト
 export const testStripeConnection = async (): Promise<{
   success: boolean;
@@ -60,7 +146,7 @@ export const testStripeConnection = async (): Promise<{
       accountId: account.id,
     };
   } catch (error) {
-    console.error("Stripe connection test failed:", error);
+
     return {
       success: false,
       error: error instanceof Error ? error.message : "Unknown error",
@@ -79,7 +165,6 @@ export const stripeConnect = {
         card_payments: { requested: true },
         transfers: { requested: true },
       },
-      business_type: "individual",
       metadata: {
         user_id: userId,
       },

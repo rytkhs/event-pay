@@ -83,6 +83,20 @@ export const RATE_LIMIT_CONFIG = {
     maxAttempts: 3, // 最大3回（慎重な操作のため制限）
     blockDurationMs: 5 * 60 * 1000, // 5分ブロック
   } as RateLimitConfig,
+
+  // Destination charges: Checkout/PaymentIntents作成（公開エンドポイント）
+  stripeCheckout: {
+    windowMs: 60 * 1000, // 1分
+    maxAttempts: 10, // 最大10回
+    blockDurationMs: 2 * 60 * 1000, // 2分ブロック
+  } as RateLimitConfig,
+
+  // Destination charges: PaymentIntents直作成（公開エンドポイント）
+  stripePaymentIntent: {
+    windowMs: 60 * 1000, // 1分
+    maxAttempts: 5, // 最大5回（より慎重）
+    blockDurationMs: 5 * 60 * 1000, // 5分ブロック
+  } as RateLimitConfig,
 } as const;
 
 // Cookie設定
