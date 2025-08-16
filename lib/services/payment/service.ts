@@ -5,8 +5,11 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 // import type { PostgrestError } from "@supabase/supabase-js";
 import { Database } from "@/types/database";
-import { stripe, generateIdempotencyKey, createStripeRequestOptions } from "@/lib/stripe/client";
+import { stripe } from "@/lib/stripe/client";
+import type Stripe from "stripe";
 import { retryWithIdempotency } from "@/lib/stripe/idempotency-retry";
+import { createDestinationCheckoutSession, createOrRetrieveCustomer } from "@/lib/stripe/destination-charges";
+import { ApplicationFeeCalculator } from "@/lib/services/fee-config/application-fee-calculator";
 import { IPaymentService, IPaymentErrorHandler } from "./interface";
 import {
   Payment,
@@ -31,10 +34,12 @@ export class PaymentService implements IPaymentService {
   private supabase: SupabaseClient<Database>;
   private stripe = stripe;
   private errorHandler: IPaymentErrorHandler;
+  private applicationFeeCalculator: ApplicationFeeCalculator;
 
   constructor(supabaseClient: SupabaseClient<Database>, errorHandler: IPaymentErrorHandler) {
     this.supabase = supabaseClient;
     this.errorHandler = errorHandler;
+    this.applicationFeeCalculator = new ApplicationFeeCalculator(supabaseClient);
   }
 
   /**
@@ -183,75 +188,159 @@ export class PaymentService implements IPaymentService {
         }
       }
 
-      // Stripe Checkout Sessionを作成 (Idempotency-Key 対応)
+      // Stripe Checkout Sessionを作成 (Destination charges対応)
+      let session: Stripe.Checkout.Session;
 
-      // 統一フォーマット: checkout:<eventId>:<userId>:<amount>:<currency>
-      const idemKey = generateIdempotencyKey(
-        "checkout",
-        params.eventId,
-        params.userId,
-        { amount: params.amount, currency: "jpy" }
-      );
+      if (params.destinationCharges) {
+        // Destination charges フロー
+        const { destinationAccountId, userEmail, userName, setupFutureUsage } = params.destinationCharges;
 
-      const requestOptions = createStripeRequestOptions(idemKey);
+        // Application fee計算
+        const feeCalculation = await this.applicationFeeCalculator.calculateApplicationFee(params.amount);
 
-      const createSession = async () =>
-        await this.stripe.checkout.sessions.create(
-          {
-            payment_method_types: ["card"],
-            line_items: [
-              {
-                price_data: {
-                  currency: "jpy",
-                  product_data: {
-                    name: params.eventTitle,
-                    description: "イベント参加費",
-                  },
-                  unit_amount: params.amount,
-                },
-                quantity: 1,
-              },
-            ],
-            mode: "payment",
-            success_url: params.successUrl,
-            cancel_url: params.cancelUrl,
+        // Customer作成・取得
+        let customerId: string | undefined;
+        if (userEmail || userName) {
+          const customer = await createOrRetrieveCustomer({
+            email: userEmail,
+            name: userName,
             metadata: {
-              payment_id: targetPaymentId,
-              attendance_id: params.attendanceId,
+              user_id: params.userId,
+              event_id: params.eventId,
             },
-            payment_intent_data: {
+          });
+          customerId = customer.id;
+        }
+
+        // Destination charges用のCheckout Session作成
+        session = await createDestinationCheckoutSession({
+          eventId: params.eventId,
+          amount: params.amount,
+          destinationAccountId,
+          platformFeeAmount: feeCalculation.applicationFeeAmount,
+          customerId,
+          successUrl: params.successUrl,
+          cancelUrl: params.cancelUrl,
+          userId: params.userId,
+          metadata: {
+            payment_id: targetPaymentId,
+            attendance_id: params.attendanceId,
+            event_title: params.eventTitle,
+          },
+          setupFutureUsage,
+        });
+
+        // DBにDestination charges関連情報を保存
+        const { error: updateDestinationError } = await this.supabase
+          .from("payments")
+          .update({
+            stripe_checkout_session_id: session.id,
+            destination_account_id: destinationAccountId,
+            application_fee_amount: feeCalculation.applicationFeeAmount,
+            transfer_group: `event_${params.eventId}_payout`,
+            stripe_customer_id: customerId,
+          })
+          .eq("id", targetPaymentId);
+
+        if (updateDestinationError) {
+          await this.errorHandler.logError(
+            new PaymentError(
+              PaymentErrorType.DATABASE_ERROR,
+              `Failed to update payment record with destination charges data: ${updateDestinationError.message}`,
+              updateDestinationError as unknown as Error
+            ),
+            {
+              operation: "updateDestinationChargesData",
+              paymentId: targetPaymentId,
+              sessionId: session.id,
+              destinationAccountId,
+              applicationFeeAmount: feeCalculation.applicationFeeAmount,
+            }
+          );
+        }
+
+        logger.info("Destination charges session created", {
+          tag: "destinationChargesCreated",
+          service: "PaymentService",
+          paymentId: targetPaymentId,
+          sessionId: session.id,
+          amount: params.amount,
+          applicationFeeAmount: feeCalculation.applicationFeeAmount,
+          destinationAccountId,
+          transferGroup: `event_${params.eventId}_payout`,
+        });
+
+      } else {
+        // 従来のSeparate charges and transfers フロー（機能フラグで制御予定）
+        const idemKey = generateIdempotencyKey(
+          "checkout",
+          params.eventId,
+          params.userId,
+          { amount: params.amount, currency: "jpy" }
+        );
+
+        const requestOptions = createStripeRequestOptions(idemKey);
+
+        const createSession = async () =>
+          await this.stripe.checkout.sessions.create(
+            {
+              payment_method_types: ["card"],
+              line_items: [
+                {
+                  price_data: {
+                    currency: "jpy",
+                    product_data: {
+                      name: params.eventTitle,
+                      description: "イベント参加費",
+                    },
+                    unit_amount: params.amount,
+                  },
+                  quantity: 1,
+                },
+              ],
+              mode: "payment",
+              success_url: params.successUrl,
+              cancel_url: params.cancelUrl,
               metadata: {
                 payment_id: targetPaymentId,
                 attendance_id: params.attendanceId,
               },
-              ...(params.transferGroup ? { transfer_group: params.transferGroup } : {}),
+              payment_intent_data: {
+                metadata: {
+                  payment_id: targetPaymentId,
+                  attendance_id: params.attendanceId,
+                },
+                ...(params.transferGroup ? { transfer_group: params.transferGroup } : {}),
+              },
+              expires_at: Math.floor(Date.now() / 1000) + 30 * 60,
             },
-            expires_at: Math.floor(Date.now() / 1000) + 30 * 60,
-          },
-          requestOptions
-        );
+            requestOptions
+          );
 
-      const session = await retryWithIdempotency(createSession);
+        session = await retryWithIdempotency(createSession);
+      }
 
-      // 決済レコードにセッションIDを更新
-      const { error: updateError } = await this.supabase
-        .from("payments")
-        .update({
-          stripe_session_id: session.id,
-        })
-        .eq("id", targetPaymentId);
+      // 従来フローの場合のみセッションIDを更新（Destination chargesの場合は上記で更新済み）
+      if (!params.destinationCharges) {
+        const { error: updateError } = await this.supabase
+          .from("payments")
+          .update({
+            stripe_session_id: session.id,
+          })
+          .eq("id", targetPaymentId);
 
-      if (updateError) {
-        // セッションは作成されたが、DBの更新に失敗した場合はハンドラに記録
-        await this.errorHandler.logError(
-          new PaymentError(
-            PaymentErrorType.DATABASE_ERROR,
-            `Failed to update payment record with session ID: ${updateError.message}`,
-            updateError as unknown as Error
-          ),
-          { operation: "updateStripeSessionId", paymentId: targetPaymentId, sessionId: session.id }
-        );
-        // セッションは有効なので処理は続行
+        if (updateError) {
+          // セッションは作成されたが、DBの更新に失敗した場合はハンドラに記録
+          await this.errorHandler.logError(
+            new PaymentError(
+              PaymentErrorType.DATABASE_ERROR,
+              `Failed to update payment record with session ID: ${updateError.message}`,
+              updateError as unknown as Error
+            ),
+            { operation: "updateStripeSessionId", paymentId: targetPaymentId, sessionId: session.id }
+          );
+          // セッションは有効なので処理は続行
+        }
       }
 
       return {

@@ -45,6 +45,22 @@ export interface CreateStripeSessionParams {
    * - Checkout -> PaymentIntent に付与し、のちの Transfer と突合するために使用
    */
   transferGroup?: string;
+  /**
+   * Destination charges用パラメータ
+   */
+  destinationCharges?: {
+    /** 送金先のStripe Connect アカウントID (acct_...) */
+    destinationAccountId: string;
+    /** ユーザーのメールアドレス（Customer作成用） */
+    userEmail?: string;
+    /** ユーザー名（Customer作成用） */
+    userName?: string;
+    /**
+     * Checkout Session で将来のオフセッション決済用にカード情報を保存するかどうか
+     * @see https://docs.stripe.com/api/checkout/sessions/create#create_checkout_session-payment_intent_data-setup_future_usage
+     */
+    setupFutureUsage?: 'off_session';
+  };
 }
 
 // Stripe決済セッション作成結果

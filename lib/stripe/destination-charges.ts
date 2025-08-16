@@ -20,7 +20,7 @@ export interface CreateDestinationCheckoutParams {
   cancelUrl: string;
   userId: string; // idempotency_key生成用
   metadata?: Record<string, string>; // 追加メタデータ
-  setupFutureUsage?: 'off_session' | 'on_session'; // オプション: カード保存フラグ
+  setupFutureUsage?: 'off_session'; // オプション: カード保存フラグ
 }
 
 /**
@@ -78,6 +78,7 @@ export async function createDestinationCheckoutSession(
     stripe.checkout.sessions.create(
       {
         mode: 'payment',
+        payment_method_types: ['card'],
         line_items: [
           {
             price_data: {
