@@ -68,18 +68,18 @@ export async function createStripeSessionAction(
       return createErrorResponse(ERROR_CODES.UNAUTHORIZED, "認証が必要です。");
     }
 
-    // レート制限（ユーザー単位）
+    // 公開エンドポイント用レート制限（ユーザー単位）
     try {
       const store = await createRateLimitStore();
       const rl = await checkRateLimit(
         store,
-        `payment_create_session_${user.id}`,
-        RATE_LIMIT_CONFIG.paymentCreateSession
+        `stripe_checkout_user_${user.id}`,
+        RATE_LIMIT_CONFIG.stripeCheckout
       );
       if (!rl.allowed) {
         return createErrorResponse(
           ERROR_CODES.RATE_LIMIT_EXCEEDED,
-          "レート制限に達しました。しばらく待ってから再試行してください。",
+          "Stripe Checkout セッションの作成回数が上限に達しました。しばらく待ってから再試行してください。",
           rl.retryAfter ? { retryAfter: rl.retryAfter } : undefined
         );
       }

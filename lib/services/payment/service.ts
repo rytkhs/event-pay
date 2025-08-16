@@ -5,7 +5,8 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 // import type { PostgrestError } from "@supabase/supabase-js";
 import { Database } from "@/types/database";
-import { stripe } from "@/lib/stripe/client";
+import { stripe, generateIdempotencyKey, createStripeRequestOptions } from "@/lib/stripe/client";
+import { retryWithIdempotency } from "@/lib/stripe/idempotency-retry";
 import { IPaymentService, IPaymentErrorHandler } from "./interface";
 import {
   Payment,
@@ -21,6 +22,7 @@ import {
   ErrorHandlingResult,
 } from "./types";
 import { ERROR_HANDLING_BY_TYPE } from "./error-mapping";
+import { logger } from "@/lib/logging/app-logger";
 
 /**
  * PaymentServiceの実装クラス
@@ -181,40 +183,54 @@ export class PaymentService implements IPaymentService {
         }
       }
 
-      // Stripe Checkout Sessionを作成
-      const session = await this.stripe.checkout.sessions.create({
-        payment_method_types: ["card"],
-        line_items: [
+      // Stripe Checkout Sessionを作成 (Idempotency-Key 対応)
+
+      const idemKey = generateIdempotencyKey(
+        "checkout",
+        params.attendanceId,
+        targetPaymentId,
+        { amount: params.amount, currency: "jpy" }
+      );
+
+      const requestOptions = createStripeRequestOptions(idemKey);
+
+      const createSession = async () =>
+        await this.stripe.checkout.sessions.create(
           {
-            price_data: {
-              currency: "jpy",
-              product_data: {
-                name: params.eventTitle,
-                description: "イベント参加費",
+            payment_method_types: ["card"],
+            line_items: [
+              {
+                price_data: {
+                  currency: "jpy",
+                  product_data: {
+                    name: params.eventTitle,
+                    description: "イベント参加費",
+                  },
+                  unit_amount: params.amount,
+                },
+                quantity: 1,
               },
-              unit_amount: params.amount,
+            ],
+            mode: "payment",
+            success_url: params.successUrl,
+            cancel_url: params.cancelUrl,
+            metadata: {
+              payment_id: targetPaymentId,
+              attendance_id: params.attendanceId,
             },
-            quantity: 1,
+            payment_intent_data: {
+              metadata: {
+                payment_id: targetPaymentId,
+                attendance_id: params.attendanceId,
+              },
+              ...(params.transferGroup ? { transfer_group: params.transferGroup } : {}),
+            },
+            expires_at: Math.floor(Date.now() / 1000) + 30 * 60,
           },
-        ],
-        mode: "payment",
-        success_url: params.successUrl,
-        cancel_url: params.cancelUrl,
-        metadata: {
-          payment_id: targetPaymentId,
-          attendance_id: params.attendanceId,
-        },
-        payment_intent_data: {
-          metadata: {
-            payment_id: targetPaymentId,
-            attendance_id: params.attendanceId,
-          },
-          ...(params.transferGroup
-            ? { transfer_group: params.transferGroup }
-            : {}),
-        },
-        expires_at: Math.floor(Date.now() / 1000) + 30 * 60, // 30分後に期限切れ
-      });
+          requestOptions
+        );
+
+      const session = await retryWithIdempotency(createSession);
 
       // 決済レコードにセッションIDを更新
       const { error: updateError } = await this.supabase
@@ -543,17 +559,19 @@ export class PaymentErrorHandler implements IPaymentErrorHandler {
    * エラーをログに記録する
    */
   async logError(error: PaymentError, context?: Record<string, unknown>): Promise<void> {
+    const stripeRequestId =
+      error.cause && typeof error.cause === "object" && "requestId" in error.cause
+        ? (error.cause as { requestId?: string }).requestId
+        : undefined;
+
     const logData = {
-      timestamp: new Date().toISOString(),
-      errorType: error.type,
+      error_type: error.type,
       message: error.message,
       stack: error.stack,
-      cause: error.cause?.message,
+      stripe_request_id: stripeRequestId,
       context,
     };
 
-    // TODO: 実際のログシステムとの連携は後で実装
-    // eslint-disable-next-line no-console
-    console.error("PaymentError:", logData);
+    logger.error("payment_error", logData);
   }
 }
