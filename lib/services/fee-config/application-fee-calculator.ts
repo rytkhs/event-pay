@@ -1,6 +1,7 @@
 import { FeeConfigService, type PlatformFeeConfig } from './service';
 import { type SupabaseClient } from '@supabase/supabase-js';
 import { Database } from '@/types/database';
+import { logger } from '@/lib/logging/app-logger';
 
 /**
  * Application Fee 計算結果
@@ -64,6 +65,17 @@ export class ApplicationFeeCalculator {
     // 計算実行
     const calculation = this.performCalculation(amount, platform);
 
+    logger.info('Application fee calculated', {
+      tag: 'feeCalculated',
+      service: 'ApplicationFeeCalculator',
+      amount,
+      applicationFeeAmount: calculation.afterMaximum,
+      rateFee: calculation.rateFee,
+      fixedFee: calculation.fixedFee,
+      minimumApplied: calculation.afterMinimum > calculation.beforeClipping,
+      maximumApplied: calculation.afterMaximum < calculation.afterMinimum,
+    });
+
     return {
       amount,
       applicationFeeAmount: calculation.afterMaximum,
@@ -92,8 +104,15 @@ export class ApplicationFeeCalculator {
     // fee_configを一度だけ取得
     const { platform } = await this.feeConfigService.getConfig(forceRefresh);
 
+    logger.info('Application fee batch calculation started', {
+      tag: 'batchCalculation',
+      service: 'ApplicationFeeCalculator',
+      batchSize: amounts.length,
+      totalAmount: amounts.reduce((sum, amount) => sum + amount, 0),
+    });
+
     // 各金額に対して計算実行
-    return amounts.map(amount => {
+    const results = amounts.map(amount => {
       const calculation = this.performCalculation(amount, platform);
       return {
         amount,
@@ -102,6 +121,17 @@ export class ApplicationFeeCalculator {
         calculation,
       };
     });
+
+    const totalFeeAmount = results.reduce((sum, result) => sum + result.applicationFeeAmount, 0);
+
+    logger.info('Application fee batch calculation completed', {
+      tag: 'batchCalculationCompleted',
+      service: 'ApplicationFeeCalculator',
+      batchSize: amounts.length,
+      totalFeeAmount,
+    });
+
+    return results;
   }
 
   /**
@@ -171,6 +201,21 @@ export class ApplicationFeeCalculator {
     }
     if (platform.maximumFee > 0 && platform.maximumFee < platform.minimumFee) {
       errors.push(`max_platform_fee (${platform.maximumFee}) must be >= min_platform_fee (${platform.minimumFee})`);
+    }
+
+    if (errors.length > 0) {
+      logger.warn('Platform fee config validation failed', {
+        tag: 'configValidationFailed',
+        service: 'ApplicationFeeCalculator',
+        errors,
+        config: platform,
+      });
+    } else {
+      logger.debug('Platform fee config validation passed', {
+        tag: 'configValidationPassed',
+        service: 'ApplicationFeeCalculator',
+        config: platform,
+      });
     }
 
     return {

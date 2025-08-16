@@ -1,6 +1,7 @@
 import { type SupabaseClient } from "@supabase/supabase-js";
 import { Database } from "@/types/database";
 import { FeeConfigCacheStrategy, globalFeeConfigCache } from './cache-strategy';
+import { logger } from '@/lib/logging/app-logger';
 
 /** Stripe 手数料設定 */
 export interface StripeFeeConfig {
@@ -50,12 +51,14 @@ export class FeeConfigService {
     if (!forceRefresh) {
       const cached = this.cacheStrategy.get();
       if (cached) {
+        logger.debug('Fee config cache hit', { tag: 'cacheHit', service: 'FeeConfigService' });
         return {
           stripe: cached.stripe,
           platform: cached.platform,
           minPayoutAmount: cached.minPayoutAmount,
         };
       }
+      logger.debug('Fee config cache miss', { tag: 'cacheMiss', service: 'FeeConfigService' });
     }
 
     try {
@@ -65,12 +68,21 @@ export class FeeConfigService {
       // キャッシュに保存
       this.cacheStrategy.set(result);
 
+      logger.info('Fee config fetched from database and cached', {
+        tag: 'fetchSuccess',
+        service: 'FeeConfigService'
+      });
+
       return result;
     } catch (error) {
       // DB取得失敗時のフェイルセーフ
       const failsafeCache = this.cacheStrategy.get(true);
       if (failsafeCache) {
-        console.warn('[FeeConfigService] Database fetch failed, using failsafe cache:', error);
+        logger.warn('Database fetch failed, using failsafe cache', {
+          tag: 'fetchFailed',
+          service: 'FeeConfigService',
+          error: error instanceof Error ? error.message : String(error),
+        });
         return {
           stripe: failsafeCache.stripe,
           platform: failsafeCache.platform,
