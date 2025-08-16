@@ -1,5 +1,6 @@
 import { type SupabaseClient } from "@supabase/supabase-js";
 import { Database } from "@/types/database";
+import { FeeConfigCacheStrategy, globalFeeConfigCache } from './cache-strategy';
 
 /** Stripe 手数料設定 */
 export interface StripeFeeConfig {
@@ -21,32 +22,19 @@ export interface PlatformFeeConfig {
   maximumFee: number;
 }
 
-/** fee_config テーブルの定義 (型生成対象外なので簡易定義) */
-// eslint-disable-next-line @typescript-eslint/consistent-type-definitions
-type _FeeConfigRow = {
-  stripe_base_rate: number | null;
-  stripe_fixed_fee: number | null;
-  platform_fee_rate: number | null;
-  platform_fixed_fee: number | null;
-  min_platform_fee: number | null;
-  max_platform_fee: number | null;
-  min_payout_amount: number | null;
-};
-
-// デフォルト値は削除 - fee_config テーブルから必須で取得
-
 /**
  * fee_config を取得・キャッシュするサービス
  */
 export class FeeConfigService {
   private supabase: SupabaseClient<Database>;
-  private cache?: { stripe: StripeFeeConfig; platform: PlatformFeeConfig; minPayoutAmount: number };
-  private fetchedAt?: number;
-  /** キャッシュ有効期間 (ms) */
-  private cacheTtl = 1000 * 60 * 10; // 10分
+  private cacheStrategy: FeeConfigCacheStrategy;
 
-  constructor(supabaseClient: SupabaseClient<Database>) {
+  constructor(
+    supabaseClient: SupabaseClient<Database>,
+    cacheStrategy?: FeeConfigCacheStrategy
+  ) {
     this.supabase = supabaseClient;
+    this.cacheStrategy = cacheStrategy || globalFeeConfigCache;
   }
 
   /**
@@ -58,13 +46,52 @@ export class FeeConfigService {
     platform: PlatformFeeConfig;
     minPayoutAmount: number;
   }> {
-    const now = Date.now();
-    if (!forceRefresh && this.cache && this.fetchedAt && now - this.fetchedAt < this.cacheTtl) {
-      return this.cache;
+    // キャッシュチェック
+    if (!forceRefresh) {
+      const cached = this.cacheStrategy.get();
+      if (cached) {
+        return {
+          stripe: cached.stripe,
+          platform: cached.platform,
+          minPayoutAmount: cached.minPayoutAmount,
+        };
+      }
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data, error } = await (this.supabase as any)
+    try {
+      // DB から取得
+      const result = await this.fetchFromDatabase();
+
+      // キャッシュに保存
+      this.cacheStrategy.set(result);
+
+      return result;
+    } catch (error) {
+      // DB取得失敗時のフェイルセーフ
+      const failsafeCache = this.cacheStrategy.get(true);
+      if (failsafeCache) {
+        console.warn('[FeeConfigService] Database fetch failed, using failsafe cache:', error);
+        return {
+          stripe: failsafeCache.stripe,
+          platform: failsafeCache.platform,
+          minPayoutAmount: failsafeCache.minPayoutAmount,
+        };
+      }
+
+      // フェイルセーフキャッシュもない場合はエラーを再スロー
+      throw error;
+    }
+  }
+
+  /**
+   * データベースから fee_config を取得
+   */
+  private async fetchFromDatabase(): Promise<{
+    stripe: StripeFeeConfig;
+    platform: PlatformFeeConfig;
+    minPayoutAmount: number;
+  }> {
+    const { data, error } = await this.supabase
       .from("fee_config")
       .select(
         "stripe_base_rate, stripe_fixed_fee, platform_fee_rate, platform_fixed_fee, min_platform_fee, max_platform_fee, min_payout_amount"
@@ -73,16 +100,14 @@ export class FeeConfigService {
       .maybeSingle();
 
     if (error) {
-      // DB の取得に失敗した場合はフォールバックではなく強制エラー
       throw new Error(`[FeeConfigService] Failed to fetch fee_config from database: ${error.message}`);
     }
 
-    // fee_config データが存在しない場合は強制エラー
     if (!data) {
       throw new Error("[FeeConfigService] No fee_config record found in database. Please insert default values.");
     }
 
-    // null 値チェックして強制エラー
+    // null 値チェック
     if (data.stripe_base_rate === null || data.stripe_fixed_fee === null || data.min_payout_amount === null) {
       throw new Error("[FeeConfigService] Critical fee_config fields are null. stripe_base_rate, stripe_fixed_fee, min_payout_amount are required.");
     }
@@ -99,9 +124,20 @@ export class FeeConfigService {
       maximumFee: Number(data.max_platform_fee ?? 0),
     };
 
-    const result = { stripe, platform, minPayoutAmount: Number(data.min_payout_amount) };
-    this.cache = result;
-    this.fetchedAt = now;
-    return result;
+    return { stripe, platform, minPayoutAmount: Number(data.min_payout_amount) };
+  }
+
+  /**
+   * キャッシュを無効化
+   */
+  invalidateCache(): void {
+    this.cacheStrategy.invalidate();
+  }
+
+  /**
+   * キャッシュ統計情報を取得
+   */
+  getCacheStats() {
+    return this.cacheStrategy.getStats();
   }
 }
