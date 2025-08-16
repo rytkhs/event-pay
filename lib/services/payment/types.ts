@@ -29,6 +29,14 @@ export interface Payment {
 export interface CreateStripeSessionParams {
   attendanceId: string;
   amount: number;
+  /**
+   * 決済対象イベントID（idempotency_key生成に使用）
+   */
+  eventId: string;
+  /**
+   * 決済を実行するユーザーID（idempotency_key生成に使用）
+   */
+  userId: string;
   eventTitle: string;
   successUrl: string;
   cancelUrl: string;
