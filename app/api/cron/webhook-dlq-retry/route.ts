@@ -54,14 +54,14 @@ export async function GET() {
     let success = 0;
 
     for (const evt of failedEvents ?? []) {
-      const retryCount: number = (evt as any).retry_count ?? 0;
-      const lastRetryAtStr: string | null = (evt as any).last_retry_at ?? null;
+      const retryCount: number = evt.retry_count ?? 0;
+      const lastRetryAtStr: string | null = evt.last_retry_at ?? null;
       const lastRetryMs = lastRetryAtStr ? Date.parse(lastRetryAtStr) : 0;
       const delaySec = Math.pow(2, retryCount) * BASE_INTERVAL_SEC;
       if (now - lastRetryMs < delaySec * 1000) continue; // まだ待機
 
       processed++;
-      const eventId: string = (evt as any).stripe_event_id;
+      const eventId: string = evt.stripe_event_id;
       let stripeEvent;
       try {
         stripeEvent = await sharedStripe.events.retrieve(eventId);
@@ -69,9 +69,9 @@ export async function GET() {
         // Event not found → terminal failure
         await idempotencyService.markEventFailed(
           eventId,
-          (evt as any).event_type,
+          evt.event_type,
           'event_not_found',
-          { stripe_account_id: (evt as any).stripe_account_id ?? null }
+          { stripe_account_id: evt.stripe_account_id ?? null }
         );
         continue;
       }
@@ -80,17 +80,20 @@ export async function GET() {
         stripeEvent.id,
         stripeEvent.type,
         () => eventHandler.handleEvent(stripeEvent),
-        { metadata: { stripe_account_id: (stripeEvent as any).account ?? null } }
+        { metadata: { stripe_account_id: stripeEvent.account ?? null } }
       );
 
       if (result.result.success) {
         success++;
       } else {
+        const errorMessage = typeof result.result === 'object' && result.result !== null && 'error' in result.result
+          ? (result.result.error as string)
+          : 'retry_failed';
         await idempotencyService.markEventFailed(
           stripeEvent.id,
           stripeEvent.type,
-          (result.result as any).error ?? 'retry_failed',
-          { stripe_account_id: (stripeEvent as any).account ?? null }
+          errorMessage,
+          { stripe_account_id: stripeEvent.account ?? null }
         );
       }
     }

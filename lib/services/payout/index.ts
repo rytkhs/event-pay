@@ -32,6 +32,8 @@ export {
 
 // ファクトリー関数内でクラスを使用するために明示的にインポート
 import { PayoutErrorHandler as _PayoutErrorHandler } from "./error-handler";
+import { createClient } from "@supabase/supabase-js";
+import { Database } from "@/types/database";
 import { PayoutValidator as _PayoutValidator } from "./validation";
 import { PayoutService as _PayoutService } from "./service";
 
@@ -77,9 +79,16 @@ export function createPayoutService(
   supabaseKey: string,
   stripeConnectService: any // IStripeConnectService
 ) {
+  const supabase = createClient<Database>(supabaseUrl, supabaseKey, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+    },
+  });
+
   const errorHandler = new _PayoutErrorHandler();
-  const validator = new _PayoutValidator(supabaseUrl, supabaseKey, stripeConnectService);
-  const service = new _PayoutService(supabaseUrl, supabaseKey, errorHandler, stripeConnectService, validator);
+  const validator = new _PayoutValidator(supabase, stripeConnectService);
+  const service = new _PayoutService(supabase, errorHandler, stripeConnectService, validator);
 
   return {
     service,

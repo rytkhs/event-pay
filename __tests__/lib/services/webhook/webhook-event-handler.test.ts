@@ -8,6 +8,12 @@ const mockSupabase = {
     select: jest.fn(() => ({
       eq: jest.fn(() => ({
         single: jest.fn(),
+        maybeSingle: jest.fn(),
+      })),
+      limit: jest.fn(() => ({
+        eq: jest.fn(() => ({
+          maybeSingle: jest.fn(),
+        })),
       })),
     })),
     update: jest.fn(() => ({
@@ -64,14 +70,23 @@ describe("StripeWebhookEventHandler", () => {
       } as Stripe.PaymentIntentSucceededEvent;
 
       // データベースエラーをシミュレート
-      mockSupabase.from.mockReturnValue({
+      (mockSupabase.from as jest.Mock).mockReturnValue({
         select: jest.fn(() => ({
           eq: jest.fn(() => ({
             single: jest.fn().mockResolvedValue({
               data: null,
               error: { message: "Database error" },
             }),
+            maybeSingle: jest.fn(),
           })),
+          limit: jest.fn(() => ({
+            eq: jest.fn(() => ({
+              maybeSingle: jest.fn(),
+            })),
+          })),
+        })),
+        update: jest.fn(() => ({
+          eq: jest.fn(),
         })),
       });
 
@@ -616,7 +631,13 @@ describe("StripeWebhookEventHandler", () => {
           },
         },
       },
-    } as Stripe.TransferReversedEvent;
+      object: "event",
+      api_version: "2023-10-16",
+      created: 1634567890,
+      livemode: false,
+      pending_webhooks: 1,
+      request: { id: "req_test", idempotency_key: null },
+    } as unknown as Stripe.TransferReversedEvent;
 
     it("送金リバーサルイベントを正常に処理する", async () => {
       const mockPayout = {

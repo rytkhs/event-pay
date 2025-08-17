@@ -5,7 +5,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 // import type { PostgrestError } from "@supabase/supabase-js";
 import { Database } from "@/types/database";
-import { stripe } from "@/lib/stripe/client";
+import { stripe, generateIdempotencyKey, createStripeRequestOptions } from "@/lib/stripe/client";
 import type Stripe from "stripe";
 import { retryWithIdempotency } from "@/lib/stripe/idempotency-retry";
 import { createDestinationCheckoutSession, createOrRetrieveCustomer } from "@/lib/stripe/destination-charges";
