@@ -5,14 +5,15 @@
 
 "use server";
 
-import { createClient } from "@supabase/supabase-js";
-import { Database } from "@/types/database";
+import { getSecureClientFactory } from "@/lib/security/secure-client-factory.impl";
+import { AdminReason, type AuditContext } from "@/lib/security/secure-client-factory.types";
 import { PayoutReconciliationService } from "@/lib/services/payout/reconciliation";
 import { PayoutService } from "@/lib/services/payout/service";
 import { PayoutErrorHandler } from "@/lib/services/payout/error-handler";
 import { StripeConnectService } from "@/lib/services/stripe-connect/service";
-import { PayoutValidator } from "@/lib/services/payout/validator";
-import { getCurrentUser } from "@/lib/auth/server";
+import { StripeConnectErrorHandler } from "@/lib/services/stripe-connect/error-handler";
+import { PayoutValidator } from "@/lib/services/payout/validation";
+import { getCurrentUser } from "@/lib/auth/auth-utils";
 import { stripe } from "@/lib/stripe/client";
 
 export interface ReconcilePayoutActionParams {
@@ -50,16 +51,22 @@ export async function reconcilePayoutAction(
       return { success: false, error: "管理者権限が必要です" };
     }
 
-    // Service Role クライアントを作成
-    const supabase = createClient<Database>(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-      {
-        auth: {
-          autoRefreshToken: false,
-          persistSession: false,
-        },
+    // セキュアな管理者クライアントを作成
+    const clientFactory = getSecureClientFactory();
+    const auditContext: AuditContext = {
+      userId: user.id,
+      operationType: "UPDATE",
+      additionalInfo: {
+        action: "reconcile_payout",
+        payoutId: params.payoutId,
+        reason: "Manual payout reconciliation by admin"
       }
+    };
+
+    const supabase = await clientFactory.createAuditedAdminClient(
+      AdminReason.PAYOUT_PROCESSING,
+      `Manual payout reconciliation for payout ${params.payoutId}`,
+      auditContext
     );
 
     // 送金レコードを取得
@@ -163,16 +170,21 @@ export async function getProcessingErrorPayoutsAction(): Promise<GetProcessingEr
       return { success: false, error: "管理者権限が必要です" };
     }
 
-    // Service Role クライアントを作成
-    const supabase = createClient<Database>(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-      {
-        auth: {
-          autoRefreshToken: false,
-          persistSession: false,
-        },
+    // セキュアな管理者クライアントを作成（エラー送金取得用）
+    const clientFactory = getSecureClientFactory();
+    const auditContext: AuditContext = {
+      userId: user.id,
+      operationType: "SELECT",
+      additionalInfo: {
+        action: "get_processing_error_payouts",
+        reason: "Admin review of failed payouts"
       }
+    };
+
+    const supabase = await clientFactory.createAuditedAdminClient(
+      AdminReason.PAYOUT_PROCESSING,
+      "Admin review of payouts with processing errors",
+      auditContext
     );
 
     // processing_error状態の送金を取得
@@ -245,21 +257,28 @@ export async function retryPayoutAction(
       return { success: false, error: "管理者権限が必要です" };
     }
 
-    // Service Role クライアントを作成
-    const supabase = createClient<Database>(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-      {
-        auth: {
-          autoRefreshToken: false,
-          persistSession: false,
-        },
+    // セキュアな管理者クライアントを作成（送金再実行用）
+    const clientFactory = getSecureClientFactory();
+    const auditContext: AuditContext = {
+      userId: user.id,
+      operationType: "UPDATE",
+      additionalInfo: {
+        action: "retry_payout",
+        payoutId: params.payoutId,
+        reason: "Manual payout retry by admin"
       }
+    };
+
+    const supabase = await clientFactory.createAuditedAdminClient(
+      AdminReason.PAYOUT_PROCESSING,
+      `Manual retry of payout ${params.payoutId}`,
+      auditContext
     );
 
     // PayoutServiceを初期化
     const errorHandler = new PayoutErrorHandler();
-    const stripeConnectService = new StripeConnectService(supabase);
+    const stripeConnectErrorHandler = new StripeConnectErrorHandler();
+    const stripeConnectService = new StripeConnectService(supabase, stripeConnectErrorHandler);
     const validator = new PayoutValidator(supabase, stripeConnectService);
 
     const payoutService = new PayoutService(

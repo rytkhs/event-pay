@@ -6,7 +6,8 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { createServiceClient } from "@/lib/supabase/service";
+import { getSecureClientFactory } from "@/lib/security/secure-client-factory.impl";
+import { AdminReason, type AuditContext } from "@/lib/security/secure-client-factory.types";
 
 export async function POST(request: NextRequest) {
   try {
@@ -29,8 +30,28 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // サービスロールクライアントで期限切れロック削除を実行
-    const supabase = createServiceClient();
+    // セキュアな管理者クライアントで期限切れロック削除を実行
+    const clientFactory = getSecureClientFactory();
+
+    const auditContext: AuditContext = {
+      ipAddress: request.headers.get("x-forwarded-for") ||
+        request.headers.get("x-real-ip") ||
+        "unknown",
+      userAgent: request.headers.get("user-agent") || "internal-scheduler",
+      requestPath: "/api/internal/scheduler/cleanup",
+      requestMethod: "POST",
+      operationType: "DELETE",
+      additionalInfo: {
+        taskType: "scheduler_lock_cleanup",
+        triggeredBy: "cron_job"
+      }
+    };
+
+    const supabase = await clientFactory.createAuditedAdminClient(
+      AdminReason.SYSTEM_MAINTENANCE,
+      "Scheduled cleanup of expired scheduler locks",
+      auditContext
+    );
 
     // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
     const { data, error } = await supabase
@@ -104,7 +125,28 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const supabase = createServiceClient();
+    // セキュアな管理者クライアントでロック状態を確認
+    const clientFactory = getSecureClientFactory();
+
+    const auditContext: AuditContext = {
+      ipAddress: request.headers.get("x-forwarded-for") ||
+        request.headers.get("x-real-ip") ||
+        "unknown",
+      userAgent: request.headers.get("user-agent") || "internal-scheduler",
+      requestPath: "/api/internal/scheduler/cleanup",
+      requestMethod: "GET",
+      operationType: "SELECT",
+      additionalInfo: {
+        taskType: "scheduler_lock_status_check",
+        triggeredBy: "system_monitoring"
+      }
+    };
+
+    const supabase = await clientFactory.createAuditedAdminClient(
+      AdminReason.SYSTEM_MAINTENANCE,
+      "System check of scheduler lock status",
+      auditContext
+    );
 
     // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
     const { data, error } = await supabase

@@ -3,7 +3,7 @@
 import { z } from "zod";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { Database } from "@/types/database";
+import type { Database, Json } from "@/types/database";
 import { PayoutService, PayoutValidator, PayoutErrorHandler } from "@/lib/services/payout";
 import { StripeConnectService, StripeConnectErrorHandler } from "@/lib/services/stripe-connect";
 import { PayoutError, PayoutErrorType } from "@/lib/services/payout/types";
@@ -18,7 +18,7 @@ import {
 } from "@/lib/types/server-actions";
 import { SecureSupabaseClientFactory } from "@/lib/security/secure-client-factory.impl";
 import { AdminReason } from "@/lib/security/secure-client-factory.types";
-import { getUserSession } from "@/lib/auth/session";
+
 import { DEFAULT_PAYOUT_DAYS_AFTER_EVENT } from "@/lib/services/payout/constants";
 
 const inputSchema = z.object({
@@ -208,10 +208,12 @@ export async function processManualPayoutAction(
       await adminClient.from("system_logs").insert({
         operation_type: "manual_payout_error",
         details: {
-          eventId: (input as any)?.eventId,
+          eventId: typeof input === 'object' && input !== null && 'eventId' in input
+            ? String((input as { eventId: unknown }).eventId)
+            : undefined,
           error: error instanceof Error ? error.message : String(error),
           stack: error instanceof Error ? error.stack : undefined,
-        },
+        } as Json,
       });
     } catch {
       // ログ記録失敗は無視

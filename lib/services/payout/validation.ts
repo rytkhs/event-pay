@@ -302,9 +302,10 @@ export class PayoutValidator implements IPayoutValidator {
   async validateStatusTransition(currentStatus: string, newStatus: string): Promise<void> {
     const validTransitions: Record<PayoutStatus, PayoutStatus[]> = {
       pending: ["processing", "failed"],
-      processing: ["completed", "failed"],
+      processing: ["completed", "failed", "processing_error"],
       completed: [], // 完了状態からは遷移不可
       failed: ["pending", "processing"], // 失敗状態からは再試行でpendingまたはprocessingに遷移可能
+      processing_error: ["pending", "processing"], // エラー状態からは再試行可能
     };
 
     const current = currentStatus as PayoutStatus;
