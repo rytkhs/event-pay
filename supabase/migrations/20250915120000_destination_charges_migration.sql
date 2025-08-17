@@ -106,6 +106,21 @@ CREATE INDEX IF NOT EXISTS idx_webhook_events_account_event
 CREATE INDEX IF NOT EXISTS idx_webhook_events_status
     ON public.webhook_events(status);
 
+-- 部分インデックス: failed / dead だけを高速に掃き出す
+CREATE INDEX IF NOT EXISTS idx_webhook_events_failed_only
+    ON public.webhook_events(status)
+    WHERE status = 'failed';
+
+CREATE INDEX IF NOT EXISTS idx_webhook_events_dead_only
+    ON public.webhook_events(status)
+    WHERE status = 'dead';
+
+-- 既存レコードでリトライ回数が閾値を超えているものを dead へ
+UPDATE public.webhook_events
+SET status = 'dead'
+WHERE status = 'failed'
+  AND retry_count >= 5;
+
 -- 6. 制約の追加
 -- payments テーブルの制約
 DO $$ BEGIN

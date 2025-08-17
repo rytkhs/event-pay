@@ -118,6 +118,24 @@ export class ConnectWebhookHandler {
     }
   }
 
+  async handlePayoutPaid(payout: Stripe.Payout): Promise<void> {
+    try {
+      // 参考表示向けのログのみ（会計確定は行わない）
+      console.log('payout.paid received', { payoutId: payout.id, amount: payout.amount, currency: payout.currency });
+    } catch (error) {
+      console.error('Error handling payout.paid event:', error);
+    }
+  }
+
+  async handlePayoutFailed(payout: Stripe.Payout): Promise<void> {
+    try {
+      // 参考表示向けのログのみ（会計確定は行わない）
+      console.warn('payout.failed received', { payoutId: payout.id, failureMessage: (payout as any).failure_message });
+    } catch (error) {
+      console.error('Error handling payout.failed event:', error);
+    }
+  }
+
   /**
    * 通知を送信
    */

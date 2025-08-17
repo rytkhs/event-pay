@@ -1,13 +1,11 @@
 import Stripe from "stripe";
 import { stripe as sharedStripe } from "@/lib/stripe/client";
 
-// Stripeの型には存在しないが、将来の互換やテスト用に扱うための疑似イベント型
-// eslint-disable-next-line @typescript-eslint/consistent-type-assertions
-const TRANSFER_FAILED_EVENT = "transfer.failed" as unknown as Stripe.Event.Type;
 import { createClient } from "@supabase/supabase-js";
 import { Database } from "@/types/database";
 import type { WebhookProcessingResult } from "./index";
 import type { SecurityReporter } from "@/lib/security/security-reporter.types";
+import { canPromoteStatus } from "@/lib/payments/status-rank";
 
 export interface WebhookEventHandler {
   handleEvent(event: Stripe.Event): Promise<WebhookProcessingResult>;
@@ -34,15 +32,48 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
   async handleEvent(event: Stripe.Event): Promise<WebhookProcessingResult> {
     try {
       switch (event.type) {
-        case "payment_intent.succeeded":
+        case "payment_intent.succeeded": {
+          // 一次処理: PaymentIntent で決済成功を確定し、DB更新や集計を行う
           return await this.handlePaymentIntentSucceeded(
             event as Stripe.PaymentIntentSucceededEvent
           );
+        }
 
         case "payment_intent.payment_failed":
           return await this.handlePaymentIntentFailed(
             event as Stripe.PaymentIntentPaymentFailedEvent
           );
+
+        case "payment_intent.canceled":
+          return await this.handlePaymentIntentCanceled(event as Stripe.PaymentIntentCanceledEvent);
+
+        case "charge.succeeded":
+          return await this.handleChargeSucceeded(event as Stripe.ChargeSucceededEvent);
+
+        case "charge.failed":
+          return await this.handleChargeFailed(event as Stripe.ChargeFailedEvent);
+
+        case "charge.refunded":
+          return await this.handleChargeRefunded(event as Stripe.ChargeRefundedEvent);
+
+        case "refund.created":
+          return await this.handleRefundCreated(event as Stripe.RefundCreatedEvent);
+
+        case "checkout.session.completed":
+        case "checkout.session.async_payment_succeeded":
+        case "checkout.session.async_payment_failed": {
+          await this.securityReporter.logSecurityEvent({
+            type: "webhook_checkout_event_seen",
+            details: { eventId: event.id, eventType: event.type },
+          });
+          return { success: true };
+        }
+        case "refund.updated":
+          return await this.handleRefundUpdated(event as Stripe.RefundUpdatedEvent);
+
+        case "charge.dispute.created":
+        case "charge.dispute.closed":
+          return await this.handleDisputeEvent(event as Stripe.ChargeDisputeCreatedEvent | Stripe.ChargeDisputeClosedEvent);
 
         // Transfer関連イベントで payouts テーブルを同期
         case "transfer.created":
@@ -51,17 +82,6 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
           return await this.handleTransferUpdated(event as Stripe.TransferUpdatedEvent);
         case "transfer.reversed":
           return await this.handleTransferReversed(event as Stripe.TransferReversedEvent);
-        case TRANSFER_FAILED_EVENT:
-          // 非標準（擬似）イベントであることを明示
-          await this.securityReporter.logSecurityEvent({
-            type: "webhook_nonstandard_event_received",
-            details: {
-              eventType: "transfer.failed",
-              eventId: event.id,
-              non_standard_event: true,
-            },
-          });
-          return await this.handleTransferFailed(event as Stripe.Event);
 
         default:
           // サポートされていないイベントタイプをログに記録
@@ -89,6 +109,251 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
         error: error instanceof Error ? error.message : "Unknown error occurred",
       };
     }
+  }
+
+  private async handleChargeSucceeded(
+    event: Stripe.ChargeSucceededEvent
+  ): Promise<WebhookProcessingResult> {
+    const charge = event.data.object;
+    // PaymentIntent拡張/charges.retrieveでbalance_tx/transferを取得
+    try {
+      let piOrCharge: Stripe.PaymentIntent | Stripe.Charge = charge as unknown as Stripe.Charge;
+      if ((charge as { payment_intent?: string | null }).payment_intent) {
+        try {
+          const expanded = await sharedStripe.paymentIntents.retrieve(
+            (charge as { payment_intent: string }).payment_intent,
+            { expand: ["latest_charge.balance_transaction", "latest_charge.transfer"] }
+          );
+          piOrCharge = expanded;
+        } catch {
+          // フォールバックで charge を使用
+        }
+      } else {
+        try {
+          const retrieved = await sharedStripe.charges.retrieve(charge.id, {
+            expand: ["balance_transaction", "transfer"],
+          });
+          piOrCharge = retrieved;
+        } catch {
+          // そのままchargeを利用
+        }
+      }
+
+      // DBの payments を特定（stripe_payment_intent_id or charge_id のいずれか）
+      const stripePaymentIntentId: string | null = (charge as { payment_intent?: string | null }).payment_intent ?? null;
+      const { data: paymentByPi } = stripePaymentIntentId
+        ? await this.supabase.from("payments").select("*").eq("stripe_payment_intent_id", stripePaymentIntentId).maybeSingle()
+        : { data: null };
+
+      let payment = paymentByPi;
+      if (!payment) {
+        // 事前に保存していないケースに備え、charge id で突合（保存時にUNIQUE想定）
+        const { data: paymentByCharge } = await this.supabase.from("payments").select("*").eq("stripe_charge_id", charge.id).maybeSingle();
+        payment = paymentByCharge ?? null;
+      }
+
+      if (!payment) {
+        // 関連レコードがない場合もACK（将来の再同期に委譲）
+        await this.securityReporter.logSecurityEvent({
+          type: "webhook_charge_no_payment_record",
+          details: { eventId: event.id, chargeId: charge.id, payment_intent: stripePaymentIntentId ?? undefined },
+        });
+        return { success: true };
+      }
+
+      // 既に同等以上の状態なら冪等
+      if (!canPromoteStatus(payment.status as Database["public"]["Enums"]["payment_status_enum"], "paid")) {
+        await this.securityReporter.logSecurityEvent({
+          type: "webhook_duplicate_processing_prevented",
+          details: { eventId: event.id, paymentId: payment.id, currentStatus: payment.status },
+        });
+        return { success: true };
+      }
+
+      // balance_transaction / transfer / application_fee を拾う
+      const chargeObj: Stripe.Charge = (
+        (piOrCharge as Stripe.PaymentIntent).latest_charge as Stripe.Charge | undefined
+      ) ?? (piOrCharge as Stripe.Charge);
+      const balanceTxnId: string | null = (chargeObj?.balance_transaction && typeof chargeObj.balance_transaction === "object")
+        ? (chargeObj.balance_transaction as Stripe.BalanceTransaction).id
+        : (typeof chargeObj?.balance_transaction === "string" ? chargeObj.balance_transaction : null);
+      const transferId: string | null = (chargeObj?.transfer && typeof chargeObj.transfer === "object")
+        ? (chargeObj.transfer as Stripe.Transfer).id
+        : (typeof chargeObj?.transfer === "string" ? chargeObj.transfer : null);
+      const applicationFeeId: string | null = typeof chargeObj?.application_fee === "string" ? chargeObj.application_fee : null;
+
+      const { error: updateError } = await this.supabase
+        .from("payments")
+        .update({
+          status: "paid",
+          paid_at: new Date().toISOString(),
+          stripe_charge_id: charge.id,
+          stripe_balance_transaction_id: balanceTxnId,
+          stripe_transfer_id: transferId,
+          application_fee_id: applicationFeeId,
+          webhook_event_id: event.id,
+          webhook_processed_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", payment.id);
+
+      if (updateError) {
+        throw new Error(`Failed to update payment on charge.succeeded: ${updateError.message}`);
+      }
+
+      await this.securityReporter.logSecurityEvent({
+        type: "webhook_charge_succeeded_processed",
+        details: { eventId: event.id, paymentId: payment.id, chargeId: charge.id, balanceTransactionId: balanceTxnId, transferId: transferId ?? undefined },
+      });
+
+      return { success: true, eventId: event.id, paymentId: payment.id };
+    } catch (error) {
+      throw (error instanceof Error ? error : new Error("Unknown error"));
+    }
+  }
+
+  private async handleChargeFailed(
+    event: Stripe.ChargeFailedEvent
+  ): Promise<WebhookProcessingResult> {
+    const charge = event.data.object;
+    const stripePaymentIntentId: string | null = (charge as { payment_intent?: string | null }).payment_intent ?? null;
+    try {
+      const { data: payment, error: fetchError } = stripePaymentIntentId
+        ? await this.supabase.from("payments").select("*").eq("stripe_payment_intent_id", stripePaymentIntentId).maybeSingle()
+        : await this.supabase.from("payments").select("*").eq("stripe_charge_id", charge.id).maybeSingle();
+      if (fetchError) {
+        throw new Error(`Payment record not found: ${fetchError.message}`);
+      }
+      if (!payment) {
+        await this.securityReporter.logSecurityEvent({ type: "webhook_charge_failed_no_payment", details: { eventId: event.id, chargeId: charge.id } });
+        return { success: true };
+      }
+      if (!canPromoteStatus(payment.status as Database["public"]["Enums"]["payment_status_enum"], "failed")) {
+        await this.securityReporter.logSecurityEvent({ type: "webhook_duplicate_processing_prevented", details: { eventId: event.id, paymentId: payment.id, currentStatus: payment.status } });
+        return { success: true };
+      }
+      const { error: updateError } = await this.supabase
+        .from("payments")
+        .update({
+          status: "failed",
+          webhook_event_id: event.id,
+          webhook_processed_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", payment.id);
+      if (updateError) {
+        throw new Error(`Failed to update payment on charge.failed: ${updateError.message}`);
+      }
+      await this.securityReporter.logSecurityEvent({ type: "webhook_charge_failed_processed", details: { eventId: event.id, paymentId: payment.id, chargeId: charge.id } });
+      return { success: true, eventId: event.id, paymentId: payment.id };
+    } catch (error) {
+      throw (error instanceof Error ? error : new Error("Unknown error"));
+    }
+  }
+
+  private async handleChargeRefunded(
+    event: Stripe.ChargeRefundedEvent
+  ): Promise<WebhookProcessingResult> {
+    const charge = event.data.object as Stripe.Charge;
+    // 累積返金額とアプリ手数料返金の保存
+    try {
+      // 支払レコードの特定
+      const stripePaymentIntentId: string | null = (charge as { payment_intent?: string | null }).payment_intent ?? null;
+      const { data: payment } = stripePaymentIntentId
+        ? await this.supabase.from("payments").select("*").eq("stripe_payment_intent_id", stripePaymentIntentId).maybeSingle()
+        : await this.supabase.from("payments").select("*").eq("stripe_charge_id", charge.id).maybeSingle();
+
+      if (!payment) {
+        await this.securityReporter.logSecurityEvent({ type: "webhook_charge_refunded_no_payment", details: { eventId: event.id, chargeId: charge.id } });
+        return { success: true };
+      }
+
+      const totalRefunded = typeof charge.amount_refunded === "number" ? charge.amount_refunded : 0;
+      // application_fee_refunds は Application Fee API 参照が必要。ここでは累積額を可能な範囲で保存
+      let applicationFeeRefundedAmount = 0;
+      let applicationFeeRefundId: string | null = null;
+      try {
+        // application_fee_id が保存されていれば合計返金額と最新の返金IDを取得
+        const paymentWithFee = payment as unknown as { application_fee_id?: string | null };
+        if (paymentWithFee?.application_fee_id) {
+          const afrList = await sharedStripe.applicationFees.listRefunds(paymentWithFee.application_fee_id, { limit: 100 });
+          const items = afrList.data ?? [];
+          applicationFeeRefundedAmount = items.reduce((acc, cur) => acc + (cur.amount ?? 0), 0);
+          applicationFeeRefundId = items.length > 0 ? items[items.length - 1].id : null;
+        }
+      } catch {
+        // 取得失敗時は0/ nullのまま継続
+      }
+
+      // ステータス: 全額返金なら refunded、部分返金は paid のまま refunded_amount 更新
+      const targetStatus = totalRefunded >= payment.amount ? "refunded" : payment.status;
+      // 巻き戻し防止: current >= target の場合は no-op
+      if (!canPromoteStatus(payment.status as Database["public"]["Enums"]["payment_status_enum"], targetStatus as Database["public"]["Enums"]["payment_status_enum"])) {
+        await this.securityReporter.logSecurityEvent({
+          type: "webhook_duplicate_processing_prevented",
+          details: { eventId: event.id, paymentId: payment.id, currentStatus: payment.status, targetStatus },
+        });
+        return { success: true };
+      }
+
+      const { error: updateError } = await this.supabase
+        .from("payments")
+        .update({
+          status: targetStatus,
+          refunded_amount: totalRefunded,
+          application_fee_refund_id: applicationFeeRefundId,
+          application_fee_refunded_amount: applicationFeeRefundedAmount,
+          webhook_event_id: event.id,
+          webhook_processed_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", payment.id);
+      if (updateError) {
+        throw new Error(`Failed to update payment on charge.refunded: ${updateError.message}`);
+      }
+
+      await this.securityReporter.logSecurityEvent({
+        type: "webhook_charge_refunded_processed",
+        details: { eventId: event.id, paymentId: payment.id, refundedAmount: totalRefunded, applicationFeeRefundedAmount },
+      });
+      return { success: true, eventId: event.id, paymentId: payment.id };
+    } catch (error) {
+      throw (error instanceof Error ? error : new Error("Unknown error"));
+    }
+  }
+
+  private async handleRefundCreated(
+    event: Stripe.RefundCreatedEvent
+  ): Promise<WebhookProcessingResult> {
+    const refund = event.data.object as Stripe.Refund;
+    await this.securityReporter.logSecurityEvent({
+      type: "webhook_refund_created_seen",
+      details: { eventId: event.id, refundId: refund.id, status: refund.status },
+    });
+    return { success: true };
+  }
+
+  private async handleRefundUpdated(
+    event: Stripe.RefundUpdatedEvent
+  ): Promise<WebhookProcessingResult> {
+    const refund = event.data.object as Stripe.Refund;
+    // 中間状態の同期のみ（最終は charge.refunded）
+    await this.securityReporter.logSecurityEvent({
+      type: "webhook_refund_updated_seen",
+      details: { eventId: event.id, refundId: refund.id, status: refund.status },
+    });
+    return { success: true };
+  }
+
+  private async handleDisputeEvent(
+    event: Stripe.ChargeDisputeCreatedEvent | Stripe.ChargeDisputeClosedEvent
+  ): Promise<WebhookProcessingResult> {
+    const dispute = event.data.object as Stripe.Dispute;
+    await this.securityReporter.logSecurityEvent({
+      type: "webhook_dispute_event",
+      details: { eventId: event.id, disputeId: dispute.id, status: dispute.status, type: event.type },
+    });
+    return { success: true };
   }
 
   /**
@@ -274,8 +539,8 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
         throw new Error(`Payment record not found for payment_intent: ${stripePaymentIntentId}`);
       }
 
-      // 既に失敗ステータスかチェック
-      if (payment.status === "failed") {
+      // 既に同等以上の状態なら冪等（failed 以上＝paid/refunded等は降格させない）
+      if (!canPromoteStatus(payment.status as Database["public"]["Enums"]["payment_status_enum"], "failed")) {
         await this.securityReporter.logSecurityEvent({
           type: "webhook_duplicate_processing_prevented",
           details: {
@@ -287,7 +552,7 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
         return { success: true }; // 重複処理を防止
       }
 
-      // 決済ステータスを失敗に更新
+      // 決済ステータスを失敗に更新（昇格のみ許可）
       const { error: updateError } = await this.supabase
         .from("payments")
         .update({
@@ -318,6 +583,55 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
       return { success: true, eventId: event.id, paymentId: payment.id };
     } catch (error) {
       // 元のエラーメッセージを維持して上位に伝播（テストの期待との乖離を防止）
+      throw (error instanceof Error ? error : new Error("Unknown error"));
+    }
+  }
+
+  private async handlePaymentIntentCanceled(
+    event: Stripe.PaymentIntentCanceledEvent
+  ): Promise<WebhookProcessingResult> {
+    const paymentIntent = event.data.object;
+    const stripePaymentIntentId = paymentIntent.id;
+    try {
+      const { data: payment, error: fetchError } = await this.supabase
+        .from("payments")
+        .select("*")
+        .eq("stripe_payment_intent_id", stripePaymentIntentId)
+        .maybeSingle();
+
+      if (fetchError) {
+        throw new Error(`Payment record not found: ${fetchError.message}`);
+      }
+
+      if (!payment) {
+        await this.securityReporter.logSecurityEvent({
+          type: "webhook_payment_intent_canceled_no_payment",
+          details: { eventId: event.id, payment_intent: stripePaymentIntentId },
+        });
+        return { success: true };
+      }
+
+      if (canPromoteStatus(payment.status as Database["public"]["Enums"]["payment_status_enum"], "failed")) {
+        const { error: updateError } = await this.supabase
+          .from("payments")
+          .update({
+            status: "failed",
+            webhook_event_id: event.id,
+            webhook_processed_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", payment.id);
+        if (updateError) {
+          throw new Error(`Failed to update payment on payment_intent.canceled: ${updateError.message}`);
+        }
+      }
+
+      await this.securityReporter.logSecurityEvent({
+        type: "webhook_payment_intent_canceled_processed",
+        details: { eventId: event.id, paymentId: payment.id },
+      });
+      return { success: true, eventId: event.id, paymentId: payment.id };
+    } catch (error) {
       throw (error instanceof Error ? error : new Error("Unknown error"));
     }
   }
@@ -554,94 +868,6 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
           reversalReason,
           amount: latestTransfer.amount,
           currency: latestTransfer.currency,
-        },
-      });
-
-      return { success: true, eventId: event.id, payoutId: payout.id };
-    } catch (error) {
-      throw (error instanceof Error ? error : new Error("Unknown error"));
-    }
-  }
-
-  // 送金失敗イベントの処理（将来的な拡張性のため）
-  // 注意: 現在のStripe APIには transfer.failed イベントは存在しない
-  private async handleTransferFailed(
-    event: Stripe.Event
-  ): Promise<WebhookProcessingResult> {
-    const transferUnknown = event.data.object as unknown as { id: string; amount?: number; currency?: string };
-    const transferId = transferUnknown.id;
-
-    try {
-      // 該当する payouts レコードを検索
-      const { data: payout, error: fetchError } = await this.supabase
-        .from("payouts")
-        .select("id, status")
-        .eq("stripe_transfer_id", transferId)
-        .maybeSingle();
-
-      if (fetchError) {
-        throw new Error(`Payout lookup failed: ${fetchError.message}`);
-      }
-
-      if (!payout) {
-        // 関連レコードがない場合は成功としてACK
-        await this.securityReporter.logSecurityEvent({
-          type: "webhook_transfer_failed_no_payout",
-          details: {
-            eventId: event.id,
-            transferId,
-          },
-        });
-        return { success: true };
-      }
-
-      // 既に失敗済みかチェック（冪等性）
-      if (payout.status === "failed") {
-        await this.securityReporter.logSecurityEvent({
-          type: "webhook_duplicate_processing_prevented",
-          details: {
-            eventId: event.id,
-            payoutId: payout.id,
-            currentStatus: payout.status,
-          },
-        });
-        return { success: true };
-      }
-
-      // 失敗理由を取得
-      const failureReason = (
-        (transferUnknown as { failure_reason?: string; last_error?: { message?: string } }).failure_reason ||
-        (transferUnknown as { failure_reason?: string; last_error?: { message?: string } }).last_error?.message ||
-        "unknown"
-      );
-      const errorMessage = `Transfer failed: ${failureReason}`;
-
-      // 送金ステータスを失敗に更新
-      const { error: updateError } = await this.supabase
-        .from("payouts")
-        .update({
-          status: "failed",
-          last_error: errorMessage,
-          webhook_event_id: event.id,
-          webhook_processed_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", payout.id);
-
-      if (updateError) {
-        throw new Error(`Failed to mark payout failed: ${updateError.message}`);
-      }
-
-      // 失敗をログに記録
-      await this.securityReporter.logSecurityEvent({
-        type: "webhook_transfer_failed_processed",
-        details: {
-          eventId: event.id,
-          payoutId: payout.id,
-          transferId,
-          failureReason,
-          amount: transferUnknown.amount,
-          currency: transferUnknown.currency,
         },
       });
 

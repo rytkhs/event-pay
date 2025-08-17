@@ -1,0 +1,111 @@
+import { NextResponse } from 'next/server';
+import { stripe as sharedStripe } from '@/lib/stripe/client';
+import { StripeWebhookEventHandler } from '@/lib/services/webhook/webhook-event-handler';
+import {
+  SupabaseWebhookIdempotencyService,
+  IdempotentWebhookProcessor,
+} from '@/lib/services/webhook/webhook-idempotency';
+import { SecurityAuditorImpl } from '@/lib/security/security-auditor.impl';
+import { AnomalyDetectorImpl } from '@/lib/security/anomaly-detector';
+import { SecurityReporterImpl } from '@/lib/security/security-reporter.impl';
+import type { WebhookProcessingResult } from '@/lib/services/webhook';
+import { createClient } from '@supabase/supabase-js';
+import { Database } from '@/types/database';
+
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+// Vercel Cron は GET 呼び出し推奨
+
+const MAX_RETRIES = 5;
+const BASE_INTERVAL_SEC = 60; // 1 分
+
+function createServices() {
+  const auditor = new SecurityAuditorImpl();
+  const anomalyDetector = new AnomalyDetectorImpl(auditor);
+  const securityReporter = new SecurityReporterImpl(auditor, anomalyDetector);
+  const eventHandler = new StripeWebhookEventHandler(securityReporter);
+  const idempotencyService = new SupabaseWebhookIdempotencyService<WebhookProcessingResult>();
+  const idempotentProcessor = new IdempotentWebhookProcessor<WebhookProcessingResult>(idempotencyService);
+  return { securityReporter, eventHandler, idempotentProcessor, idempotencyService };
+}
+
+export async function GET() {
+  const { securityReporter, eventHandler, idempotentProcessor, idempotencyService } = createServices();
+
+  try {
+    const now = Date.now();
+
+    const supabase = createClient<Database>(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      { auth: { autoRefreshToken: false, persistSession: false } }
+    );
+
+    // 失敗イベント取得
+    const { data: failedEvents, error } = await supabase
+      .from('webhook_events')
+      .select('*')
+      .eq('status', 'failed')
+      .lt('retry_count', MAX_RETRIES);
+
+    if (error) throw new Error(`Failed to fetch failed events: ${error.message}`);
+
+    let processed = 0;
+    let success = 0;
+
+    for (const evt of failedEvents ?? []) {
+      const retryCount: number = (evt as any).retry_count ?? 0;
+      const lastRetryAtStr: string | null = (evt as any).last_retry_at ?? null;
+      const lastRetryMs = lastRetryAtStr ? Date.parse(lastRetryAtStr) : 0;
+      const delaySec = Math.pow(2, retryCount) * BASE_INTERVAL_SEC;
+      if (now - lastRetryMs < delaySec * 1000) continue; // まだ待機
+
+      processed++;
+      const eventId: string = (evt as any).stripe_event_id;
+      let stripeEvent;
+      try {
+        stripeEvent = await sharedStripe.events.retrieve(eventId);
+      } catch (_err) {
+        // Event not found → terminal failure
+        await idempotencyService.markEventFailed(
+          eventId,
+          (evt as any).event_type,
+          'event_not_found',
+          { stripe_account_id: (evt as any).stripe_account_id ?? null }
+        );
+        continue;
+      }
+
+      const result = await idempotentProcessor.processWithIdempotency(
+        stripeEvent.id,
+        stripeEvent.type,
+        () => eventHandler.handleEvent(stripeEvent),
+        { metadata: { stripe_account_id: (stripeEvent as any).account ?? null } }
+      );
+
+      if (result.result.success) {
+        success++;
+      } else {
+        await idempotencyService.markEventFailed(
+          stripeEvent.id,
+          stripeEvent.type,
+          (result.result as any).error ?? 'retry_failed',
+          { stripe_account_id: (stripeEvent as any).account ?? null }
+        );
+      }
+    }
+
+    await securityReporter.logSecurityEvent({
+      type: 'webhook_dlq_retry_summary',
+      details: { processed, success },
+    });
+
+    return NextResponse.json({ processed, success });
+  } catch (e) {
+    await securityReporter.logSuspiciousActivity({
+      type: 'webhook_dlq_retry_error',
+      details: { error: e instanceof Error ? e.message : 'unknown' },
+    });
+    return NextResponse.json({ error: 'DLQ retry worker failed' }, { status: 500 });
+  }
+}

@@ -66,9 +66,13 @@ if (!hasRegisteredHooks) {
  * 未設定時は例外を投げる（起動時ではなく実行時に検出する）。
  */
 export const getWebhookSecret = (): string => {
-  const secret = process.env.STRIPE_WEBHOOK_SECRET;
+  // 環境に応じてシークレットを切替（優先順: 本番→テスト → 互換）
+  const isProd = process.env.NODE_ENV === "production" || process.env.VERCEL_ENV === "production";
+  const prod = process.env.STRIPE_WEBHOOK_SECRET;
+  const test = process.env.STRIPE_WEBHOOK_SECRET_TEST;
+  const secret = isProd ? prod : (test ?? prod);
   if (!secret) {
-    throw new Error("STRIPE_WEBHOOK_SECRET is required for webhook processing");
+    throw new Error("STRIPE_WEBHOOK_SECRET/STRIPE_WEBHOOK_SECRET_TEST is required for webhook processing");
   }
   return secret;
 };
