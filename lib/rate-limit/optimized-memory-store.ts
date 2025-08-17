@@ -1,4 +1,5 @@
 import { RateLimitStore, RateLimitData } from "./types";
+import { logger } from "@/lib/logging/app-logger";
 
 /**
  * 最適化されたメモリベースレート制限ストア
@@ -102,8 +103,10 @@ export class OptimizedMemoryRateLimitStore implements RateLimitStore {
 
     // デバッグ情報（本番環境では削除）
     if (process.env.NODE_ENV === "development" && expiredKeys.length > 0) {
-      // eslint-disable-next-line no-console
-      console.log(`Rate limit cleanup: removed ${expiredKeys.length} expired entries`);
+      logger.debug(`Rate limit cleanup: removed ${expiredKeys.length} expired entries`, {
+        tag: "rateLimitCleanup",
+        removed_count: expiredKeys.length
+      });
     }
   }
 
@@ -123,8 +126,10 @@ export class OptimizedMemoryRateLimitStore implements RateLimitStore {
     }
 
     if (process.env.NODE_ENV === "development") {
-      // eslint-disable-next-line no-console
-      console.warn(`Rate limit emergency cleanup: removed ${removeCount} entries`);
+      logger.warn(`Rate limit emergency cleanup: removed ${removeCount} entries`, {
+        tag: "rateLimitEmergencyCleanup",
+        removed_count: removeCount
+      });
     }
   }
 

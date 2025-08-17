@@ -24,11 +24,11 @@ import {
   ValidateManualPayoutParams,
   ManualPayoutEligibilityResult,
 } from "./types";
-// PayoutCalculator は削除 - RPC の calc_total_stripe_fee() を使用
 import { hasElapsedDaysInJst } from "@/lib/utils/timezone";
 import { getTransferGroupForEvent } from "@/lib/utils/stripe";
 import { StripeTransferService } from "./stripe-transfer";
 import { FeeConfigService } from "../fee-config/service";
+import { logger } from "@/lib/logging/app-logger";
 // MIN_PAYOUT_AMOUNT, isPayoutAmountEligible は削除済み
 
 /**
@@ -437,17 +437,19 @@ export class PayoutService implements IPayoutService {
 
               // processing_errorステータス設定成功時は、処理成功として返す
               // Webhookで最終的にcompletedに更新される
-              console.warn("Transfer成功後のDB更新失敗をprocessing_errorで記録", {
-                payoutId,
-                transferId,
-                updateError: updateErr instanceof Error ? updateErr.message : String(updateErr),
+              logger.warn("Failed to update the database after transfer, recording as processing_error", {
+                tag: "payoutDbUpdateFailedAfterTransfer",
+                payout_id: payoutId,
+                transfer_id: transferId,
+                error_message: updateErr instanceof Error ? updateErr.message : String(updateErr)
               });
             } catch (secondUpdateErr) {
-              // processing_error設定も失敗した場合のみAggregatePayoutErrorを投げる
-              console.error("processing_error設定も失敗", {
-                payoutId,
-                transferId,
-                originalError: updateErr,
+              // Throw AggregatePayoutError only if setting processing_error also fails
+              logger.error("Failed to set processing_error", {
+                tag: "payoutProcessingErrorUpdateFailed",
+                payout_id: payoutId,
+                transfer_id: transferId,
+                original_error: updateErr instanceof Error ? updateErr.message : String(updateErr),
                 secondUpdateError: secondUpdateErr,
               });
 
@@ -474,10 +476,11 @@ export class PayoutService implements IPayoutService {
           });
         } catch (updateErr) {
           // ステータス更新に失敗した場合は複合エラーとして再throw
-          console.error("updatePayoutStatus failed", {
-            payoutId,
-            stripeError,
-            updateErr,
+          logger.error("updatePayoutStatus failed", {
+            tag: "payoutStatusUpdateFailed",
+            payout_id: payoutId,
+            stripe_error: stripeError instanceof Error ? stripeError.message : String(stripeError),
+            update_error: updateErr instanceof Error ? updateErr.message : String(updateErr),
           });
 
           throw new AggregatePayoutError(
@@ -856,7 +859,7 @@ export class PayoutService implements IPayoutService {
   /**
    * 詳細な送金金額計算を実行する（管理者・デバッグ用）
    */
-  async calculateDetailedPayoutAmount(eventId: string): Promise<import("./calculation").DetailedPayoutCalculation> {
+  async calculateDetailedPayoutAmount(eventId: string): Promise<import("./types").DetailedPayoutCalculation> {
     try {
       // イベントのStripe決済データを取得
       const { data: paymentsData, error } = await this.supabase

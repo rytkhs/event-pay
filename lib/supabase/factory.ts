@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { getSessionManager } from "@/lib/session/manager";
 import { COOKIE_CONFIG, AUTH_CONFIG, getCookieConfig } from "@/config/security";
+import { logger } from "@/lib/logging/app-logger";
 
 export type SupabaseContext = "middleware" | "api" | "server";
 
@@ -133,8 +134,12 @@ export class SupabaseClientFactory {
 
       return { client, sessionValid };
     } catch (error) {
-      // eslint-disable-next-line no-console
-      console.warn("Failed to check session validity:", error);
+      logger.warn("Failed to check session validity", {
+        tag: "sessionValidityCheckFailed",
+        error_name: error instanceof Error ? error.name : "Unknown",
+        error_message: error instanceof Error ? error.message : String(error),
+        context
+      });
       return { client, sessionValid: false };
     }
   }

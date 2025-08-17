@@ -14,6 +14,7 @@ import type { SecurityReporter } from '@/lib/security/security-reporter.types';
 import type { WebhookProcessingResult } from '@/lib/services/webhook';
 import { getClientIP } from '@/lib/utils/ip-detection';
 import { shouldEnforceStripeWebhookIpCheck, isStripeWebhookIpAllowed } from '@/lib/security/stripe-ip-allowlist';
+import { logger } from '@/lib/logging/app-logger';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic'; // Webhookは常に動的処理
@@ -37,6 +38,15 @@ function createServices() {
 export async function POST(request: NextRequest) {
   let securityReporter: SecurityReporter | undefined;
   let enqueued = false;
+  const requestId = request.headers.get('x-request-id') || 'unknown';
+  const webhookLogger = logger.withContext({
+    request_id: requestId,
+    path: request.nextUrl.pathname,
+    tag: 'webhookProcessing'
+  });
+
+  webhookLogger.info('Webhook request received');
+
   try {
     const { securityReporter: sr, signatureVerifier, idempotencyService } = createServices();
     securityReporter = sr;
@@ -61,6 +71,7 @@ export async function POST(request: NextRequest) {
     const signature = request.headers.get('stripe-signature');
 
     if (!signature) {
+      webhookLogger.warn('Webhook signature missing');
       await securityReporter.logSuspiciousActivity({
         type: 'webhook_missing_signature',
         details: {
@@ -81,6 +92,7 @@ export async function POST(request: NextRequest) {
     const timestamp = Math.floor(Date.now() / 1000);
 
     // 署名検証
+    webhookLogger.debug('Starting signature verification');
     const verificationResult = await signatureVerifier.verifySignature({
       payload,
       signature,
@@ -88,6 +100,7 @@ export async function POST(request: NextRequest) {
     });
 
     if (!verificationResult.isValid || !verificationResult.event) {
+      webhookLogger.warn('Webhook signature verification failed');
       // 外部公開用のエラーメッセージは統一し、詳細はセキュリティログに依存
       return NextResponse.json(
         { error: 'Invalid webhook signature' },
@@ -96,6 +109,11 @@ export async function POST(request: NextRequest) {
     }
 
     const event = verificationResult.event;
+
+    webhookLogger.info('Webhook signature verified', {
+      event_id: event.id,
+      event_type: event.type
+    });
 
     // 受信イベントを pending として即時エンキュー（最小処理）
     // data.object.id はタイプにより存在しない場合があるため、あれば保存
@@ -107,6 +125,13 @@ export async function POST(request: NextRequest) {
       const idVal = (obj as { id?: unknown }).id;
       return typeof idVal === 'string' && idVal.length > 0 ? idVal : null;
     })();
+
+    webhookLogger.debug('Enqueueing webhook event for processing', {
+      event_id: event.id,
+      event_type: event.type,
+      object_id: objectId
+    });
+
     await idempotencyService.enqueueEventForProcessing(
       event.id,
       event.type,
@@ -117,6 +142,12 @@ export async function POST(request: NextRequest) {
       }
     );
     enqueued = true;
+
+    webhookLogger.info('Webhook event enqueued successfully', {
+      event_id: event.id,
+      event_type: event.type,
+      tag: 'enqueueSucceeded'
+    });
 
     // 非同期処理は別ジョブに委譲するため、ここでは即 200 を返す
     // 参考: https://docs.stripe.com/webhooks#handle-events-asynchronously
@@ -144,9 +175,13 @@ export async function POST(request: NextRequest) {
       // ログ失敗時は黙って継続
     }
 
-    // フォールバックで標準エラー出力
-    // eslint-disable-next-line no-console
-    console.error('Webhook route error:', error);
+    // フォールバックで構造化ログ出力
+    logger.error('Webhook route error', {
+      tag: 'webhookRouteError',
+      error_name: error instanceof Error ? error.name : 'Unknown',
+      error_message: error instanceof Error ? error.message : String(error),
+      enqueued
+    });
 
     // enqueue 成功後に発生した例外は 200 を返して Stripe の不要なリトライを防止
     if (enqueued) {

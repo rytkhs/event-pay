@@ -4,6 +4,7 @@
  */
 
 import { ValidationError } from "./errorHandling";
+import { logger } from "@/lib/logging/app-logger";
 
 // ValidationErrorクラスを再エクスポート
 export { ValidationError };
@@ -115,8 +116,12 @@ export function safeValidate<T>(validator: () => T, defaultValue: T, errorMessag
   try {
     return validator();
   } catch (error) {
-    if (errorMessage && process.env.NODE_ENV === "development") {
-      console.error(errorMessage, error);
+    if (errorMessage) {
+      logger.error(errorMessage, {
+        tag: "validationError",
+        error_name: error instanceof Error ? error.name : "Unknown",
+        error_message: error instanceof Error ? error.message : String(error)
+      });
     }
     return defaultValue;
   }

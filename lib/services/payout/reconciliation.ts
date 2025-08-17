@@ -8,6 +8,7 @@ import { Database } from "@/types/database";
 import { stripe } from "@/lib/stripe/client";
 import { PayoutStatus } from "./types";
 import Stripe from "stripe";
+import { logger } from "@/lib/logging/app-logger";
 
 export interface ReconciliationResult {
   checkedTransfers: number;
@@ -145,7 +146,11 @@ export class PayoutReconciliationService {
 
     if (!payout) {
       // payoutレコードが存在しない場合はログのみ
-      console.warn(`Payout record not found for transfer ${transferId}, payout ${payoutId}`);
+      logger.warn(`Payout record not found for transfer ${transferId}, payout ${payoutId}`, {
+        tag: "payoutReconciliation",
+        transfer_id: transferId,
+        payout_id: payoutId
+      });
       return false;
     }
 
@@ -234,7 +239,12 @@ export class PayoutReconciliationService {
       throw new Error(`Failed to update payout ${payout.id}: ${error.message}`);
     }
 
-    console.log(`Reconciliation: Fixed payout ${payout.id} status to ${newStatus}`);
+    logger.info(`Reconciliation: Fixed payout ${payout.id} status to ${newStatus}`, {
+      tag: "payoutReconciliation",
+      payout_id: payout.id,
+      new_status: newStatus,
+      transfer_id: transfer.id
+    });
   }
 
   /**

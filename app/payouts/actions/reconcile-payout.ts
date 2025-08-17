@@ -15,6 +15,7 @@ import { StripeConnectErrorHandler } from "@/lib/services/stripe-connect/error-h
 import { PayoutValidator } from "@/lib/services/payout/validation";
 import { getCurrentUser } from "@/lib/auth/auth-utils";
 import { stripe } from "@/lib/stripe/client";
+import { logger } from "@/lib/logging/app-logger";
 
 export interface ReconcilePayoutActionParams {
   payoutId: string;
@@ -129,7 +130,11 @@ export async function reconcilePayoutAction(
     };
 
   } catch (error) {
-    console.error("Reconcile payout action failed:", error);
+    logger.error('Reconcile payout action failed', {
+      tag: 'reconcilePayoutActionFailed',
+      error_name: error instanceof Error ? error.name : 'Unknown',
+      error_message: error instanceof Error ? error.message : String(error)
+    });
     return {
       success: false,
       error: error instanceof Error ? error.message : "修復に失敗しました",
@@ -215,7 +220,11 @@ export async function getProcessingErrorPayoutsAction(): Promise<GetProcessingEr
     };
 
   } catch (error) {
-    console.error("Get processing error payouts failed:", error);
+    logger.error('Get processing error payouts failed', {
+      tag: 'getProcessingErrorPayoutsFailed',
+      error_name: error instanceof Error ? error.name : 'Unknown',
+      error_message: error instanceof Error ? error.message : String(error)
+    });
     return {
       success: false,
       error: error instanceof Error ? error.message : "データ取得に失敗しました",
@@ -301,7 +310,11 @@ export async function retryPayoutAction(
     };
 
   } catch (error) {
-    console.error("Retry payout action failed:", error);
+    logger.error('Retry payout action failed', {
+      tag: 'retryPayoutActionFailed',
+      error_name: error instanceof Error ? error.name : 'Unknown',
+      error_message: error instanceof Error ? error.message : String(error)
+    });
     return {
       success: false,
       error: error instanceof Error ? error.message : "再実行に失敗しました",

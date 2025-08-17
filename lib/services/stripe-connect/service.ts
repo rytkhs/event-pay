@@ -7,6 +7,7 @@ import Stripe from "stripe";
 import { Database } from "@/types/database";
 import { stripe } from "@/lib/stripe/client";
 import { IStripeConnectService, IStripeConnectErrorHandler } from "./interface";
+import { logger } from "@/lib/logging/app-logger";
 import {
   StripeConnectAccount,
   CreateExpressAccountParams,
@@ -76,10 +77,14 @@ export class StripeConnectService implements IStripeConnectService {
             stripeAccount = searchResult.data[0] as Stripe.Account;
           }
         }
-      } catch (_searchError) {
+      } catch (searchError) {
         // searchは補助的機能。失敗しても致命ではないため続行する
-        // 必要に応じてロギング
-        // console.debug('Stripe accounts.search failed, continue to create:', searchError);
+        logger.debug("Stripe accounts.search failed, continue to create", {
+          tag: "stripeAccountSearchFailed",
+          user_id: userId,
+          error_name: searchError instanceof Error ? searchError.name : "Unknown",
+          error_message: searchError instanceof Error ? searchError.message : String(searchError)
+        });
       }
 
       // Stripe Express Account作成パラメータ
@@ -139,10 +144,11 @@ export class StripeConnectService implements IStripeConnectService {
             await this.stripe.accounts.del(stripeAccount.id);
           } catch (compensationError) {
             // 補償削除の失敗はログに残し、上位へはDBエラーとしてマッピングして伝搬
-            // eslint-disable-next-line no-console
-            console.error("Failed to compensate (delete) created Stripe account:", {
-              accountId: stripeAccount.id,
-              error: compensationError instanceof Error ? compensationError.message : compensationError,
+            logger.error("Failed to compensate (delete) created Stripe account", {
+              tag: "stripeConnectCompensationFailed",
+              account_id: stripeAccount.id,
+              error_name: compensationError instanceof Error ? compensationError.name : "Unknown",
+              error_message: compensationError instanceof Error ? compensationError.message : String(compensationError)
             });
           }
         }

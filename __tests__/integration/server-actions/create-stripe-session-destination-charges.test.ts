@@ -3,16 +3,18 @@
  */
 
 import { createStripeSessionAction } from "@/app/payments/actions/create-stripe-session";
-import { useDestinationCharges } from "@/lib/services/payment/feature-flags";
-import { createDestinationCheckoutSession } from "@/lib/stripe/destination-charges";
+import { isDestinationChargesEnabled } from "@/lib/services/payment/feature-flags";
+import { createDestinationCheckoutSession, createOrRetrieveCustomer } from "@/lib/stripe/destination-charges";
 import { ApplicationFeeCalculator } from "@/lib/services/fee-config/application-fee-calculator";
-import { createClient } from "@supabase/supabase-js";
-import { Database } from "@/types/database";
+import { SecureSupabaseClientFactory } from "@/lib/security/secure-client-factory.impl";
+import { createRateLimitStore, checkRateLimit } from "@/lib/rate-limit";
+import { PaymentValidator, PaymentService } from "@/lib/services/payment";
 
 // モック
 jest.mock("@/lib/services/payment/feature-flags");
 jest.mock("@/lib/stripe/destination-charges");
 jest.mock("@/lib/services/fee-config/application-fee-calculator");
+jest.mock("@/lib/services/payment");
 jest.mock("@/lib/supabase/server", () => ({
   createClient: jest.fn(),
 }));
@@ -27,12 +29,17 @@ jest.mock("@/lib/logging/app-logger", () => ({
   },
 }));
 
-const mockUseDestinationCharges = useDestinationCharges as jest.MockedFunction<
-  typeof useDestinationCharges
+const mockUseDestinationCharges = isDestinationChargesEnabled as jest.MockedFunction<
+  typeof isDestinationChargesEnabled
 >;
 const mockCreateDestinationCheckoutSession = createDestinationCheckoutSession as jest.MockedFunction<
   typeof createDestinationCheckoutSession
 >;
+const mockCreateOrRetrieveCustomer = createOrRetrieveCustomer as jest.MockedFunction<
+  typeof createOrRetrieveCustomer
+>;
+const mockPaymentValidator = PaymentValidator as jest.MockedClass<typeof PaymentValidator>;
+const mockPaymentService = PaymentService as jest.MockedClass<typeof PaymentService>;
 
 describe("createStripeSessionAction - Destination charges", () => {
   let mockSupabase: any;
@@ -60,13 +67,11 @@ describe("createStripeSessionAction - Destination charges", () => {
       createAuditedAdminClient: jest.fn().mockResolvedValue(mockSupabase),
     };
 
-    const { SecureSupabaseClientFactory } = require("@/lib/security/secure-client-factory.impl");
-    SecureSupabaseClientFactory.getInstance = jest.fn().mockReturnValue(mockSecureFactory);
+    (SecureSupabaseClientFactory.getInstance as jest.Mock) = jest.fn().mockReturnValue(mockSecureFactory);
 
     // Rate limitのモック
-    const { createRateLimitStore, checkRateLimit } = require("@/lib/rate-limit");
-    createRateLimitStore.mockResolvedValue({});
-    checkRateLimit.mockResolvedValue({ allowed: true });
+    (createRateLimitStore as jest.Mock).mockResolvedValue({});
+    (checkRateLimit as jest.Mock).mockResolvedValue({ allowed: true });
 
     // ApplicationFeeCalculatorのモック
     const mockCalculateApplicationFee = jest.fn().mockResolvedValue({
@@ -102,17 +107,85 @@ describe("createStripeSessionAction - Destination charges", () => {
     );
 
     // Destination charges関連のモック
-    const { createOrRetrieveCustomer } = require("@/lib/stripe/destination-charges");
-    createOrRetrieveCustomer.mockResolvedValue({
+    // createOrRetrieveCustomer は既にモックされています
+    mockCreateOrRetrieveCustomer.mockResolvedValue({
       id: "cus_test123",
       email: "test@example.com",
       name: "Test User",
-    });
+      object: "customer",
+      balance: 0,
+      created: Date.now(),
+      default_source: null,
+      delinquent: false,
+      description: null,
+      discount: null,
+      invoice_prefix: null,
+      livemode: false,
+      metadata: {},
+      preferred_locales: [],
+      shipping: null,
+      tax_exempt: "none" as const,
+    } as any);
 
     mockCreateDestinationCheckoutSession.mockResolvedValue({
       id: "cs_test123",
       url: "https://checkout.stripe.com/pay/cs_test123",
-    });
+      object: "checkout.session",
+      adaptive_pricing: null,
+      after_expiration: null,
+      allow_promotion_codes: null,
+      amount_subtotal: null,
+      amount_total: null,
+      automatic_tax: { enabled: false, liability: null, status: null },
+      billing_address_collection: null,
+      cancel_url: null,
+      client_reference_id: null,
+      client_secret: null,
+      consent: null,
+      consent_collection: null,
+      created: Date.now(),
+      currency: null,
+      currency_conversion: null,
+      custom_fields: [],
+      custom_text: {
+        after_submit: null,
+        shipping_address: null,
+        submit: null,
+        terms_of_service_acceptance: null,
+      },
+      customer: null,
+      customer_creation: null,
+      customer_details: null,
+      customer_email: null,
+      expires_at: Date.now() + 3600000,
+      invoice: null,
+      invoice_creation: null,
+      livemode: false,
+      locale: null,
+      metadata: {},
+      mode: "payment" as const,
+      payment_intent: null,
+      payment_link: null,
+      payment_method_collection: "if_required" as const,
+      payment_method_configuration_details: null,
+      payment_method_options: {},
+      payment_method_types: [],
+      payment_status: "unpaid" as const,
+      phone_number_collection: { enabled: false },
+      recovered_from: null,
+      saved_payment_method_options: null,
+      setup_intent: null,
+      shipping_address_collection: null,
+      shipping_cost: null,
+      shipping_details: null,
+      shipping_options: [],
+      status: "open" as const,
+      submit_type: null,
+      subscription: null,
+      success_url: null,
+      total_details: null,
+      ui_mode: "hosted" as const,
+    } as any);
   });
 
   afterEach(() => {
@@ -166,29 +239,31 @@ describe("createStripeSessionAction - Destination charges", () => {
     });
 
     // PaymentValidatorのモック（validateAttendanceAccessとvalidatePaymentAmount）
-    const { PaymentValidator } = require("@/lib/services/payment");
-    PaymentValidator.mockImplementation(() => ({
+    // PaymentValidator は既にモックされています
+    mockPaymentValidator.mockImplementation(() => ({
       validateAttendanceAccess: jest.fn().mockResolvedValue(undefined),
       validatePaymentAmount: jest.fn().mockResolvedValue(undefined),
     }));
 
     // PaymentServiceのモック
-    const { PaymentService } = require("@/lib/services/payment");
+    // PaymentService は既にモックされています
     const mockCreateStripeSession = jest.fn().mockResolvedValue({
       sessionUrl: "https://checkout.stripe.com/pay/cs_test123",
       sessionId: "cs_test123",
     });
-    PaymentService.mockImplementation(() => ({
+    mockPaymentService.mockImplementation(() => ({
       createStripeSession: mockCreateStripeSession,
     }));
 
     const result = await createStripeSessionAction(validInput);
 
     expect(result.success).toBe(true);
-    expect(result.data).toEqual({
-      sessionUrl: "https://checkout.stripe.com/pay/cs_test123",
-      sessionId: "cs_test123",
-    });
+    if (result.success) {
+      expect(result.data).toEqual({
+        sessionUrl: "https://checkout.stripe.com/pay/cs_test123",
+        sessionId: "cs_test123",
+      });
+    }
 
     // PaymentServiceのcreateStripeSessionがDestination charges設定で呼ばれることを確認
     expect(mockCreateStripeSession).toHaveBeenCalledWith(
@@ -236,29 +311,31 @@ describe("createStripeSessionAction - Destination charges", () => {
     });
 
     // PaymentValidatorのモック
-    const { PaymentValidator } = require("@/lib/services/payment");
-    PaymentValidator.mockImplementation(() => ({
+    // PaymentValidator は既にモックされています
+    mockPaymentValidator.mockImplementation(() => ({
       validateAttendanceAccess: jest.fn().mockResolvedValue(undefined),
       validatePaymentAmount: jest.fn().mockResolvedValue(undefined),
     }));
 
     // PaymentServiceのモック
-    const { PaymentService } = require("@/lib/services/payment");
+    // PaymentService は既にモックされています
     const mockCreateStripeSession = jest.fn().mockResolvedValue({
       sessionUrl: "https://checkout.stripe.com/pay/cs_traditional123",
       sessionId: "cs_traditional123",
     });
-    PaymentService.mockImplementation(() => ({
+    mockPaymentService.mockImplementation(() => ({
       createStripeSession: mockCreateStripeSession,
     }));
 
     const result = await createStripeSessionAction(validInput);
 
     expect(result.success).toBe(true);
-    expect(result.data).toEqual({
-      sessionUrl: "https://checkout.stripe.com/pay/cs_traditional123",
-      sessionId: "cs_traditional123",
-    });
+    if (result.success) {
+      expect(result.data).toEqual({
+        sessionUrl: "https://checkout.stripe.com/pay/cs_traditional123",
+        sessionId: "cs_traditional123",
+      });
+    }
 
     // PaymentServiceのcreateStripeSessionがDestination charges設定なしで呼ばれることを確認
     expect(mockCreateStripeSession).toHaveBeenCalledWith(
@@ -301,8 +378,8 @@ describe("createStripeSessionAction - Destination charges", () => {
     });
 
     // PaymentValidatorのモック
-    const { PaymentValidator } = require("@/lib/services/payment");
-    PaymentValidator.mockImplementation(() => ({
+    // PaymentValidator は既にモックされています
+    mockPaymentValidator.mockImplementation(() => ({
       validateAttendanceAccess: jest.fn().mockResolvedValue(undefined),
       validatePaymentAmount: jest.fn().mockResolvedValue(undefined),
     }));
@@ -310,8 +387,10 @@ describe("createStripeSessionAction - Destination charges", () => {
     const result = await createStripeSessionAction(validInput);
 
     expect(result.success).toBe(false);
-    expect(result.error?.code).toBe("BUSINESS_RULE_VIOLATION");
-    expect(result.error?.message).toBe("このイベントにはStripe Connectアカウントが設定されていません。");
+    if (!result.success) {
+      expect(result.error?.code).toBe("BUSINESS_RULE_VIOLATION");
+      expect(result.error?.message).toBe("このイベントにはStripe Connectアカウントが設定されていません。");
+    }
   });
 
   it("Stripe Connectアカウントで決済が無効化されている場合はエラーを返す", async () => {
@@ -343,8 +422,8 @@ describe("createStripeSessionAction - Destination charges", () => {
     });
 
     // PaymentValidatorのモック
-    const { PaymentValidator } = require("@/lib/services/payment");
-    PaymentValidator.mockImplementation(() => ({
+    // PaymentValidator は既にモックされています
+    mockPaymentValidator.mockImplementation(() => ({
       validateAttendanceAccess: jest.fn().mockResolvedValue(undefined),
       validatePaymentAmount: jest.fn().mockResolvedValue(undefined),
     }));
@@ -352,8 +431,10 @@ describe("createStripeSessionAction - Destination charges", () => {
     const result = await createStripeSessionAction(validInput);
 
     expect(result.success).toBe(false);
-    expect(result.error?.code).toBe("BUSINESS_RULE_VIOLATION");
-    expect(result.error?.message).toBe("Stripe Connectアカウントで決済が有効化されていません。");
+    if (!result.success) {
+      expect(result.error?.code).toBe("BUSINESS_RULE_VIOLATION");
+      expect(result.error?.message).toBe("Stripe Connectアカウントで決済が有効化されていません。");
+    }
   });
 
   it("プロフィール情報が取得できない場合でもユーザーのメールアドレスを使用する", async () => {
@@ -393,19 +474,19 @@ describe("createStripeSessionAction - Destination charges", () => {
     });
 
     // PaymentValidatorのモック
-    const { PaymentValidator } = require("@/lib/services/payment");
-    PaymentValidator.mockImplementation(() => ({
+    // PaymentValidator は既にモックされています
+    mockPaymentValidator.mockImplementation(() => ({
       validateAttendanceAccess: jest.fn().mockResolvedValue(undefined),
       validatePaymentAmount: jest.fn().mockResolvedValue(undefined),
     }));
 
     // PaymentServiceのモック
-    const { PaymentService } = require("@/lib/services/payment");
+    // PaymentService は既にモックされています
     const mockCreateStripeSession = jest.fn().mockResolvedValue({
       sessionUrl: "https://checkout.stripe.com/pay/cs_test123",
       sessionId: "cs_test123",
     });
-    PaymentService.mockImplementation(() => ({
+    mockPaymentService.mockImplementation(() => ({
       createStripeSession: mockCreateStripeSession,
     }));
 

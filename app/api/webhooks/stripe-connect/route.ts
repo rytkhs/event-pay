@@ -16,6 +16,7 @@ import { SecurityAuditorImpl } from "@/lib/security/security-auditor.impl";
 import { AnomalyDetectorImpl } from "@/lib/security/anomaly-detector";
 import { getClientIP } from "@/lib/utils/ip-detection";
 import { shouldEnforceStripeWebhookIpCheck, isStripeWebhookIpAllowed } from "@/lib/security/stripe-ip-allowlist";
+import { logger } from '@/lib/logging/app-logger';
 
 const webhookSecret = process.env.STRIPE_CONNECT_WEBHOOK_SECRET!;
 
@@ -25,6 +26,14 @@ export const dynamic = 'force-dynamic'; // Webhookは常に動的処理
 export async function POST(request: NextRequest) {
   const _clientIP = getClientIP(request);
   let enqueued = false;
+  const requestId = request.headers.get('x-request-id') || 'unknown';
+  const connectLogger = logger.withContext({
+    request_id: requestId,
+    path: request.nextUrl.pathname,
+    tag: 'connectWebhookProcessing'
+  });
+
+  connectLogger.info('Connect webhook request received');
 
   try {
     // 本番のみ: Stripe Webhook 送信元 IP の許可リスト検証
@@ -49,6 +58,7 @@ export async function POST(request: NextRequest) {
     const signature = request.headers.get("stripe-signature");
 
     if (!signature) {
+      connectLogger.warn('Connect webhook signature missing');
       return NextResponse.json({ error: "Missing signature" }, { status: 400 });
     }
 
@@ -58,11 +68,18 @@ export async function POST(request: NextRequest) {
     const securityReporter = new SecurityReporterImpl(auditor, anomalyDetector);
     const verifier = new StripeWebhookSignatureVerifier(stripe, webhookSecret, securityReporter);
 
+    connectLogger.debug('Starting Connect webhook signature verification');
     const verification = await verifier.verifySignature({ payload, signature });
     if (!verification.isValid || !verification.event) {
+      connectLogger.warn('Connect webhook signature verification failed');
       return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
     }
     const event: Stripe.Event = verification.event;
+
+    connectLogger.info('Connect webhook signature verified', {
+      event_id: event.id,
+      event_type: event.type
+    });
 
     // 受信イベントを pending として即時エンキュー（Connect用）
     const idempotency = new SupabaseWebhookIdempotencyService();
@@ -74,6 +91,13 @@ export async function POST(request: NextRequest) {
       const idVal = (obj as { id?: unknown }).id;
       return typeof idVal === 'string' && idVal.length > 0 ? idVal : null;
     })();
+
+    connectLogger.debug('Enqueueing Connect webhook event for processing', {
+      event_id: event.id,
+      event_type: event.type,
+      object_id: objectId
+    });
+
     await idempotency.enqueueEventForProcessing(
       event.id,
       event.type,
@@ -84,6 +108,12 @@ export async function POST(request: NextRequest) {
       }
     );
     enqueued = true;
+
+    connectLogger.info('Connect webhook event enqueued successfully', {
+      event_id: event.id,
+      event_type: event.type,
+      tag: 'enqueueSucceeded'
+    });
 
     // 非同期処理は別ジョブに委譲して即ACK
     return NextResponse.json({

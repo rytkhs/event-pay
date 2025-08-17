@@ -1,5 +1,6 @@
 import { SupabaseClient, Session } from "@supabase/supabase-js";
 import { SESSION_CONFIG, type SessionUpdatePriority } from "./config";
+import { logger } from "@/lib/logging/app-logger";
 
 /**
  * 最適化されたセッション管理クラス
@@ -41,8 +42,11 @@ export class SessionManager {
       const { data, error } = await supabase.auth.refreshSession();
 
       if (error) {
-        // eslint-disable-next-line no-console
-        console.warn("Session refresh failed:", error.message);
+        logger.warn("Session refresh failed", {
+          tag: "sessionRefreshFailed",
+          error_message: error.message,
+          session_id: sessionId
+        });
         return { updated: false, session: null };
       }
 
@@ -51,8 +55,12 @@ export class SessionManager {
 
       return { updated: true, session: data.session };
     } catch (error) {
-      // eslint-disable-next-line no-console
-      console.error("Session refresh error:", error);
+      logger.error("Session refresh error", {
+        tag: "sessionRefreshException",
+        error_name: error instanceof Error ? error.name : "Unknown",
+        error_message: error instanceof Error ? error.message : String(error),
+        session_id: sessionId
+      });
       return { updated: false, session: null };
     }
   }
@@ -125,8 +133,12 @@ export class SessionManager {
       }
     } catch (error) {
       // バックグラウンド処理なのでログのみ
-      // eslint-disable-next-line no-console
-      console.warn("Background session refresh failed:", error);
+      logger.warn("Background session refresh failed", {
+        tag: "backgroundSessionRefreshFailed",
+        error_name: error instanceof Error ? error.name : "Unknown",
+        error_message: error instanceof Error ? error.message : String(error),
+        session_id: sessionId
+      });
     }
   }
 
