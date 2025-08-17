@@ -8,6 +8,7 @@ import { formatUtcToDatetimeLocal } from "@/lib/utils/timezone";
 import { useEventRestrictions } from "@/hooks/restrictions/use-event-restrictions";
 import { useEventChanges } from "@/hooks/changes/use-event-changes";
 import { useEventSubmission } from "@/hooks/submission/use-event-submission";
+import { logger } from "@/lib/logging/app-logger";
 import type { Event, EventFormData } from "@/types/models";
 import type { ChangeItem } from "@/components/ui/change-confirmation-dialog";
 
@@ -223,7 +224,12 @@ export function useEventEditForm({ event, attendeeCount, onSubmit }: UseEventEdi
 
             resolve(result);
           } catch (error) {
-            console.error("Form submission failed:", error);
+            logger.error("Event edit form submission failed", {
+              tag: "eventEditForm",
+              event_id: event.id,
+              error_name: error instanceof Error ? error.name : "Unknown",
+              error_message: error instanceof Error ? error.message : String(error)
+            });
             form.setError("root", {
               type: "manual",
               message: "更新に失敗しました。もう一度お試しください。",
@@ -235,7 +241,7 @@ export function useEventEditForm({ event, attendeeCount, onSubmit }: UseEventEdi
 
       return result;
     },
-    [form, detectChanges, submission, startTransition]
+    [form, detectChanges, submission, startTransition, event.id]
   );
 
   // 変更リストを指定して送信する関数
@@ -277,7 +283,12 @@ export function useEventEditForm({ event, attendeeCount, onSubmit }: UseEventEdi
 
             resolve(result);
           } catch (error) {
-            console.error("Form submission failed:", error);
+            logger.error("Event edit form submission with changes failed", {
+              tag: "eventEditForm",
+              event_id: event.id,
+              error_name: error instanceof Error ? error.name : "Unknown",
+              error_message: error instanceof Error ? error.message : String(error)
+            });
             form.setError("root", {
               type: "manual",
               message: "更新に失敗しました。もう一度お試しください。",
@@ -289,7 +300,7 @@ export function useEventEditForm({ event, attendeeCount, onSubmit }: UseEventEdi
 
       return result;
     },
-    [form, submission, startTransition]
+    [form, submission, startTransition, event.id]
   );
 
   // フィールド制限チェック

@@ -23,6 +23,7 @@ import {
   getConnectAccountStatusAction,
   createConnectAccountAction,
 } from "@/app/(dashboard)/actions/stripe-connect";
+import { logger } from "@/lib/logging/app-logger";
 
 interface AccountStatusData {
   hasAccount: boolean;
@@ -98,7 +99,11 @@ export function AccountStatus({ refreshUrl, returnUrl }: AccountStatusProps) {
     try {
       await createConnectAccountAction(formData);
     } catch (error) {
-      console.error("アカウント更新エラー:", error);
+      logger.error("Account update error", {
+        tag: "connectAccountUpdateError",
+        error_name: error instanceof Error ? error.name : "Unknown",
+        error_message: error instanceof Error ? error.message : String(error),
+      });
     }
   };
 

@@ -67,7 +67,17 @@ serve(async (req) => {
       .single();
 
     if (error) {
-      console.error('Failed to cleanup expired scheduler locks:', error);
+      // エラーログ
+      const errorLog = {
+        timestamp: new Date().toISOString(),
+        level: "ERROR",
+        tag: "cleanupSchedulerLocks",
+        message: "Failed to cleanup expired scheduler locks",
+        error_name: error.name,
+        error_message: error.message
+      };
+      console.error(JSON.stringify(errorLog));
+
       return new Response(
         JSON.stringify({
           error: 'Cleanup failed',
@@ -82,10 +92,16 @@ serve(async (req) => {
 
     const result = data as CleanupResult;
 
-    console.log(`Scheduler lock cleanup completed: ${result.deleted_count} expired locks removed`, {
+    // 完了ログ
+    const completionLog = {
+      timestamp: new Date().toISOString(),
+      level: "INFO",
+      tag: "cleanupSchedulerLocks",
+      message: "Scheduler lock cleanup completed",
       deletedCount: result.deleted_count,
       expiredLocks: result.expired_locks,
-    });
+    };
+    console.log(JSON.stringify(completionLog));
 
     return new Response(
       JSON.stringify({
@@ -100,7 +116,17 @@ serve(async (req) => {
     );
 
   } catch (error) {
-    console.error('Unexpected error in scheduler lock cleanup:', error);
+    // 予期しないエラーログ
+    const unexpectedErrorLog = {
+      timestamp: new Date().toISOString(),
+      level: "ERROR",
+      tag: "cleanupSchedulerLocks",
+      message: "Unexpected error in scheduler lock cleanup",
+      error_name: error instanceof Error ? error.name : "Unknown",
+      error_message: error instanceof Error ? error.message : String(error)
+    };
+    console.error(JSON.stringify(unexpectedErrorLog));
+
     return new Response(
       JSON.stringify({
         error: 'Internal server error',

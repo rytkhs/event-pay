@@ -663,7 +663,9 @@ export class SecurityAuditorImpl implements SecurityAuditor {
 
   private async sendSecurityAlert(activity: SuspiciousActivityEntry): Promise<void> {
     // 将来実装: メール/Slack通知
-    console.warn("Security Alert:", {
+    const { logger } = await import("@/lib/logging/app-logger");
+    logger.warn("Security Alert", {
+      tag: "securityAudit",
       type: activity.activityType,
       severity: activity.severity,
       context: activity.context,

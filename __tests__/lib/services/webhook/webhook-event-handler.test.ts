@@ -2,24 +2,33 @@ import Stripe from "stripe";
 import { StripeWebhookEventHandler } from "@/lib/services/webhook/webhook-event-handler";
 import type { SecurityReporter } from "@/lib/security/security-reporter.types";
 
-// Supabaseクライアントのモック
-const mockSupabase = {
-  from: jest.fn(() => ({
-    select: jest.fn(() => ({
+// Supabaseクライアントのモック型定義
+interface MockSupabaseClient {
+  from: jest.Mock;
+  rpc: jest.Mock;
+}
+
+// より詳細なモック型を作成
+const createMockSupabaseQueryBuilder = () => ({
+  select: jest.fn(() => ({
+    eq: jest.fn(() => ({
+      single: jest.fn(),
+      maybeSingle: jest.fn(),
+    })),
+    limit: jest.fn(() => ({
       eq: jest.fn(() => ({
-        single: jest.fn(),
         maybeSingle: jest.fn(),
       })),
-      limit: jest.fn(() => ({
-        eq: jest.fn(() => ({
-          maybeSingle: jest.fn(),
-        })),
-      })),
-    })),
-    update: jest.fn(() => ({
-      eq: jest.fn(),
     })),
   })),
+  update: jest.fn(() => ({
+    eq: jest.fn(),
+  })),
+});
+
+// Supabaseクライアントのモック
+const mockSupabase: MockSupabaseClient = {
+  from: jest.fn(() => createMockSupabaseQueryBuilder()),
   rpc: jest.fn(),
 };
 
@@ -131,34 +140,28 @@ describe("StripeWebhookEventHandler", () => {
       };
 
       // データベースクエリのモック設定
-      mockSupabase.from
-        .mockReturnValueOnce({
-          select: jest.fn(() => ({
-            eq: jest.fn(() => ({
-              single: jest.fn().mockResolvedValue({
-                data: mockPayment,
-                error: null,
-              }),
-            })),
-          })),
-        })
-        .mockReturnValueOnce({
-          update: jest.fn(() => ({
-            eq: jest.fn().mockResolvedValue({
-              error: null,
-            }),
-          })),
-        })
-        .mockReturnValueOnce({
-          select: jest.fn(() => ({
-            eq: jest.fn(() => ({
-              single: jest.fn().mockResolvedValue({
-                data: mockAttendance,
-                error: null,
-              }),
-            })),
-          })),
-        });
+      (mockSupabase.from as jest.Mock)
+        .mockReturnValueOnce(createMockSupabaseQueryBuilder())
+        .mockReturnValueOnce(createMockSupabaseQueryBuilder())
+        .mockReturnValueOnce(createMockSupabaseQueryBuilder());
+
+      // 個別のモックメソッドを設定
+      const firstCall = (mockSupabase.from as jest.Mock).mock.results[0].value;
+      firstCall.select().eq().single.mockResolvedValue({
+        data: mockPayment,
+        error: null,
+      });
+
+      const secondCall = (mockSupabase.from as jest.Mock).mock.results[1].value;
+      secondCall.update().eq.mockResolvedValue({
+        error: null,
+      });
+
+      const thirdCall = (mockSupabase.from as jest.Mock).mock.results[2].value;
+      thirdCall.select().eq().single.mockResolvedValue({
+        data: mockAttendance,
+        error: null,
+      });
 
       mockSupabase.rpc.mockResolvedValue({ error: null });
 

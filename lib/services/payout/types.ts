@@ -323,3 +323,48 @@ export interface ValidateManualPayoutParams {
   minimumAmount?: number; // デフォルト: 100円
   daysAfterEvent?: number; // デフォルト: 5日
 }
+
+// ---------------------------------------
+// 送金金額詳細計算用型定義（旧 calculation.ts より移動）
+// ---------------------------------------
+export interface PaymentData {
+  amount: number;
+  method: string;
+  status: string;
+}
+
+export interface FeeCalculationResult {
+  totalAmount: number;
+  totalFee: number;
+  breakdown: {
+    paymentCount: number;
+    averageAmount: number;
+    feeRate: number;
+    perTransactionFees: number[];
+  };
+}
+
+export interface DetailedPayoutCalculation {
+  totalStripeSales: number;
+  totalStripeFee: number;
+  platformFee: number;
+  netPayoutAmount: number;
+  breakdown: {
+    stripePaymentCount: number;
+    averageTransactionAmount: number;
+    stripeFeeRate: number;
+    platformFeeRate: number;
+    stripeFeeBreakdown: number[];
+    platformFeeBreakdown: {
+      rateFee: number;
+      fixedFee: number;
+      minimumFeeApplied: boolean;
+      maximumFeeApplied: boolean;
+    };
+  };
+  validation: {
+    isValid: boolean;
+    warnings: string[];
+    errors: string[];
+  };
+}

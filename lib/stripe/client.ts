@@ -38,8 +38,9 @@ if (!hasRegisteredHooks) {
   // eslint-disable-next-line @typescript-eslint/ban-ts-comment
   // @ts-ignore - stripe typings don't expose "request" event yet
   stripe.on("request", (req: Record<string, unknown>) => {
-    logger.info("stripe_request", {
-      request_id: req.requestId as string | undefined,
+    logger.info("Stripe request initiated", {
+      tag: 'stripeRequest',
+      stripe_request_id: req.requestId as string | undefined,
       idempotency_key: req.idempotencyKey as string | undefined,
       method: req.method as string | undefined,
       path: req.path as string | undefined,
@@ -51,8 +52,9 @@ if (!hasRegisteredHooks) {
   // eslint-disable-next-line @typescript-eslint/ban-ts-comment
   // @ts-ignore - stripe typings don't expose "response" event yet
   stripe.on("response", (res: Record<string, unknown>) => {
-    logger.info("stripe_response", {
-      request_id: res.requestId as string | undefined,
+    logger.info("Stripe response received", {
+      tag: 'stripeResponse',
+      stripe_request_id: res.requestId as string | undefined,
       status: res.statusCode as number | undefined,
       latency_ms: res.elapsed as number | undefined,
       stripe_should_retry: (res.headers as Record<string, unknown> | undefined)?.["stripe-should-retry"] as string | undefined,

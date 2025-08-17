@@ -6,6 +6,7 @@ import { useTransition, useEffect } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { createEventAction } from "@/app/events/actions";
+import { logger } from "@/lib/logging/app-logger";
 
 // フロントエンド専用バリデーションスキーマ
 const eventFormSchema = z
@@ -211,7 +212,11 @@ export const useEventForm = () => {
           });
         }
       } catch (error) {
-        console.error("Event creation error:", error);
+        logger.error("Event creation failed", {
+          tag: "eventCreation",
+          error_name: error instanceof Error ? error.name : "Unknown",
+          error_message: error instanceof Error ? error.message : String(error)
+        });
         form.setError("root", {
           type: "server",
           message: "予期しないエラーが発生しました。もう一度お試しください。",
@@ -227,7 +232,8 @@ export const useEventForm = () => {
 
   // デバッグ用：フォーム状態をログ出力
   if (process.env.NODE_ENV === "development") {
-    console.log("🔍 Form Debug:", {
+    logger.debug("Form debug information", {
+      tag: "eventFormDebug",
       errors: formState.errors,
       hasErrors,
       isValid: formState.isValid,

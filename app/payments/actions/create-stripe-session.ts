@@ -3,7 +3,7 @@
 import { SecureSupabaseClientFactory } from "@/lib/security/secure-client-factory.impl";
 import { AdminReason } from "@/lib/security/secure-client-factory.types";
 import { PaymentService, PaymentErrorHandler, PaymentValidator } from "@/lib/services/payment";
-import { useDestinationCharges } from "@/lib/services/payment/feature-flags";
+import { isDestinationChargesEnabled } from "@/lib/services/payment/feature-flags";
 import { getTransferGroupForEvent } from "@/lib/utils/stripe";
 import { createRateLimitStore, checkRateLimit } from "@/lib/rate-limit";
 import { RATE_LIMIT_CONFIG } from "@/config/security";
@@ -161,7 +161,7 @@ export async function createStripeSessionAction(
     const paymentService = new PaymentService(admin, errorHandler);
 
     // Destination charges機能フラグをチェック
-    const shouldUseDestinationCharges = useDestinationCharges();
+    const shouldUseDestinationCharges = isDestinationChargesEnabled();
 
     let destinationChargesConfig = undefined;
 

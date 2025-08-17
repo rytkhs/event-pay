@@ -13,6 +13,7 @@ import {
   CONNECT_RETURN_SUFFIX,
   isAllowedConnectPath,
 } from "@/lib/routes/stripe-connect";
+import { logger } from "@/lib/logging/app-logger";
 
 // バリデーションスキーマ
 const CreateConnectAccountSchema = z.object({
@@ -105,17 +106,26 @@ export async function createConnectAccountAction(formData: FormData): Promise<vo
     const { data: { user }, error: authError } = await supabase.auth.getUser();
 
     if (authError) {
-      console.error("認証エラー:", authError);
+      logger.error('Stripe Connect account creation auth error', {
+        tag: 'connectAccountAuthError',
+        error_name: authError.name,
+        error_message: authError.message
+      });
       throw new Error("認証に失敗しました");
     }
 
     if (!user) {
-      console.warn("未認証ユーザーによるアクセス試行");
+      logger.warn('Unauthenticated user attempted Connect account creation', {
+        tag: 'connectAccountUnauthenticated'
+      });
       throw new Error("認証が必要です");
     }
 
     if (!user.email) {
-      console.error("ユーザーにメールアドレスが設定されていません:", user.id);
+      logger.error('User has no email address for Connect account', {
+        tag: 'connectAccountNoEmail',
+        user_id: user.id
+      });
       throw new Error("メールアドレスが設定されていません");
     }
 
@@ -149,7 +159,10 @@ export async function createConnectAccountAction(formData: FormData): Promise<vo
       // 作成後に再取得
       existingAccount = await stripeConnectService.getConnectAccountByUser(user.id);
       if (!existingAccount) {
-        console.error("アカウント作成後の取得に失敗:", user.id);
+        logger.error('Failed to fetch account after creation', {
+          tag: 'connectAccountFetchAfterCreationFailed',
+          user_id: user.id
+        });
         throw new Error("アカウント作成後の取得に失敗しました");
       }
     }
@@ -199,14 +212,20 @@ export async function createConnectAccountAction(formData: FormData): Promise<vo
       } catch (fallbackError) {
         hadFallbackFailure = true;
         finalError = fallbackError;
-        console.warn("ACCOUNT_ALREADY_EXISTS フォールフォワードに失敗:", fallbackError);
+        logger.warn('ACCOUNT_ALREADY_EXISTS fallback failed', {
+          tag: 'connectAccountFallbackFailed',
+          error_name: fallbackError instanceof Error ? fallbackError.name : 'Unknown',
+          error_message: fallbackError instanceof Error ? fallbackError.message : String(fallbackError)
+        });
       }
     }
 
     // 構造化ログ（fallbackが失敗した場合は両方のコンテキストを出力）
-    console.error("Stripe Connect Account Link生成エラー:", {
-      error: finalError instanceof Error ? finalError.message : String(finalError),
-      originalError: hadFallbackFailure ? (error instanceof Error ? error.message : String(error)) : undefined,
+    logger.error('Stripe Connect Account Link generation error', {
+      tag: 'connectAccountLinkGenerationError',
+      error_name: finalError instanceof Error ? finalError.name : 'Unknown',
+      error_message: finalError instanceof Error ? finalError.message : String(finalError),
+      original_error: hadFallbackFailure ? (error instanceof Error ? error.message : String(error)) : undefined,
       timestamp: new Date().toISOString()
     });
 
@@ -234,7 +253,11 @@ export async function getConnectAccountStatusAction(): Promise<ConnectAccountSta
     const { data: { user }, error: authError } = await supabase.auth.getUser();
 
     if (authError) {
-      console.error("認証エラー:", authError);
+      logger.error('Auth error in Connect account status check', {
+        tag: 'connectAccountStatusAuthError',
+        error_name: authError.name,
+        error_message: authError.message
+      });
       return {
         success: false,
         error: "認証に失敗しました"
@@ -242,7 +265,9 @@ export async function getConnectAccountStatusAction(): Promise<ConnectAccountSta
     }
 
     if (!user) {
-      console.warn("未認証ユーザーによるアクセス試行");
+      logger.warn('Unauthenticated user attempted Connect account status check', {
+        tag: 'connectAccountStatusUnauthenticated'
+      });
       return {
         success: false,
         error: "認証が必要です"
@@ -307,9 +332,10 @@ export async function getConnectAccountStatusAction(): Promise<ConnectAccountSta
 
   } catch (error) {
 
-    console.error("Stripe Connect アカウントステータス取得エラー:", {
-      error: error instanceof Error ? error.message : String(error),
-      timestamp: new Date().toISOString()
+    logger.error('Stripe Connect account status fetch error', {
+      tag: 'connectAccountStatusFetchError',
+      error_name: error instanceof Error ? error.name : 'Unknown',
+      error_message: error instanceof Error ? error.message : String(error)
     });
 
     return {
@@ -329,12 +355,18 @@ async function getAuthenticatedUser() {
   const { data: { user }, error: authError } = await supabase.auth.getUser();
 
   if (authError) {
-    console.error("認証エラー:", authError);
+    logger.error('Auth error in onboarding complete', {
+      tag: 'connectOnboardingCompleteAuthError',
+      error_name: authError.name,
+      error_message: authError.message
+    });
     throw new Error("認証に失敗しました");
   }
 
   if (!user) {
-    console.warn("未認証ユーザーによるアクセス試行");
+    logger.warn('Unauthenticated user attempted onboarding complete', {
+      tag: 'connectOnboardingCompleteUnauthenticated'
+    });
     throw new Error("認証が必要です");
   }
 
@@ -374,7 +406,10 @@ export async function handleOnboardingReturnAction(): Promise<void> {
 
 
     } else {
-      console.warn("オンボーディング完了時にアカウントが見つかりません:", user.id);
+      logger.warn('Account not found during onboarding complete', {
+        tag: 'connectOnboardingCompleteAccountNotFound',
+        user_id: user.id
+      });
     }
 
     // ダッシュボードにリダイレクト（成功メッセージ付き）
@@ -382,9 +417,10 @@ export async function handleOnboardingReturnAction(): Promise<void> {
 
   } catch (error) {
 
-    console.error("オンボーディング完了処理エラー:", {
-      error: error instanceof Error ? error.message : String(error),
-      timestamp: new Date().toISOString()
+    logger.error('Onboarding complete processing error', {
+      tag: 'connectOnboardingCompleteProcessingError',
+      error_name: error instanceof Error ? error.name : 'Unknown',
+      error_message: error instanceof Error ? error.message : String(error)
     });
 
     if (error instanceof Error && error.message === "認証が必要です") {
@@ -414,9 +450,10 @@ export async function handleOnboardingRefreshAction(): Promise<void> {
 
   } catch (error) {
 
-    console.error("オンボーディングリフレッシュ処理エラー:", {
-      error: error instanceof Error ? error.message : String(error),
-      timestamp: new Date().toISOString()
+    logger.error('Onboarding refresh processing error', {
+      tag: 'connectOnboardingRefreshProcessingError',
+      error_name: error instanceof Error ? error.name : 'Unknown',
+      error_message: error instanceof Error ? error.message : String(error)
     });
 
     if (error instanceof Error && error.message === "認証が必要です") {
@@ -493,9 +530,10 @@ export async function checkConnectPermissionsAction(): Promise<{
 
   } catch (error) {
 
-    console.error("Stripe Connect権限チェックエラー:", {
-      error: error instanceof Error ? error.message : String(error),
-      timestamp: new Date().toISOString()
+    logger.error('Stripe Connect permission check error', {
+      tag: 'connectPermissionCheckError',
+      error_name: error instanceof Error ? error.name : 'Unknown',
+      error_message: error instanceof Error ? error.message : String(error)
     });
 
     return {

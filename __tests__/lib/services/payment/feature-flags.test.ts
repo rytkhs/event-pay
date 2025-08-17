@@ -2,7 +2,7 @@
  * 決済サービス機能フラグのテスト
  */
 
-import { useDestinationCharges, getFeatureFlagStatus } from "@/lib/services/payment/feature-flags";
+import { isDestinationChargesEnabled, getFeatureFlagStatus } from "@/lib/services/payment/feature-flags";
 
 describe("Payment Feature Flags", () => {
   const originalEnv = process.env;
@@ -16,34 +16,34 @@ describe("Payment Feature Flags", () => {
     process.env = originalEnv;
   });
 
-  describe("useDestinationCharges", () => {
+  describe("isDestinationChargesEnabled", () => {
     it('環境変数が"true"の場合はtrueを返す', () => {
       process.env.USE_DESTINATION_CHARGES = "true";
-      expect(useDestinationCharges()).toBe(true);
+      expect(isDestinationChargesEnabled()).toBe(true);
     });
 
     it('環境変数が"false"の場合はfalseを返す', () => {
       process.env.USE_DESTINATION_CHARGES = "false";
-      expect(useDestinationCharges()).toBe(false);
+      expect(isDestinationChargesEnabled()).toBe(false);
     });
 
     it("環境変数が未設定の場合はfalseを返す", () => {
       delete process.env.USE_DESTINATION_CHARGES;
-      expect(useDestinationCharges()).toBe(false);
+      expect(isDestinationChargesEnabled()).toBe(false);
     });
 
     it('環境変数が"true"以外の文字列の場合はfalseを返す', () => {
       process.env.USE_DESTINATION_CHARGES = "TRUE";
-      expect(useDestinationCharges()).toBe(false);
+      expect(isDestinationChargesEnabled()).toBe(false);
 
       process.env.USE_DESTINATION_CHARGES = "1";
-      expect(useDestinationCharges()).toBe(false);
+      expect(isDestinationChargesEnabled()).toBe(false);
 
       process.env.USE_DESTINATION_CHARGES = "yes";
-      expect(useDestinationCharges()).toBe(false);
+      expect(isDestinationChargesEnabled()).toBe(false);
 
       process.env.USE_DESTINATION_CHARGES = "enabled";
-      expect(useDestinationCharges()).toBe(false);
+      expect(isDestinationChargesEnabled()).toBe(false);
     });
   });
 
@@ -54,7 +54,7 @@ describe("Payment Feature Flags", () => {
       const status = getFeatureFlagStatus();
 
       expect(status).toEqual({
-        useDestinationCharges: true,
+        isDestinationChargesEnabled: true,
       });
     });
 
@@ -64,7 +64,7 @@ describe("Payment Feature Flags", () => {
       const status = getFeatureFlagStatus();
 
       expect(status).toEqual({
-        useDestinationCharges: false,
+        isDestinationChargesEnabled: false,
       });
     });
   });

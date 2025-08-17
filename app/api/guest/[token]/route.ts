@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { validateGuestToken, type GuestAttendanceData } from "@/lib/utils/guest-token";
 import { handleRateLimit, type RateLimitErrorResponse } from "@/lib/rate-limit-middleware";
 import { RATE_LIMIT_CONFIG } from "@/config/security";
+import { logger } from "@/lib/logging/app-logger";
 
 export interface GuestValidationResponse {
   success: boolean;
@@ -59,10 +60,12 @@ export async function GET(
       },
     });
   } catch (error) {
-    if (process.env.NODE_ENV === "development") {
-      // eslint-disable-next-line no-console
-      console.error("ゲスト検証APIエラー:", error);
-    }
+    logger.error("Guest validation API error", {
+      tag: "guestValidation",
+      token: token.substring(0, 8) + "...", // セキュリティのため一部のみ
+      error_name: error instanceof Error ? error.name : "Unknown",
+      error_message: error instanceof Error ? error.message : String(error)
+    });
 
     return NextResponse.json(
       {

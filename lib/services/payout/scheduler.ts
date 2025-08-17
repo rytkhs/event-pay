@@ -21,6 +21,7 @@ import {
 import { createSchedulerConfig } from "./scheduler-config";
 import { stripeTransferService } from "./stripe-transfer";
 import { randomUUID } from "crypto";
+import { logger } from "@/lib/logging/app-logger";
 
 /**
  * PayoutSchedulerの設定インターフェース
@@ -78,7 +79,11 @@ export class PayoutScheduler {
         const connectAccount = await this.stripeConnectService.getConnectAccountByUser(event.created_by);
 
         if (!connectAccount?.stripe_account_id) {
-          console.warn(`Connect account not found for user ${event.created_by}, event ${event.id}`);
+          logger.warn("Connect account not found for user", {
+            tag: "payoutScheduler",
+            user_id: event.created_by,
+            event_id: event.id,
+          });
           continue;
         }
 
@@ -90,7 +95,13 @@ export class PayoutScheduler {
 
         accountGroups.get(accountId)!.push(event);
       } catch (error) {
-        console.error(`Failed to get Connect account for user ${event.created_by}:`, error);
+        logger.error("Failed to get Connect account for user", {
+          tag: "payoutScheduler",
+          user_id: event.created_by,
+          event_id: event.id,
+          error_name: error instanceof Error ? error.name : "Unknown",
+          error_message: error instanceof Error ? error.message : String(error),
+        });
         // エラーの場合は "unknown" グループに分類して処理を継続
         if (!accountGroups.has("unknown")) {
           accountGroups.set("unknown", []);
@@ -100,11 +111,11 @@ export class PayoutScheduler {
     }
 
     // ログ出力（デバッグ用）
-    console.log(`Grouped ${events.length} events into ${accountGroups.size} Connect accounts:`,
-      Array.from(accountGroups.entries()).map(([accountId, events]) =>
-        `${accountId}: ${events.length} events`
-      ).join(", ")
-    );
+    logger.debug("Grouped events by connect account", {
+      tag: "payoutScheduler",
+      total_events: events.length,
+      account_groups: accountGroups.size,
+    });
 
     return accountGroups;
   }
@@ -242,20 +253,39 @@ export class PayoutScheduler {
           });
 
         if (error) {
-          console.error("Heartbeat failed - lock extension error:", error);
+          logger.error("Heartbeat failed - lock extension error", {
+            tag: "payoutScheduler",
+            lock_name: lockName,
+            process_id: processId,
+            error_name: error instanceof Error ? error.name : "Unknown",
+            error_message: error instanceof Error ? error.message : String(error),
+          });
           this.shouldContinue = false;
           return;
         }
 
         if (!extended) {
-          console.warn("Heartbeat failed - lock not found or expired");
+          logger.warn("Heartbeat failed - lock not found or expired", {
+            tag: "payoutScheduler",
+            lock_name: lockName,
+            process_id: processId,
+          });
           this.shouldContinue = false;
           return;
         }
 
-        console.debug(`Heartbeat success: lock extended for ${processId}`);
+        logger.debug("Heartbeat success: lock extended", {
+          tag: "payoutScheduler",
+          process_id: processId,
+        });
       } catch (e) {
-        console.error("Heartbeat failed - unexpected error:", e);
+        logger.error("Heartbeat failed - unexpected error", {
+          tag: "payoutScheduler",
+          lock_name: lockName,
+          process_id: processId,
+          error_name: e instanceof Error ? e.name : "Unknown",
+          error_message: e instanceof Error ? e.message : String(e),
+        });
         this.shouldContinue = false;
       }
     }, 5 * 60 * 1000); // 5分間隔
@@ -305,11 +335,16 @@ export class PayoutScheduler {
 
       if (lockError) {
         // ロック取得失敗は warning とし、後段処理に進めない
-        console.warn("Failed to acquire scheduler row lock:", lockError.message);
+        logger.warn("Failed to acquire scheduler row lock", {
+          tag: "payoutScheduler",
+          error_message: lockError.message,
+        });
       }
 
       if (!locked) {
-        console.info("PayoutScheduler: Another instance is running. Abort this execution.");
+        logger.info("Another instance is running. Abort this execution.", {
+          tag: "payoutScheduler",
+        });
 
         const skippedResult: SchedulerExecutionResult = {
           executionId: `skipped-${randomUUID()}`,
@@ -328,7 +363,11 @@ export class PayoutScheduler {
           try {
             await this.logSchedulerExecution(skippedResult);
           } catch (e) {
-            console.warn("Skip log failed:", e);
+            logger.warn("Skip log failed", {
+              tag: "payoutScheduler",
+              error_name: e instanceof Error ? e.name : "Unknown",
+              error_message: e instanceof Error ? e.message : String(e),
+            });
           }
         }
 
@@ -341,7 +380,11 @@ export class PayoutScheduler {
       this.startHeartbeat("payout_scheduler", executionId);
 
     } catch (e) {
-      console.error("Unexpected error while acquiring scheduler lock:", e);
+      logger.error("Unexpected error while acquiring scheduler lock", {
+        tag: "payoutScheduler",
+        error_name: e instanceof Error ? e.name : "Unknown",
+        error_message: e instanceof Error ? e.message : String(e),
+      });
       // 続行は危険なのでスキップ扱いで終了
       return {
         executionId: `lock-error-${randomUUID()}`,
@@ -464,7 +507,12 @@ export class PayoutScheduler {
 
             // ハートビート失敗時は処理を中断
             if (!this.canContinueProcessing()) {
-              console.warn(`Processing interrupted due to heartbeat failure at event ${j + 1}/${eventsForAccount.length} in account ${accountId}`);
+              logger.warn("Processing interrupted due to heartbeat failure", {
+                tag: "payoutScheduler",
+                account_id: accountId,
+                event_index: j + 1,
+                events_in_account: eventsForAccount.length,
+              });
               throw new PayoutError(
                 PayoutErrorType.DATABASE_ERROR,
                 "ハートビート失敗により処理を中断しました"
@@ -558,7 +606,10 @@ export class PayoutScheduler {
           // レート制限が発生した場合は推奨遅延時間を採用
           if (maxSuggestedDelayMs > 0) {
             actualDelay = Math.max(delay, maxSuggestedDelayMs);
-            console.warn(`Rate limit detected. Adjusting delay to ${actualDelay}ms for next batch.`);
+            logger.warn("Rate limit detected. Adjusting delay for next batch", {
+              tag: "payoutScheduler",
+              actual_delay_ms: actualDelay,
+            });
           }
 
           if (actualDelay > 0) {
@@ -569,7 +620,11 @@ export class PayoutScheduler {
 
       // レート制限統計をログ出力
       if (rateLimitHitCount > 0) {
-        console.warn(`Rate limit hit ${rateLimitHitCount} times during execution. Max suggested delay: ${maxSuggestedDelayMs}ms`);
+        logger.warn("Rate limit encountered during execution", {
+          tag: "payoutScheduler",
+          rate_limit_hits: rateLimitHitCount,
+          max_suggested_delay_ms: maxSuggestedDelayMs,
+        });
       }
 
       // 4. 実行結果をまとめる
@@ -628,9 +683,13 @@ export class PayoutScheduler {
               p_lock_name: "payout_scheduler",
               p_process_id: executionId,
             });
-          console.debug("PayoutScheduler: Lock released successfully");
+          logger.debug("Lock released successfully", { tag: "payoutScheduler" });
         } catch (e) {
-          console.error("Failed to release scheduler lock:", e);
+          logger.error("Failed to release scheduler lock", {
+            tag: "payoutScheduler",
+            error_name: e instanceof Error ? e.name : "Unknown",
+            error_message: e instanceof Error ? e.message : String(e),
+          });
           // ロック解放失敗はログ出力のみ（TTLによる自動解放に期待）
         }
       }
@@ -880,7 +939,8 @@ export class PayoutScheduler {
 
       if (error) {
         // 重複実行IDなどのユニーク制約違反に気づけるよう詳細を出力
-        console.error("Failed to log scheduler execution:", {
+        logger.error("Failed to log scheduler execution", {
+          tag: "payoutScheduler",
           message: (error as any)?.message,
           code: (error as any)?.code,
           details: (error as any)?.details,
@@ -890,7 +950,11 @@ export class PayoutScheduler {
       }
 
     } catch (error) {
-      console.error("Failed to log scheduler execution:", error);
+      logger.error("Failed to log scheduler execution", {
+        tag: "payoutScheduler",
+        error_name: error instanceof Error ? error.name : "Unknown",
+        error_message: error instanceof Error ? error.message : String(error),
+      });
       // ログ記録の失敗は処理を停止させない
     }
   }
@@ -1033,11 +1097,17 @@ export class PayoutScheduler {
 
       // テーブルが存在しない場合は作成（マイグレーションで作成されることを想定）
       if (error && error.code === "42P01") {
-        console.warn("payout_scheduler_logs table does not exist. Please run database migration.");
+        logger.warn("payout_scheduler_logs table does not exist. Please run database migration.", {
+          tag: "payoutScheduler",
+        });
       }
 
     } catch (error) {
-      console.warn("Failed to check log table existence:", error);
+      logger.warn("Failed to check log table existence", {
+        tag: "payoutScheduler",
+        error_name: error instanceof Error ? error.name : "Unknown",
+        error_message: error instanceof Error ? error.message : String(error),
+      });
     }
   }
 

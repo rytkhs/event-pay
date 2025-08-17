@@ -1,4 +1,5 @@
 import { Redis } from "@upstash/redis";
+import { logger } from "@/lib/logging/app-logger";
 
 // アカウントロックアウト設定
 export const ACCOUNT_LOCKOUT_CONFIG = {
@@ -95,15 +96,13 @@ export class AccountLockoutService {
           lockoutExpiresAt.toISOString()
         );
 
-        // セキュリティログ - 本番環境では適切なログシステムに出力
-        if (process.env.NODE_ENV === "development") {
-          // console.warn("Account locked due to failed attempts:", {
-          //   email: email.replace(/(.{2}).*(@.*)/, "$1***$2"),
-          //   attempts: newAttempts,
-          //   lockoutExpiresAt: lockoutExpiresAt.toISOString(),
-          //   timestamp: new Date().toISOString(),
-          // });
-        }
+        // セキュリティログ
+        logger.warn("Account locked due to failed attempts", {
+          tag: "accountLocked",
+          sanitized_email: email.replace(/(.{2}).*(@.*)/, "$1***$2"),
+          failed_attempts: newAttempts,
+          lockout_expires_at: lockoutExpiresAt.toISOString()
+        });
 
         return {
           failedAttempts: newAttempts,
@@ -116,11 +115,13 @@ export class AccountLockoutService {
         failedAttempts: newAttempts,
         isLocked: false,
       };
-    } catch {
-      // 本番環境では適切なログシステムに出力
-      if (process.env.NODE_ENV === "development") {
-        // console.error("Failed to record failed attempt:", _);
-      }
+    } catch (error) {
+      logger.error("Failed to record failed attempt", {
+        tag: "lockoutRecordFailed",
+        sanitized_email: email.replace(/(.{2}).*(@.*)/, "$1***$2"),
+        error_name: error instanceof Error ? error.name : "Unknown",
+        error_message: error instanceof Error ? error.message : String(error)
+      });
       // フェイルオープン（エラー時は制限しない）
       return {
         failedAttempts: 0,
@@ -164,11 +165,13 @@ export class AccountLockoutService {
         isLocked: false,
         remainingAttempts,
       };
-    } catch {
-      // 本番環境では適切なログシステムに出力
-      if (process.env.NODE_ENV === "development") {
-        // console.error("Failed to check lockout status:", _);
-      }
+    } catch (error) {
+      logger.error("Failed to check lockout status", {
+        tag: "lockoutCheckFailed",
+        sanitized_email: email.replace(/(.{2}).*(@.*)/, "$1***$2"),
+        error_name: error instanceof Error ? error.name : "Unknown",
+        error_message: error instanceof Error ? error.message : String(error)
+      });
       // フェイルオープン（エラー時は制限しない）
       const config = this.getConfig();
       return {
@@ -189,11 +192,13 @@ export class AccountLockoutService {
       const lockoutKey = this.getLockoutKey(email);
 
       await Promise.all([redis.del(failedKey), redis.del(lockoutKey)]);
-    } catch {
-      // 本番環境では適切なログシステムに出力
-      if (process.env.NODE_ENV === "development") {
-        // console.error("Failed to clear failed attempts:", _);
-      }
+    } catch (error) {
+      logger.error("Failed to clear failed attempts", {
+        tag: "lockoutClearFailed",
+        sanitized_email: email.replace(/(.{2}).*(@.*)/, "$1***$2"),
+        error_name: error instanceof Error ? error.name : "Unknown",
+        error_message: error instanceof Error ? error.message : String(error)
+      });
       // エラーは記録するが、処理は継続
     }
   }

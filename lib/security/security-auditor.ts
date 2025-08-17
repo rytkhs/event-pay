@@ -13,6 +13,7 @@ import {
   SecurityAuditConfig,
 } from "@/types/security";
 import crypto from "crypto";
+import { logger } from "@/lib/logging/app-logger";
 
 /**
  * セキュリティ監査システムの基本実装
@@ -58,12 +59,22 @@ export class DatabaseSecurityAuditor implements SecurityAuditor {
       });
 
       if (error) {
-        console.error("Failed to log admin access:", error);
+        logger.error("Failed to log admin access", {
+          tag: "adminAccessAuditFailed",
+          error_name: error instanceof Error ? error.name : "Unknown",
+          error_message: error instanceof Error ? error.message : String(error),
+          user_id: log.userId
+        });
         // 監査ログの失敗は重要なので、別の方法で記録を試みる
         await this.fallbackLog("admin_access_audit_failed", { log, error: error.message });
       }
     } catch (error) {
-      console.error("Exception in logAdminAccess:", error);
+      logger.error("Exception in logAdminAccess", {
+        tag: "adminAccessAuditException",
+        error_name: error instanceof Error ? error.name : "Unknown",
+        error_message: error instanceof Error ? error.message : String(error),
+        user_id: log.userId
+      });
       await this.fallbackLog("admin_access_audit_exception", { log, error: String(error) });
     }
   }
@@ -95,7 +106,12 @@ export class DatabaseSecurityAuditor implements SecurityAuditor {
       });
 
       if (error) {
-        console.error("Failed to log guest access:", error);
+        logger.error("Failed to log guest access", {
+          tag: "guestAccessAuditFailed",
+          error_name: error instanceof Error ? error.name : "Unknown",
+          error_message: error instanceof Error ? error.message : String(error),
+          event_id: log.eventId
+        });
         await this.fallbackLog("guest_access_audit_failed", { log, error: error.message });
       }
 
@@ -119,7 +135,12 @@ export class DatabaseSecurityAuditor implements SecurityAuditor {
         });
       }
     } catch (error) {
-      console.error("Exception in logGuestAccess:", error);
+      logger.error("Exception in logGuestAccess", {
+        tag: "guestAccessAuditException",
+        error_name: error instanceof Error ? error.name : "Unknown",
+        error_message: error instanceof Error ? error.message : String(error),
+        event_id: log.eventId
+      });
       await this.fallbackLog("guest_access_audit_exception", { log, error: String(error) });
     }
   }
@@ -151,14 +172,26 @@ export class DatabaseSecurityAuditor implements SecurityAuditor {
       });
 
       if (error) {
-        console.error("Failed to log suspicious activity:", error);
+        logger.error("Failed to log suspicious activity", {
+          tag: "suspiciousActivityAuditFailed",
+          error_name: error instanceof Error ? error.name : "Unknown",
+          error_message: error instanceof Error ? error.message : String(error),
+          activity_type: activity.activityType,
+          table_name: activity.tableName
+        });
         await this.fallbackLog("suspicious_activity_audit_failed", {
           activity,
           error: error.message,
         });
       }
     } catch (error) {
-      console.error("Exception in logSuspiciousActivity:", error);
+      logger.error("Exception in logSuspiciousActivity", {
+        tag: "suspiciousActivityAuditException",
+        error_name: error instanceof Error ? error.name : "Unknown",
+        error_message: error instanceof Error ? error.message : String(error),
+        activity_type: activity.activityType,
+        table_name: activity.tableName
+      });
       await this.fallbackLog("suspicious_activity_audit_exception", {
         activity,
         error: String(error),
@@ -193,14 +226,26 @@ export class DatabaseSecurityAuditor implements SecurityAuditor {
       });
 
       if (error) {
-        console.error("Failed to log unauthorized access:", error);
+        logger.error("Failed to log unauthorized access", {
+          tag: "unauthorizedAccessAuditFailed",
+          error_name: error instanceof Error ? error.name : "Unknown",
+          error_message: error instanceof Error ? error.message : String(error),
+          attempted_resource: context.attemptedResource,
+          user_id: context.userId
+        });
         await this.fallbackLog("unauthorized_access_audit_failed", {
           context,
           error: error.message,
         });
       }
     } catch (error) {
-      console.error("Exception in logUnauthorizedAccess:", error);
+      logger.error("Exception in logUnauthorizedAccess", {
+        tag: "unauthorizedAccessAuditException",
+        error_name: error instanceof Error ? error.name : "Unknown",
+        error_message: error instanceof Error ? error.message : String(error),
+        attempted_resource: context.attemptedResource,
+        user_id: context.userId
+      });
       await this.fallbackLog("unauthorized_access_audit_exception", {
         context,
         error: String(error),
@@ -316,7 +361,11 @@ export class DatabaseSecurityAuditor implements SecurityAuditor {
         ),
       };
     } catch (error) {
-      console.error("Failed to generate security report:", error);
+      logger.error("Failed to generate security report", {
+        tag: "securityReportGenerationFailed",
+        error_name: error instanceof Error ? error.name : "Unknown",
+        error_message: error instanceof Error ? error.message : String(error)
+      });
       throw new Error(`Security report generation failed: ${error}`);
     }
   }
@@ -373,7 +422,11 @@ export class DatabaseSecurityAuditor implements SecurityAuditor {
 
       return indicators;
     } catch (error) {
-      console.error("Failed to analyze RLS violation indicators:", error);
+      logger.error("Failed to analyze RLS violation indicators", {
+        tag: "rlsViolationAnalysisFailed",
+        error_name: error instanceof Error ? error.name : "Unknown",
+        error_message: error instanceof Error ? error.message : String(error)
+      });
       return [];
     }
   }
@@ -426,10 +479,19 @@ export class DatabaseSecurityAuditor implements SecurityAuditor {
   private async fallbackLog(type: string, data: unknown): Promise<void> {
     try {
       // 本来はファイルシステムやメトリクスシステムに記録
-      console.error(`SECURITY_AUDIT_FALLBACK [${type}]:`, JSON.stringify(data, null, 2));
+      logger.error(`SECURITY_AUDIT_FALLBACK [${type}]`, {
+        tag: "securityAuditFallback",
+        fallback_type: type,
+        fallback_data: JSON.stringify(data, null, 2)
+      });
     } catch (error) {
       // 最後の手段として標準エラー出力
-      console.error(`CRITICAL: Security audit fallback failed for ${type}:`, error);
+      logger.error(`CRITICAL: Security audit fallback failed for ${type}`, {
+        tag: "securityAuditFallbackCritical",
+        fallback_type: type,
+        error_name: error instanceof Error ? error.name : "Unknown",
+        error_message: error instanceof Error ? error.message : String(error)
+      });
     }
   }
 

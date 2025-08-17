@@ -103,7 +103,12 @@ export function normalizeIP(ip: string): string {
   if (!isValidIP(trimmedIP)) {
     // 本番環境では適切なログシステムに出力
     if ((process.env.NODE_ENV as string) === "development") {
-      // console.warn(`Invalid IP address detected: ${ip}, using fallback`);
+      import("@/lib/logging/app-logger").then(({ logger }) =>
+        logger.warn("Invalid IP address detected. Using fallback.", {
+          tag: "ipDetection",
+          ip,
+        })
+      );
     }
     return "127.0.0.1";
   }
@@ -242,9 +247,12 @@ export function getClientIP(requestOrHeaders: NextRequest | HeaderLike): string 
   if (selectedIP) {
     // セキュリティログ: 低信頼度ヘッダーの使用を警告
     if (selectedTrust === "low" && process.env.NODE_ENV === "development") {
-      // eslint-disable-next-line no-console
-      console.warn(
-        `⚠️ Using low-trust IP header: ${selectedSource} (${selectedIP}). Consider security implications.`
+      import("@/lib/logging/app-logger").then(({ logger }) =>
+        logger.warn("Using low-trust IP header", {
+          tag: "ipDetection",
+          source: selectedSource || undefined,
+          ip: selectedIP,
+        })
       );
     }
     return selectedIP;
@@ -262,11 +270,13 @@ export function getClientIP(requestOrHeaders: NextRequest | HeaderLike): string 
 
     // 本番環境では適切なログシステムに出力
     if ((process.env.NODE_ENV as string) === "development") {
-      // console.warn("No valid client IP found, using fallback identifier", {
-      //   fallbackIP,
-      //   userAgent: headers.get("user-agent"),
-      //   timestamp: new Date().toISOString(),
-      // });
+      import("@/lib/logging/app-logger").then(({ logger }) =>
+        logger.warn("No valid client IP found, using fallback identifier", {
+          tag: "ipDetection",
+          fallback_ip: fallbackIP,
+          user_agent: headers.get("user-agent") || undefined,
+        })
+      );
     }
 
     return fallbackIP;
@@ -361,9 +371,12 @@ export function getClientIPFromHeaders(headersList: HeaderLike): string {
   if (selectedIP) {
     // セキュリティログ: 低信頼度ヘッダーの使用を警告
     if (selectedTrust === "low" && process.env.NODE_ENV === "development") {
-      // eslint-disable-next-line no-console
-      console.warn(
-        `⚠️ [Server Component] Using low-trust IP header: ${selectedSource} (${selectedIP}). Consider security implications.`
+      import("@/lib/logging/app-logger").then(({ logger }) =>
+        logger.warn("[Server Component] Using low-trust IP header", {
+          tag: "ipDetection",
+          source: selectedSource || undefined,
+          ip: selectedIP,
+        })
       );
     }
     return selectedIP;

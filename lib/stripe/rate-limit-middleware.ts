@@ -7,6 +7,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createRateLimitStore, checkRateLimit } from '../rate-limit';
 import { RATE_LIMIT_CONFIG } from '../../config/security';
 import { ApiResponseHelper } from '../api/response';
+import { logger } from '@/lib/logging/app-logger';
 
 /**
  * レート制限チェック結果
@@ -67,7 +68,12 @@ export async function checkStripeCheckoutRateLimit(
 
     return { allowed: true };
   } catch (error) {
-    console.error('Stripe Checkout rate limit check failed:', error);
+    logger.error('Stripe Checkout rate limit check failed', {
+      tag: 'rateLimitCheckFailed',
+      operation: 'checkout',
+      error_name: error instanceof Error ? error.name : 'Unknown',
+      error_message: error instanceof Error ? error.message : String(error)
+    });
     // レート制限チェック失敗時は通す（可用性優先）
     return { allowed: true };
   }
@@ -106,7 +112,12 @@ export async function checkStripePaymentIntentRateLimit(
 
     return { allowed: true };
   } catch (error) {
-    console.error('Stripe PaymentIntent rate limit check failed:', error);
+    logger.error('Stripe PaymentIntent rate limit check failed', {
+      tag: 'rateLimitCheckFailed',
+      operation: 'payment_intent',
+      error_name: error instanceof Error ? error.name : 'Unknown',
+      error_message: error instanceof Error ? error.message : String(error)
+    });
     // レート制限チェック失敗時は通す（可用性優先）
     return { allowed: true };
   }
@@ -146,7 +157,12 @@ export async function checkStripeOperationRateLimit(
 
     return { allowed: true };
   } catch (error) {
-    console.error(`Stripe ${operation} rate limit check failed:`, error);
+    logger.error('Stripe rate limit check failed', {
+      tag: 'rateLimitCheckFailed',
+      operation,
+      error_name: error instanceof Error ? error.name : 'Unknown',
+      error_message: error instanceof Error ? error.message : String(error)
+    });
     // レート制限チェック失敗時は通す（可用性優先）
     return { allowed: true };
   }
