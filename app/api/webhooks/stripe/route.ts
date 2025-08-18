@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 // Stripe 型は共有クライアント経由で利用するため未使用
-import { stripe as sharedStripe, getWebhookSecret } from '@/lib/stripe/client';
+import { stripe as sharedStripe, getWebhookSecrets } from '@/lib/stripe/client';
 import { StripeWebhookSignatureVerifier } from '@/lib/services/webhook/webhook-signature-verifier';
 // import { StripeWebhookEventHandler } from '@/lib/services/webhook/webhook-event-handler';
 import {
@@ -27,7 +27,7 @@ function createServices() {
   const securityReporter = new SecurityReporterImpl(auditor, anomalyDetector);
   const signatureVerifier = new StripeWebhookSignatureVerifier(
     stripe,
-    getWebhookSecret(),
+    getWebhookSecrets(),
     securityReporter
   );
   const idempotencyService = new SupabaseWebhookIdempotencyService<WebhookProcessingResult>();
@@ -88,15 +88,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // タイムスタンプは検証で t= を使用するため、ここでは現在時刻を付与（ログ用途のみ）
-    const timestamp = Math.floor(Date.now() / 1000);
-
     // 署名検証
     webhookLogger.debug('Starting signature verification');
     const verificationResult = await signatureVerifier.verifySignature({
       payload,
       signature,
-      fallbackTimestamp: timestamp
     });
 
     if (!verificationResult.isValid || !verificationResult.event) {

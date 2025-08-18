@@ -4,7 +4,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
-import { stripe } from "@/lib/stripe/client";
+import { stripe, getConnectWebhookSecrets } from "@/lib/stripe/client";
 // Connect 専用ハンドラは非同期ワーカー側で使用するため、このエンドポイントでは不要
 // import { ConnectWebhookHandler } from "@/lib/services/webhook/connect-webhook-handler";
 import {
@@ -18,7 +18,7 @@ import { getClientIP } from "@/lib/utils/ip-detection";
 import { shouldEnforceStripeWebhookIpCheck, isStripeWebhookIpAllowed } from "@/lib/security/stripe-ip-allowlist";
 import { logger } from '@/lib/logging/app-logger';
 
-const webhookSecret = process.env.STRIPE_CONNECT_WEBHOOK_SECRET!;
+const webhookSecrets = getConnectWebhookSecrets();
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic'; // Webhookは常に動的処理
@@ -66,7 +66,7 @@ export async function POST(request: NextRequest) {
     const auditor = new SecurityAuditorImpl();
     const anomalyDetector = new AnomalyDetectorImpl(auditor);
     const securityReporter = new SecurityReporterImpl(auditor, anomalyDetector);
-    const verifier = new StripeWebhookSignatureVerifier(stripe, webhookSecret, securityReporter);
+    const verifier = new StripeWebhookSignatureVerifier(stripe, webhookSecrets, securityReporter);
 
     connectLogger.debug('Starting Connect webhook signature verification');
     const verification = await verifier.verifySignature({ payload, signature });

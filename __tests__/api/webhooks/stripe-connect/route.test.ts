@@ -72,8 +72,9 @@ describe('/api/webhooks/stripe-connect', () => {
     const { getClientIP } = require('@/lib/utils/ip-detection');
     getClientIP.mockReturnValue('127.0.0.1');
 
-    // 環境変数のモック
+    // 環境変数のモック（複数シークレット対応）
     process.env.STRIPE_CONNECT_WEBHOOK_SECRET = 'whsec_test_secret';
+    process.env.STRIPE_CONNECT_WEBHOOK_SECRET_SECONDARY = 'whsec_test_secondary';
     process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://test.supabase.co';
     process.env.SUPABASE_SERVICE_ROLE_KEY = 'test-service-role-key';
   });
