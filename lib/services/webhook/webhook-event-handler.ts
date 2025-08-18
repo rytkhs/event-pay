@@ -71,6 +71,10 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
         case "refund.updated":
           return await this.handleRefundUpdated(event as Stripe.RefundUpdatedEvent);
 
+        case "application_fee.refunded":
+        case "application_fee.refund.updated":
+          return await this.handleApplicationFeeRefunded(event as Stripe.Event);
+
         case "charge.dispute.created":
         case "charge.dispute.closed":
           return await this.handleDisputeEvent(event as Stripe.ChargeDisputeCreatedEvent | Stripe.ChargeDisputeClosedEvent);
@@ -343,6 +347,91 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
       details: { eventId: event.id, refundId: refund.id, status: refund.status },
     });
     return { success: true };
+  }
+
+  private async handleApplicationFeeRefunded(
+    event: Stripe.Event
+  ): Promise<WebhookProcessingResult> {
+    // application_fee.refunded は、手数料のみ返金（例外運用）を正確に反映するための補助イベント
+    const obj = event.data?.object as Stripe.ApplicationFee | (Stripe.FeeRefund & { fee: string | Stripe.ApplicationFee }) | undefined;
+    try {
+      // 対象となる Application Fee ID を抽出
+      // ケース1: data.object が ApplicationFee の場合
+      // ケース2: data.object が ApplicationFeeRefund の場合（fee に紐づく）
+      let applicationFeeId: string | null = null;
+      if (obj) {
+        if ((obj as Stripe.ApplicationFee).object === "application_fee" && typeof (obj as Stripe.ApplicationFee).id === "string") {
+          applicationFeeId = (obj as Stripe.ApplicationFee).id;
+        } else if ((obj as Stripe.FeeRefund).object === "fee_refund") {
+          const feeField = (obj as Stripe.FeeRefund & { fee: string | Stripe.ApplicationFee }).fee;
+          if (typeof feeField === "string") {
+            applicationFeeId = feeField;
+          } else if (feeField && typeof feeField.id === "string") {
+            applicationFeeId = feeField.id;
+          }
+        }
+      }
+
+      if (!applicationFeeId) {
+        await this.securityReporter.logSecurityEvent({
+          type: "webhook_application_fee_refund_no_fee_id",
+          details: { eventId: event.id },
+        });
+        return { success: true };
+      }
+
+      // payments から対象レコードを特定
+      const { data: payment } = await this.supabase
+        .from("payments")
+        .select("*")
+        .eq("application_fee_id", applicationFeeId)
+        .maybeSingle();
+
+      if (!payment) {
+        await this.securityReporter.logSecurityEvent({
+          type: "webhook_application_fee_refund_no_payment",
+          details: { eventId: event.id, applicationFeeId },
+        });
+        return { success: true };
+      }
+
+      // 最新の手数料返金の累積額と最新IDを取得
+      let applicationFeeRefundedAmount = 0;
+      let applicationFeeRefundId: string | null = null;
+      try {
+        const afrList = await sharedStripe.applicationFees.listRefunds(applicationFeeId, { limit: 100 });
+        const items = (afrList.data ?? []) as Stripe.FeeRefund[];
+        applicationFeeRefundedAmount = items.reduce((sum: number, cur: Stripe.FeeRefund) => sum + (cur.amount ?? 0), 0);
+        applicationFeeRefundId = items.length > 0 ? items[items.length - 1].id : null;
+      } catch (e) {
+        await this.securityReporter.logSecurityEvent({
+          type: "webhook_application_fee_refunds_list_failed",
+          details: { eventId: event.id, applicationFeeId, error: e instanceof Error ? e.message : "unknown" },
+        });
+      }
+
+      const { error: updateError } = await this.supabase
+        .from("payments")
+        .update({
+          application_fee_refund_id: applicationFeeRefundId,
+          application_fee_refunded_amount: applicationFeeRefundedAmount,
+          webhook_event_id: event.id,
+          webhook_processed_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", payment.id);
+      if (updateError) {
+        throw new Error(`Failed to update payment on application_fee.refunded: ${updateError.message}`);
+      }
+
+      await this.securityReporter.logSecurityEvent({
+        type: "webhook_application_fee_refunded_processed",
+        details: { eventId: event.id, paymentId: payment.id, applicationFeeId, applicationFeeRefundedAmount },
+      });
+      return { success: true, eventId: event.id, paymentId: payment.id };
+    } catch (error) {
+      throw (error instanceof Error ? error : new Error("Unknown error"));
+    }
   }
 
   private async handleDisputeEvent(
