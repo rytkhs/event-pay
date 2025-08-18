@@ -62,21 +62,39 @@ if (!hasRegisteredHooks) {
   });
 }
 
+
 /**
- * Webhook用のシークレット取得関数。
- * Webhook処理ルート以外では参照しないこと。
- * 未設定時は例外を投げる（起動時ではなく実行時に検出する）。
+ * Webhook用シークレット（ローテーション対応：複数）の取得。
+ * 環境変数に以下を想定：
+ * - 本番: STRIPE_WEBHOOK_SECRET (primary), STRIPE_WEBHOOK_SECRET_SECONDARY (secondary)
+ * - テスト: STRIPE_WEBHOOK_SECRET_TEST (primary), STRIPE_WEBHOOK_SECRET_TEST_SECONDARY (secondary)
+ * いずれか存在するものを順序付き配列で返す。
  */
-export const getWebhookSecret = (): string => {
-  // 環境に応じてシークレットを切替（優先順: 本番→テスト → 互換）
+export const getWebhookSecrets = (): string[] => {
   const isProd = process.env.NODE_ENV === "production" || process.env.VERCEL_ENV === "production";
-  const prod = process.env.STRIPE_WEBHOOK_SECRET;
-  const test = process.env.STRIPE_WEBHOOK_SECRET_TEST;
-  const secret = isProd ? prod : (test ?? prod);
-  if (!secret) {
-    throw new Error("STRIPE_WEBHOOK_SECRET/STRIPE_WEBHOOK_SECRET_TEST is required for webhook processing");
+  const primary = isProd ? process.env.STRIPE_WEBHOOK_SECRET : (process.env.STRIPE_WEBHOOK_SECRET_TEST ?? process.env.STRIPE_WEBHOOK_SECRET);
+  const secondary = isProd ? process.env.STRIPE_WEBHOOK_SECRET_SECONDARY : (process.env.STRIPE_WEBHOOK_SECRET_TEST_SECONDARY ?? process.env.STRIPE_WEBHOOK_SECRET_SECONDARY);
+  const secrets = [primary, secondary].filter((s): s is string => typeof s === "string" && s.length > 0);
+  if (secrets.length === 0) {
+    throw new Error("At least one of STRIPE_WEBHOOK_SECRET[_TEST] is required for webhook processing");
   }
-  return secret;
+  return secrets;
+};
+
+/**
+ * Connect Webhook用シークレット（ローテーション対応：複数）の取得。
+ * - 本番: STRIPE_CONNECT_WEBHOOK_SECRET (primary), STRIPE_CONNECT_WEBHOOK_SECRET_SECONDARY
+ * - テスト: STRIPE_CONNECT_WEBHOOK_SECRET_TEST (primary), STRIPE_CONNECT_WEBHOOK_SECRET_TEST_SECONDARY
+ */
+export const getConnectWebhookSecrets = (): string[] => {
+  const isProd = process.env.NODE_ENV === "production" || process.env.VERCEL_ENV === "production";
+  const primary = isProd ? process.env.STRIPE_CONNECT_WEBHOOK_SECRET : (process.env.STRIPE_CONNECT_WEBHOOK_SECRET_TEST ?? process.env.STRIPE_CONNECT_WEBHOOK_SECRET);
+  const secondary = isProd ? process.env.STRIPE_CONNECT_WEBHOOK_SECRET_SECONDARY : (process.env.STRIPE_CONNECT_WEBHOOK_SECRET_TEST_SECONDARY ?? process.env.STRIPE_CONNECT_WEBHOOK_SECRET_SECONDARY);
+  const secrets = [primary, secondary].filter((s): s is string => typeof s === "string" && s.length > 0);
+  if (secrets.length === 0) {
+    throw new Error("At least one of STRIPE_CONNECT_WEBHOOK_SECRET[_TEST] is required for webhook processing");
+  }
+  return secrets;
 };
 
 // Stripe設定の取得
