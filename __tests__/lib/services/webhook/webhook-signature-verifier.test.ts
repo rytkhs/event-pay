@@ -18,6 +18,7 @@ const mockSecurityReporter = {
 describe("StripeWebhookSignatureVerifier", () => {
   let verifier: StripeWebhookSignatureVerifier;
   const webhookSecret = "whsec_test_secret";
+  const secondarySecret = "whsec_test_secret_secondary";
 
   beforeEach(() => {
     verifier = new StripeWebhookSignatureVerifier(mockStripe, webhookSecret, mockSecurityReporter);
@@ -42,7 +43,6 @@ describe("StripeWebhookSignatureVerifier", () => {
       const result = await verifier.verifySignature({
         payload: validPayload,
         signature: buildSignature(currentTimestamp, "valid"),
-        fallbackTimestamp: currentTimestamp,
       });
 
       expect(result.isValid).toBe(true);
@@ -58,25 +58,55 @@ describe("StripeWebhookSignatureVerifier", () => {
       });
     });
 
+    it("プライマリで失敗しセカンダリで成功する場合に検証が成功する", async () => {
+      const validPayload2 = JSON.stringify({ id: "evt_secondary", type: "charge.succeeded" });
+      const ts = Math.floor(Date.now() / 1000);
+
+      // 1回目（プライマリ）で失敗、2回目（セカンダリ）で成功させる
+      const mockEvent = { id: "evt_secondary", type: "charge.succeeded" } as Stripe.Event;
+      (mockStripe.webhooks.constructEvent as jest.Mock)
+        .mockImplementationOnce(() => { throw new Error("Invalid signature for primary"); })
+        .mockImplementationOnce(() => mockEvent);
+
+      // セカンダリ付きのインスタンスで再生成
+      verifier = new StripeWebhookSignatureVerifier(mockStripe, [webhookSecret, secondarySecret], mockSecurityReporter);
+
+      const result = await verifier.verifySignature({
+        payload: validPayload2,
+        signature: `t=${ts},v1=test_signature`,
+      });
+
+      expect(result.isValid).toBe(true);
+      expect(result.event).toEqual(mockEvent);
+      // constructEvent が2回呼ばれている（プライマリ→セカンダリ）
+      expect((mockStripe.webhooks.constructEvent as jest.Mock).mock.calls.length).toBe(2);
+    });
+
     it("古いタイムスタンプで検証が失敗する", async () => {
       const oldTimestamp = currentTimestamp - 400; // 6分40秒前
+
+      // SDK が tolerance 超過で失敗するケースを模擬
+      (mockStripe.webhooks.constructEvent as jest.Mock).mockImplementation(() => {
+        throw new Error("tolerance exceeded");
+      });
 
       const result = await verifier.verifySignature({
         payload: validPayload,
         signature: buildSignature(oldTimestamp, "valid"),
-        fallbackTimestamp: oldTimestamp,
       });
 
       expect(result.isValid).toBe(false);
       expect(result.event).toBeUndefined();
-      expect(result.error).toBe("Webhook timestamp is too old");
+      expect(result.error).toBe("tolerance exceeded");
       expect(mockSecurityReporter.logSuspiciousActivity).toHaveBeenCalledWith({
         type: "webhook_timestamp_invalid",
         details: {
+          error: "Timestamp outside tolerance",
           timestamp: oldTimestamp,
           currentTime: expect.any(Number),
           age: expect.any(Number),
           maxAge: 300,
+          signatureProvided: true,
         },
       });
     });
@@ -90,7 +120,6 @@ describe("StripeWebhookSignatureVerifier", () => {
       const result = await verifier.verifySignature({
         payload: validPayload,
         signature: buildSignature(currentTimestamp, "invalid"),
-        fallbackTimestamp: currentTimestamp,
       });
 
       expect(result.isValid).toBe(false);
@@ -107,19 +136,22 @@ describe("StripeWebhookSignatureVerifier", () => {
     });
 
     it("署名が提供されていない場合の処理", async () => {
+      (mockStripe.webhooks.constructEvent as jest.Mock).mockImplementation(() => {
+        throw new Error("Missing Stripe-Signature header");
+      });
+
       const result = await verifier.verifySignature({
         payload: validPayload,
         signature: "",
-        fallbackTimestamp: currentTimestamp,
       });
 
       expect(result.isValid).toBe(false);
       expect(mockSecurityReporter.logSuspiciousActivity).toHaveBeenCalledWith({
         type: "webhook_signature_invalid",
         details: {
-          error: "Missing timestamp in Stripe-Signature",
+          error: "Missing Stripe-Signature header",
+          timestamp: expect.any(Number),
           signatureProvided: false,
-          providedTimestamp: currentTimestamp,
         },
       });
     });
@@ -136,7 +168,6 @@ describe("StripeWebhookSignatureVerifier", () => {
       const result = await verifier.verifySignature({
         payload: validPayload,
         signature: buildSignature(futureTimestamp, "valid"),
-        fallbackTimestamp: futureTimestamp,
       });
 
       expect(result.isValid).toBe(true);
@@ -155,7 +186,6 @@ describe("StripeWebhookSignatureVerifier", () => {
       const result = await verifier.verifySignature({
         payload: validPayload,
         signature: buildSignature(boundaryTimestamp, "valid"),
-        fallbackTimestamp: boundaryTimestamp,
       });
 
       expect(result.isValid).toBe(true);
