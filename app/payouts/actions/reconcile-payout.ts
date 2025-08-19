@@ -16,6 +16,7 @@ import { PayoutValidator } from "@/lib/services/payout/validation";
 import { getCurrentUser } from "@/lib/auth/auth-utils";
 import { stripe } from "@/lib/stripe/client";
 import { logger } from "@/lib/logging/app-logger";
+import { isDestinationChargesEnabled } from "@/lib/services/payment/feature-flags";
 
 export interface ReconcilePayoutActionParams {
   payoutId: string;
@@ -39,6 +40,14 @@ export async function reconcilePayoutAction(
   params: ReconcilePayoutActionParams
 ): Promise<ReconcilePayoutActionResult> {
   try {
+    // 機能フラグチェック: Destination chargesが有効な場合は手動修復を無効化
+    if (isDestinationChargesEnabled()) {
+      return {
+        success: false,
+        error: "手動修復機能は無効化されています。Destination chargesによる自動送金をご利用ください。"
+      };
+    }
+
     // 認証チェック
     const user = await getCurrentUser();
     if (!user) {
