@@ -9,8 +9,7 @@ import { z } from 'zod'
 
 // バリデーションスキーマ
 const generateReportSchema = z.object({
-  eventId: z.string().uuid(),
-  forceRegenerate: z.boolean().optional().default(false)
+  eventId: z.string().uuid()
 })
 
 const getReportsSchema = z.object({
@@ -34,8 +33,7 @@ export async function generateSettlementReportAction(formData: FormData) {
 
     // 入力値検証
     const rawData = {
-      eventId: formData.get('eventId')?.toString() || '',
-      forceRegenerate: formData.get('forceRegenerate') === 'true'
+      eventId: formData.get('eventId')?.toString() || ''
     }
 
     const validatedData = generateReportSchema.parse(rawData)
@@ -46,8 +44,7 @@ export async function generateSettlementReportAction(formData: FormData) {
 
     const result = await service.generateSettlementReport({
       eventId: validatedData.eventId,
-      organizerId: user.id,
-      forceRegenerate: validatedData.forceRegenerate
+      organizerId: user.id
     })
 
     if (!result.success) {
@@ -249,69 +246,6 @@ export async function regenerateAfterRefundAction(formData: FormData) {
   } catch (error) {
     logger.error('Settlement report regeneration action failed', {
       tag: 'settlementReportRegenerationActionError',
-      error: error instanceof Error ? error.message : String(error)
-    })
-
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : '予期しないエラーが発生しました'
-    }
-  }
-}
-
-/**
- * RPC関数を使用した直接レポート生成（管理用）
- */
-export async function generateSettlementReportRpcAction(formData: FormData) {
-  try {
-    // 認証確認
-    const user = await getCurrentUser()
-    if (!user?.id) {
-      redirect('/login')
-    }
-
-    // 入力値検証
-    const rawData = {
-      eventId: formData.get('eventId')?.toString() || ''
-    }
-
-    const validatedData = generateReportSchema.parse(rawData)
-
-    // RPC関数を直接呼び出し
-    const supabase = createClient()
-    const { data: reportId, error } = await supabase
-      .rpc('generate_settlement_report', {
-        p_event_id: validatedData.eventId,
-        p_organizer_id: user.id
-      })
-
-    if (error) {
-      logger.error('RPC settlement report generation failed', {
-        tag: 'settlementReportRpcError',
-        eventId: validatedData.eventId,
-        error: error.message
-      })
-      return {
-        success: false,
-        error: `RPC呼び出しに失敗しました: ${error.message}`
-      }
-    }
-
-    logger.info('Settlement report generated via RPC', {
-      tag: 'settlementReportRpc',
-      userId: user.id,
-      eventId: validatedData.eventId,
-      reportId
-    })
-
-    return {
-      success: true,
-      reportId
-    }
-
-  } catch (error) {
-    logger.error('Settlement report RPC action failed', {
-      tag: 'settlementReportRpcActionError',
       error: error instanceof Error ? error.message : String(error)
     })
 

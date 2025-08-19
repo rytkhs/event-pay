@@ -5,6 +5,7 @@
  */
 
 import { PayoutSchedulerLog, SchedulerExecutionResult, SchedulerExecutionSummary } from "./types";
+import { toCsvCell } from '@/lib/utils/csv'
 
 /**
  * 実行結果のサマリーを生成する
@@ -129,7 +130,7 @@ export function exportExecutionResultsToCSV(logs: PayoutSchedulerLog[]): string 
   ]);
 
   const csvContent = [headers, ...rows]
-    .map(row => row.map(cell => `"${cell.replace(/"/g, '""')}"`).join(","))
+    .map(row => row.map(cell => toCsvCell(cell)).join(","))
     .join("\n");
 
   return csvContent;

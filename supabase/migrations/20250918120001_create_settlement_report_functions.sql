@@ -127,7 +127,7 @@ BEGIN
       AND generated_at < v_today_end
     LIMIT 1;
 
-    -- 既存レポートがある場合はそのIDを返す
+    -- 既存レポートがある場合はそのIDを返す（同日重複防止）
     IF v_existing_report_id IS NOT NULL THEN
         RETURN v_existing_report_id;
     END IF;
@@ -160,7 +160,7 @@ BEGIN
     -- 手取り額計算
     v_net_amount := v_stripe_sales - v_stripe_fee - v_application_fee;
 
-    -- payouts テーブルにレポートを保存（新規行でバージョン運用）
+    -- payouts テーブルにレポートを保存（同日重複防止、翌日は新規行）
     INSERT INTO public.payouts (
         event_id,
         user_id,
@@ -192,7 +192,7 @@ BEGIN
 
 EXCEPTION
     WHEN unique_violation THEN
-        -- 一意制約違反の場合（同日重複）、既存IDを検索して返す
+        -- 一意制約違反の場合（同日重複）、既存IDを検索して返す（フォールバック）
         SELECT id INTO v_existing_report_id
         FROM public.payouts
         WHERE event_id = p_event_id
@@ -209,7 +209,7 @@ EXCEPTION
 END;
 $$;
 
-COMMENT ON FUNCTION public.generate_settlement_report(UUID, UUID) IS 'イベント清算レポートを生成（destination charges用）。同日重複は既存IDを返す。';
+COMMENT ON FUNCTION public.generate_settlement_report(UUID, UUID) IS 'イベント清算レポートを生成（destination charges用）。同日重複は既存IDを返す。翌日は新規行として挿入。';
 
 -- 4. 清算レポート詳細取得関数
 CREATE OR REPLACE FUNCTION public.get_settlement_report_details(

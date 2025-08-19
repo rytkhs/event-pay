@@ -515,8 +515,8 @@ export type Database = {
           processed_at: string | null
           retry_count: number
           settlement_mode:
-          | Database["public"]["Enums"]["settlement_mode_enum"]
-          | null
+            | Database["public"]["Enums"]["settlement_mode_enum"]
+            | null
           status: Database["public"]["Enums"]["payout_status_enum"]
           stripe_account_id: string
           stripe_transfer_id: string | null
@@ -540,8 +540,8 @@ export type Database = {
           processed_at?: string | null
           retry_count?: number
           settlement_mode?:
-          | Database["public"]["Enums"]["settlement_mode_enum"]
-          | null
+            | Database["public"]["Enums"]["settlement_mode_enum"]
+            | null
           status?: Database["public"]["Enums"]["payout_status_enum"]
           stripe_account_id: string
           stripe_transfer_id?: string | null
@@ -565,8 +565,8 @@ export type Database = {
           processed_at?: string | null
           retry_count?: number
           settlement_mode?:
-          | Database["public"]["Enums"]["settlement_mode_enum"]
-          | null
+            | Database["public"]["Enums"]["settlement_mode_enum"]
+            | null
           status?: Database["public"]["Enums"]["payout_status_enum"]
           stripe_account_id?: string
           stripe_transfer_id?: string | null
@@ -739,8 +739,8 @@ export type Database = {
           ip_address?: unknown | null
           session_id?: string | null
           severity?:
-          | Database["public"]["Enums"]["security_severity_enum"]
-          | null
+            | Database["public"]["Enums"]["security_severity_enum"]
+            | null
           table_name?: string | null
           user_agent?: string | null
           user_id?: string | null
@@ -762,8 +762,8 @@ export type Database = {
           ip_address?: unknown | null
           session_id?: string | null
           severity?:
-          | Database["public"]["Enums"]["security_severity_enum"]
-          | null
+            | Database["public"]["Enums"]["security_severity_enum"]
+            | null
           table_name?: string | null
           user_agent?: string | null
           user_id?: string | null
@@ -883,8 +883,8 @@ export type Database = {
           retry_count: number
           status: string
           stripe_account_id: string | null
-          stripe_event_id: string
           stripe_event_created: number | null
+          stripe_event_id: string
         }
         Insert: {
           created_at?: string | null
@@ -898,8 +898,8 @@ export type Database = {
           retry_count?: number
           status?: string
           stripe_account_id?: string | null
-          stripe_event_id: string
           stripe_event_created?: number | null
+          stripe_event_id: string
         }
         Update: {
           created_at?: string | null
@@ -913,8 +913,8 @@ export type Database = {
           retry_count?: number
           status?: string
           stripe_account_id?: string | null
-          stripe_event_id?: string
           stripe_event_created?: number | null
+          stripe_event_id?: string
         }
         Relationships: []
       }
@@ -954,10 +954,18 @@ export type Database = {
           total_stripe_sales: number
         }[]
       }
+      calc_refund_dispute_summary: {
+        Args: { p_event_id: string }
+        Returns: Json
+      }
+      calc_total_application_fee: {
+        Args: { p_event_id: string }
+        Returns: number
+      }
       calc_total_stripe_fee: {
         Args:
-        | { p_base_rate?: number; p_event_id: string }
-        | { p_base_rate?: number; p_event_id: string; p_fixed_fee?: number }
+          | { p_base_rate?: number; p_event_id: string }
+          | { p_base_rate?: number; p_event_id: string; p_fixed_fee?: number }
         Returns: number
       }
       cleanup_expired_scheduler_locks: {
@@ -1037,8 +1045,8 @@ export type Database = {
       }
       find_eligible_events_with_details: {
         Args:
-        | { p_days_after_event?: number; p_limit?: number }
-        | { p_limit?: number; p_minimum_amount?: number; p_skip?: number }
+          | { p_days_after_event?: number; p_limit?: number }
+          | { p_limit?: number; p_minimum_amount?: number; p_skip?: number }
         Returns: {
           created_at: string
           created_by: string
@@ -1059,6 +1067,10 @@ export type Database = {
       force_release_payout_scheduler_lock: {
         Args: Record<PropertyKey, never>
         Returns: boolean
+      }
+      generate_settlement_report: {
+        Args: { p_event_id: string; p_organizer_id: string }
+        Returns: string
       }
       get_event_creator_name: {
         Args: { p_creator_id: string }
@@ -1082,6 +1094,46 @@ export type Database = {
           metadata: Json
           process_id: string
           time_remaining_minutes: number
+        }[]
+      }
+      get_settlement_aggregations: {
+        Args: { p_event_id: string }
+        Returns: {
+          avg_application_fee: number
+          payment_count: number
+          refunded_count: number
+          total_application_fee: number
+          total_application_fee_refunded: number
+          total_refunded_amount: number
+          total_stripe_sales: number
+        }[]
+      }
+      get_settlement_report_details: {
+        Args: {
+          p_event_ids?: string[]
+          p_from_date?: string
+          p_limit?: number
+          p_offset?: number
+          p_organizer_id: string
+          p_to_date?: string
+        }
+        Returns: {
+          event_date: string
+          event_id: string
+          event_title: string
+          generated_at: string
+          net_payout_amount: number
+          payment_count: number
+          refunded_count: number
+          report_id: string
+          settlement_mode: Database["public"]["Enums"]["settlement_mode_enum"]
+          status: Database["public"]["Enums"]["payout_status_enum"]
+          stripe_account_id: string
+          total_application_fee: number
+          total_refunded_amount: number
+          total_stripe_fee: number
+          total_stripe_sales: number
+          transfer_group: string
         }[]
       }
       hash_guest_token: {
@@ -1115,6 +1167,10 @@ export type Database = {
       set_test_guest_token: {
         Args: { token: string }
         Returns: undefined
+      }
+      status_rank: {
+        Args: { p: Database["public"]["Enums"]["payment_status_enum"] }
+        Returns: number
       }
       try_acquire_scheduler_lock: {
         Args: {
@@ -1154,44 +1210,44 @@ export type Database = {
     }
     Enums: {
       admin_reason_enum:
-      | "user_cleanup"
-      | "test_data_setup"
-      | "system_maintenance"
-      | "emergency_access"
-      | "data_migration"
-      | "security_investigation"
+        | "user_cleanup"
+        | "test_data_setup"
+        | "system_maintenance"
+        | "emergency_access"
+        | "data_migration"
+        | "security_investigation"
       attendance_status_enum: "attending" | "not_attending" | "maybe"
       event_status_enum: "upcoming" | "ongoing" | "past" | "cancelled"
       payment_method_enum: "stripe" | "cash"
       payment_status_enum:
-      | "pending"
-      | "paid"
-      | "failed"
-      | "received"
-      | "completed"
-      | "refunded"
-      | "waived"
+        | "pending"
+        | "paid"
+        | "failed"
+        | "received"
+        | "completed"
+        | "refunded"
+        | "waived"
       payout_status_enum:
-      | "pending"
-      | "processing"
-      | "completed"
-      | "failed"
-      | "processing_error"
+        | "pending"
+        | "processing"
+        | "completed"
+        | "failed"
+        | "processing_error"
       security_severity_enum: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL"
       settlement_mode_enum: "destination_charge"
       stripe_account_status_enum:
-      | "unverified"
-      | "onboarding"
-      | "verified"
-      | "restricted"
+        | "unverified"
+        | "onboarding"
+        | "verified"
+        | "restricted"
       suspicious_activity_type_enum:
-      | "EMPTY_RESULT_SET"
-      | "ADMIN_ACCESS_ATTEMPT"
-      | "INVALID_TOKEN_PATTERN"
-      | "RATE_LIMIT_EXCEEDED"
-      | "UNAUTHORIZED_RLS_BYPASS"
-      | "BULK_DATA_ACCESS"
-      | "UNUSUAL_ACCESS_PATTERN"
+        | "EMPTY_RESULT_SET"
+        | "ADMIN_ACCESS_ATTEMPT"
+        | "INVALID_TOKEN_PATTERN"
+        | "RATE_LIMIT_EXCEEDED"
+        | "UNAUTHORIZED_RLS_BYPASS"
+        | "BULK_DATA_ACCESS"
+        | "UNUSUAL_ACCESS_PATTERN"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1205,116 +1261,116 @@ type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
 
 export type Tables<
   DefaultSchemaTableNameOrOptions extends
-  | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
-  | { schema: keyof DatabaseWithoutInternals },
+    | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
+    | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-  ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
-    DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-  : never = never,
+    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
+    : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
   ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
-    DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
       Row: infer R
     }
-  ? R
-  : never
+    ? R
+    : never
   : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
-    DefaultSchema["Views"])
-  ? (DefaultSchema["Tables"] &
-    DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
-      Row: infer R
-    }
-  ? R
-  : never
-  : never
+        DefaultSchema["Views"])
+    ? (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
+        Row: infer R
+      }
+      ? R
+      : never
+    : never
 
 export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
-  | keyof DefaultSchema["Tables"]
-  | { schema: keyof DatabaseWithoutInternals },
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-  ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-  : never = never,
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
   ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
-    Insert: infer I
-  }
-  ? I
-  : never
+      Insert: infer I
+    }
+    ? I
+    : never
   : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
-  ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
-    Insert: infer I
-  }
-  ? I
-  : never
-  : never
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Insert: infer I
+      }
+      ? I
+      : never
+    : never
 
 export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
-  | keyof DefaultSchema["Tables"]
-  | { schema: keyof DatabaseWithoutInternals },
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-  ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-  : never = never,
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
   ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
-    Update: infer U
-  }
-  ? U
-  : never
+      Update: infer U
+    }
+    ? U
+    : never
   : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
-  ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
-    Update: infer U
-  }
-  ? U
-  : never
-  : never
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Update: infer U
+      }
+      ? U
+      : never
+    : never
 
 export type Enums<
   DefaultSchemaEnumNameOrOptions extends
-  | keyof DefaultSchema["Enums"]
-  | { schema: keyof DatabaseWithoutInternals },
+    | keyof DefaultSchema["Enums"]
+    | { schema: keyof DatabaseWithoutInternals },
   EnumName extends DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-  ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-  : never = never,
+    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
+    : never = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
   ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
   : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
-  ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
-  : never
+    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
+    : never
 
 export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
-  | keyof DefaultSchema["CompositeTypes"]
-  | { schema: keyof DatabaseWithoutInternals },
+    | keyof DefaultSchema["CompositeTypes"]
+    | { schema: keyof DatabaseWithoutInternals },
   CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-  ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-  : never = never,
+    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    : never = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
   ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
   : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
-  ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
-  : never
+    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
+    : never
 
 export const Constants = {
   graphql_public: {
@@ -1369,3 +1425,4 @@ export const Constants = {
     },
   },
 } as const
+

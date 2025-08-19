@@ -10,6 +10,7 @@ const formatCurrency = (amount: number) => {
   return amount === 0 ? "無料" : `${amount.toLocaleString()}円`;
 };
 import { CalendarIcon, CreditCardIcon, TrendingDownIcon } from "lucide-react";
+import { formatUtcToJst } from "@/lib/utils/timezone";
 
 interface SettlementReportCardProps {
   report: SettlementReportData;
@@ -25,21 +26,11 @@ export function SettlementReportCard({
   showActions = true,
 }: SettlementReportCardProps) {
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("ja-JP", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    });
+    return formatUtcToJst(new Date(dateString), "yyyy年MM月dd日");
   };
 
   const formatDateTime = (date: Date) => {
-    return date.toLocaleString("ja-JP", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
+    return formatUtcToJst(date, "yyyy年MM月dd日 HH:mm");
   };
 
   const hasRefunds = report.refundedCount > 0 || report.totalRefundedAmount > 0;

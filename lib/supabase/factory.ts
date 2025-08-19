@@ -2,6 +2,7 @@ import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Database } from "@/types/database";
 import { getSessionManager } from "@/lib/session/manager";
 import { COOKIE_CONFIG, AUTH_CONFIG, getCookieConfig } from "@/config/security";
 import { logger } from "@/lib/logging/app-logger";
@@ -18,16 +19,16 @@ export class SupabaseClientFactory {
   private static readonly ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
   private static sessionManager = getSessionManager();
 
-  static createServerClient(context: "server"): SupabaseClient;
-  static createServerClient(context: "api"): SupabaseClient;
+  static createServerClient(context: "server"): SupabaseClient<Database>;
+  static createServerClient(context: "api"): SupabaseClient<Database>;
   static createServerClient(
     context: "middleware",
     config: MiddlewareSupabaseConfig
-  ): SupabaseClient;
+  ): SupabaseClient<Database>;
   static createServerClient(
     context: SupabaseContext,
     config?: MiddlewareSupabaseConfig
-  ): SupabaseClient {
+  ): SupabaseClient<Database> {
     switch (context) {
       case "middleware":
         if (!config) {
@@ -47,14 +48,14 @@ export class SupabaseClientFactory {
   private static createMiddlewareClient({
     request,
     response,
-  }: MiddlewareSupabaseConfig): SupabaseClient {
+  }: MiddlewareSupabaseConfig): SupabaseClient<Database> {
     // HTTPS接続を動的に検出
     const isHttps =
       request.url.startsWith("https://") || request.headers.get("x-forwarded-proto") === "https";
 
     const cookieConfig = getCookieConfig(isHttps);
 
-    return createServerClient(this.URL, this.ANON_KEY, {
+    return createServerClient<Database>(this.URL, this.ANON_KEY, {
       cookies: {
         get(name: string) {
           return request.cookies.get(name)?.value;
@@ -72,10 +73,10 @@ export class SupabaseClientFactory {
     });
   }
 
-  private static createApiServerClient(): SupabaseClient {
+  private static createApiServerClient(): SupabaseClient<Database> {
     const cookieStore = cookies();
 
-    return createServerClient(this.URL, this.ANON_KEY, {
+    return createServerClient<Database>(this.URL, this.ANON_KEY, {
       cookies: {
         get(name: string) {
           return cookieStore.get(name)?.value;
@@ -104,15 +105,15 @@ export class SupabaseClientFactory {
    */
   static async createOptimizedClient(
     context: "api" | "server"
-  ): Promise<{ client: SupabaseClient; sessionValid: boolean }>;
+  ): Promise<{ client: SupabaseClient<Database>; sessionValid: boolean }>;
   static async createOptimizedClient(
     context: "middleware",
     config: MiddlewareSupabaseConfig
-  ): Promise<{ client: SupabaseClient; sessionValid: boolean }>;
+  ): Promise<{ client: SupabaseClient<Database>; sessionValid: boolean }>;
   static async createOptimizedClient(
     context: SupabaseContext,
     config?: MiddlewareSupabaseConfig
-  ): Promise<{ client: SupabaseClient; sessionValid: boolean }> {
+  ): Promise<{ client: SupabaseClient<Database>; sessionValid: boolean }> {
     const client =
       context === "middleware" && config
         ? this.createServerClient(context, config)
