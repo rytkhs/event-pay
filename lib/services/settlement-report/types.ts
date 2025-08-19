@@ -63,7 +63,6 @@ export interface SettlementReportCsvRow {
 export interface GenerateSettlementReportParams {
   eventId: string
   organizerId: string
-  forceRegenerate?: boolean    // 既存レポートの再生成
 }
 
 /**
@@ -78,25 +77,6 @@ export interface GetSettlementReportsParams {
   offset?: number
 }
 
-/**
- * プラットフォーム手数料集計結果
- */
-export interface ApplicationFeeAggregation {
-  totalApplicationFeeAmount: number
-  paymentCount: number
-  averageFeePerPayment: number
-}
-
-/**
- * 返金・Dispute 集計結果
- */
-export interface RefundDisputeAggregation {
-  totalRefundedAmount: number
-  refundedCount: number
-  totalApplicationFeeRefunded: number
-  totalDisputedAmount: number
-  disputeCount: number
-}
 
 /**
  * レポート生成結果
@@ -135,4 +115,28 @@ export interface RpcSettlementReportRow {
   total_refunded_amount: number;
   settlement_mode: SettlementMode;
   status: string;
+}
+
+/**
+ * generate_settlement_report RPC の戻り値型
+ */
+export interface GenerateSettlementReportRpcRow {
+  report_id: string;
+  already_exists: boolean;
+  event_id: string;
+  event_title: string;
+  event_date: string;
+  organizer_id: string;
+  stripe_account_id: string;
+  transfer_group: string;
+  total_stripe_sales: number;
+  total_stripe_fee: number;
+  total_application_fee: number;
+  net_payout_amount: number;
+  payment_count: number;
+  refunded_count: number;
+  total_refunded_amount: number;
+  settlement_mode: string;
+  generated_at: string;
+  updated_at: string;
 }

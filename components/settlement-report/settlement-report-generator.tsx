@@ -11,13 +11,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
-import {
-  generateSettlementReportAction,
-  generateSettlementReportRpcAction,
-} from "@/app/actions/settlement-report-actions";
+import { generateSettlementReportAction } from "@/app/actions/settlement-report-actions";
 import { CalculatorIcon, FileTextIcon, AlertTriangleIcon } from "lucide-react";
+import { formatUtcToJst } from "@/lib/utils/timezone";
 
 interface SettlementReportGeneratorProps {
   availableEvents?: {
@@ -36,8 +33,6 @@ export function SettlementReportGenerator({
 }: SettlementReportGeneratorProps) {
   const { toast } = useToast();
   const [selectedEventId, setSelectedEventId] = useState("");
-  const [forceRegenerate, setForceRegenerate] = useState(false);
-  const [useRpcMethod, setUseRpcMethod] = useState(false);
   const [generating, setGenerating] = useState(false);
 
   const selectedEvent = availableEvents.find((event) => event.id === selectedEventId);
@@ -57,17 +52,9 @@ export function SettlementReportGenerator({
     try {
       const formData = new FormData();
       formData.append("eventId", selectedEventId);
-      formData.append("forceRegenerate", forceRegenerate.toString());
 
-      let result;
-
-      if (useRpcMethod) {
-        // RPC関数を直接使用
-        result = await generateSettlementReportRpcAction(formData);
-      } else {
-        // サービス経由
-        result = await generateSettlementReportAction(formData);
-      }
+      // 統一されたサービス経由でRPC呼び出し
+      const result = await generateSettlementReportAction(formData);
 
       if (result.success) {
         // alreadyExistsプロパティは通常のアクションでのみ存在する
@@ -75,7 +62,7 @@ export function SettlementReportGenerator({
         if (hasAlreadyExists) {
           toast({
             title: "レポート生成完了",
-            description: "本日のレポートは既に存在します",
+            description: "本日のレポートを更新しました",
           });
         } else {
           toast({
@@ -91,7 +78,6 @@ export function SettlementReportGenerator({
 
         // フォームリセット
         setSelectedEventId("");
-        setForceRegenerate(false);
       } else {
         toast({
           title: "レポート生成エラー",
@@ -141,7 +127,7 @@ export function SettlementReportGenerator({
                   <SelectItem key={event.id} value={event.id}>
                     <div className="flex items-center justify-between w-full">
                       <span>
-                        {event.title} ({new Date(event.date).toLocaleDateString("ja-JP")})
+                        {event.title} ({formatUtcToJst(new Date(event.date), "yyyy年MM月dd日")})
                       </span>
                       {event.hasExistingReport && (
                         <span className="text-xs text-muted-foreground ml-2">(レポート済み)</span>
@@ -160,52 +146,17 @@ export function SettlementReportGenerator({
         </div>
 
         {/* 警告表示 */}
-        {selectedEvent?.hasExistingReport && !forceRegenerate && (
-          <div className="flex items-start space-x-2 p-3 bg-orange-50 border border-orange-200 rounded-md">
-            <AlertTriangleIcon className="w-5 h-5 text-orange-500 mt-0.5" />
+        {selectedEvent?.hasExistingReport && (
+          <div className="flex items-start space-x-2 p-3 bg-blue-50 border border-blue-200 rounded-md">
+            <AlertTriangleIcon className="w-5 h-5 text-blue-500 mt-0.5" />
             <div className="space-y-1">
-              <p className="text-sm font-medium text-orange-800">既存レポートがあります</p>
-              <p className="text-sm text-orange-700">
-                このイベントには既にレポートが存在します。再生成する場合は「強制再生成」をチェックしてください。
+              <p className="text-sm font-medium text-blue-800">既存レポートがあります</p>
+              <p className="text-sm text-blue-700">
+                このイベントには既にレポートが存在します。同日の再実行時は既存レポートを上書き更新します。
               </p>
             </div>
           </div>
         )}
-
-        {/* オプション設定 */}
-        <div className="space-y-4">
-          <div className="flex items-center space-x-2">
-            <Checkbox
-              id="force-regenerate"
-              checked={forceRegenerate}
-              onCheckedChange={(checked) => {
-                if (typeof checked === "boolean") {
-                  setForceRegenerate(checked);
-                }
-              }}
-              disabled={generating}
-            />
-            <Label htmlFor="force-regenerate" className="text-sm">
-              強制再生成（既存レポートがある場合でも新規作成）
-            </Label>
-          </div>
-
-          <div className="flex items-center space-x-2">
-            <Checkbox
-              id="use-rpc"
-              checked={useRpcMethod}
-              onCheckedChange={(checked) => {
-                if (typeof checked === "boolean") {
-                  setUseRpcMethod(checked);
-                }
-              }}
-              disabled={generating}
-            />
-            <Label htmlFor="use-rpc" className="text-sm">
-              RPC関数を直接使用（開発・デバッグ用）
-            </Label>
-          </div>
-        </div>
 
         {/* 選択中のイベント情報 */}
         {selectedEvent && (
@@ -221,7 +172,7 @@ export function SettlementReportGenerator({
                 <span className="font-medium text-blue-800">開催日:</span>
                 <br />
                 <span className="text-blue-700">
-                  {new Date(selectedEvent.date).toLocaleDateString("ja-JP")}
+                  {formatUtcToJst(new Date(selectedEvent.date), "yyyy年MM月dd日")}
                 </span>
               </div>
               <div>
@@ -254,8 +205,9 @@ export function SettlementReportGenerator({
 
         {/* 説明 */}
         <div className="text-sm text-muted-foreground space-y-1">
-          <p>• Destination charges 方式で自動集計されたレポートが生成されます</p>
+          <p>• Destination charges 方式で手動集計されたレポートが生成されます</p>
           <p>• 売上、Stripe手数料、プラットフォーム手数料、手取り額が含まれます</p>
+          <p>• 同日内の再実行時は既存レポートを上書き更新します</p>
           <p>• 返金・Dispute発生時は再集計を推奨します</p>
         </div>
       </CardContent>

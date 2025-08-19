@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -21,6 +21,7 @@ import {
   regenerateAfterRefundAction,
 } from "@/app/actions/settlement-report-actions";
 import { FileDownIcon, RefreshCwIcon, SearchIcon } from "lucide-react";
+import { formatUtcToJst } from "@/lib/utils/timezone";
 
 interface SettlementReportListProps {
   initialReports?: SettlementReportData[];
@@ -46,16 +47,17 @@ export function SettlementReportList({
     offset: 0,
   });
 
-  // 検索実行
-  const handleSearch = async () => {
+  // 検索実行（必要に応じて一時的に filters を上書き）
+  const handleSearch = async (override?: Partial<typeof filters>) => {
     setLoading(true);
     try {
+      const effective = { ...filters, ...(override ?? {}) };
       const params = {
-        eventIds: filters.eventId ? [filters.eventId] : undefined,
-        fromDate: filters.fromDate || undefined,
-        toDate: filters.toDate || undefined,
-        limit: filters.limit,
-        offset: filters.offset,
+        eventIds: effective.eventId ? [effective.eventId] : undefined,
+        fromDate: effective.fromDate || undefined,
+        toDate: effective.toDate || undefined,
+        limit: effective.limit,
+        offset: effective.offset,
       };
 
       const result = await getSettlementReportsAction(params);
@@ -166,13 +168,6 @@ export function SettlementReportList({
     }
   };
 
-  // 初期ロード
-  useEffect(() => {
-    if (initialReports.length === 0) {
-      handleSearch();
-    }
-  }, []);
-
   return (
     <div className="space-y-6">
       {/* 検索・フィルタ */}
@@ -195,7 +190,7 @@ export function SettlementReportList({
                   <SelectItem value="">すべてのイベント</SelectItem>
                   {availableEvents.map((event) => (
                     <SelectItem key={event.id} value={event.id}>
-                      {event.title} ({new Date(event.date).toLocaleDateString("ja-JP")})
+                      {event.title} ({formatUtcToJst(new Date(event.date), "yyyy年MM月dd日")})
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -244,7 +239,14 @@ export function SettlementReportList({
           </div>
 
           <div className="flex space-x-2">
-            <Button onClick={handleSearch} disabled={loading}>
+            <Button
+              onClick={() => {
+                // 新しい検索は常に 1 ページ目から
+                setFilters((prev) => ({ ...prev, offset: 0 }));
+                handleSearch({ offset: 0 });
+              }}
+              disabled={loading}
+            >
               <SearchIcon className="w-4 h-4 mr-2" />
               {loading ? "検索中..." : "検索"}
             </Button>
@@ -275,7 +277,7 @@ export function SettlementReportList({
                 </p>
                 {!loading && (
                   <p className="text-sm text-muted-foreground">
-                    イベント終了後にレポートが自動生成されます
+                    清算レポートは手動で生成してください。レポート生成タブから実行できます。
                   </p>
                 )}
               </div>
@@ -303,7 +305,9 @@ export function SettlementReportList({
             variant="outline"
             disabled={filters.offset === 0}
             onClick={() => {
-              setFilters((prev) => ({ ...prev, offset: Math.max(0, prev.offset - prev.limit) }));
+              const newOffset = Math.max(0, filters.offset - filters.limit);
+              setFilters((prev) => ({ ...prev, offset: newOffset }));
+              handleSearch({ offset: newOffset });
             }}
           >
             前のページ
@@ -311,7 +315,9 @@ export function SettlementReportList({
           <Button
             variant="outline"
             onClick={() => {
-              setFilters((prev) => ({ ...prev, offset: prev.offset + prev.limit }));
+              const newOffset = filters.offset + filters.limit;
+              setFilters((prev) => ({ ...prev, offset: newOffset }));
+              handleSearch({ offset: newOffset });
             }}
           >
             次のページ

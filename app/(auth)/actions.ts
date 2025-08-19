@@ -13,6 +13,7 @@ import {
   TEST_ACCOUNT_LOCKOUT_CONFIG,
 } from "@/lib/auth-security";
 import { headers } from "next/headers";
+import { formatUtcToJst } from "@/lib/utils/timezone";
 import { logger } from "@/lib/logging/app-logger";
 
 // バリデーションスキーマ
@@ -246,7 +247,7 @@ export async function loginAction(formData: FormData): Promise<ActionResult<{ us
       await TimingAttackProtection.normalizeResponseTime(async () => { }, 300);
       return {
         success: false,
-        error: `アカウントがロックされています。${lockoutStatus.lockoutExpiresAt?.toLocaleTimeString("ja-JP")}頃に再試行してください。`,
+        error: `アカウントがロックされています。${lockoutStatus.lockoutExpiresAt ? formatUtcToJst(lockoutStatus.lockoutExpiresAt, "HH:mm") : ""}頃に再試行してください。`,
       };
     }
     const supabase = createClient();

@@ -14,6 +14,7 @@ import {
   Wifi,
   Server,
 } from "lucide-react";
+import { formatUtcToJst } from "@/lib/utils/timezone";
 
 interface ErrorPageProps {
   title: string;
@@ -185,7 +186,7 @@ export function RegistrationDeadlineError({
 }) {
   const formatDeadline = (deadline: string) => {
     try {
-      return new Date(deadline).toLocaleString("ja-JP");
+      return formatUtcToJst(new Date(deadline), "yyyy年MM月dd日 HH:mm");
     } catch {
       return deadline;
     }

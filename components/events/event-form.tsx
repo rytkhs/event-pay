@@ -15,6 +15,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { useEventForm } from "@/hooks/use-event-form";
+import { getMinDatetimeLocal } from "@/lib/utils/timezone";
 
 /**
  * react-hook-formを使用したイベント作成フォーム
@@ -72,7 +73,7 @@ export default function EventCreateForm() {
                         {...field}
                         type="datetime-local"
                         disabled={isPending}
-                        min={new Date().toISOString().slice(0, 16)}
+                        min={getMinDatetimeLocal()}
                       />
                     </FormControl>
                     <FormDescription>イベントの開催日時を選択してください</FormDescription>
@@ -171,7 +172,7 @@ export default function EventCreateForm() {
                         {...field}
                         type="datetime-local"
                         disabled={isPending}
-                        min={new Date().toISOString().slice(0, 16)}
+                        min={getMinDatetimeLocal()}
                       />
                     </FormControl>
                     <FormDescription>参加申込の締切日時を設定してください</FormDescription>
@@ -192,7 +193,7 @@ export default function EventCreateForm() {
                         {...field}
                         type="datetime-local"
                         disabled={isPending}
-                        min={new Date().toISOString().slice(0, 16)}
+                        min={getMinDatetimeLocal()}
                       />
                     </FormControl>
                     <FormDescription>決済の締切日時を設定してください</FormDescription>

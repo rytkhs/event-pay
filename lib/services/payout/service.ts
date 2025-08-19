@@ -269,6 +269,14 @@ export class PayoutService implements IPayoutService {
         .rpc("process_event_payout", { p_event_id: eventId, p_user_id: userId });
 
       if (rpcError) {
+        logger.error("process_event_payout RPC failed", {
+          tag: "payoutRpcError",
+          event_id: eventId,
+          user_id: userId,
+          error_code: rpcError.code,
+          error_message: rpcError.message,
+        });
+
         const msg = (rpcError.message || "").toLowerCase();
 
         // 既存送金・一意制約

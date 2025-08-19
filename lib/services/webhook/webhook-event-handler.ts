@@ -1,5 +1,6 @@
 import Stripe from "stripe";
 import { stripe as sharedStripe } from "@/lib/stripe/client";
+import { SettlementReportService } from "@/lib/services/settlement-report/service";
 
 import { createClient } from "@supabase/supabase-js";
 import { Database } from "@/types/database";
@@ -112,6 +113,73 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
         success: false,
         error: error instanceof Error ? error.message : "Unknown error occurred",
       };
+    }
+  }
+
+  /**
+   * 清算スナップショットの再生成を、payments→attendances→events の関連から特定して実行
+   * 失敗時はログのみ（Webhook処理は継続）
+   */
+  private async regenerateSettlementSnapshotFromPayment(payment: unknown): Promise<void> {
+    try {
+      const paymentRecord = payment as { attendance_id?: string | null } | null;
+      const attendanceId: string | null = (paymentRecord?.attendance_id ?? null) as string | null;
+      if (!attendanceId) {
+        await this.securityReporter.logSecurityEvent({
+          type: "settlement_regenerate_missing_attendance",
+          details: { paymentHasAttendanceId: false },
+        });
+        return;
+      }
+
+      const { data: attendance, error: attErr } = await this.supabase
+        .from("attendances")
+        .select("event_id")
+        .eq("id", attendanceId)
+        .maybeSingle();
+      if (attErr || !attendance) {
+        await this.securityReporter.logSecurityEvent({
+          type: "settlement_regenerate_attendance_lookup_failed",
+          details: { error: attErr?.message ?? "not_found", attendanceId },
+        });
+        return;
+      }
+
+      const eventId: string = (attendance as { event_id: string }).event_id;
+      const { data: eventRow, error: evErr } = await this.supabase
+        .from("events")
+        .select("created_by")
+        .eq("id", eventId)
+        .maybeSingle();
+      if (evErr || !eventRow) {
+        await this.securityReporter.logSecurityEvent({
+          type: "settlement_regenerate_event_lookup_failed",
+          details: { error: evErr?.message ?? "not_found", eventId },
+        });
+        return;
+      }
+
+      const organizerId: string = (eventRow as { created_by: string }).created_by;
+
+      const service = new SettlementReportService(this.supabase);
+      const res = await service.regenerateAfterRefundOrDispute(eventId, organizerId);
+      if (!res.success) {
+        await this.securityReporter.logSecurityEvent({
+          type: "settlement_regenerate_failed",
+          details: { eventId, organizerId, error: res.error ?? "unknown" },
+        });
+        return;
+      }
+
+      await this.securityReporter.logSecurityEvent({
+        type: "settlement_regenerate_succeeded",
+        details: { eventId, organizerId, reportId: res.reportId },
+      });
+    } catch (e) {
+      await this.securityReporter.logSecurityEvent({
+        type: "settlement_regenerate_unexpected_error",
+        details: { error: e instanceof Error ? e.message : "unknown" },
+      });
     }
   }
 
@@ -320,6 +388,8 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
         type: "webhook_charge_refunded_processed",
         details: { eventId: event.id, paymentId: payment.id, refundedAmount: totalRefunded, applicationFeeRefundedAmount },
       });
+      // 清算レポートの再生成を非同期で実行（失敗してもWebhook処理はACK）
+      try { await this.regenerateSettlementSnapshotFromPayment(payment); } catch { /* noop */ }
       return { success: true, eventId: event.id, paymentId: payment.id };
     } catch (error) {
       throw (error instanceof Error ? error : new Error("Unknown error"));
@@ -428,6 +498,8 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
         type: "webhook_application_fee_refunded_processed",
         details: { eventId: event.id, paymentId: payment.id, applicationFeeId, applicationFeeRefundedAmount },
       });
+      // プラットフォーム手数料返金も清算値へ影響するため再生成を実行
+      try { await this.regenerateSettlementSnapshotFromPayment(payment); } catch { /* noop */ }
       return { success: true, eventId: event.id, paymentId: payment.id };
     } catch (error) {
       throw (error instanceof Error ? error : new Error("Unknown error"));
@@ -442,6 +514,48 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
       type: "webhook_dispute_event",
       details: { eventId: event.id, disputeId: dispute.id, status: dispute.status, type: event.type },
     });
+    // Dispute 対象の支払を推定し、清算の再生成を実行
+    try {
+      const chargeId: string | null = ((): string | null => {
+        const raw = (dispute as unknown as { charge?: unknown }).charge;
+        return typeof raw === "string" && raw.length > 0 ? raw : null;
+      })();
+      const piId: string | null = ((): string | null => {
+        const raw = (dispute as unknown as { payment_intent?: unknown }).payment_intent;
+        return typeof raw === "string" && raw.length > 0 ? raw : null;
+      })();
+
+      let payment: unknown | null = null;
+      if (piId) {
+        const { data } = await this.supabase
+          .from("payments")
+          .select("*")
+          .eq("stripe_payment_intent_id", piId)
+          .maybeSingle();
+        payment = data ?? null;
+      }
+      if (!payment && chargeId) {
+        const { data } = await this.supabase
+          .from("payments")
+          .select("*")
+          .eq("stripe_charge_id", chargeId)
+          .maybeSingle();
+        payment = data ?? null;
+      }
+      if (payment) {
+        try { await this.regenerateSettlementSnapshotFromPayment(payment); } catch { /* noop */ }
+      } else {
+        await this.securityReporter.logSecurityEvent({
+          type: "settlement_regenerate_payment_not_found_for_dispute",
+          details: { eventId: event.id, chargeId, paymentIntentId: piId },
+        });
+      }
+    } catch (e) {
+      await this.securityReporter.logSecurityEvent({
+        type: "settlement_regenerate_dispute_path_error",
+        details: { eventId: event.id, error: e instanceof Error ? e.message : "unknown" },
+      });
+    }
     return { success: true };
   }
 
