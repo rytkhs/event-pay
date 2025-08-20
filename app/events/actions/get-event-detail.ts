@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { validateEventId } from "@/lib/validations/event-id";
 import { redirect } from "next/navigation";
+import { logger } from "@/lib/logging/app-logger";
 
 export async function getEventDetailAction(eventId: string) {
   try {
@@ -47,7 +48,7 @@ export async function getEventDetailAction(eventId: string) {
         organizer_id:created_by
       `
       )
-      .eq("id", validation.data)
+      .eq("id", validation.data as any)
       .eq("created_by", user.id)
       .maybeSingle();
 
@@ -71,8 +72,13 @@ export async function getEventDetailAction(eventId: string) {
     if (creatorError) {
       // Creator name fetch error - continue with fallback
       // ログのみ（UXを阻害しない）
-      // eslint-disable-next-line no-console
-      console.warn("Failed to fetch creator name:", creatorError.message);
+      logger.warn("Failed to fetch creator name", {
+        tag: "getEventDetail",
+        event_id: eventDetail.id,
+        creator_id: eventDetail.created_by,
+        error_name: creatorError.name,
+        error_message: creatorError.message
+      });
     }
 
     const result = {

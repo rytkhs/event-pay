@@ -13,6 +13,7 @@ import type { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 
 import { validateGuestTokenFormat } from "./crypto";
+import { logger } from "@/lib/logging/app-logger";
 
 import {
   ISecureSupabaseClientFactory,
@@ -487,13 +488,20 @@ export class RLSBasedGuestValidator implements IGuestTokenValidator {
   private checkCanModify(event: unknown): boolean {
     // 型ガードでイベント情報の妥当性をチェック
     if (!isValidEventInfo(event)) {
-      // console.warn("Invalid event info provided to checkCanModify:", event);
+      logger.warn("Invalid event info provided to checkCanModify", {
+        tag: "invalidEventInfo",
+        event_id: typeof event === 'object' && event && 'id' in event ? String(event.id) : 'unknown'
+      });
       return false; // 無効なイベント情報の場合は変更不可
     }
 
     // 日付の妥当性をチェック
     if (!this.isValidDateString(event.date)) {
-      // console.warn("Invalid event date format:", event.date);
+      logger.warn("Invalid event date format", {
+        tag: "invalidDateFormat",
+        event_id: event.id,
+        event_date: event.date
+      });
       return false;
     }
 
@@ -504,7 +512,11 @@ export class RLSBasedGuestValidator implements IGuestTokenValidator {
     let registrationDeadline: Date | null = null;
     if (event.registration_deadline) {
       if (!this.isValidDateString(event.registration_deadline)) {
-        // console.warn("Invalid registration deadline format:", event.registration_deadline);
+        logger.warn("Invalid registration deadline format", {
+          tag: "invalidDeadlineFormat",
+          event_id: event.id,
+          registration_deadline: event.registration_deadline
+        });
         return false;
       }
       registrationDeadline = new Date(event.registration_deadline);

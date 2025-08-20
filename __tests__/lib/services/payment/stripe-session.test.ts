@@ -75,10 +75,12 @@ describe("PaymentService - Stripe Session Creation", () => {
     const mockParams = {
       attendanceId: "att_test_123",
       amount: 1000,
+      eventId: "evt_test_123",
+      userId: "user_test_123",
       eventTitle: "テストイベント",
       successUrl: "https://example.com/success",
       cancelUrl: "https://example.com/cancel",
-    };
+    } as CreateStripeSessionParams;
 
     it("正常にStripe Checkout Sessionを作成する", async () => {
       // モックの設定

@@ -1,6 +1,7 @@
 // Cron API認証ロジック
 
 import { AUTH_CONFIG } from "@/lib/constants/auth-config";
+import { logger } from "@/lib/logging/app-logger";
 
 interface AuthResult {
   isValid: boolean;
@@ -92,6 +93,24 @@ export function logCronActivity(
   _message: string,
   _details?: Record<string, unknown>
 ): void {
-  // Log activity without console output
-  // In the future, this function could send logs to external service
+  // _details は任意のメタ情報を付加するためのオブジェクト
+  const fields = { tag: "cronActivity", ...(_details || {}) } as Record<string, unknown>;
+
+  switch (_type) {
+    case "success":
+      // 成功も info 扱いで記録
+      logger.info(_message, fields);
+      break;
+    case "info":
+      logger.info(_message, fields);
+      break;
+    case "warning":
+      logger.warn(_message, fields);
+      break;
+    case "error":
+      logger.error(_message, fields);
+      break;
+    default:
+      logger.debug(_message, fields);
+  }
 }

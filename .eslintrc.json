@@ -11,7 +11,7 @@
     ],
     "@typescript-eslint/no-explicit-any": "warn",
     "prefer-const": "error",
-    "no-console": "warn",
+    "no-console": "error",
     "react-hooks/exhaustive-deps": "warn",
     "react/prop-types": "off",
     "react/react-in-jsx-scope": "off",

@@ -2,8 +2,8 @@ import { NextRequest } from "next/server";
 import Stripe from "stripe";
 import { POST } from "@/app/api/webhooks/stripe/route";
 
-// テスト用のStripeクライアント（バージョン固定は不要）
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "sk_test_fake");
+// テスト用Stripeクライアントは beforeEach で初期化
+let stripe: Stripe;
 
 // 実際のWebhookペイロードを生成するヘルパー
 function createWebhookPayload(event: any): string {
@@ -23,13 +23,18 @@ function createStripeSignature(payload: string, secret: string, timestamp?: numb
 
 describe("Webhook Processing Integration", () => {
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET || "whsec_test_secret";
+  const secondarySecret = "whsec_test_secondary";
 
   beforeEach(() => {
     // 環境変数の設定
     process.env.STRIPE_SECRET_KEY = "sk_test_fake";
     process.env.STRIPE_WEBHOOK_SECRET = webhookSecret;
+    process.env.STRIPE_WEBHOOK_SECRET_SECONDARY = secondarySecret;
     process.env.NEXT_PUBLIC_SUPABASE_URL = "https://test.supabase.co";
     process.env.SUPABASE_SERVICE_ROLE_KEY = "test_service_role_key";
+
+    // Stripeクライアント初期化
+    stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string);
   });
 
   it("payment_intent.succeeded Webhookの完全な処理フロー", async () => {
@@ -291,6 +296,61 @@ describe("Webhook Processing Integration", () => {
       received: true,
       eventId: "evt_test_unsupported",
       eventType: "customer.created",
+    });
+  });
+
+  it("複数シークレット検証: プライマリで失敗してセカンダリで成功", async () => {
+    const mockEvent = {
+      id: "evt_test_secondary_success",
+      type: "payment_intent.succeeded",
+      api_version: "2024-06-20",
+      created: Math.floor(Date.now() / 1000),
+      data: {
+        object: {
+          id: "pi_test_secondary",
+          object: "payment_intent",
+          amount: 2000,
+          currency: "jpy",
+          status: "succeeded",
+          metadata: {
+            attendance_id: "att_test_secondary",
+          },
+        },
+      },
+      livemode: false,
+      pending_webhooks: 1,
+      request: {
+        id: "req_test_secondary",
+        idempotency_key: null,
+      },
+    };
+
+    const payload = createWebhookPayload(mockEvent);
+    // セカンダリシークレットで署名（プライマリでは失敗する）
+    const signature = createStripeSignature(payload, secondarySecret);
+
+    const request = new NextRequest("http://localhost:3000/api/webhooks/stripe", {
+      method: "POST",
+      body: payload,
+      headers: {
+        "stripe-signature": signature,
+        "stripe-timestamp": Math.floor(Date.now() / 1000).toString(),
+        "content-type": "application/json",
+        "user-agent": "Stripe/1.0 (+https://stripe.com/docs/webhooks)",
+      },
+    });
+
+    // Webhookの処理
+    const response = await POST(request);
+    const responseData = await response.json();
+
+    // セカンダリシークレットで検証が成功することを確認
+    expect(response.status).toBe(200);
+    expect(responseData).toMatchObject({
+      received: true,
+      eventId: "evt_test_secondary_success",
+      eventType: "payment_intent.succeeded",
+      enqueued: true,
     });
   });
 });

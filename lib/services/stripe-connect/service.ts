@@ -7,6 +7,7 @@ import Stripe from "stripe";
 import { Database } from "@/types/database";
 import { stripe } from "@/lib/stripe/client";
 import { IStripeConnectService, IStripeConnectErrorHandler } from "./interface";
+import { logger } from "@/lib/logging/app-logger";
 import {
   StripeConnectAccount,
   CreateExpressAccountParams,
@@ -49,7 +50,7 @@ export class StripeConnectService implements IStripeConnectService {
     try {
       // パラメータバリデーション
       const validatedParams = validateCreateExpressAccountParams(params);
-      const { userId, email, country, businessType, businessProfile } = validatedParams;
+      const { userId, email, country, businessProfile } = validatedParams;
 
       // 既存アカウントの重複チェック（DB）
       const existingAccount = await this.getConnectAccountByUser(userId);
@@ -76,10 +77,14 @@ export class StripeConnectService implements IStripeConnectService {
             stripeAccount = searchResult.data[0] as Stripe.Account;
           }
         }
-      } catch (_searchError) {
+      } catch (searchError) {
         // searchは補助的機能。失敗しても致命ではないため続行する
-        // 必要に応じてロギング
-        // console.debug('Stripe accounts.search failed, continue to create:', searchError);
+        logger.debug("Stripe accounts.search failed, continue to create", {
+          tag: "stripeAccountSearchFailed",
+          user_id: userId,
+          error_name: searchError instanceof Error ? searchError.name : "Unknown",
+          error_message: searchError instanceof Error ? searchError.message : String(searchError)
+        });
       }
 
       // Stripe Express Account作成パラメータ
@@ -91,7 +96,6 @@ export class StripeConnectService implements IStripeConnectService {
           card_payments: { requested: true },
           transfers: { requested: true },
         },
-        business_type: businessType,
         metadata: {
           user_id: userId,
           created_by: "EventPay",
@@ -140,10 +144,11 @@ export class StripeConnectService implements IStripeConnectService {
             await this.stripe.accounts.del(stripeAccount.id);
           } catch (compensationError) {
             // 補償削除の失敗はログに残し、上位へはDBエラーとしてマッピングして伝搬
-            // eslint-disable-next-line no-console
-            console.error("Failed to compensate (delete) created Stripe account:", {
-              accountId: stripeAccount.id,
-              error: compensationError instanceof Error ? compensationError.message : compensationError,
+            logger.error("Failed to compensate (delete) created Stripe account", {
+              tag: "stripeConnectCompensationFailed",
+              account_id: stripeAccount.id,
+              error_name: compensationError instanceof Error ? compensationError.name : "Unknown",
+              error_message: compensationError instanceof Error ? compensationError.message : String(compensationError)
             });
           }
         }
@@ -249,10 +254,19 @@ export class StripeConnectService implements IStripeConnectService {
       let status: Database["public"]["Enums"]["stripe_account_status_enum"] = "unverified";
       if (account.requirements?.disabled_reason) {
         status = "restricted";
-      } else if (account.details_submitted && account.charges_enabled && account.payouts_enabled) {
-        status = "verified";
-      } else if (account.details_submitted) {
-        status = "onboarding";
+      } else {
+        const transfersCap = (() => {
+          const cap = (account.capabilities as any)?.transfers;
+          if (typeof cap === "string") return cap === "active";
+          if (cap && typeof cap === "object" && "status" in cap) return (cap as any).status === "active";
+          return false;
+        })();
+
+        if (account.details_submitted && transfersCap && account.payouts_enabled) {
+          status = "verified";
+        } else if (account.details_submitted) {
+          status = "onboarding";
+        }
       }
 
       // requirements は undefined の場合や disabled_reason 未設定の場合のキー追加を避ける
@@ -519,9 +533,8 @@ export class StripeConnectService implements IStripeConnectService {
     try {
       const account = await this.getConnectAccountByUser(userId);
       if (!account) return false;
-      const charges = account.charges_enabled ?? false;
       const payouts = account.payouts_enabled ?? false;
-      return account.status === "verified" && charges && payouts;
+      return account.status === "verified" && payouts;
     } catch (error) {
       if (error instanceof StripeConnectError) {
         throw error;

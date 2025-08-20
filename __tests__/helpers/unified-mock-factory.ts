@@ -11,6 +11,7 @@
 
 import { jest } from "@jest/globals";
 import { createClient } from "@supabase/supabase-js";
+import { logger } from "@/lib/logging/app-logger";
 
 export interface MockConfig {
   level: "unit" | "integration" | "e2e";
@@ -192,7 +193,11 @@ export class UnifiedMockFactory {
       await client.from("events").delete().like("id", "550e8400-e29b-41d4-a716-44665544%");
       // usersテーブルはauthスキーマで管理されるため直接削除不可
     } catch (error) {
-      console.warn("テストデータクリーンアップ中にエラー:", error);
+      logger.warn("Error occurred during test data cleanup", {
+        tag: "testDataCleanup",
+        error_name: error instanceof Error ? error.name : "Unknown",
+        error_message: error instanceof Error ? error.message : String(error)
+      });
     }
   }
 

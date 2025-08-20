@@ -80,8 +80,12 @@ export async function validateGuestToken(guestToken: string): Promise<GuestToken
     };
   } catch (error) {
     if (process.env.NODE_ENV === "development") {
-      // eslint-disable-next-line no-console
-      console.error("ゲストトークン検証エラー:", error);
+      const { logger } = await import("@/lib/logging/app-logger");
+      logger.error("ゲストトークン検証エラー", {
+        tag: "guestToken",
+        error_name: error instanceof Error ? error.name : "Unknown",
+        error_message: error instanceof Error ? error.message : String(error),
+      });
     }
     return {
       isValid: false,

@@ -7,6 +7,7 @@ import {
   isValidSortBy,
   isValidSortOrder,
 } from "@/lib/constants/event-filters";
+import { logger } from "@/lib/logging/app-logger";
 
 export interface SortOptions {
   sortBy: SortBy;
@@ -77,7 +78,11 @@ export function useEventSort(options: UseEventSortOptions = {}) {
     (sortBy: SortBy) => {
       if (!isValidSortBy(sortBy)) {
         if (process.env.NODE_ENV === "development") {
-          console.warn("無効なソート条件です。開催日時ソートに設定します。");
+          logger.warn('Invalid sort condition, setting to default', {
+            tag: 'invalidSortBy',
+            provided_sort_by: sortBy,
+            default_sort_by: DEFAULT_SORT_BY
+          });
         }
         sortBy = DEFAULT_SORT_BY;
       }
@@ -91,7 +96,11 @@ export function useEventSort(options: UseEventSortOptions = {}) {
     (sortOrder: SortOrder) => {
       if (!isValidSortOrder(sortOrder)) {
         if (process.env.NODE_ENV === "development") {
-          console.warn("無効なソート順序です。昇順に設定します。");
+          logger.warn('Invalid sort order, setting to default', {
+            tag: 'invalidSortOrder',
+            provided_sort_order: sortOrder,
+            default_sort_order: DEFAULT_SORT_ORDER
+          });
         }
         sortOrder = DEFAULT_SORT_ORDER;
       }

@@ -15,6 +15,7 @@ import {
   STRIPE_ERROR_CODE_MAPPING,
   POSTGRES_ERROR_CODE_MAPPING,
 } from "./error-mapping";
+import { logger } from "@/lib/logging/app-logger";
 
 /**
  * StripeConnect エラーハンドラーの実装クラス
@@ -167,13 +168,29 @@ export class StripeConnectErrorHandler implements IStripeConnectErrorHandler {
 
     switch (level) {
       case 'info':
-        console.info('StripeConnect Info:', logData);
+        logger.info('StripeConnect Info', {
+          tag: 'stripeConnectInfo',
+          service: 'stripe-connect',
+          error_type: logData.errorType,
+          message: logData.message
+        });
         break;
       case 'warn':
-        console.warn('StripeConnect Warning:', logData);
+        logger.warn('StripeConnect Warning', {
+          tag: 'stripeConnectWarning',
+          service: 'stripe-connect',
+          error_type: logData.errorType,
+          message: logData.message
+        });
         break;
       case 'error':
-        console.error('StripeConnect Error:', logData);
+        logger.error('StripeConnect Error', {
+          tag: 'stripeConnectError',
+          service: 'stripe-connect',
+          error_type: logData.errorType,
+          message: logData.message,
+          metadata: logData.metadata
+        });
         break;
     }
   }
@@ -183,11 +200,12 @@ export class StripeConnectErrorHandler implements IStripeConnectErrorHandler {
    */
   private async notifyAdmin(error: StripeConnectError): Promise<void> {
     // TODO: 実際の通知実装（メール、Slack、ログ集約システムなど）
-    console.error('Admin notification required for StripeConnect error:', {
-      type: error.type,
+    logger.error('Admin notification required for StripeConnect error', {
+      tag: 'stripeConnectAdminNotification',
+      service: 'stripe-connect',
+      error_type: error.type,
       message: error.message,
-      metadata: error.metadata,
-      timestamp: new Date().toISOString(),
+      metadata: error.metadata
     });
   }
 }

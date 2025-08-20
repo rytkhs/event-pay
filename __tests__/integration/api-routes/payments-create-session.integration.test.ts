@@ -124,6 +124,8 @@ describe("決済セッション作成 統合テスト", () => {
       const result = await paymentService.createStripeSession({
         attendanceId: testAttendanceId,
         amount: 1000,
+        eventId: testEventId,
+        userId: testUserId,
         eventTitle: "決済テストイベント",
         successUrl: "https://example.com/success",
         cancelUrl: "https://example.com/cancel",
@@ -190,6 +192,8 @@ describe("決済セッション作成 統合テスト", () => {
       await paymentService.createStripeSession({
         attendanceId: testAttendanceId,
         amount: 1000,
+        eventId: testEventId,
+        userId: testUserId,
         eventTitle: "決済テストイベント",
         successUrl: "https://example.com/success",
         cancelUrl: "https://example.com/cancel",
@@ -205,6 +209,8 @@ describe("決済セッション作成 統合テスト", () => {
       const result2 = await paymentService.createStripeSession({
         attendanceId: testAttendanceId,
         amount: 1000,
+        eventId: testEventId,
+        userId: testUserId,
         eventTitle: "決済テストイベント",
         successUrl: "https://example.com/success",
         cancelUrl: "https://example.com/cancel",
@@ -252,6 +258,8 @@ describe("決済セッション作成 統合テスト", () => {
           paymentService.createStripeSession({
             attendanceId: newAttendanceId,
             amount: 1000,
+            eventId: testEventId,
+            userId: testUserId,
             eventTitle: "決済テストイベント",
             successUrl: "https://example.com/success",
             cancelUrl: "https://example.com/cancel",
@@ -283,6 +291,8 @@ describe("決済セッション作成 統合テスト", () => {
         paymentService.createStripeSession({
           attendanceId: nonExistentId,
           amount: 1000,
+          eventId: testEventId,
+          userId: testUserId,
           eventTitle: "テストイベント",
           successUrl: "https://example.com/success",
           cancelUrl: "https://example.com/cancel",
@@ -311,6 +321,8 @@ describe("決済セッション作成 統合テスト", () => {
           paymentService.createStripeSession({
             attendanceId: newAttendanceId,
             amount: -100,
+            eventId: testEventId,
+            userId: testUserId,
             eventTitle: "テストイベント",
             successUrl: "https://example.com/success",
             cancelUrl: "https://example.com/cancel",

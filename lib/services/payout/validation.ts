@@ -221,12 +221,6 @@ export class PayoutValidator implements IPayoutValidator {
         );
       }
 
-      if (!connectAccount.charges_enabled) {
-        throw new PayoutError(
-          PayoutErrorType.STRIPE_ACCOUNT_NOT_READY,
-          "Stripe Connectアカウントで決済受取が有効になっていません。"
-        );
-      }
 
       if (!connectAccount.payouts_enabled) {
         throw new PayoutError(
@@ -302,9 +296,10 @@ export class PayoutValidator implements IPayoutValidator {
   async validateStatusTransition(currentStatus: string, newStatus: string): Promise<void> {
     const validTransitions: Record<PayoutStatus, PayoutStatus[]> = {
       pending: ["processing", "failed"],
-      processing: ["completed", "failed"],
+      processing: ["completed", "failed", "processing_error"],
       completed: [], // 完了状態からは遷移不可
       failed: ["pending", "processing"], // 失敗状態からは再試行でpendingまたはprocessingに遷移可能
+      processing_error: ["pending", "processing"], // エラー状態からは再試行可能
     };
 
     const current = currentStatus as PayoutStatus;
@@ -464,9 +459,7 @@ export class PayoutValidator implements IPayoutValidator {
             result.reasons.push("Stripe Connectアカウントの認証が完了していません");
           }
 
-          if (!connectAccount.charges_enabled) {
-            result.reasons.push("Stripe Connectアカウントで決済受取が有効になっていません");
-          }
+          // charges_enabled は Destination Charges では必須ではないためスキップ
 
           if (!connectAccount.payouts_enabled) {
             result.reasons.push("Stripe Connectアカウントで送金が有効になっていません");

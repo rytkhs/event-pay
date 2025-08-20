@@ -13,6 +13,8 @@ import {
   TEST_ACCOUNT_LOCKOUT_CONFIG,
 } from "@/lib/auth-security";
 import { headers } from "next/headers";
+import { formatUtcToJst } from "@/lib/utils/timezone";
+import { logger } from "@/lib/logging/app-logger";
 
 // バリデーションスキーマ
 const loginSchema = z.object({
@@ -199,9 +201,13 @@ export async function loginAction(formData: FormData): Promise<ActionResult<{ us
             error: "ログイン試行回数が上限に達しました。しばらく時間をおいてからお試しください",
           };
         }
-      } catch {
+      } catch (rateLimitError) {
         // Redis接続エラー等の場合はログに記録してスキップ
-        // console.warn("Rate limit check failed:", rateLimitError);
+        logger.warn("Rate limit check failed", {
+          tag: "rateLimitCheckFailed",
+          error_name: rateLimitError instanceof Error ? rateLimitError.name : "Unknown",
+          error_message: rateLimitError instanceof Error ? rateLimitError.message : String(rateLimitError)
+        });
       }
     }
 
@@ -238,10 +244,10 @@ export async function loginAction(formData: FormData): Promise<ActionResult<{ us
     // アカウントロックアウト状態確認
     const lockoutStatus = await AccountLockoutService.checkLockoutStatus(sanitizedEmail);
     if (lockoutStatus.isLocked) {
-      await TimingAttackProtection.normalizeResponseTime(async () => {}, 300);
+      await TimingAttackProtection.normalizeResponseTime(async () => { }, 300);
       return {
         success: false,
-        error: `アカウントがロックされています。${lockoutStatus.lockoutExpiresAt?.toLocaleTimeString("ja-JP")}頃に再試行してください。`,
+        error: `アカウントがロックされています。${lockoutStatus.lockoutExpiresAt ? formatUtcToJst(lockoutStatus.lockoutExpiresAt, "HH:mm") : ""}頃に再試行してください。`,
       };
     }
     const supabase = createClient();
@@ -258,7 +264,11 @@ export async function loginAction(formData: FormData): Promise<ActionResult<{ us
     const { data, error } = authResult!;
 
     if (error) {
-      // console.error("Login error:", error.message);
+      logger.error("Login authentication failed", {
+        tag: "loginFailed",
+        error_message: error.message,
+        sanitized_email: sanitizedEmail.replace(/(.)(.*)(@.*)/, "$1***$3")
+      });
 
       // ログイン失敗をアカウントロックアウトに記録
       const lockoutResult = await AccountLockoutService.recordFailedAttempt(sanitizedEmail);
@@ -289,7 +299,11 @@ export async function loginAction(formData: FormData): Promise<ActionResult<{ us
             });
 
             if (resendError) {
-              // console.error("Resend email error:", resendError.message);
+              logger.error("Email confirmation resend failed", {
+                tag: "emailResendFailed",
+                error_message: resendError.message,
+                sanitized_email: sanitizedEmail.replace(/(.)(.*)(@.*)/, "$1***$3")
+              });
             }
           }
 
@@ -298,8 +312,13 @@ export async function loginAction(formData: FormData): Promise<ActionResult<{ us
             error: "メールアドレスの確認が必要です。確認メールを再送信しました。",
             redirectUrl: `/verify-email?email=${encodeURIComponent(sanitizedEmail)}`,
           };
-        } catch {
-          // console.error("Email resend process error:", resendError);
+        } catch (resendError) {
+          logger.error("Email resend process failed", {
+            tag: "emailResendProcessFailed",
+            error_name: resendError instanceof Error ? resendError.name : "Unknown",
+            error_message: resendError instanceof Error ? resendError.message : String(resendError),
+            sanitized_email: sanitizedEmail.replace(/(.)(.*)(@.*)/, "$1***$3")
+          });
 
           return {
             success: false,
@@ -338,8 +357,12 @@ export async function loginAction(formData: FormData): Promise<ActionResult<{ us
       message: "ログインしました",
       redirectUrl: "/home",
     };
-  } catch {
-    // console.error("Login action error:", error);
+  } catch (error) {
+    logger.error("Login action error", {
+      tag: "loginActionError",
+      error_name: error instanceof Error ? error.name : "Unknown",
+      error_message: error instanceof Error ? error.message : String(error)
+    });
     // タイミング攻撃対策: エラー時も一定時間確保
     await TimingAttackProtection.addConstantDelay();
     return {
@@ -373,8 +396,12 @@ export async function registerAction(formData: FormData): Promise<ActionResult<{
             error: "登録試行回数が上限に達しました。しばらく時間をおいてからお試しください",
           };
         }
-      } catch {
-        // console.warn("Rate limit check failed:", rateLimitError);
+      } catch (rateLimitError) {
+        logger.warn("Rate limit check failed during registration", {
+          tag: "rateLimitCheckFailed",
+          error_name: rateLimitError instanceof Error ? rateLimitError.name : "Unknown",
+          error_message: rateLimitError instanceof Error ? rateLimitError.message : String(rateLimitError)
+        });
       }
     }
 
@@ -430,7 +457,11 @@ export async function registerAction(formData: FormData): Promise<ActionResult<{
     const { data, error } = registrationResult!;
 
     if (error) {
-      // console.error("Registration error:", error.message);
+      logger.error("User registration failed", {
+        tag: "registrationFailed",
+        error_message: error.message,
+        sanitized_email: sanitizedEmail.replace(/(.)(.*)(@.*)/, "$1***$3")
+      });
 
       // ユーザー列挙攻撃対策: 詳細なエラー情報を隠す
       let errorMessage = "登録処理中にエラーが発生しました";
@@ -465,8 +496,12 @@ export async function registerAction(formData: FormData): Promise<ActionResult<{
       message: "登録が完了しました。確認メールを送信しました。",
       redirectUrl: `/verify-otp?email=${encodeURIComponent(sanitizedEmail)}`,
     };
-  } catch {
-    // console.error("Register action error:", error);
+  } catch (error) {
+    logger.error("Register action error", {
+      tag: "registerActionError",
+      error_name: error instanceof Error ? error.name : "Unknown",
+      error_message: error instanceof Error ? error.message : String(error)
+    });
     await TimingAttackProtection.addConstantDelay();
     return {
       success: false,
@@ -501,7 +536,11 @@ export async function verifyOtpAction(formData: FormData): Promise<ActionResult>
     });
 
     if (error) {
-      // console.error("OTP verification error:", error.message);
+      logger.error("OTP verification failed", {
+        tag: "otpVerificationFailed",
+        error_message: error.message,
+        sanitized_email: email.replace(/(.)(.*)(@.*)/, "$1***$3")
+      });
 
       let errorMessage = "確認コードが正しくありません";
       if (error.message.includes("expired")) {
@@ -525,11 +564,20 @@ export async function verifyOtpAction(formData: FormData): Promise<ActionResult>
         });
 
         if (profileError) {
-          // console.error("Profile creation error:", profileError);
+          logger.error("Profile creation failed", {
+            tag: "profileCreationFailed",
+            user_id: data.user.id,
+            error_message: profileError.message
+          });
           // プロファイル作成エラーは非致命的として扱う
         }
-      } catch {
-        // console.error("Profile creation error:", profileError);
+      } catch (profileError) {
+        logger.error("Profile creation error", {
+          tag: "profileCreationError",
+          user_id: data.user?.id,
+          error_name: profileError instanceof Error ? profileError.name : "Unknown",
+          error_message: profileError instanceof Error ? profileError.message : String(profileError)
+        });
       }
     }
 
@@ -538,8 +586,12 @@ export async function verifyOtpAction(formData: FormData): Promise<ActionResult>
       message: "メールアドレスが確認されました",
       redirectUrl: "/home",
     };
-  } catch {
-    // console.error("Verify OTP action error:", error);
+  } catch (error) {
+    logger.error("Verify OTP action error", {
+      tag: "verifyOtpActionError",
+      error_name: error instanceof Error ? error.name : "Unknown",
+      error_message: error instanceof Error ? error.message : String(error)
+    });
     return {
       success: false,
       error: "確認処理中にエラーが発生しました",
@@ -569,7 +621,11 @@ export async function resendOtpAction(formData: FormData): Promise<ActionResult>
     });
 
     if (error) {
-      // console.error("Resend OTP error:", error.message);
+      logger.error("Resend OTP failed", {
+        tag: "resendOtpFailed",
+        error_message: error.message,
+        sanitized_email: email.replace(/(.)(.*)(@.*)/, "$1***$3")
+      });
 
       if (error.message.includes("rate limit")) {
         return {
@@ -588,8 +644,12 @@ export async function resendOtpAction(formData: FormData): Promise<ActionResult>
       success: true,
       message: "確認コードを再送信しました",
     };
-  } catch {
-    // console.error("Resend OTP action error:", error);
+  } catch (error) {
+    logger.error("Resend OTP action error", {
+      tag: "resendOtpActionError",
+      error_name: error instanceof Error ? error.name : "Unknown",
+      error_message: error instanceof Error ? error.message : String(error)
+    });
     return {
       success: false,
       error: "再送信中にエラーが発生しました",
@@ -622,8 +682,12 @@ export async function resetPasswordAction(formData: FormData): Promise<ActionRes
               "パスワードリセット試行回数が上限に達しました。しばらく時間をおいてからお試しください",
           };
         }
-      } catch {
-        // console.warn("Rate limit check failed:", rateLimitError);
+      } catch (rateLimitError) {
+        logger.warn("Rate limit check failed during password reset", {
+          tag: "rateLimitCheckFailed",
+          error_name: rateLimitError instanceof Error ? rateLimitError.name : "Unknown",
+          error_message: rateLimitError instanceof Error ? rateLimitError.message : String(rateLimitError)
+        });
       }
     }
 
@@ -665,7 +729,11 @@ export async function resetPasswordAction(formData: FormData): Promise<ActionRes
     const { error } = resetResult!;
 
     if (error) {
-      // console.error("Reset password error:", error.message);
+      logger.error("Reset password failed", {
+        tag: "resetPasswordFailed",
+        error_message: error instanceof Error ? error.message : String(error),
+        sanitized_email: email.replace(/(.)(.*)(@.*)/, "$1***$3")
+      });
     }
 
     // セキュリティ上、成功・失敗に関わらず同じメッセージを返す（ユーザー列挙攻撃対策）
@@ -673,8 +741,12 @@ export async function resetPasswordAction(formData: FormData): Promise<ActionRes
       success: true,
       message: "パスワードリセットメールを送信しました（登録済みのアドレスの場合）",
     };
-  } catch {
-    // console.error("Reset password action error:", error);
+  } catch (error) {
+    logger.error("Reset password action error", {
+      tag: "resetPasswordActionError",
+      error_name: error instanceof Error ? error.name : "Unknown",
+      error_message: error instanceof Error ? error.message : String(error)
+    });
     await TimingAttackProtection.addConstantDelay();
     return {
       success: false,
@@ -707,7 +779,10 @@ export async function updatePasswordAction(formData: FormData): Promise<ActionRe
     });
 
     if (error) {
-      // console.error("Update password error:", error.message);
+      logger.error("Update password failed", {
+        tag: "updatePasswordFailed",
+        error_message: error.message
+      });
       return {
         success: false,
         error: "パスワードの更新に失敗しました",
@@ -719,8 +794,12 @@ export async function updatePasswordAction(formData: FormData): Promise<ActionRe
       message: "パスワードが更新されました",
       redirectUrl: "/home",
     };
-  } catch {
-    // console.error("Update password action error:", error);
+  } catch (error) {
+    logger.error("Update password action error", {
+      tag: "updatePasswordActionError",
+      error_name: error instanceof Error ? error.name : "Unknown",
+      error_message: error instanceof Error ? error.message : String(error)
+    });
     return {
       success: false,
       error: "処理中にエラーが発生しました",
@@ -739,7 +818,10 @@ export async function logoutAction(): Promise<ActionResult> {
     const { error } = await supabase.auth.signOut();
 
     if (error) {
-      // console.error("Logout error:", error.message);
+      logger.warn("Logout error (non-critical)", {
+        tag: "logoutError",
+        error_message: error.message
+      });
       // ログアウトエラーでも成功として扱う（既にログアウト状態の可能性）
       return {
         success: true,
@@ -753,8 +835,12 @@ export async function logoutAction(): Promise<ActionResult> {
       message: "ログアウトしました",
       redirectUrl: "/login",
     };
-  } catch {
-    // console.error("Logout action error:", error);
+  } catch (error) {
+    logger.error("Logout action error", {
+      tag: "logoutActionError",
+      error_name: error instanceof Error ? error.name : "Unknown",
+      error_message: error instanceof Error ? error.message : String(error)
+    });
     await TimingAttackProtection.addConstantDelay();
     // ログアウトは基本的に失敗しない処理として扱う
     return {

@@ -6,7 +6,9 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { createServiceClient } from "@/lib/supabase/service";
+import { getSecureClientFactory } from "@/lib/security/secure-client-factory.impl";
+import { AdminReason, type AuditContext } from "@/lib/security/secure-client-factory.types";
+import { logger } from "@/lib/logging/app-logger";
 
 export async function POST(request: NextRequest) {
   try {
@@ -15,7 +17,9 @@ export async function POST(request: NextRequest) {
     const expectedToken = process.env.INTERNAL_API_TOKEN;
 
     if (!expectedToken) {
-      console.error("INTERNAL_API_TOKEN is not configured");
+      logger.error('INTERNAL_API_TOKEN is not configured', {
+        tag: 'internalApiTokenNotConfigured'
+      });
       return NextResponse.json(
         { error: "Internal API not configured" },
         { status: 500 }
@@ -29,8 +33,28 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // サービスロールクライアントで期限切れロック削除を実行
-    const supabase = createServiceClient();
+    // セキュアな管理者クライアントで期限切れロック削除を実行
+    const clientFactory = getSecureClientFactory();
+
+    const auditContext: AuditContext = {
+      ipAddress: request.headers.get("x-forwarded-for") ||
+        request.headers.get("x-real-ip") ||
+        "unknown",
+      userAgent: request.headers.get("user-agent") || "internal-scheduler",
+      requestPath: "/api/internal/scheduler/cleanup",
+      requestMethod: "POST",
+      operationType: "DELETE",
+      additionalInfo: {
+        taskType: "scheduler_lock_cleanup",
+        triggeredBy: "cron_job"
+      }
+    };
+
+    const supabase = await clientFactory.createAuditedAdminClient(
+      AdminReason.SYSTEM_MAINTENANCE,
+      "Scheduled cleanup of expired scheduler locks",
+      auditContext
+    );
 
     // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
     const { data, error } = await supabase
@@ -38,7 +62,10 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (error) {
-      console.error("Failed to cleanup expired scheduler locks:", error);
+      logger.error('Failed to cleanup expired scheduler locks', {
+        tag: 'schedulerLockCleanupFailed',
+        error_message: error.message
+      });
       return NextResponse.json(
         {
           error: "Cleanup failed",
@@ -59,9 +86,10 @@ export async function POST(request: NextRequest) {
       }>;
     };
 
-    console.info(`Scheduler lock cleanup completed: ${deleted_count} expired locks removed`, {
-      deletedCount: deleted_count,
-      expiredLocks: expired_locks,
+    logger.info('Scheduler lock cleanup completed', {
+      tag: 'schedulerLockCleanupCompleted',
+      deleted_count,
+      expired_locks_count: expired_locks?.length || 0
     });
 
     return NextResponse.json({
@@ -72,7 +100,11 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error("Unexpected error in scheduler lock cleanup:", error);
+    logger.error('Unexpected error in scheduler lock cleanup', {
+      tag: 'schedulerLockCleanupUnexpectedError',
+      error_name: error instanceof Error ? error.name : 'Unknown',
+      error_message: error instanceof Error ? error.message : String(error)
+    });
     return NextResponse.json(
       {
         error: "Internal server error",
@@ -104,14 +136,38 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const supabase = createServiceClient();
+    // セキュアな管理者クライアントでロック状態を確認
+    const clientFactory = getSecureClientFactory();
+
+    const auditContext: AuditContext = {
+      ipAddress: request.headers.get("x-forwarded-for") ||
+        request.headers.get("x-real-ip") ||
+        "unknown",
+      userAgent: request.headers.get("user-agent") || "internal-scheduler",
+      requestPath: "/api/internal/scheduler/cleanup",
+      requestMethod: "GET",
+      operationType: "SELECT",
+      additionalInfo: {
+        taskType: "scheduler_lock_status_check",
+        triggeredBy: "system_monitoring"
+      }
+    };
+
+    const supabase = await clientFactory.createAuditedAdminClient(
+      AdminReason.SYSTEM_MAINTENANCE,
+      "System check of scheduler lock status",
+      auditContext
+    );
 
     // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
     const { data, error } = await supabase
       .rpc("get_scheduler_lock_status");
 
     if (error) {
-      console.error("Failed to get scheduler lock status:", error);
+      logger.error('Failed to get scheduler lock status', {
+        tag: 'schedulerLockStatusFailed',
+        error_message: error.message
+      });
       return NextResponse.json(
         {
           error: "Status check failed",
@@ -128,7 +184,11 @@ export async function GET(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error("Unexpected error in scheduler lock status check:", error);
+    logger.error('Unexpected error in scheduler lock status check', {
+      tag: 'schedulerLockStatusUnexpectedError',
+      error_name: error instanceof Error ? error.name : 'Unknown',
+      error_message: error instanceof Error ? error.message : String(error)
+    });
     return NextResponse.json(
       {
         error: "Internal server error",
