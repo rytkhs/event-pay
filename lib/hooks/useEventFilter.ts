@@ -8,6 +8,7 @@ import {
   isValidStatusFilter,
   isValidPaymentFilter,
 } from "@/lib/constants/event-filters";
+import { logger } from "@/lib/logging/app-logger";
 
 export interface Filters {
   status: StatusFilter;
@@ -114,7 +115,11 @@ export function useEventFilter(options: UseEventFilterOptions = {}) {
         // 日付文字列を直接比較（YYYY-MM-DD形式、date-fns-tz統一）
         if (dateRange.end < dateRange.start) {
           if (process.env.NODE_ENV === "development") {
-            console.warn("終了日は開始日より前の日付は指定できません。日付範囲をクリアします。");
+            logger.warn('Invalid date range provided, clearing date range', {
+              tag: 'invalidDateRange',
+              start: dateRange.start,
+              end: dateRange.end
+            });
           }
           dateRange = {};
         }

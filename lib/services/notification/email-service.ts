@@ -3,6 +3,7 @@
  */
 
 import { Resend } from 'resend';
+import { logger } from '@/lib/logging/app-logger';
 import { IEmailNotificationService, EmailTemplate, NotificationResult } from './types';
 
 /**
@@ -66,7 +67,11 @@ export class EmailNotificationService implements IEmailNotificationService {
       };
 
     } catch (error) {
-      console.error('Email sending error:', error);
+      logger.error('Email sending error', {
+        tag: 'emailService',
+        error_name: error instanceof Error ? error.name : 'Unknown',
+        error_message: error instanceof Error ? error.message : String(error),
+      });
       return {
         success: false,
         error: error instanceof Error ? error.message : 'メール送信中に予期しないエラーが発生しました'
@@ -103,7 +108,11 @@ export class EmailNotificationService implements IEmailNotificationService {
       });
 
     } catch (error) {
-      console.error('Admin alert email error:', error);
+      logger.error('Admin alert email error', {
+        tag: 'emailService',
+        error_name: error instanceof Error ? error.name : 'Unknown',
+        error_message: error instanceof Error ? error.message : String(error),
+      });
       return {
         success: false,
         error: error instanceof Error ? error.message : '管理者アラート送信中にエラーが発生しました'

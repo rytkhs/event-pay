@@ -105,6 +105,12 @@ export const ERROR_HANDLING_BY_TYPE: Record<PayoutErrorType, ErrorHandlingResult
     logLevel: "error",
     shouldNotifyAdmin: true,
   },
+  [PayoutErrorType.UPDATE_STATUS_FAILED]: {
+    userMessage: "送金ステータスの更新に失敗しました。管理者にお問い合わせください。",
+    shouldRetry: true,
+    logLevel: "error",
+    shouldNotifyAdmin: true,
+  },
 };
 
 /**

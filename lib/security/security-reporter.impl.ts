@@ -10,6 +10,7 @@ import {
   AdminReason,
   SecurityRecommendation,
 } from "./audit-types";
+import { logger } from "@/lib/logging/app-logger";
 import { SecurityAuditor } from "./security-auditor.interface";
 import { AnomalyDetector, RlsViolationIndicator } from "./anomaly-detector";
 import { isObject, isString, isNumber } from "./type-guards";
@@ -97,8 +98,11 @@ export class SecurityReporterImpl implements SecurityReporter {
       });
 
       if (error) {
-        // eslint-disable-next-line no-console
-        console.error("Failed to log suspicious activity:", error);
+        logger.error("Failed to log suspicious activity", {
+          tag: "securityReporter",
+          error_name: error instanceof Error ? error.name : "Unknown",
+          error_message: error instanceof Error ? error.message : String(error)
+        });
       }
     } catch (_error) {
       // swallow logging error
@@ -118,8 +122,11 @@ export class SecurityReporterImpl implements SecurityReporter {
       });
 
       if (error) {
-        // eslint-disable-next-line no-console
-        console.error("Failed to log security event:", error);
+        logger.error("Failed to log security event", {
+          tag: "securityReporter",
+          error_name: error instanceof Error ? error.name : "Unknown",
+          error_message: error instanceof Error ? error.message : String(error)
+        });
       }
     } catch (_error) { }
   }

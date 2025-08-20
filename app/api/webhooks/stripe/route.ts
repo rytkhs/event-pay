@@ -1,19 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
 // Stripe 型は共有クライアント経由で利用するため未使用
-import { stripe as sharedStripe, getWebhookSecret } from '@/lib/stripe/client';
+import { stripe as sharedStripe, getWebhookSecrets } from '@/lib/stripe/client';
 import { StripeWebhookSignatureVerifier } from '@/lib/services/webhook/webhook-signature-verifier';
-import { StripeWebhookEventHandler } from '@/lib/services/webhook/webhook-event-handler';
+// import { StripeWebhookEventHandler } from '@/lib/services/webhook/webhook-event-handler';
 import {
   SupabaseWebhookIdempotencyService,
-  IdempotentWebhookProcessor
 } from '@/lib/services/webhook/webhook-idempotency';
 import { SecurityReporterImpl } from '@/lib/security/security-reporter.impl';
 import { SecurityAuditorImpl } from '@/lib/security/security-auditor.impl';
 import { AnomalyDetectorImpl } from '@/lib/security/anomaly-detector';
-import { handleRateLimit } from '@/lib/rate-limit-middleware';
+// Rate limiting middleware intentionally not used on this webhook per Stripe best practice (429 triggers unnecessary retries)
 import type { SecurityReporter } from '@/lib/security/security-reporter.types';
 import type { WebhookProcessingResult } from '@/lib/services/webhook';
 import { getClientIP } from '@/lib/utils/ip-detection';
+import { shouldEnforceStripeWebhookIpCheck, isStripeWebhookIpAllowed } from '@/lib/security/stripe-ip-allowlist';
+import { logger } from '@/lib/logging/app-logger';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic'; // Webhookは常に動的処理
@@ -26,40 +27,45 @@ function createServices() {
   const securityReporter = new SecurityReporterImpl(auditor, anomalyDetector);
   const signatureVerifier = new StripeWebhookSignatureVerifier(
     stripe,
-    getWebhookSecret(),
+    getWebhookSecrets(),
     securityReporter
   );
-  const eventHandler = new StripeWebhookEventHandler(securityReporter);
   const idempotencyService = new SupabaseWebhookIdempotencyService<WebhookProcessingResult>();
-  const idempotentProcessor = new IdempotentWebhookProcessor<WebhookProcessingResult>(idempotencyService);
 
-  return { securityReporter, signatureVerifier, eventHandler, idempotentProcessor, idempotencyService };
+  return { securityReporter, signatureVerifier, idempotencyService };
 }
 
 export async function POST(request: NextRequest) {
   let securityReporter: SecurityReporter | undefined;
-  try {
-    const { securityReporter: sr, signatureVerifier, eventHandler, idempotentProcessor, idempotencyService } = createServices();
-    securityReporter = sr;
-    const rateLimited = await handleRateLimit(
-      request,
-      {
-        windowMs: 1000,
-        maxAttempts: 20,
-        blockDurationMs: 1000
-      },
-      "webhook:stripe"
-    );
+  let enqueued = false;
+  // 失敗時に DLQ に書き込むための現在処理中のイベント情報
+  let eventMeta: { id: string; type: string } | null = null;
+  const requestId = request.headers.get('x-request-id') || 'unknown';
+  const webhookLogger = logger.withContext({
+    request_id: requestId,
+    path: request.nextUrl.pathname,
+    tag: 'webhookProcessing'
+  });
 
-    if (rateLimited) {
-      await securityReporter.logSuspiciousActivity({
-        type: 'webhook_rate_limit_exceeded',
-        details: {
-          retryAfter: Number(rateLimited.headers.get('Retry-After') || '1')
-        },
-        ip: getClientIP(request)
-      });
-      return rateLimited;
+  webhookLogger.info('Webhook request received');
+
+  try {
+    const { securityReporter: sr, signatureVerifier, idempotencyService } = createServices();
+    securityReporter = sr;
+
+    // 本番のみ: Stripe Webhook 送信元 IP の許可リスト検証
+    if (shouldEnforceStripeWebhookIpCheck()) {
+      const clientIp = getClientIP(request);
+      const allowed = await isStripeWebhookIpAllowed(clientIp);
+      if (!allowed) {
+        await securityReporter.logSuspiciousActivity({
+          type: 'webhook_ip_not_allowed',
+          details: { clientIp },
+          ip: clientIp,
+          userAgent: request.headers.get('user-agent') || undefined,
+        });
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+      }
     }
 
     // リクエストボディとヘッダーの取得
@@ -67,6 +73,7 @@ export async function POST(request: NextRequest) {
     const signature = request.headers.get('stripe-signature');
 
     if (!signature) {
+      webhookLogger.warn('Webhook signature missing');
       await securityReporter.logSuspiciousActivity({
         type: 'webhook_missing_signature',
         details: {
@@ -83,17 +90,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // タイムスタンプは検証で t= を使用するため、ここでは現在時刻を付与（ログ用途のみ）
-    const timestamp = Math.floor(Date.now() / 1000);
-
     // 署名検証
+    webhookLogger.debug('Starting signature verification');
     const verificationResult = await signatureVerifier.verifySignature({
       payload,
       signature,
-      fallbackTimestamp: timestamp
     });
 
     if (!verificationResult.isValid || !verificationResult.event) {
+      webhookLogger.warn('Webhook signature verification failed');
       // 外部公開用のエラーメッセージは統一し、詳細はセキュリティログに依存
       return NextResponse.json(
         { error: 'Invalid webhook signature' },
@@ -103,127 +108,55 @@ export async function POST(request: NextRequest) {
 
     const event = verificationResult.event;
 
-    // 冪等性を保証してイベントを処理
-    const processingResult = await idempotentProcessor.processWithIdempotency(
-      event.id,
-      event.type,
-      async () => {
-        return await eventHandler.handleEvent(event);
-      },
-      {
-        shouldMark: (r) => {
-          const res = r as WebhookProcessingResult;
-          return res.success === true || res.terminal === true;
-        }
-      }
-    );
+    // DLQ 用のメタデータを確定
+    eventMeta = { id: event.id, type: event.type };
 
-    // 処理結果のログ
-    // processingSuccess は、すでに処理済みかつ結果未反映の場合は未定(undefined)にする
-    const processingSuccessValue =
-      processingResult.wasAlreadyProcessed && !processingResult.result
-        ? undefined
-        : (processingResult.result?.success ?? false);
-
-    await securityReporter.logSecurityEvent({
-      type: 'webhook_processed',
-      details: {
-        eventId: event.id,
-        eventType: event.type,
-        wasAlreadyProcessed: processingResult.wasAlreadyProcessed,
-        processingSuccess: processingSuccessValue
-      }
+    webhookLogger.info('Webhook signature verified', {
+      event_id: event.id,
+      event_type: event.type
     });
 
-    // 処理が失敗した場合
-    const successFlag: boolean = processingResult.result?.success ?? false;
-    if (!successFlag) {
-      // 終端エラーの場合はACK（Stripe再試行を停止）
-      if (processingResult.result?.terminal === true) {
-        return NextResponse.json({
-          received: true,
-          eventId: event.id,
-          eventType: event.type,
-          wasAlreadyProcessed: processingResult.wasAlreadyProcessed,
-          terminal: true,
-          reason: processingResult.result?.reason,
-        });
+    // 受信イベントを pending として即時エンキュー（最小処理）
+    // data.object.id はタイプにより存在しない場合があるため、あれば保存
+    const objectId: string | null = ((): string | null => {
+      const data: unknown = (event as unknown as { data?: unknown }).data;
+      if (!data || typeof data !== 'object') return null;
+      const obj: unknown = (data as { object?: unknown }).object;
+      if (!obj || typeof obj !== 'object') return null;
+      const idVal = (obj as { id?: unknown }).id;
+      return typeof idVal === 'string' && idVal.length > 0 ? idVal : null;
+    })();
+
+    webhookLogger.debug('Enqueueing webhook event for processing', {
+      event_id: event.id,
+      event_type: event.type,
+      object_id: objectId
+    });
+
+    await idempotencyService.enqueueEventForProcessing(
+      event.id,
+      event.type,
+      {
+        stripe_account_id: (event as unknown as { account?: string | null }).account ?? null,
+        stripe_event_created: (event as { created?: number }).created ?? Math.floor(Date.now() / 1000),
+        object_id: objectId,
       }
+    );
+    enqueued = true;
 
-      // ロック未取得・結果未反映の可能性がある場合は短時間ポーリングして結果を待つ
-      if (processingResult.wasAlreadyProcessed) {
-        // ポーリングの設定は環境変数で調整可能
-        const maxWaitMs = Number.parseInt(process.env.WEBHOOK_RESULT_POLL_MAX_MS || "2000", 10);
-        const intervalMs = Number.parseInt(process.env.WEBHOOK_RESULT_POLL_INTERVAL_MS || "100", 10);
-        const start = Date.now();
-        let polled: WebhookProcessingResult | null = null;
-        do {
-          polled = await idempotencyService.getProcessingResult(event.id);
-          const polledSuccess = polled?.success;
-          if (polled?.terminal === true) {
-            return NextResponse.json({
-              received: true,
-              eventId: event.id,
-              eventType: event.type,
-              wasAlreadyProcessed: true,
-              terminal: true,
-              reason: polled.reason,
-            });
-          }
-          if (typeof polledSuccess === 'boolean') {
-            if (polledSuccess === true) {
-              // 他ワーカーが成功で確定させた
-              return NextResponse.json({
-                received: true,
-                eventId: event.id,
-                eventType: event.type,
-                wasAlreadyProcessed: true,
-              });
-            }
-            // 失敗が確定
-            break;
-          }
-          await new Promise((r) => setTimeout(r, intervalMs));
-        } while (Date.now() - start < maxWaitMs);
+    webhookLogger.info('Webhook event enqueued successfully', {
+      event_id: event.id,
+      event_type: event.type,
+      tag: 'enqueueSucceeded'
+    });
 
-        // ここまで来たら結果未反映または失敗。未反映の場合は 409 で Stripe に再試行させる
-        if (!polled || typeof polled.success !== 'boolean') {
-          await securityReporter.logSuspiciousActivity({
-            type: 'webhook_processing_in_progress',
-            details: { eventId: event.id, eventType: event.type, waitedMs: Date.now() - start },
-          });
-          return NextResponse.json(
-            { error: 'Processing in progress, please retry' },
-            { status: 409 }
-          );
-        }
-      }
-      await securityReporter.logSuspiciousActivity({
-        type: 'webhook_processing_failed',
-        details: {
-          eventId: event.id,
-          eventType: event.type,
-          error: processingResult.result?.error,
-          wasAlreadyProcessed: processingResult.wasAlreadyProcessed
-        }
-      });
-
-      return NextResponse.json(
-        {
-          error: 'Webhook processing failed',
-          eventId: event.id,
-          details: processingResult.result?.error
-        },
-        { status: 500 }
-      );
-    }
-
-    // 成功レスポンス
+    // 非同期処理は別ジョブに委譲するため、ここでは即 200 を返す
+    // 参考: https://docs.stripe.com/webhooks#handle-events-asynchronously
     return NextResponse.json({
       received: true,
       eventId: event.id,
       eventType: event.type,
-      wasAlreadyProcessed: processingResult.wasAlreadyProcessed
+      enqueued: true
     });
 
   } catch (error) {
@@ -243,9 +176,36 @@ export async function POST(request: NextRequest) {
       // ログ失敗時は黙って継続
     }
 
-    // フォールバックで標準エラー出力
-    // eslint-disable-next-line no-console
-    console.error('Webhook route error:', error);
+    // フォールバックで構造化ログ出力
+    logger.error('Webhook route error', {
+      tag: 'webhookRouteError',
+      error_name: error instanceof Error ? error.name : 'Unknown',
+      error_message: error instanceof Error ? error.message : String(error),
+      enqueued
+    });
+
+    // enqueue 成功後に発生した例外は 200 を返して Stripe の不要なリトライを防止
+    if (enqueued) {
+      return NextResponse.json({ received: true, enqueued: true });
+    }
+
+    // enqueue 前に失敗している場合は Stripe の自動リトライを促す
+    try {
+      if (securityReporter && eventMeta) {
+        const { idempotencyService: dlqSvc } = createServices();
+        await dlqSvc.markEventFailed(
+          eventMeta.id,
+          eventMeta.type,
+          error instanceof Error ? error.message : 'unexpected_error'
+        );
+      }
+    } catch (dlqError) {
+      logger.error('Failed to record failed webhook event to DLQ', {
+        tag: 'webhookDlqError',
+        original_error: error instanceof Error ? error.message : String(error),
+        dlq_error: dlqError instanceof Error ? dlqError.message : String(dlqError),
+      });
+    }
 
     return NextResponse.json(
       {

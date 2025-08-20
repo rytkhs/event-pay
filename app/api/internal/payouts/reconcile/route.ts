@@ -8,6 +8,7 @@ import { createClient } from "@supabase/supabase-js";
 import { Database } from "@/types/database";
 import { PayoutReconciliationService } from "@/lib/services/payout/reconciliation";
 import { verifyInternalRequest } from "@/lib/security/internal-auth";
+import { logger } from "@/lib/logging/app-logger";
 
 export async function POST(request: NextRequest) {
   try {
@@ -60,7 +61,11 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error("Reconciliation job failed:", error);
+    logger.error('Reconciliation job failed', {
+      tag: 'reconciliationJobFailed',
+      error_name: error instanceof Error ? error.name : 'Unknown',
+      error_message: error instanceof Error ? error.message : String(error)
+    });
 
     return NextResponse.json(
       {
@@ -106,7 +111,11 @@ export async function GET(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error("Reconciliation stats failed:", error);
+    logger.error('Reconciliation stats failed', {
+      tag: 'reconciliationStatsFailed',
+      error_name: error instanceof Error ? error.name : 'Unknown',
+      error_message: error instanceof Error ? error.message : String(error)
+    });
 
     return NextResponse.json(
       {

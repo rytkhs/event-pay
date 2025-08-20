@@ -49,7 +49,7 @@ export interface IPayoutService {
    * @returns 詳細送金金額計算結果
    * @throws PayoutError 計算に失敗した場合
    */
-  calculateDetailedPayoutAmount(eventId: string): Promise<import("./calculation").DetailedPayoutCalculation>;
+  calculateDetailedPayoutAmount(eventId: string): Promise<import("./types").DetailedPayoutCalculation>;
 
   /**
    * 送金履歴を取得する

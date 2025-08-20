@@ -3,7 +3,15 @@
  * 定期実行（cron）で呼び出され、Stripe APIとDB状態を照合・修復する
  */
 
+/* eslint-disable no-console */
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+
+declare const Deno: {
+  env: {
+    get(key: string): string | undefined;
+  };
+  serve(handler: (req: Request) => Promise<Response> | Response): void;
+};
 
 const INTERNAL_API_URL = Deno.env.get("NEXT_PUBLIC_SITE_URL") + "/api/internal/payouts/reconcile";
 const INTERNAL_API_KEY = Deno.env.get("INTERNAL_API_KEY");

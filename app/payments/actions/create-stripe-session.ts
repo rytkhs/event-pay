@@ -3,6 +3,7 @@
 import { SecureSupabaseClientFactory } from "@/lib/security/secure-client-factory.impl";
 import { AdminReason } from "@/lib/security/secure-client-factory.types";
 import { PaymentService, PaymentErrorHandler, PaymentValidator } from "@/lib/services/payment";
+import { isDestinationChargesEnabled } from "@/lib/services/payment/feature-flags";
 import { getTransferGroupForEvent } from "@/lib/utils/stripe";
 import { createRateLimitStore, checkRateLimit } from "@/lib/rate-limit";
 import { RATE_LIMIT_CONFIG } from "@/config/security";
@@ -68,18 +69,18 @@ export async function createStripeSessionAction(
       return createErrorResponse(ERROR_CODES.UNAUTHORIZED, "認証が必要です。");
     }
 
-    // レート制限（ユーザー単位）
+    // 公開エンドポイント用レート制限（ユーザー単位）
     try {
       const store = await createRateLimitStore();
       const rl = await checkRateLimit(
         store,
-        `payment_create_session_${user.id}`,
-        RATE_LIMIT_CONFIG.paymentCreateSession
+        `stripe_checkout_user_${user.id}`,
+        RATE_LIMIT_CONFIG.stripeCheckout
       );
       if (!rl.allowed) {
         return createErrorResponse(
           ERROR_CODES.RATE_LIMIT_EXCEEDED,
-          "レート制限に達しました。しばらく待ってから再試行してください。",
+          "Stripe Checkout セッションの作成回数が上限に達しました。しばらく待ってから再試行してください。",
           rl.retryAfter ? { retryAfter: rl.retryAfter } : undefined
         );
       }
@@ -92,7 +93,7 @@ export async function createStripeSessionAction(
     await validator.validateAttendanceAccess(params.attendanceId, user.id);
     await validator.validatePaymentAmount(params.amount);
 
-    // 最小限のイベント情報を取得（タイトル・fee）
+    // イベント情報とStripe Connect情報を取得
     const { data: attendanceList, error: attendanceError } = await supabase
       .from("attendances")
       .select(
@@ -102,7 +103,12 @@ export async function createStripeSessionAction(
           id,
           title,
           fee,
-          created_by
+          created_by,
+          stripe_connect_accounts (
+            stripe_account_id,
+            charges_enabled,
+            payouts_enabled
+          )
         )
       `
       )
@@ -119,7 +125,18 @@ export async function createStripeSessionAction(
       );
     }
 
-    type EventLite = { id: string; title: string; fee: number | null; created_by: string };
+    type StripeConnectAccount = {
+      stripe_account_id: string;
+      charges_enabled: boolean;
+      payouts_enabled: boolean;
+    };
+    type EventLite = {
+      id: string;
+      title: string;
+      fee: number | null;
+      created_by: string;
+      stripe_connect_accounts: StripeConnectAccount | StripeConnectAccount[] | null;
+    };
     type AttendanceWithEvent = { id: string; events: EventLite | EventLite[] };
     const attendance = attendanceList[0] as unknown as AttendanceWithEvent;
     const eventList = Array.isArray(attendance.events) ? attendance.events : [attendance.events];
@@ -143,16 +160,60 @@ export async function createStripeSessionAction(
     );
     const paymentService = new PaymentService(admin, errorHandler);
 
-    // Separate charges and transfers の推奨: 課金(PaymentIntent)と送金(Transfer)を同一グループで関連付け
+    // Destination charges機能フラグをチェック
+    const shouldUseDestinationCharges = isDestinationChargesEnabled();
+
+    let destinationChargesConfig = undefined;
+
+    if (shouldUseDestinationCharges) {
+      // Stripe Connect アカウント情報を取得
+      const connectAccounts = Array.isArray(event.stripe_connect_accounts)
+        ? event.stripe_connect_accounts
+        : event.stripe_connect_accounts ? [event.stripe_connect_accounts] : [];
+
+      const connectAccount = connectAccounts[0];
+
+      if (!connectAccount) {
+        return createErrorResponse(
+          ERROR_CODES.BUSINESS_RULE_VIOLATION,
+          "このイベントにはStripe Connectアカウントが設定されていません。"
+        );
+      }
+
+      if (!connectAccount.payouts_enabled) {
+        return createErrorResponse(
+          ERROR_CODES.BUSINESS_RULE_VIOLATION,
+          "Stripe Connectアカウントの入金機能 (payouts) が無効化されています。"
+        );
+      }
+
+      // ユーザー情報を取得（Customer作成用）
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("email, display_name")
+        .eq("id", user.id)
+        .single();
+
+      destinationChargesConfig = {
+        destinationAccountId: connectAccount.stripe_account_id,
+        userEmail: profile?.email || user.email,
+        userName: profile?.display_name,
+      };
+    }
+
+    // Transfer Group（両方のフローで使用）
     const transferGroup = getTransferGroupForEvent(event.id);
 
     const result = await paymentService.createStripeSession({
       attendanceId: params.attendanceId,
       amount: params.amount,
+      eventId: event.id,
+      userId: user.id,
       eventTitle: event.title,
       successUrl: params.successUrl,
       cancelUrl: params.cancelUrl,
       transferGroup,
+      destinationCharges: destinationChargesConfig,
     });
 
     return createSuccessResponse({ sessionUrl: result.sessionUrl, sessionId: result.sessionId });

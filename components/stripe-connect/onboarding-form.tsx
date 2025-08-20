@@ -10,6 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Loader2, CreditCard, Shield, Zap } from "lucide-react";
 import { createConnectAccountAction } from "@/app/(dashboard)/actions/stripe-connect";
+import { logger } from "@/lib/logging/app-logger";
 
 interface OnboardingFormProps {
   refreshUrl: string;
@@ -25,7 +26,11 @@ export function OnboardingForm({ refreshUrl, returnUrl }: OnboardingFormProps) {
       // Server Actionを呼び出し（リダイレクトが発生する）
       await createConnectAccountAction(formData);
     } catch (error) {
-      console.error("オンボーディング開始エラー:", error);
+      logger.error("Onboarding start error", {
+        tag: "connectOnboardingStartError",
+        error_name: error instanceof Error ? error.name : "Unknown",
+        error_message: error instanceof Error ? error.message : String(error),
+      });
       setIsLoading(false);
     }
   };

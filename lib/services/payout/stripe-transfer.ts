@@ -320,9 +320,14 @@ export class StripeTransferService {
             // ヘッダー解析に失敗した場合は指数バックオフにフォールバック
           }
 
-          console.warn(
-            `Stripe Transfer作成失敗 (試行 ${attempt + 1}/${this.retryConfig.maxRetries + 1}): ${stripeError.message}. ${delay}ms後に再試行します。`
-          );
+          const { logger } = await import("@/lib/logging/app-logger");
+          logger.warn("Failed to create Stripe Transfer. Retrying", {
+            tag: "stripeTransfer",
+            attempt: attempt + 1,
+            max_attempts: this.retryConfig.maxRetries + 1,
+            delay_ms: delay,
+            error_message: stripeError?.message,
+          });
 
           await this.sleep(delay);
           continue;

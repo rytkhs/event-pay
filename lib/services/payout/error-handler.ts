@@ -39,9 +39,13 @@ export class PayoutErrorHandler implements IPayoutErrorHandler {
       context,
     };
 
-    // TODO: 実際のログシステムとの連携は後で実装
-    // 本番環境では構造化ログとして出力し、監視システムに送信
-    console.error("PayoutError:", JSON.stringify(logData, null, 2));
+    // 本番環境では構造化ログとして出力
+    // 監視システム連携を前提にアプリ共通ロガーを使用
+    const { logger } = await import("@/lib/logging/app-logger");
+    logger.error("PayoutError", {
+      tag: "payout",
+      ...logData,
+    });
   }
 
   /**

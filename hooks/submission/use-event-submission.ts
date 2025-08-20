@@ -4,6 +4,7 @@ import { useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { updateEventAction } from "@/app/events/actions/update-event";
 import { ChangeItem } from "@/components/ui/change-confirmation-dialog";
+import { logger } from "@/lib/logging/app-logger";
 import type { Event, EventFormData } from "@/types/models";
 
 // 型安全なSubmitResult
@@ -71,7 +72,12 @@ export function useEventSubmission({ eventId, onSubmit }: UseEventSubmissionProp
           return { success: false, error: errorMessage };
         }
       } catch (error) {
-        console.error("Update error:", error);
+        logger.error("Event update failed", {
+          tag: "eventUpdate",
+          event_id: eventId,
+          error_name: error instanceof Error ? error.name : "Unknown",
+          error_message: error instanceof Error ? error.message : String(error)
+        });
         const errorMessage = "エラーが発生しました。もう一度お試しください。";
         setErrors({ general: errorMessage });
         return { success: false, error: errorMessage };
@@ -177,12 +183,17 @@ export function useEventSubmission({ eventId, onSubmit }: UseEventSubmissionProp
   // エラーハンドリング
   const handleSubmissionError = useCallback(
     (error: any, setErrors: (errors: FormErrors) => void): SubmitResult => {
-      console.error("Submission error:", error);
+      logger.error("Event submission failed", {
+        tag: "eventSubmission",
+        event_id: eventId,
+        error_name: error instanceof Error ? error.name : "Unknown",
+        error_message: error instanceof Error ? error.message : String(error)
+      });
       const errorMessage = "エラーが発生しました。もう一度お試しください。";
       setErrors({ general: errorMessage });
       return { success: false, error: errorMessage };
     },
-    []
+    [eventId]
   );
 
   // 送信状況の監視

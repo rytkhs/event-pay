@@ -1,12 +1,23 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { generateSecureUuid } from '@/lib/security/crypto';
 
 export async function middleware(request: NextRequest) {
+  // リクエスト相関IDを生成・伝播
+  const requestId = request.headers.get('x-request-id') || generateSecureUuid();
+
+  // リクエストヘッダーに相関IDを追加
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set('x-request-id', requestId);
+
   let response = NextResponse.next({
     request: {
-      headers: request.headers,
+      headers: requestHeaders,
     },
   });
+
+  // レスポンスヘッダーにも相関IDを含める（デバッグ用）
+  response.headers.set('x-request-id', requestId);
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -19,16 +30,18 @@ export async function middleware(request: NextRequest) {
         set(name: string, value: string, options) {
           request.cookies.set({ name, value, ...options });
           response = NextResponse.next({
-            request: { headers: request.headers },
+            request: { headers: requestHeaders },
           });
           response.cookies.set({ name, value, ...options });
+          response.headers.set('x-request-id', requestId);
         },
         remove(name: string, options) {
           request.cookies.set({ name, value: "", ...options });
           response = NextResponse.next({
-            request: { headers: request.headers },
+            request: { headers: requestHeaders },
           });
           response.cookies.set({ name, value: "", ...options });
+          response.headers.set('x-request-id', requestId);
         },
       },
     }

@@ -21,6 +21,7 @@ import {
   DEFAULT_PAYOUT_MAX_CONCURRENCY,
 } from "@/lib/services/payout/constants";
 import { FeeConfigService } from "@/lib/services/fee-config/service";
+import { isDestinationChargesEnabled } from "@/lib/services/payment/feature-flags";
 
 /**
  * 自動送金処理のCronエンドポイント
@@ -35,6 +36,20 @@ async function runPayoutProcessing(request: NextRequest) {
   const startTime = Date.now();
 
   try {
+    // 機能フラグチェック: Destination chargesが有効な場合は自動送金を無効化
+    if (isDestinationChargesEnabled()) {
+      logCronActivity("info", "Cron job skipped: destination charges enabled");
+
+      const data: CronExecutionData = {
+        message: "自動送金は無効化されています。Destination chargesによる自動送金に移行済みです。",
+        updatesCount: 0,
+        skippedCount: 0,
+        processingTime: Date.now() - startTime,
+      };
+
+      return createSuccessResponse(data);
+    }
+
     // 1. 認証チェック
     logCronActivity("info", "Cron job started: process-payouts");
 
