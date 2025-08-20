@@ -254,10 +254,19 @@ export class StripeConnectService implements IStripeConnectService {
       let status: Database["public"]["Enums"]["stripe_account_status_enum"] = "unverified";
       if (account.requirements?.disabled_reason) {
         status = "restricted";
-      } else if (account.details_submitted && account.charges_enabled && account.payouts_enabled) {
-        status = "verified";
-      } else if (account.details_submitted) {
-        status = "onboarding";
+      } else {
+        const transfersCap = (() => {
+          const cap = (account.capabilities as any)?.transfers;
+          if (typeof cap === "string") return cap === "active";
+          if (cap && typeof cap === "object" && "status" in cap) return (cap as any).status === "active";
+          return false;
+        })();
+
+        if (account.details_submitted && transfersCap && account.payouts_enabled) {
+          status = "verified";
+        } else if (account.details_submitted) {
+          status = "onboarding";
+        }
       }
 
       // requirements は undefined の場合や disabled_reason 未設定の場合のキー追加を避ける
@@ -524,9 +533,8 @@ export class StripeConnectService implements IStripeConnectService {
     try {
       const account = await this.getConnectAccountByUser(userId);
       if (!account) return false;
-      const charges = account.charges_enabled ?? false;
       const payouts = account.payouts_enabled ?? false;
-      return account.status === "verified" && charges && payouts;
+      return account.status === "verified" && payouts;
     } catch (error) {
       if (error instanceof StripeConnectError) {
         throw error;

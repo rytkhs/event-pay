@@ -18,8 +18,6 @@ import { getClientIP } from "@/lib/utils/ip-detection";
 import { shouldEnforceStripeWebhookIpCheck, isStripeWebhookIpAllowed } from "@/lib/security/stripe-ip-allowlist";
 import { logger } from '@/lib/logging/app-logger';
 
-const webhookSecrets = getConnectWebhookSecrets();
-
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic'; // Webhookは常に動的処理
 
@@ -61,6 +59,9 @@ export async function POST(request: NextRequest) {
       connectLogger.warn('Connect webhook signature missing');
       return NextResponse.json({ error: "Missing signature" }, { status: 400 });
     }
+
+    // Webhookシークレットはリクエスト単位で取得（ローテーション/テスト環境切替に対応）
+    const webhookSecrets = getConnectWebhookSecrets();
 
     // 共通の署名検証ロジックを使用
     const auditor = new SecurityAuditorImpl();

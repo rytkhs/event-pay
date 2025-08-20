@@ -245,11 +245,11 @@ export class PayoutService implements IPayoutService {
       }
 
       // フェイルセーフ: バリデーション後にアカウント状態が変化していないか再確認
-      // charges_enabled と payouts_enabled の双方が true であることを保証する
-      if (!(connectAccount.charges_enabled && connectAccount.payouts_enabled)) {
+      // Destination Charges では charges_enabled は不要。payouts_enabled が true であることのみ保証する
+      if (!connectAccount.payouts_enabled) {
         throw new PayoutError(
           PayoutErrorType.STRIPE_ACCOUNT_NOT_READY,
-          "Stripe Connectアカウントの決済または送金が有効になっていません"
+          "Stripe Connectアカウントで送金が有効になっていません"
         );
       }
 
