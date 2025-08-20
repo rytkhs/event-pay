@@ -48,7 +48,7 @@ export async function getEventDetailAction(eventId: string) {
         organizer_id:created_by
       `
       )
-      .eq("id", validation.data)
+      .eq("id", validation.data as any)
       .eq("created_by", user.id)
       .maybeSingle();
 

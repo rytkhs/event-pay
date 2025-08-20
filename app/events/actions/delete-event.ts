@@ -37,7 +37,7 @@ export async function deleteEventAction(eventId: string) {
         attendances(id, status)
       `
       )
-      .eq("id", validation.data)
+      .eq("id", validation.data as any)
       .eq("created_by", user.id)
       .maybeSingle();
 
@@ -49,7 +49,7 @@ export async function deleteEventAction(eventId: string) {
     }
 
     // 削除制限チェック
-    const restrictions = checkDeleteRestrictions(event);
+    const restrictions = checkDeleteRestrictions(event as any);
     if (restrictions.length > 0) {
       return {
         success: false,
@@ -64,7 +64,7 @@ export async function deleteEventAction(eventId: string) {
     const { error } = await supabase
       .from("events")
       .delete()
-      .eq("id", validation.data)
+      .eq("id", validation.data as any)
       .eq("created_by", user.id);
 
     if (error) {

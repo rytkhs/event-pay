@@ -65,6 +65,9 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
         case "charge.refund.created":
           return await this.handleRefundCreated(event as unknown as Stripe.RefundCreatedEvent);
 
+        case "refund.failed":
+          return await this.handleRefundFailed(event as unknown as Stripe.Event);
+
         case "checkout.session.completed": {
           const session = event.data.object as Stripe.Checkout.Session;
           // 支払い確定は PaymentIntent/Charge のイベントで行う。ここでは突合用IDを保存する。
@@ -125,6 +128,96 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
               details: { eventId: event.id, sessionId, paymentId: payment.id, paymentIntentId: paymentIntentId ?? undefined },
             });
             return { success: true };
+          } catch (e) {
+            throw (e instanceof Error ? e : new Error("Unknown error"));
+          }
+        }
+        // Checkout セッションが有効期限切れ（離脱など）
+        case "checkout.session.expired": {
+          const session = event.data.object as Stripe.Checkout.Session;
+          try {
+            const sessionId: string = session.id;
+            const rawPi = (session as unknown as { payment_intent?: unknown }).payment_intent;
+            const paymentIntentId: string | null = typeof rawPi === "string" && rawPi.length > 0 ? rawPi : null;
+
+            // 突合順序:
+            // 1) stripe_checkout_session_id（Destination charges）
+            // 2) stripe_session_id（従来フロー）
+            // 3) metadata.payment_id フォールバック
+            let payment: Database["public"]["Tables"]["payments"]["Row"] | null = null;
+            {
+              const { data } = await this.supabase
+                .from("payments")
+                .select("*")
+                .eq("stripe_checkout_session_id", sessionId)
+                .maybeSingle();
+              payment = data ?? null;
+            }
+            if (!payment) {
+              const { data } = await this.supabase
+                .from("payments")
+                .select("*")
+                .eq("stripe_session_id", sessionId)
+                .maybeSingle();
+              payment = data ?? null;
+            }
+            if (!payment) {
+              const paymentIdFromMetadata: string | null = ((): string | null => {
+                const md = (session as unknown as { metadata?: Record<string, unknown> | null })?.metadata ?? null;
+                const raw = md && (md as Record<string, unknown>)["payment_id"];
+                return typeof raw === "string" && raw.length > 0 ? raw : null;
+              })();
+              if (paymentIdFromMetadata) {
+                const { data } = await this.supabase
+                  .from("payments")
+                  .select("*")
+                  .eq("id", paymentIdFromMetadata)
+                  .maybeSingle();
+                payment = data ?? null;
+              }
+            }
+
+            if (!payment) {
+              await this.securityReporter.logSecurityEvent({
+                type: "webhook_checkout_expired_no_payment",
+                details: { eventId: event.id, sessionId },
+              });
+              return { success: true };
+            }
+
+            // 既に failed 以上（paid/refunded等も含む）なら冪等的にスキップ
+            if (!canPromoteStatus(payment.status as Database["public"]["Enums"]["payment_status_enum"], "failed")) {
+              await this.securityReporter.logSecurityEvent({
+                type: "webhook_duplicate_processing_prevented",
+                details: { eventId: event.id, paymentId: payment.id, currentStatus: payment.status },
+              });
+              return { success: true };
+            }
+
+            const updatePayload: Partial<Database["public"]["Tables"]["payments"]["Update"]> = {
+              status: "failed",
+              webhook_event_id: event.id,
+              webhook_processed_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+              stripe_checkout_session_id: sessionId,
+            };
+            if (paymentIntentId) {
+              (updatePayload as { stripe_payment_intent_id?: string }).stripe_payment_intent_id = paymentIntentId;
+            }
+
+            const { error: updateError } = await this.supabase
+              .from("payments")
+              .update(updatePayload)
+              .eq("id", payment.id);
+            if (updateError) {
+              throw new Error(`Failed to update payment on checkout.session.expired: ${updateError.message}`);
+            }
+
+            await this.securityReporter.logSecurityEvent({
+              type: "webhook_checkout_expired_processed",
+              details: { eventId: event.id, paymentId: payment.id, sessionId, paymentIntentId: paymentIntentId ?? undefined },
+            });
+            return { success: true, eventId: event.id, paymentId: payment.id };
           } catch (e) {
             throw (e instanceof Error ? e : new Error("Unknown error"));
           }
@@ -387,7 +480,7 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
     const charge = event.data.object;
     const stripePaymentIntentId: string | null = (charge as { payment_intent?: string | null }).payment_intent ?? null;
     try {
-      let payment: any | null = null;
+      let payment: Database["public"]["Tables"]["payments"]["Row"] | null = null;
       {
         const { data, error: fetchError } = stripePaymentIntentId
           ? await this.supabase.from("payments").select("*").eq("stripe_payment_intent_id", stripePaymentIntentId).maybeSingle()
@@ -450,7 +543,7 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
     try {
       // 支払レコードの特定
       const stripePaymentIntentId: string | null = (charge as { payment_intent?: string | null }).payment_intent ?? null;
-      let payment: any | null = null;
+      let payment: Database["public"]["Tables"]["payments"]["Row"] | null = null;
       {
         const { data } = stripePaymentIntentId
           ? await this.supabase.from("payments").select("*").eq("stripe_payment_intent_id", stripePaymentIntentId).maybeSingle()
@@ -552,12 +645,134 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
     event: Stripe.RefundUpdatedEvent
   ): Promise<WebhookProcessingResult> {
     const refund = event.data.object as Stripe.Refund;
-    // 中間状態の同期のみ（最終は charge.refunded）
+    const status: string | undefined = (refund as { status?: string }).status;
+
+    // ログは常に記録
     await this.securityReporter.logSecurityEvent({
       type: "webhook_refund_updated_seen",
-      details: { eventId: event.id, refundId: refund.id, status: refund.status },
+      details: { eventId: event.id, refundId: refund.id, status },
     });
+
+    // 返金がキャンセル/失敗に遷移した場合は、集計値を同期し直す（巻き戻しを許可）
+    if (status === "canceled" || status === "failed") {
+      const chargeId = (refund as { charge?: string | null })?.charge ?? null;
+      if (typeof chargeId === "string" && chargeId.length > 0) {
+        try {
+          await this.syncRefundAggregateByChargeId(chargeId, event.id, /*allowDemotion*/ true);
+        } catch (e) {
+          // 集計同期失敗はDLQ再試行対象にするため例外を投げる
+          throw (e instanceof Error ? e : new Error("Failed to resync refund aggregate on refund.updated"));
+        }
+      }
+    }
+
     return { success: true };
+  }
+
+  // refund.failed を受け、返金集計を再同期（必要ならステータスの巻き戻しを許可）
+  private async handleRefundFailed(
+    event: Stripe.Event
+  ): Promise<WebhookProcessingResult> {
+    const refund = (event as { data?: { object?: unknown } }).data?.object as Stripe.Refund | undefined;
+    if (!refund) {
+      await this.securityReporter.logSecurityEvent({
+        type: "webhook_refund_failed_no_object",
+        details: { eventId: event.id },
+      });
+      return { success: true };
+    }
+
+    const chargeId = (refund as { charge?: string | null })?.charge ?? null;
+    await this.securityReporter.logSecurityEvent({
+      type: "webhook_refund_failed_seen",
+      details: { eventId: event.id, refundId: refund.id, chargeId },
+    });
+
+    if (typeof chargeId === "string" && chargeId.length > 0) {
+      await this.syncRefundAggregateByChargeId(chargeId, event.id, /*allowDemotion*/ true);
+    }
+    return { success: true };
+  }
+
+  // 指定した chargeId の最新状態をStripeから取得し、paymentsの返金集計とステータスを同期
+  // allowDemotion=true のとき、全額返金でない場合に status=refunded からの巻き戻しを許可する
+  private async syncRefundAggregateByChargeId(
+    chargeId: string,
+    eventId: string,
+    allowDemotion = false
+  ): Promise<void> {
+    // 最新のChargeを取得
+    const charge = await sharedStripe.charges.retrieve(chargeId);
+    await this.applyRefundAggregateFromCharge(charge as Stripe.Charge, eventId, allowDemotion);
+  }
+
+  // Chargeスナップショットから返金集計をDBへ反映
+  private async applyRefundAggregateFromCharge(
+    charge: Stripe.Charge,
+    eventId: string,
+    allowDemotion = false
+  ): Promise<void> {
+    const stripePaymentIntentId: string | null = (charge as { payment_intent?: string | null }).payment_intent ?? null;
+    let payment: Database["public"]["Tables"]["payments"]["Row"] | null = null;
+    {
+      const { data } = stripePaymentIntentId
+        ? await this.supabase.from("payments").select("*").eq("stripe_payment_intent_id", stripePaymentIntentId).maybeSingle()
+        : await this.supabase.from("payments").select("*").eq("stripe_charge_id", charge.id).maybeSingle();
+      payment = data ?? null;
+    }
+    if (!payment) {
+      await this.securityReporter.logSecurityEvent({ type: "refund_resync_no_payment", details: { eventId, chargeId: charge.id } });
+      return;
+    }
+
+    const totalRefunded = typeof charge.amount_refunded === "number" ? charge.amount_refunded : 0;
+
+    // Application Fee の累積返金額を再計算
+    let applicationFeeRefundedAmount = 0;
+    let applicationFeeRefundId: string | null = null;
+    try {
+      const paymentWithFee = payment as unknown as { application_fee_id?: string | null };
+      if (paymentWithFee?.application_fee_id) {
+        const afrList = await sharedStripe.applicationFees.listRefunds(paymentWithFee.application_fee_id, { limit: 100 });
+        const items = (afrList.data ?? []) as Stripe.FeeRefund[];
+        applicationFeeRefundedAmount = items.reduce((sum: number, cur: Stripe.FeeRefund) => sum + (cur.amount ?? 0), 0);
+        applicationFeeRefundId = items.length > 0 ? items[items.length - 1].id : null;
+      }
+    } catch {
+      /* noop */
+    }
+
+    // 目標ステータス: 全額返金であれば refunded。未満なら現状維持。ただし allowDemotion=true かつ現状refundedなら paid に戻す
+    let targetStatus = payment.status as Database["public"]["Enums"]["payment_status_enum"];
+    if (totalRefunded >= payment.amount) {
+      targetStatus = "refunded" as Database["public"]["Enums"]["payment_status_enum"];
+    } else if (allowDemotion && targetStatus === "refunded") {
+      // もともと全額返金扱いだったが、失敗/取消で全額でなくなったケースを巻き戻す
+      targetStatus = "paid" as Database["public"]["Enums"]["payment_status_enum"];
+    }
+
+    const { error } = await this.supabase
+      .from("payments")
+      .update({
+        status: targetStatus,
+        refunded_amount: totalRefunded,
+        application_fee_refund_id: applicationFeeRefundId,
+        application_fee_refunded_amount: applicationFeeRefundedAmount,
+        webhook_event_id: eventId,
+        webhook_processed_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        ...(stripePaymentIntentId ? { stripe_payment_intent_id: stripePaymentIntentId } : {}),
+        stripe_charge_id: charge.id,
+      })
+      .eq("id", payment.id);
+    if (error) {
+      throw new Error(`Failed to resync payment on refund change: ${error.message}`);
+    }
+
+    await this.securityReporter.logSecurityEvent({
+      type: "refund_resynced_from_charge",
+      details: { eventId, paymentId: payment.id, totalRefunded, targetStatus },
+    });
   }
 
   private async handleApplicationFeeRefunded(
@@ -857,7 +1072,7 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
 
     try {
       // 決済レコードを検索（PI → metadata.payment_id フォールバック）
-      let payment: any | null = null;
+      let payment: Database["public"]["Tables"]["payments"]["Row"] | null = null;
       {
         const { data, error: fetchError } = await this.supabase
           .from("payments")
@@ -1024,7 +1239,7 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
 
     try {
       // 決済レコードを検索（PI → metadata.payment_id フォールバック）
-      let payment: any | null = null;
+      let payment: Database["public"]["Tables"]["payments"]["Row"] | null = null;
       {
         const { data, error: fetchError } = await this.supabase
           .from("payments")
@@ -1114,7 +1329,7 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
     const paymentIntent = event.data.object;
     const stripePaymentIntentId = paymentIntent.id;
     try {
-      let payment: any | null = null;
+      let payment: Database["public"]["Tables"]["payments"]["Row"] | null = null;
       const { data: byPi, error: fetchError } = await this.supabase
         .from("payments")
         .select("*")
