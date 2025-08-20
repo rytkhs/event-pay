@@ -180,10 +180,10 @@ export async function createStripeSessionAction(
         );
       }
 
-      if (!connectAccount.charges_enabled) {
+      if (!connectAccount.payouts_enabled) {
         return createErrorResponse(
           ERROR_CODES.BUSINESS_RULE_VIOLATION,
-          "Stripe Connectアカウントで決済が有効化されていません。"
+          "Stripe Connectアカウントの入金機能 (payouts) が無効化されています。"
         );
       }
 
