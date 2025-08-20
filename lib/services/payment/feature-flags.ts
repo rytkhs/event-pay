@@ -18,6 +18,6 @@ export function isDestinationChargesEnabled(): boolean {
  */
 export function getFeatureFlagStatus() {
   return {
-    useDestinationCharges: isDestinationChargesEnabled(),
+    isDestinationChargesEnabled: isDestinationChargesEnabled(),
   };
 }

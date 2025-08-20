@@ -198,7 +198,6 @@ export async function createStripeSessionAction(
         destinationAccountId: connectAccount.stripe_account_id,
         userEmail: profile?.email || user.email,
         userName: profile?.display_name,
-        setupFutureUsage: 'off_session' as const,
       };
     }
 

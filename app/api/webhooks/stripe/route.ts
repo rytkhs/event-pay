@@ -201,7 +201,13 @@ export async function POST(request: NextRequest) {
           );
         }
       }
-    } catch { /* noop */ }
+    } catch (dlqError) {
+      logger.error('Failed to record failed webhook event to DLQ', {
+        tag: 'webhookDlqError',
+        original_error: error instanceof Error ? error.message : String(error),
+        dlq_error: dlqError instanceof Error ? dlqError.message : String(dlqError),
+      });
+    }
 
     return NextResponse.json(
       {

@@ -26,6 +26,7 @@ import {
 } from "./types";
 import { ERROR_HANDLING_BY_TYPE } from "./error-mapping";
 import { logger } from "@/lib/logging/app-logger";
+import { PostgrestError } from "@supabase/supabase-js";
 
 /**
  * PaymentServiceの実装クラス
@@ -88,7 +89,7 @@ export class PaymentService implements IPaymentService {
       const existing = existingCount === 1 ? existingList![0] : null;
       if (existing) {
         const status = existing.status as PaymentStatus;
-        if (["paid", "received", "completed"].includes(status)) {
+        if (["paid", "received", "completed", "refunded"].includes(status)) {
           throw new PaymentError(
             PaymentErrorType.PAYMENT_ALREADY_EXISTS,
             "この参加に対する決済は既に完了済みです"
@@ -105,6 +106,7 @@ export class PaymentService implements IPaymentService {
             stripe_payment_intent_id: null,
             // 旧セッションIDは明示的に一旦nullにしてから新規をセット（障害時解析性の向上）
             stripe_session_id: null,
+            stripe_checkout_session_id: null,
           })
           .eq("id", existing.id);
 
@@ -148,7 +150,7 @@ export class PaymentService implements IPaymentService {
             }
 
             const dupStatus = dupExisting.status as PaymentStatus;
-            if (["paid", "received", "completed"].includes(dupStatus)) {
+            if (["paid", "received", "completed", "refunded"].includes(dupStatus)) {
               throw new PaymentError(
                 PaymentErrorType.PAYMENT_ALREADY_EXISTS,
                 "この参加に対する決済は既に完了済みです",
@@ -164,6 +166,7 @@ export class PaymentService implements IPaymentService {
                 status: "pending",
                 stripe_payment_intent_id: null,
                 stripe_session_id: null,
+                stripe_checkout_session_id: null,
               })
               .eq("id", dupExisting.id as string);
 
@@ -215,6 +218,7 @@ export class PaymentService implements IPaymentService {
         // Destination charges用のCheckout Session作成
         session = await createDestinationCheckoutSession({
           eventId: params.eventId,
+          eventTitle: params.eventTitle,
           amount: params.amount,
           destinationAccountId,
           platformFeeAmount: feeCalculation.applicationFeeAmount,
@@ -230,33 +234,47 @@ export class PaymentService implements IPaymentService {
           setupFutureUsage,
         });
 
-        // DBにDestination charges関連情報を保存
-        const { error: updateDestinationError } = await this.supabase
-          .from("payments")
-          .update({
-            stripe_checkout_session_id: session.id,
-            destination_account_id: destinationAccountId,
-            application_fee_amount: feeCalculation.applicationFeeAmount,
-            transfer_group: `event_${params.eventId}_payout`,
-            stripe_customer_id: customerId,
-          })
-          .eq("id", targetPaymentId);
+        // --- DB に Destination charges 関連情報を保存 (リトライ付き) ---
+        const updateDestinationPayload = {
+          stripe_checkout_session_id: session.id,
+          destination_account_id: destinationAccountId,
+          application_fee_amount: feeCalculation.applicationFeeAmount,
+          transfer_group: `event_${params.eventId}_payout`,
+          stripe_customer_id: customerId,
+        } as const;
 
-        if (updateDestinationError) {
-          await this.errorHandler.logError(
-            new PaymentError(
-              PaymentErrorType.DATABASE_ERROR,
-              `Failed to update payment record with destination charges data: ${updateDestinationError.message}`,
-              updateDestinationError as unknown as Error
-            ),
-            {
-              operation: "updateDestinationChargesData",
-              paymentId: targetPaymentId,
-              sessionId: session.id,
-              destinationAccountId,
-              applicationFeeAmount: feeCalculation.applicationFeeAmount,
-            }
+        const MAX_DB_UPDATE_RETRIES = 3;
+        let lastDbError: PostgrestError | null = null;
+        for (let i = 0; i < MAX_DB_UPDATE_RETRIES; i++) {
+          const { error: updateErr } = await this.supabase
+            .from("payments")
+            .update(updateDestinationPayload)
+            .eq("id", targetPaymentId);
+
+          if (!updateErr) {
+            lastDbError = null;
+            break; // success
+          }
+          lastDbError = updateErr;
+          // 短い間隔で再試行 (指数バックオフ不要な軽量処理)
+          await new Promise((r) => setTimeout(r, 100 * (i + 1)));
+        }
+
+        if (lastDbError) {
+          const dbError = new PaymentError(
+            PaymentErrorType.DATABASE_ERROR,
+            `Failed to update payment record with destination charges data after retries: ${lastDbError.message}`,
+            lastDbError as unknown as Error
           );
+          await this.errorHandler.logError(dbError, {
+            operation: "updateDestinationChargesData",
+            paymentId: targetPaymentId,
+            sessionId: session.id,
+            destinationAccountId,
+            applicationFeeAmount: feeCalculation.applicationFeeAmount,
+          });
+          // 決済整合性のために処理を中断
+          throw dbError;
         }
 
         logger.info("Destination charges session created", {
@@ -322,24 +340,36 @@ export class PaymentService implements IPaymentService {
 
       // 従来フローの場合のみセッションIDを更新（Destination chargesの場合は上記で更新済み）
       if (!params.destinationCharges) {
-        const { error: updateError } = await this.supabase
-          .from("payments")
-          .update({
-            stripe_session_id: session.id,
-          })
-          .eq("id", targetPaymentId);
+        // --- 従来フロー: Checkout Session ID を保存 (リトライ付き) ---
+        const MAX_DB_UPDATE_RETRIES = 3;
+        let lastDbError2: PostgrestError | null = null;
+        for (let i = 0; i < MAX_DB_UPDATE_RETRIES; i++) {
+          const { error: updateErr } = await this.supabase
+            .from("payments")
+            .update({ stripe_session_id: session.id })
+            .eq("id", targetPaymentId);
 
-        if (updateError) {
-          // セッションは作成されたが、DBの更新に失敗した場合はハンドラに記録
-          await this.errorHandler.logError(
-            new PaymentError(
-              PaymentErrorType.DATABASE_ERROR,
-              `Failed to update payment record with session ID: ${updateError.message}`,
-              updateError as unknown as Error
-            ),
-            { operation: "updateStripeSessionId", paymentId: targetPaymentId, sessionId: session.id }
+          if (!updateErr) {
+            lastDbError2 = null;
+            break;
+          }
+          lastDbError2 = updateErr;
+          await new Promise((r) => setTimeout(r, 100 * (i + 1)));
+        }
+
+        if (lastDbError2) {
+          const dbError = new PaymentError(
+            PaymentErrorType.DATABASE_ERROR,
+            `Failed to update payment record with session ID after retries: ${lastDbError2.message}`,
+            lastDbError2 as unknown as Error
           );
-          // セッションは有効なので処理は続行
+          await this.errorHandler.logError(dbError, {
+            operation: "updateStripeSessionId",
+            paymentId: targetPaymentId,
+            sessionId: session.id,
+          });
+          // DB と Stripe の整合性が取れないため処理を中断し、UI には再試行を促す
+          throw dbError;
         }
       }
 
