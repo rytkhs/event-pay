@@ -199,8 +199,7 @@ export class ConnectWebhookHandler {
       };
 
       // アカウント認証完了の通知
-      if (oldStatus !== 'verified' && accountInfo.status === 'verified' &&
-        accountInfo.chargesEnabled && accountInfo.payoutsEnabled) {
+      if (oldStatus !== 'verified' && accountInfo.status === 'verified' && accountInfo.payoutsEnabled) {
 
         await this.notificationService.sendAccountVerifiedNotification(baseNotificationData);
         logger.info('Account verified notification sent', {

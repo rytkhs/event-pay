@@ -1,17 +1,22 @@
 import Stripe from "stripe";
 import { logger } from "@/lib/logging/app-logger";
 
-// 環境変数の検証
-const requiredEnvVars = {
+// サーバーサイドで必須となる環境変数のみチェックする
+const serverRequiredEnvVars = {
   STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY,
-  NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY,
 } as const;
 
-// 環境変数の存在チェック（環境・テスト問わず必須）
-for (const [key, value] of Object.entries(requiredEnvVars)) {
+for (const [key, value] of Object.entries(serverRequiredEnvVars)) {
   if (!value) {
     throw new Error(`Missing required environment variable: ${key}`);
   }
+}
+
+// Publishable Key はクライアント用。サーバー専用プロセスでは未設定でも動作させる。
+if (!process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY) {
+  logger.warn("NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY is not set – client-side Stripe.js may fail to initialize", {
+    tag: "stripeEnvCheck",
+  });
 }
 
 // Stripeクライアントの初期化（Destination charges対応）
@@ -31,7 +36,12 @@ export const stripe = new Stripe(stripeSecretKey, {
 
 // We'll insert event hooks once to avoid duplicate registration in hot reload environments.
 const hasRegisteredHooks = (global as unknown as { __stripeHooks?: boolean }).__stripeHooks;
-if (!hasRegisteredHooks) {
+
+// 本番ではログを抑制。必要なときだけ `STRIPE_LOG_VERBOSE=true` を設定して有効化する
+const shouldEnableStripeLogging =
+  process.env.NODE_ENV !== "production" || process.env.STRIPE_LOG_VERBOSE === "true";
+
+if (!hasRegisteredHooks && shouldEnableStripeLogging) {
   (global as unknown as { __stripeHooks?: boolean }).__stripeHooks = true;
 
   // Stripe request hook
@@ -100,7 +110,7 @@ export const getConnectWebhookSecrets = (): string[] => {
 // Stripe設定の取得
 export const stripeConfig = {
   secretKey: process.env.STRIPE_SECRET_KEY!,
-  publishableKey: process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!,
+  publishableKey: process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || "",
   appUrl: process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000",
 } as const;
 

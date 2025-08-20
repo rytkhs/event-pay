@@ -221,12 +221,6 @@ export class PayoutValidator implements IPayoutValidator {
         );
       }
 
-      if (!connectAccount.charges_enabled) {
-        throw new PayoutError(
-          PayoutErrorType.STRIPE_ACCOUNT_NOT_READY,
-          "Stripe Connectアカウントで決済受取が有効になっていません。"
-        );
-      }
 
       if (!connectAccount.payouts_enabled) {
         throw new PayoutError(
@@ -465,9 +459,7 @@ export class PayoutValidator implements IPayoutValidator {
             result.reasons.push("Stripe Connectアカウントの認証が完了していません");
           }
 
-          if (!connectAccount.charges_enabled) {
-            result.reasons.push("Stripe Connectアカウントで決済受取が有効になっていません");
-          }
+          // charges_enabled は Destination Charges では必須ではないためスキップ
 
           if (!connectAccount.payouts_enabled) {
             result.reasons.push("Stripe Connectアカウントで送金が有効になっていません");
