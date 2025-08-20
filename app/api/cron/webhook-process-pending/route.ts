@@ -49,6 +49,7 @@ export async function GET(request: NextRequest) {
     "payment_intent.canceled",
     "charge.dispute.created",
     "charge.dispute.closed",
+    "charge.dispute.funds_reinstated",
   ]);
 
   for (const row of pending ?? []) {
