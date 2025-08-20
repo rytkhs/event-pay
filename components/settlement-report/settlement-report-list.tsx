@@ -242,8 +242,11 @@ export function SettlementReportList({
             <Button
               onClick={() => {
                 // 新しい検索は常に 1 ページ目から
-                setFilters((prev) => ({ ...prev, offset: 0 }));
-                handleSearch({ offset: 0 });
+                setFilters((prev) => {
+                  const next = { ...prev, offset: 0 };
+                  void handleSearch(next);
+                  return next;
+                });
               }}
               disabled={loading}
             >
@@ -306,8 +309,11 @@ export function SettlementReportList({
             disabled={filters.offset === 0}
             onClick={() => {
               const newOffset = Math.max(0, filters.offset - filters.limit);
-              setFilters((prev) => ({ ...prev, offset: newOffset }));
-              handleSearch({ offset: newOffset });
+              setFilters((prev) => {
+                const next = { ...prev, offset: newOffset };
+                void handleSearch(next);
+                return next;
+              });
             }}
           >
             前のページ
@@ -316,8 +322,11 @@ export function SettlementReportList({
             variant="outline"
             onClick={() => {
               const newOffset = filters.offset + filters.limit;
-              setFilters((prev) => ({ ...prev, offset: newOffset }));
-              handleSearch({ offset: newOffset });
+              setFilters((prev) => {
+                const next = { ...prev, offset: newOffset };
+                void handleSearch(next);
+                return next;
+              });
             }}
           >
             次のページ
