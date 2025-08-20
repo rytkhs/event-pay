@@ -24,6 +24,8 @@ export interface SettlementReportData {
   totalPaymentCount: number     // 総決済件数（Stripe）
   refundedCount: number         // 返金件数
   totalRefundedAmount: number   // 返金額合計
+  disputeCount: number          // Dispute件数
+  totalDisputedAmount: number   // Dispute金額合計
 
   // 設定
   settlementMode: SettlementMode
@@ -50,6 +52,8 @@ export interface SettlementReportCsvRow {
   totalPaymentCount: number
   refundedCount: number
   totalRefundedAmount: number
+  disputeCount: number
+  totalDisputedAmount: number
 
   // メタデータ
   settlementMode: string
@@ -109,6 +113,8 @@ export interface RpcSettlementReportRow {
   total_stripe_sales: number;
   total_stripe_fee: number;
   total_application_fee: number;
+  total_disputed_amount: number;
+  dispute_count: number;
   net_payout_amount: number;
   payment_count: number;
   refunded_count: number;
@@ -132,6 +138,8 @@ export interface GenerateSettlementReportRpcRow {
   total_stripe_sales: number;
   total_stripe_fee: number;
   total_application_fee: number;
+  total_disputed_amount: number;
+  dispute_count: number;
   net_payout_amount: number;
   payment_count: number;
   refunded_count: number;

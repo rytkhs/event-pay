@@ -93,6 +93,8 @@ export class SettlementReportService {
         totalPaymentCount: data.payment_count,
         refundedCount: data.refunded_count,
         totalRefundedAmount: data.total_refunded_amount,
+        disputeCount: data.dispute_count,
+        totalDisputedAmount: data.total_disputed_amount,
 
         settlementMode: data.settlement_mode as 'destination_charge',
         status: 'completed',
@@ -190,6 +192,8 @@ export class SettlementReportService {
         totalPaymentCount: row.payment_count,
         refundedCount: row.refunded_count,
         totalRefundedAmount: row.total_refunded_amount,
+        disputeCount: row.dispute_count,
+        totalDisputedAmount: row.total_disputed_amount,
 
         settlementMode: row.settlement_mode,
         status: 'completed',
@@ -231,6 +235,8 @@ export class SettlementReportService {
         totalPaymentCount: report.totalPaymentCount,
         refundedCount: report.refundedCount,
         totalRefundedAmount: report.totalRefundedAmount,
+        disputeCount: report.disputeCount,
+        totalDisputedAmount: report.totalDisputedAmount,
         settlementMode: report.settlementMode,
         transferGroup: report.transferGroup,
         stripeAccountId: report.stripeAccountId
@@ -249,6 +255,8 @@ export class SettlementReportService {
         '決済件数',
         '返金件数',
         '返金額合計',
+        'Dispute件数',
+        'Dispute金額合計',
         '決済方式',
         'Transfer Group',
         'Stripe Account ID'
@@ -268,6 +276,8 @@ export class SettlementReportService {
           row.totalPaymentCount,
           row.refundedCount,
           row.totalRefundedAmount,
+          row.disputeCount,
+          row.totalDisputedAmount,
           row.settlementMode,
           row.transferGroup,
           row.stripeAccountId

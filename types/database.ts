@@ -209,14 +209,14 @@ export type Database = {
         Insert: {
           id?: number
           is_tax_included?: boolean
-          max_platform_fee: number
+          max_platform_fee?: number
           min_payout_amount?: number
-          min_platform_fee: number
-          platform_fee_rate: number
-          platform_fixed_fee: number
+          min_platform_fee?: number
+          platform_fee_rate?: number
+          platform_fixed_fee?: number
           platform_tax_rate?: number
-          stripe_base_rate: number
-          stripe_fixed_fee: number
+          stripe_base_rate?: number
+          stripe_fixed_fee?: number
           updated_at?: string
         }
         Update: {
@@ -350,6 +350,65 @@ export type Database = {
           },
         ]
       }
+      payment_disputes: {
+        Row: {
+          amount: number
+          charge_id: string | null
+          closed_at: string | null
+          created_at: string
+          currency: string
+          evidence_due_by: string | null
+          id: string
+          payment_id: string | null
+          payment_intent_id: string | null
+          reason: string | null
+          status: string
+          stripe_account_id: string | null
+          stripe_dispute_id: string
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          charge_id?: string | null
+          closed_at?: string | null
+          created_at?: string
+          currency?: string
+          evidence_due_by?: string | null
+          id?: string
+          payment_id?: string | null
+          payment_intent_id?: string | null
+          reason?: string | null
+          status: string
+          stripe_account_id?: string | null
+          stripe_dispute_id: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          charge_id?: string | null
+          closed_at?: string | null
+          created_at?: string
+          currency?: string
+          evidence_due_by?: string | null
+          id?: string
+          payment_id?: string | null
+          payment_intent_id?: string | null
+          reason?: string | null
+          status?: string
+          stripe_account_id?: string | null
+          stripe_dispute_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_disputes_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "payments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       payments: {
         Row: {
           amount: number
@@ -368,6 +427,7 @@ export type Database = {
           paid_at: string | null
           refunded_amount: number
           status: Database["public"]["Enums"]["payment_status_enum"]
+          stripe_account_id: string | null
           stripe_balance_transaction_id: string | null
           stripe_charge_id: string | null
           stripe_checkout_session_id: string | null
@@ -375,8 +435,10 @@ export type Database = {
           stripe_payment_intent_id: string | null
           stripe_session_id: string | null
           stripe_transfer_id: string | null
+          stripe_transfer_reversal_id: string | null
           tax_included: boolean
           transfer_group: string | null
+          transfer_reversed_amount: number
           updated_at: string
           webhook_event_id: string | null
           webhook_processed_at: string | null
@@ -398,6 +460,7 @@ export type Database = {
           paid_at?: string | null
           refunded_amount?: number
           status?: Database["public"]["Enums"]["payment_status_enum"]
+          stripe_account_id?: string | null
           stripe_balance_transaction_id?: string | null
           stripe_charge_id?: string | null
           stripe_checkout_session_id?: string | null
@@ -405,8 +468,10 @@ export type Database = {
           stripe_payment_intent_id?: string | null
           stripe_session_id?: string | null
           stripe_transfer_id?: string | null
+          stripe_transfer_reversal_id?: string | null
           tax_included?: boolean
           transfer_group?: string | null
+          transfer_reversed_amount?: number
           updated_at?: string
           webhook_event_id?: string | null
           webhook_processed_at?: string | null
@@ -428,6 +493,7 @@ export type Database = {
           paid_at?: string | null
           refunded_amount?: number
           status?: Database["public"]["Enums"]["payment_status_enum"]
+          stripe_account_id?: string | null
           stripe_balance_transaction_id?: string | null
           stripe_charge_id?: string | null
           stripe_checkout_session_id?: string | null
@@ -435,8 +501,10 @@ export type Database = {
           stripe_payment_intent_id?: string | null
           stripe_session_id?: string | null
           stripe_transfer_id?: string | null
+          stripe_transfer_reversal_id?: string | null
           tax_included?: boolean
           transfer_group?: string | null
+          transfer_reversed_amount?: number
           updated_at?: string
           webhook_event_id?: string | null
           webhook_processed_at?: string | null
@@ -505,6 +573,7 @@ export type Database = {
       payouts: {
         Row: {
           created_at: string
+          dispute_count: number
           event_id: string
           generated_at: string | null
           id: string
@@ -520,6 +589,7 @@ export type Database = {
           status: Database["public"]["Enums"]["payout_status_enum"]
           stripe_account_id: string
           stripe_transfer_id: string | null
+          total_disputed_amount: number
           total_stripe_fee: number
           total_stripe_sales: number
           transfer_group: string | null
@@ -530,6 +600,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          dispute_count?: number
           event_id: string
           generated_at?: string | null
           id?: string
@@ -545,6 +616,7 @@ export type Database = {
           status?: Database["public"]["Enums"]["payout_status_enum"]
           stripe_account_id: string
           stripe_transfer_id?: string | null
+          total_disputed_amount?: number
           total_stripe_fee?: number
           total_stripe_sales?: number
           transfer_group?: string | null
@@ -555,6 +627,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          dispute_count?: number
           event_id?: string
           generated_at?: string | null
           id?: string
@@ -570,6 +643,7 @@ export type Database = {
           status?: Database["public"]["Enums"]["payout_status_enum"]
           stripe_account_id?: string
           stripe_transfer_id?: string | null
+          total_disputed_amount?: number
           total_stripe_fee?: number
           total_stripe_sales?: number
           transfer_group?: string | null
@@ -940,10 +1014,6 @@ export type Database = {
       }
     }
     Functions: {
-      acquire_payout_scheduler_lock: {
-        Args: Record<PropertyKey, never>
-        Returns: boolean
-      }
       calc_payout_amount: {
         Args: { p_event_id: string }
         Returns: {
@@ -963,9 +1033,7 @@ export type Database = {
         Returns: number
       }
       calc_total_stripe_fee: {
-        Args:
-          | { p_base_rate?: number; p_event_id: string }
-          | { p_base_rate?: number; p_event_id: string; p_fixed_fee?: number }
+        Args: { p_base_rate?: number; p_event_id: string; p_fixed_fee?: number }
         Returns: number
       }
       cleanup_expired_scheduler_locks: {
@@ -990,16 +1058,6 @@ export type Database = {
       clear_test_guest_token: {
         Args: Record<PropertyKey, never>
         Returns: undefined
-      }
-      create_attendance_with_validation: {
-        Args: {
-          p_email: string
-          p_event_id: string
-          p_guest_token: string
-          p_nickname: string
-          p_status: Database["public"]["Enums"]["attendance_status_enum"]
-        }
-        Returns: string
       }
       create_payment_record: {
         Args: {
@@ -1044,10 +1102,9 @@ export type Database = {
         }[]
       }
       find_eligible_events_with_details: {
-        Args:
-          | { p_days_after_event?: number; p_limit?: number }
-          | { p_limit?: number; p_minimum_amount?: number; p_skip?: number }
+        Args: { p_days_after_event?: number; p_limit?: number }
         Returns: {
+          charges_enabled: boolean
           created_at: string
           created_by: string
           eligible: boolean
@@ -1070,7 +1127,32 @@ export type Database = {
       }
       generate_settlement_report: {
         Args: { p_event_id: string; p_organizer_id: string }
-        Returns: string
+        Returns: {
+          already_exists: boolean
+          dispute_count: number
+          event_date: string
+          event_id: string
+          event_title: string
+          generated_at: string
+          net_payout_amount: number
+          organizer_id: string
+          payment_count: number
+          refunded_count: number
+          report_id: string
+          settlement_mode: string
+          stripe_account_id: string
+          total_application_fee: number
+          total_disputed_amount: number
+          total_refunded_amount: number
+          total_stripe_fee: number
+          total_stripe_sales: number
+          transfer_group: string
+          updated_at: string
+        }[]
+      }
+      get_enum_values: {
+        Args: { enum_name: string }
+        Returns: string[]
       }
       get_event_creator_name: {
         Args: { p_creator_id: string }
@@ -1118,6 +1200,7 @@ export type Database = {
           p_to_date?: string
         }
         Returns: {
+          dispute_count: number
           event_date: string
           event_id: string
           event_title: string
@@ -1130,6 +1213,7 @@ export type Database = {
           status: Database["public"]["Enums"]["payout_status_enum"]
           stripe_account_id: string
           total_application_fee: number
+          total_disputed_amount: number
           total_refunded_amount: number
           total_stripe_fee: number
           total_stripe_sales: number
@@ -1139,6 +1223,13 @@ export type Database = {
       hash_guest_token: {
         Args: { token: string }
         Returns: string
+      }
+      list_all_enums: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          enum_name: string
+          enum_values: string[]
+        }[]
       }
       log_security_event: {
         Args: { p_details: Json; p_event_type: string }

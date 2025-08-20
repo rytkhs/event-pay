@@ -78,6 +78,8 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
 
         case "charge.dispute.created":
         case "charge.dispute.closed":
+        case "charge.dispute.updated":
+        case "charge.dispute.funds_reinstated":
           return await this.handleDisputeEvent(event as Stripe.ChargeDisputeCreatedEvent | Stripe.ChargeDisputeClosedEvent);
 
         // Transfer関連イベントで payouts テーブルを同期
@@ -507,14 +509,14 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
   }
 
   private async handleDisputeEvent(
-    event: Stripe.ChargeDisputeCreatedEvent | Stripe.ChargeDisputeClosedEvent
+    event: Stripe.Event
   ): Promise<WebhookProcessingResult> {
     const dispute = event.data.object as Stripe.Dispute;
     await this.securityReporter.logSecurityEvent({
       type: "webhook_dispute_event",
       details: { eventId: event.id, disputeId: dispute.id, status: dispute.status, type: event.type },
     });
-    // Dispute 対象の支払を推定し、清算の再生成を実行
+    // Dispute 対象の支払を推定し、DB保存/更新 + 必要に応じてTransferリバーサル/再転送を実行
     try {
       const chargeId: string | null = ((): string | null => {
         const raw = (dispute as unknown as { charge?: unknown }).charge;
@@ -526,6 +528,7 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
       })();
 
       let payment: unknown | null = null;
+      let paymentId: string | null = null;
       if (piId) {
         const { data } = await this.supabase
           .from("payments")
@@ -533,6 +536,7 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
           .eq("stripe_payment_intent_id", piId)
           .maybeSingle();
         payment = data ?? null;
+        paymentId = (data as { id?: string } | null)?.id ?? null;
       }
       if (!payment && chargeId) {
         const { data } = await this.supabase
@@ -541,6 +545,134 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
           .eq("stripe_charge_id", chargeId)
           .maybeSingle();
         payment = data ?? null;
+        paymentId = (data as { id?: string } | null)?.id ?? null;
+      }
+
+      // Dispute記録を保存/更新
+      try {
+        const currency: string | undefined = (dispute as unknown as { currency?: string }).currency;
+        const reason: string | undefined = (dispute as unknown as { reason?: string }).reason;
+        const evidenceDueByUnix: number | undefined = (dispute as unknown as { evidence_details?: { due_by?: number } })?.evidence_details?.due_by as unknown as number | undefined;
+
+        const disputeUpsert: Database["public"]["Tables"]["payment_disputes"]["Insert"] = {
+          payment_id: paymentId ?? null,
+          stripe_dispute_id: dispute.id,
+          charge_id: chargeId ?? null,
+          payment_intent_id: piId ?? null,
+          amount: typeof (dispute as { amount?: number }).amount === "number" ? (dispute as { amount?: number }).amount! : 0,
+          currency: (currency || "jpy").toLowerCase(),
+          reason: reason ?? null,
+          status: (dispute as { status?: string }).status || "needs_response",
+          evidence_due_by: evidenceDueByUnix ? new Date(evidenceDueByUnix * 1000).toISOString() : null,
+          stripe_account_id: (event as unknown as { account?: string | null }).account ?? null,
+          updated_at: new Date().toISOString(),
+          closed_at: event.type === "charge.dispute.closed" ? new Date().toISOString() : null,
+        };
+
+        await this.supabase
+          .from("payment_disputes")
+          .upsert([disputeUpsert], { onConflict: "stripe_dispute_id" });
+      } catch (e) {
+        await this.securityReporter.logSecurityEvent({
+          type: "dispute_upsert_failed",
+          details: { eventId: event.id, disputeId: dispute.id, error: e instanceof Error ? e.message : "unknown" },
+        });
+      }
+
+      // created: Connect destination chargesでは、プラットフォーム口座から引かれるため、connected側へのtransferを一時的に戻す
+      if (event.type === "charge.dispute.created" && payment) {
+        const paymentRecord = payment as {
+          id: string;
+          stripe_transfer_id?: string | null;
+          stripe_transfer_reversal_id?: string | null;
+          transfer_reversed_amount?: number | null;
+        };
+        const transferId = paymentRecord?.stripe_transfer_id ?? null;
+        if (transferId) {
+          const disputeAmount = typeof (dispute as { amount?: number }).amount === "number" ? (dispute as { amount?: number }).amount! : 0;
+
+          /*
+           * 冪等性強化: reversal 実行直前に transfer_reversed_amount を再読込。
+           * 並列 Webhook 実行や Stripe 再送により既に reversal 済みの可能性を排除する。
+           */
+          const { data: latestPayment } = await this.supabase
+            .from("payments")
+            .select("transfer_reversed_amount")
+            .eq("id", paymentRecord.id)
+            .maybeSingle();
+
+          const currentReversed = Math.max(0, (latestPayment as { transfer_reversed_amount?: number })?.transfer_reversed_amount ?? 0);
+
+          const toReverse = Math.max(0, disputeAmount - currentReversed);
+
+          if (toReverse > 0) {
+            try {
+              const reversal = await sharedStripe.transfers.createReversal(
+                transferId,
+                { amount: toReverse },
+                { idempotencyKey: `dispute_reversal_${dispute.id}` }
+              );
+              await this.supabase
+                .from("payments")
+                .update({
+                  stripe_transfer_reversal_id: (reversal as { id?: string }).id ?? paymentRecord.stripe_transfer_reversal_id ?? null,
+                  transfer_reversed_amount: currentReversed + toReverse,
+                  updated_at: new Date().toISOString(),
+                })
+                .eq("id", paymentRecord.id);
+
+              await this.securityReporter.logSecurityEvent({
+                type: "transfer_reversal_created",
+                details: { eventId: event.id, paymentId: paymentRecord.id, transferId, reversalAmount: toReverse },
+              });
+            } catch (e) {
+              await this.securityReporter.logSecurityEvent({
+                type: "transfer_reversal_failed",
+                details: { eventId: event.id, paymentId: paymentRecord.id, transferId, error: e instanceof Error ? e.message : "unknown" },
+              });
+            }
+          }
+        }
+      }
+
+      // closed & won: 以前のリバーサル分を再転送
+      if (payment && (dispute.status === "won")) {
+        const paymentRecord = payment as {
+          id: string;
+          destination_account_id?: string | null;
+          transfer_group?: string | null;
+          transfer_reversed_amount?: number | null;
+        };
+        const destination = paymentRecord?.destination_account_id ?? null;
+        const reversedAmount = Math.max(0, paymentRecord?.transfer_reversed_amount ?? 0);
+        if (destination && reversedAmount > 0) {
+          const currency: string = ((dispute as unknown as { currency?: string }).currency || "jpy").toLowerCase();
+          try {
+            const newTransfer = await sharedStripe.transfers.create(
+              {
+                amount: reversedAmount,
+                currency,
+                destination,
+                transfer_group: paymentRecord.transfer_group ?? undefined,
+                metadata: { purpose: "retransfer_after_dispute_won", dispute_id: dispute.id },
+              },
+              { idempotencyKey: `dispute_retransfer_${dispute.id}` }
+            );
+            await this.supabase
+              .from("payments")
+              .update({ transfer_reversed_amount: 0, updated_at: new Date().toISOString() })
+              .eq("id", paymentRecord.id);
+            await this.securityReporter.logSecurityEvent({
+              type: "transfer_retransfer_created",
+              details: { eventId: event.id, paymentId: paymentRecord.id, destination, retransferId: (newTransfer as { id?: string }).id, amount: reversedAmount },
+            });
+          } catch (e) {
+            await this.securityReporter.logSecurityEvent({
+              type: "transfer_retransfer_failed",
+              details: { eventId: event.id, paymentId: paymentRecord.id, destination, error: e instanceof Error ? e.message : "unknown" },
+            });
+          }
+        }
       }
       if (payment) {
         try { await this.regenerateSettlementSnapshotFromPayment(payment); } catch { /* noop */ }
