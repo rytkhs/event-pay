@@ -7,6 +7,14 @@ const mockStripe = {
   webhooks: {
     constructEvent: jest.fn(),
   },
+  errors: {
+    StripeSignatureVerificationError: class extends Error {
+      constructor(message: string) {
+        super(message);
+        this.name = "StripeSignatureVerificationError";
+      }
+    },
+  },
 } as unknown as Stripe;
 
 // SecurityReporterのモック
@@ -87,7 +95,7 @@ describe("StripeWebhookSignatureVerifier", () => {
 
       // SDK が tolerance 超過で失敗するケースを模擬
       (mockStripe.webhooks.constructEvent as jest.Mock).mockImplementation(() => {
-        throw new Error("tolerance exceeded");
+        throw new mockStripe.errors.StripeSignatureVerificationError("tolerance exceeded");
       });
 
       const result = await verifier.verifySignature({
@@ -97,7 +105,7 @@ describe("StripeWebhookSignatureVerifier", () => {
 
       expect(result.isValid).toBe(false);
       expect(result.event).toBeUndefined();
-      expect(result.error).toBe("tolerance exceeded");
+      expect(result.error).toBe("invalid_signature");
       expect(mockSecurityReporter.logSuspiciousActivity).toHaveBeenCalledWith({
         type: "webhook_timestamp_invalid",
         details: {
@@ -112,7 +120,7 @@ describe("StripeWebhookSignatureVerifier", () => {
     });
 
     it("無効な署名で検証が失敗する", async () => {
-      const error = new Error("Invalid signature");
+      const error = new mockStripe.errors.StripeSignatureVerificationError("Invalid signature");
       (mockStripe.webhooks.constructEvent as jest.Mock).mockImplementation(() => {
         throw error;
       });
@@ -124,7 +132,7 @@ describe("StripeWebhookSignatureVerifier", () => {
 
       expect(result.isValid).toBe(false);
       expect(result.event).toBeUndefined();
-      expect(result.error).toBe("Invalid signature");
+      expect(result.error).toBe("invalid_signature");
       expect(mockSecurityReporter.logSuspiciousActivity).toHaveBeenCalledWith({
         type: "webhook_signature_invalid",
         details: {
@@ -137,7 +145,7 @@ describe("StripeWebhookSignatureVerifier", () => {
 
     it("署名が提供されていない場合の処理", async () => {
       (mockStripe.webhooks.constructEvent as jest.Mock).mockImplementation(() => {
-        throw new Error("Missing Stripe-Signature header");
+        throw new mockStripe.errors.StripeSignatureVerificationError("Missing Stripe-Signature header");
       });
 
       const result = await verifier.verifySignature({
@@ -146,6 +154,7 @@ describe("StripeWebhookSignatureVerifier", () => {
       });
 
       expect(result.isValid).toBe(false);
+      expect(result.error).toBe("invalid_signature");
       expect(mockSecurityReporter.logSuspiciousActivity).toHaveBeenCalledWith({
         type: "webhook_signature_invalid",
         details: {

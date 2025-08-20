@@ -83,26 +83,39 @@ export class StripeWebhookSignatureVerifier implements WebhookSignatureVerifier 
       throw lastError ?? new Error("Signature verification failed");
     } catch (error) {
       const message = error instanceof Error ? error.message : "Signature verification failed";
-      // SDK のエラーメッセージに tolerance 超過が含まれている場合は分類を切り替える
-      const isTimestampOutOfRange = typeof message === "string" && /tolerance|timestamp/i.test(message);
 
-      if (isTimestampOutOfRange) {
-        const nowSec = Math.floor(Date.now() / 1000);
-        const deltaSec = Math.abs(nowSec - parsedTimestamp);
-        await this.securityReporter.logSuspiciousActivity({
-          type: "webhook_timestamp_invalid",
-          details: {
-            error: "Timestamp outside tolerance",
-            timestamp: parsedTimestamp,
-            currentTime: nowSec,
-            age: deltaSec,
-            maxAge: this.maxTimestampAge,
-            signatureProvided: !!signature,
-          },
-        });
+      if (error instanceof Stripe.errors.StripeSignatureVerificationError) {
+        // SDK のエラーメッセージに tolerance 超過が含まれている場合は分類を切り替える
+        const isTimestampOutOfRange = /tolerance|timestamp/i.test(message);
+
+        if (isTimestampOutOfRange) {
+          const nowSec = Math.floor(Date.now() / 1000);
+          const deltaSec = Math.abs(nowSec - parsedTimestamp);
+          await this.securityReporter.logSuspiciousActivity({
+            type: "webhook_timestamp_invalid",
+            details: {
+              error: "Timestamp outside tolerance",
+              timestamp: parsedTimestamp,
+              currentTime: nowSec,
+              age: deltaSec,
+              maxAge: this.maxTimestampAge,
+              signatureProvided: !!signature,
+            },
+          });
+        } else {
+          await this.securityReporter.logSuspiciousActivity({
+            type: "webhook_signature_invalid",
+            details: {
+              error: message,
+              timestamp: parsedTimestamp,
+              signatureProvided: !!signature,
+            },
+          });
+        }
       } else {
+        // Stripe SDK 以外の予期しないエラー。分類を変更して冗長ログを防ぐ。
         await this.securityReporter.logSuspiciousActivity({
-          type: "webhook_signature_invalid",
+          type: "webhook_processing_error",
           details: {
             error: message,
             timestamp: parsedTimestamp,
@@ -113,7 +126,7 @@ export class StripeWebhookSignatureVerifier implements WebhookSignatureVerifier 
 
       return {
         isValid: false,
-        error: message,
+        error: "invalid_signature",
       };
     }
   }

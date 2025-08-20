@@ -25,7 +25,14 @@ export async function retryWithIdempotency<T>(
       const isIdempo409 =
         err.code === "idempotency_key_in_use" || err.statusCode === 409;
 
-      if (!isIdempo409 || attempt === maxRetries) {
+      // ネットワーク切断・TLS reset など Stripe SDK が返す ConnectionError 系
+      // 例) StripeConnectionError, StripeConnectionTimeoutError, StripeAPIConnectionError
+      const isConnectionErr =
+        typeof err.type === "string" && err.type.endsWith("ConnectionError");
+
+      const shouldRetry = isIdempo409 || isConnectionErr;
+
+      if (!shouldRetry || attempt === maxRetries) {
         throw error; // 他エラー、またはリトライ上限超過
       }
 
@@ -33,6 +40,7 @@ export async function retryWithIdempotency<T>(
         attempt: attempt + 1,
         delay_ms: delay,
         message: err.message,
+        error_type: err.type,
       });
 
       await new Promise((res) => setTimeout(res, delay + Math.random() * 100));

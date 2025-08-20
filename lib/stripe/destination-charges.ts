@@ -6,12 +6,14 @@
 import Stripe from 'stripe';
 import { stripe, generateIdempotencyKey, createStripeRequestOptions } from './client';
 import { retryWithIdempotency } from './idempotency-retry';
+import { randomUUID } from 'crypto';
 
 /**
  * Destination charges用のCheckout Session作成パラメータ
  */
 export interface CreateDestinationCheckoutParams {
   eventId: string;
+  eventTitle: string; // イベント名
   amount: number; // JPY, integer
   destinationAccountId: string; // acct_...
   platformFeeAmount: number; // 算出済み（円）
@@ -47,6 +49,7 @@ export async function createDestinationCheckoutSession(
 ): Promise<Stripe.Checkout.Session> {
   const {
     eventId,
+    eventTitle,
     amount,
     destinationAccountId,
     platformFeeAmount,
@@ -57,9 +60,17 @@ export async function createDestinationCheckoutSession(
     metadata = {},
     setupFutureUsage,
   } = params;
+  // --- Safety guard ------------------------------------------------------
+  // application_fee_amount は決済金額を超えてはならない（Stripe API 制約）。
+  if (platformFeeAmount >= amount) {
+    throw new Error(
+      `application_fee_amount (${platformFeeAmount}) must be less than amount (${amount}).`
+    );
+  }
 
   // Idempotency Key生成 (amount/currency を含めて重複防止)
-  const idempotencyKey = generateIdempotencyKey('checkout', eventId, userId, {
+  // userId と destinationAccountId の組み合わせで衝突を防止
+  const idempotencyKey = generateIdempotencyKey('checkout', eventId, `${userId}:${destinationAccountId}`, {
     amount,
     currency: 'jpy',
   });
@@ -85,8 +96,8 @@ export async function createDestinationCheckoutSession(
               currency: 'jpy',
               unit_amount: amount,
               product_data: {
-                name: `Event ${eventId} participation fee`,
-                description: `EventPay - Event ${eventId}`,
+                name: eventTitle,
+                description: `EventPay - ${eventTitle}`,
               },
             },
             quantity: 1,
@@ -97,6 +108,7 @@ export async function createDestinationCheckoutSession(
         cancel_url: cancelUrl,
         // Destination charges設定
         payment_intent_data: {
+          on_behalf_of: destinationAccountId,
           transfer_data: {
             destination: destinationAccountId,
           },
@@ -134,9 +146,16 @@ export async function createDestinationPaymentIntent(
     metadata = {},
     setupFutureUsage,
   } = params;
+  // --- Safety guard ------------------------------------------------------
+  if (platformFeeAmount >= amount) {
+    throw new Error(
+      `application_fee_amount (${platformFeeAmount}) must be less than amount (${amount}).`
+    );
+  }
 
   // Idempotency Key生成 (amount/currency を含めて重複防止)
-  const idempotencyKey = generateIdempotencyKey('payment_intent', eventId, userId, {
+  // userId と destinationAccountId の組み合わせで衝突を防止
+  const idempotencyKey = generateIdempotencyKey('payment_intent', eventId, `${userId}:${destinationAccountId}`, {
     amount,
     currency: 'jpy',
   });
@@ -160,6 +179,7 @@ export async function createDestinationPaymentIntent(
         confirmation_method: confirmationMethod,
         confirm,
         // Destination charges設定
+        on_behalf_of: destinationAccountId,
         transfer_data: {
           destination: destinationAccountId,
         },
@@ -186,6 +206,7 @@ export interface CreateDestinationRefundParams {
   reason?: Stripe.RefundCreateParams.Reason;
   reverseTransfer?: boolean; // デフォルト: true
   refundApplicationFee?: boolean; // デフォルト: true
+  refundId?: string;
   metadata?: Record<string, string>;
 }
 
@@ -198,6 +219,7 @@ export async function createDestinationRefund(
     reason,
     reverseTransfer = true,
     refundApplicationFee = true,
+    refundId: providedRefundId,
     metadata = {},
   } = params;
 
@@ -217,9 +239,20 @@ export async function createDestinationRefund(
     refundParams.reason = reason;
   }
 
-  // Idempotency-Key 生成
-  const amountKey = amount !== undefined ? amount.toString() : 'full';
-  const idempotencyKey = generateIdempotencyKey('refund', `pi_${paymentIntentId}`, amountKey);
+  // Refund ID生成（優先順位: providedRefundId > metadata.refund_id > 新しいUUID）
+  // 再試行時の安全性を確保するため、常に同じrefundIdに対して同じidempotency keyを生成
+  const refundId: string =
+    providedRefundId ||
+    (metadata?.refund_id as string | undefined) ||
+    randomUUID();
+
+  // metadata に refund_id を必ず含める
+  refundParams.metadata = {
+    ...metadata,
+    refund_id: refundId,
+  };
+
+  const idempotencyKey = generateIdempotencyKey('refund', paymentIntentId, refundId);
 
   const createRefund = () =>
     stripe.refunds.create(refundParams, createStripeRequestOptions(idempotencyKey));
@@ -234,6 +267,7 @@ export interface CreateDestinationRefundByChargeParams {
   reason?: Stripe.RefundCreateParams.Reason;
   reverseTransfer?: boolean; // デフォルト: true
   refundApplicationFee?: boolean; // デフォルト: true
+  refundId?: string; // 再試行時の安全性を確保するため、呼び出し元から指定可能
   metadata?: Record<string, string>;
 }
 
@@ -246,6 +280,7 @@ export async function createDestinationRefundByCharge(
     reason,
     reverseTransfer = true,
     refundApplicationFee = true,
+    refundId: providedRefundId,
     metadata = {},
   } = params;
 
@@ -263,8 +298,20 @@ export async function createDestinationRefundByCharge(
     refundParams.reason = reason;
   }
 
-  const amountKey = amount !== undefined ? amount.toString() : 'full';
-  const idempotencyKey = generateIdempotencyKey('refund', `ch_${chargeId}`, amountKey);
+  // Refund ID生成（優先順位: providedRefundId > metadata.refund_id > 新しいUUID）
+  // 再試行時の安全性を確保するため、常に同じrefundIdに対して同じidempotency keyを生成
+  const refundId: string =
+    providedRefundId ||
+    (metadata?.refund_id as string | undefined) ||
+    randomUUID();
+
+  // metadata に refund_id を必ず含める
+  refundParams.metadata = {
+    ...metadata,
+    refund_id: refundId,
+  };
+
+  const idempotencyKey = generateIdempotencyKey('refund', chargeId, refundId);
 
   const createRefund = () =>
     stripe.refunds.create(refundParams, createStripeRequestOptions(idempotencyKey));
@@ -303,6 +350,7 @@ export async function createDestinationRefundLatestCharge(
       reason,
       reverseTransfer,
       refundApplicationFee,
+      refundId: params.refundId,
       metadata,
     });
   }

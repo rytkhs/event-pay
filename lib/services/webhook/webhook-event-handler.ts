@@ -60,7 +60,70 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
         case "refund.created":
           return await this.handleRefundCreated(event as Stripe.RefundCreatedEvent);
 
-        case "checkout.session.completed":
+        case "checkout.session.completed": {
+          const session = event.data.object as Stripe.Checkout.Session;
+          // 支払い確定は PaymentIntent/Charge のイベントで行う。ここでは突合用IDを保存する。
+          try {
+            const sessionId: string = session.id;
+            const rawPi = (session as unknown as { payment_intent?: unknown }).payment_intent;
+            const paymentIntentId: string | null = typeof rawPi === "string" && rawPi.length > 0 ? rawPi : null;
+            const paymentIdFromMetadata: string | null = ((): string | null => {
+              const md = (session as unknown as { metadata?: Record<string, unknown> | null })?.metadata ?? null;
+              const raw = md && (md as Record<string, unknown>)["payment_id"];
+              return typeof raw === "string" && raw.length > 0 ? raw : null;
+            })();
+
+            if (!paymentIdFromMetadata) {
+              await this.securityReporter.logSecurityEvent({
+                type: "webhook_checkout_completed_missing_payment_id",
+                details: { eventId: event.id, sessionId },
+              });
+              return { success: true };
+            }
+
+            const { data: payment, error: fetchError } = await this.supabase
+              .from("payments")
+              .select("id, stripe_payment_intent_id")
+              .eq("id", paymentIdFromMetadata)
+              .maybeSingle();
+
+            if (fetchError) {
+              throw new Error(`Payment lookup failed on checkout.session.completed: ${fetchError.message}`);
+            }
+
+            if (!payment) {
+              await this.securityReporter.logSecurityEvent({
+                type: "webhook_checkout_completed_payment_not_found",
+                details: { eventId: event.id, sessionId, paymentIdFromMetadata },
+              });
+              return { success: true };
+            }
+
+            const updatePayload: Partial<Database["public"]["Tables"]["payments"]["Update"]> = {
+              stripe_checkout_session_id: sessionId,
+              updated_at: new Date().toISOString(),
+            };
+            if (paymentIntentId) {
+              (updatePayload as { stripe_payment_intent_id?: string }).stripe_payment_intent_id = paymentIntentId;
+            }
+
+            const { error: updateError } = await this.supabase
+              .from("payments")
+              .update(updatePayload)
+              .eq("id", payment.id);
+            if (updateError) {
+              throw new Error(`Failed to update payment on checkout.session.completed: ${updateError.message}`);
+            }
+
+            await this.securityReporter.logSecurityEvent({
+              type: "webhook_checkout_completed_updated",
+              details: { eventId: event.id, sessionId, paymentId: payment.id, paymentIntentId: paymentIntentId ?? undefined },
+            });
+            return { success: true };
+          } catch (e) {
+            throw (e instanceof Error ? e : new Error("Unknown error"));
+          }
+        }
         case "checkout.session.async_payment_succeeded":
         case "checkout.session.async_payment_failed": {
           await this.securityReporter.logSecurityEvent({
@@ -227,12 +290,32 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
       }
 
       if (!payment) {
-        // 関連レコードがない場合もACK（将来の再同期に委譲）
-        await this.securityReporter.logSecurityEvent({
-          type: "webhook_charge_no_payment_record",
-          details: { eventId: event.id, chargeId: charge.id, payment_intent: stripePaymentIntentId ?? undefined },
-        });
-        return { success: true };
+        // フォールバック: metadata.payment_id で突合
+        const paymentIdFromMetadata: string | null = ((): string | null => {
+          const md = (charge as unknown as { metadata?: Record<string, unknown> | null })?.metadata ?? null;
+          const raw = md && (md as Record<string, unknown>)["payment_id"];
+          return typeof raw === "string" && raw.length > 0 ? raw : null;
+        })();
+
+        if (paymentIdFromMetadata) {
+          const { data: byId } = await this.supabase
+            .from("payments")
+            .select("*")
+            .eq("id", paymentIdFromMetadata)
+            .maybeSingle();
+          if (byId) {
+            payment = byId;
+          }
+        }
+
+        if (!payment) {
+          // 関連レコードがない場合もACK（将来の再同期に委譲）
+          await this.securityReporter.logSecurityEvent({
+            type: "webhook_charge_no_payment_record",
+            details: { eventId: event.id, chargeId: charge.id, payment_intent: stripePaymentIntentId ?? undefined },
+          });
+          return { success: true };
+        }
       }
 
       // 既に同等以上の状態なら冪等
@@ -268,6 +351,8 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
           webhook_event_id: event.id,
           webhook_processed_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
+          // 可能であれば Stripe PI を保存
+          ...(stripePaymentIntentId ? { stripe_payment_intent_id: stripePaymentIntentId } : {}),
         })
         .eq("id", payment.id);
 
@@ -292,11 +377,31 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
     const charge = event.data.object;
     const stripePaymentIntentId: string | null = (charge as { payment_intent?: string | null }).payment_intent ?? null;
     try {
-      const { data: payment, error: fetchError } = stripePaymentIntentId
-        ? await this.supabase.from("payments").select("*").eq("stripe_payment_intent_id", stripePaymentIntentId).maybeSingle()
-        : await this.supabase.from("payments").select("*").eq("stripe_charge_id", charge.id).maybeSingle();
-      if (fetchError) {
-        throw new Error(`Payment record not found: ${fetchError.message}`);
+      let payment: any | null = null;
+      {
+        const { data, error: fetchError } = stripePaymentIntentId
+          ? await this.supabase.from("payments").select("*").eq("stripe_payment_intent_id", stripePaymentIntentId).maybeSingle()
+          : await this.supabase.from("payments").select("*").eq("stripe_charge_id", charge.id).maybeSingle();
+        if (fetchError) {
+          throw new Error(`Payment record lookup failed: ${fetchError.message}`);
+        }
+        payment = data ?? null;
+      }
+      if (!payment) {
+        // フォールバック: metadata.payment_id
+        const paymentIdFromMetadata: string | null = ((): string | null => {
+          const md = (charge as unknown as { metadata?: Record<string, unknown> | null })?.metadata ?? null;
+          const raw = md && (md as Record<string, unknown>)["payment_id"];
+          return typeof raw === "string" && raw.length > 0 ? raw : null;
+        })();
+        if (paymentIdFromMetadata) {
+          const { data: byId } = await this.supabase
+            .from("payments")
+            .select("*")
+            .eq("id", paymentIdFromMetadata)
+            .maybeSingle();
+          payment = byId ?? null;
+        }
       }
       if (!payment) {
         await this.securityReporter.logSecurityEvent({ type: "webhook_charge_failed_no_payment", details: { eventId: event.id, chargeId: charge.id } });
@@ -313,6 +418,8 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
           webhook_event_id: event.id,
           webhook_processed_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
+          ...(stripePaymentIntentId ? { stripe_payment_intent_id: stripePaymentIntentId } : {}),
+          stripe_charge_id: (charge as { id: string }).id,
         })
         .eq("id", payment.id);
       if (updateError) {
@@ -333,9 +440,29 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
     try {
       // 支払レコードの特定
       const stripePaymentIntentId: string | null = (charge as { payment_intent?: string | null }).payment_intent ?? null;
-      const { data: payment } = stripePaymentIntentId
-        ? await this.supabase.from("payments").select("*").eq("stripe_payment_intent_id", stripePaymentIntentId).maybeSingle()
-        : await this.supabase.from("payments").select("*").eq("stripe_charge_id", charge.id).maybeSingle();
+      let payment: any | null = null;
+      {
+        const { data } = stripePaymentIntentId
+          ? await this.supabase.from("payments").select("*").eq("stripe_payment_intent_id", stripePaymentIntentId).maybeSingle()
+          : await this.supabase.from("payments").select("*").eq("stripe_charge_id", charge.id).maybeSingle();
+        payment = data ?? null;
+      }
+      if (!payment) {
+        // フォールバック: metadata.payment_id
+        const paymentIdFromMetadata: string | null = ((): string | null => {
+          const md = (charge as unknown as { metadata?: Record<string, unknown> | null })?.metadata ?? null;
+          const raw = md && (md as Record<string, unknown>)["payment_id"];
+          return typeof raw === "string" && raw.length > 0 ? raw : null;
+        })();
+        if (paymentIdFromMetadata) {
+          const { data: byId } = await this.supabase
+            .from("payments")
+            .select("*")
+            .eq("id", paymentIdFromMetadata)
+            .maybeSingle();
+          payment = byId ?? null;
+        }
+      }
 
       if (!payment) {
         await this.securityReporter.logSecurityEvent({ type: "webhook_charge_refunded_no_payment", details: { eventId: event.id, chargeId: charge.id } });
@@ -380,6 +507,8 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
           webhook_event_id: event.id,
           webhook_processed_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
+          ...(stripePaymentIntentId ? { stripe_payment_intent_id: stripePaymentIntentId } : {}),
+          stripe_charge_id: charge.id,
         })
         .eq("id", payment.id);
       if (updateError) {
@@ -717,19 +846,43 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
     const stripePaymentIntentId = paymentIntent.id;
 
     try {
-      // 決済レコードを検索
-      const { data: payment, error: fetchError } = await this.supabase
-        .from("payments")
-        .select("*")
-        .eq("stripe_payment_intent_id", stripePaymentIntentId)
-        .single();
-
-      if (fetchError) {
-        throw new Error(`Payment record not found: ${fetchError.message}`);
+      // 決済レコードを検索（PI → metadata.payment_id フォールバック）
+      let payment: any | null = null;
+      {
+        const { data, error: fetchError } = await this.supabase
+          .from("payments")
+          .select("*")
+          .eq("stripe_payment_intent_id", stripePaymentIntentId)
+          .maybeSingle();
+        if (fetchError) {
+          throw new Error(`Payment record lookup failed: ${fetchError.message}`);
+        }
+        payment = data ?? null;
       }
 
       if (!payment) {
-        throw new Error(`Payment record not found for payment_intent: ${stripePaymentIntentId}`);
+        const paymentIdFromMetadata: string | null = ((): string | null => {
+          const md = (paymentIntent as unknown as { metadata?: Record<string, unknown> | null })?.metadata ?? null;
+          const raw = md && (md as Record<string, unknown>)["payment_id"];
+          return typeof raw === "string" && raw.length > 0 ? raw : null;
+        })();
+
+        if (paymentIdFromMetadata) {
+          const { data } = await this.supabase
+            .from("payments")
+            .select("*")
+            .eq("id", paymentIdFromMetadata)
+            .maybeSingle();
+          payment = data ?? null;
+        }
+      }
+
+      if (!payment) {
+        await this.securityReporter.logSecurityEvent({
+          type: "webhook_payment_intent_no_payment_record",
+          details: { eventId: event.id, payment_intent: stripePaymentIntentId },
+        });
+        return { success: true };
       }
 
       // 金額・通貨の整合性チェック（通貨はプラットフォーム既定のJPY想定）
@@ -791,6 +944,7 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
           webhook_event_id: event.id,
           webhook_processed_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
+          stripe_payment_intent_id: stripePaymentIntentId,
         })
         .eq("id", payment.id);
 
@@ -859,19 +1013,40 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
     const stripePaymentIntentId = paymentIntent.id;
 
     try {
-      // 決済レコードを検索
-      const { data: payment, error: fetchError } = await this.supabase
-        .from("payments")
-        .select("*")
-        .eq("stripe_payment_intent_id", stripePaymentIntentId)
-        .single();
-
-      if (fetchError) {
-        throw new Error(`Payment record not found: ${fetchError.message}`);
+      // 決済レコードを検索（PI → metadata.payment_id フォールバック）
+      let payment: any | null = null;
+      {
+        const { data, error: fetchError } = await this.supabase
+          .from("payments")
+          .select("*")
+          .eq("stripe_payment_intent_id", stripePaymentIntentId)
+          .maybeSingle();
+        if (fetchError) {
+          throw new Error(`Payment record lookup failed: ${fetchError.message}`);
+        }
+        payment = data ?? null;
       }
-
       if (!payment) {
-        throw new Error(`Payment record not found for payment_intent: ${stripePaymentIntentId}`);
+        const paymentIdFromMetadata: string | null = ((): string | null => {
+          const md = (paymentIntent as unknown as { metadata?: Record<string, unknown> | null })?.metadata ?? null;
+          const raw = md && (md as Record<string, unknown>)["payment_id"];
+          return typeof raw === "string" && raw.length > 0 ? raw : null;
+        })();
+        if (paymentIdFromMetadata) {
+          const { data } = await this.supabase
+            .from("payments")
+            .select("*")
+            .eq("id", paymentIdFromMetadata)
+            .maybeSingle();
+          payment = data ?? null;
+        }
+      }
+      if (!payment) {
+        await this.securityReporter.logSecurityEvent({
+          type: "webhook_payment_intent_failed_no_payment",
+          details: { eventId: event.id, payment_intent: stripePaymentIntentId },
+        });
+        return { success: true };
       }
 
       // 既に同等以上の状態なら冪等（failed 以上＝paid/refunded等は降格させない）
@@ -895,6 +1070,7 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
           webhook_event_id: event.id,
           webhook_processed_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
+          stripe_payment_intent_id: stripePaymentIntentId,
         })
         .eq("id", payment.id);
 
@@ -928,7 +1104,8 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
     const paymentIntent = event.data.object;
     const stripePaymentIntentId = paymentIntent.id;
     try {
-      const { data: payment, error: fetchError } = await this.supabase
+      let payment: any | null = null;
+      const { data: byPi, error: fetchError } = await this.supabase
         .from("payments")
         .select("*")
         .eq("stripe_payment_intent_id", stripePaymentIntentId)
@@ -936,6 +1113,23 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
 
       if (fetchError) {
         throw new Error(`Payment record not found: ${fetchError.message}`);
+      }
+      payment = byPi ?? null;
+
+      if (!payment) {
+        const paymentIdFromMetadata: string | null = ((): string | null => {
+          const md = (paymentIntent as unknown as { metadata?: Record<string, unknown> | null })?.metadata ?? null;
+          const raw = md && (md as Record<string, unknown>)["payment_id"];
+          return typeof raw === "string" && raw.length > 0 ? raw : null;
+        })();
+        if (paymentIdFromMetadata) {
+          const { data } = await this.supabase
+            .from("payments")
+            .select("*")
+            .eq("id", paymentIdFromMetadata)
+            .maybeSingle();
+          payment = data ?? null;
+        }
       }
 
       if (!payment) {
@@ -954,6 +1148,7 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
             webhook_event_id: event.id,
             webhook_processed_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
+            stripe_payment_intent_id: stripePaymentIntentId,
           })
           .eq("id", payment.id);
         if (updateError) {

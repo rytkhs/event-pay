@@ -280,7 +280,6 @@ describe("createStripeSessionAction - Destination charges", () => {
           destinationAccountId: "acct_test123",
           userEmail: "test@example.com",
           userName: "Test User",
-          setupFutureUsage: "off_session",
         },
       })
     );
@@ -501,7 +500,6 @@ describe("createStripeSessionAction - Destination charges", () => {
           destinationAccountId: "acct_test123",
           userEmail: "test@example.com", // user.emailが使用される
           userName: undefined, // display_nameは取得できないのでundefined
-          setupFutureUsage: "off_session",
         },
       })
     );

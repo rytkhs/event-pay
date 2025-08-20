@@ -132,7 +132,6 @@ describe("PaymentService - Destination charges", () => {
           destinationAccountId: "acct_test123",
           userEmail: "test@example.com",
           userName: "Test User",
-          setupFutureUsage: "off_session" as const,
         },
       };
 
@@ -166,7 +165,6 @@ describe("PaymentService - Destination charges", () => {
           attendance_id: "attendance-123",
           event_title: "Test Event",
         },
-        setupFutureUsage: "off_session",
       });
 
       // DBの更新が呼ばれることを確認
