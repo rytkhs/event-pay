@@ -60,6 +60,11 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
         case "refund.created":
           return await this.handleRefundCreated(event as Stripe.RefundCreatedEvent);
 
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-expect-error Stripe typings may not yet include this literal
+        case "charge.refund.created":
+          return await this.handleRefundCreated(event as unknown as Stripe.RefundCreatedEvent);
+
         case "checkout.session.completed": {
           const session = event.data.object as Stripe.Checkout.Session;
           // 支払い確定は PaymentIntent/Charge のイベントで行う。ここでは突合用IDを保存する。
@@ -134,6 +139,11 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
         }
         case "refund.updated":
           return await this.handleRefundUpdated(event as Stripe.RefundUpdatedEvent);
+
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-ignore Stripe typings may not yet include this literal
+        case "charge.refund.updated":
+          return await this.handleRefundUpdated(event as unknown as Stripe.RefundUpdatedEvent);
 
         case "application_fee.refunded":
         case "application_fee.refund.updated":

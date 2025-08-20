@@ -38,6 +38,8 @@ function createServices() {
 export async function POST(request: NextRequest) {
   let securityReporter: SecurityReporter | undefined;
   let enqueued = false;
+  // 失敗時に DLQ に書き込むための現在処理中のイベント情報
+  let eventMeta: { id: string; type: string } | null = null;
   const requestId = request.headers.get('x-request-id') || 'unknown';
   const webhookLogger = logger.withContext({
     request_id: requestId,
@@ -105,6 +107,9 @@ export async function POST(request: NextRequest) {
     }
 
     const event = verificationResult.event;
+
+    // DLQ 用のメタデータを確定
+    eventMeta = { id: event.id, type: event.type };
 
     webhookLogger.info('Webhook signature verified', {
       event_id: event.id,
@@ -186,20 +191,13 @@ export async function POST(request: NextRequest) {
 
     // enqueue 前に失敗している場合は Stripe の自動リトライを促す
     try {
-      if (securityReporter) {
+      if (securityReporter && eventMeta) {
         const { idempotencyService: dlqSvc } = createServices();
-        if (
-          typeof error === 'object' &&
-          error !== null &&
-          (error as { eventId?: string }).eventId &&
-          (error as { eventType?: string }).eventType
-        ) {
-          await dlqSvc.markEventFailed(
-            (error as { eventId: string }).eventId,
-            (error as { eventType: string }).eventType,
-            error instanceof Error ? error.message : 'unexpected_error'
-          );
-        }
+        await dlqSvc.markEventFailed(
+          eventMeta.id,
+          eventMeta.type,
+          error instanceof Error ? error.message : 'unexpected_error'
+        );
       }
     } catch (dlqError) {
       logger.error('Failed to record failed webhook event to DLQ', {
