@@ -103,7 +103,7 @@ export async function updateGuestAttendanceAction(
     const { error } = await supabase.rpc("update_guest_attendance_with_payment", {
       p_attendance_id: attendance.id,
       p_status: validatedStatus,
-      p_payment_method: validatedPaymentMethod || null,
+      p_payment_method: validatedPaymentMethod as any,
       p_event_fee: attendance.event.fee,
     });
 

@@ -28,7 +28,7 @@ export async function retryWithIdempotency<T>(
       // ネットワーク切断・TLS reset など Stripe SDK が返す ConnectionError 系
       // 例) StripeConnectionError, StripeConnectionTimeoutError, StripeAPIConnectionError
       const isConnectionErr =
-        typeof err.type === "string" && err.type.endsWith("ConnectionError");
+        typeof (err as any).type === "string" && (err as any).type.endsWith("ConnectionError");
 
       const shouldRetry = isIdempo409 || isConnectionErr;
 
@@ -40,7 +40,7 @@ export async function retryWithIdempotency<T>(
         attempt: attempt + 1,
         delay_ms: delay,
         message: err.message,
-        error_type: err.type,
+        error_type: (err as any).type,
       });
 
       await new Promise((res) => setTimeout(res, delay + Math.random() * 100));

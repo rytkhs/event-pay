@@ -151,7 +151,7 @@ export async function validateInviteToken(token: string): Promise<InviteValidati
       const actualAttendancesCount = event.capacity || 0;
 
       const eventDetail: EventDetail = {
-        ...event,
+        ...(event as any),
         attendances_count: actualAttendancesCount,
       };
 
@@ -167,7 +167,7 @@ export async function validateInviteToken(token: string): Promise<InviteValidati
     const actualAttendancesCount = attendances_count || 0;
 
     const eventDetail: EventDetail = {
-      ...event,
+      ...(event as any),
       attendances_count: actualAttendancesCount,
     };
 

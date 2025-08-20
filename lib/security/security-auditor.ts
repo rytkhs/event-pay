@@ -347,8 +347,8 @@ export class DatabaseSecurityAuditor implements SecurityAuditor {
         timeRange,
         adminAccessCount: adminAccess?.length ?? 0,
         guestAccessCount: guestAccess?.length ?? 0,
-        suspiciousActivities: suspiciousActivities ?? [],
-        unauthorizedAttempts: unauthorizedAttempts ?? [],
+        suspiciousActivities: suspiciousActivities as any ?? [],
+        unauthorizedAttempts: unauthorizedAttempts as any ?? [],
         topFailedActions: this.analyzeTopFailedActions(suspiciousActivities ?? []),
         topSuspiciousIPs: this.analyzeTopSuspiciousIPs(
           suspiciousActivities ?? [],
