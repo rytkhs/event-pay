@@ -98,18 +98,20 @@ export class SettlementReportService {
         status: 'completed',
       }
 
+      const alreadyExists = data.already_exists ?? false;
+
       logger.info('Settlement report generated successfully (RPC)', {
         tag: 'settlementReportGenerated',
         eventId,
         reportId: data.report_id,
-        alreadyExists: data.already_exists
+        alreadyExists
       })
 
       return {
         success: true,
         reportId: data.report_id,
         reportData,
-        alreadyExists: data.already_exists
+        alreadyExists
       }
 
     } catch (error) {
