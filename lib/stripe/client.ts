@@ -22,8 +22,7 @@ if (!process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY) {
 // Stripeクライアントの初期化（Destination charges対応）
 const stripeSecretKey = process.env.STRIPE_SECRET_KEY!;
 export const stripe = new Stripe(stripeSecretKey, {
-  // API バージョンを固定（Destination charges対応）
-  apiVersion: "2025-07-30.basil",
+  apiVersion: (process.env.STRIPE_API_VERSION as Stripe.LatestApiVersion | undefined) ?? "2025-07-30.basil",
   // 自動リトライ設定（429/5xx/接続エラー対応）
   maxNetworkRetries: 3,
   // タイムアウト設定（30秒）
