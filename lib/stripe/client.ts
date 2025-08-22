@@ -47,29 +47,31 @@ if (!hasRegisteredHooks && shouldEnableStripeLogging) {
   // Stripe request hook
   // eslint-disable-next-line @typescript-eslint/ban-ts-comment
   // @ts-ignore - stripe typings don't expose "request" event yet
-  stripe.on("request", (req: Record<string, unknown>) => {
-    logger.info("Stripe request initiated", {
-      tag: 'stripeRequest',
-      stripe_request_id: req.requestId as string | undefined,
-      idempotency_key: req.idempotencyKey as string | undefined,
-      method: req.method as string | undefined,
-      path: req.path as string | undefined,
-      stripe_account: req.stripeAccount as string | undefined,
+  if (typeof (stripe as unknown as { on?: unknown }).on === "function") {
+    (stripe as unknown as { on: (event: string, cb: (arg: Record<string, unknown>) => void) => void }).on("request", (req: Record<string, unknown>) => {
+      logger.info("Stripe request initiated", {
+        tag: 'stripeRequest',
+        stripe_request_id: req.requestId as string | undefined,
+        idempotency_key: req.idempotencyKey as string | undefined,
+        method: req.method as string | undefined,
+        path: req.path as string | undefined,
+        stripe_account: req.stripeAccount as string | undefined,
+      });
     });
-  });
 
-  // Stripe response hook
-  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-  // @ts-ignore - stripe typings don't expose "response" event yet
-  stripe.on("response", (res: Record<string, unknown>) => {
-    logger.info("Stripe response received", {
-      tag: 'stripeResponse',
-      stripe_request_id: res.requestId as string | undefined,
-      status: res.statusCode as number | undefined,
-      latency_ms: res.elapsed as number | undefined,
-      stripe_should_retry: (res.headers as Record<string, unknown> | undefined)?.["stripe-should-retry"] as string | undefined,
+    // Stripe response hook
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    // @ts-ignore - stripe typings don't expose "response" event yet
+    (stripe as unknown as { on: (event: string, cb: (arg: Record<string, unknown>) => void) => void }).on("response", (res: Record<string, unknown>) => {
+      logger.info("Stripe response received", {
+        tag: 'stripeResponse',
+        stripe_request_id: res.requestId as string | undefined,
+        status: res.statusCode as number | undefined,
+        latency_ms: res.elapsed as number | undefined,
+        stripe_should_retry: (res.headers as Record<string, unknown> | undefined)?.["stripe-should-retry"] as string | undefined,
+      });
     });
-  });
+  }
 }
 
 

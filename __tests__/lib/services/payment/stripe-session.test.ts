@@ -1,6 +1,7 @@
 import { PaymentService, PaymentErrorHandler } from "@/lib/services/payment/service";
 import { PaymentErrorType } from "@/lib/services/payment/types";
 import { stripe } from "@/lib/stripe/client";
+import type { CreateStripeSessionParams } from "@/lib/services/payment/types";
 
 // Stripeモック
 jest.mock("@/lib/stripe/client", () => ({

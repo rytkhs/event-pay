@@ -1,7 +1,5 @@
 import { PayoutService } from "@/lib/services/payout/service";
 import {
-  AggregatePayoutError,
-  PayoutError,
   PayoutErrorType,
 } from "@/lib/services/payout/types";
 
@@ -37,18 +35,17 @@ function createMockSupabaseClient() {
           }),
         };
       }
-      return {
-        select: jest.fn().mockReturnThis(),
-        eq: jest.fn().mockReturnThis(),
-        limit: jest.fn().mockReturnThis(),
-        maybeSingle: jest.fn().mockResolvedValue({
-          data: {
-            id: "payout_test123",
-            net_payout_amount: 2000,
-          },
-          error: null,
-        }),
-      };
+      if (table === "payouts") {
+        return {
+          select: jest.fn().mockReturnThis(),
+          eq: jest.fn().mockReturnThis(),
+          maybeSingle: jest.fn().mockResolvedValue({
+            data: { id: "payout_test123", net_payout_amount: 2000 },
+            error: null,
+          }),
+        };
+      }
+      return { select: jest.fn().mockReturnThis() };
     }),
   } as unknown as import("@supabase/supabase-js").SupabaseClient;
 }
@@ -68,12 +65,7 @@ const mockValidator = {
   validateStripeConnectAccount: jest.fn().mockResolvedValue(undefined),
 } as any;
 
-// StripeTransferService のモック
-const mockStripeTransferService = {
-  createTransfer: jest.fn(),
-} as any;
-
-describe("PayoutService - AggregatePayoutError", () => {
+describe("PayoutService - Destination charges payout", () => {
   let service: PayoutService;
 
   beforeEach(() => {
@@ -86,7 +78,6 @@ describe("PayoutService - AggregatePayoutError", () => {
       mockErrorHandler,
       mockStripeConnectService,
       mockValidator,
-      mockStripeTransferService
     );
 
     // calculatePayoutAmount を固定値でモック
@@ -104,35 +95,17 @@ describe("PayoutService - AggregatePayoutError", () => {
           platformFeeRate: 0,
         },
       });
-  });
 
-  it("Stripe Transfer と updatePayoutStatus 両方失敗で AggregatePayoutError を throw する", async () => {
-    // Stripe Transfer 失敗を設定
-    mockStripeTransferService.createTransfer.mockRejectedValue(
-      new PayoutError(PayoutErrorType.TRANSFER_CREATION_FAILED, "stripe error")
-    );
-
-    // updatePayoutStatus を失敗モック
+    // updatePayoutStatus は成功とする
     jest
       .spyOn(service as unknown as { updatePayoutStatus: AnyFn }, "updatePayoutStatus")
-      .mockRejectedValue(new Error("db update failed"));
+      .mockResolvedValue(undefined);
+  });
 
-    // console.error をスパイ
-    const consoleSpy = jest.spyOn(console, "error").mockImplementation(() => { });
-
-    await expect(
-      service.processPayout({ eventId: "event_test", userId: "user_test" })
-    ).rejects.toBeInstanceOf(AggregatePayoutError);
-
-    // console.error 呼び出しを確認
-    expect(consoleSpy).toHaveBeenCalledWith(
-      "updatePayoutStatus failed",
-      expect.objectContaining({
-        payoutId: "payout_test123",
-        updateErr: expect.any(Error),
-      })
-    );
-
-    consoleSpy.mockRestore();
+  it("Destination chargesではTransferなしでcompletedに更新される", async () => {
+    const result = await service.processPayout({ eventId: "event_test", userId: "user_test" });
+    expect(result.payoutId).toBe("payout_test123");
+    expect(result.transferId).toBeNull();
+    expect(result.netAmount).toBe(2000);
   });
 });

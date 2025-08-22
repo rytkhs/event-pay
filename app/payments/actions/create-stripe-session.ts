@@ -3,7 +3,6 @@
 import { SecureSupabaseClientFactory } from "@/lib/security/secure-client-factory.impl";
 import { AdminReason } from "@/lib/security/secure-client-factory.types";
 import { PaymentService, PaymentErrorHandler, PaymentValidator } from "@/lib/services/payment";
-import { isDestinationChargesEnabled } from "@/lib/services/payment/feature-flags";
 import { getTransferGroupForEvent } from "@/lib/utils/stripe";
 import { createRateLimitStore, checkRateLimit } from "@/lib/rate-limit";
 import { RATE_LIMIT_CONFIG } from "@/config/security";
@@ -160,46 +159,39 @@ export async function createStripeSessionAction(
     );
     const paymentService = new PaymentService(admin, errorHandler);
 
-    // Destination charges機能フラグをチェック
-    const shouldUseDestinationCharges = isDestinationChargesEnabled();
+    // Destination charges 前提で Connect アカウント情報を取得
+    const connectAccounts = Array.isArray(event.stripe_connect_accounts)
+      ? event.stripe_connect_accounts
+      : event.stripe_connect_accounts ? [event.stripe_connect_accounts] : [];
 
-    let destinationChargesConfig = undefined;
+    const connectAccount = connectAccounts[0];
 
-    if (shouldUseDestinationCharges) {
-      // Stripe Connect アカウント情報を取得
-      const connectAccounts = Array.isArray(event.stripe_connect_accounts)
-        ? event.stripe_connect_accounts
-        : event.stripe_connect_accounts ? [event.stripe_connect_accounts] : [];
-
-      const connectAccount = connectAccounts[0];
-
-      if (!connectAccount) {
-        return createErrorResponse(
-          ERROR_CODES.BUSINESS_RULE_VIOLATION,
-          "このイベントにはStripe Connectアカウントが設定されていません。"
-        );
-      }
-
-      if (!connectAccount.payouts_enabled) {
-        return createErrorResponse(
-          ERROR_CODES.BUSINESS_RULE_VIOLATION,
-          "Stripe Connectアカウントの入金機能 (payouts) が無効化されています。"
-        );
-      }
-
-      // ユーザー情報を取得（Customer作成用）
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("email, display_name")
-        .eq("id", user.id)
-        .single();
-
-      destinationChargesConfig = {
-        destinationAccountId: connectAccount.stripe_account_id,
-        userEmail: profile?.email || user.email,
-        userName: profile?.display_name,
-      };
+    if (!connectAccount) {
+      return createErrorResponse(
+        ERROR_CODES.BUSINESS_RULE_VIOLATION,
+        "このイベントにはStripe Connectアカウントが設定されていません。"
+      );
     }
+
+    if (!connectAccount.payouts_enabled) {
+      return createErrorResponse(
+        ERROR_CODES.BUSINESS_RULE_VIOLATION,
+        "Stripe Connectアカウントの入金機能 (payouts) が無効化されています。"
+      );
+    }
+
+    // ユーザー情報を取得（Customer作成用）
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("email, display_name")
+      .eq("id", user.id)
+      .single();
+
+    const destinationChargesConfig = {
+      destinationAccountId: connectAccount.stripe_account_id,
+      userEmail: profile?.email || user.email,
+      userName: profile?.display_name,
+    } as const;
 
     // Transfer Group（両方のフローで使用）
     const transferGroup = getTransferGroupForEvent(event.id);

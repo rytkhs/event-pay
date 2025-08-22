@@ -1,3 +1,19 @@
+import { createDestinationRefund } from "@/lib/stripe/destination-charges";
+
+jest.mock("@/lib/stripe/client", () => {
+  const refunds = { create: jest.fn() };
+  return {
+    stripe: {
+      refunds,
+      paymentIntents: { retrieve: jest.fn() },
+    },
+    generateIdempotencyKey: jest.fn(() => "mocked-key"),
+    createStripeRequestOptions: jest.fn(() => ({})),
+  };
+});
+
+const { stripe: mockedStripe } = jest.requireMock("@/lib/stripe/client");
+
 describe('createDestinationRefund retry logic', () => {
   beforeEach(() => {
     mockedStripe.refunds.create.mockReset();
@@ -22,7 +38,6 @@ describe('createDestinationRefund retry logic', () => {
       refundId
     });
 
-    // generateIdempotencyKeyが正しいパラメータで呼ばれていることを確認
     expect(mockedStripe.refunds.create).toHaveBeenCalledWith(
       expect.objectContaining({
         metadata: expect.objectContaining({
@@ -38,18 +53,9 @@ describe('createDestinationRefund retry logic', () => {
 
     const refundId = 'consistent-refund-id';
 
-    // 同じrefundIdで2回呼び出し
-    await createDestinationRefund({
-      paymentIntentId: 'pi_123',
-      refundId
-    });
+    await createDestinationRefund({ paymentIntentId: 'pi_123', refundId });
+    await createDestinationRefund({ paymentIntentId: 'pi_123', refundId });
 
-    await createDestinationRefund({
-      paymentIntentId: 'pi_123',
-      refundId
-    });
-
-    // 両方とも同じmetadata.refund_idを持つことを確認
     const calls = mockedStripe.refunds.create.mock.calls;
     expect(calls[0][0].metadata.refund_id).toBe(refundId);
     expect(calls[1][0].metadata.refund_id).toBe(refundId);

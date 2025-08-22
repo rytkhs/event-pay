@@ -3,7 +3,6 @@
  */
 
 import { createStripeSessionAction } from "@/app/payments/actions/create-stripe-session";
-import { isDestinationChargesEnabled } from "@/lib/services/payment/feature-flags";
 import { createDestinationCheckoutSession, createOrRetrieveCustomer } from "@/lib/stripe/destination-charges";
 import { ApplicationFeeCalculator } from "@/lib/services/fee-config/application-fee-calculator";
 import { SecureSupabaseClientFactory } from "@/lib/security/secure-client-factory.impl";
@@ -11,7 +10,6 @@ import { createRateLimitStore, checkRateLimit } from "@/lib/rate-limit";
 import { PaymentValidator, PaymentService } from "@/lib/services/payment";
 
 // モック
-jest.mock("@/lib/services/payment/feature-flags");
 jest.mock("@/lib/stripe/destination-charges");
 jest.mock("@/lib/services/fee-config/application-fee-calculator");
 jest.mock("@/lib/services/payment");
@@ -29,9 +27,7 @@ jest.mock("@/lib/logging/app-logger", () => ({
   },
 }));
 
-const mockUseDestinationCharges = isDestinationChargesEnabled as jest.MockedFunction<
-  typeof isDestinationChargesEnabled
->;
+// フラグ依存は撤廃
 const mockCreateDestinationCheckoutSession = createDestinationCheckoutSession as jest.MockedFunction<
   typeof createDestinationCheckoutSession
 >;
@@ -199,9 +195,7 @@ describe("createStripeSessionAction - Destination charges", () => {
     cancelUrl: "https://example.com/cancel",
   };
 
-  it("Destination chargesが有効な場合、Destination charges用のセッションを作成する", async () => {
-    // 機能フラグを有効に設定
-    mockUseDestinationCharges.mockReturnValue(true);
+  it("Destination charges用のセッションを作成する", async () => {
 
     // 参加記録とイベント情報（Stripe Connect情報付き）
     mockSupabase.select.mockReturnValueOnce(mockSupabase);
@@ -285,72 +279,7 @@ describe("createStripeSessionAction - Destination charges", () => {
     );
   });
 
-  it("Destination chargesが無効な場合、従来のフローを使用する", async () => {
-    // 機能フラグを無効に設定
-    mockUseDestinationCharges.mockReturnValue(false);
-
-    // 参加記録とイベント情報（Stripe Connect情報なし）
-    mockSupabase.select.mockReturnValueOnce(mockSupabase);
-    mockSupabase.eq.mockReturnValueOnce(mockSupabase);
-    mockSupabase.limit.mockReturnValueOnce(mockSupabase);
-    mockSupabase.single.mockResolvedValueOnce({
-      data: [
-        {
-          id: "attendance-123",
-          events: {
-            id: "event-123",
-            title: "Test Event",
-            fee: 1000,
-            created_by: "user-123",
-            stripe_connect_accounts: null,
-          },
-        },
-      ],
-      error: null,
-    });
-
-    // PaymentValidatorのモック
-    // PaymentValidator は既にモックされています
-    mockPaymentValidator.mockImplementation(() => ({
-      validateAttendanceAccess: jest.fn().mockResolvedValue(undefined),
-      validatePaymentAmount: jest.fn().mockResolvedValue(undefined),
-    }));
-
-    // PaymentServiceのモック
-    // PaymentService は既にモックされています
-    const mockCreateStripeSession = jest.fn().mockResolvedValue({
-      sessionUrl: "https://checkout.stripe.com/pay/cs_traditional123",
-      sessionId: "cs_traditional123",
-    });
-    mockPaymentService.mockImplementation(() => ({
-      createStripeSession: mockCreateStripeSession,
-    }));
-
-    const result = await createStripeSessionAction(validInput);
-
-    expect(result.success).toBe(true);
-    if (result.success) {
-      expect(result.data).toEqual({
-        sessionUrl: "https://checkout.stripe.com/pay/cs_traditional123",
-        sessionId: "cs_traditional123",
-      });
-    }
-
-    // PaymentServiceのcreateStripeSessionがDestination charges設定なしで呼ばれることを確認
-    expect(mockCreateStripeSession).toHaveBeenCalledWith(
-      expect.objectContaining({
-        attendanceId: "attendance-123",
-        amount: 1000,
-        eventId: "event-123",
-        userId: "user-123",
-        eventTitle: "Test Event",
-        successUrl: "https://example.com/success",
-        cancelUrl: "https://example.com/cancel",
-        transferGroup: "event_event-123_payout",
-        destinationCharges: undefined,
-      })
-    );
-  });
+  // 従来フローは廃止
 
   it("Stripe Connectアカウントが設定されていない場合はエラーを返す", async () => {
     // 機能フラグを有効に設定
