@@ -376,13 +376,25 @@ export async function createOrRetrieveCustomer(
 
   // メールアドレスが指定されている場合、既存顧客を検索
   if (email) {
-    const existingCustomers = await stripe.customers.list({
-      email,
-      limit: 1,
-    });
+    try {
+      // 厳密一致での検索を優先（Search API）
+      const searchResult = await (stripe.customers as any).search({
+        query: `email:"${email}"`,
+        limit: 1,
+      });
 
-    if (existingCustomers.data.length > 0) {
-      return existingCustomers.data[0];
+      if (searchResult?.data?.length > 0) {
+        return searchResult.data[0] as Stripe.Customer;
+      }
+    } catch (_e) {
+      // 一部リージョン/権限で search が無い場合のフォールバック
+      const existingCustomers = await stripe.customers.list({
+        email,
+        limit: 1,
+      });
+      if (existingCustomers.data.length > 0) {
+        return existingCustomers.data[0];
+      }
     }
   }
 
