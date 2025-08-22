@@ -137,6 +137,83 @@ export class ConnectWebhookHandler {
     }
   }
 
+  /**
+   * account.application.deauthorized イベントを処理
+   * - 対象アカウントのplatform連携が解除されたため、DB上の状態を無効化
+   * - 通知・監査ログを記録
+   */
+  async handleAccountApplicationDeauthorized(application: Stripe.Application, connectedAccountId?: string | null): Promise<void> {
+    try {
+      const accountId = connectedAccountId || undefined;
+
+      // 可能なら user_id をメタデータから逆引き（既存の保存がない場合はaccountIdのみで処理）
+      let userId: string | undefined;
+      if (accountId) {
+        try {
+          const acc = await this.stripeConnectService.getAccountInfo(accountId);
+          // getAccountInfoはmetadata.user_idまでは返さないため、DBから逆引き
+          const { data } = await this.supabase
+            .from('stripe_connect_accounts')
+            .select('user_id')
+            .eq('stripe_account_id', accountId)
+            .maybeSingle();
+          userId = (data as { user_id?: string } | null)?.user_id;
+        } catch { /* noop: best-effort */ }
+      }
+
+      if (userId) {
+        // ステータスとフラグをリセット（連携解除）
+        await this.stripeConnectService.updateAccountStatus({
+          userId,
+          status: 'unverified',
+          chargesEnabled: false,
+          payoutsEnabled: false,
+          stripeAccountId: accountId,
+        });
+      }
+
+      // 通知（存在する場合）
+      if (userId) {
+        await this.notificationService.sendAccountStatusChangeNotification({
+          userId,
+          accountId: accountId || 'unknown',
+          oldStatus: 'verified',
+          newStatus: 'unverified',
+          chargesEnabled: false,
+          payoutsEnabled: false,
+        });
+      }
+
+      // 監査ログ
+      try {
+        await this.supabase.from('security_audit_log').insert({
+          event_type: 'stripe_connect_account_deauthorized',
+          user_role: 'system',
+          details: {
+            application_id: application.id,
+            account_id: accountId,
+            user_id: userId,
+            deauthorized_at: new Date().toISOString(),
+          }
+        });
+      } catch { /* optional */ }
+
+      logger.info('Processed account.application.deauthorized', {
+        tag: 'accountDeauthorized',
+        account_id: accountId,
+        user_id: userId,
+        application_id: application.id,
+      });
+    } catch (error) {
+      logger.error('Error handling account.application.deauthorized', {
+        tag: 'accountDeauthorizedHandlerError',
+        error_name: error instanceof Error ? error.name : 'Unknown',
+        error_message: error instanceof Error ? error.message : String(error)
+      });
+      throw error;
+    }
+  }
+
   async handlePayoutPaid(payout: Stripe.Payout): Promise<void> {
     try {
       // 参考表示向けのログのみ（会計確定は行わない）
