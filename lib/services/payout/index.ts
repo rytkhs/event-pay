@@ -5,9 +5,7 @@
 export { PayoutService } from "./service";
 export { PayoutErrorHandler } from "./error-handler";
 export { PayoutValidator } from "./validation";
-export { StripeTransferService } from "./stripe-transfer";
 export { PayoutScheduler } from "./scheduler";
-export type { CreateTransferParams, CreateTransferResult } from "./stripe-transfer";
 
 // スケジューラー関連のエクスポート
 export {

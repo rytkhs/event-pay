@@ -5,9 +5,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 // import type { PostgrestError } from "@supabase/supabase-js";
 import { Database } from "@/types/database";
-import { stripe, generateIdempotencyKey, createStripeRequestOptions } from "@/lib/stripe/client";
-import type Stripe from "stripe";
-import { retryWithIdempotency } from "@/lib/stripe/idempotency-retry";
+import { stripe } from "@/lib/stripe/client";
 import { createDestinationCheckoutSession, createOrRetrieveCustomer } from "@/lib/stripe/destination-charges";
 import { ApplicationFeeCalculator } from "@/lib/services/fee-config/application-fee-calculator";
 import { IPaymentService, IPaymentErrorHandler } from "./interface";
@@ -191,187 +189,98 @@ export class PaymentService implements IPaymentService {
         }
       }
 
-      // Stripe Checkout Sessionを作成 (Destination charges対応)
-      let session: Stripe.Checkout.Session;
+      // Stripe Checkout Sessionを作成（Destination chargesに統一）
+      const { destinationAccountId, userEmail, userName, setupFutureUsage } = params.destinationCharges!;
 
-      if (params.destinationCharges) {
-        // Destination charges フロー
-        const { destinationAccountId, userEmail, userName, setupFutureUsage } = params.destinationCharges;
+      // Application fee計算
+      const feeCalculation = await this.applicationFeeCalculator.calculateApplicationFee(params.amount);
 
-        // Application fee計算
-        const feeCalculation = await this.applicationFeeCalculator.calculateApplicationFee(params.amount);
-
-        // Customer作成・取得
-        let customerId: string | undefined;
-        if (userEmail || userName) {
-          const customer = await createOrRetrieveCustomer({
-            email: userEmail,
-            name: userName,
-            metadata: {
-              user_id: params.userId,
-              event_id: params.eventId,
-            },
-          });
-          customerId = customer.id;
-        }
-
-        // Destination charges用のCheckout Session作成
-        session = await createDestinationCheckoutSession({
-          eventId: params.eventId,
-          eventTitle: params.eventTitle,
-          amount: params.amount,
-          destinationAccountId,
-          platformFeeAmount: feeCalculation.applicationFeeAmount,
-          customerId,
-          successUrl: params.successUrl,
-          cancelUrl: params.cancelUrl,
-          userId: params.userId,
+      // Customer作成・取得
+      let customerId: string | undefined;
+      if (userEmail || userName) {
+        const customer = await createOrRetrieveCustomer({
+          email: userEmail,
+          name: userName,
           metadata: {
-            payment_id: targetPaymentId,
-            attendance_id: params.attendanceId,
-            event_title: params.eventTitle,
+            user_id: params.userId,
+            event_id: params.eventId,
           },
-          setupFutureUsage,
         });
+        customerId = customer.id;
+      }
 
-        // --- DB に Destination charges 関連情報を保存 (リトライ付き) ---
-        const updateDestinationPayload = {
-          stripe_checkout_session_id: session.id,
-          destination_account_id: destinationAccountId,
-          application_fee_amount: feeCalculation.applicationFeeAmount,
-          transfer_group: `event_${params.eventId}_payout`,
-          stripe_customer_id: customerId,
-        } as const;
+      // Destination charges用のCheckout Session作成
+      const session = await createDestinationCheckoutSession({
+        eventId: params.eventId,
+        eventTitle: params.eventTitle,
+        amount: params.amount,
+        destinationAccountId,
+        platformFeeAmount: feeCalculation.applicationFeeAmount,
+        customerId,
+        successUrl: params.successUrl,
+        cancelUrl: params.cancelUrl,
+        userId: params.userId,
+        metadata: {
+          payment_id: targetPaymentId,
+          attendance_id: params.attendanceId,
+          event_title: params.eventTitle,
+        },
+        setupFutureUsage,
+      });
 
-        const MAX_DB_UPDATE_RETRIES = 3;
-        let lastDbError: PostgrestError | null = null;
-        for (let i = 0; i < MAX_DB_UPDATE_RETRIES; i++) {
-          const { error: updateErr } = await this.supabase
-            .from("payments")
-            .update(updateDestinationPayload)
-            .eq("id", targetPaymentId);
+      // --- DB に Destination charges 関連情報を保存 (リトライ付き) ---
+      const updateDestinationPayload = {
+        stripe_checkout_session_id: session.id,
+        destination_account_id: destinationAccountId,
+        application_fee_amount: feeCalculation.applicationFeeAmount,
+        transfer_group: `event_${params.eventId}_payout`,
+        stripe_customer_id: customerId,
+      } as const;
 
-          if (!updateErr) {
-            lastDbError = null;
-            break; // success
-          }
-          lastDbError = updateErr;
-          // 短い間隔で再試行 (指数バックオフ不要な軽量処理)
-          await new Promise((r) => setTimeout(r, 100 * (i + 1)));
+      const MAX_DB_UPDATE_RETRIES = 3;
+      let lastDbError: PostgrestError | null = null;
+      for (let i = 0; i < MAX_DB_UPDATE_RETRIES; i++) {
+        const { error: updateErr } = await this.supabase
+          .from("payments")
+          .update(updateDestinationPayload)
+          .eq("id", targetPaymentId);
+
+        if (!updateErr) {
+          lastDbError = null;
+          break; // success
         }
+        lastDbError = updateErr;
+        // 短い間隔で再試行 (指数バックオフ不要な軽量処理)
+        await new Promise((r) => setTimeout(r, 100 * (i + 1)));
+      }
 
-        if (lastDbError) {
-          const dbError = new PaymentError(
-            PaymentErrorType.DATABASE_ERROR,
-            `Failed to update payment record with destination charges data after retries: ${lastDbError.message}`,
-            lastDbError as unknown as Error
-          );
-          await this.errorHandler.logError(dbError, {
-            operation: "updateDestinationChargesData",
-            paymentId: targetPaymentId,
-            sessionId: session.id,
-            destinationAccountId,
-            applicationFeeAmount: feeCalculation.applicationFeeAmount,
-          });
-          // 決済整合性のために処理を中断
-          throw dbError;
-        }
-
-        logger.info("Destination charges session created", {
-          tag: "destinationChargesCreated",
-          service: "PaymentService",
+      if (lastDbError) {
+        const dbError = new PaymentError(
+          PaymentErrorType.DATABASE_ERROR,
+          `Failed to update payment record with destination charges data after retries: ${lastDbError.message}`,
+          lastDbError as unknown as Error
+        );
+        await this.errorHandler.logError(dbError, {
+          operation: "updateDestinationChargesData",
           paymentId: targetPaymentId,
           sessionId: session.id,
-          amount: params.amount,
-          applicationFeeAmount: feeCalculation.applicationFeeAmount,
           destinationAccountId,
-          transferGroup: `event_${params.eventId}_payout`,
+          applicationFeeAmount: feeCalculation.applicationFeeAmount,
         });
-
-      } else {
-        // 従来のSeparate charges and transfers フロー（機能フラグで制御予定）
-        const idemKey = generateIdempotencyKey(
-          "checkout",
-          params.eventId,
-          params.userId,
-          { amount: params.amount, currency: "jpy" }
-        );
-
-        const requestOptions = createStripeRequestOptions(idemKey);
-
-        const createSession = async () =>
-          await this.stripe.checkout.sessions.create(
-            {
-              payment_method_types: ["card"],
-              line_items: [
-                {
-                  price_data: {
-                    currency: "jpy",
-                    product_data: {
-                      name: params.eventTitle,
-                      description: "イベント参加費",
-                    },
-                    unit_amount: params.amount,
-                  },
-                  quantity: 1,
-                },
-              ],
-              mode: "payment",
-              success_url: params.successUrl,
-              cancel_url: params.cancelUrl,
-              metadata: {
-                payment_id: targetPaymentId,
-                attendance_id: params.attendanceId,
-              },
-              payment_intent_data: {
-                metadata: {
-                  payment_id: targetPaymentId,
-                  attendance_id: params.attendanceId,
-                },
-                ...(params.transferGroup ? { transfer_group: params.transferGroup } : {}),
-              },
-              expires_at: Math.floor(Date.now() / 1000) + 30 * 60,
-            },
-            requestOptions
-          );
-
-        session = await retryWithIdempotency(createSession);
+        // 決済整合性のために処理を中断
+        throw dbError;
       }
 
-      // 従来フローの場合のみセッションIDを更新（Destination chargesの場合は上記で更新済み）
-      if (!params.destinationCharges) {
-        // --- 従来フロー: Checkout Session ID を保存 (リトライ付き) ---
-        const MAX_DB_UPDATE_RETRIES = 3;
-        let lastDbError2: PostgrestError | null = null;
-        for (let i = 0; i < MAX_DB_UPDATE_RETRIES; i++) {
-          const { error: updateErr } = await this.supabase
-            .from("payments")
-            .update({ stripe_session_id: session.id })
-            .eq("id", targetPaymentId);
-
-          if (!updateErr) {
-            lastDbError2 = null;
-            break;
-          }
-          lastDbError2 = updateErr;
-          await new Promise((r) => setTimeout(r, 100 * (i + 1)));
-        }
-
-        if (lastDbError2) {
-          const dbError = new PaymentError(
-            PaymentErrorType.DATABASE_ERROR,
-            `Failed to update payment record with session ID after retries: ${lastDbError2.message}`,
-            lastDbError2 as unknown as Error
-          );
-          await this.errorHandler.logError(dbError, {
-            operation: "updateStripeSessionId",
-            paymentId: targetPaymentId,
-            sessionId: session.id,
-          });
-          // DB と Stripe の整合性が取れないため処理を中断し、UI には再試行を促す
-          throw dbError;
-        }
-      }
+      logger.info("Destination charges session created", {
+        tag: "destinationChargesCreated",
+        service: "PaymentService",
+        paymentId: targetPaymentId,
+        sessionId: session.id,
+        amount: params.amount,
+        applicationFeeAmount: feeCalculation.applicationFeeAmount,
+        destinationAccountId,
+        transferGroup: `event_${params.eventId}_payout`,
+      });
 
       return {
         sessionUrl: session.url!,

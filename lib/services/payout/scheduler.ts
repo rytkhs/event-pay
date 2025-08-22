@@ -19,7 +19,6 @@ import {
   NewPayoutSchedulerLogInsert,
 } from "./types";
 import { createSchedulerConfig } from "./scheduler-config";
-import { stripeTransferService } from "./stripe-transfer";
 import { randomUUID } from "crypto";
 import { logger } from "@/lib/logging/app-logger";
 
@@ -44,8 +43,7 @@ export class PayoutScheduler {
   private payoutService: IPayoutService;
   private stripeConnectService: IStripeConnectService;
   private config: PayoutSchedulerConfig;
-  // Stripe Transfer service (singleton)
-  private transferService = stripeTransferService;
+  // 旧Transferフロー削除に伴い未使用
 
   // ハートビート制御
   private heartbeatInterval: NodeJS.Timeout | null = null;
@@ -845,11 +843,8 @@ export class PayoutScheduler {
           continue;
         }
 
-        // Stripe Transfer の現在ステータスを取得
-        const transfer = await this.transferService.getTransfer(row.stripe_transfer_id);
-        const transferStatus = (transfer as any).status as string | undefined;
-
-        if (transferStatus === 'paid') {
+        // Destination charges移行のため、processingはDB更新遅延とみなし完了へ
+        if (true) {
           await this.payoutService.updatePayoutStatus({
             payoutId: row.id,
             status: 'completed',
@@ -867,31 +862,6 @@ export class PayoutScheduler {
             note: 'Reconciled processing -> completed',
           });
 
-        } else if (transferStatus === 'failed' || transferStatus === 'canceled') {
-          await this.payoutService.updatePayoutStatus({
-            payoutId: row.id,
-            status: 'failed',
-            lastError: `Stripe transfer ${transferStatus}`,
-          });
-
-          failed++;
-          results.push({
-            eventId: row.event_id,
-            eventTitle: row.events?.title || '',
-            userId: row.user_id,
-            success: false,
-            error: `Stripe transfer ${transferStatus}`,
-          });
-        } else {
-          // pending などはスキップ
-          results.push({
-            eventId: row.event_id,
-            eventTitle: row.events?.title || '',
-            userId: row.user_id,
-            success: true,
-            note: `Transfer still ${transferStatus} – no action`,
-            amount: 0,
-          });
         }
 
       } catch (err) {

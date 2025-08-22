@@ -21,7 +21,6 @@ import {
   DEFAULT_PAYOUT_MAX_CONCURRENCY,
 } from "@/lib/services/payout/constants";
 import { FeeConfigService } from "@/lib/services/fee-config/service";
-import { isDestinationChargesEnabled } from "@/lib/services/payment/feature-flags";
 
 /**
  * 自動送金処理のCronエンドポイント
@@ -36,19 +35,17 @@ async function runPayoutProcessing(request: NextRequest) {
   const startTime = Date.now();
 
   try {
-    // 機能フラグチェック: Destination chargesが有効な場合は自動送金を無効化
-    if (isDestinationChargesEnabled()) {
-      logCronActivity("info", "Cron job skipped: destination charges enabled");
+    // Destination chargesへ完全移行のため、このCronは常にスキップ
+    logCronActivity("info", "Cron job skipped: destination charges is the only flow");
 
-      const data: CronExecutionData = {
-        message: "自動送金は無効化されています。Destination chargesによる自動送金に移行済みです。",
-        updatesCount: 0,
-        skippedCount: 0,
-        processingTime: Date.now() - startTime,
-      };
+    const data: CronExecutionData = {
+      message: "自動送金はDestination chargesで処理されます（Cronは無効）。",
+      updatesCount: 0,
+      skippedCount: 0,
+      processingTime: Date.now() - startTime,
+    };
 
-      return createSuccessResponse(data);
-    }
+    return createSuccessResponse(data);
 
     // 1. 認証チェック
     logCronActivity("info", "Cron job started: process-payouts");
@@ -63,7 +60,7 @@ async function runPayoutProcessing(request: NextRequest) {
       return createErrorResponse(error, 401);
     }
 
-    // 2. サービス初期化（監査付き管理者クライアントを使用）
+    // 以降のロジックは実行されないが、将来の再有効化に備え保持
     const secureFactory = SecureSupabaseClientFactory.getInstance();
     const adminClient = (await secureFactory.createAuditedAdminClient(
       AdminReason.PAYOUT_PROCESSING,

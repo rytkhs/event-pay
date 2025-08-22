@@ -248,13 +248,16 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
         case "charge.dispute.funds_reinstated":
           return await this.handleDisputeEvent(event as Stripe.ChargeDisputeCreatedEvent | Stripe.ChargeDisputeClosedEvent);
 
-        // Transfer関連イベントで payouts テーブルを同期
+        // Destination chargesへ移行後もTransferイベントは来る可能性があるが、
+        // payouts と直接整合しないため受信のみACKする
         case "transfer.created":
-          return await this.handleTransferCreated(event as Stripe.TransferCreatedEvent);
         case "transfer.updated":
-          return await this.handleTransferUpdated(event as Stripe.TransferUpdatedEvent);
         case "transfer.reversed":
-          return await this.handleTransferReversed(event as Stripe.TransferReversedEvent);
+          await this.securityReporter.logSecurityEvent({
+            type: "webhook_transfer_event_ignored",
+            details: { eventType: event.type, eventId: event.id },
+          });
+          return { success: true };
 
         default:
           // サポートされていないイベントタイプをログに記録

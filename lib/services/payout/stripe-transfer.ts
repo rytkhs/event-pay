@@ -1,6 +1,6 @@
 /**
- * Stripe Transfer実行の専用サービス
- * タスク7.3: Stripe Transfer実行の実装
+ * DEPRECATED: Separate charges and transfers フローは廃止されました。
+ * アプリケーションからは参照されません。
  */
 
 import Stripe from "stripe";

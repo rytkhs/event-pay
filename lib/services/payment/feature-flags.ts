@@ -9,8 +9,7 @@
  * - "false" または未設定: 従来のSeparate charges and transfersを使用
  */
 export function isDestinationChargesEnabled(): boolean {
-  const envValue = process.env.USE_DESTINATION_CHARGES;
-  return envValue === "true";
+  return true;
 }
 
 /**
@@ -18,6 +17,6 @@ export function isDestinationChargesEnabled(): boolean {
  */
 export function getFeatureFlagStatus() {
   return {
-    isDestinationChargesEnabled: isDestinationChargesEnabled(),
+    isDestinationChargesEnabled: true,
   };
 }

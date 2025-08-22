@@ -26,7 +26,6 @@ import {
 } from "./types";
 import { hasElapsedDaysInJst } from "@/lib/utils/timezone";
 import { getTransferGroupForEvent } from "@/lib/utils/stripe";
-import { StripeTransferService } from "./stripe-transfer";
 import { FeeConfigService } from "../fee-config/service";
 import { logger } from "@/lib/logging/app-logger";
 // MIN_PAYOUT_AMOUNT, isPayoutAmountEligible は削除済み
@@ -39,7 +38,6 @@ export class PayoutService implements IPayoutService {
   private stripe = stripe;
   private errorHandler: IPayoutErrorHandler;
   private stripeConnectService: IStripeConnectService;
-  private stripeTransferService: StripeTransferService;
   private validator: IPayoutValidator;
   private feeConfigService: FeeConfigService;
 
@@ -48,14 +46,12 @@ export class PayoutService implements IPayoutService {
     supabaseClient: SupabaseClient<Database>,
     errorHandler: IPayoutErrorHandler,
     stripeConnectService: IStripeConnectService,
-    validator: IPayoutValidator,
-    stripeTransferService?: StripeTransferService
+    validator: IPayoutValidator
   ) {
     this.supabase = supabaseClient;
     this.errorHandler = errorHandler;
     this.stripeConnectService = stripeConnectService;
     this.validator = validator;
-    this.stripeTransferService = stripeTransferService || new StripeTransferService();
     this.feeConfigService = new FeeConfigService(supabaseClient);
   }
 
@@ -383,140 +379,20 @@ export class PayoutService implements IPayoutService {
         );
       }
 
-      // Stripe Transferを実行
-      let transferId: string | null = null;
-      let estimatedArrival: string | undefined;
-      let rateLimitInfo: any = undefined;
-
-      try {
-        const transferParams = {
-          amount: payoutRow.net_payout_amount,
-          currency: "jpy" as const,
-          destination: connectAccount.stripe_account_id,
-          metadata: {
-            payout_id: payoutId,
-            event_id: eventId,
-            user_id: userId,
-          },
-          description: `EventPay payout for event ${eventId}`,
-          transferGroup: getTransferGroupForEvent(eventId),
-        };
-
-        // 新しいStripeTransferServiceを使用
-        const transferResult = await this.stripeTransferService.createTransfer(transferParams);
-
-        transferId = transferResult.transferId;
-        estimatedArrival = transferResult.estimatedArrival?.toISOString();
-        rateLimitInfo = transferResult.rateLimitInfo;
-
-        // 送金レコードを更新（processing状態に）
-        // Webhook 先着で既に completed になっている可能性があるためガードを入れる
-        try {
-          await this.updatePayoutStatus({
-            payoutId: payoutId,
-            status: "processing",
-            stripeTransferId: transferId,
-            transferGroup: getTransferGroupForEvent(eventId),
-          });
-        } catch (updateErr) {
-          // すでに Webhook が completed に遷移させていた場合は処理成功として許容
-          if (
-            updateErr instanceof PayoutError &&
-            updateErr.type === PayoutErrorType.INVALID_STATUS_TRANSITION
-          ) {
-            const latest = await this.getPayoutById(payoutId);
-            if (latest && latest.status === "completed") {
-              // 競合により完了済み。エラーを無視して続行
-            } else {
-              throw updateErr;
-            }
-          } else {
-            // Transfer成功後のDB更新失敗 -> processing_errorに設定
-            // Webhookによる最終的整合性に期待し、failedには落とさない
-            try {
-              await this.updatePayoutStatus({
-                payoutId: payoutId,
-                status: "processing_error",
-                stripeTransferId: transferId,
-                transferGroup: getTransferGroupForEvent(eventId),
-                lastError: `Transfer成功後のDB更新失敗: ${updateErr instanceof Error ? updateErr.message : String(updateErr)}`,
-                notes: "Webhook処理による自動復旧待ち",
-              });
-
-              // processing_errorステータス設定成功時は、処理成功として返す
-              // Webhookで最終的にcompletedに更新される
-              logger.warn("Failed to update the database after transfer, recording as processing_error", {
-                tag: "payoutDbUpdateFailedAfterTransfer",
-                payout_id: payoutId,
-                transfer_id: transferId,
-                error_message: updateErr instanceof Error ? updateErr.message : String(updateErr)
-              });
-            } catch (secondUpdateErr) {
-              // Throw AggregatePayoutError only if setting processing_error also fails
-              logger.error("Failed to set processing_error", {
-                tag: "payoutProcessingErrorUpdateFailed",
-                payout_id: payoutId,
-                transfer_id: transferId,
-                original_error: updateErr instanceof Error ? updateErr.message : String(updateErr),
-                secondUpdateError: secondUpdateErr,
-              });
-
-              throw new AggregatePayoutError(
-                updateErr instanceof Error ? updateErr : new Error(String(updateErr)),
-                secondUpdateErr as Error
-              );
-            }
-          }
-        }
-
-      } catch (stripeError) {
-        // Stripe Transfer失敗時は送金レコードをfailedに更新。
-        const errorMessage =
-          stripeError instanceof PayoutError
-            ? stripeError.message
-            : (stripeError as Error).message;
-
-        try {
-          await this.updatePayoutStatus({
-            payoutId: payoutId,
-            status: "failed",
-            lastError: errorMessage,
-          });
-        } catch (updateErr) {
-          // ステータス更新に失敗した場合は複合エラーとして再throw
-          logger.error("updatePayoutStatus failed", {
-            tag: "payoutStatusUpdateFailed",
-            payout_id: payoutId,
-            stripe_error: stripeError instanceof Error ? stripeError.message : String(stripeError),
-            update_error: updateErr instanceof Error ? updateErr.message : String(updateErr),
-          });
-
-          throw new AggregatePayoutError(
-            stripeError instanceof Error
-              ? stripeError
-              : new Error(String(stripeError)),
-            updateErr as Error
-          );
-        }
-
-        // update 成功時は従来通りエラーを再送出
-        if (stripeError instanceof PayoutError) {
-          throw stripeError;
-        }
-
-        throw new PayoutError(
-          PayoutErrorType.TRANSFER_CREATION_FAILED,
-          `Stripe Transferの作成に失敗しました: ${errorMessage}`,
-          stripeError as Error
-        );
-      }
+      // 送金レコードを即時に completed へ更新して返す。
+      await this.updatePayoutStatus({
+        payoutId,
+        status: "completed",
+        processedAt: new Date(),
+        transferGroup: getTransferGroupForEvent(eventId),
+      });
 
       return {
-        payoutId: payoutId,
-        transferId,
+        payoutId,
+        transferId: null,
         netAmount: payoutRow.net_payout_amount,
-        estimatedArrival,
-        rateLimitInfo,
+        estimatedArrival: undefined,
+        rateLimitInfo: undefined,
       };
 
     } catch (_error) {

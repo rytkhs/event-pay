@@ -20,7 +20,6 @@ import { SecureSupabaseClientFactory } from "@/lib/security/secure-client-factor
 import { AdminReason } from "@/lib/security/secure-client-factory.types";
 
 import { DEFAULT_PAYOUT_DAYS_AFTER_EVENT } from "@/lib/services/payout/constants";
-import { isDestinationChargesEnabled } from "@/lib/services/payment/feature-flags";
 
 const inputSchema = z.object({
   eventId: z.string().uuid(),
@@ -69,13 +68,11 @@ export async function processManualPayoutAction(
   isManual: boolean;
 }>> {
   try {
-    // 機能フラグチェック: Destination chargesが有効な場合は手動送金を無効化
-    if (isDestinationChargesEnabled()) {
-      return createErrorResponse(
-        ERROR_CODES.BUSINESS_RULE_VIOLATION,
-        "手動送金機能は無効化されています。Destination chargesによる自動送金をご利用ください。"
-      );
-    }
+    // Destination chargesへ完全移行のため、手動送金は常に無効
+    return createErrorResponse(
+      ERROR_CODES.BUSINESS_RULE_VIOLATION,
+      "手動送金機能は無効化されています。Destination chargesに統一されました。"
+    );
 
     // 1. 入力データの検証
     const parsed = inputSchema.safeParse(input);
