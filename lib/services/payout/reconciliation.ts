@@ -6,7 +6,7 @@
 import { SupabaseClient } from "@supabase/supabase-js";
 import { Database } from "@/types/database";
 import { stripe } from "@/lib/stripe/client";
-import { PayoutStatus } from "./types";
+import { PayoutStatus, Payout } from "./types";
 import Stripe from "stripe";
 import { logger } from "@/lib/logging/app-logger";
 
@@ -94,28 +94,29 @@ export class PayoutReconciliationService {
   /**
    * Stripe APIからTransfer一覧を取得
    */
-  private async getStripeTransfers(createdAfter: number, limit: number): Promise<Stripe.Transfer[]> {
+  private async getStripeTransfers(
+    createdAfter: number,
+    limit: number,
+    filters?: { destination?: string; transferGroup?: string }
+  ): Promise<Stripe.Transfer[]> {
     const transfers: Stripe.Transfer[] = [];
-    let hasMore = true;
-    let startingAfter: string | undefined;
 
-    while (hasMore && transfers.length < limit) {
-      const params: Stripe.TransferListParams = {
-        created: { gte: createdAfter },
-        limit: Math.min(100, limit - transfers.length),
-        ...(startingAfter && { starting_after: startingAfter }),
-      };
+    const listParams: Stripe.TransferListParams = {
+      created: { gte: createdAfter },
+      // 1ページあたりの最大件数。総件数の上限は呼び出し元limitで制御
+      limit: 100,
+      ...(filters?.destination ? { destination: filters.destination } : {}),
+      ...(filters?.transferGroup ? { transfer_group: filters.transferGroup } : {}),
+    };
 
-      const response = await stripe.transfers.list(params);
-      transfers.push(...response.data);
-
-      hasMore = response.has_more;
-      if (response.data.length > 0) {
-        startingAfter = response.data[response.data.length - 1].id;
-      } else {
-        hasMore = false;
+    // Stripe SDK の自動ページングを利用し、総件数が上限に達したら打ち切る
+    await stripe.transfers.list(listParams).autoPagingEach((t) => {
+      transfers.push(t);
+      if (transfers.length >= limit) {
+        return false; // stop iteration early
       }
-    }
+      return undefined; // continue
+    });
 
     return transfers;
   }
@@ -167,7 +168,7 @@ export class PayoutReconciliationService {
   /**
    * payoutとtransferの整合性をチェック
    */
-  private checkPayoutConsistency(payout: any, transfer: Stripe.Transfer): boolean {
+  private checkPayoutConsistency(payout: Payout, transfer: Stripe.Transfer): boolean {
     // Transferが成功している場合、payoutもcompletedであるべき
     if (this.isTransferSuccessful(transfer)) {
       return payout.status !== "completed";
@@ -190,24 +191,26 @@ export class PayoutReconciliationService {
    * Transferが成功状態かチェック
    */
   private isTransferSuccessful(transfer: Stripe.Transfer): boolean {
-    // Stripeでは、Transferが作成された時点で基本的に成功
-    // reversalsがない、または空の場合は成功とみなす
-    const reversals = (transfer as any).reversals;
-    return !reversals || !reversals.data || reversals.data.length === 0;
+    // 逆送金が1円も発生していなければ成功扱い
+    const amountReversed = (transfer as unknown as { amount_reversed?: number }).amount_reversed ?? 0;
+    const reversedFlag = (transfer as unknown as { reversed?: boolean }).reversed === true;
+    return !reversedFlag && amountReversed === 0;
   }
 
   /**
    * Transferが失敗状態かチェック
    */
   private isTransferFailed(transfer: Stripe.Transfer): boolean {
-    const reversals = (transfer as any).reversals;
-    return reversals && reversals.data && reversals.data.length > 0;
+    // 全額/一部いずれかの逆送金があれば失敗（要再調整）として扱う
+    const amountReversed = (transfer as unknown as { amount_reversed?: number }).amount_reversed ?? 0;
+    const reversedFlag = (transfer as unknown as { reversed?: boolean }).reversed === true;
+    return reversedFlag || amountReversed > 0;
   }
 
   /**
    * payout状態を修復
    */
-  private async fixPayoutStatus(payout: any, transfer: Stripe.Transfer): Promise<void> {
+  private async fixPayoutStatus(payout: Payout, transfer: Stripe.Transfer): Promise<void> {
     let newStatus: PayoutStatus;
     let notes = "";
 
@@ -216,9 +219,11 @@ export class PayoutReconciliationService {
       notes = `Reconciliation: Transfer ${transfer.id} confirmed successful`;
     } else if (this.isTransferFailed(transfer)) {
       newStatus = "failed";
-      const reversals = (transfer as any).reversals;
+      const amountReversed = (transfer as unknown as { amount_reversed?: number }).amount_reversed ?? 0;
+      const reversalType = amountReversed > 0 && amountReversed < transfer.amount ? "partial" : "full";
+      const reversals = (transfer as unknown as { reversals?: { data?: Array<{ reason?: string }> } }).reversals;
       const reversalReason = reversals?.data?.[0]?.reason || "unknown";
-      notes = `Reconciliation: Transfer ${transfer.id} reversed (${reversalReason})`;
+      notes = `Reconciliation: Transfer ${transfer.id} ${reversalType} reversal (${reversalReason})`;
     } else {
       // 不明な状態の場合はprocessing_errorのまま
       return;
