@@ -98,7 +98,13 @@ export class StripeTransferService {
         transferId: transfer.id,
         amount: transfer.amount,
         destination: transfer.destination as string,
-        status: (transfer as any).status || "pending",
+        status: ((): string => {
+          const amountReversed = (transfer as unknown as { amount_reversed?: number }).amount_reversed ?? 0;
+          const reversedFlag = (transfer as unknown as { reversed?: boolean }).reversed === true;
+          if (reversedFlag) return "reversed";
+          if (amountReversed > 0) return "partially_reversed";
+          return "succeeded";
+        })(),
         created: transfer.created,
         estimatedArrival: this.calculateEstimatedArrival(transfer.created),
         rateLimitInfo,
@@ -205,6 +211,24 @@ export class StripeTransferService {
   }
 
   /**
+   * 送金先アカウントの可用性チェック
+   * charges_enabled / payouts_enabled を確認
+   */
+  private async assertDestinationAccountReady(destinationAccountId: string): Promise<void> {
+    const account = await this.stripe.accounts.retrieve(destinationAccountId);
+    const chargesEnabled = (account as unknown as { charges_enabled?: boolean }).charges_enabled === true;
+    const payoutsEnabled = (account as unknown as { payouts_enabled?: boolean }).payouts_enabled === true;
+    if (!chargesEnabled || !payoutsEnabled) {
+      throw new PayoutError(
+        PayoutErrorType.STRIPE_ACCOUNT_NOT_READY,
+        "送金先アカウントが決済/送金を受け取れる状態ではありません",
+        undefined,
+        { destinationAccountId, chargesEnabled, payoutsEnabled }
+      );
+    }
+  }
+
+  /**
    * 冪等性キーを生成する
    * Race condition対策として、payout_id + destinationベースの冪等性キーを使用
    * これにより、万一DBで重複レコードが作成されても、Stripe側で重複Transferを防ぐ
@@ -248,6 +272,9 @@ export class StripeTransferService {
     let hitRateLimit = false;
     let suggestedDelayMs: number | undefined;
     let retriedCount = 0;
+
+    // 送金実行前に口座状態を確認
+    await this.assertDestinationAccountReady(params.destination);
 
     for (let attempt = 0; attempt <= this.retryConfig.maxRetries; attempt++) {
       try {
