@@ -6,6 +6,8 @@ import { StripeWebhookEventHandler } from "@/lib/services/webhook/webhook-event-
 import { SecurityAuditorImpl } from "@/lib/security/security-auditor.impl";
 import { AnomalyDetectorImpl } from "@/lib/security/anomaly-detector";
 import { SecurityReporterImpl } from "@/lib/security/security-reporter.impl";
+import { ConnectWebhookHandler } from "@/lib/services/webhook/connect-webhook-handler";
+import Stripe from "stripe";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -24,10 +26,11 @@ export async function GET(request: NextRequest) {
   const idempotencyService = new SupabaseWebhookIdempotencyService();
   const processor = new IdempotentWebhookProcessor(idempotencyService);
   const handler = new StripeWebhookEventHandler(securityReporter);
+  const connectHandler = await ConnectWebhookHandler.create();
 
   // 未処理(pending/failed)のイベントを取得し、一定件数だけ処理
   const MAX_BATCH = Number.parseInt(process.env.WEBHOOK_PROCESS_MAX_BATCH || "50", 10);
-  let pending: Array<{ stripe_event_id: string; event_type: string; status: string; stripe_event_created: number | null; created_at: string | null }> = [];
+  let pending: Array<{ stripe_event_id: string; event_type: string; status: string; stripe_event_created: number | null; created_at: string | null; stripe_account_id: string | null }> = [];
   try {
     pending = await idempotencyService.listPendingOrFailedEventsOrdered(MAX_BATCH);
   } catch (err) {
@@ -55,7 +58,10 @@ export async function GET(request: NextRequest) {
   for (const row of pending ?? []) {
     try {
       const evtId: string = row.stripe_event_id;
-      const event = await sharedStripe.events.retrieve(evtId);
+      const event = await sharedStripe.events.retrieve(
+        evtId,
+        row.stripe_account_id ? { stripeAccount: row.stripe_account_id } : undefined
+      );
 
       // data.object.id を抽出（イベントにより存在しない場合あり）
       const objectId: string | undefined = ((): string | undefined => {
@@ -72,7 +78,52 @@ export async function GET(request: NextRequest) {
         try { await idempotencyService.attachObjectIdIfMissing(event.id, objectId); } catch { /* noop */ }
       }
 
-      // 確定系イベントに限り、object_id + event.type (+ account) で重複処理済みか確認
+      // Connectイベントの判定（connected accountから届いたイベントを優先判定）
+      const isConnectEvent = !!row.stripe_account_id && (
+        event.type.startsWith("account.") ||
+        event.type.startsWith("payout.") ||
+        event.type.startsWith("person.") ||
+        event.type.startsWith("capability.")
+      );
+
+      if (isConnectEvent) {
+        const res = await processor.processWithIdempotency(
+          event.id,
+          event.type,
+          async () => {
+            const evt: Stripe.Event = event as Stripe.Event;
+            switch (evt.type) {
+              case "account.updated":
+                await connectHandler.handleAccountUpdated(evt.data.object as Stripe.Account);
+                break;
+              case "account.application.deauthorized": {
+                // data.object は application、connected account id は event.account
+                const app = evt.data.object as Stripe.Application;
+                const acct = (evt as unknown as { account?: string | null }).account ?? null;
+                await connectHandler.handleAccountApplicationDeauthorized(app, acct);
+                break;
+              }
+              case "payout.paid":
+                await connectHandler.handlePayoutPaid(evt.data.object as Stripe.Payout);
+                break;
+              case "payout.failed":
+                await connectHandler.handlePayoutFailed(evt.data.object as Stripe.Payout);
+                break;
+              // account.application.deauthorized は次タスクでDB更新実装予定
+              default:
+                // 未対応のConnectイベントはACKのみ
+                break;
+            }
+            return ({ success: true, eventId: evt.id, eventType: evt.type } as unknown) as { success: boolean };
+          },
+          { metadata: { stripe_account_id: row.stripe_account_id } }
+        );
+        processed++;
+        if ((res.result as { success?: boolean })?.success) succeeded++; else failed++;
+        continue;
+      }
+
+      // 通常（プラットフォーム）イベント: 確定系の重複判定→標準ハンドラへ委譲
       if (objectId && DEDUP_BY_OBJECT_EVENT_TYPES.has(event.type)) {
         const alreadyProcessed = await idempotencyService.hasProcessedByObject(
           event.type,
@@ -91,14 +142,16 @@ export async function GET(request: NextRequest) {
           continue;
         }
       }
-      const res = await processor.processWithIdempotency(
-        event.id,
-        event.type,
-        () => handler.handleEvent(event),
-        { metadata: { stripe_account_id: (event as unknown as { account?: string | null }).account ?? null } }
-      );
-      processed++;
-      if ((res.result as { success?: boolean })?.success) succeeded++; else failed++;
+      {
+        const res = await processor.processWithIdempotency(
+          event.id,
+          event.type,
+          () => handler.handleEvent(event),
+          { metadata: { stripe_account_id: (event as unknown as { account?: string | null }).account ?? null } }
+        );
+        processed++;
+        if ((res.result as { success?: boolean })?.success) succeeded++; else failed++;
+      }
     } catch (e) {
       failed++;
       try {

@@ -34,6 +34,7 @@ export interface WebhookIdempotencyService<T extends Json = Json> {
     status: string;
     stripe_event_created: number | null;
     created_at: string | null;
+    stripe_account_id: string | null;
   }>>;
   /**
    * 既に同一の (event_type, object_id, stripe_account_id) が processed 済みかを確認（限定的に使用）
@@ -160,10 +161,11 @@ export class SupabaseWebhookIdempotencyService<T extends Json = Json>
     status: string;
     stripe_event_created: number | null;
     created_at: string | null;
+    stripe_account_id: string | null;
   }>> {
     const { data, error } = await this.supabase
       .from("webhook_events")
-      .select("stripe_event_id, event_type, status, stripe_event_created, created_at")
+      .select("stripe_event_id, event_type, status, stripe_event_created, created_at, stripe_account_id")
       .in("status", ["pending", "failed"])
       .order("stripe_event_created", { ascending: true, nullsFirst: false })
       .order("created_at", { ascending: true })
@@ -178,6 +180,7 @@ export class SupabaseWebhookIdempotencyService<T extends Json = Json>
       status: string;
       stripe_event_created: number | null;
       created_at: string | null;
+      stripe_account_id: string | null;
     }>;
   }
 
@@ -591,8 +594,16 @@ export class RedisWebhookIdempotencyService<T extends Json = Json>
     status: string;
     stripe_event_created: number | null;
     created_at: string | null;
+    stripe_account_id: string | null;
   }>> {
-    return [];
+    return [] as Array<{
+      stripe_event_id: string;
+      event_type: string;
+      status: string;
+      stripe_event_created: number | null;
+      created_at: string | null;
+      stripe_account_id: string | null;
+    }>;
   }
 
   async hasProcessedByObject(
