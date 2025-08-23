@@ -22,7 +22,6 @@ import {
 import {
   validateCreateExpressAccountParams,
   validateCreateAccountLinkParams,
-  validateUpdateAccountStatusParams,
   validateStripeAccountId,
   validateUserId,
 } from "./validation";
@@ -373,9 +372,14 @@ export class StripeConnectService implements IStripeConnectService {
    */
   async updateAccountStatus(params: UpdateAccountStatusParams): Promise<void> {
     try {
-      // パラメータバリデーション
-      const validatedParams = validateUpdateAccountStatusParams(params);
-      const { userId, status, chargesEnabled, payoutsEnabled, stripeAccountId } = validatedParams;
+      const { userId, status, chargesEnabled, payoutsEnabled, stripeAccountId } = params;
+
+      validateUserId(userId);
+
+      if (stripeAccountId) {
+        // オプションで指定された場合のみ形式検証
+        validateStripeAccountId(stripeAccountId);
+      }
 
       const updateData: Database["public"]["Tables"]["stripe_connect_accounts"]["Update"] = {
         status: status,
