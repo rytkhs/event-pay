@@ -13,7 +13,7 @@ CREATE TYPE public.payment_method_enum AS ENUM ('stripe', 'cash');
 CREATE TYPE public.payment_status_enum AS ENUM ('pending', 'paid', 'failed', 'received', 'completed', 'refunded', 'waived');
 CREATE TYPE public.attendance_status_enum AS ENUM ('attending', 'not_attending', 'maybe');
 CREATE TYPE public.stripe_account_status_enum AS ENUM ('unverified', 'onboarding', 'verified', 'restricted');
-CREATE TYPE public.payout_status_enum AS ENUM ('pending', 'processing', 'completed', 'failed', 'processing_error');
+CREATE TYPE public.payout_status_enum AS ENUM ('pending', 'processing', 'completed', 'failed');
 CREATE TYPE public.admin_reason_enum AS ENUM ('user_cleanup', 'test_data_setup', 'system_maintenance', 'emergency_access', 'data_migration', 'security_investigation');
 CREATE TYPE public.suspicious_activity_type_enum AS ENUM ('EMPTY_RESULT_SET', 'ADMIN_ACCESS_ATTEMPT', 'INVALID_TOKEN_PATTERN', 'RATE_LIMIT_EXCEEDED', 'UNAUTHORIZED_RLS_BYPASS', 'BULK_DATA_ACCESS', 'UNUSUAL_ACCESS_PATTERN');
 CREATE TYPE public.security_severity_enum AS ENUM ('LOW', 'MEDIUM', 'HIGH', 'CRITICAL');
@@ -449,7 +449,7 @@ CREATE INDEX idx_unauthorized_access_log_guest_token ON public.unauthorized_acce
 
 -- 一意制約・部分インデックス
 CREATE UNIQUE INDEX uniq_payouts_event_generated_date_jst ON public.payouts (event_id, ((generated_at AT TIME ZONE 'Asia/Tokyo')::date));
-CREATE INDEX idx_payouts_status_processing_error ON public.payouts (status) WHERE status = 'processing_error';
+-- removed obsolete index for processing_error
 
 -- アクティブな送金レコードの重複防止（同一event_idに対し、アクティブ状態の送金レコードは1件まで）
 CREATE UNIQUE INDEX IF NOT EXISTS unique_active_payout_per_event

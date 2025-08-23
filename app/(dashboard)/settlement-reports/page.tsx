@@ -23,7 +23,7 @@ export default async function SettlementReportsPage() {
       title,
       date,
       status,
-      payouts!left (
+      settlements!left (
         id,
         settlement_mode,
         generated_at
@@ -40,8 +40,9 @@ export default async function SettlementReportsPage() {
     date: event.date,
     status: event.status,
     hasExistingReport:
-      (event.payouts as any[])?.some((payout) => payout.settlement_mode === "destination_charge") ||
-      false,
+      (event.settlements as any[])?.some(
+        (settlement) => settlement.settlement_mode === "destination_charge"
+      ) || false,
   }));
 
   // 初期レポート一覧を取得（最新10件）- RPC関数で動的計算

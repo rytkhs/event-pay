@@ -3,7 +3,6 @@
 import { SecureSupabaseClientFactory } from "@/lib/security/secure-client-factory.impl";
 import { AdminReason } from "@/lib/security/secure-client-factory.types";
 import { PaymentService, PaymentErrorHandler, PaymentValidator } from "@/lib/services/payment";
-import { getTransferGroupForEvent } from "@/lib/utils/stripe";
 import { createRateLimitStore, checkRateLimit } from "@/lib/rate-limit";
 import { RATE_LIMIT_CONFIG } from "@/config/security";
 import { createStripeSessionRequestSchema } from "@/lib/services/payment/validation";
@@ -105,7 +104,6 @@ export async function createStripeSessionAction(
           created_by,
           stripe_connect_accounts (
             stripe_account_id,
-            charges_enabled,
             payouts_enabled
           )
         )
@@ -126,7 +124,6 @@ export async function createStripeSessionAction(
 
     type StripeConnectAccount = {
       stripe_account_id: string;
-      charges_enabled: boolean;
       payouts_enabled: boolean;
     };
     type EventLite = {
@@ -193,9 +190,6 @@ export async function createStripeSessionAction(
       userName: profile?.display_name,
     } as const;
 
-    // Transfer Group（両方のフローで使用）
-    const transferGroup = getTransferGroupForEvent(event.id);
-
     const result = await paymentService.createStripeSession({
       attendanceId: params.attendanceId,
       amount: params.amount,
@@ -204,7 +198,6 @@ export async function createStripeSessionAction(
       eventTitle: event.title,
       successUrl: params.successUrl,
       cancelUrl: params.cancelUrl,
-      transferGroup,
       destinationCharges: destinationChargesConfig,
     });
 

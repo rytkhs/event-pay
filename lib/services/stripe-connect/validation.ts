@@ -6,7 +6,6 @@ import { z } from "zod";
 import {
   CreateExpressAccountParams,
   CreateAccountLinkParams,
-  UpdateAccountStatusParams,
   StripeConnectError,
   StripeConnectErrorType,
 } from "./types";

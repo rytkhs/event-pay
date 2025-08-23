@@ -2,29 +2,23 @@
  * getPayoutsHistoryAction の軽い単体テスト
  */
 
-import { getPayoutsHistoryAction } from "@/app/payouts/actions/get-payouts-history";
-import { PayoutService, PayoutValidator, PayoutErrorHandler } from "@/lib/services/payout";
-import { StripeConnectService } from "@/lib/services/stripe-connect";
-import { PayoutError, PayoutErrorType } from "@/lib/services/payout/types";
+import { getSettlementHistoryAction } from "@/app/settlements/actions/get-settlement-history";
+import { SettlementHistoryService } from "@/lib/services/settlement";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 import { ERROR_CODES } from "@/lib/types/server-actions";
 
 // モック設定
 jest.mock("@/lib/supabase/server");
-jest.mock("@/lib/services/payout");
-jest.mock("@/lib/services/stripe-connect");
+jest.mock("@/lib/services/settlement");
 
 const mockCreateServerClient = createServerClient as jest.MockedFunction<typeof createServerClient>;
-const mockPayoutService = PayoutService as jest.MockedClass<typeof PayoutService>;
-const mockPayoutValidator = PayoutValidator as jest.MockedClass<typeof PayoutValidator>;
-const mockPayoutErrorHandler = PayoutErrorHandler as jest.MockedClass<typeof PayoutErrorHandler>;
-const mockStripeConnectService = StripeConnectService as jest.MockedClass<typeof StripeConnectService>;
+const mockSettlementHistoryService = SettlementHistoryService as unknown as jest.MockedClass<typeof SettlementHistoryService>;
 
 describe("getPayoutsHistoryAction", () => {
   const mockUser = { id: "user-123", email: "test@example.com" };
 
   let mockSupabaseClient: any;
-  let mockPayoutServiceInstance: any;
+  let mockServiceInstance: any;
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -39,14 +33,10 @@ describe("getPayoutsHistoryAction", () => {
     };
     mockCreateServerClient.mockReturnValue(mockSupabaseClient);
 
-    mockPayoutServiceInstance = {
+    mockServiceInstance = {
       getPayoutHistory: jest.fn(),
     };
-    mockPayoutService.mockImplementation(() => mockPayoutServiceInstance);
-
-    mockPayoutValidator.mockImplementation(() => ({} as any));
-    mockPayoutErrorHandler.mockImplementation(() => ({} as any));
-    mockStripeConnectService.mockImplementation(() => ({} as any));
+    (mockSettlementHistoryService as any).mockImplementation(() => mockServiceInstance);
   });
 
   describe("正常系", () => {
@@ -97,10 +87,10 @@ describe("getPayoutsHistoryAction", () => {
         },
       ];
 
-      mockPayoutServiceInstance.getPayoutHistory.mockResolvedValue(payouts);
+      mockServiceInstance.getPayoutHistory.mockResolvedValue(payouts);
 
       // act
-      const result = await getPayoutsHistoryAction({ status: "completed", limit: 20, offset: 0 });
+      const result = await getSettlementHistoryAction({ status: "completed", limit: 20, offset: 0 });
 
       // assert
       expect(result.success).toBe(true);
@@ -115,7 +105,6 @@ describe("getPayoutsHistoryAction", () => {
           platformFee: 0,
           netPayoutAmount: 1928,
           status: "completed",
-          stripeTransferId: "tr_1",
           processedAt: "2024-01-15T10:00:00Z",
           createdAt: "2024-01-15T09:00:00Z",
           notes: "手動実行: 緊急",
@@ -124,20 +113,22 @@ describe("getPayoutsHistoryAction", () => {
         expect(result.data.items[1].isManual).toBe(false);
       }
 
-      expect(mockPayoutServiceInstance.getPayoutHistory).toHaveBeenCalledWith({
-        userId: mockUser.id,
-        status: "completed",
-        eventId: undefined,
-        limit: 20,
-        offset: 0,
-      });
+      expect(mockServiceInstance.getPayoutHistory).toHaveBeenCalledWith(
+        mockUser.id,
+        {
+          status: "completed",
+          eventId: undefined,
+          limit: 20,
+          offset: 0,
+        }
+      );
     });
   });
 
   describe("認証エラー", () => {
     it("未認証で UNAUTHORIZED を返す", async () => {
       mockSupabaseClient.auth.getUser.mockResolvedValue({ data: { user: null }, error: null });
-      const result = await getPayoutsHistoryAction({});
+      const result = await getSettlementHistoryAction({});
       expect(result.success).toBe(false);
       if (!result.success) {
         expect(result.code).toBe(ERROR_CODES.UNAUTHORIZED);
@@ -148,7 +139,7 @@ describe("getPayoutsHistoryAction", () => {
 
   describe("バリデーションエラー", () => {
     it("limit が 0 でエラー", async () => {
-      const result = (await getPayoutsHistoryAction({ limit: 0 })) as any;
+      const result = (await getSettlementHistoryAction({ limit: 0 })) as any;
       expect(result.success).toBe(false);
       if (!result.success) {
         expect(result.code).toBe(ERROR_CODES.VALIDATION_ERROR);
@@ -159,11 +150,9 @@ describe("getPayoutsHistoryAction", () => {
 
   describe("サービス側エラー", () => {
     it("DBエラーをハンドリングして返す", async () => {
-      mockPayoutServiceInstance.getPayoutHistory.mockRejectedValue(
-        new PayoutError(PayoutErrorType.DATABASE_ERROR, "DB error")
-      );
+      mockServiceInstance.getPayoutHistory.mockRejectedValue(new Error("DB error"));
 
-      const result = await getPayoutsHistoryAction({});
+      const result = await getSettlementHistoryAction({});
       expect(result.success).toBe(false);
       if (!result.success) {
         expect(result.code).toBe(ERROR_CODES.DATABASE_ERROR);

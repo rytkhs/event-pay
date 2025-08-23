@@ -150,7 +150,7 @@ export class ConnectWebhookHandler {
       let userId: string | undefined;
       if (accountId) {
         try {
-          const acc = await this.stripeConnectService.getAccountInfo(accountId);
+          const _acc = await this.stripeConnectService.getAccountInfo(accountId);
           // getAccountInfoはmetadata.user_idまでは返さないため、DBから逆引き
           const { data } = await this.supabase
             .from('stripe_connect_accounts')
