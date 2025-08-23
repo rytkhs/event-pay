@@ -44,17 +44,6 @@ export const createAccountLinkSchema = z.object({
 });
 
 /**
- * アカウントステータス更新パラメータのバリデーションスキーマ
- */
-export const updateAccountStatusSchema = z.object({
-  userId: z.string().uuid("有効なユーザーIDを指定してください"),
-  status: z.enum(["unverified", "onboarding", "verified", "restricted"]),
-  chargesEnabled: z.boolean(),
-  payoutsEnabled: z.boolean(),
-  stripeAccountId: z.string().optional(),
-});
-
-/**
  * Express Account作成パラメータのバリデーション
  */
 export const validateCreateExpressAccountParams = (
@@ -104,30 +93,6 @@ export const validateCreateAccountLinkParams = (
   }
 };
 
-/**
- * アカウントステータス更新パラメータのバリデーション
- */
-export const validateUpdateAccountStatusParams = (
-  params: unknown
-): UpdateAccountStatusParams => {
-  try {
-    return updateAccountStatusSchema.parse(params);
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      const message = error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join(', ');
-      throw new StripeConnectError(
-        StripeConnectErrorType.VALIDATION_ERROR,
-        `アカウントステータス更新パラメータが無効です: ${message}`,
-        error
-      );
-    }
-    throw new StripeConnectError(
-      StripeConnectErrorType.VALIDATION_ERROR,
-      "アカウントステータス更新パラメータの検証に失敗しました",
-      error as Error
-    );
-  }
-};
 
 /**
  * Stripe Account IDの形式チェック

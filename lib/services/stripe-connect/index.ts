@@ -29,7 +29,6 @@ export { StripeConnectError, StripeConnectErrorType } from "./types";
 export {
   validateCreateExpressAccountParams,
   validateCreateAccountLinkParams,
-  validateUpdateAccountStatusParams,
   validateStripeAccountId,
   validateUserId,
 } from "./validation";
