@@ -65,6 +65,8 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
         case "charge.refund.created":
           return await this.handleRefundCreated(event as unknown as Stripe.RefundCreatedEvent);
 
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-expect-error Stripe typings may not yet include this literal
         case "refund.failed":
           return await this.handleRefundFailed(event as unknown as Stripe.Event);
 
