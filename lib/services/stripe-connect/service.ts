@@ -203,13 +203,15 @@ export class StripeConnectService implements IStripeConnectService {
 
       // Collection Optionsが指定されている場合は追加
       if (validatedParams.collectionOptions) {
-        const collectionOptions: Stripe.AccountLinkCreateParams.CollectionOptions = {};
-        if (validatedParams.collectionOptions.fields) {
-          collectionOptions.fields = validatedParams.collectionOptions.fields;
-        }
+        // Stripeの型定義では fields が必須のため、デフォルト値 "currently_due" を設定しておく
+        const collectionOptions: Stripe.AccountLinkCreateParams.CollectionOptions = {
+          fields: validatedParams.collectionOptions.fields ?? "currently_due",
+        };
+
         if (validatedParams.collectionOptions.futureRequirements) {
           collectionOptions.future_requirements = validatedParams.collectionOptions.futureRequirements;
         }
+
         createParams.collection_options = collectionOptions;
       }
 
