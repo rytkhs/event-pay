@@ -2,12 +2,10 @@
 
 import { z } from "zod";
 import { createClient as createServerClient } from "@/lib/supabase/server";
-import { PayoutService, PayoutValidator, PayoutErrorHandler } from "@/lib/services/payout";
-import { StripeConnectService, StripeConnectErrorHandler } from "@/lib/services/stripe-connect";
+import { SettlementHistoryService } from "@/lib/services/settlement";
 import { SecureSupabaseClientFactory } from "@/lib/security/secure-client-factory.impl";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { Database } from "@/types/database";
-import { PayoutError, PayoutErrorType, type Payout } from "@/lib/services/payout/types";
 import {
   type ServerActionResult,
   createErrorResponse,
@@ -30,15 +28,14 @@ type PayoutHistoryItem = {
   totalStripeFee: number;
   platformFee: number;
   netPayoutAmount: number;
-  status: Payout["status"];
-  stripeTransferId: string | null;
+  status: Database["public"]["Enums"]["payout_status_enum"];
   processedAt: string | null;
   createdAt: string;
   notes: string | null;
   isManual: boolean;
 };
 
-export async function getPayoutsHistoryAction(
+export async function getSettlementHistoryAction(
   input: unknown
 ): Promise<ServerActionResult<{ items: PayoutHistoryItem[] }>> {
   try {
@@ -66,23 +63,10 @@ export async function getPayoutsHistoryAction(
     const secureFactory = SecureSupabaseClientFactory.getInstance();
     const userClient = secureFactory.createAuthenticatedClient();
 
-    const stripeConnectService = new StripeConnectService(
-      userClient as SupabaseClient<Database>,
-      new StripeConnectErrorHandler()
-    );
-
-    const validator = new PayoutValidator(userClient as SupabaseClient<Database>, stripeConnectService);
-    const errorHandler = new PayoutErrorHandler();
-    const payoutService = new PayoutService(
-      userClient as SupabaseClient<Database>,
-      errorHandler,
-      stripeConnectService,
-      validator
-    );
+    const settlementHistoryService = new SettlementHistoryService(userClient as SupabaseClient<Database>);
 
     // 4) 送金履歴取得
-    const payouts = await payoutService.getPayoutHistory({
-      userId: user.id,
+    const payouts = await settlementHistoryService.getPayoutHistory(user.id, {
       status,
       eventId,
       limit,
@@ -99,7 +83,6 @@ export async function getPayoutsHistoryAction(
       platformFee: p.platform_fee,
       netPayoutAmount: p.net_payout_amount,
       status: p.status,
-      stripeTransferId: p.stripe_transfer_id,
       processedAt: p.processed_at,
       createdAt: p.created_at,
       notes: p.notes,
@@ -108,16 +91,7 @@ export async function getPayoutsHistoryAction(
 
     return createSuccessResponse({ items });
   } catch (error) {
-    if (error instanceof PayoutError) {
-      // 主にDATABASE_ERRORを想定
-      const code =
-        error.type === PayoutErrorType.DATABASE_ERROR
-          ? ERROR_CODES.DATABASE_ERROR
-          : ERROR_CODES.INTERNAL_ERROR;
-      return createErrorResponse(code, error.message);
-    }
-    return createErrorResponse(ERROR_CODES.INTERNAL_ERROR, "予期しないエラーが発生しました", {
-      originalError: error,
-    });
+    const message = error instanceof Error ? error.message : "Unknown error";
+    return createErrorResponse(ERROR_CODES.DATABASE_ERROR, message);
   }
 }

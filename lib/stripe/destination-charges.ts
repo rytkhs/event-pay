@@ -5,6 +5,7 @@
 
 import Stripe from 'stripe';
 import { stripe, generateIdempotencyKey, createStripeRequestOptions } from './client';
+import { getTransferGroupForEvent } from '@/lib/utils/stripe';
 import { retryWithIdempotency } from './idempotency-retry';
 import { randomUUID } from 'crypto';
 
@@ -75,8 +76,8 @@ export async function createDestinationCheckoutSession(
     currency: 'jpy',
   });
 
-  // Transfer Group生成
-  const transferGroup = `event_${eventId}_payout`;
+  // Transfer Group生成（共通ユーティリティ）
+  const transferGroup = getTransferGroupForEvent(eventId);
 
   // メタデータ統合
   const sessionMetadata = {
@@ -160,8 +161,8 @@ export async function createDestinationPaymentIntent(
     currency: 'jpy',
   });
 
-  // Transfer Group生成
-  const transferGroup = `event_${eventId}_payout`;
+  // Transfer Group生成（共通ユーティリティ）
+  const transferGroup = getTransferGroupForEvent(eventId);
 
   // メタデータ統合
   const intentMetadata = {
@@ -405,23 +406,3 @@ export async function createOrRetrieveCustomer(
     metadata,
   });
 }
-
-/**
- * Transfer Group関連のユーティリティ
- */
-export const transferGroupUtils = {
-  /**
-   * イベント用のTransfer Group生成
-   */
-  generateEventTransferGroup: (eventId: string): string => {
-    return `event_${eventId}_payout`;
-  },
-
-  /**
-   * Transfer GroupからイベントIDを抽出
-   */
-  extractEventIdFromTransferGroup: (transferGroup: string): string | null => {
-    const match = transferGroup.match(/^event_(.+)_payout$/);
-    return match ? match[1] : null;
-  },
-};

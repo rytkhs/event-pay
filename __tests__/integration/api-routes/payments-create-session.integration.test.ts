@@ -178,7 +178,7 @@ describe("決済セッション作成 統合テスト", () => {
       expect(payment?.method).toBe("stripe");
       expect(payment?.amount).toBe(1000);
       expect(payment?.status).toBe("pending");
-      expect(payment?.stripe_session_id).toBe("cs_test_123");
+      expect(payment?.stripe_checkout_session_id).toBe("cs_test_123");
     });
 
     it("重複作成リクエストでも既存レコードを再利用してセッションを再発行する", async () => {
@@ -225,7 +225,7 @@ describe("決済セッション作成 統合テスト", () => {
         .eq("attendance_id", testAttendanceId);
 
       expect(payments).toHaveLength(1);
-      expect(payments?.[0]?.stripe_session_id).toBe("cs_test_second");
+      expect(payments?.[0]?.stripe_checkout_session_id).toBe("cs_test_second");
     });
 
     it("Stripe APIエラーを適切に処理する", async () => {
@@ -274,7 +274,7 @@ describe("決済セッション作成 統合テスト", () => {
           .single();
 
         expect(payment).toBeTruthy();
-        expect(payment?.stripe_session_id).toBeNull();
+        expect(payment?.stripe_checkout_session_id).toBeNull();
       } finally {
         // クリーンアップ
         await supabase.from("payments").delete().eq("attendance_id", newAttendanceId);

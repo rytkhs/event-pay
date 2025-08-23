@@ -248,15 +248,10 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
         case "charge.dispute.funds_reinstated":
           return await this.handleDisputeEvent(event as Stripe.ChargeDisputeCreatedEvent | Stripe.ChargeDisputeClosedEvent);
 
-        // Destination chargesへ移行後もTransferイベントは来る可能性があるが、
-        // payouts と直接整合しないため受信のみACKする
+        // Destination chargesでは transfer.* は不使用
         case "transfer.created":
         case "transfer.updated":
         case "transfer.reversed":
-          await this.securityReporter.logSecurityEvent({
-            type: "webhook_transfer_event_ignored",
-            details: { eventType: event.type, eventId: event.id },
-          });
           return { success: true };
 
         default:
@@ -437,9 +432,18 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
       const chargeObj: Stripe.Charge = (
         (piOrCharge as Stripe.PaymentIntent).latest_charge as Stripe.Charge | undefined
       ) ?? (piOrCharge as Stripe.Charge);
-      const balanceTxnId: string | null = (chargeObj?.balance_transaction && typeof chargeObj.balance_transaction === "object")
-        ? (chargeObj.balance_transaction as Stripe.BalanceTransaction).id
-        : (typeof chargeObj?.balance_transaction === "string" ? chargeObj.balance_transaction : null);
+      const btObj = ((): { id: string | null; fee: number | null; net: number | null; fee_details: Array<{ amount?: number; currency?: string; type?: string }> | null } => {
+        const raw = chargeObj?.balance_transaction as unknown;
+        if (raw && typeof raw === "object") {
+          const tx = raw as Stripe.BalanceTransaction;
+          return { id: tx.id, fee: typeof tx.fee === "number" ? tx.fee : null, net: typeof tx.net === "number" ? tx.net : null, fee_details: Array.isArray(tx.fee_details) ? tx.fee_details.map(fd => ({ amount: fd.amount, currency: (fd as any).currency, type: (fd as any).type })) : null };
+        }
+        if (typeof raw === "string") {
+          return { id: raw, fee: null, net: null, fee_details: null };
+        }
+        return { id: null, fee: null, net: null, fee_details: null };
+      })();
+      const balanceTxnId: string | null = btObj.id;
       const transferId: string | null = (chargeObj?.transfer && typeof chargeObj.transfer === "object")
         ? (chargeObj.transfer as Stripe.Transfer).id
         : (typeof chargeObj?.transfer === "string" ? chargeObj.transfer : null);
@@ -452,6 +456,9 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
           paid_at: new Date().toISOString(),
           stripe_charge_id: charge.id,
           stripe_balance_transaction_id: balanceTxnId,
+          stripe_balance_transaction_fee: btObj.fee,
+          stripe_balance_transaction_net: btObj.net,
+          stripe_fee_details: btObj.fee_details as unknown as import("@/types/database").Json,
           stripe_transfer_id: transferId,
           application_fee_id: applicationFeeId,
           webhook_event_id: event.id,
@@ -936,101 +943,7 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
         });
       }
 
-      // created: Connect destination chargesでは、プラットフォーム口座から引かれるため、connected側へのtransferを一時的に戻す
-      if (event.type === "charge.dispute.created" && payment) {
-        const paymentRecord = payment as {
-          id: string;
-          stripe_transfer_id?: string | null;
-          stripe_transfer_reversal_id?: string | null;
-          transfer_reversed_amount?: number | null;
-        };
-        const transferId = paymentRecord?.stripe_transfer_id ?? null;
-        if (transferId) {
-          const disputeAmount = typeof (dispute as { amount?: number }).amount === "number" ? (dispute as { amount?: number }).amount! : 0;
-
-          /*
-           * 冪等性強化: reversal 実行直前に transfer_reversed_amount を再読込。
-           * 並列 Webhook 実行や Stripe 再送により既に reversal 済みの可能性を排除する。
-           */
-          const { data: latestPayment } = await this.supabase
-            .from("payments")
-            .select("transfer_reversed_amount")
-            .eq("id", paymentRecord.id)
-            .maybeSingle();
-
-          const currentReversed = Math.max(0, (latestPayment as { transfer_reversed_amount?: number })?.transfer_reversed_amount ?? 0);
-
-          const toReverse = Math.max(0, disputeAmount - currentReversed);
-
-          if (toReverse > 0) {
-            try {
-              const reversal = await sharedStripe.transfers.createReversal(
-                transferId,
-                { amount: toReverse },
-                { idempotencyKey: `dispute_reversal_${dispute.id}` }
-              );
-              await this.supabase
-                .from("payments")
-                .update({
-                  stripe_transfer_reversal_id: (reversal as { id?: string }).id ?? paymentRecord.stripe_transfer_reversal_id ?? null,
-                  transfer_reversed_amount: currentReversed + toReverse,
-                  updated_at: new Date().toISOString(),
-                })
-                .eq("id", paymentRecord.id);
-
-              await this.securityReporter.logSecurityEvent({
-                type: "transfer_reversal_created",
-                details: { eventId: event.id, paymentId: paymentRecord.id, transferId, reversalAmount: toReverse },
-              });
-            } catch (e) {
-              await this.securityReporter.logSecurityEvent({
-                type: "transfer_reversal_failed",
-                details: { eventId: event.id, paymentId: paymentRecord.id, transferId, error: e instanceof Error ? e.message : "unknown" },
-              });
-            }
-          }
-        }
-      }
-
-      // closed & won: 以前のリバーサル分を再転送
-      if (payment && (dispute.status === "won")) {
-        const paymentRecord = payment as {
-          id: string;
-          destination_account_id?: string | null;
-          transfer_group?: string | null;
-          transfer_reversed_amount?: number | null;
-        };
-        const destination = paymentRecord?.destination_account_id ?? null;
-        const reversedAmount = Math.max(0, paymentRecord?.transfer_reversed_amount ?? 0);
-        if (destination && reversedAmount > 0) {
-          const currency: string = ((dispute as unknown as { currency?: string }).currency || "jpy").toLowerCase();
-          try {
-            const newTransfer = await sharedStripe.transfers.create(
-              {
-                amount: reversedAmount,
-                currency,
-                destination,
-                transfer_group: paymentRecord.transfer_group ?? undefined,
-                metadata: { purpose: "retransfer_after_dispute_won", dispute_id: dispute.id },
-              },
-              { idempotencyKey: `dispute_retransfer_${dispute.id}` }
-            );
-            await this.supabase
-              .from("payments")
-              .update({ transfer_reversed_amount: 0, updated_at: new Date().toISOString() })
-              .eq("id", paymentRecord.id);
-            await this.securityReporter.logSecurityEvent({
-              type: "transfer_retransfer_created",
-              details: { eventId: event.id, paymentId: paymentRecord.id, destination, retransferId: (newTransfer as { id?: string }).id, amount: reversedAmount },
-            });
-          } catch (e) {
-            await this.securityReporter.logSecurityEvent({
-              type: "transfer_retransfer_failed",
-              details: { eventId: event.id, paymentId: paymentRecord.id, destination, error: e instanceof Error ? e.message : "unknown" },
-            });
-          }
-        }
-      }
+      // Destination charges: Transfer の reversal / 再転送は行わない
       if (payment) {
         try { await this.regenerateSettlementSnapshotFromPayment(payment); } catch { /* noop */ }
       } else {
@@ -1048,24 +961,8 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
     return { success: true };
   }
 
-  /**
-   * 最新のTransfer情報を取得（失敗時はイベントのオブジェクトでフォールバック）
-   */
-  private async getLatestTransferOrFallback(transferFromEvent: Stripe.Transfer): Promise<Stripe.Transfer> {
-    try {
-      const latest = await sharedStripe.transfers.retrieve(transferFromEvent.id);
-      return latest;
-    } catch (e) {
-      await this.securityReporter.logSecurityEvent({
-        type: "webhook_transfer_retrieve_failed",
-        details: {
-          transferId: transferFromEvent.id,
-          error: e instanceof Error ? e.message : "unknown",
-        },
-      });
-      return transferFromEvent;
-    }
-  }
+  // transfer.* ハンドラは不要
+  // getLatestTransferOrFallback / handleTransferCreated / handleTransferUpdated / handleTransferReversed を削除
 
   private async handlePaymentIntentSucceeded(
     event: Stripe.PaymentIntentSucceededEvent
@@ -1389,247 +1286,6 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
         details: { eventId: event.id, paymentId: payment.id },
       });
       return { success: true, eventId: event.id, paymentId: payment.id };
-    } catch (error) {
-      throw (error instanceof Error ? error : new Error("Unknown error"));
-    }
-  }
-
-  // Transferが作成された時点で completed へ（Stripeでは作成時点で送金完了）
-  private async handleTransferCreated(
-    event: Stripe.TransferCreatedEvent
-  ): Promise<WebhookProcessingResult> {
-    const transferFromEvent = event.data.object;
-    const latestTransfer = await this.getLatestTransferOrFallback(transferFromEvent);
-    const transferId = latestTransfer.id;
-    const transferGroup = (latestTransfer as unknown as { transfer_group?: string }).transfer_group;
-
-    try {
-      // 該当する payouts レコードを transfer_id もしくは transfer_group で特定
-      let payoutQuery = this.supabase
-        .from("payouts")
-        .select("id, status, stripe_transfer_id")
-        .limit(1);
-
-      if (transferGroup) {
-        payoutQuery = payoutQuery.or(
-          `stripe_transfer_id.eq.${transferId},transfer_group.eq.${transferGroup}`
-        );
-      } else {
-        payoutQuery = payoutQuery.eq("stripe_transfer_id", transferId);
-      }
-
-      const { data: payout, error: fetchError } = await payoutQuery.maybeSingle();
-
-      if (fetchError) {
-        throw new Error(`Payout lookup failed: ${fetchError.message}`);
-      }
-
-      if (!payout) {
-        // 関連レコードがない場合は成功としてACK（将来の再同期に委ねる）
-        await this.securityReporter.logSecurityEvent({
-          type: "webhook_transfer_no_payout_record",
-          details: {
-            eventId: event.id,
-            transferId,
-            transferGroup,
-          },
-        });
-        return { success: true };
-      }
-
-      // 既に完了済みかチェック（冪等性）
-      if (payout.status === "completed") {
-        await this.securityReporter.logSecurityEvent({
-          type: "webhook_duplicate_processing_prevented",
-          details: {
-            eventId: event.id,
-            payoutId: payout.id,
-            currentStatus: payout.status,
-          },
-        });
-        return { success: true };
-      }
-
-      // processing_errorステータスからの復旧処理
-      if (payout.status === "processing_error") {
-        await this.securityReporter.logSecurityEvent({
-          type: "webhook_processing_error_recovery",
-          details: {
-            eventId: event.id,
-            payoutId: payout.id,
-            transferId,
-            previousStatus: payout.status,
-            recoveryAction: "transfer.created webhook processing",
-          },
-        });
-      }
-
-      // 送金ステータスを完了に更新
-      const { error: updateError } = await this.supabase
-        .from("payouts")
-        .update({
-          status: "completed",
-          stripe_transfer_id: transferId,
-          processed_at: new Date().toISOString(),
-          webhook_event_id: event.id,
-          webhook_processed_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", payout.id);
-
-      if (updateError) {
-        throw new Error(`Failed to mark payout completed: ${updateError.message}`);
-      }
-
-      // 成功をログに記録
-      await this.securityReporter.logSecurityEvent({
-        type: "webhook_transfer_created_processed",
-        details: {
-          eventId: event.id,
-          payoutId: payout.id,
-          transferId,
-          amount: latestTransfer.amount,
-          currency: latestTransfer.currency,
-        },
-      });
-
-      return { success: true, eventId: event.id, payoutId: payout.id };
-    } catch (error) {
-      throw (error instanceof Error ? error : new Error("Unknown error"));
-    }
-  }
-
-  // 送金更新イベントの処理
-  private async handleTransferUpdated(
-    event: Stripe.TransferUpdatedEvent
-  ): Promise<WebhookProcessingResult> {
-    const transferFromEvent = event.data.object;
-    const latestTransfer = await this.getLatestTransferOrFallback(transferFromEvent);
-    const transferId = latestTransfer.id;
-
-    try {
-      // 該当する payouts レコードを検索
-      const { data: payout, error: fetchError } = await this.supabase
-        .from("payouts")
-        .select("id, status")
-        .eq("stripe_transfer_id", transferId)
-        .maybeSingle();
-
-      if (fetchError) {
-        throw new Error(`Payout lookup failed: ${fetchError.message}`);
-      }
-
-      if (!payout) {
-        // 関連レコードがない場合は成功としてACK
-        await this.securityReporter.logSecurityEvent({
-          type: "webhook_transfer_updated_no_payout",
-          details: {
-            eventId: event.id,
-            transferId,
-          },
-        });
-        return { success: true };
-      }
-
-      // 送金の状態に応じて処理
-      // Stripeでは、transferが作成された時点で基本的に完了しているため、
-      // 特別な状態変更は不要だが、ログは記録する
-      await this.securityReporter.logSecurityEvent({
-        type: "webhook_transfer_updated_processed",
-        details: {
-          eventId: event.id,
-          payoutId: payout.id,
-          transferId,
-          currentPayoutStatus: payout.status,
-        },
-      });
-
-      return { success: true, eventId: event.id, payoutId: payout.id };
-    } catch (error) {
-      throw (error instanceof Error ? error : new Error("Unknown error"));
-    }
-  }
-
-  // 送金リバーサル（失敗同等として扱う）
-  private async handleTransferReversed(
-    event: Stripe.TransferReversedEvent
-  ): Promise<WebhookProcessingResult> {
-    const transferFromEvent = event.data.object;
-    const latestTransfer = await this.getLatestTransferOrFallback(transferFromEvent);
-    const transferId = latestTransfer.id;
-
-    try {
-      // 該当する payouts レコードを検索
-      const { data: payout, error: fetchError } = await this.supabase
-        .from("payouts")
-        .select("id, status")
-        .eq("stripe_transfer_id", transferId)
-        .maybeSingle();
-
-      if (fetchError) {
-        throw new Error(`Payout lookup failed: ${fetchError.message}`);
-      }
-
-      if (!payout) {
-        // 関連レコードがない場合は成功としてACK
-        await this.securityReporter.logSecurityEvent({
-          type: "webhook_transfer_reversed_no_payout",
-          details: {
-            eventId: event.id,
-            transferId,
-          },
-        });
-        return { success: true };
-      }
-
-      // 既に失敗済みかチェック（冪等性）
-      if (payout.status === "failed") {
-        await this.securityReporter.logSecurityEvent({
-          type: "webhook_duplicate_processing_prevented",
-          details: {
-            eventId: event.id,
-            payoutId: payout.id,
-            currentStatus: payout.status,
-          },
-        });
-        return { success: true };
-      }
-
-      // リバーサル理由を取得
-      const reversalReason = ((latestTransfer as unknown as { reversals?: { data?: Array<{ reason?: string }> } })
-        ?.reversals?.data?.[0]?.reason) || "unknown";
-      const errorMessage = `Transfer reversed: ${reversalReason}`;
-
-      // 送金ステータスを失敗に更新
-      const { error: updateError } = await this.supabase
-        .from("payouts")
-        .update({
-          status: "failed",
-          last_error: errorMessage,
-          webhook_event_id: event.id,
-          webhook_processed_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", payout.id);
-
-      if (updateError) {
-        throw new Error(`Failed to mark payout failed: ${updateError.message}`);
-      }
-
-      // 失敗をログに記録
-      await this.securityReporter.logSecurityEvent({
-        type: "webhook_transfer_reversed_processed",
-        details: {
-          eventId: event.id,
-          payoutId: payout.id,
-          transferId,
-          reversalReason,
-          amount: latestTransfer.amount,
-          currency: latestTransfer.currency,
-        },
-      });
-
-      return { success: true, eventId: event.id, payoutId: payout.id };
     } catch (error) {
       throw (error instanceof Error ? error : new Error("Unknown error"));
     }

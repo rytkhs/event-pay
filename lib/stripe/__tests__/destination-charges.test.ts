@@ -3,23 +3,13 @@
  */
 
 import { describe, it, expect } from '@jest/globals';
-import { transferGroupUtils } from '../destination-charges';
+import { getTransferGroupForEvent } from '@/lib/utils/stripe';
 
 describe('Destination charges', () => {
-  describe('transferGroupUtils', () => {
+  describe('getTransferGroupForEvent', () => {
     it('イベント用のTransfer Groupを生成する', () => {
-      const result = transferGroupUtils.generateEventTransferGroup('event_123');
+      const result = getTransferGroupForEvent('event_123');
       expect(result).toBe('event_event_123_payout');
-    });
-
-    it('Transfer GroupからイベントIDを抽出する', () => {
-      const result = transferGroupUtils.extractEventIdFromTransferGroup('event_event_123_payout');
-      expect(result).toBe('event_123');
-    });
-
-    it('無効なTransfer Groupの場合はnullを返す', () => {
-      const result = transferGroupUtils.extractEventIdFromTransferGroup('invalid_format');
-      expect(result).toBeNull();
     });
   });
 

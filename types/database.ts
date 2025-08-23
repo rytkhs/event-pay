@@ -428,17 +428,18 @@ export type Database = {
           refunded_amount: number
           status: Database["public"]["Enums"]["payment_status_enum"]
           stripe_account_id: string | null
+          stripe_balance_transaction_fee: number | null
           stripe_balance_transaction_id: string | null
+          stripe_balance_transaction_net: number | null
           stripe_charge_id: string | null
           stripe_checkout_session_id: string | null
           stripe_customer_id: string | null
+          stripe_fee_details: Json | null
           stripe_payment_intent_id: string | null
           stripe_session_id: string | null
           stripe_transfer_id: string | null
-          stripe_transfer_reversal_id: string | null
           tax_included: boolean
           transfer_group: string | null
-          transfer_reversed_amount: number
           updated_at: string
           webhook_event_id: string | null
           webhook_processed_at: string | null
@@ -461,17 +462,18 @@ export type Database = {
           refunded_amount?: number
           status?: Database["public"]["Enums"]["payment_status_enum"]
           stripe_account_id?: string | null
+          stripe_balance_transaction_fee?: number | null
           stripe_balance_transaction_id?: string | null
+          stripe_balance_transaction_net?: number | null
           stripe_charge_id?: string | null
           stripe_checkout_session_id?: string | null
           stripe_customer_id?: string | null
+          stripe_fee_details?: Json | null
           stripe_payment_intent_id?: string | null
           stripe_session_id?: string | null
           stripe_transfer_id?: string | null
-          stripe_transfer_reversal_id?: string | null
           tax_included?: boolean
           transfer_group?: string | null
-          transfer_reversed_amount?: number
           updated_at?: string
           webhook_event_id?: string | null
           webhook_processed_at?: string | null
@@ -494,17 +496,18 @@ export type Database = {
           refunded_amount?: number
           status?: Database["public"]["Enums"]["payment_status_enum"]
           stripe_account_id?: string | null
+          stripe_balance_transaction_fee?: number | null
           stripe_balance_transaction_id?: string | null
+          stripe_balance_transaction_net?: number | null
           stripe_charge_id?: string | null
           stripe_checkout_session_id?: string | null
           stripe_customer_id?: string | null
+          stripe_fee_details?: Json | null
           stripe_payment_intent_id?: string | null
           stripe_session_id?: string | null
           stripe_transfer_id?: string | null
-          stripe_transfer_reversal_id?: string | null
           tax_included?: boolean
           transfer_group?: string | null
-          transfer_reversed_amount?: number
           updated_at?: string
           webhook_event_id?: string | null
           webhook_processed_at?: string | null
@@ -570,112 +573,6 @@ export type Database = {
         }
         Relationships: []
       }
-      payouts: {
-        Row: {
-          created_at: string
-          dispute_count: number
-          event_id: string
-          generated_at: string | null
-          id: string
-          last_error: string | null
-          net_payout_amount: number
-          notes: string | null
-          platform_fee: number
-          processed_at: string | null
-          retry_count: number
-          settlement_mode:
-            | Database["public"]["Enums"]["settlement_mode_enum"]
-            | null
-          status: Database["public"]["Enums"]["payout_status_enum"]
-          stripe_account_id: string
-          stripe_transfer_id: string | null
-          total_disputed_amount: number
-          total_stripe_fee: number
-          total_stripe_sales: number
-          transfer_group: string | null
-          updated_at: string
-          user_id: string
-          webhook_event_id: string | null
-          webhook_processed_at: string | null
-        }
-        Insert: {
-          created_at?: string
-          dispute_count?: number
-          event_id: string
-          generated_at?: string | null
-          id?: string
-          last_error?: string | null
-          net_payout_amount?: number
-          notes?: string | null
-          platform_fee?: number
-          processed_at?: string | null
-          retry_count?: number
-          settlement_mode?:
-            | Database["public"]["Enums"]["settlement_mode_enum"]
-            | null
-          status?: Database["public"]["Enums"]["payout_status_enum"]
-          stripe_account_id: string
-          stripe_transfer_id?: string | null
-          total_disputed_amount?: number
-          total_stripe_fee?: number
-          total_stripe_sales?: number
-          transfer_group?: string | null
-          updated_at?: string
-          user_id: string
-          webhook_event_id?: string | null
-          webhook_processed_at?: string | null
-        }
-        Update: {
-          created_at?: string
-          dispute_count?: number
-          event_id?: string
-          generated_at?: string | null
-          id?: string
-          last_error?: string | null
-          net_payout_amount?: number
-          notes?: string | null
-          platform_fee?: number
-          processed_at?: string | null
-          retry_count?: number
-          settlement_mode?:
-            | Database["public"]["Enums"]["settlement_mode_enum"]
-            | null
-          status?: Database["public"]["Enums"]["payout_status_enum"]
-          stripe_account_id?: string
-          stripe_transfer_id?: string | null
-          total_disputed_amount?: number
-          total_stripe_fee?: number
-          total_stripe_sales?: number
-          transfer_group?: string | null
-          updated_at?: string
-          user_id?: string
-          webhook_event_id?: string | null
-          webhook_processed_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "payouts_event_id_fkey"
-            columns: ["event_id"]
-            isOneToOne: false
-            referencedRelation: "events"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "payouts_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "public_profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "payouts_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       scheduler_locks: {
         Row: {
           acquired_at: string
@@ -729,6 +626,109 @@ export type Database = {
           user_role?: string | null
         }
         Relationships: []
+      }
+      settlements: {
+        Row: {
+          created_at: string
+          dispute_count: number
+          event_id: string
+          generated_at: string | null
+          id: string
+          last_error: string | null
+          net_payout_amount: number
+          notes: string | null
+          platform_fee: number
+          processed_at: string | null
+          retry_count: number
+          settlement_mode:
+            | Database["public"]["Enums"]["settlement_mode_enum"]
+            | null
+          status: Database["public"]["Enums"]["payout_status_enum"]
+          stripe_account_id: string
+          total_disputed_amount: number
+          total_stripe_fee: number
+          total_stripe_sales: number
+          transfer_group: string | null
+          updated_at: string
+          user_id: string
+          webhook_event_id: string | null
+          webhook_processed_at: string | null
+        }
+        Insert: {
+          created_at?: string
+          dispute_count?: number
+          event_id: string
+          generated_at?: string | null
+          id?: string
+          last_error?: string | null
+          net_payout_amount?: number
+          notes?: string | null
+          platform_fee?: number
+          processed_at?: string | null
+          retry_count?: number
+          settlement_mode?:
+            | Database["public"]["Enums"]["settlement_mode_enum"]
+            | null
+          status?: Database["public"]["Enums"]["payout_status_enum"]
+          stripe_account_id: string
+          total_disputed_amount?: number
+          total_stripe_fee?: number
+          total_stripe_sales?: number
+          transfer_group?: string | null
+          updated_at?: string
+          user_id: string
+          webhook_event_id?: string | null
+          webhook_processed_at?: string | null
+        }
+        Update: {
+          created_at?: string
+          dispute_count?: number
+          event_id?: string
+          generated_at?: string | null
+          id?: string
+          last_error?: string | null
+          net_payout_amount?: number
+          notes?: string | null
+          platform_fee?: number
+          processed_at?: string | null
+          retry_count?: number
+          settlement_mode?:
+            | Database["public"]["Enums"]["settlement_mode_enum"]
+            | null
+          status?: Database["public"]["Enums"]["payout_status_enum"]
+          stripe_account_id?: string
+          total_disputed_amount?: number
+          total_stripe_fee?: number
+          total_stripe_sales?: number
+          transfer_group?: string | null
+          updated_at?: string
+          user_id?: string
+          webhook_event_id?: string | null
+          webhook_processed_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payouts_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payouts_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payouts_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       stripe_connect_accounts: {
         Row: {
@@ -1083,6 +1083,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      finalize_event_settlement: {
+        Args: { p_event_id: string; p_user_id: string }
+        Returns: string
+      }
       find_eligible_events_basic: {
         Args: {
           p_days_after_event?: number
@@ -1288,7 +1292,6 @@ export type Database = {
           _notes?: string
           _payout_id: string
           _processed_at?: string
-          _stripe_transfer_id?: string
           _to_status: Database["public"]["Enums"]["payout_status_enum"]
           _transfer_group?: string
         }
@@ -1318,12 +1321,7 @@ export type Database = {
         | "completed"
         | "refunded"
         | "waived"
-      payout_status_enum:
-        | "pending"
-        | "processing"
-        | "completed"
-        | "failed"
-        | "processing_error"
+      payout_status_enum: "pending" | "processing" | "completed" | "failed"
       security_severity_enum: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL"
       settlement_mode_enum: "destination_charge"
       stripe_account_status_enum:
@@ -1489,13 +1487,7 @@ export const Constants = {
         "refunded",
         "waived",
       ],
-      payout_status_enum: [
-        "pending",
-        "processing",
-        "completed",
-        "failed",
-        "processing_error",
-      ],
+      payout_status_enum: ["pending", "processing", "completed", "failed"],
       security_severity_enum: ["LOW", "MEDIUM", "HIGH", "CRITICAL"],
       settlement_mode_enum: ["destination_charge"],
       stripe_account_status_enum: [

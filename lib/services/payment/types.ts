@@ -41,7 +41,7 @@ export interface CreateStripeSessionParams {
   successUrl: string;
   cancelUrl: string;
   /**
-   * Stripe Separate charges and transfers でのグルーピング用識別子
+   * Strip でのグルーピング用識別子
    * - Checkout -> PaymentIntent に付与し、のちの Transfer と突合するために使用
    */
   transferGroup?: string;
