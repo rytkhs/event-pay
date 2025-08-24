@@ -30,7 +30,11 @@ describe("Error Handling Integration", () => {
             eq: jest.fn().mockReturnValue({
               single: jest.fn().mockResolvedValue({
                 data: null,
-                error: { code: "PGRST116", message: "No rows found" },
+                error: null,
+              }),
+              maybeSingle: jest.fn().mockResolvedValue({
+                data: null,
+                error: null,
               }),
             }),
           }),

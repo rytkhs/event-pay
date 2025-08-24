@@ -28,7 +28,7 @@ export interface Event {
   created_at: string;
   updated_at: string;
   created_by: string;
-  invite_token: string;
+  invite_token: string | null;
   // 関連データ（JOINで取得される場合）
   creator_name?: string;
   attendances_count?: number;

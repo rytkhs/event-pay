@@ -1,6 +1,6 @@
 /**
  * RLSポリシー検証テスト
- * 
+ *
  * データベースアクセスセキュリティ再設計の一環として、
  * RLSポリシーの動作を検証し、権限昇格攻撃の防御をテストする
  */
@@ -37,9 +37,7 @@ describe("RLSポリシー検証テスト", () => {
       const guestClient = secureClientFactory.createGuestClient(guestToken);
 
       // 管理者監査テーブルへのアクセス試行
-      const { data, error } = await guestClient
-        .from("admin_access_audit")
-        .select("*");
+      const { data, error } = await guestClient.from("admin_access_audit").select("*");
 
       // RLSポリシーにより空の結果セットが返される
       expect(error).toBeNull();
@@ -56,7 +54,7 @@ describe("RLSポリシー検証テスト", () => {
 
       // テスト環境では通常空のリストが返される（権限制限により）
       expect(data).toBeDefined();
-      if (data && typeof data === 'object' && 'users' in data) {
+      if (data && typeof data === "object" && "users" in data) {
         expect(Array.isArray(data.users)).toBe(true);
       }
     });
@@ -131,9 +129,7 @@ describe("RLSポリシー検証テスト", () => {
       const guestClient = secureClientFactory.createGuestClient(guestToken);
 
       // usersテーブルへのアクセス試行
-      const { data, error } = await guestClient
-        .from("users")
-        .select("*");
+      const { data, error } = await guestClient.from("users").select("*");
 
       // RLSポリシーにより空の結果セットが返される
       expect(error).toBeNull();

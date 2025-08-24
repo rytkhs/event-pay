@@ -1,6 +1,6 @@
 /**
  * セキュリティ監査システムテスト
- * 
+ *
  * セキュリティ監査機能の動作を検証し、
  * 管理者権限使用の記録とゲストアクセスの監視をテストする
  */
@@ -30,18 +30,12 @@ describe("セキュリティ監査システムテスト", () => {
     it("管理者権限要求時に理由とコンテキストが必要", async () => {
       // 理由なしで管理者権限を要求
       await expect(async () => {
-        await secureClientFactory.createAuditedAdminClient(
-          null as any,
-          "Missing reason test"
-        );
+        await secureClientFactory.createAuditedAdminClient(null as any, "Missing reason test");
       }).rejects.toThrow();
 
       // コンテキストなしで管理者権限を要求
       await expect(async () => {
-        await secureClientFactory.createAuditedAdminClient(
-          AdminReason.TEST_DATA_SETUP,
-          ""
-        );
+        await secureClientFactory.createAuditedAdminClient(AdminReason.TEST_DATA_SETUP, "");
       }).rejects.toThrow();
     });
   });
@@ -84,9 +78,7 @@ describe("セキュリティ監査システムテスト", () => {
 
       // ゲストトークンで管理者テーブルへのアクセス試行
       const guestClient = secureClientFactory.createGuestClient(guestToken);
-      const { data, error } = await guestClient
-        .from("admin_access_audit")
-        .select("*");
+      const { data, error } = await guestClient.from("admin_access_audit").select("*");
 
       // アクセスは拒否される（空の結果セット）
       expect(error).toBeNull();
@@ -95,22 +87,20 @@ describe("セキュリティ監査システムテスト", () => {
 
     it("大量の失敗したアクセスが適切に処理される", async () => {
       // 大量の有効な形式だが存在しないトークンでアクセス試行
-      const invalidTokens = Array.from({ length: 5 }, () =>
-        generateGuestToken() // 有効な形式のトークンを生成
+      const invalidTokens = Array.from(
+        { length: 5 },
+        () => generateGuestToken() // 有効な形式のトークンを生成
       );
 
-      const promises = invalidTokens.map(token => {
+      const promises = invalidTokens.map((token) => {
         const guestClient = secureClientFactory.createGuestClient(token);
-        return guestClient
-          .from("attendances")
-          .select("*")
-          .eq("guest_token", token);
+        return guestClient.from("attendances").select("*").eq("guest_token", token);
       });
 
       const results = await Promise.allSettled(promises);
 
       // 全て空の結果セットが返される
-      results.forEach(result => {
+      results.forEach((result) => {
         if (result.status === "fulfilled") {
           expect(result.value.data).toEqual([]);
         }
@@ -124,9 +114,7 @@ describe("セキュリティ監査システムテスト", () => {
 
       // 権限のないリソースへのアクセス試行
       const guestClient = secureClientFactory.createGuestClient(guestToken);
-      const { data, error } = await guestClient
-        .from("users")
-        .select("*");
+      const { data, error } = await guestClient.from("users").select("*");
 
       // アクセスは拒否される（空の結果セット）
       expect(error).toBeNull();
@@ -145,7 +133,7 @@ describe("セキュリティ監査システムテスト", () => {
       } else {
         // テスト環境では空のリストが返される場合がある
         expect(data).toBeDefined();
-        if (data && typeof data === 'object' && 'users' in data) {
+        if (data && typeof data === "object" && "users" in data) {
           expect(Array.isArray(data.users)).toBe(true);
         }
       }
@@ -166,12 +154,7 @@ describe("セキュリティ監査システムテスト", () => {
 
     it("ゲストトークンの形式検証が動作する", () => {
       const validToken = generateGuestToken();
-      const invalidTokens = [
-        "",
-        "invalid",
-        "gst_short",
-        "wrong_prefix_" + "a".repeat(32),
-      ];
+      const invalidTokens = ["", "invalid", "gst_short", "wrong_prefix_" + "a".repeat(32)];
 
       // 有効なトークンでクライアント作成成功
       expect(() => {
@@ -179,7 +162,7 @@ describe("セキュリティ監査システムテスト", () => {
       }).not.toThrow();
 
       // 無効なトークンでクライアント作成失敗
-      invalidTokens.forEach(token => {
+      invalidTokens.forEach((token) => {
         expect(() => {
           secureClientFactory.createGuestClient(token);
         }).toThrow();

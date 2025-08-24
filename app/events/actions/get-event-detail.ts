@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { validateEventId } from "@/lib/validations/event-id";
 import { redirect } from "next/navigation";
+import { logger } from "@/lib/logging/app-logger";
 
 export async function getEventDetailAction(eventId: string) {
   try {
@@ -47,14 +48,11 @@ export async function getEventDetailAction(eventId: string) {
         organizer_id:created_by
       `
       )
-      .eq("id", validation.data)
+      .eq("id", validation.data as any)
       .eq("created_by", user.id)
-      .single();
+      .maybeSingle();
 
     if (error) {
-      if (error.code === "PGRST116") {
-        throw new Error("Event not found");
-      }
       if (error.code === "PGRST301") {
         throw new Error("Access denied");
       }
@@ -73,6 +71,14 @@ export async function getEventDetailAction(eventId: string) {
 
     if (creatorError) {
       // Creator name fetch error - continue with fallback
+      // ログのみ（UXを阻害しない）
+      logger.warn("Failed to fetch creator name", {
+        tag: "getEventDetail",
+        event_id: eventDetail.id,
+        creator_id: eventDetail.created_by,
+        error_name: creatorError.name,
+        error_message: creatorError.message
+      });
     }
 
     const result = {

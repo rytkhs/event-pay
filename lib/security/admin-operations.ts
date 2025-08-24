@@ -69,14 +69,9 @@ export async function checkUserProfileExists(
     const secureFactory = SecureSupabaseClientFactory.getInstance();
     const adminClient = await secureFactory.createAuditedAdminClient(reason, context);
 
-    const { data, error } = await adminClient
-      .from("users")
-      .select("id")
-      .eq("id", userId)
-      .single();
+    const { data, error } = await adminClient.from("users").select("id").eq("id", userId).maybeSingle();
 
-    if (error && error.code !== "PGRST116") {
-      // PGRST116 = No rows returned
+    if (error) {
       return {
         success: false,
         error: `Failed to check user profile: ${error.message}`,
@@ -105,10 +100,7 @@ export async function checkUserProfileExists(
  * @param emergencyReason 緊急対応の理由
  * @returns 管理者クライアント（緊急時のみ使用）
  */
-export async function createEmergencyAdminClient(
-  userId: string,
-  emergencyReason: string
-) {
+export async function createEmergencyAdminClient(userId: string, emergencyReason: string) {
   // 直接インポートを使用（循環依存を解消）
   const secureFactory = SecureSupabaseClientFactory.getInstance();
   return await secureFactory.createAuditedAdminClient(

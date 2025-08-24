@@ -14,6 +14,11 @@ export interface RateLimitErrorResponse {
 
 // レート制限ミドルウェア
 
+/**
+ * レート制限ミドルウェア
+ * 注意: この関数および内部処理では、署名検証互換性のためにリクエストボディを一切消費しないこと。
+ * 署名検証ルートでは `request.text()` を後段で使用するため、ここで `json()` などを呼ばないこと。
+ */
 export function withRateLimit(config: RateLimitConfig, keyPrefix?: string) {
   return async function (request: NextRequest) {
     // 信頼度ベースでの安全なIPアドレス取得

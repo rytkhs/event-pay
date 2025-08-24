@@ -3,6 +3,7 @@ import { MemoryRateLimitStore } from "./memory-store";
 import { OptimizedMemoryRateLimitStore } from "./optimized-memory-store";
 import { RedisRateLimitStore, createRedisClient } from "./redis-store";
 import { RATE_LIMIT_CONFIG } from "@/config/security";
+import { logger } from "@/lib/logging/app-logger";
 
 // シングルトンストア
 let rateLimitStoreInstance: RateLimitStore | null = null;
@@ -22,8 +23,11 @@ export async function createRateLimitStore(): Promise<RateLimitStore> {
         return rateLimitStoreInstance;
       }
     } catch (error) {
-      // eslint-disable-next-line no-console
-      console.warn("Failed to create Redis store, falling back to optimized memory store:", error);
+      logger.warn("Failed to create Redis store, falling back to optimized memory store", {
+        tag: "redisStoreCreationFailed",
+        error_name: error instanceof Error ? error.name : "Unknown",
+        error_message: error instanceof Error ? error.message : String(error)
+      });
     }
   }
 

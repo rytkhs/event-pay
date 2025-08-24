@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server';
+import { createClient } from "@/lib/supabase/server";
 import {
   SecurityAuditor,
   AdminAccessAuditLog,
@@ -10,9 +10,10 @@ import {
   TimeRange,
   SuspiciousActivityType,
   SecuritySeverity,
-  SecurityAuditConfig
-} from '@/types/security';
-import crypto from 'crypto';
+  SecurityAuditConfig,
+} from "@/types/security";
+import crypto from "crypto";
+import { logger } from "@/lib/logging/app-logger";
 
 /**
  * セキュリティ監査システムの基本実装
@@ -30,7 +31,7 @@ export class DatabaseSecurityAuditor implements SecurityAuditor {
       emptyResultSetThreshold: 3, // 3回連続で空の結果セットが返された場合に疑わしいと判定
       bulkAccessThreshold: 100, // 100件以上のデータアクセスを大量アクセスと判定
       retentionDays: 90,
-      ...config
+      ...config,
     };
   }
 
@@ -43,30 +44,38 @@ export class DatabaseSecurityAuditor implements SecurityAuditor {
     try {
       const supabase = createClient();
 
-      const { error } = await supabase
-        .from('admin_access_audit')
-        .insert({
-          user_id: log.userId,
-          reason: log.reason,
-          context: log.context,
-          operation_details: log.operationDetails,
-          ip_address: log.ipAddress,
-          user_agent: log.userAgent,
-          accessed_tables: log.accessedTables,
-          session_id: log.sessionId,
-          duration_ms: log.durationMs,
-          success: log.success ?? true,
-          error_message: log.errorMessage
-        });
+      const { error } = await supabase.from("admin_access_audit").insert({
+        user_id: log.userId,
+        reason: log.reason,
+        context: log.context,
+        operation_details: log.operationDetails,
+        ip_address: log.ipAddress,
+        user_agent: log.userAgent,
+        accessed_tables: log.accessedTables,
+        session_id: log.sessionId,
+        duration_ms: log.durationMs,
+        success: log.success ?? true,
+        error_message: log.errorMessage,
+      });
 
       if (error) {
-        console.error('Failed to log admin access:', error);
+        logger.error("Failed to log admin access", {
+          tag: "adminAccessAuditFailed",
+          error_name: error instanceof Error ? error.name : "Unknown",
+          error_message: error instanceof Error ? error.message : String(error),
+          user_id: log.userId
+        });
         // 監査ログの失敗は重要なので、別の方法で記録を試みる
-        await this.fallbackLog('admin_access_audit_failed', { log, error: error.message });
+        await this.fallbackLog("admin_access_audit_failed", { log, error: error.message });
       }
     } catch (error) {
-      console.error('Exception in logAdminAccess:', error);
-      await this.fallbackLog('admin_access_audit_exception', { log, error: String(error) });
+      logger.error("Exception in logAdminAccess", {
+        tag: "adminAccessAuditException",
+        error_name: error instanceof Error ? error.name : "Unknown",
+        error_message: error instanceof Error ? error.message : String(error),
+        user_id: log.userId
+      });
+      await this.fallbackLog("admin_access_audit_exception", { log, error: String(error) });
     }
   }
 
@@ -79,28 +88,31 @@ export class DatabaseSecurityAuditor implements SecurityAuditor {
     try {
       const supabase = createClient();
 
-      const { error } = await supabase
-        .from('guest_access_audit')
-        .insert({
-          guest_token_hash: log.guestTokenHash,
-          attendance_id: log.attendanceId,
-          event_id: log.eventId,
-          action: log.action,
-          table_name: log.tableName,
-          operation_type: log.operationType,
-          success: log.success,
-          result_count: log.resultCount,
-          ip_address: log.ipAddress,
-          user_agent: log.userAgent,
-          session_id: log.sessionId,
-          duration_ms: log.durationMs,
-          error_code: log.errorCode,
-          error_message: log.errorMessage
-        });
+      const { error } = await supabase.from("guest_access_audit").insert({
+        guest_token_hash: log.guestTokenHash,
+        attendance_id: log.attendanceId,
+        event_id: log.eventId,
+        action: log.action,
+        table_name: log.tableName,
+        operation_type: log.operationType,
+        success: log.success,
+        result_count: log.resultCount,
+        ip_address: log.ipAddress,
+        user_agent: log.userAgent,
+        session_id: log.sessionId,
+        duration_ms: log.durationMs,
+        error_code: log.errorCode,
+        error_message: log.errorMessage,
+      });
 
       if (error) {
-        console.error('Failed to log guest access:', error);
-        await this.fallbackLog('guest_access_audit_failed', { log, error: error.message });
+        logger.error("Failed to log guest access", {
+          tag: "guestAccessAuditFailed",
+          error_name: error instanceof Error ? error.name : "Unknown",
+          error_message: error instanceof Error ? error.message : String(error),
+          event_id: log.eventId
+        });
+        await this.fallbackLog("guest_access_audit_failed", { log, error: error.message });
       }
 
       // 失敗したアクセスの場合、疑わしい活動として記録
@@ -108,23 +120,28 @@ export class DatabaseSecurityAuditor implements SecurityAuditor {
         await this.logSuspiciousActivity({
           activityType: SuspiciousActivityType.INVALID_TOKEN_PATTERN,
           tableName: log.tableName,
-          userRole: 'guest',
+          userRole: "guest",
           attemptedAction: log.action,
           context: {
             guestTokenHash: log.guestTokenHash,
             errorCode: log.errorCode,
-            errorMessage: log.errorMessage
+            errorMessage: log.errorMessage,
           },
           severity: SecuritySeverity.MEDIUM,
           ipAddress: log.ipAddress,
           userAgent: log.userAgent,
           sessionId: log.sessionId,
-          detectionMethod: 'guest_access_failure'
+          detectionMethod: "guest_access_failure",
         });
       }
     } catch (error) {
-      console.error('Exception in logGuestAccess:', error);
-      await this.fallbackLog('guest_access_audit_exception', { log, error: String(error) });
+      logger.error("Exception in logGuestAccess", {
+        tag: "guestAccessAuditException",
+        error_name: error instanceof Error ? error.name : "Unknown",
+        error_message: error instanceof Error ? error.message : String(error),
+        event_id: log.eventId
+      });
+      await this.fallbackLog("guest_access_audit_exception", { log, error: String(error) });
     }
   }
 
@@ -137,32 +154,48 @@ export class DatabaseSecurityAuditor implements SecurityAuditor {
     try {
       const supabase = createClient();
 
-      const { error } = await supabase
-        .from('suspicious_activity_log')
-        .insert({
-          activity_type: activity.activityType,
-          table_name: activity.tableName,
-          user_role: activity.userRole,
-          user_id: activity.userId,
-          attempted_action: activity.attemptedAction,
-          expected_result_count: activity.expectedResultCount,
-          actual_result_count: activity.actualResultCount,
-          context: activity.context,
-          severity: activity.severity ?? SecuritySeverity.MEDIUM,
-          ip_address: activity.ipAddress,
-          user_agent: activity.userAgent,
-          session_id: activity.sessionId,
-          detection_method: activity.detectionMethod,
-          false_positive: activity.falsePositive ?? false
-        });
+      const { error } = await supabase.from("suspicious_activity_log").insert({
+        activity_type: activity.activityType,
+        table_name: activity.tableName,
+        user_role: activity.userRole,
+        user_id: activity.userId,
+        attempted_action: activity.attemptedAction,
+        expected_result_count: activity.expectedResultCount,
+        actual_result_count: activity.actualResultCount,
+        context: activity.context,
+        severity: activity.severity ?? SecuritySeverity.MEDIUM,
+        ip_address: activity.ipAddress,
+        user_agent: activity.userAgent,
+        session_id: activity.sessionId,
+        detection_method: activity.detectionMethod,
+        false_positive: activity.falsePositive ?? false,
+      });
 
       if (error) {
-        console.error('Failed to log suspicious activity:', error);
-        await this.fallbackLog('suspicious_activity_audit_failed', { activity, error: error.message });
+        logger.error("Failed to log suspicious activity", {
+          tag: "suspiciousActivityAuditFailed",
+          error_name: error instanceof Error ? error.name : "Unknown",
+          error_message: error instanceof Error ? error.message : String(error),
+          activity_type: activity.activityType,
+          table_name: activity.tableName
+        });
+        await this.fallbackLog("suspicious_activity_audit_failed", {
+          activity,
+          error: error.message,
+        });
       }
     } catch (error) {
-      console.error('Exception in logSuspiciousActivity:', error);
-      await this.fallbackLog('suspicious_activity_audit_exception', { activity, error: String(error) });
+      logger.error("Exception in logSuspiciousActivity", {
+        tag: "suspiciousActivityAuditException",
+        error_name: error instanceof Error ? error.name : "Unknown",
+        error_message: error instanceof Error ? error.message : String(error),
+        activity_type: activity.activityType,
+        table_name: activity.tableName
+      });
+      await this.fallbackLog("suspicious_activity_audit_exception", {
+        activity,
+        error: String(error),
+      });
     }
   }
 
@@ -175,32 +208,48 @@ export class DatabaseSecurityAuditor implements SecurityAuditor {
     try {
       const supabase = createClient();
 
-      const { error } = await supabase
-        .from('unauthorized_access_log')
-        .insert({
-          attempted_resource: context.attemptedResource,
-          required_permission: context.requiredPermission,
-          user_context: context.userContext,
-          user_id: context.userId,
-          guest_token_hash: context.guestTokenHash,
-          detection_method: context.detectionMethod,
-          blocked_by_rls: context.blockedByRls ?? false,
-          ip_address: context.ipAddress,
-          user_agent: context.userAgent,
-          session_id: context.sessionId,
-          request_path: context.requestPath,
-          request_method: context.requestMethod,
-          request_headers: context.requestHeaders,
-          response_status: context.responseStatus
-        });
+      const { error } = await supabase.from("unauthorized_access_log").insert({
+        attempted_resource: context.attemptedResource,
+        required_permission: context.requiredPermission,
+        user_context: context.userContext,
+        user_id: context.userId,
+        guest_token_hash: context.guestTokenHash,
+        detection_method: context.detectionMethod,
+        blocked_by_rls: context.blockedByRls ?? false,
+        ip_address: context.ipAddress,
+        user_agent: context.userAgent,
+        session_id: context.sessionId,
+        request_path: context.requestPath,
+        request_method: context.requestMethod,
+        request_headers: context.requestHeaders,
+        response_status: context.responseStatus,
+      });
 
       if (error) {
-        console.error('Failed to log unauthorized access:', error);
-        await this.fallbackLog('unauthorized_access_audit_failed', { context, error: error.message });
+        logger.error("Failed to log unauthorized access", {
+          tag: "unauthorizedAccessAuditFailed",
+          error_name: error instanceof Error ? error.name : "Unknown",
+          error_message: error instanceof Error ? error.message : String(error),
+          attempted_resource: context.attemptedResource,
+          user_id: context.userId
+        });
+        await this.fallbackLog("unauthorized_access_audit_failed", {
+          context,
+          error: error.message,
+        });
       }
     } catch (error) {
-      console.error('Exception in logUnauthorizedAccess:', error);
-      await this.fallbackLog('unauthorized_access_audit_exception', { context, error: String(error) });
+      logger.error("Exception in logUnauthorizedAccess", {
+        tag: "unauthorizedAccessAuditException",
+        error_name: error instanceof Error ? error.name : "Unknown",
+        error_message: error instanceof Error ? error.message : String(error),
+        attempted_resource: context.attemptedResource,
+        user_id: context.userId
+      });
+      await this.fallbackLog("unauthorized_access_audit_exception", {
+        context,
+        error: String(error),
+      });
     }
   }
 
@@ -222,8 +271,11 @@ export class DatabaseSecurityAuditor implements SecurityAuditor {
         expectedResultCount: expectedCount,
         actualResultCount: actualCount,
         context,
-        severity: expectedCount > this.config.emptyResultSetThreshold ? SecuritySeverity.HIGH : SecuritySeverity.MEDIUM,
-        detectionMethod: 'empty_result_set_analysis'
+        severity:
+          expectedCount > this.config.emptyResultSetThreshold
+            ? SecuritySeverity.HIGH
+            : SecuritySeverity.MEDIUM,
+        detectionMethod: "empty_result_set_analysis",
       });
     }
   }
@@ -241,12 +293,15 @@ export class DatabaseSecurityAuditor implements SecurityAuditor {
       await this.logSuspiciousActivity({
         activityType: SuspiciousActivityType.EMPTY_RESULT_SET,
         tableName,
-        attemptedAction: 'DATA_ACCESS',
+        attemptedAction: "DATA_ACCESS",
         expectedResultCount: expectedCount,
         actualResultCount: actualCount,
         context,
-        severity: expectedCount > this.config.emptyResultSetThreshold ? SecuritySeverity.HIGH : SecuritySeverity.MEDIUM,
-        detectionMethod: 'empty_result_set_violation_detection'
+        severity:
+          expectedCount > this.config.emptyResultSetThreshold
+            ? SecuritySeverity.HIGH
+            : SecuritySeverity.MEDIUM,
+        detectionMethod: "empty_result_set_violation_detection",
       });
     }
   }
@@ -260,47 +315,57 @@ export class DatabaseSecurityAuditor implements SecurityAuditor {
     try {
       // 管理者アクセス統計
       const { data: adminAccess } = await supabase
-        .from('admin_access_audit')
-        .select('*')
-        .gte('created_at', timeRange.start.toISOString())
-        .lte('created_at', timeRange.end.toISOString());
+        .from("admin_access_audit")
+        .select("*")
+        .gte("created_at", timeRange.start.toISOString())
+        .lte("created_at", timeRange.end.toISOString());
 
       // ゲストアクセス統計
       const { data: guestAccess } = await supabase
-        .from('guest_access_audit')
-        .select('*')
-        .gte('created_at', timeRange.start.toISOString())
-        .lte('created_at', timeRange.end.toISOString());
+        .from("guest_access_audit")
+        .select("*")
+        .gte("created_at", timeRange.start.toISOString())
+        .lte("created_at", timeRange.end.toISOString());
 
       // 疑わしい活動
       const { data: suspiciousActivities } = await supabase
-        .from('suspicious_activity_log')
-        .select('*')
-        .gte('created_at', timeRange.start.toISOString())
-        .lte('created_at', timeRange.end.toISOString())
-        .order('created_at', { ascending: false });
+        .from("suspicious_activity_log")
+        .select("*")
+        .gte("created_at", timeRange.start.toISOString())
+        .lte("created_at", timeRange.end.toISOString())
+        .order("created_at", { ascending: false });
 
       // 不正アクセス試行
       const { data: unauthorizedAttempts } = await supabase
-        .from('unauthorized_access_log')
-        .select('*')
-        .gte('created_at', timeRange.start.toISOString())
-        .lte('created_at', timeRange.end.toISOString())
-        .order('created_at', { ascending: false });
+        .from("unauthorized_access_log")
+        .select("*")
+        .gte("created_at", timeRange.start.toISOString())
+        .lte("created_at", timeRange.end.toISOString())
+        .order("created_at", { ascending: false });
 
       return {
         timeRange,
         adminAccessCount: adminAccess?.length ?? 0,
         guestAccessCount: guestAccess?.length ?? 0,
-        suspiciousActivities: suspiciousActivities ?? [],
-        unauthorizedAttempts: unauthorizedAttempts ?? [],
+        suspiciousActivities: suspiciousActivities as any ?? [],
+        unauthorizedAttempts: unauthorizedAttempts as any ?? [],
         topFailedActions: this.analyzeTopFailedActions(suspiciousActivities ?? []),
-        topSuspiciousIPs: this.analyzeTopSuspiciousIPs(suspiciousActivities ?? [], unauthorizedAttempts ?? []),
+        topSuspiciousIPs: this.analyzeTopSuspiciousIPs(
+          suspiciousActivities ?? [],
+          unauthorizedAttempts ?? []
+        ),
         rlsViolationIndicators: await this.analyzeRlsViolationIndicators(timeRange),
-        recommendations: this.generateRecommendations(suspiciousActivities ?? [], unauthorizedAttempts ?? [])
+        recommendations: this.generateRecommendations(
+          suspiciousActivities ?? [],
+          unauthorizedAttempts ?? []
+        ),
       };
     } catch (error) {
-      console.error('Failed to generate security report:', error);
+      logger.error("Failed to generate security report", {
+        tag: "securityReportGenerationFailed",
+        error_name: error instanceof Error ? error.name : "Unknown",
+        error_message: error instanceof Error ? error.message : String(error)
+      });
       throw new Error(`Security report generation failed: ${error}`);
     }
   }
@@ -308,21 +373,23 @@ export class DatabaseSecurityAuditor implements SecurityAuditor {
   /**
    * RLS違反の指標を分析
    */
-  private async analyzeRlsViolationIndicators(timeRange: TimeRange): Promise<Array<{
-    tableName: string;
-    emptyResultCount: number;
-    suspicionLevel: SecuritySeverity;
-  }>> {
+  private async analyzeRlsViolationIndicators(timeRange: TimeRange): Promise<
+    Array<{
+      tableName: string;
+      emptyResultCount: number;
+      suspicionLevel: SecuritySeverity;
+    }>
+  > {
     const supabase = createClient();
 
     try {
       // 空の結果セットの頻度を分析
       const { data: emptyResults } = await supabase
-        .from('suspicious_activity_log')
-        .select('*')
-        .eq('activity_type', SuspiciousActivityType.EMPTY_RESULT_SET)
-        .gte('created_at', timeRange.start.toISOString())
-        .lte('created_at', timeRange.end.toISOString());
+        .from("suspicious_activity_log")
+        .select("*")
+        .eq("activity_type", SuspiciousActivityType.EMPTY_RESULT_SET)
+        .gte("created_at", timeRange.start.toISOString())
+        .lte("created_at", timeRange.end.toISOString());
 
       const indicators: Array<{
         tableName: string;
@@ -334,7 +401,7 @@ export class DatabaseSecurityAuditor implements SecurityAuditor {
         // テーブル別に集計
         const tableStats: Record<string, number> = {};
         emptyResults.forEach((result: Record<string, unknown>) => {
-          const tableName = String(result.table_name || 'unknown');
+          const tableName = String(result.table_name || "unknown");
           tableStats[tableName] = (tableStats[tableName] || 0) + 1;
         });
 
@@ -343,15 +410,23 @@ export class DatabaseSecurityAuditor implements SecurityAuditor {
           indicators.push({
             tableName,
             emptyResultCount: count,
-            suspicionLevel: count > 10 ? SecuritySeverity.HIGH :
-              count > 5 ? SecuritySeverity.MEDIUM : SecuritySeverity.LOW
+            suspicionLevel:
+              count > 10
+                ? SecuritySeverity.HIGH
+                : count > 5
+                  ? SecuritySeverity.MEDIUM
+                  : SecuritySeverity.LOW,
           });
         });
       }
 
       return indicators;
     } catch (error) {
-      console.error('Failed to analyze RLS violation indicators:', error);
+      logger.error("Failed to analyze RLS violation indicators", {
+        tag: "rlsViolationAnalysisFailed",
+        error_name: error instanceof Error ? error.name : "Unknown",
+        error_message: error instanceof Error ? error.message : String(error)
+      });
       return [];
     }
   }
@@ -368,30 +443,30 @@ export class DatabaseSecurityAuditor implements SecurityAuditor {
     if (suspiciousActivities.length > 10) {
       recommendations.push({
         priority: SecuritySeverity.HIGH,
-        category: 'MONITORING',
-        title: '疑わしい活動の高頻度検出',
-        description: 'RLSポリシーとアクセスパターンの見直しが必要です。',
-        actionRequired: true
+        category: "MONITORING",
+        title: "疑わしい活動の高頻度検出",
+        description: "RLSポリシーとアクセスパターンの見直しが必要です。",
+        actionRequired: true,
       });
     }
 
     if (unauthorizedAttempts.length > 5) {
       recommendations.push({
         priority: SecuritySeverity.MEDIUM,
-        category: 'ACCESS_CONTROL',
-        title: '不正アクセス試行の検出',
-        description: '追加のレート制限の実装を検討してください。',
-        actionRequired: true
+        category: "ACCESS_CONTROL",
+        title: "不正アクセス試行の検出",
+        description: "追加のレート制限の実装を検討してください。",
+        actionRequired: true,
       });
     }
 
     if (recommendations.length === 0) {
       recommendations.push({
         priority: SecuritySeverity.LOW,
-        category: 'MONITORING',
-        title: 'セキュリティ状況良好',
-        description: '現在、緊急のセキュリティ懸念は検出されていません。',
-        actionRequired: false
+        category: "MONITORING",
+        title: "セキュリティ状況良好",
+        description: "現在、緊急のセキュリティ懸念は検出されていません。",
+        actionRequired: false,
       });
     }
 
@@ -404,10 +479,19 @@ export class DatabaseSecurityAuditor implements SecurityAuditor {
   private async fallbackLog(type: string, data: unknown): Promise<void> {
     try {
       // 本来はファイルシステムやメトリクスシステムに記録
-      console.error(`SECURITY_AUDIT_FALLBACK [${type}]:`, JSON.stringify(data, null, 2));
+      logger.error(`SECURITY_AUDIT_FALLBACK [${type}]`, {
+        tag: "securityAuditFallback",
+        fallback_type: type,
+        fallback_data: JSON.stringify(data, null, 2)
+      });
     } catch (error) {
       // 最後の手段として標準エラー出力
-      console.error(`CRITICAL: Security audit fallback failed for ${type}:`, error);
+      logger.error(`CRITICAL: Security audit fallback failed for ${type}`, {
+        tag: "securityAuditFallbackCritical",
+        fallback_type: type,
+        error_name: error instanceof Error ? error.name : "Unknown",
+        error_message: error instanceof Error ? error.message : String(error)
+      });
     }
   }
 
@@ -415,7 +499,7 @@ export class DatabaseSecurityAuditor implements SecurityAuditor {
    * ゲストトークンをハッシュ化
    */
   hashGuestToken(token: string): string {
-    return crypto.createHash('sha256').update(token).digest('hex');
+    return crypto.createHash("sha256").update(token).digest("hex");
   }
   /**
    * 失敗したアクションの上位を分析
@@ -427,7 +511,7 @@ export class DatabaseSecurityAuditor implements SecurityAuditor {
     const actionCounts: Record<string, number> = {};
 
     suspiciousActivities.forEach((activity: Record<string, unknown>) => {
-      const action = String(activity?.attempted_action || 'unknown');
+      const action = String(activity?.attempted_action || "unknown");
       actionCounts[action] = (actionCounts[action] || 0) + 1;
     });
 
@@ -450,17 +534,23 @@ export class DatabaseSecurityAuditor implements SecurityAuditor {
   }> {
     const ipCounts: Record<string, number> = {};
 
-    [...suspiciousActivities, ...unauthorizedAttempts].forEach((activity: Record<string, unknown>) => {
-      const ip = String(activity?.ip_address || 'unknown');
-      ipCounts[ip] = (ipCounts[ip] || 0) + 1;
-    });
+    [...suspiciousActivities, ...unauthorizedAttempts].forEach(
+      (activity: Record<string, unknown>) => {
+        const ip = String(activity?.ip_address || "unknown");
+        ipCounts[ip] = (ipCounts[ip] || 0) + 1;
+      }
+    );
 
     return Object.entries(ipCounts)
       .map(([ipAddress, count]) => ({
         ipAddress,
         count,
-        severity: count > 10 ? SecuritySeverity.HIGH :
-          count > 5 ? SecuritySeverity.MEDIUM : SecuritySeverity.LOW
+        severity:
+          count > 10
+            ? SecuritySeverity.HIGH
+            : count > 5
+              ? SecuritySeverity.MEDIUM
+              : SecuritySeverity.LOW,
       }))
       .sort((a, b) => b.count - a.count)
       .slice(0, 5); // 上位5件

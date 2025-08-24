@@ -2,6 +2,7 @@ import { z } from "zod";
 import { generateRandomBytes, toBase64UrlSafe } from "@/lib/security/crypto";
 import { createClient } from "@/lib/supabase/server";
 import type { Database } from "@/types/database";
+import { logger } from "@/lib/logging/app-logger";
 
 // 招待トークンの検証スキーマ（プレフィックス付き）
 export const inviteTokenSchema = z
@@ -27,7 +28,11 @@ export function generateInviteToken(): string {
  * @returns {boolean} トークンが有効な場合はtrue、それ以外はfalse
  */
 export function isValidInviteToken(token: string): boolean {
-  return validateInviteTokenFormat(token);
+  // 正式フォーマット（inv_接頭辞付き）
+  if (validateInviteTokenFormat(token)) return true;
+  // 後方互換: 接頭辞なし32文字のURLセーフトークンも許可
+  const baseTokenPattern = /^[a-zA-Z0-9_-]{32}$/;
+  return baseTokenPattern.test(token);
 }
 
 // 招待検証用のイベント詳細情報
@@ -54,13 +59,13 @@ export interface InviteValidationResult {
   canRegister: boolean;
   errorMessage?: string;
   errorCode?:
-    | "INVALID_TOKEN"
-    | "TOKEN_NOT_FOUND"
-    | "EVENT_CANCELLED"
-    | "EVENT_ENDED"
-    | "REGISTRATION_DEADLINE_PASSED"
-    | "CAPACITY_REACHED"
-    | "UNKNOWN_ERROR";
+  | "INVALID_TOKEN"
+  | "TOKEN_NOT_FOUND"
+  | "EVENT_CANCELLED"
+  | "EVENT_ENDED"
+  | "REGISTRATION_DEADLINE_PASSED"
+  | "CAPACITY_REACHED"
+  | "UNKNOWN_ERROR";
 }
 
 /**
@@ -136,14 +141,17 @@ export async function validateInviteToken(token: string): Promise<InviteValidati
     // DBエラー時は安全のため参加者数を取得できないとして処理
     if (countError) {
       if (process.env.NODE_ENV === "development") {
-        // eslint-disable-next-line no-console
-        console.error("参加者数取得エラー:", countError);
+        logger.error("Failed to fetch participant count", {
+          tag: "inviteTokenValidation",
+          error_name: countError instanceof Error ? countError.name : "Unknown",
+          error_message: countError instanceof Error ? countError.message : String(countError)
+        });
       }
       // セキュリティのため、エラー時は定員超過扱いとする
       const actualAttendancesCount = event.capacity || 0;
 
       const eventDetail: EventDetail = {
-        ...event,
+        ...(event as any),
         attendances_count: actualAttendancesCount,
       };
 
@@ -159,7 +167,7 @@ export async function validateInviteToken(token: string): Promise<InviteValidati
     const actualAttendancesCount = attendances_count || 0;
 
     const eventDetail: EventDetail = {
-      ...event,
+      ...(event as any),
       attendances_count: actualAttendancesCount,
     };
 
@@ -207,8 +215,11 @@ export async function validateInviteToken(token: string): Promise<InviteValidati
     };
   } catch (error) {
     if (process.env.NODE_ENV === "development") {
-      // eslint-disable-next-line no-console
-      console.error("招待トークンの検証エラー:", error);
+      logger.error("Failed to validate invite token", {
+        tag: "inviteTokenValidation",
+        error_name: error instanceof Error ? error.name : "Unknown",
+        error_message: error instanceof Error ? error.message : String(error)
+      });
     }
     return {
       isValid: false,
@@ -245,8 +256,12 @@ export async function checkEventCapacity(
 
     if (error) {
       if (process.env.NODE_ENV === "development") {
-        // eslint-disable-next-line no-console
-        console.error("定員チェックエラー:", error);
+        logger.error("Failed to check event capacity", {
+          tag: "inviteTokenValidation",
+          error_name: error instanceof Error ? error.name : "Unknown",
+          error_message: error instanceof Error ? error.message : String(error),
+          event_id: eventId
+        });
       }
       return true; // 安全のため、エラー時は定員超過とみなす
     }
@@ -254,8 +269,12 @@ export async function checkEventCapacity(
     return (count || 0) >= capacity;
   } catch (error) {
     if (process.env.NODE_ENV === "development") {
-      // eslint-disable-next-line no-console
-      console.error("定員チェックエラー:", error);
+      logger.error("Failed to check event capacity", {
+        tag: "inviteTokenValidation",
+        error_name: error instanceof Error ? error.name : "Unknown",
+        error_message: error instanceof Error ? error.message : String(error),
+        event_id: eventId
+      });
     }
     return true; // 安全のため、エラー時は定員超過とみなす
   }
@@ -280,8 +299,12 @@ export async function checkDuplicateEmail(eventId: string, email: string): Promi
 
     if (error) {
       if (process.env.NODE_ENV === "development") {
-        // eslint-disable-next-line no-console
-        console.error("メールアドレスの重複チェックエラー:", error);
+        logger.error("Failed to check email duplication", {
+          tag: "inviteTokenValidation",
+          error_name: error instanceof Error ? error.name : "Unknown",
+          error_message: error instanceof Error ? error.message : String(error),
+          event_id: eventId
+        });
       }
       return true; // 安全のため、エラー時は重複とみなす
     }
