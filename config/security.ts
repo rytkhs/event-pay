@@ -35,11 +35,11 @@ export const RATE_LIMIT_CONFIG = {
     blockDurationMs: 5 * 60 * 1000, // 5分ブロック
   } as RateLimitConfig,
 
-  // 招待リンク関連API（GET リクエストが頻繁に発生するため緩い設定）
+  // 招待リンク関連API（参加登録と同一設定）
   invite: {
-    windowMs: 1 * 60 * 1000, // 1分
-    maxAttempts: 20, // 20回まで（頻繁な検証を許容）
-    blockDurationMs: 5 * 60 * 1000, // 5分ブロック（短めに設定）
+    windowMs: 5 * 60 * 1000, // 5分
+    maxAttempts: 10, // 10回まで
+    blockDurationMs: 15 * 60 * 1000, // 15分ブロック
   } as RateLimitConfig,
 
   // 参加登録関連（将来のAPI拡張用）
@@ -60,6 +60,41 @@ export const RATE_LIMIT_CONFIG = {
   general: {
     windowMs: 60 * 1000, // 1分
     maxAttempts: 60, // 60回まで
+    blockDurationMs: 5 * 60 * 1000, // 5分ブロック
+  } as RateLimitConfig,
+
+  // 決済: Stripeセッション作成（内部UI）
+  paymentCreateSession: {
+    windowMs: 10 * 1000, // 10秒
+    maxAttempts: 3, // 最大3回
+    blockDurationMs: 20 * 1000, // 20秒ブロック
+  } as RateLimitConfig,
+
+  // 決済: 現金ステータス更新（内部UI）
+  paymentStatusUpdate: {
+    windowMs: 5 * 1000, // 5秒
+    maxAttempts: 10, // 最大10回
+    blockDurationMs: 20 * 1000, // 20秒ブロック
+  } as RateLimitConfig,
+
+  // 送金: 手動送金実行（内部UI）
+  manualPayout: {
+    windowMs: 60 * 1000, // 1分
+    maxAttempts: 3, // 最大3回（慎重な操作のため制限）
+    blockDurationMs: 5 * 60 * 1000, // 5分ブロック
+  } as RateLimitConfig,
+
+  // Destination charges: Checkout/PaymentIntents作成（公開エンドポイント）
+  stripeCheckout: {
+    windowMs: 60 * 1000, // 1分
+    maxAttempts: 10, // 最大10回
+    blockDurationMs: 2 * 60 * 1000, // 2分ブロック
+  } as RateLimitConfig,
+
+  // Destination charges: PaymentIntents直作成（公開エンドポイント）
+  stripePaymentIntent: {
+    windowMs: 60 * 1000, // 1分
+    maxAttempts: 5, // 最大5回（より慎重）
     blockDurationMs: 5 * 60 * 1000, // 5分ブロック
   } as RateLimitConfig,
 } as const;

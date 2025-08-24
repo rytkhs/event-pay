@@ -3,6 +3,8 @@
  * セキュリティ関連のイベントを統一的に記録・監視します
  */
 
+import { logger } from "@/lib/logging/app-logger";
+
 export interface SecurityEvent {
   type: SecurityEventType;
   severity: SecuritySeverity;
@@ -48,7 +50,14 @@ export function logSecurityEvent(event: SecurityEvent): void {
 
   // 開発環境では詳細ログを出力
   if (process.env.NODE_ENV === "development") {
-    console.warn(`[SECURITY ${event.severity}] ${event.type}:`, logEntry);
+    logger.warn(`[SECURITY ${event.severity}] ${event.type}`, {
+      tag: "securityEvent",
+      security_type: event.type,
+      security_severity: event.severity,
+      message: event.message,
+      user_id: event.userId,
+      event_id: event.eventId
+    });
   }
 
   // 本番環境では適切なログシステムに送信
@@ -300,7 +309,10 @@ function maskToken(token: string): string {
 function sendSecurityAlert(logEntry: Record<string, unknown>): void {
   // 開発環境では警告を出力
   if (process.env.NODE_ENV === "development") {
-    console.error("🚨 SECURITY ALERT:", logEntry);
+    logger.error("🚨 SECURITY ALERT", {
+      tag: "securityAlert",
+      alert_data: logEntry
+    });
   }
 
   // 本番環境では適切なアラートシステムに送信

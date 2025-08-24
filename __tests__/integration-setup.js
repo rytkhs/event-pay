@@ -6,6 +6,7 @@
  * @since 2025-01-22
  */
 
+/* eslint-disable no-console */
 import "@testing-library/jest-dom";
 import { config } from "dotenv";
 import { UnifiedMockFactory } from "./helpers/unified-mock-factory";

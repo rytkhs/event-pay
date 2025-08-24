@@ -1,11 +1,15 @@
 /**
  * 権限昇格攻撃防御テスト
- * 
+ *
  * 様々な権限昇格攻撃パターンに対する防御機能をテストする
  */
 
 import { SecureSupabaseClientFactory } from "@/lib/security/secure-client-factory.impl";
-import { AdminReason, GuestTokenError, GuestErrorCode } from "@/lib/security/secure-client-factory.types";
+import {
+  AdminReason,
+  GuestTokenError,
+  GuestErrorCode,
+} from "@/lib/security/secure-client-factory.types";
 import { generateGuestToken } from "@/lib/utils/guest-token";
 
 describe("権限昇格攻撃防御テスト", () => {
@@ -21,9 +25,7 @@ describe("権限昇格攻撃防御テスト", () => {
       const guestClient = secureClientFactory.createGuestClient(guestToken);
 
       // auth.usersテーブルへのアクセス試行
-      const { data, error } = await guestClient
-        .from("users")
-        .select("*");
+      const { data, error } = await guestClient.from("users").select("*");
 
       // RLSポリシーにより空の結果セットが返される
       expect(error).toBeNull();
@@ -35,9 +37,7 @@ describe("権限昇格攻撃防御テスト", () => {
       const guestClient = secureClientFactory.createGuestClient(guestToken);
 
       // 管理者監査テーブルへのアクセス試行
-      const { data, error } = await guestClient
-        .from("admin_access_audit")
-        .select("*");
+      const { data, error } = await guestClient.from("admin_access_audit").select("*");
 
       // RLSポリシーにより空の結果セットが返される
       expect(error).toBeNull();
@@ -50,9 +50,7 @@ describe("権限昇格攻撃防御テスト", () => {
 
       const guestClient = secureClientFactory.createGuestClient(fakeToken);
 
-      const { data, error } = await guestClient
-        .from("attendances")
-        .select("*");
+      const { data, error } = await guestClient.from("attendances").select("*");
 
       // RLSポリシーにより空の結果セットが返される
       expect(error).toBeNull();
@@ -81,17 +79,15 @@ describe("権限昇格攻撃防御テスト", () => {
       const anonymousClient = secureClientFactory.createAuthenticatedClient();
 
       // 認証なしでイベント作成試行
-      const { data, error } = await anonymousClient
-        .from("events")
-        .insert({
-          title: "不正なイベント",
-          date: new Date().toISOString(),
-          location: "テスト会場",
-          fee: 1000,
-          capacity: 50,
-          status: "upcoming",
-          payment_methods: ["stripe"],
-        });
+      const { data, error } = await anonymousClient.from("events").insert({
+        title: "不正なイベント",
+        date: new Date().toISOString(),
+        location: "テスト会場",
+        fee: 1000,
+        capacity: 50,
+        status: "upcoming",
+        payment_methods: ["stripe"],
+      });
 
       // 認証が必要なためエラーが発生
       expect(error).toBeDefined();
@@ -120,9 +116,7 @@ describe("権限昇格攻撃防御テスト", () => {
       const guestClient = secureClientFactory.createGuestClient(guestToken);
 
       // PostgreSQLシステムテーブルへのアクセス試行
-      const { data, error } = await guestClient
-        .from("pg_tables")
-        .select("*");
+      const { data, error } = await guestClient.from("pg_tables").select("*");
 
       // システムテーブルへのアクセスは拒否される
       expect(error).toBeDefined();
@@ -169,9 +163,7 @@ describe("権限昇格攻撃防御テスト", () => {
 
       const guestClient = secureClientFactory.createGuestClient(tamperedToken);
 
-      const { data, error } = await guestClient
-        .from("attendances")
-        .select("*");
+      const { data, error } = await guestClient.from("attendances").select("*");
 
       // 改ざんされたトークンでは空の結果セットが返される
       expect(error).toBeNull();
@@ -188,7 +180,7 @@ describe("権限昇格攻撃防御テスト", () => {
       // 両方のクライアントで操作を実行
       const [result1, result2] = await Promise.all([
         client1.from("attendances").select("*").eq("guest_token", guestToken),
-        client2.from("attendances").select("*").eq("guest_token", guestToken)
+        client2.from("attendances").select("*").eq("guest_token", guestToken),
       ]);
 
       // 両方とも正常に動作する（トークンの再利用は許可される）
@@ -240,7 +232,7 @@ describe("権限昇格攻撃防御テスト", () => {
     it("無効なトークンでの大量アクセスが適切に処理される", async () => {
       const invalidTokens = Array.from({ length: 10 }, () => generateGuestToken());
 
-      const promises = invalidTokens.map(token => {
+      const promises = invalidTokens.map((token) => {
         const guestClient = secureClientFactory.createGuestClient(token);
         return guestClient.from("attendances").select("*").eq("guest_token", token);
       });
@@ -248,7 +240,7 @@ describe("権限昇格攻撃防御テスト", () => {
       const results = await Promise.allSettled(promises);
 
       // 全て空の結果セットが返されることを確認
-      results.forEach(result => {
+      results.forEach((result) => {
         if (result.status === "fulfilled") {
           expect(result.value.data).toEqual([]);
         }

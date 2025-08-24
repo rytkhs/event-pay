@@ -3,7 +3,12 @@
  * 型安全性を向上させるための型ガード関数を提供
  */
 
-import type { TimeRange, SecuritySeverity, AdminReason, SuspiciousActivityType } from "@/types/security";
+import type {
+  TimeRange,
+  SecuritySeverity,
+  AdminReason,
+  SuspiciousActivityType,
+} from "@/types/security";
 import type { Event } from "@/types/models";
 
 // ====================================================================
@@ -21,21 +26,21 @@ export function isNotNullOrUndefined<T>(value: T | null | undefined): value is T
  * 値が文字列であることを確認
  */
 export function isString(value: unknown): value is string {
-  return typeof value === 'string';
+  return typeof value === "string";
 }
 
 /**
  * 値が数値であることを確認
  */
 export function isNumber(value: unknown): value is number {
-  return typeof value === 'number' && !isNaN(value);
+  return typeof value === "number" && !isNaN(value);
 }
 
 /**
  * 値がオブジェクトであることを確認（nullを除く）
  */
 export function isObject(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 /**
@@ -71,8 +76,8 @@ export function isISODateString(value: unknown): value is string {
 export function isTimeRange(obj: unknown): obj is TimeRange {
   return (
     isObject(obj) &&
-    'start' in obj &&
-    'end' in obj &&
+    "start" in obj &&
+    "end" in obj &&
     isDate(obj.start) &&
     isDate(obj.end) &&
     obj.start <= obj.end
@@ -84,7 +89,9 @@ export function isTimeRange(obj: unknown): obj is TimeRange {
  */
 export function assertTimeRange(obj: unknown): asserts obj is TimeRange {
   if (!isTimeRange(obj)) {
-    throw new Error('Invalid TimeRange object: must have start and end Date properties with start <= end');
+    throw new Error(
+      "Invalid TimeRange object: must have start and end Date properties with start <= end"
+    );
   }
 }
 
@@ -108,14 +115,14 @@ export interface EventInfo {
 export function isValidEventInfo(event: unknown): event is EventInfo {
   return (
     isObject(event) &&
-    'id' in event &&
-    'date' in event &&
-    'status' in event &&
+    "id" in event &&
+    "date" in event &&
+    "status" in event &&
     isString(event.id) &&
     isString(event.date) &&
     isString(event.status) &&
     // registration_deadlineはオプショナル
-    ('registration_deadline' in event
+    ("registration_deadline" in event
       ? event.registration_deadline === null || isString(event.registration_deadline)
       : true)
   );
@@ -127,8 +134,16 @@ export function isValidEventInfo(event: unknown): event is EventInfo {
 export function isValidEvent(event: unknown): event is Event {
   if (!isObject(event)) return false;
 
-  const requiredStringFields = ['id', 'title', 'date', 'created_at', 'updated_at', 'created_by', 'invite_token'];
-  const requiredNumberFields = ['fee'];
+  const requiredStringFields = [
+    "id",
+    "title",
+    "date",
+    "created_at",
+    "updated_at",
+    "created_by",
+    "invite_token",
+  ];
+  const requiredNumberFields = ["fee"];
 
   // 必須文字列フィールドの確認
   for (const field of requiredStringFields) {
@@ -145,28 +160,36 @@ export function isValidEvent(event: unknown): event is Event {
   }
 
   // オプショナルフィールドの確認
-  if ('description' in event && event.description !== null && !isString(event.description)) {
+  if ("description" in event && event.description !== null && !isString(event.description)) {
     return false;
   }
 
-  if ('location' in event && event.location !== null && !isString(event.location)) {
+  if ("location" in event && event.location !== null && !isString(event.location)) {
     return false;
   }
 
-  if ('capacity' in event && event.capacity !== null && !isNumber(event.capacity)) {
+  if ("capacity" in event && event.capacity !== null && !isNumber(event.capacity)) {
     return false;
   }
 
-  if ('registration_deadline' in event && event.registration_deadline !== null && !isString(event.registration_deadline)) {
+  if (
+    "registration_deadline" in event &&
+    event.registration_deadline !== null &&
+    !isString(event.registration_deadline)
+  ) {
     return false;
   }
 
-  if ('payment_deadline' in event && event.payment_deadline !== null && !isString(event.payment_deadline)) {
+  if (
+    "payment_deadline" in event &&
+    event.payment_deadline !== null &&
+    !isString(event.payment_deadline)
+  ) {
     return false;
   }
 
   // payment_methodsの確認
-  if ('payment_methods' in event && !isArray(event.payment_methods)) {
+  if ("payment_methods" in event && !isArray(event.payment_methods)) {
     return false;
   }
 
@@ -181,36 +204,42 @@ export function isValidEvent(event: unknown): event is Event {
  * SecuritySeverityの型ガード
  */
 export function isSecuritySeverity(value: unknown): value is SecuritySeverity {
-  return isString(value) && ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'].includes(value);
+  return isString(value) && ["LOW", "MEDIUM", "HIGH", "CRITICAL"].includes(value);
 }
 
 /**
  * AdminReasonの型ガード
  */
 export function isAdminReason(value: unknown): value is AdminReason {
-  return isString(value) && [
-    'user_cleanup',
-    'test_data_setup',
-    'system_maintenance',
-    'emergency_access',
-    'data_migration',
-    'security_investigation'
-  ].includes(value);
+  return (
+    isString(value) &&
+    [
+      "user_cleanup",
+      "test_data_setup",
+      "system_maintenance",
+      "emergency_access",
+      "data_migration",
+      "security_investigation",
+    ].includes(value)
+  );
 }
 
 /**
  * SuspiciousActivityTypeの型ガード
  */
 export function isSuspiciousActivityType(value: unknown): value is SuspiciousActivityType {
-  return isString(value) && [
-    'EMPTY_RESULT_SET',
-    'ADMIN_ACCESS_ATTEMPT',
-    'INVALID_TOKEN_PATTERN',
-    'RATE_LIMIT_EXCEEDED',
-    'UNAUTHORIZED_RLS_BYPASS',
-    'BULK_DATA_ACCESS',
-    'UNUSUAL_ACCESS_PATTERN'
-  ].includes(value);
+  return (
+    isString(value) &&
+    [
+      "EMPTY_RESULT_SET",
+      "ADMIN_ACCESS_ATTEMPT",
+      "INVALID_TOKEN_PATTERN",
+      "RATE_LIMIT_EXCEEDED",
+      "UNAUTHORIZED_RLS_BYPASS",
+      "BULK_DATA_ACCESS",
+      "UNUSUAL_ACCESS_PATTERN",
+    ].includes(value)
+  );
 }
 
 // ====================================================================
@@ -220,8 +249,10 @@ export function isSuspiciousActivityType(value: unknown): value is SuspiciousAct
 /**
  * データベースレコードの基本構造を確認
  */
-export function isDatabaseRecord(value: unknown): value is Record<string, unknown> & { id: string } {
-  return isObject(value) && 'id' in value && isString(value.id);
+export function isDatabaseRecord(
+  value: unknown
+): value is Record<string, unknown> & { id: string } {
+  return isObject(value) && "id" in value && isString(value.id);
 }
 
 /**
@@ -237,11 +268,16 @@ export function isAttendanceRecord(value: unknown): value is {
 } {
   return (
     isDatabaseRecord(value) &&
-    'event_id' in value && isString(value.event_id) &&
-    'nickname' in value && isString(value.nickname) &&
-    'email' in value && isString(value.email) &&
-    'status' in value && isString(value.status) &&
-    'guest_token' in value && (value.guest_token === null || isString(value.guest_token))
+    "event_id" in value &&
+    isString(value.event_id) &&
+    "nickname" in value &&
+    isString(value.nickname) &&
+    "email" in value &&
+    isString(value.email) &&
+    "status" in value &&
+    isString(value.status) &&
+    "guest_token" in value &&
+    (value.guest_token === null || isString(value.guest_token))
   );
 }
 
@@ -262,12 +298,16 @@ export function isAdminAccessLog(value: unknown): value is {
 } {
   return (
     isObject(value) &&
-    'reason' in value && isAdminReason(value.reason) &&
-    'context' in value && isString(value.context) &&
-    (!('userId' in value) || value.userId === undefined || isString(value.userId)) &&
-    (!('ipAddress' in value) || value.ipAddress === undefined || isString(value.ipAddress)) &&
-    (!('userAgent' in value) || value.userAgent === undefined || isString(value.userAgent)) &&
-    (!('operationDetails' in value) || value.operationDetails === undefined || isObject(value.operationDetails))
+    "reason" in value &&
+    isAdminReason(value.reason) &&
+    "context" in value &&
+    isString(value.context) &&
+    (!("userId" in value) || value.userId === undefined || isString(value.userId)) &&
+    (!("ipAddress" in value) || value.ipAddress === undefined || isString(value.ipAddress)) &&
+    (!("userAgent" in value) || value.userAgent === undefined || isString(value.userAgent)) &&
+    (!("operationDetails" in value) ||
+      value.operationDetails === undefined ||
+      isObject(value.operationDetails))
   );
 }
 
@@ -283,11 +323,16 @@ export function isGuestAccessLog(value: unknown): value is {
 } {
   return (
     isObject(value) &&
-    'guestTokenHash' in value && isString(value.guestTokenHash) &&
-    'action' in value && isString(value.action) &&
-    'success' in value && typeof value.success === 'boolean' &&
-    (!('attendanceId' in value) || value.attendanceId === undefined || isString(value.attendanceId)) &&
-    (!('eventId' in value) || value.eventId === undefined || isString(value.eventId))
+    "guestTokenHash" in value &&
+    isString(value.guestTokenHash) &&
+    "action" in value &&
+    isString(value.action) &&
+    "success" in value &&
+    typeof value.success === "boolean" &&
+    (!("attendanceId" in value) ||
+      value.attendanceId === undefined ||
+      isString(value.attendanceId)) &&
+    (!("eventId" in value) || value.eventId === undefined || isString(value.eventId))
   );
 }
 
@@ -316,9 +361,9 @@ export function isErrorContext(value: unknown): value is Record<string, unknown>
 /**
  * 値が空でないことを確認（null, undefined, 空文字列, 空配列, 空オブジェクトを除外）
  */
-export function isNotEmpty<T>(value: T | null | undefined | '' | [] | object): value is T {
+export function isNotEmpty<T>(value: T | null | undefined | "" | [] | object): value is T {
   if (value === null || value === undefined) return false;
-  if (isString(value) && value === '') return false;
+  if (isString(value) && value === "") return false;
   if (isArray(value) && value.length === 0) return false;
   if (isObject(value) && Object.keys(value).length === 0) return false;
   return true;

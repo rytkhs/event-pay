@@ -18,6 +18,21 @@ import {
  * セキュリティレポート生成システムのインターフェース
  */
 export interface SecurityReporter {
+  /** セキュリティイベントを記録 */
+  logSecurityEvent(params: {
+    type: string;
+    details: Record<string, unknown>;
+    userId?: string;
+  }): Promise<void>;
+
+  /** 疑わしい活動を記録 */
+  logSuspiciousActivity(params: {
+    type: string;
+    details: Record<string, unknown>;
+    ip?: string;
+    userAgent?: string;
+  }): Promise<void>;
+
   /**
    * 包括的なセキュリティレポートを生成
    */
@@ -54,10 +69,7 @@ export interface SecurityReporter {
   /**
    * レポートをエクスポート（JSON、CSV、PDF）
    */
-  exportReport(
-    report: SecurityReport,
-    format: ExportFormat
-  ): Promise<ExportedReport>;
+  exportReport(report: SecurityReport, format: ExportFormat): Promise<ExportedReport>;
 }
 
 // ====================================================================

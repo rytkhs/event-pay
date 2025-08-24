@@ -3,7 +3,7 @@ import type { NextRequest, NextResponse } from "next/server";
 import { GuestErrorCode } from "@/types/security";
 
 /**
- * 管理者権限使用の理由を定義するエナム
+ * 管理者権限使用の理由を定義するenum
  */
 export enum AdminReason {
   USER_CLEANUP = "user_cleanup",
@@ -13,6 +13,8 @@ export enum AdminReason {
   EMERGENCY_ACCESS = "emergency_access",
   DATA_MIGRATION = "data_migration",
   SECURITY_INVESTIGATION = "security_investigation",
+  PAYOUT_PROCESSING = "payout_processing",
+  PAYMENT_PROCESSING = "payment_processing",
 }
 
 // エラーハンドリングは専用ファイルから再エクスポート

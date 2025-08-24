@@ -8,10 +8,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { validateGuestTokenFormat } from "./crypto";
 import { getSecureClientFactory } from "./secure-client-factory.impl";
-import {
-  IGuestTokenValidator,
-  ISecurityAuditor,
-} from "./secure-client-factory.interface";
+import { IGuestTokenValidator, ISecurityAuditor } from "./secure-client-factory.interface";
 import {
   GuestErrorCode,
   GuestTokenErrorFactory,
@@ -156,7 +153,10 @@ export class RLSGuestTokenValidator implements IGuestTokenValidator {
       // 成功をログに記録
       await this.safeLogGuestAccess(token, "VALIDATE_TOKEN", true, {
         attendanceId: attendance.id,
-        eventId: (Array.isArray(attendance.event) && attendance.event.length > 0) ? attendance.event[0].id : "",
+        eventId:
+          Array.isArray(attendance.event) && attendance.event.length > 0
+            ? attendance.event[0].id
+            : "",
         tableName: "attendances",
         operationType: "SELECT",
         resultCount: 1,
@@ -165,7 +165,10 @@ export class RLSGuestTokenValidator implements IGuestTokenValidator {
       return {
         isValid: true,
         attendanceId: attendance.id,
-        eventId: (Array.isArray(attendance.event) && attendance.event.length > 0) ? attendance.event[0].id : "",
+        eventId:
+          Array.isArray(attendance.event) && attendance.event.length > 0
+            ? attendance.event[0].id
+            : "",
         canModify,
       };
     } catch (error) {
@@ -290,7 +293,10 @@ export class RLSGuestTokenValidator implements IGuestTokenValidator {
       // 成功をログに記録
       await this.safeLogGuestAccess(token, "VALIDATE_TOKEN_DETAILS", true, {
         attendanceId: attendance.id,
-        eventId: (Array.isArray(attendance.event) && attendance.event.length > 0) ? attendance.event[0].id : "",
+        eventId:
+          Array.isArray(attendance.event) && attendance.event.length > 0
+            ? attendance.event[0].id
+            : "",
         tableName: "attendances",
         operationType: "SELECT",
         resultCount: 1,
@@ -436,7 +442,7 @@ export class RLSGuestTokenValidator implements IGuestTokenValidator {
       // registration_deadlineはオプショナル
       ("registration_deadline" in event
         ? (event as EventInfo).registration_deadline === null ||
-        typeof (event as EventInfo).registration_deadline === "string"
+          typeof (event as EventInfo).registration_deadline === "string"
         : true)
     );
   }

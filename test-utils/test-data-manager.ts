@@ -3,6 +3,7 @@ import { EVENT_STATUS } from "@/types/enums";
 import { SecureSupabaseClientFactory } from "@/lib/security/secure-client-factory.impl";
 import { AdminReason } from "@/lib/security/secure-client-factory.types";
 import type { SupabaseClient, Session, User } from "@supabase/supabase-js";
+import { logger } from "@/lib/logging/app-logger";
 
 /**
  * テスト用の認証セッション型
@@ -44,14 +45,18 @@ export class TestDataManager {
     this.secureClientFactory = SecureSupabaseClientFactory.create();
 
     // 通常のクライアント（RLS有効）
-    this.authenticatedClient = supabaseClient || this.secureClientFactory.createAuthenticatedClient();
+    this.authenticatedClient =
+      supabaseClient || this.secureClientFactory.createAuthenticatedClient();
   }
 
   /**
    * 管理者権限が真に必要な場合のみ使用（監査付き）
    * テストデータのクリーンアップなど限定的な用途のみ
    */
-  private async getAuditedAdminClient(reason: AdminReason, context: string): Promise<SupabaseClient> {
+  private async getAuditedAdminClient(
+    reason: AdminReason,
+    context: string
+  ): Promise<SupabaseClient> {
     return await this.secureClientFactory.createAuditedAdminClient(reason, context);
   }
 
@@ -127,7 +132,10 @@ export class TestDataManager {
       });
 
       if (publicUserError) {
-        console.warn("Failed to create public user record:", publicUserError.message);
+        logger.warn("Failed to create public user record", {
+          tag: "testDataManager",
+          error_message: publicUserError.message
+        });
       }
 
       createdBy = authUser.user.id;
@@ -158,10 +166,11 @@ export class TestDataManager {
       .single();
 
     if (error) {
-      console.error("Event creation error details:", {
-        error,
-        defaultEvent,
-        createdBy,
+      logger.error("Event creation error details", {
+        tag: "testDataManager",
+        error_message: error.message,
+        error_code: error.code,
+        created_by: createdBy
       });
       throw new Error(`Failed to create test event: ${error.message} (Code: ${error.code})`);
     }
@@ -390,7 +399,11 @@ export class TestDataManager {
         }
       }
     } catch (error) {
-      console.warn("Cleanup failed:", error);
+      logger.warn("Cleanup failed", {
+        tag: "testDataManager",
+        error_name: error instanceof Error ? error.name : "Unknown",
+        error_message: error instanceof Error ? error.message : String(error)
+      });
     }
   }
 
@@ -489,7 +502,10 @@ export class TestDataManager {
     });
 
     if (publicUserError) {
-      console.warn("Failed to create public user record:", publicUserError.message);
+      logger.warn("Failed to create public user record", {
+        tag: "testDataManager",
+        error_message: publicUserError.message
+      });
     }
 
     const creator = {

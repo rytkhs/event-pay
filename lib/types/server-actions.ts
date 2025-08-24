@@ -41,6 +41,8 @@ export const ERROR_CODES = {
   // システムエラー
   INTERNAL_ERROR: "INTERNAL_ERROR",
   NETWORK_ERROR: "NETWORK_ERROR",
+  // レート制限
+  RATE_LIMIT_EXCEEDED: "RATE_LIMIT_EXCEEDED",
 } as const;
 
 export type ErrorCode = (typeof ERROR_CODES)[keyof typeof ERROR_CODES];
@@ -60,6 +62,7 @@ export const ERROR_MESSAGES = {
   [ERROR_CODES.EDIT_RESTRICTION]: "編集制限により変更できません",
   [ERROR_CODES.INTERNAL_ERROR]: "システムエラーが発生しました",
   [ERROR_CODES.NETWORK_ERROR]: "ネットワークエラーが発生しました",
+  [ERROR_CODES.RATE_LIMIT_EXCEEDED]: "レート制限に達しました。しばらく待って再試行してください",
 } as const;
 
 /**

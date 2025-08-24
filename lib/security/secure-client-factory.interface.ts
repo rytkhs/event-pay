@@ -194,26 +194,24 @@ export interface ISecurityAuditor {
    *
    * @param activity 疑わしい活動の詳細
    */
-  logSuspiciousActivity(
-    activity: {
-      activityType: string;
-      tableName?: string;
-      userRole?: string;
-      userId?: string;
-      attemptedAction?: string;
-      expectedResultCount?: number;
-      actualResultCount?: number;
-      context?: Record<string, unknown>;
-      severity?: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
-      ipAddress?: string;
-      userAgent?: string;
-      sessionId?: string;
-      detectionMethod?: string;
-      falsePositive?: boolean;
-      investigatedAt?: Date;
-      investigatedBy?: string;
-      investigationNotes?: string;
-      createdAt?: Date;
-    }
-  ): Promise<void>;
+  logSuspiciousActivity(activity: {
+    activityType: string;
+    tableName?: string;
+    userRole?: string;
+    userId?: string;
+    attemptedAction?: string;
+    expectedResultCount?: number;
+    actualResultCount?: number;
+    context?: Record<string, unknown>;
+    severity?: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
+    ipAddress?: string;
+    userAgent?: string;
+    sessionId?: string;
+    detectionMethod?: string;
+    falsePositive?: boolean;
+    investigatedAt?: Date;
+    investigatedBy?: string;
+    investigationNotes?: string;
+    createdAt?: Date;
+  }): Promise<void>;
 }

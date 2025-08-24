@@ -9,13 +9,13 @@ interface EventDetailProps {
     id: string;
     title: string;
     date: string;
-    location: string;
+    location: any;
     fee: number;
-    capacity: number;
+    capacity: any;
     status: "upcoming" | "ongoing" | "past" | "cancelled";
-    description?: string;
-    registration_deadline?: string;
-    payment_deadline?: string;
+    description?: any;
+    registration_deadline?: any;
+    payment_deadline?: any;
     payment_methods: PaymentMethod[];
     created_at: string;
     updated_at: string;

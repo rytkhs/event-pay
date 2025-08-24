@@ -6,6 +6,7 @@ import { AccountLockoutService, TimingAttackProtection, InputSanitizer } from "@
 import { getClientIP } from "@/lib/utils/ip-detection";
 import { z } from "zod";
 import { formatUtcToJst } from "@/lib/utils/timezone";
+import { logger } from "@/lib/logging/app-logger";
 
 // ログイン関連の型定義
 export interface LoginInput {
@@ -77,11 +78,12 @@ export class LoginService {
         allowed: result.allowed,
         retryAfter: result.retryAfter,
       };
-    } catch {
-      // 本番環境では適切なログシステムに出力
-      if (process.env.NODE_ENV === "development") {
-        // console.error("Rate limit check failed:", _);
-      }
+    } catch (error) {
+      logger.warn("Rate limit check failed in login service", {
+        tag: "rateLimitCheckFailed",
+        error_name: error instanceof Error ? error.name : "Unknown",
+        error_message: error instanceof Error ? error.message : String(error)
+      });
       // フェイルオープン（エラー時は制限しない）
       return { allowed: true };
     }

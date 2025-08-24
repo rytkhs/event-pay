@@ -1,4 +1,9 @@
-import { deleteUserById, checkUserProfileExists, createEmergencyAdminClient, createMaintenanceAdminClient } from "@/lib/security/admin-operations";
+import {
+  deleteUserById,
+  checkUserProfileExists,
+  createEmergencyAdminClient,
+  createMaintenanceAdminClient,
+} from "@/lib/security/admin-operations";
 import { AdminReason } from "@/lib/security/secure-client-factory.types";
 import { getSecureClientFactory } from "@/lib/security";
 
@@ -69,7 +74,9 @@ describe("Admin Operations", () => {
       const deleteError = new Error("User not found");
       mockAdminClient.auth.admin.deleteUser.mockResolvedValue({ error: deleteError });
 
-      await expect(deleteUserById("user-123")).rejects.toThrow("Failed to delete user: User not found");
+      await expect(deleteUserById("user-123")).rejects.toThrow(
+        "Failed to delete user: User not found"
+      );
     });
   });
 
@@ -95,7 +102,11 @@ describe("Admin Operations", () => {
     it("should return false when user profile does not exist", async () => {
       mockAdminClient.single.mockResolvedValue({
         data: null,
-        error: { code: "PGRST116" }, // No rows returned
+        error: null,
+      });
+      mockAdminClient.maybeSingle.mockResolvedValue({
+        data: null,
+        error: null,
       });
 
       const result = await checkUserProfileExists("user-123");

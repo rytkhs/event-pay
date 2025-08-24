@@ -37,9 +37,9 @@ export async function deleteEventAction(eventId: string) {
         attendances(id, status)
       `
       )
-      .eq("id", validation.data)
+      .eq("id", validation.data as any)
       .eq("created_by", user.id)
-      .single();
+      .maybeSingle();
 
     if (fetchError || !event) {
       return {
@@ -49,7 +49,7 @@ export async function deleteEventAction(eventId: string) {
     }
 
     // 削除制限チェック
-    const restrictions = checkDeleteRestrictions(event);
+    const restrictions = checkDeleteRestrictions(event as any);
     if (restrictions.length > 0) {
       return {
         success: false,
@@ -64,16 +64,10 @@ export async function deleteEventAction(eventId: string) {
     const { error } = await supabase
       .from("events")
       .delete()
-      .eq("id", validation.data)
+      .eq("id", validation.data as any)
       .eq("created_by", user.id);
 
     if (error) {
-      if (error.code === "PGRST116") {
-        return {
-          success: false,
-          error: { message: "Event not found" },
-        };
-      }
       if (error.code === "23503") {
         return {
           success: false,

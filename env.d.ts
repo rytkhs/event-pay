@@ -15,10 +15,33 @@ declare namespace NodeJS {
     // ===========================
     /** Stripe シークレットキー（sk_test_xxx または sk_live_xxx） */
     STRIPE_SECRET_KEY: string;
-    /** Stripe Webhook署名検証用シークレット（whsec_xxx） */
+    /** Stripe Webhook署名検証用シークレット（whsec_xxx） - プライマリ */
     STRIPE_WEBHOOK_SECRET: string;
+    /** Stripe Webhook署名検証用シークレット（whsec_xxx） - セカンダリ（ローテーション用・オプション） */
+    STRIPE_WEBHOOK_SECRET_SECONDARY?: string;
+    /** Stripe Webhook署名検証用シークレット（whsec_xxx） - テスト環境プライマリ */
+    STRIPE_WEBHOOK_SECRET_TEST?: string;
+    /** Stripe Webhook署名検証用シークレット（whsec_xxx） - テスト環境セカンダリ（オプション） */
+    STRIPE_WEBHOOK_SECRET_TEST_SECONDARY?: string;
+    /** Stripe Connect Webhook署名検証用シークレット（whsec_xxx） - プライマリ */
+    STRIPE_CONNECT_WEBHOOK_SECRET?: string;
+    /** Stripe Connect Webhook署名検証用シークレット（whsec_xxx） - セカンダリ（ローテーション用・オプション） */
+    STRIPE_CONNECT_WEBHOOK_SECRET_SECONDARY?: string;
+    /** Stripe Connect Webhook署名検証用シークレット（whsec_xxx） - テスト環境プライマリ */
+    STRIPE_CONNECT_WEBHOOK_SECRET_TEST?: string;
+    /** Stripe Connect Webhook署名検証用シークレット（whsec_xxx） - テスト環境セカンダリ（オプション） */
+    STRIPE_CONNECT_WEBHOOK_SECRET_TEST_SECONDARY?: string;
     /** Stripe パブリッシャブルキー（フロントエンド用、pk_test_xxx または pk_live_xxx） */
     NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: string;
+    /** Stripe API バージョン（例: 2024-06-20）。未設定時はSDKデフォルトを使用 */
+    STRIPE_API_VERSION?: string;
+    /** Stripe Webhook タイムスタンプ許容秒数（デフォルト: 300）。例: 300 */
+    STRIPE_WEBHOOK_TIMESTAMP_TOLERANCE?: string;
+
+    /** Webhook結果ポーリングの最大待機ミリ秒（デフォルト: 2000） */
+    WEBHOOK_RESULT_POLL_MAX_MS?: string;
+    /** Webhook結果ポーリング間隔ミリ秒（デフォルト: 100） */
+    WEBHOOK_RESULT_POLL_INTERVAL_MS?: string;
 
     // ===========================
     // Resend API Configuration（必須）

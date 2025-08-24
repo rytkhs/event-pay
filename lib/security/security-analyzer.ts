@@ -152,7 +152,7 @@ export class SecurityAnalyzerImpl implements SecurityAnalyzer {
 
       if (emptyResultSets && Array.isArray(emptyResultSets)) {
         emptyResultSets.forEach((entry) => {
-          if (isObject(entry) && 'table_name' in entry && isString(entry.table_name)) {
+          if (isObject(entry) && "table_name" in entry && isString(entry.table_name)) {
             const tableName = entry.table_name;
             emptyResultSetFrequency[tableName] = (emptyResultSetFrequency[tableName] || 0) + 1;
           }
@@ -195,12 +195,14 @@ export class SecurityAnalyzerImpl implements SecurityAnalyzer {
   // プライベートヘルパーメソッド
   // ====================================================================
 
-  private async analyzeAdminAccessPatterns(timeRange: TimeRange): Promise<Array<{
-    pattern: string;
-    frequency: number;
-    severity: SecuritySeverity;
-    description: string;
-  }>> {
+  private async analyzeAdminAccessPatterns(timeRange: TimeRange): Promise<
+    Array<{
+      pattern: string;
+      frequency: number;
+      severity: SecuritySeverity;
+      description: string;
+    }>
+  > {
     const { data, error } = await this.supabase
       .from("admin_access_audit")
       .select("reason, user_id, created_at, success")
@@ -229,7 +231,7 @@ export class SecurityAnalyzerImpl implements SecurityAnalyzer {
     // 頻繁な管理者アクセスの検知
     const accessCounts: Record<string, number> = {};
     data.forEach((entry) => {
-      if (isObject(entry) && 'user_id' in entry && isString(entry.user_id)) {
+      if (isObject(entry) && "user_id" in entry && isString(entry.user_id)) {
         accessCounts[entry.user_id] = (accessCounts[entry.user_id] || 0) + 1;
       }
     });
@@ -247,8 +249,8 @@ export class SecurityAnalyzerImpl implements SecurityAnalyzer {
     });
 
     // 失敗した管理者アクセスの検知
-    const failures = data.filter((entry) =>
-      isObject(entry) && 'success' in entry && entry.success === false
+    const failures = data.filter(
+      (entry) => isObject(entry) && "success" in entry && entry.success === false
     ).length;
 
     if (failures > 5) {
@@ -263,12 +265,14 @@ export class SecurityAnalyzerImpl implements SecurityAnalyzer {
     return patterns;
   }
 
-  private async analyzeGuestAccessPatterns(timeRange: TimeRange): Promise<Array<{
-    pattern: string;
-    frequency: number;
-    severity: SecuritySeverity;
-    description: string;
-  }>> {
+  private async analyzeGuestAccessPatterns(timeRange: TimeRange): Promise<
+    Array<{
+      pattern: string;
+      frequency: number;
+      severity: SecuritySeverity;
+      description: string;
+    }>
+  > {
     const { data, error } = await this.supabase
       .from("guest_access_audit")
       .select("guest_token_hash, action, success, created_at")
@@ -297,7 +301,7 @@ export class SecurityAnalyzerImpl implements SecurityAnalyzer {
     // 同一トークンからの大量アクセス
     const tokenCounts: Record<string, number> = {};
     data.forEach((entry) => {
-      if (isObject(entry) && 'guest_token_hash' in entry && isString(entry.guest_token_hash)) {
+      if (isObject(entry) && "guest_token_hash" in entry && isString(entry.guest_token_hash)) {
         const tokenHash = entry.guest_token_hash;
         tokenCounts[tokenHash] = (tokenCounts[tokenHash] || 0) + 1;
       }
@@ -317,8 +321,8 @@ export class SecurityAnalyzerImpl implements SecurityAnalyzer {
 
     // ゲストアクセス失敗率の分析
     const totalAccess = data.length;
-    const failures = data.filter((entry) =>
-      isObject(entry) && 'success' in entry && entry.success === false
+    const failures = data.filter(
+      (entry) => isObject(entry) && "success" in entry && entry.success === false
     ).length;
 
     const failureRate = totalAccess > 0 ? failures / totalAccess : 0;
@@ -336,12 +340,14 @@ export class SecurityAnalyzerImpl implements SecurityAnalyzer {
     return patterns;
   }
 
-  private async analyzeSuspiciousActivityPatterns(timeRange: TimeRange): Promise<Array<{
-    pattern: string;
-    frequency: number;
-    severity: SecuritySeverity;
-    description: string;
-  }>> {
+  private async analyzeSuspiciousActivityPatterns(timeRange: TimeRange): Promise<
+    Array<{
+      pattern: string;
+      frequency: number;
+      severity: SecuritySeverity;
+      description: string;
+    }>
+  > {
     const { data, error } = await this.supabase
       .from("suspicious_activity_log")
       .select("activity_type, severity, table_name, created_at")
@@ -370,7 +376,7 @@ export class SecurityAnalyzerImpl implements SecurityAnalyzer {
     // 活動タイプ別の集計
     const activityCounts: Record<string, number> = {};
     data.forEach((entry) => {
-      if (isObject(entry) && 'activity_type' in entry && isString(entry.activity_type)) {
+      if (isObject(entry) && "activity_type" in entry && isString(entry.activity_type)) {
         const activityType = entry.activity_type;
         activityCounts[activityType] = (activityCounts[activityType] || 0) + 1;
       }

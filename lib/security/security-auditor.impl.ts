@@ -7,10 +7,7 @@
 
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
 import { createHash } from "crypto";
-import {
-  SecurityAuditor,
-  SecurityAuditConfig,
-} from "./security-auditor.interface";
+import { SecurityAuditor, SecurityAuditConfig } from "./security-auditor.interface";
 import {
   AdminReason,
   AdminAccessAuditEntry,
@@ -666,7 +663,9 @@ export class SecurityAuditorImpl implements SecurityAuditor {
 
   private async sendSecurityAlert(activity: SuspiciousActivityEntry): Promise<void> {
     // 将来実装: メール/Slack通知
-    console.warn("Security Alert:", {
+    const { logger } = await import("@/lib/logging/app-logger");
+    logger.warn("Security Alert", {
+      tag: "securityAudit",
       type: activity.activityType,
       severity: activity.severity,
       context: activity.context,
@@ -702,7 +701,9 @@ export class SecurityAuditorImpl implements SecurityAuditor {
   // 詳細実装メソッド
   // ====================================================================
 
-  private async getSuspiciousActivitiesInRange(timeRange: TimeRange): Promise<SuspiciousActivitySummary[]> {
+  private async getSuspiciousActivitiesInRange(
+    timeRange: TimeRange
+  ): Promise<SuspiciousActivitySummary[]> {
     const { data, error } = await this.supabase
       .from("suspicious_activity_log")
       .select("activity_type, severity, table_name, created_at")
@@ -718,12 +719,15 @@ export class SecurityAuditorImpl implements SecurityAuditor {
     }
 
     // 活動タイプ別にグループ化
-    const groupedActivities: Record<string, {
-      count: number;
-      severity: SecuritySeverity;
-      lastOccurrence: Date;
-      affectedTables: Set<string>;
-    }> = {};
+    const groupedActivities: Record<
+      string,
+      {
+        count: number;
+        severity: SecuritySeverity;
+        lastOccurrence: Date;
+        affectedTables: Set<string>;
+      }
+    > = {};
 
     data?.forEach((activity) => {
       const key = activity.activity_type;
@@ -756,7 +760,9 @@ export class SecurityAuditorImpl implements SecurityAuditor {
     }));
   }
 
-  private async getUnauthorizedAttemptsInRange(timeRange: TimeRange): Promise<UnauthorizedAttemptSummary[]> {
+  private async getUnauthorizedAttemptsInRange(
+    timeRange: TimeRange
+  ): Promise<UnauthorizedAttemptSummary[]> {
     const { data, error } = await this.supabase
       .from("unauthorized_access_log")
       .select("detection_method, attempted_resource, ip_address, created_at")
@@ -772,12 +778,15 @@ export class SecurityAuditorImpl implements SecurityAuditor {
     }
 
     // 検知方法別にグループ化
-    const groupedAttempts: Record<string, {
-      count: number;
-      uniqueIpAddresses: Set<string>;
-      resourceCounts: Record<string, number>;
-      lastAttempt: Date;
-    }> = {};
+    const groupedAttempts: Record<
+      string,
+      {
+        count: number;
+        uniqueIpAddresses: Set<string>;
+        resourceCounts: Record<string, number>;
+        lastAttempt: Date;
+      }
+    > = {};
 
     data?.forEach((attempt) => {
       const key = attempt.detection_method;
@@ -806,8 +815,8 @@ export class SecurityAuditorImpl implements SecurityAuditor {
     });
 
     return Object.entries(groupedAttempts).map(([detectionMethod, data]) => {
-      const mostTargetedResource = Object.entries(data.resourceCounts)
-        .sort(([, a], [, b]) => b - a)[0]?.[0] || "unknown";
+      const mostTargetedResource =
+        Object.entries(data.resourceCounts).sort(([, a], [, b]) => b - a)[0]?.[0] || "unknown";
 
       return {
         detectionMethod: detectionMethod as DetectionMethod,
@@ -819,7 +828,9 @@ export class SecurityAuditorImpl implements SecurityAuditor {
     });
   }
 
-  private async analyzeRlsViolationIndicators(timeRange: TimeRange): Promise<RlsViolationIndicator[]> {
+  private async analyzeRlsViolationIndicators(
+    timeRange: TimeRange
+  ): Promise<RlsViolationIndicator[]> {
     const indicators: RlsViolationIndicator[] = [];
 
     // 空の結果セットの頻度分析
@@ -881,7 +892,9 @@ export class SecurityAuditorImpl implements SecurityAuditor {
     return indicators;
   }
 
-  private async generateSecurityRecommendations(timeRange: TimeRange): Promise<SecurityRecommendation[]> {
+  private async generateSecurityRecommendations(
+    timeRange: TimeRange
+  ): Promise<SecurityRecommendation[]> {
     const recommendations: SecurityRecommendation[] = [];
 
     // 疑わしい活動の分析
@@ -891,7 +904,7 @@ export class SecurityAuditorImpl implements SecurityAuditor {
 
     // 高優先度の推奨事項
     const criticalActivities = suspiciousActivities.filter(
-      a => a.severity === SecuritySeverity.CRITICAL
+      (a) => a.severity === SecuritySeverity.CRITICAL
     );
     if (criticalActivities.length > 0) {
       recommendations.push({
@@ -915,7 +928,7 @@ export class SecurityAuditorImpl implements SecurityAuditor {
     }
 
     // 不正アクセス試行の推奨事項
-    const highVolumeAttempts = unauthorizedAttempts.filter(a => a.count > 10);
+    const highVolumeAttempts = unauthorizedAttempts.filter((a) => a.count > 10);
     if (highVolumeAttempts.length > 0) {
       recommendations.push({
         priority: SecuritySeverity.HIGH,
@@ -933,7 +946,8 @@ export class SecurityAuditorImpl implements SecurityAuditor {
         priority: SecuritySeverity.MEDIUM,
         category: "MONITORING",
         title: "監視システムの強化",
-        description: "疑わしい活動の頻度が高いため、監視システムの強化と自動アラートの設定を推奨します。",
+        description:
+          "疑わしい活動の頻度が高いため、監視システムの強化と自動アラートの設定を推奨します。",
         actionRequired: false,
       });
     }

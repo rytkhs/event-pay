@@ -1,6 +1,7 @@
 "use client";
 
 import { ApiResponse } from "@/lib/types/api";
+import { logger } from "@/lib/logging/app-logger";
 
 /**
  * 統一APIクライアント - edge-csrf対応
@@ -37,7 +38,12 @@ export class ApiClient {
       return await response.json();
     } catch (error) {
       if (process.env.NODE_ENV === "development") {
-        // console.error("API request failed:", error);
+        logger.error("API request failed", {
+          tag: "apiRequestFailed",
+          endpoint: endpoint,
+          error_name: error instanceof Error ? error.name : "Unknown",
+          error_message: error instanceof Error ? error.message : String(error)
+        });
       }
       throw error;
     }
