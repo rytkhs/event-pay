@@ -97,6 +97,13 @@ export const RATE_LIMIT_CONFIG = {
     maxAttempts: 5, // 最大5回（より慎重）
     blockDurationMs: 5 * 60 * 1000, // 5分ブロック
   } as RateLimitConfig,
+
+  // 参加者CSVエクスポート（内部UI）
+  participantsCsvExport: {
+    windowMs: 5 * 60 * 1000, // 5分
+    maxAttempts: 5, // 最大5回
+    blockDurationMs: 15 * 60 * 1000, // 15分ブロック
+  } as RateLimitConfig,
 } as const;
 
 // Cookie設定

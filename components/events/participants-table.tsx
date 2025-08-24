@@ -29,6 +29,7 @@ import { ja } from "date-fns/locale";
 import { useToast } from "@/hooks/use-toast";
 import { updateCashStatusAction } from "@/app/payments/actions/update-cash-status";
 import { bulkUpdateCashStatusAction } from "@/app/payments/actions/bulk-update-cash-status";
+import { exportParticipantsCsvAction } from "@/app/events/actions/export-participants-csv";
 import type {
   GetParticipantsResponse,
   GetParticipantsParams,
@@ -43,7 +44,7 @@ interface ParticipantsTableProps {
 }
 
 export function ParticipantsTable({
-  eventId: _eventId,
+  eventId,
   initialData,
   onParamsChange,
   isLoading = false,
@@ -55,6 +56,7 @@ export function ParticipantsTable({
   const [selectedPaymentIds, setSelectedPaymentIds] = useState<string[]>([]);
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
   const [bulkUpdateMode, setBulkUpdateMode] = useState<"received" | "waived" | null>(null);
+  const [isExporting, setIsExporting] = useState(false);
   const [searchQuery, setSearchQuery] = useState(initialData.filters.search || "");
   const [attendanceFilter, setAttendanceFilter] = useState<string>(
     initialData.filters.attendanceStatus || ""
@@ -192,7 +194,7 @@ export function ParticipantsTable({
           result.error &&
           typeof result.error === "object" &&
           "code" in result.error &&
-          (result.error as any).code === "CONFLICT"
+          (result.error as { code: string }).code === "CONFLICT"
         ) {
           toast({
             title: "同時更新が検出されました",
@@ -263,7 +265,7 @@ export function ParticipantsTable({
           result.error &&
           typeof result.error === "object" &&
           "code" in result.error &&
-          (result.error as any).code === "CONFLICT"
+          (result.error as { code: string }).code === "CONFLICT"
         ) {
           toast({
             title: "同時更新が検出されました",
@@ -399,6 +401,69 @@ export function ParticipantsTable({
     }
   };
 
+  // CSVエクスポートハンドラー
+  const handleExportCsv = async () => {
+    if (isExporting) return;
+
+    setIsExporting(true);
+
+    try {
+      // 注意喚起トースト
+      toast({
+        title: "CSV エクスポート",
+        description: "個人情報の取り扱いには十分注意してください。",
+        duration: 3000,
+      });
+
+      // 現在のフィルター条件でエクスポート
+      const filters = {
+        search: searchQuery || undefined,
+        attendanceStatus: attendanceFilter || undefined,
+        paymentMethod: paymentMethodFilter || undefined,
+        paymentStatus: paymentStatusFilter || undefined,
+      };
+
+      const result = await exportParticipantsCsvAction({
+        eventId,
+        filters,
+      });
+
+      if (result.success && result.csvContent && result.filename) {
+        // CSVファイルをダウンロード
+        const blob = new Blob([result.csvContent], { type: "text/csv;charset=utf-8;" });
+        const link = document.createElement("a");
+        const url = URL.createObjectURL(blob);
+
+        link.setAttribute("href", url);
+        link.setAttribute("download", result.filename);
+        link.style.visibility = "hidden";
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+
+        toast({
+          title: "エクスポート完了",
+          description: `${result.filename} をダウンロードしました。`,
+        });
+      } else {
+        toast({
+          title: "エクスポート失敗",
+          description: result.error || "CSVエクスポートに失敗しました。",
+          variant: "destructive",
+        });
+      }
+    } catch (_error) {
+      toast({
+        title: "エクスポート失敗",
+        description: "CSVエクスポートでエラーが発生しました。",
+        variant: "destructive",
+      });
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   // 日付フォーマット
   const formatDate = (dateString: string | null) => {
     if (!dateString) return "-";
@@ -426,9 +491,14 @@ export function ParticipantsTable({
             {isLoading && <RefreshCw className="h-4 w-4 animate-spin" />}
           </CardTitle>
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" disabled={isLoading}>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleExportCsv}
+              disabled={isLoading || isExporting}
+            >
               <Download className="h-4 w-4 mr-2" />
-              CSV出力
+              {isExporting ? "エクスポート中..." : "CSV出力"}
             </Button>
           </div>
         </div>
@@ -676,7 +746,7 @@ export function ParticipantsTable({
                         {participant.email}
                       </td>
                       <td className="px-4 py-4 whitespace-nowrap">
-                        {getAttendanceStatusBadge(participant.attendance_status)}
+                        {getAttendanceStatusBadge(participant.status)}
                       </td>
                       <td className="px-4 py-4 whitespace-nowrap">
                         {getPaymentMethodBadge(participant.payment_method)}

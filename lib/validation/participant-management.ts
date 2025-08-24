@@ -142,7 +142,7 @@ export const ParticipantViewSchema = z.object({
   attendance_id: z.string(),
   nickname: z.string(),
   email: z.string(),
-  attendance_status: z.enum(["attending", "not_attending", "maybe"]),
+  status: z.enum(["attending", "not_attending", "maybe"]),
   attendance_created_at: z.string(),
   attendance_updated_at: z.string(),
 
