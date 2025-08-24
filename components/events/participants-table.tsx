@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
   SelectContent,
@@ -13,9 +14,21 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 // HTMLテーブルを使用するため、外部Tableコンポーネントは不要
-import { Search, Filter, Download, ChevronLeft, ChevronRight, RefreshCw } from "lucide-react";
+import {
+  Search,
+  Filter,
+  Download,
+  ChevronLeft,
+  ChevronRight,
+  RefreshCw,
+  Check,
+  X,
+} from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { ja } from "date-fns/locale";
+import { useToast } from "@/hooks/use-toast";
+import { updateCashStatusAction } from "@/app/payments/actions/update-cash-status";
+import { bulkUpdateCashStatusAction } from "@/app/payments/actions/bulk-update-cash-status";
 import type {
   GetParticipantsResponse,
   GetParticipantsParams,
@@ -30,11 +43,18 @@ interface ParticipantsTableProps {
 }
 
 export function ParticipantsTable({
+  eventId: _eventId,
   initialData,
   onParamsChange,
   isLoading = false,
-  onPaymentStatusUpdate: _onPaymentStatusUpdate,
+  onPaymentStatusUpdate,
 }: ParticipantsTableProps) {
+  const { toast } = useToast();
+
+  // 選択機能のstate
+  const [selectedPaymentIds, setSelectedPaymentIds] = useState<string[]>([]);
+  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
+  const [bulkUpdateMode, setBulkUpdateMode] = useState<"received" | "waived" | null>(null);
   const [searchQuery, setSearchQuery] = useState(initialData.filters.search || "");
   const [attendanceFilter, setAttendanceFilter] = useState<string>(
     initialData.filters.attendanceStatus || ""
@@ -60,6 +80,8 @@ export function ParticipantsTable({
       field: initialData.sort.field,
       order: initialData.sort.order,
     });
+    // ページ・フィルタ変更時は選択状態をリセットし誤操作を防止
+    setSelectedPaymentIds([]);
   }, [initialData]);
 
   // フィルターハンドラー
@@ -126,6 +148,152 @@ export function ParticipantsTable({
   // ページネーションハンドラー
   const handlePageChange = (newPage: number) => {
     onParamsChange({ page: newPage });
+  };
+
+  // 現金決済のみをフィルター
+  const cashPayments = initialData.participants.filter(
+    (p) => p.payment_method === "cash" && p.payment_id
+  );
+
+  // 選択機能ハンドラー
+  const handleSelectPayment = (paymentId: string, checked: boolean) => {
+    setSelectedPaymentIds((prev) =>
+      checked ? [...prev, paymentId] : prev.filter((id) => id !== paymentId)
+    );
+  };
+
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      const cashPaymentIds = cashPayments.filter((p) => p.payment_id).map((p) => p.payment_id!);
+      setSelectedPaymentIds(cashPaymentIds);
+    } else {
+      setSelectedPaymentIds([]);
+    }
+  };
+
+  // 個別ステータス更新
+  const handleUpdatePaymentStatus = async (paymentId: string, status: "received" | "waived") => {
+    setIsUpdatingStatus(true);
+    try {
+      const result = await updateCashStatusAction({
+        paymentId,
+        status,
+      });
+
+      if (result.success) {
+        toast({
+          title: "ステータスを更新しました",
+          description: `決済ステータスを「${status === "received" ? "受領済み" : "免除"}」に更新しました`,
+        });
+        onPaymentStatusUpdate?.();
+      } else {
+        // 競合エラーの場合は特別な処理
+        if (
+          result.error &&
+          typeof result.error === "object" &&
+          "code" in result.error &&
+          (result.error as any).code === "CONFLICT"
+        ) {
+          toast({
+            title: "同時更新が検出されました",
+            description:
+              "他のユーザーによって同時に更新されました。画面を更新して最新状態を確認してください。",
+            variant: "destructive",
+          });
+          // 自動的に最新データを再取得
+          setTimeout(() => {
+            onPaymentStatusUpdate?.();
+          }, 1000);
+        } else {
+          toast({
+            title: "エラーが発生しました",
+            description:
+              typeof result.error === "string" ? result.error : "ステータス更新に失敗しました",
+            variant: "destructive",
+          });
+        }
+      }
+    } catch (_error) {
+      toast({
+        title: "エラーが発生しました",
+        description: "ステータス更新に失敗しました",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUpdatingStatus(false);
+    }
+  };
+
+  // 一括ステータス更新
+  const handleBulkUpdate = async (status: "received" | "waived") => {
+    if (selectedPaymentIds.length === 0) {
+      toast({
+        title: "選択エラー",
+        description: "更新する決済を選択してください",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsUpdatingStatus(true);
+    setBulkUpdateMode(status);
+
+    // 現在選択されている決済の最新versionを含めて更新
+    const _selectedPayments = initialData.participants.filter(
+      (p) => p.payment_id && selectedPaymentIds.includes(p.payment_id)
+    );
+
+    try {
+      const result = await bulkUpdateCashStatusAction({
+        paymentIds: selectedPaymentIds,
+        status,
+      });
+
+      if (result.success) {
+        const { successCount, failedCount } = result.data;
+        toast({
+          title: "一括更新が完了しました",
+          description: `${successCount}件成功、${failedCount}件失敗`,
+        });
+        setSelectedPaymentIds([]);
+        onPaymentStatusUpdate?.();
+      } else {
+        // 競合エラーの場合は特別な処理
+        if (
+          result.error &&
+          typeof result.error === "object" &&
+          "code" in result.error &&
+          (result.error as any).code === "CONFLICT"
+        ) {
+          toast({
+            title: "同時更新が検出されました",
+            description:
+              "他のユーザーによって同時に更新されました。画面を更新して最新状態を確認してください。",
+            variant: "destructive",
+          });
+          // 自動的に最新データを再取得して選択を解除
+          setTimeout(() => {
+            setSelectedPaymentIds([]);
+            onPaymentStatusUpdate?.();
+          }, 1000);
+        } else {
+          toast({
+            title: "エラーが発生しました",
+            description: typeof result.error === "string" ? result.error : "一括更新に失敗しました",
+            variant: "destructive",
+          });
+        }
+      }
+    } catch (_error) {
+      toast({
+        title: "エラーが発生しました",
+        description: "一括更新に失敗しました",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUpdatingStatus(false);
+      setBulkUpdateMode(null);
+    }
   };
 
   // ステータスバッジのスタイル
@@ -265,6 +433,44 @@ export function ParticipantsTable({
           </div>
         </div>
 
+        {/* 一括操作バー */}
+        {selectedPaymentIds.length > 0 && (
+          <div className="flex items-center justify-between bg-blue-50 border border-blue-200 rounded-md p-3">
+            <span className="text-sm text-blue-800">
+              {selectedPaymentIds.length}件の現金決済を選択中
+            </span>
+            <div className="flex items-center gap-2">
+              <Button
+                size="sm"
+                onClick={() => handleBulkUpdate("received")}
+                disabled={isUpdatingStatus}
+                className="bg-green-600 hover:bg-green-700"
+              >
+                <Check className="h-4 w-4 mr-1" />
+                {bulkUpdateMode === "received" && isUpdatingStatus ? "処理中..." : "一括受領"}
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => handleBulkUpdate("waived")}
+                disabled={isUpdatingStatus}
+                className="border-orange-300 text-orange-700 hover:bg-orange-50"
+              >
+                <X className="h-4 w-4 mr-1" />
+                {bulkUpdateMode === "waived" && isUpdatingStatus ? "処理中..." : "一括免除"}
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => setSelectedPaymentIds([])}
+                disabled={isUpdatingStatus}
+              >
+                選択解除
+              </Button>
+            </div>
+          </div>
+        )}
+
         {/* 検索・フィルターエリア */}
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
           {/* 検索 */}
@@ -354,6 +560,16 @@ export function ParticipantsTable({
           <table className="w-full">
             <thead className="bg-gray-50">
               <tr>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <Checkbox
+                    checked={
+                      cashPayments.length > 0 &&
+                      selectedPaymentIds.length === cashPayments.filter((p) => p.payment_id).length
+                    }
+                    onCheckedChange={handleSelectAll}
+                    disabled={isLoading || cashPayments.length === 0}
+                  />
+                </th>
                 <th
                   className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                   onClick={() => handleSort("nickname")}
@@ -408,12 +624,15 @@ export function ParticipantsTable({
                     <span className="ml-1">{currentSort.order === "asc" ? "↑" : "↓"}</span>
                   )}
                 </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  アクション
+                </th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {participants.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-4 py-8 text-center text-gray-500">
+                  <td colSpan={10} className="px-4 py-8 text-center text-gray-500">
                     {isLoading ? "読み込み中..." : "参加者が見つかりません"}
                   </td>
                 </tr>
@@ -426,11 +645,30 @@ export function ParticipantsTable({
                     participant.payment_status === "failed" ||
                     participant.payment_status === "refunded";
 
+                  const isCashPayment =
+                    participant.payment_method === "cash" && participant.payment_id;
+                  const isSelected = participant.payment_id
+                    ? selectedPaymentIds.includes(participant.payment_id)
+                    : false;
+
                   return (
                     <tr
                       key={participant.attendance_id}
                       className={`hover:bg-gray-50 ${isUnpaid ? "bg-red-50 border-l-4 border-red-400" : ""}`}
                     >
+                      <td className="px-4 py-4 whitespace-nowrap">
+                        {isCashPayment ? (
+                          <Checkbox
+                            checked={isSelected}
+                            onCheckedChange={(checked) =>
+                              handleSelectPayment(participant.payment_id!, checked as boolean)
+                            }
+                            disabled={isLoading || isUpdatingStatus}
+                          />
+                        ) : (
+                          <span className="text-gray-400">-</span>
+                        )}
+                      </td>
                       <td className="px-4 py-4 whitespace-nowrap font-medium text-gray-900">
                         {participant.nickname}
                       </td>
@@ -456,6 +694,40 @@ export function ParticipantsTable({
                       </td>
                       <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-600">
                         {formatDate(participant.attendance_updated_at)}
+                      </td>
+                      <td className="px-4 py-4 whitespace-nowrap">
+                        {isCashPayment &&
+                        participant.payment_status !== "received" &&
+                        participant.payment_status !== "waived" ? (
+                          <div className="flex items-center gap-1">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() =>
+                                handleUpdatePaymentStatus(participant.payment_id!, "received")
+                              }
+                              disabled={isUpdatingStatus}
+                              className="h-7 px-2 text-xs bg-green-50 border-green-300 text-green-700 hover:bg-green-100"
+                            >
+                              <Check className="h-3 w-3 mr-1" />
+                              受領
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() =>
+                                handleUpdatePaymentStatus(participant.payment_id!, "waived")
+                              }
+                              disabled={isUpdatingStatus}
+                              className="h-7 px-2 text-xs bg-orange-50 border-orange-300 text-orange-700 hover:bg-orange-100"
+                            >
+                              <X className="h-3 w-3 mr-1" />
+                              免除
+                            </Button>
+                          </div>
+                        ) : (
+                          <span className="text-gray-400">-</span>
+                        )}
                       </td>
                     </tr>
                   );
