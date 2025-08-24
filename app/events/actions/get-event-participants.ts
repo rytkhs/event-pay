@@ -117,7 +117,7 @@ export async function getEventParticipantsAction(
       status: "attending" | "not_attending" | "maybe";
       created_at: string;
       updated_at: string;
-      payments: {
+      payments: Array<{
         id: string;
         method: "stripe" | "cash";
         status: "pending" | "paid" | "failed" | "received" | "refunded" | "waived" | "completed";
@@ -126,18 +126,18 @@ export async function getEventParticipantsAction(
         version: number;
         created_at: string;
         updated_at: string;
-      } | null;
+      }> | null;
     };
 
     // データ変換（参加者ビュー形式に変換）
-    const participants: ParticipantView[] = (attendances || []).map((attendance: SupabaseAttendanceWithPayments) => {
-      const latestPayment = attendance.payments;
+    const participants: ParticipantView[] = (attendances as unknown as SupabaseAttendanceWithPayments[] || []).map((attendance) => {
+      const latestPayment = (attendance.payments || [])[0] || null;
 
       return {
         attendance_id: attendance.id,
         nickname: attendance.nickname,
         email: attendance.email,
-        attendance_status: attendance.status,
+        status: attendance.status,
         attendance_created_at: attendance.created_at,
         attendance_updated_at: attendance.updated_at,
         payment_id: latestPayment?.id || null,
