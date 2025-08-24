@@ -1,10 +1,11 @@
 import { getEventDetailAction } from "@/app/events/actions/get-event-detail";
 import { getEventAttendancesAction } from "@/app/events/actions/get-event-attendances";
 import { getEventPaymentsAction } from "@/app/events/actions/get-event-payments";
+import { getEventParticipantsAction } from "@/app/events/actions/get-event-participants";
 import { EventDetail } from "@/components/events/event-detail";
 import { EventActions } from "@/components/events/event-actions";
 import { InviteLink } from "@/components/events/invite-link";
-import { EventStats } from "@/components/events/event-stats";
+import { ParticipantsManagement } from "@/components/events/participants-management";
 import { notFound, redirect } from "next/navigation";
 import { sanitizeEventDescription } from "@/lib/utils/sanitize";
 import { getCurrentUser } from "@/lib/auth/auth-utils";
@@ -21,6 +22,7 @@ const cachedActions = createCachedActions({
   getEventDetail: getEventDetailAction,
   getEventAttendances: getEventAttendancesAction,
   getEventPayments: getEventPaymentsAction,
+  getEventParticipants: getEventParticipantsAction,
 });
 
 export default async function EventDetailPage({ params }: EventDetailPageProps) {
@@ -37,18 +39,34 @@ export default async function EventDetailPage({ params }: EventDetailPageProps) 
 
     // 現在のユーザーを取得して主催者かどうか判定
     const currentUser = await getCurrentUser();
-    const isOrganizer = currentUser && currentUser.id === eventDetail.organizer_id;
+    const isOrganizer = currentUser && currentUser.id === eventDetail.created_by;
 
-    // 主催者の場合のみ統計データを取得
+    // 主催者の場合のみ統計データと参加者データを取得
     let attendances: Awaited<ReturnType<typeof cachedActions.getEventAttendances>> = [];
     let payments: Awaited<ReturnType<typeof cachedActions.getEventPayments>> = [];
+    let participantsData: Awaited<ReturnType<typeof cachedActions.getEventParticipants>> | null =
+      null;
 
     if (isOrganizer) {
       try {
+        // 基本的な統計データ
         [attendances, payments] = await Promise.all([
           cachedActions.getEventAttendances(params.id),
           cachedActions.getEventPayments(params.id),
         ]);
+
+        // 参加者詳細データ（デフォルトパラメータで初期データを取得）
+        participantsData = await cachedActions.getEventParticipants({
+          eventId: params.id,
+          search: undefined,
+          attendanceStatus: undefined,
+          paymentMethod: undefined,
+          paymentStatus: undefined,
+          sortField: "updated_at",
+          sortOrder: "desc",
+          page: 1,
+          limit: 50,
+        });
       } catch (_) {
         // エラーが発生してもページ表示は継続
       }
@@ -66,9 +84,15 @@ export default async function EventDetailPage({ params }: EventDetailPageProps) 
 
           <EventDetail event={eventDetail} />
 
-          {/* 主催者のみにイベント統計を表示 */}
-          {isOrganizer && (
-            <EventStats eventData={eventDetail} attendances={attendances} payments={payments} />
+          {/* 主催者のみに参加者管理セクションを表示 */}
+          {isOrganizer && participantsData && (
+            <ParticipantsManagement
+              eventId={params.id}
+              eventData={eventDetail}
+              initialAttendances={attendances}
+              initialPayments={payments}
+              initialParticipantsData={participantsData}
+            />
           )}
 
           {/* 主催者のみに招待リンクを表示 */}
