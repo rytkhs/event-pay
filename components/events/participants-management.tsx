@@ -3,19 +3,22 @@
 import React, { useState, useCallback } from "react";
 import { ParticipantsTable } from "./participants-table";
 import { EventStats } from "./event-stats";
-import { useToast } from "@/components/ui/use-toast";
+import { PaymentSummary } from "./payment-summary";
+import { useToast } from "@/hooks/use-toast";
 import { getEventParticipantsAction } from "@/app/events/actions/get-event-participants";
+import { getEventPaymentsAction } from "@/app/events/actions/get-event-payments";
 import type {
   GetParticipantsResponse,
   GetParticipantsParams,
+  GetEventPaymentsResponse,
 } from "@/lib/validation/participant-management";
-import type { Event, Attendance, Payment } from "@/types/models";
+import type { Event, Attendance } from "@/types/models";
 
 interface ParticipantsManagementProps {
   eventId: string;
   eventData: Event & { organizer_id: string };
   initialAttendances: Pick<Attendance, "id" | "status">[];
-  initialPayments: Pick<Payment, "id" | "method" | "amount" | "status">[];
+  initialPaymentsData: GetEventPaymentsResponse;
   initialParticipantsData: GetParticipantsResponse;
 }
 
@@ -23,13 +26,34 @@ export function ParticipantsManagement({
   eventId,
   eventData,
   initialAttendances,
-  initialPayments,
+  initialPaymentsData,
   initialParticipantsData,
 }: ParticipantsManagementProps) {
   const [participantsData, setParticipantsData] =
     useState<GetParticipantsResponse>(initialParticipantsData);
+  const [paymentsData, setPaymentsData] = useState<GetEventPaymentsResponse>(initialPaymentsData);
   const [isLoading, setIsLoading] = useState(false);
+  const [isPaymentsLoading, setIsPaymentsLoading] = useState(false);
   const { toast } = useToast();
+
+  // 決済データ更新ハンドラー
+  const refreshPaymentsData = useCallback(async () => {
+    setIsPaymentsLoading(true);
+    try {
+      const updatedPaymentsData = await getEventPaymentsAction(eventId);
+      setPaymentsData(updatedPaymentsData);
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error("Failed to update payments data:", error);
+      toast({
+        title: "エラーが発生しました",
+        description: "決済データの取得に失敗しました。",
+        variant: "destructive",
+      });
+    } finally {
+      setIsPaymentsLoading(false);
+    }
+  }, [eventId, toast]);
 
   // パラメータ変更ハンドラー
   const handleParamsChange = useCallback(
@@ -52,7 +76,11 @@ export function ParticipantsManagement({
 
         const updatedData = await getEventParticipantsAction(currentParams);
         setParticipantsData(updatedData);
+
+        // 参加者データ更新時は決済データも更新（決済状況変化の可能性）
+        await refreshPaymentsData();
       } catch (error) {
+        // eslint-disable-next-line no-console
         console.error("Failed to update participants data:", error);
         toast({
           title: "エラーが発生しました",
@@ -63,7 +91,7 @@ export function ParticipantsManagement({
         setIsLoading(false);
       }
     },
-    [eventId, participantsData, toast]
+    [eventId, participantsData, toast, refreshPaymentsData]
   );
 
   return (
@@ -72,8 +100,16 @@ export function ParticipantsManagement({
       <EventStats
         eventData={eventData}
         attendances={initialAttendances}
-        payments={initialPayments}
+        payments={paymentsData.payments.map((p) => ({
+          id: p.id,
+          method: p.method,
+          amount: p.amount,
+          status: p.status,
+        }))}
       />
+
+      {/* 決済状況サマリー（MANAGE-002新機能） */}
+      <PaymentSummary summary={paymentsData.summary} isLoading={isPaymentsLoading} />
 
       {/* 参加者一覧テーブル */}
       <ParticipantsTable
@@ -81,6 +117,7 @@ export function ParticipantsManagement({
         initialData={participantsData}
         onParamsChange={handleParamsChange}
         isLoading={isLoading}
+        onPaymentStatusUpdate={refreshPaymentsData}
       />
     </div>
   );
