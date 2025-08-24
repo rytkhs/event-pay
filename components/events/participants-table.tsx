@@ -26,12 +26,14 @@ interface ParticipantsTableProps {
   initialData: GetParticipantsResponse;
   onParamsChange: (params: Partial<GetParticipantsParams>) => void;
   isLoading?: boolean;
+  onPaymentStatusUpdate?: () => void;
 }
 
 export function ParticipantsTable({
   initialData,
   onParamsChange,
   isLoading = false,
+  onPaymentStatusUpdate: _onPaymentStatusUpdate,
 }: ParticipantsTableProps) {
   const [searchQuery, setSearchQuery] = useState(initialData.filters.search || "");
   const [attendanceFilter, setAttendanceFilter] = useState<string>(
@@ -416,34 +418,48 @@ export function ParticipantsTable({
                   </td>
                 </tr>
               ) : (
-                participants.map((participant) => (
-                  <tr key={participant.attendance_id} className="hover:bg-gray-50">
-                    <td className="px-4 py-4 whitespace-nowrap font-medium text-gray-900">
-                      {participant.nickname}
-                    </td>
-                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-600">
-                      {participant.email}
-                    </td>
-                    <td className="px-4 py-4 whitespace-nowrap">
-                      {getAttendanceStatusBadge(participant.attendance_status)}
-                    </td>
-                    <td className="px-4 py-4 whitespace-nowrap">
-                      {getPaymentMethodBadge(participant.payment_method)}
-                    </td>
-                    <td className="px-4 py-4 whitespace-nowrap">
-                      {getPaymentStatusBadge(participant.payment_status)}
-                    </td>
-                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {formatAmount(participant.amount)}
-                    </td>
-                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-600">
-                      {formatDate(participant.paid_at)}
-                    </td>
-                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-600">
-                      {formatDate(participant.attendance_updated_at)}
-                    </td>
-                  </tr>
-                ))
+                participants.map((participant) => {
+                  // 未決済のハイライト判定（pending, failed, refunded）
+                  // refunded(返金済)は実質的に未収金のため未決済として扱う
+                  const isUnpaid =
+                    participant.payment_status === "pending" ||
+                    participant.payment_status === "failed" ||
+                    participant.payment_status === "refunded";
+
+                  return (
+                    <tr
+                      key={participant.attendance_id}
+                      className={`hover:bg-gray-50 ${isUnpaid ? "bg-red-50 border-l-4 border-red-400" : ""}`}
+                    >
+                      <td className="px-4 py-4 whitespace-nowrap font-medium text-gray-900">
+                        {participant.nickname}
+                      </td>
+                      <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-600">
+                        {participant.email}
+                      </td>
+                      <td className="px-4 py-4 whitespace-nowrap">
+                        {getAttendanceStatusBadge(participant.attendance_status)}
+                      </td>
+                      <td className="px-4 py-4 whitespace-nowrap">
+                        {getPaymentMethodBadge(participant.payment_method)}
+                      </td>
+                      <td className="px-4 py-4 whitespace-nowrap">
+                        {getPaymentStatusBadge(participant.payment_status)}
+                      </td>
+                      <td
+                        className={`px-4 py-4 whitespace-nowrap text-sm ${isUnpaid ? "text-red-900 font-semibold" : "text-gray-900"}`}
+                      >
+                        {formatAmount(participant.amount)}
+                      </td>
+                      <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-600">
+                        {formatDate(participant.paid_at)}
+                      </td>
+                      <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-600">
+                        {formatDate(participant.attendance_updated_at)}
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>

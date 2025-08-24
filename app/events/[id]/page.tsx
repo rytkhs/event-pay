@@ -43,14 +43,14 @@ export default async function EventDetailPage({ params }: EventDetailPageProps) 
 
     // 主催者の場合のみ統計データと参加者データを取得
     let attendances: Awaited<ReturnType<typeof cachedActions.getEventAttendances>> = [];
-    let payments: Awaited<ReturnType<typeof cachedActions.getEventPayments>> = [];
+    let paymentsData: Awaited<ReturnType<typeof cachedActions.getEventPayments>> | null = null;
     let participantsData: Awaited<ReturnType<typeof cachedActions.getEventParticipants>> | null =
       null;
 
     if (isOrganizer) {
       try {
         // 基本的な統計データ
-        [attendances, payments] = await Promise.all([
+        [attendances, paymentsData] = await Promise.all([
           cachedActions.getEventAttendances(params.id),
           cachedActions.getEventPayments(params.id),
         ]);
@@ -85,12 +85,12 @@ export default async function EventDetailPage({ params }: EventDetailPageProps) 
           <EventDetail event={eventDetail} />
 
           {/* 主催者のみに参加者管理セクションを表示 */}
-          {isOrganizer && participantsData && (
+          {isOrganizer && participantsData && paymentsData && (
             <ParticipantsManagement
               eventId={params.id}
               eventData={eventDetail}
               initialAttendances={attendances}
-              initialPayments={payments}
+              initialPaymentsData={paymentsData}
               initialParticipantsData={participantsData}
             />
           )}
