@@ -86,6 +86,9 @@ export interface UpdatePaymentStatusParams {
   status: PaymentStatus;
   paidAt?: Date;
   stripePaymentIntentId?: string;
+  expectedVersion?: number; // 楽観的ロック用
+  userId?: string; // RPC実行用ユーザーID
+  notes?: string; // 更新理由・備考
 }
 
 // 決済エラーの種類
@@ -110,6 +113,7 @@ export enum PaymentErrorType {
   ATTENDANCE_NOT_FOUND = "ATTENDANCE_NOT_FOUND",
   PAYMENT_NOT_FOUND = "PAYMENT_NOT_FOUND",
   INVALID_AMOUNT = "INVALID_AMOUNT",
+  CONCURRENT_UPDATE = "CONCURRENT_UPDATE", // 楽観的ロック競合
 }
 
 // 決済エラークラス

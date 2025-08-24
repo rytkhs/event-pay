@@ -44,6 +44,7 @@ export async function getEventParticipantsAction(
           status,
           amount,
           paid_at,
+          version,
           created_at,
           updated_at
         )
@@ -122,6 +123,7 @@ export async function getEventParticipantsAction(
         status: "pending" | "paid" | "failed" | "received" | "refunded" | "waived" | "completed";
         amount: number;
         paid_at: string | null;
+        version: number;
         created_at: string;
         updated_at: string;
       } | null;
@@ -143,6 +145,7 @@ export async function getEventParticipantsAction(
         payment_status: latestPayment?.status || null,
         amount: latestPayment?.amount || null,
         paid_at: latestPayment?.paid_at || null,
+        payment_version: latestPayment?.version || null,
         payment_created_at: latestPayment?.created_at || null,
         payment_updated_at: latestPayment?.updated_at || null,
       };

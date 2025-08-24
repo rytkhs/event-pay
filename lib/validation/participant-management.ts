@@ -152,6 +152,7 @@ export const ParticipantViewSchema = z.object({
   payment_status: PaymentStatusEnum.nullable(),
   amount: z.number().nullable(),
   paid_at: z.string().nullable(),
+  payment_version: z.number().nullable(), // 楽観的ロック用
   payment_created_at: z.string().nullable(),
   payment_updated_at: z.string().nullable(),
 });
