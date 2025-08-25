@@ -50,22 +50,31 @@ export async function getEventParticipantsAction(
         )
       `)
       .eq("event_id", validatedEventId)
-      // 最新の決済 1 件に絞る
-      .order("updated_at", { foreignTable: "payments", ascending: false })
+      // 最新決済を取得: 1) paid_at DESC NULLS LAST 2) created_at DESC 3) updated_at DESC
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .order("paid_at", {
+        foreignTable: "payments",
+        ascending: false,
+        nullsFirst: false,
+      } as any)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .order("created_at", { foreignTable: "payments", ascending: false } as any)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .order("updated_at", { foreignTable: "payments", ascending: false } as any)
       .limit(1, { foreignTable: "payments" });
 
     // 件数取得用クエリ（同じ条件）
     let countQuery = supabase
       .from("attendances")
-      .select("id", { count: "exact", head: true })
+      .select("id, payments!left(id)", {
+        count: "exact",
+        head: true,
+      })
       .eq("event_id", validatedEventId);
 
     // 検索条件（ニックネーム/メール部分一致）
     if (search) {
-      const escapeForPostgrest = (value: string) => {
-        return `"${value.replace(/"/g, '""')}"`;
-      };
-      const pattern = escapeForPostgrest(`%${search}%`);
+      const pattern = `%${search}%`;
       query = query.or(`nickname.ilike.${pattern},email.ilike.${pattern}`);
       countQuery = countQuery.or(`nickname.ilike.${pattern},email.ilike.${pattern}`);
     }
