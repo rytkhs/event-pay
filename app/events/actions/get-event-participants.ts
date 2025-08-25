@@ -71,6 +71,22 @@ export async function getEventParticipantsAction(
         head: true,
       })
       .eq("event_id", validatedEventId);
+    // payments が複数行ヒットした場合に attendance が重複計上されないよう、
+    // LIST 取得側と同じ lateral join (order+limit 1) を適用する。
+    // PostgREST における head:true + count:exact でも JOIN 重複が残るため、
+    // 同一ロジックを付与して整合性を担保する。
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    countQuery = countQuery
+      .order("paid_at", {
+        foreignTable: "payments",
+        ascending: false,
+        nullsFirst: false,
+      } as any)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .order("created_at", { foreignTable: "payments", ascending: false } as any)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .order("updated_at", { foreignTable: "payments", ascending: false } as any)
+      .limit(1, { foreignTable: "payments" });
 
     // 検索条件（ニックネーム/メール部分一致）
     if (search) {

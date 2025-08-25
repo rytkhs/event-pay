@@ -25,6 +25,8 @@ export async function exportParticipantsCsvAction(
   success: boolean;
   csvContent?: string;
   filename?: string;
+  /** 取得件数が上限(1000件)に達し切り捨てが発生した場合 true */
+  truncated?: boolean;
   error?: string;
 }> {
   try {
@@ -140,9 +142,22 @@ export async function exportParticipantsCsvAction(
     }
 
     if (!participants || participants.length === 0) {
+      // 0 件でも正常終了とし、ヘッダーのみの空 CSV を返却する
+
+      // ファイル名生成（participants-<eventId>-<yyyymmdd>.csv）
+      const now = new Date();
+      const dateStr = now.getFullYear().toString() +
+        (now.getMonth() + 1).toString().padStart(2, '0') +
+        now.getDate().toString().padStart(2, '0');
+      const filename = `participants-${validatedEventId}-${dateStr}.csv`;
+
+      // ヘッダーのみの CSV 文字列を生成
+      const csvContent = generateCsvContent([], columns);
+
       return {
-        success: false,
-        error: "エクスポート対象の参加者が見つかりません。"
+        success: true,
+        csvContent,
+        filename,
       };
     }
 
@@ -180,7 +195,8 @@ export async function exportParticipantsCsvAction(
     return {
       success: true,
       csvContent,
-      filename
+      filename,
+      truncated: participants.length === 1000,
     };
 
   } catch (error) {
