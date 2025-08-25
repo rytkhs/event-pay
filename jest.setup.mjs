@@ -28,7 +28,7 @@ global.testUtils = {
     location: "Test Location",
     price: 1000,
     capacity: 100,
-    organizer_id: "test-user-id",
+    created_by: "test-user-id",
   },
 
   // Helper to reset all mocks
@@ -44,9 +44,9 @@ global.testSupabaseConnection =
   typeof jest !== "undefined" ? jest.fn().mockResolvedValue(true) : () => Promise.resolve(true);
 
 // Essential JSDOM polyfills for modern web APIs
-Object.defineProperty(window, 'matchMedia', {
+Object.defineProperty(window, "matchMedia", {
   writable: true,
-  value: jest.fn().mockImplementation(query => ({
+  value: jest.fn().mockImplementation((query) => ({
     matches: false,
     media: query,
     onchange: null,
@@ -59,43 +59,43 @@ Object.defineProperty(window, 'matchMedia', {
 });
 
 // HTMLFormElement.prototype.requestSubmit polyfill for JSDOM
-Object.defineProperty(HTMLFormElement.prototype, 'requestSubmit', {
-  value: function(submitter) {
-    const event = new Event('submit', { bubbles: true, cancelable: true });
+Object.defineProperty(HTMLFormElement.prototype, "requestSubmit", {
+  value: function (submitter) {
+    const event = new Event("submit", { bubbles: true, cancelable: true });
     if (submitter) {
-      Object.defineProperty(event, 'submitter', {
+      Object.defineProperty(event, "submitter", {
         value: submitter,
         writable: false,
-        configurable: true
+        configurable: true,
       });
     }
     this.dispatchEvent(event);
   },
   writable: true,
-  configurable: true
+  configurable: true,
 });
 
 // Comprehensive JSDOM polyfills for Radix UI pointer capture
 const addPointerCaptureMethods = (target) => {
   if (!target.hasPointerCapture) {
-    Object.defineProperty(target, 'hasPointerCapture', {
+    Object.defineProperty(target, "hasPointerCapture", {
       value: () => false,
       writable: true,
-      configurable: true
+      configurable: true,
     });
   }
   if (!target.setPointerCapture) {
-    Object.defineProperty(target, 'setPointerCapture', {
+    Object.defineProperty(target, "setPointerCapture", {
       value: () => {},
       writable: true,
-      configurable: true
+      configurable: true,
     });
   }
   if (!target.releasePointerCapture) {
-    Object.defineProperty(target, 'releasePointerCapture', {
+    Object.defineProperty(target, "releasePointerCapture", {
       value: () => {},
       writable: true,
-      configurable: true
+      configurable: true,
     });
   }
 };
@@ -107,31 +107,39 @@ const addPointerCaptureMethods = (target) => {
 const originalError = console.error;
 console.error = (...args) => {
   const message = args[0];
-  if (typeof message === 'string' && 
-      (message.includes('hasPointerCapture') || 
-       message.includes('setPointerCapture') ||
-       message.includes('releasePointerCapture'))) {
+  if (
+    typeof message === "string" &&
+    (message.includes("hasPointerCapture") ||
+      message.includes("setPointerCapture") ||
+      message.includes("releasePointerCapture"))
+  ) {
     return; // Suppress pointer capture errors
   }
   originalError.apply(console, args);
 };
 
 // Mock modern web APIs for Radix UI components
-global.PointerEvent = global.PointerEvent || function(type, init) {
-  return new Event(type, init);
-};
+global.PointerEvent =
+  global.PointerEvent ||
+  function (type, init) {
+    return new Event(type, init);
+  };
 
-global.IntersectionObserver = global.IntersectionObserver || class {
-  observe() {}
-  unobserve() {}
-  disconnect() {}
-};
+global.IntersectionObserver =
+  global.IntersectionObserver ||
+  class {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  };
 
-global.ResizeObserver = global.ResizeObserver || class {
-  observe() {}
-  unobserve() {}
-  disconnect() {}
-};
+global.ResizeObserver =
+  global.ResizeObserver ||
+  class {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  };
 
 // Setup and cleanup
 beforeEach(() => {

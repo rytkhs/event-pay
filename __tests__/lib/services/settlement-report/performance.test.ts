@@ -40,7 +40,7 @@ describe('SettlementReportService Performance Tests (RPC Version)', () => {
 
       const result = await service.generateSettlementReport({
         eventId: 'event-1',
-        organizerId: 'organizer-1'
+        createdBy: 'organizer-1'
       })
 
       const endTime = Date.now()
@@ -55,7 +55,7 @@ describe('SettlementReportService Performance Tests (RPC Version)', () => {
         'generate_settlement_report',
         {
           p_event_id: 'event-1',
-          p_organizer_id: 'organizer-1'
+          p_created_by: 'organizer-1'
         }
       )
 
@@ -74,7 +74,7 @@ describe('SettlementReportService Performance Tests (RPC Version)', () => {
 
       const result = await service.generateSettlementReport({
         eventId: 'event-1',
-        organizerId: 'organizer-1'
+        createdBy: 'organizer-1'
       })
 
       expect(result.success).toBe(false)
@@ -95,7 +95,7 @@ describe('SettlementReportService Performance Tests (RPC Version)', () => {
 
       const result = await service.generateSettlementReport({
         eventId: 'event-1',
-        organizerId: 'organizer-1'
+        createdBy: 'organizer-1'
       })
 
       expect(result.success).toBe(false)
@@ -130,7 +130,7 @@ describe('SettlementReportService Performance Tests (RPC Version)', () => {
         'generate_settlement_report',
         {
           p_event_id: 'event-1',
-          p_organizer_id: 'organizer-1'
+          p_created_by: 'organizer-1'
         }
       )
     })
@@ -152,7 +152,7 @@ describe('SettlementReportService Performance Tests (RPC Version)', () => {
 
         await service.generateSettlementReport({
           eventId: `event-${i}`,
-          organizerId: 'organizer-1'
+          createdBy: 'organizer-1'
         })
 
         const duration = Date.now() - startTime
@@ -183,7 +183,7 @@ describe('SettlementReportService Performance Tests (RPC Version)', () => {
       const promises = Array.from({ length: concurrentRequests }, (_, i) =>
         service.generateSettlementReport({
           eventId: `event-${i}`,
-          organizerId: 'organizer-1'
+          createdBy: 'organizer-1'
         })
       )
 

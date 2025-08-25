@@ -54,14 +54,36 @@ export async function getEventParticipantsAction(
       .order("updated_at", { foreignTable: "payments", ascending: false })
       .limit(1, { foreignTable: "payments" });
 
+    // 件数取得用クエリ（同じ条件）
+    let countQuery = supabase
+      .from("attendances")
+      .select("id", { count: "exact", head: true })
+      .eq("event_id", validatedEventId);
+
     // 検索条件（ニックネーム/メール部分一致）
     if (search) {
-      query = query.or(`nickname.ilike.%${search}%, email.ilike.%${search}%`);
+      const escapeForPostgrest = (value: string) => {
+        return `"${value.replace(/"/g, '""')}"`;
+      };
+      const pattern = escapeForPostgrest(`%${search}%`);
+      query = query.or(`nickname.ilike.${pattern},email.ilike.${pattern}`);
+      countQuery = countQuery.or(`nickname.ilike.${pattern},email.ilike.${pattern}`);
     }
 
     // 参加ステータスフィルター
     if (attendanceStatus) {
       query = query.eq("status", attendanceStatus);
+      countQuery = countQuery.eq("status", attendanceStatus);
+    }
+
+    // 決済フィルターを Supabase クエリにプッシュ
+    if (paymentMethod) {
+      query = query.eq("payments.method", paymentMethod);
+      countQuery = countQuery.eq("payments.method", paymentMethod);
+    }
+    if (paymentStatus) {
+      query = query.eq("payments.status", paymentStatus);
+      countQuery = countQuery.eq("payments.status", paymentStatus);
     }
 
     // ソート処理（attendances側のフィールドのみ）
@@ -73,27 +95,10 @@ export async function getEventParticipantsAction(
       query = query.order("updated_at", { ascending: false });
     }
 
-    // 件数取得用クエリ（同じ条件）
-    let countQuery = supabase
-      .from("attendances")
-      .select("id", { count: "exact", head: true })
-      .eq("event_id", validatedEventId);
-
-    if (search) {
-      countQuery = countQuery.or(`nickname.ilike.%${search}%, email.ilike.%${search}%`);
-    }
-
-    if (attendanceStatus) {
-      countQuery = countQuery.eq("status", attendanceStatus);
-    }
-
     // ページネーション
     const offset = (page - 1) * limit;
-    // paymentMethod / paymentStatus フィルタがある場合はクライアント側で再スライスするため
-    // Supabase へは range を適用しない（重複適用を防ぐ）
-    if (!paymentMethod && !paymentStatus) {
-      query = query.range(offset, offset + limit - 1);
-    }
+    // Supabase へページングを任せる
+    query = query.range(offset, offset + limit - 1);
 
     // 並行実行
     const [{ data: attendances, error: attendancesError }, { count, error: countError }] = await Promise.all([
@@ -151,17 +156,8 @@ export async function getEventParticipantsAction(
       };
     });
 
-    // 決済フィルタリング（Supabaseクエリでは複雑なので、後処理で実行）
-    let filteredParticipants = participants;
-    const hasPaymentFilter = paymentMethod || paymentStatus;
-
-    if (paymentMethod) {
-      filteredParticipants = filteredParticipants.filter(p => p.payment_method === paymentMethod);
-    }
-
-    if (paymentStatus) {
-      filteredParticipants = filteredParticipants.filter(p => p.payment_status === paymentStatus);
-    }
+    // 初期値
+    const filteredParticipants = participants;
 
     // 決済関連のソート処理（後処理）
     const paymentSortFields = ["payment_method", "payment_status", "paid_at"];
@@ -192,15 +188,12 @@ export async function getEventParticipantsAction(
       });
     }
 
-    // 件数計算：決済フィルターがある場合はフィルター後の全件数を使用
+    // 件数計算：Supabase 側でフィルター済みの件数を使用
     const totalCount = count || 0;
-    const effectiveTotal = hasPaymentFilter ? filteredParticipants.length : totalCount;
+    const effectiveTotal = totalCount;
 
-    // ページネーション適用
-    const startIndex = (page - 1) * limit;
-    const paginatedParticipants = hasPaymentFilter
-      ? filteredParticipants.slice(startIndex, startIndex + limit)
-      : filteredParticipants;
+    // ページネーションは Supabase が担当したのでそのまま返却
+    const paginatedParticipants = filteredParticipants;
 
     const totalPages = Math.ceil(effectiveTotal / limit);
 

@@ -34,16 +34,20 @@ export async function exportParticipantsCsvAction(
 
     const columns = inputColumns;
 
-    // レート制限チェック
+    // IP アドレス取得（情報ログ用）
     const headersList = headers();
     const ip = headersList.get("x-forwarded-for") || "unknown";
+
+    // 共通の認証・権限確認処理
+    const { user, eventId: validatedEventId } = await verifyEventAccess(eventId);
 
     // レートリミットストア生成
     const store = await createRateLimitStore();
 
+    // レート制限チェック (ユーザー単位 + イベント単位)
     const rateLimitResult = await checkRateLimit(
       store,
-      `csv_export_${ip}_${eventId}`,
+      `csv_export_${user.id}_${validatedEventId}`,
       RATE_LIMIT_CONFIG.participantsCsvExport
     );
 
@@ -53,9 +57,6 @@ export async function exportParticipantsCsvAction(
         error: "レート制限: CSVエクスポートの実行回数が上限に達しました。しばらく待ってから再度お試しください。"
       };
     }
-
-    // 共通の認証・権限確認処理
-    const { user, eventId: validatedEventId } = await verifyEventAccess(eventId);
 
     const supabase = createClient();
     const factory = SecureSupabaseClientFactory.getInstance();
@@ -91,7 +92,11 @@ export async function exportParticipantsCsvAction(
 
     // フィルター適用
     if (filters?.search) {
-      query = query.or(`nickname.ilike.%${filters.search}%, email.ilike.%${filters.search}%`);
+      const escapeForPostgrest = (value: string) => {
+        return `"${value.replace(/"/g, '""')}"`;
+      };
+      const pattern = escapeForPostgrest(`%${filters.search}%`);
+      query = query.or(`nickname.ilike.${pattern},email.ilike.${pattern}`);
     }
 
     if (filters?.attendanceStatus) {
