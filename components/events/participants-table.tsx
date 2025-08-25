@@ -240,11 +240,6 @@ export function ParticipantsTable({
     setIsUpdatingStatus(true);
     setBulkUpdateMode(status);
 
-    // 現在選択されている決済の最新versionを含めて更新
-    const _selectedPayments = initialData.participants.filter(
-      (p) => p.payment_id && selectedPaymentIds.includes(p.payment_id)
-    );
-
     try {
       const result = await bulkUpdateCashStatusAction({
         paymentIds: selectedPaymentIds,
