@@ -156,6 +156,22 @@ export async function updateCashStatusAction(
       );
     }
 
+    // ステータス遷移などのビジネスルール検証
+    try {
+      await new PaymentValidator(supabase).validateUpdatePaymentStatusParams({
+        paymentId,
+        status,
+      });
+    } catch (validationError) {
+      if (validationError instanceof PaymentError) {
+        return createErrorResponse(mapPaymentError(validationError.type), validationError.message);
+      }
+      return createErrorResponse(
+        ERROR_CODES.INTERNAL_ERROR,
+        "ステータス検証中に予期しないエラーが発生しました。"
+      );
+    }
+
     // 楽観的ロック付きRPCで更新
     const admin = await factory.createAuditedAdminClient(
       AdminReason.PAYMENT_PROCESSING,

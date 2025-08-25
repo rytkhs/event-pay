@@ -418,9 +418,9 @@ export function ParticipantsTable({
       // 現在のフィルター条件でエクスポート
       const filters = {
         search: searchQuery || undefined,
-        attendanceStatus: attendanceFilter || undefined,
-        paymentMethod: paymentMethodFilter || undefined,
-        paymentStatus: paymentStatusFilter || undefined,
+        attendanceStatus: attendanceFilter === "all" ? undefined : attendanceFilter || undefined,
+        paymentMethod: paymentMethodFilter === "all" ? undefined : paymentMethodFilter || undefined,
+        paymentStatus: paymentStatusFilter === "all" ? undefined : paymentStatusFilter || undefined,
       };
 
       const result = await exportParticipantsCsvAction({

@@ -91,7 +91,7 @@ export async function exportParticipantsCsvAction(
 
     // フィルター適用
     if (filters?.search) {
-      query = query.or(`nickname.ilike.%${filters.search}%,email.ilike.%${filters.search}%`);
+      query = query.or(`nickname.ilike.%${filters.search}%, email.ilike.%${filters.search}%`);
     }
 
     if (filters?.attendanceStatus) {

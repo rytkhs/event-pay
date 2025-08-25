@@ -51,20 +51,32 @@ BEGIN
    WHERE id = p_payment_id
    FOR UPDATE;
 
+  -- 決済レコードが存在しない場合は即座にエラー
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Payment record not found: %', p_payment_id
+      USING ERRCODE = 'P0002';
+  END IF;
+
   SELECT *
     INTO v_attendance_record
     FROM attendances
    WHERE id = v_payment_record.attendance_id;
+
+  -- 参加記録が存在しない場合（理論上起こらないが念のため）
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Attendance record not found: %', v_payment_record.attendance_id
+      USING ERRCODE = 'P0005';
+  END IF;
 
   SELECT *
     INTO v_event_record
     FROM events
    WHERE id = v_attendance_record.event_id;
 
-  -- 決済レコードが存在しない
+  -- イベントが存在しない場合（参照整合性欠如）
   IF NOT FOUND THEN
-    RAISE EXCEPTION 'Payment record not found: %', p_payment_id
-      USING ERRCODE = 'P0002';
+    RAISE EXCEPTION 'Event record not found: %', v_attendance_record.event_id
+      USING ERRCODE = 'P0006';
   END IF;
 
   -- 主催者権限チェック
@@ -87,8 +99,7 @@ BEGIN
         WHEN p_new_status = 'waived' THEN paid_at  -- 免除時はpaid_atは変更しない
         ELSE paid_at
       END,
-      version = version + 1,
-      updated_at = now()
+      version = version + 1
   WHERE id = p_payment_id
     AND version = p_expected_version
     AND method = 'cash';

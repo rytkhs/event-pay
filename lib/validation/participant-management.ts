@@ -218,7 +218,7 @@ export const PaymentSummarySchema = z.object({
   // ステータス別集計
   byStatus: z.array(PaymentStatusSummarySchema),
 
-  // 未決済ハイライト（pending, failed）
+  // 未決済ハイライト（pending, failed, refunded）
   unpaidCount: z.number().int().min(0),
   unpaidAmount: z.number().int().min(0),
 

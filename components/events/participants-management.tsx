@@ -100,12 +100,7 @@ export function ParticipantsManagement({
       <EventStats
         eventData={eventData}
         attendances={initialAttendances}
-        payments={paymentsData.payments.map((p) => ({
-          id: p.id,
-          method: p.method,
-          amount: p.amount,
-          status: p.status,
-        }))}
+        payments={paymentsData.payments}
       />
 
       {/* 決済状況サマリー（MANAGE-002新機能） */}
