@@ -406,7 +406,7 @@ export function ParticipantsTable({
       // 注意喚起トースト
       toast({
         title: "CSV エクスポート",
-        description: "個人情報の取り扱いには十分注意してください。",
+        description: "個人情報の取り扱いには十分注意してください。(最大 1,000 件まで) ",
         duration: 3000,
       });
 
@@ -423,24 +423,40 @@ export function ParticipantsTable({
         filters,
       });
 
-      if (result.success && result.csvContent && result.filename) {
-        // CSVファイルをダウンロード
-        const blob = new Blob([result.csvContent], { type: "text/csv;charset=utf-8;" });
-        const link = document.createElement("a");
-        const url = URL.createObjectURL(blob);
+      if (result.success) {
+        if (result.csvContent && result.csvContent.length > 0) {
+          // CSVファイルをダウンロード
+          const blob = new Blob([result.csvContent], { type: "text/csv;charset=utf-8;" });
+          const link = document.createElement("a");
+          const url = URL.createObjectURL(blob);
 
-        link.setAttribute("href", url);
-        link.setAttribute("download", result.filename);
-        link.style.visibility = "hidden";
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(url);
+          link.setAttribute("href", url);
+          link.setAttribute("download", result.filename ?? "participants.csv");
+          link.style.visibility = "hidden";
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          URL.revokeObjectURL(url);
 
-        toast({
-          title: "エクスポート完了",
-          description: `${result.filename} をダウンロードしました。`,
-        });
+          toast({
+            title: "エクスポート完了",
+            description: `${result.filename ?? "participants.csv"} をダウンロードしました。`,
+          });
+
+          if (result.truncated) {
+            toast({
+              title: "注意: 一部データを省略",
+              description:
+                "1,001 件以上のデータが存在したため、先頭 1,000 件のみを出力しました。フィルターで範囲を絞って再度エクスポートしてください。",
+            });
+          }
+        } else {
+          // 対象 0 件
+          toast({
+            title: "対象データなし",
+            description: "エクスポート対象の参加者がいませんでした。",
+          });
+        }
       } else {
         toast({
           title: "エクスポート失敗",
