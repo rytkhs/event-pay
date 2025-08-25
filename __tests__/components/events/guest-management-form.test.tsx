@@ -40,7 +40,7 @@ const mockAttendanceData: GuestAttendanceData = {
     capacity: 50,
     registration_deadline: "2024-12-30T15:00:00Z",
     payment_deadline: "2024-12-30T15:00:00Z",
-    organizer_id: "organizer-123",
+    created_by: "organizer-123",
   },
   payment: {
     id: "payment-123",

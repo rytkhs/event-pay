@@ -5,7 +5,9 @@ import { validateEventId } from "@/lib/validations/event-id";
 import { redirect } from "next/navigation";
 import { logger } from "@/lib/logging/app-logger";
 
-export async function getEventDetailAction(eventId: string) {
+import type { EventDetail as DetailType } from "@/types/models";
+
+export async function getEventDetailAction(eventId: string): Promise<DetailType> {
   try {
     // イベントIDのバリデーション
     const validation = validateEventId(eventId);
@@ -22,7 +24,6 @@ export async function getEventDetailAction(eventId: string) {
     } = await supabase.auth.getUser();
     if (authError || !user) {
       redirect("/login");
-      return; // redirect後の処理を防ぐため早期return
     }
 
     // イベント詳細取得（RLSで自分のイベントのみ取得可能）
@@ -44,13 +45,12 @@ export async function getEventDetailAction(eventId: string) {
         created_at,
         updated_at,
         created_by,
-        invite_token,
-        organizer_id:created_by
+        invite_token
       `
       )
-      .eq("id", validation.data as any)
+      .eq("id", validation.data as string)
       .eq("created_by", user.id)
-      .maybeSingle();
+      .maybeSingle<DetailType>();
 
     if (error) {
       if (error.code === "PGRST301") {
@@ -81,7 +81,7 @@ export async function getEventDetailAction(eventId: string) {
       });
     }
 
-    const result = {
+    const result: DetailType = {
       ...eventDetail,
       creator_name: creatorName || "Unknown User",
     };

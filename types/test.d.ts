@@ -24,7 +24,7 @@ declare global {
         location: string;
         price: number;
         capacity: number;
-        organizer_id: string;
+        created_by: string;
       };
       resetAllMocks: () => void;
     };
@@ -58,4 +58,4 @@ declare global {
   }
 }
 
-export {};
+export { };

@@ -363,44 +363,13 @@ export class PaymentService implements IPaymentService {
    */
   async updatePaymentStatus(params: UpdatePaymentStatusParams): Promise<void> {
     try {
-      const updateData: {
-        status: PaymentStatus;
-        updated_at: string;
-        paid_at?: string;
-        stripe_payment_intent_id?: string | null;
-      } = {
-        status: params.status,
-        updated_at: new Date().toISOString(),
-      };
-
-      if (params.paidAt) {
-        updateData.paid_at = params.paidAt.toISOString();
-      }
-
-      if (params.stripePaymentIntentId) {
-        updateData.stripe_payment_intent_id = params.stripePaymentIntentId;
-      }
-
-      const { data, error } = await this.supabase
-        .from("payments")
-        .update(updateData)
-        .eq("id", params.paymentId)
-        .select("id")
-        .maybeSingle();
-
-      if (error) {
-        throw new PaymentError(
-          PaymentErrorType.DATABASE_ERROR,
-          `決済ステータスの更新に失敗しました: ${error.message}`,
-          error
-        );
-      }
-
-      if (!data) {
-        throw new PaymentError(
-          PaymentErrorType.PAYMENT_NOT_FOUND,
-          "指定された決済レコードが見つかりません"
-        );
+      // 楽観的ロック対応：現金決済の場合はRPCを使用、それ以外は従来通り
+      if (params.expectedVersion !== undefined && params.userId) {
+        // 楽観的ロック付きの安全更新（現金決済用）
+        await this.updatePaymentStatusSafe(params);
+      } else {
+        // 従来の更新方法（Stripe決済用など）
+        await this.updatePaymentStatusLegacy(params);
       }
     } catch (error) {
       if (error instanceof PaymentError) {
@@ -410,6 +379,201 @@ export class PaymentService implements IPaymentService {
       throw new PaymentError(
         PaymentErrorType.DATABASE_ERROR,
         "決済ステータスの更新に失敗しました",
+        error as Error
+      );
+    }
+  }
+
+  /**
+   * 楽観的ロック付きの決済ステータス更新（現金決済用）
+   */
+  private async updatePaymentStatusSafe(params: UpdatePaymentStatusParams): Promise<void> {
+    try {
+      const { data: _data, error } = await this.supabase.rpc('rpc_update_payment_status_safe', {
+        p_payment_id: params.paymentId,
+        p_new_status: params.status,
+        p_expected_version: params.expectedVersion!,
+        p_user_id: params.userId!,
+        p_notes: params.notes ?? undefined,
+      });
+
+      if (error) {
+        // PostgreSQLのエラーコードを確認
+        if (error.code === '40001') {
+          // serialization_failure = 楽観的ロック競合
+          throw new PaymentError(
+            PaymentErrorType.CONCURRENT_UPDATE,
+            "他のユーザーによって同時に更新されました。最新の状態を確認してから再試行してください。"
+          );
+        } else if (error.code === 'P0001') {
+          // 権限エラー
+          throw new PaymentError(
+            PaymentErrorType.FORBIDDEN,
+            "この操作を実行する権限がありません。"
+          );
+        } else if (error.code === 'P0002') {
+          // 決済レコードが見つからない
+          throw new PaymentError(
+            PaymentErrorType.PAYMENT_NOT_FOUND,
+            "指定された決済レコードが見つかりません。"
+          );
+        } else if (error.code === 'P0003') {
+          // 現金決済でない
+          throw new PaymentError(
+            PaymentErrorType.INVALID_PAYMENT_METHOD,
+            "現金決済以外は手動更新できません。"
+          );
+        } else {
+          throw new PaymentError(
+            PaymentErrorType.DATABASE_ERROR,
+            `決済ステータスの更新に失敗しました: ${error.message}`,
+            error
+          );
+        }
+      }
+
+      // 正常に更新完了
+    } catch (error) {
+      if (error instanceof PaymentError) {
+        throw error;
+      }
+
+      throw new PaymentError(
+        PaymentErrorType.DATABASE_ERROR,
+        "決済ステータスの更新に失敗しました",
+        error as Error
+      );
+    }
+  }
+
+  /**
+   * 従来の決済ステータス更新（Stripe決済用など）
+   */
+  private async updatePaymentStatusLegacy(params: UpdatePaymentStatusParams): Promise<void> {
+    const updateData: {
+      status: PaymentStatus;
+      updated_at: string;
+      paid_at?: string;
+      stripe_payment_intent_id?: string | null;
+    } = {
+      status: params.status,
+      updated_at: new Date().toISOString(),
+    };
+
+    if (params.paidAt) {
+      updateData.paid_at = params.paidAt.toISOString();
+    }
+
+    if (params.stripePaymentIntentId) {
+      updateData.stripe_payment_intent_id = params.stripePaymentIntentId;
+    }
+
+    const { data, error } = await this.supabase
+      .from("payments")
+      .update(updateData)
+      .eq("id", params.paymentId)
+      .select("id")
+      .maybeSingle();
+
+    if (error) {
+      throw new PaymentError(
+        PaymentErrorType.DATABASE_ERROR,
+        `決済ステータスの更新に失敗しました: ${error.message}`,
+        error
+      );
+    }
+
+    if (!data) {
+      throw new PaymentError(
+        PaymentErrorType.PAYMENT_NOT_FOUND,
+        "指定された決済レコードが見つかりません"
+      );
+    }
+  }
+
+  /**
+   * 複数の決済ステータスを一括更新する（楽観的ロック対応）
+   */
+  async bulkUpdatePaymentStatus(
+    updates: Array<{
+      paymentId: string;
+      status: PaymentStatus;
+      expectedVersion: number;
+    }>,
+    userId: string,
+    notes?: string
+  ): Promise<{
+    successCount: number;
+    failureCount: number;
+    failures: Array<{
+      paymentId: string;
+      error: string;
+    }>;
+  }> {
+    try {
+      // 入力バリデーション
+      if (updates.length === 0) {
+        throw new PaymentError(
+          PaymentErrorType.VALIDATION_ERROR,
+          "更新対象の決済が指定されていません"
+        );
+      }
+
+      if (updates.length > 50) {
+        throw new PaymentError(
+          PaymentErrorType.VALIDATION_ERROR,
+          "一度に更新できる決済は最大50件です"
+        );
+      }
+
+      // 一括更新用RPCに渡すJSONデータを構築
+      const paymentUpdates = updates.map(update => ({
+        payment_id: update.paymentId,
+        expected_version: update.expectedVersion,
+        new_status: update.status
+      }));
+
+      const { data, error } = await this.supabase.rpc('rpc_bulk_update_payment_status_safe', {
+        p_payment_updates: paymentUpdates,
+        p_user_id: userId,
+        p_notes: notes ?? undefined,
+      });
+
+      if (error) {
+        throw new PaymentError(
+          PaymentErrorType.DATABASE_ERROR,
+          `一括更新に失敗しました: ${error.message}`,
+          error
+        );
+      }
+
+      // RPC結果をパース
+      const result = data as {
+        success_count: number;
+        failure_count: number;
+        failures: Array<{
+          payment_id: string;
+          error_code: string;
+          error_message: string;
+        }>;
+      };
+
+      return {
+        successCount: result.success_count,
+        failureCount: result.failure_count,
+        failures: result.failures.map(failure => ({
+          paymentId: failure.payment_id,
+          error: failure.error_message,
+        })),
+      };
+    } catch (error) {
+      if (error instanceof PaymentError) {
+        throw error;
+      }
+
+      throw new PaymentError(
+        PaymentErrorType.DATABASE_ERROR,
+        "一括更新に失敗しました",
         error as Error
       );
     }

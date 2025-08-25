@@ -441,6 +441,7 @@ export type Database = {
           tax_included: boolean
           transfer_group: string | null
           updated_at: string
+          version: number
           webhook_event_id: string | null
           webhook_processed_at: string | null
         }
@@ -475,6 +476,7 @@ export type Database = {
           tax_included?: boolean
           transfer_group?: string | null
           updated_at?: string
+          version?: number
           webhook_event_id?: string | null
           webhook_processed_at?: string | null
         }
@@ -509,6 +511,7 @@ export type Database = {
           tax_included?: boolean
           transfer_group?: string | null
           updated_at?: string
+          version?: number
           webhook_event_id?: string | null
           webhook_processed_at?: string | null
         }
@@ -1083,10 +1086,6 @@ export type Database = {
         }
         Returns: boolean
       }
-      finalize_event_settlement: {
-        Args: { p_event_id: string; p_user_id: string }
-        Returns: string
-      }
       find_eligible_events_basic: {
         Args: {
           p_days_after_event?: number
@@ -1130,16 +1129,16 @@ export type Database = {
         Returns: boolean
       }
       generate_settlement_report: {
-        Args: { p_event_id: string; p_organizer_id: string }
+        Args: { p_created_by: string; p_event_id: string }
         Returns: {
           already_exists: boolean
+          created_by: string
           dispute_count: number
           event_date: string
           event_id: string
           event_title: string
           generated_at: string
           net_payout_amount: number
-          organizer_id: string
           payment_count: number
           refunded_count: number
           report_id: string
@@ -1196,11 +1195,11 @@ export type Database = {
       }
       get_settlement_report_details: {
         Args: {
+          p_created_by: string
           p_event_ids?: string[]
           p_from_date?: string
           p_limit?: number
           p_offset?: number
-          p_organizer_id: string
           p_to_date?: string
         }
         Returns: {
@@ -1258,6 +1257,20 @@ export type Database = {
       release_scheduler_lock: {
         Args: { p_lock_name: string; p_process_id?: string }
         Returns: boolean
+      }
+      rpc_bulk_update_payment_status_safe: {
+        Args: { p_notes?: string; p_payment_updates: Json; p_user_id: string }
+        Returns: Json
+      }
+      rpc_update_payment_status_safe: {
+        Args: {
+          p_expected_version: number
+          p_new_status: Database["public"]["Enums"]["payment_status_enum"]
+          p_notes?: string
+          p_payment_id: string
+          p_user_id: string
+        }
+        Returns: Json
       }
       set_test_guest_token: {
         Args: { token: string }

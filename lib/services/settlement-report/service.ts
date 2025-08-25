@@ -33,20 +33,20 @@ export class SettlementReportService {
    */
   async generateSettlementReport(params: GenerateSettlementReportParams): Promise<SettlementReportResult> {
     try {
-      const { eventId, organizerId } = params
+      const { eventId, createdBy } = params
 
       logger.info('Settlement report generation started (RPC)', {
         tag: 'settlementReportGeneration',
         service: 'SettlementReportService',
         eventId,
-        organizerId
+        createdBy
       })
 
       // RPC関数を直接呼び出し（競合条件を回避＋完全データ取得）
       const { data, error } = await this.supabase
         .rpc('generate_settlement_report', {
           p_event_id: eventId,
-          p_organizer_id: organizerId,
+          p_created_by: createdBy,
         })
         .single<GenerateSettlementReportRpcRow>()
 
@@ -80,7 +80,7 @@ export class SettlementReportService {
         eventId: data.event_id,
         eventTitle: data.event_title,
         eventDate: data.event_date,
-        organizerId: data.organizer_id,
+        createdBy: data.created_by,
         stripeAccountId: data.stripe_account_id,
         transferGroup: data.transfer_group,
         generatedAt: new Date(data.generated_at),
@@ -155,7 +155,7 @@ export class SettlementReportService {
       const { data, error } = await this.supabase.rpc(
         'get_settlement_report_details',
         {
-          p_organizer_id: params.organizerId,
+          p_created_by: params.createdBy,
           p_event_ids: params.eventIds || undefined,
           p_from_date: fromDateUtc,
           p_to_date: toDateUtc,
@@ -167,7 +167,7 @@ export class SettlementReportService {
       if (error) {
         logger.error('Failed to get settlement reports via RPC', {
           tag: 'getSettlementReportsRpcError',
-          organizerId: params.organizerId,
+          createdBy: params.createdBy,
           error: error?.message || 'Unknown error',
         })
         throw new Error(`Failed to get settlement reports: ${error?.message || 'Unknown error'}`)
@@ -179,7 +179,7 @@ export class SettlementReportService {
         eventId: row.event_id,
         eventTitle: row.event_title,
         eventDate: row.event_date,
-        organizerId: params.organizerId,
+        createdBy: params.createdBy,
         stripeAccountId: row.stripe_account_id ?? '',
         transferGroup: row.transfer_group ?? '',
         generatedAt: new Date(row.generated_at),
@@ -201,7 +201,7 @@ export class SettlementReportService {
     } catch (error) {
       logger.error('Settlement reports RPC call failed', {
         tag: 'getSettlementReportsRpcError',
-        organizerId: params.organizerId,
+        createdBy: params.createdBy,
         error: error instanceof Error ? error.message : String(error),
       })
       throw error
@@ -296,7 +296,7 @@ export class SettlementReportService {
     } catch (error) {
       logger.error('CSV export failed', {
         tag: 'csvExportError',
-        organizerId: params.organizerId,
+        createdBy: params.createdBy,
         error: error instanceof Error ? error.message : String(error)
       })
 
@@ -310,16 +310,16 @@ export class SettlementReportService {
   /**
    * 返金・Dispute時の再集計
    */
-  async regenerateAfterRefundOrDispute(eventId: string, organizerId: string): Promise<SettlementReportResult> {
+  async regenerateAfterRefundOrDispute(eventId: string, createdBy: string): Promise<SettlementReportResult> {
     logger.info('Regenerating settlement report after refund/dispute', {
       tag: 'settlementReportRegeneration',
       eventId,
-      organizerId
+      createdBy
     })
 
     return this.generateSettlementReport({
       eventId,
-      organizerId
+      createdBy
     })
   }
 

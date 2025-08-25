@@ -4,6 +4,7 @@
 
 import {
   Payment,
+  PaymentStatus,
   CreateStripeSessionParams,
   CreateStripeSessionResult,
   CreateCashPaymentParams,
@@ -39,6 +40,31 @@ export interface IPaymentService {
    * @throws PaymentError 決済ステータス更新に失敗した場合
    */
   updatePaymentStatus(params: UpdatePaymentStatusParams): Promise<void>;
+
+  /**
+   * 複数の決済ステータスを一括更新する（楽観的ロック対応）
+   * @param updates 更新対象の決済リスト
+   * @param userId 実行ユーザーID
+   * @param notes 更新理由・備考
+   * @returns 成功・失敗の詳細結果
+   * @throws PaymentError 一括更新に失敗した場合
+   */
+  bulkUpdatePaymentStatus(
+    updates: Array<{
+      paymentId: string;
+      status: PaymentStatus;
+      expectedVersion: number;
+    }>,
+    userId: string,
+    notes?: string
+  ): Promise<{
+    successCount: number;
+    failureCount: number;
+    failures: Array<{
+      paymentId: string;
+      error: string;
+    }>;
+  }>;
 
   /**
    * 参加記録IDから決済情報を取得する

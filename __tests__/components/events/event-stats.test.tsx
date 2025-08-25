@@ -2,18 +2,13 @@ import { render, screen } from "@testing-library/react";
 import { EventStats } from "@/components/events/event-stats";
 import type { Event, Attendance, Payment } from "@/types/models";
 
-// テスト用の型定義（EventStatsコンポーネントのpropsに合わせて調整）
-interface MockEventData extends Event {
-  organizer_id: string;
-}
-
 // 共通型から必要なフィールドのみを抽出
 type MockAttendanceData = Pick<Attendance, "id" | "status">;
 type MockPaymentData = Pick<Payment, "id" | "method" | "amount" | "status">;
 
 describe("EventStats", () => {
   // テスト用のベースデータ
-  let baseEventData: MockEventData;
+  let baseEventData: Event;
   let baseAttendances: MockAttendanceData[];
   let basePayments: MockPaymentData[];
 
@@ -24,7 +19,7 @@ describe("EventStats", () => {
   });
 
   // ヘルパー関数: モックイベントデータ作成
-  function createMockEventData(overrides: Partial<MockEventData> = {}): MockEventData {
+  function createMockEventData(overrides: Partial<Event> = {}): Event {
     return {
       id: "event-1",
       title: "テストイベント",
@@ -41,7 +36,6 @@ describe("EventStats", () => {
       updated_at: "2024-01-01T00:00:00Z",
       created_by: "user-1",
       invite_token: "test-token",
-      organizer_id: "user-1",
       creator_name: "テストユーザー",
       attendances_count: 0,
       ...overrides,

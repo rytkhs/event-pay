@@ -16,10 +16,19 @@ import {
 } from "@/lib/types/server-actions";
 
 const inputSchema = z.object({
-  paymentId: z.string().uuid(),
+  paymentIds: z.array(z.string().uuid()).min(1).max(50), // 最大50件まで
   status: z.enum(["received", "waived"]),
   notes: z.string().max(1000).optional(),
 });
+
+type BulkUpdateResult = {
+  successCount: number;
+  failedCount: number;
+  failures: Array<{
+    paymentId: string;
+    error: string;
+  }>;
+};
 
 function mapPaymentError(type: PaymentErrorType): ErrorCode {
   switch (type) {
@@ -44,15 +53,14 @@ function mapPaymentError(type: PaymentErrorType): ErrorCode {
     case PaymentErrorType.DATABASE_ERROR:
       return ERROR_CODES.DATABASE_ERROR;
     case PaymentErrorType.STRIPE_API_ERROR:
-    case PaymentErrorType.WEBHOOK_PROCESSING_ERROR:
     default:
       return ERROR_CODES.INTERNAL_ERROR;
   }
 }
 
-export async function updateCashStatusAction(
+export async function bulkUpdateCashStatusAction(
   input: unknown
-): Promise<ServerActionResult<{ paymentId: string; status: "received" | "waived" }>> {
+): Promise<ServerActionResult<BulkUpdateResult>> {
   try {
     const parsed = inputSchema.safeParse(input);
     if (!parsed.success) {
@@ -60,7 +68,7 @@ export async function updateCashStatusAction(
         zodErrors: parsed.error.errors,
       });
     }
-    const { paymentId, status, notes } = parsed.data;
+    const { paymentIds, status, notes } = parsed.data;
 
     const factory = SecureSupabaseClientFactory.getInstance();
     const supabase = await factory.createAuthenticatedClient();
@@ -72,12 +80,12 @@ export async function updateCashStatusAction(
       return createErrorResponse(ERROR_CODES.UNAUTHORIZED, "認証が必要です。");
     }
 
-    // レート制限（ユーザー単位）
+    // レート制限（ユーザー単位、一括更新用の制限）
     try {
       const store = await createRateLimitStore();
       const rl = await checkRateLimit(
         store,
-        `payment_update_status_${user.id}`,
+        `payment_bulk_update_${user.id}`,
         RATE_LIMIT_CONFIG.paymentStatusUpdate
       );
       if (!rl.allowed) {
@@ -91,98 +99,116 @@ export async function updateCashStatusAction(
       // レート制限でのストア初期化失敗時はスキップ（安全側）
     }
 
-    // 対象決済の取得（権限・バージョン・メソッド判定をまとめて取得）
-    const { data: payment, error: fetchError } = await supabase
+    // 対象決済の一括取得（主催者権限チェック用）
+    const { data: paymentsWithEvent, error: fetchError } = await supabase
       .from("payments")
       .select(`
         id,
-        version,
         method,
         status,
+        version,
         attendance_id,
         attendances!inner (
           id,
+          event_id,
           events!inner (
             id,
             created_by
           )
         )
       `)
-      .eq("id", paymentId)
-      .single();
+      .in("id", paymentIds);
 
-    if (fetchError || !payment) {
+    if (fetchError) {
+      return createErrorResponse(ERROR_CODES.DATABASE_ERROR, "決済レコードの取得に失敗しました。");
+    }
+
+    if (!paymentsWithEvent || paymentsWithEvent.length === 0) {
       return createErrorResponse(ERROR_CODES.NOT_FOUND, "決済レコードが見つかりません。");
     }
 
-    // 基本的な権限チェック（RPC関数内でも再チェックされる）
-    await new PaymentValidator(supabase).validateAttendanceAccess(
-      payment.attendance_id,
-      user.id
-    );
+    // 権限チェック：すべての決済が同じユーザーのイベントに属していることを確認
+    const unauthorizedPayments = paymentsWithEvent.filter((payment) => {
+      const attendance = Array.isArray(payment.attendances) ? payment.attendances[0] : payment.attendances;
+      const event = Array.isArray(attendance.events) ? attendance.events[0] : attendance.events;
+      return event.created_by !== user.id;
+    });
 
-    // 権限チェック：主催者のみ
-    const attendance = Array.isArray(payment.attendances) ? payment.attendances[0] : payment.attendances;
-    const event = Array.isArray(attendance.events) ? attendance.events[0] : attendance.events;
-
-    if (event.created_by !== user.id) {
+    if (unauthorizedPayments.length > 0) {
       return createErrorResponse(ERROR_CODES.FORBIDDEN, "この操作を実行する権限がありません。");
     }
 
-    // 現金決済のみ
-    if (payment.method !== "cash") {
-      return createErrorResponse(
-        ERROR_CODES.BUSINESS_RULE_VIOLATION,
-        "現金決済以外は手動更新できません。"
-      );
-    }
+    // 現金決済以外のフィルタリング
+    const nonCashPayments = paymentsWithEvent.filter((p) => p.method !== "cash");
 
-    // ステータス遷移などのビジネスルール検証
-    try {
-      await new PaymentValidator(supabase).validateUpdatePaymentStatusParams({
-        paymentId,
-        status,
+    // 部分成功を許容するため、非現金決済は failures に積むだけで処理続行
+    const initialFailures: BulkUpdateResult["failures"] = nonCashPayments.map((p) => ({
+      paymentId: p.id,
+      error: "現金決済以外は手動更新できません。",
+    }));
+
+    // 現金決済のみを抽出
+    const cashPayments = paymentsWithEvent.filter((p) => p.method === "cash");
+
+    if (cashPayments.length === 0) {
+      return createSuccessResponse({
+        successCount: 0,
+        failedCount: initialFailures.length,
+        failures: initialFailures,
       });
-    } catch (validationError) {
-      if (validationError instanceof PaymentError) {
-        return createErrorResponse(mapPaymentError(validationError.type), validationError.message);
-      }
-      return createErrorResponse(
-        ERROR_CODES.INTERNAL_ERROR,
-        "ステータス検証中に予期しないエラーが発生しました。"
-      );
     }
 
-    // 楽観的ロック付きRPCで更新
+    // 基本的なバリデーション（RPC関数内でも再実行される）
+    const validator = new PaymentValidator(supabase);
+    for (const payment of cashPayments) {
+      await validator.validateUpdatePaymentStatusParams({
+        paymentId: payment.id,
+        status
+      });
+    }
+
+    // 楽観的ロック対応の一括更新用RPCを使用
     const admin = await factory.createAuditedAdminClient(
       AdminReason.PAYMENT_PROCESSING,
-      "app/payments/actions/update-cash-status"
+      "app/payments/actions/bulk-update-cash-status"
     );
 
-    const { data: _rpcResult, error: rpcError } = await admin.rpc('rpc_update_payment_status_safe', {
-      p_payment_id: paymentId,
-      p_new_status: status,
-      p_expected_version: payment.version,
+    // 一括更新用のデータを構築（version情報を含める）
+    const updateData = cashPayments.map(payment => ({
+      payment_id: payment.id,
+      expected_version: payment.version,
+      new_status: status
+    }));
+
+    const { data: rpcResult, error: rpcError } = await admin.rpc('rpc_bulk_update_payment_status_safe', {
+      p_payment_updates: updateData,
       p_user_id: user.id,
       p_notes: notes || null,
     });
 
     if (rpcError) {
-      // 楽観的ロック競合の場合
-      if (rpcError.code === '40001') {
-        return createErrorResponse(
-          ERROR_CODES.CONFLICT,
-          "他のユーザーによって同時に更新されました。最新の状態を確認してから再試行してください。"
-        );
-      }
-
       return createErrorResponse(
         ERROR_CODES.DATABASE_ERROR,
-        `決済ステータスの更新に失敗しました: ${rpcError.message}`
+        `一括決済ステータス更新に失敗しました: ${rpcError.message}`
       );
     }
 
-    return createSuccessResponse({ paymentId, status });
+    // RPC結果をレスポンス形式に変換
+    const rpcFailures: BulkUpdateResult["failures"] = (rpcResult.failures || []).map((f: {
+      payment_id: string;
+      error_message: string;
+    }) => ({
+      paymentId: f.payment_id,
+      error: f.error_message,
+    }));
+
+    const result: BulkUpdateResult = {
+      successCount: rpcResult.success_count || 0,
+      failedCount: (rpcResult.failure_count || 0) + initialFailures.length,
+      failures: [...initialFailures, ...rpcFailures],
+    };
+
+    return createSuccessResponse(result);
   } catch (error) {
     if (error instanceof PaymentError) {
       return createErrorResponse(mapPaymentError(error.type), error.message);

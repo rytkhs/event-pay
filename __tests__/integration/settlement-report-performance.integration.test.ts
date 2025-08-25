@@ -46,7 +46,7 @@ describe('Settlement Report Performance Integration', () => {
 
       const result = await service.generateSettlementReport({
         eventId: testEventId,
-        organizerId: testOrganizerId,
+        createdBy: testOrganizerId,
 
       })
 
@@ -78,7 +78,7 @@ describe('Settlement Report Performance Integration', () => {
 
       const result = await service.generateSettlementReport({
         eventId: testEventId,
-        organizerId: testOrganizerId,
+        createdBy: testOrganizerId,
 
       })
 
@@ -153,7 +153,7 @@ describe('Settlement Report Performance Integration', () => {
       const promises = testEventIds.map(eventId =>
         service.generateSettlementReport({
           eventId,
-          organizerId: testOrganizerId,
+          createdBy: testOrganizerId,
 
         })
       )
@@ -199,7 +199,7 @@ describe('Settlement Report Performance Integration', () => {
 
       const result = await service.generateSettlementReport({
         eventId: testEventId,
-        organizerId: testOrganizerId,
+        createdBy: testOrganizerId,
 
       })
 
