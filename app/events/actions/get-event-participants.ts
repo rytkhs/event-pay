@@ -86,12 +86,32 @@ export async function getEventParticipantsAction(
       countQuery = countQuery.eq("payments.status", paymentStatus);
     }
 
-    // ソート処理（attendances側のフィールドのみ）
-    const attendanceSortFields = ["created_at", "updated_at", "nickname", "email", "status"];
+    // ソート処理
+    const attendanceSortFields = [
+      "created_at",
+      "updated_at",
+      "nickname",
+      "email",
+      "status",
+    ];
+
+    const paymentSortFields: Record<string, { column: string; foreignTable: string }> = {
+      payment_method: { column: "method", foreignTable: "payments" },
+      payment_status: { column: "status", foreignTable: "payments" },
+      paid_at: { column: "paid_at", foreignTable: "payments" },
+    };
+
     if (attendanceSortFields.includes(sortField)) {
       query = query.order(sortField, { ascending: sortOrder === "asc" });
+    } else if (sortField in paymentSortFields) {
+      const cfg = paymentSortFields[sortField];
+      query = query.order(cfg.column, {
+        ascending: sortOrder === "asc",
+        foreignTable: cfg.foreignTable,
+        nullsFirst: sortOrder === "asc", // 未決済(paid_at=null)を最後に持ってくる
+      } as any);
     } else {
-      // デフォルトソート
+      // フォールバック：updated_at DESC
       query = query.order("updated_at", { ascending: false });
     }
 
@@ -159,34 +179,7 @@ export async function getEventParticipantsAction(
     // 初期値
     const filteredParticipants = participants;
 
-    // 決済関連のソート処理（後処理）
-    const paymentSortFields = ["payment_method", "payment_status", "paid_at"];
-    if (paymentSortFields.includes(sortField)) {
-      filteredParticipants.sort((a, b) => {
-        let aValue, bValue;
-
-        switch (sortField) {
-          case "payment_method":
-            aValue = a.payment_method || "";
-            bValue = b.payment_method || "";
-            break;
-          case "payment_status":
-            aValue = a.payment_status || "";
-            bValue = b.payment_status || "";
-            break;
-          case "paid_at":
-            aValue = a.paid_at ? new Date(a.paid_at).getTime() : 0;
-            bValue = b.paid_at ? new Date(b.paid_at).getTime() : 0;
-            break;
-          default:
-            return 0;
-        }
-
-        if (aValue < bValue) return sortOrder === "asc" ? -1 : 1;
-        if (aValue > bValue) return sortOrder === "asc" ? 1 : -1;
-        return 0;
-      });
-    }
+    // 決済関連のソートは DB で完結させたため、クライアント側での並べ替えは不要
 
     // 件数計算：Supabase 側でフィルター済みの件数を使用
     const totalCount = count || 0;

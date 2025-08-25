@@ -77,7 +77,8 @@ export function PaymentSummary({ summary, isLoading = false }: PaymentSummaryPro
             <div className="text-2xl font-bold text-green-600" data-testid="total-amount">
               ¥{summary.totalAmount.toLocaleString()}
             </div>
-            <div className="text-sm text-gray-600">決済総額</div>
+            {/* 決済総額は未決済・失敗を含む全ステータス合算のためラベルを明確化 */}
+            <div className="text-sm text-gray-600">総金額（全ステータス）</div>
           </div>
           <div className="text-center p-4 bg-emerald-50 rounded-lg">
             <div

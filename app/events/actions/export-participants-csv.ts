@@ -316,7 +316,10 @@ function generateCsvContent(
  * セルの先頭が = + - @ \t などの場合、単一引用符 (') を付与して数式評価を防止する。
  */
 function sanitizeCsvValue(raw: string): string {
-  if (/^[=+\-@\t]/.test(raw)) {
+  // 先頭に空白(半角/全角)や制御文字が続いた後に = + - @ \t が現れる場合も Excel は数式として評価するため、
+  // \s は U+0009–U+000D, U+0020, U+00A0 などを含む。追加で制御文字(0x00-0x1F)を広くカバー。
+  // 例: " =SUM(...)" → 単一引用符付与
+  if (/^[\s\x00-\x1F]*[=+\-@\t]/u.test(raw)) {
     return `'${raw}`;
   }
   return raw;
