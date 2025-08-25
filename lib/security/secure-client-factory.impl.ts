@@ -522,12 +522,12 @@ export class RLSBasedGuestValidator implements IGuestTokenValidator {
       registrationDeadline = new Date(event.registration_deadline);
     }
 
-    // イベント開始前かつ登録締切前かつアクティブ状態
+    // イベント開始前かつ登録締切前かつ開催予定（upcoming）状態
     const isBeforeEventStart = eventDate > now;
     const isBeforeDeadline = registrationDeadline === null || registrationDeadline > now;
-    const isActive = event.status === "active";
+    const isUpcoming = event.status === "upcoming";
 
-    return isBeforeEventStart && isBeforeDeadline && isActive;
+    return isBeforeEventStart && isBeforeDeadline && isUpcoming;
   }
 
   /**
