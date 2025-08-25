@@ -70,7 +70,6 @@ export async function getEventParticipantsAction(
         count: "exact",
         head: true,
       })
-      .limit(1, { foreignTable: "payments" })
       .eq("event_id", validatedEventId);
 
     // 検索条件（ニックネーム/メール部分一致）

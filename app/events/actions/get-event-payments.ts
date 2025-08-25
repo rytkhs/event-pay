@@ -59,10 +59,41 @@ export async function getEventPaymentsAction(eventId: string): Promise<GetEventP
     updated_at: payment.updated_at,
   }));
 
-  const summary = calculatePaymentSummary(cleanedPayments);
+  // 各参加者(attendance_id)につき最新の決済1件のみを抽出
+  // paid_at DESC NULLS LAST → created_at DESC → updated_at DESC 相当のロジック
+  const latestPaymentsMap = new Map<string, typeof cleanedPayments[0]>();
+  cleanedPayments.forEach((payment) => {
+    const existing = latestPaymentsMap.get(payment.attendance_id);
+    if (!existing) {
+      latestPaymentsMap.set(payment.attendance_id, payment);
+      return;
+    }
+    // 比較関数：paid_at (null は最古扱い), その後 created_at, updated_at
+    const paidAtA = payment.paid_at ?? "";
+    const paidAtB = existing.paid_at ?? "";
+    if (paidAtA > paidAtB) {
+      latestPaymentsMap.set(payment.attendance_id, payment);
+      return;
+    }
+    if (paidAtA === paidAtB && payment.created_at > existing.created_at) {
+      latestPaymentsMap.set(payment.attendance_id, payment);
+      return;
+    }
+    if (
+      paidAtA === paidAtB &&
+      payment.created_at === existing.created_at &&
+      payment.updated_at > existing.updated_at
+    ) {
+      latestPaymentsMap.set(payment.attendance_id, payment);
+    }
+  });
+
+  const latestPayments = Array.from(latestPaymentsMap.values());
+
+  const summary = calculatePaymentSummary(latestPayments);
 
   const validatedResponse = GetEventPaymentsResponseSchema.parse({
-    payments: cleanedPayments,
+    payments: latestPayments,
     summary,
   });
 
