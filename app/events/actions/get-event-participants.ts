@@ -70,6 +70,7 @@ export async function getEventParticipantsAction(
         count: "exact",
         head: true,
       })
+      .limit(1, { foreignTable: "payments" })
       .eq("event_id", validatedEventId);
 
     // 検索条件（ニックネーム/メール部分一致）
@@ -117,7 +118,7 @@ export async function getEventParticipantsAction(
       query = query.order(cfg.column, {
         ascending: sortOrder === "asc",
         foreignTable: cfg.foreignTable,
-        nullsFirst: sortOrder === "asc", // 未決済(paid_at=null)を最後に持ってくる
+        nullsFirst: false, // 未決済(paid_at=null)を最後に持ってくる（NULLS LAST 固定）
       } as any);
     } else {
       // フォールバック：updated_at DESC
@@ -185,24 +186,21 @@ export async function getEventParticipantsAction(
       };
     });
 
-    // 初期値
-    const filteredParticipants = participants;
-
-    // 決済関連のソートは DB で完結させたため、クライアント側での並べ替えは不要
+    // 決済関連のソートは DB 側で完結するためクライアントでの並べ替えは不要
 
     // 件数計算：Supabase 側でフィルター済みの件数を使用
     const totalCount = count || 0;
     const effectiveTotal = totalCount;
 
     // ページネーションは Supabase が担当したのでそのまま返却
-    const paginatedParticipants = filteredParticipants;
+    const paginatedParticipants = participants;
 
     const totalPages = Math.ceil(effectiveTotal / limit);
 
     logger.info("Event participants retrieved", {
       eventId: validatedEventId,
       userId: user.id,
-      participantCount: filteredParticipants.length,
+      participantCount: participants.length,
       totalCount: effectiveTotal,
       page,
       filters: { search, attendanceStatus, paymentMethod, paymentStatus }

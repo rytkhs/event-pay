@@ -94,6 +94,11 @@ export function ParticipantsManagement({
     [eventId, participantsData, toast, refreshPaymentsData]
   );
 
+  // 決済・参加者の両方をまとめて再取得
+  const refreshAllData = useCallback(async () => {
+    await handleParamsChange({});
+  }, [handleParamsChange]);
+
   return (
     <div className="space-y-6">
       {/* イベント統計 */}
@@ -112,7 +117,7 @@ export function ParticipantsManagement({
         initialData={participantsData}
         onParamsChange={handleParamsChange}
         isLoading={isLoading}
-        onPaymentStatusUpdate={refreshPaymentsData}
+        onPaymentStatusUpdate={refreshAllData}
       />
     </div>
   );
