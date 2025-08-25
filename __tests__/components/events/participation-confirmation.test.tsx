@@ -18,7 +18,7 @@ const mockEventDetail: EventDetail = {
   payment_deadline: "2024-12-29T23:59:59Z",
   payment_methods: ["stripe", "cash"],
   invite_token: "test-invite-token",
-  organizer_id: "test-organizer-id",
+  created_by: "test-organizer-id",
   created_at: "2024-01-01T00:00:00Z",
   updated_at: "2024-01-01T00:00:00Z",
 };

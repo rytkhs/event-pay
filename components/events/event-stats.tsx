@@ -1,17 +1,12 @@
 import React from "react";
 import type { Event, Attendance, Payment } from "@/types/models";
 
-// EventStats専用の型定義 - 共通型をベースに最小限の拡張
-interface EventStatsEventData extends Event {
-  organizer_id: string; // Event詳細ページで追加されるフィールド
-}
-
 // 統計表示に必要な最小限のフィールドのみを抽出
 type EventStatsAttendanceData = Pick<Attendance, "id" | "status">;
 type EventStatsPaymentData = Pick<Payment, "id" | "method" | "amount" | "status">;
 
 interface EventStatsProps {
-  eventData: EventStatsEventData;
+  eventData: Event;
   attendances: EventStatsAttendanceData[];
   payments: EventStatsPaymentData[];
 }

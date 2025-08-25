@@ -18,6 +18,7 @@ export const HTTP_STATUS_BY_ERROR: Record<PaymentErrorType, number> = {
   // ビジネスロジック
   [PaymentErrorType.INVALID_STATUS_TRANSITION]: 400,
   [PaymentErrorType.PAYMENT_ALREADY_EXISTS]: 409,
+  [PaymentErrorType.CONCURRENT_UPDATE]: 409,
   [PaymentErrorType.EVENT_NOT_FOUND]: 404,
   [PaymentErrorType.ATTENDANCE_NOT_FOUND]: 404,
   [PaymentErrorType.PAYMENT_NOT_FOUND]: 404,
@@ -60,6 +61,11 @@ export const ERROR_HANDLING_BY_TYPE: Record<PaymentErrorType, ErrorHandlingResul
     userMessage: "この参加に対する決済は既に作成されています。",
     shouldRetry: false,
     logLevel: "info",
+  },
+  [PaymentErrorType.CONCURRENT_UPDATE]: {
+    userMessage: "他のユーザーによって同時に更新されました。画面を更新して最新状態を確認してください。",
+    shouldRetry: false,
+    logLevel: "warn",
   },
   [PaymentErrorType.ATTENDANCE_NOT_FOUND]: {
     userMessage: "指定された参加記録が見つかりません。",

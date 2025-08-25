@@ -34,7 +34,7 @@ test.describe("ゲスト自己管理ページ", () => {
                   capacity: 50,
                   registration_deadline: "2024-12-30T15:00:00Z",
                   payment_deadline: "2024-12-30T15:00:00Z",
-                  organizer_id: "organizer-123",
+                  created_by: "organizer-123",
                 },
                 payment: {
                   id: "payment-123",
@@ -229,7 +229,7 @@ test.describe("ゲスト自己管理ページ", () => {
                 capacity: 50,
                 registration_deadline: "2024-01-01T15:00:00Z",
                 payment_deadline: "2024-01-01T15:00:00Z",
-                organizer_id: "organizer-123",
+                created_by: "organizer-123",
               },
               payment: null,
             },

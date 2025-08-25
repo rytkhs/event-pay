@@ -47,7 +47,7 @@ export default async function SettlementReportsPage() {
 
   // 初期レポート一覧を取得（最新10件）- RPC関数で動的計算
   const { data: initialReportsRpc } = await (supabase as any).rpc("get_settlement_report_details", {
-    p_organizer_id: user.id,
+    p_created_by: user.id,
     p_event_ids: null,
     p_from_date: null,
     p_to_date: null,
@@ -59,7 +59,7 @@ export default async function SettlementReportsPage() {
     eventId: report.event_id,
     eventTitle: report.event_title,
     eventDate: report.event_date,
-    organizerId: user.id,
+    createdBy: user.id,
     stripeAccountId: report.stripe_account_id,
     transferGroup: report.transfer_group,
     generatedAt: new Date(report.generated_at),

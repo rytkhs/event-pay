@@ -21,7 +21,7 @@ export const mockEvent = {
   location: "Test Location",
   price: 1000,
   capacity: 100,
-  organizer_id: "test-user-id",
+  created_by: "test-user-id",
   status: "draft" as const,
   created_at: "2024-01-01T00:00:00Z",
   updated_at: "2024-01-01T00:00:00Z",
