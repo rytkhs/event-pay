@@ -3,8 +3,9 @@
 import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { CreditCard, Banknote, AlertTriangle, CheckCircle } from "lucide-react";
+import { CreditCard, Banknote, AlertTriangle, CheckCircle, Info } from "lucide-react";
 import type { PaymentSummary as PaymentSummaryType } from "@/lib/validation/participant-management";
+import { TooltipContent, TooltipTrigger, TooltipWrapper } from "@/components/ui/tooltip";
 
 interface PaymentSummaryProps {
   summary: PaymentSummaryType;
@@ -77,8 +78,18 @@ export function PaymentSummary({ summary, isLoading = false }: PaymentSummaryPro
             <div className="text-2xl font-bold text-green-600" data-testid="total-amount">
               ¥{summary.totalAmount.toLocaleString()}
             </div>
-            {/* 決済総額は未決済・失敗を含む全ステータス合算のためラベルを明確化 */}
-            <div className="text-sm text-gray-600">総金額（全ステータス）</div>
+            {/* 決済総額は未決済・失敗を含む全ステータス合算。参加者ごとに最新取引のみ集計である旨をツールチップで補足 */}
+            <div className="flex items-center justify-center gap-1 text-sm text-gray-600">
+              <span>総金額（全ステータス）</span>
+              <TooltipWrapper>
+                <TooltipTrigger asChild>
+                  <Info className="w-4 h-4 cursor-pointer text-gray-400" aria-label="説明" />
+                </TooltipTrigger>
+                <TooltipContent side="top">
+                  各参加者の最新取引 1 件のみを合算した金額です
+                </TooltipContent>
+              </TooltipWrapper>
+            </div>
           </div>
           <div className="text-center p-4 bg-emerald-50 rounded-lg">
             <div

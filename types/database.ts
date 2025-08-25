@@ -1017,15 +1017,6 @@ export type Database = {
       }
     }
     Functions: {
-      bulk_update_payment_status_with_audit: {
-        Args: {
-          p_new_status: Database["public"]["Enums"]["payment_status_enum"]
-          p_notes?: string
-          p_payment_ids: string[]
-          p_user_id?: string
-        }
-        Returns: Json
-      }
       calc_payout_amount: {
         Args: { p_event_id: string }
         Returns: {
@@ -1306,17 +1297,6 @@ export type Database = {
           p_status: Database["public"]["Enums"]["attendance_status_enum"]
         }
         Returns: undefined
-      }
-      update_payment_status_with_audit: {
-        Args: {
-          p_new_status: Database["public"]["Enums"]["payment_status_enum"]
-          p_notes?: string
-          p_paid_at?: string
-          p_payment_id: string
-          p_stripe_payment_intent_id?: string
-          p_user_id?: string
-        }
-        Returns: Json
       }
       update_payout_status_safe: {
         Args: {
