@@ -327,21 +327,21 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
         return;
       }
 
-      const organizerId: string = (eventRow as { created_by: string }).created_by;
+      const createdBy: string = (eventRow as { created_by: string }).created_by;
 
       const service = new SettlementReportService(this.supabase);
-      const res = await service.regenerateAfterRefundOrDispute(eventId, organizerId);
+      const res = await service.regenerateAfterRefundOrDispute(eventId, createdBy);
       if (!res.success) {
         await this.securityReporter.logSecurityEvent({
           type: "settlement_regenerate_failed",
-          details: { eventId, organizerId, error: res.error ?? "unknown" },
+          details: { eventId, createdBy, error: res.error ?? "unknown" },
         });
         return;
       }
 
       await this.securityReporter.logSecurityEvent({
         type: "settlement_regenerate_succeeded",
-        details: { eventId, organizerId, reportId: res.reportId },
+        details: { eventId, createdBy, reportId: res.reportId },
       });
     } catch (e) {
       await this.securityReporter.logSecurityEvent({

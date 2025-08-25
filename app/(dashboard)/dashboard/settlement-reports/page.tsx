@@ -18,7 +18,7 @@ export default async function SettlementReportsPage() {
 
   // 直近のレポートを初期表示（最大50件）
   const initialReports = await service.getSettlementReports({
-    organizerId: user.id,
+    createdBy: user.id,
     limit: 50,
     offset: 0,
   });

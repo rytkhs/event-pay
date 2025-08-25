@@ -16,7 +16,7 @@ import type { Event, Attendance } from "@/types/models";
 
 interface ParticipantsManagementProps {
   eventId: string;
-  eventData: Event & { organizer_id: string };
+  eventData: Event;
   initialAttendances: Pick<Attendance, "id" | "status">[];
   initialPaymentsData: GetEventPaymentsResponse;
   initialParticipantsData: GetParticipantsResponse;

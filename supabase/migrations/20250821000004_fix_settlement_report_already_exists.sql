@@ -9,14 +9,14 @@
 -- Recreate function with improved logic
 CREATE OR REPLACE FUNCTION public.generate_settlement_report(
     p_event_id UUID,
-    p_organizer_id UUID
+    p_created_by UUID
 ) RETURNS TABLE (
     report_id UUID,
     already_exists BOOLEAN,
     event_id UUID,
     event_title VARCHAR(255),
     event_date DATE,
-    organizer_id UUID,
+    created_by UUID,
     stripe_account_id VARCHAR(255),
     transfer_group TEXT,
     total_stripe_sales INTEGER,
@@ -56,8 +56,8 @@ DECLARE
     v_updated_at TIMESTAMPTZ;
 BEGIN
     -- 1) Validation -----------------------------------------------------
-    IF p_event_id IS NULL OR p_organizer_id IS NULL THEN
-        RAISE EXCEPTION 'event_id and organizer_id are required';
+    IF p_event_id IS NULL OR p_created_by IS NULL THEN
+        RAISE EXCEPTION 'event_id and created_by are required';
     END IF;
 
     -- 2) Event & Stripe account check ----------------------------------
@@ -70,7 +70,7 @@ BEGIN
       FROM public.events e
       JOIN public.stripe_connect_accounts sca ON sca.user_id = e.created_by
      WHERE e.id = p_event_id
-       AND e.created_by = p_organizer_id
+       AND e.created_by = p_created_by
        AND sca.payouts_enabled = TRUE;
 
     IF NOT FOUND THEN
@@ -127,7 +127,7 @@ BEGIN
         updated_at
     ) VALUES (
         p_event_id,
-        p_organizer_id,
+        p_created_by,
         v_stripe_sales,
         v_stripe_fee,
         v_net_application_fee,
@@ -171,7 +171,7 @@ BEGIN
     event_id := p_event_id;
     event_title := v_event_data.title;
     event_date := v_event_data.date;
-    organizer_id := p_organizer_id;
+    created_by := p_created_by;
     stripe_account_id := v_event_data.stripe_account_id;
     transfer_group := v_transfer_group;
     total_stripe_sales := v_stripe_sales;

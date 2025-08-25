@@ -45,7 +45,7 @@ export async function generateSettlementReportAction(formData: FormData) {
 
     const result = await service.generateSettlementReport({
       eventId: validatedData.eventId,
-      organizerId: user.id
+      createdBy: user.id
     })
 
     if (!result.success) {
@@ -108,7 +108,7 @@ export async function getSettlementReportsAction(params: {
     const service = new SettlementReportService(supabase)
 
     const reports = await service.getSettlementReports({
-      organizerId: user.id,
+      createdBy: user.id,
       eventIds: validatedParams.eventIds,
       fromDate: validatedParams.fromDate ? new Date(validatedParams.fromDate) : undefined,
       toDate: validatedParams.toDate ? new Date(validatedParams.toDate) : undefined,
@@ -158,7 +158,7 @@ export async function exportSettlementReportsAction(params: {
     const service = new SettlementReportService(supabase)
 
     const result = await service.exportToCsv({
-      organizerId: user.id,
+      createdBy: user.id,
       eventIds: validatedParams.eventIds,
       fromDate: validatedParams.fromDate ? new Date(validatedParams.fromDate) : undefined,
       toDate: validatedParams.toDate ? new Date(validatedParams.toDate) : undefined,

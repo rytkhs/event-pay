@@ -9,7 +9,7 @@ export interface SettlementReportData {
   eventId: string
   eventTitle: string
   eventDate: string
-  organizerId: string
+  createdBy: string
   stripeAccountId: string
   transferGroup: string
   generatedAt: Date
@@ -66,14 +66,14 @@ export interface SettlementReportCsvRow {
  */
 export interface GenerateSettlementReportParams {
   eventId: string
-  organizerId: string
+  createdBy: string
 }
 
 /**
  * レポート検索パラメータ
  */
 export interface GetSettlementReportsParams {
-  organizerId: string
+  createdBy: string
   eventIds?: string[]
   fromDate?: Date
   toDate?: Date
@@ -132,7 +132,7 @@ export interface GenerateSettlementReportRpcRow {
   event_id: string;
   event_title: string;
   event_date: string;
-  organizer_id: string;
+  created_by: string;
   stripe_account_id: string;
   transfer_group: string;
   total_stripe_sales: number;

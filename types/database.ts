@@ -1138,16 +1138,16 @@ export type Database = {
         Returns: boolean
       }
       generate_settlement_report: {
-        Args: { p_event_id: string; p_organizer_id: string }
+        Args: { p_created_by: string; p_event_id: string }
         Returns: {
           already_exists: boolean
+          created_by: string
           dispute_count: number
           event_date: string
           event_id: string
           event_title: string
           generated_at: string
           net_payout_amount: number
-          organizer_id: string
           payment_count: number
           refunded_count: number
           report_id: string
@@ -1204,11 +1204,11 @@ export type Database = {
       }
       get_settlement_report_details: {
         Args: {
+          p_created_by: string
           p_event_ids?: string[]
           p_from_date?: string
           p_limit?: number
           p_offset?: number
-          p_organizer_id: string
           p_to_date?: string
         }
         Returns: {
