@@ -442,7 +442,7 @@ export class RLSGuestTokenValidator implements IGuestTokenValidator {
       // registration_deadlineはオプショナル
       ("registration_deadline" in event
         ? (event as EventInfo).registration_deadline === null ||
-          typeof (event as EventInfo).registration_deadline === "string"
+        typeof (event as EventInfo).registration_deadline === "string"
         : true)
     );
   }
@@ -484,9 +484,9 @@ export class RLSGuestTokenValidator implements IGuestTokenValidator {
     // イベント開始前かつ登録締切前かつアクティブ状態
     const isBeforeEventStart = eventDate > now;
     const isBeforeDeadline = registrationDeadline === null || registrationDeadline > now;
-    const isActive = event.status === "active";
+    const isUpcoming = event.status === "upcoming";
 
-    return isBeforeEventStart && isBeforeDeadline && isActive;
+    return isBeforeEventStart && isBeforeDeadline && isUpcoming;
   }
 
   /**
@@ -509,8 +509,8 @@ export class RLSGuestTokenValidator implements IGuestTokenValidator {
       return false;
     }
 
-    // イベントがアクティブでない場合は変更不可
-    if (event.status !== "active") {
+    // イベントが開催予定（upcoming）でない場合は変更不可
+    if (event.status !== "upcoming") {
       return false;
     }
 

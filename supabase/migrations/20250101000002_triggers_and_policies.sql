@@ -520,6 +520,7 @@ USING (
   AND EXISTS (
     SELECT 1 FROM public.events e
     WHERE e.id = attendances.event_id
+    AND e.status = 'upcoming'
     AND (e.registration_deadline IS NULL OR e.registration_deadline > NOW())
     AND e.date > NOW()
   )
@@ -530,6 +531,7 @@ WITH CHECK (
   AND EXISTS (
     SELECT 1 FROM public.events e
     WHERE e.id = attendances.event_id
+    AND e.status = 'upcoming'
     AND (e.registration_deadline IS NULL OR e.registration_deadline > NOW())
     AND e.date > NOW()
   )
@@ -572,6 +574,7 @@ USING (
     WHERE a.id = payments.attendance_id
     AND a.guest_token IS NOT NULL
     AND a.guest_token = public.get_guest_token()
+    AND e.status = 'upcoming'
     AND (e.payment_deadline IS NULL OR e.payment_deadline > NOW())
     AND e.date > NOW()
   )
@@ -583,6 +586,7 @@ WITH CHECK (
     WHERE a.id = payments.attendance_id
     AND a.guest_token IS NOT NULL
     AND a.guest_token = public.get_guest_token()
+    AND e.status = 'upcoming'
     AND (e.payment_deadline IS NULL OR e.payment_deadline > NOW())
     AND e.date > NOW()
   )

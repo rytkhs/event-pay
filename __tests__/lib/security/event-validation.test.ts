@@ -5,10 +5,7 @@
  */
 
 import { describe, it, expect, jest, beforeEach } from "@jest/globals";
-import {
-  RLSBasedGuestValidator,
-  getGuestTokenValidator,
-} from "@/lib/security/secure-client-factory.impl";
+import { RLSBasedGuestValidator } from "@/lib/security/secure-client-factory.impl";
 
 // プライベートメソッドにアクセスするためのテスト用ヘルパー
 class TestableGuestValidator extends RLSBasedGuestValidator {
@@ -44,18 +41,18 @@ describe("イベント情報バリデーション", () => {
           id: "event-123",
           date: "2024-12-31T23:59:59.000Z",
           registration_deadline: "2024-12-30T23:59:59.000Z",
-          status: "active",
+          status: "upcoming",
         },
         {
           id: "event-456",
           date: "2024-12-31T23:59:59.000Z",
           registration_deadline: null,
-          status: "active",
+          status: "upcoming",
         },
         {
           id: "event-789",
           date: "2024-12-31T23:59:59.000Z",
-          status: "active",
+          status: "upcoming",
           // registration_deadline は存在しない
         },
       ];
@@ -75,14 +72,14 @@ describe("イベント情報バリデーション", () => {
         {},
         { id: "event-123" }, // date, status が不足
         { id: "event-123", date: "2024-12-31T23:59:59.000Z" }, // status が不足
-        { id: "event-123", status: "active" }, // date が不足
-        { id: 123, date: "2024-12-31T23:59:59.000Z", status: "active" }, // id が文字列でない
-        { id: "event-123", date: 123, status: "active" }, // date が文字列でない
+        { id: "event-123", status: "upcoming" }, // date が不足
+        { id: 123, date: "2024-12-31T23:59:59.000Z", status: "upcoming" }, // id が文字列でない
+        { id: "event-123", date: 123, status: "upcoming" }, // date が文字列でない
         { id: "event-123", date: "2024-12-31T23:59:59.000Z", status: 123 }, // status が文字列でない
         {
           id: "event-123",
           date: "2024-12-31T23:59:59.000Z",
-          status: "active",
+          status: "upcoming",
           registration_deadline: 123, // registration_deadline が文字列でもnullでもない
         },
       ];
@@ -127,7 +124,7 @@ describe("イベント情報バリデーション", () => {
   describe("checkCanModify ビジネスロジック", () => {
     beforeEach(() => {
       // コンソール警告をモック
-      jest.spyOn(console, "warn").mockImplementation(() => {});
+      jest.spyOn(console, "warn").mockImplementation(() => { });
     });
 
     afterEach(() => {
@@ -144,7 +141,7 @@ describe("イベント情報バリデーション", () => {
         id: "event-123",
         date: futureDate.toISOString(),
         registration_deadline: nearFutureDate.toISOString(),
-        status: "active",
+        status: "upcoming",
       };
 
       expect(validator.testCheckCanModify(modifiableEvent)).toBe(true);
@@ -158,7 +155,7 @@ describe("イベント情報バリデーション", () => {
         id: "event-123",
         date: pastDate.toISOString(),
         registration_deadline: null,
-        status: "active",
+        status: "upcoming",
       };
 
       expect(validator.testCheckCanModify(pastEvent)).toBe(false);
@@ -173,7 +170,7 @@ describe("イベント情報バリデーション", () => {
         id: "event-123",
         date: futureDate.toISOString(),
         registration_deadline: pastDeadline.toISOString(),
-        status: "active",
+        status: "upcoming",
       };
 
       expect(validator.testCheckCanModify(expiredEvent)).toBe(false);
@@ -203,7 +200,7 @@ describe("イベント情報バリデーション", () => {
         {
           id: "event-123",
           date: "invalid-date",
-          status: "active",
+          status: "upcoming",
         }, // 無効な日付形式
       ];
 
@@ -221,7 +218,7 @@ describe("イベント情報バリデーション", () => {
       const eventWithoutDeadline = {
         id: "event-123",
         date: futureDate.toISOString(),
-        status: "active",
+        status: "upcoming",
         // registration_deadline なし
       };
 
@@ -231,7 +228,7 @@ describe("イベント情報バリデーション", () => {
         id: "event-123",
         date: futureDate.toISOString(),
         registration_deadline: null,
-        status: "active",
+        status: "upcoming",
       };
 
       expect(validator.testCheckCanModify(eventWithNullDeadline)).toBe(true);
@@ -240,12 +237,12 @@ describe("イベント情報バリデーション", () => {
 
   describe("エラーハンドリング", () => {
     it("無効な日付形式で適切な警告を出力するべき", () => {
-      const consoleSpy = jest.spyOn(console, "warn").mockImplementation(() => {});
+      const consoleSpy = jest.spyOn(console, "warn").mockImplementation(() => { });
 
       const eventWithInvalidDate = {
         id: "event-123",
         date: "invalid-date-format",
-        status: "active",
+        status: "upcoming",
       };
 
       const result = validator.testCheckCanModify(eventWithInvalidDate);
@@ -257,7 +254,7 @@ describe("イベント情報バリデーション", () => {
     });
 
     it("無効な登録締切形式で適切な警告を出力するべき", () => {
-      const consoleSpy = jest.spyOn(console, "warn").mockImplementation(() => {});
+      const consoleSpy = jest.spyOn(console, "warn").mockImplementation(() => { });
 
       const now = new Date();
       const futureDate = new Date(now.getTime() + 86400000);
@@ -266,7 +263,7 @@ describe("イベント情報バリデーション", () => {
         id: "event-123",
         date: futureDate.toISOString(),
         registration_deadline: "invalid-deadline-format",
-        status: "active",
+        status: "upcoming",
       };
 
       const result = validator.testCheckCanModify(eventWithInvalidDeadline);
