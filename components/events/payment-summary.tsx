@@ -55,7 +55,7 @@ export function PaymentSummary({ summary, isLoading = false }: PaymentSummaryPro
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          決済状況
+          決済状況（イベント全体）
           {hasUnpaidPayments && (
             <Badge variant="destructive" className="ml-2">
               <AlertTriangle className="w-3 h-3 mr-1" />

@@ -39,7 +39,7 @@ export async function getEventPaymentsAction(eventId: string): Promise<GetEventP
       paid_at,
       created_at,
       updated_at,
-      attendances!inner()
+      attendances!inner(event_id)
     `
     )
     .eq("attendances.event_id", validatedEventId);

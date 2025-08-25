@@ -87,15 +87,22 @@ export async function exportParticipantsCsvAction(
       `)
       .eq("event_id", validatedEventId)
       // 最新の決済 1 件に絞る
-      .order("updated_at", { foreignTable: "payments", ascending: false })
+      // 優先順位: 1) paid_at DESC (NULL は後ろ) 2) created_at DESC 3) updated_at DESC
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .order("paid_at", {
+        foreignTable: "payments",
+        ascending: false,
+        nullsFirst: false,
+      } as any)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .order("created_at", { foreignTable: "payments", ascending: false } as any)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .order("updated_at", { foreignTable: "payments", ascending: false } as any)
       .limit(1, { foreignTable: "payments" })
 
     // フィルター適用
     if (filters?.search) {
-      const escapeForPostgrest = (value: string) => {
-        return `"${value.replace(/"/g, '""')}"`;
-      };
-      const pattern = escapeForPostgrest(`%${filters.search}%`);
+      const pattern = `%${filters.search}%`;
       query = query.or(`nickname.ilike.${pattern},email.ilike.${pattern}`);
     }
 

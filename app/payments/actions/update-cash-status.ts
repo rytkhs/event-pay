@@ -91,36 +91,15 @@ export async function updateCashStatusAction(
       // レート制限でのストア初期化失敗時はスキップ（安全側）
     }
 
-    // 対象決済の取得（主催者権限チェックは Validator に委譲）
-    const { data: paymentWithEvent, error: fetchError } = await supabase
-      .from("payments")
-      .select(`id, method, status, attendance_id`)
-      .eq("id", paymentId)
-      .single();
-
-    if (fetchError || !paymentWithEvent) {
-      return createErrorResponse(ERROR_CODES.NOT_FOUND, "決済レコードが見つかりません。");
-    }
-
-    // 基本的な権限チェック（RPC関数内でも再チェックされる）
-    await new PaymentValidator(supabase).validateAttendanceAccess(
-      paymentWithEvent.attendance_id,
-      user.id
-    );
-
-    if (paymentWithEvent.method !== "cash") {
-      return createErrorResponse(
-        ERROR_CODES.BUSINESS_RULE_VIOLATION,
-        "現金決済以外は手動更新できません。"
-      );
-    }
-
-    // 現在のバージョンを取得（権限チェックも兼ねる）
-    const { data: currentPayment, error: fetchPaymentError } = await supabase
+    // 対象決済の取得（権限・バージョン・メソッド判定をまとめて取得）
+    const { data: payment, error: fetchError } = await supabase
       .from("payments")
       .select(`
+        id,
         version,
         method,
+        status,
+        attendance_id,
         attendances!inner (
           id,
           events!inner (
@@ -132,24 +111,26 @@ export async function updateCashStatusAction(
       .eq("id", paymentId)
       .single();
 
-    if (fetchPaymentError || !currentPayment) {
+    if (fetchError || !payment) {
       return createErrorResponse(ERROR_CODES.NOT_FOUND, "決済レコードが見つかりません。");
     }
 
+    // 基本的な権限チェック（RPC関数内でも再チェックされる）
+    await new PaymentValidator(supabase).validateAttendanceAccess(
+      payment.attendance_id,
+      user.id
+    );
+
     // 権限チェック：主催者のみ
-    const attendance = Array.isArray(currentPayment.attendances)
-      ? currentPayment.attendances[0]
-      : currentPayment.attendances;
-    const event = Array.isArray(attendance.events)
-      ? attendance.events[0]
-      : attendance.events;
+    const attendance = Array.isArray(payment.attendances) ? payment.attendances[0] : payment.attendances;
+    const event = Array.isArray(attendance.events) ? attendance.events[0] : attendance.events;
 
     if (event.created_by !== user.id) {
       return createErrorResponse(ERROR_CODES.FORBIDDEN, "この操作を実行する権限がありません。");
     }
 
     // 現金決済のみ
-    if (currentPayment.method !== "cash") {
+    if (payment.method !== "cash") {
       return createErrorResponse(
         ERROR_CODES.BUSINESS_RULE_VIOLATION,
         "現金決済以外は手動更新できません。"
@@ -181,7 +162,7 @@ export async function updateCashStatusAction(
     const { data: _rpcResult, error: rpcError } = await admin.rpc('rpc_update_payment_status_safe', {
       p_payment_id: paymentId,
       p_new_status: status,
-      p_expected_version: currentPayment.version,
+      p_expected_version: payment.version,
       p_user_id: user.id,
       p_notes: notes || null,
     });
