@@ -67,8 +67,7 @@ BEGIN
     -- 参加ステータスを更新
     UPDATE public.attendances
     SET
-      status = p_status,
-      updated_at = NOW()
+      status = p_status
     WHERE id = p_attendance_id;
 
     -- 決済レコードの処理
@@ -87,8 +86,7 @@ BEGIN
           UPDATE public.payments
           SET
             method = p_payment_method,
-            amount = p_event_fee,
-            updated_at = NOW()
+            amount = p_event_fee
           WHERE id = v_payment_id;
         ELSE
           -- 未決済系ステータスは pending へリセット
@@ -96,8 +94,7 @@ BEGIN
           SET
             method = p_payment_method,
             amount = p_event_fee,
-            status = 'pending',
-            updated_at = NOW()
+            status = 'pending'
           WHERE id = v_payment_id;
         END IF;
       ELSE
@@ -106,16 +103,12 @@ BEGIN
           attendance_id,
           amount,
           method,
-          status,
-          created_at,
-          updated_at
+          status
         ) VALUES (
           p_attendance_id,
           p_event_fee,
           p_payment_method,
-          'pending',
-          NOW(),
-          NOW()
+          'pending'
         );
       END IF;
     ELSIF p_status != 'attending' THEN
@@ -134,7 +127,7 @@ BEGIN
         ELSIF v_payment_status IN ('paid', 'received', 'completed') THEN
           IF v_payment_method = 'cash' THEN
             UPDATE public.payments
-            SET status = 'refunded', updated_at = NOW()
+            SET status = 'refunded'
             WHERE id = v_payment_id;
             INSERT INTO public.system_logs(operation_type, details)
             VALUES ('cash_refund_recorded', jsonb_build_object('attendanceId', p_attendance_id, 'paymentId', v_payment_id));

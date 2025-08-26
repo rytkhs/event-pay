@@ -101,6 +101,7 @@ export interface CsvExportResult {
   csvContent?: string
   filename?: string
   error?: string
+  truncated?: boolean
 }
 
 export interface RpcSettlementReportRow {

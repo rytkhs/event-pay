@@ -179,8 +179,7 @@ BEGIN
   -- 参加ステータスを更新
   UPDATE public.attendances
   SET
-    status = p_status,
-    updated_at = NOW()
+    status = p_status
   WHERE id = p_attendance_id;
 
   -- 決済レコードの処理
@@ -198,8 +197,7 @@ BEGIN
       SET
         method = p_payment_method,
         amount = p_event_fee,
-        status = 'pending',
-        updated_at = NOW()
+        status = 'pending'
       WHERE id = v_payment_id;
     ELSE
       -- 新しい決済レコードを作成
@@ -207,16 +205,12 @@ BEGIN
         attendance_id,
         amount,
         method,
-        status,
-        created_at,
-        updated_at
+        status
       ) VALUES (
         p_attendance_id,
         p_event_fee,
         p_payment_method,
-        'pending',
-        NOW(),
-        NOW()
+        'pending'
       );
     END IF;
   ELSIF p_status != 'attending' THEN
@@ -241,7 +235,7 @@ BEGIN
         IF v_payment_method = 'cash' THEN
           -- 現金は即時にrefundedへ
           UPDATE public.payments
-          SET status = 'refunded', updated_at = NOW()
+          SET status = 'refunded'
           WHERE id = v_payment_id;
           -- 監査ログ
           INSERT INTO public.system_logs(operation_type, details)

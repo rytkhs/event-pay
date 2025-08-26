@@ -27,7 +27,6 @@ as $$
 begin
     update public.payouts
     set status             = _to_status,
-        updated_at         = now(),
         processed_at       = coalesce(_processed_at, processed_at),
         transfer_group     = coalesce(_transfer_group, transfer_group),
         last_error         = coalesce(_last_error, last_error),

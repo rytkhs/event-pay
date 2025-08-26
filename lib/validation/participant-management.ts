@@ -127,6 +127,42 @@ export const ExportParticipantsCsvParamsSchema = z.object({
 
 export type ExportParticipantsCsvParams = z.infer<typeof ExportParticipantsCsvParamsSchema>;
 
+// 全件選択用（現金決済の最新レコードに限定）パラメータ
+export const GetAllCashPaymentIdsParamsSchema = z.object({
+  eventId: z.string().uuid(),
+  filters: z
+    .object({
+      search: SearchQuerySchema,
+      attendanceStatus: AttendanceStatusFilterSchema,
+      // paymentMethod はサーバー側で cash を強制するため受け取らない
+      paymentStatus: PaymentStatusFilterSchema,
+    })
+    .optional(),
+  // 取得上限（+1 で打ち切り判定に利用）。過度なメモリ消費を避けるため 5000 に制限
+  max: z
+    .number()
+    .int()
+    .min(1)
+    .max(5000)
+    .default(5000),
+});
+
+export type GetAllCashPaymentIdsParams = z.infer<typeof GetAllCashPaymentIdsParamsSchema>;
+
+export const GetAllCashPaymentIdsResponseSchema = z.object({
+  success: z.literal(true),
+  paymentIds: z.array(z.string().uuid()),
+  total: z.number().int().min(0),
+  truncated: z.boolean().optional(),
+}).or(
+  z.object({
+    success: z.literal(false),
+    error: z.string(),
+  })
+);
+
+export type GetAllCashPaymentIdsResponse = z.infer<typeof GetAllCashPaymentIdsResponseSchema>;
+
 // 一括現金ステータス更新パラメータ
 export const BulkUpdateCashStatusParamsSchema = z.object({
   paymentIds: z.array(z.string().uuid()).min(1).max(50), // 一度に最大50件

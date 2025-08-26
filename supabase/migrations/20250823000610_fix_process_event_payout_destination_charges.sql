@@ -53,8 +53,7 @@ BEGIN
             UPDATE public.payouts
             SET status = 'pending',
                 processed_at = NULL,
-                last_error = NULL,
-                updated_at = now()
+                last_error = NULL
             WHERE id = payout_id
             RETURNING id INTO payout_id;
 
@@ -120,8 +119,7 @@ EXCEPTION
                 UPDATE public.payouts
                 SET status = 'pending',
                     processed_at = NULL,
-                    last_error = NULL,
-                    updated_at = now()
+                    last_error = NULL
                 WHERE id = payout_id;
             END IF;
             RETURN payout_id;

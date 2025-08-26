@@ -42,12 +42,12 @@ export function useEventSort(options: UseEventSortOptions = {}) {
 
       switch (sortOptions.sortBy) {
         case "date":
-          // 日付文字列を直接比較（ISO文字列、date-fns-tz統一）
-          comparison = a.date.localeCompare(b.date);
+          // ISO 文字列に依存せずタイムスタンプで比較
+          comparison = new Date(a.date).getTime() - new Date(b.date).getTime();
           break;
         case "created_at":
-          // 日付文字列を直接比較（ISO文字列、date-fns-tz統一）
-          comparison = a.created_at.localeCompare(b.created_at);
+          // ISO 文字列に依存せずタイムスタンプで比較
+          comparison = new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
           break;
         case "attendances_count":
           // 参加者数はクライアントサイドで計算（集計値のため）

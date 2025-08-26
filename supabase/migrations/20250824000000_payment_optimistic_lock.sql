@@ -15,7 +15,6 @@ BEGIN
   IF TG_OP = 'UPDATE' AND OLD.version = NEW.version THEN
     NEW.version = OLD.version + 1;
   END IF;
-  NEW.updated_at = now();
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
