@@ -129,7 +129,7 @@ export async function createGuestStripeSessionAction(
       attendanceId: attendance.id,
       amount: amountToCharge,
       eventId: event.id,
-      userId: attendance.id,
+      actorId: attendance.id,
       eventTitle: event.title,
       successUrl,
       cancelUrl,

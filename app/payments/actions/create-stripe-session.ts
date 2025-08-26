@@ -221,7 +221,7 @@ export async function createStripeSessionAction(
       attendanceId: params.attendanceId,
       amount: params.amount,
       eventId: event.id,
-      userId: user.id,
+      actorId: user.id,
       eventTitle: event.title,
       successUrl: params.successUrl,
       cancelUrl: params.cancelUrl,

@@ -107,7 +107,7 @@ describe("PaymentService - Destination charges", () => {
       attendanceId: "attendance-123",
       amount: 1000,
       eventId: "event-123",
-      userId: "user-123",
+      actorId: "user-123",
       eventTitle: "Test Event",
       successUrl: "https://example.com/success",
       cancelUrl: "https://example.com/cancel",
@@ -145,7 +145,7 @@ describe("PaymentService - Destination charges", () => {
         email: "test@example.com",
         name: "Test User",
         metadata: {
-          user_id: "user-123",
+          actor_id: "user-123",
           event_id: "event-123",
         },
       });
@@ -159,7 +159,7 @@ describe("PaymentService - Destination charges", () => {
         customerId: "cus_test123",
         successUrl: "https://example.com/success",
         cancelUrl: "https://example.com/cancel",
-        userId: "user-123",
+        actorId: "user-123",
         metadata: {
           payment_id: "payment-123",
           attendance_id: "attendance-123",
