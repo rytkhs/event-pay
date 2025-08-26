@@ -3,6 +3,8 @@ import { validateGuestToken, type GuestAttendanceData } from "@/lib/utils/guest-
 import { handleRateLimit, type RateLimitErrorResponse } from "@/lib/rate-limit-middleware";
 import { RATE_LIMIT_CONFIG } from "@/config/security";
 import { logger } from "@/lib/logging/app-logger";
+import { logInvalidTokenAccess } from "@/lib/security/security-logger";
+import { getClientIP } from "@/lib/utils/ip-detection";
 
 export interface GuestValidationResponse {
   success: boolean;
@@ -10,7 +12,10 @@ export interface GuestValidationResponse {
     attendance: GuestAttendanceData;
     canModify: boolean;
   };
-  error?: string;
+  error?: {
+    code: string;
+    message: string;
+  };
 }
 
 /**
@@ -33,7 +38,10 @@ export async function GET(
       return NextResponse.json(
         {
           success: false,
-          error: "ゲストトークンが必要です",
+          error: {
+            code: "MISSING_TOKEN",
+            message: "ゲストトークンが必要です",
+          },
         },
         { status: 400 }
       );
@@ -43,10 +51,22 @@ export async function GET(
     const result = await validateGuestToken(token);
 
     if (!result.isValid || !result.attendance) {
+      // セキュリティログ（トークンは内部でマスクされる）
+      const userAgent = request.headers.get("user-agent") || undefined;
+      const ip = getClientIP(request);
+      logInvalidTokenAccess(token, "guest", { userAgent, ip });
+
+      const errorCode = (result.errorMessage || "").includes("見つかりません")
+        ? "TOKEN_NOT_FOUND"
+        : "INVALID_TOKEN";
+
       return NextResponse.json(
         {
           success: false,
-          error: result.errorMessage || "無効なゲストトークンです",
+          error: {
+            code: errorCode,
+            message: result.errorMessage || "無効なゲストトークンです",
+          },
         },
         { status: 404 }
       );
@@ -70,7 +90,10 @@ export async function GET(
     return NextResponse.json(
       {
         success: false,
-        error: "参加データの取得中にエラーが発生しました",
+        error: {
+          code: "INTERNAL_ERROR",
+          message: "参加データの取得中にエラーが発生しました",
+        },
       },
       { status: 500 }
     );
