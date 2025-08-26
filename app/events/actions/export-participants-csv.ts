@@ -32,9 +32,7 @@ export async function exportParticipantsCsvAction(
   try {
     // パラメータバリデーション
     const validatedParams = ExportParticipantsCsvParamsSchema.parse(params);
-    const { eventId, filters, columns: inputColumns } = validatedParams;
-
-    const columns = inputColumns;
+    const { eventId, filters, columns } = validatedParams;
 
     // IP アドレス取得（情報ログ用）
     const headersList = headers();
@@ -124,7 +122,8 @@ export async function exportParticipantsCsvAction(
 
     // データ取得（ページネーションなし - 全件取得）
     // ただし、大量データ対策として上限を設定
-    query = query.limit(1000); // 最大1,000件
+    // 1,001 件まで取得して "上限超過を厳密判定" する
+    query = query.limit(1001); // 最大1,001件 (+1 行オーバーフェッチ)
 
     const { data: participants, error: queryError } = await query;
 
@@ -161,8 +160,14 @@ export async function exportParticipantsCsvAction(
       };
     }
 
+    // 切り捨て判定 (+1 行オーバーフェッチ方式)
+    const truncated = participants.length > 1000;
+
+    // CSV に含めるデータ (最大 1,000 行)
+    const csvSource = truncated ? (participants as any[]).slice(0, 1000) : (participants as any[]);
+
     // CSV生成
-    const csvContent = generateCsvContent(participants as any[], columns);
+    const csvContent = generateCsvContent(csvSource, columns);
 
     // ファイル名生成（participants-<eventId>-<yyyymmdd>.csv）
     const now = new Date();
@@ -177,7 +182,7 @@ export async function exportParticipantsCsvAction(
       details: {
         event_id: validatedEventId,
         user_id: user.id,
-        participant_count: participants.length,
+        participant_count: csvSource.length,
         filters: filters || {},
         columns,
         filename: filename,
@@ -188,7 +193,7 @@ export async function exportParticipantsCsvAction(
     logger.info("Participants CSV export completed", {
       eventId: validatedEventId,
       userId: user.id,
-      participantCount: participants.length,
+      participantCount: csvSource.length,
       filename: filename
     });
 
@@ -196,7 +201,7 @@ export async function exportParticipantsCsvAction(
       success: true,
       csvContent,
       filename,
-      truncated: participants.length === 1000,
+      truncated,
     };
 
   } catch (error) {
@@ -339,11 +344,21 @@ function generateCsvContent(
  * セルの先頭が = + - @ \t などの場合、単一引用符 (') を付与して数式評価を防止する。
  */
 function sanitizeCsvValue(raw: string): string {
-  // 先頭に空白(半角/全角)や制御文字が続いた後に = + - @ \t が現れる場合も Excel は数式として評価するため、
-  // \s は U+0009–U+000D, U+0020, U+00A0 などを含む。追加で制御文字(0x00-0x1F)を広くカバー。
-  // 例: " =SUM(...)" → 単一引用符付与
+  // Excel CSV Injection 対策
+  // 1. 既に先頭が単一引用符（'）で始まる場合でも、一部環境では式と解釈される既知バグがある。
+  //    → 追加でもう 1 文字の単一引用符を付与し、"''=FORMULA" の形に変換してリテラル扱いを強制する。
+  // 2. 先頭に空白/制御文字が続いた後に = + - @ \t が来る場合も数式評価されるため、従来どおり ' を付与。
+  //    \s は U+0009–U+000D, U+0020, U+00A0 などを含む。追加で制御文字(0x00-0x1F)を広くカバー。
+
+  // ケース 1: 先頭が ' で始まる
+  if (/^'/u.test(raw)) {
+    return `''${raw}`;
+  }
+
+  // ケース 2: 空白/制御文字 + リスク文字
   if (/^[\s\x00-\x1F]*[=+\-@\t]/u.test(raw)) {
     return `'${raw}`;
   }
+
   return raw;
 }

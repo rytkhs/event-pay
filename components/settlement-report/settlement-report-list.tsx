@@ -110,6 +110,14 @@ export function SettlementReportList({
           title: "エクスポート完了",
           description: `${result.filename} をダウンロードしました`,
         });
+
+        if ((result as any).truncated) {
+          toast({
+            title: "注意: 一部データを省略",
+            description:
+              "1,001 件以上のデータが存在したため、先頭 1,000 件のみを出力しました。フィルターで範囲を絞って再度エクスポートしてください。",
+          });
+        }
       } else {
         toast({
           title: "エクスポートエラー",
