@@ -8,9 +8,8 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { Database } from "@/types/database";
 import {
   type ServerActionResult,
-  createErrorResponse,
-  createSuccessResponse,
-  ERROR_CODES,
+  createServerActionError,
+  createServerActionSuccess,
 } from "@/lib/types/server-actions";
 
 const inputSchema = z.object({
@@ -42,7 +41,7 @@ export async function getSettlementHistoryAction(
     // 1) 入力検証
     const parsed = inputSchema.safeParse(input);
     if (!parsed.success) {
-      return createErrorResponse(ERROR_CODES.VALIDATION_ERROR, "入力データが無効です。", {
+      return createServerActionError("VALIDATION_ERROR", "入力データが無効です。", {
         zodErrors: parsed.error.errors,
       });
     }
@@ -56,7 +55,7 @@ export async function getSettlementHistoryAction(
       error: authError,
     } = await supabase.auth.getUser();
     if (authError || !user) {
-      return createErrorResponse(ERROR_CODES.UNAUTHORIZED, "認証が必要です。");
+      return createServerActionError("UNAUTHORIZED", "認証が必要です。");
     }
 
     // 3) サービス初期化（RLS適用: 認証済みクライアントを使用）
@@ -89,9 +88,9 @@ export async function getSettlementHistoryAction(
       isManual: typeof p.notes === "string" ? p.notes.includes("手動実行") : false,
     }));
 
-    return createSuccessResponse({ items });
+    return createServerActionSuccess({ items });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
-    return createErrorResponse(ERROR_CODES.DATABASE_ERROR, message);
+    return createServerActionError("DATABASE_ERROR", message);
   }
 }

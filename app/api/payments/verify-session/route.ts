@@ -11,6 +11,7 @@ import { logger } from "@/lib/logging/app-logger";
 import { logSecurityEvent } from "@/lib/security/security-logger";
 import { createRateLimitStore, checkRateLimit } from "@/lib/rate-limit";
 import { z } from "zod";
+import { createProblemResponse, createQueryValidationError } from "@/lib/api/problem-details";
 
 // リクエストバリデーションスキーマ
 const VerifySessionSchema = z.object({
@@ -87,13 +88,10 @@ export async function GET(request: NextRequest) {
     });
 
     if (!rateLimitResult.allowed) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: "リクエストが多すぎます。しばらく待ってから再試行してください。",
-        },
-        { status: 429 }
-      );
+      return createProblemResponse("RATE_LIMITED", {
+        instance: "/api/payments/verify-session",
+        retryable: true,
+      });
     }
 
     // 4. 残りのパラメータを取得
@@ -107,13 +105,15 @@ export async function GET(request: NextRequest) {
     });
 
     if (!validationResult.success) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: "無効なパラメータです",
-        },
-        { status: 400 }
+      const errors = validationResult.error.errors.map(err =>
+        createQueryValidationError(err.path[0] as string, "VALIDATION_ERROR", err.message)
       );
+
+      return createProblemResponse("VALIDATION_ERROR", {
+        instance: "/api/payments/verify-session",
+        detail: "リクエストパラメータの検証に失敗しました",
+        errors,
+      });
     }
 
     const { session_id, attendance_id } = validationResult.data;
@@ -155,13 +155,9 @@ export async function GET(request: NextRequest) {
       });
 
       // 突合不一致時は情報を返さない
-      return NextResponse.json(
-        {
-          success: false,
-          error: "決済セッションが見つかりません",
-        },
-        { status: 404 }
-      );
+      return createProblemResponse("PAYMENT_SESSION_NOT_FOUND", {
+        instance: "/api/payments/verify-session",
+      });
     }
 
     // DB一致後にのみStripe Checkout Sessionを取得
@@ -177,13 +173,10 @@ export async function GET(request: NextRequest) {
         error: stripeError instanceof Error ? stripeError.message : String(stripeError),
       });
 
-      return NextResponse.json(
-        {
-          success: false,
-          error: "決済セッションが見つかりません",
-        },
-        { status: 404 }
-      );
+      return createProblemResponse("PAYMENT_SESSION_NOT_FOUND", {
+        instance: "/api/payments/verify-session",
+        detail: "Stripe決済セッションの取得に失敗しました",
+      });
     }
 
     // セッションステータスから決済状況を判定
@@ -254,12 +247,8 @@ export async function GET(request: NextRequest) {
       error_message: error instanceof Error ? error.message : String(error),
     });
 
-    return NextResponse.json(
-      {
-        success: false,
-        error: "内部エラーが発生しました",
-      },
-      { status: 500 }
-    );
+    return createProblemResponse("INTERNAL_ERROR", {
+      instance: "/api/payments/verify-session",
+    });
   }
 }
