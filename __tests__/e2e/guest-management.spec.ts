@@ -103,7 +103,7 @@ test.describe("ゲスト自己管理ページ", () => {
           data: {
             attendanceId: "attendance-123",
             status: "not_attending",
-            requiresPayment: false,
+            requiresAdditionalPayment: false,
           },
         }),
       });
@@ -146,7 +146,7 @@ test.describe("ゲスト自己管理ページ", () => {
             attendanceId: "attendance-123",
             status: "attending",
             paymentMethod: "cash",
-            requiresPayment: true,
+            requiresAdditionalPayment: true,
           },
         }),
       });

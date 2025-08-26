@@ -26,7 +26,7 @@ const mockEventDetail: EventDetail = {
 const mockRegistrationDataAttending: RegisterParticipationData = {
   attendanceId: "test-attendance-id",
   guestToken: "test-guest-token-123456789",
-  requiresPayment: true,
+  requiresAdditionalPayment: true,
   eventTitle: "テストイベント",
   participantNickname: "テストユーザー",
   participantEmail: "test@example.com",
@@ -37,7 +37,7 @@ const mockRegistrationDataAttending: RegisterParticipationData = {
 const mockRegistrationDataNotAttending: RegisterParticipationData = {
   attendanceId: "test-attendance-id-2",
   guestToken: "test-guest-token-987654321",
-  requiresPayment: false,
+  requiresAdditionalPayment: false,
   eventTitle: "テストイベント",
   participantNickname: "テストユーザー2",
   participantEmail: "test2@example.com",
@@ -47,7 +47,7 @@ const mockRegistrationDataNotAttending: RegisterParticipationData = {
 const mockRegistrationDataCash: RegisterParticipationData = {
   attendanceId: "test-attendance-id-3",
   guestToken: "test-guest-token-cash123",
-  requiresPayment: true,
+  requiresAdditionalPayment: true,
   eventTitle: "テストイベント",
   participantNickname: "テストユーザー3",
   participantEmail: "test3@example.com",

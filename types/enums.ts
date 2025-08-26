@@ -234,15 +234,6 @@ export const EVENT_STATUS_LABELS: Record<EventStatus, string> = {
 };
 
 /**
- * PaymentMethodの日本語表示名
- */
-export const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
-  stripe: "クレジットカード",
-  cash: "現金",
-  free: "無料",
-};
-
-/**
  * PaymentStatusの日本語表示名
  */
 export const PAYMENT_STATUS_LABELS: Record<PaymentStatus, string> = {
