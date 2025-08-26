@@ -36,6 +36,7 @@ export interface GuestAttendanceData {
     capacity: number | null;
     registration_deadline: string | null;
     payment_deadline: string | null;
+    status: Database["public"]["Enums"]["event_status_enum"];
     created_by: string;
   };
   payment?: {
@@ -99,44 +100,11 @@ export async function validateGuestToken(guestToken: string): Promise<GuestToken
  * RLS形式のデータを従来形式に変換
  */
 function convertToLegacyFormat(rlsData: RLSGuestAttendanceData): GuestAttendanceData {
+  // RLS から取得した event オブジェクトをそのまま使用し、status を保持する
   return {
     ...rlsData,
-    event: {
-      ...rlsData.event,
-      // statusフィールドを除外（従来形式には含まれていない）
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      status: undefined,
-    } as GuestAttendanceData["event"],
+    event: rlsData.event as GuestAttendanceData["event"],
   };
-}
-
-/**
- * 参加状況を変更可能かどうかを判定する（従来互換）
- *
- * 注意: この関数は後方互換性のために残されています。
- * 新しいコードではRLSGuestTokenValidatorの使用を推奨します。
- *
- * @param event イベントデータ
- * @returns 変更可能かどうか
- */
-function _checkCanModifyAttendance(event: GuestAttendanceData["event"]): boolean {
-  const now = new Date();
-
-  // 登録締切が設定されている場合、締切を過ぎていれば変更不可
-  if (event.registration_deadline) {
-    const deadline = new Date(event.registration_deadline);
-    if (now > deadline) {
-      return false;
-    }
-  }
-
-  // イベント開始時刻を過ぎていれば変更不可
-  const eventDate = new Date(event.date);
-  if (now > eventDate) {
-    return false;
-  }
-
-  return true;
 }
 
 /**
@@ -176,15 +144,10 @@ export function generateGuestToken(): string {
  * 移行状況:
  * ✅ validateGuestToken() - RLSベースの実装に移行済み
  * ✅ generateGuestToken() - 変更なし（既に安全）
- * ✅ _checkCanModifyAttendance() - 後方互換性のために保持
  *
  * 新しいコードでの推奨事項:
  * - getRLSGuestTokenValidator()を使用してバリデーターを取得
  * - 直接RLSベースのメソッドを使用
  * - 新しいエラーハンドリングシステムを活用
  *
- * 廃止予定:
- * - _checkCanModifyAttendance() - RLSGuestTokenValidatorのメソッドを使用
- * - GuestAttendanceData型 - RLSGuestAttendanceData型を使用
- * - GuestTokenValidationResult型 - RLSGuestTokenValidationResult型を使用
  */

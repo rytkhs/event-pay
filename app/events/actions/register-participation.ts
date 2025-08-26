@@ -34,7 +34,7 @@ import type { Database } from "@/types/database";
 export interface RegisterParticipationData {
   attendanceId: string;
   guestToken: string;
-  requiresPayment: boolean;
+  requiresAdditionalPayment: boolean;
   eventTitle: string;
   participantNickname: string;
   participantEmail: string;
@@ -377,13 +377,13 @@ export async function registerParticipationAction(
     const newAttendanceId = await executeRegistration(processedData, event, securityContext);
 
     // 6. 決済が必要かどうかの判定
-    const requiresPayment = participationData.attendanceStatus === "attending" && event.fee > 0;
+    const requiresAdditionalPayment = participationData.attendanceStatus === "attending" && event.fee > 0;
 
     // 7. 成功レスポンスの作成
     const responseData: RegisterParticipationData = {
       attendanceId: newAttendanceId,
       guestToken: processedData.guestToken,
-      requiresPayment,
+      requiresAdditionalPayment,
       eventTitle: event.title,
       participantNickname: processedData.sanitizedNickname,
       participantEmail: processedData.sanitizedEmail,

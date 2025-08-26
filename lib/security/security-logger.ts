@@ -226,6 +226,29 @@ export function logInvalidTokenAccess(
 }
 
 /**
+ * ゲストページで予期しないエラーが発生した際のログ
+ * 無効トークンか内部エラーか判別できないケースをこのタグで区別する
+ */
+export function logUnexpectedGuestPageError(
+  token: string,
+  error: unknown,
+  request?: {
+    userAgent?: string;
+    ip?: string;
+  }
+): void {
+  logParticipationSecurityEvent(
+    "SUSPICIOUS_ACTIVITY",
+    "Unexpected error occurred on guest page",
+    {
+      maskedToken: maskToken(token),
+      errorName: error instanceof Error ? error.name : "Unknown",
+    },
+    request
+  );
+}
+
+/**
  * イベントタイプに基づいて重要度を決定します
  * @param type イベントタイプ
  * @returns 重要度

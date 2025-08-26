@@ -227,7 +227,7 @@ describe("updateGuestAttendanceAction", () => {
 
       expect(result.success).toBe(true);
       expect(result.data?.status).toBe("not_attending");
-      expect(result.data?.requiresPayment).toBe(false);
+      expect(result.data?.requiresAdditionalPayment).toBe(false);
 
       expect(mockSupabase.rpc).toHaveBeenCalledWith("update_guest_attendance_with_payment", {
         p_attendance_id: "attendance-123",
@@ -248,7 +248,7 @@ describe("updateGuestAttendanceAction", () => {
       expect(result.success).toBe(true);
       expect(result.data?.status).toBe("attending");
       expect(result.data?.paymentMethod).toBe("cash");
-      expect(result.data?.requiresPayment).toBe(true);
+      expect(result.data?.requiresAdditionalPayment).toBe(true);
 
       expect(mockSupabase.rpc).toHaveBeenCalledWith("update_guest_attendance_with_payment", {
         p_attendance_id: "attendance-123",
@@ -279,7 +279,7 @@ describe("updateGuestAttendanceAction", () => {
 
       expect(result.success).toBe(true);
       expect(result.data?.status).toBe("attending");
-      expect(result.data?.requiresPayment).toBe(false);
+      expect(result.data?.requiresAdditionalPayment).toBe(false);
 
       expect(mockSupabase.rpc).toHaveBeenCalledWith("update_guest_attendance_with_payment", {
         p_attendance_id: "attendance-123",

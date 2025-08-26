@@ -17,7 +17,7 @@ CREATE OR REPLACE FUNCTION public.register_attendance_with_payment(
   p_status public.attendance_status_enum,
   p_guest_token VARCHAR,
   p_payment_method public.payment_method_enum DEFAULT NULL,
-  p_event_fee INTEGER DEFAULT 0
+  p_event_fee INTEGER DEFAULT 0  -- 呼び出し時点で確定した参加費を渡す（主催者がfeeを変更してもゲストが見た金額で決済を行うため・個別価格拡張を想定）
 )
 RETURNS UUID -- 新しく作成されたattendanceのIDを返す
 LANGUAGE plpgsql

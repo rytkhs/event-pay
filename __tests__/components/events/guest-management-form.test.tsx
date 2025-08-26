@@ -156,7 +156,7 @@ describe("GuestManagementForm", () => {
         data: {
           attendanceId: "attendance-123",
           status: "not_attending",
-          requiresPayment: false,
+          requiresAdditionalPayment: false,
         },
       });
 

@@ -105,7 +105,11 @@ export async function createDestinationCheckoutSession(
           },
         ],
         customer: customerId,
-        success_url: successUrl,
+        success_url: (() => {
+          const u = new URL(successUrl);
+          u.searchParams.set("session_id", "{CHECKOUT_SESSION_ID}");
+          return u.toString();
+        })(),
         cancel_url: cancelUrl,
         // Destination charges設定
         payment_intent_data: {
@@ -379,7 +383,7 @@ export async function createOrRetrieveCustomer(
   if (email) {
     try {
       // 厳密一致での検索を優先（Search API）
-      const searchResult = await (stripe.customers as any).search({
+      const searchResult = await stripe.customers.search({
         query: `email:"${email}"`,
         limit: 1,
       });

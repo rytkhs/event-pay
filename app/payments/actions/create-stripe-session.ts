@@ -7,6 +7,8 @@ import { createRateLimitStore, checkRateLimit } from "@/lib/rate-limit";
 import { RATE_LIMIT_CONFIG } from "@/config/security";
 import { createStripeSessionRequestSchema } from "@/lib/services/payment/validation";
 import { PaymentError, PaymentErrorType } from "@/lib/services/payment/types";
+import { canCreateStripeSession } from "@/lib/validation/payment-eligibility";
+import type { EventStatus } from "@/types/enums";
 import {
   type ServerActionResult,
   createErrorResponse,
@@ -101,6 +103,9 @@ export async function createStripeSessionAction(
           id,
           title,
           fee,
+          date,
+          payment_deadline,
+          status,
           created_by,
           stripe_connect_accounts (
             stripe_account_id,
@@ -130,6 +135,9 @@ export async function createStripeSessionAction(
       id: string;
       title: string;
       fee: number | null;
+      date: string;
+      payment_deadline: string | null;
+      status: string;
       created_by: string;
       stripe_connect_accounts: StripeConnectAccount | StripeConnectAccount[] | null;
     };
@@ -139,6 +147,25 @@ export async function createStripeSessionAction(
     const event = eventList[0];
     if (!event) {
       return createErrorResponse(ERROR_CODES.NOT_FOUND, "イベントが見つかりません。");
+    }
+
+    // 決済許可条件の統一チェック
+    // 注意: このAPIは認証ユーザー向けなので、attendance情報を仮構築する
+    const mockAttendance = {
+      id: params.attendanceId,
+      status: "attending" as const, // 認証ユーザーは参加中として扱う
+      payment: null, // 新規決済セッション作成なのでnull
+    };
+
+    const eligibilityResult = canCreateStripeSession(mockAttendance, {
+      ...event,
+      status: event.status as EventStatus,
+    });
+    if (!eligibilityResult.isEligible) {
+      return createErrorResponse(
+        ERROR_CODES.BUSINESS_RULE_VIOLATION,
+        eligibilityResult.reason || "決済セッションの作成条件を満たしていません。"
+      );
     }
 
     // 金額整合性

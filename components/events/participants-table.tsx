@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { PaymentStatusBadge } from "@/components/common/payment-status-badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -312,62 +313,6 @@ export function ParticipantsTable({
         return (
           <Badge variant="outline" className="bg-yellow-100 text-yellow-800">
             未定
-          </Badge>
-        );
-      default:
-        return <Badge variant="outline">{status}</Badge>;
-    }
-  };
-
-  const getPaymentStatusBadge = (status: string | null) => {
-    if (!status)
-      return (
-        <Badge variant="outline" className="bg-gray-100 text-gray-600">
-          未登録
-        </Badge>
-      );
-
-    switch (status) {
-      case "paid":
-        return (
-          <Badge variant="default" className="bg-green-100 text-green-800">
-            支払済み
-          </Badge>
-        );
-      case "received":
-        return (
-          <Badge variant="default" className="bg-green-100 text-green-800">
-            受領済み
-          </Badge>
-        );
-      case "completed":
-        return (
-          <Badge variant="default" className="bg-green-100 text-green-800">
-            完了
-          </Badge>
-        );
-      case "pending":
-        return (
-          <Badge variant="outline" className="bg-yellow-100 text-yellow-800">
-            未決済
-          </Badge>
-        );
-      case "failed":
-        return (
-          <Badge variant="secondary" className="bg-red-100 text-red-800">
-            失敗
-          </Badge>
-        );
-      case "refunded":
-        return (
-          <Badge variant="secondary" className="bg-red-100 text-red-800">
-            返金済み
-          </Badge>
-        );
-      case "waived":
-        return (
-          <Badge variant="outline" className="bg-gray-100 text-gray-600">
-            免除
           </Badge>
         );
       default:
@@ -763,7 +708,7 @@ export function ParticipantsTable({
                         {getPaymentMethodBadge(participant.payment_method)}
                       </td>
                       <td className="px-4 py-4 whitespace-nowrap">
-                        {getPaymentStatusBadge(participant.payment_status)}
+                        <PaymentStatusBadge status={participant.payment_status} />
                       </td>
                       <td
                         className={`px-4 py-4 whitespace-nowrap text-sm ${isUnpaid ? "text-red-900 font-semibold" : "text-gray-900"}`}
