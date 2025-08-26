@@ -1,6 +1,6 @@
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
+import { SecureSupabaseClientFactory, AdminReason } from "@/lib/security";
 import { validateGuestToken } from "@/lib/utils/guest-token";
 import { validateGuestTokenFormat } from "@/lib/security/crypto";
 import {
@@ -170,7 +170,13 @@ export async function updateGuestAttendanceAction(
       validatedPaymentMethod = null;
     }
 
-    const supabase = createClient();
+    // 監査付きの service_role クライアントを取得
+    const secureFactory = SecureSupabaseClientFactory.getInstance();
+    const adminClient = await secureFactory.createAuditedAdminClient(
+      AdminReason.PAYMENT_PROCESSING,
+      "update_guest_attendance_with_payment",
+      { ipAddress: ip, userAgent, guestToken }
+    );
 
     // データベース更新の実行（定員チェックはRPC関数内で実行される）
     // NOTE: `p_event_fee` は冗長に見えるが、以下の理由で呼び出し時に確定した金額を明示的に渡している。
@@ -178,12 +184,9 @@ export async function updateGuestAttendanceAction(
     //   2. 将来の早割・クーポン等、ゲストごとに金額が変わる拡張を見越して、個別金額をRPCに渡す設計としている。
     //   3. events.fee をRPC内で都度参照すると、トランザクション外の変更が決済金額に反映され整合性が崩れるリスクがあるため。
     //     （例）fee を 0 → 500 に変更した直後にゲストが「不参加→参加」を送信した場合など。
-    const { error } = await supabase.rpc("update_guest_attendance_with_payment", {
+    const { error } = await adminClient.rpc("update_guest_attendance_with_payment", {
       p_attendance_id: attendance.id,
       p_status: validatedStatus,
-      // Supabase RPC の型定義は undefined|enum だが、null を許容したいので
-      // 明示的に null を渡すため型チェックを抑制
-      // @ts-expect-error Supabase client typings do not allow null but DB param is nullable
       p_payment_method: validatedPaymentMethod,
       p_event_fee: attendance.event.fee,
     });

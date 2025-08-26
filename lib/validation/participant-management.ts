@@ -153,6 +153,7 @@ export const GetAllCashPaymentIdsResponseSchema = z.object({
   success: z.literal(true),
   paymentIds: z.array(z.string().uuid()),
   total: z.number().int().min(0),
+  matchedTotal: z.number().int().min(0).optional(),
   truncated: z.boolean().optional(),
 }).or(
   z.object({

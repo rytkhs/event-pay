@@ -59,11 +59,12 @@ export class PaymentService implements IPaymentService {
       const { data: existingList, error: findError } = await this.supabase
         .from("payments")
         .select(
-          "id, status, method, stripe_session_id, stripe_payment_intent_id, updated_at, created_at"
+          "id, status, method, stripe_session_id, stripe_payment_intent_id, paid_at, created_at, updated_at"
         )
         .eq("attendance_id", params.attendanceId)
-        .order("updated_at", { ascending: false })
+        .order("paid_at", { ascending: false, nullsFirst: false })
         .order("created_at", { ascending: false })
+        .order("updated_at", { ascending: false })
         .limit(2);
 
       if (findError) {

@@ -212,16 +212,19 @@ export function ParticipantsTable({
         setSelectedPaymentIds(result.paymentIds);
         setSelectionMeta({
           mode: "all",
-          total: result.total,
+          total:
+            "matchedTotal" in result && typeof result.matchedTotal === "number"
+              ? result.matchedTotal
+              : result.total,
           truncated: Boolean(result.truncated),
         });
 
         toast({
           title: "全件選択",
-          description: `${result.paymentIds.length}件を選択しました${
-            typeof result.total === "number"
-              ? `（該当: ${result.total}件${result.truncated ? "、上限まで" : ""}）`
-              : ""
+          description: `${result.paymentIds.length}件を選択しました$${
+            "matchedTotal" in result && typeof result.matchedTotal === "number"
+              ? `（取得: ${result.paymentIds.length}件 / 該当: ${result.matchedTotal}件${result.truncated ? "、上限まで" : ""}）`
+              : `（取得: ${result.paymentIds.length}件${result.truncated ? "、上限まで" : ""}）`
           }`,
         });
       } else {

@@ -36,6 +36,7 @@ import {
 import { SecurityAuditorImpl } from "./security-auditor.impl";
 import { isValidEventInfo } from "./type-guards";
 import { COOKIE_CONFIG, AUTH_CONFIG, getCookieConfig } from "@/config/security";
+import { isValidIsoDateTimeString } from "@/lib/utils/timezone";
 
 /**
  * セキュアSupabaseクライアントファクトリーの実装
@@ -478,8 +479,7 @@ export class RLSBasedGuestValidator implements IGuestTokenValidator {
    * 日付文字列の有効性をチェック
    */
   private isValidDateString(dateStr: string): boolean {
-    const date = new Date(dateStr);
-    return !isNaN(date.getTime()) && dateStr === date.toISOString();
+    return isValidIsoDateTimeString(dateStr);
   }
 
   /**

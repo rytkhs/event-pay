@@ -7,6 +7,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { createEventAction } from "@/app/events/actions";
 import { logger } from "@/lib/logging/app-logger";
+import { convertDatetimeLocalToUtc } from "@/lib/utils/timezone";
 
 // フロントエンド専用バリデーションスキーマ
 const eventFormSchema = z
@@ -20,9 +21,12 @@ const eventFormSchema = z
       .min(1, "開催日時は必須です")
       .refine((val) => {
         if (!val) return false;
-        const selectedDate = new Date(val);
-        const now = new Date();
-        return selectedDate > now;
+        try {
+          const eventUtc = convertDatetimeLocalToUtc(val);
+          return eventUtc > new Date();
+        } catch {
+          return false;
+        }
       }, "開催日時は現在時刻より後である必要があります"),
     fee: z
       .string()
@@ -61,9 +65,9 @@ const eventFormSchema = z
       // 参加申込締切が開催日時より前であることを確認（空文字列は無視）
       if (data.registration_deadline && data.registration_deadline.trim() !== "" && data.date) {
         try {
-          const regDate = new Date(data.registration_deadline);
-          const eventDate = new Date(data.date);
-          return regDate < eventDate;
+          const regUtc = convertDatetimeLocalToUtc(data.registration_deadline);
+          const eventUtc = convertDatetimeLocalToUtc(data.date);
+          return regUtc < eventUtc;
         } catch {
           return false;
         }
@@ -80,9 +84,9 @@ const eventFormSchema = z
       // 決済締切が開催日時より前であることを確認（空文字列は無視）
       if (data.payment_deadline && data.payment_deadline.trim() !== "" && data.date) {
         try {
-          const payDate = new Date(data.payment_deadline);
-          const eventDate = new Date(data.date);
-          return payDate < eventDate;
+          const payUtc = convertDatetimeLocalToUtc(data.payment_deadline);
+          const eventUtc = convertDatetimeLocalToUtc(data.date);
+          return payUtc < eventUtc;
         } catch {
           return false;
         }
@@ -104,9 +108,9 @@ const eventFormSchema = z
         data.payment_deadline.trim() !== ""
       ) {
         try {
-          const payDate = new Date(data.payment_deadline);
-          const regDate = new Date(data.registration_deadline);
-          return payDate >= regDate;
+          const payUtc = convertDatetimeLocalToUtc(data.payment_deadline);
+          const regUtc = convertDatetimeLocalToUtc(data.registration_deadline);
+          return payUtc >= regUtc;
         } catch {
           return false;
         }

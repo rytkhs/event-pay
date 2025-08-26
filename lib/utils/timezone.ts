@@ -135,7 +135,19 @@ export function isUtcDateFuture(utcDate: Date | string): boolean {
   return date > nowUtc;
 }
 
-// Phase 1: 新しいユーティリティ関数の追加
+/**
+ * ISO8601日時文字列の妥当性チェック（Zまたはオフセット許容、ミリ秒は1〜6桁許容）
+ * 例: 2024-05-01T12:34:56Z / 2024-05-01T12:34:56.000Z / 2024-05-01T12:34:56.123456+09:00
+ */
+export function isValidIsoDateTimeString(value: string): boolean {
+  if (!value || typeof value !== "string") return false;
+  // YYYY-MM-DDTHH:mm:ss(.SSS..SSSSSS)?(Z|±HH:MM)
+  const isoRegex = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,6})?(?:Z|[+\-]\d{2}:\d{2})$/;
+  if (!isoRegex.test(value)) return false;
+  const date = new Date(value);
+  return !isNaN(date.getTime());
+}
+
 
 /**
  * UTC日時文字列をdatetime-local形式のJST文字列に安全に変換
