@@ -222,7 +222,8 @@ export class SettlementReportService {
         return {
           success: true,
           csvContent: '',
-          filename: `settlement-reports-${formatDateToJstYmd(getCurrentJstTime())}.csv`
+          filename: `settlement-reports-${formatDateToJstYmd(getCurrentJstTime())}.csv`,
+          truncated: false
         }
       }
 

@@ -13,16 +13,19 @@ import { z } from "zod";
 // リクエストバリデーションスキーマ
 const VerifySessionSchema = z.object({
   session_id: z.string().min(1, "セッションIDは必須です"),
-  attendance_id: z.string().uuid("有効な参加IDを入力してください").optional(),
+  attendance_id: z.string().uuid("有効な参加IDを入力してください"),
 });
 
 // レスポンス型
 interface VerificationResult {
   success: boolean;
-  payment_status: "success" | "failed" | "cancelled" | "processing" | "pending";
-  payment_id?: string;
-  amount?: number;
-  currency?: string;
+  /**
+   * 決済ステータス
+   *
+   * success フラグが true の場合のみ必ず含まれる。
+   * リクエストエラー時（success: false）のレスポンスでは省略される。
+   */
+  payment_status?: "success" | "failed" | "cancelled" | "processing" | "pending";
   error?: string;
 }
 
@@ -44,7 +47,6 @@ export async function GET(request: NextRequest) {
         {
           success: false,
           error: "リクエストが多すぎます。しばらく待ってから再試行してください。",
-          payment_status: "failed" as const
         },
         { status: 429 }
       );
@@ -65,7 +67,6 @@ export async function GET(request: NextRequest) {
         {
           success: false,
           error: "無効なパラメータです",
-          payment_status: "failed" as const,
         },
         { status: 400 }
       );
@@ -73,7 +74,35 @@ export async function GET(request: NextRequest) {
 
     const { session_id, attendance_id } = validationResult.data;
 
-    // Stripe Checkout Sessionを取得
+    // まずDBで attendance_id と session_id の突合（存在しない場合は終了）
+    const supabase = createClient();
+    const { data: payment, error: dbError } = await supabase
+      .from("payments")
+      .select("id, status, stripe_checkout_session_id, amount")
+      .eq("attendance_id", attendance_id)
+      .eq("stripe_checkout_session_id", session_id)
+      .single();
+
+    if (dbError && dbError.code !== "PGRST116") {
+      logger.error("Database query failed during payment verification", {
+        tag: "payment-verify",
+        attendance_id,
+        error: dbError.message,
+      });
+    }
+
+    if (!payment) {
+      // 突合不一致時は情報を返さない
+      return NextResponse.json(
+        {
+          success: false,
+          error: "決済セッションが見つかりません",
+        },
+        { status: 404 }
+      );
+    }
+
+    // DB一致後にのみStripe Checkout Sessionを取得
     let checkoutSession;
     try {
       checkoutSession = await stripe.checkout.sessions.retrieve(session_id, {
@@ -90,7 +119,6 @@ export async function GET(request: NextRequest) {
         {
           success: false,
           error: "決済セッションが見つかりません",
-          payment_status: "failed" as const,
         },
         { status: 404 }
       );
@@ -117,41 +145,21 @@ export async function GET(request: NextRequest) {
         paymentStatus = "processing";
     }
 
-    // DBからの整合性チェック（attendance_idが提供された場合）
-    if (attendance_id) {
-      const supabase = createClient();
-
-      const { data: payment, error: dbError } = await supabase
-        .from("payments")
-        .select("id, status, stripe_checkout_session_id, amount")
-        .eq("attendance_id", attendance_id)
-        .eq("stripe_checkout_session_id", session_id)
-        .single();
-
-      if (dbError && dbError.code !== "PGRST116") { // PGRST116 = not found
-        logger.error("Database query failed during payment verification", {
+    // DBとStripeのステータスが一致しない場合の処理
+    if (payment && paymentStatus === "success") {
+      const dbStatus = payment.status;
+      if (!["paid", "completed", "received"].includes(dbStatus)) {
+        // Webhook処理が遅延している可能性があるため、warning レベル
+        logger.warn("Payment status mismatch between Stripe and DB", {
           tag: "payment-verify",
-          attendance_id,
-          error: dbError.message,
+          stripe_status: paymentStatus,
+          db_status: dbStatus,
+          session_id: session_id.substring(0, 8) + "...",
+          payment_id: payment.id,
         });
-      }
 
-      // DBとStripeのステータスが一致しない場合の処理
-      if (payment && paymentStatus === "success") {
-        const dbStatus = payment.status;
-        if (!["paid", "completed", "received"].includes(dbStatus)) {
-          // Webhook処理が遅延している可能性があるため、warning レベル
-          logger.warn("Payment status mismatch between Stripe and DB", {
-            tag: "payment-verify",
-            stripe_status: paymentStatus,
-            db_status: dbStatus,
-            session_id: session_id.substring(0, 8) + "...",
-            payment_id: payment.id,
-          });
-
-          // この場合は一旦processing扱いとし、クライアント側で再確認を促す
-          paymentStatus = "processing";
-        }
+        // この場合は一旦processing扱いとし、クライアント側で再確認を促す
+        paymentStatus = "processing";
       }
     }
 
@@ -159,13 +167,6 @@ export async function GET(request: NextRequest) {
       success: true,
       payment_status: paymentStatus,
     };
-
-    // 成功時の追加情報
-    if (paymentStatus === "success" && checkoutSession.payment_intent) {
-      const paymentIntent = checkoutSession.payment_intent as any;
-      result.amount = paymentIntent.amount;
-      result.currency = paymentIntent.currency;
-    }
 
     logger.info("Payment session verification completed", {
       tag: "payment-verify",
@@ -187,7 +188,6 @@ export async function GET(request: NextRequest) {
       {
         success: false,
         error: "内部エラーが発生しました",
-        payment_status: "failed" as const,
       },
       { status: 500 }
     );

@@ -47,7 +47,7 @@ export async function generateMetadata({ params }: GuestPageProps): Promise<Meta
 
 export default async function GuestPage({ params, searchParams }: GuestPageProps) {
   const { token } = params;
-　  const { payment: paymentParam, session_id } = searchParams;
+  const { payment: paymentParam, session_id } = searchParams;
   const VALID_PAYMENT_STATUSES = new Set([
     "success",
     "cancelled",
