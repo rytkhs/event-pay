@@ -6,7 +6,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 // import type { PostgrestError } from "@supabase/supabase-js";
 import { Database } from "@/types/database";
 import { stripe } from "@/lib/stripe/client";
-import { createDestinationCheckoutSession, createOrRetrieveCustomer } from "@/lib/stripe/destination-charges";
+import * as DestinationCharges from "../../stripe/destination-charges";
 import { ApplicationFeeCalculator } from "@/lib/services/fee-config/application-fee-calculator";
 import { IPaymentService, IPaymentErrorHandler } from "./interface";
 import {
@@ -198,11 +198,11 @@ export class PaymentService implements IPaymentService {
       // Customer作成・取得
       let customerId: string | undefined;
       if (userEmail || userName) {
-        const customer = await createOrRetrieveCustomer({
+        const customer = await DestinationCharges.createOrRetrieveCustomer({
           email: userEmail,
           name: userName,
           metadata: {
-            user_id: params.userId,
+            actor_id: params.actorId,
             event_id: params.eventId,
           },
         });
@@ -210,7 +210,7 @@ export class PaymentService implements IPaymentService {
       }
 
       // Destination charges用のCheckout Session作成
-      const session = await createDestinationCheckoutSession({
+      const session = await DestinationCharges.createDestinationCheckoutSession({
         eventId: params.eventId,
         eventTitle: params.eventTitle,
         amount: params.amount,
@@ -219,7 +219,7 @@ export class PaymentService implements IPaymentService {
         customerId,
         successUrl: params.successUrl,
         cancelUrl: params.cancelUrl,
-        userId: params.userId,
+        actorId: params.actorId,
         metadata: {
           payment_id: targetPaymentId,
           attendance_id: params.attendanceId,
@@ -280,6 +280,7 @@ export class PaymentService implements IPaymentService {
         applicationFeeAmount: feeCalculation.applicationFeeAmount,
         destinationAccountId,
         transferGroup: `event_${params.eventId}_payout`,
+        actorId: params.actorId,
       });
 
       return {
