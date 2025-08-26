@@ -21,6 +21,7 @@ import {
 import { SecurityAuditorImpl } from "./security-auditor.impl";
 import { sanitizeForEventPay } from "@/lib/utils/sanitize";
 import type { Database } from "@/types/database";
+import { isValidIsoDateTimeString } from "@/lib/utils/timezone";
 
 /**
  * ゲスト参加データの型定義（RLSベース）
@@ -251,7 +252,8 @@ export class RLSGuestTokenValidator implements IGuestTokenValidator {
         `
         )
         // payments は UNIQUE 制約で 1 件が想定だが、将来複数行を許容する拡張に備え最新順で並べ替え
-        .order("created_at", { ascending: false, referencedTable: "payments" })
+        .order("created_at", { ascending: false, referencedTable: "payment" })
+        .limit(1, { referencedTable: "payment" })
         .single();
 
       if (error || !attendance) {
@@ -451,16 +453,7 @@ export class RLSGuestTokenValidator implements IGuestTokenValidator {
    * 日付文字列の有効性をチェック
    */
   private isValidDateString(dateStr: string): boolean {
-    // ISO 8601 (UTC またはオフセット付き) かつ Date として解釈できるかを判定する
-    // 許可例: 2024-05-01T12:34:56Z / 2024-05-01T12:34:56.000Z / 2024-05-01T12:34:56+00:00
-    const isoRegex = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?(?:Z|[+\-]\d{2}:\d{2})$/;
-
-    if (!isoRegex.test(dateStr)) {
-      return false;
-    }
-
-    const date = new Date(dateStr);
-    return !isNaN(date.getTime());
+    return isValidIsoDateTimeString(dateStr);
   }
 
   /**

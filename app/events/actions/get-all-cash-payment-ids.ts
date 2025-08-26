@@ -62,12 +62,24 @@ export async function getAllCashPaymentIdsAction(
       query = query.eq("payments.status", filters.paymentStatus);
     }
 
+    // クローンして総件数取得用のクエリ（limit 無し）
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const countQuery = (query as any).clone();
+
     // 上限 + 1 で取得
     query = query.limit(max + 1);
 
     const { data, error } = await query;
+    // 総件数を取得（head:true で行データは取得しない）
+    const { count: matchedTotal, error: countError } = await countQuery.select("id", {
+      count: "exact",
+      head: true,
+    });
     if (error) {
       handleDatabaseError(error, { eventId: validatedEventId, userId: user.id });
+    }
+    if (countError) {
+      handleDatabaseError(countError, { eventId: validatedEventId, userId: user.id });
     }
 
     const attendances = ((data as unknown) || []) as Array<{
@@ -102,7 +114,13 @@ export async function getAllCashPaymentIdsAction(
       truncated,
     });
 
-    return { success: true, paymentIds: resultIds, total: paymentIds.length, truncated };
+    return {
+      success: true,
+      paymentIds: resultIds,
+      total: paymentIds.length,
+      matchedTotal: matchedTotal ?? paymentIds.length,
+      truncated,
+    };
   } catch (error) {
     return { success: false, error: error instanceof Error ? error.message : "取得に失敗しました" };
   }
