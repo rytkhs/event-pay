@@ -96,13 +96,19 @@ export interface SettlementReportResult {
 /**
  * CSV エクスポート結果
  */
-export interface CsvExportResult {
-  success: boolean
-  csvContent?: string
-  filename?: string
-  error?: string
-  truncated?: boolean
+export type CsvExportSuccess = {
+  success: true
+  csvContent: string
+  filename: string
+  truncated: boolean
 }
+
+export type CsvExportFailure = {
+  success: false
+  error: string
+}
+
+export type CsvExportResult = CsvExportSuccess | CsvExportFailure
 
 export interface RpcSettlementReportRow {
   event_id: string;

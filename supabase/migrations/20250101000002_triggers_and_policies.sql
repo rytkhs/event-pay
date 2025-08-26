@@ -188,7 +188,7 @@ BEGIN
     SELECT id INTO v_payment_id
     FROM public.payments
     WHERE attendance_id = p_attendance_id
-    ORDER BY updated_at DESC
+    ORDER BY paid_at DESC NULLS LAST, created_at DESC, updated_at DESC
     LIMIT 1;
 
     IF v_payment_id IS NOT NULL THEN
@@ -218,7 +218,7 @@ BEGIN
     SELECT id, status, method INTO v_payment_id, v_payment_status, v_payment_method
     FROM public.payments
     WHERE attendance_id = p_attendance_id
-    ORDER BY updated_at DESC
+    ORDER BY paid_at DESC NULLS LAST, created_at DESC, updated_at DESC
     LIMIT 1;
 
     IF FOUND THEN

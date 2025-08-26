@@ -9,17 +9,14 @@ import { CheckCircle, XCircle, AlertCircle, X, Loader2 } from "lucide-react";
 
 interface PaymentStatusAlertProps {
   sessionId?: string;
-  attendanceId?: string;
+  attendanceId: string;
   paymentStatus: string;
   eventTitle: string;
 }
 
 interface VerificationResult {
   success: boolean;
-  payment_status: "success" | "failed" | "cancelled" | "processing" | "pending";
-  payment_id?: string;
-  amount?: number;
-  currency?: string;
+  payment_status?: "success" | "failed" | "cancelled" | "processing" | "pending";
   error?: string;
 }
 
@@ -46,14 +43,14 @@ export function PaymentStatusAlert({
     try {
       const params = new URLSearchParams({
         session_id: sessionId,
-        ...(attendanceId && { attendance_id: attendanceId }),
+        attendance_id: attendanceId,
       });
 
       const response = await fetch(`/api/payments/verify-session?${params}`);
       const result: VerificationResult = await response.json();
 
       if (result.success) {
-        setVerifiedStatus(result.payment_status);
+        setVerifiedStatus(result.payment_status ?? null);
 
         // 決済完了の場合は、ページを最新状態にリフレッシュ
         if (result.payment_status === "success") {
@@ -71,6 +68,12 @@ export function PaymentStatusAlert({
       setIsVerifying(false);
     }
   }, [sessionId, attendanceId, router]);
+
+  // ポーリング打ち切り後に手動再確認する関数
+  const retryVerify = useCallback(() => {
+    setRetryCount(0); // リセットして再度ポーリングできるように
+    verifySession();
+  }, [verifySession]);
 
   // URL パラメータをクリアするための関数
   const clearPaymentStatus = useCallback(() => {
@@ -181,6 +184,34 @@ export function PaymentStatusAlert({
             "決済処理に失敗しました。カード情報を確認の上、ページ下部の再決済ボタンから決済をやり直してください。",
         };
       default:
+        // ポーリング上限に達した場合のガイダンスを追加
+        if (
+          retryCount >= maxRetries &&
+          sessionId &&
+          ["processing", "pending"].includes(currentStatus)
+        ) {
+          return {
+            variant: "default" as const,
+            icon: <AlertCircle className="h-5 w-5 text-blue-600" />,
+            bgColor: "bg-blue-50 border-blue-200",
+            textColor: "text-blue-800",
+            title: "決済状況を再確認できません",
+            description:
+              "決済確認に時間がかかっています。もう一度確認を行うか、ページを再読み込みしてください。",
+            // 再確認 / リロード用のアクション要素を返す
+            actions: (
+              <div className="mt-3 flex gap-2">
+                <Button size="sm" onClick={retryVerify}>
+                  もう一度確認
+                </Button>
+                <Button size="sm" variant="secondary" onClick={() => router.refresh()}>
+                  ページを更新
+                </Button>
+              </div>
+            ),
+          } as const;
+        }
+
         return {
           variant: "default" as const,
           icon: <AlertCircle className="h-5 w-5 text-blue-600" />,
@@ -208,6 +239,7 @@ export function PaymentStatusAlert({
             <AlertDescription className={`mt-1 text-sm ${alertContent.textColor}`}>
               {alertContent.description}
             </AlertDescription>
+            {alertContent.actions}
             {(verifiedStatus === "success" || paymentStatus === "success") && (
               <div className="mt-2">
                 <p className={`text-xs ${alertContent.textColor} opacity-80`}>
