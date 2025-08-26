@@ -5,8 +5,10 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { stripe } from "@/lib/stripe/client";
-import { createClient } from "@/lib/supabase/server";
+
+import { SecureSupabaseClientFactory } from "@/lib/security/secure-client-factory.impl";
 import { logger } from "@/lib/logging/app-logger";
+import { logSecurityEvent } from "@/lib/security/security-logger";
 import { createRateLimitStore, checkRateLimit } from "@/lib/rate-limit";
 import { z } from "zod";
 
@@ -36,6 +38,27 @@ interface VerificationResult {
 
 export async function GET(request: NextRequest) {
   try {
+    const guestToken = request.headers.get("x-guest-token");
+    if (!guestToken) {
+      logSecurityEvent({
+        type: "INVALID_TOKEN",
+        severity: "HIGH",
+        message: "Missing guest token in payment verification request",
+        details: {
+          endpoint: "/api/payments/verify-session",
+        },
+        ip: request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown",
+        timestamp: new Date(),
+      });
+      return NextResponse.json(
+        {
+          success: false,
+          error: "ゲストトークンが必要です",
+        },
+        { status: 400 }
+      );
+    }
+
     // ------------------------------
     // Rate limiting
     // ------------------------------
@@ -96,7 +119,10 @@ export async function GET(request: NextRequest) {
     const { session_id, attendance_id } = validationResult.data;
 
     // まずDBで attendance_id と session_id の突合（存在しない場合は終了）
-    const supabase = createClient();
+    // ゲストトークンを使用してRLSを満たすクライアントを生成
+    const secureClientFactory = SecureSupabaseClientFactory.getInstance();
+    const supabase = await secureClientFactory.createGuestClient(guestToken);
+
     const { data: payment, error: dbError } = await supabase
       .from("payments")
       .select("id, status, stripe_checkout_session_id, amount")
@@ -113,6 +139,21 @@ export async function GET(request: NextRequest) {
     }
 
     if (!payment) {
+      // RLS違反やデータ不整合の可能性をログ記録
+      logSecurityEvent({
+        type: "SUSPICIOUS_ACTIVITY",
+        severity: "HIGH",
+        message: "Payment verification failed - no matching record found with guest token",
+        details: {
+          attendanceId: attendance_id,
+          sessionId: session_id.substring(0, 8) + "...",
+          hasGuestToken: !!guestToken,
+          dbErrorCode: dbError?.code,
+        },
+        ip: request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown",
+        timestamp: new Date(),
+      });
+
       // 突合不一致時は情報を返さない
       return NextResponse.json(
         {

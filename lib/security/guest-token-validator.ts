@@ -252,8 +252,8 @@ export class RLSGuestTokenValidator implements IGuestTokenValidator {
         `
         )
         // payments は UNIQUE 制約で 1 件が想定だが、将来複数行を許容する拡張に備え最新順で並べ替え
-        .order("created_at", { ascending: false, referencedTable: "payment" })
-        .limit(1, { referencedTable: "payment" })
+        .order("created_at", { ascending: false, referencedTable: "payments" })
+        .limit(1, { referencedTable: "payments" })
         .single();
 
       if (error || !attendance) {
