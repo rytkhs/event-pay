@@ -170,6 +170,48 @@ export async function updateGuestAttendanceAction(
       validatedPaymentMethod = null;
     }
 
+    // finalized 決済状態の定義（支払いが確定しており不可逆な状態）
+    const finalizedPaymentStatuses: Array<Database["public"]["Enums"]["payment_status_enum"]> = [
+      "paid",
+      "received",
+      "completed",
+      "waived",
+    ];
+
+    // finalized 後の決済方法変更をサーバ側でも明示的に拒否
+    // 条件: 参加ステータスは変えず（既に attending）、決済方法のみ変更、かつ現在の支払いが finalized
+    if (
+      attendance.status === "attending" &&
+      validatedStatus === "attending" &&
+      attendance.event.fee > 0 &&
+      validatedPaymentMethod !== null
+    ) {
+      const currentPaymentMethod = attendance.payment?.method ?? null;
+      const currentPaymentStatus = attendance.payment?.status ?? null;
+      const isPaymentMethodChanging = currentPaymentMethod !== validatedPaymentMethod;
+      if (
+        isPaymentMethodChanging &&
+        currentPaymentStatus &&
+        finalizedPaymentStatuses.includes(currentPaymentStatus)
+      ) {
+        // 監査ログ
+        logParticipationSecurityEvent(
+          "PAYMENT_METHOD_CHANGE_AFTER_FINALIZED_ATTEMPT",
+          "Attempt to change payment method after payment finalized",
+          {
+            attendanceId: attendance.id,
+            eventId: attendance.event.id,
+          },
+          securityContext
+        );
+
+        return {
+          success: false,
+          error: "支払が確定しているため、決済方法を変更できません",
+        };
+      }
+    }
+
     // 監査付きの service_role クライアントを取得
     const secureFactory = SecureSupabaseClientFactory.getInstance();
     const adminClient = await secureFactory.createAuditedAdminClient(
@@ -266,6 +308,10 @@ export async function updateGuestAttendanceAction(
 
       // 既に参加で決済方法のみ変更
       if (currentStatus === "attending" && isPaymentMethodChanging) {
+        // 既に確定済みの支払いがある場合は追加決済不要
+        if (currentPaymentStatus && finalizedPaymentStatuses.includes(currentPaymentStatus)) {
+          return false;
+        }
         return true;
       }
 

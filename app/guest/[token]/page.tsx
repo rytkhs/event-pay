@@ -153,6 +153,7 @@ export default async function GuestPage({ params, searchParams }: GuestPageProps
               attendanceId={attendance.id}
               paymentStatus={payment}
               eventTitle={attendance.event.title}
+              guestToken={token}
             />
           )}
 

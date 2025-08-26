@@ -12,6 +12,7 @@ interface PaymentStatusAlertProps {
   attendanceId: string;
   paymentStatus: string;
   eventTitle: string;
+  guestToken: string;
 }
 
 interface VerificationResult {
@@ -26,6 +27,7 @@ export function PaymentStatusAlert({
   attendanceId,
   paymentStatus,
   eventTitle,
+  guestToken,
 }: PaymentStatusAlertProps) {
   const router = useRouter();
   const [verifiedStatus, setVerifiedStatus] = useState<string | null>(null);
@@ -33,7 +35,16 @@ export function PaymentStatusAlert({
   const [isVerifying, setIsVerifying] = useState(false);
   const [verificationError, setVerificationError] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState(0);
-  const maxRetries = 12; // 5秒間隔で1分間
+  const maxRetries = 12; // 指数バックオフで最大およそ2分弱を目安
+
+  // 指数バックオフ + ジッター（0.5〜1.0倍）
+  const getBackoffDelayMs = (attempt: number) => {
+    const base = 1000; // 1s
+    const max = 60000; // 60s
+    const raw = Math.min(base * Math.pow(2, attempt), max);
+    const jitter = 0.5 + Math.random() * 0.5;
+    return Math.floor(raw * jitter);
+  };
 
   // セッション検証を行う関数
   const verifySession = useCallback(async () => {
@@ -48,31 +59,63 @@ export function PaymentStatusAlert({
         attendance_id: attendanceId,
       });
 
-      const response = await fetch(`/api/payments/verify-session?${params}`);
-      const result: VerificationResult = await response.json();
+      const response = await fetch(`/api/payments/verify-session?${params}`, {
+        headers: {
+          "X-Guest-Token": guestToken,
+        },
+      });
+      const status = response.status;
 
-      if (result.success) {
-        setVerifiedStatus(result.payment_status ?? null);
-        if (typeof result.payment_required === "boolean") {
-          setPaymentRequired(result.payment_required);
+      // レスポンスがJSONでない可能性も考慮し安全にparse
+      let parsed: VerificationResult | null = null;
+      try {
+        parsed = (await response.json()) as VerificationResult;
+      } catch (_e) {
+        parsed = null;
+      }
+
+      if (response.ok && parsed && parsed.success) {
+        setVerifiedStatus(parsed.payment_status ?? null);
+        if (typeof parsed.payment_required === "boolean") {
+          setPaymentRequired(parsed.payment_required);
         }
 
         // 決済完了の場合は、ページを最新状態にリフレッシュ
-        if (result.payment_status === "success") {
+        if (parsed.payment_status === "success") {
           setTimeout(() => {
             router.refresh();
           }, 2000);
         }
       } else {
-        setVerificationError(result.error || "検証に失敗しました");
+        // エラー分類
+        // - 一時的: 429 / 5xx / 401 / 403 / 404 / ネットワーク → UIは処理中にフォールバック
+        // - 致命的: 400 など明らかな無効リクエスト → 赤エラー表示
+        const isTransientStatus =
+          status === 0 ||
+          status === 401 ||
+          status === 403 ||
+          status === 404 ||
+          status === 429 ||
+          status >= 500;
+
+        if (isTransientStatus) {
+          // 処理中にフォールバック（ユーザーにはエラーを見せない）
+          setVerifiedStatus((s) => s || "processing");
+          // エラーメッセージは出さない
+        } else {
+          // 明らかな無効パラメータ等のみ赤エラー
+          const message = (parsed && parsed.error) || "検証に失敗しました";
+          setVerificationError(message);
+        }
       }
     } catch (_error) {
       // エラーログはクライアント側では記録しない（セキュリティ上の理由）
-      setVerificationError("ネットワークエラーが発生しました");
+      // ネットワーク障害は一時的エラーとしてフォールバック
+      setVerifiedStatus((s) => s || "processing");
     } finally {
       setIsVerifying(false);
     }
-  }, [sessionId, attendanceId, router]);
+  }, [sessionId, attendanceId, guestToken, router]);
 
   // ポーリング打ち切り後に手動再確認する関数
   const retryVerify = useCallback(() => {
@@ -98,25 +141,23 @@ export function PaymentStatusAlert({
     }
   }, [sessionId, verifiedStatus, isVerifying, verifySession, paymentStatus]);
 
-  // 決済ステータスが processing/pending の間はポーリングで再検証
+  // 決済ステータスが processing/pending の間は指数バックオフで再検証
   useEffect(() => {
-    // キャンセルがURLで指定されている場合は常にキャンセルを優先
     const currentStatus =
       paymentStatus === "cancelled" ? "cancelled" : verifiedStatus || paymentStatus;
 
-    // 対象ステータスか & sessionId があるか & リトライ上限未満
     if (
       paymentStatus !== "cancelled" &&
       sessionId &&
       ["processing", "pending"].includes(currentStatus) &&
       retryCount < maxRetries
     ) {
-      const intervalId = setInterval(() => {
+      const delay = getBackoffDelayMs(retryCount);
+      const timeoutId = setTimeout(() => {
         verifySession();
         setRetryCount((c) => c + 1);
-      }, 5000); // 5秒ごと
-
-      return () => clearInterval(intervalId);
+      }, delay);
+      return () => clearTimeout(timeoutId);
     }
   }, [sessionId, verifiedStatus, paymentStatus, verifySession, retryCount]);
 

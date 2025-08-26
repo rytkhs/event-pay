@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { SecureSupabaseClientFactory } from "@/lib/security/secure-client-factory.impl";
+import { AdminReason } from "@/lib/security/secure-client-factory.types";
 import { validateCronSecret, logCronActivity } from "@/lib/cron-auth";
 import { updateEventStatus, getCurrentTime } from "@/lib/event-status-updater";
 import { EVENT_CONFIG } from "@/lib/constants/event-config";
@@ -29,8 +30,12 @@ export async function POST(request: NextRequest) {
       return createErrorResponse(error, 401);
     }
 
-    // 2. Supabaseクライアント作成
-    const supabase = createClient();
+    // 2. 監査付きadminクライアント作成
+    const secureClientFactory = SecureSupabaseClientFactory.getInstance();
+    const supabase = await secureClientFactory.createAuditedAdminClient(
+      AdminReason.SYSTEM_MAINTENANCE,
+      "Automated event status update via cron job"
+    );
 
     // 3. 対象イベントを取得
     const { data: events, error: fetchError } = await supabase

@@ -3,6 +3,7 @@
 import { z } from "zod";
 import { headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
+import { SecureSupabaseClientFactory } from "@/lib/security/secure-client-factory.impl";
 import { generateGuestToken } from "@/lib/utils/guest-token";
 
 import {
@@ -311,7 +312,9 @@ async function verifyGuestTokenStorage(
   securityContext: { userAgent?: string; ip?: string }
 ): Promise<void> {
   try {
-    const supabase = createClient();
+    const secureClientFactory = SecureSupabaseClientFactory.getInstance();
+    const supabase = await secureClientFactory.createGuestClient(expectedGuestToken);
+
     const { data: savedAttendance, error: verifyError } = await supabase
       .from("attendances")
       .select("id, guest_token")
