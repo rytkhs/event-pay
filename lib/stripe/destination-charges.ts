@@ -51,7 +51,7 @@ export async function createDestinationCheckoutSession(
     setupFutureUsage,
   } = params;
 
-  if (platformFeeAmount >= amount) {
+  if (platformFeeAmount > amount) {
     throw new Error(
       `application_fee_amount (${platformFeeAmount}) must be less than amount (${amount}).`
     );
@@ -95,7 +95,11 @@ export async function createDestinationCheckoutSession(
           u.searchParams.set('session_id', '{CHECKOUT_SESSION_ID}');
           return u.toString();
         })(),
-        cancel_url: cancelUrl,
+        cancel_url: (() => {
+          const u = new URL(cancelUrl);
+          u.searchParams.set('session_id', '{CHECKOUT_SESSION_ID}');
+          return u.toString();
+        })(),
         payment_intent_data: {
           on_behalf_of: destinationAccountId,
           transfer_data: { destination: destinationAccountId },
@@ -129,7 +133,7 @@ export async function createDestinationPaymentIntent(
     setupFutureUsage,
   } = params;
 
-  if (platformFeeAmount >= amount) {
+  if (platformFeeAmount > amount) {
     throw new Error(
       `application_fee_amount (${platformFeeAmount}) must be less than amount (${amount}).`
     );

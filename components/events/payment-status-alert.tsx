@@ -17,6 +17,7 @@ interface PaymentStatusAlertProps {
 interface VerificationResult {
   success: boolean;
   payment_status?: "success" | "failed" | "cancelled" | "processing" | "pending";
+  payment_required?: boolean;
   error?: string;
 }
 
@@ -28,6 +29,7 @@ export function PaymentStatusAlert({
 }: PaymentStatusAlertProps) {
   const router = useRouter();
   const [verifiedStatus, setVerifiedStatus] = useState<string | null>(null);
+  const [paymentRequired, setPaymentRequired] = useState<boolean | null>(null);
   const [isVerifying, setIsVerifying] = useState(false);
   const [verificationError, setVerificationError] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState(0);
@@ -51,6 +53,9 @@ export function PaymentStatusAlert({
 
       if (result.success) {
         setVerifiedStatus(result.payment_status ?? null);
+        if (typeof result.payment_required === "boolean") {
+          setPaymentRequired(result.payment_required);
+        }
 
         // 決済完了の場合は、ページを最新状態にリフレッシュ
         if (result.payment_status === "success") {
@@ -85,17 +90,27 @@ export function PaymentStatusAlert({
 
   // セッション検証を実行（sessionIdがある場合）
   useEffect(() => {
+    // キャンセル導線では検証を行わず、UIのキャンセル表示を優先する
+    if (paymentStatus === "cancelled") return;
+
     if (sessionId && !verifiedStatus && !isVerifying) {
       verifySession();
     }
-  }, [sessionId, verifiedStatus, isVerifying, verifySession]);
+  }, [sessionId, verifiedStatus, isVerifying, verifySession, paymentStatus]);
 
   // 決済ステータスが processing/pending の間はポーリングで再検証
   useEffect(() => {
-    const currentStatus = verifiedStatus || paymentStatus;
+    // キャンセルがURLで指定されている場合は常にキャンセルを優先
+    const currentStatus =
+      paymentStatus === "cancelled" ? "cancelled" : verifiedStatus || paymentStatus;
 
     // 対象ステータスか & sessionId があるか & リトライ上限未満
-    if (sessionId && ["processing", "pending"].includes(currentStatus) && retryCount < maxRetries) {
+    if (
+      paymentStatus !== "cancelled" &&
+      sessionId &&
+      ["processing", "pending"].includes(currentStatus) &&
+      retryCount < maxRetries
+    ) {
       const intervalId = setInterval(() => {
         verifySession();
         setRetryCount((c) => c + 1);
@@ -115,7 +130,8 @@ export function PaymentStatusAlert({
 
   // 自動的にアラートを閉じる（成功時のみ）
   useEffect(() => {
-    const currentStatus = verifiedStatus || paymentStatus;
+    const currentStatus =
+      paymentStatus === "cancelled" ? "cancelled" : verifiedStatus || paymentStatus;
     if (currentStatus === "success") {
       const timer = setTimeout(() => {
         clearPaymentStatus();
@@ -127,7 +143,8 @@ export function PaymentStatusAlert({
 
   const getAlertContent = () => {
     // 検証中はローディング状態を表示
-    if (sessionId && isVerifying) {
+    // キャンセル時は検証ローディングを表示しない
+    if (sessionId && isVerifying && paymentStatus !== "cancelled") {
       return {
         variant: "default" as const,
         icon: <Loader2 className="h-5 w-5 text-blue-600 animate-spin" />,
@@ -150,11 +167,24 @@ export function PaymentStatusAlert({
       };
     }
 
-    // 検証済みステータスを優先、なければURL パラメータのステータスを使用
-    const currentStatus = verifiedStatus || paymentStatus;
+    // キャンセル導線ではURLのキャンセルを優先、他は検証済みを優先
+    const currentStatus =
+      paymentStatus === "cancelled" ? "cancelled" : verifiedStatus || paymentStatus;
 
     switch (currentStatus) {
       case "success":
+        if (paymentRequired === false) {
+          // 無料/全額割引: 支払い不要の完了
+          return {
+            variant: "default" as const,
+            icon: <CheckCircle className="h-5 w-5 text-green-600" />,
+            bgColor: "bg-green-50 border-green-200",
+            textColor: "text-green-800",
+            title: verifiedStatus ? "参加登録が完了しました（検証済み）" : "参加登録が完了しました",
+            description: `${sanitizeForEventPay(eventTitle)}の参加登録が確定しました。お支払いは不要です。`,
+          };
+        }
+        // 有料の決済完了
         return {
           variant: "default" as const,
           icon: <CheckCircle className="h-5 w-5 text-green-600" />,

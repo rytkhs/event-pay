@@ -26,16 +26,37 @@ interface VerificationResult {
    * リクエストエラー時（success: false）のレスポンスでは省略される。
    */
   payment_status?: "success" | "failed" | "cancelled" | "processing" | "pending";
+  /**
+   * このセッションで支払いが必要か（無料・全額割引は false）
+   * success フラグが true の場合に付与され得る。
+   */
+  payment_required?: boolean;
   error?: string;
 }
 
 export async function GET(request: NextRequest) {
   try {
+    // ------------------------------
     // Rate limiting
-    const store = await createRateLimitStore();
-    const clientIP = request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip") || "unknown";
-    const rateLimitKey = `payment-verify:${clientIP}`;
+    // ------------------------------
+    // 1. まずクエリパラメータを取得して attendance_id を抽出
+    const url = new URL(request.url);
+    const attendanceParam = url.searchParams.get("attendance_id") || "unknown";
 
+    // 2. IP アドレス取得は複数ヘッダーをフォールバック
+    const clientIP =
+      // XFF は複数 IP が "a, b" 形式で並ぶので先頭を取る
+      request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
+      request.headers.get("x-real-ip") ??
+      request.headers.get("cf-connecting-ip") ??
+      // Next.js Edge Runtime では request.ip が存在する場合がある
+      (request as unknown as { ip?: string }).ip ??
+      "unknown";
+
+    // 3. IP と attendance_id の複合キーで粒度を細分化
+    const rateLimitKey = `payment-verify:${clientIP}:${attendanceParam}`;
+
+    const store = await createRateLimitStore();
     const rateLimitResult = await checkRateLimit(store, rateLimitKey, {
       maxAttempts: 10,
       windowMs: 60 * 1000, // 1 minute
@@ -52,9 +73,9 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const url = new URL(request.url);
+    // 4. 残りのパラメータを取得
     const sessionId = url.searchParams.get("session_id");
-    const attendanceId = url.searchParams.get("attendance_id");
+    const attendanceId = attendanceParam === "unknown" ? null : attendanceParam;
 
     // バリデーション
     const validationResult = VerifySessionSchema.safeParse({
@@ -145,6 +166,13 @@ export async function GET(request: NextRequest) {
         paymentStatus = "processing";
     }
 
+    // 支払い要否を判定（no_cost orders / 100% off / 価格0）
+    const isNoPaymentRequired =
+      checkoutSession.payment_status === "no_payment_required" ||
+      (typeof (checkoutSession as { amount_total?: number }).amount_total === "number" &&
+        (checkoutSession as { amount_total?: number }).amount_total === 0) ||
+      (typeof payment?.amount === "number" && payment.amount === 0);
+
     // DBとStripeのステータスが一致しない場合の処理
     if (payment && paymentStatus === "success") {
       const dbStatus = payment.status;
@@ -166,6 +194,7 @@ export async function GET(request: NextRequest) {
     const result: VerificationResult = {
       success: true,
       payment_status: paymentStatus,
+      payment_required: !isNoPaymentRequired,
     };
 
     logger.info("Payment session verification completed", {

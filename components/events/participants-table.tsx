@@ -221,7 +221,7 @@ export function ParticipantsTable({
 
         toast({
           title: "全件選択",
-          description: `${result.paymentIds.length}件を選択しました$${
+          description: `${result.paymentIds.length}件を選択しました${
             "matchedTotal" in result && typeof result.matchedTotal === "number"
               ? `（取得: ${result.paymentIds.length}件 / 該当: ${result.matchedTotal}件${result.truncated ? "、上限まで" : ""}）`
               : `（取得: ${result.paymentIds.length}件${result.truncated ? "、上限まで" : ""}）`

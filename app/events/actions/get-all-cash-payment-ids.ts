@@ -62,19 +62,31 @@ export async function getAllCashPaymentIdsAction(
       query = query.eq("payments.status", filters.paymentStatus);
     }
 
-    // クローンして総件数取得用のクエリ（limit 無し）
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const countQuery = (query as any).clone();
+    // 総件数取得用のクエリ（limit 無し、head:true）
+    let countQuery = supabase
+      .from("attendances")
+      .select(`id, payments!inner ( id )`, { count: "exact", head: true })
+      .eq("event_id", validatedEventId)
+      .eq("payments.method", "cash")
+      .limit(1, { foreignTable: "payments" });
+
+    if (filters?.search) {
+      const pattern = `%${filters.search}%`;
+      countQuery = countQuery.or(`nickname.ilike.${pattern},email.ilike.${pattern}`);
+    }
+    if (filters?.attendanceStatus) {
+      countQuery = countQuery.eq("status", filters.attendanceStatus);
+    }
+    if (filters?.paymentStatus) {
+      countQuery = countQuery.eq("payments.status", filters.paymentStatus);
+    }
 
     // 上限 + 1 で取得
     query = query.limit(max + 1);
 
     const { data, error } = await query;
     // 総件数を取得（head:true で行データは取得しない）
-    const { count: matchedTotal, error: countError } = await countQuery.select("id", {
-      count: "exact",
-      head: true,
-    });
+    const { count: matchedTotal, error: countError } = await countQuery;
     if (error) {
       handleDatabaseError(error, { eventId: validatedEventId, userId: user.id });
     }
