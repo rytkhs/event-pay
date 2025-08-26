@@ -9,9 +9,8 @@ import { createRateLimitStore, checkRateLimit } from "@/lib/rate-limit";
 import { RATE_LIMIT_CONFIG } from "@/config/security";
 import {
   type ServerActionResult,
-  createErrorResponse,
-  createSuccessResponse,
-  ERROR_CODES,
+  createServerActionError,
+  createServerActionSuccess,
   type ErrorCode,
 } from "@/lib/types/server-actions";
 
@@ -24,29 +23,29 @@ const inputSchema = z.object({
 function mapPaymentError(type: PaymentErrorType): ErrorCode {
   switch (type) {
     case PaymentErrorType.VALIDATION_ERROR:
-      return ERROR_CODES.VALIDATION_ERROR;
+      return "VALIDATION_ERROR";
     case PaymentErrorType.UNAUTHORIZED:
-      return ERROR_CODES.UNAUTHORIZED;
+      return "UNAUTHORIZED";
     case PaymentErrorType.FORBIDDEN:
-      return ERROR_CODES.FORBIDDEN;
+      return "FORBIDDEN";
     case PaymentErrorType.INVALID_AMOUNT:
     case PaymentErrorType.INVALID_PAYMENT_METHOD:
     case PaymentErrorType.INVALID_STATUS_TRANSITION:
-      return ERROR_CODES.BUSINESS_RULE_VIOLATION;
+      return "RESOURCE_CONFLICT";
     case PaymentErrorType.EVENT_NOT_FOUND:
     case PaymentErrorType.ATTENDANCE_NOT_FOUND:
     case PaymentErrorType.PAYMENT_NOT_FOUND:
-      return ERROR_CODES.NOT_FOUND;
+      return "NOT_FOUND";
     case PaymentErrorType.PAYMENT_ALREADY_EXISTS:
-      return ERROR_CODES.CONFLICT;
+      return "RESOURCE_CONFLICT";
     case PaymentErrorType.CONCURRENT_UPDATE:
-      return ERROR_CODES.CONFLICT;
+      return "RESOURCE_CONFLICT";
     case PaymentErrorType.DATABASE_ERROR:
-      return ERROR_CODES.DATABASE_ERROR;
+      return "DATABASE_ERROR";
     case PaymentErrorType.STRIPE_API_ERROR:
     case PaymentErrorType.WEBHOOK_PROCESSING_ERROR:
     default:
-      return ERROR_CODES.INTERNAL_ERROR;
+      return "INTERNAL_ERROR";
   }
 }
 
@@ -56,8 +55,8 @@ export async function updateCashStatusAction(
   try {
     const parsed = inputSchema.safeParse(input);
     if (!parsed.success) {
-      return createErrorResponse(ERROR_CODES.VALIDATION_ERROR, "入力データが無効です。", {
-        zodErrors: parsed.error.errors,
+      return createServerActionError("VALIDATION_ERROR", "入力データが無効です。", {
+        details: { zodErrors: parsed.error.errors },
       });
     }
     const { paymentId, status, notes } = parsed.data;
@@ -69,7 +68,7 @@ export async function updateCashStatusAction(
       error: authError,
     } = await supabase.auth.getUser();
     if (authError || !user) {
-      return createErrorResponse(ERROR_CODES.UNAUTHORIZED, "認証が必要です。");
+      return createServerActionError("UNAUTHORIZED", "認証が必要です。");
     }
 
     // レート制限（ユーザー単位）
@@ -81,10 +80,10 @@ export async function updateCashStatusAction(
         RATE_LIMIT_CONFIG.paymentStatusUpdate
       );
       if (!rl.allowed) {
-        return createErrorResponse(
-          ERROR_CODES.RATE_LIMIT_EXCEEDED,
+        return createServerActionError(
+          "RATE_LIMITED",
           "レート制限に達しました。しばらく待ってから再試行してください。",
-          rl.retryAfter ? { retryAfter: rl.retryAfter } : undefined
+          rl.retryAfter ? { retryable: true, details: { retryAfter: rl.retryAfter } } : { retryable: true }
         );
       }
     } catch {
@@ -112,7 +111,7 @@ export async function updateCashStatusAction(
       .single();
 
     if (fetchError || !payment) {
-      return createErrorResponse(ERROR_CODES.NOT_FOUND, "決済レコードが見つかりません。");
+      return createServerActionError("NOT_FOUND", "決済レコードが見つかりません。");
     }
 
     // 基本的な権限チェック（RPC関数内でも再チェックされる）
@@ -126,13 +125,13 @@ export async function updateCashStatusAction(
     const event = Array.isArray(attendance.events) ? attendance.events[0] : attendance.events;
 
     if (event.created_by !== user.id) {
-      return createErrorResponse(ERROR_CODES.FORBIDDEN, "この操作を実行する権限がありません。");
+      return createServerActionError("FORBIDDEN", "この操作を実行する権限がありません。");
     }
 
     // 現金決済のみ
     if (payment.method !== "cash") {
-      return createErrorResponse(
-        ERROR_CODES.BUSINESS_RULE_VIOLATION,
+      return createServerActionError(
+        "RESOURCE_CONFLICT",
         "現金決済以外は手動更新できません。"
       );
     }
@@ -145,10 +144,10 @@ export async function updateCashStatusAction(
       });
     } catch (validationError) {
       if (validationError instanceof PaymentError) {
-        return createErrorResponse(mapPaymentError(validationError.type), validationError.message);
+        return createServerActionError(mapPaymentError(validationError.type), validationError.message);
       }
-      return createErrorResponse(
-        ERROR_CODES.INTERNAL_ERROR,
+      return createServerActionError(
+        "INTERNAL_ERROR",
         "ステータス検証中に予期しないエラーが発生しました。"
       );
     }
@@ -170,25 +169,25 @@ export async function updateCashStatusAction(
     if (rpcError) {
       // 楽観的ロック競合の場合
       if (rpcError.code === '40001') {
-        return createErrorResponse(
-          ERROR_CODES.CONFLICT,
+        return createServerActionError(
+          "RESOURCE_CONFLICT",
           "他のユーザーによって同時に更新されました。最新の状態を確認してから再試行してください。"
         );
       }
 
-      return createErrorResponse(
-        ERROR_CODES.DATABASE_ERROR,
+      return createServerActionError(
+        "DATABASE_ERROR",
         `決済ステータスの更新に失敗しました: ${rpcError.message}`
       );
     }
 
-    return createSuccessResponse({ paymentId, status });
+    return createServerActionSuccess({ paymentId, status });
   } catch (error) {
     if (error instanceof PaymentError) {
-      return createErrorResponse(mapPaymentError(error.type), error.message);
+      return createServerActionError(mapPaymentError(error.type), error.message);
     }
-    return createErrorResponse(ERROR_CODES.INTERNAL_ERROR, "予期しないエラーが発生しました", {
-      originalError: error,
+    return createServerActionError("INTERNAL_ERROR", "予期しないエラーが発生しました", {
+      details: { originalError: error },
     });
   }
 }

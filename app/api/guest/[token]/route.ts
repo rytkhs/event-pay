@@ -5,16 +5,13 @@ import { RATE_LIMIT_CONFIG } from "@/config/security";
 import { logger } from "@/lib/logging/app-logger";
 import { logInvalidTokenAccess } from "@/lib/security/security-logger";
 import { getClientIP } from "@/lib/utils/ip-detection";
+import { createProblemResponse, type ProblemDetails } from "@/lib/api/problem-details";
 
-export interface GuestValidationResponse {
-  success: boolean;
-  data?: {
+export interface GuestValidationSuccessResponse {
+  success: true;
+  data: {
     attendance: GuestAttendanceData;
     canModify: boolean;
-  };
-  error?: {
-    code: string;
-    message: string;
   };
 }
 
@@ -24,7 +21,7 @@ export interface GuestValidationResponse {
 export async function GET(
   request: NextRequest,
   { params }: { params: { token: string } }
-): Promise<NextResponse<GuestValidationResponse | RateLimitErrorResponse>> {
+): Promise<NextResponse<GuestValidationSuccessResponse | ProblemDetails | RateLimitErrorResponse>> {
   // レート制限を適用
   const rateLimitResponse = await handleRateLimit(request, RATE_LIMIT_CONFIG.guest, "guest");
   if (rateLimitResponse) {
@@ -35,16 +32,10 @@ export async function GET(
 
   try {
     if (!token) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: "MISSING_TOKEN",
-            message: "ゲストトークンが必要です",
-          },
-        },
-        { status: 400 }
-      );
+      return createProblemResponse("MISSING_PARAMETER", {
+        instance: `/api/guest/${token || "[empty]"}`,
+        detail: "ゲストトークンが必要です",
+      });
     }
 
     // ゲストトークンを検証
@@ -60,16 +51,14 @@ export async function GET(
         ? "TOKEN_NOT_FOUND"
         : "INVALID_TOKEN";
 
-      return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: errorCode,
-            message: result.errorMessage || "無効なゲストトークンです",
-          },
-        },
-        { status: 404 }
-      );
+      const problemCode = errorCode === "TOKEN_NOT_FOUND"
+        ? "GUEST_TOKEN_NOT_FOUND"
+        : "GUEST_TOKEN_INVALID";
+
+      return createProblemResponse(problemCode, {
+        instance: `/api/guest/${token}`,
+        detail: result.errorMessage || "無効なゲストトークンです",
+      });
     }
 
     return NextResponse.json({
@@ -87,15 +76,9 @@ export async function GET(
       error_message: error instanceof Error ? error.message : String(error)
     });
 
-    return NextResponse.json(
-      {
-        success: false,
-        error: {
-          code: "INTERNAL_ERROR",
-          message: "参加データの取得中にエラーが発生しました",
-        },
-      },
-      { status: 500 }
-    );
+    return createProblemResponse("INTERNAL_ERROR", {
+      instance: `/api/guest/${token}`,
+      detail: "参加データの取得中にエラーが発生しました",
+    });
   }
 }

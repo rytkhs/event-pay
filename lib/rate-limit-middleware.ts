@@ -1,16 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { checkRateLimit, createRateLimitStore, type RateLimitConfig } from "@/lib/rate-limit/index";
 import { getClientIP } from "@/lib/utils/ip-detection";
+import { createProblemResponse } from "@/lib/api/problem-details";
 
 // レート制限エラーレスポンス用の型定義
-export interface RateLimitErrorResponse {
-  success: false;
-  error: {
-    code: string;
-    message: string;
-    retryAfter?: number;
-  };
-}
+export type RateLimitErrorResponse = NextResponse;
 
 // レート制限ミドルウェア
 
@@ -28,22 +22,12 @@ export function withRateLimit(config: RateLimitConfig, keyPrefix?: string) {
 
     if (!result.allowed) {
       const retryAfter = result.retryAfter || 60;
-
-      const errorResponse: RateLimitErrorResponse = {
-        success: false,
-        error: {
-          code: "RATE_LIMIT_EXCEEDED",
-          message: "レート制限に達しました。しばらく待ってから再試行してください。",
-          retryAfter,
-        },
-      };
-
-      return NextResponse.json(errorResponse, {
-        status: 429,
-        headers: {
-          "Retry-After": retryAfter.toString(),
-        },
+      const res = createProblemResponse("RATE_LIMITED", {
+        instance: request.nextUrl.pathname,
+        retryable: true,
       });
+      res.headers.set("Retry-After", retryAfter.toString());
+      return res;
     }
 
     // レート制限通過時にはnullを返して処理続行を示す

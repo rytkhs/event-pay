@@ -7,6 +7,8 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { CheckCircle, XCircle, AlertCircle, X, Loader2 } from "lucide-react";
 
+import { type ProblemDetails } from "@/lib/api/problem-details";
+
 interface PaymentStatusAlertProps {
   sessionId?: string;
   attendanceId: string;
@@ -15,11 +17,9 @@ interface PaymentStatusAlertProps {
   guestToken: string;
 }
 
-interface VerificationResult {
-  success: boolean;
-  payment_status?: "success" | "failed" | "cancelled" | "processing" | "pending";
-  payment_required?: boolean;
-  error?: string;
+interface VerificationSuccessResult {
+  payment_status: "success" | "failed" | "cancelled" | "processing" | "pending";
+  payment_required: boolean;
 }
 
 export function PaymentStatusAlert({
@@ -67,18 +67,16 @@ export function PaymentStatusAlert({
       const status = response.status;
 
       // レスポンスがJSONでない可能性も考慮し安全にparse
-      let parsed: VerificationResult | null = null;
+      let parsed: VerificationSuccessResult | null = null;
       try {
-        parsed = (await response.json()) as VerificationResult;
+        parsed = (await response.json()) as VerificationSuccessResult;
       } catch (_e) {
         parsed = null;
       }
 
-      if (response.ok && parsed && parsed.success) {
+      if (response.ok && parsed) {
         setVerifiedStatus(parsed.payment_status ?? null);
-        if (typeof parsed.payment_required === "boolean") {
-          setPaymentRequired(parsed.payment_required);
-        }
+        setPaymentRequired(parsed.payment_required);
 
         // 決済完了の場合は、ページを最新状態にリフレッシュ
         if (parsed.payment_status === "success") {
@@ -87,6 +85,21 @@ export function PaymentStatusAlert({
           }, 2000);
         }
       } else {
+        // エラーレスポンスの処理（RFC 7807 Problem Details）
+        let problemDetails: ProblemDetails | null = null;
+        try {
+          // 既に parsed でエラー情報を取得済みの場合、それをProblem Detailsとして扱う
+          if (parsed) {
+            problemDetails = parsed as unknown as ProblemDetails;
+          } else {
+            // レスポンスを再取得してProblem Detailsとしてパース
+            const errorText = await response.text();
+            problemDetails = JSON.parse(errorText) as ProblemDetails;
+          }
+        } catch (_e) {
+          problemDetails = null;
+        }
+
         // エラー分類
         // - 一時的: 429 / 5xx / 401 / 403 / 404 / ネットワーク → UIは処理中にフォールバック
         // - 致命的: 400 など明らかな無効リクエスト → 赤エラー表示
@@ -96,7 +109,8 @@ export function PaymentStatusAlert({
           status === 403 ||
           status === 404 ||
           status === 429 ||
-          status >= 500;
+          status >= 500 ||
+          (problemDetails?.retryable ?? false);
 
         if (isTransientStatus) {
           // 処理中にフォールバック（ユーザーにはエラーを見せない）
@@ -104,7 +118,7 @@ export function PaymentStatusAlert({
           // エラーメッセージは出さない
         } else {
           // 明らかな無効パラメータ等のみ赤エラー
-          const message = (parsed && parsed.error) || "検証に失敗しました";
+          const message = problemDetails?.detail || "検証に失敗しました";
           setVerificationError(message);
         }
       }

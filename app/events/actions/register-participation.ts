@@ -19,10 +19,9 @@ import {
 } from "@/lib/validations/participation";
 import {
   type ServerActionResult,
-  createErrorResponse,
-  createSuccessResponse,
-  zodErrorToResponse,
-  ERROR_CODES,
+  createServerActionError,
+  createServerActionSuccess,
+  zodErrorToServerActionResponse,
 } from "@/lib/types/server-actions";
 import {
   logParticipationSecurityEvent,
@@ -88,9 +87,9 @@ async function extractAndValidateFormData(
         },
         securityContext
       );
-      throw zodErrorToResponse(error);
+      throw zodErrorToServerActionResponse(error);
     }
-    throw createErrorResponse(ERROR_CODES.VALIDATION_ERROR, "入力データが無効です");
+    throw createServerActionError("VALIDATION_ERROR", "入力データが無効です");
   }
 }
 
@@ -106,8 +105,8 @@ async function validateInviteAndEvent(
   if (!inviteValidation.isValid || !inviteValidation.event) {
     // 無効なトークンアクセスをログに記録
     logInvalidTokenAccess(participationData.inviteToken, "invite", securityContext);
-    throw createErrorResponse(
-      ERROR_CODES.NOT_FOUND,
+    throw createServerActionError(
+      "NOT_FOUND",
       inviteValidation.errorMessage || "無効な招待リンクです"
     );
   }
@@ -125,8 +124,8 @@ async function validateInviteAndEvent(
       { ...securityContext, eventId: inviteValidation.event?.id }
     );
 
-    throw createErrorResponse(
-      ERROR_CODES.BUSINESS_RULE_VIOLATION,
+    throw createServerActionError(
+      "RESOURCE_CONFLICT",
       inviteValidation.errorMessage || "このイベントには参加登録できません"
     );
   }
@@ -161,8 +160,8 @@ async function validateCapacityAndDuplication(
         { ...securityContext, eventId: event.id }
       );
 
-      throw createErrorResponse(
-        ERROR_CODES.BUSINESS_RULE_VIOLATION,
+      throw createServerActionError(
+        "RESOURCE_CONFLICT",
         "このイベントは定員に達しています"
       );
     }
@@ -179,8 +178,8 @@ async function validateCapacityAndDuplication(
       { ...securityContext, eventId: event.id }
     );
 
-    throw createErrorResponse(
-      ERROR_CODES.CONFLICT,
+    throw createServerActionError(
+      "RESOURCE_CONFLICT",
       "このメールアドレスは既にこのイベントに登録されています"
     );
   }
@@ -193,8 +192,8 @@ async function validateCapacityAndDuplication(
   );
 
   if (Object.keys(validationErrors).length > 0) {
-    throw createErrorResponse(
-      ERROR_CODES.CONFLICT,
+    throw createServerActionError(
+      "RESOURCE_CONFLICT",
       validationErrors.email || validationErrors.general || "入力データに問題があります"
     );
   }
@@ -234,7 +233,7 @@ async function sanitizeAndPrepareData(
       { ...securityContext, eventId: event.id }
     );
 
-    throw createErrorResponse(ERROR_CODES.INTERNAL_ERROR, "参加登録の処理中にエラーが発生しました");
+    throw createServerActionError("INTERNAL_ERROR", "参加登録の処理中にエラーが発生しました");
   }
 
   return {
@@ -293,7 +292,7 @@ async function executeRegistration(
       { ...securityContext, eventId: event.id }
     );
 
-    throw createErrorResponse(ERROR_CODES.DATABASE_ERROR, "参加登録の処理中にエラーが発生しました");
+    throw createServerActionError("DATABASE_ERROR", "参加登録の処理中にエラーが発生しました");
   }
 
   // ゲストトークンが正しく保存されたかを検証
@@ -394,7 +393,7 @@ export async function registerParticipationAction(
       paymentMethod: participationData.paymentMethod,
     };
 
-    return createSuccessResponse(responseData, "参加登録が完了しました");
+    return createServerActionSuccess(responseData, "参加登録が完了しました");
   } catch (error) {
     // エラーが既にServerActionResultの場合はそのまま返す
     if (error && typeof error === "object" && "success" in error) {
@@ -411,8 +410,8 @@ export async function registerParticipationAction(
       securityContext
     );
 
-    return createErrorResponse(
-      ERROR_CODES.INTERNAL_ERROR,
+    return createServerActionError(
+      "INTERNAL_ERROR",
       "参加登録の処理中にエラーが発生しました"
     );
   }
@@ -438,8 +437,8 @@ export async function registerParticipationDirectAction(
 
     return await registerParticipationAction(formData);
   } catch (_error) {
-    return createErrorResponse(
-      ERROR_CODES.INTERNAL_ERROR,
+    return createServerActionError(
+      "INTERNAL_ERROR",
       "参加登録の処理中にエラーが発生しました"
     );
   }

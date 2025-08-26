@@ -8,9 +8,8 @@ import { RATE_LIMIT_CONFIG } from "@/config/security";
 import { validateGuestToken } from "@/lib/utils/guest-token";
 import { canCreateStripeSession } from "@/lib/validation/payment-eligibility";
 import {
-  createErrorResponse,
-  createSuccessResponse,
-  ERROR_CODES,
+  createServerActionError,
+  createServerActionSuccess,
   type ServerActionResult,
 } from "@/lib/types/server-actions";
 import { z } from "zod";
@@ -31,8 +30,8 @@ export async function createGuestStripeSessionAction(
   // 1. 入力検証
   const parsed = guestStripeSessionSchema.safeParse(input);
   if (!parsed.success) {
-    return createErrorResponse(ERROR_CODES.VALIDATION_ERROR, "入力データが無効です。", {
-      zodErrors: parsed.error.errors,
+    return createServerActionError("VALIDATION_ERROR", "入力データが無効です。", {
+      details: { zodErrors: parsed.error.errors },
     });
   }
   const { guestToken, successUrl, cancelUrl } = parsed.data;
@@ -40,7 +39,7 @@ export async function createGuestStripeSessionAction(
   // 2. guestToken 検証 & 参加データ取得
   const tokenResult = await validateGuestToken(guestToken);
   if (!tokenResult.isValid || !tokenResult.attendance) {
-    return createErrorResponse(ERROR_CODES.UNAUTHORIZED, tokenResult.errorMessage ?? "無効なゲストトークンです");
+    return createServerActionError("UNAUTHORIZED", tokenResult.errorMessage ?? "無効なゲストトークンです");
   }
   const attendance = tokenResult.attendance;
   const event = attendance.event;
@@ -48,8 +47,8 @@ export async function createGuestStripeSessionAction(
   // 決済許可条件の統一チェック
   const eligibilityResult = canCreateStripeSession(attendance, event);
   if (!eligibilityResult.isEligible) {
-    return createErrorResponse(
-      ERROR_CODES.BUSINESS_RULE_VIOLATION,
+    return createServerActionError(
+      "RESOURCE_CONFLICT",
       eligibilityResult.reason || "決済セッションの作成条件を満たしていません。"
     );
   }
@@ -63,10 +62,13 @@ export async function createGuestStripeSessionAction(
       RATE_LIMIT_CONFIG.stripeCheckout
     );
     if (!rl.allowed) {
-      return createErrorResponse(
-        ERROR_CODES.RATE_LIMIT_EXCEEDED,
+      return createServerActionError(
+        "RATE_LIMITED",
         "Stripe Checkout セッションの作成回数が上限に達しました。しばらく待ってから再試行してください。",
-        rl.retryAfter ? { retryAfter: rl.retryAfter } : undefined
+        {
+          retryable: true,
+          details: rl.retryAfter ? { retryAfter: rl.retryAfter } : undefined,
+        }
       );
     }
   } catch {
@@ -75,7 +77,7 @@ export async function createGuestStripeSessionAction(
 
   // 4. 金額妥当性 (フロント改ざん防止) - 共通チェックで既に確認済みだが念のため
   if (event.fee <= 0) {
-    return createErrorResponse(ERROR_CODES.BUSINESS_RULE_VIOLATION, "無料イベントでは決済は不要です。");
+    return createServerActionError("RESOURCE_CONFLICT", "無料イベントでは決済は不要です。");
   }
 
   // 5. 決済サービス呼び出し (Admin)
@@ -105,15 +107,15 @@ export async function createGuestStripeSessionAction(
     .maybeSingle();
 
   if (connectError || !connectAccount) {
-    return createErrorResponse(
-      ERROR_CODES.BUSINESS_RULE_VIOLATION,
+    return createServerActionError(
+      "RESOURCE_CONFLICT",
       "このイベントにはStripe Connectアカウントが設定されていません。"
     );
   }
 
   if (!connectAccount.payouts_enabled) {
-    return createErrorResponse(
-      ERROR_CODES.BUSINESS_RULE_VIOLATION,
+    return createServerActionError(
+      "RESOURCE_CONFLICT",
       "Stripe Connectアカウントの入金機能 (payouts) が無効化されています。"
     );
   }
@@ -136,9 +138,9 @@ export async function createGuestStripeSessionAction(
       destinationCharges: destinationChargesConfig,
     });
 
-    return createSuccessResponse({ sessionUrl: result.sessionUrl, sessionId: result.sessionId });
+    return createServerActionSuccess({ sessionUrl: result.sessionUrl, sessionId: result.sessionId });
   } catch (error) {
     const msg = error instanceof Error ? error.message : "Stripe セッション作成に失敗しました";
-    return createErrorResponse(ERROR_CODES.INTERNAL_ERROR, msg);
+    return createServerActionError("INTERNAL_ERROR", msg);
   }
 }
