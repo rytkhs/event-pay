@@ -248,6 +248,13 @@ const ERROR_DEFINITIONS: Record<string, ErrorDefinition> = {
     defaultDetail: "決済セッションが見つかりません",
     retryable: false,
   },
+  PAYMENT_SESSION_OUTDATED: {
+    type: "https://api.eventpay.app/errors/payment_session_outdated",
+    title: "Payment Session Outdated",
+    defaultStatus: 409,
+    defaultDetail: "最新の決済セッションではありません。再度お試しください",
+    retryable: false,
+  },
   PAYMENT_PROCESSING_ERROR: {
     type: "https://api.eventpay.app/errors/payment_processing_error",
     title: "Payment Processing Error",
@@ -306,13 +313,6 @@ const ERROR_DEFINITIONS: Record<string, ErrorDefinition> = {
     title: "Registration Deadline Passed",
     defaultStatus: 410,
     defaultDetail: "参加申込期限が過ぎています",
-    retryable: false,
-  },
-  CAPACITY_REACHED: {
-    type: "https://api.eventpay.app/errors/capacity_reached",
-    title: "Capacity Reached",
-    defaultStatus: 200,
-    defaultDetail: "このイベントは定員に達しています",
     retryable: false,
   },
 

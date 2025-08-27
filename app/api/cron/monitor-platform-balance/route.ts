@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { createProblemResponse } from "@/lib/api/problem-details";
 import { stripe as sharedStripe } from "@/lib/stripe/client";
 import { validateCronSecret, logCronActivity } from "@/lib/cron-auth";
 import { EmailNotificationService } from "@/lib/services/notification/email-service";
@@ -14,7 +15,10 @@ export const dynamic = "force-dynamic";
 export async function GET(request: NextRequest) {
   const auth = validateCronSecret(request);
   if (!auth.isValid) {
-    return NextResponse.json({ error: auth.error || "Unauthorized" }, { status: 401 });
+    return createProblemResponse("UNAUTHORIZED", {
+      instance: "/api/cron/monitor-platform-balance",
+      detail: auth.error || "Unauthorized",
+    });
   }
 
   const minThreshold = Number.parseInt(process.env.PLATFORM_BALANCE_MIN_JPY || "0", 10);
@@ -63,6 +67,9 @@ export async function GET(request: NextRequest) {
     logCronActivity("error", "Failed to retrieve platform balance", {
       error: e instanceof Error ? e.message : String(e),
     });
-    return NextResponse.json({ error: "Failed to retrieve platform balance" }, { status: 500 });
+    return createProblemResponse("INTERNAL_ERROR", {
+      instance: "/api/cron/monitor-platform-balance",
+      detail: "Failed to retrieve platform balance",
+    });
   }
 }
