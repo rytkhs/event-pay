@@ -56,6 +56,7 @@ export interface GuestTokenValidationResult {
   attendance?: GuestAttendanceData;
   errorMessage?: string;
   canModify: boolean;
+  errorCode?: import("@/lib/security/secure-client-factory.types").GuestErrorCode;
 }
 
 /**
@@ -78,6 +79,7 @@ export async function validateGuestToken(guestToken: string): Promise<GuestToken
       attendance: rlsResult.attendance ? convertToLegacyFormat(rlsResult.attendance) : undefined,
       errorMessage: rlsResult.errorMessage,
       canModify: rlsResult.canModify,
+      errorCode: rlsResult.errorCode,
     };
   } catch (error) {
     if (process.env.NODE_ENV === "development") {
@@ -92,6 +94,7 @@ export async function validateGuestToken(guestToken: string): Promise<GuestToken
       isValid: false,
       errorMessage: "参加データの取得中にエラーが発生しました",
       canModify: false,
+      errorCode: "TOKEN_NOT_FOUND" as import("@/lib/security/secure-client-factory.types").GuestErrorCode,
     };
   }
 }

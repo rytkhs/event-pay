@@ -12,24 +12,25 @@ import { PAYMENT_METHODS, PAYMENT_METHOD_LABELS } from "@/lib/constants/payment-
 import type { Database } from "@/types/database";
 import { headers } from "next/headers";
 import { getClientIPFromHeaders } from "@/lib/utils/ip-detection";
+import {
+  createServerActionError,
+  createServerActionSuccess,
+  type ServerActionResult
+} from "@/lib/types/server-actions";
 
 // 更新データの型定義
-export interface UpdateGuestAttendanceData {
+export interface UpdateGuestAttendanceInput {
   guestToken: string;
   attendanceStatus: Database["public"]["Enums"]["attendance_status_enum"];
   paymentMethod?: Database["public"]["Enums"]["payment_method_enum"];
 }
 
-// 更新結果の型定義
-export interface UpdateGuestAttendanceResult {
-  success: boolean;
-  data?: {
-    attendanceId: string;
-    status: Database["public"]["Enums"]["attendance_status_enum"];
-    paymentMethod: Database["public"]["Enums"]["payment_method_enum"] | null;
-    requiresAdditionalPayment: boolean;
-  };
-  error?: string;
+// 更新結果のデータ型定義
+export interface UpdateGuestAttendanceData {
+  attendanceId: string;
+  status: Database["public"]["Enums"]["attendance_status_enum"];
+  paymentMethod: Database["public"]["Enums"]["payment_method_enum"] | null;
+  requiresAdditionalPayment: boolean;
 }
 
 /**
@@ -39,7 +40,7 @@ export interface UpdateGuestAttendanceResult {
  */
 export async function updateGuestAttendanceAction(
   formData: FormData
-): Promise<UpdateGuestAttendanceResult> {
+): Promise<ServerActionResult<UpdateGuestAttendanceData>> {
   const headersList = headers();
   const userAgent = headersList.get("user-agent") || undefined;
   const ip = getClientIPFromHeaders(headersList);
@@ -54,18 +55,12 @@ export async function updateGuestAttendanceAction(
 
     // 基本検証
     if (!guestToken || typeof guestToken !== 'string') {
-      return {
-        success: false,
-        error: "ゲストトークンが必要です",
-      };
+      return createServerActionError("MISSING_PARAMETER", "ゲストトークンが必要です");
     }
 
     // トークン形式の基本チェック
     if (!validateGuestTokenFormat(guestToken)) {
-      return {
-        success: false,
-        error: "無効なゲストトークンの形式です",
-      };
+      return createServerActionError("VALIDATION_ERROR", "無効なゲストトークンの形式です");
     }
 
     // ゲストトークンの検証と参加データの取得
@@ -83,10 +78,10 @@ export async function updateGuestAttendanceAction(
         });
       }
 
-      return {
-        success: false,
-        error: tokenValidation.errorMessage || "無効なゲストトークンです",
-      };
+      return createServerActionError(
+        "UNAUTHORIZED",
+        tokenValidation.errorMessage || "無効なゲストトークンです"
+      );
     }
 
     // 変更可能かどうかの確認
@@ -119,10 +114,7 @@ export async function updateGuestAttendanceAction(
         securityContext
       );
 
-      return {
-        success: false,
-        error: detailedError,
-      };
+      return createServerActionError("FORBIDDEN", detailedError);
     }
 
     const attendance = tokenValidation.attendance;
@@ -130,10 +122,7 @@ export async function updateGuestAttendanceAction(
     // 参加ステータスの検証
     const statusValidation = attendanceStatusSchema.safeParse(attendanceStatus);
     if (!statusValidation.success) {
-      return {
-        success: false,
-        error: "有効な参加ステータスを選択してください",
-      };
+      return createServerActionError("VALIDATION_ERROR", "有効な参加ステータスを選択してください");
     }
 
     const validatedStatus = statusValidation.data;
@@ -145,10 +134,10 @@ export async function updateGuestAttendanceAction(
 
     if (isAttending && isPayableEvent) {
       if (!paymentMethod || paymentMethod.trim() === '') {
-        return {
-          success: false,
-          error: `参加を選択した場合は決済方法を選択してください（参加費: ${attendance.event.fee.toLocaleString("ja-JP")}円）`,
-        };
+        return createServerActionError(
+          "VALIDATION_ERROR",
+          `参加を選択した場合は決済方法を選択してください（参加費: ${attendance.event.fee.toLocaleString("ja-JP")}円）`
+        );
       }
 
       const paymentValidation = paymentMethodSchema.safeParse(paymentMethod.trim());
@@ -157,10 +146,10 @@ export async function updateGuestAttendanceAction(
         const labelList = PAYMENT_METHODS.filter((m) => m !== "free")
           .map((m) => PAYMENT_METHOD_LABELS[m])
           .join("、");
-        return {
-          success: false,
-          error: `有効な決済方法を選択してください（選択可能: ${labelList}）`,
-        };
+        return createServerActionError(
+          "VALIDATION_ERROR",
+          `有効な決済方法を選択してください（選択可能: ${labelList}）`
+        );
       }
       validatedPaymentMethod = paymentValidation.data as Database["public"]["Enums"]["payment_method_enum"];
     }
@@ -205,10 +194,10 @@ export async function updateGuestAttendanceAction(
           securityContext
         );
 
-        return {
-          success: false,
-          error: "支払が確定しているため、決済方法を変更できません",
-        };
+        return createServerActionError(
+          "BUSINESS_RULE_VIOLATION",
+          "支払が確定しているため、決済方法を変更できません"
+        );
       }
     }
 
@@ -234,11 +223,18 @@ export async function updateGuestAttendanceAction(
     });
 
     if (error) {
-      // RPC関数からのエラーメッセージを適切に処理
-      let userFriendlyError = "参加状況の更新中にエラーが発生しました";
+      // RPC関数からのエラーメッセージを安定したコードベースで処理
+      // 将来的にはRPC側で機械可読なコードを返すことを推奨
 
-      if (error.message.includes("Event capacity") && error.message.includes("has been reached")) {
+      let errorCode: string;
+      let userFriendlyError: string;
+
+      // 固定キーワードベースでの分類（暫定対応）
+      if (error.message.includes("EVP_CAPACITY_REACHED") ||
+        (error.message.includes("Event capacity") && error.message.includes("has been reached"))) {
+        errorCode = "ATTENDANCE_CAPACITY_REACHED";
         userFriendlyError = "イベントの定員に達しているため参加できません";
+
         // 定員超過試行をセキュリティログに記録
         logParticipationSecurityEvent(
           "CAPACITY_BYPASS_ATTEMPT",
@@ -248,8 +244,13 @@ export async function updateGuestAttendanceAction(
             eventId: attendance.event.id,
           }
         );
-      } else if (error.message.includes("registration_deadline") || error.message.includes("Event is closed for modification")) {
+
+      } else if (error.message.includes("EVP_DEADLINE_PASSED") ||
+        error.message.includes("registration_deadline") ||
+        error.message.includes("Event is closed for modification")) {
+        errorCode = "ATTENDANCE_DEADLINE_PASSED";
         userFriendlyError = "申込締切を過ぎているため参加状況を変更できません";
+
         // 期限超過試行をセキュリティログに記録
         logParticipationSecurityEvent(
           "DEADLINE_BYPASS_ATTEMPT",
@@ -259,12 +260,26 @@ export async function updateGuestAttendanceAction(
             eventId: attendance.event.id,
           }
         );
-      } else if (error.message.includes("event not found")) {
+
+      } else if (error.message.includes("EVP_EVENT_NOT_FOUND") ||
+        error.message.includes("event not found")) {
+        errorCode = "NOT_FOUND";
         userFriendlyError = "イベントが見つかりませんでした";
-      } else if (error.message.includes("attendance not found") || error.message.includes("Attendance record not found")) {
+
+      } else if (error.message.includes("EVP_ATTENDANCE_NOT_FOUND") ||
+        error.message.includes("attendance not found") ||
+        error.message.includes("Attendance record not found")) {
+        errorCode = "ATTENDANCE_NOT_FOUND";
         userFriendlyError = "参加データが見つかりませんでした";
-      } else if (error.message.includes("Rejecting status rollback")) {
+
+      } else if (error.message.includes("EVP_STATUS_ROLLBACK_REJECTED") ||
+        error.message.includes("Rejecting status rollback")) {
+        errorCode = "ATTENDANCE_STATUS_ROLLBACK_REJECTED";
         userFriendlyError = "参加状況を過去の状態に戻すことはできません";
+
+      } else {
+        errorCode = "DATABASE_ERROR";
+        userFriendlyError = "参加状況の更新中にエラーが発生しました";
       }
 
       // 開発環境ではより詳細なログを出力
@@ -281,10 +296,7 @@ export async function updateGuestAttendanceAction(
         });
       }
 
-      return {
-        success: false,
-        error: userFriendlyError,
-      };
+      return createServerActionError(errorCode as "ATTENDANCE_CAPACITY_REACHED" | "ATTENDANCE_DEADLINE_PASSED" | "NOT_FOUND" | "ATTENDANCE_NOT_FOUND" | "ATTENDANCE_STATUS_ROLLBACK_REJECTED" | "DATABASE_ERROR", userFriendlyError);
     }
 
     // 決済が必要かどうかの判定（境界条件を含む詳細チェック）
@@ -327,15 +339,12 @@ export async function updateGuestAttendanceAction(
       return false;
     })();
 
-    return {
-      success: true,
-      data: {
-        attendanceId: attendance.id,
-        status: validatedStatus,
-        paymentMethod: validatedPaymentMethod,
-        requiresAdditionalPayment,
-      },
-    };
+    return createServerActionSuccess({
+      attendanceId: attendance.id,
+      status: validatedStatus,
+      paymentMethod: validatedPaymentMethod,
+      requiresAdditionalPayment,
+    });
   } catch (error) {
     // 予期しないエラーのログ記録
     if (process.env.NODE_ENV === "development") {
@@ -350,9 +359,9 @@ export async function updateGuestAttendanceAction(
       });
     }
 
-    return {
-      success: false,
-      error: "参加状況の更新中にエラーが発生しました。しばらく待ってからもう一度お試しください。",
-    };
+    return createServerActionError(
+      "INTERNAL_ERROR",
+      "参加状況の更新中にエラーが発生しました。しばらく待ってからもう一度お試しください。"
+    );
   }
 }
