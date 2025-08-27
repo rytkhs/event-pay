@@ -53,7 +53,7 @@ export async function createDestinationCheckoutSession(
 
   if (platformFeeAmount > amount) {
     throw new Error(
-      `application_fee_amount (${platformFeeAmount}) must be less than amount (${amount}).`
+      `application_fee_amount (${platformFeeAmount}) must be less than or equal to amount (${amount}).`
     );
   }
 
@@ -135,7 +135,7 @@ export async function createDestinationPaymentIntent(
 
   if (platformFeeAmount > amount) {
     throw new Error(
-      `application_fee_amount (${platformFeeAmount}) must be less than amount (${amount}).`
+      `application_fee_amount (${platformFeeAmount}) must be less than or equal to amount (${amount}).`
     );
   }
 

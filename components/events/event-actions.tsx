@@ -51,7 +51,7 @@ export function EventActions({ eventId }: EventActionsProps) {
         router.refresh(); // ページ遷移後にキャッシュを更新
       } else {
         // Server Actionから返される詳細なエラーメッセージを表示
-        setDeleteError(result.error?.message || "削除に失敗しました");
+        setDeleteError(result.error || "削除に失敗しました");
       }
     } catch {
       setDeleteError("削除に失敗しました");

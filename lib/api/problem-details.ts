@@ -283,7 +283,7 @@ const ERROR_DEFINITIONS: Record<string, ErrorDefinition> = {
   INVITE_TOKEN_INVALID: {
     type: "https://api.eventpay.app/errors/invite_token_invalid",
     title: "Invalid Invite Token",
-    defaultStatus: 400,
+    defaultStatus: 404,
     defaultDetail: "無効な招待リンクです",
     retryable: false,
   },
@@ -343,6 +343,43 @@ const ERROR_DEFINITIONS: Record<string, ErrorDefinition> = {
     title: "Attendance Status Rollback Rejected",
     defaultStatus: 400,
     defaultDetail: "参加状況を過去の状態に戻すことはできません",
+    retryable: false,
+  },
+
+  // イベント管理関連
+  EVENT_NOT_FOUND: {
+    type: "https://api.eventpay.app/errors/event_not_found",
+    title: "Event Not Found",
+    defaultStatus: 404,
+    defaultDetail: "指定されたイベントが見つかりません",
+    retryable: false,
+  },
+  EVENT_ACCESS_DENIED: {
+    type: "https://api.eventpay.app/errors/event_access_denied",
+    title: "Event Access Denied",
+    defaultStatus: 403,
+    defaultDetail: "このイベントへのアクセス権限がありません",
+    retryable: false,
+  },
+  EVENT_DELETE_RESTRICTED: {
+    type: "https://api.eventpay.app/errors/event_delete_restricted",
+    title: "Event Delete Restricted",
+    defaultStatus: 409,
+    defaultDetail: "参加者が存在するためイベントを削除できません",
+    retryable: false,
+  },
+  EVENT_DELETE_FAILED: {
+    type: "https://api.eventpay.app/errors/event_delete_failed",
+    title: "Event Delete Failed",
+    defaultStatus: 500,
+    defaultDetail: "イベントの削除に失敗しました",
+    retryable: true,
+  },
+  EVENT_INVALID_ID: {
+    type: "https://api.eventpay.app/errors/event_invalid_id",
+    title: "Invalid Event ID",
+    defaultStatus: 400,
+    defaultDetail: "無効なイベントID形式です",
     retryable: false,
   },
 
