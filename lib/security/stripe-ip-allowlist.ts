@@ -5,6 +5,8 @@
  * - 追加許可 IP は環境変数で上書き可能
  */
 
+import { apiClient } from "@/lib/api/client";
+
 const STRIPE_IPS_JSON_URL = "https://stripe.com/files/ips/ips_webhooks.json";
 const DEFAULT_TTL_MS = 24 * 60 * 60 * 1000; // 24h
 
@@ -53,9 +55,11 @@ export async function getStripeWebhookAllowedIPs(options?: { ttlMs?: number }): 
 
   // フェッチ
   try {
-    const res = await fetch(STRIPE_IPS_JSON_URL, { cache: "no-store" });
-    if (!res.ok) throw new Error(`Failed to fetch Stripe IPs: ${res.status}`);
-    const json = (await res.json()) as StripeIpsResponse;
+    const json = await apiClient.get<StripeIpsResponse>(STRIPE_IPS_JSON_URL, {
+      cache: "no-store",
+      timeout: 10000, // 10秒タイムアウト
+      maxRetries: 2, // 2回リトライ
+    });
     const ips = new Set<string>([
       ...((json.WEBHOOKS ?? json.webhooks ?? []) as string[]),
       ...parseExtraIpsFromEnv(),
