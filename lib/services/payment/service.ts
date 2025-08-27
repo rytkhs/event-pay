@@ -6,7 +6,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 // import type { PostgrestError } from "@supabase/supabase-js";
 import { Database } from "@/types/database";
 import { stripe } from "@/lib/stripe/client";
-import * as DestinationCharges from "../../stripe/destination-charges";
+import * as DestinationCharges from "@/lib/stripe/destination-charges";
 import { ApplicationFeeCalculator } from "@/lib/services/fee-config/application-fee-calculator";
 import { IPaymentService, IPaymentErrorHandler } from "./interface";
 import {
@@ -55,59 +55,78 @@ export class PaymentService implements IPaymentService {
    */
   async createStripeSession(params: CreateStripeSessionParams): Promise<CreateStripeSessionResult> {
     try {
-      // 既存の決済レコードを確認（attendanceごとに一意）
-      const { data: existingList, error: findError } = await this.supabase
+      // 既存決済の状態を履歴化設計に合わせて取得（open優先・履歴は無視）
+      let targetPaymentId: string;
+
+      const { data: openPayment, error: openFindError } = await this.supabase
         .from("payments")
         .select(
           "id, status, method, stripe_session_id, stripe_payment_intent_id, paid_at, created_at, updated_at"
         )
         .eq("attendance_id", params.attendanceId)
+        .in("status", ["pending", "failed"])
+        .order("updated_at", { ascending: false, nullsFirst: false })
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (openFindError) {
+        throw new PaymentError(
+          PaymentErrorType.DATABASE_ERROR,
+          `決済レコード（open）の検索に失敗しました: ${openFindError.message}`,
+          openFindError
+        );
+      }
+
+      const { data: latestTerminal, error: terminalFindError } = await this.supabase
+        .from("payments")
+        .select("id, status, paid_at, created_at, updated_at")
+        .eq("attendance_id", params.attendanceId)
+        .in("status", ["paid", "received", "completed", "refunded"])
         .order("paid_at", { ascending: false, nullsFirst: false })
         .order("created_at", { ascending: false })
-        .order("updated_at", { ascending: false })
-        .limit(2);
+        .limit(1)
+        .maybeSingle();
 
-      if (findError) {
+      if (terminalFindError) {
         throw new PaymentError(
           PaymentErrorType.DATABASE_ERROR,
-          `決済レコードの検索に失敗しました: ${findError.message}`,
-          findError
+          `決済レコード（終端）の検索に失敗しました: ${terminalFindError.message}`,
+          terminalFindError
         );
       }
 
-      // 既存の扱い: 支払完了系はブロック、それ以外は再試行として再利用
-      let targetPaymentId: string;
-      const existingCount = Array.isArray(existingList) ? existingList.length : 0;
-      if (existingCount > 1) {
-        throw new PaymentError(
-          PaymentErrorType.DATABASE_ERROR,
-          "決済レコードの整合性エラー: 複数のレコードが存在します"
-        );
-      }
-
-      const existing = existingCount === 1 ? existingList![0] : null;
-      if (existing) {
-        const status = existing.status as PaymentStatus;
-        if (["paid", "received", "completed", "refunded"].includes(status)) {
+      // 支払完了系が直近に存在する場合は受付不可
+      if (latestTerminal) {
+        if (!openPayment) {
           throw new PaymentError(
             PaymentErrorType.PAYMENT_ALREADY_EXISTS,
             "この参加に対する決済は既に完了済みです"
           );
         }
 
-        // 再試行: 既存レコードを pending に戻し、セッションは後段で新規発行して更新
+        const terminalTime = (latestTerminal.paid_at ?? latestTerminal.updated_at ?? latestTerminal.created_at) as string | null;
+        const openTime = (openPayment.updated_at ?? openPayment.created_at) as string | null;
+        if (terminalTime && openTime && new Date(terminalTime).getTime() > new Date(openTime).getTime()) {
+          throw new PaymentError(
+            PaymentErrorType.PAYMENT_ALREADY_EXISTS,
+            "この参加に対する決済は既に完了済みです"
+          );
+        }
+      }
+
+      if (openPayment) {
+        // 再試行: openを pending に戻し、セッションは後段で新規発行して更新
         const { error: reuseError } = await this.supabase
           .from("payments")
           .update({
             amount: params.amount,
             status: "pending",
-            // 古いIntentは無効化される前提でクリア（Webhookとの整合は別途担保）
             stripe_payment_intent_id: null,
-            // 旧セッションIDは明示的に一旦nullにしてから新規をセット（障害時解析性の向上）
             stripe_session_id: null,
             stripe_checkout_session_id: null,
           })
-          .eq("id", existing.id);
+          .eq("id", openPayment.id);
 
         if (reuseError) {
           throw new PaymentError(
@@ -116,9 +135,9 @@ export class PaymentService implements IPaymentService {
             reuseError
           );
         }
-        targetPaymentId = existing.id as string;
+        targetPaymentId = openPayment.id as string;
       } else {
-        // 新規作成
+        // openが無ければ新規作成
         const { data: payment, error: insertError } = await this.supabase
           .from("payments")
           .insert({
@@ -131,53 +150,72 @@ export class PaymentService implements IPaymentService {
           .single();
 
         if (insertError) {
-          // 一意制約違反（同時実行レース）時は既存を再取得して再利用にフォールバック
           if (insertError.code === "23505") {
-            const { data: dupExisting, error: dupFindError } = await this.supabase
+            // 同時実行: openが作られたのでopenを再取得して再利用
+            const { data: concurrentOpen, error: refetchOpenError } = await this.supabase
               .from("payments")
-              .select("id, status")
+              .select("id, status, updated_at, created_at")
               .eq("attendance_id", params.attendanceId)
-              .single();
+              .in("status", ["pending", "failed"])
+              .order("updated_at", { ascending: false, nullsFirst: false })
+              .order("created_at", { ascending: false })
+              .limit(1)
+              .maybeSingle();
 
-            if (dupFindError || !dupExisting) {
-              // 既存取得に失敗した場合は保守的に「既に存在」として返す
-              throw new PaymentError(
-                PaymentErrorType.PAYMENT_ALREADY_EXISTS,
-                "この参加記録に対する決済レコードは既に存在します",
-                insertError
-              );
-            }
-
-            const dupStatus = dupExisting.status as PaymentStatus;
-            if (["paid", "received", "completed", "refunded"].includes(dupStatus)) {
-              throw new PaymentError(
-                PaymentErrorType.PAYMENT_ALREADY_EXISTS,
-                "この参加に対する決済は既に完了済みです",
-                insertError
-              );
-            }
-
-            // 未完了なら既存を再利用（pendingへ戻す）
-            const { error: dupReuseError } = await this.supabase
-              .from("payments")
-              .update({
-                amount: params.amount,
-                status: "pending",
-                stripe_payment_intent_id: null,
-                stripe_session_id: null,
-                stripe_checkout_session_id: null,
-              })
-              .eq("id", dupExisting.id as string);
-
-            if (dupReuseError) {
+            if (refetchOpenError) {
               throw new PaymentError(
                 PaymentErrorType.DATABASE_ERROR,
-                `既存決済の更新に失敗しました: ${dupReuseError.message}`,
-                dupReuseError
+                `既存open決済の再取得に失敗しました: ${refetchOpenError.message}`,
+                refetchOpenError
               );
             }
 
-            targetPaymentId = dupExisting.id as string;
+            if (concurrentOpen) {
+              const { error: dupReuseError } = await this.supabase
+                .from("payments")
+                .update({
+                  amount: params.amount,
+                  status: "pending",
+                  stripe_payment_intent_id: null,
+                  stripe_session_id: null,
+                  stripe_checkout_session_id: null,
+                })
+                .eq("id", concurrentOpen.id as string);
+
+              if (dupReuseError) {
+                throw new PaymentError(
+                  PaymentErrorType.DATABASE_ERROR,
+                  `既存決済の更新に失敗しました: ${dupReuseError.message}`,
+                  dupReuseError
+                );
+              }
+
+              targetPaymentId = concurrentOpen.id as string;
+            } else {
+              // openが無いのに23505 → 直近で終端化された可能性
+              const { data: terminalAfterRace } = await this.supabase
+                .from("payments")
+                .select("id")
+                .eq("attendance_id", params.attendanceId)
+                .in("status", ["paid", "received", "completed", "refunded"])
+                .order("paid_at", { ascending: false, nullsFirst: false })
+                .limit(1)
+                .maybeSingle();
+
+              if (terminalAfterRace) {
+                throw new PaymentError(
+                  PaymentErrorType.PAYMENT_ALREADY_EXISTS,
+                  "この参加に対する決済は既に完了済みです",
+                  insertError
+                );
+              }
+
+              throw new PaymentError(
+                PaymentErrorType.DATABASE_ERROR,
+                `決済レコードの作成に失敗しました: ${insertError.message}`,
+                insertError
+              );
+            }
           } else {
             throw new PaymentError(
               PaymentErrorType.DATABASE_ERROR,
@@ -584,22 +622,48 @@ export class PaymentService implements IPaymentService {
    */
   async getPaymentByAttendance(attendanceId: string): Promise<Payment | null> {
     try {
-      const { data, error } = await this.supabase
+      // open（pending/failed）を優先的に返す
+      const { data: openPayment, error: openError } = await this.supabase
         .from("payments")
         .select("*")
         .eq("attendance_id", attendanceId)
+        .in("status", ["pending", "failed"])
+        .order("updated_at", { ascending: false, nullsFirst: false })
+        .order("created_at", { ascending: false })
+        .limit(1)
         .maybeSingle();
 
-      if (error) {
+      if (openError) {
         throw new PaymentError(
           PaymentErrorType.DATABASE_ERROR,
-          `決済情報の取得に失敗しました: ${error.message}`,
-          error
+          `決済情報の取得に失敗しました: ${openError.message}`,
+          openError
         );
       }
 
-      if (!data) return null;
-      return data as Payment;
+      if (openPayment) return openPayment as Payment;
+
+      // openが無い場合は、最新の終端系（paid/received/completed/refunded）を返す
+      const { data: latestTerminal, error: terminalError } = await this.supabase
+        .from("payments")
+        .select("*")
+        .eq("attendance_id", attendanceId)
+        .in("status", ["paid", "received", "completed", "refunded"])
+        .order("paid_at", { ascending: false, nullsFirst: false })
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (terminalError) {
+        throw new PaymentError(
+          PaymentErrorType.DATABASE_ERROR,
+          `決済情報の取得に失敗しました: ${terminalError.message}`,
+          terminalError
+        );
+      }
+
+      if (!latestTerminal) return null;
+      return latestTerminal as Payment;
     } catch (error) {
       if (error instanceof PaymentError) {
         throw error;

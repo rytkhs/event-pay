@@ -4,8 +4,8 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createRateLimitStore, checkRateLimit } from '../rate-limit';
-import { RATE_LIMIT_CONFIG } from '../../config/security';
+import { createRateLimitStore, checkRateLimit } from '@/lib/rate-limit';
+import { RATE_LIMIT_CONFIG } from '@/config/security';
 import { createProblemResponse } from '@/lib/api/problem-details';
 import { logger } from '@/lib/logging/app-logger';
 
