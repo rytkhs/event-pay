@@ -272,6 +272,80 @@ const ERROR_DEFINITIONS: Record<string, ErrorDefinition> = {
     retryable: false,
   },
 
+  // 招待関連
+  INVITE_TOKEN_NOT_FOUND: {
+    type: "https://api.eventpay.app/errors/invite_token_not_found",
+    title: "Invite Token Not Found",
+    defaultStatus: 404,
+    defaultDetail: "招待リンクが見つかりません",
+    retryable: false,
+  },
+  INVITE_TOKEN_INVALID: {
+    type: "https://api.eventpay.app/errors/invite_token_invalid",
+    title: "Invalid Invite Token",
+    defaultStatus: 400,
+    defaultDetail: "無効な招待リンクです",
+    retryable: false,
+  },
+  EVENT_CANCELLED: {
+    type: "https://api.eventpay.app/errors/event_cancelled",
+    title: "Event Cancelled",
+    defaultStatus: 410,
+    defaultDetail: "このイベントはキャンセルされました",
+    retryable: false,
+  },
+  EVENT_ENDED: {
+    type: "https://api.eventpay.app/errors/event_ended",
+    title: "Event Ended",
+    defaultStatus: 410,
+    defaultDetail: "このイベントは終了しています",
+    retryable: false,
+  },
+  REGISTRATION_DEADLINE_PASSED: {
+    type: "https://api.eventpay.app/errors/registration_deadline_passed",
+    title: "Registration Deadline Passed",
+    defaultStatus: 410,
+    defaultDetail: "参加申込期限が過ぎています",
+    retryable: false,
+  },
+  CAPACITY_REACHED: {
+    type: "https://api.eventpay.app/errors/capacity_reached",
+    title: "Capacity Reached",
+    defaultStatus: 200,
+    defaultDetail: "このイベントは定員に達しています",
+    retryable: false,
+  },
+
+  // 参加管理関連
+  ATTENDANCE_CAPACITY_REACHED: {
+    type: "https://api.eventpay.app/errors/attendance_capacity_reached",
+    title: "Attendance Capacity Reached",
+    defaultStatus: 409,
+    defaultDetail: "イベントの定員に達しているため参加できません",
+    retryable: false,
+  },
+  ATTENDANCE_DEADLINE_PASSED: {
+    type: "https://api.eventpay.app/errors/attendance_deadline_passed",
+    title: "Attendance Deadline Passed",
+    defaultStatus: 410,
+    defaultDetail: "申込締切を過ぎているため参加状況を変更できません",
+    retryable: false,
+  },
+  ATTENDANCE_NOT_FOUND: {
+    type: "https://api.eventpay.app/errors/attendance_not_found",
+    title: "Attendance Not Found",
+    defaultStatus: 404,
+    defaultDetail: "参加データが見つかりませんでした",
+    retryable: false,
+  },
+  ATTENDANCE_STATUS_ROLLBACK_REJECTED: {
+    type: "https://api.eventpay.app/errors/attendance_status_rollback_rejected",
+    title: "Attendance Status Rollback Rejected",
+    defaultStatus: 400,
+    defaultDetail: "参加状況を過去の状態に戻すことはできません",
+    retryable: false,
+  },
+
   // サーバーエラー
   INTERNAL_ERROR: {
     type: "https://api.eventpay.app/errors/internal_error",

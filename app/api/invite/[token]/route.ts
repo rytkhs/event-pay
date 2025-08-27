@@ -52,13 +52,9 @@ export async function GET(
 
     // 無効なトークンの場合（要件1.2）
     if (!result.isValid || !result.event) {
-      const errorCode = result.errorMessage?.includes("見つかりません")
-        ? "TOKEN_NOT_FOUND"
-        : "INVALID_TOKEN";
-
-      const problemCode = errorCode === "TOKEN_NOT_FOUND"
-        ? "GUEST_TOKEN_NOT_FOUND"  // 統一されたエラーコードを使用
-        : "GUEST_TOKEN_INVALID";
+      const problemCode = result.errorCode === "TOKEN_NOT_FOUND"
+        ? "INVITE_TOKEN_NOT_FOUND"
+        : "INVITE_TOKEN_INVALID";
 
       return createProblemResponse(problemCode, {
         instance: `/api/invite/${token}`,
@@ -70,18 +66,14 @@ export async function GET(
 
     // イベントステータス別のエラーハンドリング
     if (event.status === "cancelled") {
-      return createProblemResponse("RESOURCE_CONFLICT", {
+      return createProblemResponse("EVENT_CANCELLED", {
         instance: `/api/invite/${token}`,
-        status: 410,
-        detail: "このイベントはキャンセルされました",
       });
     }
 
     if (event.status === "past") {
-      return createProblemResponse("RESOURCE_CONFLICT", {
+      return createProblemResponse("EVENT_ENDED", {
         instance: `/api/invite/${token}`,
-        status: 410,
-        detail: "このイベントは終了しています",
       });
     }
 
@@ -90,10 +82,8 @@ export async function GET(
       const now = new Date();
       const deadline = new Date(event.registration_deadline);
       if (now > deadline) {
-        return createProblemResponse("RESOURCE_CONFLICT", {
+        return createProblemResponse("REGISTRATION_DEADLINE_PASSED", {
           instance: `/api/invite/${token}`,
-          status: 410,
-          detail: "参加申込期限が過ぎています",
         });
       }
     }
@@ -103,25 +93,14 @@ export async function GET(
 
     // 定員に達している場合の詳細情報
     if (isCapacityReached && event.capacity) {
-      return NextResponse.json(
-        {
-          success: true,
-          data: {
-            event,
-            isCapacityReached: true,
-            isRegistrationOpen: false,
-          },
-          error: {
-            code: "CAPACITY_REACHED",
-            message: "このイベントは定員に達しています",
-            details: {
-              capacity: event.capacity,
-              currentAttendees: event.attendances_count,
-            },
-          },
+      return NextResponse.json({
+        success: true,
+        data: {
+          event,
+          isCapacityReached: true,
+          isRegistrationOpen: false,
         },
-        { status: 200 }
-      );
+      });
     }
 
     // 正常なレスポンス

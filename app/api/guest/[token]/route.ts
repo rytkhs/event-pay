@@ -42,16 +42,11 @@ export async function GET(
     const result = await validateGuestToken(token);
 
     if (!result.isValid || !result.attendance) {
-      // セキュリティログ（トークンは内部でマスクされる）
       const userAgent = request.headers.get("user-agent") || undefined;
       const ip = getClientIP(request);
       logInvalidTokenAccess(token, "guest", { userAgent, ip });
 
-      const errorCode = (result.errorMessage || "").includes("見つかりません")
-        ? "TOKEN_NOT_FOUND"
-        : "INVALID_TOKEN";
-
-      const problemCode = errorCode === "TOKEN_NOT_FOUND"
+      const problemCode = result.errorCode === "TOKEN_NOT_FOUND"
         ? "GUEST_TOKEN_NOT_FOUND"
         : "GUEST_TOKEN_INVALID";
 
