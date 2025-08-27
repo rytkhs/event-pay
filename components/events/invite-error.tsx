@@ -56,6 +56,10 @@ export function InviteError({
     case "RATE_LIMIT_EXCEEDED":
       return <RateLimitError onRetry={handleRetry} />;
 
+    case "INVITE_TOKEN_INVALID":
+    case "INVITE_TOKEN_NOT_FOUND":
+      return <InvalidInviteError onRetry={showRetry ? handleRetry : undefined} />;
+
     default:
       // エラーコードが指定されていない場合は、メッセージから推測
       if (errorMessage.includes("無効") || errorMessage.includes("期限切れ")) {
