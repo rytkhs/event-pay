@@ -81,13 +81,9 @@ BEGIN
 
       IF v_payment_id IS NOT NULL THEN
         -- 既存の決済レコードを更新
-        IF v_payment_status IN ('paid', 'received', 'completed') THEN
-          -- ステータスを維持したまま method / amount のみ変更（rollback 衝突回避）
-          UPDATE public.payments
-          SET
-            method = p_payment_method,
-            amount = p_event_fee
-          WHERE id = v_payment_id;
+        IF v_payment_status IN ('paid', 'received', 'completed', 'waived') THEN
+          -- 確定済み決済の属性変更は禁止（DB契約）
+          RAISE EXCEPTION 'EVP_PAYMENT_FINALIZED_IMMUTABLE: Payment is finalized; cannot modify method/amount';
         ELSE
           -- 未決済系ステータスは pending へリセット
           UPDATE public.payments

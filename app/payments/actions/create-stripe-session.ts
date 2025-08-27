@@ -8,7 +8,8 @@ import { RATE_LIMIT_CONFIG } from "@/config/security";
 import { createStripeSessionRequestSchema } from "@/lib/services/payment/validation";
 import { PaymentError, PaymentErrorType } from "@/lib/services/payment/types";
 import { canCreateStripeSession } from "@/lib/validation/payment-eligibility";
-import type { EventStatus } from "@/types/enums";
+import type { EventStatus, AttendanceStatus } from "@/types/enums";
+import { isValidPaymentStatus } from "@/types/enums";
 import {
   type ServerActionResult,
   createServerActionError,
@@ -101,6 +102,14 @@ export async function createStripeSessionAction(
       .select(
         `
         id,
+        status,
+        payments!left (
+          method,
+          status,
+          paid_at,
+          created_at,
+          updated_at
+        ),
         events!inner (
           id,
           title,
@@ -117,6 +126,10 @@ export async function createStripeSessionAction(
       `
       )
       .eq("id", params.attendanceId)
+      .order("paid_at", { foreignTable: "payments", ascending: false, nullsFirst: false } as any)
+      .order("created_at", { foreignTable: "payments", ascending: false } as any)
+      .order("updated_at", { foreignTable: "payments", ascending: false } as any)
+      .limit(1, { foreignTable: "payments" })
       .limit(1);
 
     if (attendanceError || !attendanceList || attendanceList.length === 0) {
@@ -143,26 +156,58 @@ export async function createStripeSessionAction(
       created_by: string;
       stripe_connect_accounts: StripeConnectAccount | StripeConnectAccount[] | null;
     };
-    type AttendanceWithEvent = { id: string; events: EventLite | EventLite[] };
-    const attendance = attendanceList[0] as unknown as AttendanceWithEvent;
+    type AttendanceWithEventAndPayment = {
+      id: string;
+      status: AttendanceStatus;
+      payments?:
+      | null
+      | {
+        method: string | null;
+        status: string | null;
+        paid_at?: string | null;
+        created_at?: string;
+        updated_at?: string;
+      }
+      | Array<{
+        method: string | null;
+        status: string | null;
+        paid_at?: string | null;
+        created_at?: string;
+        updated_at?: string;
+      }>;
+      events: EventLite | EventLite[];
+    };
+    const attendance = attendanceList[0] as unknown as AttendanceWithEventAndPayment;
     const eventList = Array.isArray(attendance.events) ? attendance.events : [attendance.events];
     const event = eventList[0];
     if (!event) {
       return createServerActionError("NOT_FOUND", "イベントが見つかりません。");
     }
 
-    // 決済許可条件の統一チェック
-    // 注意: このAPIは認証ユーザー向けなので、attendance情報を仮構築する
-    const mockAttendance = {
-      id: params.attendanceId,
-      status: "attending" as const, // 認証ユーザーは参加中として扱う
-      payment: null, // 新規決済セッション作成なのでnull
-    };
+    // 決済許可条件の統一チェック（実データで判定）
+    const payments = Array.isArray(attendance.payments)
+      ? attendance.payments
+      : attendance.payments
+        ? [attendance.payments]
+        : [];
+    const latestPayment = payments[0] || null;
 
-    const eligibilityResult = canCreateStripeSession(mockAttendance, {
-      ...event,
-      status: event.status as EventStatus,
-    });
+    const paymentStatus = latestPayment?.status && isValidPaymentStatus(latestPayment.status)
+      ? latestPayment.status
+      : null;
+    const paymentMethod = latestPayment?.method ?? null;
+
+    const eligibilityResult = canCreateStripeSession(
+      {
+        id: params.attendanceId,
+        status: attendance.status,
+        payment: latestPayment ? { method: paymentMethod, status: paymentStatus } : null,
+      },
+      {
+        ...event,
+        status: event.status as EventStatus,
+      }
+    );
     if (!eligibilityResult.isEligible) {
       return createServerActionError(
         "RESOURCE_CONFLICT",

@@ -1,10 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { checkRateLimit, createRateLimitStore, type RateLimitConfig } from "@/lib/rate-limit/index";
 import { getClientIP } from "@/lib/utils/ip-detection";
-import { createProblemResponse } from "@/lib/api/problem-details";
-
-// レート制限エラーレスポンス用の型定義
-export type RateLimitErrorResponse = NextResponse;
+import { createProblemResponse, type ProblemDetails } from "@/lib/api/problem-details";
 
 // レート制限ミドルウェア
 
@@ -14,7 +11,7 @@ export type RateLimitErrorResponse = NextResponse;
  * 署名検証ルートでは `request.text()` を後段で使用するため、ここで `json()` などを呼ばないこと。
  */
 export function withRateLimit(config: RateLimitConfig, keyPrefix?: string) {
-  return async function (request: NextRequest) {
+  return async function (request: NextRequest): Promise<NextResponse<ProblemDetails> | null> {
     // 信頼度ベースでの安全なIPアドレス取得
     const ip = getClientIP(request);
     const store = await createRateLimitStore();
@@ -40,7 +37,7 @@ export async function handleRateLimit(
   request: NextRequest,
   config: RateLimitConfig,
   keyPrefix?: string
-): Promise<NextResponse | null> {
+): Promise<NextResponse<ProblemDetails> | null> {
   const middleware = withRateLimit(config, keyPrefix);
   return await middleware(request);
 }

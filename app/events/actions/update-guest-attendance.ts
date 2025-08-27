@@ -245,6 +245,10 @@ export async function updateGuestAttendanceAction(
           }
         );
 
+      } else if (error.message.includes("EVP_PAYMENT_FINALIZED_IMMUTABLE")) {
+        errorCode = "RESOURCE_CONFLICT";
+        userFriendlyError = "支払が確定しているため、決済情報を変更できません";
+
       } else if (error.message.includes("EVP_DEADLINE_PASSED") ||
         error.message.includes("registration_deadline") ||
         error.message.includes("Event is closed for modification")) {

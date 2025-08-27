@@ -4,7 +4,7 @@ import {
   type EventDetail,
   checkEventCapacity,
 } from "@/lib/utils/invite-token";
-import { handleRateLimit, type RateLimitErrorResponse } from "@/lib/rate-limit-middleware";
+import { handleRateLimit } from "@/lib/rate-limit-middleware";
 import { RATE_LIMIT_CONFIG } from "@/config/security";
 import { logParticipationSecurityEvent } from "@/lib/security/security-logger";
 import { createProblemResponse, type ProblemDetails } from "@/lib/api/problem-details";
@@ -29,11 +29,11 @@ export interface InviteValidationSuccessResponse {
 export async function GET(
   request: NextRequest,
   { params }: { params: { token: string } }
-): Promise<NextResponse<InviteValidationSuccessResponse | ProblemDetails | RateLimitErrorResponse>> {
+): Promise<NextResponse<InviteValidationSuccessResponse | ProblemDetails>> {
   // レート制限を適用
   const rateLimitResponse = await handleRateLimit(request, RATE_LIMIT_CONFIG.invite, "invite");
   if (rateLimitResponse) {
-    return rateLimitResponse as NextResponse<RateLimitErrorResponse>;
+    return rateLimitResponse;
   }
 
   try {

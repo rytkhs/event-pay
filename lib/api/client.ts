@@ -70,6 +70,7 @@ export class ApiClient {
         "Content-Type": "application/json",
         ...defaultOptions.headers,
       },
+      credentials: "same-origin",
       ...defaultOptions,
     };
   }

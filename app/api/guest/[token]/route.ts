@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { validateGuestToken, type GuestAttendanceData } from "@/lib/utils/guest-token";
-import { handleRateLimit, type RateLimitErrorResponse } from "@/lib/rate-limit-middleware";
+import { handleRateLimit } from "@/lib/rate-limit-middleware";
 import { RATE_LIMIT_CONFIG } from "@/config/security";
 import { logger } from "@/lib/logging/app-logger";
 import { logInvalidTokenAccess } from "@/lib/security/security-logger";
@@ -21,11 +21,11 @@ export interface GuestValidationSuccessResponse {
 export async function GET(
   request: NextRequest,
   { params }: { params: { token: string } }
-): Promise<NextResponse<GuestValidationSuccessResponse | ProblemDetails | RateLimitErrorResponse>> {
+): Promise<NextResponse<GuestValidationSuccessResponse | ProblemDetails>> {
   // レート制限を適用
   const rateLimitResponse = await handleRateLimit(request, RATE_LIMIT_CONFIG.guest, "guest");
   if (rateLimitResponse) {
-    return rateLimitResponse as NextResponse<RateLimitErrorResponse>;
+    return rateLimitResponse;
   }
 
   const { token } = params;
