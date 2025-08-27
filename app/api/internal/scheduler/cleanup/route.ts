@@ -6,6 +6,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
+import { createProblemResponse } from "@/lib/api/problem-details";
 import { getSecureClientFactory } from "@/lib/security/secure-client-factory.impl";
 import { AdminReason, type AuditContext } from "@/lib/security/secure-client-factory.types";
 import { logger } from "@/lib/logging/app-logger";
@@ -20,17 +21,17 @@ export async function POST(request: NextRequest) {
       logger.error('INTERNAL_API_TOKEN is not configured', {
         tag: 'internalApiTokenNotConfigured'
       });
-      return NextResponse.json(
-        { error: "Internal API not configured" },
-        { status: 500 }
-      );
+      return createProblemResponse("INTERNAL_ERROR", {
+        instance: "/api/internal/scheduler/cleanup",
+        detail: "Internal API not configured",
+      });
     }
 
     if (!authHeader?.startsWith("Bearer ") || authHeader.slice(7) !== expectedToken) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      );
+      return createProblemResponse("UNAUTHORIZED", {
+        instance: "/api/internal/scheduler/cleanup",
+        detail: "Unauthorized",
+      });
     }
 
     // セキュアな管理者クライアントで期限切れロック削除を実行
@@ -66,13 +67,10 @@ export async function POST(request: NextRequest) {
         tag: 'schedulerLockCleanupFailed',
         error_message: error.message
       });
-      return NextResponse.json(
-        {
-          error: "Cleanup failed",
-          details: error.message
-        },
-        { status: 500 }
-      );
+      return createProblemResponse("DATABASE_ERROR", {
+        instance: "/api/internal/scheduler/cleanup",
+        detail: `Cleanup failed: ${error.message}`,
+      });
     }
 
     // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
@@ -105,13 +103,10 @@ export async function POST(request: NextRequest) {
       error_name: error instanceof Error ? error.name : 'Unknown',
       error_message: error instanceof Error ? error.message : String(error)
     });
-    return NextResponse.json(
-      {
-        error: "Internal server error",
-        details: error instanceof Error ? error.message : "Unknown error"
-      },
-      { status: 500 }
-    );
+    return createProblemResponse("INTERNAL_ERROR", {
+      instance: "/api/internal/scheduler/cleanup",
+      detail: error instanceof Error ? error.message : "Unknown error",
+    });
   }
 }
 
@@ -123,17 +118,17 @@ export async function GET(request: NextRequest) {
     const expectedToken = process.env.INTERNAL_API_TOKEN;
 
     if (!expectedToken) {
-      return NextResponse.json(
-        { error: "Internal API not configured" },
-        { status: 500 }
-      );
+      return createProblemResponse("INTERNAL_ERROR", {
+        instance: "/api/internal/scheduler/cleanup",
+        detail: "Internal API not configured",
+      });
     }
 
     if (!authHeader?.startsWith("Bearer ") || authHeader.slice(7) !== expectedToken) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      );
+      return createProblemResponse("UNAUTHORIZED", {
+        instance: "/api/internal/scheduler/cleanup",
+        detail: "Unauthorized",
+      });
     }
 
     // セキュアな管理者クライアントでロック状態を確認
@@ -168,13 +163,10 @@ export async function GET(request: NextRequest) {
         tag: 'schedulerLockStatusFailed',
         error_message: error.message
       });
-      return NextResponse.json(
-        {
-          error: "Status check failed",
-          details: error.message
-        },
-        { status: 500 }
-      );
+      return createProblemResponse("DATABASE_ERROR", {
+        instance: "/api/internal/scheduler/cleanup",
+        detail: `Status check failed: ${error.message}`,
+      });
     }
 
     return NextResponse.json({
@@ -189,12 +181,9 @@ export async function GET(request: NextRequest) {
       error_name: error instanceof Error ? error.name : 'Unknown',
       error_message: error instanceof Error ? error.message : String(error)
     });
-    return NextResponse.json(
-      {
-        error: "Internal server error",
-        details: error instanceof Error ? error.message : "Unknown error"
-      },
-      { status: 500 }
-    );
+    return createProblemResponse("INTERNAL_ERROR", {
+      instance: "/api/internal/scheduler/cleanup",
+      detail: error instanceof Error ? error.message : "Unknown error",
+    });
   }
 }
