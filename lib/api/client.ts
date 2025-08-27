@@ -54,6 +54,11 @@ export interface FetchOptions extends RequestInit {
   maxRetries?: number;
   /** リトライ間隔（ミリ秒） */
   retryDelay?: number;
+  /**
+   * 成功時のレスポンス処理方法（デフォルト: 'json'）
+   * 'json' を指定した場合に JSON 以外が返ると ApiError を投げます
+   */
+  responseType?: "json" | "text" | "blob" | "arrayBuffer" | "response";
 }
 
 /**
@@ -67,7 +72,7 @@ export class ApiClient {
     this.baseUrl = baseUrl;
     this.defaultOptions = {
       headers: {
-        "Content-Type": "application/json",
+        Accept: "application/json",
         ...defaultOptions.headers,
       },
       credentials: "same-origin",
@@ -78,14 +83,21 @@ export class ApiClient {
   /**
    * API リクエストを実行
    */
+  // オーバーロード: responseType によって返り値の型を分岐
+  async request<T = unknown>(url: string, options?: FetchOptions & { responseType?: "json" | undefined }): Promise<T>;
+  async request(url: string, options: FetchOptions & { responseType: "text" }): Promise<string>;
+  async request(url: string, options: FetchOptions & { responseType: "blob" }): Promise<Blob>;
+  async request(url: string, options: FetchOptions & { responseType: "arrayBuffer" }): Promise<ArrayBuffer>;
+  async request(url: string, options: FetchOptions & { responseType: "response" }): Promise<Response>;
   async request<T = unknown>(
     url: string,
     options: FetchOptions = {}
-  ): Promise<T> {
+  ): Promise<T | string | Blob | ArrayBuffer | Response> {
     const {
       timeout = 30000,
       maxRetries = 0,
       retryDelay = 1000,
+      responseType = "json",
       ...fetchOptions
     } = options;
 
@@ -106,20 +118,73 @@ export class ApiClient {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), timeout);
 
+        // 外部のAbortSignalがある場合は合成（外部signal中断時は内部も中断）
+        const externalSignal = fetchOptions.signal;
+        const combinedSignal = controller.signal;
+
+        if (externalSignal) {
+          // 外部signalが既に中断済みなら即座に中断
+          if (externalSignal.aborted) {
+            controller.abort();
+          } else {
+            // 外部signalの中断を監視し、内部controllerも中断
+            const abortHandler = () => controller.abort();
+            externalSignal.addEventListener('abort', abortHandler, { once: true });
+
+            // クリーンアップのためにタイムアウト時にリスナーを削除
+            const originalAbort = controller.abort.bind(controller);
+            controller.abort = () => {
+              externalSignal.removeEventListener('abort', abortHandler);
+              originalAbort();
+            };
+          }
+        }
+
         const response = await fetch(fullUrl, {
           ...requestOptions,
-          signal: controller.signal,
+          signal: combinedSignal,
         });
 
         clearTimeout(timeoutId);
 
         if (response.ok) {
-          // 成功レスポンス
-          const contentType = response.headers.get("content-type");
-          if (contentType?.includes("application/json")) {
-            return await response.json();
+          // 成功レスポンス処理
+          const contentType = response.headers.get("content-type") || "";
+          const statusNoContent = response.status === 204 || response.status === 205;
+
+          // レスポンスボディが空かどうか（Content-Length: 0 などにも対応）
+          const hasBody = !statusNoContent && response.headers.get("content-length") !== "0";
+
+          switch (responseType) {
+            case "response":
+              return response;
+            case "text":
+              return hasBody ? await response.text() : "";
+            case "blob":
+              return hasBody ? await response.blob() : new Blob([]);
+            case "arrayBuffer":
+              return hasBody ? await response.arrayBuffer() : new ArrayBuffer(0);
+            case "json":
+            default: {
+              if (!hasBody) {
+                // No Content の場合は undefined を返して呼び出し側で扱う
+                return undefined as unknown as T;
+              }
+              if (contentType.includes("application/json")) {
+                return await response.json();
+              }
+              // JSON 期待だが JSON ではない
+              throw new ApiError(
+                "UNEXPECTED_CONTENT_TYPE",
+                `期待した content-type: application/json, 実際: ${contentType || "unknown"}`,
+                undefined,
+                false,
+                undefined,
+                undefined,
+                response.status
+              );
+            }
           }
-          return response as unknown as T;
         }
 
         // エラーレスポンスの処理
@@ -209,17 +274,24 @@ export class ApiClient {
    * GET リクエスト
    */
   async get<T = unknown>(url: string, options: FetchOptions = {}): Promise<T> {
-    return this.request<T>(url, { ...options, method: "GET" });
+    return this.request<T>(url, { ...options, method: "GET", responseType: "json" as const });
   }
 
   /**
    * POST リクエスト
    */
   async post<T = unknown>(url: string, data?: unknown, options: FetchOptions = {}): Promise<T> {
+    const body = data ? JSON.stringify(data) : undefined;
+    const headers = {
+      ...options.headers,
+      ...(body ? { "Content-Type": "application/json" } : {}),
+    } as HeadersInit;
     return this.request<T>(url, {
       ...options,
       method: "POST",
-      body: data ? JSON.stringify(data) : undefined,
+      headers,
+      body,
+      responseType: "json" as const,
     });
   }
 
@@ -227,10 +299,17 @@ export class ApiClient {
    * PUT リクエスト
    */
   async put<T = unknown>(url: string, data?: unknown, options: FetchOptions = {}): Promise<T> {
+    const body = data ? JSON.stringify(data) : undefined;
+    const headers = {
+      ...options.headers,
+      ...(body ? { "Content-Type": "application/json" } : {}),
+    } as HeadersInit;
     return this.request<T>(url, {
       ...options,
       method: "PUT",
-      body: data ? JSON.stringify(data) : undefined,
+      headers,
+      body,
+      responseType: "json" as const,
     });
   }
 
@@ -238,7 +317,7 @@ export class ApiClient {
    * DELETE リクエスト
    */
   async delete<T = unknown>(url: string, options: FetchOptions = {}): Promise<T> {
-    return this.request<T>(url, { ...options, method: "DELETE" });
+    return this.request<T>(url, { ...options, method: "DELETE", responseType: "json" as const });
   }
 }
 

@@ -1,13 +1,13 @@
 "use client";
 
-import { useEffect, useCallback, useState } from "react";
+import { useEffect, useCallback, useState, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { sanitizeForEventPay } from "@/lib/utils/sanitize";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { CheckCircle, XCircle, AlertCircle, X, Loader2 } from "lucide-react";
 
-import { type ProblemDetails } from "@/lib/api/problem-details";
+import { apiClient, isApiError } from "@/lib/api/client";
 
 interface PaymentStatusAlertProps {
   sessionId?: string;
@@ -36,6 +36,7 @@ export function PaymentStatusAlert({
   const [verificationError, setVerificationError] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState(0);
   const maxRetries = 8; // 指数バックオフ + ジッターで合計約 2 分を想定
+  const abortRef = useRef<AbortController | null>(null);
 
   // 指数バックオフ + ジッター（0.5〜1.0倍）
   const getBackoffDelayMs = (attempt: number) => {
@@ -52,65 +53,70 @@ export function PaymentStatusAlert({
 
     setIsVerifying(true);
     setVerificationError(null);
+    let localController: AbortController | null = null;
 
     try {
+      // 既存のリクエストがあれば中断
+      if (abortRef.current) {
+        try {
+          abortRef.current.abort();
+        } catch (_e) {}
+      }
+
+      const controller = new AbortController();
+      abortRef.current = controller;
+      localController = controller;
+
       const params = new URLSearchParams({
         session_id: sessionId,
         attendance_id: attendanceId,
       });
 
-      const response = await fetch(`/api/payments/verify-session?${params}`, {
-        headers: {
-          "X-Guest-Token": guestToken,
-        },
-      });
-      const status = response.status;
+      // apiClientを使用してJSONレスポンスを取得
+      const result = await apiClient.get<VerificationSuccessResult>(
+        `/api/payments/verify-session?${params}`,
+        {
+          headers: {
+            "X-Guest-Token": guestToken,
+          },
+          signal: controller.signal,
+        }
+      );
 
-      // レスポンスがJSONでない可能性も考慮し安全にparse
-      let parsed: VerificationSuccessResult | null = null;
-      try {
-        parsed = (await response.json()) as VerificationSuccessResult;
-      } catch (_e) {
-        parsed = null;
+      // 成功時の処理
+      setVerifiedStatus(result.payment_status ?? null);
+      setPaymentRequired(result.payment_required);
+
+      // 決済完了の場合は、ページを最新状態にリフレッシュ
+      if (result.payment_status === "success") {
+        setTimeout(() => {
+          router.refresh();
+        }, 2000);
+      }
+    } catch (error: unknown) {
+      // 中断は無視
+      if (
+        typeof error === "object" &&
+        error !== null &&
+        "name" in error &&
+        (error as { name?: string }).name === "AbortError"
+      ) {
+        return;
       }
 
-      if (response.ok && parsed) {
-        setVerifiedStatus(parsed.payment_status ?? null);
-        setPaymentRequired(parsed.payment_required);
-
-        // 決済完了の場合は、ページを最新状態にリフレッシュ
-        if (parsed.payment_status === "success") {
-          setTimeout(() => {
-            router.refresh();
-          }, 2000);
-        }
-      } else {
-        // エラーレスポンスの処理（RFC 7807 Problem Details）
-        let problemDetails: ProblemDetails | null = null;
-        try {
-          // 既に parsed でエラー情報を取得済みの場合、それをProblem Detailsとして扱う
-          if (parsed) {
-            problemDetails = parsed as unknown as ProblemDetails;
-          } else {
-            // レスポンスを再取得してProblem Detailsとしてパース
-            const errorText = await response.text();
-            problemDetails = JSON.parse(errorText) as ProblemDetails;
-          }
-        } catch (_e) {
-          problemDetails = null;
-        }
-
+      // ApiErrorの場合は詳細なエラーハンドリング
+      if (isApiError(error)) {
         // エラー分類
         // - 致命（即表示）: 401/403/404（認証・認可・不整合）→ 明示エラーを表示
         // - 一時（再試行）: 429/5xx/ネットワーク/ retryable:true → processingへフォールバック
         // - それ以外の400系: 明示エラー
-        const isFatalAuthOrNotFound = status === 401 || status === 403 || status === 404;
-        const isRetryable =
-          status === 0 || status === 429 || status >= 500 || (problemDetails?.retryable ?? false);
+        const isFatalAuthOrNotFound =
+          error.status === 401 || error.status === 403 || error.status === 404;
+        const isRetryable = error.retryable || error.status === 429 || error.status >= 500;
 
         if (isFatalAuthOrNotFound) {
           let message: string;
-          if (status === 404) {
+          if (error.status === 404) {
             message = "決済セッションが見つかりません。再度決済を開始してください。";
           } else {
             message =
@@ -122,18 +128,37 @@ export function PaymentStatusAlert({
           setVerifiedStatus((s) => s || "processing");
         } else {
           // それ以外の明らかな無効パラメータなどはエラー表示
-          const message = problemDetails?.detail || "検証に失敗しました";
+          const message = error.detail || "検証に失敗しました";
           setVerificationError(message);
         }
+      } else {
+        // その他のエラー（ネットワーク障害など）は一時的エラーとしてフォールバック
+        setVerifiedStatus((s) => s || "processing");
       }
-    } catch (_error) {
-      // エラーログはクライアント側では記録しない（セキュリティ上の理由）
-      // ネットワーク障害は一時的エラーとしてフォールバック
-      setVerifiedStatus((s) => s || "processing");
     } finally {
       setIsVerifying(false);
+      // 自分が最後に立てたコントローラであればクリア
+      try {
+        if (abortRef.current === localController) {
+          abortRef.current = null;
+        }
+      } catch (_e) {}
     }
   }, [sessionId, attendanceId, guestToken, router]);
+
+  // アンマウント時に未完了の検証を中断
+  useEffect(() => {
+    return () => {
+      try {
+        abortRef.current?.abort();
+      } catch (_e) {}
+    };
+  }, []);
+
+  // paymentStatus と verifiedStatus からの派生状態を単一点に集約
+  const derivedStatus = useMemo(() => {
+    return paymentStatus === "cancelled" ? "cancelled" : verifiedStatus || paymentStatus;
+  }, [paymentStatus, verifiedStatus]);
 
   // ポーリング打ち切り後に手動再確認する関数
   const retryVerify = useCallback(() => {
@@ -152,22 +177,19 @@ export function PaymentStatusAlert({
   // セッション検証を実行（sessionIdがある場合）
   useEffect(() => {
     // キャンセル導線では検証を行わず、UIのキャンセル表示を優先する
-    if (paymentStatus === "cancelled") return;
+    if (derivedStatus === "cancelled") return;
 
     if (sessionId && !verifiedStatus && !isVerifying) {
       verifySession();
     }
-  }, [sessionId, verifiedStatus, isVerifying, verifySession, paymentStatus]);
+  }, [sessionId, verifiedStatus, isVerifying, verifySession, derivedStatus]);
 
   // 決済ステータスが processing/pending の間は指数バックオフで再検証
   useEffect(() => {
-    const currentStatus =
-      paymentStatus === "cancelled" ? "cancelled" : verifiedStatus || paymentStatus;
-
     if (
-      paymentStatus !== "cancelled" &&
+      derivedStatus !== "cancelled" &&
       sessionId &&
-      ["processing", "pending"].includes(currentStatus) &&
+      ["processing", "pending"].includes(derivedStatus) &&
       retryCount < maxRetries
     ) {
       const delay = getBackoffDelayMs(retryCount);
@@ -177,33 +199,31 @@ export function PaymentStatusAlert({
       }, delay);
       return () => clearTimeout(timeoutId);
     }
-  }, [sessionId, verifiedStatus, paymentStatus, verifySession, retryCount]);
+  }, [sessionId, derivedStatus, verifySession, retryCount]);
 
   // ステータス確定後はリトライ回数をリセット
   useEffect(() => {
     const finalStatuses = ["success", "failed", "cancelled"];
-    if (finalStatuses.includes(verifiedStatus || "")) {
+    if (finalStatuses.includes(derivedStatus)) {
       setRetryCount(0);
     }
-  }, [verifiedStatus]);
+  }, [derivedStatus]);
 
   // 自動的にアラートを閉じる（成功時のみ）
   useEffect(() => {
-    const currentStatus =
-      paymentStatus === "cancelled" ? "cancelled" : verifiedStatus || paymentStatus;
-    if (currentStatus === "success") {
+    if (derivedStatus === "success") {
       const timer = setTimeout(() => {
         clearPaymentStatus();
       }, 10000); // 10秒後に自動で閉じる
 
       return () => clearTimeout(timer);
     }
-  }, [verifiedStatus, paymentStatus, clearPaymentStatus]);
+  }, [derivedStatus, clearPaymentStatus]);
 
   const getAlertContent = () => {
     // 検証中はローディング状態を表示
     // キャンセル時は検証ローディングを表示しない
-    if (sessionId && isVerifying && paymentStatus !== "cancelled") {
+    if (sessionId && isVerifying && derivedStatus !== "cancelled") {
       return {
         variant: "default" as const,
         icon: <Loader2 className="h-5 w-5 text-blue-600 animate-spin" />,
@@ -227,10 +247,7 @@ export function PaymentStatusAlert({
     }
 
     // キャンセル導線ではURLのキャンセルを優先、他は検証済みを優先
-    const currentStatus =
-      paymentStatus === "cancelled" ? "cancelled" : verifiedStatus || paymentStatus;
-
-    switch (currentStatus) {
+    switch (derivedStatus) {
       case "success":
         if (paymentRequired === false) {
           // 無料/全額割引: 支払い不要の完了
@@ -277,7 +294,7 @@ export function PaymentStatusAlert({
         if (
           retryCount >= maxRetries &&
           sessionId &&
-          ["processing", "pending"].includes(currentStatus)
+          ["processing", "pending"].includes(derivedStatus)
         ) {
           return {
             variant: "default" as const,
@@ -329,7 +346,7 @@ export function PaymentStatusAlert({
               {alertContent.description}
             </AlertDescription>
             {alertContent.actions}
-            {(verifiedStatus === "success" || paymentStatus === "success") && (
+            {derivedStatus === "success" && (
               <div className="mt-2">
                 <p className={`text-xs ${alertContent.textColor} opacity-80`}>
                   このメッセージは10秒後に自動的に非表示になります。
