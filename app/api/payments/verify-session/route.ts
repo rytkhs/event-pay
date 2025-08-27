@@ -12,6 +12,7 @@ import { logSecurityEvent } from "@/lib/security/security-logger";
 import { createRateLimitStore, checkRateLimit } from "@/lib/rate-limit";
 import { z } from "zod";
 import { createProblemResponse, createQueryValidationError } from "@/lib/api/problem-details";
+import { getClientIP } from "@/lib/utils/ip-detection";
 
 // リクエストバリデーションスキーマ
 const VerifySessionSchema = z.object({
@@ -48,16 +49,13 @@ export async function GET(request: NextRequest) {
         details: {
           endpoint: "/api/payments/verify-session",
         },
-        ip: request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown",
+        ip: getClientIP(request),
         timestamp: new Date(),
       });
-      return NextResponse.json(
-        {
-          success: false,
-          error: "ゲストトークンが必要です",
-        },
-        { status: 400 }
-      );
+      return createProblemResponse("MISSING_PARAMETER", {
+        instance: "/api/payments/verify-session",
+        detail: "ゲストトークンが必要です",
+      });
     }
 
     // ------------------------------
@@ -67,18 +65,14 @@ export async function GET(request: NextRequest) {
     const url = new URL(request.url);
     const attendanceParam = url.searchParams.get("attendance_id") || "unknown";
 
-    // 2. IP アドレス取得は複数ヘッダーをフォールバック
-    const clientIP =
-      // XFF は複数 IP が "a, b" 形式で並ぶので先頭を取る
-      request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
-      request.headers.get("x-real-ip") ??
-      request.headers.get("cf-connecting-ip") ??
-      // Next.js Edge Runtime では request.ip が存在する場合がある
-      (request as unknown as { ip?: string }).ip ??
-      "unknown";
+    // 2. IP アドレス取得は共通ユーティリティで統一（本番は擬似IPフォールバック）
+    const clientIP = getClientIP(request);
 
-    // 3. IP と attendance_id の複合キーで粒度を細分化
-    const rateLimitKey = `payment-verify:${clientIP}:${attendanceParam}`;
+    // 3. レート制限キー: IP単位を基準にし、attendance_id が有効な場合のみ付与（unknownは使わない）
+    const rateLimitKey =
+      attendanceParam && attendanceParam !== "unknown"
+        ? `payment-verify:${clientIP}:${attendanceParam}`
+        : `payment-verify:${clientIP}`;
 
     const store = await createRateLimitStore();
     const rateLimitResult = await checkRateLimit(store, rateLimitKey, {
@@ -123,12 +117,13 @@ export async function GET(request: NextRequest) {
     const secureClientFactory = SecureSupabaseClientFactory.getInstance();
     const supabase = await secureClientFactory.createGuestClient(guestToken);
 
-    const { data: payment, error: dbError } = await supabase
+    const { data: paymentRow, error: dbError } = await supabase
       .from("payments")
       .select("id, status, stripe_checkout_session_id, amount")
       .eq("attendance_id", attendance_id)
       .eq("stripe_checkout_session_id", session_id)
       .single();
+    let payment = paymentRow;
 
     if (dbError && dbError.code !== "PGRST116") {
       logger.error("Database query failed during payment verification", {
@@ -138,56 +133,151 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    if (!payment) {
-      // RLS違反やデータ不整合の可能性をログ記録
-      logSecurityEvent({
-        type: "SUSPICIOUS_ACTIVITY",
-        severity: "HIGH",
-        message: "Payment verification failed - no matching record found with guest token",
-        details: {
-          attendanceId: attendance_id,
-          sessionId: session_id.substring(0, 8) + "...",
-          hasGuestToken: !!guestToken,
-          dbErrorCode: dbError?.code,
-        },
-        ip: request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown",
-        timestamp: new Date(),
-      });
+    // Stripe Checkout Session 情報（フォールバック突合でも利用）
+    let checkoutSession: unknown | null = null;
 
-      // 突合不一致時は情報を返さない
-      return createProblemResponse("PAYMENT_SESSION_NOT_FOUND", {
-        instance: "/api/payments/verify-session",
-      });
+    if (!payment) {
+      // フォールバック: StripeのSessionから internal payment_id を推定
+      try {
+        checkoutSession = await stripe.checkout.sessions.retrieve(session_id, {
+          expand: ["payment_intent"],
+        });
+      } catch (stripeError) {
+        logger.warn("Stripe session retrieval failed (fallback)", {
+          tag: "payment-verify",
+          session_id: session_id.substring(0, 8) + "...",
+          error: stripeError instanceof Error ? stripeError.message : String(stripeError),
+        });
+      }
+
+      if (checkoutSession) {
+        const cs = checkoutSession as {
+          client_reference_id?: string | null;
+          metadata?: Record<string, unknown> | null;
+          payment_intent?: unknown;
+        };
+
+        const candidatePaymentId: string | null = ((): string | null => {
+          const fromClientRef = typeof cs.client_reference_id === "string" && cs.client_reference_id.length > 0 ? cs.client_reference_id : null;
+          const fromSessionMeta = cs.metadata && typeof cs.metadata["payment_id"] === "string" && (cs.metadata["payment_id"] as string).length > 0 ? (cs.metadata["payment_id"] as string) : null;
+          const fromPiMeta = ((): string | null => {
+            const pi = cs.payment_intent as unknown;
+            if (pi && typeof pi === "object" && (pi as { metadata?: Record<string, unknown> | null }).metadata) {
+              const md = (pi as { metadata?: Record<string, unknown> | null }).metadata;
+              const raw = md && md["payment_id"];
+              return typeof raw === "string" && raw.length > 0 ? raw : null;
+            }
+            return null;
+          })();
+          return fromClientRef || fromSessionMeta || fromPiMeta;
+        })();
+
+        if (candidatePaymentId) {
+          const { data: fallbackPayment } = await supabase
+            .from("payments")
+            .select("id, status, stripe_checkout_session_id, amount")
+            .eq("id", candidatePaymentId)
+            .eq("attendance_id", attendance_id)
+            .maybeSingle();
+
+          if (fallbackPayment) {
+            // 既に他のセッションで置換済みか？
+            if (
+              typeof fallbackPayment.stripe_checkout_session_id === "string" &&
+              fallbackPayment.stripe_checkout_session_id.length > 0 &&
+              fallbackPayment.stripe_checkout_session_id !== session_id
+            ) {
+              logSecurityEvent({
+                type: "SUSPICIOUS_ACTIVITY",
+                severity: "MEDIUM",
+                message: "Outdated checkout session detected during verification",
+                details: {
+                  attendanceId: attendance_id,
+                  requestedSessionId: session_id.substring(0, 8) + "...",
+                  currentSessionId: (fallbackPayment.stripe_checkout_session_id as string).substring(0, 8) + "...",
+                  paymentId: fallbackPayment.id,
+                  reason: "session_outdated",
+                },
+                ip: getClientIP(request),
+                timestamp: new Date(),
+              });
+
+              return createProblemResponse("PAYMENT_SESSION_OUTDATED", {
+                instance: "/api/payments/verify-session",
+              });
+            }
+
+            // フォールバック成立
+            payment = fallbackPayment;
+            logSecurityEvent({
+              type: "SUSPICIOUS_ACTIVITY",
+              severity: "LOW",
+              message: "Payment matched by fallback using client_reference_id/metadata",
+              details: {
+                attendanceId: attendance_id,
+                sessionId: session_id.substring(0, 8) + "...",
+                paymentId: fallbackPayment.id,
+                reason: "fallback_matched",
+              },
+              ip: getClientIP(request),
+              timestamp: new Date(),
+            });
+          }
+        }
+      }
+
+      if (!payment) {
+        // 最終的に突合できなかった場合は情報を返さない
+        logSecurityEvent({
+          type: "SUSPICIOUS_ACTIVITY",
+          severity: "HIGH",
+          message: "Payment verification failed - no matching record found with guest token",
+          details: {
+            attendanceId: attendance_id,
+            sessionId: session_id.substring(0, 8) + "...",
+            hasGuestToken: !!guestToken,
+            dbErrorCode: dbError?.code,
+          },
+          ip: getClientIP(request),
+          timestamp: new Date(),
+        });
+
+        return createProblemResponse("PAYMENT_SESSION_NOT_FOUND", {
+          instance: "/api/payments/verify-session",
+        });
+      }
     }
 
-    // DB一致後にのみStripe Checkout Sessionを取得
-    let checkoutSession;
-    try {
-      checkoutSession = await stripe.checkout.sessions.retrieve(session_id, {
-        expand: ["payment_intent"],
-      });
-    } catch (stripeError) {
-      logger.warn("Stripe session retrieval failed", {
-        tag: "payment-verify",
-        session_id: session_id.substring(0, 8) + "...", // セキュリティのため一部のみログ
-        error: stripeError instanceof Error ? stripeError.message : String(stripeError),
-      });
+    // Stripe Checkout Session を未取得の場合のみ取得
+    if (!checkoutSession) {
+      try {
+        checkoutSession = await stripe.checkout.sessions.retrieve(session_id, {
+          expand: ["payment_intent"],
+        });
+      } catch (stripeError) {
+        logger.warn("Stripe session retrieval failed", {
+          tag: "payment-verify",
+          session_id: session_id.substring(0, 8) + "...", // セキュリティのため一部のみログ
+          error: stripeError instanceof Error ? stripeError.message : String(stripeError),
+        });
 
-      return createProblemResponse("PAYMENT_SESSION_NOT_FOUND", {
-        instance: "/api/payments/verify-session",
-        detail: "Stripe決済セッションの取得に失敗しました",
-      });
+        return createProblemResponse("PAYMENT_SESSION_NOT_FOUND", {
+          instance: "/api/payments/verify-session",
+          detail: "Stripe決済セッションの取得に失敗しました",
+        });
+      }
     }
 
     // セッションステータスから決済状況を判定
     let paymentStatus: VerificationResult["payment_status"];
-    switch (checkoutSession.payment_status) {
+    const cs2 = checkoutSession as { payment_status?: string; status?: string };
+    switch (cs2.payment_status) {
       case "paid":
         paymentStatus = "success";
         break;
       case "unpaid":
         // セッションが期限切れかキャンセルされた場合
-        if (checkoutSession.status === "expired") {
+        if (cs2.status === "expired") {
           paymentStatus = "cancelled";
         } else {
           paymentStatus = "pending";
@@ -202,7 +292,7 @@ export async function GET(request: NextRequest) {
 
     // 支払い要否を判定（no_cost orders / 100% off / 価格0）
     const isNoPaymentRequired =
-      checkoutSession.payment_status === "no_payment_required" ||
+      cs2.payment_status === "no_payment_required" ||
       (typeof (checkoutSession as { amount_total?: number }).amount_total === "number" &&
         (checkoutSession as { amount_total?: number }).amount_total === 0) ||
       (typeof payment?.amount === "number" && payment.amount === 0);

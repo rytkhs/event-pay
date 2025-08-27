@@ -43,11 +43,6 @@ export function InviteError({
     case "EVENT_ENDED":
       return <EventEndedError eventTitle={eventTitle} />;
 
-    case "CAPACITY_REACHED":
-      return (
-        <CapacityReachedError eventTitle={eventTitle} capacity={capacity} onRetry={handleRetry} />
-      );
-
     case "REGISTRATION_DEADLINE_PASSED":
       return <RegistrationDeadlineError eventTitle={eventTitle} deadline={deadline} />;
 

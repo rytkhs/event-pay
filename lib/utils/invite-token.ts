@@ -64,7 +64,6 @@ export interface InviteValidationResult {
   | "EVENT_CANCELLED"
   | "EVENT_ENDED"
   | "REGISTRATION_DEADLINE_PASSED"
-  | "CAPACITY_REACHED"
   | "UNKNOWN_ERROR";
 }
 
