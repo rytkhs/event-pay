@@ -379,7 +379,7 @@ CREATE INDEX idx_payments_tax_rate ON public.payments(application_fee_tax_rate);
 CREATE INDEX idx_payments_tax_included ON public.payments(tax_included);
 CREATE INDEX idx_payments_method_status_paid ON public.payments (method, status) WHERE method = 'stripe' AND status = 'paid';
 CREATE INDEX idx_payments_refunded_amount ON public.payments (refunded_amount) WHERE refunded_amount > 0;
--- 参加1件あたり未確定決済の重複防止（pending/processing/failed/ requires_action）
+-- 参加1件あたり未確定決済の重複防止（pending/failed）
 CREATE UNIQUE INDEX IF NOT EXISTS unique_open_payment_per_attendance
 ON public.payments(attendance_id)
 WHERE status IN ('pending','failed');

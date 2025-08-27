@@ -195,7 +195,7 @@ export async function updateGuestAttendanceAction(
         );
 
         return createServerActionError(
-          "BUSINESS_RULE_VIOLATION",
+          "RESOURCE_CONFLICT",
           "支払が確定しているため、決済方法を変更できません"
         );
       }

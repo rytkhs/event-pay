@@ -6,7 +6,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createRateLimitStore, checkRateLimit } from '../rate-limit';
 import { RATE_LIMIT_CONFIG } from '../../config/security';
-import { ApiResponseHelper } from '../api/response';
+import { createProblemResponse } from '@/lib/api/problem-details';
 import { logger } from '@/lib/logging/app-logger';
 
 /**
@@ -59,10 +59,10 @@ export async function checkStripeCheckoutRateLimit(
       return {
         allowed: false,
         retryAfter: result.retryAfter,
-        response: ApiResponseHelper.rateLimit(
-          'Stripe Checkout作成の試行回数が上限に達しました。しばらく待ってから再試行してください。',
-          result.retryAfter
-        ),
+        response: createProblemResponse('RATE_LIMITED', {
+          instance: '/api/stripe/checkout',
+          retryable: true,
+        }),
       };
     }
 
@@ -103,10 +103,10 @@ export async function checkStripePaymentIntentRateLimit(
       return {
         allowed: false,
         retryAfter: result.retryAfter,
-        response: ApiResponseHelper.rateLimit(
-          'Stripe PaymentIntent作成の試行回数が上限に達しました。しばらく待ってから再試行してください。',
-          result.retryAfter
-        ),
+        response: createProblemResponse('RATE_LIMITED', {
+          instance: '/api/stripe/payment_intent',
+          retryable: true,
+        }),
       };
     }
 
@@ -148,10 +148,10 @@ export async function checkStripeOperationRateLimit(
       return {
         allowed: false,
         retryAfter: result.retryAfter,
-        response: ApiResponseHelper.rateLimit(
-          `Stripe ${operation}操作の試行回数が上限に達しました。しばらく待ってから再試行してください。`,
-          result.retryAfter
-        ),
+        response: createProblemResponse('RATE_LIMITED', {
+          instance: `/api/stripe/${operation}`,
+          retryable: true,
+        }),
       };
     }
 

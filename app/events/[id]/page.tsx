@@ -31,11 +31,24 @@ export default async function EventDetailPage({ params }: EventDetailPageProps) 
       notFound();
     }
 
-    const eventDetail = await cachedActions.getEventDetail(params.id);
+    const eventDetailResult = await cachedActions.getEventDetail(params.id);
 
-    if (!eventDetail) {
-      notFound();
+    if (!eventDetailResult.success) {
+      // エラーコードに基づいて適切な処理
+      if (eventDetailResult.code === "EVENT_NOT_FOUND") {
+        notFound();
+      }
+      if (eventDetailResult.code === "EVENT_ACCESS_DENIED") {
+        redirect("/events/" + params.id + "/forbidden");
+      }
+      if (eventDetailResult.code === "EVENT_INVALID_ID") {
+        notFound();
+      }
+      // その他のエラーは500エラーとして処理
+      throw new Error(eventDetailResult.error);
     }
+
+    const eventDetail = eventDetailResult.data;
 
     // 現在のユーザーを取得して主催者かどうか判定
     const currentUser = await getCurrentUser();
@@ -106,17 +119,7 @@ export default async function EventDetailPage({ params }: EventDetailPageProps) 
       </div>
     );
   } catch (error) {
-    if (error instanceof Error) {
-      if (error.message === "Event not found") {
-        notFound();
-      }
-      if (error.message === "Access denied") {
-        redirect("/events/" + params.id + "/forbidden");
-      }
-      if (error.message === "Invalid event ID format") {
-        notFound();
-      }
-    }
+    // 予期しないエラーの場合は500エラーとして処理
     throw error;
   }
 }
@@ -124,13 +127,15 @@ export default async function EventDetailPage({ params }: EventDetailPageProps) 
 // ページメタデータ生成（動的タイトル設定）
 export async function generateMetadata({ params }: EventDetailPageProps) {
   try {
-    const eventDetail = await cachedActions.getEventDetail(params.id);
-    if (!eventDetail) {
+    const eventDetailResult = await cachedActions.getEventDetail(params.id);
+    if (!eventDetailResult.success) {
       return {
         title: "イベント詳細 - EventPay",
         description: "イベントの詳細情報",
       };
     }
+
+    const eventDetail = eventDetailResult.data;
     return {
       title: `${eventDetail.title} - EventPay`,
       description: sanitizeEventDescription(

@@ -5,16 +5,18 @@ import { validateEventId } from "@/lib/validations/event-id";
 import { checkDeleteRestrictions } from "@/lib/utils/event-restrictions";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
+import {
+  createServerActionError,
+  createServerActionSuccess,
+  type ServerActionResult
+} from "@/lib/types/server-actions";
 
-export async function deleteEventAction(eventId: string) {
+export async function deleteEventAction(eventId: string): Promise<ServerActionResult<void>> {
   try {
     // イベントIDのバリデーション
     const validation = validateEventId(eventId);
     if (!validation.success) {
-      return {
-        success: false,
-        error: { message: "Invalid event ID format" },
-      };
+      return createServerActionError("EVENT_INVALID_ID", "無効なイベントID形式です");
     }
 
     const supabase = createClient();
@@ -42,22 +44,17 @@ export async function deleteEventAction(eventId: string) {
       .maybeSingle();
 
     if (fetchError || !event) {
-      return {
-        success: false,
-        error: { message: "Event not found" },
-      };
+      return createServerActionError("EVENT_NOT_FOUND", "イベントが見つかりません");
     }
 
     // 削除制限チェック
     const restrictions = checkDeleteRestrictions(event as any);
     if (restrictions.length > 0) {
-      return {
-        success: false,
-        error: {
-          message: restrictions[0].message,
-          violations: restrictions,
-        },
-      };
+      return createServerActionError(
+        "EVENT_DELETE_RESTRICTED",
+        restrictions[0].message,
+        { details: { violations: restrictions } }
+      );
     }
 
     // イベント削除（RLSで自分のイベントのみ削除可能）
@@ -69,26 +66,24 @@ export async function deleteEventAction(eventId: string) {
 
     if (error) {
       if (error.code === "23503") {
-        return {
-          success: false,
-          error: { message: "Cannot delete event with existing participants" },
-        };
+        return createServerActionError(
+          "EVENT_DELETE_RESTRICTED",
+          "参加者が存在するためイベントを削除できません"
+        );
       }
-      return {
-        success: false,
-        error: { message: "Failed to delete event" },
-      };
+      return createServerActionError("EVENT_DELETE_FAILED", "イベントの削除に失敗しました");
     }
 
     // キャッシュを無効化
     revalidatePath("/events");
     revalidatePath(`/events/${validation.data}`);
 
-    return { success: true };
-  } catch (_) {
-    return {
-      success: false,
-      error: { message: "An unexpected error occurred" },
-    };
+    return createServerActionSuccess(undefined, "イベントが正常に削除されました");
+  } catch (error) {
+    return createServerActionError(
+      "INTERNAL_ERROR",
+      "予期しないエラーが発生しました",
+      { retryable: true }
+    );
   }
 }

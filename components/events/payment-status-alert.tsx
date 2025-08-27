@@ -35,12 +35,12 @@ export function PaymentStatusAlert({
   const [isVerifying, setIsVerifying] = useState(false);
   const [verificationError, setVerificationError] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState(0);
-  const maxRetries = 12; // 指数バックオフで最大およそ2分弱を目安
+  const maxRetries = 8; // 指数バックオフ + ジッターで合計約 2 分を想定
 
   // 指数バックオフ + ジッター（0.5〜1.0倍）
   const getBackoffDelayMs = (attempt: number) => {
     const base = 1000; // 1s
-    const max = 60000; // 60s
+    const max = 30000; // 30s
     const raw = Math.min(base * Math.pow(2, attempt), max);
     const jitter = 0.5 + Math.random() * 0.5;
     return Math.floor(raw * jitter);
@@ -101,23 +101,27 @@ export function PaymentStatusAlert({
         }
 
         // エラー分類
-        // - 一時的: 429 / 5xx / 401 / 403 / 404 / ネットワーク → UIは処理中にフォールバック
-        // - 致命的: 400 など明らかな無効リクエスト → 赤エラー表示
-        const isTransientStatus =
-          status === 0 ||
-          status === 401 ||
-          status === 403 ||
-          status === 404 ||
-          status === 429 ||
-          status >= 500 ||
-          (problemDetails?.retryable ?? false);
+        // - 致命（即表示）: 401/403/404（認証・認可・不整合）→ 明示エラーを表示
+        // - 一時（再試行）: 429/5xx/ネットワーク/ retryable:true → processingへフォールバック
+        // - それ以外の400系: 明示エラー
+        const isFatalAuthOrNotFound = status === 401 || status === 403 || status === 404;
+        const isRetryable =
+          status === 0 || status === 429 || status >= 500 || (problemDetails?.retryable ?? false);
 
-        if (isTransientStatus) {
-          // 処理中にフォールバック（ユーザーにはエラーを見せない）
+        if (isFatalAuthOrNotFound) {
+          let message: string;
+          if (status === 404) {
+            message = "決済セッションが見つかりません。再度決済を開始してください。";
+          } else {
+            message =
+              "検証に必要な認証情報が無効か権限がありません。リンクを開き直すか、主催者にお問い合わせください。";
+          }
+          setVerificationError(message);
+        } else if (isRetryable) {
+          // 処理中にフォールバック（ユーザーにはエラーを見せず再確認）
           setVerifiedStatus((s) => s || "processing");
-          // エラーメッセージは出さない
         } else {
-          // 明らかな無効パラメータ等のみ赤エラー
+          // それ以外の明らかな無効パラメータなどはエラー表示
           const message = problemDetails?.detail || "検証に失敗しました";
           setVerificationError(message);
         }

@@ -4,15 +4,20 @@ import { createClient } from "@/lib/supabase/server";
 import { validateEventId } from "@/lib/validations/event-id";
 import { redirect } from "next/navigation";
 import { logger } from "@/lib/logging/app-logger";
+import {
+  createServerActionError,
+  createServerActionSuccess,
+  type ServerActionResult
+} from "@/lib/types/server-actions";
 
 import type { EventDetail as DetailType } from "@/types/models";
 
-export async function getEventDetailAction(eventId: string): Promise<DetailType> {
+export async function getEventDetailAction(eventId: string): Promise<ServerActionResult<DetailType>> {
   try {
     // イベントIDのバリデーション
     const validation = validateEventId(eventId);
     if (!validation.success) {
-      throw new Error("Invalid event ID format");
+      return createServerActionError("EVENT_INVALID_ID", "無効なイベントID形式です");
     }
 
     const supabase = createClient();
@@ -54,13 +59,13 @@ export async function getEventDetailAction(eventId: string): Promise<DetailType>
 
     if (error) {
       if (error.code === "PGRST301") {
-        throw new Error("Access denied");
+        return createServerActionError("EVENT_ACCESS_DENIED", "このイベントへのアクセス権限がありません");
       }
-      throw new Error(`Database error: ${error.message} (Code: ${error.code})`);
+      return createServerActionError("DATABASE_ERROR", "データベースエラーが発生しました");
     }
 
     if (!eventDetail) {
-      throw new Error("Event not found");
+      return createServerActionError("EVENT_NOT_FOUND", "イベントが見つかりません");
     }
 
     // セキュリティ強化：get_event_creator_name()関数を使用してcreator_nameを取得
@@ -86,11 +91,12 @@ export async function getEventDetailAction(eventId: string): Promise<DetailType>
       creator_name: creatorName || "Unknown User",
     };
 
-    return result;
+    return createServerActionSuccess(result);
   } catch (error) {
-    if (error instanceof Error) {
-      throw error;
-    }
-    throw new Error("Unknown error");
+    return createServerActionError(
+      "INTERNAL_ERROR",
+      "予期しないエラーが発生しました",
+      { retryable: true }
+    );
   }
 }
