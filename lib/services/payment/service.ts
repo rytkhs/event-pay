@@ -454,12 +454,10 @@ export class PaymentService implements IPaymentService {
   private async updatePaymentStatusLegacy(params: UpdatePaymentStatusParams): Promise<void> {
     const updateData: {
       status: PaymentStatus;
-      updated_at: string;
       paid_at?: string;
       stripe_payment_intent_id?: string | null;
     } = {
       status: params.status,
-      updated_at: new Date().toISOString(),
     };
 
     if (params.paidAt) {

@@ -136,8 +136,8 @@ export async function getEventParticipantsAction(
         nullsFirst: false, // 未決済(paid_at=null)を最後に持ってくる（NULLS LAST 固定）
       } as any);
     } else {
-      // フォールバック：updated_at DESC
-      query = query.order("updated_at", { ascending: false });
+      // フォールバック：created_at DESC（編集による並び揺れを避ける）
+      query = query.order("created_at", { ascending: false });
     }
 
     // ページネーション

@@ -51,9 +51,9 @@ export async function createDestinationCheckoutSession(
     setupFutureUsage,
   } = params;
 
-  if (platformFeeAmount > amount) {
+  if (platformFeeAmount >= amount) {
     throw new Error(
-      `application_fee_amount (${platformFeeAmount}) must be less than or equal to amount (${amount}).`
+      `application_fee_amount (${platformFeeAmount}) must be less than amount (${amount}).`
     );
   }
 
@@ -133,9 +133,9 @@ export async function createDestinationPaymentIntent(
     setupFutureUsage,
   } = params;
 
-  if (platformFeeAmount > amount) {
+  if (platformFeeAmount >= amount) {
     throw new Error(
-      `application_fee_amount (${platformFeeAmount}) must be less than or equal to amount (${amount}).`
+      `application_fee_amount (${platformFeeAmount}) must be less than amount (${amount}).`
     );
   }
 
