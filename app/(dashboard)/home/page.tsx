@@ -40,7 +40,7 @@ export default async function DashboardPage() {
     if (process.env.NODE_ENV === "development") {
       // console.warn("Dashboard: Redirecting to login due to auth failure");
     }
-    redirect("/login?redirectTo=/dashboard");
+    redirect("/login?redirectTo=/home");
   }
 
   return (
