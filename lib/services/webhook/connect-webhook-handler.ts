@@ -63,10 +63,10 @@ export class ConnectWebhookHandler {
    */
   async handleAccountUpdated(account: Stripe.Account): Promise<void> {
     try {
-      // メタデータからユーザーIDを取得
-      const userId = account.metadata?.user_id;
+      // メタデータからユーザーIDを取得（actor_idへ統一）
+      const userId = (account.metadata as Record<string, string | undefined> | undefined)?.actor_id;
       if (!userId) {
-        logger.warn('Account missing user_id in metadata', {
+        logger.warn('Account missing actor_id in metadata', {
           tag: 'accountMissingUserId',
           stripe_account_id: account.id
         });
@@ -118,7 +118,7 @@ export class ConnectWebhookHandler {
       // 管理者にエラー通知を送信
       try {
         await this.notificationService.sendAccountStatusChangeNotification({
-          userId: account.metadata?.user_id || 'unknown',
+          userId: (account.metadata as Record<string, string | undefined> | undefined)?.actor_id || 'unknown',
           accountId: account.id,
           oldStatus: 'unknown',
           newStatus: 'error',
@@ -151,7 +151,7 @@ export class ConnectWebhookHandler {
       if (accountId) {
         try {
           const _acc = await this.stripeConnectService.getAccountInfo(accountId);
-          // getAccountInfoはmetadata.user_idまでは返さないため、DBから逆引き
+          // getAccountInfoはmetadata.actor_idまでは返さないため、DBから逆引き
           const { data } = await this.supabase
             .from('stripe_connect_accounts')
             .select('user_id')

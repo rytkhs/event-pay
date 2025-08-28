@@ -62,7 +62,7 @@ export class StripeConnectService implements IStripeConnectService {
         );
       }
 
-      // Stripe側の既存アカウント確認（emailでリスト→metadata.user_idで照合）
+      // Stripe側の既存アカウント確認（emailでリスト→metadata.actor_idで照合）
       // 見つかった場合はそのアカウントを再利用する
       let stripeAccount: Stripe.Account | null = null;
       try {
@@ -70,7 +70,7 @@ export class StripeConnectService implements IStripeConnectService {
         const accountsResource = (this.stripe.accounts as unknown) as { search?: (params: { query: string }) => Promise<{ data: unknown[] }> };
         if (accountsResource?.search) {
           const searchResult = await accountsResource.search({
-            query: `metadata['user_id']:'${userId}'`,
+            query: `metadata['actor_id']:'${userId}'`,
           });
           if (Array.isArray(searchResult?.data) && searchResult.data.length > 0) {
             stripeAccount = searchResult.data[0] as Stripe.Account;
@@ -96,7 +96,7 @@ export class StripeConnectService implements IStripeConnectService {
           transfers: { requested: true },
         },
         metadata: {
-          user_id: userId,
+          actor_id: userId,
           created_by: "EventPay",
         },
       };
