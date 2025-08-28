@@ -16,6 +16,7 @@ import { AnomalyDetectorImpl } from "@/lib/security/anomaly-detector";
 import { getClientIP } from "@/lib/utils/ip-detection";
 import { shouldEnforceStripeWebhookIpCheck, isStripeWebhookIpAllowed } from "@/lib/security/stripe-ip-allowlist";
 import { logger } from '@/lib/logging/app-logger';
+import { generateSecureUuid } from '@/lib/security/crypto';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic'; // Webhookは常に動的処理
@@ -23,7 +24,7 @@ export const dynamic = 'force-dynamic'; // Webhookは常に動的処理
 export async function POST(request: NextRequest) {
   const _clientIP = getClientIP(request);
   let enqueued = false;
-  const requestId = request.headers.get('x-request-id') || 'unknown';
+  const requestId = request.headers.get('x-request-id') || generateSecureUuid();
   const connectLogger = logger.withContext({
     request_id: requestId,
     path: request.nextUrl.pathname,

@@ -16,6 +16,7 @@ import type { WebhookProcessingResult } from '@/lib/services/webhook';
 import { getClientIP } from '@/lib/utils/ip-detection';
 import { shouldEnforceStripeWebhookIpCheck, isStripeWebhookIpAllowed } from '@/lib/security/stripe-ip-allowlist';
 import { logger } from '@/lib/logging/app-logger';
+import { generateSecureUuid } from '@/lib/security/crypto';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic'; // Webhookは常に動的処理
@@ -41,7 +42,7 @@ export async function POST(request: NextRequest) {
   let enqueued = false;
   // 失敗時に DLQ に書き込むための現在処理中のイベント情報
   let eventMeta: { id: string; type: string } | null = null;
-  const requestId = request.headers.get('x-request-id') || 'unknown';
+  const requestId = request.headers.get('x-request-id') || generateSecureUuid();
   const webhookLogger = logger.withContext({
     request_id: requestId,
     path: request.nextUrl.pathname,
