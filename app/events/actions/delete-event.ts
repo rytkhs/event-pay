@@ -79,7 +79,7 @@ export async function deleteEventAction(eventId: string): Promise<ServerActionRe
     revalidatePath(`/events/${validation.data}`);
 
     return createServerActionSuccess(undefined, "イベントが正常に削除されました");
-  } catch (error) {
+  } catch (_error) {
     return createServerActionError(
       "INTERNAL_ERROR",
       "予期しないエラーが発生しました",

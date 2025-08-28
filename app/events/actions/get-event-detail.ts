@@ -92,7 +92,7 @@ export async function getEventDetailAction(eventId: string): Promise<ServerActio
     };
 
     return createServerActionSuccess(result);
-  } catch (error) {
+  } catch (_error) {
     return createServerActionError(
       "INTERNAL_ERROR",
       "予期しないエラーが発生しました",
