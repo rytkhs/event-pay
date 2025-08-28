@@ -1,6 +1,10 @@
 /**
  * Server Actionsの共通レスポンス型定義
+ * RFC 7807 Problem Details のコード体系と統合
  */
+
+import { type ErrorCode as ProblemDetailsErrorCode } from "@/lib/api/problem-details";
+import { randomBytes } from "crypto";
 
 export interface ServerActionSuccess<T = unknown> {
   success: true;
@@ -11,80 +15,68 @@ export interface ServerActionSuccess<T = unknown> {
 export interface ServerActionError {
   success: false;
   error: string;
-  code?: string;
+  code: ProblemDetailsErrorCode;
   details?: Record<string, unknown>;
+  correlationId?: string;
+  retryable?: boolean;
+  fieldErrors?: Array<{
+    field: string;
+    code: string;
+    message: string;
+  }>;
 }
 
 export type ServerActionResult<T = unknown> = ServerActionSuccess<T> | ServerActionError;
 
 /**
- * エラーコード定義
+ * Server Actions用エラーコード（Problem Details と統合）
  */
-export const ERROR_CODES = {
-  // 認証・認可エラー
-  UNAUTHORIZED: "UNAUTHORIZED",
-  FORBIDDEN: "FORBIDDEN",
-
-  // バリデーションエラー
-  VALIDATION_ERROR: "VALIDATION_ERROR",
-  INVALID_INPUT: "INVALID_INPUT",
-
-  // データベースエラー
-  NOT_FOUND: "NOT_FOUND",
-  CONFLICT: "CONFLICT",
-  DATABASE_ERROR: "DATABASE_ERROR",
-
-  // ビジネスロジックエラー
-  BUSINESS_RULE_VIOLATION: "BUSINESS_RULE_VIOLATION",
-  EDIT_RESTRICTION: "EDIT_RESTRICTION",
-
-  // システムエラー
-  INTERNAL_ERROR: "INTERNAL_ERROR",
-  NETWORK_ERROR: "NETWORK_ERROR",
-  // レート制限
-  RATE_LIMIT_EXCEEDED: "RATE_LIMIT_EXCEEDED",
-} as const;
-
-export type ErrorCode = (typeof ERROR_CODES)[keyof typeof ERROR_CODES];
+export type ErrorCode = ProblemDetailsErrorCode;
 
 /**
- * エラーメッセージのローカライゼーション
+ * 相関IDを生成
  */
-export const ERROR_MESSAGES = {
-  [ERROR_CODES.UNAUTHORIZED]: "認証が必要です",
-  [ERROR_CODES.FORBIDDEN]: "このイベントを編集する権限がありません",
-  [ERROR_CODES.VALIDATION_ERROR]: "入力値が無効です",
-  [ERROR_CODES.INVALID_INPUT]: "入力形式が正しくありません",
-  [ERROR_CODES.NOT_FOUND]: "イベントが見つかりません",
-  [ERROR_CODES.CONFLICT]: "データが競合しています",
-  [ERROR_CODES.DATABASE_ERROR]: "データベースエラーが発生しました",
-  [ERROR_CODES.BUSINESS_RULE_VIOLATION]: "ビジネスルール違反です",
-  [ERROR_CODES.EDIT_RESTRICTION]: "編集制限により変更できません",
-  [ERROR_CODES.INTERNAL_ERROR]: "システムエラーが発生しました",
-  [ERROR_CODES.NETWORK_ERROR]: "ネットワークエラーが発生しました",
-  [ERROR_CODES.RATE_LIMIT_EXCEEDED]: "レート制限に達しました。しばらく待って再試行してください",
-} as const;
+function generateCorrelationId(): string {
+  return `sa_${randomBytes(6).toString('hex')}`;
+}
 
 /**
- * エラーレスポンスを作成するヘルパー関数
+ * Server Actions用のエラー設定オプション
  */
-export function createErrorResponse(
+export interface ServerActionErrorOptions {
+  details?: Record<string, unknown>;
+  correlationId?: string;
+  retryable?: boolean;
+  fieldErrors?: Array<{
+    field: string;
+    code: string;
+    message: string;
+  }>;
+}
+
+/**
+ * Server Actions用エラーレスポンスを作成するヘルパー関数
+ */
+export function createServerActionError(
   code: ErrorCode,
-  customMessage?: string,
-  details?: Record<string, unknown>
+  message: string,
+  options: ServerActionErrorOptions = {}
 ): ServerActionError {
   return {
     success: false,
-    error: customMessage || ERROR_MESSAGES[code],
+    error: message,
     code,
-    details,
+    correlationId: options.correlationId || generateCorrelationId(),
+    retryable: options.retryable ?? false,
+    details: options.details,
+    fieldErrors: options.fieldErrors,
   };
 }
 
 /**
- * 成功レスポンスを作成するヘルパー関数
+ * Server Actions用成功レスポンスを作成するヘルパー関数
  */
-export function createSuccessResponse<T>(data: T, message?: string): ServerActionSuccess<T> {
+export function createServerActionSuccess<T>(data: T, message?: string): ServerActionSuccess<T> {
   return {
     success: true,
     data,
@@ -93,13 +85,22 @@ export function createSuccessResponse<T>(data: T, message?: string): ServerActio
 }
 
 /**
- * Zodエラーをレスポンスに変換するヘルパー関数
+ * Zodエラーを Server Actions レスポンスに変換するヘルパー関数
  */
-export function zodErrorToResponse(error: import("zod").ZodError): ServerActionError {
+export function zodErrorToServerActionResponse(error: import("zod").ZodError): ServerActionError {
+  const fieldErrors = error.errors.map(err => ({
+    field: err.path.join('.'),
+    code: err.code,
+    message: err.message,
+  }));
+
   const firstError = error.errors?.[0];
-  return createErrorResponse(
-    ERROR_CODES.VALIDATION_ERROR,
+  return createServerActionError(
+    "VALIDATION_ERROR",
     firstError?.message || "入力値が無効です",
-    { zodErrors: error.errors }
+    {
+      fieldErrors,
+      details: { zodErrors: error.errors },
+    }
   );
 }

@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { PaymentStatusBadge } from "@/components/common/payment-status-badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -30,6 +31,7 @@ import { useToast } from "@/hooks/use-toast";
 import { updateCashStatusAction } from "@/app/payments/actions/update-cash-status";
 import { bulkUpdateCashStatusAction } from "@/app/payments/actions/bulk-update-cash-status";
 import { exportParticipantsCsvAction } from "@/app/events/actions/export-participants-csv";
+import { getAllCashPaymentIdsAction } from "@/app/events/actions/get-all-cash-payment-ids";
 import type {
   GetParticipantsResponse,
   GetParticipantsParams,
@@ -57,6 +59,12 @@ export function ParticipantsTable({
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
   const [bulkUpdateMode, setBulkUpdateMode] = useState<"received" | "waived" | null>(null);
   const [isExporting, setIsExporting] = useState(false);
+  const [isSelectingAll, setIsSelectingAll] = useState(false);
+  const [selectionMeta, setSelectionMeta] = useState<{
+    mode: "page" | "all" | null;
+    total?: number;
+    truncated?: boolean;
+  }>({ mode: null });
   const [searchQuery, setSearchQuery] = useState(initialData.filters.search || "");
   const [attendanceFilter, setAttendanceFilter] = useState<string>(
     initialData.filters.attendanceStatus || ""
@@ -84,6 +92,7 @@ export function ParticipantsTable({
     });
     // ページ・フィルタ変更時は選択状態をリセットし誤操作を防止
     setSelectedPaymentIds([]);
+    setSelectionMeta({ mode: null });
   }, [initialData]);
 
   // フィルターハンドラー
@@ -168,8 +177,71 @@ export function ParticipantsTable({
     if (checked) {
       const cashPaymentIds = cashPayments.filter((p) => p.payment_id).map((p) => p.payment_id!);
       setSelectedPaymentIds(cashPaymentIds);
+      setSelectionMeta({ mode: "page" });
     } else {
       setSelectedPaymentIds([]);
+      setSelectionMeta({ mode: null });
+    }
+  };
+
+  // 条件に合致する「現金」全件を選択
+  const handleSelectAllMatching = async () => {
+    if (isSelectingAll) return;
+    setIsSelectingAll(true);
+    try {
+      const filters = {
+        search: searchQuery || undefined,
+        attendanceStatus: attendanceFilter === "all" ? undefined : attendanceFilter || undefined,
+        paymentStatus: paymentStatusFilter === "all" ? undefined : paymentStatusFilter || undefined,
+      };
+
+      const result = await getAllCashPaymentIdsAction({
+        eventId,
+        filters,
+        max: 5000,
+      });
+
+      if (result.success) {
+        if (result.paymentIds.length === 0) {
+          setSelectedPaymentIds([]);
+          setSelectionMeta({ mode: null });
+          toast({ title: "対象なし", description: "条件に一致する現金決済がありません。" });
+          return;
+        }
+
+        setSelectedPaymentIds(result.paymentIds);
+        setSelectionMeta({
+          mode: "all",
+          total:
+            "matchedTotal" in result && typeof result.matchedTotal === "number"
+              ? result.matchedTotal
+              : result.total,
+          truncated: Boolean(result.truncated),
+        });
+
+        toast({
+          title: "全件選択",
+          description: `${result.paymentIds.length}件を選択しました${
+            "matchedTotal" in result && typeof result.matchedTotal === "number"
+              ? `（取得: ${result.paymentIds.length}件 / 該当: ${result.matchedTotal}件${result.truncated ? "、上限まで" : ""}）`
+              : `（取得: ${result.paymentIds.length}件${result.truncated ? "、上限まで" : ""}）`
+          }`,
+        });
+      } else {
+        toast({
+          title: "選択に失敗しました",
+          description: result.error || "全件選択に失敗しました",
+          variant: "destructive",
+        });
+      }
+    } catch (_e) {
+      toast({
+        title: "選択に失敗しました",
+        description: "全件選択でエラーが発生しました",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSelectingAll(false);
     }
   };
 
@@ -241,46 +313,45 @@ export function ParticipantsTable({
     setBulkUpdateMode(status);
 
     try {
-      const result = await bulkUpdateCashStatusAction({
-        paymentIds: selectedPaymentIds,
-        status,
-      });
+      // 50件ずつチャンクして順次実行
+      const chunkSize = 50;
+      let totalSuccess = 0;
+      let totalFailed = 0;
 
-      if (result.success) {
-        const { successCount, failedCount } = result.data;
-        toast({
-          title: "一括更新が完了しました",
-          description: `${successCount}件成功、${failedCount}件失敗`,
-        });
-        setSelectedPaymentIds([]);
-        onPaymentStatusUpdate?.();
-      } else {
-        // 競合エラーの場合は特別な処理
-        if (
-          result.error &&
-          typeof result.error === "object" &&
-          "code" in result.error &&
-          (result.error as { code: string }).code === "CONFLICT"
-        ) {
-          toast({
-            title: "同時更新が検出されました",
-            description:
-              "他のユーザーによって同時に更新されました。画面を更新して最新状態を確認してください。",
-            variant: "destructive",
-          });
-          // 自動的に最新データを再取得して選択を解除
-          setTimeout(() => {
-            setSelectedPaymentIds([]);
-            onPaymentStatusUpdate?.();
-          }, 1000);
+      for (let i = 0; i < selectedPaymentIds.length; i += chunkSize) {
+        const chunk = selectedPaymentIds.slice(i, i + chunkSize);
+        const result = await bulkUpdateCashStatusAction({ paymentIds: chunk, status });
+
+        if (result.success) {
+          totalSuccess += result.data.successCount;
+          totalFailed += result.data.failedCount;
         } else {
-          toast({
-            title: "エラーが発生しました",
-            description: typeof result.error === "string" ? result.error : "一括更新に失敗しました",
-            variant: "destructive",
-          });
+          // 競合専用メッセージ
+          if (
+            result.error &&
+            typeof result.error === "object" &&
+            "code" in result.error &&
+            (result.error as { code: string }).code === "CONFLICT"
+          ) {
+            toast({
+              title: "同時更新が検出されました",
+              description: "他のユーザーによって同時に更新されました。最新状態を取得します。",
+              variant: "destructive",
+            });
+            // 次のチャンク処理は継続しつつ、後で最新再取得
+          } else {
+            // 失敗として件数加算（このチャンク分）
+            totalFailed += chunk.length;
+          }
         }
       }
+
+      toast({
+        title: "一括更新が完了しました",
+        description: `${totalSuccess}件成功、${totalFailed}件失敗`,
+      });
+      setSelectedPaymentIds([]);
+      onPaymentStatusUpdate?.();
     } catch (_error) {
       toast({
         title: "エラーが発生しました",
@@ -312,62 +383,6 @@ export function ParticipantsTable({
         return (
           <Badge variant="outline" className="bg-yellow-100 text-yellow-800">
             未定
-          </Badge>
-        );
-      default:
-        return <Badge variant="outline">{status}</Badge>;
-    }
-  };
-
-  const getPaymentStatusBadge = (status: string | null) => {
-    if (!status)
-      return (
-        <Badge variant="outline" className="bg-gray-100 text-gray-600">
-          未登録
-        </Badge>
-      );
-
-    switch (status) {
-      case "paid":
-        return (
-          <Badge variant="default" className="bg-green-100 text-green-800">
-            支払済み
-          </Badge>
-        );
-      case "received":
-        return (
-          <Badge variant="default" className="bg-green-100 text-green-800">
-            受領済み
-          </Badge>
-        );
-      case "completed":
-        return (
-          <Badge variant="default" className="bg-green-100 text-green-800">
-            完了
-          </Badge>
-        );
-      case "pending":
-        return (
-          <Badge variant="outline" className="bg-yellow-100 text-yellow-800">
-            未決済
-          </Badge>
-        );
-      case "failed":
-        return (
-          <Badge variant="secondary" className="bg-red-100 text-red-800">
-            失敗
-          </Badge>
-        );
-      case "refunded":
-        return (
-          <Badge variant="secondary" className="bg-red-100 text-red-800">
-            返金済み
-          </Badge>
-        );
-      case "waived":
-        return (
-          <Badge variant="outline" className="bg-gray-100 text-gray-600">
-            免除
           </Badge>
         );
       default:
@@ -505,6 +520,14 @@ export function ParticipantsTable({
             <Button
               variant="outline"
               size="sm"
+              onClick={handleSelectAllMatching}
+              disabled={isLoading || isSelectingAll}
+            >
+              {isSelectingAll ? "全件選択中..." : "条件に合う現金を全件選択"}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
               onClick={handleExportCsv}
               disabled={isLoading || isExporting}
             >
@@ -519,6 +542,13 @@ export function ParticipantsTable({
           <div className="flex items-center justify-between bg-blue-50 border border-blue-200 rounded-md p-3">
             <span className="text-sm text-blue-800">
               {selectedPaymentIds.length}件の現金決済を選択中
+              {selectionMeta.mode === "all" && (
+                <span className="ml-2 text-xs text-blue-700">
+                  （全件選択
+                  {typeof selectionMeta.total === "number" ? `: 該当 ${selectionMeta.total}件` : ""}
+                  {selectionMeta.truncated ? "、上限まで" : ""}）
+                </span>
+              )}
             </span>
             <div className="flex items-center gap-2">
               <Button
@@ -763,7 +793,7 @@ export function ParticipantsTable({
                         {getPaymentMethodBadge(participant.payment_method)}
                       </td>
                       <td className="px-4 py-4 whitespace-nowrap">
-                        {getPaymentStatusBadge(participant.payment_status)}
+                        <PaymentStatusBadge status={participant.payment_status} />
                       </td>
                       <td
                         className={`px-4 py-4 whitespace-nowrap text-sm ${isUnpaid ? "text-red-900 font-semibold" : "text-gray-900"}`}

@@ -4,21 +4,17 @@ import {
   type EventDetail,
   checkEventCapacity,
 } from "@/lib/utils/invite-token";
-import { handleRateLimit, type RateLimitErrorResponse } from "@/lib/rate-limit-middleware";
+import { handleRateLimit } from "@/lib/rate-limit-middleware";
 import { RATE_LIMIT_CONFIG } from "@/config/security";
 import { logParticipationSecurityEvent } from "@/lib/security/security-logger";
+import { createProblemResponse, type ProblemDetails } from "@/lib/api/problem-details";
 
-export interface InviteValidationResponse {
-  success: boolean;
-  data?: {
+export interface InviteValidationSuccessResponse {
+  success: true;
+  data: {
     event: EventDetail;
     isCapacityReached: boolean;
     isRegistrationOpen: boolean;
-  };
-  error?: {
-    code: string;
-    message: string;
-    details?: Record<string, unknown>;
   };
 }
 
@@ -33,11 +29,11 @@ export interface InviteValidationResponse {
 export async function GET(
   request: NextRequest,
   { params }: { params: { token: string } }
-): Promise<NextResponse<InviteValidationResponse | RateLimitErrorResponse>> {
+): Promise<NextResponse<InviteValidationSuccessResponse | ProblemDetails>> {
   // レート制限を適用
   const rateLimitResponse = await handleRateLimit(request, RATE_LIMIT_CONFIG.invite, "invite");
   if (rateLimitResponse) {
-    return rateLimitResponse as NextResponse<RateLimitErrorResponse>;
+    return rateLimitResponse;
   }
 
   try {
@@ -45,16 +41,10 @@ export async function GET(
 
     // トークンパラメータの検証
     if (!token || typeof token !== "string") {
-      return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: "MISSING_TOKEN",
-            message: "招待トークンが必要です",
-          },
-        },
-        { status: 400 }
-      );
+      return createProblemResponse("MISSING_PARAMETER", {
+        instance: `/api/invite/${token || "[empty]"}`,
+        detail: "招待トークンが必要です",
+      });
     }
 
     // 招待トークンを検証
@@ -62,51 +52,29 @@ export async function GET(
 
     // 無効なトークンの場合（要件1.2）
     if (!result.isValid || !result.event) {
-      const errorCode = result.errorMessage?.includes("見つかりません")
-        ? "TOKEN_NOT_FOUND"
-        : "INVALID_TOKEN";
+      const problemCode = result.errorCode === "TOKEN_NOT_FOUND"
+        ? "INVITE_TOKEN_NOT_FOUND"
+        : "INVITE_TOKEN_INVALID";
 
-      return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: errorCode,
-            message: result.errorMessage || "無効な招待リンクです",
-          },
-        },
-        { status: 404 }
-      );
+      return createProblemResponse(problemCode, {
+        instance: `/api/invite/${token}`,
+        detail: result.errorMessage || "無効な招待リンクです",
+      });
     }
 
     const event = result.event;
 
     // イベントステータス別のエラーハンドリング
     if (event.status === "cancelled") {
-      return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: "EVENT_CANCELLED",
-            message: "このイベントはキャンセルされました",
-            details: { eventId: event.id, eventTitle: event.title },
-          },
-        },
-        { status: 410 }
-      );
+      return createProblemResponse("EVENT_CANCELLED", {
+        instance: `/api/invite/${token}`,
+      });
     }
 
     if (event.status === "past") {
-      return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: "EVENT_ENDED",
-            message: "このイベントは終了しています",
-            details: { eventId: event.id, eventDate: event.date },
-          },
-        },
-        { status: 410 }
-      );
+      return createProblemResponse("EVENT_ENDED", {
+        instance: `/api/invite/${token}`,
+      });
     }
 
     // 登録期限の確認（要件1.4）
@@ -114,20 +82,9 @@ export async function GET(
       const now = new Date();
       const deadline = new Date(event.registration_deadline);
       if (now > deadline) {
-        return NextResponse.json(
-          {
-            success: false,
-            error: {
-              code: "REGISTRATION_DEADLINE_PASSED",
-              message: "参加申込期限が過ぎています",
-              details: {
-                deadline: event.registration_deadline,
-                currentTime: now.toISOString(),
-              },
-            },
-          },
-          { status: 410 }
-        );
+        return createProblemResponse("REGISTRATION_DEADLINE_PASSED", {
+          instance: `/api/invite/${token}`,
+        });
       }
     }
 
@@ -136,25 +93,14 @@ export async function GET(
 
     // 定員に達している場合の詳細情報
     if (isCapacityReached && event.capacity) {
-      return NextResponse.json(
-        {
-          success: true,
-          data: {
-            event,
-            isCapacityReached: true,
-            isRegistrationOpen: false,
-          },
-          error: {
-            code: "CAPACITY_REACHED",
-            message: "このイベントは定員に達しています",
-            details: {
-              capacity: event.capacity,
-              currentAttendees: event.attendances_count,
-            },
-          },
+      return NextResponse.json({
+        success: true,
+        data: {
+          event,
+          isCapacityReached: true,
+          isRegistrationOpen: false,
         },
-        { status: 200 }
-      );
+      });
     }
 
     // 正常なレスポンス
@@ -185,15 +131,9 @@ export async function GET(
       { userAgent, ip }
     );
 
-    return NextResponse.json(
-      {
-        success: false,
-        error: {
-          code: "INTERNAL_SERVER_ERROR",
-          message: "招待リンクの検証中にエラーが発生しました",
-        },
-      },
-      { status: 500 }
-    );
+    return createProblemResponse("INTERNAL_ERROR", {
+      instance: `/api/invite/${params.token}`,
+      detail: "招待リンクの検証中にエラーが発生しました",
+    });
   }
 }

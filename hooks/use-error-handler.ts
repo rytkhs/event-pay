@@ -23,11 +23,37 @@ export interface ErrorState {
 }
 
 /**
+ * Problem Details のコードを ErrorDetails マッピングで使用しているコードへ変換
+ * 既存のユーザーメッセージマッピングに合わせるための最低限のブリッジ
+ */
+function mapProblemCodeToErrorCode(problemCode: string | undefined): string {
+  if (!problemCode) return "UNKNOWN_ERROR";
+  switch (problemCode) {
+    case "RATE_LIMITED":
+      return "RATE_LIMIT_EXCEEDED";
+    case "INTERNAL_ERROR":
+      return "INTERNAL_SERVER_ERROR";
+    default:
+      return problemCode;
+  }
+}
+
+function looksLikeProblemDetails(body: unknown): boolean {
+  if (!body || typeof body !== "object") return false;
+  const anyBody = body as Record<string, unknown>;
+  return (
+    typeof anyBody["type"] === "string" &&
+    typeof anyBody["detail"] === "string" &&
+    (typeof anyBody["code"] === "string" || typeof anyBody["status"] === "number")
+  );
+}
+
+/**
  * エラーハンドリング用カスタムフック
  * 統一的なエラー処理とユーザーフィードバックを提供
  */
 export function useErrorHandler(options: UseErrorHandlerOptions = {}) {
-  const { showToast = true, logErrors = true, defaultContext = {} } = options;
+  const { showToast = true, logErrors: _logErrors = true, defaultContext = {} } = options;
   const { toast } = useToast();
   const [errorState, setErrorState] = useState<ErrorState>({
     error: null,
@@ -74,9 +100,25 @@ export function useErrorHandler(options: UseErrorHandlerOptions = {}) {
   const handleApiError = useCallback(
     async (response: Response, context?: Partial<ErrorContext>) => {
       try {
-        const errorData = await response.json();
-        const errorCode = errorData.error?.code || "UNKNOWN_ERROR";
-        return handleError(errorCode, context);
+        const contentType = response.headers.get("content-type") || "";
+
+        // 一度だけボディを読む。JSONでなければ null にして分岐
+        let body: unknown = null;
+        try {
+          body = await response.clone().json();
+        } catch {
+          body = null;
+        }
+
+        // RFC7807: application/problem+json または それに準ずる構造
+        if (contentType.includes("application/problem+json") || looksLikeProblemDetails(body)) {
+          const problem = (body || {}) as { code?: string; detail?: string };
+          const mappedCode = mapProblemCodeToErrorCode(problem.code);
+          return handleError({ code: mappedCode }, context);
+        }
+
+        // Problem Details 以外は想定外エラーとして扱う
+        return handleError("UNKNOWN_ERROR", context);
       } catch {
         return handleError("NETWORK_ERROR", context);
       }

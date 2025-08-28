@@ -43,11 +43,6 @@ export function InviteError({
     case "EVENT_ENDED":
       return <EventEndedError eventTitle={eventTitle} />;
 
-    case "CAPACITY_REACHED":
-      return (
-        <CapacityReachedError eventTitle={eventTitle} capacity={capacity} onRetry={handleRetry} />
-      );
-
     case "REGISTRATION_DEADLINE_PASSED":
       return <RegistrationDeadlineError eventTitle={eventTitle} deadline={deadline} />;
 
@@ -60,6 +55,10 @@ export function InviteError({
 
     case "RATE_LIMIT_EXCEEDED":
       return <RateLimitError onRetry={handleRetry} />;
+
+    case "INVITE_TOKEN_INVALID":
+    case "INVITE_TOKEN_NOT_FOUND":
+      return <InvalidInviteError onRetry={showRetry ? handleRetry : undefined} />;
 
     default:
       // エラーコードが指定されていない場合は、メッセージから推測

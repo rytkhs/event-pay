@@ -265,7 +265,7 @@ describe("createStripeSessionAction - Destination charges", () => {
         attendanceId: "attendance-123",
         amount: 1000,
         eventId: "event-123",
-        userId: "user-123",
+        actorId: "user-123",
         eventTitle: "Test Event",
         successUrl: "https://example.com/success",
         cancelUrl: "https://example.com/cancel",

@@ -1,4 +1,5 @@
-import { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+import { createProblemResponse } from "@/lib/api/problem-details";
 import { validateCronSecret, logCronActivity } from "@/lib/cron-auth";
 import { stripe as sharedStripe } from "@/lib/stripe/client";
 import { SupabaseWebhookIdempotencyService, IdempotentWebhookProcessor } from "@/lib/services/webhook/webhook-idempotency";
@@ -17,7 +18,10 @@ export async function GET(request: NextRequest) {
 
   const auth = validateCronSecret(request);
   if (!auth.isValid) {
-    return new Response("Unauthorized", { status: 401 });
+    return createProblemResponse("UNAUTHORIZED", {
+      instance: "/api/cron/webhook-process-pending",
+      detail: auth.error || "Unauthorized",
+    });
   }
 
   const auditor = new SecurityAuditorImpl();
@@ -35,7 +39,10 @@ export async function GET(request: NextRequest) {
     pending = await idempotencyService.listPendingOrFailedEventsOrdered(MAX_BATCH);
   } catch (err) {
     logCronActivity("error", "Failed to fetch pending webhook events", { error: err instanceof Error ? err.message : String(err) });
-    return new Response("OK", { status: 200 });
+    return createProblemResponse("INTERNAL_ERROR", {
+      instance: "/api/cron/webhook-process-pending",
+      detail: "Failed to fetch pending webhook events",
+    });
   }
 
   let processed = 0;
@@ -172,5 +179,10 @@ export async function GET(request: NextRequest) {
     ms: Date.now() - start,
   });
 
-  return new Response("OK", { status: 200 });
+  return NextResponse.json({
+    processed,
+    succeeded,
+    failed,
+    ms: Date.now() - start,
+  });
 }

@@ -4,7 +4,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useCallback, useEffect, useMemo, useTransition } from "react";
 import { z } from "zod";
-import { formatUtcToDatetimeLocal } from "@/lib/utils/timezone";
+import { convertDatetimeLocalToUtc, formatUtcToDatetimeLocal } from "@/lib/utils/timezone";
 import { useEventRestrictions } from "@/hooks/restrictions/use-event-restrictions";
 import { useEventChanges } from "@/hooks/changes/use-event-changes";
 import { useEventSubmission } from "@/hooks/submission/use-event-submission";
@@ -50,9 +50,12 @@ const eventEditFormSchema = z
   .refine(
     (data) => {
       if (!data.date) return true;
-      const eventDate = new Date(data.date);
-      const now = new Date();
-      return eventDate > now;
+      try {
+        const eventUtc = convertDatetimeLocalToUtc(data.date);
+        return eventUtc > new Date();
+      } catch {
+        return false;
+      }
     },
     {
       message: "開催日時は現在時刻より後である必要があります",
@@ -62,9 +65,13 @@ const eventEditFormSchema = z
   .refine(
     (data) => {
       if (!data.registration_deadline || !data.date) return true;
-      const deadline = new Date(data.registration_deadline);
-      const eventDate = new Date(data.date);
-      return deadline < eventDate;
+      try {
+        const deadlineUtc = convertDatetimeLocalToUtc(data.registration_deadline);
+        const eventUtc = convertDatetimeLocalToUtc(data.date);
+        return deadlineUtc < eventUtc;
+      } catch {
+        return false;
+      }
     },
     {
       message: "参加申込締切は開催日時より前に設定してください",
@@ -74,9 +81,13 @@ const eventEditFormSchema = z
   .refine(
     (data) => {
       if (!data.payment_deadline || !data.date) return true;
-      const paymentDeadline = new Date(data.payment_deadline);
-      const eventDate = new Date(data.date);
-      return paymentDeadline < eventDate;
+      try {
+        const payUtc = convertDatetimeLocalToUtc(data.payment_deadline);
+        const eventUtc = convertDatetimeLocalToUtc(data.date);
+        return payUtc < eventUtc;
+      } catch {
+        return false;
+      }
     },
     {
       message: "支払い締切は開催日時より前に設定してください",

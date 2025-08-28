@@ -25,6 +25,7 @@ export type SecurityEventType =
   | "MALICIOUS_INPUT"
   | "CAPACITY_BYPASS_ATTEMPT"
   | "DEADLINE_BYPASS_ATTEMPT"
+  | "PAYMENT_METHOD_CHANGE_AFTER_FINALIZED_ATTEMPT"
   | "SANITIZATION_TRIGGERED"
   | "VALIDATION_FAILURE"
   | "SUSPICIOUS_ACTIVITY";
@@ -226,6 +227,29 @@ export function logInvalidTokenAccess(
 }
 
 /**
+ * ゲストページで予期しないエラーが発生した際のログ
+ * 無効トークンか内部エラーか判別できないケースをこのタグで区別する
+ */
+export function logUnexpectedGuestPageError(
+  token: string,
+  error: unknown,
+  request?: {
+    userAgent?: string;
+    ip?: string;
+  }
+): void {
+  logParticipationSecurityEvent(
+    "SUSPICIOUS_ACTIVITY",
+    "Unexpected error occurred on guest page",
+    {
+      maskedToken: maskToken(token),
+      errorName: error instanceof Error ? error.name : "Unknown",
+    },
+    request
+  );
+}
+
+/**
  * イベントタイプに基づいて重要度を決定します
  * @param type イベントタイプ
  * @returns 重要度
@@ -238,6 +262,7 @@ function getSeverityForEventType(type: SecurityEventType): SecuritySeverity {
     case "DUPLICATE_REGISTRATION":
     case "CAPACITY_BYPASS_ATTEMPT":
     case "DEADLINE_BYPASS_ATTEMPT":
+    case "PAYMENT_METHOD_CHANGE_AFTER_FINALIZED_ATTEMPT":
       return "MEDIUM";
     case "RATE_LIMIT_EXCEEDED":
     case "INVALID_TOKEN":

@@ -17,7 +17,7 @@ CREATE OR REPLACE FUNCTION public.register_attendance_with_payment(
   p_status public.attendance_status_enum,
   p_guest_token VARCHAR,
   p_payment_method public.payment_method_enum DEFAULT NULL,
-  p_event_fee INTEGER DEFAULT 0
+  p_event_fee INTEGER DEFAULT 0  -- 呼び出し時点で確定した参加費を渡す（主催者がfeeを変更してもゲストが見た金額で決済を行うため・個別価格拡張を想定）
 )
 RETURNS UUID -- 新しく作成されたattendanceのIDを返す
 LANGUAGE plpgsql
@@ -179,8 +179,7 @@ BEGIN
   -- 参加ステータスを更新
   UPDATE public.attendances
   SET
-    status = p_status,
-    updated_at = NOW()
+    status = p_status
   WHERE id = p_attendance_id;
 
   -- 決済レコードの処理
@@ -189,7 +188,7 @@ BEGIN
     SELECT id INTO v_payment_id
     FROM public.payments
     WHERE attendance_id = p_attendance_id
-    ORDER BY updated_at DESC
+    ORDER BY paid_at DESC NULLS LAST, created_at DESC, updated_at DESC
     LIMIT 1;
 
     IF v_payment_id IS NOT NULL THEN
@@ -198,8 +197,7 @@ BEGIN
       SET
         method = p_payment_method,
         amount = p_event_fee,
-        status = 'pending',
-        updated_at = NOW()
+        status = 'pending'
       WHERE id = v_payment_id;
     ELSE
       -- 新しい決済レコードを作成
@@ -207,16 +205,12 @@ BEGIN
         attendance_id,
         amount,
         method,
-        status,
-        created_at,
-        updated_at
+        status
       ) VALUES (
         p_attendance_id,
         p_event_fee,
         p_payment_method,
-        'pending',
-        NOW(),
-        NOW()
+        'pending'
       );
     END IF;
   ELSIF p_status != 'attending' THEN
@@ -224,7 +218,7 @@ BEGIN
     SELECT id, status, method INTO v_payment_id, v_payment_status, v_payment_method
     FROM public.payments
     WHERE attendance_id = p_attendance_id
-    ORDER BY updated_at DESC
+    ORDER BY paid_at DESC NULLS LAST, created_at DESC, updated_at DESC
     LIMIT 1;
 
     IF FOUND THEN
@@ -241,7 +235,7 @@ BEGIN
         IF v_payment_method = 'cash' THEN
           -- 現金は即時にrefundedへ
           UPDATE public.payments
-          SET status = 'refunded', updated_at = NOW()
+          SET status = 'refunded'
           WHERE id = v_payment_id;
           -- 監査ログ
           INSERT INTO public.system_logs(operation_type, details)
@@ -520,6 +514,7 @@ USING (
   AND EXISTS (
     SELECT 1 FROM public.events e
     WHERE e.id = attendances.event_id
+    AND e.status = 'upcoming'
     AND (e.registration_deadline IS NULL OR e.registration_deadline > NOW())
     AND e.date > NOW()
   )
@@ -530,6 +525,7 @@ WITH CHECK (
   AND EXISTS (
     SELECT 1 FROM public.events e
     WHERE e.id = attendances.event_id
+    AND e.status = 'upcoming'
     AND (e.registration_deadline IS NULL OR e.registration_deadline > NOW())
     AND e.date > NOW()
   )
@@ -572,6 +568,7 @@ USING (
     WHERE a.id = payments.attendance_id
     AND a.guest_token IS NOT NULL
     AND a.guest_token = public.get_guest_token()
+    AND e.status = 'upcoming'
     AND (e.payment_deadline IS NULL OR e.payment_deadline > NOW())
     AND e.date > NOW()
   )
@@ -583,6 +580,7 @@ WITH CHECK (
     WHERE a.id = payments.attendance_id
     AND a.guest_token IS NOT NULL
     AND a.guest_token = public.get_guest_token()
+    AND e.status = 'upcoming'
     AND (e.payment_deadline IS NULL OR e.payment_deadline > NOW())
     AND e.date > NOW()
   )

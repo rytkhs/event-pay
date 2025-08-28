@@ -335,7 +335,7 @@ describe("registerParticipationAction", () => {
       expect(result.success).toBe(true);
       expect(result.data?.attendanceId).toBe("attendance-123");
       expect(result.data?.guestToken).toBe("generated-guest-token-123456789012");
-      expect(result.data?.requiresPayment).toBe(true);
+      expect(result.data?.requiresAdditionalPayment).toBe(true);
 
       expect(mockSupabase.rpc).toHaveBeenCalledWith("register_attendance_with_payment", {
         p_event_id: "event-123",
@@ -358,7 +358,7 @@ describe("registerParticipationAction", () => {
       const result = await registerParticipationAction(formData);
 
       expect(result.success).toBe(true);
-      expect(result.data?.requiresPayment).toBe(false);
+      expect(result.data?.requiresAdditionalPayment).toBe(false);
 
       expect(mockSupabase.rpc).toHaveBeenCalledWith("register_attendance_with_payment", {
         p_event_id: "event-123",
@@ -381,7 +381,7 @@ describe("registerParticipationAction", () => {
       const result = await registerParticipationAction(formData);
 
       expect(result.success).toBe(true);
-      expect(result.data?.requiresPayment).toBe(false);
+      expect(result.data?.requiresAdditionalPayment).toBe(false);
 
       expect(mockSupabase.rpc).toHaveBeenCalledWith("register_attendance_with_payment", {
         p_event_id: "event-123",
@@ -411,7 +411,7 @@ describe("registerParticipationAction", () => {
       const result = await registerParticipationAction(formData);
 
       expect(result.success).toBe(true);
-      expect(result.data?.requiresPayment).toBe(false);
+      expect(result.data?.requiresAdditionalPayment).toBe(false);
 
       expect(mockSupabase.rpc).toHaveBeenCalledWith("register_attendance_with_payment", {
         p_event_id: "event-123",

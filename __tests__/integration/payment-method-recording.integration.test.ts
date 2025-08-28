@@ -366,7 +366,7 @@ describe("決済方法記録統合テスト", () => {
       const registrationResult = {
         attendanceId: "test-attendance-id",
         guestToken: "test-guest-token",
-        requiresPayment: true,
+        requiresAdditionalPayment: true,
         // 決済URLや決済完了情報は含まれない
         paymentUrl: undefined,
         paymentIntentId: undefined,
@@ -375,7 +375,7 @@ describe("決済方法記録統合テスト", () => {
 
       expect(registrationResult.attendanceId).toBeDefined();
       expect(registrationResult.guestToken).toBeDefined();
-      expect(registrationResult.requiresPayment).toBe(true);
+      expect(registrationResult.requiresAdditionalPayment).toBe(true);
       expect(registrationResult.paymentUrl).toBeUndefined();
       expect(registrationResult.paymentIntentId).toBeUndefined();
       expect(registrationResult.paymentStatus).toBeUndefined();

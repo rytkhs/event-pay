@@ -1,4 +1,5 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
+import { createProblemResponse } from '@/lib/api/problem-details';
 import { stripe as sharedStripe } from '@/lib/stripe/client';
 import { StripeWebhookEventHandler } from '@/lib/services/webhook/webhook-event-handler';
 import {
@@ -11,6 +12,7 @@ import { SecurityReporterImpl } from '@/lib/security/security-reporter.impl';
 import type { WebhookProcessingResult } from '@/lib/services/webhook';
 import { createClient } from '@supabase/supabase-js';
 import { Database } from '@/types/database';
+import { validateCronSecret } from '@/lib/cron-auth';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -29,7 +31,15 @@ function createServices() {
   return { securityReporter, eventHandler, idempotentProcessor, idempotencyService };
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const auth = validateCronSecret(request);
+  if (!auth.isValid) {
+    return createProblemResponse('UNAUTHORIZED', {
+      instance: '/api/cron/webhook-dlq-retry',
+      detail: auth.error || 'Unauthorized',
+    });
+  }
+
   const { securityReporter, eventHandler, idempotentProcessor, idempotencyService } = createServices();
 
   try {
@@ -109,6 +119,9 @@ export async function GET() {
       type: 'webhook_dlq_retry_error',
       details: { error: e instanceof Error ? e.message : 'unknown' },
     });
-    return NextResponse.json({ error: 'DLQ retry worker failed' }, { status: 500 });
+    return createProblemResponse('INTERNAL_ERROR', {
+      instance: '/api/cron/webhook-dlq-retry',
+      detail: 'DLQ retry worker failed',
+    });
   }
 }

@@ -213,17 +213,24 @@ export class SettlementReportService {
    */
   async exportToCsv(params: GetSettlementReportsParams): Promise<CsvExportResult> {
     try {
-      const reports = await this.getSettlementReports(params)
+      // 1,001 件取得して切り捨て判定
+      const limit = params.limit && params.limit > 0 ? params.limit : 1000
+      const overfetchParams: GetSettlementReportsParams = { ...params, limit: limit + 1 }
+      const reports = await this.getSettlementReports(overfetchParams)
 
       if (reports.length === 0) {
         return {
           success: true,
           csvContent: '',
-          filename: `settlement-reports-${formatDateToJstYmd(getCurrentJstTime())}.csv`
+          filename: `settlement-reports-${formatDateToJstYmd(getCurrentJstTime())}.csv`,
+          truncated: false
         }
       }
 
-      const csvRows: SettlementReportCsvRow[] = reports.map(report => ({
+      const truncated = reports.length > limit
+      const exportSource = truncated ? reports.slice(0, limit) : reports
+
+      const csvRows: SettlementReportCsvRow[] = exportSource.map(report => ({
         eventId: report.eventId,
         eventTitle: report.eventTitle,
         eventDate: report.eventDate,
@@ -290,7 +297,8 @@ export class SettlementReportService {
       return {
         success: true,
         csvContent,
-        filename
+        filename,
+        truncated
       }
 
     } catch (error) {

@@ -10,10 +10,9 @@ import type { Database } from "@/types/database";
 import { checkEditRestrictions } from "@/lib/utils/event-restrictions";
 import {
   type ServerActionResult,
-  createErrorResponse,
-  createSuccessResponse,
-  zodErrorToResponse,
-  ERROR_CODES,
+  createServerActionError,
+  createServerActionSuccess,
+  zodErrorToServerActionResponse,
 } from "@/lib/types/server-actions";
 import { convertDatetimeLocalToUtc } from "@/lib/utils/timezone";
 
@@ -78,7 +77,7 @@ export async function updateEventAction(
     if (requestMethod === "OPTIONS") {
       // プリフライトリクエストでは Origin ヘッダーが必須
       if (!requestOrigin) {
-        return createErrorResponse(ERROR_CODES.UNAUTHORIZED, "無効なリクエストです");
+        return createServerActionError("UNAUTHORIZED", "無効なリクエストです");
       }
     }
 
@@ -94,7 +93,7 @@ export async function updateEventAction(
 
     // より厳密なチェック: 少なくとも一つのヘッダーが存在し、有効である必要がある
     if ((!requestOrigin && !referer) || (!isValidOrigin && !isValidReferer)) {
-      return createErrorResponse(ERROR_CODES.UNAUTHORIZED, "無効なリクエストです");
+      return createServerActionError("UNAUTHORIZED", "無効なリクエストです");
     }
 
     const supabase = createClient();
@@ -102,8 +101,8 @@ export async function updateEventAction(
     // イベントIDのバリデーション（UUID形式）
     const eventIdValidation = validateEventId(eventId);
     if (!eventIdValidation.success) {
-      return createErrorResponse(
-        ERROR_CODES.INVALID_INPUT,
+      return createServerActionError(
+        "VALIDATION_ERROR",
         eventIdValidation.error?.message || "無効なイベントIDです"
       );
     }
@@ -115,7 +114,7 @@ export async function updateEventAction(
     } = await supabase.auth.getUser();
 
     if (authError || !user) {
-      return createErrorResponse(ERROR_CODES.UNAUTHORIZED);
+      return createServerActionError("UNAUTHORIZED", "認証が必要です");
     }
 
     // イベントの存在確認と権限チェック
@@ -126,12 +125,12 @@ export async function updateEventAction(
       .single();
 
     if (eventError || !existingEvent) {
-      return createErrorResponse(ERROR_CODES.NOT_FOUND, "イベントが見つかりません");
+      return createServerActionError("NOT_FOUND", "イベントが見つかりません");
     }
 
     // 作成者権限チェック
     if (existingEvent.created_by !== user.id) {
-      return createErrorResponse(ERROR_CODES.FORBIDDEN, "このイベントを編集する権限がありません");
+      return createServerActionError("FORBIDDEN", "このイベントを編集する権限がありません");
     }
 
     // フォームデータの抽出
@@ -144,7 +143,7 @@ export async function updateEventAction(
     } catch (error) {
       if (error instanceof z.ZodError) {
         const firstError = error.errors[0];
-        return createErrorResponse(ERROR_CODES.VALIDATION_ERROR, firstError.message);
+        return createServerActionError("VALIDATION_ERROR", firstError.message);
       }
       throw error;
     }
@@ -159,9 +158,15 @@ export async function updateEventAction(
     });
 
     if (restrictions.length > 0) {
-      return createErrorResponse(ERROR_CODES.EDIT_RESTRICTION, restrictions[0].message, {
-        violations: restrictions,
-      });
+      return createServerActionError(
+        "RESOURCE_CONFLICT",
+        "編集制限により変更できません",
+        {
+          details: {
+            violations: restrictions,
+          },
+        }
+      );
     }
 
     // 定員変更の追加検証（Race Condition対策）
@@ -174,15 +179,15 @@ export async function updateEventAction(
         .eq("status", "attending");
 
       if (attendanceError) {
-        return createErrorResponse(ERROR_CODES.DATABASE_ERROR, "参加者数の確認に失敗しました");
+        return createServerActionError("DATABASE_ERROR", "参加者数の確認に失敗しました");
       }
 
       const currentAttendeeCount = latestAttendances?.length || 0;
 
       // 定員が設定されており、現在の参加者数より少ない場合はエラー
       if (validatedData.capacity !== null && validatedData.capacity < currentAttendeeCount) {
-        return createErrorResponse(
-          ERROR_CODES.EDIT_RESTRICTION,
+        return createServerActionError(
+          "VALIDATION_ERROR",
           `定員は現在の参加者数（${currentAttendeeCount}名）以上で設定してください`
         );
       }
@@ -200,27 +205,27 @@ export async function updateEventAction(
       .single();
 
     if (updateError) {
-      return createErrorResponse(ERROR_CODES.DATABASE_ERROR, "イベントの更新に失敗しました", {
-        databaseError: updateError,
+      return createServerActionError("DATABASE_ERROR", "イベントの更新に失敗しました", {
+        details: { databaseError: updateError },
       });
     }
 
     if (!updatedEvent) {
-      return createErrorResponse(ERROR_CODES.DATABASE_ERROR, "イベントの更新に失敗しました");
+      return createServerActionError("DATABASE_ERROR", "イベントの更新に失敗しました");
     }
 
     // キャッシュの無効化
     revalidatePath("/events");
     revalidatePath(`/events/${eventId}`);
 
-    return createSuccessResponse(updatedEvent, "イベントが正常に更新されました");
+    return createServerActionSuccess(updatedEvent, "イベントが正常に更新されました");
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return zodErrorToResponse(error);
+      return zodErrorToServerActionResponse(error);
     }
 
-    return createErrorResponse(ERROR_CODES.INTERNAL_ERROR, "予期しないエラーが発生しました", {
-      originalError: error,
+    return createServerActionError("INTERNAL_ERROR", "予期しないエラーが発生しました", {
+      details: { originalError: error },
     });
   }
 }

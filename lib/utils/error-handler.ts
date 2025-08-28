@@ -53,6 +53,22 @@ const ERROR_MAPPINGS: Record<string, Omit<ErrorDetails, "code">> = {
     shouldAlert: false,
     retryable: false,
   },
+  INVITE_TOKEN_INVALID: {
+    message: "Invalid invite token provided",
+    userMessage: "無効な招待リンクです。正しいリンクをご確認ください。",
+    severity: "medium",
+    shouldLog: true,
+    shouldAlert: false,
+    retryable: false,
+  },
+  INVITE_TOKEN_NOT_FOUND: {
+    message: "Invite token not found in database",
+    userMessage: "招待リンクが見つかりません。リンクが正しいかご確認ください。",
+    severity: "medium",
+    shouldLog: true,
+    shouldAlert: false,
+    retryable: false,
+  },
 
   // イベント関連エラー
   EVENT_NOT_FOUND: {
@@ -87,9 +103,11 @@ const ERROR_MAPPINGS: Record<string, Omit<ErrorDetails, "code">> = {
     shouldAlert: false,
     retryable: false,
   },
-  CAPACITY_REACHED: {
-    message: "Event capacity has been reached",
-    userMessage: "このイベントは定員に達しています。",
+
+  // 参加状況更新/登録時の定員超過（操作失敗）
+  ATTENDANCE_CAPACITY_REACHED: {
+    message: "Attendance update blocked due to capacity reached",
+    userMessage: "イベントの定員に達しているため参加できません。",
     severity: "low",
     shouldLog: false,
     shouldAlert: false,

@@ -9,9 +9,8 @@ import { createRateLimitStore, checkRateLimit } from "@/lib/rate-limit";
 import { RATE_LIMIT_CONFIG } from "@/config/security";
 import {
   type ServerActionResult,
-  createErrorResponse,
-  createSuccessResponse,
-  ERROR_CODES,
+  createServerActionError,
+  createServerActionSuccess,
   type ErrorCode,
 } from "@/lib/types/server-actions";
 
@@ -33,28 +32,28 @@ type BulkUpdateResult = {
 function mapPaymentError(type: PaymentErrorType): ErrorCode {
   switch (type) {
     case PaymentErrorType.VALIDATION_ERROR:
-      return ERROR_CODES.VALIDATION_ERROR;
+      return "VALIDATION_ERROR";
     case PaymentErrorType.UNAUTHORIZED:
-      return ERROR_CODES.UNAUTHORIZED;
+      return "UNAUTHORIZED";
     case PaymentErrorType.FORBIDDEN:
-      return ERROR_CODES.FORBIDDEN;
+      return "FORBIDDEN";
     case PaymentErrorType.INVALID_AMOUNT:
     case PaymentErrorType.INVALID_PAYMENT_METHOD:
     case PaymentErrorType.INVALID_STATUS_TRANSITION:
-      return ERROR_CODES.BUSINESS_RULE_VIOLATION;
+      return "RESOURCE_CONFLICT";
     case PaymentErrorType.EVENT_NOT_FOUND:
     case PaymentErrorType.ATTENDANCE_NOT_FOUND:
     case PaymentErrorType.PAYMENT_NOT_FOUND:
-      return ERROR_CODES.NOT_FOUND;
+      return "NOT_FOUND";
     case PaymentErrorType.PAYMENT_ALREADY_EXISTS:
-      return ERROR_CODES.CONFLICT;
+      return "RESOURCE_CONFLICT";
     case PaymentErrorType.CONCURRENT_UPDATE:
-      return ERROR_CODES.CONFLICT;
+      return "RESOURCE_CONFLICT";
     case PaymentErrorType.DATABASE_ERROR:
-      return ERROR_CODES.DATABASE_ERROR;
+      return "DATABASE_ERROR";
     case PaymentErrorType.STRIPE_API_ERROR:
     default:
-      return ERROR_CODES.INTERNAL_ERROR;
+      return "INTERNAL_ERROR";
   }
 }
 
@@ -64,8 +63,8 @@ export async function bulkUpdateCashStatusAction(
   try {
     const parsed = inputSchema.safeParse(input);
     if (!parsed.success) {
-      return createErrorResponse(ERROR_CODES.VALIDATION_ERROR, "入力データが無効です。", {
-        zodErrors: parsed.error.errors,
+      return createServerActionError("VALIDATION_ERROR", "入力データが無効です。", {
+        details: { zodErrors: parsed.error.errors },
       });
     }
     const { paymentIds, status, notes } = parsed.data;
@@ -77,7 +76,7 @@ export async function bulkUpdateCashStatusAction(
       error: authError,
     } = await supabase.auth.getUser();
     if (authError || !user) {
-      return createErrorResponse(ERROR_CODES.UNAUTHORIZED, "認証が必要です。");
+      return createServerActionError("UNAUTHORIZED", "認証が必要です。");
     }
 
     // レート制限（ユーザー単位、一括更新用の制限）
@@ -89,10 +88,10 @@ export async function bulkUpdateCashStatusAction(
         RATE_LIMIT_CONFIG.paymentStatusUpdate
       );
       if (!rl.allowed) {
-        return createErrorResponse(
-          ERROR_CODES.RATE_LIMIT_EXCEEDED,
+        return createServerActionError(
+          "RATE_LIMITED",
           "レート制限に達しました。しばらく待ってから再試行してください。",
-          rl.retryAfter ? { retryAfter: rl.retryAfter } : undefined
+          rl.retryAfter ? { retryable: true, details: { retryAfter: rl.retryAfter } } : { retryable: true }
         );
       }
     } catch {
@@ -120,11 +119,11 @@ export async function bulkUpdateCashStatusAction(
       .in("id", paymentIds);
 
     if (fetchError) {
-      return createErrorResponse(ERROR_CODES.DATABASE_ERROR, "決済レコードの取得に失敗しました。");
+      return createServerActionError("DATABASE_ERROR", "決済レコードの取得に失敗しました。");
     }
 
     if (!paymentsWithEvent || paymentsWithEvent.length === 0) {
-      return createErrorResponse(ERROR_CODES.NOT_FOUND, "決済レコードが見つかりません。");
+      return createServerActionError("NOT_FOUND", "決済レコードが見つかりません。");
     }
 
     // 権限チェック：すべての決済が同じユーザーのイベントに属していることを確認
@@ -135,7 +134,7 @@ export async function bulkUpdateCashStatusAction(
     });
 
     if (unauthorizedPayments.length > 0) {
-      return createErrorResponse(ERROR_CODES.FORBIDDEN, "この操作を実行する権限がありません。");
+      return createServerActionError("FORBIDDEN", "この操作を実行する権限がありません。");
     }
 
     // 現金決済以外のフィルタリング
@@ -151,7 +150,7 @@ export async function bulkUpdateCashStatusAction(
     const cashPayments = paymentsWithEvent.filter((p) => p.method === "cash");
 
     if (cashPayments.length === 0) {
-      return createSuccessResponse({
+      return createServerActionSuccess({
         successCount: 0,
         failedCount: initialFailures.length,
         failures: initialFailures,
@@ -187,8 +186,8 @@ export async function bulkUpdateCashStatusAction(
     });
 
     if (rpcError) {
-      return createErrorResponse(
-        ERROR_CODES.DATABASE_ERROR,
+      return createServerActionError(
+        "DATABASE_ERROR",
         `一括決済ステータス更新に失敗しました: ${rpcError.message}`
       );
     }
@@ -208,13 +207,13 @@ export async function bulkUpdateCashStatusAction(
       failures: [...initialFailures, ...rpcFailures],
     };
 
-    return createSuccessResponse(result);
+    return createServerActionSuccess(result);
   } catch (error) {
     if (error instanceof PaymentError) {
-      return createErrorResponse(mapPaymentError(error.type), error.message);
+      return createServerActionError(mapPaymentError(error.type), error.message);
     }
-    return createErrorResponse(ERROR_CODES.INTERNAL_ERROR, "予期しないエラーが発生しました", {
-      originalError: error,
+    return createServerActionError("INTERNAL_ERROR", "予期しないエラーが発生しました", {
+      details: { originalError: error },
     });
   }
 }

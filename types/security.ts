@@ -8,7 +8,7 @@ export {
   GuestTokenErrorHandler,
   ErrorSeverity,
   type GuestErrorContext,
-} from "../lib/security/guest-token-errors";
+} from "@/lib/security/guest-token-errors";
 
 // 管理者権限使用理由
 export enum AdminReason {
@@ -159,7 +159,7 @@ export interface TimeRange {
 }
 
 // AuditContext型をaudit-types.tsから再エクスポート
-export type { AuditContext } from "../lib/security/audit-types";
+export type { AuditContext } from "@/lib/security/audit-types";
 
 // 管理者権限エラー
 export enum AdminAccessErrorCode {

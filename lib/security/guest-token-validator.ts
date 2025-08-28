@@ -21,6 +21,7 @@ import {
 import { SecurityAuditorImpl } from "./security-auditor.impl";
 import { sanitizeForEventPay } from "@/lib/utils/sanitize";
 import type { Database } from "@/types/database";
+import { isValidIsoDateTimeString } from "@/lib/utils/timezone";
 
 /**
  * ゲスト参加データの型定義（RLSベース）
@@ -44,7 +45,7 @@ export interface RLSGuestAttendanceData {
     registration_deadline: string | null;
     payment_deadline: string | null;
     created_by: string;
-    status: string;
+    status: Database["public"]["Enums"]["event_status_enum"];
   };
   payment?: {
     id: string;
@@ -148,15 +149,19 @@ export class RLSGuestTokenValidator implements IGuestTokenValidator {
       }
 
       // 変更可能性をチェック
-      const canModify = this.checkCanModify(attendance.event);
+      // -----------------------------
+      // event が配列で返るケースへの防御的対応
+      // 単体オブジェクトに正規化してから変更可能性を判定
+      // -----------------------------
+      const eventData = Array.isArray(attendance.event)
+        ? attendance.event[0]
+        : attendance.event;
+      const canModify = this.checkCanModify(eventData);
 
       // 成功をログに記録
       await this.safeLogGuestAccess(token, "VALIDATE_TOKEN", true, {
         attendanceId: attendance.id,
-        eventId:
-          Array.isArray(attendance.event) && attendance.event.length > 0
-            ? attendance.event[0].id
-            : "",
+        eventId: eventData ? eventData.id : "",
         tableName: "attendances",
         operationType: "SELECT",
         resultCount: 1,
@@ -165,10 +170,7 @@ export class RLSGuestTokenValidator implements IGuestTokenValidator {
       return {
         isValid: true,
         attendanceId: attendance.id,
-        eventId:
-          Array.isArray(attendance.event) && attendance.event.length > 0
-            ? attendance.event[0].id
-            : "",
+        eventId: eventData ? eventData.id : "",
         canModify,
       };
     } catch (error) {
@@ -249,6 +251,9 @@ export class RLSGuestTokenValidator implements IGuestTokenValidator {
           )
         `
         )
+        // payments は UNIQUE 制約で 1 件が想定だが、将来複数行を許容する拡張に備え最新順で並べ替え
+        .order("created_at", { ascending: false, referencedTable: "payments" })
+        .limit(1, { referencedTable: "payments" })
         .single();
 
       if (error || !attendance) {
@@ -293,10 +298,7 @@ export class RLSGuestTokenValidator implements IGuestTokenValidator {
       // 成功をログに記録
       await this.safeLogGuestAccess(token, "VALIDATE_TOKEN_DETAILS", true, {
         attendanceId: attendance.id,
-        eventId:
-          Array.isArray(attendance.event) && attendance.event.length > 0
-            ? attendance.event[0].id
-            : "",
+        eventId: eventData ? eventData.id : "",
         tableName: "attendances",
         operationType: "SELECT",
         resultCount: 1,
@@ -442,7 +444,7 @@ export class RLSGuestTokenValidator implements IGuestTokenValidator {
       // registration_deadlineはオプショナル
       ("registration_deadline" in event
         ? (event as EventInfo).registration_deadline === null ||
-          typeof (event as EventInfo).registration_deadline === "string"
+        typeof (event as EventInfo).registration_deadline === "string"
         : true)
     );
   }
@@ -451,8 +453,7 @@ export class RLSGuestTokenValidator implements IGuestTokenValidator {
    * 日付文字列の有効性をチェック
    */
   private isValidDateString(dateStr: string): boolean {
-    const date = new Date(dateStr);
-    return !isNaN(date.getTime()) && dateStr === date.toISOString();
+    return isValidIsoDateTimeString(dateStr);
   }
 
   /**
@@ -484,9 +485,9 @@ export class RLSGuestTokenValidator implements IGuestTokenValidator {
     // イベント開始前かつ登録締切前かつアクティブ状態
     const isBeforeEventStart = eventDate > now;
     const isBeforeDeadline = registrationDeadline === null || registrationDeadline > now;
-    const isActive = event.status === "active";
+    const isUpcoming = event.status === "upcoming";
 
-    return isBeforeEventStart && isBeforeDeadline && isActive;
+    return isBeforeEventStart && isBeforeDeadline && isUpcoming;
   }
 
   /**
@@ -509,8 +510,8 @@ export class RLSGuestTokenValidator implements IGuestTokenValidator {
       return false;
     }
 
-    // イベントがアクティブでない場合は変更不可
-    if (event.status !== "active") {
+    // イベントが開催予定（upcoming）でない場合は変更不可
+    if (event.status !== "upcoming") {
       return false;
     }
 

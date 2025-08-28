@@ -111,7 +111,7 @@ describe("registerParticipationAction", () => {
     if (result.success) {
       expect(result.data.attendanceId).toBe("attendance-123");
       expect(result.data.guestToken).toBeDefined();
-      expect(result.data.requiresPayment).toBe(true);
+      expect(result.data.requiresAdditionalPayment).toBe(true);
     }
   });
 

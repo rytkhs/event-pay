@@ -7,38 +7,40 @@ import { createRateLimitStore, checkRateLimit } from "@/lib/rate-limit";
 import { RATE_LIMIT_CONFIG } from "@/config/security";
 import { createStripeSessionRequestSchema } from "@/lib/services/payment/validation";
 import { PaymentError, PaymentErrorType } from "@/lib/services/payment/types";
+import { canCreateStripeSession } from "@/lib/validation/payment-eligibility";
+import type { EventStatus, AttendanceStatus } from "@/types/enums";
+import { isValidPaymentStatus } from "@/types/enums";
 import {
   type ServerActionResult,
-  createErrorResponse,
-  createSuccessResponse,
-  ERROR_CODES,
+  createServerActionError,
+  createServerActionSuccess,
   type ErrorCode,
 } from "@/lib/types/server-actions";
 
 function mapPaymentError(type: PaymentErrorType): ErrorCode {
   switch (type) {
     case PaymentErrorType.VALIDATION_ERROR:
-      return ERROR_CODES.VALIDATION_ERROR;
+      return "VALIDATION_ERROR";
     case PaymentErrorType.UNAUTHORIZED:
-      return ERROR_CODES.UNAUTHORIZED;
+      return "UNAUTHORIZED";
     case PaymentErrorType.FORBIDDEN:
-      return ERROR_CODES.FORBIDDEN;
+      return "FORBIDDEN";
     case PaymentErrorType.INVALID_AMOUNT:
     case PaymentErrorType.INVALID_PAYMENT_METHOD:
     case PaymentErrorType.INVALID_STATUS_TRANSITION:
-      return ERROR_CODES.BUSINESS_RULE_VIOLATION;
+      return "RESOURCE_CONFLICT";
     case PaymentErrorType.EVENT_NOT_FOUND:
     case PaymentErrorType.ATTENDANCE_NOT_FOUND:
     case PaymentErrorType.PAYMENT_NOT_FOUND:
-      return ERROR_CODES.NOT_FOUND;
+      return "NOT_FOUND";
     case PaymentErrorType.PAYMENT_ALREADY_EXISTS:
-      return ERROR_CODES.CONFLICT;
+      return "RESOURCE_CONFLICT";
     case PaymentErrorType.DATABASE_ERROR:
-      return ERROR_CODES.DATABASE_ERROR;
+      return "DATABASE_ERROR";
     case PaymentErrorType.STRIPE_API_ERROR:
     case PaymentErrorType.WEBHOOK_PROCESSING_ERROR:
     default:
-      return ERROR_CODES.INTERNAL_ERROR;
+      return "INTERNAL_ERROR";
   }
 }
 
@@ -49,8 +51,8 @@ export async function createStripeSessionAction(
     // 入力検証
     const parsed = createStripeSessionRequestSchema.safeParse(input);
     if (!parsed.success) {
-      return createErrorResponse(ERROR_CODES.VALIDATION_ERROR, "入力データが無効です。", {
-        zodErrors: parsed.error.errors,
+      return createServerActionError("VALIDATION_ERROR", "入力データが無効です。", {
+        details: { zodErrors: parsed.error.errors },
       });
     }
 
@@ -64,7 +66,7 @@ export async function createStripeSessionAction(
       error: authError,
     } = await supabase.auth.getUser();
     if (authError || !user) {
-      return createErrorResponse(ERROR_CODES.UNAUTHORIZED, "認証が必要です。");
+      return createServerActionError("UNAUTHORIZED", "認証が必要です。");
     }
 
     // 公開エンドポイント用レート制限（ユーザー単位）
@@ -76,10 +78,13 @@ export async function createStripeSessionAction(
         RATE_LIMIT_CONFIG.stripeCheckout
       );
       if (!rl.allowed) {
-        return createErrorResponse(
-          ERROR_CODES.RATE_LIMIT_EXCEEDED,
+        return createServerActionError(
+          "RATE_LIMITED",
           "Stripe Checkout セッションの作成回数が上限に達しました。しばらく待ってから再試行してください。",
-          rl.retryAfter ? { retryAfter: rl.retryAfter } : undefined
+          {
+            retryable: true,
+            details: rl.retryAfter ? { retryAfter: rl.retryAfter } : undefined,
+          }
         );
       }
     } catch {
@@ -97,10 +102,21 @@ export async function createStripeSessionAction(
       .select(
         `
         id,
+        status,
+        payments!left (
+          method,
+          status,
+          paid_at,
+          created_at,
+          updated_at
+        ),
         events!inner (
           id,
           title,
           fee,
+          date,
+          payment_deadline,
+          status,
           created_by,
           stripe_connect_accounts (
             stripe_account_id,
@@ -110,14 +126,18 @@ export async function createStripeSessionAction(
       `
       )
       .eq("id", params.attendanceId)
+      .order("paid_at", { foreignTable: "payments", ascending: false, nullsFirst: false } as any)
+      .order("created_at", { foreignTable: "payments", ascending: false } as any)
+      .order("updated_at", { foreignTable: "payments", ascending: false } as any)
+      .limit(1, { foreignTable: "payments" })
       .limit(1);
 
     if (attendanceError || !attendanceList || attendanceList.length === 0) {
-      return createErrorResponse(ERROR_CODES.NOT_FOUND, "参加記録が見つかりません。");
+      return createServerActionError("NOT_FOUND", "参加記録が見つかりません。");
     }
     if (attendanceList.length > 1) {
-      return createErrorResponse(
-        ERROR_CODES.DATABASE_ERROR,
+      return createServerActionError(
+        "DATABASE_ERROR",
         "参加記録の整合性エラー: 複数件のレコードが見つかりました"
       );
     }
@@ -130,21 +150,75 @@ export async function createStripeSessionAction(
       id: string;
       title: string;
       fee: number | null;
+      date: string;
+      payment_deadline: string | null;
+      status: string;
       created_by: string;
       stripe_connect_accounts: StripeConnectAccount | StripeConnectAccount[] | null;
     };
-    type AttendanceWithEvent = { id: string; events: EventLite | EventLite[] };
-    const attendance = attendanceList[0] as unknown as AttendanceWithEvent;
+    type AttendanceWithEventAndPayment = {
+      id: string;
+      status: AttendanceStatus;
+      payments?:
+      | null
+      | {
+        method: string | null;
+        status: string | null;
+        paid_at?: string | null;
+        created_at?: string;
+        updated_at?: string;
+      }
+      | Array<{
+        method: string | null;
+        status: string | null;
+        paid_at?: string | null;
+        created_at?: string;
+        updated_at?: string;
+      }>;
+      events: EventLite | EventLite[];
+    };
+    const attendance = attendanceList[0] as unknown as AttendanceWithEventAndPayment;
     const eventList = Array.isArray(attendance.events) ? attendance.events : [attendance.events];
     const event = eventList[0];
     if (!event) {
-      return createErrorResponse(ERROR_CODES.NOT_FOUND, "イベントが見つかりません。");
+      return createServerActionError("NOT_FOUND", "イベントが見つかりません。");
+    }
+
+    // 決済許可条件の統一チェック（実データで判定）
+    const payments = Array.isArray(attendance.payments)
+      ? attendance.payments
+      : attendance.payments
+        ? [attendance.payments]
+        : [];
+    const latestPayment = payments[0] || null;
+
+    const paymentStatus = latestPayment?.status && isValidPaymentStatus(latestPayment.status)
+      ? latestPayment.status
+      : null;
+    const paymentMethod = latestPayment?.method ?? null;
+
+    const eligibilityResult = canCreateStripeSession(
+      {
+        id: params.attendanceId,
+        status: attendance.status,
+        payment: latestPayment ? { method: paymentMethod, status: paymentStatus } : null,
+      },
+      {
+        ...event,
+        status: event.status as EventStatus,
+      }
+    );
+    if (!eligibilityResult.isEligible) {
+      return createServerActionError(
+        "RESOURCE_CONFLICT",
+        eligibilityResult.reason || "決済セッションの作成条件を満たしていません。"
+      );
     }
 
     // 金額整合性
     if (params.amount !== event.fee) {
-      return createErrorResponse(
-        ERROR_CODES.BUSINESS_RULE_VIOLATION,
+      return createServerActionError(
+        "RESOURCE_CONFLICT",
         "指定された金額がイベントの参加費と一致しません。"
       );
     }
@@ -164,15 +238,15 @@ export async function createStripeSessionAction(
     const connectAccount = connectAccounts[0];
 
     if (!connectAccount) {
-      return createErrorResponse(
-        ERROR_CODES.BUSINESS_RULE_VIOLATION,
+      return createServerActionError(
+        "RESOURCE_CONFLICT",
         "このイベントにはStripe Connectアカウントが設定されていません。"
       );
     }
 
     if (!connectAccount.payouts_enabled) {
-      return createErrorResponse(
-        ERROR_CODES.BUSINESS_RULE_VIOLATION,
+      return createServerActionError(
+        "RESOURCE_CONFLICT",
         "Stripe Connectアカウントの入金機能 (payouts) が無効化されています。"
       );
     }
@@ -194,20 +268,20 @@ export async function createStripeSessionAction(
       attendanceId: params.attendanceId,
       amount: params.amount,
       eventId: event.id,
-      userId: user.id,
+      actorId: user.id,
       eventTitle: event.title,
       successUrl: params.successUrl,
       cancelUrl: params.cancelUrl,
       destinationCharges: destinationChargesConfig,
     });
 
-    return createSuccessResponse({ sessionUrl: result.sessionUrl, sessionId: result.sessionId });
+    return createServerActionSuccess({ sessionUrl: result.sessionUrl, sessionId: result.sessionId });
   } catch (error) {
     if (error instanceof PaymentError) {
-      return createErrorResponse(mapPaymentError(error.type), error.message);
+      return createServerActionError(mapPaymentError(error.type), error.message);
     }
-    return createErrorResponse(ERROR_CODES.INTERNAL_ERROR, "予期しないエラーが発生しました", {
-      originalError: error,
+    return createServerActionError("INTERNAL_ERROR", "予期しないエラーが発生しました", {
+      details: { originalError: error },
     });
   }
 }

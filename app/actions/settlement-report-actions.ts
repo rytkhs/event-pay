@@ -7,6 +7,22 @@ import { getCurrentUser } from '@/lib/auth/auth-utils'
 import { redirect } from 'next/navigation'
 import { z } from 'zod'
 
+export type ExportSettlementReportsSuccess = {
+  success: true
+  csvContent: string
+  filename: string
+  truncated: boolean
+}
+
+export type ExportSettlementReportsFailure = {
+  success: false
+  error: string
+}
+
+export type ExportSettlementReportsResponse =
+  | ExportSettlementReportsSuccess
+  | ExportSettlementReportsFailure
+
 // バリデーションスキーマ
 const generateReportSchema = z.object({
   eventId: z.string().uuid()
@@ -142,7 +158,7 @@ export async function exportSettlementReportsAction(params: {
   eventIds?: string[]
   fromDate?: string
   toDate?: string
-}) {
+}): Promise<ExportSettlementReportsResponse> {
   try {
     // 認証確認
     const user = await getCurrentUser()
@@ -181,7 +197,8 @@ export async function exportSettlementReportsAction(params: {
     return {
       success: true,
       csvContent: result.csvContent,
-      filename: result.filename
+      filename: result.filename,
+      truncated: !!result.truncated
     }
 
   } catch (error) {

@@ -218,19 +218,18 @@ BEGIN
     INSERT INTO public.payouts (
         event_id, user_id, total_stripe_sales, total_stripe_fee, platform_fee,
         total_disputed_amount, dispute_count, net_payout_amount, stripe_account_id,
-        transfer_group, settlement_mode, status, generated_at, updated_at
+        transfer_group, settlement_mode, status, generated_at
     ) VALUES (
         p_event_id, p_created_by, v_stripe_sales, v_stripe_fee, v_net_application_fee,
         v_total_disputed_amount, v_dispute_count, v_net_amount, v_event_data.stripe_account_id,
-        v_transfer_group, 'destination_charge', 'completed', now(), now()
+        v_transfer_group, 'destination_charge', 'completed', now()
     ) ON CONFLICT ON CONSTRAINT uniq_payouts_event_generated_date_jst DO UPDATE SET
         total_stripe_sales = EXCLUDED.total_stripe_sales,
         total_stripe_fee   = EXCLUDED.total_stripe_fee,
         platform_fee       = EXCLUDED.platform_fee,
         total_disputed_amount = EXCLUDED.total_disputed_amount,
         dispute_count = EXCLUDED.dispute_count,
-        net_payout_amount  = EXCLUDED.net_payout_amount,
-        updated_at         = now()
+        net_payout_amount  = EXCLUDED.net_payout_amount
     RETURNING id, (xmax = 0), public.payouts.generated_at, public.payouts.updated_at
       INTO v_payout_id, v_was_update, v_generated_at, v_updated_at;
 
