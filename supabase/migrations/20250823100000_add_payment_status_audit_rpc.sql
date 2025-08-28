@@ -74,7 +74,6 @@ BEGIN
     UPDATE public.payments
     SET
         status = p_new_status,
-        updated_at = NOW(),
         paid_at = CASE
             WHEN p_new_status IN ('paid', 'received', 'completed') AND p_paid_at IS NOT NULL
             THEN p_paid_at

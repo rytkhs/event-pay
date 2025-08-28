@@ -188,8 +188,7 @@ BEGIN
             SET status = 'pending',
                 stripe_transfer_id = NULL,
                 processed_at = NULL,
-                last_error = NULL,
-                updated_at = now()
+                last_error = NULL
             WHERE id = payout_id
             RETURNING id INTO payout_id;
 
@@ -258,8 +257,7 @@ EXCEPTION
                 SET status = 'pending',
                     stripe_transfer_id = NULL,
                     processed_at = NULL,
-                    last_error = NULL,
-                    updated_at = now()
+                    last_error = NULL
                 WHERE id = payout_id;
             END IF;
             RETURN payout_id;
@@ -478,7 +476,6 @@ as $$
 begin
     update public.payouts
     set status             = _to_status,
-        updated_at         = now(),
         processed_at       = coalesce(_processed_at, processed_at),
         stripe_transfer_id = coalesce(_stripe_transfer_id, stripe_transfer_id),
         transfer_group     = coalesce(_transfer_group, transfer_group),
@@ -798,8 +795,7 @@ BEGIN
         transfer_group,
         settlement_mode,
         status,
-        generated_at,
-        updated_at
+        generated_at
     ) VALUES (
         p_event_id,
         p_created_by,
@@ -811,15 +807,13 @@ BEGIN
         v_transfer_group,
         'destination_charge',
         'completed',
-        now(),
         now()
     )
     ON CONFLICT ON CONSTRAINT uniq_payouts_event_generated_date_jst DO UPDATE SET
         total_stripe_sales = EXCLUDED.total_stripe_sales,
         total_stripe_fee   = EXCLUDED.total_stripe_fee,
         platform_fee       = EXCLUDED.platform_fee,
-        net_payout_amount  = EXCLUDED.net_payout_amount,
-        updated_at         = now()
+        net_payout_amount  = EXCLUDED.net_payout_amount
     RETURNING id, (xmax = 0), public.payouts.generated_at, public.payouts.updated_at
     INTO v_payout_id, v_was_update, v_generated_at, v_updated_at;
 

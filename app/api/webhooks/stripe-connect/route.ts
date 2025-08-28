@@ -3,10 +3,9 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
+import { createProblemResponse } from "@/lib/api/problem-details";
 import Stripe from "stripe";
 import { stripe, getConnectWebhookSecrets } from "@/lib/stripe/client";
-// Connect 専用ハンドラは非同期ワーカー側で使用するため、このエンドポイントでは不要
-// import { ConnectWebhookHandler } from "@/lib/services/webhook/connect-webhook-handler";
 import {
   SupabaseWebhookIdempotencyService,
 } from "@/lib/services/webhook/webhook-idempotency";
@@ -48,7 +47,10 @@ export async function POST(request: NextRequest) {
           ip: clientIp,
           userAgent: request.headers.get("user-agent") || undefined,
         });
-        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+        return createProblemResponse("FORBIDDEN", {
+          instance: "/api/webhooks/stripe-connect",
+          detail: "IP not allowed",
+        });
       }
     }
 
@@ -57,7 +59,10 @@ export async function POST(request: NextRequest) {
 
     if (!signature) {
       connectLogger.warn('Connect webhook signature missing');
-      return NextResponse.json({ error: "Missing signature" }, { status: 400 });
+      return createProblemResponse("MISSING_PARAMETER", {
+        instance: "/api/webhooks/stripe-connect",
+        detail: "Missing signature",
+      });
     }
 
     // Webhookシークレットはリクエスト単位で取得（ローテーション/テスト環境切替に対応）
@@ -73,7 +78,10 @@ export async function POST(request: NextRequest) {
     const verification = await verifier.verifySignature({ payload, signature });
     if (!verification.isValid || !verification.event) {
       connectLogger.warn('Connect webhook signature verification failed');
-      return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
+      return createProblemResponse("INVALID_REQUEST", {
+        instance: "/api/webhooks/stripe-connect",
+        detail: "Invalid signature",
+      });
     }
     const event: Stripe.Event = verification.event;
 
@@ -130,11 +138,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ received: true, enqueued: true });
     }
     // enqueue 前に失敗している場合は 500 を返し Stripe に再送してもらう
-    return NextResponse.json({ error: "Webhook handler failed" }, { status: 500 });
+    return createProblemResponse("INTERNAL_ERROR", {
+      instance: "/api/webhooks/stripe-connect",
+      detail: "Webhook handler failed",
+    });
   }
 }
 
 // GETメソッドは許可しない
 export async function GET() {
-  return NextResponse.json({ error: "Method not allowed" }, { status: 405 });
+  return createProblemResponse("INVALID_REQUEST", {
+    instance: "/api/webhooks/stripe-connect",
+    detail: "Method not allowed",
+    status: 405,
+  });
 }

@@ -50,7 +50,7 @@ const mockRegistrationData: RegisterParticipationData = {
   participantEmail: "test@example.com",
   attendanceStatus: "attending",
   paymentMethod: "stripe",
-  requiresPayment: true,
+  requiresAdditionalPayment: true,
 };
 
 const mockProps = {
@@ -290,7 +290,7 @@ describe("ParticipationConfirmation Accessibility", () => {
         event: { ...mockEvent, fee: 0 },
         registrationData: {
           ...mockRegistrationData,
-          requiresPayment: false,
+          requiresAdditionalPayment: false,
           paymentMethod: undefined,
         },
       };
@@ -366,7 +366,7 @@ describe("ParticipationConfirmation Accessibility", () => {
         event: { ...mockEvent, fee: 0 },
         registrationData: {
           ...mockRegistrationData,
-          requiresPayment: false,
+          requiresAdditionalPayment: false,
           paymentMethod: undefined,
         },
       };

@@ -76,7 +76,7 @@ COMMENT ON COLUMN public.attendances.guest_token IS 'ゲストアクセス用の
 -- payments: 決済情報（Destination charges対応）
 CREATE TABLE public.payments (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    attendance_id UUID NOT NULL UNIQUE REFERENCES public.attendances(id) ON DELETE CASCADE,
+    attendance_id UUID NOT NULL REFERENCES public.attendances(id) ON DELETE CASCADE,
     method public.payment_method_enum NOT NULL,
     amount INTEGER NOT NULL CHECK (amount >= 0),
     status public.payment_status_enum NOT NULL DEFAULT 'pending',
@@ -379,6 +379,10 @@ CREATE INDEX idx_payments_tax_rate ON public.payments(application_fee_tax_rate);
 CREATE INDEX idx_payments_tax_included ON public.payments(tax_included);
 CREATE INDEX idx_payments_method_status_paid ON public.payments (method, status) WHERE method = 'stripe' AND status = 'paid';
 CREATE INDEX idx_payments_refunded_amount ON public.payments (refunded_amount) WHERE refunded_amount > 0;
+-- 参加1件あたり未確定決済の重複防止（pending/failed）
+CREATE UNIQUE INDEX IF NOT EXISTS unique_open_payment_per_attendance
+ON public.payments(attendance_id)
+WHERE status IN ('pending','failed');
 
 -- Payouts テーブル関連
 CREATE INDEX idx_payouts_event_id ON public.payouts(event_id);

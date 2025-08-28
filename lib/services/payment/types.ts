@@ -34,9 +34,11 @@ export interface CreateStripeSessionParams {
    */
   eventId: string;
   /**
-   * 決済を実行するユーザーID（idempotency_key生成に使用）
+   * 決済実行主体のID（idempotency_key生成に使用）
+   * - 認証ユーザー: users.id
+   * - ゲスト: attendances.id（参加単位）
    */
-  userId: string;
+  actorId: string;
   eventTitle: string;
   successUrl: string;
   cancelUrl: string;

@@ -94,27 +94,36 @@ export function SettlementReportList({
 
       const result = await exportSettlementReportsAction(params);
 
-      if (result.success && result.csvContent && result.filename) {
-        // CSV ダウンロード
-        const blob = new Blob([result.csvContent], { type: "text/csv;charset=utf-8;" });
-        const link = document.createElement("a");
-        const url = URL.createObjectURL(blob);
-        link.setAttribute("href", url);
-        link.setAttribute("download", result.filename);
-        link.style.visibility = "hidden";
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-
-        toast({
-          title: "エクスポート完了",
-          description: `${result.filename} をダウンロードしました`,
-        });
-      } else {
+      if (!result.success) {
         toast({
           title: "エクスポートエラー",
-          description: result.error || "CSV エクスポートに失敗しました",
+          description: result.error,
           variant: "destructive",
+        });
+        return;
+      }
+
+      // CSV ダウンロード（成功時）
+      const blob = new Blob([result.csvContent], { type: "text/csv;charset=utf-8;" });
+      const link = document.createElement("a");
+      const url = URL.createObjectURL(blob);
+      link.setAttribute("href", url);
+      link.setAttribute("download", result.filename);
+      link.style.visibility = "hidden";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      toast({
+        title: "エクスポート完了",
+        description: `${result.filename} をダウンロードしました`,
+      });
+
+      if (result.truncated) {
+        toast({
+          title: "注意: 一部データを省略",
+          description:
+            "1,001 件以上のデータが存在したため、先頭 1,000 件のみを出力しました。フィルターで範囲を絞って再度エクスポートしてください。",
         });
       }
     } catch (_error) {

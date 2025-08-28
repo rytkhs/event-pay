@@ -1,4 +1,5 @@
 import { updateGuestAttendanceAction } from "@/app/events/actions/update-guest-attendance";
+import type { ServerActionResult } from "@/lib/types/server-actions";
 import { validateGuestToken } from "@/lib/utils/guest-token";
 import { createClient } from "@/lib/supabase/server";
 
@@ -51,14 +52,27 @@ describe("updateGuestAttendanceAction", () => {
     jest.clearAllMocks();
   });
 
+  // 型安全なアサートヘルパー
+  type ErrorResult<T> = Extract<ServerActionResult<T>, { success: false }>;
+  type SuccessResult<T> = Extract<ServerActionResult<T>, { success: true }>;
+
+  function asError<T>(result: ServerActionResult<T>): ErrorResult<T> {
+    expect(result.success).toBe(false);
+    return result as ErrorResult<T>;
+  }
+
+  function asSuccess<T>(result: ServerActionResult<T>): SuccessResult<T> {
+    expect(result.success).toBe(true);
+    return result as SuccessResult<T>;
+  }
+
   describe("基本検証", () => {
     it("ゲストトークンが必要", async () => {
       const formData = new FormData();
       formData.append("attendanceStatus", "attending");
 
-      const result = await updateGuestAttendanceAction(formData);
-
-      expect(result.success).toBe(false);
+      const result = asError(await updateGuestAttendanceAction(formData));
+      expect(result.code).toBe("MISSING_PARAMETER");
       expect(result.error).toBe("ゲストトークンが必要です");
     });
 
@@ -73,9 +87,8 @@ describe("updateGuestAttendanceAction", () => {
       formData.append("guestToken", "invalid-token");
       formData.append("attendanceStatus", "attending");
 
-      const result = await updateGuestAttendanceAction(formData);
-
-      expect(result.success).toBe(false);
+      const result = asError(await updateGuestAttendanceAction(formData));
+      expect(result.code).toBe("UNAUTHORIZED");
       expect(result.error).toBe("無効なゲストトークンです");
     });
 
@@ -90,9 +103,8 @@ describe("updateGuestAttendanceAction", () => {
       formData.append("guestToken", "test-guest-token-123456789012");
       formData.append("attendanceStatus", "attending");
 
-      const result = await updateGuestAttendanceAction(formData);
-
-      expect(result.success).toBe(false);
+      const result = asError(await updateGuestAttendanceAction(formData));
+      expect(result.code).toBe("FORBIDDEN");
       expect(result.error).toBe("参加状況の変更期限を過ぎています");
     });
   });
@@ -111,9 +123,8 @@ describe("updateGuestAttendanceAction", () => {
       formData.append("guestToken", "test-guest-token-123456789012");
       formData.append("attendanceStatus", "invalid-status");
 
-      const result = await updateGuestAttendanceAction(formData);
-
-      expect(result.success).toBe(false);
+      const result = asError(await updateGuestAttendanceAction(formData));
+      expect(result.code).toBe("VALIDATION_ERROR");
       expect(result.error).toBe("有効な参加ステータスを選択してください");
     });
 
@@ -123,10 +134,9 @@ describe("updateGuestAttendanceAction", () => {
       formData.append("attendanceStatus", "attending");
       // paymentMethodを設定しない
 
-      const result = await updateGuestAttendanceAction(formData);
-
-      expect(result.success).toBe(false);
-      expect(result.error).toBe("参加を選択した場合は決済方法を選択してください");
+      const result = asError(await updateGuestAttendanceAction(formData));
+      expect(result.code).toBe("VALIDATION_ERROR");
+      expect(result.error).toContain("参加を選択した場合は決済方法を選択してください");
     });
 
     it("無効な決済方法はエラー", async () => {
@@ -135,10 +145,9 @@ describe("updateGuestAttendanceAction", () => {
       formData.append("attendanceStatus", "attending");
       formData.append("paymentMethod", "invalid-method");
 
-      const result = await updateGuestAttendanceAction(formData);
-
-      expect(result.success).toBe(false);
-      expect(result.error).toBe("有効な決済方法を選択してください");
+      const result = asError(await updateGuestAttendanceAction(formData));
+      expect(result.code).toBe("VALIDATION_ERROR");
+      expect(result.error).toContain("有効な決済方法を選択してください");
     });
   });
 
@@ -170,9 +179,8 @@ describe("updateGuestAttendanceAction", () => {
       formData.append("attendanceStatus", "attending");
       formData.append("paymentMethod", "stripe");
 
-      const result = await updateGuestAttendanceAction(formData);
-
-      expect(result.success).toBe(false);
+      const result = asError(await updateGuestAttendanceAction(formData));
+      expect(result.code).toBe("ATTENDANCE_CAPACITY_REACHED");
       expect(result.error).toBe("イベントの定員に達しているため参加できません");
       expect(mockRpc).toHaveBeenCalledWith("update_guest_attendance_with_payment", {
         p_attendance_id: "attendance-123",
@@ -223,11 +231,9 @@ describe("updateGuestAttendanceAction", () => {
       formData.append("guestToken", "test-guest-token-123456789012");
       formData.append("attendanceStatus", "not_attending");
 
-      const result = await updateGuestAttendanceAction(formData);
-
-      expect(result.success).toBe(true);
-      expect(result.data?.status).toBe("not_attending");
-      expect(result.data?.requiresPayment).toBe(false);
+      const result = asSuccess(await updateGuestAttendanceAction(formData));
+      expect(result.data.status).toBe("not_attending");
+      expect(result.data.requiresAdditionalPayment).toBe(false);
 
       expect(mockSupabase.rpc).toHaveBeenCalledWith("update_guest_attendance_with_payment", {
         p_attendance_id: "attendance-123",
@@ -243,12 +249,10 @@ describe("updateGuestAttendanceAction", () => {
       formData.append("attendanceStatus", "attending");
       formData.append("paymentMethod", "cash");
 
-      const result = await updateGuestAttendanceAction(formData);
-
-      expect(result.success).toBe(true);
-      expect(result.data?.status).toBe("attending");
-      expect(result.data?.paymentMethod).toBe("cash");
-      expect(result.data?.requiresPayment).toBe(true);
+      const result = asSuccess(await updateGuestAttendanceAction(formData));
+      expect(result.data.status).toBe("attending");
+      expect(result.data.paymentMethod).toBe("cash");
+      expect(result.data.requiresAdditionalPayment).toBe(true);
 
       expect(mockSupabase.rpc).toHaveBeenCalledWith("update_guest_attendance_with_payment", {
         p_attendance_id: "attendance-123",
@@ -275,11 +279,9 @@ describe("updateGuestAttendanceAction", () => {
       formData.append("guestToken", "test-guest-token-123456789012");
       formData.append("attendanceStatus", "attending");
 
-      const result = await updateGuestAttendanceAction(formData);
-
-      expect(result.success).toBe(true);
-      expect(result.data?.status).toBe("attending");
-      expect(result.data?.requiresPayment).toBe(false);
+      const result = asSuccess(await updateGuestAttendanceAction(formData));
+      expect(result.data.status).toBe("attending");
+      expect(result.data.requiresAdditionalPayment).toBe(false);
 
       expect(mockSupabase.rpc).toHaveBeenCalledWith("update_guest_attendance_with_payment", {
         p_attendance_id: "attendance-123",
@@ -306,9 +308,8 @@ describe("updateGuestAttendanceAction", () => {
       formData.append("guestToken", "test-guest-token-123456789012");
       formData.append("attendanceStatus", "not_attending");
 
-      const result = await updateGuestAttendanceAction(formData);
-
-      expect(result.success).toBe(false);
+      const result = asError(await updateGuestAttendanceAction(formData));
+      expect(result.code).toBe("DATABASE_ERROR");
       expect(result.error).toBe("参加状況の更新中にエラーが発生しました");
     });
 
@@ -319,10 +320,9 @@ describe("updateGuestAttendanceAction", () => {
       formData.append("guestToken", "test-guest-token-123456789012");
       formData.append("attendanceStatus", "attending");
 
-      const result = await updateGuestAttendanceAction(formData);
-
-      expect(result.success).toBe(false);
-      expect(result.error).toBe("参加状況の更新中にエラーが発生しました");
+      const result = asError(await updateGuestAttendanceAction(formData));
+      expect(result.code).toBe("INTERNAL_ERROR");
+      expect(result.error).toContain("参加状況の更新中にエラーが発生しました");
     });
   });
 });

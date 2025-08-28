@@ -1,16 +1,21 @@
-import { NextRequest } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { NextRequest, NextResponse } from "next/server";
+import { SecureSupabaseClientFactory } from "@/lib/security/secure-client-factory.impl";
+import { AdminReason } from "@/lib/security/secure-client-factory.types";
 import { validateCronSecret, logCronActivity } from "@/lib/cron-auth";
 import { updateEventStatus, getCurrentTime } from "@/lib/event-status-updater";
 import { EVENT_CONFIG } from "@/lib/constants/event-config";
-import {
-  createApiError,
-  createErrorResponse,
-  createSuccessResponse,
-  ERROR_CODES,
-} from "@/lib/utils/api-error";
+import { createProblemResponse } from "@/lib/api/problem-details";
 import { processBatch, getBatchSummary } from "@/lib/utils/batch-processor";
-import type { CronExecutionData } from "@/lib/types/api-response";
+interface CronExecutionData {
+  message: string;
+  updatesCount: number;
+  processingTime: number;
+  skippedCount: number;
+  updates: Array<{ id: string }>;
+}
+
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest) {
   const startTime = Date.now();
@@ -22,15 +27,18 @@ export async function POST(request: NextRequest) {
     const authResult = validateCronSecret(request);
     if (!authResult.isValid) {
       logCronActivity("error", "Authentication failed", { error: authResult.error });
-      const error = createApiError(
-        ERROR_CODES.UNAUTHORIZED,
-        authResult.error || "Authentication failed"
-      );
-      return createErrorResponse(error, 401);
+      return createProblemResponse("UNAUTHORIZED", {
+        instance: "/api/cron/update-event-status",
+        detail: authResult.error || "Authentication failed",
+      });
     }
 
-    // 2. Supabaseクライアント作成
-    const supabase = createClient();
+    // 2. 監査付きadminクライアント作成
+    const secureClientFactory = SecureSupabaseClientFactory.getInstance();
+    const supabase = await secureClientFactory.createAuditedAdminClient(
+      AdminReason.SYSTEM_MAINTENANCE,
+      "Automated event status update via cron job"
+    );
 
     // 3. 対象イベントを取得
     const { data: events, error: fetchError } = await supabase
@@ -40,10 +48,10 @@ export async function POST(request: NextRequest) {
 
     if (fetchError) {
       logCronActivity("error", "Failed to fetch events", { error: fetchError });
-      const error = createApiError(ERROR_CODES.DATABASE_ERROR, "Failed to fetch events", {
-        originalError: fetchError,
+      return createProblemResponse("DATABASE_ERROR", {
+        instance: "/api/cron/update-event-status",
+        detail: "Failed to fetch events",
       });
-      return createErrorResponse(error, 500);
     }
 
     if (!events || events.length === 0) {
@@ -52,8 +60,10 @@ export async function POST(request: NextRequest) {
         message: "No events to update",
         updatesCount: 0,
         processingTime: Date.now() - startTime,
+        skippedCount: 0,
+        updates: [],
       };
-      return createSuccessResponse(data);
+      return NextResponse.json(data);
     }
 
     // 4. ステータス更新ロジックを実行
@@ -127,7 +137,7 @@ export async function POST(request: NextRequest) {
       processingTime,
     };
 
-    return createSuccessResponse(data);
+    return NextResponse.json(data);
   } catch (error) {
     const processingTime = Date.now() - startTime;
     const errorMessage = error instanceof Error ? error.message : "Unknown error";
@@ -137,13 +147,10 @@ export async function POST(request: NextRequest) {
       processingTime,
     });
 
-    const apiError = createApiError(
-      ERROR_CODES.INTERNAL_ERROR,
-      "Unexpected error occurred during event status update",
-      { originalError: errorMessage, processingTime }
-    );
-
-    return createErrorResponse(apiError, 500);
+    return createProblemResponse("INTERNAL_ERROR", {
+      instance: "/api/cron/update-event-status",
+      detail: "Unexpected error occurred during event status update",
+    });
   }
 }
 

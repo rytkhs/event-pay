@@ -69,21 +69,29 @@ export async function getEventPaymentsAction(eventId: string): Promise<GetEventP
       return;
     }
     // 比較関数：paid_at (null は最古扱い), その後 created_at, updated_at
-    const paidAtA = payment.paid_at ?? "";
-    const paidAtB = existing.paid_at ?? "";
-    if (paidAtA > paidAtB) {
-      latestPaymentsMap.set(payment.attendance_id, payment);
+    // ISO 文字列ではなく Date オブジェクトのタイムスタンプで比較
+    const paidAtA = payment.paid_at ? new Date(payment.paid_at).getTime() : -Infinity; // null は最古扱い
+    const paidAtB = existing.paid_at ? new Date(existing.paid_at).getTime() : -Infinity;
+
+    if (paidAtA !== paidAtB) {
+      if (paidAtA > paidAtB) {
+        latestPaymentsMap.set(payment.attendance_id, payment);
+      }
       return;
     }
-    if (paidAtA === paidAtB && payment.created_at > existing.created_at) {
-      latestPaymentsMap.set(payment.attendance_id, payment);
+
+    const createdAtA = new Date(payment.created_at).getTime();
+    const createdAtB = new Date(existing.created_at).getTime();
+    if (createdAtA !== createdAtB) {
+      if (createdAtA > createdAtB) {
+        latestPaymentsMap.set(payment.attendance_id, payment);
+      }
       return;
     }
-    if (
-      paidAtA === paidAtB &&
-      payment.created_at === existing.created_at &&
-      payment.updated_at > existing.updated_at
-    ) {
+
+    const updatedAtA = new Date(payment.updated_at).getTime();
+    const updatedAtB = new Date(existing.updated_at).getTime();
+    if (updatedAtA > updatedAtB) {
       latestPaymentsMap.set(payment.attendance_id, payment);
     }
   });

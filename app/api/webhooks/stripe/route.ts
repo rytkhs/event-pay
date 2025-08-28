@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { createProblemResponse } from '@/lib/api/problem-details';
 // Stripe 型は共有クライアント経由で利用するため未使用
 import { stripe as sharedStripe, getWebhookSecrets } from '@/lib/stripe/client';
 import { StripeWebhookSignatureVerifier } from '@/lib/services/webhook/webhook-signature-verifier';
@@ -64,7 +65,10 @@ export async function POST(request: NextRequest) {
           ip: clientIp,
           userAgent: request.headers.get('user-agent') || undefined,
         });
-        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+        return createProblemResponse('FORBIDDEN', {
+          instance: '/api/webhooks/stripe',
+          detail: 'IP not allowed',
+        });
       }
     }
 
@@ -84,10 +88,10 @@ export async function POST(request: NextRequest) {
         userAgent: request.headers.get('user-agent') || undefined
       });
 
-      return NextResponse.json(
-        { error: 'Missing stripe-signature header' },
-        { status: 400 }
-      );
+      return createProblemResponse('MISSING_PARAMETER', {
+        instance: '/api/webhooks/stripe',
+        detail: 'Missing stripe-signature header',
+      });
     }
 
     // 署名検証
@@ -100,10 +104,10 @@ export async function POST(request: NextRequest) {
     if (!verificationResult.isValid || !verificationResult.event) {
       webhookLogger.warn('Webhook signature verification failed');
       // 外部公開用のエラーメッセージは統一し、詳細はセキュリティログに依存
-      return NextResponse.json(
-        { error: 'Invalid webhook signature' },
-        { status: 400 }
-      );
+      return createProblemResponse('INVALID_REQUEST', {
+        instance: '/api/webhooks/stripe',
+        detail: 'Invalid webhook signature',
+      });
     }
 
     const event = verificationResult.event;
@@ -207,41 +211,43 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    return NextResponse.json(
-      {
-        error: 'Internal server error',
-      },
-      { status: 500 }
-    );
+    return createProblemResponse('INTERNAL_ERROR', {
+      instance: '/api/webhooks/stripe',
+      detail: 'Internal server error',
+    });
   }
 }
 
 // GETメソッドは許可しない
 export async function GET() {
-  return NextResponse.json(
-    { error: 'Method not allowed' },
-    { status: 405 }
-  );
+  return createProblemResponse('INVALID_REQUEST', {
+    instance: '/api/webhooks/stripe',
+    detail: 'Method not allowed',
+    status: 405,
+  });
 }
 
 // その他のHTTPメソッドも許可しない
 export async function PUT() {
-  return NextResponse.json(
-    { error: 'Method not allowed' },
-    { status: 405 }
-  );
+  return createProblemResponse('INVALID_REQUEST', {
+    instance: '/api/webhooks/stripe',
+    detail: 'Method not allowed',
+    status: 405,
+  });
 }
 
 export async function DELETE() {
-  return NextResponse.json(
-    { error: 'Method not allowed' },
-    { status: 405 }
-  );
+  return createProblemResponse('INVALID_REQUEST', {
+    instance: '/api/webhooks/stripe',
+    detail: 'Method not allowed',
+    status: 405,
+  });
 }
 
 export async function PATCH() {
-  return NextResponse.json(
-    { error: 'Method not allowed' },
-    { status: 405 }
-  );
+  return createProblemResponse('INVALID_REQUEST', {
+    instance: '/api/webhooks/stripe',
+    detail: 'Method not allowed',
+    status: 405,
+  });
 }

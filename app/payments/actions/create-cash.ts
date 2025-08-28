@@ -7,9 +7,8 @@ import { PaymentService, PaymentValidator, PaymentErrorHandler } from "@/lib/ser
 import { PaymentError, PaymentErrorType } from "@/lib/services/payment/types";
 import {
   type ServerActionResult,
-  createErrorResponse,
-  createSuccessResponse,
-  ERROR_CODES,
+  createServerActionError,
+  createServerActionSuccess,
   type ErrorCode,
 } from "@/lib/types/server-actions";
 
@@ -24,27 +23,27 @@ type CreateCashActionData =
 function mapPaymentError(type: PaymentErrorType): ErrorCode {
   switch (type) {
     case PaymentErrorType.VALIDATION_ERROR:
-      return ERROR_CODES.VALIDATION_ERROR;
+      return "VALIDATION_ERROR";
     case PaymentErrorType.UNAUTHORIZED:
-      return ERROR_CODES.UNAUTHORIZED;
+      return "UNAUTHORIZED";
     case PaymentErrorType.FORBIDDEN:
-      return ERROR_CODES.FORBIDDEN;
+      return "FORBIDDEN";
     case PaymentErrorType.INVALID_AMOUNT:
     case PaymentErrorType.INVALID_PAYMENT_METHOD:
     case PaymentErrorType.INVALID_STATUS_TRANSITION:
-      return ERROR_CODES.BUSINESS_RULE_VIOLATION;
+      return "RESOURCE_CONFLICT";
     case PaymentErrorType.EVENT_NOT_FOUND:
     case PaymentErrorType.ATTENDANCE_NOT_FOUND:
     case PaymentErrorType.PAYMENT_NOT_FOUND:
-      return ERROR_CODES.NOT_FOUND;
+      return "NOT_FOUND";
     case PaymentErrorType.PAYMENT_ALREADY_EXISTS:
-      return ERROR_CODES.CONFLICT;
+      return "RESOURCE_CONFLICT";
     case PaymentErrorType.DATABASE_ERROR:
-      return ERROR_CODES.DATABASE_ERROR;
+      return "DATABASE_ERROR";
     case PaymentErrorType.STRIPE_API_ERROR:
     case PaymentErrorType.WEBHOOK_PROCESSING_ERROR:
     default:
-      return ERROR_CODES.INTERNAL_ERROR;
+      return "INTERNAL_ERROR";
   }
 }
 
@@ -54,8 +53,8 @@ export async function createCashAction(
   try {
     const parsed = inputSchema.safeParse(input);
     if (!parsed.success) {
-      return createErrorResponse(ERROR_CODES.VALIDATION_ERROR, "入力データが無効です。", {
-        zodErrors: parsed.error.errors,
+      return createServerActionError("VALIDATION_ERROR", "入力データが無効です。", {
+        details: { zodErrors: parsed.error.errors },
       });
     }
     const { attendanceId } = parsed.data;
@@ -67,7 +66,7 @@ export async function createCashAction(
       error: authError,
     } = await supabase.auth.getUser();
     if (authError || !user) {
-      return createErrorResponse(ERROR_CODES.UNAUTHORIZED, "認証が必要です。");
+      return createServerActionError("UNAUTHORIZED", "認証が必要です。");
     }
 
     // 参加記録の存在確認と主催者権限チェック
@@ -88,32 +87,32 @@ export async function createCashAction(
       .single();
 
     if (attendanceError || !attendance) {
-      return createErrorResponse(ERROR_CODES.NOT_FOUND, "参加記録が見つかりません。");
+      return createServerActionError("NOT_FOUND", "参加記録が見つかりません。");
     }
 
     const event = Array.isArray(attendance.events) ? attendance.events[0] : attendance.events;
     if (!event) {
-      return createErrorResponse(ERROR_CODES.NOT_FOUND, "イベントが見つかりません。");
+      return createServerActionError("NOT_FOUND", "イベントが見つかりません。");
     }
 
     // 主催者認可チェック（早期リターン前に必ず検証）
     if (event.created_by !== user.id) {
-      return createErrorResponse(ERROR_CODES.FORBIDDEN, "この操作を実行する権限がありません。");
+      return createServerActionError("FORBIDDEN", "この操作を実行する権限がありません。");
     }
 
     // 金額整合性（feeのみ信頼）
     if (event.fee == null) {
-      return createErrorResponse(ERROR_CODES.BUSINESS_RULE_VIOLATION, "イベントの参加費が不正です。");
+      return createServerActionError("RESOURCE_CONFLICT", "イベントの参加費が不正です。");
     }
     const amount = event.fee;
     if (amount === 0) {
-      return createSuccessResponse<CreateCashActionData>({
+      return createServerActionSuccess<CreateCashActionData>({
         noPaymentRequired: true,
         paymentId: null,
       });
     }
     if (amount < 0) {
-      return createErrorResponse(ERROR_CODES.BUSINESS_RULE_VIOLATION, "イベントの参加費が不正です。");
+      return createServerActionError("RESOURCE_CONFLICT", "イベントの参加費が不正です。");
     }
 
     // バリデーション（RLS 下の認証クライアントで実行）
@@ -134,13 +133,13 @@ export async function createCashAction(
       details: { attendanceId, amount, paymentId: result.paymentId, userId: user.id },
     });
 
-    return createSuccessResponse<CreateCashActionData>({ paymentId: result.paymentId });
+    return createServerActionSuccess<CreateCashActionData>({ paymentId: result.paymentId });
   } catch (error) {
     if (error instanceof PaymentError) {
-      return createErrorResponse(mapPaymentError(error.type), error.message);
+      return createServerActionError(mapPaymentError(error.type), error.message);
     }
-    return createErrorResponse(ERROR_CODES.INTERNAL_ERROR, "予期しないエラーが発生しました", {
-      originalError: error,
+    return createServerActionError("INTERNAL_ERROR", "予期しないエラーが発生しました", {
+      details: { originalError: error },
     });
   }
 }

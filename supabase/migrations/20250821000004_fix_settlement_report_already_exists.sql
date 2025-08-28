@@ -123,8 +123,7 @@ BEGIN
         transfer_group,
         settlement_mode,
         status,
-        generated_at,
-        updated_at
+        generated_at
     ) VALUES (
         p_event_id,
         p_created_by,
@@ -138,7 +137,6 @@ BEGIN
         v_transfer_group,
         'destination_charge',
         'completed',
-        now(),
         now()
     ) ON CONFLICT ON CONSTRAINT uniq_payouts_event_generated_date_jst DO NOTHING
       RETURNING id, generated_at, updated_at
@@ -154,8 +152,7 @@ BEGIN
                platform_fee       = v_net_application_fee,
                total_disputed_amount = v_total_disputed_amount,
                dispute_count         = v_dispute_count,
-               net_payout_amount  = v_net_amount,
-               updated_at         = now()
+               net_payout_amount  = v_net_amount
          WHERE event_id = p_event_id
            AND (generated_at AT TIME ZONE 'Asia/Tokyo')::date = (now() AT TIME ZONE 'Asia/Tokyo')::date
          RETURNING id, generated_at, updated_at

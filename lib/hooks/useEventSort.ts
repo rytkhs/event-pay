@@ -42,12 +42,18 @@ export function useEventSort(options: UseEventSortOptions = {}) {
 
       switch (sortOptions.sortBy) {
         case "date":
-          // 日付文字列を直接比較（ISO文字列、date-fns-tz統一）
-          comparison = a.date.localeCompare(b.date);
+          {
+            const tA = Date.parse(a.date);
+            const tB = Date.parse(b.date);
+            comparison = (Number.isNaN(tA) ? 0 : tA) - (Number.isNaN(tB) ? 0 : tB);
+          }
           break;
         case "created_at":
-          // 日付文字列を直接比較（ISO文字列、date-fns-tz統一）
-          comparison = a.created_at.localeCompare(b.created_at);
+          {
+            const tA = Date.parse(a.created_at);
+            const tB = Date.parse(b.created_at);
+            comparison = (Number.isNaN(tA) ? 0 : tA) - (Number.isNaN(tB) ? 0 : tB);
+          }
           break;
         case "attendances_count":
           // 参加者数はクライアントサイドで計算（集計値のため）

@@ -36,6 +36,7 @@ import {
 import { SecurityAuditorImpl } from "./security-auditor.impl";
 import { isValidEventInfo } from "./type-guards";
 import { COOKIE_CONFIG, AUTH_CONFIG, getCookieConfig } from "@/config/security";
+import { isValidIsoDateTimeString } from "@/lib/utils/timezone";
 
 /**
  * セキュアSupabaseクライアントファクトリーの実装
@@ -478,8 +479,7 @@ export class RLSBasedGuestValidator implements IGuestTokenValidator {
    * 日付文字列の有効性をチェック
    */
   private isValidDateString(dateStr: string): boolean {
-    const date = new Date(dateStr);
-    return !isNaN(date.getTime()) && dateStr === date.toISOString();
+    return isValidIsoDateTimeString(dateStr);
   }
 
   /**
@@ -522,12 +522,12 @@ export class RLSBasedGuestValidator implements IGuestTokenValidator {
       registrationDeadline = new Date(event.registration_deadline);
     }
 
-    // イベント開始前かつ登録締切前かつアクティブ状態
+    // イベント開始前かつ登録締切前かつ開催予定（upcoming）状態
     const isBeforeEventStart = eventDate > now;
     const isBeforeDeadline = registrationDeadline === null || registrationDeadline > now;
-    const isActive = event.status === "active";
+    const isUpcoming = event.status === "upcoming";
 
-    return isBeforeEventStart && isBeforeDeadline && isActive;
+    return isBeforeEventStart && isBeforeDeadline && isUpcoming;
   }
 
   /**

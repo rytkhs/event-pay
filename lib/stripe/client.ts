@@ -201,7 +201,7 @@ export const stripeConnect = {
         transfers: { requested: true },
       },
       metadata: {
-        user_id: userId,
+        actor_id: userId,
       },
     });
   },

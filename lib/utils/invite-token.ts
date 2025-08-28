@@ -64,7 +64,6 @@ export interface InviteValidationResult {
   | "EVENT_CANCELLED"
   | "EVENT_ENDED"
   | "REGISTRATION_DEADLINE_PASSED"
-  | "CAPACITY_REACHED"
   | "UNKNOWN_ERROR";
 }
 
@@ -132,11 +131,12 @@ export async function validateInviteToken(token: string): Promise<InviteValidati
       };
     }
 
-    // 参加者数を別途取得
+    // 参加者数を別途取得（参加ステータスのみをカウント）
     const { count: attendances_count, error: countError } = await supabase
       .from("attendances")
       .select("*", { count: "exact", head: true })
-      .eq("event_id", event.id);
+      .eq("event_id", event.id)
+      .eq("status", "attending");
 
     // DBエラー時は安全のため参加者数を取得できないとして処理
     if (countError) {

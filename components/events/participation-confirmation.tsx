@@ -174,7 +174,7 @@ export function ParticipationConfirmation({
       </Card>
 
       {/* 決済情報（参加かつ有料の場合） */}
-      {registrationData.requiresPayment && (
+      {registrationData.requiresAdditionalPayment && (
         <Card
           className="p-4 sm:p-6 bg-blue-50 border-blue-200"
           role="region"
@@ -356,7 +356,7 @@ export function ParticipationConfirmation({
           </h3>
 
           <ol className="space-y-3 sm:space-y-4" role="list">
-            {registrationData.requiresPayment && (
+            {registrationData.requiresAdditionalPayment && (
               <li className="flex items-start space-x-3">
                 <div
                   className="flex-shrink-0 w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center text-xs font-medium"
@@ -375,10 +375,10 @@ export function ParticipationConfirmation({
 
             <li className="flex items-start space-x-3">
               <div
-                className="flex-shrink-0 w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center text-xs font-medium"
+                className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-600 text-xs font-medium text-white"
                 aria-hidden="true"
               >
-                {registrationData.requiresPayment ? "2" : "1"}
+                {registrationData.requiresAdditionalPayment ? "2" : "1"}
               </div>
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-medium text-gray-900">イベント当日</p>

@@ -49,7 +49,7 @@ const mockRegistrationData: RegisterParticipationData = {
   participantEmail: "test@example.com",
   attendanceStatus: "attending",
   paymentMethod: "stripe",
-  requiresPayment: true,
+  requiresAdditionalPayment: true,
 };
 
 describe("Basic Accessibility Tests", () => {
