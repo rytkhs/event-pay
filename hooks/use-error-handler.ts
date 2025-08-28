@@ -12,7 +12,6 @@ import {
 
 export interface UseErrorHandlerOptions {
   showToast?: boolean;
-  logErrors?: boolean;
   defaultContext?: Partial<ErrorContext>;
 }
 
@@ -53,7 +52,7 @@ function looksLikeProblemDetails(body: unknown): boolean {
  * 統一的なエラー処理とユーザーフィードバックを提供
  */
 export function useErrorHandler(options: UseErrorHandlerOptions = {}) {
-  const { showToast = true, logErrors: _logErrors = true, defaultContext = {} } = options;
+  const { showToast = true, defaultContext = {} } = options;
   const { toast } = useToast();
   const [errorState, setErrorState] = useState<ErrorState>({
     error: null,
@@ -203,7 +202,6 @@ export function useErrorHandler(options: UseErrorHandlerOptions = {}) {
 export function useParticipationErrorHandler() {
   return useErrorHandler({
     showToast: true,
-    logErrors: true,
     defaultContext: {
       action: "participation",
     },
@@ -216,7 +214,6 @@ export function useParticipationErrorHandler() {
 export function useInviteErrorHandler() {
   return useErrorHandler({
     showToast: true,
-    logErrors: true,
     defaultContext: {
       action: "invite_access",
     },
@@ -229,7 +226,6 @@ export function useInviteErrorHandler() {
 export function useGuestErrorHandler() {
   return useErrorHandler({
     showToast: true,
-    logErrors: true,
     defaultContext: {
       action: "guest_management",
     },
