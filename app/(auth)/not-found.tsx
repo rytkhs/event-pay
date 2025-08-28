@@ -3,12 +3,18 @@
  * /(auth)/*で存在しないページへのアクセス
  */
 
+"use client";
+
 import { NotFoundLayout } from "@/components/errors";
 
 /**
  * 認証関連ページの404エラー
  */
 export default function AuthNotFoundPage() {
+  const handleGoToLogin = () => {
+    window.location.href = "/auth/login";
+  };
+
   return (
     <NotFoundLayout
       title="認証ページが見つかりません"
@@ -18,7 +24,7 @@ export default function AuthNotFoundPage() {
       customActions={[
         {
           label: "ログインページ",
-          action: () => (window.location.href = "/auth/login"),
+          action: handleGoToLogin,
           variant: "default",
         },
       ]}
