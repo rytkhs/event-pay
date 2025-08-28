@@ -24,7 +24,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { ErrorBoundary, ParticipationErrorFallback } from "./error-boundary";
+import { ParticipationErrorBoundary } from "@/components/errors";
 import { useParticipationErrorHandler } from "@/hooks/use-error-handler";
 import { AlertTriangle } from "lucide-react";
 
@@ -115,7 +115,7 @@ export function ParticipationForm({
   };
 
   return (
-    <ErrorBoundary fallback={ParticipationErrorFallback}>
+    <ParticipationErrorBoundary>
       <Card className="p-4 sm:p-6">
         <div className="space-y-4 sm:space-y-6">
           <div>
@@ -486,6 +486,6 @@ export function ParticipationForm({
           </Form>
         </div>
       </Card>
-    </ErrorBoundary>
+    </ParticipationErrorBoundary>
   );
 }
