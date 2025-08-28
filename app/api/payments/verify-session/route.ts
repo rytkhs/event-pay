@@ -3,6 +3,8 @@
  * Stripe Checkout Session IDを使用して決済ステータスを検証
  */
 
+export const dynamic = 'force-dynamic';
+
 import { NextRequest, NextResponse } from "next/server";
 import { stripe } from "@/lib/stripe/client";
 

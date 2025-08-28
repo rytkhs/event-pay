@@ -2,6 +2,8 @@
  * Stripe Connect オンボーディング完了後のリダイレクトページ
  */
 
+export const dynamic = "force-dynamic";
+
 import { Suspense } from "react";
 import { Metadata } from "next";
 import { handleOnboardingReturnAction } from "@/app/(dashboard)/actions/stripe-connect";
