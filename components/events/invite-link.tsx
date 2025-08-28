@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { useToast } from "@/hooks/use-toast";
+import { useToast } from "@/contexts/toast-context";
 import { generateInviteTokenAction } from "@/app/events/actions";
 import { Copy, ExternalLink, RefreshCw } from "lucide-react";
 import { useClipboard } from "@/hooks/use-clipboard";

@@ -10,7 +10,7 @@ import { formatUtcToJapaneseDisplay } from "@/lib/utils/timezone";
 import { PAYMENT_METHOD_LABELS } from "@/lib/constants/payment-methods";
 import { PaymentStatusSpan } from "@/components/common/payment-status-badge";
 import { canGuestRepay } from "@/lib/validation/payment-eligibility";
-import { useToast } from "@/hooks/use-toast";
+import { useToast } from "@/contexts/toast-context";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
