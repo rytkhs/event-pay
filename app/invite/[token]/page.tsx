@@ -1,7 +1,7 @@
 import { headers } from "next/headers";
 import { validateInviteToken } from "@/lib/utils/invite-token";
 import { InviteEventDetail } from "@/components/events/invite-event-detail";
-import { InviteError } from "@/components/events/invite-error";
+import { ErrorLayout } from "@/components/errors";
 import { notFound } from "next/navigation";
 import { sanitizeEventDescription } from "@/lib/utils/sanitize";
 import { logInvalidTokenAccess } from "@/lib/security/security-logger";
@@ -33,10 +33,16 @@ export default async function InvitePage({ params }: InvitePageProps) {
       logInvalidTokenAccess(params.token, "invite", { userAgent, ip });
 
       return (
-        <InviteError
-          errorMessage={validationResult.errorMessage || "無効な招待リンクです"}
-          errorCode="INVALID_TOKEN"
+        <ErrorLayout
+          code="INVALID_INVITE"
+          category="business"
+          severity="medium"
+          title="無効な招待リンク"
+          message={validationResult.errorMessage || "この招待リンクは無効または期限切れです"}
+          description="正しい招待リンクをご確認いただくか、イベント主催者にお問い合わせください。"
           showRetry={false}
+          showHome={true}
+          enableLogging={false}
         />
       );
     }
@@ -46,14 +52,55 @@ export default async function InvitePage({ params }: InvitePageProps) {
       const errorMessage = validationResult.errorMessage || "現在参加申し込みを受け付けていません";
       const errorCode = validationResult.errorCode || "UNKNOWN_ERROR";
 
+      // エラーコードに応じたエラーレイアウト
+      const getErrorConfig = () => {
+        switch (errorCode) {
+          case "EVENT_ENDED":
+            return {
+              title: "イベント終了",
+              icon: "business" as const,
+              description: "既に終了したイベントには参加申し込みできません。",
+            };
+          case "EVENT_CANCELLED":
+            return {
+              title: "定員到達",
+              icon: "business" as const,
+              description: `定員: ${validationResult.event?.capacity}\u540d\nキャンセルが出た場合は参加可能になることがあります。`,
+            };
+          case "REGISTRATION_DEADLINE_PASSED":
+            return {
+              title: "申込期限終了",
+              icon: "business" as const,
+              description: validationResult.event?.registration_deadline
+                ? `申込期限: ${new Date(validationResult.event.registration_deadline).toLocaleString("ja-JP")}`
+                : "申込期限を過ぎたため、参加申し込みはできません。",
+            };
+          default:
+            return {
+              title: "参加申し込み不可",
+              icon: "business" as const,
+              description: "現在参加申し込みを受け付けていません。",
+            };
+        }
+      };
+
+      const config = getErrorConfig();
+
       return (
-        <InviteError
-          errorMessage={errorMessage}
-          errorCode={errorCode}
+        <ErrorLayout
+          code="409"
+          category={config.icon}
+          severity="medium"
+          title={config.title}
+          message={
+            validationResult.event?.title
+              ? `「${validationResult.event.title}」${errorMessage}`
+              : errorMessage
+          }
+          description={config.description}
           showRetry={false}
-          eventTitle={validationResult.event?.title}
-          capacity={validationResult.event?.capacity ?? undefined}
-          deadline={validationResult.event?.registration_deadline ?? undefined}
+          showHome={true}
+          enableLogging={false}
         />
       );
     }
@@ -81,10 +128,17 @@ export default async function InvitePage({ params }: InvitePageProps) {
   } catch (_error) {
     // 予期しないエラーは詳細なログ記録を避ける（セキュリティ上の理由）
     return (
-      <InviteError
-        errorMessage="招待リンクの処理中にエラーが発生しました"
-        errorCode="INTERNAL_SERVER_ERROR"
+      <ErrorLayout
+        code="500"
+        category="server"
+        severity="high"
+        title="サーバーエラー"
+        message="招待リンクの処理中にエラーが発生しました"
+        description="しばらく時間をおいて再度お試しください。問題が続く場合はサポートにお問い合わせください。"
         showRetry={true}
+        showHome={true}
+        showSupport={true}
+        onRetry={() => window.location.reload()}
       />
     );
   }

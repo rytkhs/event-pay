@@ -3,7 +3,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { EventListWithFilters } from "@/components/events/event-list-with-filters";
 import { EventLoading } from "@/components/events/event-loading";
-import { EventError } from "@/components/events/event-error";
+import { InlineErrorCard } from "@/components/errors";
 import { Button } from "@/components/ui/button";
 import { getEventsAction } from "./actions";
 import type { SortBy, SortOrder, StatusFilter, PaymentFilter } from "./actions/get-events";
@@ -78,7 +78,19 @@ async function EventsContent({ searchParams }: EventsContentProps) {
     }
 
     // その他のエラー
-    return <EventError error={new Error(result.error)} reset={() => window.location.reload()} />;
+    return (
+      <InlineErrorCard
+        code="500"
+        category="business"
+        severity="medium"
+        title="イベントの読み込みエラー"
+        message={result.error}
+        description="イベント一覧の取得に失敗しました。ページを再読み込みしてください。"
+        showRetry={true}
+        onRetry={() => window.location.reload()}
+        compact={false}
+      />
+    );
   }
 
   return (
