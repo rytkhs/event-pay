@@ -42,7 +42,7 @@ export async function getSettlementHistoryAction(
     const parsed = inputSchema.safeParse(input);
     if (!parsed.success) {
       return createServerActionError("VALIDATION_ERROR", "入力データが無効です。", {
-        zodErrors: parsed.error.errors,
+        details: { zodErrors: parsed.error.errors },
       });
     }
 
