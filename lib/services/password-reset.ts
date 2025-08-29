@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/supabase/server";
 import { z } from "zod";
 
 export class PasswordResetService {
@@ -13,7 +13,7 @@ export class PasswordResetService {
   }
 
   static async sendResetEmail(email: string) {
-    const supabase = createSupabaseServerClient();
+    const supabase = createClient();
 
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/auth/reset-password/confirm`,
