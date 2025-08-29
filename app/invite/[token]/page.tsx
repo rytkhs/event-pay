@@ -138,7 +138,6 @@ export default async function InvitePage({ params }: InvitePageProps) {
         showRetry={true}
         showHome={true}
         showSupport={true}
-        onRetry={() => window.location.reload()}
       />
     );
   }
