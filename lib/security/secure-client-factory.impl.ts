@@ -7,7 +7,6 @@
 
 import { createClient } from "@supabase/supabase-js";
 import { createServerClient, createBrowserClient } from "@supabase/ssr";
-import type { SupabaseClient } from "@supabase/supabase-js";
 import type { CookieOptions } from "@supabase/ssr";
 import type { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
@@ -80,7 +79,7 @@ export class SecureSupabaseClientFactory implements ISecureSupabaseClientFactory
   /**
    * 通常の認証済みクライアントを作成
    */
-  createAuthenticatedClient(options?: ClientCreationOptions): SupabaseClient {
+  createAuthenticatedClient(options?: ClientCreationOptions) {
     const cookieStore = cookies();
 
     return createServerClient(this.supabaseUrl, this.anonKey, {
@@ -119,7 +118,7 @@ export class SecureSupabaseClientFactory implements ISecureSupabaseClientFactory
    * X-Guest-Tokenヘッダーを自動設定し、RLSポリシーベースのアクセス制御を実現
    * SSR環境でも安全に動作するよう環境を考慮
    */
-  createGuestClient(token: string, options?: ClientCreationOptions): SupabaseClient {
+  createGuestClient(token: string, options?: ClientCreationOptions) {
     // トークンの基本フォーマット検証
     if (!validateGuestTokenFormat(token)) {
       throw new GuestTokenError(
@@ -177,7 +176,7 @@ export class SecureSupabaseClientFactory implements ISecureSupabaseClientFactory
     context: string,
     auditContext?: AuditContext,
     options?: ClientCreationOptions
-  ): Promise<SupabaseClient> {
+  ) {
     // 理由の妥当性をチェック
     if (!Object.values(AdminReason).includes(reason)) {
       throw new AdminAccessError(
@@ -241,7 +240,7 @@ export class SecureSupabaseClientFactory implements ISecureSupabaseClientFactory
   /**
    * 読み取り専用クライアントを作成
    */
-  createReadOnlyClient(options?: ClientCreationOptions): SupabaseClient {
+  createReadOnlyClient(options?: ClientCreationOptions) {
     return createClient(this.supabaseUrl, this.anonKey, {
       auth: {
         persistSession: options?.persistSession ?? false,
@@ -263,7 +262,7 @@ export class SecureSupabaseClientFactory implements ISecureSupabaseClientFactory
     request: NextRequest,
     response: NextResponse,
     options?: ClientCreationOptions
-  ): SupabaseClient {
+  ) {
     // HTTPS接続を動的に検出
     const isHttps =
       request.url.startsWith("https://") || request.headers.get("x-forwarded-proto") === "https";
@@ -301,7 +300,7 @@ export class SecureSupabaseClientFactory implements ISecureSupabaseClientFactory
   /**
    * ブラウザ用クライアントを作成
    */
-  createBrowserClient(options?: ClientCreationOptions): SupabaseClient {
+  createBrowserClient(options?: ClientCreationOptions) {
     return createBrowserClient(this.supabaseUrl, this.anonKey, {
       auth: {
         persistSession: options?.persistSession ?? true,

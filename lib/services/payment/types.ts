@@ -123,7 +123,7 @@ export class PaymentError extends Error {
   constructor(
     public type: PaymentErrorType,
     message: string,
-    public cause?: Error
+    public cause?: unknown
   ) {
     super(message);
     this.name = "PaymentError";

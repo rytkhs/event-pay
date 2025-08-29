@@ -2,6 +2,7 @@
  * StripeConnectService関連の型定義
  */
 
+import type { PostgrestError } from "@supabase/supabase-js";
 import { Database } from "@/types/database";
 
 // Stripe Connectアカウントステータスの型（データベースのenumに合わせる）
@@ -111,13 +112,13 @@ export enum StripeConnectErrorType {
 // StripeConnectエラークラス
 export class StripeConnectError extends Error {
   public readonly type: StripeConnectErrorType;
-  public readonly originalError?: Error;
+  public readonly originalError?: Error | PostgrestError;
   public readonly metadata?: Record<string, unknown>;
 
   constructor(
     type: StripeConnectErrorType,
     message: string,
-    originalError?: Error,
+    originalError?: Error | PostgrestError,
     metadata?: Record<string, unknown>
   ) {
     super(message);
