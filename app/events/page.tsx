@@ -87,7 +87,6 @@ async function EventsContent({ searchParams }: EventsContentProps) {
         message={result.error}
         description="イベント一覧の取得に失敗しました。ページを再読み込みしてください。"
         showRetry={true}
-        onRetry={() => window.location.reload()}
         compact={false}
       />
     );
