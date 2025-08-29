@@ -81,7 +81,7 @@ export async function getEventDetailAction(eventId: string): Promise<ServerActio
         tag: "getEventDetail",
         event_id: eventDetail.id,
         creator_id: eventDetail.created_by,
-        error_name: creatorError.name,
+        error_name: creatorError.code,
         error_message: creatorError.message
       });
     }

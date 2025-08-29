@@ -2,6 +2,7 @@
  * StripeConnectServiceのインターフェース定義
  */
 
+import type { PostgrestError } from "@supabase/supabase-js";
 import {
   StripeConnectAccount,
   CreateExpressAccountParams,
@@ -113,5 +114,5 @@ export interface IStripeConnectErrorHandler {
    * @param context エラーが発生したコンテキスト
    * @returns StripeConnectError
    */
-  mapDatabaseError(dbError: Error, context: string): StripeConnectError;
+  mapDatabaseError(dbError: Error | PostgrestError, context: string): StripeConnectError;
 }

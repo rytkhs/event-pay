@@ -70,7 +70,7 @@ export class StripeConnectErrorHandler implements IStripeConnectErrorHandler {
   /**
    * データベースエラーをStripeConnectErrorにマッピングする
    */
-  mapDatabaseError(dbError: Error, context: string): StripeConnectError {
+  mapDatabaseError(dbError: Error | PostgrestError, context: string): StripeConnectError {
     // PostgrestErrorの場合
     if (this.isPostgrestError(dbError)) {
       const postgrestError = dbError as PostgrestError;
@@ -143,7 +143,7 @@ export class StripeConnectErrorHandler implements IStripeConnectErrorHandler {
   /**
    * PostgrestErrorかどうかを判定する
    */
-  private isPostgrestError(error: Error): error is PostgrestError {
+  private isPostgrestError(error: Error | PostgrestError): error is PostgrestError {
     return 'code' in error && 'details' in error && 'hint' in error;
   }
 
@@ -160,9 +160,9 @@ export class StripeConnectErrorHandler implements IStripeConnectErrorHandler {
       metadata: error.metadata,
       stack: error.stack,
       originalError: error.originalError ? {
-        name: error.originalError.name,
+        name: 'name' in error.originalError ? error.originalError.name : 'Unknown',
         message: error.originalError.message,
-        stack: error.originalError.stack,
+        stack: 'stack' in error.originalError ? error.originalError.stack : undefined,
       } : undefined,
     };
 
