@@ -44,17 +44,10 @@ function createPinoLogger() {
   };
 
   if (isDevelopment) {
-    // 開発環境: pretty print で人間可読
+    // 開発環境: worker を使う transport は使用しない（Next.js dev で thread-stream が落ちるため）
+    // 代わりに JSON を stdout に出し、CLI 側で `pino-pretty` にパイプして整形する
     return pino({
       ...baseConfig,
-      transport: {
-        target: 'pino-pretty',
-        options: {
-          colorize: true,
-          translateTime: 'yyyy-mm-dd HH:MM:ss',
-          ignore: 'hostname,pid',
-        },
-      },
     });
   } else {
     // 本番環境: JSON 出力（Datadog 等への送信用）
