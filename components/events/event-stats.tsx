@@ -188,5 +188,3 @@ export function EventStats({ eventData, attendances, payments }: EventStatsProps
     </div>
   );
 }
-
-export default EventStats;
