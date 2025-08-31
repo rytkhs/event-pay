@@ -39,6 +39,39 @@
       "@/lib/*": [
         "./core/*",
         "./lib/*"
+      ],
+      "@/components/auth/*": [
+        "./features/auth/components/*"
+      ],
+      "@/components/events/*": [
+        "./features/events/components/*"
+      ],
+      "@/components/stripe-connect/*": [
+        "./features/stripe-connect/components/*"
+      ],
+      "@/components/settlement-report/*": [
+        "./features/settlements/components/*"
+      ],
+      "@/components/common/*": [
+        "./features/payments/components/*"
+      ],
+      "@/lib/services/payment/*": [
+        "./features/payments/services/*"
+      ],
+      "@/lib/services/fee-config/*": [
+        "./features/payments/services/fee-config/*"
+      ],
+      "@/lib/services/settlement-report/*": [
+        "./features/settlements/services/*"
+      ],
+      "@/lib/services/stripe-connect/*": [
+        "./features/stripe-connect/services/*"
+      ],
+      "@/lib/services/webhook/*": [
+        "./features/payments/services/webhook/*"
+      ],
+      "@/lib/services/notification/*": [
+        "./core/notification/*"
       ]
     }
   },
