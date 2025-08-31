@@ -59,6 +59,63 @@
       ],
       "@/types/event": [
         "./features/events/types.ts"
+      ],
+      "@/components/auth": [
+        "./features/auth/components/index.ts"
+      ],
+      "@/components/events/*": [
+        "./features/events/components/*"
+      ],
+      "@/components/stripe-connect/*": [
+        "./features/stripe-connect/components/*"
+      ],
+      "@/components/settlement-report": [
+        "./features/settlements/components/index.ts"
+      ],
+      "@/components/settlement-report/*": [
+        "./features/settlements/components/*"
+      ],
+      "@/components/common/payment-status-badge": [
+        "./features/payments/components/payment-status-badge.tsx"
+      ],
+      "@/lib/utils": [
+        "./core/utils.ts"
+      ],
+      "@/lib/utils/*": [
+        "./core/utils/*"
+      ],
+      "@/lib/constants/*": [
+        "./core/constants/*"
+      ],
+      "@/lib/rate-limit": [
+        "./core/rate-limit/index.ts"
+      ],
+      "@/lib/rate-limit/*": [
+        "./core/rate-limit/*"
+      ],
+      "@/lib/security": [
+        "./core/security/index.ts"
+      ],
+      "@/lib/security/*": [
+        "./core/security/*"
+      ],
+      "@/lib/services/payment": [
+        "./features/payments/services/index.ts"
+      ],
+      "@/lib/services/payment/*": [
+        "./features/payments/services/*"
+      ],
+      "@/lib/services/stripe-connect": [
+        "./features/stripe-connect/services/index.ts"
+      ],
+      "@/lib/services/stripe-connect/*": [
+        "./features/stripe-connect/services/*"
+      ],
+      "@/lib/services/webhook": [
+        "./features/payments/services/webhook/index.ts"
+      ],
+      "@/lib/services/webhook/*": [
+        "./features/payments/services/webhook/*"
       ]
     }
   },
