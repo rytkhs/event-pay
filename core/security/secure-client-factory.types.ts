@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { NextRequest, NextResponse } from "next/server";
-import { GuestErrorCode } from "@/types/security";
+import { GuestErrorCode } from "@core/types/security";
 
 /**
  * 管理者権限使用の理由を定義するenum

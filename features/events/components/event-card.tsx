@@ -1,10 +1,10 @@
 import Link from "next/link";
-import { Event } from "@/types/event";
+import { Event } from "@features/events/types";
 import { memo, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatUtcToJstByType } from "@core/utils/timezone";
 import { sanitizeForEventPay } from "@core/utils/sanitize";
-import { EVENT_STATUS_LABELS } from "@/types/enums";
+import { EVENT_STATUS_LABELS } from "@core/types/enums";
 
 interface EventCardProps {
   event: Event;

@@ -24,7 +24,7 @@ import {
   createConnectAccountAction,
 } from "@/app/(dashboard)/actions/stripe-connect";
 import { logger } from "@core/logging/app-logger";
-import { STRIPE_ACCOUNT_STATUS_LABELS } from "@/types/enums";
+import { STRIPE_ACCOUNT_STATUS_LABELS } from "@core/types/enums";
 
 interface AccountStatusData {
   hasAccount: boolean;

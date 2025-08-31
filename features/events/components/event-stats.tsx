@@ -1,5 +1,5 @@
 import React from "react";
-import type { Event, Attendance, Payment } from "@/types/models";
+import type { Event, Attendance, Payment } from "@core/types/models";
 
 // 統計表示に必要な最小限のフィールドのみを抽出
 type EventStatsAttendanceData = Pick<Attendance, "id" | "status">;

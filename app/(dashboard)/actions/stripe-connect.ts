@@ -5,7 +5,7 @@
 
 import { redirect } from "next/navigation";
 import { createClient } from "@core/supabase/server";
-import { createUserStripeConnectService } from "@/lib/services/stripe-connect";
+import { createUserStripeConnectService } from "@features/stripe-connect/services";
 import { StripeConnectError, StripeConnectErrorType } from "@features/stripe-connect/services/types";
 import { z } from "zod";
 import {

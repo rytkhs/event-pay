@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { PaymentStatusBadge } from "@/components/common/payment-status-badge";
+import { PaymentStatusBadge } from "@features/payments/components/payment-status-badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import {

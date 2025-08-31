@@ -1,6 +1,6 @@
 // Cron API認証ロジック
 
-import { AUTH_CONFIG } from "@/lib/constants/auth-config";
+import { AUTH_CONFIG } from "@core/constants/auth-config";
 import { logger } from "@core/logging/app-logger";
 
 interface AuthResult {

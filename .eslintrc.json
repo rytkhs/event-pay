@@ -1,5 +1,29 @@
 {
   "root": true,
   "extends": ["next", "next/core-web-vitals", "prettier"],
-  "plugins": ["@typescript-eslint"]
+  "plugins": ["@typescript-eslint", "import"],
+  "rules": {
+    "import/no-restricted-paths": [
+      "error",
+      {
+        "zones": [
+          {
+            "target": "./features/*/!(types).{ts,tsx}",
+            "from": "./features/!(auth|events|payments|settlements|stripe-connect)/**",
+            "message": "Features should not directly import from other features. Use @core/* for shared functionality."
+          },
+          {
+            "target": "./core/**",
+            "from": "./features/**",
+            "message": "Core modules should not depend on feature modules."
+          },
+          {
+            "target": "./features/**",
+            "from": "./app/**",
+            "message": "Features should not depend on app-specific modules."
+          }
+        ]
+      }
+    ]
+  }
 }

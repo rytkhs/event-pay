@@ -12,7 +12,7 @@ import type {
   GetParticipantsParams,
   GetEventPaymentsResponse,
 } from "@core/validation/participant-management";
-import type { Event, Attendance } from "@/types/models";
+import type { Event, Attendance } from "@core/types/models";
 
 interface ParticipantsManagementProps {
   eventId: string;

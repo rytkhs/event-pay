@@ -1,6 +1,6 @@
 import { headers } from "next/headers";
 import { validateInviteToken } from "@core/utils/invite-token";
-import { InviteEventDetail } from "@/components/events/invite-event-detail";
+import { InviteEventDetail } from "@features/events/components/invite-event-detail";
 import { ErrorLayout } from "@/components/errors";
 import { notFound } from "next/navigation";
 import { sanitizeEventDescription } from "@core/utils/sanitize";

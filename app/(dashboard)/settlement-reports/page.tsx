@@ -2,7 +2,7 @@ import React from "react";
 import { createClient } from "@core/supabase/server";
 import { getCurrentUser } from "@core/auth/auth-utils";
 import { redirect } from "next/navigation";
-import { SettlementReportList, SettlementReportGenerator } from "@/components/settlement-report";
+import { SettlementReportList, SettlementReportGenerator } from "@features/settlements/components";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default async function SettlementReportsPage() {

@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { updateEventAction } from "@/app/events/actions/update-event";
 import { ChangeItem } from "@/components/ui/change-confirmation-dialog";
 import { logger } from "@core/logging/app-logger";
-import type { Event, EventFormData } from "@/types/models";
+import type { Event, EventFormData } from "@core/types/models";
 
 // 型安全なSubmitResult
 interface SubmitResult {

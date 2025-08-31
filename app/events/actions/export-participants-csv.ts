@@ -7,7 +7,7 @@ import { verifyEventAccess } from "@core/auth/event-authorization";
 import {
   ExportParticipantsCsvParamsSchema,
 } from "@core/validation/participant-management";
-import { checkRateLimit, createRateLimitStore } from "@/lib/rate-limit";
+import { checkRateLimit, createRateLimitStore } from "@core/rate-limit";
 import { RATE_LIMIT_CONFIG } from "@/config/security";
 import { formatUtcToJstSafe } from "@core/utils/timezone";
 import { logger } from "@core/logging/app-logger";

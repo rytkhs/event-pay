@@ -2,7 +2,7 @@
 
 import { useCallback } from "react";
 import { parseCapacity } from "@core/utils/number-parsers";
-import type { EventFormData } from "@/types/models";
+import type { EventFormData } from "@core/types/models";
 
 interface UseEventRestrictionsProps {
   hasAttendees: boolean;

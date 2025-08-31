@@ -8,7 +8,7 @@ import {
   SupabaseWebhookIdempotencyService,
 } from '@features/payments/services/webhook/webhook-idempotency';
 // Rate limiting middleware intentionally not used on this webhook per Stripe best practice (429 triggers unnecessary retries)
-import type { WebhookProcessingResult } from '@/lib/services/webhook';
+import type { WebhookProcessingResult } from '@features/payments/services/webhook';
 import { getClientIP } from '@core/utils/ip-detection';
 import { shouldEnforceStripeWebhookIpCheck, isStripeWebhookIpAllowed } from '@core/security/stripe-ip-allowlist';
 import { logger } from '@core/logging/app-logger';

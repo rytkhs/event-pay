@@ -1,4 +1,4 @@
-import EventCreateForm from "@/components/events/event-form";
+import EventCreateForm from "@features/events/components/event-form";
 import { createClient } from "@core/supabase/server";
 import { redirect } from "next/navigation";
 

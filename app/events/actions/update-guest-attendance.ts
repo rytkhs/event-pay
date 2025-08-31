@@ -1,6 +1,6 @@
 "use server";
 
-import { SecureSupabaseClientFactory, AdminReason } from "@/lib/security";
+import { SecureSupabaseClientFactory, AdminReason } from "@core/security";
 import { validateGuestToken } from "@core/utils/guest-token";
 import { validateGuestTokenFormat } from "@core/security/crypto";
 import {
@@ -8,7 +8,7 @@ import {
   logParticipationSecurityEvent,
 } from "@core/security/security-logger";
 import { attendanceStatusSchema, paymentMethodSchema } from "@core/validation/participation";
-import { PAYMENT_METHODS, PAYMENT_METHOD_LABELS } from "@/lib/constants/payment-methods";
+import { PAYMENT_METHODS, PAYMENT_METHOD_LABELS } from "@core/constants/payment-methods";
 import type { Database } from "@/types/database";
 import { headers } from "next/headers";
 import { getClientIPFromHeaders } from "@core/utils/ip-detection";

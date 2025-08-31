@@ -3,7 +3,7 @@
  * UI/API間の条件整合性を保つために、決済関連の判定ロジックを一元化する
  */
 
-import { AttendanceStatus, PaymentStatus, EventStatus } from "@/types/enums";
+import { AttendanceStatus, PaymentStatus, EventStatus } from "@core/types/enums";
 
 /**
  * 決済許可判定に必要な最小限のイベント情報

@@ -3,7 +3,7 @@
 import { useState, useCallback, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { z } from "zod";
-import { Event } from "@/types/event";
+import { Event } from "@features/events/types";
 import { EventList } from "./event-list";
 import { EventFilters } from "./event-filters";
 import { EventSort } from "./event-sort";

@@ -1,7 +1,7 @@
 import React from "react";
 import { createClient } from "@core/supabase/server";
 import { SettlementReportService } from "@features/settlements/services/service";
-import { SettlementReportList } from "@/components/settlement-report/settlement-report-list";
+import { SettlementReportList } from "@features/settlements/components/settlement-report-list";
 import { getCurrentUser } from "@core/auth/auth-utils";
 import { redirect } from "next/navigation";
 

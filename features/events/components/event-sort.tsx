@@ -18,7 +18,7 @@ import {
   SORT_BY_LABELS,
   isValidSortBy,
   isValidSortOrder,
-} from "@/lib/constants/event-filters";
+} from "@core/constants/event-filters";
 
 interface EventSortProps {
   sortBy: SortBy;

@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/change-confirmation-dialog";
 import { useEventEditForm, type EventEditFormDataRHF } from "@features/events/hooks/use-event-edit-form";
 import { sanitizeForEventPay } from "@core/utils/sanitize";
-import type { Event } from "@/types/models";
+import type { Event } from "@core/types/models";
 
 interface EventEditFormProps {
   event: Event;
