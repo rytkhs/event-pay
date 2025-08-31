@@ -4,4 +4,4 @@ export { AuthSubmitButton } from "./AuthSubmitButton";
 export { AuthFormField, AuthEmailField } from "./AuthFormField";
 
 // 認証フック
-export { useAuthForm } from "@/lib/hooks/useAuthForm";
+export { useAuthForm } from "@features/auth/hooks/useAuthForm";

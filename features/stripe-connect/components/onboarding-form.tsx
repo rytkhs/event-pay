@@ -10,7 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Loader2, CreditCard, Shield, Zap } from "lucide-react";
 import { createConnectAccountAction } from "@/app/(dashboard)/actions/stripe-connect";
-import { logger } from "@/lib/logging/app-logger";
+import { logger } from "@core/logging/app-logger";
 
 interface OnboardingFormProps {
   refreshUrl: string;

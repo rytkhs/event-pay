@@ -1,9 +1,9 @@
 'use server'
 
-import { createClient } from '@/lib/supabase/server'
-import { SettlementReportService } from '@/lib/services/settlement-report/service'
-import { logger } from '@/lib/logging/app-logger'
-import { getCurrentUser } from '@/lib/auth/auth-utils'
+import { createClient } from '@core/supabase/server'
+import { SettlementReportService } from '@features/settlements/services/service'
+import { logger } from '@core/logging/app-logger'
+import { getCurrentUser } from '@core/auth/auth-utils'
 import { redirect } from 'next/navigation'
 import { z } from 'zod'
 

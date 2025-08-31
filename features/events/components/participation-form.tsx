@@ -3,13 +3,13 @@
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { EventDetail } from "@/lib/utils/invite-token";
+import { EventDetail } from "@core/utils/invite-token";
 import {
   participationFormSchema,
   type ParticipationFormData,
   validateParticipationField,
   sanitizeParticipationInput,
-} from "@/lib/validations/participation";
+} from "@core/validation/participation";
 import { PAYMENT_METHOD_LABELS } from "@/lib/constants/payment-methods";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -25,7 +25,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { ParticipationErrorBoundary } from "@/components/errors";
-import { useParticipationErrorHandler } from "@/hooks/use-error-handler";
+import { useParticipationErrorHandler } from "@core/hooks/use-error-handler";
 import { AlertTriangle } from "lucide-react";
 
 interface ParticipationFormProps {

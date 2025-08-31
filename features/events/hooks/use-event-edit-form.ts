@@ -4,15 +4,15 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useCallback, useEffect, useMemo, useTransition } from "react";
 import { z } from "zod";
-import { convertDatetimeLocalToUtc, formatUtcToDatetimeLocal } from "@/lib/utils/timezone";
-import { safeParseNumber, parseFee } from "@/lib/utils/number-parsers";
-import { useEventRestrictions } from "@/hooks/restrictions/use-event-restrictions";
-import { useEventChanges } from "@/hooks/changes/use-event-changes";
-import { useEventSubmission } from "@/hooks/submission/use-event-submission";
-import { logger } from "@/lib/logging/app-logger";
+import { convertDatetimeLocalToUtc, formatUtcToDatetimeLocal } from "@core/utils/timezone";
+import { safeParseNumber, parseFee } from "@core/utils/number-parsers";
+import { useEventRestrictions } from "@features/events/hooks/use-event-restrictions";
+import { useEventChanges } from "@features/events/hooks/use-event-changes";
+import { useEventSubmission } from "@features/events/hooks/use-event-submission";
+import { logger } from "@core/logging/app-logger";
 import type { Event, EventFormData } from "@/types/models";
 import type { ChangeItem } from "@/components/ui/change-confirmation-dialog";
-import { useErrorHandler } from "@/hooks/use-error-handler";
+import { useErrorHandler } from "@core/hooks/use-error-handler";
 
 interface UseEventEditFormProps {
   event: Event;

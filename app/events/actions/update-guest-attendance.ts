@@ -1,22 +1,22 @@
 "use server";
 
 import { SecureSupabaseClientFactory, AdminReason } from "@/lib/security";
-import { validateGuestToken } from "@/lib/utils/guest-token";
-import { validateGuestTokenFormat } from "@/lib/security/crypto";
+import { validateGuestToken } from "@core/utils/guest-token";
+import { validateGuestTokenFormat } from "@core/security/crypto";
 import {
   logInvalidTokenAccess,
   logParticipationSecurityEvent,
-} from "@/lib/security/security-logger";
-import { attendanceStatusSchema, paymentMethodSchema } from "@/lib/validations/participation";
+} from "@core/security/security-logger";
+import { attendanceStatusSchema, paymentMethodSchema } from "@core/validation/participation";
 import { PAYMENT_METHODS, PAYMENT_METHOD_LABELS } from "@/lib/constants/payment-methods";
 import type { Database } from "@/types/database";
 import { headers } from "next/headers";
-import { getClientIPFromHeaders } from "@/lib/utils/ip-detection";
+import { getClientIPFromHeaders } from "@core/utils/ip-detection";
 import {
   createServerActionError,
   createServerActionSuccess,
   type ServerActionResult
-} from "@/lib/types/server-actions";
+} from "@core/types/server-actions";
 
 // 更新データの型定義
 export interface UpdateGuestAttendanceInput {
@@ -70,7 +70,7 @@ export async function updateGuestAttendanceAction(
 
       // 開発環境では詳細ログも出力
       if (process.env.NODE_ENV === "development") {
-        const { logger } = await import("@/lib/logging/app-logger");
+        const { logger } = await import("@core/logging/app-logger");
         logger.warn("無効なゲストトークンによるアクセス", {
           tag: "updateGuestAttendance",
           token_prefix: guestToken.substring(0, 4),
@@ -288,7 +288,7 @@ export async function updateGuestAttendanceAction(
 
       // 開発環境ではより詳細なログを出力
       if (process.env.NODE_ENV === "development") {
-        const { logger } = await import("@/lib/logging/app-logger");
+        const { logger } = await import("@core/logging/app-logger");
         logger.error("RPC実行エラー", {
           tag: "updateGuestAttendance",
           error_message: error.message,
@@ -352,7 +352,7 @@ export async function updateGuestAttendanceAction(
   } catch (error) {
     // 予期しないエラーのログ記録
     if (process.env.NODE_ENV === "development") {
-      const { logger } = await import("@/lib/logging/app-logger");
+      const { logger } = await import("@core/logging/app-logger");
       logger.error("ゲスト参加状況更新で予期しないエラー", {
         tag: "updateGuestAttendance",
         error_name: error instanceof Error ? error.name : "Unknown",

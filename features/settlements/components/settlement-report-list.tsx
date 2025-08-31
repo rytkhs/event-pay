@@ -14,14 +14,14 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/contexts/toast-context";
 import { SettlementReportCard } from "./settlement-report-card";
-import { SettlementReportData } from "@/lib/services/settlement-report/types";
+import { SettlementReportData } from "@features/settlements/services/types";
 import {
   getSettlementReportsAction,
   exportSettlementReportsAction,
   regenerateAfterRefundAction,
 } from "@/app/actions/settlement-report-actions";
 import { FileDownIcon, RefreshCwIcon, SearchIcon } from "lucide-react";
-import { formatUtcToJstByType } from "@/lib/utils/timezone";
+import { formatUtcToJstByType } from "@core/utils/timezone";
 
 interface SettlementReportListProps {
   initialReports?: SettlementReportData[];

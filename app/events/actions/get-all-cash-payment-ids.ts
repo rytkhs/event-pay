@@ -1,14 +1,14 @@
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
-import { SecureSupabaseClientFactory } from "@/lib/security/secure-client-factory.impl";
-import { AdminReason } from "@/lib/security/secure-client-factory.types";
-import { verifyEventAccess, handleDatabaseError } from "@/lib/auth/event-authorization";
+import { createClient } from "@core/supabase/server";
+import { SecureSupabaseClientFactory } from "@core/security/secure-client-factory.impl";
+import { AdminReason } from "@core/security/secure-client-factory.types";
+import { verifyEventAccess, handleDatabaseError } from "@core/auth/event-authorization";
 import {
   GetAllCashPaymentIdsParamsSchema,
   type GetAllCashPaymentIdsResponse,
-} from "@/lib/validation/participant-management";
-import { logger } from "@/lib/logging/app-logger";
+} from "@core/validation/participant-management";
+import { logger } from "@core/logging/app-logger";
 
 /**
  * 条件に合致する「現金決済」の最新行の payment_id を全件返す

@@ -14,7 +14,7 @@ import {
 import { useToast } from "@/contexts/toast-context";
 import { generateSettlementReportAction } from "@/app/actions/settlement-report-actions";
 import { CalculatorIcon, FileTextIcon, AlertTriangleIcon } from "lucide-react";
-import { formatUtcToJstByType } from "@/lib/utils/timezone";
+import { formatUtcToJstByType } from "@core/utils/timezone";
 
 interface SettlementReportGeneratorProps {
   availableEvents?: {

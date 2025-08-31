@@ -4,13 +4,13 @@ import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { SettlementReportData } from "@/lib/services/settlement-report/types";
+import { SettlementReportData } from "@features/settlements/services/types";
 // Format currency helper
 const formatCurrency = (amount: number) => {
   return amount === 0 ? "無料" : `${amount.toLocaleString()}円`;
 };
 import { CalendarIcon, CreditCardIcon, TrendingDownIcon } from "lucide-react";
-import { formatUtcToJstByType } from "@/lib/utils/timezone";
+import { formatUtcToJstByType } from "@core/utils/timezone";
 
 interface SettlementReportCardProps {
   report: SettlementReportData;

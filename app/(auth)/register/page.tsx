@@ -14,7 +14,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { useRegisterFormRHF } from "@/lib/hooks/useAuthForm";
+import { useRegisterFormRHF } from "@features/auth/hooks/useAuthForm";
 import { registerAction } from "@/app/(auth)/actions";
 
 export default function RegisterPage() {

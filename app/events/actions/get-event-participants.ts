@@ -1,13 +1,13 @@
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
-import { verifyEventAccess, handleDatabaseError } from "@/lib/auth/event-authorization";
+import { createClient } from "@core/supabase/server";
+import { verifyEventAccess, handleDatabaseError } from "@core/auth/event-authorization";
 import {
   GetParticipantsParamsSchema,
   type GetParticipantsResponse,
   type ParticipantView
-} from "@/lib/validation/participant-management";
-import { logger } from "@/lib/logging/app-logger";
+} from "@core/validation/participant-management";
+import { logger } from "@core/logging/app-logger";
 
 /**
  * イベント参加者詳細一覧取得

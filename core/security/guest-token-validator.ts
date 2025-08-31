@@ -18,10 +18,10 @@ import {
 
   EventInfo,
 } from "./secure-client-factory.types";
-import { logger } from "@/lib/logging/app-logger";
-import { sanitizeForEventPay } from "@/lib/utils/sanitize";
+import { logger } from "@core/logging/app-logger";
+import { sanitizeForEventPay } from "@core/utils/sanitize";
 import type { Database } from "@/types/database";
-import { isValidIsoDateTimeString } from "@/lib/utils/timezone";
+import { isValidIsoDateTimeString } from "@core/utils/timezone";
 
 /**
  * ゲスト参加データの型定義（RLSベース）

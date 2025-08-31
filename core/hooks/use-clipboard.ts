@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { logger } from "@/lib/logging/app-logger";
+import { logger } from "@core/logging/app-logger";
 
 export function useClipboard() {
   const [isCopied, setIsCopied] = useState(false);

@@ -80,7 +80,7 @@ export {
 // 7. 管理者操作
 // ====================================================================
 // 循環依存を回避するため、admin-operationsは直接インポートしてください:
-// import { AdminOperations, deleteUserById } from "@/lib/security/admin-operations";
+// import { AdminOperations, deleteUserById } from "@core/security/admin-operations";
 export type { AdminOperationResult } from "./admin-operations.types";
 
 // ====================================================================

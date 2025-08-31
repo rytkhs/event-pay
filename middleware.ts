@@ -1,6 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
-import { generateSecureUuid } from '@/lib/security/crypto';
+import { generateSecureUuid } from '@core/security/crypto';
 
 const AFTER_LOGIN_REDIRECT_PATH = "/home";
 

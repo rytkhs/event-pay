@@ -3,7 +3,7 @@
  * RFC 7807 Problem Details のコード体系と統合
  */
 
-import { type ErrorCode as ProblemDetailsErrorCode } from "@/lib/api/problem-details";
+import { type ErrorCode as ProblemDetailsErrorCode } from "@core/api/problem-details";
 import { randomBytes } from "crypto";
 
 

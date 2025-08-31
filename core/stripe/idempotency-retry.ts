@@ -1,4 +1,4 @@
-import { logger } from "@/lib/logging/app-logger";
+import { logger } from "@core/logging/app-logger";
 
 /**
  * Execute a Stripe request with automatic handling of `idempotency_key_in_use` (HTTP 409).

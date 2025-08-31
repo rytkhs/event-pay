@@ -5,9 +5,9 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 // import type { PostgrestError } from "@supabase/supabase-js";
 import { Database } from "@/types/database";
-import { stripe } from "@/lib/stripe/client";
-import * as DestinationCharges from "@/lib/stripe/destination-charges";
-import { ApplicationFeeCalculator } from "@/lib/services/fee-config/application-fee-calculator";
+import { stripe } from "@core/stripe/client";
+import * as DestinationCharges from "@core/stripe/destination-charges";
+import { ApplicationFeeCalculator } from "@features/payments/services/fee-config/application-fee-calculator";
 import { IPaymentService, IPaymentErrorHandler } from "./interface";
 import {
   Payment,
@@ -23,7 +23,7 @@ import {
   ErrorHandlingResult,
 } from "./types";
 import { ERROR_HANDLING_BY_TYPE } from "./error-mapping";
-import { logger } from "@/lib/logging/app-logger";
+import { logger } from "@core/logging/app-logger";
 import { PostgrestError } from "@supabase/supabase-js";
 
 /**

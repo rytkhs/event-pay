@@ -1,4 +1,4 @@
-import { ServerActionResult } from "@/lib/hooks/useAuthForm";
+import { ServerActionResult } from "@features/auth/hooks/useAuthForm";
 
 interface AuthFormMessagesProps {
   state: ServerActionResult;

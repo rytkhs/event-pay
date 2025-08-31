@@ -6,15 +6,15 @@
 export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from "next/server";
-import { stripe } from "@/lib/stripe/client";
+import { stripe } from "@core/stripe/client";
 
-import { SecureSupabaseClientFactory } from "@/lib/security/secure-client-factory.impl";
-import { logger } from "@/lib/logging/app-logger";
-import { logSecurityEvent } from "@/lib/security/security-logger";
+import { SecureSupabaseClientFactory } from "@core/security/secure-client-factory.impl";
+import { logger } from "@core/logging/app-logger";
+import { logSecurityEvent } from "@core/security/security-logger";
 import { createRateLimitStore, checkRateLimit } from "@/lib/rate-limit";
 import { z } from "zod";
-import { createProblemResponse, createQueryValidationError } from "@/lib/api/problem-details";
-import { getClientIP } from "@/lib/utils/ip-detection";
+import { createProblemResponse, createQueryValidationError } from "@core/api/problem-details";
+import { getClientIP } from "@core/utils/ip-detection";
 
 // リクエストバリデーションスキーマ
 const VerifySessionSchema = z.object({

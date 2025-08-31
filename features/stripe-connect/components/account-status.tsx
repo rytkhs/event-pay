@@ -23,7 +23,7 @@ import {
   getConnectAccountStatusAction,
   createConnectAccountAction,
 } from "@/app/(dashboard)/actions/stripe-connect";
-import { logger } from "@/lib/logging/app-logger";
+import { logger } from "@core/logging/app-logger";
 import { STRIPE_ACCOUNT_STATUS_LABELS } from "@/types/enums";
 
 interface AccountStatusData {

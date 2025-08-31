@@ -2,8 +2,8 @@ import Link from "next/link";
 import { Event } from "@/types/event";
 import { memo, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { formatUtcToJstByType } from "@/lib/utils/timezone";
-import { sanitizeForEventPay } from "@/lib/utils/sanitize";
+import { formatUtcToJstByType } from "@core/utils/timezone";
+import { sanitizeForEventPay } from "@core/utils/sanitize";
 import { EVENT_STATUS_LABELS } from "@/types/enums";
 
 interface EventCardProps {

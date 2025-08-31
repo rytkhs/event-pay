@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createProblemResponse } from "@/lib/api/problem-details";
-import { stripe as sharedStripe } from "@/lib/stripe/client";
-import { validateCronSecret, logCronActivity } from "@/lib/cron-auth";
-import { EmailNotificationService } from "@/lib/services/notification/email-service";
+import { createProblemResponse } from "@core/api/problem-details";
+import { stripe as sharedStripe } from "@core/stripe/client";
+import { validateCronSecret, logCronActivity } from "@core/cron-auth";
+import { EmailNotificationService } from "@core/notification/email-service";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";

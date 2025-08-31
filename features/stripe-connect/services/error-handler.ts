@@ -15,7 +15,7 @@ import {
   STRIPE_ERROR_CODE_MAPPING,
   POSTGRES_ERROR_CODE_MAPPING,
 } from "./error-mapping";
-import { logger, type LogLevel } from "@/lib/logging/app-logger";
+import { logger, type LogLevel } from "@core/logging/app-logger";
 
 /**
  * StripeConnect エラーハンドラーの実装クラス

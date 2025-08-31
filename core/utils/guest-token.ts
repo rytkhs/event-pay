@@ -1,8 +1,8 @@
-import { generateRandomBytes, toBase64UrlSafe } from "@/lib/security/crypto";
+import { generateRandomBytes, toBase64UrlSafe } from "@core/security/crypto";
 import {
   validateGuestTokenRLS,
   type RLSGuestAttendanceData,
-} from "@/lib/security/guest-token-validator";
+} from "@core/security/guest-token-validator";
 import type { Database } from "@/types/database";
 
 /**
@@ -63,7 +63,7 @@ export async function validateGuestToken(guestToken: string): Promise<{
   attendance?: GuestAttendanceData;
   errorMessage?: string;
   canModify: boolean;
-  errorCode?: import("@/lib/security/secure-client-factory.types").GuestErrorCode;
+  errorCode?: import("@core/security/secure-client-factory.types").GuestErrorCode;
 }> {
   try {
     // 新しいRLSベースのバリデーターを使用
@@ -79,7 +79,7 @@ export async function validateGuestToken(guestToken: string): Promise<{
     };
   } catch (error) {
     if (process.env.NODE_ENV === "development") {
-      const { logger } = await import("@/lib/logging/app-logger");
+      const { logger } = await import("@core/logging/app-logger");
       logger.error("ゲストトークン検証エラー", {
         tag: "guestToken",
         error_name: error instanceof Error ? error.name : "Unknown",
@@ -90,7 +90,7 @@ export async function validateGuestToken(guestToken: string): Promise<{
       isValid: false,
       errorMessage: "参加データの取得中にエラーが発生しました",
       canModify: false,
-      errorCode: "TOKEN_NOT_FOUND" as import("@/lib/security/secure-client-factory.types").GuestErrorCode,
+      errorCode: "TOKEN_NOT_FOUND" as import("@core/security/secure-client-factory.types").GuestErrorCode,
     };
   }
 }

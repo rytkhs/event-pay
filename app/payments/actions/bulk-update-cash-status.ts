@@ -1,10 +1,10 @@
 "use server";
 
 import { z } from "zod";
-import { SecureSupabaseClientFactory } from "@/lib/security/secure-client-factory.impl";
-import { AdminReason } from "@/lib/security/secure-client-factory.types";
+import { SecureSupabaseClientFactory } from "@core/security/secure-client-factory.impl";
+import { AdminReason } from "@core/security/secure-client-factory.types";
 import { PaymentValidator } from "@/lib/services/payment";
-import { PaymentError, PaymentErrorType } from "@/lib/services/payment/types";
+import { PaymentError, PaymentErrorType } from "@features/payments/services/types";
 import { createRateLimitStore, checkRateLimit } from "@/lib/rate-limit";
 import { RATE_LIMIT_CONFIG } from "@/config/security";
 import {
@@ -12,7 +12,7 @@ import {
   createServerActionError,
   createServerActionSuccess,
   type ErrorCode,
-} from "@/lib/types/server-actions";
+} from "@core/types/server-actions";
 
 const inputSchema = z.object({
   paymentIds: z.array(z.string().uuid()).min(1).max(50), // 最大50件まで

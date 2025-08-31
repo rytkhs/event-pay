@@ -3,7 +3,7 @@
  * 決済・個人情報を扱うアプリケーションとして最高レベルのセキュリティを確保
  */
 
-import { RateLimitConfig } from "@/lib/rate-limit/types";
+import { RateLimitConfig } from "@core/rate-limit/types";
 
 // レート制限設定
 export const RATE_LIMIT_CONFIG = {

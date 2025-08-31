@@ -1,7 +1,7 @@
 import { FeeConfigService, type PlatformFeeConfig } from './service';
 import { type SupabaseClient } from '@supabase/supabase-js';
 import { Database } from '@/types/database';
-import { logger } from '@/lib/logging/app-logger';
+import { logger } from '@core/logging/app-logger';
 
 /**
  * Application Fee 計算結果

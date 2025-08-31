@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback } from "react";
-import { parseCapacity } from "@/lib/utils/number-parsers";
+import { parseCapacity } from "@core/utils/number-parsers";
 import type { EventFormData } from "@/types/models";
 
 interface UseEventRestrictionsProps {

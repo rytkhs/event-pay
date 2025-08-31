@@ -4,14 +4,14 @@
 
 import { Suspense } from "react";
 import { Metadata } from "next";
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@core/supabase/server";
 import { redirect } from "next/navigation";
 import { OnboardingForm } from "@/components/stripe-connect/onboarding-form";
 import { AccountStatus } from "@/components/stripe-connect/account-status";
 import { createUserStripeConnectService } from "@/lib/services/stripe-connect";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { CONNECT_REFRESH_PATH, CONNECT_RETURN_PATH } from "@/lib/routes/stripe-connect";
+import { CONNECT_REFRESH_PATH, CONNECT_RETURN_PATH } from "@core/routes/stripe-connect";
 
 export const metadata: Metadata = {
   title: "Stripe Connect 設定 | EventPay",

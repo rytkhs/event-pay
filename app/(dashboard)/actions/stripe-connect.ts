@@ -4,16 +4,16 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@core/supabase/server";
 import { createUserStripeConnectService } from "@/lib/services/stripe-connect";
-import { StripeConnectError, StripeConnectErrorType } from "@/lib/services/stripe-connect/types";
+import { StripeConnectError, StripeConnectErrorType } from "@features/stripe-connect/services/types";
 import { z } from "zod";
 import {
   CONNECT_REFRESH_SUFFIX,
   CONNECT_RETURN_SUFFIX,
   isAllowedConnectPath,
-} from "@/lib/routes/stripe-connect";
-import { logger } from "@/lib/logging/app-logger";
+} from "@core/routes/stripe-connect";
+import { logger } from "@core/logging/app-logger";
 
 // バリデーションスキーマ
 const CreateConnectAccountSchema = z.object({

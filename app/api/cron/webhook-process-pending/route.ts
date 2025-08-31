@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createProblemResponse } from "@/lib/api/problem-details";
-import { validateCronSecret, logCronActivity } from "@/lib/cron-auth";
-import { stripe as sharedStripe } from "@/lib/stripe/client";
-import { SupabaseWebhookIdempotencyService, IdempotentWebhookProcessor } from "@/lib/services/webhook/webhook-idempotency";
-import { StripeWebhookEventHandler } from "@/lib/services/webhook/webhook-event-handler";
+import { createProblemResponse } from "@core/api/problem-details";
+import { validateCronSecret, logCronActivity } from "@core/cron-auth";
+import { stripe as sharedStripe } from "@core/stripe/client";
+import { SupabaseWebhookIdempotencyService, IdempotentWebhookProcessor } from "@features/payments/services/webhook/webhook-idempotency";
+import { StripeWebhookEventHandler } from "@features/payments/services/webhook/webhook-event-handler";
 
-import { ConnectWebhookHandler } from "@/lib/services/webhook/connect-webhook-handler";
+import { ConnectWebhookHandler } from "@features/payments/services/webhook/connect-webhook-handler";
 import Stripe from "stripe";
 
 export const runtime = "nodejs";

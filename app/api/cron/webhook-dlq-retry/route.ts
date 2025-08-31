@@ -1,16 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createProblemResponse } from '@/lib/api/problem-details';
-import { stripe as sharedStripe } from '@/lib/stripe/client';
-import { StripeWebhookEventHandler } from '@/lib/services/webhook/webhook-event-handler';
+import { createProblemResponse } from '@core/api/problem-details';
+import { stripe as sharedStripe } from '@core/stripe/client';
+import { StripeWebhookEventHandler } from '@features/payments/services/webhook/webhook-event-handler';
 import {
   SupabaseWebhookIdempotencyService,
   IdempotentWebhookProcessor,
-} from '@/lib/services/webhook/webhook-idempotency';
-import { logger } from '@/lib/logging/app-logger';
+} from '@features/payments/services/webhook/webhook-idempotency';
+import { logger } from '@core/logging/app-logger';
 import type { WebhookProcessingResult } from '@/lib/services/webhook';
 import { createClient } from '@supabase/supabase-js';
 import { Database } from '@/types/database';
-import { validateCronSecret } from '@/lib/cron-auth';
+import { validateCronSecret } from '@core/cron-auth';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';

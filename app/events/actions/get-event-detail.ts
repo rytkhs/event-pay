@@ -1,14 +1,14 @@
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
-import { validateEventId } from "@/lib/validations/event-id";
+import { createClient } from "@core/supabase/server";
+import { validateEventId } from "@core/validation/event-id";
 import { redirect } from "next/navigation";
-import { logger } from "@/lib/logging/app-logger";
+import { logger } from "@core/logging/app-logger";
 import {
   createServerActionError,
   createServerActionSuccess,
   type ServerActionResult
-} from "@/lib/types/server-actions";
+} from "@core/types/server-actions";
 
 import type { EventDetail as DetailType } from "@/types/models";
 

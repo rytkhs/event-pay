@@ -3,7 +3,7 @@
 // ゲストトークンエラー関連の型をインポート
 export {
   GuestErrorCode,
-} from "@/lib/security/guest-token-errors";
+} from "@core/security/guest-token-errors";
 
 // 管理者権限使用理由
 export enum AdminReason {
@@ -103,6 +103,6 @@ export interface TimeRange {
 }
 
 // AuditContext型をaudit-types.tsから再エクスポート
-export type { AuditContext } from "@/lib/security/audit-types";
+export type { AuditContext } from "@core/security/audit-types";
 
 // 管理者権限エラー - lib/security/secure-client-factory.types.ts から利用

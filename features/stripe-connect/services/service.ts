@@ -5,9 +5,9 @@
 import { type SupabaseClient } from "@supabase/supabase-js";
 import Stripe from "stripe";
 import { Database } from "@/types/database";
-import { stripe } from "@/lib/stripe/client";
+import { stripe } from "@core/stripe/client";
 import { IStripeConnectService, IStripeConnectErrorHandler } from "./interface";
-import { logger } from "@/lib/logging/app-logger";
+import { logger } from "@core/logging/app-logger";
 import {
   StripeConnectAccount,
   CreateExpressAccountParams,

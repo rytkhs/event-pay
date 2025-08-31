@@ -14,8 +14,8 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { useEventForm } from "@/hooks/use-event-form";
-import { getMinDatetimeLocal } from "@/lib/utils/timezone";
+import { useEventForm } from "@features/events/hooks/use-event-form";
+import { getMinDatetimeLocal } from "@core/utils/timezone";
 
 /**
  * react-hook-formを使用したイベント作成フォーム

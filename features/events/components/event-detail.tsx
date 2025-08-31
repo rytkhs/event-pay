@@ -1,8 +1,8 @@
 "use client";
 
 import { PaymentMethod, PAYMENT_METHOD_LABELS } from "@/lib/constants/payment-methods";
-import { sanitizeEventDescription, sanitizeForEventPay } from "@/lib/utils/sanitize";
-import { formatUtcToJstByType } from "@/lib/utils/timezone";
+import { sanitizeEventDescription, sanitizeForEventPay } from "@core/utils/sanitize";
+import { formatUtcToJstByType } from "@core/utils/timezone";
 import { EVENT_STATUS_LABELS } from "@/types/enums";
 
 interface EventDetailProps {

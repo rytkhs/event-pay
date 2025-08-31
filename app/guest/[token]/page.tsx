@@ -2,17 +2,17 @@ import { Metadata } from "next";
 import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import { cache } from "react";
-import { validateGuestToken } from "@/lib/utils/guest-token";
-import { sanitizeForEventPay } from "@/lib/utils/sanitize";
+import { validateGuestToken } from "@core/utils/guest-token";
+import { sanitizeForEventPay } from "@core/utils/sanitize";
 import { GuestManagementForm } from "@/components/events/guest-management-form";
 import { PaymentStatusAlert } from "@/components/events/payment-status-alert";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { AlertCircle, ArrowLeft } from "lucide-react";
 import Link from "next/link";
-import { logInvalidTokenAccess } from "@/lib/security/security-logger";
-import { getClientIPFromHeaders } from "@/lib/utils/ip-detection";
-import { logUnexpectedGuestPageError } from "@/lib/security/security-logger";
+import { logInvalidTokenAccess } from "@core/security/security-logger";
+import { getClientIPFromHeaders } from "@core/utils/ip-detection";
+import { logUnexpectedGuestPageError } from "@core/security/security-logger";
 
 // リクエスト内で検証結果を共有し、DB クエリを 1 回に抑える
 const getGuestValidation = cache(async (token: string) => validateGuestToken(token));
@@ -174,7 +174,7 @@ export default async function GuestPage({ params, searchParams }: GuestPageProps
     );
   } catch (error) {
     // 予期しないエラーの場合は構造化ログを記録して404を返す
-    const { getErrorDetails, logError } = await import("@/lib/utils/error-handler");
+    const { getErrorDetails, logError } = await import("@core/utils/error-handler");
 
     // リクエスト情報を取得（エラーハンドリング用）
     const errorHeadersList = headers();
@@ -195,7 +195,7 @@ export default async function GuestPage({ params, searchParams }: GuestPageProps
     logError(getErrorDetails("GUEST_TOKEN_VALIDATION_FAILED"), errorContext);
 
     if (process.env.NODE_ENV === "development") {
-      const { logger } = await import("@/lib/logging/app-logger");
+      const { logger } = await import("@core/logging/app-logger");
       logger.error("ゲストページでエラーが発生", {
         tag: "guestPage",
         error_name: error instanceof Error ? error.name : "Unknown",

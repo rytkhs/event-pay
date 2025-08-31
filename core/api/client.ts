@@ -3,7 +3,7 @@
  * RFC 7807 Problem Details 対応
  */
 
-import { type ProblemDetails } from "@/lib/api/problem-details";
+import { type ProblemDetails } from "@core/api/problem-details";
 
 /**
  * API エラークラス
