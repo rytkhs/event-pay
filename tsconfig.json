@@ -72,6 +72,33 @@
       ],
       "@/lib/services/notification/*": [
         "./core/notification/*"
+      ],
+      "@components/auth": [
+        "./features/auth/components/index.ts"
+      ],
+      "@components/settlement-report": [
+        "./features/settlements/components/index.ts"
+      ],
+      "@/components/auth": [
+        "./features/auth/components/index.ts"
+      ],
+      "@/components/settlement-report": [
+        "./features/settlements/components/index.ts"
+      ],
+      "@/lib/services/payment": [
+        "./features/payments/services/index.ts"
+      ],
+      "@/lib/services/stripe-connect": [
+        "./features/stripe-connect/services/index.ts"
+      ],
+      "@/lib/services/webhook": [
+        "./features/payments/services/webhook/index.ts"
+      ],
+      "@/lib/services/notification": [
+        "./core/notification/index.ts"
+      ],
+      "@/lib/services/notification/types": [
+        "./core/notification/types.ts"
       ]
     }
   },
