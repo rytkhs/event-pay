@@ -117,6 +117,18 @@
       ],
       "@/types/event": [
         "./features/events/types.ts"
+      ],
+      "@/lib/hooks/*": [
+        "./core/hooks/*"
+      ],
+      "@core/hooks/*": [
+        "./core/hooks/*"
+      ],
+      "@features/auth/hooks/*": [
+        "./features/auth/hooks/*"
+      ],
+      "@features/events/hooks/*": [
+        "./features/events/hooks/*"
       ]
     }
   },
