@@ -79,3 +79,12 @@ playwright-report/
 test-results/
 
 .kiro/
+
+\!memo.md
+.github/
+.windsurf/
+STRIPE_PAYOUT_IMPROVEMENT_PLAN.md
+STRIPE_PAYOUT_TASKS.md
+comprehensive-review-checklist.md
+temp.md
+temp2.md
