@@ -36,40 +36,6 @@ export function toBase64UrlSafe(bytes: Uint8Array): string {
 }
 
 /**
- * 暗号学的に安全な乱数生成器を使用してトークンを生成
- * @param length バイト長（デフォルト: 32バイト = 64文字の16進数）
- * @returns 16進数文字列のトークン
- */
-export function generateSecureToken(length: number = 32): string {
-  const bytes = generateRandomBytes(length);
-  return Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
-}
-
-/**
- * 6桁の数字OTPコードを生成
- * リジェクションサンプリングを使用して統計的バイアスを除去
- * @returns 6桁の数字文字列
- */
-export function generateOtpCode(): string {
-  const max = 1000000; // 10^6
-  const maxValidValue = Math.floor(0xffffffff / max) * max; // バイアス除去のための閾値
-  let randomNumber: number;
-
-  // リジェクションサンプリング：バイアス除去のため安全な範囲まで再試行
-  do {
-    // 4バイト（32ビット）の暗号学的に安全な乱数を生成
-    const bytes = generateRandomBytes(4);
-    // Uint8Arrayからunsigned 32bit integerを作成（big-endian）
-    randomNumber = (bytes[0] << 24) | (bytes[1] << 16) | (bytes[2] << 8) | bytes[3];
-    // >>> 0 で符号なし32ビット整数に変換
-    randomNumber = randomNumber >>> 0;
-  } while (randomNumber >= maxValidValue);
-
-  const otp = randomNumber % max;
-  return otp.toString().padStart(6, "0");
-}
-
-/**
  * トークンのハッシュ化（SHA-256）
  * @param token 元のトークン
  * @returns SHA-256ハッシュ
@@ -99,33 +65,6 @@ export function constantTimeCompare(a: string, b: string): boolean {
 }
 
 /**
- * ハッシュ化された値同士の定数時間比較
- * @param inputHash 入力のハッシュ
- * @param storedHash 保存されているハッシュ
- * @returns 一致するかどうか
- */
-export function verifyHashedToken(inputToken: string, storedHash: string): boolean {
-  const inputHash = hashToken(inputToken);
-  return constantTimeCompare(inputHash, storedHash);
-}
-
-/**
- * OTPコードの定数時間比較（6桁数字専用）
- * @param inputOtp 入力されたOTPコード
- * @param storedOtp 保存されているOTPコード
- * @returns 一致するかどうか
- */
-export function verifyOtpCode(inputOtp: string, storedOtp: string): boolean {
-  // 6桁の数字のみ許可
-  const otpPattern = /^\d{6}$/;
-  if (!otpPattern.test(inputOtp) || !otpPattern.test(storedOtp)) {
-    return false;
-  }
-
-  return constantTimeCompare(inputOtp, storedOtp);
-}
-
-/**
  * ランダムな遅延を追加（タイミング正規化）
  * @param minMs 最小遅延時間（ミリ秒）
  * @param maxMs 最大遅延時間（ミリ秒）
@@ -133,29 +72,6 @@ export function verifyOtpCode(inputOtp: string, storedOtp: string): boolean {
 export async function randomDelay(minMs: number = 100, maxMs: number = 500): Promise<void> {
   const delay = Math.random() * (maxMs - minMs) + minMs;
   return new Promise((resolve) => setTimeout(resolve, delay));
-}
-
-/**
- * セキュアなランダム整数生成
- * @param min 最小値（含む）
- * @param max 最大値（含む）
- * @returns セキュアなランダム整数
- */
-export function secureRandomInt(min: number, max: number): number {
-  const range = max - min + 1;
-  const byteCount = Math.ceil(Math.log2(range) / 8);
-  const maxValid = Math.floor(256 ** byteCount / range) * range - 1;
-
-  let randomValue;
-  do {
-    const bytes = generateRandomBytes(byteCount);
-    randomValue = 0;
-    for (let i = 0; i < byteCount; i++) {
-      randomValue = (randomValue << 8) | bytes[i];
-    }
-  } while (randomValue > maxValid);
-
-  return min + (randomValue % range);
 }
 
 /**
@@ -189,12 +105,3 @@ export function validateGuestTokenFormat(token: string): boolean {
   // 36文字のプレフィックス付きBase64URL形式をチェック（gst_プレフィックス + 32文字）
   return /^gst_[a-zA-Z0-9_-]{32}$/.test(token);
 }
-
-/**
- * テスト用のヘルパー関数
- */
-export const __testing__ = {
-  constantTimeCompare,
-  verifyOtpCode,
-  hashToken,
-};

@@ -8,17 +8,3 @@ export interface AdminOperationResult<T = unknown> {
   auditId?: string;
   timestamp: Date;
 }
-
-/**
- * 管理者操作のコンテキスト型定義
- */
-export interface AdminOperationContext {
-  userId?: string;
-  sessionId?: string;
-  ipAddress?: string;
-  userAgent?: string;
-  requestId?: string;
-  operationType: string;
-  reason: string;
-  additionalContext?: Record<string, unknown>;
-}

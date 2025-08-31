@@ -1,14 +1,17 @@
 /**
- * 型安全なFormData抽出ユーティリティ
+ * イベント専用FormData抽出ユーティリティ
  *
- * 全てのServer Actionsで共通利用可能な、型安全なFormData抽出機能を提供
+ * イベント作成・更新のServer Actions向けの型安全なFormData抽出機能を提供
  * nullチェックと空文字チェックを統一的に処理
  */
 
+import type { UpdateEventFormData } from "@/lib/validations/event";
+
 /**
  * 型安全な値抽出関数（オプショナル）
+ * 内部実装用のヘルパー関数
  */
-export function extractOptionalValue(formData: FormData, key: string): string | undefined {
+function extractOptionalValue(formData: FormData, key: string): string | undefined {
   const value = formData.get(key) as string | null;
   // nullと空文字をundefinedに変換
   return value !== null && value !== "" ? value : undefined;
@@ -16,8 +19,9 @@ export function extractOptionalValue(formData: FormData, key: string): string | 
 
 /**
  * 型安全な値抽出関数（必須）
+ * 内部実装用のヘルパー関数
  */
-export function extractRequiredValue(formData: FormData, key: string): string {
+function extractRequiredValue(formData: FormData, key: string): string {
   const value = formData.get(key) as string | null;
   // nullの場合は空文字列を返す（必須フィールドのデフォルト値）
   return value !== null && value !== "" ? value : "";
@@ -25,8 +29,9 @@ export function extractRequiredValue(formData: FormData, key: string): string {
 
 /**
  * 型安全な配列値抽出関数
+ * 内部実装用のヘルパー関数
  */
-export function extractArrayValues(formData: FormData, key: string): string[] | undefined {
+function extractArrayValues(formData: FormData, key: string): string[] | undefined {
   const values = formData.getAll(key) as string[];
   const filteredValues = values.filter((v) => v !== null && v !== "");
   return filteredValues.length > 0 ? filteredValues : undefined;
@@ -34,27 +39,32 @@ export function extractArrayValues(formData: FormData, key: string): string[] | 
 
 /**
  * 型安全な数値抽出関数
+ * 内部実装用のヘルパー関数
  */
-export function extractNumberValue(formData: FormData, key: string): number | undefined {
+function extractNumberValue(formData: FormData, key: string): number | undefined {
   const value = extractOptionalValue(formData, key);
   if (!value) return undefined;
 
+  // safeParseNumberを使用して型安全な変換を行う
   const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : undefined;
+  if (!Number.isFinite(parsed)) return undefined;
+  return parsed !== 0 || value.trim() !== "" ? parsed : undefined;
 }
 
 /**
  * 型安全なブール値抽出関数
+ * 内部実装用のヘルパー関数
  */
-export function extractBooleanValue(formData: FormData, key: string): boolean {
+function extractBooleanValue(formData: FormData, key: string): boolean {
   const value = formData.get(key) as string | null;
   return value === "true" || value === "on";
 }
 
 /**
  * FormData抽出のベースインターフェース
+ * 内部実装用
  */
-export interface FormDataExtractor {
+interface FormDataExtractor {
   extractOptionalValue: (key: string) => string | undefined;
   extractRequiredValue: (key: string) => string;
   extractArrayValues: (key: string) => string[] | undefined;
@@ -64,8 +74,9 @@ export interface FormDataExtractor {
 
 /**
  * FormData抽出器のファクトリー関数
+ * 内部実装用のヘルパー関数
  */
-export function createFormDataExtractor(formData: FormData): FormDataExtractor {
+function createFormDataExtractor(formData: FormData): FormDataExtractor {
   return {
     extractOptionalValue: (key) => extractOptionalValue(formData, key),
     extractRequiredValue: (key) => extractRequiredValue(formData, key),
@@ -77,8 +88,9 @@ export function createFormDataExtractor(formData: FormData): FormDataExtractor {
 
 /**
  * イベント作成用のFormData抽出
+ * 内部実装用
  */
-export interface EventCreateFormData {
+interface EventCreateFormData {
   title: string;
   date: string;
   fee: string;
@@ -108,20 +120,10 @@ export function extractEventCreateFormData(formData: FormData): EventCreateFormD
 
 /**
  * イベント更新用のFormData抽出
+ * バリデーションスキーマと一致する型を使用
  */
-export interface EventUpdateFormData {
-  title?: string;
-  date?: string;
-  fee?: string;
-  payment_methods?: string[];
-  location?: string;
-  description?: string;
-  capacity?: string;
-  registration_deadline?: string;
-  payment_deadline?: string;
-}
 
-export function extractEventUpdateFormData(formData: FormData): EventUpdateFormData {
+export function extractEventUpdateFormData(formData: FormData): Partial<UpdateEventFormData> {
   const extractor = createFormDataExtractor(formData);
 
   return {

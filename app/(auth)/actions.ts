@@ -11,6 +11,8 @@ import {
   InputSanitizer,
   ACCOUNT_LOCKOUT_CONFIG,
   TEST_ACCOUNT_LOCKOUT_CONFIG,
+  type LockoutResult,
+  type LockoutStatus,
 } from "@/lib/auth-security";
 import { headers } from "next/headers";
 import { formatUtcToJst } from "@/lib/utils/timezone";
@@ -242,7 +244,7 @@ export async function loginAction(formData: FormData): Promise<ActionResult<{ us
     }
 
     // アカウントロックアウト状態確認
-    const lockoutStatus = await AccountLockoutService.checkLockoutStatus(sanitizedEmail);
+    const lockoutStatus: LockoutStatus = await AccountLockoutService.checkLockoutStatus(sanitizedEmail);
     if (lockoutStatus.isLocked) {
       await TimingAttackProtection.normalizeResponseTime(async () => { }, 300);
       return {
@@ -271,7 +273,7 @@ export async function loginAction(formData: FormData): Promise<ActionResult<{ us
       });
 
       // ログイン失敗をアカウントロックアウトに記録
-      const lockoutResult = await AccountLockoutService.recordFailedAttempt(sanitizedEmail);
+      const lockoutResult: LockoutResult = await AccountLockoutService.recordFailedAttempt(sanitizedEmail);
 
       // アカウントロックアウトが発生した場合
       if (lockoutResult.isLocked) {

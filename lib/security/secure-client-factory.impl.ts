@@ -12,12 +12,8 @@ import type { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 
 import { validateGuestTokenFormat } from "./crypto";
-import { logger } from "@/lib/logging/app-logger";
-
 import {
   ISecureSupabaseClientFactory,
-  IGuestTokenValidator,
-  ISecurityAuditor,
 } from "./secure-client-factory.interface";
 import {
   AdminReason,
@@ -27,15 +23,9 @@ import {
   AdminAccessErrorCode,
   AuditContext,
   ClientCreationOptions,
-  GuestValidationResult,
-  GuestSession,
-  GuestPermission,
-  EventInfo,
 } from "./secure-client-factory.types";
-import { SecurityAuditorImpl } from "./security-auditor.impl";
-import { isValidEventInfo } from "./type-guards";
+import { logger } from "@/lib/logging/app-logger";
 import { COOKIE_CONFIG, AUTH_CONFIG, getCookieConfig } from "@/config/security";
-import { isValidIsoDateTimeString } from "@/lib/utils/timezone";
 
 /**
  * セキュアSupabaseクライアントファクトリーの実装
@@ -45,7 +35,7 @@ export class SecureSupabaseClientFactory implements ISecureSupabaseClientFactory
   private readonly supabaseUrl: string;
   private readonly anonKey: string;
   private readonly serviceRoleKey: string;
-  private readonly auditor: ISecurityAuditor;
+  // Security auditor removed
 
   constructor() {
     this.supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
@@ -56,7 +46,7 @@ export class SecureSupabaseClientFactory implements ISecureSupabaseClientFactory
       throw new Error("Supabase environment variables are not configured");
     }
 
-    this.auditor = new SecurityAuditorImpl();
+    // Security auditor removed
   }
 
   /**
@@ -197,7 +187,7 @@ export class SecureSupabaseClientFactory implements ISecureSupabaseClientFactory
 
     // 監査ログを記録
     try {
-      const fullAuditContext: AuditContext = {
+      const _fullAuditContext: AuditContext = {
         userId: auditContext?.userId,
         ipAddress: auditContext?.ipAddress,
         userAgent: auditContext?.userAgent,
@@ -211,7 +201,7 @@ export class SecureSupabaseClientFactory implements ISecureSupabaseClientFactory
         },
       };
 
-      await this.auditor.logAdminAccess(reason, context, fullAuditContext);
+      logger.info('Admin access logged', { reason, context });
     } catch (error) {
       throw new AdminAccessError(
         AdminAccessErrorCode.AUDIT_LOG_FAILED,
@@ -317,269 +307,8 @@ export class SecureSupabaseClientFactory implements ISecureSupabaseClientFactory
 }
 
 /**
- * RLSポリシーベースのゲストトークンバリデーター実装
- */
-export class RLSBasedGuestValidator implements IGuestTokenValidator {
-  private readonly clientFactory: SecureSupabaseClientFactory;
-  private readonly auditor: ISecurityAuditor;
-
-  constructor() {
-    this.clientFactory = SecureSupabaseClientFactory.getInstance();
-    this.auditor = new SecurityAuditorImpl();
-  }
-
-  /**
-   * ゲストトークンを検証
-   * RLSポリシーを使用してトークンの有効性を確認
-   */
-  async validateToken(token: string): Promise<GuestValidationResult> {
-    // 基本フォーマット検証
-    if (!validateGuestTokenFormat(token)) {
-      // 監査ログの失敗はビジネスロジックを妨げない
-      await this.safeLogGuestAccess(token, "VALIDATE_TOKEN", false, {
-        errorCode: GuestErrorCode.INVALID_FORMAT,
-      });
-
-      return {
-        isValid: false,
-        errorCode: GuestErrorCode.INVALID_FORMAT,
-        canModify: false,
-      };
-    }
-
-    try {
-      // ゲストクライアントを作成（X-Guest-Tokenヘッダー自動設定）
-      const guestClient = this.clientFactory.createGuestClient(token);
-
-      // RLSポリシーにより、該当するattendanceのみ取得される
-      const { data: attendance, error } = await guestClient
-        .from("attendances")
-        .select(
-          `
-          id,
-          event_id,
-          status,
-          event:events (
-            id,
-            date,
-            registration_deadline,
-            status
-          )
-        `
-        )
-        .single(); // トークンが有効なら必ず1件のみ取得される
-
-      if (error || !attendance) {
-        // 監査ログの失敗はビジネスロジックを妨げない
-        await this.safeLogGuestAccess(token, "VALIDATE_TOKEN", false, {
-          errorCode: GuestErrorCode.TOKEN_NOT_FOUND,
-          errorMessage: error?.message,
-        });
-
-        return {
-          isValid: false,
-          errorCode: GuestErrorCode.TOKEN_NOT_FOUND,
-          canModify: false,
-        };
-      }
-
-      // 変更可能性をチェック
-      const canModify = this.checkCanModify(attendance.event);
-
-      // 成功をログに記録（監査ログの失敗はビジネスロジックを妨げない）
-      await this.safeLogGuestAccess(token, "VALIDATE_TOKEN", true, {
-        attendanceId: attendance.id,
-        eventId: attendance.event_id,
-        resultCount: 1,
-      });
-
-      return {
-        isValid: true,
-        attendanceId: attendance.id,
-        eventId: attendance.event_id,
-        canModify,
-      };
-    } catch (error) {
-      // RLSポリシー違反やその他のエラー
-      // 監査ログの失敗はビジネスロジックを妨げない
-      await this.safeLogGuestAccess(token, "VALIDATE_TOKEN", false, {
-        errorCode: GuestErrorCode.TOKEN_NOT_FOUND,
-        errorMessage: String(error),
-      });
-
-      return {
-        isValid: false,
-        errorCode: GuestErrorCode.TOKEN_NOT_FOUND,
-        canModify: false,
-      };
-    }
-  }
-
-  /**
-   * ゲストセッションを作成
-   */
-  async createGuestSession(token: string): Promise<GuestSession> {
-    const validationResult = await this.validateToken(token);
-
-    if (!validationResult.isValid || !validationResult.attendanceId || !validationResult.eventId) {
-      throw new GuestTokenError(
-        validationResult.errorCode || GuestErrorCode.TOKEN_NOT_FOUND,
-        "Cannot create session for invalid token"
-      );
-    }
-
-    // セッション有効期限を設定（イベント開始時刻まで、または24時間後のいずれか短い方）
-    const expiresAt = new Date();
-    expiresAt.setHours(expiresAt.getHours() + 24); // デフォルト24時間
-
-    // 基本的な権限を設定
-    const permissions: GuestPermission[] = [
-      GuestPermission.READ_ATTENDANCE,
-      GuestPermission.READ_EVENT,
-      GuestPermission.READ_PAYMENT,
-    ];
-
-    if (validationResult.canModify) {
-      permissions.push(GuestPermission.UPDATE_ATTENDANCE);
-    }
-
-    return {
-      token,
-      attendanceId: validationResult.attendanceId,
-      eventId: validationResult.eventId,
-      expiresAt,
-      permissions,
-    };
-  }
-
-  /**
-   * 変更権限をチェック
-   */
-  async checkModificationPermissions(token: string): Promise<boolean> {
-    const validationResult = await this.validateToken(token);
-    return validationResult.canModify;
-  }
-
-  /**
-   * トークンの基本フォーマットを検証
-   */
-  validateTokenFormat(token: string): boolean {
-    return validateGuestTokenFormat(token);
-  }
-
-  /**
-   * イベント情報の型ガード（型ガードファイルの関数を使用）
-   */
-  private isValidEventInfo(event: unknown): event is EventInfo {
-    return isValidEventInfo(event);
-  }
-
-  /**
-   * 日付文字列の有効性をチェック
-   */
-  private isValidDateString(dateStr: string): boolean {
-    return isValidIsoDateTimeString(dateStr);
-  }
-
-  /**
-   * イベント情報から変更可能性を判定
-   */
-  private checkCanModify(event: unknown): boolean {
-    // 型ガードでイベント情報の妥当性をチェック
-    if (!isValidEventInfo(event)) {
-      logger.warn("Invalid event info provided to checkCanModify", {
-        tag: "invalidEventInfo",
-        event_id: typeof event === 'object' && event && 'id' in event ? String(event.id) : 'unknown'
-      });
-      return false; // 無効なイベント情報の場合は変更不可
-    }
-
-    // 日付の妥当性をチェック
-    if (!this.isValidDateString(event.date)) {
-      logger.warn("Invalid event date format", {
-        tag: "invalidDateFormat",
-        event_id: event.id,
-        event_date: event.date
-      });
-      return false;
-    }
-
-    const now = new Date();
-    const eventDate = new Date(event.date);
-
-    // 登録締切の処理
-    let registrationDeadline: Date | null = null;
-    if (event.registration_deadline) {
-      if (!this.isValidDateString(event.registration_deadline)) {
-        logger.warn("Invalid registration deadline format", {
-          tag: "invalidDeadlineFormat",
-          event_id: event.id,
-          registration_deadline: event.registration_deadline
-        });
-        return false;
-      }
-      registrationDeadline = new Date(event.registration_deadline);
-    }
-
-    // イベント開始前かつ登録締切前かつ開催予定（upcoming）状態
-    const isBeforeEventStart = eventDate > now;
-    const isBeforeDeadline = registrationDeadline === null || registrationDeadline > now;
-    const isUpcoming = event.status === "upcoming";
-
-    return isBeforeEventStart && isBeforeDeadline && isUpcoming;
-  }
-
-  /**
-   * 安全な監査ログ記録
-   * 監査ログの失敗がビジネスロジックを妨げないようにエラーをキャッチ
-   */
-  private async safeLogGuestAccess(
-    token: string,
-    action: string,
-    success: boolean,
-    additionalInfo?: {
-      attendanceId?: string;
-      eventId?: string;
-      tableName?: string;
-      operationType?: "SELECT" | "INSERT" | "UPDATE" | "DELETE";
-      resultCount?: number;
-      errorCode?: string;
-      errorMessage?: string;
-    }
-  ): Promise<void> {
-    try {
-      const auditContext: AuditContext = {
-        guestToken: token,
-        operationType: additionalInfo?.operationType || "SELECT",
-        additionalInfo,
-      };
-      await this.auditor.logGuestAccess(token, action, auditContext, success, additionalInfo);
-    } catch (_auditError) {
-      // 監査ログの失敗をコンソールに記録するが、ビジネスロジックは継続
-      // 将来的には、監査ログ失敗の通知システムを実装することも検討
-      // 例: メトリクス送信、アラート送信など
-    }
-  }
-}
-
-/**
  * セキュアクライアントファクトリーのシングルトンインスタンスを取得
  */
 export function getSecureClientFactory(): SecureSupabaseClientFactory {
   return SecureSupabaseClientFactory.getInstance();
-}
-
-/**
- * セキュアクライアントファクトリーの新しいインスタンスを作成
- * テスト環境や特別な用途で使用
- */
-export function createSecureClientFactory(): SecureSupabaseClientFactory {
-  return SecureSupabaseClientFactory.create();
-}
-
-/**
- * ゲストトークンバリデーターのインスタンスを取得
- */
-export function getGuestTokenValidator(): IGuestTokenValidator {
-  return new RLSBasedGuestValidator();
 }

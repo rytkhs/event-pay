@@ -9,16 +9,11 @@ export { StripeConnectErrorHandler } from "./error-handler";
 // インターフェース
 export type { IStripeConnectService, IStripeConnectErrorHandler } from "./interface";
 
-// 型定義
+// 型定義（公開API）
 export type {
   StripeConnectAccount,
   StripeAccountStatus,
-  CreateExpressAccountParams,
-  CreateExpressAccountResult,
-  CreateAccountLinkParams,
-  CreateAccountLinkResult,
   AccountInfo,
-  UpdateAccountStatusParams,
   ErrorHandlingResult,
 } from "./types";
 
@@ -43,16 +38,17 @@ export {
 // サービスインスタンス作成のヘルパー関数
 import { StripeConnectService } from "./service";
 import { StripeConnectErrorHandler } from "./error-handler";
+import type { IStripeConnectService } from "./interface";
 import { SecureSupabaseClientFactory } from "@/lib/security/secure-client-factory.impl";
 import { AdminReason } from "@/lib/security/secure-client-factory.types";
-import type { SupabaseClient } from "@supabase/supabase-js";
+import { type SupabaseClient } from "@supabase/supabase-js";
 import { Database } from "@/types/database";
 
 /**
  * 認証済みユーザー用のStripeConnectServiceを作成
  * Server Actions / サーバーコンポーネントで使用（RLS適用）
  */
-export const createUserStripeConnectService = (): StripeConnectService => {
+export const createUserStripeConnectService = (): IStripeConnectService => {
   const secureFactory = SecureSupabaseClientFactory.getInstance();
   const userClient = secureFactory.createAuthenticatedClient();
   const errorHandler = new StripeConnectErrorHandler();
@@ -66,7 +62,7 @@ export const createUserStripeConnectService = (): StripeConnectService => {
 export const createAdminStripeConnectService = async (
   reason: AdminReason,
   context: string
-): Promise<StripeConnectService> => {
+): Promise<IStripeConnectService> => {
   const secureFactory = SecureSupabaseClientFactory.getInstance();
   const adminClient = await secureFactory.createAuditedAdminClient(reason, context);
   const errorHandler = new StripeConnectErrorHandler();
@@ -79,7 +75,7 @@ export const createAdminStripeConnectService = async (
  */
 export const createStripeConnectServiceWithClient = (
   adminClient: SupabaseClient<Database>
-): StripeConnectService => {
+): IStripeConnectService => {
   const errorHandler = new StripeConnectErrorHandler();
   return new StripeConnectService(adminClient as SupabaseClient<Database>, errorHandler);
 };

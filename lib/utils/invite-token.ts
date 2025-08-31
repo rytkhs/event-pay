@@ -1,14 +1,9 @@
-import { z } from "zod";
 import { generateRandomBytes, toBase64UrlSafe } from "@/lib/security/crypto";
 import { createClient } from "@/lib/supabase/server";
 import type { Database } from "@/types/database";
 import { logger } from "@/lib/logging/app-logger";
 
-// 招待トークンの検証スキーマ（プレフィックス付き）
-export const inviteTokenSchema = z
-  .string()
-  .length(36, "無効な招待トークンの形式です")
-  .regex(/^inv_[a-zA-Z0-9_-]{32}$/, "無効な招待トークンの形式です");
+
 
 /**
  * 暗号学的に安全な招待トークンを生成します。
@@ -72,13 +67,11 @@ export interface InviteValidationResult {
  * @param {string} token - 検証するトークン
  * @returns {boolean} トークン形式が有効な場合はtrue、それ以外はfalse
  */
-export function validateInviteTokenFormat(token: string): boolean {
-  try {
-    inviteTokenSchema.parse(token);
-    return true;
-  } catch {
-    return false;
-  }
+function validateInviteTokenFormat(token: string): boolean {
+  // 新仕様フォーマット（inv_プレフィックス付き36文字）
+  return typeof token === 'string' &&
+    token.length === 36 &&
+    /^inv_[a-zA-Z0-9_-]{32}$/.test(token);
 }
 
 /**

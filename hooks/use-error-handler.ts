@@ -10,12 +10,12 @@ import {
   type ErrorContext,
 } from "@/lib/utils/error-handler";
 
-export interface UseErrorHandlerOptions {
+interface UseErrorHandlerOptions {
   showToast?: boolean;
   defaultContext?: Partial<ErrorContext>;
 }
 
-export interface ErrorState {
+interface ErrorState {
   error: ErrorDetails | null;
   isError: boolean;
   isRetryable: boolean;
@@ -204,30 +204,6 @@ export function useParticipationErrorHandler() {
     showToast: true,
     defaultContext: {
       action: "participation",
-    },
-  });
-}
-
-/**
- * 招待リンク専用のエラーハンドリングフック
- */
-export function useInviteErrorHandler() {
-  return useErrorHandler({
-    showToast: true,
-    defaultContext: {
-      action: "invite_access",
-    },
-  });
-}
-
-/**
- * ゲスト管理専用のエラーハンドリングフック
- */
-export function useGuestErrorHandler() {
-  return useErrorHandler({
-    showToast: true,
-    defaultContext: {
-      action: "guest_management",
     },
   });
 }

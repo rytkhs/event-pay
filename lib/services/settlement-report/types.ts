@@ -1,6 +1,6 @@
 import { Database } from '@/types/database'
 
-export type SettlementMode = Database["public"]["Enums"]["settlement_mode_enum"]
+type SettlementMode = Database["public"]["Enums"]["settlement_mode_enum"]
 
 /**
  * イベント清算レポートの基本情報
@@ -95,20 +95,8 @@ export interface SettlementReportResult {
 
 /**
  * CSV エクスポート結果
+ * Note: 実際の使用はapp/actions/settlement-report-actions.tsの型定義を参照
  */
-export type CsvExportSuccess = {
-  success: true
-  csvContent: string
-  filename: string
-  truncated: boolean
-}
-
-export type CsvExportFailure = {
-  success: false
-  error: string
-}
-
-export type CsvExportResult = CsvExportSuccess | CsvExportFailure
 
 export interface RpcSettlementReportRow {
   event_id: string;

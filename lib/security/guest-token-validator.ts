@@ -8,17 +8,17 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { validateGuestTokenFormat } from "./crypto";
 import { getSecureClientFactory } from "./secure-client-factory.impl";
-import { IGuestTokenValidator, ISecurityAuditor } from "./secure-client-factory.interface";
+import { IGuestTokenValidator } from "./secure-client-factory.interface";
 import {
   GuestErrorCode,
   GuestTokenErrorFactory,
   GuestValidationResult,
   GuestSession,
   GuestPermission,
-  AuditContext,
+
   EventInfo,
 } from "./secure-client-factory.types";
-import { SecurityAuditorImpl } from "./security-auditor.impl";
+import { logger } from "@/lib/logging/app-logger";
 import { sanitizeForEventPay } from "@/lib/utils/sanitize";
 import type { Database } from "@/types/database";
 import { isValidIsoDateTimeString } from "@/lib/utils/timezone";
@@ -79,10 +79,10 @@ export interface RLSGuestTokenValidationResult {
  */
 export class RLSGuestTokenValidator implements IGuestTokenValidator {
   private readonly clientFactory = getSecureClientFactory();
-  private readonly auditor: ISecurityAuditor;
+  // Security auditor removed
 
   constructor() {
-    this.auditor = new SecurityAuditorImpl();
+    // Security auditor removed
   }
 
   /**
@@ -537,12 +537,8 @@ export class RLSGuestTokenValidator implements IGuestTokenValidator {
     }
   ): Promise<void> {
     try {
-      const auditContext: AuditContext = {
-        guestToken: token,
-        operationType: additionalInfo?.operationType || "SELECT",
-        additionalInfo,
-      };
-      await this.auditor.logGuestAccess(token, action, auditContext, success, additionalInfo);
+      // Audit context removed with security reporter
+      logger.info('Guest access logged', { token: token.substring(0, 8), action, success, additionalInfo });
     } catch (_auditError) {
       // 監査ログの失敗をコンソールに記録するが、ビジネスロジックは継続
       // 将来的には、監査ログ失敗の通知システムを実装することも検討

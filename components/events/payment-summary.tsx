@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { CreditCard, Banknote, AlertTriangle, CheckCircle, Info } from "lucide-react";
 import type { PaymentSummary as PaymentSummaryType } from "@/lib/validation/participant-management";
 import { TooltipContent, TooltipTrigger, TooltipWrapper } from "@/components/ui/tooltip";
+import { PAYMENT_STATUS_LABELS } from "@/types/enums";
 
 interface PaymentSummaryProps {
   summary: PaymentSummaryType;
@@ -43,13 +44,21 @@ export function PaymentSummary({ summary, isLoading = false }: PaymentSummaryPro
     PaymentSummaryType["byStatus"][number]["status"],
     { bg: string; text: string; label: string }
   > = {
-    paid: { bg: "bg-blue-50", text: "text-blue-600", label: "Stripe決済済み" },
-    received: { bg: "bg-green-50", text: "text-green-600", label: "現金受領済み" },
-    completed: { bg: "bg-emerald-50", text: "text-emerald-600", label: "完了" },
-    pending: { bg: "bg-yellow-50", text: "text-yellow-600", label: "未決済" },
-    failed: { bg: "bg-red-50", text: "text-red-600", label: "失敗" },
-    refunded: { bg: "bg-purple-50", text: "text-purple-600", label: "返金済み" },
-    waived: { bg: "bg-indigo-50", text: "text-indigo-600", label: "免除" },
+    paid: { bg: "bg-blue-50", text: "text-blue-600", label: PAYMENT_STATUS_LABELS.paid },
+    received: { bg: "bg-green-50", text: "text-green-600", label: PAYMENT_STATUS_LABELS.received },
+    completed: {
+      bg: "bg-emerald-50",
+      text: "text-emerald-600",
+      label: PAYMENT_STATUS_LABELS.completed,
+    },
+    pending: { bg: "bg-yellow-50", text: "text-yellow-600", label: PAYMENT_STATUS_LABELS.pending },
+    failed: { bg: "bg-red-50", text: "text-red-600", label: PAYMENT_STATUS_LABELS.failed },
+    refunded: {
+      bg: "bg-purple-50",
+      text: "text-purple-600",
+      label: PAYMENT_STATUS_LABELS.refunded,
+    },
+    waived: { bg: "bg-indigo-50", text: "text-indigo-600", label: PAYMENT_STATUS_LABELS.waived },
   };
 
   return (

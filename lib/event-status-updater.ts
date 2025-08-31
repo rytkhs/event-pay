@@ -33,7 +33,7 @@ interface BatchUpdateResult {
 /**
  * 単一イベントのステータス更新要否を判定
  */
-export function shouldUpdateEventStatus(event: Event, currentTime: Date): StatusUpdateResult {
+function shouldUpdateEventStatus(event: Event, currentTime: Date): StatusUpdateResult {
   const { status, date } = event;
 
   // キャンセル済みイベントは更新しない

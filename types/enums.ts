@@ -178,13 +178,6 @@ export const PAYOUT_STATUS_VALUES: PayoutStatus[] = Object.values(PAYOUT_STATUS)
 // ====================================================================
 
 /**
- * 値が有効なEventStatusかどうかを判定
- */
-export function isValidEventStatus(value: string): value is EventStatus {
-  return EVENT_STATUS_VALUES.includes(value as EventStatus);
-}
-
-/**
  * 値が有効なPaymentMethodかどうかを判定
  */
 export function isValidPaymentMethod(value: string): value is PaymentMethod {
@@ -196,27 +189,6 @@ export function isValidPaymentMethod(value: string): value is PaymentMethod {
  */
 export function isValidPaymentStatus(value: string): value is PaymentStatus {
   return PAYMENT_STATUS_VALUES.includes(value as PaymentStatus);
-}
-
-/**
- * 値が有効なAttendanceStatusかどうかを判定
- */
-export function isValidAttendanceStatus(value: string): value is AttendanceStatus {
-  return ATTENDANCE_STATUS_VALUES.includes(value as AttendanceStatus);
-}
-
-/**
- * 値が有効なStripeAccountStatusかどうかを判定
- */
-export function isValidStripeAccountStatus(value: string): value is StripeAccountStatus {
-  return STRIPE_ACCOUNT_STATUS_VALUES.includes(value as StripeAccountStatus);
-}
-
-/**
- * 値が有効なPayoutStatusかどうかを判定
- */
-export function isValidPayoutStatus(value: string): value is PayoutStatus {
-  return PAYOUT_STATUS_VALUES.includes(value as PayoutStatus);
 }
 
 // ====================================================================

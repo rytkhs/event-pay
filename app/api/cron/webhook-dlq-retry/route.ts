@@ -6,9 +6,7 @@ import {
   SupabaseWebhookIdempotencyService,
   IdempotentWebhookProcessor,
 } from '@/lib/services/webhook/webhook-idempotency';
-import { SecurityAuditorImpl } from '@/lib/security/security-auditor.impl';
-import { AnomalyDetectorImpl } from '@/lib/security/anomaly-detector';
-import { SecurityReporterImpl } from '@/lib/security/security-reporter.impl';
+import { logger } from '@/lib/logging/app-logger';
 import type { WebhookProcessingResult } from '@/lib/services/webhook';
 import { createClient } from '@supabase/supabase-js';
 import { Database } from '@/types/database';
@@ -22,13 +20,10 @@ const MAX_RETRIES = 5;
 const BASE_INTERVAL_SEC = 60; // 1 分
 
 function createServices() {
-  const auditor = new SecurityAuditorImpl();
-  const anomalyDetector = new AnomalyDetectorImpl(auditor);
-  const securityReporter = new SecurityReporterImpl(auditor, anomalyDetector);
-  const eventHandler = new StripeWebhookEventHandler(securityReporter);
+  const eventHandler = new StripeWebhookEventHandler();
   const idempotencyService = new SupabaseWebhookIdempotencyService<WebhookProcessingResult>();
   const idempotentProcessor = new IdempotentWebhookProcessor<WebhookProcessingResult>(idempotencyService);
-  return { securityReporter, eventHandler, idempotentProcessor, idempotencyService };
+  return { eventHandler, idempotentProcessor, idempotencyService };
 }
 
 export async function GET(request: NextRequest) {
@@ -40,7 +35,7 @@ export async function GET(request: NextRequest) {
     });
   }
 
-  const { securityReporter, eventHandler, idempotentProcessor, idempotencyService } = createServices();
+  const { eventHandler, idempotentProcessor, idempotencyService } = createServices();
 
   try {
     const now = Date.now();
@@ -108,17 +103,11 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    await securityReporter.logSecurityEvent({
-      type: 'webhook_dlq_retry_summary',
-      details: { processed, success },
-    });
+    logger.info('Webhook DLQ retry completed', { processed, success });
 
     return NextResponse.json({ processed, success });
   } catch (e) {
-    await securityReporter.logSuspiciousActivity({
-      type: 'webhook_dlq_retry_error',
-      details: { error: e instanceof Error ? e.message : 'unknown' },
-    });
+    logger.error('Webhook DLQ retry failed', { error: e instanceof Error ? e.message : 'unknown' });
     return createProblemResponse('INTERNAL_ERROR', {
       instance: '/api/cron/webhook-dlq-retry',
       detail: 'DLQ retry worker failed',

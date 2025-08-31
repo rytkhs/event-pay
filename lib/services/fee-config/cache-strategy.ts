@@ -179,29 +179,3 @@ export class FeeConfigCacheStrategy {
  * アプリケーション全体で共有される
  */
 export const globalFeeConfigCache = new FeeConfigCacheStrategy();
-
-/**
- * 環境別のキャッシュ設定
- */
-export const CACHE_CONFIG = {
-  development: {
-    ttl: 1000 * 60 * 5, // 5分（開発時は短め）
-    maxFailsafeAge: 1000 * 60 * 30, // 30分
-  },
-  test: {
-    ttl: 1000 * 10, // 10秒（テスト時は非常に短い）
-    maxFailsafeAge: 1000 * 60, // 1分
-  },
-  production: {
-    ttl: 1000 * 60 * 10, // 10分
-    maxFailsafeAge: 1000 * 60 * 60, // 1時間
-  },
-} as const;
-
-/**
- * 環境に応じたキャッシュ戦略を作成
- */
-export function createEnvironmentCache(environment: string = process.env.NODE_ENV || 'development'): FeeConfigCacheStrategy {
-  const config = CACHE_CONFIG[environment as keyof typeof CACHE_CONFIG] || CACHE_CONFIG.development;
-  return new FeeConfigCacheStrategy(config.ttl, environment, config.maxFailsafeAge);
-}

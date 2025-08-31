@@ -14,7 +14,7 @@ import {
 import { useToast } from "@/contexts/toast-context";
 import { generateSettlementReportAction } from "@/app/actions/settlement-report-actions";
 import { CalculatorIcon, FileTextIcon, AlertTriangleIcon } from "lucide-react";
-import { formatUtcToJst } from "@/lib/utils/timezone";
+import { formatUtcToJstByType } from "@/lib/utils/timezone";
 
 interface SettlementReportGeneratorProps {
   availableEvents?: {
@@ -127,7 +127,8 @@ export function SettlementReportGenerator({
                   <SelectItem key={event.id} value={event.id}>
                     <div className="flex items-center justify-between w-full">
                       <span>
-                        {event.title} ({formatUtcToJst(new Date(event.date), "yyyy年MM月dd日")})
+                        {event.title} (
+                        {formatUtcToJstByType(event.date, "japanese").replace(" ", "")}）
                       </span>
                       {event.hasExistingReport && (
                         <span className="text-xs text-muted-foreground ml-2">(レポート済み)</span>
@@ -172,7 +173,7 @@ export function SettlementReportGenerator({
                 <span className="font-medium text-blue-800">開催日:</span>
                 <br />
                 <span className="text-blue-700">
-                  {formatUtcToJst(new Date(selectedEvent.date), "yyyy年MM月dd日")}
+                  {formatUtcToJstByType(selectedEvent.date, "japanese").replace(" ", "")}
                 </span>
               </div>
               <div>

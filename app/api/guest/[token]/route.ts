@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { validateGuestToken, type GuestAttendanceData } from "@/lib/utils/guest-token";
 import { handleRateLimit } from "@/lib/rate-limit-middleware";
 import { RATE_LIMIT_CONFIG } from "@/config/security";
-import { logger } from "@/lib/logging/app-logger";
 import { logInvalidTokenAccess } from "@/lib/security/security-logger";
 import { getClientIP } from "@/lib/utils/ip-detection";
 import { createProblemResponse, type ProblemDetails } from "@/lib/api/problem-details";
@@ -64,16 +63,25 @@ export async function GET(
       },
     });
   } catch (error) {
-    logger.error("Guest validation API error", {
-      tag: "guestValidation",
-      token: token.substring(0, 8) + "...", // セキュリティのため一部のみ
-      error_name: error instanceof Error ? error.name : "Unknown",
-      error_message: error instanceof Error ? error.message : String(error)
-    });
+    const { getErrorDetails, logError } = await import("@/lib/utils/error-handler");
+
+    const errorContext = {
+      action: "guest_token_validation",
+      ip: getClientIP(request),
+      userAgent: request.headers.get("user-agent") || undefined,
+      additionalData: {
+        tokenPrefix: token.substring(0, 8) + "...",
+        originalError: error instanceof Error ? error.name : "Unknown",
+        originalMessage: error instanceof Error ? error.message : String(error)
+      }
+    };
+
+    logError(getErrorDetails("GUEST_TOKEN_VALIDATION_FAILED"), errorContext);
 
     return createProblemResponse("INTERNAL_ERROR", {
       instance: `/api/guest/${token}`,
       detail: "参加データの取得中にエラーが発生しました",
+      log_context: { guest_token_error: true }
     });
   }
 }

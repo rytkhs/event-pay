@@ -10,9 +10,6 @@ import {
   SupabaseWebhookIdempotencyService,
 } from "@/lib/services/webhook/webhook-idempotency";
 import { StripeWebhookSignatureVerifier } from "@/lib/services/webhook/webhook-signature-verifier";
-import { SecurityReporterImpl } from "@/lib/security/security-reporter.impl";
-import { SecurityAuditorImpl } from "@/lib/security/security-auditor.impl";
-import { AnomalyDetectorImpl } from "@/lib/security/anomaly-detector";
 import { getClientIP } from "@/lib/utils/ip-detection";
 import { shouldEnforceStripeWebhookIpCheck, isStripeWebhookIpAllowed } from "@/lib/security/stripe-ip-allowlist";
 import { logger } from '@/lib/logging/app-logger';
@@ -39,14 +36,10 @@ export async function POST(request: NextRequest) {
       const clientIp = _clientIP;
       const allowed = await isStripeWebhookIpAllowed(clientIp);
       if (!allowed) {
-        const auditor = new SecurityAuditorImpl();
-        const anomalyDetector = new AnomalyDetectorImpl(auditor);
-        const securityReporter = new SecurityReporterImpl(auditor, anomalyDetector);
-        await securityReporter.logSuspiciousActivity({
-          type: "webhook_ip_not_allowed",
-          details: { clientIp },
-          ip: clientIp,
-          userAgent: request.headers.get("user-agent") || undefined,
+        // Security logging replaced with standard logger
+        logger.warn('Webhook IP not allowed', {
+          clientIp,
+          userAgent: request.headers.get("user-agent") || undefined
         });
         return createProblemResponse("FORBIDDEN", {
           instance: "/api/webhooks/stripe-connect",
@@ -70,10 +63,8 @@ export async function POST(request: NextRequest) {
     const webhookSecrets = getConnectWebhookSecrets();
 
     // 共通の署名検証ロジックを使用
-    const auditor = new SecurityAuditorImpl();
-    const anomalyDetector = new AnomalyDetectorImpl(auditor);
-    const securityReporter = new SecurityReporterImpl(auditor, anomalyDetector);
-    const verifier = new StripeWebhookSignatureVerifier(stripe, webhookSecrets, securityReporter);
+    // Security logging replaced with standard logger
+    const verifier = new StripeWebhookSignatureVerifier(stripe, webhookSecrets);
 
     connectLogger.debug('Starting Connect webhook signature verification');
     const verification = await verifier.verifySignature({ payload, signature });

@@ -188,10 +188,3 @@ export function getSessionManager(): SessionManager {
   }
   return sessionManagerInstance;
 }
-
-export function resetSessionManager(): void {
-  if (sessionManagerInstance) {
-    sessionManagerInstance.cleanupAllSessions();
-    sessionManagerInstance = null;
-  }
-}

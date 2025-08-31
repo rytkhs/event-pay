@@ -140,6 +140,18 @@ export async function createGuestStripeSessionAction(
 
     return createServerActionSuccess({ sessionUrl: result.sessionUrl, sessionId: result.sessionId });
   } catch (error) {
+    const { getErrorDetails, logError } = await import("@/lib/utils/error-handler");
+
+    const errorContext = {
+      action: "guest_stripe_session_creation",
+      additionalData: {
+        originalError: error instanceof Error ? error.name : "Unknown",
+        originalMessage: error instanceof Error ? error.message : String(error)
+      }
+    };
+
+    logError(getErrorDetails("GUEST_TOKEN_VALIDATION_FAILED"), errorContext);
+
     const msg = error instanceof Error ? error.message : "Stripe セッション作成に失敗しました";
     return createServerActionError("INTERNAL_ERROR", msg);
   }

@@ -7,11 +7,7 @@ import { StripeWebhookSignatureVerifier } from '@/lib/services/webhook/webhook-s
 import {
   SupabaseWebhookIdempotencyService,
 } from '@/lib/services/webhook/webhook-idempotency';
-import { SecurityReporterImpl } from '@/lib/security/security-reporter.impl';
-import { SecurityAuditorImpl } from '@/lib/security/security-auditor.impl';
-import { AnomalyDetectorImpl } from '@/lib/security/anomaly-detector';
 // Rate limiting middleware intentionally not used on this webhook per Stripe best practice (429 triggers unnecessary retries)
-import type { SecurityReporter } from '@/lib/security/security-reporter.types';
 import type { WebhookProcessingResult } from '@/lib/services/webhook';
 import { getClientIP } from '@/lib/utils/ip-detection';
 import { shouldEnforceStripeWebhookIpCheck, isStripeWebhookIpAllowed } from '@/lib/security/stripe-ip-allowlist';
@@ -24,21 +20,17 @@ export const dynamic = 'force-dynamic'; // Webhookは常に動的処理
 function createServices() {
   const stripe = sharedStripe;
 
-  const auditor = new SecurityAuditorImpl();
-  const anomalyDetector = new AnomalyDetectorImpl(auditor);
-  const securityReporter = new SecurityReporterImpl(auditor, anomalyDetector);
+  // Security logging replaced with standard logger
   const signatureVerifier = new StripeWebhookSignatureVerifier(
     stripe,
-    getWebhookSecrets(),
-    securityReporter
+    getWebhookSecrets()
   );
   const idempotencyService = new SupabaseWebhookIdempotencyService<WebhookProcessingResult>();
 
-  return { securityReporter, signatureVerifier, idempotencyService };
+  return { signatureVerifier, idempotencyService };
 }
 
 export async function POST(request: NextRequest) {
-  let securityReporter: SecurityReporter | undefined;
   let enqueued = false;
   // 失敗時に DLQ に書き込むための現在処理中のイベント情報
   let eventMeta: { id: string; type: string } | null = null;
@@ -52,18 +44,15 @@ export async function POST(request: NextRequest) {
   webhookLogger.info('Webhook request received');
 
   try {
-    const { securityReporter: sr, signatureVerifier, idempotencyService } = createServices();
-    securityReporter = sr;
+    const { signatureVerifier, idempotencyService } = createServices();
 
     // 本番のみ: Stripe Webhook 送信元 IP の許可リスト検証
     if (shouldEnforceStripeWebhookIpCheck()) {
       const clientIp = getClientIP(request);
       const allowed = await isStripeWebhookIpAllowed(clientIp);
       if (!allowed) {
-        await securityReporter.logSuspiciousActivity({
-          type: 'webhook_ip_not_allowed',
-          details: { clientIp },
-          ip: clientIp,
+        webhookLogger.warn('Webhook IP not allowed', {
+          clientIp,
           userAgent: request.headers.get('user-agent') || undefined,
         });
         return createProblemResponse('FORBIDDEN', {
@@ -79,12 +68,9 @@ export async function POST(request: NextRequest) {
 
     if (!signature) {
       webhookLogger.warn('Webhook signature missing');
-      await securityReporter.logSuspiciousActivity({
-        type: 'webhook_missing_signature',
-        details: {
-          hasPayload: !!payload,
-          payloadLength: payload.length
-        },
+      webhookLogger.warn('Webhook missing signature', {
+        hasPayload: !!payload,
+        payloadLength: payload.length,
         ip: getClientIP(request),
         userAgent: request.headers.get('user-agent') || undefined
       });
@@ -167,16 +153,11 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     // 予期しないエラーのログ
     try {
-      if (securityReporter) {
-        await securityReporter.logSuspiciousActivity({
-          type: 'webhook_unexpected_error',
-          details: {
-            error: error instanceof Error ? error.message : 'Unknown error',
-            stack: error instanceof Error ? error.stack : undefined
-          },
-          ip: getClientIP(request)
-        });
-      }
+      webhookLogger.error('Webhook unexpected error', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : undefined,
+        ip: getClientIP(request)
+      });
     } catch (_logError) {
       // ログ失敗時は黙って継続
     }
@@ -196,7 +177,7 @@ export async function POST(request: NextRequest) {
 
     // enqueue 前に失敗している場合は Stripe の自動リトライを促す
     try {
-      if (securityReporter && eventMeta) {
+      if (eventMeta) {
         const { idempotencyService: dlqSvc } = createServices();
         await dlqSvc.markEventFailed(
           eventMeta.id,

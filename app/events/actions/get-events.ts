@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import type { Database } from "@/types/database";
 import { Event } from "@/types/event";
 import { convertJstDateToUtcRange } from "@/lib/utils/timezone";
-import { dateFilterSchema } from "@/lib/validations/event";
+import { dateFilterSchema, type DateFilterInput } from "@/lib/validations/event";
 
 type EventRow = Database["public"]["Tables"]["events"]["Row"];
 
@@ -18,10 +18,7 @@ export type PaymentFilter = "all" | "free" | "paid";
 export type SortBy = "date" | "created_at" | "attendances_count" | "fee";
 export type SortOrder = "asc" | "desc";
 
-export interface DateFilter {
-  start?: string;
-  end?: string;
-}
+export type DateFilter = DateFilterInput;
 
 // 型安全なフィルター条件の定義
 interface FilterCondition {
@@ -32,11 +29,11 @@ interface FilterCondition {
 
 interface EqualityFilter {
   [key: string]:
-    | string
-    | number
-    | boolean
-    | null
-    | Database["public"]["Enums"]["event_status_enum"];
+  | string
+  | number
+  | boolean
+  | null
+  | Database["public"]["Enums"]["event_status_enum"];
 }
 
 type GetEventsOptions = {
@@ -51,15 +48,15 @@ type GetEventsOptions = {
 
 type GetEventsResult =
   | {
-      success: true;
-      data: Event[];
-      totalCount: number;
-      hasMore: boolean;
-    }
+    success: true;
+    data: Event[];
+    totalCount: number;
+    hasMore: boolean;
+  }
   | {
-      success: false;
-      error: string;
-    };
+    success: false;
+    error: string;
+  };
 
 // ソート項目をSupabaseのカラム名にマッピング
 function getOrderColumn(sortBy: SortBy): string | null {

@@ -5,7 +5,7 @@
 import Stripe from 'stripe';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { Database } from '@/types/database';
-import { createStripeConnectServiceWithClient, type StripeConnectService } from '@/lib/services/stripe-connect';
+import { createStripeConnectServiceWithClient, type IStripeConnectService } from '@/lib/services/stripe-connect';
 import { NotificationService } from '@/lib/services/notification';
 import { SecureSupabaseClientFactory } from '@/lib/security/secure-client-factory.impl';
 import { AdminReason } from '@/lib/security/secure-client-factory.types';
@@ -22,12 +22,12 @@ import { logger } from '@/lib/logging/app-logger';
  */
 export class ConnectWebhookHandler {
   private supabase: SupabaseClient<Database>;
-  private stripeConnectService: StripeConnectService;
+  private stripeConnectService: IStripeConnectService;
   private notificationService: NotificationService;
 
   private constructor(
     supabase: SupabaseClient<Database>,
-    stripeConnectService: StripeConnectService,
+    stripeConnectService: IStripeConnectService,
     notificationService: NotificationService
   ) {
     this.supabase = supabase;

@@ -1,5 +1,5 @@
 import Stripe from "stripe";
-import type { SecurityReporter } from "@/lib/security/security-reporter.types";
+import { logger } from "@/lib/logging/app-logger";
 
 export interface WebhookSignatureVerifier {
   /**
@@ -15,16 +15,14 @@ export interface WebhookSignatureVerifier {
 export class StripeWebhookSignatureVerifier implements WebhookSignatureVerifier {
   private readonly stripe: Stripe;
   private readonly webhookSecrets: string[];
-  private readonly securityReporter: SecurityReporter;
   // 許容秒数は環境変数で調整可能（デフォルト300秒=5分）
   private readonly maxTimestampAge = Number.parseInt(process.env.STRIPE_WEBHOOK_TIMESTAMP_TOLERANCE || "300", 10);
 
-  constructor(stripe: Stripe, webhookSecretOrSecrets: string | string[], securityReporter: SecurityReporter) {
+  constructor(stripe: Stripe, webhookSecretOrSecrets: string | string[]) {
     this.stripe = stripe;
     this.webhookSecrets = Array.isArray(webhookSecretOrSecrets)
       ? webhookSecretOrSecrets.filter((s) => typeof s === "string" && s.length > 0)
       : [webhookSecretOrSecrets].filter((s) => typeof s === "string" && s.length > 0);
-    this.securityReporter = securityReporter;
   }
 
   /**
@@ -59,13 +57,10 @@ export class StripeWebhookSignatureVerifier implements WebhookSignatureVerifier 
           );
 
           // 検証成功をログ
-          await this.securityReporter.logSecurityEvent({
-            type: "webhook_signature_verified",
-            details: {
-              eventType: event.type,
-              eventId: event.id,
-              timestamp: parsedTimestamp,
-            },
+          logger.info("Webhook signature verified", {
+            eventType: event.type,
+            eventId: event.id,
+            timestamp: parsedTimestamp,
           });
 
           return {
@@ -91,36 +86,27 @@ export class StripeWebhookSignatureVerifier implements WebhookSignatureVerifier 
         if (isTimestampOutOfRange) {
           const nowSec = Math.floor(Date.now() / 1000);
           const deltaSec = Math.abs(nowSec - parsedTimestamp);
-          await this.securityReporter.logSuspiciousActivity({
-            type: "webhook_timestamp_invalid",
-            details: {
-              error: "Timestamp outside tolerance",
-              timestamp: parsedTimestamp,
-              currentTime: nowSec,
-              age: deltaSec,
-              maxAge: this.maxTimestampAge,
-              signatureProvided: !!signature,
-            },
+          logger.warn("Webhook timestamp invalid", {
+            error: "Timestamp outside tolerance",
+            timestamp: parsedTimestamp,
+            currentTime: nowSec,
+            age: deltaSec,
+            maxAge: this.maxTimestampAge,
+            signatureProvided: !!signature,
           });
         } else {
-          await this.securityReporter.logSuspiciousActivity({
-            type: "webhook_signature_invalid",
-            details: {
-              error: message,
-              timestamp: parsedTimestamp,
-              signatureProvided: !!signature,
-            },
+          logger.warn("Webhook signature invalid", {
+            error: message,
+            timestamp: parsedTimestamp,
+            signatureProvided: !!signature,
           });
         }
       } else {
         // Stripe SDK 以外の予期しないエラー。分類を変更して冗長ログを防ぐ。
-        await this.securityReporter.logSuspiciousActivity({
-          type: "webhook_processing_error",
-          details: {
-            error: message,
-            timestamp: parsedTimestamp,
-            signatureProvided: !!signature,
-          },
+        logger.error("Webhook processing error", {
+          error: message,
+          timestamp: parsedTimestamp,
+          signatureProvided: !!signature,
         });
       }
 

@@ -2,7 +2,8 @@
 
 import { PaymentMethod, PAYMENT_METHOD_LABELS } from "@/lib/constants/payment-methods";
 import { sanitizeEventDescription, sanitizeForEventPay } from "@/lib/utils/sanitize";
-import { formatUtcToJapaneseDisplay } from "@/lib/utils/timezone";
+import { formatUtcToJstByType } from "@/lib/utils/timezone";
+import { EVENT_STATUS_LABELS } from "@/types/enums";
 
 interface EventDetailProps {
   event: {
@@ -34,18 +35,7 @@ export function EventDetail({ event }: EventDetailProps) {
   };
 
   const getStatusText = (status: string) => {
-    switch (status) {
-      case "upcoming":
-        return "開催予定";
-      case "ongoing":
-        return "開催中";
-      case "past":
-        return "終了";
-      case "cancelled":
-        return "キャンセル";
-      default:
-        return status;
-    }
+    return EVENT_STATUS_LABELS[status as keyof typeof EVENT_STATUS_LABELS] || status;
   };
 
   return (
@@ -61,7 +51,9 @@ export function EventDetail({ event }: EventDetailProps) {
         <div className="space-y-4">
           <div>
             <h3 className="text-sm font-medium text-gray-700">開催日</h3>
-            <p className="mt-1 text-sm text-gray-900">{formatUtcToJapaneseDisplay(event.date)}</p>
+            <p className="mt-1 text-sm text-gray-900">
+              {formatUtcToJstByType(event.date, "japanese")}
+            </p>
           </div>
 
           <div>
@@ -85,7 +77,7 @@ export function EventDetail({ event }: EventDetailProps) {
             <div>
               <h3 className="text-sm font-medium text-gray-700">申込締切</h3>
               <p className="mt-1 text-sm text-gray-900">
-                {formatUtcToJapaneseDisplay(event.registration_deadline)}
+                {formatUtcToJstByType(event.registration_deadline, "japanese")}
               </p>
             </div>
           )}
@@ -94,7 +86,7 @@ export function EventDetail({ event }: EventDetailProps) {
             <div>
               <h3 className="text-sm font-medium text-gray-700">決済締切</h3>
               <p className="mt-1 text-sm text-gray-900">
-                {formatUtcToJapaneseDisplay(event.payment_deadline)}
+                {formatUtcToJstByType(event.payment_deadline, "japanese")}
               </p>
             </div>
           )}
@@ -123,11 +115,11 @@ export function EventDetail({ event }: EventDetailProps) {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs text-gray-500">
           <div>
             <span className="font-medium">作成日時:</span>{" "}
-            {formatUtcToJapaneseDisplay(event.created_at)}
+            {formatUtcToJstByType(event.created_at, "japanese")}
           </div>
           <div>
             <span className="font-medium">最終更新:</span>{" "}
-            {formatUtcToJapaneseDisplay(event.updated_at)}
+            {formatUtcToJstByType(event.updated_at, "japanese")}
           </div>
         </div>
       </div>

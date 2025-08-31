@@ -52,7 +52,7 @@ export interface ValidationError {
 /**
  * エラー作成時の設定オプション
  */
-export interface ProblemOptions {
+interface ProblemOptions {
   /** HTTPステータスコード（デフォルト: 500） */
   status?: number;
   /** 詳細メッセージ */
@@ -81,7 +81,7 @@ function generateCorrelationId(): string {
 /**
  * RFC 7807 準拠の Problem Details オブジェクトを作成
  */
-export function createProblem(
+function createProblem(
   code: string,
   options: ProblemOptions = {}
 ): ProblemDetails {
@@ -411,21 +411,6 @@ const ERROR_DEFINITIONS: Record<string, ErrorDefinition> = {
  * エラーコードの型安全性のための型定義
  */
 export type ErrorCode = keyof typeof ERROR_DEFINITIONS;
-
-/**
- * バリデーションエラーの作成ヘルパー
- */
-export function createValidationError(
-  field: string,
-  code: string,
-  message: string
-): ValidationError {
-  return {
-    pointer: `/body/${field}`,
-    code,
-    message,
-  };
-}
 
 /**
  * クエリパラメータのバリデーションエラー作成ヘルパー

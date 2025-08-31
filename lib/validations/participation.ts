@@ -1,20 +1,17 @@
 import { z } from "zod";
-import type { Database } from "@/types/database";
 import { sanitizeForEventPay } from "@/lib/utils/sanitize";
 import { logSanitizationEvent, logValidationFailure } from "@/lib/security/security-logger";
 
-// 参加ステータスの型定義
-type AttendanceStatus = Database["public"]["Enums"]["attendance_status_enum"];
-type PaymentMethod = Database["public"]["Enums"]["payment_method_enum"];
+
 
 // 招待トークンの検証スキーマ
-export const inviteTokenSchema = z
+const inviteTokenSchema = z
   .string()
   .length(32, "無効な招待トークンの形式です")
   .regex(/^[a-zA-Z0-9_-]+$/, "無効な招待トークンの文字です");
 
 // ニックネームの検証スキーマ
-export const nicknameSchema = z
+const nicknameSchema = z
   .string()
   .min(1, "ニックネームを入力してください")
   .max(50, "ニックネームは50文字以内で入力してください")
@@ -22,7 +19,7 @@ export const nicknameSchema = z
   .transform((val) => sanitizeForEventPay(val.trim()));
 
 // メールアドレスの検証スキーマ
-export const emailSchema = z
+const emailSchema = z
   .string()
   .transform((val) => val.trim().toLowerCase())
   .pipe(
@@ -72,7 +69,7 @@ export const participationFormSchema = z
 export type ParticipationFormData = z.infer<typeof participationFormSchema>;
 
 // 参加フォームの検証エラー型
-export interface ParticipationValidationErrors {
+interface ParticipationValidationErrors {
   inviteToken?: string;
   nickname?: string;
   email?: string;
@@ -140,47 +137,7 @@ export const validateParticipationField = (
   return errors;
 };
 
-/**
- * 参加フォーム全体の検証（セキュリティログ付き）
- * @param formData フォームデータ
- * @param request リクエスト情報（ログ用）
- * @returns 検証エラー
- */
-export const validateParticipationForm = (
-  formData: ParticipationFormData,
-  request?: {
-    userAgent?: string;
-    ip?: string;
-    eventId?: string;
-  }
-): ParticipationValidationErrors => {
-  try {
-    participationFormSchema.parse(formData);
-    return {};
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      const errors: ParticipationValidationErrors = {};
-      error.errors.forEach((err) => {
-        const fieldPath = err.path[0] as keyof ParticipationFormData;
-        const errorMessage = err.message;
-        errors[fieldPath] = errorMessage;
 
-        // バリデーション失敗をログに記録
-        if (request) {
-          const fieldValue = formData[fieldPath];
-          logValidationFailure(
-            fieldPath,
-            errorMessage,
-            typeof fieldValue === "string" ? fieldValue : undefined,
-            request
-          );
-        }
-      });
-      return errors;
-    }
-    return { general: "予期しないエラーが発生しました" };
-  }
-};
 
 /**
  * メールアドレスの重複チェック付き検証（セキュリティログ付き）
@@ -198,10 +155,31 @@ export const validateParticipationFormWithDuplicateCheck = async (
   }
 ): Promise<ParticipationValidationErrors> => {
   // 基本検証
-  const errors = validateParticipationForm(formData, {
-    ...request,
-    eventId,
-  });
+  let errors: ParticipationValidationErrors = {};
+  try {
+    participationFormSchema.parse(formData);
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      error.errors.forEach((err) => {
+        const fieldPath = err.path[0] as keyof ParticipationFormData;
+        const errorMessage = err.message;
+        errors[fieldPath] = errorMessage;
+
+        // バリデーション失敗をログに記録
+        if (request) {
+          const fieldValue = formData[fieldPath];
+          logValidationFailure(
+            fieldPath,
+            errorMessage,
+            typeof fieldValue === "string" ? fieldValue : undefined,
+            { ...request, eventId }
+          );
+        }
+      });
+    } else {
+      errors = { general: "予期しないエラーが発生しました" };
+    }
+  }
 
   // 基本検証でエラーがある場合は重複チェックをスキップ
   if (Object.keys(errors).length > 0) {
@@ -270,6 +248,3 @@ export const sanitizeParticipationInput = {
     return sanitized;
   },
 };
-
-// エクスポート用の型定義
-export type { AttendanceStatus, PaymentMethod };

@@ -1,6 +1,7 @@
 import { z } from "zod";
 import type { Database } from "@/types/database";
 import { isUtcDateFuture, convertDatetimeLocalToUtc } from "@/lib/utils/timezone";
+import { parseFee } from "@/lib/utils/number-parsers";
 import { sanitizeForEventPay } from "@/lib/utils/sanitize";
 
 // 決済方法の定数（無料イベントは参加費0円で判定）
@@ -357,7 +358,7 @@ export const updateEventSchema = z
     (data) => {
       // 参加費が設定されている場合のみチェック（編集では部分更新）
       if (data.fee !== undefined && data.payment_methods !== undefined) {
-        const fee = typeof data.fee === "number" ? data.fee : Number(data.fee || 0);
+        const fee = typeof data.fee === "number" ? data.fee : parseFee(String(data.fee || ""));
         // 無料イベント（fee=0）の場合は決済方法不要
         if (fee === 0) return true;
         // 有料イベント（fee≥1）の場合は決済方法必須
@@ -373,7 +374,7 @@ export const updateEventSchema = z
 
 export type CreateEventInput = z.infer<typeof createEventSchema>;
 export type UpdateEventInput = z.infer<typeof updateEventSchema>;
-export type PaymentMethod = (typeof PAYMENT_METHODS)[number];
+export type UpdateEventFormData = z.input<typeof updateEventSchema>;
 
 // 日付フィルター用のバリデーションスキーマ（強化版）
 const dateFormatRegex = /^\d{4}-\d{2}-\d{2}$/;
@@ -422,33 +423,3 @@ export const dateFilterSchema = z
   );
 
 export type DateFilterInput = z.infer<typeof dateFilterSchema>;
-
-// 参加者登録用のバリデーションスキーマ（新規追加）
-export const attendanceRegistrationSchema = z.object({
-  invite_token: z
-    .string()
-    .min(1, "招待トークンが必要です")
-    .regex(/^[a-zA-Z0-9_-]{16,64}$/, "無効な招待トークンです"),
-
-  nickname: z
-    .string()
-    .min(1, "ニックネームを入力してください")
-    .max(50, "ニックネームは50文字以内で入力してください")
-    .regex(/^[^\s].*[^\s]$/, "前後の空白は使用できません")
-    .transform((val) => sanitizeForEventPay(val.trim())),
-
-  email: z
-    .string()
-    .email("有効なメールアドレスを入力してください")
-    .max(255, "メールアドレスは255文字以内で入力してください"),
-
-  status: z.enum(["attending", "not_attending", "maybe"], {
-    errorMap: () => ({ message: "有効な参加ステータスを選択してください" }),
-  }),
-
-  payment_method: z.enum(["stripe", "cash"], {
-    errorMap: () => ({ message: "有効な決済方法を選択してください" }),
-  }),
-});
-
-export type AttendanceRegistrationInput = z.infer<typeof attendanceRegistrationSchema>;

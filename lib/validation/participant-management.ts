@@ -23,21 +23,21 @@ export const PaymentStatusEnum = z.enum([
 // 利便性のために値配列をエクスポート（runtime 用）
 export const PAYMENT_STATUS_VALUES = PaymentStatusEnum.options;
 
-// 参加ステータスフィルター
-export const AttendanceStatusFilterSchema = z
+// 参加ステータスフィルター（内部専用）
+const AttendanceStatusFilterSchema = z
   .enum(["attending", "not_attending", "maybe"])
   .optional();
 
-// 決済方法フィルター
-export const PaymentMethodFilterSchema = z
+// 決済方法フィルター（内部専用）
+const PaymentMethodFilterSchema = z
   .enum(["stripe", "cash"])
   .optional();
 
-// 決済ステータスフィルター
-export const PaymentStatusFilterSchema = PaymentStatusEnum.optional();
+// 決済ステータスフィルター（内部専用）
+const PaymentStatusFilterSchema = PaymentStatusEnum.optional();
 
-// ソートフィールド
-export const ParticipantSortFieldSchema = z
+// ソートフィールド（内部専用）
+const ParticipantSortFieldSchema = z
   .enum([
     "created_at",
     "updated_at",
@@ -50,27 +50,27 @@ export const ParticipantSortFieldSchema = z
   ])
   .default("updated_at");
 
-// ソート順序
-export const SortOrderSchema = z
+// ソート順序（内部専用）
+const SortOrderSchema = z
   .enum(["asc", "desc"])
   .default("desc");
 
-// ページネーション
-export const PageSchema = z
+// ページネーション（内部専用）
+const PageSchema = z
   .number()
   .int()
   .min(1)
   .default(1);
 
-export const LimitSchema = z
+const LimitSchema = z
   .number()
   .int()
   .min(1)
   .max(100)
   .default(50);
 
-// 検索クエリ
-export const SearchQuerySchema = z
+// 検索クエリ（内部専用）
+const SearchQuerySchema = z
   .string()
   .max(255)
   .optional()
@@ -173,8 +173,8 @@ export const BulkUpdateCashStatusParamsSchema = z.object({
 
 export type BulkUpdateCashStatusParams = z.infer<typeof BulkUpdateCashStatusParamsSchema>;
 
-// 参加者詳細表示用型（attendances + payments結合）
-export const ParticipantViewSchema = z.object({
+// 参加者詳細表示用型（内部専用 - attendances + payments結合）
+const ParticipantViewSchema = z.object({
   // attendance fields
   attendance_id: z.string(),
   nickname: z.string(),
@@ -225,8 +225,8 @@ export type GetParticipantsResponse = z.infer<typeof GetParticipantsResponseSche
 // 決済集計関連スキーマ（MANAGE-002対応）
 // ====================================================================
 
-// 決済方法別集計
-export const PaymentMethodSummarySchema = z.object({
+// 決済方法別集計（内部専用）
+const PaymentMethodSummarySchema = z.object({
   method: z.enum(["stripe", "cash"]),
   count: z.number().int().min(0),
   totalAmount: z.number().int().min(0),
@@ -234,8 +234,8 @@ export const PaymentMethodSummarySchema = z.object({
 
 export type PaymentMethodSummary = z.infer<typeof PaymentMethodSummarySchema>;
 
-// 決済ステータス別集計
-export const PaymentStatusSummarySchema = z.object({
+// 決済ステータス別集計（内部専用）
+const PaymentStatusSummarySchema = z.object({
   status: PaymentStatusEnum,
   count: z.number().int().min(0),
   totalAmount: z.number().int().min(0),
@@ -243,8 +243,8 @@ export const PaymentStatusSummarySchema = z.object({
 
 export type PaymentStatusSummary = z.infer<typeof PaymentStatusSummarySchema>;
 
-// 決済集計データ全体
-export const PaymentSummarySchema = z.object({
+// 決済集計データ全体（内部専用）
+const PaymentSummarySchema = z.object({
   // 基本集計
   totalPayments: z.number().int().min(0),
   totalAmount: z.number().int().min(0),

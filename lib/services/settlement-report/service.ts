@@ -8,7 +8,7 @@ import {
   GenerateSettlementReportParams,
   GetSettlementReportsParams,
   SettlementReportResult,
-  CsvExportResult,
+
   RpcSettlementReportRow,
   GenerateSettlementReportRpcRow
 } from './types'
@@ -211,7 +211,13 @@ export class SettlementReportService {
   /**
    * CSV エクスポート
    */
-  async exportToCsv(params: GetSettlementReportsParams): Promise<CsvExportResult> {
+  async exportToCsv(params: GetSettlementReportsParams): Promise<{
+    success: boolean;
+    csvContent?: string;
+    filename?: string;
+    truncated?: boolean;
+    error?: string;
+  }> {
     try {
       // 1,001 件取得して切り捨て判定
       const limit = params.limit && params.limit > 0 ? params.limit : 1000

@@ -6,11 +6,7 @@
 import { type ErrorCode as ProblemDetailsErrorCode } from "@/lib/api/problem-details";
 import { randomBytes } from "crypto";
 
-export interface ServerActionSuccess<T = unknown> {
-  success: true;
-  data: T;
-  message?: string;
-}
+
 
 export interface ServerActionError {
   success: false;
@@ -26,7 +22,11 @@ export interface ServerActionError {
   }>;
 }
 
-export type ServerActionResult<T = unknown> = ServerActionSuccess<T> | ServerActionError;
+export type ServerActionResult<T = unknown> = {
+  success: true;
+  data: T;
+  message?: string;
+} | ServerActionError;
 
 /**
  * Server Actions用エラーコード（Problem Details と統合）
@@ -40,19 +40,7 @@ function generateCorrelationId(): string {
   return `sa_${randomBytes(6).toString('hex')}`;
 }
 
-/**
- * Server Actions用のエラー設定オプション
- */
-export interface ServerActionErrorOptions {
-  details?: Record<string, unknown>;
-  correlationId?: string;
-  retryable?: boolean;
-  fieldErrors?: Array<{
-    field: string;
-    code: string;
-    message: string;
-  }>;
-}
+
 
 /**
  * Server Actions用エラーレスポンスを作成するヘルパー関数
@@ -60,7 +48,16 @@ export interface ServerActionErrorOptions {
 export function createServerActionError(
   code: ErrorCode,
   message: string,
-  options: ServerActionErrorOptions = {}
+  options: {
+    details?: Record<string, unknown>;
+    correlationId?: string;
+    retryable?: boolean;
+    fieldErrors?: Array<{
+      field: string;
+      code: string;
+      message: string;
+    }>;
+  } = {}
 ): ServerActionError {
   return {
     success: false,
@@ -76,7 +73,7 @@ export function createServerActionError(
 /**
  * Server Actions用成功レスポンスを作成するヘルパー関数
  */
-export function createServerActionSuccess<T>(data: T, message?: string): ServerActionSuccess<T> {
+export function createServerActionSuccess<T>(data: T, message?: string): ServerActionResult<T> {
   return {
     success: true,
     data,

@@ -3,7 +3,7 @@
 /**
  * バッチ処理の結果
  */
-export interface BatchResult<T, R> {
+interface BatchResult<T, R> {
   /** 成功した処理のリスト */
   successful: Array<{ item: T; result: R }>;
   /** 失敗した処理のリスト */
@@ -13,7 +13,7 @@ export interface BatchResult<T, R> {
 /**
  * バッチ処理のオプション
  */
-export interface BatchProcessOptions {
+interface BatchProcessOptions {
   /** エラーが発生しても処理を継続するか */
   continueOnError?: boolean;
   /** 並列処理の最大数 */

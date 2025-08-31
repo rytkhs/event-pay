@@ -3,11 +3,6 @@
 // ゲストトークンエラー関連の型をインポート
 export {
   GuestErrorCode,
-  GuestTokenError,
-  GuestTokenErrorFactory,
-  GuestTokenErrorHandler,
-  ErrorSeverity,
-  type GuestErrorContext,
 } from "@/lib/security/guest-token-errors";
 
 // 管理者権限使用理由
@@ -99,58 +94,7 @@ export interface SuspiciousActivity {
   createdAt?: Date;
 }
 
-// 不正アクセス試行ログ
-export interface UnauthorizedAccessContext {
-  id?: string;
-  attemptedResource: string;
-  requiredPermission?: string;
-  userContext?: Record<string, any>;
-  userId?: string;
-  guestTokenHash?: string;
-  detectionMethod: "EMPTY_RESULT" | "PERMISSION_CHECK" | "RATE_LIMIT" | "RLS_POLICY";
-  blockedByRls?: boolean;
-  ipAddress?: string;
-  userAgent?: string;
-  sessionId?: string;
-  requestPath?: string;
-  requestMethod?: string;
-  requestHeaders?: Record<string, any>;
-  responseStatus?: number;
-  createdAt?: Date;
-}
 
-// セキュリティレポート
-export interface SecurityReport {
-  timeRange: TimeRange;
-  adminAccessCount: number;
-  guestAccessCount: number;
-  suspiciousActivities: SuspiciousActivity[];
-  unauthorizedAttempts: UnauthorizedAccessContext[];
-  topFailedActions: Array<{
-    action: string;
-    count: number;
-  }>;
-  topSuspiciousIPs: Array<{
-    ipAddress: string;
-    count: number;
-    severity: SecuritySeverity;
-  }>;
-  rlsViolationIndicators: Array<{
-    tableName: string;
-    emptyResultCount: number;
-    suspicionLevel: SecuritySeverity;
-  }>;
-  recommendations?: SecurityRecommendation[];
-}
-
-// セキュリティ推奨事項
-export interface SecurityRecommendation {
-  priority: SecuritySeverity;
-  category: "ACCESS_CONTROL" | "MONITORING" | "POLICY_UPDATE" | "INVESTIGATION";
-  title: string;
-  description: string;
-  actionRequired: boolean;
-}
 
 // 時間範囲
 export interface TimeRange {
@@ -161,47 +105,4 @@ export interface TimeRange {
 // AuditContext型をaudit-types.tsから再エクスポート
 export type { AuditContext } from "@/lib/security/audit-types";
 
-// 管理者権限エラー
-export enum AdminAccessErrorCode {
-  UNAUTHORIZED_REASON = "UNAUTHORIZED_REASON",
-  MISSING_CONTEXT = "MISSING_CONTEXT",
-  AUDIT_LOG_FAILED = "AUDIT_LOG_FAILED",
-  EMERGENCY_ACCESS_REQUIRED = "EMERGENCY_ACCESS_REQUIRED",
-}
-
-export class AdminAccessError extends Error {
-  constructor(
-    public code: AdminAccessErrorCode,
-    message: string,
-    public auditContext?: Record<string, unknown>
-  ) {
-    super(message);
-    this.name = "AdminAccessError";
-  }
-}
-
-// セキュリティ監査インターフェース
-export interface SecurityAuditor {
-  logAdminAccess(log: AdminAccessAuditLog): Promise<void>;
-  logGuestAccess(log: GuestAccessAuditLog): Promise<void>;
-  logSuspiciousActivity(activity: SuspiciousActivity): Promise<void>;
-  logUnauthorizedAccess(context: UnauthorizedAccessContext): Promise<void>;
-  generateSecurityReport(timeRange: TimeRange): Promise<SecurityReport>;
-  detectEmptyResultSetViolation(
-    tableName: string,
-    expectedCount: number,
-    actualCount: number,
-    context: Record<string, any>
-  ): Promise<void>;
-}
-
-// セキュリティ監査設定
-export interface SecurityAuditConfig {
-  enableAdminAudit: boolean;
-  enableGuestAudit: boolean;
-  enableSuspiciousActivityDetection: boolean;
-  enableUnauthorizedAccessDetection: boolean;
-  emptyResultSetThreshold: number; // 空の結果セットを疑わしいと判定する閾値
-  bulkAccessThreshold: number; // 大量アクセスを疑わしいと判定する閾値
-  retentionDays: number; // ログの保持期間
-}
+// 管理者権限エラー - lib/security/secure-client-factory.types.ts から利用

@@ -18,11 +18,3 @@ export function isAllowedConnectPath(pathname: string, expectedSuffix: string): 
   const normalized = pathname.replace(/\/+$/, "");
   return normalized.endsWith(expectedSuffix);
 }
-
-/**
- * ベースURLとパスを結合して絶対URLを生成
- */
-export function buildConnectUrl(baseUrl: string, path: string): string {
-  const base = baseUrl.replace(/\/+$/, "");
-  return `${base}${path}`;
-}

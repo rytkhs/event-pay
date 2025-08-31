@@ -143,33 +143,6 @@ export function logSanitizationEvent(
   }
 }
 
-/**
- * 重複登録試行を記録します
- * @param email 重複したメールアドレス（マスク済み）
- * @param eventId イベントID
- * @param request リクエスト情報
- */
-export function logDuplicateRegistrationAttempt(
-  email: string,
-  eventId: string,
-  request?: {
-    userAgent?: string;
-    ip?: string;
-  }
-): void {
-  logParticipationSecurityEvent(
-    "DUPLICATE_REGISTRATION",
-    "Duplicate registration attempt detected",
-    {
-      maskedEmail: maskEmail(email),
-      eventId,
-    },
-    {
-      ...request,
-      eventId,
-    }
-  );
-}
 
 /**
  * バリデーション失敗を記録します
@@ -303,19 +276,7 @@ function maskIP(ip?: string): string | undefined {
   return "xxx.xxx.xxx.xxx";
 }
 
-/**
- * メールアドレスをマスクします
- * @param email メールアドレス
- * @returns マスクされたメールアドレス
- */
-function maskEmail(email: string): string {
-  if (!email.includes("@")) return "***";
 
-  const [local, domain] = email.split("@");
-  const maskedLocal = local.length > 2 ? local.substring(0, 2) + "***" : "***";
-
-  return `${maskedLocal}@${domain}`;
-}
 
 /**
  * トークンをマスクします

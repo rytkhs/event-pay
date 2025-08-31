@@ -8,6 +8,7 @@ import { z } from "zod";
 import { createEventAction } from "@/app/events/actions";
 import { logger } from "@/lib/logging/app-logger";
 import { convertDatetimeLocalToUtc } from "@/lib/utils/timezone";
+import { safeParseNumber, parseFee } from "@/lib/utils/number-parsers";
 
 // フロントエンド専用バリデーションスキーマ
 const eventFormSchema = z
@@ -32,16 +33,16 @@ const eventFormSchema = z
       .string()
       .min(1, "参加費は必須です")
       .refine((val) => {
-        const num = Number(val);
-        return Number.isFinite(num) && num >= 0 && num <= 1000000;
+        const num = parseFee(val);
+        return num >= 0 && num <= 1000000;
       }, "参加費は0以上1000000以下である必要があります"),
     payment_methods: z.array(z.string()),
     location: z.string().max(200, "場所は200文字以内で入力してください"),
     description: z.string().max(1000, "説明は1000文字以内で入力してください"),
     capacity: z.string().refine((val) => {
       if (!val || val.trim() === "") return true;
-      const num = Number(val);
-      return Number.isFinite(num) && num >= 1 && num <= 10000;
+      const num = safeParseNumber(val);
+      return num >= 1 && num <= 10000;
     }, "定員は1以上10000以下である必要があります"),
     registration_deadline: z.string(),
     payment_deadline: z.string(),
@@ -49,7 +50,7 @@ const eventFormSchema = z
   .refine(
     (data) => {
       // 参加費に基づく決済方法バリデーション
-      const fee = Number(data.fee);
+      const fee = parseFee(data.fee);
       if (fee > 0) {
         return data.payment_methods && data.payment_methods.length > 0;
       }
@@ -157,7 +158,7 @@ export const useEventForm = () => {
   // 参加費をリアルタイムで監視
   const watchedFee = form.watch("fee");
   // 空文字列や未入力の場合は無料イベントとして扱わない
-  const currentFee = watchedFee && watchedFee.trim() !== "" ? parseInt(watchedFee, 10) : null;
+  const currentFee = watchedFee && watchedFee.trim() !== "" ? safeParseNumber(watchedFee) : null;
   const isFreeEvent = currentFee === 0;
 
   // 無料イベントの場合は決済方法をクリア

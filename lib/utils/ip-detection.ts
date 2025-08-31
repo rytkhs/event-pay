@@ -56,7 +56,7 @@ function isValidIPv6(ip: string): boolean {
 /**
  * IPアドレスが有効かどうかを検証する
  */
-export function isValidIP(ip: string): boolean {
+function isValidIP(ip: string): boolean {
   if (!ip || typeof ip !== "string") {
     return false;
   }
@@ -75,7 +75,7 @@ export function isValidIP(ip: string): boolean {
 /**
  * IPアドレスがプライベートIPかどうかを判定する
  */
-export function isPrivateIP(ip: string): boolean {
+function isPrivateIP(ip: string): boolean {
   if (!isValidIP(ip)) {
     return false;
   }
@@ -92,7 +92,7 @@ export function isPrivateIP(ip: string): boolean {
 /**
  * IPアドレスを正規化する
  */
-export function normalizeIP(ip: string): string {
+function normalizeIP(ip: string): string {
   if (!ip || typeof ip !== "string") {
     return "127.0.0.1";
   }
@@ -120,7 +120,7 @@ export function normalizeIP(ip: string): string {
  * フォールバック識別子を生成する
  * プロキシヘッダーが全て存在しない場合の代替手段
  */
-export function generateFallbackIdentifier(request: NextRequest): string {
+function generateFallbackIdentifier(request: NextRequest): string {
   // セッション固有の情報からハッシュを生成
   const sessionData = [
     request.headers.get("user-agent") || "",
