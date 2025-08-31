@@ -119,6 +119,8 @@
         "./features/events/types.ts"
       ],
       "@/lib/hooks/*": [
+        "./features/auth/hooks/*",
+        "./features/events/hooks/*",
         "./core/hooks/*"
       ],
       "@core/hooks/*": [
@@ -128,6 +130,15 @@
         "./features/auth/hooks/*"
       ],
       "@features/events/hooks/*": [
+        "./features/events/hooks/*"
+      ],
+      "@/hooks/use-clipboard": [
+        "./core/hooks/use-clipboard.ts"
+      ],
+      "@/hooks/use-error-handler": [
+        "./core/hooks/use-error-handler.ts"
+      ],
+      "@/hooks/*": [
         "./features/events/hooks/*"
       ]
     }
