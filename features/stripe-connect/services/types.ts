@@ -28,7 +28,7 @@ export interface CreateExpressAccountParams {
   userId: string;
   email: string;
   country?: string;
-  businessType?: 'individual' | 'company';
+  businessType?: "individual" | "company";
   businessProfile?: {
     url?: string;
     productDescription?: string;
@@ -46,10 +46,10 @@ export interface CreateAccountLinkParams {
   accountId: string;
   refreshUrl: string;
   returnUrl: string;
-  type?: 'account_onboarding' | 'account_update';
+  type?: "account_onboarding" | "account_update";
   collectionOptions?: {
-    fields?: 'currently_due' | 'eventually_due';
-    futureRequirements?: 'include' | 'omit';
+    fields?: "currently_due" | "eventually_due";
+    futureRequirements?: "include" | "omit";
   };
 }
 
@@ -76,8 +76,8 @@ export interface AccountInfo {
     disabled_reason?: string;
   };
   capabilities?: {
-    card_payments?: 'active' | 'inactive' | 'pending';
-    transfers?: 'active' | 'inactive' | 'pending';
+    card_payments?: "active" | "inactive" | "pending";
+    transfers?: "active" | "inactive" | "pending";
   };
 }
 
@@ -93,21 +93,21 @@ export interface UpdateAccountStatusParams {
 // StripeConnect関連のエラー型
 export enum StripeConnectErrorType {
   // ユーザーエラー
-  ACCOUNT_ALREADY_EXISTS = 'ACCOUNT_ALREADY_EXISTS',
-  ACCOUNT_NOT_FOUND = 'ACCOUNT_NOT_FOUND',
-  INVALID_ACCOUNT_STATUS = 'INVALID_ACCOUNT_STATUS',
-  ONBOARDING_INCOMPLETE = 'ONBOARDING_INCOMPLETE',
+  ACCOUNT_ALREADY_EXISTS = "ACCOUNT_ALREADY_EXISTS",
+  ACCOUNT_NOT_FOUND = "ACCOUNT_NOT_FOUND",
+  INVALID_ACCOUNT_STATUS = "INVALID_ACCOUNT_STATUS",
+  ONBOARDING_INCOMPLETE = "ONBOARDING_INCOMPLETE",
 
   // Stripe APIエラー
-  STRIPE_API_ERROR = 'STRIPE_API_ERROR',
-  ACCOUNT_CREATION_FAILED = 'ACCOUNT_CREATION_FAILED',
-  ACCOUNT_LINK_CREATION_FAILED = 'ACCOUNT_LINK_CREATION_FAILED',
-  ACCOUNT_RETRIEVAL_FAILED = 'ACCOUNT_RETRIEVAL_FAILED',
+  STRIPE_API_ERROR = "STRIPE_API_ERROR",
+  ACCOUNT_CREATION_FAILED = "ACCOUNT_CREATION_FAILED",
+  ACCOUNT_LINK_CREATION_FAILED = "ACCOUNT_LINK_CREATION_FAILED",
+  ACCOUNT_RETRIEVAL_FAILED = "ACCOUNT_RETRIEVAL_FAILED",
 
   // システムエラー
-  DATABASE_ERROR = 'DATABASE_ERROR',
-  VALIDATION_ERROR = 'VALIDATION_ERROR',
-  UNKNOWN_ERROR = 'UNKNOWN_ERROR'
+  DATABASE_ERROR = "DATABASE_ERROR",
+  VALIDATION_ERROR = "VALIDATION_ERROR",
+  UNKNOWN_ERROR = "UNKNOWN_ERROR",
 }
 
 // StripeConnectエラークラス
@@ -123,7 +123,7 @@ export class StripeConnectError extends Error {
     metadata?: Record<string, unknown>
   ) {
     super(message);
-    this.name = 'StripeConnectError';
+    this.name = "StripeConnectError";
     this.type = type;
     this.originalError = originalError;
     this.metadata = metadata;

@@ -141,8 +141,6 @@ export interface SecureSupabaseClient {
   createMiddlewareClient(request: NextRequest, response: NextResponse): SupabaseClient;
 }
 
-
-
 /**
  * クライアント作成オプション
  */

@@ -1,8 +1,8 @@
 /**
  * 通知サービスの実装
  */
-import type { SupabaseClient } from '@supabase/supabase-js';
-import { Database } from '@/types/database';
+import type { SupabaseClient } from "@supabase/supabase-js";
+import { Database } from "@/types/database";
 import {
   INotificationService,
   IEmailNotificationService,
@@ -10,9 +10,9 @@ import {
   StripeConnectNotificationData,
   AccountStatusChangeNotification,
   AccountRestrictedNotification,
-  EmailTemplate
-} from './types';
-import { EmailNotificationService } from './email-service';
+  EmailTemplate,
+} from "./types";
+import { EmailNotificationService } from "./email-service";
 
 /**
  * 通知サービスの実装クラス
@@ -29,32 +29,33 @@ export class NotificationService implements INotificationService {
   /**
    * アカウント認証完了通知を送信
    */
-  async sendAccountVerifiedNotification(data: StripeConnectNotificationData): Promise<NotificationResult> {
+  async sendAccountVerifiedNotification(
+    data: StripeConnectNotificationData
+  ): Promise<NotificationResult> {
     try {
       // ユーザー情報を取得
       const userInfo = await this.getUserInfo(data.userId);
       if (!userInfo) {
         return {
           success: false,
-          error: 'ユーザー情報が見つかりません'
+          error: "ユーザー情報が見つかりません",
         };
       }
 
       const template: EmailTemplate = {
-        subject: 'Stripe Connectアカウントの認証が完了しました',
-        body: this.createAccountVerifiedEmailBody(userInfo.name || 'ユーザー'),
-        htmlBody: this.createAccountVerifiedEmailHtml(userInfo.name || 'ユーザー')
+        subject: "Stripe Connectアカウントの認証が完了しました",
+        body: this.createAccountVerifiedEmailBody(userInfo.name || "ユーザー"),
+        htmlBody: this.createAccountVerifiedEmailHtml(userInfo.name || "ユーザー"),
       };
 
       return await this.emailService.sendEmail({
         to: userInfo.email,
-        template
+        template,
       });
-
     } catch (error) {
       return {
         success: false,
-        error: error instanceof Error ? error.message : '通知送信中にエラーが発生しました'
+        error: error instanceof Error ? error.message : "通知送信中にエラーが発生しました",
       };
     }
   }
@@ -62,56 +63,57 @@ export class NotificationService implements INotificationService {
   /**
    * アカウント制限通知を送信
    */
-  async sendAccountRestrictedNotification(data: AccountRestrictedNotification): Promise<NotificationResult> {
+  async sendAccountRestrictedNotification(
+    data: AccountRestrictedNotification
+  ): Promise<NotificationResult> {
     try {
       // ユーザー情報を取得
       const userInfo = await this.getUserInfo(data.userId);
       if (!userInfo) {
         return {
           success: false,
-          error: 'ユーザー情報が見つかりません'
+          error: "ユーザー情報が見つかりません",
         };
       }
 
       const template: EmailTemplate = {
-        subject: 'Stripe Connectアカウントに制限が設定されました',
+        subject: "Stripe Connectアカウントに制限が設定されました",
         body: this.createAccountRestrictedEmailBody(
-          userInfo.name || 'ユーザー',
+          userInfo.name || "ユーザー",
           data.restrictionReason,
           data.requiredActions,
           data.dashboardUrl
         ),
         htmlBody: this.createAccountRestrictedEmailHtml(
-          userInfo.name || 'ユーザー',
+          userInfo.name || "ユーザー",
           data.restrictionReason,
           data.requiredActions,
           data.dashboardUrl
-        )
+        ),
       };
 
       const result = await this.emailService.sendEmail({
         to: userInfo.email,
-        template
+        template,
       });
 
       // 管理者にもアラートを送信
       await this.emailService.sendAdminAlert({
-        subject: 'Stripe Connectアカウント制限',
+        subject: "Stripe Connectアカウント制限",
         message: `ユーザー ${data.userId} のStripe Connectアカウント ${data.accountId} に制限が設定されました。`,
         details: {
           userId: data.userId,
           accountId: data.accountId,
           restrictionReason: data.restrictionReason,
-          requiredActions: data.requiredActions
-        }
+          requiredActions: data.requiredActions,
+        },
       });
 
       return result;
-
     } catch (error) {
       return {
         success: false,
-        error: error instanceof Error ? error.message : '通知送信中にエラーが発生しました'
+        error: error instanceof Error ? error.message : "通知送信中にエラーが発生しました",
       };
     }
   }
@@ -119,7 +121,9 @@ export class NotificationService implements INotificationService {
   /**
    * アカウント状態変更通知を送信
    */
-  async sendAccountStatusChangeNotification(data: AccountStatusChangeNotification): Promise<NotificationResult> {
+  async sendAccountStatusChangeNotification(
+    data: AccountStatusChangeNotification
+  ): Promise<NotificationResult> {
     try {
       // 重要な状態変更のみ通知
       if (this.shouldNotifyStatusChange(data.oldStatus, data.newStatus)) {
@@ -128,40 +132,39 @@ export class NotificationService implements INotificationService {
         if (!userInfo) {
           return {
             success: false,
-            error: 'ユーザー情報が見つかりません'
+            error: "ユーザー情報が見つかりません",
           };
         }
 
         const template: EmailTemplate = {
-          subject: 'Stripe Connectアカウントの状態が更新されました',
+          subject: "Stripe Connectアカウントの状態が更新されました",
           body: this.createStatusChangeEmailBody(
-            userInfo.name || 'ユーザー',
+            userInfo.name || "ユーザー",
             data.oldStatus,
             data.newStatus,
             data.chargesEnabled,
             data.payoutsEnabled
           ),
           htmlBody: this.createStatusChangeEmailHtml(
-            userInfo.name || 'ユーザー',
+            userInfo.name || "ユーザー",
             data.oldStatus,
             data.newStatus,
             data.chargesEnabled,
             data.payoutsEnabled
-          )
+          ),
         };
 
         return await this.emailService.sendEmail({
           to: userInfo.email,
-          template
+          template,
         });
       }
 
       return { success: true };
-
     } catch (error) {
       return {
         success: false,
-        error: error instanceof Error ? error.message : '通知送信中にエラーが発生しました'
+        error: error instanceof Error ? error.message : "通知送信中にエラーが発生しました",
       };
     }
   }
@@ -173,9 +176,9 @@ export class NotificationService implements INotificationService {
     try {
       // usersテーブルからnameを取得
       const { data: userData, error: userError } = await this.supabase
-        .from('users')
-        .select('name')
-        .eq('id', userId)
+        .from("users")
+        .select("name")
+        .eq("id", userId)
         .single();
 
       if (userError) {
@@ -183,7 +186,8 @@ export class NotificationService implements INotificationService {
       }
 
       // Supabase Authからemailを取得
-      const { data: authData, error: authError } = await this.supabase.auth.admin.getUserById(userId);
+      const { data: authData, error: authError } =
+        await this.supabase.auth.admin.getUserById(userId);
 
       if (authError || !authData.user?.email) {
         return null;
@@ -191,9 +195,8 @@ export class NotificationService implements INotificationService {
 
       return {
         email: authData.user.email,
-        name: userData?.name
+        name: userData?.name,
       };
-
     } catch (_error) {
       return null;
     }
@@ -208,14 +211,14 @@ export class NotificationService implements INotificationService {
   ): boolean {
     // 認証完了や制限状態への変更は通知
     const importantTransitions = [
-      { from: 'unverified', to: 'verified' },
-      { from: 'onboarding', to: 'verified' },
-      { from: 'verified', to: 'restricted' },
-      { from: 'onboarding', to: 'restricted' }
+      { from: "unverified", to: "verified" },
+      { from: "onboarding", to: "verified" },
+      { from: "verified", to: "restricted" },
+      { from: "onboarding", to: "restricted" },
     ];
 
     return importantTransitions.some(
-      transition => transition.from === oldStatus && transition.to === newStatus
+      (transition) => transition.from === oldStatus && transition.to === newStatus
     );
   }
 
@@ -302,8 +305,8 @@ Stripe Connectアカウントに制限が設定されました。
     }
 
     if (requiredActions && requiredActions.length > 0) {
-      body += '\n必要なアクション:\n';
-      requiredActions.forEach(action => {
+      body += "\n必要なアクション:\n";
+      requiredActions.forEach((action) => {
         body += `- ${action}\n`;
       });
     }
@@ -331,16 +334,16 @@ EventPay チーム
     requiredActions?: string[],
     dashboardUrl?: string
   ): string {
-    let actionsHtml = '';
+    let actionsHtml = "";
     if (requiredActions && requiredActions.length > 0) {
-      actionsHtml = '<h3>必要なアクション:</h3><ul>';
-      requiredActions.forEach(action => {
+      actionsHtml = "<h3>必要なアクション:</h3><ul>";
+      requiredActions.forEach((action) => {
         actionsHtml += `<li>${action}</li>`;
       });
-      actionsHtml += '</ul>';
+      actionsHtml += "</ul>";
     }
 
-    let dashboardHtml = '';
+    let dashboardHtml = "";
     if (dashboardUrl) {
       dashboardHtml = `
         <div style="margin: 20px 0;">
@@ -368,7 +371,7 @@ EventPay チーム
 
     <div style="background-color: #fef2f2; border: 1px solid #f87171; border-radius: 8px; padding: 16px; margin: 20px 0;">
       <p style="margin: 0; font-weight: bold; color: #dc2626;">⚠️ Stripe Connectアカウントに制限が設定されました</p>
-      ${restrictionReason ? `<p style="margin: 10px 0 0 0;">制限理由: ${restrictionReason}</p>` : ''}
+      ${restrictionReason ? `<p style="margin: 10px 0 0 0;">制限理由: ${restrictionReason}</p>` : ""}
     </div>
 
     ${actionsHtml}
@@ -397,10 +400,10 @@ EventPay チーム
     payoutsEnabled: boolean
   ): string {
     const statusMap: Record<string, string> = {
-      'unverified': '未認証',
-      'onboarding': '認証中',
-      'verified': '認証済み',
-      'restricted': '制限中'
+      unverified: "未認証",
+      onboarding: "認証中",
+      verified: "認証済み",
+      restricted: "制限中",
     };
 
     return `
@@ -412,10 +415,10 @@ Stripe Connectアカウントの状態が更新されました。
 
 変更内容:
 - 状態: ${statusMap[oldStatus] || oldStatus} → ${statusMap[newStatus] || newStatus}
-- 決済受取: ${chargesEnabled ? '有効' : '無効'}
-- 送金: ${payoutsEnabled ? '有効' : '無効'}
+- 決済受取: ${chargesEnabled ? "有効" : "無効"}
+- 送金: ${payoutsEnabled ? "有効" : "無効"}
 
-${newStatus === 'verified' ? 'これで、イベントの売上を自動的に受け取ることができるようになりました。' : ''}
+${newStatus === "verified" ? "これで、イベントの売上を自動的に受け取ることができるようになりました。" : ""}
 
 ご不明な点がございましたら、お気軽にお問い合わせください。
 
@@ -434,13 +437,14 @@ EventPay チーム
     payoutsEnabled: boolean
   ): string {
     const statusMap: Record<string, string> = {
-      'unverified': '未認証',
-      'onboarding': '認証中',
-      'verified': '認証済み',
-      'restricted': '制限中'
+      unverified: "未認証",
+      onboarding: "認証中",
+      verified: "認証済み",
+      restricted: "制限中",
     };
 
-    const statusColor = newStatus === 'verified' ? '#059669' : newStatus === 'restricted' ? '#dc2626' : '#2563eb';
+    const statusColor =
+      newStatus === "verified" ? "#059669" : newStatus === "restricted" ? "#dc2626" : "#2563eb";
 
     return `
 <!DOCTYPE html>
@@ -466,7 +470,7 @@ EventPay チーム
       </ul>
     </div>
 
-    ${newStatus === 'verified' ? '<div style="background-color: #f0fdf4; border: 1px solid #22c55e; border-radius: 8px; padding: 16px; margin: 20px 0;"><p style="margin: 0; color: #059669; font-weight: bold;">✅ これで、イベントの売上を自動的に受け取ることができるようになりました。</p></div>' : ''}
+    ${newStatus === "verified" ? '<div style="background-color: #f0fdf4; border: 1px solid #22c55e; border-radius: 8px; padding: 16px; margin: 20px 0;"><p style="margin: 0; color: #059669; font-weight: bold;">✅ これで、イベントの売上を自動的に受け取ることができるようになりました。</p></div>' : ""}
 
     <p>ご不明な点がございましたら、お気軽にお問い合わせください。</p>
 

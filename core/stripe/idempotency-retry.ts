@@ -22,8 +22,7 @@ export async function retryWithIdempotency<T>(
       return await fn();
     } catch (error: unknown) {
       const err = error as { code?: string; statusCode?: number; message?: string };
-      const isIdempo409 =
-        err.code === "idempotency_key_in_use" || err.statusCode === 409;
+      const isIdempo409 = err.code === "idempotency_key_in_use" || err.statusCode === 409;
 
       // ネットワーク切断・TLS reset など Stripe SDK が返す ConnectionError 系
       // 例) StripeConnectionError, StripeConnectionTimeoutError, StripeAPIConnectionError

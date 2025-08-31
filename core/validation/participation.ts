@@ -2,8 +2,6 @@ import { z } from "zod";
 import { sanitizeForEventPay } from "@core/utils/sanitize";
 import { logSanitizationEvent, logValidationFailure } from "@core/security/security-logger";
 
-
-
 // 招待トークンの検証スキーマ
 const inviteTokenSchema = z
   .string()
@@ -136,8 +134,6 @@ export const validateParticipationField = (
 
   return errors;
 };
-
-
 
 /**
  * メールアドレスの重複チェック付き検証（セキュリティログ付き）

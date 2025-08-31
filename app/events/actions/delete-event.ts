@@ -8,7 +8,7 @@ import { revalidatePath } from "next/cache";
 import {
   createServerActionError,
   createServerActionSuccess,
-  type ServerActionResult
+  type ServerActionResult,
 } from "@core/types/server-actions";
 
 export async function deleteEventAction(eventId: string): Promise<ServerActionResult<void>> {
@@ -50,11 +50,9 @@ export async function deleteEventAction(eventId: string): Promise<ServerActionRe
     // 削除制限チェック
     const restrictions = checkDeleteRestrictions(event as any);
     if (restrictions.length > 0) {
-      return createServerActionError(
-        "EVENT_DELETE_RESTRICTED",
-        restrictions[0].message,
-        { details: { violations: restrictions } }
-      );
+      return createServerActionError("EVENT_DELETE_RESTRICTED", restrictions[0].message, {
+        details: { violations: restrictions },
+      });
     }
 
     // イベント削除（RLSで自分のイベントのみ削除可能）
@@ -80,10 +78,8 @@ export async function deleteEventAction(eventId: string): Promise<ServerActionRe
 
     return createServerActionSuccess(undefined, "イベントが正常に削除されました");
   } catch (_error) {
-    return createServerActionError(
-      "INTERNAL_ERROR",
-      "予期しないエラーが発生しました",
-      { retryable: true }
-    );
+    return createServerActionError("INTERNAL_ERROR", "予期しないエラーが発生しました", {
+      retryable: true,
+    });
   }
 }

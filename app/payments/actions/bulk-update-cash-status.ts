@@ -91,7 +91,9 @@ export async function bulkUpdateCashStatusAction(
         return createServerActionError(
           "RATE_LIMITED",
           "レート制限に達しました。しばらく待ってから再試行してください。",
-          rl.retryAfter ? { retryable: true, details: { retryAfter: rl.retryAfter } } : { retryable: true }
+          rl.retryAfter
+            ? { retryable: true, details: { retryAfter: rl.retryAfter } }
+            : { retryable: true }
         );
       }
     } catch {
@@ -101,7 +103,8 @@ export async function bulkUpdateCashStatusAction(
     // 対象決済の一括取得（主催者権限チェック用）
     const { data: paymentsWithEvent, error: fetchError } = await supabase
       .from("payments")
-      .select(`
+      .select(
+        `
         id,
         method,
         status,
@@ -115,7 +118,8 @@ export async function bulkUpdateCashStatusAction(
             created_by
           )
         )
-      `)
+      `
+      )
       .in("id", paymentIds);
 
     if (fetchError) {
@@ -128,7 +132,9 @@ export async function bulkUpdateCashStatusAction(
 
     // 権限チェック：すべての決済が同じユーザーのイベントに属していることを確認
     const unauthorizedPayments = paymentsWithEvent.filter((payment) => {
-      const attendance = Array.isArray(payment.attendances) ? payment.attendances[0] : payment.attendances;
+      const attendance = Array.isArray(payment.attendances)
+        ? payment.attendances[0]
+        : payment.attendances;
       const event = Array.isArray(attendance.events) ? attendance.events[0] : attendance.events;
       return event.created_by !== user.id;
     });
@@ -162,7 +168,7 @@ export async function bulkUpdateCashStatusAction(
     for (const payment of cashPayments) {
       await validator.validateUpdatePaymentStatusParams({
         paymentId: payment.id,
-        status
+        status,
       });
     }
 
@@ -173,17 +179,20 @@ export async function bulkUpdateCashStatusAction(
     );
 
     // 一括更新用のデータを構築（version情報を含める）
-    const updateData = cashPayments.map(payment => ({
+    const updateData = cashPayments.map((payment) => ({
       payment_id: payment.id,
       expected_version: payment.version,
-      new_status: status
+      new_status: status,
     }));
 
-    const { data: rpcResult, error: rpcError } = await admin.rpc('rpc_bulk_update_payment_status_safe', {
-      p_payment_updates: updateData,
-      p_user_id: user.id,
-      p_notes: notes || null,
-    });
+    const { data: rpcResult, error: rpcError } = await admin.rpc(
+      "rpc_bulk_update_payment_status_safe",
+      {
+        p_payment_updates: updateData,
+        p_user_id: user.id,
+        p_notes: notes || null,
+      }
+    );
 
     if (rpcError) {
       return createServerActionError(
@@ -193,13 +202,12 @@ export async function bulkUpdateCashStatusAction(
     }
 
     // RPC結果をレスポンス形式に変換
-    const rpcFailures: BulkUpdateResult["failures"] = (rpcResult.failures || []).map((f: {
-      payment_id: string;
-      error_message: string;
-    }) => ({
-      paymentId: f.payment_id,
-      error: f.error_message,
-    }));
+    const rpcFailures: BulkUpdateResult["failures"] = (rpcResult.failures || []).map(
+      (f: { payment_id: string; error_message: string }) => ({
+        paymentId: f.payment_id,
+        error: f.error_message,
+      })
+    );
 
     const result: BulkUpdateResult = {
       successCount: rpcResult.success_count || 0,

@@ -2,8 +2,8 @@
  * 通知サービスのエクスポート
  */
 
-export { NotificationService } from './service';
-export { EmailNotificationService } from './email-service';
+export { NotificationService } from "./service";
+export { EmailNotificationService } from "./email-service";
 export type {
   INotificationService,
   IEmailNotificationService,
@@ -12,5 +12,5 @@ export type {
   NotificationResult,
   StripeConnectNotificationData,
   AccountStatusChangeNotification,
-  AccountRestrictedNotification
-} from './types';
+  AccountRestrictedNotification,
+} from "./types";

@@ -24,14 +24,10 @@ export const PaymentStatusEnum = z.enum([
 export const PAYMENT_STATUS_VALUES = PaymentStatusEnum.options;
 
 // 参加ステータスフィルター（内部専用）
-const AttendanceStatusFilterSchema = z
-  .enum(["attending", "not_attending", "maybe"])
-  .optional();
+const AttendanceStatusFilterSchema = z.enum(["attending", "not_attending", "maybe"]).optional();
 
 // 決済方法フィルター（内部専用）
-const PaymentMethodFilterSchema = z
-  .enum(["stripe", "cash"])
-  .optional();
+const PaymentMethodFilterSchema = z.enum(["stripe", "cash"]).optional();
 
 // 決済ステータスフィルター（内部専用）
 const PaymentStatusFilterSchema = PaymentStatusEnum.optional();
@@ -46,28 +42,17 @@ const ParticipantSortFieldSchema = z
     "status",
     "payment_method",
     "payment_status",
-    "paid_at"
+    "paid_at",
   ])
   .default("updated_at");
 
 // ソート順序（内部専用）
-const SortOrderSchema = z
-  .enum(["asc", "desc"])
-  .default("desc");
+const SortOrderSchema = z.enum(["asc", "desc"]).default("desc");
 
 // ページネーション（内部専用）
-const PageSchema = z
-  .number()
-  .int()
-  .min(1)
-  .default(1);
+const PageSchema = z.number().int().min(1).default(1);
 
-const LimitSchema = z
-  .number()
-  .int()
-  .min(1)
-  .max(100)
-  .default(50);
+const LimitSchema = z.number().int().min(1).max(100).default(50);
 
 // 検索クエリ（内部専用）
 const SearchQuerySchema = z
@@ -94,25 +79,29 @@ export type GetParticipantsParams = z.infer<typeof GetParticipantsParamsSchema>;
 // CSVエクスポートパラメータ
 export const ExportParticipantsCsvParamsSchema = z.object({
   eventId: z.string().uuid(),
-  filters: z.object({
-    search: SearchQuerySchema,
-    attendanceStatus: AttendanceStatusFilterSchema,
-    paymentMethod: PaymentMethodFilterSchema,
-    paymentStatus: PaymentStatusFilterSchema,
-  }).optional(),
+  filters: z
+    .object({
+      search: SearchQuerySchema,
+      attendanceStatus: AttendanceStatusFilterSchema,
+      paymentMethod: PaymentMethodFilterSchema,
+      paymentStatus: PaymentStatusFilterSchema,
+    })
+    .optional(),
   columns: z
-    .array(z.enum([
-      "attendance_id",
-      "nickname",
-      "email",
-      "status",
-      "payment_method",
-      "payment_status",
-      "amount",
-      "paid_at",
-      "created_at",
-      "updated_at"
-    ]))
+    .array(
+      z.enum([
+        "attendance_id",
+        "nickname",
+        "email",
+        "status",
+        "payment_method",
+        "payment_status",
+        "amount",
+        "paid_at",
+        "created_at",
+        "updated_at",
+      ])
+    )
     .optional()
     .default([
       "attendance_id",
@@ -121,7 +110,7 @@ export const ExportParticipantsCsvParamsSchema = z.object({
       "status",
       "payment_method",
       "payment_status",
-      "paid_at"
+      "paid_at",
     ]),
 });
 
@@ -139,28 +128,25 @@ export const GetAllCashPaymentIdsParamsSchema = z.object({
     })
     .optional(),
   // 取得上限（+1 で打ち切り判定に利用）。過度なメモリ消費を避けるため 5000 に制限
-  max: z
-    .number()
-    .int()
-    .min(1)
-    .max(5000)
-    .default(5000),
+  max: z.number().int().min(1).max(5000).default(5000),
 });
 
 export type GetAllCashPaymentIdsParams = z.infer<typeof GetAllCashPaymentIdsParamsSchema>;
 
-export const GetAllCashPaymentIdsResponseSchema = z.object({
-  success: z.literal(true),
-  paymentIds: z.array(z.string().uuid()),
-  total: z.number().int().min(0),
-  matchedTotal: z.number().int().min(0).optional(),
-  truncated: z.boolean().optional(),
-}).or(
-  z.object({
-    success: z.literal(false),
-    error: z.string(),
+export const GetAllCashPaymentIdsResponseSchema = z
+  .object({
+    success: z.literal(true),
+    paymentIds: z.array(z.string().uuid()),
+    total: z.number().int().min(0),
+    matchedTotal: z.number().int().min(0).optional(),
+    truncated: z.boolean().optional(),
   })
-);
+  .or(
+    z.object({
+      success: z.literal(false),
+      error: z.string(),
+    })
+  );
 
 export type GetAllCashPaymentIdsResponse = z.infer<typeof GetAllCashPaymentIdsResponseSchema>;
 
@@ -268,16 +254,18 @@ export type PaymentSummary = z.infer<typeof PaymentSummarySchema>;
 
 // 決済一覧＋集計レスポンス
 export const GetEventPaymentsResponseSchema = z.object({
-  payments: z.array(z.object({
-    id: z.string(),
-    method: z.enum(["stripe", "cash"]),
-    amount: z.number().int(),
-    status: PaymentStatusEnum,
-    attendance_id: z.string(),
-    paid_at: z.string().nullable(),
-    created_at: z.string(),
-    updated_at: z.string(),
-  })),
+  payments: z.array(
+    z.object({
+      id: z.string(),
+      method: z.enum(["stripe", "cash"]),
+      amount: z.number().int(),
+      status: PaymentStatusEnum,
+      attendance_id: z.string(),
+      paid_at: z.string().nullable(),
+      created_at: z.string(),
+      updated_at: z.string(),
+    })
+  ),
   summary: PaymentSummarySchema,
 });
 

@@ -45,7 +45,7 @@ export class SessionManager {
         logger.warn("Session refresh failed", {
           tag: "sessionRefreshFailed",
           error_message: error.message,
-          session_id: sessionId
+          session_id: sessionId,
         });
         return { updated: false, session: null };
       }
@@ -59,7 +59,7 @@ export class SessionManager {
         tag: "sessionRefreshException",
         error_name: error instanceof Error ? error.name : "Unknown",
         error_message: error instanceof Error ? error.message : String(error),
-        session_id: sessionId
+        session_id: sessionId,
       });
       return { updated: false, session: null };
     }
@@ -137,7 +137,7 @@ export class SessionManager {
         tag: "backgroundSessionRefreshFailed",
         error_name: error instanceof Error ? error.name : "Unknown",
         error_message: error instanceof Error ? error.message : String(error),
-        session_id: sessionId
+        session_id: sessionId,
       });
     }
   }

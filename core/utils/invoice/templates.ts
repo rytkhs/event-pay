@@ -99,7 +99,7 @@ export function generateInvoiceHTML(data: InvoiceData): string {
     .totals-row.total { font-weight: bold; font-size: 18px; border-top: 2px solid #333; }
     .tax-notice { margin-top: 30px; padding: 15px; background-color: #f8f9fa; border-left: 4px solid #007bff; }
     .footer { margin-top: 40px; font-size: 12px; color: #666; }
-    ${showTaxDetails ? '' : '.tax-hidden { display: none; }'}
+    ${showTaxDetails ? "" : ".tax-hidden { display: none; }"}
   </style>
 </head>
 <body>
@@ -119,14 +119,14 @@ export function generateInvoiceHTML(data: InvoiceData): string {
       <h3>請求先</h3>
       <div>${billTo.name}</div>
       <div>${billTo.email}</div>
-      ${billTo.address ? `<div>${billTo.address}</div>` : ''}
+      ${billTo.address ? `<div>${billTo.address}</div>` : ""}
     </div>
     <div class="bill-section">
       <h3>請求元</h3>
       <div>${billFrom.businessName}</div>
       <div>${billFrom.address}</div>
       <div>${billFrom.email}</div>
-      ${billFrom.invoiceRegistrationNumber ? `<div class="tax-hidden">適格請求書発行事業者登録番号: ${billFrom.invoiceRegistrationNumber}</div>` : ''}
+      ${billFrom.invoiceRegistrationNumber ? `<div class="tax-hidden">適格請求書発行事業者登録番号: ${billFrom.invoiceRegistrationNumber}</div>` : ""}
     </div>
   </div>
 
@@ -137,13 +137,15 @@ export function generateInvoiceHTML(data: InvoiceData): string {
         <th>参加者</th>
         <th>決済日</th>
         <th class="amount">決済金額</th>
-        <th class="amount">手数料${showTaxDetails ? '（税込）' : ''}</th>
+        <th class="amount">手数料${showTaxDetails ? "（税込）" : ""}</th>
         <th class="amount tax-hidden">税抜手数料</th>
         <th class="amount tax-hidden">消費税</th>
       </tr>
     </thead>
     <tbody>
-      ${items.map(item => `
+      ${items
+        .map(
+          (item) => `
         <tr>
           <td>${item.eventName}</td>
           <td>${item.participantName}</td>
@@ -153,7 +155,9 @@ export function generateInvoiceHTML(data: InvoiceData): string {
           <td class="amount tax-hidden">¥${item.taxInfo.amountExcludingTax.toLocaleString()}</td>
           <td class="amount tax-hidden">¥${item.taxInfo.taxAmount.toLocaleString()}</td>
         </tr>
-      `).join('')}
+      `
+        )
+        .join("")}
     </tbody>
   </table>
 
@@ -172,17 +176,21 @@ export function generateInvoiceHTML(data: InvoiceData): string {
     </div>
   </div>
 
-  ${showTaxDetails ? `
+  ${
+    showTaxDetails
+      ? `
   <div class="tax-notice">
     <strong>消費税について</strong><br>
     当請求書は消費税法に基づく適格請求書です。内税方式で計算されており、消費税額は上記の通りです。
   </div>
-  ` : `
+  `
+      : `
   <div class="tax-notice">
     <strong>消費税について</strong><br>
     現在、当サービスは免税事業者として運営しており、消費税は請求いたしません。
   </div>
-  `}
+  `
+  }
 
   <div class="footer">
     この請求書は EventPay システムにより自動生成されました。<br>
@@ -201,7 +209,7 @@ export function generateInvoiceHTML(data: InvoiceData): string {
  */
 export function generateReceiptHTML(
   item: PlatformFeeInvoiceItem,
-  companyInfo: InvoiceData['billFrom']
+  companyInfo: InvoiceData["billFrom"]
 ): string {
   const showTaxDetails = item.taxInfo.taxAmount > 0;
 
@@ -219,7 +227,7 @@ export function generateReceiptHTML(
     .receipt-row { display: flex; justify-content: space-between; margin-bottom: 8px; }
     .receipt-row.total { font-weight: bold; font-size: 18px; border-top: 1px solid #333; padding-top: 8px; }
     .company-info { margin-top: 30px; font-size: 12px; }
-    ${showTaxDetails ? '' : '.tax-hidden { display: none; }'}
+    ${showTaxDetails ? "" : ".tax-hidden { display: none; }"}
   </style>
 </head>
 <body>
@@ -263,7 +271,7 @@ export function generateReceiptHTML(
     <div>${companyInfo.businessName}</div>
     <div>${companyInfo.address}</div>
     <div>${companyInfo.email}</div>
-    ${companyInfo.invoiceRegistrationNumber ? `<div class="tax-hidden">適格請求書発行事業者登録番号: ${companyInfo.invoiceRegistrationNumber}</div>` : ''}
+    ${companyInfo.invoiceRegistrationNumber ? `<div class="tax-hidden">適格請求書発行事業者登録番号: ${companyInfo.invoiceRegistrationNumber}</div>` : ""}
   </div>
 </body>
 </html>
@@ -275,9 +283,10 @@ export function generateReceiptHTML(
  * @param calculation 手数料計算結果
  * @returns 税額表示情報
  */
-export function createTaxDisplayInfo(
-  calculation: { taxCalculation: any; config: any }
-): TaxDisplayInfo {
+export function createTaxDisplayInfo(calculation: {
+  taxCalculation: any;
+  config: any;
+}): TaxDisplayInfo {
   return {
     taxRatePercent: Math.round(calculation.taxCalculation.taxRate * 100),
     amountExcludingTax: calculation.taxCalculation.feeExcludingTax,
@@ -289,10 +298,10 @@ export function createTaxDisplayInfo(
 }
 
 /** MVP段階のデフォルト会社情報 */
-export const DEFAULT_COMPANY_INFO: InvoiceData['billFrom'] = {
-  businessName: 'EventPay',
-  address: '',
-  email: 'support@eventpay.jp',
+export const DEFAULT_COMPANY_INFO: InvoiceData["billFrom"] = {
+  businessName: "EventPay",
+  address: "",
+  email: "support@eventpay.jp",
   // 課税事業者になったら設定
   invoiceRegistrationNumber: process.env.INVOICE_REGISTRATION_NUMBER,
 };

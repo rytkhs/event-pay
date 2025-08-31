@@ -107,8 +107,6 @@ export function useAuthForm<T extends ServerActionResult>(
   };
 }
 
-
-
 // === react-hook-form実装（新実装） ===
 
 // バリデーションスキーマ

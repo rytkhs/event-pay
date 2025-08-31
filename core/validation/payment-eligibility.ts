@@ -114,10 +114,8 @@ export function canGuestRepay(
   currentTime: Date = new Date(),
   options: GuestRepayOptions = {}
 ): PaymentEligibilityResult {
-  const {
-    allowedPaymentStatuses = ["failed", "pending"],
-    requiredPaymentMethod = "stripe",
-  } = options;
+  const { allowedPaymentStatuses = ["failed", "pending"], requiredPaymentMethod = "stripe" } =
+    options;
 
   // 基本条件をチェック
   const baseResult = checkBasicPaymentEligibility(attendance, event, currentTime);
@@ -183,7 +181,13 @@ export function canCreateStripeSession(
   const isValidStatus = allowedPaymentStatuses.includes(paymentStatus);
 
   // 決済完了済み状態の除外
-  const finalizedStatuses: PaymentStatus[] = ["paid", "received", "completed", "refunded", "waived"];
+  const finalizedStatuses: PaymentStatus[] = [
+    "paid",
+    "received",
+    "completed",
+    "refunded",
+    "waived",
+  ];
   const isNotFinalized = !paymentStatus || !finalizedStatuses.includes(paymentStatus);
 
   const extendedChecks = {
@@ -208,8 +212,6 @@ export function canCreateStripeSession(
     checks: extendedChecks,
   };
 }
-
-
 
 /**
  * 決済期限までの残り日数を取得

@@ -39,7 +39,10 @@ export async function createGuestStripeSessionAction(
   // 2. guestToken 検証 & 参加データ取得
   const tokenResult = await validateGuestToken(guestToken);
   if (!tokenResult.isValid || !tokenResult.attendance) {
-    return createServerActionError("UNAUTHORIZED", tokenResult.errorMessage ?? "無効なゲストトークンです");
+    return createServerActionError(
+      "UNAUTHORIZED",
+      tokenResult.errorMessage ?? "無効なゲストトークンです"
+    );
   }
   const attendance = tokenResult.attendance;
   const event = attendance.event;
@@ -138,7 +141,10 @@ export async function createGuestStripeSessionAction(
       destinationCharges: destinationChargesConfig,
     });
 
-    return createServerActionSuccess({ sessionUrl: result.sessionUrl, sessionId: result.sessionId });
+    return createServerActionSuccess({
+      sessionUrl: result.sessionUrl,
+      sessionId: result.sessionId,
+    });
   } catch (error) {
     const { getErrorDetails, logError } = await import("@core/utils/error-handler");
 
@@ -146,8 +152,8 @@ export async function createGuestStripeSessionAction(
       action: "guest_stripe_session_creation",
       additionalData: {
         originalError: error instanceof Error ? error.name : "Unknown",
-        originalMessage: error instanceof Error ? error.message : String(error)
-      }
+        originalMessage: error instanceof Error ? error.message : String(error),
+      },
     };
 
     logError(getErrorDetails("GUEST_TOKEN_VALIDATION_FAILED"), errorContext);

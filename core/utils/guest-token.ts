@@ -47,8 +47,6 @@ export interface GuestAttendanceData {
   } | null;
 }
 
-
-
 /**
  * ゲストトークンを検証し、参加データを取得する
  *
@@ -90,7 +88,8 @@ export async function validateGuestToken(guestToken: string): Promise<{
       isValid: false,
       errorMessage: "参加データの取得中にエラーが発生しました",
       canModify: false,
-      errorCode: "TOKEN_NOT_FOUND" as import("@core/security/secure-client-factory.types").GuestErrorCode,
+      errorCode:
+        "TOKEN_NOT_FOUND" as import("@core/security/secure-client-factory.types").GuestErrorCode,
     };
   }
 }
@@ -105,8 +104,6 @@ function convertToLegacyFormat(rlsData: RLSGuestAttendanceData): GuestAttendance
     event: rlsData.event as GuestAttendanceData["event"],
   };
 }
-
-
 
 /**
  * ゲストトークンを生成する

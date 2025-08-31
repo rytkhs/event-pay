@@ -61,7 +61,7 @@ export async function getEventPaymentsAction(eventId: string): Promise<GetEventP
 
   // 各参加者(attendance_id)につき最新の決済1件のみを抽出
   // paid_at DESC NULLS LAST → created_at DESC → updated_at DESC 相当のロジック
-  const latestPaymentsMap = new Map<string, typeof cleanedPayments[0]>();
+  const latestPaymentsMap = new Map<string, (typeof cleanedPayments)[0]>();
   cleanedPayments.forEach((payment) => {
     const existing = latestPaymentsMap.get(payment.attendance_id);
     if (!existing) {
@@ -118,11 +118,13 @@ export async function getEventPaymentsAction(eventId: string): Promise<GetEventP
 /**
  * 決済データから集計情報を計算
  */
-function calculatePaymentSummary(payments: Array<{
-  method: "stripe" | "cash";
-  amount: number;
-  status: PaymentStatus;
-}>): PaymentSummary {
+function calculatePaymentSummary(
+  payments: Array<{
+    method: "stripe" | "cash";
+    amount: number;
+    status: PaymentStatus;
+  }>
+): PaymentSummary {
   const totalPayments = payments.length;
   const totalAmount = payments.reduce((sum, p) => sum + p.amount, 0);
 
@@ -183,18 +185,22 @@ function calculatePaymentSummary(payments: Array<{
   });
 
   // 方法別結果配列作成
-  const byMethod: PaymentMethodSummary[] = Array.from(methodMap.entries()).map(([method, stat]) => ({
-    method,
-    count: stat.count,
-    totalAmount: stat.totalAmount,
-  }));
+  const byMethod: PaymentMethodSummary[] = Array.from(methodMap.entries()).map(
+    ([method, stat]) => ({
+      method,
+      count: stat.count,
+      totalAmount: stat.totalAmount,
+    })
+  );
 
   // ステータス別結果配列作成（0件のものも含める）
-  const byStatus: PaymentStatusSummary[] = Array.from(statusMap.entries()).map(([status, stat]) => ({
-    status,
-    count: stat.count,
-    totalAmount: stat.totalAmount,
-  }));
+  const byStatus: PaymentStatusSummary[] = Array.from(statusMap.entries()).map(
+    ([status, stat]) => ({
+      status,
+      count: stat.count,
+      totalAmount: stat.totalAmount,
+    })
+  );
 
   return {
     totalPayments,

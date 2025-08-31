@@ -33,7 +33,10 @@ export async function GET(request: NextRequest) {
 
     const availableJpy = sum((bal.available as any) || []);
     const pendingJpy = sum((bal.pending as any) || []);
-    const connectReservedJpy = sum(((bal as unknown as { connect_reserved?: Array<{ amount: number; currency: string }> }).connect_reserved) || []);
+    const connectReservedJpy = sum(
+      (bal as unknown as { connect_reserved?: Array<{ amount: number; currency: string }> })
+        .connect_reserved || []
+    );
 
     const details = {
       available_jpy: availableJpy,

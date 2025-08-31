@@ -75,16 +75,13 @@ interface ProblemOptions {
  * 相関IDを生成
  */
 function generateCorrelationId(): string {
-  return `req_${randomBytes(8).toString('hex')}`;
+  return `req_${randomBytes(8).toString("hex")}`;
 }
 
 /**
  * RFC 7807 準拠の Problem Details オブジェクトを作成
  */
-function createProblem(
-  code: string,
-  options: ProblemOptions = {}
-): ProblemDetails {
+function createProblem(code: string, options: ProblemOptions = {}): ProblemDetails {
   const errorDef = ERROR_DEFINITIONS[code];
   if (!errorDef) {
     throw new Error(`Unknown error code: ${code}`);
@@ -139,19 +136,19 @@ export function createProblemResponse(
   const response = NextResponse.json(problem, {
     status: problem.status,
     headers: {
-      'Content-Type': 'application/problem+json',
-      'X-Correlation-ID': problem.correlation_id,
+      "Content-Type": "application/problem+json",
+      "X-Correlation-ID": problem.correlation_id,
     },
   });
 
   // レート制限の場合は Retry-After ヘッダーを追加
   if (problem.status === 429) {
-    response.headers.set('Retry-After', '60'); // デフォルト60秒
+    response.headers.set("Retry-After", "60"); // デフォルト60秒
   }
 
   // 認証エラーの場合は WWW-Authenticate ヘッダーを追加
   if (problem.status === 401) {
-    response.headers.set('WWW-Authenticate', 'Bearer');
+    response.headers.set("WWW-Authenticate", "Bearer");
   }
 
   return response;

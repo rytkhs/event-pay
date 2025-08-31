@@ -42,8 +42,6 @@ const createStripeSessionParamsSchema = z.object({
   cancelUrl: z.string().url("キャンセル時URLは有効なURLである必要があります"),
 });
 
-
-
 // 現金決済用スキーマ（内部使用専用）
 const createCashPaymentParamsSchema = z.object({
   attendanceId: z.string().uuid("参加記録IDは有効なUUIDである必要があります"),
@@ -74,7 +72,10 @@ export class PaymentValidator implements IPaymentValidator {
   /**
    * Stripe決済セッション作成パラメータを検証する
    */
-  async validateCreateStripeSessionParams(params: CreateStripeSessionParams, userId: string): Promise<void> {
+  async validateCreateStripeSessionParams(
+    params: CreateStripeSessionParams,
+    userId: string
+  ): Promise<void> {
     try {
       // Zodスキーマによる基本検証
       createStripeSessionParamsSchema.parse(params);
@@ -108,7 +109,10 @@ export class PaymentValidator implements IPaymentValidator {
   /**
    * 現金決済作成パラメータを検証する
    */
-  async validateCreateCashPaymentParams(params: CreateCashPaymentParams, userId: string): Promise<void> {
+  async validateCreateCashPaymentParams(
+    params: CreateCashPaymentParams,
+    userId: string
+  ): Promise<void> {
     try {
       // Zodスキーマによる基本検証
       createCashPaymentParamsSchema.parse(params);
@@ -209,15 +213,16 @@ export class PaymentValidator implements IPaymentValidator {
       // userId は必須引数。created_by を確認
       if (userId) {
         type EventLite = { id: string; created_by: string };
-        type AttendanceWithEvent = { id: string; event_id: string; events: EventLite | EventLite[] };
+        type AttendanceWithEvent = {
+          id: string;
+          event_id: string;
+          events: EventLite | EventLite[];
+        };
         const record = (Array.isArray(data) ? data[0] : data) as unknown as AttendanceWithEvent;
         const events = Array.isArray(record.events) ? record.events : [record.events];
         const createdBy = events[0]?.created_by;
         if (!createdBy || createdBy !== userId) {
-          throw new PaymentError(
-            PaymentErrorType.FORBIDDEN,
-            "この操作を実行する権限がありません"
-          );
+          throw new PaymentError(PaymentErrorType.FORBIDDEN, "この操作を実行する権限がありません");
         }
       }
     } catch (error) {

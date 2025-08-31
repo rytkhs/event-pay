@@ -1,7 +1,7 @@
-import { FeeConfigService, type PlatformFeeConfig } from './service';
-import { type SupabaseClient } from '@supabase/supabase-js';
-import { Database } from '@/types/database';
-import { logger } from '@core/logging/app-logger';
+import { FeeConfigService, type PlatformFeeConfig } from "./service";
+import { type SupabaseClient } from "@supabase/supabase-js";
+import { Database } from "@/types/database";
+import { logger } from "@core/logging/app-logger";
 
 /**
  * Application Fee 計算結果
@@ -82,9 +82,9 @@ export class ApplicationFeeCalculator {
     const calculation = this.performCalculation(amount, platform);
     const taxCalculation = this.calculateTax(calculation.afterMaximum, platform);
 
-    logger.info('Application fee calculated', {
-      tag: 'feeCalculated',
-      service: 'ApplicationFeeCalculator',
+    logger.info("Application fee calculated", {
+      tag: "feeCalculated",
+      service: "ApplicationFeeCalculator",
       amount,
       applicationFeeAmount: calculation.afterMaximum,
       rateFee: calculation.rateFee,
@@ -126,15 +126,15 @@ export class ApplicationFeeCalculator {
     // fee_configを一度だけ取得
     const { platform } = await this.feeConfigService.getConfig(forceRefresh);
 
-    logger.info('Application fee batch calculation started', {
-      tag: 'batchCalculation',
-      service: 'ApplicationFeeCalculator',
+    logger.info("Application fee batch calculation started", {
+      tag: "batchCalculation",
+      service: "ApplicationFeeCalculator",
       batchSize: amounts.length,
       totalAmount: amounts.reduce((sum, amount) => sum + amount, 0),
     });
 
     // 各金額に対して計算実行
-    const results = amounts.map(amount => {
+    const results = amounts.map((amount) => {
       const calculation = this.performCalculation(amount, platform);
       const taxCalculation = this.calculateTax(calculation.afterMaximum, platform);
       return {
@@ -148,9 +148,9 @@ export class ApplicationFeeCalculator {
 
     const totalFeeAmount = results.reduce((sum, result) => sum + result.applicationFeeAmount, 0);
 
-    logger.info('Application fee batch calculation completed', {
-      tag: 'batchCalculationCompleted',
-      service: 'ApplicationFeeCalculator',
+    logger.info("Application fee batch calculation completed", {
+      tag: "batchCalculationCompleted",
+      service: "ApplicationFeeCalculator",
       batchSize: amounts.length,
       totalFeeAmount,
     });
@@ -167,7 +167,7 @@ export class ApplicationFeeCalculator {
   private performCalculation(
     amount: number,
     config: PlatformFeeConfig
-  ): ApplicationFeeCalculation['calculation'] {
+  ): ApplicationFeeCalculation["calculation"] {
     // 1. 基本計算: 四捨五入 → 固定手数料追加
     const rateFee = Math.round(amount * config.rate);
     const fixedFee = config.fixedFee;
@@ -203,7 +203,7 @@ export class ApplicationFeeCalculator {
   private calculateTax(
     totalFeeAmount: number,
     config: PlatformFeeConfig
-  ): ApplicationFeeCalculation['taxCalculation'] {
+  ): ApplicationFeeCalculation["taxCalculation"] {
     // MVP段階では税率0%なので、すべて0で返す
     if (config.taxRate === 0) {
       return {
@@ -270,7 +270,9 @@ export class ApplicationFeeCalculator {
       errors.push(`max_platform_fee must be non-negative, got: ${platform.maximumFee}`);
     }
     if (platform.maximumFee > 0 && platform.maximumFee < platform.minimumFee) {
-      errors.push(`max_platform_fee (${platform.maximumFee}) must be >= min_platform_fee (${platform.minimumFee})`);
+      errors.push(
+        `max_platform_fee (${platform.maximumFee}) must be >= min_platform_fee (${platform.minimumFee})`
+      );
     }
     if (platform.taxRate < 0) {
       errors.push(`platform_tax_rate must be non-negative, got: ${platform.taxRate}`);
@@ -280,16 +282,16 @@ export class ApplicationFeeCalculator {
     }
 
     if (errors.length > 0) {
-      logger.warn('Platform fee config validation failed', {
-        tag: 'configValidationFailed',
-        service: 'ApplicationFeeCalculator',
+      logger.warn("Platform fee config validation failed", {
+        tag: "configValidationFailed",
+        service: "ApplicationFeeCalculator",
         errors,
         config: platform,
       });
     } else {
-      logger.debug('Platform fee config validation passed', {
-        tag: 'configValidationPassed',
-        service: 'ApplicationFeeCalculator',
+      logger.debug("Platform fee config validation passed", {
+        tag: "configValidationPassed",
+        service: "ApplicationFeeCalculator",
         config: platform,
       });
     }

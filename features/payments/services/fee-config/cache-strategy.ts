@@ -1,4 +1,4 @@
-import { type PlatformFeeConfig, type StripeFeeConfig } from './service';
+import { type PlatformFeeConfig, type StripeFeeConfig } from "./service";
 
 /**
  * Fee Config キャッシュエントリ
@@ -34,7 +34,7 @@ export class FeeConfigCacheStrategy {
 
   constructor(
     private readonly ttl: number = 1000 * 60 * 10, // 10分
-    private readonly environment: string = process.env.NODE_ENV || 'development',
+    private readonly environment: string = process.env.NODE_ENV || "development",
     maxFailsafeAge: number = 1000 * 60 * 60 // 1時間
   ) {
     this.maxFailsafeAge = maxFailsafeAge;
@@ -84,7 +84,7 @@ export class FeeConfigCacheStrategy {
   /**
    * キャッシュに設定を保存
    */
-  set(config: Omit<FeeConfigCacheEntry, 'fetchedAt' | 'environment'>): void {
+  set(config: Omit<FeeConfigCacheEntry, "fetchedAt" | "environment">): void {
     const key = this.getCacheKey();
     const entry: FeeConfigCacheEntry = {
       ...config,
@@ -128,8 +128,7 @@ export class FeeConfigCacheStrategy {
     const currentKey = this.getCacheKey();
     const currentEntry = this.cache.get(currentKey);
 
-    const environments = Array.from(this.cache.keys())
-      .map(key => key.replace('fee_config_', ''));
+    const environments = Array.from(this.cache.keys()).map((key) => key.replace("fee_config_", ""));
 
     return {
       totalEntries: this.cache.size,

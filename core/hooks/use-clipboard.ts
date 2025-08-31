@@ -40,7 +40,7 @@ export function useClipboard() {
       logger.error("Failed to copy text to clipboard", {
         tag: "clipboardCopy",
         error_name: error instanceof Error ? error.name : "Unknown",
-        error_message: error instanceof Error ? error.message : String(error)
+        error_message: error instanceof Error ? error.message : String(error),
       });
       return false;
     }

@@ -220,7 +220,7 @@ export const useEventForm = () => {
         logger.error("Event creation failed", {
           tag: "eventCreation",
           error_name: error instanceof Error ? error.name : "Unknown",
-          error_message: error instanceof Error ? error.message : String(error)
+          error_message: error instanceof Error ? error.message : String(error),
         });
         form.setError("root", {
           type: "server",

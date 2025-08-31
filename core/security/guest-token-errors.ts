@@ -531,8 +531,8 @@ export class GuestTokenErrorCollector {
   generateStatistics(timeRange?: { start: Date; end: Date }): ErrorStatistics {
     const filteredErrors = timeRange
       ? this.errors.filter(
-        (error) => error.timestamp >= timeRange.start && error.timestamp <= timeRange.end
-      )
+          (error) => error.timestamp >= timeRange.start && error.timestamp <= timeRange.end
+        )
       : this.errors;
 
     const errorsByCode: Record<GuestErrorCode, number> = {} as Record<GuestErrorCode, number>;

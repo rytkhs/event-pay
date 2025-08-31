@@ -148,7 +148,6 @@ export function isValidIsoDateTimeString(value: string): boolean {
   return !isNaN(date.getTime());
 }
 
-
 /**
  * UTC日時文字列をdatetime-local形式のJST文字列に安全に変換
  * フォーム入力での使用を想定

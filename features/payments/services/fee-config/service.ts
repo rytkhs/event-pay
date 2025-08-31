@@ -1,7 +1,7 @@
 import { type SupabaseClient } from "@supabase/supabase-js";
 import { Database } from "@/types/database";
-import { FeeConfigCacheStrategy, globalFeeConfigCache } from './cache-strategy';
-import { logger } from '@core/logging/app-logger';
+import { FeeConfigCacheStrategy, globalFeeConfigCache } from "./cache-strategy";
+import { logger } from "@core/logging/app-logger";
 
 /** Stripe 手数料設定 */
 export interface StripeFeeConfig {
@@ -34,10 +34,7 @@ export class FeeConfigService {
   private supabase: SupabaseClient<Database>;
   private cacheStrategy: FeeConfigCacheStrategy;
 
-  constructor(
-    supabaseClient: SupabaseClient<Database>,
-    cacheStrategy?: FeeConfigCacheStrategy
-  ) {
+  constructor(supabaseClient: SupabaseClient<Database>, cacheStrategy?: FeeConfigCacheStrategy) {
     this.supabase = supabaseClient;
     this.cacheStrategy = cacheStrategy || globalFeeConfigCache;
   }
@@ -55,14 +52,14 @@ export class FeeConfigService {
     if (!forceRefresh) {
       const cached = this.cacheStrategy.get();
       if (cached) {
-        logger.debug('Fee config cache hit', { tag: 'cacheHit', service: 'FeeConfigService' });
+        logger.debug("Fee config cache hit", { tag: "cacheHit", service: "FeeConfigService" });
         return {
           stripe: cached.stripe,
           platform: cached.platform,
           minPayoutAmount: cached.minPayoutAmount,
         };
       }
-      logger.debug('Fee config cache miss', { tag: 'cacheMiss', service: 'FeeConfigService' });
+      logger.debug("Fee config cache miss", { tag: "cacheMiss", service: "FeeConfigService" });
     }
 
     try {
@@ -72,9 +69,9 @@ export class FeeConfigService {
       // キャッシュに保存
       this.cacheStrategy.set(result);
 
-      logger.info('Fee config fetched from database and cached', {
-        tag: 'fetchSuccess',
-        service: 'FeeConfigService'
+      logger.info("Fee config fetched from database and cached", {
+        tag: "fetchSuccess",
+        service: "FeeConfigService",
       });
 
       return result;
@@ -82,9 +79,9 @@ export class FeeConfigService {
       // DB取得失敗時のフェイルセーフ
       const failsafeCache = this.cacheStrategy.get(true);
       if (failsafeCache) {
-        logger.warn('Database fetch failed, using failsafe cache', {
-          tag: 'fetchFailed',
-          service: 'FeeConfigService',
+        logger.warn("Database fetch failed, using failsafe cache", {
+          tag: "fetchFailed",
+          service: "FeeConfigService",
           error: error instanceof Error ? error.message : String(error),
         });
         return {
@@ -116,16 +113,26 @@ export class FeeConfigService {
       .maybeSingle();
 
     if (error) {
-      throw new Error(`[FeeConfigService] Failed to fetch fee_config from database: ${error.message}`);
+      throw new Error(
+        `[FeeConfigService] Failed to fetch fee_config from database: ${error.message}`
+      );
     }
 
     if (!data) {
-      throw new Error("[FeeConfigService] No fee_config record found in database. Please insert default values.");
+      throw new Error(
+        "[FeeConfigService] No fee_config record found in database. Please insert default values."
+      );
     }
 
     // null 値チェック
-    if (data.stripe_base_rate === null || data.stripe_fixed_fee === null || data.min_payout_amount === null) {
-      throw new Error("[FeeConfigService] Critical fee_config fields are null. stripe_base_rate, stripe_fixed_fee, min_payout_amount are required.");
+    if (
+      data.stripe_base_rate === null ||
+      data.stripe_fixed_fee === null ||
+      data.min_payout_amount === null
+    ) {
+      throw new Error(
+        "[FeeConfigService] Critical fee_config fields are null. stripe_base_rate, stripe_fixed_fee, min_payout_amount are required."
+      );
     }
 
     const stripe: StripeFeeConfig = {

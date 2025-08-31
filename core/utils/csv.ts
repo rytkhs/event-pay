@@ -10,19 +10,19 @@
 /**
  * Excel が数式とみなす先頭文字
  */
-const DANGEROUS_FORMULA_REGEX = /^[=+\-@]/
+const DANGEROUS_FORMULA_REGEX = /^[=+\-@]/;
 
 /**
  * セル値をサニタイズしてプレーンテキスト化する
  */
 function sanitizeCsvCell(value: unknown): string {
-  const str = value == null ? '' : String(value)
+  const str = value == null ? "" : String(value);
 
   // 先頭が危険文字の場合は単一引用符を付ける
   if (DANGEROUS_FORMULA_REGEX.test(str)) {
-    return `'${str}`
+    return `'${str}`;
   }
-  return str
+  return str;
 }
 
 /**
@@ -30,10 +30,10 @@ function sanitizeCsvCell(value: unknown): string {
  * RFC4180 準拠のセル文字列を返す。
  */
 export function toCsvCell(value: unknown): string {
-  const sanitized = sanitizeCsvCell(value)
+  const sanitized = sanitizeCsvCell(value);
 
   // ダブルクォートを "" にエスケープ
-  const escaped = sanitized.replace(/"/g, '""')
+  const escaped = sanitized.replace(/"/g, '""');
 
-  return `"${escaped}"`
+  return `"${escaped}"`;
 }

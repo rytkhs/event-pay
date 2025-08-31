@@ -45,14 +45,12 @@ const createAccountLinkSchema = z.object({
 /**
  * Express Account作成パラメータのバリデーション
  */
-export const validateCreateExpressAccountParams = (
-  params: unknown
-): CreateExpressAccountParams => {
+export const validateCreateExpressAccountParams = (params: unknown): CreateExpressAccountParams => {
   try {
     return createExpressAccountSchema.parse(params);
   } catch (error) {
     if (error instanceof z.ZodError) {
-      const message = error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join(', ');
+      const message = error.errors.map((e) => `${e.path.join(".")}: ${e.message}`).join(", ");
       throw new StripeConnectError(
         StripeConnectErrorType.VALIDATION_ERROR,
         `Express Account作成パラメータが無効です: ${message}`,
@@ -70,14 +68,12 @@ export const validateCreateExpressAccountParams = (
 /**
  * Account Link生成パラメータのバリデーション
  */
-export const validateCreateAccountLinkParams = (
-  params: unknown
-): CreateAccountLinkParams => {
+export const validateCreateAccountLinkParams = (params: unknown): CreateAccountLinkParams => {
   try {
     return createAccountLinkSchema.parse(params);
   } catch (error) {
     if (error instanceof z.ZodError) {
-      const message = error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join(', ');
+      const message = error.errors.map((e) => `${e.path.join(".")}: ${e.message}`).join(", ");
       throw new StripeConnectError(
         StripeConnectErrorType.VALIDATION_ERROR,
         `Account Link生成パラメータが無効です: ${message}`,
@@ -92,12 +88,11 @@ export const validateCreateAccountLinkParams = (
   }
 };
 
-
 /**
  * Stripe Account IDの形式チェック
  */
 export const validateStripeAccountId = (accountId: string): void => {
-  if (!accountId || typeof accountId !== 'string') {
+  if (!accountId || typeof accountId !== "string") {
     throw new StripeConnectError(
       StripeConnectErrorType.VALIDATION_ERROR,
       "Stripe Account IDが指定されていません"
@@ -105,7 +100,7 @@ export const validateStripeAccountId = (accountId: string): void => {
   }
 
   // Stripe Connect Account IDは "acct_" で始まる
-  if (!accountId.startsWith('acct_')) {
+  if (!accountId.startsWith("acct_")) {
     throw new StripeConnectError(
       StripeConnectErrorType.VALIDATION_ERROR,
       "無効なStripe Account ID形式です"
@@ -117,7 +112,7 @@ export const validateStripeAccountId = (accountId: string): void => {
  * ユーザーIDの形式チェック
  */
 export const validateUserId = (userId: string): void => {
-  if (!userId || typeof userId !== 'string') {
+  if (!userId || typeof userId !== "string") {
     throw new StripeConnectError(
       StripeConnectErrorType.VALIDATION_ERROR,
       "ユーザーIDが指定されていません"

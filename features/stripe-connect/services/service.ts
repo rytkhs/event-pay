@@ -34,10 +34,7 @@ export class StripeConnectService implements IStripeConnectService {
   private stripe = stripe;
   private errorHandler: IStripeConnectErrorHandler;
 
-  constructor(
-    supabaseClient: SupabaseClient<Database>,
-    errorHandler: IStripeConnectErrorHandler
-  ) {
+  constructor(supabaseClient: SupabaseClient<Database>, errorHandler: IStripeConnectErrorHandler) {
     this.supabase = supabaseClient;
     this.errorHandler = errorHandler;
   }
@@ -45,7 +42,9 @@ export class StripeConnectService implements IStripeConnectService {
   /**
    * Stripe Express Accountを作成する
    */
-  async createExpressAccount(params: CreateExpressAccountParams): Promise<CreateExpressAccountResult> {
+  async createExpressAccount(
+    params: CreateExpressAccountParams
+  ): Promise<CreateExpressAccountResult> {
     try {
       // パラメータバリデーション
       const validatedParams = validateCreateExpressAccountParams(params);
@@ -67,7 +66,9 @@ export class StripeConnectService implements IStripeConnectService {
       let stripeAccount: Stripe.Account | null = null;
       try {
         // 型定義に search が無いStripeバージョンでもビルドを通すため、動的呼び出し
-        const accountsResource = (this.stripe.accounts as unknown) as { search?: (params: { query: string }) => Promise<{ data: unknown[] }> };
+        const accountsResource = this.stripe.accounts as unknown as {
+          search?: (params: { query: string }) => Promise<{ data: unknown[] }>;
+        };
         if (accountsResource?.search) {
           const searchResult = await accountsResource.search({
             query: `metadata['actor_id']:'${userId}'`,
@@ -82,7 +83,7 @@ export class StripeConnectService implements IStripeConnectService {
           tag: "stripeAccountSearchFailed",
           user_id: userId,
           error_name: searchError instanceof Error ? searchError.name : "Unknown",
-          error_message: searchError instanceof Error ? searchError.message : String(searchError)
+          error_message: searchError instanceof Error ? searchError.message : String(searchError),
         });
       }
 
@@ -103,12 +104,17 @@ export class StripeConnectService implements IStripeConnectService {
 
       // ビジネスプロフィール情報を事前入力
       if (businessProfile) {
-        createParams.business_profile = {} as NonNullable<Stripe.AccountCreateParams["business_profile"]>;
+        createParams.business_profile = {} as NonNullable<
+          Stripe.AccountCreateParams["business_profile"]
+        >;
         if (businessProfile.url) {
-          (createParams.business_profile as Stripe.AccountCreateParams.BusinessProfile).url = businessProfile.url;
+          (createParams.business_profile as Stripe.AccountCreateParams.BusinessProfile).url =
+            businessProfile.url;
         }
         if (businessProfile.productDescription) {
-          (createParams.business_profile as Stripe.AccountCreateParams.BusinessProfile).product_description = businessProfile.productDescription;
+          (
+            createParams.business_profile as Stripe.AccountCreateParams.BusinessProfile
+          ).product_description = businessProfile.productDescription;
         }
       }
 
@@ -126,15 +132,13 @@ export class StripeConnectService implements IStripeConnectService {
       }
 
       // データベースにアカウント情報を保存
-      const { error: dbError } = await this.supabase
-        .from("stripe_connect_accounts")
-        .insert({
-          user_id: userId,
-          stripe_account_id: stripeAccount.id,
-          status: "unverified",
-          charges_enabled: false,
-          payouts_enabled: false,
-        });
+      const { error: dbError } = await this.supabase.from("stripe_connect_accounts").insert({
+        user_id: userId,
+        stripe_account_id: stripeAccount.id,
+        status: "unverified",
+        charges_enabled: false,
+        payouts_enabled: false,
+      });
 
       if (dbError) {
         // Stripeアカウントは作成されたが、DBへの保存に失敗した場合は補償削除を試行
@@ -147,22 +151,21 @@ export class StripeConnectService implements IStripeConnectService {
               tag: "stripeConnectCompensationFailed",
               account_id: stripeAccount.id,
               error_name: compensationError instanceof Error ? compensationError.name : "Unknown",
-              error_message: compensationError instanceof Error ? compensationError.message : String(compensationError)
+              error_message:
+                compensationError instanceof Error
+                  ? compensationError.message
+                  : String(compensationError),
             });
           }
         }
 
-        throw this.errorHandler.mapDatabaseError(
-          dbError,
-          "Express Account作成後のDB保存"
-        );
+        throw this.errorHandler.mapDatabaseError(dbError, "Express Account作成後のDB保存");
       }
 
       return {
         accountId: stripeAccount.id,
         status: "unverified",
       };
-
     } catch (error) {
       if (error instanceof StripeConnectError) {
         throw error;
@@ -209,7 +212,8 @@ export class StripeConnectService implements IStripeConnectService {
         };
 
         if (validatedParams.collectionOptions.futureRequirements) {
-          collectionOptions.future_requirements = validatedParams.collectionOptions.futureRequirements;
+          collectionOptions.future_requirements =
+            validatedParams.collectionOptions.futureRequirements;
         }
 
         createParams.collection_options = collectionOptions;
@@ -221,7 +225,6 @@ export class StripeConnectService implements IStripeConnectService {
         url: accountLink.url,
         expiresAt: accountLink.expires_at,
       };
-
     } catch (error) {
       if (error instanceof StripeConnectError) {
         throw error;
@@ -259,7 +262,8 @@ export class StripeConnectService implements IStripeConnectService {
         const transfersCap = (() => {
           const cap = (account.capabilities as any)?.transfers;
           if (typeof cap === "string") return cap === "active";
-          if (cap && typeof cap === "object" && "status" in cap) return (cap as any).status === "active";
+          if (cap && typeof cap === "object" && "status" in cap)
+            return (cap as any).status === "active";
           return false;
         })();
 
@@ -271,13 +275,15 @@ export class StripeConnectService implements IStripeConnectService {
       }
 
       // requirements は undefined の場合や disabled_reason 未設定の場合のキー追加を避ける
-      let requirements: {
-        currently_due: string[];
-        eventually_due: string[];
-        past_due: string[];
-        pending_verification: string[];
-        disabled_reason?: string;
-      } | undefined = undefined;
+      let requirements:
+        | {
+            currently_due: string[];
+            eventually_due: string[];
+            past_due: string[];
+            pending_verification: string[];
+            disabled_reason?: string;
+          }
+        | undefined = undefined;
       if (account.requirements) {
         requirements = {
           currently_due: account.requirements.currently_due || [],
@@ -291,17 +297,17 @@ export class StripeConnectService implements IStripeConnectService {
       }
 
       // capabilities は string または { status: string } の両方に対応
-      const mapCapability = (cap: unknown): 'active' | 'inactive' | 'pending' | undefined => {
-        if (typeof cap === 'string') return cap as any;
-        if (cap && typeof cap === 'object' && 'status' in (cap as any)) return (cap as any).status;
+      const mapCapability = (cap: unknown): "active" | "inactive" | "pending" | undefined => {
+        if (typeof cap === "string") return cap as any;
+        if (cap && typeof cap === "object" && "status" in (cap as any)) return (cap as any).status;
         return undefined;
       };
 
       const capabilities = account.capabilities
         ? {
-          card_payments: mapCapability((account.capabilities as any).card_payments),
-          transfers: mapCapability((account.capabilities as any).transfers),
-        }
+            card_payments: mapCapability((account.capabilities as any).card_payments),
+            transfers: mapCapability((account.capabilities as any).transfers),
+          }
         : undefined;
 
       return {
@@ -315,7 +321,6 @@ export class StripeConnectService implements IStripeConnectService {
         requirements,
         capabilities,
       };
-
     } catch (error) {
       if (error instanceof StripeConnectError) {
         throw error;
@@ -354,7 +359,6 @@ export class StripeConnectService implements IStripeConnectService {
 
       if (!data) return null;
       return data as StripeConnectAccount;
-
     } catch (error) {
       if (error instanceof StripeConnectError) {
         throw error;
@@ -437,24 +441,24 @@ export class StripeConnectService implements IStripeConnectService {
         }
 
         // 競合に強くするためUPSERT（user_id基準）
-        const { error: insertError } = await this.supabase
-          .from("stripe_connect_accounts")
-          .upsert(
-            {
-              user_id: userId,
-              stripe_account_id: stripeAccountId,
-              status: status,
-              charges_enabled: chargesEnabled,
-              payouts_enabled: payoutsEnabled,
-            },
-            { onConflict: "user_id" }
-          );
+        const { error: insertError } = await this.supabase.from("stripe_connect_accounts").upsert(
+          {
+            user_id: userId,
+            stripe_account_id: stripeAccountId,
+            status: status,
+            charges_enabled: chargesEnabled,
+            payouts_enabled: payoutsEnabled,
+          },
+          { onConflict: "user_id" }
+        );
 
         if (insertError) {
-          throw this.errorHandler.mapDatabaseError(insertError, "Connect Account作成（フェイルセーフ）");
+          throw this.errorHandler.mapDatabaseError(
+            insertError,
+            "Connect Account作成（フェイルセーフ）"
+          );
         }
       }
-
     } catch (error) {
       if (error instanceof StripeConnectError) {
         throw error;

@@ -214,5 +214,5 @@ export {
   COOKIE_CONFIG,
   AUTH_CONFIG,
   PASSWORD_CONFIG,
-  getCookieConfig
+  getCookieConfig,
 } from "./config";

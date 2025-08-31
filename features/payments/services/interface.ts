@@ -127,7 +127,10 @@ export interface IPaymentValidator {
    * @param params 検証対象のパラメータ
    * @throws PaymentError バリデーションに失敗した場合
    */
-  validateCreateStripeSessionParams(params: CreateStripeSessionParams, userId: string): Promise<void>;
+  validateCreateStripeSessionParams(
+    params: CreateStripeSessionParams,
+    userId: string
+  ): Promise<void>;
 
   /**
    * 現金決済作成パラメータを検証する

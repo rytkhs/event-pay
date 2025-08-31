@@ -105,9 +105,15 @@ export class PaymentService implements IPaymentService {
           );
         }
 
-        const terminalTime = (latestTerminal.paid_at ?? latestTerminal.updated_at ?? latestTerminal.created_at) as string | null;
+        const terminalTime = (latestTerminal.paid_at ??
+          latestTerminal.updated_at ??
+          latestTerminal.created_at) as string | null;
         const openTime = (openPayment.updated_at ?? openPayment.created_at) as string | null;
-        if (terminalTime && openTime && new Date(terminalTime).getTime() > new Date(openTime).getTime()) {
+        if (
+          terminalTime &&
+          openTime &&
+          new Date(terminalTime).getTime() > new Date(openTime).getTime()
+        ) {
           throw new PaymentError(
             PaymentErrorType.PAYMENT_ALREADY_EXISTS,
             "この参加に対する決済は既に完了済みです"
@@ -229,10 +235,13 @@ export class PaymentService implements IPaymentService {
       }
 
       // Stripe Checkout Sessionを作成（Destination chargesに統一）
-      const { destinationAccountId, userEmail, userName, setupFutureUsage } = params.destinationCharges!;
+      const { destinationAccountId, userEmail, userName, setupFutureUsage } =
+        params.destinationCharges!;
 
       // Application fee計算
-      const feeCalculation = await this.applicationFeeCalculator.calculateApplicationFee(params.amount);
+      const feeCalculation = await this.applicationFeeCalculator.calculateApplicationFee(
+        params.amount
+      );
 
       // Customer作成・取得
       let customerId: string | undefined;
@@ -429,7 +438,7 @@ export class PaymentService implements IPaymentService {
    */
   private async updatePaymentStatusSafe(params: UpdatePaymentStatusParams): Promise<void> {
     try {
-      const { data: _data, error } = await this.supabase.rpc('rpc_update_payment_status_safe', {
+      const { data: _data, error } = await this.supabase.rpc("rpc_update_payment_status_safe", {
         p_payment_id: params.paymentId,
         p_new_status: params.status,
         p_expected_version: params.expectedVersion!,
@@ -439,25 +448,25 @@ export class PaymentService implements IPaymentService {
 
       if (error) {
         // PostgreSQLのエラーコードを確認
-        if (error.code === '40001') {
+        if (error.code === "40001") {
           // serialization_failure = 楽観的ロック競合
           throw new PaymentError(
             PaymentErrorType.CONCURRENT_UPDATE,
             "他のユーザーによって同時に更新されました。最新の状態を確認してから再試行してください。"
           );
-        } else if (error.code === 'P0001') {
+        } else if (error.code === "P0001") {
           // 権限エラー
           throw new PaymentError(
             PaymentErrorType.FORBIDDEN,
             "この操作を実行する権限がありません。"
           );
-        } else if (error.code === 'P0002') {
+        } else if (error.code === "P0002") {
           // 決済レコードが見つからない
           throw new PaymentError(
             PaymentErrorType.PAYMENT_NOT_FOUND,
             "指定された決済レコードが見つかりません。"
           );
-        } else if (error.code === 'P0003') {
+        } else if (error.code === "P0003") {
           // 現金決済でない
           throw new PaymentError(
             PaymentErrorType.INVALID_PAYMENT_METHOD,
@@ -565,13 +574,13 @@ export class PaymentService implements IPaymentService {
       }
 
       // 一括更新用RPCに渡すJSONデータを構築
-      const paymentUpdates = updates.map(update => ({
+      const paymentUpdates = updates.map((update) => ({
         payment_id: update.paymentId,
         expected_version: update.expectedVersion,
-        new_status: update.status
+        new_status: update.status,
       }));
 
-      const { data, error } = await this.supabase.rpc('rpc_bulk_update_payment_status_safe', {
+      const { data, error } = await this.supabase.rpc("rpc_bulk_update_payment_status_safe", {
         p_payment_updates: paymentUpdates,
         p_user_id: userId,
         p_notes: notes ?? undefined,
@@ -599,7 +608,7 @@ export class PaymentService implements IPaymentService {
       return {
         successCount: result.success_count,
         failureCount: result.failure_count,
-        failures: result.failures.map(failure => ({
+        failures: result.failures.map((failure) => ({
           paymentId: failure.payment_id,
           error: failure.error_message,
         })),
@@ -805,11 +814,13 @@ export class PaymentErrorHandler implements IPaymentErrorHandler {
    * 決済エラーを処理し、適切な対応を決定する
    */
   async handlePaymentError(error: PaymentError): Promise<ErrorHandlingResult> {
-    return ERROR_HANDLING_BY_TYPE[error.type] ?? {
-      userMessage: "予期しないエラーが発生しました。管理者にお問い合わせください。",
-      shouldRetry: false,
-      logLevel: "error",
-    };
+    return (
+      ERROR_HANDLING_BY_TYPE[error.type] ?? {
+        userMessage: "予期しないエラーが発生しました。管理者にお問い合わせください。",
+        shouldRetry: false,
+        logLevel: "error",
+      }
+    );
   }
 
   /**

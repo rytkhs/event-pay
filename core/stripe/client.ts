@@ -14,15 +14,19 @@ for (const [key, value] of Object.entries(serverRequiredEnvVars)) {
 
 // Publishable Key はクライアント用。サーバー専用プロセスでは未設定でも動作させる。
 if (!process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY) {
-  logger.warn("NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY is not set – client-side Stripe.js may fail to initialize", {
-    tag: "stripeEnvCheck",
-  });
+  logger.warn(
+    "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY is not set – client-side Stripe.js may fail to initialize",
+    {
+      tag: "stripeEnvCheck",
+    }
+  );
 }
 
 // Stripeクライアントの初期化（Destination charges対応）
 const stripeSecretKey = process.env.STRIPE_SECRET_KEY!;
 export const stripe = new Stripe(stripeSecretKey, {
-  apiVersion: (process.env.STRIPE_API_VERSION as Stripe.LatestApiVersion | undefined) ?? "2024-04-10",
+  apiVersion:
+    (process.env.STRIPE_API_VERSION as Stripe.LatestApiVersion | undefined) ?? "2024-04-10",
   // 自動リトライ設定（429/5xx/接続エラー対応）
   maxNetworkRetries: 3,
   // タイムアウト設定（30秒）
@@ -47,9 +51,13 @@ if (!hasRegisteredHooks && shouldEnableStripeLogging) {
   // eslint-disable-next-line @typescript-eslint/ban-ts-comment
   // @ts-ignore - stripe typings don't expose "request" event yet
   if (typeof (stripe as unknown as { on?: unknown }).on === "function") {
-    (stripe as unknown as { on: (event: string, cb: (arg: Record<string, unknown>) => void) => void }).on("request", (req: Record<string, unknown>) => {
+    (
+      stripe as unknown as {
+        on: (event: string, cb: (arg: Record<string, unknown>) => void) => void;
+      }
+    ).on("request", (req: Record<string, unknown>) => {
       logger.info("Stripe request initiated", {
-        tag: 'stripeRequest',
+        tag: "stripeRequest",
         stripe_request_id: req.requestId as string | undefined,
         idempotency_key: req.idempotencyKey as string | undefined,
         method: req.method as string | undefined,
@@ -61,18 +69,23 @@ if (!hasRegisteredHooks && shouldEnableStripeLogging) {
     // Stripe response hook
     // eslint-disable-next-line @typescript-eslint/ban-ts-comment
     // @ts-ignore - stripe typings don't expose "response" event yet
-    (stripe as unknown as { on: (event: string, cb: (arg: Record<string, unknown>) => void) => void }).on("response", (res: Record<string, unknown>) => {
+    (
+      stripe as unknown as {
+        on: (event: string, cb: (arg: Record<string, unknown>) => void) => void;
+      }
+    ).on("response", (res: Record<string, unknown>) => {
       logger.info("Stripe response received", {
-        tag: 'stripeResponse',
+        tag: "stripeResponse",
         stripe_request_id: res.requestId as string | undefined,
         status: res.statusCode as number | undefined,
         latency_ms: res.elapsed as number | undefined,
-        stripe_should_retry: (res.headers as Record<string, unknown> | undefined)?.["stripe-should-retry"] as string | undefined,
+        stripe_should_retry: (res.headers as Record<string, unknown> | undefined)?.[
+          "stripe-should-retry"
+        ] as string | undefined,
       });
     });
   }
 }
-
 
 /**
  * Webhook用シークレット（ローテーション対応：複数）の取得。
@@ -83,11 +96,20 @@ if (!hasRegisteredHooks && shouldEnableStripeLogging) {
  */
 export const getWebhookSecrets = (): string[] => {
   const isProd = process.env.NODE_ENV === "production" || process.env.VERCEL_ENV === "production";
-  const primary = isProd ? process.env.STRIPE_WEBHOOK_SECRET : (process.env.STRIPE_WEBHOOK_SECRET_TEST ?? process.env.STRIPE_WEBHOOK_SECRET);
-  const secondary = isProd ? process.env.STRIPE_WEBHOOK_SECRET_SECONDARY : (process.env.STRIPE_WEBHOOK_SECRET_TEST_SECONDARY ?? process.env.STRIPE_WEBHOOK_SECRET_SECONDARY);
-  const secrets = [primary, secondary].filter((s): s is string => typeof s === "string" && s.length > 0);
+  const primary = isProd
+    ? process.env.STRIPE_WEBHOOK_SECRET
+    : (process.env.STRIPE_WEBHOOK_SECRET_TEST ?? process.env.STRIPE_WEBHOOK_SECRET);
+  const secondary = isProd
+    ? process.env.STRIPE_WEBHOOK_SECRET_SECONDARY
+    : (process.env.STRIPE_WEBHOOK_SECRET_TEST_SECONDARY ??
+      process.env.STRIPE_WEBHOOK_SECRET_SECONDARY);
+  const secrets = [primary, secondary].filter(
+    (s): s is string => typeof s === "string" && s.length > 0
+  );
   if (secrets.length === 0) {
-    throw new Error("At least one of STRIPE_WEBHOOK_SECRET[_TEST] is required for webhook processing");
+    throw new Error(
+      "At least one of STRIPE_WEBHOOK_SECRET[_TEST] is required for webhook processing"
+    );
   }
   return secrets;
 };
@@ -99,22 +121,30 @@ export const getWebhookSecrets = (): string[] => {
  */
 export const getConnectWebhookSecrets = (): string[] => {
   const isProd = process.env.NODE_ENV === "production" || process.env.VERCEL_ENV === "production";
-  const primary = isProd ? process.env.STRIPE_CONNECT_WEBHOOK_SECRET : (process.env.STRIPE_CONNECT_WEBHOOK_SECRET_TEST ?? process.env.STRIPE_CONNECT_WEBHOOK_SECRET);
-  const secondary = isProd ? process.env.STRIPE_CONNECT_WEBHOOK_SECRET_SECONDARY : (process.env.STRIPE_CONNECT_WEBHOOK_SECRET_TEST_SECONDARY ?? process.env.STRIPE_CONNECT_WEBHOOK_SECRET_SECONDARY);
-  const secrets = [primary, secondary].filter((s): s is string => typeof s === "string" && s.length > 0);
+  const primary = isProd
+    ? process.env.STRIPE_CONNECT_WEBHOOK_SECRET
+    : (process.env.STRIPE_CONNECT_WEBHOOK_SECRET_TEST ?? process.env.STRIPE_CONNECT_WEBHOOK_SECRET);
+  const secondary = isProd
+    ? process.env.STRIPE_CONNECT_WEBHOOK_SECRET_SECONDARY
+    : (process.env.STRIPE_CONNECT_WEBHOOK_SECRET_TEST_SECONDARY ??
+      process.env.STRIPE_CONNECT_WEBHOOK_SECRET_SECONDARY);
+  const secrets = [primary, secondary].filter(
+    (s): s is string => typeof s === "string" && s.length > 0
+  );
   if (secrets.length === 0) {
-    throw new Error("At least one of STRIPE_CONNECT_WEBHOOK_SECRET[_TEST] is required for webhook processing");
+    throw new Error(
+      "At least one of STRIPE_CONNECT_WEBHOOK_SECRET[_TEST] is required for webhook processing"
+    );
   }
   return secrets;
 };
-
 
 /**
  * Idempotency Key生成関数
  * Destination charges対応でCheckout/PaymentIntents作成時の二重作成防止
  */
 export const generateIdempotencyKey = (
-  type: 'checkout' | 'payment_intent' | 'refund',
+  type: "checkout" | "payment_intent" | "refund",
   primaryId: string, // eventId or paymentIntentId / chargeId depending on type
   secondaryId?: string | number, // userId or amount/full etc. optional
   opts?: {
@@ -125,12 +155,11 @@ export const generateIdempotencyKey = (
   // Stripe Idempotency-Key は 1〜255 文字 (ASCII) に制限されるため、
   // keyComponent をコロンスプリットで連結した後に slice で truncate する。
 
-  const prefix =
-    type === 'payment_intent' ? 'pi' : type === 'refund' ? 'refund' : type; // 明示的に refund を保持
+  const prefix = type === "payment_intent" ? "pi" : type === "refund" ? "refund" : type; // 明示的に refund を保持
 
   const components: (string | number | undefined)[] = [prefix, primaryId];
 
-  if (secondaryId !== undefined && secondaryId !== '') {
+  if (secondaryId !== undefined && secondaryId !== "") {
     components.push(secondaryId);
   }
 
@@ -142,16 +171,14 @@ export const generateIdempotencyKey = (
     components.push(opts.currency);
   }
 
-  return components.join(':').slice(0, 255);
+  return components.join(":").slice(0, 255);
 };
 
 /**
  * Stripe API呼び出し用のオプション生成
  * idempotency_keyを含む共通オプションを提供
  */
-export const createStripeRequestOptions = (
-  idempotencyKey?: string
-): Stripe.RequestOptions => {
+export const createStripeRequestOptions = (idempotencyKey?: string): Stripe.RequestOptions => {
   const options: Stripe.RequestOptions = {};
 
   if (idempotencyKey) {

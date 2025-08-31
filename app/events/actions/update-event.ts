@@ -147,15 +147,11 @@ export async function updateEventAction(
     });
 
     if (restrictions.length > 0) {
-      return createServerActionError(
-        "RESOURCE_CONFLICT",
-        "編集制限により変更できません",
-        {
-          details: {
-            violations: restrictions,
-          },
-        }
-      );
+      return createServerActionError("RESOURCE_CONFLICT", "編集制限により変更できません", {
+        details: {
+          violations: restrictions,
+        },
+      });
     }
 
     // 定員変更の追加検証（Race Condition対策）
