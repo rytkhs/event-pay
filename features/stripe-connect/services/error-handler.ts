@@ -5,11 +5,7 @@
 import Stripe from "stripe";
 import type { PostgrestError } from "@supabase/supabase-js";
 import { IStripeConnectErrorHandler } from "./interface";
-import {
-  StripeConnectError,
-  StripeConnectErrorType,
-  ErrorHandlingResult,
-} from "./types";
+import { StripeConnectError, StripeConnectErrorType, ErrorHandlingResult } from "./types";
 import {
   ERROR_HANDLING_BY_TYPE,
   STRIPE_ERROR_CODE_MAPPING,
@@ -25,7 +21,9 @@ export class StripeConnectErrorHandler implements IStripeConnectErrorHandler {
    * StripeConnectエラーを処理する
    */
   async handleError(error: StripeConnectError): Promise<ErrorHandlingResult> {
-    const handling = ERROR_HANDLING_BY_TYPE[error.type] || ERROR_HANDLING_BY_TYPE[StripeConnectErrorType.UNKNOWN_ERROR];
+    const handling =
+      ERROR_HANDLING_BY_TYPE[error.type] ||
+      ERROR_HANDLING_BY_TYPE[StripeConnectErrorType.UNKNOWN_ERROR];
 
     // エラーログの出力
     this.logError(error, handling.logLevel);
@@ -43,7 +41,8 @@ export class StripeConnectErrorHandler implements IStripeConnectErrorHandler {
    */
   mapStripeError(stripeError: Error, context: string): StripeConnectError {
     if (stripeError instanceof Stripe.errors.StripeError) {
-      const errorType = (stripeError.code && STRIPE_ERROR_CODE_MAPPING[stripeError.code]) ||
+      const errorType =
+        (stripeError.code && STRIPE_ERROR_CODE_MAPPING[stripeError.code]) ||
         this.getStripeErrorTypeByClass(stripeError);
 
       return new StripeConnectError(
@@ -74,8 +73,8 @@ export class StripeConnectErrorHandler implements IStripeConnectErrorHandler {
     // PostgrestErrorの場合
     if (this.isPostgrestError(dbError)) {
       const postgrestError = dbError as PostgrestError;
-      let errorType = POSTGRES_ERROR_CODE_MAPPING[postgrestError.code] ||
-        StripeConnectErrorType.DATABASE_ERROR;
+      let errorType =
+        POSTGRES_ERROR_CODE_MAPPING[postgrestError.code] || StripeConnectErrorType.DATABASE_ERROR;
 
       // UNIQUE違反(23505)のうち、stripe_account_id衝突を明示的に分類
       // detailsに衝突カラムが含まれることが多いため、簡易に判定
@@ -112,7 +111,9 @@ export class StripeConnectErrorHandler implements IStripeConnectErrorHandler {
   /**
    * Stripeエラーのクラスに基づいてエラータイプを判定する
    */
-  private getStripeErrorTypeByClass(stripeError: Stripe.errors.StripeError): StripeConnectErrorType {
+  private getStripeErrorTypeByClass(
+    stripeError: Stripe.errors.StripeError
+  ): StripeConnectErrorType {
     if (stripeError instanceof Stripe.errors.StripeCardError) {
       return StripeConnectErrorType.VALIDATION_ERROR;
     }
@@ -144,7 +145,7 @@ export class StripeConnectErrorHandler implements IStripeConnectErrorHandler {
    * PostgrestErrorかどうかを判定する
    */
   private isPostgrestError(error: Error | PostgrestError): error is PostgrestError {
-    return 'code' in error && 'details' in error && 'hint' in error;
+    return "code" in error && "details" in error && "hint" in error;
   }
 
   /**
@@ -154,42 +155,44 @@ export class StripeConnectErrorHandler implements IStripeConnectErrorHandler {
     const logData = {
       timestamp: new Date().toISOString(),
       level,
-      service: 'stripe-connect',
+      service: "stripe-connect",
       errorType: error.type,
       message: error.message,
       metadata: error.metadata,
       stack: error.stack,
-      originalError: error.originalError ? {
-        name: 'name' in error.originalError ? error.originalError.name : 'Unknown',
-        message: error.originalError.message,
-        stack: 'stack' in error.originalError ? error.originalError.stack : undefined,
-      } : undefined,
+      originalError: error.originalError
+        ? {
+            name: "name" in error.originalError ? error.originalError.name : "Unknown",
+            message: error.originalError.message,
+            stack: "stack" in error.originalError ? error.originalError.stack : undefined,
+          }
+        : undefined,
     };
 
     switch (level) {
-      case 'info':
-        logger.info('StripeConnect Info', {
-          tag: 'stripeConnectInfo',
-          service: 'stripe-connect',
-          error_type: logData.errorType,
-          message: logData.message
-        });
-        break;
-      case 'warn':
-        logger.warn('StripeConnect Warning', {
-          tag: 'stripeConnectWarning',
-          service: 'stripe-connect',
-          error_type: logData.errorType,
-          message: logData.message
-        });
-        break;
-      case 'error':
-        logger.error('StripeConnect Error', {
-          tag: 'stripeConnectError',
-          service: 'stripe-connect',
+      case "info":
+        logger.info("StripeConnect Info", {
+          tag: "stripeConnectInfo",
+          service: "stripe-connect",
           error_type: logData.errorType,
           message: logData.message,
-          metadata: logData.metadata
+        });
+        break;
+      case "warn":
+        logger.warn("StripeConnect Warning", {
+          tag: "stripeConnectWarning",
+          service: "stripe-connect",
+          error_type: logData.errorType,
+          message: logData.message,
+        });
+        break;
+      case "error":
+        logger.error("StripeConnect Error", {
+          tag: "stripeConnectError",
+          service: "stripe-connect",
+          error_type: logData.errorType,
+          message: logData.message,
+          metadata: logData.metadata,
         });
         break;
     }
@@ -200,12 +203,12 @@ export class StripeConnectErrorHandler implements IStripeConnectErrorHandler {
    */
   private async notifyAdmin(error: StripeConnectError): Promise<void> {
     // TODO: 実際の通知実装（メール、Slack、ログ集約システムなど）
-    logger.error('Admin notification required for StripeConnect error', {
-      tag: 'stripeConnectAdminNotification',
-      service: 'stripe-connect',
+    logger.error("Admin notification required for StripeConnect error", {
+      tag: "stripeConnectAdminNotification",
+      service: "stripe-connect",
       error_type: error.type,
       message: error.message,
-      metadata: error.metadata
+      metadata: error.metadata,
     });
   }
 }

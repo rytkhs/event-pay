@@ -26,7 +26,7 @@ export async function createRateLimitStore(): Promise<RateLimitStore> {
       logger.warn("Failed to create Redis store, falling back to optimized memory store", {
         tag: "redisStoreCreationFailed",
         error_name: error instanceof Error ? error.name : "Unknown",
-        error_message: error instanceof Error ? error.message : String(error)
+        error_message: error instanceof Error ? error.message : String(error),
       });
     }
   }

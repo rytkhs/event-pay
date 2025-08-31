@@ -24,18 +24,22 @@ export interface WebhookIdempotencyService<T extends Json = Json> {
   enqueueEventForProcessing(
     eventId: string,
     eventType: string,
-    metadata?: { stripe_account_id?: string | null; stripe_event_created?: number; object_id?: string | null }
+    metadata?: {
+      stripe_account_id?: string | null;
+      stripe_event_created?: number;
+      object_id?: string | null;
+    }
   ): Promise<void>;
-  listPendingOrFailedEventsOrdered(
-    maxBatch: number
-  ): Promise<Array<{
-    stripe_event_id: string;
-    event_type: string;
-    status: string;
-    stripe_event_created: number | null;
-    created_at: string | null;
-    stripe_account_id: string | null;
-  }>>;
+  listPendingOrFailedEventsOrdered(maxBatch: number): Promise<
+    Array<{
+      stripe_event_id: string;
+      event_type: string;
+      status: string;
+      stripe_event_created: number | null;
+      created_at: string | null;
+      stripe_account_id: string | null;
+    }>
+  >;
   /**
    * 既に同一の (event_type, object_id, stripe_account_id) が processed 済みかを確認（限定的に使用）
    */
@@ -48,14 +52,12 @@ export interface WebhookIdempotencyService<T extends Json = Json> {
    * 既存の webhook_events 行に対して、object_id が未設定であれば補完する。
    * すでに値が入っている場合は上書きしない（安全側）。
    */
-  attachObjectIdIfMissing(
-    eventId: string,
-    objectId: string
-  ): Promise<void>;
+  attachObjectIdIfMissing(eventId: string, objectId: string): Promise<void>;
 }
 
 export class SupabaseWebhookIdempotencyService<T extends Json = Json>
-  implements WebhookIdempotencyService<T> {
+  implements WebhookIdempotencyService<T>
+{
   private readonly supabase;
 
   constructor() {
@@ -78,27 +80,30 @@ export class SupabaseWebhookIdempotencyService<T extends Json = Json>
   async enqueueEventForProcessing(
     eventId: string,
     eventType: string,
-    metadata?: { stripe_account_id?: string | null; stripe_event_created?: number; object_id?: string | null }
+    metadata?: {
+      stripe_account_id?: string | null;
+      stripe_event_created?: number;
+      object_id?: string | null;
+    }
   ): Promise<void> {
     const nowIso = new Date().toISOString();
     // 既存なら何もしない（UNIQUE違反を拾ってスキップ）
-    const { error } = await this.supabase
-      .from("webhook_events")
-      .insert({
-        stripe_event_id: eventId,
-        event_type: eventType,
-        processing_result: { enqueuedAt: nowIso } as unknown as T,
-        processed_at: nowIso,
-        created_at: nowIso,
-        status: "pending",
-        processing_error: null,
-        retry_count: 0,
-        stripe_account_id: metadata?.stripe_account_id ?? null,
-        stripe_event_created: typeof metadata?.stripe_event_created === "number"
+    const { error } = await this.supabase.from("webhook_events").insert({
+      stripe_event_id: eventId,
+      event_type: eventType,
+      processing_result: { enqueuedAt: nowIso } as unknown as T,
+      processed_at: nowIso,
+      created_at: nowIso,
+      status: "pending",
+      processing_error: null,
+      retry_count: 0,
+      stripe_account_id: metadata?.stripe_account_id ?? null,
+      stripe_event_created:
+        typeof metadata?.stripe_event_created === "number"
           ? Math.trunc(metadata!.stripe_event_created)
           : null,
-        object_id: metadata?.object_id ?? null,
-      } as never);
+      object_id: metadata?.object_id ?? null,
+    } as never);
 
     // 一意制約違反(23505)は無視。他のエラーは投げる。
     if (error && (error as unknown as { code?: string }).code !== "23505") {
@@ -153,19 +158,21 @@ export class SupabaseWebhookIdempotencyService<T extends Json = Json>
     }
   }
 
-  async listPendingOrFailedEventsOrdered(
-    maxBatch: number
-  ): Promise<Array<{
-    stripe_event_id: string;
-    event_type: string;
-    status: string;
-    stripe_event_created: number | null;
-    created_at: string | null;
-    stripe_account_id: string | null;
-  }>> {
+  async listPendingOrFailedEventsOrdered(maxBatch: number): Promise<
+    Array<{
+      stripe_event_id: string;
+      event_type: string;
+      status: string;
+      stripe_event_created: number | null;
+      created_at: string | null;
+      stripe_account_id: string | null;
+    }>
+  > {
     const { data, error } = await this.supabase
       .from("webhook_events")
-      .select("stripe_event_id, event_type, status, stripe_event_created, created_at, stripe_account_id")
+      .select(
+        "stripe_event_id, event_type, status, stripe_event_created, created_at, stripe_account_id"
+      )
       .in("status", ["pending", "failed"])
       .order("stripe_event_created", { ascending: true, nullsFirst: false })
       .order("created_at", { ascending: true })
@@ -174,7 +181,7 @@ export class SupabaseWebhookIdempotencyService<T extends Json = Json>
     if (error) {
       throw new Error(`Failed to fetch pending webhook events: ${error.message}`);
     }
-    return ((data ?? []) as unknown) as Array<{
+    return (data ?? []) as unknown as Array<{
       stripe_event_id: string;
       event_type: string;
       status: string;
@@ -230,16 +237,17 @@ export class SupabaseWebhookIdempotencyService<T extends Json = Json>
       if (!isStale) return false;
 
       // stale と判断できる場合は上書きでロックを再取得
-      const { error: overwriteError } = await this.supabase
-        .from("webhook_events")
-        .upsert({
+      const { error: overwriteError } = await this.supabase.from("webhook_events").upsert(
+        {
           stripe_event_id: eventId,
           event_type: eventType,
           processing_result: lockPayload as T,
           processed_at: now.toISOString(),
           created_at: now.toISOString(),
           stripe_account_id: metadata?.stripe_account_id ?? null,
-        }, { onConflict: "stripe_event_id" });
+        },
+        { onConflict: "stripe_event_id" }
+      );
 
       if (!overwriteError) return true;
       return false;
@@ -255,9 +263,8 @@ export class SupabaseWebhookIdempotencyService<T extends Json = Json>
     processingResult: T,
     metadata?: { stripe_account_id?: string | null }
   ): Promise<void> {
-    const { error } = await this.supabase
-      .from("webhook_events")
-      .upsert({
+    const { error } = await this.supabase.from("webhook_events").upsert(
+      {
         stripe_event_id: eventId,
         event_type: eventType,
         processing_result: processingResult,
@@ -267,7 +274,9 @@ export class SupabaseWebhookIdempotencyService<T extends Json = Json>
         processing_error: null,
         last_retry_at: null,
         stripe_account_id: metadata?.stripe_account_id ?? null,
-      }, { onConflict: "stripe_event_id" });
+      },
+      { onConflict: "stripe_event_id" }
+    );
 
     if (error) {
       throw new Error(`Failed to update processing result: ${error.message}`);
@@ -302,7 +311,8 @@ export class SupabaseWebhookIdempotencyService<T extends Json = Json>
       if (!data) return false;
       // success === true または terminal === true の時のみ処理済みと判定（ロック行や一時失敗は未処理扱い）
       try {
-        const result = (data as unknown as { processing_result?: T | null }).processing_result ?? null;
+        const result =
+          (data as unknown as { processing_result?: T | null }).processing_result ?? null;
         const bag = (result as unknown as { success?: boolean; terminal?: boolean } | null) ?? null;
         const isProcessed = bag?.success === true || bag?.terminal === true;
         return !!isProcessed;
@@ -325,22 +335,20 @@ export class SupabaseWebhookIdempotencyService<T extends Json = Json>
   ): Promise<void> {
     try {
       // upsertで確実に最終結果を記録
-      const { error: upsertError } = await this.supabase
-        .from("webhook_events")
-        .upsert(
-          {
-            stripe_event_id: eventId,
-            event_type: eventType,
-            processing_result: processingResult,
-            processed_at: new Date().toISOString(),
-            created_at: new Date().toISOString(),
-            status: "processed",
-            processing_error: null,
-            last_retry_at: null,
-            stripe_account_id: metadata?.stripe_account_id ?? null,
-          },
-          { onConflict: "stripe_event_id" }
-        );
+      const { error: upsertError } = await this.supabase.from("webhook_events").upsert(
+        {
+          stripe_event_id: eventId,
+          event_type: eventType,
+          processing_result: processingResult,
+          processed_at: new Date().toISOString(),
+          created_at: new Date().toISOString(),
+          status: "processed",
+          processing_error: null,
+          last_retry_at: null,
+          stripe_account_id: metadata?.stripe_account_id ?? null,
+        },
+        { onConflict: "stripe_event_id" }
+      );
 
       if (upsertError) {
         throw new Error(upsertError.message);
@@ -400,30 +408,28 @@ export class SupabaseWebhookIdempotencyService<T extends Json = Json>
     const isDead = nextRetry >= effectiveMax;
     const statusVal = isDead ? "dead" : "failed";
 
-    const processingResult = ({
+    const processingResult = {
       success: false,
       error: errorMessage,
       failedAt: nowIso,
       terminal: isDead,
-    } as unknown) as T;
+    } as unknown as T;
 
-    const { error } = await this.supabase
-      .from("webhook_events")
-      .upsert(
-        {
-          stripe_event_id: eventId,
-          event_type: eventType,
-          processing_result: processingResult,
-          processed_at: nowIso,
-          created_at: nowIso,
-          status: statusVal,
-          processing_error: errorMessage,
-          retry_count: nextRetry,
-          last_retry_at: nowIso,
-          stripe_account_id: metadata?.stripe_account_id ?? null,
-        },
-        { onConflict: "stripe_event_id" }
-      );
+    const { error } = await this.supabase.from("webhook_events").upsert(
+      {
+        stripe_event_id: eventId,
+        event_type: eventType,
+        processing_result: processingResult,
+        processed_at: nowIso,
+        created_at: nowIso,
+        status: statusVal,
+        processing_error: errorMessage,
+        retry_count: nextRetry,
+        last_retry_at: nowIso,
+        stripe_account_id: metadata?.stripe_account_id ?? null,
+      },
+      { onConflict: "stripe_event_id" }
+    );
     if (error) {
       throw new Error(`Failed to mark event failed: ${error.message}`);
     }
@@ -442,11 +448,18 @@ export class IdempotentWebhookProcessor<T extends Json = Json> {
     eventId: string,
     eventType: string,
     processor: () => Promise<T>,
-    options?: { shouldMark?: (result: T) => boolean; metadata?: { stripe_account_id?: string | null } }
+    options?: {
+      shouldMark?: (result: T) => boolean;
+      metadata?: { stripe_account_id?: string | null };
+    }
   ): Promise<{ result: T; wasAlreadyProcessed: boolean }> {
     // 新しいロック方式が実装されている場合は利用。なければ従来方式にフォールバック
     const svc = this.idempotencyService as unknown as {
-      acquireProcessingLock?: (eventId: string, eventType: string, metadata?: { stripe_account_id?: string | null }) => Promise<boolean>;
+      acquireProcessingLock?: (
+        eventId: string,
+        eventType: string,
+        metadata?: { stripe_account_id?: string | null }
+      ) => Promise<boolean>;
       updateProcessingResult?: (
         eventId: string,
         eventType: string,
@@ -456,10 +469,14 @@ export class IdempotentWebhookProcessor<T extends Json = Json> {
       releaseProcessingLock?: (eventId: string) => Promise<void>;
     };
     if (typeof svc.acquireProcessingLock === "function") {
-      const acquired: boolean = await svc.acquireProcessingLock(eventId, eventType, options?.metadata);
+      const acquired: boolean = await svc.acquireProcessingLock(
+        eventId,
+        eventType,
+        options?.metadata
+      );
       if (!acquired) {
         const previousResult = await this.idempotencyService.getProcessingResult(eventId);
-        const normalizedResult = previousResult ?? (({ success: false } as unknown) as T);
+        const normalizedResult = previousResult ?? ({ success: false } as unknown as T);
         return { result: normalizedResult, wasAlreadyProcessed: true };
       }
 
@@ -470,7 +487,12 @@ export class IdempotentWebhookProcessor<T extends Json = Json> {
           if (typeof svc.updateProcessingResult === "function") {
             await svc.updateProcessingResult(eventId, eventType, result, options?.metadata);
           } else {
-            await this.idempotencyService.markEventAsProcessed(eventId, eventType, result, options?.metadata);
+            await this.idempotencyService.markEventAsProcessed(
+              eventId,
+              eventType,
+              result,
+              options?.metadata
+            );
           }
         } else {
           // 失敗等で確定保存しない場合はロックを解放してStripeの再試行を許容
@@ -485,7 +507,7 @@ export class IdempotentWebhookProcessor<T extends Json = Json> {
           if (typeof svc.releaseProcessingLock === "function") {
             await svc.releaseProcessingLock(eventId);
           }
-        } catch (_e) { }
+        } catch (_e) {}
         throw error;
       }
     }
@@ -494,7 +516,7 @@ export class IdempotentWebhookProcessor<T extends Json = Json> {
     const isProcessed = await this.idempotencyService.isEventProcessed(eventId);
     if (isProcessed) {
       const previousResult = await this.idempotencyService.getProcessingResult(eventId);
-      const normalizedResult = previousResult ?? (({ success: false } as unknown) as T);
+      const normalizedResult = previousResult ?? ({ success: false } as unknown as T);
       return { result: normalizedResult, wasAlreadyProcessed: true };
     }
 

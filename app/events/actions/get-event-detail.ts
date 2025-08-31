@@ -7,12 +7,14 @@ import { logger } from "@core/logging/app-logger";
 import {
   createServerActionError,
   createServerActionSuccess,
-  type ServerActionResult
+  type ServerActionResult,
 } from "@core/types/server-actions";
 
 import type { EventDetail as DetailType } from "@core/types/models";
 
-export async function getEventDetailAction(eventId: string): Promise<ServerActionResult<DetailType>> {
+export async function getEventDetailAction(
+  eventId: string
+): Promise<ServerActionResult<DetailType>> {
   try {
     // イベントIDのバリデーション
     const validation = validateEventId(eventId);
@@ -59,7 +61,10 @@ export async function getEventDetailAction(eventId: string): Promise<ServerActio
 
     if (error) {
       if (error.code === "PGRST301") {
-        return createServerActionError("EVENT_ACCESS_DENIED", "このイベントへのアクセス権限がありません");
+        return createServerActionError(
+          "EVENT_ACCESS_DENIED",
+          "このイベントへのアクセス権限がありません"
+        );
       }
       return createServerActionError("DATABASE_ERROR", "データベースエラーが発生しました");
     }
@@ -82,7 +87,7 @@ export async function getEventDetailAction(eventId: string): Promise<ServerActio
         event_id: eventDetail.id,
         creator_id: eventDetail.created_by,
         error_name: creatorError.code,
-        error_message: creatorError.message
+        error_message: creatorError.message,
       });
     }
 
@@ -93,10 +98,8 @@ export async function getEventDetailAction(eventId: string): Promise<ServerActio
 
     return createServerActionSuccess(result);
   } catch (_error) {
-    return createServerActionError(
-      "INTERNAL_ERROR",
-      "予期しないエラーが発生しました",
-      { retryable: true }
-    );
+    return createServerActionError("INTERNAL_ERROR", "予期しないエラーが発生しました", {
+      retryable: true,
+    });
   }
 }

@@ -5,7 +5,7 @@ import { verifyEventAccess, handleDatabaseError } from "@core/auth/event-authori
 import {
   GetParticipantsParamsSchema,
   type GetParticipantsResponse,
-  type ParticipantView
+  type ParticipantView,
 } from "@core/validation/participant-management";
 import { logger } from "@core/logging/app-logger";
 
@@ -21,7 +21,17 @@ export async function getEventParticipantsAction(
   try {
     // パラメータバリデーション
     const validatedParams = GetParticipantsParamsSchema.parse(params);
-    const { eventId, search, attendanceStatus, paymentMethod, paymentStatus, sortField, sortOrder, page, limit } = validatedParams;
+    const {
+      eventId,
+      search,
+      attendanceStatus,
+      paymentMethod,
+      paymentStatus,
+      sortField,
+      sortOrder,
+      page,
+      limit,
+    } = validatedParams;
 
     // 共通の認証・権限確認処理
     const { user, eventId: validatedEventId } = await verifyEventAccess(eventId);
@@ -31,7 +41,8 @@ export async function getEventParticipantsAction(
     // ベースクエリの構築
     let query = supabase
       .from("attendances")
-      .select(`
+      .select(
+        `
         id,
         nickname,
         email,
@@ -48,7 +59,8 @@ export async function getEventParticipantsAction(
           created_at,
           updated_at
         )
-      `)
+      `
+      )
       .eq("event_id", validatedEventId)
       // 最新決済を取得: 1) paid_at DESC NULLS LAST 2) created_at DESC 3) updated_at DESC
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -112,13 +124,7 @@ export async function getEventParticipantsAction(
     }
 
     // ソート処理
-    const attendanceSortFields = [
-      "created_at",
-      "updated_at",
-      "nickname",
-      "email",
-      "status",
-    ];
+    const attendanceSortFields = ["created_at", "updated_at", "nickname", "email", "status"];
 
     const paymentSortFields: Record<string, { column: string; foreignTable: string }> = {
       payment_method: { column: "method", foreignTable: "payments" },
@@ -146,10 +152,8 @@ export async function getEventParticipantsAction(
     query = query.range(offset, offset + limit - 1);
 
     // 並行実行
-    const [{ data: attendances, error: attendancesError }, { count, error: countError }] = await Promise.all([
-      query,
-      countQuery
-    ]);
+    const [{ data: attendances, error: attendancesError }, { count, error: countError }] =
+      await Promise.all([query, countQuery]);
 
     if (attendancesError) {
       handleDatabaseError(attendancesError, { eventId: validatedEventId, userId: user.id });
@@ -180,7 +184,9 @@ export async function getEventParticipantsAction(
     };
 
     // データ変換（参加者ビュー形式に変換）
-    const participants: ParticipantView[] = (attendances as unknown as SupabaseAttendanceWithPayments[] || []).map((attendance) => {
+    const participants: ParticipantView[] = (
+      (attendances as unknown as SupabaseAttendanceWithPayments[]) || []
+    ).map((attendance) => {
       const latestPayment = (attendance.payments || [])[0] || null;
 
       return {
@@ -218,7 +224,7 @@ export async function getEventParticipantsAction(
       participantCount: participants.length,
       totalCount: effectiveTotal,
       page,
-      filters: { search, attendanceStatus, paymentMethod, paymentStatus }
+      filters: { search, attendanceStatus, paymentMethod, paymentStatus },
     });
 
     return {
@@ -242,11 +248,10 @@ export async function getEventParticipantsAction(
         order: sortOrder,
       },
     };
-
   } catch (error) {
     logger.error("Failed to get event participants", {
       error: error instanceof Error ? error.message : "Unknown error",
-      params
+      params,
     });
 
     if (error instanceof Error) {

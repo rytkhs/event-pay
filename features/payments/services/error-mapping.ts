@@ -1,6 +1,5 @@
 import { ErrorHandlingResult, PaymentErrorType } from "./types";
 
-
 // PaymentErrorType -> ユーザー向けハンドリングの集約マップ（網羅必須）
 export const ERROR_HANDLING_BY_TYPE: Record<PaymentErrorType, ErrorHandlingResult> = {
   [PaymentErrorType.VALIDATION_ERROR]: {
@@ -39,7 +38,8 @@ export const ERROR_HANDLING_BY_TYPE: Record<PaymentErrorType, ErrorHandlingResul
     logLevel: "info",
   },
   [PaymentErrorType.CONCURRENT_UPDATE]: {
-    userMessage: "他のユーザーによって同時に更新されました。画面を更新して最新状態を確認してください。",
+    userMessage:
+      "他のユーザーによって同時に更新されました。画面を更新して最新状態を確認してください。",
     shouldRetry: false,
     logLevel: "warn",
   },

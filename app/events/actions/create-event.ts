@@ -12,13 +12,13 @@ type EventRow = Database["public"]["Tables"]["events"]["Row"];
 
 type CreateEventResult =
   | {
-    success: true;
-    data: EventRow;
-  }
+      success: true;
+      data: EventRow;
+    }
   | {
-    success: false;
-    error: string;
-  };
+      success: false;
+      error: string;
+    };
 
 type FormDataFields = {
   title: string;

@@ -4,9 +4,7 @@ import { createClient } from "@core/supabase/server";
 import { SecureSupabaseClientFactory } from "@core/security/secure-client-factory.impl";
 import { AdminReason } from "@core/security/secure-client-factory.types";
 import { verifyEventAccess } from "@core/auth/event-authorization";
-import {
-  ExportParticipantsCsvParamsSchema,
-} from "@core/validation/participant-management";
+import { ExportParticipantsCsvParamsSchema } from "@core/validation/participant-management";
 import { checkRateLimit, createRateLimitStore } from "@core/rate-limit";
 import { RATE_LIMIT_CONFIG } from "@core/security";
 import { formatUtcToJstSafe } from "@core/utils/timezone";
@@ -19,9 +17,7 @@ import { headers } from "next/headers";
  *
  * attendancesとpaymentsを結合してCSVファイルを生成
  */
-export async function exportParticipantsCsvAction(
-  params: unknown
-): Promise<{
+export async function exportParticipantsCsvAction(params: unknown): Promise<{
   success: boolean;
   csvContent?: string;
   filename?: string;
@@ -54,7 +50,8 @@ export async function exportParticipantsCsvAction(
     if (!rateLimitResult.allowed) {
       return {
         success: false,
-        error: "レート制限: CSVエクスポートの実行回数が上限に達しました。しばらく待ってから再度お試しください。"
+        error:
+          "レート制限: CSVエクスポートの実行回数が上限に達しました。しばらく待ってから再度お試しください。",
       };
     }
 
@@ -68,7 +65,8 @@ export async function exportParticipantsCsvAction(
     // CSVデータ取得用クエリの構築
     let query = supabase
       .from("attendances")
-      .select(`
+      .select(
+        `
         id,
         nickname,
         email,
@@ -84,7 +82,8 @@ export async function exportParticipantsCsvAction(
           created_at,
           updated_at
         )
-      `)
+      `
+      )
       .eq("event_id", validatedEventId)
       // 最新の決済 1 件に絞る
       // 優先順位: 1) paid_at DESC (NULL は後ろ) 2) created_at DESC 3) updated_at DESC
@@ -98,7 +97,7 @@ export async function exportParticipantsCsvAction(
       .order("created_at", { foreignTable: "payments", ascending: false } as any)
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .order("updated_at", { foreignTable: "payments", ascending: false } as any)
-      .limit(1, { foreignTable: "payments" })
+      .limit(1, { foreignTable: "payments" });
 
     // フィルター適用
     if (filters?.search) {
@@ -131,12 +130,12 @@ export async function exportParticipantsCsvAction(
       logger.error("Failed to fetch participants for CSV export", {
         eventId: validatedEventId,
         userId: user.id,
-        error: queryError
+        error: queryError,
       });
 
       return {
         success: false,
-        error: "参加者データの取得に失敗しました。"
+        error: "参加者データの取得に失敗しました。",
       };
     }
 
@@ -145,9 +144,10 @@ export async function exportParticipantsCsvAction(
 
       // ファイル名生成（participants-<eventId>-<yyyymmdd>.csv）
       const now = new Date();
-      const dateStr = now.getFullYear().toString() +
-        (now.getMonth() + 1).toString().padStart(2, '0') +
-        now.getDate().toString().padStart(2, '0');
+      const dateStr =
+        now.getFullYear().toString() +
+        (now.getMonth() + 1).toString().padStart(2, "0") +
+        now.getDate().toString().padStart(2, "0");
       const filename = `participants-${validatedEventId}-${dateStr}.csv`;
 
       // ヘッダーのみの CSV 文字列を生成
@@ -171,9 +171,10 @@ export async function exportParticipantsCsvAction(
 
     // ファイル名生成（participants-<eventId>-<yyyymmdd>.csv）
     const now = new Date();
-    const dateStr = now.getFullYear().toString() +
-      (now.getMonth() + 1).toString().padStart(2, '0') +
-      now.getDate().toString().padStart(2, '0');
+    const dateStr =
+      now.getFullYear().toString() +
+      (now.getMonth() + 1).toString().padStart(2, "0") +
+      now.getDate().toString().padStart(2, "0");
     const filename = `participants-${validatedEventId}-${dateStr}.csv`;
 
     // 監査ログ記録
@@ -186,15 +187,15 @@ export async function exportParticipantsCsvAction(
         filters: filters || {},
         columns,
         filename: filename,
-        ip_address: ip
-      }
+        ip_address: ip,
+      },
     });
 
     logger.info("Participants CSV export completed", {
       eventId: validatedEventId,
       userId: user.id,
       participantCount: csvSource.length,
-      filename: filename
+      filename: filename,
     });
 
     return {
@@ -203,16 +204,15 @@ export async function exportParticipantsCsvAction(
       filename,
       truncated,
     };
-
   } catch (error) {
     logger.error("Participants CSV export failed", {
       error: error instanceof Error ? error.message : "Unknown error",
-      params
+      params,
     });
 
     return {
       success: false,
-      error: error instanceof Error ? error.message : "CSVエクスポートに失敗しました。"
+      error: error instanceof Error ? error.message : "CSVエクスポートに失敗しました。",
     };
   }
 }
@@ -239,10 +239,7 @@ interface CsvParticipant {
   }> | null;
 }
 
-function generateCsvContent(
-  participants: CsvParticipant[],
-  columns: string[]
-): string {
+function generateCsvContent(participants: CsvParticipant[], columns: string[]): string {
   // CSV ヘッダー行の生成
   const headerMap: Record<string, string> = {
     attendance_id: "参加ID",
@@ -254,47 +251,47 @@ function generateCsvContent(
     amount: "金額",
     paid_at: "決済日時",
     created_at: "登録日時",
-    updated_at: "更新日時"
+    updated_at: "更新日時",
   };
 
-  const headers = columns.map(col => headerMap[col] || col);
+  const headers = columns.map((col) => headerMap[col] || col);
 
   // CSV行の生成
-  const rows = participants.map(participant => {
+  const rows = participants.map((participant) => {
     const latestPayment = (participant.payments as { [key: string]: any }[])?.[0] || null;
 
-    return columns.map(column => {
-      let value: string | number = '';
+    return columns.map((column) => {
+      let value: string | number = "";
 
       switch (column) {
-        case 'attendance_id':
+        case "attendance_id":
           value = participant.id;
           break;
-        case 'nickname':
+        case "nickname":
           value = participant.nickname;
           break;
-        case 'email':
+        case "email":
           value = participant.email;
           break;
-        case 'status':
+        case "status":
           // 参加ステータスの日本語化
           const statusMap: Record<string, string> = {
             attending: "参加",
             not_attending: "不参加",
-            maybe: "未定"
+            maybe: "未定",
           };
           value = statusMap[participant.status] || participant.status;
           break;
-        case 'payment_method':
+        case "payment_method":
           if (latestPayment?.method) {
             const methodMap: Record<string, string> = {
               stripe: "オンライン決済",
-              cash: "現金"
+              cash: "現金",
             };
             value = methodMap[latestPayment.method] || latestPayment.method;
           }
           break;
-        case 'payment_status':
+        case "payment_status":
           if (latestPayment?.status) {
             const statusMap: Record<string, string> = {
               pending: "未決済",
@@ -303,40 +300,41 @@ function generateCsvContent(
               received: "現金受領",
               refunded: "返金済み",
               waived: "免除",
-              completed: "完了"
+              completed: "完了",
             };
             value = statusMap[latestPayment.status] || latestPayment.status;
           }
           break;
-        case 'amount':
-          value = latestPayment?.amount || '';
+        case "amount":
+          value = latestPayment?.amount || "";
           break;
-        case 'paid_at':
-          value = latestPayment?.paid_at ?
-            formatUtcToJstSafe(latestPayment.paid_at, 'yyyy/MM/dd HH:mm') : '';
+        case "paid_at":
+          value = latestPayment?.paid_at
+            ? formatUtcToJstSafe(latestPayment.paid_at, "yyyy/MM/dd HH:mm")
+            : "";
           break;
-        case 'created_at':
-          value = formatUtcToJstSafe(participant.created_at, 'yyyy/MM/dd HH:mm');
+        case "created_at":
+          value = formatUtcToJstSafe(participant.created_at, "yyyy/MM/dd HH:mm");
           break;
-        case 'updated_at':
-          value = formatUtcToJstSafe(participant.updated_at, 'yyyy/MM/dd HH:mm');
+        case "updated_at":
+          value = formatUtcToJstSafe(participant.updated_at, "yyyy/MM/dd HH:mm");
           break;
         default:
-          value = '';
+          value = "";
       }
 
       // CSV形式用にエスケープ（ダブルクォートで囲み、内部のダブルクォートはエスケープ）
-      const strValue = sanitizeCsvValue(String(value ?? ''));
+      const strValue = sanitizeCsvValue(String(value ?? ""));
       return `"${strValue.replace(/"/g, '""')}"`;
     });
   });
 
   // CSV文字列の組み立て
-  const csvLines = [headers.map(h => `"${h}"`).join(','), ...rows.map(row => row.join(','))];
-  const csvString = csvLines.join('\n');
+  const csvLines = [headers.map((h) => `"${h}"`).join(","), ...rows.map((row) => row.join(","))];
+  const csvString = csvLines.join("\n");
 
   // UTF-8 BOMを付与
-  return '\uFEFF' + csvString;
+  return "\uFEFF" + csvString;
 }
 
 /**

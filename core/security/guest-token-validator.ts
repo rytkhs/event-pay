@@ -15,7 +15,6 @@ import {
   GuestValidationResult,
   GuestSession,
   GuestPermission,
-
   EventInfo,
 } from "./secure-client-factory.types";
 import { logger } from "@core/logging/app-logger";
@@ -153,9 +152,7 @@ export class RLSGuestTokenValidator implements IGuestTokenValidator {
       // event が配列で返るケースへの防御的対応
       // 単体オブジェクトに正規化してから変更可能性を判定
       // -----------------------------
-      const eventData = Array.isArray(attendance.event)
-        ? attendance.event[0]
-        : attendance.event;
+      const eventData = Array.isArray(attendance.event) ? attendance.event[0] : attendance.event;
       const canModify = this.checkCanModify(eventData);
 
       // 成功をログに記録
@@ -444,7 +441,7 @@ export class RLSGuestTokenValidator implements IGuestTokenValidator {
       // registration_deadlineはオプショナル
       ("registration_deadline" in event
         ? (event as EventInfo).registration_deadline === null ||
-        typeof (event as EventInfo).registration_deadline === "string"
+          typeof (event as EventInfo).registration_deadline === "string"
         : true)
     );
   }
@@ -538,7 +535,12 @@ export class RLSGuestTokenValidator implements IGuestTokenValidator {
   ): Promise<void> {
     try {
       // Audit context removed with security reporter
-      logger.info('Guest access logged', { token: token.substring(0, 8), action, success, additionalInfo });
+      logger.info("Guest access logged", {
+        token: token.substring(0, 8),
+        action,
+        success,
+        additionalInfo,
+      });
     } catch (_auditError) {
       // 監査ログの失敗をコンソールに記録するが、ビジネスロジックは継続
       // 将来的には、監査ログ失敗の通知システムを実装することも検討

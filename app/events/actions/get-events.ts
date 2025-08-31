@@ -29,11 +29,11 @@ interface FilterCondition {
 
 interface EqualityFilter {
   [key: string]:
-  | string
-  | number
-  | boolean
-  | null
-  | Database["public"]["Enums"]["event_status_enum"];
+    | string
+    | number
+    | boolean
+    | null
+    | Database["public"]["Enums"]["event_status_enum"];
 }
 
 type GetEventsOptions = {
@@ -48,15 +48,15 @@ type GetEventsOptions = {
 
 type GetEventsResult =
   | {
-    success: true;
-    data: Event[];
-    totalCount: number;
-    hasMore: boolean;
-  }
+      success: true;
+      data: Event[];
+      totalCount: number;
+      hasMore: boolean;
+    }
   | {
-    success: false;
-    error: string;
-  };
+      success: false;
+      error: string;
+    };
 
 // ソート項目をSupabaseのカラム名にマッピング
 function getOrderColumn(sortBy: SortBy): string | null {

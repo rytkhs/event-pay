@@ -160,10 +160,7 @@ async function validateCapacityAndDuplication(
         { ...securityContext, eventId: event.id }
       );
 
-      throw createServerActionError(
-        "RESOURCE_CONFLICT",
-        "このイベントは定員に達しています"
-      );
+      throw createServerActionError("RESOURCE_CONFLICT", "このイベントは定員に達しています");
     }
   }
 
@@ -379,7 +376,8 @@ export async function registerParticipationAction(
     const newAttendanceId = await executeRegistration(processedData, event, securityContext);
 
     // 6. 決済が必要かどうかの判定
-    const requiresAdditionalPayment = participationData.attendanceStatus === "attending" && event.fee > 0;
+    const requiresAdditionalPayment =
+      participationData.attendanceStatus === "attending" && event.fee > 0;
 
     // 7. 成功レスポンスの作成
     const responseData: RegisterParticipationData = {
@@ -410,10 +408,7 @@ export async function registerParticipationAction(
       securityContext
     );
 
-    return createServerActionError(
-      "INTERNAL_ERROR",
-      "参加登録の処理中にエラーが発生しました"
-    );
+    return createServerActionError("INTERNAL_ERROR", "参加登録の処理中にエラーが発生しました");
   }
 }
 
@@ -437,9 +432,6 @@ export async function registerParticipationDirectAction(
 
     return await registerParticipationAction(formData);
   } catch (_error) {
-    return createServerActionError(
-      "INTERNAL_ERROR",
-      "参加登録の処理中にエラーが発生しました"
-    );
+    return createServerActionError("INTERNAL_ERROR", "参加登録の処理中にエラーが発生しました");
   }
 }

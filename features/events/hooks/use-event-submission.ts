@@ -76,7 +76,7 @@ export function useEventSubmission({ eventId, onSubmit }: UseEventSubmissionProp
           tag: "eventUpdate",
           event_id: eventId,
           error_name: error instanceof Error ? error.name : "Unknown",
-          error_message: error instanceof Error ? error.message : String(error)
+          error_message: error instanceof Error ? error.message : String(error),
         });
         const errorMessage = "エラーが発生しました。もう一度お試しください。";
         setErrors({ general: errorMessage });
@@ -187,7 +187,7 @@ export function useEventSubmission({ eventId, onSubmit }: UseEventSubmissionProp
         tag: "eventSubmission",
         event_id: eventId,
         error_name: error instanceof Error ? error.name : "Unknown",
-        error_message: error instanceof Error ? error.message : String(error)
+        error_message: error instanceof Error ? error.message : String(error),
       });
       const errorMessage = "エラーが発生しました。もう一度お試しください。";
       setErrors({ general: errorMessage });

@@ -2,9 +2,9 @@
  * メール通知サービスの実装
  */
 
-import { Resend } from 'resend';
-import { logger } from '@core/logging/app-logger';
-import { IEmailNotificationService, EmailTemplate, NotificationResult } from './types';
+import { Resend } from "resend";
+import { logger } from "@core/logging/app-logger";
+import { IEmailNotificationService, EmailTemplate, NotificationResult } from "./types";
 
 /**
  * Resendを使用したメール通知サービス
@@ -17,21 +17,18 @@ export class EmailNotificationService implements IEmailNotificationService {
   constructor() {
     const apiKey = process.env.RESEND_API_KEY;
     if (!apiKey) {
-      throw new Error('RESEND_API_KEY environment variable is required');
+      throw new Error("RESEND_API_KEY environment variable is required");
     }
 
     this.resend = new Resend(apiKey);
-    this.fromEmail = process.env.FROM_EMAIL || 'noreply@eventpay.jp';
-    this.adminEmail = process.env.ADMIN_EMAIL || 'admin@eventpay.jp';
+    this.fromEmail = process.env.FROM_EMAIL || "noreply@eventpay.jp";
+    this.adminEmail = process.env.ADMIN_EMAIL || "admin@eventpay.jp";
   }
 
   /**
    * メール送信
    */
-  async sendEmail(params: {
-    to: string;
-    template: EmailTemplate;
-  }): Promise<NotificationResult> {
+  async sendEmail(params: { to: string; template: EmailTemplate }): Promise<NotificationResult> {
     try {
       const { to, template } = params;
 
@@ -57,24 +54,24 @@ export class EmailNotificationService implements IEmailNotificationService {
       if (result.error) {
         return {
           success: false,
-          error: result.error.message || 'メール送信に失敗しました'
+          error: result.error.message || "メール送信に失敗しました",
         };
       }
 
       return {
         success: true,
-        messageId: result.data?.id
+        messageId: result.data?.id,
       };
-
     } catch (error) {
-      logger.error('Email sending error', {
-        tag: 'emailService',
-        error_name: error instanceof Error ? error.name : 'Unknown',
+      logger.error("Email sending error", {
+        tag: "emailService",
+        error_name: error instanceof Error ? error.name : "Unknown",
         error_message: error instanceof Error ? error.message : String(error),
       });
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'メール送信中に予期しないエラーが発生しました'
+        error:
+          error instanceof Error ? error.message : "メール送信中に予期しないエラーが発生しました",
       };
     }
   }
@@ -92,30 +89,30 @@ export class EmailNotificationService implements IEmailNotificationService {
 
       let body = message;
       if (details) {
-        body += '\n\n詳細情報:\n';
+        body += "\n\n詳細情報:\n";
         body += JSON.stringify(details, null, 2);
       }
 
       const template: EmailTemplate = {
         subject: `[EventPay Alert] ${subject}`,
         body: body,
-        from: this.fromEmail
+        from: this.fromEmail,
       };
 
       return await this.sendEmail({
         to: this.adminEmail,
-        template
+        template,
       });
-
     } catch (error) {
-      logger.error('Admin alert email error', {
-        tag: 'emailService',
-        error_name: error instanceof Error ? error.name : 'Unknown',
+      logger.error("Admin alert email error", {
+        tag: "emailService",
+        error_name: error instanceof Error ? error.name : "Unknown",
         error_message: error instanceof Error ? error.message : String(error),
       });
       return {
         success: false,
-        error: error instanceof Error ? error.message : '管理者アラート送信中にエラーが発生しました'
+        error:
+          error instanceof Error ? error.message : "管理者アラート送信中にエラーが発生しました",
       };
     }
   }

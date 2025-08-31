@@ -1,9 +1,7 @@
 // セキュリティ監査システムの型定義
 
 // ゲストトークンエラー関連の型をインポート
-export {
-  GuestErrorCode,
-} from "@core/security/guest-token-errors";
+export { GuestErrorCode } from "@core/security/guest-token-errors";
 
 // 管理者権限使用理由
 export enum AdminReason {
@@ -93,8 +91,6 @@ export interface SuspiciousActivity {
   investigationNotes?: string;
   createdAt?: Date;
 }
-
-
 
 // 時間範囲
 export interface TimeRange {

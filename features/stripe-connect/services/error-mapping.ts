@@ -36,7 +36,8 @@ export const ERROR_HANDLING_BY_TYPE: Record<StripeConnectErrorType, ErrorHandlin
 
   // Stripe APIエラー
   [StripeConnectErrorType.STRIPE_API_ERROR]: {
-    userMessage: "決済サービスとの通信でエラーが発生しました。しばらく時間をおいて再度お試しください。",
+    userMessage:
+      "決済サービスとの通信でエラーが発生しました。しばらく時間をおいて再度お試しください。",
     shouldRetry: true,
     logLevel: "error",
     shouldNotifyAdmin: true,
@@ -48,7 +49,8 @@ export const ERROR_HANDLING_BY_TYPE: Record<StripeConnectErrorType, ErrorHandlin
     shouldNotifyAdmin: true,
   },
   [StripeConnectErrorType.ACCOUNT_LINK_CREATION_FAILED]: {
-    userMessage: "アカウント設定リンクの生成に失敗しました。しばらく時間をおいて再度お試しください。",
+    userMessage:
+      "アカウント設定リンクの生成に失敗しました。しばらく時間をおいて再度お試しください。",
     shouldRetry: true,
     logLevel: "error",
     shouldNotifyAdmin: true,
@@ -86,19 +88,19 @@ export const ERROR_HANDLING_BY_TYPE: Record<StripeConnectErrorType, ErrorHandlin
  */
 export const STRIPE_ERROR_CODE_MAPPING: Record<string, StripeConnectErrorType> = {
   // アカウント関連
-  'account_already_exists': StripeConnectErrorType.ACCOUNT_ALREADY_EXISTS,
-  'account_invalid': StripeConnectErrorType.INVALID_ACCOUNT_STATUS,
-  'account_not_found': StripeConnectErrorType.ACCOUNT_NOT_FOUND,
+  account_already_exists: StripeConnectErrorType.ACCOUNT_ALREADY_EXISTS,
+  account_invalid: StripeConnectErrorType.INVALID_ACCOUNT_STATUS,
+  account_not_found: StripeConnectErrorType.ACCOUNT_NOT_FOUND,
 
   // API関連
-  'api_connection_error': StripeConnectErrorType.STRIPE_API_ERROR,
-  'api_error': StripeConnectErrorType.STRIPE_API_ERROR,
-  'authentication_error': StripeConnectErrorType.STRIPE_API_ERROR,
-  'rate_limit_error': StripeConnectErrorType.STRIPE_API_ERROR,
+  api_connection_error: StripeConnectErrorType.STRIPE_API_ERROR,
+  api_error: StripeConnectErrorType.STRIPE_API_ERROR,
+  authentication_error: StripeConnectErrorType.STRIPE_API_ERROR,
+  rate_limit_error: StripeConnectErrorType.STRIPE_API_ERROR,
 
   // パラメータ関連
-  'invalid_request_error': StripeConnectErrorType.VALIDATION_ERROR,
-  'idempotency_key_in_use': StripeConnectErrorType.VALIDATION_ERROR,
+  invalid_request_error: StripeConnectErrorType.VALIDATION_ERROR,
+  idempotency_key_in_use: StripeConnectErrorType.VALIDATION_ERROR,
 };
 
 /**
@@ -106,22 +108,22 @@ export const STRIPE_ERROR_CODE_MAPPING: Record<string, StripeConnectErrorType> =
  */
 export const POSTGRES_ERROR_CODE_MAPPING: Record<string, StripeConnectErrorType> = {
   // 一意制約違反
-  '23505': StripeConnectErrorType.ACCOUNT_ALREADY_EXISTS,
+  "23505": StripeConnectErrorType.ACCOUNT_ALREADY_EXISTS,
 
   // 外部キー制約違反
-  '23503': StripeConnectErrorType.VALIDATION_ERROR,
+  "23503": StripeConnectErrorType.VALIDATION_ERROR,
 
   // NOT NULL制約違反
-  '23502': StripeConnectErrorType.VALIDATION_ERROR,
+  "23502": StripeConnectErrorType.VALIDATION_ERROR,
 
   // チェック制約違反
-  '23514': StripeConnectErrorType.VALIDATION_ERROR,
+  "23514": StripeConnectErrorType.VALIDATION_ERROR,
 
   // 接続エラー
-  '08000': StripeConnectErrorType.DATABASE_ERROR,
-  '08003': StripeConnectErrorType.DATABASE_ERROR,
-  '08006': StripeConnectErrorType.DATABASE_ERROR,
+  "08000": StripeConnectErrorType.DATABASE_ERROR,
+  "08003": StripeConnectErrorType.DATABASE_ERROR,
+  "08006": StripeConnectErrorType.DATABASE_ERROR,
 
   // 権限エラー
-  '42501': StripeConnectErrorType.DATABASE_ERROR,
+  "42501": StripeConnectErrorType.DATABASE_ERROR,
 };

@@ -1,4 +1,4 @@
-import pino from 'pino';
+import pino from "pino";
 
 /**
  * EventPay 構造化ログシステム
@@ -32,14 +32,14 @@ export interface EventPayLogFields {
 
 /** Pino インスタンスの作成 */
 function createPinoLogger() {
-  const isDevelopment = process.env.NODE_ENV !== 'production';
+  const isDevelopment = process.env.NODE_ENV !== "production";
 
   const baseConfig = {
-    level: isDevelopment ? 'debug' : 'info',
+    level: isDevelopment ? "debug" : "info",
     base: {
-      service: 'eventpay',
-      env: process.env.NODE_ENV || 'development',
-      version: process.env.npm_package_version || '1.0.0',
+      service: "eventpay",
+      env: process.env.NODE_ENV || "development",
+      version: process.env.npm_package_version || "1.0.0",
     },
   };
 

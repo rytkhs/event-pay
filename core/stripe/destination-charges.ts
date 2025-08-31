@@ -1,7 +1,7 @@
-import Stripe from 'stripe';
-import { stripe, generateIdempotencyKey, createStripeRequestOptions } from './client';
-import { getTransferGroupForEvent } from '@core/utils/stripe';
-import { retryWithIdempotency } from './idempotency-retry';
+import Stripe from "stripe";
+import { stripe, generateIdempotencyKey, createStripeRequestOptions } from "./client";
+import { getTransferGroupForEvent } from "@core/utils/stripe";
+import { retryWithIdempotency } from "./idempotency-retry";
 
 // Destination charges用のCheckout Session作成パラメータ（内部専用）
 interface CreateDestinationCheckoutParams {
@@ -15,7 +15,7 @@ interface CreateDestinationCheckoutParams {
   cancelUrl: string;
   actorId: string; // idempotency_key生成用（認証ユーザー=users.id / ゲスト=attendances.id）
   metadata?: Record<string, string>;
-  setupFutureUsage?: 'off_session';
+  setupFutureUsage?: "off_session";
 }
 
 // Destination charges対応のCheckout Session作成
@@ -42,10 +42,15 @@ export async function createDestinationCheckoutSession(
     );
   }
 
-  const idempotencyKey = generateIdempotencyKey('checkout', eventId, `${actorId}:${destinationAccountId}`, {
-    amount,
-    currency: 'jpy',
-  });
+  const idempotencyKey = generateIdempotencyKey(
+    "checkout",
+    eventId,
+    `${actorId}:${destinationAccountId}`,
+    {
+      amount,
+      currency: "jpy",
+    }
+  );
 
   const transferGroup = getTransferGroupForEvent(eventId);
 
@@ -58,12 +63,12 @@ export async function createDestinationCheckoutSession(
   const createSession = (key: string) =>
     stripe.checkout.sessions.create(
       {
-        mode: 'payment',
-        payment_method_types: ['card'],
+        mode: "payment",
+        payment_method_types: ["card"],
         line_items: [
           {
             price_data: {
-              currency: 'jpy',
+              currency: "jpy",
               unit_amount: amount,
               product_data: {
                 name: eventTitle,
@@ -77,12 +82,12 @@ export async function createDestinationCheckoutSession(
         client_reference_id: metadata?.payment_id ?? undefined,
         success_url: (() => {
           const u = new URL(successUrl);
-          u.searchParams.set('session_id', '{CHECKOUT_SESSION_ID}');
+          u.searchParams.set("session_id", "{CHECKOUT_SESSION_ID}");
           return u.toString();
         })(),
         cancel_url: (() => {
           const u = new URL(cancelUrl);
-          u.searchParams.set('session_id', '{CHECKOUT_SESSION_ID}');
+          u.searchParams.set("session_id", "{CHECKOUT_SESSION_ID}");
           return u.toString();
         })(),
         payment_intent_data: {

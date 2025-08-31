@@ -69,12 +69,16 @@ export interface INotificationService {
   /**
    * アカウント制限通知を送信
    */
-  sendAccountRestrictedNotification(data: AccountRestrictedNotification): Promise<NotificationResult>;
+  sendAccountRestrictedNotification(
+    data: AccountRestrictedNotification
+  ): Promise<NotificationResult>;
 
   /**
    * アカウント状態変更通知を送信
    */
-  sendAccountStatusChangeNotification(data: AccountStatusChangeNotification): Promise<NotificationResult>;
+  sendAccountStatusChangeNotification(
+    data: AccountStatusChangeNotification
+  ): Promise<NotificationResult>;
 }
 
 /**
@@ -84,10 +88,7 @@ export interface IEmailNotificationService {
   /**
    * メール送信
    */
-  sendEmail(params: {
-    to: string;
-    template: EmailTemplate;
-  }): Promise<NotificationResult>;
+  sendEmail(params: { to: string; template: EmailTemplate }): Promise<NotificationResult>;
 
   /**
    * 管理者向けアラートメール送信

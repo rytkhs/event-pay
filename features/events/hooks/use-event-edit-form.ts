@@ -219,25 +219,26 @@ export function useEventEditForm({ event, attendeeCount, onSubmit }: UseEventEdi
 
           // submitWithErrorHandling を使用してエラーハンドリングを統一
           const result = await submitWithErrorHandling(
-            () => submission.submitForm(formData, detectedChanges, (errors) => {
-              // エラーをreact-hook-formに設定
-              Object.entries(errors).forEach(([field, message]) => {
-                if (field === "general") {
-                  form.setError("root", {
-                    type: "manual",
-                    message: message,
-                  });
-                } else {
-                  form.setError(field as keyof EventEditFormDataRHF, {
-                    type: "manual",
-                    message: message,
-                  });
-                }
-              });
-            }),
+            () =>
+              submission.submitForm(formData, detectedChanges, (errors) => {
+                // エラーをreact-hook-formに設定
+                Object.entries(errors).forEach(([field, message]) => {
+                  if (field === "general") {
+                    form.setError("root", {
+                      type: "manual",
+                      message: message,
+                    });
+                  } else {
+                    form.setError(field as keyof EventEditFormDataRHF, {
+                      type: "manual",
+                      message: message,
+                    });
+                  }
+                });
+              }),
             {
               action: "event_edit",
-              eventId: event.id
+              eventId: event.id,
             }
           );
 
@@ -249,7 +250,10 @@ export function useEventEditForm({ event, attendeeCount, onSubmit }: UseEventEdi
               type: "manual",
               message: result.error?.userMessage || "更新に失敗しました。もう一度お試しください。",
             });
-            resolve({ success: false, error: result.error?.userMessage || "更新に失敗しました。もう一度お試しください。" });
+            resolve({
+              success: false,
+              error: result.error?.userMessage || "更新に失敗しました。もう一度お試しください。",
+            });
           }
         });
       });
@@ -300,7 +304,7 @@ export function useEventEditForm({ event, attendeeCount, onSubmit }: UseEventEdi
               tag: "eventEditForm",
               event_id: event.id,
               error_name: error instanceof Error ? error.name : "Unknown",
-              error_message: error instanceof Error ? error.message : String(error)
+              error_message: error instanceof Error ? error.message : String(error),
             });
             form.setError("root", {
               type: "manual",

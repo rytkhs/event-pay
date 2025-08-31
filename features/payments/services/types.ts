@@ -61,7 +61,7 @@ export interface CreateStripeSessionParams {
      * Checkout Session で将来のオフセッション決済用にカード情報を保存するかどうか
      * @see https://docs.stripe.com/api/checkout/sessions/create#create_checkout_session-payment_intent_data-setup_future_usage
      */
-    setupFutureUsage?: 'off_session';
+    setupFutureUsage?: "off_session";
   };
 }
 

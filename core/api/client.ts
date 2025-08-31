@@ -26,8 +26,8 @@ export class ApiError extends Error {
    * Problem Details から ApiError を作成
    */
   static fromProblemDetails(problem: ProblemDetails): ApiError {
-    const validationErrors = problem.errors?.map(err => ({
-      field: err.pointer.replace(/^\/(?:query|body)\//, ''),
+    const validationErrors = problem.errors?.map((err) => ({
+      field: err.pointer.replace(/^\/(?:query|body)\//, ""),
       code: err.code,
       message: err.message,
     }));
@@ -84,11 +84,20 @@ class ApiClient {
    * API リクエストを実行
    */
   // オーバーロード: responseType によって返り値の型を分岐
-  async request<T = unknown>(url: string, options?: FetchOptions & { responseType?: "json" | undefined }): Promise<T>;
+  async request<T = unknown>(
+    url: string,
+    options?: FetchOptions & { responseType?: "json" | undefined }
+  ): Promise<T>;
   async request(url: string, options: FetchOptions & { responseType: "text" }): Promise<string>;
   async request(url: string, options: FetchOptions & { responseType: "blob" }): Promise<Blob>;
-  async request(url: string, options: FetchOptions & { responseType: "arrayBuffer" }): Promise<ArrayBuffer>;
-  async request(url: string, options: FetchOptions & { responseType: "response" }): Promise<Response>;
+  async request(
+    url: string,
+    options: FetchOptions & { responseType: "arrayBuffer" }
+  ): Promise<ArrayBuffer>;
+  async request(
+    url: string,
+    options: FetchOptions & { responseType: "response" }
+  ): Promise<Response>;
   async request<T = unknown>(
     url: string,
     options: FetchOptions = {}
@@ -129,12 +138,12 @@ class ApiClient {
           } else {
             // 外部signalの中断を監視し、内部controllerも中断
             const abortHandler = () => controller.abort();
-            externalSignal.addEventListener('abort', abortHandler, { once: true });
+            externalSignal.addEventListener("abort", abortHandler, { once: true });
 
             // クリーンアップのためにタイムアウト時にリスナーを削除
             const originalAbort = controller.abort.bind(controller);
             controller.abort = () => {
-              externalSignal.removeEventListener('abort', abortHandler);
+              externalSignal.removeEventListener("abort", abortHandler);
               originalAbort();
             };
           }
@@ -233,12 +242,22 @@ class ApiClient {
 
         // リトライ判定
         if (attempt < maxRetries && (lastError?.retryable || response.status >= 500)) {
-          await new Promise(resolve => setTimeout(resolve, retryDelay * (attempt + 1)));
+          await new Promise((resolve) => setTimeout(resolve, retryDelay * (attempt + 1)));
           continue;
         }
 
-        throw lastError || new ApiError("HTTP_ERROR", `HTTP ${response.status}`, undefined, false, undefined, undefined, response.status);
-
+        throw (
+          lastError ||
+          new ApiError(
+            "HTTP_ERROR",
+            `HTTP ${response.status}`,
+            undefined,
+            false,
+            undefined,
+            undefined,
+            response.status
+          )
+        );
       } catch (error) {
         if (error instanceof ApiError) {
           lastError = error;
@@ -259,7 +278,7 @@ class ApiClient {
         }
 
         if (attempt < maxRetries && lastError.retryable) {
-          await new Promise(resolve => setTimeout(resolve, retryDelay * (attempt + 1)));
+          await new Promise((resolve) => setTimeout(resolve, retryDelay * (attempt + 1)));
           continue;
         }
 
@@ -332,7 +351,6 @@ export const apiClient = new ApiClient();
 export function isApiError(error: unknown): error is ApiError {
   return error instanceof ApiError;
 }
-
 
 /**
  * 便利関数: リトライ可能なエラーかどうかを判定

@@ -139,7 +139,7 @@ export class SupabaseClientFactory {
         tag: "sessionValidityCheckFailed",
         error_name: error instanceof Error ? error.name : "Unknown",
         error_message: error instanceof Error ? error.message : String(error),
-        context
+        context,
       });
       return { client, sessionValid: false };
     }

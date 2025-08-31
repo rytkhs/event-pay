@@ -57,7 +57,7 @@ export function logSecurityEvent(event: SecurityEvent): void {
       security_severity: event.severity,
       message: event.message,
       user_id: event.userId,
-      event_id: event.eventId
+      event_id: event.eventId,
     });
   }
 
@@ -142,7 +142,6 @@ export function logSanitizationEvent(
     );
   }
 }
-
 
 /**
  * バリデーション失敗を記録します
@@ -276,8 +275,6 @@ function maskIP(ip?: string): string | undefined {
   return "xxx.xxx.xxx.xxx";
 }
 
-
-
 /**
  * トークンをマスクします
  * @param token トークン
@@ -297,7 +294,7 @@ function sendSecurityAlert(logEntry: Record<string, unknown>): void {
   if (process.env.NODE_ENV === "development") {
     logger.error("🚨 SECURITY ALERT", {
       tag: "securityAlert",
-      alert_data: logEntry
+      alert_data: logEntry,
     });
   }
 

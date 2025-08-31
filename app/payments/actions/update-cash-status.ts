@@ -83,7 +83,9 @@ export async function updateCashStatusAction(
         return createServerActionError(
           "RATE_LIMITED",
           "レート制限に達しました。しばらく待ってから再試行してください。",
-          rl.retryAfter ? { retryable: true, details: { retryAfter: rl.retryAfter } } : { retryable: true }
+          rl.retryAfter
+            ? { retryable: true, details: { retryAfter: rl.retryAfter } }
+            : { retryable: true }
         );
       }
     } catch {
@@ -93,7 +95,8 @@ export async function updateCashStatusAction(
     // 対象決済の取得（権限・バージョン・メソッド判定をまとめて取得）
     const { data: payment, error: fetchError } = await supabase
       .from("payments")
-      .select(`
+      .select(
+        `
         id,
         version,
         method,
@@ -106,7 +109,8 @@ export async function updateCashStatusAction(
             created_by
           )
         )
-      `)
+      `
+      )
       .eq("id", paymentId)
       .single();
 
@@ -115,13 +119,12 @@ export async function updateCashStatusAction(
     }
 
     // 基本的な権限チェック（RPC関数内でも再チェックされる）
-    await new PaymentValidator(supabase).validateAttendanceAccess(
-      payment.attendance_id,
-      user.id
-    );
+    await new PaymentValidator(supabase).validateAttendanceAccess(payment.attendance_id, user.id);
 
     // 権限チェック：主催者のみ
-    const attendance = Array.isArray(payment.attendances) ? payment.attendances[0] : payment.attendances;
+    const attendance = Array.isArray(payment.attendances)
+      ? payment.attendances[0]
+      : payment.attendances;
     const event = Array.isArray(attendance.events) ? attendance.events[0] : attendance.events;
 
     if (event.created_by !== user.id) {
@@ -130,10 +133,7 @@ export async function updateCashStatusAction(
 
     // 現金決済のみ
     if (payment.method !== "cash") {
-      return createServerActionError(
-        "RESOURCE_CONFLICT",
-        "現金決済以外は手動更新できません。"
-      );
+      return createServerActionError("RESOURCE_CONFLICT", "現金決済以外は手動更新できません。");
     }
 
     // ステータス遷移などのビジネスルール検証
@@ -144,7 +144,10 @@ export async function updateCashStatusAction(
       });
     } catch (validationError) {
       if (validationError instanceof PaymentError) {
-        return createServerActionError(mapPaymentError(validationError.type), validationError.message);
+        return createServerActionError(
+          mapPaymentError(validationError.type),
+          validationError.message
+        );
       }
       return createServerActionError(
         "INTERNAL_ERROR",
@@ -158,17 +161,20 @@ export async function updateCashStatusAction(
       "app/payments/actions/update-cash-status"
     );
 
-    const { data: _rpcResult, error: rpcError } = await admin.rpc('rpc_update_payment_status_safe', {
-      p_payment_id: paymentId,
-      p_new_status: status,
-      p_expected_version: payment.version,
-      p_user_id: user.id,
-      p_notes: notes || null,
-    });
+    const { data: _rpcResult, error: rpcError } = await admin.rpc(
+      "rpc_update_payment_status_safe",
+      {
+        p_payment_id: paymentId,
+        p_new_status: status,
+        p_expected_version: payment.version,
+        p_user_id: user.id,
+        p_notes: notes || null,
+      }
+    );
 
     if (rpcError) {
       // 楽観的ロック競合の場合
-      if (rpcError.code === '40001') {
+      if (rpcError.code === "40001") {
         return createServerActionError(
           "RESOURCE_CONFLICT",
           "他のユーザーによって同時に更新されました。最新の状態を確認してから再試行してください。"

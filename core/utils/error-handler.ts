@@ -283,7 +283,8 @@ export function logError(error: ErrorDetails, context?: ErrorContext): void {
     });
   } else {
     // 一般的なエラーログ
-    const logLevel: LogLevel = error.severity === "high" || error.severity === "critical" ? "error" : "warn";
+    const logLevel: LogLevel =
+      error.severity === "high" || error.severity === "critical" ? "error" : "warn";
 
     // ログレベルに応じたログ出力
     if (logLevel === "error") {
@@ -294,7 +295,7 @@ export function logError(error: ErrorDetails, context?: ErrorContext): void {
         user_id: context?.userId,
         event_id: context?.eventId,
         action: context?.action,
-        ...context?.additionalData
+        ...context?.additionalData,
       });
     } else {
       logger.warn(error.message, {
@@ -304,7 +305,7 @@ export function logError(error: ErrorDetails, context?: ErrorContext): void {
         user_id: context?.userId,
         event_id: context?.eventId,
         action: context?.action,
-        ...context?.additionalData
+        ...context?.additionalData,
       });
     }
   }

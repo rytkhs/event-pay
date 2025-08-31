@@ -115,10 +115,10 @@ export function useEventFilter(options: UseEventFilterOptions = {}) {
         // 日付文字列を直接比較（YYYY-MM-DD形式、date-fns-tz統一）
         if (dateRange.end < dateRange.start) {
           if (process.env.NODE_ENV === "development") {
-            logger.warn('Invalid date range provided, clearing date range', {
-              tag: 'invalidDateRange',
+            logger.warn("Invalid date range provided, clearing date range", {
+              tag: "invalidDateRange",
               start: dateRange.start,
-              end: dateRange.end
+              end: dateRange.end,
             });
           }
           dateRange = {};

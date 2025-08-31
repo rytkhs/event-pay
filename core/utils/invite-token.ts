@@ -3,8 +3,6 @@ import { createClient } from "@core/supabase/server";
 import type { Database } from "@/types/database";
 import { logger } from "@core/logging/app-logger";
 
-
-
 /**
  * 暗号学的に安全な招待トークンを生成します。
  * 24バイトのランダムデータをURLセーフなBase64でエンコードし、プレフィックスを追加します（36文字）。
@@ -54,12 +52,12 @@ export interface InviteValidationResult {
   canRegister: boolean;
   errorMessage?: string;
   errorCode?:
-  | "INVALID_TOKEN"
-  | "TOKEN_NOT_FOUND"
-  | "EVENT_CANCELLED"
-  | "EVENT_ENDED"
-  | "REGISTRATION_DEADLINE_PASSED"
-  | "UNKNOWN_ERROR";
+    | "INVALID_TOKEN"
+    | "TOKEN_NOT_FOUND"
+    | "EVENT_CANCELLED"
+    | "EVENT_ENDED"
+    | "REGISTRATION_DEADLINE_PASSED"
+    | "UNKNOWN_ERROR";
 }
 
 /**
@@ -69,9 +67,7 @@ export interface InviteValidationResult {
  */
 function validateInviteTokenFormat(token: string): boolean {
   // 新仕様フォーマット（inv_プレフィックス付き36文字）
-  return typeof token === 'string' &&
-    token.length === 36 &&
-    /^inv_[a-zA-Z0-9_-]{32}$/.test(token);
+  return typeof token === "string" && token.length === 36 && /^inv_[a-zA-Z0-9_-]{32}$/.test(token);
 }
 
 /**
@@ -137,7 +133,7 @@ export async function validateInviteToken(token: string): Promise<InviteValidati
         logger.error("Failed to fetch participant count", {
           tag: "inviteTokenValidation",
           error_name: countError instanceof Error ? countError.name : "Unknown",
-          error_message: countError instanceof Error ? countError.message : String(countError)
+          error_message: countError instanceof Error ? countError.message : String(countError),
         });
       }
       // セキュリティのため、エラー時は定員超過扱いとする
@@ -211,7 +207,7 @@ export async function validateInviteToken(token: string): Promise<InviteValidati
       logger.error("Failed to validate invite token", {
         tag: "inviteTokenValidation",
         error_name: error instanceof Error ? error.name : "Unknown",
-        error_message: error instanceof Error ? error.message : String(error)
+        error_message: error instanceof Error ? error.message : String(error),
       });
     }
     return {
@@ -253,7 +249,7 @@ export async function checkEventCapacity(
           tag: "inviteTokenValidation",
           error_name: error instanceof Error ? error.name : "Unknown",
           error_message: error instanceof Error ? error.message : String(error),
-          event_id: eventId
+          event_id: eventId,
         });
       }
       return true; // 安全のため、エラー時は定員超過とみなす
@@ -266,7 +262,7 @@ export async function checkEventCapacity(
         tag: "inviteTokenValidation",
         error_name: error instanceof Error ? error.name : "Unknown",
         error_message: error instanceof Error ? error.message : String(error),
-        event_id: eventId
+        event_id: eventId,
       });
     }
     return true; // 安全のため、エラー時は定員超過とみなす
@@ -296,7 +292,7 @@ export async function checkDuplicateEmail(eventId: string, email: string): Promi
           tag: "inviteTokenValidation",
           error_name: error instanceof Error ? error.name : "Unknown",
           error_message: error instanceof Error ? error.message : String(error),
-          event_id: eventId
+          event_id: eventId,
         });
       }
       return true; // 安全のため、エラー時は重複とみなす

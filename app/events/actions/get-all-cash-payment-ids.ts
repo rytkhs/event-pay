@@ -35,9 +35,7 @@ export async function getAllCashPaymentIdsAction(
     // attendances をベースに latest payments を 1 件だけ付ける
     let query = supabase
       .from("attendances")
-      .select(
-        `id, payments!inner ( id, method, status, paid_at, created_at, updated_at )`
-      )
+      .select(`id, payments!inner ( id, method, status, paid_at, created_at, updated_at )`)
       .eq("event_id", validatedEventId)
       // 最新 1 件に制約
       // eslint-disable-next-line @typescript-eslint/no-explicit-any

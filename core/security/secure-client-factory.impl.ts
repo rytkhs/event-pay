@@ -12,9 +12,7 @@ import type { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 
 import { validateGuestTokenFormat } from "./crypto";
-import {
-  ISecureSupabaseClientFactory,
-} from "./secure-client-factory.interface";
+import { ISecureSupabaseClientFactory } from "./secure-client-factory.interface";
 import {
   AdminReason,
   GuestErrorCode,
@@ -126,8 +124,8 @@ export class SecureSupabaseClientFactory implements ISecureSupabaseClientFactory
       return createServerClient(this.supabaseUrl, this.anonKey, {
         cookies: {
           get: () => undefined,
-          set: () => { },
-          remove: () => { },
+          set: () => {},
+          remove: () => {},
         },
         auth: {
           persistSession: false, // ゲストセッションは永続化しない
@@ -201,7 +199,7 @@ export class SecureSupabaseClientFactory implements ISecureSupabaseClientFactory
         },
       };
 
-      logger.info('Admin access logged', { reason, context });
+      logger.info("Admin access logged", { reason, context });
     } catch (error) {
       throw new AdminAccessError(
         AdminAccessErrorCode.AUDIT_LOG_FAILED,

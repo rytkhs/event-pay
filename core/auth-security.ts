@@ -101,7 +101,7 @@ export class AccountLockoutService {
           tag: "accountLocked",
           sanitized_email: email.replace(/(.{2}).*(@.*)/, "$1***$2"),
           failed_attempts: newAttempts,
-          lockout_expires_at: lockoutExpiresAt.toISOString()
+          lockout_expires_at: lockoutExpiresAt.toISOString(),
         });
 
         return {
@@ -120,7 +120,7 @@ export class AccountLockoutService {
         tag: "lockoutRecordFailed",
         sanitized_email: email.replace(/(.{2}).*(@.*)/, "$1***$2"),
         error_name: error instanceof Error ? error.name : "Unknown",
-        error_message: error instanceof Error ? error.message : String(error)
+        error_message: error instanceof Error ? error.message : String(error),
       });
       // フェイルオープン（エラー時は制限しない）
       return {
@@ -170,7 +170,7 @@ export class AccountLockoutService {
         tag: "lockoutCheckFailed",
         sanitized_email: email.replace(/(.{2}).*(@.*)/, "$1***$2"),
         error_name: error instanceof Error ? error.name : "Unknown",
-        error_message: error instanceof Error ? error.message : String(error)
+        error_message: error instanceof Error ? error.message : String(error),
       });
       // フェイルオープン（エラー時は制限しない）
       const config = this.getConfig();
@@ -197,7 +197,7 @@ export class AccountLockoutService {
         tag: "lockoutClearFailed",
         sanitized_email: email.replace(/(.{2}).*(@.*)/, "$1***$2"),
         error_name: error instanceof Error ? error.name : "Unknown",
-        error_message: error instanceof Error ? error.message : String(error)
+        error_message: error instanceof Error ? error.message : String(error),
       });
       // エラーは記録するが、処理は継続
     }

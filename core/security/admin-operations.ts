@@ -69,7 +69,11 @@ export async function checkUserProfileExists(
     const secureFactory = SecureSupabaseClientFactory.getInstance();
     const adminClient = await secureFactory.createAuditedAdminClient(reason, context);
 
-    const { data, error } = await adminClient.from("users").select("id").eq("id", userId).maybeSingle();
+    const { data, error } = await adminClient
+      .from("users")
+      .select("id")
+      .eq("id", userId)
+      .maybeSingle();
 
     if (error) {
       return {

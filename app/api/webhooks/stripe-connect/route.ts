@@ -6,29 +6,30 @@ import { NextRequest, NextResponse } from "next/server";
 import { createProblemResponse } from "@core/api/problem-details";
 import Stripe from "stripe";
 import { stripe, getConnectWebhookSecrets } from "@core/stripe/client";
-import {
-  SupabaseWebhookIdempotencyService,
-} from "@features/payments/services/webhook/webhook-idempotency";
+import { SupabaseWebhookIdempotencyService } from "@features/payments/services/webhook/webhook-idempotency";
 import { StripeWebhookSignatureVerifier } from "@features/payments/services/webhook/webhook-signature-verifier";
 import { getClientIP } from "@core/utils/ip-detection";
-import { shouldEnforceStripeWebhookIpCheck, isStripeWebhookIpAllowed } from "@core/security/stripe-ip-allowlist";
-import { logger } from '@core/logging/app-logger';
-import { generateSecureUuid } from '@core/security/crypto';
+import {
+  shouldEnforceStripeWebhookIpCheck,
+  isStripeWebhookIpAllowed,
+} from "@core/security/stripe-ip-allowlist";
+import { logger } from "@core/logging/app-logger";
+import { generateSecureUuid } from "@core/security/crypto";
 
-export const runtime = 'nodejs';
-export const dynamic = 'force-dynamic'; // Webhookは常に動的処理
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic"; // Webhookは常に動的処理
 
 export async function POST(request: NextRequest) {
   const _clientIP = getClientIP(request);
   let enqueued = false;
-  const requestId = request.headers.get('x-request-id') || generateSecureUuid();
+  const requestId = request.headers.get("x-request-id") || generateSecureUuid();
   const connectLogger = logger.withContext({
     request_id: requestId,
     path: request.nextUrl.pathname,
-    tag: 'connectWebhookProcessing'
+    tag: "connectWebhookProcessing",
   });
 
-  connectLogger.info('Connect webhook request received');
+  connectLogger.info("Connect webhook request received");
 
   try {
     // 本番のみ: Stripe Webhook 送信元 IP の許可リスト検証
@@ -37,9 +38,9 @@ export async function POST(request: NextRequest) {
       const allowed = await isStripeWebhookIpAllowed(clientIp);
       if (!allowed) {
         // Security logging replaced with standard logger
-        logger.warn('Webhook IP not allowed', {
+        logger.warn("Webhook IP not allowed", {
           clientIp,
-          userAgent: request.headers.get("user-agent") || undefined
+          userAgent: request.headers.get("user-agent") || undefined,
         });
         return createProblemResponse("FORBIDDEN", {
           instance: "/api/webhooks/stripe-connect",
@@ -52,7 +53,7 @@ export async function POST(request: NextRequest) {
     const signature = request.headers.get("stripe-signature");
 
     if (!signature) {
-      connectLogger.warn('Connect webhook signature missing');
+      connectLogger.warn("Connect webhook signature missing");
       return createProblemResponse("MISSING_PARAMETER", {
         instance: "/api/webhooks/stripe-connect",
         detail: "Missing signature",
@@ -66,10 +67,10 @@ export async function POST(request: NextRequest) {
     // Security logging replaced with standard logger
     const verifier = new StripeWebhookSignatureVerifier(stripe, webhookSecrets);
 
-    connectLogger.debug('Starting Connect webhook signature verification');
+    connectLogger.debug("Starting Connect webhook signature verification");
     const verification = await verifier.verifySignature({ payload, signature });
     if (!verification.isValid || !verification.event) {
-      connectLogger.warn('Connect webhook signature verification failed');
+      connectLogger.warn("Connect webhook signature verification failed");
       return createProblemResponse("INVALID_REQUEST", {
         instance: "/api/webhooks/stripe-connect",
         detail: "Invalid signature",
@@ -77,43 +78,40 @@ export async function POST(request: NextRequest) {
     }
     const event: Stripe.Event = verification.event;
 
-    connectLogger.info('Connect webhook signature verified', {
+    connectLogger.info("Connect webhook signature verified", {
       event_id: event.id,
-      event_type: event.type
+      event_type: event.type,
     });
 
     // 受信イベントを pending として即時エンキュー（Connect用）
     const idempotency = new SupabaseWebhookIdempotencyService();
     const objectId: string | null = ((): string | null => {
       const data: unknown = (event as unknown as { data?: unknown }).data;
-      if (!data || typeof data !== 'object') return null;
+      if (!data || typeof data !== "object") return null;
       const obj: unknown = (data as { object?: unknown }).object;
-      if (!obj || typeof obj !== 'object') return null;
+      if (!obj || typeof obj !== "object") return null;
       const idVal = (obj as { id?: unknown }).id;
-      return typeof idVal === 'string' && idVal.length > 0 ? idVal : null;
+      return typeof idVal === "string" && idVal.length > 0 ? idVal : null;
     })();
 
-    connectLogger.debug('Enqueueing Connect webhook event for processing', {
+    connectLogger.debug("Enqueueing Connect webhook event for processing", {
       event_id: event.id,
       event_type: event.type,
-      object_id: objectId
+      object_id: objectId,
     });
 
-    await idempotency.enqueueEventForProcessing(
-      event.id,
-      event.type,
-      {
-        stripe_account_id: (event as unknown as { account?: string | null }).account ?? null,
-        stripe_event_created: (event as { created?: number }).created ?? Math.floor(Date.now() / 1000),
-        object_id: objectId,
-      }
-    );
+    await idempotency.enqueueEventForProcessing(event.id, event.type, {
+      stripe_account_id: (event as unknown as { account?: string | null }).account ?? null,
+      stripe_event_created:
+        (event as { created?: number }).created ?? Math.floor(Date.now() / 1000),
+      object_id: objectId,
+    });
     enqueued = true;
 
-    connectLogger.info('Connect webhook event enqueued successfully', {
+    connectLogger.info("Connect webhook event enqueued successfully", {
       event_id: event.id,
       event_type: event.type,
-      tag: 'enqueueSucceeded'
+      tag: "enqueueSucceeded",
     });
 
     // 非同期処理は別ジョブに委譲して即ACK
@@ -121,9 +119,8 @@ export async function POST(request: NextRequest) {
       received: true,
       eventId: event.id,
       eventType: event.type,
-      enqueued: true
+      enqueued: true,
     });
-
   } catch (_error) {
     // enqueue 後の例外は 200 を返し Stripe の不要なリトライを防止
     if (enqueued) {

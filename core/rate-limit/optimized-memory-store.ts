@@ -105,7 +105,7 @@ export class OptimizedMemoryRateLimitStore implements RateLimitStore {
     if (process.env.NODE_ENV === "development" && expiredKeys.length > 0) {
       logger.debug(`Rate limit cleanup: removed ${expiredKeys.length} expired entries`, {
         tag: "rateLimitCleanup",
-        removed_count: expiredKeys.length
+        removed_count: expiredKeys.length,
       });
     }
   }
@@ -128,7 +128,7 @@ export class OptimizedMemoryRateLimitStore implements RateLimitStore {
     if (process.env.NODE_ENV === "development") {
       logger.warn(`Rate limit emergency cleanup: removed ${removeCount} entries`, {
         tag: "rateLimitEmergencyCleanup",
-        removed_count: removeCount
+        removed_count: removeCount,
       });
     }
   }

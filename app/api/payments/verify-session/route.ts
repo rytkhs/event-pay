@@ -3,7 +3,7 @@
  * Stripe Checkout Session IDを使用して決済ステータスを検証
  */
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from "next/server";
 import { stripe } from "@core/stripe/client";
@@ -101,7 +101,7 @@ export async function GET(request: NextRequest) {
     });
 
     if (!validationResult.success) {
-      const errors = validationResult.error.errors.map(err =>
+      const errors = validationResult.error.errors.map((err) =>
         createQueryValidationError(err.path[0] as string, "VALIDATION_ERROR", err.message)
       );
 
@@ -160,11 +160,23 @@ export async function GET(request: NextRequest) {
         };
 
         const candidatePaymentId: string | null = ((): string | null => {
-          const fromClientRef = typeof cs.client_reference_id === "string" && cs.client_reference_id.length > 0 ? cs.client_reference_id : null;
-          const fromSessionMeta = cs.metadata && typeof cs.metadata["payment_id"] === "string" && (cs.metadata["payment_id"] as string).length > 0 ? (cs.metadata["payment_id"] as string) : null;
+          const fromClientRef =
+            typeof cs.client_reference_id === "string" && cs.client_reference_id.length > 0
+              ? cs.client_reference_id
+              : null;
+          const fromSessionMeta =
+            cs.metadata &&
+            typeof cs.metadata["payment_id"] === "string" &&
+            (cs.metadata["payment_id"] as string).length > 0
+              ? (cs.metadata["payment_id"] as string)
+              : null;
           const fromPiMeta = ((): string | null => {
             const pi = cs.payment_intent as unknown;
-            if (pi && typeof pi === "object" && (pi as { metadata?: Record<string, unknown> | null }).metadata) {
+            if (
+              pi &&
+              typeof pi === "object" &&
+              (pi as { metadata?: Record<string, unknown> | null }).metadata
+            ) {
               const md = (pi as { metadata?: Record<string, unknown> | null }).metadata;
               const raw = md && md["payment_id"];
               return typeof raw === "string" && raw.length > 0 ? raw : null;
@@ -196,7 +208,8 @@ export async function GET(request: NextRequest) {
                 details: {
                   attendanceId: attendance_id,
                   requestedSessionId: session_id.substring(0, 8) + "...",
-                  currentSessionId: (fallbackPayment.stripe_checkout_session_id as string).substring(0, 8) + "...",
+                  currentSessionId:
+                    (fallbackPayment.stripe_checkout_session_id as string).substring(0, 8) + "...",
                   paymentId: fallbackPayment.id,
                   reason: "session_outdated",
                 },
@@ -331,7 +344,6 @@ export async function GET(request: NextRequest) {
     });
 
     return NextResponse.json(result);
-
   } catch (error) {
     logger.error("Unexpected error in payment verification", {
       tag: "payment-verify",
