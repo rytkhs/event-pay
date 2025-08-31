@@ -4,9 +4,7 @@ import { validateCronSecret, logCronActivity } from "@/lib/cron-auth";
 import { stripe as sharedStripe } from "@/lib/stripe/client";
 import { SupabaseWebhookIdempotencyService, IdempotentWebhookProcessor } from "@/lib/services/webhook/webhook-idempotency";
 import { StripeWebhookEventHandler } from "@/lib/services/webhook/webhook-event-handler";
-import { SecurityAuditorImpl } from "@/lib/security/security-auditor.impl";
-import { AnomalyDetectorImpl } from "@/lib/security/anomaly-detector";
-import { SecurityReporterImpl } from "@/lib/security/security-reporter.impl";
+
 import { ConnectWebhookHandler } from "@/lib/services/webhook/connect-webhook-handler";
 import Stripe from "stripe";
 
@@ -24,12 +22,9 @@ export async function GET(request: NextRequest) {
     });
   }
 
-  const auditor = new SecurityAuditorImpl();
-  const anomaly = new AnomalyDetectorImpl(auditor);
-  const securityReporter = new SecurityReporterImpl(auditor, anomaly);
   const idempotencyService = new SupabaseWebhookIdempotencyService();
   const processor = new IdempotentWebhookProcessor(idempotencyService);
-  const handler = new StripeWebhookEventHandler(securityReporter);
+  const handler = new StripeWebhookEventHandler();
   const connectHandler = await ConnectWebhookHandler.create();
 
   // 未処理(pending/failed)のイベントを取得し、一定件数だけ処理

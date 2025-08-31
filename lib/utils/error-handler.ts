@@ -4,6 +4,7 @@
  */
 
 import { logSecurityEvent, type SecurityEventType } from "@/lib/security/security-logger";
+import { logger, type LogLevel } from "@/lib/logging/app-logger";
 
 export interface ErrorDetails {
   code: string;
@@ -209,6 +210,14 @@ const ERROR_MAPPINGS: Record<string, Omit<ErrorDetails, "code">> = {
     shouldAlert: false,
     retryable: false,
   },
+  GUEST_TOKEN_VALIDATION_FAILED: {
+    message: "Guest token validation failed",
+    userMessage: "参加データの取得中にエラーが発生しました。",
+    severity: "high",
+    shouldLog: true,
+    shouldAlert: false,
+    retryable: true,
+  },
 };
 
 /**
@@ -274,8 +283,30 @@ export function logError(error: ErrorDetails, context?: ErrorContext): void {
     });
   } else {
     // 一般的なエラーログ
-    const _logLevel = error.severity === "high" || error.severity === "critical" ? "error" : "warn";
-    // TODO: ログレベルに応じた適切なログ出力を実装
+    const logLevel: LogLevel = error.severity === "high" || error.severity === "critical" ? "error" : "warn";
+
+    // ログレベルに応じたログ出力
+    if (logLevel === "error") {
+      logger.error(error.message, {
+        tag: "errorHandler",
+        error_code: error.code,
+        severity: error.severity,
+        user_id: context?.userId,
+        event_id: context?.eventId,
+        action: context?.action,
+        ...context?.additionalData
+      });
+    } else {
+      logger.warn(error.message, {
+        tag: "errorHandler",
+        error_code: error.code,
+        severity: error.severity,
+        user_id: context?.userId,
+        event_id: context?.eventId,
+        action: context?.action,
+        ...context?.additionalData
+      });
+    }
   }
 }
 

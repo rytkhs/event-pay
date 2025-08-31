@@ -1,7 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
-import { updateEventSchema } from "@/lib/validations/event";
+import { updateEventSchema, type UpdateEventFormData } from "@/lib/validations/event";
 import { validateEventId } from "@/lib/validations/event-id";
 import { extractEventUpdateFormData } from "@/lib/utils/form-data-extractors";
 import { z } from "zod";
@@ -19,18 +19,7 @@ import { convertDatetimeLocalToUtc } from "@/lib/utils/timezone";
 type EventRow = Database["public"]["Tables"]["events"]["Row"];
 type UpdateEventResult = ServerActionResult<EventRow>;
 
-// 型安全なFormDataFields定義
-type FormDataFields = {
-  title?: string;
-  date?: string;
-  fee?: string;
-  payment_methods?: string[];
-  location?: string;
-  description?: string;
-  capacity?: string;
-  registration_deadline?: string;
-  payment_deadline?: string;
-};
+// UpdateEventInputを使用（Zodスキーマから自動生成）
 
 export async function updateEventAction(
   eventId: string,
@@ -230,7 +219,7 @@ export async function updateEventAction(
   }
 }
 
-function extractFormData(formData: FormData): FormDataFields {
+function extractFormData(formData: FormData): Partial<UpdateEventFormData> {
   // 共通ユーティリティを使用して型安全なFormData抽出
   return extractEventUpdateFormData(formData);
 }

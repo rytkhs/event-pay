@@ -13,7 +13,7 @@ import {
 /**
  * Express Account作成パラメータのバリデーションスキーマ
  */
-export const createExpressAccountSchema = z.object({
+const createExpressAccountSchema = z.object({
   userId: z.string().uuid("有効なユーザーIDを指定してください"),
   email: z.string().email("有効なメールアドレスを指定してください"),
   country: z.string().length(2, "国コードは2文字で指定してください").optional().default("JP"),
@@ -29,7 +29,7 @@ export const createExpressAccountSchema = z.object({
 /**
  * Account Link生成パラメータのバリデーションスキーマ
  */
-export const createAccountLinkSchema = z.object({
+const createAccountLinkSchema = z.object({
   accountId: z.string().min(1, "アカウントIDを指定してください"),
   refreshUrl: z.string().url("有効なリフレッシュURLを指定してください"),
   returnUrl: z.string().url("有効なリターンURLを指定してください"),

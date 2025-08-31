@@ -25,7 +25,6 @@ export {
   GuestTokenErrorFactory,
   GuestTokenErrorHandler,
   ErrorSeverity,
-  type GuestErrorContext,
 } from "./guest-token-errors";
 
 /**
@@ -142,31 +141,7 @@ export interface SecureSupabaseClient {
   createMiddlewareClient(request: NextRequest, response: NextResponse): SupabaseClient;
 }
 
-/**
- * ゲストトークンバリデーターのインターフェース
- */
-export interface GuestTokenValidator {
-  /**
-   * ゲストトークンを検証
-   * @param token ゲストトークン
-   * @returns 検証結果
-   */
-  validateToken(token: string): Promise<GuestValidationResult>;
 
-  /**
-   * ゲストセッションを作成
-   * @param token ゲストトークン
-   * @returns ゲストセッション
-   */
-  createGuestSession(token: string): Promise<GuestSession>;
-
-  /**
-   * 変更権限をチェック
-   * @param token ゲストトークン
-   * @returns 変更可能かどうか
-   */
-  checkModificationPermissions(token: string): Promise<boolean>;
-}
 
 /**
  * クライアント作成オプション

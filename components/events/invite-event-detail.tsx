@@ -3,8 +3,9 @@
 import { useState } from "react";
 import { EventDetail } from "@/lib/utils/invite-token";
 import { sanitizeEventDescription, sanitizeForEventPay } from "@/lib/utils/sanitize";
-import { formatUtcToJapaneseDisplay } from "@/lib/utils/timezone";
+import { formatUtcToJstByType } from "@/lib/utils/timezone";
 import { PAYMENT_METHOD_LABELS } from "@/lib/constants/payment-methods";
+import { EVENT_STATUS_LABELS } from "@/types/enums";
 import { type ParticipationFormData } from "@/lib/validations/participation";
 import {
   registerParticipationAction,
@@ -31,18 +32,7 @@ export function InviteEventDetail({ event, inviteToken }: InviteEventDetailProps
   };
 
   const getStatusText = (status: string) => {
-    switch (status) {
-      case "upcoming":
-        return "開催予定";
-      case "ongoing":
-        return "開催中";
-      case "past":
-        return "終了";
-      case "cancelled":
-        return "キャンセル";
-      default:
-        return status;
-    }
+    return EVENT_STATUS_LABELS[status as keyof typeof EVENT_STATUS_LABELS] || status;
   };
 
   // 定員状況の確認
@@ -122,7 +112,7 @@ export function InviteEventDetail({ event, inviteToken }: InviteEventDetailProps
               <div>
                 <h3 className="text-sm font-medium text-gray-700">開催日</h3>
                 <p className="mt-1 text-sm text-gray-900 break-words">
-                  {formatUtcToJapaneseDisplay(event.date)}
+                  {formatUtcToJstByType(event.date, "japanese")}
                 </p>
               </div>
 
@@ -168,7 +158,7 @@ export function InviteEventDetail({ event, inviteToken }: InviteEventDetailProps
                 <div>
                   <h3 className="text-sm font-medium text-gray-700">申込締切</h3>
                   <p className="mt-1 text-sm text-gray-900 break-words">
-                    {formatUtcToJapaneseDisplay(event.registration_deadline)}
+                    {formatUtcToJstByType(event.registration_deadline, "japanese")}
                     {isRegistrationDeadlinePassed && (
                       <span className="ml-2 text-red-600 font-medium block sm:inline">
                         （締切済み）
@@ -182,7 +172,7 @@ export function InviteEventDetail({ event, inviteToken }: InviteEventDetailProps
                 <div>
                   <h3 className="text-sm font-medium text-gray-700">決済締切</h3>
                   <p className="mt-1 text-sm text-gray-900 break-words">
-                    {formatUtcToJapaneseDisplay(event.payment_deadline)}
+                    {formatUtcToJstByType(event.payment_deadline, "japanese")}
                   </p>
                 </div>
               )}

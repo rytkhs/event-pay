@@ -15,7 +15,7 @@ export interface EditRestrictionViolation {
 /**
  * 制限チェックのコンテキスト情報
  */
-export interface RestrictionContext {
+interface RestrictionContext {
   operation: "update" | "delete" | "payment_change" | "capacity_change";
   attendeeCount: number;
   hasPayments?: boolean;
@@ -25,7 +25,7 @@ export interface RestrictionContext {
 /**
  * 制限ルールの定義
  */
-export interface RestrictionRule {
+interface RestrictionRule {
   field: string;
   check: (existingValue: unknown, newValue: unknown, context: RestrictionContext) => boolean;
   message: string | ((context: RestrictionContext) => string);
@@ -67,7 +67,7 @@ function getFieldValue(
 /**
  * 汎用的なイベント制限チェック機能
  */
-export function checkEventRestrictions(
+function checkEventRestrictions(
   existingEvent: EventWithAttendances,
   newData: Partial<EventRow>,
   context: RestrictionContext
@@ -230,116 +230,4 @@ export function checkDeleteRestrictions(
       attendeeCount,
     }
   );
-}
-
-/**
- * 決済関連変更制限をチェック
- */
-export function checkPaymentChangeRestrictions(
-  existingEvent: EventWithAttendances,
-  newData: Partial<EventRow>,
-  hasActivePayments: boolean
-): EditRestrictionViolation[] {
-  const attendeeCount = existingEvent.attendances?.length || 0;
-
-  return checkEventRestrictions(existingEvent, newData, {
-    operation: "payment_change",
-    attendeeCount,
-    hasActivePayments,
-  });
-}
-
-/**
- * 定員変更制限をチェック
- */
-export function checkCapacityChangeRestrictions(
-  existingEvent: EventWithAttendances,
-  newCapacity: number
-): EditRestrictionViolation[] {
-  const attendeeCount = existingEvent.attendances?.length || 0;
-
-  return checkEventRestrictions(
-    existingEvent,
-    { capacity: newCapacity },
-    {
-      operation: "capacity_change",
-      attendeeCount,
-    }
-  );
-}
-
-/**
- * 参加者がいる場合に編集可能なフィールドのみを残す
- */
-export function filterEditableFields(
-  existingEvent: EventWithAttendances,
-  newData: Partial<EventRow>
-): Partial<EventRow> {
-  const hasAttendees = existingEvent.attendances && existingEvent.attendances.length > 0;
-
-  if (!hasAttendees) {
-    return newData; // 参加者がいない場合は全て編集可能
-  }
-
-  // 参加者がいる場合に編集可能なフィールドのみ抽出
-  const editableFields: Partial<EventRow> = {};
-
-  // 編集可能項目
-  if (newData.description !== undefined) {
-    editableFields.description = newData.description;
-  }
-
-  if (newData.location !== undefined) {
-    editableFields.location = newData.location;
-  }
-
-  // 開催日時も編集可能
-  if (newData.date !== undefined) {
-    editableFields.date = newData.date;
-  }
-
-  // 定員は増加のみ可能
-  if (newData.capacity !== undefined) {
-    const currentCapacity = (existingEvent as EventRow).capacity || 999999;
-    if (newData.capacity !== null && newData.capacity >= currentCapacity) {
-      editableFields.capacity = newData.capacity;
-    }
-  }
-
-  // 締切日時は変更可能（ただし整合性チェックは必要）
-  if (newData.registration_deadline !== undefined) {
-    editableFields.registration_deadline = newData.registration_deadline;
-  }
-
-  if (newData.payment_deadline !== undefined) {
-    editableFields.payment_deadline = newData.payment_deadline;
-  }
-
-  return editableFields;
-}
-
-/**
- * 編集制限のルール説明を取得
- */
-export function getEditRestrictionRules(): {
-  restrictedFields: string[];
-  editableFields: string[];
-  rules: string[];
-} {
-  return {
-    restrictedFields: ["title", "date", "fee", "payment_methods", "capacity (減少のみ)"],
-    editableFields: [
-      "description",
-      "location",
-      "capacity (増加のみ)",
-      "registration_deadline",
-      "payment_deadline",
-    ],
-    rules: [
-      "参加者がいる場合、基本情報の変更は制限されます",
-      "説明と場所の詳細情報は追加・変更可能です",
-      "定員は増加のみ可能です",
-      "締切日時は変更可能ですが、整合性チェックが行われます",
-    ],
-  };
 }

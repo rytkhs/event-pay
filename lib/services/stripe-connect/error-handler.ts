@@ -15,7 +15,7 @@ import {
   STRIPE_ERROR_CODE_MAPPING,
   POSTGRES_ERROR_CODE_MAPPING,
 } from "./error-mapping";
-import { logger } from "@/lib/logging/app-logger";
+import { logger, type LogLevel } from "@/lib/logging/app-logger";
 
 /**
  * StripeConnect エラーハンドラーの実装クラス
@@ -150,7 +150,7 @@ export class StripeConnectErrorHandler implements IStripeConnectErrorHandler {
   /**
    * エラーログを出力する
    */
-  private logError(error: StripeConnectError, level: 'info' | 'warn' | 'error'): void {
+  private logError(error: StripeConnectError, level: LogLevel): void {
     const logData = {
       timestamp: new Date().toISOString(),
       level,

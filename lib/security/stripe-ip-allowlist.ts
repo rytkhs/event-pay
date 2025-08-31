@@ -45,7 +45,7 @@ export function shouldEnforceStripeWebhookIpCheck(): boolean {
   return isProduction();
 }
 
-export async function getStripeWebhookAllowedIPs(options?: { ttlMs?: number }): Promise<Set<string>> {
+async function getStripeWebhookAllowedIPs(options?: { ttlMs?: number }): Promise<Set<string>> {
   const ttlMs = options?.ttlMs ?? DEFAULT_TTL_MS;
 
   // キャッシュ新鮮

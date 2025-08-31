@@ -301,28 +301,3 @@ export class ApplicationFeeCalculator {
     };
   }
 }
-
-/**
- * 代表的なテストケースの期待値
- * テストファイルで使用するための定数
- */
-export const TEST_CASES = {
-  /** 1000円の場合の期待値（設定: rate=0%, fixed=0, min=0, max=0） */
-  AMOUNT_1000_NO_FEE: {
-    amount: 1000,
-    expected: 0,
-    description: '手数料なし設定での1000円',
-  },
-  /** 999円の場合の期待値（設定: rate=3%, fixed=30, min=50, max=500） */
-  AMOUNT_999_WITH_FEE: {
-    amount: 999,
-    expected: 60, // round(999 * 0.03) = 30 → 30 + 30 = 60 (> min 50) なので最終値は 60
-    description: '手数料あり設定での999円（最小値を上回るため 60 が適用）',
-  },
-  /** 1円の場合の期待値（設定: rate=3%, fixed=30, min=50, max=500） */
-  AMOUNT_1_WITH_FEE: {
-    amount: 1,
-    expected: 1, // min=50だが、決済金額上限により1円
-    description: '手数料あり設定での1円（決済金額上限適用）',
-  },
-} as const;

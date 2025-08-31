@@ -15,7 +15,7 @@ const DANGEROUS_FORMULA_REGEX = /^[=+\-@]/
 /**
  * セル値をサニタイズしてプレーンテキスト化する
  */
-export function sanitizeCsvCell(value: unknown): string {
+function sanitizeCsvCell(value: unknown): string {
   const str = value == null ? '' : String(value)
 
   // 先頭が危険文字の場合は単一引用符を付ける

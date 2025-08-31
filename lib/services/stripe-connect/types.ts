@@ -4,6 +4,7 @@
 
 import type { PostgrestError } from "@supabase/supabase-js";
 import { Database } from "@/types/database";
+import type { LogLevel } from "@/lib/logging/app-logger";
 
 // Stripe Connectアカウントステータスの型（データベースのenumに合わせる）
 export type StripeAccountStatus = Database["public"]["Enums"]["stripe_account_status_enum"];
@@ -133,6 +134,6 @@ export class StripeConnectError extends Error {
 export interface ErrorHandlingResult {
   userMessage: string;
   shouldRetry: boolean;
-  logLevel: 'info' | 'warn' | 'error';
+  logLevel: LogLevel;
   shouldNotifyAdmin: boolean;
 }

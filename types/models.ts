@@ -60,21 +60,7 @@ export interface EventFormData {
   payment_deadline: string;
 }
 
-/**
- * react-hook-form用のイベントフォームデータ型
- * UI操作に最適化された型定義
- */
-export interface EventFormDataRHF {
-  title: string;
-  description: string;
-  location: string;
-  date: string;
-  fee: string;
-  capacity: string;
-  payment_methods: string[]; // UI操作では配列
-  registration_deadline: string;
-  payment_deadline: string;
-}
+
 
 // ====================================================================
 // Attendance関連の型定義
@@ -130,14 +116,4 @@ export interface User {
   stripe_onboarding_completed: boolean;
   created_at: string;
   updated_at: string;
-}
-
-/**
- * 公開プロフィール型
- * RLSで保護されたユーザー情報の安全な表示用
- */
-export interface PublicProfile {
-  id: string;
-  display_name: string;
-  created_at: string;
 }

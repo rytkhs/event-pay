@@ -5,12 +5,14 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useCallback, useEffect, useMemo, useTransition } from "react";
 import { z } from "zod";
 import { convertDatetimeLocalToUtc, formatUtcToDatetimeLocal } from "@/lib/utils/timezone";
+import { safeParseNumber, parseFee } from "@/lib/utils/number-parsers";
 import { useEventRestrictions } from "@/hooks/restrictions/use-event-restrictions";
 import { useEventChanges } from "@/hooks/changes/use-event-changes";
 import { useEventSubmission } from "@/hooks/submission/use-event-submission";
 import { logger } from "@/lib/logging/app-logger";
 import type { Event, EventFormData } from "@/types/models";
 import type { ChangeItem } from "@/components/ui/change-confirmation-dialog";
+import { useErrorHandler } from "@/hooks/use-error-handler";
 
 interface UseEventEditFormProps {
   event: Event;
@@ -36,7 +38,7 @@ const eventEditFormSchema = z
   })
   .refine(
     (data) => {
-      const fee = parseInt(data.fee || "0", 10);
+      const fee = parseFee(data.fee || "");
       // 無料イベント（fee=0）の場合は決済方法不要
       if (fee === 0) return true;
       // 有料イベント（fee≥1）の場合は決済方法必須
@@ -101,6 +103,7 @@ export type EventEditFormDataRHF = z.infer<typeof eventEditFormSchema>;
 export function useEventEditForm({ event, attendeeCount, onSubmit }: UseEventEditFormProps) {
   const hasAttendees = attendeeCount > 0;
   const [isPending, startTransition] = useTransition();
+  const { submitWithErrorHandling } = useErrorHandler();
 
   // 初期値をメモ化（型安全）
   const initialFormData = useMemo<EventEditFormDataRHF>(
@@ -132,7 +135,7 @@ export function useEventEditForm({ event, attendeeCount, onSubmit }: UseEventEdi
   // 参加費をリアルタイムで監視
   const watchedFee = form.watch("fee");
   // 空文字列や未入力の場合は無料イベントとして扱わない
-  const currentFee = watchedFee && watchedFee.trim() !== "" ? parseInt(watchedFee, 10) : null;
+  const currentFee = watchedFee && watchedFee.trim() !== "" ? safeParseNumber(watchedFee) : null;
   const isFreeEvent = currentFee === 0;
 
   // 無料イベントの場合は決済方法をクリア
@@ -187,36 +190,36 @@ export function useEventEditForm({ event, attendeeCount, onSubmit }: UseEventEdi
   // フォーム送信処理
   const handleSubmit = useCallback(
     async (data: EventEditFormDataRHF) => {
-      const result = new Promise<{ success: boolean; error?: string }>((resolve) => {
+      return new Promise<{ success: boolean; error?: string }>((resolve) => {
         startTransition(async () => {
-          try {
-            // EventFormData形式に変換（numeric フィールドの型安全性確保）
-            const formData: EventFormData = {
-              title: data.title,
-              description: data.description,
-              location: data.location,
-              date: data.date,
-              fee: data.fee.toString(), // 文字列として統一
-              capacity: data.capacity?.toString() || "", // 文字列として統一
-              payment_methods: data.payment_methods,
-              registration_deadline: data.registration_deadline || "",
-              payment_deadline: data.payment_deadline || "",
-            };
+          // EventFormData形式に変換（numeric フィールドの型安全性確保）
+          const formData: EventFormData = {
+            title: data.title,
+            description: data.description,
+            location: data.location,
+            date: data.date,
+            fee: data.fee.toString(), // 文字列として統一
+            capacity: data.capacity?.toString() || "", // 文字列として統一
+            payment_methods: data.payment_methods,
+            registration_deadline: data.registration_deadline || "",
+            payment_deadline: data.payment_deadline || "",
+          };
 
-            // 変更検出
-            const detectedChanges = detectChanges();
+          // 変更検出
+          const detectedChanges = detectChanges();
 
-            if (detectedChanges.length === 0) {
-              form.setError("root", {
-                type: "manual",
-                message: "変更がありません",
-              });
-              resolve({ success: false, error: "変更がありません" });
-              return;
-            }
+          if (detectedChanges.length === 0) {
+            form.setError("root", {
+              type: "manual",
+              message: "変更がありません",
+            });
+            resolve({ success: false, error: "変更がありません" });
+            return;
+          }
 
-            // 実際の送信処理
-            const result = await submission.submitForm(formData, detectedChanges, (errors) => {
+          // submitWithErrorHandling を使用してエラーハンドリングを統一
+          const result = await submitWithErrorHandling(
+            () => submission.submitForm(formData, detectedChanges, (errors) => {
               // エラーをreact-hook-formに設定
               Object.entries(errors).forEach(([field, message]) => {
                 if (field === "general") {
@@ -231,28 +234,27 @@ export function useEventEditForm({ event, attendeeCount, onSubmit }: UseEventEdi
                   });
                 }
               });
-            });
+            }),
+            {
+              action: "event_edit",
+              eventId: event.id
+            }
+          );
 
-            resolve(result);
-          } catch (error) {
-            logger.error("Event edit form submission failed", {
-              tag: "eventEditForm",
-              event_id: event.id,
-              error_name: error instanceof Error ? error.name : "Unknown",
-              error_message: error instanceof Error ? error.message : String(error)
-            });
+          if (result.success) {
+            resolve({ success: true });
+          } else {
+            // submitWithErrorHandling でエラーハンドリング済みなので、フォームエラーのみ設定
             form.setError("root", {
               type: "manual",
-              message: "更新に失敗しました。もう一度お試しください。",
+              message: result.error?.userMessage || "更新に失敗しました。もう一度お試しください。",
             });
-            resolve({ success: false, error: "更新に失敗しました。もう一度お試しください。" });
+            resolve({ success: false, error: result.error?.userMessage || "更新に失敗しました。もう一度お試しください。" });
           }
         });
       });
-
-      return result;
     },
-    [form, detectChanges, submission, startTransition, event.id]
+    [form, detectChanges, submission, startTransition, event.id, submitWithErrorHandling]
   );
 
   // 変更リストを指定して送信する関数

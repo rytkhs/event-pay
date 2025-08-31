@@ -10,12 +10,12 @@
 import { parseISO, differenceInCalendarDays } from "date-fns";
 import { fromZonedTime, toZonedTime, format } from "date-fns-tz";
 
-export const JST_TIMEZONE = "Asia/Tokyo";
+const JST_TIMEZONE = "Asia/Tokyo";
 
 /**
  * 日時変換エラーの種類
  */
-export class DateConversionError extends Error {
+class DateConversionError extends Error {
   constructor(
     message: string,
     public readonly errorType: "INVALID_FORMAT" | "INVALID_DATE" | "PAST_DATE" | "OUT_OF_RANGE"
@@ -240,20 +240,4 @@ export function getElapsedCalendarDaysInJst(since: Date | string, now: Date = ne
   const sinceJst = toZonedTime(sinceDate, JST_TIMEZONE);
   const nowJst = toZonedTime(now, JST_TIMEZONE);
   return differenceInCalendarDays(nowJst, sinceJst);
-}
-
-/**
- * JSTにおける暦日差が指定日数以上かどうか
- */
-export function hasElapsedDaysInJst(since: Date | string, days: number, now: Date = new Date()): boolean {
-  return getElapsedCalendarDaysInJst(since, now) >= days;
-}
-
-/**
- * 現在から指定日数前のJST日付（yyyy-MM-dd）を返す
- */
-export function getJstYmdDaysAgo(days: number, now: Date = new Date()): string {
-  const jst = toZonedTime(now, JST_TIMEZONE);
-  jst.setDate(jst.getDate() - days);
-  return format(jst, "yyyy-MM-dd", { timeZone: JST_TIMEZONE });
 }

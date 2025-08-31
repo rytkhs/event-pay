@@ -108,12 +108,6 @@ export const getConnectWebhookSecrets = (): string[] => {
   return secrets;
 };
 
-// Stripe設定の取得
-export const stripeConfig = {
-  secretKey: process.env.STRIPE_SECRET_KEY!,
-  publishableKey: process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || "",
-  appUrl: process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000",
-} as const;
 
 /**
  * Idempotency Key生成関数
@@ -165,57 +159,4 @@ export const createStripeRequestOptions = (
   }
 
   return options;
-};
-
-// Stripe接続テスト
-export const testStripeConnection = async (): Promise<{
-  success: boolean;
-  error?: string;
-  accountId?: string;
-}> => {
-  try {
-    // Stripeアカウント情報を取得してAPI接続をテスト
-    const account = await stripe.accounts.retrieve();
-    return {
-      success: true,
-      accountId: account.id,
-    };
-  } catch (error) {
-
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : "Unknown error",
-    };
-  }
-};
-
-// Stripe Connect Express用の設定
-export const stripeConnect = {
-  createConnectAccount: async (userId: string, email: string) => {
-    return await stripe.accounts.create({
-      type: "express",
-      country: "JP",
-      email,
-      capabilities: {
-        card_payments: { requested: true },
-        transfers: { requested: true },
-      },
-      metadata: {
-        actor_id: userId,
-      },
-    });
-  },
-
-  createAccountLink: async (accountId: string, refreshUrl: string, returnUrl: string) => {
-    return await stripe.accountLinks.create({
-      account: accountId,
-      refresh_url: refreshUrl,
-      return_url: returnUrl,
-      type: "account_onboarding",
-    });
-  },
-
-  retrieveAccount: async (accountId: string) => {
-    return await stripe.accounts.retrieve(accountId);
-  },
 };

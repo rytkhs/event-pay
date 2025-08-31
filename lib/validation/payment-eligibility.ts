@@ -80,7 +80,7 @@ export function checkBasicPaymentEligibility(
     isAttending: attendance.status === "attending",
     isPaidEvent: (event.fee ?? 0) > 0,
     isUpcomingEvent: event.status === "upcoming",
-    isBeforeDeadline: isBeforePaymentDeadline(event, currentTime),
+    isBeforeDeadline: currentTime < new Date(event.payment_deadline || event.date),
     isValidPaymentMethod: true, // 基本チェックでは制限なし
     isValidPaymentStatus: true, // 基本チェックでは制限なし
   };
@@ -209,34 +209,17 @@ export function canCreateStripeSession(
   };
 }
 
+
+
 /**
- * 決済期限チェックのヘルパー関数
- * payment_deadline が設定されている場合はそれを、されていない場合はevent.dateを期限とする
+ * 決済期限までの残り日数を取得
  */
-export function isBeforePaymentDeadline(
+export function getDaysUntilPaymentDeadline(
   event: PaymentEligibilityEvent,
   currentTime: Date = new Date()
-): boolean {
-  const deadline = event.payment_deadline
-    ? new Date(event.payment_deadline)
-    : new Date(event.date);
-
-  return currentTime < deadline;
-}
-
-/**
- * 決済許可条件の詳細情報を文字列として取得（デバッグ用）
- */
-export function getPaymentEligibilityDebugInfo(
-  result: PaymentEligibilityResult
-): string {
-  const { isEligible, reason, checks } = result;
-  const status = isEligible ? "✅ 許可" : "❌ 拒否";
-  const reasonText = reason ? ` - ${reason}` : "";
-
-  const checkDetails = Object.entries(checks)
-    .map(([key, value]) => `${key}: ${value ? "✅" : "❌"}`)
-    .join(", ");
-
-  return `${status}${reasonText}\nチェック詳細: ${checkDetails}`;
+): number {
+  // 動的importではなく、実装を直接記述
+  const deadline = new Date(event.payment_deadline || event.date);
+  const diffMs = deadline.getTime() - currentTime.getTime();
+  return Math.ceil(diffMs / (1000 * 60 * 60 * 24)); // 日数計算
 }

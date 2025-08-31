@@ -24,6 +24,7 @@ import {
   createConnectAccountAction,
 } from "@/app/(dashboard)/actions/stripe-connect";
 import { logger } from "@/lib/logging/app-logger";
+import { STRIPE_ACCOUNT_STATUS_LABELS } from "@/types/enums";
 
 interface AccountStatusData {
   hasAccount: boolean;
@@ -122,18 +123,10 @@ export function AccountStatus({ refreshUrl, returnUrl }: AccountStatusProps) {
   };
 
   const getStatusText = (status: string | null) => {
-    switch (status) {
-      case "verified":
-        return "認証完了";
-      case "onboarding":
-        return "設定中";
-      case "restricted":
-        return "制限中";
-      case "unverified":
-        return "未認証";
-      default:
-        return "未設定";
-    }
+    if (!status) return "未設定";
+    return (
+      STRIPE_ACCOUNT_STATUS_LABELS[status as keyof typeof STRIPE_ACCOUNT_STATUS_LABELS] || "未設定"
+    );
   };
 
   const getStatusVariant = (

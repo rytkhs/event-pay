@@ -7,9 +7,9 @@ import { getSessionManager } from "@/lib/session/manager";
 import { COOKIE_CONFIG, AUTH_CONFIG, getCookieConfig } from "@/config/security";
 import { logger } from "@/lib/logging/app-logger";
 
-export type SupabaseContext = "middleware" | "api" | "server";
+type SupabaseContext = "middleware" | "api" | "server";
 
-export interface MiddlewareSupabaseConfig {
+interface MiddlewareSupabaseConfig {
   request: NextRequest;
   response: NextResponse;
 }

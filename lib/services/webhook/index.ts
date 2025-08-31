@@ -10,7 +10,6 @@ export { StripeWebhookEventHandler } from "./webhook-event-handler";
 export type { WebhookIdempotencyService } from "./webhook-idempotency";
 export {
   SupabaseWebhookIdempotencyService,
-  RedisWebhookIdempotencyService,
   IdempotentWebhookProcessor,
 } from "./webhook-idempotency";
 

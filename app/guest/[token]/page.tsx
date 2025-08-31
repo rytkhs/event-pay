@@ -173,7 +173,27 @@ export default async function GuestPage({ params, searchParams }: GuestPageProps
       </div>
     );
   } catch (error) {
-    // 予期しないエラーの場合はログを記録して404を返す
+    // 予期しないエラーの場合は構造化ログを記録して404を返す
+    const { getErrorDetails, logError } = await import("@/lib/utils/error-handler");
+
+    // リクエスト情報を取得（エラーハンドリング用）
+    const errorHeadersList = headers();
+    const errorUserAgent = errorHeadersList.get("user-agent") || undefined;
+    const errorIp = getClientIPFromHeaders(errorHeadersList);
+
+    const errorContext = {
+      action: "guest_page_load",
+      ip: errorIp,
+      userAgent: errorUserAgent,
+      additionalData: {
+        tokenPrefix: token.substring(0, 8) + "...",
+        originalError: error instanceof Error ? error.name : "Unknown",
+        originalMessage: error instanceof Error ? error.message : String(error),
+      },
+    };
+
+    logError(getErrorDetails("GUEST_TOKEN_VALIDATION_FAILED"), errorContext);
+
     if (process.env.NODE_ENV === "development") {
       const { logger } = await import("@/lib/logging/app-logger");
       logger.error("ゲストページでエラーが発生", {
@@ -184,10 +204,7 @@ export default async function GuestPage({ params, searchParams }: GuestPageProps
       });
     }
     // セキュリティログに記録（エラー詳細は記録しない）
-    const headersList = headers();
-    const userAgent = headersList.get("user-agent") || undefined;
-    const ip = getClientIPFromHeaders(headersList);
-    logUnexpectedGuestPageError(token, error, { userAgent, ip });
+    logUnexpectedGuestPageError(token, error, { userAgent: errorUserAgent, ip: errorIp });
     notFound();
   }
 }

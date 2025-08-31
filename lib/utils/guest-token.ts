@@ -1,6 +1,5 @@
 import { generateRandomBytes, toBase64UrlSafe } from "@/lib/security/crypto";
 import {
-  getRLSGuestTokenValidator,
   validateGuestTokenRLS,
   type RLSGuestAttendanceData,
 } from "@/lib/security/guest-token-validator";
@@ -48,16 +47,7 @@ export interface GuestAttendanceData {
   } | null;
 }
 
-/**
- * ゲストトークン検証結果の型定義
- */
-export interface GuestTokenValidationResult {
-  isValid: boolean;
-  attendance?: GuestAttendanceData;
-  errorMessage?: string;
-  canModify: boolean;
-  errorCode?: import("@/lib/security/secure-client-factory.types").GuestErrorCode;
-}
+
 
 /**
  * ゲストトークンを検証し、参加データを取得する
@@ -68,7 +58,13 @@ export interface GuestTokenValidationResult {
  * @param guestToken - 36文字のプレフィックス付きゲストトークン
  * @returns 検証結果と参加データ
  */
-export async function validateGuestToken(guestToken: string): Promise<GuestTokenValidationResult> {
+export async function validateGuestToken(guestToken: string): Promise<{
+  isValid: boolean;
+  attendance?: GuestAttendanceData;
+  errorMessage?: string;
+  canModify: boolean;
+  errorCode?: import("@/lib/security/secure-client-factory.types").GuestErrorCode;
+}> {
   try {
     // 新しいRLSベースのバリデーターを使用
     const rlsResult = await validateGuestTokenRLS(guestToken);
@@ -110,17 +106,7 @@ function convertToLegacyFormat(rlsData: RLSGuestAttendanceData): GuestAttendance
   };
 }
 
-/**
- * RLSベースのゲストトークンバリデーターを取得
- *
- * 新しいコードではこの関数を使用してバリデーターを取得し、
- * 直接RLSベースの機能を使用することを推奨します。
- *
- * @returns RLSベースのゲストトークンバリデーター
- */
-export function getGuestTokenValidator() {
-  return getRLSGuestTokenValidator();
-}
+
 
 /**
  * ゲストトークンを生成する

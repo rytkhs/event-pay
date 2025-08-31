@@ -4,8 +4,9 @@ import { useState } from "react";
 import { EventDetail } from "@/lib/utils/invite-token";
 import { type RegisterParticipationData } from "@/app/events/actions/register-participation";
 import { sanitizeForEventPay } from "@/lib/utils/sanitize";
-import { formatUtcToJapaneseDisplay } from "@/lib/utils/timezone";
+import { formatUtcToJstByType } from "@/lib/utils/timezone";
 import { PAYMENT_METHOD_LABELS } from "@/lib/constants/payment-methods";
+import { ATTENDANCE_STATUS_LABELS } from "@/types/enums";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { CheckCircle, Copy, ExternalLink, CreditCard, Banknote } from "lucide-react";
@@ -32,16 +33,7 @@ export function ParticipationConfirmation({
 
   // 参加ステータスの日本語表示
   const getAttendanceStatusText = (status: string) => {
-    switch (status) {
-      case "attending":
-        return "参加";
-      case "not_attending":
-        return "不参加";
-      case "maybe":
-        return "未定";
-      default:
-        return status;
-    }
+    return ATTENDANCE_STATUS_LABELS[status as keyof typeof ATTENDANCE_STATUS_LABELS] || status;
   };
 
   // 決済方法のアイコン
@@ -316,7 +308,7 @@ export function ParticipationConfirmation({
             <div>
               <h4 className="text-sm font-medium text-gray-700">開催日時</h4>
               <p className="mt-1 text-sm text-gray-900 break-words">
-                {formatUtcToJapaneseDisplay(event.date)}
+                {formatUtcToJstByType(event.date, "japanese")}
               </p>
             </div>
 
@@ -331,7 +323,7 @@ export function ParticipationConfirmation({
               <div>
                 <h4 className="text-sm font-medium text-gray-700">申込締切</h4>
                 <p className="mt-1 text-sm text-gray-900 break-words">
-                  {formatUtcToJapaneseDisplay(event.registration_deadline)}
+                  {formatUtcToJstByType(event.registration_deadline, "japanese")}
                 </p>
               </div>
             )}
@@ -340,7 +332,7 @@ export function ParticipationConfirmation({
               <div>
                 <h4 className="text-sm font-medium text-gray-700">決済締切</h4>
                 <p className="mt-1 text-sm text-gray-900 break-words">
-                  {formatUtcToJapaneseDisplay(event.payment_deadline)}
+                  {formatUtcToJstByType(event.payment_deadline, "japanese")}
                 </p>
               </div>
             )}

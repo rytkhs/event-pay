@@ -7,7 +7,7 @@
 // ====================================================================
 // 1. セキュアクライアントファクトリー
 // ====================================================================
-export { SecureSupabaseClientFactory, RLSBasedGuestValidator } from "./secure-client-factory.impl";
+export { SecureSupabaseClientFactory } from "./secure-client-factory.impl";
 export type {
   ISecureSupabaseClientFactory,
   IGuestTokenValidator,
@@ -26,10 +26,8 @@ export {
   type GuestSession,
   type GuestValidationResult,
   type AuditContext,
-  type GuestTokenValidator,
   type ClientCreationOptions,
   type EventInfo,
-  type GuestErrorContext,
 } from "./secure-client-factory.types";
 
 // ====================================================================
@@ -38,83 +36,26 @@ export {
 export { RLSGuestTokenValidator } from "./guest-token-validator";
 
 // ====================================================================
-// 3. セキュリティ監査システム
+// 3. 基本的な監査型定義
 // ====================================================================
-export { SecurityAuditorImpl } from "./security-auditor.impl";
-export type { SecurityAuditor } from "./security-auditor.interface";
 export {
-  SuspiciousActivityType,
   SecuritySeverity,
   DetectionMethod,
   AuditErrorCode,
   AuditError,
-  type AdminAccessAuditEntry,
-  type GuestAccessAuditEntry,
-  type SuspiciousActivityEntry,
-  type UnauthorizedAccessEntry,
-  type ResultSetAnalysis,
   type SecurityReport,
   type TimeRange,
   type PredefinedTimeRange,
-  type SuspiciousActivitySummary,
-  type UnauthorizedAttemptSummary,
-  type RlsViolationIndicator,
   type SecurityRecommendation,
 } from "./audit-types";
-
-// ====================================================================
-// 4. 異常検知システム
-// ====================================================================
-export {
-  AnomalyDetectorImpl,
-  type AnomalyDetector,
-  type AnomalyDetectionResult,
-  type AccessPatternAnalysis,
-  type AnomalousPattern,
-  type BaselineMetrics,
-  type SuspiciousActivityTrend,
-  type DetectionThresholds,
-  AnomalyType,
-  RlsViolationType,
-  TrendDirection,
-} from "./anomaly-detector";
-
-// ====================================================================
-// 5. セキュリティレポート機能
-// ====================================================================
-export { SecurityReporterImpl } from "./security-reporter.impl";
-export type { SecurityReporter } from "./security-reporter.types";
-export {
-  type ComprehensiveSecurityReport,
-  type AdminAccessReport,
-  type GuestAccessReport,
-  type ThreatAnalysisReport,
-  type RlsViolationReport,
-  type PeriodicSecurityReport,
-  type ExportedReport,
-  type ExecutiveSummary,
-  type DetailedAnalysis,
-  type TrendAnalysis,
-  type ComplianceStatus,
-  type ActionItem,
-  ReportPeriod,
-  ReportType,
-  ExportFormat,
-  ActionItemStatus,
-} from "./security-reporter.types";
 
 // ====================================================================
 // 6. 暗号化ユーティリティ
 // ====================================================================
 export {
-  generateSecureToken,
   hashToken,
-  verifyHashedToken,
-  generateOtpCode,
-  verifyOtpCode,
   constantTimeCompare,
   randomDelay,
-  secureRandomInt,
   generateSecureUuid,
   validateGuestTokenFormat,
   generateRandomBytes,
@@ -140,38 +81,28 @@ export {
 // ====================================================================
 // 循環依存を回避するため、admin-operationsは直接インポートしてください:
 // import { AdminOperations, deleteUserById } from "@/lib/security/admin-operations";
-export type { AdminOperationResult, AdminOperationContext } from "./admin-operations.types";
+export type { AdminOperationResult } from "./admin-operations.types";
 
 // ====================================================================
-// 8. 統合セキュリティファクトリー
+// 5. 統合セキュリティファクトリー
 // ====================================================================
 
-import { SecurityAuditorImpl } from "./security-auditor.impl";
 import { SecureSupabaseClientFactory } from "./secure-client-factory.impl";
 import { RLSGuestTokenValidator } from "./guest-token-validator";
 import { AdminOperations } from "./admin-operations";
-import { AnomalyDetectorImpl } from "./anomaly-detector";
-import { SecurityReporterImpl } from "./security-reporter.impl";
 
 /**
  * セキュリティシステムの統合ファクトリー
  *
- * 全てのセキュリティコンポーネントを統合し、
- * 一元的な設定と初期化を提供する
+ * 必要最小限のセキュリティコンポーネントを統合
  */
 export class SecuritySystemFactory {
   private static instance: SecuritySystemFactory;
-  private auditor: SecurityAuditorImpl;
   private clientFactory: SecureSupabaseClientFactory;
   private guestValidator: RLSGuestTokenValidator;
   private adminOps: AdminOperations;
-  private anomalyDetector: AnomalyDetectorImpl;
-  private reporter: SecurityReporterImpl;
 
   private constructor() {
-    // セキュリティ監査システムを初期化
-    this.auditor = new SecurityAuditorImpl();
-
     // セキュアクライアントファクトリーを初期化
     this.clientFactory = SecureSupabaseClientFactory.create();
 
@@ -180,12 +111,6 @@ export class SecuritySystemFactory {
 
     // 管理者操作を初期化
     this.adminOps = new AdminOperations();
-
-    // 異常検知システムを初期化
-    this.anomalyDetector = new AnomalyDetectorImpl(this.auditor);
-
-    // セキュリティレポーターを初期化
-    this.reporter = new SecurityReporterImpl(this.auditor, this.anomalyDetector);
   }
 
   /**
@@ -196,13 +121,6 @@ export class SecuritySystemFactory {
       SecuritySystemFactory.instance = new SecuritySystemFactory();
     }
     return SecuritySystemFactory.instance;
-  }
-
-  /**
-   * セキュリティ監査システムを取得
-   */
-  public getAuditor(): SecurityAuditorImpl {
-    return this.auditor;
   }
 
   /**
@@ -227,20 +145,6 @@ export class SecuritySystemFactory {
   }
 
   /**
-   * 異常検知システムを取得
-   */
-  public getAnomalyDetector(): AnomalyDetectorImpl {
-    return this.anomalyDetector;
-  }
-
-  /**
-   * セキュリティレポーターを取得
-   */
-  public getReporter(): SecurityReporterImpl {
-    return this.reporter;
-  }
-
-  /**
    * システム全体の健全性チェック
    */
   public async healthCheck(): Promise<{
@@ -253,12 +157,9 @@ export class SecuritySystemFactory {
 
     try {
       // 各コンポーネントの健全性をチェック
-      components.auditor = true; // 実際の実装では詳細チェック
       components.clientFactory = true;
       components.guestValidator = true;
       components.adminOps = true;
-      components.anomalyDetector = true;
-      components.reporter = true;
 
       const healthyComponents = Object.values(components).filter(Boolean).length;
       const totalComponents = Object.keys(components).length;

@@ -2,8 +2,9 @@ import Link from "next/link";
 import { Event } from "@/types/event";
 import { memo, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { formatUtcToJapaneseDisplay } from "@/lib/utils/timezone";
+import { formatUtcToJstByType } from "@/lib/utils/timezone";
 import { sanitizeForEventPay } from "@/lib/utils/sanitize";
+import { EVENT_STATUS_LABELS } from "@/types/enums";
 
 interface EventCardProps {
   event: Event;
@@ -11,16 +12,16 @@ interface EventCardProps {
 
 // ステータスマッピングを外部で定義してメモ化
 const STATUS_CONFIG = {
-  upcoming: { text: "開催予定", styles: "bg-green-100 text-green-800" },
-  ongoing: { text: "開催中", styles: "bg-blue-100 text-blue-800" },
-  past: { text: "終了", styles: "bg-gray-100 text-gray-800" },
-  cancelled: { text: "キャンセル", styles: "bg-red-100 text-red-800" },
+  upcoming: { text: EVENT_STATUS_LABELS.upcoming, styles: "bg-green-100 text-green-800" },
+  ongoing: { text: EVENT_STATUS_LABELS.ongoing, styles: "bg-blue-100 text-blue-800" },
+  past: { text: EVENT_STATUS_LABELS.past, styles: "bg-gray-100 text-gray-800" },
+  cancelled: { text: EVENT_STATUS_LABELS.cancelled, styles: "bg-red-100 text-red-800" },
 } as const;
 
 export const EventCard = memo(function EventCard({ event }: EventCardProps) {
   // 日付フォーマットをメモ化（date-fns-tz統一）
   const formattedDate = useMemo(() => {
-    return formatUtcToJapaneseDisplay(event.date);
+    return formatUtcToJstByType(event.date, "japanese");
   }, [event.date]);
 
   // ステータス情報をメモ化

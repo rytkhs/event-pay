@@ -64,7 +64,7 @@ export interface FetchOptions extends RequestInit {
 /**
  * RFC 7807 Problem Details 対応の fetch ラッパー
  */
-export class ApiClient {
+class ApiClient {
   private baseUrl: string;
   private defaultOptions: RequestInit;
 
@@ -333,19 +333,6 @@ export function isApiError(error: unknown): error is ApiError {
   return error instanceof ApiError;
 }
 
-/**
- * 便利関数: レート制限エラーかどうかを判定
- */
-export function isRateLimitError(error: unknown): boolean {
-  return isApiError(error) && error.code === "RATE_LIMITED";
-}
-
-/**
- * 便利関数: バリデーションエラーかどうかを判定
- */
-export function isValidationError(error: unknown): boolean {
-  return isApiError(error) && error.code === "VALIDATION_ERROR" && !!error.validationErrors?.length;
-}
 
 /**
  * 便利関数: リトライ可能なエラーかどうかを判定

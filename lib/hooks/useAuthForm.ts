@@ -19,22 +19,6 @@ export interface ServerActionResult<T = unknown> {
   needsEmailConfirmation?: boolean;
 }
 
-// ログインフォームデータ型
-export interface LoginFormData {
-  email: string;
-  password: string;
-  rememberMe?: boolean;
-}
-
-// 会員登録フォームデータ型
-export interface RegisterFormData {
-  name: string;
-  email: string;
-  password: string;
-  passwordConfirm: string;
-  termsAgreed: boolean;
-}
-
 // 旧useAuthForm実装（パスワードリセット等で使用）
 
 // useAuthFormのオプション型
@@ -123,25 +107,7 @@ export function useAuthForm<T extends ServerActionResult>(
   };
 }
 
-/**
- * フィールドエラー取得ヘルパー
- */
-export function getFieldError(
-  fieldErrors: Record<string, string[]> | undefined,
-  fieldName: string
-): string | undefined {
-  return fieldErrors?.[fieldName]?.[0];
-}
 
-/**
- * フィールドにエラーがあるかチェック
- */
-export function hasFieldError(
-  fieldErrors: Record<string, string[]> | undefined,
-  fieldName: string
-): boolean {
-  return Boolean(fieldErrors?.[fieldName]?.length);
-}
 
 // === react-hook-form実装（新実装） ===
 

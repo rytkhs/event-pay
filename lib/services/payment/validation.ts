@@ -16,8 +16,7 @@ import {
   PaymentStatus,
 } from "./types";
 
-// Zodスキーマ定義
-const paymentMethodSchema = z.enum(["stripe", "cash"]);
+// Zodスキーマ定義（内部使用専用）
 const paymentStatusSchema = z.enum([
   "pending",
   "paid",
@@ -28,7 +27,7 @@ const paymentStatusSchema = z.enum([
   "waived",
 ]);
 
-// サービス層（Stripeに渡す直前の最終パラメータ）用スキーマ
+// サービス層（Stripeに渡す直前の最終パラメータ）用スキーマ（内部使用専用）
 const createStripeSessionParamsSchema = z.object({
   attendanceId: z.string().uuid("参加記録IDは有効なUUIDである必要があります"),
   amount: z
@@ -43,17 +42,9 @@ const createStripeSessionParamsSchema = z.object({
   cancelUrl: z.string().url("キャンセル時URLは有効なURLである必要があります"),
 });
 
-// APIルートの入力用スキーマ（eventTitleはサーバー側で取得するため不要）
-const createStripeSessionRequestSchema = z.object({
-  attendanceId: z.string().uuid("参加記録IDは有効なUUIDである必要があります"),
-  amount: z
-    .number()
-    .int("金額は整数である必要があります")
-    .positive("金額は正の数である必要があります"),
-  successUrl: z.string().url("成功時URLは有効なURLである必要があります"),
-  cancelUrl: z.string().url("キャンセル時URLは有効なURLである必要があります"),
-});
 
+
+// 現金決済用スキーマ（内部使用専用）
 const createCashPaymentParamsSchema = z.object({
   attendanceId: z.string().uuid("参加記録IDは有効なUUIDである必要があります"),
   amount: z
@@ -62,6 +53,7 @@ const createCashPaymentParamsSchema = z.object({
     .positive("金額は正の数である必要があります"),
 });
 
+// 決済ステータス更新用スキーマ（内部使用専用）
 const updatePaymentStatusParamsSchema = z.object({
   paymentId: z.string().uuid("決済IDは有効なUUIDである必要があります"),
   status: paymentStatusSchema,
@@ -420,35 +412,3 @@ export class PaymentValidator implements IPaymentValidator {
     }
   }
 }
-
-// バリデーション用のヘルパー関数
-export const validateUUID = (value: string, fieldName: string): void => {
-  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-  if (!uuidRegex.test(value)) {
-    throw new PaymentError(
-      PaymentErrorType.VALIDATION_ERROR,
-      `${fieldName}は有効なUUIDである必要があります`
-    );
-  }
-};
-
-export const validateUrl = (value: string, fieldName: string): void => {
-  try {
-    new URL(value);
-  } catch {
-    throw new PaymentError(
-      PaymentErrorType.VALIDATION_ERROR,
-      `${fieldName}は有効なURLである必要があります`
-    );
-  }
-};
-
-// Zodスキーマのエクスポート
-export {
-  createStripeSessionParamsSchema,
-  createStripeSessionRequestSchema,
-  createCashPaymentParamsSchema,
-  updatePaymentStatusParamsSchema,
-  paymentMethodSchema,
-  paymentStatusSchema,
-};

@@ -1,29 +1,5 @@
 import { ErrorHandlingResult, PaymentErrorType } from "./types";
 
-// PaymentErrorType -> HTTP Status Code の集約マップ（網羅必須）
-export const HTTP_STATUS_BY_ERROR: Record<PaymentErrorType, number> = {
-  // ユーザーエラー
-  [PaymentErrorType.VALIDATION_ERROR]: 400,
-  [PaymentErrorType.INVALID_PAYMENT_METHOD]: 400,
-  [PaymentErrorType.INSUFFICIENT_FUNDS]: 400,
-  [PaymentErrorType.CARD_DECLINED]: 400,
-  [PaymentErrorType.UNAUTHORIZED]: 401,
-  [PaymentErrorType.FORBIDDEN]: 403,
-
-  // システム/内部エラー
-  [PaymentErrorType.STRIPE_API_ERROR]: 500,
-  [PaymentErrorType.DATABASE_ERROR]: 500,
-  [PaymentErrorType.WEBHOOK_PROCESSING_ERROR]: 500,
-
-  // ビジネスロジック
-  [PaymentErrorType.INVALID_STATUS_TRANSITION]: 400,
-  [PaymentErrorType.PAYMENT_ALREADY_EXISTS]: 409,
-  [PaymentErrorType.CONCURRENT_UPDATE]: 409,
-  [PaymentErrorType.EVENT_NOT_FOUND]: 404,
-  [PaymentErrorType.ATTENDANCE_NOT_FOUND]: 404,
-  [PaymentErrorType.PAYMENT_NOT_FOUND]: 404,
-  [PaymentErrorType.INVALID_AMOUNT]: 400,
-};
 
 // PaymentErrorType -> ユーザー向けハンドリングの集約マップ（網羅必須）
 export const ERROR_HANDLING_BY_TYPE: Record<PaymentErrorType, ErrorHandlingResult> = {

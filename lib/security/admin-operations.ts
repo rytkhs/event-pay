@@ -199,10 +199,3 @@ export class AdminOperations {
     return createMaintenanceAdminClient(maintenanceTask);
   }
 }
-
-/**
- * デフォルトのAdminOperationsインスタンスを取得
- */
-export function getAdminOperations(): AdminOperations {
-  return new AdminOperations();
-}

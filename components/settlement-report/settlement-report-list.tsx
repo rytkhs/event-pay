@@ -21,7 +21,7 @@ import {
   regenerateAfterRefundAction,
 } from "@/app/actions/settlement-report-actions";
 import { FileDownIcon, RefreshCwIcon, SearchIcon } from "lucide-react";
-import { formatUtcToJst } from "@/lib/utils/timezone";
+import { formatUtcToJstByType } from "@/lib/utils/timezone";
 
 interface SettlementReportListProps {
   initialReports?: SettlementReportData[];
@@ -199,7 +199,8 @@ export function SettlementReportList({
                   <SelectItem value="">すべてのイベント</SelectItem>
                   {availableEvents.map((event) => (
                     <SelectItem key={event.id} value={event.id}>
-                      {event.title} ({formatUtcToJst(new Date(event.date), "yyyy年MM月dd日")})
+                      {event.title} ({formatUtcToJstByType(event.date, "japanese").replace(" ", "")}
+                      ）
                     </SelectItem>
                   ))}
                 </SelectContent>

@@ -196,8 +196,8 @@ export async function exportSettlementReportsAction(params: {
 
     return {
       success: true,
-      csvContent: result.csvContent,
-      filename: result.filename,
+      csvContent: result.csvContent!,
+      filename: result.filename!,
       truncated: !!result.truncated
     }
 
