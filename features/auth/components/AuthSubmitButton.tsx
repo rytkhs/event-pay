@@ -3,7 +3,7 @@
 import { ReactNode, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn } from "@core/utils";
 import { useReducedMotion, useIsMobile } from "@core/hooks/useMediaQuery";
 
 interface AuthSubmitButtonProps {
