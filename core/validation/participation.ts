@@ -1,6 +1,6 @@
 import { z } from "zod";
-import { sanitizeForEventPay } from "@/lib/utils/sanitize";
-import { logSanitizationEvent, logValidationFailure } from "@/lib/security/security-logger";
+import { sanitizeForEventPay } from "@core/utils/sanitize";
+import { logSanitizationEvent, logValidationFailure } from "@core/security/security-logger";
 
 
 

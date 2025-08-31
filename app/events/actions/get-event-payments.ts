@@ -1,7 +1,7 @@
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
-import { verifyEventAccess, handleDatabaseError } from "@/lib/auth/event-authorization";
+import { createClient } from "@core/supabase/server";
+import { verifyEventAccess, handleDatabaseError } from "@core/auth/event-authorization";
 import {
   GetEventPaymentsResponseSchema,
   type GetEventPaymentsResponse,
@@ -10,9 +10,9 @@ import {
   type PaymentSummary,
   PAYMENT_STATUS_VALUES,
   PaymentStatusEnum,
-} from "@/lib/validation/participant-management";
+} from "@core/validation/participant-management";
 import type { z } from "zod";
-import { logger } from "@/lib/logging/app-logger";
+import { logger } from "@core/logging/app-logger";
 
 type PaymentStatus = z.infer<typeof PaymentStatusEnum>;
 

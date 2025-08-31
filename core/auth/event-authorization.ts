@@ -3,8 +3,8 @@
  * 複数のアクション関数で使用される認証・権限確認処理を統一
  */
 
-import { createClient } from "@/lib/supabase/server";
-import { validateEventId } from "@/lib/validations/event-id";
+import { createClient } from "@core/supabase/server";
+import { validateEventId } from "@core/validation/event-id";
 import { redirect } from "next/navigation";
 import type { User } from "@supabase/supabase-js";
 

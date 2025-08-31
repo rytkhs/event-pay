@@ -3,7 +3,7 @@
  * セキュリティ関連のイベントを統一的に記録・監視します
  */
 
-import { logger } from "@/lib/logging/app-logger";
+import { logger } from "@core/logging/app-logger";
 
 export interface SecurityEvent {
   type: SecurityEventType;

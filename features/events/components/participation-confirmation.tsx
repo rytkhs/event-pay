@@ -1,16 +1,16 @@
 "use client";
 
 import { useState } from "react";
-import { EventDetail } from "@/lib/utils/invite-token";
+import { EventDetail } from "@core/utils/invite-token";
 import { type RegisterParticipationData } from "@/app/events/actions/register-participation";
-import { sanitizeForEventPay } from "@/lib/utils/sanitize";
-import { formatUtcToJstByType } from "@/lib/utils/timezone";
+import { sanitizeForEventPay } from "@core/utils/sanitize";
+import { formatUtcToJstByType } from "@core/utils/timezone";
 import { PAYMENT_METHOD_LABELS } from "@/lib/constants/payment-methods";
 import { ATTENDANCE_STATUS_LABELS } from "@/types/enums";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { CheckCircle, Copy, ExternalLink, CreditCard, Banknote } from "lucide-react";
-import { useClipboard } from "@/hooks/use-clipboard";
+import { useClipboard } from "@core/hooks/use-clipboard";
 
 interface ParticipationConfirmationProps {
   registrationData: RegisterParticipationData;

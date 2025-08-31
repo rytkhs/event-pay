@@ -1,6 +1,6 @@
 import { SupabaseClient, Session } from "@supabase/supabase-js";
 import { SESSION_CONFIG, type SessionUpdatePriority } from "./config";
-import { logger } from "@/lib/logging/app-logger";
+import { logger } from "@core/logging/app-logger";
 
 /**
  * 最適化されたセッション管理クラス

@@ -2,9 +2,9 @@
 
 import { ReactNode, useEffect, useRef } from "react";
 import { AuthFormMessages } from "./AuthFormMessages";
-import { ServerActionResult } from "@/lib/hooks/useAuthForm";
+import { ServerActionResult } from "@features/auth/hooks/useAuthForm";
 import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
-import { useFocusManagement } from "@/lib/hooks/useFocusManagement";
+import { useFocusManagement } from "@core/hooks/useFocusManagement";
 
 interface AuthFormWrapperProps {
   title: string;

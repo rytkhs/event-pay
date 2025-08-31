@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePasswordConfirmation } from "@/lib/hooks/usePasswordConfirmation";
+import { usePasswordConfirmation } from "@features/auth/hooks/usePasswordConfirmation";
 import { PasswordStatusIcon } from "@/components/ui/PasswordStatusIcon";
 import { updatePasswordAction } from "@/app/(auth)/actions";
 import { useAuthForm, AuthFormWrapper, AuthFormField, AuthSubmitButton } from "@/components/auth";

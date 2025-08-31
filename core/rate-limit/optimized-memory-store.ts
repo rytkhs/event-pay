@@ -1,5 +1,5 @@
 import { RateLimitStore, RateLimitData } from "./types";
-import { logger } from "@/lib/logging/app-logger";
+import { logger } from "@core/logging/app-logger";
 
 /**
  * 最適化されたメモリベースレート制限ストア

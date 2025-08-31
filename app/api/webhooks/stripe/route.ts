@@ -1,18 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createProblemResponse } from '@/lib/api/problem-details';
+import { createProblemResponse } from '@core/api/problem-details';
 // Stripe 型は共有クライアント経由で利用するため未使用
-import { stripe as sharedStripe, getWebhookSecrets } from '@/lib/stripe/client';
-import { StripeWebhookSignatureVerifier } from '@/lib/services/webhook/webhook-signature-verifier';
-// import { StripeWebhookEventHandler } from '@/lib/services/webhook/webhook-event-handler';
+import { stripe as sharedStripe, getWebhookSecrets } from '@core/stripe/client';
+import { StripeWebhookSignatureVerifier } from '@features/payments/services/webhook/webhook-signature-verifier';
+// import { StripeWebhookEventHandler } from '@features/payments/services/webhook/webhook-event-handler';
 import {
   SupabaseWebhookIdempotencyService,
-} from '@/lib/services/webhook/webhook-idempotency';
+} from '@features/payments/services/webhook/webhook-idempotency';
 // Rate limiting middleware intentionally not used on this webhook per Stripe best practice (429 triggers unnecessary retries)
 import type { WebhookProcessingResult } from '@/lib/services/webhook';
-import { getClientIP } from '@/lib/utils/ip-detection';
-import { shouldEnforceStripeWebhookIpCheck, isStripeWebhookIpAllowed } from '@/lib/security/stripe-ip-allowlist';
-import { logger } from '@/lib/logging/app-logger';
-import { generateSecureUuid } from '@/lib/security/crypto';
+import { getClientIP } from '@core/utils/ip-detection';
+import { shouldEnforceStripeWebhookIpCheck, isStripeWebhookIpAllowed } from '@core/security/stripe-ip-allowlist';
+import { logger } from '@core/logging/app-logger';
+import { generateSecureUuid } from '@core/security/crypto';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic'; // Webhookは常に動的処理

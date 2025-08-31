@@ -2,32 +2,32 @@
 
 import { z } from "zod";
 import { headers } from "next/headers";
-import { createClient } from "@/lib/supabase/server";
-import { SecureSupabaseClientFactory } from "@/lib/security/secure-client-factory.impl";
-import { generateGuestToken } from "@/lib/utils/guest-token";
+import { createClient } from "@core/supabase/server";
+import { SecureSupabaseClientFactory } from "@core/security/secure-client-factory.impl";
+import { generateGuestToken } from "@core/utils/guest-token";
 
 import {
   validateInviteToken,
   checkEventCapacity,
   checkDuplicateEmail as _checkDuplicateEmail,
-} from "@/lib/utils/invite-token";
+} from "@core/utils/invite-token";
 import {
   participationFormSchema,
   type ParticipationFormData,
   validateParticipationFormWithDuplicateCheck,
   sanitizeParticipationInput,
-} from "@/lib/validations/participation";
+} from "@core/validation/participation";
 import {
   type ServerActionResult,
   createServerActionError,
   createServerActionSuccess,
   zodErrorToServerActionResponse,
-} from "@/lib/types/server-actions";
+} from "@core/types/server-actions";
 import {
   logParticipationSecurityEvent,
   logInvalidTokenAccess,
-} from "@/lib/security/security-logger";
-import { getClientIPFromHeaders } from "@/lib/utils/ip-detection";
+} from "@core/security/security-logger";
+import { getClientIPFromHeaders } from "@core/utils/ip-detection";
 import type { Database } from "@/types/database";
 
 // 参加登録結果の型定義

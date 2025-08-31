@@ -141,13 +141,13 @@ export async function createMaintenanceAdminClient(maintenanceTask: string) {
  *
  * Before:
  * ```typescript
- * import { deleteUserById } from "@/lib/supabase/admin";
+ * import { deleteUserById } from "@core/supabase/admin";
  * await deleteUserById(userId);
  * ```
  *
  * After:
  * ```typescript
- * import { deleteUserById } from "@/lib/security/admin-operations";
+ * import { deleteUserById } from "@core/security/admin-operations";
  * await deleteUserById(userId, AdminReason.USER_CLEANUP, "Specific reason");
  * ```
  *

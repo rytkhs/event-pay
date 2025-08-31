@@ -35,7 +35,7 @@ import { getAllCashPaymentIdsAction } from "@/app/events/actions/get-all-cash-pa
 import type {
   GetParticipantsResponse,
   GetParticipantsParams,
-} from "@/lib/validation/participant-management";
+} from "@core/validation/participant-management";
 
 interface ParticipantsTableProps {
   eventId: string;

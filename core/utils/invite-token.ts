@@ -1,7 +1,7 @@
-import { generateRandomBytes, toBase64UrlSafe } from "@/lib/security/crypto";
-import { createClient } from "@/lib/supabase/server";
+import { generateRandomBytes, toBase64UrlSafe } from "@core/security/crypto";
+import { createClient } from "@core/supabase/server";
 import type { Database } from "@/types/database";
-import { logger } from "@/lib/logging/app-logger";
+import { logger } from "@core/logging/app-logger";
 
 
 

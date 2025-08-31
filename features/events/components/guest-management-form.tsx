@@ -4,12 +4,12 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { updateGuestAttendanceAction } from "@/app/events/actions/update-guest-attendance";
 import { createGuestStripeSessionAction } from "@/app/guest/actions/create-stripe-session";
-import { type GuestAttendanceData } from "@/lib/utils/guest-token";
-import { sanitizeForEventPay } from "@/lib/utils/sanitize";
-import { formatUtcToJstByType } from "@/lib/utils/timezone";
+import { type GuestAttendanceData } from "@core/utils/guest-token";
+import { sanitizeForEventPay } from "@core/utils/sanitize";
+import { formatUtcToJstByType } from "@core/utils/timezone";
 import { PAYMENT_METHOD_LABELS } from "@/lib/constants/payment-methods";
 import { PaymentStatusSpan } from "@/components/common/payment-status-badge";
-import { canGuestRepay } from "@/lib/validation/payment-eligibility";
+import { canGuestRepay } from "@core/validation/payment-eligibility";
 import { useToast } from "@/contexts/toast-context";
 import { ATTENDANCE_STATUS_LABELS } from "@/types/enums";
 import { Card } from "@/components/ui/card";
@@ -97,7 +97,7 @@ export function GuestManagementForm({ attendance, canModify }: GuestManagementFo
     } catch (error) {
       // エラーログの記録
       if (process.env.NODE_ENV === "development") {
-        const { logger } = await import("@/lib/logging/app-logger");
+        const { logger } = await import("@core/logging/app-logger");
         logger.error("Stripe決済セッション作成エラー", {
           tag: "guestStripePayment",
           error_name: error instanceof Error ? error.name : "Unknown",
@@ -162,7 +162,7 @@ export function GuestManagementForm({ attendance, canModify }: GuestManagementFo
     } catch (error) {
       // 本番環境では適切なログシステムでエラーログを記録
       if (process.env.NODE_ENV === "development") {
-        const { logger } = await import("@/lib/logging/app-logger");
+        const { logger } = await import("@core/logging/app-logger");
         logger.error("ゲスト管理フォーム送信エラー", {
           tag: "guestManagementForm",
           error_name: error instanceof Error ? error.name : "Unknown",

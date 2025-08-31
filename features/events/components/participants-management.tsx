@@ -11,7 +11,7 @@ import type {
   GetParticipantsResponse,
   GetParticipantsParams,
   GetEventPaymentsResponse,
-} from "@/lib/validation/participant-management";
+} from "@core/validation/participant-management";
 import type { Event, Attendance } from "@/types/models";
 
 interface ParticipantsManagementProps {

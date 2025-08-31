@@ -18,8 +18,8 @@ import {
   ChangeConfirmationDialog,
   type ChangeItem,
 } from "@/components/ui/change-confirmation-dialog";
-import { useEventEditForm, type EventEditFormDataRHF } from "@/hooks/use-event-edit-form";
-import { sanitizeForEventPay } from "@/lib/utils/sanitize";
+import { useEventEditForm, type EventEditFormDataRHF } from "@features/events/hooks/use-event-edit-form";
+import { sanitizeForEventPay } from "@core/utils/sanitize";
 import type { Event } from "@/types/models";
 
 interface EventEditFormProps {

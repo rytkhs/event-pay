@@ -1,7 +1,7 @@
 import { type SupabaseClient } from "@supabase/supabase-js";
 import { Database } from "@/types/database";
 import { FeeConfigCacheStrategy, globalFeeConfigCache } from './cache-strategy';
-import { logger } from '@/lib/logging/app-logger';
+import { logger } from '@core/logging/app-logger';
 
 /** Stripe 手数料設定 */
 export interface StripeFeeConfig {

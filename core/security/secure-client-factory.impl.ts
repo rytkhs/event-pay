@@ -24,7 +24,7 @@ import {
   AuditContext,
   ClientCreationOptions,
 } from "./secure-client-factory.types";
-import { logger } from "@/lib/logging/app-logger";
+import { logger } from "@core/logging/app-logger";
 import { COOKIE_CONFIG, AUTH_CONFIG, getCookieConfig } from "@/config/security";
 
 /**

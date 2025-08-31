@@ -39,8 +39,8 @@ export {
 import { StripeConnectService } from "./service";
 import { StripeConnectErrorHandler } from "./error-handler";
 import type { IStripeConnectService } from "./interface";
-import { SecureSupabaseClientFactory } from "@/lib/security/secure-client-factory.impl";
-import { AdminReason } from "@/lib/security/secure-client-factory.types";
+import { SecureSupabaseClientFactory } from "@core/security/secure-client-factory.impl";
+import { AdminReason } from "@core/security/secure-client-factory.types";
 import { type SupabaseClient } from "@supabase/supabase-js";
 import { Database } from "@/types/database";
 

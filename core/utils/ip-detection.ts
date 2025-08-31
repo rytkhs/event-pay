@@ -103,7 +103,7 @@ function normalizeIP(ip: string): string {
   if (!isValidIP(trimmedIP)) {
     // 本番環境では適切なログシステムに出力
     if ((process.env.NODE_ENV as string) === "development") {
-      import("@/lib/logging/app-logger").then(({ logger }) =>
+      import("@core/logging/app-logger").then(({ logger }) =>
         logger.warn("Invalid IP address detected. Using fallback.", {
           tag: "ipDetection",
           ip,
@@ -247,7 +247,7 @@ export function getClientIP(requestOrHeaders: NextRequest | HeaderLike): string 
   if (selectedIP) {
     // セキュリティログ: 低信頼度ヘッダーの使用を警告
     if (selectedTrust === "low" && process.env.NODE_ENV === "development") {
-      import("@/lib/logging/app-logger").then(({ logger }) =>
+      import("@core/logging/app-logger").then(({ logger }) =>
         logger.warn("Using low-trust IP header", {
           tag: "ipDetection",
           source: selectedSource || undefined,
@@ -270,7 +270,7 @@ export function getClientIP(requestOrHeaders: NextRequest | HeaderLike): string 
 
     // 本番環境では適切なログシステムに出力
     if ((process.env.NODE_ENV as string) === "development") {
-      import("@/lib/logging/app-logger").then(({ logger }) =>
+      import("@core/logging/app-logger").then(({ logger }) =>
         logger.warn("No valid client IP found, using fallback identifier", {
           tag: "ipDetection",
           fallback_ip: fallbackIP,
@@ -371,7 +371,7 @@ export function getClientIPFromHeaders(headersList: HeaderLike): string {
   if (selectedIP) {
     // セキュリティログ: 低信頼度ヘッダーの使用を警告
     if (selectedTrust === "low" && process.env.NODE_ENV === "development") {
-      import("@/lib/logging/app-logger").then(({ logger }) =>
+      import("@core/logging/app-logger").then(({ logger }) =>
         logger.warn("[Server Component] Using low-trust IP header", {
           tag: "ipDetection",
           source: selectedSource || undefined,

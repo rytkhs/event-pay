@@ -6,7 +6,7 @@
  */
 
 import { NextResponse } from "next/server";
-import { logger } from "@/lib/logging/app-logger";
+import { logger } from "@core/logging/app-logger";
 import { randomBytes } from "crypto";
 
 /**

@@ -4,7 +4,7 @@ import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { CreditCard, Banknote, AlertTriangle, CheckCircle, Info } from "lucide-react";
-import type { PaymentSummary as PaymentSummaryType } from "@/lib/validation/participant-management";
+import type { PaymentSummary as PaymentSummaryType } from "@core/validation/participant-management";
 import { TooltipContent, TooltipTrigger, TooltipWrapper } from "@/components/ui/tooltip";
 import { PAYMENT_STATUS_LABELS } from "@/types/enums";
 

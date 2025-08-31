@@ -3,17 +3,17 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { createProblemResponse } from "@/lib/api/problem-details";
+import { createProblemResponse } from "@core/api/problem-details";
 import Stripe from "stripe";
-import { stripe, getConnectWebhookSecrets } from "@/lib/stripe/client";
+import { stripe, getConnectWebhookSecrets } from "@core/stripe/client";
 import {
   SupabaseWebhookIdempotencyService,
-} from "@/lib/services/webhook/webhook-idempotency";
-import { StripeWebhookSignatureVerifier } from "@/lib/services/webhook/webhook-signature-verifier";
-import { getClientIP } from "@/lib/utils/ip-detection";
-import { shouldEnforceStripeWebhookIpCheck, isStripeWebhookIpAllowed } from "@/lib/security/stripe-ip-allowlist";
-import { logger } from '@/lib/logging/app-logger';
-import { generateSecureUuid } from '@/lib/security/crypto';
+} from "@features/payments/services/webhook/webhook-idempotency";
+import { StripeWebhookSignatureVerifier } from "@features/payments/services/webhook/webhook-signature-verifier";
+import { getClientIP } from "@core/utils/ip-detection";
+import { shouldEnforceStripeWebhookIpCheck, isStripeWebhookIpAllowed } from "@core/security/stripe-ip-allowlist";
+import { logger } from '@core/logging/app-logger';
+import { generateSecureUuid } from '@core/security/crypto';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic'; // Webhookは常に動的処理

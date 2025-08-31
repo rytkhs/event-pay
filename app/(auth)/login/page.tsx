@@ -13,7 +13,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { useLoginFormRHF } from "@/lib/hooks/useAuthForm";
+import { useLoginFormRHF } from "@features/auth/hooks/useAuthForm";
 import { loginAction } from "@/app/(auth)/actions";
 
 export default function LoginPage() {

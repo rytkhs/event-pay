@@ -5,7 +5,7 @@
  * nullチェックと空文字チェックを統一的に処理
  */
 
-import type { UpdateEventFormData } from "@/lib/validations/event";
+import type { UpdateEventFormData } from "@core/validation/event";
 
 /**
  * 型安全な値抽出関数（オプショナル）

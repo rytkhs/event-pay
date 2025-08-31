@@ -1,20 +1,20 @@
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
-import { updateEventSchema, type UpdateEventFormData } from "@/lib/validations/event";
-import { validateEventId } from "@/lib/validations/event-id";
-import { extractEventUpdateFormData } from "@/lib/utils/form-data-extractors";
+import { createClient } from "@core/supabase/server";
+import { updateEventSchema, type UpdateEventFormData } from "@core/validation/event";
+import { validateEventId } from "@core/validation/event-id";
+import { extractEventUpdateFormData } from "@core/utils/form-data-extractors";
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import type { Database } from "@/types/database";
-import { checkEditRestrictions } from "@/lib/utils/event-restrictions";
+import { checkEditRestrictions } from "@core/utils/event-restrictions";
 import {
   type ServerActionResult,
   createServerActionError,
   createServerActionSuccess,
   zodErrorToServerActionResponse,
-} from "@/lib/types/server-actions";
-import { convertDatetimeLocalToUtc } from "@/lib/utils/timezone";
+} from "@core/types/server-actions";
+import { convertDatetimeLocalToUtc } from "@core/utils/timezone";
 
 type EventRow = Database["public"]["Tables"]["events"]["Row"];
 type UpdateEventResult = ServerActionResult<EventRow>;

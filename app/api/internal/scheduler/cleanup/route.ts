@@ -6,10 +6,10 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { createProblemResponse } from "@/lib/api/problem-details";
-import { getSecureClientFactory } from "@/lib/security/secure-client-factory.impl";
-import { AdminReason, type AuditContext } from "@/lib/security/secure-client-factory.types";
-import { logger } from "@/lib/logging/app-logger";
+import { createProblemResponse } from "@core/api/problem-details";
+import { getSecureClientFactory } from "@core/security/secure-client-factory.impl";
+import { AdminReason, type AuditContext } from "@core/security/secure-client-factory.types";
+import { logger } from "@core/logging/app-logger";
 
 export async function POST(request: NextRequest) {
   try {

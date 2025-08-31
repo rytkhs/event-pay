@@ -55,22 +55,22 @@
       "@/components/common/*": [
         "./features/payments/components/*"
       ],
-      "@/lib/services/payment/*": [
+      "@features/payments/services/*": [
         "./features/payments/services/*"
       ],
-      "@/lib/services/fee-config/*": [
+      "@features/payments/services/fee-config/*": [
         "./features/payments/services/fee-config/*"
       ],
-      "@/lib/services/settlement-report/*": [
+      "@features/settlements/services/*": [
         "./features/settlements/services/*"
       ],
-      "@/lib/services/stripe-connect/*": [
+      "@features/stripe-connect/services/*": [
         "./features/stripe-connect/services/*"
       ],
-      "@/lib/services/webhook/*": [
+      "@features/payments/services/webhook/*": [
         "./features/payments/services/webhook/*"
       ],
-      "@/lib/services/notification/*": [
+      "@core/notification/*": [
         "./core/notification/*"
       ],
       "@components/auth": [
@@ -94,16 +94,16 @@
       "@/lib/services/webhook": [
         "./features/payments/services/webhook/index.ts"
       ],
-      "@/lib/services/notification": [
+      "@core/notification": [
         "./core/notification/index.ts"
       ],
-      "@/lib/services/notification/types": [
+      "@core/notification/types": [
         "./core/notification/types.ts"
       ],
-      "@/lib/validations/*": [
+      "@core/validation/*": [
         "./core/validation/*"
       ],
-      "@/lib/validation/*": [
+      "@core/validation/*": [
         "./core/validation/*"
       ],
       "@/types/enums": [
@@ -132,10 +132,10 @@
       "@features/events/hooks/*": [
         "./features/events/hooks/*"
       ],
-      "@/hooks/use-clipboard": [
+      "@core/hooks/use-clipboard": [
         "./core/hooks/use-clipboard.ts"
       ],
-      "@/hooks/use-error-handler": [
+      "@core/hooks/use-error-handler": [
         "./core/hooks/use-error-handler.ts"
       ],
       "@/hooks/*": [

@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@core/supabase/server";
 
 export async function getCurrentUser() {
   // テスト環境での認証状態シミュレーション

@@ -6,9 +6,9 @@ import { useTransition, useEffect } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { createEventAction } from "@/app/events/actions";
-import { logger } from "@/lib/logging/app-logger";
-import { convertDatetimeLocalToUtc } from "@/lib/utils/timezone";
-import { safeParseNumber, parseFee } from "@/lib/utils/number-parsers";
+import { logger } from "@core/logging/app-logger";
+import { convertDatetimeLocalToUtc } from "@core/utils/timezone";
+import { safeParseNumber, parseFee } from "@core/utils/number-parsers";
 
 // フロントエンド専用バリデーションスキーマ
 const eventFormSchema = z

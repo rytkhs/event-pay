@@ -5,7 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
 import { useTransition, useEffect } from "react";
 import { useFormState } from "react-dom";
-import { useFocusManagement } from "@/lib/hooks/useFocusManagement";
+import { useFocusManagement } from "@core/hooks/useFocusManagement";
 import { z } from "zod";
 
 // Server Action結果の共通型（既存と同じ）

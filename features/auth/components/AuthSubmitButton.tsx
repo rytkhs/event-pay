@@ -4,7 +4,7 @@ import { ReactNode, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useReducedMotion, useIsMobile } from "@/lib/hooks/useMediaQuery";
+import { useReducedMotion, useIsMobile } from "@core/hooks/useMediaQuery";
 
 interface AuthSubmitButtonProps {
   children: ReactNode;

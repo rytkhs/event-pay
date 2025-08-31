@@ -4,7 +4,7 @@ import {
   validateInviteToken,
   type InviteValidationResult,
   type EventDetail,
-} from "@/lib/utils/invite-token";
+} from "@core/utils/invite-token";
 
 export interface ServerActionResult<T> {
   success: boolean;

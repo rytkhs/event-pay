@@ -1,12 +1,12 @@
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
-import { createEventSchema, type CreateEventInput } from "@/lib/validations/event";
-import { extractEventCreateFormData } from "@/lib/utils/form-data-extractors";
+import { createClient } from "@core/supabase/server";
+import { createEventSchema, type CreateEventInput } from "@core/validation/event";
+import { extractEventCreateFormData } from "@core/utils/form-data-extractors";
 import { z } from "zod";
-import { generateInviteToken } from "@/lib/utils/invite-token";
+import { generateInviteToken } from "@core/utils/invite-token";
 import type { Database } from "@/types/database";
-import { convertDatetimeLocalToUtc } from "@/lib/utils/timezone";
+import { convertDatetimeLocalToUtc } from "@core/utils/timezone";
 
 type EventRow = Database["public"]["Tables"]["events"]["Row"];
 

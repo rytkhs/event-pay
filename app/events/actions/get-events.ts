@@ -1,10 +1,10 @@
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@core/supabase/server";
 import type { Database } from "@/types/database";
 import { Event } from "@/types/event";
-import { convertJstDateToUtcRange } from "@/lib/utils/timezone";
-import { dateFilterSchema, type DateFilterInput } from "@/lib/validations/event";
+import { convertJstDateToUtcRange } from "@core/utils/timezone";
+import { dateFilterSchema, type DateFilterInput } from "@core/validation/event";
 
 type EventRow = Database["public"]["Tables"]["events"]["Row"];
 

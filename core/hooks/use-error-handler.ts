@@ -8,7 +8,7 @@ import {
   isRetryableError,
   type ErrorDetails,
   type ErrorContext,
-} from "@/lib/utils/error-handler";
+} from "@core/utils/error-handler";
 
 interface UseErrorHandlerOptions {
   showToast?: boolean;

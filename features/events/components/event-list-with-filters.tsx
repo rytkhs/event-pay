@@ -8,8 +8,8 @@ import { EventList } from "./event-list";
 import { EventFilters } from "./event-filters";
 import { EventSort } from "./event-sort";
 import { Pagination } from "./pagination";
-import { useEventFilter, Filters } from "@/lib/hooks/useEventFilter";
-import { usePagination } from "@/lib/hooks/usePagination";
+import { useEventFilter, Filters } from "@features/events/hooks/useEventFilter";
+import { usePagination } from "@core/hooks/usePagination";
 import type {
   SortBy,
   SortOrder,

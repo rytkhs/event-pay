@@ -5,7 +5,7 @@
  * - 追加許可 IP は環境変数で上書き可能
  */
 
-import { apiClient } from "@/lib/api/client";
+import { apiClient } from "@core/api/client";
 
 const STRIPE_IPS_JSON_URL = "https://stripe.com/files/ips/ips_webhooks.json";
 const DEFAULT_TTL_MS = 24 * 60 * 60 * 1000; // 24h

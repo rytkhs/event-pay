@@ -1,17 +1,17 @@
 "use server";
 
-import { SecureSupabaseClientFactory } from "@/lib/security/secure-client-factory.impl";
-import { AdminReason } from "@/lib/security/secure-client-factory.types";
+import { SecureSupabaseClientFactory } from "@core/security/secure-client-factory.impl";
+import { AdminReason } from "@core/security/secure-client-factory.types";
 import { PaymentService, PaymentErrorHandler } from "@/lib/services/payment";
 import { createRateLimitStore, checkRateLimit } from "@/lib/rate-limit";
 import { RATE_LIMIT_CONFIG } from "@/config/security";
-import { validateGuestToken } from "@/lib/utils/guest-token";
-import { canCreateStripeSession } from "@/lib/validation/payment-eligibility";
+import { validateGuestToken } from "@core/utils/guest-token";
+import { canCreateStripeSession } from "@core/validation/payment-eligibility";
 import {
   createServerActionError,
   createServerActionSuccess,
   type ServerActionResult,
-} from "@/lib/types/server-actions";
+} from "@core/types/server-actions";
 import { z } from "zod";
 
 /**
@@ -140,7 +140,7 @@ export async function createGuestStripeSessionAction(
 
     return createServerActionSuccess({ sessionUrl: result.sessionUrl, sessionId: result.sessionId });
   } catch (error) {
-    const { getErrorDetails, logError } = await import("@/lib/utils/error-handler");
+    const { getErrorDetails, logError } = await import("@core/utils/error-handler");
 
     const errorContext = {
       action: "guest_stripe_session_creation",

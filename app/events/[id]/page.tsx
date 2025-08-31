@@ -7,9 +7,9 @@ import { EventActions } from "@/components/events/event-actions";
 import { InviteLink } from "@/components/events/invite-link";
 import { ParticipantsManagement } from "@/components/events/participants-management";
 import { notFound, redirect } from "next/navigation";
-import { sanitizeEventDescription } from "@/lib/utils/sanitize";
-import { getCurrentUser } from "@/lib/auth/auth-utils";
-import { createCachedActions } from "@/lib/utils/cache-helpers";
+import { sanitizeEventDescription } from "@core/utils/sanitize";
+import { getCurrentUser } from "@core/auth/auth-utils";
+import { createCachedActions } from "@core/utils/cache-helpers";
 
 interface EventDetailPageProps {
   params: {

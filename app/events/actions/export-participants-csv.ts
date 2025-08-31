@@ -1,16 +1,16 @@
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
-import { SecureSupabaseClientFactory } from "@/lib/security/secure-client-factory.impl";
-import { AdminReason } from "@/lib/security/secure-client-factory.types";
-import { verifyEventAccess } from "@/lib/auth/event-authorization";
+import { createClient } from "@core/supabase/server";
+import { SecureSupabaseClientFactory } from "@core/security/secure-client-factory.impl";
+import { AdminReason } from "@core/security/secure-client-factory.types";
+import { verifyEventAccess } from "@core/auth/event-authorization";
 import {
   ExportParticipantsCsvParamsSchema,
-} from "@/lib/validation/participant-management";
+} from "@core/validation/participant-management";
 import { checkRateLimit, createRateLimitStore } from "@/lib/rate-limit";
 import { RATE_LIMIT_CONFIG } from "@/config/security";
-import { formatUtcToJstSafe } from "@/lib/utils/timezone";
-import { logger } from "@/lib/logging/app-logger";
+import { formatUtcToJstSafe } from "@core/utils/timezone";
+import { logger } from "@core/logging/app-logger";
 import { headers } from "next/headers";
 
 /**

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { checkRateLimit, createRateLimitStore, type RateLimitConfig } from "@/lib/rate-limit/index";
-import { getClientIP } from "@/lib/utils/ip-detection";
-import { createProblemResponse, type ProblemDetails } from "@/lib/api/problem-details";
+import { checkRateLimit, createRateLimitStore, type RateLimitConfig } from "@core/rate-limit/index";
+import { getClientIP } from "@core/utils/ip-detection";
+import { createProblemResponse, type ProblemDetails } from "@core/api/problem-details";
 
 // レート制限ミドルウェア
 

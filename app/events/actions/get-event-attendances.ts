@@ -1,7 +1,7 @@
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
-import { verifyEventAccess, handleDatabaseError } from "@/lib/auth/event-authorization";
+import { createClient } from "@core/supabase/server";
+import { verifyEventAccess, handleDatabaseError } from "@core/auth/event-authorization";
 
 export async function getEventAttendancesAction(eventId: string) {
   try {

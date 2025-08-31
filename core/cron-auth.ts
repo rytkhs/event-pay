@@ -1,7 +1,7 @@
 // Cron API認証ロジック
 
 import { AUTH_CONFIG } from "@/lib/constants/auth-config";
-import { logger } from "@/lib/logging/app-logger";
+import { logger } from "@core/logging/app-logger";
 
 interface AuthResult {
   isValid: boolean;

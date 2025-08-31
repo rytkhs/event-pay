@@ -1,5 +1,5 @@
 import Stripe from "stripe";
-import { logger } from "@/lib/logging/app-logger";
+import { logger } from "@core/logging/app-logger";
 
 // サーバーサイドで必須となる環境変数のみチェックする
 const serverRequiredEnvVars = {

@@ -3,8 +3,8 @@
  * 統一的なエラーハンドリングとユーザーフレンドリーなメッセージ変換
  */
 
-import { logSecurityEvent, type SecurityEventType } from "@/lib/security/security-logger";
-import { logger, type LogLevel } from "@/lib/logging/app-logger";
+import { logSecurityEvent, type SecurityEventType } from "@core/security/security-logger";
+import { logger, type LogLevel } from "@core/logging/app-logger";
 
 export interface ErrorDetails {
   code: string;

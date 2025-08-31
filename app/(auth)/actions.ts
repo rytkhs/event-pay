@@ -1,9 +1,9 @@
 "use server";
 
 import { z } from "zod";
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@core/supabase/server";
 import { type EmailOtpType, type AuthResponse } from "@supabase/supabase-js";
-import { checkRateLimit, createRateLimitStore } from "@/lib/rate-limit/index";
+import { checkRateLimit, createRateLimitStore } from "@core/rate-limit/index";
 import { RATE_LIMIT_CONFIG } from "@/config/security";
 import {
   AccountLockoutService,
@@ -13,10 +13,10 @@ import {
   TEST_ACCOUNT_LOCKOUT_CONFIG,
   type LockoutResult,
   type LockoutStatus,
-} from "@/lib/auth-security";
+} from "@core/auth-security";
 import { headers } from "next/headers";
-import { formatUtcToJst } from "@/lib/utils/timezone";
-import { logger } from "@/lib/logging/app-logger";
+import { formatUtcToJst } from "@core/utils/timezone";
+import { logger } from "@core/logging/app-logger";
 
 // バリデーションスキーマ
 const loginSchema = z.object({

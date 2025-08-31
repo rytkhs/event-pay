@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/contexts/toast-context";
 import { generateInviteTokenAction } from "@/app/events/actions";
 import { Copy, ExternalLink, RefreshCw } from "lucide-react";
-import { useClipboard } from "@/hooks/use-clipboard";
+import { useClipboard } from "@core/hooks/use-clipboard";
 
 interface InviteLinkProps {
   eventId: string;
