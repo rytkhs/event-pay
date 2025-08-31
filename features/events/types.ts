@@ -1,4 +1,4 @@
-import type { Database } from "./database";
+import type { Database } from "@/types/database";
 
 export interface Event {
   id: string;

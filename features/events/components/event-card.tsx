@@ -24,11 +24,10 @@ export const EventCard = memo(function EventCard({ event }: EventCardProps) {
     return formatUtcToJstByType(event.date, "japanese");
   }, [event.date]);
 
-  // ステータス情報をメモ化
+  // ステータス情報をメモ化（型安全にキーを解決）
   const statusInfo = useMemo(() => {
-    return (
-      STATUS_CONFIG[event.status] || { text: event.status, styles: "bg-gray-100 text-gray-800" }
-    );
+    const key = event.status as keyof typeof STATUS_CONFIG;
+    return STATUS_CONFIG[key] ?? { text: event.status, styles: "bg-gray-100 text-gray-800" };
   }, [event.status]);
 
   // 料金表示をメモ化
