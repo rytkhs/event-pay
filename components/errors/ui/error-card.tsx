@@ -9,7 +9,7 @@ import { Card } from "@/components/ui/card";
 import { ErrorIcon } from "./error-icon";
 import { ErrorActions } from "./error-actions";
 import { ErrorPageProps } from "../error-types";
-import { cn } from "@/lib/utils";
+import { cn } from "@core/utils";
 
 interface ErrorCardProps extends ErrorPageProps {
   size?: "sm" | "md" | "lg";

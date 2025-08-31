@@ -19,7 +19,7 @@ import {
   LucideIcon,
 } from "lucide-react";
 import { ErrorCategory, ErrorCode } from "../error-types";
-import { cn } from "@/lib/utils";
+import { cn } from "@core/utils";
 
 interface ErrorIconProps {
   category?: ErrorCategory;

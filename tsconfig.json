@@ -78,10 +78,10 @@
       "@/components/common/payment-status-badge": [
         "./features/payments/components/payment-status-badge.tsx"
       ],
-      "@/lib/utils": [
+      "@core/utils": [
         "./core/utils.ts"
       ],
-      "@/lib/utils/*": [
+      "@core/utils/*": [
         "./core/utils/*"
       ],
       "@/lib/constants/*": [
