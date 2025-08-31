@@ -3,7 +3,7 @@
  * アプリケーション全体で使用される共通の型定義を集約
  */
 
-import type { Database } from "./database";
+import type { Database } from "@/types/database";
 
 // ====================================================================
 // Event関連の型定義
