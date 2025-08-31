@@ -36,93 +36,6 @@
       "@components/*": [
         "./components/*"
       ],
-      "@/lib/*": [
-        "./core/*",
-        "./lib/*"
-      ],
-      "@/components/auth/*": [
-        "./features/auth/components/*"
-      ],
-      "@/components/events/*": [
-        "./features/events/components/*"
-      ],
-      "@/components/stripe-connect/*": [
-        "./features/stripe-connect/components/*"
-      ],
-      "@/components/settlement-report/*": [
-        "./features/settlements/components/*"
-      ],
-      "@/components/common/*": [
-        "./features/payments/components/*"
-      ],
-      "@features/payments/services/*": [
-        "./features/payments/services/*"
-      ],
-      "@features/payments/services/fee-config/*": [
-        "./features/payments/services/fee-config/*"
-      ],
-      "@features/settlements/services/*": [
-        "./features/settlements/services/*"
-      ],
-      "@features/stripe-connect/services/*": [
-        "./features/stripe-connect/services/*"
-      ],
-      "@features/payments/services/webhook/*": [
-        "./features/payments/services/webhook/*"
-      ],
-      "@core/notification/*": [
-        "./core/notification/*"
-      ],
-      "@components/auth": [
-        "./features/auth/components/index.ts"
-      ],
-      "@components/settlement-report": [
-        "./features/settlements/components/index.ts"
-      ],
-      "@/components/auth": [
-        "./features/auth/components/index.ts"
-      ],
-      "@/components/settlement-report": [
-        "./features/settlements/components/index.ts"
-      ],
-      "@/lib/services/payment": [
-        "./features/payments/services/index.ts"
-      ],
-      "@/lib/services/stripe-connect": [
-        "./features/stripe-connect/services/index.ts"
-      ],
-      "@/lib/services/webhook": [
-        "./features/payments/services/webhook/index.ts"
-      ],
-      "@core/notification": [
-        "./core/notification/index.ts"
-      ],
-      "@core/notification/types": [
-        "./core/notification/types.ts"
-      ],
-      "@core/validation/*": [
-        "./core/validation/*"
-      ],
-      "@core/validation/*": [
-        "./core/validation/*"
-      ],
-      "@/types/enums": [
-        "./core/types/enums.ts"
-      ],
-      "@/types/models": [
-        "./core/types/models.ts"
-      ],
-      "@/types/security": [
-        "./core/types/security.ts"
-      ],
-      "@/types/event": [
-        "./features/events/types.ts"
-      ],
-      "@/lib/hooks/*": [
-        "./features/auth/hooks/*",
-        "./features/events/hooks/*",
-        "./core/hooks/*"
-      ],
       "@core/hooks/*": [
         "./core/hooks/*"
       ],
@@ -138,8 +51,74 @@
       "@core/hooks/use-error-handler": [
         "./core/hooks/use-error-handler.ts"
       ],
-      "@/hooks/*": [
-        "./features/events/hooks/*"
+      "@/types/enums": [
+        "./core/types/enums.ts"
+      ],
+      "@/types/models": [
+        "./core/types/models.ts"
+      ],
+      "@/types/security": [
+        "./core/types/security.ts"
+      ],
+      "@/types/event": [
+        "./features/events/types.ts"
+      ],
+      "@/components/auth": [
+        "./features/auth/components/index.ts"
+      ],
+      "@/components/events/*": [
+        "./features/events/components/*"
+      ],
+      "@/components/stripe-connect/*": [
+        "./features/stripe-connect/components/*"
+      ],
+      "@/components/settlement-report": [
+        "./features/settlements/components/index.ts"
+      ],
+      "@/components/settlement-report/*": [
+        "./features/settlements/components/*"
+      ],
+      "@/components/common/*": [
+        "./features/payments/components/*"
+      ],
+      "@/lib/constants/*": [
+        "./core/constants/*"
+      ],
+      "@/lib/rate-limit": [
+        "./core/rate-limit/index.ts"
+      ],
+      "@/lib/rate-limit/*": [
+        "./core/rate-limit/*"
+      ],
+      "@/lib/security": [
+        "./core/security/index.ts"
+      ],
+      "@/lib/security/*": [
+        "./core/security/*"
+      ],
+      "@/lib/services/payment": [
+        "./features/payments/services/index.ts"
+      ],
+      "@/lib/services/payment/*": [
+        "./features/payments/services/*"
+      ],
+      "@/lib/services/stripe-connect": [
+        "./features/stripe-connect/services/index.ts"
+      ],
+      "@/lib/services/stripe-connect/*": [
+        "./features/stripe-connect/services/*"
+      ],
+      "@/lib/services/webhook": [
+        "./features/payments/services/webhook/index.ts"
+      ],
+      "@/lib/services/webhook/*": [
+        "./features/payments/services/webhook/*"
+      ],
+      "@/lib/utils": [
+        "./core/utils.ts"
+      ],
+      "@/lib/utils/*": [
+        "./core/utils/*"
       ]
     }
   },
