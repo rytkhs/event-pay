@@ -99,6 +99,24 @@
       ],
       "@/lib/services/notification/types": [
         "./core/notification/types.ts"
+      ],
+      "@/lib/validations/*": [
+        "./core/validation/*"
+      ],
+      "@/lib/validation/*": [
+        "./core/validation/*"
+      ],
+      "@/types/enums": [
+        "./core/types/enums.ts"
+      ],
+      "@/types/models": [
+        "./core/types/models.ts"
+      ],
+      "@/types/security": [
+        "./core/types/security.ts"
+      ],
+      "@/types/event": [
+        "./features/events/types.ts"
       ]
     }
   },
