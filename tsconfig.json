@@ -23,14 +23,7 @@
       "@/*": ["./*"],
       "@core/*": ["./core/*"],
       "@features/*": ["./features/*"],
-      "@core/hooks/*": ["./core/hooks/*"],
-      "@features/auth/hooks/*": ["./features/auth/hooks/*"],
-      "@features/events/hooks/*": ["./features/events/hooks/*"],
-      "@core/hooks/use-clipboard": ["./core/hooks/use-clipboard.ts"],
-      "@core/hooks/use-error-handler": ["./core/hooks/use-error-handler.ts"],
-      "@components/*": ["./components/*"],
-      "@core/utils": ["./core/utils.ts"],
-      "@core/utils/*": ["./core/utils/*"]
+      "@components/*": ["./components/*"]
     }
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts", "types/**/*.ts"],

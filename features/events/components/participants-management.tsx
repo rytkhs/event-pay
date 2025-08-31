@@ -4,7 +4,7 @@ import React, { useState, useCallback } from "react";
 import { ParticipantsTable } from "./participants-table";
 import { EventStats } from "./event-stats";
 import { PaymentSummary } from "./payment-summary";
-import { useToast } from "@/contexts/toast-context";
+import { useToast } from "@core/contexts/toast-context";
 import { getEventParticipantsAction } from "@/app/events/actions/get-event-participants";
 import { getEventPaymentsAction } from "@/app/events/actions/get-event-payments";
 import type {

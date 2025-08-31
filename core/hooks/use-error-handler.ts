@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { useToast } from "@/contexts/toast-context";
+import { useToast } from "@core/contexts/toast-context";
 import {
   handleClientError,
   getUserErrorMessage,
