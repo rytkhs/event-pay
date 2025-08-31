@@ -1,7 +1,7 @@
 // イベントステータス自動更新ロジック
 
-import { EventStatus, EVENT_STATUS } from "@/types/enums";
-import { EVENT_CONFIG, TIME_CONSTANTS } from "@/lib/constants/event-config";
+import { EventStatus, EVENT_STATUS } from "@core/types/enums";
+import { EVENT_CONFIG, TIME_CONSTANTS } from "@core/constants/event-config";
 
 interface Event {
   id: string;

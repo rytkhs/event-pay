@@ -7,7 +7,7 @@ import {
   IdempotentWebhookProcessor,
 } from '@features/payments/services/webhook/webhook-idempotency';
 import { logger } from '@core/logging/app-logger';
-import type { WebhookProcessingResult } from '@/lib/services/webhook';
+import type { WebhookProcessingResult } from '@features/payments/services/webhook';
 import { createClient } from '@supabase/supabase-js';
 import { Database } from '@/types/database';
 import { validateCronSecret } from '@core/cron-auth';

@@ -10,7 +10,7 @@ import { useEventRestrictions } from "@features/events/hooks/use-event-restricti
 import { useEventChanges } from "@features/events/hooks/use-event-changes";
 import { useEventSubmission } from "@features/events/hooks/use-event-submission";
 import { logger } from "@core/logging/app-logger";
-import type { Event, EventFormData } from "@/types/models";
+import type { Event, EventFormData } from "@core/types/models";
 import type { ChangeItem } from "@/components/ui/change-confirmation-dialog";
 import { useErrorHandler } from "@core/hooks/use-error-handler";
 

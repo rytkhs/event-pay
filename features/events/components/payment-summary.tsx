@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { CreditCard, Banknote, AlertTriangle, CheckCircle, Info } from "lucide-react";
 import type { PaymentSummary as PaymentSummaryType } from "@core/validation/participant-management";
 import { TooltipContent, TooltipTrigger, TooltipWrapper } from "@/components/ui/tooltip";
-import { PAYMENT_STATUS_LABELS } from "@/types/enums";
+import { PAYMENT_STATUS_LABELS } from "@core/types/enums";
 
 interface PaymentSummaryProps {
   summary: PaymentSummaryType;

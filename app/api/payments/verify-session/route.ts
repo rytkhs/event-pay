@@ -11,7 +11,7 @@ import { stripe } from "@core/stripe/client";
 import { SecureSupabaseClientFactory } from "@core/security/secure-client-factory.impl";
 import { logger } from "@core/logging/app-logger";
 import { logSecurityEvent } from "@core/security/security-logger";
-import { createRateLimitStore, checkRateLimit } from "@/lib/rate-limit";
+import { createRateLimitStore, checkRateLimit } from "@core/rate-limit";
 import { z } from "zod";
 import { createProblemResponse, createQueryValidationError } from "@core/api/problem-details";
 import { getClientIP } from "@core/utils/ip-detection";

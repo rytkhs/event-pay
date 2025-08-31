@@ -10,7 +10,7 @@ import {
   type ServerActionResult
 } from "@core/types/server-actions";
 
-import type { EventDetail as DetailType } from "@/types/models";
+import type { EventDetail as DetailType } from "@core/types/models";
 
 export async function getEventDetailAction(eventId: string): Promise<ServerActionResult<DetailType>> {
   try {

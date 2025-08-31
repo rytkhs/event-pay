@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback } from "react";
-import { Event } from "@/types/event";
+import { Event } from "@features/events/types";
 import { StatusFilter, PaymentFilter, DateFilter } from "@/app/events/actions/get-events";
 import { convertJstDateToUtcRange } from "@core/utils/timezone";
 import {
@@ -7,7 +7,7 @@ import {
   DEFAULT_PAYMENT_FILTER,
   isValidStatusFilter,
   isValidPaymentFilter,
-} from "@/lib/constants/event-filters";
+} from "@core/constants/event-filters";
 import { logger } from "@core/logging/app-logger";
 
 export interface Filters {

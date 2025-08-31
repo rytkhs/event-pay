@@ -3,7 +3,7 @@ import { SecureSupabaseClientFactory } from "@core/security/secure-client-factor
 import { AdminReason } from "@core/security/secure-client-factory.types";
 import { validateCronSecret, logCronActivity } from "@core/cron-auth";
 import { updateEventStatus, getCurrentTime } from "@core/event-status-updater";
-import { EVENT_CONFIG } from "@/lib/constants/event-config";
+import { EVENT_CONFIG } from "@core/constants/event-config";
 import { createProblemResponse } from "@core/api/problem-details";
 import { processBatch, getBatchSummary } from "@core/utils/batch-processor";
 interface CronExecutionData {

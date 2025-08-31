@@ -19,7 +19,7 @@ import {
   PAYMENT_FILTER_OPTIONS,
   STATUS_FILTER_LABELS,
   PAYMENT_FILTER_LABELS,
-} from "@/lib/constants/event-filters";
+} from "@core/constants/event-filters";
 
 interface EventFiltersProps {
   statusFilter: StatusFilter;

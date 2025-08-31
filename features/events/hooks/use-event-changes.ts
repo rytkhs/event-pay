@@ -3,7 +3,7 @@
 import { useCallback, useMemo } from "react";
 import { ChangeItem } from "@/components/ui/change-confirmation-dialog";
 import { formatUtcToDatetimeLocal } from "@core/utils/timezone";
-import type { Event, EventFormData } from "@/types/models";
+import type { Event, EventFormData } from "@core/types/models";
 
 interface UseEventChangesProps {
   event: Event;

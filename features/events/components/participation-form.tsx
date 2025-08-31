@@ -10,7 +10,7 @@ import {
   validateParticipationField,
   sanitizeParticipationInput,
 } from "@core/validation/participation";
-import { PAYMENT_METHOD_LABELS } from "@/lib/constants/payment-methods";
+import { PAYMENT_METHOD_LABELS } from "@core/constants/payment-methods";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

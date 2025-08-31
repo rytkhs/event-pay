@@ -4,8 +4,8 @@ import { useState } from "react";
 import { EventDetail } from "@core/utils/invite-token";
 import { sanitizeEventDescription, sanitizeForEventPay } from "@core/utils/sanitize";
 import { formatUtcToJstByType } from "@core/utils/timezone";
-import { PAYMENT_METHOD_LABELS } from "@/lib/constants/payment-methods";
-import { EVENT_STATUS_LABELS } from "@/types/enums";
+import { PAYMENT_METHOD_LABELS } from "@core/constants/payment-methods";
+import { EVENT_STATUS_LABELS } from "@core/types/enums";
 import { type ParticipationFormData } from "@core/validation/participation";
 import {
   registerParticipationAction,

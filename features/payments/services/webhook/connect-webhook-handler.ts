@@ -5,7 +5,7 @@
 import Stripe from 'stripe';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { Database } from '@/types/database';
-import { createStripeConnectServiceWithClient, type IStripeConnectService } from '@/lib/services/stripe-connect';
+import { createStripeConnectServiceWithClient, type IStripeConnectService } from '@features/stripe-connect/services';
 import { NotificationService } from '@core/notification';
 import { SecureSupabaseClientFactory } from '@core/security/secure-client-factory.impl';
 import { AdminReason } from '@core/security/secure-client-factory.types';

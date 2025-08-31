@@ -2,7 +2,7 @@
 
 import { createClient } from "@core/supabase/server";
 import type { Database } from "@/types/database";
-import { Event } from "@/types/event";
+import { Event } from "@features/events/types";
 import { convertJstDateToUtcRange } from "@core/utils/timezone";
 import { dateFilterSchema, type DateFilterInput } from "@core/validation/event";
 

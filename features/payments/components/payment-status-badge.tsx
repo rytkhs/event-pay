@@ -1,5 +1,5 @@
 import { Badge } from "@/components/ui/badge";
-import { PAYMENT_STATUS_LABELS, type PaymentStatus } from "@/types/enums";
+import { PAYMENT_STATUS_LABELS, type PaymentStatus } from "@core/types/enums";
 
 /**
  * 決済ステータス表示プロパティの定義

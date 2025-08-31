@@ -1,11 +1,7 @@
 {
   "compilerOptions": {
     "target": "ES2017",
-    "lib": [
-      "dom",
-      "dom.iterable",
-      "es6"
-    ],
+    "lib": ["dom", "dom.iterable", "es6"],
     "allowJs": true,
     "skipLibCheck": true,
     "strict": true,
@@ -24,108 +20,20 @@
       }
     ],
     "paths": {
-      "@/*": [
-        "./*"
-      ],
-      "@core/*": [
-        "./core/*"
-      ],
-      "@features/*": [
-        "./features/*"
-      ],
-      "@core/hooks/*": [
-        "./core/hooks/*"
-      ],
-      "@features/auth/hooks/*": [
-        "./features/auth/hooks/*"
-      ],
-      "@features/events/hooks/*": [
-        "./features/events/hooks/*"
-      ],
-      "@core/hooks/use-clipboard": [
-        "./core/hooks/use-clipboard.ts"
-      ],
-      "@core/hooks/use-error-handler": [
-        "./core/hooks/use-error-handler.ts"
-      ],
-      "@/types/enums": [
-        "./core/types/enums.ts"
-      ],
-      "@/types/models": [
-        "./core/types/models.ts"
-      ],
-      "@/types/security": [
-        "./core/types/security.ts"
-      ],
-      "@/types/event": [
-        "./features/events/types.ts"
-      ],
-      "@/components/auth": [
-        "./features/auth/components/index.ts"
-      ],
-      "@/components/events/*": [
-        "./features/events/components/*"
-      ],
-      "@/components/stripe-connect/*": [
-        "./features/stripe-connect/components/*"
-      ],
-      "@/components/settlement-report": [
-        "./features/settlements/components/index.ts"
-      ],
-      "@/components/settlement-report/*": [
-        "./features/settlements/components/*"
-      ],
-      "@/components/common/payment-status-badge": [
-        "./features/payments/components/payment-status-badge.tsx"
-      ],
-      "@core/utils": [
-        "./core/utils.ts"
-      ],
-      "@core/utils/*": [
-        "./core/utils/*"
-      ],
-      "@/lib/constants/*": [
-        "./core/constants/*"
-      ],
-      "@/lib/rate-limit": [
-        "./core/rate-limit/index.ts"
-      ],
-      "@/lib/rate-limit/*": [
-        "./core/rate-limit/*"
-      ],
-      "@/lib/security": [
-        "./core/security/index.ts"
-      ],
-      "@/lib/security/*": [
-        "./core/security/*"
-      ],
-      "@/lib/services/payment": [
-        "./features/payments/services/index.ts"
-      ],
-      "@/lib/services/payment/*": [
-        "./features/payments/services/*"
-      ],
-      "@/lib/services/stripe-connect": [
-        "./features/stripe-connect/services/index.ts"
-      ],
-      "@/lib/services/stripe-connect/*": [
-        "./features/stripe-connect/services/*"
-      ],
-      "@/lib/services/webhook": [
-        "./features/payments/services/webhook/index.ts"
-      ],
-      "@/lib/services/webhook/*": [
-        "./features/payments/services/webhook/*"
-      ]
+      "@/*": ["./*"],
+      "@core/*": ["./core/*"],
+      "@features/*": ["./features/*"],
+      "@core/hooks/*": ["./core/hooks/*"],
+      "@features/auth/hooks/*": ["./features/auth/hooks/*"],
+      "@features/events/hooks/*": ["./features/events/hooks/*"],
+      "@core/hooks/use-clipboard": ["./core/hooks/use-clipboard.ts"],
+      "@core/hooks/use-error-handler": ["./core/hooks/use-error-handler.ts"],
+      "@components/*": ["./components/*"],
+      "@core/utils": ["./core/utils.ts"],
+      "@core/utils/*": ["./core/utils/*"]
     }
   },
-  "include": [
-    "next-env.d.ts",
-    "**/*.ts",
-    "**/*.tsx",
-    ".next/types/**/*.ts",
-    "types/**/*.ts"
-  ],
+  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts", "types/**/*.ts"],
   "exclude": [
     "node_modules",
     "__tests__",

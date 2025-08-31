@@ -1,6 +1,5 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
-import { generateSecureUuid } from '@core/security/crypto';
 
 const AFTER_LOGIN_REDIRECT_PATH = "/home";
 
@@ -20,8 +19,7 @@ function isPublicPath(pathname: string): boolean {
 }
 
 export async function middleware(request: NextRequest) {
-  // リクエスト相関IDを生成・伝播
-  const requestId = request.headers.get('x-request-id') ?? generateSecureUuid();
+  const requestId = request.headers.get('x-request-id') ?? crypto.randomUUID();
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set('x-request-id', requestId);
 
