@@ -4,7 +4,7 @@ import { z } from "zod";
 import { createClient } from "@core/supabase/server";
 import { type EmailOtpType, type AuthResponse } from "@supabase/supabase-js";
 import { checkRateLimit, createRateLimitStore } from "@core/rate-limit/index";
-import { RATE_LIMIT_CONFIG } from "@/config/security";
+import { RATE_LIMIT_CONFIG } from "@core/security";
 import {
   AccountLockoutService,
   TimingAttackProtection,

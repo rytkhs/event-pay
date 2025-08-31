@@ -27,7 +27,7 @@ import {
 } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { ja } from "date-fns/locale";
-import { useToast } from "@/contexts/toast-context";
+import { useToast } from "@core/contexts/toast-context";
 import { updateCashStatusAction } from "@/app/payments/actions/update-cash-status";
 import { bulkUpdateCashStatusAction } from "@/app/payments/actions/bulk-update-cash-status";
 import { exportParticipantsCsvAction } from "@/app/events/actions/export-participants-csv";

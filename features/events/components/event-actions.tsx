@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { updateCashStatusAction } from "@/app/payments/actions/update-cash-status";
-import { useToast } from "@/contexts/toast-context";
+import { useToast } from "@core/contexts/toast-context";
 import { deleteEventAction } from "@/app/events/actions/delete-event";
 import {
   Dialog,

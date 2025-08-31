@@ -4,7 +4,7 @@ import { SecureSupabaseClientFactory } from "@core/security/secure-client-factor
 import { AdminReason } from "@core/security/secure-client-factory.types";
 import { PaymentService, PaymentErrorHandler } from "@features/payments/services";
 import { createRateLimitStore, checkRateLimit } from "@core/rate-limit";
-import { RATE_LIMIT_CONFIG } from "@/config/security";
+import { RATE_LIMIT_CONFIG } from "@core/security";
 import { validateGuestToken } from "@core/utils/guest-token";
 import { canCreateStripeSession } from "@core/validation/payment-eligibility";
 import {

@@ -17,7 +17,7 @@ StripeConnectServiceは以下の機能を提供します：
 ### サービスインスタンスの作成
 
 ```typescript
-import { createStripeConnectService } from "@/lib/services/stripe-connect";
+import { createStripeConnectService } from "@core/services/stripe-connect";
 
 const stripeConnectService = createStripeConnectService(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -116,7 +116,7 @@ try {
 StripeConnectServiceは`StripeConnectError`クラスを使用してエラーを管理します。
 
 ```typescript
-import { StripeConnectError, StripeConnectErrorType } from "@/lib/services/stripe-connect";
+import { StripeConnectError, StripeConnectErrorType } from "@core/services/stripe-connect";
 
 try {
   await stripeConnectService.createExpressAccount(params);

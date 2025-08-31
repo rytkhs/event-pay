@@ -1,6 +1,7 @@
 "use server";
 
-import { SecureSupabaseClientFactory, AdminReason } from "@core/security";
+import { SecureSupabaseClientFactory } from "@core/security/secure-client-factory.impl";
+import { AdminReason } from "@core/security/secure-client-factory.types";
 import { validateGuestToken } from "@core/utils/guest-token";
 import { validateGuestTokenFormat } from "@core/security/crypto";
 import {

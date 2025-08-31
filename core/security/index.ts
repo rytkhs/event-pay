@@ -205,3 +205,14 @@ export function createSecureSupabaseClient(): SecureSupabaseClientFactory {
 export function createGuestTokenValidator(): RLSGuestTokenValidator {
   return getSecuritySystem().getGuestValidator();
 }
+
+// ====================================================================
+// 8. セキュリティ設定
+// ====================================================================
+export {
+  RATE_LIMIT_CONFIG,
+  COOKIE_CONFIG,
+  AUTH_CONFIG,
+  PASSWORD_CONFIG,
+  getCookieConfig
+} from "./config";

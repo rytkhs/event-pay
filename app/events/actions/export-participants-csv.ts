@@ -8,7 +8,7 @@ import {
   ExportParticipantsCsvParamsSchema,
 } from "@core/validation/participant-management";
 import { checkRateLimit, createRateLimitStore } from "@core/rate-limit";
-import { RATE_LIMIT_CONFIG } from "@/config/security";
+import { RATE_LIMIT_CONFIG } from "@core/security";
 import { formatUtcToJstSafe } from "@core/utils/timezone";
 import { logger } from "@core/logging/app-logger";
 import { headers } from "next/headers";
