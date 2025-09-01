@@ -3,7 +3,7 @@
  */
 
 export { PaymentService, PaymentErrorHandler } from "./service";
-export { PaymentValidator } from "./validation";
+export { PaymentValidator } from "../validation";
 export type { IPaymentService, IPaymentErrorHandler, IPaymentValidator } from "./interface";
 export type {
   Payment,
@@ -15,5 +15,5 @@ export type {
   CreateCashPaymentResult,
   UpdatePaymentStatusParams,
   ErrorHandlingResult,
-} from "./types";
-export { PaymentError, PaymentErrorType } from "./types";
+} from "../types";
+export { PaymentError, PaymentErrorType } from "../types";
