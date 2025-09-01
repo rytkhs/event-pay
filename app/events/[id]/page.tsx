@@ -4,7 +4,7 @@ import { getEventPaymentsAction } from "@/app/events/actions/get-event-payments"
 import { getEventParticipantsAction } from "@/app/events/actions/get-event-participants";
 import { EventDetail } from "@features/events/components/event-detail";
 import { EventActions } from "@features/events/components/event-actions";
-import { InviteLink } from "@features/events/components/invite-link";
+import { InviteLink } from "@features/invite/components/invite-link";
 import { ParticipantsManagement } from "@features/events/components/participants-management";
 import { notFound, redirect } from "next/navigation";
 import { sanitizeEventDescription } from "@core/utils/sanitize";
