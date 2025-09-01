@@ -1,14 +1,20 @@
 /**
  * Invite Feature Public API
  * 招待機能の公開エクスポート
- *
- * 注意: 現在、招待関連コンポーネントは events/components/ 内に存在
- * 将来的にはこのfeatureに独立配置予定
  */
 
-// 将来的な拡張用
-// export * from "./components";
+// Components
+export * from "./components";
+
+// Actions (Phase 3で追加予定)
+// export * from "./actions";
+
+// Hooks (将来的な拡張用)
 // export * from "./hooks";
+
+// Services (将来的な拡張用)
 // export * from "./services";
-// export * from "./types";
-// export * from "./validation";
+
+// Types & Validation
+export * from "./types";
+export * from "./validation";
