@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { cache } from "react";
 import { validateGuestToken } from "@core/utils/guest-token";
 import { sanitizeForEventPay } from "@core/utils/sanitize";
-import { GuestManagementForm } from "@features/events/components/guest-management-form";
+import { GuestManagementForm } from "@features/guest/components/guest-management-form";
 import { PaymentStatusAlert } from "@features/events/components/payment-status-alert";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
