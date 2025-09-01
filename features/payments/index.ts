@@ -4,7 +4,7 @@
  */
 
 // Components
-export * from "./components/payment-status-badge";
+// PaymentStatusBadge は @components/ui/payment-status-badge に移動しました
 
 // Hooks (将来的な拡張用)
 // export * from "./hooks";

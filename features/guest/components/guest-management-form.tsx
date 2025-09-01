@@ -8,7 +8,7 @@ import { type GuestAttendanceData } from "@core/utils/guest-token";
 import { sanitizeForEventPay } from "@core/utils/sanitize";
 import { formatUtcToJstByType } from "@core/utils/timezone";
 import { PAYMENT_METHOD_LABELS } from "@core/constants/payment-methods";
-import { PaymentStatusSpan } from "@features/payments/components/payment-status-badge";
+import { PaymentStatusSpan } from "@components/ui/payment-status-badge";
 import { canGuestRepay } from "@core/validation/payment-eligibility";
 import { useToast } from "@core/contexts/toast-context";
 import { ATTENDANCE_STATUS_LABELS } from "@core/types/enums";

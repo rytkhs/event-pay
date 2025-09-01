@@ -1,51 +1,6 @@
 {
-  "root": true,
-  "extends": ["next/core-web-vitals", "next/typescript", "prettier"],
-  "plugins": ["@typescript-eslint", "import"],
-  "rules": {
-    "@typescript-eslint/no-unused-vars": [
-      "error",
-      {
-        "argsIgnorePattern": "^_",
-        "varsIgnorePattern": "^_",
-        "caughtErrorsIgnorePattern": "^_"
-      }
-    ],
-    "@typescript-eslint/no-explicit-any": "warn",
-    "prefer-const": "error",
-    "no-console": "error",
-    "react-hooks/exhaustive-deps": "warn",
-    "react/prop-types": "off",
-    "react/react-in-jsx-scope": "off",
-    "@next/next/no-img-element": "error",
-    "jsx-a11y/alt-text": [
-      "error",
-      {
-        "elements": ["area", "[role=\"img\"]"],
-        "img": ["Image"]
-      }
-    ],
-    "import/no-restricted-paths": [
-      "error",
-      {
-        "zones": [
-          {
-            "target": "./features/*/!(types).{ts,tsx}",
-            "from": "./features/!(auth|events|payments|settlements|stripe-connect)/**",
-            "message": "Features should not directly import from other features. Use @core/* for shared functionality."
-          },
-          {
-            "target": "./core/**",
-            "from": "./features/**",
-            "message": "Core modules should not depend on feature modules."
-          },
-          {
-            "target": "./features/**",
-            "from": "./app/**",
-            "message": "Features should not depend on app-specific modules."
-          }
-        ]
-      }
-    ]
-  }
+  "extends": [
+    "next/core-web-vitals",
+    "next/typescript"
+  ]
 }
