@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { EventDetail } from "@core/utils/invite-token";
-import { type RegisterParticipationData } from "@/app/events/actions/register-participation";
+import { type RegisterParticipationData } from "../actions/register-participation";
 import { sanitizeForEventPay } from "@core/utils/sanitize";
 import { formatUtcToJstByType } from "@core/utils/timezone";
 import { PAYMENT_METHOD_LABELS } from "@core/constants/payment-methods";
