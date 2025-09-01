@@ -1,13 +1,27 @@
 "use client";
 
 import { createContext, useContext, useState, useCallback, ReactNode } from "react";
-import { Toast, Toaster } from "@/components/ui/toast";
 
-interface ToastOptions {
+// Core層内で定義されたToast型（UI層への依存を回避）
+export interface Toast {
+  id: string;
   title: string;
   description?: string;
   variant?: "default" | "destructive" | "success";
   duration?: number;
+}
+
+export interface ToastOptions {
+  title: string;
+  description?: string;
+  variant?: "default" | "destructive" | "success";
+  duration?: number;
+}
+
+// Toaster コンポーネントの抽象化されたインターフェース
+export interface ToasterProps {
+  toasts: Toast[];
+  onClose: (id: string) => void;
 }
 
 interface ToastContextType {
@@ -17,7 +31,13 @@ interface ToastContextType {
 
 const ToastContext = createContext<ToastContextType | undefined>(undefined);
 
-export function ToastProvider({ children }: { children: ReactNode }) {
+export function ToastProvider({
+  children,
+  ToasterComponent,
+}: {
+  children: ReactNode;
+  ToasterComponent?: React.ComponentType<ToasterProps>;
+}) {
   const [toasts, setToasts] = useState<Toast[]>([]);
 
   const toast = useCallback((options: ToastOptions) => {
@@ -37,7 +57,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   return (
     <ToastContext.Provider value={{ toast, toasts }}>
       {children}
-      <Toaster toasts={toasts} onClose={removeToast} />
+      {ToasterComponent && <ToasterComponent toasts={toasts} onClose={removeToast} />}
     </ToastContext.Provider>
   );
 }
