@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { updateGuestAttendanceAction } from "@/app/events/actions/update-guest-attendance";
+import { updateGuestAttendanceAction } from "@/app/guest/actions/update-attendance";
 import { createGuestStripeSessionAction } from "@/app/guest/actions/create-stripe-session";
 import { type GuestAttendanceData } from "@core/utils/guest-token";
 import { sanitizeForEventPay } from "@core/utils/sanitize";

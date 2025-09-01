@@ -1,14 +1,17 @@
 /**
  * Guest Feature Public API
  * ゲスト機能の公開エクスポート
- *
- * 注意: 現在、ゲスト関連コンポーネントは events/components/ 内に存在
- * 将来的にはこのfeatureに独立配置予定
- */
+run  */
 
-// 将来的な拡張用
-// export * from "./components";
+// Components
+export * from "./components";
+
+// Hooks (将来的な拡張用)
 // export * from "./hooks";
+
+// Services (将来的な拡張用)
 // export * from "./services";
-// export * from "./types";
-// export * from "./validation";
+
+// Types & Validation
+export * from "./types";
+export * from "./validation";
