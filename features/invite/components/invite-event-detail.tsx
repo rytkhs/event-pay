@@ -10,7 +10,7 @@ import { type ParticipationFormData } from "@core/validation/participation";
 import {
   registerParticipationAction,
   type RegisterParticipationData,
-} from "@/app/events/actions/register-participation";
+} from "../actions/register-participation";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ParticipationForm } from "./participation-form";
