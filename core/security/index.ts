@@ -87,9 +87,9 @@ export type { AdminOperationResult } from "./admin-operations.types";
 // 5. 統合セキュリティファクトリー
 // ====================================================================
 
-import { SecureSupabaseClientFactory } from "./secure-client-factory.impl";
-import { RLSGuestTokenValidator } from "./guest-token-validator";
 import { AdminOperations } from "./admin-operations";
+import { RLSGuestTokenValidator } from "./guest-token-validator";
+import { SecureSupabaseClientFactory } from "./secure-client-factory.impl";
 
 /**
  * セキュリティシステムの統合ファクトリー

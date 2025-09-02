@@ -5,10 +5,12 @@
 export const dynamic = "force-dynamic";
 
 import { Suspense } from "react";
-import { Metadata } from "next";
+
+import { Loader2 } from "lucide-react";
+import type { Metadata } from "next";
+
 import { handleOnboardingRefreshAction } from "@/app/(dashboard)/actions/stripe-connect";
 import { Card, CardContent } from "@/components/ui/card";
-import { Loader2 } from "lucide-react";
 
 export const metadata: Metadata = {
   title: "設定を再開 | EventPay",

@@ -1,12 +1,21 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+
 import { z } from "zod";
+
+import {
+  STATUS_FILTER_OPTIONS,
+  PAYMENT_FILTER_OPTIONS,
+  STATUS_FILTER_LABELS,
+  PAYMENT_FILTER_LABELS,
+} from "@core/constants/event-filters";
+
 import { StatusFilter, PaymentFilter, DateFilter } from "@/app/events/actions/get-events";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -14,12 +23,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  STATUS_FILTER_OPTIONS,
-  PAYMENT_FILTER_OPTIONS,
-  STATUS_FILTER_LABELS,
-  PAYMENT_FILTER_LABELS,
-} from "@core/constants/event-filters";
 
 interface EventFiltersProps {
   statusFilter: StatusFilter;

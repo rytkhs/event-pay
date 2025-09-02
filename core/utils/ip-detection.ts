@@ -1,5 +1,6 @@
-import { NextRequest } from "next/server";
 import { createHash } from "crypto";
+
+import { NextRequest } from "next/server";
 
 /**
  * ヘッダーアクセス用のインターフェース
@@ -392,7 +393,7 @@ export function getClientIPFromHeaders(headersList: HeaderLike): string {
  */
 export function getClientIdentifier(request: NextRequest, userId?: string): string {
   // 認証済みユーザーの場合はユーザーIDを使用
-  if (userId && userId.trim()) {
+  if (userId?.trim()) {
     return `user_${userId.trim().replace(/[^a-zA-Z0-9_-]/g, "")}`;
   }
 

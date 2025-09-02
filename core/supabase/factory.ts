@@ -1,11 +1,14 @@
-import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
+
+import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { Database } from "@/types/database";
-import { getSessionManager } from "@core/session/manager";
-import { COOKIE_CONFIG, AUTH_CONFIG, getCookieConfig } from "@core/security";
+
 import { logger } from "@core/logging/app-logger";
+import { COOKIE_CONFIG, AUTH_CONFIG, getCookieConfig } from "@core/security";
+import { getSessionManager } from "@core/session/manager";
+
+import type { Database } from "@/types/database";
 
 type SupabaseContext = "middleware" | "api" | "server";
 

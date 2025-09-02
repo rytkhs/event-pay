@@ -1,10 +1,10 @@
 "use server";
 
+import { headers } from "next/headers";
+
+import type { EmailOtpType, AuthResponse } from "@supabase/supabase-js";
 import { z } from "zod";
-import { createClient } from "@core/supabase/server";
-import { type EmailOtpType, type AuthResponse } from "@supabase/supabase-js";
-import { checkRateLimit, createRateLimitStore } from "@core/rate-limit/index";
-import { RATE_LIMIT_CONFIG } from "@core/security";
+
 import {
   AccountLockoutService,
   TimingAttackProtection,
@@ -14,9 +14,11 @@ import {
   type LockoutResult,
   type LockoutStatus,
 } from "@core/auth-security";
-import { headers } from "next/headers";
-import { formatUtcToJst } from "@core/utils/timezone";
 import { logger } from "@core/logging/app-logger";
+import { checkRateLimit, createRateLimitStore } from "@core/rate-limit/index";
+import { RATE_LIMIT_CONFIG } from "@core/security";
+import { createClient } from "@core/supabase/server";
+import { formatUtcToJst } from "@core/utils/timezone";
 
 // バリデーションスキーマ
 const loginSchema = z.object({
@@ -38,16 +40,21 @@ const registerSchema = z
       .refine(
         (trimmed) => {
           // NULL文字やcontrol文字のチェック
-          if (trimmed.includes("\0") || trimmed.includes("\x1a")) return false;
+          if (trimmed.includes("\0") || trimmed.includes("\x1a")) {
+            return false;
+          }
           // 危険な特殊文字のチェック（アポストロフィと引用符は許可）
-          if (/[;&|`$(){}[\]<>\\]/.test(trimmed)) return false;
+          if (/[;&|`$(){}[\]<>\\]/.test(trimmed)) {
+            return false;
+          }
           // コマンドインジェクション対策（完全なコマンド形式のみ拒否）
           if (
             /^\s*(rm|cat|echo|whoami|id|ls|pwd|sudo|su|curl|wget|nc|nmap|chmod|chown|kill|ps|top|netstat|find|grep|awk|sed|tail|head|sort|uniq)\s+/.test(
               trimmed
             )
-          )
+          ) {
             return false;
+          }
           return true;
         },
         {
@@ -177,7 +184,7 @@ export async function loginAction(formData: FormData): Promise<ActionResult<{ us
 
       const isValidOrigin = origin && allowedOrigins.some((allowed) => origin === allowed);
       const isValidReferer =
-        referer && allowedOrigins.some((allowed) => referer.startsWith(allowed + "/"));
+        referer && allowedOrigins.some((allowed) => referer.startsWith(`${allowed}/`));
 
       if (!isValidOrigin && !isValidReferer) {
         await TimingAttackProtection.addConstantDelay();

@@ -1,12 +1,15 @@
 "use client";
 
 import React from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+
 import { CreditCard, Banknote, AlertTriangle, CheckCircle, Info } from "lucide-react";
-import type { PaymentSummary as PaymentSummaryType } from "@core/validation/participant-management";
-import { TooltipContent, TooltipTrigger, TooltipWrapper } from "@/components/ui/tooltip";
+
 import { PAYMENT_STATUS_LABELS } from "@core/types/enums";
+import type { PaymentSummary as PaymentSummaryType } from "@core/validation/participant-management";
+
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { TooltipContent, TooltipTrigger, TooltipWrapper } from "@/components/ui/tooltip";
 
 interface PaymentSummaryProps {
   summary: PaymentSummaryType;

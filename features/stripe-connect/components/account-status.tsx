@@ -5,10 +5,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+
 import {
   CheckCircle,
   AlertCircle,
@@ -19,12 +16,18 @@ import {
   RefreshCw,
   ExternalLink,
 } from "lucide-react";
+
+import { logger } from "@core/logging/app-logger";
+import { STRIPE_ACCOUNT_STATUS_LABELS } from "@core/types/enums";
+
 import {
   getConnectAccountStatusAction,
   createConnectAccountAction,
 } from "@/app/(dashboard)/actions/stripe-connect";
-import { logger } from "@core/logging/app-logger";
-import { STRIPE_ACCOUNT_STATUS_LABELS } from "@core/types/enums";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 interface AccountStatusData {
   hasAccount: boolean;

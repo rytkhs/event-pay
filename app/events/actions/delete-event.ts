@@ -1,15 +1,16 @@
 "use server";
 
-import { createClient } from "@core/supabase/server";
-import { validateEventId } from "@core/validation/event-id";
-import { checkDeleteRestrictions } from "@core/utils/event-restrictions";
-import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
+
+import { createClient } from "@core/supabase/server";
 import {
   createServerActionError,
   createServerActionSuccess,
   type ServerActionResult,
 } from "@core/types/server-actions";
+import { checkDeleteRestrictions } from "@core/utils/event-restrictions";
+import { validateEventId } from "@core/validation/event-id";
 
 export async function deleteEventAction(eventId: string): Promise<ServerActionResult<void>> {
   try {

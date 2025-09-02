@@ -5,11 +5,13 @@
  * HMAC認証またはサービスロール認証で保護する
  */
 
-import { NextRequest, NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
+import { NextResponse } from "next/server";
+
 import { createProblemResponse } from "@core/api/problem-details";
+import { logger } from "@core/logging/app-logger";
 import { getSecureClientFactory } from "@core/security/secure-client-factory.impl";
 import { AdminReason, type AuditContext } from "@core/security/secure-client-factory.types";
-import { logger } from "@core/logging/app-logger";
 
 export async function POST(request: NextRequest) {
   try {

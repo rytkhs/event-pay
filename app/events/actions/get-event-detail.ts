@@ -1,16 +1,16 @@
 "use server";
 
-import { createClient } from "@core/supabase/server";
-import { validateEventId } from "@core/validation/event-id";
 import { redirect } from "next/navigation";
+
 import { logger } from "@core/logging/app-logger";
+import { createClient } from "@core/supabase/server";
+import type { EventDetail as DetailType } from "@core/types/models";
 import {
   createServerActionError,
   createServerActionSuccess,
   type ServerActionResult,
 } from "@core/types/server-actions";
-
-import type { EventDetail as DetailType } from "@core/types/models";
+import { validateEventId } from "@core/validation/event-id";
 
 export async function getEventDetailAction(
   eventId: string

@@ -1,13 +1,16 @@
 "use client";
 
 import { useEffect, useCallback, useState, useMemo, useRef } from "react";
+
 import { useRouter } from "next/navigation";
-import { sanitizeForEventPay } from "@core/utils/sanitize";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
+
 import { CheckCircle, XCircle, AlertCircle, X, Loader2 } from "lucide-react";
 
 import { apiClient, isApiError } from "@core/api/client";
+import { sanitizeForEventPay } from "@core/utils/sanitize";
+
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
 
 interface PaymentStatusAlertProps {
   sessionId?: string;

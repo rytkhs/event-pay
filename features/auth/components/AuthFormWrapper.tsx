@@ -1,10 +1,14 @@
 "use client";
 
 import { ReactNode, useEffect, useRef } from "react";
-import { AuthFormMessages } from "./AuthFormMessages";
-import { ServerActionResult } from "@features/auth/hooks/useAuthForm";
-import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
+
 import { useFocusManagement } from "@core/hooks/useFocusManagement";
+
+import { ServerActionResult } from "@features/auth/hooks/useAuthForm";
+
+import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
+
+import { AuthFormMessages } from "./AuthFormMessages";
 
 interface AuthFormWrapperProps {
   title: string;

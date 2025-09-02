@@ -2,23 +2,26 @@
  * Stripe Connect Webhook ハンドラー
  */
 
-import Stripe from "stripe";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { Database } from "@/types/database";
-import {
-  createStripeConnectServiceWithClient,
-  type IStripeConnectService,
-} from "@features/stripe-connect/services";
+import Stripe from "stripe";
+
+import { logger } from "@core/logging/app-logger";
 import { NotificationService } from "@core/notification";
-import { SecureSupabaseClientFactory } from "@core/security/secure-client-factory.impl";
-import { AdminReason } from "@core/security/secure-client-factory.types";
 import type {
   AccountStatusChangeNotification,
   AccountRestrictedNotification,
   StripeConnectNotificationData,
 } from "@core/notification/types";
+import { SecureSupabaseClientFactory } from "@core/security/secure-client-factory.impl";
+import { AdminReason } from "@core/security/secure-client-factory.types";
+
+import {
+  createStripeConnectServiceWithClient,
+  type IStripeConnectService,
+} from "@features/stripe-connect/services";
 import type { StripeAccountStatusLike } from "@features/stripe-connect/services/types";
-import { logger } from "@core/logging/app-logger";
+
+import { Database } from "@/types/database";
 
 /**
  * Connect Webhook イベントハンドラー

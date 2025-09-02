@@ -3,8 +3,10 @@
  */
 
 import type { PostgrestError } from "@supabase/supabase-js";
-import { Database } from "@/types/database";
+
 import type { LogLevel } from "@core/logging/app-logger";
+
+import { Database } from "@/types/database";
 
 // Stripe Connectアカウントステータスの型（データベースのenumに合わせる）
 export type StripeAccountStatus = Database["public"]["Enums"]["stripe_account_status_enum"];

@@ -1,8 +1,10 @@
-import { createClient } from "@core/supabase/server";
 import { notFound, redirect } from "next/navigation";
-import { EventEditForm } from "@features/events/components/event-edit-form";
-import { EditRestrictionsNotice } from "@features/events/components/edit-restrictions-notice";
+
+import { createClient } from "@core/supabase/server";
 import { calculateAttendeeCount } from "@core/utils/event-calculations";
+
+import { EditRestrictionsNotice } from "@features/events/components/edit-restrictions-notice";
+import { EventEditForm } from "@features/events/components/event-edit-form";
 
 interface EventEditPageProps {
   params: {

@@ -1,10 +1,12 @@
-import { NextRequest, NextResponse } from "next/server";
-import { SecureSupabaseClientFactory } from "@core/security/secure-client-factory.impl";
-import { AdminReason } from "@core/security/secure-client-factory.types";
+import type { NextRequest } from "next/server";
+import { NextResponse } from "next/server";
+
+import { createProblemResponse } from "@core/api/problem-details";
+import { EVENT_CONFIG } from "@core/constants/event-config";
 import { validateCronSecret, logCronActivity } from "@core/cron-auth";
 import { updateEventStatus, getCurrentTime } from "@core/event-status-updater";
-import { EVENT_CONFIG } from "@core/constants/event-config";
-import { createProblemResponse } from "@core/api/problem-details";
+import { SecureSupabaseClientFactory } from "@core/security/secure-client-factory.impl";
+import { AdminReason } from "@core/security/secure-client-factory.types";
 import { processBatch, getBatchSummary } from "@core/utils/batch-processor";
 interface CronExecutionData {
   message: string;

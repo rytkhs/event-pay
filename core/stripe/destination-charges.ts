@@ -1,6 +1,8 @@
 import Stripe from "stripe";
-import { stripe, generateIdempotencyKey, createStripeRequestOptions } from "./client";
+
 import { getTransferGroupForEvent } from "@core/utils/stripe";
+
+import { stripe, generateIdempotencyKey, createStripeRequestOptions } from "./client";
 import { retryWithIdempotency } from "./idempotency-retry";
 
 // Destination charges用のCheckout Session作成パラメータ（内部専用）

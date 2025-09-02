@@ -1,20 +1,24 @@
 "use client";
 
 import { useState } from "react";
+
+import { PAYMENT_METHOD_LABELS } from "@core/constants/payment-methods";
+import { EVENT_STATUS_LABELS } from "@core/types/enums";
 import { EventDetail } from "@core/utils/invite-token";
 import { sanitizeEventDescription, sanitizeForEventPay } from "@core/utils/sanitize";
 import { formatUtcToJstByType } from "@core/utils/timezone";
-import { PAYMENT_METHOD_LABELS } from "@core/constants/payment-methods";
-import { EVENT_STATUS_LABELS } from "@core/types/enums";
 import { type ParticipationFormData } from "@core/validation/participation";
+
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+
 import {
   registerParticipationAction,
   type RegisterParticipationData,
 } from "../actions/register-participation";
-import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { ParticipationForm } from "./participation-form";
+
 import { ParticipationConfirmation } from "./participation-confirmation";
+import { ParticipationForm } from "./participation-form";
 
 interface InviteEventDetailProps {
   event: EventDetail;

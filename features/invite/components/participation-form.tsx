@@ -1,8 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { useForm } from "react-hook-form";
+
 import { zodResolver } from "@hookform/resolvers/zod";
+import { AlertTriangle } from "lucide-react";
+import { useForm } from "react-hook-form";
+
+import { PAYMENT_METHOD_LABELS } from "@core/constants/payment-methods";
+import { useParticipationErrorHandler } from "@core/hooks/use-error-handler";
 import { EventDetail } from "@core/utils/invite-token";
 import {
   participationFormSchema,
@@ -10,12 +15,10 @@ import {
   validateParticipationField,
   sanitizeParticipationInput,
 } from "@core/validation/participation";
-import { PAYMENT_METHOD_LABELS } from "@core/constants/payment-methods";
-import { Card } from "@/components/ui/card";
+
+import { ParticipationErrorBoundary } from "@/components/errors";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Label } from "@/components/ui/label";
+import { Card } from "@/components/ui/card";
 import {
   Form,
   FormControl,
@@ -24,9 +27,9 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { ParticipationErrorBoundary } from "@/components/errors";
-import { useParticipationErrorHandler } from "@core/hooks/use-error-handler";
-import { AlertTriangle } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
 interface ParticipationFormProps {
   event: EventDetail;

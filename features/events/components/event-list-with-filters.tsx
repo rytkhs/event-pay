@@ -1,15 +1,16 @@
 "use client";
 
 import { useState, useCallback, useTransition } from "react";
+
 import { useRouter } from "next/navigation";
+
 import { z } from "zod";
-import { Event } from "@features/events/types";
-import { EventList } from "./event-list";
-import { EventFilters } from "./event-filters";
-import { EventSort } from "./event-sort";
-import { Pagination } from "./pagination";
-import { useEventFilter, Filters } from "@features/events/hooks/useEventFilter";
+
 import { usePagination } from "@core/hooks/usePagination";
+
+import { useEventFilter, Filters } from "@features/events/hooks/useEventFilter";
+import { Event } from "@features/events/types";
+
 import type {
   SortBy,
   SortOrder,
@@ -17,6 +18,11 @@ import type {
   PaymentFilter,
   DateFilter,
 } from "@/app/events/actions/get-events";
+
+import { EventFilters } from "./event-filters";
+import { EventList } from "./event-list";
+import { EventSort } from "./event-sort";
+import { Pagination } from "./pagination";
 
 interface EventListWithFiltersProps {
   events: Event[];

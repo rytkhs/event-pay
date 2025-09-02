@@ -1,6 +1,8 @@
-import EventCreateForm from "@features/events/components/event-form";
-import { createClient } from "@core/supabase/server";
 import { redirect } from "next/navigation";
+
+import { createClient } from "@core/supabase/server";
+
+import EventCreateForm from "@features/events/components/event-form";
 
 export default async function CreateEventPage() {
   const supabase = await createClient();

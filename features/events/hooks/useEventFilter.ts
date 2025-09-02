@@ -1,7 +1,5 @@
 import { useState, useMemo, useCallback } from "react";
-import { Event } from "@features/events/types";
-import { StatusFilter, PaymentFilter, DateFilter } from "@/app/events/actions/get-events";
-import { convertJstDateToUtcRange } from "@core/utils/timezone";
+
 import {
   DEFAULT_STATUS_FILTER,
   DEFAULT_PAYMENT_FILTER,
@@ -9,6 +7,11 @@ import {
   isValidPaymentFilter,
 } from "@core/constants/event-filters";
 import { logger } from "@core/logging/app-logger";
+import { convertJstDateToUtcRange } from "@core/utils/timezone";
+
+import { Event } from "@features/events/types";
+
+import { StatusFilter, PaymentFilter, DateFilter } from "@/app/events/actions/get-events";
 
 export interface Filters {
   status: StatusFilter;

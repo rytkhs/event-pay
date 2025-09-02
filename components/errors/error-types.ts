@@ -3,8 +3,9 @@
  * Next.js App Router + EventPayアプリケーション専用
  */
 
-import { ReactNode } from "react";
-import { LucideIcon } from "lucide-react";
+import type { ReactNode } from "react";
+
+import type { LucideIcon } from "lucide-react";
 
 /**
  * エラーの重要度レベル

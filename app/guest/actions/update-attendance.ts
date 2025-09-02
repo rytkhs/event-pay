@@ -1,26 +1,29 @@
 "use server";
 
+import { headers } from "next/headers";
+
+import { PAYMENT_METHODS } from "@core/constants/payment-methods";
+import { validateGuestTokenFormat } from "@core/security/crypto";
 import { SecureSupabaseClientFactory } from "@core/security/secure-client-factory.impl";
 import { AdminReason } from "@core/security/secure-client-factory.types";
-import { validateGuestToken } from "@core/utils/guest-token";
-import { validateGuestTokenFormat } from "@core/security/crypto";
 import {
   logInvalidTokenAccess,
   logParticipationSecurityEvent,
 } from "@core/security/security-logger";
-import { attendanceStatusSchema, paymentMethodSchema } from "@core/validation/participation";
-import { PAYMENT_METHODS } from "@core/constants/payment-methods";
-import type { Database } from "@/types/database";
-import { headers } from "next/headers";
-import { getClientIPFromHeaders } from "@core/utils/ip-detection";
 import {
   createServerActionError,
   createServerActionSuccess,
   type ServerActionResult,
 } from "@core/types/server-actions";
+import { validateGuestToken } from "@core/utils/guest-token";
+import { getClientIPFromHeaders } from "@core/utils/ip-detection";
+import { attendanceStatusSchema, paymentMethodSchema } from "@core/validation/participation";
+
+import type { UpdateGuestAttendanceData } from "@features/guest/types";
+
+import type { Database } from "@/types/database";
 
 // 型定義は features/guest/types.ts に統一
-import type { UpdateGuestAttendanceData } from "@features/guest/types";
 
 /**
  * ゲスト参加状況を更新するサーバーアクション
@@ -93,7 +96,10 @@ export async function updateGuestAttendanceAction(
 
     if (validatedStatus.data === "attending" && attendance.event.fee > 0) {
       if (!paymentMethod) {
-        return createServerActionError("VALIDATION_ERROR", "参加費が必要なため、決済方法を選択してください");
+        return createServerActionError(
+          "VALIDATION_ERROR",
+          "参加費が必要なため、決済方法を選択してください"
+        );
       }
 
       const paymentValidation = paymentMethodSchema.safeParse(paymentMethod);
@@ -101,7 +107,8 @@ export async function updateGuestAttendanceAction(
         return createServerActionError("VALIDATION_ERROR", "無効な決済方法です");
       }
 
-      validatedPaymentMethod = paymentValidation.data as Database["public"]["Enums"]["payment_method_enum"];
+      validatedPaymentMethod =
+        paymentValidation.data as Database["public"]["Enums"]["payment_method_enum"];
 
       // 決済方法の利用可能性チェック
       if (validatedPaymentMethod === "stripe" && !PAYMENT_METHODS.includes("stripe")) {
@@ -179,7 +186,8 @@ export async function updateGuestAttendanceAction(
     if (error) {
       // RPC関数からのエラーメッセージを安定したコードベースで処理
       const errorCode = error.code || "";
-      const isRegistrationFull = error.message?.includes("registration_full") || errorCode === "23514";
+      const isRegistrationFull =
+        error.message?.includes("registration_full") || errorCode === "23514";
 
       // 開発環境では詳細エラーログを出力
       if (process.env.NODE_ENV === "development") {

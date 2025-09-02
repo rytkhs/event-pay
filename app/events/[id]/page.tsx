@@ -1,15 +1,18 @@
-import { getEventDetailAction } from "@/app/events/actions/get-event-detail";
-import { getEventAttendancesAction } from "@/app/events/actions/get-event-attendances";
-import { getEventPaymentsAction } from "@/app/events/actions/get-event-payments";
-import { getEventParticipantsAction } from "@/app/events/actions/get-event-participants";
-import { EventDetail } from "@features/events/components/event-detail";
-import { EventActions } from "@features/events/components/event-actions";
-import { InviteLink } from "@features/invite/components/invite-link";
-import { ParticipantsManagement } from "@features/events/components/participants-management";
 import { notFound, redirect } from "next/navigation";
-import { sanitizeEventDescription } from "@core/utils/sanitize";
+
 import { getCurrentUser } from "@core/auth/auth-utils";
 import { createCachedActions } from "@core/utils/cache-helpers";
+import { sanitizeEventDescription } from "@core/utils/sanitize";
+
+import { EventActions } from "@features/events/components/event-actions";
+import { EventDetail } from "@features/events/components/event-detail";
+import { ParticipantsManagement } from "@features/events/components/participants-management";
+import { InviteLink } from "@features/invite/components/invite-link";
+
+import { getEventAttendancesAction } from "@/app/events/actions/get-event-attendances";
+import { getEventDetailAction } from "@/app/events/actions/get-event-detail";
+import { getEventParticipantsAction } from "@/app/events/actions/get-event-participants";
+import { getEventPaymentsAction } from "@/app/events/actions/get-event-payments";
 
 interface EventDetailPageProps {
   params: {
@@ -39,7 +42,7 @@ export default async function EventDetailPage({ params }: EventDetailPageProps) 
         notFound();
       }
       if (eventDetailResult.code === "EVENT_ACCESS_DENIED") {
-        redirect("/events/" + params.id + "/forbidden");
+        redirect(`/events/${params.id}/forbidden`);
       }
       if (eventDetailResult.code === "EVENT_INVALID_ID") {
         notFound();

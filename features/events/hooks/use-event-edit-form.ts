@@ -1,18 +1,22 @@
 "use client";
 
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
 import { useCallback, useEffect, useMemo, useTransition } from "react";
+
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
 import { z } from "zod";
-import { convertDatetimeLocalToUtc, formatUtcToDatetimeLocal } from "@core/utils/timezone";
-import { safeParseNumber, parseFee } from "@core/utils/number-parsers";
-import { useEventRestrictions } from "@features/events/hooks/use-event-restrictions";
-import { useEventChanges } from "@features/events/hooks/use-event-changes";
-import { useEventSubmission } from "@features/events/hooks/use-event-submission";
+
+import { useErrorHandler } from "@core/hooks/use-error-handler";
 import { logger } from "@core/logging/app-logger";
 import type { Event, EventFormData } from "@core/types/models";
+import { safeParseNumber, parseFee } from "@core/utils/number-parsers";
+import { convertDatetimeLocalToUtc, formatUtcToDatetimeLocal } from "@core/utils/timezone";
+
+import { useEventChanges } from "@features/events/hooks/use-event-changes";
+import { useEventRestrictions } from "@features/events/hooks/use-event-restrictions";
+import { useEventSubmission } from "@features/events/hooks/use-event-submission";
+
 import type { ChangeItem } from "@/components/ui/change-confirmation-dialog";
-import { useErrorHandler } from "@core/hooks/use-error-handler";
 
 interface UseEventEditFormProps {
   event: Event;

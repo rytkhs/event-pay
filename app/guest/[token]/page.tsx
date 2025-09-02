@@ -1,18 +1,22 @@
-import { Metadata } from "next";
-import { headers } from "next/headers";
-import { notFound } from "next/navigation";
 import { cache } from "react";
-import { validateGuestToken } from "@core/utils/guest-token";
-import { sanitizeForEventPay } from "@core/utils/sanitize";
-import { GuestManagementForm } from "@features/guest/components/guest-management-form";
-import { PaymentStatusAlert } from "@features/events/components/payment-status-alert";
-import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { AlertCircle, ArrowLeft } from "lucide-react";
+
+import { headers } from "next/headers";
 import Link from "next/link";
-import { logInvalidTokenAccess } from "@core/security/security-logger";
+import { notFound } from "next/navigation";
+
+import { AlertCircle, ArrowLeft } from "lucide-react";
+import type { Metadata } from "next";
+
+import { logInvalidTokenAccess, logUnexpectedGuestPageError } from "@core/security/security-logger";
+import { validateGuestToken } from "@core/utils/guest-token";
 import { getClientIPFromHeaders } from "@core/utils/ip-detection";
-import { logUnexpectedGuestPageError } from "@core/security/security-logger";
+import { sanitizeForEventPay } from "@core/utils/sanitize";
+
+import { PaymentStatusAlert } from "@features/events/components/payment-status-alert";
+import { GuestManagementForm } from "@features/guest/components/guest-management-form";
+
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 
 // リクエスト内で検証結果を共有し、DB クエリを 1 回に抑える
 const getGuestValidation = cache(async (token: string) => validateGuestToken(token));
@@ -186,7 +190,7 @@ export default async function GuestPage({ params, searchParams }: GuestPageProps
       ip: errorIp,
       userAgent: errorUserAgent,
       additionalData: {
-        tokenPrefix: token.substring(0, 8) + "...",
+        tokenPrefix: `${token.substring(0, 8)}...`,
         originalError: error instanceof Error ? error.name : "Unknown",
         originalMessage: error instanceof Error ? error.message : String(error),
       },

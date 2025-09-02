@@ -1,15 +1,16 @@
 "use server";
 
-import { createClient } from "@core/supabase/server";
-import { SecureSupabaseClientFactory } from "@core/security/secure-client-factory.impl";
-import { AdminReason } from "@core/security/secure-client-factory.types";
+import { headers } from "next/headers";
+
 import { verifyEventAccess } from "@core/auth/event-authorization";
-import { ExportParticipantsCsvParamsSchema } from "@core/validation/participant-management";
+import { logger } from "@core/logging/app-logger";
 import { checkRateLimit, createRateLimitStore } from "@core/rate-limit";
 import { RATE_LIMIT_CONFIG } from "@core/security";
+import { SecureSupabaseClientFactory } from "@core/security/secure-client-factory.impl";
+import { AdminReason } from "@core/security/secure-client-factory.types";
+import { createClient } from "@core/supabase/server";
 import { formatUtcToJstSafe } from "@core/utils/timezone";
-import { logger } from "@core/logging/app-logger";
-import { headers } from "next/headers";
+import { ExportParticipantsCsvParamsSchema } from "@core/validation/participant-management";
 
 /**
  * 参加者データCSVエクスポート
@@ -186,7 +187,7 @@ export async function exportParticipantsCsvAction(params: unknown): Promise<{
         participant_count: csvSource.length,
         filters: filters || {},
         columns,
-        filename: filename,
+        filename,
         ip_address: ip,
       },
     });
@@ -195,7 +196,7 @@ export async function exportParticipantsCsvAction(params: unknown): Promise<{
       eventId: validatedEventId,
       userId: user.id,
       participantCount: csvSource.length,
-      filename: filename,
+      filename,
     });
 
     return {
@@ -334,7 +335,7 @@ function generateCsvContent(participants: CsvParticipant[], columns: string[]): 
   const csvString = csvLines.join("\n");
 
   // UTF-8 BOMを付与
-  return "\uFEFF" + csvString;
+  return `\uFEFF${csvString}`;
 }
 
 /**

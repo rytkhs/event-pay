@@ -1,18 +1,21 @@
 "use client";
 
 import React, { useState, useCallback } from "react";
-import { ParticipantsTable } from "./participants-table";
-import { EventStats } from "./event-stats";
-import { PaymentSummary } from "./payment-summary";
+
 import { useToast } from "@core/contexts/toast-context";
-import { getEventParticipantsAction } from "@/app/events/actions/get-event-participants";
-import { getEventPaymentsAction } from "@/app/events/actions/get-event-payments";
+import type { Event, Attendance } from "@core/types/models";
 import type {
   GetParticipantsResponse,
   GetParticipantsParams,
   GetEventPaymentsResponse,
 } from "@core/validation/participant-management";
-import type { Event, Attendance } from "@core/types/models";
+
+import { getEventParticipantsAction } from "@/app/events/actions/get-event-participants";
+import { getEventPaymentsAction } from "@/app/events/actions/get-event-payments";
+
+import { EventStats } from "./event-stats";
+import { ParticipantsTable } from "./participants-table";
+import { PaymentSummary } from "./payment-summary";
 
 interface ParticipantsManagementProps {
   eventId: string;

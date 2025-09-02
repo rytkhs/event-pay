@@ -1,4 +1,5 @@
 import { useCallback } from "react";
+
 import { FocusManager, FocusableElement } from "@core/utils/focusManager";
 
 export interface FocusManagementHook {

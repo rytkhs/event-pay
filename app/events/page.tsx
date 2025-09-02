@@ -1,18 +1,23 @@
 import React, { Suspense } from "react";
+
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { EventListWithFilters } from "@features/events/components/event-list-with-filters";
-import { EventLoading } from "@features/events/components/event-loading";
-import { InlineErrorCard } from "@/components/errors";
-import { Button } from "@/components/ui/button";
-import { getEventsAction } from "./actions";
-import type { SortBy, SortOrder, StatusFilter, PaymentFilter } from "./actions/get-events";
+
 import {
   DEFAULT_SORT_BY,
   DEFAULT_SORT_ORDER,
   DEFAULT_STATUS_FILTER,
   DEFAULT_PAYMENT_FILTER,
 } from "@core/constants/event-filters";
+
+import { EventListWithFilters } from "@features/events/components/event-list-with-filters";
+import { EventLoading } from "@features/events/components/event-loading";
+
+import { InlineErrorCard } from "@/components/errors";
+import { Button } from "@/components/ui/button";
+
+import { getEventsAction } from "./actions";
+import type { SortBy, SortOrder, StatusFilter, PaymentFilter } from "./actions/get-events";
 
 interface EventsContentProps {
   searchParams: { [key: string]: string | string[] | undefined };

@@ -4,19 +4,22 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { createClient } from "@core/supabase/server";
-import { createUserStripeConnectService } from "@features/stripe-connect/services";
-import {
-  StripeConnectError,
-  StripeConnectErrorType,
-} from "@features/stripe-connect/services/types";
+
 import { z } from "zod";
+
+import { logger } from "@core/logging/app-logger";
 import {
   CONNECT_REFRESH_SUFFIX,
   CONNECT_RETURN_SUFFIX,
   isAllowedConnectPath,
 } from "@core/routes/stripe-connect";
-import { logger } from "@core/logging/app-logger";
+import { createClient } from "@core/supabase/server";
+
+import { createUserStripeConnectService } from "@features/stripe-connect/services";
+import {
+  StripeConnectError,
+  StripeConnectErrorType,
+} from "@features/stripe-connect/services/types";
 
 // バリデーションスキーマ
 const CreateConnectAccountSchema = z.object({
@@ -44,11 +47,17 @@ function validateAndNormalizeRedirectUrls(formData: FormData): {
 
   const getAllowedOrigins = () => {
     const origins: string[] = [];
-    if (process.env.NEXT_PUBLIC_APP_URL) origins.push(process.env.NEXT_PUBLIC_APP_URL);
-    if (process.env.NEXT_PUBLIC_SITE_URL) origins.push(process.env.NEXT_PUBLIC_SITE_URL);
+    if (process.env.NEXT_PUBLIC_APP_URL) {
+      origins.push(process.env.NEXT_PUBLIC_APP_URL);
+    }
+    if (process.env.NEXT_PUBLIC_SITE_URL) {
+      origins.push(process.env.NEXT_PUBLIC_SITE_URL);
+    }
     origins.push("http://localhost:3000");
     origins.push("https://localhost:3000");
-    if (process.env.VERCEL_URL) origins.push(`https://${process.env.VERCEL_URL}`);
+    if (process.env.VERCEL_URL) {
+      origins.push(`https://${process.env.VERCEL_URL}`);
+    }
     if (process.env.ALLOWED_ORIGINS) {
       origins.push(
         ...process.env.ALLOWED_ORIGINS.split(",")

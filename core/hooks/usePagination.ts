@@ -1,4 +1,5 @@
 import { useCallback } from "react";
+
 import { useRouter, useSearchParams } from "next/navigation";
 
 interface UsePaginationOptions {

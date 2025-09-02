@@ -3,10 +3,12 @@
  * 複数のアクション関数で使用される認証・権限確認処理を統一
  */
 
+import { redirect } from "next/navigation";
+
+import type { User } from "@supabase/supabase-js";
+
 import { createClient } from "@core/supabase/server";
 import { validateEventId } from "@core/validation/event-id";
-import { redirect } from "next/navigation";
-import type { User } from "@supabase/supabase-js";
 
 /**
  * イベントアクセス確認の戻り値型

@@ -2,16 +2,18 @@
  * StripeConnect エラーハンドラーの実装
  */
 
-import Stripe from "stripe";
 import type { PostgrestError } from "@supabase/supabase-js";
-import { IStripeConnectErrorHandler } from "./interface";
-import { StripeConnectError, StripeConnectErrorType, ErrorHandlingResult } from "./types";
+import Stripe from "stripe";
+
+import { logger, type LogLevel } from "@core/logging/app-logger";
+
 import {
   ERROR_HANDLING_BY_TYPE,
   STRIPE_ERROR_CODE_MAPPING,
   POSTGRES_ERROR_CODE_MAPPING,
 } from "./error-mapping";
-import { logger, type LogLevel } from "@core/logging/app-logger";
+import { IStripeConnectErrorHandler } from "./interface";
+import { StripeConnectError, StripeConnectErrorType, ErrorHandlingResult } from "./types";
 
 /**
  * StripeConnect エラーハンドラーの実装クラス

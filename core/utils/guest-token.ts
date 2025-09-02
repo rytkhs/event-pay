@@ -3,6 +3,7 @@ import {
   validateGuestTokenRLS,
   type RLSGuestAttendanceData,
 } from "@core/security/guest-token-validator";
+
 import type { Database } from "@/types/database";
 
 /**

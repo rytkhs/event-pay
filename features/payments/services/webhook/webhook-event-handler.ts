@@ -1,12 +1,15 @@
+import { createClient } from "@supabase/supabase-js";
 import Stripe from "stripe";
+
+import { logger } from "@core/logging/app-logger";
 import { stripe as sharedStripe } from "@core/stripe/client";
+import { canPromoteStatus } from "@core/utils/payments/status-rank";
+
 import { SettlementReportService } from "@features/settlements/services/service";
 
-import { createClient } from "@supabase/supabase-js";
 import { Database } from "@/types/database";
+
 import type { WebhookProcessingResult } from "./index";
-import { logger } from "@core/logging/app-logger";
-import { canPromoteStatus } from "@core/utils/payments/status-rank";
 
 export interface WebhookEventHandler {
   handleEvent(event: Stripe.Event): Promise<WebhookProcessingResult>;

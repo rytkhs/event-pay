@@ -1,6 +1,7 @@
-import { createClient } from "@core/supabase/server";
-import { redirect } from "next/navigation";
 import Link from "next/link";
+import { redirect } from "next/navigation";
+
+import { createClient } from "@core/supabase/server";
 
 export default async function Home() {
   // 認証状態チェック

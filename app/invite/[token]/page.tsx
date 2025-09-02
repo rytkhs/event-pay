@@ -1,11 +1,14 @@
 import { headers } from "next/headers";
-import { validateInviteToken } from "@core/utils/invite-token";
-import { InviteEventDetail } from "@features/invite/components/invite-event-detail";
-import { ErrorLayout } from "@/components/errors";
 import { notFound } from "next/navigation";
-import { sanitizeEventDescription } from "@core/utils/sanitize";
+
 import { logInvalidTokenAccess } from "@core/security/security-logger";
+import { validateInviteToken } from "@core/utils/invite-token";
 import { getClientIPFromHeaders } from "@core/utils/ip-detection";
+import { sanitizeEventDescription } from "@core/utils/sanitize";
+
+import { InviteEventDetail } from "@features/invite/components/invite-event-detail";
+
+import { ErrorLayout } from "@/components/errors";
 
 interface InvitePageProps {
   params: {
