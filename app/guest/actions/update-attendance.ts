@@ -19,7 +19,7 @@ import { validateGuestToken } from "@core/utils/guest-token";
 import { getClientIPFromHeaders } from "@core/utils/ip-detection";
 import { attendanceStatusSchema, paymentMethodSchema } from "@core/validation/participation";
 
-import type { UpdateGuestAttendanceData } from "@features/guest/types";
+import type { UpdateGuestAttendanceData } from "@features/guest";
 
 import type { Database } from "@/types/database";
 

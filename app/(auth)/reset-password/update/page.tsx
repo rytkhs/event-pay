@@ -2,13 +2,8 @@
 
 import Link from "next/link";
 
-import {
-  useAuthForm,
-  AuthFormWrapper,
-  AuthFormField,
-  AuthSubmitButton,
-} from "@features/auth/components";
-import { usePasswordConfirmation } from "@features/auth/hooks/usePasswordConfirmation";
+import { useAuthForm, AuthFormWrapper, AuthFormField, AuthSubmitButton } from "@features/auth";
+import { usePasswordConfirmation } from "@features/auth";
 
 import { updatePasswordAction } from "@/app/(auth)/actions";
 import { PasswordStatusIcon } from "@/components/ui/PasswordStatusIcon";

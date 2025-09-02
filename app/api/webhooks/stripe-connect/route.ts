@@ -17,8 +17,10 @@ import {
 import { stripe, getConnectWebhookSecrets } from "@core/stripe/client";
 import { getClientIP } from "@core/utils/ip-detection";
 
-import { SupabaseWebhookIdempotencyService } from "@features/payments/services/webhook/webhook-idempotency";
-import { StripeWebhookSignatureVerifier } from "@features/payments/services/webhook/webhook-signature-verifier";
+import {
+  SupabaseWebhookIdempotencyService,
+  StripeWebhookSignatureVerifier,
+} from "@features/payments";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic"; // Webhookは常に動的処理

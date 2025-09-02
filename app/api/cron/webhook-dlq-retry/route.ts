@@ -8,12 +8,12 @@ import { validateCronSecret } from "@core/cron-auth";
 import { logger } from "@core/logging/app-logger";
 import { stripe as sharedStripe } from "@core/stripe/client";
 
-import type { WebhookProcessingResult } from "@features/payments/services/webhook";
-import { StripeWebhookEventHandler } from "@features/payments/services/webhook/webhook-event-handler";
 import {
+  type WebhookProcessingResult,
+  StripeWebhookEventHandler,
   SupabaseWebhookIdempotencyService,
   IdempotentWebhookProcessor,
-} from "@features/payments/services/webhook/webhook-idempotency";
+} from "@features/payments";
 
 import type { Database } from "@/types/database";
 

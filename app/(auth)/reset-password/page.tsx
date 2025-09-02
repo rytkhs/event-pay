@@ -2,12 +2,7 @@
 
 import Link from "next/link";
 
-import {
-  useAuthForm,
-  AuthFormWrapper,
-  AuthEmailField,
-  AuthSubmitButton,
-} from "@features/auth/components";
+import { useAuthForm, AuthFormWrapper, AuthEmailField, AuthSubmitButton } from "@features/auth";
 
 import { resetPasswordAction } from "@/app/(auth)/actions";
 

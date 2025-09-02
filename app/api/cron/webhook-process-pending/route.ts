@@ -7,12 +7,12 @@ import { createProblemResponse } from "@core/api/problem-details";
 import { validateCronSecret, logCronActivity } from "@core/cron-auth";
 import { stripe as sharedStripe } from "@core/stripe/client";
 
-import { ConnectWebhookHandler } from "@features/payments/services/webhook/connect-webhook-handler";
-import { StripeWebhookEventHandler } from "@features/payments/services/webhook/webhook-event-handler";
 import {
+  ConnectWebhookHandler,
+  StripeWebhookEventHandler,
   SupabaseWebhookIdempotencyService,
   IdempotentWebhookProcessor,
-} from "@features/payments/services/webhook/webhook-idempotency";
+} from "@features/payments";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -204,7 +204,7 @@ export async function GET(request: NextRequest) {
           e instanceof Error ? e.message : "process_error",
           { stripe_account_id: null }
         );
-      } catch {}
+      } catch { }
     }
   }
 

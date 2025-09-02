@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { getCurrentUser } from "@core/auth/auth-utils";
 import { createClient } from "@core/supabase/server";
 
-import { SettlementReportList, SettlementReportGenerator } from "@features/settlements/components";
+import { SettlementReportList, SettlementReportGenerator } from "@features/settlements";
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 

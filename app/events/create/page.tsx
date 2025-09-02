@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 
 import { createClient } from "@core/supabase/server";
 
-import EventCreateForm from "@features/events/components/event-form";
+import { EventForm as EventCreateForm } from "@features/events";
 
 export default async function CreateEventPage() {
   const supabase = await createClient();

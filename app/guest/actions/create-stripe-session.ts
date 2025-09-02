@@ -14,7 +14,7 @@ import {
 import { validateGuestToken } from "@core/utils/guest-token";
 import { canCreateStripeSession } from "@core/validation/payment-eligibility";
 
-import { PaymentService, PaymentErrorHandler } from "@features/payments/services";
+import { PaymentService, PaymentErrorHandler } from "@features/payments";
 
 /**
  * ゲスト用 Stripe Checkout セッション作成アクション

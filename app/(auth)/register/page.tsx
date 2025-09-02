@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 
-import { useRegisterFormRHF } from "@features/auth/hooks/useAuthForm";
+import { useRegisterFormRHF } from "@features/auth";
 
 import { registerAction } from "@/app/(auth)/actions";
 import { Button } from "@/components/ui/button";
