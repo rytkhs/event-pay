@@ -208,8 +208,8 @@ export class NotificationService implements INotificationService {
    * 状態変更の通知が必要かチェック
    */
   private shouldNotifyStatusChange(
-    oldStatus: import("@features/stripe-connect/services/types").StripeAccountStatusLike,
-    newStatus: import("@features/stripe-connect/services/types").StripeAccountStatusLike
+    oldStatus: import("@features/stripe-connect").StripeAccountStatusLike,
+    newStatus: import("@features/stripe-connect").StripeAccountStatusLike
   ): boolean {
     // 認証完了や制限状態への変更は通知
     const importantTransitions = [

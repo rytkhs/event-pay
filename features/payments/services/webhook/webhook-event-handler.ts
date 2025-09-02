@@ -5,7 +5,7 @@ import { logger } from "@core/logging/app-logger";
 import { stripe as sharedStripe } from "@core/stripe/client";
 import { canPromoteStatus } from "@core/utils/payments/status-rank";
 
-import { SettlementReportService } from "@features/settlements/services/service";
+import { SettlementReportService } from "@features/settlements";
 
 import { Database } from "@/types/database";
 

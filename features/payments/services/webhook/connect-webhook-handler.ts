@@ -18,8 +18,8 @@ import { AdminReason } from "@core/security/secure-client-factory.types";
 import {
   createStripeConnectServiceWithClient,
   type IStripeConnectService,
-} from "@features/stripe-connect/services";
-import type { StripeAccountStatusLike } from "@features/stripe-connect/services/types";
+  type StripeAccountStatusLike,
+} from "@features/stripe-connect";
 
 import { Database } from "@/types/database";
 
