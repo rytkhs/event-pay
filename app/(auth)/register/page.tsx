@@ -1,13 +1,13 @@
-'use client'
+"use client";
 
-import Link from 'next/link'
+import Link from "next/link";
 
-import { useRegisterFormRHF } from '@features/auth'
+import { useRegisterFormRHF } from "@features/auth";
 
-import { registerAction } from '@/app/(auth)/actions'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
-import { Checkbox } from '@/components/ui/checkbox'
+import { registerAction } from "@/app/(auth)/actions";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Form,
   FormControl,
@@ -15,65 +15,65 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from '@/components/ui/form'
-import { Input } from '@/components/ui/input'
+} from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
 
 export default function RegisterPage() {
   const { form, onSubmit, isPending } = useRegisterFormRHF(registerAction, {
     enableFocusManagement: true,
-  })
+  });
 
   // パスワード強度の表示
-  const password = form.watch('password')
-  const passwordConfirm = form.watch('passwordConfirm')
+  const password = form.watch("password");
+  const passwordConfirm = form.watch("passwordConfirm");
 
   const getPasswordStrength = (password: string) => {
     if (!password) {
-      return { level: 0, text: '', color: 'text-gray-500', feedback: '' }
+      return { level: 0, text: "", color: "text-gray-500", feedback: "" };
     }
 
-    let score = 0
-    const feedback = []
+    let score = 0;
+    const feedback = [];
 
     if (password.length >= 8) {
-      score += 1
+      score += 1;
     } else {
-      feedback.push('8文字以上')
+      feedback.push("8文字以上");
     }
 
     if (/[A-Z]/.test(password)) {
-      score += 1
+      score += 1;
     } else {
-      feedback.push('大文字')
+      feedback.push("大文字");
     }
 
     if (/[a-z]/.test(password)) {
-      score += 1
+      score += 1;
     } else {
-      feedback.push('小文字')
+      feedback.push("小文字");
     }
 
     if (/\d/.test(password)) {
-      score += 1
+      score += 1;
     } else {
-      feedback.push('数字')
+      feedback.push("数字");
     }
 
     const levels = [
-      { level: 0, text: '弱い', color: 'text-red-500' },
-      { level: 1, text: '弱い', color: 'text-red-500' },
-      { level: 2, text: '普通', color: 'text-yellow-500' },
-      { level: 3, text: '強い', color: 'text-green-500' },
-      { level: 4, text: 'とても強い', color: 'text-green-600' },
-    ]
+      { level: 0, text: "弱い", color: "text-red-500" },
+      { level: 1, text: "弱い", color: "text-red-500" },
+      { level: 2, text: "普通", color: "text-yellow-500" },
+      { level: 3, text: "強い", color: "text-green-500" },
+      { level: 4, text: "とても強い", color: "text-green-600" },
+    ];
 
     return {
       ...levels[score],
-      feedback: feedback.length > 0 ? `必要: ${feedback.join(', ')}` : 'OK',
-    }
-  }
+      feedback: feedback.length > 0 ? `必要: ${feedback.join(", ")}` : "OK",
+    };
+  };
 
-  const passwordStrength = getPasswordStrength(password)
+  const passwordStrength = getPasswordStrength(password);
 
   return (
     <>
@@ -163,7 +163,7 @@ export default function RegisterPage() {
                             <span className={`font-medium ${passwordStrength.color}`}>
                               強度: {passwordStrength.text}
                             </span>
-                            {passwordStrength.feedback !== 'OK' && (
+                            {passwordStrength.feedback !== "OK" && (
                               <span className="text-gray-600 ml-2">
                                 ({passwordStrength.feedback})
                               </span>
@@ -261,11 +261,11 @@ export default function RegisterPage() {
                     disabled={isPending}
                     data-testid="submit-button"
                   >
-                    {isPending ? '登録中...' : 'アカウントを作成'}
+                    {isPending ? "登録中..." : "アカウントを作成"}
                   </Button>
 
                   <div className="text-center text-sm text-gray-600">
-                    すでにアカウントをお持ちの方は{' '}
+                    すでにアカウントをお持ちの方は{" "}
                     <Link
                       href="/login"
                       className="text-blue-600 hover:text-blue-500 underline focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 rounded"
@@ -284,5 +284,5 @@ export default function RegisterPage() {
         <p>EventPay - 小規模コミュニティ向けイベント出欠管理・集金ツール</p>
       </footer>
     </>
-  )
+  );
 }

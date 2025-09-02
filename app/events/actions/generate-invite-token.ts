@@ -1,15 +1,15 @@
-'use server'
+"use server";
 
-import { z } from 'zod'
+import { z } from "zod";
 
-import { getCurrentUser } from '@core/auth/auth-utils'
-import { SecureSupabaseClientFactory } from '@core/security/secure-client-factory.impl'
-import { generateInviteToken } from '@core/utils/invite-token'
+import { getCurrentUser } from "@core/auth/auth-utils";
+import { SecureSupabaseClientFactory } from "@core/security/secure-client-factory.impl";
+import { generateInviteToken } from "@core/utils/invite-token";
 
-const generateInviteTokenSchema = z.string().uuid('Invalid event ID format')
+const generateInviteTokenSchema = z.string().uuid("Invalid event ID format");
 
 interface GenerateInviteTokenOptions {
-  forceRegenerate?: boolean
+  forceRegenerate?: boolean;
 }
 
 export async function generateInviteTokenAction(
@@ -18,40 +18,40 @@ export async function generateInviteTokenAction(
 ) {
   try {
     // バリデーション
-    const validatedEventId = generateInviteTokenSchema.parse(eventId)
+    const validatedEventId = generateInviteTokenSchema.parse(eventId);
 
     // 認証確認
-    const user = await getCurrentUser()
+    const user = await getCurrentUser();
     if (!user) {
       return {
         success: false,
-        error: 'Authentication required',
-      }
+        error: "Authentication required",
+      };
     }
 
     // RLS 下の認証クライアントを利用
-    const factory = SecureSupabaseClientFactory.getInstance()
-    const supabase = await factory.createAuthenticatedClient()
+    const factory = SecureSupabaseClientFactory.getInstance();
+    const supabase = await factory.createAuthenticatedClient();
 
     // イベントの存在確認と権限チェック
     const { data: event, error: eventError } = await supabase
-      .from('events')
-      .select('id, created_by, invite_token')
-      .eq('id', validatedEventId)
-      .single()
+      .from("events")
+      .select("id, created_by, invite_token")
+      .eq("id", validatedEventId)
+      .single();
 
     if (eventError || !event) {
       return {
         success: false,
-        error: 'Event not found',
-      }
+        error: "Event not found",
+      };
     }
 
     if (event.created_by !== user.id) {
       return {
         success: false,
-        error: 'Permission denied',
-      }
+        error: "Permission denied",
+      };
     }
 
     // 既に招待トークンがある場合の処理
@@ -61,70 +61,70 @@ export async function generateInviteTokenAction(
         success: true,
         data: {
           inviteToken: event.invite_token,
-          inviteUrl: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/invite/${event.invite_token}`,
+          inviteUrl: `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/invite/${event.invite_token}`,
         },
-      }
+      };
     }
 
     // 新しい招待トークンを生成（重複チェック付き）
-    let newInviteToken = generateInviteToken()
-    let attempts = 0
-    const maxAttempts = 3
+    let newInviteToken = generateInviteToken();
+    let attempts = 0;
+    const maxAttempts = 3;
 
     // 重複チェック（まれなケースだが安全性のため）
     while (attempts < maxAttempts) {
       const { data: existing } = await supabase
-        .from('events')
-        .select('id')
-        .eq('invite_token', newInviteToken)
-        .single()
+        .from("events")
+        .select("id")
+        .eq("invite_token", newInviteToken)
+        .single();
 
       if (!existing) {
-        break
+        break;
       }
 
-      newInviteToken = generateInviteToken()
-      attempts++
+      newInviteToken = generateInviteToken();
+      attempts++;
     }
 
     if (attempts >= maxAttempts) {
       return {
         success: false,
-        error: 'Failed to generate unique invite token',
-      }
+        error: "Failed to generate unique invite token",
+      };
     }
 
     // データベースを更新
     const { error: updateError } = await supabase
-      .from('events')
+      .from("events")
       .update({ invite_token: newInviteToken })
-      .eq('id', validatedEventId)
+      .eq("id", validatedEventId);
 
     if (updateError) {
       return {
         success: false,
-        error: 'Failed to update invite token',
-      }
+        error: "Failed to update invite token",
+      };
     }
 
     return {
       success: true,
       data: {
         inviteToken: newInviteToken,
-        inviteUrl: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/invite/${newInviteToken}`,
+        inviteUrl: `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/invite/${newInviteToken}`,
       },
-    }
+    };
   } catch (error) {
     if (error instanceof z.ZodError) {
       return {
         success: false,
-        error: 'Invalid event ID',
-      }
+        error: "Invalid event ID",
+      };
     }
 
     return {
       success: false,
-      error: 'Internal server error',
-    }
+      error: "Internal server error",
+    };
   }
 }

@@ -2,32 +2,32 @@
  * Stripe Connect エラーページ
  */
 
-import { Suspense } from 'react'
+import { Suspense } from "react";
 
-import Link from 'next/link'
+import Link from "next/link";
 
-import { AlertTriangle, ArrowLeft, RefreshCw } from 'lucide-react'
-import type { Metadata } from 'next'
+import { AlertTriangle, ArrowLeft, RefreshCw } from "lucide-react";
+import type { Metadata } from "next";
 
-import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 export const metadata: Metadata = {
-  title: '設定エラー | EventPay',
-  description: 'Stripe Connect設定中にエラーが発生しました',
-}
+  title: "設定エラー | EventPay",
+  description: "Stripe Connect設定中にエラーが発生しました",
+};
 
 interface ErrorPageProps {
   searchParams: {
-    message?: string
-  }
+    message?: string;
+  };
 }
 
 function ErrorContent({ searchParams }: ErrorPageProps) {
   const errorMessage = searchParams.message
     ? decodeURIComponent(searchParams.message)
-    : 'Stripe Connect設定中に予期しないエラーが発生しました'
+    : "Stripe Connect設定中に予期しないエラーが発生しました";
 
   return (
     <div className="container mx-auto py-16 px-4">
@@ -79,7 +79,7 @@ function ErrorContent({ searchParams }: ErrorPageProps) {
         </Card>
       </div>
     </div>
-  )
+  );
 }
 
 export default function ConnectErrorPage(props: ErrorPageProps) {
@@ -87,5 +87,5 @@ export default function ConnectErrorPage(props: ErrorPageProps) {
     <Suspense fallback={<div>Loading...</div>}>
       <ErrorContent {...props} />
     </Suspense>
-  )
+  );
 }

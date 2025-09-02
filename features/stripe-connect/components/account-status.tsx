@@ -20,10 +20,7 @@ import {
 import { logger } from "@core/logging/app-logger";
 import { STRIPE_ACCOUNT_STATUS_LABELS } from "@core/types/enums";
 
-import {
-  getConnectAccountStatusAction,
-  createConnectAccountAction,
-} from "@/app/(dashboard)/actions/stripe-connect";
+// Actions are now injected via props to avoid circular dependency
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -50,9 +47,16 @@ interface AccountStatusData {
 interface AccountStatusProps {
   refreshUrl: string;
   returnUrl: string;
+  onGetAccountStatus: () => Promise<{ success: boolean; data?: AccountStatusData; error?: string }>;
+  onCreateAccount: (formData: FormData) => Promise<void>;
 }
 
-export function AccountStatus({ refreshUrl, returnUrl }: AccountStatusProps) {
+export function AccountStatus({
+  refreshUrl,
+  returnUrl,
+  onGetAccountStatus,
+  onCreateAccount,
+}: AccountStatusProps) {
   const [accountData, setAccountData] = useState<AccountStatusData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -60,7 +64,7 @@ export function AccountStatus({ refreshUrl, returnUrl }: AccountStatusProps) {
 
   const fetchAccountStatus = async () => {
     try {
-      const result = await getConnectAccountStatusAction();
+      const result = await onGetAccountStatus();
       if (result.success && result.data) {
         // statusプロパティを適切にマッピング
         const mappedData: AccountStatusData = {
@@ -101,7 +105,7 @@ export function AccountStatus({ refreshUrl, returnUrl }: AccountStatusProps) {
     formData.append("returnUrl", returnUrl);
 
     try {
-      await createConnectAccountAction(formData);
+      await onCreateAccount(formData);
     } catch (error) {
       logger.error("Account update error", {
         tag: "connectAccountUpdateError",

@@ -3,7 +3,7 @@
  * 無効な管理URLへのアクセス
  */
 
-import { ErrorLayout } from '@/components/errors'
+import { ErrorLayout } from "@/components/errors";
 
 /**
  * ゲスト管理URLの404ページ
@@ -27,5 +27,5 @@ export default function GuestNotFoundPage() {
         </p>
       </div>
     </ErrorLayout>
-  )
+  );
 }

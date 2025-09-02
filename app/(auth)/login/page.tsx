@@ -1,13 +1,13 @@
-'use client'
+"use client";
 
-import Link from 'next/link'
+import Link from "next/link";
 
-import { useLoginFormRHF } from '@features/auth'
+import { useLoginFormRHF } from "@features/auth";
 
-import { loginAction } from '@/app/(auth)/actions'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
-import { Checkbox } from '@/components/ui/checkbox'
+import { loginAction } from "@/app/(auth)/actions";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Form,
   FormControl,
@@ -15,13 +15,13 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from '@/components/ui/form'
-import { Input } from '@/components/ui/input'
+} from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
 
 export default function LoginPage() {
   const { form, onSubmit, isPending } = useLoginFormRHF(loginAction, {
     enableFocusManagement: true,
-  })
+  });
 
   return (
     <>
@@ -127,11 +127,11 @@ export default function LoginPage() {
 
                   {/* 送信ボタン */}
                   <Button type="submit" className="w-full" disabled={isPending}>
-                    {isPending ? 'ログイン中...' : 'ログイン'}
+                    {isPending ? "ログイン中..." : "ログイン"}
                   </Button>
 
                   <div className="text-center text-sm text-gray-600">
-                    アカウントをお持ちでない方は{' '}
+                    アカウントをお持ちでない方は{" "}
                     <Link
                       href="/register"
                       className="text-blue-600 hover:text-blue-500 underline focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 rounded"
@@ -150,5 +150,5 @@ export default function LoginPage() {
         <p>EventPay - 小規模コミュニティ向けイベント出欠管理・集金ツール</p>
       </footer>
     </>
-  )
+  );
 }

@@ -9,11 +9,7 @@ import { formatUtcToJstByType } from "@core/utils/timezone";
 
 import { SettlementReportData } from "../services/types";
 
-import {
-  getSettlementReportsAction,
-  exportSettlementReportsAction,
-  regenerateAfterRefundAction,
-} from "@/app/actions/settlement-report-actions";
+// Actions are now injected via props to avoid circular dependency
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -31,11 +27,33 @@ import { SettlementReportCard } from "./settlement-report-card";
 interface SettlementReportListProps {
   initialReports?: SettlementReportData[];
   availableEvents?: { id: string; title: string; date: string }[];
+  onGetReports: (params: {
+    eventIds?: string[];
+    fromDate?: string;
+    toDate?: string;
+    limit: number;
+    offset: number;
+  }) => Promise<{ success: boolean; reports: SettlementReportData[]; error?: string }>;
+  onExportReports: (params: {
+    eventIds?: string[];
+    fromDate?: string;
+    toDate?: string;
+  }) => Promise<{
+    success: boolean;
+    csvContent?: string;
+    filename?: string;
+    truncated?: boolean;
+    error?: string;
+  }>;
+  onRegenerateReport: (formData: FormData) => Promise<{ success: boolean; error?: string }>;
 }
 
 export function SettlementReportList({
   initialReports = [],
   availableEvents = [],
+  onGetReports,
+  onExportReports,
+  onRegenerateReport,
 }: SettlementReportListProps) {
   const { toast } = useToast();
   const [reports, setReports] = useState<SettlementReportData[]>(initialReports);
@@ -65,7 +83,7 @@ export function SettlementReportList({
         offset: effective.offset,
       };
 
-      const result = await getSettlementReportsAction(params);
+      const result = await onGetReports(params);
 
       if (result.success) {
         setReports(result.reports);
@@ -97,7 +115,7 @@ export function SettlementReportList({
         toDate: filters.toDate || undefined,
       };
 
-      const result = await exportSettlementReportsAction(params);
+      const result = await onExportReports(params);
 
       if (!result.success) {
         toast({
@@ -109,6 +127,15 @@ export function SettlementReportList({
       }
 
       // CSV ダウンロード（成功時）
+      if (!result.csvContent || !result.filename) {
+        toast({
+          title: "エクスポートエラー",
+          description: "CSVデータまたはファイル名が取得できませんでした",
+          variant: "destructive",
+        });
+        return;
+      }
+
       const blob = new Blob([result.csvContent], { type: "text/csv;charset=utf-8;" });
       const link = document.createElement("a");
       const url = URL.createObjectURL(blob);
@@ -150,7 +177,7 @@ export function SettlementReportList({
       const formData = new FormData();
       formData.append("eventId", eventId);
 
-      const result = await regenerateAfterRefundAction(formData);
+      const result = await onRegenerateReport(formData);
 
       if (result.success) {
         toast({

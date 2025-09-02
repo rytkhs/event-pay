@@ -1,24 +1,24 @@
-import { redirect } from 'next/navigation'
+import { redirect } from "next/navigation";
 
-import { createClient } from '@core/supabase/server'
+import { createClient } from "@core/supabase/server";
 
-import { EventForm as EventCreateForm } from '@features/events'
+import { EventForm as EventCreateForm } from "@features/events";
 
 export default async function CreateEventPage() {
-  const supabase = await createClient()
+  const supabase = await createClient();
 
   const {
     data: { user },
     error,
-  } = await supabase.auth.getUser()
+  } = await supabase.auth.getUser();
 
   if (error || !user) {
-    redirect('/login')
+    redirect("/login");
   }
 
   return (
     <div className="container mx-auto py-8">
       <EventCreateForm />
     </div>
-  )
+  );
 }

@@ -1,25 +1,25 @@
-import React, { Suspense } from 'react'
+import React, { Suspense } from "react";
 
-import Link from 'next/link'
-import { redirect } from 'next/navigation'
+import Link from "next/link";
+import { redirect } from "next/navigation";
 
 import {
   DEFAULT_SORT_BY,
   DEFAULT_SORT_ORDER,
   DEFAULT_STATUS_FILTER,
   DEFAULT_PAYMENT_FILTER,
-} from '@core/constants/event-filters'
+} from "@core/constants/event-filters";
 
-import { EventListWithFilters, EventLoading } from '@features/events'
+import { EventListWithFilters, EventLoading } from "@features/events";
 
-import { InlineErrorCard } from '@/components/errors'
-import { Button } from '@/components/ui/button'
+import { InlineErrorCard } from "@/components/errors";
+import { Button } from "@/components/ui/button";
 
-import { getEventsAction } from './actions'
-import type { SortBy, SortOrder, StatusFilter, PaymentFilter } from './actions/get-events'
+import { getEventsAction } from "./actions";
+import type { SortBy, SortOrder, StatusFilter, PaymentFilter } from "./actions/get-events";
 
 interface EventsContentProps {
-  searchParams: { [key: string]: string | string[] | undefined }
+  searchParams: { [key: string]: string | string[] | undefined };
 }
 
 async function EventsContent({ searchParams }: EventsContentProps) {
@@ -27,40 +27,40 @@ async function EventsContent({ searchParams }: EventsContentProps) {
   const sortBy =
     ((Array.isArray(searchParams.sortBy)
       ? searchParams.sortBy[0]
-      : searchParams.sortBy) as SortBy) || DEFAULT_SORT_BY
+      : searchParams.sortBy) as SortBy) || DEFAULT_SORT_BY;
 
   const sortOrder =
     ((Array.isArray(searchParams.sortOrder)
       ? searchParams.sortOrder[0]
-      : searchParams.sortOrder) as SortOrder) || DEFAULT_SORT_ORDER
+      : searchParams.sortOrder) as SortOrder) || DEFAULT_SORT_ORDER;
 
   const statusFilter =
     ((Array.isArray(searchParams.status)
       ? searchParams.status[0]
-      : searchParams.status) as StatusFilter) || DEFAULT_STATUS_FILTER
+      : searchParams.status) as StatusFilter) || DEFAULT_STATUS_FILTER;
 
   const paymentFilter =
     ((Array.isArray(searchParams.payment)
       ? searchParams.payment[0]
-      : searchParams.payment) as PaymentFilter) || DEFAULT_PAYMENT_FILTER
+      : searchParams.payment) as PaymentFilter) || DEFAULT_PAYMENT_FILTER;
 
   const dateStart = Array.isArray(searchParams.dateStart)
     ? searchParams.dateStart[0]
-    : searchParams.dateStart
+    : searchParams.dateStart;
 
   const dateEnd = Array.isArray(searchParams.dateEnd)
     ? searchParams.dateEnd[0]
-    : searchParams.dateEnd
+    : searchParams.dateEnd;
 
   // ページネーション用のパラメータ
   const page = parseInt(
-    Array.isArray(searchParams.page) ? searchParams.page[0] : searchParams.page || '1',
+    Array.isArray(searchParams.page) ? searchParams.page[0] : searchParams.page || "1",
     10
-  )
+  );
   const limit = parseInt(
-    Array.isArray(searchParams.limit) ? searchParams.limit[0] : searchParams.limit || '10',
+    Array.isArray(searchParams.limit) ? searchParams.limit[0] : searchParams.limit || "10",
     10
-  )
+  );
 
   const result = await getEventsAction({
     limit,
@@ -73,12 +73,12 @@ async function EventsContent({ searchParams }: EventsContentProps) {
       start: dateStart,
       end: dateEnd,
     },
-  })
+  });
 
   if (!result.success) {
     // 認証エラーの場合はログインページにリダイレクト
-    if (result.error.includes('認証')) {
-      redirect('/login')
+    if (result.error.includes("認証")) {
+      redirect("/login");
     }
 
     // その他のエラー
@@ -93,7 +93,7 @@ async function EventsContent({ searchParams }: EventsContentProps) {
         showRetry={true}
         compact={false}
       />
-    )
+    );
   }
 
   return (
@@ -106,11 +106,11 @@ async function EventsContent({ searchParams }: EventsContentProps) {
       initialPaymentFilter={paymentFilter}
       initialDateFilter={{ start: dateStart, end: dateEnd }}
     />
-  )
+  );
 }
 
 interface EventsPageProps {
-  searchParams: { [key: string]: string | string[] | undefined }
+  searchParams: { [key: string]: string | string[] | undefined };
 }
 
 export default async function EventsPage({ searchParams }: EventsPageProps) {
@@ -127,5 +127,5 @@ export default async function EventsPage({ searchParams }: EventsPageProps) {
         <EventsContent searchParams={searchParams} />
       </Suspense>
     </div>
-  )
+  );
 }

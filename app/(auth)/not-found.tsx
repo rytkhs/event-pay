@@ -3,17 +3,17 @@
  * /(auth)/*で存在しないページへのアクセス
  */
 
-'use client'
+"use client";
 
-import { NotFoundLayout } from '@/components/errors'
+import { NotFoundLayout } from "@/components/errors";
 
 /**
  * 認証関連ページの404エラー
  */
 export default function AuthNotFoundPage() {
   const handleGoToLogin = () => {
-    window.location.href = '/auth/login'
-  }
+    window.location.href = "/auth/login";
+  };
 
   return (
     <NotFoundLayout
@@ -23,11 +23,11 @@ export default function AuthNotFoundPage() {
       showBack={true}
       customActions={[
         {
-          label: 'ログインページ',
+          label: "ログインページ",
           action: handleGoToLogin,
-          variant: 'default',
+          variant: "default",
         },
       ]}
     />
-  )
+  );
 }
