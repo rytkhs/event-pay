@@ -54,8 +54,8 @@
         "pattern": "components/ui/**/*"
       },
       {
-        "type": "components-other",
-        "pattern": "components/**/*"
+        "type": "components-errors",
+        "pattern": "components/errors/**/*"
       },
       {
         "type": "types",
@@ -73,7 +73,7 @@
           // app層は全てにアクセス可能
           {
             "from": "app",
-            "allow": ["features", "core", "components-ui", "components-other", "types"]
+            "allow": ["features", "core", "components-ui", "components-errors", "types"]
           },
           // features層はcoreとcomponents/uiのみアクセス可能
           {
@@ -90,10 +90,10 @@
             "from": "components-ui",
             "allow": ["types"]
           },
-          // components/other層はcoreとtypesにアクセス可能（既存互換）
+          // components/errors層はtypesのみ
           {
-            "from": "components-other",
-            "allow": ["core", "types"]
+            "from": "components-errors",
+            "allow": ["types"]
           }
         ]
       }
@@ -221,6 +221,16 @@
             "target": "./app/**/*",
             "from": "./lib/**/*",
             "message": "app層では@core/*または@features/*を使用してください（lib/*は段階的に廃止予定）"
+          },
+          {
+            "target": "./core/**/*",
+            "from": "./features/**/*",
+            "message": "core層からfeatures層の参照は禁止です（共有型は@core/typesへ集約）"
+          },
+          {
+            "target": "./components/ui/**/*",
+            "from": "./core/**/*",
+            "message": "components/ui は core への依存を禁止します（UIの独立性を維持）"
           }
         ]
       }
