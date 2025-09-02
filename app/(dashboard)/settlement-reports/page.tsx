@@ -1,26 +1,26 @@
-import React from "react";
+import React from 'react'
 
-import { redirect } from "next/navigation";
+import { redirect } from 'next/navigation'
 
-import { getCurrentUser } from "@core/auth/auth-utils";
-import { createClient } from "@core/supabase/server";
+import { getCurrentUser } from '@core/auth/auth-utils'
+import { createClient } from '@core/supabase/server'
 
-import { SettlementReportList, SettlementReportGenerator } from "@features/settlements";
+import { SettlementReportList, SettlementReportGenerator } from '@features/settlements'
 
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 
 export default async function SettlementReportsPage() {
   // 認証確認
-  const user = await getCurrentUser();
+  const user = await getCurrentUser()
   if (!user?.id) {
-    redirect("/login");
+    redirect('/login')
   }
 
-  const supabase = createClient();
+  const supabase = createClient()
 
   // 利用可能なイベント一覧を取得
   const { data: events } = await supabase
-    .from("events")
+    .from('events')
     .select(
       `
       id,
@@ -34,8 +34,8 @@ export default async function SettlementReportsPage() {
       )
     `
     )
-    .eq("created_by", user.id)
-    .order("date", { ascending: false });
+    .eq('created_by', user.id)
+    .order('date', { ascending: false })
 
   // イベントに既存レポートがあるかチェック
   const availableEvents = (events || []).map((event) => ({
@@ -45,19 +45,19 @@ export default async function SettlementReportsPage() {
     status: event.status,
     hasExistingReport:
       (event.settlements as any[])?.some(
-        (settlement) => settlement.settlement_mode === "destination_charge"
+        (settlement) => settlement.settlement_mode === 'destination_charge'
       ) || false,
-  }));
+  }))
 
   // 初期レポート一覧を取得（最新10件）- RPC関数で動的計算
-  const { data: initialReportsRpc } = await (supabase as any).rpc("get_settlement_report_details", {
+  const { data: initialReportsRpc } = await (supabase as any).rpc('get_settlement_report_details', {
     p_created_by: user.id,
     p_event_ids: null,
     p_from_date: null,
     p_to_date: null,
     p_limit: 10,
     p_offset: 0,
-  });
+  })
 
   const formattedReports = (initialReportsRpc || []).map((report: any) => ({
     eventId: report.event_id,
@@ -80,7 +80,7 @@ export default async function SettlementReportsPage() {
 
     settlementMode: report.settlement_mode,
     status: report.status,
-  }));
+  }))
 
   return (
     <div className="container mx-auto py-8 space-y-8">
@@ -114,5 +114,5 @@ export default async function SettlementReportsPage() {
         </TabsContent>
       </Tabs>
     </div>
-  );
+  )
 }

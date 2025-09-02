@@ -2,19 +2,19 @@
  * エラーページ用のアクションボタンコンポーネント
  */
 
-"use client";
+'use client'
 
-import Link from "next/link";
+import Link from 'next/link'
 
-import type { LucideIcon } from "lucide-react";
-import { RefreshCw, Home, ArrowLeft, MessageCircle, ExternalLink } from "lucide-react";
+import type { LucideIcon } from 'lucide-react'
+import { RefreshCw, Home, ArrowLeft, MessageCircle, ExternalLink } from 'lucide-react'
 
-import { Button } from "@/components/ui/button";
+import { Button } from '@/components/ui/button'
 
-import type { ErrorActionConfig } from "../error-types";
+import type { ErrorActionConfig } from '../error-types'
 
 interface ErrorActionsProps extends ErrorActionConfig {
-  className?: string;
+  className?: string
 }
 
 /**
@@ -26,35 +26,35 @@ export function ErrorActions({
   showBack = false,
   showSupport = false,
   customActions = [],
-  retryLabel = "再試行",
+  retryLabel = '再試行',
   onRetry,
-  className = "",
+  className = '',
 }: ErrorActionsProps) {
   const handleRetry = () => {
     if (onRetry) {
-      onRetry();
+      onRetry()
     } else {
       // デフォルトの再試行アクション
-      window.location.reload();
+      window.location.reload()
     }
-  };
+  }
 
   const handleGoHome = () => {
-    window.location.href = "/";
-  };
+    window.location.href = '/'
+  }
 
   const handleGoBack = () => {
-    window.history.back();
-  };
+    window.history.back()
+  }
 
   const handleSupport = () => {
     // サポートページへのリンクまたはメールto:
-    const supportEmail = process.env.NEXT_PUBLIC_SUPPORT_EMAIL || "support@example.com";
-    window.location.href = `mailto:${supportEmail}?subject=EventPayでエラーが発生しました`;
-  };
+    const supportEmail = process.env.NEXT_PUBLIC_SUPPORT_EMAIL || 'support@example.com'
+    window.location.href = `mailto:${supportEmail}?subject=EventPayでエラーが発生しました`
+  }
 
   // アクションの優先順位を決定
-  const actions = [];
+  const actions = []
 
   // カスタムアクション（最優先）
   customActions.forEach((action, index) => {
@@ -62,14 +62,14 @@ export function ErrorActions({
       <Button
         key={`custom-${index}`}
         onClick={action.action}
-        variant={action.variant || "default"}
+        variant={action.variant || 'default'}
         className="w-full"
       >
         {action.icon && <action.icon className="h-4 w-4 mr-2" />}
         {action.label}
       </Button>
-    );
-  });
+    )
+  })
 
   // 再試行ボタン
   if (showRetry) {
@@ -82,7 +82,7 @@ export function ErrorActions({
         <RefreshCw className="h-4 w-4 mr-2" />
         {retryLabel}
       </Button>
-    );
+    )
   }
 
   // 戻るボタン
@@ -92,7 +92,7 @@ export function ErrorActions({
         <ArrowLeft className="h-4 w-4 mr-2" />
         戻る
       </Button>
-    );
+    )
   }
 
   // サポートボタン
@@ -102,51 +102,51 @@ export function ErrorActions({
         <MessageCircle className="h-4 w-4 mr-2" />
         サポートに連絡
       </Button>
-    );
+    )
   }
 
   // ホームボタン（最低優先）
   if (showHome) {
-    const isOnlyAction = actions.length === 0;
+    const isOnlyAction = actions.length === 0
     actions.push(
       <Button
         key="home"
         onClick={handleGoHome}
-        variant={isOnlyAction ? "default" : "outline"}
+        variant={isOnlyAction ? 'default' : 'outline'}
         className="w-full"
       >
         <Home className="h-4 w-4 mr-2" />
         ホームに戻る
       </Button>
-    );
+    )
   }
 
   if (actions.length === 0) {
-    return null;
+    return null
   }
 
-  return <div className={`space-y-3 ${className}`}>{actions}</div>;
+  return <div className={`space-y-3 ${className}`}>{actions}</div>
 }
 
 /**
  * 単一のアクションボタン
  */
 interface SingleActionButtonProps {
-  label: string;
-  onClick: () => void;
-  variant?: "default" | "outline" | "destructive" | "secondary";
-  icon?: LucideIcon;
-  className?: string;
-  disabled?: boolean;
-  loading?: boolean;
+  label: string
+  onClick: () => void
+  variant?: 'default' | 'outline' | 'destructive' | 'secondary'
+  icon?: LucideIcon
+  className?: string
+  disabled?: boolean
+  loading?: boolean
 }
 
 export function SingleActionButton({
   label,
   onClick,
-  variant = "default",
+  variant = 'default',
   icon: Icon,
-  className = "",
+  className = '',
   disabled = false,
   loading = false,
 }: SingleActionButtonProps) {
@@ -164,28 +164,28 @@ export function SingleActionButton({
       ) : null}
       {label}
     </Button>
-  );
+  )
 }
 
 /**
  * リンクベースのアクションボタン
  */
 interface LinkActionButtonProps {
-  href: string;
-  label: string;
-  variant?: "default" | "outline" | "destructive" | "secondary";
-  icon?: LucideIcon;
-  external?: boolean;
-  className?: string;
+  href: string
+  label: string
+  variant?: 'default' | 'outline' | 'destructive' | 'secondary'
+  icon?: LucideIcon
+  external?: boolean
+  className?: string
 }
 
 export function LinkActionButton({
   href,
   label,
-  variant = "default",
+  variant = 'default',
   icon: Icon,
   external = false,
-  className = "",
+  className = '',
 }: LinkActionButtonProps) {
   if (external) {
     return (
@@ -196,7 +196,7 @@ export function LinkActionButton({
           <ExternalLink className="h-4 w-4 ml-2" />
         </a>
       </Button>
-    );
+    )
   }
 
   return (
@@ -206,7 +206,7 @@ export function LinkActionButton({
         {label}
       </Link>
     </Button>
-  );
+  )
 }
 
 /**
@@ -214,20 +214,18 @@ export function LinkActionButton({
  */
 export const RetryButton = ({
   onRetry,
-  label = "再試行",
+  label = '再試行',
 }: {
-  onRetry: () => void;
-  label?: string;
-}) => <SingleActionButton label={label} onClick={onRetry} icon={RefreshCw} variant="default" />;
+  onRetry: () => void
+  label?: string
+}) => <SingleActionButton label={label} onClick={onRetry} icon={RefreshCw} variant="default" />
 
-export const HomeButton = ({ variant = "outline" }: { variant?: "default" | "outline" }) => (
+export const HomeButton = ({ variant = 'outline' }: { variant?: 'default' | 'outline' }) => (
   <LinkActionButton href="/" label="ホームに戻る" icon={Home} variant={variant} />
-);
+)
 
 export const BackButton = ({ onClick }: { onClick?: () => void }) => {
-  const handleBack = onClick || (() => window.history.back());
+  const handleBack = onClick || (() => window.history.back())
 
-  return (
-    <SingleActionButton label="戻る" onClick={handleBack} icon={ArrowLeft} variant="outline" />
-  );
-};
+  return <SingleActionButton label="戻る" onClick={handleBack} icon={ArrowLeft} variant="outline" />
+}

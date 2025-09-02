@@ -3,20 +3,20 @@
  * Next.js App Router error.tsx, not-found.tsx, global-error.tsx 用
  */
 
-"use client";
+'use client'
 
-import type { ReactNode } from "react";
-import { useEffect } from "react";
+import type { ReactNode } from 'react'
+import { useEffect } from 'react'
 
-import { logError, addBreadcrumb } from "./error-logger";
-import type { ErrorPageProps } from "./error-types";
-import { ErrorCard } from "./ui/error-card";
+import { logError, addBreadcrumb } from './error-logger'
+import type { ErrorPageProps } from './error-types'
+import { ErrorCard } from './ui/error-card'
 
 interface ErrorLayoutProps extends ErrorPageProps {
-  children?: ReactNode;
-  size?: "sm" | "md" | "lg";
-  showErrorDetails?: boolean;
-  enableLogging?: boolean;
+  children?: ReactNode
+  size?: 'sm' | 'md' | 'lg'
+  showErrorDetails?: boolean
+  enableLogging?: boolean
 }
 
 /**
@@ -25,7 +25,7 @@ interface ErrorLayoutProps extends ErrorPageProps {
 export function ErrorLayout({
   code,
   category,
-  severity = "medium",
+  severity = 'medium',
   title,
   message,
   description,
@@ -39,7 +39,7 @@ export function ErrorLayout({
   onRetry,
   error,
   reset,
-  size = "md",
+  size = 'md',
   showErrorDetails = true,
   enableLogging = true,
   children,
@@ -49,7 +49,7 @@ export function ErrorLayout({
   useEffect(() => {
     if (enableLogging && error) {
       // パンくずリスト追加
-      addBreadcrumb("error", `Error occurred: ${title}`, "error", { code, category, severity });
+      addBreadcrumb('error', `Error occurred: ${title}`, 'error', { code, category, severity })
 
       // エラーログ記録
       logError(
@@ -64,14 +64,14 @@ export function ErrorLayout({
         },
         error,
         {
-          url: typeof window !== "undefined" ? window.location.href : undefined,
-          pathname: typeof window !== "undefined" ? window.location.pathname : undefined,
-          userAgent: typeof window !== "undefined" ? window.navigator.userAgent : undefined,
-          referrer: typeof document !== "undefined" ? document.referrer : undefined,
+          url: typeof window !== 'undefined' ? window.location.href : undefined,
+          pathname: typeof window !== 'undefined' ? window.location.pathname : undefined,
+          userAgent: typeof window !== 'undefined' ? window.navigator.userAgent : undefined,
+          referrer: typeof document !== 'undefined' ? document.referrer : undefined,
         }
-      );
+      )
     }
-  }, [error, code, category, severity, title, message, description, enableLogging]);
+  }, [error, code, category, severity, title, message, description, enableLogging])
 
   return (
     <ErrorCard
@@ -96,16 +96,16 @@ export function ErrorLayout({
     >
       {children}
     </ErrorCard>
-  );
+  )
 }
 
 /**
  * 404エラー専用レイアウト
  */
 export function NotFoundLayout({
-  title = "ページが見つかりません",
-  message = "お探しのページは存在しないか、移動された可能性があります。",
-  description = "URLをご確認いただくか、ホームページに戻ってください。",
+  title = 'ページが見つかりません',
+  message = 'お探しのページは存在しないか、移動された可能性があります。',
+  description = 'URLをご確認いただくか、ホームページに戻ってください。',
   showBack = true,
   ...props
 }: Partial<ErrorLayoutProps>) {
@@ -123,16 +123,16 @@ export function NotFoundLayout({
       enableLogging={false} // 404は大量に発生する可能性があるためログ無効
       {...props}
     />
-  );
+  )
 }
 
 /**
  * 500エラー専用レイアウト
  */
 export function ServerErrorLayout({
-  title = "サーバーエラーが発生しました",
-  message = "申し訳ございません。サーバーで問題が発生しました。",
-  description = "しばらく時間をおいて再度お試しください。問題が続く場合はサポートにお問い合わせください。",
+  title = 'サーバーエラーが発生しました',
+  message = '申し訳ございません。サーバーで問題が発生しました。',
+  description = 'しばらく時間をおいて再度お試しください。問題が続く場合はサポートにお問い合わせください。',
   showRetry = true,
   showSupport = true,
   ...props
@@ -150,20 +150,20 @@ export function ServerErrorLayout({
       showSupport={showSupport}
       {...props}
     />
-  );
+  )
 }
 
 /**
  * 認証エラー専用レイアウト
  */
 export function AuthErrorLayout({
-  title = "認証が必要です",
-  message = "このページにアクセスするには認証が必要です。",
-  description = "ログインしてから再度お試しください。",
+  title = '認証が必要です',
+  message = 'このページにアクセスするには認証が必要です。',
+  description = 'ログインしてから再度お試しください。',
   customActions,
   ...props
 }: Partial<ErrorLayoutProps>) {
-  const defaultCustomActions = customActions || [];
+  const defaultCustomActions = customActions || []
 
   return (
     <ErrorLayout
@@ -178,18 +178,18 @@ export function AuthErrorLayout({
       customActions={defaultCustomActions}
       {...props}
     />
-  );
+  )
 }
 
 /**
  * レート制限エラー専用レイアウト
  */
 export function RateLimitErrorLayout({
-  title = "アクセス制限",
-  message = "アクセス頻度が高すぎます。",
-  description = "セキュリティのため、短時間での連続アクセスを制限しています。5分程度お待ちください。",
+  title = 'アクセス制限',
+  message = 'アクセス頻度が高すぎます。',
+  description = 'セキュリティのため、短時間での連続アクセスを制限しています。5分程度お待ちください。',
   showRetry = true,
-  retryLabel = "再試行",
+  retryLabel = '再試行',
   ...props
 }: Partial<ErrorLayoutProps>) {
   return (
@@ -209,16 +209,16 @@ export function RateLimitErrorLayout({
         <p className="text-sm text-orange-700">{description}</p>
       </div>
     </ErrorLayout>
-  );
+  )
 }
 
 /**
  * 決済エラー専用レイアウト
  */
 export function PaymentErrorLayout({
-  title = "決済エラーが発生しました",
-  message = "決済処理中にエラーが発生しました。",
-  description = "カード情報をご確認の上、再度お試しください。問題が続く場合はサポートにお問い合わせください。",
+  title = '決済エラーが発生しました',
+  message = '決済処理中にエラーが発生しました。',
+  description = 'カード情報をご確認の上、再度お試しください。問題が続く場合はサポートにお問い合わせください。',
   showRetry = true,
   showSupport = true,
   ...props
@@ -236,18 +236,18 @@ export function PaymentErrorLayout({
       showSupport={showSupport}
       {...props}
     />
-  );
+  )
 }
 
 /**
  * メンテナンス中専用レイアウト
  */
 export function MaintenanceLayout({
-  title = "メンテナンス中",
-  message = "現在、システムメンテナンスを実施しています。",
-  description = "ご迷惑をおかけして申し訳ございません。しばらくお待ちください。",
+  title = 'メンテナンス中',
+  message = '現在、システムメンテナンスを実施しています。',
+  description = 'ご迷惑をおかけして申し訳ございません。しばらくお待ちください。',
   showRetry = true,
-  retryLabel = "再確認",
+  retryLabel = '再確認',
   ...props
 }: Partial<ErrorLayoutProps>) {
   return (
@@ -263,5 +263,5 @@ export function MaintenanceLayout({
       retryLabel={retryLabel}
       {...props}
     />
-  );
+  )
 }

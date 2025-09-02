@@ -3,13 +3,13 @@
  * /events/*で発生するエラーをキャッチ
  */
 
-"use client";
+'use client'
 
-import { ErrorLayout } from "@/components/errors";
+import { ErrorLayout } from '@/components/errors'
 
 interface EventsErrorPageProps {
-  error: Error & { digest?: string };
-  reset: () => void;
+  error: Error & { digest?: string }
+  reset: () => void
 }
 
 /**
@@ -31,5 +31,5 @@ export default function EventsErrorPage({ error, reset }: EventsErrorPageProps) 
       error={error}
       size="md"
     />
-  );
+  )
 }

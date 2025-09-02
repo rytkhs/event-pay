@@ -1,34 +1,34 @@
-import { redirect } from "next/navigation";
+import { redirect } from 'next/navigation'
 
-import { createClient } from "@core/supabase/server";
-import { formatUtcToJst } from "@core/utils/timezone";
+import { createClient } from '@core/supabase/server'
+import { formatUtcToJst } from '@core/utils/timezone'
 
-import { logoutAction } from "@/app/(auth)/actions";
+import { logoutAction } from '@/app/(auth)/actions'
 
 async function handleLogout() {
-  "use server";
-  const result = await logoutAction();
+  'use server'
+  const result = await logoutAction()
   if (result.success && result.redirectUrl) {
-    redirect(result.redirectUrl);
+    redirect(result.redirectUrl)
   }
 }
 
 export default async function DashboardPage() {
   // 認証状態チェック
-  const supabase = createClient();
+  const supabase = createClient()
 
   // デバッグ情報を追加
-  if (process.env.NODE_ENV === "development") {
+  if (process.env.NODE_ENV === 'development') {
     // console.info("Dashboard: Checking authentication...");
   }
 
   const {
     data: { user },
     error,
-  } = await supabase.auth.getUser();
+  } = await supabase.auth.getUser()
 
   // デバッグ情報を追加
-  if (process.env.NODE_ENV === "development") {
+  if (process.env.NODE_ENV === 'development') {
     // console.info("Dashboard: Auth check result:", {
     //   hasUser: !!user,
     //   userId: user?.id || "none",
@@ -39,10 +39,10 @@ export default async function DashboardPage() {
   }
 
   if (error || !user) {
-    if (process.env.NODE_ENV === "development") {
+    if (process.env.NODE_ENV === 'development') {
       // console.warn("Dashboard: Redirecting to login due to auth failure");
     }
-    redirect("/login?redirectTo=/home");
+    redirect('/login?redirectTo=/home')
   }
 
   return (
@@ -90,15 +90,15 @@ export default async function DashboardPage() {
                     <div className="flex justify-between">
                       <span className="text-sm text-gray-600">登録日時:</span>
                       <span className="text-sm text-gray-900">
-                        {formatUtcToJst(user.created_at, "yyyy/MM/dd HH:mm")}
+                        {formatUtcToJst(user.created_at, 'yyyy/MM/dd HH:mm')}
                       </span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-sm text-gray-600">メール確認:</span>
                       <span
-                        className={`text-sm ${user.email_confirmed_at ? "text-green-600" : "text-red-600"}`}
+                        className={`text-sm ${user.email_confirmed_at ? 'text-green-600' : 'text-red-600'}`}
                       >
-                        {user.email_confirmed_at ? "確認済み" : "未確認"}
+                        {user.email_confirmed_at ? '確認済み' : '未確認'}
                       </span>
                     </div>
                   </div>
@@ -114,5 +114,5 @@ export default async function DashboardPage() {
         </div>
       </main>
     </div>
-  );
+  )
 }

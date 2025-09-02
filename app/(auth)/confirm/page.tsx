@@ -1,14 +1,14 @@
-import Link from "next/link";
+import Link from 'next/link'
 
 interface ConfirmPageProps {
   searchParams: {
-    email?: string;
-    error?: string;
-  };
+    email?: string
+    error?: string
+  }
 }
 
 export default async function ConfirmPage({ searchParams }: ConfirmPageProps) {
-  const { email, error } = searchParams;
+  const { email, error } = searchParams
 
   // エラーがある場合の表示
   if (error) {
@@ -30,7 +30,7 @@ export default async function ConfirmPage({ searchParams }: ConfirmPageProps) {
           </main>
         </div>
       </div>
-    );
+    )
   }
 
   // 通常の確認待ちページ
@@ -88,5 +88,5 @@ export default async function ConfirmPage({ searchParams }: ConfirmPageProps) {
         </footer>
       </div>
     </div>
-  );
+  )
 }

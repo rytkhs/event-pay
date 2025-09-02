@@ -1,91 +1,91 @@
-"use client";
+'use client'
 
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect, Suspense } from 'react'
 
-import Link from "next/link";
-import { useSearchParams, useRouter } from "next/navigation";
+import Link from 'next/link'
+import { useSearchParams, useRouter } from 'next/navigation'
 
-import { resendOtpAction } from "../actions";
+import { resendOtpAction } from '../actions'
 
 function VerifyEmailContent() {
-  const [resendLoading, setResendLoading] = useState(false);
-  const [resendDisabled, setResendDisabled] = useState(false);
-  const [countdown, setCountdown] = useState(0);
-  const [message, setMessage] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [resendLoading, setResendLoading] = useState(false)
+  const [resendDisabled, setResendDisabled] = useState(false)
+  const [countdown, setCountdown] = useState(0)
+  const [message, setMessage] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
 
-  const searchParams = useSearchParams();
-  const router = useRouter();
-  const email = searchParams.get("email");
+  const searchParams = useSearchParams()
+  const router = useRouter()
+  const email = searchParams.get('email')
 
   // カウントダウンタイマー
   useEffect(() => {
     if (countdown > 0) {
-      const timer = setTimeout(() => setCountdown(countdown - 1), 1000);
-      return () => clearTimeout(timer);
+      const timer = setTimeout(() => setCountdown(countdown - 1), 1000)
+      return () => clearTimeout(timer)
     } else if (resendDisabled && countdown === 0) {
-      setResendDisabled(false);
+      setResendDisabled(false)
     }
-  }, [countdown, resendDisabled]);
+  }, [countdown, resendDisabled])
 
   // メールアドレスがない場合はリダイレクト
   useEffect(() => {
     if (!email) {
-      router.push("/login");
+      router.push('/login')
     }
-  }, [email, router]);
+  }, [email, router])
 
   const handleResend = async () => {
     if (!email || resendDisabled) {
-      return;
+      return
     }
 
-    setResendLoading(true);
-    setError(null);
-    setMessage(null);
+    setResendLoading(true)
+    setError(null)
+    setMessage(null)
 
     try {
-      const formData = new FormData();
-      formData.append("email", email);
+      const formData = new FormData()
+      formData.append('email', email)
 
-      const result = await resendOtpAction(formData);
+      const result = await resendOtpAction(formData)
 
       if (result.error) {
-        setError(result.error);
+        setError(result.error)
       } else {
-        setMessage("確認メールを再送信しました");
-        setResendDisabled(true);
-        setCountdown(60);
+        setMessage('確認メールを再送信しました')
+        setResendDisabled(true)
+        setCountdown(60)
       }
     } catch {
-      setError("再送信に失敗しました。");
+      setError('再送信に失敗しました。')
     } finally {
-      setResendLoading(false);
+      setResendLoading(false)
     }
-  };
-
-  const getEmailProvider = (email: string) => {
-    const domain = email.split("@")[1]?.toLowerCase();
-
-    const providers = {
-      "gmail.com": { name: "Gmail", url: "https://mail.google.com" },
-      "yahoo.co.jp": { name: "Yahoo!メール", url: "https://mail.yahoo.co.jp" },
-      "hotmail.com": { name: "Outlook", url: "https://outlook.live.com" },
-      "outlook.com": { name: "Outlook", url: "https://outlook.live.com" },
-      "icloud.com": { name: "iCloud Mail", url: "https://www.icloud.com/mail" },
-      "docomo.ne.jp": { name: "ドコモメール", url: "https://mail.docomo.ne.jp" },
-      "ezweb.ne.jp": { name: "au メール", url: "https://webmail.ezweb.ne.jp" },
-      "softbank.ne.jp": { name: "SoftBank メール", url: "https://mail.softbank.jp" },
-    };
-
-    return providers[domain as keyof typeof providers];
-  };
-
-  if (!email) {
-    return null; // リダイレクト中
   }
 
-  const emailProvider = getEmailProvider(email);
+  const getEmailProvider = (email: string) => {
+    const domain = email.split('@')[1]?.toLowerCase()
+
+    const providers = {
+      'gmail.com': { name: 'Gmail', url: 'https://mail.google.com' },
+      'yahoo.co.jp': { name: 'Yahoo!メール', url: 'https://mail.yahoo.co.jp' },
+      'hotmail.com': { name: 'Outlook', url: 'https://outlook.live.com' },
+      'outlook.com': { name: 'Outlook', url: 'https://outlook.live.com' },
+      'icloud.com': { name: 'iCloud Mail', url: 'https://www.icloud.com/mail' },
+      'docomo.ne.jp': { name: 'ドコモメール', url: 'https://mail.docomo.ne.jp' },
+      'ezweb.ne.jp': { name: 'au メール', url: 'https://webmail.ezweb.ne.jp' },
+      'softbank.ne.jp': { name: 'SoftBank メール', url: 'https://mail.softbank.jp' },
+    }
+
+    return providers[domain as keyof typeof providers]
+  }
+
+  if (!email) {
+    return null // リダイレクト中
+  }
+
+  const emailProvider = getEmailProvider(email)
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -184,15 +184,15 @@ function VerifyEmailContent() {
                 disabled={resendDisabled || resendLoading}
                 className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
                   resendDisabled || resendLoading
-                    ? "bg-gray-300 text-gray-500 cursor-not-allowed"
-                    : "bg-blue-600 text-white hover:bg-blue-700"
+                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                    : 'bg-blue-600 text-white hover:bg-blue-700'
                 }`}
               >
                 {resendLoading
-                  ? "送信中..."
+                  ? '送信中...'
                   : resendDisabled
                     ? `再送信まで ${countdown}秒`
-                    : "確認メールを再送信"}
+                    : '確認メールを再送信'}
               </button>
             </div>
           </div>
@@ -218,7 +218,7 @@ function VerifyEmailContent() {
         </footer>
       </div>
     </div>
-  );
+  )
 }
 
 export default function VerifyEmailPage() {
@@ -253,5 +253,5 @@ export default function VerifyEmailPage() {
     >
       <VerifyEmailContent />
     </Suspense>
-  );
+  )
 }

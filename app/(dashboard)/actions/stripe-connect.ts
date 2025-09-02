@@ -1,83 +1,83 @@
 /**
  * Stripe Connect関連のServer Actions
  */
-"use server";
+'use server'
 
-import { redirect } from "next/navigation";
+import { redirect } from 'next/navigation'
 
-import { z } from "zod";
+import { z } from 'zod'
 
-import { logger } from "@core/logging/app-logger";
+import { logger } from '@core/logging/app-logger'
 import {
   CONNECT_REFRESH_SUFFIX,
   CONNECT_RETURN_SUFFIX,
   isAllowedConnectPath,
-} from "@core/routes/stripe-connect";
-import { createClient } from "@core/supabase/server";
+} from '@core/routes/stripe-connect'
+import { createClient } from '@core/supabase/server'
 
 import {
   createUserStripeConnectService,
   StripeConnectError,
   StripeConnectErrorType,
-} from "@features/stripe-connect";
+} from '@features/stripe-connect'
 
 // バリデーションスキーマ
 const CreateConnectAccountSchema = z.object({
-  refreshUrl: z.string().url("有効なリフレッシュURLを指定してください"),
-  returnUrl: z.string().url("有効なリターンURLを指定してください"),
-});
+  refreshUrl: z.string().url('有効なリフレッシュURLを指定してください'),
+  returnUrl: z.string().url('有効なリターンURLを指定してください'),
+})
 
 // リダイレクトURLの検証関数（オリジン・パス検証を含む）。成功時は入力値をそのまま返す
 function validateAndNormalizeRedirectUrls(formData: FormData): {
-  refreshUrl: string;
-  returnUrl: string;
+  refreshUrl: string
+  returnUrl: string
 } {
   const rawData = {
-    refreshUrl: formData.get("refreshUrl") as string,
-    returnUrl: formData.get("returnUrl") as string,
-  };
-
-  const validationResult = CreateConnectAccountSchema.safeParse(rawData);
-  if (!validationResult.success) {
-    const errorMessages = validationResult.error.errors.map((e) => e.message).join(", ");
-    throw new Error(`入力データが無効です: ${errorMessages}`);
+    refreshUrl: formData.get('refreshUrl') as string,
+    returnUrl: formData.get('returnUrl') as string,
   }
 
-  const { refreshUrl, returnUrl } = validationResult.data;
+  const validationResult = CreateConnectAccountSchema.safeParse(rawData)
+  if (!validationResult.success) {
+    const errorMessages = validationResult.error.errors.map((e) => e.message).join(', ')
+    throw new Error(`入力データが無効です: ${errorMessages}`)
+  }
+
+  const { refreshUrl, returnUrl } = validationResult.data
 
   const getAllowedOrigins = () => {
-    const origins: string[] = [];
+    const origins: string[] = []
     if (process.env.NEXT_PUBLIC_APP_URL) {
-      origins.push(process.env.NEXT_PUBLIC_APP_URL);
+      origins.push(process.env.NEXT_PUBLIC_APP_URL)
     }
     if (process.env.NEXT_PUBLIC_SITE_URL) {
-      origins.push(process.env.NEXT_PUBLIC_SITE_URL);
+      origins.push(process.env.NEXT_PUBLIC_SITE_URL)
     }
-    origins.push("http://localhost:3000");
-    origins.push("https://localhost:3000");
+    origins.push('http://localhost:3000')
+    origins.push('https://localhost:3000')
     if (process.env.VERCEL_URL) {
-      origins.push(`https://${process.env.VERCEL_URL}`);
+      origins.push(`https://${process.env.VERCEL_URL}`)
     }
     if (process.env.ALLOWED_ORIGINS) {
       origins.push(
-        ...process.env.ALLOWED_ORIGINS.split(",")
+        ...process.env.ALLOWED_ORIGINS.split(',')
           .map((o) => o.trim())
           .filter(Boolean)
-      );
+      )
     }
-    const normalize = (o: string) => o.replace(/\/$/, "");
-    return Array.from(new Set(origins.filter(Boolean).map(normalize)));
-  };
+    const normalize = (o: string) => o.replace(/\/$/, '')
+    return Array.from(new Set(origins.filter(Boolean).map(normalize)))
+  }
 
-  const allowedOrigins = getAllowedOrigins();
-  const normalizeOrigin = (o: string) => o.replace(/\/$/, "");
-  const refresh = new URL(refreshUrl);
-  const ret = new URL(returnUrl);
+  const allowedOrigins = getAllowedOrigins()
+  const normalizeOrigin = (o: string) => o.replace(/\/$/, '')
+  const refresh = new URL(refreshUrl)
+  const ret = new URL(returnUrl)
   const isAllowedOrigin = (origin: string) =>
-    allowedOrigins.some((allowed) => normalizeOrigin(origin) === normalizeOrigin(allowed));
+    allowedOrigins.some((allowed) => normalizeOrigin(origin) === normalizeOrigin(allowed))
 
   if (!isAllowedOrigin(refresh.origin) || !isAllowedOrigin(ret.origin)) {
-    throw new Error("不正なリダイレクトURLが指定されました");
+    throw new Error('不正なリダイレクトURLが指定されました')
   }
 
   // パスはサフィックス一致で許容（将来サブパスに移動しても許容）。
@@ -86,33 +86,33 @@ function validateAndNormalizeRedirectUrls(formData: FormData): {
     !isAllowedConnectPath(refresh.pathname, CONNECT_REFRESH_SUFFIX) ||
     !isAllowedConnectPath(ret.pathname, CONNECT_RETURN_SUFFIX)
   ) {
-    throw new Error("不正なリダイレクトURLのパスが指定されました");
+    throw new Error('不正なリダイレクトURLのパスが指定されました')
   }
 
-  return { refreshUrl, returnUrl };
+  return { refreshUrl, returnUrl }
 }
 
 // レスポンス型定義
 interface ConnectAccountStatusResult {
-  success: boolean;
-  error?: string;
+  success: boolean
+  error?: string
   data?: {
-    hasAccount: boolean;
-    accountId?: string;
-    status?: string;
-    chargesEnabled: boolean;
-    payoutsEnabled: boolean;
+    hasAccount: boolean
+    accountId?: string
+    status?: string
+    chargesEnabled: boolean
+    payoutsEnabled: boolean
     requirements?: {
-      currently_due: string[];
-      eventually_due: string[];
-      past_due: string[];
-      pending_verification: string[];
-    };
+      currently_due: string[]
+      eventually_due: string[]
+      past_due: string[]
+      pending_verification: string[]
+    }
     capabilities?: {
-      card_payments?: "active" | "inactive" | "pending";
-      transfers?: "active" | "inactive" | "pending";
-    };
-  };
+      card_payments?: 'active' | 'inactive' | 'pending'
+      transfers?: 'active' | 'inactive' | 'pending'
+    }
+  }
 }
 
 /**
@@ -122,65 +122,65 @@ interface ConnectAccountStatusResult {
 export async function createConnectAccountAction(formData: FormData): Promise<void> {
   try {
     // 1. 認証チェック
-    const supabase = createClient();
+    const supabase = createClient()
     const {
       data: { user },
       error: authError,
-    } = await supabase.auth.getUser();
+    } = await supabase.auth.getUser()
 
     if (authError) {
-      logger.error("Stripe Connect account creation auth error", {
-        tag: "connectAccountAuthError",
+      logger.error('Stripe Connect account creation auth error', {
+        tag: 'connectAccountAuthError',
         error_name: authError.name,
         error_message: authError.message,
-      });
-      throw new Error("認証に失敗しました");
+      })
+      throw new Error('認証に失敗しました')
     }
 
     if (!user) {
-      logger.warn("Unauthenticated user attempted Connect account creation", {
-        tag: "connectAccountUnauthenticated",
-      });
-      throw new Error("認証が必要です");
+      logger.warn('Unauthenticated user attempted Connect account creation', {
+        tag: 'connectAccountUnauthenticated',
+      })
+      throw new Error('認証が必要です')
     }
 
     if (!user.email) {
-      logger.error("User has no email address for Connect account", {
-        tag: "connectAccountNoEmail",
+      logger.error('User has no email address for Connect account', {
+        tag: 'connectAccountNoEmail',
         user_id: user.id,
-      });
-      throw new Error("メールアドレスが設定されていません");
+      })
+      throw new Error('メールアドレスが設定されていません')
     }
 
     // 2. リダイレクトURLの検証（オリジン・パス含む）
-    const { refreshUrl, returnUrl } = validateAndNormalizeRedirectUrls(formData);
+    const { refreshUrl, returnUrl } = validateAndNormalizeRedirectUrls(formData)
 
     // 3. StripeConnectServiceを初期化（ユーザーセッション使用、RLS適用）
-    const stripeConnectService = createUserStripeConnectService();
+    const stripeConnectService = createUserStripeConnectService()
 
     // 4. 既存のアカウントをチェック
-    let existingAccount = await stripeConnectService.getConnectAccountByUser(user.id);
+    let existingAccount = await stripeConnectService.getConnectAccountByUser(user.id)
 
     // 5. アカウントが存在しない場合は新規作成
     if (!existingAccount) {
       await stripeConnectService.createExpressAccount({
         userId: user.id,
         email: user.email,
-        country: "JP", // 日本固定
-        businessType: "individual",
+        country: 'JP', // 日本固定
+        businessType: 'individual',
         businessProfile: {
-          productDescription: "イベント参加費の管理・決済サービス",
+          productDescription: 'イベント参加費の管理・決済サービス',
         },
-      });
+      })
 
       // 作成後に再取得
-      existingAccount = await stripeConnectService.getConnectAccountByUser(user.id);
+      existingAccount = await stripeConnectService.getConnectAccountByUser(user.id)
       if (!existingAccount) {
-        logger.error("Failed to fetch account after creation", {
-          tag: "connectAccountFetchAfterCreationFailed",
+        logger.error('Failed to fetch account after creation', {
+          tag: 'connectAccountFetchAfterCreationFailed',
           user_id: user.id,
-        });
-        throw new Error("アカウント作成後の取得に失敗しました");
+        })
+        throw new Error('アカウント作成後の取得に失敗しました')
       }
     }
 
@@ -189,18 +189,18 @@ export async function createConnectAccountAction(formData: FormData): Promise<vo
       accountId: existingAccount.stripe_account_id,
       refreshUrl,
       returnUrl,
-      type: "account_onboarding",
+      type: 'account_onboarding',
       collectionOptions: {
-        fields: "eventually_due", // アップフロント登録でより多くの情報を一度に収集
+        fields: 'eventually_due', // アップフロント登録でより多くの情報を一度に収集
       },
-    });
+    })
 
     // 7. Account LinkのURLにリダイレクト
-    redirect(accountLink.url);
+    redirect(accountLink.url)
   } catch (error) {
     // フォールフォワード失敗時の実エラーを最終エラーとして扱う
-    let finalError: unknown = error;
-    let hadFallbackFailure = false;
+    let finalError: unknown = error
+    let hadFallbackFailure = false
 
     // 競合（同時実行）対策: 既存アカウントがすでに作成されていた場合はフォールフォワード
     if (
@@ -208,42 +208,42 @@ export async function createConnectAccountAction(formData: FormData): Promise<vo
       error.type === StripeConnectErrorType.ACCOUNT_ALREADY_EXISTS
     ) {
       try {
-        const supabase = createClient();
+        const supabase = createClient()
         const {
           data: { user },
-        } = await supabase.auth.getUser();
+        } = await supabase.auth.getUser()
         if (user) {
-          const stripeConnectService = createUserStripeConnectService();
-          const existing = await stripeConnectService.getConnectAccountByUser(user.id);
+          const stripeConnectService = createUserStripeConnectService()
+          const existing = await stripeConnectService.getConnectAccountByUser(user.id)
           if (existing) {
             // 直ちにAccount Linkを生成してリダイレクト（検証を再適用）
-            const { refreshUrl, returnUrl } = validateAndNormalizeRedirectUrls(formData);
+            const { refreshUrl, returnUrl } = validateAndNormalizeRedirectUrls(formData)
             const accountLink = await stripeConnectService.createAccountLink({
               accountId: existing.stripe_account_id,
               refreshUrl,
               returnUrl,
-              type: "account_onboarding",
-              collectionOptions: { fields: "eventually_due" },
-            });
-            redirect(accountLink.url);
+              type: 'account_onboarding',
+              collectionOptions: { fields: 'eventually_due' },
+            })
+            redirect(accountLink.url)
           }
         }
       } catch (fallbackError) {
-        hadFallbackFailure = true;
-        finalError = fallbackError;
-        logger.warn("ACCOUNT_ALREADY_EXISTS fallback failed", {
-          tag: "connectAccountFallbackFailed",
-          error_name: fallbackError instanceof Error ? fallbackError.name : "Unknown",
+        hadFallbackFailure = true
+        finalError = fallbackError
+        logger.warn('ACCOUNT_ALREADY_EXISTS fallback failed', {
+          tag: 'connectAccountFallbackFailed',
+          error_name: fallbackError instanceof Error ? fallbackError.name : 'Unknown',
           error_message:
             fallbackError instanceof Error ? fallbackError.message : String(fallbackError),
-        });
+        })
       }
     }
 
     // 構造化ログ（fallbackが失敗した場合は両方のコンテキストを出力）
-    logger.error("Stripe Connect Account Link generation error", {
-      tag: "connectAccountLinkGenerationError",
-      error_name: finalError instanceof Error ? finalError.name : "Unknown",
+    logger.error('Stripe Connect Account Link generation error', {
+      tag: 'connectAccountLinkGenerationError',
+      error_name: finalError instanceof Error ? finalError.name : 'Unknown',
       error_message: finalError instanceof Error ? finalError.message : String(finalError),
       original_error: hadFallbackFailure
         ? error instanceof Error
@@ -251,17 +251,17 @@ export async function createConnectAccountAction(formData: FormData): Promise<vo
           : String(error)
         : undefined,
       timestamp: new Date().toISOString(),
-    });
+    })
 
     if (finalError instanceof StripeConnectError) {
-      const errorMessage = encodeURIComponent(finalError.message);
-      redirect(`/dashboard/connect/error?message=${errorMessage}&type=${finalError.type}`);
+      const errorMessage = encodeURIComponent(finalError.message)
+      redirect(`/dashboard/connect/error?message=${errorMessage}&type=${finalError.type}`)
     }
 
     const errorMessage = encodeURIComponent(
-      finalError instanceof Error ? finalError.message : "アカウント設定中にエラーが発生しました"
-    );
-    redirect(`/dashboard/connect/error?message=${errorMessage}`);
+      finalError instanceof Error ? finalError.message : 'アカウント設定中にエラーが発生しました'
+    )
+    redirect(`/dashboard/connect/error?message=${errorMessage}`)
   }
 }
 
@@ -272,39 +272,39 @@ export async function createConnectAccountAction(formData: FormData): Promise<vo
 export async function getConnectAccountStatusAction(): Promise<ConnectAccountStatusResult> {
   try {
     // 1. 認証チェック
-    const supabase = createClient();
+    const supabase = createClient()
     const {
       data: { user },
       error: authError,
-    } = await supabase.auth.getUser();
+    } = await supabase.auth.getUser()
 
     if (authError) {
-      logger.error("Auth error in Connect account status check", {
-        tag: "connectAccountStatusAuthError",
+      logger.error('Auth error in Connect account status check', {
+        tag: 'connectAccountStatusAuthError',
         error_name: authError.name,
         error_message: authError.message,
-      });
+      })
       return {
         success: false,
-        error: "認証に失敗しました",
-      };
+        error: '認証に失敗しました',
+      }
     }
 
     if (!user) {
-      logger.warn("Unauthenticated user attempted Connect account status check", {
-        tag: "connectAccountStatusUnauthenticated",
-      });
+      logger.warn('Unauthenticated user attempted Connect account status check', {
+        tag: 'connectAccountStatusUnauthenticated',
+      })
       return {
         success: false,
-        error: "認証が必要です",
-      };
+        error: '認証が必要です',
+      }
     }
 
     // 2. StripeConnectServiceを初期化（ユーザーセッション使用、RLS適用）
-    const stripeConnectService = createUserStripeConnectService();
+    const stripeConnectService = createUserStripeConnectService()
 
     // 3. アカウント情報を取得
-    const account = await stripeConnectService.getConnectAccountByUser(user.id);
+    const account = await stripeConnectService.getConnectAccountByUser(user.id)
 
     if (!account) {
       return {
@@ -314,18 +314,18 @@ export async function getConnectAccountStatusAction(): Promise<ConnectAccountSta
           chargesEnabled: false,
           payoutsEnabled: false,
         },
-      };
+      }
     }
 
     // 4. Stripeから最新の情報を取得
 
-    const accountInfo = await stripeConnectService.getAccountInfo(account.stripe_account_id);
+    const accountInfo = await stripeConnectService.getAccountInfo(account.stripe_account_id)
 
     // 5. データベースの情報が古い場合は更新
     const needsUpdate =
       account.status !== accountInfo.status ||
       account.charges_enabled !== accountInfo.chargesEnabled ||
-      account.payouts_enabled !== accountInfo.payoutsEnabled;
+      account.payouts_enabled !== accountInfo.payoutsEnabled
 
     if (needsUpdate) {
       await stripeConnectService.updateAccountStatus({
@@ -333,7 +333,7 @@ export async function getConnectAccountStatusAction(): Promise<ConnectAccountSta
         status: accountInfo.status,
         chargesEnabled: accountInfo.chargesEnabled,
         payoutsEnabled: accountInfo.payoutsEnabled,
-      });
+      })
     }
 
     return {
@@ -347,21 +347,21 @@ export async function getConnectAccountStatusAction(): Promise<ConnectAccountSta
         requirements: accountInfo.requirements,
         capabilities: accountInfo.capabilities,
       },
-    };
+    }
   } catch (error) {
-    logger.error("Stripe Connect account status fetch error", {
-      tag: "connectAccountStatusFetchError",
-      error_name: error instanceof Error ? error.name : "Unknown",
+    logger.error('Stripe Connect account status fetch error', {
+      tag: 'connectAccountStatusFetchError',
+      error_name: error instanceof Error ? error.name : 'Unknown',
       error_message: error instanceof Error ? error.message : String(error),
-    });
+    })
 
     return {
       success: false,
       error:
         error instanceof StripeConnectError
           ? error.message
-          : "アカウント情報の取得中にエラーが発生しました",
-    };
+          : 'アカウント情報の取得中にエラーが発生しました',
+    }
   }
 }
 
@@ -369,29 +369,29 @@ export async function getConnectAccountStatusAction(): Promise<ConnectAccountSta
  * 認証済みユーザーを取得するヘルパー関数
  */
 async function getAuthenticatedUser() {
-  const supabase = createClient();
+  const supabase = createClient()
   const {
     data: { user },
     error: authError,
-  } = await supabase.auth.getUser();
+  } = await supabase.auth.getUser()
 
   if (authError) {
-    logger.error("Auth error in onboarding complete", {
-      tag: "connectOnboardingCompleteAuthError",
+    logger.error('Auth error in onboarding complete', {
+      tag: 'connectOnboardingCompleteAuthError',
       error_name: authError.name,
       error_message: authError.message,
-    });
-    throw new Error("認証に失敗しました");
+    })
+    throw new Error('認証に失敗しました')
   }
 
   if (!user) {
-    logger.warn("Unauthenticated user attempted onboarding complete", {
-      tag: "connectOnboardingCompleteUnauthenticated",
-    });
-    throw new Error("認証が必要です");
+    logger.warn('Unauthenticated user attempted onboarding complete', {
+      tag: 'connectOnboardingCompleteUnauthenticated',
+    })
+    throw new Error('認証が必要です')
   }
 
-  return user;
+  return user
 }
 
 /**
@@ -401,16 +401,16 @@ async function getAuthenticatedUser() {
 export async function handleOnboardingReturnAction(): Promise<void> {
   try {
     // 1. 認証チェック
-    const user = await getAuthenticatedUser();
+    const user = await getAuthenticatedUser()
 
     // 2. StripeConnectServiceを初期化（ユーザーセッション使用、RLS適用）
-    const stripeConnectService = createUserStripeConnectService();
+    const stripeConnectService = createUserStripeConnectService()
 
     // 3. アカウント情報を取得して最新状態に同期
-    const account = await stripeConnectService.getConnectAccountByUser(user.id);
+    const account = await stripeConnectService.getConnectAccountByUser(user.id)
 
     if (account) {
-      const accountInfo = await stripeConnectService.getAccountInfo(account.stripe_account_id);
+      const accountInfo = await stripeConnectService.getAccountInfo(account.stripe_account_id)
 
       // データベースの情報を更新
       await stripeConnectService.updateAccountStatus({
@@ -418,32 +418,32 @@ export async function handleOnboardingReturnAction(): Promise<void> {
         status: accountInfo.status,
         chargesEnabled: accountInfo.chargesEnabled,
         payoutsEnabled: accountInfo.payoutsEnabled,
-      });
+      })
     } else {
-      logger.warn("Account not found during onboarding complete", {
-        tag: "connectOnboardingCompleteAccountNotFound",
+      logger.warn('Account not found during onboarding complete', {
+        tag: 'connectOnboardingCompleteAccountNotFound',
         user_id: user.id,
-      });
+      })
     }
 
     // ダッシュボードにリダイレクト（成功メッセージ付き）
-    redirect("/dashboard?connect=success");
+    redirect('/dashboard?connect=success')
   } catch (error) {
-    logger.error("Onboarding complete processing error", {
-      tag: "connectOnboardingCompleteProcessingError",
-      error_name: error instanceof Error ? error.name : "Unknown",
+    logger.error('Onboarding complete processing error', {
+      tag: 'connectOnboardingCompleteProcessingError',
+      error_name: error instanceof Error ? error.name : 'Unknown',
       error_message: error instanceof Error ? error.message : String(error),
-    });
+    })
 
-    if (error instanceof Error && error.message === "認証が必要です") {
-      redirect("/login");
+    if (error instanceof Error && error.message === '認証が必要です') {
+      redirect('/login')
     }
 
     // エラーページにリダイレクト
     const errorMessage = encodeURIComponent(
-      error instanceof Error ? error.message : "アカウント設定の完了処理中にエラーが発生しました"
-    );
-    redirect(`/dashboard/connect/error?message=${errorMessage}`);
+      error instanceof Error ? error.message : 'アカウント設定の完了処理中にエラーが発生しました'
+    )
+    redirect(`/dashboard/connect/error?message=${errorMessage}`)
   }
 }
 
@@ -454,28 +454,28 @@ export async function handleOnboardingReturnAction(): Promise<void> {
 export async function handleOnboardingRefreshAction(): Promise<void> {
   try {
     // 1. 認証チェック
-    await getAuthenticatedUser();
+    await getAuthenticatedUser()
 
     // Connect設定ページにリダイレクト（リフレッシュメッセージ付き）
-    redirect("/dashboard/connect?refresh=true");
+    redirect('/dashboard/connect?refresh=true')
   } catch (error) {
-    logger.error("Onboarding refresh processing error", {
-      tag: "connectOnboardingRefreshProcessingError",
-      error_name: error instanceof Error ? error.name : "Unknown",
+    logger.error('Onboarding refresh processing error', {
+      tag: 'connectOnboardingRefreshProcessingError',
+      error_name: error instanceof Error ? error.name : 'Unknown',
       error_message: error instanceof Error ? error.message : String(error),
-    });
+    })
 
-    if (error instanceof Error && error.message === "認証が必要です") {
-      redirect("/login");
+    if (error instanceof Error && error.message === '認証が必要です') {
+      redirect('/login')
     }
 
     // エラーページにリダイレクト
     const errorMessage = encodeURIComponent(
       error instanceof Error
         ? error.message
-        : "アカウント設定のリフレッシュ中にエラーが発生しました"
-    );
-    redirect(`/dashboard/connect/error?message=${errorMessage}`);
+        : 'アカウント設定のリフレッシュ中にエラーが発生しました'
+    )
+    redirect(`/dashboard/connect/error?message=${errorMessage}`)
   }
 }
 
@@ -484,46 +484,46 @@ export async function handleOnboardingRefreshAction(): Promise<void> {
  * 特定の操作（決済受取、送金）が可能かどうかを確認
  */
 export async function checkConnectPermissionsAction(): Promise<{
-  success: boolean;
-  error?: string;
+  success: boolean
+  error?: string
   data?: {
-    canReceivePayments: boolean;
-    canReceivePayouts: boolean;
-    isVerified: boolean;
-    restrictions?: string[];
-  };
+    canReceivePayments: boolean
+    canReceivePayouts: boolean
+    isVerified: boolean
+    restrictions?: string[]
+  }
 }> {
   try {
     // 1. 認証チェック
-    const user = await getAuthenticatedUser();
+    const user = await getAuthenticatedUser()
 
     // 2. StripeConnectServiceを初期化（ユーザーセッション使用、RLS適用）
-    const stripeConnectService = createUserStripeConnectService();
+    const stripeConnectService = createUserStripeConnectService()
 
     // 3. 各権限をチェック
     const [canReceivePayments, canReceivePayouts, isVerified] = await Promise.all([
       stripeConnectService.isChargesEnabled(user.id),
       stripeConnectService.isPayoutsEnabled(user.id),
       stripeConnectService.isAccountVerified(user.id),
-    ]);
+    ])
 
     // 4. アカウント情報を取得して制限事項を確認
-    const account = await stripeConnectService.getConnectAccountByUser(user.id);
-    const restrictions: string[] = [];
+    const account = await stripeConnectService.getConnectAccountByUser(user.id)
+    const restrictions: string[] = []
 
     if (account) {
-      const accountInfo = await stripeConnectService.getAccountInfo(account.stripe_account_id);
+      const accountInfo = await stripeConnectService.getAccountInfo(account.stripe_account_id)
 
       // 制限事項を抽出
       if (
         accountInfo.requirements?.currently_due &&
         accountInfo.requirements.currently_due.length > 0
       ) {
-        restrictions.push(`必要な情報: ${accountInfo.requirements.currently_due.join(", ")}`);
+        restrictions.push(`必要な情報: ${accountInfo.requirements.currently_due.join(', ')}`)
       }
 
       if (accountInfo.requirements?.past_due && accountInfo.requirements.past_due.length > 0) {
-        restrictions.push(`期限切れ情報: ${accountInfo.requirements.past_due.join(", ")}`);
+        restrictions.push(`期限切れ情報: ${accountInfo.requirements.past_due.join(', ')}`)
       }
     }
 
@@ -535,20 +535,20 @@ export async function checkConnectPermissionsAction(): Promise<{
         isVerified,
         restrictions: restrictions.length > 0 ? restrictions : undefined,
       },
-    };
+    }
   } catch (error) {
-    logger.error("Stripe Connect permission check error", {
-      tag: "connectPermissionCheckError",
-      error_name: error instanceof Error ? error.name : "Unknown",
+    logger.error('Stripe Connect permission check error', {
+      tag: 'connectPermissionCheckError',
+      error_name: error instanceof Error ? error.name : 'Unknown',
       error_message: error instanceof Error ? error.message : String(error),
-    });
+    })
 
     return {
       success: false,
       error:
         error instanceof StripeConnectError
           ? error.message
-          : "権限チェック中にエラーが発生しました",
-    };
+          : '権限チェック中にエラーが発生しました',
+    }
   }
 }

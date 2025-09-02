@@ -1,10 +1,10 @@
-"use server";
+'use server'
 
-import type { z } from "zod";
+import type { z } from 'zod'
 
-import { verifyEventAccess, handleDatabaseError } from "@core/auth/event-authorization";
-import { logger } from "@core/logging/app-logger";
-import { createClient } from "@core/supabase/server";
+import { verifyEventAccess, handleDatabaseError } from '@core/auth/event-authorization'
+import { logger } from '@core/logging/app-logger'
+import { createClient } from '@core/supabase/server'
 import {
   PaymentStatusEnum,
   GetEventPaymentsResponseSchema,
@@ -13,9 +13,9 @@ import {
   type PaymentMethodSummary,
   type PaymentStatusSummary,
   type PaymentSummary,
-} from "@core/validation/participant-management";
+} from '@core/validation/participant-management'
 
-type PaymentStatus = z.infer<typeof PaymentStatusEnum>;
+type PaymentStatus = z.infer<typeof PaymentStatusEnum>
 
 /**
  * イベント決済情報取得（集計付き）
@@ -23,13 +23,13 @@ type PaymentStatus = z.infer<typeof PaymentStatusEnum>;
  */
 export async function getEventPaymentsAction(eventId: string): Promise<GetEventPaymentsResponse> {
   // 認可チェック
-  const { user, eventId: validatedEventId } = await verifyEventAccess(eventId);
+  const { user, eventId: validatedEventId } = await verifyEventAccess(eventId)
 
-  const supabase = createClient();
+  const supabase = createClient()
 
   // 決済データ取得
   const { data: payments, error } = await supabase
-    .from("payments")
+    .from('payments')
     .select(
       `
       id,
@@ -43,10 +43,10 @@ export async function getEventPaymentsAction(eventId: string): Promise<GetEventP
       attendances!inner(event_id)
     `
     )
-    .eq("attendances.event_id", validatedEventId);
+    .eq('attendances.event_id', validatedEventId)
 
   if (error) {
-    handleDatabaseError(error, { eventId: validatedEventId, userId: user.id });
+    handleDatabaseError(error, { eventId: validatedEventId, userId: user.id })
   }
 
   const cleanedPayments = (payments || []).map((payment) => ({
@@ -58,62 +58,62 @@ export async function getEventPaymentsAction(eventId: string): Promise<GetEventP
     paid_at: payment.paid_at,
     created_at: payment.created_at,
     updated_at: payment.updated_at,
-  }));
+  }))
 
   // 各参加者(attendance_id)につき最新の決済1件のみを抽出
   // paid_at DESC NULLS LAST → created_at DESC → updated_at DESC 相当のロジック
-  const latestPaymentsMap = new Map<string, (typeof cleanedPayments)[0]>();
+  const latestPaymentsMap = new Map<string, (typeof cleanedPayments)[0]>()
   cleanedPayments.forEach((payment) => {
-    const existing = latestPaymentsMap.get(payment.attendance_id);
+    const existing = latestPaymentsMap.get(payment.attendance_id)
     if (!existing) {
-      latestPaymentsMap.set(payment.attendance_id, payment);
-      return;
+      latestPaymentsMap.set(payment.attendance_id, payment)
+      return
     }
     // 比較関数：paid_at (null は最古扱い), その後 created_at, updated_at
     // ISO 文字列ではなく Date オブジェクトのタイムスタンプで比較
-    const paidAtA = payment.paid_at ? new Date(payment.paid_at).getTime() : -Infinity; // null は最古扱い
-    const paidAtB = existing.paid_at ? new Date(existing.paid_at).getTime() : -Infinity;
+    const paidAtA = payment.paid_at ? new Date(payment.paid_at).getTime() : -Infinity // null は最古扱い
+    const paidAtB = existing.paid_at ? new Date(existing.paid_at).getTime() : -Infinity
 
     if (paidAtA !== paidAtB) {
       if (paidAtA > paidAtB) {
-        latestPaymentsMap.set(payment.attendance_id, payment);
+        latestPaymentsMap.set(payment.attendance_id, payment)
       }
-      return;
+      return
     }
 
-    const createdAtA = new Date(payment.created_at).getTime();
-    const createdAtB = new Date(existing.created_at).getTime();
+    const createdAtA = new Date(payment.created_at).getTime()
+    const createdAtB = new Date(existing.created_at).getTime()
     if (createdAtA !== createdAtB) {
       if (createdAtA > createdAtB) {
-        latestPaymentsMap.set(payment.attendance_id, payment);
+        latestPaymentsMap.set(payment.attendance_id, payment)
       }
-      return;
+      return
     }
 
-    const updatedAtA = new Date(payment.updated_at).getTime();
-    const updatedAtB = new Date(existing.updated_at).getTime();
+    const updatedAtA = new Date(payment.updated_at).getTime()
+    const updatedAtB = new Date(existing.updated_at).getTime()
     if (updatedAtA > updatedAtB) {
-      latestPaymentsMap.set(payment.attendance_id, payment);
+      latestPaymentsMap.set(payment.attendance_id, payment)
     }
-  });
+  })
 
-  const latestPayments = Array.from(latestPaymentsMap.values());
+  const latestPayments = Array.from(latestPaymentsMap.values())
 
-  const summary = calculatePaymentSummary(latestPayments);
+  const summary = calculatePaymentSummary(latestPayments)
 
   const validatedResponse = GetEventPaymentsResponseSchema.parse({
     payments: latestPayments,
     summary,
-  });
+  })
 
-  logger.info("決済情報取得完了", {
+  logger.info('決済情報取得完了', {
     eventId: validatedEventId,
     userId: user.id,
     paymentCount: cleanedPayments.length,
     totalAmount: summary.totalAmount,
-  });
+  })
 
-  return validatedResponse;
+  return validatedResponse
 }
 
 /**
@@ -121,69 +121,69 @@ export async function getEventPaymentsAction(eventId: string): Promise<GetEventP
  */
 function calculatePaymentSummary(
   payments: Array<{
-    method: "stripe" | "cash";
-    amount: number;
-    status: PaymentStatus;
+    method: 'stripe' | 'cash'
+    amount: number
+    status: PaymentStatus
   }>
 ): PaymentSummary {
-  const totalPayments = payments.length;
-  const totalAmount = payments.reduce((sum, p) => sum + p.amount, 0);
+  const totalPayments = payments.length
+  const totalAmount = payments.reduce((sum, p) => sum + p.amount, 0)
 
   // 方法別集計
-  const methodMap = new Map<"stripe" | "cash", { count: number; totalAmount: number }>();
+  const methodMap = new Map<'stripe' | 'cash', { count: number; totalAmount: number }>()
 
   // 初期化
-  methodMap.set("stripe", { count: 0, totalAmount: 0 });
-  methodMap.set("cash", { count: 0, totalAmount: 0 });
+  methodMap.set('stripe', { count: 0, totalAmount: 0 })
+  methodMap.set('cash', { count: 0, totalAmount: 0 })
 
   // ステータス別集計
-  const statusMap = new Map<PaymentStatus, { count: number; totalAmount: number }>();
+  const statusMap = new Map<PaymentStatus, { count: number; totalAmount: number }>()
 
   // 初期化
   PAYMENT_STATUS_VALUES.forEach((status) => {
-    statusMap.set(status as PaymentStatus, { count: 0, totalAmount: 0 });
-  });
+    statusMap.set(status as PaymentStatus, { count: 0, totalAmount: 0 })
+  })
 
   // 決済済み・未決済集計用
-  let paidCount = 0;
-  let paidAmount = 0;
-  let unpaidCount = 0;
-  let unpaidAmount = 0;
+  let paidCount = 0
+  let paidAmount = 0
+  let unpaidCount = 0
+  let unpaidAmount = 0
 
   // 決済済みステータス（paid, received, completed, waived）
   // waived(免除)は管理者による意図的な決済完了として扱う
-  const paidStatuses = new Set<PaymentStatus>(["paid", "received", "completed", "waived"]);
+  const paidStatuses = new Set<PaymentStatus>(['paid', 'received', 'completed', 'waived'])
   // 未決済ステータス（pending, failed, refunded）
   // refunded(返金済)は実質的に未収金のため未決済として扱う
-  const unpaidStatuses = new Set<PaymentStatus>(["pending", "failed", "refunded"]);
+  const unpaidStatuses = new Set<PaymentStatus>(['pending', 'failed', 'refunded'])
 
   // 集計処理
   payments.forEach((payment) => {
     // 方法別集計
-    const methodStat = methodMap.get(payment.method)!;
-    methodStat.count += 1;
-    methodStat.totalAmount += payment.amount;
+    const methodStat = methodMap.get(payment.method)!
+    methodStat.count += 1
+    methodStat.totalAmount += payment.amount
 
     // ステータス別集計（未知ステータスはスキップし警告ログ）
-    const statusStat = statusMap.get(payment.status);
+    const statusStat = statusMap.get(payment.status)
     if (statusStat) {
-      statusStat.count += 1;
-      statusStat.totalAmount += payment.amount;
+      statusStat.count += 1
+      statusStat.totalAmount += payment.amount
     } else {
-      logger.warn("Unknown payment status encountered while aggregating", {
+      logger.warn('Unknown payment status encountered while aggregating', {
         status: payment.status,
-      });
+      })
     }
 
     // 決済済み・未決済集計
     if (paidStatuses.has(payment.status)) {
-      paidCount += 1;
-      paidAmount += payment.amount;
+      paidCount += 1
+      paidAmount += payment.amount
     } else if (unpaidStatuses.has(payment.status)) {
-      unpaidCount += 1;
-      unpaidAmount += payment.amount;
+      unpaidCount += 1
+      unpaidAmount += payment.amount
     }
-  });
+  })
 
   // 方法別結果配列作成
   const byMethod: PaymentMethodSummary[] = Array.from(methodMap.entries()).map(
@@ -192,7 +192,7 @@ function calculatePaymentSummary(
       count: stat.count,
       totalAmount: stat.totalAmount,
     })
-  );
+  )
 
   // ステータス別結果配列作成（0件のものも含める）
   const byStatus: PaymentStatusSummary[] = Array.from(statusMap.entries()).map(
@@ -201,7 +201,7 @@ function calculatePaymentSummary(
       count: stat.count,
       totalAmount: stat.totalAmount,
     })
-  );
+  )
 
   return {
     totalPayments,
@@ -212,5 +212,5 @@ function calculatePaymentSummary(
     unpaidAmount,
     paidCount,
     paidAmount,
-  };
+  }
 }
