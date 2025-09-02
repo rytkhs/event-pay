@@ -1,8 +1,12 @@
 import React, { memo } from "react";
+
 import Link from "next/link";
+
 import { Event } from "@features/events/types";
-import { EventCard } from "./event-card";
+
 import { Button } from "@/components/ui/button";
+
+import { EventCard } from "./event-card";
 
 interface EventListProps {
   events: Event[];

@@ -1,9 +1,9 @@
 "use client";
 
 import { PaymentMethod, PAYMENT_METHOD_LABELS } from "@core/constants/payment-methods";
+import { EVENT_STATUS_LABELS } from "@core/types/enums";
 import { sanitizeEventDescription, sanitizeForEventPay } from "@core/utils/sanitize";
 import { formatUtcToJstByType } from "@core/utils/timezone";
-import { EVENT_STATUS_LABELS } from "@core/types/enums";
 
 interface EventDetailProps {
   event: {
@@ -26,7 +26,7 @@ interface EventDetailProps {
 }
 
 export function EventDetail({ event }: EventDetailProps) {
-  if (!event || !event.id || !event.title) {
+  if (!event?.id || !event.title) {
     return <div>イベント情報が正しく読み込まれませんでした。</div>;
   }
 

@@ -3,7 +3,7 @@
  * 開発環境、本番環境でのエラー追跡とレポート機能
  */
 
-import { ErrorInfo, ErrorLogEntry, ErrorReportingConfig } from "./error-types";
+import type { ErrorInfo, ErrorLogEntry, ErrorReportingConfig } from "./error-types";
 
 /**
  * 簡単なID生成関数
@@ -162,7 +162,9 @@ class ErrorLogger {
    * ローカルストレージに保存（デバッグ用）
    */
   private saveToLocalStorage(logEntry: ErrorLogEntry): void {
-    if (typeof window === "undefined") return;
+    if (typeof window === "undefined") {
+      return;
+    }
 
     try {
       const key = `eventpay_error_log`;
@@ -190,7 +192,9 @@ class ErrorLogger {
    * ローカルストレージからエラーログを取得
    */
   getLocalLogs(): ErrorLogEntry[] {
-    if (typeof window === "undefined") return [];
+    if (typeof window === "undefined") {
+      return [];
+    }
 
     try {
       const logs = JSON.parse(localStorage.getItem("eventpay_error_log") || "[]");
@@ -209,7 +213,9 @@ class ErrorLogger {
    * ローカルストレージのエラーログをクリア
    */
   clearLocalLogs(): void {
-    if (typeof window === "undefined") return;
+    if (typeof window === "undefined") {
+      return;
+    }
     localStorage.removeItem("eventpay_error_log");
   }
 }

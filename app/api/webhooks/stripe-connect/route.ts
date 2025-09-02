@@ -2,19 +2,23 @@
  * Stripe Connect Webhook エンドポイント
  */
 
-import { NextRequest, NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
+import { NextResponse } from "next/server";
+
+import type Stripe from "stripe";
+
 import { createProblemResponse } from "@core/api/problem-details";
-import Stripe from "stripe";
-import { stripe, getConnectWebhookSecrets } from "@core/stripe/client";
-import { SupabaseWebhookIdempotencyService } from "@features/payments/services/webhook/webhook-idempotency";
-import { StripeWebhookSignatureVerifier } from "@features/payments/services/webhook/webhook-signature-verifier";
-import { getClientIP } from "@core/utils/ip-detection";
+import { logger } from "@core/logging/app-logger";
+import { generateSecureUuid } from "@core/security/crypto";
 import {
   shouldEnforceStripeWebhookIpCheck,
   isStripeWebhookIpAllowed,
 } from "@core/security/stripe-ip-allowlist";
-import { logger } from "@core/logging/app-logger";
-import { generateSecureUuid } from "@core/security/crypto";
+import { stripe, getConnectWebhookSecrets } from "@core/stripe/client";
+import { getClientIP } from "@core/utils/ip-detection";
+
+import { SupabaseWebhookIdempotencyService } from "@features/payments/services/webhook/webhook-idempotency";
+import { StripeWebhookSignatureVerifier } from "@features/payments/services/webhook/webhook-signature-verifier";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic"; // Webhookは常に動的処理
@@ -87,9 +91,13 @@ export async function POST(request: NextRequest) {
     const idempotency = new SupabaseWebhookIdempotencyService();
     const objectId: string | null = ((): string | null => {
       const data: unknown = (event as unknown as { data?: unknown }).data;
-      if (!data || typeof data !== "object") return null;
+      if (!data || typeof data !== "object") {
+        return null;
+      }
       const obj: unknown = (data as { object?: unknown }).object;
-      if (!obj || typeof obj !== "object") return null;
+      if (!obj || typeof obj !== "object") {
+        return null;
+      }
       const idVal = (obj as { id?: unknown }).id;
       return typeof idVal === "string" && idVal.length > 0 ? idVal : null;
     })();

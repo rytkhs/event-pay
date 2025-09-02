@@ -1,9 +1,11 @@
 "use client";
 
 import { useState, useEffect, Suspense } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
-import { resendOtpAction } from "../actions";
+
 import Link from "next/link";
+import { useSearchParams, useRouter } from "next/navigation";
+
+import { resendOtpAction } from "../actions";
 
 function VerifyEmailContent() {
   const [resendLoading, setResendLoading] = useState(false);
@@ -34,7 +36,9 @@ function VerifyEmailContent() {
   }, [email, router]);
 
   const handleResend = async () => {
-    if (!email || resendDisabled) return;
+    if (!email || resendDisabled) {
+      return;
+    }
 
     setResendLoading(true);
     setError(null);

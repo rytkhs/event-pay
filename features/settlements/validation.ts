@@ -8,7 +8,9 @@ import { z } from "zod";
 export const generateReportSchema = z.object({
   eventId: z.string().uuid("イベントIDは有効なUUIDである必要があります"),
   reportType: z.enum(["detailed", "summary"], {
-    errorMap: () => ({ message: "レポート種別は 'detailed' または 'summary' である必要があります" })
+    errorMap: () => ({
+      message: "レポート種別は 'detailed' または 'summary' である必要があります",
+    }),
   }),
   includeTransactions: z.boolean().optional().default(true),
 });

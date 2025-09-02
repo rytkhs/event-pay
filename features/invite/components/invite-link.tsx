@@ -1,13 +1,16 @@
 "use client";
 
 import { useState, useEffect } from "react";
+
+import { Copy, ExternalLink, RefreshCw } from "lucide-react";
+
+import { useToast } from "@core/contexts/toast-context";
+import { useClipboard } from "@core/hooks/use-clipboard";
+
+import { generateInviteTokenAction } from "@/app/events/actions";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { useToast } from "@core/contexts/toast-context";
-import { generateInviteTokenAction } from "@/app/events/actions";
-import { Copy, ExternalLink, RefreshCw } from "lucide-react";
-import { useClipboard } from "@core/hooks/use-clipboard";
 
 interface InviteLinkProps {
   eventId: string;

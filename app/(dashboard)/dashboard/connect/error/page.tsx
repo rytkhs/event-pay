@@ -3,12 +3,15 @@
  */
 
 import { Suspense } from "react";
-import { Metadata } from "next";
+
 import Link from "next/link";
+
+import { AlertTriangle, ArrowLeft, RefreshCw } from "lucide-react";
+import type { Metadata } from "next";
+
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertTriangle, ArrowLeft, RefreshCw } from "lucide-react";
 
 export const metadata: Metadata = {
   title: "設定エラー | EventPay",

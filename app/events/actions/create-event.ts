@@ -1,12 +1,14 @@
 "use server";
 
-import { createClient } from "@core/supabase/server";
-import { createEventSchema, type CreateEventInput } from "@core/validation/event";
-import { extractEventCreateFormData } from "@core/utils/form-data-extractors";
 import { z } from "zod";
+
+import { createClient } from "@core/supabase/server";
+import { extractEventCreateFormData } from "@core/utils/form-data-extractors";
 import { generateInviteToken } from "@core/utils/invite-token";
-import type { Database } from "@/types/database";
 import { convertDatetimeLocalToUtc } from "@core/utils/timezone";
+import { createEventSchema, type CreateEventInput } from "@core/validation/event";
+
+import type { Database } from "@/types/database";
 
 type EventRow = Database["public"]["Tables"]["events"]["Row"];
 
@@ -116,7 +118,9 @@ function parseCapacityLocal(capacity: string | number | null | undefined): numbe
   }
 
   if (typeof capacity === "string") {
-    if (capacity.trim() === "") return null;
+    if (capacity.trim() === "") {
+      return null;
+    }
     const parsed = Number(capacity);
     if (!Number.isFinite(parsed) || parsed <= 0) {
       return null;
@@ -125,7 +129,9 @@ function parseCapacityLocal(capacity: string | number | null | undefined): numbe
   }
 
   if (typeof capacity === "number") {
-    if (capacity <= 0) return null;
+    if (capacity <= 0) {
+      return null;
+    }
     return capacity;
   }
 

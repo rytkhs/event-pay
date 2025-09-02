@@ -2,6 +2,7 @@
  * エラー種別に応じた統一アイコンコンポーネント
  */
 
+import type { LucideIcon } from "lucide-react";
 import {
   AlertTriangle,
   XCircle,
@@ -16,10 +17,11 @@ import {
   Ban,
   Wrench,
   HelpCircle,
-  LucideIcon,
 } from "lucide-react";
-import { ErrorCategory, ErrorCode } from "../error-types";
+
 import { cn } from "@core/utils";
+
+import type { ErrorCategory, ErrorCode } from "../error-types";
 
 interface ErrorIconProps {
   category?: ErrorCategory;

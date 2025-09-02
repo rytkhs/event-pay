@@ -2,9 +2,11 @@
  * 決済データ検証ロジック（feature ルート）
  */
 
-import { z } from "zod";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { z } from "zod";
+
 import { Database } from "@/types/database";
+
 import { IPaymentValidator } from "./services/interface";
 import {
   CreateStripeSessionParams,
@@ -30,7 +32,10 @@ const paymentStatusSchema = z.enum([
 // サービス層（Stripeに渡す直前の最終パラメータ）用スキーマ（内部使用専用）
 const createStripeSessionParamsSchema = z.object({
   attendanceId: z.string().uuid("参加記録IDは有効なUUIDである必要があります"),
-  amount: z.number().int("金額は整数である必要があります").positive("金額は正の数である必要があります"),
+  amount: z
+    .number()
+    .int("金額は整数である必要があります")
+    .positive("金額は正の数である必要があります"),
   eventTitle: z
     .string()
     .min(1, "イベントタイトルは必須です")
@@ -42,7 +47,10 @@ const createStripeSessionParamsSchema = z.object({
 // 現金決済用スキーマ（内部使用専用）
 const createCashPaymentParamsSchema = z.object({
   attendanceId: z.string().uuid("参加記録IDは有効なUUIDである必要があります"),
-  amount: z.number().int("金額は整数である必要があります").positive("金額は正の数である必要があります"),
+  amount: z
+    .number()
+    .int("金額は整数である必要があります")
+    .positive("金額は正の数である必要があります"),
 });
 
 // 決済ステータス更新用スキーマ（内部使用専用）
@@ -163,7 +171,11 @@ export class PaymentValidator implements IPaymentValidator {
       }
       if (userId) {
         type EventLite = { id: string; created_by: string };
-        type AttendanceWithEvent = { id: string; event_id: string; events: EventLite | EventLite[] };
+        type AttendanceWithEvent = {
+          id: string;
+          event_id: string;
+          events: EventLite | EventLite[];
+        };
         const record = (Array.isArray(data) ? data[0] : data) as unknown as AttendanceWithEvent;
         const events = Array.isArray(record.events) ? record.events : [record.events];
         const createdBy = events[0]?.created_by;
@@ -264,7 +276,10 @@ export class PaymentValidator implements IPaymentValidator {
     }
   }
 
-  private async validateStatusTransition(paymentId: string, newStatus: PaymentStatus): Promise<void> {
+  private async validateStatusTransition(
+    paymentId: string,
+    newStatus: PaymentStatus
+  ): Promise<void> {
     try {
       const { data, error } = await this.supabase
         .from("payments")

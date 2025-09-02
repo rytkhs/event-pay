@@ -1,9 +1,11 @@
 "use client";
 
 import { useState, useEffect, Suspense } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
-import { verifyOtpAction, resendOtpAction } from "../actions";
+
 import Link from "next/link";
+import { useSearchParams, useRouter } from "next/navigation";
+
+import { verifyOtpAction, resendOtpAction } from "../actions";
 
 function VerifyOtpContent() {
   const [otp, setOtp] = useState("");
@@ -37,7 +39,9 @@ function VerifyOtpContent() {
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!email || !otp.trim()) return;
+    if (!email || !otp.trim()) {
+      return;
+    }
 
     setLoading(true);
     setError(null);
@@ -69,7 +73,9 @@ function VerifyOtpContent() {
   };
 
   const handleResend = async () => {
-    if (!email || resendDisabled) return;
+    if (!email || resendDisabled) {
+      return;
+    }
 
     setResendLoading(true);
     setError(null);

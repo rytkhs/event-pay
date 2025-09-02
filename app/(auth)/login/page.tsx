@@ -1,10 +1,13 @@
 "use client";
 
 import Link from "next/link";
+
+import { useLoginFormRHF } from "@features/auth/hooks/useAuthForm";
+
+import { loginAction } from "@/app/(auth)/actions";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Form,
   FormControl,
@@ -13,8 +16,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { useLoginFormRHF } from "@features/auth/hooks/useAuthForm";
-import { loginAction } from "@/app/(auth)/actions";
+import { Input } from "@/components/ui/input";
 
 export default function LoginPage() {
   const { form, onSubmit, isPending } = useLoginFormRHF(loginAction, {

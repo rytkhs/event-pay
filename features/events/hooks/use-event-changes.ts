@@ -1,9 +1,11 @@
 "use client";
 
 import { useCallback, useMemo } from "react";
-import { ChangeItem } from "@/components/ui/change-confirmation-dialog";
-import { formatUtcToDatetimeLocal } from "@core/utils/timezone";
+
 import type { Event, EventFormData } from "@core/types/models";
+import { formatUtcToDatetimeLocal } from "@core/utils/timezone";
+
+import { ChangeItem } from "@/components/ui/change-confirmation-dialog";
 
 interface UseEventChangesProps {
   event: Event;

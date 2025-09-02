@@ -6,7 +6,8 @@
 import { z } from "zod";
 
 // ゲストトークンバリデーション
-export const guestTokenSchema = z.string()
+export const guestTokenSchema = z
+  .string()
   .min(1, "ゲストトークンは必須です")
   .regex(/^[A-Za-z0-9_-]+$/, "ゲストトークンの形式が不正です");
 
@@ -14,7 +15,7 @@ export const guestTokenSchema = z.string()
 export const updateAttendanceSchema = z.object({
   guestToken: guestTokenSchema,
   attendanceStatus: z.enum(["attending", "not_attending", "pending"], {
-    errorMap: () => ({ message: "参加ステータスを正しく選択してください" })
+    errorMap: () => ({ message: "参加ステータスを正しく選択してください" }),
   }),
   paymentMethod: z.enum(["stripe", "cash"]).optional(),
 });

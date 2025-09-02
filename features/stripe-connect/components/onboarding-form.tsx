@@ -5,12 +5,15 @@
 "use client";
 
 import { useState } from "react";
+
+import { Loader2, CreditCard, Shield, Zap } from "lucide-react";
+
+import { logger } from "@core/logging/app-logger";
+
+import { createConnectAccountAction } from "@/app/(dashboard)/actions/stripe-connect";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Loader2, CreditCard, Shield, Zap } from "lucide-react";
-import { createConnectAccountAction } from "@/app/(dashboard)/actions/stripe-connect";
-import { logger } from "@core/logging/app-logger";
 
 interface OnboardingFormProps {
   refreshUrl: string;

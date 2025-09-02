@@ -3,11 +3,19 @@
  */
 
 import type { SupabaseClient } from "@supabase/supabase-js";
+
 // import type { PostgrestError } from "@supabase/supabase-js";
-import { Database } from "@/types/database";
+import { PostgrestError } from "@supabase/supabase-js";
+
+import { logger } from "@core/logging/app-logger";
 import { stripe } from "@core/stripe/client";
 import * as DestinationCharges from "@core/stripe/destination-charges";
+
 import { ApplicationFeeCalculator } from "@features/payments/services/fee-config/application-fee-calculator";
+
+import { Database } from "@/types/database";
+
+import { ERROR_HANDLING_BY_TYPE } from "./error-mapping";
 import { IPaymentService, IPaymentErrorHandler } from "./interface";
 import {
   Payment,
@@ -22,9 +30,6 @@ import {
   PaymentErrorType,
   ErrorHandlingResult,
 } from "./types";
-import { ERROR_HANDLING_BY_TYPE } from "./error-mapping";
-import { logger } from "@core/logging/app-logger";
-import { PostgrestError } from "@supabase/supabase-js";
 
 /**
  * PaymentServiceの実装クラス

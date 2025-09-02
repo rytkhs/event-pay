@@ -1,9 +1,12 @@
 import React from "react";
-import { createClient } from "@core/supabase/server";
-import { SettlementReportService } from "@features/settlements/services/service";
-import { SettlementReportList } from "@features/settlements/components/settlement-report-list";
-import { getCurrentUser } from "@core/auth/auth-utils";
+
 import { redirect } from "next/navigation";
+
+import { getCurrentUser } from "@core/auth/auth-utils";
+import { createClient } from "@core/supabase/server";
+
+import { SettlementReportList } from "@features/settlements/components/settlement-report-list";
+import { SettlementReportService } from "@features/settlements/services/service";
 
 export const dynamic = "force-dynamic";
 

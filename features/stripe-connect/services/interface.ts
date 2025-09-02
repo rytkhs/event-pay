@@ -3,6 +3,7 @@
  */
 
 import type { PostgrestError } from "@supabase/supabase-js";
+
 import {
   StripeConnectAccount,
   CreateExpressAccountParams,

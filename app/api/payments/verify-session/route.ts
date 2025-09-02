@@ -5,15 +5,17 @@
 
 export const dynamic = "force-dynamic";
 
-import { NextRequest, NextResponse } from "next/server";
-import { stripe } from "@core/stripe/client";
+import type { NextRequest } from "next/server";
+import { NextResponse } from "next/server";
 
-import { SecureSupabaseClientFactory } from "@core/security/secure-client-factory.impl";
-import { logger } from "@core/logging/app-logger";
-import { logSecurityEvent } from "@core/security/security-logger";
-import { createRateLimitStore, checkRateLimit } from "@core/rate-limit";
 import { z } from "zod";
+
 import { createProblemResponse, createQueryValidationError } from "@core/api/problem-details";
+import { logger } from "@core/logging/app-logger";
+import { createRateLimitStore, checkRateLimit } from "@core/rate-limit";
+import { SecureSupabaseClientFactory } from "@core/security/secure-client-factory.impl";
+import { logSecurityEvent } from "@core/security/security-logger";
+import { stripe } from "@core/stripe/client";
 import { getClientIP } from "@core/utils/ip-detection";
 
 // リクエストバリデーションスキーマ
@@ -147,7 +149,7 @@ export async function GET(request: NextRequest) {
       } catch (stripeError) {
         logger.warn("Stripe session retrieval failed (fallback)", {
           tag: "payment-verify",
-          session_id: session_id.substring(0, 8) + "...",
+          session_id: `${session_id.substring(0, 8)}...`,
           error: stripeError instanceof Error ? stripeError.message : String(stripeError),
         });
       }
@@ -178,7 +180,7 @@ export async function GET(request: NextRequest) {
               (pi as { metadata?: Record<string, unknown> | null }).metadata
             ) {
               const md = (pi as { metadata?: Record<string, unknown> | null }).metadata;
-              const raw = md && md["payment_id"];
+              const raw = md?.["payment_id"];
               return typeof raw === "string" && raw.length > 0 ? raw : null;
             }
             return null;
@@ -207,9 +209,8 @@ export async function GET(request: NextRequest) {
                 message: "Outdated checkout session detected during verification",
                 details: {
                   attendanceId: attendance_id,
-                  requestedSessionId: session_id.substring(0, 8) + "...",
-                  currentSessionId:
-                    (fallbackPayment.stripe_checkout_session_id as string).substring(0, 8) + "...",
+                  requestedSessionId: `${session_id.substring(0, 8)}...`,
+                  currentSessionId: `${(fallbackPayment.stripe_checkout_session_id as string).substring(0, 8)}...`,
                   paymentId: fallbackPayment.id,
                   reason: "session_outdated",
                 },
@@ -230,7 +231,7 @@ export async function GET(request: NextRequest) {
               message: "Payment matched by fallback using client_reference_id/metadata",
               details: {
                 attendanceId: attendance_id,
-                sessionId: session_id.substring(0, 8) + "...",
+                sessionId: `${session_id.substring(0, 8)}...`,
                 paymentId: fallbackPayment.id,
                 reason: "fallback_matched",
               },
@@ -249,7 +250,7 @@ export async function GET(request: NextRequest) {
           message: "Payment verification failed - no matching record found with guest token",
           details: {
             attendanceId: attendance_id,
-            sessionId: session_id.substring(0, 8) + "...",
+            sessionId: `${session_id.substring(0, 8)}...`,
             hasGuestToken: !!guestToken,
             dbErrorCode: dbError?.code,
           },
@@ -272,7 +273,7 @@ export async function GET(request: NextRequest) {
       } catch (stripeError) {
         logger.warn("Stripe session retrieval failed", {
           tag: "payment-verify",
-          session_id: session_id.substring(0, 8) + "...", // セキュリティのため一部のみログ
+          session_id: `${session_id.substring(0, 8)}...`, // セキュリティのため一部のみログ
           error: stripeError instanceof Error ? stripeError.message : String(stripeError),
         });
 
@@ -321,7 +322,7 @@ export async function GET(request: NextRequest) {
           tag: "payment-verify",
           stripe_status: paymentStatus,
           db_status: dbStatus,
-          session_id: session_id.substring(0, 8) + "...",
+          session_id: `${session_id.substring(0, 8)}...`,
           payment_id: payment.id,
         });
 
@@ -338,7 +339,7 @@ export async function GET(request: NextRequest) {
 
     logger.info("Payment session verification completed", {
       tag: "payment-verify",
-      session_id: session_id.substring(0, 8) + "...",
+      session_id: `${session_id.substring(0, 8)}...`,
       payment_status: paymentStatus,
       attendance_id,
     });

@@ -1,33 +1,35 @@
 "use server";
 
-import { z } from "zod";
 import { headers } from "next/headers";
-import { createClient } from "@core/supabase/server";
-import { SecureSupabaseClientFactory } from "@core/security/secure-client-factory.impl";
-import { generateGuestToken } from "@core/utils/guest-token";
 
+import { z } from "zod";
+
+import { SecureSupabaseClientFactory } from "@core/security/secure-client-factory.impl";
 import {
-  validateInviteToken,
-  checkEventCapacity,
-  checkDuplicateEmail as _checkDuplicateEmail,
-} from "@core/utils/invite-token";
-import {
-  participationFormSchema,
-  type ParticipationFormData,
-  validateParticipationFormWithDuplicateCheck,
-  sanitizeParticipationInput,
-} from "@core/validation/participation";
+  logParticipationSecurityEvent,
+  logInvalidTokenAccess,
+} from "@core/security/security-logger";
+import { createClient } from "@core/supabase/server";
 import {
   type ServerActionResult,
   createServerActionError,
   createServerActionSuccess,
   zodErrorToServerActionResponse,
 } from "@core/types/server-actions";
+import { generateGuestToken } from "@core/utils/guest-token";
 import {
-  logParticipationSecurityEvent,
-  logInvalidTokenAccess,
-} from "@core/security/security-logger";
+  validateInviteToken,
+  checkEventCapacity,
+  checkDuplicateEmail as _checkDuplicateEmail,
+} from "@core/utils/invite-token";
 import { getClientIPFromHeaders } from "@core/utils/ip-detection";
+import {
+  participationFormSchema,
+  type ParticipationFormData,
+  validateParticipationFormWithDuplicateCheck,
+  sanitizeParticipationInput,
+} from "@core/validation/participation";
+
 import type { Database } from "@/types/database";
 
 // 参加登録結果の型定義

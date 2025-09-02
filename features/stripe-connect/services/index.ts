@@ -36,13 +36,16 @@ export {
 } from "./error-mapping";
 
 // サービスインスタンス作成のヘルパー関数
-import { StripeConnectService } from "./service";
-import { StripeConnectErrorHandler } from "./error-handler";
-import type { IStripeConnectService } from "./interface";
+import { type SupabaseClient } from "@supabase/supabase-js";
+
 import { SecureSupabaseClientFactory } from "@core/security/secure-client-factory.impl";
 import { AdminReason } from "@core/security/secure-client-factory.types";
-import { type SupabaseClient } from "@supabase/supabase-js";
+
 import { Database } from "@/types/database";
+
+import { StripeConnectErrorHandler } from "./error-handler";
+import type { IStripeConnectService } from "./interface";
+import { StripeConnectService } from "./service";
 
 /**
  * 認証済みユーザー用のStripeConnectServiceを作成

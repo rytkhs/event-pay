@@ -1,6 +1,6 @@
-import { AdminReason } from "./secure-client-factory.types";
 import type { AdminOperationResult } from "./admin-operations.types";
 import { SecureSupabaseClientFactory } from "./secure-client-factory.impl";
+import { AdminReason } from "./secure-client-factory.types";
 
 /**
  * セキュアな管理者操作ユーティリティ

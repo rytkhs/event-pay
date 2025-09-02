@@ -1,8 +1,9 @@
 "use server";
 
 import { z } from "zod";
-import { SecureSupabaseClientFactory } from "@core/security/secure-client-factory.impl";
+
 import { getCurrentUser } from "@core/auth/auth-utils";
+import { SecureSupabaseClientFactory } from "@core/security/secure-client-factory.impl";
 import { generateInviteToken } from "@core/utils/invite-token";
 
 const generateInviteTokenSchema = z.string().uuid("Invalid event ID format");
@@ -78,7 +79,9 @@ export async function generateInviteTokenAction(
         .eq("invite_token", newInviteToken)
         .single();
 
-      if (!existing) break;
+      if (!existing) {
+        break;
+      }
 
       newInviteToken = generateInviteToken();
       attempts++;

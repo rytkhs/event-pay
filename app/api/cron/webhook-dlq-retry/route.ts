@@ -1,16 +1,21 @@
-import { NextRequest, NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
+import { NextResponse } from "next/server";
+
+import { createClient } from "@supabase/supabase-js";
+
 import { createProblemResponse } from "@core/api/problem-details";
+import { validateCronSecret } from "@core/cron-auth";
+import { logger } from "@core/logging/app-logger";
 import { stripe as sharedStripe } from "@core/stripe/client";
+
+import type { WebhookProcessingResult } from "@features/payments/services/webhook";
 import { StripeWebhookEventHandler } from "@features/payments/services/webhook/webhook-event-handler";
 import {
   SupabaseWebhookIdempotencyService,
   IdempotentWebhookProcessor,
 } from "@features/payments/services/webhook/webhook-idempotency";
-import { logger } from "@core/logging/app-logger";
-import type { WebhookProcessingResult } from "@features/payments/services/webhook";
-import { createClient } from "@supabase/supabase-js";
-import { Database } from "@/types/database";
-import { validateCronSecret } from "@core/cron-auth";
+
+import type { Database } from "@/types/database";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -55,7 +60,9 @@ export async function GET(request: NextRequest) {
       .eq("status", "failed")
       .lt("retry_count", MAX_RETRIES);
 
-    if (error) throw new Error(`Failed to fetch failed events: ${error.message}`);
+    if (error) {
+      throw new Error(`Failed to fetch failed events: ${error.message}`);
+    }
 
     let processed = 0;
     let success = 0;
@@ -65,7 +72,9 @@ export async function GET(request: NextRequest) {
       const lastRetryAtStr: string | null = evt.last_retry_at ?? null;
       const lastRetryMs = lastRetryAtStr ? Date.parse(lastRetryAtStr) : 0;
       const delaySec = Math.pow(2, retryCount) * BASE_INTERVAL_SEC;
-      if (now - lastRetryMs < delaySec * 1000) continue; // まだ待機
+      if (now - lastRetryMs < delaySec * 1000) {
+        continue;
+      } // まだ待機
 
       processed++;
       const eventId: string = evt.stripe_event_id;

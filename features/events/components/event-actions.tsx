@@ -1,10 +1,13 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { updateCashStatusAction } from "@/app/payments/actions/update-cash-status";
+
+import { useRouter } from "next/navigation";
+
 import { useToast } from "@core/contexts/toast-context";
+
 import { deleteEventAction } from "@/app/events/actions/delete-event";
+import { updateCashStatusAction } from "@/app/payments/actions/update-cash-status";
 import {
   Dialog,
   DialogContent,

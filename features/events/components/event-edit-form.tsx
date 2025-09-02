@@ -1,8 +1,22 @@
 "use client";
 
 import { useState } from "react";
+
+import type { Event } from "@core/types/models";
+import { sanitizeForEventPay } from "@core/utils/sanitize";
+
+import {
+  useEventEditForm,
+  type EventEditFormDataRHF,
+} from "@features/events/hooks/use-event-edit-form";
+
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  ChangeConfirmationDialog,
+  type ChangeItem,
+} from "@/components/ui/change-confirmation-dialog";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Form,
   FormControl,
@@ -13,17 +27,6 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Checkbox } from "@/components/ui/checkbox";
-import {
-  ChangeConfirmationDialog,
-  type ChangeItem,
-} from "@/components/ui/change-confirmation-dialog";
-import {
-  useEventEditForm,
-  type EventEditFormDataRHF,
-} from "@features/events/hooks/use-event-edit-form";
-import { sanitizeForEventPay } from "@core/utils/sanitize";
-import type { Event } from "@core/types/models";
 
 interface EventEditFormProps {
   event: Event;

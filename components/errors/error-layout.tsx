@@ -5,11 +5,12 @@
 
 "use client";
 
-import { ReactNode } from "react";
-import { ErrorCard } from "./ui/error-card";
-import { ErrorPageProps } from "./error-types";
-import { logError, addBreadcrumb } from "./error-logger";
+import type { ReactNode } from "react";
 import { useEffect } from "react";
+
+import { logError, addBreadcrumb } from "./error-logger";
+import type { ErrorPageProps } from "./error-types";
+import { ErrorCard } from "./ui/error-card";
 
 interface ErrorLayoutProps extends ErrorPageProps {
   children?: ReactNode;

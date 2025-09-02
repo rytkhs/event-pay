@@ -1,10 +1,20 @@
 "use client";
 
-import { z } from "zod";
-import { SortBy, SortOrder } from "@/app/events/actions/get-events";
 import { useEffect } from "react";
+
+import { z } from "zod";
+
+import {
+  SORT_BY_OPTIONS,
+  SORT_BY_LABELS,
+  isValidSortBy,
+  isValidSortOrder,
+} from "@core/constants/event-filters";
+
+import { SortBy, SortOrder } from "@/app/events/actions/get-events";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
   Select,
   SelectContent,
@@ -12,13 +22,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import {
-  SORT_BY_OPTIONS,
-  SORT_BY_LABELS,
-  isValidSortBy,
-  isValidSortOrder,
-} from "@core/constants/event-filters";
 
 interface EventSortProps {
   sortBy: SortBy;

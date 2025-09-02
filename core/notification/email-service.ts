@@ -3,7 +3,9 @@
  */
 
 import { Resend } from "resend";
+
 import { logger } from "@core/logging/app-logger";
+
 import { IEmailNotificationService, EmailTemplate, NotificationResult } from "./types";
 
 /**

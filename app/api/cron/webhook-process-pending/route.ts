@@ -1,15 +1,18 @@
-import { NextRequest, NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
+import { NextResponse } from "next/server";
+
+import type Stripe from "stripe";
+
 import { createProblemResponse } from "@core/api/problem-details";
 import { validateCronSecret, logCronActivity } from "@core/cron-auth";
 import { stripe as sharedStripe } from "@core/stripe/client";
+
+import { ConnectWebhookHandler } from "@features/payments/services/webhook/connect-webhook-handler";
+import { StripeWebhookEventHandler } from "@features/payments/services/webhook/webhook-event-handler";
 import {
   SupabaseWebhookIdempotencyService,
   IdempotentWebhookProcessor,
 } from "@features/payments/services/webhook/webhook-idempotency";
-import { StripeWebhookEventHandler } from "@features/payments/services/webhook/webhook-event-handler";
-
-import { ConnectWebhookHandler } from "@features/payments/services/webhook/connect-webhook-handler";
-import Stripe from "stripe";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -80,9 +83,13 @@ export async function GET(request: NextRequest) {
       // data.object.id を抽出（イベントにより存在しない場合あり）
       const objectId: string | undefined = ((): string | undefined => {
         const data: unknown = (event as unknown as { data?: unknown }).data;
-        if (!data || typeof data !== "object") return undefined;
+        if (!data || typeof data !== "object") {
+          return undefined;
+        }
         const obj: unknown = (data as { object?: unknown }).object;
-        if (!obj || typeof obj !== "object") return undefined;
+        if (!obj || typeof obj !== "object") {
+          return undefined;
+        }
         const idVal = (obj as { id?: unknown }).id;
         return typeof idVal === "string" && idVal.length > 0 ? idVal : undefined;
       })();
@@ -139,8 +146,11 @@ export async function GET(request: NextRequest) {
           { metadata: { stripe_account_id: row.stripe_account_id } }
         );
         processed++;
-        if ((res.result as { success?: boolean })?.success) succeeded++;
-        else failed++;
+        if ((res.result as { success?: boolean })?.success) {
+          succeeded++;
+        } else {
+          failed++;
+        }
         continue;
       }
 
@@ -179,8 +189,11 @@ export async function GET(request: NextRequest) {
           }
         );
         processed++;
-        if ((res.result as { success?: boolean })?.success) succeeded++;
-        else failed++;
+        if ((res.result as { success?: boolean })?.success) {
+          succeeded++;
+        } else {
+          failed++;
+        }
       }
     } catch (e) {
       failed++;

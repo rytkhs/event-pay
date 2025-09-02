@@ -2,7 +2,10 @@
  * 通知サービスの実装
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
+
 import { Database } from "@/types/database";
+
+import { EmailNotificationService } from "./email-service";
 import {
   INotificationService,
   IEmailNotificationService,
@@ -12,7 +15,6 @@ import {
   AccountRestrictedNotification,
   EmailTemplate,
 } from "./types";
-import { EmailNotificationService } from "./email-service";
 
 /**
  * 通知サービスの実装クラス
