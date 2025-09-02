@@ -2,27 +2,27 @@
  * Stripe Connect オンボーディングリフレッシュページ
  */
 
-export const dynamic = 'force-dynamic'
+export const dynamic = "force-dynamic";
 
-import { Suspense } from 'react'
+import { Suspense } from "react";
 
-import { Loader2 } from 'lucide-react'
-import type { Metadata } from 'next'
+import { Loader2 } from "lucide-react";
+import type { Metadata } from "next";
 
-import { handleOnboardingRefreshAction } from '@/app/(dashboard)/actions/stripe-connect'
-import { Card, CardContent } from '@/components/ui/card'
+import { handleOnboardingRefreshAction } from "@/app/(dashboard)/actions/stripe-connect";
+import { Card, CardContent } from "@/components/ui/card";
 
 export const metadata: Metadata = {
-  title: '設定を再開 | EventPay',
-  description: 'Stripe Connect設定を再開しています',
-}
+  title: "設定を再開 | EventPay",
+  description: "Stripe Connect設定を再開しています",
+};
 
 async function RefreshContent() {
   // オンボーディングリフレッシュ処理を実行（リダイレクトが発生）
-  await handleOnboardingRefreshAction()
+  await handleOnboardingRefreshAction();
 
   // この部分は通常実行されない（リダイレクトが発生するため）
-  return null
+  return null;
 }
 
 function LoadingContent() {
@@ -44,7 +44,7 @@ function LoadingContent() {
         </Card>
       </div>
     </div>
-  )
+  );
 }
 
 export default function ConnectRefreshPage() {
@@ -52,5 +52,5 @@ export default function ConnectRefreshPage() {
     <Suspense fallback={<LoadingContent />}>
       <RefreshContent />
     </Suspense>
-  )
+  );
 }

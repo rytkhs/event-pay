@@ -10,7 +10,6 @@ import { Loader2, CreditCard, Shield, Zap } from "lucide-react";
 
 import { logger } from "@core/logging/app-logger";
 
-import { createConnectAccountAction } from "@/app/(dashboard)/actions/stripe-connect";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -18,16 +17,17 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 interface OnboardingFormProps {
   refreshUrl: string;
   returnUrl: string;
+  onCreateAccount: (formData: FormData) => Promise<void>;
 }
 
-export function OnboardingForm({ refreshUrl, returnUrl }: OnboardingFormProps) {
+export function OnboardingForm({ refreshUrl, returnUrl, onCreateAccount }: OnboardingFormProps) {
   const [isLoading, setIsLoading] = useState(false);
 
   const handleSubmit = async (formData: FormData) => {
     setIsLoading(true);
     try {
       // Server Actionを呼び出し（リダイレクトが発生する）
-      await createConnectAccountAction(formData);
+      await onCreateAccount(formData);
     } catch (error) {
       logger.error("Onboarding start error", {
         tag: "connectOnboardingStartError",

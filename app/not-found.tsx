@@ -3,7 +3,7 @@
  * アプリケーション全体のNot Foundエラー
  */
 
-import { NotFoundLayout } from '@/components/errors'
+import { NotFoundLayout } from "@/components/errors";
 
 /**
  * ルートレベルの404エラーページ
@@ -16,5 +16,5 @@ export default function RootNotFoundPage() {
       description="URLをご確認いただくか、ホームページに戻ってください。"
       showBack={true}
     />
-  )
+  );
 }

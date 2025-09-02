@@ -1,21 +1,21 @@
-import { notFound, redirect } from 'next/navigation'
+import { notFound, redirect } from "next/navigation";
 
-import { getCurrentUser } from '@core/auth/auth-utils'
-import { createCachedActions } from '@core/utils/cache-helpers'
-import { sanitizeEventDescription } from '@core/utils/sanitize'
+import { getCurrentUser } from "@core/auth/auth-utils";
+import { createCachedActions } from "@core/utils/cache-helpers";
+import { sanitizeEventDescription } from "@core/utils/sanitize";
 
-import { EventActions, EventDetail, ParticipantsManagement } from '@features/events'
-import { InviteLink } from '@features/invite'
+import { EventActions, EventDetail, ParticipantsManagement } from "@features/events";
+import { InviteLink } from "@features/invite";
 
-import { getEventAttendancesAction } from '@/app/events/actions/get-event-attendances'
-import { getEventDetailAction } from '@/app/events/actions/get-event-detail'
-import { getEventParticipantsAction } from '@/app/events/actions/get-event-participants'
-import { getEventPaymentsAction } from '@/app/events/actions/get-event-payments'
+import { getEventAttendancesAction } from "@/app/events/actions/get-event-attendances";
+import { getEventDetailAction } from "@/app/events/actions/get-event-detail";
+import { getEventParticipantsAction } from "@/app/events/actions/get-event-participants";
+import { getEventPaymentsAction } from "@/app/events/actions/get-event-payments";
 
 interface EventDetailPageProps {
   params: {
-    id: string
-  }
+    id: string;
+  };
 }
 
 // キャッシュ処理を統一
@@ -24,50 +24,50 @@ const cachedActions = createCachedActions({
   getEventAttendances: getEventAttendancesAction,
   getEventPayments: getEventPaymentsAction,
   getEventParticipants: getEventParticipantsAction,
-})
+});
 
 export default async function EventDetailPage({ params }: EventDetailPageProps) {
   try {
     if (!params?.id) {
-      notFound()
+      notFound();
     }
 
-    const eventDetailResult = await cachedActions.getEventDetail(params.id)
+    const eventDetailResult = await cachedActions.getEventDetail(params.id);
 
     if (!eventDetailResult.success) {
       // エラーコードに基づいて適切な処理
-      if (eventDetailResult.code === 'EVENT_NOT_FOUND') {
-        notFound()
+      if (eventDetailResult.code === "EVENT_NOT_FOUND") {
+        notFound();
       }
-      if (eventDetailResult.code === 'EVENT_ACCESS_DENIED') {
-        redirect(`/events/${params.id}/forbidden`)
+      if (eventDetailResult.code === "EVENT_ACCESS_DENIED") {
+        redirect(`/events/${params.id}/forbidden`);
       }
-      if (eventDetailResult.code === 'EVENT_INVALID_ID') {
-        notFound()
+      if (eventDetailResult.code === "EVENT_INVALID_ID") {
+        notFound();
       }
       // その他のエラーは500エラーとして処理
-      throw new Error(eventDetailResult.error)
+      throw new Error(eventDetailResult.error);
     }
 
-    const eventDetail = eventDetailResult.data
+    const eventDetail = eventDetailResult.data;
 
     // 現在のユーザーを取得して主催者かどうか判定
-    const currentUser = await getCurrentUser()
-    const isOrganizer = currentUser && currentUser.id === eventDetail.created_by
+    const currentUser = await getCurrentUser();
+    const isOrganizer = currentUser && currentUser.id === eventDetail.created_by;
 
     // 主催者の場合のみ統計データと参加者データを取得
-    let attendances: Awaited<ReturnType<typeof cachedActions.getEventAttendances>> = []
-    let paymentsData: Awaited<ReturnType<typeof cachedActions.getEventPayments>> | null = null
+    let attendances: Awaited<ReturnType<typeof cachedActions.getEventAttendances>> = [];
+    let paymentsData: Awaited<ReturnType<typeof cachedActions.getEventPayments>> | null = null;
     let participantsData: Awaited<ReturnType<typeof cachedActions.getEventParticipants>> | null =
-      null
+      null;
 
     if (isOrganizer) {
       try {
         // 基本的な統計データ
-        ;[attendances, paymentsData] = await Promise.all([
+        [attendances, paymentsData] = await Promise.all([
           cachedActions.getEventAttendances(params.id),
           cachedActions.getEventPayments(params.id),
-        ])
+        ]);
 
         // 参加者詳細データ（デフォルトパラメータで初期データを取得）
         participantsData = await cachedActions.getEventParticipants({
@@ -76,11 +76,11 @@ export default async function EventDetailPage({ params }: EventDetailPageProps) 
           attendanceStatus: undefined,
           paymentMethod: undefined,
           paymentStatus: undefined,
-          sortField: 'updated_at',
-          sortOrder: 'desc',
+          sortField: "updated_at",
+          sortOrder: "desc",
           page: 1,
           limit: 50,
-        })
+        });
       } catch (_) {
         // エラーが発生してもページ表示は継続
       }
@@ -118,35 +118,35 @@ export default async function EventDetailPage({ params }: EventDetailPageProps) 
           )}
         </div>
       </div>
-    )
+    );
   } catch (error) {
     // 予期しないエラーの場合は500エラーとして処理
-    throw error
+    throw error;
   }
 }
 
 // ページメタデータ生成（動的タイトル設定）
 export async function generateMetadata({ params }: EventDetailPageProps) {
   try {
-    const eventDetailResult = await cachedActions.getEventDetail(params.id)
+    const eventDetailResult = await cachedActions.getEventDetail(params.id);
     if (!eventDetailResult.success) {
       return {
-        title: 'イベント詳細 - EventPay',
-        description: 'イベントの詳細情報',
-      }
+        title: "イベント詳細 - EventPay",
+        description: "イベントの詳細情報",
+      };
     }
 
-    const eventDetail = eventDetailResult.data
+    const eventDetail = eventDetailResult.data;
     return {
       title: `${eventDetail.title} - EventPay`,
       description: sanitizeEventDescription(
         eventDetail.description || `${eventDetail.title}の詳細情報`
       ),
-    }
+    };
   } catch {
     return {
-      title: 'イベント詳細 - EventPay',
-      description: 'イベントの詳細情報',
-    }
+      title: "イベント詳細 - EventPay",
+      description: "イベントの詳細情報",
+    };
   }
 }

@@ -1,52 +1,52 @@
-import { notFound, redirect } from 'next/navigation'
+import { notFound, redirect } from "next/navigation";
 
-import { createClient } from '@core/supabase/server'
-import { calculateAttendeeCount } from '@core/utils/event-calculations'
+import { createClient } from "@core/supabase/server";
+import { calculateAttendeeCount } from "@core/utils/event-calculations";
 
-import { EditRestrictionsNotice, EventEditForm } from '@features/events'
+import { EditRestrictionsNotice, EventEditForm } from "@features/events";
 
 interface EventEditPageProps {
   params: {
-    id: string
-  }
+    id: string;
+  };
 }
 
 export default async function EventEditPage({ params }: EventEditPageProps) {
-  const supabase = createClient()
+  const supabase = createClient();
 
   // 認証チェック
   const {
     data: { user },
     error: authError,
-  } = await supabase.auth.getUser()
+  } = await supabase.auth.getUser();
 
   if (authError || !user) {
-    redirect('/login')
+    redirect("/login");
   }
 
   // イベントの取得
   const { data: event, error: eventError } = await supabase
-    .from('events')
+    .from("events")
     .select(
       `
       *,
       attendances(id, status)
     `
     )
-    .eq('id', params.id)
-    .single()
+    .eq("id", params.id)
+    .single();
 
   if (eventError || !event) {
-    notFound()
+    notFound();
   }
 
   // 編集権限チェック
   if (event.created_by !== user.id) {
-    redirect(`/events/${params.id}`)
+    redirect(`/events/${params.id}`);
   }
 
   // 参加者数を計算（技術設計書のattendance_status_enumに準拠）
-  const attendeeCount = calculateAttendeeCount(event.attendances)
+  const attendeeCount = calculateAttendeeCount(event.attendances);
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
@@ -68,12 +68,12 @@ export default async function EventEditPage({ params }: EventEditPageProps) {
         </div>
       </div>
     </div>
-  )
+  );
 }
 
 export function generateMetadata() {
   return {
-    title: 'イベント編集 - EventPay',
-    description: 'イベント情報の編集画面',
-  }
+    title: "イベント編集 - EventPay",
+    description: "イベント情報の編集画面",
+  };
 }

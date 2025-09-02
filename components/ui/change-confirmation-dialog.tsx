@@ -1,8 +1,8 @@
-'use client'
+"use client";
 
-import { Fragment } from 'react'
+import { Fragment } from "react";
 
-import { Button } from '@/components/ui/button'
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -10,24 +10,24 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
-} from '@/components/ui/dialog'
+} from "@/components/ui/dialog";
 
 export interface ChangeItem {
-  field: string
-  fieldName: string
-  oldValue: string
-  newValue: string
-  impact?: string
+  field: string;
+  fieldName: string;
+  oldValue: string;
+  newValue: string;
+  impact?: string;
 }
 
 interface ChangeConfirmationDialogProps {
-  isOpen: boolean
-  changes: ChangeItem[]
-  attendeeCount?: number
-  onConfirm: (changes: ChangeItem[]) => void
-  onCancel: () => void
-  onClose?: () => void
-  isLoading?: boolean
+  isOpen: boolean;
+  changes: ChangeItem[];
+  attendeeCount?: number;
+  onConfirm: (changes: ChangeItem[]) => void;
+  onCancel: () => void;
+  onClose?: () => void;
+  isLoading?: boolean;
 }
 
 export function ChangeConfirmationDialog({
@@ -39,18 +39,18 @@ export function ChangeConfirmationDialog({
   onClose,
   isLoading = false,
 }: ChangeConfirmationDialogProps) {
-  const hasAttendees = attendeeCount > 0
+  const hasAttendees = attendeeCount > 0;
 
   const handleOpenChange = (open: boolean) => {
     if (!open) {
       // ESCキーやオーバーレイクリックでの閉じる処理
       if (onClose) {
-        onClose()
+        onClose();
       } else {
-        onCancel() // onCloseが未定義の場合はフォールバック
+        onCancel(); // onCloseが未定義の場合はフォールバック
       }
     }
-  }
+  };
 
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
@@ -110,7 +110,7 @@ export function ChangeConfirmationDialog({
           {/* 制限項目の警告 */}
           {hasAttendees &&
             changes.some((change) =>
-              ['title', 'fee', 'payment_methods', 'capacity'].includes(change.field)
+              ["title", "fee", "payment_methods", "capacity"].includes(change.field)
             ) && (
               <div className="bg-red-50 border border-red-200 rounded-lg p-4">
                 <div className="flex items-start gap-3">
@@ -163,11 +163,11 @@ export function ChangeConfirmationDialog({
                 更新中...
               </>
             ) : (
-              '変更を確定'
+              "変更を確定"
             )}
           </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
-  )
+  );
 }

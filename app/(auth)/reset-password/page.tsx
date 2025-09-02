@@ -1,15 +1,15 @@
-'use client'
+"use client";
 
-import Link from 'next/link'
+import Link from "next/link";
 
-import { useAuthForm, AuthFormWrapper, AuthEmailField, AuthSubmitButton } from '@features/auth'
+import { useAuthForm, AuthFormWrapper, AuthEmailField, AuthSubmitButton } from "@features/auth";
 
-import { resetPasswordAction } from '@/app/(auth)/actions'
+import { resetPasswordAction } from "@/app/(auth)/actions";
 
 export default function ResetPasswordPage() {
   const { state, formAction, isPending } = useAuthForm(resetPasswordAction, {
     redirectOnSuccess: false, // メール送信成功時はリダイレクトしない
-  })
+  });
 
   return (
     <AuthFormWrapper
@@ -37,12 +37,12 @@ export default function ResetPasswordPage() {
           </Link>
         </div>
         <div className="text-sm text-gray-600">
-          アカウントをお持ちでない方は{' '}
+          アカウントをお持ちでない方は{" "}
           <Link href="/register" className="text-blue-600 hover:text-blue-500 hover:underline">
             新規登録
           </Link>
         </div>
       </div>
     </AuthFormWrapper>
-  )
+  );
 }

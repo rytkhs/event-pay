@@ -3,13 +3,13 @@
  * /payouts/*で発生するエラーをキャッチ
  */
 
-'use client'
+"use client";
 
-import { ErrorLayout } from '@/components/errors'
+import { ErrorLayout } from "@/components/errors";
 
 interface PayoutErrorPageProps {
-  error: Error & { digest?: string }
-  reset: () => void
+  error: Error & { digest?: string };
+  reset: () => void;
 }
 
 /**
@@ -31,5 +31,5 @@ export default function PayoutErrorPage({ error, reset }: PayoutErrorPageProps) 
       error={error}
       size="md"
     />
-  )
+  );
 }

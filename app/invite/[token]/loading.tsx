@@ -1,4 +1,4 @@
-import { Card } from '@/components/ui/card'
+import { Card } from "@/components/ui/card";
 
 export default function InviteLoading() {
   return (
@@ -47,5 +47,5 @@ export default function InviteLoading() {
         </div>
       </div>
     </div>
-  )
+  );
 }

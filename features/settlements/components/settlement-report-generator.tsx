@@ -7,7 +7,10 @@ import { CalculatorIcon, FileTextIcon, AlertTriangleIcon } from "lucide-react";
 import { useToast } from "@core/contexts/toast-context";
 import { formatUtcToJstByType } from "@core/utils/timezone";
 
-import { generateSettlementReportAction } from "@/app/actions/settlement-report-actions";
+import type {
+  GenerateSettlementReportSuccess,
+  GenerateSettlementReportFailure,
+} from "@/app/actions/settlement-report-actions";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -28,11 +31,15 @@ interface SettlementReportGeneratorProps {
     hasExistingReport?: boolean;
   }[];
   onReportGenerated?: (reportId: string) => void;
+  onGenerateReport: (
+    formData: FormData
+  ) => Promise<GenerateSettlementReportSuccess | GenerateSettlementReportFailure>;
 }
 
 export function SettlementReportGenerator({
   availableEvents = [],
   onReportGenerated,
+  onGenerateReport,
 }: SettlementReportGeneratorProps) {
   const { toast } = useToast();
   const [selectedEventId, setSelectedEventId] = useState("");
@@ -57,7 +64,7 @@ export function SettlementReportGenerator({
       formData.append("eventId", selectedEventId);
 
       // 統一されたサービス経由でRPC呼び出し
-      const result = await generateSettlementReportAction(formData);
+      const result = await onGenerateReport(formData);
 
       if (result.success) {
         // alreadyExistsプロパティは通常のアクションでのみ存在する

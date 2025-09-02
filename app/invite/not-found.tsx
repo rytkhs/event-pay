@@ -3,7 +3,7 @@
  * 無効または存在しない招待リンクへのアクセス
  */
 
-import { ErrorLayout } from '@/components/errors'
+import { ErrorLayout } from "@/components/errors";
 
 /**
  * 無効な招待リンクの404ページ
@@ -21,5 +21,5 @@ export default function InviteNotFoundPage() {
       showHome={true}
       enableLogging={false}
     />
-  )
+  );
 }

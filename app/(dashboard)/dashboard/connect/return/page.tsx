@@ -2,27 +2,27 @@
  * Stripe Connect オンボーディング完了後のリダイレクトページ
  */
 
-export const dynamic = 'force-dynamic'
+export const dynamic = "force-dynamic";
 
-import { Suspense } from 'react'
+import { Suspense } from "react";
 
-import { Loader2 } from 'lucide-react'
-import type { Metadata } from 'next'
+import { Loader2 } from "lucide-react";
+import type { Metadata } from "next";
 
-import { handleOnboardingReturnAction } from '@/app/(dashboard)/actions/stripe-connect'
-import { Card, CardContent } from '@/components/ui/card'
+import { handleOnboardingReturnAction } from "@/app/(dashboard)/actions/stripe-connect";
+import { Card, CardContent } from "@/components/ui/card";
 
 export const metadata: Metadata = {
-  title: '設定完了処理中 | EventPay',
-  description: 'Stripe Connect設定の完了処理を行っています',
-}
+  title: "設定完了処理中 | EventPay",
+  description: "Stripe Connect設定の完了処理を行っています",
+};
 
 async function ReturnContent() {
   // オンボーディング完了処理を実行（リダイレクトが発生）
-  await handleOnboardingReturnAction()
+  await handleOnboardingReturnAction();
 
   // この部分は通常実行されない（リダイレクトが発生するため）
-  return null
+  return null;
 }
 
 function LoadingContent() {
@@ -44,7 +44,7 @@ function LoadingContent() {
         </Card>
       </div>
     </div>
-  )
+  );
 }
 
 export default function ConnectReturnPage() {
@@ -52,5 +52,5 @@ export default function ConnectReturnPage() {
     <Suspense fallback={<LoadingContent />}>
       <ReturnContent />
     </Suspense>
-  )
+  );
 }
