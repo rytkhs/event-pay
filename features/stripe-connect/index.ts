@@ -3,8 +3,8 @@
  * Stripe Connect機能の公開エクスポート
  */
 
-// Components (将来的な拡張用)
-// export * from "./components";
+// Components
+export * from "./components";
 
 // Hooks (将来的な拡張用)
 // export * from "./hooks";

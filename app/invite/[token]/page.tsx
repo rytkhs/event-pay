@@ -6,7 +6,7 @@ import { validateInviteToken } from "@core/utils/invite-token";
 import { getClientIPFromHeaders } from "@core/utils/ip-detection";
 import { sanitizeEventDescription } from "@core/utils/sanitize";
 
-import { InviteEventDetail } from "@features/invite/components/invite-event-detail";
+import { InviteEventDetail } from "@features/invite";
 
 import { ErrorLayout } from "@/components/errors";
 

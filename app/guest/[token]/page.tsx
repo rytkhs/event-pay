@@ -12,8 +12,8 @@ import { validateGuestToken } from "@core/utils/guest-token";
 import { getClientIPFromHeaders } from "@core/utils/ip-detection";
 import { sanitizeForEventPay } from "@core/utils/sanitize";
 
-import { PaymentStatusAlert } from "@features/events/components/payment-status-alert";
-import { GuestManagementForm } from "@features/guest/components/guest-management-form";
+import { PaymentStatusAlert } from "@features/events";
+import { GuestManagementForm } from "@features/guest";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";

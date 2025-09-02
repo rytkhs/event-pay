@@ -13,8 +13,7 @@ import {
   type ErrorCode,
 } from "@core/types/server-actions";
 
-import { PaymentValidator } from "@features/payments/services";
-import { PaymentError, PaymentErrorType } from "@features/payments/types";
+import { PaymentValidator, PaymentError, PaymentErrorType } from "@features/payments";
 
 const inputSchema = z.object({
   paymentId: z.string().uuid(),

@@ -10,8 +10,7 @@ import {
   DEFAULT_PAYMENT_FILTER,
 } from "@core/constants/event-filters";
 
-import { EventListWithFilters } from "@features/events/components/event-list-with-filters";
-import { EventLoading } from "@features/events/components/event-loading";
+import { EventListWithFilters, EventLoading } from "@features/events";
 
 import { InlineErrorCard } from "@/components/errors";
 import { Button } from "@/components/ui/button";

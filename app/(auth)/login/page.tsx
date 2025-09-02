@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 
-import { useLoginFormRHF } from "@features/auth/hooks/useAuthForm";
+import { useLoginFormRHF } from "@features/auth";
 
 import { loginAction } from "@/app/(auth)/actions";
 import { Button } from "@/components/ui/button";

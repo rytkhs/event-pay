@@ -11,9 +11,11 @@ import type { Metadata } from "next";
 import { CONNECT_REFRESH_PATH, CONNECT_RETURN_PATH } from "@core/routes/stripe-connect";
 import { createClient } from "@core/supabase/server";
 
-import { AccountStatus } from "@features/stripe-connect/components/account-status";
-import { OnboardingForm } from "@features/stripe-connect/components/onboarding-form";
-import { createUserStripeConnectService } from "@features/stripe-connect/services";
+import {
+  AccountStatus,
+  OnboardingForm,
+  createUserStripeConnectService,
+} from "@features/stripe-connect";
 
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";

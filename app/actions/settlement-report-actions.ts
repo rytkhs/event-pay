@@ -8,7 +8,7 @@ import { getCurrentUser } from "@core/auth/auth-utils";
 import { logger } from "@core/logging/app-logger";
 import { createClient } from "@core/supabase/server";
 
-import { SettlementReportService } from "@features/settlements/services/service";
+import { SettlementReportService } from "@features/settlements";
 
 export type ExportSettlementReportsSuccess = {
   success: true;

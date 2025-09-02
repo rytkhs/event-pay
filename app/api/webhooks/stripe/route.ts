@@ -12,9 +12,11 @@ import {
 import { stripe as sharedStripe, getWebhookSecrets } from "@core/stripe/client";
 import { getClientIP } from "@core/utils/ip-detection";
 
-import type { WebhookProcessingResult } from "@features/payments/services/webhook";
-import { SupabaseWebhookIdempotencyService } from "@features/payments/services/webhook/webhook-idempotency";
-import { StripeWebhookSignatureVerifier } from "@features/payments/services/webhook/webhook-signature-verifier";
+import {
+  type WebhookProcessingResult,
+  SupabaseWebhookIdempotencyService,
+  StripeWebhookSignatureVerifier,
+} from "@features/payments";
 // import { StripeWebhookEventHandler } from '@features/payments/services/webhook/webhook-event-handler';
 // Rate limiting middleware intentionally not used on this webhook per Stripe best practice (429 triggers unnecessary retries)
 

@@ -5,6 +5,7 @@ export { StripeWebhookSignatureVerifier } from "./webhook-signature-verifier";
 // Webhookイベントハンドラー
 export type { WebhookEventHandler } from "./webhook-event-handler";
 export { StripeWebhookEventHandler } from "./webhook-event-handler";
+export { ConnectWebhookHandler } from "./connect-webhook-handler";
 
 // Webhook冪等性保証
 export type { WebhookIdempotencyService } from "./webhook-idempotency";

@@ -4,10 +4,8 @@ import { getCurrentUser } from "@core/auth/auth-utils";
 import { createCachedActions } from "@core/utils/cache-helpers";
 import { sanitizeEventDescription } from "@core/utils/sanitize";
 
-import { EventActions } from "@features/events/components/event-actions";
-import { EventDetail } from "@features/events/components/event-detail";
-import { ParticipantsManagement } from "@features/events/components/participants-management";
-import { InviteLink } from "@features/invite/components/invite-link";
+import { EventActions, EventDetail, ParticipantsManagement } from "@features/events";
+import { InviteLink } from "@features/invite";
 
 import { getEventAttendancesAction } from "@/app/events/actions/get-event-attendances";
 import { getEventDetailAction } from "@/app/events/actions/get-event-detail";

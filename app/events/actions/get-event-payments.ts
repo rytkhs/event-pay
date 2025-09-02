@@ -5,14 +5,14 @@ import type { z } from "zod";
 import { verifyEventAccess, handleDatabaseError } from "@core/auth/event-authorization";
 import { logger } from "@core/logging/app-logger";
 import { createClient } from "@core/supabase/server";
-import type {
+import {
   PaymentStatusEnum,
   GetEventPaymentsResponseSchema,
+  PAYMENT_STATUS_VALUES,
   type GetEventPaymentsResponse,
   type PaymentMethodSummary,
   type PaymentStatusSummary,
   type PaymentSummary,
-  PAYMENT_STATUS_VALUES,
 } from "@core/validation/participant-management";
 
 type PaymentStatus = z.infer<typeof PaymentStatusEnum>;

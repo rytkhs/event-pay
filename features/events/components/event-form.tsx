@@ -22,7 +22,7 @@ import { Textarea } from "@/components/ui/textarea";
 /**
  * react-hook-formを使用したイベント作成フォーム
  */
-export default function EventCreateForm() {
+function EventCreateForm() {
   const { form, onSubmit, isPending, hasErrors, isFreeEvent } = useEventForm();
 
   return (
@@ -335,3 +335,7 @@ export default function EventCreateForm() {
     </Card>
   );
 }
+
+// デフォルトエクスポートと名前付きエクスポート両方を提供
+export default EventCreateForm;
+export { EventCreateForm as EventForm };
