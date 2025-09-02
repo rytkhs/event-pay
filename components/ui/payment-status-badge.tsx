@@ -1,4 +1,4 @@
-import { PAYMENT_STATUS_LABELS, type PaymentStatus } from "@core/types/enums";
+import { PAYMENT_STATUS_LABELS, type PaymentStatus } from "./_lib/types";
 
 import { Badge } from "@/components/ui/badge";
 
