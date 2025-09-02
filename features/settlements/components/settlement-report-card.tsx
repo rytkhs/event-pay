@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 
-import { SettlementReportData } from "@features/settlements/services/types";
+import { SettlementReportData } from "../services/types";
 
 // Format currency helper
 const formatCurrency = (amount: number) => {

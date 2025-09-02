@@ -2,7 +2,7 @@
 
 import { getMinDatetimeLocal } from "@core/utils/timezone";
 
-import { useEventForm } from "@features/events/hooks/use-event-form";
+import { useEventForm } from "../hooks/use-event-form";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";

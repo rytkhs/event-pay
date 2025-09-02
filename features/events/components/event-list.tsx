@@ -2,7 +2,7 @@ import React, { memo } from "react";
 
 import Link from "next/link";
 
-import { Event } from "@features/events/types";
+import { Event } from "../types";
 
 import { Button } from "@/components/ui/button";
 

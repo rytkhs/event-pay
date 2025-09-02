@@ -9,7 +9,7 @@ import {
 import { logger } from "@core/logging/app-logger";
 import { convertJstDateToUtcRange } from "@core/utils/timezone";
 
-import { Event } from "@features/events/types";
+import { Event } from "../types";
 
 import { StatusFilter, PaymentFilter, DateFilter } from "@/app/events/actions/get-events";
 

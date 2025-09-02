@@ -4,7 +4,7 @@ import { ReactNode, useEffect, useRef } from "react";
 
 import { useFocusManagement } from "@core/hooks/useFocusManagement";
 
-import { ServerActionResult } from "@features/auth/hooks/useAuthForm";
+import { ServerActionResult } from "../hooks/useAuthForm";
 
 import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
 

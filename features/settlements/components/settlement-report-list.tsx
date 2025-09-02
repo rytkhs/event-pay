@@ -7,7 +7,7 @@ import { FileDownIcon, RefreshCwIcon, SearchIcon } from "lucide-react";
 import { useToast } from "@core/contexts/toast-context";
 import { formatUtcToJstByType } from "@core/utils/timezone";
 
-import { SettlementReportData } from "@features/settlements/services/types";
+import { SettlementReportData } from "../services/types";
 
 import {
   getSettlementReportsAction,
