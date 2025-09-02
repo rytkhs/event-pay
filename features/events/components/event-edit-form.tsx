@@ -5,10 +5,7 @@ import { useState } from "react";
 import type { Event } from "@core/types/models";
 import { sanitizeForEventPay } from "@core/utils/sanitize";
 
-import {
-  useEventEditForm,
-  type EventEditFormDataRHF,
-} from "@features/events/hooks/use-event-edit-form";
+import { useEventEditForm, type EventEditFormDataRHF } from "../hooks/use-event-edit-form";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";

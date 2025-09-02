@@ -11,7 +11,7 @@ import { logger } from "@core/logging/app-logger";
 import { stripe } from "@core/stripe/client";
 import * as DestinationCharges from "@core/stripe/destination-charges";
 
-import { ApplicationFeeCalculator } from "@features/payments/services/fee-config/application-fee-calculator";
+import { ApplicationFeeCalculator } from "./fee-config/application-fee-calculator";
 
 import { Database } from "@/types/database";
 

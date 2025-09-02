@@ -6,7 +6,7 @@ import { EVENT_STATUS_LABELS } from "@core/types/enums";
 import { sanitizeForEventPay } from "@core/utils/sanitize";
 import { formatUtcToJstByType } from "@core/utils/timezone";
 
-import { Event } from "@features/events/types";
+import { Event } from "../types";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 

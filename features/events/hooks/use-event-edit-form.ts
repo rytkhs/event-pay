@@ -12,9 +12,9 @@ import type { Event, EventFormData } from "@core/types/models";
 import { safeParseNumber, parseFee } from "@core/utils/number-parsers";
 import { convertDatetimeLocalToUtc, formatUtcToDatetimeLocal } from "@core/utils/timezone";
 
-import { useEventChanges } from "@features/events/hooks/use-event-changes";
-import { useEventRestrictions } from "@features/events/hooks/use-event-restrictions";
-import { useEventSubmission } from "@features/events/hooks/use-event-submission";
+import { useEventChanges } from "./use-event-changes";
+import { useEventRestrictions } from "./use-event-restrictions";
+import { useEventSubmission } from "./use-event-submission";
 
 import type { ChangeItem } from "@/components/ui/change-confirmation-dialog";
 

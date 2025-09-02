@@ -8,8 +8,8 @@ import { z } from "zod";
 
 import { usePagination } from "@core/hooks/usePagination";
 
-import { useEventFilter, Filters } from "@features/events/hooks/useEventFilter";
-import { Event } from "@features/events/types";
+import { useEventFilter, Filters } from "../hooks/useEventFilter";
+import { Event } from "../types";
 
 import type {
   SortBy,
