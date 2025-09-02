@@ -42,8 +42,8 @@ export interface StripeConnectNotificationData {
  * アカウント状態変更通知データ
  */
 export interface AccountStatusChangeNotification extends StripeConnectNotificationData {
-  oldStatus: import("@features/stripe-connect/services/types").StripeAccountStatusLike;
-  newStatus: import("@features/stripe-connect/services/types").StripeAccountStatusLike;
+  oldStatus: import("@features/stripe-connect").StripeAccountStatusLike;
+  newStatus: import("@features/stripe-connect").StripeAccountStatusLike;
   chargesEnabled: boolean;
   payoutsEnabled: boolean;
 }

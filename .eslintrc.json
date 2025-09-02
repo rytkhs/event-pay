@@ -70,10 +70,10 @@
       {
         "default": "disallow",
         "rules": [
-          // app層は全てにアクセス可能
+          // app層は全てにアクセス可能（自分自身も含む）
           {
             "from": "app",
-            "allow": ["features", "core", "components-ui", "components-errors", "types"]
+            "allow": ["app", "features", "core", "components-ui", "components-errors", "types"]
           },
           // features層はcoreとcomponents/uiのみアクセス可能
           {
@@ -100,11 +100,11 @@
     ],
     "boundaries/no-private": "error",
 
-    // feature間の相互依存禁止
+    // feature間の相互依存禁止 (featuresのみに適用)
     "boundaries/entry-point": [
       "error",
       {
-        "default": "disallow",
+        "default": "allow",
         "rules": [
           {
             "target": "features",
@@ -306,6 +306,71 @@
       "files": ["app/api/**/*"],
       "rules": {
         "@typescript-eslint/explicit-function-return-type": "off"
+      }
+    },
+    // Feature自己参照の禁止
+    {
+      "files": ["features/events/**/*"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": ["@features/events/**"],
+                "message": "同一feature内では相対パスを使用してください（@features/events → ../...）"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": ["features/auth/**/*"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": ["@features/auth/**"],
+                "message": "同一feature内では相対パスを使用してください（@features/auth → ../...）"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": ["features/payments/**/*"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": ["@features/payments/**"],
+                "message": "同一feature内では相対パスを使用してください（@features/payments → ../...）"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": ["features/settlements/**/*"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": ["@features/settlements/**"],
+                "message": "同一feature内では相対パスを使用してください（@features/settlements → ../...）"
+              }
+            ]
+          }
+        ]
       }
     }
   ],
