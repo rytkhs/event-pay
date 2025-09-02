@@ -1,17 +1,17 @@
 interface PasswordStatusIconProps {
-  type: "success" | "error" | "none";
-  message?: string;
-  testId?: string;
+  type: 'success' | 'error' | 'none'
+  message?: string
+  testId?: string
 }
 
 export function PasswordStatusIcon({ type, message, testId }: PasswordStatusIconProps) {
-  if (type === "none") {
-    return null;
+  if (type === 'none') {
+    return null
   }
 
-  const isSuccess = type === "success";
-  const iconColor = isSuccess ? "text-green-600" : "text-red-600";
-  const defaultTestId = isSuccess ? "password-match-success" : "password-match-error";
+  const isSuccess = type === 'success'
+  const iconColor = isSuccess ? 'text-green-600' : 'text-red-600'
+  const defaultTestId = isSuccess ? 'password-match-success' : 'password-match-error'
 
   return (
     <div className={`flex items-center ${iconColor} text-sm`}>
@@ -46,5 +46,5 @@ export function PasswordStatusIcon({ type, message, testId }: PasswordStatusIcon
       )}
       {message && <span>{message}</span>}
     </div>
-  );
+  )
 }

@@ -4,52 +4,52 @@
  * root layout.jsのエラーも含む
  */
 
-"use client";
+'use client'
 
-import { useEffect } from "react";
+import { useEffect } from 'react'
 
-import { ErrorLayout } from "@/components/errors";
+import { ErrorLayout } from '@/components/errors'
 
 interface GlobalErrorProps {
-  error: Error & { digest?: string };
-  reset: () => void;
+  error: Error & { digest?: string }
+  reset: () => void
 }
 
 export default function GlobalError({ error, reset }: GlobalErrorProps) {
   useEffect(() => {
     // グローバルエラーの発生をトラッキング
     // 本番環境では重要度が最高レベル
-    if (process.env.NODE_ENV === "production") {
+    if (process.env.NODE_ENV === 'production') {
       // 外部モニタリングサービスに送信
       // 例: Sentry, DataDog, New Relic等
     }
-  }, [error]);
+  }, [error])
 
   const handleReset = () => {
     try {
-      reset();
+      reset()
     } catch (_resetError) {
       // reset に失敗した場合はページリロード
-      window.location.reload();
+      window.location.reload()
     }
-  };
+  }
 
   const handleSupport = () => {
-    const supportEmail = process.env.NEXT_PUBLIC_SUPPORT_EMAIL || "support@eventpay.jp";
-    const subject = "EventPay - 重大なエラーが発生しました";
+    const supportEmail = process.env.NEXT_PUBLIC_SUPPORT_EMAIL || 'support@eventpay.jp'
+    const subject = 'EventPay - 重大なエラーが発生しました'
     const body = `
 エラーが発生しました。以下の情報をお送りします：
 
 エラーメッセージ: ${error.message}
 発生時刻: ${new Date().toISOString()}
-ページURL: ${typeof window !== "undefined" ? window.location.href : "不明"}
-ユーザーエージェント: ${typeof window !== "undefined" ? window.navigator.userAgent : "不明"}
+ページURL: ${typeof window !== 'undefined' ? window.location.href : '不明'}
+ユーザーエージェント: ${typeof window !== 'undefined' ? window.navigator.userAgent : '不明'}
 
-${error.digest ? `エラーID: ${error.digest}` : ""}
-    `.trim();
+${error.digest ? `エラーID: ${error.digest}` : ''}
+    `.trim()
 
-    window.location.href = `mailto:${supportEmail}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-  };
+    window.location.href = `mailto:${supportEmail}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
+  }
 
   return (
     <html lang="ja">
@@ -74,9 +74,9 @@ ${error.digest ? `エラーID: ${error.digest}` : ""}
           error={error}
           customActions={[
             {
-              label: "サポートに連絡",
+              label: 'サポートに連絡',
               action: handleSupport,
-              variant: "outline",
+              variant: 'outline',
             },
           ]}
         >
@@ -101,5 +101,5 @@ ${error.digest ? `エラーID: ${error.digest}` : ""}
         </ErrorLayout>
       </body>
     </html>
-  );
+  )
 }

@@ -3,13 +3,13 @@
  * /payments/*で発生するエラーをキャッチ
  */
 
-"use client";
+'use client'
 
-import { PaymentErrorLayout } from "@/components/errors";
+import { PaymentErrorLayout } from '@/components/errors'
 
 interface PaymentErrorPageProps {
-  error: Error & { digest?: string };
-  reset: () => void;
+  error: Error & { digest?: string }
+  reset: () => void
 }
 
 /**
@@ -18,14 +18,14 @@ interface PaymentErrorPageProps {
 export default function PaymentErrorPage({ error, reset }: PaymentErrorPageProps) {
   // エラーメッセージに基づいて適切なエラータイプを判定
   const isStripeError =
-    error.message?.includes("stripe") ||
-    error.message?.includes("payment") ||
-    error.message?.includes("card");
+    error.message?.includes('stripe') ||
+    error.message?.includes('payment') ||
+    error.message?.includes('card')
 
   const isNetworkError =
-    error.message?.includes("network") ||
-    error.message?.includes("fetch") ||
-    error.message?.includes("timeout");
+    error.message?.includes('network') ||
+    error.message?.includes('fetch') ||
+    error.message?.includes('timeout')
 
   if (isNetworkError) {
     return (
@@ -36,7 +36,7 @@ export default function PaymentErrorPage({ error, reset }: PaymentErrorPageProps
         error={error}
         onRetry={reset}
       />
-    );
+    )
   }
 
   if (isStripeError) {
@@ -48,8 +48,8 @@ export default function PaymentErrorPage({ error, reset }: PaymentErrorPageProps
         error={error}
         onRetry={reset}
       />
-    );
+    )
   }
 
-  return <PaymentErrorLayout error={error} onRetry={reset} />;
+  return <PaymentErrorLayout error={error} onRetry={reset} />
 }

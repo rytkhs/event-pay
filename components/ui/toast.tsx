@@ -1,51 +1,51 @@
-"use client";
+'use client'
 
-import { useEffect, useState } from "react";
+import { useEffect, useState } from 'react'
 
-import { X } from "lucide-react";
+import { X } from 'lucide-react'
 
 export interface Toast {
-  id: string;
-  title: string;
-  description?: string;
-  variant?: "default" | "destructive" | "success";
-  duration?: number;
+  id: string
+  title: string
+  description?: string
+  variant?: 'default' | 'destructive' | 'success'
+  duration?: number
 }
 
 interface ToastProps {
-  toast: Toast;
-  onClose: (id: string) => void;
+  toast: Toast
+  onClose: (id: string) => void
 }
 
 function ToastComponent({ toast, onClose }: ToastProps) {
-  const [isVisible, setIsVisible] = useState(false);
+  const [isVisible, setIsVisible] = useState(false)
 
   useEffect(() => {
     // マウント時にフェードイン
-    setIsVisible(true);
+    setIsVisible(true)
 
     // 自動削除タイマー
     const timer = setTimeout(() => {
-      setIsVisible(false);
-      setTimeout(() => onClose(toast.id), 300); // フェードアウト後に削除
-    }, toast.duration || 5000);
+      setIsVisible(false)
+      setTimeout(() => onClose(toast.id), 300) // フェードアウト後に削除
+    }, toast.duration || 5000)
 
-    return () => clearTimeout(timer);
-  }, [toast.id, toast.duration, onClose]);
+    return () => clearTimeout(timer)
+  }, [toast.id, toast.duration, onClose])
 
   const variantStyles = {
-    default: "bg-white border-gray-200 text-gray-900",
-    destructive: "bg-red-50 border-red-200 text-red-900",
-    success: "bg-green-50 border-green-200 text-green-900",
-  };
+    default: 'bg-white border-gray-200 text-gray-900',
+    destructive: 'bg-red-50 border-red-200 text-red-900',
+    success: 'bg-green-50 border-green-200 text-green-900',
+  }
 
   return (
     <div
       className={`
-        ${variantStyles[toast.variant || "default"]}
+        ${variantStyles[toast.variant || 'default']}
         border rounded-lg shadow-lg p-4 mb-2 min-w-[300px] max-w-[400px]
         transition-all duration-300 ease-in-out transform
-        ${isVisible ? "translate-x-0 opacity-100" : "translate-x-full opacity-0"}
+        ${isVisible ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0'}
       `}
       role="alert"
       aria-live="polite"
@@ -64,17 +64,17 @@ function ToastComponent({ toast, onClose }: ToastProps) {
         </button>
       </div>
     </div>
-  );
+  )
 }
 
 interface ToasterProps {
-  toasts: Toast[];
-  onClose: (id: string) => void;
+  toasts: Toast[]
+  onClose: (id: string) => void
 }
 
 export function Toaster({ toasts, onClose }: ToasterProps) {
   if (toasts.length === 0) {
-    return null;
+    return null
   }
 
   return (
@@ -83,5 +83,5 @@ export function Toaster({ toasts, onClose }: ToasterProps) {
         <ToastComponent key={toast.id} toast={toast} onClose={onClose} />
       ))}
     </div>
-  );
+  )
 }

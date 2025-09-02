@@ -1,13 +1,13 @@
-import Link from "next/link";
+import Link from 'next/link'
 
 interface ErrorPageProps {
   searchParams: {
-    message?: string;
-  };
+    message?: string
+  }
 }
 
 export default function AuthErrorPage({ searchParams }: ErrorPageProps) {
-  const { message } = searchParams;
+  const { message } = searchParams
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -18,7 +18,7 @@ export default function AuthErrorPage({ searchParams }: ErrorPageProps) {
 
         <main className="space-y-4">
           <div className="p-3 rounded-md text-sm bg-red-50 text-red-800 border border-red-200">
-            {message ? decodeURIComponent(message) : "認証に失敗しました。"}
+            {message ? decodeURIComponent(message) : '認証に失敗しました。'}
           </div>
 
           <div className="text-center space-y-2">
@@ -47,5 +47,5 @@ export default function AuthErrorPage({ searchParams }: ErrorPageProps) {
         </main>
       </div>
     </div>
-  );
+  )
 }

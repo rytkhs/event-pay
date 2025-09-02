@@ -3,13 +3,13 @@
  * /(auth)/*で発生するエラーをキャッチ
  */
 
-"use client";
+'use client'
 
-import { AuthErrorLayout } from "@/components/errors";
+import { AuthErrorLayout } from '@/components/errors'
 
 interface AuthErrorPageProps {
-  error: Error & { digest?: string };
-  reset: () => void;
+  error: Error & { digest?: string }
+  reset: () => void
 }
 
 /**
@@ -18,9 +18,9 @@ interface AuthErrorPageProps {
 export default function AuthErrorPage({ error, reset }: AuthErrorPageProps) {
   // エラーメッセージに基づいて適切なエラータイプを判定
   const isAuthenticationError =
-    error.message?.includes("authentication") ||
-    error.message?.includes("login") ||
-    error.message?.includes("認証");
+    error.message?.includes('authentication') ||
+    error.message?.includes('login') ||
+    error.message?.includes('認証')
 
   if (isAuthenticationError) {
     return (
@@ -31,7 +31,7 @@ export default function AuthErrorPage({ error, reset }: AuthErrorPageProps) {
         error={error}
         onRetry={reset}
       />
-    );
+    )
   }
 
   return (
@@ -43,11 +43,11 @@ export default function AuthErrorPage({ error, reset }: AuthErrorPageProps) {
       onRetry={reset}
       customActions={[
         {
-          label: "再試行",
+          label: '再試行',
           action: reset,
-          variant: "default",
+          variant: 'default',
         },
       ]}
     />
-  );
+  )
 }

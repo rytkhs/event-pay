@@ -1,38 +1,43 @@
-"use client";
+'use client'
 
-import Link from "next/link";
+import Link from 'next/link'
 
-import { useAuthForm, AuthFormWrapper, AuthFormField, AuthSubmitButton } from "@features/auth";
-import { usePasswordConfirmation } from "@features/auth";
+import {
+  useAuthForm,
+  AuthFormWrapper,
+  AuthFormField,
+  AuthSubmitButton,
+  usePasswordConfirmation,
+} from '@features/auth'
 
-import { updatePasswordAction } from "@/app/(auth)/actions";
-import { PasswordStatusIcon } from "@/components/ui/PasswordStatusIcon";
+import { updatePasswordAction } from '@/app/(auth)/actions'
+import { PasswordStatusIcon } from '@/components/ui/PasswordStatusIcon'
 
 export default function UpdatePasswordPage() {
   // 共通認証フォームフック
-  const { state, formAction, isPending } = useAuthForm(updatePasswordAction);
+  const { state, formAction, isPending } = useAuthForm(updatePasswordAction)
 
   // パスワード確認カスタムフック
-  const passwordConfirmation = usePasswordConfirmation();
+  const passwordConfirmation = usePasswordConfirmation()
 
   const handleSubmit = async (formData: FormData) => {
     // パスワード確認バリデーション
     if (!passwordConfirmation.actions.validateMatch()) {
-      return;
+      return
     }
 
     // 確認パスワードが空の場合
     if (passwordConfirmation.validation.isEmpty) {
-      return;
+      return
     }
 
     // フォームデータにパスワードを追加
-    formData.set("password", passwordConfirmation.state.password);
-    formData.set("passwordConfirm", passwordConfirmation.state.confirmPassword);
+    formData.set('password', passwordConfirmation.state.password)
+    formData.set('passwordConfirm', passwordConfirmation.state.confirmPassword)
 
     // Server Actionを実行
-    return formAction(formData);
-  };
+    return formAction(formData)
+  }
 
   return (
     <AuthFormWrapper
@@ -74,10 +79,10 @@ export default function UpdatePasswordPage() {
           required
         />
 
-        {passwordConfirmation.validation.iconType === "success" && (
+        {passwordConfirmation.validation.iconType === 'success' && (
           <PasswordStatusIcon type="success" message="パスワードが一致しています" />
         )}
-        {passwordConfirmation.validation.iconType === "error" && (
+        {passwordConfirmation.validation.iconType === 'error' && (
           <PasswordStatusIcon type="error" message={passwordConfirmation.state.error} />
         )}
 
@@ -92,5 +97,5 @@ export default function UpdatePasswordPage() {
         </Link>
       </div>
     </AuthFormWrapper>
-  );
+  )
 }

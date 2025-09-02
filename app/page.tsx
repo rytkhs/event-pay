@@ -1,19 +1,19 @@
-import Link from "next/link";
-import { redirect } from "next/navigation";
+import Link from 'next/link'
+import { redirect } from 'next/navigation'
 
-import { createClient } from "@core/supabase/server";
+import { createClient } from '@core/supabase/server'
 
 export default async function Home() {
   // 認証状態チェック
-  const supabase = createClient();
+  const supabase = createClient()
   const {
     data: { user },
     error,
-  } = await supabase.auth.getUser();
+  } = await supabase.auth.getUser()
 
   // 認証済みユーザーはダッシュボードにリダイレクト
   if (user && !error) {
-    redirect("/home");
+    redirect('/home')
   }
 
   return (
@@ -59,5 +59,5 @@ export default async function Home() {
         </div>
       </div>
     </div>
-  );
+  )
 }

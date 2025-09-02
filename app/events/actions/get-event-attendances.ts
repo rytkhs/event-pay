@@ -1,35 +1,35 @@
-"use server";
+'use server'
 
-import { verifyEventAccess, handleDatabaseError } from "@core/auth/event-authorization";
-import { createClient } from "@core/supabase/server";
+import { verifyEventAccess, handleDatabaseError } from '@core/auth/event-authorization'
+import { createClient } from '@core/supabase/server'
 
 export async function getEventAttendancesAction(eventId: string) {
   try {
     // 共通の認証・権限確認処理
-    const { user, eventId: validatedEventId } = await verifyEventAccess(eventId);
+    const { user, eventId: validatedEventId } = await verifyEventAccess(eventId)
 
-    const supabase = createClient();
+    const supabase = createClient()
 
     // 参加者データ取得（RLSで自分のイベントのみ取得可能）
     const { data: attendances, error } = await supabase
-      .from("attendances")
+      .from('attendances')
       .select(
         `
         id,
         status
       `
       )
-      .eq("event_id", validatedEventId);
+      .eq('event_id', validatedEventId)
 
     if (error) {
-      handleDatabaseError(error, { eventId: validatedEventId, userId: user.id });
+      handleDatabaseError(error, { eventId: validatedEventId, userId: user.id })
     }
 
-    return attendances || [];
+    return attendances || []
   } catch (error) {
     if (error instanceof Error) {
-      throw error;
+      throw error
     }
-    throw new Error("Unknown error");
+    throw new Error('Unknown error')
   }
 }
