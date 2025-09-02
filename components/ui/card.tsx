@@ -1,6 +1,6 @@
 import * as React from "react";
 
-import { cn } from "@core/utils";
+import { cn } from "./_lib/cn";
 
 const Card = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
   ({ className, ...props }, ref) => (

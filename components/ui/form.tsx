@@ -13,7 +13,7 @@ import {
   type FieldValues,
 } from "react-hook-form";
 
-import { cn } from "@core/utils";
+import { cn } from "./_lib/cn";
 
 import { Label } from "@/components/ui/label";
 
