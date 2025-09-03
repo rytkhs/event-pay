@@ -3,8 +3,9 @@
  * Next.js App Router + EventPayアプリケーション専用
  */
 
-import { ReactNode } from "react";
-import { LucideIcon } from "lucide-react";
+import type { ReactNode } from "react";
+
+import type { LucideIcon } from "lucide-react";
 
 /**
  * エラーの重要度レベル
@@ -15,29 +16,44 @@ export type ErrorSeverity = "low" | "medium" | "high" | "critical";
  * エラーカテゴリ
  */
 export type ErrorCategory =
-  | "network"        // ネットワーク関連
-  | "auth"          // 認証・認可関連
-  | "validation"    // バリデーション関連
-  | "business"      // ビジネスロジック関連
-  | "server"        // サーバーエラー
-  | "client"        // クライアントエラー
-  | "security"      // セキュリティ関連
-  | "payment"       // 決済関連
-  | "not-found"     // 存在しないリソース
-  | "unknown";      // 不明なエラー
+  | "network" // ネットワーク関連
+  | "auth" // 認証・認可関連
+  | "validation" // バリデーション関連
+  | "business" // ビジネスロジック関連
+  | "server" // サーバーエラー
+  | "client" // クライアントエラー
+  | "security" // セキュリティ関連
+  | "payment" // 決済関連
+  | "not-found" // 存在しないリソース
+  | "unknown"; // 不明なエラー
 
 /**
  * エラーコード（HTTPステータスコード + カスタムコード）
  */
 export type ErrorCode =
   // HTTP 4xx
-  | "400" | "401" | "403" | "404" | "409" | "422" | "429"
+  | "400"
+  | "401"
+  | "403"
+  | "404"
+  | "409"
+  | "422"
+  | "429"
   // HTTP 5xx
-  | "500" | "502" | "503" | "504"
+  | "500"
+  | "502"
+  | "503"
+  | "504"
   // カスタムビジネスエラー
-  | "EVENT_ENDED" | "EVENT_FULL" | "REGISTRATION_CLOSED"
-  | "DUPLICATE_REGISTRATION" | "INVALID_INVITE" | "PAYMENT_FAILED"
-  | "INSUFFICIENT_BALANCE" | "RATE_LIMITED" | "MAINTENANCE";
+  | "EVENT_ENDED"
+  | "EVENT_FULL"
+  | "REGISTRATION_CLOSED"
+  | "DUPLICATE_REGISTRATION"
+  | "INVALID_INVITE"
+  | "PAYMENT_FAILED"
+  | "INSUFFICIENT_BALANCE"
+  | "RATE_LIMITED"
+  | "MAINTENANCE";
 
 /**
  * エラー情報の基本構造

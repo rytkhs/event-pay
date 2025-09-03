@@ -1,6 +1,6 @@
-import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
-import { generateSecureUuid } from '@/lib/security/crypto';
+
+import { createServerClient } from "@supabase/ssr";
 
 const AFTER_LOGIN_REDIRECT_PATH = "/home";
 
@@ -20,10 +20,9 @@ function isPublicPath(pathname: string): boolean {
 }
 
 export async function middleware(request: NextRequest) {
-  // リクエスト相関IDを生成・伝播
-  const requestId = request.headers.get('x-request-id') ?? generateSecureUuid();
+  const requestId = request.headers.get("x-request-id") ?? crypto.randomUUID();
   const requestHeaders = new Headers(request.headers);
-  requestHeaders.set('x-request-id', requestId);
+  requestHeaders.set("x-request-id", requestId);
 
   // ベースレスポンス（ヘッダー伝播）
   const response = NextResponse.next({
@@ -31,7 +30,7 @@ export async function middleware(request: NextRequest) {
       headers: requestHeaders,
     },
   });
-  response.headers.set('x-request-id', requestId);
+  response.headers.set("x-request-id", requestId);
 
   // Supabase SSRクライアント（Cookieの双方向同期: getAll / setAll）
   const supabase = createServerClient(
@@ -63,7 +62,7 @@ export async function middleware(request: NextRequest) {
     const redirectUrl = new URL("/login", request.url);
     redirectUrl.searchParams.set("redirectTo", pathname);
     const redirectResponse = NextResponse.redirect(redirectUrl, { headers: response.headers });
-    redirectResponse.headers.set('x-request-id', requestId);
+    redirectResponse.headers.set("x-request-id", requestId);
     return redirectResponse;
   }
 
@@ -71,7 +70,7 @@ export async function middleware(request: NextRequest) {
   if (isAuthPath(pathname) && user) {
     const homeUrl = new URL(AFTER_LOGIN_REDIRECT_PATH, request.url);
     const redirectResponse = NextResponse.redirect(homeUrl, { headers: response.headers });
-    redirectResponse.headers.set('x-request-id', requestId);
+    redirectResponse.headers.set("x-request-id", requestId);
     return redirectResponse;
   }
 

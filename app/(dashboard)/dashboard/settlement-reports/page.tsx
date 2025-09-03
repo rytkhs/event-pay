@@ -1,9 +1,17 @@
 import React from "react";
-import { createClient } from "@/lib/supabase/server";
-import { SettlementReportService } from "@/lib/services/settlement-report/service";
-import { SettlementReportList } from "@/components/settlement-report/settlement-report-list";
-import { getCurrentUser } from "@/lib/auth/auth-utils";
+
 import { redirect } from "next/navigation";
+
+import { getCurrentUser } from "@core/auth/auth-utils";
+import { createClient } from "@core/supabase/server";
+
+import {
+  SettlementReportList,
+  SettlementReportService,
+  exportSettlementReportsAction,
+  getSettlementReportsAction,
+  regenerateAfterRefundAction,
+} from "@features/settlements";
 
 export const dynamic = "force-dynamic";
 
@@ -36,7 +44,13 @@ export default async function SettlementReportsPage() {
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-bold">清算レポート</h1>
-      <SettlementReportList initialReports={initialReports} availableEvents={availableEvents} />
+      <SettlementReportList
+        initialReports={initialReports}
+        availableEvents={availableEvents}
+        onGetReports={getSettlementReportsAction}
+        onExportReports={exportSettlementReportsAction}
+        onRegenerateReport={regenerateAfterRefundAction}
+      />
     </div>
   );
 }

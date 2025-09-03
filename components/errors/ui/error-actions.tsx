@@ -4,10 +4,14 @@
 
 "use client";
 
-import { Button } from "@/components/ui/button";
-import { RefreshCw, Home, ArrowLeft, MessageCircle, ExternalLink, LucideIcon } from "lucide-react";
 import Link from "next/link";
-import { ErrorActionConfig } from "../error-types";
+
+import type { LucideIcon } from "lucide-react";
+import { RefreshCw, Home, ArrowLeft, MessageCircle, ExternalLink } from "lucide-react";
+
+import { Button } from "@/components/ui/button";
+
+import type { ErrorActionConfig } from "../error-types";
 
 interface ErrorActionsProps extends ErrorActionConfig {
   className?: string;

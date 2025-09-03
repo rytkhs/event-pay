@@ -5,10 +5,12 @@
 
 "use client";
 
-import React, { ReactNode } from "react";
+import type { ReactNode } from "react";
+import React from "react";
+
 import { ErrorLayout } from "./error-layout";
-import { ErrorBoundaryProps, ErrorFallbackProps } from "./error-types";
 import { logError, addBreadcrumb } from "./error-logger";
+import type { ErrorBoundaryProps, ErrorFallbackProps } from "./error-types";
 
 interface ErrorBoundaryState {
   hasError: boolean;
