@@ -1,8 +1,10 @@
-import { NextRequest, NextResponse } from "next/server";
-import { createProblemResponse } from "@/lib/api/problem-details";
-import { stripe as sharedStripe } from "@/lib/stripe/client";
-import { validateCronSecret, logCronActivity } from "@/lib/cron-auth";
-import { EmailNotificationService } from "@/lib/services/notification/email-service";
+import type { NextRequest } from "next/server";
+import { NextResponse } from "next/server";
+
+import { createProblemResponse } from "@core/api/problem-details";
+import { validateCronSecret, logCronActivity } from "@core/cron-auth";
+import { EmailNotificationService } from "@core/notification/email-service";
+import { stripe as sharedStripe } from "@core/stripe/client";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -33,7 +35,10 @@ export async function GET(request: NextRequest) {
 
     const availableJpy = sum((bal.available as any) || []);
     const pendingJpy = sum((bal.pending as any) || []);
-    const connectReservedJpy = sum(((bal as unknown as { connect_reserved?: Array<{ amount: number; currency: string }> }).connect_reserved) || []);
+    const connectReservedJpy = sum(
+      (bal as unknown as { connect_reserved?: Array<{ amount: number; currency: string }> })
+        .connect_reserved || []
+    );
 
     const details = {
       available_jpy: availableJpy,

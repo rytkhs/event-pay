@@ -1,86 +1,77 @@
-import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
-import { generateSecureUuid } from '@/lib/security/crypto';
+
+import { createServerClient } from "@supabase/ssr";
+
+const AFTER_LOGIN_REDIRECT_PATH = "/home";
+
+function isAuthPath(pathname: string): boolean {
+  // 認証ページ: ログイン済みならホームへ誘導
+  // 注意: パスワードリセット関連はログイン済みでもアクセス許可
+  if (pathname === "/login" || pathname === "/register") return true;
+  return false;
+}
+
+function isPublicPath(pathname: string): boolean {
+  // 明示的な公開ページ。その他はデフォルトで保護扱い
+  const publicExact = ["/", "/favicon.ico", "/login", "/register", "/reset-password"];
+  if (publicExact.includes(pathname)) return true;
+  const publicPrefixes = ["/guest/", "/invite/", "/auth/reset-password/"];
+  return publicPrefixes.some((p) => pathname.startsWith(p));
+}
 
 export async function middleware(request: NextRequest) {
-  // リクエスト相関IDを生成・伝播
-  const requestId = request.headers.get('x-request-id') || generateSecureUuid();
-
-  // リクエストヘッダーに相関IDを追加
+  const requestId = request.headers.get("x-request-id") ?? crypto.randomUUID();
   const requestHeaders = new Headers(request.headers);
-  requestHeaders.set('x-request-id', requestId);
+  requestHeaders.set("x-request-id", requestId);
 
-  let response = NextResponse.next({
+  // ベースレスポンス（ヘッダー伝播）
+  const response = NextResponse.next({
     request: {
       headers: requestHeaders,
     },
   });
+  response.headers.set("x-request-id", requestId);
 
-  // レスポンスヘッダーにも相関IDを含める（デバッグ用）
-  response.headers.set('x-request-id', requestId);
-
+  // Supabase SSRクライアント（Cookieの双方向同期: getAll / setAll）
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        get(name: string) {
-          return request.cookies.get(name)?.value;
+        getAll() {
+          return request.cookies.getAll();
         },
-        set(name: string, value: string, options) {
-          request.cookies.set({ name, value, ...options });
-          response = NextResponse.next({
-            request: { headers: requestHeaders },
+        setAll(cookies) {
+          cookies.forEach(({ name, value, options }) => {
+            request.cookies.set({ name, value, ...options });
+            response.cookies.set({ name, value, ...options });
           });
-          response.cookies.set({ name, value, ...options });
-          response.headers.set('x-request-id', requestId);
-        },
-        remove(name: string, options) {
-          request.cookies.set({ name, value: "", ...options });
-          response = NextResponse.next({
-            request: { headers: requestHeaders },
-          });
-          response.cookies.set({ name, value: "", ...options });
-          response.headers.set('x-request-id', requestId);
         },
       },
     }
   );
 
-  // セッション情報を取得（セッションCookieも自動更新される）
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
   const pathname = request.nextUrl.pathname;
 
-  // 認証が必要なルート
-  const protectedRoutes = ["/home", "/events", "/profile", "/admin"];
-  // 認証済みユーザーがアクセスできないルート
-  const authRoutes = ["/login", "/register"];
-  // 公開ルート（認証不要）
-  const publicRoutes = ["/auth", "/api/auth", "/", "/favicon.ico", "/_next"];
-
-  // 保護されたルートへの未認証アクセス
-  const isProtectedRoute = protectedRoutes.some((route) => pathname.startsWith(route));
-  if (isProtectedRoute && !user) {
+  // 認証ガード: 公開以外はログイン必須
+  if (!isPublicPath(pathname) && !user) {
     const redirectUrl = new URL("/login", request.url);
     redirectUrl.searchParams.set("redirectTo", pathname);
-    return NextResponse.redirect(redirectUrl);
+    const redirectResponse = NextResponse.redirect(redirectUrl, { headers: response.headers });
+    redirectResponse.headers.set("x-request-id", requestId);
+    return redirectResponse;
   }
 
-  // 認証済みユーザーが認証ページにアクセス
-  const isAuthRoute = authRoutes.some((route) => pathname.startsWith(route));
-  if (isAuthRoute && user) {
-    return NextResponse.redirect(new URL("/home", request.url));
-  }
-
-  // 公開ルート以外で未認証の場合はすべて保護されたルートとして扱う
-  const isPublicRoute = publicRoutes.some((route) => pathname.startsWith(route));
-  if (!isPublicRoute && !user) {
-    const redirectUrl = new URL("/login", request.url);
-    redirectUrl.searchParams.set("redirectTo", pathname);
-    return NextResponse.redirect(redirectUrl);
+  // ログイン済みが認証ページへ来たらホームへ
+  if (isAuthPath(pathname) && user) {
+    const homeUrl = new URL(AFTER_LOGIN_REDIRECT_PATH, request.url);
+    const redirectResponse = NextResponse.redirect(homeUrl, { headers: response.headers });
+    redirectResponse.headers.set("x-request-id", requestId);
+    return redirectResponse;
   }
 
   return response;
@@ -88,12 +79,7 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    /*
-     * Match all request paths except for the ones starting with:
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     */
-    "/((?!_next/static|_next/image|favicon.ico).*)",
+    // APIや静的アセット等は対象外
+    "/((?!api|_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml|manifest.webmanifest).*)",
   ],
 };

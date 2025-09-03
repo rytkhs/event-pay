@@ -3,15 +3,24 @@
  */
 
 import { Suspense } from "react";
-import { Metadata } from "next";
-import { createClient } from "@/lib/supabase/server";
+
 import { redirect } from "next/navigation";
-import { OnboardingForm } from "@/components/stripe-connect/onboarding-form";
-import { AccountStatus } from "@/components/stripe-connect/account-status";
-import { createUserStripeConnectService } from "@/lib/services/stripe-connect";
+
+import type { Metadata } from "next";
+
+import { CONNECT_REFRESH_PATH, CONNECT_RETURN_PATH } from "@core/routes/stripe-connect";
+import { createClient } from "@core/supabase/server";
+
+import {
+  AccountStatus,
+  OnboardingForm,
+  createUserStripeConnectService,
+  createConnectAccountAction,
+  getConnectAccountStatusAction,
+} from "@features/stripe-connect";
+
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { CONNECT_REFRESH_PATH, CONNECT_RETURN_PATH } from "@/lib/routes/stripe-connect";
 
 export const metadata: Metadata = {
   title: "Stripe Connect 設定 | EventPay",
@@ -68,9 +77,41 @@ async function ConnectContent({ searchParams }: ConnectPageProps) {
 
         {/* アカウントが存在しない場合はオンボーディングフォーム */}
         {!existingAccount ? (
-          <OnboardingForm refreshUrl={refreshUrl} returnUrl={returnUrl} />
+          <OnboardingForm
+            refreshUrl={refreshUrl}
+            returnUrl={returnUrl}
+            onCreateAccount={createConnectAccountAction}
+          />
         ) : (
-          <AccountStatus refreshUrl={refreshUrl} returnUrl={returnUrl} />
+          <AccountStatus
+            refreshUrl={refreshUrl}
+            returnUrl={returnUrl}
+            onGetAccountStatus={async () => {
+              const r = await getConnectAccountStatusAction();
+              return {
+                success: r.success,
+                error: r.error,
+                data: r.data
+                  ? {
+                      hasAccount: r.data.hasAccount,
+                      accountId: r.data.accountId,
+                      status:
+                        r.data.status === "unverified" ||
+                        r.data.status === "onboarding" ||
+                        r.data.status === "verified" ||
+                        r.data.status === "restricted"
+                          ? r.data.status
+                          : null,
+                      chargesEnabled: r.data.chargesEnabled,
+                      payoutsEnabled: r.data.payoutsEnabled,
+                      requirements: r.data.requirements,
+                      capabilities: r.data.capabilities,
+                    }
+                  : undefined,
+              };
+            }}
+            onCreateAccount={createConnectAccountAction}
+          />
         )}
       </div>
     </div>
