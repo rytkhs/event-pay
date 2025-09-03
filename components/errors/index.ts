@@ -45,7 +45,7 @@ export {
   logError,
   addBreadcrumb,
   getLocalLogs,
-  clearLocalLogs
+  clearLocalLogs,
 } from "./error-logger";
 
 // プリセットアイコン

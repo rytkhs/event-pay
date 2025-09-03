@@ -9,8 +9,8 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
 interface CleanupResult {
@@ -25,46 +25,41 @@ interface CleanupResult {
 
 serve(async (req) => {
   // CORS プリフライト対応
-  if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders });
+  if (req.method === "OPTIONS") {
+    return new Response("ok", { headers: corsHeaders });
   }
 
   try {
     // 認証チェック（Supabase Service Role Key または指定トークン）
-    const authHeader = req.headers.get('authorization');
-    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-    const internalToken = Deno.env.get('INTERNAL_API_TOKEN');
+    const authHeader = req.headers.get("authorization");
+    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    const internalToken = Deno.env.get("INTERNAL_API_TOKEN");
 
     let authenticated = false;
 
-    if (authHeader?.startsWith('Bearer ')) {
+    if (authHeader?.startsWith("Bearer ")) {
       const token = authHeader.slice(7);
       authenticated = token === serviceRoleKey || token === internalToken;
     }
 
     if (!authenticated) {
-      return new Response(
-        JSON.stringify({ error: 'Unauthorized' }),
-        {
-          status: 401,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        }
-      );
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     // Supabase クライアント初期化（Service Role）
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabase = createClient(supabaseUrl, serviceRoleKey!, {
       auth: {
         autoRefreshToken: false,
-        persistSession: false
-      }
+        persistSession: false,
+      },
     });
 
     // 期限切れロック削除 RPC を実行
-    const { data, error } = await supabase
-      .rpc('cleanup_expired_scheduler_locks')
-      .single();
+    const { data, error } = await supabase.rpc("cleanup_expired_scheduler_locks").single();
 
     if (error) {
       // エラーログ
@@ -74,18 +69,18 @@ serve(async (req) => {
         tag: "cleanupSchedulerLocks",
         message: "Failed to cleanup expired scheduler locks",
         error_name: error.name,
-        error_message: error.message
+        error_message: error.message,
       };
       console.error(JSON.stringify(errorLog));
 
       return new Response(
         JSON.stringify({
-          error: 'Cleanup failed',
-          details: error.message
+          error: "Cleanup failed",
+          details: error.message,
         }),
         {
           status: 500,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
         }
       );
     }
@@ -111,10 +106,9 @@ serve(async (req) => {
         timestamp: new Date().toISOString(),
       }),
       {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
       }
     );
-
   } catch (error) {
     // 予期しないエラーログ
     const unexpectedErrorLog = {
@@ -123,18 +117,18 @@ serve(async (req) => {
       tag: "cleanupSchedulerLocks",
       message: "Unexpected error in scheduler lock cleanup",
       error_name: error instanceof Error ? error.name : "Unknown",
-      error_message: error instanceof Error ? error.message : String(error)
+      error_message: error instanceof Error ? error.message : String(error),
     };
     console.error(JSON.stringify(unexpectedErrorLog));
 
     return new Response(
       JSON.stringify({
-        error: 'Internal server error',
-        details: error instanceof Error ? error.message : 'Unknown error'
+        error: "Internal server error",
+        details: error instanceof Error ? error.message : "Unknown error",
       }),
       {
         status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
       }
     );
   }

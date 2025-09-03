@@ -1,12 +1,18 @@
-import { NextRequest, NextResponse } from "next/server";
-import { createProblemResponse } from "@/lib/api/problem-details";
-import { validateCronSecret, logCronActivity } from "@/lib/cron-auth";
-import { stripe as sharedStripe } from "@/lib/stripe/client";
-import { SupabaseWebhookIdempotencyService, IdempotentWebhookProcessor } from "@/lib/services/webhook/webhook-idempotency";
-import { StripeWebhookEventHandler } from "@/lib/services/webhook/webhook-event-handler";
+import type { NextRequest } from "next/server";
+import { NextResponse } from "next/server";
 
-import { ConnectWebhookHandler } from "@/lib/services/webhook/connect-webhook-handler";
-import Stripe from "stripe";
+import type Stripe from "stripe";
+
+import { createProblemResponse } from "@core/api/problem-details";
+import { validateCronSecret, logCronActivity } from "@core/cron-auth";
+import { stripe as sharedStripe } from "@core/stripe/client";
+
+import {
+  ConnectWebhookHandler,
+  StripeWebhookEventHandler,
+  SupabaseWebhookIdempotencyService,
+  IdempotentWebhookProcessor,
+} from "@features/payments";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -29,11 +35,20 @@ export async function GET(request: NextRequest) {
 
   // 未処理(pending/failed)のイベントを取得し、一定件数だけ処理
   const MAX_BATCH = Number.parseInt(process.env.WEBHOOK_PROCESS_MAX_BATCH || "50", 10);
-  let pending: Array<{ stripe_event_id: string; event_type: string; status: string; stripe_event_created: number | null; created_at: string | null; stripe_account_id: string | null }> = [];
+  let pending: Array<{
+    stripe_event_id: string;
+    event_type: string;
+    status: string;
+    stripe_event_created: number | null;
+    created_at: string | null;
+    stripe_account_id: string | null;
+  }> = [];
   try {
     pending = await idempotencyService.listPendingOrFailedEventsOrdered(MAX_BATCH);
   } catch (err) {
-    logCronActivity("error", "Failed to fetch pending webhook events", { error: err instanceof Error ? err.message : String(err) });
+    logCronActivity("error", "Failed to fetch pending webhook events", {
+      error: err instanceof Error ? err.message : String(err),
+    });
     return createProblemResponse("INTERNAL_ERROR", {
       instance: "/api/cron/webhook-process-pending",
       detail: "Failed to fetch pending webhook events",
@@ -68,25 +83,33 @@ export async function GET(request: NextRequest) {
       // data.object.id を抽出（イベントにより存在しない場合あり）
       const objectId: string | undefined = ((): string | undefined => {
         const data: unknown = (event as unknown as { data?: unknown }).data;
-        if (!data || typeof data !== 'object') return undefined;
+        if (!data || typeof data !== "object") {
+          return undefined;
+        }
         const obj: unknown = (data as { object?: unknown }).object;
-        if (!obj || typeof obj !== 'object') return undefined;
+        if (!obj || typeof obj !== "object") {
+          return undefined;
+        }
         const idVal = (obj as { id?: unknown }).id;
-        return typeof idVal === 'string' && idVal.length > 0 ? idVal : undefined;
+        return typeof idVal === "string" && idVal.length > 0 ? idVal : undefined;
       })();
 
       // 必要であれば欠損している object_id を補完（以前のenqueueで取れなかった場合）
       if (objectId) {
-        try { await idempotencyService.attachObjectIdIfMissing(event.id, objectId); } catch { /* noop */ }
+        try {
+          await idempotencyService.attachObjectIdIfMissing(event.id, objectId);
+        } catch {
+          /* noop */
+        }
       }
 
       // Connectイベントの判定（connected accountから届いたイベントを優先判定）
-      const isConnectEvent = !!row.stripe_account_id && (
-        event.type.startsWith("account.") ||
-        event.type.startsWith("payout.") ||
-        event.type.startsWith("person.") ||
-        event.type.startsWith("capability.")
-      );
+      const isConnectEvent =
+        !!row.stripe_account_id &&
+        (event.type.startsWith("account.") ||
+          event.type.startsWith("payout.") ||
+          event.type.startsWith("person.") ||
+          event.type.startsWith("capability."));
 
       if (isConnectEvent) {
         const res = await processor.processWithIdempotency(
@@ -116,12 +139,18 @@ export async function GET(request: NextRequest) {
                 // 未対応のConnectイベントはACKのみ
                 break;
             }
-            return ({ success: true, eventId: evt.id, eventType: evt.type } as unknown) as { success: boolean };
+            return { success: true, eventId: evt.id, eventType: evt.type } as unknown as {
+              success: boolean;
+            };
           },
           { metadata: { stripe_account_id: row.stripe_account_id } }
         );
         processed++;
-        if ((res.result as { success?: boolean })?.success) succeeded++; else failed++;
+        if ((res.result as { success?: boolean })?.success) {
+          succeeded++;
+        } else {
+          failed++;
+        }
         continue;
       }
 
@@ -136,7 +165,11 @@ export async function GET(request: NextRequest) {
           await idempotencyService.markEventAsProcessed(
             event.id,
             event.type,
-            ({ success: true, skipped: true, reason: "duplicate_by_object" } as unknown) as { success: boolean; skipped: boolean; reason: string },
+            { success: true, skipped: true, reason: "duplicate_by_object" } as unknown as {
+              success: boolean;
+              skipped: boolean;
+              reason: string;
+            },
             { stripe_account_id: (event as unknown as { account?: string | null }).account ?? null }
           );
           processed++;
@@ -149,10 +182,18 @@ export async function GET(request: NextRequest) {
           event.id,
           event.type,
           () => handler.handleEvent(event),
-          { metadata: { stripe_account_id: (event as unknown as { account?: string | null }).account ?? null } }
+          {
+            metadata: {
+              stripe_account_id: (event as unknown as { account?: string | null }).account ?? null,
+            },
+          }
         );
         processed++;
-        if ((res.result as { success?: boolean })?.success) succeeded++; else failed++;
+        if ((res.result as { success?: boolean })?.success) {
+          succeeded++;
+        } else {
+          failed++;
+        }
       }
     } catch (e) {
       failed++;
@@ -163,7 +204,7 @@ export async function GET(request: NextRequest) {
           e instanceof Error ? e.message : "process_error",
           { stripe_account_id: null }
         );
-      } catch { }
+      } catch {}
     }
   }
 

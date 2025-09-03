@@ -4,12 +4,16 @@
 
 "use client";
 
-import { ReactNode } from "react";
+import type { ReactNode } from "react";
+
+import { cn } from "@core/utils";
+
 import { Card } from "@/components/ui/card";
-import { ErrorIcon } from "./error-icon";
+
+import type { ErrorPageProps } from "../error-types";
+
 import { ErrorActions } from "./error-actions";
-import { ErrorPageProps } from "../error-types";
-import { cn } from "@/lib/utils";
+import { ErrorIcon } from "./error-icon";
 
 interface ErrorCardProps extends ErrorPageProps {
   size?: "sm" | "md" | "lg";

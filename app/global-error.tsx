@@ -6,8 +6,9 @@
 
 "use client";
 
-import { ErrorLayout } from "@/components/errors";
 import { useEffect } from "react";
+
+import { ErrorLayout } from "@/components/errors";
 
 interface GlobalErrorProps {
   error: Error & { digest?: string };

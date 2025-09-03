@@ -1,18 +1,22 @@
-import { Metadata } from "next";
-import { headers } from "next/headers";
-import { notFound } from "next/navigation";
 import { cache } from "react";
-import { validateGuestToken } from "@/lib/utils/guest-token";
-import { sanitizeForEventPay } from "@/lib/utils/sanitize";
-import { GuestManagementForm } from "@/components/events/guest-management-form";
-import { PaymentStatusAlert } from "@/components/events/payment-status-alert";
-import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { AlertCircle, ArrowLeft } from "lucide-react";
+
+import { headers } from "next/headers";
 import Link from "next/link";
-import { logInvalidTokenAccess } from "@/lib/security/security-logger";
-import { getClientIPFromHeaders } from "@/lib/utils/ip-detection";
-import { logUnexpectedGuestPageError } from "@/lib/security/security-logger";
+import { notFound } from "next/navigation";
+
+import { AlertCircle, ArrowLeft } from "lucide-react";
+import type { Metadata } from "next";
+
+import { logInvalidTokenAccess, logUnexpectedGuestPageError } from "@core/security/security-logger";
+import { validateGuestToken } from "@core/utils/guest-token";
+import { getClientIPFromHeaders } from "@core/utils/ip-detection";
+import { sanitizeForEventPay } from "@core/utils/sanitize";
+
+import { PaymentStatusAlert } from "@features/events";
+import { GuestManagementForm } from "@features/guest";
+
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 
 // リクエスト内で検証結果を共有し、DB クエリを 1 回に抑える
 const getGuestValidation = cache(async (token: string) => validateGuestToken(token));
@@ -123,7 +127,7 @@ export default async function GuestPage({ params, searchParams }: GuestPageProps
           <section aria-labelledby="security-warning-title">
             <Card
               className="p-3 sm:p-4 mb-4 sm:mb-6 bg-yellow-50 border-yellow-200"
-              role="alert"
+              role="region"
               aria-labelledby="security-warning-title"
             >
               <div className="flex items-start space-x-2 sm:space-x-3">
@@ -135,7 +139,7 @@ export default async function GuestPage({ params, searchParams }: GuestPageProps
                   <h2 id="security-warning-title" className="font-medium text-yellow-800">
                     重要：セキュリティについて
                   </h2>
-                  <div className="text-yellow-700 mt-1 leading-relaxed" role="text">
+                  <div className="text-yellow-700 mt-1 leading-relaxed">
                     <p>このページのURLは他の人と共有しないでください。</p>
                     <p className="mt-1">
                       URLを知っている人は誰でもあなたの参加状況を確認・変更できます。
@@ -174,7 +178,7 @@ export default async function GuestPage({ params, searchParams }: GuestPageProps
     );
   } catch (error) {
     // 予期しないエラーの場合は構造化ログを記録して404を返す
-    const { getErrorDetails, logError } = await import("@/lib/utils/error-handler");
+    const { getErrorDetails, logError } = await import("@core/utils/error-handler");
 
     // リクエスト情報を取得（エラーハンドリング用）
     const errorHeadersList = headers();
@@ -186,7 +190,7 @@ export default async function GuestPage({ params, searchParams }: GuestPageProps
       ip: errorIp,
       userAgent: errorUserAgent,
       additionalData: {
-        tokenPrefix: token.substring(0, 8) + "...",
+        tokenPrefix: `${token.substring(0, 8)}...`,
         originalError: error instanceof Error ? error.name : "Unknown",
         originalMessage: error instanceof Error ? error.message : String(error),
       },
@@ -195,7 +199,7 @@ export default async function GuestPage({ params, searchParams }: GuestPageProps
     logError(getErrorDetails("GUEST_TOKEN_VALIDATION_FAILED"), errorContext);
 
     if (process.env.NODE_ENV === "development") {
-      const { logger } = await import("@/lib/logging/app-logger");
+      const { logger } = await import("@core/logging/app-logger");
       logger.error("ゲストページでエラーが発生", {
         tag: "guestPage",
         error_name: error instanceof Error ? error.name : "Unknown",
