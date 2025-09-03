@@ -1,15 +1,19 @@
-import { getEventDetailAction } from "@/app/events/actions/get-event-detail";
-import { getEventAttendancesAction } from "@/app/events/actions/get-event-attendances";
-import { getEventPaymentsAction } from "@/app/events/actions/get-event-payments";
-import { getEventParticipantsAction } from "@/app/events/actions/get-event-participants";
-import { EventDetail } from "@/components/events/event-detail";
-import { EventActions } from "@/components/events/event-actions";
-import { InviteLink } from "@/components/events/invite-link";
-import { ParticipantsManagement } from "@/components/events/participants-management";
 import { notFound, redirect } from "next/navigation";
-import { sanitizeEventDescription } from "@/lib/utils/sanitize";
-import { getCurrentUser } from "@/lib/auth/auth-utils";
-import { createCachedActions } from "@/lib/utils/cache-helpers";
+
+import { getCurrentUser } from "@core/auth/auth-utils";
+import { createCachedActions } from "@core/utils/cache-helpers";
+import { sanitizeEventDescription } from "@core/utils/sanitize";
+
+import {
+  EventActions,
+  EventDetail,
+  ParticipantsManagement,
+  getEventAttendancesAction,
+  getEventDetailAction,
+  getEventParticipantsAction,
+  getEventPaymentsAction,
+} from "@features/events";
+import { InviteLink } from "@features/invite";
 
 interface EventDetailPageProps {
   params: {
@@ -39,7 +43,7 @@ export default async function EventDetailPage({ params }: EventDetailPageProps) 
         notFound();
       }
       if (eventDetailResult.code === "EVENT_ACCESS_DENIED") {
-        redirect("/events/" + params.id + "/forbidden");
+        redirect(`/events/${params.id}/forbidden`);
       }
       if (eventDetailResult.code === "EVENT_INVALID_ID") {
         notFound();

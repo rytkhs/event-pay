@@ -1,11 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Checkbox } from "@/components/ui/checkbox";
 
+import { registerAction } from "@core/actions/auth";
+
+import { useRegisterFormRHF } from "@features/auth";
+
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Form,
   FormControl,
@@ -14,8 +17,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { useRegisterFormRHF } from "@/lib/hooks/useAuthForm";
-import { registerAction } from "@/app/(auth)/actions";
+import { Input } from "@/components/ui/input";
 
 export default function RegisterPage() {
   const { form, onSubmit, isPending } = useRegisterFormRHF(registerAction, {
@@ -27,22 +29,36 @@ export default function RegisterPage() {
   const passwordConfirm = form.watch("passwordConfirm");
 
   const getPasswordStrength = (password: string) => {
-    if (!password) return { level: 0, text: "", color: "text-gray-500", feedback: "" };
+    if (!password) {
+      return { level: 0, text: "", color: "text-gray-500", feedback: "" };
+    }
 
     let score = 0;
     const feedback = [];
 
-    if (password.length >= 8) score += 1;
-    else feedback.push("8文字以上");
+    if (password.length >= 8) {
+      score += 1;
+    } else {
+      feedback.push("8文字以上");
+    }
 
-    if (/[A-Z]/.test(password)) score += 1;
-    else feedback.push("大文字");
+    if (/[A-Z]/.test(password)) {
+      score += 1;
+    } else {
+      feedback.push("大文字");
+    }
 
-    if (/[a-z]/.test(password)) score += 1;
-    else feedback.push("小文字");
+    if (/[a-z]/.test(password)) {
+      score += 1;
+    } else {
+      feedback.push("小文字");
+    }
 
-    if (/\d/.test(password)) score += 1;
-    else feedback.push("数字");
+    if (/\d/.test(password)) {
+      score += 1;
+    } else {
+      feedback.push("数字");
+    }
 
     const levels = [
       { level: 0, text: "弱い", color: "text-red-500" },

@@ -5,7 +5,9 @@ interface PasswordStatusIconProps {
 }
 
 export function PasswordStatusIcon({ type, message, testId }: PasswordStatusIconProps) {
-  if (type === "none") return null;
+  if (type === "none") {
+    return null;
+  }
 
   const isSuccess = type === "success";
   const iconColor = isSuccess ? "text-green-600" : "text-red-600";

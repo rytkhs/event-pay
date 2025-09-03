@@ -1,4 +1,4 @@
-import { EventLoading } from "@/components/events/event-loading";
+import { EventLoading } from "@features/events";
 
 export default function EventsPageLoading() {
   return <EventLoading />;

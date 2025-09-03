@@ -1,18 +1,22 @@
 import React, { Suspense } from "react";
+
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { EventListWithFilters } from "@/components/events/event-list-with-filters";
-import { EventLoading } from "@/components/events/event-loading";
-import { EventError } from "@/components/events/event-error";
-import { Button } from "@/components/ui/button";
-import { getEventsAction } from "./actions";
-import type { SortBy, SortOrder, StatusFilter, PaymentFilter } from "./actions/get-events";
+
 import {
   DEFAULT_SORT_BY,
   DEFAULT_SORT_ORDER,
   DEFAULT_STATUS_FILTER,
   DEFAULT_PAYMENT_FILTER,
-} from "@/lib/constants/event-filters";
+} from "@core/constants/event-filters";
+import type { SortBy, SortOrder, StatusFilter, PaymentFilter } from "@core/types/events";
+
+import { EventListWithFilters, EventLoading } from "@features/events";
+
+import { InlineErrorCard } from "@/components/errors";
+import { Button } from "@/components/ui/button";
+
+import { getEventsAction } from "./actions";
 
 interface EventsContentProps {
   searchParams: { [key: string]: string | string[] | undefined };
@@ -78,7 +82,18 @@ async function EventsContent({ searchParams }: EventsContentProps) {
     }
 
     // その他のエラー
-    return <EventError error={new Error(result.error)} reset={() => window.location.reload()} />;
+    return (
+      <InlineErrorCard
+        code="500"
+        category="business"
+        severity="medium"
+        title="イベントの読み込みエラー"
+        message={result.error}
+        description="イベント一覧の取得に失敗しました。ページを再読み込みしてください。"
+        showRetry={true}
+        compact={false}
+      />
+    );
   }
 
   return (

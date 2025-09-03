@@ -86,6 +86,11 @@ const nextConfig = {
         crypto: false,
       };
     }
+    // Pino / thread-stream を外部扱いにしてサーバーバンドルから外す（dev の worker 解決エラー回避）
+    if (isServer) {
+      const externals = Array.isArray(config.externals) ? config.externals : [];
+      config.externals = [...externals, "pino-pretty", "thread-stream"];
+    }
     return config;
   },
   // 画像最適化設定（セキュリティ強化）

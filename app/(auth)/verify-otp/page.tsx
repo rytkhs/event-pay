@@ -1,9 +1,11 @@
 "use client";
 
 import { useState, useEffect, Suspense } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
-import { verifyOtpAction, resendOtpAction } from "../actions";
+
 import Link from "next/link";
+import { useSearchParams, useRouter } from "next/navigation";
+
+import { verifyOtpAction, resendOtpAction } from "@core/actions/auth";
 
 function VerifyOtpContent() {
   const [otp, setOtp] = useState("");
@@ -37,7 +39,9 @@ function VerifyOtpContent() {
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!email || !otp.trim()) return;
+    if (!email || !otp.trim()) {
+      return;
+    }
 
     setLoading(true);
     setError(null);
@@ -56,9 +60,12 @@ function VerifyOtpContent() {
         setSuccess(true);
         // 成功時はセッション状態を更新してからダッシュボードにリダイレクト
         router.refresh(); // クライアント側のセッション状態を更新
-        setTimeout(() => {
-          router.push(result.redirectUrl!);
-        }, 1500);
+        const redirectUrl = result.redirectUrl;
+        if (redirectUrl) {
+          setTimeout(() => {
+            router.push(redirectUrl);
+          }, 1500);
+        }
       }
     } catch {
       // console.error("OTP verification error:", _);
@@ -69,7 +76,9 @@ function VerifyOtpContent() {
   };
 
   const handleResend = async () => {
-    if (!email || resendDisabled) return;
+    if (!email || resendDisabled) {
+      return;
+    }
 
     setResendLoading(true);
     setError(null);
