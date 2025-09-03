@@ -1,6 +1,7 @@
 import Stripe from "stripe";
 
 import { logger } from "@core/logging/app-logger";
+import { getRequiredEnvVar } from "@core/utils/env-helper";
 
 // サーバーサイドで必須となる環境変数のみチェックする
 const serverRequiredEnvVars = {
@@ -24,7 +25,7 @@ if (!process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY) {
 }
 
 // Stripeクライアントの初期化（Destination charges対応）
-const stripeSecretKey = process.env.STRIPE_SECRET_KEY!;
+const stripeSecretKey = getRequiredEnvVar("STRIPE_SECRET_KEY");
 export const stripe = new Stripe(stripeSecretKey, {
   apiVersion:
     (process.env.STRIPE_API_VERSION as Stripe.LatestApiVersion | undefined) ?? "2024-04-10",

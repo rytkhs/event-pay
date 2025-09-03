@@ -7,10 +7,6 @@ import { CalculatorIcon, FileTextIcon, AlertTriangleIcon } from "lucide-react";
 import { useToast } from "@core/contexts/toast-context";
 import { formatUtcToJstByType } from "@core/utils/timezone";
 
-import type {
-  GenerateSettlementReportSuccess,
-  GenerateSettlementReportFailure,
-} from "@/app/actions/settlement-report-actions";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -21,6 +17,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+
+import type {
+  GenerateSettlementReportSuccess,
+  GenerateSettlementReportFailure,
+} from "../actions/settlement-reports";
 
 interface SettlementReportGeneratorProps {
   availableEvents?: {

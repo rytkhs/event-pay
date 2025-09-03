@@ -1,7 +1,8 @@
 // セキュリティ監査システムの型定義
 
-// ゲストトークンエラー関連の型をインポート
-export { GuestErrorCode } from "@core/security/guest-token-errors";
+// ゲストトークンエラー関連の型は core/security/guest-token-errors.ts で定義
+// 循環依存を避けるため、ここでは再エクスポートしません
+// 必要な場合は direct import を使用: import { GuestErrorCode } from "@core/security/guest-token-errors";
 
 // 管理者権限使用理由
 export enum AdminReason {

@@ -2,7 +2,7 @@
  * イベント一覧表示機能で使用する共通定数
  */
 
-import { SortBy, SortOrder, StatusFilter, PaymentFilter } from "@/app/events/actions/get-events";
+import { SortBy, SortOrder, StatusFilter, PaymentFilter } from "@core/types/events";
 
 // ソートオプション
 export const SORT_BY_OPTIONS: readonly SortBy[] = [

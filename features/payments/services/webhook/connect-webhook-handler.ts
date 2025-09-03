@@ -12,14 +12,13 @@ import type {
   AccountRestrictedNotification,
   StripeConnectNotificationData,
 } from "@core/notification/types";
+import { getStripeConnectPort, type StripeAccountStatusLike } from "@core/ports/stripe-connect";
 import { SecureSupabaseClientFactory } from "@core/security/secure-client-factory.impl";
 import { AdminReason } from "@core/security/secure-client-factory.types";
+import type { StripeAccountStatus } from "@core/types/enums";
 
-import {
-  createStripeConnectServiceWithClient,
-  type IStripeConnectService,
-  type StripeAccountStatusLike,
-} from "@features/stripe-connect";
+// Removed @core/services dependency to break circular reference
+// Use ports instead of direct feature import to avoid boundaries violation
 
 import { Database } from "@/types/database";
 
@@ -28,16 +27,13 @@ import { Database } from "@/types/database";
  */
 export class ConnectWebhookHandler {
   private supabase: SupabaseClient<Database>;
-  private stripeConnectService: IStripeConnectService;
   private notificationService: NotificationService;
 
   private constructor(
     supabase: SupabaseClient<Database>,
-    stripeConnectService: IStripeConnectService,
     notificationService: NotificationService
   ) {
     this.supabase = supabase;
-    this.stripeConnectService = stripeConnectService;
     this.notificationService = notificationService;
   }
 
@@ -51,19 +47,10 @@ export class ConnectWebhookHandler {
       "Stripe Connect webhook processing"
     );
 
-    // 既に生成済みの adminClient を共有して StripeConnectService を構築
-    const stripeConnectService = createStripeConnectServiceWithClient(
-      adminClient as SupabaseClient<Database>
-    );
-
-    // NotificationServiceも監査付きクライアントを使用するか、
+    // NotificationServiceも監査付きクライアントを使用
     const notificationService = new NotificationService(adminClient as SupabaseClient<Database>);
 
-    return new ConnectWebhookHandler(
-      adminClient as SupabaseClient<Database>,
-      stripeConnectService,
-      notificationService
-    );
+    return new ConnectWebhookHandler(adminClient as SupabaseClient<Database>, notificationService);
   }
 
   /**
@@ -82,17 +69,18 @@ export class ConnectWebhookHandler {
       }
 
       // 現在のアカウント状態を取得（存在しない場合でも処理継続し、挿入で追従）
-      const currentAccount = await this.stripeConnectService.getConnectAccountByUser(userId);
+      const stripeConnectPort = getStripeConnectPort();
+      const currentAccount = await stripeConnectPort.getConnectAccountByUser(userId);
 
       // Stripeからアカウント情報を取得
-      const accountInfo = await this.stripeConnectService.getAccountInfo(account.id);
+      const accountInfo = await stripeConnectPort.getAccountInfo(account.id);
 
       // 状態変更を記録（存在しない場合は未知扱い）
       const oldStatus = currentAccount?.status ?? "unknown";
       const newStatus = accountInfo.status;
 
       // データベースのアカウント情報を更新
-      await this.stripeConnectService.updateAccountStatus({
+      await stripeConnectPort.updateAccountStatus({
         userId,
         status: accountInfo.status,
         chargesEnabled: accountInfo.chargesEnabled,
@@ -129,8 +117,8 @@ export class ConnectWebhookHandler {
             (account.metadata as Record<string, string | undefined> | undefined)?.actor_id ||
             "unknown",
           accountId: account.id,
-          oldStatus: "unknown",
-          newStatus: "error",
+          oldStatus: "unverified" as StripeAccountStatus,
+          newStatus: "restricted" as StripeAccountStatus,
           chargesEnabled: false,
           payoutsEnabled: false,
         });
@@ -165,7 +153,8 @@ export class ConnectWebhookHandler {
       let userId: string | undefined;
       if (accountId) {
         try {
-          const _acc = await this.stripeConnectService.getAccountInfo(accountId);
+          const stripeConnectPort = getStripeConnectPort();
+          const _acc = await stripeConnectPort.getAccountInfo(accountId);
           // getAccountInfoはmetadata.actor_idまでは返さないため、DBから逆引き
           const { data } = await this.supabase
             .from("stripe_connect_accounts")
@@ -180,7 +169,8 @@ export class ConnectWebhookHandler {
 
       if (userId) {
         // ステータスとフラグをリセット（連携解除）
-        await this.stripeConnectService.updateAccountStatus({
+        const stripeConnectPort = getStripeConnectPort();
+        await stripeConnectPort.updateAccountStatus({
           userId,
           status: "unverified",
           chargesEnabled: false,
@@ -194,8 +184,8 @@ export class ConnectWebhookHandler {
         await this.notificationService.sendAccountStatusChangeNotification({
           userId,
           accountId: accountId || "unknown",
-          oldStatus: "verified",
-          newStatus: "unverified",
+          oldStatus: "verified" as StripeAccountStatus,
+          newStatus: "unverified" as StripeAccountStatus,
           chargesEnabled: false,
           payoutsEnabled: false,
         });
@@ -329,8 +319,8 @@ export class ConnectWebhookHandler {
       if (this.shouldNotifyStatusChange(oldStatus, accountInfo.status)) {
         const statusChangeNotification: AccountStatusChangeNotification = {
           ...baseNotificationData,
-          oldStatus,
-          newStatus: accountInfo.status,
+          oldStatus: oldStatus as StripeAccountStatus,
+          newStatus: accountInfo.status as StripeAccountStatus,
           chargesEnabled: accountInfo.chargesEnabled,
           payoutsEnabled: accountInfo.payoutsEnabled,
         };

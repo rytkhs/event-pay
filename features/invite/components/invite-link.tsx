@@ -4,10 +4,10 @@ import { useState, useEffect } from "react";
 
 import { Copy, ExternalLink, RefreshCw } from "lucide-react";
 
+import { generateInviteTokenAction } from "@core/actions";
 import { useToast } from "@core/contexts/toast-context";
 import { useClipboard } from "@core/hooks/use-clipboard";
 
-import { generateInviteTokenAction } from "@/app/events/actions";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -37,9 +37,9 @@ export function InviteLink({ eventId, initialInviteToken }: InviteLinkProps) {
     try {
       const result = await generateInviteTokenAction(eventId, { forceRegenerate });
 
-      if (result.success && result.data) {
-        setInviteToken(result.data.inviteToken);
-        setInviteUrl(result.data.inviteUrl);
+      if (result.success && result.token) {
+        setInviteToken(result.token);
+        setInviteUrl(`${window.location.origin}/events/${eventId}/guest?token=${result.token}`);
 
         const message = forceRegenerate
           ? "新しい招待リンクを生成しました"

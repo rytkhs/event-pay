@@ -1,6 +1,9 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
+// Feature adapters initialization (ensure core ports are registered)
+import "@/app/_init/feature-registrations";
+
 import { createProblemResponse } from "@core/api/problem-details";
 // Stripe 型は共有クライアント経由で利用するため未使用
 import { logger } from "@core/logging/app-logger";

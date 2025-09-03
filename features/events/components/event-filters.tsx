@@ -11,7 +11,6 @@ import {
   PAYMENT_FILTER_LABELS,
 } from "@core/constants/event-filters";
 
-import { StatusFilter, PaymentFilter, DateFilter } from "@/app/events/actions/get-events";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -23,6 +22,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+
+import { StatusFilter, PaymentFilter, DateFilter } from "../actions/get-events";
 
 interface EventFiltersProps {
   statusFilter: StatusFilter;

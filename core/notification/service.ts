@@ -128,7 +128,7 @@ export class NotificationService implements INotificationService {
   ): Promise<NotificationResult> {
     try {
       // 重要な状態変更のみ通知
-      if (this.shouldNotifyStatusChange(data.oldStatus, data.newStatus)) {
+      if (this.shouldNotifyStatusChange(data.oldStatus as string, data.newStatus as string)) {
         // ユーザー情報を取得
         const userInfo = await this.getUserInfo(data.userId);
         if (!userInfo) {
@@ -207,10 +207,7 @@ export class NotificationService implements INotificationService {
   /**
    * 状態変更の通知が必要かチェック
    */
-  private shouldNotifyStatusChange(
-    oldStatus: import("@features/stripe-connect").StripeAccountStatusLike,
-    newStatus: import("@features/stripe-connect").StripeAccountStatusLike
-  ): boolean {
+  private shouldNotifyStatusChange(oldStatus: string, newStatus: string): boolean {
     // 認証完了や制限状態への変更は通知
     const importantTransitions = [
       { from: "unverified", to: "verified" },

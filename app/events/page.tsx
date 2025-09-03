@@ -9,6 +9,7 @@ import {
   DEFAULT_STATUS_FILTER,
   DEFAULT_PAYMENT_FILTER,
 } from "@core/constants/event-filters";
+import type { SortBy, SortOrder, StatusFilter, PaymentFilter } from "@core/types/events";
 
 import { EventListWithFilters, EventLoading } from "@features/events";
 
@@ -16,7 +17,6 @@ import { InlineErrorCard } from "@/components/errors";
 import { Button } from "@/components/ui/button";
 
 import { getEventsAction } from "./actions";
-import type { SortBy, SortOrder, StatusFilter, PaymentFilter } from "./actions/get-events";
 
 interface EventsContentProps {
   searchParams: { [key: string]: string | string[] | undefined };

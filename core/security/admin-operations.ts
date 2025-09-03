@@ -151,7 +151,7 @@ export async function createMaintenanceAdminClient(maintenanceTask: string) {
  *
  * After:
  * ```typescript
- * import { deleteUserById } from "@core/security/admin-operations";
+ * import { deleteUserById } from "./admin-operations";
  * await deleteUserById(userId, AdminReason.USER_CLEANUP, "Specific reason");
  * ```
  *

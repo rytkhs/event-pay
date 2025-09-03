@@ -9,7 +9,8 @@ import { Suspense } from "react";
 import { Loader2 } from "lucide-react";
 import type { Metadata } from "next";
 
-import { handleOnboardingRefreshAction } from "@/app/(dashboard)/actions/stripe-connect";
+import { handleOnboardingRefreshAction } from "@features/stripe-connect";
+
 import { Card, CardContent } from "@/components/ui/card";
 
 export const metadata: Metadata = {

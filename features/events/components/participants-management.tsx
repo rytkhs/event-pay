@@ -10,8 +10,8 @@ import type {
   GetEventPaymentsResponse,
 } from "@core/validation/participant-management";
 
-import { getEventParticipantsAction } from "@/app/events/actions/get-event-participants";
-import { getEventPaymentsAction } from "@/app/events/actions/get-event-payments";
+import { getEventParticipantsAction } from "../actions/get-event-participants";
+import { getEventPaymentsAction } from "../actions/get-event-payments";
 
 import { EventStats } from "./event-stats";
 import { ParticipantsTable } from "./participants-table";

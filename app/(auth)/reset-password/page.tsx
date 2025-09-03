@@ -2,9 +2,9 @@
 
 import Link from "next/link";
 
-import { useAuthForm, AuthFormWrapper, AuthEmailField, AuthSubmitButton } from "@features/auth";
+import { resetPasswordAction } from "@core/actions/auth";
 
-import { resetPasswordAction } from "@/app/(auth)/actions";
+import { useAuthForm, AuthFormWrapper, AuthEmailField, AuthSubmitButton } from "@features/auth";
 
 export default function ResetPasswordPage() {
   const { state, formAction, isPending } = useAuthForm(resetPasswordAction, {

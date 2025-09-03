@@ -1,5 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 
+import { getRequiredEnvVar } from "@core/utils/env-helper";
+
 import { Database } from "@/types/database";
 import type { Json } from "@/types/database";
 
@@ -63,8 +65,8 @@ export class SupabaseWebhookIdempotencyService<T extends Json = Json>
 
   constructor() {
     this.supabase = createClient<Database>(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      getRequiredEnvVar("NEXT_PUBLIC_SUPABASE_URL"),
+      getRequiredEnvVar("SUPABASE_SERVICE_ROLE_KEY"),
       {
         auth: {
           autoRefreshToken: false,
@@ -101,7 +103,7 @@ export class SupabaseWebhookIdempotencyService<T extends Json = Json>
       stripe_account_id: metadata?.stripe_account_id ?? null,
       stripe_event_created:
         typeof metadata?.stripe_event_created === "number"
-          ? Math.trunc(metadata!.stripe_event_created)
+          ? Math.trunc(metadata.stripe_event_created)
           : null,
       object_id: metadata?.object_id ?? null,
     } as never);

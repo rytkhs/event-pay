@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 
+import { updatePasswordAction } from "@core/actions/auth";
+
 import {
   useAuthForm,
   AuthFormWrapper,
@@ -10,7 +12,6 @@ import {
   usePasswordConfirmation,
 } from "@features/auth";
 
-import { updatePasswordAction } from "@/app/(auth)/actions";
 import { PasswordStatusIcon } from "@/components/ui/PasswordStatusIcon";
 
 export default function UpdatePasswordPage() {

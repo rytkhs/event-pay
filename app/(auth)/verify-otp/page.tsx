@@ -5,7 +5,7 @@ import { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
 
-import { verifyOtpAction, resendOtpAction } from "../actions";
+import { verifyOtpAction, resendOtpAction } from "@core/actions/auth";
 
 function VerifyOtpContent() {
   const [otp, setOtp] = useState("");

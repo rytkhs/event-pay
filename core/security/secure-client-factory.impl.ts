@@ -13,8 +13,9 @@ import type { CookieOptions } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
 
 import { logger } from "@core/logging/app-logger";
-import { COOKIE_CONFIG, AUTH_CONFIG, getCookieConfig } from "@core/security";
+import { getRequiredEnvVar } from "@core/utils/env-helper";
 
+import { COOKIE_CONFIG, AUTH_CONFIG, getCookieConfig } from "./config";
 import { validateGuestTokenFormat } from "./crypto";
 import { ISecureSupabaseClientFactory } from "./secure-client-factory.interface";
 import {
@@ -38,13 +39,9 @@ export class SecureSupabaseClientFactory implements ISecureSupabaseClientFactory
   // Security auditor removed
 
   constructor() {
-    this.supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-    this.anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-    this.serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-
-    if (!this.supabaseUrl || !this.anonKey || !this.serviceRoleKey) {
-      throw new Error("Supabase environment variables are not configured");
-    }
+    this.supabaseUrl = getRequiredEnvVar("NEXT_PUBLIC_SUPABASE_URL");
+    this.anonKey = getRequiredEnvVar("NEXT_PUBLIC_SUPABASE_ANON_KEY");
+    this.serviceRoleKey = getRequiredEnvVar("SUPABASE_SERVICE_ROLE_KEY");
 
     // Security auditor removed
   }

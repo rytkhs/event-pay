@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 
+import { registerAction } from "@core/actions/auth";
+
 import { useRegisterFormRHF } from "@features/auth";
 
-import { registerAction } from "@/app/(auth)/actions";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";

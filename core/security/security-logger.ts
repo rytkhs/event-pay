@@ -3,6 +3,7 @@
  * セキュリティ関連のイベントを統一的に記録・監視します
  */
 
+import { getMaliciousPatternDetails } from "@core/constants/security-patterns";
 import { logger } from "@core/logging/app-logger";
 
 export interface SecurityEvent {
@@ -124,7 +125,8 @@ export function logSanitizationEvent(
 ): void {
   // サニタイゼーションが実際に何かを変更した場合のみログ記録
   if (originalInput !== sanitizedInput) {
-    const hasScriptTag = originalInput.includes("<script") || originalInput.includes("javascript:");
+    // 悪意パターンの詳細な検査を実行
+    const maliciousPatternResult = getMaliciousPatternDetails(originalInput);
     const hasHtmlTags = /<[^>]*>/.test(originalInput);
 
     logParticipationSecurityEvent(
@@ -134,7 +136,8 @@ export function logSanitizationEvent(
         fieldName,
         originalLength: originalInput.length,
         sanitizedLength: sanitizedInput.length,
-        hasScriptTag,
+        hasMaliciousPattern: maliciousPatternResult.hasPattern,
+        detectedPatterns: maliciousPatternResult.detectedPatterns,
         hasHtmlTags,
         // セキュリティ上、実際の内容は記録しない（長さと特徴のみ）
       },

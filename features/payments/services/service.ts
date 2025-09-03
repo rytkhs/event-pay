@@ -3,19 +3,18 @@
  */
 
 import type { SupabaseClient } from "@supabase/supabase-js";
-
 // import type { PostgrestError } from "@supabase/supabase-js";
 import { PostgrestError } from "@supabase/supabase-js";
 
 import { logger } from "@core/logging/app-logger";
 import { stripe } from "@core/stripe/client";
 import * as DestinationCharges from "@core/stripe/destination-charges";
-
-import { ApplicationFeeCalculator } from "./fee-config/application-fee-calculator";
+import { assertStripePayment } from "@core/utils/stripe-guards";
 
 import { Database } from "@/types/database";
 
 import { ERROR_HANDLING_BY_TYPE } from "./error-mapping";
+import { ApplicationFeeCalculator } from "./fee-config/application-fee-calculator";
 import { IPaymentService, IPaymentErrorHandler } from "./interface";
 import {
   Payment,
@@ -235,13 +234,20 @@ export class PaymentService implements IPaymentService {
             );
           }
         } else {
-          targetPaymentId = payment!.id as string;
+          assertStripePayment(payment, "payment lookup");
+          targetPaymentId = payment.id;
         }
       }
 
       // Stripe Checkout Sessionを作成（Destination chargesに統一）
+      if (!params.destinationCharges) {
+        throw new PaymentError(
+          PaymentErrorType.VALIDATION_ERROR,
+          "Destination charges configuration is required"
+        );
+      }
       const { destinationAccountId, userEmail, userName, setupFutureUsage } =
-        params.destinationCharges!;
+        params.destinationCharges;
 
       // Application fee計算
       const feeCalculation = await this.applicationFeeCalculator.calculateApplicationFee(
@@ -336,8 +342,15 @@ export class PaymentService implements IPaymentService {
         actorId: params.actorId,
       });
 
+      if (!session.url) {
+        throw new PaymentError(
+          PaymentErrorType.STRIPE_API_ERROR,
+          "Stripe session URL is not available"
+        );
+      }
+
       return {
-        sessionUrl: session.url!,
+        sessionUrl: session.url,
         sessionId: session.id,
       };
     } catch (error) {
@@ -443,11 +456,24 @@ export class PaymentService implements IPaymentService {
    */
   private async updatePaymentStatusSafe(params: UpdatePaymentStatusParams): Promise<void> {
     try {
+      if (!params.expectedVersion) {
+        throw new PaymentError(
+          PaymentErrorType.VALIDATION_ERROR,
+          "Expected version is required for safe status update"
+        );
+      }
+      if (!params.userId) {
+        throw new PaymentError(
+          PaymentErrorType.VALIDATION_ERROR,
+          "User ID is required for status update"
+        );
+      }
+
       const { data: _data, error } = await this.supabase.rpc("rpc_update_payment_status_safe", {
         p_payment_id: params.paymentId,
         p_new_status: params.status,
-        p_expected_version: params.expectedVersion!,
-        p_user_id: params.userId!,
+        p_expected_version: params.expectedVersion,
+        p_user_id: params.userId,
         p_notes: params.notes ?? undefined,
       });
 

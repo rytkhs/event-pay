@@ -1,9 +1,8 @@
 import { redirect } from "next/navigation";
 
+import { logoutAction } from "@core/actions/auth";
 import { createClient } from "@core/supabase/server";
 import { formatUtcToJst } from "@core/utils/timezone";
-
-import { logoutAction } from "../../(auth)/actions";
 
 async function handleLogout() {
   "use server";

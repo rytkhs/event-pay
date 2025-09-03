@@ -5,12 +5,13 @@ import { redirect } from "next/navigation";
 import { getCurrentUser } from "@core/auth/auth-utils";
 import { createClient } from "@core/supabase/server";
 
-import { SettlementReportList, SettlementReportService } from "@features/settlements";
 import {
+  SettlementReportList,
+  SettlementReportService,
   exportSettlementReportsAction,
   getSettlementReportsAction,
   regenerateAfterRefundAction,
-} from "@/app/actions/settlement-report-actions";
+} from "@features/settlements";
 
 export const dynamic = "force-dynamic";
 
