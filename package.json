@@ -22,7 +22,9 @@
     "test:unit": "jest --config=jest.config.mjs --passWithNoTests --runInBand",
     "test:e2e": "playwright test",
     "test": "npm run test:unit && npm run test:e2e",
-    "test:ci": "npm run test:unit && npm run test:e2e"
+    "test:ci": "npm run test:unit && npm run test:e2e",
+    "test:setup": "npx supabase db reset --local && echo 'Test environment ready'",
+    "test:with-server": "PLAYWRIGHT_START_SERVER=1 npm run test:e2e"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.1.1",
