@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+
 import { X } from "lucide-react";
 
 export interface Toast {
@@ -72,7 +73,9 @@ interface ToasterProps {
 }
 
 export function Toaster({ toasts, onClose }: ToasterProps) {
-  if (toasts.length === 0) return null;
+  if (toasts.length === 0) {
+    return null;
+  }
 
   return (
     <div className="fixed top-4 right-4 z-50 flex flex-col" aria-label="通知">

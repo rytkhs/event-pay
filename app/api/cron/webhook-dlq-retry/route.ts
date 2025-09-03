@@ -1,64 +1,78 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { createProblemResponse } from '@/lib/api/problem-details';
-import { stripe as sharedStripe } from '@/lib/stripe/client';
-import { StripeWebhookEventHandler } from '@/lib/services/webhook/webhook-event-handler';
+import type { NextRequest } from "next/server";
+import { NextResponse } from "next/server";
+
+import { createClient } from "@supabase/supabase-js";
+
+import { createProblemResponse } from "@core/api/problem-details";
+import { validateCronSecret } from "@core/cron-auth";
+import { logger } from "@core/logging/app-logger";
+import { stripe as sharedStripe } from "@core/stripe/client";
+
 import {
+  type WebhookProcessingResult,
+  StripeWebhookEventHandler,
   SupabaseWebhookIdempotencyService,
   IdempotentWebhookProcessor,
-} from '@/lib/services/webhook/webhook-idempotency';
-import { SecurityAuditorImpl } from '@/lib/security/security-auditor.impl';
-import { AnomalyDetectorImpl } from '@/lib/security/anomaly-detector';
-import { SecurityReporterImpl } from '@/lib/security/security-reporter.impl';
-import type { WebhookProcessingResult } from '@/lib/services/webhook';
-import { createClient } from '@supabase/supabase-js';
-import { Database } from '@/types/database';
-import { validateCronSecret } from '@/lib/cron-auth';
+} from "@features/payments";
 
-export const runtime = 'nodejs';
-export const dynamic = 'force-dynamic';
+import type { Database } from "@/types/database";
+
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 // Vercel Cron は GET 呼び出し推奨
 
 const MAX_RETRIES = 5;
 const BASE_INTERVAL_SEC = 60; // 1 分
 
 function createServices() {
-  const auditor = new SecurityAuditorImpl();
-  const anomalyDetector = new AnomalyDetectorImpl(auditor);
-  const securityReporter = new SecurityReporterImpl(auditor, anomalyDetector);
-  const eventHandler = new StripeWebhookEventHandler(securityReporter);
+  const eventHandler = new StripeWebhookEventHandler();
   const idempotencyService = new SupabaseWebhookIdempotencyService<WebhookProcessingResult>();
-  const idempotentProcessor = new IdempotentWebhookProcessor<WebhookProcessingResult>(idempotencyService);
-  return { securityReporter, eventHandler, idempotentProcessor, idempotencyService };
+  const idempotentProcessor = new IdempotentWebhookProcessor<WebhookProcessingResult>(
+    idempotencyService
+  );
+  return { eventHandler, idempotentProcessor, idempotencyService };
 }
 
 export async function GET(request: NextRequest) {
   const auth = validateCronSecret(request);
   if (!auth.isValid) {
-    return createProblemResponse('UNAUTHORIZED', {
-      instance: '/api/cron/webhook-dlq-retry',
-      detail: auth.error || 'Unauthorized',
+    return createProblemResponse("UNAUTHORIZED", {
+      instance: "/api/cron/webhook-dlq-retry",
+      detail: auth.error || "Unauthorized",
     });
   }
 
-  const { securityReporter, eventHandler, idempotentProcessor, idempotencyService } = createServices();
+  const { eventHandler, idempotentProcessor, idempotencyService } = createServices();
 
   try {
     const now = Date.now();
 
-    const supabase = createClient<Database>(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-      { auth: { autoRefreshToken: false, persistSession: false } }
-    );
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    if (!supabaseUrl || !serviceRoleKey) {
+      logger.error("Required Supabase environment variables are missing", {
+        tag: "webhookDlqRetryEnvMissing",
+      });
+      return createProblemResponse("INTERNAL_ERROR", {
+        instance: "/api/cron/webhook-dlq-retry",
+        detail: "Server configuration error",
+      });
+    }
+
+    const supabase = createClient<Database>(supabaseUrl, serviceRoleKey, {
+      auth: { autoRefreshToken: false, persistSession: false },
+    });
 
     // 失敗イベント取得
-    const { data: failedEvents, error } = await supabase
-      .from('webhook_events')
-      .select('*')
-      .eq('status', 'failed')
-      .lt('retry_count', MAX_RETRIES);
+    const { data: failedEvents, error: fetchError } = await supabase
+      .from("webhook_events")
+      .select("*")
+      .eq("status", "failed")
+      .lt("retry_count", MAX_RETRIES);
 
-    if (error) throw new Error(`Failed to fetch failed events: ${error.message}`);
+    if (fetchError) {
+      throw new Error(`Failed to fetch failed events: ${fetchError.message}`);
+    }
 
     let processed = 0;
     let success = 0;
@@ -68,21 +82,20 @@ export async function GET(request: NextRequest) {
       const lastRetryAtStr: string | null = evt.last_retry_at ?? null;
       const lastRetryMs = lastRetryAtStr ? Date.parse(lastRetryAtStr) : 0;
       const delaySec = Math.pow(2, retryCount) * BASE_INTERVAL_SEC;
-      if (now - lastRetryMs < delaySec * 1000) continue; // まだ待機
+      if (now - lastRetryMs < delaySec * 1000) {
+        continue;
+      } // まだ待機
 
       processed++;
       const eventId: string = evt.stripe_event_id;
-      let stripeEvent;
+      let stripeEvent: Awaited<ReturnType<typeof sharedStripe.events.retrieve>>;
       try {
         stripeEvent = await sharedStripe.events.retrieve(eventId);
       } catch (_err) {
         // Event not found → terminal failure
-        await idempotencyService.markEventFailed(
-          eventId,
-          evt.event_type,
-          'event_not_found',
-          { stripe_account_id: evt.stripe_account_id ?? null }
-        );
+        await idempotencyService.markEventFailed(eventId, evt.event_type, "event_not_found", {
+          stripe_account_id: evt.stripe_account_id ?? null,
+        });
         continue;
       }
 
@@ -90,38 +103,30 @@ export async function GET(request: NextRequest) {
         stripeEvent.id,
         stripeEvent.type,
         () => eventHandler.handleEvent(stripeEvent),
-        { metadata: { stripe_account_id: stripeEvent.account ?? null } }
+        { metadata: { stripe_account_id: (stripeEvent as any)?.account ?? null } }
       );
 
       if (result.result.success) {
         success++;
       } else {
-        const errorMessage = typeof result.result === 'object' && result.result !== null && 'error' in result.result
-          ? (result.result.error as string)
-          : 'retry_failed';
-        await idempotencyService.markEventFailed(
-          stripeEvent.id,
-          stripeEvent.type,
-          errorMessage,
-          { stripe_account_id: stripeEvent.account ?? null }
-        );
+        const errorMessage =
+          typeof result.result === "object" && result.result !== null && "error" in result.result
+            ? (result.result.error as string)
+            : "retry_failed";
+        await idempotencyService.markEventFailed(stripeEvent.id, stripeEvent.type, errorMessage, {
+          stripe_account_id: stripeEvent.account ?? null,
+        });
       }
     }
 
-    await securityReporter.logSecurityEvent({
-      type: 'webhook_dlq_retry_summary',
-      details: { processed, success },
-    });
+    logger.info("Webhook DLQ retry completed", { processed, success });
 
     return NextResponse.json({ processed, success });
   } catch (e) {
-    await securityReporter.logSuspiciousActivity({
-      type: 'webhook_dlq_retry_error',
-      details: { error: e instanceof Error ? e.message : 'unknown' },
-    });
-    return createProblemResponse('INTERNAL_ERROR', {
-      instance: '/api/cron/webhook-dlq-retry',
-      detail: 'DLQ retry worker failed',
+    logger.error("Webhook DLQ retry failed", { error: e instanceof Error ? e.message : "unknown" });
+    return createProblemResponse("INTERNAL_ERROR", {
+      instance: "/api/cron/webhook-dlq-retry",
+      detail: "DLQ retry worker failed",
     });
   }
 }

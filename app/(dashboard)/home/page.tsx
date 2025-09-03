@@ -1,7 +1,8 @@
-import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
-import { logoutAction } from "@/app/(auth)/actions";
-import { formatUtcToJst } from "@/lib/utils/timezone";
+
+import { logoutAction } from "@core/actions/auth";
+import { createClient } from "@core/supabase/server";
+import { formatUtcToJst } from "@core/utils/timezone";
 
 async function handleLogout() {
   "use server";
@@ -40,7 +41,7 @@ export default async function DashboardPage() {
     if (process.env.NODE_ENV === "development") {
       // console.warn("Dashboard: Redirecting to login due to auth failure");
     }
-    redirect("/login?redirectTo=/dashboard");
+    redirect("/login?redirectTo=/home");
   }
 
   return (

@@ -1,10 +1,18 @@
 "use client";
 
 import Link from "next/link";
-import { usePasswordConfirmation } from "@/lib/hooks/usePasswordConfirmation";
+
+import { updatePasswordAction } from "@core/actions/auth";
+
+import {
+  useAuthForm,
+  AuthFormWrapper,
+  AuthFormField,
+  AuthSubmitButton,
+  usePasswordConfirmation,
+} from "@features/auth";
+
 import { PasswordStatusIcon } from "@/components/ui/PasswordStatusIcon";
-import { updatePasswordAction } from "@/app/(auth)/actions";
-import { useAuthForm, AuthFormWrapper, AuthFormField, AuthSubmitButton } from "@/components/auth";
 
 export default function UpdatePasswordPage() {
   // 共通認証フォームフック

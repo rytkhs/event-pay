@@ -1,8 +1,19 @@
 import React from "react";
-import { createClient } from "@/lib/supabase/server";
-import { getCurrentUser } from "@/lib/auth/auth-utils";
+
 import { redirect } from "next/navigation";
-import { SettlementReportList, SettlementReportGenerator } from "@/components/settlement-report";
+
+import { getCurrentUser } from "@core/auth/auth-utils";
+import { createClient } from "@core/supabase/server";
+
+import {
+  SettlementReportList,
+  SettlementReportGenerator,
+  exportSettlementReportsAction,
+  generateSettlementReportAction,
+  getSettlementReportsAction,
+  regenerateAfterRefundAction,
+} from "@features/settlements";
+
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default async function SettlementReportsPage() {
@@ -97,6 +108,9 @@ export default async function SettlementReportsPage() {
           <SettlementReportList
             initialReports={formattedReports}
             availableEvents={availableEvents}
+            onGetReports={getSettlementReportsAction}
+            onExportReports={exportSettlementReportsAction}
+            onRegenerateReport={regenerateAfterRefundAction}
           />
         </TabsContent>
 
@@ -106,6 +120,7 @@ export default async function SettlementReportsPage() {
             onReportGenerated={() => {
               // レポート生成後の処理をここに追加予定
             }}
+            onGenerateReport={generateSettlementReportAction}
           />
         </TabsContent>
       </Tabs>
