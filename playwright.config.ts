@@ -1,0 +1,35 @@
+import { defineConfig, devices } from "@playwright/test";
+
+const shouldStartServer = process.env.PLAYWRIGHT_START_SERVER === "1";
+const webServer = shouldStartServer
+  ? {
+      command: process.env.PLAYWRIGHT_WEBSERVER_CMD || "npm run dev",
+      url: "http://localhost:3000",
+      reuseExistingServer: true,
+      timeout: 120 * 1000,
+    }
+  : undefined;
+
+export default defineConfig({
+  testDir: "./tests/e2e",
+  outputDir: "tmp/test-artifacts/playwright-results",
+  reporter: [
+    ["list"],
+    ["html", { outputFolder: "tmp/test-artifacts/playwright-report", open: "never" }],
+  ],
+  use: {
+    baseURL: process.env.PLAYWRIGHT_BASE_URL || "http://localhost:3000",
+    trace: "retain-on-failure",
+    video: "retain-on-failure",
+    screenshot: "only-on-failure",
+    viewport: { width: 1280, height: 800 },
+    timezoneId: "Asia/Tokyo",
+  },
+  ...(webServer ? { webServer } : {}),
+  projects: [
+    {
+      name: "chromium",
+      use: { ...devices["Desktop Chrome"] },
+    },
+  ],
+});
