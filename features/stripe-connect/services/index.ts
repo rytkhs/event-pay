@@ -9,25 +9,6 @@ export { StripeConnectErrorHandler } from "./error-handler";
 // インターフェース
 export type { IStripeConnectService, IStripeConnectErrorHandler } from "./interface";
 
-// 型定義（公開API）
-export type {
-  StripeConnectAccount,
-  StripeAccountStatus,
-  AccountInfo,
-  ErrorHandlingResult,
-} from "./types";
-
-// エラー関連
-export { StripeConnectError, StripeConnectErrorType } from "./types";
-
-// バリデーション関数
-export {
-  validateCreateExpressAccountParams,
-  validateCreateAccountLinkParams,
-  validateStripeAccountId,
-  validateUserId,
-} from "./validation";
-
 // エラーマッピング
 export {
   ERROR_HANDLING_BY_TYPE,

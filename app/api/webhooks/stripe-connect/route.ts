@@ -7,6 +7,9 @@ import { NextResponse } from "next/server";
 
 import type Stripe from "stripe";
 
+// Feature adapters initialization (ensure core ports are registered)
+import "@/app/_init/feature-registrations";
+
 import { createProblemResponse } from "@core/api/problem-details";
 import { logger } from "@core/logging/app-logger";
 import { generateSecureUuid } from "@core/security/crypto";

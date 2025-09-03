@@ -1,11 +1,15 @@
 import { createClient } from "@supabase/supabase-js";
 import Stripe from "stripe";
 
+// import { emitPaymentCompleted, emitPaymentFailed } from "@core/events";
 import { logger } from "@core/logging/app-logger";
+import { getSettlementReportPort } from "@core/ports/settlements";
 import { stripe as sharedStripe } from "@core/stripe/client";
+import { getRequiredEnvVar } from "@core/utils/env-helper";
 import { canPromoteStatus } from "@core/utils/payments/status-rank";
 
-import { SettlementReportService } from "@features/settlements";
+// Removed @core/services dependency to break circular reference
+// Use ports instead of direct feature import to avoid boundaries violation
 
 import { Database } from "@/types/database";
 
@@ -20,8 +24,8 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
 
   constructor() {
     this.supabase = createClient<Database>(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      getRequiredEnvVar("NEXT_PUBLIC_SUPABASE_URL"),
+      getRequiredEnvVar("SUPABASE_SERVICE_ROLE_KEY"),
       {
         auth: {
           autoRefreshToken: false,
@@ -365,8 +369,8 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
 
       const createdBy: string = (eventRow as { created_by: string }).created_by;
 
-      const service = new SettlementReportService(this.supabase);
-      const res = await service.regenerateAfterRefundOrDispute(eventId, createdBy);
+      const settlementPort = getSettlementReportPort();
+      const res = await settlementPort.regenerateAfterRefundOrDispute(eventId, createdBy);
       if (!res.success) {
         await logger.info("Webhook security event", {
           type: "settlement_regenerate_failed",
@@ -1116,10 +1120,7 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
           stripe_dispute_id: dispute.id,
           charge_id: chargeId ?? null,
           payment_intent_id: piId ?? null,
-          amount:
-            typeof (dispute as { amount?: number }).amount === "number"
-              ? (dispute as { amount?: number }).amount!
-              : 0,
+          amount: (dispute as { amount?: number }).amount ?? 0,
           currency: (currency || "jpy").toLowerCase(),
           reason: reason ?? null,
           status: (dispute as { status?: string }).status || "needs_response",
@@ -1229,8 +1230,8 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
       const hasPiCurrency = typeof piCurrency === "string";
 
       if (
-        (hasDbAmount && hasPiAmount && piAmount! !== paymentAmount!) ||
-        (hasPiCurrency && piCurrency!.toLowerCase() !== expectedCurrency)
+        (hasDbAmount && hasPiAmount && piAmount !== paymentAmount) ||
+        (hasPiCurrency && piCurrency && piCurrency.toLowerCase() !== expectedCurrency)
       ) {
         await logger.info("Webhook security event", {
           type: "webhook_amount_currency_mismatch",

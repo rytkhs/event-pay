@@ -246,7 +246,7 @@ export function ParticipationConfirmation({
               <div id="guest-url-content" className="space-y-3">
                 <div className="p-3 bg-gray-50 rounded-lg border">
                   <p className="text-xs text-gray-600 mb-2">管理URL:</p>
-                  <p
+                  <div
                     className="text-xs sm:text-sm font-mono text-gray-900 break-all leading-relaxed"
                     role="textbox"
                     aria-readonly="true"
@@ -254,7 +254,7 @@ export function ParticipationConfirmation({
                     tabIndex={0}
                   >
                     {guestManagementUrl}
-                  </p>
+                  </div>
                 </div>
 
                 <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2">
@@ -351,7 +351,7 @@ export function ParticipationConfirmation({
             次のステップ
           </h3>
 
-          <ol className="space-y-3 sm:space-y-4" role="list">
+          <ol className="space-y-3 sm:space-y-4">
             {registrationData.requiresAdditionalPayment && (
               <li className="flex items-start space-x-3">
                 <div

@@ -5,7 +5,7 @@ import { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
 
-import { resendOtpAction } from "../actions";
+import { resendOtpAction } from "@core/actions/auth";
 
 function VerifyEmailContent() {
   const [resendLoading, setResendLoading] = useState(false);

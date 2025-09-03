@@ -8,16 +8,15 @@ import { z } from "zod";
 
 import { usePagination } from "@core/hooks/usePagination";
 
-import { useEventFilter, Filters } from "../hooks/useEventFilter";
-import { Event } from "../types";
-
 import type {
   SortBy,
   SortOrder,
   StatusFilter,
   PaymentFilter,
   DateFilter,
-} from "@/app/events/actions/get-events";
+} from "../actions/get-events";
+import { useEventFilter, Filters } from "../hooks/useEventFilter";
+import { Event } from "../types";
 
 import { EventFilters } from "./event-filters";
 import { EventList } from "./event-list";

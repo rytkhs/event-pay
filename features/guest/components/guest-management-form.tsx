@@ -24,13 +24,13 @@ import { canGuestRepay } from "@core/validation/payment-eligibility";
 
 import { PaymentStatusSpan } from "@components/ui/payment-status-badge";
 
-import { createGuestStripeSessionAction } from "@/app/guest/actions/create-stripe-session";
-import { updateGuestAttendanceAction } from "@/app/guest/actions/update-attendance";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+
+import { createGuestStripeSessionAction, updateGuestAttendanceAction } from "../actions";
 
 interface GuestManagementFormProps {
   attendance: GuestAttendanceData;

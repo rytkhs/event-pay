@@ -17,6 +17,8 @@ import {
 } from "lucide-react";
 
 import { useToast } from "@core/contexts/toast-context";
+import { getPaymentActions } from "@core/services";
+import { extractValidPaymentIds, hasPaymentId } from "@core/utils/data-guards";
 import type {
   GetParticipantsResponse,
   GetParticipantsParams,
@@ -24,10 +26,6 @@ import type {
 
 import { PaymentStatusBadge } from "@components/ui/payment-status-badge";
 
-import { exportParticipantsCsvAction } from "@/app/events/actions/export-participants-csv";
-import { getAllCashPaymentIdsAction } from "@/app/events/actions/get-all-cash-payment-ids";
-import { bulkUpdateCashStatusAction } from "@/app/payments/actions/bulk-update-cash-status";
-import { updateCashStatusAction } from "@/app/payments/actions/update-cash-status";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -40,6 +38,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+
+import { exportParticipantsCsvAction } from "../actions/export-participants-csv";
+import { getAllCashPaymentIdsAction } from "../actions/get-all-cash-payment-ids";
 
 interface ParticipantsTableProps {
   eventId: string;
@@ -179,7 +180,7 @@ export function ParticipantsTable({
 
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
-      const cashPaymentIds = cashPayments.filter((p) => p.payment_id).map((p) => p.payment_id!);
+      const cashPaymentIds = extractValidPaymentIds(cashPayments);
       setSelectedPaymentIds(cashPaymentIds);
       setSelectionMeta({ mode: "page" });
     } else {
@@ -253,7 +254,8 @@ export function ParticipantsTable({
   const handleUpdatePaymentStatus = async (paymentId: string, status: "received" | "waived") => {
     setIsUpdatingStatus(true);
     try {
-      const result = await updateCashStatusAction({
+      const paymentActions = getPaymentActions();
+      const result = await paymentActions.updateCashStatus({
         paymentId,
         status,
       });
@@ -324,7 +326,8 @@ export function ParticipantsTable({
 
       for (let i = 0; i < selectedPaymentIds.length; i += chunkSize) {
         const chunk = selectedPaymentIds.slice(i, i + chunkSize);
-        const result = await bulkUpdateCashStatusAction({ paymentIds: chunk, status });
+        const paymentActions = getPaymentActions();
+        const result = await paymentActions.bulkUpdateCashStatus({ paymentIds: chunk, status });
 
         if (result.success) {
           totalSuccess += result.data.successCount;
@@ -776,7 +779,8 @@ export function ParticipantsTable({
                           <Checkbox
                             checked={isSelected}
                             onCheckedChange={(checked) =>
-                              handleSelectPayment(participant.payment_id!, checked as boolean)
+                              hasPaymentId(participant) &&
+                              handleSelectPayment(participant.payment_id, checked as boolean)
                             }
                             disabled={isLoading || isUpdatingStatus}
                           />
@@ -819,7 +823,8 @@ export function ParticipantsTable({
                               size="sm"
                               variant="outline"
                               onClick={() =>
-                                handleUpdatePaymentStatus(participant.payment_id!, "received")
+                                hasPaymentId(participant) &&
+                                handleUpdatePaymentStatus(participant.payment_id, "received")
                               }
                               disabled={isUpdatingStatus}
                               className="h-7 px-2 text-xs bg-green-50 border-green-300 text-green-700 hover:bg-green-100"
@@ -831,7 +836,8 @@ export function ParticipantsTable({
                               size="sm"
                               variant="outline"
                               onClick={() =>
-                                handleUpdatePaymentStatus(participant.payment_id!, "waived")
+                                hasPaymentId(participant) &&
+                                handleUpdatePaymentStatus(participant.payment_id, "waived")
                               }
                               disabled={isUpdatingStatus}
                               className="h-7 px-2 text-xs bg-orange-50 border-orange-300 text-orange-700 hover:bg-orange-100"

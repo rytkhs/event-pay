@@ -11,9 +11,8 @@ import {
 import { logger } from "@core/logging/app-logger";
 import { convertJstDateToUtcRange } from "@core/utils/timezone";
 
+import { StatusFilter, PaymentFilter, DateFilter } from "../actions/get-events";
 import { Event } from "../types";
-
-import { StatusFilter, PaymentFilter, DateFilter } from "@/app/events/actions/get-events";
 
 export interface Filters {
   status: StatusFilter;

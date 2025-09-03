@@ -13,7 +13,8 @@ import {
   type ErrorCode,
 } from "@core/types/server-actions";
 
-import { PaymentValidator, PaymentError, PaymentErrorType } from "@features/payments";
+import { PaymentError, PaymentErrorType } from "../types";
+import { PaymentValidator } from "../validation";
 
 const inputSchema = z.object({
   paymentId: z.string().uuid(),
@@ -159,7 +160,7 @@ export async function updateCashStatusAction(
     // 楽観的ロック付きRPCで更新
     const admin = await factory.createAuditedAdminClient(
       AdminReason.PAYMENT_PROCESSING,
-      "app/payments/actions/update-cash-status"
+      "features/payments/actions/update-cash-status"
     );
 
     const { data: _rpcResult, error: rpcError } = await admin.rpc(

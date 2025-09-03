@@ -5,14 +5,15 @@ import { redirect } from "next/navigation";
 import { getCurrentUser } from "@core/auth/auth-utils";
 import { createClient } from "@core/supabase/server";
 
-import { SettlementReportList, SettlementReportGenerator } from "@features/settlements";
-
 import {
+  SettlementReportList,
+  SettlementReportGenerator,
   exportSettlementReportsAction,
   generateSettlementReportAction,
   getSettlementReportsAction,
   regenerateAfterRefundAction,
-} from "@/app/actions/settlement-report-actions";
+} from "@features/settlements";
+
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default async function SettlementReportsPage() {

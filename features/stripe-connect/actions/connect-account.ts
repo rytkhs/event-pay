@@ -15,11 +15,8 @@ import {
 } from "@core/routes/stripe-connect";
 import { createClient } from "@core/supabase/server";
 
-import {
-  createUserStripeConnectService,
-  StripeConnectError,
-  StripeConnectErrorType,
-} from "@features/stripe-connect";
+import { createUserStripeConnectService } from "../services";
+import { StripeConnectError, StripeConnectErrorType } from "../types";
 
 // バリデーションスキーマ
 const CreateConnectAccountSchema = z.object({

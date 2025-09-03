@@ -14,7 +14,7 @@ import { isValidIsoDateTimeString } from "@core/utils/timezone";
 import type { Database } from "@/types/database";
 
 import { validateGuestTokenFormat } from "./crypto";
-import { getSecureClientFactory } from "./secure-client-factory.impl";
+import { SecureSupabaseClientFactory } from "./secure-client-factory.impl";
 import { IGuestTokenValidator } from "./secure-client-factory.interface";
 import {
   GuestErrorCode,
@@ -80,7 +80,7 @@ export interface RLSGuestTokenValidationResult {
  * - エラーハンドリングの強化
  */
 export class RLSGuestTokenValidator implements IGuestTokenValidator {
-  private readonly clientFactory = getSecureClientFactory();
+  private readonly clientFactory = SecureSupabaseClientFactory.getInstance();
   // Security auditor removed
 
   constructor() {

@@ -12,7 +12,7 @@ import { logger } from "@core/logging/app-logger";
 import { safeParseNumber, parseFee } from "@core/utils/number-parsers";
 import { convertDatetimeLocalToUtc } from "@core/utils/timezone";
 
-import { createEventAction } from "@/app/events/actions";
+import { createEventAction } from "../actions";
 
 // フロントエンド専用バリデーションスキーマ
 const eventFormSchema = z

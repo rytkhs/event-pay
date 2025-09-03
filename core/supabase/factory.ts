@@ -7,6 +7,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { logger } from "@core/logging/app-logger";
 import { COOKIE_CONFIG, AUTH_CONFIG, getCookieConfig } from "@core/security";
 import { getSessionManager } from "@core/session/manager";
+import { getRequiredEnvVar } from "@core/utils/env-helper";
 
 import type { Database } from "@/types/database";
 
@@ -18,8 +19,8 @@ interface MiddlewareSupabaseConfig {
 }
 
 export class SupabaseClientFactory {
-  private static readonly URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-  private static readonly ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+  private static readonly URL = getRequiredEnvVar("NEXT_PUBLIC_SUPABASE_URL");
+  private static readonly ANON_KEY = getRequiredEnvVar("NEXT_PUBLIC_SUPABASE_ANON_KEY");
   private static sessionManager = getSessionManager();
 
   static createServerClient(context: "server"): SupabaseClient<Database>;

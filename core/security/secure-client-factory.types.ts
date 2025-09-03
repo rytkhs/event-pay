@@ -2,7 +2,7 @@ import type { NextRequest, NextResponse } from "next/server";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-import { GuestErrorCode } from "@core/types/security";
+import { GuestErrorCode } from "./guest-token-errors";
 
 /**
  * 管理者権限使用の理由を定義するenum

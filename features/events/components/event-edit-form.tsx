@@ -5,8 +5,6 @@ import { useState } from "react";
 import type { Event } from "@core/types/models";
 import { sanitizeForEventPay } from "@core/utils/sanitize";
 
-import { useEventEditForm, type EventEditFormDataRHF } from "../hooks/use-event-edit-form";
-
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -24,6 +22,8 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+
+import { useEventEditForm, type EventEditFormDataRHF } from "../hooks/use-event-edit-form";
 
 interface EventEditFormProps {
   event: Event;

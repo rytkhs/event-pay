@@ -4,9 +4,9 @@ import { ReactNode, useEffect, useRef } from "react";
 
 import { useFocusManagement } from "@core/hooks/useFocusManagement";
 
-import { ServerActionResult } from "../hooks/useAuthForm";
-
 import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
+
+import { ServerActionResult } from "../hooks/useAuthForm";
 
 import { AuthFormMessages } from "./AuthFormMessages";
 
@@ -99,7 +99,6 @@ export function AuthFormWrapper({
                 }
                 className={`space-y-6 ${className}`}
                 noValidate
-                role="form"
                 aria-describedby={state.error ? "form-error" : undefined}
                 data-testid={testId}
               >

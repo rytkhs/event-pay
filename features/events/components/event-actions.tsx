@@ -5,9 +5,8 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { useToast } from "@core/contexts/toast-context";
+import { getPaymentActions } from "@core/services";
 
-import { deleteEventAction } from "@/app/events/actions/delete-event";
-import { updateCashStatusAction } from "@/app/payments/actions/update-cash-status";
 import {
   Dialog,
   DialogContent,
@@ -16,6 +15,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+
+import { deleteEventAction } from "../actions/delete-event";
 
 interface EventActionsProps {
   eventId: string;
@@ -75,7 +76,8 @@ export function EventActions({ eventId }: EventActionsProps) {
       const paymentId = window.prompt("受領済みにする現金決済の支払いIDを入力してください");
       if (!paymentId) return;
 
-      const result = await updateCashStatusAction({ paymentId, status: "received" });
+      const paymentActions = getPaymentActions();
+      const result = await paymentActions.updateCashStatus({ paymentId, status: "received" });
       if (result.success) {
         toast({ title: "更新成功", description: "現金決済を受領済みに更新しました" });
         router.refresh();

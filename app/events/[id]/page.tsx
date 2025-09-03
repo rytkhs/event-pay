@@ -4,13 +4,16 @@ import { getCurrentUser } from "@core/auth/auth-utils";
 import { createCachedActions } from "@core/utils/cache-helpers";
 import { sanitizeEventDescription } from "@core/utils/sanitize";
 
-import { EventActions, EventDetail, ParticipantsManagement } from "@features/events";
+import {
+  EventActions,
+  EventDetail,
+  ParticipantsManagement,
+  getEventAttendancesAction,
+  getEventDetailAction,
+  getEventParticipantsAction,
+  getEventPaymentsAction,
+} from "@features/events";
 import { InviteLink } from "@features/invite";
-
-import { getEventAttendancesAction } from "@/app/events/actions/get-event-attendances";
-import { getEventDetailAction } from "@/app/events/actions/get-event-detail";
-import { getEventParticipantsAction } from "@/app/events/actions/get-event-participants";
-import { getEventPaymentsAction } from "@/app/events/actions/get-event-payments";
 
 interface EventDetailPageProps {
   params: {

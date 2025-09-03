@@ -23,6 +23,9 @@ export * from "./components/event-edit-form";
 // export * from "./components/participation-confirmation";
 // export * from "./components/invite-event-detail";
 
+// Actions
+export * from "./actions";
+
 // Hooks
 export * from "./hooks/use-event-form";
 export * from "./hooks/use-event-edit-form";
@@ -34,3 +37,6 @@ export * from "./hooks/useEventFilter";
 // Types & Validation
 export * from "./types";
 export * from "./validation";
+
+// Re-export filter/sort types from core for backward compatibility
+export type { SortBy, SortOrder, StatusFilter, PaymentFilter } from "@core/types/events";

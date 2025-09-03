@@ -7,8 +7,6 @@ import { FileDownIcon, RefreshCwIcon, SearchIcon } from "lucide-react";
 import { useToast } from "@core/contexts/toast-context";
 import { formatUtcToJstByType } from "@core/utils/timezone";
 
-import { SettlementReportData } from "../services/types";
-
 // Actions are now injected via props to avoid circular dependency
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -21,6 +19,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+
+import { SettlementReportData } from "../services/types";
 
 import { SettlementReportCard } from "./settlement-report-card";
 

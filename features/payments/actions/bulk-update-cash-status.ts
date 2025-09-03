@@ -13,7 +13,8 @@ import {
   type ErrorCode,
 } from "@core/types/server-actions";
 
-import { PaymentValidator, PaymentError, PaymentErrorType } from "@features/payments";
+import { PaymentError, PaymentErrorType } from "../types";
+import { PaymentValidator } from "../validation";
 
 const inputSchema = z.object({
   paymentIds: z.array(z.string().uuid()).min(1).max(50), // 最大50件まで
@@ -176,7 +177,7 @@ export async function bulkUpdateCashStatusAction(
     // 楽観的ロック対応の一括更新用RPCを使用
     const admin = await factory.createAuditedAdminClient(
       AdminReason.PAYMENT_PROCESSING,
-      "app/payments/actions/bulk-update-cash-status"
+      "features/payments/actions/bulk-update-cash-status"
     );
 
     // 一括更新用のデータを構築（version情報を含める）

@@ -6,6 +6,7 @@ import { createRateLimitStore, checkRateLimit } from "@core/rate-limit";
 import { RATE_LIMIT_CONFIG } from "@core/security";
 import { SecureSupabaseClientFactory } from "@core/security/secure-client-factory.impl";
 import { AdminReason } from "@core/security/secure-client-factory.types";
+import { getPaymentService } from "@core/services";
 import {
   createServerActionError,
   createServerActionSuccess,
@@ -13,8 +14,6 @@ import {
 } from "@core/types/server-actions";
 import { validateGuestToken } from "@core/utils/guest-token";
 import { canCreateStripeSession } from "@core/validation/payment-eligibility";
-
-import { PaymentService, PaymentErrorHandler } from "@features/payments";
 
 /**
  * ゲスト用 Stripe Checkout セッション作成アクション
@@ -91,7 +90,7 @@ export async function createGuestStripeSessionAction(
     AdminReason.PAYMENT_PROCESSING,
     "app/guest/actions/create-stripe-session"
   );
-  const paymentService = new PaymentService(admin, new PaymentErrorHandler());
+  const paymentService = getPaymentService();
 
   // 5.1 既存の決済レコードがあれば金額は payments.amount を優先する
   const { data: existingPayment } = await admin
