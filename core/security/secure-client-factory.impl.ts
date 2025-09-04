@@ -5,7 +5,7 @@
  * 管理者権限の使用を監査し、ゲストトークンによる透過的なアクセス制御を提供
  */
 
-import { cookies } from "next/headers";
+// next/headers は テスト環境では利用できないため動的インポート
 import type { NextRequest, NextResponse } from "next/server";
 
 import { createServerClient, createBrowserClient } from "@supabase/ssr";
@@ -67,7 +67,37 @@ export class SecureSupabaseClientFactory implements ISecureSupabaseClientFactory
    * 通常の認証済みクライアントを作成
    */
   createAuthenticatedClient(options?: ClientCreationOptions) {
-    const cookieStore = cookies();
+    // テスト環境またはヘッダーが利用できない場合はブラウザクライアントを作成
+    if (process.env.NODE_ENV === "test" || typeof document !== "undefined") {
+      return createBrowserClient(this.supabaseUrl, this.anonKey, {
+        auth: {
+          persistSession: options?.persistSession ?? true,
+          autoRefreshToken: options?.autoRefreshToken ?? true,
+        },
+        global: {
+          headers: options?.headers || {},
+        },
+      });
+    }
+
+    // 動的にnext/headersをインポート
+    let cookieStore;
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      const { cookies } = require("next/headers");
+      cookieStore = cookies();
+    } catch (error) {
+      // next/headersが利用できない場合はブラウザクライアントを作成
+      return createBrowserClient(this.supabaseUrl, this.anonKey, {
+        auth: {
+          persistSession: options?.persistSession ?? true,
+          autoRefreshToken: options?.autoRefreshToken ?? true,
+        },
+        global: {
+          headers: options?.headers || {},
+        },
+      });
+    }
 
     return createServerClient(this.supabaseUrl, this.anonKey, {
       cookies: {

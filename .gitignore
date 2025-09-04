@@ -93,3 +93,8 @@ ADR-0001-core-features-architecture.md
 REFAC_RUNBOOK.md
 strage/
 DIRECTORY_STRUCTURE.md
+ARCHITECTURE_RULES.md
+tmp/
+
+# Playwright authentication state
+playwright/.auth/

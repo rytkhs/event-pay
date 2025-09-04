@@ -13,6 +13,8 @@ const webServer = shouldStartServer
 export default defineConfig({
   testDir: "./tests/e2e",
   outputDir: "tmp/test-artifacts/playwright-results",
+  workers: 2,
+  fullyParallel: true,
   reporter: [
     ["list"],
     ["html", { outputFolder: "tmp/test-artifacts/playwright-report", open: "never" }],
@@ -27,9 +29,15 @@ export default defineConfig({
   },
   ...(webServer ? { webServer } : {}),
   projects: [
+    { name: "setup", testMatch: /.*\.setup\.ts/ },
     {
       name: "chromium",
-      use: { ...devices["Desktop Chrome"] },
+      use: {
+        ...devices["Desktop Chrome"],
+        // Use prepared auth state.
+        storageState: "playwright/.auth/user.json",
+      },
+      dependencies: ["setup"],
     },
   ],
 });
