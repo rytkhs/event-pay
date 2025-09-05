@@ -98,3 +98,4 @@ tmp/
 
 # Playwright authentication state
 playwright/.auth/
+.env.test
