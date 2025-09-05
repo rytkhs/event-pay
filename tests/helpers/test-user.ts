@@ -66,7 +66,7 @@ export async function createTestUser(email: string, password: string): Promise<T
 
     // プロファイルが存在しない場合は作成
     if (profileError || !existingProfile) {
-      const { error: createProfileError } = await adminClient.from("users").insert({
+      const { error: createProfileError } = await adminClient.from("users").upsert({
         id: existingUser.id,
         name: existingUser.user_metadata?.name || `テストユーザー_${email}`,
       });
@@ -109,8 +109,8 @@ export async function createTestUser(email: string, password: string): Promise<T
 
   console.log(`Test user created successfully: ${email} (ID: ${data.user.id})`);
 
-  // public.usersテーブルにプロファイルを作成
-  const { error: profileError } = await adminClient.from("users").insert({
+  // public.usersテーブルにプロファイルを作成（upsertで重複を回避）
+  const { error: profileError } = await adminClient.from("users").upsert({
     id: data.user.id,
     name: data.user.user_metadata?.name || `テストユーザー_${email}`,
   });
