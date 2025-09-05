@@ -1,6 +1,10 @@
 "use client";
 
-import { getMinDatetimeLocal } from "@core/utils/timezone";
+import { useEffect, useState } from "react";
+
+import { format } from "date-fns-tz";
+
+import { getCurrentJstTime } from "@core/utils/timezone";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -22,8 +26,20 @@ import { useEventForm } from "../hooks/use-event-form";
 /**
  * react-hook-formを使用したイベント作成フォーム
  */
-function EventCreateForm() {
-  const { form, onSubmit, isPending, hasErrors, isFreeEvent } = useEventForm();
+function EventCreateForm(): JSX.Element {
+  const { form, onSubmit, isPending, isFreeEvent } = useEventForm();
+
+  // SSR不整合を避けるため、datetime-localのmin値をクライアント側で設定
+  const [minDatetimeLocal, setMinDatetimeLocal] = useState<string | undefined>(undefined);
+
+  useEffect(() => {
+    const now = getCurrentJstTime();
+    // 1時間後
+    now.setHours(now.getHours() + 1);
+    // 'YYYY-MM-DDTHH:mm'形式に変換
+    const minValue = format(now, "yyyy-MM-dd'T'HH:mm", { timeZone: "Asia/Tokyo" });
+    setMinDatetimeLocal(minValue);
+  }, []);
 
   return (
     <Card className="w-full max-w-2xl mx-auto">
@@ -75,7 +91,7 @@ function EventCreateForm() {
                         {...field}
                         type="datetime-local"
                         disabled={isPending}
-                        min={getMinDatetimeLocal()}
+                        min={minDatetimeLocal}
                       />
                     </FormControl>
                     <FormDescription>イベントの開催日時を選択してください</FormDescription>
@@ -174,7 +190,7 @@ function EventCreateForm() {
                         {...field}
                         type="datetime-local"
                         disabled={isPending}
-                        min={getMinDatetimeLocal()}
+                        min={minDatetimeLocal}
                       />
                     </FormControl>
                     <FormDescription>参加申込の締切日時を設定してください</FormDescription>
@@ -195,7 +211,7 @@ function EventCreateForm() {
                         {...field}
                         type="datetime-local"
                         disabled={isPending}
-                        min={getMinDatetimeLocal()}
+                        min={minDatetimeLocal}
                       />
                     </FormControl>
                     <FormDescription>決済の締切日時を設定してください</FormDescription>
@@ -249,16 +265,18 @@ function EventCreateForm() {
                         <div className="flex items-center space-x-2">
                           <Checkbox
                             id="stripe"
-                            checked={field.value?.includes("stripe")}
-                            onCheckedChange={(checked) => {
-                              const currentMethods = field.value || [];
-                              if (checked) {
-                                field.onChange([...currentMethods, "stripe"]);
-                              } else {
-                                field.onChange(
-                                  currentMethods.filter((method) => method !== "stripe")
-                                );
-                              }
+                            checked={Array.isArray(field.value) && field.value.includes("stripe")}
+                            onCheckedChange={(checked: boolean) => {
+                              // Radix UI Checkboxの三状態を正規化
+                              const isChecked = checked === true;
+                              const currentMethods = Array.isArray(field.value) ? field.value : [];
+                              const newMethods = isChecked
+                                ? Array.from(new Set([...currentMethods, "stripe"]))
+                                : currentMethods.filter((method) => method !== "stripe");
+
+                              field.onChange(newMethods);
+                              // 相関バリデーション: 全体を再検証（payment_methods依存の.refineを更新）
+                              void form.trigger();
                             }}
                             disabled={isPending}
                           />
@@ -272,16 +290,18 @@ function EventCreateForm() {
                         <div className="flex items-center space-x-2">
                           <Checkbox
                             id="cash"
-                            checked={field.value?.includes("cash")}
-                            onCheckedChange={(checked) => {
-                              const currentMethods = field.value || [];
-                              if (checked) {
-                                field.onChange([...currentMethods, "cash"]);
-                              } else {
-                                field.onChange(
-                                  currentMethods.filter((method) => method !== "cash")
-                                );
-                              }
+                            checked={Array.isArray(field.value) && field.value.includes("cash")}
+                            onCheckedChange={(checked: boolean) => {
+                              // Radix UI Checkboxの三状態を正規化
+                              const isChecked = checked === true;
+                              const currentMethods = Array.isArray(field.value) ? field.value : [];
+                              const newMethods = isChecked
+                                ? Array.from(new Set([...currentMethods, "cash"]))
+                                : currentMethods.filter((method) => method !== "cash");
+
+                              field.onChange(newMethods);
+                              // 相関バリデーション: 全体を再検証（payment_methods依存の.refineを更新）
+                              void form.trigger();
                             }}
                             disabled={isPending}
                           />
@@ -325,7 +345,11 @@ function EventCreateForm() {
               >
                 リセット
               </Button>
-              <Button type="submit" disabled={isPending || hasErrors} className="min-w-[120px]">
+              <Button
+                type="submit"
+                disabled={isPending || !form.formState.isValid}
+                className="min-w-[120px]"
+              >
                 {isPending ? "作成中..." : "イベントを作成"}
               </Button>
             </div>

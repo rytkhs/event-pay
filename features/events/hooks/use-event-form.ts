@@ -40,7 +40,7 @@ const eventFormSchema = z
         const num = parseFee(val);
         return num >= 0 && num <= 1000000;
       }, "参加費は0以上1000000以下である必要があります"),
-    payment_methods: z.array(z.string()),
+    payment_methods: z.array(z.string()).default([]),
     location: z.string().max(200, "場所は200文字以内で入力してください"),
     description: z.string().max(1000, "説明は1000文字以内で入力してください"),
     capacity: z.string().refine((val) => {
@@ -56,7 +56,8 @@ const eventFormSchema = z
       // 参加費に基づく決済方法バリデーション
       const fee = parseFee(data.fee);
       if (fee > 0) {
-        return data.payment_methods && data.payment_methods.length > 0;
+        // 配列の要素数をチェック（空配列でない）
+        return Array.isArray(data.payment_methods) && data.payment_methods.length > 0;
       }
       return true;
     },
@@ -128,6 +129,7 @@ const eventFormSchema = z
     }
   );
 
+// Zodスキーマの推論型をフォーム型として使用（resolverとの互換性のため）
 type EventFormData = z.infer<typeof eventFormSchema>;
 
 // react-hook-form用のデフォルト値
@@ -139,7 +141,7 @@ const defaultValues: EventFormData = {
   capacity: "",
   registration_deadline: "",
   payment_deadline: "",
-  payment_methods: [],
+  payment_methods: [], // default([])を手動で設定
   fee: "",
 };
 
@@ -147,7 +149,15 @@ const defaultValues: EventFormData = {
  * react-hook-formを使用したイベント作成フォーム用フック
  * セキュリティファースト設計を維持しながら、パフォーマンスと開発効率を向上
  */
-export const useEventForm = () => {
+export const useEventForm = (): {
+  form: ReturnType<typeof useForm<EventFormData>>;
+  onSubmit: () => void;
+  isPending: boolean;
+  hasErrors: boolean;
+  isFreeEvent: boolean;
+  formData: EventFormData;
+  errors: Record<string, string | undefined>;
+} => {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
@@ -155,8 +165,10 @@ export const useEventForm = () => {
   const form = useForm<EventFormData>({
     resolver: zodResolver(eventFormSchema),
     defaultValues,
-    mode: "all", // 全フィールドのリアルタイムバリデーション（相関バリデーション対応）
+    mode: "onChange", // 配列・相関バリデーションの遅延を回避
     reValidateMode: "onChange",
+    shouldFocusError: true,
+    criteriaMode: "all", // 全エラーを表示
   });
 
   // 参加費をリアルタイムで監視
@@ -165,15 +177,22 @@ export const useEventForm = () => {
   const currentFee = watchedFee && watchedFee.trim() !== "" ? safeParseNumber(watchedFee) : null;
   const isFreeEvent = currentFee === 0;
 
-  // 無料イベントの場合は決済方法をクリア
+  // 無料イベントの場合は決済方法をクリア（トリガーでバリデーション更新）
   useEffect(() => {
     if (isFreeEvent) {
-      form.setValue("payment_methods", []);
+      form.setValue("payment_methods", [], {
+        shouldValidate: true,
+        shouldTouch: true,
+      });
+      // 全体のバリデーションを再実行
+      setTimeout(() => {
+        form.trigger();
+      }, 100);
     }
   }, [isFreeEvent, form]);
 
   // フォーム送信処理
-  const onSubmit = async (data: EventFormData) => {
+  const onSubmit = async (data: EventFormData): Promise<void> => {
     startTransition(async () => {
       try {
         // フォームデータをFormDataオブジェクトに変換
@@ -241,14 +260,26 @@ export const useEventForm = () => {
 
   // デバッグ用：フォーム状態をログ出力
   if (process.env.NODE_ENV === "development") {
+    const allErrors = Object.entries(formState.errors).map(([key, error]) => ({
+      field: key,
+      message: error?.message || "Unknown error",
+      type: error?.type || "unknown",
+    }));
+
+    // デバッグ用のエラー詳細出力は一旦削除
+
     logger.debug("Form debug information", {
       tag: "eventFormDebug",
       errors: formState.errors,
+      errorList: allErrors,
       hasErrors,
       isValid: formState.isValid,
       isDirty: formState.isDirty,
       isSubmitting: formState.isSubmitting,
       currentValues: form.watch(),
+      paymentMethods: form.watch("payment_methods"),
+      fee: form.watch("fee"),
+      isFreeEvent,
     });
   }
 
@@ -260,9 +291,13 @@ export const useEventForm = () => {
     isFreeEvent, // ✨ 新規追加
     // 既存実装との互換性のため
     formData: form.watch(),
-    errors: {
-      ...formState.errors,
-      general: formState.errors.root?.message,
-    },
+    errors: Object.fromEntries(
+      Object.entries(formState.errors).map(([key, error]) => [
+        key,
+        typeof error === "object" && error !== null && "message" in error
+          ? error.message || undefined
+          : undefined,
+      ])
+    ) as Record<string, string | undefined>,
   };
 };

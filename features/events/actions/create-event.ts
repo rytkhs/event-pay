@@ -26,7 +26,7 @@ type FormDataFields = {
   title: string;
   date: string;
   fee: string;
-  payment_methods: string;
+  payment_methods: string[];
   location?: string;
   description?: string;
   capacity?: string;

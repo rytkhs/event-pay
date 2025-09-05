@@ -102,17 +102,11 @@ export const createEventSchema = z
       .transform((val) => Number(val)),
 
     payment_methods: z
-      .string()
-      .optional()
-      .transform((val) => {
-        if (!val || val.trim() === "") return [];
-        // カンマ区切りの文字列を配列に変換
-        const methods = val
-          .split(",")
-          .map((method) => method.trim())
-          .filter(Boolean);
-        // 重複を除去して型安全な変換
-        return [...new Set(methods)].filter(isValidPaymentMethod);
+      .array(z.string())
+      .default([])
+      .transform((methods) => {
+        // 配列の各要素をバリデーションし、重複を除去
+        return [...new Set(methods.filter(isValidPaymentMethod))];
       }),
 
     location: z

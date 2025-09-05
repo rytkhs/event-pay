@@ -94,7 +94,7 @@ interface EventCreateFormData {
   title: string;
   date: string;
   fee: string;
-  payment_methods: string;
+  payment_methods: string[];
   location?: string;
   description?: string;
   capacity?: string;
@@ -109,7 +109,7 @@ export function extractEventCreateFormData(formData: FormData): EventCreateFormD
     title: extractor.extractRequiredValue("title"),
     date: extractor.extractRequiredValue("date"),
     fee: extractor.extractRequiredValue("fee"),
-    payment_methods: extractor.extractRequiredValue("payment_methods"),
+    payment_methods: extractor.extractArrayValues("payment_methods"),
     location: extractor.extractOptionalValue("location"),
     description: extractor.extractOptionalValue("description"),
     capacity: extractor.extractOptionalValue("capacity"),
