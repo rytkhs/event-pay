@@ -39,7 +39,7 @@ export async function createTestUser(email: string, password: string): Promise<T
     perPage: 100,
   });
 
-  const existingUser = existingUsers.users.find((user) => user.email === email);
+  const existingUser = existingUsers.users.find((user: { email?: string }) => user.email === email);
 
   if (existingUser) {
     console.log(`Test user already exists: ${email} (ID: ${existingUser.id})`);
@@ -55,6 +55,28 @@ export async function createTestUser(email: string, password: string): Promise<T
         },
       });
       console.log(`Updated existing test user to confirmed: ${email}`);
+    }
+
+    // public.usersにプロファイルが存在するか確認
+    const { data: existingProfile, error: profileError } = await adminClient
+      .from("users")
+      .select("id")
+      .eq("id", existingUser.id)
+      .single();
+
+    // プロファイルが存在しない場合は作成
+    if (profileError || !existingProfile) {
+      const { error: createProfileError } = await adminClient.from("users").insert({
+        id: existingUser.id,
+        name: existingUser.user_metadata?.name || `テストユーザー_${email}`,
+      });
+
+      if (createProfileError) {
+        console.error("Failed to create profile for existing user:", createProfileError);
+        // プロファイル作成エラーは警告のみ（非致命的）
+      } else {
+        console.log(`Created profile for existing test user: ${email}`);
+      }
     }
 
     return {
@@ -86,6 +108,26 @@ export async function createTestUser(email: string, password: string): Promise<T
   }
 
   console.log(`Test user created successfully: ${email} (ID: ${data.user.id})`);
+
+  // public.usersテーブルにプロファイルを作成
+  const { error: profileError } = await adminClient.from("users").insert({
+    id: data.user.id,
+    name: data.user.user_metadata?.name || `テストユーザー_${email}`,
+  });
+
+  if (profileError) {
+    console.error("Failed to create profile for new user:", profileError);
+    // プロファイル作成に失敗した場合、作成したauth.usersも削除してロールバック
+    try {
+      await adminClient.auth.admin.deleteUser(data.user.id);
+      console.log("Rolled back auth.users creation due to profile creation failure");
+    } catch (rollbackError) {
+      console.error("Failed to rollback user creation:", rollbackError);
+    }
+    throw new Error(`Failed to create user profile: ${profileError.message}`);
+  }
+
+  console.log(`Profile created for new test user: ${email}`);
 
   return {
     id: data.user.id,
@@ -127,14 +169,27 @@ export async function deleteTestUser(email: string): Promise<void> {
     return;
   }
 
-  const testUser = users.users.find((user) => user.email === email);
+  const testUser = users.users.find((user: { email?: string }) => user.email === email);
 
   if (!testUser) {
     console.log(`Test user not found: ${email}`);
     return;
   }
 
-  // ユーザーを削除
+  // 先にpublic.usersからプロファイルを削除
+  const { error: profileDeleteError } = await adminClient
+    .from("users")
+    .delete()
+    .eq("id", testUser.id);
+
+  if (profileDeleteError) {
+    console.error("Failed to delete user profile:", profileDeleteError);
+    // プロファイル削除エラーは警告のみ（非致命的）
+  } else {
+    console.log(`Profile deleted for test user: ${email}`);
+  }
+
+  // auth.usersからユーザーを削除
   const { error: deleteError } = await adminClient.auth.admin.deleteUser(testUser.id);
 
   if (deleteError) {
