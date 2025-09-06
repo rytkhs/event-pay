@@ -1,5 +1,7 @@
 import { logger } from "@core/logging/app-logger";
 import { generateRandomBytes, toBase64UrlSafe } from "@core/security/crypto";
+import { SecureSupabaseClientFactory } from "@core/security/secure-client-factory.impl";
+import { AdminReason } from "@core/security/secure-client-factory.types";
 import { createClient } from "@core/supabase/server";
 
 import type { Database } from "@/types/database";
@@ -88,10 +90,16 @@ export async function validateInviteToken(token: string): Promise<InviteValidati
   }
 
   try {
-    const supabase = createClient();
+    // Phase 2: Service Roleクライアントを使用してRLS制約を回避
+    const secureFactory = SecureSupabaseClientFactory.getInstance();
+    const adminClient = await secureFactory.createAuditedAdminClient(
+      AdminReason.EVENT_MANAGEMENT,
+      "validate_invite_token",
+      { inviteToken: token }
+    );
 
     // 招待トークンでイベントを取得
-    const { data: event, error } = await supabase
+    const { data: event, error } = await adminClient
       .from("events")
       .select(
         `
@@ -122,7 +130,7 @@ export async function validateInviteToken(token: string): Promise<InviteValidati
     }
 
     // 参加者数を別途取得（参加ステータスのみをカウント）
-    const { count: attendances_count, error: countError } = await supabase
+    const { count: attendances_count, error: countError } = await adminClient
       .from("attendances")
       .select("*", { count: "exact", head: true })
       .eq("event_id", event.id)

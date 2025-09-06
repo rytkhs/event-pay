@@ -18,6 +18,7 @@ export enum AdminReason {
   PAYOUT_PROCESSING = "payout_processing",
   PAYMENT_PROCESSING = "payment_processing",
   CSV_EXPORT = "csv_export",
+  EVENT_MANAGEMENT = "event_management",
 }
 
 // エラーハンドリングは専用ファイルから再エクスポート
