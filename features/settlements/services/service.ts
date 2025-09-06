@@ -27,9 +27,9 @@ import {
  * Destination charges での集計スナップショット生成・管理
  */
 export class SettlementReportService {
-  private supabase: SupabaseClient<Database>;
+  private supabase: SupabaseClient<Database, "public">;
 
-  constructor(supabaseClient?: SupabaseClient<Database>) {
+  constructor(supabaseClient?: SupabaseClient<Database, "public">) {
     this.supabase = supabaseClient || createClient();
   }
 
@@ -54,8 +54,8 @@ export class SettlementReportService {
       // RPC関数を直接呼び出し（競合条件を回避＋完全データ取得）
       const { data, error } = await this.supabase
         .rpc("generate_settlement_report", {
-          p_event_id: eventId,
-          p_created_by: createdBy,
+          input_event_id: eventId,
+          input_created_by: createdBy,
         })
         .single<GenerateSettlementReportRpcRow>();
 
@@ -160,14 +160,14 @@ export class SettlementReportService {
         toDateUtc = endOfDay.toISOString();
       }
 
-      const { data, error } = (await this.supabase.rpc("get_settlement_report_details", {
-        p_created_by: params.createdBy,
-        p_event_ids: params.eventIds || undefined,
+      const { data, error } = await this.supabase.rpc("get_settlement_report_details", {
+        input_created_by: params.createdBy,
+        input_event_ids: params.eventIds || undefined,
         p_from_date: fromDateUtc,
         p_to_date: toDateUtc,
         p_limit: params.limit || 50,
         p_offset: params.offset || 0,
-      })) as { data: RpcSettlementReportRow[] | null; error: Error | null };
+      });
 
       if (error) {
         logger.error("Failed to get settlement reports via RPC", {
@@ -178,7 +178,17 @@ export class SettlementReportService {
         throw new Error(`Failed to get settlement reports: ${error?.message || "Unknown error"}`);
       }
 
-      const rows: RpcSettlementReportRow[] = data || [];
+      const rows = (data || []).map((row) => ({
+        ...row,
+        // これらのフィールドがRPCから返されない場合のデフォルト値を設定
+        total_disputed_amount: (row as any).total_disputed_amount ?? 0,
+        dispute_count: (row as any).dispute_count ?? 0,
+      })) as Array<
+        RpcSettlementReportRow & {
+          total_disputed_amount: number;
+          dispute_count: number;
+        }
+      >;
 
       return rows.map(
         (row): SettlementReportData => ({

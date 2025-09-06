@@ -62,9 +62,9 @@ const updatePaymentStatusParamsSchema = z.object({
 });
 
 export class PaymentValidator implements IPaymentValidator {
-  private supabase: SupabaseClient<Database>;
+  private supabase: SupabaseClient<Database, "public">;
 
-  constructor(supabaseClient: SupabaseClient<Database>) {
+  constructor(supabaseClient: SupabaseClient<Database, "public">) {
     this.supabase = supabaseClient;
   }
 

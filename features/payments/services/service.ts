@@ -34,12 +34,15 @@ import {
  * PaymentServiceの実装クラス
  */
 export class PaymentService implements IPaymentService {
-  private supabase: SupabaseClient<Database>;
+  private supabase: SupabaseClient<Database, "public">;
   private stripe = stripe;
   private errorHandler: IPaymentErrorHandler;
   private applicationFeeCalculator: ApplicationFeeCalculator;
 
-  constructor(supabaseClient: SupabaseClient<Database>, errorHandler: IPaymentErrorHandler) {
+  constructor(
+    supabaseClient: SupabaseClient<Database, "public">,
+    errorHandler: IPaymentErrorHandler
+  ) {
     this.supabase = supabaseClient;
     this.errorHandler = errorHandler;
     this.applicationFeeCalculator = new ApplicationFeeCalculator(supabaseClient);

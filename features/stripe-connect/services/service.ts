@@ -33,11 +33,14 @@ import {
  * StripeConnectServiceの実装クラス
  */
 export class StripeConnectService implements IStripeConnectService {
-  private supabase: SupabaseClient<Database>;
+  private supabase: SupabaseClient<Database, "public">;
   private stripe = stripe;
   private errorHandler: IStripeConnectErrorHandler;
 
-  constructor(supabaseClient: SupabaseClient<Database>, errorHandler: IStripeConnectErrorHandler) {
+  constructor(
+    supabaseClient: SupabaseClient<Database, "public">,
+    errorHandler: IStripeConnectErrorHandler
+  ) {
     this.supabase = supabaseClient;
     this.errorHandler = errorHandler;
   }

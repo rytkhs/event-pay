@@ -59,7 +59,7 @@ export interface ApplicationFeeCalculation {
 export class ApplicationFeeCalculator {
   private feeConfigService: FeeConfigService;
 
-  constructor(supabaseClient: SupabaseClient<Database>) {
+  constructor(supabaseClient: SupabaseClient<Database, "public">) {
     this.feeConfigService = new FeeConfigService(supabaseClient);
   }
 

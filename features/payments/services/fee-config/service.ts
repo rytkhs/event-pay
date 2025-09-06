@@ -34,10 +34,13 @@ export interface PlatformFeeConfig {
  * fee_config を取得・キャッシュするサービス
  */
 export class FeeConfigService {
-  private supabase: SupabaseClient<Database>;
+  private supabase: SupabaseClient<Database, "public">;
   private cacheStrategy: FeeConfigCacheStrategy;
 
-  constructor(supabaseClient: SupabaseClient<Database>, cacheStrategy?: FeeConfigCacheStrategy) {
+  constructor(
+    supabaseClient: SupabaseClient<Database, "public">,
+    cacheStrategy?: FeeConfigCacheStrategy
+  ) {
     this.supabase = supabaseClient;
     this.cacheStrategy = cacheStrategy || globalFeeConfigCache;
   }

@@ -26,7 +26,7 @@ import { Database } from "@/types/database";
  * Connect Webhook イベントハンドラー
  */
 export class ConnectWebhookHandler {
-  private supabase: SupabaseClient<Database>;
+  private supabase: SupabaseClient<Database, "public">;
   private notificationService: NotificationService;
 
   private constructor(
@@ -48,7 +48,9 @@ export class ConnectWebhookHandler {
     );
 
     // NotificationServiceも監査付きクライアントを使用
-    const notificationService = new NotificationService(adminClient as SupabaseClient<Database>);
+    const notificationService = new NotificationService(
+      adminClient as SupabaseClient<Database, "public">
+    );
 
     return new ConnectWebhookHandler(adminClient as SupabaseClient<Database>, notificationService);
   }

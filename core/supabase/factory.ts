@@ -1,4 +1,3 @@
-import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
 
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
@@ -74,11 +73,30 @@ export class SupabaseClientFactory {
           response.cookies.delete({ name, ...options });
         },
       },
-    });
+    }) as unknown as SupabaseClient<Database>;
   }
 
   private static createApiServerClient(): SupabaseClient<Database> {
-    const cookieStore = cookies();
+    // テスト環境での dynamic import 対応
+    let cookieStore: any;
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      const nextHeaders = require("next/headers");
+      cookieStore = nextHeaders.cookies();
+    } catch (error) {
+      // next/headersが利用できない場合（テスト環境など）は、空のcookieStore実装を提供
+      logger.warn("next/headers not available, using empty cookie store", {
+        tag: "cookieStoreUnavailable",
+        error_message: error instanceof Error ? error.message : String(error),
+        environment: process.env.NODE_ENV,
+      });
+
+      cookieStore = {
+        get: () => undefined,
+        set: () => {},
+        delete: () => {},
+      };
+    }
 
     return createServerClient<Database>(this.URL, this.ANON_KEY, {
       cookies: {
@@ -101,7 +119,7 @@ export class SupabaseClientFactory {
           cookieStore.delete(name);
         },
       },
-    });
+    }) as unknown as SupabaseClient<Database>;
   }
 
   /**

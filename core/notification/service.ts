@@ -20,10 +20,10 @@ import {
  * 通知サービスの実装クラス
  */
 export class NotificationService implements INotificationService {
-  private supabase: SupabaseClient<Database>;
+  private supabase: SupabaseClient<Database, "public">;
   private emailService: IEmailNotificationService;
 
-  constructor(supabase: SupabaseClient<Database>) {
+  constructor(supabase: SupabaseClient<Database, "public">) {
     this.supabase = supabase;
     this.emailService = new EmailNotificationService();
   }
