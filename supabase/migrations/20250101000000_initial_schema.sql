@@ -252,7 +252,8 @@ CREATE TABLE public.system_logs (
     id BIGSERIAL PRIMARY KEY,
     operation_type VARCHAR(50) NOT NULL,
     details JSONB,
-    executed_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL
+    executed_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL
 );
 ALTER TABLE public.system_logs ENABLE ROW LEVEL SECURITY;
 
@@ -658,7 +659,7 @@ CREATE OR REPLACE FUNCTION public.calc_payout_amount(
   total_stripe_fee INTEGER,
   platform_fee INTEGER,
   net_payout_amount INTEGER,
-  stripe_payment_count INTEGER
+  stripe_payment_count BIGINT
 ) LANGUAGE plpgsql SECURITY DEFINER AS $$
 BEGIN
   RETURN QUERY

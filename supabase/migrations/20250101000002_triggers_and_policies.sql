@@ -71,11 +71,10 @@ BEGIN
 
       -- 定員が設定されている場合のみチェック
       IF v_capacity IS NOT NULL THEN
-        -- 現在の参加者数を取得（排他ロック付き）
+        -- 現在の参加者数を取得
         SELECT COUNT(*) INTO v_current_attendees
         FROM public.attendances
-        WHERE event_id = p_event_id AND status = 'attending'
-        FOR UPDATE;
+        WHERE event_id = p_event_id AND status = 'attending';
 
         -- 定員超過チェック
         IF v_current_attendees >= v_capacity THEN
@@ -104,7 +103,7 @@ BEGIN
   EXCEPTION
     WHEN unique_violation THEN
       -- 重複エラーの詳細を提供
-      IF SQLSTATE = '23505' AND CONSTRAINT_NAME = 'attendances_guest_token_key' THEN
+      IF SQLSTATE = '23505' THEN
         RAISE EXCEPTION 'Guest token already exists (unique constraint violation): %', LEFT(p_guest_token, 8) || '...';
       ELSE
         RAISE EXCEPTION 'Unique constraint violation: %', SQLERRM;
@@ -353,7 +352,7 @@ COMMENT ON FUNCTION public.cleanup_test_tables_dev_only IS 'テストデータ�
 
 -- 孤立ユーザー検出関数 (30日以上活動のないユーザー)
 CREATE OR REPLACE FUNCTION public.detect_orphaned_users()
-RETURNS TABLE(user_id UUID, email TEXT, days_since_creation INTEGER)
+RETURNS TABLE(user_id UUID, email VARCHAR(255), days_since_creation INTEGER)
 LANGUAGE plpgsql SECURITY DEFINER AS $$
 BEGIN
     RETURN QUERY
@@ -473,62 +472,15 @@ CREATE POLICY "Users can update own profile" ON public.users FOR UPDATE TO authe
 
 -- events: 認証済みユーザーは全てのイベントを閲覧可能、作成者のみ管理可能
 CREATE POLICY "Authenticated users can view all events" ON public.events FOR SELECT TO authenticated USING (auth.uid() IS NOT NULL);
-CREATE POLICY "Creators can manage own events" ON public.events FOR ALL TO authenticated USING (auth.uid() = created_by) WITH CHECK (auth.uid() = created_by);
-
--- 招待リンク経由でのイベント詳細読み取りアクセス
-CREATE POLICY "Invite link access to events" ON public.events FOR SELECT TO anon, authenticated USING (
-  EXISTS (
-    SELECT 1 FROM public.invite_links il
-    WHERE il.event_id = events.id
-    AND il.expires_at > NOW()
-    AND (il.max_uses IS NULL OR il.current_uses < il.max_uses)
-  )
-);
-
--- ゲストが参加するイベント情報への読み取り専用アクセス
-CREATE POLICY "Guest token read event details" ON public.events FOR SELECT TO anon, authenticated USING (
-  EXISTS (
-    SELECT 1 FROM public.attendances a
-    WHERE a.event_id = events.id
-    AND a.guest_token IS NOT NULL
-    AND a.guest_token = public.get_guest_token()
-  )
-);
-
--- attendances: 関係者のみ閲覧可能、書き込みはサーバーサイドのみ
-CREATE POLICY "Related parties can view attendances" ON public.attendances FOR SELECT TO authenticated USING (
-    EXISTS (SELECT 1 FROM public.events WHERE id = attendances.event_id AND created_by = auth.uid())
-);
+-- 無限再帰を避けるため、FOR ALLではなく個別のポリシーに分離
+CREATE POLICY "Creators can insert own events" ON public.events FOR INSERT TO authenticated WITH CHECK (auth.uid() = created_by);
+CREATE POLICY "Creators can update own events" ON public.events FOR UPDATE TO authenticated USING (auth.uid() = created_by) WITH CHECK (auth.uid() = created_by);
+CREATE POLICY "Creators can delete own events" ON public.events FOR DELETE TO authenticated USING (auth.uid() = created_by);
 
 -- ゲストトークンによる読み取りアクセス
 CREATE POLICY "Guest token read access for attendances" ON public.attendances FOR SELECT TO anon, authenticated USING (
   guest_token IS NOT NULL
   AND guest_token = public.get_guest_token()
-);
-
--- ゲストトークンによる更新アクセス（期限内のみ）
-CREATE POLICY "Guest token update for attendances" ON public.attendances FOR UPDATE TO anon, authenticated
-USING (
-  guest_token IS NOT NULL
-  AND guest_token = public.get_guest_token()
-  AND EXISTS (
-    SELECT 1 FROM public.events e
-    WHERE e.id = attendances.event_id
-    AND e.status = 'upcoming'
-    AND (e.registration_deadline IS NULL OR e.registration_deadline > NOW())
-    AND e.date > NOW()
-  )
-)
-WITH CHECK (
-  guest_token IS NOT NULL
-  AND guest_token = public.get_guest_token()
-  AND EXISTS (
-    SELECT 1 FROM public.events e
-    WHERE e.id = attendances.event_id
-    AND e.status = 'upcoming'
-    AND (e.registration_deadline IS NULL OR e.registration_deadline > NOW())
-    AND e.date > NOW()
-  )
 );
 
 -- Service role can manage attendances (Server Actions用)
@@ -618,12 +570,21 @@ CREATE POLICY "event_creators_can_view_settlement_reports" ON public.payouts FOR
 CREATE POLICY "Service role can manage stripe/payout info" ON public.stripe_connect_accounts FOR ALL TO service_role USING (true) WITH CHECK (true);
 CREATE POLICY "Service role can manage payouts" ON public.payouts FOR ALL TO service_role USING (true) WITH CHECK (true);
 
+-- 安全なRLSポリシー（循環参照を完全に防止）
+-- 複雑な権限チェックはService Roleを使用してアプリケーション層で処理
+
+-- 最低限必要なRLSポリシーのみを保持
+-- 複雑なアクセス制御はアプリケーション層の責任
+
 -- invite_links: 作成者のみ管理可能、誰でも有効なリンクは閲覧可能
-CREATE POLICY "Creators can manage invite links" ON public.invite_links FOR ALL TO authenticated
-    USING (EXISTS (SELECT 1 FROM public.events WHERE id = invite_links.event_id AND created_by = auth.uid()))
-    WITH CHECK (EXISTS (SELECT 1 FROM public.events WHERE id = invite_links.event_id AND created_by = auth.uid()));
 CREATE POLICY "Anyone can view valid invite links" ON public.invite_links FOR SELECT TO anon, authenticated
     USING (expires_at > NOW() AND (max_uses IS NULL OR current_uses < max_uses));
+
+-- Note: 以下の機能はService Roleを使用してアプリケーション層で実装します：
+-- - 招待リンク経由でのイベントアクセス
+-- - ゲストトークン経由でのイベント詳細アクセス
+-- - 主催者による参加者情報閲覧
+-- - 招待リンクの作成・管理
 
 -- webhook_events: 管理者のみアクセス可能
 CREATE POLICY "webhook_events_admin_only" ON public.webhook_events FOR ALL TO authenticated USING (false);

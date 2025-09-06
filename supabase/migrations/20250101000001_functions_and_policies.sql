@@ -334,12 +334,12 @@ CREATE OR REPLACE FUNCTION public.find_eligible_events_basic(
     p_user_id         UUID DEFAULT NULL
 ) RETURNS TABLE (
     event_id UUID,
-    title TEXT,
-    event_date DATE,
+    title VARCHAR(255),
+    event_date TIMESTAMP WITH TIME ZONE,
     fee INTEGER,
     created_by UUID,
     created_at TIMESTAMP WITH TIME ZONE,
-    paid_attendances_count INTEGER,
+    paid_attendances_count BIGINT,
     total_stripe_sales INTEGER
 ) LANGUAGE plpgsql
 AS $$
@@ -382,12 +382,12 @@ CREATE OR REPLACE FUNCTION public.find_eligible_events_with_details(
     p_limit INT DEFAULT 50
 ) RETURNS TABLE (
     event_id UUID,
-    title TEXT,
-    event_date DATE,
+    title VARCHAR(255),
+    event_date TIMESTAMP WITH TIME ZONE,
     fee INT,
     created_by UUID,
     created_at TIMESTAMPTZ,
-    paid_attendances_count INT,
+    paid_attendances_count BIGINT,
     total_stripe_sales INT,
     total_stripe_fee INT,
     platform_fee INT,
@@ -691,7 +691,7 @@ CREATE OR REPLACE FUNCTION public.generate_settlement_report(
     already_exists BOOLEAN,
     event_id UUID,
     event_title VARCHAR(255),
-    event_date DATE,
+    event_date TIMESTAMP WITH TIME ZONE,
     created_by UUID,
     stripe_account_id VARCHAR(255),
     transfer_group TEXT,
@@ -855,7 +855,7 @@ CREATE OR REPLACE FUNCTION public.get_settlement_report_details(
     report_id UUID,
     event_id UUID,
     event_title TEXT,
-    event_date DATE,
+    event_date TIMESTAMP WITH TIME ZONE,
     stripe_account_id VARCHAR(255),
     transfer_group VARCHAR(255),
     generated_at TIMESTAMP WITH TIME ZONE,

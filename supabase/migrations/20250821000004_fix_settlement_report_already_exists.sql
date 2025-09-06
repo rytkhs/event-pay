@@ -138,7 +138,7 @@ BEGIN
         'destination_charge',
         'completed',
         now()
-    ) ON CONFLICT ON CONSTRAINT uniq_payouts_event_generated_date_jst DO NOTHING
+    ) ON CONFLICT (event_id, (DATE(generated_at AT TIME ZONE 'Asia/Tokyo'))) DO NOTHING
       RETURNING id, generated_at, updated_at
       INTO v_payout_id, v_generated_at, v_updated_at;
 

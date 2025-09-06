@@ -1,0 +1,4249 @@
+
+
+SET statement_timeout = 0;
+SET lock_timeout = 0;
+SET idle_in_transaction_session_timeout = 0;
+SET client_encoding = 'UTF8';
+SET standard_conforming_strings = on;
+SELECT pg_catalog.set_config('search_path', '', false);
+SET check_function_bodies = false;
+SET xmloption = content;
+SET client_min_messages = warning;
+SET row_security = off;
+
+
+CREATE EXTENSION IF NOT EXISTS "pg_net" WITH SCHEMA "extensions";
+
+
+
+
+
+
+COMMENT ON SCHEMA "public" IS 'standard public schema';
+
+
+
+CREATE EXTENSION IF NOT EXISTS "pg_graphql" WITH SCHEMA "graphql";
+
+
+
+
+
+
+CREATE EXTENSION IF NOT EXISTS "pg_stat_statements" WITH SCHEMA "extensions";
+
+
+
+
+
+
+CREATE EXTENSION IF NOT EXISTS "pgcrypto" WITH SCHEMA "extensions";
+
+
+
+
+
+
+CREATE EXTENSION IF NOT EXISTS "supabase_vault" WITH SCHEMA "vault";
+
+
+
+
+
+
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp" WITH SCHEMA "extensions";
+
+
+
+
+
+
+CREATE TYPE "public"."admin_reason_enum" AS ENUM (
+    'user_cleanup',
+    'test_data_setup',
+    'system_maintenance',
+    'emergency_access',
+    'data_migration',
+    'security_investigation'
+);
+
+
+ALTER TYPE "public"."admin_reason_enum" OWNER TO "postgres";
+
+
+CREATE TYPE "public"."attendance_status_enum" AS ENUM (
+    'attending',
+    'not_attending',
+    'maybe'
+);
+
+
+ALTER TYPE "public"."attendance_status_enum" OWNER TO "postgres";
+
+
+CREATE TYPE "public"."event_status_enum" AS ENUM (
+    'upcoming',
+    'ongoing',
+    'past',
+    'cancelled'
+);
+
+
+ALTER TYPE "public"."event_status_enum" OWNER TO "postgres";
+
+
+CREATE TYPE "public"."payment_method_enum" AS ENUM (
+    'stripe',
+    'cash'
+);
+
+
+ALTER TYPE "public"."payment_method_enum" OWNER TO "postgres";
+
+
+CREATE TYPE "public"."payment_status_enum" AS ENUM (
+    'pending',
+    'paid',
+    'failed',
+    'received',
+    'completed',
+    'refunded',
+    'waived'
+);
+
+
+ALTER TYPE "public"."payment_status_enum" OWNER TO "postgres";
+
+
+COMMENT ON TYPE "public"."payment_status_enum" IS '決済状況 (completedは無料イベント用, processing_errorは送金成功・DB更新失敗)';
+
+
+
+CREATE TYPE "public"."payout_status_enum" AS ENUM (
+    'pending',
+    'processing',
+    'completed',
+    'failed'
+);
+
+
+ALTER TYPE "public"."payout_status_enum" OWNER TO "postgres";
+
+
+CREATE TYPE "public"."security_severity_enum" AS ENUM (
+    'LOW',
+    'MEDIUM',
+    'HIGH',
+    'CRITICAL'
+);
+
+
+ALTER TYPE "public"."security_severity_enum" OWNER TO "postgres";
+
+
+CREATE TYPE "public"."settlement_mode_enum" AS ENUM (
+    'destination_charge'
+);
+
+
+ALTER TYPE "public"."settlement_mode_enum" OWNER TO "postgres";
+
+
+CREATE TYPE "public"."stripe_account_status_enum" AS ENUM (
+    'unverified',
+    'onboarding',
+    'verified',
+    'restricted'
+);
+
+
+ALTER TYPE "public"."stripe_account_status_enum" OWNER TO "postgres";
+
+
+CREATE TYPE "public"."suspicious_activity_type_enum" AS ENUM (
+    'EMPTY_RESULT_SET',
+    'ADMIN_ACCESS_ATTEMPT',
+    'INVALID_TOKEN_PATTERN',
+    'RATE_LIMIT_EXCEEDED',
+    'UNAUTHORIZED_RLS_BYPASS',
+    'BULK_DATA_ACCESS',
+    'UNUSUAL_ACCESS_PATTERN'
+);
+
+
+ALTER TYPE "public"."suspicious_activity_type_enum" OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."calc_payout_amount"("p_event_id" "uuid") RETURNS TABLE("total_stripe_sales" integer, "total_stripe_fee" integer, "platform_fee" integer, "net_payout_amount" integer, "stripe_payment_count" bigint)
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    AS $$
+BEGIN
+  RETURN QUERY
+  SELECT
+    COALESCE(SUM(p.amount) FILTER (WHERE p.method = 'stripe' AND p.status = 'paid'), 0)::INT AS total_stripe_sales,
+    public.calc_total_stripe_fee(p_event_id)::INT                                   AS total_stripe_fee,
+    0::INT                                                                    AS platform_fee,
+    (COALESCE(SUM(p.amount) FILTER (WHERE p.method = 'stripe' AND p.status = 'paid'), 0)
+      - public.calc_total_stripe_fee(p_event_id))::INT                               AS net_payout_amount,
+    COUNT(p.id) FILTER (WHERE p.method = 'stripe' AND p.status = 'paid')      AS stripe_payment_count
+  FROM public.attendances a
+  LEFT JOIN public.payments p ON p.attendance_id = a.id
+  WHERE a.event_id = p_event_id;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."calc_payout_amount"("p_event_id" "uuid") OWNER TO "postgres";
+
+
+COMMENT ON FUNCTION "public"."calc_payout_amount"("p_event_id" "uuid") IS '指定イベントのStripe売上・手数料・純送金額を一括計算して返す。';
+
+
+
+CREATE OR REPLACE FUNCTION "public"."calc_refund_dispute_summary"("p_event_id" "uuid") RETURNS json
+    LANGUAGE "plpgsql"
+    AS $$
+DECLARE
+    v_total_refunded_amount INTEGER := 0;
+    v_refunded_count INTEGER := 0;
+    v_total_app_fee_refunded INTEGER := 0;
+    v_total_disputed_amount INTEGER := 0;
+    v_dispute_count INTEGER := 0;
+    v_result JSON;
+BEGIN
+    -- Refund totals
+    SELECT
+        COALESCE(SUM(p.refunded_amount), 0)::INT,
+        COUNT(*)::INT,
+        COALESCE(SUM(p.application_fee_refunded_amount), 0)::INT
+    INTO
+        v_total_refunded_amount,
+        v_refunded_count,
+        v_total_app_fee_refunded
+    FROM public.payments p
+    JOIN public.attendances a ON p.attendance_id = a.id
+    WHERE a.event_id = p_event_id
+      AND p.method = 'stripe'
+      AND p.refunded_amount > 0;
+
+    -- Dispute totals: include all except 'won'
+    SELECT
+        COALESCE(SUM(d.amount), 0)::INT,
+        COUNT(*)::INT
+    INTO
+        v_total_disputed_amount,
+        v_dispute_count
+    FROM public.payment_disputes d
+    JOIN public.payments p ON p.id = d.payment_id
+    JOIN public.attendances a ON p.attendance_id = a.id
+    WHERE a.event_id = p_event_id
+      AND d.status NOT IN ('won', 'warning_closed');
+
+    v_result := json_build_object(
+        'totalRefundedAmount', v_total_refunded_amount,
+        'refundedCount', v_refunded_count,
+        'totalApplicationFeeRefunded', v_total_app_fee_refunded,
+        'totalDisputedAmount', v_total_disputed_amount,
+        'disputeCount', v_dispute_count
+    );
+
+    RETURN v_result;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."calc_refund_dispute_summary"("p_event_id" "uuid") OWNER TO "postgres";
+
+
+COMMENT ON FUNCTION "public"."calc_refund_dispute_summary"("p_event_id" "uuid") IS 'イベント単位の返金・Dispute集計（won以外のDisputeを控除対象とする）';
+
+
+
+CREATE OR REPLACE FUNCTION "public"."calc_total_application_fee"("p_event_id" "uuid") RETURNS integer
+    LANGUAGE "plpgsql"
+    AS $$
+DECLARE
+    v_total_fee INTEGER;
+BEGIN
+    SELECT COALESCE(SUM(p.application_fee_amount), 0)::INT
+    INTO   v_total_fee
+    FROM public.payments p
+    JOIN public.attendances a ON p.attendance_id = a.id
+    WHERE a.event_id = p_event_id
+      AND p.method = 'stripe'
+      AND p.status = 'paid';
+
+    RETURN v_total_fee;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."calc_total_application_fee"("p_event_id" "uuid") OWNER TO "postgres";
+
+
+COMMENT ON FUNCTION "public"."calc_total_application_fee"("p_event_id" "uuid") IS 'イベント単位でアプリケーション手数料（プラットフォーム手数料）を合計計算';
+
+
+
+CREATE OR REPLACE FUNCTION "public"."calc_total_stripe_fee"("p_event_id" "uuid", "p_base_rate" numeric DEFAULT NULL::numeric, "p_fixed_fee" integer DEFAULT NULL::integer) RETURNS integer
+    LANGUAGE "plpgsql"
+    AS $$
+DECLARE
+    v_rate   NUMERIC := COALESCE(p_base_rate,  (SELECT stripe_base_rate  FROM public.fee_config LIMIT 1), 0.036);
+    v_fixed  INTEGER := COALESCE(p_fixed_fee,  (SELECT stripe_fixed_fee FROM public.fee_config LIMIT 1), 0);
+    v_total_fee INTEGER;
+BEGIN
+    SELECT COALESCE(SUM(
+      COALESCE(p.stripe_balance_transaction_fee, ROUND(p.amount * v_rate + v_fixed))
+    ), 0)::INT
+      INTO v_total_fee
+      FROM public.payments p
+      JOIN public.attendances a ON p.attendance_id = a.id
+     WHERE a.event_id = p_event_id
+       AND p.method = 'stripe'
+       AND p.status = 'paid';
+
+    RETURN v_total_fee;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."calc_total_stripe_fee"("p_event_id" "uuid", "p_base_rate" numeric, "p_fixed_fee" integer) OWNER TO "postgres";
+
+
+COMMENT ON FUNCTION "public"."calc_total_stripe_fee"("p_event_id" "uuid", "p_base_rate" numeric, "p_fixed_fee" integer) IS 'Prefer stored balance_transaction fee per payment; fallback to rate+fixed if missing.';
+
+
+
+CREATE OR REPLACE FUNCTION "public"."can_access_attendance"("p_attendance_id" "uuid") RETURNS boolean
+    LANGUAGE "plpgsql" STABLE SECURITY DEFINER
+    AS $$
+DECLARE
+  event_id_for_attendance UUID;
+  guest_token_var TEXT;
+BEGIN
+
+  -- 参加レコードのイベントIDを取得
+  SELECT a.event_id INTO event_id_for_attendance
+  FROM attendances a
+  WHERE a.id = p_attendance_id;
+
+  -- イベントが見つからない場合は拒否
+  IF event_id_for_attendance IS NULL THEN
+    RETURN FALSE;
+  END IF;
+
+  -- イベントアクセス権限をチェック（主催者・招待・ゲスト）
+  IF public.can_access_event(event_id_for_attendance) THEN
+    RETURN TRUE;
+  END IF;
+
+  -- ゲストトークンでの自分の参加情報アクセス（追加チェック）
+  BEGIN
+    guest_token_var := public.get_guest_token();
+    IF guest_token_var IS NOT NULL AND EXISTS (
+      SELECT 1 FROM attendances
+      WHERE id = p_attendance_id
+      AND attendances.guest_token = guest_token_var
+    ) THEN
+      RETURN TRUE;
+    END IF;
+  EXCEPTION WHEN OTHERS THEN
+    NULL; -- エラーは無視して続行
+  END;
+
+  RETURN FALSE;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."can_access_attendance"("p_attendance_id" "uuid") OWNER TO "postgres";
+
+
+COMMENT ON FUNCTION "public"."can_access_attendance"("p_attendance_id" "uuid") IS '参加者情報アクセス権限チェック関数。イベントアクセス権限またはゲストトークンによるアクセスをチェック。';
+
+
+
+CREATE OR REPLACE FUNCTION "public"."can_access_event"("p_event_id" "uuid") RETURNS boolean
+    LANGUAGE "plpgsql" STABLE SECURITY DEFINER
+    AS $$
+DECLARE
+  current_user_id UUID;
+  invite_token_var TEXT;
+  guest_token_var TEXT;
+BEGIN
+  -- 現在のユーザーIDを取得
+  current_user_id := auth.uid();
+
+  -- リクエストヘッダーからトークンを取得（循環参照なし）
+  BEGIN
+    invite_token_var := current_setting('request.headers.x-invite-token', true);
+  EXCEPTION WHEN OTHERS THEN
+    invite_token_var := NULL;
+  END;
+
+  -- ゲストトークンを安全に取得
+  BEGIN
+    guest_token_var := public.get_guest_token();
+  EXCEPTION WHEN OTHERS THEN
+    guest_token_var := NULL;
+  END;
+
+  -- 1. 認証ユーザーの主催者権限（直接比較）
+  IF current_user_id IS NOT NULL THEN
+    IF EXISTS (
+      SELECT 1 FROM events
+      WHERE id = p_event_id
+      AND created_by = current_user_id
+    ) THEN
+      RETURN TRUE;
+    END IF;
+  END IF;
+
+  -- 2. 招待トークン権限（直接比較、循環なし）
+  IF invite_token_var IS NOT NULL AND invite_token_var != '' THEN
+    IF EXISTS (
+      SELECT 1 FROM events
+      WHERE id = p_event_id
+      AND events.invite_token = invite_token_var
+      AND status = 'upcoming'
+    ) THEN
+      RETURN TRUE;
+    END IF;
+  END IF;
+
+  -- 3. ゲストトークン権限（attendancesから直接、循環なし）
+  IF guest_token_var IS NOT NULL AND guest_token_var != '' THEN
+    IF EXISTS (
+      SELECT 1 FROM attendances
+      WHERE event_id = p_event_id
+      AND attendances.guest_token = guest_token_var
+    ) THEN
+      RETURN TRUE;
+    END IF;
+  END IF;
+
+  -- デフォルト: アクセス拒否
+  RETURN FALSE;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."can_access_event"("p_event_id" "uuid") OWNER TO "postgres";
+
+
+COMMENT ON FUNCTION "public"."can_access_event"("p_event_id" "uuid") IS 'イベントアクセス権限チェック関数。主催者権限、招待トークン、ゲストトークンによるアクセスを安全にチェック。循環参照なし。';
+
+
+
+CREATE OR REPLACE FUNCTION "public"."can_manage_invite_links"("p_event_id" "uuid") RETURNS boolean
+    LANGUAGE "plpgsql" STABLE SECURITY DEFINER
+    AS $$
+DECLARE
+  current_user_id UUID;
+BEGIN
+  current_user_id := auth.uid();
+
+  -- 認証済みユーザーの主催者権限のみ
+  IF current_user_id IS NOT NULL AND EXISTS (
+    SELECT 1 FROM events
+    WHERE id = p_event_id
+    AND created_by = current_user_id
+  ) THEN
+    RETURN TRUE;
+  END IF;
+
+  RETURN FALSE;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."can_manage_invite_links"("p_event_id" "uuid") OWNER TO "postgres";
+
+
+COMMENT ON FUNCTION "public"."can_manage_invite_links"("p_event_id" "uuid") IS '招待リンク管理権限チェック関数。イベント主催者のみが管理可能。';
+
+
+
+CREATE OR REPLACE FUNCTION "public"."check_attendance_capacity_limit"() RETURNS "trigger"
+    LANGUAGE "plpgsql"
+    AS $$
+DECLARE event_capacity INTEGER; current_attending_count INTEGER;
+BEGIN
+    IF NEW.status = 'attending' THEN
+        SELECT capacity INTO event_capacity FROM public.events WHERE id = NEW.event_id;
+        IF event_capacity IS NOT NULL THEN
+            SELECT COUNT(*) INTO current_attending_count FROM public.attendances WHERE event_id = NEW.event_id AND status = 'attending';
+            IF current_attending_count >= event_capacity THEN RAISE EXCEPTION 'イベントの定員（%名）に達しています。', event_capacity; END IF;
+        END IF;
+    END IF;
+    RETURN NEW;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."check_attendance_capacity_limit"() OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."cleanup_expired_scheduler_locks"() RETURNS TABLE("deleted_count" integer, "expired_locks" "jsonb")
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    AS $$
+DECLARE
+  _deleted_count int := 0;
+  _expired_locks jsonb;
+BEGIN
+  -- 削除対象の期限切れロック情報を記録
+  SELECT jsonb_agg(
+    jsonb_build_object(
+      'lock_name', lock_name,
+      'acquired_at', acquired_at,
+      'expires_at', expires_at,
+      'process_id', process_id
+    )
+  ) INTO _expired_locks
+  FROM public.scheduler_locks
+  WHERE expires_at < now();
+
+  -- 期限切れロックを削除
+  DELETE FROM public.scheduler_locks
+  WHERE expires_at < now();
+
+  GET DIAGNOSTICS _deleted_count = ROW_COUNT;
+
+  RETURN QUERY SELECT _deleted_count, COALESCE(_expired_locks, '[]'::jsonb);
+END;
+$$;
+
+
+ALTER FUNCTION "public"."cleanup_expired_scheduler_locks"() OWNER TO "postgres";
+
+
+COMMENT ON FUNCTION "public"."cleanup_expired_scheduler_locks"() IS '期限切れロックの一括削除。定期的な実行を推奨';
+
+
+
+CREATE OR REPLACE FUNCTION "public"."cleanup_old_audit_logs"("retention_days" integer DEFAULT 90) RETURNS integer
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    AS $$
+DECLARE
+    deleted_count INTEGER := 0;
+    temp_count INTEGER;
+BEGIN
+    -- 管理者アクセス監査ログのクリーンアップ
+    DELETE FROM public.admin_access_audit
+    WHERE created_at < NOW() - INTERVAL '1 day' * retention_days;
+    GET DIAGNOSTICS temp_count = ROW_COUNT;
+    deleted_count := deleted_count + temp_count;
+
+    -- ゲストアクセス監査ログのクリーンアップ
+    DELETE FROM public.guest_access_audit
+    WHERE created_at < NOW() - INTERVAL '1 day' * retention_days;
+    GET DIAGNOSTICS temp_count = ROW_COUNT;
+    deleted_count := deleted_count + temp_count;
+
+    -- 疑わしい活動ログのクリーンアップ（調査済みのもののみ）
+    DELETE FROM public.suspicious_activity_log
+    WHERE created_at < NOW() - INTERVAL '1 day' * retention_days
+    AND investigated_at IS NOT NULL;
+    GET DIAGNOSTICS temp_count = ROW_COUNT;
+    deleted_count := deleted_count + temp_count;
+
+    -- 不正アクセス試行ログのクリーンアップ
+    DELETE FROM public.unauthorized_access_log
+    WHERE created_at < NOW() - INTERVAL '1 day' * retention_days;
+    GET DIAGNOSTICS temp_count = ROW_COUNT;
+    deleted_count := deleted_count + temp_count;
+
+    RETURN deleted_count;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."cleanup_old_audit_logs"("retention_days" integer) OWNER TO "postgres";
+
+
+COMMENT ON FUNCTION "public"."cleanup_old_audit_logs"("retention_days" integer) IS '指定した日数より古い監査ログを削除する関数';
+
+
+
+CREATE OR REPLACE FUNCTION "public"."cleanup_old_scheduler_logs"("retention_days" integer DEFAULT 30) RETURNS integer
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    AS $$
+DECLARE
+    deleted_count INTEGER;
+BEGIN
+    -- 指定日数より古いログを削除
+    DELETE FROM public.payout_scheduler_logs
+    WHERE start_time < (now() - (retention_days || ' days')::INTERVAL);
+
+    GET DIAGNOSTICS deleted_count = ROW_COUNT;
+
+    RETURN deleted_count;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."cleanup_old_scheduler_logs"("retention_days" integer) OWNER TO "postgres";
+
+
+COMMENT ON FUNCTION "public"."cleanup_old_scheduler_logs"("retention_days" integer) IS 'PayoutSchedulerの古いログを削除する関数';
+
+
+
+CREATE OR REPLACE FUNCTION "public"."cleanup_test_tables_dev_only"() RETURNS "void"
+    LANGUAGE "plpgsql"
+    AS $$
+BEGIN
+    -- 警告: この関数は開発環境専用です。本番環境で実行しないでください。
+    RAISE WARNING 'Executing development-only cleanup function. This should not be run in production.';
+
+    DELETE FROM public.settlements;
+    DELETE FROM public.payments;
+    DELETE FROM public.attendances;
+    DELETE FROM public.invite_links;
+    DELETE FROM public.events;
+    DELETE FROM public.stripe_connect_accounts;
+    DELETE FROM public.users;
+    -- auth.usersは別途テストコードで管理
+    RAISE NOTICE 'Test data cleanup completed for all public tables.';
+END;
+$$;
+
+
+ALTER FUNCTION "public"."cleanup_test_tables_dev_only"() OWNER TO "postgres";
+
+
+COMMENT ON FUNCTION "public"."cleanup_test_tables_dev_only"() IS 'テストデータクリーンアップ関数（開発環境専用）';
+
+
+
+CREATE OR REPLACE FUNCTION "public"."clear_test_guest_token"() RETURNS "void"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    AS $$
+BEGIN
+  -- テスト用設定をクリア
+  PERFORM set_config('test.guest_token', '', false);
+END;
+$$;
+
+
+ALTER FUNCTION "public"."clear_test_guest_token"() OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."create_payment_record"("p_attendance_id" "uuid", "p_method" "public"."payment_method_enum", "p_amount" integer) RETURNS "uuid"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    AS $$
+DECLARE
+    payment_id UUID;
+BEGIN
+    -- 入力値検証
+    IF p_attendance_id IS NULL THEN
+        RAISE EXCEPTION 'attendance_id cannot be null';
+    END IF;
+
+    IF p_amount < 0 THEN
+        RAISE EXCEPTION 'amount must be non-negative, got: %', p_amount;
+    END IF;
+
+    -- 重複チェック
+    IF EXISTS (SELECT 1 FROM public.payments WHERE attendance_id = p_attendance_id) THEN
+        RAISE EXCEPTION 'Payment record already exists for attendance_id: %', p_attendance_id;
+    END IF;
+
+    -- attendanceレコードの存在確認
+    IF NOT EXISTS (SELECT 1 FROM public.attendances WHERE id = p_attendance_id) THEN
+        RAISE EXCEPTION 'Attendance record not found for id: %', p_attendance_id;
+    END IF;
+
+    -- 決済レコード作成
+    INSERT INTO public.payments (attendance_id, method, amount, status)
+    VALUES (p_attendance_id, p_method, p_amount, 'pending')
+    RETURNING id INTO payment_id;
+
+    RETURN payment_id;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."create_payment_record"("p_attendance_id" "uuid", "p_method" "public"."payment_method_enum", "p_amount" integer) OWNER TO "postgres";
+
+
+COMMENT ON FUNCTION "public"."create_payment_record"("p_attendance_id" "uuid", "p_method" "public"."payment_method_enum", "p_amount" integer) IS '決済レコードを作成する関数';
+
+
+
+CREATE OR REPLACE FUNCTION "public"."detect_orphaned_users"() RETURNS TABLE("user_id" "uuid", "email" character varying, "days_since_creation" integer)
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    AS $$
+BEGIN
+    RETURN QUERY
+    SELECT u.id, au.email, EXTRACT(DAYS FROM NOW() - u.created_at)::INTEGER
+    FROM public.users u
+    JOIN auth.users au ON u.id = au.id
+    WHERE u.created_at < NOW() - INTERVAL '30 days'
+      AND NOT EXISTS(SELECT 1 FROM public.events WHERE created_by = u.id);
+END;
+$$;
+
+
+ALTER FUNCTION "public"."detect_orphaned_users"() OWNER TO "postgres";
+
+
+COMMENT ON FUNCTION "public"."detect_orphaned_users"() IS '30日以上活動のない孤立ユーザーを検出する関数';
+
+
+
+CREATE OR REPLACE FUNCTION "public"."extend_scheduler_lock"("p_lock_name" "text", "p_process_id" "text", "p_extend_minutes" integer DEFAULT 30) RETURNS boolean
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    AS $$
+DECLARE
+  _updated_count int := 0;
+BEGIN
+  -- 指定されたプロセスIDのロックのTTLを延長
+  UPDATE public.scheduler_locks
+  SET expires_at = now() + (p_extend_minutes || ' minutes')::interval,
+      metadata = metadata || jsonb_build_object('last_heartbeat', now()::text)
+  WHERE lock_name = p_lock_name
+    AND process_id = p_process_id
+    AND expires_at > now(); -- 期限切れでないことを確認
+
+  GET DIAGNOSTICS _updated_count = ROW_COUNT;
+
+  -- 更新できた場合は成功
+  RETURN _updated_count > 0;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."extend_scheduler_lock"("p_lock_name" "text", "p_process_id" "text", "p_extend_minutes" integer) OWNER TO "postgres";
+
+
+COMMENT ON FUNCTION "public"."extend_scheduler_lock"("p_lock_name" "text", "p_process_id" "text", "p_extend_minutes" integer) IS 'スケジューラーロックのTTL延長（ハートビート用）。process_id一致時のみ延長可能';
+
+
+
+CREATE OR REPLACE FUNCTION "public"."find_eligible_events_basic"("p_days_after_event" integer DEFAULT 5, "p_minimum_amount" integer DEFAULT NULL::integer, "p_limit" integer DEFAULT 100, "p_user_id" "uuid" DEFAULT NULL::"uuid") RETURNS TABLE("event_id" "uuid", "title" character varying, "event_date" timestamp with time zone, "fee" integer, "created_by" "uuid", "created_at" timestamp with time zone, "paid_attendances_count" bigint, "total_stripe_sales" integer)
+    LANGUAGE "plpgsql"
+    AS $$
+BEGIN
+    RETURN QUERY
+    WITH target_events AS (
+        SELECT e.*
+          FROM public.events e
+         WHERE e.status = 'past'
+           AND e.date <= (CURRENT_DATE - p_days_after_event)
+           AND (p_user_id IS NULL OR e.created_by = p_user_id)
+    ), sales AS (
+        SELECT a.event_id, COUNT(*) AS paid_attendances_count, SUM(p.amount)::INT AS total_stripe_sales
+          FROM public.attendances a
+          JOIN public.payments p ON p.attendance_id = a.id
+         WHERE p.method = 'stripe' AND p.status = 'paid'
+         GROUP BY a.event_id
+    )
+    SELECT
+        t.id AS event_id,
+        t.title,
+        t.date AS event_date,
+        t.fee,
+        t.created_by,
+        t.created_at,
+        COALESCE(s.paid_attendances_count,0) AS paid_attendances_count,
+        COALESCE(s.total_stripe_sales,0)      AS total_stripe_sales
+      FROM target_events t
+      LEFT JOIN sales s ON s.event_id = t.id
+     WHERE COALESCE(s.total_stripe_sales,0) >= COALESCE(p_minimum_amount, public.get_min_payout_amount())
+     LIMIT p_limit;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."find_eligible_events_basic"("p_days_after_event" integer, "p_minimum_amount" integer, "p_limit" integer, "p_user_id" "uuid") OWNER TO "postgres";
+
+
+COMMENT ON FUNCTION "public"."find_eligible_events_basic"("p_days_after_event" integer, "p_minimum_amount" integer, "p_limit" integer, "p_user_id" "uuid") IS '送金対象イベント検索 (fee_config ベースの最小送金金額利用)';
+
+
+
+CREATE OR REPLACE FUNCTION "public"."find_eligible_events_with_details"("p_days_after_event" integer DEFAULT 5, "p_limit" integer DEFAULT 50) RETURNS TABLE("event_id" "uuid", "title" character varying, "event_date" timestamp with time zone, "fee" integer, "created_by" "uuid", "created_at" timestamp with time zone, "paid_attendances_count" bigint, "total_stripe_sales" integer, "total_stripe_fee" integer, "platform_fee" integer, "net_payout_amount" integer, "charges_enabled" boolean, "payouts_enabled" boolean, "eligible" boolean, "ineligible_reason" "text")
+    LANGUAGE "plpgsql"
+    AS $$
+BEGIN
+    RETURN QUERY
+    WITH unpaid_events AS (
+        SELECT e.*
+        FROM public.events e
+        WHERE e.status = 'past'
+          AND e.date <= (current_date - p_days_after_event)
+        LIMIT p_limit
+    ),
+    sales AS (
+        SELECT a.event_id,
+               COUNT(*) FILTER (WHERE p.status = 'paid')                        AS paid_attendances_count,
+               COALESCE(SUM(p.amount) FILTER (WHERE p.status = 'paid'),0)::INT AS total_stripe_sales,
+               public.calc_total_stripe_fee(a.event_id)                        AS total_stripe_fee
+        FROM public.attendances a
+        JOIN public.payments p ON p.attendance_id = a.id AND p.method = 'stripe'
+        WHERE a.event_id IN (SELECT id FROM unpaid_events)
+        GROUP BY a.event_id
+    ),
+    accounts AS (
+        SELECT sca.user_id,
+               sca.status,
+               sca.charges_enabled,
+               sca.payouts_enabled,
+               e.id AS event_id
+        FROM public.stripe_connect_accounts sca
+        JOIN unpaid_events e ON sca.user_id = e.created_by
+    )
+    SELECT
+        ue.id AS event_id,
+        ue.title,
+        ue.date AS event_date,
+        ue.fee,
+        ue.created_by,
+        ue.created_at,
+        COALESCE(s.paid_attendances_count,0),
+        COALESCE(s.total_stripe_sales,0),
+        COALESCE(s.total_stripe_fee,0),
+        0 AS platform_fee,
+        (COALESCE(s.total_stripe_sales,0) - COALESCE(s.total_stripe_fee,0)) AS net_payout_amount,
+        COALESCE(a.charges_enabled,false) AS charges_enabled,
+        COALESCE(a.payouts_enabled,false) AS payouts_enabled,
+        (
+          COALESCE(a.status,'unverified') = 'verified' AND
+          COALESCE(a.charges_enabled,false) = TRUE AND
+          COALESCE(a.payouts_enabled,false) = TRUE AND
+          (COALESCE(s.total_stripe_sales,0) - COALESCE(s.total_stripe_fee,0)) >= public.get_min_payout_amount()
+        ) AS eligible,
+        CASE
+            WHEN COALESCE(a.status,'unverified') <> 'verified' THEN 'Stripe Connectアカウントの認証が完了していません'
+            WHEN COALESCE(a.charges_enabled,false) = FALSE THEN 'Stripe Connectアカウントで決済受取が有効になっていません'
+            WHEN COALESCE(a.payouts_enabled,false) = FALSE THEN 'Stripe Connectアカウントで送金が有効になっていません'
+            WHEN (COALESCE(s.total_stripe_sales,0) - COALESCE(s.total_stripe_fee,0)) < public.get_min_payout_amount() THEN '最小送金額の条件を満たしていません'
+            ELSE NULL
+        END AS ineligible_reason
+    FROM unpaid_events ue
+    LEFT JOIN sales s ON s.event_id = ue.id
+    LEFT JOIN accounts a ON a.event_id = ue.id;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."find_eligible_events_with_details"("p_days_after_event" integer, "p_limit" integer) OWNER TO "postgres";
+
+
+COMMENT ON FUNCTION "public"."find_eligible_events_with_details"("p_days_after_event" integer, "p_limit" integer) IS '送金候補イベントを取得（verified status要件付き、charges_enabled / payouts_enabled チェック）';
+
+
+
+CREATE OR REPLACE FUNCTION "public"."force_release_payout_scheduler_lock"() RETURNS boolean
+    LANGUAGE "sql"
+    AS $$
+  SELECT pg_advisory_unlock(901234);
+$$;
+
+
+ALTER FUNCTION "public"."force_release_payout_scheduler_lock"() OWNER TO "postgres";
+
+
+COMMENT ON FUNCTION "public"."force_release_payout_scheduler_lock"() IS 'ペイアウトスケジューラーのアドバイザリロックを強制的に解放するユーティリティ関数（緊急時用）';
+
+
+
+CREATE OR REPLACE FUNCTION "public"."generate_settlement_report"("input_event_id" "uuid", "input_created_by" "uuid") RETURNS TABLE("report_id" "uuid", "already_exists" boolean, "returned_event_id" "uuid", "event_title" character varying, "event_date" timestamp with time zone, "created_by" "uuid", "stripe_account_id" character varying, "transfer_group" "text", "total_stripe_sales" integer, "total_stripe_fee" integer, "total_application_fee" integer, "net_payout_amount" integer, "payment_count" integer, "refunded_count" integer, "total_refunded_amount" integer, "settlement_mode" "text", "report_generated_at" timestamp with time zone, "report_updated_at" timestamp with time zone)
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    AS $$
+DECLARE
+    v_payout_id UUID;
+    v_event_data RECORD;
+    v_stripe_sales INTEGER;
+    v_stripe_fee INTEGER;
+    v_application_fee INTEGER;
+    v_total_refunded_amount INTEGER := 0;
+    v_total_app_fee_refunded INTEGER := 0;
+    v_net_application_fee INTEGER;
+    v_net_amount INTEGER;
+    v_payment_count INTEGER;
+    v_refunded_count INTEGER := 0;
+    v_transfer_group TEXT;
+    v_refund_data JSON;
+    v_was_update BOOLEAN := FALSE;
+    v_generated_at TIMESTAMPTZ;
+    v_updated_at TIMESTAMPTZ;
+BEGIN
+    -- Validation
+    IF input_event_id IS NULL OR input_created_by IS NULL THEN
+        RAISE EXCEPTION 'event_id and created_by are required';
+    END IF;
+
+    -- Event & Connect account validation
+    SELECT e.id,
+           e.title,
+           e.date,
+           e.created_by,
+           sca.stripe_account_id
+      INTO v_event_data
+      FROM public.events e
+      JOIN public.stripe_connect_accounts sca ON sca.user_id = e.created_by
+     WHERE e.id = input_event_id
+       AND e.created_by = input_created_by
+       AND sca.payouts_enabled = TRUE;
+
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'Event not found or organizer not authorized, or Stripe Connect account not ready';
+    END IF;
+
+    -- Correlation key for Transfers
+    v_transfer_group := 'event_' || input_event_id::text || '_payout';
+
+    -- Aggregate sales: include both paid & refunded Stripe payments
+    SELECT COALESCE(SUM(p.amount), 0)::INT,
+           COUNT(*)::INT
+      INTO v_stripe_sales,
+           v_payment_count
+      FROM public.payments p
+      JOIN public.attendances a ON p.attendance_id = a.id
+     WHERE a.event_id = input_event_id
+       AND p.method = 'stripe'
+       AND p.status IN ('paid', 'refunded');
+
+    -- Stripe platform fee (platform cost – not used in net calc)
+    v_stripe_fee := public.calc_total_stripe_fee(input_event_id);
+
+    -- Application fee (gross)
+    v_application_fee := public.calc_total_application_fee(input_event_id);
+
+    -- Refund summary JSON
+    v_refund_data := public.calc_refund_dispute_summary(input_event_id);
+    IF v_refund_data IS NOT NULL THEN
+        v_total_refunded_amount  := COALESCE((v_refund_data ->> 'totalRefundedAmount')::INT, 0);
+        v_total_app_fee_refunded := COALESCE((v_refund_data ->> 'totalApplicationFeeRefunded')::INT, 0);
+        v_refunded_count         := COALESCE((v_refund_data ->> 'refundedCount')::INT, 0);
+    END IF;
+
+    -- Net application fee (cannot be negative)
+    v_net_application_fee := GREATEST(v_application_fee - v_total_app_fee_refunded, 0);
+
+    -- Net payout amount (Stripe fee is platform-borne)
+    v_net_amount := (v_stripe_sales - v_total_refunded_amount) - v_net_application_fee;
+
+    -- Atomic upsert by (event_id, JST date)
+    INSERT INTO public.settlements (
+        event_id,
+        user_id,
+        total_stripe_sales,
+        total_stripe_fee,
+        platform_fee,
+        net_payout_amount,
+        stripe_account_id,
+        transfer_group,
+        settlement_mode,
+        status,
+        generated_at
+    ) VALUES (
+        input_event_id,
+        input_created_by,
+        v_stripe_sales,
+        v_stripe_fee,
+        v_net_application_fee,
+        v_net_amount,
+        v_event_data.stripe_account_id,
+        v_transfer_group,
+        'destination_charge',
+        'completed',
+        now()
+    )
+    ON CONFLICT (event_id, (DATE(generated_at AT TIME ZONE 'Asia/Tokyo'))) DO UPDATE SET
+        total_stripe_sales = EXCLUDED.total_stripe_sales,
+        total_stripe_fee   = EXCLUDED.total_stripe_fee,
+        platform_fee       = EXCLUDED.platform_fee,
+        net_payout_amount  = EXCLUDED.net_payout_amount
+    RETURNING id, (xmax = 0), public.settlements.generated_at, public.settlements.updated_at
+    INTO v_payout_id, v_was_update, v_generated_at, v_updated_at;
+
+    -- Return enriched record
+    report_id := v_payout_id;
+    already_exists := NOT v_was_update;
+    returned_event_id := input_event_id;
+    event_title := v_event_data.title;
+    event_date := v_event_data.date;
+    created_by := input_created_by;
+    stripe_account_id := v_event_data.stripe_account_id;
+    transfer_group := v_transfer_group;
+    total_stripe_sales := v_stripe_sales;
+    total_stripe_fee := v_stripe_fee;
+    total_application_fee := v_net_application_fee;
+    net_payout_amount := v_net_amount;
+    payment_count := v_payment_count;
+    refunded_count := v_refunded_count;
+    total_refunded_amount := v_total_refunded_amount;
+    settlement_mode := 'destination_charge';
+    report_generated_at := v_generated_at;
+    report_updated_at := v_updated_at;
+
+    RETURN;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."generate_settlement_report"("input_event_id" "uuid", "input_created_by" "uuid") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."get_enum_values"("enum_name" "text") RETURNS "text"[]
+    LANGUAGE "sql" STABLE
+    AS $$
+    SELECT array_agg(enumlabel ORDER BY enumlabel)
+    FROM pg_enum e
+    JOIN pg_type t ON e.enumtypid = t.oid
+    JOIN pg_namespace n ON t.typnamespace = n.oid
+    WHERE n.nspname = 'public' AND t.typname = enum_name;
+$$;
+
+
+ALTER FUNCTION "public"."get_enum_values"("enum_name" "text") OWNER TO "postgres";
+
+
+COMMENT ON FUNCTION "public"."get_enum_values"("enum_name" "text") IS 'Enum型の値一覧を取得するヘルパー関数（CI用）';
+
+
+
+CREATE OR REPLACE FUNCTION "public"."get_event_creator_name"("p_creator_id" "uuid") RETURNS "text"
+    LANGUAGE "plpgsql" STABLE SECURITY DEFINER
+    AS $$
+BEGIN
+    RETURN (SELECT name FROM public.users WHERE id = p_creator_id);
+END;
+$$;
+
+
+ALTER FUNCTION "public"."get_event_creator_name"("p_creator_id" "uuid") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."get_guest_token"() RETURNS "text"
+    LANGUAGE "plpgsql" STABLE SECURITY DEFINER
+    AS $$
+DECLARE
+  token TEXT;
+BEGIN
+  -- 1. JWTクレームから取得（推奨、将来実装）
+  BEGIN
+    SELECT (current_setting('request.jwt.claims', true)::json->>'guest_token') INTO token;
+    IF token IS NOT NULL AND token != '' THEN
+      RETURN token;
+    END IF;
+  EXCEPTION
+    WHEN OTHERS THEN
+      NULL; -- 続行
+  END;
+
+  -- 2. カスタムヘッダーから取得（現在の実装）
+  BEGIN
+    SELECT current_setting('request.headers.x-guest-token', true) INTO token;
+    IF token IS NOT NULL AND token != '' THEN
+      RETURN token;
+    END IF;
+  EXCEPTION
+    WHEN OTHERS THEN
+      NULL; -- 続行
+  END;
+
+  -- 3. アプリケーション設定から取得（テスト用）
+  BEGIN
+    SELECT current_setting('app.guest_token', true) INTO token;
+    IF token IS NOT NULL AND token != '' THEN
+      RETURN token;
+    END IF;
+  EXCEPTION
+    WHEN OTHERS THEN
+      NULL; -- 続行
+  END;
+
+  -- 4. テスト用の直接設定（テスト環境専用）
+  BEGIN
+    SELECT current_setting('test.guest_token', true) INTO token;
+    IF token IS NOT NULL AND token != '' THEN
+      RETURN token;
+    END IF;
+  EXCEPTION
+    WHEN OTHERS THEN
+      NULL; -- 続行
+  END;
+
+  -- すべて失敗した場合はNULLを返す
+  RETURN NULL;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."get_guest_token"() OWNER TO "postgres";
+
+
+COMMENT ON FUNCTION "public"."get_guest_token"() IS 'ゲストトークンを複数の方法（JWTクレーム、ヘッダー、設定）から取得するヘルパー関数。フォールバック機能付き。';
+
+
+
+CREATE OR REPLACE FUNCTION "public"."get_min_payout_amount"() RETURNS integer
+    LANGUAGE "sql" STABLE
+    AS $$
+    SELECT COALESCE((SELECT min_payout_amount FROM public.fee_config LIMIT 1), 100);
+$$;
+
+
+ALTER FUNCTION "public"."get_min_payout_amount"() OWNER TO "postgres";
+
+
+COMMENT ON FUNCTION "public"."get_min_payout_amount"() IS '最小送金金額（円）を返すユーティリティ関数。fee_config に設定が無い場合はデフォルト 100 円。';
+
+
+
+CREATE OR REPLACE FUNCTION "public"."get_scheduler_lock_status"("p_lock_name" "text" DEFAULT NULL::"text") RETURNS TABLE("lock_name" "text", "acquired_at" timestamp with time zone, "expires_at" timestamp with time zone, "time_remaining_minutes" integer, "process_id" "text", "metadata" "jsonb", "is_expired" boolean)
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    AS $$
+BEGIN
+  RETURN QUERY
+  SELECT
+    sl.lock_name,
+    sl.acquired_at,
+    sl.expires_at,
+    EXTRACT(EPOCH FROM (sl.expires_at - now()) / 60)::int as time_remaining_minutes,
+    sl.process_id,
+    sl.metadata,
+    sl.expires_at < now() as is_expired
+  FROM public.scheduler_locks sl
+  WHERE (p_lock_name IS NULL OR sl.lock_name = p_lock_name)
+  ORDER BY sl.acquired_at DESC;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."get_scheduler_lock_status"("p_lock_name" "text") OWNER TO "postgres";
+
+
+COMMENT ON FUNCTION "public"."get_scheduler_lock_status"("p_lock_name" "text") IS 'ロック状態の監視・デバッグ用関数';
+
+
+
+CREATE OR REPLACE FUNCTION "public"."get_settlement_aggregations"("p_event_id" "uuid") RETURNS TABLE("total_stripe_sales" bigint, "payment_count" bigint, "total_application_fee" bigint, "avg_application_fee" numeric, "total_refunded_amount" bigint, "refunded_count" bigint, "total_application_fee_refunded" bigint)
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    AS $$
+BEGIN
+  RETURN QUERY
+  WITH payment_data AS (
+    SELECT
+      p.amount,
+      p.application_fee_amount,
+      p.refunded_amount,
+      p.application_fee_refunded_amount
+    FROM public.payments p
+    INNER JOIN public.attendances a ON a.id = p.attendance_id
+    WHERE a.event_id = p_event_id
+      AND p.method = 'stripe'
+      AND p.status = 'paid'
+  ),
+  sales_agg AS (
+    SELECT
+      COALESCE(SUM(amount), 0) as total_sales,
+      COUNT(*) as payment_cnt
+    FROM payment_data
+  ),
+  fee_agg AS (
+    SELECT
+      COALESCE(SUM(application_fee_amount), 0) as total_fee,
+      CASE
+        WHEN COUNT(*) > 0 THEN AVG(application_fee_amount)
+        ELSE 0
+      END as avg_fee
+    FROM payment_data
+  ),
+  refund_agg AS (
+    SELECT
+      COALESCE(SUM(refunded_amount), 0) as total_refund,
+      COUNT(*) FILTER (WHERE refunded_amount > 0) as refund_cnt,
+      COALESCE(SUM(application_fee_refunded_amount), 0) as total_fee_refund
+    FROM payment_data
+  )
+  SELECT
+    sales_agg.total_sales::BIGINT,
+    sales_agg.payment_cnt::BIGINT,
+    fee_agg.total_fee::BIGINT,
+    fee_agg.avg_fee::NUMERIC,
+    refund_agg.total_refund::BIGINT,
+    refund_agg.refund_cnt::BIGINT,
+    refund_agg.total_fee_refund::BIGINT
+  FROM sales_agg
+  CROSS JOIN fee_agg
+  CROSS JOIN refund_agg;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."get_settlement_aggregations"("p_event_id" "uuid") OWNER TO "postgres";
+
+
+COMMENT ON FUNCTION "public"."get_settlement_aggregations"("p_event_id" "uuid") IS 'Aggregates settlement data for a given event efficiently in a single DB query. Returns Stripe sales, application fees, and refund totals with counts. Optimized to replace multiple JS reduce operations and reduce network overhead.';
+
+
+
+CREATE OR REPLACE FUNCTION "public"."get_settlement_report_details"("input_created_by" "uuid", "input_event_ids" "uuid"[] DEFAULT NULL::"uuid"[], "p_from_date" timestamp with time zone DEFAULT NULL::timestamp with time zone, "p_to_date" timestamp with time zone DEFAULT NULL::timestamp with time zone, "p_limit" integer DEFAULT 50, "p_offset" integer DEFAULT 0) RETURNS TABLE("report_id" "uuid", "event_id" "uuid", "event_title" character varying, "event_date" timestamp with time zone, "stripe_account_id" character varying, "transfer_group" character varying, "generated_at" timestamp with time zone, "total_stripe_sales" integer, "total_stripe_fee" integer, "total_application_fee" integer, "net_payout_amount" integer, "payment_count" integer, "refunded_count" integer, "total_refunded_amount" integer, "settlement_mode" "public"."settlement_mode_enum", "status" "public"."payout_status_enum")
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    AS $$
+BEGIN
+    RETURN QUERY
+    SELECT
+        p.id AS report_id,
+        p.event_id,
+        e.title AS event_title,
+        e.date AS event_date,
+        p.stripe_account_id,
+        p.transfer_group,
+        p.generated_at,
+
+        p.total_stripe_sales,
+        p.total_stripe_fee,
+        p.platform_fee AS total_application_fee,
+        p.net_payout_amount,
+
+        -- 決済件数を動的に取得
+        (
+            SELECT COUNT(*)::INT
+            FROM public.payments pay
+            JOIN public.attendances att ON pay.attendance_id = att.id
+            WHERE att.event_id = p.event_id
+              AND pay.method = 'stripe'
+              AND pay.status = 'paid'
+        ) AS payment_count,
+
+        -- 返金件数・金額を動的に取得
+        (
+            SELECT COUNT(*)::INT
+            FROM public.payments pay
+            JOIN public.attendances att ON pay.attendance_id = att.id
+            WHERE att.event_id = p.event_id
+              AND pay.method = 'stripe'
+              AND pay.refunded_amount > 0
+        ) AS refunded_count,
+
+        (
+            SELECT COALESCE(SUM(pay.refunded_amount), 0)::INT
+            FROM public.payments pay
+            JOIN public.attendances att ON pay.attendance_id = att.id
+            WHERE att.event_id = p.event_id
+              AND pay.method = 'stripe'
+              AND pay.refunded_amount > 0
+        ) AS total_refunded_amount,
+
+        p.settlement_mode,
+        p.status
+    FROM public.settlements p
+    JOIN public.events e ON p.event_id = e.id
+    WHERE p.user_id = input_created_by
+      AND p.settlement_mode = 'destination_charge'
+      AND (input_event_ids IS NULL OR p.event_id = ANY(input_event_ids))
+      AND (p_from_date IS NULL OR p.generated_at >= p_from_date)
+      AND (p_to_date IS NULL OR p.generated_at <= p_to_date)
+    ORDER BY p.generated_at DESC
+    LIMIT p_limit
+    OFFSET p_offset;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."get_settlement_report_details"("input_created_by" "uuid", "input_event_ids" "uuid"[], "p_from_date" timestamp with time zone, "p_to_date" timestamp with time zone, "p_limit" integer, "p_offset" integer) OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."handle_new_user"() RETURNS "trigger"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    AS $$
+BEGIN
+  -- auth.usersからのメタデータを使用してpublic.usersにプロファイルを作成
+  INSERT INTO public.users (id, name)
+  VALUES (
+    NEW.id,
+    COALESCE(NEW.raw_user_meta_data->>'name', 'ユーザー')
+  );
+  RETURN NEW;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."handle_new_user"() OWNER TO "postgres";
+
+
+COMMENT ON FUNCTION "public"."handle_new_user"() IS 'auth.usersテーブルに新しいユーザーが作成された際に、自動的にpublic.usersテーブルにプロファイルレコードを作成する関数';
+
+
+
+CREATE OR REPLACE FUNCTION "public"."hash_guest_token"("token" "text") RETURNS character varying
+    LANGUAGE "plpgsql" IMMUTABLE SECURITY DEFINER
+    AS $$
+BEGIN
+    RETURN encode(digest(token, 'sha256'), 'hex');
+END;
+$$;
+
+
+ALTER FUNCTION "public"."hash_guest_token"("token" "text") OWNER TO "postgres";
+
+
+COMMENT ON FUNCTION "public"."hash_guest_token"("token" "text") IS 'ゲストトークンをSHA-256でハッシュ化する関数（監査ログ用）';
+
+
+
+CREATE OR REPLACE FUNCTION "public"."list_all_enums"() RETURNS TABLE("enum_name" "text", "enum_values" "text"[])
+    LANGUAGE "sql" STABLE
+    AS $$
+    SELECT
+        t.typname AS enum_name,
+        array_agg(e.enumlabel ORDER BY e.enumlabel) AS enum_values
+    FROM pg_enum e
+    JOIN pg_type t ON e.enumtypid = t.oid
+    JOIN pg_namespace n ON t.typnamespace = n.oid
+    WHERE n.nspname = 'public'
+    GROUP BY t.typname
+    ORDER BY t.typname;
+$$;
+
+
+ALTER FUNCTION "public"."list_all_enums"() OWNER TO "postgres";
+
+
+COMMENT ON FUNCTION "public"."list_all_enums"() IS '全Enum型とその値を一覧表示（開発用）';
+
+
+
+CREATE OR REPLACE FUNCTION "public"."log_security_event"("p_event_type" "text", "p_details" "jsonb") RETURNS "void"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    AS $$
+BEGIN
+    INSERT INTO public.security_audit_log (event_type, details, user_role, ip_address)
+    VALUES (p_event_type, p_details, auth.role(), inet_client_addr());
+EXCEPTION WHEN OTHERS THEN
+    RAISE WARNING 'Failed to log security event: %', SQLERRM;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."log_security_event"("p_event_type" "text", "p_details" "jsonb") OWNER TO "postgres";
+
+
+COMMENT ON FUNCTION "public"."log_security_event"("p_event_type" "text", "p_details" "jsonb") IS 'セキュリティイベントをログに記録する関数';
+
+
+
+CREATE OR REPLACE FUNCTION "public"."prevent_payment_status_rollback"() RETURNS "trigger"
+    LANGUAGE "plpgsql"
+    AS $$
+BEGIN
+  IF NEW.status IS DISTINCT FROM OLD.status THEN
+    IF public.status_rank(NEW.status) < public.status_rank(OLD.status) THEN
+      RAISE EXCEPTION 'Rejecting status rollback: % -> %', OLD.status, NEW.status;
+    END IF;
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."prevent_payment_status_rollback"() OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."process_event_payout"("input_event_id" "uuid", "p_user_id" "uuid") RETURNS "uuid"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    AS $$
+DECLARE
+    payout_id UUID;
+    existing_status payout_status_enum;
+    stripe_sales INTEGER;
+    stripe_fees  INTEGER;
+    platform_fees INTEGER := 0; -- MVP では 0 円
+    net_amount INTEGER;
+    stripe_account VARCHAR(255);
+    lock_key BIGINT;
+BEGIN
+    -- 必須入力チェック
+    IF input_event_id IS NULL OR p_user_id IS NULL THEN
+        RAISE EXCEPTION 'event_id and user_id cannot be null';
+    END IF;
+
+    -- イベント固有ロック
+    lock_key := abs(hashtext(input_event_id::text));
+    PERFORM pg_advisory_xact_lock(lock_key);
+
+    -- 権限＆存在確認
+    IF NOT EXISTS (
+        SELECT 1 FROM public.events
+        WHERE id = input_event_id AND created_by = p_user_id AND status = 'past'
+    ) THEN
+        RAISE EXCEPTION 'Event not found or not authorized: %', input_event_id;
+    END IF;
+
+    -- 既存送金レコードチェック（最新行）
+    SELECT id, status INTO payout_id, existing_status
+    FROM public.settlements
+    WHERE event_id = input_event_id
+    ORDER BY created_at DESC
+    LIMIT 1;
+
+    IF payout_id IS NOT NULL THEN
+        -- pending の場合はそのまま再利用して返却
+        IF existing_status = 'pending' THEN
+            RETURN payout_id;
+        ELSIF existing_status = 'failed' THEN
+            -- failed を pending にリセットして再利用
+            UPDATE public.settlements
+            SET status = 'pending',
+                processed_at = NULL,
+                last_error = NULL
+            WHERE id = payout_id
+            RETURNING id INTO payout_id;
+
+            RETURN payout_id;
+        ELSE
+            RAISE EXCEPTION 'Payout already exists or in progress for event_id: %', input_event_id;
+        END IF;
+    END IF;
+
+    -- Stripe Connect account (verified & charges_enabled & payouts_enabled) 取得
+    SELECT stripe_account_id INTO stripe_account
+      FROM public.stripe_connect_accounts
+     WHERE user_id = p_user_id
+       AND status = 'verified'
+       AND charges_enabled = true
+       AND payouts_enabled = true;
+    IF stripe_account IS NULL THEN
+        RAISE EXCEPTION 'No verified Stripe Connect account for user: %', p_user_id;
+    END IF;
+
+    -- 売上合計
+    SELECT COALESCE(SUM(p.amount),0)::INT INTO stripe_sales
+      FROM public.payments p
+      JOIN public.attendances a ON p.attendance_id = a.id
+     WHERE a.event_id = input_event_id
+       AND p.method = 'stripe'
+       AND p.status = 'paid';
+
+    -- Stripe 手数料 (割合+固定)
+    stripe_fees := public.calc_total_stripe_fee(input_event_id);
+
+    -- プラットフォーム手数料 (将来対応) 今は 0
+
+    net_amount := stripe_sales - stripe_fees - platform_fees;
+
+    -- 最小送金金額チェック
+    IF net_amount < public.get_min_payout_amount() THEN
+        RAISE EXCEPTION 'Net payout amount < minimum (%). Calculated: %', public.get_min_payout_amount(), net_amount;
+    END IF;
+
+    -- 送金レコード作成
+    INSERT INTO public.settlements (
+        event_id, user_id, total_stripe_sales, total_stripe_fee,
+        platform_fee, net_payout_amount, stripe_account_id, status, transfer_group
+    ) VALUES (
+        input_event_id, p_user_id, stripe_sales, stripe_fees,
+        platform_fees, net_amount, stripe_account, 'pending',
+        'event_' || input_event_id::text || '_payout'
+    ) RETURNING id INTO payout_id;
+
+    RETURN payout_id;
+
+EXCEPTION
+    WHEN unique_violation THEN
+        -- 並行処理でユニーク制約違反が発生した場合、最新 pending / failed を再取得
+        SELECT id, status INTO payout_id, existing_status
+        FROM public.settlements
+        WHERE event_id = input_event_id
+        ORDER BY created_at DESC
+        LIMIT 1;
+
+        IF payout_id IS NOT NULL AND existing_status IN ('pending', 'failed') THEN
+            -- failed の場合はリセットして返す
+            IF existing_status = 'failed' THEN
+                UPDATE public.settlements
+                SET status = 'pending',
+                    processed_at = NULL,
+                    last_error = NULL
+                WHERE id = payout_id;
+            END IF;
+            RETURN payout_id;
+        ELSE
+            RAISE EXCEPTION 'Payout already exists or in progress for event_id: %', input_event_id;
+        END IF;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."process_event_payout"("input_event_id" "uuid", "p_user_id" "uuid") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."register_attendance_with_payment"("p_event_id" "uuid", "p_nickname" character varying, "p_email" character varying, "p_status" "public"."attendance_status_enum", "p_guest_token" character varying, "p_payment_method" "public"."payment_method_enum" DEFAULT NULL::"public"."payment_method_enum", "p_event_fee" integer DEFAULT 0) RETURNS "uuid"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    AS $_$
+DECLARE
+  v_attendance_id UUID;
+  v_event_exists BOOLEAN;
+BEGIN
+  -- 入力パラメータの検証
+  IF p_event_id IS NULL THEN
+    RAISE EXCEPTION 'Event ID cannot be null';
+  END IF;
+
+  IF p_nickname IS NULL OR LENGTH(TRIM(p_nickname)) = 0 THEN
+    RAISE EXCEPTION 'Nickname cannot be null or empty';
+  END IF;
+
+  IF p_email IS NULL OR LENGTH(TRIM(p_email)) = 0 THEN
+    RAISE EXCEPTION 'Email cannot be null or empty';
+  END IF;
+
+  IF p_status IS NULL THEN
+    RAISE EXCEPTION 'Status cannot be null';
+  END IF;
+
+  -- ゲストトークンの検証
+  IF p_guest_token IS NULL OR LENGTH(p_guest_token) != 36 THEN
+    RAISE EXCEPTION 'Guest token must be exactly 36 characters long with gst_ prefix, got: %', COALESCE(LENGTH(p_guest_token), 0);
+  END IF;
+
+  -- ゲストトークンの形式を検証
+  IF NOT (p_guest_token ~ '^gst_[a-zA-Z0-9_-]{32}$') THEN
+    RAISE EXCEPTION 'Guest token must have format gst_[32 alphanumeric chars], got: %', LEFT(p_guest_token, 8) || '...';
+  END IF;
+
+  -- イベントが存在するか確認し、定員を取得
+  SELECT EXISTS(SELECT 1 FROM public.events WHERE id = p_event_id FOR UPDATE) INTO v_event_exists;
+  IF NOT v_event_exists THEN
+    RAISE EXCEPTION 'Event with ID % does not exist', p_event_id;
+  END IF;
+
+  -- 定員チェック（attending状態の場合のみ）
+  IF p_status = 'attending' THEN
+    DECLARE
+      v_capacity INTEGER;
+      v_current_attendees INTEGER;
+    BEGIN
+      -- イベントの定員を取得
+      SELECT capacity INTO v_capacity FROM public.events WHERE id = p_event_id;
+
+      -- 定員が設定されている場合のみチェック
+      IF v_capacity IS NOT NULL THEN
+        -- 現在の参加者数を取得
+        SELECT COUNT(*) INTO v_current_attendees
+        FROM public.attendances
+        WHERE event_id = p_event_id AND status = 'attending';
+
+        -- 定員超過チェック
+        IF v_current_attendees >= v_capacity THEN
+          RAISE EXCEPTION 'Event capacity (%) has been reached. Current attendees: %', v_capacity, v_current_attendees;
+        END IF;
+      END IF;
+    END;
+  END IF;
+
+  -- ゲストトークンの重複チェック
+  IF EXISTS(SELECT 1 FROM public.attendances WHERE guest_token = p_guest_token) THEN
+    RAISE EXCEPTION 'Guest token already exists: %', LEFT(p_guest_token, 8) || '...';
+  END IF;
+
+  -- 1. attendancesテーブルに参加記録を挿入
+  BEGIN
+    INSERT INTO public.attendances (event_id, nickname, email, status, guest_token)
+    VALUES (p_event_id, p_nickname, p_email, p_status, p_guest_token)
+    RETURNING id INTO v_attendance_id;
+
+    -- 挿入が成功したかを確認
+    IF v_attendance_id IS NULL THEN
+      RAISE EXCEPTION 'Failed to insert attendance record';
+    END IF;
+
+  EXCEPTION
+    WHEN unique_violation THEN
+      -- 重複エラーの詳細を提供
+      IF SQLSTATE = '23505' THEN
+        RAISE EXCEPTION 'Guest token already exists (unique constraint violation): %', LEFT(p_guest_token, 8) || '...';
+      ELSE
+        RAISE EXCEPTION 'Unique constraint violation: %', SQLERRM;
+      END IF;
+    WHEN OTHERS THEN
+      RAISE EXCEPTION 'Failed to insert attendance: %', SQLERRM;
+  END;
+
+  -- 2. 参加ステータスが'attending'で、イベントが有料の場合、paymentsテーブルに決済記録を挿入
+  IF p_status = 'attending' AND p_event_fee > 0 AND p_payment_method IS NOT NULL THEN
+    BEGIN
+      INSERT INTO public.payments (attendance_id, amount, method, status)
+      VALUES (v_attendance_id, p_event_fee, p_payment_method, 'pending');
+    EXCEPTION
+      WHEN OTHERS THEN
+        -- 決済記録の挿入に失敗した場合、参加記録も削除してロールバック
+        DELETE FROM public.attendances WHERE id = v_attendance_id;
+        RAISE EXCEPTION 'Failed to insert payment record: %', SQLERRM;
+    END;
+  END IF;
+
+  RETURN v_attendance_id;
+END;
+$_$;
+
+
+ALTER FUNCTION "public"."register_attendance_with_payment"("p_event_id" "uuid", "p_nickname" character varying, "p_email" character varying, "p_status" "public"."attendance_status_enum", "p_guest_token" character varying, "p_payment_method" "public"."payment_method_enum", "p_event_fee" integer) OWNER TO "postgres";
+
+
+COMMENT ON FUNCTION "public"."register_attendance_with_payment"("p_event_id" "uuid", "p_nickname" character varying, "p_email" character varying, "p_status" "public"."attendance_status_enum", "p_guest_token" character varying, "p_payment_method" "public"."payment_method_enum", "p_event_fee" integer) IS 'イベント参加登録と決済レコード作成を一括で実行する関数（gst_形式トークン対応）';
+
+
+
+CREATE OR REPLACE FUNCTION "public"."release_scheduler_lock"("p_lock_name" "text", "p_process_id" "text" DEFAULT NULL::"text") RETURNS boolean
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    AS $$
+DECLARE
+  _deleted_count int := 0;
+BEGIN
+  -- process_id が指定されている場合は一致するもののみ削除
+  IF p_process_id IS NOT NULL THEN
+    DELETE FROM public.scheduler_locks
+    WHERE lock_name = p_lock_name
+      AND (process_id = p_process_id OR process_id IS NULL);
+  ELSE
+    -- process_id 未指定の場合は無条件削除
+    DELETE FROM public.scheduler_locks
+    WHERE lock_name = p_lock_name;
+  END IF;
+
+  GET DIAGNOSTICS _deleted_count = ROW_COUNT;
+
+  RETURN _deleted_count > 0;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."release_scheduler_lock"("p_lock_name" "text", "p_process_id" "text") OWNER TO "postgres";
+
+
+COMMENT ON FUNCTION "public"."release_scheduler_lock"("p_lock_name" "text", "p_process_id" "text") IS 'スケジューラーロック解放。process_id指定で安全な解放が可能';
+
+
+
+CREATE OR REPLACE FUNCTION "public"."rpc_bulk_update_payment_status_safe"("p_payment_updates" "jsonb", "p_user_id" "uuid", "p_notes" "text" DEFAULT NULL::"text") RETURNS json
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    AS $$
+DECLARE
+  v_update_item     jsonb;
+  v_payment_id      uuid;
+  v_expected_version integer;
+  v_new_status      payment_status_enum;
+  v_success_count   integer := 0;
+  v_failure_count   integer := 0;
+  v_failures        jsonb := '[]'::jsonb;
+  v_result          json;
+BEGIN
+  -- 入力検証
+  IF jsonb_array_length(p_payment_updates) > 50 THEN
+    RAISE EXCEPTION 'Too many payments to update at once (max 50)'
+      USING ERRCODE = 'P0004';
+  END IF;
+
+  -- 各決済を順次更新
+  FOR v_update_item IN SELECT * FROM jsonb_array_elements(p_payment_updates)
+  LOOP
+    BEGIN
+      v_payment_id := (v_update_item->>'payment_id')::uuid;
+      v_expected_version := (v_update_item->>'expected_version')::integer;
+      v_new_status := (v_update_item->>'new_status')::payment_status_enum;
+
+      -- 個別の安全更新を実行
+      PERFORM rpc_update_payment_status_safe(
+        v_payment_id,
+        v_new_status,
+        v_expected_version,
+        p_user_id,
+        p_notes
+      );
+
+      v_success_count := v_success_count + 1;
+
+    EXCEPTION
+      WHEN OTHERS THEN
+        v_failure_count := v_failure_count + 1;
+        v_failures := v_failures || jsonb_build_object(
+          'payment_id', v_payment_id,
+          'error_code', SQLSTATE,
+          'error_message', SQLERRM
+        );
+    END;
+  END LOOP;
+
+  -- 一括処理の監査ログ
+  INSERT INTO system_logs (operation_type, details, created_at)
+  VALUES (
+    'payment_bulk_status_update_safe',
+    jsonb_build_object(
+      'user_id', p_user_id,
+      'total_count', jsonb_array_length(p_payment_updates),
+      'success_count', v_success_count,
+      'failure_count', v_failure_count,
+      'failures', v_failures,
+      'notes', p_notes
+    ),
+    now()
+  );
+
+  -- 結果返却
+  v_result := jsonb_build_object(
+    'success_count', v_success_count,
+    'failure_count', v_failure_count,
+    'failures', v_failures
+  );
+
+  RETURN v_result;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."rpc_bulk_update_payment_status_safe"("p_payment_updates" "jsonb", "p_user_id" "uuid", "p_notes" "text") OWNER TO "postgres";
+
+
+COMMENT ON FUNCTION "public"."rpc_bulk_update_payment_status_safe"("p_payment_updates" "jsonb", "p_user_id" "uuid", "p_notes" "text") IS 'Bulk payment status update with optimistic locking and detailed failure reporting';
+
+
+
+CREATE OR REPLACE FUNCTION "public"."rpc_update_payment_status_safe"("p_payment_id" "uuid", "p_new_status" "public"."payment_status_enum", "p_expected_version" integer, "p_user_id" "uuid", "p_notes" "text" DEFAULT NULL::"text") RETURNS json
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    AS $$
+DECLARE
+  v_updated_rows     integer;
+  v_payment_record   payments%ROWTYPE;
+  v_attendance_record attendances%ROWTYPE;
+  v_event_record     events%ROWTYPE;
+  v_result           json;
+BEGIN
+  -- 個別にSELECTして各ROWTYPE変数へ格納（複数 INTO 禁止エラー回避）
+  SELECT *
+    INTO v_payment_record
+    FROM payments
+   WHERE id = p_payment_id
+   FOR UPDATE;
+
+  -- 決済レコードが存在しない場合は即座にエラー
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Payment record not found: %', p_payment_id
+      USING ERRCODE = 'P0002';
+  END IF;
+
+  SELECT *
+    INTO v_attendance_record
+    FROM attendances
+   WHERE id = v_payment_record.attendance_id;
+
+  -- 参加記録が存在しない場合（理論上起こらないが念のため）
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Attendance record not found: %', v_payment_record.attendance_id
+      USING ERRCODE = 'P0005';
+  END IF;
+
+  SELECT *
+    INTO v_event_record
+    FROM events
+   WHERE id = v_attendance_record.event_id;
+
+  -- イベントが存在しない場合（参照整合性欠如）
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Event record not found: %', v_attendance_record.event_id
+      USING ERRCODE = 'P0006';
+  END IF;
+
+  -- 主催者権限チェック
+  IF v_event_record.created_by != p_user_id THEN
+    RAISE EXCEPTION 'Unauthorized: User % is not the event creator', p_user_id
+      USING ERRCODE = 'P0001';
+  END IF;
+
+  -- 現金決済でない場合はエラー
+  IF v_payment_record.method != 'cash' THEN
+    RAISE EXCEPTION 'Only cash payments can be manually updated'
+      USING ERRCODE = 'P0003';
+  END IF;
+
+  -- 2. 楽観的ロック付きステータス更新
+  UPDATE payments
+  SET status = p_new_status,
+      paid_at = CASE
+        WHEN p_new_status = 'received' THEN now()
+        WHEN p_new_status = 'waived' THEN paid_at  -- 免除時はpaid_atは変更しない
+        ELSE paid_at
+      END,
+      version = version + 1
+  WHERE id = p_payment_id
+    AND version = p_expected_version
+    AND method = 'cash';
+
+  GET DIAGNOSTICS v_updated_rows = ROW_COUNT;
+
+  -- バージョン競合検出
+  IF v_updated_rows = 0 THEN
+    RAISE EXCEPTION 'Concurrent update detected for payment %', p_payment_id
+      USING ERRCODE = '40001'; -- serialization_failure
+  END IF;
+
+  -- 3. 監査ログ記録
+  INSERT INTO system_logs (operation_type, details, created_at)
+  VALUES (
+    'payment_status_update_safe',
+    jsonb_build_object(
+      'payment_id', p_payment_id,
+      'old_status', v_payment_record.status,
+      'new_status', p_new_status,
+      'expected_version', p_expected_version,
+      'new_version', v_payment_record.version + 1,
+      'user_id', p_user_id,
+      'notes', p_notes,
+      'event_id', v_event_record.id,
+      'attendance_id', v_attendance_record.id
+    ),
+    now()
+  );
+
+  -- 4. 結果返却
+  v_result := jsonb_build_object(
+    'payment_id', p_payment_id,
+    'status', p_new_status,
+    'new_version', v_payment_record.version + 1,
+    'updated_at', now()
+  );
+
+  RETURN v_result;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."rpc_update_payment_status_safe"("p_payment_id" "uuid", "p_new_status" "public"."payment_status_enum", "p_expected_version" integer, "p_user_id" "uuid", "p_notes" "text") OWNER TO "postgres";
+
+
+COMMENT ON FUNCTION "public"."rpc_update_payment_status_safe"("p_payment_id" "uuid", "p_new_status" "public"."payment_status_enum", "p_expected_version" integer, "p_user_id" "uuid", "p_notes" "text") IS 'Optimistic-lock aware payment status update with audit logging';
+
+
+
+CREATE OR REPLACE FUNCTION "public"."set_test_guest_token"("token" "text") RETURNS "void"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    AS $$
+BEGIN
+  -- テスト用設定を使用（セッション全体で有効）
+  PERFORM set_config('test.guest_token', token, false);
+END;
+$$;
+
+
+ALTER FUNCTION "public"."set_test_guest_token"("token" "text") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."status_rank"("p" "public"."payment_status_enum") RETURNS integer
+    LANGUAGE "sql" IMMUTABLE PARALLEL SAFE
+    AS $$
+  SELECT CASE p
+    WHEN 'pending'   THEN 10
+    WHEN 'failed'    THEN 15
+    WHEN 'paid'      THEN 20
+    WHEN 'received'  THEN 25
+    WHEN 'waived'    THEN 28
+    WHEN 'completed' THEN 30
+    WHEN 'refunded'  THEN 40
+    ELSE 0
+  END;
+$$;
+
+
+ALTER FUNCTION "public"."status_rank"("p" "public"."payment_status_enum") OWNER TO "postgres";
+
+
+COMMENT ON FUNCTION "public"."status_rank"("p" "public"."payment_status_enum") IS 'Returns precedence rank of payment statuses. Higher is more terminal (prevents rollback).';
+
+
+
+CREATE OR REPLACE FUNCTION "public"."try_acquire_scheduler_lock"("p_lock_name" "text", "p_ttl_minutes" integer DEFAULT 180, "p_process_id" "text" DEFAULT NULL::"text", "p_metadata" "jsonb" DEFAULT '{}'::"jsonb") RETURNS boolean
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    AS $$
+DECLARE
+  _inserted boolean := false;
+BEGIN
+  -- 期限切れロックの自動削除
+  DELETE FROM public.scheduler_locks
+  WHERE lock_name = p_lock_name AND expires_at < now();
+
+  -- ロック取得を試行
+  BEGIN
+    INSERT INTO public.scheduler_locks (
+      lock_name,
+      acquired_at,
+      expires_at,
+      process_id,
+      metadata
+    )
+    VALUES (
+      p_lock_name,
+      now(),
+      now() + (p_ttl_minutes || ' minutes')::interval,
+      p_process_id,
+      p_metadata
+    );
+
+    _inserted := true;
+
+  EXCEPTION
+    WHEN unique_violation THEN
+      -- ロック取得失敗（既に他のプロセスが保持中）
+      _inserted := false;
+  END;
+
+  RETURN _inserted;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."try_acquire_scheduler_lock"("p_lock_name" "text", "p_ttl_minutes" integer, "p_process_id" "text", "p_metadata" "jsonb") OWNER TO "postgres";
+
+
+COMMENT ON FUNCTION "public"."try_acquire_scheduler_lock"("p_lock_name" "text", "p_ttl_minutes" integer, "p_process_id" "text", "p_metadata" "jsonb") IS 'スケジューラーロック取得。TTL付きで自動期限切れを防ぐ';
+
+
+
+CREATE OR REPLACE FUNCTION "public"."update_guest_attendance_with_payment"("p_attendance_id" "uuid", "p_status" "public"."attendance_status_enum", "p_payment_method" "public"."payment_method_enum" DEFAULT NULL::"public"."payment_method_enum", "p_event_fee" integer DEFAULT 0) RETURNS "void"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'pg_temp'
+    AS $$
+  DECLARE
+    v_event_id UUID;
+    v_payment_id UUID;
+    v_current_status public.attendance_status_enum;
+    v_capacity INTEGER;
+    v_current_attendees INTEGER;
+    v_payment_status public.payment_status_enum;
+    v_payment_method public.payment_method_enum;
+    -- Added guards
+    v_event_status public.event_status_enum;
+    v_reg_deadline TIMESTAMPTZ;
+    v_event_date TIMESTAMPTZ;
+  BEGIN
+    -- 参加記録の存在確認と現在のステータス取得
+    SELECT event_id, status INTO v_event_id, v_current_status
+    FROM public.attendances
+    WHERE id = p_attendance_id;
+
+    IF NOT FOUND THEN
+      RAISE EXCEPTION 'Attendance record not found';
+    END IF;
+
+    -- イベント締切・開始・ステータスチェック (追加)
+    SELECT status, registration_deadline, date
+      INTO v_event_status, v_reg_deadline, v_event_date
+    FROM public.events
+    WHERE id = v_event_id
+    FOR SHARE;
+
+    IF v_event_status <> 'upcoming'
+      OR (v_reg_deadline IS NOT NULL AND v_reg_deadline <= NOW())
+      OR v_event_date <= NOW() THEN
+      RAISE EXCEPTION 'Event is closed for modification';
+    END IF;
+
+    -- 定員チェック（attendingに変更する場合のみ）
+    IF p_status = 'attending' AND v_current_status != 'attending' THEN
+      SELECT capacity INTO v_capacity FROM public.events WHERE id = v_event_id FOR UPDATE;
+      IF v_capacity IS NOT NULL THEN
+        SELECT COUNT(*) INTO v_current_attendees
+        FROM public.attendances
+        WHERE event_id = v_event_id AND status = 'attending' AND id != p_attendance_id;
+
+        IF v_current_attendees >= v_capacity THEN
+          RAISE EXCEPTION 'Event capacity (%) has been reached. Current attendees: %', v_capacity, v_current_attendees;
+        END IF;
+      END IF;
+    END IF;
+
+    -- 参加ステータスを更新
+    UPDATE public.attendances
+    SET
+      status = p_status
+    WHERE id = p_attendance_id;
+
+    -- 決済レコードの処理
+    IF p_status = 'attending' AND p_event_fee > 0 AND p_payment_method IS NOT NULL THEN
+      -- 既存の決済レコードを確認（ステータスも取得）
+      SELECT id, status INTO v_payment_id, v_payment_status
+      FROM public.payments
+      WHERE attendance_id = p_attendance_id
+      ORDER BY paid_at DESC NULLS LAST, created_at DESC, updated_at DESC
+      LIMIT 1;
+
+      IF v_payment_id IS NOT NULL THEN
+        -- 既存の決済レコードを更新
+        IF v_payment_status IN ('paid', 'received', 'completed', 'waived') THEN
+          -- 確定済み決済の属性変更は禁止（DB契約）
+          RAISE EXCEPTION 'EVP_PAYMENT_FINALIZED_IMMUTABLE: Payment is finalized; cannot modify method/amount';
+        ELSE
+          -- 未決済系ステータスは pending へリセット
+          UPDATE public.payments
+          SET
+            method = p_payment_method,
+            amount = p_event_fee,
+            status = 'pending'
+          WHERE id = v_payment_id;
+        END IF;
+      ELSE
+        -- 新しい決済レコードを作成
+        INSERT INTO public.payments (
+          attendance_id,
+          amount,
+          method,
+          status
+        ) VALUES (
+          p_attendance_id,
+          p_event_fee,
+          p_payment_method,
+          'pending'
+        );
+      END IF;
+    ELSIF p_status != 'attending' THEN
+      -- 既存の決済レコードを取得
+      SELECT id, status, method INTO v_payment_id, v_payment_status, v_payment_method
+      FROM public.payments
+      WHERE attendance_id = p_attendance_id
+      ORDER BY paid_at DESC NULLS LAST, created_at DESC, updated_at DESC
+      LIMIT 1;
+
+      IF FOUND THEN
+        IF v_payment_status IN ('pending', 'failed') THEN
+          DELETE FROM public.payments WHERE id = v_payment_id;
+          INSERT INTO public.system_logs(operation_type, details)
+          VALUES ('unpaid_payment_deleted', jsonb_build_object('attendanceId', p_attendance_id, 'paymentId', v_payment_id, 'previousStatus', v_payment_status));
+        ELSIF v_payment_status IN ('paid', 'received', 'completed') THEN
+          IF v_payment_method = 'cash' THEN
+            UPDATE public.payments
+            SET status = 'refunded'
+            WHERE id = v_payment_id;
+            INSERT INTO public.system_logs(operation_type, details)
+            VALUES ('cash_refund_recorded', jsonb_build_object('attendanceId', p_attendance_id, 'paymentId', v_payment_id));
+          ELSE
+            INSERT INTO public.system_logs(operation_type, details)
+            VALUES ('stripe_refund_required', jsonb_build_object('attendanceId', p_attendance_id, 'paymentId', v_payment_id));
+          END IF;
+        ELSIF v_payment_status = 'waived' THEN
+          INSERT INTO public.system_logs(operation_type, details)
+          VALUES ('waived_payment_kept', jsonb_build_object('attendanceId', p_attendance_id, 'paymentId', v_payment_id));
+        END IF;
+      END IF;
+    END IF;
+
+    RETURN;
+  END;
+  $$;
+
+
+ALTER FUNCTION "public"."update_guest_attendance_with_payment"("p_attendance_id" "uuid", "p_status" "public"."attendance_status_enum", "p_payment_method" "public"."payment_method_enum", "p_event_fee" integer) OWNER TO "postgres";
+
+
+COMMENT ON FUNCTION "public"."update_guest_attendance_with_payment"("p_attendance_id" "uuid", "p_status" "public"."attendance_status_enum", "p_payment_method" "public"."payment_method_enum", "p_event_fee" integer) IS 'ゲスト参加状況更新と決済処理（参加キャンセル時の決済処理安全化版）';
+
+
+
+CREATE OR REPLACE FUNCTION "public"."update_payment_version"() RETURNS "trigger"
+    LANGUAGE "plpgsql"
+    AS $$
+BEGIN
+  -- UPDATE 時に version を自動インクリメント（手動更新された場合のフォールバック）
+  IF TG_OP = 'UPDATE' AND OLD.version = NEW.version THEN
+    NEW.version = OLD.version + 1;
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."update_payment_version"() OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."update_payout_status_safe"("_payout_id" "uuid", "_from_status" "public"."payout_status_enum", "_to_status" "public"."payout_status_enum", "_processed_at" timestamp with time zone DEFAULT NULL::timestamp with time zone, "_transfer_group" "text" DEFAULT NULL::"text", "_last_error" "text" DEFAULT NULL::"text", "_notes" "text" DEFAULT NULL::"text") RETURNS "void"
+    LANGUAGE "plpgsql"
+    AS $$
+begin
+    update public.settlements
+    set status             = _to_status,
+        processed_at       = coalesce(_processed_at, processed_at),
+        transfer_group     = coalesce(_transfer_group, transfer_group),
+        last_error         = coalesce(_last_error, last_error),
+        notes              = coalesce(_notes, notes)
+    where id = _payout_id
+      and status = _from_status;
+
+    if not found then
+        raise exception 'payout status conflict or not found'
+            using errcode = '40001'; -- serialization_failure 相当
+    end if;
+end;
+$$;
+
+
+ALTER FUNCTION "public"."update_payout_status_safe"("_payout_id" "uuid", "_from_status" "public"."payout_status_enum", "_to_status" "public"."payout_status_enum", "_processed_at" timestamp with time zone, "_transfer_group" "text", "_last_error" "text", "_notes" "text") OWNER TO "postgres";
+
+
+COMMENT ON FUNCTION "public"."update_payout_status_safe"("_payout_id" "uuid", "_from_status" "public"."payout_status_enum", "_to_status" "public"."payout_status_enum", "_processed_at" timestamp with time zone, "_transfer_group" "text", "_last_error" "text", "_notes" "text") IS 'Remove transfer_id handling; DC does not rely on transfers.';
+
+
+
+CREATE OR REPLACE FUNCTION "public"."update_revenue_summary"("p_event_id" "uuid") RETURNS json
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    AS $$
+DECLARE
+    total_revenue INTEGER;
+    stripe_revenue INTEGER;
+    cash_revenue INTEGER;
+    paid_count INTEGER;
+    pending_count INTEGER;
+    total_fees INTEGER;
+    net_revenue INTEGER;
+    result JSON;
+BEGIN
+    IF p_event_id IS NULL THEN
+        RAISE EXCEPTION 'event_id cannot be null';
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM public.events WHERE id = p_event_id) THEN
+        RAISE EXCEPTION 'Event not found: %', p_event_id;
+    END IF;
+
+    -- 売上集計
+    SELECT
+        COALESCE(SUM(CASE WHEN p.status IN ('paid','received','completed') THEN p.amount ELSE 0 END),0),
+        COALESCE(SUM(CASE WHEN p.method='stripe' AND p.status='paid' THEN p.amount ELSE 0 END),0),
+        COALESCE(SUM(CASE WHEN p.method='cash' AND p.status IN ('received','completed') THEN p.amount ELSE 0 END),0),
+        COUNT(CASE WHEN p.status IN ('paid','received','completed') THEN 1 END),
+        COUNT(CASE WHEN p.status='pending' THEN 1 END)
+      INTO total_revenue, stripe_revenue, cash_revenue, paid_count, pending_count
+      FROM public.payments p
+      JOIN public.attendances a ON p.attendance_id = a.id
+     WHERE a.event_id = p_event_id;
+
+    -- Stripe 手数料を共通関数で取得
+    total_fees := public.calc_total_stripe_fee(p_event_id);
+    net_revenue := total_revenue - total_fees;
+
+    result := json_build_object(
+        'event_id', p_event_id,
+        'total_revenue', total_revenue,
+        'stripe_revenue', stripe_revenue,
+        'cash_revenue', cash_revenue,
+        'paid_count', paid_count,
+        'pending_count', pending_count,
+        'total_fees', total_fees,
+        'net_revenue', net_revenue,
+        'updated_at', now()
+    );
+    RETURN result;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."update_revenue_summary"("p_event_id" "uuid") OWNER TO "postgres";
+
+
+COMMENT ON FUNCTION "public"."update_revenue_summary"("p_event_id" "uuid") IS 'イベント売上サマリー: fee_config ベースの手数料計算';
+
+
+
+CREATE OR REPLACE FUNCTION "public"."update_updated_at_column"() RETURNS "trigger"
+    LANGUAGE "plpgsql"
+    AS $$
+BEGIN NEW.updated_at = NOW(); RETURN NEW; END;
+$$;
+
+
+ALTER FUNCTION "public"."update_updated_at_column"() OWNER TO "postgres";
+
+SET default_tablespace = '';
+
+SET default_table_access_method = "heap";
+
+
+CREATE TABLE IF NOT EXISTS "public"."admin_access_audit" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "user_id" "uuid",
+    "reason" "public"."admin_reason_enum" NOT NULL,
+    "context" "text" NOT NULL,
+    "operation_details" "jsonb",
+    "ip_address" "inet",
+    "user_agent" "text",
+    "accessed_tables" "text"[],
+    "session_id" "text",
+    "duration_ms" integer,
+    "success" boolean DEFAULT true,
+    "error_message" "text",
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL
+);
+
+
+ALTER TABLE "public"."admin_access_audit" OWNER TO "postgres";
+
+
+COMMENT ON TABLE "public"."admin_access_audit" IS '管理者権限を使用したデータベースアクセスの監査ログ';
+
+
+
+CREATE TABLE IF NOT EXISTS "public"."attendances" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "event_id" "uuid" NOT NULL,
+    "nickname" character varying(50) NOT NULL,
+    "email" character varying(255) NOT NULL,
+    "status" "public"."attendance_status_enum" NOT NULL,
+    "guest_token" character varying(36) NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    CONSTRAINT "attendances_email_check" CHECK ((("email")::"text" ~* '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$'::"text")),
+    CONSTRAINT "attendances_nickname_check" CHECK (("length"(TRIM(BOTH FROM "nickname")) >= 1))
+);
+
+
+ALTER TABLE "public"."attendances" OWNER TO "postgres";
+
+
+COMMENT ON TABLE "public"."attendances" IS 'イベントへの出欠情報';
+
+
+
+COMMENT ON COLUMN "public"."attendances"."guest_token" IS 'ゲストアクセス用のトークン。gst_プレフィックス付き（Base64形式、合計36文字：gst_ + 32文字）';
+
+
+
+CREATE TABLE IF NOT EXISTS "public"."events" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "created_by" "uuid" NOT NULL,
+    "title" character varying(255) NOT NULL,
+    "date" timestamp with time zone NOT NULL,
+    "location" character varying(500),
+    "fee" integer DEFAULT 0 NOT NULL,
+    "capacity" integer,
+    "description" "text",
+    "registration_deadline" timestamp with time zone,
+    "payment_deadline" timestamp with time zone,
+    "payment_methods" "public"."payment_method_enum"[] NOT NULL,
+    "invite_token" character varying(255),
+    "status" "public"."event_status_enum" DEFAULT 'upcoming'::"public"."event_status_enum" NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    CONSTRAINT "events_capacity_check" CHECK ((("capacity" IS NULL) OR ("capacity" > 0))),
+    CONSTRAINT "events_date_after_creation" CHECK (("date" > "created_at")),
+    CONSTRAINT "events_fee_check" CHECK (("fee" >= 0)),
+    CONSTRAINT "events_payment_deadline_after_registration" CHECK ((("payment_deadline" IS NULL) OR ("registration_deadline" IS NULL) OR ("payment_deadline" >= "registration_deadline"))),
+    CONSTRAINT "events_payment_deadline_before_event" CHECK ((("payment_deadline" IS NULL) OR ("payment_deadline" < "date"))),
+    CONSTRAINT "events_payment_methods_check" CHECK (("array_length"("payment_methods", 1) > 0)),
+    CONSTRAINT "events_registration_deadline_before_event" CHECK ((("registration_deadline" IS NULL) OR ("registration_deadline" < "date")))
+);
+
+
+ALTER TABLE "public"."events" OWNER TO "postgres";
+
+
+COMMENT ON TABLE "public"."events" IS 'イベント情報';
+
+
+
+CREATE TABLE IF NOT EXISTS "public"."fee_config" (
+    "id" integer DEFAULT 1 NOT NULL,
+    "stripe_base_rate" numeric(5,4) DEFAULT 0.0360 NOT NULL,
+    "stripe_fixed_fee" integer DEFAULT 0 NOT NULL,
+    "platform_fee_rate" numeric(5,4) DEFAULT 0 NOT NULL,
+    "platform_fixed_fee" integer DEFAULT 0 NOT NULL,
+    "min_platform_fee" integer DEFAULT 0 NOT NULL,
+    "max_platform_fee" integer DEFAULT 0 NOT NULL,
+    "min_payout_amount" integer DEFAULT 100 NOT NULL,
+    "platform_tax_rate" numeric(5,2) DEFAULT 10.00 NOT NULL,
+    "is_tax_included" boolean DEFAULT true NOT NULL,
+    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL
+);
+
+
+ALTER TABLE "public"."fee_config" OWNER TO "postgres";
+
+
+COMMENT ON TABLE "public"."fee_config" IS '手数料設定テーブル（シングルトン）';
+
+
+
+COMMENT ON COLUMN "public"."fee_config"."stripe_base_rate" IS 'Stripe 決済手数料の割合 (0.039 = 3.9%)';
+
+
+
+COMMENT ON COLUMN "public"."fee_config"."stripe_fixed_fee" IS 'Stripe 決済手数料の固定額 (円)';
+
+
+
+COMMENT ON COLUMN "public"."fee_config"."min_payout_amount" IS '最小送金金額 (円)';
+
+
+
+COMMENT ON COLUMN "public"."fee_config"."platform_tax_rate" IS 'Platform consumption tax rate (e.g., 10.00 for 10%)';
+
+
+
+COMMENT ON COLUMN "public"."fee_config"."is_tax_included" IS 'Whether platform fees are calculated as tax-included (true=内税, false=外税)';
+
+
+
+CREATE TABLE IF NOT EXISTS "public"."guest_access_audit" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "guest_token_hash" character varying(64) NOT NULL,
+    "attendance_id" "uuid",
+    "event_id" "uuid",
+    "action" character varying(100) NOT NULL,
+    "table_name" character varying(100),
+    "operation_type" character varying(20),
+    "success" boolean NOT NULL,
+    "result_count" integer,
+    "ip_address" "inet",
+    "user_agent" "text",
+    "session_id" "text",
+    "duration_ms" integer,
+    "error_code" character varying(50),
+    "error_message" "text",
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL
+);
+
+
+ALTER TABLE "public"."guest_access_audit" OWNER TO "postgres";
+
+
+COMMENT ON TABLE "public"."guest_access_audit" IS 'ゲストトークンを使用したアクセスの監査ログ';
+
+
+
+COMMENT ON COLUMN "public"."guest_access_audit"."guest_token_hash" IS 'セキュリティのためSHA-256でハッシュ化されたゲストトークン';
+
+
+
+CREATE TABLE IF NOT EXISTS "public"."invite_links" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "event_id" "uuid" NOT NULL,
+    "token" "text" NOT NULL,
+    "expires_at" timestamp with time zone NOT NULL,
+    "max_uses" integer,
+    "current_uses" integer DEFAULT 0,
+    "created_by" "uuid",
+    "created_at" timestamp with time zone DEFAULT "now"(),
+    "updated_at" timestamp with time zone DEFAULT "now"()
+);
+
+
+ALTER TABLE "public"."invite_links" OWNER TO "postgres";
+
+
+COMMENT ON TABLE "public"."invite_links" IS 'イベント招待リンク';
+
+
+
+CREATE TABLE IF NOT EXISTS "public"."payment_disputes" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "payment_id" "uuid",
+    "stripe_dispute_id" character varying(255) NOT NULL,
+    "charge_id" character varying(255),
+    "payment_intent_id" character varying(255),
+    "amount" integer NOT NULL,
+    "currency" character varying(10) DEFAULT 'jpy'::character varying NOT NULL,
+    "reason" character varying(50),
+    "status" character varying(50) NOT NULL,
+    "evidence_due_by" timestamp with time zone,
+    "stripe_account_id" character varying(255),
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "closed_at" timestamp with time zone,
+    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL
+);
+
+
+ALTER TABLE "public"."payment_disputes" OWNER TO "postgres";
+
+
+COMMENT ON TABLE "public"."payment_disputes" IS 'Stripe Dispute records linked to payments for aggregation and audit.';
+
+
+
+CREATE TABLE IF NOT EXISTS "public"."payments" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "attendance_id" "uuid" NOT NULL,
+    "method" "public"."payment_method_enum" NOT NULL,
+    "amount" integer NOT NULL,
+    "status" "public"."payment_status_enum" DEFAULT 'pending'::"public"."payment_status_enum" NOT NULL,
+    "stripe_payment_intent_id" character varying(255),
+    "webhook_event_id" character varying(100),
+    "webhook_processed_at" timestamp with time zone,
+    "paid_at" timestamp with time zone,
+    "stripe_session_id" character varying(255),
+    "stripe_account_id" character varying(255),
+    "application_fee_amount" integer DEFAULT 0 NOT NULL,
+    "stripe_checkout_session_id" character varying(255),
+    "transfer_group" character varying(255),
+    "stripe_charge_id" character varying(255),
+    "stripe_balance_transaction_id" character varying(255),
+    "stripe_customer_id" character varying(255),
+    "stripe_transfer_id" character varying(255),
+    "refunded_amount" integer DEFAULT 0 NOT NULL,
+    "destination_account_id" character varying(255),
+    "application_fee_id" character varying(255),
+    "application_fee_refund_id" character varying(255),
+    "application_fee_refunded_amount" integer DEFAULT 0 NOT NULL,
+    "application_fee_tax_rate" numeric(5,2) DEFAULT 0.00 NOT NULL,
+    "application_fee_tax_amount" integer DEFAULT 0 NOT NULL,
+    "application_fee_excl_tax" integer DEFAULT 0 NOT NULL,
+    "tax_included" boolean DEFAULT true NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "stripe_balance_transaction_fee" integer,
+    "stripe_balance_transaction_net" integer,
+    "stripe_fee_details" "jsonb",
+    "version" integer DEFAULT 1 NOT NULL,
+    CONSTRAINT "chk_payments_application_fee_amount_non_negative" CHECK (("application_fee_amount" >= 0)),
+    CONSTRAINT "chk_payments_application_fee_refunded_amount_non_negative" CHECK (("application_fee_refunded_amount" >= 0)),
+    CONSTRAINT "chk_payments_refunded_amount_non_negative" CHECK (("refunded_amount" >= 0)),
+    CONSTRAINT "payments_amount_check" CHECK (("amount" >= 0)),
+    CONSTRAINT "payments_paid_at_when_completed" CHECK (((("status" = ANY (ARRAY['paid'::"public"."payment_status_enum", 'received'::"public"."payment_status_enum", 'completed'::"public"."payment_status_enum"])) AND ("paid_at" IS NOT NULL)) OR ("status" <> ALL (ARRAY['paid'::"public"."payment_status_enum", 'received'::"public"."payment_status_enum", 'completed'::"public"."payment_status_enum"])))),
+    CONSTRAINT "payments_stripe_intent_required" CHECK (((("method" = 'stripe'::"public"."payment_method_enum") AND ("status" = 'pending'::"public"."payment_status_enum")) OR (("method" = 'stripe'::"public"."payment_method_enum") AND ("status" <> 'pending'::"public"."payment_status_enum") AND ("stripe_payment_intent_id" IS NOT NULL)) OR ("method" <> 'stripe'::"public"."payment_method_enum")))
+);
+
+
+ALTER TABLE "public"."payments" OWNER TO "postgres";
+
+
+COMMENT ON TABLE "public"."payments" IS '決済情報（Destination charges対応）';
+
+
+
+COMMENT ON COLUMN "public"."payments"."application_fee_amount" IS 'プラットフォーム手数料（円）';
+
+
+
+COMMENT ON COLUMN "public"."payments"."stripe_checkout_session_id" IS 'Stripe Checkout Session ID';
+
+
+
+COMMENT ON COLUMN "public"."payments"."transfer_group" IS 'イベント単位の送金グループ識別子';
+
+
+
+COMMENT ON COLUMN "public"."payments"."stripe_charge_id" IS 'Stripe Charge ID（確定時に保存）';
+
+
+
+COMMENT ON COLUMN "public"."payments"."stripe_balance_transaction_id" IS 'Stripe Balance Transaction ID';
+
+
+
+COMMENT ON COLUMN "public"."payments"."stripe_customer_id" IS 'Stripe Customer ID（将来の継続課金用）';
+
+
+
+COMMENT ON COLUMN "public"."payments"."stripe_transfer_id" IS 'Stripe Transfer ID（自動Transfer相関用）';
+
+
+
+COMMENT ON COLUMN "public"."payments"."refunded_amount" IS '返金累積額（円）';
+
+
+
+COMMENT ON COLUMN "public"."payments"."destination_account_id" IS 'Stripe Connect宛先アカウントID';
+
+
+
+COMMENT ON COLUMN "public"."payments"."application_fee_id" IS 'Stripe Application Fee ID';
+
+
+
+COMMENT ON COLUMN "public"."payments"."application_fee_refund_id" IS 'Stripe Application Fee Refund ID';
+
+
+
+COMMENT ON COLUMN "public"."payments"."application_fee_refunded_amount" IS 'プラットフォーム手数料返金額（円）';
+
+
+
+COMMENT ON COLUMN "public"."payments"."application_fee_tax_rate" IS 'Tax rate applied to application fee (e.g., 10.00 for 10%)';
+
+
+
+COMMENT ON COLUMN "public"."payments"."application_fee_tax_amount" IS 'Tax amount in yen (integer)';
+
+
+
+COMMENT ON COLUMN "public"."payments"."application_fee_excl_tax" IS 'Application fee excluding tax in yen (integer)';
+
+
+
+COMMENT ON COLUMN "public"."payments"."tax_included" IS 'Whether the application_fee_amount includes tax (true=tax included, false=tax excluded)';
+
+
+
+COMMENT ON COLUMN "public"."payments"."version" IS 'Optimistic lock version to prevent concurrent updates';
+
+
+
+CREATE TABLE IF NOT EXISTS "public"."payout_scheduler_logs" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "execution_id" character varying(100) NOT NULL,
+    "start_time" timestamp without time zone NOT NULL,
+    "end_time" timestamp without time zone NOT NULL,
+    "processing_time_ms" integer NOT NULL,
+    "eligible_events_count" integer DEFAULT 0 NOT NULL,
+    "successful_payouts" integer DEFAULT 0 NOT NULL,
+    "failed_payouts" integer DEFAULT 0 NOT NULL,
+    "total_amount" integer DEFAULT 0 NOT NULL,
+    "dry_run" boolean DEFAULT false NOT NULL,
+    "error_message" "text",
+    "results" "jsonb",
+    "summary" "jsonb",
+    "created_at" timestamp without time zone DEFAULT "now"(),
+    CONSTRAINT "payout_scheduler_logs_eligible_events_count_check" CHECK (("eligible_events_count" >= 0)),
+    CONSTRAINT "payout_scheduler_logs_failed_payouts_check" CHECK (("failed_payouts" >= 0)),
+    CONSTRAINT "payout_scheduler_logs_processing_time_ms_check" CHECK (("processing_time_ms" >= 0)),
+    CONSTRAINT "payout_scheduler_logs_successful_payouts_check" CHECK (("successful_payouts" >= 0)),
+    CONSTRAINT "payout_scheduler_logs_total_amount_check" CHECK (("total_amount" >= 0)),
+    CONSTRAINT "valid_execution_time" CHECK (("end_time" >= "start_time")),
+    CONSTRAINT "valid_payout_counts" CHECK ((("successful_payouts" + "failed_payouts") <= "eligible_events_count"))
+);
+
+
+ALTER TABLE "public"."payout_scheduler_logs" OWNER TO "postgres";
+
+
+COMMENT ON TABLE "public"."payout_scheduler_logs" IS 'PayoutScheduler実行ログテーブル - 自動送金処理の実行履歴を記録';
+
+
+
+CREATE TABLE IF NOT EXISTS "public"."users" (
+    "id" "uuid" NOT NULL,
+    "name" character varying(255) NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL
+);
+
+
+ALTER TABLE "public"."users" OWNER TO "postgres";
+
+
+COMMENT ON TABLE "public"."users" IS '運営者情報（Supabase auth.usersと同期）';
+
+
+
+CREATE OR REPLACE VIEW "public"."public_profiles" AS
+ SELECT "id",
+    "name",
+    "created_at"
+   FROM "public"."users";
+
+
+ALTER VIEW "public"."public_profiles" OWNER TO "postgres";
+
+
+CREATE TABLE IF NOT EXISTS "public"."scheduler_locks" (
+    "lock_name" "text" NOT NULL,
+    "acquired_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "expires_at" timestamp with time zone NOT NULL,
+    "process_id" "text",
+    "metadata" "jsonb" DEFAULT '{}'::"jsonb",
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL
+);
+
+
+ALTER TABLE "public"."scheduler_locks" OWNER TO "postgres";
+
+
+COMMENT ON TABLE "public"."scheduler_locks" IS 'スケジューラー排他制御用テーブル。行ロックによる確実な単一実行を保証する';
+
+
+
+CREATE TABLE IF NOT EXISTS "public"."security_audit_log" (
+    "id" bigint NOT NULL,
+    "event_type" "text" NOT NULL,
+    "user_role" "text",
+    "ip_address" "inet",
+    "details" "jsonb",
+    "timestamp" timestamp with time zone DEFAULT "now"()
+);
+
+
+ALTER TABLE "public"."security_audit_log" OWNER TO "postgres";
+
+
+COMMENT ON TABLE "public"."security_audit_log" IS 'セキュリティ監査ログテーブル';
+
+
+
+CREATE SEQUENCE IF NOT EXISTS "public"."security_audit_log_id_seq"
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE "public"."security_audit_log_id_seq" OWNER TO "postgres";
+
+
+ALTER SEQUENCE "public"."security_audit_log_id_seq" OWNED BY "public"."security_audit_log"."id";
+
+
+
+CREATE TABLE IF NOT EXISTS "public"."settlements" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "event_id" "uuid" NOT NULL,
+    "user_id" "uuid" NOT NULL,
+    "total_stripe_sales" integer DEFAULT 0 NOT NULL,
+    "total_stripe_fee" integer DEFAULT 0 NOT NULL,
+    "platform_fee" integer DEFAULT 0 NOT NULL,
+    "net_payout_amount" integer DEFAULT 0 NOT NULL,
+    "status" "public"."payout_status_enum" DEFAULT 'completed'::"public"."payout_status_enum" NOT NULL,
+    "webhook_event_id" character varying(100),
+    "webhook_processed_at" timestamp with time zone,
+    "processed_at" timestamp with time zone,
+    "notes" "text",
+    "stripe_account_id" character varying(255) NOT NULL,
+    "retry_count" integer DEFAULT 0 NOT NULL,
+    "last_error" "text",
+    "transfer_group" character varying(255),
+    "settlement_mode" "public"."settlement_mode_enum" DEFAULT 'destination_charge'::"public"."settlement_mode_enum",
+    "generated_at" timestamp with time zone DEFAULT "now"(),
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "total_disputed_amount" integer DEFAULT 0 NOT NULL,
+    "dispute_count" integer DEFAULT 0 NOT NULL,
+    CONSTRAINT "payouts_amounts_non_negative" CHECK ((("total_stripe_sales" >= 0) AND ("total_stripe_fee" >= 0) AND ("platform_fee" >= 0) AND ("net_payout_amount" >= 0))),
+    CONSTRAINT "payouts_calculation_valid" CHECK (("net_payout_amount" = (("total_stripe_sales" - "total_stripe_fee") - "platform_fee")))
+);
+
+
+ALTER TABLE "public"."settlements" OWNER TO "postgres";
+
+
+COMMENT ON TABLE "public"."settlements" IS '運営者への売上清算履歴（レポート・スナップショット用途）';
+
+
+
+COMMENT ON COLUMN "public"."settlements"."stripe_account_id" IS 'Stripe Connect Account ID';
+
+
+
+COMMENT ON COLUMN "public"."settlements"."retry_count" IS '清算処理のリトライ回数';
+
+
+
+COMMENT ON COLUMN "public"."settlements"."last_error" IS '最後に発生したエラーメッセージ';
+
+
+
+COMMENT ON COLUMN "public"."settlements"."transfer_group" IS 'イベント単位の送金グループ識別子';
+
+
+
+COMMENT ON COLUMN "public"."settlements"."settlement_mode" IS '送金モード（destination_charge固定）';
+
+
+
+COMMENT ON COLUMN "public"."settlements"."generated_at" IS 'レポート生成日時';
+
+
+
+CREATE TABLE IF NOT EXISTS "public"."stripe_connect_accounts" (
+    "user_id" "uuid" NOT NULL,
+    "stripe_account_id" character varying(255) NOT NULL,
+    "status" "public"."stripe_account_status_enum" DEFAULT 'unverified'::"public"."stripe_account_status_enum" NOT NULL,
+    "charges_enabled" boolean DEFAULT false NOT NULL,
+    "payouts_enabled" boolean DEFAULT false NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL
+);
+
+
+ALTER TABLE "public"."stripe_connect_accounts" OWNER TO "postgres";
+
+
+COMMENT ON TABLE "public"."stripe_connect_accounts" IS 'Stripe Connectアカウント情報';
+
+
+
+CREATE TABLE IF NOT EXISTS "public"."suspicious_activity_log" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "activity_type" "public"."suspicious_activity_type_enum" NOT NULL,
+    "table_name" character varying(100),
+    "user_role" character varying(50),
+    "user_id" "uuid",
+    "attempted_action" character varying(100),
+    "expected_result_count" integer,
+    "actual_result_count" integer,
+    "context" "jsonb",
+    "severity" "public"."security_severity_enum" DEFAULT 'MEDIUM'::"public"."security_severity_enum",
+    "ip_address" "inet",
+    "user_agent" "text",
+    "session_id" "text",
+    "detection_method" character varying(100),
+    "false_positive" boolean DEFAULT false,
+    "investigated_at" timestamp with time zone,
+    "investigated_by" "uuid",
+    "investigation_notes" "text",
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL
+);
+
+
+ALTER TABLE "public"."suspicious_activity_log" OWNER TO "postgres";
+
+
+COMMENT ON TABLE "public"."suspicious_activity_log" IS '疑わしい活動やセキュリティ違反の可能性がある操作のログ';
+
+
+
+COMMENT ON COLUMN "public"."suspicious_activity_log"."false_positive" IS '誤検知フラグ - 調査の結果、問題なしと判定された場合にTRUEに設定';
+
+
+
+CREATE TABLE IF NOT EXISTS "public"."system_logs" (
+    "id" bigint NOT NULL,
+    "operation_type" character varying(50) NOT NULL,
+    "details" "jsonb",
+    "executed_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL
+);
+
+
+ALTER TABLE "public"."system_logs" OWNER TO "postgres";
+
+
+COMMENT ON TABLE "public"."system_logs" IS 'システムログテーブル';
+
+
+
+CREATE SEQUENCE IF NOT EXISTS "public"."system_logs_id_seq"
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE "public"."system_logs_id_seq" OWNER TO "postgres";
+
+
+ALTER SEQUENCE "public"."system_logs_id_seq" OWNED BY "public"."system_logs"."id";
+
+
+
+CREATE TABLE IF NOT EXISTS "public"."unauthorized_access_log" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "attempted_resource" character varying(200) NOT NULL,
+    "required_permission" character varying(100),
+    "user_context" "jsonb",
+    "user_id" "uuid",
+    "guest_token_hash" character varying(64),
+    "detection_method" character varying(50) NOT NULL,
+    "blocked_by_rls" boolean DEFAULT false,
+    "ip_address" "inet",
+    "user_agent" "text",
+    "session_id" "text",
+    "request_path" character varying(500),
+    "request_method" character varying(10),
+    "request_headers" "jsonb",
+    "response_status" integer,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL
+);
+
+
+ALTER TABLE "public"."unauthorized_access_log" OWNER TO "postgres";
+
+
+COMMENT ON TABLE "public"."unauthorized_access_log" IS '不正なアクセス試行や権限違反の記録';
+
+
+
+COMMENT ON COLUMN "public"."unauthorized_access_log"."blocked_by_rls" IS 'RLSポリシーによってアクセスがブロックされた場合にTRUE';
+
+
+
+CREATE TABLE IF NOT EXISTS "public"."webhook_events" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "stripe_event_id" character varying(255) NOT NULL,
+    "event_type" character varying(100) NOT NULL,
+    "processing_result" "jsonb",
+    "processed_at" timestamp with time zone NOT NULL,
+    "stripe_account_id" character varying(255),
+    "retry_count" integer DEFAULT 0 NOT NULL,
+    "last_retry_at" timestamp with time zone,
+    "status" character varying(30) DEFAULT 'processed'::character varying NOT NULL,
+    "processing_error" "text",
+    "stripe_event_created" bigint,
+    "object_id" character varying(255),
+    "created_at" timestamp with time zone DEFAULT "now"()
+);
+
+
+ALTER TABLE "public"."webhook_events" OWNER TO "postgres";
+
+
+COMMENT ON TABLE "public"."webhook_events" IS 'Webhook処理の冪等性を保証するためのテーブル';
+
+
+
+COMMENT ON COLUMN "public"."webhook_events"."stripe_account_id" IS 'Stripe Connect Account ID（Connect イベント相関用）';
+
+
+
+COMMENT ON COLUMN "public"."webhook_events"."retry_count" IS 'Webhook再試行回数';
+
+
+
+COMMENT ON COLUMN "public"."webhook_events"."last_retry_at" IS '最終再試行日時';
+
+
+
+COMMENT ON COLUMN "public"."webhook_events"."status" IS 'Webhook処理状態（processed/failed）';
+
+
+
+COMMENT ON COLUMN "public"."webhook_events"."processing_error" IS 'Webhook処理エラー詳細';
+
+
+
+COMMENT ON COLUMN "public"."webhook_events"."stripe_event_created" IS 'Stripe event.created (epoch seconds). Used for FIFO ordering to reduce out-of-order processing.';
+
+
+
+COMMENT ON COLUMN "public"."webhook_events"."object_id" IS 'Stripe data.object.id captured for duplicate detection across separate events of the same type.';
+
+
+
+ALTER TABLE ONLY "public"."security_audit_log" ALTER COLUMN "id" SET DEFAULT "nextval"('"public"."security_audit_log_id_seq"'::"regclass");
+
+
+
+ALTER TABLE ONLY "public"."system_logs" ALTER COLUMN "id" SET DEFAULT "nextval"('"public"."system_logs_id_seq"'::"regclass");
+
+
+
+ALTER TABLE ONLY "public"."admin_access_audit"
+    ADD CONSTRAINT "admin_access_audit_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."attendances"
+    ADD CONSTRAINT "attendances_guest_token_key" UNIQUE ("guest_token");
+
+
+
+ALTER TABLE ONLY "public"."attendances"
+    ADD CONSTRAINT "attendances_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."events"
+    ADD CONSTRAINT "events_invite_token_key" UNIQUE ("invite_token");
+
+
+
+ALTER TABLE ONLY "public"."events"
+    ADD CONSTRAINT "events_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."fee_config"
+    ADD CONSTRAINT "fee_config_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."guest_access_audit"
+    ADD CONSTRAINT "guest_access_audit_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."invite_links"
+    ADD CONSTRAINT "invite_links_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."invite_links"
+    ADD CONSTRAINT "invite_links_token_key" UNIQUE ("token");
+
+
+
+ALTER TABLE ONLY "public"."payment_disputes"
+    ADD CONSTRAINT "payment_disputes_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."payment_disputes"
+    ADD CONSTRAINT "payment_disputes_stripe_dispute_id_key" UNIQUE ("stripe_dispute_id");
+
+
+
+ALTER TABLE ONLY "public"."payments"
+    ADD CONSTRAINT "payments_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."payments"
+    ADD CONSTRAINT "payments_stripe_payment_intent_id_key" UNIQUE ("stripe_payment_intent_id");
+
+
+
+ALTER TABLE ONLY "public"."payout_scheduler_logs"
+    ADD CONSTRAINT "payout_scheduler_logs_execution_id_key" UNIQUE ("execution_id");
+
+
+
+ALTER TABLE ONLY "public"."payout_scheduler_logs"
+    ADD CONSTRAINT "payout_scheduler_logs_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."settlements"
+    ADD CONSTRAINT "payouts_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."scheduler_locks"
+    ADD CONSTRAINT "scheduler_locks_pkey" PRIMARY KEY ("lock_name");
+
+
+
+ALTER TABLE ONLY "public"."security_audit_log"
+    ADD CONSTRAINT "security_audit_log_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."stripe_connect_accounts"
+    ADD CONSTRAINT "stripe_connect_accounts_pkey" PRIMARY KEY ("user_id");
+
+
+
+ALTER TABLE ONLY "public"."stripe_connect_accounts"
+    ADD CONSTRAINT "stripe_connect_accounts_stripe_account_id_key" UNIQUE ("stripe_account_id");
+
+
+
+ALTER TABLE ONLY "public"."suspicious_activity_log"
+    ADD CONSTRAINT "suspicious_activity_log_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."system_logs"
+    ADD CONSTRAINT "system_logs_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."unauthorized_access_log"
+    ADD CONSTRAINT "unauthorized_access_log_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."users"
+    ADD CONSTRAINT "users_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."webhook_events"
+    ADD CONSTRAINT "webhook_events_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."webhook_events"
+    ADD CONSTRAINT "webhook_events_stripe_event_id_unique" UNIQUE ("stripe_event_id");
+
+
+
+CREATE UNIQUE INDEX "attendances_event_email_unique" ON "public"."attendances" USING "btree" ("event_id", "email");
+
+
+
+CREATE INDEX "idx_admin_access_audit_created_at_reason" ON "public"."admin_access_audit" USING "btree" ("created_at" DESC, "reason");
+
+
+
+CREATE INDEX "idx_admin_access_audit_failed_access" ON "public"."admin_access_audit" USING "btree" ("created_at" DESC, "reason") WHERE ("success" = false);
+
+
+
+CREATE INDEX "idx_admin_access_audit_user_id_created_at" ON "public"."admin_access_audit" USING "btree" ("user_id", "created_at" DESC) WHERE ("user_id" IS NOT NULL);
+
+
+
+CREATE INDEX "idx_attendances_event_id" ON "public"."attendances" USING "btree" ("event_id");
+
+
+
+CREATE INDEX "idx_attendances_event_id_guest_token" ON "public"."attendances" USING "btree" ("event_id", "guest_token") WHERE (("guest_token" IS NOT NULL) AND (("guest_token")::"text" ~ '^gst_[a-zA-Z0-9_-]{32}$'::"text"));
+
+
+
+CREATE INDEX "idx_attendances_event_id_id" ON "public"."attendances" USING "btree" ("event_id", "id");
+
+
+
+CREATE INDEX "idx_attendances_guest_token" ON "public"."attendances" USING "btree" ("guest_token") WHERE ("guest_token" IS NOT NULL);
+
+
+
+CREATE INDEX "idx_attendances_guest_token_active" ON "public"."attendances" USING "btree" ("guest_token") WHERE (("guest_token" IS NOT NULL) AND (("guest_token")::"text" ~ '^gst_[a-zA-Z0-9_-]{32}$'::"text"));
+
+
+
+CREATE INDEX "idx_events_created_by" ON "public"."events" USING "btree" ("created_by");
+
+
+
+CREATE INDEX "idx_events_deadlines" ON "public"."events" USING "btree" ("registration_deadline", "payment_deadline", "date") WHERE (("registration_deadline" IS NOT NULL) OR ("payment_deadline" IS NOT NULL));
+
+
+
+CREATE INDEX "idx_events_invite_token" ON "public"."events" USING "btree" ("invite_token") WHERE ("invite_token" IS NOT NULL);
+
+
+
+CREATE INDEX "idx_events_status" ON "public"."events" USING "btree" ("status");
+
+
+
+CREATE INDEX "idx_guest_access_audit_attendance_id" ON "public"."guest_access_audit" USING "btree" ("attendance_id", "created_at" DESC) WHERE ("attendance_id" IS NOT NULL);
+
+
+
+CREATE INDEX "idx_guest_access_audit_created_at" ON "public"."guest_access_audit" USING "btree" ("created_at" DESC) WHERE ("success" = false);
+
+
+
+CREATE INDEX "idx_guest_access_audit_event_id" ON "public"."guest_access_audit" USING "btree" ("event_id", "created_at" DESC) WHERE ("event_id" IS NOT NULL);
+
+
+
+CREATE INDEX "idx_guest_access_audit_token_hash_created_at" ON "public"."guest_access_audit" USING "btree" ("guest_token_hash", "created_at" DESC);
+
+
+
+CREATE INDEX "idx_invite_links_token" ON "public"."invite_links" USING "btree" ("token");
+
+
+
+CREATE INDEX "idx_payment_disputes_charge_id" ON "public"."payment_disputes" USING "btree" ("charge_id");
+
+
+
+CREATE INDEX "idx_payment_disputes_dispute_status" ON "public"."payment_disputes" USING "btree" ("status");
+
+
+
+CREATE INDEX "idx_payment_disputes_payment_id" ON "public"."payment_disputes" USING "btree" ("payment_id");
+
+
+
+CREATE INDEX "idx_payment_disputes_pi_id" ON "public"."payment_disputes" USING "btree" ("payment_intent_id");
+
+
+
+CREATE INDEX "idx_payments_attendance_id" ON "public"."payments" USING "btree" ("attendance_id");
+
+
+
+CREATE INDEX "idx_payments_balance_txn" ON "public"."payments" USING "btree" ("stripe_balance_transaction_id");
+
+
+
+CREATE INDEX "idx_payments_balance_txn_fee" ON "public"."payments" USING "btree" ("stripe_balance_transaction_fee");
+
+
+
+CREATE INDEX "idx_payments_balance_txn_net" ON "public"."payments" USING "btree" ("stripe_balance_transaction_net");
+
+
+
+CREATE INDEX "idx_payments_checkout_session" ON "public"."payments" USING "btree" ("stripe_checkout_session_id");
+
+
+
+CREATE INDEX "idx_payments_customer_id" ON "public"."payments" USING "btree" ("stripe_customer_id");
+
+
+
+CREATE INDEX "idx_payments_destination_account" ON "public"."payments" USING "btree" ("destination_account_id");
+
+
+
+CREATE INDEX "idx_payments_id_version" ON "public"."payments" USING "btree" ("id", "version");
+
+
+
+CREATE INDEX "idx_payments_method_status_paid" ON "public"."payments" USING "btree" ("method", "status") WHERE (("method" = 'stripe'::"public"."payment_method_enum") AND ("status" = 'paid'::"public"."payment_status_enum"));
+
+
+
+CREATE INDEX "idx_payments_refunded_amount" ON "public"."payments" USING "btree" ("refunded_amount") WHERE ("refunded_amount" > 0);
+
+
+
+CREATE INDEX "idx_payments_status" ON "public"."payments" USING "btree" ("status");
+
+
+
+CREATE INDEX "idx_payments_stripe_account_id" ON "public"."payments" USING "btree" ("stripe_account_id");
+
+
+
+CREATE UNIQUE INDEX "idx_payments_stripe_charge_id" ON "public"."payments" USING "btree" ("stripe_charge_id") WHERE ("stripe_charge_id" IS NOT NULL);
+
+
+
+CREATE INDEX "idx_payments_stripe_payment_intent" ON "public"."payments" USING "btree" ("stripe_payment_intent_id");
+
+
+
+CREATE INDEX "idx_payments_stripe_session_id" ON "public"."payments" USING "btree" ("stripe_session_id");
+
+
+
+CREATE INDEX "idx_payments_tax_included" ON "public"."payments" USING "btree" ("tax_included");
+
+
+
+CREATE INDEX "idx_payments_tax_rate" ON "public"."payments" USING "btree" ("application_fee_tax_rate");
+
+
+
+CREATE INDEX "idx_payments_transfer_group" ON "public"."payments" USING "btree" ("transfer_group");
+
+
+
+CREATE INDEX "idx_payments_webhook_event" ON "public"."payments" USING "btree" ("webhook_event_id");
+
+
+
+CREATE INDEX "idx_payout_scheduler_logs_dry_run" ON "public"."payout_scheduler_logs" USING "btree" ("dry_run", "start_time" DESC);
+
+
+
+CREATE INDEX "idx_payout_scheduler_logs_execution_id" ON "public"."payout_scheduler_logs" USING "btree" ("execution_id");
+
+
+
+CREATE INDEX "idx_payout_scheduler_logs_failed" ON "public"."payout_scheduler_logs" USING "btree" ("start_time" DESC) WHERE ("error_message" IS NOT NULL);
+
+
+
+CREATE INDEX "idx_payout_scheduler_logs_start_time" ON "public"."payout_scheduler_logs" USING "btree" ("start_time" DESC);
+
+
+
+CREATE INDEX "idx_payout_scheduler_logs_success" ON "public"."payout_scheduler_logs" USING "btree" ("start_time" DESC) WHERE ("error_message" IS NULL);
+
+
+
+CREATE INDEX "idx_scheduler_locks_expires_at" ON "public"."scheduler_locks" USING "btree" ("expires_at");
+
+
+
+CREATE INDEX "idx_settlements_event_generated_at" ON "public"."settlements" USING "btree" ("event_id", "generated_at");
+
+
+
+CREATE INDEX "idx_settlements_event_id" ON "public"."settlements" USING "btree" ("event_id");
+
+
+
+CREATE INDEX "idx_settlements_generated_date_jst" ON "public"."settlements" USING "btree" (((("generated_at" AT TIME ZONE 'Asia/Tokyo'::"text"))::"date"));
+
+
+
+CREATE INDEX "idx_settlements_settlement_mode" ON "public"."settlements" USING "btree" ("settlement_mode");
+
+
+
+CREATE INDEX "idx_settlements_status" ON "public"."settlements" USING "btree" ("status");
+
+
+
+CREATE INDEX "idx_settlements_stripe_account" ON "public"."settlements" USING "btree" ("stripe_account_id");
+
+
+
+CREATE INDEX "idx_settlements_transfer_group" ON "public"."settlements" USING "btree" ("transfer_group");
+
+
+
+CREATE INDEX "idx_settlements_user_id" ON "public"."settlements" USING "btree" ("user_id");
+
+
+
+CREATE INDEX "idx_stripe_connect_accounts_status" ON "public"."stripe_connect_accounts" USING "btree" ("status");
+
+
+
+CREATE INDEX "idx_stripe_connect_accounts_stripe_account_id" ON "public"."stripe_connect_accounts" USING "btree" ("stripe_account_id");
+
+
+
+CREATE INDEX "idx_stripe_connect_accounts_user_id" ON "public"."stripe_connect_accounts" USING "btree" ("user_id");
+
+
+
+CREATE INDEX "idx_suspicious_activity_log_activity_type" ON "public"."suspicious_activity_log" USING "btree" ("activity_type", "created_at" DESC);
+
+
+
+CREATE INDEX "idx_suspicious_activity_log_created_at_severity" ON "public"."suspicious_activity_log" USING "btree" ("created_at" DESC, "severity") WHERE ("severity" = ANY (ARRAY['HIGH'::"public"."security_severity_enum", 'CRITICAL'::"public"."security_severity_enum"]));
+
+
+
+CREATE INDEX "idx_suspicious_activity_log_uninvestigated" ON "public"."suspicious_activity_log" USING "btree" ("created_at" DESC) WHERE (("investigated_at" IS NULL) AND ("severity" = ANY (ARRAY['HIGH'::"public"."security_severity_enum", 'CRITICAL'::"public"."security_severity_enum"])));
+
+
+
+CREATE INDEX "idx_suspicious_activity_log_user_id" ON "public"."suspicious_activity_log" USING "btree" ("user_id", "created_at" DESC) WHERE ("user_id" IS NOT NULL);
+
+
+
+CREATE INDEX "idx_unauthorized_access_log_created_at" ON "public"."unauthorized_access_log" USING "btree" ("created_at" DESC);
+
+
+
+CREATE INDEX "idx_unauthorized_access_log_detection_method" ON "public"."unauthorized_access_log" USING "btree" ("detection_method", "created_at" DESC);
+
+
+
+CREATE INDEX "idx_unauthorized_access_log_guest_token" ON "public"."unauthorized_access_log" USING "btree" ("guest_token_hash", "created_at" DESC) WHERE ("guest_token_hash" IS NOT NULL);
+
+
+
+CREATE INDEX "idx_unauthorized_access_log_ip_address" ON "public"."unauthorized_access_log" USING "btree" ("ip_address", "created_at" DESC) WHERE ("ip_address" IS NOT NULL);
+
+
+
+CREATE INDEX "idx_unauthorized_access_log_user_id" ON "public"."unauthorized_access_log" USING "btree" ("user_id", "created_at" DESC) WHERE ("user_id" IS NOT NULL);
+
+
+
+CREATE INDEX "idx_webhook_events_account_event" ON "public"."webhook_events" USING "btree" ("stripe_account_id", "event_type");
+
+
+
+CREATE INDEX "idx_webhook_events_account_event_object" ON "public"."webhook_events" USING "btree" ("stripe_account_id", "event_type", "object_id");
+
+
+
+CREATE INDEX "idx_webhook_events_dead_only" ON "public"."webhook_events" USING "btree" ("status") WHERE (("status")::"text" = 'dead'::"text");
+
+
+
+CREATE INDEX "idx_webhook_events_event_created" ON "public"."webhook_events" USING "btree" ("stripe_event_created");
+
+
+
+CREATE INDEX "idx_webhook_events_event_type" ON "public"."webhook_events" USING "btree" ("event_type");
+
+
+
+CREATE INDEX "idx_webhook_events_event_type_object_id" ON "public"."webhook_events" USING "btree" ("event_type", "object_id");
+
+
+
+CREATE INDEX "idx_webhook_events_failed_only" ON "public"."webhook_events" USING "btree" ("status") WHERE (("status")::"text" = 'failed'::"text");
+
+
+
+CREATE INDEX "idx_webhook_events_object_id" ON "public"."webhook_events" USING "btree" ("object_id");
+
+
+
+CREATE INDEX "idx_webhook_events_processed_at" ON "public"."webhook_events" USING "btree" ("processed_at");
+
+
+
+CREATE INDEX "idx_webhook_events_status" ON "public"."webhook_events" USING "btree" ("status");
+
+
+
+CREATE INDEX "idx_webhook_events_stripe_account_id" ON "public"."webhook_events" USING "btree" ("stripe_account_id");
+
+
+
+CREATE UNIQUE INDEX "uniq_settlements_event_generated_date_jst" ON "public"."settlements" USING "btree" ("event_id", ((("generated_at" AT TIME ZONE 'Asia/Tokyo'::"text"))::"date"));
+
+
+
+CREATE UNIQUE INDEX "unique_active_settlement_per_event" ON "public"."settlements" USING "btree" ("event_id") WHERE ("status" = ANY (ARRAY['pending'::"public"."payout_status_enum", 'processing'::"public"."payout_status_enum", 'completed'::"public"."payout_status_enum"]));
+
+
+
+CREATE UNIQUE INDEX "unique_open_payment_per_attendance" ON "public"."payments" USING "btree" ("attendance_id") WHERE ("status" = ANY (ARRAY['pending'::"public"."payment_status_enum", 'failed'::"public"."payment_status_enum"]));
+
+
+
+CREATE OR REPLACE TRIGGER "check_attendance_capacity_before_insert_or_update" BEFORE INSERT OR UPDATE ON "public"."attendances" FOR EACH ROW EXECUTE FUNCTION "public"."check_attendance_capacity_limit"();
+
+
+
+CREATE OR REPLACE TRIGGER "trg_prevent_payment_status_rollback" BEFORE UPDATE ON "public"."payments" FOR EACH ROW EXECUTE FUNCTION "public"."prevent_payment_status_rollback"();
+
+
+
+CREATE OR REPLACE TRIGGER "trigger_update_payment_version" BEFORE UPDATE ON "public"."payments" FOR EACH ROW EXECUTE FUNCTION "public"."update_payment_version"();
+
+
+
+CREATE OR REPLACE TRIGGER "update_attendances_updated_at" BEFORE UPDATE ON "public"."attendances" FOR EACH ROW EXECUTE FUNCTION "public"."update_updated_at_column"();
+
+
+
+CREATE OR REPLACE TRIGGER "update_events_updated_at" BEFORE UPDATE ON "public"."events" FOR EACH ROW EXECUTE FUNCTION "public"."update_updated_at_column"();
+
+
+
+CREATE OR REPLACE TRIGGER "update_invite_links_updated_at" BEFORE UPDATE ON "public"."invite_links" FOR EACH ROW EXECUTE FUNCTION "public"."update_updated_at_column"();
+
+
+
+CREATE OR REPLACE TRIGGER "update_payments_updated_at" BEFORE UPDATE ON "public"."payments" FOR EACH ROW EXECUTE FUNCTION "public"."update_updated_at_column"();
+
+
+
+CREATE OR REPLACE TRIGGER "update_settlements_updated_at" BEFORE UPDATE ON "public"."settlements" FOR EACH ROW EXECUTE FUNCTION "public"."update_updated_at_column"();
+
+
+
+CREATE OR REPLACE TRIGGER "update_stripe_connect_accounts_updated_at" BEFORE UPDATE ON "public"."stripe_connect_accounts" FOR EACH ROW EXECUTE FUNCTION "public"."update_updated_at_column"();
+
+
+
+CREATE OR REPLACE TRIGGER "update_users_updated_at" BEFORE UPDATE ON "public"."users" FOR EACH ROW EXECUTE FUNCTION "public"."update_updated_at_column"();
+
+
+
+ALTER TABLE ONLY "public"."admin_access_audit"
+    ADD CONSTRAINT "admin_access_audit_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "auth"."users"("id") ON DELETE SET NULL;
+
+
+
+ALTER TABLE ONLY "public"."attendances"
+    ADD CONSTRAINT "attendances_event_id_fkey" FOREIGN KEY ("event_id") REFERENCES "public"."events"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."events"
+    ADD CONSTRAINT "events_created_by_fkey" FOREIGN KEY ("created_by") REFERENCES "public"."users"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."guest_access_audit"
+    ADD CONSTRAINT "guest_access_audit_attendance_id_fkey" FOREIGN KEY ("attendance_id") REFERENCES "public"."attendances"("id") ON DELETE SET NULL;
+
+
+
+ALTER TABLE ONLY "public"."guest_access_audit"
+    ADD CONSTRAINT "guest_access_audit_event_id_fkey" FOREIGN KEY ("event_id") REFERENCES "public"."events"("id") ON DELETE SET NULL;
+
+
+
+ALTER TABLE ONLY "public"."invite_links"
+    ADD CONSTRAINT "invite_links_created_by_fkey" FOREIGN KEY ("created_by") REFERENCES "auth"."users"("id");
+
+
+
+ALTER TABLE ONLY "public"."invite_links"
+    ADD CONSTRAINT "invite_links_event_id_fkey" FOREIGN KEY ("event_id") REFERENCES "public"."events"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."payment_disputes"
+    ADD CONSTRAINT "payment_disputes_payment_id_fkey" FOREIGN KEY ("payment_id") REFERENCES "public"."payments"("id") ON DELETE SET NULL;
+
+
+
+ALTER TABLE ONLY "public"."payments"
+    ADD CONSTRAINT "payments_attendance_id_fkey" FOREIGN KEY ("attendance_id") REFERENCES "public"."attendances"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."settlements"
+    ADD CONSTRAINT "payouts_event_id_fkey" FOREIGN KEY ("event_id") REFERENCES "public"."events"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."settlements"
+    ADD CONSTRAINT "payouts_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."stripe_connect_accounts"
+    ADD CONSTRAINT "stripe_connect_accounts_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."suspicious_activity_log"
+    ADD CONSTRAINT "suspicious_activity_log_investigated_by_fkey" FOREIGN KEY ("investigated_by") REFERENCES "auth"."users"("id") ON DELETE SET NULL;
+
+
+
+ALTER TABLE ONLY "public"."suspicious_activity_log"
+    ADD CONSTRAINT "suspicious_activity_log_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "auth"."users"("id") ON DELETE SET NULL;
+
+
+
+ALTER TABLE ONLY "public"."unauthorized_access_log"
+    ADD CONSTRAINT "unauthorized_access_log_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "auth"."users"("id") ON DELETE SET NULL;
+
+
+
+ALTER TABLE ONLY "public"."users"
+    ADD CONSTRAINT "users_id_fkey" FOREIGN KEY ("id") REFERENCES "auth"."users"("id") ON DELETE CASCADE;
+
+
+
+CREATE POLICY "Allow service role access to scheduler_locks" ON "public"."scheduler_locks" TO "service_role" USING (true) WITH CHECK (true);
+
+
+
+CREATE POLICY "Creators can delete own events" ON "public"."events" FOR DELETE TO "authenticated" USING (("auth"."uid"() = "created_by"));
+
+
+
+CREATE POLICY "Creators can insert own events" ON "public"."events" FOR INSERT TO "authenticated" WITH CHECK (("auth"."uid"() = "created_by"));
+
+
+
+CREATE POLICY "Creators can update own events" ON "public"."events" FOR UPDATE TO "authenticated" USING (("auth"."uid"() = "created_by")) WITH CHECK (("auth"."uid"() = "created_by"));
+
+
+
+CREATE POLICY "Creators can view payments" ON "public"."payments" FOR SELECT TO "authenticated" USING ((EXISTS ( SELECT 1
+   FROM ("public"."attendances" "a"
+     JOIN "public"."events" "e" ON (("a"."event_id" = "e"."id")))
+  WHERE (("a"."id" = "payments"."attendance_id") AND ("e"."created_by" = "auth"."uid"())))));
+
+
+
+CREATE POLICY "Guest token read payment details" ON "public"."payments" FOR SELECT TO "authenticated", "anon" USING ((EXISTS ( SELECT 1
+   FROM "public"."attendances" "a"
+  WHERE (("a"."id" = "payments"."attendance_id") AND ("a"."guest_token" IS NOT NULL) AND (("a"."guest_token")::"text" = "public"."get_guest_token"())))));
+
+
+
+CREATE POLICY "Guest token update payment details" ON "public"."payments" FOR UPDATE TO "authenticated", "anon" USING ((EXISTS ( SELECT 1
+   FROM ("public"."attendances" "a"
+     JOIN "public"."events" "e" ON (("a"."event_id" = "e"."id")))
+  WHERE (("a"."id" = "payments"."attendance_id") AND ("a"."guest_token" IS NOT NULL) AND (("a"."guest_token")::"text" = "public"."get_guest_token"()) AND ("e"."status" = 'upcoming'::"public"."event_status_enum") AND (("e"."payment_deadline" IS NULL) OR ("e"."payment_deadline" > "now"())) AND ("e"."date" > "now"()))))) WITH CHECK ((EXISTS ( SELECT 1
+   FROM ("public"."attendances" "a"
+     JOIN "public"."events" "e" ON (("a"."event_id" = "e"."id")))
+  WHERE (("a"."id" = "payments"."attendance_id") AND ("a"."guest_token" IS NOT NULL) AND (("a"."guest_token")::"text" = "public"."get_guest_token"()) AND ("e"."status" = 'upcoming'::"public"."event_status_enum") AND (("e"."payment_deadline" IS NULL) OR ("e"."payment_deadline" > "now"())) AND ("e"."date" > "now"())))));
+
+
+
+CREATE POLICY "Safe attendance access policy" ON "public"."attendances" FOR SELECT TO "authenticated", "anon" USING ("public"."can_access_attendance"("id"));
+
+
+
+CREATE POLICY "Safe event access policy" ON "public"."events" FOR SELECT TO "authenticated", "anon" USING ("public"."can_access_event"("id"));
+
+
+
+CREATE POLICY "Safe invite link management policy" ON "public"."invite_links" TO "authenticated" USING ("public"."can_manage_invite_links"("event_id")) WITH CHECK ("public"."can_manage_invite_links"("event_id"));
+
+
+
+CREATE POLICY "Safe invite link view policy" ON "public"."invite_links" FOR SELECT TO "authenticated", "anon" USING ((("expires_at" > "now"()) AND (("max_uses" IS NULL) OR ("current_uses" < "max_uses"))));
+
+
+
+CREATE POLICY "Service role can access admin audit logs" ON "public"."admin_access_audit" TO "service_role" USING (true) WITH CHECK (true);
+
+
+
+CREATE POLICY "Service role can access guest audit logs" ON "public"."guest_access_audit" TO "service_role" USING (true) WITH CHECK (true);
+
+
+
+CREATE POLICY "Service role can access security logs" ON "public"."security_audit_log" TO "service_role" USING (true);
+
+
+
+CREATE POLICY "Service role can access suspicious activity logs" ON "public"."suspicious_activity_log" TO "service_role" USING (true) WITH CHECK (true);
+
+
+
+CREATE POLICY "Service role can access system logs" ON "public"."system_logs" TO "service_role" USING (true);
+
+
+
+CREATE POLICY "Service role can access unauthorized access logs" ON "public"."unauthorized_access_log" TO "service_role" USING (true) WITH CHECK (true);
+
+
+
+CREATE POLICY "Service role can manage attendances" ON "public"."attendances" TO "service_role" USING (true) WITH CHECK (true);
+
+
+
+CREATE POLICY "Service role can manage payments" ON "public"."payments" TO "service_role" USING (true) WITH CHECK (true);
+
+
+
+CREATE POLICY "Service role can manage settlements" ON "public"."settlements" TO "service_role" USING (true) WITH CHECK (true);
+
+
+
+CREATE POLICY "Service role can manage stripe/payout info" ON "public"."stripe_connect_accounts" TO "service_role" USING (true) WITH CHECK (true);
+
+
+
+CREATE POLICY "Users can manage own stripe accounts" ON "public"."stripe_connect_accounts" TO "authenticated" USING (("auth"."uid"() = "user_id")) WITH CHECK (("auth"."uid"() = "user_id"));
+
+
+
+CREATE POLICY "Users can update own profile" ON "public"."users" FOR UPDATE TO "authenticated" USING (("auth"."uid"() = "id")) WITH CHECK (("auth"."uid"() = "id"));
+
+
+
+CREATE POLICY "Users can view own admin audit logs" ON "public"."admin_access_audit" FOR SELECT TO "authenticated" USING (("auth"."uid"() = "user_id"));
+
+
+
+CREATE POLICY "Users can view own profile" ON "public"."users" FOR SELECT TO "authenticated" USING (("auth"."uid"() = "id"));
+
+
+
+CREATE POLICY "Users can view own settlements" ON "public"."settlements" FOR SELECT TO "authenticated" USING (("auth"."uid"() = "user_id"));
+
+
+
+ALTER TABLE "public"."admin_access_audit" ENABLE ROW LEVEL SECURITY;
+
+
+CREATE POLICY "admin_can_view_scheduler_logs" ON "public"."payout_scheduler_logs" FOR SELECT TO "authenticated" USING ((EXISTS ( SELECT 1
+   FROM "auth"."users"
+  WHERE (("users"."id" = "auth"."uid"()) AND (("users"."email")::"text" = ANY ((ARRAY['admin@eventpay.com'::character varying, 'support@eventpay.com'::character varying])::"text"[]))))));
+
+
+
+ALTER TABLE "public"."attendances" ENABLE ROW LEVEL SECURITY;
+
+
+CREATE POLICY "dispute_select_event_owner" ON "public"."payment_disputes" FOR SELECT TO "authenticated" USING ((EXISTS ( SELECT 1
+   FROM (("public"."payments" "p"
+     JOIN "public"."attendances" "a" ON (("a"."id" = "p"."attendance_id")))
+     JOIN "public"."events" "e" ON (("e"."id" = "a"."event_id")))
+  WHERE (("p"."id" = "payment_disputes"."payment_id") AND ("e"."created_by" = "auth"."uid"())))));
+
+
+
+CREATE POLICY "event_creators_can_view_payments" ON "public"."payments" FOR SELECT TO "authenticated" USING ((EXISTS ( SELECT 1
+   FROM ("public"."attendances" "a"
+     JOIN "public"."events" "e" ON (("a"."event_id" = "e"."id")))
+  WHERE (("a"."id" = "payments"."attendance_id") AND ("e"."created_by" = "auth"."uid"())))));
+
+
+
+CREATE POLICY "event_creators_can_view_settlements" ON "public"."settlements" FOR SELECT TO "authenticated" USING ((EXISTS ( SELECT 1
+   FROM "public"."events" "e"
+  WHERE (("e"."id" = "settlements"."event_id") AND ("e"."created_by" = "auth"."uid"())))));
+
+
+
+ALTER TABLE "public"."events" ENABLE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "public"."guest_access_audit" ENABLE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "public"."invite_links" ENABLE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "public"."payment_disputes" ENABLE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "public"."payments" ENABLE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "public"."payout_scheduler_logs" ENABLE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "public"."scheduler_locks" ENABLE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "public"."security_audit_log" ENABLE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "public"."settlements" ENABLE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "public"."stripe_connect_accounts" ENABLE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "public"."suspicious_activity_log" ENABLE ROW LEVEL SECURITY;
+
+
+CREATE POLICY "system_can_manage_scheduler_logs" ON "public"."payout_scheduler_logs" TO "service_role" USING (true) WITH CHECK (true);
+
+
+
+ALTER TABLE "public"."system_logs" ENABLE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "public"."unauthorized_access_log" ENABLE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "public"."users" ENABLE ROW LEVEL SECURITY;
+
+
+CREATE POLICY "users_can_view_own_settlements" ON "public"."settlements" FOR SELECT TO "authenticated" USING (("user_id" = "auth"."uid"()));
+
+
+
+CREATE POLICY "users_can_view_own_stripe_accounts" ON "public"."stripe_connect_accounts" FOR SELECT TO "authenticated" USING (("user_id" = "auth"."uid"()));
+
+
+
+ALTER TABLE "public"."webhook_events" ENABLE ROW LEVEL SECURITY;
+
+
+CREATE POLICY "webhook_events_admin_only" ON "public"."webhook_events" TO "authenticated" USING (false);
+
+
+
+CREATE POLICY "webhook_events_service_role" ON "public"."webhook_events" TO "service_role" USING (true) WITH CHECK (true);
+
+
+
+
+
+ALTER PUBLICATION "supabase_realtime" OWNER TO "postgres";
+
+
+
+
+
+GRANT USAGE ON SCHEMA "public" TO "postgres";
+GRANT USAGE ON SCHEMA "public" TO "anon";
+GRANT USAGE ON SCHEMA "public" TO "authenticated";
+GRANT USAGE ON SCHEMA "public" TO "service_role";
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+GRANT ALL ON FUNCTION "public"."calc_payout_amount"("p_event_id" "uuid") TO "anon";
+GRANT ALL ON FUNCTION "public"."calc_payout_amount"("p_event_id" "uuid") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."calc_payout_amount"("p_event_id" "uuid") TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."calc_refund_dispute_summary"("p_event_id" "uuid") TO "anon";
+GRANT ALL ON FUNCTION "public"."calc_refund_dispute_summary"("p_event_id" "uuid") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."calc_refund_dispute_summary"("p_event_id" "uuid") TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."calc_total_application_fee"("p_event_id" "uuid") TO "anon";
+GRANT ALL ON FUNCTION "public"."calc_total_application_fee"("p_event_id" "uuid") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."calc_total_application_fee"("p_event_id" "uuid") TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."calc_total_stripe_fee"("p_event_id" "uuid", "p_base_rate" numeric, "p_fixed_fee" integer) TO "anon";
+GRANT ALL ON FUNCTION "public"."calc_total_stripe_fee"("p_event_id" "uuid", "p_base_rate" numeric, "p_fixed_fee" integer) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."calc_total_stripe_fee"("p_event_id" "uuid", "p_base_rate" numeric, "p_fixed_fee" integer) TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."can_access_attendance"("p_attendance_id" "uuid") TO "anon";
+GRANT ALL ON FUNCTION "public"."can_access_attendance"("p_attendance_id" "uuid") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."can_access_attendance"("p_attendance_id" "uuid") TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."can_access_event"("p_event_id" "uuid") TO "anon";
+GRANT ALL ON FUNCTION "public"."can_access_event"("p_event_id" "uuid") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."can_access_event"("p_event_id" "uuid") TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."can_manage_invite_links"("p_event_id" "uuid") TO "anon";
+GRANT ALL ON FUNCTION "public"."can_manage_invite_links"("p_event_id" "uuid") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."can_manage_invite_links"("p_event_id" "uuid") TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."check_attendance_capacity_limit"() TO "anon";
+GRANT ALL ON FUNCTION "public"."check_attendance_capacity_limit"() TO "authenticated";
+GRANT ALL ON FUNCTION "public"."check_attendance_capacity_limit"() TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."cleanup_expired_scheduler_locks"() TO "anon";
+GRANT ALL ON FUNCTION "public"."cleanup_expired_scheduler_locks"() TO "authenticated";
+GRANT ALL ON FUNCTION "public"."cleanup_expired_scheduler_locks"() TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."cleanup_old_audit_logs"("retention_days" integer) TO "anon";
+GRANT ALL ON FUNCTION "public"."cleanup_old_audit_logs"("retention_days" integer) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."cleanup_old_audit_logs"("retention_days" integer) TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."cleanup_old_scheduler_logs"("retention_days" integer) TO "anon";
+GRANT ALL ON FUNCTION "public"."cleanup_old_scheduler_logs"("retention_days" integer) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."cleanup_old_scheduler_logs"("retention_days" integer) TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."cleanup_test_tables_dev_only"() TO "anon";
+GRANT ALL ON FUNCTION "public"."cleanup_test_tables_dev_only"() TO "authenticated";
+GRANT ALL ON FUNCTION "public"."cleanup_test_tables_dev_only"() TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."clear_test_guest_token"() TO "anon";
+GRANT ALL ON FUNCTION "public"."clear_test_guest_token"() TO "authenticated";
+GRANT ALL ON FUNCTION "public"."clear_test_guest_token"() TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."create_payment_record"("p_attendance_id" "uuid", "p_method" "public"."payment_method_enum", "p_amount" integer) TO "anon";
+GRANT ALL ON FUNCTION "public"."create_payment_record"("p_attendance_id" "uuid", "p_method" "public"."payment_method_enum", "p_amount" integer) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."create_payment_record"("p_attendance_id" "uuid", "p_method" "public"."payment_method_enum", "p_amount" integer) TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."detect_orphaned_users"() TO "anon";
+GRANT ALL ON FUNCTION "public"."detect_orphaned_users"() TO "authenticated";
+GRANT ALL ON FUNCTION "public"."detect_orphaned_users"() TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."extend_scheduler_lock"("p_lock_name" "text", "p_process_id" "text", "p_extend_minutes" integer) TO "anon";
+GRANT ALL ON FUNCTION "public"."extend_scheduler_lock"("p_lock_name" "text", "p_process_id" "text", "p_extend_minutes" integer) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."extend_scheduler_lock"("p_lock_name" "text", "p_process_id" "text", "p_extend_minutes" integer) TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."find_eligible_events_basic"("p_days_after_event" integer, "p_minimum_amount" integer, "p_limit" integer, "p_user_id" "uuid") TO "anon";
+GRANT ALL ON FUNCTION "public"."find_eligible_events_basic"("p_days_after_event" integer, "p_minimum_amount" integer, "p_limit" integer, "p_user_id" "uuid") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."find_eligible_events_basic"("p_days_after_event" integer, "p_minimum_amount" integer, "p_limit" integer, "p_user_id" "uuid") TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."find_eligible_events_with_details"("p_days_after_event" integer, "p_limit" integer) TO "anon";
+GRANT ALL ON FUNCTION "public"."find_eligible_events_with_details"("p_days_after_event" integer, "p_limit" integer) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."find_eligible_events_with_details"("p_days_after_event" integer, "p_limit" integer) TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."force_release_payout_scheduler_lock"() TO "anon";
+GRANT ALL ON FUNCTION "public"."force_release_payout_scheduler_lock"() TO "authenticated";
+GRANT ALL ON FUNCTION "public"."force_release_payout_scheduler_lock"() TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."generate_settlement_report"("input_event_id" "uuid", "input_created_by" "uuid") TO "anon";
+GRANT ALL ON FUNCTION "public"."generate_settlement_report"("input_event_id" "uuid", "input_created_by" "uuid") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."generate_settlement_report"("input_event_id" "uuid", "input_created_by" "uuid") TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."get_enum_values"("enum_name" "text") TO "anon";
+GRANT ALL ON FUNCTION "public"."get_enum_values"("enum_name" "text") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."get_enum_values"("enum_name" "text") TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."get_event_creator_name"("p_creator_id" "uuid") TO "anon";
+GRANT ALL ON FUNCTION "public"."get_event_creator_name"("p_creator_id" "uuid") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."get_event_creator_name"("p_creator_id" "uuid") TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."get_guest_token"() TO "anon";
+GRANT ALL ON FUNCTION "public"."get_guest_token"() TO "authenticated";
+GRANT ALL ON FUNCTION "public"."get_guest_token"() TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."get_min_payout_amount"() TO "anon";
+GRANT ALL ON FUNCTION "public"."get_min_payout_amount"() TO "authenticated";
+GRANT ALL ON FUNCTION "public"."get_min_payout_amount"() TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."get_scheduler_lock_status"("p_lock_name" "text") TO "anon";
+GRANT ALL ON FUNCTION "public"."get_scheduler_lock_status"("p_lock_name" "text") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."get_scheduler_lock_status"("p_lock_name" "text") TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."get_settlement_aggregations"("p_event_id" "uuid") TO "anon";
+GRANT ALL ON FUNCTION "public"."get_settlement_aggregations"("p_event_id" "uuid") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."get_settlement_aggregations"("p_event_id" "uuid") TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."get_settlement_report_details"("input_created_by" "uuid", "input_event_ids" "uuid"[], "p_from_date" timestamp with time zone, "p_to_date" timestamp with time zone, "p_limit" integer, "p_offset" integer) TO "anon";
+GRANT ALL ON FUNCTION "public"."get_settlement_report_details"("input_created_by" "uuid", "input_event_ids" "uuid"[], "p_from_date" timestamp with time zone, "p_to_date" timestamp with time zone, "p_limit" integer, "p_offset" integer) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."get_settlement_report_details"("input_created_by" "uuid", "input_event_ids" "uuid"[], "p_from_date" timestamp with time zone, "p_to_date" timestamp with time zone, "p_limit" integer, "p_offset" integer) TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."handle_new_user"() FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."handle_new_user"() TO "service_role";
+GRANT ALL ON FUNCTION "public"."handle_new_user"() TO "supabase_auth_admin";
+
+
+
+GRANT ALL ON FUNCTION "public"."hash_guest_token"("token" "text") TO "anon";
+GRANT ALL ON FUNCTION "public"."hash_guest_token"("token" "text") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."hash_guest_token"("token" "text") TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."list_all_enums"() TO "anon";
+GRANT ALL ON FUNCTION "public"."list_all_enums"() TO "authenticated";
+GRANT ALL ON FUNCTION "public"."list_all_enums"() TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."log_security_event"("p_event_type" "text", "p_details" "jsonb") TO "anon";
+GRANT ALL ON FUNCTION "public"."log_security_event"("p_event_type" "text", "p_details" "jsonb") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."log_security_event"("p_event_type" "text", "p_details" "jsonb") TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."prevent_payment_status_rollback"() TO "anon";
+GRANT ALL ON FUNCTION "public"."prevent_payment_status_rollback"() TO "authenticated";
+GRANT ALL ON FUNCTION "public"."prevent_payment_status_rollback"() TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."process_event_payout"("input_event_id" "uuid", "p_user_id" "uuid") TO "anon";
+GRANT ALL ON FUNCTION "public"."process_event_payout"("input_event_id" "uuid", "p_user_id" "uuid") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."process_event_payout"("input_event_id" "uuid", "p_user_id" "uuid") TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."register_attendance_with_payment"("p_event_id" "uuid", "p_nickname" character varying, "p_email" character varying, "p_status" "public"."attendance_status_enum", "p_guest_token" character varying, "p_payment_method" "public"."payment_method_enum", "p_event_fee" integer) TO "anon";
+GRANT ALL ON FUNCTION "public"."register_attendance_with_payment"("p_event_id" "uuid", "p_nickname" character varying, "p_email" character varying, "p_status" "public"."attendance_status_enum", "p_guest_token" character varying, "p_payment_method" "public"."payment_method_enum", "p_event_fee" integer) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."register_attendance_with_payment"("p_event_id" "uuid", "p_nickname" character varying, "p_email" character varying, "p_status" "public"."attendance_status_enum", "p_guest_token" character varying, "p_payment_method" "public"."payment_method_enum", "p_event_fee" integer) TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."release_scheduler_lock"("p_lock_name" "text", "p_process_id" "text") TO "anon";
+GRANT ALL ON FUNCTION "public"."release_scheduler_lock"("p_lock_name" "text", "p_process_id" "text") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."release_scheduler_lock"("p_lock_name" "text", "p_process_id" "text") TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."rpc_bulk_update_payment_status_safe"("p_payment_updates" "jsonb", "p_user_id" "uuid", "p_notes" "text") TO "anon";
+GRANT ALL ON FUNCTION "public"."rpc_bulk_update_payment_status_safe"("p_payment_updates" "jsonb", "p_user_id" "uuid", "p_notes" "text") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."rpc_bulk_update_payment_status_safe"("p_payment_updates" "jsonb", "p_user_id" "uuid", "p_notes" "text") TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."rpc_update_payment_status_safe"("p_payment_id" "uuid", "p_new_status" "public"."payment_status_enum", "p_expected_version" integer, "p_user_id" "uuid", "p_notes" "text") TO "anon";
+GRANT ALL ON FUNCTION "public"."rpc_update_payment_status_safe"("p_payment_id" "uuid", "p_new_status" "public"."payment_status_enum", "p_expected_version" integer, "p_user_id" "uuid", "p_notes" "text") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."rpc_update_payment_status_safe"("p_payment_id" "uuid", "p_new_status" "public"."payment_status_enum", "p_expected_version" integer, "p_user_id" "uuid", "p_notes" "text") TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."set_test_guest_token"("token" "text") TO "anon";
+GRANT ALL ON FUNCTION "public"."set_test_guest_token"("token" "text") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."set_test_guest_token"("token" "text") TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."status_rank"("p" "public"."payment_status_enum") TO "anon";
+GRANT ALL ON FUNCTION "public"."status_rank"("p" "public"."payment_status_enum") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."status_rank"("p" "public"."payment_status_enum") TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."try_acquire_scheduler_lock"("p_lock_name" "text", "p_ttl_minutes" integer, "p_process_id" "text", "p_metadata" "jsonb") TO "anon";
+GRANT ALL ON FUNCTION "public"."try_acquire_scheduler_lock"("p_lock_name" "text", "p_ttl_minutes" integer, "p_process_id" "text", "p_metadata" "jsonb") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."try_acquire_scheduler_lock"("p_lock_name" "text", "p_ttl_minutes" integer, "p_process_id" "text", "p_metadata" "jsonb") TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."update_guest_attendance_with_payment"("p_attendance_id" "uuid", "p_status" "public"."attendance_status_enum", "p_payment_method" "public"."payment_method_enum", "p_event_fee" integer) FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."update_guest_attendance_with_payment"("p_attendance_id" "uuid", "p_status" "public"."attendance_status_enum", "p_payment_method" "public"."payment_method_enum", "p_event_fee" integer) TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."update_payment_version"() TO "anon";
+GRANT ALL ON FUNCTION "public"."update_payment_version"() TO "authenticated";
+GRANT ALL ON FUNCTION "public"."update_payment_version"() TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."update_payout_status_safe"("_payout_id" "uuid", "_from_status" "public"."payout_status_enum", "_to_status" "public"."payout_status_enum", "_processed_at" timestamp with time zone, "_transfer_group" "text", "_last_error" "text", "_notes" "text") TO "anon";
+GRANT ALL ON FUNCTION "public"."update_payout_status_safe"("_payout_id" "uuid", "_from_status" "public"."payout_status_enum", "_to_status" "public"."payout_status_enum", "_processed_at" timestamp with time zone, "_transfer_group" "text", "_last_error" "text", "_notes" "text") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."update_payout_status_safe"("_payout_id" "uuid", "_from_status" "public"."payout_status_enum", "_to_status" "public"."payout_status_enum", "_processed_at" timestamp with time zone, "_transfer_group" "text", "_last_error" "text", "_notes" "text") TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."update_revenue_summary"("p_event_id" "uuid") TO "anon";
+GRANT ALL ON FUNCTION "public"."update_revenue_summary"("p_event_id" "uuid") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."update_revenue_summary"("p_event_id" "uuid") TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."update_updated_at_column"() TO "anon";
+GRANT ALL ON FUNCTION "public"."update_updated_at_column"() TO "authenticated";
+GRANT ALL ON FUNCTION "public"."update_updated_at_column"() TO "service_role";
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+GRANT ALL ON TABLE "public"."admin_access_audit" TO "anon";
+GRANT ALL ON TABLE "public"."admin_access_audit" TO "authenticated";
+GRANT ALL ON TABLE "public"."admin_access_audit" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."attendances" TO "anon";
+GRANT ALL ON TABLE "public"."attendances" TO "authenticated";
+GRANT ALL ON TABLE "public"."attendances" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."events" TO "anon";
+GRANT ALL ON TABLE "public"."events" TO "authenticated";
+GRANT ALL ON TABLE "public"."events" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."fee_config" TO "anon";
+GRANT ALL ON TABLE "public"."fee_config" TO "authenticated";
+GRANT ALL ON TABLE "public"."fee_config" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."guest_access_audit" TO "anon";
+GRANT ALL ON TABLE "public"."guest_access_audit" TO "authenticated";
+GRANT ALL ON TABLE "public"."guest_access_audit" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."invite_links" TO "anon";
+GRANT ALL ON TABLE "public"."invite_links" TO "authenticated";
+GRANT ALL ON TABLE "public"."invite_links" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."payment_disputes" TO "anon";
+GRANT ALL ON TABLE "public"."payment_disputes" TO "authenticated";
+GRANT ALL ON TABLE "public"."payment_disputes" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."payments" TO "anon";
+GRANT ALL ON TABLE "public"."payments" TO "authenticated";
+GRANT ALL ON TABLE "public"."payments" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."payout_scheduler_logs" TO "anon";
+GRANT ALL ON TABLE "public"."payout_scheduler_logs" TO "authenticated";
+GRANT ALL ON TABLE "public"."payout_scheduler_logs" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."users" TO "anon";
+GRANT ALL ON TABLE "public"."users" TO "authenticated";
+GRANT ALL ON TABLE "public"."users" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."public_profiles" TO "anon";
+GRANT ALL ON TABLE "public"."public_profiles" TO "authenticated";
+GRANT ALL ON TABLE "public"."public_profiles" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."scheduler_locks" TO "anon";
+GRANT ALL ON TABLE "public"."scheduler_locks" TO "authenticated";
+GRANT ALL ON TABLE "public"."scheduler_locks" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."security_audit_log" TO "anon";
+GRANT ALL ON TABLE "public"."security_audit_log" TO "authenticated";
+GRANT ALL ON TABLE "public"."security_audit_log" TO "service_role";
+
+
+
+GRANT ALL ON SEQUENCE "public"."security_audit_log_id_seq" TO "anon";
+GRANT ALL ON SEQUENCE "public"."security_audit_log_id_seq" TO "authenticated";
+GRANT ALL ON SEQUENCE "public"."security_audit_log_id_seq" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."settlements" TO "anon";
+GRANT ALL ON TABLE "public"."settlements" TO "authenticated";
+GRANT ALL ON TABLE "public"."settlements" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."stripe_connect_accounts" TO "anon";
+GRANT ALL ON TABLE "public"."stripe_connect_accounts" TO "authenticated";
+GRANT ALL ON TABLE "public"."stripe_connect_accounts" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."suspicious_activity_log" TO "anon";
+GRANT ALL ON TABLE "public"."suspicious_activity_log" TO "authenticated";
+GRANT ALL ON TABLE "public"."suspicious_activity_log" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."system_logs" TO "anon";
+GRANT ALL ON TABLE "public"."system_logs" TO "authenticated";
+GRANT ALL ON TABLE "public"."system_logs" TO "service_role";
+
+
+
+GRANT ALL ON SEQUENCE "public"."system_logs_id_seq" TO "anon";
+GRANT ALL ON SEQUENCE "public"."system_logs_id_seq" TO "authenticated";
+GRANT ALL ON SEQUENCE "public"."system_logs_id_seq" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."unauthorized_access_log" TO "anon";
+GRANT ALL ON TABLE "public"."unauthorized_access_log" TO "authenticated";
+GRANT ALL ON TABLE "public"."unauthorized_access_log" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."webhook_events" TO "anon";
+GRANT ALL ON TABLE "public"."webhook_events" TO "authenticated";
+GRANT ALL ON TABLE "public"."webhook_events" TO "service_role";
+
+
+
+
+
+
+
+
+
+ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON SEQUENCES TO "postgres";
+ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON SEQUENCES TO "anon";
+ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON SEQUENCES TO "authenticated";
+ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON SEQUENCES TO "service_role";
+
+
+
+
+
+
+ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON FUNCTIONS TO "postgres";
+ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON FUNCTIONS TO "anon";
+ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON FUNCTIONS TO "authenticated";
+ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON FUNCTIONS TO "service_role";
+
+
+
+
+
+
+ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TABLES TO "postgres";
+ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TABLES TO "anon";
+ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TABLES TO "authenticated";
+ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TABLES TO "service_role";
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+RESET ALL;

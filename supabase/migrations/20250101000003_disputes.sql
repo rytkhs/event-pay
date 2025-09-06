@@ -223,7 +223,7 @@ BEGIN
         p_event_id, p_created_by, v_stripe_sales, v_stripe_fee, v_net_application_fee,
         v_total_disputed_amount, v_dispute_count, v_net_amount, v_event_data.stripe_account_id,
         v_transfer_group, 'destination_charge', 'completed', now()
-    ) ON CONFLICT ON CONSTRAINT uniq_payouts_event_generated_date_jst DO UPDATE SET
+    ) ON CONFLICT (event_id, (DATE(generated_at AT TIME ZONE 'Asia/Tokyo'))) DO UPDATE SET
         total_stripe_sales = EXCLUDED.total_stripe_sales,
         total_stripe_fee   = EXCLUDED.total_stripe_fee,
         platform_fee       = EXCLUDED.platform_fee,
@@ -283,7 +283,7 @@ CREATE OR REPLACE FUNCTION public.get_settlement_report_details(
 ) RETURNS TABLE (
     report_id UUID,
     event_id UUID,
-    event_title TEXT,
+    event_title VARCHAR(255),
     event_date DATE,
     stripe_account_id VARCHAR(255),
     transfer_group VARCHAR(255),
