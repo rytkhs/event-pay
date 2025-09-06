@@ -55,7 +55,7 @@ test.describe("イベント作成（E2E）", () => {
 
     // 作成されたイベントの情報が表示されることを確認
     await expect(page.getByText("テスト勉強会")).toBeVisible();
-    await expect(page.getByText("1000円")).toBeVisible();
+    await expect(page.getByText("1,000円")).toBeVisible();
   });
 
   test("正常系：無料イベントを作成し、決済方法の選択が不要であることを確認", async ({ page }) => {
@@ -108,9 +108,9 @@ test.describe("イベント作成（E2E）", () => {
     await page.getByLabel("イベントタイトル *").fill("a");
     await page.getByLabel("イベントタイトル *").fill("");
 
-    // 開催日時欄に文字を入力してから削除
-    await page.getByLabel("開催日時 *").fill("2");
-    await page.getByLabel("開催日時 *").fill("");
+    // 開催日時欄に有効な日時を入力してから削除
+    await page.getByLabel("開催日時 *").fill("2025-12-25T15:00");
+    await page.getByLabel("開催日時 *").clear();
 
     // 参加費欄に文字を入力してから削除
     await page.getByLabel("参加費 *").fill("1");
