@@ -30,11 +30,30 @@ function extractRequiredValue(formData: FormData, key: string): string {
 /**
  * 型安全な配列値抽出関数
  * 内部実装用のヘルパー関数
+ * カンマ区切りの文字列と複数の値の両方に対応
  */
 function extractArrayValues(formData: FormData, key: string): string[] | undefined {
+  // まず複数の値で送られていないかチェック
   const values = formData.getAll(key) as string[];
-  const filteredValues = values.filter((v) => v !== null && v !== "");
-  return filteredValues.length > 0 ? filteredValues : undefined;
+
+  if (values.length > 1) {
+    // 複数の値が送られている場合（従来の動作）
+    const filteredValues = values.filter((v) => v !== null && v !== "");
+    return filteredValues.length > 0 ? filteredValues : undefined;
+  }
+
+  // 単一の値の場合、カンマ区切りの文字列かチェック
+  const singleValue = values[0];
+  if (!singleValue || singleValue === "") {
+    return undefined;
+  }
+
+  // カンマ区切りの文字列を配列に分割
+  const splitValues = singleValue
+    .split(",")
+    .map((v) => v.trim())
+    .filter((v) => v !== "");
+  return splitValues.length > 0 ? splitValues : undefined;
 }
 
 /**
@@ -109,7 +128,7 @@ export function extractEventCreateFormData(formData: FormData): EventCreateFormD
     title: extractor.extractRequiredValue("title"),
     date: extractor.extractRequiredValue("date"),
     fee: extractor.extractRequiredValue("fee"),
-    payment_methods: extractor.extractArrayValues("payment_methods"),
+    payment_methods: extractor.extractArrayValues("payment_methods") || [],
     location: extractor.extractOptionalValue("location"),
     description: extractor.extractOptionalValue("description"),
     capacity: extractor.extractOptionalValue("capacity"),

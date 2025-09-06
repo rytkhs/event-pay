@@ -2,6 +2,8 @@
 
 import { z } from "zod";
 
+import { SecureSupabaseClientFactory } from "@core/security/secure-client-factory.impl";
+import { AdminReason } from "@core/security/secure-client-factory.types";
 import { createClient } from "@core/supabase/server";
 import { extractEventCreateFormData } from "@core/utils/form-data-extractors";
 import { generateInviteToken } from "@core/utils/invite-token";
@@ -58,12 +60,30 @@ export async function createEventAction(formData: FormData): Promise<CreateEvent
     }
 
     const rawData = extractFormData(formData);
-    const validatedData = createEventSchema.parse(rawData);
-    const inviteToken = generateInviteToken();
 
+    let validatedData;
+    try {
+      validatedData = createEventSchema.parse(rawData);
+    } catch (validationError) {
+      throw validationError;
+    }
+
+    const inviteToken = generateInviteToken();
     const eventData = buildEventData(validatedData, user.id, inviteToken);
 
-    const { data: createdEvent, error: dbError } = await supabase
+    // Service Roleクライアントを使用してRLS制約を回避
+    const secureFactory = SecureSupabaseClientFactory.getInstance();
+    const adminClient = await secureFactory.createAuditedAdminClient(
+      AdminReason.EVENT_MANAGEMENT,
+      "create_event",
+      {
+        userId: user.id,
+        eventTitle: eventData.title,
+        inviteToken: eventData.invite_token,
+      }
+    );
+
+    const { data: createdEvent, error: dbError } = await adminClient
       .from("events")
       .insert(eventData)
       .select()
@@ -147,7 +167,23 @@ function convertDatetimeLocalToIso(dateString: string): string {
   return utcDate.toISOString();
 }
 
-function buildEventData(validatedData: CreateEventInput, userId: string, inviteToken: string) {
+function buildEventData(
+  validatedData: CreateEventInput,
+  userId: string,
+  inviteToken: string
+): {
+  title: string;
+  date: string;
+  fee: number;
+  payment_methods: Database["public"]["Enums"]["payment_method_enum"][] | [];
+  location: string | null;
+  description: string | null;
+  capacity: number | null;
+  registration_deadline: string | null;
+  payment_deadline: string | null;
+  created_by: string;
+  invite_token: string;
+} {
   const fee = Number(validatedData.fee);
 
   return {
@@ -159,8 +195,8 @@ function buildEventData(validatedData: CreateEventInput, userId: string, inviteT
       fee === 0
         ? []
         : (validatedData.payment_methods as Database["public"]["Enums"]["payment_method_enum"][]),
-    location: validatedData.location || null,
-    description: validatedData.description || null,
+    location: validatedData.location ?? null,
+    description: validatedData.description ?? null,
     capacity: parseCapacityLocal(validatedData.capacity),
     registration_deadline: validatedData.registration_deadline
       ? convertDatetimeLocalToIso(validatedData.registration_deadline)

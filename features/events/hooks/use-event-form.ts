@@ -40,7 +40,7 @@ const eventFormSchema = z
         const num = parseFee(val);
         return num >= 0 && num <= 1000000;
       }, "参加費は0以上1000000以下である必要があります"),
-    payment_methods: z.array(z.string()).default([]),
+    payment_methods: z.array(z.string()),
     location: z.string().max(200, "場所は200文字以内で入力してください"),
     description: z.string().max(1000, "説明は1000文字以内で入力してください"),
     capacity: z.string().refine((val) => {
@@ -242,8 +242,8 @@ export const useEventForm = (): {
       } catch (error) {
         logger.error("Event creation failed", {
           tag: "eventCreation",
-          error_name: error instanceof Error ? error.name : "Unknown",
-          error_message: error instanceof Error ? error.message : String(error),
+          error_name: error instanceof Error ? (error.name ?? "Unknown") : "Unknown",
+          error_message: error instanceof Error ? (error.message ?? String(error)) : String(error),
         });
         form.setError("root", {
           type: "server",
@@ -258,31 +258,6 @@ export const useEventForm = (): {
   // カスタムルールではなく、実際のエラーの存在で判定
   const hasErrors = Object.keys(formState.errors).length > 0;
 
-  // デバッグ用：フォーム状態をログ出力
-  if (process.env.NODE_ENV === "development") {
-    const allErrors = Object.entries(formState.errors).map(([key, error]) => ({
-      field: key,
-      message: error?.message || "Unknown error",
-      type: error?.type || "unknown",
-    }));
-
-    // デバッグ用のエラー詳細出力は一旦削除
-
-    logger.debug("Form debug information", {
-      tag: "eventFormDebug",
-      errors: formState.errors,
-      errorList: allErrors,
-      hasErrors,
-      isValid: formState.isValid,
-      isDirty: formState.isDirty,
-      isSubmitting: formState.isSubmitting,
-      currentValues: form.watch(),
-      paymentMethods: form.watch("payment_methods"),
-      fee: form.watch("fee"),
-      isFreeEvent,
-    });
-  }
-
   return {
     form,
     onSubmit: form.handleSubmit(onSubmit),
@@ -295,7 +270,7 @@ export const useEventForm = (): {
       Object.entries(formState.errors).map(([key, error]) => [
         key,
         typeof error === "object" && error !== null && "message" in error
-          ? error.message || undefined
+          ? (error.message ?? undefined)
           : undefined,
       ])
     ) as Record<string, string | undefined>,
