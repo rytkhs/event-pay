@@ -23,13 +23,17 @@ setup("authenticate", async ({ page }) => {
     throw new Error("Test user email or password is not set in .env.test file.");
   }
 
-  // テストユーザーを作成（既に存在する場合はエラーを無視）
+  // テストユーザーを作成または取得（改善版）
   try {
-    console.log(`Creating test user: ${username}`);
-    await createTestUser(username, password);
+    console.log(`Creating or retrieving test user: ${username}`);
+    await createTestUser(username, password, {
+      maxRetries: 5,
+      retryDelay: 2000,
+    });
+    console.log(`✓ Test user ready: ${username}`);
   } catch (error) {
-    console.log("Test user may already exist or creation failed:", error);
-    // ユーザーが既に存在する場合は続行
+    console.error("Failed to create/retrieve test user:", error);
+    throw new Error(`Test setup failed: Unable to create test user ${username}`);
   }
 
   // ログインページに移動

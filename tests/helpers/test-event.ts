@@ -1,0 +1,275 @@
+import { SecureSupabaseClientFactory } from "@core/security/secure-client-factory.impl";
+import { AdminReason } from "@core/security/secure-client-factory.types";
+import { generateInviteToken } from "@core/utils/invite-token";
+
+import type { Database } from "@/types/database";
+
+type EventInsert = Database["public"]["Tables"]["events"]["Insert"];
+
+export interface TestEvent {
+  id: string;
+  title: string;
+  date: string;
+  fee: number;
+  capacity: number | null;
+  invite_token: string;
+  created_by: string;
+  payment_methods?: Database["public"]["Enums"]["payment_method_enum"][];
+}
+
+export interface CreateTestEventOptions {
+  title?: string;
+  fee?: number;
+  capacity?: number | null;
+  payment_methods?: Database["public"]["Enums"]["payment_method_enum"][];
+  location?: string;
+  description?: string;
+  registration_deadline?: string;
+  payment_deadline?: string;
+  status?: Database["public"]["Enums"]["event_status_enum"];
+}
+
+/**
+ * テスト用イベントを作成する
+ *
+ * @param createdBy イベント作成者のユーザーID
+ * @param options イベントのオプション設定
+ * @returns 作成されたイベント情報
+ */
+export async function createTestEvent(
+  createdBy: string,
+  options: CreateTestEventOptions = {}
+): Promise<TestEvent> {
+  const secureFactory = SecureSupabaseClientFactory.getInstance();
+
+  // 監査付き管理者クライアントを作成
+  const adminClient = await secureFactory.createAuditedAdminClient(
+    AdminReason.TEST_DATA_SETUP,
+    `Creating test event for E2E tests`,
+    {
+      operationType: "INSERT",
+      accessedTables: ["public.events"],
+      additionalInfo: {
+        testContext: "playwright-e2e-setup",
+        createdBy,
+      },
+    }
+  );
+
+  // 将来の日時を生成（現在時刻から1時間後）
+  const futureDate = new Date(Date.now() + 60 * 60 * 1000);
+  const futureDateString = futureDate.toISOString();
+
+  // 招待トークンを生成
+  const inviteToken = generateInviteToken();
+
+  // デフォルト値を設定
+  const defaultOptions: Required<CreateTestEventOptions> = {
+    title: "テスト用イベント",
+    fee: 0, // デフォルトは無料
+    capacity: null, // デフォルトは定員なし
+    payment_methods: [],
+    location: "テスト会場",
+    description: "E2Eテスト用のイベントです",
+    registration_deadline: "",
+    payment_deadline: "",
+    status: "upcoming",
+  };
+
+  const eventOptions = { ...defaultOptions, ...options };
+
+  // 有料イベントの場合、payment_methodsが空ならstripeを設定
+  if (eventOptions.fee > 0 && eventOptions.payment_methods.length === 0) {
+    eventOptions.payment_methods = ["stripe"];
+  }
+
+  // イベントデータを構築
+  const eventData: EventInsert = {
+    title: eventOptions.title,
+    date: futureDateString,
+    location: eventOptions.location,
+    description: eventOptions.description,
+    fee: eventOptions.fee,
+    capacity: eventOptions.capacity,
+    payment_methods: eventOptions.payment_methods,
+    registration_deadline: eventOptions.registration_deadline,
+    payment_deadline: eventOptions.payment_deadline,
+    status: eventOptions.status,
+    invite_token: inviteToken,
+    created_by: createdBy,
+  };
+
+  // データベースにイベントを作成
+  const { data: createdEvent, error } = await adminClient
+    .from("events")
+    .insert(eventData)
+    .select()
+    .single();
+
+  if (error) {
+    console.error("Failed to create test event:", error);
+    throw new Error(`Failed to create test event: ${error.message}`);
+  }
+
+  if (!createdEvent) {
+    throw new Error("Event creation succeeded but event data is missing");
+  }
+
+  console.log(`Test event created successfully: ${eventOptions.title} (ID: ${createdEvent.id})`);
+
+  return {
+    id: createdEvent.id,
+    title: createdEvent.title,
+    date: createdEvent.date,
+    fee: createdEvent.fee,
+    capacity: createdEvent.capacity,
+    invite_token: createdEvent.invite_token!,
+    created_by: createdEvent.created_by,
+    payment_methods: createdEvent.payment_methods,
+  };
+}
+
+/**
+ * 複数の参加者が既に登録されているテストイベントを作成する
+ *
+ * @param createdBy イベント作成者のユーザーID
+ * @param options イベントのオプション設定
+ * @param participantCount 事前に作成する参加者数
+ * @returns 作成されたイベント情報
+ */
+export async function createTestEventWithParticipants(
+  createdBy: string,
+  options: CreateTestEventOptions = {},
+  participantCount: number = 1
+): Promise<TestEvent> {
+  // イベントを作成
+  const event = await createTestEvent(createdBy, options);
+
+  // 参加者を作成
+  const secureFactory = SecureSupabaseClientFactory.getInstance();
+  const adminClient = await secureFactory.createAuditedAdminClient(
+    AdminReason.TEST_DATA_SETUP,
+    `Creating test participants for event ${event.id}`,
+    {
+      operationType: "INSERT",
+      accessedTables: ["public.attendances"],
+      additionalInfo: {
+        testContext: "playwright-e2e-setup",
+        eventId: event.id,
+        participantCount,
+      },
+    }
+  );
+
+  // 参加者データを作成
+  const participants = Array.from({ length: participantCount }, (_, i) => ({
+    event_id: event.id,
+    nickname: `テスト参加者${i + 1}`,
+    email: `test-participant-${i + 1}@example.com`,
+    status: "attending" as const,
+    guest_token: `guest_token_${i + 1}`,
+  }));
+
+  const { error: participantError } = await adminClient
+    .from("attendances")
+    .insert(participants);
+
+  if (participantError) {
+    console.error("Failed to create test participants:", participantError);
+    // 参加者作成に失敗した場合、イベントを削除してロールバック
+    await adminClient.from("events").delete().eq("id", event.id);
+    throw new Error(`Failed to create test participants: ${participantError.message}`);
+  }
+
+  console.log(`Created ${participantCount} test participants for event ${event.id}`);
+
+  return event;
+}
+
+/**
+ * テストイベントを削除する
+ *
+ * @param eventId 削除するイベントID
+ */
+export async function deleteTestEvent(eventId: string): Promise<void> {
+  const secureFactory = SecureSupabaseClientFactory.getInstance();
+
+  const adminClient = await secureFactory.createAuditedAdminClient(
+    AdminReason.TEST_DATA_CLEANUP,
+    `Deleting test event after E2E tests: ${eventId}`,
+    {
+      operationType: "DELETE",
+      accessedTables: ["public.events", "public.attendances", "public.payments"],
+      additionalInfo: {
+        testContext: "playwright-e2e-cleanup",
+        eventId,
+      },
+    }
+  );
+
+  // 関連する参加者と決済データを先に削除
+  await adminClient.from("payments").delete().eq("event_id", eventId);
+  await adminClient.from("attendances").delete().eq("event_id", eventId);
+
+  // イベントを削除
+  const { error } = await adminClient.from("events").delete().eq("id", eventId);
+
+  if (error) {
+    console.error("Failed to delete test event:", error);
+    throw new Error(`Failed to delete test event: ${error.message}`);
+  }
+
+  console.log(`Test event deleted successfully: ${eventId}`);
+}
+
+/**
+ * テスト用の有料イベントを作成する便利関数
+ */
+export async function createPaidTestEvent(
+  createdBy: string,
+  fee: number = 1000,
+  capacity: number | null = null
+): Promise<TestEvent> {
+  return createTestEvent(createdBy, {
+    title: `有料テストイベント（${fee}円）`,
+    fee,
+    capacity,
+    payment_methods: ["stripe"],
+  });
+}
+
+/**
+ * テスト用の定員ありイベントを作成する便利関数
+ */
+export async function createCapacityLimitedTestEvent(
+  createdBy: string,
+  capacity: number,
+  fee: number = 0
+): Promise<TestEvent> {
+  return createTestEvent(createdBy, {
+    title: `定員${capacity}名のテストイベント`,
+    fee,
+    capacity,
+    payment_methods: fee > 0 ? ["stripe"] : [],
+  });
+}
+
+/**
+ * 定員いっぱいのテストイベントを作成する便利関数
+ */
+export async function createFullCapacityTestEvent(
+  createdBy: string,
+  capacity: number,
+  fee: number = 0
+): Promise<TestEvent> {
+  return createTestEventWithParticipants(
+    createdBy,
+    {
+      title: `定員満了テストイベント（${capacity}名）`,
+      fee,
+      capacity,
+      payment_methods: fee > 0 ? ["stripe"] : [],
+    },
+    capacity
+  );
+}
