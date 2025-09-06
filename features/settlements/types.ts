@@ -107,8 +107,8 @@ export interface RpcSettlementReportRow {
   total_stripe_sales: number;
   total_stripe_fee: number;
   total_application_fee: number;
-  total_disputed_amount: number;
-  dispute_count: number;
+  total_disputed_amount?: number;
+  dispute_count?: number;
   net_payout_amount: number;
   payment_count: number;
   refunded_count: number;
