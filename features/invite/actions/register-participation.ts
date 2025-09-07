@@ -2,6 +2,7 @@
 
 import { headers } from "next/headers";
 
+import type { PostgrestError } from "@supabase/supabase-js";
 import { z } from "zod";
 
 import { SecureSupabaseClientFactory } from "@core/security/secure-client-factory.impl";
@@ -20,13 +21,13 @@ import { generateGuestToken } from "@core/utils/guest-token";
 import {
   validateInviteToken,
   checkEventCapacity,
-  checkDuplicateEmail as _checkDuplicateEmail,
+  checkDuplicateEmail,
 } from "@core/utils/invite-token";
 import { getClientIPFromHeaders } from "@core/utils/ip-detection";
 import {
   participationFormSchema,
+  createParticipationFormSchema,
   type ParticipationFormData,
-  validateParticipationFormWithDuplicateCheck,
   sanitizeParticipationInput,
 } from "@core/validation/participation";
 
@@ -54,7 +55,6 @@ interface ProcessedFormData {
 
 interface ValidatedEventData {
   event: NonNullable<Awaited<ReturnType<typeof validateInviteToken>>["event"]>;
-  canRegister: boolean;
 }
 
 /**
@@ -70,9 +70,11 @@ async function extractAndValidateFormData(
     nickname: formData.get("nickname") as string,
     email: formData.get("email") as string,
     attendanceStatus: formData.get("attendanceStatus") as string,
-    paymentMethod: rawPaymentMethod && rawPaymentMethod.trim() ? rawPaymentMethod : undefined,
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+    paymentMethod: rawPaymentMethod?.trim() || undefined, // 意図的に || を使用（空文字もundefinedに変換）
   };
 
+  // 基本的な構造チェックのみ実行（eventFee依存のバリデーションは後で実行）
   try {
     return participationFormSchema.parse(rawData);
   } catch (error) {
@@ -109,7 +111,7 @@ async function validateInviteAndEvent(
     logInvalidTokenAccess(participationData.inviteToken, "invite", securityContext);
     throw createServerActionError(
       "NOT_FOUND",
-      inviteValidation.errorMessage || "無効な招待リンクです"
+      inviteValidation.errorMessage ?? "無効な招待リンクです"
     );
   }
 
@@ -128,20 +130,53 @@ async function validateInviteAndEvent(
 
     throw createServerActionError(
       "RESOURCE_CONFLICT",
-      inviteValidation.errorMessage || "このイベントには参加登録できません"
+      inviteValidation.errorMessage ?? "このイベントには参加登録できません"
     );
   }
 
   return {
     event: inviteValidation.event,
-    canRegister: inviteValidation.canRegister,
   };
 }
 
 /**
- * 容量チェックと重複チェックの実行
+ * フォームデータの完全バリデーション（eventFee依存）
  */
-async function validateCapacityAndDuplication(
+async function validateFormDataWithEventFee(
+  participationData: ParticipationFormData,
+  event: ValidatedEventData["event"],
+  securityContext: { userAgent?: string; ip?: string }
+): Promise<void> {
+  // イベント参加費を考慮した完全バリデーション
+  const schema = createParticipationFormSchema(event.fee);
+
+  try {
+    schema.parse(participationData);
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      // バリデーションエラーをセキュリティログに記録
+      logParticipationSecurityEvent(
+        "VALIDATION_FAILURE",
+        "Complete form validation failed with event fee context",
+        {
+          eventFee: event.fee,
+          errors: error.errors.map((e) => ({
+            field: e.path.join("."),
+            message: e.message,
+          })),
+        },
+        { ...securityContext, eventId: event.id }
+      );
+      throw zodErrorToServerActionResponse(error);
+    }
+    throw createServerActionError("VALIDATION_ERROR", "入力データが無効です");
+  }
+}
+
+/**
+ * 容量チェックの実行
+ */
+async function validateCapacity(
   participationData: ParticipationFormData,
   event: ValidatedEventData["event"],
   securityContext: { userAgent?: string; ip?: string }
@@ -165,82 +200,99 @@ async function validateCapacityAndDuplication(
       throw createServerActionError("RESOURCE_CONFLICT", "このイベントは定員に達しています");
     }
   }
+}
 
-  // メールアドレスの重複チェック（ユーザビリティ改善のため事前チェック）
-  const isDuplicate = await _checkDuplicateEmail(event.id, participationData.email);
+/**
+ * メールアドレス重複チェック（サニタイズ済みメールで実行）
+ */
+async function validateEmailDuplication(
+  sanitizedEmail: string,
+  event: ValidatedEventData["event"],
+  securityContext: { userAgent?: string; ip?: string }
+): Promise<void> {
+  // サニタイズ済みメールアドレスの重複チェック
+  const isDuplicate = await checkDuplicateEmail(event.id, sanitizedEmail);
   if (isDuplicate) {
     // 重複エラー試行をログに記録
     logParticipationSecurityEvent(
       "DUPLICATE_REGISTRATION",
       "Attempt to register with a duplicate email",
-      { eventId: event.id, email: participationData.email },
+      { eventId: event.id, email: sanitizedEmail },
       { ...securityContext, eventId: event.id }
     );
 
     throw createServerActionError(
-      "RESOURCE_CONFLICT",
+      "DUPLICATE_REGISTRATION",
       "このメールアドレスは既にこのイベントに登録されています"
-    );
-  }
-
-  // 包括的なバリデーションと重複チェック（セキュリティログ付き）
-  const validationErrors = await validateParticipationFormWithDuplicateCheck(
-    participationData,
-    event.id,
-    securityContext
-  );
-
-  if (Object.keys(validationErrors).length > 0) {
-    throw createServerActionError(
-      "RESOURCE_CONFLICT",
-      validationErrors.email || validationErrors.general || "入力データに問題があります"
     );
   }
 }
 
 /**
- * データのサニタイゼーションとゲストトークン生成
+ * 参加データのサニタイゼーション
  */
-async function sanitizeAndPrepareData(
+function sanitizeParticipationData(
+  participationData: ParticipationFormData,
+  eventId: string,
+  securityContext: { userAgent?: string; ip?: string }
+): { sanitizedNickname: string; sanitizedEmail: string } {
+  const sanitizedNickname = sanitizeParticipationInput.nickname(participationData.nickname, {
+    ...securityContext,
+    eventId,
+  });
+  const sanitizedEmail = sanitizeParticipationInput.email(participationData.email, {
+    ...securityContext,
+    eventId,
+  });
+
+  return { sanitizedNickname, sanitizedEmail };
+}
+
+/**
+ * セキュアなゲストトークンの生成
+ */
+function generateSecureGuestToken(): string {
+  return generateGuestToken();
+}
+
+/**
+ * サニタイズ済みデータとゲストトークンを統合して処理用データを準備
+ */
+async function prepareProcessedData(
   participationData: ParticipationFormData,
   event: ValidatedEventData["event"],
   securityContext: { userAgent?: string; ip?: string }
 ): Promise<ProcessedFormData> {
-  // 入力データのサニタイゼーション（セキュリティログ付き）
-  const sanitizedNickname = sanitizeParticipationInput.nickname(participationData.nickname, {
-    ...securityContext,
-    eventId: event.id,
-  });
-  const sanitizedEmail = sanitizeParticipationInput.email(participationData.email, {
-    ...securityContext,
-    eventId: event.id,
-  });
+  // 1. 入力データのサニタイゼーション
+  const { sanitizedNickname, sanitizedEmail } = sanitizeParticipationData(
+    participationData,
+    event.id,
+    securityContext
+  );
 
-  // ゲストトークンの生成
-  let guestToken: string;
-  try {
-    guestToken = generateGuestToken();
-  } catch (tokenError) {
-    // トークン生成失敗をセキュリティログに記録
-    logParticipationSecurityEvent(
-      "SUSPICIOUS_ACTIVITY",
-      "Guest token generation failed",
-      {
-        eventId: event.id,
-        error: tokenError instanceof Error ? tokenError.message : "Unknown error",
-      },
-      { ...securityContext, eventId: event.id }
-    );
+  // 2. ゲストトークンの生成
+  const guestToken = generateSecureGuestToken();
 
-    throw createServerActionError("INTERNAL_ERROR", "参加登録の処理中にエラーが発生しました");
-  }
-
+  // 3. 処理用データの統合
   return {
     participationData,
     sanitizedNickname,
     sanitizedEmail,
     guestToken,
   };
+}
+
+/**
+ * PostgrestErrorかどうかを型安全に判定する
+ */
+function isPostgrestError(error: unknown): error is PostgrestError {
+  const maybe = error as Partial<PostgrestError>;
+  return (
+    error !== null &&
+    typeof error === "object" &&
+    typeof maybe.code === "string" &&
+    typeof maybe.message === "string"
+  );
 }
 
 /**
@@ -254,9 +306,10 @@ async function executeRegistration(
   const supabase = createClient();
 
   let newAttendanceId: string | null = null;
-  let rpcError: { message: string; code?: string; details?: string } | null = null;
+  let rpcError: PostgrestError | Error | null = null;
 
   try {
+    // RPCは新しく作成されたattendanceのUUID(string形式)を返す
     const rpcResult = await supabase
       .rpc("register_attendance_with_payment", {
         p_event_id: event.id,
@@ -267,24 +320,84 @@ async function executeRegistration(
         p_payment_method: processedData.participationData.paymentMethod,
         p_event_fee: event.fee,
       })
+      .returns<string>()
       .single();
 
-    newAttendanceId = rpcResult.data as string | null;
-    rpcError = rpcResult.error as { message: string; code?: string; details?: string } | null;
+    // RPCの戻り値を型安全に取得
+    if (rpcResult.error) {
+      rpcError = rpcResult.error;
+      newAttendanceId = null;
+    } else {
+      newAttendanceId = rpcResult.data;
+    }
   } catch (rpcCallError) {
-    rpcError = rpcCallError as { message: string; code?: string; details?: string };
+    // 型安全にエラーを処理
+    rpcError = rpcCallError instanceof Error ? rpcCallError : new Error(String(rpcCallError));
+    newAttendanceId = null;
   }
 
+  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   if (rpcError || !newAttendanceId) {
-    // データベースエラーをセキュリティログに記録
+    // データベースエラーをセキュリティログに記録（型安全）
+    const errorMessage = rpcError?.message ?? "RPC call failed";
+    const errorCode = isPostgrestError(rpcError) ? rpcError.code : undefined;
+    const errorDetails = isPostgrestError(rpcError) ? rpcError.details : undefined;
+
+    // RPC内のキャパシティチェックエラーを適切にハンドリング
+    if (errorMessage.includes("Event capacity") && errorMessage.includes("has been reached")) {
+      // RPC内部でのキャパシティ超過（レースコンディション発生）
+      logParticipationSecurityEvent(
+        "CAPACITY_RACE_CONDITION",
+        "Race condition detected: capacity exceeded during RPC execution",
+        {
+          eventId: event.id,
+          error: errorMessage,
+          errorCode,
+          errorDetails,
+        },
+        { ...securityContext, eventId: event.id }
+      );
+
+      throw createServerActionError("RESOURCE_CONFLICT", "このイベントは定員に達しています");
+    }
+
+    // RPC内での重複エラーを適切にハンドリング
+    if (
+      errorMessage.includes("duplicate key") ||
+      errorMessage.includes("already exists") ||
+      errorMessage.includes("unique constraint") ||
+      errorCode === "23505" || // PostgreSQL unique constraint violation
+      errorDetails?.includes("attendances_event_id_email_key")
+    ) {
+      // RPC内部での重複検出（レースコンディション発生）
+      logParticipationSecurityEvent(
+        "DUPLICATE_REGISTRATION",
+        "Race condition detected: duplicate email during RPC execution",
+        {
+          eventId: event.id,
+          error: errorMessage,
+          errorCode,
+          errorDetails,
+          email: processedData.sanitizedEmail,
+        },
+        { ...securityContext, eventId: event.id }
+      );
+
+      throw createServerActionError(
+        "DUPLICATE_REGISTRATION",
+        "このメールアドレスは既にこのイベントに登録されています"
+      );
+    }
+
+    // その他のRPCエラー
     logParticipationSecurityEvent(
       "SUSPICIOUS_ACTIVITY",
       "Database error during attendance creation via RPC",
       {
         eventId: event.id,
-        error: rpcError?.message || "RPC call failed",
-        errorCode: rpcError?.code,
-        errorDetails: rpcError?.details,
+        error: errorMessage,
+        errorCode,
+        errorDetails,
         guestTokenProvided: !!processedData.guestToken,
         guestTokenLength: processedData.guestToken?.length,
       },
@@ -302,6 +415,11 @@ async function executeRegistration(
 
 /**
  * ゲストトークン保存の検証
+ *
+ * 設計方針:
+ * - メイン処理（参加登録）は既に成功しているため、検証失敗時もユーザーエラーは返さない
+ * - セキュリティ問題として適切にログ記録し、管理者の監視・対処を可能にする
+ * - 将来的にはメトリクス監視によって問題の頻度を追跡し、根本対策を検討する
  */
 async function verifyGuestTokenStorage(
   attendanceId: string,
@@ -319,6 +437,7 @@ async function verifyGuestTokenStorage(
       .eq("id", attendanceId)
       .single();
 
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     if (verifyError || !savedAttendance) {
       logParticipationSecurityEvent(
         "SUSPICIOUS_ACTIVITY",
@@ -326,25 +445,76 @@ async function verifyGuestTokenStorage(
         {
           eventId: event.id,
           attendanceId,
-          error: verifyError?.message || "Attendance record not found",
+          error: verifyError?.message ?? "Attendance record not found",
         },
         { ...securityContext, eventId: event.id }
       );
     } else if (savedAttendance.guest_token !== expectedGuestToken) {
       logParticipationSecurityEvent(
         "SUSPICIOUS_ACTIVITY",
-        "Guest token mismatch after storage",
+        "Guest token mismatch after storage (plain text comparison)",
         {
           eventId: event.id,
           attendanceId,
           expectedTokenLength: expectedGuestToken.length,
           savedTokenLength: savedAttendance.guest_token?.length,
+          expectedPrefix: expectedGuestToken.substring(0, 4),
+          savedPrefix: savedAttendance.guest_token?.substring(0, 4),
+        },
+        { ...securityContext, eventId: event.id }
+      );
+    } else {
+      // 検証成功：通常の処理として扱い、詳細ログは開発環境でのみ記録
+      if (process.env.NODE_ENV === "development") {
+        logParticipationSecurityEvent(
+          "SUSPICIOUS_ACTIVITY", // TODO: 将来的にはSUCCESS_AUDITなど専用型を追加
+          "Guest token storage verification completed successfully",
+          {
+            eventId: event.id,
+            attendanceId,
+            tokenLength: expectedGuestToken.length,
+          },
+          { ...securityContext, eventId: event.id }
+        );
+      }
+    }
+  } catch (verifyException) {
+    const errorMessage =
+      verifyException instanceof Error ? verifyException.message : "Unknown verification error";
+
+    // SecureSupabaseClientFactory関連のエラーは高優先度で記録（システムインシデント可能性）
+    if (
+      errorMessage.includes("SecureSupabaseClientFactory") ||
+      errorMessage.includes("createGuestClient")
+    ) {
+      logParticipationSecurityEvent(
+        "SUSPICIOUS_ACTIVITY", // 将来的にはSYSTEM_FAILURE等の専用型を検討
+        "CRITICAL: SecureSupabaseClientFactory failure detected during guest token verification",
+        {
+          eventId: event.id,
+          attendanceId,
+          error: errorMessage,
+          severity: "CRITICAL",
+          requiresImmediateAttention: true,
+          systemComponent: "SecureSupabaseClientFactory",
+          operationContext: "guest_token_verification",
+        },
+        { ...securityContext, eventId: event.id }
+      );
+    } else {
+      // その他の検証エラー（設計意図: UX保持のためユーザーエラーは返さない）
+      logParticipationSecurityEvent(
+        "SUSPICIOUS_ACTIVITY",
+        "Guest token verification failed but continuing main process (by design for UX)",
+        {
+          eventId: event.id,
+          attendanceId,
+          error: errorMessage,
+          designNote: "User experience prioritized over strict security validation at this stage",
         },
         { ...securityContext, eventId: event.id }
       );
     }
-  } catch (_verifyException) {
-    // 検証エラーは記録するが、メイン処理は続行する
   }
 }
 
@@ -357,7 +527,7 @@ export async function registerParticipationAction(
 ): Promise<ServerActionResult<RegisterParticipationData>> {
   // リクエスト情報を取得（セキュリティログ用）
   const headersList = headers();
-  const userAgent = headersList.get("user-agent") || undefined;
+  const userAgent = headersList.get("user-agent") ?? undefined;
   const ip = getClientIPFromHeaders(headersList);
   const securityContext = { userAgent, ip };
 
@@ -368,20 +538,26 @@ export async function registerParticipationAction(
     // 2. 招待トークンの検証とイベント情報の取得
     const { event } = await validateInviteAndEvent(participationData, securityContext);
 
-    // 3. 容量チェックと重複チェック
-    await validateCapacityAndDuplication(participationData, event, securityContext);
+    // 3. イベント参加費を考慮した完全バリデーション
+    await validateFormDataWithEventFee(participationData, event, securityContext);
 
-    // 4. データのサニタイゼーションとゲストトークン生成
-    const processedData = await sanitizeAndPrepareData(participationData, event, securityContext);
+    // 4. 容量チェック（サニタイゼーション前に実行）
+    await validateCapacity(participationData, event, securityContext);
 
-    // 5. データベース操作の実行
+    // 5. データのサニタイゼーションとゲストトークン生成
+    const processedData = await prepareProcessedData(participationData, event, securityContext);
+
+    // 6. メール重複チェック（サニタイズ済みメールアドレスで実行）
+    await validateEmailDuplication(processedData.sanitizedEmail, event, securityContext);
+
+    // 7. データベース操作の実行
     const newAttendanceId = await executeRegistration(processedData, event, securityContext);
 
-    // 6. 決済が必要かどうかの判定
+    // 8. 決済が必要かどうかの判定
     const requiresAdditionalPayment =
       participationData.attendanceStatus === "attending" && event.fee > 0;
 
-    // 7. 成功レスポンスの作成
+    // 9. 成功レスポンスの作成
     const responseData: RegisterParticipationData = {
       attendanceId: newAttendanceId,
       guestToken: processedData.guestToken,
@@ -428,12 +604,22 @@ export async function registerParticipationDirectAction(
     formData.append("nickname", participationData.nickname);
     formData.append("email", participationData.email);
     formData.append("attendanceStatus", participationData.attendanceStatus);
-    if (participationData.paymentMethod) {
-      formData.append("paymentMethod", participationData.paymentMethod);
-    }
+    // paymentMethodはundefinedの場合も空文字として送信（バリデーション一貫性のため）
+    formData.append("paymentMethod", participationData.paymentMethod ?? "");
 
     return await registerParticipationAction(formData);
-  } catch (_error) {
+  } catch (error) {
+    // エラー詳細をセキュリティログに記録
+    logParticipationSecurityEvent(
+      "SUSPICIOUS_ACTIVITY",
+      "Unexpected error in direct participation registration",
+      {
+        error: error instanceof Error ? error.message : "Unknown error",
+        stack: error instanceof Error ? error.stack : undefined,
+      },
+      { userAgent: "direct-action", ip: "internal" }
+    );
+
     return createServerActionError("INTERNAL_ERROR", "参加登録の処理中にエラーが発生しました");
   }
 }

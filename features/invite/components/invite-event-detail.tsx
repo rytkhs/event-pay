@@ -25,18 +25,18 @@ interface InviteEventDetailProps {
   inviteToken: string;
 }
 
-export function InviteEventDetail({ event, inviteToken }: InviteEventDetailProps) {
+export function InviteEventDetail({ event, inviteToken }: InviteEventDetailProps): JSX.Element {
   const [showForm, setShowForm] = useState(false);
   const [registrationData, setRegistrationData] = useState<RegisterParticipationData | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const formatCurrency = (amount: number) => {
+  const formatCurrency = (amount: number): string => {
     return amount === 0 ? "無料" : `${amount.toLocaleString()}円`;
   };
 
-  const getStatusText = (status: string) => {
-    return EVENT_STATUS_LABELS[status as keyof typeof EVENT_STATUS_LABELS] || status;
+  const getStatusText = (status: string): string => {
+    return EVENT_STATUS_LABELS[status as keyof typeof EVENT_STATUS_LABELS] ?? status;
   };
 
   // 定員状況の確認
@@ -50,7 +50,7 @@ export function InviteEventDetail({ event, inviteToken }: InviteEventDetailProps
   const canRegister =
     !isCapacityReached && !isRegistrationDeadlinePassed && event.status === "upcoming";
 
-  const handleParticipationSubmit = async (data: ParticipationFormData) => {
+  const handleParticipationSubmit = async (data: ParticipationFormData): Promise<void> => {
     try {
       setIsSubmitting(true);
       setError(null);
@@ -68,13 +68,13 @@ export function InviteEventDetail({ event, inviteToken }: InviteEventDetailProps
       // 参加登録サーバーアクションを実行
       const result = await registerParticipationAction(formData);
 
-      if (result.success && result.data) {
+      if (result.success) {
         // 成功時は確認ページを表示
         setRegistrationData(result.data);
         setShowForm(false);
       } else {
         // エラー時はエラーメッセージを表示
-        setError(!result.success ? result.error : "参加申し込み中にエラーが発生しました");
+        setError(result.error);
       }
     } catch (_error) {
       setError("参加申し込み中にエラーが発生しました");
@@ -123,7 +123,7 @@ export function InviteEventDetail({ event, inviteToken }: InviteEventDetailProps
               <div>
                 <h3 className="text-sm font-medium text-gray-700">開催場所</h3>
                 <p className="mt-1 text-sm text-gray-900 break-words">
-                  {sanitizeForEventPay(event.location || "未定")}
+                  {sanitizeForEventPay(event.location ?? "未定")}
                 </p>
               </div>
 
