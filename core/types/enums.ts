@@ -6,6 +6,8 @@
  * フロントエンドとバックエンドでの型安全性を確保します。
  */
 
+import { Database } from "@/types/database";
+
 // ====================================================================
 // イベントステータス型
 // ====================================================================
@@ -38,11 +40,9 @@ export const EVENT_STATUS_VALUES: EventStatus[] = Object.values(EVENT_STATUS);
 // ====================================================================
 /**
  * 決済方法を表すENUM型
+ * データベースのpayment_method_enumと完全に一致
  */
-export type PaymentMethod =
-  | "stripe" // オンライン決済（Stripe）
-  | "cash" // 現金決済（当日支払い）
-  | "free"; // 無料イベント
+export type PaymentMethod = Database["public"]["Enums"]["payment_method_enum"];
 
 /**
  * 決済方法の定数定義
@@ -50,13 +50,12 @@ export type PaymentMethod =
 export const PAYMENT_METHOD = {
   STRIPE: "stripe" as const,
   CASH: "cash" as const,
-  FREE: "free" as const,
 } as const;
 
 /**
  * 決済方法の有効な値の配列
  */
-export const PAYMENT_METHOD_VALUES: PaymentMethod[] = Object.values(PAYMENT_METHOD);
+export const PAYMENT_METHOD_VALUES: PaymentMethod[] = ["stripe", "cash"];
 
 // ====================================================================
 // 決済ステータス型
