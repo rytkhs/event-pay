@@ -312,7 +312,7 @@ export async function createPendingTestPayment(
   const {
     amount = 1000,
     method = "stripe",
-    stripeAccountId = null,
+    stripeAccountId = undefined,
     applicationFeeAmount = Math.floor(amount * 0.1), // デフォルト10%
   } = options;
 
@@ -376,7 +376,7 @@ export async function createTestPaymentWithExistingAmount(
     stripeAccountId?: string;
   } = {}
 ): Promise<TestPaymentData> {
-  const { method = "stripe", stripeAccountId = null } = options;
+  const { method = "stripe", stripeAccountId = undefined } = options;
 
   return createPendingTestPayment(attendanceId, {
     amount: existingAmount,
