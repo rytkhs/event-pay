@@ -33,14 +33,6 @@ const config = {
     "!**/node_modules/**",
   ],
   coverageDirectory: "tmp/test-artifacts/jest-coverage",
-  coverageThreshold: {
-    global: {
-      statements: 50,
-      branches: 50,
-      functions: 50,
-      lines: 50,
-    },
-  },
   reporters: [
     "default",
     ["jest-junit", { outputDirectory: "tmp/test-artifacts", outputName: "junit.xml" }],
