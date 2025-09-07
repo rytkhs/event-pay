@@ -20,12 +20,16 @@
     "db:seed": "npx supabase seed reset",
     "stripe:listen": "stripe listen --forward-to localhost:3000/api/webhooks/stripe",
     "test:unit": "jest --config=jest.config.mjs --passWithNoTests --runInBand",
+    "test:unit:watch": "jest --config=jest.config.mjs --watch --runInBand",
+    "test:unit:coverage": "jest --config=jest.config.mjs --coverage --runInBand",
     "test:e2e": "playwright test",
     "test:e2e:headed": "playwright test --headed",
+    "test:e2e:debug": "playwright test --debug",
     "test": "npm run test:unit && npm run test:e2e",
     "test:ci": "npm run test:unit && npm run test:e2e",
     "test:setup": "npx supabase db reset --local && echo 'Test environment ready'",
-    "test:with-server": "PLAYWRIGHT_START_SERVER=1 npm run test:e2e"
+    "test:with-server": "PLAYWRIGHT_START_SERVER=1 npm run test:e2e",
+    "test:payments": "jest --config=jest.config.mjs --testPathPattern=payments --runInBand"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.1.1",

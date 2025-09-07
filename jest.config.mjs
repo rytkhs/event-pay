@@ -2,6 +2,7 @@
 const config = {
   testMatch: ["<rootDir>/tests/**/?(*.)+(spec|test).[tj]s?(x)"],
   testPathIgnorePatterns: ["/node_modules/", "/tests/e2e/"],
+  setupFilesAfterEnv: ["<rootDir>/tests/setup/jest-setup.ts"],
   transform: {
     "^.+\\.(ts|tsx)$": [
       "ts-jest",
@@ -24,8 +25,22 @@ const config = {
   testEnvironment: "node",
   collectCoverage: true,
   coverageProvider: "v8",
-  collectCoverageFrom: ["core/**/*.{ts,tsx}", "features/**/*.{ts,tsx}", "!**/*.d.ts"],
+  collectCoverageFrom: [
+    "core/**/*.{ts,tsx}",
+    "features/**/*.{ts,tsx}",
+    "!**/*.d.ts",
+    "!tests/**/*",
+    "!**/node_modules/**",
+  ],
   coverageDirectory: "tmp/test-artifacts/jest-coverage",
+  coverageThreshold: {
+    global: {
+      statements: 50,
+      branches: 50,
+      functions: 50,
+      lines: 50,
+    },
+  },
   reporters: [
     "default",
     ["jest-junit", { outputDirectory: "tmp/test-artifacts", outputName: "junit.xml" }],
