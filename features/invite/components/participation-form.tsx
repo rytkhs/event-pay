@@ -1,6 +1,5 @@
 "use client";
-
-import { useState } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { AlertTriangle } from "lucide-react";
@@ -10,10 +9,8 @@ import { PAYMENT_METHOD_LABELS } from "@core/constants/payment-methods";
 import { useParticipationErrorHandler } from "@core/hooks/use-error-handler";
 import { EventDetail } from "@core/utils/invite-token";
 import {
-  participationFormSchema,
+  createParticipationFormSchema,
   type ParticipationFormData,
-  validateParticipationField,
-  sanitizeParticipationInput,
 } from "@core/validation/participation";
 
 import { ParticipationErrorBoundary } from "@/components/errors";
@@ -45,10 +42,17 @@ export function ParticipationForm({
   onSubmit,
   onCancel,
   isSubmitting: externalIsSubmitting = false,
-}: ParticipationFormProps) {
+}: ParticipationFormProps): JSX.Element {
   const [internalIsSubmitting, setInternalIsSubmitting] = useState(false);
   const isSubmitting = externalIsSubmitting || internalIsSubmitting;
   const { handleError, isError, error, clearError } = useParticipationErrorHandler();
+
+  // 外部isSubmittingがfalseになったら内部状態もリセット（競合状態の解決）
+  useEffect(() => {
+    if (!externalIsSubmitting && internalIsSubmitting) {
+      setInternalIsSubmitting(false);
+    }
+  }, [externalIsSubmitting, internalIsSubmitting]);
 
   // アクセシビリティ用のID生成
   const formId = "participation-form";
@@ -56,46 +60,40 @@ export function ParticipationForm({
   const attendanceGroupId = "attendance-status-group";
   const paymentGroupId = "payment-method-group";
 
-  const form = useForm<ParticipationFormData>({
-    resolver: zodResolver(participationFormSchema),
+  // スキーマのメモ化（毎レンダーでの再生成を防止）
+  const validationSchema = useMemo(() => createParticipationFormSchema(event.fee), [event.fee]);
+
+  const form = useForm({
+    resolver: zodResolver(validationSchema),
     defaultValues: {
       inviteToken,
       nickname: "",
       email: "",
-      attendanceStatus: undefined,
+      attendanceStatus: undefined as "attending" | "not_attending" | "maybe" | undefined,
       paymentMethod: undefined,
     },
     mode: "onChange", // リアルタイムバリデーション
   });
 
   const watchedAttendanceStatus = form.watch("attendanceStatus");
-  const showPaymentMethod = watchedAttendanceStatus === "attending" && event.fee > 0;
 
-  // フィールドレベルのリアルタイムバリデーション（セキュリティ対策強化版）
-  const handleFieldChange = (fieldName: keyof ParticipationFormData, value: string) => {
-    // クライアントサイドでは詳細なセキュリティログは記録しない
-    // （サーバーサイドで包括的にログ記録される）
-    const errors = validateParticipationField(fieldName, value, form.getValues());
+  // 条件ロジックの一元管理
+  const isAttending = watchedAttendanceStatus === "attending";
+  const isPaidEvent = event.fee > 0;
+  const showPaymentMethod = isAttending && isPaidEvent;
+  const showFeeInfo = isAttending; // 参加時は無料・有料問わず費用情報を表示
 
-    // エラーがある場合は表示、ない場合はクリア
-    if (errors[fieldName]) {
-      form.setError(fieldName, { message: errors[fieldName] });
-    } else {
-      form.clearErrors(fieldName);
-    }
-  };
-
-  const handleFormSubmit = async (data: ParticipationFormData) => {
+  const handleFormSubmit = async (data: ParticipationFormData): Promise<void> => {
     try {
       setInternalIsSubmitting(true);
-      clearError(); // 前回のエラーをクリア
+      clearError();
 
-      // 入力データのサニタイゼーション（クライアントサイド）
-      // サーバーサイドでも再度サニタイゼーションが実行される
+      // バリデーションスキーマで既にサニタイゼーション済みのため、追加処理は不要
       const sanitizedData: ParticipationFormData = {
-        ...data,
-        nickname: sanitizeParticipationInput.nickname(data.nickname),
-        email: sanitizeParticipationInput.email(data.email),
+        inviteToken: data.inviteToken,
+        nickname: data.nickname,
+        email: data.email,
+        attendanceStatus: data.attendanceStatus,
         // 不参加・未定の場合はpaymentMethodをundefinedに確実に設定
         paymentMethod: data.attendanceStatus === "attending" ? data.paymentMethod : undefined,
       };
@@ -173,6 +171,8 @@ export function ParticipationForm({
               aria-describedby={`${formId}-description ${isError ? errorId : ""}`}
               noValidate
             >
+              {/* 招待トークン（フォームの堅牢性向上のJavaScript無効環境対応） */}
+              <input type="hidden" {...form.register("inviteToken")} value={inviteToken} />
               {/* ニックネーム入力 */}
               <FormField
                 control={form.control}
@@ -190,10 +190,6 @@ export function ParticipationForm({
                         {...field}
                         placeholder="表示名を入力してください"
                         maxLength={50}
-                        onChange={(e) => {
-                          field.onChange(e);
-                          handleFieldChange("nickname", e.target.value);
-                        }}
                         className="w-full h-11 sm:h-10 text-base sm:text-sm"
                         autoComplete="name"
                         inputMode="text"
@@ -229,10 +225,6 @@ export function ParticipationForm({
                         type="email"
                         placeholder="example@email.com"
                         maxLength={255}
-                        onChange={(e) => {
-                          field.onChange(e);
-                          handleFieldChange("email", e.target.value);
-                        }}
                         className="w-full h-11 sm:h-10 text-base sm:text-sm"
                         autoComplete="email"
                         inputMode="email"
@@ -264,16 +256,17 @@ export function ParticipationForm({
                     </FormLabel>
                     <FormControl>
                       <RadioGroup
-                        value={field.value}
+                        value={field.value ?? ""}
                         onValueChange={(value) => {
                           field.onChange(value);
-                          handleFieldChange("attendanceStatus", value);
 
                           // 参加ステータスが変更された時の処理
                           if (value !== "attending") {
                             form.setValue("paymentMethod", undefined);
                             form.clearErrors("paymentMethod");
                           }
+                          // paymentMethodのみを再検証
+                          form.trigger("paymentMethod");
                         }}
                         className="space-y-3 sm:space-y-4"
                         aria-labelledby={attendanceGroupId}
@@ -284,18 +277,18 @@ export function ParticipationForm({
                         <div className="flex items-center space-x-3 p-3 sm:p-2 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-blue-500">
                           <RadioGroupItem
                             value="attending"
-                            id="attending"
+                            id={`${formId}-attending`}
                             className="h-5 w-5 sm:h-4 sm:w-4"
-                            aria-describedby="attending-description"
+                            aria-describedby={`${formId}-attending-description`}
                           />
                           <Label
-                            htmlFor="attending"
+                            htmlFor={`${formId}-attending`}
                             className="text-sm sm:text-sm font-normal cursor-pointer flex-1 leading-relaxed"
                           >
                             参加
                             {event.capacity && (
                               <span
-                                id="attending-description"
+                                id={`${formId}-attending-description`}
                                 className="text-xs text-gray-500 ml-1 block sm:inline"
                               >
                                 (定員: {event.attendances_count}/{event.capacity}人)
@@ -306,11 +299,11 @@ export function ParticipationForm({
                         <div className="flex items-center space-x-3 p-3 sm:p-2 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-blue-500">
                           <RadioGroupItem
                             value="not_attending"
-                            id="not_attending"
+                            id={`${formId}-not_attending`}
                             className="h-5 w-5 sm:h-4 sm:w-4"
                           />
                           <Label
-                            htmlFor="not_attending"
+                            htmlFor={`${formId}-not_attending`}
                             className="text-sm sm:text-sm font-normal cursor-pointer flex-1 leading-relaxed"
                           >
                             不参加
@@ -319,11 +312,11 @@ export function ParticipationForm({
                         <div className="flex items-center space-x-3 p-3 sm:p-2 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-blue-500">
                           <RadioGroupItem
                             value="maybe"
-                            id="maybe"
+                            id={`${formId}-maybe`}
                             className="h-5 w-5 sm:h-4 sm:w-4"
                           />
                           <Label
-                            htmlFor="maybe"
+                            htmlFor={`${formId}-maybe`}
                             className="text-sm sm:text-sm font-normal cursor-pointer flex-1 leading-relaxed"
                           >
                             未定
@@ -355,10 +348,9 @@ export function ParticipationForm({
                       </FormLabel>
                       <FormControl>
                         <RadioGroup
-                          value={field.value}
+                          value={field.value ?? ""}
                           onValueChange={(value) => {
                             field.onChange(value);
-                            handleFieldChange("paymentMethod", value);
                           }}
                           className="space-y-3 sm:space-y-4"
                           aria-labelledby={paymentGroupId}
@@ -367,7 +359,7 @@ export function ParticipationForm({
                           role="radiogroup"
                         >
                           {event.payment_methods
-                            // DBのEnumに"free"は存在しないためフィルタを削除
+                            // DBの型は既に"stripe"|"cash"のみで安全
                             .map((method) => (
                               <div
                                 key={method}
@@ -375,18 +367,18 @@ export function ParticipationForm({
                               >
                                 <RadioGroupItem
                                   value={method}
-                                  id={method}
+                                  id={`${formId}-${method}`}
                                   className="h-5 w-5 sm:h-4 sm:w-4 mt-0.5"
-                                  aria-describedby={`${method}-description`}
+                                  aria-describedby={`${formId}-${method}-description`}
                                 />
                                 <Label
-                                  htmlFor={method}
+                                  htmlFor={`${formId}-${method}`}
                                   className="text-sm sm:text-sm font-normal cursor-pointer flex-1 leading-relaxed"
                                 >
                                   <div className="font-medium">{PAYMENT_METHOD_LABELS[method]}</div>
                                   {method === "stripe" && (
                                     <div
-                                      id={`${method}-description`}
+                                      id={`${formId}-${method}-description`}
                                       className="text-xs text-gray-500 mt-1"
                                     >
                                       クレジットカード決済
@@ -394,7 +386,7 @@ export function ParticipationForm({
                                   )}
                                   {method === "cash" && (
                                     <div
-                                      id={`${method}-description`}
+                                      id={`${formId}-${method}-description`}
                                       className="text-xs text-gray-500 mt-1"
                                     >
                                       当日現金支払い
@@ -423,38 +415,23 @@ export function ParticipationForm({
               )}
 
               {/* 参加費表示 */}
-              {watchedAttendanceStatus === "attending" && event.fee > 0 && (
+              {showFeeInfo && (
                 <div
-                  className="bg-blue-50 p-3 sm:p-4 rounded-lg"
+                  className={`p-3 sm:p-4 rounded-lg ${isPaidEvent ? "bg-blue-50" : "bg-green-50"}`}
                   role="region"
                   aria-label="参加費情報"
                 >
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-medium text-gray-700">参加費</span>
                     <span
-                      className="text-lg sm:text-xl font-semibold text-blue-600"
-                      aria-label={`参加費 ${event.fee.toLocaleString()}円`}
+                      className={`text-lg sm:text-xl font-semibold ${
+                        isPaidEvent ? "text-blue-600" : "text-green-600"
+                      }`}
+                      aria-label={
+                        isPaidEvent ? `参加費 ${event.fee.toLocaleString()}円` : "参加費 無料"
+                      }
                     >
-                      {event.fee.toLocaleString()}円
-                    </span>
-                  </div>
-                </div>
-              )}
-
-              {/* 無料イベントの場合の表示 */}
-              {watchedAttendanceStatus === "attending" && event.fee === 0 && (
-                <div
-                  className="bg-green-50 p-3 sm:p-4 rounded-lg"
-                  role="region"
-                  aria-label="参加費情報"
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-gray-700">参加費</span>
-                    <span
-                      className="text-lg sm:text-xl font-semibold text-green-600"
-                      aria-label="参加費 無料"
-                    >
-                      無料
+                      {isPaidEvent ? `${event.fee.toLocaleString()}円` : "無料"}
                     </span>
                   </div>
                 </div>
@@ -466,12 +443,23 @@ export function ParticipationForm({
                   type="submit"
                   disabled={isSubmitting || !form.formState.isValid}
                   className="w-full sm:flex-1 bg-blue-600 hover:bg-blue-700 text-white h-12 sm:h-10 text-base sm:text-sm font-medium focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-                  aria-describedby={isSubmitting ? "submit-status" : undefined}
+                  aria-describedby={
+                    isSubmitting
+                      ? "submit-status"
+                      : !form.formState.isValid
+                        ? "form-validation-status"
+                        : undefined
+                  }
                 >
                   {isSubmitting ? "申し込み中..." : "参加申し込みを完了する"}
                   {isSubmitting && (
                     <span id="submit-status" className="sr-only" aria-live="polite">
                       申し込みを処理中です。しばらくお待ちください。
+                    </span>
+                  )}
+                  {!form.formState.isValid && !isSubmitting && (
+                    <span id="form-validation-status" className="sr-only" aria-live="polite">
+                      フォームに入力エラーがあります。各項目をご確認ください。
                     </span>
                   )}
                 </Button>

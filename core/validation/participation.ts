@@ -6,7 +6,8 @@ import { sanitizeForEventPay } from "@core/utils/sanitize";
 // 招待トークンの検証スキーマ
 const inviteTokenSchema = z
   .string()
-  .length(32, "無効な招待トークンの形式です")
+  .min(32, "招待トークンが短すぎます")
+  .max(64, "招待トークンが長すぎます")
   .regex(/^[a-zA-Z0-9_-]+$/, "無効な招待トークンの文字です");
 
 // ニックネームの検証スキーマ
@@ -30,45 +31,83 @@ const emailSchema = z
   );
 
 // 参加ステータスの検証スキーマ
-export const attendanceStatusSchema = z.enum(["attending", "not_attending", "maybe"], {
-  errorMap: () => ({ message: "有効な参加ステータスを選択してください" }),
-});
+export const attendanceStatusSchema = z
+  .string()
+  .refine((val) => val === "" || ["attending", "not_attending", "maybe"].includes(val), {
+    message: "参加ステータスを選択してください",
+  })
+  .refine((val) => val !== "", {
+    message: "参加ステータスを選択してください",
+  })
+  .transform((val) => val as "attending" | "not_attending" | "maybe");
 
 // 決済方法の検証スキーマ（参加ステータスが"attending"かつ有料の場合のみ必須）
 export const paymentMethodSchema = z
-  .enum(["stripe", "cash"], {
-    errorMap: () => ({ message: "有効な決済方法を選択してください" }),
+  .string()
+  .refine((val) => val === "" || ["stripe", "cash"].includes(val), {
+    message: "有効な決済方法を選択してください",
   })
+  .transform((val) => (val === "" ? undefined : (val as "stripe" | "cash")))
   .optional();
 
-// 参加フォームの基本検証スキーマ
-export const participationFormSchema = z
-  .object({
-    inviteToken: inviteTokenSchema,
-    nickname: nicknameSchema,
-    email: emailSchema,
-    attendanceStatus: attendanceStatusSchema,
-    paymentMethod: paymentMethodSchema,
-  })
-  .refine(
-    (data) => {
-      // 参加ステータスが"attending"の場合は決済方法が必須（無料イベントは除く）
-      if (data.attendanceStatus === "attending") {
-        return data.paymentMethod !== undefined;
+// 参加フォームの基本検証スキーマ（動的バリデーション用）
+export const createParticipationFormSchema = (
+  eventFee: number = 0
+): z.ZodEffects<
+  z.ZodObject<{
+    inviteToken: typeof inviteTokenSchema;
+    nickname: typeof nicknameSchema;
+    email: typeof emailSchema;
+    attendanceStatus: typeof attendanceStatusSchema;
+    paymentMethod: typeof paymentMethodSchema;
+  }>
+> => {
+  return z
+    .object({
+      inviteToken: inviteTokenSchema,
+      nickname: nicknameSchema,
+      email: emailSchema,
+      attendanceStatus: attendanceStatusSchema,
+      paymentMethod: paymentMethodSchema,
+    })
+    .refine(
+      (data) => {
+        // 参加ステータスが"attending"かつ有料イベントの場合のみ決済方法が必須
+        if (data.attendanceStatus === "attending" && eventFee > 0) {
+          return data.paymentMethod !== undefined;
+        }
+        return true;
+      },
+      {
+        message: "参加を選択した場合は決済方法を選択してください",
+        path: ["paymentMethod"],
       }
-      return true;
-    },
-    {
-      message: "参加を選択した場合は決済方法を選択してください",
-      path: ["paymentMethod"],
-    }
-  );
+    );
+};
 
-// 参加フォームデータの型定義
-export type ParticipationFormData = z.infer<typeof participationFormSchema>;
+// 後方互換性のための基本スキーマ（無料イベント用）
+export const participationFormSchema = createParticipationFormSchema(0);
+
+// 参加フォームデータの型定義（動的スキーマ対応）
+export type ParticipationFormData = {
+  inviteToken: string;
+  nickname: string;
+  email: string;
+  attendanceStatus: "attending" | "not_attending" | "maybe";
+  paymentMethod?: "stripe" | "cash" | undefined;
+};
+
+// 型生成のためのヘルパー関数（動的スキーマ用）
+export type ParticipationFormDataForEventFee<T extends number> = T extends 0
+  ? ParticipationFormData & { paymentMethod?: undefined }
+  : ParticipationFormData & { paymentMethod: "stripe" | "cash" };
+
+// 後方互換性のための静的型（無料イベント用）
+// export type ParticipationFormDataStatic = z.infer<typeof participationFormSchema>;
 
 // 参加フォームの検証エラー型
 interface ParticipationValidationErrors {
+  [key: string]: string | undefined;
   inviteToken?: string;
   nickname?: string;
   email?: string;
@@ -82,6 +121,7 @@ interface ParticipationValidationErrors {
  * @param name フィールド名
  * @param value フィールドの値
  * @param formData 全体のフォームデータ（相関チェック用）
+ * @param eventFee イベント参加費（決済方法の必須判定用）
  * @param request リクエスト情報（ログ用）
  * @returns 検証エラー
  */
@@ -89,6 +129,7 @@ export const validateParticipationField = (
   name: keyof ParticipationFormData,
   value: string,
   formData?: Partial<ParticipationFormData>,
+  _eventFee: number = 0,
   request?: {
     userAgent?: string;
     ip?: string;
@@ -110,10 +151,6 @@ export const validateParticipationField = (
         break;
       case "attendanceStatus":
         attendanceStatusSchema.parse(value);
-        // 参加ステータスが変更された場合、決済方法の要否をチェック
-        if (value === "attending" && formData && !formData.paymentMethod) {
-          errors.paymentMethod = "参加を選択した場合は決済方法を選択してください";
-        }
         break;
       case "paymentMethod":
         if (value) {
@@ -124,11 +161,11 @@ export const validateParticipationField = (
   } catch (error) {
     if (error instanceof z.ZodError) {
       const errorMessage = error.errors[0].message;
-      errors[name] = errorMessage;
+      errors[name as string] = errorMessage;
 
       // バリデーション失敗をログに記録
       if (request) {
-        logValidationFailure(name, errorMessage, value, request);
+        logValidationFailure(String(name), errorMessage, value, request);
       }
     }
   }
@@ -160,13 +197,13 @@ export const validateParticipationFormWithDuplicateCheck = async (
       error.errors.forEach((err) => {
         const fieldPath = err.path[0] as keyof ParticipationFormData;
         const errorMessage = err.message;
-        errors[fieldPath] = errorMessage;
+        errors[fieldPath as string] = errorMessage;
 
         // バリデーション失敗をログに記録
         if (request) {
           const fieldValue = formData[fieldPath];
           logValidationFailure(
-            fieldPath,
+            String(fieldPath),
             errorMessage,
             typeof fieldValue === "string" ? fieldValue : undefined,
             { ...request, eventId }

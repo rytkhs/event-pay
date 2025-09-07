@@ -16,7 +16,7 @@ export interface EventDetail {
   title: string;
   description: string | null;
   event_date: string;
-  fee_amount: number;
+  fee: number;
   status: EventStatus;
   registration_deadline: string | null;
   capacity: number | null;
@@ -25,13 +25,6 @@ export interface EventDetail {
   created_at: string;
   updated_at: string;
   invite_token: string | null;
-}
-
-// 参加フォームデータ（core/validation/participation.tsから参照）
-export interface ParticipationFormData {
-  nickname: string;
-  email: string;
-  paymentMethod: PaymentMethod;
 }
 
 // 参加登録結果データ - actionsから直接エクスポート
