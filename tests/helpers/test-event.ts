@@ -24,8 +24,8 @@ export interface CreateTestEventOptions {
   payment_methods?: Database["public"]["Enums"]["payment_method_enum"][];
   location?: string;
   description?: string;
-  registration_deadline?: string;
-  payment_deadline?: string;
+  registration_deadline?: string | null;
+  payment_deadline?: string | null;
   status?: Database["public"]["Enums"]["event_status_enum"];
 }
 
@@ -71,8 +71,8 @@ export async function createTestEvent(
     payment_methods: [],
     location: "テスト会場",
     description: "E2Eテスト用のイベントです",
-    registration_deadline: "",
-    payment_deadline: "",
+    registration_deadline: null,
+    payment_deadline: null,
     status: "upcoming",
   };
 
@@ -92,8 +92,8 @@ export async function createTestEvent(
     fee: eventOptions.fee,
     capacity: eventOptions.capacity,
     payment_methods: eventOptions.payment_methods,
-    registration_deadline: eventOptions.registration_deadline,
-    payment_deadline: eventOptions.payment_deadline,
+    registration_deadline: eventOptions.registration_deadline || null,
+    payment_deadline: eventOptions.payment_deadline || null,
     status: eventOptions.status,
     invite_token: inviteToken,
     created_by: createdBy,
@@ -170,9 +170,7 @@ export async function createTestEventWithParticipants(
     guest_token: `guest_token_${i + 1}`,
   }));
 
-  const { error: participantError } = await adminClient
-    .from("attendances")
-    .insert(participants);
+  const { error: participantError } = await adminClient.from("attendances").insert(participants);
 
   if (participantError) {
     console.error("Failed to create test participants:", participantError);
