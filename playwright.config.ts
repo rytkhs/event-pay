@@ -13,9 +13,9 @@ const webServer = shouldStartServer
 export default defineConfig({
   testDir: "./tests/e2e",
   outputDir: "tmp/test-artifacts/playwright-results",
-  workers: 2,
-  fullyParallel: true,
-  timeout: 50 * 1000,
+  workers: 1,
+  fullyParallel: false,
+  timeout: 40 * 1000,
   expect: {
     timeout: 10 * 1000,
   },
