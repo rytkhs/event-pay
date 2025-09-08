@@ -44,16 +44,6 @@ export async function createDestinationCheckoutSession(
     );
   }
 
-  const idempotencyKey = generateIdempotencyKey(
-    "checkout",
-    eventId,
-    `${actorId}:${destinationAccountId}`,
-    {
-      amount,
-      currency: "jpy",
-    }
-  );
-
   const transferGroup = getTransferGroupForEvent(eventId);
 
   const sessionMetadata = {
@@ -62,8 +52,10 @@ export async function createDestinationCheckoutSession(
     ...metadata,
   };
 
-  const createSession = (key: string) =>
-    stripe.checkout.sessions.create(
+  const idempotencyKey = generateIdempotencyKey("checkout");
+
+  const createSession = () => {
+    return stripe.checkout.sessions.create(
       {
         mode: "payment",
         payment_method_types: ["card"],
@@ -102,10 +94,11 @@ export async function createDestinationCheckoutSession(
         },
         metadata: sessionMetadata,
       },
-      createStripeRequestOptions(key)
+      createStripeRequestOptions(idempotencyKey)
     );
+  };
 
-  return await retryWithIdempotency(() => createSession(idempotencyKey));
+  return await retryWithIdempotency(createSession);
 }
 
 // Customer作成・取得ヘルパー

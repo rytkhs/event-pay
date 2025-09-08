@@ -1,3 +1,5 @@
+import crypto from "crypto";
+
 import Stripe from "stripe";
 
 import { logger } from "@core/logging/app-logger";
@@ -143,37 +145,28 @@ export const getConnectWebhookSecrets = (): string[] => {
 
 /**
  * Idempotency Key生成関数
- * Destination charges対応でCheckout/PaymentIntents作成時の二重作成防止
+ * Stripe APIの二重実行防止のため、各リクエストごとに一意のUUIDを生成
+ *
+ * @param prefix - オプション：操作タイプのプレフィックス（デバッグ用）
+ * @returns 一意のIdempotency-Key
  */
-export const generateIdempotencyKey = (
-  type: "checkout" | "payment_intent" | "refund",
-  primaryId: string, // eventId or paymentIntentId / chargeId depending on type
-  secondaryId?: string | number, // userId or amount/full etc. optional
-  opts?: {
-    amount?: number;
-    currency?: string;
-  }
-): string => {
-  // Stripe Idempotency-Key は 1〜255 文字 (ASCII) に制限されるため、
-  // keyComponent をコロンスプリットで連結した後に slice で truncate する。
-
-  const prefix = type === "payment_intent" ? "pi" : type === "refund" ? "refund" : type; // 明示的に refund を保持
-
-  const components: (string | number | undefined)[] = [prefix, primaryId];
-
-  if (secondaryId !== undefined && secondaryId !== "") {
-    components.push(secondaryId);
+export const generateIdempotencyKey = (prefix?: string): string => {
+  // Prefer UUID v4 when available
+  if (typeof globalThis !== "undefined" && globalThis.crypto && "randomUUID" in globalThis.crypto) {
+    const uuid = (globalThis.crypto as Crypto).randomUUID();
+    return prefix ? `${prefix}_${uuid}` : uuid;
   }
 
-  // 可変パラメータ（amount/currency）が指定されていれば追加
-  if (opts?.amount !== undefined) {
-    components.push(opts.amount);
+  // Fallback: cryptographically secure random bytes -> hex
+  try {
+    const buf = crypto.randomBytes(16); // 128 bits
+    const hex = buf.toString("hex"); // 32 hex chars
+    return prefix ? `${prefix}_${hex}` : hex;
+  } catch {
+    // Last resort: pseudo-random (not recommended for production)
+    const fallback = `fallback_${Math.random().toString(36).slice(2)}_${Date.now()}`;
+    return prefix ? `${prefix}_${fallback}` : fallback;
   }
-  if (opts?.currency) {
-    components.push(opts.currency);
-  }
-
-  return components.join(":").slice(0, 255);
 };
 
 /**

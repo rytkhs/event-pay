@@ -245,16 +245,10 @@ export const createMockConnectAccount = (
 };
 
 // テスト用のidempotency keyを生成する関数
-export const generateTestIdempotencyKey = (
-  type: "checkout" | "payment_intent",
-  primaryId: string,
-  secondaryId?: string
-): string => {
-  const components = [type, primaryId];
-  if (secondaryId) {
-    components.push(secondaryId);
-  }
-  return components.join(":").slice(0, 255);
+export const generateTestIdempotencyKey = (prefix?: string): string => {
+  // テスト環境では固定のUUIDを使用してテストの再現性を保つ
+  const testUuid = "550e8400-e29b-41d4-a716-446655440000";
+  return prefix ? `${prefix}_${testUuid}` : testUuid;
 };
 
 // APIテスト用の共通アサーション

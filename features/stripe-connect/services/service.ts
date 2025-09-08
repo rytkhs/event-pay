@@ -6,7 +6,7 @@ import { type SupabaseClient } from "@supabase/supabase-js";
 import Stripe from "stripe";
 
 import { logger } from "@core/logging/app-logger";
-import { stripe } from "@core/stripe/client";
+import { stripe, generateIdempotencyKey } from "@core/stripe/client";
 
 import { Database } from "@/types/database";
 
@@ -127,7 +127,7 @@ export class StripeConnectService implements IStripeConnectService {
       // 既存が見つからなければ新規作成（Idempotency-Keyで二重作成防止）
       let createdNewAccount = false;
       if (!stripeAccount) {
-        const idempotencyKey = `connect-create:${userId}`;
+        const idempotencyKey = generateIdempotencyKey("connect");
         if (process.env.NODE_ENV === "test") {
           // テスト環境では引数シグネチャ互換のためリクエストオプションを渡さない
           stripeAccount = await this.stripe.accounts.create(createParams as any);
