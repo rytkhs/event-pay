@@ -162,7 +162,7 @@ export class SecureSupabaseClientFactory implements ISecureSupabaseClientFactory
         },
         global: {
           headers: {
-            "X-Guest-Token": token, // カスタムヘッダーでトークンを自動設定
+            "x-guest-token": token, // カスタムヘッダーでトークンを自動設定
             ...options?.headers,
           },
         },
@@ -176,7 +176,7 @@ export class SecureSupabaseClientFactory implements ISecureSupabaseClientFactory
         },
         global: {
           headers: {
-            "X-Guest-Token": token, // カスタムヘッダーでトークンを自動設定
+            "x-guest-token": token, // カスタムヘッダーでトークンを自動設定
             ...options?.headers,
           },
         },

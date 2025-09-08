@@ -15,6 +15,17 @@ import {
 import { validateGuestToken } from "@core/utils/guest-token";
 import { canCreateStripeSession } from "@core/validation/payment-eligibility";
 
+// Server Action内でPaymentService実装の登録を確保
+async function ensurePaymentServiceRegistration() {
+  try {
+    // PaymentService実装を動的にインポートして登録
+    await import("@features/payments/core-bindings");
+  } catch (error) {
+    console.error("Failed to register PaymentService implementation:", error);
+    throw new Error("PaymentService initialization failed");
+  }
+}
+
 /**
  * ゲスト用 Stripe Checkout セッション作成アクション
  * ゲストトークンで本人性を検証し、Admin クライアントで決済セッションを生成する。
@@ -90,6 +101,9 @@ export async function createGuestStripeSessionAction(
     AdminReason.PAYMENT_PROCESSING,
     "app/guest/actions/create-stripe-session"
   );
+
+  // PaymentService実装の登録を確実に実行
+  await ensurePaymentServiceRegistration();
   const paymentService = getPaymentService();
 
   // 5.1 既存の決済レコードがあれば金額は payments.amount を優先する

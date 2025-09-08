@@ -80,7 +80,7 @@ export function PaymentStatusAlert({
         `/api/payments/verify-session?${params}`,
         {
           headers: {
-            "X-Guest-Token": guestToken,
+            "x-guest-token": guestToken,
           },
           signal: controller.signal,
         }

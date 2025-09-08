@@ -17,6 +17,7 @@ import { validateGuestTokenFormat } from "./crypto";
 import { SecureSupabaseClientFactory } from "./secure-client-factory.impl";
 import { IGuestTokenValidator } from "./secure-client-factory.interface";
 import {
+  AdminReason,
   GuestErrorCode,
   GuestTokenErrorFactory,
   GuestValidationResult,
@@ -113,17 +114,21 @@ export class RLSGuestTokenValidator implements IGuestTokenValidator {
     }
 
     try {
-      // ゲストクライアントを作成（X-Guest-Tokenヘッダー自動設定）
-      const guestClient = this.clientFactory.createGuestClient(token);
+      // サービスロール権限でゲストトークンを直接検証（RLSバイパス）
+      const serviceClient = await this.clientFactory.createAuditedAdminClient(
+        AdminReason.SECURITY_INVESTIGATION,
+        "VALIDATE_GUEST_TOKEN"
+      );
 
-      // RLSポリシーにより、該当するattendanceのみ取得される
-      const { data: attendance, error } = await guestClient
+      // ゲストトークンで直接attendanceを検索
+      const { data: attendance, error } = await serviceClient
         .from("attendances")
         .select(
           `
           id,
           event_id,
           status,
+          guest_token,
           event:events (
             id,
             date,
@@ -132,10 +137,11 @@ export class RLSGuestTokenValidator implements IGuestTokenValidator {
           )
         `
         )
+        .eq("guest_token", token)
         .single(); // トークンが有効なら必ず1件のみ取得される
 
       if (error || !attendance) {
-        await this.safeLogGuestAccess(token, "VALIDATE_TOKEN", false, {
+        await this.safeLogGuestAccess(token, "VALIDATE_TOKEN_DETAILS", false, {
           errorCode: GuestErrorCode.TOKEN_NOT_FOUND,
           errorMessage: error?.message,
           tableName: "attendances",
@@ -159,7 +165,7 @@ export class RLSGuestTokenValidator implements IGuestTokenValidator {
       const canModify = this.checkCanModify(eventData);
 
       // 成功をログに記録
-      await this.safeLogGuestAccess(token, "VALIDATE_TOKEN", true, {
+      await this.safeLogGuestAccess(token, "VALIDATE_TOKEN_DETAILS", true, {
         attendanceId: attendance.id,
         eventId: eventData ? eventData.id : "",
         tableName: "attendances",
@@ -174,8 +180,8 @@ export class RLSGuestTokenValidator implements IGuestTokenValidator {
         canModify,
       };
     } catch (error) {
-      // RLSポリシー違反やその他のエラー
-      await this.safeLogGuestAccess(token, "VALIDATE_TOKEN", false, {
+      // データベースアクセスエラーやその他の例外
+      await this.safeLogGuestAccess(token, "VALIDATE_TOKEN_DETAILS", false, {
         errorCode: GuestErrorCode.TOKEN_NOT_FOUND,
         errorMessage: String(error),
         tableName: "attendances",
@@ -214,11 +220,14 @@ export class RLSGuestTokenValidator implements IGuestTokenValidator {
     }
 
     try {
-      // ゲストクライアントを作成
-      const guestClient = this.clientFactory.createGuestClient(token);
+      // サービスロール権限でゲストトークンを直接検証
+      const serviceClient = await this.clientFactory.createAuditedAdminClient(
+        AdminReason.SECURITY_INVESTIGATION,
+        "GET_GUEST_ATTENDANCE_DETAILS"
+      );
 
       // 詳細な参加データを取得
-      const { data: attendance, error } = await guestClient
+      const { data: attendance, error } = await serviceClient
         .from("attendances")
         .select(
           `
@@ -251,6 +260,7 @@ export class RLSGuestTokenValidator implements IGuestTokenValidator {
           )
         `
         )
+        .eq("guest_token", token)
         // payments は UNIQUE 制約で 1 件が想定だが、将来複数行を許容する拡張に備え最新順で並べ替え
         .order("created_at", { ascending: false, referencedTable: "payments" })
         .limit(1, { referencedTable: "payments" })
