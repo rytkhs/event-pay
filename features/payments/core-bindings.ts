@@ -3,6 +3,8 @@
  * features/payments の実装を core/services registry に登録する
  */
 
+import { SecureSupabaseClientFactory } from "@core/security/secure-client-factory.impl";
+import { AdminReason } from "@core/security/secure-client-factory.types";
 import paymentRegistry from "@core/services/payment-registry";
 import { createClient } from "@core/supabase/server";
 
@@ -20,13 +22,15 @@ let paymentServiceInstance: PaymentService | null = null;
 
 const paymentServiceImpl = {
   async createStripeSession(params: any) {
-    if (!paymentServiceInstance) {
-      // Get secure Supabase client and error handler for constructor
-      const supabaseClient = createClient();
-      const errorHandler = new PaymentErrorHandler();
-      paymentServiceInstance = new PaymentService(supabaseClient, errorHandler);
-    }
-    return paymentServiceInstance.createStripeSession(params);
+    // Stripe決済セッション作成時はAdminクライアントを使用（RLS回避のため）
+    const factory = SecureSupabaseClientFactory.getInstance();
+    const adminClient = await factory.createAuditedAdminClient(
+      AdminReason.PAYMENT_PROCESSING,
+      "features/payments/core-bindings createStripeSession"
+    );
+    const errorHandler = new PaymentErrorHandler();
+    const paymentService = new PaymentService(adminClient, errorHandler);
+    return paymentService.createStripeSession(params);
   },
 
   async createCashPayment(params: any) {
