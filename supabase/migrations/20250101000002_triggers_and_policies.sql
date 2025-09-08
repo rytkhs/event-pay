@@ -477,11 +477,11 @@ CREATE POLICY "Creators can insert own events" ON public.events FOR INSERT TO au
 CREATE POLICY "Creators can update own events" ON public.events FOR UPDATE TO authenticated USING (auth.uid() = created_by) WITH CHECK (auth.uid() = created_by);
 CREATE POLICY "Creators can delete own events" ON public.events FOR DELETE TO authenticated USING (auth.uid() = created_by);
 
--- ゲストトークンによる読み取りアクセス
-CREATE POLICY "Guest token read access for attendances" ON public.attendances FOR SELECT TO anon, authenticated USING (
-  guest_token IS NOT NULL
-  AND guest_token = public.get_guest_token()
-);
+-- ゲストトークンによる読み取りアクセス（削除済み：アプリケーション層で検証）
+-- CREATE POLICY "Guest token read access for attendances" ON public.attendances FOR SELECT TO anon, authenticated USING (
+--   guest_token IS NOT NULL
+--   AND guest_token = public.get_guest_token()
+-- );
 
 -- Service role can manage attendances (Server Actions用)
 CREATE POLICY "Service role can manage attendances" ON public.attendances FOR ALL TO service_role USING (true) WITH CHECK (true);

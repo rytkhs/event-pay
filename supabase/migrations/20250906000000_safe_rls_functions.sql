@@ -157,6 +157,9 @@ $$;
 DROP POLICY IF EXISTS "Authenticated users can view all events" ON public.events;
 DROP POLICY IF EXISTS "Guest token read access for attendances" ON public.attendances;
 
+-- 注意: 上記のDROP文は実際のマイグレーション時に実行されますが、
+-- ポリシー定義は後のアプリケーション層での検証移行のためコメントアウトしました
+
 -- Note: 他の基本的なポリシーは保持（循環参照なし）
 -- - "Creators can insert own events"
 -- - "Creators can update own events"
@@ -173,10 +176,10 @@ CREATE POLICY "Safe event access policy" ON public.events FOR SELECT
 TO anon, authenticated
 USING (public.can_access_event(id));
 
--- 3.2 参加者情報用の安全なポリシー
-CREATE POLICY "Safe attendance access policy" ON public.attendances FOR SELECT
-TO anon, authenticated
-USING (public.can_access_attendance(id));
+-- 3.2 参加者情報用の安全なポリシー（削除済み：アプリケーション層で検証）
+-- CREATE POLICY "Safe attendance access policy" ON public.attendances FOR SELECT
+-- TO anon, authenticated
+-- USING (public.can_access_attendance(id));
 
 -- 3.3 招待リンク管理用の安全なポリシー（既存を置換）
 DROP POLICY IF EXISTS "Anyone can view valid invite links" ON public.invite_links;
