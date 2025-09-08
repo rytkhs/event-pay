@@ -87,7 +87,7 @@ export async function createTestUserWithConnect(
   const {
     payoutsEnabled = true,
     chargesEnabled = true,
-    stripeAccountId = `acct_test_${Math.random().toString(36).substring(2, 15)}`,
+    stripeAccountId = "acct_1RwIFbCZwTLGDVBd",
   } = options;
 
   const user = await createTestUser(email, password);

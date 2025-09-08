@@ -104,7 +104,7 @@ describe("createGuestStripeSessionAction - Connectアカウント未設定/無�
 
   it("payouts_enabled=false時はRESOURCE_CONFLICTエラーを返す", async () => {
     connectAccountResponse = {
-      data: { stripe_account_id: "acct_123", payouts_enabled: false },
+      data: { stripe_account_id: "acct_1RwIFbCZwTLGDVBd", payouts_enabled: false },
       error: null,
     };
 

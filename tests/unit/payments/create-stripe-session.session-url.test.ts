@@ -41,7 +41,7 @@ describe("PaymentService - sessionUrl生成とテンプレート置換", () => {
 
   // テスト用の固定データ
   const testData = {
-    connectAccountId: "acct_test_connect_123456",
+    connectAccountId: "acct_1RwIFbCZwTLGDVBd",
     amount: 1000,
     eventId: "event_test_123",
     attendanceId: "attendance_test_456",
