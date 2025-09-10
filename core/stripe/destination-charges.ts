@@ -75,15 +75,13 @@ export async function createDestinationCheckoutSession(
         customer: customerId,
         client_reference_id: metadata?.payment_id ?? undefined,
         success_url: (() => {
-          const u = new URL(successUrl);
-          u.searchParams.set("session_id", "{CHECKOUT_SESSION_ID}");
-          return u.toString();
+          // Stripe は生の {CHECKOUT_SESSION_ID} を置換するため、URLSearchParams でエンコードせず連結する
+          const hasQuery = successUrl.includes("?");
+          const separator = hasQuery ? "&" : "?";
+          return `${successUrl}${separator}session_id={CHECKOUT_SESSION_ID}`;
         })(),
-        cancel_url: (() => {
-          const u = new URL(cancelUrl);
-          u.searchParams.set("session_id", "{CHECKOUT_SESSION_ID}");
-          return u.toString();
-        })(),
+        // cancel 側はテンプレート置換の保証がないため、そのまま渡す
+        cancel_url: cancelUrl,
         payment_intent_data: {
           on_behalf_of: destinationAccountId,
           transfer_data: { destination: destinationAccountId },
