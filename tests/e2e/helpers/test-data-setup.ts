@@ -1,0 +1,286 @@
+/**
+ * E2Eテスト用データセットアップヘルパー
+ * APIルートではなくSupabase直接操作でテストデータを管理
+ */
+
+import { createClient } from "@supabase/supabase-js";
+
+import { generateGuestToken } from "@core/utils/guest-token";
+
+import type { Database } from "@/types/database";
+
+// テスト用Supabaseクライアント（Service Role使用）
+const supabaseAdmin = createClient<Database>(
+  process.env.NEXT_PUBLIC_SUPABASE_URL ?? "",
+  process.env.SUPABASE_SERVICE_ROLE_KEY ?? "",
+  {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+    },
+  }
+);
+
+// テスト用固定値
+export const TEST_IDS = {
+  EVENT_ID: "87654321-4321-4321-4321-cba987654321",
+  ATTENDANCE_ID: "11111111-2222-3333-4444-555555555555",
+  CONNECT_ACCOUNT_ID: "acct_1RwIFbCZwTLGDVBd",
+} as const;
+
+// 動的に生成されるテストユーザーID
+let testUserId: string | null = null;
+
+export const FIXED_TIME = new Date("2026-01-01T12:00:00.000Z");
+
+/**
+ * テストデータ作成・管理クラス
+ */
+export class TestDataManager {
+  /**
+   * Connect設定済みユーザーを作成
+   */
+  static async createUserWithConnect() {
+    // 1. まずSupabase Authでユーザー作成
+    const { data: authUser, error: authError } = await supabaseAdmin.auth.admin.createUser({
+      email: "test-e2e@example.com",
+      password: "test-password-123",
+      user_metadata: { name: "E2Eテストユーザー" },
+      email_confirm: true,
+    });
+
+    if (authError || !authUser.user) {
+      throw new Error(`Auth user creation failed: ${authError?.message}`);
+    }
+
+    // テストユーザーIDを保存
+    testUserId = authUser.user.id;
+
+    // 2. users テーブルにレコード作成
+    const userData = {
+      id: authUser.user.id,
+      name: "E2Eテストユーザー",
+      created_at: FIXED_TIME.toISOString(),
+      updated_at: FIXED_TIME.toISOString(),
+    };
+
+    const { error: userError } = await supabaseAdmin
+      .from("users")
+      .upsert(userData, { onConflict: "id" });
+
+    if (userError) {
+      throw new Error(`User creation failed: ${userError.message}`);
+    }
+
+    // 3. Connect アカウント作成
+    const connectData = {
+      user_id: authUser.user.id,
+      stripe_account_id: TEST_IDS.CONNECT_ACCOUNT_ID,
+      payouts_enabled: true,
+      charges_enabled: true,
+      status: "verified" as const,
+      created_at: FIXED_TIME.toISOString(),
+      updated_at: FIXED_TIME.toISOString(),
+    };
+
+    const { error: connectError } = await supabaseAdmin
+      .from("stripe_connect_accounts")
+      .upsert(connectData, { onConflict: "user_id" });
+
+    if (connectError) {
+      throw new Error(`Connect account creation failed: ${connectError.message}`);
+    }
+
+    return { user: userData, connect: connectData };
+  }
+
+  /**
+   * 有料イベントを作成
+   */
+  static async createPaidEvent() {
+    if (!testUserId) {
+      throw new Error("User must be created before creating event");
+    }
+
+    // テスト用イベントデータを組み立て
+    const eventData: Database["public"]["Tables"]["events"]["Insert"] = {
+      id: TEST_IDS.EVENT_ID,
+      created_by: testUserId,
+      title: "E2Eテスト有料イベント",
+      description: "E2Eテスト用に作成された有料イベントです。",
+      location: "オンライン",
+      fee: 3000,
+      date: new Date(FIXED_TIME.getTime() + 48 * 60 * 60 * 1000).toISOString(), // +2days after created_at
+      registration_deadline: new Date(FIXED_TIME.getTime() + 24 * 60 * 60 * 1000).toISOString(), // +1day
+      payment_methods: ["stripe"],
+      status: "upcoming",
+      created_at: FIXED_TIME.toISOString(),
+      updated_at: FIXED_TIME.toISOString(),
+    };
+
+    const { error } = await supabaseAdmin.from("events").upsert(eventData, { onConflict: "id" });
+
+    if (error) {
+      throw new Error(`Event creation failed: ${error.message}`);
+    }
+
+    return eventData;
+  }
+
+  /**
+   * 参加者を作成
+   */
+  static async createAttendance(
+    options: {
+      status?: string;
+      existingPayment?: {
+        amount: number;
+        status: string;
+      };
+    } = {}
+  ) {
+    const { status = "attending", existingPayment } = options;
+
+    const attendanceData = {
+      id: TEST_IDS.ATTENDANCE_ID,
+      event_id: TEST_IDS.EVENT_ID,
+      nickname: "E2Eテスト参加者",
+      email: "e2e-participant@example.com",
+      status: status as "attending" | "not_attending" | "maybe",
+      guest_token: generateGuestToken(),
+      created_at: FIXED_TIME.toISOString(),
+      updated_at: FIXED_TIME.toISOString(),
+    };
+
+    const { error: attendanceError } = await supabaseAdmin
+      .from("attendances")
+      .upsert(attendanceData, { onConflict: "id" });
+
+    if (attendanceError) {
+      throw new Error(`Attendance creation failed: ${attendanceError.message}`);
+    }
+
+    // 決済データがある場合は作成
+    if (existingPayment) {
+      const paymentData = {
+        id: `pay_test_${TEST_IDS.ATTENDANCE_ID}`,
+        attendance_id: TEST_IDS.ATTENDANCE_ID,
+        amount: existingPayment.amount,
+        status: existingPayment.status as
+          | "received"
+          | "pending"
+          | "paid"
+          | "failed"
+          | "completed"
+          | "refunded"
+          | "waived",
+        method: "stripe" as const,
+        created_at: FIXED_TIME.toISOString(),
+        updated_at: FIXED_TIME.toISOString(),
+      };
+
+      const { error: paymentError } = await supabaseAdmin
+        .from("payments")
+        .upsert(paymentData, { onConflict: "id" });
+
+      if (paymentError) {
+        throw new Error(`Payment creation failed: ${paymentError.message}`);
+      }
+    }
+
+    return attendanceData;
+  }
+
+  /**
+   * イベントの期限を更新
+   */
+  static async updateEventDeadline(deadline: string) {
+    const { error } = await supabaseAdmin
+      .from("events")
+      .update({
+        registration_deadline: deadline,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", TEST_IDS.EVENT_ID);
+
+    if (error) {
+      throw new Error(`Event deadline update failed: ${error.message}`);
+    }
+  }
+
+  /**
+   * 決済状態を検証
+   */
+  static async verifyPayment(expectedAmount: number, expectedStatus: string) {
+    const { data: payments, error } = await supabaseAdmin
+      .from("payments")
+      .select("*")
+      .eq("attendance_id", TEST_IDS.ATTENDANCE_ID)
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      throw new Error(`Payment verification failed: ${error.message}`);
+    }
+
+    if (!payments || payments.length === 0) {
+      throw new Error("No payment records found");
+    }
+
+    const latestPayment = payments[0];
+
+    if (latestPayment.amount !== expectedAmount) {
+      throw new Error(`Amount mismatch: expected ${expectedAmount}, got ${latestPayment.amount}`);
+    }
+
+    if (latestPayment.status !== expectedStatus) {
+      throw new Error(`Status mismatch: expected ${expectedStatus}, got ${latestPayment.status}`);
+    }
+
+    return latestPayment;
+  }
+
+  /**
+   * テストデータをクリーンアップ
+   */
+  static async cleanup() {
+    const cleanupPromises = [
+      // 決済データ削除
+      supabaseAdmin.from("payments").delete().eq("attendance_id", TEST_IDS.ATTENDANCE_ID).then(),
+      // 参加者データ削除
+      supabaseAdmin.from("attendances").delete().eq("id", TEST_IDS.ATTENDANCE_ID).then(),
+      // イベントデータ削除
+      supabaseAdmin.from("events").delete().eq("id", TEST_IDS.EVENT_ID).then(),
+    ];
+
+    // ユーザーIDが存在する場合のみクリーンアップ
+    if (testUserId) {
+      cleanupPromises.push(
+        // Connect アカウントデータ削除
+        supabaseAdmin.from("stripe_connect_accounts").delete().eq("user_id", testUserId).then(),
+        // ユーザーデータ削除
+        supabaseAdmin.from("users").delete().eq("id", testUserId).then()
+      );
+    }
+
+    const results = await Promise.allSettled(cleanupPromises);
+
+    // Authユーザーの削除
+    if (testUserId) {
+      try {
+        await supabaseAdmin.auth.admin.deleteUser(testUserId);
+      } catch (error) {
+        console.warn("Auth user cleanup failed:", error);
+      }
+      // testUserIdをリセット
+      testUserId = null;
+    }
+
+    const errors = results
+      .filter((result): result is PromiseRejectedResult => result.status === "rejected")
+      .map((result) => result.reason);
+
+    if (errors.length > 0) {
+      console.warn("Some cleanup operations failed:", errors);
+    }
+  }
+}

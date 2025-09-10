@@ -14,6 +14,7 @@ import { createProblemResponse, createQueryValidationError } from "@core/api/pro
 import { logger } from "@core/logging/app-logger";
 import { createRateLimitStore, checkRateLimit } from "@core/rate-limit";
 import { SecureSupabaseClientFactory } from "@core/security/secure-client-factory.impl";
+import { AdminReason } from "@core/security/secure-client-factory.types";
 import { logSecurityEvent } from "@core/security/security-logger";
 import { stripe } from "@core/stripe/client";
 import { getClientIP } from "@core/utils/ip-detection";
@@ -116,18 +117,81 @@ export async function GET(request: NextRequest) {
 
     const { session_id, attendance_id } = validationResult.data;
 
-    // まずDBで attendance_id と session_id の突合（存在しない場合は終了）
-    // ゲストトークンを使用してRLSを満たすクライアントを生成
+    // attendances テーブル経由で payment 情報を取得（サービスロールでRLSをバイパス）
+    // ゲストトークンでの権限確認は事前に実施済み（APIレベルでヘッダー検証）
     const secureClientFactory = SecureSupabaseClientFactory.getInstance();
-    const supabase = await secureClientFactory.createGuestClient(guestToken);
+    const supabase = await secureClientFactory.createAuditedAdminClient(
+      AdminReason.SECURITY_INVESTIGATION,
+      "PAYMENT_SESSION_VERIFICATION",
+      {
+        additionalInfo: {
+          attendanceId: attendance_id,
+          sessionId: `${session_id.substring(0, 8)}...`,
+          hasGuestToken: !!guestToken,
+        },
+      }
+    );
 
-    const { data: paymentRow, error: dbError } = await supabase
-      .from("payments")
-      .select("id, status, stripe_checkout_session_id, amount")
-      .eq("attendance_id", attendance_id)
-      .eq("stripe_checkout_session_id", session_id)
+    // attendances テーブルから関連する payment 情報を取得（権限確認済み）
+    const { data: attendanceData, error: dbError } = await supabase
+      .from("attendances")
+      .select(
+        `
+        id,
+        guest_token,
+        payment:payments (
+          id,
+          status,
+          stripe_checkout_session_id,
+          amount
+        )
+      `
+      )
+      .eq("id", attendance_id)
       .single();
-    let payment = paymentRow;
+
+    // ゲストトークンの照合確認（セキュリティチェック）
+    if (attendanceData && attendanceData.guest_token !== guestToken) {
+      logSecurityEvent({
+        type: "SUSPICIOUS_ACTIVITY",
+        severity: "HIGH",
+        message: "Guest token mismatch during payment verification",
+        details: {
+          attendanceId: attendance_id,
+          sessionId: `${session_id.substring(0, 8)}...`,
+          tokenMatch: false,
+        },
+        ip: getClientIP(request),
+        timestamp: new Date(),
+      });
+
+      return createProblemResponse("PAYMENT_SESSION_NOT_FOUND", {
+        instance: "/api/payments/verify-session",
+      });
+    }
+
+    // payment データの抽出と検証
+    let payment: {
+      id: string;
+      status: string;
+      stripe_checkout_session_id: string | null;
+      amount: number;
+    } | null = null;
+
+    if (attendanceData?.payment) {
+      const paymentArray = Array.isArray(attendanceData.payment)
+        ? attendanceData.payment
+        : [attendanceData.payment];
+
+      // セッション ID でフィルタリング
+      const matchingPayment = paymentArray.find(
+        (p) => p && p.stripe_checkout_session_id === session_id
+      );
+
+      if (matchingPayment) {
+        payment = matchingPayment;
+      }
+    }
 
     if (dbError && dbError.code !== "PGRST116") {
       logger.error("Database query failed during payment verification", {
@@ -189,12 +253,13 @@ export async function GET(request: NextRequest) {
         })();
 
         if (candidatePaymentId) {
+          // フォールバック時：直接 payments テーブルからデータを取得（既に権限確認済み）
           const { data: fallbackPayment } = await supabase
             .from("payments")
             .select("id, status, stripe_checkout_session_id, amount")
             .eq("id", candidatePaymentId)
             .eq("attendance_id", attendance_id)
-            .maybeSingle();
+            .single();
 
           if (fallbackPayment) {
             // 既に他のセッションで置換済みか？
