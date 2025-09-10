@@ -5,10 +5,6 @@
       "schedule": "0 * * * *"
     },
     {
-      "path": "/api/cron/webhook-process-pending",
-      "schedule": "*/15 * * * *"
-    },
-    {
       "path": "/api/cron/monitor-platform-balance",
       "schedule": "0 9 * * *"
     }

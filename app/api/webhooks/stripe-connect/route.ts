@@ -5,6 +5,7 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
+import { Client } from "@upstash/qstash";
 import type Stripe from "stripe";
 
 // Feature adapters initialization (ensure core ports are registered)
@@ -20,17 +21,19 @@ import {
 import { stripe, getConnectWebhookSecrets } from "@core/stripe/client";
 import { getClientIP } from "@core/utils/ip-detection";
 
-import {
-  SupabaseWebhookIdempotencyService,
-  StripeWebhookSignatureVerifier,
-} from "@features/payments";
+import { StripeWebhookSignatureVerifier } from "@features/payments";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic"; // Webhookは常に動的処理
 
+const getQstashClient = () => {
+  const token = process.env.QSTASH_TOKEN;
+  if (!token) throw new Error("QSTASH_TOKEN is required");
+  return new Client({ token });
+};
+
 export async function POST(request: NextRequest) {
   const _clientIP = getClientIP(request);
-  let enqueued = false;
   const requestId = request.headers.get("x-request-id") || generateSecureUuid();
   const connectLogger = logger.withContext({
     request_id: requestId,
@@ -92,57 +95,45 @@ export async function POST(request: NextRequest) {
       event_type: event.type,
     });
 
-    // 受信イベントを pending として即時エンキュー（Connect用）
-    const idempotency = new SupabaseWebhookIdempotencyService();
-    const objectId: string | null = ((): string | null => {
-      const data: unknown = (event as unknown as { data?: unknown }).data;
-      if (!data || typeof data !== "object") {
-        return null;
-      }
-      const obj: unknown = (data as { object?: unknown }).object;
-      if (!obj || typeof obj !== "object") {
-        return null;
-      }
-      const idVal = (obj as { id?: unknown }).id;
-      return typeof idVal === "string" && idVal.length > 0 ? idVal : null;
-    })();
-
-    connectLogger.debug("Enqueueing Connect webhook event for processing", {
+    // QStash に publish（deduplicationId=event.id）
+    const workerUrl = `${process.env.APP_BASE_URL || process.env.NEXTAUTH_URL}/api/workers/stripe-connect-webhook`;
+    connectLogger.debug("Publishing Connect webhook to QStash", {
+      worker_url: workerUrl,
       event_id: event.id,
       event_type: event.type,
-      object_id: objectId,
     });
 
-    await idempotency.enqueueEventForProcessing(event.id, event.type, {
-      stripe_account_id: (event as unknown as { account?: string | null }).account ?? null,
-      stripe_event_created:
-        (event as { created?: number }).created ?? Math.floor(Date.now() / 1000),
-      object_id: objectId,
+    const qstash = getQstashClient();
+    const publishRes = await qstash.publishJSON({
+      url: workerUrl,
+      body: {
+        eventId: event.id,
+        type: event.type,
+        account: (event as unknown as { account?: string | null }).account ?? null,
+      },
+      deduplicationId: event.id,
+      retries: 5,
+      delay: 0,
+      headers: { "x-source": "stripe-connect-webhook", "x-request-id": requestId },
     });
-    enqueued = true;
 
-    connectLogger.info("Connect webhook event enqueued successfully", {
+    connectLogger.info("Connect webhook published to QStash", {
       event_id: event.id,
       event_type: event.type,
-      tag: "enqueueSucceeded",
+      qstash_message_id: publishRes.messageId,
     });
 
-    // 非同期処理は別ジョブに委譲して即ACK
     return NextResponse.json({
       received: true,
       eventId: event.id,
       eventType: event.type,
-      enqueued: true,
+      qstashMessageId: publishRes.messageId,
     });
   } catch (_error) {
-    // enqueue 後の例外は 200 を返し Stripe の不要なリトライを防止
-    if (enqueued) {
-      return NextResponse.json({ received: true, enqueued: true });
-    }
-    // enqueue 前に失敗している場合は 500 を返し Stripe に再送してもらう
+    // 失敗時は 500 を返し Stripe に再送してもらう
     return createProblemResponse("INTERNAL_ERROR", {
       instance: "/api/webhooks/stripe-connect",
-      detail: "Webhook handler failed",
+      detail: "Connect webhook handler failed",
     });
   }
 }
