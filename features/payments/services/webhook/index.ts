@@ -7,12 +7,7 @@ export type { WebhookEventHandler } from "./webhook-event-handler";
 export { StripeWebhookEventHandler } from "./webhook-event-handler";
 export { ConnectWebhookHandler } from "./connect-webhook-handler";
 
-// Webhook冪等性保証
-export type { WebhookIdempotencyService } from "./webhook-idempotency";
-export {
-  SupabaseWebhookIdempotencyService,
-  IdempotentWebhookProcessor,
-} from "./webhook-idempotency";
+// 旧Webhook冪等性保証モジュールはQStash移行に伴い廃止
 
 // 型定義（DB Json 制約に適合させるため index signature を付与）
 import type { Json } from "@/types/database";

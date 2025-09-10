@@ -1,4 +1,6 @@
 
+\restrict 4MFIMgdFlNvHoiUEEEBiTaCX8PEjqYgnd7dX9goVdMq9fFGormvsStD8jzbldQA
+
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -2758,58 +2760,6 @@ COMMENT ON COLUMN "public"."unauthorized_access_log"."blocked_by_rls" IS 'RLSポ
 
 
 
-CREATE TABLE IF NOT EXISTS "public"."webhook_events" (
-    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
-    "stripe_event_id" character varying(255) NOT NULL,
-    "event_type" character varying(100) NOT NULL,
-    "processing_result" "jsonb",
-    "processed_at" timestamp with time zone NOT NULL,
-    "stripe_account_id" character varying(255),
-    "retry_count" integer DEFAULT 0 NOT NULL,
-    "last_retry_at" timestamp with time zone,
-    "status" character varying(30) DEFAULT 'processed'::character varying NOT NULL,
-    "processing_error" "text",
-    "stripe_event_created" bigint,
-    "object_id" character varying(255),
-    "created_at" timestamp with time zone DEFAULT "now"()
-);
-
-
-ALTER TABLE "public"."webhook_events" OWNER TO "postgres";
-
-
-COMMENT ON TABLE "public"."webhook_events" IS 'Webhook処理の冪等性を保証するためのテーブル';
-
-
-
-COMMENT ON COLUMN "public"."webhook_events"."stripe_account_id" IS 'Stripe Connect Account ID（Connect イベント相関用）';
-
-
-
-COMMENT ON COLUMN "public"."webhook_events"."retry_count" IS 'Webhook再試行回数';
-
-
-
-COMMENT ON COLUMN "public"."webhook_events"."last_retry_at" IS '最終再試行日時';
-
-
-
-COMMENT ON COLUMN "public"."webhook_events"."status" IS 'Webhook処理状態（processed/failed）';
-
-
-
-COMMENT ON COLUMN "public"."webhook_events"."processing_error" IS 'Webhook処理エラー詳細';
-
-
-
-COMMENT ON COLUMN "public"."webhook_events"."stripe_event_created" IS 'Stripe event.created (epoch seconds). Used for FIFO ordering to reduce out-of-order processing.';
-
-
-
-COMMENT ON COLUMN "public"."webhook_events"."object_id" IS 'Stripe data.object.id captured for duplicate detection across separate events of the same type.';
-
-
-
 ALTER TABLE ONLY "public"."security_audit_log" ALTER COLUMN "id" SET DEFAULT "nextval"('"public"."security_audit_log_id_seq"'::"regclass");
 
 
@@ -2935,16 +2885,6 @@ ALTER TABLE ONLY "public"."unauthorized_access_log"
 
 ALTER TABLE ONLY "public"."users"
     ADD CONSTRAINT "users_pkey" PRIMARY KEY ("id");
-
-
-
-ALTER TABLE ONLY "public"."webhook_events"
-    ADD CONSTRAINT "webhook_events_pkey" PRIMARY KEY ("id");
-
-
-
-ALTER TABLE ONLY "public"."webhook_events"
-    ADD CONSTRAINT "webhook_events_stripe_event_id_unique" UNIQUE ("stripe_event_id");
 
 
 
@@ -3216,50 +3156,6 @@ CREATE INDEX "idx_unauthorized_access_log_user_id" ON "public"."unauthorized_acc
 
 
 
-CREATE INDEX "idx_webhook_events_account_event" ON "public"."webhook_events" USING "btree" ("stripe_account_id", "event_type");
-
-
-
-CREATE INDEX "idx_webhook_events_account_event_object" ON "public"."webhook_events" USING "btree" ("stripe_account_id", "event_type", "object_id");
-
-
-
-CREATE INDEX "idx_webhook_events_dead_only" ON "public"."webhook_events" USING "btree" ("status") WHERE (("status")::"text" = 'dead'::"text");
-
-
-
-CREATE INDEX "idx_webhook_events_event_created" ON "public"."webhook_events" USING "btree" ("stripe_event_created");
-
-
-
-CREATE INDEX "idx_webhook_events_event_type" ON "public"."webhook_events" USING "btree" ("event_type");
-
-
-
-CREATE INDEX "idx_webhook_events_event_type_object_id" ON "public"."webhook_events" USING "btree" ("event_type", "object_id");
-
-
-
-CREATE INDEX "idx_webhook_events_failed_only" ON "public"."webhook_events" USING "btree" ("status") WHERE (("status")::"text" = 'failed'::"text");
-
-
-
-CREATE INDEX "idx_webhook_events_object_id" ON "public"."webhook_events" USING "btree" ("object_id");
-
-
-
-CREATE INDEX "idx_webhook_events_processed_at" ON "public"."webhook_events" USING "btree" ("processed_at");
-
-
-
-CREATE INDEX "idx_webhook_events_status" ON "public"."webhook_events" USING "btree" ("status");
-
-
-
-CREATE INDEX "idx_webhook_events_stripe_account_id" ON "public"."webhook_events" USING "btree" ("stripe_account_id");
-
-
-
 CREATE UNIQUE INDEX "uniq_settlements_event_generated_date_jst" ON "public"."settlements" USING "btree" ("event_id", ((("generated_at" AT TIME ZONE 'Asia/Tokyo'::"text"))::"date"));
 
 
@@ -3431,10 +3327,6 @@ CREATE POLICY "Guest token update payment details" ON "public"."payments" FOR UP
 
 
 
-CREATE POLICY "Safe attendance access policy" ON "public"."attendances" FOR SELECT TO "authenticated", "anon" USING ("public"."can_access_attendance"("id"));
-
-
-
 CREATE POLICY "Safe event access policy" ON "public"."events" FOR SELECT TO "authenticated", "anon" USING ("public"."can_access_event"("id"));
 
 
@@ -3591,17 +3483,6 @@ CREATE POLICY "users_can_view_own_settlements" ON "public"."settlements" FOR SEL
 
 
 CREATE POLICY "users_can_view_own_stripe_accounts" ON "public"."stripe_connect_accounts" FOR SELECT TO "authenticated" USING (("user_id" = "auth"."uid"()));
-
-
-
-ALTER TABLE "public"."webhook_events" ENABLE ROW LEVEL SECURITY;
-
-
-CREATE POLICY "webhook_events_admin_only" ON "public"."webhook_events" TO "authenticated" USING (false);
-
-
-
-CREATE POLICY "webhook_events_service_role" ON "public"."webhook_events" TO "service_role" USING (true) WITH CHECK (true);
 
 
 
@@ -4180,12 +4061,6 @@ GRANT ALL ON TABLE "public"."unauthorized_access_log" TO "service_role";
 
 
 
-GRANT ALL ON TABLE "public"."webhook_events" TO "anon";
-GRANT ALL ON TABLE "public"."webhook_events" TO "authenticated";
-GRANT ALL ON TABLE "public"."webhook_events" TO "service_role";
-
-
-
 
 
 
@@ -4245,5 +4120,7 @@ ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TAB
 
 
 
+
+\unrestrict 4MFIMgdFlNvHoiUEEEBiTaCX8PEjqYgnd7dX9goVdMq9fFGormvsStD8jzbldQA
 
 RESET ALL;
