@@ -162,13 +162,18 @@ export async function createTestEventWithParticipants(
   );
 
   // 参加者データを作成
-  const participants = Array.from({ length: participantCount }, (_, i) => ({
-    event_id: event.id,
-    nickname: `テスト参加者${i + 1}`,
-    email: `test-participant-${i + 1}@example.com`,
-    status: "attending" as const,
-    guest_token: `guest_token_${i + 1}`,
-  }));
+  // 参加者データを作成
+  const participants = Array.from({ length: participantCount }, (_, i) => {
+    // タイムスタンプとインデックスを組み合わせてユニークなサフィックスを生成
+    const uniqueSuffix = `${Date.now()}-${i}`;
+    return {
+      event_id: event.id,
+      nickname: `テスト参加者${i + 1}`,
+      email: `test-participant-${uniqueSuffix}@example.com`,
+      status: "attending" as const,
+      guest_token: `guest_token_${uniqueSuffix}`,
+    };
+  });
 
   const { error: participantError } = await adminClient.from("attendances").insert(participants);
 

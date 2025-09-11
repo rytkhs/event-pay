@@ -25,7 +25,7 @@ interface UseEventEditFormProps {
 }
 
 // react-hook-form用のスキーマ（フォーム入力値をそのまま扱う）
-const eventEditFormSchema = z
+const eventEditFormSchemaBase = z
   .object({
     title: z
       .string()
@@ -102,7 +102,24 @@ const eventEditFormSchema = z
   );
 
 // フォームデータ型（react-hook-form用）
-export type EventEditFormDataRHF = z.infer<typeof eventEditFormSchema>;
+export type EventEditFormDataRHF = z.infer<typeof eventEditFormSchemaBase>;
+
+// 参加者数依存の capacity バリデーションを追加するスキーマ
+function createEventEditFormSchema(attendeeCount: number) {
+  return eventEditFormSchemaBase.refine(
+    (data) => {
+      // 未入力（制限なし）は許可
+      if (!data.capacity || data.capacity.trim() === "") return true;
+      const cap = Number(data.capacity);
+      if (!Number.isFinite(cap)) return false;
+      return cap >= attendeeCount;
+    },
+    {
+      message: `定員は現在の参加者数（${attendeeCount}名）以上で設定してください`,
+      path: ["capacity"],
+    }
+  );
+}
 
 export function useEventEditForm({ event, attendeeCount, onSubmit }: UseEventEditFormProps) {
   const hasAttendees = attendeeCount > 0;
@@ -127,7 +144,7 @@ export function useEventEditForm({ event, attendeeCount, onSubmit }: UseEventEdi
 
   // react-hook-formの初期化
   const form = useForm<EventEditFormDataRHF>({
-    resolver: zodResolver(eventEditFormSchema),
+    resolver: zodResolver(createEventEditFormSchema(attendeeCount)),
     defaultValues: initialFormData,
     mode: "all", // クロスフィールドバリデーション対応
     reValidateMode: "onChange",

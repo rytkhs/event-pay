@@ -2,6 +2,7 @@ import { notFound, redirect } from "next/navigation";
 
 import { createClient } from "@core/supabase/server";
 import { calculateAttendeeCount } from "@core/utils/event-calculations";
+import { validateEventId } from "@core/validation/event-id";
 
 import { EditRestrictionsNotice, EventEditForm } from "@features/events";
 
@@ -14,7 +15,12 @@ interface EventEditPageProps {
 export default async function EventEditPage({ params }: EventEditPageProps) {
   const supabase = createClient();
 
-  // 認証チェック
+  // IDバリデーション（形式不正のみ404）
+  const validation = validateEventId(params.id);
+  if (!validation.success) {
+    notFound();
+  }
+
   const {
     data: { user },
     error: authError,
@@ -24,7 +30,7 @@ export default async function EventEditPage({ params }: EventEditPageProps) {
     redirect("/login");
   }
 
-  // イベントの取得
+  // イベントの取得（RLSで他人イベントは0件として見える）
   const { data: event, error: eventError } = await supabase
     .from("events")
     .select(
@@ -36,18 +42,17 @@ export default async function EventEditPage({ params }: EventEditPageProps) {
     .eq("id", params.id)
     .single();
 
-  if (eventError || !event) {
-    notFound();
+  // アクセス拒否は403へ（PGRST301=RLS拒否 / PGRST116=0件）
+  if (eventError?.code === "PGRST301" || eventError?.code === "PGRST116" || !event) {
+    redirect(`/events/${params.id}/forbidden`);
   }
 
   // 編集権限チェック
   if (event.created_by !== user.id) {
-    redirect(`/events/${params.id}`);
+    redirect(`/events/${params.id}/forbidden`);
   }
 
-  // 参加者数を計算（技術設計書のattendance_status_enumに準拠）
   const attendeeCount = calculateAttendeeCount(event.attendances);
-
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">

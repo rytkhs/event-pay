@@ -212,8 +212,8 @@ export function EventEditForm({ event, attendeeCount, onSubmit, serverError }: E
                           <Input
                             {...field}
                             type="number"
-                            min="1"
-                            disabled={isPending || restrictions.isFieldRestricted("capacity")}
+                            min={hasAttendees ? attendeeCount : 1}
+                            disabled={isPending}
                             placeholder="制限なしの場合は空欄"
                             value={field.value || ""}
                             onChange={(e) => {
