@@ -6,9 +6,10 @@
  * を正しく設定していることを検証する
  */
 
+import * as DestinationCharges from "../../../core/stripe/destination-charges";
+import { ApplicationFeeCalculator } from "../../../features/payments/services/fee-config/application-fee-calculator";
 import { PaymentService, PaymentErrorHandler } from "../../../features/payments/services/service";
 import { createMockStripeClient } from "../../setup/stripe-mock";
-import { ApplicationFeeCalculator } from "../../../features/payments/services/fee-config/application-fee-calculator";
 
 // Stripe destination-charges モジュールをモック
 jest.mock("../../../core/stripe/destination-charges", () => {
@@ -22,8 +23,6 @@ jest.mock("../../../core/stripe/destination-charges", () => {
 
 // Application fee calculator をモック
 jest.mock("../../../features/payments/services/fee-config/application-fee-calculator");
-
-import * as DestinationCharges from "../../../core/stripe/destination-charges";
 
 // Supabaseクライアントのモック作成関数
 const createMockSupabaseClient = () => {
@@ -435,6 +434,7 @@ describe("PaymentService - Stripe Checkout パラメータ検証", () => {
           event_title: testData.eventTitle,
         },
         setupFutureUsage: undefined, // デフォルト値
+        idempotencyKey: expect.any(String),
       });
     });
   });

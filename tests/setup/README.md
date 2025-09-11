@@ -77,7 +77,7 @@ STRIPE_SECRET_KEY=sk_test_...
 STRIPE_CONNECT_WEBHOOK_SECRET_TEST=whsec_test_...
 
 # セキュリティ設定（テスト時は緩和）
-STRIPE_ENFORCE_WEBHOOK_IP=false
+ENABLE_STRIPE_IP_CHECK=false
 ```
 
 ## モック戦略

@@ -116,9 +116,10 @@ export async function createTestUserWithConnect(
     status: payoutsEnabled && chargesEnabled ? "verified" : "onboarding",
   };
 
+  // 重複回避：stripe_account_id での upsert（既存があれば更新）
   const { data: connectAccount, error } = await adminClient
     .from("stripe_connect_accounts")
-    .insert(connectAccountData)
+    .upsert(connectAccountData, { onConflict: "stripe_account_id" })
     .select()
     .single();
 
@@ -340,6 +341,18 @@ export async function createPendingTestPayment(
     stripe_account_id: stripeAccountId,
     tax_included: false,
   };
+
+  // 既存のopenなpayment（pending/failed以外の定義に依存）がある場合の一意制約回避
+  // テスト用は単純に同一attendanceのpendingを削除してから作成
+  try {
+    await adminClient
+      .from("payments")
+      .delete()
+      .eq("attendance_id", attendanceId)
+      .eq("status", "pending");
+  } catch {
+    // best-effort cleanup
+  }
 
   const { data: payment, error } = await adminClient
     .from("payments")

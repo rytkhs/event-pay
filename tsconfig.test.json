@@ -1,0 +1,18 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true
+  },
+  "include": [
+    "tests/**/*.ts",
+    "tests/**/*.tsx",
+    "app/**/*.ts",
+    "app/**/*.tsx",
+    "core/**/*.ts",
+    "core/**/*.tsx",
+    "features/**/*.ts",
+    "features/**/*.tsx",
+    "types/**/*.ts"
+  ],
+  "exclude": []
+}
