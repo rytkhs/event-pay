@@ -414,6 +414,8 @@ export type Database = {
           application_fee_tax_amount: number;
           application_fee_tax_rate: number;
           attendance_id: string;
+          checkout_idempotency_key: string | null;
+          checkout_key_revision: number;
           created_at: string;
           destination_account_id: string | null;
           id: string;
@@ -449,6 +451,8 @@ export type Database = {
           application_fee_tax_amount?: number;
           application_fee_tax_rate?: number;
           attendance_id: string;
+          checkout_idempotency_key?: string | null;
+          checkout_key_revision?: number;
           created_at?: string;
           destination_account_id?: string | null;
           id?: string;
@@ -484,6 +488,8 @@ export type Database = {
           application_fee_tax_amount?: number;
           application_fee_tax_rate?: number;
           attendance_id?: string;
+          checkout_idempotency_key?: string | null;
+          checkout_key_revision?: number;
           created_at?: string;
           destination_account_id?: string | null;
           id?: string;

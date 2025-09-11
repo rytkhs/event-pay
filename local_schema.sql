@@ -1,5 +1,5 @@
 
-\restrict 4MFIMgdFlNvHoiUEEEBiTaCX8PEjqYgnd7dX9goVdMq9fFGormvsStD8jzbldQA
+\restrict UuONxzq2Ole7XXfVcRVGtHbNuMSW54FoHZzCpYF3rcvq94RFfEhDYxb3VONbKqS
 
 
 SET statement_timeout = 0;
@@ -2397,6 +2397,8 @@ CREATE TABLE IF NOT EXISTS "public"."payments" (
     "stripe_balance_transaction_net" integer,
     "stripe_fee_details" "jsonb",
     "version" integer DEFAULT 1 NOT NULL,
+    "checkout_idempotency_key" "text",
+    "checkout_key_revision" integer DEFAULT 0 NOT NULL,
     CONSTRAINT "chk_payments_application_fee_amount_non_negative" CHECK (("application_fee_amount" >= 0)),
     CONSTRAINT "chk_payments_application_fee_refunded_amount_non_negative" CHECK (("application_fee_refunded_amount" >= 0)),
     CONSTRAINT "chk_payments_refunded_amount_non_negative" CHECK (("refunded_amount" >= 0)),
@@ -2992,6 +2994,10 @@ CREATE INDEX "idx_payments_balance_txn_net" ON "public"."payments" USING "btree"
 
 
 
+CREATE INDEX "idx_payments_checkout_idempotency_key" ON "public"."payments" USING "btree" ("checkout_idempotency_key") WHERE ("checkout_idempotency_key" IS NOT NULL);
+
+
+
 CREATE INDEX "idx_payments_checkout_session" ON "public"."payments" USING "btree" ("stripe_checkout_session_id");
 
 
@@ -3308,22 +3314,6 @@ CREATE POLICY "Creators can view payments" ON "public"."payments" FOR SELECT TO 
    FROM ("public"."attendances" "a"
      JOIN "public"."events" "e" ON (("a"."event_id" = "e"."id")))
   WHERE (("a"."id" = "payments"."attendance_id") AND ("e"."created_by" = "auth"."uid"())))));
-
-
-
-CREATE POLICY "Guest token read payment details" ON "public"."payments" FOR SELECT TO "authenticated", "anon" USING ((EXISTS ( SELECT 1
-   FROM "public"."attendances" "a"
-  WHERE (("a"."id" = "payments"."attendance_id") AND ("a"."guest_token" IS NOT NULL) AND (("a"."guest_token")::"text" = "public"."get_guest_token"())))));
-
-
-
-CREATE POLICY "Guest token update payment details" ON "public"."payments" FOR UPDATE TO "authenticated", "anon" USING ((EXISTS ( SELECT 1
-   FROM ("public"."attendances" "a"
-     JOIN "public"."events" "e" ON (("a"."event_id" = "e"."id")))
-  WHERE (("a"."id" = "payments"."attendance_id") AND ("a"."guest_token" IS NOT NULL) AND (("a"."guest_token")::"text" = "public"."get_guest_token"()) AND ("e"."status" = 'upcoming'::"public"."event_status_enum") AND (("e"."payment_deadline" IS NULL) OR ("e"."payment_deadline" > "now"())) AND ("e"."date" > "now"()))))) WITH CHECK ((EXISTS ( SELECT 1
-   FROM ("public"."attendances" "a"
-     JOIN "public"."events" "e" ON (("a"."event_id" = "e"."id")))
-  WHERE (("a"."id" = "payments"."attendance_id") AND ("a"."guest_token" IS NOT NULL) AND (("a"."guest_token")::"text" = "public"."get_guest_token"()) AND ("e"."status" = 'upcoming'::"public"."event_status_enum") AND (("e"."payment_deadline" IS NULL) OR ("e"."payment_deadline" > "now"())) AND ("e"."date" > "now"())))));
 
 
 
@@ -4121,6 +4111,6 @@ ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TAB
 
 
 
-\unrestrict 4MFIMgdFlNvHoiUEEEBiTaCX8PEjqYgnd7dX9goVdMq9fFGormvsStD8jzbldQA
+\unrestrict UuONxzq2Ole7XXfVcRVGtHbNuMSW54FoHZzCpYF3rcvq94RFfEhDYxb3VONbKqS
 
 RESET ALL;
