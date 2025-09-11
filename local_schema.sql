@@ -1,5 +1,5 @@
 
-\restrict UuONxzq2Ole7XXfVcRVGtHbNuMSW54FoHZzCpYF3rcvq94RFfEhDYxb3VONbKqS
+\restrict BgHiOnvJ6EilTMPbhSlyCgkxvt4PANohs8wPyghp4eYU49clAcr9ZrYh0KzapHl
 
 
 SET statement_timeout = 0;
@@ -3170,7 +3170,7 @@ CREATE UNIQUE INDEX "unique_active_settlement_per_event" ON "public"."settlement
 
 
 
-CREATE UNIQUE INDEX "unique_open_payment_per_attendance" ON "public"."payments" USING "btree" ("attendance_id") WHERE ("status" = ANY (ARRAY['pending'::"public"."payment_status_enum", 'failed'::"public"."payment_status_enum"]));
+CREATE UNIQUE INDEX "unique_open_payment_per_attendance" ON "public"."payments" USING "btree" ("attendance_id") WHERE ("status" = 'pending'::"public"."payment_status_enum");
 
 
 
@@ -3406,6 +3406,12 @@ CREATE POLICY "dispute_select_event_owner" ON "public"."payment_disputes" FOR SE
      JOIN "public"."attendances" "a" ON (("a"."id" = "p"."attendance_id")))
      JOIN "public"."events" "e" ON (("e"."id" = "a"."event_id")))
   WHERE (("p"."id" = "payment_disputes"."payment_id") AND ("e"."created_by" = "auth"."uid"())))));
+
+
+
+CREATE POLICY "event_creators_can_view_attendances" ON "public"."attendances" FOR SELECT TO "authenticated" USING ((EXISTS ( SELECT 1
+   FROM "public"."events" "e"
+  WHERE (("e"."id" = "attendances"."event_id") AND ("e"."created_by" = "auth"."uid"())))));
 
 
 
@@ -4111,6 +4117,6 @@ ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TAB
 
 
 
-\unrestrict UuONxzq2Ole7XXfVcRVGtHbNuMSW54FoHZzCpYF3rcvq94RFfEhDYxb3VONbKqS
+\unrestrict BgHiOnvJ6EilTMPbhSlyCgkxvt4PANohs8wPyghp4eYU49clAcr9ZrYh0KzapHl
 
 RESET ALL;
