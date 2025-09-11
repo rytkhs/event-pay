@@ -171,7 +171,8 @@ export async function createGuestStripeSessionAction(
       },
     };
 
-    logError(getErrorDetails("GUEST_TOKEN_VALIDATION_FAILED"), errorContext);
+    // トークン検証エラーではなく、決済セッション作成失敗を記録
+    logError(getErrorDetails("PAYMENT_SESSION_CREATION_FAILED"), errorContext);
 
     const msg = error instanceof Error ? error.message : "Stripe セッション作成に失敗しました";
     return createServerActionError("INTERNAL_ERROR", msg);

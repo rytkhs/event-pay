@@ -295,21 +295,23 @@ export class PaymentValidator implements IPaymentValidator {
       }
       const currentStatus = data.status as PaymentStatus;
       const method = data.method as PaymentMethod;
-      const validTransitions: Record<PaymentStatus, PaymentStatus[]> = {
-        pending: ["paid", "received", "failed", "completed", "refunded", "waived"],
-        paid: ["completed", "refunded"],
-        received: ["completed"],
-        failed: ["pending"],
-        completed: ["refunded"],
-        refunded: [],
-        waived: ["completed"],
-      };
-      if (!validTransitions[currentStatus]?.includes(newStatus)) {
+
+      // 単調増加（降格禁止）ルール：アプリ側の canPromoteStatus に合わせる
+      const { canPromoteStatus } = await import("@core/utils/payments/status-rank");
+      const isPromotion = canPromoteStatus(
+        currentStatus as unknown as PaymentStatus,
+        newStatus as unknown as PaymentStatus
+      );
+
+      // 同一ステータスは許容（冪等更新）／降格は拒否
+      if (newStatus !== currentStatus && !isPromotion) {
         throw new PaymentError(
           PaymentErrorType.INVALID_STATUS_TRANSITION,
-          `ステータス「${currentStatus}」から「${newStatus}」への変更はできません`
+          `ステータス「${currentStatus}」から「${newStatus}」への降格はできません`
         );
       }
+
+      // 方式に応じた禁止ルール
       if (method === "stripe" && newStatus === "received") {
         throw new PaymentError(
           PaymentErrorType.INVALID_STATUS_TRANSITION,

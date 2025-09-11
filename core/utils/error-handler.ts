@@ -218,6 +218,15 @@ const ERROR_MAPPINGS: Record<string, Omit<ErrorDetails, "code">> = {
     shouldAlert: false,
     retryable: true,
   },
+  // 決済セッション作成失敗（ゲスト・主催者の区別なく共通利用）
+  PAYMENT_SESSION_CREATION_FAILED: {
+    message: "Payment session creation failed",
+    userMessage: "決済セッションの作成に失敗しました。しばらくしてから再度お試しください。",
+    severity: "high",
+    shouldLog: true,
+    shouldAlert: false,
+    retryable: true,
+  },
 };
 
 /**
