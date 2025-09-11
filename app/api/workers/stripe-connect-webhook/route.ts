@@ -11,7 +11,6 @@ import { Receiver } from "@upstash/qstash";
 import Stripe from "stripe";
 
 import { logger } from "@core/logging/app-logger";
-import { stripe as sharedStripe } from "@core/stripe/client";
 import { getClientIP } from "@core/utils/ip-detection";
 
 import { ConnectWebhookHandler } from "@features/payments/services/webhook/connect-webhook-handler";
@@ -61,22 +60,31 @@ export async function POST(request: NextRequest) {
       return new NextResponse("Invalid signature", { status: 401 });
     }
 
-    let parsed: { eventId: string; type?: string; account?: string | null };
+    let parsed: { event: Stripe.Event };
     try {
       parsed = JSON.parse(rawBody);
     } catch (e) {
       return new NextResponse("Invalid JSON body", { status: 400 });
     }
 
-    const { eventId, account } = parsed;
-    if (!eventId) {
-      return new NextResponse("Missing eventId", { status: 400 });
+    const { event } = parsed;
+    if (!event?.id || !event?.type) {
+      logger.warn("Missing or invalid event in Connect QStash webhook body", {
+        tag: "connect-qstash",
+        correlation_id: corr,
+        has_event: !!event,
+        event_id: event?.id,
+        event_type: event?.type,
+      });
+      return new NextResponse("Missing or invalid event data", { status: 400 });
     }
 
-    const retrieveOptions: { stripeAccount?: string } = {};
-    if (account) retrieveOptions.stripeAccount = account;
-
-    const event = await sharedStripe.events.retrieve(eventId, retrieveOptions);
+    logger.debug("Processing received Connect event", {
+      tag: "connect-qstash",
+      correlation_id: corr,
+      event_id: event.id,
+      event_type: event.type,
+    });
 
     // 既存Connectハンドラに委譲
     const handler = await ConnectWebhookHandler.create();

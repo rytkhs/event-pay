@@ -98,14 +98,13 @@ export async function POST(request: NextRequest) {
       tag: "webhookProcessing",
     });
 
-    // QStashに転送
+    // QStashに転送（完全なイベントデータを送信）
     const workerUrl = `${process.env.APP_BASE_URL || process.env.NEXTAUTH_URL}/api/workers/stripe-webhook`;
     // const workerUrl = "https://de438ee16cfb.ngrok-free.app/api/workers/stripe-webhook";
 
+    // 完全なイベントデータを送信（イベント再取得を不要にする）
     const qstashBody = {
-      eventId: event.id,
-      type: event.type,
-      account: (event as unknown as { account?: string | null }).account ?? null,
+      event: event, // 検証済みの完全なStripe.Eventオブジェクト
     };
 
     logger.debug("Publishing to QStash", {

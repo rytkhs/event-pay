@@ -95,7 +95,7 @@ export async function POST(request: NextRequest) {
       event_type: event.type,
     });
 
-    // QStash に publish（deduplicationId=event.id）
+    // QStash に publish（完全なイベントデータを送信）
     const workerUrl = `${process.env.APP_BASE_URL || process.env.NEXTAUTH_URL}/api/workers/stripe-connect-webhook`;
     connectLogger.debug("Publishing Connect webhook to QStash", {
       worker_url: workerUrl,
@@ -107,12 +107,10 @@ export async function POST(request: NextRequest) {
     const publishRes = await qstash.publishJSON({
       url: workerUrl,
       body: {
-        eventId: event.id,
-        type: event.type,
-        account: (event as unknown as { account?: string | null }).account ?? null,
+        event: event, // 検証済みの完全なStripe.Eventオブジェクト
       },
       deduplicationId: event.id,
-      retries: 5,
+      retries: 3,
       delay: 0,
       headers: { "x-source": "stripe-connect-webhook", "x-request-id": requestId },
     });
@@ -129,7 +127,14 @@ export async function POST(request: NextRequest) {
       eventType: event.type,
       qstashMessageId: publishRes.messageId,
     });
-  } catch (_error) {
+  } catch (error) {
+    // 詳細なエラー情報をログに出力
+    connectLogger.error("Connect webhook processing error", {
+      error_name: error instanceof Error ? error.name : "Unknown",
+      error_message: error instanceof Error ? error.message : String(error),
+      error_stack: error instanceof Error ? error.stack : undefined,
+    });
+
     // 失敗時は 500 を返し Stripe に再送してもらう
     return createProblemResponse("INTERNAL_ERROR", {
       instance: "/api/webhooks/stripe-connect",

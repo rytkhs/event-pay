@@ -14,9 +14,9 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
 import { Receiver } from "@upstash/qstash";
+import type Stripe from "stripe";
 
 import { logger } from "@core/logging/app-logger";
-import { stripe } from "@core/stripe/client";
 import { getClientIP } from "@core/utils/ip-detection";
 
 import { StripeWebhookEventHandler } from "@features/payments/services/webhook/webhook-event-handler";
@@ -37,9 +37,7 @@ const getQstashReceiver = () => {
 };
 
 interface QStashWebhookBody {
-  eventId: string;
-  type: string;
-  account?: string | null;
+  event: Stripe.Event;
 }
 
 export async function POST(request: NextRequest) {
@@ -106,56 +104,25 @@ export async function POST(request: NextRequest) {
       return new NextResponse("Invalid JSON body", { status: 400 });
     }
 
-    const { eventId, type, account } = webhookBody;
+    const { event: stripeEvent } = webhookBody;
 
-    if (!eventId || !type) {
-      logger.error("Missing required fields in QStash webhook body", {
+    if (!stripeEvent?.id || !stripeEvent?.type) {
+      logger.error("Missing or invalid event in QStash webhook body", {
         tag: "qstash-processing",
         correlation_id: correlationId,
-        event_id: eventId,
-        event_type: type,
+        has_event: !!stripeEvent,
+        event_id: stripeEvent?.id,
+        event_type: stripeEvent?.type,
       });
-      return new NextResponse("Missing eventId or type", { status: 400 });
+      return new NextResponse("Missing or invalid event data", { status: 400 });
     }
 
-    // Stripe APIからイベントデータを再取得（正規性確保）
-    let stripeEvent;
-    try {
-      logger.debug("Retrieving Stripe event", {
-        tag: "qstash-processing",
-        correlation_id: correlationId,
-        event_id: eventId,
-        event_type: type,
-        account: account || undefined,
-      });
-
-      const retrieveOptions: { stripeAccount?: string } = {};
-      if (account) {
-        retrieveOptions.stripeAccount = account;
-      }
-
-      stripeEvent = await stripe.events.retrieve(eventId, retrieveOptions);
-    } catch (error) {
-      logger.error("Failed to retrieve Stripe event", {
-        tag: "qstash-processing",
-        correlation_id: correlationId,
-        event_id: eventId,
-        error: error instanceof Error ? error.message : "Unknown error",
-      });
-      return new NextResponse("Failed to retrieve Stripe event", { status: 404 });
-    }
-
-    // イベントタイプ検証
-    if (stripeEvent.type !== type) {
-      logger.warn("Event type mismatch", {
-        tag: "qstash-security",
-        correlation_id: correlationId,
-        expected_type: type,
-        actual_type: stripeEvent.type,
-        event_id: eventId,
-      });
-      return new NextResponse("Event type mismatch", { status: 400 });
-    }
+    logger.debug("Processing received Stripe event", {
+      tag: "qstash-processing",
+      correlation_id: correlationId,
+      event_id: stripeEvent.id,
+      event_type: stripeEvent.type,
+    });
 
     // 既存のWebhookハンドラーで処理
     const handler = new StripeWebhookEventHandler();
@@ -166,8 +133,8 @@ export async function POST(request: NextRequest) {
     logger.info("QStash webhook processing completed", {
       tag: "qstash-processing",
       correlation_id: correlationId,
-      event_id: eventId,
-      event_type: type,
+      event_id: stripeEvent.id,
+      event_type: stripeEvent.type,
       delivery_id: deliveryId,
       success: processingResult.success,
       processing_time_ms: processingTime,
@@ -176,8 +143,8 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      eventId,
-      type,
+      eventId: stripeEvent.id,
+      type: stripeEvent.type,
       processingResult,
       correlationId,
       deliveryId,
