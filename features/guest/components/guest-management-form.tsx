@@ -4,15 +4,7 @@ import { useState } from "react";
 
 import { useRouter } from "next/navigation";
 
-import {
-  Loader2,
-  Save,
-  CreditCard,
-  Banknote,
-  AlertCircle,
-  CheckCircle,
-  ExternalLink,
-} from "lucide-react";
+import { Loader2, Save, CreditCard, AlertCircle, CheckCircle } from "lucide-react";
 
 import { PAYMENT_METHOD_LABELS } from "@core/constants/payment-methods";
 import { useToast } from "@core/contexts/toast-context";
@@ -22,15 +14,19 @@ import { sanitizeForEventPay } from "@core/utils/sanitize";
 import { formatUtcToJstByType } from "@core/utils/timezone";
 import { canGuestRepay } from "@core/validation/payment-eligibility";
 
-import { PaymentStatusSpan } from "@components/ui/payment-status-badge";
-
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 
-import { createGuestStripeSessionAction, updateGuestAttendanceAction } from "../actions";
+import { updateGuestAttendanceAction } from "../actions";
 
 interface GuestManagementFormProps {
   attendance: GuestAttendanceData;
@@ -43,9 +39,9 @@ export function GuestManagementForm({ attendance, canModify }: GuestManagementFo
   const [attendanceStatus, setAttendanceStatus] = useState(attendance.status);
   const [paymentMethod, setPaymentMethod] = useState(attendance.payment?.method || "stripe");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
 
   // 再決済ボタン表示条件
   const canRepayResult = canGuestRepay(attendance, attendance.event);
@@ -56,75 +52,16 @@ export function GuestManagementForm({ attendance, canModify }: GuestManagementFo
     return ATTENDANCE_STATUS_LABELS[status as keyof typeof ATTENDANCE_STATUS_LABELS] || status;
   };
 
-  // 決済方法のアイコン
-  const getPaymentMethodIcon = (method: string) => {
-    switch (method) {
-      case "stripe":
-        return <CreditCard className="h-4 w-4" />;
-      case "cash":
-        return <Banknote className="h-4 w-4" />;
-      default:
-        return null;
-    }
+  // リセット処理
+  const handleReset = () => {
+    setAttendanceStatus(attendance.status);
+    setPaymentMethod(attendance.payment?.method || "stripe");
+    setError(null);
+    setSuccess(null);
   };
 
-  // Stripe決済セッション作成処理
-  const handleStripePayment = async () => {
-    if (!attendance || attendance.event.fee <= 0) return;
-
-    setIsProcessingPayment(true);
-    try {
-      // 現在のURLに安全にクエリパラメータを追加してリダイレクト先を生成
-      const buildRedirectUrl = (status: "success" | "cancelled") => {
-        const url = new URL(window.location.href);
-        url.searchParams.delete("session_id");
-        // 既存の payment パラメータを置き換える / 存在しなければ追加する
-        url.searchParams.set("payment", status);
-        return url.toString();
-      };
-
-      const result = await createGuestStripeSessionAction({
-        guestToken: attendance.guest_token,
-        successUrl: buildRedirectUrl("success"),
-        cancelUrl: buildRedirectUrl("cancelled"),
-      });
-
-      if (result.success && result.data) {
-        // Stripe Checkoutページにリダイレクト
-        window.location.href = result.data.sessionUrl;
-      } else {
-        toast({
-          title: "決済エラー",
-          description: !result.success ? result.error : "決済セッションの作成に失敗しました。",
-          variant: "destructive",
-        });
-      }
-    } catch (error) {
-      // エラーログの記録
-      if (process.env.NODE_ENV === "development") {
-        const { logger } = await import("@core/logging/app-logger");
-        logger.error("Stripe決済セッション作成エラー", {
-          tag: "guestStripePayment",
-          error_name: error instanceof Error ? error.name : "Unknown",
-          error_message: error instanceof Error ? error.message : String(error),
-          attendance_id: attendance.id,
-          event_id: attendance.event.id,
-        });
-      }
-
-      toast({
-        title: "決済エラー",
-        description: "予期しないエラーが発生しました。しばらく待ってからもう一度お試しください。",
-        variant: "destructive",
-      });
-    } finally {
-      setIsProcessingPayment(false);
-    }
-  };
-
-  // フォーム送信処理
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  // 保存処理（決済開始なし）
+  const performSubmit = async () => {
     setIsSubmitting(true);
     setError(null);
     setSuccess(null);
@@ -143,24 +80,14 @@ export function GuestManagementForm({ attendance, canModify }: GuestManagementFo
 
       if (result.success) {
         setSuccess("参加状況を更新しました");
+        toast({
+          title: "保存完了",
+          description: "参加状況を更新しました。",
+          variant: "success",
+        });
 
-        // 決済が必要な場合の処理
-        if (result.data?.requiresAdditionalPayment && paymentMethod === "stripe") {
-          // 成功メッセージを表示してから決済フローを開始
-          toast({
-            title: "参加状況を更新しました",
-            description: "続いてオンライン決済を行います。",
-            variant: "success",
-          });
-
-          // 少し待ってから決済フローを開始
-          setTimeout(() => {
-            handleStripePayment();
-          }, 1000);
-        } else {
-          // ページをリロードして最新データを表示
-          router.refresh();
-        }
+        // ページをリロードして最新データを表示
+        router.refresh();
       } else {
         setError(result.error || "参加状況の更新に失敗しました。もう一度お試しください。");
       }
@@ -181,7 +108,15 @@ export function GuestManagementForm({ attendance, canModify }: GuestManagementFo
       setError("予期しないエラーが発生しました。しばらく待ってからもう一度お試しください。");
     } finally {
       setIsSubmitting(false);
+      setIsConfirmOpen(false);
     }
+  };
+
+  // 送信前確認モーダルを開く
+  const handleOpenConfirm = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (isSubmitting || !hasChanges) return;
+    setIsConfirmOpen(true);
   };
 
   // 変更があるかどうかの判定
@@ -199,51 +134,6 @@ export function GuestManagementForm({ attendance, canModify }: GuestManagementFo
 
   return (
     <div className="space-y-4 sm:space-y-6">
-      {/* 現在の参加状況表示 */}
-      <Card className="p-4 sm:p-6">
-        <div className="space-y-3 sm:space-y-4">
-          <h3 className="text-lg font-semibold text-gray-900">現在の参加状況</h3>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-            <div>
-              <h4 className="text-sm font-medium text-gray-700">参加ステータス</h4>
-              <p className="mt-1">
-                <span
-                  className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                    attendance.status === "attending"
-                      ? "bg-green-100 text-green-800"
-                      : attendance.status === "not_attending"
-                        ? "bg-red-100 text-red-800"
-                        : "bg-yellow-100 text-yellow-800"
-                  }`}
-                >
-                  {getAttendanceStatusText(attendance.status)}
-                </span>
-              </p>
-            </div>
-
-            {attendance.payment && (
-              <div>
-                <h4 className="text-sm font-medium text-gray-700">決済方法</h4>
-                <p className="mt-1 text-sm text-gray-900 flex items-center space-x-2">
-                  {getPaymentMethodIcon(attendance.payment.method)}
-                  <span>{PAYMENT_METHOD_LABELS[attendance.payment.method]}</span>
-                </p>
-              </div>
-            )}
-          </div>
-
-          {attendance.payment && (
-            <div>
-              <h4 className="text-sm font-medium text-gray-700">決済状況</h4>
-              <p className="mt-1">
-                <PaymentStatusSpan status={attendance.payment.status} />
-              </p>
-            </div>
-          )}
-        </div>
-      </Card>
-
       {/* 変更不可の場合の警告 */}
       {!canModify && (
         <section aria-labelledby="modification-disabled-title">
@@ -259,26 +149,12 @@ export function GuestManagementForm({ attendance, canModify }: GuestManagementFo
             </AlertDescription>
           </Alert>
 
-          {/* 再決済ボタン（参加変更不可でも決済だけ可能にする） */}
+          {/* 再決済はステータス概要の「決済を完了する」ボタンで行います */}
           {canRepay && (
-            <div className="mt-4 flex justify-center">
-              <Button
-                onClick={handleStripePayment}
-                disabled={isProcessingPayment}
-                className="min-w-[160px]"
-              >
-                {isProcessingPayment ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" aria-hidden="true" />
-                    決済準備中...
-                  </>
-                ) : (
-                  <>
-                    <CreditCard className="h-4 w-4 mr-2" aria-hidden="true" />
-                    再決済へ進む
-                  </>
-                )}
-              </Button>
+            <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+              <p className="text-sm text-blue-800">
+                決済が必要な場合は、ページ上部の「決済を完了する」ボタンをクリックしてください。
+              </p>
             </div>
           )}
         </section>
@@ -287,15 +163,16 @@ export function GuestManagementForm({ attendance, canModify }: GuestManagementFo
       {/* 参加状況変更フォーム */}
       {canModify && (
         <section aria-labelledby="attendance-form-title">
-          <Card className="p-4 sm:p-6">
-            <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6" noValidate>
+          <Card className="p-6">
+            <form onSubmit={handleOpenConfirm} className="space-y-6" noValidate>
               <div>
-                <h3
+                <h2
                   id="attendance-form-title"
-                  className="text-lg font-semibold text-gray-900 mb-3 sm:mb-4"
+                  className="text-lg font-semibold text-gray-900 flex items-center mb-6"
                 >
-                  参加状況の変更
-                </h3>
+                  <div className="text-xl mr-2">⚙️</div>
+                  参加管理
+                </h2>
               </div>
 
               {/* エラー・成功メッセージ */}
@@ -321,71 +198,54 @@ export function GuestManagementForm({ attendance, canModify }: GuestManagementFo
 
               {/* 参加ステータス選択 */}
               <fieldset className="space-y-3">
-                <legend className="text-sm font-medium text-gray-900">
-                  参加ステータス{" "}
-                  <span className="text-red-500" aria-label="必須">
-                    *
-                  </span>
-                </legend>
-                <RadioGroup
-                  value={attendanceStatus}
-                  onValueChange={(value) => setAttendanceStatus(value as typeof attendanceStatus)}
-                  className="space-y-3 sm:space-y-2"
-                  aria-required="true"
-                  aria-describedby="attendance-status-help"
-                >
-                  <div className="flex items-center space-x-3 p-3 sm:p-2 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors min-h-[44px]">
-                    <RadioGroupItem
-                      value="attending"
-                      id="attending"
-                      className="h-5 w-5 sm:h-4 sm:w-4"
-                      aria-describedby="attending-description"
-                    />
-                    <Label
-                      htmlFor="attending"
-                      className="text-sm text-gray-700 cursor-pointer flex-1 min-h-[44px] flex items-center"
+                <legend className="text-sm font-medium text-gray-700 mb-3">参加意思:</legend>
+                <div className="space-y-2">
+                  {[
+                    { value: "attending" as const, label: "参加", color: "green" },
+                    { value: "not_attending" as const, label: "不参加", color: "red" },
+                    { value: "maybe" as const, label: "未定", color: "yellow" },
+                  ].map((option) => (
+                    <label
+                      key={option.value}
+                      className={`flex items-center p-3 rounded-lg border-2 cursor-pointer transition-all ${
+                        attendanceStatus === option.value
+                          ? option.color === "green"
+                            ? "border-green-300 bg-green-50"
+                            : option.color === "red"
+                              ? "border-red-300 bg-red-50"
+                              : "border-yellow-300 bg-yellow-50"
+                          : "border-gray-200 hover:border-gray-300"
+                      }`}
                     >
-                      参加
-                    </Label>
-                    <span id="attending-description" className="sr-only">
-                      イベントに参加します
-                    </span>
-                  </div>
-                  <div className="flex items-center space-x-3 p-3 sm:p-2 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors min-h-[44px]">
-                    <RadioGroupItem
-                      value="not_attending"
-                      id="not_attending"
-                      className="h-5 w-5 sm:h-4 sm:w-4"
-                      aria-describedby="not-attending-description"
-                    />
-                    <Label
-                      htmlFor="not_attending"
-                      className="text-sm text-gray-700 cursor-pointer flex-1 min-h-[44px] flex items-center"
-                    >
-                      不参加
-                    </Label>
-                    <span id="not-attending-description" className="sr-only">
-                      イベントに参加しません
-                    </span>
-                  </div>
-                  <div className="flex items-center space-x-3 p-3 sm:p-2 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors min-h-[44px]">
-                    <RadioGroupItem
-                      value="maybe"
-                      id="maybe"
-                      className="h-5 w-5 sm:h-4 sm:w-4"
-                      aria-describedby="maybe-description"
-                    />
-                    <Label
-                      htmlFor="maybe"
-                      className="text-sm text-gray-700 cursor-pointer flex-1 min-h-[44px] flex items-center"
-                    >
-                      未定
-                    </Label>
-                    <span id="maybe-description" className="sr-only">
-                      参加するかまだ決まっていません
-                    </span>
-                  </div>
-                </RadioGroup>
+                      <input
+                        type="radio"
+                        name="participationStatus"
+                        value={option.value}
+                        checked={attendanceStatus === option.value}
+                        onChange={(e) =>
+                          setAttendanceStatus(e.target.value as typeof attendanceStatus)
+                        }
+                        className="sr-only"
+                      />
+                      <div
+                        className={`w-4 h-4 rounded-full border-2 mr-3 flex items-center justify-center ${
+                          attendanceStatus === option.value
+                            ? option.color === "green"
+                              ? "border-green-500 bg-green-500"
+                              : option.color === "red"
+                                ? "border-red-500 bg-red-500"
+                                : "border-yellow-500 bg-yellow-500"
+                            : "border-gray-300"
+                        }`}
+                      >
+                        {attendanceStatus === option.value && (
+                          <div className="w-2 h-2 rounded-full bg-white"></div>
+                        )}
+                      </div>
+                      <span className="text-sm font-medium text-gray-900">{option.label}</span>
+                    </label>
+                  ))}
+                </div>
                 <p id="attendance-status-help" className="text-xs text-gray-600 sr-only">
                   参加ステータスを選択してください。参加を選択した場合、決済方法の選択が必要になることがあります。
                 </p>
@@ -412,56 +272,55 @@ export function GuestManagementForm({ attendance, canModify }: GuestManagementFo
                       </AlertDescription>
                     </Alert>
                   ) : (
-                    <RadioGroup
-                      value={paymentMethod}
-                      onValueChange={(value) => setPaymentMethod(value as typeof paymentMethod)}
-                      className="space-y-3 sm:space-y-2"
-                      aria-required="true"
-                      aria-describedby="payment-method-help"
-                    >
-                      <div className="flex items-start space-x-3 p-3 sm:p-2 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors min-h-[64px]">
-                        <RadioGroupItem
-                          value="stripe"
-                          id="stripe"
-                          className="h-5 w-5 sm:h-4 sm:w-4 mt-0.5"
-                          aria-describedby="stripe-description"
-                        />
-                        <Label
-                          htmlFor="stripe"
-                          className="text-sm text-gray-700 cursor-pointer flex-1 flex items-start space-x-2 min-h-[44px]"
+                    <div className="space-y-2">
+                      {[
+                        {
+                          value: "stripe" as const,
+                          label: "オンライン決済",
+                          description: "クレジットカード・銀行振込",
+                        },
+                        {
+                          value: "cash" as const,
+                          label: "当日現金払い",
+                          description: "会場での現金支払い",
+                        },
+                      ].map((option) => (
+                        <label
+                          key={option.value}
+                          className={`flex items-start p-3 rounded-lg border-2 cursor-pointer transition-all ${
+                            paymentMethod === option.value
+                              ? "border-blue-300 bg-blue-50"
+                              : "border-gray-200 hover:border-gray-300"
+                          }`}
                         >
-                          <CreditCard className="h-4 w-4 mt-0.5 flex-shrink-0" aria-hidden="true" />
-                          <div>
-                            <div className="font-medium">{PAYMENT_METHOD_LABELS.stripe}</div>
-                            <div className="text-xs text-gray-500 mt-1">クレジットカード決済</div>
+                          <input
+                            type="radio"
+                            name="paymentMethod"
+                            value={option.value}
+                            checked={paymentMethod === option.value}
+                            onChange={(e) =>
+                              setPaymentMethod(e.target.value as typeof paymentMethod)
+                            }
+                            className="sr-only"
+                          />
+                          <div
+                            className={`w-4 h-4 rounded-full border-2 mr-3 mt-0.5 flex items-center justify-center flex-shrink-0 ${
+                              paymentMethod === option.value
+                                ? "border-blue-500 bg-blue-500"
+                                : "border-gray-300"
+                            }`}
+                          >
+                            {paymentMethod === option.value && (
+                              <div className="w-2 h-2 rounded-full bg-white"></div>
+                            )}
                           </div>
-                        </Label>
-                        <span id="stripe-description" className="sr-only">
-                          オンラインでクレジットカードによる決済を行います
-                        </span>
-                      </div>
-                      <div className="flex items-start space-x-3 p-3 sm:p-2 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors min-h-[64px]">
-                        <RadioGroupItem
-                          value="cash"
-                          id="cash"
-                          className="h-5 w-5 sm:h-4 sm:w-4 mt-0.5"
-                          aria-describedby="cash-description"
-                        />
-                        <Label
-                          htmlFor="cash"
-                          className="text-sm text-gray-700 cursor-pointer flex-1 flex items-start space-x-2 min-h-[44px]"
-                        >
-                          <Banknote className="h-4 w-4 mt-0.5 flex-shrink-0" aria-hidden="true" />
                           <div>
-                            <div className="font-medium">{PAYMENT_METHOD_LABELS.cash}</div>
-                            <div className="text-xs text-gray-500 mt-1">当日現金支払い</div>
+                            <div className="text-sm font-medium text-gray-900">{option.label}</div>
+                            <div className="text-xs text-gray-500 mt-0.5">{option.description}</div>
                           </div>
-                        </Label>
-                        <span id="cash-description" className="sr-only">
-                          イベント当日に会場で現金で支払います
-                        </span>
-                      </div>
-                    </RadioGroup>
+                        </label>
+                      ))}
+                    </div>
                   )}
 
                   <p id="payment-method-help" className="text-xs text-gray-600 sr-only">
@@ -486,47 +345,51 @@ export function GuestManagementForm({ attendance, canModify }: GuestManagementFo
                 </fieldset>
               )}
 
-              {/* 送信ボタン */}
-              <div className="flex justify-center sm:justify-end">
-                <Button
+              {/* 変更警告 */}
+              {hasChanges && (
+                <div className="flex items-start space-x-2 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                  <AlertCircle className="h-5 w-5 text-yellow-600 flex-shrink-0 mt-0.5" />
+                  <div className="text-sm text-yellow-800">
+                    変更が保存されていません。「変更を保存」ボタンをクリックして保存してください。
+                  </div>
+                </div>
+              )}
+
+              {/* 送信・リセットボタン */}
+              <div className="pt-4 flex flex-col sm:flex-row gap-3">
+                <button
                   type="submit"
-                  disabled={isSubmitting || isProcessingPayment || !hasChanges}
-                  className="w-full sm:w-auto min-w-[120px] h-12 sm:h-10 text-base sm:text-sm font-medium min-h-[44px]"
-                  aria-describedby={hasChanges ? undefined : "no-changes-help"}
+                  disabled={isSubmitting || !hasChanges}
+                  className={`flex items-center justify-center flex-1 px-4 py-3 rounded-lg text-sm font-medium transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 ${
+                    hasChanges && !isSubmitting
+                      ? "bg-blue-600 text-white hover:bg-blue-700 focus:ring-blue-500"
+                      : "bg-gray-100 text-gray-400 cursor-not-allowed"
+                  }`}
                 >
-                  {isSubmitting || isProcessingPayment ? (
+                  {isSubmitting ? (
                     <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" aria-hidden="true" />
-                      {isProcessingPayment ? "決済準備中..." : "更新中..."}
-                      <span className="sr-only">
-                        {isProcessingPayment
-                          ? "決済セッションを準備しています"
-                          : "参加状況を更新しています"}
-                      </span>
+                      <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full mr-2"></div>
+                      保存中...
                     </>
                   ) : (
                     <>
-                      <Save className="h-4 w-4 mr-2" aria-hidden="true" />
-                      {/* 再決済の場合はボタンテキストを変更 */}
-                      {attendanceStatus === "attending" &&
-                      attendance.event.fee > 0 &&
-                      attendance.payment?.method === paymentMethod &&
-                      attendance.payment?.status &&
-                      ["failed", "pending"].includes(attendance.payment.status)
-                        ? "再決済を実行"
-                        : "変更を保存"}
-                      {attendanceStatus === "attending" &&
-                        attendance.event.fee > 0 &&
-                        paymentMethod === "stripe" &&
-                        hasChanges && <ExternalLink className="h-4 w-4 ml-1" aria-hidden="true" />}
+                      <Save className="h-4 w-4 mr-2" />
+                      変更を保存
                     </>
                   )}
-                </Button>
-                {!hasChanges && (
-                  <p id="no-changes-help" className="sr-only">
-                    変更がないため、送信ボタンは無効になっています
-                  </p>
-                )}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleReset}
+                  disabled={isSubmitting || !hasChanges}
+                  className={`flex items-center justify-center px-4 py-3 rounded-lg text-sm font-medium transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 ${
+                    hasChanges && !isSubmitting
+                      ? "bg-gray-100 text-gray-700 hover:bg-gray-200 focus:ring-gray-500"
+                      : "bg-gray-50 text-gray-400 cursor-not-allowed"
+                  }`}
+                >
+                  リセット
+                </button>
               </div>
 
               {/* 決済フロー案内 */}
@@ -666,6 +529,67 @@ export function GuestManagementForm({ attendance, canModify }: GuestManagementFo
           </div>
         </div>
       </Card>
+
+      {/* 確認モーダル */}
+      <Dialog
+        open={isConfirmOpen}
+        onOpenChange={(open) => {
+          if (!open && !isSubmitting) {
+            setIsConfirmOpen(false);
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>変更内容の確認</DialogTitle>
+            <DialogDescription>以下の内容で変更を保存します。よろしいですか？</DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-2 text-sm">
+            <div className="flex justify-between">
+              <span className="text-gray-600">参加意思:</span>
+              <span className="font-medium text-gray-900">
+                {getAttendanceStatusText(attendanceStatus)}
+              </span>
+            </div>
+            {attendanceStatus === "attending" && attendance.event.fee > 0 && (
+              <div className="flex justify-between">
+                <span className="text-gray-600">決済方法:</span>
+                <span className="font-medium text-gray-900">
+                  {PAYMENT_METHOD_LABELS[paymentMethod as keyof typeof PAYMENT_METHOD_LABELS]}
+                </span>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter className="flex-col sm:flex-row gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setIsConfirmOpen(false)}
+              disabled={isSubmitting}
+              className="w-full sm:w-auto"
+            >
+              キャンセル
+            </Button>
+            <Button
+              type="button"
+              onClick={performSubmit}
+              disabled={isSubmitting}
+              className="w-full sm:w-auto"
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" aria-hidden="true" />
+                  保存中...
+                </>
+              ) : (
+                "保存する"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

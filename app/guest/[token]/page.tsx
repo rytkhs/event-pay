@@ -1,10 +1,10 @@
 import { cache } from "react";
 
 import { headers } from "next/headers";
-import Link from "next/link";
+/* no-op */
 import { notFound } from "next/navigation";
 
-import { AlertCircle, ArrowLeft } from "lucide-react";
+import { AlertCircle } from "lucide-react";
 import type { Metadata } from "next";
 
 import { logInvalidTokenAccess, logUnexpectedGuestPageError } from "@core/security/security-logger";
@@ -12,11 +12,13 @@ import { validateGuestToken } from "@core/utils/guest-token";
 import { getClientIPFromHeaders } from "@core/utils/ip-detection";
 import { sanitizeForEventPay } from "@core/utils/sanitize";
 
-import { PaymentStatusAlert } from "@features/events";
-import { GuestManagementForm } from "@features/guest";
+import { GuestHeader } from "@features/guest";
 
-import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+
+import { GuestPageClient } from "./guest-page-client";
+
+/* no-op */
 
 // リクエスト内で検証結果を共有し、DB クエリを 1 回に抑える
 const getGuestValidation = cache(async (token: string) => validateGuestToken(token));
@@ -82,40 +84,7 @@ export default async function GuestPage({ params, searchParams }: GuestPageProps
     return (
       <div className="min-h-screen bg-gray-50">
         {/* ヘッダー */}
-        <header className="bg-white border-b border-gray-200" role="banner">
-          <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="py-4 sm:py-6">
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-3 sm:space-y-0">
-                <div className="min-w-0 flex-1">
-                  <h1 className="text-xl sm:text-2xl font-bold text-gray-900" id="page-title">
-                    参加状況管理
-                  </h1>
-                  <p
-                    className="mt-1 text-sm text-gray-600 break-words"
-                    aria-describedby="page-title"
-                  >
-                    {sanitizeForEventPay(attendance.event.title)}
-                  </p>
-                </div>
-
-                {/* ホームに戻るリンク */}
-                <nav className="flex-shrink-0" role="navigation" aria-label="ページナビゲーション">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    asChild
-                    className="w-full sm:w-auto min-h-[44px] min-w-[44px]"
-                  >
-                    <Link href="/" aria-label="EventPayホームページに戻る">
-                      <ArrowLeft className="h-4 w-4 mr-2" aria-hidden="true" />
-                      ホームに戻る
-                    </Link>
-                  </Button>
-                </nav>
-              </div>
-            </div>
-          </div>
-        </header>
+        <GuestHeader attendance={attendance} />
 
         {/* メインコンテンツ */}
         <main
@@ -150,19 +119,13 @@ export default async function GuestPage({ params, searchParams }: GuestPageProps
             </Card>
           </section>
 
-          {/* 決済結果表示 */}
-          {payment && (
-            <PaymentStatusAlert
-              sessionId={session_id}
-              attendanceId={attendance.id}
-              paymentStatus={payment}
-              eventTitle={attendance.event.title}
-              guestToken={token}
-            />
-          )}
-
-          {/* ゲスト管理フォーム */}
-          <GuestManagementForm attendance={attendance} canModify={canModify} />
+          <GuestPageClient
+            attendance={attendance}
+            canModify={canModify}
+            payment={payment}
+            sessionId={session_id}
+            guestToken={token}
+          />
 
           {/* フッター情報 */}
           <footer className="mt-6 sm:mt-8 text-center" role="contentinfo">

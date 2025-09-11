@@ -6,6 +6,27 @@ const config: Config = {
     "./pages/**/*.{js,ts,jsx,tsx,mdx}",
     "./components/**/*.{js,ts,jsx,tsx,mdx}",
     "./app/**/*.{js,ts,jsx,tsx,mdx}",
+    "./features/**/*.{js,ts,jsx,tsx,mdx}",
+    "./core/**/*.{js,ts,jsx,tsx,mdx}",
+  ],
+  safelist: [
+    // ゲスト管理フォームで使用する動的クラス
+    "border-green-300",
+    "bg-green-50",
+    "border-green-500",
+    "bg-green-500",
+    "border-red-300",
+    "bg-red-50",
+    "border-red-500",
+    "bg-red-500",
+    "border-yellow-300",
+    "bg-yellow-50",
+    "border-yellow-500",
+    "bg-yellow-500",
+    "border-blue-300",
+    "bg-blue-50",
+    "border-blue-500",
+    "bg-blue-500",
   ],
   theme: {
     extend: {
@@ -42,6 +63,19 @@ const config: Config = {
         card: {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
+        },
+        // EventPay Custom Colors
+        success: {
+          DEFAULT: "hsl(var(--success))",
+          foreground: "hsl(var(--success-foreground))",
+        },
+        warning: {
+          DEFAULT: "hsl(var(--warning))",
+          foreground: "hsl(var(--warning-foreground))",
+        },
+        info: {
+          DEFAULT: "hsl(var(--info))",
+          foreground: "hsl(var(--info-foreground))",
         },
       },
       borderRadius: {
