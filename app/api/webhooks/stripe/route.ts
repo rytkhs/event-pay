@@ -45,16 +45,19 @@ export async function POST(request: NextRequest) {
     const clientIP = getClientIP(request);
 
     // IP許可リストのチェック（本番環境でのセキュリティ）
-    if (shouldEnforceStripeWebhookIpCheck() && !isStripeWebhookIpAllowed(clientIP)) {
-      logger.warn("Webhook request from unauthorized IP", {
-        tag: "security-rejected",
-        ip: clientIP,
-        request_id: requestId,
-      });
-      return createProblemResponse("FORBIDDEN", {
-        instance: "/api/webhooks/stripe",
-        detail: "IP address not authorized for webhook access",
-      });
+    if (shouldEnforceStripeWebhookIpCheck()) {
+      const allowed = await isStripeWebhookIpAllowed(clientIP);
+      if (!allowed) {
+        logger.warn("Webhook request from unauthorized IP", {
+          tag: "security-rejected",
+          ip: clientIP,
+          request_id: requestId,
+        });
+        return createProblemResponse("FORBIDDEN", {
+          instance: "/api/webhooks/stripe",
+          detail: "IP address not authorized for webhook access",
+        });
+      }
     }
 
     const payload = await request.text();

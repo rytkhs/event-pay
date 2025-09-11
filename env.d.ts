@@ -88,5 +88,15 @@ declare namespace NodeJS {
     // ===========================
     /** Node.js実行環境 */
     NODE_ENV: "development" | "production" | "test";
+
+    // ===========================
+    // Security - Webhook IP Control (Optional)
+    // ===========================
+    /**
+     * Webhook IP制御の有効/無効
+     * - ENABLE_STRIPE_IP_CHECK: true/false
+     * 本番時の既定は有効。
+     */
+    ENABLE_STRIPE_IP_CHECK?: string;
   }
 }
