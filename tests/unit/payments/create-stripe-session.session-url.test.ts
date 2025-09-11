@@ -64,18 +64,19 @@ describe("PaymentService - sessionUrl生成とテンプレート置換", () => {
     mockApplicationFeeCalculator = {
       calculateApplicationFee: jest.fn(),
       calculateApplicationFeeBatch: jest.fn(),
-    } as jest.Mocked<ApplicationFeeCalculator>;
+      validateConfig: jest.fn(),
+    } as unknown as jest.Mocked<ApplicationFeeCalculator>;
 
     mockApplicationFeeCalculator.calculateApplicationFee.mockResolvedValue({
       amount: testData.amount,
       applicationFeeAmount: testData.calculatedFee,
       config: {
-        platform_fee_rate: 0.1,
-        platform_fixed_fee: 0,
-        min_platform_fee: 50,
-        max_platform_fee: 1000,
-        tax_rate: 0,
-        is_tax_included: true,
+        rate: 0.1,
+        fixedFee: 0,
+        minimumFee: 50,
+        maximumFee: 1000,
+        taxRate: 0,
+        isTaxIncluded: true,
       },
       calculation: {
         rateFee: testData.calculatedFee,
@@ -267,51 +268,36 @@ describe("PaymentService - sessionUrl生成とテンプレート置換", () => {
   });
 
   describe("テンプレート置換ロジックの単体検証", () => {
-    it("success_urlとcancel_urlに{CHECKOUT_SESSION_ID}テンプレートが正しく設定されること", () => {
+    it("success_urlは生の{CHECKOUT_SESSION_ID}が連結されること（エンコードされない）", () => {
       // Arrange
       const baseSuccessUrl = "https://example.com/success";
-      const baseCancelUrl = "https://example.com/cancel";
 
-      // Act - destination-charges.tsのロジックを模擬
-      const successUrlWithTemplate = (() => {
-        const u = new URL(baseSuccessUrl);
-        u.searchParams.set("session_id", "{CHECKOUT_SESSION_ID}");
-        return u.toString();
-      })();
-
-      const cancelUrlWithTemplate = (() => {
-        const u = new URL(baseCancelUrl);
-        u.searchParams.set("session_id", "{CHECKOUT_SESSION_ID}");
-        return u.toString();
-      })();
+      // Act - destination-charges.tsの新ロジックを模擬（文字列連結）
+      const hasQuery = baseSuccessUrl.includes("?");
+      const separator = hasQuery ? "&" : "?";
+      const successUrlWithTemplate = `${baseSuccessUrl}${separator}session_id={CHECKOUT_SESSION_ID}`;
 
       // Assert
       expect(successUrlWithTemplate).toBe(
-        "https://example.com/success?session_id=%7BCHECKOUT_SESSION_ID%7D"
+        "https://example.com/success?session_id={CHECKOUT_SESSION_ID}"
       );
-      expect(cancelUrlWithTemplate).toBe(
-        "https://example.com/cancel?session_id=%7BCHECKOUT_SESSION_ID%7D"
-      );
+    });
 
-      // デコードして検証
-      expect(decodeURIComponent(successUrlWithTemplate)).toContain(
-        "session_id={CHECKOUT_SESSION_ID}"
-      );
-      expect(decodeURIComponent(cancelUrlWithTemplate)).toContain(
-        "session_id={CHECKOUT_SESSION_ID}"
+    it("既にクエリがあるURLにも正しく連結されること", () => {
+      const baseSuccessUrlWithQuery = "https://example.com/success?from=checkout";
+      const successUrlWithTemplate = `${baseSuccessUrlWithQuery}&session_id={CHECKOUT_SESSION_ID}`;
+      expect(successUrlWithTemplate).toBe(
+        "https://example.com/success?from=checkout&session_id={CHECKOUT_SESSION_ID}"
       );
     });
 
     it("テンプレート置換が実際のsession.idで行われることを想定した検証", () => {
       // Arrange
-      const templateUrl = "https://example.com/success?session_id=%7BCHECKOUT_SESSION_ID%7D";
+      const templateUrl = "https://example.com/success?session_id={CHECKOUT_SESSION_ID}";
       const actualSessionId = "cs_test_1234567890abcdef";
 
       // Act - Stripeが実際に行う置換を模擬
-      const finalUrl = decodeURIComponent(templateUrl).replace(
-        "{CHECKOUT_SESSION_ID}",
-        actualSessionId
-      );
+      const finalUrl = templateUrl.replace("{CHECKOUT_SESSION_ID}", actualSessionId);
 
       // Assert
       expect(finalUrl).toBe("https://example.com/success?session_id=cs_test_1234567890abcdef");

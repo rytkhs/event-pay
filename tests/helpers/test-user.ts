@@ -50,7 +50,9 @@ async function withRetry<T>(
     }
   }
 
-  throw new Error(`${operationName} failed after ${maxRetries + 1} attempts: ${lastError?.message}`);
+  throw new Error(
+    `${operationName} failed after ${maxRetries + 1} attempts: ${lastError?.message}`
+  );
 }
 
 /**
@@ -90,7 +92,13 @@ export async function createTestUser(
       const existingUser = await findExistingTestUser(adminClient, email);
       if (existingUser) {
         console.log(`✓ Using existing test user: ${email} (ID: ${existingUser.id})`);
-        return await ensureUserProfileExists(adminClient, existingUser, email, password, skipProfileCreation);
+        return await ensureUserProfileExists(
+          adminClient,
+          existingUser,
+          email,
+          password,
+          skipProfileCreation
+        );
       }
 
       // Step 2: 新規ユーザーの作成（排他制御付き）
@@ -206,11 +214,20 @@ async function createNewTestUserSafely(
 
     if (authError) {
       // 既に存在するユーザーかもしれない（並行処理での競合）
-      if (authError.message?.includes("already been registered") || authError.message?.includes("email address is already")) {
+      if (
+        authError.message?.includes("already been registered") ||
+        authError.message?.includes("email address is already")
+      ) {
         console.log(`User may have been created by another process: ${email}`);
         const existingUser = await findExistingTestUser(adminClient, email);
         if (existingUser) {
-          return await ensureUserProfileExists(adminClient, existingUser, email, password, skipProfileCreation);
+          return await ensureUserProfileExists(
+            adminClient,
+            existingUser,
+            email,
+            password,
+            skipProfileCreation
+          );
         }
       }
       throw new Error(`Failed to create auth user: ${authError.message}`);
@@ -245,7 +262,6 @@ async function createNewTestUserSafely(
 
     console.log(`✓ Test user created successfully: ${email}`);
     return { id: createdUserId, email, password };
-
   } catch (error) {
     // ロールバック処理
     if (createdUserId) {

@@ -2,6 +2,7 @@
  * E2Eテスト用データセットアップヘルパー
  * APIルートではなくSupabase直接操作でテストデータを管理
  */
+import crypto from "crypto";
 
 import { createClient } from "@supabase/supabase-js";
 
@@ -85,7 +86,7 @@ export class TestDataManager {
 
     const { error: connectError } = await supabaseAdmin
       .from("stripe_connect_accounts")
-      .upsert(connectData, { onConflict: "user_id" });
+      .upsert(connectData, { onConflict: "stripe_account_id" });
 
     if (connectError) {
       throw new Error(`Connect account creation failed: ${connectError.message}`);
@@ -162,8 +163,8 @@ export class TestDataManager {
 
     // 決済データがある場合は作成
     if (existingPayment) {
-      const paymentData = {
-        id: `pay_test_${TEST_IDS.ATTENDANCE_ID}`,
+      const paymentData: Database["public"]["Tables"]["payments"]["Insert"] = {
+        id: crypto.randomUUID(),
         attendance_id: TEST_IDS.ATTENDANCE_ID,
         amount: existingPayment.amount,
         status: existingPayment.status as
@@ -175,8 +176,12 @@ export class TestDataManager {
           | "refunded"
           | "waived",
         method: "stripe" as const,
-        created_at: FIXED_TIME.toISOString(),
-        updated_at: FIXED_TIME.toISOString(),
+        stripe_payment_intent_id: `pi_${crypto.randomUUID()}`,
+        // 新しいIdempotency関連カラムを明示的に設定（null許可だが統一性のため）
+        checkout_idempotency_key: null,
+        checkout_key_revision: 0,
+        created_at: new Date("2000-01-01T00:00:00.000Z").toISOString(),
+        updated_at: new Date("2000-01-01T00:00:00.000Z").toISOString(),
       };
 
       const { error: paymentError } = await supabaseAdmin
