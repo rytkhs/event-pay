@@ -430,6 +430,23 @@ export class PaymentService implements IPaymentService {
       }
 
       // Destination charges用のCheckout Session作成
+      // Idempotency-Key: ボディ差分（特に金額差）時はキーを回転。そうでなければ再利用
+      let idempotencyKeyToUse: string | null =
+        (openPayment as any)?.checkout_idempotency_key ?? null;
+      let checkoutKeyRevisionToSave: number = (openPayment as any)?.checkout_key_revision ?? 0;
+      const amountChanged = Boolean(
+        openPayment &&
+          (openPayment as any).status === "pending" &&
+          typeof (openPayment as any).amount === "number" &&
+          (openPayment as any).amount !== params.amount
+      );
+      if (!idempotencyKeyToUse || amountChanged) {
+        const { generateIdempotencyKey } = await import("@core/stripe/client");
+        idempotencyKeyToUse = generateIdempotencyKey("checkout");
+        if (openPayment) {
+          checkoutKeyRevisionToSave = ((openPayment as any).checkout_key_revision ?? 0) + 1;
+        }
+      }
       const session = await DestinationCharges.createDestinationCheckoutSession({
         eventId: params.eventId,
         eventTitle: params.eventTitle,
@@ -446,6 +463,7 @@ export class PaymentService implements IPaymentService {
           event_title: params.eventTitle,
         },
         setupFutureUsage,
+        idempotencyKey: idempotencyKeyToUse ?? undefined,
       });
 
       // --- DB に Destination charges 関連情報を保存 (リトライ付き) ---
@@ -455,6 +473,8 @@ export class PaymentService implements IPaymentService {
         application_fee_amount: feeCalculation.applicationFeeAmount,
         transfer_group: `event_${params.eventId}_payout`,
         stripe_customer_id: customerId,
+        checkout_idempotency_key: idempotencyKeyToUse,
+        checkout_key_revision: checkoutKeyRevisionToSave,
       } as const;
 
       const MAX_DB_UPDATE_RETRIES = 3;

@@ -18,6 +18,7 @@ interface CreateDestinationCheckoutParams {
   actorId: string; // idempotency_key生成用（認証ユーザー=users.id / ゲスト=attendances.id）
   metadata?: Record<string, string>;
   setupFutureUsage?: "off_session";
+  idempotencyKey?: string; // 既存キーの再利用用（任意）
 }
 
 // Destination charges対応のCheckout Session作成
@@ -36,6 +37,7 @@ export async function createDestinationCheckoutSession(
     actorId,
     metadata = {},
     setupFutureUsage,
+    idempotencyKey,
   } = params;
 
   if (platformFeeAmount >= amount) {
@@ -52,7 +54,7 @@ export async function createDestinationCheckoutSession(
     ...metadata,
   };
 
-  const idempotencyKey = generateIdempotencyKey("checkout");
+  const resolvedKey = idempotencyKey ?? generateIdempotencyKey("checkout");
 
   const createSession = () => {
     return stripe.checkout.sessions.create(
@@ -92,7 +94,7 @@ export async function createDestinationCheckoutSession(
         },
         metadata: sessionMetadata,
       },
-      createStripeRequestOptions(idempotencyKey)
+      createStripeRequestOptions(resolvedKey)
     );
   };
 
