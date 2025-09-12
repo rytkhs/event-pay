@@ -13,6 +13,7 @@ import Stripe from "stripe";
 import { logger } from "@core/logging/app-logger";
 import { getClientIP } from "@core/utils/ip-detection";
 
+import "@/app/_init/feature-registrations";
 import { ConnectWebhookHandler } from "@features/payments/services/webhook/connect-webhook-handler";
 
 const getQstashReceiver = () => {

@@ -19,6 +19,7 @@ import type Stripe from "stripe";
 import { logger } from "@core/logging/app-logger";
 import { getClientIP } from "@core/utils/ip-detection";
 
+import "@/app/_init/feature-registrations";
 import { StripeWebhookEventHandler } from "@features/payments/services/webhook/webhook-event-handler";
 
 // QStash署名検証用のReceiver初期化
