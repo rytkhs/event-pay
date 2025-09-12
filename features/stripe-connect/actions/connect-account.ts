@@ -30,6 +30,21 @@ function isNextRedirectError(err: unknown): boolean {
   }
 }
 
+// 入力検証に起因するエラーかを判定
+function isValidationError(err: unknown): boolean {
+  try {
+    const message = err instanceof Error ? err.message : String(err);
+    return (
+      message.includes("入力データが無効です") ||
+      message.includes("不正なリダイレクトURLが指定されました") ||
+      message.includes("不正なリダイレクトURLのパスが指定されました") ||
+      message.includes("HTTPSのリダイレクトURLのみ許可されています")
+    );
+  } catch {
+    return false;
+  }
+}
+
 // バリデーションスキーマ
 const CreateConnectAccountSchema = z.object({
   refreshUrl: z.string().url("有効なリフレッシュURLを指定してください"),
@@ -82,10 +97,19 @@ function validateAndNormalizeRedirectUrls(formData: FormData): {
   const normalizeOrigin = (o: string) => o.replace(/\/$/, "");
   const refresh = new URL(refreshUrl);
   const ret = new URL(returnUrl);
-  const isAllowedOrigin = (origin: string) =>
-    allowedOrigins.some((allowed) => normalizeOrigin(origin) === normalizeOrigin(allowed));
+  // スキーム差異(http/https)はここでは許容し、ホスト(含ポート)一致で判定
+  const extractHost = (value: string) => {
+    try {
+      const u = new URL(value);
+      return u.host; // hostname:port
+    } catch {
+      return value.replace(/^https?:\/\//, "").replace(/\/$/, "");
+    }
+  };
+  const isAllowedHost = (originLike: string) =>
+    allowedOrigins.some((allowed) => extractHost(allowed) === extractHost(originLike));
 
-  if (!isAllowedOrigin(refresh.origin) || !isAllowedOrigin(ret.origin)) {
+  if (!isAllowedHost(refresh.origin) || !isAllowedHost(ret.origin)) {
     throw new Error("不正なリダイレクトURLが指定されました");
   }
 
@@ -277,6 +301,11 @@ export async function createConnectAccountAction(formData: FormData): Promise<vo
         : undefined,
       timestamp: new Date().toISOString(),
     });
+
+    // 入力検証に起因するエラーはテスト容易性と一貫性のため再スロー（リダイレクトしない）
+    if (isValidationError(finalError)) {
+      throw finalError instanceof Error ? finalError : new Error(String(finalError));
+    }
 
     if (finalError instanceof StripeConnectError) {
       const errorMessage = encodeURIComponent(finalError.message);
