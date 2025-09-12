@@ -117,9 +117,6 @@ export default async function SettlementReportsPage() {
         <TabsContent value="generate" className="space-y-6">
           <SettlementReportGenerator
             availableEvents={availableEvents}
-            onReportGenerated={() => {
-              // レポート生成後の処理をここに追加予定
-            }}
             onGenerateReport={generateSettlementReportAction}
           />
         </TabsContent>

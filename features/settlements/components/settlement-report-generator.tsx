@@ -130,7 +130,7 @@ export function SettlementReportGenerator({
             </SelectTrigger>
             <SelectContent>
               {eligibleEvents.length === 0 ? (
-                <SelectItem value="" disabled>
+                <SelectItem value="__no_options__" disabled>
                   生成可能なイベントがありません
                 </SelectItem>
               ) : (

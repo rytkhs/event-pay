@@ -63,7 +63,7 @@ export function SettlementReportList({
 
   // フィルタ状態
   const [filters, setFilters] = useState({
-    eventId: "",
+    eventId: "__all__",
     fromDate: "",
     toDate: "",
     limit: 50,
@@ -76,7 +76,8 @@ export function SettlementReportList({
     try {
       const effective = { ...filters, ...(override ?? {}) };
       const params = {
-        eventIds: effective.eventId ? [effective.eventId] : undefined,
+        eventIds:
+          effective.eventId && effective.eventId !== "__all__" ? [effective.eventId] : undefined,
         fromDate: effective.fromDate || undefined,
         toDate: effective.toDate || undefined,
         limit: effective.limit,
@@ -110,7 +111,7 @@ export function SettlementReportList({
     setExporting(true);
     try {
       const params = {
-        eventIds: filters.eventId ? [filters.eventId] : undefined,
+        eventIds: filters.eventId && filters.eventId !== "__all__" ? [filters.eventId] : undefined,
         fromDate: filters.fromDate || undefined,
         toDate: filters.toDate || undefined,
       };
@@ -228,7 +229,7 @@ export function SettlementReportList({
                   <SelectValue placeholder="すべてのイベント" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">すべてのイベント</SelectItem>
+                  <SelectItem value="__all__">すべてのイベント</SelectItem>
                   {availableEvents.map((event) => (
                     <SelectItem key={event.id} value={event.id}>
                       {event.title} ({formatUtcToJstByType(event.date, "japanese").replace(" ", "")}
