@@ -4,7 +4,7 @@
 
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import {
   CheckCircle,
@@ -17,7 +17,6 @@ import {
   ExternalLink,
 } from "lucide-react";
 
-import { logger } from "@core/logging/app-logger";
 import { STRIPE_ACCOUNT_STATUS_LABELS } from "@core/types/enums";
 
 // Actions are now injected via props to avoid circular dependency
@@ -46,73 +45,16 @@ interface AccountStatusData {
 
 interface AccountStatusProps {
   refreshUrl: string;
-  returnUrl: string;
-  onGetAccountStatus: () => Promise<{ success: boolean; data?: AccountStatusData; error?: string }>;
-  onCreateAccount: (formData: FormData) => Promise<void>;
+  status: AccountStatusData;
 }
 
-export function AccountStatus({
-  refreshUrl,
-  returnUrl,
-  onGetAccountStatus,
-  onCreateAccount,
-}: AccountStatusProps) {
-  const [accountData, setAccountData] = useState<AccountStatusData | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+export function AccountStatus({ refreshUrl, status }: AccountStatusProps) {
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const fetchAccountStatus = async () => {
-    try {
-      const result = await onGetAccountStatus();
-      if (result.success && result.data) {
-        // statusプロパティを適切にマッピング
-        const mappedData: AccountStatusData = {
-          ...result.data,
-          status:
-            result.data.status === "unverified" ||
-            result.data.status === "onboarding" ||
-            result.data.status === "verified" ||
-            result.data.status === "restricted"
-              ? result.data.status
-              : null,
-        };
-        setAccountData(mappedData);
-        setError(null);
-      } else {
-        setError(result.error || "アカウント情報の取得中にエラーが発生しました");
-      }
-    } catch (_err) {
-      setError("アカウント情報の取得中にエラーが発生しました");
-    } finally {
-      setIsLoading(false);
-      setIsRefreshing(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchAccountStatus();
-  }, []);
-
+  const accountData = status;
   const handleRefresh = async () => {
     setIsRefreshing(true);
-    await fetchAccountStatus();
-  };
-
-  const handleUpdateAccount = async () => {
-    const formData = new FormData();
-    formData.append("refreshUrl", refreshUrl);
-    formData.append("returnUrl", returnUrl);
-
-    try {
-      await onCreateAccount(formData);
-    } catch (error) {
-      logger.error("Account update error", {
-        tag: "connectAccountUpdateError",
-        error_name: error instanceof Error ? error.name : "Unknown",
-        error_message: error instanceof Error ? error.message : String(error),
-      });
-    }
+    // サーバーコンポーネントを再評価するにはページをリロード（または router.refresh()）
+    window.location.reload();
   };
 
   const getStatusIcon = (status: string | null) => {
@@ -150,34 +92,6 @@ export function AccountStatus({
         return "outline";
     }
   };
-
-  if (isLoading) {
-    return (
-      <Card>
-        <CardContent className="flex items-center justify-center py-8">
-          <RefreshCw className="h-6 w-6 animate-spin mr-2" />
-          アカウント情報を読み込み中...
-        </CardContent>
-      </Card>
-    );
-  }
-
-  if (error) {
-    return (
-      <Card>
-        <CardContent className="py-8">
-          <Alert variant="destructive">
-            <AlertCircle className="h-4 w-4" />
-            <AlertDescription>{error}</AlertDescription>
-          </Alert>
-          <Button onClick={handleRefresh} variant="outline" className="mt-4">
-            <RefreshCw className="h-4 w-4 mr-2" />
-            再試行
-          </Button>
-        </CardContent>
-      </Card>
-    );
-  }
 
   if (!accountData?.hasAccount) {
     return null; // OnboardingFormが表示される
@@ -278,10 +192,12 @@ export function AccountStatus({
         {/* アクションボタン */}
         {accountData.status !== "verified" && (
           <div className="flex gap-2">
-            <Button onClick={handleUpdateAccount} className="flex-1">
-              <ExternalLink className="h-4 w-4 mr-2" />
-              {accountData.status === "unverified" ? "設定を完了する" : "設定を更新する"}
-            </Button>
+            <a href={refreshUrl} className="flex-1">
+              <Button type="button" className="w-full">
+                <ExternalLink className="h-4 w-4 mr-2" />
+                {accountData.status === "unverified" ? "設定を完了する" : "設定を更新する"}
+              </Button>
+            </a>
           </div>
         )}
 

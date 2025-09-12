@@ -85,32 +85,29 @@ async function ConnectContent({ searchParams }: ConnectPageProps) {
         ) : (
           <AccountStatus
             refreshUrl={refreshUrl}
-            returnUrl={returnUrl}
-            onGetAccountStatus={async () => {
+            status={await (async () => {
               const r = await getConnectAccountStatusAction();
               return {
-                success: r.success,
-                error: r.error,
-                data: r.data
-                  ? {
-                      hasAccount: r.data.hasAccount,
-                      accountId: r.data.accountId,
-                      status:
-                        r.data.status === "unverified" ||
-                        r.data.status === "onboarding" ||
-                        r.data.status === "verified" ||
-                        r.data.status === "restricted"
-                          ? r.data.status
-                          : null,
-                      chargesEnabled: r.data.chargesEnabled,
-                      payoutsEnabled: r.data.payoutsEnabled,
-                      requirements: r.data.requirements,
-                      capabilities: r.data.capabilities,
-                    }
-                  : undefined,
+                hasAccount: true,
+                accountId: r.data?.accountId,
+                status:
+                  r.data?.status === "unverified" ||
+                  r.data?.status === "onboarding" ||
+                  r.data?.status === "verified" ||
+                  r.data?.status === "restricted"
+                    ? (r.data?.status as any)
+                    : null,
+                chargesEnabled: r.data?.chargesEnabled ?? false,
+                payoutsEnabled: r.data?.payoutsEnabled ?? false,
+                requirements: r.data?.requirements ?? {
+                  currently_due: [],
+                  eventually_due: [],
+                  past_due: [],
+                  pending_verification: [],
+                },
+                capabilities: r.data?.capabilities,
               };
-            }}
-            onCreateAccount={createConnectAccountAction}
+            })()}
           />
         )}
       </div>

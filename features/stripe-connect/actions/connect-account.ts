@@ -9,6 +9,8 @@ import { z } from "zod";
 
 import { logger } from "@core/logging/app-logger";
 import {
+  CONNECT_REFRESH_PATH,
+  CONNECT_RETURN_PATH,
   CONNECT_REFRESH_SUFFIX,
   CONNECT_RETURN_SUFFIX,
   isAllowedConnectPath,
@@ -17,6 +19,16 @@ import { createClient } from "@core/supabase/server";
 
 import { createUserStripeConnectService } from "../services";
 import { StripeConnectError, StripeConnectErrorType } from "../types";
+
+// Next.js の redirect は例外としてスローされるため、捕捉時は即時に再スローする
+function isNextRedirectError(err: unknown): boolean {
+  try {
+    const digest = (err as any)?.digest;
+    return typeof digest === "string" && digest.startsWith("NEXT_REDIRECT");
+  } catch {
+    return false;
+  }
+}
 
 // バリデーションスキーマ
 const CreateConnectAccountSchema = z.object({
@@ -75,6 +87,14 @@ function validateAndNormalizeRedirectUrls(formData: FormData): {
 
   if (!isAllowedOrigin(refresh.origin) || !isAllowedOrigin(ret.origin)) {
     throw new Error("不正なリダイレクトURLが指定されました");
+  }
+
+  // 本番はHTTPSのみ許可（Stripe推奨）
+  const isProd = process.env.NODE_ENV === "production";
+  if (isProd) {
+    if (refresh.protocol !== "https:" || ret.protocol !== "https:") {
+      throw new Error("本番環境ではHTTPSのリダイレクトURLのみ許可されています");
+    }
   }
 
   // パスはサフィックス一致で許容（将来サブパスに移動しても許容）。
@@ -195,6 +215,10 @@ export async function createConnectAccountAction(formData: FormData): Promise<vo
     // 7. Account LinkのURLにリダイレクト
     redirect(accountLink.url);
   } catch (error) {
+    // redirect 例外はそのまま再スロー（エラー扱いしない）
+    if (isNextRedirectError(error)) {
+      throw error as Error;
+    }
     // フォールフォワード失敗時の実エラーを最終エラーとして扱う
     let finalError: unknown = error;
     let hadFallbackFailure = false;
@@ -226,6 +250,10 @@ export async function createConnectAccountAction(formData: FormData): Promise<vo
           }
         }
       } catch (fallbackError) {
+        // ここでも redirect は再スロー
+        if (isNextRedirectError(fallbackError)) {
+          throw fallbackError as Error;
+        }
         hadFallbackFailure = true;
         finalError = fallbackError;
         logger.warn("ACCOUNT_ALREADY_EXISTS fallback failed", {
@@ -403,19 +431,41 @@ export async function handleOnboardingReturnAction(): Promise<void> {
     // 2. StripeConnectServiceを初期化（ユーザーセッション使用、RLS適用）
     const stripeConnectService = createUserStripeConnectService();
 
-    // 3. アカウント情報を取得して最新状態に同期
+    // 3. アカウント情報を取得して最新状態に同期（軽量リトライ付き）
     const account = await stripeConnectService.getConnectAccountByUser(user.id);
 
     if (account) {
-      const accountInfo = await stripeConnectService.getAccountInfo(account.stripe_account_id);
+      const retry = async <T>(
+        fn: () => Promise<T>,
+        attempts = 3,
+        baseDelayMs = 200
+      ): Promise<T> => {
+        let lastErr: unknown;
+        for (let i = 0; i < attempts; i++) {
+          try {
+            return await fn();
+          } catch (e) {
+            lastErr = e;
+            // Stripe 側の整合に多少の遅延がある場合に備え、指数バックオフで再試行
+            const delay = baseDelayMs * Math.pow(2, i);
+            await new Promise((resolve) => setTimeout(resolve, delay));
+          }
+        }
+        throw lastErr instanceof Error ? lastErr : new Error(String(lastErr));
+      };
 
-      // データベースの情報を更新
-      await stripeConnectService.updateAccountStatus({
-        userId: user.id,
-        status: accountInfo.status,
-        chargesEnabled: accountInfo.chargesEnabled,
-        payoutsEnabled: accountInfo.payoutsEnabled,
-      });
+      const accountInfo = await retry(() =>
+        stripeConnectService.getAccountInfo(account.stripe_account_id)
+      );
+
+      await retry(() =>
+        stripeConnectService.updateAccountStatus({
+          userId: user.id,
+          status: accountInfo.status,
+          chargesEnabled: accountInfo.chargesEnabled,
+          payoutsEnabled: accountInfo.payoutsEnabled,
+        })
+      );
     } else {
       logger.warn("Account not found during onboarding complete", {
         tag: "connectOnboardingCompleteAccountNotFound",
@@ -426,6 +476,9 @@ export async function handleOnboardingReturnAction(): Promise<void> {
     // ダッシュボードにリダイレクト（成功メッセージ付き）
     redirect("/dashboard?connect=success");
   } catch (error) {
+    if (isNextRedirectError(error)) {
+      throw error as Error;
+    }
     logger.error("Onboarding complete processing error", {
       tag: "connectOnboardingCompleteProcessingError",
       error_name: error instanceof Error ? error.name : "Unknown",
@@ -451,11 +504,48 @@ export async function handleOnboardingReturnAction(): Promise<void> {
 export async function handleOnboardingRefreshAction(): Promise<void> {
   try {
     // 1. 認証チェック
-    await getAuthenticatedUser();
+    const user = await getAuthenticatedUser();
 
-    // Connect設定ページにリダイレクト（リフレッシュメッセージ付き）
-    redirect("/dashboard/connect?refresh=true");
+    // 2. 必要情報の準備（ベースURL → refresh/return URL）
+    const baseUrl =
+      process.env.NEXT_PUBLIC_APP_URL ||
+      process.env.NEXT_PUBLIC_SITE_URL ||
+      "http://localhost:3000";
+    const refreshUrl = `${baseUrl}${CONNECT_REFRESH_PATH}`;
+    const returnUrl = `${baseUrl}${CONNECT_RETURN_PATH}`;
+
+    // 3. StripeConnectServiceを初期化
+    const stripeConnectService = createUserStripeConnectService();
+
+    // 4. 既存アカウントを取得（無ければ作成）
+    let account = await stripeConnectService.getConnectAccountByUser(user.id);
+    if (!account) {
+      await stripeConnectService.createExpressAccount({
+        userId: user.id,
+        email: user.email || `${user.id}@example.com`,
+        country: "JP",
+        businessType: "individual",
+        businessProfile: { productDescription: "イベント参加費の管理・決済サービス" },
+      });
+      account = await stripeConnectService.getConnectAccountByUser(user.id);
+      if (!account) {
+        throw new Error("アカウント情報の取得に失敗しました");
+      }
+    }
+
+    // 5. Account Linkを生成して即リダイレクト
+    const accountLink = await stripeConnectService.createAccountLink({
+      accountId: account.stripe_account_id,
+      refreshUrl,
+      returnUrl,
+      type: "account_onboarding",
+      collectionOptions: { fields: "eventually_due" },
+    });
+    redirect(accountLink.url);
   } catch (error) {
+    if (isNextRedirectError(error)) {
+      throw error as Error;
+    }
     logger.error("Onboarding refresh processing error", {
       tag: "connectOnboardingRefreshProcessingError",
       error_name: error instanceof Error ? error.name : "Unknown",

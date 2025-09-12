@@ -212,9 +212,9 @@ export class StripeConnectService implements IStripeConnectService {
 
       // Collection Optionsが指定されている場合は追加
       if (validatedParams.collectionOptions) {
-        // Stripeの型定義では fields が必須のため、デフォルト値 "currently_due" を設定しておく
+        // Stripeの型定義では fields が必須のため、デフォルト値を "eventually_due" に統一（アップフロント収集）
         const collectionOptions: Stripe.AccountLinkCreateParams.CollectionOptions = {
-          fields: validatedParams.collectionOptions.fields ?? "currently_due",
+          fields: validatedParams.collectionOptions.fields ?? "eventually_due",
         };
 
         if (validatedParams.collectionOptions.futureRequirements) {

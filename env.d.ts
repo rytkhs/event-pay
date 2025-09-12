@@ -90,6 +90,16 @@ declare namespace NodeJS {
     NODE_ENV: "development" | "production" | "test";
 
     // ===========================
+    // App URLs / Origins
+    // ===========================
+    /** アプリのベースURL（例: https://eventpay.app） */
+    NEXT_PUBLIC_APP_URL?: string;
+    /** 別名（静的サイトURLなど） */
+    NEXT_PUBLIC_SITE_URL?: string;
+    /** 追加許可オリジン（カンマ区切り） */
+    ALLOWED_ORIGINS?: string;
+
+    // ===========================
     // Security - Webhook IP Control (Optional)
     // ===========================
     /**
