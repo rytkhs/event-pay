@@ -94,7 +94,7 @@ function validateAndNormalizeRedirectUrls(formData: FormData): {
   };
 
   const allowedOrigins = getAllowedOrigins();
-  const normalizeOrigin = (o: string) => o.replace(/\/$/, "");
+  // const normalizeOrigin = (o: string) => o.replace(/\/$/, "");
   const refresh = new URL(refreshUrl);
   const ret = new URL(returnUrl);
   // スキーム差異(http/https)はここでは許容し、ホスト(含ポート)一致で判定
