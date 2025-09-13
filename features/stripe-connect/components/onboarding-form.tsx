@@ -47,6 +47,8 @@ export function OnboardingForm({ refreshUrl, returnUrl, onCreateAccount }: Onboa
         </CardTitle>
         <CardDescription>
           イベントの売上を受け取るために、Stripe Connectアカウントの設定が必要です。
+          <br />
+          初回設定は約3〜5分で完了します。
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
@@ -74,10 +76,9 @@ export function OnboardingForm({ refreshUrl, returnUrl, onCreateAccount }: Onboa
           <AlertDescription>
             <strong>設定について：</strong>
             <ul className="mt-2 space-y-1 text-sm">
-              <li>• 本人確認書類（運転免許証など）が必要です</li>
-              <li>• 銀行口座情報の登録が必要です</li>
-              <li>• 設定完了まで数分程度かかります</li>
-              <li>• 一度設定すると変更には制限があります</li>
+              <li>• 本人確認書類（運転免許証など）と銀行口座情報をご用意ください</li>
+              <li>• 所要時間の目安は3〜5分です。途中で中断しても、このページから再開できます</li>
+              <li>• 一度設定すると一部の情報変更に制限があります</li>
             </ul>
           </AlertDescription>
         </Alert>

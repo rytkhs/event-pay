@@ -106,7 +106,9 @@ export function AccountStatus({ refreshUrl, status }: AccountStatusProps) {
               <CreditCard className="h-5 w-5" />
               Stripe Connect アカウント
             </CardTitle>
-            <CardDescription>売上受取用アカウントの設定状況</CardDescription>
+            <CardDescription>
+              売上受取用アカウントの設定状況です。未完了の項目がある場合は「設定を更新する」から続きが行えます。
+            </CardDescription>
           </div>
           <Button onClick={handleRefresh} variant="outline" size="sm" disabled={isRefreshing}>
             {isRefreshing ? (
@@ -135,16 +137,10 @@ export function AccountStatus({ refreshUrl, status }: AccountStatusProps) {
         </div>
 
         {/* 機能ステータス */}
-        <div className="grid gap-4 md:grid-cols-2">
-          <div className="flex items-center justify-between p-3 border rounded-lg">
-            <div className="flex items-center gap-2">
-              <CreditCard className="h-4 w-4" />
-              <span className="text-sm font-medium">決済受取</span>
-            </div>
-            <Badge variant={accountData.chargesEnabled ? "default" : "outline"}>
-              {accountData.chargesEnabled ? "有効" : "無効"}
-            </Badge>
-          </div>
+        <div className="text-sm text-muted-foreground">
+          決済はプラットフォーム側で処理されます。
+        </div>
+        <div className="grid gap-4 md:grid-cols-1">
           <div className="flex items-center justify-between p-3 border rounded-lg">
             <div className="flex items-center gap-2">
               <ArrowUpDown className="h-4 w-4" />
@@ -202,17 +198,15 @@ export function AccountStatus({ refreshUrl, status }: AccountStatusProps) {
         )}
 
         {/* 成功メッセージ */}
-        {accountData.status === "verified" &&
-          accountData.chargesEnabled &&
-          accountData.payoutsEnabled && (
-            <Alert>
-              <CheckCircle className="h-4 w-4" />
-              <AlertDescription>
-                <strong>設定完了！</strong> Stripe Connectアカウントの設定が完了しました。
-                イベントの売上を自動で受け取ることができます。
-              </AlertDescription>
-            </Alert>
-          )}
+        {accountData.status === "verified" && accountData.payoutsEnabled && (
+          <Alert>
+            <CheckCircle className="h-4 w-4" />
+            <AlertDescription>
+              <strong>設定完了！</strong> Stripe Connectアカウントの設定が完了しました。
+              イベントの売上は決済後に自動で送金されます。
+            </AlertDescription>
+          </Alert>
+        )}
       </CardContent>
     </Card>
   );

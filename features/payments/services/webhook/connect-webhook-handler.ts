@@ -12,7 +12,11 @@ import type {
   AccountRestrictedNotification,
   StripeConnectNotificationData,
 } from "@core/notification/types";
-import { getStripeConnectPort, type StripeAccountStatusLike } from "@core/ports/stripe-connect";
+import {
+  getStripeConnectPort,
+  isStripeConnectPortRegistered,
+  type StripeAccountStatusLike,
+} from "@core/ports/stripe-connect";
 import { SecureSupabaseClientFactory } from "@core/security/secure-client-factory.impl";
 import { AdminReason } from "@core/security/secure-client-factory.types";
 import type { StripeAccountStatus } from "@core/types/enums";
@@ -51,6 +55,23 @@ export class ConnectWebhookHandler {
     const notificationService = new NotificationService(
       adminClient as SupabaseClient<Database, "public">
     );
+
+    // フォールバック: StripeConnectPort が未登録ならここでアダプタ登録を行う
+    if (!isStripeConnectPortRegistered()) {
+      try {
+        const { registerStripeConnectAdapters } = await import(
+          "@features/stripe-connect/adapters/stripe-connect-port.adapter"
+        );
+        registerStripeConnectAdapters();
+      } catch (e) {
+        logger.error("Failed to register StripeConnect adapters", {
+          tag: "stripeConnectAdapterRegisterError",
+          error_name: e instanceof Error ? e.name : "Unknown",
+          error_message: e instanceof Error ? e.message : String(e),
+        });
+        throw e;
+      }
+    }
 
     return new ConnectWebhookHandler(adminClient as SupabaseClient<Database>, notificationService);
   }
