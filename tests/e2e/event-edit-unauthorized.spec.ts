@@ -45,7 +45,7 @@ test.describe("イベント編集（未権限ユーザーのアクセス制御�
     await page.getByLabel("メールアドレス").fill(other.email);
     await page.getByLabel("パスワード").fill(other.password);
     await page.getByRole("button", { name: "ログイン" }).click();
-    await expect(page).toHaveURL(/\/home$/);
+    await expect(page).toHaveURL(/\/dashboard$/);
 
     // 他人のイベント編集ページへアクセス
     await page.goto(`/events/${event.id}/edit`);

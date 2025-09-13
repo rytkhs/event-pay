@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 
 import { createServerClient } from "@supabase/ssr";
 
-const AFTER_LOGIN_REDIRECT_PATH = "/home";
+const AFTER_LOGIN_REDIRECT_PATH = "/dashboard";
 
 function isAuthPath(pathname: string): boolean {
   // 認証ページ: ログイン済みならホームへ誘導
@@ -68,8 +68,8 @@ export async function middleware(request: NextRequest) {
 
   // ログイン済みが認証ページへ来たらホームへ
   if (isAuthPath(pathname) && user) {
-    const homeUrl = new URL(AFTER_LOGIN_REDIRECT_PATH, request.url);
-    const redirectResponse = NextResponse.redirect(homeUrl, { headers: response.headers });
+    const dashboardUrl = new URL(AFTER_LOGIN_REDIRECT_PATH, request.url);
+    const redirectResponse = NextResponse.redirect(dashboardUrl, { headers: response.headers });
     redirectResponse.headers.set("x-request-id", requestId);
     return redirectResponse;
   }

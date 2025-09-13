@@ -53,7 +53,7 @@ setup("authenticate", async ({ page }) => {
 
   // ログイン後のリダイレクト先を待機し、URLを検証
   // ホーム画面にリダイレクトされることを期待
-  await expect(page).toHaveURL("/home", { timeout: 15000 });
+  await expect(page).toHaveURL("/dashboard", { timeout: 15000 });
 
   // 念のため、ログイン後のページに特定の要素が存在することを確認
   await expect(page.getByRole("heading", { name: "EventPay ダッシュボード" })).toBeVisible();

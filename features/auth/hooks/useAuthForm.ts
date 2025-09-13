@@ -189,7 +189,7 @@ export function useLoginFormRHF<T extends ServerActionResult>(
             options.onSuccess(result);
           }
 
-          const redirectUrl = result.redirectUrl || "/home";
+          const redirectUrl = result.redirectUrl || "/dashboard";
           router.push(redirectUrl);
         } else {
           // サーバーエラーをフォームエラーとして設定
@@ -272,7 +272,7 @@ export function useRegisterFormRHF<T extends ServerActionResult>(
           if (result.needsEmailConfirmation) {
             router.push("/auth/verify-email");
           } else {
-            const redirectUrl = result.redirectUrl || "/home";
+            const redirectUrl = result.redirectUrl || "/dashboard";
             router.push(redirectUrl);
           }
         } else {

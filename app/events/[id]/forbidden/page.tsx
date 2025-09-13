@@ -21,7 +21,7 @@ export default function EventForbiddenPage(_props: ForbiddenPageProps) {
           <p className="mt-4 text-gray-600">このページへアクセスする権限がありません。</p>
           <div className="mt-8">
             <Link
-              href="/home"
+              href="/"
               className="inline-flex items-center rounded-md bg-gray-900 px-4 py-2 text-white hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-400"
             >
               ホームへ戻る

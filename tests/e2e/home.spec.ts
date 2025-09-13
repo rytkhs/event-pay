@@ -5,7 +5,7 @@ test.describe("ホームページ", () => {
     page,
   }) => {
     // 認証済みの状態で直接ホームページにアクセス
-    await page.goto("/home");
+    await page.goto("/dashboard");
 
     // 「EventPay ダッシュボード」という見出しが表示されていることを確認
     await expect(page.getByRole("heading", { name: "EventPay ダッシュボード" })).toBeVisible();

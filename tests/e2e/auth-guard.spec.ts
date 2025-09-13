@@ -22,18 +22,18 @@ test.describe("認証ガード・セッション検証", () => {
     await expect(page.locator('input[type="password"]')).toBeVisible();
   });
 
-  test("未認証ユーザーがホームページ(/home)にアクセスするとloginにリダイレクトされる", async ({
+  test("未認証ユーザーがダッシュボード(/dashboard)にアクセスするとloginにリダイレクトされる", async ({
     page,
   }) => {
-    // ホームページ（保護されたページ）にアクセス
-    await page.goto("/home");
+    // ダッシュボード（保護されたページ）にアクセス
+    await page.goto("/dashboard");
 
-    // /login?redirectTo=/home にリダイレクトされることを確認
+    // /login?redirectTo=/dashboard にリダイレクトされることを確認
     await expect(page).toHaveURL(/\/login/);
 
     // redirectToクエリパラメータが正しく設定されていることを確認
     const url = new URL(page.url());
-    expect(url.searchParams.get("redirectTo")).toBe("/home");
+    expect(url.searchParams.get("redirectTo")).toBe("/dashboard");
   });
 
   test("未認証ユーザーが公開ページ（/）にはアクセスできる", async ({ page }) => {
@@ -47,7 +47,7 @@ test.describe("認証ガード・セッション検証", () => {
     await expect(page.locator("body")).toBeVisible();
   });
 
-  test("認証済みユーザーが/loginにアクセスすると/homeにリダイレクトされる", async ({
+  test("認証済みユーザーが/loginにアクセスすると/dashboardにリダイレクトされる", async ({
     page,
     context,
   }) => {
@@ -71,7 +71,7 @@ test.describe("認証ガード・セッション検証", () => {
     // ログインページにアクセス
     await page.goto("/login");
 
-    // /home にリダイレクトされるか、またはセッションが無効でログインページに留まることを確認
+    // /dashboard にリダイレクトされるか、またはセッションが無効でログインページに留まることを確認
     // 実際のSupabaseセッションが必要なので、このテストは実際の認証フローをテストする必要がある
     await page.waitForLoadState("networkidle");
 
