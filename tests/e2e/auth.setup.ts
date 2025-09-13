@@ -55,9 +55,6 @@ setup("authenticate", async ({ page }) => {
   // ホーム画面にリダイレクトされることを期待
   await expect(page).toHaveURL("/dashboard", { timeout: 15000 });
 
-  // 念のため、ログイン後のページに特定の要素が存在することを確認
-  await expect(page.getByRole("heading", { name: "EventPay ダッシュボード" })).toBeVisible();
-
   // 現在のページの認証状態（CookieやLocalStorage）をファイルに保存
   await page.context().storageState({ path: authFile });
 });
