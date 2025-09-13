@@ -20,10 +20,12 @@ import { createClient } from "@core/supabase/server";
 import { formatUtcToJst } from "@core/utils/timezone";
 
 import { getDashboardDataAction } from "@features/events/actions/get-dashboard-stats";
+import { getDetailedAccountStatusAction } from "@features/stripe-connect/actions/account-status-check";
 import {
   checkExpressDashboardAccessAction,
   createExpressDashboardLoginLinkAction,
 } from "@features/stripe-connect/actions/express-dashboard";
+import { ConnectAccountCta } from "@features/stripe-connect/components/connect-account-cta";
 
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -77,10 +79,11 @@ export default async function DashboardPage() {
     redirect("/login?redirectTo=/dashboard");
   }
 
-  // ダッシュボードデータとExpress Dashboard アクセス情報を並列取得
-  const [dashboardResult, expressDashboardResult] = await Promise.all([
+  // ダッシュボードデータとStripe Connect情報を並列取得
+  const [dashboardResult, expressDashboardResult, accountStatusResult] = await Promise.all([
     getDashboardDataAction(),
     checkExpressDashboardAccessAction(),
+    getDetailedAccountStatusAction(),
   ]);
 
   if (!dashboardResult.success || !dashboardResult.data) {
@@ -100,6 +103,7 @@ export default async function DashboardPage() {
 
   const { stats, recentEvents } = dashboardResult.data;
   const canAccessExpressDashboard = expressDashboardResult.success;
+  const accountStatus = accountStatusResult.success ? accountStatusResult.status : undefined;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -171,6 +175,9 @@ export default async function DashboardPage() {
             </CardContent>
           </Card>
         </div>
+
+        {/* Stripe Connect アカウント設定CTA */}
+        {accountStatus && <ConnectAccountCta status={accountStatus} />}
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* 最近のイベント */}
