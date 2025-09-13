@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 
 import { logger } from "@core/logging/app-logger";
 import { createClient } from "@core/supabase/server";
+import { isNextRedirectError } from "@core/utils/next";
 
 import { createUserStripeConnectService } from "../services";
 
@@ -84,14 +85,9 @@ export async function createExpressDashboardLoginLinkAction(): Promise<void> {
     // 6. ログインリンクにリダイレクト（Stripeのベストプラクティス）
     redirect(loginLink.url);
   } catch (error) {
-    // Next.js の redirect は例外としてスローされるため、捕捉した場合は即時再スローする
-    try {
-      const digest = (error as any)?.digest;
-      if (typeof digest === "string" && digest.startsWith("NEXT_REDIRECT")) {
-        throw error as Error;
-      }
-    } catch {
-      // 何もしない（通常のエラーハンドリングへ）
+    // redirect 例外はそのまま再スロー（エラー扱いしない）
+    if (isNextRedirectError(error)) {
+      throw error as Error;
     }
 
     logger.error("Failed to create Express Dashboard login link", {

@@ -279,7 +279,7 @@ export default async function DashboardPage() {
                         size="sm"
                       >
                         <ExternalLink className="h-4 w-4 mr-2" />
-                        Express ダッシュボード
+                        売上ダッシュボード
                       </Button>
                     </form>
                   )}

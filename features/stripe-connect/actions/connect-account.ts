@@ -16,19 +16,10 @@ import {
   isAllowedConnectPath,
 } from "@core/routes/stripe-connect";
 import { createClient } from "@core/supabase/server";
+import { isNextRedirectError } from "@core/utils/next";
 
 import { createUserStripeConnectService } from "../services";
 import { StripeConnectError, StripeConnectErrorType } from "../types";
-
-// Next.js の redirect は例外としてスローされるため、捕捉時は即時に再スローする
-function isNextRedirectError(err: unknown): boolean {
-  try {
-    const digest = (err as any)?.digest;
-    return typeof digest === "string" && digest.startsWith("NEXT_REDIRECT");
-  } catch {
-    return false;
-  }
-}
 
 // 入力検証に起因するエラーかを判定
 function isValidationError(err: unknown): boolean {
