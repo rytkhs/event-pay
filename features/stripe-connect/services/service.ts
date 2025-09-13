@@ -563,4 +563,46 @@ export class StripeConnectService implements IStripeConnectService {
       );
     }
   }
+
+  /**
+   * Express Dashboard ログインリンクを生成する
+   * Stripeのベストプラクティスに従い、オンデマンドでログインリンクを生成
+   * @param accountId Stripe Connect Account ID
+   * @returns ログインリンク情報
+   * @throws StripeConnectError ログインリンク生成に失敗した場合
+   */
+  async createLoginLink(accountId: string): Promise<{ url: string; created: number }> {
+    try {
+      // Stripe Account IDの形式チェック
+      validateStripeAccountId(accountId);
+
+      // Stripeからログインリンクを生成
+      const loginLink = await this.stripe.accounts.createLoginLink(accountId);
+
+      logger.info("Login link created successfully", {
+        tag: "stripeConnectLoginLinkCreated",
+        account_id: accountId,
+        url_length: loginLink.url.length,
+      });
+
+      return {
+        url: loginLink.url,
+        created: loginLink.created,
+      };
+    } catch (error) {
+      logger.error("Failed to create login link", {
+        tag: "stripeConnectLoginLinkError",
+        account_id: accountId,
+        error_name: error instanceof Error ? error.name : "Unknown",
+        error_message: error instanceof Error ? error.message : String(error),
+      });
+
+      throw new StripeConnectError(
+        StripeConnectErrorType.UNKNOWN_ERROR,
+        "ログインリンクの生成に失敗しました",
+        error as Error,
+        { accountId }
+      );
+    }
+  }
 }

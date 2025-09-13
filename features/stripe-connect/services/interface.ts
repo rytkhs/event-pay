@@ -88,6 +88,14 @@ export interface IStripeConnectService {
    * @throws StripeConnectError アカウント情報取得に失敗した場合
    */
   isAccountVerified(userId: string): Promise<boolean>;
+
+  /**
+   * Express Dashboard ログインリンクを生成する
+   * @param accountId Stripe Connect Account ID
+   * @returns ログインリンク情報
+   * @throws StripeConnectError ログインリンク生成に失敗した場合
+   */
+  createLoginLink(accountId: string): Promise<{ url: string; created: number }>;
 }
 
 /**
