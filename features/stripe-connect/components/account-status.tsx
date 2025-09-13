@@ -51,6 +51,13 @@ interface AccountStatusProps {
 export function AccountStatus({ refreshUrl, status }: AccountStatusProps) {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const accountData = status;
+  const hasDueRequirements = Boolean(
+    accountData?.requirements &&
+      ((accountData.requirements.currently_due?.length ?? 0) > 0 ||
+        (accountData.requirements.past_due?.length ?? 0) > 0)
+  );
+  const shouldShowAction =
+    accountData.status !== "verified" || hasDueRequirements || !accountData.payoutsEnabled;
   const handleRefresh = async () => {
     setIsRefreshing(true);
     // サーバーコンポーネントを再評価するにはページをリロード（または router.refresh()）
@@ -126,9 +133,6 @@ export function AccountStatus({ refreshUrl, status }: AccountStatusProps) {
             {getStatusIcon(accountData.status)}
             <div>
               <div className="font-semibold">アカウントステータス</div>
-              <div className="text-sm text-muted-foreground">
-                ID: {accountData.accountId?.slice(-8)}
-              </div>
             </div>
           </div>
           <Badge variant={getStatusVariant(accountData.status)}>
@@ -153,40 +157,18 @@ export function AccountStatus({ refreshUrl, status }: AccountStatusProps) {
         </div>
 
         {/* 要求事項がある場合の表示 */}
-        {accountData.requirements && (
-          <>
-            {accountData.requirements.currently_due.length > 0 && (
-              <Alert>
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription>
-                  <strong>追加情報が必要です：</strong>
-                  <ul className="mt-2 space-y-1 text-sm">
-                    {accountData.requirements.currently_due.map((requirement, index) => (
-                      <li key={index}>• {requirement}</li>
-                    ))}
-                  </ul>
-                </AlertDescription>
-              </Alert>
-            )}
-
-            {accountData.requirements.past_due.length > 0 && (
-              <Alert variant="destructive">
-                <XCircle className="h-4 w-4" />
-                <AlertDescription>
-                  <strong>期限切れの要求事項があります：</strong>
-                  <ul className="mt-2 space-y-1 text-sm">
-                    {accountData.requirements.past_due.map((requirement, index) => (
-                      <li key={index}>• {requirement}</li>
-                    ))}
-                  </ul>
-                </AlertDescription>
-              </Alert>
-            )}
-          </>
+        {hasDueRequirements && (
+          <Alert variant={accountData.requirements?.past_due?.length ? "destructive" : undefined}>
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              <strong>アカウント情報の更新が必要です。</strong>{" "}
+              Stripeで必要事項の入力を完了してください。
+            </AlertDescription>
+          </Alert>
         )}
 
         {/* アクションボタン */}
-        {accountData.status !== "verified" && (
+        {shouldShowAction && (
           <div className="flex gap-2">
             <a href={refreshUrl} className="flex-1">
               <Button type="button" className="w-full">
@@ -203,7 +185,7 @@ export function AccountStatus({ refreshUrl, status }: AccountStatusProps) {
             <CheckCircle className="h-4 w-4" />
             <AlertDescription>
               <strong>設定完了！</strong> Stripe Connectアカウントの設定が完了しました。
-              イベントの売上は決済後に自動で送金されます。
+              オンライン決済が有効化されました。
             </AlertDescription>
           </Alert>
         )}
