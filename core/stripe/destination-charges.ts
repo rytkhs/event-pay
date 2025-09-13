@@ -85,7 +85,8 @@ export async function createDestinationCheckoutSession(
         // cancel 側はテンプレート置換の保証がないため、そのまま渡す
         cancel_url: cancelUrl,
         payment_intent_data: {
-          on_behalf_of: destinationAccountId,
+          // MVPではon_behalf_ofを使用しない（接続先はtransfersのみ要求）
+          // on_behalf_of: destinationAccountId,
           transfer_data: { destination: destinationAccountId },
           application_fee_amount: platformFeeAmount,
           transfer_group: transferGroup,

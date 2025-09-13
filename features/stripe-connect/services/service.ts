@@ -54,7 +54,7 @@ export class StripeConnectService implements IStripeConnectService {
     try {
       // パラメータバリデーション
       const validatedParams = validateCreateExpressAccountParams(params);
-      const { userId, email, country, businessProfile } = validatedParams;
+      const { userId, email, country, businessType, businessProfile } = validatedParams;
 
       // 既存アカウントの重複チェック（DB）
       const existingAccount = await this.getConnectAccountByUser(userId);
@@ -98,8 +98,11 @@ export class StripeConnectService implements IStripeConnectService {
         type: "express",
         country: country,
         email: email,
+        ...(businessType ? { business_type: businessType } : {}),
+        ...(country === "JP" ? { default_currency: "jpy" } : {}),
         capabilities: {
-          card_payments: { requested: true },
+          // MVPではオンボーディング簡略化のためcard_paymentsは要求しない
+          // card_payments: { requested: true },
           transfers: { requested: true },
         },
         metadata: {

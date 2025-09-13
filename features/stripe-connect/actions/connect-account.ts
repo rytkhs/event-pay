@@ -607,9 +607,9 @@ export async function checkConnectPermissionsAction(): Promise<{
     // 2. StripeConnectServiceを初期化（ユーザーセッション使用、RLS適用）
     const stripeConnectService = createUserStripeConnectService();
 
-    // 3. 各権限をチェック
-    const [canReceivePayments, canReceivePayouts, isVerified] = await Promise.all([
-      stripeConnectService.isChargesEnabled(user.id),
+    // 3. 各権限をチェック（MVP: destination charges 前提のため、
+    //    canReceivePayments は接続アカウントのcharges_enabledに依存させない）
+    const [canReceivePayouts, isVerified] = await Promise.all([
       stripeConnectService.isPayoutsEnabled(user.id),
       stripeConnectService.isAccountVerified(user.id),
     ]);
@@ -633,6 +633,8 @@ export async function checkConnectPermissionsAction(): Promise<{
         restrictions.push(`期限切れ情報: ${accountInfo.requirements.past_due.join(", ")}`);
       }
     }
+
+    const canReceivePayments = isVerified && canReceivePayouts;
 
     return {
       success: true,
