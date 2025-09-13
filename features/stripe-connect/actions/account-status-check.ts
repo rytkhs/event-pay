@@ -56,7 +56,7 @@ export async function getDetailedAccountStatusAction(): Promise<{
           statusType: "no_account",
           title: "決済機能を有効にしましょう",
           description:
-            "イベントの参加費を受け取るために、Stripe Connectアカウントの設定が必要です。設定は約3〜5分で完了します。",
+            "オンライン決済を有効化するために、Stripe Connectアカウントの設定が必要です。設定は約3〜5分で完了します。",
           actionText: "アカウント設定を開始",
           actionUrl: "/dashboard/connect",
           severity: "info",

@@ -52,7 +52,7 @@ async function ConnectContent({ searchParams }: ConnectPageProps) {
   const existingAccount = await stripeConnectService.getConnectAccountByUser(user.id);
 
   // リダイレクトURL設定
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL;
   const refreshUrl = `${baseUrl}${CONNECT_REFRESH_PATH}`;
   const returnUrl = `${baseUrl}${CONNECT_RETURN_PATH}`;
 
