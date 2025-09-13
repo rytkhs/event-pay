@@ -60,16 +60,32 @@ export async function createExpressDashboardLoginLinkAction(): Promise<void> {
       return;
     }
 
-    // 4. アカウント状態を確認（Express Dashboardアクセスには最低限details_submittedが必要）
+    // 4. アカウント状態を確認
     const accountInfo = await stripeConnectService.getAccountInfo(account.stripe_account_id);
 
-    if (accountInfo.status === "unverified") {
-      logger.warn("Unverified account attempted Express Dashboard access", {
-        tag: "expressDashboardUnverified",
+    // Expressダッシュボードのログインリンクはオンボーディング未完了では作成不可のため、verifiedに限定
+    if (accountInfo.status !== "verified") {
+      const statusTagMap: Record<string, string> = {
+        unverified: "expressDashboardUnverified",
+        onboarding: "expressDashboardOnboarding",
+        restricted: "expressDashboardRestricted",
+      };
+
+      const messageMap: Record<string, string> = {
+        unverified: "verification_required",
+        onboarding: "onboarding_required",
+        restricted: "account_restricted",
+      };
+
+      const status = accountInfo.status as keyof typeof statusTagMap;
+
+      logger.warn("Non-verified account attempted Express Dashboard access", {
+        tag: statusTagMap[status] ?? "expressDashboardAccessDenied",
         user_id: user.id,
         account_id: account.stripe_account_id,
+        status: accountInfo.status,
       });
-      redirect("/dashboard/connect?message=verification_required");
+      redirect(`/dashboard/connect?message=${messageMap[status] ?? "onboarding_required"}`);
       return;
     }
 
@@ -96,7 +112,8 @@ export async function createExpressDashboardLoginLinkAction(): Promise<void> {
       error_message: error instanceof Error ? error.message : String(error),
     });
 
-    redirect("/dashboard?error=express_dashboard_failed");
+    // 失敗時は接続設定ページへ誘導
+    redirect("/dashboard/connect?message=express_dashboard_failed");
   }
 }
 
@@ -135,16 +152,24 @@ export async function checkExpressDashboardAccessAction(): Promise<ExpressDashbo
     // 4. アカウント状態の確認
     const accountInfo = await stripeConnectService.getAccountInfo(account.stripe_account_id);
 
-    if (accountInfo.status === "unverified") {
+    // Expressダッシュボード表示は verified 限定
+    if (accountInfo.status !== "verified") {
+      let errorMessage = "Stripe Connectアカウントの設定が完了していません";
+      if (accountInfo.status === "unverified") {
+        errorMessage = "Stripe Connectアカウントの認証が未完了です";
+      } else if (accountInfo.status === "onboarding") {
+        errorMessage = "Stripe Connectのオンボーディングを完了してください";
+      } else if (accountInfo.status === "restricted") {
+        errorMessage = "Stripe Connectアカウントに制限があります";
+      }
+
       return {
         success: false,
-        error: "Stripe Connectアカウントの認証が完了していません",
+        error: errorMessage,
       };
     }
 
-    return {
-      success: true,
-    };
+    return { success: true };
   } catch (error) {
     logger.error("Failed to check Express Dashboard access", {
       tag: "expressDashboardAccessCheckError",
