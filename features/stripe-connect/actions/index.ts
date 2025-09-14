@@ -3,4 +3,5 @@ export {
   getConnectAccountStatusAction,
   handleOnboardingReturnAction,
   handleOnboardingRefreshAction,
+  prefillAndStartOnboardingAction,
 } from "./connect-account";

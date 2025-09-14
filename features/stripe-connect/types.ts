@@ -92,6 +92,23 @@ export interface UpdateAccountStatusParams {
   stripeAccountId?: string;
 }
 
+// ビジネスプロファイル更新パラメータ
+export interface UpdateBusinessProfileParams {
+  accountId: string;
+  businessProfile: {
+    url?: string;
+    product_description?: string;
+    mcc?: string;
+  };
+}
+
+// ビジネスプロファイル更新結果
+export interface UpdateBusinessProfileResult {
+  success: boolean;
+  accountId: string;
+  updatedFields: string[];
+}
+
 // StripeConnect関連のエラー型
 export enum StripeConnectErrorType {
   // ユーザーエラー

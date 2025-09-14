@@ -10,7 +10,6 @@ import { stripe, generateIdempotencyKey } from "@core/stripe/client";
 
 import { Database } from "@/types/database";
 
-import { IStripeConnectService, IStripeConnectErrorHandler } from "./interface";
 import {
   StripeConnectAccount,
   CreateExpressAccountParams,
@@ -19,9 +18,13 @@ import {
   CreateAccountLinkResult,
   AccountInfo,
   UpdateAccountStatusParams,
+  UpdateBusinessProfileParams,
+  UpdateBusinessProfileResult,
   StripeConnectError,
   StripeConnectErrorType,
-} from "./types";
+} from "../types";
+
+import { IStripeConnectService, IStripeConnectErrorHandler } from "./interface";
 import {
   validateCreateExpressAccountParams,
   validateCreateAccountLinkParams,
@@ -478,6 +481,92 @@ export class StripeConnectService implements IStripeConnectService {
         "Connect Accountステータス更新中に予期しないエラーが発生しました",
         error as Error,
         { userId: params.userId }
+      );
+    }
+  }
+
+  /**
+   * Stripe Connectアカウントのビジネスプロファイルを更新する
+   */
+  async updateBusinessProfile(
+    params: UpdateBusinessProfileParams
+  ): Promise<UpdateBusinessProfileResult> {
+    try {
+      const { accountId, businessProfile } = params;
+
+      // アカウントIDの形式チェック
+      validateStripeAccountId(accountId);
+
+      // 更新するフィールドを特定
+      const updateFields: string[] = [];
+      const updateData: Partial<Stripe.AccountUpdateParams["business_profile"]> = {};
+
+      if (businessProfile.url !== undefined) {
+        updateData.url = businessProfile.url;
+        updateFields.push("url");
+      }
+
+      if (businessProfile.product_description !== undefined) {
+        updateData.product_description = businessProfile.product_description;
+        updateFields.push("product_description");
+      }
+
+      if (businessProfile.mcc !== undefined) {
+        updateData.mcc = businessProfile.mcc;
+        updateFields.push("mcc");
+      }
+
+      if (updateFields.length === 0) {
+        // 更新する項目がない場合は成功として扱う
+        return {
+          success: true,
+          accountId,
+          updatedFields: [],
+        };
+      }
+
+      // Stripe APIでビジネスプロファイルを更新
+      const idempotencyKey = generateIdempotencyKey(`update-profile-${accountId}`);
+
+      await this.stripe.accounts.update(
+        accountId,
+        {
+          business_profile: updateData,
+        },
+        {
+          idempotencyKey,
+        }
+      );
+
+      logger.info("Business profile updated successfully", {
+        tag: "updateBusinessProfile",
+        account_id: accountId,
+        updated_fields: updateFields,
+      });
+
+      return {
+        success: true,
+        accountId,
+        updatedFields: updateFields,
+      };
+    } catch (error) {
+      if (error instanceof StripeConnectError) {
+        throw error;
+      }
+
+      // Stripeエラーの場合はマッピング
+      if (error && typeof error === "object" && "type" in error) {
+        throw this.errorHandler.mapStripeError(
+          error as unknown as Error,
+          "ビジネスプロファイル更新"
+        );
+      }
+
+      throw new StripeConnectError(
+        StripeConnectErrorType.UNKNOWN_ERROR,
+        "ビジネスプロファイル更新中に予期しないエラーが発生しました",
+        error as Error,
+        { accountId: params.accountId }
       );
     }
   }

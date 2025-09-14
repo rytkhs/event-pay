@@ -12,9 +12,11 @@ import {
   CreateAccountLinkResult,
   AccountInfo,
   UpdateAccountStatusParams,
+  UpdateBusinessProfileParams,
+  UpdateBusinessProfileResult,
   StripeConnectError,
   ErrorHandlingResult,
-} from "./types";
+} from "../types";
 
 /**
  * Stripe Connect サービスのメインインターフェース
@@ -58,6 +60,14 @@ export interface IStripeConnectService {
    * @throws StripeConnectError ステータス更新に失敗した場合
    */
   updateAccountStatus(params: UpdateAccountStatusParams): Promise<void>;
+
+  /**
+   * Stripe Connectアカウントのビジネスプロファイルを更新する
+   * @param params ビジネスプロファイル更新パラメータ
+   * @returns 更新結果
+   * @throws StripeConnectError 更新に失敗した場合
+   */
+  updateBusinessProfile(params: UpdateBusinessProfileParams): Promise<UpdateBusinessProfileResult>;
 
   /**
    * アカウントが決済受取可能かチェックする

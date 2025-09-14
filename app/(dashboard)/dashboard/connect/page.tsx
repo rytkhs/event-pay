@@ -15,7 +15,7 @@ import {
   AccountStatus,
   OnboardingForm,
   createUserStripeConnectService,
-  createConnectAccountAction,
+  prefillAndStartOnboardingAction,
   getConnectAccountStatusAction,
 } from "@features/stripe-connect";
 
@@ -80,7 +80,7 @@ async function ConnectContent({ searchParams }: ConnectPageProps) {
           <OnboardingForm
             refreshUrl={refreshUrl}
             returnUrl={returnUrl}
-            onCreateAccount={createConnectAccountAction}
+            onPrefillAndStart={prefillAndStartOnboardingAction}
           />
         ) : (
           <AccountStatus
