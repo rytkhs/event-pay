@@ -62,18 +62,16 @@ function EventCreateForm(): JSX.Element {
                 name="title"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>イベントタイトル *</FormLabel>
+                    <FormLabel>イベント *</FormLabel>
                     <FormControl>
                       <Input
                         {...field}
-                        placeholder="例：月例勉強会"
+                        placeholder="例：月例勉強会、夏合宿、会費の集金など"
                         disabled={isPending}
                         maxLength={100}
                       />
                     </FormControl>
-                    <FormDescription>
-                      イベントのタイトルを入力してください（100文字以内）
-                    </FormDescription>
+                    <FormDescription>イベントのタイトルを入力してください</FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -94,7 +92,7 @@ function EventCreateForm(): JSX.Element {
                         min={minDatetimeLocal}
                       />
                     </FormControl>
-                    <FormDescription>イベントの開催日時を選択してください</FormDescription>
+                    <FormDescription>イベントの開催日時を設定してください</FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -115,9 +113,7 @@ function EventCreateForm(): JSX.Element {
                         maxLength={200}
                       />
                     </FormControl>
-                    <FormDescription>
-                      イベントの開催場所を入力してください（200文字以内）
-                    </FormDescription>
+                    <FormDescription>イベントの開催場所を入力してください (任意)</FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -129,7 +125,7 @@ function EventCreateForm(): JSX.Element {
                 name="description"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>説明</FormLabel>
+                    <FormLabel>説明・備考など</FormLabel>
                     <FormControl>
                       <Textarea
                         {...field}
@@ -139,9 +135,7 @@ function EventCreateForm(): JSX.Element {
                         maxLength={1000}
                       />
                     </FormControl>
-                    <FormDescription>
-                      イベントの詳細な説明を入力してください（1000文字以内）
-                    </FormDescription>
+                    <FormDescription>イベントの詳細な説明を入力してください (任意)</FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -158,13 +152,13 @@ function EventCreateForm(): JSX.Element {
                       <Input
                         {...field}
                         type="number"
-                        placeholder="例：30"
+                        placeholder="例：60"
                         disabled={isPending}
                         min="1"
                         max="10000"
                       />
                     </FormControl>
-                    <FormDescription>イベントの定員を入力してください（1-10000人）</FormDescription>
+                    <FormDescription>イベントの定員を入力してください (任意)</FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -175,7 +169,9 @@ function EventCreateForm(): JSX.Element {
             <div className="space-y-4">
               <div>
                 <h3 className="text-lg font-medium text-gray-900">締切設定</h3>
-                <p className="text-sm text-gray-500">参加申込と決済の締切を設定してください</p>
+                <p className="text-sm text-gray-500">
+                  参加申込と決済の締切を設定してください (任意)
+                </p>
               </div>
 
               {/* 参加申込締切 */}
@@ -193,7 +189,7 @@ function EventCreateForm(): JSX.Element {
                         min={minDatetimeLocal}
                       />
                     </FormControl>
-                    <FormDescription>参加申込の締切日時を設定してください</FormDescription>
+                    <FormDescription>参加申込の締切日時を設定してください (任意)</FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -214,7 +210,7 @@ function EventCreateForm(): JSX.Element {
                         min={minDatetimeLocal}
                       />
                     </FormControl>
-                    <FormDescription>決済の締切日時を設定してください</FormDescription>
+                    <FormDescription>決済の締切日時を設定してください (任意)</FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -241,13 +237,13 @@ function EventCreateForm(): JSX.Element {
                       <Input
                         {...field}
                         type="number"
-                        placeholder="例：1000"
+                        placeholder="例：3000"
                         disabled={isPending}
                         min="0"
                         max="1000000"
                       />
                     </FormControl>
-                    <FormDescription>参加費を入力してください（0-1000000円）</FormDescription>
+                    <FormDescription>参加費を入力してください</FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -284,7 +280,7 @@ function EventCreateForm(): JSX.Element {
                             htmlFor="stripe"
                             className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
                           >
-                            オンライン決済（Stripe）
+                            オンライン決済
                           </label>
                         </div>
                         <div className="flex items-center space-x-2">
@@ -309,11 +305,18 @@ function EventCreateForm(): JSX.Element {
                             htmlFor="cash"
                             className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
                           >
-                            現金決済
+                            現金
                           </label>
                         </div>
                       </div>
-                      <FormDescription>有料イベントでは決済方法の選択が必要です</FormDescription>
+                      <FormDescription>
+                        有料イベントでは決済方法の選択が必要です。
+                        <br />
+                        現金の場合は当日会場などで集金してください。
+                        <br />
+                        オンライン決済の場合はクレジットカード、Apple Pay、 Google
+                        Payなどが利用できます。
+                      </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
