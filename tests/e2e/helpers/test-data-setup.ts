@@ -218,6 +218,66 @@ export class TestDataManager {
   }
 
   /**
+   * イベントのオンライン決済設定を更新
+   * - payment_deadline / allow_payment_after_deadline / grace_period_days を一括で設定
+   */
+  static async updateEventPaymentSettings(options: {
+    payment_deadline?: string | null;
+    allow_payment_after_deadline?: boolean;
+    grace_period_days?: number;
+    status?: Database["public"]["Enums"]["event_status_enum"]; // 必要に応じて状態も変更
+  }) {
+    const update: Partial<Database["public"]["Tables"]["events"]["Update"]> = {
+      payment_deadline: options.payment_deadline ?? null,
+      // DB制約: payment_deadline >= registration_deadline を満たすため、registration_deadline も同時調整
+      // 基本方針: registration_deadline を min(payment_deadline, date) に寄せるが、nullの場合は触らない
+      // ここでは安全に registration_deadline <= payment_deadline となるよう、必要時のみ registration_deadline を payment_deadline に合わせる
+      allow_payment_after_deadline: options.allow_payment_after_deadline ?? false,
+      grace_period_days: options.grace_period_days ?? 0,
+      updated_at: new Date().toISOString(),
+    };
+    if (options.status) {
+      (update as any).status = options.status;
+    }
+
+    // 既存の event を取得して registration_deadline と date を把握
+    const { data: eventRow, error: fetchErr } = await supabaseAdmin
+      .from("events")
+      .select("date, registration_deadline")
+      .eq("id", TEST_IDS.EVENT_ID)
+      .single();
+    if (fetchErr) {
+      throw new Error(`Failed to fetch event for update: ${fetchErr.message}`);
+    }
+
+    const currentReg = eventRow?.registration_deadline as string | null;
+    const eventDate = eventRow?.date as string;
+    const nextPay = (update.payment_deadline ?? null) as string | null;
+
+    // registration_deadline を null→date に近づけるポリシー（テスト内での一貫性確保）
+    // かつ DB CHECK を満たすため、reg <= pay を保証
+    let nextReg: string | null | undefined = undefined;
+    if (nextPay) {
+      // registration_deadline が null か、payment_deadline より後なら調整
+      if (!currentReg || new Date(currentReg) > new Date(nextPay)) {
+        // payment_deadline と eventDate のうち早い方に寄せる
+        nextReg = new Date(
+          Math.min(new Date(nextPay).getTime(), new Date(eventDate).getTime())
+        ).toISOString();
+      }
+    }
+
+    const { error } = await supabaseAdmin
+      .from("events")
+      .update({ ...update, ...(nextReg !== undefined ? { registration_deadline: nextReg } : {}) })
+      .eq("id", TEST_IDS.EVENT_ID);
+
+    if (error) {
+      throw new Error(`Event payment settings update failed: ${error.message}`);
+    }
+  }
+
+  /**
    * 決済状態を検証
    */
   static async verifyPayment(expectedAmount: number, expectedStatus: string) {
