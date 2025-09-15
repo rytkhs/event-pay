@@ -19,7 +19,7 @@ const STATUS_CONFIG = {
   upcoming: { text: EVENT_STATUS_LABELS.upcoming, styles: "bg-green-100 text-green-800" },
   ongoing: { text: EVENT_STATUS_LABELS.ongoing, styles: "bg-blue-100 text-blue-800" },
   past: { text: EVENT_STATUS_LABELS.past, styles: "bg-gray-100 text-gray-800" },
-  cancelled: { text: EVENT_STATUS_LABELS.cancelled, styles: "bg-red-100 text-red-800" },
+  canceled: { text: EVENT_STATUS_LABELS.canceled, styles: "bg-red-100 text-red-800" },
 } as const;
 
 export const EventCard = memo(function EventCard({ event }: EventCardProps) {

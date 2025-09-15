@@ -41,7 +41,7 @@ export function GuestPageClient({
     setIsProcessingPayment(true);
     try {
       // 現在のURLに安全にクエリパラメータを追加してリダイレクト先を生成
-      const buildRedirectUrl = (status: "success" | "cancelled") => {
+      const buildRedirectUrl = (status: "success" | "canceled") => {
         const url = new URL(window.location.href);
         url.searchParams.delete("session_id");
         // 既存の payment パラメータを置き換える / 存在しなければ追加する
@@ -52,7 +52,7 @@ export function GuestPageClient({
       const result = await createGuestStripeSessionAction({
         guestToken: attendance.guest_token,
         successUrl: buildRedirectUrl("success"),
-        cancelUrl: buildRedirectUrl("cancelled"),
+        cancelUrl: buildRedirectUrl("canceled"),
       });
 
       if (result.success && result.data) {

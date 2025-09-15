@@ -52,7 +52,7 @@ function getStatusBadge(status: string) {
     upcoming: { label: "開催予定", variant: "default" as const },
     ongoing: { label: "開催中", variant: "secondary" as const },
     past: { label: "終了", variant: "outline" as const },
-    cancelled: { label: "中止", variant: "destructive" as const },
+    canceled: { label: "中止", variant: "destructive" as const },
   };
 
   const config = statusConfig[status as keyof typeof statusConfig] || {

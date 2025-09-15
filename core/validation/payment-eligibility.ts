@@ -96,8 +96,8 @@ export function checkBasicPaymentEligibility(
     grace_period_days: event.grace_period_days,
   } as FinalLimitOptions & { effectivePaymentDeadline: Date; eventDate: Date });
 
-  // ステータスガード: cancelledのみ禁止。猶予ONの場合はpastも許可
-  const isEventActiveForPayment = event.status !== "cancelled";
+  // ステータスガード: canceledのみ禁止。猶予ONの場合はpastも許可
+  const isEventActiveForPayment = event.status !== "canceled";
 
   const checks = {
     isAttending: attendance.status === "attending",

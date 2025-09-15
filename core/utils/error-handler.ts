@@ -80,8 +80,8 @@ const ERROR_MAPPINGS: Record<string, Omit<ErrorDetails, "code">> = {
     shouldAlert: false,
     retryable: false,
   },
-  EVENT_CANCELLED: {
-    message: "Event has been cancelled",
+  EVENT_CANCELED: {
+    message: "Event has been canceled",
     userMessage: "このイベントはキャンセルされました。",
     severity: "low",
     shouldLog: false,

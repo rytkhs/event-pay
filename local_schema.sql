@@ -1,5 +1,5 @@
 
-\restrict 4Q0hJglQdc65MdGlpQpwMgyfsPBfj1dbmX73CxRkvgiYqbQpw3r3Mldzl6lKfYj
+\restrict lC996H0E5gTHut9t753KIv0d20RtMF3UYZDlr08acMQci5sgi18oRtyvbpgGwaW
 
 
 SET statement_timeout = 0;
@@ -87,7 +87,7 @@ CREATE TYPE "public"."event_status_enum" AS ENUM (
     'upcoming',
     'ongoing',
     'past',
-    'cancelled'
+    'canceled'
 );
 
 
@@ -4120,6 +4120,6 @@ ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TAB
 
 
 
-\unrestrict 4Q0hJglQdc65MdGlpQpwMgyfsPBfj1dbmX73CxRkvgiYqbQpw3r3Mldzl6lKfYj
+\unrestrict lC996H0E5gTHut9t753KIv0d20RtMF3UYZDlr08acMQci5sgi18oRtyvbpgGwaW
 
 RESET ALL;

@@ -13,7 +13,7 @@ interface EventDetailProps {
     location: any;
     fee: number;
     capacity: any;
-    status: "upcoming" | "ongoing" | "past" | "cancelled";
+    status: "upcoming" | "ongoing" | "past" | "canceled";
     description?: any;
     registration_deadline?: any;
     payment_deadline?: any;

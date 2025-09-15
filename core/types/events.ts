@@ -10,7 +10,7 @@
 /**
  * イベントステータスフィルタ型
  */
-export type StatusFilter = "all" | "upcoming" | "ongoing" | "past" | "cancelled";
+export type StatusFilter = "all" | "upcoming" | "ongoing" | "past" | "canceled";
 
 /**
  * 支払いフィルタ型

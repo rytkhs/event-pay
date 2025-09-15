@@ -8,7 +8,7 @@ BEGIN;
 -- ====================================================================
 -- 1. ENUM型定義
 -- ====================================================================
-CREATE TYPE public.event_status_enum AS ENUM ('upcoming', 'ongoing', 'past', 'cancelled');
+CREATE TYPE public.event_status_enum AS ENUM ('upcoming', 'ongoing', 'past', 'canceled');
 CREATE TYPE public.payment_method_enum AS ENUM ('stripe', 'cash');
 CREATE TYPE public.payment_status_enum AS ENUM ('pending', 'paid', 'failed', 'received', 'completed', 'refunded', 'waived');
 CREATE TYPE public.attendance_status_enum AS ENUM ('attending', 'not_attending', 'maybe');

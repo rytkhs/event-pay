@@ -1283,7 +1283,7 @@ export type Database = {
         | "data_migration"
         | "security_investigation";
       attendance_status_enum: "attending" | "not_attending" | "maybe";
-      event_status_enum: "upcoming" | "ongoing" | "past" | "cancelled";
+      event_status_enum: "upcoming" | "ongoing" | "past" | "canceled";
       payment_method_enum: "stripe" | "cash";
       payment_status_enum:
         | "pending"
@@ -1442,7 +1442,7 @@ export const Constants = {
         "security_investigation",
       ],
       attendance_status_enum: ["attending", "not_attending", "maybe"],
-      event_status_enum: ["upcoming", "ongoing", "past", "cancelled"],
+      event_status_enum: ["upcoming", "ongoing", "past", "canceled"],
       payment_method_enum: ["stripe", "cash"],
       payment_status_enum: [
         "pending",

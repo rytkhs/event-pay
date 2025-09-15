@@ -21,7 +21,7 @@ interface PaymentStatusAlertProps {
 }
 
 interface VerificationSuccessResult {
-  payment_status: "success" | "failed" | "cancelled" | "processing" | "pending";
+  payment_status: "success" | "failed" | "canceled" | "processing" | "pending";
   payment_required: boolean;
 }
 
@@ -160,7 +160,7 @@ export function PaymentStatusAlert({
 
   // paymentStatus と verifiedStatus からの派生状態を単一点に集約
   const derivedStatus = useMemo(() => {
-    return paymentStatus === "cancelled" ? "cancelled" : verifiedStatus || paymentStatus;
+    return paymentStatus === "canceled" ? "canceled" : verifiedStatus || paymentStatus;
   }, [paymentStatus, verifiedStatus]);
 
   // ポーリング打ち切り後に手動再確認する関数
@@ -180,7 +180,7 @@ export function PaymentStatusAlert({
   // セッション検証を実行（sessionIdがある場合）
   useEffect(() => {
     // キャンセル導線では検証を行わず、UIのキャンセル表示を優先する
-    if (derivedStatus === "cancelled") return;
+    if (derivedStatus === "canceled") return;
 
     if (sessionId && !verifiedStatus && !isVerifying) {
       verifySession();
@@ -190,7 +190,7 @@ export function PaymentStatusAlert({
   // 決済ステータスが processing/pending の間は指数バックオフで再検証
   useEffect(() => {
     if (
-      derivedStatus !== "cancelled" &&
+      derivedStatus !== "canceled" &&
       sessionId &&
       ["processing", "pending"].includes(derivedStatus) &&
       retryCount < maxRetries
@@ -206,7 +206,7 @@ export function PaymentStatusAlert({
 
   // ステータス確定後はリトライ回数をリセット
   useEffect(() => {
-    const finalStatuses = ["success", "failed", "cancelled"];
+    const finalStatuses = ["success", "failed", "canceled"];
     if (finalStatuses.includes(derivedStatus)) {
       setRetryCount(0);
     }
@@ -226,7 +226,7 @@ export function PaymentStatusAlert({
   const getAlertContent = () => {
     // 検証中はローディング状態を表示
     // キャンセル時は検証ローディングを表示しない
-    if (sessionId && isVerifying && derivedStatus !== "cancelled") {
+    if (sessionId && isVerifying && derivedStatus !== "canceled") {
       return {
         variant: "default" as const,
         icon: <Loader2 className="h-5 w-5 text-blue-600 animate-spin" />,
@@ -272,7 +272,7 @@ export function PaymentStatusAlert({
           title: verifiedStatus ? "決済が完了しました（検証済み）" : "決済が完了しました",
           description: `${sanitizeForEventPay(eventTitle)}の参加費の決済が正常に完了しました。参加登録が確定されました。`,
         };
-      case "cancelled":
+      case "canceled":
         return {
           variant: "default" as const,
           icon: <XCircle className="h-5 w-5 text-orange-600" />,

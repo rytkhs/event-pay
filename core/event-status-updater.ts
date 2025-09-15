@@ -37,11 +37,11 @@ function shouldUpdateEventStatus(event: Event, currentTime: Date): StatusUpdateR
   const { status, date } = event;
 
   // キャンセル済みイベントは更新しない
-  if (status === EVENT_STATUS.CANCELLED) {
+  if (status === EVENT_STATUS.CANCELED) {
     return {
       shouldUpdate: false,
       newStatus: status,
-      reason: "Cancelled events are not updated",
+      reason: "Canceled events are not updated",
     };
   }
 
