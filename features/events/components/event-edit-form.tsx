@@ -31,9 +31,16 @@ interface EventEditFormProps {
   attendeeCount: number;
   onSubmit?: (data: Event) => void;
   serverError?: string;
+  hasStripePaid?: boolean;
 }
 
-export function EventEditForm({ event, attendeeCount, onSubmit, serverError }: EventEditFormProps) {
+export function EventEditForm({
+  event,
+  attendeeCount,
+  onSubmit,
+  serverError,
+  hasStripePaid = false,
+}: EventEditFormProps) {
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [pendingChanges, setPendingChanges] = useState<ChangeItem[]>([]);
 
@@ -50,6 +57,7 @@ export function EventEditForm({ event, attendeeCount, onSubmit, serverError }: E
     event,
     attendeeCount,
     onSubmit,
+    hasStripePaid,
   });
 
   const handleSubmit = async (_data: EventEditFormDataRHF) => {
@@ -112,10 +120,12 @@ export function EventEditForm({ event, attendeeCount, onSubmit, serverError }: E
             </div>
           )}
 
-          {/* 参加者制限の通知 */}
-          {hasAttendees && (
+          {/* 編集制限の通知（V2: 決済済み時のみ） */}
+          {restrictions.getRestrictedFieldNames().length > 0 && (
             <div className="bg-blue-50 border border-blue-200 text-blue-700 px-4 py-3 rounded">
-              <p className="font-medium">参加者がいるため、一部項目の編集が制限されています</p>
+              <p className="font-medium">
+                決済済みの参加者がいるため、一部項目の編集が制限されています
+              </p>
               <p className="text-sm mt-1">
                 制限項目: {restrictions.getRestrictedFieldNames().join(", ")}
               </p>
@@ -142,15 +152,12 @@ export function EventEditForm({ event, attendeeCount, onSubmit, serverError }: E
                       <FormItem>
                         <FormLabel>
                           タイトル <span className="text-red-500">*</span>
-                          {restrictions.isFieldRestricted("title") && (
-                            <span className="ml-2 text-sm text-gray-500">(編集制限)</span>
-                          )}
                         </FormLabel>
                         <FormControl>
                           <Input
                             {...field}
                             value={sanitizeForEventPay(field.value)}
-                            disabled={isPending || restrictions.isFieldRestricted("title")}
+                            disabled={isPending}
                             maxLength={100}
                             required
                           />
@@ -205,8 +212,10 @@ export function EventEditForm({ event, attendeeCount, onSubmit, serverError }: E
                       <FormItem>
                         <FormLabel>
                           定員
-                          {restrictions.isFieldRestricted("capacity") && (
-                            <span className="ml-2 text-sm text-gray-500">(編集制限)</span>
+                          {hasAttendees && (
+                            <span className="ml-2 text-sm text-gray-500">
+                              (現在の参加者数以上で設定)
+                            </span>
                           )}
                         </FormLabel>
                         <FormControl>
@@ -277,6 +286,8 @@ export function EventEditForm({ event, attendeeCount, onSubmit, serverError }: E
                             {...field}
                             type="number"
                             min="0"
+                            step="1"
+                            inputMode="numeric"
                             disabled={isPending || restrictions.isFieldRestricted("fee")}
                             required
                           />

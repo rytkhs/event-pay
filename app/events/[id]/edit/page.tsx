@@ -53,6 +53,18 @@ export default async function EventEditPage({ params }: EventEditPageProps) {
   }
 
   const attendeeCount = calculateAttendeeCount(event.attendances);
+
+  // Stripe 決済済み参加者の有無を算出
+  const { data: stripePaid, error: stripePaidError } = await supabase
+    .from("payments")
+    .select("id")
+    .eq("event_id", params.id)
+    .eq("method", "stripe")
+    .in("status", ["paid", "refunded"])
+    .limit(1);
+
+  // 取得エラー時はフェイルクローズ（true 扱い）
+  const hasStripePaid = stripePaidError ? true : (stripePaid?.length ?? 0) > 0;
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -65,11 +77,21 @@ export default async function EventEditPage({ params }: EventEditPageProps) {
             </p>
           </div>
 
-          {/* 編集制限の通知 */}
-          <EditRestrictionsNotice hasAttendees={attendeeCount > 0} attendeeCount={attendeeCount} />
+          {/* V2ではhasStripePaid時のみ制限が発生（fee/payment_methods）。旧Noticeは非表示にする */}
+          {/* ここで独自に注意を出す場合は、hasStripePaidに基づいてメッセージを表示する */}
+          {false && (
+            <EditRestrictionsNotice
+              hasAttendees={attendeeCount > 0}
+              attendeeCount={attendeeCount}
+            />
+          )}
 
           {/* 編集フォーム */}
-          <EventEditForm event={event} attendeeCount={attendeeCount} />
+          <EventEditForm
+            event={event}
+            attendeeCount={attendeeCount}
+            hasStripePaid={hasStripePaid}
+          />
         </div>
       </div>
     </div>

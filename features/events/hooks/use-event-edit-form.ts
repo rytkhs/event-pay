@@ -22,6 +22,7 @@ interface UseEventEditFormProps {
   event: Event;
   attendeeCount: number;
   onSubmit?: (data: Event) => void;
+  hasStripePaid: boolean;
 }
 
 // react-hook-form用のスキーマ（フォーム入力値をそのまま扱う）
@@ -34,7 +35,13 @@ const eventEditFormSchemaBase = z
     description: z.string().max(1000, "説明は1000文字以内で入力してください"),
     location: z.string().max(200, "場所は200文字以内で入力してください"),
     date: z.string().min(1, "開催日時は必須です"),
-    fee: z.string().regex(/^\d+$/, "参加費は数値で入力してください"),
+    fee: z
+      .string()
+      .regex(/^\d+$/, "参加費は数値で入力してください")
+      .refine((v) => {
+        const n = Number(v);
+        return Number.isInteger(n) && n >= 0 && n <= 1_000_000;
+      }, "参加費は0〜1,000,000の整数で入力してください"),
     capacity: z.string().optional(),
     payment_methods: z.array(z.string()), // min制約を削除
     registration_deadline: z.string().optional(),
@@ -88,18 +95,58 @@ const eventEditFormSchemaBase = z
   )
   .refine(
     (data) => {
-      if (!data.payment_deadline || !data.date) return true;
+      // registration_deadline ≤ payment_deadline（両方入力時）
+      if (!data.payment_deadline || !data.registration_deadline) return true;
       try {
         const payUtc = convertDatetimeLocalToUtc(data.payment_deadline);
-        const eventUtc = convertDatetimeLocalToUtc(data.date);
-        return payUtc < eventUtc;
+        const regUtc = convertDatetimeLocalToUtc(data.registration_deadline);
+        return regUtc <= payUtc;
       } catch {
         return false;
       }
     },
     {
-      message: "オンライン決済締切は開催日時より前に設定してください",
+      message: "オンライン決済締切は参加申込締切以降に設定してください",
       path: ["payment_deadline"],
+    }
+  )
+  .refine(
+    (data) => {
+      // payment_deadline ≤ date + 30日
+      if (!data.payment_deadline || !data.date) return true;
+      try {
+        const payUtc = convertDatetimeLocalToUtc(data.payment_deadline);
+        const eventUtc = convertDatetimeLocalToUtc(data.date);
+        const maxUtc = new Date(eventUtc.getTime() + 30 * 24 * 60 * 60 * 1000);
+        return payUtc <= maxUtc;
+      } catch {
+        return false;
+      }
+    },
+    {
+      message: "オンライン決済締切は開催日時から30日以内に設定してください",
+      path: ["payment_deadline"],
+    }
+  )
+  .refine(
+    (data) => {
+      // 最終支払期限（payment_deadline + 猶予日） ≤ date + 30日
+      if (!data.payment_deadline || !data.date) return true;
+      try {
+        const payUtc = convertDatetimeLocalToUtc(data.payment_deadline);
+        const eventUtc = convertDatetimeLocalToUtc(data.date);
+        const grace = data.allow_payment_after_deadline ? Number(data.grace_period_days ?? "0") : 0;
+        if (!Number.isInteger(grace) || grace < 0 || grace > 30) return false;
+        const finalDue = new Date(payUtc.getTime() + grace * 24 * 60 * 60 * 1000);
+        const maxUtc = new Date(eventUtc.getTime() + 30 * 24 * 60 * 60 * 1000);
+        return finalDue <= maxUtc;
+      } catch {
+        return false;
+      }
+    },
+    {
+      message: "最終支払期限は開催日時から30日以内に設定してください",
+      path: ["grace_period_days"],
     }
   );
 
@@ -113,7 +160,8 @@ function createEventEditFormSchema(attendeeCount: number) {
       // 未入力（制限なし）は許可
       if (!data.capacity || data.capacity.trim() === "") return true;
       const cap = Number(data.capacity);
-      if (!Number.isFinite(cap)) return false;
+      if (!Number.isInteger(cap)) return false;
+      if (cap < 1 || cap > 10_000) return false;
       return cap >= attendeeCount;
     },
     {
@@ -123,7 +171,12 @@ function createEventEditFormSchema(attendeeCount: number) {
   );
 }
 
-export function useEventEditForm({ event, attendeeCount, onSubmit }: UseEventEditFormProps) {
+export function useEventEditForm({
+  event,
+  attendeeCount,
+  onSubmit,
+  hasStripePaid,
+}: UseEventEditFormProps) {
   const hasAttendees = attendeeCount > 0;
   const [isPending, startTransition] = useTransition();
   const { submitWithErrorHandling } = useErrorHandler();
@@ -212,7 +265,7 @@ export function useEventEditForm({ event, attendeeCount, onSubmit }: UseEventEdi
   const currentFormData = useMemo(() => getCurrentFormData(), [getCurrentFormData]);
 
   // 分割されたフックの初期化
-  const restrictions = useEventRestrictions({ hasAttendees, attendeeCount });
+  const restrictions = useEventRestrictions({ hasAttendees, attendeeCount, hasStripePaid });
   const changes = useEventChanges({
     event,
     formData: currentFormData,
