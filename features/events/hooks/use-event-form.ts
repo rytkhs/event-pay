@@ -50,6 +50,8 @@ const eventFormSchema = z
     }, "定員は1以上10000以下である必要があります"),
     registration_deadline: z.string(),
     payment_deadline: z.string(),
+    allow_payment_after_deadline: z.boolean().optional(),
+    grace_period_days: z.string().optional(),
   })
   .refine(
     (data) => {
@@ -100,7 +102,7 @@ const eventFormSchema = z
       return true;
     },
     {
-      message: "決済締切は開催日時より前に設定してください",
+      message: "オンライン決済締切は開催日時より前に設定してください",
       path: ["payment_deadline"],
     }
   )
@@ -143,6 +145,8 @@ const defaultValues: EventFormData = {
   payment_deadline: "",
   payment_methods: [], // default([])を手動で設定
   fee: "",
+  allow_payment_after_deadline: false,
+  grace_period_days: "0",
 };
 
 /**
@@ -173,6 +177,7 @@ export const useEventForm = (): {
 
   // 参加費をリアルタイムで監視
   const watchedFee = form.watch("fee");
+  const watchedDate = form.watch("date");
   // 空文字列や未入力の場合は無料イベントとして扱わない
   const currentFee = watchedFee && watchedFee.trim() !== "" ? safeParseNumber(watchedFee) : null;
   const isFreeEvent = currentFee === 0;
@@ -190,6 +195,28 @@ export const useEventForm = (): {
       }, 100);
     }
   }, [isFreeEvent, form]);
+
+  // 開催日時入力時に、未入力の締切（参加申込・オンライン決済）を自動プリセット
+  useEffect(() => {
+    const dateValue = watchedDate;
+    if (!dateValue || dateValue.trim() === "") return;
+
+    const reg = form.getValues("registration_deadline");
+    const pay = form.getValues("payment_deadline");
+
+    if (!reg || reg.trim() === "") {
+      form.setValue("registration_deadline", dateValue, {
+        shouldValidate: true,
+        shouldTouch: true,
+      });
+    }
+    if (!pay || pay.trim() === "") {
+      form.setValue("payment_deadline", dateValue, {
+        shouldValidate: true,
+        shouldTouch: true,
+      });
+    }
+  }, [watchedDate, form]);
 
   // フォーム送信処理
   const onSubmit = async (data: EventFormData): Promise<void> => {
@@ -224,6 +251,15 @@ export const useEventForm = (): {
         }
         if (data.payment_deadline) {
           formData.append("payment_deadline", data.payment_deadline);
+        }
+        if (data.allow_payment_after_deadline) {
+          formData.append(
+            "allow_payment_after_deadline",
+            String(data.allow_payment_after_deadline)
+          );
+        }
+        if (data.grace_period_days) {
+          formData.append("grace_period_days", data.grace_period_days);
         }
 
         // Server Actionの実行

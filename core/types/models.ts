@@ -25,6 +25,8 @@ export interface Event {
   payment_methods: Database["public"]["Enums"]["payment_method_enum"][];
   registration_deadline: string | null;
   payment_deadline: string | null;
+  allow_payment_after_deadline: boolean;
+  grace_period_days: number;
   created_at: string;
   updated_at: string;
   created_by: string;
@@ -58,6 +60,8 @@ export interface EventFormData {
   payment_methods: string[]; // 既存実装では配列
   registration_deadline: string;
   payment_deadline: string;
+  allow_payment_after_deadline?: boolean;
+  grace_period_days?: string; // 数値入力だがフォームでは文字列
 }
 
 // ====================================================================

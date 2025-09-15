@@ -19,6 +19,7 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
+  FormDescription,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -349,7 +350,7 @@ export function EventEditForm({ event, attendeeCount, onSubmit, serverError }: E
                 <div>
                   <h3 className="text-lg font-medium text-gray-900">締切設定</h3>
                   <p className="text-sm text-gray-500">
-                    参加申込と支払いの締切日時を設定してください
+                    参加申込とオンライン決済の締切日時を設定してください
                   </p>
                 </div>
 
@@ -375,7 +376,7 @@ export function EventEditForm({ event, attendeeCount, onSubmit, serverError }: E
                     name="payment_deadline"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>支払い締切</FormLabel>
+                        <FormLabel>オンライン決済締切</FormLabel>
                         <FormControl>
                           <Input {...field} type="datetime-local" disabled={isPending} />
                         </FormControl>
@@ -384,6 +385,70 @@ export function EventEditForm({ event, attendeeCount, onSubmit, serverError }: E
                     )}
                   />
                 </div>
+
+                {/* 締切後もオンライン決済を許可 + 猶予（日） */}
+                {!isFreeEvent && form.watch("payment_deadline") && (
+                  <div className="space-y-3">
+                    <FormField
+                      control={form.control}
+                      name="allow_payment_after_deadline"
+                      as={undefined as never}
+                      render={() => (
+                        <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                          <FormControl>
+                            <Checkbox
+                              checked={Boolean(form.watch("allow_payment_after_deadline"))}
+                              onCheckedChange={(checked) => {
+                                form.setValue("allow_payment_after_deadline", checked === true);
+                                void form.trigger();
+                              }}
+                              disabled={isPending}
+                            />
+                          </FormControl>
+                          <div className="space-y-1 leading-none">
+                            <FormLabel>締切後もオンライン決済を許可</FormLabel>
+                            <FormDescription>
+                              終了後も支払いを受け付けます（最長30日まで）。
+                            </FormDescription>
+                          </div>
+                        </FormItem>
+                      )}
+                    />
+
+                    {form.watch("allow_payment_after_deadline") && (
+                      <FormField
+                        control={form.control}
+                        name="grace_period_days"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>猶予（日）</FormLabel>
+                            <FormControl>
+                              <Input
+                                {...field}
+                                type="number"
+                                inputMode="numeric"
+                                min="0"
+                                max="30"
+                                step="1"
+                                placeholder="例：7"
+                                disabled={isPending}
+                                onChange={(e) => {
+                                  const v = e.target.value;
+                                  field.onChange(v);
+                                  void form.trigger();
+                                }}
+                              />
+                            </FormControl>
+                            <FormDescription>
+                              オンライン決済締切からの猶予日数（最大30日）。
+                            </FormDescription>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    )}
+                  </div>
+                )}
               </div>
 
               {/* アクションボタン */}
