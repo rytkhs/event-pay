@@ -11,7 +11,7 @@ import {
   createServerActionSuccess,
   zodErrorToServerActionResponse,
 } from "@core/types/server-actions";
-import { checkEditRestrictions } from "@core/utils/event-restrictions";
+import { checkEditRestrictionsV2, type EventWithAttendances } from "@core/utils/event-restrictions";
 import { extractEventUpdateFormData } from "@core/utils/form-data-extractors";
 import { convertDatetimeLocalToUtc } from "@core/utils/timezone";
 import { updateEventSchema, type UpdateEventFormData } from "@core/validation/event";
@@ -140,14 +140,121 @@ export async function updateEventAction(
       throw error;
     }
 
-    // 参加者がいる場合の制限チェック（バリデーション後に実行）
-    const restrictions = checkEditRestrictions(existingEvent, {
-      title: validatedData.title,
-      date: validatedData.date ? convertDatetimeLocalToIso(validatedData.date) : undefined,
-      fee: validatedData.fee,
-      capacity: validatedData.capacity,
-      payment_methods: validatedData.payment_methods,
-    });
+    // クロスフィールド検証（既存値と突合）: registration/payment_deadline と date の整合
+    // effectiveDate: 入力があれば新値、なければ既存値
+    const effectiveDateIso = validatedData.date
+      ? convertDatetimeLocalToIso(validatedData.date as string)
+      : existingEvent.date;
+
+    // registration_deadline: 入力未指定なら既存値、空文字はnull（クリア）
+    const effectiveRegDeadlineIso =
+      validatedData.registration_deadline !== undefined
+        ? validatedData.registration_deadline
+          ? convertDatetimeLocalToIso(validatedData.registration_deadline as string)
+          : null
+        : (existingEvent.registration_deadline as string | null);
+
+    // payment_deadline: 入力未指定なら既存値、空文字はnull（クリア）
+    const effectivePayDeadlineIso =
+      validatedData.payment_deadline !== undefined
+        ? validatedData.payment_deadline
+          ? convertDatetimeLocalToIso(validatedData.payment_deadline as string)
+          : null
+        : (existingEvent.payment_deadline as string | null);
+
+    // 参加申込締切: registration_deadline ≤ date
+    if (effectiveRegDeadlineIso) {
+      if (new Date(effectiveRegDeadlineIso) > new Date(effectiveDateIso)) {
+        return createServerActionError(
+          "VALIDATION_ERROR",
+          "参加申込締切は開催日時以前に設定してください"
+        );
+      }
+    }
+
+    // 決済締切: registration_deadline ≤ payment_deadline（regがある場合）
+    if (effectivePayDeadlineIso && effectiveRegDeadlineIso) {
+      if (new Date(effectivePayDeadlineIso) < new Date(effectiveRegDeadlineIso)) {
+        return createServerActionError(
+          "VALIDATION_ERROR",
+          "決済締切は参加申込締切以降に設定してください"
+        );
+      }
+    }
+
+    // 決済締切: payment_deadline ≤ date + 30日
+    if (effectivePayDeadlineIso) {
+      const eventPlus30d = new Date(
+        new Date(effectiveDateIso).getTime() + 30 * 24 * 60 * 60 * 1000
+      );
+      if (new Date(effectivePayDeadlineIso) > eventPlus30d) {
+        return createServerActionError(
+          "VALIDATION_ERROR",
+          "オンライン決済締切は開催日時から30日以内に設定してください"
+        );
+      }
+    }
+
+    // 猶予ON時: final_payment_limit <= date + 30日
+    const effectiveAllowAfter =
+      validatedData.allow_payment_after_deadline !== undefined
+        ? Boolean(validatedData.allow_payment_after_deadline)
+        : Boolean((existingEvent as any).allow_payment_after_deadline);
+
+    if (effectiveAllowAfter) {
+      const baseIso = effectivePayDeadlineIso ?? effectiveDateIso;
+      const graceDays =
+        Number(
+          validatedData.grace_period_days !== undefined
+            ? validatedData.grace_period_days
+            : ((existingEvent as any).grace_period_days ?? 0)
+        ) || 0;
+      const finalCandidate = new Date(
+        new Date(baseIso).getTime() + graceDays * 24 * 60 * 60 * 1000
+      );
+      const eventPlus30d = new Date(
+        new Date(effectiveDateIso).getTime() + 30 * 24 * 60 * 60 * 1000
+      );
+      if (finalCandidate > eventPlus30d) {
+        return createServerActionError(
+          "VALIDATION_ERROR",
+          "猶予を含む最終支払期限は開催日時から30日以内にしてください"
+        );
+      }
+    }
+
+    // 決済完了者（Stripe）の存在を確認（有無だけで良いので軽量に取得）
+    const { data: stripePayments, error: paymentsError } = await supabase
+      .from("payments")
+      .select("id")
+      .eq("event_id", eventId)
+      .eq("method", "stripe")
+      .in("status", ["paid", "refunded"])
+      .limit(1);
+
+    if (paymentsError) {
+      return createServerActionError("DATABASE_ERROR", "決済状況の確認に失敗しました", {
+        details: { databaseError: paymentsError },
+      });
+    }
+
+    const hasActivePayments = (stripePayments?.length || 0) > 0;
+
+    // 現在の参加者数（attending のみ）を算出
+    const attendeeCount = (existingEvent.attendances || []).filter(
+      (a: any) => a?.status === "attending"
+    ).length;
+
+    // V2 編集制限（基本項目は常に編集可、金銭系/定員のみ制限）
+    const restrictions = checkEditRestrictionsV2(
+      existingEvent as unknown as EventWithAttendances,
+      {
+        fee: validatedData.fee,
+        capacity: validatedData.capacity,
+        payment_methods: validatedData.payment_methods,
+      },
+      { attendeeCount, hasActivePayments }
+    );
 
     if (restrictions.length > 0) {
       return createServerActionError("RESOURCE_CONFLICT", "編集制限により変更できません", {
@@ -240,7 +347,7 @@ function buildUpdateData(
   const updateData: Partial<EventRow> = {};
 
   // 変更されたフィールドのみ更新（パフォーマンス最適化）
-  if (validatedData.title && validatedData.title !== existingEvent.title) {
+  if (validatedData.title !== undefined && validatedData.title !== existingEvent.title) {
     updateData.title = validatedData.title as string;
   }
 
