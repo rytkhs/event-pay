@@ -68,7 +68,7 @@ export default async function InvitePage({ params }: InvitePageProps) {
             return {
               title: "定員到達",
               icon: "business" as const,
-              description: `定員: ${validationResult.event?.capacity}\u540d\nキャンセルが出た場合は参加可能になることがあります。`,
+              description: "このイベントはキャンセルされました。",
             };
           case "REGISTRATION_DEADLINE_PASSED":
             return {

@@ -16,19 +16,33 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 
+import { cancelEventAction } from "../actions/cancel-event";
 import { deleteEventAction } from "../actions/delete-event";
 
 interface EventActionsProps {
   eventId: string;
+  attendingCount?: number;
+  maybeCount?: number;
+  hasPayments?: boolean;
 }
 
-export function EventActions({ eventId }: EventActionsProps) {
+export function EventActions({
+  eventId,
+  attendingCount = 0,
+  maybeCount = 0,
+  hasPayments = false,
+}: EventActionsProps) {
   const router = useRouter();
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showCancelDialog, setShowCancelDialog] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isCanceling, setIsCanceling] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [cancelMessage, setCancelMessage] = useState<string>("");
   const [isUpdatingCash, setIsUpdatingCash] = useState(false);
   const { toast } = useToast();
+
+  const canHardDelete = attendingCount + maybeCount === 0 && !hasPayments;
 
   const isDisabled = !eventId || eventId === "";
 
@@ -40,6 +54,11 @@ export function EventActions({ eventId }: EventActionsProps) {
   const handleDelete = () => {
     if (isDisabled) return;
     setShowDeleteDialog(true);
+  };
+
+  const handleCancel = () => {
+    if (isDisabled) return;
+    setShowCancelDialog(true);
   };
 
   const handleDeleteConfirm = async () => {
@@ -67,6 +86,33 @@ export function EventActions({ eventId }: EventActionsProps) {
   const handleDeleteCancel = () => {
     setShowDeleteDialog(false);
     setDeleteError(null);
+  };
+
+  const handleCancelConfirm = async () => {
+    if (isDisabled || isCanceling) return;
+    setIsCanceling(true);
+    try {
+      const result = await cancelEventAction({ eventId, message: cancelMessage });
+      if (result.success) {
+        toast({ title: "中止完了", description: "イベントを中止しました" });
+        router.refresh();
+        setShowCancelDialog(false);
+        setCancelMessage("");
+      } else {
+        toast({
+          title: "中止失敗",
+          description: result.error || "中止に失敗しました",
+          variant: "destructive",
+        });
+      }
+    } finally {
+      setIsCanceling(false);
+    }
+  };
+
+  const handleCancelClose = () => {
+    setShowCancelDialog(false);
+    setCancelMessage("");
   };
 
   const handleMarkCashReceived = async () => {
@@ -111,13 +157,23 @@ export function EventActions({ eventId }: EventActionsProps) {
         {isUpdatingCash ? "更新中..." : "現金受領を反映"}
       </button>
 
-      <button
-        onClick={handleDelete}
-        disabled={isDisabled}
-        className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 disabled:bg-gray-400"
-      >
-        削除
-      </button>
+      {canHardDelete ? (
+        <button
+          onClick={handleDelete}
+          disabled={isDisabled}
+          className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 disabled:bg-gray-400"
+        >
+          削除
+        </button>
+      ) : (
+        <button
+          onClick={handleCancel}
+          disabled={isDisabled}
+          className="px-4 py-2 bg-amber-600 text-white rounded hover:bg-amber-700 disabled:bg-gray-400"
+        >
+          イベントを中止する
+        </button>
+      )}
 
       <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <DialogContent>
@@ -143,6 +199,46 @@ export function EventActions({ eventId }: EventActionsProps) {
               className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 disabled:bg-gray-400"
             >
               削除する
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showCancelDialog} onOpenChange={setShowCancelDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>イベントを中止しますか？</DialogTitle>
+            <DialogDescription>
+              中止すると新規参加・決済はできなくなります。必要に応じて参加者へのメッセージを入力してください。
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-2">
+            <label htmlFor="cancelMessage" className="text-sm text-gray-700">
+              参加者への通知メッセージ（任意）
+            </label>
+            <textarea
+              id="cancelMessage"
+              value={cancelMessage}
+              onChange={(e) => setCancelMessage(e.target.value)}
+              className="w-full border rounded p-2 h-28"
+              placeholder="中止の理由や返金に関する案内など"
+            />
+          </div>
+
+          <DialogFooter>
+            <button
+              onClick={handleCancelClose}
+              className="px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400"
+            >
+              キャンセル
+            </button>
+            <button
+              onClick={handleCancelConfirm}
+              disabled={isCanceling}
+              className="px-4 py-2 bg-amber-600 text-white rounded hover:bg-amber-700 disabled:bg-gray-400"
+            >
+              {isCanceling ? "中止中..." : "通知して中止を確定"}
             </button>
           </DialogFooter>
         </DialogContent>

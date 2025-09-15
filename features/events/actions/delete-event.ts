@@ -1,73 +1,67 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
 
+import { verifyEventAccess } from "@core/auth/event-authorization";
 import { createClient } from "@core/supabase/server";
 import {
   createServerActionError,
   createServerActionSuccess,
   type ServerActionResult,
 } from "@core/types/server-actions";
-import { checkDeleteRestrictions } from "@core/utils/event-restrictions";
-import { validateEventId } from "@core/validation/event-id";
 
 export async function deleteEventAction(eventId: string): Promise<ServerActionResult<void>> {
   try {
-    // イベントIDのバリデーション
-    const validation = validateEventId(eventId);
-    if (!validation.success) {
-      return createServerActionError("EVENT_INVALID_ID", "無効なイベントID形式です");
-    }
+    // 認証・権限（作成者のみ）+ イベントID検証
+    const { eventId: validatedEventId, user } = await verifyEventAccess(eventId);
 
     const supabase = createClient();
 
-    // 認証確認
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-    if (authError || !user) {
-      redirect("/login");
+    // 参加者カウント（attending / maybe のみを対象）
+    const { count: participantCount, error: attendanceCountError } = await supabase
+      .from("attendances")
+      .select("id", { count: "exact", head: true })
+      .eq("event_id", validatedEventId)
+      .in("status", ["attending", "maybe"]);
+
+    if (attendanceCountError) {
+      return createServerActionError("DATABASE_ERROR", "参加者情報の取得に失敗しました");
     }
 
-    // イベント情報を取得（削除制限チェック用）
-    const { data: event, error: fetchError } = await supabase
-      .from("events")
-      .select(
-        `
-        *,
-        attendances(id, status)
-      `
-      )
-      .eq("id", validation.data as any)
-      .eq("created_by", user.id)
-      .maybeSingle();
+    // 支払いレコードの存在チェック（当該イベントの参加者に紐づく決済）
+    const { count: paymentCount, error: paymentCountError } = await supabase
+      .from("payments")
+      .select("id, attendances!inner(event_id)", { count: "exact", head: true })
+      .eq("attendances.event_id", validatedEventId);
 
-    if (fetchError || !event) {
-      return createServerActionError("EVENT_NOT_FOUND", "イベントが見つかりません");
+    if (paymentCountError) {
+      return createServerActionError("DATABASE_ERROR", "決済情報の取得に失敗しました");
     }
 
-    // 削除制限チェック
-    const restrictions = checkDeleteRestrictions(event as any);
-    if (restrictions.length > 0) {
-      return createServerActionError("EVENT_DELETE_RESTRICTED", restrictions[0].message, {
-        details: { violations: restrictions },
-      });
+    const attendingOrMaybeCount = participantCount ?? 0;
+    const hasPayments = (paymentCount ?? 0) > 0;
+
+    // ケースAのみ許可（参加表明者が0件 かつ 支払いレコードが0件の場合）
+    if (attendingOrMaybeCount > 0 || hasPayments) {
+      return createServerActionError(
+        "EVENT_DELETE_RESTRICTED",
+        `参加表明者が${attendingOrMaybeCount}名、または支払いレコードが存在するため、このイベントは削除できません。イベントを中止してください。`,
+        { details: { attendingOrMaybeCount, paymentCount: paymentCount ?? 0 } }
+      );
     }
 
     // イベント削除（RLSで自分のイベントのみ削除可能）
     const { error } = await supabase
       .from("events")
       .delete()
-      .eq("id", validation.data as any)
+      .eq("id", validatedEventId)
       .eq("created_by", user.id);
 
     if (error) {
-      if (error.code === "23503") {
+      if ((error as any).code === "23503") {
         return createServerActionError(
           "EVENT_DELETE_RESTRICTED",
-          "参加者が存在するためイベントを削除できません"
+          "関連データが存在するためイベントを削除できません"
         );
       }
       return createServerActionError("EVENT_DELETE_FAILED", "イベントの削除に失敗しました");
@@ -75,7 +69,7 @@ export async function deleteEventAction(eventId: string): Promise<ServerActionRe
 
     // キャッシュを無効化
     revalidatePath("/events");
-    revalidatePath(`/events/${validation.data}`);
+    revalidatePath(`/events/${validatedEventId}`);
 
     return createServerActionSuccess(undefined, "イベントが正常に削除されました");
   } catch (_error) {

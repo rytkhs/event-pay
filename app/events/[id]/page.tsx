@@ -12,6 +12,7 @@ import {
   getEventDetailAction,
   getEventParticipantsAction,
   getEventPaymentsAction,
+  getEventStatsAction,
 } from "@features/events";
 import { InviteLink } from "@features/invite";
 
@@ -27,6 +28,7 @@ const cachedActions = createCachedActions({
   getEventAttendances: getEventAttendancesAction,
   getEventPayments: getEventPaymentsAction,
   getEventParticipants: getEventParticipantsAction,
+  getEventStats: getEventStatsAction,
 });
 
 export default async function EventDetailPage({ params }: EventDetailPageProps) {
@@ -64,13 +66,21 @@ export default async function EventDetailPage({ params }: EventDetailPageProps) 
     let participantsData: Awaited<ReturnType<typeof cachedActions.getEventParticipants>> | null =
       null;
 
+    let stats: { attending_count: number; maybe_count: number } | null = null;
+
     if (isOrganizer) {
       try {
         // 基本的な統計データ
-        [attendances, paymentsData] = await Promise.all([
+        const [attRes, payRes, statsRes] = await Promise.all([
           cachedActions.getEventAttendances(params.id),
           cachedActions.getEventPayments(params.id),
+          cachedActions.getEventStats(params.id),
         ]);
+        attendances = attRes;
+        paymentsData = payRes;
+        if (statsRes?.success) {
+          stats = statsRes.data as any;
+        }
 
         // 参加者詳細データ（デフォルトパラメータで初期データを取得）
         participantsData = await cachedActions.getEventParticipants({
@@ -96,7 +106,12 @@ export default async function EventDetailPage({ params }: EventDetailPageProps) 
             <div>
               <h1 className="text-3xl font-bold text-gray-900">イベント詳細</h1>
             </div>
-            <EventActions eventId={params.id} />
+            <EventActions
+              eventId={params.id}
+              attendingCount={stats?.attending_count || 0}
+              maybeCount={stats?.maybe_count || 0}
+              hasPayments={(paymentsData?.summary.totalPayments || 0) > 0}
+            />
           </div>
 
           <EventDetail event={eventDetail} />
