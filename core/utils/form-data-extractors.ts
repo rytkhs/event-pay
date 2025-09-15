@@ -119,6 +119,8 @@ interface EventCreateFormData {
   capacity?: string;
   registration_deadline?: string;
   payment_deadline?: string;
+  allow_payment_after_deadline?: boolean;
+  grace_period_days?: number;
 }
 
 export function extractEventCreateFormData(formData: FormData): EventCreateFormData {
@@ -134,6 +136,8 @@ export function extractEventCreateFormData(formData: FormData): EventCreateFormD
     capacity: extractor.extractOptionalValue("capacity"),
     registration_deadline: extractor.extractOptionalValue("registration_deadline"),
     payment_deadline: extractor.extractOptionalValue("payment_deadline"),
+    allow_payment_after_deadline: extractor.extractBooleanValue("allow_payment_after_deadline"),
+    grace_period_days: extractor.extractNumberValue("grace_period_days"),
   };
 }
 
@@ -155,5 +159,7 @@ export function extractEventUpdateFormData(formData: FormData): Partial<UpdateEv
     capacity: extractor.extractOptionalValue("capacity"),
     registration_deadline: extractor.extractOptionalValue("registration_deadline"),
     payment_deadline: extractor.extractOptionalValue("payment_deadline"),
+    allow_payment_after_deadline: extractor.extractBooleanValue("allow_payment_after_deadline"),
+    grace_period_days: extractor.extractNumberValue("grace_period_days"),
   };
 }

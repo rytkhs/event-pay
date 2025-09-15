@@ -36,6 +36,8 @@ export interface GuestAttendanceData {
     capacity: number | null;
     registration_deadline: string | null;
     payment_deadline: string | null;
+    allow_payment_after_deadline?: boolean;
+    grace_period_days?: number | null;
     status: Database["public"]["Enums"]["event_status_enum"];
     created_by: string;
   };

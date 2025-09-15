@@ -4,6 +4,11 @@
  */
 
 import { AttendanceStatus, PaymentStatus, EventStatus } from "@core/types/enums";
+import {
+  deriveEffectiveDeadlines,
+  deriveFinalPaymentLimit,
+  type FinalLimitOptions,
+} from "@core/utils/deadlines";
 
 /**
  * 決済許可判定に必要な最小限のイベント情報
@@ -14,6 +19,8 @@ export interface PaymentEligibilityEvent {
   fee: number | null;
   date: string; // ISO string
   payment_deadline?: string | null; // ISO string
+  allow_payment_after_deadline?: boolean; // 締切後もオンライン決済許可
+  grace_period_days?: number | null; // 0-30
 }
 
 /**
@@ -76,11 +83,27 @@ export function checkBasicPaymentEligibility(
   event: PaymentEligibilityEvent,
   currentTime: Date = new Date()
 ): PaymentEligibilityResult {
+  // effective / final の導出（ユーティリティ使用）
+  const { effectivePaymentDeadline, eventDate } = deriveEffectiveDeadlines({
+    date: event.date,
+    registration_deadline: undefined, // 参加判定では未使用
+    payment_deadline: event.payment_deadline ?? undefined,
+  });
+  const finalPaymentLimit = deriveFinalPaymentLimit({
+    effectivePaymentDeadline,
+    eventDate,
+    allow_payment_after_deadline: event.allow_payment_after_deadline,
+    grace_period_days: event.grace_period_days,
+  } as FinalLimitOptions & { effectivePaymentDeadline: Date; eventDate: Date });
+
+  // ステータスガード: cancelledのみ禁止。猶予ONの場合はpastも許可
+  const isEventActiveForPayment = event.status !== "cancelled";
+
   const checks = {
     isAttending: attendance.status === "attending",
     isPaidEvent: (event.fee ?? 0) > 0,
-    isUpcomingEvent: event.status === "upcoming",
-    isBeforeDeadline: currentTime < new Date(event.payment_deadline || event.date),
+    isUpcomingEvent: true, // 旧項目は維持しない（下位互換のため残すが、意味は使わない）
+    isBeforeDeadline: currentTime <= finalPaymentLimit,
     isValidPaymentMethod: true, // 基本チェックでは制限なし
     isValidPaymentStatus: true, // 基本チェックでは制限なし
   };
@@ -91,7 +114,7 @@ export function checkBasicPaymentEligibility(
     reason = "参加者のみ決済を行えます。";
   } else if (!checks.isPaidEvent) {
     reason = "無料イベントでは決済は不要です。";
-  } else if (!checks.isUpcomingEvent) {
+  } else if (!isEventActiveForPayment) {
     reason = "キャンセル済みまたは無効な状態のイベントです。";
   } else if (!checks.isBeforeDeadline) {
     reason = "決済期限を過ぎています。";

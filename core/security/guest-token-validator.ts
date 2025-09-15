@@ -47,6 +47,8 @@ export interface RLSGuestAttendanceData {
     capacity: number | null;
     registration_deadline: string | null;
     payment_deadline: string | null;
+    allow_payment_after_deadline?: boolean;
+    grace_period_days?: number | null;
     created_by: string;
     status: Database["public"]["Enums"]["event_status_enum"];
   };
@@ -133,6 +135,9 @@ export class RLSGuestTokenValidator implements IGuestTokenValidator {
             id,
             date,
             registration_deadline,
+            payment_deadline,
+            allow_payment_after_deadline,
+            grace_period_days,
             status
           )
         `
@@ -248,6 +253,8 @@ export class RLSGuestTokenValidator implements IGuestTokenValidator {
             capacity,
             registration_deadline,
             payment_deadline,
+            allow_payment_after_deadline,
+            grace_period_days,
             created_by,
             status
           ),

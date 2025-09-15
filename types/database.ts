@@ -119,12 +119,14 @@ export type Database = {
       };
       events: {
         Row: {
+          allow_payment_after_deadline: boolean;
           capacity: number | null;
           created_at: string;
           created_by: string;
           date: string;
           description: string | null;
           fee: number;
+          grace_period_days: number;
           id: string;
           invite_token: string | null;
           location: string | null;
@@ -136,12 +138,14 @@ export type Database = {
           updated_at: string;
         };
         Insert: {
+          allow_payment_after_deadline?: boolean;
           capacity?: number | null;
           created_at?: string;
           created_by: string;
           date: string;
           description?: string | null;
           fee?: number;
+          grace_period_days?: number;
           id?: string;
           invite_token?: string | null;
           location?: string | null;
@@ -153,12 +157,14 @@ export type Database = {
           updated_at?: string;
         };
         Update: {
+          allow_payment_after_deadline?: boolean;
           capacity?: number | null;
           created_at?: string;
           created_by?: string;
           date?: string;
           description?: string | null;
           fee?: number;
+          grace_period_days?: number;
           id?: string;
           invite_token?: string | null;
           location?: string | null;

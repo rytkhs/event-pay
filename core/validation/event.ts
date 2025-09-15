@@ -133,14 +133,36 @@ export const createEventSchema = z
     registration_deadline: z
       .string()
       .transform((val) => (val ? sanitizeForEventPay(val.trim()) : val)) // XSS対策
-      .refine(validateOptionalFutureDate, "参加申込締切は現在時刻より後である必要があります")
+      // 作成時は未来必須（仕様）
+      .refine(
+        (val) => (val ? validateOptionalFutureDate(val) : true),
+        "参加申込締切は現在時刻より後である必要があります"
+      )
       .optional(),
 
     payment_deadline: z
       .string()
       .transform((val) => (val ? sanitizeForEventPay(val.trim()) : val)) // XSS対策
-      .refine(validateOptionalFutureDate, "決済締切は現在時刻より後である必要があります")
+      // 作成時は未来必須（仕様）
+      .refine(
+        (val) => (val ? validateOptionalFutureDate(val) : true),
+        "オンライン決済締切は現在時刻より後である必要があります"
+      )
       .optional(),
+
+    // 締切後のオンライン決済許可（UIは未対応でもサーバーで受け入れ可能に）
+    allow_payment_after_deadline: z.boolean().optional().default(false),
+
+    // 猶予（日）: 0〜30日（DB CHECK と整合）
+    grace_period_days: z
+      .union([z.string(), z.number()])
+      .transform((v) => {
+        if (v === undefined || v === null || v === "") return 0;
+        const n = typeof v === "string" ? Number(v) : v;
+        return Number.isFinite(n) ? Number(n) : 0;
+      })
+      .refine((n) => n >= 0 && n <= 30, "猶予（日）は0〜30の範囲で指定してください")
+      .default(0),
   })
   .refine(
     (data) => {
@@ -163,31 +185,12 @@ export const createEventSchema = z
   )
   .refine(
     (data) => {
-      // 決済締切が開催日時より前であることを確認（date-fns-tz統一）
-      if (data.payment_deadline && data.date) {
-        try {
-          const payUtcDate = convertDatetimeLocalToUtc(data.payment_deadline);
-          const eventUtcDate = convertDatetimeLocalToUtc(data.date);
-          return payUtcDate < eventUtcDate;
-        } catch {
-          return false;
-        }
-      }
-      return true;
-    },
-    {
-      message: "決済締切は開催日時より前に設定してください",
-      path: ["payment_deadline"],
-    }
-  )
-  .refine(
-    (data) => {
       // 決済締切が参加申込締切以降であることを確認（date-fns-tz統一）
       if (data.registration_deadline && data.payment_deadline) {
         try {
           const payUtcDate = convertDatetimeLocalToUtc(data.payment_deadline);
           const regUtcDate = convertDatetimeLocalToUtc(data.registration_deadline);
-          return payUtcDate >= regUtcDate;
+          return payUtcDate >= regUtcDate; // 包括比較
         } catch {
           return false;
         }
@@ -197,6 +200,51 @@ export const createEventSchema = z
     {
       message: "決済締切は参加申込締切以降に設定してください",
       path: ["payment_deadline"],
+    }
+  )
+  .refine(
+    (data) => {
+      // 決済締切の上限: payment_deadline <= date + 30日（包括比較, nullはUIでdateを初期値表示）
+      if (data.payment_deadline && data.date) {
+        try {
+          const payUtcDate = convertDatetimeLocalToUtc(data.payment_deadline);
+          const eventUtcDate = convertDatetimeLocalToUtc(data.date);
+          const eventPlus30d = new Date(eventUtcDate.getTime() + 30 * 24 * 60 * 60 * 1000);
+          return payUtcDate <= eventPlus30d; // 包括比較
+        } catch {
+          return false;
+        }
+      }
+      return true;
+    },
+    {
+      message: "オンライン決済締切は開催日時から30日以内に設定してください",
+      path: ["payment_deadline"],
+    }
+  )
+  .refine(
+    (data) => {
+      // 猶予ON時: final_payment_limit <= date + 30日 を満たすように grace_period_days を制限
+      if (data.allow_payment_after_deadline && data.date) {
+        try {
+          const baseUtc = data.payment_deadline
+            ? convertDatetimeLocalToUtc(data.payment_deadline)
+            : convertDatetimeLocalToUtc(data.date); // effective_payment_deadline
+          const eventUtcDate = convertDatetimeLocalToUtc(data.date);
+          const finalCandidate = new Date(
+            baseUtc.getTime() + (Number(data.grace_period_days) || 0) * 24 * 60 * 60 * 1000
+          );
+          const eventPlus30d = new Date(eventUtcDate.getTime() + 30 * 24 * 60 * 60 * 1000);
+          return finalCandidate <= eventPlus30d; // 包括比較
+        } catch {
+          return false;
+        }
+      }
+      return true;
+    },
+    {
+      message: "猶予を含む最終支払期限は開催日時から30日以内にしてください",
+      path: ["grace_period_days"],
     }
   )
   .refine(
@@ -285,12 +333,23 @@ export const updateEventSchema = z
 
     registration_deadline: z
       .string()
-      .refine(validateOptionalFutureDate, "参加申込締切は現在時刻より後である必要があります")
+      // 編集では過去日時も保存可能（運用整備用）。現在時刻チェックは行わない。
       .optional(),
 
     payment_deadline: z
       .string()
-      .refine(validateOptionalFutureDate, "決済締切は現在時刻より後である必要があります")
+      // 編集では過去日時も保存可能（運用整備用）。現在時刻チェックは行わない。
+      .optional(),
+
+    allow_payment_after_deadline: z.boolean().optional(),
+    grace_period_days: z
+      .union([z.string(), z.number()])
+      .transform((v) => {
+        if (v === undefined || v === null || v === "") return undefined;
+        const n = typeof v === "string" ? Number(v) : v;
+        return Number.isFinite(n) ? Number(n) : 0;
+      })
+      .refine((n) => n === undefined || (n >= 0 && n <= 30), "猶予（日）は0〜30の範囲")
       .optional(),
   })
   .refine(
@@ -314,31 +373,12 @@ export const updateEventSchema = z
   )
   .refine(
     (data) => {
-      // 決済締切が開催日時より前であることを確認（date-fns-tz統一）
-      if (data.payment_deadline && data.date) {
-        try {
-          const payUtcDate = convertDatetimeLocalToUtc(data.payment_deadline);
-          const eventUtcDate = convertDatetimeLocalToUtc(data.date);
-          return payUtcDate < eventUtcDate;
-        } catch {
-          return false;
-        }
-      }
-      return true;
-    },
-    {
-      message: "決済締切は開催日時より前に設定してください",
-      path: ["payment_deadline"],
-    }
-  )
-  .refine(
-    (data) => {
       // 決済締切が参加申込締切以降であることを確認（date-fns-tz統一）
       if (data.registration_deadline && data.payment_deadline) {
         try {
           const payUtcDate = convertDatetimeLocalToUtc(data.payment_deadline);
           const regUtcDate = convertDatetimeLocalToUtc(data.registration_deadline);
-          return payUtcDate >= regUtcDate;
+          return payUtcDate >= regUtcDate; // 包括比較
         } catch {
           return false;
         }
@@ -348,6 +388,50 @@ export const updateEventSchema = z
     {
       message: "決済締切は参加申込締切以降に設定してください",
       path: ["payment_deadline"],
+    }
+  )
+  .refine(
+    (data) => {
+      // 上限チェック: payment_deadline <= date + 30日
+      if (data.payment_deadline && data.date) {
+        try {
+          const payUtcDate = convertDatetimeLocalToUtc(data.payment_deadline);
+          const eventUtcDate = convertDatetimeLocalToUtc(data.date);
+          const eventPlus30d = new Date(eventUtcDate.getTime() + 30 * 24 * 60 * 60 * 1000);
+          return payUtcDate <= eventPlus30d; // 包括比較
+        } catch {
+          return false;
+        }
+      }
+      return true;
+    },
+    {
+      message: "オンライン決済締切は開催日時から30日以内に設定してください",
+      path: ["payment_deadline"],
+    }
+  )
+  .refine(
+    (data) => {
+      // 猶予ON時: final_payment_limit <= date + 30日
+      if (data.allow_payment_after_deadline && data.date) {
+        try {
+          const baseUtc = data.payment_deadline
+            ? convertDatetimeLocalToUtc(data.payment_deadline)
+            : convertDatetimeLocalToUtc(data.date);
+          const eventUtcDate = convertDatetimeLocalToUtc(data.date);
+          const grace = Number(data.grace_period_days ?? 0) || 0;
+          const finalCandidate = new Date(baseUtc.getTime() + grace * 24 * 60 * 60 * 1000);
+          const eventPlus30d = new Date(eventUtcDate.getTime() + 30 * 24 * 60 * 60 * 1000);
+          return finalCandidate <= eventPlus30d; // 包括比較
+        } catch {
+          return false;
+        }
+      }
+      return true;
+    },
+    {
+      message: "猶予を含む最終支払期限は開催日時から30日以内にしてください",
+      path: ["grace_period_days"],
     }
   )
   .refine(

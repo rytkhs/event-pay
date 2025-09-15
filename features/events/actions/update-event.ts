@@ -329,5 +329,22 @@ function buildUpdateData(
     }
   }
 
+  // 締切後決済許可
+  if (validatedData.allow_payment_after_deadline !== undefined) {
+    const next = Boolean(validatedData.allow_payment_after_deadline);
+    if (next !== (existingEvent as any).allow_payment_after_deadline) {
+      (updateData as any).allow_payment_after_deadline = next;
+    }
+  }
+
+  // 猶予日数
+  if (validatedData.grace_period_days !== undefined) {
+    const raw = validatedData.grace_period_days as number;
+    const next = Number.isFinite(raw) ? Number(raw) : 0;
+    if (next !== (existingEvent as any).grace_period_days) {
+      (updateData as any).grace_period_days = next;
+    }
+  }
+
   return updateData;
 }
