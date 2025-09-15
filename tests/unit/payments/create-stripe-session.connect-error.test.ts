@@ -35,8 +35,16 @@ jest.mock("@core/utils/guest-token", () => ({
 // モック: レートリミットは常に許可
 jest.mock("@core/rate-limit", () => ({
   __esModule: true,
-  createRateLimitStore: jest.fn(async () => ({})),
-  checkRateLimit: jest.fn(async () => ({ allowed: true })),
+  enforceRateLimit: jest.fn(async () => ({ allowed: true })),
+  buildKey: jest.fn(() => "RL:payment.createSession:attendance:att_1"),
+  POLICIES: {
+    "payment.createSession": {
+      scope: "payment.createSession",
+      limit: 3,
+      window: "10 s",
+      blockMs: 20000,
+    },
+  },
 }));
 
 // モック: 管理者Supabaseクライアント（payments と stripe_connect_accounts へのクエリを最小限で再現）

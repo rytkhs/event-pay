@@ -15,8 +15,8 @@ import {
   type LockoutStatus,
 } from "@core/auth-security";
 import { logger } from "@core/logging/app-logger";
-import { checkRateLimit, createRateLimitStore } from "@core/rate-limit/index";
-import { RATE_LIMIT_CONFIG } from "@core/security";
+import { enforceRateLimit, buildKey, POLICIES } from "@core/rate-limit/index";
+import { getClientIPFromHeaders } from "@core/utils/ip-detection";
 import { createClient } from "@core/supabase/server";
 import { formatUtcToJst } from "@core/utils/timezone";
 
@@ -195,32 +195,6 @@ export async function loginAction(formData: FormData): Promise<ActionResult<{ us
       }
     }
 
-    // レート制限チェック（テスト環境では無効化）
-    if (process.env.NODE_ENV !== "test") {
-      try {
-        const headersList = headers();
-        const ip = headersList.get("x-forwarded-for") || headersList.get("x-real-ip") || "unknown";
-
-        const store = await createRateLimitStore();
-        const rateLimitResult = await checkRateLimit(store, `login_${ip}`, RATE_LIMIT_CONFIG.login);
-        if (!rateLimitResult.allowed) {
-          await TimingAttackProtection.addConstantDelay();
-          return {
-            success: false,
-            error: "ログイン試行回数が上限に達しました。しばらく時間をおいてからお試しください",
-          };
-        }
-      } catch (rateLimitError) {
-        // Redis接続エラー等の場合はログに記録してスキップ
-        logger.warn("Rate limit check failed", {
-          tag: "rateLimitCheckFailed",
-          error_name: rateLimitError instanceof Error ? rateLimitError.name : "Unknown",
-          error_message:
-            rateLimitError instanceof Error ? rateLimitError.message : String(rateLimitError),
-        });
-      }
-    }
-
     const rawData = formDataToObject(formData);
     const result = loginSchema.safeParse(rawData);
 
@@ -249,6 +223,33 @@ export async function loginAction(formData: FormData): Promise<ActionResult<{ us
         success: false,
         error: "入力内容を確認してください",
       };
+    }
+
+    // レート制限チェック（ip + emailHash の AND）
+    if (process.env.NODE_ENV !== "test") {
+      try {
+        const headersList = headers();
+        const ip = getClientIPFromHeaders(headersList);
+        const keyInput = buildKey({ scope: "auth.login", ip, email: sanitizedEmail });
+        const rateLimitResult = await enforceRateLimit({
+          keys: Array.isArray(keyInput) ? keyInput : [keyInput],
+          policy: POLICIES["auth.login"],
+        });
+        if (!rateLimitResult.allowed) {
+          await TimingAttackProtection.addConstantDelay();
+          return {
+            success: false,
+            error: "ログイン試行回数が上限に達しました。しばらく時間をおいてからお試しください",
+          };
+        }
+      } catch (rateLimitError) {
+        logger.warn("Rate limit check failed", {
+          tag: "rateLimitCheckFailed",
+          error_name: rateLimitError instanceof Error ? rateLimitError.name : "Unknown",
+          error_message:
+            rateLimitError instanceof Error ? rateLimitError.message : String(rateLimitError),
+        });
+      }
     }
 
     // アカウントロックアウト状態確認
@@ -396,35 +397,6 @@ export async function loginAction(formData: FormData): Promise<ActionResult<{ us
  */
 export async function registerAction(formData: FormData): Promise<ActionResult<{ user: unknown }>> {
   try {
-    // レート制限チェック（テスト環境では無効化）
-    if (process.env.NODE_ENV !== "test") {
-      try {
-        const headersList = headers();
-        const ip = headersList.get("x-forwarded-for") || headersList.get("x-real-ip") || "unknown";
-
-        const store = await createRateLimitStore();
-        const rateLimitResult = await checkRateLimit(
-          store,
-          `register_${ip}`,
-          RATE_LIMIT_CONFIG.register
-        );
-        if (!rateLimitResult.allowed) {
-          await TimingAttackProtection.addConstantDelay();
-          return {
-            success: false,
-            error: "登録試行回数が上限に達しました。しばらく時間をおいてからお試しください",
-          };
-        }
-      } catch (rateLimitError) {
-        logger.warn("Rate limit check failed during registration", {
-          tag: "rateLimitCheckFailed",
-          error_name: rateLimitError instanceof Error ? rateLimitError.name : "Unknown",
-          error_message:
-            rateLimitError instanceof Error ? rateLimitError.message : String(rateLimitError),
-        });
-      }
-    }
-
     const rawData = formDataToObject(formData);
     const result = registerSchema.safeParse(rawData);
 
@@ -455,6 +427,33 @@ export async function registerAction(formData: FormData): Promise<ActionResult<{
     const sanitizedEmail = InputSanitizer.sanitizeEmail(email);
     const sanitizedPassword = InputSanitizer.sanitizePassword(password);
     const sanitizedName = name.trim();
+
+    // レート制限チェック（ip + emailHash の AND）
+    if (process.env.NODE_ENV !== "test") {
+      try {
+        const headersList = headers();
+        const ip = getClientIPFromHeaders(headersList);
+        const keyInput = buildKey({ scope: "auth.register", ip, email: sanitizedEmail });
+        const rateLimitResult = await enforceRateLimit({
+          keys: Array.isArray(keyInput) ? keyInput : [keyInput],
+          policy: POLICIES["auth.register"],
+        });
+        if (!rateLimitResult.allowed) {
+          await TimingAttackProtection.addConstantDelay();
+          return {
+            success: false,
+            error: "登録試行回数が上限に達しました。しばらく時間をおいてからお試しください",
+          };
+        }
+      } catch (rateLimitError) {
+        logger.warn("Rate limit check failed during registration", {
+          tag: "rateLimitCheckFailed",
+          error_name: rateLimitError instanceof Error ? rateLimitError.name : "Unknown",
+          error_message:
+            rateLimitError instanceof Error ? rateLimitError.message : String(rateLimitError),
+        });
+      }
+    }
 
     const supabase = createClient();
 
@@ -640,6 +639,33 @@ export async function resendOtpAction(formData: FormData): Promise<ActionResult>
       };
     }
 
+    // レート制限チェック（ip + emailHash の AND）
+    if (process.env.NODE_ENV !== "test") {
+      try {
+        const headersList = headers();
+        const ip = getClientIPFromHeaders(headersList);
+        const sanitizedEmail = InputSanitizer.sanitizeEmail(email);
+        const keyInput = buildKey({ scope: "auth.emailResend", ip, email: sanitizedEmail });
+        const rateLimitResult = await enforceRateLimit({
+          keys: Array.isArray(keyInput) ? keyInput : [keyInput],
+          policy: POLICIES["auth.emailResend"],
+        });
+        if (!rateLimitResult.allowed) {
+          return {
+            success: false,
+            error: "送信回数の上限に達しました。しばらく時間をおいてからお試しください",
+          };
+        }
+      } catch (rateLimitError) {
+        logger.warn("Rate limit check failed during email resend", {
+          tag: "rateLimitCheckFailed",
+          error_name: rateLimitError instanceof Error ? rateLimitError.name : "Unknown",
+          error_message:
+            rateLimitError instanceof Error ? rateLimitError.message : String(rateLimitError),
+        });
+      }
+    }
+
     const supabase = createClient();
 
     const { error } = await supabase.auth.resend({
@@ -689,36 +715,6 @@ export async function resendOtpAction(formData: FormData): Promise<ActionResult>
  */
 export async function resetPasswordAction(formData: FormData): Promise<ActionResult> {
   try {
-    // レート制限チェック（テスト環境では無効化）
-    if (process.env.NODE_ENV !== "test") {
-      try {
-        const headersList = headers();
-        const ip = headersList.get("x-forwarded-for") || headersList.get("x-real-ip") || "unknown";
-
-        const store = await createRateLimitStore();
-        const rateLimitResult = await checkRateLimit(
-          store,
-          `reset_password_${ip}`,
-          RATE_LIMIT_CONFIG.passwordReset
-        );
-        if (!rateLimitResult.allowed) {
-          await TimingAttackProtection.addConstantDelay();
-          return {
-            success: false,
-            error:
-              "パスワードリセット試行回数が上限に達しました。しばらく時間をおいてからお試しください",
-          };
-        }
-      } catch (rateLimitError) {
-        logger.warn("Rate limit check failed during password reset", {
-          tag: "rateLimitCheckFailed",
-          error_name: rateLimitError instanceof Error ? rateLimitError.name : "Unknown",
-          error_message:
-            rateLimitError instanceof Error ? rateLimitError.message : String(rateLimitError),
-        });
-      }
-    }
-
     const rawData = formDataToObject(formData);
     const result = resetPasswordSchema.safeParse(rawData);
 
@@ -743,6 +739,33 @@ export async function resetPasswordAction(formData: FormData): Promise<ActionRes
         success: false,
         error: "有効なメールアドレスを入力してください",
       };
+    }
+    // レート制限チェック（ip + emailHash の AND）
+    if (process.env.NODE_ENV !== "test") {
+      try {
+        const headersList = headers();
+        const ip = getClientIPFromHeaders(headersList);
+        const keyInput = buildKey({ scope: "auth.passwordReset", ip, email });
+        const rateLimitResult = await enforceRateLimit({
+          keys: Array.isArray(keyInput) ? keyInput : [keyInput],
+          policy: POLICIES["auth.passwordReset"],
+        });
+        if (!rateLimitResult.allowed) {
+          await TimingAttackProtection.addConstantDelay();
+          return {
+            success: false,
+            error:
+              "パスワードリセット試行回数が上限に達しました。しばらく時間をおいてからお試しください",
+          };
+        }
+      } catch (rateLimitError) {
+        logger.warn("Rate limit check failed during password reset", {
+          tag: "rateLimitCheckFailed",
+          error_name: rateLimitError instanceof Error ? rateLimitError.name : "Unknown",
+          error_message:
+            rateLimitError instanceof Error ? rateLimitError.message : String(rateLimitError),
+        });
+      }
     }
     const supabase = createClient();
 

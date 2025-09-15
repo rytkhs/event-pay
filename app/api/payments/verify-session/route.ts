@@ -12,7 +12,7 @@ import { z } from "zod";
 
 import { createProblemResponse, createQueryValidationError } from "@core/api/problem-details";
 import { logger } from "@core/logging/app-logger";
-import { createRateLimitStore, checkRateLimit } from "@core/rate-limit";
+import { withRateLimit, buildKey, POLICIES } from "@core/rate-limit";
 import { SecureSupabaseClientFactory } from "@core/security/secure-client-factory.impl";
 import { AdminReason } from "@core/security/secure-client-factory.types";
 import { logSecurityEvent } from "@core/security/security-logger";
@@ -45,6 +45,17 @@ interface VerificationResult {
 
 export async function GET(request: NextRequest) {
   try {
+    // 事前レート制限（署名検証互換: ボディ未消費）
+    const mw = withRateLimit(POLICIES["stripe.checkout"], (r) =>
+      buildKey({
+        scope: "stripe.checkout",
+        ip: getClientIP(r),
+        token: r.headers.get("x-guest-token") || undefined,
+      })
+    );
+    const rateLimited = await mw(request);
+    if (rateLimited) return rateLimited;
+
     const guestToken = request.headers.get("x-guest-token");
     if (!guestToken) {
       logSecurityEvent({
@@ -63,38 +74,10 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // ------------------------------
-    // Rate limiting
-    // ------------------------------
-    // 1. まずクエリパラメータを取得して attendance_id を抽出
+    // 1. 残りのパラメータを取得
     const url = new URL(request.url);
-    const attendanceParam = url.searchParams.get("attendance_id") || "unknown";
-
-    // 2. IP アドレス取得は共通ユーティリティで統一（本番は擬似IPフォールバック）
-    const clientIP = getClientIP(request);
-
-    // 3. レート制限キー: IP単位を基準にし、attendance_id が有効な場合のみ付与（unknownは使わない）
-    const rateLimitKey =
-      attendanceParam && attendanceParam !== "unknown"
-        ? `payment-verify:${clientIP}:${attendanceParam}`
-        : `payment-verify:${clientIP}`;
-
-    const store = await createRateLimitStore();
-    const rateLimitResult = await checkRateLimit(store, rateLimitKey, {
-      maxAttempts: 10,
-      windowMs: 60 * 1000, // 1 minute
-      blockDurationMs: 60 * 1000, // 1 minute block
-    });
-
-    if (!rateLimitResult.allowed) {
-      return createProblemResponse("RATE_LIMITED", {
-        instance: "/api/payments/verify-session",
-        retryable: true,
-      });
-    }
-
-    // 4. 残りのパラメータを取得
     const sessionId = url.searchParams.get("session_id");
+    const attendanceParam = url.searchParams.get("attendance_id") || "unknown";
     const attendanceId = attendanceParam === "unknown" ? null : attendanceParam;
 
     // バリデーション

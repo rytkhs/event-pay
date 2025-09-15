@@ -209,10 +209,4 @@ export function createGuestTokenValidator(): RLSGuestTokenValidator {
 // ====================================================================
 // 8. セキュリティ設定
 // ====================================================================
-export {
-  RATE_LIMIT_CONFIG,
-  COOKIE_CONFIG,
-  AUTH_CONFIG,
-  PASSWORD_CONFIG,
-  getCookieConfig,
-} from "./config";
+export { COOKIE_CONFIG, AUTH_CONFIG, PASSWORD_CONFIG, getCookieConfig } from "./config";
