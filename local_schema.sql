@@ -1,5 +1,5 @@
 
-\restrict BgHiOnvJ6EilTMPbhSlyCgkxvt4PANohs8wPyghp4eYU49clAcr9ZrYh0KzapHl
+\restrict lC996H0E5gTHut9t753KIv0d20RtMF3UYZDlr08acMQci5sgi18oRtyvbpgGwaW
 
 
 SET statement_timeout = 0;
@@ -87,7 +87,7 @@ CREATE TYPE "public"."event_status_enum" AS ENUM (
     'upcoming',
     'ongoing',
     'past',
-    'cancelled'
+    'canceled'
 );
 
 
@@ -2228,11 +2228,14 @@ CREATE TABLE IF NOT EXISTS "public"."events" (
     "status" "public"."event_status_enum" DEFAULT 'upcoming'::"public"."event_status_enum" NOT NULL,
     "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
     "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "allow_payment_after_deadline" boolean DEFAULT false NOT NULL,
+    "grace_period_days" smallint DEFAULT 0 NOT NULL,
     CONSTRAINT "events_capacity_check" CHECK ((("capacity" IS NULL) OR ("capacity" > 0))),
     CONSTRAINT "events_date_after_creation" CHECK (("date" > "created_at")),
     CONSTRAINT "events_fee_check" CHECK (("fee" >= 0)),
+    CONSTRAINT "events_grace_period_days_check" CHECK ((("grace_period_days" >= 0) AND ("grace_period_days" <= 30))),
     CONSTRAINT "events_payment_deadline_after_registration" CHECK ((("payment_deadline" IS NULL) OR ("registration_deadline" IS NULL) OR ("payment_deadline" >= "registration_deadline"))),
-    CONSTRAINT "events_payment_deadline_before_event" CHECK ((("payment_deadline" IS NULL) OR ("payment_deadline" < "date"))),
+    CONSTRAINT "events_payment_deadline_within_30d_after_date" CHECK ((("payment_deadline" IS NULL) OR ("payment_deadline" <= ("date" + '30 days'::interval)))),
     CONSTRAINT "events_payment_methods_check" CHECK (("array_length"("payment_methods", 1) > 0)),
     CONSTRAINT "events_registration_deadline_before_event" CHECK ((("registration_deadline" IS NULL) OR ("registration_deadline" < "date")))
 );
@@ -4117,6 +4120,6 @@ ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TAB
 
 
 
-\unrestrict BgHiOnvJ6EilTMPbhSlyCgkxvt4PANohs8wPyghp4eYU49clAcr9ZrYh0KzapHl
+\unrestrict lC996H0E5gTHut9t753KIv0d20RtMF3UYZDlr08acMQci5sgi18oRtyvbpgGwaW
 
 RESET ALL;

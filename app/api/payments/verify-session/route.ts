@@ -34,7 +34,7 @@ interface VerificationResult {
    * success フラグが true の場合のみ必ず含まれる。
    * リクエストエラー時（success: false）のレスポンスでは省略される。
    */
-  payment_status?: "success" | "failed" | "cancelled" | "processing" | "pending";
+  payment_status?: "success" | "failed" | "canceled" | "processing" | "pending";
   /**
    * このセッションで支払いが必要か（無料・全額割引は false）
    * success フラグが true の場合に付与され得る。
@@ -359,7 +359,7 @@ export async function GET(request: NextRequest) {
       case "unpaid":
         // セッションが期限切れかキャンセルされた場合
         if (cs2.status === "expired") {
-          paymentStatus = "cancelled";
+          paymentStatus = "canceled";
         } else {
           paymentStatus = "pending";
         }

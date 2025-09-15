@@ -39,6 +39,8 @@ const eventEditFormSchemaBase = z
     payment_methods: z.array(z.string()), // min制約を削除
     registration_deadline: z.string().optional(),
     payment_deadline: z.string().optional(),
+    allow_payment_after_deadline: z.boolean().optional(),
+    grace_period_days: z.string().optional(),
   })
   .refine(
     (data) => {
@@ -96,7 +98,7 @@ const eventEditFormSchemaBase = z
       }
     },
     {
-      message: "支払い締切は開催日時より前に設定してください",
+      message: "オンライン決済締切は開催日時より前に設定してください",
       path: ["payment_deadline"],
     }
   );
@@ -138,6 +140,8 @@ export function useEventEditForm({ event, attendeeCount, onSubmit }: UseEventEdi
       payment_methods: event.payment_methods || [],
       registration_deadline: formatUtcToDatetimeLocal(event.registration_deadline || ""),
       payment_deadline: formatUtcToDatetimeLocal(event.payment_deadline || ""),
+      allow_payment_after_deadline: (event as any).allow_payment_after_deadline ?? false,
+      grace_period_days: ((event as any).grace_period_days ?? 0).toString(),
     }),
     [event]
   );
@@ -166,6 +170,27 @@ export function useEventEditForm({ event, attendeeCount, onSubmit }: UseEventEdi
     }
   }, [isFreeEvent, form]);
 
+  // 開催日時が入力・変更された場合、未入力の締切（参加申込・オンライン決済）をdateで自動プリセット
+  useEffect(() => {
+    const dateValue = form.getValues("date");
+    if (!dateValue || dateValue.trim() === "") return;
+    const reg = form.getValues("registration_deadline");
+    const pay = form.getValues("payment_deadline");
+    if (!reg || reg.trim() === "") {
+      form.setValue("registration_deadline", dateValue, {
+        shouldValidate: true,
+        shouldTouch: true,
+      });
+    }
+    if (!pay || pay.trim() === "") {
+      form.setValue("payment_deadline", dateValue, {
+        shouldValidate: true,
+        shouldTouch: true,
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form.watch("date")]);
+
   // 現在のフォームデータを取得（EventFormData形式に変換、numeric フィールドの型安全性確保）
   const getCurrentFormData = useCallback((): EventFormData => {
     return {
@@ -178,6 +203,8 @@ export function useEventEditForm({ event, attendeeCount, onSubmit }: UseEventEdi
       payment_methods: watchedValues.payment_methods || [],
       registration_deadline: watchedValues.registration_deadline || "",
       payment_deadline: watchedValues.payment_deadline || "",
+      allow_payment_after_deadline: watchedValues.allow_payment_after_deadline ?? false,
+      grace_period_days: watchedValues.grace_period_days || "0",
     };
   }, [watchedValues]);
 
@@ -224,6 +251,8 @@ export function useEventEditForm({ event, attendeeCount, onSubmit }: UseEventEdi
             payment_methods: data.payment_methods,
             registration_deadline: data.registration_deadline || "",
             payment_deadline: data.payment_deadline || "",
+            allow_payment_after_deadline: data.allow_payment_after_deadline ?? false,
+            grace_period_days: data.grace_period_days || "0",
           };
 
           // 変更検出
@@ -299,6 +328,8 @@ export function useEventEditForm({ event, attendeeCount, onSubmit }: UseEventEdi
               payment_methods: data.payment_methods,
               registration_deadline: data.registration_deadline || "",
               payment_deadline: data.payment_deadline || "",
+              allow_payment_after_deadline: data.allow_payment_after_deadline ?? false,
+              grace_period_days: data.grace_period_days || "0",
             };
 
             // 実際の送信処理

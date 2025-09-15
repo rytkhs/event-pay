@@ -18,7 +18,7 @@ export type EventStatus =
   | "upcoming" // 開催予定（デフォルト）
   | "ongoing" // 開催中
   | "past" // 終了
-  | "cancelled"; // キャンセル
+  | "canceled"; // キャンセル
 
 /**
  * イベントステータスの定数定義
@@ -27,7 +27,7 @@ export const EVENT_STATUS = {
   UPCOMING: "upcoming" as const,
   ONGOING: "ongoing" as const,
   PAST: "past" as const,
-  CANCELLED: "cancelled" as const,
+  CANCELED: "canceled" as const,
 } as const;
 
 /**
@@ -201,7 +201,7 @@ export const EVENT_STATUS_LABELS: Record<EventStatus, string> = {
   upcoming: "開催予定",
   ongoing: "開催中",
   past: "終了",
-  cancelled: "キャンセル",
+  canceled: "キャンセル",
 };
 
 /**

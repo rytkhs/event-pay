@@ -64,7 +64,7 @@ export default async function InvitePage({ params }: InvitePageProps) {
               icon: "business" as const,
               description: "既に終了したイベントには参加申し込みできません。",
             };
-          case "EVENT_CANCELLED":
+          case "EVENT_CANCELED":
             return {
               title: "定員到達",
               icon: "business" as const,

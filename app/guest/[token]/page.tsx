@@ -56,7 +56,7 @@ export default async function GuestPage({ params, searchParams }: GuestPageProps
   const { payment: paymentParam, session_id } = searchParams;
   const VALID_PAYMENT_STATUSES = new Set([
     "success",
-    "cancelled",
+    "canceled",
     "failed",
     "processing",
     "pending",

@@ -119,12 +119,14 @@ export type Database = {
       };
       events: {
         Row: {
+          allow_payment_after_deadline: boolean;
           capacity: number | null;
           created_at: string;
           created_by: string;
           date: string;
           description: string | null;
           fee: number;
+          grace_period_days: number;
           id: string;
           invite_token: string | null;
           location: string | null;
@@ -136,12 +138,14 @@ export type Database = {
           updated_at: string;
         };
         Insert: {
+          allow_payment_after_deadline?: boolean;
           capacity?: number | null;
           created_at?: string;
           created_by: string;
           date: string;
           description?: string | null;
           fee?: number;
+          grace_period_days?: number;
           id?: string;
           invite_token?: string | null;
           location?: string | null;
@@ -153,12 +157,14 @@ export type Database = {
           updated_at?: string;
         };
         Update: {
+          allow_payment_after_deadline?: boolean;
           capacity?: number | null;
           created_at?: string;
           created_by?: string;
           date?: string;
           description?: string | null;
           fee?: number;
+          grace_period_days?: number;
           id?: string;
           invite_token?: string | null;
           location?: string | null;
@@ -1277,7 +1283,7 @@ export type Database = {
         | "data_migration"
         | "security_investigation";
       attendance_status_enum: "attending" | "not_attending" | "maybe";
-      event_status_enum: "upcoming" | "ongoing" | "past" | "cancelled";
+      event_status_enum: "upcoming" | "ongoing" | "past" | "canceled";
       payment_method_enum: "stripe" | "cash";
       payment_status_enum:
         | "pending"
@@ -1436,7 +1442,7 @@ export const Constants = {
         "security_investigation",
       ],
       attendance_status_enum: ["attending", "not_attending", "maybe"],
-      event_status_enum: ["upcoming", "ongoing", "past", "cancelled"],
+      event_status_enum: ["upcoming", "ongoing", "past", "canceled"],
       payment_method_enum: ["stripe", "cash"],
       payment_status_enum: [
         "pending",

@@ -57,7 +57,7 @@ export interface InviteValidationResult {
   errorCode?:
     | "INVALID_TOKEN"
     | "TOKEN_NOT_FOUND"
-    | "EVENT_CANCELLED"
+    | "EVENT_CANCELED"
     | "EVENT_ENDED"
     | "REGISTRATION_DEADLINE_PASSED"
     | "UNKNOWN_ERROR";
@@ -170,13 +170,13 @@ export async function validateInviteToken(token: string): Promise<InviteValidati
     };
 
     // イベントがキャンセルされているか確認
-    if (event.status === "cancelled") {
+    if (event.status === "canceled") {
       return {
         isValid: true,
         event: eventDetail,
         canRegister: false,
         errorMessage: "このイベントはキャンセルされました",
-        errorCode: "EVENT_CANCELLED",
+        errorCode: "EVENT_CANCELED",
       };
     }
 

@@ -40,6 +40,7 @@ import {
 } from "@/components/ui/select";
 
 import { exportParticipantsCsvAction } from "../actions/export-participants-csv";
+import { generateGuestUrlAction } from "../actions/generate-guest-url";
 import { getAllCashPaymentIdsAction } from "../actions/get-all-cash-payment-ids";
 
 interface ParticipantsTableProps {
@@ -515,6 +516,34 @@ export function ParticipantsTable({
 
   const { participants, pagination } = initialData;
 
+  // ゲストURLコピー
+  const handleCopyGuestUrl = async (attendanceId: string) => {
+    try {
+      const res = await generateGuestUrlAction({ eventId, attendanceId });
+      if (!res.success) {
+        toast({
+          title: "コピーできません",
+          description: res.error || "ゲストURL生成に失敗しました",
+          variant: "destructive",
+        });
+        return;
+      }
+      await navigator.clipboard.writeText(res.data.guestUrl);
+      toast({
+        title: "URLをコピーしました",
+        description: res.data.canOnlinePay
+          ? "現在オンライン決済が可能です。"
+          : res.data.reason || "オンライン決済は現在できません。",
+      });
+    } catch {
+      toast({
+        title: "コピーに失敗しました",
+        description: "クリップボードにアクセスできませんでした",
+        variant: "destructive",
+      });
+    }
+  };
+
   return (
     <Card className="w-full">
       <CardHeader>
@@ -815,40 +844,51 @@ export function ParticipantsTable({
                         {formatDate(participant.attendance_updated_at)}
                       </td>
                       <td className="px-4 py-4 whitespace-nowrap">
-                        {isCashPayment &&
-                        participant.payment_status !== "received" &&
-                        participant.payment_status !== "waived" ? (
-                          <div className="flex items-center gap-1">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() =>
-                                hasPaymentId(participant) &&
-                                handleUpdatePaymentStatus(participant.payment_id, "received")
-                              }
-                              disabled={isUpdatingStatus}
-                              className="h-7 px-2 text-xs bg-green-50 border-green-300 text-green-700 hover:bg-green-100"
-                            >
-                              <Check className="h-3 w-3 mr-1" />
-                              受領
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() =>
-                                hasPaymentId(participant) &&
-                                handleUpdatePaymentStatus(participant.payment_id, "waived")
-                              }
-                              disabled={isUpdatingStatus}
-                              className="h-7 px-2 text-xs bg-orange-50 border-orange-300 text-orange-700 hover:bg-orange-100"
-                            >
-                              <X className="h-3 w-3 mr-1" />
-                              免除
-                            </Button>
-                          </div>
-                        ) : (
-                          <span className="text-gray-400">-</span>
-                        )}
+                        <div className="flex items-center gap-1">
+                          {isCashPayment &&
+                            participant.payment_status !== "received" &&
+                            participant.payment_status !== "waived" && (
+                              <>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() =>
+                                    hasPaymentId(participant) &&
+                                    handleUpdatePaymentStatus(participant.payment_id, "received")
+                                  }
+                                  disabled={isUpdatingStatus}
+                                  className="h-7 px-2 text-xs bg-green-50 border-green-300 text-green-700 hover:bg-green-100"
+                                >
+                                  <Check className="h-3 w-3 mr-1" />
+                                  受領
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() =>
+                                    hasPaymentId(participant) &&
+                                    handleUpdatePaymentStatus(participant.payment_id, "waived")
+                                  }
+                                  disabled={isUpdatingStatus}
+                                  className="h-7 px-2 text-xs bg-orange-50 border-orange-300 text-orange-700 hover:bg-orange-100"
+                                >
+                                  <X className="h-3 w-3 mr-1" />
+                                  免除
+                                </Button>
+                              </>
+                            )}
+
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleCopyGuestUrl(participant.attendance_id)}
+                            className="h-7 px-2 text-xs"
+                            title="ゲスト用URLをコピー"
+                            disabled={participant.status !== "attending"}
+                          >
+                            URLコピー
+                          </Button>
+                        </div>
                       </td>
                     </tr>
                   );

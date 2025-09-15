@@ -106,12 +106,12 @@ export async function getEventsAction(options: GetEventsOptions = {}): Promise<G
 
     if (
       statusFilter &&
-      !["all", "upcoming", "ongoing", "past", "cancelled"].includes(statusFilter)
+      !["all", "upcoming", "ongoing", "past", "canceled"].includes(statusFilter)
     ) {
       return {
         success: false,
         error:
-          "statusFilterは'all', 'upcoming', 'ongoing', 'past', 'cancelled'のいずれかである必要があります",
+          "statusFilterは'all', 'upcoming', 'ongoing', 'past', 'canceled'のいずれかである必要があります",
       };
     }
 

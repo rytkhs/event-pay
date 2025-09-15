@@ -52,7 +52,7 @@ export const inviteGenerationSchema = z.object({
 
 // 参加者検索・フィルタ用バリデーション
 export const participantFilterSchema = z.object({
-  status: z.enum(["confirmed", "pending", "cancelled"]).optional(),
+  status: z.enum(["confirmed", "pending", "canceled"]).optional(),
   payment_status: z
     .enum(["pending", "paid", "received", "failed", "completed", "refunded", "waived"])
     .optional(),

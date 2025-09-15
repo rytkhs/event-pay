@@ -293,9 +293,9 @@ const ERROR_DEFINITIONS: Record<string, ErrorDefinition> = {
     defaultDetail: "無効な招待リンクです",
     retryable: false,
   },
-  EVENT_CANCELLED: {
-    type: "https://api.eventpay.app/errors/event_cancelled",
-    title: "Event Cancelled",
+  EVENT_CANCELED: {
+    type: "https://api.eventpay.app/errors/event_canceled",
+    title: "Event Canceled",
     defaultStatus: 410,
     defaultDetail: "このイベントはキャンセルされました",
     retryable: false,

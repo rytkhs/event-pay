@@ -13,7 +13,7 @@ interface EventDetailProps {
     location: any;
     fee: number;
     capacity: any;
-    status: "upcoming" | "ongoing" | "past" | "cancelled";
+    status: "upcoming" | "ongoing" | "past" | "canceled";
     description?: any;
     registration_deadline?: any;
     payment_deadline?: any;
@@ -84,7 +84,7 @@ export function EventDetail({ event }: EventDetailProps) {
 
           {event.payment_deadline && (
             <div>
-              <h3 className="text-sm font-medium text-gray-700">決済締切</h3>
+              <h3 className="text-sm font-medium text-gray-700">オンライン決済締切</h3>
               <p className="mt-1 text-sm text-gray-900">
                 {formatUtcToJstByType(event.payment_deadline, "japanese")}
               </p>

@@ -33,6 +33,8 @@ interface FormErrors {
   payment_methods?: string;
   registration_deadline?: string;
   payment_deadline?: string;
+  allow_payment_after_deadline?: string;
+  grace_period_days?: string;
   general?: string;
 }
 
@@ -53,6 +55,8 @@ export function useEventSubmission({ eventId, onSubmit }: UseEventSubmissionProp
         Object.entries(formData).forEach(([key, value]) => {
           if (Array.isArray(value)) {
             value.forEach((v) => formDataObj.append(key, v));
+          } else if (typeof value === "boolean") {
+            formDataObj.append(key, String(value));
           } else if (value !== "") {
             formDataObj.append(key, value);
           }
@@ -128,6 +132,12 @@ export function useEventSubmission({ eventId, onSubmit }: UseEventSubmissionProp
         case "payment_deadline":
           submissionData.payment_deadline = value as string;
           break;
+        case "allow_payment_after_deadline":
+          submissionData.allow_payment_after_deadline = value as boolean;
+          break;
+        case "grace_period_days":
+          submissionData.grace_period_days = value as string;
+          break;
       }
     });
 
@@ -141,6 +151,8 @@ export function useEventSubmission({ eventId, onSubmit }: UseEventSubmissionProp
     Object.entries(data).forEach(([key, value]) => {
       if (Array.isArray(value)) {
         value.forEach((v) => formDataObj.append(key, v));
+      } else if (typeof value === "boolean") {
+        formDataObj.append(key, String(value));
       } else if (value !== "") {
         formDataObj.append(key, value);
       }

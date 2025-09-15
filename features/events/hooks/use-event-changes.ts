@@ -76,7 +76,19 @@ export function useEventChanges({
         field: "payment_deadline",
         oldValue: formatUtcToDatetimeLocal(event.payment_deadline || ""),
         newValue: formData.payment_deadline || "",
-        fieldName: "支払い締切",
+        fieldName: "オンライン決済締切",
+      },
+      {
+        field: "allow_payment_after_deadline",
+        oldValue: ((event as any).allow_payment_after_deadline ?? false).toString(),
+        newValue: ((formData as any).allow_payment_after_deadline ?? false).toString(),
+        fieldName: "締切後もオンライン決済を許可",
+      },
+      {
+        field: "grace_period_days",
+        oldValue: (((event as any).grace_period_days ?? 0) as number).toString(),
+        newValue: ((formData as any).grace_period_days ?? "0") as string,
+        fieldName: "猶予（日）",
       },
     ];
 
@@ -141,7 +153,13 @@ export function useEventChanges({
       const fieldTypes = {
         basic: ["title", "description", "location"],
         datetime: ["date", "registration_deadline", "payment_deadline"],
-        payment: ["fee", "payment_methods", "capacity"],
+        payment: [
+          "fee",
+          "payment_methods",
+          "capacity",
+          "allow_payment_after_deadline",
+          "grace_period_days",
+        ],
       };
 
       return changes.filter((change) => fieldTypes[fieldType].includes(change.field));

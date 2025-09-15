@@ -19,7 +19,7 @@ export const STATUS_FILTER_OPTIONS: readonly StatusFilter[] = [
   "upcoming",
   "ongoing",
   "past",
-  "cancelled",
+  "canceled",
 ] as const;
 export const PAYMENT_FILTER_OPTIONS: readonly PaymentFilter[] = ["all", "free", "paid"] as const;
 
@@ -42,7 +42,7 @@ export const STATUS_FILTER_LABELS: Record<StatusFilter, string> = {
   upcoming: "開催予定",
   ongoing: "開催中",
   past: "終了済み",
-  cancelled: "キャンセル",
+  canceled: "キャンセル",
 } as const;
 
 export const PAYMENT_FILTER_LABELS: Record<PaymentFilter, string> = {

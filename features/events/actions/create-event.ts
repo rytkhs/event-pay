@@ -34,6 +34,8 @@ type FormDataFields = {
   capacity?: string;
   registration_deadline?: string;
   payment_deadline?: string;
+  allow_payment_after_deadline?: boolean;
+  grace_period_days?: number;
 };
 
 export async function createEventAction(formData: FormData): Promise<CreateEventResult> {
@@ -181,6 +183,8 @@ function buildEventData(
   capacity: number | null;
   registration_deadline: string | null;
   payment_deadline: string | null;
+  allow_payment_after_deadline: boolean;
+  grace_period_days: number;
   created_by: string;
   invite_token: string;
 } {
@@ -204,6 +208,8 @@ function buildEventData(
     payment_deadline: validatedData.payment_deadline
       ? convertDatetimeLocalToIso(validatedData.payment_deadline)
       : null,
+    allow_payment_after_deadline: Boolean(validatedData.allow_payment_after_deadline),
+    grace_period_days: Number(validatedData.grace_period_days ?? 0),
     created_by: userId,
     invite_token: inviteToken,
   };
