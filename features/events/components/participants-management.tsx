@@ -51,6 +51,7 @@ export function ParticipantsManagement({
   const { toast } = useToast();
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [addNickname, setAddNickname] = useState("");
+  const [addError, setAddError] = useState<string | null>(null);
   // const [addEmail, setAddEmail] = useState("");
   const [isAdding, setIsAdding] = useState(false);
   const [confirmOverCapacity, setConfirmOverCapacity] = useState<null | {
@@ -61,11 +62,17 @@ export function ParticipantsManagement({
   const handleOpenAdd = () => {
     setAddNickname("");
     setConfirmOverCapacity(null);
+    setAddError(null);
     setShowAddDialog(true);
   };
 
   const handleSubmitAdd = async (forceBypass = false) => {
     if (isAdding) return;
+    if (!addNickname || addNickname.trim().length === 0) {
+      setAddError("ニックネームを入力してください");
+      return;
+    }
+    setAddError(null);
     setIsAdding(true);
     try {
       const result = await adminAddAttendanceAction({
@@ -205,18 +212,29 @@ export function ParticipantsManagement({
               placeholder="ニックネーム"
               value={addNickname}
               onChange={(e) => setAddNickname(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  void handleSubmitAdd(false);
+                }
+              }}
+              required
             />
+            {addError && <div className="text-sm text-red-600">{addError}</div>}
             {/* MVPではメールは収集しない */}
             {confirmOverCapacity && (
               <div className="text-sm text-orange-700 bg-orange-50 border border-orange-200 rounded p-2">
-                定員（{confirmOverCapacity.capacity ?? "-"}）を超過します。本当に追加しますか？
+                定員（{confirmOverCapacity.capacity ?? "-"}）を超過しています（現在{" "}
+                {confirmOverCapacity.current ?? "-"} 名）。本当に追加しますか？
               </div>
             )}
           </div>
           <DialogFooter>
             {!confirmOverCapacity ? (
-              <Button onClick={() => void handleSubmitAdd(false)} disabled={isAdding}>
-                追加
+              <Button
+                onClick={() => void handleSubmitAdd(false)}
+                disabled={isAdding || !addNickname || addNickname.trim().length === 0}
+              >
+                {isAdding ? "追加中..." : "追加"}
               </Button>
             ) : (
               <>
@@ -232,7 +250,7 @@ export function ParticipantsManagement({
                   disabled={isAdding}
                   className="bg-red-600 hover:bg-red-700"
                 >
-                  定員超過で追加
+                  {isAdding ? "処理中..." : "定員超過で追加"}
                 </Button>
               </>
             )}
