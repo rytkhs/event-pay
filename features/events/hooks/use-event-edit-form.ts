@@ -83,13 +83,13 @@ const eventEditFormSchemaBase = z
       try {
         const deadlineUtc = convertDatetimeLocalToUtc(data.registration_deadline);
         const eventUtc = convertDatetimeLocalToUtc(data.date);
-        return deadlineUtc < eventUtc;
+        return deadlineUtc <= eventUtc;
       } catch {
         return false;
       }
     },
     {
-      message: "参加申込締切は開催日時より前に設定してください",
+      message: "参加申込締切は開催日時以前に設定してください",
       path: ["registration_deadline"],
     }
   )

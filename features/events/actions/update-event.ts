@@ -162,12 +162,12 @@ export async function updateEventAction(
           : null
         : (existingEvent.payment_deadline as string | null);
 
-    // 参加申込締切: registration_deadline < date
+    // 参加申込締切: registration_deadline ≤ date
     if (effectiveRegDeadlineIso) {
-      if (new Date(effectiveRegDeadlineIso) >= new Date(effectiveDateIso)) {
+      if (new Date(effectiveRegDeadlineIso) > new Date(effectiveDateIso)) {
         return createServerActionError(
           "VALIDATION_ERROR",
-          "参加申込締切は開催日時より前に設定してください"
+          "参加申込締切は開催日時以前に設定してください"
         );
       }
     }

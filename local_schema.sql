@@ -1,5 +1,5 @@
 
-\restrict lC996H0E5gTHut9t753KIv0d20RtMF3UYZDlr08acMQci5sgi18oRtyvbpgGwaW
+\restrict EYfeXrEzBXoZCrGcMYjDDaijr0NEe5BJy8pLI7qAwDqVzjo5sELIYLT8vjlQOGt
 
 
 SET statement_timeout = 0;
@@ -2237,7 +2237,7 @@ CREATE TABLE IF NOT EXISTS "public"."events" (
     CONSTRAINT "events_payment_deadline_after_registration" CHECK ((("payment_deadline" IS NULL) OR ("registration_deadline" IS NULL) OR ("payment_deadline" >= "registration_deadline"))),
     CONSTRAINT "events_payment_deadline_within_30d_after_date" CHECK ((("payment_deadline" IS NULL) OR ("payment_deadline" <= ("date" + '30 days'::interval)))),
     CONSTRAINT "events_payment_methods_check" CHECK (("array_length"("payment_methods", 1) > 0)),
-    CONSTRAINT "events_registration_deadline_before_event" CHECK ((("registration_deadline" IS NULL) OR ("registration_deadline" < "date")))
+    CONSTRAINT "events_registration_deadline_before_event" CHECK ((("registration_deadline" IS NULL) OR ("registration_deadline" <= "date")))
 );
 
 
@@ -4120,6 +4120,6 @@ ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TAB
 
 
 
-\unrestrict lC996H0E5gTHut9t753KIv0d20RtMF3UYZDlr08acMQci5sgi18oRtyvbpgGwaW
+\unrestrict EYfeXrEzBXoZCrGcMYjDDaijr0NEe5BJy8pLI7qAwDqVzjo5sELIYLT8vjlQOGt
 
 RESET ALL;

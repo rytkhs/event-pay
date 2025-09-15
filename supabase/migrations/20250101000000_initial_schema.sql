@@ -52,7 +52,7 @@ CREATE TABLE public.events (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL,
     CONSTRAINT events_date_after_creation CHECK (date > created_at),
-    CONSTRAINT events_registration_deadline_before_event CHECK (registration_deadline IS NULL OR registration_deadline < date),
+    CONSTRAINT events_registration_deadline_before_event CHECK (registration_deadline IS NULL OR registration_deadline <= date),
     CONSTRAINT events_payment_deadline_before_event CHECK (payment_deadline IS NULL OR payment_deadline < date),
     CONSTRAINT events_payment_deadline_after_registration CHECK (payment_deadline IS NULL OR registration_deadline IS NULL OR payment_deadline >= registration_deadline)
 );

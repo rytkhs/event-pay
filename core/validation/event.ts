@@ -166,12 +166,12 @@ export const createEventSchema = z
   })
   .refine(
     (data) => {
-      // 参加申込締切が開催日時より前であることを確認（date-fns-tz統一）
+      // 参加申込締切が開催日時以前であることを確認（date-fns-tz統一）
       if (data.registration_deadline && data.date) {
         try {
           const regUtcDate = convertDatetimeLocalToUtc(data.registration_deadline);
           const eventUtcDate = convertDatetimeLocalToUtc(data.date);
-          return regUtcDate < eventUtcDate;
+          return regUtcDate <= eventUtcDate;
         } catch {
           return false;
         }
@@ -179,7 +179,7 @@ export const createEventSchema = z
       return true;
     },
     {
-      message: "参加申込締切は開催日時より前に設定してください",
+      message: "参加申込締切は開催日時以前に設定してください",
       path: ["registration_deadline"],
     }
   )
@@ -354,12 +354,12 @@ export const updateEventSchema = z
   })
   .refine(
     (data) => {
-      // 参加申込締切が開催日時より前であることを確認（date-fns-tz統一）
+      // 参加申込締切が開催日時以前であることを確認（date-fns-tz統一）
       if (data.registration_deadline && data.date) {
         try {
           const regUtcDate = convertDatetimeLocalToUtc(data.registration_deadline);
           const eventUtcDate = convertDatetimeLocalToUtc(data.date);
-          return regUtcDate < eventUtcDate;
+          return regUtcDate <= eventUtcDate;
         } catch {
           return false;
         }
@@ -367,7 +367,7 @@ export const updateEventSchema = z
       return true;
     },
     {
-      message: "参加申込締切は開催日時より前に設定してください",
+      message: "参加申込締切は開催日時以前に設定してください",
       path: ["registration_deadline"],
     }
   )
