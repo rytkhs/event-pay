@@ -23,9 +23,15 @@ interface EventActionsProps {
   eventId: string;
   attendingCount?: number;
   maybeCount?: number;
+  hasPayments?: boolean;
 }
 
-export function EventActions({ eventId, attendingCount = 0, maybeCount = 0 }: EventActionsProps) {
+export function EventActions({
+  eventId,
+  attendingCount = 0,
+  maybeCount = 0,
+  hasPayments = false,
+}: EventActionsProps) {
   const router = useRouter();
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showCancelDialog, setShowCancelDialog] = useState(false);
@@ -36,7 +42,7 @@ export function EventActions({ eventId, attendingCount = 0, maybeCount = 0 }: Ev
   const [isUpdatingCash, setIsUpdatingCash] = useState(false);
   const { toast } = useToast();
 
-  const canHardDelete = attendingCount + maybeCount === 0;
+  const canHardDelete = attendingCount + maybeCount === 0 && !hasPayments;
 
   const isDisabled = !eventId || eventId === "";
 

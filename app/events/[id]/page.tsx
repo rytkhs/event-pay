@@ -110,6 +110,7 @@ export default async function EventDetailPage({ params }: EventDetailPageProps) 
               eventId={params.id}
               attendingCount={stats?.attending_count || 0}
               maybeCount={stats?.maybe_count || 0}
+              hasPayments={(paymentsData?.summary.totalPayments || 0) > 0}
             />
           </div>
 
