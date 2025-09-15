@@ -200,13 +200,15 @@ test.describe("イベント作成（E2E）", () => {
     await page.getByLabel("イベント *").fill("テストイベント");
     await page.getByLabel("開催日時 *").fill(eventDateString);
     await page.getByLabel("参加費 *").fill("0");
-    await page.getByLabel("決済締切").fill(paymentDeadlineString);
+    await page.getByLabel("オンライン決済締切").fill(paymentDeadlineString);
 
     // 他のフィールドをクリックしてバリデーションをトリガー
     await page.getByLabel("説明").click();
 
     // エラーメッセージが表示されることを確認
-    await expect(page.getByText("決済締切は開催日時より前に設定してください")).toBeVisible();
+    await expect(
+      page.getByText("オンライン決済締切は開催日時より前に設定してください")
+    ).toBeVisible();
 
     // 作成ボタンが無効化されていることを確認
     await expect(page.getByRole("button", { name: "イベントを作成" })).toBeDisabled();
@@ -227,7 +229,7 @@ test.describe("イベント作成（E2E）", () => {
     await page.getByLabel("開催日時 *").fill(eventDateString);
     await page.getByLabel("参加費 *").fill("0");
     await page.getByLabel("参加申込締切").fill(registrationDeadlineString);
-    await page.getByLabel("決済締切").fill(paymentDeadlineString);
+    await page.getByLabel("オンライン決済締切").fill(paymentDeadlineString);
 
     // 他のフィールドをクリックしてバリデーションをトリガー
     await page.getByLabel("説明").click();

@@ -174,7 +174,7 @@ export function InviteEventDetail({ event, inviteToken }: InviteEventDetailProps
 
               {event.payment_deadline && (
                 <div>
-                  <h3 className="text-sm font-medium text-gray-700">決済締切</h3>
+                  <h3 className="text-sm font-medium text-gray-700">オンライン決済締切</h3>
                   <p className="mt-1 text-sm text-gray-900 break-words">
                     {formatUtcToJstByType(event.payment_deadline, "japanese")}
                   </p>

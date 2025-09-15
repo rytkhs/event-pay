@@ -243,8 +243,19 @@ export function getDaysUntilPaymentDeadline(
   event: PaymentEligibilityEvent,
   currentTime: Date = new Date()
 ): number {
-  // 動的importではなく、実装を直接記述
-  const deadline = new Date(event.payment_deadline || event.date);
-  const diffMs = deadline.getTime() - currentTime.getTime();
-  return Math.ceil(diffMs / (1000 * 60 * 60 * 24)); // 日数計算
+  // 新仕様: 猶予ON時は final_payment_limit を基準に残日数を算出
+  const { effectivePaymentDeadline, eventDate } = deriveEffectiveDeadlines({
+    date: event.date,
+    registration_deadline: undefined,
+    payment_deadline: event.payment_deadline ?? undefined,
+  });
+  const finalPaymentLimit = deriveFinalPaymentLimit({
+    effectivePaymentDeadline,
+    eventDate,
+    allow_payment_after_deadline: event.allow_payment_after_deadline,
+    grace_period_days: event.grace_period_days,
+  } as FinalLimitOptions & { effectivePaymentDeadline: Date; eventDate: Date });
+
+  const diffMs = finalPaymentLimit.getTime() - currentTime.getTime();
+  return Math.ceil(diffMs / (1000 * 60 * 60 * 24));
 }

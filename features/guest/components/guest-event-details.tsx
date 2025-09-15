@@ -62,7 +62,7 @@ export function GuestEventDetails({ attendance }: GuestEventDetailsProps) {
           <div className="flex items-center space-x-3">
             <Clock className="h-5 w-5 text-gray-500 flex-shrink-0" />
             <div className="text-gray-900">
-              決済締切:{" "}
+              オンライン決済締切:{" "}
               <span className="font-medium">
                 {formatUtcToJstByType(event.payment_deadline, "japanese")}
               </span>

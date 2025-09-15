@@ -472,7 +472,7 @@ export function GuestManagementForm({ attendance, canModify }: GuestManagementFo
 
             {attendance.event.payment_deadline && (
               <div>
-                <h4 className="text-sm font-medium text-gray-700">決済締切</h4>
+                <h4 className="text-sm font-medium text-gray-700">オンライン決済締切</h4>
                 <p className="mt-1 text-sm text-gray-900 break-words">
                   {formatUtcToJstByType(attendance.event.payment_deadline, "japanese")}
                 </p>

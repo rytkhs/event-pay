@@ -392,7 +392,6 @@ export function EventEditForm({ event, attendeeCount, onSubmit, serverError }: E
                     <FormField
                       control={form.control}
                       name="allow_payment_after_deadline"
-                      as={undefined as never}
                       render={() => (
                         <FormItem className="flex flex-row items-start space-x-3 space-y-0">
                           <FormControl>
