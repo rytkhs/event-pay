@@ -113,7 +113,7 @@ function createProblem(code: string, options: ProblemOptions = {}): ProblemDetai
   }
 
   // ログ出力（PII除外済みの想定）
-  logger.error(`API Error: ${code}`, {
+  const logPayload = {
     tag: "api-error",
     correlation_id: correlationId,
     error_code: code,
@@ -121,7 +121,13 @@ function createProblem(code: string, options: ProblemOptions = {}): ProblemDetai
     instance: problem.instance,
     retryable: problem.retryable,
     ...options.log_context,
-  });
+  } as const;
+
+  if (status === 429) {
+    logger.warn(`API Error: ${code}`, logPayload);
+  } else {
+    logger.error(`API Error: ${code}`, logPayload);
+  }
 
   return problem;
 }
@@ -143,9 +149,9 @@ export function createProblemResponse(
     },
   });
 
-  // レート制限の場合は Retry-After ヘッダーを追加
-  if (problem.status === 429) {
-    response.headers.set("Retry-After", "60"); // デフォルト60秒
+  // レート制限の場合は Retry-After ヘッダーをデフォルト付与（必要なら呼び出し側で上書き）
+  if (problem.status === 429 && !response.headers.get("Retry-After")) {
+    response.headers.set("Retry-After", "60");
   }
 
   // 認証エラーの場合は WWW-Authenticate ヘッダーを追加

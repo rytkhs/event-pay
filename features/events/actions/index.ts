@@ -9,3 +9,5 @@ export { getEventPaymentsAction } from "./get-event-payments";
 export { validateInviteTokenAction } from "./validate-invite-token";
 // generateInviteTokenAction moved to @core/actions to resolve boundary violations
 export { exportParticipantsCsvAction } from "./export-participants-csv";
+export { cancelEventAction } from "./cancel-event";
+export { getEventStatsAction } from "./get-event-stats";

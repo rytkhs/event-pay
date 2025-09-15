@@ -2,8 +2,7 @@
 
 import { z } from "zod";
 
-import { createRateLimitStore, checkRateLimit } from "@core/rate-limit";
-import { RATE_LIMIT_CONFIG } from "@core/security";
+import { enforceRateLimit, buildKey, POLICIES } from "@core/rate-limit";
 import { SecureSupabaseClientFactory } from "@core/security/secure-client-factory.impl";
 import { AdminReason } from "@core/security/secure-client-factory.types";
 import {
@@ -75,12 +74,11 @@ export async function updateCashStatusAction(
 
     // レート制限（ユーザー単位）
     try {
-      const store = await createRateLimitStore();
-      const rl = await checkRateLimit(
-        store,
-        `payment_update_status_${user.id}`,
-        RATE_LIMIT_CONFIG.paymentStatusUpdate
-      );
+      const key = buildKey({ scope: "payment.statusUpdate", userId: user.id });
+      const rl = await enforceRateLimit({
+        keys: Array.isArray(key) ? key : [key],
+        policy: POLICIES["payment.statusUpdate"],
+      });
       if (!rl.allowed) {
         return createServerActionError(
           "RATE_LIMITED",

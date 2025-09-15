@@ -2,8 +2,7 @@
 
 import { z } from "zod";
 
-import { createRateLimitStore, checkRateLimit } from "@core/rate-limit";
-import { RATE_LIMIT_CONFIG } from "@core/security";
+import { enforceRateLimit, buildKey, POLICIES } from "@core/rate-limit";
 import { SecureSupabaseClientFactory } from "@core/security/secure-client-factory.impl";
 import { AdminReason } from "@core/security/secure-client-factory.types";
 import { getPaymentService } from "@core/services";
@@ -79,12 +78,11 @@ export async function createGuestStripeSessionAction(
 
   // 3. レート制限 (attendance 単位)
   try {
-    const store = await createRateLimitStore();
-    const rl = await checkRateLimit(
-      store,
-      `stripe_checkout_guest_${attendance.id}`,
-      RATE_LIMIT_CONFIG.stripeCheckout
-    );
+    const key = buildKey({ scope: "payment.createSession", attendanceId: attendance.id });
+    const rl = await enforceRateLimit({
+      keys: Array.isArray(key) ? key : [key],
+      policy: POLICIES["payment.createSession"],
+    });
     if (!rl.allowed) {
       return createServerActionError(
         "RATE_LIMITED",

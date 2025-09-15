@@ -4,8 +4,7 @@ import { headers } from "next/headers";
 
 import { verifyEventAccess } from "@core/auth/event-authorization";
 import { logger } from "@core/logging/app-logger";
-import { checkRateLimit, createRateLimitStore } from "@core/rate-limit";
-import { RATE_LIMIT_CONFIG } from "@core/security";
+import { enforceRateLimit, buildKey, POLICIES } from "@core/rate-limit";
 import { SecureSupabaseClientFactory } from "@core/security/secure-client-factory.impl";
 import { AdminReason } from "@core/security/secure-client-factory.types";
 import { createClient } from "@core/supabase/server";
@@ -38,15 +37,12 @@ export async function exportParticipantsCsvAction(params: unknown): Promise<{
     // 共通の認証・権限確認処理
     const { user, eventId: validatedEventId } = await verifyEventAccess(eventId);
 
-    // レートリミットストア生成
-    const store = await createRateLimitStore();
-
-    // レート制限チェック (ユーザー単位 + イベント単位)
-    const rateLimitResult = await checkRateLimit(
-      store,
-      `csv_export_${user.id}_${validatedEventId}`,
-      RATE_LIMIT_CONFIG.participantsCsvExport
-    );
+    // レート制限チェック (ユーザー単位)
+    const key = buildKey({ scope: "export.participantsCsv", userId: user.id });
+    const rateLimitResult = await enforceRateLimit({
+      keys: Array.isArray(key) ? key : [key],
+      policy: POLICIES["export.participantsCsv"],
+    });
 
     if (!rateLimitResult.allowed) {
       return {
