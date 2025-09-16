@@ -176,5 +176,5 @@ export interface EventInfo {
   id: string;
   date: string; // ISO 8601 文字列
   registration_deadline?: string | null; // ISO 8601 文字列またはnull
-  status: string;
+  canceled_at?: string | null;
 }

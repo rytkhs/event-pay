@@ -21,7 +21,7 @@ export interface Event {
   date: string;
   fee: number;
   capacity: number | null;
-  status: Database["public"]["Enums"]["event_status_enum"];
+  status: "upcoming" | "ongoing" | "past" | "canceled"; // 算出値（DBカラムではない）
   payment_methods: Database["public"]["Enums"]["payment_method_enum"][];
   registration_deadline: string | null;
   payment_deadline: string | null;
@@ -31,6 +31,7 @@ export interface Event {
   updated_at: string;
   created_by: string;
   invite_token: string | null;
+  canceled_at?: string | null;
   // 関連データ（JOINで取得される場合）
   creator_name?: string;
   attendances_count?: number;

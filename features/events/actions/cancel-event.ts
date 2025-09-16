@@ -42,10 +42,9 @@ export async function cancelEventAction(
     // イベントを中止状態に更新（invite_token を NULL 化）
     const { data: updatedRows, error: updateError } = await supabase
       .from("events")
-      .update({ status: "canceled", invite_token: null })
+      .update({ canceled_at: new Date().toISOString(), canceled_by: user.id, invite_token: null })
       .eq("id", eventId)
       .eq("created_by", user.id)
-      .neq("status", "canceled")
       .select("id");
 
     if (updateError) {

@@ -1,5 +1,5 @@
 
-\restrict cTFRJBPvbl2gJanpctiAhKcfrVV7ysAdVsy0e9RtVk7TH6wj9qEZWLK6XqezQNW
+\restrict MBpwjM0FGFoPbzWMifWr3tXCRAwWy4Q6X6kGH6oHpAYcDsTZ3E3QJBnlogAMmPk
 
 
 SET statement_timeout = 0;
@@ -81,17 +81,6 @@ CREATE TYPE "public"."attendance_status_enum" AS ENUM (
 
 
 ALTER TYPE "public"."attendance_status_enum" OWNER TO "postgres";
-
-
-CREATE TYPE "public"."event_status_enum" AS ENUM (
-    'upcoming',
-    'ongoing',
-    'past',
-    'canceled'
-);
-
-
-ALTER TYPE "public"."event_status_enum" OWNER TO "postgres";
 
 
 CREATE TYPE "public"."payment_method_enum" AS ENUM (
@@ -374,58 +363,52 @@ DECLARE
   invite_token_var TEXT;
   guest_token_var TEXT;
 BEGIN
-  -- 現在のユーザーIDを取得
   current_user_id := auth.uid();
 
-  -- リクエストヘッダーからトークンを取得（循環参照なし）
   BEGIN
     invite_token_var := current_setting('request.headers.x-invite-token', true);
   EXCEPTION WHEN OTHERS THEN
     invite_token_var := NULL;
   END;
 
-  -- ゲストトークンを安全に取得
   BEGIN
     guest_token_var := public.get_guest_token();
   EXCEPTION WHEN OTHERS THEN
     guest_token_var := NULL;
   END;
 
-  -- 1. 認証ユーザーの主催者権限（直接比較）
   IF current_user_id IS NOT NULL THEN
     IF EXISTS (
       SELECT 1 FROM events
       WHERE id = p_event_id
-      AND created_by = current_user_id
+        AND created_by = current_user_id
     ) THEN
       RETURN TRUE;
     END IF;
   END IF;
 
-  -- 2. 招待トークン権限（直接比較、循環なし）
   IF invite_token_var IS NOT NULL AND invite_token_var != '' THEN
     IF EXISTS (
       SELECT 1 FROM events
       WHERE id = p_event_id
-      AND events.invite_token = invite_token_var
-      AND status = 'upcoming'
+        AND events.invite_token = invite_token_var
+        AND events.canceled_at IS NULL
+        AND events.date > NOW()
     ) THEN
       RETURN TRUE;
     END IF;
   END IF;
 
-  -- 3. ゲストトークン権限（attendancesから直接、循環なし）
   IF guest_token_var IS NOT NULL AND guest_token_var != '' THEN
     IF EXISTS (
       SELECT 1 FROM attendances
       WHERE event_id = p_event_id
-      AND attendances.guest_token = guest_token_var
+        AND attendances.guest_token = guest_token_var
     ) THEN
       RETURN TRUE;
     END IF;
   END IF;
 
-  -- デフォルト: アクセス拒否
   RETURN FALSE;
 END;
 $$;
@@ -566,15 +549,55 @@ COMMENT ON FUNCTION "public"."extend_scheduler_lock"("p_lock_name" "text", "p_pr
 
 
 
+CREATE OR REPLACE FUNCTION "public"."find_eligible_events_basic"("p_days_after_event" integer DEFAULT 5, "p_minimum_amount" integer DEFAULT NULL::integer, "p_limit" integer DEFAULT 100, "p_user_id" "uuid" DEFAULT NULL::"uuid") RETURNS TABLE("event_id" "uuid", "title" character varying, "event_date" timestamp with time zone, "fee" integer, "created_by" "uuid", "created_at" timestamp with time zone, "paid_attendances_count" bigint, "total_stripe_sales" integer)
+    LANGUAGE "plpgsql"
+    AS $$
+BEGIN
+    RETURN QUERY
+    WITH target_events AS (
+        SELECT e.*
+          FROM public.events e
+         WHERE e.canceled_at IS NULL
+           AND NOW() >= (e.date + interval '24 hours')
+           AND e.date <= (CURRENT_DATE - p_days_after_event)
+           AND (p_user_id IS NULL OR e.created_by = p_user_id)
+    ), sales AS (
+        SELECT a.event_id, COUNT(*) AS paid_attendances_count, SUM(p.amount)::INT AS total_stripe_sales
+          FROM public.attendances a
+          JOIN public.payments p ON p.attendance_id = a.id
+         WHERE p.method = 'stripe' AND p.status = 'paid'
+         GROUP BY a.event_id
+    )
+    SELECT
+        t.id AS event_id,
+        t.title,
+        t.date AS event_date,
+        t.fee,
+        t.created_by,
+        t.created_at,
+        COALESCE(s.paid_attendances_count,0) AS paid_attendances_count,
+        COALESCE(s.total_stripe_sales,0)      AS total_stripe_sales
+      FROM target_events t
+      LEFT JOIN sales s ON s.event_id = t.id
+     WHERE COALESCE(s.total_stripe_sales,0) >= COALESCE(p_minimum_amount, public.get_min_payout_amount())
+     LIMIT p_limit;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."find_eligible_events_basic"("p_days_after_event" integer, "p_minimum_amount" integer, "p_limit" integer, "p_user_id" "uuid") OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."find_eligible_events_with_details"("p_days_after_event" integer DEFAULT 5, "p_limit" integer DEFAULT 50) RETURNS TABLE("event_id" "uuid", "title" character varying, "event_date" timestamp with time zone, "fee" integer, "created_by" "uuid", "created_at" timestamp with time zone, "paid_attendances_count" bigint, "total_stripe_sales" integer, "total_stripe_fee" integer, "platform_fee" integer, "net_payout_amount" integer, "charges_enabled" boolean, "payouts_enabled" boolean, "eligible" boolean, "ineligible_reason" "text")
     LANGUAGE "plpgsql"
     AS $$
 BEGIN
     RETURN QUERY
-    WITH unpaid_events AS (
+    WITH ended_events AS (
         SELECT e.*
         FROM public.events e
-        WHERE e.status = 'past'
+        WHERE e.canceled_at IS NULL
+          AND NOW() >= (e.date + interval '24 hours')
           AND e.date <= (current_date - p_days_after_event)
         LIMIT p_limit
     ),
@@ -585,7 +608,7 @@ BEGIN
                public.calc_total_stripe_fee(a.event_id)                        AS total_stripe_fee
         FROM public.attendances a
         JOIN public.payments p ON p.attendance_id = a.id AND p.method = 'stripe'
-        WHERE a.event_id IN (SELECT id FROM unpaid_events)
+        WHERE a.event_id IN (SELECT id FROM ended_events)
         GROUP BY a.event_id
     ),
     accounts AS (
@@ -595,38 +618,31 @@ BEGIN
                sca.payouts_enabled,
                e.id AS event_id
         FROM public.stripe_connect_accounts sca
-        JOIN unpaid_events e ON sca.user_id = e.created_by
+        JOIN ended_events e ON sca.user_id = e.created_by
     )
     SELECT
-        ue.id AS event_id,
-        ue.title,
-        ue.date AS event_date,
-        ue.fee,
-        ue.created_by,
-        ue.created_at,
-        COALESCE(s.paid_attendances_count,0),
-        COALESCE(s.total_stripe_sales,0),
-        COALESCE(s.total_stripe_fee,0),
-        0 AS platform_fee,
-        (COALESCE(s.total_stripe_sales,0) - COALESCE(s.total_stripe_fee,0)) AS net_payout_amount,
-        COALESCE(a.charges_enabled,false) AS charges_enabled,
-        COALESCE(a.payouts_enabled,false) AS payouts_enabled,
-        (
-          COALESCE(a.status,'unverified') = 'verified' AND
-          COALESCE(a.charges_enabled,false) = TRUE AND
-          COALESCE(a.payouts_enabled,false) = TRUE AND
-          (COALESCE(s.total_stripe_sales,0) - COALESCE(s.total_stripe_fee,0)) >= public.get_min_payout_amount()
-        ) AS eligible,
+        ee.id AS event_id,
+        ee.title,
+        ee.date AS event_date,
+        ee.fee,
+        ee.created_by,
+        ee.created_at,
+        COALESCE(s.paid_attendances_count,0) AS paid_attendances_count,
+        COALESCE(s.total_stripe_sales,0)     AS total_stripe_sales,
+        COALESCE(s.total_stripe_fee,0)       AS total_stripe_fee,
+        0                                    AS platform_fee,
+        COALESCE(s.total_stripe_sales,0) - COALESCE(s.total_stripe_fee,0) AS net_payout_amount,
+        a.charges_enabled,
+        a.payouts_enabled,
+        (a.status = 'verified' AND a.payouts_enabled) AS eligible,
         CASE
-            WHEN COALESCE(a.status,'unverified') <> 'verified' THEN 'Stripe Connectアカウントの認証が完了していません'
-            WHEN COALESCE(a.charges_enabled,false) = FALSE THEN 'Stripe Connectアカウントで決済受取が有効になっていません'
-            WHEN COALESCE(a.payouts_enabled,false) = FALSE THEN 'Stripe Connectアカウントで送金が有効になっていません'
-            WHEN (COALESCE(s.total_stripe_sales,0) - COALESCE(s.total_stripe_fee,0)) < public.get_min_payout_amount() THEN '最小送金額の条件を満たしていません'
-            ELSE NULL
+          WHEN a.status <> 'verified' THEN 'Stripe account not verified'
+          WHEN NOT a.payouts_enabled THEN 'Payouts not enabled'
+          ELSE NULL
         END AS ineligible_reason
-    FROM unpaid_events ue
-    LEFT JOIN sales s ON s.event_id = ue.id
-    LEFT JOIN accounts a ON a.event_id = ue.id;
+    FROM ended_events ee
+    LEFT JOIN sales s ON s.event_id = ee.id
+    LEFT JOIN accounts a ON a.event_id = ee.id;
 END;
 $$;
 
@@ -1076,6 +1092,106 @@ $$;
 ALTER FUNCTION "public"."prevent_payment_status_rollback"() OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."process_event_payout"("p_event_id" "uuid", "p_user_id" "uuid") RETURNS "uuid"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    AS $$
+DECLARE
+    payout_id UUID;
+    existing_status payout_status_enum;
+    stripe_sales INTEGER;
+    stripe_fees  INTEGER;
+    platform_fees INTEGER := 0;
+    net_amount INTEGER;
+    stripe_account VARCHAR(255);
+    lock_key BIGINT;
+BEGIN
+    IF p_event_id IS NULL OR p_user_id IS NULL THEN
+        RAISE EXCEPTION 'event_id and user_id cannot be null';
+    END IF;
+
+    lock_key := abs(hashtext(p_event_id::text));
+    PERFORM pg_advisory_xact_lock(lock_key);
+
+    -- 終了イベントの権限＆存在確認（非キャンセルかつ終了済み）
+    IF NOT EXISTS (
+        SELECT 1 FROM public.events
+        WHERE id = p_event_id
+          AND created_by = p_user_id
+          AND canceled_at IS NULL
+          AND NOW() >= (date + interval '24 hours')
+    ) THEN
+        RAISE EXCEPTION 'Event not found or not authorized: %', p_event_id;
+    END IF;
+
+    SELECT id, status INTO payout_id, existing_status
+    FROM public.settlements
+    WHERE event_id = p_event_id
+    ORDER BY created_at DESC
+    LIMIT 1;
+
+    IF payout_id IS NOT NULL THEN
+        IF existing_status = 'pending' THEN
+            RETURN payout_id;
+        ELSIF existing_status = 'failed' THEN
+            UPDATE public.settlements
+            SET status = 'pending',
+                processed_at = NULL,
+                last_error = NULL
+            WHERE id = payout_id
+            RETURNING id INTO payout_id;
+
+            RETURN payout_id;
+        ELSE
+            RAISE EXCEPTION 'Payout already exists or in progress for event_id: %', p_event_id;
+        END IF;
+    END IF;
+
+    -- Stripe Connect account (verified & payouts_enabled)
+    SELECT stripe_account_id INTO stripe_account
+      FROM public.stripe_connect_accounts
+     WHERE user_id = p_user_id
+       AND status = 'verified'
+       AND payouts_enabled = true;
+    IF stripe_account IS NULL THEN
+        RAISE EXCEPTION 'No verified Stripe Connect account for user: %', p_user_id;
+    END IF;
+
+    SELECT COALESCE(SUM(p.amount),0)::INT INTO stripe_sales
+      FROM public.payments p
+      JOIN public.attendances a ON p.attendance_id = a.id
+     WHERE a.event_id = p_event_id
+       AND p.method = 'stripe'
+       AND p.status = 'paid';
+
+    stripe_fees := public.calc_total_stripe_fee(p_event_id);
+
+    net_amount := stripe_sales - stripe_fees - platform_fees;
+
+    IF net_amount < public.get_min_payout_amount() THEN
+        RAISE EXCEPTION 'Net payout amount < minimum (%). Calculated: %', public.get_min_payout_amount(), net_amount;
+    END IF;
+
+    INSERT INTO public.settlements (
+        event_id, user_id, total_stripe_sales, total_stripe_fee,
+        platform_fee, net_payout_amount, stripe_account_id, status, transfer_group
+    ) VALUES (
+        p_event_id, p_user_id, stripe_sales, stripe_fees,
+        platform_fees, net_amount, stripe_account, 'pending',
+        'event_' || p_event_id::text || '_payout'
+    ) RETURNING id INTO payout_id;
+
+    RETURN payout_id;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."process_event_payout"("p_event_id" "uuid", "p_user_id" "uuid") OWNER TO "postgres";
+
+
+COMMENT ON FUNCTION "public"."process_event_payout"("p_event_id" "uuid", "p_user_id" "uuid") IS 'イベント送金処理（都度算出: ended）。settlements 対応・payouts_enabled のみ必須。';
+
+
+
 CREATE OR REPLACE FUNCTION "public"."register_attendance_with_payment"("p_event_id" "uuid", "p_nickname" character varying, "p_email" character varying, "p_status" "public"."attendance_status_enum", "p_guest_token" character varying, "p_payment_method" "public"."payment_method_enum" DEFAULT NULL::"public"."payment_method_enum", "p_event_fee" integer DEFAULT 0) RETURNS "uuid"
     LANGUAGE "plpgsql" SECURITY DEFINER
     AS $_$
@@ -1518,8 +1634,8 @@ CREATE OR REPLACE FUNCTION "public"."update_guest_attendance_with_payment"("p_at
     v_current_attendees INTEGER;
     v_payment_status public.payment_status_enum;
     v_payment_method public.payment_method_enum;
-    -- Added guards
-    v_event_status public.event_status_enum;
+    -- Guards (updated)
+    v_canceled_at TIMESTAMPTZ;
     v_reg_deadline TIMESTAMPTZ;
     v_event_date TIMESTAMPTZ;
   BEGIN
@@ -1532,16 +1648,16 @@ CREATE OR REPLACE FUNCTION "public"."update_guest_attendance_with_payment"("p_at
       RAISE EXCEPTION 'Attendance record not found';
     END IF;
 
-    -- イベント締切・開始・ステータスチェック (追加)
-    SELECT status, registration_deadline, date
-      INTO v_event_status, v_reg_deadline, v_event_date
+    -- イベント締切・開始・キャンセルチェック
+    SELECT canceled_at, registration_deadline, date
+      INTO v_canceled_at, v_reg_deadline, v_event_date
     FROM public.events
     WHERE id = v_event_id
     FOR SHARE;
 
-    IF v_event_status <> 'upcoming'
-      OR (v_reg_deadline IS NOT NULL AND v_reg_deadline <= NOW())
-      OR v_event_date <= NOW() THEN
+    IF (v_canceled_at IS NOT NULL)
+       OR (v_reg_deadline IS NOT NULL AND v_reg_deadline <= NOW())
+       OR v_event_date <= NOW() THEN
       RAISE EXCEPTION 'Event is closed for modification';
     END IF;
 
@@ -1561,13 +1677,11 @@ CREATE OR REPLACE FUNCTION "public"."update_guest_attendance_with_payment"("p_at
 
     -- 参加ステータスを更新
     UPDATE public.attendances
-    SET
-      status = p_status
+    SET status = p_status
     WHERE id = p_attendance_id;
 
     -- 決済レコードの処理
     IF p_status = 'attending' AND p_event_fee > 0 AND p_payment_method IS NOT NULL THEN
-      -- 既存の決済レコードを確認（ステータスも取得）
       SELECT id, status INTO v_payment_id, v_payment_status
       FROM public.payments
       WHERE attendance_id = p_attendance_id
@@ -1575,21 +1689,16 @@ CREATE OR REPLACE FUNCTION "public"."update_guest_attendance_with_payment"("p_at
       LIMIT 1;
 
       IF v_payment_id IS NOT NULL THEN
-        -- 既存の決済レコードを更新
         IF v_payment_status IN ('paid', 'received', 'completed', 'waived') THEN
-          -- 確定済み決済の属性変更は禁止（DB契約）
           RAISE EXCEPTION 'EVP_PAYMENT_FINALIZED_IMMUTABLE: Payment is finalized; cannot modify method/amount';
         ELSE
-          -- 未決済系ステータスは pending へリセット
           UPDATE public.payments
-          SET
-            method = p_payment_method,
-            amount = p_event_fee,
-            status = 'pending'
+          SET method = p_payment_method,
+              amount = p_event_fee,
+              status = 'pending'
           WHERE id = v_payment_id;
         END IF;
       ELSE
-        -- 新しい決済レコードを作成
         INSERT INTO public.payments (
           attendance_id,
           amount,
@@ -1603,7 +1712,6 @@ CREATE OR REPLACE FUNCTION "public"."update_guest_attendance_with_payment"("p_at
         );
       END IF;
     ELSIF p_status != 'attending' THEN
-      -- 既存の決済レコードを取得
       SELECT id, status, method INTO v_payment_id, v_payment_status, v_payment_method
       FROM public.payments
       WHERE attendance_id = p_attendance_id
@@ -1617,9 +1725,7 @@ CREATE OR REPLACE FUNCTION "public"."update_guest_attendance_with_payment"("p_at
           VALUES ('unpaid_payment_deleted', jsonb_build_object('attendanceId', p_attendance_id, 'paymentId', v_payment_id, 'previousStatus', v_payment_status));
         ELSIF v_payment_status IN ('paid', 'received', 'completed') THEN
           IF v_payment_method = 'cash' THEN
-            UPDATE public.payments
-            SET status = 'refunded'
-            WHERE id = v_payment_id;
+            UPDATE public.payments SET status = 'refunded' WHERE id = v_payment_id;
             INSERT INTO public.system_logs(operation_type, details)
             VALUES ('cash_refund_recorded', jsonb_build_object('attendanceId', p_attendance_id, 'paymentId', v_payment_id));
           ELSE
@@ -1772,11 +1878,12 @@ CREATE TABLE IF NOT EXISTS "public"."events" (
     "payment_deadline" timestamp with time zone,
     "payment_methods" "public"."payment_method_enum"[] NOT NULL,
     "invite_token" character varying(255),
-    "status" "public"."event_status_enum" DEFAULT 'upcoming'::"public"."event_status_enum" NOT NULL,
     "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
     "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
     "allow_payment_after_deadline" boolean DEFAULT false NOT NULL,
     "grace_period_days" smallint DEFAULT 0 NOT NULL,
+    "canceled_at" timestamp with time zone,
+    "canceled_by" "uuid",
     CONSTRAINT "events_capacity_check" CHECK ((("capacity" IS NULL) OR ("capacity" > 0))),
     CONSTRAINT "events_date_after_creation" CHECK (("date" > "created_at")),
     CONSTRAINT "events_fee_check" CHECK (("fee" >= 0)),
@@ -2276,7 +2383,19 @@ CREATE INDEX "idx_attendances_guest_token_active" ON "public"."attendances" USIN
 
 
 
+CREATE INDEX "idx_events_canceled_at" ON "public"."events" USING "btree" ("canceled_at");
+
+
+
 CREATE INDEX "idx_events_created_by" ON "public"."events" USING "btree" ("created_by");
+
+
+
+CREATE INDEX "idx_events_created_by_date" ON "public"."events" USING "btree" ("created_by", "date");
+
+
+
+CREATE INDEX "idx_events_date" ON "public"."events" USING "btree" ("date");
 
 
 
@@ -2285,10 +2404,6 @@ CREATE INDEX "idx_events_deadlines" ON "public"."events" USING "btree" ("registr
 
 
 CREATE INDEX "idx_events_invite_token" ON "public"."events" USING "btree" ("invite_token") WHERE ("invite_token" IS NOT NULL);
-
-
-
-CREATE INDEX "idx_events_status" ON "public"."events" USING "btree" ("status");
 
 
 
@@ -2490,6 +2605,11 @@ ALTER TABLE ONLY "public"."attendances"
 
 
 ALTER TABLE ONLY "public"."events"
+    ADD CONSTRAINT "events_canceled_by_fkey" FOREIGN KEY ("canceled_by") REFERENCES "public"."users"("id");
+
+
+
+ALTER TABLE ONLY "public"."events"
     ADD CONSTRAINT "events_created_by_fkey" FOREIGN KEY ("created_by") REFERENCES "public"."users"("id") ON DELETE CASCADE;
 
 
@@ -2540,6 +2660,16 @@ CREATE POLICY "Creators can view payments" ON "public"."payments" FOR SELECT TO 
    FROM ("public"."attendances" "a"
      JOIN "public"."events" "e" ON (("a"."event_id" = "e"."id")))
   WHERE (("a"."id" = "payments"."attendance_id") AND ("e"."created_by" = "auth"."uid"())))));
+
+
+
+CREATE POLICY "Guest token update payment details" ON "public"."payments" FOR UPDATE TO "authenticated", "anon" USING ((EXISTS ( SELECT 1
+   FROM ("public"."attendances" "a"
+     JOIN "public"."events" "e" ON (("a"."event_id" = "e"."id")))
+  WHERE (("a"."id" = "payments"."attendance_id") AND ("a"."guest_token" IS NOT NULL) AND (("a"."guest_token")::"text" = "public"."get_guest_token"()) AND ("e"."canceled_at" IS NULL) AND (("e"."payment_deadline" IS NULL) OR ("e"."payment_deadline" > "now"())) AND ("e"."date" > "now"()))))) WITH CHECK ((EXISTS ( SELECT 1
+   FROM ("public"."attendances" "a"
+     JOIN "public"."events" "e" ON (("a"."event_id" = "e"."id")))
+  WHERE (("a"."id" = "payments"."attendance_id") AND ("a"."guest_token" IS NOT NULL) AND (("a"."guest_token")::"text" = "public"."get_guest_token"()) AND ("e"."canceled_at" IS NULL) AND (("e"."payment_deadline" IS NULL) OR ("e"."payment_deadline" > "now"())) AND ("e"."date" > "now"())))));
 
 
 
@@ -2875,6 +3005,12 @@ GRANT ALL ON FUNCTION "public"."extend_scheduler_lock"("p_lock_name" "text", "p_
 
 
 
+GRANT ALL ON FUNCTION "public"."find_eligible_events_basic"("p_days_after_event" integer, "p_minimum_amount" integer, "p_limit" integer, "p_user_id" "uuid") TO "anon";
+GRANT ALL ON FUNCTION "public"."find_eligible_events_basic"("p_days_after_event" integer, "p_minimum_amount" integer, "p_limit" integer, "p_user_id" "uuid") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."find_eligible_events_basic"("p_days_after_event" integer, "p_minimum_amount" integer, "p_limit" integer, "p_user_id" "uuid") TO "service_role";
+
+
+
 GRANT ALL ON FUNCTION "public"."find_eligible_events_with_details"("p_days_after_event" integer, "p_limit" integer) TO "anon";
 GRANT ALL ON FUNCTION "public"."find_eligible_events_with_details"("p_days_after_event" integer, "p_limit" integer) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."find_eligible_events_with_details"("p_days_after_event" integer, "p_limit" integer) TO "service_role";
@@ -2938,6 +3074,12 @@ GRANT ALL ON FUNCTION "public"."hash_guest_token"("token" "text") TO "service_ro
 GRANT ALL ON FUNCTION "public"."prevent_payment_status_rollback"() TO "anon";
 GRANT ALL ON FUNCTION "public"."prevent_payment_status_rollback"() TO "authenticated";
 GRANT ALL ON FUNCTION "public"."prevent_payment_status_rollback"() TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."process_event_payout"("p_event_id" "uuid", "p_user_id" "uuid") TO "anon";
+GRANT ALL ON FUNCTION "public"."process_event_payout"("p_event_id" "uuid", "p_user_id" "uuid") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."process_event_payout"("p_event_id" "uuid", "p_user_id" "uuid") TO "service_role";
 
 
 
@@ -3165,6 +3307,6 @@ ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TAB
 
 
 
-\unrestrict cTFRJBPvbl2gJanpctiAhKcfrVV7ysAdVsy0e9RtVk7TH6wj9qEZWLK6XqezQNW
+\unrestrict MBpwjM0FGFoPbzWMifWr3tXCRAwWy4Q6X6kGH6oHpAYcDsTZ3E3QJBnlogAMmPk
 
 RESET ALL;

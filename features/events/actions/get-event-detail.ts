@@ -10,6 +10,7 @@ import {
   createServerActionSuccess,
   type ServerActionResult,
 } from "@core/types/server-actions";
+import { deriveEventStatus } from "@core/utils/derive-event-status";
 import { validateEventId } from "@core/validation/event-id";
 
 export async function getEventDetailAction(
@@ -44,7 +45,6 @@ export async function getEventDetailAction(
         location,
         fee,
         capacity,
-        status,
         description,
         registration_deadline,
         payment_deadline,
@@ -52,7 +52,8 @@ export async function getEventDetailAction(
         created_at,
         updated_at,
         created_by,
-        invite_token
+        invite_token,
+        canceled_at
       `
       )
       .eq("id", validation.data as string)
@@ -91,8 +92,15 @@ export async function getEventDetailAction(
       });
     }
 
+    const computedStatus = deriveEventStatus(
+      eventDetail.date,
+      (eventDetail as any).canceled_at ?? null
+    );
+
     const result: DetailType = {
       ...eventDetail,
+      // 型の都合上、statusは算出値を設定（DBカラムではない）
+      status: computedStatus as any,
       creator_name: creatorName || "Unknown User",
     };
 

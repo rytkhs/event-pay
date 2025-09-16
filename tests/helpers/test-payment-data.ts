@@ -203,7 +203,7 @@ export async function createPaidTestEvent(
     payment_methods: paymentMethods,
     registration_deadline: null,
     payment_deadline: null,
-    status: "upcoming",
+    canceled_at: null,
     invite_token: inviteToken,
     created_by: createdBy,
   };
