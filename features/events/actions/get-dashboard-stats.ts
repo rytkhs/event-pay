@@ -5,6 +5,7 @@ import { startOfMonth, endOfMonth } from "date-fns";
 import { createClient } from "@core/supabase/server";
 import { createServerActionError, type ServerActionResult } from "@core/types/server-actions";
 // import { formatUtcToJst } from "@core/utils/timezone";
+import { deriveEventStatus } from "@core/utils/derive-event-status";
 
 export interface DashboardStats {
   monthlyRevenue: number;
@@ -57,12 +58,12 @@ export async function getDashboardDataAction(): Promise<ServerActionResult<Dashb
           id,
           title,
           date,
-          status,
           fee,
           capacity,
           payment_deadline,
           registration_deadline,
-          created_at
+          created_at,
+          canceled_at
         `
         )
         .eq("created_by", user.id)
@@ -138,11 +139,13 @@ export async function getDashboardDataAction(): Promise<ServerActionResult<Dashb
         const attendances_count =
           attendances?.filter((attendance) => attendance.status === "attending").length || 0;
 
+        const computedStatus = deriveEventStatus(event.date, (event as any).canceled_at ?? null);
+
         return {
           id: event.id,
           title: event.title,
           date: event.date,
-          status: event.status,
+          status: computedStatus,
           fee: event.fee,
           attendances_count,
           capacity: event.capacity,

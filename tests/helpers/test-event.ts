@@ -26,7 +26,7 @@ export interface CreateTestEventOptions {
   description?: string;
   registration_deadline?: string | null;
   payment_deadline?: string | null;
-  status?: Database["public"]["Enums"]["event_status_enum"];
+  canceled_at?: string | null;
 }
 
 /**
@@ -73,7 +73,7 @@ export async function createTestEvent(
     description: "E2Eテスト用のイベントです",
     registration_deadline: null,
     payment_deadline: null,
-    status: "upcoming",
+    canceled_at: null,
   };
 
   const eventOptions = { ...defaultOptions, ...options };
@@ -94,7 +94,7 @@ export async function createTestEvent(
     payment_methods: eventOptions.payment_methods,
     registration_deadline: eventOptions.registration_deadline || null,
     payment_deadline: eventOptions.payment_deadline || null,
-    status: eventOptions.status,
+    canceled_at: eventOptions.canceled_at ?? null,
     invite_token: inviteToken,
     created_by: createdBy,
   };
@@ -123,7 +123,7 @@ export async function createTestEvent(
     date: createdEvent.date,
     fee: createdEvent.fee,
     capacity: createdEvent.capacity,
-    invite_token: createdEvent.invite_token!,
+    invite_token: createdEvent.invite_token,
     created_by: createdEvent.created_by,
     payment_methods: createdEvent.payment_methods,
   };

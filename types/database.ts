@@ -72,6 +72,8 @@ export type Database = {
       events: {
         Row: {
           allow_payment_after_deadline: boolean;
+          canceled_at: string | null;
+          canceled_by: string | null;
           capacity: number | null;
           created_at: string;
           created_by: string;
@@ -85,12 +87,13 @@ export type Database = {
           payment_deadline: string | null;
           payment_methods: Database["public"]["Enums"]["payment_method_enum"][];
           registration_deadline: string | null;
-          status: Database["public"]["Enums"]["event_status_enum"];
           title: string;
           updated_at: string;
         };
         Insert: {
           allow_payment_after_deadline?: boolean;
+          canceled_at?: string | null;
+          canceled_by?: string | null;
           capacity?: number | null;
           created_at?: string;
           created_by: string;
@@ -104,12 +107,13 @@ export type Database = {
           payment_deadline?: string | null;
           payment_methods: Database["public"]["Enums"]["payment_method_enum"][];
           registration_deadline?: string | null;
-          status?: Database["public"]["Enums"]["event_status_enum"];
           title: string;
           updated_at?: string;
         };
         Update: {
           allow_payment_after_deadline?: boolean;
+          canceled_at?: string | null;
+          canceled_by?: string | null;
           capacity?: number | null;
           created_at?: string;
           created_by?: string;
@@ -123,11 +127,24 @@ export type Database = {
           payment_deadline?: string | null;
           payment_methods?: Database["public"]["Enums"]["payment_method_enum"][];
           registration_deadline?: string | null;
-          status?: Database["public"]["Enums"]["event_status_enum"];
           title?: string;
           updated_at?: string;
         };
         Relationships: [
+          {
+            foreignKeyName: "events_canceled_by_fkey";
+            columns: ["canceled_by"];
+            isOneToOne: false;
+            referencedRelation: "public_profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "events_canceled_by_fkey";
+            columns: ["canceled_by"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
           {
             foreignKeyName: "events_created_by_fkey";
             columns: ["created_by"];
@@ -683,6 +700,24 @@ export type Database = {
         };
         Returns: boolean;
       };
+      find_eligible_events_basic: {
+        Args: {
+          p_days_after_event?: number;
+          p_limit?: number;
+          p_minimum_amount?: number;
+          p_user_id?: string;
+        };
+        Returns: {
+          created_at: string;
+          created_by: string;
+          event_date: string;
+          event_id: string;
+          fee: number;
+          paid_attendances_count: number;
+          title: string;
+          total_stripe_sales: number;
+        }[];
+      };
       find_eligible_events_with_details: {
         Args: { p_days_after_event?: number; p_limit?: number };
         Returns: {
@@ -794,6 +829,10 @@ export type Database = {
         Args: { token: string };
         Returns: string;
       };
+      process_event_payout: {
+        Args: { p_event_id: string; p_user_id: string };
+        Returns: string;
+      };
       register_attendance_with_payment: {
         Args: {
           p_email: string;
@@ -864,7 +903,6 @@ export type Database = {
         | "data_migration"
         | "security_investigation";
       attendance_status_enum: "attending" | "not_attending" | "maybe";
-      event_status_enum: "upcoming" | "ongoing" | "past" | "canceled";
       payment_method_enum: "stripe" | "cash";
       payment_status_enum:
         | "pending"
@@ -1023,7 +1061,6 @@ export const Constants = {
         "security_investigation",
       ],
       attendance_status_enum: ["attending", "not_attending", "maybe"],
-      event_status_enum: ["upcoming", "ongoing", "past", "canceled"],
       payment_method_enum: ["stripe", "cash"],
       payment_status_enum: [
         "pending",

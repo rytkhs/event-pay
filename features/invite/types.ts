@@ -8,7 +8,7 @@ import { Database } from "@/types/database";
 // Database型から必要な型を抽出
 export type AttendanceStatus = Database["public"]["Enums"]["attendance_status_enum"];
 export type PaymentMethod = Database["public"]["Enums"]["payment_method_enum"];
-export type EventStatus = Database["public"]["Enums"]["event_status_enum"];
+export type EventStatus = "upcoming" | "ongoing" | "past" | "canceled"; // 算出値
 
 // イベント詳細情報（core/utils/invite-token.tsから参照）
 export interface EventDetail {

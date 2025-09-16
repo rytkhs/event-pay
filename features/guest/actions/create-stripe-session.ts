@@ -11,6 +11,7 @@ import {
   createServerActionSuccess,
   type ServerActionResult,
 } from "@core/types/server-actions";
+import { deriveEventStatus } from "@core/utils/derive-event-status";
 import { validateGuestToken } from "@core/utils/guest-token";
 import { canCreateStripeSession } from "@core/validation/payment-eligibility";
 
@@ -61,13 +62,13 @@ export async function createGuestStripeSessionAction(
   // 決済許可条件の統一チェック
   const eligibilityResult = canCreateStripeSession(attendance, {
     id: event.id,
-    status: event.status,
+    status: deriveEventStatus(event.date, (event as any).canceled_at ?? null),
     fee: event.fee,
     date: event.date,
     payment_deadline: event.payment_deadline,
     // 新フィールド（存在しない場合は既定値で解釈）
-    allow_payment_after_deadline: event.allow_payment_after_deadline ?? false,
-    grace_period_days: event.grace_period_days ?? 0,
+    allow_payment_after_deadline: (event as any).allow_payment_after_deadline ?? false,
+    grace_period_days: (event as any).grace_period_days ?? 0,
   });
   if (!eligibilityResult.isEligible) {
     return createServerActionError(

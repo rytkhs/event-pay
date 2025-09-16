@@ -38,7 +38,6 @@ export interface GuestAttendanceData {
     payment_deadline: string | null;
     allow_payment_after_deadline?: boolean;
     grace_period_days?: number | null;
-    status: Database["public"]["Enums"]["event_status_enum"];
     created_by: string;
   };
   payment?: {
@@ -101,10 +100,11 @@ export async function validateGuestToken(guestToken: string): Promise<{
  * RLS形式のデータを従来形式に変換
  */
 function convertToLegacyFormat(rlsData: RLSGuestAttendanceData): GuestAttendanceData {
-  // RLS から取得した event オブジェクトをそのまま使用し、status を保持する
+  // RLS から取得した event オブジェクトをそのまま使用
+  const event = Array.isArray(rlsData.event) ? rlsData.event[0] : rlsData.event;
   return {
     ...rlsData,
-    event: rlsData.event as GuestAttendanceData["event"],
+    event: event as GuestAttendanceData["event"],
   };
 }
 

@@ -3,6 +3,7 @@
 import { createClient } from "@core/supabase/server";
 import { SortBy, SortOrder, StatusFilter, PaymentFilter } from "@core/types/events";
 import { createServerActionError, type ServerActionResult } from "@core/types/server-actions";
+import { deriveEventStatus } from "@core/utils/derive-event-status";
 import { convertJstDateToUtcRange } from "@core/utils/timezone";
 import { dateFilterSchema, type DateFilterInput } from "@core/validation/event";
 
@@ -25,17 +26,12 @@ export type DateFilter = DateFilterInput;
 // 型安全なフィルター条件の定義
 interface FilterCondition {
   field: string;
-  operator: "eq" | "gt" | "gte" | "lte";
+  operator: "eq" | "gt" | "gte" | "lte" | "neq";
   value: string | number | boolean | null;
 }
 
 interface EqualityFilter {
-  [key: string]:
-    | string
-    | number
-    | boolean
-    | null
-    | Database["public"]["Enums"]["event_status_enum"];
+  [key: string]: string | number | boolean | null | "upcoming" | "ongoing" | "past" | "canceled";
 }
 
 type GetEventsOptions = {
@@ -141,8 +137,22 @@ export async function getEventsAction(options: GetEventsOptions = {}): Promise<G
 
     const conditionFilters: FilterCondition[] = [];
 
-    if (statusFilter !== "all") {
-      equalityFilters.status = statusFilter;
+    // ステータスフィルター（都度算出）
+    const nowIso = new Date().toISOString();
+    const thresholdIso = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+
+    if (statusFilter === "upcoming") {
+      conditionFilters.push({ field: "canceled_at", operator: "eq", value: null });
+      conditionFilters.push({ field: "date", operator: "gt", value: nowIso });
+    } else if (statusFilter === "ongoing") {
+      conditionFilters.push({ field: "canceled_at", operator: "eq", value: null });
+      conditionFilters.push({ field: "date", operator: "lte", value: nowIso });
+      conditionFilters.push({ field: "date", operator: "gt", value: thresholdIso });
+    } else if (statusFilter === "past") {
+      conditionFilters.push({ field: "canceled_at", operator: "eq", value: null });
+      conditionFilters.push({ field: "date", operator: "lte", value: thresholdIso });
+    } else if (statusFilter === "canceled") {
+      conditionFilters.push({ field: "canceled_at", operator: "neq", value: null });
     }
 
     if (paymentFilter !== "all") {
@@ -183,7 +193,11 @@ export async function getEventsAction(options: GetEventsOptions = {}): Promise<G
 
       // 等価フィルターを適用
       Object.entries(equalityFilters).forEach(([field, value]) => {
-        result = result.eq(field, value);
+        if (value === null) {
+          result = result.is(field, null);
+        } else {
+          result = result.eq(field, value);
+        }
       });
 
       // 条件フィルターを適用
@@ -199,7 +213,18 @@ export async function getEventsAction(options: GetEventsOptions = {}): Promise<G
             result = result.lte(field, value);
             break;
           case "eq":
-            result = result.eq(field, value);
+            if (value === null) {
+              result = result.is(field, null);
+            } else {
+              result = result.eq(field, value);
+            }
+            break;
+          case "neq":
+            if (value === null) {
+              result = result.not(field, "is", null);
+            } else {
+              result = result.neq(field, value);
+            }
             break;
           default:
             // TypeScriptの型チェックにより到達不可能
@@ -221,9 +246,9 @@ export async function getEventsAction(options: GetEventsOptions = {}): Promise<G
       location,
       fee,
       capacity,
-      status,
       created_by,
       created_at,
+      canceled_at,
       public_profiles!events_created_by_fkey(name),
       attendances(count)
     `)
@@ -267,6 +292,7 @@ export async function getEventsAction(options: GetEventsOptions = {}): Promise<G
     // JOINで取得した作成者名を使用（N+1問題を解決）
     let eventsData = (events || []).map((event: EventWithAttendancesCount) => {
       const creator_name = event.public_profiles?.name || "不明";
+      const computedStatus = deriveEventStatus(event.date, (event as any).canceled_at ?? null);
 
       return {
         id: event.id,
@@ -275,7 +301,7 @@ export async function getEventsAction(options: GetEventsOptions = {}): Promise<G
         location: event.location || "",
         fee: event.fee,
         capacity: event.capacity || 0,
-        status: event.status as Database["public"]["Enums"]["event_status_enum"],
+        status: computedStatus,
         creator_name,
         attendances_count: event.attendances?.count || 0,
         created_at: event.created_at,

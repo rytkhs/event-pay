@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 
 import { useRouter } from "next/navigation";
 
@@ -38,6 +38,7 @@ export function EventActions({
   const [isDeleting, setIsDeleting] = useState(false);
   const [isCanceling, setIsCanceling] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const deleteErrorRef = useRef<HTMLDivElement | null>(null);
   const [cancelMessage, setCancelMessage] = useState<string>("");
   const [isUpdatingCash, setIsUpdatingCash] = useState(false);
   const { toast } = useToast();
@@ -82,6 +83,14 @@ export function EventActions({
       setIsDeleting(false);
     }
   };
+
+  // 削除エラー発生時にダイアログ内のエラーへスクロール＆フォーカス
+  useEffect(() => {
+    if (showDeleteDialog && deleteError && deleteErrorRef.current) {
+      deleteErrorRef.current.focus({ preventScroll: true });
+      deleteErrorRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  }, [showDeleteDialog, deleteError]);
 
   const handleDeleteCancel = () => {
     setShowDeleteDialog(false);
@@ -184,7 +193,17 @@ export function EventActions({
             </DialogDescription>
           </DialogHeader>
 
-          {deleteError && <div className="text-red-600 text-sm">{deleteError}</div>}
+          {deleteError && (
+            <div
+              className="text-red-600 text-sm"
+              role="alert"
+              aria-live="assertive"
+              ref={deleteErrorRef}
+              tabIndex={-1}
+            >
+              {deleteError}
+            </div>
+          )}
 
           <DialogFooter>
             <button

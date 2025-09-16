@@ -114,7 +114,7 @@ export class TestDataManager {
       date: new Date(FIXED_TIME.getTime() + 48 * 60 * 60 * 1000).toISOString(), // +2days after created_at
       registration_deadline: new Date(FIXED_TIME.getTime() + 24 * 60 * 60 * 1000).toISOString(), // +1day
       payment_methods: ["stripe"],
-      status: "upcoming",
+      canceled_at: null,
       created_at: FIXED_TIME.toISOString(),
       updated_at: FIXED_TIME.toISOString(),
     };
@@ -225,7 +225,7 @@ export class TestDataManager {
     payment_deadline?: string | null;
     allow_payment_after_deadline?: boolean;
     grace_period_days?: number;
-    status?: Database["public"]["Enums"]["event_status_enum"]; // 必要に応じて状態も変更
+    status?: "upcoming" | "ongoing" | "past" | "canceled"; // 必要に応じて状態も変更
   }) {
     const update: Partial<Database["public"]["Tables"]["events"]["Update"]> = {
       payment_deadline: options.payment_deadline ?? null,
@@ -236,9 +236,7 @@ export class TestDataManager {
       grace_period_days: options.grace_period_days ?? 0,
       updated_at: new Date().toISOString(),
     };
-    if (options.status) {
-      (update as any).status = options.status;
-    }
+    // status は廃止。必要であれば canceled_at を直接設定する。
 
     // 既存の event を取得して registration_deadline と date を把握
     const { data: eventRow, error: fetchErr } = await supabaseAdmin

@@ -2,6 +2,21 @@
 
 import { useState } from "react";
 
+// アイコンインポート
+import {
+  Calendar,
+  MapPin,
+  Users,
+  DollarSign,
+  Clock,
+  CreditCard,
+  CheckCircle,
+  XCircle,
+  AlertCircle,
+  Calendar as CalendarIcon,
+  Star,
+} from "lucide-react";
+
 import { PAYMENT_METHOD_LABELS } from "@core/constants/payment-methods";
 import { EVENT_STATUS_LABELS } from "@core/types/enums";
 import { EventDetail } from "@core/utils/invite-token";
@@ -9,8 +24,9 @@ import { sanitizeEventDescription, sanitizeForEventPay } from "@core/utils/sanit
 import { formatUtcToJstByType } from "@core/utils/timezone";
 import { type ParticipationFormData } from "@core/validation/participation";
 
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 import {
   registerParticipationAction,
@@ -37,6 +53,35 @@ export function InviteEventDetail({ event, inviteToken }: InviteEventDetailProps
 
   const getStatusText = (status: string): string => {
     return EVENT_STATUS_LABELS[status as keyof typeof EVENT_STATUS_LABELS] ?? status;
+  };
+
+  const getStatusBadgeVariant = (status: string): "default" | "secondary" | "destructive" => {
+    switch (status) {
+      case "upcoming":
+        return "default";
+      case "ongoing":
+        return "secondary";
+      case "completed":
+      case "cancelled":
+        return "destructive";
+      default:
+        return "secondary";
+    }
+  };
+
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case "upcoming":
+        return <CheckCircle className="h-4 w-4" />;
+      case "ongoing":
+        return <Star className="h-4 w-4" />;
+      case "completed":
+        return <CheckCircle className="h-4 w-4" />;
+      case "cancelled":
+        return <XCircle className="h-4 w-4" />;
+      default:
+        return <AlertCircle className="h-4 w-4" />;
+    }
   };
 
   // 定員状況の確認
@@ -73,11 +118,12 @@ export function InviteEventDetail({ event, inviteToken }: InviteEventDetailProps
         setRegistrationData(result.data);
         setShowForm(false);
       } else {
-        // エラー時はエラーメッセージを表示
-        setError(result.error);
+        // エラーはフォーム側で処理するためスローして委譲
+        throw { code: result.code ?? "UNKNOWN_ERROR", message: result.error };
       }
-    } catch (_error) {
-      setError("参加申し込み中にエラーが発生しました");
+    } catch (err) {
+      // 親では握りつぶさずフォーム側のエラーハンドラに委譲
+      throw err;
     } finally {
       setIsSubmitting(false);
     }
@@ -92,147 +138,266 @@ export function InviteEventDetail({ event, inviteToken }: InviteEventDetailProps
     <div className="space-y-4 sm:space-y-6">
       {/* エラーメッセージ */}
       {error && (
-        <Card className="p-3 sm:p-4 bg-red-50 border-red-200">
-          <div className="text-sm text-red-800">
-            <strong>エラー:</strong> {error}
+        <Card className="p-4 sm:p-5 bg-red-50 border-red-200 shadow-md">
+          <div className="flex items-start space-x-3">
+            <AlertCircle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
+            <div>
+              <h4 className="text-sm font-medium text-red-800 mb-1">エラーが発生しました</h4>
+              <p className="text-sm text-red-700">{error}</p>
+            </div>
           </div>
         </Card>
       )}
 
-      {/* イベント詳細カード */}
-      <Card className="p-4 sm:p-6">
-        <div className="space-y-4 sm:space-y-6">
-          <div>
-            <h2 className="text-xl sm:text-2xl font-bold text-gray-900 break-words">
-              {sanitizeForEventPay(event.title)}
-            </h2>
-            <div className="mt-2 text-sm text-gray-600">
-              ステータス: <span className="font-medium">{getStatusText(event.status)}</span>
+      {/* イベントタイトル＆ステータスカード */}
+      <Card className="overflow-hidden shadow-lg">
+        <div className="bg-gradient-to-r from-blue-600 via-blue-700 to-indigo-700 px-6 py-8 text-white">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div className="flex-1">
+              <h2 className="text-2xl sm:text-3xl font-bold break-words mb-2">
+                {sanitizeForEventPay(event.title)}
+              </h2>
+              <div className="flex items-center gap-2">
+                {getStatusIcon(event.status)}
+                <Badge variant={getStatusBadgeVariant(event.status)} className="text-sm">
+                  {getStatusText(event.status)}
+                </Badge>
+              </div>
             </div>
+            {event.fee > 0 && (
+              <div className="bg-white/10 backdrop-blur-sm rounded-lg px-4 py-3 text-center">
+                <div className="flex items-center justify-center gap-1 text-sm text-blue-100">
+                  <DollarSign className="h-4 w-4" />
+                  参加費
+                </div>
+                <div className="text-2xl font-bold">{formatCurrency(event.fee)}</div>
+              </div>
+            )}
           </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
-            <div className="space-y-3 sm:space-y-4">
-              <div>
-                <h3 className="text-sm font-medium text-gray-700">開催日</h3>
-                <p className="mt-1 text-sm text-gray-900 break-words">
-                  {formatUtcToJstByType(event.date, "japanese")}
-                </p>
-              </div>
-
-              <div>
-                <h3 className="text-sm font-medium text-gray-700">開催場所</h3>
-                <p className="mt-1 text-sm text-gray-900 break-words">
-                  {sanitizeForEventPay(event.location ?? "未定")}
-                </p>
-              </div>
-
-              <div>
-                <h3 className="text-sm font-medium text-gray-700">参加費</h3>
-                <p className="mt-1 text-sm text-gray-900 font-semibold">
-                  {formatCurrency(event.fee)}
-                </p>
-              </div>
-
-              <div>
-                <h3 className="text-sm font-medium text-gray-700">定員</h3>
-                <p className="mt-1 text-sm text-gray-900">
-                  {event.capacity === null ? (
-                    "制限なし"
-                  ) : event.capacity === 0 ? (
-                    "0人（募集停止）"
-                  ) : event.capacity < 0 ? (
-                    "無効な定員"
-                  ) : (
-                    <>
-                      {event.attendances_count}/{event.capacity}人
-                      {isCapacityReached && (
-                        <span className="ml-2 text-red-600 font-medium block sm:inline">
-                          （満員）
-                        </span>
-                      )}
-                    </>
-                  )}
-                </p>
-              </div>
-            </div>
-
-            <div className="space-y-3 sm:space-y-4">
-              {event.registration_deadline && (
-                <div>
-                  <h3 className="text-sm font-medium text-gray-700">申込締切</h3>
-                  <p className="mt-1 text-sm text-gray-900 break-words">
-                    {formatUtcToJstByType(event.registration_deadline, "japanese")}
-                    {isRegistrationDeadlinePassed && (
-                      <span className="ml-2 text-red-600 font-medium block sm:inline">
-                        （締切済み）
-                      </span>
-                    )}
-                  </p>
-                </div>
-              )}
-
-              {event.payment_deadline && (
-                <div>
-                  <h3 className="text-sm font-medium text-gray-700">オンライン決済締切</h3>
-                  <p className="mt-1 text-sm text-gray-900 break-words">
-                    {formatUtcToJstByType(event.payment_deadline, "japanese")}
-                  </p>
-                </div>
-              )}
-
-              {event.fee > 0 && (
-                <div>
-                  <h3 className="text-sm font-medium text-gray-700">決済方法</h3>
-                  <p className="mt-1 text-sm text-gray-900">
-                    {event.payment_methods
-                      .map((method) => PAYMENT_METHOD_LABELS[method])
-                      .join(", ")}
-                  </p>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {event.description && (
-            <div>
-              <h3 className="text-sm font-medium text-gray-700">詳細説明</h3>
-              <p className="mt-1 text-sm text-gray-900 whitespace-pre-wrap break-words">
-                {sanitizeEventDescription(event.description)}
-              </p>
-            </div>
-          )}
         </div>
       </Card>
 
-      {/* 参加申し込みボタン */}
-      <div className="text-center">
-        {canRegister ? (
-          <Button
-            onClick={() => setShowForm(true)}
-            disabled={isSubmitting}
-            className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white px-6 sm:px-8 py-3 sm:py-3 text-base sm:text-lg font-medium h-12 sm:h-auto"
-            size="lg"
-          >
-            {isSubmitting ? "処理中..." : "参加申し込みをする"}
-          </Button>
-        ) : (
-          <div className="space-y-3">
-            <Button
-              disabled
-              className="w-full sm:w-auto px-6 sm:px-8 py-3 text-base sm:text-lg h-12 sm:h-auto"
-              size="lg"
-            >
-              参加申し込み不可
-            </Button>
-            <div className="text-sm text-red-600 space-y-1">
-              {isCapacityReached && <p>定員に達しています</p>}
-              {isRegistrationDeadlinePassed && <p>申込期限が過ぎています</p>}
-              {event.status !== "upcoming" && <p>このイベントは申し込みを受け付けていません</p>}
+      {/* イベント基本情報カード */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* 開催情報 */}
+        <Card className="shadow-md hover:shadow-lg transition-shadow duration-200">
+          <CardHeader className="pb-4">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Calendar className="h-5 w-5 text-blue-600" />
+              開催情報
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-start gap-3">
+              <CalendarIcon className="h-5 w-5 text-gray-500 mt-0.5 flex-shrink-0" />
+              <div className="flex-1">
+                <div className="text-sm text-gray-600">開催日時</div>
+                <div className="font-medium text-gray-900 break-words">
+                  {formatUtcToJstByType(event.date, "japanese")}
+                </div>
+              </div>
             </div>
-          </div>
-        )}
+
+            <div className="flex items-start gap-3">
+              <MapPin className="h-5 w-5 text-gray-500 mt-0.5 flex-shrink-0" />
+              <div className="flex-1">
+                <div className="text-sm text-gray-600">開催場所</div>
+                <div className="font-medium text-gray-900 break-words">
+                  {sanitizeForEventPay(event.location ?? "未定")}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-start gap-3">
+              <Users className="h-5 w-5 text-gray-500 mt-0.5 flex-shrink-0" />
+              <div className="flex-1">
+                <div className="text-sm text-gray-600">定員</div>
+                <div className="font-medium text-gray-900">
+                  {event.capacity === null ? (
+                    <span className="text-green-600">制限なし</span>
+                  ) : event.capacity === 0 ? (
+                    <span className="text-red-600">募集停止</span>
+                  ) : event.capacity < 0 ? (
+                    <span className="text-red-600">無効な定員</span>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <span>
+                        {event.attendances_count}/{event.capacity}人
+                      </span>
+                      {isCapacityReached ? (
+                        <Badge variant="destructive" className="text-xs">
+                          満員
+                        </Badge>
+                      ) : (
+                        <Badge variant="secondary" className="text-xs">
+                          募集中
+                        </Badge>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* 申込・決済情報 */}
+        <Card className="shadow-md hover:shadow-lg transition-shadow duration-200">
+          <CardHeader className="pb-4">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Clock className="h-5 w-5 text-blue-600" />
+              申込・決済情報
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {event.registration_deadline && (
+              <div className="flex items-start gap-3">
+                <Clock className="h-5 w-5 text-gray-500 mt-0.5 flex-shrink-0" />
+                <div className="flex-1">
+                  <div className="text-sm text-gray-600">申込締切</div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium text-gray-900 break-words">
+                      {formatUtcToJstByType(event.registration_deadline, "japanese")}
+                    </span>
+                    {isRegistrationDeadlinePassed && (
+                      <Badge variant="destructive" className="text-xs">
+                        締切済み
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {event.payment_deadline && (
+              <div className="flex items-start gap-3">
+                <CreditCard className="h-5 w-5 text-gray-500 mt-0.5 flex-shrink-0" />
+                <div className="flex-1">
+                  <div className="text-sm text-gray-600">オンライン決済締切</div>
+                  <div className="font-medium text-gray-900 break-words">
+                    {formatUtcToJstByType(event.payment_deadline, "japanese")}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {event.fee > 0 && (
+              <div className="flex items-start gap-3">
+                <CreditCard className="h-5 w-5 text-gray-500 mt-0.5 flex-shrink-0" />
+                <div className="flex-1">
+                  <div className="text-sm text-gray-600">決済方法</div>
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    {event.payment_methods.map((method) => (
+                      <Badge key={method} variant="outline" className="text-xs">
+                        {PAYMENT_METHOD_LABELS[method]}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {event.fee === 0 && (
+              <div className="flex items-start gap-3">
+                <CheckCircle className="h-5 w-5 text-green-500 mt-0.5 flex-shrink-0" />
+                <div className="flex-1">
+                  <div className="text-sm text-gray-600">参加費</div>
+                  <div className="font-medium text-green-600">無料</div>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
+
+      {/* イベント詳細説明 */}
+      {event.description && (
+        <Card className="shadow-md">
+          <CardHeader>
+            <CardTitle className="text-lg">イベント詳細</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="prose prose-sm max-w-none text-gray-700 whitespace-pre-wrap break-words">
+              {sanitizeEventDescription(event.description)}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* 参加申し込みCTAセクション */}
+      <Card className="border-2 border-blue-100 bg-gradient-to-br from-blue-50 to-indigo-50 shadow-lg">
+        <CardContent className="pt-6">
+          <div className="text-center space-y-4">
+            {canRegister ? (
+              <>
+                <div className="space-y-2">
+                  <h3 className="text-xl font-bold text-gray-900">参加申し込み</h3>
+                  <p className="text-sm text-gray-600">下のボタンから参加申し込みを開始できます</p>
+                </div>
+                <Button
+                  onClick={() => setShowForm(true)}
+                  disabled={isSubmitting}
+                  className="w-full sm:w-auto bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-8 py-4 text-lg font-semibold shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 min-w-[200px]"
+                  size="lg"
+                >
+                  {isSubmitting ? (
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      処理中...
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <CheckCircle className="h-5 w-5" />
+                      参加申し込みをする
+                    </div>
+                  )}
+                </Button>
+                <div className="text-xs text-gray-500">✓ 簡単な情報入力だけで申し込み完了</div>
+              </>
+            ) : (
+              <>
+                <div className="space-y-2">
+                  <h3 className="text-xl font-bold text-gray-700">参加申し込み受付終了</h3>
+                  <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                    <div className="flex items-center justify-center gap-2 mb-3">
+                      <XCircle className="h-6 w-6 text-red-500" />
+                      <span className="font-medium text-red-800">申し込みできません</span>
+                    </div>
+                    <div className="text-sm text-red-700 space-y-1">
+                      {isCapacityReached && (
+                        <div className="flex items-center gap-2">
+                          <Users className="h-4 w-4" />
+                          <span>定員に達しています</span>
+                        </div>
+                      )}
+                      {isRegistrationDeadlinePassed && (
+                        <div className="flex items-center gap-2">
+                          <Clock className="h-4 w-4" />
+                          <span>申込期限が過ぎています</span>
+                        </div>
+                      )}
+                      {event.status !== "upcoming" && (
+                        <div className="flex items-center gap-2">
+                          <AlertCircle className="h-4 w-4" />
+                          <span>このイベントは申し込みを受け付けていません</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                <Button
+                  disabled
+                  variant="secondary"
+                  size="lg"
+                  className="w-full sm:w-auto px-8 py-4 text-lg min-w-[200px] opacity-60"
+                >
+                  参加申し込み不可
+                </Button>
+              </>
+            )}
+          </div>
+        </CardContent>
+      </Card>
 
       {/* 参加申し込みフォーム */}
       {showForm && (

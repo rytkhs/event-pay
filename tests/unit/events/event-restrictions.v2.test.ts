@@ -22,7 +22,7 @@ function createEvent(
     payment_methods: [],
     registration_deadline: null,
     payment_deadline: null,
-    status: "upcoming" as Database["public"]["Enums"]["event_status_enum"],
+    canceled_at: null,
     invite_token: "tok",
     created_by: "user_1",
     created_at: new Date().toISOString(),

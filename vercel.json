@@ -1,10 +1,6 @@
 {
   "crons": [
     {
-      "path": "/api/cron/update-event-status",
-      "schedule": "0 * * * *"
-    },
-    {
       "path": "/api/cron/monitor-platform-balance",
       "schedule": "0 9 * * *"
     }

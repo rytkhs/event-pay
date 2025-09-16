@@ -3,6 +3,7 @@ import { generateRandomBytes, toBase64UrlSafe } from "@core/security/crypto";
 import { SecureSupabaseClientFactory } from "@core/security/secure-client-factory.impl";
 import { AdminReason } from "@core/security/secure-client-factory.types";
 import { createClient } from "@core/supabase/server";
+import { deriveEventStatus } from "@core/utils/derive-event-status";
 
 import type { Database } from "@/types/database";
 
@@ -43,7 +44,7 @@ export interface EventDetail {
   payment_methods: Database["public"]["Enums"]["payment_method_enum"][];
   registration_deadline: string | null;
   payment_deadline: string | null;
-  status: Database["public"]["Enums"]["event_status_enum"];
+  status: "upcoming" | "ongoing" | "past" | "canceled";
   invite_token: string;
   attendances_count: number;
 }
@@ -113,8 +114,8 @@ export async function validateInviteToken(token: string): Promise<InviteValidati
         payment_methods,
         registration_deadline,
         payment_deadline,
-        status,
-        invite_token
+        invite_token,
+        canceled_at
       `
       )
       .eq("invite_token", token)
@@ -164,13 +165,15 @@ export async function validateInviteToken(token: string): Promise<InviteValidati
 
     const actualAttendancesCount = attendances_count || 0;
 
+    const computedStatus = deriveEventStatus(event.date, (event as any).canceled_at ?? null);
     const eventDetail: EventDetail = {
       ...(event as any),
+      status: computedStatus as any,
       attendances_count: actualAttendancesCount,
     };
 
     // イベントがキャンセルされているか確認
-    if (event.status === "canceled") {
+    if ((event as any).canceled_at) {
       return {
         isValid: true,
         event: eventDetail,
@@ -181,7 +184,7 @@ export async function validateInviteToken(token: string): Promise<InviteValidati
     }
 
     // イベントが終了しているか確認
-    if (event.status === "past") {
+    if (computedStatus === "past") {
       return {
         isValid: true,
         event: eventDetail,

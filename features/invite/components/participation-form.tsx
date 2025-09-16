@@ -1,8 +1,8 @@
 "use client";
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, CheckCircle, XCircle } from "lucide-react";
 import { useForm } from "react-hook-form";
 
 import { PAYMENT_METHOD_LABELS } from "@core/constants/payment-methods";
@@ -46,6 +46,7 @@ export function ParticipationForm({
   const [internalIsSubmitting, setInternalIsSubmitting] = useState(false);
   const isSubmitting = externalIsSubmitting || internalIsSubmitting;
   const { handleError, isError, error, clearError } = useParticipationErrorHandler();
+  const errorRef = useRef<HTMLDivElement | null>(null);
 
   // 外部isSubmittingがfalseになったら内部状態もリセット（競合状態の解決）
   useEffect(() => {
@@ -59,6 +60,15 @@ export function ParticipationForm({
   const errorId = "participation-error";
   const attendanceGroupId = "attendance-status-group";
   const paymentGroupId = "payment-method-group";
+
+  // エラー発生時にエラー領域へスクロール＆フォーカス
+  useEffect(() => {
+    if (isError && errorRef.current) {
+      // フォーカスしてからスムーズスクロール
+      errorRef.current.focus({ preventScroll: true });
+      errorRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  }, [isError]);
 
   // スキーマのメモ化（毎レンダーでの再生成を防止）
   const validationSchema = useMemo(() => createParticipationFormSchema(event.fee), [event.fee]);
@@ -117,24 +127,27 @@ export function ParticipationForm({
 
   return (
     <ParticipationErrorBoundary>
-      <Card className="p-4 sm:p-6">
-        <div className="space-y-4 sm:space-y-6">
+      <Card className="shadow-lg border-2 border-blue-100 bg-gradient-to-b from-white to-blue-50/30">
+        <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-4 -m-px rounded-t-lg">
           <div>
-            <h3 id={`${formId}-title`} className="text-lg sm:text-xl font-semibold text-gray-900">
-              参加申し込み
+            <h3 id={`${formId}-title`} className="text-xl font-bold text-white">
+              参加申し込みフォーム
             </h3>
-            <p id={`${formId}-description`} className="text-sm text-gray-600 mt-1">
+            <p id={`${formId}-description`} className="text-blue-100 text-sm mt-1">
               以下の情報を入力して参加申し込みを完了してください
             </p>
           </div>
-
+        </div>
+        <div className="p-6 space-y-6">
           {/* エラー表示 */}
           {isError && error && (
             <Card
               className="p-3 sm:p-4 border-red-200 bg-red-50"
               role="alert"
-              aria-live="polite"
+              aria-live="assertive"
               id={errorId}
+              ref={errorRef}
+              tabIndex={-1}
             >
               <div className="flex items-start space-x-2 sm:space-x-3">
                 <AlertTriangle
@@ -438,11 +451,11 @@ export function ParticipationForm({
               )}
 
               {/* フォームボタン */}
-              <div className="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-4 pt-4">
+              <div className="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-4 pt-6">
                 <Button
                   type="submit"
                   disabled={isSubmitting || !form.formState.isValid}
-                  className="w-full sm:flex-1 bg-blue-600 hover:bg-blue-700 text-white h-12 sm:h-10 text-base sm:text-sm font-medium focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                  className="w-full sm:flex-1 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white h-12 text-base font-semibold shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
                   aria-describedby={
                     isSubmitting
                       ? "submit-status"
@@ -451,7 +464,17 @@ export function ParticipationForm({
                         : undefined
                   }
                 >
-                  {isSubmitting ? "申し込み中..." : "参加申し込みを完了する"}
+                  {isSubmitting ? (
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      申し込み中...
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <CheckCircle className="h-5 w-5" />
+                      参加申し込みを完了する
+                    </div>
+                  )}
                   {isSubmitting && (
                     <span id="submit-status" className="sr-only" aria-live="polite">
                       申し込みを処理中です。しばらくお待ちください。
@@ -468,9 +491,12 @@ export function ParticipationForm({
                   variant="outline"
                   onClick={onCancel}
                   disabled={isSubmitting}
-                  className="w-full sm:flex-1 h-12 sm:h-10 text-base sm:text-sm focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                  className="w-full sm:flex-1 h-12 text-base font-medium border-2 hover:bg-gray-50 transition-colors focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
                 >
-                  キャンセル
+                  <div className="flex items-center gap-2">
+                    <XCircle className="h-4 w-4" />
+                    キャンセル
+                  </div>
                 </Button>
               </div>
             </form>

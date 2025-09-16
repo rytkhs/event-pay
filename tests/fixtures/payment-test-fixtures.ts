@@ -207,7 +207,9 @@ export const webhookEventFixtures = {
       ...mockPaymentIntent,
       id: "pi_test_completed",
       status: "succeeded",
+      amount: 1500,
       amount_received: 1500,
+      currency: "jpy",
       application_fee_amount: 150,
       on_behalf_of: "acct_1RwIFbCZwTLGDVBd",
       transfer_data: {

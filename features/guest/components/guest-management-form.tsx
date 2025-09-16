@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 
 import { useRouter } from "next/navigation";
 
@@ -10,6 +10,7 @@ import { PAYMENT_METHOD_LABELS } from "@core/constants/payment-methods";
 import { useToast } from "@core/contexts/toast-context";
 import { useErrorHandler } from "@core/hooks/use-error-handler";
 import { ATTENDANCE_STATUS_LABELS } from "@core/types/enums";
+import { deriveEventStatus } from "@core/utils/derive-event-status";
 import { type GuestAttendanceData } from "@core/utils/guest-token";
 import { sanitizeForEventPay } from "@core/utils/sanitize";
 import { formatUtcToJstByType } from "@core/utils/timezone";
@@ -44,9 +45,18 @@ export function GuestManagementForm({ attendance, canModify }: GuestManagementFo
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+  const errorAlertRef = useRef<HTMLDivElement | null>(null);
 
   // 再決済ボタン表示条件
-  const canRepayResult = canGuestRepay(attendance, attendance.event);
+  const canRepayResult = canGuestRepay(attendance, {
+    id: attendance.event.id,
+    status: deriveEventStatus(attendance.event.date, null),
+    fee: attendance.event.fee,
+    date: attendance.event.date,
+    payment_deadline: attendance.event.payment_deadline,
+    allow_payment_after_deadline: attendance.event.allow_payment_after_deadline ?? false,
+    grace_period_days: attendance.event.grace_period_days ?? 0,
+  });
   const canRepay = canRepayResult.isEligible;
 
   // 参加ステータスの日本語表示
@@ -108,6 +118,14 @@ export function GuestManagementForm({ attendance, canModify }: GuestManagementFo
       setIsConfirmOpen(false);
     }
   };
+
+  // エラー発生時にエラー領域へスクロール＆フォーカス
+  useEffect(() => {
+    if (error && errorAlertRef.current) {
+      errorAlertRef.current.focus({ preventScroll: true });
+      errorAlertRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  }, [error]);
 
   // 送信前確認モーダルを開く
   const handleOpenConfirm = (e: React.FormEvent) => {
@@ -174,7 +192,13 @@ export function GuestManagementForm({ attendance, canModify }: GuestManagementFo
 
               {/* エラー・成功メッセージ */}
               {error && (
-                <Alert variant="destructive" role="alert" aria-live="polite">
+                <Alert
+                  variant="destructive"
+                  role="alert"
+                  aria-live="assertive"
+                  ref={errorAlertRef}
+                  tabIndex={-1}
+                >
                   <AlertCircle className="h-4 w-4" aria-hidden="true" />
                   <AlertDescription>
                     <span className="sr-only">エラー：</span>

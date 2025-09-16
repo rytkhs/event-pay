@@ -55,7 +55,7 @@ describe("RLS Authorization for attendances/payments", () => {
       registration_deadline: registrationDeadline,
       payment_deadline: paymentDeadline,
       payment_methods: ["stripe"],
-      status: "upcoming",
+      canceled_at: null,
       created_at: now,
       updated_at: now,
     });

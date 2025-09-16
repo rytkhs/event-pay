@@ -1,6 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 
 import { createClient } from "@core/supabase/server";
+import { deriveEventStatus } from "@core/utils/derive-event-status";
 import { calculateAttendeeCount } from "@core/utils/event-calculations";
 import { validateEventId } from "@core/validation/event-id";
 
@@ -35,7 +36,22 @@ export default async function EventEditPage({ params }: EventEditPageProps) {
     .from("events")
     .select(
       `
-      *,
+      id,
+      title,
+      description,
+      location,
+      date,
+      fee,
+      capacity,
+      registration_deadline,
+      payment_deadline,
+      allow_payment_after_deadline,
+      grace_period_days,
+      created_at,
+      updated_at,
+      created_by,
+      invite_token,
+      canceled_at,
       attendances(id, status)
     `
     )
@@ -65,6 +81,9 @@ export default async function EventEditPage({ params }: EventEditPageProps) {
 
   // 取得エラー時はフェイルクローズ（true 扱い）
   const hasStripePaid = stripePaidError ? true : (stripePaid?.length ?? 0) > 0;
+  // 算出ステータスを付与
+  const computedStatus = deriveEventStatus(event.date, (event as any).canceled_at ?? null);
+
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -88,7 +107,7 @@ export default async function EventEditPage({ params }: EventEditPageProps) {
 
           {/* 編集フォーム */}
           <EventEditForm
-            event={event}
+            event={{ ...(event as any), status: computedStatus }}
             attendeeCount={attendeeCount}
             hasStripePaid={hasStripePaid}
           />

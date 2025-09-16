@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect, Suspense, useRef } from "react";
 
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
@@ -13,6 +13,7 @@ function VerifyEmailContent() {
   const [countdown, setCountdown] = useState(0);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const errorRef = useRef<HTMLDivElement | null>(null);
 
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -63,6 +64,14 @@ function VerifyEmailContent() {
       setResendLoading(false);
     }
   };
+
+  // エラー発生時にスクロール＆フォーカス
+  useEffect(() => {
+    if (error && errorRef.current) {
+      errorRef.current.focus({ preventScroll: true });
+      errorRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  }, [error]);
 
   const getEmailProvider = (email: string) => {
     const domain = email.split("@")[1]?.toLowerCase();
@@ -163,7 +172,13 @@ function VerifyEmailContent() {
           )}
 
           {error && (
-            <div className="p-3 rounded-md text-sm bg-red-50 text-red-800 border border-red-200">
+            <div
+              className="p-3 rounded-md text-sm bg-red-50 text-red-800 border border-red-200"
+              role="alert"
+              aria-live="assertive"
+              ref={errorRef}
+              tabIndex={-1}
+            >
               {error}
             </div>
           )}

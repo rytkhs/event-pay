@@ -50,7 +50,7 @@ export interface RLSGuestAttendanceData {
     allow_payment_after_deadline?: boolean;
     grace_period_days?: number | null;
     created_by: string;
-    status: Database["public"]["Enums"]["event_status_enum"];
+    canceled_at?: string | null;
   };
   payment?: {
     id: string;
@@ -138,7 +138,7 @@ export class RLSGuestTokenValidator implements IGuestTokenValidator {
             payment_deadline,
             allow_payment_after_deadline,
             grace_period_days,
-            status
+            canceled_at
           )
         `
         )
@@ -256,7 +256,7 @@ export class RLSGuestTokenValidator implements IGuestTokenValidator {
             allow_payment_after_deadline,
             grace_period_days,
             created_by,
-            status
+            canceled_at
           ),
           payment:payments (
             id,
@@ -454,10 +454,11 @@ export class RLSGuestTokenValidator implements IGuestTokenValidator {
       event !== null &&
       "id" in event &&
       "date" in event &&
-      "status" in event &&
       typeof (event as EventInfo).id === "string" &&
       typeof (event as EventInfo).date === "string" &&
-      typeof (event as EventInfo).status === "string" &&
+      ("canceled_at" in (event as any)
+        ? (event as any).canceled_at === null || typeof (event as any).canceled_at === "string"
+        : true) &&
       // registration_deadlineはオプショナル
       ("registration_deadline" in event
         ? (event as EventInfo).registration_deadline === null ||
@@ -502,9 +503,9 @@ export class RLSGuestTokenValidator implements IGuestTokenValidator {
     // イベント開始前かつ登録締切前かつアクティブ状態
     const isBeforeEventStart = eventDate > now;
     const isBeforeDeadline = registrationDeadline === null || registrationDeadline > now;
-    const isUpcoming = event.status === "upcoming";
+    const notCanceled = !(event as any).canceled_at;
 
-    return isBeforeEventStart && isBeforeDeadline && isUpcoming;
+    return isBeforeEventStart && isBeforeDeadline && notCanceled;
   }
 
   /**
@@ -512,6 +513,11 @@ export class RLSGuestTokenValidator implements IGuestTokenValidator {
    */
   private checkCanModifyAttendance(event: RLSGuestAttendanceData["event"]): boolean {
     const now = new Date();
+
+    // キャンセル済みイベントは変更不可
+    if ((event as any).canceled_at) {
+      return false;
+    }
 
     // 登録締切が設定されている場合、締切を過ぎていれば変更不可
     if (event.registration_deadline) {
@@ -524,11 +530,6 @@ export class RLSGuestTokenValidator implements IGuestTokenValidator {
     // イベント開始時刻を過ぎていれば変更不可
     const eventDate = new Date(event.date);
     if (now > eventDate) {
-      return false;
-    }
-
-    // イベントが開催予定（upcoming）でない場合は変更不可
-    if (event.status !== "upcoming") {
       return false;
     }
 

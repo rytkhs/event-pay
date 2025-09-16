@@ -1,5 +1,3 @@
-import type { Database } from "@/types/database";
-
 export interface Event {
   id: string;
   title: string;
@@ -7,7 +5,7 @@ export interface Event {
   location: string;
   fee: number;
   capacity: number;
-  status: Database["public"]["Enums"]["event_status_enum"];
+  status: "upcoming" | "ongoing" | "past" | "canceled";
   creator_name: string;
   // 実際のSupabaseクエリから取得される参加者数
   attendances_count?: number;

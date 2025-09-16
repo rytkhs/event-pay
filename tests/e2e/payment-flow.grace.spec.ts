@@ -32,7 +32,6 @@ test.describe("決済フロー - 猶予と最終上限", () => {
       payment_deadline: "2000-01-01T00:00:00.000Z",
       allow_payment_after_deadline: false,
       grace_period_days: 0,
-      status: "upcoming",
     });
 
     await PageHelper.navigateToGuestPage(page, attendance.guest_token);
@@ -53,7 +52,6 @@ test.describe("決済フロー - 猶予と最終上限", () => {
       payment_deadline: new Date(FIXED_TIME.getTime() + 1 * 60 * 60 * 1000).toISOString(),
       allow_payment_after_deadline: true,
       grace_period_days: 30,
-      status: "past", // 終了後でも許可（仕様）
     });
 
     await PageHelper.navigateToGuestPage(page, attendance.guest_token);
@@ -77,7 +75,6 @@ test.describe("決済フロー - 猶予と最終上限", () => {
       payment_deadline: new Date(FIXED_TIME.getTime() + 48 * 60 * 60 * 1000).toISOString(), // = date
       allow_payment_after_deadline: true,
       grace_period_days: 30,
-      status: "past",
     });
 
     // 現在時刻を final + 1h にセット

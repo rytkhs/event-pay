@@ -23,7 +23,6 @@ describe("イベントの削除/中止ロジック", () => {
         date: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
         fee: 0,
         payment_methods: [],
-        status: "upcoming",
         created_by: user.id,
         invite_token: "inv_unit_test_token_aaaaaaaaaaaaaaaaaaaaaa",
       })
@@ -56,7 +55,6 @@ describe("イベントの削除/中止ロジック", () => {
         date: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
         fee: 1000,
         payment_methods: ["stripe"],
-        status: "upcoming",
         created_by: user.id,
         invite_token: "inv_unit_test_token_bbbbbbbbbbbbbbbbbbbbbbbb",
       })
@@ -96,17 +94,17 @@ describe("イベントの削除/中止ロジック", () => {
     // 中止へ更新
     const { error: updErr } = await admin
       .from("events")
-      .update({ status: "canceled", invite_token: null })
+      .update({ canceled_at: new Date().toISOString(), invite_token: null })
       .eq("id", ev!.id);
     expect(updErr).toBeNull();
 
     // 招待検証: canceled は canRegister=false
     const { data: canceledEvent } = await admin
       .from("events")
-      .select("status, invite_token")
+      .select("canceled_at, invite_token")
       .eq("id", ev!.id)
       .single();
-    expect(canceledEvent?.status).toBe("canceled");
+    expect(canceledEvent?.canceled_at).toBeTruthy();
     expect(canceledEvent?.invite_token).toBeNull();
   });
 });

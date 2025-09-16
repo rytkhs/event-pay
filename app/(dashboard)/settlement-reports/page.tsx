@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 
 import { getCurrentUser } from "@core/auth/auth-utils";
 import { createClient } from "@core/supabase/server";
+import { deriveEventStatus } from "@core/utils/derive-event-status";
 
 import {
   SettlementReportList,
@@ -28,32 +29,17 @@ export default async function SettlementReportsPage() {
   // 利用可能なイベント一覧を取得
   const { data: events } = await supabase
     .from("events")
-    .select(
-      `
-      id,
-      title,
-      date,
-      status,
-      settlements!left (
-        id,
-        settlement_mode,
-        generated_at
-      )
-    `
-    )
+    .select("id, title, date, canceled_at")
     .eq("created_by", user.id)
     .order("date", { ascending: false });
 
-  // イベントに既存レポートがあるかチェック
+  // イベントに既存レポートがあるかチェック（初期ロードでは未計算。必要ならRPC等で取得）
   const availableEvents = (events || []).map((event) => ({
     id: event.id,
     title: event.title,
     date: event.date,
-    status: event.status,
-    hasExistingReport:
-      (event.settlements as any[])?.some(
-        (settlement) => settlement.settlement_mode === "destination_charge"
-      ) || false,
+    status: deriveEventStatus(event.date, (event as any).canceled_at ?? null),
+    hasExistingReport: false,
   }));
 
   // 初期レポート一覧を取得（最新10件）- RPC関数で動的計算
