@@ -56,6 +56,7 @@ export async function POST(request: NextRequest) {
         return createProblemResponse("FORBIDDEN", {
           instance: "/api/webhooks/stripe",
           detail: "IP address not authorized for webhook access",
+          correlation_id: requestId,
         });
       }
     }
@@ -71,6 +72,7 @@ export async function POST(request: NextRequest) {
       return createProblemResponse("INVALID_REQUEST", {
         instance: "/api/webhooks/stripe",
         detail: "Missing Stripe signature",
+        correlation_id: requestId,
       });
     }
 
@@ -89,6 +91,7 @@ export async function POST(request: NextRequest) {
       return createProblemResponse("INVALID_REQUEST", {
         instance: "/api/webhooks/stripe",
         detail: "Invalid webhook signature",
+        correlation_id: requestId,
       });
     }
 
@@ -164,7 +167,11 @@ export async function POST(request: NextRequest) {
       stack: error instanceof Error ? error.stack : undefined,
     });
 
-    // QStash転送に失敗した場合でも、Stripeには500を返してリトライを促す
-    return new NextResponse("Internal server error", { status: 500 });
+    // 失敗時はProblem Detailsで500を返し、Stripeにリトライを促す
+    return createProblemResponse("INTERNAL_ERROR", {
+      instance: "/api/webhooks/stripe",
+      detail: "Webhook forwarding failed",
+      correlation_id: requestId,
+    });
   }
 }

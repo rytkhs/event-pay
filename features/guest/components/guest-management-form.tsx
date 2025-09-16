@@ -8,6 +8,7 @@ import { Loader2, Save, CreditCard, AlertCircle, CheckCircle } from "lucide-reac
 
 import { PAYMENT_METHOD_LABELS } from "@core/constants/payment-methods";
 import { useToast } from "@core/contexts/toast-context";
+import { useErrorHandler } from "@core/hooks/use-error-handler";
 import { ATTENDANCE_STATUS_LABELS } from "@core/types/enums";
 import { type GuestAttendanceData } from "@core/utils/guest-token";
 import { sanitizeForEventPay } from "@core/utils/sanitize";
@@ -36,6 +37,7 @@ interface GuestManagementFormProps {
 export function GuestManagementForm({ attendance, canModify }: GuestManagementFormProps) {
   const router = useRouter();
   const { toast } = useToast();
+  const { handleError } = useErrorHandler();
   const [attendanceStatus, setAttendanceStatus] = useState(attendance.status);
   const [paymentMethod, setPaymentMethod] = useState(attendance.payment?.method || "stripe");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -92,19 +94,14 @@ export function GuestManagementForm({ attendance, canModify }: GuestManagementFo
         setError(result.error || "参加状況の更新に失敗しました。もう一度お試しください。");
       }
     } catch (error) {
-      // 本番環境では適切なログシステムでエラーログを記録
-      if (process.env.NODE_ENV === "development") {
-        const { logger } = await import("@core/logging/app-logger");
-        logger.error("ゲスト管理フォーム送信エラー", {
+      handleError(error, {
+        action: "guest_form_submit",
+        additionalData: {
           tag: "guestManagementForm",
-          error_name: error instanceof Error ? error.name : "Unknown",
-          error_message: error instanceof Error ? error.message : String(error),
-          attendance_id: attendance.id,
-          event_id: attendance.event.id,
-        });
-      }
-
-      // ユーザーフレンドリーなエラーメッセージを表示
+          attendanceId: attendance.id,
+          eventId: attendance.event.id,
+        },
+      });
       setError("予期しないエラーが発生しました。しばらく待ってからもう一度お試しください。");
     } finally {
       setIsSubmitting(false);

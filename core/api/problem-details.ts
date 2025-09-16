@@ -116,6 +116,7 @@ function createProblem(code: string, options: ProblemOptions = {}): ProblemDetai
   const logPayload = {
     tag: "api-error",
     correlation_id: correlationId,
+    request_id: correlationId,
     error_code: code,
     status,
     instance: problem.instance,

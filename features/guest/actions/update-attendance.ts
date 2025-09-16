@@ -78,7 +78,7 @@ export async function updateGuestAttendanceAction(
     // 変更可能かどうかの確認
     if (!tokenValidation.canModify) {
       return createServerActionError(
-        "OPERATION_NOT_ALLOWED",
+        "ATTENDANCE_DEADLINE_PASSED",
         "参加登録の期限が過ぎているため、変更できません"
       );
     }
@@ -112,10 +112,13 @@ export async function updateGuestAttendanceAction(
 
       // 決済方法の利用可能性チェック
       if (validatedPaymentMethod === "stripe" && !PAYMENT_METHODS.includes("stripe")) {
-        return createServerActionError("SERVICE_UNAVAILABLE", "オンライン決済は現在利用できません");
+        return createServerActionError(
+          "EXTERNAL_SERVICE_ERROR",
+          "オンライン決済は現在利用できません"
+        );
       }
       if (validatedPaymentMethod === "cash" && !PAYMENT_METHODS.includes("cash")) {
-        return createServerActionError("SERVICE_UNAVAILABLE", "現金決済は現在利用できません");
+        return createServerActionError("EXTERNAL_SERVICE_ERROR", "現金決済は現在利用できません");
       }
     }
 
@@ -203,7 +206,7 @@ export async function updateGuestAttendanceAction(
 
       if (isRegistrationFull) {
         return createServerActionError(
-          "REGISTRATION_FULL",
+          "ATTENDANCE_CAPACITY_REACHED",
           "申し訳ございませんが、定員に達したため参加登録できませんでした"
         );
       }
@@ -261,8 +264,9 @@ export async function updateGuestAttendanceAction(
     }
 
     return createServerActionError(
-      "INTERNAL_SERVER_ERROR",
-      "システムエラーが発生しました。しばらく経ってから再度お試しください"
+      "INTERNAL_ERROR",
+      "システムエラーが発生しました。しばらく経ってから再度お試しください",
+      { retryable: true }
     );
   }
 }
