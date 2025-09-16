@@ -1,10 +1,10 @@
 export const dynamic = "force-dynamic";
 
-import type { NextRequest } from "next/server";
-import { NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 
 import { Receiver } from "@upstash/qstash";
 
+import { createProblemResponse } from "@core/api/problem-details";
 import { logger } from "@core/logging/app-logger";
 import { SecureSupabaseClientFactory } from "@core/security/secure-client-factory.impl";
 import { AdminReason } from "@core/security/secure-client-factory.types";
@@ -47,7 +47,10 @@ export async function POST(request: NextRequest) {
         correlation_id: corr,
         ip: getClientIP(request),
       });
-      return new NextResponse("Missing signature", { status: 401 });
+      return createProblemResponse("UNAUTHORIZED", {
+        instance: "/api/workers/event-cancel",
+        detail: "Missing QStash signature",
+      });
     }
 
     const receiver = getQstashReceiver();
@@ -58,7 +61,10 @@ export async function POST(request: NextRequest) {
         correlation_id: corr,
         ip: getClientIP(request),
       });
-      return new NextResponse("Invalid signature", { status: 401 });
+      return createProblemResponse("UNAUTHORIZED", {
+        instance: "/api/workers/event-cancel",
+        detail: "Invalid QStash signature",
+      });
     }
 
     // JSON パース
@@ -66,12 +72,18 @@ export async function POST(request: NextRequest) {
     try {
       parsed = JSON.parse(rawBody);
     } catch {
-      return new NextResponse("Invalid JSON body", { status: 400 });
+      return createProblemResponse("INVALID_REQUEST", {
+        instance: "/api/workers/event-cancel",
+        detail: "Invalid JSON body",
+      });
     }
 
     const { eventId, message } = parsed;
     if (!eventId) {
-      return new NextResponse("Missing eventId", { status: 400 });
+      return createProblemResponse("MISSING_PARAMETER", {
+        instance: "/api/workers/event-cancel",
+        detail: "Missing eventId",
+      });
     }
 
     // 管理者クライアント（Service Role）で参加者メールを取得
@@ -95,8 +107,11 @@ export async function POST(request: NextRequest) {
         event_id: eventId,
         error_message: error.message,
       });
-      // DB失敗でも200返してQStashの無限リトライを避ける（要件: ベストエフォート）
-      return NextResponse.json({ received: true, deliveryId, attendees: 0 });
+      // 致命的失敗はHTTP 500で返却し、QStashの再試行に委ねる
+      return createProblemResponse("DATABASE_ERROR", {
+        instance: "/api/workers/event-cancel",
+        detail: "Failed to fetch attendees for cancel worker",
+      });
     }
 
     const emails = (attendees || []).map((a) => a.email).filter(Boolean);
@@ -119,8 +134,11 @@ export async function POST(request: NextRequest) {
       tag: "event-cancel-worker",
       error_message: error instanceof Error ? error.message : String(error),
     });
-    // 失敗時も500で返し、QStashのリトライに委ねる
-    return new NextResponse("Internal Server Error", { status: 500 });
+    // 失敗時は500 Problem Detailsで返し、QStashのリトライに委ねる
+    return createProblemResponse("INTERNAL_ERROR", {
+      instance: "/api/workers/event-cancel",
+      detail: "Event cancel worker failed",
+    });
   } finally {
     const ms = Date.now() - start;
     logger.debug("Event cancel worker finished", { tag: "event-cancel-worker", duration_ms: ms });

@@ -2,6 +2,7 @@
 
 import { createClient } from "@core/supabase/server";
 import { SortBy, SortOrder, StatusFilter, PaymentFilter } from "@core/types/events";
+import { createServerActionError, type ServerActionResult } from "@core/types/server-actions";
 import { convertJstDateToUtcRange } from "@core/utils/timezone";
 import { dateFilterSchema, type DateFilterInput } from "@core/validation/event";
 
@@ -47,17 +48,7 @@ type GetEventsOptions = {
   sortOrder?: SortOrder;
 };
 
-type GetEventsResult =
-  | {
-      success: true;
-      data: Event[];
-      totalCount: number;
-      hasMore: boolean;
-    }
-  | {
-      success: false;
-      error: string;
-    };
+type GetEventsResult = ServerActionResult<Event[]> & { totalCount?: number; hasMore?: boolean };
 
 // ソート項目をSupabaseのカラム名にマッピング
 function getOrderColumn(sortBy: SortBy): string | null {
@@ -90,36 +81,34 @@ export async function getEventsAction(options: GetEventsOptions = {}): Promise<G
 
     // パラメータバリデーション
     if (sortOrder && !["asc", "desc"].includes(sortOrder)) {
-      return {
-        success: false,
-        error: "sortOrderは'asc'または'desc'である必要があります",
-      };
+      return createServerActionError(
+        "VALIDATION_ERROR",
+        "sortOrderは'asc'または'desc'である必要があります"
+      );
     }
 
     if (sortBy && !["date", "created_at", "attendances_count", "fee"].includes(sortBy)) {
-      return {
-        success: false,
-        error:
-          "sortByは'date', 'created_at', 'attendances_count', 'fee'のいずれかである必要があります",
-      };
+      return createServerActionError(
+        "VALIDATION_ERROR",
+        "sortByは'date', 'created_at', 'attendances_count', 'fee'のいずれかである必要があります"
+      );
     }
 
     if (
       statusFilter &&
       !["all", "upcoming", "ongoing", "past", "canceled"].includes(statusFilter)
     ) {
-      return {
-        success: false,
-        error:
-          "statusFilterは'all', 'upcoming', 'ongoing', 'past', 'canceled'のいずれかである必要があります",
-      };
+      return createServerActionError(
+        "VALIDATION_ERROR",
+        "statusFilterは'all', 'upcoming', 'ongoing', 'past', 'canceled'のいずれかである必要があります"
+      );
     }
 
     if (paymentFilter && !["all", "free", "paid"].includes(paymentFilter)) {
-      return {
-        success: false,
-        error: "paymentFilterは'all', 'free', 'paid'のいずれかである必要があります",
-      };
+      return createServerActionError(
+        "VALIDATION_ERROR",
+        "paymentFilterは'all', 'free', 'paid'のいずれかである必要があります"
+      );
     }
 
     // 日付フィルターのバリデーション
@@ -128,10 +117,7 @@ export async function getEventsAction(options: GetEventsOptions = {}): Promise<G
       if (!dateValidation.success) {
         const errorMessage =
           dateValidation.error.errors[0]?.message || "日付フィルターの形式が正しくありません";
-        return {
-          success: false,
-          error: errorMessage,
-        };
+        return createServerActionError("VALIDATION_ERROR", errorMessage);
       }
     }
 
@@ -141,17 +127,11 @@ export async function getEventsAction(options: GetEventsOptions = {}): Promise<G
     } = await supabase.auth.getUser();
 
     if (authError) {
-      return {
-        success: false,
-        error: "認証が必要です",
-      };
+      return createServerActionError("UNAUTHORIZED", "認証が必要です");
     }
 
     if (!user) {
-      return {
-        success: false,
-        error: "認証が必要です",
-      };
+      return createServerActionError("UNAUTHORIZED", "認証が必要です");
     }
 
     // 型安全なフィルター条件を構築
@@ -271,17 +251,17 @@ export async function getEventsAction(options: GetEventsOptions = {}): Promise<G
     const { data: events, error: dbError } = eventsResult;
 
     if (countError) {
-      return {
-        success: false,
-        error: "イベントの取得に失敗しました",
-      };
+      return createServerActionError("DATABASE_ERROR", "イベントの取得に失敗しました", {
+        retryable: true,
+        details: { countError },
+      });
     }
 
     if (dbError) {
-      return {
-        success: false,
-        error: "イベントの取得に失敗しました",
-      };
+      return createServerActionError("DATABASE_ERROR", "イベントの取得に失敗しました", {
+        retryable: true,
+        details: { dbError },
+      });
     }
 
     // JOINで取得した作成者名を使用（N+1問題を解決）
@@ -323,9 +303,8 @@ export async function getEventsAction(options: GetEventsOptions = {}): Promise<G
       hasMore,
     };
   } catch (_) {
-    return {
-      success: false,
-      error: "予期しないエラーが発生しました",
-    };
+    return createServerActionError("INTERNAL_ERROR", "予期しないエラーが発生しました", {
+      retryable: true,
+    });
   }
 }

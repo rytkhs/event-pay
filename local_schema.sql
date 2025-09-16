@@ -1,5 +1,5 @@
 
-\restrict EYfeXrEzBXoZCrGcMYjDDaijr0NEe5BJy8pLI7qAwDqVzjo5sELIYLT8vjlQOGt
+\restrict cTFRJBPvbl2gJanpctiAhKcfrVV7ysAdVsy0e9RtVk7TH6wj9qEZWLK6XqezQNW
 
 
 SET statement_timeout = 0;
@@ -524,101 +524,6 @@ COMMENT ON FUNCTION "public"."cleanup_expired_scheduler_locks"() IS '期限切�
 
 
 
-CREATE OR REPLACE FUNCTION "public"."cleanup_old_audit_logs"("retention_days" integer DEFAULT 90) RETURNS integer
-    LANGUAGE "plpgsql" SECURITY DEFINER
-    AS $$
-DECLARE
-    deleted_count INTEGER := 0;
-    temp_count INTEGER;
-BEGIN
-    -- 管理者アクセス監査ログのクリーンアップ
-    DELETE FROM public.admin_access_audit
-    WHERE created_at < NOW() - INTERVAL '1 day' * retention_days;
-    GET DIAGNOSTICS temp_count = ROW_COUNT;
-    deleted_count := deleted_count + temp_count;
-
-    -- ゲストアクセス監査ログのクリーンアップ
-    DELETE FROM public.guest_access_audit
-    WHERE created_at < NOW() - INTERVAL '1 day' * retention_days;
-    GET DIAGNOSTICS temp_count = ROW_COUNT;
-    deleted_count := deleted_count + temp_count;
-
-    -- 疑わしい活動ログのクリーンアップ（調査済みのもののみ）
-    DELETE FROM public.suspicious_activity_log
-    WHERE created_at < NOW() - INTERVAL '1 day' * retention_days
-    AND investigated_at IS NOT NULL;
-    GET DIAGNOSTICS temp_count = ROW_COUNT;
-    deleted_count := deleted_count + temp_count;
-
-    -- 不正アクセス試行ログのクリーンアップ
-    DELETE FROM public.unauthorized_access_log
-    WHERE created_at < NOW() - INTERVAL '1 day' * retention_days;
-    GET DIAGNOSTICS temp_count = ROW_COUNT;
-    deleted_count := deleted_count + temp_count;
-
-    RETURN deleted_count;
-END;
-$$;
-
-
-ALTER FUNCTION "public"."cleanup_old_audit_logs"("retention_days" integer) OWNER TO "postgres";
-
-
-COMMENT ON FUNCTION "public"."cleanup_old_audit_logs"("retention_days" integer) IS '指定した日数より古い監査ログを削除する関数';
-
-
-
-CREATE OR REPLACE FUNCTION "public"."cleanup_old_scheduler_logs"("retention_days" integer DEFAULT 30) RETURNS integer
-    LANGUAGE "plpgsql" SECURITY DEFINER
-    AS $$
-DECLARE
-    deleted_count INTEGER;
-BEGIN
-    -- 指定日数より古いログを削除
-    DELETE FROM public.payout_scheduler_logs
-    WHERE start_time < (now() - (retention_days || ' days')::INTERVAL);
-
-    GET DIAGNOSTICS deleted_count = ROW_COUNT;
-
-    RETURN deleted_count;
-END;
-$$;
-
-
-ALTER FUNCTION "public"."cleanup_old_scheduler_logs"("retention_days" integer) OWNER TO "postgres";
-
-
-COMMENT ON FUNCTION "public"."cleanup_old_scheduler_logs"("retention_days" integer) IS 'PayoutSchedulerの古いログを削除する関数';
-
-
-
-CREATE OR REPLACE FUNCTION "public"."cleanup_test_tables_dev_only"() RETURNS "void"
-    LANGUAGE "plpgsql"
-    AS $$
-BEGIN
-    -- 警告: この関数は開発環境専用です。本番環境で実行しないでください。
-    RAISE WARNING 'Executing development-only cleanup function. This should not be run in production.';
-
-    DELETE FROM public.settlements;
-    DELETE FROM public.payments;
-    DELETE FROM public.attendances;
-    DELETE FROM public.invite_links;
-    DELETE FROM public.events;
-    DELETE FROM public.stripe_connect_accounts;
-    DELETE FROM public.users;
-    -- auth.usersは別途テストコードで管理
-    RAISE NOTICE 'Test data cleanup completed for all public tables.';
-END;
-$$;
-
-
-ALTER FUNCTION "public"."cleanup_test_tables_dev_only"() OWNER TO "postgres";
-
-
-COMMENT ON FUNCTION "public"."cleanup_test_tables_dev_only"() IS 'テストデータクリーンアップ関数（開発環境専用）';
-
-
-
 CREATE OR REPLACE FUNCTION "public"."clear_test_guest_token"() RETURNS "void"
     LANGUAGE "plpgsql" SECURITY DEFINER
     AS $$
@@ -630,69 +535,6 @@ $$;
 
 
 ALTER FUNCTION "public"."clear_test_guest_token"() OWNER TO "postgres";
-
-
-CREATE OR REPLACE FUNCTION "public"."create_payment_record"("p_attendance_id" "uuid", "p_method" "public"."payment_method_enum", "p_amount" integer) RETURNS "uuid"
-    LANGUAGE "plpgsql" SECURITY DEFINER
-    AS $$
-DECLARE
-    payment_id UUID;
-BEGIN
-    -- 入力値検証
-    IF p_attendance_id IS NULL THEN
-        RAISE EXCEPTION 'attendance_id cannot be null';
-    END IF;
-
-    IF p_amount < 0 THEN
-        RAISE EXCEPTION 'amount must be non-negative, got: %', p_amount;
-    END IF;
-
-    -- 重複チェック
-    IF EXISTS (SELECT 1 FROM public.payments WHERE attendance_id = p_attendance_id) THEN
-        RAISE EXCEPTION 'Payment record already exists for attendance_id: %', p_attendance_id;
-    END IF;
-
-    -- attendanceレコードの存在確認
-    IF NOT EXISTS (SELECT 1 FROM public.attendances WHERE id = p_attendance_id) THEN
-        RAISE EXCEPTION 'Attendance record not found for id: %', p_attendance_id;
-    END IF;
-
-    -- 決済レコード作成
-    INSERT INTO public.payments (attendance_id, method, amount, status)
-    VALUES (p_attendance_id, p_method, p_amount, 'pending')
-    RETURNING id INTO payment_id;
-
-    RETURN payment_id;
-END;
-$$;
-
-
-ALTER FUNCTION "public"."create_payment_record"("p_attendance_id" "uuid", "p_method" "public"."payment_method_enum", "p_amount" integer) OWNER TO "postgres";
-
-
-COMMENT ON FUNCTION "public"."create_payment_record"("p_attendance_id" "uuid", "p_method" "public"."payment_method_enum", "p_amount" integer) IS '決済レコードを作成する関数';
-
-
-
-CREATE OR REPLACE FUNCTION "public"."detect_orphaned_users"() RETURNS TABLE("user_id" "uuid", "email" character varying, "days_since_creation" integer)
-    LANGUAGE "plpgsql" SECURITY DEFINER
-    AS $$
-BEGIN
-    RETURN QUERY
-    SELECT u.id, au.email, EXTRACT(DAYS FROM NOW() - u.created_at)::INTEGER
-    FROM public.users u
-    JOIN auth.users au ON u.id = au.id
-    WHERE u.created_at < NOW() - INTERVAL '30 days'
-      AND NOT EXISTS(SELECT 1 FROM public.events WHERE created_by = u.id);
-END;
-$$;
-
-
-ALTER FUNCTION "public"."detect_orphaned_users"() OWNER TO "postgres";
-
-
-COMMENT ON FUNCTION "public"."detect_orphaned_users"() IS '30日以上活動のない孤立ユーザーを検出する関数';
-
 
 
 CREATE OR REPLACE FUNCTION "public"."extend_scheduler_lock"("p_lock_name" "text", "p_process_id" "text", "p_extend_minutes" integer DEFAULT 30) RETURNS boolean
@@ -721,48 +563,6 @@ ALTER FUNCTION "public"."extend_scheduler_lock"("p_lock_name" "text", "p_process
 
 
 COMMENT ON FUNCTION "public"."extend_scheduler_lock"("p_lock_name" "text", "p_process_id" "text", "p_extend_minutes" integer) IS 'スケジューラーロックのTTL延長（ハートビート用）。process_id一致時のみ延長可能';
-
-
-
-CREATE OR REPLACE FUNCTION "public"."find_eligible_events_basic"("p_days_after_event" integer DEFAULT 5, "p_minimum_amount" integer DEFAULT NULL::integer, "p_limit" integer DEFAULT 100, "p_user_id" "uuid" DEFAULT NULL::"uuid") RETURNS TABLE("event_id" "uuid", "title" character varying, "event_date" timestamp with time zone, "fee" integer, "created_by" "uuid", "created_at" timestamp with time zone, "paid_attendances_count" bigint, "total_stripe_sales" integer)
-    LANGUAGE "plpgsql"
-    AS $$
-BEGIN
-    RETURN QUERY
-    WITH target_events AS (
-        SELECT e.*
-          FROM public.events e
-         WHERE e.status = 'past'
-           AND e.date <= (CURRENT_DATE - p_days_after_event)
-           AND (p_user_id IS NULL OR e.created_by = p_user_id)
-    ), sales AS (
-        SELECT a.event_id, COUNT(*) AS paid_attendances_count, SUM(p.amount)::INT AS total_stripe_sales
-          FROM public.attendances a
-          JOIN public.payments p ON p.attendance_id = a.id
-         WHERE p.method = 'stripe' AND p.status = 'paid'
-         GROUP BY a.event_id
-    )
-    SELECT
-        t.id AS event_id,
-        t.title,
-        t.date AS event_date,
-        t.fee,
-        t.created_by,
-        t.created_at,
-        COALESCE(s.paid_attendances_count,0) AS paid_attendances_count,
-        COALESCE(s.total_stripe_sales,0)      AS total_stripe_sales
-      FROM target_events t
-      LEFT JOIN sales s ON s.event_id = t.id
-     WHERE COALESCE(s.total_stripe_sales,0) >= COALESCE(p_minimum_amount, public.get_min_payout_amount())
-     LIMIT p_limit;
-END;
-$$;
-
-
-ALTER FUNCTION "public"."find_eligible_events_basic"("p_days_after_event" integer, "p_minimum_amount" integer, "p_limit" integer, "p_user_id" "uuid") OWNER TO "postgres";
-
-
-COMMENT ON FUNCTION "public"."find_eligible_events_basic"("p_days_after_event" integer, "p_minimum_amount" integer, "p_limit" integer, "p_user_id" "uuid") IS '送金対象イベント検索 (fee_config ベースの最小送金金額利用)';
 
 
 
@@ -835,20 +635,6 @@ ALTER FUNCTION "public"."find_eligible_events_with_details"("p_days_after_event"
 
 
 COMMENT ON FUNCTION "public"."find_eligible_events_with_details"("p_days_after_event" integer, "p_limit" integer) IS '送金候補イベントを取得（verified status要件付き、charges_enabled / payouts_enabled チェック）';
-
-
-
-CREATE OR REPLACE FUNCTION "public"."force_release_payout_scheduler_lock"() RETURNS boolean
-    LANGUAGE "sql"
-    AS $$
-  SELECT pg_advisory_unlock(901234);
-$$;
-
-
-ALTER FUNCTION "public"."force_release_payout_scheduler_lock"() OWNER TO "postgres";
-
-
-COMMENT ON FUNCTION "public"."force_release_payout_scheduler_lock"() IS 'ペイアウトスケジューラーのアドバイザリロックを強制的に解放するユーティリティ関数（緊急時用）';
 
 
 
@@ -989,24 +775,6 @@ $$;
 
 
 ALTER FUNCTION "public"."generate_settlement_report"("input_event_id" "uuid", "input_created_by" "uuid") OWNER TO "postgres";
-
-
-CREATE OR REPLACE FUNCTION "public"."get_enum_values"("enum_name" "text") RETURNS "text"[]
-    LANGUAGE "sql" STABLE
-    AS $$
-    SELECT array_agg(enumlabel ORDER BY enumlabel)
-    FROM pg_enum e
-    JOIN pg_type t ON e.enumtypid = t.oid
-    JOIN pg_namespace n ON t.typnamespace = n.oid
-    WHERE n.nspname = 'public' AND t.typname = enum_name;
-$$;
-
-
-ALTER FUNCTION "public"."get_enum_values"("enum_name" "text") OWNER TO "postgres";
-
-
-COMMENT ON FUNCTION "public"."get_enum_values"("enum_name" "text") IS 'Enum型の値一覧を取得するヘルパー関数（CI用）';
-
 
 
 CREATE OR REPLACE FUNCTION "public"."get_event_creator_name"("p_creator_id" "uuid") RETURNS "text"
@@ -1291,47 +1059,6 @@ COMMENT ON FUNCTION "public"."hash_guest_token"("token" "text") IS 'ゲストト
 
 
 
-CREATE OR REPLACE FUNCTION "public"."list_all_enums"() RETURNS TABLE("enum_name" "text", "enum_values" "text"[])
-    LANGUAGE "sql" STABLE
-    AS $$
-    SELECT
-        t.typname AS enum_name,
-        array_agg(e.enumlabel ORDER BY e.enumlabel) AS enum_values
-    FROM pg_enum e
-    JOIN pg_type t ON e.enumtypid = t.oid
-    JOIN pg_namespace n ON t.typnamespace = n.oid
-    WHERE n.nspname = 'public'
-    GROUP BY t.typname
-    ORDER BY t.typname;
-$$;
-
-
-ALTER FUNCTION "public"."list_all_enums"() OWNER TO "postgres";
-
-
-COMMENT ON FUNCTION "public"."list_all_enums"() IS '全Enum型とその値を一覧表示（開発用）';
-
-
-
-CREATE OR REPLACE FUNCTION "public"."log_security_event"("p_event_type" "text", "p_details" "jsonb") RETURNS "void"
-    LANGUAGE "plpgsql" SECURITY DEFINER
-    AS $$
-BEGIN
-    INSERT INTO public.security_audit_log (event_type, details, user_role, ip_address)
-    VALUES (p_event_type, p_details, auth.role(), inet_client_addr());
-EXCEPTION WHEN OTHERS THEN
-    RAISE WARNING 'Failed to log security event: %', SQLERRM;
-END;
-$$;
-
-
-ALTER FUNCTION "public"."log_security_event"("p_event_type" "text", "p_details" "jsonb") OWNER TO "postgres";
-
-
-COMMENT ON FUNCTION "public"."log_security_event"("p_event_type" "text", "p_details" "jsonb") IS 'セキュリティイベントをログに記録する関数';
-
-
-
 CREATE OR REPLACE FUNCTION "public"."prevent_payment_status_rollback"() RETURNS "trigger"
     LANGUAGE "plpgsql"
     AS $$
@@ -1347,134 +1074,6 @@ $$;
 
 
 ALTER FUNCTION "public"."prevent_payment_status_rollback"() OWNER TO "postgres";
-
-
-CREATE OR REPLACE FUNCTION "public"."process_event_payout"("input_event_id" "uuid", "p_user_id" "uuid") RETURNS "uuid"
-    LANGUAGE "plpgsql" SECURITY DEFINER
-    AS $$
-DECLARE
-    payout_id UUID;
-    existing_status payout_status_enum;
-    stripe_sales INTEGER;
-    stripe_fees  INTEGER;
-    platform_fees INTEGER := 0; -- MVP では 0 円
-    net_amount INTEGER;
-    stripe_account VARCHAR(255);
-    lock_key BIGINT;
-BEGIN
-    -- 必須入力チェック
-    IF input_event_id IS NULL OR p_user_id IS NULL THEN
-        RAISE EXCEPTION 'event_id and user_id cannot be null';
-    END IF;
-
-    -- イベント固有ロック
-    lock_key := abs(hashtext(input_event_id::text));
-    PERFORM pg_advisory_xact_lock(lock_key);
-
-    -- 権限＆存在確認
-    IF NOT EXISTS (
-        SELECT 1 FROM public.events
-        WHERE id = input_event_id AND created_by = p_user_id AND status = 'past'
-    ) THEN
-        RAISE EXCEPTION 'Event not found or not authorized: %', input_event_id;
-    END IF;
-
-    -- 既存送金レコードチェック（最新行）
-    SELECT id, status INTO payout_id, existing_status
-    FROM public.settlements
-    WHERE event_id = input_event_id
-    ORDER BY created_at DESC
-    LIMIT 1;
-
-    IF payout_id IS NOT NULL THEN
-        -- pending の場合はそのまま再利用して返却
-        IF existing_status = 'pending' THEN
-            RETURN payout_id;
-        ELSIF existing_status = 'failed' THEN
-            -- failed を pending にリセットして再利用
-            UPDATE public.settlements
-            SET status = 'pending',
-                processed_at = NULL,
-                last_error = NULL
-            WHERE id = payout_id
-            RETURNING id INTO payout_id;
-
-            RETURN payout_id;
-        ELSE
-            RAISE EXCEPTION 'Payout already exists or in progress for event_id: %', input_event_id;
-        END IF;
-    END IF;
-
-    -- Stripe Connect account (verified & charges_enabled & payouts_enabled) 取得
-    SELECT stripe_account_id INTO stripe_account
-      FROM public.stripe_connect_accounts
-     WHERE user_id = p_user_id
-       AND status = 'verified'
-       AND charges_enabled = true
-       AND payouts_enabled = true;
-    IF stripe_account IS NULL THEN
-        RAISE EXCEPTION 'No verified Stripe Connect account for user: %', p_user_id;
-    END IF;
-
-    -- 売上合計
-    SELECT COALESCE(SUM(p.amount),0)::INT INTO stripe_sales
-      FROM public.payments p
-      JOIN public.attendances a ON p.attendance_id = a.id
-     WHERE a.event_id = input_event_id
-       AND p.method = 'stripe'
-       AND p.status = 'paid';
-
-    -- Stripe 手数料 (割合+固定)
-    stripe_fees := public.calc_total_stripe_fee(input_event_id);
-
-    -- プラットフォーム手数料 (将来対応) 今は 0
-
-    net_amount := stripe_sales - stripe_fees - platform_fees;
-
-    -- 最小送金金額チェック
-    IF net_amount < public.get_min_payout_amount() THEN
-        RAISE EXCEPTION 'Net payout amount < minimum (%). Calculated: %', public.get_min_payout_amount(), net_amount;
-    END IF;
-
-    -- 送金レコード作成
-    INSERT INTO public.settlements (
-        event_id, user_id, total_stripe_sales, total_stripe_fee,
-        platform_fee, net_payout_amount, stripe_account_id, status, transfer_group
-    ) VALUES (
-        input_event_id, p_user_id, stripe_sales, stripe_fees,
-        platform_fees, net_amount, stripe_account, 'pending',
-        'event_' || input_event_id::text || '_payout'
-    ) RETURNING id INTO payout_id;
-
-    RETURN payout_id;
-
-EXCEPTION
-    WHEN unique_violation THEN
-        -- 並行処理でユニーク制約違反が発生した場合、最新 pending / failed を再取得
-        SELECT id, status INTO payout_id, existing_status
-        FROM public.settlements
-        WHERE event_id = input_event_id
-        ORDER BY created_at DESC
-        LIMIT 1;
-
-        IF payout_id IS NOT NULL AND existing_status IN ('pending', 'failed') THEN
-            -- failed の場合はリセットして返す
-            IF existing_status = 'failed' THEN
-                UPDATE public.settlements
-                SET status = 'pending',
-                    processed_at = NULL,
-                    last_error = NULL
-                WHERE id = payout_id;
-            END IF;
-            RETURN payout_id;
-        ELSE
-            RAISE EXCEPTION 'Payout already exists or in progress for event_id: %', input_event_id;
-        END IF;
-END;
-$$;
-
-
-ALTER FUNCTION "public"."process_event_payout"("input_event_id" "uuid", "p_user_id" "uuid") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."register_attendance_with_payment"("p_event_id" "uuid", "p_nickname" character varying, "p_email" character varying, "p_status" "public"."attendance_status_enum", "p_guest_token" character varying, "p_payment_method" "public"."payment_method_enum" DEFAULT NULL::"public"."payment_method_enum", "p_event_fee" integer DEFAULT 0) RETURNS "uuid"
@@ -2062,34 +1661,6 @@ $$;
 ALTER FUNCTION "public"."update_payment_version"() OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."update_payout_status_safe"("_payout_id" "uuid", "_from_status" "public"."payout_status_enum", "_to_status" "public"."payout_status_enum", "_processed_at" timestamp with time zone DEFAULT NULL::timestamp with time zone, "_transfer_group" "text" DEFAULT NULL::"text", "_last_error" "text" DEFAULT NULL::"text", "_notes" "text" DEFAULT NULL::"text") RETURNS "void"
-    LANGUAGE "plpgsql"
-    AS $$
-begin
-    update public.settlements
-    set status             = _to_status,
-        processed_at       = coalesce(_processed_at, processed_at),
-        transfer_group     = coalesce(_transfer_group, transfer_group),
-        last_error         = coalesce(_last_error, last_error),
-        notes              = coalesce(_notes, notes)
-    where id = _payout_id
-      and status = _from_status;
-
-    if not found then
-        raise exception 'payout status conflict or not found'
-            using errcode = '40001'; -- serialization_failure 相当
-    end if;
-end;
-$$;
-
-
-ALTER FUNCTION "public"."update_payout_status_safe"("_payout_id" "uuid", "_from_status" "public"."payout_status_enum", "_to_status" "public"."payout_status_enum", "_processed_at" timestamp with time zone, "_transfer_group" "text", "_last_error" "text", "_notes" "text") OWNER TO "postgres";
-
-
-COMMENT ON FUNCTION "public"."update_payout_status_safe"("_payout_id" "uuid", "_from_status" "public"."payout_status_enum", "_to_status" "public"."payout_status_enum", "_processed_at" timestamp with time zone, "_transfer_group" "text", "_last_error" "text", "_notes" "text") IS 'Remove transfer_id handling; DC does not rely on transfers.';
-
-
-
 CREATE OR REPLACE FUNCTION "public"."update_revenue_summary"("p_event_id" "uuid") RETURNS json
     LANGUAGE "plpgsql" SECURITY DEFINER
     AS $$
@@ -2161,30 +1732,6 @@ ALTER FUNCTION "public"."update_updated_at_column"() OWNER TO "postgres";
 SET default_tablespace = '';
 
 SET default_table_access_method = "heap";
-
-
-CREATE TABLE IF NOT EXISTS "public"."admin_access_audit" (
-    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
-    "user_id" "uuid",
-    "reason" "public"."admin_reason_enum" NOT NULL,
-    "context" "text" NOT NULL,
-    "operation_details" "jsonb",
-    "ip_address" "inet",
-    "user_agent" "text",
-    "accessed_tables" "text"[],
-    "session_id" "text",
-    "duration_ms" integer,
-    "success" boolean DEFAULT true,
-    "error_message" "text",
-    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL
-);
-
-
-ALTER TABLE "public"."admin_access_audit" OWNER TO "postgres";
-
-
-COMMENT ON TABLE "public"."admin_access_audit" IS '管理者権限を使用したデータベースアクセスの監査ログ';
-
 
 
 CREATE TABLE IF NOT EXISTS "public"."attendances" (
@@ -2287,57 +1834,6 @@ COMMENT ON COLUMN "public"."fee_config"."platform_tax_rate" IS 'Platform consump
 
 
 COMMENT ON COLUMN "public"."fee_config"."is_tax_included" IS 'Whether platform fees are calculated as tax-included (true=内税, false=外税)';
-
-
-
-CREATE TABLE IF NOT EXISTS "public"."guest_access_audit" (
-    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
-    "guest_token_hash" character varying(64) NOT NULL,
-    "attendance_id" "uuid",
-    "event_id" "uuid",
-    "action" character varying(100) NOT NULL,
-    "table_name" character varying(100),
-    "operation_type" character varying(20),
-    "success" boolean NOT NULL,
-    "result_count" integer,
-    "ip_address" "inet",
-    "user_agent" "text",
-    "session_id" "text",
-    "duration_ms" integer,
-    "error_code" character varying(50),
-    "error_message" "text",
-    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL
-);
-
-
-ALTER TABLE "public"."guest_access_audit" OWNER TO "postgres";
-
-
-COMMENT ON TABLE "public"."guest_access_audit" IS 'ゲストトークンを使用したアクセスの監査ログ';
-
-
-
-COMMENT ON COLUMN "public"."guest_access_audit"."guest_token_hash" IS 'セキュリティのためSHA-256でハッシュ化されたゲストトークン';
-
-
-
-CREATE TABLE IF NOT EXISTS "public"."invite_links" (
-    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
-    "event_id" "uuid" NOT NULL,
-    "token" "text" NOT NULL,
-    "expires_at" timestamp with time zone NOT NULL,
-    "max_uses" integer,
-    "current_uses" integer DEFAULT 0,
-    "created_by" "uuid",
-    "created_at" timestamp with time zone DEFAULT "now"(),
-    "updated_at" timestamp with time zone DEFAULT "now"()
-);
-
-
-ALTER TABLE "public"."invite_links" OWNER TO "postgres";
-
-
-COMMENT ON TABLE "public"."invite_links" IS 'イベント招待リンク';
 
 
 
@@ -2483,38 +1979,6 @@ COMMENT ON COLUMN "public"."payments"."tax_included" IS 'Whether the application
 
 
 COMMENT ON COLUMN "public"."payments"."version" IS 'Optimistic lock version to prevent concurrent updates';
-
-
-
-CREATE TABLE IF NOT EXISTS "public"."payout_scheduler_logs" (
-    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
-    "execution_id" character varying(100) NOT NULL,
-    "start_time" timestamp without time zone NOT NULL,
-    "end_time" timestamp without time zone NOT NULL,
-    "processing_time_ms" integer NOT NULL,
-    "eligible_events_count" integer DEFAULT 0 NOT NULL,
-    "successful_payouts" integer DEFAULT 0 NOT NULL,
-    "failed_payouts" integer DEFAULT 0 NOT NULL,
-    "total_amount" integer DEFAULT 0 NOT NULL,
-    "dry_run" boolean DEFAULT false NOT NULL,
-    "error_message" "text",
-    "results" "jsonb",
-    "summary" "jsonb",
-    "created_at" timestamp without time zone DEFAULT "now"(),
-    CONSTRAINT "payout_scheduler_logs_eligible_events_count_check" CHECK (("eligible_events_count" >= 0)),
-    CONSTRAINT "payout_scheduler_logs_failed_payouts_check" CHECK (("failed_payouts" >= 0)),
-    CONSTRAINT "payout_scheduler_logs_processing_time_ms_check" CHECK (("processing_time_ms" >= 0)),
-    CONSTRAINT "payout_scheduler_logs_successful_payouts_check" CHECK (("successful_payouts" >= 0)),
-    CONSTRAINT "payout_scheduler_logs_total_amount_check" CHECK (("total_amount" >= 0)),
-    CONSTRAINT "valid_execution_time" CHECK (("end_time" >= "start_time")),
-    CONSTRAINT "valid_payout_counts" CHECK ((("successful_payouts" + "failed_payouts") <= "eligible_events_count"))
-);
-
-
-ALTER TABLE "public"."payout_scheduler_logs" OWNER TO "postgres";
-
-
-COMMENT ON TABLE "public"."payout_scheduler_logs" IS 'PayoutScheduler実行ログテーブル - 自動送金処理の実行履歴を記録';
 
 
 
@@ -2669,40 +2133,6 @@ COMMENT ON TABLE "public"."stripe_connect_accounts" IS 'Stripe Connectアカウ�
 
 
 
-CREATE TABLE IF NOT EXISTS "public"."suspicious_activity_log" (
-    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
-    "activity_type" "public"."suspicious_activity_type_enum" NOT NULL,
-    "table_name" character varying(100),
-    "user_role" character varying(50),
-    "user_id" "uuid",
-    "attempted_action" character varying(100),
-    "expected_result_count" integer,
-    "actual_result_count" integer,
-    "context" "jsonb",
-    "severity" "public"."security_severity_enum" DEFAULT 'MEDIUM'::"public"."security_severity_enum",
-    "ip_address" "inet",
-    "user_agent" "text",
-    "session_id" "text",
-    "detection_method" character varying(100),
-    "false_positive" boolean DEFAULT false,
-    "investigated_at" timestamp with time zone,
-    "investigated_by" "uuid",
-    "investigation_notes" "text",
-    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL
-);
-
-
-ALTER TABLE "public"."suspicious_activity_log" OWNER TO "postgres";
-
-
-COMMENT ON TABLE "public"."suspicious_activity_log" IS '疑わしい活動やセキュリティ違反の可能性がある操作のログ';
-
-
-
-COMMENT ON COLUMN "public"."suspicious_activity_log"."false_positive" IS '誤検知フラグ - 調査の結果、問題なしと判定された場合にTRUEに設定';
-
-
-
 CREATE TABLE IF NOT EXISTS "public"."system_logs" (
     "id" bigint NOT NULL,
     "operation_type" character varying(50) NOT NULL,
@@ -2734,47 +2164,11 @@ ALTER SEQUENCE "public"."system_logs_id_seq" OWNED BY "public"."system_logs"."id
 
 
 
-CREATE TABLE IF NOT EXISTS "public"."unauthorized_access_log" (
-    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
-    "attempted_resource" character varying(200) NOT NULL,
-    "required_permission" character varying(100),
-    "user_context" "jsonb",
-    "user_id" "uuid",
-    "guest_token_hash" character varying(64),
-    "detection_method" character varying(50) NOT NULL,
-    "blocked_by_rls" boolean DEFAULT false,
-    "ip_address" "inet",
-    "user_agent" "text",
-    "session_id" "text",
-    "request_path" character varying(500),
-    "request_method" character varying(10),
-    "request_headers" "jsonb",
-    "response_status" integer,
-    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL
-);
-
-
-ALTER TABLE "public"."unauthorized_access_log" OWNER TO "postgres";
-
-
-COMMENT ON TABLE "public"."unauthorized_access_log" IS '不正なアクセス試行や権限違反の記録';
-
-
-
-COMMENT ON COLUMN "public"."unauthorized_access_log"."blocked_by_rls" IS 'RLSポリシーによってアクセスがブロックされた場合にTRUE';
-
-
-
 ALTER TABLE ONLY "public"."security_audit_log" ALTER COLUMN "id" SET DEFAULT "nextval"('"public"."security_audit_log_id_seq"'::"regclass");
 
 
 
 ALTER TABLE ONLY "public"."system_logs" ALTER COLUMN "id" SET DEFAULT "nextval"('"public"."system_logs_id_seq"'::"regclass");
-
-
-
-ALTER TABLE ONLY "public"."admin_access_audit"
-    ADD CONSTRAINT "admin_access_audit_pkey" PRIMARY KEY ("id");
 
 
 
@@ -2803,21 +2197,6 @@ ALTER TABLE ONLY "public"."fee_config"
 
 
 
-ALTER TABLE ONLY "public"."guest_access_audit"
-    ADD CONSTRAINT "guest_access_audit_pkey" PRIMARY KEY ("id");
-
-
-
-ALTER TABLE ONLY "public"."invite_links"
-    ADD CONSTRAINT "invite_links_pkey" PRIMARY KEY ("id");
-
-
-
-ALTER TABLE ONLY "public"."invite_links"
-    ADD CONSTRAINT "invite_links_token_key" UNIQUE ("token");
-
-
-
 ALTER TABLE ONLY "public"."payment_disputes"
     ADD CONSTRAINT "payment_disputes_pkey" PRIMARY KEY ("id");
 
@@ -2835,16 +2214,6 @@ ALTER TABLE ONLY "public"."payments"
 
 ALTER TABLE ONLY "public"."payments"
     ADD CONSTRAINT "payments_stripe_payment_intent_id_key" UNIQUE ("stripe_payment_intent_id");
-
-
-
-ALTER TABLE ONLY "public"."payout_scheduler_logs"
-    ADD CONSTRAINT "payout_scheduler_logs_execution_id_key" UNIQUE ("execution_id");
-
-
-
-ALTER TABLE ONLY "public"."payout_scheduler_logs"
-    ADD CONSTRAINT "payout_scheduler_logs_pkey" PRIMARY KEY ("id");
 
 
 
@@ -2873,18 +2242,8 @@ ALTER TABLE ONLY "public"."stripe_connect_accounts"
 
 
 
-ALTER TABLE ONLY "public"."suspicious_activity_log"
-    ADD CONSTRAINT "suspicious_activity_log_pkey" PRIMARY KEY ("id");
-
-
-
 ALTER TABLE ONLY "public"."system_logs"
     ADD CONSTRAINT "system_logs_pkey" PRIMARY KEY ("id");
-
-
-
-ALTER TABLE ONLY "public"."unauthorized_access_log"
-    ADD CONSTRAINT "unauthorized_access_log_pkey" PRIMARY KEY ("id");
 
 
 
@@ -2894,18 +2253,6 @@ ALTER TABLE ONLY "public"."users"
 
 
 CREATE UNIQUE INDEX "attendances_event_email_unique" ON "public"."attendances" USING "btree" ("event_id", "email");
-
-
-
-CREATE INDEX "idx_admin_access_audit_created_at_reason" ON "public"."admin_access_audit" USING "btree" ("created_at" DESC, "reason");
-
-
-
-CREATE INDEX "idx_admin_access_audit_failed_access" ON "public"."admin_access_audit" USING "btree" ("created_at" DESC, "reason") WHERE ("success" = false);
-
-
-
-CREATE INDEX "idx_admin_access_audit_user_id_created_at" ON "public"."admin_access_audit" USING "btree" ("user_id", "created_at" DESC) WHERE ("user_id" IS NOT NULL);
 
 
 
@@ -2942,26 +2289,6 @@ CREATE INDEX "idx_events_invite_token" ON "public"."events" USING "btree" ("invi
 
 
 CREATE INDEX "idx_events_status" ON "public"."events" USING "btree" ("status");
-
-
-
-CREATE INDEX "idx_guest_access_audit_attendance_id" ON "public"."guest_access_audit" USING "btree" ("attendance_id", "created_at" DESC) WHERE ("attendance_id" IS NOT NULL);
-
-
-
-CREATE INDEX "idx_guest_access_audit_created_at" ON "public"."guest_access_audit" USING "btree" ("created_at" DESC) WHERE ("success" = false);
-
-
-
-CREATE INDEX "idx_guest_access_audit_event_id" ON "public"."guest_access_audit" USING "btree" ("event_id", "created_at" DESC) WHERE ("event_id" IS NOT NULL);
-
-
-
-CREATE INDEX "idx_guest_access_audit_token_hash_created_at" ON "public"."guest_access_audit" USING "btree" ("guest_token_hash", "created_at" DESC);
-
-
-
-CREATE INDEX "idx_invite_links_token" ON "public"."invite_links" USING "btree" ("token");
 
 
 
@@ -3061,26 +2388,6 @@ CREATE INDEX "idx_payments_webhook_event" ON "public"."payments" USING "btree" (
 
 
 
-CREATE INDEX "idx_payout_scheduler_logs_dry_run" ON "public"."payout_scheduler_logs" USING "btree" ("dry_run", "start_time" DESC);
-
-
-
-CREATE INDEX "idx_payout_scheduler_logs_execution_id" ON "public"."payout_scheduler_logs" USING "btree" ("execution_id");
-
-
-
-CREATE INDEX "idx_payout_scheduler_logs_failed" ON "public"."payout_scheduler_logs" USING "btree" ("start_time" DESC) WHERE ("error_message" IS NOT NULL);
-
-
-
-CREATE INDEX "idx_payout_scheduler_logs_start_time" ON "public"."payout_scheduler_logs" USING "btree" ("start_time" DESC);
-
-
-
-CREATE INDEX "idx_payout_scheduler_logs_success" ON "public"."payout_scheduler_logs" USING "btree" ("start_time" DESC) WHERE ("error_message" IS NULL);
-
-
-
 CREATE INDEX "idx_scheduler_locks_expires_at" ON "public"."scheduler_locks" USING "btree" ("expires_at");
 
 
@@ -3129,42 +2436,6 @@ CREATE INDEX "idx_stripe_connect_accounts_user_id" ON "public"."stripe_connect_a
 
 
 
-CREATE INDEX "idx_suspicious_activity_log_activity_type" ON "public"."suspicious_activity_log" USING "btree" ("activity_type", "created_at" DESC);
-
-
-
-CREATE INDEX "idx_suspicious_activity_log_created_at_severity" ON "public"."suspicious_activity_log" USING "btree" ("created_at" DESC, "severity") WHERE ("severity" = ANY (ARRAY['HIGH'::"public"."security_severity_enum", 'CRITICAL'::"public"."security_severity_enum"]));
-
-
-
-CREATE INDEX "idx_suspicious_activity_log_uninvestigated" ON "public"."suspicious_activity_log" USING "btree" ("created_at" DESC) WHERE (("investigated_at" IS NULL) AND ("severity" = ANY (ARRAY['HIGH'::"public"."security_severity_enum", 'CRITICAL'::"public"."security_severity_enum"])));
-
-
-
-CREATE INDEX "idx_suspicious_activity_log_user_id" ON "public"."suspicious_activity_log" USING "btree" ("user_id", "created_at" DESC) WHERE ("user_id" IS NOT NULL);
-
-
-
-CREATE INDEX "idx_unauthorized_access_log_created_at" ON "public"."unauthorized_access_log" USING "btree" ("created_at" DESC);
-
-
-
-CREATE INDEX "idx_unauthorized_access_log_detection_method" ON "public"."unauthorized_access_log" USING "btree" ("detection_method", "created_at" DESC);
-
-
-
-CREATE INDEX "idx_unauthorized_access_log_guest_token" ON "public"."unauthorized_access_log" USING "btree" ("guest_token_hash", "created_at" DESC) WHERE ("guest_token_hash" IS NOT NULL);
-
-
-
-CREATE INDEX "idx_unauthorized_access_log_ip_address" ON "public"."unauthorized_access_log" USING "btree" ("ip_address", "created_at" DESC) WHERE ("ip_address" IS NOT NULL);
-
-
-
-CREATE INDEX "idx_unauthorized_access_log_user_id" ON "public"."unauthorized_access_log" USING "btree" ("user_id", "created_at" DESC) WHERE ("user_id" IS NOT NULL);
-
-
-
 CREATE UNIQUE INDEX "uniq_settlements_event_generated_date_jst" ON "public"."settlements" USING "btree" ("event_id", ((("generated_at" AT TIME ZONE 'Asia/Tokyo'::"text"))::"date"));
 
 
@@ -3197,10 +2468,6 @@ CREATE OR REPLACE TRIGGER "update_events_updated_at" BEFORE UPDATE ON "public"."
 
 
 
-CREATE OR REPLACE TRIGGER "update_invite_links_updated_at" BEFORE UPDATE ON "public"."invite_links" FOR EACH ROW EXECUTE FUNCTION "public"."update_updated_at_column"();
-
-
-
 CREATE OR REPLACE TRIGGER "update_payments_updated_at" BEFORE UPDATE ON "public"."payments" FOR EACH ROW EXECUTE FUNCTION "public"."update_updated_at_column"();
 
 
@@ -3217,11 +2484,6 @@ CREATE OR REPLACE TRIGGER "update_users_updated_at" BEFORE UPDATE ON "public"."u
 
 
 
-ALTER TABLE ONLY "public"."admin_access_audit"
-    ADD CONSTRAINT "admin_access_audit_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "auth"."users"("id") ON DELETE SET NULL;
-
-
-
 ALTER TABLE ONLY "public"."attendances"
     ADD CONSTRAINT "attendances_event_id_fkey" FOREIGN KEY ("event_id") REFERENCES "public"."events"("id") ON DELETE CASCADE;
 
@@ -3229,26 +2491,6 @@ ALTER TABLE ONLY "public"."attendances"
 
 ALTER TABLE ONLY "public"."events"
     ADD CONSTRAINT "events_created_by_fkey" FOREIGN KEY ("created_by") REFERENCES "public"."users"("id") ON DELETE CASCADE;
-
-
-
-ALTER TABLE ONLY "public"."guest_access_audit"
-    ADD CONSTRAINT "guest_access_audit_attendance_id_fkey" FOREIGN KEY ("attendance_id") REFERENCES "public"."attendances"("id") ON DELETE SET NULL;
-
-
-
-ALTER TABLE ONLY "public"."guest_access_audit"
-    ADD CONSTRAINT "guest_access_audit_event_id_fkey" FOREIGN KEY ("event_id") REFERENCES "public"."events"("id") ON DELETE SET NULL;
-
-
-
-ALTER TABLE ONLY "public"."invite_links"
-    ADD CONSTRAINT "invite_links_created_by_fkey" FOREIGN KEY ("created_by") REFERENCES "auth"."users"("id");
-
-
-
-ALTER TABLE ONLY "public"."invite_links"
-    ADD CONSTRAINT "invite_links_event_id_fkey" FOREIGN KEY ("event_id") REFERENCES "public"."events"("id") ON DELETE CASCADE;
 
 
 
@@ -3277,27 +2519,8 @@ ALTER TABLE ONLY "public"."stripe_connect_accounts"
 
 
 
-ALTER TABLE ONLY "public"."suspicious_activity_log"
-    ADD CONSTRAINT "suspicious_activity_log_investigated_by_fkey" FOREIGN KEY ("investigated_by") REFERENCES "auth"."users"("id") ON DELETE SET NULL;
-
-
-
-ALTER TABLE ONLY "public"."suspicious_activity_log"
-    ADD CONSTRAINT "suspicious_activity_log_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "auth"."users"("id") ON DELETE SET NULL;
-
-
-
-ALTER TABLE ONLY "public"."unauthorized_access_log"
-    ADD CONSTRAINT "unauthorized_access_log_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "auth"."users"("id") ON DELETE SET NULL;
-
-
-
 ALTER TABLE ONLY "public"."users"
     ADD CONSTRAINT "users_id_fkey" FOREIGN KEY ("id") REFERENCES "auth"."users"("id") ON DELETE CASCADE;
-
-
-
-CREATE POLICY "Allow service role access to scheduler_locks" ON "public"."scheduler_locks" TO "service_role" USING (true) WITH CHECK (true);
 
 
 
@@ -3324,35 +2547,11 @@ CREATE POLICY "Safe event access policy" ON "public"."events" FOR SELECT TO "aut
 
 
 
-CREATE POLICY "Safe invite link management policy" ON "public"."invite_links" TO "authenticated" USING ("public"."can_manage_invite_links"("event_id")) WITH CHECK ("public"."can_manage_invite_links"("event_id"));
-
-
-
-CREATE POLICY "Safe invite link view policy" ON "public"."invite_links" FOR SELECT TO "authenticated", "anon" USING ((("expires_at" > "now"()) AND (("max_uses" IS NULL) OR ("current_uses" < "max_uses"))));
-
-
-
-CREATE POLICY "Service role can access admin audit logs" ON "public"."admin_access_audit" TO "service_role" USING (true) WITH CHECK (true);
-
-
-
-CREATE POLICY "Service role can access guest audit logs" ON "public"."guest_access_audit" TO "service_role" USING (true) WITH CHECK (true);
-
-
-
 CREATE POLICY "Service role can access security logs" ON "public"."security_audit_log" TO "service_role" USING (true);
 
 
 
-CREATE POLICY "Service role can access suspicious activity logs" ON "public"."suspicious_activity_log" TO "service_role" USING (true) WITH CHECK (true);
-
-
-
 CREATE POLICY "Service role can access system logs" ON "public"."system_logs" TO "service_role" USING (true);
-
-
-
-CREATE POLICY "Service role can access unauthorized access logs" ON "public"."unauthorized_access_log" TO "service_role" USING (true) WITH CHECK (true);
 
 
 
@@ -3380,24 +2579,7 @@ CREATE POLICY "Users can update own profile" ON "public"."users" FOR UPDATE TO "
 
 
 
-CREATE POLICY "Users can view own admin audit logs" ON "public"."admin_access_audit" FOR SELECT TO "authenticated" USING (("auth"."uid"() = "user_id"));
-
-
-
 CREATE POLICY "Users can view own profile" ON "public"."users" FOR SELECT TO "authenticated" USING (("auth"."uid"() = "id"));
-
-
-
-CREATE POLICY "Users can view own settlements" ON "public"."settlements" FOR SELECT TO "authenticated" USING (("auth"."uid"() = "user_id"));
-
-
-
-ALTER TABLE "public"."admin_access_audit" ENABLE ROW LEVEL SECURITY;
-
-
-CREATE POLICY "admin_can_view_scheduler_logs" ON "public"."payout_scheduler_logs" FOR SELECT TO "authenticated" USING ((EXISTS ( SELECT 1
-   FROM "auth"."users"
-  WHERE (("users"."id" = "auth"."uid"()) AND (("users"."email")::"text" = ANY ((ARRAY['admin@eventpay.com'::character varying, 'support@eventpay.com'::character varying])::"text"[]))))));
 
 
 
@@ -3425,28 +2607,13 @@ CREATE POLICY "event_creators_can_view_payments" ON "public"."payments" FOR SELE
 
 
 
-CREATE POLICY "event_creators_can_view_settlements" ON "public"."settlements" FOR SELECT TO "authenticated" USING ((EXISTS ( SELECT 1
-   FROM "public"."events" "e"
-  WHERE (("e"."id" = "settlements"."event_id") AND ("e"."created_by" = "auth"."uid"())))));
-
-
-
 ALTER TABLE "public"."events" ENABLE ROW LEVEL SECURITY;
-
-
-ALTER TABLE "public"."guest_access_audit" ENABLE ROW LEVEL SECURITY;
-
-
-ALTER TABLE "public"."invite_links" ENABLE ROW LEVEL SECURITY;
 
 
 ALTER TABLE "public"."payment_disputes" ENABLE ROW LEVEL SECURITY;
 
 
 ALTER TABLE "public"."payments" ENABLE ROW LEVEL SECURITY;
-
-
-ALTER TABLE "public"."payout_scheduler_logs" ENABLE ROW LEVEL SECURITY;
 
 
 ALTER TABLE "public"."scheduler_locks" ENABLE ROW LEVEL SECURITY;
@@ -3461,24 +2628,10 @@ ALTER TABLE "public"."settlements" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "public"."stripe_connect_accounts" ENABLE ROW LEVEL SECURITY;
 
 
-ALTER TABLE "public"."suspicious_activity_log" ENABLE ROW LEVEL SECURITY;
-
-
-CREATE POLICY "system_can_manage_scheduler_logs" ON "public"."payout_scheduler_logs" TO "service_role" USING (true) WITH CHECK (true);
-
-
-
 ALTER TABLE "public"."system_logs" ENABLE ROW LEVEL SECURITY;
 
 
-ALTER TABLE "public"."unauthorized_access_log" ENABLE ROW LEVEL SECURITY;
-
-
 ALTER TABLE "public"."users" ENABLE ROW LEVEL SECURITY;
-
-
-CREATE POLICY "users_can_view_own_settlements" ON "public"."settlements" FOR SELECT TO "authenticated" USING (("user_id" = "auth"."uid"()));
-
 
 
 CREATE POLICY "users_can_view_own_stripe_accounts" ON "public"."stripe_connect_accounts" FOR SELECT TO "authenticated" USING (("user_id" = "auth"."uid"()));
@@ -3710,39 +2863,9 @@ GRANT ALL ON FUNCTION "public"."cleanup_expired_scheduler_locks"() TO "service_r
 
 
 
-GRANT ALL ON FUNCTION "public"."cleanup_old_audit_logs"("retention_days" integer) TO "anon";
-GRANT ALL ON FUNCTION "public"."cleanup_old_audit_logs"("retention_days" integer) TO "authenticated";
-GRANT ALL ON FUNCTION "public"."cleanup_old_audit_logs"("retention_days" integer) TO "service_role";
-
-
-
-GRANT ALL ON FUNCTION "public"."cleanup_old_scheduler_logs"("retention_days" integer) TO "anon";
-GRANT ALL ON FUNCTION "public"."cleanup_old_scheduler_logs"("retention_days" integer) TO "authenticated";
-GRANT ALL ON FUNCTION "public"."cleanup_old_scheduler_logs"("retention_days" integer) TO "service_role";
-
-
-
-GRANT ALL ON FUNCTION "public"."cleanup_test_tables_dev_only"() TO "anon";
-GRANT ALL ON FUNCTION "public"."cleanup_test_tables_dev_only"() TO "authenticated";
-GRANT ALL ON FUNCTION "public"."cleanup_test_tables_dev_only"() TO "service_role";
-
-
-
 GRANT ALL ON FUNCTION "public"."clear_test_guest_token"() TO "anon";
 GRANT ALL ON FUNCTION "public"."clear_test_guest_token"() TO "authenticated";
 GRANT ALL ON FUNCTION "public"."clear_test_guest_token"() TO "service_role";
-
-
-
-GRANT ALL ON FUNCTION "public"."create_payment_record"("p_attendance_id" "uuid", "p_method" "public"."payment_method_enum", "p_amount" integer) TO "anon";
-GRANT ALL ON FUNCTION "public"."create_payment_record"("p_attendance_id" "uuid", "p_method" "public"."payment_method_enum", "p_amount" integer) TO "authenticated";
-GRANT ALL ON FUNCTION "public"."create_payment_record"("p_attendance_id" "uuid", "p_method" "public"."payment_method_enum", "p_amount" integer) TO "service_role";
-
-
-
-GRANT ALL ON FUNCTION "public"."detect_orphaned_users"() TO "anon";
-GRANT ALL ON FUNCTION "public"."detect_orphaned_users"() TO "authenticated";
-GRANT ALL ON FUNCTION "public"."detect_orphaned_users"() TO "service_role";
 
 
 
@@ -3752,33 +2875,15 @@ GRANT ALL ON FUNCTION "public"."extend_scheduler_lock"("p_lock_name" "text", "p_
 
 
 
-GRANT ALL ON FUNCTION "public"."find_eligible_events_basic"("p_days_after_event" integer, "p_minimum_amount" integer, "p_limit" integer, "p_user_id" "uuid") TO "anon";
-GRANT ALL ON FUNCTION "public"."find_eligible_events_basic"("p_days_after_event" integer, "p_minimum_amount" integer, "p_limit" integer, "p_user_id" "uuid") TO "authenticated";
-GRANT ALL ON FUNCTION "public"."find_eligible_events_basic"("p_days_after_event" integer, "p_minimum_amount" integer, "p_limit" integer, "p_user_id" "uuid") TO "service_role";
-
-
-
 GRANT ALL ON FUNCTION "public"."find_eligible_events_with_details"("p_days_after_event" integer, "p_limit" integer) TO "anon";
 GRANT ALL ON FUNCTION "public"."find_eligible_events_with_details"("p_days_after_event" integer, "p_limit" integer) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."find_eligible_events_with_details"("p_days_after_event" integer, "p_limit" integer) TO "service_role";
 
 
 
-GRANT ALL ON FUNCTION "public"."force_release_payout_scheduler_lock"() TO "anon";
-GRANT ALL ON FUNCTION "public"."force_release_payout_scheduler_lock"() TO "authenticated";
-GRANT ALL ON FUNCTION "public"."force_release_payout_scheduler_lock"() TO "service_role";
-
-
-
 GRANT ALL ON FUNCTION "public"."generate_settlement_report"("input_event_id" "uuid", "input_created_by" "uuid") TO "anon";
 GRANT ALL ON FUNCTION "public"."generate_settlement_report"("input_event_id" "uuid", "input_created_by" "uuid") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."generate_settlement_report"("input_event_id" "uuid", "input_created_by" "uuid") TO "service_role";
-
-
-
-GRANT ALL ON FUNCTION "public"."get_enum_values"("enum_name" "text") TO "anon";
-GRANT ALL ON FUNCTION "public"."get_enum_values"("enum_name" "text") TO "authenticated";
-GRANT ALL ON FUNCTION "public"."get_enum_values"("enum_name" "text") TO "service_role";
 
 
 
@@ -3830,27 +2935,9 @@ GRANT ALL ON FUNCTION "public"."hash_guest_token"("token" "text") TO "service_ro
 
 
 
-GRANT ALL ON FUNCTION "public"."list_all_enums"() TO "anon";
-GRANT ALL ON FUNCTION "public"."list_all_enums"() TO "authenticated";
-GRANT ALL ON FUNCTION "public"."list_all_enums"() TO "service_role";
-
-
-
-GRANT ALL ON FUNCTION "public"."log_security_event"("p_event_type" "text", "p_details" "jsonb") TO "anon";
-GRANT ALL ON FUNCTION "public"."log_security_event"("p_event_type" "text", "p_details" "jsonb") TO "authenticated";
-GRANT ALL ON FUNCTION "public"."log_security_event"("p_event_type" "text", "p_details" "jsonb") TO "service_role";
-
-
-
 GRANT ALL ON FUNCTION "public"."prevent_payment_status_rollback"() TO "anon";
 GRANT ALL ON FUNCTION "public"."prevent_payment_status_rollback"() TO "authenticated";
 GRANT ALL ON FUNCTION "public"."prevent_payment_status_rollback"() TO "service_role";
-
-
-
-GRANT ALL ON FUNCTION "public"."process_event_payout"("input_event_id" "uuid", "p_user_id" "uuid") TO "anon";
-GRANT ALL ON FUNCTION "public"."process_event_payout"("input_event_id" "uuid", "p_user_id" "uuid") TO "authenticated";
-GRANT ALL ON FUNCTION "public"."process_event_payout"("input_event_id" "uuid", "p_user_id" "uuid") TO "service_role";
 
 
 
@@ -3907,12 +2994,6 @@ GRANT ALL ON FUNCTION "public"."update_payment_version"() TO "service_role";
 
 
 
-GRANT ALL ON FUNCTION "public"."update_payout_status_safe"("_payout_id" "uuid", "_from_status" "public"."payout_status_enum", "_to_status" "public"."payout_status_enum", "_processed_at" timestamp with time zone, "_transfer_group" "text", "_last_error" "text", "_notes" "text") TO "anon";
-GRANT ALL ON FUNCTION "public"."update_payout_status_safe"("_payout_id" "uuid", "_from_status" "public"."payout_status_enum", "_to_status" "public"."payout_status_enum", "_processed_at" timestamp with time zone, "_transfer_group" "text", "_last_error" "text", "_notes" "text") TO "authenticated";
-GRANT ALL ON FUNCTION "public"."update_payout_status_safe"("_payout_id" "uuid", "_from_status" "public"."payout_status_enum", "_to_status" "public"."payout_status_enum", "_processed_at" timestamp with time zone, "_transfer_group" "text", "_last_error" "text", "_notes" "text") TO "service_role";
-
-
-
 GRANT ALL ON FUNCTION "public"."update_revenue_summary"("p_event_id" "uuid") TO "anon";
 GRANT ALL ON FUNCTION "public"."update_revenue_summary"("p_event_id" "uuid") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."update_revenue_summary"("p_event_id" "uuid") TO "service_role";
@@ -3940,12 +3021,6 @@ GRANT ALL ON FUNCTION "public"."update_updated_at_column"() TO "service_role";
 
 
 
-GRANT ALL ON TABLE "public"."admin_access_audit" TO "anon";
-GRANT ALL ON TABLE "public"."admin_access_audit" TO "authenticated";
-GRANT ALL ON TABLE "public"."admin_access_audit" TO "service_role";
-
-
-
 GRANT ALL ON TABLE "public"."attendances" TO "anon";
 GRANT ALL ON TABLE "public"."attendances" TO "authenticated";
 GRANT ALL ON TABLE "public"."attendances" TO "service_role";
@@ -3964,18 +3039,6 @@ GRANT ALL ON TABLE "public"."fee_config" TO "service_role";
 
 
 
-GRANT ALL ON TABLE "public"."guest_access_audit" TO "anon";
-GRANT ALL ON TABLE "public"."guest_access_audit" TO "authenticated";
-GRANT ALL ON TABLE "public"."guest_access_audit" TO "service_role";
-
-
-
-GRANT ALL ON TABLE "public"."invite_links" TO "anon";
-GRANT ALL ON TABLE "public"."invite_links" TO "authenticated";
-GRANT ALL ON TABLE "public"."invite_links" TO "service_role";
-
-
-
 GRANT ALL ON TABLE "public"."payment_disputes" TO "anon";
 GRANT ALL ON TABLE "public"."payment_disputes" TO "authenticated";
 GRANT ALL ON TABLE "public"."payment_disputes" TO "service_role";
@@ -3985,12 +3048,6 @@ GRANT ALL ON TABLE "public"."payment_disputes" TO "service_role";
 GRANT ALL ON TABLE "public"."payments" TO "anon";
 GRANT ALL ON TABLE "public"."payments" TO "authenticated";
 GRANT ALL ON TABLE "public"."payments" TO "service_role";
-
-
-
-GRANT ALL ON TABLE "public"."payout_scheduler_logs" TO "anon";
-GRANT ALL ON TABLE "public"."payout_scheduler_logs" TO "authenticated";
-GRANT ALL ON TABLE "public"."payout_scheduler_logs" TO "service_role";
 
 
 
@@ -4036,12 +3093,6 @@ GRANT ALL ON TABLE "public"."stripe_connect_accounts" TO "service_role";
 
 
 
-GRANT ALL ON TABLE "public"."suspicious_activity_log" TO "anon";
-GRANT ALL ON TABLE "public"."suspicious_activity_log" TO "authenticated";
-GRANT ALL ON TABLE "public"."suspicious_activity_log" TO "service_role";
-
-
-
 GRANT ALL ON TABLE "public"."system_logs" TO "anon";
 GRANT ALL ON TABLE "public"."system_logs" TO "authenticated";
 GRANT ALL ON TABLE "public"."system_logs" TO "service_role";
@@ -4051,12 +3102,6 @@ GRANT ALL ON TABLE "public"."system_logs" TO "service_role";
 GRANT ALL ON SEQUENCE "public"."system_logs_id_seq" TO "anon";
 GRANT ALL ON SEQUENCE "public"."system_logs_id_seq" TO "authenticated";
 GRANT ALL ON SEQUENCE "public"."system_logs_id_seq" TO "service_role";
-
-
-
-GRANT ALL ON TABLE "public"."unauthorized_access_log" TO "anon";
-GRANT ALL ON TABLE "public"."unauthorized_access_log" TO "authenticated";
-GRANT ALL ON TABLE "public"."unauthorized_access_log" TO "service_role";
 
 
 
@@ -4120,6 +3165,6 @@ ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TAB
 
 
 
-\unrestrict EYfeXrEzBXoZCrGcMYjDDaijr0NEe5BJy8pLI7qAwDqVzjo5sELIYLT8vjlQOGt
+\unrestrict cTFRJBPvbl2gJanpctiAhKcfrVV7ysAdVsy0e9RtVk7TH6wj9qEZWLK6XqezQNW
 
 RESET ALL;

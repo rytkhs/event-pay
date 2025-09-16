@@ -3,6 +3,7 @@
 import { startOfMonth, endOfMonth } from "date-fns";
 
 import { createClient } from "@core/supabase/server";
+import { createServerActionError, type ServerActionResult } from "@core/types/server-actions";
 // import { formatUtcToJst } from "@core/utils/timezone";
 
 export interface DashboardStats {
@@ -27,11 +28,7 @@ export interface DashboardData {
   recentEvents: RecentEvent[];
 }
 
-export async function getDashboardDataAction(): Promise<{
-  success: boolean;
-  data?: DashboardData;
-  error?: string;
-}> {
+export async function getDashboardDataAction(): Promise<ServerActionResult<DashboardData>> {
   try {
     const supabase = createClient();
 
@@ -42,10 +39,7 @@ export async function getDashboardDataAction(): Promise<{
     } = await supabase.auth.getUser();
 
     if (authError || !user) {
-      return {
-        success: false,
-        error: "認証が必要です",
-      };
+      return createServerActionError("UNAUTHORIZED", "認証が必要です");
     }
 
     // 今月の開始・終了日を取得
@@ -106,10 +100,10 @@ export async function getDashboardDataAction(): Promise<{
     ]);
 
     if (eventsResult.error) {
-      return {
-        success: false,
-        error: "イベント情報の取得に失敗しました",
-      };
+      return createServerActionError("DATABASE_ERROR", "イベント情報の取得に失敗しました", {
+        retryable: true,
+        details: { dbError: eventsResult.error },
+      });
     }
 
     const events = eventsResult.data || [];
@@ -169,10 +163,10 @@ export async function getDashboardDataAction(): Promise<{
       },
     };
   } catch (error) {
-    return {
-      success: false,
-      error: "ダッシュボード情報の取得に失敗しました",
-    };
+    return createServerActionError("INTERNAL_ERROR", "ダッシュボード情報の取得に失敗しました", {
+      retryable: true,
+      details: { originalError: error },
+    });
   }
 }
 

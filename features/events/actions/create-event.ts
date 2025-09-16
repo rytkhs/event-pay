@@ -5,6 +5,12 @@ import { z } from "zod";
 import { SecureSupabaseClientFactory } from "@core/security/secure-client-factory.impl";
 import { AdminReason } from "@core/security/secure-client-factory.types";
 import { createClient } from "@core/supabase/server";
+import {
+  type ServerActionResult,
+  createServerActionError,
+  createServerActionSuccess,
+  zodErrorToServerActionResponse,
+} from "@core/types/server-actions";
 import { extractEventCreateFormData } from "@core/utils/form-data-extractors";
 import { generateInviteToken } from "@core/utils/invite-token";
 import { convertDatetimeLocalToUtc } from "@core/utils/timezone";
@@ -14,15 +20,7 @@ import type { Database } from "@/types/database";
 
 type EventRow = Database["public"]["Tables"]["events"]["Row"];
 
-type CreateEventResult =
-  | {
-      success: true;
-      data: EventRow;
-    }
-  | {
-      success: false;
-      error: string;
-    };
+type CreateEventResult = ServerActionResult<EventRow>;
 
 type FormDataFields = {
   title: string;
@@ -48,17 +46,11 @@ export async function createEventAction(formData: FormData): Promise<CreateEvent
     } = await supabase.auth.getUser();
 
     if (authError) {
-      return {
-        success: false,
-        error: "認証が必要です",
-      };
+      return createServerActionError("UNAUTHORIZED", "認証が必要です");
     }
 
     if (!user) {
-      return {
-        success: false,
-        error: "認証が必要です",
-      };
+      return createServerActionError("UNAUTHORIZED", "認証が必要です");
     }
 
     const rawData = extractFormData(formData);
@@ -67,7 +59,10 @@ export async function createEventAction(formData: FormData): Promise<CreateEvent
     try {
       validatedData = createEventSchema.parse(rawData);
     } catch (validationError) {
-      throw validationError;
+      if (validationError instanceof z.ZodError) {
+        return zodErrorToServerActionResponse(validationError);
+      }
+      return createServerActionError("VALIDATION_ERROR", "入力が不正です");
     }
 
     const inviteToken = generateInviteToken();
@@ -92,35 +87,27 @@ export async function createEventAction(formData: FormData): Promise<CreateEvent
       .single();
 
     if (dbError) {
-      return {
-        success: false,
-        error: "イベントの作成に失敗しました",
-      };
+      return createServerActionError("DATABASE_ERROR", "イベントの作成に失敗しました", {
+        retryable: true,
+        details: { dbError },
+      });
     }
 
     if (!createdEvent) {
-      return {
-        success: false,
-        error: "イベントの作成に失敗しました",
-      };
+      return createServerActionError("DATABASE_ERROR", "イベントの作成に失敗しました", {
+        retryable: true,
+      });
     }
 
-    return {
-      success: true,
-      data: createdEvent,
-    };
+    return createServerActionSuccess(createdEvent);
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return {
-        success: false,
-        error: error.errors[0].message,
-      };
+      return zodErrorToServerActionResponse(error);
     }
-
-    return {
-      success: false,
-      error: "予期しないエラーが発生しました",
-    };
+    return createServerActionError("INTERNAL_ERROR", "予期しないエラーが発生しました", {
+      retryable: true,
+      details: { originalError: error },
+    });
   }
 }
 

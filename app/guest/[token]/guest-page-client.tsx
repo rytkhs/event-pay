@@ -5,6 +5,7 @@ import { useState } from "react";
 // import { useRouter } from "next/navigation";
 
 import { useToast } from "@core/contexts/toast-context";
+import { useErrorHandler } from "@core/hooks/use-error-handler";
 import { type GuestAttendanceData } from "@core/utils/guest-token";
 
 import { PaymentStatusAlert } from "@features/events";
@@ -32,6 +33,7 @@ export function GuestPageClient({
 }: GuestPageClientProps) {
   // const router = useRouter();
   const { toast } = useToast();
+  const { handleError } = useErrorHandler();
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
 
   // Stripe決済セッション作成処理
@@ -66,22 +68,13 @@ export function GuestPageClient({
         });
       }
     } catch (error) {
-      // エラーログの記録
-      if (process.env.NODE_ENV === "development") {
-        const { logger } = await import("@core/logging/app-logger");
-        logger.error("Stripe決済セッション作成エラー", {
+      handleError(error, {
+        action: "create_stripe_session",
+        additionalData: {
           tag: "guestStripePayment",
-          error_name: error instanceof Error ? error.name : "Unknown",
-          error_message: error instanceof Error ? error.message : String(error),
-          attendance_id: attendance.id,
-          event_id: attendance.event.id,
-        });
-      }
-
-      toast({
-        title: "決済エラー",
-        description: "予期しないエラーが発生しました。しばらく待ってからもう一度お試しください。",
-        variant: "destructive",
+          attendanceId: attendance.id,
+          eventId: attendance.event.id,
+        },
       });
     } finally {
       setIsProcessingPayment(false);
