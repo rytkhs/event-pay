@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 
 import { logger } from "@core/logging/app-logger";
 import type { Event, EventFormData } from "@core/types/models";
+import { deriveEventStatus } from "@core/utils/derive-event-status";
 
 import { ChangeItem } from "@/components/ui/change-confirmation-dialog";
 
@@ -66,13 +67,21 @@ export function useEventSubmission({ eventId, onSubmit }: UseEventSubmissionProp
         const result = await updateEventAction(eventId, formDataObj);
 
         if (result.success && result.data) {
+          // ステータス算出を付与
+          const dataWithStatus: Event = {
+            ...(result.data as any),
+            status: deriveEventStatus(
+              (result.data as any).date,
+              (result.data as any).canceled_at ?? null
+            ),
+          };
           // 成功時の処理
           if (onSubmit) {
-            onSubmit(result.data);
+            onSubmit(dataWithStatus);
           } else {
             router.push(`/events/${eventId}`);
           }
-          return { success: true, data: result.data };
+          return { success: true, data: dataWithStatus };
         } else {
           // 失敗時の処理
           const errorMessage = result.success === false ? result.error : "エラーが発生しました";

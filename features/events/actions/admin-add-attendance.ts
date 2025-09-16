@@ -11,6 +11,7 @@ import {
   createServerActionSuccess,
   type ServerActionResult,
 } from "@core/types/server-actions";
+import { deriveEventStatus } from "@core/utils/derive-event-status";
 import { generateGuestToken } from "@core/utils/guest-token";
 import { canCreateStripeSession } from "@core/validation/payment-eligibility";
 
@@ -64,7 +65,7 @@ export async function adminAddAttendanceAction(
     const { data: eventRow, error: eventErr } = await adminClient
       .from("events")
       .select(
-        `id, created_by, status, date, fee, capacity, registration_deadline, payment_deadline, allow_payment_after_deadline, grace_period_days`
+        `id, created_by, date, fee, capacity, registration_deadline, payment_deadline, allow_payment_after_deadline, grace_period_days, canceled_at`
       )
       .eq("id", eventId)
       .single();
@@ -127,7 +128,7 @@ export async function adminAddAttendanceAction(
     // 決済可否（Stripe）を判定
     const eventForEligibility = {
       id: eventRow.id,
-      status: eventRow.status as any,
+      status: deriveEventStatus(eventRow.date, (eventRow as any).canceled_at ?? null),
       fee: eventRow.fee,
       date: eventRow.date,
       payment_deadline: eventRow.payment_deadline,

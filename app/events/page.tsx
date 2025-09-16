@@ -99,7 +99,7 @@ async function EventsContent({ searchParams }: EventsContentProps) {
   return (
     <EventListWithFilters
       events={result.data}
-      totalCount={result.totalCount}
+      totalCount={result.totalCount ?? 0}
       initialSortBy={sortBy}
       initialSortOrder={sortOrder}
       initialStatusFilter={statusFilter}

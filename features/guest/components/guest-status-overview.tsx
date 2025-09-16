@@ -5,6 +5,7 @@ import React from "react";
 import { Ticket, CreditCard, Clock, CheckCircle, AlertCircle } from "lucide-react";
 
 import { type GuestAttendanceData } from "@core/utils/guest-token";
+import { canCreateStripeSession } from "@core/validation/payment-eligibility";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -87,6 +88,10 @@ export function GuestStatusOverview({
     attendance.payment?.status !== "received" &&
     attendance.payment?.status !== "waived";
 
+  // 決済セッション作成の可否（期限/猶予/最終上限を考慮）
+  const eligibility = canCreateStripeSession(attendance as any, attendance.event as any);
+  const paymentDisabled = isProcessingPayment || !eligibility.isEligible;
+
   return (
     <Card className="p-6">
       <h2 className="text-lg font-semibold text-gray-900 mb-4">現在の状況</h2>
@@ -125,7 +130,7 @@ export function GuestStatusOverview({
         <h3 className="text-sm font-medium text-gray-700 mb-3">次に行うこと:</h3>
         <div className="flex flex-col sm:flex-row gap-3">
           {shouldShowPayment && (
-            <Button onClick={onPaymentClick || scrollToTarget} disabled={isProcessingPayment}>
+            <Button onClick={onPaymentClick || scrollToTarget} disabled={paymentDisabled}>
               {isProcessingPayment ? (
                 <>
                   <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full mr-2"></div>
@@ -137,6 +142,12 @@ export function GuestStatusOverview({
                 </>
               )}
             </Button>
+          )}
+          {/* 期限超過などで決済不可の場合の案内 */}
+          {shouldShowPayment && !isProcessingPayment && !eligibility.isEligible && (
+            <div className="text-sm text-red-600" aria-live="polite">
+              決済期限を過ぎているため、現在このイベントでは決済できません。
+            </div>
           )}
           <Button variant="secondary" onClick={scrollToTarget}>
             <Ticket className="h-4 w-4 mr-2" /> 参加状況を変更
