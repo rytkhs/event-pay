@@ -149,21 +149,21 @@ export async function generateMetadata({ params }: EventDetailPageProps) {
     const eventDetailResult = await cachedActions.getEventDetail(params.id);
     if (!eventDetailResult.success) {
       return {
-        title: "イベント詳細 - EventPay",
+        title: "イベント詳細 - みんなの集金",
         description: "イベントの詳細情報",
       };
     }
 
     const eventDetail = eventDetailResult.data;
     return {
-      title: `${eventDetail.title} - EventPay`,
+      title: `${eventDetail.title} - みんなの集金`,
       description: sanitizeEventDescription(
         eventDetail.description || `${eventDetail.title}の詳細情報`
       ),
     };
   } catch {
     return {
-      title: "イベント詳細 - EventPay",
+      title: "イベント詳細 - みんなの集金",
       description: "イベントの詳細情報",
     };
   }

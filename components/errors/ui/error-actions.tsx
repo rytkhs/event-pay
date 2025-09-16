@@ -50,7 +50,7 @@ export function ErrorActions({
   const handleSupport = () => {
     // サポートページへのリンクまたはメールto:
     const supportEmail = process.env.NEXT_PUBLIC_SUPPORT_EMAIL || "support@example.com";
-    window.location.href = `mailto:${supportEmail}?subject=EventPayでエラーが発生しました`;
+    window.location.href = `mailto:${supportEmail}?subject=みんなの集金でエラーが発生しました`;
   };
 
   // アクションの優先順位を決定

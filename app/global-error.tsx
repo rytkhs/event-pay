@@ -36,7 +36,7 @@ export default function GlobalError({ error, reset }: GlobalErrorProps) {
 
   const handleSupport = () => {
     const supportEmail = process.env.NEXT_PUBLIC_SUPPORT_EMAIL || "support@eventpay.jp";
-    const subject = "EventPay - 重大なエラーが発生しました";
+    const subject = "みんなの集金 - 重大なエラーが発生しました";
     const body = `
 エラーが発生しました。以下の情報をお送りします：
 
@@ -56,7 +56,7 @@ ${error.digest ? `エラーID: ${error.digest}` : ""}
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <title>エラーが発生しました - EventPay</title>
+        <title>エラーが発生しました - みんなの集金</title>
         <meta name="robots" content="noindex, nofollow" />
       </head>
       <body>
@@ -65,7 +65,7 @@ ${error.digest ? `エラーID: ${error.digest}` : ""}
           category="server"
           severity="critical"
           title="アプリケーションエラー"
-          message="EventPayで重大なエラーが発生しました"
+          message="みんなの集金で重大なエラーが発生しました"
           description="システム管理者に通報済みです。ご不便をおかけして申し訳ございません。"
           showRetry={true}
           showHome={true}

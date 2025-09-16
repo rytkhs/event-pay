@@ -228,7 +228,7 @@ export class NotificationService implements INotificationService {
     return `
 ${userName} 様
 
-EventPayをご利用いただき、ありがとうございます。
+みんなの集金をご利用いただき、ありがとうございます。
 
 Stripe Connectアカウントの認証が完了しました。
 これで、イベントの売上を自動的に受け取ることができるようになりました。
@@ -238,7 +238,7 @@ Stripe Connectアカウントの認証が完了しました。
 
 ご不明な点がございましたら、お気軽にお問い合わせください。
 
-EventPay チーム
+みんなの集金 チーム
     `.trim();
   }
 
@@ -259,7 +259,7 @@ EventPay チーム
 
     <p>${userName} 様</p>
 
-    <p>EventPayをご利用いただき、ありがとうございます。</p>
+    <p>みんなの集金をご利用いただき、ありがとうございます。</p>
 
     <div style="background-color: #f0f9ff; border: 1px solid #0ea5e9; border-radius: 8px; padding: 16px; margin: 20px 0;">
       <p style="margin: 0; font-weight: bold; color: #0ea5e9;">✅ Stripe Connectアカウントの認証が完了しました</p>
@@ -275,7 +275,7 @@ EventPay チーム
     <p>ご不明な点がございましたら、お気軽にお問い合わせください。</p>
 
     <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 30px 0;">
-    <p style="color: #6b7280; font-size: 14px;">EventPay チーム</p>
+    <p style="color: #6b7280; font-size: 14px;">みんなの集金 チーム</p>
   </div>
 </body>
 </html>
@@ -294,7 +294,7 @@ EventPay チーム
     let body = `
 ${userName} 様
 
-EventPayをご利用いただき、ありがとうございます。
+みんなの集金をご利用いただき、ありがとうございます。
 
 Stripe Connectアカウントに制限が設定されました。
     `;
@@ -318,7 +318,7 @@ Stripe Connectアカウントに制限が設定されました。
 制限を解除するには、上記のアクションを完了してください。
 ご不明な点がございましたら、お気軽にお問い合わせください。
 
-EventPay チーム
+みんなの集金 チーム
     `;
 
     return body.trim();
@@ -366,7 +366,7 @@ EventPay チーム
 
     <p>${userName} 様</p>
 
-    <p>EventPayをご利用いただき、ありがとうございます。</p>
+    <p>みんなの集金をご利用いただき、ありがとうございます。</p>
 
     <div style="background-color: #fef2f2; border: 1px solid #f87171; border-radius: 8px; padding: 16px; margin: 20px 0;">
       <p style="margin: 0; font-weight: bold; color: #dc2626;">⚠️ Stripe Connectアカウントに制限が設定されました</p>
@@ -381,7 +381,7 @@ EventPay チーム
     <p>ご不明な点がございましたら、お気軽にお問い合わせください。</p>
 
     <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 30px 0;">
-    <p style="color: #6b7280; font-size: 14px;">EventPay チーム</p>
+    <p style="color: #6b7280; font-size: 14px;">みんなの集金 チーム</p>
   </div>
 </body>
 </html>
@@ -408,7 +408,7 @@ EventPay チーム
     return `
 ${userName} 様
 
-EventPayをご利用いただき、ありがとうございます。
+みんなの集金をご利用いただき、ありがとうございます。
 
 Stripe Connectアカウントの状態が更新されました。
 
@@ -421,7 +421,7 @@ ${newStatus === "verified" ? "これで、イベントの売上を自動的に�
 
 ご不明な点がございましたら、お気軽にお問い合わせください。
 
-EventPay チーム
+みんなの集金 チーム
     `.trim();
   }
 
@@ -458,7 +458,7 @@ EventPay チーム
 
     <p>${userName} 様</p>
 
-    <p>EventPayをご利用いただき、ありがとうございます。</p>
+    <p>みんなの集金をご利用いただき、ありがとうございます。</p>
 
     <div style="background-color: #f9fafb; border: 1px solid #d1d5db; border-radius: 8px; padding: 16px; margin: 20px 0;">
       <h3 style="margin-top: 0;">変更内容:</h3>
@@ -474,7 +474,7 @@ EventPay チーム
     <p>ご不明な点がございましたら、お気軽にお問い合わせください。</p>
 
     <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 30px 0;">
-    <p style="color: #6b7280; font-size: 14px;">EventPay チーム</p>
+    <p style="color: #6b7280; font-size: 14px;">みんなの集金 チーム</p>
   </div>
 </body>
 </html>

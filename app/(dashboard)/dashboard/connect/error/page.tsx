@@ -14,7 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 export const metadata: Metadata = {
-  title: "設定エラー | EventPay",
+  title: "設定エラー | みんなの集金",
   description: "Stripe Connect設定中にエラーが発生しました",
 };
 

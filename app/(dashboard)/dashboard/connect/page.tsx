@@ -23,7 +23,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export const metadata: Metadata = {
-  title: "Stripe Connect 設定 | EventPay",
+  title: "Stripe Connect 設定 | みんなの集金",
   description: "売上受取用のStripe Connectアカウントを設定します",
 };
 

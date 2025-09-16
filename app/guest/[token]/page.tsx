@@ -36,7 +36,7 @@ export async function generateMetadata({ params }: GuestPageProps): Promise<Meta
 
   if (!validation.isValid || !validation.attendance) {
     return {
-      title: "参加状況管理 - EventPay",
+      title: "参加状況管理 - みんなの集金",
       description: "イベント参加状況の管理ページ",
       robots: "noindex, nofollow",
     };
@@ -45,7 +45,7 @@ export async function generateMetadata({ params }: GuestPageProps): Promise<Meta
   const eventTitle = sanitizeForEventPay(validation.attendance.event.title);
 
   return {
-    title: `${eventTitle} - 参加状況管理 | EventPay`,
+    title: `${eventTitle} - 参加状況管理 | みんなの集金`,
     description: `${eventTitle}の参加状況を確認・変更できます`,
     robots: "noindex, nofollow", // ゲストページは検索エンジンにインデックスされないようにする
   };

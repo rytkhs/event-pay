@@ -14,7 +14,7 @@ import { handleOnboardingReturnAction } from "@features/stripe-connect";
 import { Card, CardContent } from "@/components/ui/card";
 
 export const metadata: Metadata = {
-  title: "設定完了処理中 | EventPay",
+  title: "設定完了処理中 | みんなの集金",
   description: "Stripe Connect設定の完了処理を行っています",
 };
 

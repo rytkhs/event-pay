@@ -84,7 +84,7 @@ export default function RegisterPage() {
             <CardHeader className="text-center">
               <CardTitle className="text-3xl font-bold">会員登録</CardTitle>
               <CardDescription className="text-sm">
-                EventPayアカウントを作成してください
+                みんなの集金アカウントを作成してください
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -231,7 +231,7 @@ export default function RegisterPage() {
                             に同意します
                           </FormLabel>
                           <div id="terms-description" className="text-xs text-gray-600">
-                            EventPayをご利用いただくには利用規約への同意が必要です
+                            みんなの集金をご利用いただくには利用規約への同意が必要です
                           </div>
                         </div>
                       </FormItem>
@@ -282,7 +282,7 @@ export default function RegisterPage() {
       </main>
 
       <footer className="text-center text-sm text-gray-600 py-4" role="contentinfo">
-        <p>EventPay - 小規模コミュニティ向けイベント出欠管理・集金ツール</p>
+        <p>みんなの集金 - 出欠も集金も、ひとつのリンクで完了</p>
       </footer>
     </>
   );

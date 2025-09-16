@@ -14,7 +14,7 @@ import { handleOnboardingRefreshAction } from "@features/stripe-connect";
 import { Card, CardContent } from "@/components/ui/card";
 
 export const metadata: Metadata = {
-  title: "設定を再開 | EventPay",
+  title: "設定を再開 | みんなの集金",
   description: "Stripe Connect設定を再開しています",
 };
 

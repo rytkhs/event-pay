@@ -13,7 +13,7 @@ export default async function Home() {
 
   // 認証済みユーザーはダッシュボードにリダイレクト
   if (user && !error) {
-    redirect("/home");
+    redirect("/dashboard");
   }
 
   return (
@@ -21,11 +21,11 @@ export default async function Home() {
       <div className="flex flex-col justify-center items-center min-h-screen px-4">
         <div className="max-w-md w-full space-y-8 text-center">
           <div>
-            <h1 className="text-4xl font-bold text-gray-900 mb-4">EventPay</h1>
+            <h1 className="text-4xl font-bold text-gray-900 mb-4">みんなの集金</h1>
             <p className="text-xl text-gray-600 mb-8">
-              小規模コミュニティ向け
+              出欠も集金も、ひとつのリンクで完了
               <br />
-              イベント出欠管理・集金ツール
+              参加者は登録不要。主催者は出欠と入金の状況が自動でまとまるから、集計ミスと催促のストレスがぐっと減ります。
             </p>
           </div>
 
@@ -54,7 +54,7 @@ export default async function Home() {
           </div>
 
           <div className="text-center text-sm text-gray-500">
-            <p>© 2024 EventPay - 会計担当者の負担を80%削減</p>
+            <p>© 2025 みんなの集金 - 出欠も集金も、ひとつのリンクで完了</p>
           </div>
         </div>
       </div>

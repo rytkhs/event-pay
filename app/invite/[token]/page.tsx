@@ -132,7 +132,7 @@ export default async function InvitePage({ params }: InvitePageProps) {
               </div>
               <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-2">
                 <span className="bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-                  EventPay
+                  みんなの集金
                 </span>{" "}
                 参加申し込み
               </h1>
@@ -156,7 +156,7 @@ export default async function InvitePage({ params }: InvitePageProps) {
         <footer className="bg-white/50 border-t border-gray-200 mt-12">
           <div className="container mx-auto px-4 py-6">
             <div className="text-center text-sm text-gray-500">
-              <p>© 2025 EventPay. すべての権利を保持しています。</p>
+              <p>© 2025 みんなの集金. すべての権利を保持しています。</p>
             </div>
           </div>
         </footer>
@@ -185,7 +185,7 @@ export async function generateMetadata({ params }: InvitePageProps) {
   try {
     if (!params?.token) {
       return {
-        title: "イベント参加申し込み - EventPay",
+        title: "イベント参加申し込み - みんなの集金",
         description: "イベントへの参加申し込み",
       };
     }
@@ -194,19 +194,19 @@ export async function generateMetadata({ params }: InvitePageProps) {
 
     if (!validationResult.isValid || !validationResult.event) {
       return {
-        title: "無効な招待リンク - EventPay",
+        title: "無効な招待リンク - みんなの集金",
         description: "招待リンクが無効または期限切れです",
       };
     }
 
     const event = validationResult.event;
     return {
-      title: `${event.title} - 参加申し込み | EventPay`,
+      title: `${event.title} - 参加申し込み | みんなの集金`,
       description: sanitizeEventDescription(event.description || `${event.title}への参加申し込み`),
     };
   } catch {
     return {
-      title: "イベント参加申し込み - EventPay",
+      title: "イベント参加申し込み - みんなの集金",
       description: "イベントへの参加申し込み",
     };
   }
