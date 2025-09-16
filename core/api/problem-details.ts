@@ -147,6 +147,8 @@ export function createProblemResponse(
     headers: {
       "Content-Type": "application/problem+json",
       "X-Correlation-ID": problem.correlation_id,
+      // センシティブなエラー詳細の誤キャッシュ防止
+      "Cache-Control": "no-store",
     },
   });
 

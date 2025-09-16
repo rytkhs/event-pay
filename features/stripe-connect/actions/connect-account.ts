@@ -788,6 +788,18 @@ export async function prefillAndStartOnboardingAction(formData: FormData): Promi
     });
 
     // 7. ログ記録（KPI計測用）
+    // Account Link URL は機微トークンを含むためフル値をログに残さない
+    const maskedUrl = (() => {
+      try {
+        const u = new URL(accountLink.url);
+        // パス末尾の8文字のみを残してマスク
+        const tail = u.pathname.slice(-8);
+        return `${u.origin}/…/${tail}`;
+      } catch {
+        return "[masked]";
+      }
+    })();
+
     logger.info("Onboarding started with prefill", {
       tag: "onboardingStarted",
       user_id: user.id,
@@ -795,7 +807,7 @@ export async function prefillAndStartOnboardingAction(formData: FormData): Promi
       prefill_success: prefillSuccess,
       has_website: validatedData.hasWebsite,
       mcc_preset: validatedData.mccPreset,
-      account_link_url: accountLink.url,
+      account_link_url_masked: maskedUrl,
     });
 
     // 8. Account LinkのURLにリダイレクト

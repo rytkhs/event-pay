@@ -406,35 +406,58 @@ export function getUserErrorMessage(
  * @returns エラー詳細
  */
 export async function handleApiError(response: Response): Promise<ErrorDetails> {
-  let errorCode = "UNKNOWN_ERROR";
-
+  // Problem Details 優先でエラーコードを判定
   try {
-    const errorData = await response.json();
-    if (errorData.error?.code) {
-      errorCode = errorData.error.code;
+    const contentType = response.headers.get("content-type") || "";
+
+    if (contentType.includes("application/problem+json")) {
+      const problem = await response.json();
+      const code = typeof problem?.code === "string" ? problem.code : "UNKNOWN_ERROR";
+      return getErrorDetails(code);
+    }
+
+    // 非 Problem Details の JSON でも code や message を尊重
+    if (contentType.includes("application/json")) {
+      const body = await response.json();
+      const code = typeof body?.code === "string" ? body.code : undefined;
+      if (code) return getErrorDetails(code);
     }
   } catch {
-    // JSONパースに失敗した場合はHTTPステータスコードから推測
-    switch (response.status) {
-      case 400:
-        errorCode = "VALIDATION_ERROR";
-        break;
-      case 404:
-        errorCode = "NOT_FOUND";
-        break;
-      case 409:
-        errorCode = "CONFLICT";
-        break;
-      case 429:
-        errorCode = "RATE_LIMIT_EXCEEDED";
-        break;
-      case 500:
-        errorCode = "INTERNAL_SERVER_ERROR";
-        break;
-    }
+    // 何もしない（後段でHTTPステータスから推測）
   }
 
-  return getErrorDetails(errorCode);
+  // フォールバック: HTTP ステータスから推測
+  let fallback = "UNKNOWN_ERROR";
+  switch (response.status) {
+    case 400:
+      fallback = "VALIDATION_ERROR";
+      break;
+    case 401:
+      fallback = "UNAUTHORIZED";
+      break;
+    case 403:
+      fallback = "FORBIDDEN";
+      break;
+    case 404:
+      fallback = "NOT_FOUND";
+      break;
+    case 409:
+      fallback = "RESOURCE_CONFLICT";
+      break;
+    case 410:
+      fallback = "EVENT_ENDED"; // 代表的な410を便宜的にマップ（UI側で適宜上書き可）
+      break;
+    case 422:
+      fallback = "VALIDATION_ERROR";
+      break;
+    case 429:
+      fallback = "RATE_LIMITED";
+      break;
+    case 500:
+      fallback = "INTERNAL_ERROR";
+      break;
+  }
+  return getErrorDetails(fallback);
 }
 
 /**

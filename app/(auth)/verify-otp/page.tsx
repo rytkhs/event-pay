@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect, Suspense, useRef } from "react";
 
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
@@ -10,6 +10,7 @@ import { verifyOtpAction, resendOtpAction } from "@core/actions/auth";
 function VerifyOtpContent() {
   const [otp, setOtp] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const errorRef = useRef<HTMLDivElement | null>(null);
   const [loading, setLoading] = useState(false);
   const [resendLoading, setResendLoading] = useState(false);
   const [resendDisabled, setResendDisabled] = useState(false);
@@ -74,6 +75,14 @@ function VerifyOtpContent() {
       setLoading(false);
     }
   };
+
+  // エラー発生時にスクロール＆フォーカス
+  useEffect(() => {
+    if (error && errorRef.current) {
+      errorRef.current.focus({ preventScroll: true });
+      errorRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  }, [error]);
 
   const handleResend = async () => {
     if (!email || resendDisabled) {
@@ -174,7 +183,13 @@ function VerifyOtpContent() {
             </div>
 
             {error && (
-              <div className="p-3 rounded-md text-sm bg-red-50 text-red-800 border border-red-200">
+              <div
+                className="p-3 rounded-md text-sm bg-red-50 text-red-800 border border-red-200"
+                role="alert"
+                aria-live="assertive"
+                ref={errorRef}
+                tabIndex={-1}
+              >
                 {error}
               </div>
             )}
