@@ -1,8 +1,10 @@
+import { Noto_Sans_JP } from "next/font/google";
 import localFont from "next/font/local";
 
 import type { Metadata } from "next";
 
 import "./globals.css";
+import "./(marketing)/lp.css";
 
 import { ToastProvider } from "@core/contexts/toast-context";
 
@@ -18,6 +20,13 @@ const geistMono = localFont({
   src: "./fonts/GeistMonoVF.woff",
   variable: "--font-geist-mono",
   weight: "100 900",
+});
+
+const notoSansJp = Noto_Sans_JP({
+  subsets: ["latin"],
+  display: "swap",
+  variable: "--font-noto-sans-jp",
+  weight: ["100", "300", "400", "500", "700", "900"],
 });
 
 export const metadata: Metadata = {
@@ -41,7 +50,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning={true}>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} ${notoSansJp.className} antialiased`}
         suppressHydrationWarning={true}
       >
         <TooltipProvider>

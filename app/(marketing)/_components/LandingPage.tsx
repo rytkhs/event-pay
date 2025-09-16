@@ -1,0 +1,571 @@
+"use client";
+
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+
+import Image from "next/image";
+import { useRouter } from "next/navigation";
+
+import "../lp.css";
+
+type FAQItem = {
+  question: string;
+  answer: string;
+};
+
+const faqItems: FAQItem[] = [
+  {
+    question: "本当に無料で使えますか？",
+    answer:
+      "はい。登録料・月額利用料・プラットフォーム手数料は無料です（期間限定）。オンライン決済時は決済代行会社の手数料のみ発生します。",
+  },
+  {
+    question: "参加者にアカウント作成は必要ですか？",
+    answer: "いいえ。主催者から届いたURLにアクセスして回答するだけです。",
+  },
+  {
+    question: "現金とオンラインの両方で集金できますか？",
+    answer: "はい。両方に対応し、入金状況を1つの画面で確認できます。",
+  },
+  {
+    question: "リマインドのタイミングは設定できますか？",
+    answer: "可能です。締切日の◯日前や未払い発生時など、柔軟に設定できます。",
+  },
+  {
+    question: "CSVなどでデータをエクスポートできますか？",
+    answer: "はい。出欠・入金データをCSVでエクスポートできます。",
+  },
+];
+
+export default function LandingPage(): JSX.Element {
+  const router = useRouter();
+  const rootRef = useRef<HTMLDivElement | null>(null);
+  const headerRef = useRef<HTMLElement | null>(null);
+  const heroRef = useRef<HTMLElement | null>(null);
+  const closingRef = useRef<HTMLElement | null>(null);
+
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [headerScrolled, setHeaderScrolled] = useState(false);
+  const [floatingVisible, setFloatingVisible] = useState(false);
+  const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(null);
+
+  const handleToggleMobileMenu = useCallback(() => {
+    setMobileMenuOpen((p) => !p);
+  }, []);
+
+  const closeMobileMenu = useCallback(() => {
+    setMobileMenuOpen(false);
+  }, []);
+
+  useEffect(() => {
+    if (typeof document !== "undefined") {
+      document.body.style.overflow = mobileMenuOpen ? "hidden" : "";
+    }
+  }, [mobileMenuOpen]);
+
+  const scrollToSection = useCallback((id: string) => {
+    const container = rootRef.current;
+    const header = headerRef.current;
+    if (!container) return;
+    const target = container.querySelector<HTMLElement>(`#${id}`);
+    const headerHeight = header?.offsetHeight ?? 80;
+    if (target) {
+      const targetTop = target.getBoundingClientRect().top + window.scrollY;
+      const top = targetTop - headerHeight - 20; // padding
+      window.scrollTo({ top: Math.max(0, top), behavior: "smooth" });
+    }
+  }, []);
+
+  const handleSignUp = useCallback(() => {
+    router.push("/register");
+  }, [router]);
+
+  useEffect(() => {
+    const onScroll = () => {
+      const scrolled = window.scrollY > 50;
+      setHeaderScrolled(scrolled);
+
+      const hero = heroRef.current;
+      const closing = closingRef.current;
+      if (hero && closing) {
+        const heroBottom = hero.offsetTop + hero.offsetHeight;
+        const closingTop = closing.offsetTop;
+        const y = window.scrollY;
+        setFloatingVisible(y > heroBottom && y < closingTop - window.innerHeight);
+      }
+    };
+    const onResize = () => {
+      if (window.innerWidth > 768) closeMobileMenu();
+      onScroll();
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", onResize);
+    onScroll();
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", onResize);
+    };
+  }, [closeMobileMenu]);
+
+  useEffect(() => {
+    // initial hero animations
+    const root = rootRef.current;
+    if (!root) return;
+    const selectors = [".hero-title", ".hero-description", ".hero-chips", ".hero-cta"];
+    const elements: HTMLElement[] = selectors
+      .map((s) => Array.from(root.querySelectorAll<HTMLElement>(s)))
+      .flat();
+    elements.forEach((el) => {
+      el.style.opacity = "0";
+      el.style.transform = "translateY(30px)";
+      el.style.transition = "opacity 0.6s ease, transform 0.6s ease";
+    });
+    elements.forEach((el, index) => {
+      setTimeout(() => {
+        el.style.opacity = "1";
+        el.style.transform = "translateY(0)";
+      }, index * 200);
+    });
+
+    // scroll animations
+    const animateTargets = root.querySelectorAll<HTMLElement>(
+      ".problem-card, .use-case-card, .feature"
+    );
+    animateTargets.forEach((el) => {
+      el.style.opacity = "0";
+      el.style.transform = "translateY(30px)";
+      el.style.transition = "opacity 0.6s ease, transform 0.6s ease";
+    });
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            const el = entry.target as HTMLElement;
+            el.style.opacity = "1";
+            el.style.transform = "translateY(0)";
+          }
+        });
+      },
+      { threshold: 0.1, rootMargin: "0px 0px -50px 0px" }
+    );
+    animateTargets.forEach((el) => observer.observe(el));
+
+    return () => observer.disconnect();
+  }, []);
+
+  const onClickNav = useCallback(
+    (e: React.MouseEvent<HTMLAnchorElement>, href: string) => {
+      e.preventDefault();
+      const id = href.startsWith("#") ? href.slice(1) : href;
+      scrollToSection(id);
+      closeMobileMenu();
+    },
+    [closeMobileMenu, scrollToSection]
+  );
+
+  const headerClassName = useMemo(() => {
+    return `header${headerScrolled ? " scrolled" : ""}`;
+  }, [headerScrolled]);
+
+  return (
+    <div ref={rootRef} data-lp>
+      <header className={headerClassName} id="header" ref={headerRef}>
+        <div className="header-container">
+          <div className="header-logo">
+            <h1 className="logo-text">みんなの集金</h1>
+          </div>
+          <nav className="header-nav">
+            <a href="#features" className="nav-link" onClick={(e) => onClickNav(e, "#features")}>
+              機能
+            </a>
+            <a href="#pricing" className="nav-link" onClick={(e) => onClickNav(e, "#pricing")}>
+              料金
+            </a>
+            <a href="#faq" className="nav-link" onClick={(e) => onClickNav(e, "#faq")}>
+              FAQ
+            </a>
+            <button
+              className="btn btn-primary header-cta"
+              onClick={() => scrollToSection("closing")}
+            >
+              無料で始める
+            </button>
+          </nav>
+          <button
+            className="mobile-menu-btn"
+            aria-label="Open menu"
+            onClick={handleToggleMobileMenu}
+          >
+            <span></span>
+            <span></span>
+            <span></span>
+          </button>
+        </div>
+      </header>
+
+      <div
+        className={`mobile-menu${mobileMenuOpen ? " active" : ""}`}
+        id="mobileMenu"
+        role="dialog"
+        aria-modal="true"
+      >
+        <nav className="mobile-nav">
+          <a
+            href="#features"
+            className="mobile-nav-link"
+            onClick={(e) => onClickNav(e, "#features")}
+          >
+            機能
+          </a>
+          <a href="#pricing" className="mobile-nav-link" onClick={(e) => onClickNav(e, "#pricing")}>
+            料金
+          </a>
+          <a href="#faq" className="mobile-nav-link" onClick={(e) => onClickNav(e, "#faq")}>
+            FAQ
+          </a>
+          <button className="btn btn-primary mobile-cta" onClick={() => scrollToSection("closing")}>
+            無料で始める
+          </button>
+        </nav>
+      </div>
+
+      <section className="hero" ref={heroRef}>
+        <div className="container">
+          <div className="hero-content">
+            <div className="hero-text">
+              <h1 className="hero-title">
+                出欠も集金も、
+                <br />
+                ひとつのリンクで完了。
+              </h1>
+              <p className="hero-description">
+                参加者は登録不要。主催者は出欠と入金の状況が自動でまとまるから、集計ミスと催促のストレスがぐっと減ります。
+              </p>
+              <div className="hero-chips">
+                <span className="chip">参加者登録不要</span>
+                <span className="chip">現金・オンライン対応</span>
+                <span className="chip">自動リマインド</span>
+              </div>
+              <div className="hero-cta">
+                <button className="btn btn-primary btn-large hero-main-cta" onClick={handleSignUp}>
+                  無料でイベントを作成
+                </button>
+                <p className="micro-copy">メールアドレスだけ、30秒で完了</p>
+              </div>
+            </div>
+            <div className="hero-image">
+              <Image
+                src="https://user-gen-media-assets.s3.amazonaws.com/gpt4o_images/c4d341b4-9a1a-4d99-89ed-98dccf05081c.png"
+                alt="スマホ画面での参加表明から決済、自動集計の流れ"
+                className="hero-img"
+                width={1200}
+                height={800}
+                loading="lazy"
+                unoptimized
+              />
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="problems" id="problems">
+        <div className="container">
+          <h2 className="section-title">イベントの準備、こんな「ムダ」がありませんか？</h2>
+          <div className="problems-grid">
+            <div className="problem-card">
+              <Image
+                src="https://user-gen-media-assets.s3.amazonaws.com/gpt4o_images/20c9bde7-141a-4245-a9d1-d51dbdfe3594.png"
+                alt="LINEの返信が散らばる"
+                className="problem-img"
+                width={160}
+                height={160}
+                loading="lazy"
+                unoptimized
+              />
+              <h3 className="problem-title">LINEの返信が散らばる</h3>
+              <p className="problem-text">
+                既読はつくのに、誰が参加かは結局スプレッドシートで手入力。
+              </p>
+            </div>
+            <div className="problem-card">
+              <Image
+                src="https://user-gen-media-assets.s3.amazonaws.com/gpt4o_images/ab490c24-995e-4d0c-9744-66ed8d2415d5.png"
+                alt="現金回収が負担"
+                className="problem-img"
+                width={160}
+                height={160}
+                loading="lazy"
+                unoptimized
+              />
+              <h3 className="problem-title">現金回収が負担</h3>
+              <p className="problem-text">集める/お釣り/立替/当日ドタキャン…管理がぐちゃぐちゃ。</p>
+            </div>
+            <div className="problem-card">
+              <Image
+                src="https://user-gen-media-assets.s3.amazonaws.com/gpt4o_images/5dc6c287-4eee-4c61-b55d-250e9a805e5d.png"
+                alt="リマインドが手作業"
+                className="problem-img"
+                width={160}
+                height={160}
+                loading="lazy"
+                unoptimized
+              />
+              <h3 className="problem-title">リマインドが手作業</h3>
+              <p className="problem-text">未回答者へ個別メッセージ。週末の時間が消えていく。</p>
+            </div>
+            <div className="problem-card">
+              <Image
+                src="https://user-gen-media-assets.s3.amazonaws.com/gpt4o_images/19732857-0730-4415-9e50-8d83ab3b80f8.png"
+                alt="入金状況が不透明"
+                className="problem-img"
+                width={160}
+                height={160}
+                loading="lazy"
+                unoptimized
+              />
+              <h3 className="problem-title">入金状況が不透明</h3>
+              <p className="problem-text">誰が払った？未払いは？確認にまた時間がかかる。</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="features" id="features">
+        <div className="container">
+          <h2 className="section-title">1本の招待リンクで、準備〜集金まで自動化</h2>
+
+          <div className="feature">
+            <div className="feature-content">
+              <div className="feature-text">
+                <span className="feature-label">かんたん共有</span>
+                <h3 className="feature-title">参加者はワンタップ回答、登録不要。</h3>
+                <p className="feature-description">
+                  イベント作成→URL発行→LINEやSNSで送るだけ。日程調整の感覚で、すぐに出欠の回答が集まります。
+                </p>
+              </div>
+              <div className="feature-image">
+                <Image
+                  src="https://user-gen-media-assets.s3.amazonaws.com/gpt4o_images/375ad9c4-1a48-4970-8401-88c5208d9f8f.png"
+                  alt="招待リンクをSNSで共有"
+                  className="feature-img"
+                  width={1080}
+                  height={720}
+                  loading="lazy"
+                  unoptimized
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="feature feature-reverse">
+            <div className="feature-content">
+              <div className="feature-text">
+                <span className="feature-label">一元管理</span>
+                <h3 className="feature-title">現金・オンラインの入金をまとめて可視化。</h3>
+                <p className="feature-description">
+                  当日の現金回収も、事前のオンライン決済も1画面で管理。未払いだけを自動で抽出できます。
+                </p>
+              </div>
+              <div className="feature-image">
+                <Image
+                  src="https://user-gen-media-assets.s3.amazonaws.com/gpt4o_images/af1eb29e-7908-424f-a9fa-979a4aac52f0.png"
+                  alt="現金・オンライン決済の一元管理ダッシュボード"
+                  className="feature-img"
+                  width={1080}
+                  height={720}
+                  loading="lazy"
+                  unoptimized
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="feature">
+            <div className="feature-content">
+              <div className="feature-text">
+                <span className="feature-label">自動リマインド</span>
+                <h3 className="feature-title">未回答・未払いにだけ、自動でやさしく催促。</h3>
+                <p className="feature-description">
+                  締切前に自動通知。主催者はもう個別に追いかける必要がありません。
+                </p>
+              </div>
+              <div className="feature-image">
+                <Image
+                  src="https://user-gen-media-assets.s3.amazonaws.com/gpt4o_images/31532885-c150-4a60-baf0-fd13da648dd4.png"
+                  alt="カレンダーとベルの自動通知"
+                  className="feature-img"
+                  width={1080}
+                  height={720}
+                  loading="lazy"
+                  unoptimized
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="use-cases" id="use-cases">
+        <div className="container">
+          <h2 className="section-title">合宿、懇親会、地域イベントまで幅広く</h2>
+          <div className="use-cases-grid">
+            <div className="use-case-card">
+              <Image
+                src="https://user-gen-media-assets.s3.amazonaws.com/gpt4o_images/645c7c9c-8142-47a0-95e7-67a727a97d8e.png"
+                alt="大学・社会人サークル"
+                className="use-case-img"
+                width={200}
+                height={200}
+                loading="lazy"
+                unoptimized
+              />
+              <h3 className="use-case-title">大学・社会人サークル</h3>
+              <p className="use-case-text">合宿、BBQ、打ち上げ、参加費の徴収に。</p>
+            </div>
+            <div className="use-case-card">
+              <Image
+                src="https://user-gen-media-assets.s3.amazonaws.com/gpt4o_images/8b6fc0ab-2e7b-4240-97a5-457ed1828534.png"
+                alt="PTA・町内会"
+                className="use-case-img"
+                width={200}
+                height={200}
+                loading="lazy"
+                unoptimized
+              />
+              <h3 className="use-case-title">PTA・町内会</h3>
+              <p className="use-case-text">バザー/運動会/防災訓練の準備費や参加費に。</p>
+            </div>
+            <div className="use-case-card">
+              <Image
+                src="https://user-gen-media-assets.s3.amazonaws.com/gpt4o_images/810d66ed-e652-4b2d-9a93-065f1fd174d1.png"
+                alt="スポーツチーム"
+                className="use-case-img"
+                width={200}
+                height={200}
+                loading="lazy"
+                unoptimized
+              />
+              <h3 className="use-case-title">スポーツチーム</h3>
+              <p className="use-case-text">練習費・遠征費の集金、出欠管理に。</p>
+            </div>
+            <div className="use-case-card">
+              <Image
+                src="https://user-gen-media-assets.s3.amazonaws.com/gpt4o_images/8ef625fe-765e-4e2f-9098-bd4f5b4cca5c.png"
+                alt="社内イベント"
+                className="use-case-img"
+                width={200}
+                height={200}
+                loading="lazy"
+                unoptimized
+              />
+              <h3 className="use-case-title">社内イベント</h3>
+              <p className="use-case-text">懇親会や部活動の会費管理に。</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="pricing" id="pricing">
+        <div className="container">
+          <h2 className="section-title">まずは無料でシンプルに始められます</h2>
+          <div className="pricing-card">
+            <div className="pricing-item">
+              <span className="pricing-label">初期費用</span>
+              <span className="pricing-value">0円</span>
+            </div>
+            <div className="pricing-item">
+              <span className="pricing-label">月額費用</span>
+              <span className="pricing-value">0円</span>
+            </div>
+            <div className="pricing-item highlight">
+              <span className="pricing-label">プラットフォーム手数料</span>
+              <span className="pricing-value accent">期間限定 0円</span>
+            </div>
+            <p className="pricing-note">
+              ※オンライン決済をご利用の場合のみ、決済代行会社の手数料（例: 3.6%）が発生します。
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section className="faq" id="faq">
+        <div className="container">
+          <h2 className="section-title">よくあるご質問</h2>
+          <div className="faq-list">
+            {faqItems.map((item, idx) => {
+              const isActive = openFaqIndex === idx;
+              return (
+                <div key={item.question} className={`faq-item${isActive ? " active" : ""}`}>
+                  <button
+                    className="faq-question"
+                    onClick={() => setOpenFaqIndex(isActive ? null : idx)}
+                    aria-expanded={isActive}
+                  >
+                    <span>{item.question}</span>
+                    <span className="faq-icon">+</span>
+                  </button>
+                  <div className="faq-answer" aria-hidden={!isActive}>
+                    <p>{item.answer}</p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </section>
+
+      <section className="closing" id="closing" ref={closingRef}>
+        <div className="container">
+          <h2 className="closing-title">
+            もう集金に追われない。
+            <br />
+            準備に集中して、イベントをもっと楽しもう。
+          </h2>
+          <div className="closing-cta">
+            <button className="btn btn-primary btn-large closing-main-cta" onClick={handleSignUp}>
+              無料でイベントを作成
+            </button>
+            <p className="micro-copy">
+              メールアドレスのみ・30秒で完了。クレジットカード登録は不要です。
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <footer className="footer">
+        <div className="container">
+          <div className="footer-content">
+            <div className="footer-logo">
+              <span className="logo-text">みんなの集金</span>
+            </div>
+            <div className="footer-links">
+              <button type="button" className="footer-link">
+                運営会社
+              </button>
+              <button type="button" className="footer-link">
+                利用規約
+              </button>
+              <button type="button" className="footer-link">
+                プライバシーポリシー
+              </button>
+              <button type="button" className="footer-link">
+                お問い合わせ
+              </button>
+            </div>
+          </div>
+          <div className="footer-bottom">
+            <p>© 2025 みんなの集金. All rights reserved.</p>
+          </div>
+        </div>
+      </footer>
+
+      <div className={`floating-cta${floatingVisible ? " visible" : ""}`} id="floatingCta">
+        <button
+          className="btn btn-primary floating-cta-btn"
+          onClick={() => scrollToSection("closing")}
+        >
+          無料で始める
+        </button>
+      </div>
+    </div>
+  );
+}
