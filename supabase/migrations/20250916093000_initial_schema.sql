@@ -1,5 +1,5 @@
 
-\restrict 0QLA6EK7aiPfCzjsYpuPd4niDQQAuWDq9hTnifXbmsFejORAgiCbTfsQUT3CohJ
+
 
 
 SET statement_timeout = 0;
@@ -3060,8 +3060,6 @@ GRANT ALL ON FUNCTION "public"."get_settlement_report_details"("input_created_by
 
 
 REVOKE ALL ON FUNCTION "public"."handle_new_user"() FROM PUBLIC;
-GRANT ALL ON FUNCTION "public"."handle_new_user"() TO "anon";
-GRANT ALL ON FUNCTION "public"."handle_new_user"() TO "authenticated";
 GRANT ALL ON FUNCTION "public"."handle_new_user"() TO "service_role";
 GRANT ALL ON FUNCTION "public"."handle_new_user"() TO "supabase_auth_admin";
 
@@ -3128,8 +3126,6 @@ GRANT ALL ON FUNCTION "public"."try_acquire_scheduler_lock"("p_lock_name" "text"
 
 
 REVOKE ALL ON FUNCTION "public"."update_guest_attendance_with_payment"("p_attendance_id" "uuid", "p_status" "public"."attendance_status_enum", "p_payment_method" "public"."payment_method_enum", "p_event_fee" integer) FROM PUBLIC;
-GRANT ALL ON FUNCTION "public"."update_guest_attendance_with_payment"("p_attendance_id" "uuid", "p_status" "public"."attendance_status_enum", "p_payment_method" "public"."payment_method_enum", "p_event_fee" integer) TO "anon";
-GRANT ALL ON FUNCTION "public"."update_guest_attendance_with_payment"("p_attendance_id" "uuid", "p_status" "public"."attendance_status_enum", "p_payment_method" "public"."payment_method_enum", "p_event_fee" integer) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."update_guest_attendance_with_payment"("p_attendance_id" "uuid", "p_status" "public"."attendance_status_enum", "p_payment_method" "public"."payment_method_enum", "p_event_fee" integer) TO "service_role";
 
 
@@ -3311,6 +3307,6 @@ ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TAB
 
 
 
-\unrestrict 0QLA6EK7aiPfCzjsYpuPd4niDQQAuWDq9hTnifXbmsFejORAgiCbTfsQUT3CohJ
+
 
 RESET ALL;
