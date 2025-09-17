@@ -6,7 +6,6 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { logger } from "@core/logging/app-logger";
 import { COOKIE_CONFIG, AUTH_CONFIG, getCookieConfig } from "@core/security";
 import { getSessionManager } from "@core/session/manager";
-import { getRequiredEnvVar } from "@core/utils/env-helper";
 
 import type { Database } from "@/types/database";
 
@@ -18,8 +17,27 @@ interface MiddlewareSupabaseConfig {
 }
 
 export class SupabaseClientFactory {
-  private static readonly URL = getRequiredEnvVar("NEXT_PUBLIC_SUPABASE_URL");
-  private static readonly ANON_KEY = getRequiredEnvVar("NEXT_PUBLIC_SUPABASE_ANON_KEY");
+  private static get URL(): string {
+    const value = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    if (!value) {
+      const key = "NEXT_PUBLIC_SUPABASE_URL";
+      const message = `Missing required environment variable: ${key}`;
+      logger.error(message, { tag: "envVarMissing", variable_name: key });
+      throw new Error(message);
+    }
+    return value;
+  }
+
+  private static get ANON_KEY(): string {
+    const value = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    if (!value) {
+      const key = "NEXT_PUBLIC_SUPABASE_ANON_KEY";
+      const message = `Missing required environment variable: ${key}`;
+      logger.error(message, { tag: "envVarMissing", variable_name: key });
+      throw new Error(message);
+    }
+    return value;
+  }
   private static sessionManager = getSessionManager();
 
   static createServerClient(context: "server"): SupabaseClient<Database>;

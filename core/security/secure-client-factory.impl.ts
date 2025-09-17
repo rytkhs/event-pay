@@ -13,7 +13,6 @@ import type { CookieOptions } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
 
 import { logger } from "@core/logging/app-logger";
-import { getRequiredEnvVar } from "@core/utils/env-helper";
 
 import { COOKIE_CONFIG, AUTH_CONFIG, getCookieConfig } from "./config";
 import { validateGuestTokenFormat } from "./crypto";
@@ -39,9 +38,33 @@ export class SecureSupabaseClientFactory implements ISecureSupabaseClientFactory
   // Security auditor removed
 
   constructor() {
-    this.supabaseUrl = getRequiredEnvVar("NEXT_PUBLIC_SUPABASE_URL");
-    this.anonKey = getRequiredEnvVar("NEXT_PUBLIC_SUPABASE_ANON_KEY");
-    this.serviceRoleKey = getRequiredEnvVar("SUPABASE_SERVICE_ROLE_KEY");
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    if (!url) {
+      const key = "NEXT_PUBLIC_SUPABASE_URL";
+      const message = `Missing required environment variable: ${key}`;
+      logger.error(message, { tag: "envVarMissing", variable_name: key });
+      throw new Error(message);
+    }
+
+    const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    if (!anon) {
+      const key = "NEXT_PUBLIC_SUPABASE_ANON_KEY";
+      const message = `Missing required environment variable: ${key}`;
+      logger.error(message, { tag: "envVarMissing", variable_name: key });
+      throw new Error(message);
+    }
+
+    const service = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    if (!service) {
+      const key = "SUPABASE_SERVICE_ROLE_KEY";
+      const message = `Missing required environment variable: ${key}`;
+      logger.error(message, { tag: "envVarMissing", variable_name: key });
+      throw new Error(message);
+    }
+
+    this.supabaseUrl = url;
+    this.anonKey = anon;
+    this.serviceRoleKey = service;
 
     // Security auditor removed
   }
