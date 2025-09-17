@@ -1,6 +1,8 @@
 import { SecureSupabaseClientFactory } from "@core/security/secure-client-factory.impl";
 import { AdminReason } from "@core/security/secure-client-factory.types";
 
+import { seedUiDemoDataForUser } from "./ui-seed";
+
 export interface TestUser {
   id: string;
   email: string;
@@ -53,6 +55,41 @@ async function withRetry<T>(
   throw new Error(
     `${operationName} failed after ${maxRetries + 1} attempts: ${lastError?.message}`
   );
+}
+
+/**
+ * 環境変数の真偽（"1"/"true"/"yes"/"on" を真と解釈）
+ */
+function isTruthyEnv(value: string | undefined): boolean {
+  const normalized = (value ?? "").toLowerCase();
+  return normalized === "1" || normalized === "true" || normalized === "yes" || normalized === "on";
+}
+
+/**
+ * UI確認用の大量シードを必要に応じて実行
+ * 失敗してもユーザー作成フローには影響させない
+ */
+async function maybeSeedUiDataForUser(user: { id: string; email: string }): Promise<void> {
+  const enabled = isTruthyEnv(process.env.UI_DEMO_SEED ?? process.env.UI_DEMO_SEED_ENABLED);
+  if (!enabled) return;
+
+  try {
+    // 既定のボリュームでユーザー配下のイベント/参加者/決済を大量生成
+    await seedUiDemoDataForUser(
+      { id: user.id, email: user.email },
+      {
+        eventsPerUser: 8,
+        participantsPerEvent: 20,
+        pendingPaymentsPerEvent: 8,
+        paidEventRatio: 0.7,
+      }
+    );
+    // eslint-disable-next-line no-console
+    console.log(`✓ UI demo data seeded for user ${user.email}`);
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.warn("UI demo data seeding failed (ignored):", e);
+  }
 }
 
 /**
@@ -185,7 +222,9 @@ async function ensureUserProfileExists(
     console.log(`✓ Created profile for existing test user: ${email}`);
   }
 
-  return { id: existingUser.id, email, password };
+  const result = { id: existingUser.id, email, password };
+  await maybeSeedUiDataForUser(result);
+  return result;
 }
 
 /**
@@ -261,7 +300,9 @@ async function createNewTestUserSafely(
     }
 
     console.log(`✓ Test user created successfully: ${email}`);
-    return { id: createdUserId, email, password };
+    const result = { id: createdUserId, email, password };
+    await maybeSeedUiDataForUser(result);
+    return result;
   } catch (error) {
     // ロールバック処理
     if (createdUserId) {
