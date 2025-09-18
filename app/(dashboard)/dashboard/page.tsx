@@ -271,9 +271,9 @@ export default async function DashboardPage() {
                   </Button>
 
                   <Button asChild variant="outline" className="w-full justify-start" size="sm">
-                    <Link href="/dashboard/connect">
+                    <Link href="/settings/profile">
                       <Settings className="h-4 w-4 mr-2" />
-                      Stripe設定
+                      アカウント設定
                     </Link>
                   </Button>
 
