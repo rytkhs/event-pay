@@ -2,19 +2,16 @@ import { notFound, redirect } from "next/navigation";
 
 import { getCurrentUser } from "@core/auth/auth-utils";
 import { createCachedActions } from "@core/utils/cache-helpers";
-import { sanitizeEventDescription } from "@core/utils/sanitize";
 
 import {
-  EventActions,
-  EventDetail,
-  ParticipantsManagement,
   getEventAttendancesAction,
   getEventDetailAction,
   getEventParticipantsAction,
   getEventPaymentsAction,
   getEventStatsAction,
 } from "@features/events";
-import { InviteLink } from "@features/invite";
+
+import { ModernEventDetailPage } from "./components/modern-event-detail-page";
 
 interface EventDetailPageProps {
   params: {
@@ -100,42 +97,15 @@ export default async function EventDetailPage({ params }: EventDetailPageProps) 
     }
 
     return (
-      <div className="container mx-auto px-4 py-8">
-        <div className="max-w-4xl mx-auto space-y-6">
-          <div className="flex justify-between items-start">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">イベント詳細</h1>
-            </div>
-            <EventActions
-              eventId={params.id}
-              attendingCount={stats?.attending_count || 0}
-              maybeCount={stats?.maybe_count || 0}
-              hasPayments={(paymentsData?.summary.totalPayments || 0) > 0}
-            />
-          </div>
-
-          <EventDetail event={eventDetail} />
-
-          {/* 主催者のみに参加者管理セクションを表示 */}
-          {isOrganizer && participantsData && paymentsData && (
-            <ParticipantsManagement
-              eventId={params.id}
-              eventData={eventDetail}
-              initialAttendances={attendances}
-              initialPaymentsData={paymentsData}
-              initialParticipantsData={participantsData}
-            />
-          )}
-
-          {/* 主催者のみに招待リンクを表示 */}
-          {isOrganizer && (
-            <InviteLink
-              eventId={params.id}
-              initialInviteToken={eventDetail.invite_token || undefined}
-            />
-          )}
-        </div>
-      </div>
+      <ModernEventDetailPage
+        eventId={params.id}
+        eventDetail={eventDetail}
+        isOrganizer={isOrganizer || false}
+        attendances={attendances}
+        paymentsData={paymentsData}
+        participantsData={participantsData}
+        stats={stats}
+      />
     );
   } catch (error) {
     // 予期しないエラーの場合は500エラーとして処理
@@ -157,9 +127,7 @@ export async function generateMetadata({ params }: EventDetailPageProps) {
     const eventDetail = eventDetailResult.data;
     return {
       title: `${eventDetail.title} - みんなの集金`,
-      description: sanitizeEventDescription(
-        eventDetail.description || `${eventDetail.title}の詳細情報`
-      ),
+      description: `${eventDetail.title}の詳細情報と参加者管理`,
     };
   } catch {
     return {

@@ -234,7 +234,7 @@ function EventCreateForm(): JSX.Element {
                         <FormControl>
                           <Checkbox
                             checked={Boolean(form.watch("allow_payment_after_deadline"))}
-                            onCheckedChange={(checked) => {
+                            onCheckedChange={(checked: boolean) => {
                               form.setValue("allow_payment_after_deadline", checked === true);
                               // 相関バリデーション再評価
                               void form.trigger();

@@ -364,7 +364,7 @@ function ModernEventForm(): JSX.Element {
                                   checked={
                                     Array.isArray(field.value) && field.value.includes("stripe")
                                   }
-                                  onCheckedChange={(checked) => {
+                                  onCheckedChange={(checked: boolean) => {
                                     const current = Array.isArray(field.value) ? field.value : [];
                                     const next =
                                       checked === true
@@ -401,7 +401,7 @@ function ModernEventForm(): JSX.Element {
                                   checked={
                                     Array.isArray(field.value) && field.value.includes("cash")
                                   }
-                                  onCheckedChange={(checked) => {
+                                  onCheckedChange={(checked: boolean) => {
                                     const current = Array.isArray(field.value) ? field.value : [];
                                     const next =
                                       checked === true
@@ -482,7 +482,7 @@ function ModernEventForm(): JSX.Element {
                               <FormControl>
                                 <Checkbox
                                   checked={Boolean(form.watch("allow_payment_after_deadline"))}
-                                  onCheckedChange={(checked) => {
+                                  onCheckedChange={(checked: boolean) => {
                                     form.setValue("allow_payment_after_deadline", checked === true);
                                     void form.trigger();
                                   }}
