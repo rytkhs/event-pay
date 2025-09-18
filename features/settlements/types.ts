@@ -123,7 +123,7 @@ export interface RpcSettlementReportRow {
 export interface GenerateSettlementReportRpcRow {
   report_id: string;
   already_exists: boolean;
-  event_id: string;
+  returned_event_id: string;
   event_title: string;
   event_date: string;
   created_by: string;
@@ -132,13 +132,13 @@ export interface GenerateSettlementReportRpcRow {
   total_stripe_sales: number;
   total_stripe_fee: number;
   total_application_fee: number;
-  total_disputed_amount: number;
-  dispute_count: number;
   net_payout_amount: number;
   payment_count: number;
   refunded_count: number;
   total_refunded_amount: number;
+  dispute_count: number;
+  total_disputed_amount: number;
   settlement_mode: string;
-  generated_at: string;
-  updated_at: string;
+  report_generated_at: string;
+  report_updated_at: string;
 }
