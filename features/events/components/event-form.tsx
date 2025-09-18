@@ -1,3 +1,4 @@
+// @deprecated 2025-09-17
 "use client";
 
 import { useEffect, useState } from "react";
@@ -170,7 +171,7 @@ function EventCreateForm(): JSX.Element {
               <div>
                 <h3 className="text-lg font-medium text-gray-900">締切設定</h3>
                 <p className="text-sm text-gray-500">
-                  参加申込とオンライン決済の締切を設定してください (任意)
+                  参加申込とオンライン決済の締切を設定してください
                 </p>
               </div>
 
@@ -180,7 +181,7 @@ function EventCreateForm(): JSX.Element {
                 name="registration_deadline"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>参加申込締切</FormLabel>
+                    <FormLabel>参加申込締切 *</FormLabel>
                     <FormControl>
                       <Input
                         {...field}
@@ -189,19 +190,25 @@ function EventCreateForm(): JSX.Element {
                         min={minDatetimeLocal}
                       />
                     </FormControl>
-                    <FormDescription>参加申込の締切日時を設定してください (任意)</FormDescription>
+                    <FormDescription>参加申込の締切日時を設定してください</FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
               />
 
-              {/* オンライン決済締切 */}
+              {/* オンライン決済締切（オンライン選択時のみ必須） */}
               <FormField
                 control={form.control}
                 name="payment_deadline"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>オンライン決済締切</FormLabel>
+                    <FormLabel>
+                      オンライン決済締切
+                      {Array.isArray(form.watch("payment_methods")) &&
+                      form.watch("payment_methods").includes("stripe")
+                        ? " *"
+                        : ""}
+                    </FormLabel>
                     <FormControl>
                       <Input
                         {...field}
@@ -210,9 +217,7 @@ function EventCreateForm(): JSX.Element {
                         min={minDatetimeLocal}
                       />
                     </FormControl>
-                    <FormDescription>
-                      オンライン決済の締切日時を設定してください (任意)
-                    </FormDescription>
+                    <FormDescription>オンライン決済の締切日時を設定してください</FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}

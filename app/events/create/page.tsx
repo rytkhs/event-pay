@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 
 import { createClient } from "@core/supabase/server";
 
-import { EventForm as EventCreateForm } from "@features/events";
+import { ModernEventForm } from "@features/events";
 
 export default async function CreateEventPage() {
   const supabase = await createClient();
@@ -17,8 +17,10 @@ export default async function CreateEventPage() {
   }
 
   return (
-    <div className="container mx-auto py-8">
-      <EventCreateForm />
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50/30 py-8">
+      <div className="container mx-auto px-4">
+        <ModernEventForm />
+      </div>
     </div>
   );
 }

@@ -132,13 +132,9 @@ export const createEventSchema = z
 
     registration_deadline: z
       .string()
-      .transform((val) => (val ? sanitizeForEventPay(val.trim()) : val)) // XSS対策
-      // 作成時は未来必須（仕様）
-      .refine(
-        (val) => (val ? validateOptionalFutureDate(val) : true),
-        "参加申込締切は現在時刻より後である必要があります"
-      )
-      .optional(),
+      .min(1, "参加申込締切は必須です")
+      .transform((val) => sanitizeForEventPay(val.trim())) // XSS対策
+      .refine(validateFutureDate, "参加申込締切は現在時刻より後である必要があります"),
 
     payment_deadline: z
       .string()
@@ -181,6 +177,22 @@ export const createEventSchema = z
     {
       message: "参加申込締切は開催日時以前に設定してください",
       path: ["registration_deadline"],
+    }
+  )
+  .refine(
+    (data) => {
+      // オンライン決済選択時は決済締切が必須
+      const hasStripe = Array.isArray(data.payment_methods)
+        ? data.payment_methods.includes("stripe")
+        : false;
+      if (hasStripe) {
+        return Boolean(data.payment_deadline && String(data.payment_deadline).trim() !== "");
+      }
+      return true;
+    },
+    {
+      message: "オンライン決済を選択した場合、決済締切は必須です",
+      path: ["payment_deadline"],
     }
   )
   .refine(

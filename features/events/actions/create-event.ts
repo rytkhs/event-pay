@@ -30,7 +30,7 @@ type FormDataFields = {
   location?: string;
   description?: string;
   capacity?: string;
-  registration_deadline?: string;
+  registration_deadline: string;
   payment_deadline?: string;
   allow_payment_after_deadline?: boolean;
   grace_period_days?: number;

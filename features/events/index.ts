@@ -7,6 +7,7 @@
 export * from "./components/event-card";
 export * from "./components/event-detail";
 export * from "./components/event-form";
+export * from "./components/modern-event-form";
 export * from "./components/event-list";
 export * from "./components/event-filters";
 export * from "./components/participants-table";
