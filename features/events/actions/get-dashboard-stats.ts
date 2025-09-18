@@ -1,17 +1,16 @@
 "use server";
 
-import { startOfMonth, endOfMonth } from "date-fns";
-
 import { createClient } from "@core/supabase/server";
 import { createServerActionError, type ServerActionResult } from "@core/types/server-actions";
-// import { formatUtcToJst } from "@core/utils/timezone";
 import { deriveEventStatus } from "@core/utils/derive-event-status";
 
+// import { getStripeBalanceAction } from "@features/stripe-connect/actions/get-balance";
+
 export interface DashboardStats {
-  monthlyRevenue: number;
-  monthlyEventsCount: number;
-  monthlyParticipants: number;
-  pendingActionsCount: number;
+  upcomingEventsCount: number;
+  totalUpcomingParticipants: number;
+  unpaidFeesTotal: number;
+  stripeAccountBalance: number;
 }
 
 export interface RecentEvent {
@@ -43,62 +42,26 @@ export async function getDashboardDataAction(): Promise<ServerActionResult<Dashb
       return createServerActionError("UNAUTHORIZED", "認証が必要です");
     }
 
-    // 今月の開始・終了日を取得
     const now = new Date();
-    const monthStart = startOfMonth(now).toISOString();
-    const monthEnd = endOfMonth(now).toISOString();
 
-    // 並列でデータを取得
-    const [eventsResult, attendancesResult, paymentsResult] = await Promise.all([
-      // ユーザーのイベント一覧取得
-      supabase
-        .from("events")
-        .select(
-          `
-          id,
-          title,
-          date,
-          fee,
-          capacity,
-          payment_deadline,
-          registration_deadline,
-          created_at,
-          canceled_at
+    // ユーザーのイベント一覧取得
+    const eventsResult = await supabase
+      .from("events")
+      .select(
         `
-        )
-        .eq("created_by", user.id)
-        .order("created_at", { ascending: false }),
-
-      // 今月の参加者数取得
-      supabase
-        .from("attendances")
-        .select(
-          `
-          id,
-          status,
-          event:events!inner(created_by, date)
-        `
-        )
-        .eq("events.created_by", user.id)
-        .gte("events.date", monthStart)
-        .lte("events.date", monthEnd),
-
-      // 今月の売上取得
-      supabase
-        .from("payments")
-        .select(
-          `
-          amount,
-          status,
-          attendance:attendances!inner(
-            event:events!inner(created_by, date)
-          )
-        `
-        )
-        .eq("attendances.events.created_by", user.id)
-        .gte("attendances.events.date", monthStart)
-        .lte("attendances.events.date", monthEnd),
-    ]);
+        id,
+        title,
+        date,
+        fee,
+        capacity,
+        payment_deadline,
+        registration_deadline,
+        created_at,
+        canceled_at
+      `
+      )
+      .eq("created_by", user.id)
+      .order("created_at", { ascending: false });
 
     if (eventsResult.error) {
       return createServerActionError("DATABASE_ERROR", "イベント情報の取得に失敗しました", {
@@ -109,35 +72,74 @@ export async function getDashboardDataAction(): Promise<ServerActionResult<Dashb
 
     const events = eventsResult.data || [];
 
-    // 統計計算
-    const monthlyEventsCount = events.filter((event) => {
+    // 開催予定のイベントをフィルタリング
+    const upcomingEvents = events.filter((event: any) => {
       const eventDate = new Date(event.date);
-      return eventDate >= new Date(monthStart) && eventDate <= new Date(monthEnd);
-    }).length;
+      const isNotCanceled = !event.canceled_at;
+      const isFuture = eventDate > now;
+      return isNotCanceled && isFuture;
+    });
 
-    // 今月の参加者数計算（参加確定者のみ）
-    const monthlyParticipants =
-      attendancesResult.data?.filter((attendance) => attendance.status === "attending").length || 0;
+    // ① 開催予定イベント数
+    const upcomingEventsCount = upcomingEvents.length;
 
-    // 今月の売上計算（決済完了分のみ）
-    const monthlyRevenue =
-      paymentsResult.data
-        ?.filter((payment) => ["paid", "received", "completed"].includes(payment.status))
-        .reduce((sum, payment) => sum + payment.amount, 0) || 0;
+    // ② 参加予定者総数を計算
+    let totalUpcomingParticipants = 0;
+    for (const event of upcomingEvents) {
+      const { data: attendances } = await supabase
+        .from("attendances")
+        .select("status")
+        .eq("event_id", event.id);
 
-    // 未処理アクション数計算
-    const pendingActionsCount = calculatePendingActions(events);
+      const attendingCount =
+        attendances?.filter((attendance: any) => attendance.status === "attending").length || 0;
+      totalUpcomingParticipants += attendingCount;
+    }
+
+    // ③ 未回収の参加費合計を計算
+    let unpaidFeesTotal = 0;
+    for (const event of upcomingEvents) {
+      if (event.fee > 0) {
+        const { data: attendances } = await supabase
+          .from("attendances")
+          .select(
+            `
+            id,
+            status,
+            payments!inner(status)
+          `
+          )
+          .eq("event_id", event.id)
+          .eq("status", "attending");
+
+        if (attendances) {
+          for (const attendance of attendances) {
+            // 支払いが未完了の参加者の参加費を合算
+            const hasCompletedPayment = attendance.payments?.some((payment: any) =>
+              ["paid", "received", "completed"].includes(payment.status)
+            );
+
+            if (!hasCompletedPayment) {
+              unpaidFeesTotal += event.fee;
+            }
+          }
+        }
+      }
+    }
+
+    // ④ Stripeアカウント残高（一時的に0に設定、後でダッシュボードで取得）
+    const stripeAccountBalance = 0;
 
     // 最近のイベント5件（参加者数を含む）
     const recentEventsWithStats = await Promise.all(
-      events.slice(0, 5).map(async (event) => {
+      events.slice(0, 5).map(async (event: any) => {
         const { data: attendances } = await supabase
           .from("attendances")
           .select("status")
           .eq("event_id", event.id);
 
         const attendances_count =
-          attendances?.filter((attendance) => attendance.status === "attending").length || 0;
+          attendances?.filter((attendance: any) => attendance.status === "attending").length || 0;
 
         const computedStatus = deriveEventStatus(event.date, (event as any).canceled_at ?? null);
 
@@ -157,10 +159,10 @@ export async function getDashboardDataAction(): Promise<ServerActionResult<Dashb
       success: true,
       data: {
         stats: {
-          monthlyRevenue,
-          monthlyEventsCount,
-          monthlyParticipants,
-          pendingActionsCount,
+          upcomingEventsCount,
+          totalUpcomingParticipants,
+          unpaidFeesTotal,
+          stripeAccountBalance,
         },
         recentEvents: recentEventsWithStats,
       },
@@ -171,49 +173,4 @@ export async function getDashboardDataAction(): Promise<ServerActionResult<Dashb
       details: { originalError: error },
     });
   }
-}
-
-function calculatePendingActions(
-  events: Array<{
-    date: string;
-    payment_deadline?: string | null;
-    registration_deadline?: string | null;
-    capacity?: number | null;
-  }>
-): number {
-  const now = new Date();
-  let pendingCount = 0;
-
-  events.forEach((event) => {
-    // const eventDate = new Date(event.date);
-    const paymentDeadline = event.payment_deadline ? new Date(event.payment_deadline) : null;
-    const registrationDeadline = event.registration_deadline
-      ? new Date(event.registration_deadline)
-      : null;
-
-    // 支払い締切が7日以内のイベント
-    if (paymentDeadline && paymentDeadline > now) {
-      const daysUntilPayment = Math.ceil(
-        (paymentDeadline.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
-      );
-      if (daysUntilPayment <= 7) {
-        pendingCount++;
-      }
-    }
-
-    // 参加者募集締切が3日以内のイベント
-    if (registrationDeadline && registrationDeadline > now) {
-      const daysUntilRegistration = Math.ceil(
-        (registrationDeadline.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
-      );
-      if (daysUntilRegistration <= 3) {
-        pendingCount++;
-      }
-    }
-
-    // 定員の90%以上のイベントのチェックは後で個別に処理する
-    // ここでは一旦コメントアウト
-  });
-
-  return pendingCount;
 }

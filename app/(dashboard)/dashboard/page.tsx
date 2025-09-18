@@ -3,9 +3,10 @@ import { redirect } from "next/navigation";
 
 import {
   Calendar,
+  CalendarDays,
   Users,
   DollarSign,
-  AlertCircle,
+  AlertTriangle,
   Plus,
   List,
   FileText,
@@ -13,6 +14,7 @@ import {
   Clock,
   UserCheck,
   ExternalLink,
+  Landmark,
 } from "lucide-react";
 
 import { logoutAction } from "@core/actions/auth";
@@ -25,6 +27,7 @@ import {
   checkExpressDashboardAccessAction,
   createExpressDashboardLoginLinkAction,
 } from "@features/stripe-connect/actions/express-dashboard";
+import { getStripeBalanceAction } from "@features/stripe-connect/actions/get-balance";
 import { ConnectAccountCta } from "@features/stripe-connect/components/connect-account-cta";
 
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -80,18 +83,20 @@ export default async function DashboardPage() {
   }
 
   // ダッシュボードデータとStripe Connect情報を並列取得
-  const [dashboardResult, expressDashboardResult, accountStatusResult] = await Promise.all([
-    getDashboardDataAction(),
-    checkExpressDashboardAccessAction(),
-    getDetailedAccountStatusAction(),
-  ]);
+  const [dashboardResult, expressDashboardResult, accountStatusResult, stripeBalanceResult] =
+    await Promise.all([
+      getDashboardDataAction(),
+      checkExpressDashboardAccessAction(),
+      getDetailedAccountStatusAction(),
+      getStripeBalanceAction(),
+    ]);
 
   if (!dashboardResult.success || !dashboardResult.data) {
     return (
       <div className="min-h-screen bg-gray-50">
         <div className="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
           <Alert>
-            <AlertCircle className="h-4 w-4" />
+            <AlertTriangle className="h-4 w-4" />
             <AlertDescription>
               ダッシュボード情報の読み込みに失敗しました。ページを再読み込みしてください。
             </AlertDescription>
@@ -101,23 +106,39 @@ export default async function DashboardPage() {
     );
   }
 
-  const { stats, recentEvents } = dashboardResult.data;
+  const { stats: dashboardStats, recentEvents } = dashboardResult.data;
   const canAccessExpressDashboard = expressDashboardResult.success;
   const accountStatus = accountStatusResult.success ? accountStatusResult.status : undefined;
+  const stripeBalance = stripeBalanceResult.success ? stripeBalanceResult.data : 0;
+
+  // statsにStripe残高を統合
+  const stats = {
+    ...dashboardStats,
+    stripeAccountBalance: stripeBalance,
+  };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50/30">
       {/* ヘッダー */}
-      <header className="bg-white shadow-sm">
+      <header className="bg-white/80 backdrop-blur-sm border-b border-gray-200/50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16">
             <div className="flex items-center">
-              <h1 className="text-2xl font-bold text-gray-900">ダッシュボード</h1>
+              <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                ダッシュボード
+              </h1>
             </div>
             <div className="flex items-center space-x-4" data-testid="user-menu">
-              <span className="text-sm text-gray-700">ようこそ、{user.email}さん</span>
+              <span className="text-sm text-gray-600 hidden sm:inline">
+                ようこそ、{user.email}さん
+              </span>
               <form action={handleLogout}>
-                <Button type="submit" variant="outline" size="sm">
+                <Button
+                  type="submit"
+                  variant="outline"
+                  size="sm"
+                  className="border-gray-200 hover:bg-gray-50"
+                >
                   ログアウト
                 </Button>
               </form>
@@ -127,51 +148,57 @@ export default async function DashboardPage() {
       </header>
 
       <main className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
-        {/* 統計カードセクション */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600">今月の収支額</CardTitle>
-              <DollarSign className="h-4 w-4 text-green-600" />
+        {/* 統計カードセクション（4つのカード） */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+          <Card className="hover:shadow-md transition-shadow border-0 shadow-sm">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+              <CardTitle className="text-sm font-medium text-gray-600">開催予定イベント</CardTitle>
+              <CalendarDays className="h-5 w-5 text-blue-600" />
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-green-600">
-                {formatCurrency(stats.monthlyRevenue)}
+            <CardContent className="pt-0">
+              <div className="text-3xl font-bold text-blue-600 mb-1">
+                {stats.upcomingEventsCount}
               </div>
-              <p className="text-xs text-gray-500 mt-1">決済完了分のみ</p>
+              <p className="text-xs text-gray-500">管理中のイベント</p>
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600">今月のイベント数</CardTitle>
-              <Calendar className="h-4 w-4 text-blue-600" />
+          <Card className="hover:shadow-md transition-shadow border-0 shadow-sm">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+              <CardTitle className="text-sm font-medium text-gray-600">参加予定者</CardTitle>
+              <Users className="h-5 w-5 text-purple-600" />
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-blue-600">{stats.monthlyEventsCount}</div>
-              <p className="text-xs text-gray-500 mt-1">開催・予定含む</p>
+            <CardContent className="pt-0">
+              <div className="text-3xl font-bold text-purple-600 mb-1">
+                {stats.totalUpcomingParticipants}
+              </div>
+              <p className="text-xs text-gray-500">合計参加者数</p>
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600">今月の参加者数</CardTitle>
-              <Users className="h-4 w-4 text-purple-600" />
+          <Card className="hover:shadow-md transition-shadow border-0 shadow-sm">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+              <CardTitle className="text-sm font-medium text-gray-600">未決済の参加費</CardTitle>
+              <DollarSign className="h-5 w-5 text-amber-600" />
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-purple-600">{stats.monthlyParticipants}</div>
-              <p className="text-xs text-gray-500 mt-1">参加確定者のみ</p>
+            <CardContent className="pt-0">
+              <div className="text-3xl font-bold text-amber-600 mb-1">
+                {formatCurrency(stats.unpaidFeesTotal)}
+              </div>
+              <p className="text-xs text-gray-500">決済待ち金額</p>
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600">要対応項目</CardTitle>
-              <AlertCircle className="h-4 w-4 text-orange-600" />
+          <Card className="hover:shadow-md transition-shadow border-0 shadow-sm">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+              <CardTitle className="text-sm font-medium text-gray-600">アカウント残高</CardTitle>
+              <Landmark className="h-5 w-5 text-green-600" />
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-orange-600">{stats.pendingActionsCount}</div>
-              <p className="text-xs text-gray-500 mt-1">締切・定員近し</p>
+            <CardContent className="pt-0">
+              <div className="text-3xl font-bold text-green-600 mb-1">
+                {formatCurrency(stats.stripeAccountBalance)}
+              </div>
+              <p className="text-xs text-gray-500">振込み待ち金額</p>
             </CardContent>
           </Card>
         </div>
@@ -180,39 +207,46 @@ export default async function DashboardPage() {
         {accountStatus && <ConnectAccountCta status={accountStatus} />}
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* 最近のイベント */}
+          {/* 最近のイベント（コンパクト版） */}
           <div className="lg:col-span-2">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg font-semibold">最近のイベント</CardTitle>
+            <Card className="border-0 shadow-sm">
+              <CardHeader className="pb-4">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-lg font-semibold">最近のイベント</CardTitle>
+                  <Button
+                    asChild
+                    variant="ghost"
+                    size="sm"
+                    className="text-gray-500 hover:text-gray-700"
+                  >
+                    <Link href="/events">
+                      すべて表示
+                      <ExternalLink className="h-3 w-3 ml-1" />
+                    </Link>
+                  </Button>
+                </div>
               </CardHeader>
-              <CardContent>
+              <CardContent className="pt-0">
                 {recentEvents.length === 0 ? (
-                  <div className="text-center py-8">
-                    <Calendar className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                    <p className="text-gray-500 mb-4">まだイベントがありません</p>
-                    <Button asChild>
-                      <Link href="/events/create">
-                        <Plus className="h-4 w-4 mr-2" />
-                        最初のイベントを作成
-                      </Link>
-                    </Button>
+                  <div className="text-center py-6 bg-gray-50 rounded-lg">
+                    <Calendar className="h-8 w-8 text-gray-400 mx-auto mb-3" />
+                    <p className="text-sm text-gray-500">まだイベントがありません</p>
                   </div>
                 ) : (
-                  <div className="space-y-4">
-                    {recentEvents.map((event) => (
+                  <div className="space-y-3">
+                    {recentEvents.slice(0, 3).map((event) => (
                       <div
                         key={event.id}
-                        className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+                        className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
                       >
                         <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-3 mb-2">
+                          <div className="flex items-center gap-2 mb-1">
                             <h3 className="text-sm font-medium text-gray-900 truncate">
                               {event.title}
                             </h3>
                             {getStatusBadge(event.status)}
                           </div>
-                          <div className="flex items-center text-xs text-gray-500 space-x-4">
+                          <div className="flex items-center text-xs text-gray-500 space-x-3">
                             <span className="flex items-center">
                               <Clock className="h-3 w-3 mr-1" />
                               {formatUtcToJst(event.date, "MM/dd HH:mm")}
@@ -230,7 +264,7 @@ export default async function DashboardPage() {
                             )}
                           </div>
                         </div>
-                        <Button asChild variant="outline" size="sm">
+                        <Button asChild variant="ghost" size="sm" className="ml-2">
                           <Link href={`/events/${event.id}`}>詳細</Link>
                         </Button>
                       </div>
@@ -243,19 +277,12 @@ export default async function DashboardPage() {
 
           {/* クイックアクション */}
           <div>
-            <Card>
-              <CardHeader>
+            <Card className="border-0 shadow-sm">
+              <CardHeader className="pb-4">
                 <CardTitle className="text-lg font-semibold">クイックアクション</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
-                  <Button asChild className="w-full justify-start" size="sm">
-                    <Link href="/events/create">
-                      <Plus className="h-4 w-4 mr-2" />
-                      新規イベント作成
-                    </Link>
-                  </Button>
-
                   <Button asChild variant="outline" className="w-full justify-start" size="sm">
                     <Link href="/events">
                       <List className="h-4 w-4 mr-2" />
@@ -293,27 +320,21 @@ export default async function DashboardPage() {
                 </div>
               </CardContent>
             </Card>
-
-            {/* お知らせ・ヒント */}
-            {stats.pendingActionsCount > 0 && (
-              <Card className="mt-6">
-                <CardHeader>
-                  <CardTitle className="text-lg font-semibold text-orange-600">
-                    <AlertCircle className="h-5 w-5 inline mr-2" />
-                    要対応項目があります
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-sm text-gray-600 mb-3">
-                    締切が近いイベントや定員に近づいているイベントがあります。
-                  </p>
-                  <Button asChild variant="outline" size="sm">
-                    <Link href="/events">確認する</Link>
-                  </Button>
-                </CardContent>
-              </Card>
-            )}
           </div>
+        </div>
+
+        {/* フローティングアクションボタン（FAB） - 新規イベント作成 */}
+        <div className="fixed bottom-6 right-6 z-50">
+          <Button
+            asChild
+            size="lg"
+            className="rounded-full w-14 h-14 shadow-lg hover:shadow-xl transition-shadow"
+          >
+            <Link href="/events/create" className="flex items-center justify-center">
+              <Plus className="h-6 w-6" />
+              <span className="sr-only">新規イベント作成</span>
+            </Link>
+          </Button>
         </div>
       </main>
     </div>

@@ -697,4 +697,45 @@ export class StripeConnectService implements IStripeConnectService {
       );
     }
   }
+
+  /**
+   * Stripe Connectアカウントの残高を取得する
+   * @param accountId Stripe Connect Account ID
+   * @returns 利用可能残高（JPY）
+   */
+  async getAccountBalance(accountId: string): Promise<number> {
+    try {
+      validateStripeAccountId(accountId);
+
+      logger.info("Stripe Connect残高取得を開始", { accountId });
+
+      // Stripe APIで残高を取得
+      const balance = await this.stripe.balance.retrieve({
+        stripeAccount: accountId,
+      });
+
+      // JPYの利用可能残高を取得
+      const jpy = balance.available.find((b) => b.currency === "jpy");
+      const availableAmount = jpy ? jpy.amount : 0;
+
+      logger.info("Stripe Connect残高取得完了", {
+        accountId,
+        availableAmount,
+      });
+
+      return availableAmount;
+    } catch (error) {
+      logger.error("Stripe Connect残高取得エラー", {
+        accountId,
+        error: error instanceof Error ? error.message : String(error),
+      });
+
+      throw new StripeConnectError(
+        StripeConnectErrorType.STRIPE_API_ERROR,
+        "アカウント残高の取得に失敗しました",
+        error as Error,
+        { accountId }
+      );
+    }
+  }
 }
