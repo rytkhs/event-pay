@@ -1,5 +1,5 @@
 
-\restrict 0QLA6EK7aiPfCzjsYpuPd4niDQQAuWDq9hTnifXbmsFejORAgiCbTfsQUT3CohJ
+\restrict 8e9XbofMiO1pTFAeCS3jQnGZKeoCRVanhfBjqeOLoBXebtDA70N5WUKD4oBfgQX
 
 
 SET statement_timeout = 0;
@@ -654,7 +654,7 @@ COMMENT ON FUNCTION "public"."find_eligible_events_with_details"("p_days_after_e
 
 
 
-CREATE OR REPLACE FUNCTION "public"."generate_settlement_report"("input_event_id" "uuid", "input_created_by" "uuid") RETURNS TABLE("report_id" "uuid", "already_exists" boolean, "returned_event_id" "uuid", "event_title" character varying, "event_date" timestamp with time zone, "created_by" "uuid", "stripe_account_id" character varying, "transfer_group" "text", "total_stripe_sales" integer, "total_stripe_fee" integer, "total_application_fee" integer, "net_payout_amount" integer, "payment_count" integer, "refunded_count" integer, "total_refunded_amount" integer, "settlement_mode" "text", "report_generated_at" timestamp with time zone, "report_updated_at" timestamp with time zone)
+CREATE OR REPLACE FUNCTION "public"."generate_settlement_report"("input_event_id" "uuid", "input_created_by" "uuid") RETURNS TABLE("report_id" "uuid", "already_exists" boolean, "returned_event_id" "uuid", "event_title" character varying, "event_date" timestamp with time zone, "created_by" "uuid", "stripe_account_id" character varying, "transfer_group" "text", "total_stripe_sales" integer, "total_stripe_fee" integer, "total_application_fee" integer, "net_payout_amount" integer, "payment_count" integer, "refunded_count" integer, "total_refunded_amount" integer, "dispute_count" integer, "total_disputed_amount" integer, "settlement_mode" "text", "report_generated_at" timestamp with time zone, "report_updated_at" timestamp with time zone)
     LANGUAGE "plpgsql" SECURITY DEFINER
     AS $$
 DECLARE
@@ -669,6 +669,8 @@ DECLARE
     v_net_amount INTEGER;
     v_payment_count INTEGER;
     v_refunded_count INTEGER := 0;
+    v_dispute_count INTEGER := 0;
+    v_total_disputed_amount INTEGER := 0;
     v_transfer_group TEXT;
     v_refund_data JSON;
     v_was_update BOOLEAN := FALSE;
@@ -723,6 +725,8 @@ BEGIN
         v_total_refunded_amount  := COALESCE((v_refund_data ->> 'totalRefundedAmount')::INT, 0);
         v_total_app_fee_refunded := COALESCE((v_refund_data ->> 'totalApplicationFeeRefunded')::INT, 0);
         v_refunded_count         := COALESCE((v_refund_data ->> 'refundedCount')::INT, 0);
+        v_dispute_count          := COALESCE((v_refund_data ->> 'disputeCount')::INT, 0);
+        v_total_disputed_amount  := COALESCE((v_refund_data ->> 'totalDisputedAmount')::INT, 0);
     END IF;
 
     -- Net application fee (cannot be negative)
@@ -731,39 +735,53 @@ BEGIN
     -- Net payout amount (Stripe fee is platform-borne)
     v_net_amount := (v_stripe_sales - v_total_refunded_amount) - v_net_application_fee;
 
-    -- Atomic upsert by (event_id, JST date)
-    INSERT INTO public.settlements (
-        event_id,
-        user_id,
-        total_stripe_sales,
-        total_stripe_fee,
-        platform_fee,
-        net_payout_amount,
-        stripe_account_id,
-        transfer_group,
-        settlement_mode,
-        status,
-        generated_at
-    ) VALUES (
-        input_event_id,
-        input_created_by,
-        v_stripe_sales,
-        v_stripe_fee,
-        v_net_application_fee,
-        v_net_amount,
-        v_event_data.stripe_account_id,
-        v_transfer_group,
-        'destination_charge',
-        'completed',
-        now()
-    )
-    ON CONFLICT (event_id, (DATE(generated_at AT TIME ZONE 'Asia/Tokyo'))) DO UPDATE SET
-        total_stripe_sales = EXCLUDED.total_stripe_sales,
-        total_stripe_fee   = EXCLUDED.total_stripe_fee,
-        platform_fee       = EXCLUDED.platform_fee,
-        net_payout_amount  = EXCLUDED.net_payout_amount
-    RETURNING id, (xmax = 0), public.settlements.generated_at, public.settlements.updated_at
-    INTO v_payout_id, v_was_update, v_generated_at, v_updated_at;
+    -- Try to update existing active settlement record first
+    UPDATE public.settlements SET
+        total_stripe_sales = v_stripe_sales,
+        total_stripe_fee = v_stripe_fee,
+        platform_fee = v_net_application_fee,
+        net_payout_amount = v_net_amount,
+        updated_at = now()
+    WHERE event_id = input_event_id
+      AND status IN ('pending', 'processing', 'completed')
+    RETURNING id, generated_at, updated_at
+    INTO v_payout_id, v_generated_at, v_updated_at;
+
+    -- Check if we updated an existing record
+    IF FOUND THEN
+        v_was_update := TRUE;
+    ELSE
+        -- Insert new settlement record if no active record exists
+        INSERT INTO public.settlements (
+            event_id,
+            user_id,
+            total_stripe_sales,
+            total_stripe_fee,
+            platform_fee,
+            net_payout_amount,
+            stripe_account_id,
+            transfer_group,
+            settlement_mode,
+            status,
+            generated_at
+        ) VALUES (
+            input_event_id,
+            input_created_by,
+            v_stripe_sales,
+            v_stripe_fee,
+            v_net_application_fee,
+            v_net_amount,
+            v_event_data.stripe_account_id,
+            v_transfer_group,
+            'destination_charge',
+            'completed',
+            now()
+        )
+        RETURNING id, generated_at, updated_at
+        INTO v_payout_id, v_generated_at, v_updated_at;
+
+        v_was_update := FALSE;
+    END IF;
 
     -- Return enriched record
     report_id := v_payout_id;
@@ -781,11 +799,13 @@ BEGIN
     payment_count := v_payment_count;
     refunded_count := v_refunded_count;
     total_refunded_amount := v_total_refunded_amount;
+    dispute_count := v_dispute_count;
+    total_disputed_amount := v_total_disputed_amount;
     settlement_mode := 'destination_charge';
     report_generated_at := v_generated_at;
     report_updated_at := v_updated_at;
 
-    RETURN;
+    RETURN NEXT;
 END;
 $$;
 
@@ -1874,7 +1894,7 @@ CREATE TABLE IF NOT EXISTS "public"."events" (
     "fee" integer DEFAULT 0 NOT NULL,
     "capacity" integer,
     "description" "text",
-    "registration_deadline" timestamp with time zone,
+    "registration_deadline" timestamp with time zone NOT NULL,
     "payment_deadline" timestamp with time zone,
     "payment_methods" "public"."payment_method_enum"[] NOT NULL,
     "invite_token" character varying(255),
@@ -1889,6 +1909,7 @@ CREATE TABLE IF NOT EXISTS "public"."events" (
     CONSTRAINT "events_fee_check" CHECK (("fee" >= 0)),
     CONSTRAINT "events_grace_period_days_check" CHECK ((("grace_period_days" >= 0) AND ("grace_period_days" <= 30))),
     CONSTRAINT "events_payment_deadline_after_registration" CHECK ((("payment_deadline" IS NULL) OR ("registration_deadline" IS NULL) OR ("payment_deadline" >= "registration_deadline"))),
+    CONSTRAINT "events_payment_deadline_required_if_stripe" CHECK (((NOT ('stripe'::"public"."payment_method_enum" = ANY ("payment_methods"))) OR ("payment_deadline" IS NOT NULL))),
     CONSTRAINT "events_payment_deadline_within_30d_after_date" CHECK ((("payment_deadline" IS NULL) OR ("payment_deadline" <= ("date" + '30 days'::interval)))),
     CONSTRAINT "events_payment_methods_check" CHECK (("array_length"("payment_methods", 1) > 0)),
     CONSTRAINT "events_registration_deadline_before_event" CHECK ((("registration_deadline" IS NULL) OR ("registration_deadline" <= "date")))
@@ -2187,7 +2208,7 @@ CREATE TABLE IF NOT EXISTS "public"."settlements" (
     "total_disputed_amount" integer DEFAULT 0 NOT NULL,
     "dispute_count" integer DEFAULT 0 NOT NULL,
     CONSTRAINT "payouts_amounts_non_negative" CHECK ((("total_stripe_sales" >= 0) AND ("total_stripe_fee" >= 0) AND ("platform_fee" >= 0) AND ("net_payout_amount" >= 0))),
-    CONSTRAINT "payouts_calculation_valid" CHECK (("net_payout_amount" = (("total_stripe_sales" - "total_stripe_fee") - "platform_fee")))
+    CONSTRAINT "payouts_calculation_reasonable" CHECK ((("net_payout_amount" <= "total_stripe_sales") AND ("net_payout_amount" >= 0)))
 );
 
 
@@ -3311,6 +3332,6 @@ ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TAB
 
 
 
-\unrestrict 0QLA6EK7aiPfCzjsYpuPd4niDQQAuWDq9hTnifXbmsFejORAgiCbTfsQUT3CohJ
+\unrestrict 8e9XbofMiO1pTFAeCS3jQnGZKeoCRVanhfBjqeOLoBXebtDA70N5WUKD4oBfgQX
 
 RESET ALL;

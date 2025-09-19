@@ -86,7 +86,7 @@ export type Database = {
           location: string | null;
           payment_deadline: string | null;
           payment_methods: Database["public"]["Enums"]["payment_method_enum"][];
-          registration_deadline: string | null;
+          registration_deadline: string;
           title: string;
           updated_at: string;
         };
@@ -106,7 +106,7 @@ export type Database = {
           location?: string | null;
           payment_deadline?: string | null;
           payment_methods: Database["public"]["Enums"]["payment_method_enum"][];
-          registration_deadline?: string | null;
+          registration_deadline: string;
           title: string;
           updated_at?: string;
         };
@@ -126,7 +126,7 @@ export type Database = {
           location?: string | null;
           payment_deadline?: string | null;
           payment_methods?: Database["public"]["Enums"]["payment_method_enum"][];
-          registration_deadline?: string | null;
+          registration_deadline?: string;
           title?: string;
           updated_at?: string;
         };
@@ -743,6 +743,7 @@ export type Database = {
         Returns: {
           already_exists: boolean;
           created_by: string;
+          dispute_count: number;
           event_date: string;
           event_title: string;
           net_payout_amount: number;
@@ -755,6 +756,7 @@ export type Database = {
           settlement_mode: string;
           stripe_account_id: string;
           total_application_fee: number;
+          total_disputed_amount: number;
           total_refunded_amount: number;
           total_stripe_fee: number;
           total_stripe_sales: number;
