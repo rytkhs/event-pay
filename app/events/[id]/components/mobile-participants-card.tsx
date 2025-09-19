@@ -8,6 +8,7 @@ import { Check, X, Copy, Users } from "lucide-react";
 
 // import { useToast } from "@core/contexts/toast-context";
 import { hasPaymentId } from "@core/utils/data-guards";
+import { toSimplePaymentStatus, isPaymentUnpaid } from "@core/utils/payment-status-mapper";
 import type { GetParticipantsResponse } from "@core/validation/participant-management";
 
 import { Button } from "@/components/ui/button";
@@ -62,10 +63,8 @@ export function MobileParticipantsCard({
         </Card>
       ) : (
         participants.map((participant) => {
-          const isUnpaid =
-            participant.payment_status === "pending" ||
-            participant.payment_status === "failed" ||
-            participant.payment_status === "refunded";
+          const isUnpaid = isPaymentUnpaid(participant.payment_status);
+          const simpleStatus = toSimplePaymentStatus(participant.payment_status);
 
           const isCashPayment = participant.payment_method === "cash" && participant.payment_id;
           const isSelected = participant.payment_id
@@ -118,38 +117,36 @@ export function MobileParticipantsCard({
 
                 {/* アクション行 */}
                 <div className="flex items-center gap-2 pt-2">
-                  {isCashPayment &&
-                    participant.payment_status !== "received" &&
-                    participant.payment_status !== "waived" && (
-                      <div className="flex gap-2 flex-1">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() =>
-                            hasPaymentId(participant) &&
-                            onUpdatePaymentStatus(participant.payment_id, "received")
-                          }
-                          disabled={isUpdatingStatus}
-                          className="flex-1 h-8 text-xs bg-green-50 border-green-300 text-green-700 hover:bg-green-100"
-                        >
-                          <Check className="h-3 w-3 mr-1" />
-                          受領済み
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() =>
-                            hasPaymentId(participant) &&
-                            onUpdatePaymentStatus(participant.payment_id, "waived")
-                          }
-                          disabled={isUpdatingStatus}
-                          className="flex-1 h-8 text-xs bg-orange-50 border-orange-300 text-orange-700 hover:bg-orange-100"
-                        >
-                          <X className="h-3 w-3 mr-1" />
-                          免除
-                        </Button>
-                      </div>
-                    )}
+                  {isCashPayment && simpleStatus !== "paid" && simpleStatus !== "waived" && (
+                    <div className="flex gap-2 flex-1">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() =>
+                          hasPaymentId(participant) &&
+                          onUpdatePaymentStatus(participant.payment_id, "received")
+                        }
+                        disabled={isUpdatingStatus}
+                        className="flex-1 h-8 text-xs bg-green-50 border-green-300 text-green-700 hover:bg-green-100"
+                      >
+                        <Check className="h-3 w-3 mr-1" />
+                        受領済み
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() =>
+                          hasPaymentId(participant) &&
+                          onUpdatePaymentStatus(participant.payment_id, "waived")
+                        }
+                        disabled={isUpdatingStatus}
+                        className="flex-1 h-8 text-xs bg-orange-50 border-orange-300 text-orange-700 hover:bg-orange-100"
+                      >
+                        <X className="h-3 w-3 mr-1" />
+                        免除
+                      </Button>
+                    </div>
+                  )}
 
                   <Button
                     size="sm"

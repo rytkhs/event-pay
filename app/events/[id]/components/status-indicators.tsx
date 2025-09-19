@@ -2,6 +2,12 @@
 
 import { CreditCard, Banknote, Clock, CheckCircle } from "lucide-react";
 
+import {
+  toSimplePaymentStatus,
+  SIMPLE_PAYMENT_STATUS_LABELS,
+  getSimplePaymentStatusStyle,
+} from "@core/utils/payment-status-mapper";
+
 import { Badge } from "@/components/ui/badge";
 
 // 出欠状況の統一ピル表示
@@ -122,54 +128,24 @@ export function PaymentStatusIndicator({
   amount,
   size = "md",
 }: PaymentStatusIndicatorProps) {
-  const getStatusConfig = (status: string) => {
-    switch (status) {
-      case "succeeded":
-      case "received":
-        return {
-          icon: CheckCircle,
-          label: "決済済み",
-          bgColor: "bg-green-100",
-          textColor: "text-green-800",
-          iconColor: "text-green-600",
-        };
-      case "pending":
-        return {
-          icon: Clock,
-          label: "決済待ち",
-          bgColor: "bg-yellow-100",
-          textColor: "text-yellow-800",
-          iconColor: "text-yellow-600",
-        };
-      case "failed":
-        return {
-          icon: Clock,
-          label: "決済失敗",
-          bgColor: "bg-red-100",
-          textColor: "text-red-800",
-          iconColor: "text-red-600",
-        };
+  // 新しいマッピングユーティリティを使用
+  const simpleStatus = toSimplePaymentStatus(status as any);
+  const statusStyle = getSimplePaymentStatusStyle(simpleStatus);
+  const label = SIMPLE_PAYMENT_STATUS_LABELS[simpleStatus];
+
+  const getIconComponent = () => {
+    switch (simpleStatus) {
+      case "paid":
       case "waived":
-        return {
-          icon: CheckCircle,
-          label: "免除",
-          bgColor: "bg-blue-100",
-          textColor: "text-blue-800",
-          iconColor: "text-blue-600",
-        };
+        return CheckCircle;
+      case "unpaid":
+      case "refunded":
       default:
-        return {
-          icon: Clock,
-          label: "未決済",
-          bgColor: "bg-gray-100",
-          textColor: "text-gray-800",
-          iconColor: "text-gray-600",
-        };
+        return Clock;
     }
   };
 
-  const config = getStatusConfig(status);
-  const Icon = config.icon;
+  const Icon = getIconComponent();
 
   const sizeClasses = {
     sm: "text-xs px-2 py-1",
@@ -185,15 +161,15 @@ export function PaymentStatusIndicator({
 
   return (
     <Badge
-      variant="outline"
+      variant={statusStyle.variant}
       className={`
         flex items-center gap-1 font-medium
-        ${config.bgColor} ${config.textColor}
+        ${statusStyle.className}
         ${sizeClasses[size]}
       `}
     >
-      <Icon className={`${iconSizes[size]} ${config.iconColor}`} />
-      <span>{config.label}</span>
+      <Icon className={`${iconSizes[size]} ${statusStyle.iconColor}`} />
+      <span>{label}</span>
       {amount !== null && amount !== undefined && (
         <span className="ml-1 font-bold">¥{amount.toLocaleString()}</span>
       )}

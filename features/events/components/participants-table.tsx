@@ -19,12 +19,16 @@ import {
 import { useToast } from "@core/contexts/toast-context";
 import { getPaymentActions } from "@core/services";
 import { extractValidPaymentIds, hasPaymentId } from "@core/utils/data-guards";
+import {
+  toSimplePaymentStatus,
+  isPaymentUnpaid,
+  SIMPLE_PAYMENT_STATUS_LABELS,
+  getSimplePaymentStatusStyle,
+} from "@core/utils/payment-status-mapper";
 import type {
   GetParticipantsResponse,
   GetParticipantsParams,
 } from "@core/validation/participant-management";
-
-import { PaymentStatusBadge } from "@components/ui/payment-status-badge";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -751,12 +755,9 @@ export function ParticipantsTable({
                 </tr>
               ) : (
                 participants.map((participant) => {
-                  // 未決済のハイライト判定（pending, failed, refunded）
-                  // refunded(返金済)は実質的に未収金のため未決済として扱う
-                  const isUnpaid =
-                    participant.payment_status === "pending" ||
-                    participant.payment_status === "failed" ||
-                    participant.payment_status === "refunded";
+                  // 未決済のハイライト判定（新しいマッピングユーティリティを使用）
+                  const isUnpaid = isPaymentUnpaid(participant.payment_status);
+                  const simpleStatus = toSimplePaymentStatus(participant.payment_status);
 
                   const isCashPayment =
                     participant.payment_method === "cash" && participant.payment_id;
@@ -793,7 +794,12 @@ export function ParticipantsTable({
                         {getPaymentMethodBadge(participant.payment_method)}
                       </td>
                       <td className="px-4 py-4 whitespace-nowrap">
-                        <PaymentStatusBadge status={participant.payment_status} />
+                        <Badge
+                          variant={getSimplePaymentStatusStyle(simpleStatus).variant}
+                          className={getSimplePaymentStatusStyle(simpleStatus).className}
+                        >
+                          {SIMPLE_PAYMENT_STATUS_LABELS[simpleStatus]}
+                        </Badge>
                       </td>
                       <td className="px-4 py-4 whitespace-nowrap">
                         <div className="flex items-center gap-1">

@@ -5,6 +5,7 @@ import React from "react";
 import { Ticket, CreditCard, Clock, CheckCircle, AlertCircle } from "lucide-react";
 
 import { type GuestAttendanceData } from "@core/utils/guest-token";
+import { toSimplePaymentStatus, isPaymentCompleted } from "@core/utils/payment-status-mapper";
 import { canCreateStripeSession } from "@core/validation/payment-eligibility";
 
 import { Button } from "@/components/ui/button";
@@ -50,31 +51,31 @@ export function GuestStatusOverview({
   };
 
   const paymentIcon = () => {
-    const status = attendance.payment?.status;
-    switch (status) {
+    const simpleStatus = toSimplePaymentStatus(attendance.payment?.status as any);
+    switch (simpleStatus) {
       case "paid":
-      case "completed":
-      case "received":
       case "waived":
         return <CheckCircle className="h-6 w-6 text-green-600" />;
-      case "pending":
+      case "unpaid":
         return <Clock className="h-6 w-6 text-orange-600" />;
+      case "refunded":
+        return <AlertCircle className="h-6 w-6 text-orange-600" />;
       default:
         return <AlertCircle className="h-6 w-6 text-gray-400" />;
     }
   };
 
   const paymentText = () => {
-    const status = attendance.payment?.status;
     if (!attendance.event.fee || attendance.event.fee <= 0) return "決済不要";
-    switch (status) {
+    const simpleStatus = toSimplePaymentStatus(attendance.payment?.status as any);
+    switch (simpleStatus) {
       case "paid":
-      case "completed":
-      case "received":
-      case "waived":
         return "決済完了";
-      case "pending":
-        return "未決済";
+      case "waived":
+        return "免除";
+      case "refunded":
+        return "返金済み";
+      case "unpaid":
       default:
         return "未決済";
     }
@@ -83,10 +84,7 @@ export function GuestStatusOverview({
   const shouldShowPayment =
     attendance.status === "attending" &&
     attendance.event.fee > 0 &&
-    attendance.payment?.status !== "paid" &&
-    attendance.payment?.status !== "completed" &&
-    attendance.payment?.status !== "received" &&
-    attendance.payment?.status !== "waived";
+    !isPaymentCompleted(attendance.payment?.status as any);
 
   // 決済セッション作成の可否（期限/猶予/最終上限を考慮）
   const eligibility = canCreateStripeSession(attendance as any, attendance.event as any);
