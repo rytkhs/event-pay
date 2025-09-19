@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useTransition } from "react";
+import { useState, useCallback, useTransition, useMemo } from "react";
 
 import { useRouter } from "next/navigation";
 
@@ -46,6 +46,7 @@ export function EventListWithFilters({
 }: EventListWithFiltersProps) {
   const router = useRouter();
   const [isPending] = useTransition();
+  const [searchQuery, setSearchQuery] = useState("");
 
   // ページネーション
   const { currentPage, pageSize, setPage } = usePagination({
@@ -157,64 +158,83 @@ export function EventListWithFilters({
     !!filters.dateRange.start ||
     !!filters.dateRange.end;
 
-  // 表示するイベントはサーバーから取得したもの
-  const displayEvents = events;
+  // 検索機能によるフィルタリング
+  const displayEvents = useMemo(() => {
+    if (!searchQuery.trim()) {
+      return events;
+    }
+
+    const query = searchQuery.toLowerCase().trim();
+    return events.filter((event) => {
+      return (
+        event.title.toLowerCase().includes(query) ||
+        (event.location && event.location.toLowerCase().includes(query))
+      );
+    });
+  }, [events, searchQuery]);
 
   // ローディング状態
   const isDisplayLoading = isPending || initialLoading;
 
   return (
     <div className="space-y-6" data-testid="event-list-with-filters">
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-        {/* フィルター */}
-        <div>
-          <EventFilters
-            statusFilter={filters.status}
-            dateFilter={filters.dateRange}
-            paymentFilter={filters.payment}
-            onStatusFilterChange={setStatusFilter}
-            onDateFilterChange={setDateRangeFilter}
-            onPaymentFilterChange={setPaymentFilter}
-            onClearFilters={clearFilters}
-            isFiltered={isFiltered}
-          />
-        </div>
-
-        {/* メインコンテンツ */}
-        <div className="lg:col-span-3 space-y-4">
-          {/* ソート */}
-          <EventSort
-            sortBy={sortBy}
-            sortOrder={sortOrder}
-            onSortChange={customSetSortBy}
-            onOrderChange={customSetSortOrder}
-          />
-
-          {/* イベント一覧 */}
-          <EventList events={displayEvents} isLoading={isDisplayLoading} isFiltered={isFiltered} />
-
-          {/* ページネーション */}
-          {totalCount > pageSize && (
-            <div className="flex justify-center mt-6">
-              <Pagination
-                currentPage={currentPage}
-                totalCount={totalCount}
-                pageSize={pageSize}
-                onPageChange={setPage}
-              />
-            </div>
-          )}
-
-          {/* 結果件数表示 */}
-          <div className="text-sm text-gray-600 mt-4">
-            {totalCount > 0 && (
-              <>
-                {Math.min((currentPage - 1) * pageSize + 1, totalCount)}〜
-                {Math.min(currentPage * pageSize, totalCount)}件 / 全{totalCount}件を表示
-              </>
-            )}
-            {totalCount === 0 && "該当するイベントがありません"}
+      {/* 統合フィルターバー */}
+      <div className="bg-white border rounded-lg p-4 shadow-sm">
+        <div className="flex flex-col lg:flex-row lg:items-center gap-4">
+          {/* 検索とフィルター */}
+          <div className="flex-1">
+            <EventFilters
+              statusFilter={filters.status}
+              dateFilter={filters.dateRange}
+              paymentFilter={filters.payment}
+              onStatusFilterChange={setStatusFilter}
+              onDateFilterChange={setDateRangeFilter}
+              onPaymentFilterChange={setPaymentFilter}
+              onClearFilters={clearFilters}
+              isFiltered={isFiltered}
+              searchQuery={searchQuery}
+              onSearchQueryChange={setSearchQuery}
+            />
           </div>
+
+          {/* ソート */}
+          <div className="flex-shrink-0">
+            <EventSort
+              sortBy={sortBy}
+              sortOrder={sortOrder}
+              onSortChange={customSetSortBy}
+              onOrderChange={customSetSortOrder}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* メインコンテンツ */}
+      <div className="space-y-6">
+        {/* イベント一覧 */}
+        <EventList events={displayEvents} isLoading={isDisplayLoading} isFiltered={isFiltered} />
+
+        {/* ページネーション */}
+        {totalCount > pageSize && (
+          <div className="flex justify-center">
+            <Pagination
+              currentPage={currentPage}
+              totalCount={totalCount}
+              pageSize={pageSize}
+              onPageChange={setPage}
+            />
+          </div>
+        )}
+
+        {/* 結果件数表示 */}
+        <div className="text-sm text-muted-foreground text-center">
+          {totalCount > 0 && (
+            <>
+              {Math.min((currentPage - 1) * pageSize + 1, totalCount)}〜
+              {Math.min(currentPage * pageSize, totalCount)}件 / 全{totalCount}件を表示
+            </>
+          )}
+          {totalCount === 0 && "該当するイベントがありません"}
         </div>
       </div>
     </div>

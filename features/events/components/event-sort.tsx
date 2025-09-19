@@ -11,9 +11,7 @@ import {
   isValidSortOrder,
 } from "@core/constants/event-filters";
 
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
@@ -60,59 +58,47 @@ export function EventSort({ sortBy, sortOrder, onSortChange, onOrderChange }: Ev
     }
   };
   return (
-    <Card data-testid="event-sort" role="region" aria-label="イベントソート設定">
-      <CardHeader>
-        <CardTitle>ソート</CardTitle>
-      </CardHeader>
-      <CardContent className="flex items-center space-x-4">
-        <div className="flex-1">
-          <Label htmlFor="sort-by">並び順</Label>
-          <Select value={sortBy} onValueChange={handleSortChange}>
-            <SelectTrigger data-testid="sort-by-select" aria-label="並び順">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {SORT_BY_OPTIONS.map((option) => (
-                <SelectItem key={option} value={option}>
-                  {SORT_BY_LABELS[option]}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+    <div data-testid="event-sort" className="flex items-center gap-2">
+      {/* ソート条件 */}
+      <Select value={sortBy} onValueChange={handleSortChange}>
+        <SelectTrigger
+          className="w-auto min-w-[120px]"
+          data-testid="sort-by-select"
+          aria-label="並び順"
+        >
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {SORT_BY_OPTIONS.map((option) => (
+            <SelectItem key={option} value={option}>
+              {SORT_BY_LABELS[option]}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
 
-        <div className="flex-1">
-          <Label>順序</Label>
-          <RadioGroup
-            value={sortOrder}
-            onValueChange={handleOrderChange}
-            className="flex space-x-4"
-          >
-            <div className="flex items-center space-x-2">
-              <RadioGroupItem value="asc" id="asc" />
-              <Label htmlFor="asc" className="flex items-center">
-                昇順
-                {sortOrder === "asc" && (
-                  <span data-testid="sort-arrow-up" className="ml-1">
-                    ↑
-                  </span>
-                )}
-              </Label>
-            </div>
-            <div className="flex items-center space-x-2">
-              <RadioGroupItem value="desc" id="desc" />
-              <Label htmlFor="desc" className="flex items-center">
-                降順
-                {sortOrder === "desc" && (
-                  <span data-testid="sort-arrow-down" className="ml-1">
-                    ↓
-                  </span>
-                )}
-              </Label>
-            </div>
-          </RadioGroup>
-        </div>
-      </CardContent>
-    </Card>
+      {/* ソート順序ボタン */}
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={() => handleOrderChange(sortOrder === "asc" ? "desc" : "asc")}
+        className="px-2 py-1 h-8"
+        aria-label={
+          sortOrder === "asc"
+            ? "昇順でソート中（クリックで降順）"
+            : "降順でソート中（クリックで昇順）"
+        }
+      >
+        {sortOrder === "asc" ? (
+          <span data-testid="sort-arrow-up" className="flex items-center">
+            ↑
+          </span>
+        ) : (
+          <span data-testid="sort-arrow-down" className="flex items-center">
+            ↓
+          </span>
+        )}
+      </Button>
+    </div>
   );
 }

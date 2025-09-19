@@ -54,27 +54,52 @@ export const EventCard = memo(function EventCard({ event }: EventCardProps) {
   }, [event.location]);
 
   return (
-    <Card data-testid="event-card" className="hover:shadow-lg transition-shadow">
-      <Link href={`/events/${event.id}`}>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-xl" data-testid="event-title">
+    <Link href={`/events/${event.id}`} className="block">
+      <Card
+        data-testid="event-card"
+        className="border border-border/50 hover:border-border hover:shadow-sm transition-all duration-200 h-full"
+      >
+        <CardHeader className="pb-3">
+          <CardTitle
+            className="text-lg font-semibold leading-tight line-clamp-2"
+            data-testid="event-title"
+          >
             {sanitizedTitle}
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-2">
-          <p className="text-muted-foreground">{formattedDate}</p>
-          <p className="text-muted-foreground">{sanitizedLocation}</p>
-          <div className="flex justify-between items-center">
-            <span className="text-lg font-bold">{formattedFee}</span>
-            <span className="text-sm text-muted-foreground">{attendanceText}</span>
+        <CardContent className="pt-0 space-y-3">
+          {/* 日時・場所 */}
+          <div className="space-y-1">
+            <p className="text-sm text-muted-foreground flex items-center">📅 {formattedDate}</p>
+            {sanitizedLocation && (
+              <p className="text-sm text-muted-foreground flex items-center line-clamp-1">
+                📍 {sanitizedLocation}
+              </p>
+            )}
           </div>
-          <div className="flex justify-between items-center pt-2">
-            <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusInfo.styles}`}>
+
+          {/* 料金・参加者数 */}
+          <div className="flex justify-between items-end">
+            <div className="flex flex-col">
+              <span className="text-xs text-muted-foreground">料金</span>
+              <span className="text-base font-semibold">{formattedFee}</span>
+            </div>
+            <div className="flex flex-col items-end">
+              <span className="text-xs text-muted-foreground">参加者</span>
+              <span className="text-sm">{attendanceText}</span>
+            </div>
+          </div>
+
+          {/* ステータス */}
+          <div className="pt-1">
+            <span
+              className={`inline-block px-2 py-1 rounded-md text-xs font-medium ${statusInfo.styles}`}
+            >
               {statusInfo.text}
             </span>
           </div>
         </CardContent>
-      </Link>
-    </Card>
+      </Card>
+    </Link>
   );
 });

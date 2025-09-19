@@ -115,17 +115,34 @@ interface EventsPageProps {
 
 export default async function EventsPage({ searchParams }: EventsPageProps) {
   return (
-    <div data-testid="events-page-container" className="container mx-auto px-4 py-8">
-      <div data-testid="events-page-header" className="mb-8">
-        <h1 className="text-3xl font-bold">イベント一覧</h1>
-        <Button asChild className="mt-4">
-          <Link href="/events/create">新しいイベントを作成</Link>
-        </Button>
+    <div data-testid="events-page-container" className="container mx-auto px-4 py-6">
+      <div data-testid="events-page-header" className="mb-6">
+        <h1 className="text-2xl font-bold">イベント一覧</h1>
       </div>
 
       <Suspense fallback={<EventLoading />}>
         <EventsContent searchParams={searchParams} />
       </Suspense>
+
+      {/* フローティングアクションボタン */}
+      <Button
+        asChild
+        size="lg"
+        className="fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-lg hover:shadow-xl transition-all duration-200 z-50"
+        data-testid="fab-create-event"
+      >
+        <Link href="/events/create" aria-label="新しいイベントを作成">
+          <svg
+            className="h-6 w-6"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={2}
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+          </svg>
+        </Link>
+      </Button>
     </div>
   );
 }

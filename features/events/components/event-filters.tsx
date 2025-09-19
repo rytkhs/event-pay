@@ -12,9 +12,7 @@ import {
 } from "@core/constants/event-filters";
 
 import { Button } from "@/components/ui/button";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -34,6 +32,9 @@ interface EventFiltersProps {
   onPaymentFilterChange: (payment: PaymentFilter) => void;
   onClearFilters: () => void;
   isFiltered?: boolean;
+  // 検索機能のプロップを追加
+  searchQuery?: string;
+  onSearchQueryChange?: (query: string) => void;
 }
 
 export function EventFilters({
@@ -45,6 +46,8 @@ export function EventFilters({
   onPaymentFilterChange,
   onClearFilters,
   isFiltered = false,
+  searchQuery = "",
+  onSearchQueryChange,
 }: EventFiltersProps) {
   const [dateError, setDateError] = useState<string>("");
   const startDateRef = useRef<HTMLInputElement>(null);
@@ -122,17 +125,31 @@ export function EventFilters({
   };
 
   return (
-    <Card data-testid="event-filters">
-      <CardHeader>
-        <CardTitle>フィルター</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {/* ステータスフィルター */}
-        <div className="space-y-2">
-          <Label htmlFor="status-filter">ステータス</Label>
+    <div data-testid="event-filters" className="w-full">
+      {/* 統合フィルターバー */}
+      <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
+        {/* 検索 */}
+        <div className="flex-1 min-w-0">
+          <Input
+            type="text"
+            placeholder="イベント名・場所で検索..."
+            value={searchQuery}
+            onChange={(e) => onSearchQueryChange?.(e.target.value)}
+            className="w-full"
+            data-testid="search-input"
+          />
+        </div>
+
+        {/* フィルター要素 */}
+        <div className="flex flex-wrap gap-2 items-center">
+          {/* ステータス */}
           <Select value={statusFilter} onValueChange={handleStatusChange}>
-            <SelectTrigger data-testid="status-filter" aria-label="イベントステータスでフィルター">
-              <SelectValue />
+            <SelectTrigger
+              className="w-auto min-w-[120px]"
+              data-testid="status-filter"
+              aria-label="ステータス"
+            >
+              <SelectValue placeholder="ステータス" />
             </SelectTrigger>
             <SelectContent>
               {STATUS_FILTER_OPTIONS.map((option) => (
@@ -142,14 +159,15 @@ export function EventFilters({
               ))}
             </SelectContent>
           </Select>
-        </div>
 
-        {/* 決済状況フィルター */}
-        <div className="space-y-2">
-          <Label htmlFor="payment-filter">料金</Label>
+          {/* 料金 */}
           <Select value={paymentFilter} onValueChange={handlePaymentChange}>
-            <SelectTrigger data-testid="payment-filter" aria-label="料金設定でフィルター">
-              <SelectValue />
+            <SelectTrigger
+              className="w-auto min-w-[100px]"
+              data-testid="payment-filter"
+              aria-label="料金"
+            >
+              <SelectValue placeholder="料金" />
             </SelectTrigger>
             <SelectContent>
               {PAYMENT_FILTER_OPTIONS.map((option) => (
@@ -159,51 +177,45 @@ export function EventFilters({
               ))}
             </SelectContent>
           </Select>
-        </div>
 
-        {/* 日付範囲フィルター */}
-        <div className="space-y-2">
-          <Label>開催日</Label>
-          <div className="space-y-2">
-            <div>
-              <Label htmlFor="start-date" className="text-xs text-muted-foreground">
-                開始日
-              </Label>
-              <Input
-                ref={startDateRef}
-                id="start-date"
-                type="date"
-                value={dateFilter.start || ""}
-                onChange={(e) => handleDateChange("start", e.target.value)}
-              />
-            </div>
-            <div>
-              <Label htmlFor="end-date" className="text-xs text-muted-foreground">
-                終了日
-              </Label>
-              <Input
-                ref={endDateRef}
-                id="end-date"
-                type="date"
-                value={dateFilter.end || ""}
-                onChange={(e) => handleDateChange("end", e.target.value)}
-              />
-            </div>
-            {dateError && <p className="text-destructive text-sm mt-1">{dateError}</p>}
+          {/* 日付範囲 */}
+          <div className="flex items-center gap-1">
+            <Input
+              ref={startDateRef}
+              type="date"
+              value={dateFilter.start || ""}
+              onChange={(e) => handleDateChange("start", e.target.value)}
+              className="w-auto min-w-[140px]"
+              aria-label="開始日"
+            />
+            <span className="text-muted-foreground text-sm">〜</span>
+            <Input
+              ref={endDateRef}
+              type="date"
+              value={dateFilter.end || ""}
+              onChange={(e) => handleDateChange("end", e.target.value)}
+              className="w-auto min-w-[140px]"
+              aria-label="終了日"
+            />
           </div>
-        </div>
 
-        {/* フィルター解除 */}
-        <Button
-          variant="outline"
-          onClick={handleClearFilters}
-          disabled={!isFiltered}
-          className="w-full"
-          aria-label={isFiltered ? "フィルターをクリア" : "フィルターが設定されていません"}
-        >
-          フィルターをクリア
-        </Button>
-      </CardContent>
-    </Card>
+          {/* クリアボタン */}
+          {isFiltered && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleClearFilters}
+              className="px-2 py-1 h-8 text-xs"
+              aria-label="フィルターをクリア"
+            >
+              クリア
+            </Button>
+          )}
+        </div>
+      </div>
+
+      {/* エラー表示 */}
+      {dateError && <p className="text-destructive text-sm mt-2">{dateError}</p>}
+    </div>
   );
 }
