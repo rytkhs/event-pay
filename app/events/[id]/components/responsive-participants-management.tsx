@@ -3,7 +3,6 @@
 import React, { useState, useCallback } from "react";
 
 import { useToast } from "@core/contexts/toast-context";
-import { useMediaQuery } from "@core/hooks/useMediaQuery";
 import type {
   GetParticipantsResponse,
   GetParticipantsParams,
@@ -22,8 +21,6 @@ import { adminAddAttendanceAction } from "@/features/events/actions/admin-add-at
 import { generateGuestUrlAction } from "@/features/events/actions/generate-guest-url";
 import { getEventParticipantsAction } from "@/features/events/actions/get-event-participants";
 import { ParticipantsTable } from "@/features/events/components/participants-table";
-
-import { MobileParticipantsCard } from "./mobile-participants-card";
 
 interface ResponsiveParticipantsManagementProps {
   eventId: string;
@@ -48,9 +45,6 @@ export function ResponsiveParticipantsManagement({
     capacity?: number | null;
     current?: number;
   }>(null);
-
-  // モバイル検出
-  const isMobile = useMediaQuery("(max-width: 768px)");
 
   const handleOpenAdd = () => {
     setAddNickname("");
@@ -186,30 +180,15 @@ export function ResponsiveParticipantsManagement({
         </Button>
       </div>
 
-      {/* 参加者一覧 - レスポンシブ */}
-      {isMobile ? (
-        <div className="space-y-4">
-          <h3 className="text-lg font-semibold text-gray-900">参加者一覧</h3>
-          <MobileParticipantsCard
-            eventFee={eventFee}
-            participants={participantsData.participants}
-            selectedPaymentIds={[]} // TODO: モバイル版の選択機能実装
-            isUpdatingStatus={false} // TODO: モバイル版の更新状態管理
-            onSelectPayment={() => {}} // TODO: モバイル版の選択処理
-            onUpdatePaymentStatus={async () => {}} // TODO: モバイル版の更新処理
-            onCopyGuestUrl={handleCopyGuestUrl}
-          />
-        </div>
-      ) : (
-        <ParticipantsTable
-          eventId={eventId}
-          eventFee={eventFee}
-          initialData={participantsData}
-          onParamsChange={handleParamsChange}
-          isLoading={isLoading}
-          onPaymentStatusUpdate={refreshAllData}
-        />
-      )}
+      {/* 参加者一覧 - テーブル形式（全デバイス共通） */}
+      <ParticipantsTable
+        eventId={eventId}
+        eventFee={eventFee}
+        initialData={participantsData}
+        onParamsChange={handleParamsChange}
+        isLoading={isLoading}
+        onPaymentStatusUpdate={refreshAllData}
+      />
 
       {/* 追加ダイアログ */}
       <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>

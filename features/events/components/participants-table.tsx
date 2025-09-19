@@ -713,7 +713,7 @@ export function ParticipantsTable({
       <CardContent>
         {/* テーブル */}
         <div className="rounded-md border overflow-x-auto">
-          <table className="w-full">
+          <table className="w-full min-w-[768px]">
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -819,7 +819,7 @@ export function ParticipantsTable({
                         </td>
                       )}
                       <td className="px-4 py-4 whitespace-nowrap">
-                        <div className="flex items-center gap-1">
+                        <div className="flex items-center gap-2">
                           {isCashPayment &&
                             simpleStatus !== "paid" &&
                             simpleStatus !== "waived" && (
@@ -832,7 +832,7 @@ export function ParticipantsTable({
                                     handleUpdatePaymentStatus(participant.payment_id, "received")
                                   }
                                   disabled={isUpdatingStatus}
-                                  className="h-7 px-2 text-xs bg-green-50 border-green-300 text-green-700 hover:bg-green-100"
+                                  className="h-8 px-2 text-xs bg-green-50 border-green-300 text-green-700 hover:bg-green-100"
                                 >
                                   <Check className="h-3 w-3 mr-1" />
                                   受領
@@ -845,7 +845,7 @@ export function ParticipantsTable({
                                     handleUpdatePaymentStatus(participant.payment_id, "waived")
                                   }
                                   disabled={isUpdatingStatus}
-                                  className="h-7 px-2 text-xs bg-orange-50 border-orange-300 text-orange-700 hover:bg-orange-100"
+                                  className="h-8 px-2 text-xs bg-orange-50 border-orange-300 text-orange-700 hover:bg-orange-100"
                                 >
                                   <X className="h-3 w-3 mr-1" />
                                   免除
@@ -857,7 +857,7 @@ export function ParticipantsTable({
                             size="sm"
                             variant="ghost"
                             onClick={() => handleCopyGuestUrl(participant.attendance_id)}
-                            className="h-7 px-2 text-xs"
+                            className="h-8 px-2 text-xs"
                             title="ゲスト用URLをコピー"
                             disabled={participant.status !== "attending"}
                           >
