@@ -201,8 +201,8 @@ export async function createPaidTestEvent(
     fee,
     capacity,
     payment_methods: paymentMethods,
-    registration_deadline: null,
-    payment_deadline: null,
+    registration_deadline: futureDateString,
+    payment_deadline: futureDateString,
     canceled_at: null,
     invite_token: inviteToken,
     created_by: createdBy,
@@ -560,3 +560,80 @@ export const TEST_PAYMENT_AMOUNTS = {
   LARGE: 5000, // 5,000円
   VERY_LARGE: 10000, // 10,000円
 } as const;
+
+/**
+ * 支払い済みのStripe決済を作成（統合テスト用）
+ * - status = 'paid'
+ * - paid_at を現在時刻に設定（制約対策）
+ * - stripe_payment_intent_id をダミー付与（制約対策）
+ * - stripe_balance_transaction_fee を指定可能（未指定時はrate計算にフォールバック）
+ */
+export async function createPaidStripePayment(
+  attendanceId: string,
+  options: {
+    amount?: number;
+    applicationFeeAmount?: number;
+    stripeAccountId?: string;
+    stripeBalanceTransactionFee?: number;
+    paymentIntentId?: string;
+  } = {}
+): Promise<TestPaymentData> {
+  const {
+    amount = 1000,
+    applicationFeeAmount = Math.floor(amount * 0.1),
+    stripeAccountId,
+    stripeBalanceTransactionFee,
+    paymentIntentId = `pi_test_${Math.random().toString(36).slice(2)}`,
+  } = options;
+
+  const secureFactory = SecureSupabaseClientFactory.getInstance();
+  const adminClient = await secureFactory.createAuditedAdminClient(
+    AdminReason.TEST_DATA_SETUP,
+    `Creating PAID stripe payment for attendance: ${attendanceId}`,
+    {
+      operationType: "INSERT",
+      accessedTables: ["public.payments"],
+      additionalInfo: {
+        testContext: "settlement-integration",
+        attendanceId,
+        amount,
+      },
+    }
+  );
+
+  const paymentData: PaymentInsert = {
+    attendance_id: attendanceId,
+    method: "stripe",
+    amount,
+    status: "paid",
+    paid_at: new Date().toISOString(),
+    stripe_payment_intent_id: paymentIntentId,
+    stripe_account_id: stripeAccountId,
+    application_fee_amount: applicationFeeAmount,
+    // ts types may not allow null; omit the field if undefined to satisfy types
+    ...(stripeBalanceTransactionFee != null
+      ? { stripe_balance_transaction_fee: stripeBalanceTransactionFee }
+      : {}),
+    tax_included: false,
+  } as PaymentInsert;
+
+  const { data: payment, error } = await adminClient
+    .from("payments")
+    .insert(paymentData)
+    .select()
+    .single();
+
+  if (error) {
+    throw new Error(`Failed to create paid stripe payment: ${error.message}`);
+  }
+
+  return {
+    id: payment.id,
+    amount: payment.amount,
+    status: payment.status,
+    method: payment.method,
+    attendance_id: payment.attendance_id,
+    application_fee_amount: payment.application_fee_amount,
+    stripe_account_id: payment.stripe_account_id,
+  };
+}

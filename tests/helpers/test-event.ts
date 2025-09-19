@@ -60,6 +60,9 @@ export async function createTestEvent(
   const futureDate = new Date(Date.now() + 60 * 60 * 1000);
   const futureDateString = futureDate.toISOString();
 
+  // デフォルトの申込締切（イベント開始30分前）
+  const defaultRegistrationDeadline = new Date(futureDate.getTime() - 30 * 60 * 1000).toISOString();
+
   // 招待トークンを生成
   const inviteToken = generateInviteToken();
 
@@ -71,7 +74,7 @@ export async function createTestEvent(
     payment_methods: [],
     location: "テスト会場",
     description: "E2Eテスト用のイベントです",
-    registration_deadline: null,
+    registration_deadline: defaultRegistrationDeadline,
     payment_deadline: null,
     canceled_at: null,
   };
@@ -92,7 +95,7 @@ export async function createTestEvent(
     fee: eventOptions.fee,
     capacity: eventOptions.capacity,
     payment_methods: eventOptions.payment_methods,
-    registration_deadline: eventOptions.registration_deadline || null,
+    registration_deadline: eventOptions.registration_deadline || defaultRegistrationDeadline,
     payment_deadline: eventOptions.payment_deadline || null,
     canceled_at: eventOptions.canceled_at ?? null,
     invite_token: inviteToken,
