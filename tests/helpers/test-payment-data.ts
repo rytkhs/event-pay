@@ -637,3 +637,79 @@ export async function createPaidStripePayment(
     stripe_account_id: payment.stripe_account_id,
   };
 }
+
+/**
+ * 返金データを決済に追加（統合テスト用）
+ * - refunded_amount を設定し、指定されたアプリケーション手数料返金額も設定
+ * - status は 'refunded' に変更
+ */
+export async function addRefundToPayment(
+  paymentId: string,
+  options: {
+    refundedAmount: number;
+    applicationFeeRefundedAmount?: number;
+  }
+): Promise<void> {
+  const adminClient = await SecureSupabaseClientFactory.getInstance().createAuditedAdminClient(
+    AdminReason.TEST_DATA_SETUP,
+    "Add refund to test payment",
+    { accessedTables: ["public.payments"] }
+  );
+
+  const { applicationFeeRefundedAmount = 0 } = options;
+
+  const { error } = await adminClient
+    .from("payments")
+    .update({
+      status: "refunded" as const,
+      refunded_amount: options.refundedAmount,
+      application_fee_refunded_amount: applicationFeeRefundedAmount,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", paymentId);
+
+  if (error) {
+    throw new Error(`Failed to add refund to payment: ${error.message}`);
+  }
+}
+
+/**
+ * 争議データを決済に作成（統合テスト用）
+ * - payment_disputes テーブルにレコード挿入
+ * - 'lost', 'warning_needs_response' などのステータスを設定可能
+ */
+export async function createPaymentDispute(
+  paymentId: string,
+  options: {
+    amount: number;
+    status?: "lost" | "warning_needs_response" | "warning_under_review" | "won" | "warning_closed";
+    reason?: string;
+  } = { amount: 0 }
+): Promise<string> {
+  const adminClient = await SecureSupabaseClientFactory.getInstance().createAuditedAdminClient(
+    AdminReason.TEST_DATA_SETUP,
+    "Create payment dispute for test",
+    { accessedTables: ["public.payment_disputes"] }
+  );
+
+  const disputeData = {
+    payment_id: paymentId,
+    amount: options.amount,
+    status: options.status ?? "lost",
+    reason: options.reason ?? "fraudulent",
+    stripe_dispute_id: `dp_test_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`,
+    created_at: new Date().toISOString(),
+  };
+
+  const { data, error } = await adminClient
+    .from("payment_disputes")
+    .insert(disputeData)
+    .select("id")
+    .single();
+
+  if (error) {
+    throw new Error(`Failed to create payment dispute: ${error.message}`);
+  }
+
+  return data.id;
+}

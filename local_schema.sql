@@ -1,5 +1,5 @@
 
-\restrict 8e9XbofMiO1pTFAeCS3jQnGZKeoCRVanhfBjqeOLoBXebtDA70N5WUKD4oBfgQX
+\restrict XdWcjpmGakWWfzKrK0VR87y7n2AYuUPW6kq8jE7oZbegXkox5YmtxLZDISKhEKa
 
 
 SET statement_timeout = 0;
@@ -262,7 +262,7 @@ BEGIN
     JOIN public.attendances a ON p.attendance_id = a.id
     WHERE a.event_id = p_event_id
       AND p.method = 'stripe'
-      AND p.status = 'paid';
+      AND p.status IN ('paid', 'refunded');
 
     RETURN v_total_fee;
 END;
@@ -272,7 +272,7 @@ $$;
 ALTER FUNCTION "public"."calc_total_application_fee"("p_event_id" "uuid") OWNER TO "postgres";
 
 
-COMMENT ON FUNCTION "public"."calc_total_application_fee"("p_event_id" "uuid") IS 'イベント単位でアプリケーション手数料（プラットフォーム手数料）を合計計算';
+COMMENT ON FUNCTION "public"."calc_total_application_fee"("p_event_id" "uuid") IS 'イベント単位でアプリケーション手数料（プラットフォーム手数料）を合計計算。部分返金された決済も含める。';
 
 
 
@@ -3332,6 +3332,6 @@ ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TAB
 
 
 
-\unrestrict 8e9XbofMiO1pTFAeCS3jQnGZKeoCRVanhfBjqeOLoBXebtDA70N5WUKD4oBfgQX
+\unrestrict XdWcjpmGakWWfzKrK0VR87y7n2AYuUPW6kq8jE7oZbegXkox5YmtxLZDISKhEKa
 
 RESET ALL;
