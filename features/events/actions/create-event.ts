@@ -1,10 +1,13 @@
 "use server";
 
+import { headers } from "next/headers";
+
 import { z } from "zod";
 
 import { getCurrentUser } from "@core/auth/auth-utils";
 import { SecureSupabaseClientFactory } from "@core/security/secure-client-factory.impl";
 import { AdminReason } from "@core/security/secure-client-factory.types";
+import { logSecurityEvent } from "@core/security/security-logger";
 import {
   type ServerActionResult,
   createServerActionError,
@@ -41,7 +44,27 @@ export async function createEventAction(formData: FormData): Promise<CreateEvent
     const user = await getCurrentUser();
 
     if (!user) {
-      return createServerActionError("UNAUTHORIZED", "認証が必要です");
+      // セキュリティログの記録
+      const headersList = headers();
+      logSecurityEvent({
+        type: "SUSPICIOUS_ACTIVITY",
+        severity: "MEDIUM",
+        message: "未認証でのイベント作成試行",
+        userAgent: headersList.get("user-agent") || undefined,
+        ip: headersList.get("x-forwarded-for") || headersList.get("x-real-ip") || undefined,
+        timestamp: new Date(),
+        details: {
+          action: "create_event",
+          endpoint: "/events/create",
+        },
+      });
+
+      return createServerActionError("UNAUTHORIZED", "認証が必要です", {
+        details: {
+          timestamp: new Date().toISOString(),
+          action: "create_event",
+        },
+      });
     }
 
     const rawData = extractFormData(formData);
