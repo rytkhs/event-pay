@@ -178,34 +178,30 @@ export function EventListWithFilters({
 
   return (
     <div className="space-y-6" data-testid="event-list-with-filters">
-      {/* 統合フィルターバー */}
-      <div className="bg-white border rounded-lg p-4 shadow-sm">
-        <div className="flex flex-col lg:flex-row lg:items-center gap-4">
-          {/* 検索とフィルター */}
-          <div className="flex-1">
-            <EventFilters
-              statusFilter={filters.status}
-              dateFilter={filters.dateRange}
-              paymentFilter={filters.payment}
-              onStatusFilterChange={setStatusFilter}
-              onDateFilterChange={setDateRangeFilter}
-              onPaymentFilterChange={setPaymentFilter}
-              onClearFilters={clearFilters}
-              isFiltered={isFiltered}
-              searchQuery={searchQuery}
-              onSearchQueryChange={setSearchQuery}
-            />
-          </div>
+      {/* 検索・フィルターセクション */}
+      <div className="space-y-4">
+        <EventFilters
+          statusFilter={filters.status}
+          dateFilter={filters.dateRange}
+          paymentFilter={filters.payment}
+          onStatusFilterChange={setStatusFilter}
+          onDateFilterChange={setDateRangeFilter}
+          onPaymentFilterChange={setPaymentFilter}
+          onClearFilters={clearFilters}
+          isFiltered={isFiltered}
+          searchQuery={searchQuery}
+          onSearchQueryChange={setSearchQuery}
+        />
 
-          {/* ソート */}
-          <div className="flex-shrink-0">
-            <EventSort
-              sortBy={sortBy}
-              sortOrder={sortOrder}
-              onSortChange={customSetSortBy}
-              onOrderChange={customSetSortOrder}
-            />
-          </div>
+        {/* 結果数・ソート */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 py-2">
+          <div className="text-sm text-muted-foreground">{totalCount}件のイベント</div>
+          <EventSort
+            sortBy={sortBy}
+            sortOrder={sortOrder}
+            onSortChange={customSetSortBy}
+            onOrderChange={customSetSortOrder}
+          />
         </div>
       </div>
 
