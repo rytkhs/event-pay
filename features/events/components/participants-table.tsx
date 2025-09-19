@@ -781,7 +781,7 @@ export function ParticipantsTable({
                   return (
                     <tr
                       key={participant.attendance_id}
-                      className={`${isPaid ? "bg-green-50 border-l-4 !border-l-green-300" : ""}`}
+                      className={`${isPaid ? "bg-green-50 border-l-4 !border-l-green-200" : ""}`}
                     >
                       <td className="px-4 py-4 whitespace-nowrap">
                         {isCashPayment ? (
