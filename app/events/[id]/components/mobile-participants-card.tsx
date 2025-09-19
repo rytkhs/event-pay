@@ -22,6 +22,7 @@ import {
 } from "./status-indicators";
 
 interface MobileParticipantsCardProps {
+  eventFee: number;
   participants: GetParticipantsResponse["participants"];
   selectedPaymentIds: string[];
   isUpdatingStatus: boolean;
@@ -31,6 +32,7 @@ interface MobileParticipantsCardProps {
 }
 
 export function MobileParticipantsCard({
+  eventFee,
   participants,
   selectedPaymentIds,
   isUpdatingStatus,
@@ -39,6 +41,9 @@ export function MobileParticipantsCard({
   onCopyGuestUrl,
 }: MobileParticipantsCardProps) {
   // const { toast } = useToast();
+
+  // 無料イベントかどうかの判定
+  const isFreeEvent = eventFee === 0;
 
   // 日付フォーマット
   const formatDate = (dateString: string | null) => {
@@ -63,7 +68,7 @@ export function MobileParticipantsCard({
         </Card>
       ) : (
         participants.map((participant) => {
-          const isUnpaid = isPaymentUnpaid(participant.payment_status);
+          const isUnpaid = !isFreeEvent && isPaymentUnpaid(participant.payment_status);
           const simpleStatus = toSimplePaymentStatus(participant.payment_status);
 
           const isCashPayment = participant.payment_method === "cash" && participant.payment_id;
@@ -100,20 +105,22 @@ export function MobileParticipantsCard({
                   </div>
                 </div>
 
-                {/* 決済情報行 */}
-                <div className="grid grid-cols-2 gap-4 py-2 bg-gray-50 rounded-lg px-3">
-                  <div className="space-y-2">
-                    <PaymentMethodIcon method={participant.payment_method} size="sm" />
-                    <PaymentStatusIndicator
-                      status={participant.payment_status || "pending"}
-                      amount={participant.amount}
-                      size="sm"
-                    />
+                {/* 決済情報行 - 無料イベントでは非表示 */}
+                {!isFreeEvent && (
+                  <div className="grid grid-cols-2 gap-4 py-2 bg-gray-50 rounded-lg px-3">
+                    <div className="space-y-2">
+                      <PaymentMethodIcon method={participant.payment_method} size="sm" />
+                      <PaymentStatusIndicator
+                        status={participant.payment_status || "pending"}
+                        amount={participant.amount}
+                        size="sm"
+                      />
+                    </div>
+                    <div className="text-right space-y-1">
+                      <p className="text-xs text-gray-500">{formatDate(participant.paid_at)}</p>
+                    </div>
                   </div>
-                  <div className="text-right space-y-1">
-                    <p className="text-xs text-gray-500">{formatDate(participant.paid_at)}</p>
-                  </div>
-                </div>
+                )}
 
                 {/* アクション行 */}
                 <div className="flex items-center gap-2 pt-2">

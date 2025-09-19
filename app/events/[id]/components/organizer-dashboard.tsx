@@ -199,6 +199,7 @@ export function OrganizerDashboard({
           {participantsData && (
             <ResponsiveParticipantsManagement
               eventId={eventId}
+              eventFee={eventDetail.fee}
               initialParticipantsData={participantsData}
             />
           )}

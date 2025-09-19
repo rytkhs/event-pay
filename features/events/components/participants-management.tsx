@@ -195,6 +195,7 @@ export function ParticipantsManagement({
       {/* 参加者一覧テーブル */}
       <ParticipantsTable
         eventId={eventId}
+        eventFee={eventData.fee}
         initialData={participantsData}
         onParamsChange={handleParamsChange}
         isLoading={isLoading}

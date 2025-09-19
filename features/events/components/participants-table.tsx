@@ -49,6 +49,7 @@ import { getAllCashPaymentIdsAction } from "../actions/get-all-cash-payment-ids"
 
 interface ParticipantsTableProps {
   eventId: string;
+  eventFee: number;
   initialData: GetParticipantsResponse;
   onParamsChange: (params: Partial<GetParticipantsParams>) => void;
   isLoading?: boolean;
@@ -57,12 +58,16 @@ interface ParticipantsTableProps {
 
 export function ParticipantsTable({
   eventId,
+  eventFee,
   initialData,
   onParamsChange,
   isLoading = false,
   onPaymentStatusUpdate,
 }: ParticipantsTableProps) {
   const { toast } = useToast();
+
+  // 無料イベントかどうかの判定
+  const isFreeEvent = eventFee === 0;
 
   // 選択機能のstate
   const [selectedPaymentIds, setSelectedPaymentIds] = useState<string[]>([]);
@@ -663,40 +668,44 @@ export function ParticipantsTable({
               </SelectContent>
             </Select>
 
-            <Select
-              value={paymentMethodFilter}
-              onValueChange={handlePaymentMethodFilter}
-              disabled={isLoading}
-            >
-              <SelectTrigger className="w-[100px]">
-                <SelectValue placeholder="決済方法" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">全て</SelectItem>
-                <SelectItem value="stripe">カード</SelectItem>
-                <SelectItem value="cash">現金</SelectItem>
-              </SelectContent>
-            </Select>
+            {!isFreeEvent && (
+              <Select
+                value={paymentMethodFilter}
+                onValueChange={handlePaymentMethodFilter}
+                disabled={isLoading}
+              >
+                <SelectTrigger className="w-[100px]">
+                  <SelectValue placeholder="決済方法" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">全て</SelectItem>
+                  <SelectItem value="stripe">カード</SelectItem>
+                  <SelectItem value="cash">現金</SelectItem>
+                </SelectContent>
+              </Select>
+            )}
 
-            <Select
-              value={paymentStatusFilter}
-              onValueChange={handlePaymentStatusFilter}
-              disabled={isLoading}
-            >
-              <SelectTrigger className="w-[120px]">
-                <SelectValue placeholder="決済状況" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">全て</SelectItem>
-                <SelectItem value="paid">支払済み</SelectItem>
-                <SelectItem value="received">受領済み</SelectItem>
-                <SelectItem value="completed">完了</SelectItem>
-                <SelectItem value="pending">未決済</SelectItem>
-                <SelectItem value="failed">失敗</SelectItem>
-                <SelectItem value="refunded">返金済み</SelectItem>
-                <SelectItem value="waived">免除</SelectItem>
-              </SelectContent>
-            </Select>
+            {!isFreeEvent && (
+              <Select
+                value={paymentStatusFilter}
+                onValueChange={handlePaymentStatusFilter}
+                disabled={isLoading}
+              >
+                <SelectTrigger className="w-[120px]">
+                  <SelectValue placeholder="決済状況" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">全て</SelectItem>
+                  <SelectItem value="paid">支払済み</SelectItem>
+                  <SelectItem value="received">受領済み</SelectItem>
+                  <SelectItem value="completed">完了</SelectItem>
+                  <SelectItem value="pending">未決済</SelectItem>
+                  <SelectItem value="failed">失敗</SelectItem>
+                  <SelectItem value="refunded">返金済み</SelectItem>
+                  <SelectItem value="waived">免除</SelectItem>
+                </SelectContent>
+              </Select>
+            )}
           </div>
         </div>
       </CardHeader>
@@ -735,12 +744,16 @@ export function ParticipantsTable({
                     <span className="ml-1">{currentSort.order === "asc" ? "↑" : "↓"}</span>
                   )}
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  決済方法
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  決済状況
-                </th>
+                {!isFreeEvent && (
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    決済方法
+                  </th>
+                )}
+                {!isFreeEvent && (
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    決済状況
+                  </th>
+                )}
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   アクション
                 </th>
@@ -749,14 +762,14 @@ export function ParticipantsTable({
             <tbody className="bg-white divide-y divide-gray-200">
               {participants.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-4 py-8 text-center text-gray-500">
+                  <td colSpan={isFreeEvent ? 4 : 6} className="px-4 py-8 text-center text-gray-500">
                     {isLoading ? "読み込み中..." : "参加者が見つかりません"}
                   </td>
                 </tr>
               ) : (
                 participants.map((participant) => {
-                  // 未決済のハイライト判定（新しいマッピングユーティリティを使用）
-                  const isUnpaid = isPaymentUnpaid(participant.payment_status);
+                  // 未決済のハイライト判定（無料イベントではハイライトしない）
+                  const isUnpaid = !isFreeEvent && isPaymentUnpaid(participant.payment_status);
                   const simpleStatus = toSimplePaymentStatus(participant.payment_status);
 
                   const isCashPayment =
@@ -790,17 +803,21 @@ export function ParticipantsTable({
                       <td className="px-4 py-4 whitespace-nowrap">
                         {getAttendanceStatusBadge(participant.status)}
                       </td>
-                      <td className="px-4 py-4 whitespace-nowrap">
-                        {getPaymentMethodBadge(participant.payment_method)}
-                      </td>
-                      <td className="px-4 py-4 whitespace-nowrap">
-                        <Badge
-                          variant={getSimplePaymentStatusStyle(simpleStatus).variant}
-                          className={getSimplePaymentStatusStyle(simpleStatus).className}
-                        >
-                          {SIMPLE_PAYMENT_STATUS_LABELS[simpleStatus]}
-                        </Badge>
-                      </td>
+                      {!isFreeEvent && (
+                        <td className="px-4 py-4 whitespace-nowrap">
+                          {getPaymentMethodBadge(participant.payment_method)}
+                        </td>
+                      )}
+                      {!isFreeEvent && (
+                        <td className="px-4 py-4 whitespace-nowrap">
+                          <Badge
+                            variant={getSimplePaymentStatusStyle(simpleStatus).variant}
+                            className={getSimplePaymentStatusStyle(simpleStatus).className}
+                          >
+                            {SIMPLE_PAYMENT_STATUS_LABELS[simpleStatus]}
+                          </Badge>
+                        </td>
+                      )}
                       <td className="px-4 py-4 whitespace-nowrap">
                         <div className="flex items-center gap-1">
                           {isCashPayment &&

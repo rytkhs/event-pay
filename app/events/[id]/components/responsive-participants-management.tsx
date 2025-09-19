@@ -27,11 +27,13 @@ import { MobileParticipantsCard } from "./mobile-participants-card";
 
 interface ResponsiveParticipantsManagementProps {
   eventId: string;
+  eventFee: number;
   initialParticipantsData: GetParticipantsResponse;
 }
 
 export function ResponsiveParticipantsManagement({
   eventId,
+  eventFee,
   initialParticipantsData,
 }: ResponsiveParticipantsManagementProps) {
   const [participantsData, setParticipantsData] =
@@ -189,6 +191,7 @@ export function ResponsiveParticipantsManagement({
         <div className="space-y-4">
           <h3 className="text-lg font-semibold text-gray-900">参加者一覧</h3>
           <MobileParticipantsCard
+            eventFee={eventFee}
             participants={participantsData.participants}
             selectedPaymentIds={[]} // TODO: モバイル版の選択機能実装
             isUpdatingStatus={false} // TODO: モバイル版の更新状態管理
@@ -200,6 +203,7 @@ export function ResponsiveParticipantsManagement({
       ) : (
         <ParticipantsTable
           eventId={eventId}
+          eventFee={eventFee}
           initialData={participantsData}
           onParamsChange={handleParamsChange}
           isLoading={isLoading}
