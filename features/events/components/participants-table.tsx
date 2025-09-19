@@ -12,6 +12,8 @@ import {
   RefreshCw,
   Check,
   X,
+  CreditCard,
+  Banknote,
 } from "lucide-react";
 
 import { useToast } from "@core/contexts/toast-context";
@@ -375,20 +377,20 @@ export function ParticipantsTable({
     switch (status) {
       case "attending":
         return (
-          <Badge variant="default" className="bg-blue-100 text-blue-800">
-            参加予定
+          <Badge variant="default" className="bg-green-100 text-green-800 text-md">
+            ◯
           </Badge>
         );
       case "not_attending":
         return (
-          <Badge variant="secondary" className="bg-red-100 text-red-800">
-            不参加
+          <Badge variant="secondary" className="bg-red-100 text-red-800 text-md">
+            ✕
           </Badge>
         );
       case "maybe":
         return (
-          <Badge variant="outline" className="bg-yellow-100 text-yellow-800">
-            未定
+          <Badge variant="outline" className="bg-yellow-100 text-yellow-800 text-md">
+            △
           </Badge>
         );
       default:
@@ -402,15 +404,27 @@ export function ParticipantsTable({
     switch (method) {
       case "stripe":
         return (
-          <Badge variant="outline" className="bg-purple-100 text-purple-800">
-            カード
-          </Badge>
+          <div className="inline-flex">
+            <Badge
+              variant="outline"
+              className="bg-purple-100 text-purple-800 flex items-center gap-1"
+            >
+              <CreditCard className="h-5 w-5" />
+              オンライン
+            </Badge>
+          </div>
         );
       case "cash":
         return (
-          <Badge variant="outline" className="bg-orange-100 text-orange-800">
-            現金
-          </Badge>
+          <div className="inline-flex">
+            <Badge
+              variant="outline"
+              className="bg-orange-100 text-orange-800 flex items-center gap-1"
+            >
+              <Banknote className="h-5 w-5" />
+              現金
+            </Badge>
+          </div>
         );
       default:
         return <Badge variant="outline">{method}</Badge>;
@@ -784,8 +798,8 @@ export function ParticipantsTable({
                       <td className="px-4 py-4 whitespace-nowrap">
                         <div className="flex items-center gap-1">
                           {isCashPayment &&
-                            participant.payment_status !== "received" &&
-                            participant.payment_status !== "waived" && (
+                            simpleStatus !== "paid" &&
+                            simpleStatus !== "waived" && (
                               <>
                                 <Button
                                   size="sm"

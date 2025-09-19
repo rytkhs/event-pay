@@ -15,15 +15,15 @@ export function AttendanceStatusPill({ status, size = "md" }: AttendanceStatusPi
     switch (status) {
       case "attending":
         return {
-          emoji: "🟢",
-          label: "参加予定",
+          emoji: "◯",
+          label: "参加",
           bgColor: "bg-green-100",
           textColor: "text-green-800",
           borderColor: "border-green-300",
         };
       case "not_attending":
         return {
-          emoji: "🔴",
+          emoji: "✕",
           label: "不参加",
           bgColor: "bg-red-100",
           textColor: "text-red-800",
@@ -31,7 +31,7 @@ export function AttendanceStatusPill({ status, size = "md" }: AttendanceStatusPi
         };
       case "maybe":
         return {
-          emoji: "🟡",
+          emoji: "△",
           label: "未定",
           bgColor: "bg-yellow-100",
           textColor: "text-yellow-800",

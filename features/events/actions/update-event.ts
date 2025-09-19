@@ -421,7 +421,7 @@ function buildUpdateData(
   if (validatedData.registration_deadline !== undefined) {
     const newDeadline = validatedData.registration_deadline
       ? convertDatetimeLocalToIso(validatedData.registration_deadline as string)
-      : null;
+      : undefined;
     if (newDeadline !== existingEvent.registration_deadline) {
       updateData.registration_deadline = newDeadline;
     }
