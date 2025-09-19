@@ -4,18 +4,21 @@ import React from "react";
 
 import { format, parseISO } from "date-fns";
 import { ja } from "date-fns/locale";
-import { Check, X, Copy, Users, CreditCard, Banknote } from "lucide-react";
+import { Check, X, Copy, Users } from "lucide-react";
 
 // import { useToast } from "@core/contexts/toast-context";
 import { hasPaymentId } from "@core/utils/data-guards";
 import type { GetParticipantsResponse } from "@core/validation/participant-management";
 
-import { PaymentStatusBadge } from "@components/ui/payment-status-badge";
-
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
+
+import {
+  AttendanceStatusPill,
+  PaymentMethodIcon,
+  PaymentStatusIndicator,
+} from "./status-indicators";
 
 interface MobileParticipantsCardProps {
   participants: GetParticipantsResponse["participants"];
@@ -43,54 +46,6 @@ export function MobileParticipantsCard({
       return format(parseISO(dateString), "MM/dd HH:mm", { locale: ja });
     } catch {
       return "-";
-    }
-  };
-
-  // 金額フォーマット
-  const formatAmount = (amount: number | null) => {
-    if (amount === null) return "-";
-    return `¥${amount.toLocaleString()}`;
-  };
-
-  // ステータスバッジ
-  const getAttendanceStatusBadge = (status: string) => {
-    switch (status) {
-      case "attending":
-        return (
-          <Badge variant="default" className="bg-blue-100 text-blue-800 text-xs">
-            参加予定
-          </Badge>
-        );
-      case "not_attending":
-        return (
-          <Badge variant="secondary" className="bg-red-100 text-red-800 text-xs">
-            不参加
-          </Badge>
-        );
-      case "maybe":
-        return (
-          <Badge variant="outline" className="bg-yellow-100 text-yellow-800 text-xs">
-            未定
-          </Badge>
-        );
-      default:
-        return (
-          <Badge variant="outline" className="text-xs">
-            {status}
-          </Badge>
-        );
-    }
-  };
-
-  const getPaymentMethodIcon = (method: string | null) => {
-    if (!method) return null;
-    switch (method) {
-      case "stripe":
-        return <CreditCard className="h-4 w-4 text-purple-600" />;
-      case "cash":
-        return <Banknote className="h-4 w-4 text-orange-600" />;
-      default:
-        return null;
     }
   };
 
@@ -139,37 +94,24 @@ export function MobileParticipantsCard({
                     )}
                     <div className="min-w-0 flex-1">
                       <h3 className="font-medium text-gray-900 truncate">{participant.nickname}</h3>
-                      <p className="text-sm text-gray-500 truncate">{participant.email}</p>
                     </div>
                   </div>
                   <div className="flex-shrink-0">
-                    {getAttendanceStatusBadge(participant.status)}
+                    <AttendanceStatusPill status={participant.status} size="sm" />
                   </div>
                 </div>
 
                 {/* 決済情報行 */}
                 <div className="grid grid-cols-2 gap-4 py-2 bg-gray-50 rounded-lg px-3">
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2">
-                      {getPaymentMethodIcon(participant.payment_method)}
-                      <span className="text-sm text-gray-600">
-                        {participant.payment_method === "stripe"
-                          ? "カード"
-                          : participant.payment_method === "cash"
-                            ? "現金"
-                            : "-"}
-                      </span>
-                    </div>
-                    <div className="text-sm font-medium">
-                      <PaymentStatusBadge status={participant.payment_status} />
-                    </div>
+                  <div className="space-y-2">
+                    <PaymentMethodIcon method={participant.payment_method} size="sm" />
+                    <PaymentStatusIndicator
+                      status={participant.payment_status || "pending"}
+                      amount={participant.amount}
+                      size="sm"
+                    />
                   </div>
                   <div className="text-right space-y-1">
-                    <p
-                      className={`text-sm font-medium ${isUnpaid ? "text-red-600" : "text-gray-900"}`}
-                    >
-                      {formatAmount(participant.amount)}
-                    </p>
                     <p className="text-xs text-gray-500">{formatDate(participant.paid_at)}</p>
                   </div>
                 </div>

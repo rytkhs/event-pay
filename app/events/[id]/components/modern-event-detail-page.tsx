@@ -12,6 +12,9 @@ import {
   Banknote,
   AlertCircle,
   CheckCircle2,
+  UserPlus,
+  Share2,
+  Edit,
 } from "lucide-react";
 
 import { EVENT_STATUS_LABELS } from "@core/types/enums";
@@ -30,7 +33,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { InviteLink } from "@/features/invite/components/invite-link";
 
 import { EventOverview } from "./event-overview";
+import { OrganizerDashboard } from "./organizer-dashboard";
+import { ParticipantView } from "./participant-view";
 import { ResponsiveParticipantsManagement } from "./responsive-participants-management";
+import { StatusBar } from "./status-bar";
 
 interface ModernEventDetailPageProps {
   eventId: string;
@@ -102,12 +108,24 @@ export function ModernEventDetailPage({
 
   const StatusIcon = getStatusIcon(eventDetail.status);
 
+  // 招待リンクのコピー処理
+  const handleCopyInviteLink = async () => {
+    try {
+      const inviteUrl = `${window.location.origin}/invite/${eventDetail.invite_token}`;
+      await navigator.clipboard.writeText(inviteUrl);
+      // TODO: toast通知を追加
+    } catch (error) {
+      console.error("Failed to copy invite link:", error);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* ヘッダー */}
+      {/* ヒーローヘッダー */}
       <div className="bg-white border-b border-gray-200">
         <div className="max-w-6xl mx-auto px-4 py-4">
-          <div className="flex items-center justify-between mb-4">
+          {/* 上部ナビゲーション */}
+          <div className="flex items-center justify-between mb-6">
             <Button
               variant="ghost"
               onClick={() => router.push("/events")}
@@ -116,289 +134,113 @@ export function ModernEventDetailPage({
               <ArrowLeft className="h-4 w-4" />
               イベント一覧に戻る
             </Button>
-
-            {isOrganizer && (
-              <Button onClick={() => router.push(`/events/${eventId}/edit`)} variant="outline">
-                編集
-              </Button>
-            )}
           </div>
 
+          {/* メインヒーローエリア */}
           <div className="space-y-4">
-            {/* イベント名とステータス */}
-            <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-              <h1 className="text-2xl lg:text-3xl font-bold text-gray-900 flex-1">
-                {sanitizeForEventPay(eventDetail.title)}
-              </h1>
-              <Badge
-                variant={getStatusBadgeVariant(eventDetail.status)}
-                className="flex items-center gap-1 px-3 py-1 text-sm font-medium w-fit"
-              >
-                <StatusIcon className="h-4 w-4" />
-                {EVENT_STATUS_LABELS[eventDetail.status as keyof typeof EVENT_STATUS_LABELS] ||
-                  eventDetail.status}
-              </Badge>
-            </div>
-
-            {/* 基本情報 */}
-            <div className="flex flex-wrap gap-4 text-sm text-gray-600">
-              <div className="flex items-center gap-2">
-                <Calendar className="h-4 w-4" />
-                {formatUtcToJstByType(eventDetail.date, "japanese")}
-              </div>
-              <div className="flex items-center gap-2">
-                <MapPin className="h-4 w-4" />
-                {sanitizeForEventPay(eventDetail.location)}
-              </div>
-              {eventDetail.fee > 0 && (
-                <div className="flex items-center gap-2">
-                  <Banknote className="h-4 w-4" />
-                  {eventDetail.fee.toLocaleString()}円
+            {/* タイトル行とCTA */}
+            <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
+              {/* 左側：イベント名とステータス */}
+              <div className="flex-1 min-w-0">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-2">
+                  <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">
+                    {sanitizeForEventPay(eventDetail.title)}
+                  </h1>
+                  <Badge
+                    variant={getStatusBadgeVariant(eventDetail.status)}
+                    className="flex items-center gap-1 px-3 py-1 text-sm font-medium w-fit"
+                  >
+                    <StatusIcon className="h-4 w-4" />
+                    {EVENT_STATUS_LABELS[eventDetail.status as keyof typeof EVENT_STATUS_LABELS] ||
+                      eventDetail.status}
+                  </Badge>
                 </div>
-              )}
-              <div className="flex items-center gap-2">
-                <Users className="h-4 w-4" />
-                定員{eventDetail.capacity}人
+
+                {/* 基本情報を主要エリアに移動 */}
+                <div className="flex flex-wrap gap-4 text-sm text-gray-600">
+                  <div className="flex items-center gap-2">
+                    <Calendar className="h-4 w-4" />
+                    {formatUtcToJstByType(eventDetail.date, "japanese")}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <MapPin className="h-4 w-4" />
+                    {sanitizeForEventPay(eventDetail.location)}
+                  </div>
+                  {eventDetail.fee > 0 && (
+                    <div className="flex items-center gap-2">
+                      <Banknote className="h-4 w-4" />
+                      {eventDetail.fee.toLocaleString()}円
+                    </div>
+                  )}
+                  <div className="flex items-center gap-2">
+                    <Users className="h-4 w-4" />
+                    定員{eventDetail.capacity}人
+                  </div>
+                </div>
+              </div>
+
+              {/* 右側：主要CTAボタン */}
+              <div className="flex-shrink-0 w-full lg:w-auto">
+                {isOrganizer ? (
+                  /* 主催者向けCTA */
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <Button
+                      onClick={() => router.push(`/events/${eventId}/edit`)}
+                      variant="outline"
+                      className="flex items-center gap-2"
+                    >
+                      <Edit className="h-4 w-4" />
+                      編集
+                    </Button>
+                    <Button
+                      onClick={handleCopyInviteLink}
+                      variant="default"
+                      className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700"
+                      disabled={!eventDetail.invite_token}
+                    >
+                      <Share2 className="h-4 w-4" />
+                      招待リンク共有
+                    </Button>
+                  </div>
+                ) : (
+                  /* 参加者向けCTA */
+                  <div className="flex flex-col gap-2">
+                    <Button
+                      onClick={() => router.push(`/invite/${eventDetail.invite_token}`)}
+                      variant="default"
+                      size="lg"
+                      className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700"
+                      disabled={!eventDetail.invite_token || eventDetail.status !== "upcoming"}
+                    >
+                      <UserPlus className="h-4 w-4" />
+                      参加登録
+                    </Button>
+                    <p className="text-xs text-gray-500 text-center">
+                      {eventDetail.status !== "upcoming"
+                        ? "イベントが終了しています"
+                        : "出欠確認・お支払い"}
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* サマリーカード（主催者のみ） */}
-      {isOrganizer && (
-        <div className="max-w-6xl mx-auto px-4 py-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-            {/* 参加状況 */}
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-600">参加状況</p>
-                    <div className="mt-2">
-                      <p className="text-2xl font-bold text-gray-900">
-                        {attendingCount}
-                        <span className="text-sm font-normal text-gray-500">
-                          /{eventDetail.capacity}人
-                        </span>
-                      </p>
-                      <p className="text-xs text-gray-500 mt-1">参加率 {attendanceRate}%</p>
-                    </div>
-                  </div>
-                  <div
-                    className={`p-3 rounded-full ${attendingCount >= (eventDetail.capacity || 0) ? "bg-orange-100" : "bg-blue-100"}`}
-                  >
-                    <Users
-                      className={`h-6 w-6 ${attendingCount >= (eventDetail.capacity || 0) ? "text-orange-600" : "text-blue-600"}`}
-                    />
-                  </div>
-                </div>
-                {maybeCount > 0 && (
-                  <p className="text-xs text-yellow-600 mt-2">未定: {maybeCount}人</p>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* 集金状況 */}
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-600">集金状況</p>
-                    <div className="mt-2">
-                      <p className="text-2xl font-bold text-gray-900">
-                        ¥{totalRevenue.toLocaleString()}
-                      </p>
-                      <p className="text-xs text-gray-500 mt-1">進捗 {collectionProgress}%</p>
-                    </div>
-                  </div>
-                  <div className="p-3 rounded-full bg-green-100">
-                    <Banknote className="h-6 w-6 text-green-600" />
-                  </div>
-                </div>
-                {expectedRevenue > 0 && (
-                  <p className="text-xs text-gray-500 mt-2">
-                    目標: ¥{expectedRevenue.toLocaleString()}
-                  </p>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* 未決済状況 */}
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-600">未決済</p>
-                    <div className="mt-2">
-                      <p
-                        className={`text-2xl font-bold ${hasUnpaidPayments ? "text-red-600" : "text-gray-900"}`}
-                      >
-                        {unpaidCount}件
-                      </p>
-                      <p className="text-xs text-gray-500 mt-1">
-                        ¥{(paymentsData?.summary?.unpaidAmount || 0).toLocaleString()}
-                      </p>
-                    </div>
-                  </div>
-                  <div
-                    className={`p-3 rounded-full ${hasUnpaidPayments ? "bg-red-100" : "bg-gray-100"}`}
-                  >
-                    <AlertCircle
-                      className={`h-6 w-6 ${hasUnpaidPayments ? "text-red-600" : "text-gray-400"}`}
-                    />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* 決済方法別 */}
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-600">決済方法</p>
-                    <div className="mt-2 space-y-1">
-                      <div className="flex justify-between text-sm">
-                        <span>カード</span>
-                        <span className="font-medium">
-                          {paymentsData?.summary?.byMethod?.find((m) => m.method === "stripe")
-                            ?.count || 0}
-                          件
-                        </span>
-                      </div>
-                      <div className="flex justify-between text-sm">
-                        <span>現金</span>
-                        <span className="font-medium">
-                          {paymentsData?.summary?.byMethod?.find((m) => m.method === "cash")
-                            ?.count || 0}
-                          件
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-      )}
-
-      {/* タブコンテンツ */}
+      {/* メインコンテンツエリア */}
       <div className="max-w-6xl mx-auto px-4 pb-8">
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3 lg:w-auto lg:grid-cols-3 bg-white border border-gray-200 rounded-lg">
-            <TabsTrigger
-              value="overview"
-              className="data-[state=active]:bg-blue-50 data-[state=active]:text-blue-700"
-            >
-              概要
-            </TabsTrigger>
-            {isOrganizer && (
-              <TabsTrigger
-                value="participants"
-                className="data-[state=active]:bg-blue-50 data-[state=active]:text-blue-700"
-              >
-                参加者管理
-              </TabsTrigger>
-            )}
-            {isOrganizer && (
-              <TabsTrigger
-                value="invite"
-                className="data-[state=active]:bg-blue-50 data-[state=active]:text-blue-700"
-              >
-                招待・共有
-              </TabsTrigger>
-            )}
-          </TabsList>
-
-          <TabsContent value="overview" className="space-y-6">
-            <EventOverview event={eventDetail} />
-          </TabsContent>
-
-          {isOrganizer && (
-            <TabsContent value="participants" className="space-y-6">
-              {participantsData && (
-                <ResponsiveParticipantsManagement
-                  eventId={eventId}
-                  initialParticipantsData={participantsData}
-                />
-              )}
-            </TabsContent>
-          )}
-
-          {isOrganizer && (
-            <TabsContent value="invite" className="space-y-6">
-              <div className="space-y-6">
-                <InviteLink
-                  eventId={eventId}
-                  initialInviteToken={eventDetail.invite_token || undefined}
-                />
-
-                {/* 追加のアクション */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle>その他のアクション</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <Button
-                        variant="outline"
-                        onClick={() => window.open(`/invite/${eventDetail.invite_token}`, "_blank")}
-                        disabled={!eventDetail.invite_token}
-                        className="justify-start"
-                      >
-                        参加ページを確認
-                      </Button>
-                      <Button
-                        variant="outline"
-                        onClick={() => router.push(`/events/${eventId}/edit`)}
-                        className="justify-start"
-                      >
-                        イベント情報を編集
-                      </Button>
-                    </div>
-
-                    {/* 危険なアクション */}
-                    <div className="pt-4 border-t border-gray-200">
-                      <h4 className="text-sm font-medium text-gray-900 mb-3">危険なアクション</h4>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        {attendingCount + maybeCount === 0 &&
-                        !paymentsData?.summary?.totalPayments ? (
-                          <Button
-                            variant="destructive"
-                            className="justify-start"
-                            onClick={() => {
-                              if (
-                                confirm("本当にイベントを削除しますか？この操作は取り消せません。")
-                              ) {
-                                // 削除処理（既存のロジックを使用）
-                              }
-                            }}
-                          >
-                            イベントを削除
-                          </Button>
-                        ) : (
-                          <Button
-                            variant="destructive"
-                            className="justify-start"
-                            onClick={() => {
-                              if (confirm("イベントを中止しますか？参加者に通知されます。")) {
-                                // 中止処理（既存のロジックを使用）
-                              }
-                            }}
-                          >
-                            イベントを中止
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-            </TabsContent>
-          )}
-        </Tabs>
+        {isOrganizer ? (
+          <OrganizerDashboard
+            eventId={eventId}
+            eventDetail={eventDetail}
+            paymentsData={paymentsData}
+            participantsData={participantsData}
+            stats={stats}
+          />
+        ) : (
+          <ParticipantView eventDetail={eventDetail} />
+        )}
       </div>
     </div>
   );

@@ -625,7 +625,7 @@ export function ParticipantsTable({
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
               <Input
-                placeholder="ニックネーム、メールで検索..."
+                placeholder="ニックネームで検索..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && handleSearch()}
@@ -728,15 +728,6 @@ export function ParticipantsTable({
                 </th>
                 <th
                   className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                  onClick={() => handleSort("email")}
-                >
-                  メール
-                  {currentSort.field === "email" && (
-                    <span className="ml-1">{currentSort.order === "asc" ? "↑" : "↓"}</span>
-                  )}
-                </th>
-                <th
-                  className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                   onClick={() => handleSort("status")}
                 >
                   参加状況
@@ -779,7 +770,7 @@ export function ParticipantsTable({
             <tbody className="bg-white divide-y divide-gray-200">
               {participants.length === 0 ? (
                 <tr>
-                  <td colSpan={10} className="px-4 py-8 text-center text-gray-500">
+                  <td colSpan={9} className="px-4 py-8 text-center text-gray-500">
                     {isLoading ? "読み込み中..." : "参加者が見つかりません"}
                   </td>
                 </tr>
@@ -807,9 +798,9 @@ export function ParticipantsTable({
                         {isCashPayment ? (
                           <Checkbox
                             checked={isSelected}
-                            onCheckedChange={(checked) =>
+                            onCheckedChange={(checked: boolean) =>
                               hasPaymentId(participant) &&
-                              handleSelectPayment(participant.payment_id, checked as boolean)
+                              handleSelectPayment(participant.payment_id, checked)
                             }
                             disabled={isLoading || isUpdatingStatus}
                           />
@@ -819,9 +810,6 @@ export function ParticipantsTable({
                       </td>
                       <td className="px-4 py-4 whitespace-nowrap font-medium text-gray-900">
                         {participant.nickname}
-                      </td>
-                      <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-600">
-                        {participant.email}
                       </td>
                       <td className="px-4 py-4 whitespace-nowrap">
                         {getAttendanceStatusBadge(participant.status)}
