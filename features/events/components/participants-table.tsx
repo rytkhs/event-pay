@@ -21,7 +21,7 @@ import { getPaymentActions } from "@core/services";
 import { extractValidPaymentIds, hasPaymentId } from "@core/utils/data-guards";
 import {
   toSimplePaymentStatus,
-  isPaymentUnpaid,
+  isPaymentCompleted,
   SIMPLE_PAYMENT_STATUS_LABELS,
   getSimplePaymentStatusStyle,
 } from "@core/utils/payment-status-mapper";
@@ -768,8 +768,8 @@ export function ParticipantsTable({
                 </tr>
               ) : (
                 participants.map((participant) => {
-                  // 未決済のハイライト判定（無料イベントではハイライトしない）
-                  const isUnpaid = !isFreeEvent && isPaymentUnpaid(participant.payment_status);
+                  // 決済済みのハイライト判定（無料イベントではハイライトしない）
+                  const isPaid = !isFreeEvent && isPaymentCompleted(participant.payment_status);
                   const simpleStatus = toSimplePaymentStatus(participant.payment_status);
 
                   const isCashPayment =
@@ -781,7 +781,7 @@ export function ParticipantsTable({
                   return (
                     <tr
                       key={participant.attendance_id}
-                      className={`hover:bg-gray-50 ${isUnpaid ? "bg-red-50 border-l-4 border-red-400" : ""}`}
+                      className={`${isPaid ? "bg-green-50 border-l-4 !border-l-green-300" : ""}`}
                     >
                       <td className="px-4 py-4 whitespace-nowrap">
                         {isCashPayment ? (

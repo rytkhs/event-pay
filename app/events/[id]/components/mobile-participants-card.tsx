@@ -8,7 +8,7 @@ import { Check, X, Copy, Users } from "lucide-react";
 
 // import { useToast } from "@core/contexts/toast-context";
 import { hasPaymentId } from "@core/utils/data-guards";
-import { toSimplePaymentStatus, isPaymentUnpaid } from "@core/utils/payment-status-mapper";
+import { toSimplePaymentStatus, isPaymentCompleted } from "@core/utils/payment-status-mapper";
 import type { GetParticipantsResponse } from "@core/validation/participant-management";
 
 import { Button } from "@/components/ui/button";
@@ -68,7 +68,7 @@ export function MobileParticipantsCard({
         </Card>
       ) : (
         participants.map((participant) => {
-          const isUnpaid = !isFreeEvent && isPaymentUnpaid(participant.payment_status);
+          const isPaid = !isFreeEvent && isPaymentCompleted(participant.payment_status);
           const simpleStatus = toSimplePaymentStatus(participant.payment_status);
 
           const isCashPayment = participant.payment_method === "cash" && participant.payment_id;
@@ -79,7 +79,7 @@ export function MobileParticipantsCard({
           return (
             <Card
               key={participant.attendance_id}
-              className={`${isUnpaid ? "border-l-4 border-l-red-400 bg-red-50" : ""} hover:shadow-md transition-shadow`}
+              className={`${isPaid ? "border-l-4 !border-l-green-400 bg-green-50" : ""}`}
             >
               <CardContent className="p-4 space-y-3">
                 {/* ヘッダー行 */}
