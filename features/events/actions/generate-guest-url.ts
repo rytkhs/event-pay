@@ -41,7 +41,7 @@ export async function generateGuestUrlAction(input: unknown): Promise<
     const { data: attendance, error: attErr } = await admin
       .from("attendances")
       .select(
-        "id, status, guest_token, event:events(id, status, date, fee, payment_deadline, allow_payment_after_deadline, grace_period_days)"
+        "id, status, guest_token, event:events(id, date, fee, payment_deadline, allow_payment_after_deadline, grace_period_days, canceled_at)"
       )
       .eq("id", attendanceId)
       .eq("event_id", eventId)
@@ -65,11 +65,14 @@ export async function generateGuestUrlAction(input: unknown): Promise<
     const eventRel: unknown = (attendance as any).event;
     const ev = Array.isArray(eventRel) ? (eventRel[0] as any) : (eventRel as any);
 
+    // イベントの状態をcanceled_atから判定
+    const eventStatus = (ev as any).canceled_at ? "canceled" : "active";
+
     const eligibility = canCreateStripeSession(
       { id: attendance.id, status: attendance.status as any, payment: null },
       {
         id: ev.id as string,
-        status: ev.status as any,
+        status: eventStatus as any,
         fee: ev.fee as number,
         date: ev.date as string,
         payment_deadline: (ev as any).payment_deadline ?? null,
