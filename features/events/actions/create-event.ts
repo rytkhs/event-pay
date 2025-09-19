@@ -2,9 +2,9 @@
 
 import { z } from "zod";
 
+import { getCurrentUser } from "@core/auth/auth-utils";
 import { SecureSupabaseClientFactory } from "@core/security/secure-client-factory.impl";
 import { AdminReason } from "@core/security/secure-client-factory.types";
-import { createClient } from "@core/supabase/server";
 import {
   type ServerActionResult,
   createServerActionError,
@@ -38,16 +38,7 @@ type FormDataFields = {
 
 export async function createEventAction(formData: FormData): Promise<CreateEventResult> {
   try {
-    const supabase = createClient();
-
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError) {
-      return createServerActionError("UNAUTHORIZED", "認証が必要です");
-    }
+    const user = await getCurrentUser();
 
     if (!user) {
       return createServerActionError("UNAUTHORIZED", "認証が必要です");
@@ -192,11 +183,17 @@ function buildEventData(
     registration_deadline: validatedData.registration_deadline
       ? convertDatetimeLocalToIso(validatedData.registration_deadline)
       : null,
-    payment_deadline: validatedData.payment_deadline
-      ? convertDatetimeLocalToIso(validatedData.payment_deadline)
-      : null,
-    allow_payment_after_deadline: Boolean(validatedData.allow_payment_after_deadline),
-    grace_period_days: Number(validatedData.grace_period_days ?? 0),
+    // 無料イベント（fee=0）の場合は決済締切も強制的にnullに設定
+    payment_deadline:
+      fee === 0
+        ? null
+        : validatedData.payment_deadline
+          ? convertDatetimeLocalToIso(validatedData.payment_deadline)
+          : null,
+    // 無料イベント（fee=0）の場合は決済関連の設定も強制的にリセット
+    allow_payment_after_deadline:
+      fee === 0 ? false : Boolean(validatedData.allow_payment_after_deadline),
+    grace_period_days: fee === 0 ? 0 : Number(validatedData.grace_period_days ?? 0),
     created_by: userId,
     invite_token: inviteToken,
   };
