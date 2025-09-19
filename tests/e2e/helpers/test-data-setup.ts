@@ -26,7 +26,7 @@ const supabaseAdmin = createClient<Database>(
 export const TEST_IDS = {
   EVENT_ID: "87654321-4321-4321-4321-cba987654321",
   ATTENDANCE_ID: "11111111-2222-3333-4444-555555555555",
-  CONNECT_ACCOUNT_ID: "acct_1RwIFbCZwTLGDVBd",
+  CONNECT_ACCOUNT_ID: "acct_1S95RCEJRRCbin0V",
 } as const;
 
 // 動的に生成されるテストユーザーID

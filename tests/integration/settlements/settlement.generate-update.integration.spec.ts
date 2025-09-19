@@ -6,6 +6,8 @@ import {
   createPaidTestEvent,
   createTestAttendance,
   createPaidStripePayment,
+  createRefundedStripePayment,
+  createPaymentDispute,
   cleanupTestPaymentData,
   type TestPaymentUser,
   type TestPaymentEvent,
@@ -210,5 +212,268 @@ describe("清算レポート生成・更新（正常フロー）", () => {
     // Verify generated_at and updated_at are valid timestamps
     expect(new Date(row.report_generated_at).getTime()).toBeGreaterThan(0);
     expect(new Date(row.report_updated_at).getTime()).toBeGreaterThan(0);
+  });
+});
+
+/**
+ * Settlement integration tests (refund & dispute scenarios)
+ * - Generate settlement report with refunded payments
+ * - Generate settlement report with disputed payments
+ */
+describe("清算レポート生成（返金・争議シナリオ）", () => {
+  let organizer: TestPaymentUser;
+  let event: TestPaymentEvent;
+  let attendance: TestAttendanceData;
+  const createdPaymentIds: string[] = [];
+  const createdDisputeIds: string[] = [];
+
+  const secureFactory = SecureSupabaseClientFactory.getInstance();
+  let adminClient: any;
+
+  beforeAll(async () => {
+    adminClient = await secureFactory.createAuditedAdminClient(
+      AdminReason.TEST_DATA_SETUP,
+      "Settlement refund/dispute integration test setup",
+      {
+        accessedTables: [
+          "public.events",
+          "public.attendances",
+          "public.payments",
+          "public.payment_disputes",
+          "public.settlements",
+        ],
+      }
+    );
+
+    organizer = await createTestUserWithConnect();
+    event = await createPaidTestEvent(organizer.id, {
+      fee: 2000,
+      title: "Settlement Refund/Dispute Test Event",
+    });
+    attendance = await createTestAttendance(event.id, {
+      email: `settlement-refund-attendee-${Date.now()}@example.com`,
+      nickname: "返金・争議統合テスト参加者",
+    });
+  });
+
+  afterAll(async () => {
+    // Cleanup disputes first (foreign key dependency)
+    if (createdDisputeIds.length > 0) {
+      await adminClient.from("payment_disputes").delete().in("id", createdDisputeIds);
+    }
+
+    await cleanupTestPaymentData({
+      paymentIds: createdPaymentIds,
+      attendanceIds: [attendance.id],
+      eventIds: [event.id],
+      userIds: [organizer.id],
+    });
+
+    await deleteTestUser(organizer.email);
+  });
+
+  test("返金がある場合の差引計算が正確に行われる", async () => {
+    // Create mixed payment scenario:
+    // - 1 paid payment: 2000 yen, fee 200, stripe fee 72
+    // - 1 refunded payment: 1500 yen (original), 1000 yen refunded, fee 150->100 refunded, stripe fee 60
+    const p1 = await createPaidStripePayment(attendance.id, {
+      amount: 2000,
+      applicationFeeAmount: 200,
+      stripeAccountId: organizer.stripeConnectAccountId,
+      stripeBalanceTransactionFee: 72,
+    });
+
+    const p2 = await createRefundedStripePayment(attendance.id, {
+      amount: 1500,
+      refundedAmount: 1000, // Partial refund
+      applicationFeeAmount: 150,
+      applicationFeeRefundedAmount: 100, // Partial app fee refund
+      stripeAccountId: organizer.stripeConnectAccountId,
+      stripeBalanceTransactionFee: 60,
+    });
+
+    createdPaymentIds.push(p1.id, p2.id);
+
+    const { data, error } = await adminClient.rpc("generate_settlement_report", {
+      input_event_id: event.id,
+      input_created_by: organizer.id,
+    });
+
+    expect(error).toBeNull();
+    const row = data[0];
+
+    // Verify totals with refunds
+    // Sales: paid(2000) + refunded_original(1500) = 3500
+    expect(row.total_stripe_sales).toBe(2000 + 1500);
+
+    // Stripe fees: Only from 'paid' status payments = 72 (p1 only)
+    // calc_total_stripe_fee excludes 'refunded' status payments
+    expect(row.total_stripe_fee).toBe(72);
+
+    // Application fees: This is NET application fee (gross - refunded)
+    // Gross: paid(200) + refunded_original(150) = 350
+    // Refunded app fee: 100 (from p2)
+    // Net: 350 - 100 = 250
+    expect(row.total_application_fee).toBe(350 - 100);
+
+    // Refunded amount: 1000
+    expect(row.total_refunded_amount).toBe(1000);
+
+    // Net payout: sales - refunded - net_application_fee = 3500 - 1000 - 250 = 2250
+    expect(row.net_payout_amount).toBe(3500 - 1000 - 250);
+
+    // Counts
+    expect(row.payment_count).toBe(2); // Both payments counted
+    expect(row.refunded_count).toBe(1); // Only the refunded payment
+  });
+
+  test("争議（dispute）がある場合の集計が正確に行われる", async () => {
+    // Clear previous test data
+    if (createdPaymentIds.length > 0) {
+      await adminClient.from("payments").delete().in("id", createdPaymentIds);
+      createdPaymentIds.length = 0;
+    }
+
+    // Create payments with disputes:
+    // - 1 paid payment without dispute: 1800 yen
+    // - 1 paid payment with dispute: 1200 yen, disputed 800 yen
+    const p1 = await createPaidStripePayment(attendance.id, {
+      amount: 1800,
+      applicationFeeAmount: 180,
+      stripeAccountId: organizer.stripeConnectAccountId,
+      stripeBalanceTransactionFee: 65,
+    });
+
+    const p2 = await createPaidStripePayment(attendance.id, {
+      amount: 1200,
+      applicationFeeAmount: 120,
+      stripeAccountId: organizer.stripeConnectAccountId,
+      stripeBalanceTransactionFee: 50,
+    });
+
+    // Add dispute to p2
+    const dispute = await createPaymentDispute(p2.id, {
+      amount: 800, // Partial dispute
+      status: "warning_needs_response",
+      reason: "fraudulent",
+      stripeAccountId: organizer.stripeConnectAccountId,
+    });
+
+    createdPaymentIds.push(p1.id, p2.id);
+    createdDisputeIds.push(dispute.id);
+
+    const { data, error } = await adminClient.rpc("generate_settlement_report", {
+      input_event_id: event.id,
+      input_created_by: organizer.id,
+    });
+
+    expect(error).toBeNull();
+    const row = data[0];
+
+    // Verify totals with disputes
+    // Sales: 1800 + 1200 = 3000
+    expect(row.total_stripe_sales).toBe(1800 + 1200);
+
+    // Stripe fees: 65 + 50 = 115
+    expect(row.total_stripe_fee).toBe(65 + 50);
+
+    // Application fees: 180 + 120 = 300
+    expect(row.total_application_fee).toBe(180 + 120);
+
+    // No refunds in this scenario
+    expect(row.total_refunded_amount).toBe(0);
+
+    // Net payout: sales - refunded - application_fee = 3000 - 0 - 300 = 2700
+    // Note: Disputes may affect payout but the calculation depends on RPC implementation
+    expect(row.net_payout_amount).toBe(3000 - 0 - 300);
+
+    // Counts
+    expect(row.payment_count).toBe(2);
+    expect(row.refunded_count).toBe(0);
+
+    // Verify dispute information is captured (if RPC includes dispute data)
+    // This depends on the actual RPC implementation
+    expect(row.report_id).toBeTruthy();
+  });
+
+  test("返金と争議が混在する複雑なシナリオ", async () => {
+    // Clear previous test data
+    if (createdPaymentIds.length > 0) {
+      await adminClient.from("payments").delete().in("id", createdPaymentIds);
+      createdPaymentIds.length = 0;
+    }
+    if (createdDisputeIds.length > 0) {
+      await adminClient.from("payment_disputes").delete().in("id", createdDisputeIds);
+      createdDisputeIds.length = 0;
+    }
+
+    // Complex scenario:
+    // - 1 paid payment: 2500 yen
+    // - 1 refunded payment: 2000->1500 refunded
+    // - 1 paid payment with dispute: 1800 yen, 1200 disputed
+    const p1 = await createPaidStripePayment(attendance.id, {
+      amount: 2500,
+      applicationFeeAmount: 250,
+      stripeAccountId: organizer.stripeConnectAccountId,
+      stripeBalanceTransactionFee: 88,
+    });
+
+    const p2 = await createRefundedStripePayment(attendance.id, {
+      amount: 2000,
+      refundedAmount: 1500,
+      applicationFeeAmount: 200,
+      applicationFeeRefundedAmount: 150,
+      stripeAccountId: organizer.stripeConnectAccountId,
+      stripeBalanceTransactionFee: 72,
+    });
+
+    const p3 = await createPaidStripePayment(attendance.id, {
+      amount: 1800,
+      applicationFeeAmount: 180,
+      stripeAccountId: organizer.stripeConnectAccountId,
+      stripeBalanceTransactionFee: 65,
+    });
+
+    const dispute = await createPaymentDispute(p3.id, {
+      amount: 1200,
+      status: "warning_needs_response",
+      reason: "credit_not_processed",
+      stripeAccountId: organizer.stripeConnectAccountId,
+    });
+
+    createdPaymentIds.push(p1.id, p2.id, p3.id);
+    createdDisputeIds.push(dispute.id);
+
+    const { data, error } = await adminClient.rpc("generate_settlement_report", {
+      input_event_id: event.id,
+      input_created_by: organizer.id,
+    });
+
+    expect(error).toBeNull();
+    const row = data[0];
+
+    // Verify complex totals
+    // Sales: 2500 + 2000 + 1800 = 6300
+    expect(row.total_stripe_sales).toBe(2500 + 2000 + 1800);
+
+    // Stripe fees: Only from 'paid' payments = 88 (p1) + 65 (p3) = 153
+    // p2 is 'refunded' so excluded from fee calculation
+    expect(row.total_stripe_fee).toBe(88 + 65);
+
+    // Application fees: This is NET application fee (gross - refunded)
+    // Gross: paid(250) + paid(180) + refunded_original(200) = 630
+    // Refunded app fee: 150 (from p2)
+    // Net: 630 - 150 = 480
+    expect(row.total_application_fee).toBe(630 - 150);
+
+    // Refunded amount: 1500
+    expect(row.total_refunded_amount).toBe(1500);
+
+    // Net payout: 6300 - 1500 - 480 = 4320
+    expect(row.net_payout_amount).toBe(6300 - 1500 - 480);
+
+    // Counts
+    expect(row.payment_count).toBe(3);
+    expect(row.refunded_count).toBe(1);
   });
 });

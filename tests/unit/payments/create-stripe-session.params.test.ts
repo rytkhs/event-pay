@@ -42,7 +42,7 @@ describe("PaymentService - Stripe Checkout パラメータ検証", () => {
 
   // テスト用の固定データ
   const testData = {
-    connectAccountId: "acct_1RwIFbCZwTLGDVBd",
+    connectAccountId: "acct_1S95RCEJRRCbin0V",
     amount: 1000,
     eventId: "event_test_123",
     attendanceId: "attendance_test_456",

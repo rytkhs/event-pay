@@ -87,7 +87,7 @@ export async function createTestUserWithConnect(
   const {
     payoutsEnabled = true,
     chargesEnabled = true,
-    stripeAccountId = "acct_1RwIFbCZwTLGDVBd",
+    stripeAccountId = "acct_1S95RCEJRRCbin0V",
   } = options;
 
   const user = await createTestUser(email, password);
@@ -684,20 +684,29 @@ export async function createPaymentDispute(
     amount: number;
     status?: "lost" | "warning_needs_response" | "warning_under_review" | "won" | "warning_closed";
     reason?: string;
+    stripeDisputeId?: string;
+    stripeAccountId?: string;
   } = { amount: 0 }
-): Promise<string> {
+): Promise<{ id: string; dispute_id: string; amount: number; status: string }> {
   const adminClient = await SecureSupabaseClientFactory.getInstance().createAuditedAdminClient(
     AdminReason.TEST_DATA_SETUP,
     "Create payment dispute for test",
     { accessedTables: ["public.payment_disputes"] }
   );
 
+  const stripeDisputeId =
+    options.stripeDisputeId ??
+    `dp_test_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+  const status = options.status ?? "lost";
+
   const disputeData = {
     payment_id: paymentId,
     amount: options.amount,
-    status: options.status ?? "lost",
+    status,
     reason: options.reason ?? "fraudulent",
-    stripe_dispute_id: `dp_test_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`,
+    stripe_dispute_id: stripeDisputeId,
+    stripe_account_id: options.stripeAccountId ?? null,
+    currency: "jpy",
     created_at: new Date().toISOString(),
   };
 
@@ -711,5 +720,78 @@ export async function createPaymentDispute(
     throw new Error(`Failed to create payment dispute: ${error.message}`);
   }
 
-  return data.id;
+  return { id: data.id, dispute_id: stripeDisputeId, amount: options.amount, status };
+}
+
+/**
+ * 返金済みのStripe決済を作成（統合テスト用）
+ * - status = 'refunded'
+ * - refunded_amount を設定
+ * - application_fee_refunded_amount を設定
+ */
+export async function createRefundedStripePayment(
+  attendanceId: string,
+  options: {
+    amount?: number;
+    refundedAmount?: number;
+    applicationFeeAmount?: number;
+    applicationFeeRefundedAmount?: number;
+    stripeAccountId?: string;
+    stripeBalanceTransactionFee?: number;
+    paymentIntentId?: string;
+  } = {}
+): Promise<TestPaymentData> {
+  const {
+    amount = 1000,
+    refundedAmount = amount, // Default: full refund
+    applicationFeeAmount = Math.floor(amount * 0.1),
+    applicationFeeRefundedAmount = Math.floor(refundedAmount * 0.1),
+    stripeAccountId = "acct_test_refund_" + Math.random().toString(36).slice(2, 8),
+    stripeBalanceTransactionFee,
+    paymentIntentId = "pi_refund_" + Math.random().toString(36).slice(2, 12),
+  } = options;
+
+  const paymentData: PaymentInsert = {
+    attendance_id: attendanceId,
+    method: "stripe" as const,
+    amount,
+    status: "refunded" as const,
+    paid_at: new Date(Date.now() - 60000).toISOString(), // 1分前に支払い
+    refunded_amount: refundedAmount,
+    stripe_payment_intent_id: paymentIntentId,
+    stripe_account_id: stripeAccountId,
+    application_fee_amount: applicationFeeAmount,
+    application_fee_refunded_amount: applicationFeeRefundedAmount,
+    ...(stripeBalanceTransactionFee != null
+      ? { stripe_balance_transaction_fee: stripeBalanceTransactionFee }
+      : {}),
+    tax_included: false,
+  };
+
+  const adminClient = await SecureSupabaseClientFactory.getInstance().createAuditedAdminClient(
+    AdminReason.TEST_DATA_SETUP,
+    "Create refunded payment for test",
+    { accessedTables: ["public.payments"] }
+  );
+
+  const { data, error } = await adminClient
+    .from("payments")
+    .insert(paymentData)
+    .select("id")
+    .single();
+
+  if (error) {
+    throw new Error(`Failed to create refunded payment: ${error.message}`);
+  }
+
+  const paymentId = data.id;
+  return {
+    id: paymentId,
+    amount: paymentData.amount,
+    status: paymentData.status as Database["public"]["Enums"]["payment_status_enum"],
+    method: paymentData.method,
+    attendance_id: paymentData.attendance_id,
+    application_fee_amount: paymentData.application_fee_amount || 0,
+    stripe_account_id: paymentData.stripe_account_id || undefined,
+  };
 }
