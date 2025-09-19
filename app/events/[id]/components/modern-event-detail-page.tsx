@@ -1,7 +1,5 @@
 "use client";
 
-import { useState } from "react";
-
 import { useRouter } from "next/navigation";
 
 import {
@@ -28,15 +26,9 @@ import type {
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { InviteLink } from "@/features/invite/components/invite-link";
 
-import { EventOverview } from "./event-overview";
 import { OrganizerDashboard } from "./organizer-dashboard";
 import { ParticipantView } from "./participant-view";
-import { ResponsiveParticipantsManagement } from "./responsive-participants-management";
-import { StatusBar } from "./status-bar";
 
 interface ModernEventDetailPageProps {
   eventId: string;
@@ -56,24 +48,6 @@ export function ModernEventDetailPage({
   stats,
 }: ModernEventDetailPageProps) {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState("overview");
-
-  // 統計計算
-  const attendingCount = stats?.attending_count || 0;
-  const maybeCount = stats?.maybe_count || 0;
-  const totalRevenue = paymentsData?.summary?.paidAmount || 0;
-  const expectedRevenue = eventDetail.fee * attendingCount;
-  const unpaidCount = paymentsData?.summary?.unpaidCount || 0;
-  const hasUnpaidPayments = unpaidCount > 0;
-
-  // 参加率計算
-  const attendanceRate = eventDetail.capacity
-    ? Math.round((attendingCount / eventDetail.capacity) * 100)
-    : 0;
-
-  // 集金進捗率
-  const collectionProgress =
-    expectedRevenue > 0 ? Math.round((totalRevenue / expectedRevenue) * 100) : 0;
 
   // ステータスバッジの色
   const getStatusBadgeVariant = (status: string) => {

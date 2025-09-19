@@ -4,7 +4,6 @@ import { getCurrentUser } from "@core/auth/auth-utils";
 import { createCachedActions } from "@core/utils/cache-helpers";
 
 import {
-  getEventAttendancesAction,
   getEventDetailAction,
   getEventParticipantsAction,
   getEventPaymentsAction,
@@ -22,7 +21,6 @@ interface EventDetailPageProps {
 // キャッシュ処理を統一
 const cachedActions = createCachedActions({
   getEventDetail: getEventDetailAction,
-  getEventAttendances: getEventAttendancesAction,
   getEventPayments: getEventPaymentsAction,
   getEventParticipants: getEventParticipantsAction,
   getEventStats: getEventStatsAction,
@@ -58,7 +56,6 @@ export default async function EventDetailPage({ params }: EventDetailPageProps) 
     const isOrganizer = currentUser && currentUser.id === eventDetail.created_by;
 
     // 主催者の場合のみ統計データと参加者データを取得
-    let attendances: Awaited<ReturnType<typeof cachedActions.getEventAttendances>> = [];
     let paymentsData: Awaited<ReturnType<typeof cachedActions.getEventPayments>> | null = null;
     let participantsData: Awaited<ReturnType<typeof cachedActions.getEventParticipants>> | null =
       null;
@@ -68,12 +65,10 @@ export default async function EventDetailPage({ params }: EventDetailPageProps) 
     if (isOrganizer) {
       try {
         // 基本的な統計データ
-        const [attRes, payRes, statsRes] = await Promise.all([
-          cachedActions.getEventAttendances(params.id),
+        const [payRes, statsRes] = await Promise.all([
           cachedActions.getEventPayments(params.id),
           cachedActions.getEventStats(params.id),
         ]);
-        attendances = attRes;
         paymentsData = payRes;
         if (statsRes?.success) {
           stats = statsRes.data as any;
@@ -101,7 +96,6 @@ export default async function EventDetailPage({ params }: EventDetailPageProps) 
         eventId={params.id}
         eventDetail={eventDetail}
         isOrganizer={isOrganizer || false}
-        attendances={attendances}
         paymentsData={paymentsData}
         participantsData={participantsData}
         stats={stats}

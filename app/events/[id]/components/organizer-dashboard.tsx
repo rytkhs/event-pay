@@ -221,7 +221,6 @@ export function OrganizerDashboard({
       {/* フローティングアクションメニュー */}
       <FloatingActionMenu
         eventId={eventId}
-        eventTitle={eventDetail.title}
         inviteToken={eventDetail.invite_token || undefined}
         onCopyInviteLink={handleCopyInviteLink}
         onSendReminder={handleSendReminder}

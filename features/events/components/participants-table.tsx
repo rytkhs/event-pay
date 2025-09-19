@@ -3,8 +3,6 @@
 import React, { useState, useEffect } from "react";
 
 // HTMLテーブルを使用するため、外部Tableコンポーネントは不要
-import { format, parseISO } from "date-fns";
-import { ja } from "date-fns/locale";
 import {
   Search,
   Filter,
@@ -498,22 +496,6 @@ export function ParticipantsTable({
     }
   };
 
-  // 日付フォーマット
-  const formatDate = (dateString: string | null) => {
-    if (!dateString) return "-";
-    try {
-      return format(parseISO(dateString), "MM/dd HH:mm", { locale: ja });
-    } catch {
-      return "-";
-    }
-  };
-
-  // 金額フォーマット
-  const formatAmount = (amount: number | null) => {
-    if (amount === null) return "-";
-    return `¥${amount.toLocaleString()}`;
-  };
-
   const { participants, pagination } = initialData;
 
   // ゲストURLコピー
@@ -742,27 +724,6 @@ export function ParticipantsTable({
                   決済状況
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  金額
-                </th>
-                <th
-                  className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                  onClick={() => handleSort("paid_at")}
-                >
-                  決済日時
-                  {currentSort.field === "paid_at" && (
-                    <span className="ml-1">{currentSort.order === "asc" ? "↑" : "↓"}</span>
-                  )}
-                </th>
-                <th
-                  className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                  onClick={() => handleSort("updated_at")}
-                >
-                  更新日時
-                  {currentSort.field === "updated_at" && (
-                    <span className="ml-1">{currentSort.order === "asc" ? "↑" : "↓"}</span>
-                  )}
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   アクション
                 </th>
               </tr>
@@ -770,7 +731,7 @@ export function ParticipantsTable({
             <tbody className="bg-white divide-y divide-gray-200">
               {participants.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="px-4 py-8 text-center text-gray-500">
+                  <td colSpan={6} className="px-4 py-8 text-center text-gray-500">
                     {isLoading ? "読み込み中..." : "参加者が見つかりません"}
                   </td>
                 </tr>
@@ -819,17 +780,6 @@ export function ParticipantsTable({
                       </td>
                       <td className="px-4 py-4 whitespace-nowrap">
                         <PaymentStatusBadge status={participant.payment_status} />
-                      </td>
-                      <td
-                        className={`px-4 py-4 whitespace-nowrap text-sm ${isUnpaid ? "text-red-900 font-semibold" : "text-gray-900"}`}
-                      >
-                        {formatAmount(participant.amount)}
-                      </td>
-                      <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-600">
-                        {formatDate(participant.paid_at)}
-                      </td>
-                      <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-600">
-                        {formatDate(participant.attendance_updated_at)}
                       </td>
                       <td className="px-4 py-4 whitespace-nowrap">
                         <div className="flex items-center gap-1">

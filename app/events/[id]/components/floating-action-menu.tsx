@@ -11,7 +11,6 @@ import { Card } from "@/components/ui/card";
 
 interface FloatingActionMenuProps {
   eventId: string;
-  eventTitle: string;
   inviteToken?: string;
   onCopyInviteLink: () => void;
   onSendReminder?: () => void;
@@ -20,7 +19,6 @@ interface FloatingActionMenuProps {
 
 export function FloatingActionMenu({
   eventId,
-  eventTitle,
   inviteToken,
   onCopyInviteLink,
   onSendReminder,
@@ -90,6 +88,14 @@ export function FloatingActionMenu({
         <div
           className="fixed inset-0 bg-black bg-opacity-20 z-40 lg:hidden"
           onClick={() => setIsOpen(false)}
+          onKeyDown={(e) => {
+            if (e.key === "Escape") {
+              setIsOpen(false);
+            }
+          }}
+          role="button"
+          tabIndex={0}
+          aria-label="メニューを閉じる"
         />
       )}
 
