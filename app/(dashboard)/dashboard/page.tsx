@@ -118,13 +118,13 @@ export default async function DashboardPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50/30">
+    <div className="min-h-screen bg-muted/30">
       {/* ヘッダー */}
-      <header className="bg-white/80 backdrop-blur-sm border-b border-gray-200/50">
+      <header className="bg-background/80 backdrop-blur-sm border-b border-border/50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16">
             <div className="flex items-center">
-              <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+              <h1 className="text-2xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
                 ダッシュボード
               </h1>
             </div>
@@ -137,7 +137,7 @@ export default async function DashboardPage() {
                   type="submit"
                   variant="outline"
                   size="sm"
-                  className="border-gray-200 hover:bg-gray-50"
+                  className="border-border hover:bg-muted"
                 >
                   ログアウト
                 </Button>
@@ -153,10 +153,10 @@ export default async function DashboardPage() {
           <Card className="hover:shadow-md transition-shadow border-0 shadow-sm">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
               <CardTitle className="text-sm font-medium text-gray-600">開催予定イベント</CardTitle>
-              <CalendarDays className="h-5 w-5 text-blue-600" />
+              <CalendarDays className="h-5 w-5 text-primary" />
             </CardHeader>
             <CardContent className="pt-0">
-              <div className="text-3xl font-bold text-blue-600 mb-1">
+              <div className="text-3xl font-bold text-primary mb-1">
                 {stats.upcomingEventsCount}
               </div>
               <p className="text-xs text-gray-500">管理中のイベント</p>
@@ -166,10 +166,10 @@ export default async function DashboardPage() {
           <Card className="hover:shadow-md transition-shadow border-0 shadow-sm">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
               <CardTitle className="text-sm font-medium text-gray-600">参加予定者</CardTitle>
-              <Users className="h-5 w-5 text-purple-600" />
+              <Users className="h-5 w-5 text-secondary" />
             </CardHeader>
             <CardContent className="pt-0">
-              <div className="text-3xl font-bold text-purple-600 mb-1">
+              <div className="text-3xl font-bold text-secondary mb-1">
                 {stats.totalUpcomingParticipants}
               </div>
               <p className="text-xs text-gray-500">合計参加者数</p>
@@ -179,10 +179,10 @@ export default async function DashboardPage() {
           <Card className="hover:shadow-md transition-shadow border-0 shadow-sm">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
               <CardTitle className="text-sm font-medium text-gray-600">未決済の参加費</CardTitle>
-              <DollarSign className="h-5 w-5 text-amber-600" />
+              <DollarSign className="h-5 w-5 text-warning" />
             </CardHeader>
             <CardContent className="pt-0">
-              <div className="text-3xl font-bold text-amber-600 mb-1">
+              <div className="text-3xl font-bold text-warning mb-1">
                 {formatCurrency(stats.unpaidFeesTotal)}
               </div>
               <p className="text-xs text-gray-500">決済待ち金額</p>
@@ -192,10 +192,10 @@ export default async function DashboardPage() {
           <Card className="hover:shadow-md transition-shadow border-0 shadow-sm">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
               <CardTitle className="text-sm font-medium text-gray-600">アカウント残高</CardTitle>
-              <Landmark className="h-5 w-5 text-green-600" />
+              <Landmark className="h-5 w-5 text-success" />
             </CardHeader>
             <CardContent className="pt-0">
-              <div className="text-3xl font-bold text-green-600 mb-1">
+              <div className="text-3xl font-bold text-success mb-1">
                 {formatCurrency(stats.stripeAccountBalance)}
               </div>
               <p className="text-xs text-gray-500">振込み待ち金額</p>
@@ -228,7 +228,7 @@ export default async function DashboardPage() {
               </CardHeader>
               <CardContent className="pt-0">
                 {recentEvents.length === 0 ? (
-                  <div className="text-center py-6 bg-gray-50 rounded-lg">
+                  <div className="text-center py-6 bg-muted rounded-lg">
                     <Calendar className="h-8 w-8 text-gray-400 mx-auto mb-3" />
                     <p className="text-sm text-gray-500">まだイベントがありません</p>
                   </div>
@@ -237,7 +237,7 @@ export default async function DashboardPage() {
                     {recentEvents.slice(0, 3).map((event) => (
                       <div
                         key={event.id}
-                        className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+                        className="flex items-center justify-between p-3 bg-muted rounded-lg hover:bg-muted/80 transition-colors"
                       >
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-1">
