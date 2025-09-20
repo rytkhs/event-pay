@@ -1,13 +1,20 @@
 [data-lp] {
-  /* カスタムカラーとフォント */
-  --main-color: #00a388;
-  --accent-color: #ff6b3d;
-  --base-color: #ffffff;
-  --secondary-bg: #f6fbfa;
-  --text-color: #222222;
-  --sub-text: #6b7280;
-  --dark-bg: #111418;
-  --light-teal: rgba(0, 163, 136, 0.1);
+  /* ミント×ネイビーカラーパレット */
+  --main-color: #2ec4b6; /* メインカラー（プライマリ） */
+  --accent-color: #3a86ff; /* サブカラー（アクセント） */
+  --base-color: #ffffff; /* 面 */
+  --secondary-bg: #f8fafc; /* 背景 */
+  --text-color: #0b1220; /* 本文テキスト */
+  --sub-text: #475569; /* サブテキスト */
+  --dark-bg: #0f172a; /* ディープネイビー */
+  --light-mint: rgba(46, 196, 182, 0.1); /* 薄いミント */
+
+  /* 追加のステータス色 */
+  --success-color: #16a34a; /* 成功 */
+  --warning-color: #f59e0b; /* 注意 */
+  --error-color: #ef4444; /* エラー */
+  --info-color: #0ea5e9; /* 情報 */
+  --border-color: #e2e8f0; /* 枠線 */
 
   --font-family: "Zen Kaku Gothic New", "Noto Sans JP", sans-serif;
 
@@ -60,12 +67,22 @@
 }
 
 [data-lp] .btn-primary {
-  background-color: var(--accent-color);
+  background-color: var(--main-color);
   color: white;
 }
 
 [data-lp] .btn-primary:hover {
-  background-color: #e55a2f;
+  background-color: #26a498;
+  transform: translateY(-2px);
+}
+
+[data-lp] .btn-secondary {
+  background-color: var(--accent-color);
+  color: white;
+}
+
+[data-lp] .btn-secondary:hover {
+  background-color: #2d6edb;
   transform: translateY(-2px);
 }
 
@@ -226,7 +243,7 @@
 }
 
 [data-lp] .chip {
-  background: var(--light-teal);
+  background: var(--light-mint);
   color: var(--main-color);
   padding: 8px 16px;
   border-radius: 20px;
@@ -245,6 +262,41 @@
   font-size: 14px;
   color: var(--sub-text);
   margin: 0;
+}
+
+/* ステータスバッジ */
+[data-lp] .status-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+[data-lp] .status-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 12px;
+  border-radius: 16px;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+[data-lp] .status-badge.success {
+  background-color: rgba(22, 163, 74, 0.1);
+  color: var(--success-color);
+  border: 1px solid rgba(22, 163, 74, 0.3);
+}
+
+[data-lp] .status-badge.info {
+  background-color: rgba(14, 165, 233, 0.1);
+  color: var(--info-color);
+  border: 1px solid rgba(14, 165, 233, 0.3);
+}
+
+[data-lp] .status-badge.warning {
+  background-color: rgba(245, 158, 11, 0.1);
+  color: var(--warning-color);
+  border: 1px solid rgba(245, 158, 11, 0.3);
 }
 
 [data-lp] .hero-img {
@@ -329,7 +381,7 @@
 
 [data-lp] .feature-label {
   display: inline-block;
-  background: var(--light-teal);
+  background: var(--light-mint);
   color: var(--main-color);
   padding: 6px 12px;
   border-radius: 16px;
@@ -432,7 +484,7 @@
 }
 
 [data-lp] .pricing-item.highlight {
-  background: var(--light-teal);
+  background: var(--light-mint);
   margin: 0 -20px;
   padding: 20px;
   border-radius: 8px;
@@ -451,7 +503,8 @@
 }
 
 [data-lp] .pricing-value.accent {
-  color: var(--accent-color);
+  color: var(--main-color);
+  font-weight: 800;
 }
 
 [data-lp] .pricing-note {
@@ -459,6 +512,41 @@
   color: var(--sub-text);
   margin-top: 24px;
   text-align: center;
+}
+
+/* 料金アラート */
+[data-lp] .pricing-alerts {
+  margin: 24px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+[data-lp] .alert {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+[data-lp] .alert-icon {
+  font-weight: bold;
+  font-size: 16px;
+}
+
+[data-lp] .alert.alert-success {
+  background-color: rgba(22, 163, 74, 0.1);
+  color: var(--success-color);
+  border: 1px solid rgba(22, 163, 74, 0.3);
+}
+
+[data-lp] .alert.alert-error {
+  background-color: rgba(239, 68, 68, 0.1);
+  color: var(--error-color);
+  border: 1px solid rgba(239, 68, 68, 0.3);
 }
 
 /* FAQ */
@@ -530,7 +618,7 @@
 /* クロージング */
 [data-lp] .closing {
   padding: var(--section-padding) 0;
-  background: var(--light-teal);
+  background: var(--light-mint);
   text-align: center;
 }
 
@@ -612,7 +700,12 @@
 }
 
 [data-lp] .floating-cta .btn {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 4px 12px rgba(46, 196, 182, 0.3);
+  background-color: var(--main-color);
+}
+
+[data-lp] .floating-cta .btn:hover {
+  background-color: #26a498;
 }
 
 /* レスポンシブ */
@@ -650,6 +743,11 @@
 
   [data-lp] .hero-cta {
     align-items: center;
+  }
+
+  [data-lp] .status-badges {
+    justify-content: center;
+    margin-bottom: 20px;
   }
 
   [data-lp] .section-title {
