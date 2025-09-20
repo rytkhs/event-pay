@@ -5,7 +5,6 @@ import { headers } from "next/headers";
 import { PAYMENT_METHODS } from "@core/constants/payment-methods";
 import { validateGuestTokenFormat } from "@core/security/crypto";
 import { SecureSupabaseClientFactory } from "@core/security/secure-client-factory.impl";
-import { AdminReason } from "@core/security/secure-client-factory.types";
 import {
   logInvalidTokenAccess,
   logParticipationSecurityEvent,
@@ -165,13 +164,9 @@ export async function updateGuestAttendanceAction(
       }
     }
 
-    // 監査付きの service_role クライアントを取得
+    // ゲストクライアントを取得してRLSポリシーを適用
     const secureFactory = SecureSupabaseClientFactory.getInstance();
-    const adminClient = await secureFactory.createAuditedAdminClient(
-      AdminReason.PAYMENT_PROCESSING,
-      "update_guest_attendance_with_payment",
-      { ipAddress: ip, userAgent, guestToken }
-    );
+    const guestClient = secureFactory.createGuestClient(guestToken);
 
     // データベース更新の実行（定員チェックはRPC関数内で実行される）
     // NOTE: `p_event_fee` は冗長に見えるが、以下の理由で呼び出し時に確定した金額を明示的に渡している。
@@ -179,7 +174,7 @@ export async function updateGuestAttendanceAction(
     //   2. 将来の早割・クーポン等、ゲストごとに金額が変わる拡張を見越して、個別金額をRPCに渡す設計としている。
     //   3. events.fee をRPC内で都度参照すると、トランザクション外の変更が決済金額に反映され整合性が崩れるリスクがあるため。
     //     （例）fee を 0 → 500 に変更した直後にゲストが「不参加→参加」を送信した場合など。
-    const { error } = await adminClient.rpc("update_guest_attendance_with_payment", {
+    const { error } = await guestClient.rpc("update_guest_attendance_with_payment", {
       p_attendance_id: attendance.id,
       p_status: validatedStatus.data,
       p_payment_method: validatedPaymentMethod,

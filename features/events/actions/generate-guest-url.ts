@@ -4,7 +4,6 @@ import { z } from "zod";
 
 import { verifyEventAccess } from "@core/auth/event-authorization";
 import { SecureSupabaseClientFactory } from "@core/security/secure-client-factory.impl";
-import { AdminReason } from "@core/security/secure-client-factory.types";
 import {
   createServerActionError,
   createServerActionSuccess,
@@ -28,17 +27,13 @@ export async function generateGuestUrlAction(input: unknown): Promise<
     const { eventId, attendanceId } = InputSchema.parse(input);
 
     // 主催者権限確認
-    const { user } = await verifyEventAccess(eventId);
+    await verifyEventAccess(eventId);
 
     const factory = SecureSupabaseClientFactory.getInstance();
-    const admin = await factory.createAuditedAdminClient(
-      AdminReason.EVENT_MANAGEMENT,
-      "generate_guest_url",
-      { eventId, actorId: user.id, attendanceId }
-    );
+    const authenticatedClient = factory.createAuthenticatedClient();
 
     // attendance と event を取得（guest_token, 決済可否判定用）
-    const { data: attendance, error: attErr } = await admin
+    const { data: attendance, error: attErr } = await authenticatedClient
       .from("attendances")
       .select(
         "id, status, guest_token, event:events(id, date, fee, payment_deadline, allow_payment_after_deadline, grace_period_days, canceled_at)"

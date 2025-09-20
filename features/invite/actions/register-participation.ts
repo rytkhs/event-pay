@@ -1,7 +1,5 @@
 "use server";
 
-import { headers } from "next/headers";
-
 import type { PostgrestError } from "@supabase/supabase-js";
 import { z } from "zod";
 
@@ -23,7 +21,7 @@ import {
   checkEventCapacity,
   checkDuplicateEmail,
 } from "@core/utils/invite-token";
-import { getClientIPFromHeaders } from "@core/utils/ip-detection";
+import { getSafeHeaders } from "@core/utils/next";
 import {
   participationFormSchema,
   createParticipationFormSchema,
@@ -309,17 +307,20 @@ async function executeRegistration(
   let rpcError: PostgrestError | Error | null = null;
 
   try {
+    // 【重要デバッグ】RPC呼び出しパラメータをログ出力
+    const rpcParams = {
+      p_event_id: event.id,
+      p_nickname: processedData.sanitizedNickname,
+      p_email: processedData.sanitizedEmail,
+      p_status: processedData.participationData.attendanceStatus,
+      p_guest_token: processedData.guestToken,
+      p_payment_method: processedData.participationData.paymentMethod,
+      p_event_fee: event.fee,
+    };
+
     // RPCは新しく作成されたattendanceのUUID(string形式)を返す
     const rpcResult = await supabase
-      .rpc("register_attendance_with_payment", {
-        p_event_id: event.id,
-        p_nickname: processedData.sanitizedNickname,
-        p_email: processedData.sanitizedEmail,
-        p_status: processedData.participationData.attendanceStatus,
-        p_guest_token: processedData.guestToken,
-        p_payment_method: processedData.participationData.paymentMethod,
-        p_event_fee: event.fee,
-      })
+      .rpc("register_attendance_with_payment", rpcParams)
       .returns<string>()
       .single();
 
@@ -525,11 +526,8 @@ async function verifyGuestTokenStorage(
 export async function registerParticipationAction(
   formData: FormData
 ): Promise<ServerActionResult<RegisterParticipationData>> {
-  // リクエスト情報を取得（セキュリティログ用）
-  const headersList = headers();
-  const userAgent = headersList.get("user-agent") ?? undefined;
-  const ip = getClientIPFromHeaders(headersList);
-  const securityContext = { userAgent, ip };
+  // リクエスト情報を取得（テスト環境でも安全）
+  const { context: securityContext } = await getSafeHeaders();
 
   try {
     // 1. FormDataの抽出と基本バリデーション

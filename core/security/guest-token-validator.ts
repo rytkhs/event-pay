@@ -17,7 +17,6 @@ import { validateGuestTokenFormat } from "./crypto";
 import { SecureSupabaseClientFactory } from "./secure-client-factory.impl";
 import { IGuestTokenValidator } from "./secure-client-factory.interface";
 import {
-  AdminReason,
   GuestErrorCode,
   GuestTokenErrorFactory,
   GuestValidationResult,
@@ -116,14 +115,11 @@ export class RLSGuestTokenValidator implements IGuestTokenValidator {
     }
 
     try {
-      // サービスロール権限でゲストトークンを直接検証（RLSバイパス）
-      const serviceClient = await this.clientFactory.createAuditedAdminClient(
-        AdminReason.SECURITY_INVESTIGATION,
-        "VALIDATE_GUEST_TOKEN"
-      );
+      // ゲストクライアントを使用してRLSポリシーを有効化
+      const guestClient = this.clientFactory.createGuestClient(token);
 
       // ゲストトークンで直接attendanceを検索
-      const { data: attendance, error } = await serviceClient
+      const { data: attendance, error } = await guestClient
         .from("attendances")
         .select(
           `
@@ -225,14 +221,10 @@ export class RLSGuestTokenValidator implements IGuestTokenValidator {
     }
 
     try {
-      // サービスロール権限でゲストトークンを直接検証
-      const serviceClient = await this.clientFactory.createAuditedAdminClient(
-        AdminReason.SECURITY_INVESTIGATION,
-        "GET_GUEST_ATTENDANCE_DETAILS"
-      );
+      const guestClient = this.clientFactory.createGuestClient(token);
 
       // 詳細な参加データを取得
-      const { data: attendance, error } = await serviceClient
+      const { data: attendance, error } = await guestClient
         .from("attendances")
         .select(
           `

@@ -4,7 +4,6 @@ import { z } from "zod";
 
 import { enforceRateLimit, buildKey, POLICIES } from "@core/rate-limit";
 import { SecureSupabaseClientFactory } from "@core/security/secure-client-factory.impl";
-import { AdminReason } from "@core/security/secure-client-factory.types";
 import { getPaymentService } from "@core/services";
 import {
   createServerActionError,
@@ -103,19 +102,16 @@ export async function createGuestStripeSessionAction(
     return createServerActionError("RESOURCE_CONFLICT", "無料イベントでは決済は不要です。");
   }
 
-  // 5. 決済サービス呼び出し (Admin)
+  // 5. 決済サービス呼び出し (Guest)
   const factory = SecureSupabaseClientFactory.getInstance();
-  const admin = await factory.createAuditedAdminClient(
-    AdminReason.PAYMENT_PROCESSING,
-    "app/guest/actions/create-stripe-session"
-  );
+  const guestClient = factory.createGuestClient(guestToken);
 
   // PaymentService実装の登録を確実に実行
   await ensurePaymentServiceRegistration();
   const paymentService = getPaymentService();
 
   // 5.1 既存の決済レコードがあれば金額は payments.amount を優先する
-  const { data: existingPayment } = await admin
+  const { data: existingPayment } = await guestClient
     .from("payments")
     .select("amount")
     .eq("attendance_id", attendance.id)
@@ -126,7 +122,7 @@ export async function createGuestStripeSessionAction(
   const amountToCharge = existingPayment?.amount ?? event.fee;
 
   // 5.2 Stripe Connect アカウント取得 (Destination charges 前提)
-  const { data: connectAccount, error: connectError } = await admin
+  const { data: connectAccount, error: connectError } = await guestClient
     .from("stripe_connect_accounts")
     .select("stripe_account_id, payouts_enabled")
     .eq("user_id", event.created_by)
