@@ -36,7 +36,7 @@ export function FloatingActionMenu({
         router.push(`/events/${eventId}/edit`);
         setIsOpen(false);
       },
-      color: "bg-blue-600 hover:bg-blue-700 text-white",
+      color: "bg-primary hover:bg-primary/90 text-primary-foreground",
     },
     {
       id: "share",
@@ -46,7 +46,7 @@ export function FloatingActionMenu({
         onCopyInviteLink();
         setIsOpen(false);
       },
-      color: "bg-green-600 hover:bg-green-700 text-white",
+      color: "bg-success hover:bg-success/90 text-success-foreground",
       disabled: !inviteToken,
     },
     {
@@ -57,7 +57,7 @@ export function FloatingActionMenu({
         onSendReminder?.();
         setIsOpen(false);
       },
-      color: "bg-orange-600 hover:bg-orange-700 text-white",
+      color: "bg-warning hover:bg-warning/90 text-warning-foreground",
     },
     {
       id: "export",
@@ -67,7 +67,7 @@ export function FloatingActionMenu({
         onExportData?.();
         setIsOpen(false);
       },
-      color: "bg-purple-600 hover:bg-purple-700 text-white",
+      color: "bg-secondary hover:bg-secondary/90 text-secondary-foreground",
     },
     {
       id: "settings",
@@ -77,7 +77,7 @@ export function FloatingActionMenu({
         router.push(`/events/${eventId}/settings`);
         setIsOpen(false);
       },
-      color: "bg-gray-600 hover:bg-gray-700 text-white",
+      color: "bg-muted hover:bg-muted/90 text-muted-foreground",
     },
   ];
 
@@ -135,8 +135,8 @@ export function FloatingActionMenu({
             h-14 w-14 rounded-full shadow-lg transition-all duration-200
             ${
               isOpen
-                ? "bg-red-600 hover:bg-red-700 rotate-45"
-                : "bg-blue-600 hover:bg-blue-700 hover:scale-110"
+                ? "bg-destructive hover:bg-destructive/90 rotate-45"
+                : "bg-primary hover:bg-primary/90 hover:scale-110"
             }
           `}
         >

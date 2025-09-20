@@ -34,9 +34,9 @@ function ToastComponent({ toast, onClose }: ToastProps) {
   }, [toast.id, toast.duration, onClose]);
 
   const variantStyles = {
-    default: "bg-white border-gray-200 text-gray-900",
-    destructive: "bg-red-50 border-red-200 text-red-900",
-    success: "bg-green-50 border-green-200 text-green-900",
+    default: "bg-background border-border text-foreground",
+    destructive: "bg-destructive/10 border-destructive/20 text-destructive",
+    success: "bg-success/10 border-success/20 text-success",
   };
 
   return (
@@ -57,7 +57,7 @@ function ToastComponent({ toast, onClose }: ToastProps) {
         </div>
         <button
           onClick={() => onClose(toast.id)}
-          className="ml-3 text-gray-400 hover:text-gray-600 transition-colors"
+          className="ml-3 text-muted-foreground hover:text-foreground transition-colors"
           aria-label="閉じる"
         >
           <X size={16} />

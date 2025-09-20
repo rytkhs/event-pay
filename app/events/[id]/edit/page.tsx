@@ -85,13 +85,13 @@ export default async function EventEditPage({ params }: EventEditPageProps) {
   const computedStatus = deriveEventStatus(event.date, (event as any).canceled_at ?? null);
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
+    <div className="min-h-screen bg-muted/30 py-8">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="space-y-6">
           {/* ページヘッダー */}
           <div className="text-center">
-            <h1 className="text-3xl font-bold text-gray-900">イベント編集</h1>
-            <p className="mt-2 text-sm text-gray-600">
+            <h1 className="text-3xl font-bold text-foreground">イベント編集</h1>
+            <p className="mt-2 text-sm text-muted-foreground">
               イベント「{event.title}」の設定を編集します
             </p>
           </div>

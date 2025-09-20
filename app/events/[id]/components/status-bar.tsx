@@ -24,35 +24,35 @@ export function StatusBar({
 
   // プログレスバーの色を動的に設定
   const getAttendanceColor = (rate: number) => {
-    if (rate >= 90) return "bg-red-500"; // 定員間近
-    if (rate >= 70) return "bg-orange-500"; // 注意
-    return "bg-blue-500"; // 正常
+    if (rate >= 90) return "bg-destructive"; // 定員間近
+    if (rate >= 70) return "bg-warning"; // 注意
+    return "bg-primary"; // 正常
   };
 
   const getCollectionColor = (progress: number) => {
-    if (progress >= 80) return "bg-green-500"; // 順調
-    if (progress >= 50) return "bg-orange-500"; // 注意
-    return "bg-red-500"; // 要注意
+    if (progress >= 80) return "bg-success"; // 順調
+    if (progress >= 50) return "bg-warning"; // 注意
+    return "bg-destructive"; // 要注意
   };
 
   return (
-    <div className="bg-white border border-gray-200 rounded-lg p-4 mb-6">
+    <div className="bg-white border border-border rounded-lg p-4 mb-6">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* 参加状況 */}
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-medium text-gray-700">参加状況</h3>
-            <span className="text-sm text-gray-600">
+            <h3 className="text-sm font-medium text-foreground">参加状況</h3>
+            <span className="text-sm text-muted-foreground">
               {attendingCount} / {capacity}人 ({attendanceRate}%)
             </span>
           </div>
-          <div className="w-full bg-gray-200 rounded-full h-2">
+          <div className="w-full bg-muted rounded-full h-2">
             <div
               className={`h-full rounded-full transition-all ${getAttendanceColor(attendanceRate)}`}
               style={{ width: `${Math.min(attendanceRate, 100)}%` }}
             />
           </div>
-          <div className="flex justify-between text-xs text-gray-500">
+          <div className="flex justify-between text-xs text-muted-foreground">
             <span>0人</span>
             <span>{capacity}人 (定員)</span>
           </div>
@@ -61,23 +61,25 @@ export function StatusBar({
         {/* 集金状況 */}
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-medium text-gray-700">集金進捗</h3>
-            <span className="text-sm text-gray-600">
+            <h3 className="text-sm font-medium text-foreground">集金進捗</h3>
+            <span className="text-sm text-muted-foreground">
               ¥{totalRevenue.toLocaleString()} / ¥{expectedRevenue.toLocaleString()} (
               {collectionProgress}%)
             </span>
           </div>
-          <div className="w-full bg-gray-200 rounded-full h-2">
+          <div className="w-full bg-muted rounded-full h-2">
             <div
               className={`h-full rounded-full transition-all ${getCollectionColor(collectionProgress)}`}
               style={{ width: `${Math.min(collectionProgress, 100)}%` }}
             />
           </div>
-          <div className="flex justify-between text-xs text-gray-500">
+          <div className="flex justify-between text-xs text-muted-foreground">
             <span>¥0</span>
             <span>¥{expectedRevenue.toLocaleString()} (目標)</span>
           </div>
-          {unpaidCount > 0 && <p className="text-xs text-red-600 mt-1">未決済: {unpaidCount}件</p>}
+          {unpaidCount > 0 && (
+            <p className="text-xs text-destructive mt-1">未決済: {unpaidCount}件</p>
+          )}
         </div>
       </div>
     </div>

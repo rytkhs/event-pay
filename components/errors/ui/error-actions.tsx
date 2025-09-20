@@ -77,7 +77,7 @@ export function ErrorActions({
       <Button
         key="retry"
         onClick={handleRetry}
-        className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+        className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
       >
         <RefreshCw className="h-4 w-4 mr-2" />
         {retryLabel}

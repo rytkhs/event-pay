@@ -78,7 +78,7 @@ export default function RegisterPage() {
 
   return (
     <>
-      <main className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+      <main className="min-h-screen flex items-center justify-center bg-muted/30 py-12 px-4 sm:px-6 lg:px-8">
         <div className="w-full max-w-md space-y-8">
           <Card>
             <CardHeader className="text-center">
@@ -165,7 +165,7 @@ export default function RegisterPage() {
                               強度: {passwordStrength.text}
                             </span>
                             {passwordStrength.feedback !== "OK" && (
-                              <span className="text-gray-600 ml-2">
+                              <span className="text-muted-foreground ml-2">
                                 ({passwordStrength.feedback})
                               </span>
                             )}
@@ -195,7 +195,7 @@ export default function RegisterPage() {
                           />
                         </FormControl>
                         {passwordConfirm && password && passwordConfirm !== password && (
-                          <div className="text-sm text-red-500">パスワードが一致しません</div>
+                          <div className="text-sm text-destructive">パスワードが一致しません</div>
                         )}
                         <FormMessage />
                       </FormItem>
@@ -222,7 +222,7 @@ export default function RegisterPage() {
                           <FormLabel className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
                             <Link
                               href="/terms"
-                              className="text-blue-600 hover:text-blue-500 underline"
+                              className="text-primary hover:text-primary/80 underline"
                               target="_blank"
                               rel="noopener noreferrer"
                             >
@@ -230,7 +230,7 @@ export default function RegisterPage() {
                             </Link>
                             に同意します
                           </FormLabel>
-                          <div id="terms-description" className="text-xs text-gray-600">
+                          <div id="terms-description" className="text-xs text-muted-foreground">
                             みんなの集金をご利用いただくには利用規約への同意が必要です
                           </div>
                         </div>
@@ -240,7 +240,7 @@ export default function RegisterPage() {
 
                   {/* 全体エラーメッセージ */}
                   {form.formState.errors.root && (
-                    <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
+                    <div className="bg-destructive/10 border border-destructive/20 text-destructive px-4 py-3 rounded">
                       {form.formState.errors.root.message}
                     </div>
                   )}
@@ -248,7 +248,7 @@ export default function RegisterPage() {
                   {/* 利用規約エラーメッセージ */}
                   {form.formState.errors.termsAgreed && (
                     <div
-                      className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded"
+                      className="bg-destructive/10 border border-destructive/20 text-destructive px-4 py-3 rounded"
                       data-testid="terms-error"
                     >
                       {form.formState.errors.termsAgreed.message}
@@ -265,11 +265,11 @@ export default function RegisterPage() {
                     {isPending ? "登録中..." : "アカウントを作成"}
                   </Button>
 
-                  <div className="text-center text-sm text-gray-600">
+                  <div className="text-center text-sm text-muted-foreground">
                     すでにアカウントをお持ちの方は{" "}
                     <Link
                       href="/login"
-                      className="text-blue-600 hover:text-blue-500 underline focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 rounded"
+                      className="text-primary hover:text-primary/80 underline focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1 rounded"
                     >
                       ログイン
                     </Link>
@@ -281,7 +281,7 @@ export default function RegisterPage() {
         </div>
       </main>
 
-      <footer className="text-center text-sm text-gray-600 py-4" role="contentinfo">
+      <footer className="text-center text-sm text-muted-foreground py-4" role="contentinfo">
         <p>みんなの集金 - 出欠も集金も、ひとつのリンクで完了</p>
       </footer>
     </>

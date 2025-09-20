@@ -26,7 +26,7 @@ export default function LoginPage() {
 
   return (
     <>
-      <main className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+      <main className="min-h-screen flex items-center justify-center bg-muted/30 py-12 px-4 sm:px-6 lg:px-8">
         <div className="w-full max-w-md space-y-8">
           <Card>
             <CardHeader className="text-center">
@@ -110,7 +110,7 @@ export default function LoginPage() {
                     <div></div>
                     <Link
                       href="/reset-password"
-                      className="text-blue-600 hover:text-blue-500 underline focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 rounded"
+                      className="text-primary hover:text-primary/80 underline focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1 rounded"
                     >
                       パスワードを忘れた方
                     </Link>
@@ -119,7 +119,7 @@ export default function LoginPage() {
                   {/* 全体エラーメッセージ */}
                   {form.formState.errors.root && (
                     <div
-                      className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded"
+                      className="bg-destructive/10 border border-destructive/20 text-destructive px-4 py-3 rounded"
                       data-testid="error-message"
                     >
                       {form.formState.errors.root.message}
@@ -131,11 +131,11 @@ export default function LoginPage() {
                     {isPending ? "ログイン中..." : "ログイン"}
                   </Button>
 
-                  <div className="text-center text-sm text-gray-600">
+                  <div className="text-center text-sm text-muted-foreground">
                     アカウントをお持ちでない方は{" "}
                     <Link
                       href="/register"
-                      className="text-blue-600 hover:text-blue-500 underline focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 rounded"
+                      className="text-primary hover:text-primary/80 underline focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1 rounded"
                     >
                       会員登録
                     </Link>
@@ -147,7 +147,7 @@ export default function LoginPage() {
         </div>
       </main>
 
-      <footer className="text-center text-sm text-gray-600 py-4" role="contentinfo">
+      <footer className="text-center text-sm text-muted-foreground py-4" role="contentinfo">
         <p>みんなの集金 - 出欠も集金も、ひとつのリンクで完了</p>
       </footer>
     </>

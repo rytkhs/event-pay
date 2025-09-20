@@ -90,16 +90,16 @@ export function ModernEventDetailPage({
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-muted">
       {/* ヒーローヘッダー */}
-      <div className="bg-white border-b border-gray-200">
+      <div className="bg-white border-b border-border">
         <div className="max-w-6xl mx-auto px-4 py-4">
           {/* 上部ナビゲーション */}
           <div className="flex items-center justify-between mb-6">
             <Button
               variant="ghost"
               onClick={() => router.push("/events")}
-              className="flex items-center gap-2 text-gray-600 hover:text-gray-900"
+              className="flex items-center gap-2 text-muted-foreground hover:text-foreground"
             >
               <ArrowLeft className="h-4 w-4" />
               イベント一覧に戻る
@@ -113,7 +113,7 @@ export function ModernEventDetailPage({
               {/* 左側：イベント名とステータス */}
               <div className="flex-1 min-w-0">
                 <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-2">
-                  <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">
+                  <h1 className="text-2xl lg:text-3xl font-bold text-foreground">
                     {sanitizeForEventPay(eventDetail.title)}
                   </h1>
                   <Badge
@@ -127,7 +127,7 @@ export function ModernEventDetailPage({
                 </div>
 
                 {/* 基本情報を主要エリアに移動 */}
-                <div className="flex flex-wrap gap-4 text-sm text-gray-600">
+                <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
                   <div className="flex items-center gap-2">
                     <Calendar className="h-4 w-4" />
                     {formatUtcToJstByType(eventDetail.date, "japanese")}
@@ -164,7 +164,7 @@ export function ModernEventDetailPage({
                   <Button
                     onClick={handleCopyInviteLink}
                     variant="default"
-                    className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700"
+                    className="flex items-center gap-2 bg-primary hover:bg-primary/90"
                     disabled={!eventDetail.invite_token}
                   >
                     <Share2 className="h-4 w-4" />

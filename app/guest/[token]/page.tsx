@@ -82,7 +82,7 @@ export default async function GuestPage({ params, searchParams }: GuestPageProps
     const { attendance, canModify } = validation;
 
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-muted/30">
         {/* ヘッダー */}
         <GuestHeader attendance={attendance} />
 
@@ -129,7 +129,7 @@ export default async function GuestPage({ params, searchParams }: GuestPageProps
 
           {/* フッター情報 */}
           <footer className="mt-6 sm:mt-8 text-center" role="contentinfo">
-            <div className="text-xs text-gray-500 leading-relaxed">
+            <div className="text-xs text-muted-foreground leading-relaxed">
               <p>このページは参加者専用の管理ページです。</p>
               <p className="mt-1">
                 ご質問やご不明点がある場合は、イベント主催者にお問い合わせください。

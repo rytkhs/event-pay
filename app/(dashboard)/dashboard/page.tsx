@@ -124,12 +124,10 @@ export default async function DashboardPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16">
             <div className="flex items-center">
-              <h1 className="text-2xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
-                ダッシュボード
-              </h1>
+              <h1 className="text-2xl font-bold text-primary">ダッシュボード</h1>
             </div>
             <div className="flex items-center space-x-4" data-testid="user-menu">
-              <span className="text-sm text-gray-600 hidden sm:inline">
+              <span className="text-sm text-muted-foreground hidden sm:inline">
                 ようこそ、{user.email}さん
               </span>
               <form action={handleLogout}>
@@ -152,53 +150,61 @@ export default async function DashboardPage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           <Card className="hover:shadow-md transition-shadow border-0 shadow-sm">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-              <CardTitle className="text-sm font-medium text-gray-600">開催予定イベント</CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                開催予定イベント
+              </CardTitle>
               <CalendarDays className="h-5 w-5 text-primary" />
             </CardHeader>
             <CardContent className="pt-0">
               <div className="text-3xl font-bold text-primary mb-1">
                 {stats.upcomingEventsCount}
               </div>
-              <p className="text-xs text-gray-500">管理中のイベント</p>
+              <p className="text-xs text-muted-foreground">管理中のイベント</p>
             </CardContent>
           </Card>
 
           <Card className="hover:shadow-md transition-shadow border-0 shadow-sm">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-              <CardTitle className="text-sm font-medium text-gray-600">参加予定者</CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                参加予定者
+              </CardTitle>
               <Users className="h-5 w-5 text-secondary" />
             </CardHeader>
             <CardContent className="pt-0">
               <div className="text-3xl font-bold text-secondary mb-1">
                 {stats.totalUpcomingParticipants}
               </div>
-              <p className="text-xs text-gray-500">合計参加者数</p>
+              <p className="text-xs text-muted-foreground">合計参加者数</p>
             </CardContent>
           </Card>
 
           <Card className="hover:shadow-md transition-shadow border-0 shadow-sm">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-              <CardTitle className="text-sm font-medium text-gray-600">未決済の参加費</CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                未決済の参加費
+              </CardTitle>
               <DollarSign className="h-5 w-5 text-warning" />
             </CardHeader>
             <CardContent className="pt-0">
               <div className="text-3xl font-bold text-warning mb-1">
                 {formatCurrency(stats.unpaidFeesTotal)}
               </div>
-              <p className="text-xs text-gray-500">決済待ち金額</p>
+              <p className="text-xs text-muted-foreground">決済待ち金額</p>
             </CardContent>
           </Card>
 
           <Card className="hover:shadow-md transition-shadow border-0 shadow-sm">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-              <CardTitle className="text-sm font-medium text-gray-600">アカウント残高</CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                アカウント残高
+              </CardTitle>
               <Landmark className="h-5 w-5 text-success" />
             </CardHeader>
             <CardContent className="pt-0">
               <div className="text-3xl font-bold text-success mb-1">
                 {formatCurrency(stats.stripeAccountBalance)}
               </div>
-              <p className="text-xs text-gray-500">振込み待ち金額</p>
+              <p className="text-xs text-muted-foreground">振込み待ち金額</p>
             </CardContent>
           </Card>
         </div>
@@ -217,7 +223,7 @@ export default async function DashboardPage() {
                     asChild
                     variant="ghost"
                     size="sm"
-                    className="text-gray-500 hover:text-gray-700"
+                    className="text-muted-foreground hover:text-foreground"
                   >
                     <Link href="/events">
                       すべて表示
@@ -229,8 +235,8 @@ export default async function DashboardPage() {
               <CardContent className="pt-0">
                 {recentEvents.length === 0 ? (
                   <div className="text-center py-6 bg-muted rounded-lg">
-                    <Calendar className="h-8 w-8 text-gray-400 mx-auto mb-3" />
-                    <p className="text-sm text-gray-500">まだイベントがありません</p>
+                    <Calendar className="h-8 w-8 text-muted-foreground mx-auto mb-3" />
+                    <p className="text-sm text-muted-foreground">まだイベントがありません</p>
                   </div>
                 ) : (
                   <div className="space-y-3">
@@ -241,12 +247,12 @@ export default async function DashboardPage() {
                       >
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-1">
-                            <h3 className="text-sm font-medium text-gray-900 truncate">
+                            <h3 className="text-sm font-medium text-foreground truncate">
                               {event.title}
                             </h3>
                             {getStatusBadge(event.status)}
                           </div>
-                          <div className="flex items-center text-xs text-gray-500 space-x-3">
+                          <div className="flex items-center text-xs text-muted-foreground space-x-3">
                             <span className="flex items-center">
                               <Clock className="h-3 w-3 mr-1" />
                               {formatUtcToJst(event.date, "MM/dd HH:mm")}

@@ -69,21 +69,21 @@ export function ChangeConfirmationDialog({
           {/* 変更内容の表示 */}
           {changes.length > 0 && (
             <div className="space-y-3">
-              <h3 className="font-medium text-gray-900">変更される項目</h3>
+              <h3 className="font-medium text-foreground">変更される項目</h3>
               <div className="space-y-2">
                 {changes.map((change, index) => (
                   <div
                     key={index}
-                    className="bg-gray-50 p-3 rounded-lg border"
+                    className="bg-muted/30 p-3 rounded-lg border"
                     data-testid={`change-item-${change.field}`}
                   >
-                    <div className="font-medium text-sm text-gray-700">{change.fieldName}</div>
+                    <div className="font-medium text-sm text-foreground">{change.fieldName}</div>
                     <div className="mt-1 text-sm">
-                      <span className="text-red-600">変更前: </span>
+                      <span className="text-destructive">変更前: </span>
                       <span className="font-mono">{change.oldValue}</span>
                     </div>
                     <div className="text-sm">
-                      <span className="text-green-600">変更後: </span>
+                      <span className="text-success">変更後: </span>
                       <span className="font-mono">{change.newValue}</span>
                     </div>
                   </div>
@@ -94,12 +94,12 @@ export function ChangeConfirmationDialog({
 
           {/* 影響範囲の表示 */}
           {hasAttendees && (
-            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+            <div className="bg-warning/10 border border-warning/20 rounded-lg p-4">
               <div className="flex items-start gap-3">
-                <span className="text-yellow-600 text-lg">⚠️</span>
+                <span className="text-warning text-lg">⚠️</span>
                 <div>
-                  <h4 className="font-medium text-yellow-800">参加者への影響について</h4>
-                  <p className="text-sm text-yellow-700 mt-1">
+                  <h4 className="font-medium text-warning">参加者への影響について</h4>
+                  <p className="text-sm text-warning/80 mt-1">
                     {attendeeCount}人の参加者に変更が通知されます。
                   </p>
                 </div>
@@ -112,12 +112,12 @@ export function ChangeConfirmationDialog({
             changes.some((change) =>
               ["title", "fee", "payment_methods", "capacity"].includes(change.field)
             ) && (
-              <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+              <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-4">
                 <div className="flex items-start gap-3">
-                  <span className="text-red-600 text-lg">🚫</span>
+                  <span className="text-destructive text-lg">🚫</span>
                   <div>
-                    <h4 className="font-medium text-red-800">制限項目の変更</h4>
-                    <p className="text-sm text-red-700 mt-1">
+                    <h4 className="font-medium text-destructive">制限項目の変更</h4>
+                    <p className="text-sm text-destructive/80 mt-1">
                       参加者がいる場合、通常は変更できない項目が含まれています。
                     </p>
                   </div>
@@ -127,12 +127,12 @@ export function ChangeConfirmationDialog({
 
           {/* 通知メールの送信について */}
           {hasAttendees && (
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <div className="bg-info/10 border border-info/20 rounded-lg p-4">
               <div className="flex items-start gap-3">
-                <span className="text-blue-600 text-lg">📧</span>
+                <span className="text-info text-lg">📧</span>
                 <div>
-                  <h4 className="font-medium text-blue-800">通知メールの送信</h4>
-                  <p className="text-sm text-blue-700 mt-1">
+                  <h4 className="font-medium text-info">通知メールの送信</h4>
+                  <p className="text-sm text-info/80 mt-1">
                     変更内容について参加者に自動で通知メールが送信されます。
                   </p>
                 </div>

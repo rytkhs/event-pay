@@ -10,7 +10,7 @@ export function PasswordStatusIcon({ type, message, testId }: PasswordStatusIcon
   }
 
   const isSuccess = type === "success";
-  const iconColor = isSuccess ? "text-green-600" : "text-red-600";
+  const iconColor = isSuccess ? "text-success" : "text-destructive";
   const defaultTestId = isSuccess ? "password-match-success" : "password-match-error";
 
   return (

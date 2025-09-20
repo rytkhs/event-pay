@@ -75,28 +75,28 @@ export function OrganizerDashboard({
 
       {/* 主催者向けタブ */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-4 lg:w-auto lg:grid-cols-4 bg-white border border-gray-200 rounded-lg">
+        <TabsList className="grid w-full grid-cols-4 lg:w-auto lg:grid-cols-4 bg-white border border-border rounded-lg">
           <TabsTrigger
             value="dashboard"
-            className="data-[state=active]:bg-blue-50 data-[state=active]:text-blue-700"
+            className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary"
           >
             ダッシュボード
           </TabsTrigger>
           <TabsTrigger
             value="participants"
-            className="data-[state=active]:bg-blue-50 data-[state=active]:text-blue-700"
+            className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary"
           >
             参加者管理
           </TabsTrigger>
           <TabsTrigger
             value="overview"
-            className="data-[state=active]:bg-blue-50 data-[state=active]:text-blue-700"
+            className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary"
           >
             イベント詳細
           </TabsTrigger>
           <TabsTrigger
             value="invite"
-            className="data-[state=active]:bg-blue-50 data-[state=active]:text-blue-700"
+            className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary"
           >
             招待・共有
           </TabsTrigger>
@@ -113,12 +113,12 @@ export function OrganizerDashboard({
               <CardContent className="space-y-3">
                 <div className="flex justify-between">
                   <span className="text-sm text-gray-600">参加予定</span>
-                  <span className="font-medium text-blue-600">{attendingCount}人</span>
+                  <span className="font-medium text-primary">{attendingCount}人</span>
                 </div>
                 {maybeCount > 0 && (
                   <div className="flex justify-between">
                     <span className="text-sm text-gray-600">未定</span>
-                    <span className="font-medium text-yellow-600">{maybeCount}人</span>
+                    <span className="font-medium text-warning">{maybeCount}人</span>
                   </div>
                 )}
                 <div className="flex justify-between border-t pt-2">
@@ -135,15 +135,13 @@ export function OrganizerDashboard({
               </CardHeader>
               <CardContent className="space-y-3">
                 <div className="flex justify-between">
-                  <span className="text-sm text-gray-600">決済済み</span>
-                  <span className="font-medium text-green-600">
-                    ¥{totalRevenue.toLocaleString()}
-                  </span>
+                  <span className="text-sm text-muted-foreground">決済済み</span>
+                  <span className="font-medium text-success">¥{totalRevenue.toLocaleString()}</span>
                 </div>
                 {unpaidCount > 0 && (
                   <div className="flex justify-between">
-                    <span className="text-sm text-gray-600">未決済</span>
-                    <span className="font-medium text-red-600">
+                    <span className="text-sm text-muted-foreground">未決済</span>
+                    <span className="font-medium text-destructive">
                       {unpaidCount}件 / ¥
                       {(paymentsData?.summary?.unpaidAmount || 0).toLocaleString()}
                     </span>
@@ -163,7 +161,7 @@ export function OrganizerDashboard({
               </CardHeader>
               <CardContent className="space-y-3">
                 <div className="flex justify-between">
-                  <span className="text-sm text-gray-600">オンライン決済</span>
+                  <span className="text-sm text-muted-foreground">オンライン決済</span>
                   <span className="font-medium">
                     {paymentsData?.summary?.byMethod?.find((m) => m.method === "stripe")?.count ||
                       0}
@@ -171,7 +169,7 @@ export function OrganizerDashboard({
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-sm text-gray-600">現金</span>
+                  <span className="text-sm text-muted-foreground">現金</span>
                   <span className="font-medium">
                     {paymentsData?.summary?.byMethod?.find((m) => m.method === "cash")?.count || 0}
                     件
