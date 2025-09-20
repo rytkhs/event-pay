@@ -10,7 +10,6 @@ import {
   Banknote,
   AlertCircle,
   CheckCircle2,
-  UserPlus,
   Share2,
   Edit,
 } from "lucide-react";
@@ -28,12 +27,10 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 
 import { OrganizerDashboard } from "./organizer-dashboard";
-import { ParticipantView } from "./participant-view";
 
 interface ModernEventDetailPageProps {
   eventId: string;
   eventDetail: Event;
-  isOrganizer: boolean;
   paymentsData: GetEventPaymentsResponse | null;
   participantsData: GetParticipantsResponse | null;
   stats: { attending_count: number; maybe_count: number } | null;
@@ -42,7 +39,6 @@ interface ModernEventDetailPageProps {
 export function ModernEventDetailPage({
   eventId,
   eventDetail,
-  isOrganizer,
   paymentsData,
   participantsData,
   stats,
@@ -155,47 +151,26 @@ export function ModernEventDetailPage({
 
               {/* 右側：主要CTAボタン */}
               <div className="flex-shrink-0 w-full lg:w-auto">
-                {isOrganizer ? (
-                  /* 主催者向けCTA */
-                  <div className="flex flex-col sm:flex-row gap-2">
-                    <Button
-                      onClick={() => router.push(`/events/${eventId}/edit`)}
-                      variant="outline"
-                      className="flex items-center gap-2"
-                    >
-                      <Edit className="h-4 w-4" />
-                      編集
-                    </Button>
-                    <Button
-                      onClick={handleCopyInviteLink}
-                      variant="default"
-                      className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700"
-                      disabled={!eventDetail.invite_token}
-                    >
-                      <Share2 className="h-4 w-4" />
-                      招待リンク共有
-                    </Button>
-                  </div>
-                ) : (
-                  /* 参加者向けCTA */
-                  <div className="flex flex-col gap-2">
-                    <Button
-                      onClick={() => router.push(`/invite/${eventDetail.invite_token}`)}
-                      variant="default"
-                      size="lg"
-                      className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700"
-                      disabled={!eventDetail.invite_token || eventDetail.status !== "upcoming"}
-                    >
-                      <UserPlus className="h-4 w-4" />
-                      参加登録
-                    </Button>
-                    <p className="text-xs text-gray-500 text-center">
-                      {eventDetail.status !== "upcoming"
-                        ? "イベントが終了しています"
-                        : "出欠確認・お支払い"}
-                    </p>
-                  </div>
-                )}
+                {/* 主催者向けCTA */}
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <Button
+                    onClick={() => router.push(`/events/${eventId}/edit`)}
+                    variant="outline"
+                    className="flex items-center gap-2"
+                  >
+                    <Edit className="h-4 w-4" />
+                    編集
+                  </Button>
+                  <Button
+                    onClick={handleCopyInviteLink}
+                    variant="default"
+                    className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700"
+                    disabled={!eventDetail.invite_token}
+                  >
+                    <Share2 className="h-4 w-4" />
+                    招待リンク共有
+                  </Button>
+                </div>
               </div>
             </div>
           </div>
@@ -204,17 +179,13 @@ export function ModernEventDetailPage({
 
       {/* メインコンテンツエリア */}
       <div className="max-w-6xl mx-auto px-4 pb-8">
-        {isOrganizer ? (
-          <OrganizerDashboard
-            eventId={eventId}
-            eventDetail={eventDetail}
-            paymentsData={paymentsData}
-            participantsData={participantsData}
-            stats={stats}
-          />
-        ) : (
-          <ParticipantView eventDetail={eventDetail} />
-        )}
+        <OrganizerDashboard
+          eventId={eventId}
+          eventDetail={eventDetail}
+          paymentsData={paymentsData}
+          participantsData={participantsData}
+          stats={stats}
+        />
       </div>
     </div>
   );
