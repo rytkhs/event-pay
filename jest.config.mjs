@@ -21,6 +21,7 @@ const config = {
     "^@features/(.*)$": "<rootDir>/features/$1",
     "^@components/(.*)$": "<rootDir>/components/$1",
     "^@/types/(.*)$": "<rootDir>/types/$1",
+    "^@tests/(.*)$": "<rootDir>/tests/$1",
   },
   testEnvironment: "node",
   collectCoverage: true,
