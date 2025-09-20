@@ -106,6 +106,7 @@
     "postcss": "^8",
     "postcss-load-config": "^6.0.1",
     "prettier": "^3.6.1",
+    "shadcn": "^3.3.1",
     "tailwindcss": "^3.4.1",
     "ts-jest": "^29.4.1",
     "typescript": "^5"
