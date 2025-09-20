@@ -353,7 +353,7 @@ BEGIN
   current_user_id := auth.uid();
 
   BEGIN
-    invite_token_var := current_setting('request.headers.x-invite-token', true);
+    invite_token_var := current_setting('request.headers', true)::json->>'x-invite-token';
   EXCEPTION WHEN OTHERS THEN
     invite_token_var := NULL;
   END;
