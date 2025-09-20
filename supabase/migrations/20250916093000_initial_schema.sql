@@ -1979,7 +1979,6 @@ CREATE TABLE IF NOT EXISTS "public"."payments" (
     "webhook_event_id" character varying(100),
     "webhook_processed_at" timestamp with time zone,
     "paid_at" timestamp with time zone,
-    "stripe_session_id" character varying(255),
     "stripe_account_id" character varying(255),
     "application_fee_amount" integer DEFAULT 0 NOT NULL,
     "stripe_checkout_session_id" character varying(255),
@@ -2480,10 +2479,6 @@ CREATE UNIQUE INDEX "idx_payments_stripe_charge_id" ON "public"."payments" USING
 
 
 CREATE INDEX "idx_payments_stripe_payment_intent" ON "public"."payments" USING "btree" ("stripe_payment_intent_id");
-
-
-
-CREATE INDEX "idx_payments_stripe_session_id" ON "public"."payments" USING "btree" ("stripe_session_id");
 
 
 

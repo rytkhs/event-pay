@@ -163,22 +163,13 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
 
             // 突合順序:
             // 1) stripe_checkout_session_id（Destination charges）
-            // 2) stripe_session_id（従来フロー）
-            // 3) metadata.payment_id フォールバック
+            // 2) metadata.payment_id フォールバック
             let payment: Database["public"]["Tables"]["payments"]["Row"] | null = null;
             {
               const { data } = await this.supabase
                 .from("payments")
                 .select("*")
                 .eq("stripe_checkout_session_id", sessionId)
-                .maybeSingle();
-              payment = data ?? null;
-            }
-            if (!payment) {
-              const { data } = await this.supabase
-                .from("payments")
-                .select("*")
-                .eq("stripe_session_id", sessionId)
                 .maybeSingle();
               payment = data ?? null;
             }

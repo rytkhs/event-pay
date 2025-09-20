@@ -71,7 +71,6 @@ export class PaymentService implements IPaymentService {
         id: string;
         status: PaymentStatus;
         method: PaymentMethod;
-        stripe_session_id: string | null;
         stripe_payment_intent_id: string | null;
         paid_at: string | null;
         created_at: string | null;
@@ -82,7 +81,7 @@ export class PaymentService implements IPaymentService {
       const { data: openPending, error: openPendingError } = await this.supabase
         .from("payments")
         .select(
-          "id, status, method, amount, checkout_idempotency_key, checkout_key_revision, stripe_session_id, stripe_payment_intent_id, paid_at, created_at, updated_at"
+          "id, status, method, amount, checkout_idempotency_key, checkout_key_revision, stripe_payment_intent_id, paid_at, created_at, updated_at"
         )
         .eq("attendance_id", params.attendanceId)
         .eq("status", "pending")
@@ -108,7 +107,6 @@ export class PaymentService implements IPaymentService {
           amount: row.amount as number,
           checkout_idempotency_key: (row.checkout_idempotency_key as string) ?? null,
           checkout_key_revision: (row.checkout_key_revision as number | null) ?? 0,
-          stripe_session_id: row.stripe_session_id,
           stripe_payment_intent_id: row.stripe_payment_intent_id,
           paid_at: row.paid_at ?? null,
           created_at: row.created_at ?? null,
@@ -118,7 +116,7 @@ export class PaymentService implements IPaymentService {
         const { data: openFailed, error: openFailedError } = await this.supabase
           .from("payments")
           .select(
-            "id, status, method, amount, checkout_idempotency_key, checkout_key_revision, stripe_session_id, stripe_payment_intent_id, paid_at, created_at, updated_at"
+            "id, status, method, amount, checkout_idempotency_key, checkout_key_revision, stripe_payment_intent_id, paid_at, created_at, updated_at"
           )
           .eq("attendance_id", params.attendanceId)
           .eq("status", "failed")
@@ -144,7 +142,6 @@ export class PaymentService implements IPaymentService {
             amount: row.amount as number,
             checkout_idempotency_key: (row.checkout_idempotency_key as string) ?? null,
             checkout_key_revision: (row.checkout_key_revision as number | null) ?? 0,
-            stripe_session_id: row.stripe_session_id,
             stripe_payment_intent_id: row.stripe_payment_intent_id,
             paid_at: row.paid_at ?? null,
             created_at: row.created_at ?? null,
@@ -205,7 +202,6 @@ export class PaymentService implements IPaymentService {
               amount: params.amount,
               // status はすでに pending のため変更しない
               stripe_payment_intent_id: null,
-              stripe_session_id: null,
               stripe_checkout_session_id: null,
             })
             .eq("id", openPayment.id);
@@ -260,7 +256,6 @@ export class PaymentService implements IPaymentService {
                     .update({
                       amount: params.amount,
                       stripe_payment_intent_id: null,
-                      stripe_session_id: null,
                       stripe_checkout_session_id: null,
                     })
                     .eq("id", concurrentOpen.id as string);
@@ -341,7 +336,6 @@ export class PaymentService implements IPaymentService {
                   .update({
                     amount: params.amount,
                     stripe_payment_intent_id: null,
-                    stripe_session_id: null,
                     stripe_checkout_session_id: null,
                   })
                   .eq("id", concurrentOpen.id as string);

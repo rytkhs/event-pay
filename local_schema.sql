@@ -1,5 +1,5 @@
 
-\restrict XdWcjpmGakWWfzKrK0VR87y7n2AYuUPW6kq8jE7oZbegXkox5YmtxLZDISKhEKa
+\restrict RfNbyTIB49LZMJCmSyaeYu4ICAzKxa3dZxFZSmUH2VRK9hDTc1U3Q3bNb5gXBw5
 
 
 SET statement_timeout = 0;
@@ -163,32 +163,6 @@ CREATE TYPE "public"."suspicious_activity_type_enum" AS ENUM (
 
 
 ALTER TYPE "public"."suspicious_activity_type_enum" OWNER TO "postgres";
-
-
-CREATE OR REPLACE FUNCTION "public"."calc_payout_amount"("p_event_id" "uuid") RETURNS TABLE("total_stripe_sales" integer, "total_stripe_fee" integer, "platform_fee" integer, "net_payout_amount" integer, "stripe_payment_count" bigint)
-    LANGUAGE "plpgsql" SECURITY DEFINER
-    AS $$
-BEGIN
-  RETURN QUERY
-  SELECT
-    COALESCE(SUM(p.amount) FILTER (WHERE p.method = 'stripe' AND p.status = 'paid'), 0)::INT AS total_stripe_sales,
-    public.calc_total_stripe_fee(p_event_id)::INT                                   AS total_stripe_fee,
-    0::INT                                                                    AS platform_fee,
-    (COALESCE(SUM(p.amount) FILTER (WHERE p.method = 'stripe' AND p.status = 'paid'), 0)
-      - public.calc_total_stripe_fee(p_event_id))::INT                               AS net_payout_amount,
-    COUNT(p.id) FILTER (WHERE p.method = 'stripe' AND p.status = 'paid')      AS stripe_payment_count
-  FROM public.attendances a
-  LEFT JOIN public.payments p ON p.attendance_id = a.id
-  WHERE a.event_id = p_event_id;
-END;
-$$;
-
-
-ALTER FUNCTION "public"."calc_payout_amount"("p_event_id" "uuid") OWNER TO "postgres";
-
-
-COMMENT ON FUNCTION "public"."calc_payout_amount"("p_event_id" "uuid") IS '指定イベントのStripe売上・手数料・純送金額を一括計算して返す。';
-
 
 
 CREATE OR REPLACE FUNCTION "public"."calc_refund_dispute_summary"("p_event_id" "uuid") RETURNS json
@@ -929,67 +903,6 @@ COMMENT ON FUNCTION "public"."get_scheduler_lock_status"("p_lock_name" "text") I
 
 
 
-CREATE OR REPLACE FUNCTION "public"."get_settlement_aggregations"("p_event_id" "uuid") RETURNS TABLE("total_stripe_sales" bigint, "payment_count" bigint, "total_application_fee" bigint, "avg_application_fee" numeric, "total_refunded_amount" bigint, "refunded_count" bigint, "total_application_fee_refunded" bigint)
-    LANGUAGE "plpgsql" SECURITY DEFINER
-    AS $$
-BEGIN
-  RETURN QUERY
-  WITH payment_data AS (
-    SELECT
-      p.amount,
-      p.application_fee_amount,
-      p.refunded_amount,
-      p.application_fee_refunded_amount
-    FROM public.payments p
-    INNER JOIN public.attendances a ON a.id = p.attendance_id
-    WHERE a.event_id = p_event_id
-      AND p.method = 'stripe'
-      AND p.status = 'paid'
-  ),
-  sales_agg AS (
-    SELECT
-      COALESCE(SUM(amount), 0) as total_sales,
-      COUNT(*) as payment_cnt
-    FROM payment_data
-  ),
-  fee_agg AS (
-    SELECT
-      COALESCE(SUM(application_fee_amount), 0) as total_fee,
-      CASE
-        WHEN COUNT(*) > 0 THEN AVG(application_fee_amount)
-        ELSE 0
-      END as avg_fee
-    FROM payment_data
-  ),
-  refund_agg AS (
-    SELECT
-      COALESCE(SUM(refunded_amount), 0) as total_refund,
-      COUNT(*) FILTER (WHERE refunded_amount > 0) as refund_cnt,
-      COALESCE(SUM(application_fee_refunded_amount), 0) as total_fee_refund
-    FROM payment_data
-  )
-  SELECT
-    sales_agg.total_sales::BIGINT,
-    sales_agg.payment_cnt::BIGINT,
-    fee_agg.total_fee::BIGINT,
-    fee_agg.avg_fee::NUMERIC,
-    refund_agg.total_refund::BIGINT,
-    refund_agg.refund_cnt::BIGINT,
-    refund_agg.total_fee_refund::BIGINT
-  FROM sales_agg
-  CROSS JOIN fee_agg
-  CROSS JOIN refund_agg;
-END;
-$$;
-
-
-ALTER FUNCTION "public"."get_settlement_aggregations"("p_event_id" "uuid") OWNER TO "postgres";
-
-
-COMMENT ON FUNCTION "public"."get_settlement_aggregations"("p_event_id" "uuid") IS 'Aggregates settlement data for a given event efficiently in a single DB query. Returns Stripe sales, application fees, and refund totals with counts. Optimized to replace multiple JS reduce operations and reduce network overhead.';
-
-
-
 CREATE OR REPLACE FUNCTION "public"."get_settlement_report_details"("input_created_by" "uuid", "input_event_ids" "uuid"[] DEFAULT NULL::"uuid"[], "p_from_date" timestamp with time zone DEFAULT NULL::timestamp with time zone, "p_to_date" timestamp with time zone DEFAULT NULL::timestamp with time zone, "p_limit" integer DEFAULT 50, "p_offset" integer DEFAULT 0) RETURNS TABLE("report_id" "uuid", "event_id" "uuid", "event_title" character varying, "event_date" timestamp with time zone, "stripe_account_id" character varying, "transfer_group" character varying, "generated_at" timestamp with time zone, "total_stripe_sales" integer, "total_stripe_fee" integer, "total_application_fee" integer, "net_payout_amount" integer, "payment_count" integer, "refunded_count" integer, "total_refunded_amount" integer, "settlement_mode" "public"."settlement_mode_enum", "status" "public"."payout_status_enum")
     LANGUAGE "plpgsql" SECURITY DEFINER
     AS $$
@@ -1110,106 +1023,6 @@ $$;
 
 
 ALTER FUNCTION "public"."prevent_payment_status_rollback"() OWNER TO "postgres";
-
-
-CREATE OR REPLACE FUNCTION "public"."process_event_payout"("p_event_id" "uuid", "p_user_id" "uuid") RETURNS "uuid"
-    LANGUAGE "plpgsql" SECURITY DEFINER
-    AS $$
-DECLARE
-    payout_id UUID;
-    existing_status payout_status_enum;
-    stripe_sales INTEGER;
-    stripe_fees  INTEGER;
-    platform_fees INTEGER := 0;
-    net_amount INTEGER;
-    stripe_account VARCHAR(255);
-    lock_key BIGINT;
-BEGIN
-    IF p_event_id IS NULL OR p_user_id IS NULL THEN
-        RAISE EXCEPTION 'event_id and user_id cannot be null';
-    END IF;
-
-    lock_key := abs(hashtext(p_event_id::text));
-    PERFORM pg_advisory_xact_lock(lock_key);
-
-    -- 終了イベントの権限＆存在確認（非キャンセルかつ終了済み）
-    IF NOT EXISTS (
-        SELECT 1 FROM public.events
-        WHERE id = p_event_id
-          AND created_by = p_user_id
-          AND canceled_at IS NULL
-          AND NOW() >= (date + interval '24 hours')
-    ) THEN
-        RAISE EXCEPTION 'Event not found or not authorized: %', p_event_id;
-    END IF;
-
-    SELECT id, status INTO payout_id, existing_status
-    FROM public.settlements
-    WHERE event_id = p_event_id
-    ORDER BY created_at DESC
-    LIMIT 1;
-
-    IF payout_id IS NOT NULL THEN
-        IF existing_status = 'pending' THEN
-            RETURN payout_id;
-        ELSIF existing_status = 'failed' THEN
-            UPDATE public.settlements
-            SET status = 'pending',
-                processed_at = NULL,
-                last_error = NULL
-            WHERE id = payout_id
-            RETURNING id INTO payout_id;
-
-            RETURN payout_id;
-        ELSE
-            RAISE EXCEPTION 'Payout already exists or in progress for event_id: %', p_event_id;
-        END IF;
-    END IF;
-
-    -- Stripe Connect account (verified & payouts_enabled)
-    SELECT stripe_account_id INTO stripe_account
-      FROM public.stripe_connect_accounts
-     WHERE user_id = p_user_id
-       AND status = 'verified'
-       AND payouts_enabled = true;
-    IF stripe_account IS NULL THEN
-        RAISE EXCEPTION 'No verified Stripe Connect account for user: %', p_user_id;
-    END IF;
-
-    SELECT COALESCE(SUM(p.amount),0)::INT INTO stripe_sales
-      FROM public.payments p
-      JOIN public.attendances a ON p.attendance_id = a.id
-     WHERE a.event_id = p_event_id
-       AND p.method = 'stripe'
-       AND p.status = 'paid';
-
-    stripe_fees := public.calc_total_stripe_fee(p_event_id);
-
-    net_amount := stripe_sales - stripe_fees - platform_fees;
-
-    IF net_amount < public.get_min_payout_amount() THEN
-        RAISE EXCEPTION 'Net payout amount < minimum (%). Calculated: %', public.get_min_payout_amount(), net_amount;
-    END IF;
-
-    INSERT INTO public.settlements (
-        event_id, user_id, total_stripe_sales, total_stripe_fee,
-        platform_fee, net_payout_amount, stripe_account_id, status, transfer_group
-    ) VALUES (
-        p_event_id, p_user_id, stripe_sales, stripe_fees,
-        platform_fees, net_amount, stripe_account, 'pending',
-        'event_' || p_event_id::text || '_payout'
-    ) RETURNING id INTO payout_id;
-
-    RETURN payout_id;
-END;
-$$;
-
-
-ALTER FUNCTION "public"."process_event_payout"("p_event_id" "uuid", "p_user_id" "uuid") OWNER TO "postgres";
-
-
-COMMENT ON FUNCTION "public"."process_event_payout"("p_event_id" "uuid", "p_user_id" "uuid") IS 'イベント送金処理（都度算出: ended）。settlements 対応・payouts_enabled のみ必須。';
-
 
 
 CREATE OR REPLACE FUNCTION "public"."register_attendance_with_payment"("p_event_id" "uuid", "p_nickname" character varying, "p_email" character varying, "p_status" "public"."attendance_status_enum", "p_guest_token" character varying, "p_payment_method" "public"."payment_method_enum" DEFAULT NULL::"public"."payment_method_enum", "p_event_fee" integer DEFAULT 0) RETURNS "uuid"
@@ -2000,7 +1813,6 @@ CREATE TABLE IF NOT EXISTS "public"."payments" (
     "webhook_event_id" character varying(100),
     "webhook_processed_at" timestamp with time zone,
     "paid_at" timestamp with time zone,
-    "stripe_session_id" character varying(255),
     "stripe_account_id" character varying(255),
     "application_fee_amount" integer DEFAULT 0 NOT NULL,
     "stripe_checkout_session_id" character varying(255),
@@ -2504,10 +2316,6 @@ CREATE INDEX "idx_payments_stripe_payment_intent" ON "public"."payments" USING "
 
 
 
-CREATE INDEX "idx_payments_stripe_session_id" ON "public"."payments" USING "btree" ("stripe_session_id");
-
-
-
 CREATE INDEX "idx_payments_tax_included" ON "public"."payments" USING "btree" ("tax_included");
 
 
@@ -2960,12 +2768,6 @@ GRANT USAGE ON SCHEMA "public" TO "service_role";
 
 
 
-GRANT ALL ON FUNCTION "public"."calc_payout_amount"("p_event_id" "uuid") TO "anon";
-GRANT ALL ON FUNCTION "public"."calc_payout_amount"("p_event_id" "uuid") TO "authenticated";
-GRANT ALL ON FUNCTION "public"."calc_payout_amount"("p_event_id" "uuid") TO "service_role";
-
-
-
 GRANT ALL ON FUNCTION "public"."calc_refund_dispute_summary"("p_event_id" "uuid") TO "anon";
 GRANT ALL ON FUNCTION "public"."calc_refund_dispute_summary"("p_event_id" "uuid") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."calc_refund_dispute_summary"("p_event_id" "uuid") TO "service_role";
@@ -3068,12 +2870,6 @@ GRANT ALL ON FUNCTION "public"."get_scheduler_lock_status"("p_lock_name" "text")
 
 
 
-GRANT ALL ON FUNCTION "public"."get_settlement_aggregations"("p_event_id" "uuid") TO "anon";
-GRANT ALL ON FUNCTION "public"."get_settlement_aggregations"("p_event_id" "uuid") TO "authenticated";
-GRANT ALL ON FUNCTION "public"."get_settlement_aggregations"("p_event_id" "uuid") TO "service_role";
-
-
-
 GRANT ALL ON FUNCTION "public"."get_settlement_report_details"("input_created_by" "uuid", "input_event_ids" "uuid"[], "p_from_date" timestamp with time zone, "p_to_date" timestamp with time zone, "p_limit" integer, "p_offset" integer) TO "anon";
 GRANT ALL ON FUNCTION "public"."get_settlement_report_details"("input_created_by" "uuid", "input_event_ids" "uuid"[], "p_from_date" timestamp with time zone, "p_to_date" timestamp with time zone, "p_limit" integer, "p_offset" integer) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."get_settlement_report_details"("input_created_by" "uuid", "input_event_ids" "uuid"[], "p_from_date" timestamp with time zone, "p_to_date" timestamp with time zone, "p_limit" integer, "p_offset" integer) TO "service_role";
@@ -3097,12 +2893,6 @@ GRANT ALL ON FUNCTION "public"."hash_guest_token"("token" "text") TO "service_ro
 GRANT ALL ON FUNCTION "public"."prevent_payment_status_rollback"() TO "anon";
 GRANT ALL ON FUNCTION "public"."prevent_payment_status_rollback"() TO "authenticated";
 GRANT ALL ON FUNCTION "public"."prevent_payment_status_rollback"() TO "service_role";
-
-
-
-GRANT ALL ON FUNCTION "public"."process_event_payout"("p_event_id" "uuid", "p_user_id" "uuid") TO "anon";
-GRANT ALL ON FUNCTION "public"."process_event_payout"("p_event_id" "uuid", "p_user_id" "uuid") TO "authenticated";
-GRANT ALL ON FUNCTION "public"."process_event_payout"("p_event_id" "uuid", "p_user_id" "uuid") TO "service_role";
 
 
 
@@ -3332,6 +3122,6 @@ ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TAB
 
 
 
-\unrestrict XdWcjpmGakWWfzKrK0VR87y7n2AYuUPW6kq8jE7oZbegXkox5YmtxLZDISKhEKa
+\unrestrict RfNbyTIB49LZMJCmSyaeYu4ICAzKxa3dZxFZSmUH2VRK9hDTc1U3Q3bNb5gXBw5
 
 RESET ALL;

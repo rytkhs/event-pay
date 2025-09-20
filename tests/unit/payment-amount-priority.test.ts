@@ -70,7 +70,6 @@ describe("既存payments.amount優先ロジック検証", () => {
         amount: 1500, // params.amount
         status: "pending",
         stripe_payment_intent_id: null,
-        stripe_session_id: null,
         stripe_checkout_session_id: null,
       };
 

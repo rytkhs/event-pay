@@ -291,7 +291,6 @@ export type Database = {
           stripe_customer_id: string | null;
           stripe_fee_details: Json | null;
           stripe_payment_intent_id: string | null;
-          stripe_session_id: string | null;
           stripe_transfer_id: string | null;
           tax_included: boolean;
           transfer_group: string | null;
@@ -328,7 +327,6 @@ export type Database = {
           stripe_customer_id?: string | null;
           stripe_fee_details?: Json | null;
           stripe_payment_intent_id?: string | null;
-          stripe_session_id?: string | null;
           stripe_transfer_id?: string | null;
           tax_included?: boolean;
           transfer_group?: string | null;
@@ -365,7 +363,6 @@ export type Database = {
           stripe_customer_id?: string | null;
           stripe_fee_details?: Json | null;
           stripe_payment_intent_id?: string | null;
-          stripe_session_id?: string | null;
           stripe_transfer_id?: string | null;
           tax_included?: boolean;
           transfer_group?: string | null;
@@ -647,16 +644,6 @@ export type Database = {
       };
     };
     Functions: {
-      calc_payout_amount: {
-        Args: { p_event_id: string };
-        Returns: {
-          net_payout_amount: number;
-          platform_fee: number;
-          stripe_payment_count: number;
-          total_stripe_fee: number;
-          total_stripe_sales: number;
-        }[];
-      };
       calc_refund_dispute_summary: {
         Args: { p_event_id: string };
         Returns: Json;
@@ -787,18 +774,6 @@ export type Database = {
           time_remaining_minutes: number;
         }[];
       };
-      get_settlement_aggregations: {
-        Args: { p_event_id: string };
-        Returns: {
-          avg_application_fee: number;
-          payment_count: number;
-          refunded_count: number;
-          total_application_fee: number;
-          total_application_fee_refunded: number;
-          total_refunded_amount: number;
-          total_stripe_sales: number;
-        }[];
-      };
       get_settlement_report_details: {
         Args: {
           input_created_by: string;
@@ -829,10 +804,6 @@ export type Database = {
       };
       hash_guest_token: {
         Args: { token: string };
-        Returns: string;
-      };
-      process_event_payout: {
-        Args: { p_event_id: string; p_user_id: string };
         Returns: string;
       };
       register_attendance_with_payment: {
