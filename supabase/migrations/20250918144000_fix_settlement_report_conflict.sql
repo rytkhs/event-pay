@@ -4,7 +4,7 @@
 
 DROP FUNCTION IF EXISTS "public"."generate_settlement_report"("input_event_id" "uuid", "input_created_by" "uuid");
 
-CREATE FUNCTION "public"."generate_settlement_report"("input_event_id" "uuid", "input_created_by" "uuid") RETURNS TABLE("report_id" "uuid", "already_exists" boolean, "returned_event_id" "uuid", "event_title" character varying, "event_date" timestamp with time zone, "created_by" "uuid", "stripe_account_id" character varying, "transfer_group" "text", "total_stripe_sales" integer, "total_stripe_fee" integer, "total_application_fee" integer, "net_payout_amount" integer, "payment_count" integer, "refunded_count" integer, "total_refunded_amount" integer, "dispute_count" integer, "total_disputed_amount" integer, "settlement_mode" "text", "report_generated_at" timestamp with time zone, "report_updated_at" timestamp with time zone)
+   npx supabase gen types typescript --local > types/database.tsCREATE FUNCTION "public"."generate_settlement_report"("input_event_id" "uuid", "input_created_by" "uuid") RETURNS TABLE("report_id" "uuid", "already_exists" boolean, "returned_event_id" "uuid", "event_title" character varying, "event_date" timestamp with time zone, "created_by" "uuid", "stripe_account_id" character varying, "transfer_group" "text", "total_stripe_sales" integer, "total_stripe_fee" integer, "total_application_fee" integer, "net_payout_amount" integer, "payment_count" integer, "refunded_count" integer, "total_refunded_amount" integer, "dispute_count" integer, "total_disputed_amount" integer, "report_generated_at" timestamp with time zone, "report_updated_at" timestamp with time zone)
     LANGUAGE "plpgsql" SECURITY DEFINER
     AS $$
 DECLARE
@@ -111,8 +111,8 @@ BEGIN
             net_payout_amount,
             stripe_account_id,
             transfer_group,
-            settlement_mode,
-            status,
+            -- settlement_mode は削除済み
+            -- status は削除済み
             generated_at
         ) VALUES (
             input_event_id,
@@ -123,8 +123,7 @@ BEGIN
             v_net_amount,
             v_event_data.stripe_account_id,
             v_transfer_group,
-            'destination_charge',
-            'completed',
+            -- 'destination_charge', 'completed' は削除済み
             now()
         )
         RETURNING id, generated_at, updated_at
@@ -151,7 +150,7 @@ BEGIN
     total_refunded_amount := v_total_refunded_amount;
     dispute_count := v_dispute_count;
     total_disputed_amount := v_total_disputed_amount;
-    settlement_mode := 'destination_charge';
+    -- settlement_mode は削除済み
     report_generated_at := v_generated_at;
     report_updated_at := v_updated_at;
 

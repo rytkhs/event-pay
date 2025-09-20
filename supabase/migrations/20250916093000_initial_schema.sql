@@ -106,19 +106,11 @@ CREATE TYPE "public"."payment_status_enum" AS ENUM (
 ALTER TYPE "public"."payment_status_enum" OWNER TO "postgres";
 
 
-COMMENT ON TYPE "public"."payment_status_enum" IS '決済状況 (completedは無料イベント用, processing_errorは送金成功・DB更新失敗)';
+COMMENT ON TYPE "public"."payment_status_enum" IS '決済状況 (completedは無料イベント用)';
 
 
 
-CREATE TYPE "public"."payout_status_enum" AS ENUM (
-    'pending',
-    'processing',
-    'completed',
-    'failed'
-);
-
-
-ALTER TYPE "public"."payout_status_enum" OWNER TO "postgres";
+-- payout_status_enum は削除済み（Destination Charges移行により不要）
 
 
 CREATE TYPE "public"."security_severity_enum" AS ENUM (
@@ -132,12 +124,7 @@ CREATE TYPE "public"."security_severity_enum" AS ENUM (
 ALTER TYPE "public"."security_severity_enum" OWNER TO "postgres";
 
 
-CREATE TYPE "public"."settlement_mode_enum" AS ENUM (
-    'destination_charge'
-);
-
-
-ALTER TYPE "public"."settlement_mode_enum" OWNER TO "postgres";
+-- settlement_mode_enum は削除済み（常に'destination_charge'だったため不要）
 
 
 CREATE TYPE "public"."stripe_account_status_enum" AS ENUM (
@@ -654,7 +641,7 @@ COMMENT ON FUNCTION "public"."find_eligible_events_with_details"("p_days_after_e
 
 
 
-CREATE OR REPLACE FUNCTION "public"."generate_settlement_report"("input_event_id" "uuid", "input_created_by" "uuid") RETURNS TABLE("report_id" "uuid", "already_exists" boolean, "returned_event_id" "uuid", "event_title" character varying, "event_date" timestamp with time zone, "created_by" "uuid", "stripe_account_id" character varying, "transfer_group" "text", "total_stripe_sales" integer, "total_stripe_fee" integer, "total_application_fee" integer, "net_payout_amount" integer, "payment_count" integer, "refunded_count" integer, "total_refunded_amount" integer, "settlement_mode" "text", "report_generated_at" timestamp with time zone, "report_updated_at" timestamp with time zone)
+CREATE OR REPLACE FUNCTION "public"."generate_settlement_report"("input_event_id" "uuid", "input_created_by" "uuid") RETURNS TABLE("report_id" "uuid", "already_exists" boolean, "returned_event_id" "uuid", "event_title" character varying, "event_date" timestamp with time zone, "created_by" "uuid", "stripe_account_id" character varying, "transfer_group" "text", "total_stripe_sales" integer, "total_stripe_fee" integer, "total_application_fee" integer, "net_payout_amount" integer, "payment_count" integer, "refunded_count" integer, "total_refunded_amount" integer, "report_generated_at" timestamp with time zone, "report_updated_at" timestamp with time zone)
     LANGUAGE "plpgsql" SECURITY DEFINER
     AS $$
 DECLARE
@@ -741,8 +728,8 @@ BEGIN
         net_payout_amount,
         stripe_account_id,
         transfer_group,
-        settlement_mode,
-        status,
+        -- settlement_mode は削除済み
+        -- status は削除済み
         generated_at
     ) VALUES (
         input_event_id,
@@ -753,8 +740,7 @@ BEGIN
         v_net_amount,
         v_event_data.stripe_account_id,
         v_transfer_group,
-        'destination_charge',
-        'completed',
+        -- 'destination_charge', 'completed' は削除済み（カラム削除により不要）
         now()
     )
     ON CONFLICT (event_id, (DATE(generated_at AT TIME ZONE 'Asia/Tokyo'))) DO UPDATE SET
@@ -781,7 +767,7 @@ BEGIN
     payment_count := v_payment_count;
     refunded_count := v_refunded_count;
     total_refunded_amount := v_total_refunded_amount;
-    settlement_mode := 'destination_charge';
+    -- settlement_mode は削除済み
     report_generated_at := v_generated_at;
     report_updated_at := v_updated_at;
 
@@ -970,7 +956,7 @@ COMMENT ON FUNCTION "public"."get_settlement_aggregations"("p_event_id" "uuid") 
 
 
 
-CREATE OR REPLACE FUNCTION "public"."get_settlement_report_details"("input_created_by" "uuid", "input_event_ids" "uuid"[] DEFAULT NULL::"uuid"[], "p_from_date" timestamp with time zone DEFAULT NULL::timestamp with time zone, "p_to_date" timestamp with time zone DEFAULT NULL::timestamp with time zone, "p_limit" integer DEFAULT 50, "p_offset" integer DEFAULT 0) RETURNS TABLE("report_id" "uuid", "event_id" "uuid", "event_title" character varying, "event_date" timestamp with time zone, "stripe_account_id" character varying, "transfer_group" character varying, "generated_at" timestamp with time zone, "total_stripe_sales" integer, "total_stripe_fee" integer, "total_application_fee" integer, "net_payout_amount" integer, "payment_count" integer, "refunded_count" integer, "total_refunded_amount" integer, "settlement_mode" "public"."settlement_mode_enum", "status" "public"."payout_status_enum")
+CREATE OR REPLACE FUNCTION "public"."get_settlement_report_details"("input_created_by" "uuid", "input_event_ids" "uuid"[] DEFAULT NULL::"uuid"[], "p_from_date" timestamp with time zone DEFAULT NULL::timestamp with time zone, "p_to_date" timestamp with time zone DEFAULT NULL::timestamp with time zone, "p_limit" integer DEFAULT 50, "p_offset" integer DEFAULT 0) RETURNS TABLE("report_id" "uuid", "event_id" "uuid", "event_title" character varying, "event_date" timestamp with time zone, "stripe_account_id" character varying, "transfer_group" character varying, "generated_at" timestamp with time zone, "total_stripe_sales" integer, "total_stripe_fee" integer, "total_application_fee" integer, "net_payout_amount" integer, "payment_count" integer, "refunded_count" integer, "total_refunded_amount" integer)
     LANGUAGE "plpgsql" SECURITY DEFINER
     AS $$
 BEGIN
@@ -1018,12 +1004,10 @@ BEGIN
               AND pay.refunded_amount > 0
         ) AS total_refunded_amount,
 
-        p.settlement_mode,
-        p.status
+        -- settlement_mode と status は削除済み（常に'destination_charge', 'completed'だったため）
     FROM public.settlements p
     JOIN public.events e ON p.event_id = e.id
     WHERE p.user_id = input_created_by
-      AND p.settlement_mode = 'destination_charge'
       AND (input_event_ids IS NULL OR p.event_id = ANY(input_event_ids))
       AND (p_from_date IS NULL OR p.generated_at >= p_from_date)
       AND (p_to_date IS NULL OR p.generated_at <= p_to_date)
@@ -1097,7 +1081,7 @@ CREATE OR REPLACE FUNCTION "public"."process_event_payout"("p_event_id" "uuid", 
     AS $$
 DECLARE
     payout_id UUID;
-    existing_status payout_status_enum;
+    -- existing_status変数は削除済み（payout_status_enum削除により不要）
     stripe_sales INTEGER;
     stripe_fees  INTEGER;
     platform_fees INTEGER := 0;
@@ -2170,7 +2154,7 @@ CREATE TABLE IF NOT EXISTS "public"."settlements" (
     "total_stripe_fee" integer DEFAULT 0 NOT NULL,
     "platform_fee" integer DEFAULT 0 NOT NULL,
     "net_payout_amount" integer DEFAULT 0 NOT NULL,
-    "status" "public"."payout_status_enum" DEFAULT 'completed'::"public"."payout_status_enum" NOT NULL,
+    -- status カラムは削除済み（常に'completed'だったため不要）
     "webhook_event_id" character varying(100),
     "webhook_processed_at" timestamp with time zone,
     "processed_at" timestamp with time zone,
@@ -2179,7 +2163,7 @@ CREATE TABLE IF NOT EXISTS "public"."settlements" (
     "retry_count" integer DEFAULT 0 NOT NULL,
     "last_error" "text",
     "transfer_group" character varying(255),
-    "settlement_mode" "public"."settlement_mode_enum" DEFAULT 'destination_charge'::"public"."settlement_mode_enum",
+    -- settlement_mode カラムは削除済み（常に'destination_charge'だったため不要）
     "generated_at" timestamp with time zone DEFAULT "now"(),
     "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
     "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
@@ -2213,7 +2197,7 @@ COMMENT ON COLUMN "public"."settlements"."transfer_group" IS 'イベント単位
 
 
 
-COMMENT ON COLUMN "public"."settlements"."settlement_mode" IS '送金モード（destination_charge固定）';
+-- COMMENT ON COLUMN settlement_mode は削除済み（カラム自体が削除されたため）
 
 
 
@@ -2514,11 +2498,11 @@ CREATE INDEX "idx_settlements_generated_date_jst" ON "public"."settlements" USIN
 
 
 
-CREATE INDEX "idx_settlements_settlement_mode" ON "public"."settlements" USING "btree" ("settlement_mode");
+-- idx_settlements_settlement_mode インデックスは削除済み（settlement_modeカラム削除により不要）
 
 
 
-CREATE INDEX "idx_settlements_status" ON "public"."settlements" USING "btree" ("status");
+-- idx_settlements_status インデックスは削除済み（statusカラム削除により不要）
 
 
 
@@ -2550,7 +2534,7 @@ CREATE UNIQUE INDEX "uniq_settlements_event_generated_date_jst" ON "public"."set
 
 
 
-CREATE UNIQUE INDEX "unique_active_settlement_per_event" ON "public"."settlements" USING "btree" ("event_id") WHERE ("status" = ANY (ARRAY['pending'::"public"."payout_status_enum", 'processing'::"public"."payout_status_enum", 'completed'::"public"."payout_status_enum"]));
+-- unique_active_settlement_per_event インデックスは削除済み（statusカラム削除により不要）
 
 
 

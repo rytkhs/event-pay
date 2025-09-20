@@ -448,8 +448,6 @@ export type Database = {
           platform_fee: number;
           processed_at: string | null;
           retry_count: number;
-          settlement_mode: Database["public"]["Enums"]["settlement_mode_enum"] | null;
-          status: Database["public"]["Enums"]["payout_status_enum"];
           stripe_account_id: string;
           total_disputed_amount: number;
           total_stripe_fee: number;
@@ -472,8 +470,6 @@ export type Database = {
           platform_fee?: number;
           processed_at?: string | null;
           retry_count?: number;
-          settlement_mode?: Database["public"]["Enums"]["settlement_mode_enum"] | null;
-          status?: Database["public"]["Enums"]["payout_status_enum"];
           stripe_account_id: string;
           total_disputed_amount?: number;
           total_stripe_fee?: number;
@@ -496,8 +492,6 @@ export type Database = {
           platform_fee?: number;
           processed_at?: string | null;
           retry_count?: number;
-          settlement_mode?: Database["public"]["Enums"]["settlement_mode_enum"] | null;
-          status?: Database["public"]["Enums"]["payout_status_enum"];
           stripe_account_id?: string;
           total_disputed_amount?: number;
           total_stripe_fee?: number;
@@ -740,7 +734,6 @@ export type Database = {
           report_id: string;
           report_updated_at: string;
           returned_event_id: string;
-          settlement_mode: string;
           stripe_account_id: string;
           total_application_fee: number;
           total_disputed_amount: number;
@@ -792,8 +785,6 @@ export type Database = {
           payment_count: number;
           refunded_count: number;
           report_id: string;
-          settlement_mode: Database["public"]["Enums"]["settlement_mode_enum"];
-          status: Database["public"]["Enums"]["payout_status_enum"];
           stripe_account_id: string;
           total_application_fee: number;
           total_refunded_amount: number;
@@ -885,9 +876,7 @@ export type Database = {
         | "completed"
         | "refunded"
         | "waived";
-      payout_status_enum: "pending" | "processing" | "completed" | "failed";
       security_severity_enum: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
-      settlement_mode_enum: "destination_charge";
       stripe_account_status_enum: "unverified" | "onboarding" | "verified" | "restricted";
       suspicious_activity_type_enum:
         | "EMPTY_RESULT_SET"
@@ -1044,9 +1033,7 @@ export const Constants = {
         "refunded",
         "waived",
       ],
-      payout_status_enum: ["pending", "processing", "completed", "failed"],
       security_severity_enum: ["LOW", "MEDIUM", "HIGH", "CRITICAL"],
-      settlement_mode_enum: ["destination_charge"],
       stripe_account_status_enum: ["unverified", "onboarding", "verified", "restricted"],
       suspicious_activity_type_enum: [
         "EMPTY_RESULT_SET",

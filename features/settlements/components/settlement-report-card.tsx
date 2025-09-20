@@ -57,14 +57,8 @@ export function SettlementReportCard({
             </div>
           </div>
           <div className="flex items-center space-x-2">
-            <Badge variant="secondary">
-              {report.settlementMode === "destination_charge"
-                ? "Destination Charges"
-                : report.settlementMode}
-            </Badge>
-            <Badge variant={report.status === "completed" ? "default" : "secondary"}>
-              {report.status === "completed" ? "完了" : report.status}
-            </Badge>
+            <Badge variant="secondary">Destination Charges</Badge>
+            <Badge variant="default">完了</Badge>
           </div>
         </div>
       </CardHeader>

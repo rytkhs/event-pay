@@ -23,9 +23,8 @@ RETURNS TABLE(
     "net_payout_amount" integer,
     "payment_count" integer,
     "refunded_count" integer,
-    "total_refunded_amount" integer,
-    "settlement_mode" "public"."settlement_mode_enum",
-    "status" "public"."payout_status_enum"
+    "total_refunded_amount" integer
+    -- settlement_mode と status は削除済み（Payout機能削除により不要）
 )
 LANGUAGE "plpgsql" SECURITY DEFINER
 AS $$
@@ -72,14 +71,12 @@ BEGIN
             WHERE att.event_id = p.event_id
               AND pay.method = 'stripe'
               AND pay.refunded_amount > 0
-        ) AS total_refunded_amount,
+        ) AS total_refunded_amount
 
-        p.settlement_mode,
-        p.status
+        -- settlement_mode と status は削除済み（Payout機能削除により不要）
     FROM public.settlements p
     JOIN public.events e ON p.event_id = e.id
     WHERE p.user_id = input_created_by
-      AND p.settlement_mode = 'destination_charge'
       AND (input_event_ids IS NULL OR p.event_id = ANY(input_event_ids))
       AND (p_from_date IS NULL OR p.generated_at >= p_from_date)
       AND (p_to_date IS NULL OR p.generated_at <= p_to_date)

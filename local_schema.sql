@@ -1,5 +1,5 @@
 
-\restrict RfNbyTIB49LZMJCmSyaeYu4ICAzKxa3dZxFZSmUH2VRK9hDTc1U3Q3bNb5gXBw5
+\restrict 4eL9oGH7m3cWoXa8R4wsVGB8Gr7sdw7QEyyiMlgkWufurNwJACtOahEsVV1mvfh
 
 
 SET statement_timeout = 0;
@@ -21,7 +21,7 @@ CREATE EXTENSION IF NOT EXISTS "pg_net" WITH SCHEMA "extensions";
 
 
 
-COMMENT ON SCHEMA "public" IS 'standard public schema';
+COMMENT ON SCHEMA "public" IS '清算RPC関数のクリーンアップ完了 - 一貫性のないロジックを持つ未使用関数を削除 (calc_payout_amount, process_event_payout, get_settlement_aggregations)';
 
 
 
@@ -106,19 +106,8 @@ CREATE TYPE "public"."payment_status_enum" AS ENUM (
 ALTER TYPE "public"."payment_status_enum" OWNER TO "postgres";
 
 
-COMMENT ON TYPE "public"."payment_status_enum" IS '決済状況 (completedは無料イベント用, processing_errorは送金成功・DB更新失敗)';
+COMMENT ON TYPE "public"."payment_status_enum" IS '決済状況 (completedは無料イベント用)';
 
-
-
-CREATE TYPE "public"."payout_status_enum" AS ENUM (
-    'pending',
-    'processing',
-    'completed',
-    'failed'
-);
-
-
-ALTER TYPE "public"."payout_status_enum" OWNER TO "postgres";
 
 
 CREATE TYPE "public"."security_severity_enum" AS ENUM (
@@ -130,14 +119,6 @@ CREATE TYPE "public"."security_severity_enum" AS ENUM (
 
 
 ALTER TYPE "public"."security_severity_enum" OWNER TO "postgres";
-
-
-CREATE TYPE "public"."settlement_mode_enum" AS ENUM (
-    'destination_charge'
-);
-
-
-ALTER TYPE "public"."settlement_mode_enum" OWNER TO "postgres";
 
 
 CREATE TYPE "public"."stripe_account_status_enum" AS ENUM (
@@ -266,7 +247,7 @@ BEGIN
       JOIN public.attendances a ON p.attendance_id = a.id
      WHERE a.event_id = p_event_id
        AND p.method = 'stripe'
-       AND p.status = 'paid';
+       AND p.status IN ('paid', 'refunded'); -- 修正: 一貫性のためrefundedも含める
 
     RETURN v_total_fee;
 END;
@@ -276,7 +257,7 @@ $$;
 ALTER FUNCTION "public"."calc_total_stripe_fee"("p_event_id" "uuid", "p_base_rate" numeric, "p_fixed_fee" integer) OWNER TO "postgres";
 
 
-COMMENT ON FUNCTION "public"."calc_total_stripe_fee"("p_event_id" "uuid", "p_base_rate" numeric, "p_fixed_fee" integer) IS 'Prefer stored balance_transaction fee per payment; fallback to rate+fixed if missing.';
+COMMENT ON FUNCTION "public"."calc_total_stripe_fee"("p_event_id" "uuid", "p_base_rate" numeric, "p_fixed_fee" integer) IS 'Calculate total Stripe fees for an event, including both paid and refunded payments. Prefers stored balance_transaction fee per payment; fallback to rate+fixed calculation if missing.';
 
 
 
@@ -628,7 +609,7 @@ COMMENT ON FUNCTION "public"."find_eligible_events_with_details"("p_days_after_e
 
 
 
-CREATE OR REPLACE FUNCTION "public"."generate_settlement_report"("input_event_id" "uuid", "input_created_by" "uuid") RETURNS TABLE("report_id" "uuid", "already_exists" boolean, "returned_event_id" "uuid", "event_title" character varying, "event_date" timestamp with time zone, "created_by" "uuid", "stripe_account_id" character varying, "transfer_group" "text", "total_stripe_sales" integer, "total_stripe_fee" integer, "total_application_fee" integer, "net_payout_amount" integer, "payment_count" integer, "refunded_count" integer, "total_refunded_amount" integer, "dispute_count" integer, "total_disputed_amount" integer, "settlement_mode" "text", "report_generated_at" timestamp with time zone, "report_updated_at" timestamp with time zone)
+CREATE OR REPLACE FUNCTION "public"."generate_settlement_report"("input_event_id" "uuid", "input_created_by" "uuid") RETURNS TABLE("report_id" "uuid", "already_exists" boolean, "returned_event_id" "uuid", "event_title" character varying, "event_date" timestamp with time zone, "created_by" "uuid", "stripe_account_id" character varying, "transfer_group" "text", "total_stripe_sales" integer, "total_stripe_fee" integer, "total_application_fee" integer, "net_payout_amount" integer, "payment_count" integer, "refunded_count" integer, "total_refunded_amount" integer, "dispute_count" integer, "total_disputed_amount" integer, "report_generated_at" timestamp with time zone, "report_updated_at" timestamp with time zone)
     LANGUAGE "plpgsql" SECURITY DEFINER
     AS $$
 DECLARE
@@ -735,8 +716,8 @@ BEGIN
             net_payout_amount,
             stripe_account_id,
             transfer_group,
-            settlement_mode,
-            status,
+            -- settlement_mode は削除済み
+            -- status は削除済み
             generated_at
         ) VALUES (
             input_event_id,
@@ -747,8 +728,7 @@ BEGIN
             v_net_amount,
             v_event_data.stripe_account_id,
             v_transfer_group,
-            'destination_charge',
-            'completed',
+            -- 'destination_charge', 'completed' は削除済み
             now()
         )
         RETURNING id, generated_at, updated_at
@@ -775,7 +755,7 @@ BEGIN
     total_refunded_amount := v_total_refunded_amount;
     dispute_count := v_dispute_count;
     total_disputed_amount := v_total_disputed_amount;
-    settlement_mode := 'destination_charge';
+    -- settlement_mode は削除済み
     report_generated_at := v_generated_at;
     report_updated_at := v_updated_at;
 
@@ -817,8 +797,9 @@ BEGIN
   END;
 
   -- 2. カスタムヘッダーから取得（現在の実装）
+  -- 正しい形式: current_setting('request.headers', true)::json->>'header-name'
   BEGIN
-    SELECT current_setting('request.headers.x-guest-token', true) INTO token;
+    SELECT current_setting('request.headers', true)::json->>'x-guest-token' INTO token;
     IF token IS NOT NULL AND token != '' THEN
       RETURN token;
     END IF;
@@ -858,7 +839,7 @@ $$;
 ALTER FUNCTION "public"."get_guest_token"() OWNER TO "postgres";
 
 
-COMMENT ON FUNCTION "public"."get_guest_token"() IS 'ゲストトークンを複数の方法（JWTクレーム、ヘッダー、設定）から取得するヘルパー関数。フォールバック機能付き。';
+COMMENT ON FUNCTION "public"."get_guest_token"() IS 'ゲストトークンを複数の方法（JWTクレーム、ヘッダー、設定）から取得するヘルパー関数。フォールバック機能付き。正しいヘッダーアクセス形式を使用。';
 
 
 
@@ -903,7 +884,7 @@ COMMENT ON FUNCTION "public"."get_scheduler_lock_status"("p_lock_name" "text") I
 
 
 
-CREATE OR REPLACE FUNCTION "public"."get_settlement_report_details"("input_created_by" "uuid", "input_event_ids" "uuid"[] DEFAULT NULL::"uuid"[], "p_from_date" timestamp with time zone DEFAULT NULL::timestamp with time zone, "p_to_date" timestamp with time zone DEFAULT NULL::timestamp with time zone, "p_limit" integer DEFAULT 50, "p_offset" integer DEFAULT 0) RETURNS TABLE("report_id" "uuid", "event_id" "uuid", "event_title" character varying, "event_date" timestamp with time zone, "stripe_account_id" character varying, "transfer_group" character varying, "generated_at" timestamp with time zone, "total_stripe_sales" integer, "total_stripe_fee" integer, "total_application_fee" integer, "net_payout_amount" integer, "payment_count" integer, "refunded_count" integer, "total_refunded_amount" integer, "settlement_mode" "public"."settlement_mode_enum", "status" "public"."payout_status_enum")
+CREATE OR REPLACE FUNCTION "public"."get_settlement_report_details"("input_created_by" "uuid", "input_event_ids" "uuid"[] DEFAULT NULL::"uuid"[], "p_from_date" timestamp with time zone DEFAULT NULL::timestamp with time zone, "p_to_date" timestamp with time zone DEFAULT NULL::timestamp with time zone, "p_limit" integer DEFAULT 50, "p_offset" integer DEFAULT 0) RETURNS TABLE("report_id" "uuid", "event_id" "uuid", "event_title" character varying, "event_date" timestamp with time zone, "stripe_account_id" character varying, "transfer_group" character varying, "generated_at" timestamp with time zone, "total_stripe_sales" integer, "total_stripe_fee" integer, "total_application_fee" integer, "net_payout_amount" integer, "payment_count" integer, "refunded_count" integer, "total_refunded_amount" integer)
     LANGUAGE "plpgsql" SECURITY DEFINER
     AS $$
 BEGIN
@@ -922,14 +903,14 @@ BEGIN
         p.platform_fee AS total_application_fee,
         p.net_payout_amount,
 
-        -- 決済件数を動的に取得
+        -- 決済件数を動的に取得 (修正: IN ('paid', 'refunded') で一貫性確保)
         (
             SELECT COUNT(*)::INT
             FROM public.payments pay
             JOIN public.attendances att ON pay.attendance_id = att.id
             WHERE att.event_id = p.event_id
               AND pay.method = 'stripe'
-              AND pay.status = 'paid'
+              AND pay.status IN ('paid', 'refunded')
         ) AS payment_count,
 
         -- 返金件数・金額を動的に取得
@@ -949,14 +930,12 @@ BEGIN
             WHERE att.event_id = p.event_id
               AND pay.method = 'stripe'
               AND pay.refunded_amount > 0
-        ) AS total_refunded_amount,
+        ) AS total_refunded_amount
 
-        p.settlement_mode,
-        p.status
+        -- settlement_mode と status は削除済み（Payout機能削除により不要）
     FROM public.settlements p
     JOIN public.events e ON p.event_id = e.id
     WHERE p.user_id = input_created_by
-      AND p.settlement_mode = 'destination_charge'
       AND (input_event_ids IS NULL OR p.event_id = ANY(input_event_ids))
       AND (p_from_date IS NULL OR p.generated_at >= p_from_date)
       AND (p_to_date IS NULL OR p.generated_at <= p_to_date)
@@ -968,6 +947,10 @@ $$;
 
 
 ALTER FUNCTION "public"."get_settlement_report_details"("input_created_by" "uuid", "input_event_ids" "uuid"[], "p_from_date" timestamp with time zone, "p_to_date" timestamp with time zone, "p_limit" integer, "p_offset" integer) OWNER TO "postgres";
+
+
+COMMENT ON FUNCTION "public"."get_settlement_report_details"("input_created_by" "uuid", "input_event_ids" "uuid"[], "p_from_date" timestamp with time zone, "p_to_date" timestamp with time zone, "p_limit" integer, "p_offset" integer) IS '一貫した決済ステータスフィルタリング（paid + refunded）を適用した清算レポート詳細。他の清算関数との一貫性を保つためpayment_count計算を修正。';
+
 
 
 CREATE OR REPLACE FUNCTION "public"."handle_new_user"() RETURNS "trigger"
@@ -2004,7 +1987,6 @@ CREATE TABLE IF NOT EXISTS "public"."settlements" (
     "total_stripe_fee" integer DEFAULT 0 NOT NULL,
     "platform_fee" integer DEFAULT 0 NOT NULL,
     "net_payout_amount" integer DEFAULT 0 NOT NULL,
-    "status" "public"."payout_status_enum" DEFAULT 'completed'::"public"."payout_status_enum" NOT NULL,
     "webhook_event_id" character varying(100),
     "webhook_processed_at" timestamp with time zone,
     "processed_at" timestamp with time zone,
@@ -2013,7 +1995,6 @@ CREATE TABLE IF NOT EXISTS "public"."settlements" (
     "retry_count" integer DEFAULT 0 NOT NULL,
     "last_error" "text",
     "transfer_group" character varying(255),
-    "settlement_mode" "public"."settlement_mode_enum" DEFAULT 'destination_charge'::"public"."settlement_mode_enum",
     "generated_at" timestamp with time zone DEFAULT "now"(),
     "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
     "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
@@ -2044,10 +2025,6 @@ COMMENT ON COLUMN "public"."settlements"."last_error" IS '最後に発生した�
 
 
 COMMENT ON COLUMN "public"."settlements"."transfer_group" IS 'イベント単位の送金グループ識別子';
-
-
-
-COMMENT ON COLUMN "public"."settlements"."settlement_mode" IS '送金モード（destination_charge固定）';
 
 
 
@@ -2348,14 +2325,6 @@ CREATE INDEX "idx_settlements_generated_date_jst" ON "public"."settlements" USIN
 
 
 
-CREATE INDEX "idx_settlements_settlement_mode" ON "public"."settlements" USING "btree" ("settlement_mode");
-
-
-
-CREATE INDEX "idx_settlements_status" ON "public"."settlements" USING "btree" ("status");
-
-
-
 CREATE INDEX "idx_settlements_stripe_account" ON "public"."settlements" USING "btree" ("stripe_account_id");
 
 
@@ -2381,10 +2350,6 @@ CREATE INDEX "idx_stripe_connect_accounts_user_id" ON "public"."stripe_connect_a
 
 
 CREATE UNIQUE INDEX "uniq_settlements_event_generated_date_jst" ON "public"."settlements" USING "btree" ("event_id", ((("generated_at" AT TIME ZONE 'Asia/Tokyo'::"text"))::"date"));
-
-
-
-CREATE UNIQUE INDEX "unique_active_settlement_per_event" ON "public"."settlements" USING "btree" ("event_id") WHERE ("status" = ANY (ARRAY['pending'::"public"."payout_status_enum", 'processing'::"public"."payout_status_enum", 'completed'::"public"."payout_status_enum"]));
 
 
 
@@ -2502,6 +2467,17 @@ CREATE POLICY "Guest token update payment details" ON "public"."payments" FOR UP
 
 
 
+CREATE POLICY "Guests can view event organizer stripe accounts" ON "public"."stripe_connect_accounts" FOR SELECT TO "anon" USING ((("public"."get_guest_token"() IS NOT NULL) AND (EXISTS ( SELECT 1
+   FROM ("public"."attendances" "a"
+     JOIN "public"."events" "e" ON (("a"."event_id" = "e"."id")))
+  WHERE ((("a"."guest_token")::"text" = "public"."get_guest_token"()) AND ("e"."created_by" = "stripe_connect_accounts"."user_id"))))));
+
+
+
+COMMENT ON POLICY "Guests can view event organizer stripe accounts" ON "public"."stripe_connect_accounts" IS 'ゲストトークンを持つ匿名ユーザーが、自身が参加しているイベントの主催者のStripe Connectアカウント情報（決済処理に必要な最小限の情報）にのみアクセス可能';
+
+
+
 CREATE POLICY "Safe event access policy" ON "public"."events" FOR SELECT TO "authenticated", "anon" USING ("public"."can_access_event"("id"));
 
 
@@ -2567,6 +2543,10 @@ CREATE POLICY "event_creators_can_view_payments" ON "public"."payments" FOR SELE
 
 
 ALTER TABLE "public"."events" ENABLE ROW LEVEL SECURITY;
+
+
+CREATE POLICY "guest_token_can_access_own_attendance" ON "public"."attendances" TO "authenticated", "anon" USING ((("guest_token")::"text" = "public"."get_guest_token"())) WITH CHECK ((("guest_token")::"text" = "public"."get_guest_token"()));
+
 
 
 ALTER TABLE "public"."payment_disputes" ENABLE ROW LEVEL SECURITY;
@@ -3122,6 +3102,6 @@ ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TAB
 
 
 
-\unrestrict RfNbyTIB49LZMJCmSyaeYu4ICAzKxa3dZxFZSmUH2VRK9hDTc1U3Q3bNb5gXBw5
+\unrestrict 4eL9oGH7m3cWoXa8R4wsVGB8Gr7sdw7QEyyiMlgkWufurNwJACtOahEsVV1mvfh
 
 RESET ALL;

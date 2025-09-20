@@ -106,8 +106,7 @@ export class SettlementReportService {
         disputeCount: resultRow.dispute_count,
         totalDisputedAmount: resultRow.total_disputed_amount,
 
-        settlementMode: resultRow.settlement_mode as "destination_charge",
-        status: "completed",
+        // settlementMode と status は削除済み（常に'destination_charge', 'completed'だったため不要）
       };
 
       const alreadyExists = resultRow.already_exists ?? false;
@@ -212,8 +211,7 @@ export class SettlementReportService {
           disputeCount: row.dispute_count,
           totalDisputedAmount: row.total_disputed_amount,
 
-          settlementMode: row.settlement_mode,
-          status: "completed",
+          // settlementMode と status は削除済み（常に'destination_charge', 'completed'だったため不要）
         })
       );
     } catch (error) {
@@ -268,7 +266,7 @@ export class SettlementReportService {
         totalRefundedAmount: report.totalRefundedAmount,
         disputeCount: report.disputeCount,
         totalDisputedAmount: report.totalDisputedAmount,
-        settlementMode: report.settlementMode,
+        settlementMode: "destination_charge",
         transferGroup: report.transferGroup,
         stripeAccountId: report.stripeAccountId,
       }));

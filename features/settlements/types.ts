@@ -1,6 +1,7 @@
 import { Database } from "@/types/database";
 
-type SettlementMode = Database["public"]["Enums"]["settlement_mode_enum"];
+// SettlementMode は削除済み（常に'destination_charge'だったため不要）
+type SettlementMode = "destination_charge";
 
 /**
  * イベント清算レポートの基本情報
@@ -28,8 +29,8 @@ export interface SettlementReportData {
   totalDisputedAmount: number; // Dispute金額合計
 
   // 設定
-  settlementMode: SettlementMode;
-  status: "completed"; // destination charges なので常に completed
+  // settlementMode は削除済み（常に'destination_charge'だったため不要）
+  // status は削除済み（常に'completed'だったため不要）
 }
 
 /**
@@ -113,8 +114,7 @@ export interface RpcSettlementReportRow {
   payment_count: number;
   refunded_count: number;
   total_refunded_amount: number;
-  settlement_mode: SettlementMode;
-  status: string;
+  // settlement_mode と status は削除済み（常に'destination_charge', 'completed'だったため不要）
 }
 
 /**
