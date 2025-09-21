@@ -422,8 +422,8 @@ BEGIN
         IF event_capacity IS NOT NULL THEN
             -- 【重要】イベントが既にロックされているため、安全に参加者数をカウント
             -- この時点で同一イベントへの他の参加登録はブロックされる
-            SELECT COUNT(*) INTO current_attending_count 
-            FROM public.attendances 
+            SELECT COUNT(*) INTO current_attending_count
+            FROM public.attendances
             WHERE event_id = NEW.event_id AND status = 'attending';
 
             -- 定員超過チェック
@@ -1071,7 +1071,7 @@ BEGIN
       SELECT capacity INTO v_capacity
       FROM public.events
       WHERE id = p_event_id FOR UPDATE;
-      
+
       -- イベントが存在しない場合、v_capacity は NULL になる
       IF v_capacity IS NULL AND NOT EXISTS(SELECT 1 FROM public.events WHERE id = p_event_id) THEN
         RAISE EXCEPTION 'Event with ID % does not exist', p_event_id;
