@@ -271,6 +271,29 @@ const ERROR_DEFINITIONS: Record<string, ErrorDefinition> = {
     retryable: true,
   },
 
+  // Stripe Connect関連
+  CONNECT_ACCOUNT_NOT_FOUND: {
+    type: "https://api.eventpay.app/errors/connect_account_not_found",
+    title: "Connect Account Not Found",
+    defaultStatus: 422,
+    defaultDetail: "Stripe Connect Account が見つかりません",
+    retryable: false,
+  },
+  CONNECT_ACCOUNT_RESTRICTED: {
+    type: "https://api.eventpay.app/errors/connect_account_restricted",
+    title: "Connect Account Restricted",
+    defaultStatus: 422,
+    defaultDetail: "Stripe Connect Account が制限されています",
+    retryable: false,
+  },
+  STRIPE_CONFIG_ERROR: {
+    type: "https://api.eventpay.app/errors/stripe_config_error",
+    title: "Stripe Configuration Error",
+    defaultStatus: 500,
+    defaultDetail: "決済設定に問題があります",
+    retryable: false,
+  },
+
   // ゲスト関連
   GUEST_TOKEN_NOT_FOUND: {
     type: "https://api.eventpay.app/errors/guest_token_not_found",
