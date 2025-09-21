@@ -92,7 +92,13 @@ export async function validateInviteToken(token: string): Promise<InviteValidati
   try {
     // 読み取り専用クライアント（匿名ロール）を使用してRLSポリシーを適用
     const secureFactory = SecureSupabaseClientFactory.getInstance();
-    const anonClient = secureFactory.createReadOnlyClient();
+    // RLSポリシーで can_access_event() が request.headers.x-invite-token を参照するため、
+    // 招待トークンをヘッダーに付与したリードオンリークライアントを生成する
+    const anonClient = secureFactory.createReadOnlyClient({
+      headers: {
+        "x-invite-token": token,
+      },
+    });
 
     // 招待トークンでイベントを取得
     const { data: event, error } = await anonClient
