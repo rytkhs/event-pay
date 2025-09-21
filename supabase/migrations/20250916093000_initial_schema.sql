@@ -809,8 +809,9 @@ BEGIN
   END;
 
   -- 2. カスタムヘッダーから取得（現在の実装）
+  -- 正しい形式: current_setting('request.headers', true)::json->>'header-name'
   BEGIN
-    SELECT current_setting('request.headers.x-guest-token', true) INTO token;
+    SELECT current_setting('request.headers', true)::json->>'x-guest-token' INTO token;
     IF token IS NOT NULL AND token != '' THEN
       RETURN token;
     END IF;

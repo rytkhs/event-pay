@@ -101,9 +101,9 @@ export class ImprovedGuestTokenValidator {
  * FOR ALL
  * TO anon, authenticated
  * USING (
- *   guest_token = current_setting('request.headers.x-guest-token', true)
+ *   guest_token = current_setting('request.headers', true)::json->>'x-guest-token'
  * )
  * WITH CHECK (
- *   guest_token = current_setting('request.headers.x-guest-token', true)
+ *   guest_token = current_setting('request.headers', true)::json->>'x-guest-token'
  * );
  */
