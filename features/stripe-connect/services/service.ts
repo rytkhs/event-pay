@@ -63,12 +63,18 @@ export class StripeConnectService implements IStripeConnectService {
       // 既存アカウントの重複チェック（DB）
       const existingAccount = await this.getConnectAccountByUser(userId);
       if (existingAccount) {
-        throw new StripeConnectError(
-          StripeConnectErrorType.ACCOUNT_ALREADY_EXISTS,
-          `ユーザー ${userId} には既にStripe Connectアカウントが存在します`,
-          undefined,
-          { userId, existingAccountId: existingAccount.stripe_account_id }
-        );
+        // べき等性を確保: エラーではなく既存アカウント情報を返す
+        logger.info("Existing Stripe Connect account found, returning existing account", {
+          tag: "stripeConnectIdempotencyCheck",
+          user_id: userId,
+          existing_account_id: existingAccount.stripe_account_id,
+          existing_status: existingAccount.status,
+        });
+
+        return {
+          accountId: existingAccount.stripe_account_id,
+          status: existingAccount.status,
+        };
       }
 
       // Stripe側の既存アカウント確認（emailでリスト→metadata.actor_idで照合）
