@@ -10,7 +10,6 @@ import type {
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { InviteLink } from "@/features/invite/components/invite-link";
 
 import { EventOverview } from "./event-overview";
 import { FloatingActionMenu } from "./floating-action-menu";
@@ -41,17 +40,6 @@ export function OrganizerDashboard({
   const expectedRevenue = eventDetail.fee * attendingCount;
   const unpaidCount = paymentsData?.summary?.unpaidCount || 0;
 
-  // FAB用ハンドラー関数
-  const handleCopyInviteLink = async () => {
-    try {
-      const inviteUrl = `${window.location.origin}/invite/${eventDetail.invite_token}`;
-      await navigator.clipboard.writeText(inviteUrl);
-      // TODO: toast通知
-    } catch (error) {
-      console.error("Failed to copy invite link:", error);
-    }
-  };
-
   const handleSendReminder = async () => {
     // TODO: リマインドメール送信機能
     console.log("Send reminder not implemented yet");
@@ -75,7 +63,7 @@ export function OrganizerDashboard({
 
       {/* 主催者向けタブ */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-4 lg:w-auto lg:grid-cols-4 bg-white border border-border rounded-lg">
+        <TabsList className="grid w-full grid-cols-3 lg:w-auto lg:grid-cols-3 bg-white border border-border rounded-lg">
           <TabsTrigger
             value="dashboard"
             className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary"
@@ -93,12 +81,6 @@ export function OrganizerDashboard({
             className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary"
           >
             イベント詳細
-          </TabsTrigger>
-          <TabsTrigger
-            value="invite"
-            className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary"
-          >
-            招待・共有
           </TabsTrigger>
         </TabsList>
 
@@ -207,21 +189,11 @@ export function OrganizerDashboard({
         <TabsContent value="overview" className="space-y-6">
           <EventOverview event={eventDetail} />
         </TabsContent>
-
-        {/* 招待・共有 */}
-        <TabsContent value="invite" className="space-y-6">
-          <InviteLink
-            eventId={eventId}
-            initialInviteToken={eventDetail.invite_token || undefined}
-          />
-        </TabsContent>
       </Tabs>
 
       {/* フローティングアクションメニュー */}
       <FloatingActionMenu
         eventId={eventId}
-        inviteToken={eventDetail.invite_token || undefined}
-        onCopyInviteLink={handleCopyInviteLink}
         onSendReminder={handleSendReminder}
         onExportData={handleExportData}
       />

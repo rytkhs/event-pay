@@ -4,23 +4,19 @@ import { useState } from "react";
 
 import { useRouter } from "next/navigation";
 
-import { Plus, Edit, Share2, Mail, Download, Settings, X } from "lucide-react";
+import { Plus, Edit, Mail, Download, Settings, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 
 interface FloatingActionMenuProps {
   eventId: string;
-  inviteToken?: string;
-  onCopyInviteLink: () => void;
   onSendReminder?: () => void;
   onExportData?: () => void;
 }
 
 export function FloatingActionMenu({
   eventId,
-  inviteToken,
-  onCopyInviteLink,
   onSendReminder,
   onExportData,
 }: FloatingActionMenuProps) {
@@ -37,17 +33,6 @@ export function FloatingActionMenu({
         setIsOpen(false);
       },
       color: "bg-primary hover:bg-primary/90 text-primary-foreground",
-    },
-    {
-      id: "share",
-      label: "招待リンク共有",
-      icon: Share2,
-      onClick: () => {
-        onCopyInviteLink();
-        setIsOpen(false);
-      },
-      color: "bg-success hover:bg-success/90 text-success-foreground",
-      disabled: !inviteToken,
     },
     {
       id: "reminder",
@@ -111,11 +96,9 @@ export function FloatingActionMenu({
                   <Button
                     key={action.id}
                     onClick={action.onClick}
-                    disabled={action.disabled}
                     className={`
                       justify-start gap-3 h-12
                       ${action.color}
-                      disabled:opacity-50 disabled:cursor-not-allowed
                     `}
                   >
                     <Icon className="h-4 w-4" />

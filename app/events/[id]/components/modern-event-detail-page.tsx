@@ -10,7 +10,6 @@ import {
   Banknote,
   AlertCircle,
   CheckCircle2,
-  Share2,
   Edit,
 } from "lucide-react";
 
@@ -25,6 +24,7 @@ import type {
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { InviteLinkPopover } from "@/features/invite/components/invite-link-popover";
 
 import { OrganizerDashboard } from "./organizer-dashboard";
 
@@ -77,17 +77,6 @@ export function ModernEventDetailPage({
   };
 
   const StatusIcon = getStatusIcon(eventDetail.status);
-
-  // 招待リンクのコピー処理
-  const handleCopyInviteLink = async () => {
-    try {
-      const inviteUrl = `${window.location.origin}/invite/${eventDetail.invite_token}`;
-      await navigator.clipboard.writeText(inviteUrl);
-      // TODO: toast通知を追加
-    } catch (error) {
-      console.error("Failed to copy invite link:", error);
-    }
-  };
 
   return (
     <div className="min-h-screen bg-muted">
@@ -161,15 +150,10 @@ export function ModernEventDetailPage({
                     <Edit className="h-4 w-4" />
                     編集
                   </Button>
-                  <Button
-                    onClick={handleCopyInviteLink}
-                    variant="default"
-                    className="flex items-center gap-2 bg-primary hover:bg-primary/90"
-                    disabled={!eventDetail.invite_token}
-                  >
-                    <Share2 className="h-4 w-4" />
-                    招待リンク共有
-                  </Button>
+                  <InviteLinkPopover
+                    eventId={eventId}
+                    initialInviteToken={eventDetail.invite_token || undefined}
+                  />
                 </div>
               </div>
             </div>
