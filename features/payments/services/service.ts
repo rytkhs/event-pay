@@ -7,8 +7,10 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { PostgrestError } from "@supabase/supabase-js";
 
 import { logger } from "@core/logging/app-logger";
+import { createPaymentLogger, type PaymentLogger } from "@core/logging/payment-logger";
 import { stripe } from "@core/stripe/client";
 import * as DestinationCharges from "@core/stripe/destination-charges";
+import { convertStripeError } from "@core/stripe/error-handler";
 import { assertStripePayment } from "@core/utils/stripe-guards";
 
 import { Database } from "@/types/database";
@@ -38,6 +40,7 @@ export class PaymentService implements IPaymentService {
   private stripe = stripe;
   private errorHandler: IPaymentErrorHandler;
   private applicationFeeCalculator: ApplicationFeeCalculator;
+  private paymentLogger: PaymentLogger;
 
   constructor(
     supabaseClient: SupabaseClient<Database, "public">,
@@ -46,6 +49,7 @@ export class PaymentService implements IPaymentService {
     this.supabase = supabaseClient;
     this.errorHandler = errorHandler;
     this.applicationFeeCalculator = new ApplicationFeeCalculator(supabaseClient);
+    this.paymentLogger = createPaymentLogger({ service: "PaymentService" });
   }
 
   /**
@@ -62,6 +66,21 @@ export class PaymentService implements IPaymentService {
    * - Action 層では重複チェックを省略してよい（最終判断は本メソッド）。
    */
   async createStripeSession(params: CreateStripeSessionParams): Promise<CreateStripeSessionResult> {
+    const correlationId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const contextLogger = this.paymentLogger.withContext({
+      attendance_id: params.attendanceId,
+      event_id: params.eventId,
+      amount: params.amount,
+      payment_method: "stripe",
+      correlation_id: correlationId,
+      connect_account_id: params.destinationCharges?.destinationAccountId,
+    });
+
+    contextLogger.startOperation("create_stripe_session", {
+      actor_id: params.actorId,
+      event_title: params.eventTitle,
+    });
+
     try {
       // 既存決済の状態を履歴化設計に合わせて取得（open優先・履歴は無視）
       let targetPaymentId: string;
@@ -396,6 +415,11 @@ export class PaymentService implements IPaymentService {
 
       // Stripe Checkout Sessionを作成（Destination chargesに統一）
       if (!params.destinationCharges) {
+        contextLogger.logPaymentError(
+          "create_stripe_session",
+          new Error("Destination charges configuration is required"),
+          { payment_phase: "validation" }
+        );
         throw new PaymentError(
           PaymentErrorType.VALIDATION_ERROR,
           "Destination charges configuration is required"
@@ -404,8 +428,15 @@ export class PaymentService implements IPaymentService {
       const { destinationAccountId, userEmail, userName, setupFutureUsage } =
         params.destinationCharges;
 
-      // Connect Account の事前検証
-      await this.validateConnectAccount(destinationAccountId);
+      // Connect Account情報をログに記録
+      contextLogger.logConnectAccountValidation(destinationAccountId, true, {
+        user_email: userEmail,
+        user_name: userName,
+        payment_id: targetPaymentId,
+      });
+
+      // TODO: Connect Account の事前検証（別タスクで実装予定）
+      // await this.validateConnectAccount(destinationAccountId);
 
       // Application fee計算
       const feeCalculation = await this.applicationFeeCalculator.calculateApplicationFee(
@@ -508,6 +539,7 @@ export class PaymentService implements IPaymentService {
         throw dbError;
       }
 
+      // 既存のログも残しつつ、構造化ログも追加
       logger.info("Destination charges session created", {
         tag: "destinationChargesCreated",
         service: "PaymentService",
@@ -520,6 +552,15 @@ export class PaymentService implements IPaymentService {
         actorId: params.actorId,
       });
 
+      // 構造化ログでセッション作成成功を記録
+      contextLogger.logSessionCreation(true, {
+        payment_id: targetPaymentId,
+        stripe_session_id: session.id,
+        session_url: session.url || undefined,
+        application_fee_amount: feeCalculation.applicationFeeAmount,
+        transfer_group: `event_${params.eventId}_payout`,
+      });
+
       if (!session.url) {
         throw new PaymentError(
           PaymentErrorType.STRIPE_API_ERROR,
@@ -527,30 +568,53 @@ export class PaymentService implements IPaymentService {
         );
       }
 
+      // 最終成功ログ
+      contextLogger.operationSuccess("create_stripe_session", {
+        payment_id: targetPaymentId,
+        stripe_session_id: session.id,
+        session_url: session.url,
+      });
+
       return {
         sessionUrl: session.url,
         sessionId: session.id,
       };
     } catch (error) {
       if (error instanceof PaymentError) {
+        // PaymentErrorの場合もログに記録
+        contextLogger.logPaymentError("create_stripe_session", error);
         throw error;
       }
 
-      // Stripeエラーの詳細を判定
-      if (error && typeof error === "object" && (error as { type?: string }).type) {
-        const stripeError = error as { message?: string };
-        throw new PaymentError(
-          PaymentErrorType.STRIPE_API_ERROR,
-          `Stripe決済セッションの作成に失敗しました: ${stripeError.message || "不明なエラー"}`,
-          error as unknown as Error
-        );
+      // 構造化ログでエラーを記録
+      contextLogger.logPaymentError("create_stripe_session", error);
+
+      // Stripe固有エラーの場合は汎用ハンドラーで詳細分類
+      if (error && typeof error === "object" && "type" in error) {
+        const stripeError = error as any;
+        if (stripeError.type && typeof stripeError.type === "string") {
+          const enhancedError = convertStripeError(stripeError, {
+            operation: "create_stripe_session",
+            connectAccountId: params.destinationCharges?.destinationAccountId,
+            amount: params.amount,
+            sessionId: undefined,
+            additionalData: {
+              event_id: params.eventId,
+              attendance_id: params.attendanceId,
+              actor_id: params.actorId,
+            },
+          });
+          throw enhancedError;
+        }
       }
 
-      throw new PaymentError(
+      // その他のエラーの場合は汎用的なPaymentError
+      const genericError = new PaymentError(
         PaymentErrorType.STRIPE_API_ERROR,
         "Stripe決済セッションの作成に失敗しました",
         error as Error
       );
+      throw genericError;
     }
   }
 
@@ -607,6 +671,18 @@ export class PaymentService implements IPaymentService {
    * 決済ステータスを更新する
    */
   async updatePaymentStatus(params: UpdatePaymentStatusParams): Promise<void> {
+    const contextLogger = this.paymentLogger.withContext({
+      payment_id: params.paymentId,
+      user_id: params.userId,
+      correlation_id: `status_update_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+    });
+
+    contextLogger.startOperation("update_payment_status", {
+      expected_version: params.expectedVersion,
+      new_status: params.status,
+      notes: params.notes,
+    });
+
     try {
       // 楽観的ロック対応：現金決済の場合はRPCを使用、それ以外は従来通り
       if (params.expectedVersion !== undefined && params.userId) {
@@ -616,7 +692,13 @@ export class PaymentService implements IPaymentService {
         // 従来の更新方法（Stripe決済用など）
         await this.updatePaymentStatusLegacy(params);
       }
+
+      // 成功ログを記録
+      contextLogger.operationSuccess("update_payment_status");
     } catch (error) {
+      // エラーログを記録
+      contextLogger.logPaymentError("update_payment_status", error);
+
       if (error instanceof PaymentError) {
         throw error;
       }
@@ -766,6 +848,17 @@ export class PaymentService implements IPaymentService {
       error: string;
     }>;
   }> {
+    const contextLogger = this.paymentLogger.withContext({
+      user_id: userId,
+      correlation_id: `bulk_update_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      bulk_operation_count: updates.length,
+    });
+
+    contextLogger.startOperation("bulk_update_payment_status", {
+      update_count: updates.length,
+      notes,
+    });
+
     try {
       // 入力バリデーション
       if (updates.length === 0) {
@@ -814,7 +907,7 @@ export class PaymentService implements IPaymentService {
         }>;
       };
 
-      return {
+      const response = {
         successCount: result.success_count,
         failureCount: result.failure_count,
         failures: result.failures.map((failure) => ({
@@ -822,7 +915,20 @@ export class PaymentService implements IPaymentService {
           error: failure.error_message,
         })),
       };
+
+      // 一括更新の結果をログに記録
+      contextLogger.logBulkStatusUpdate(result.success_count, result.failure_count, {
+        total_updates: updates.length,
+        failures: result.failures.length > 0 ? result.failures : undefined,
+      });
+
+      contextLogger.operationSuccess("bulk_update_payment_status");
+
+      return response;
     } catch (error) {
+      // エラーログを記録
+      contextLogger.logPaymentError("bulk_update_payment_status", error);
+
       if (error instanceof PaymentError) {
         throw error;
       }
