@@ -93,7 +93,6 @@ BEGIN
         net_payout_amount = v_net_amount,
         updated_at = now()
     WHERE event_id = input_event_id
-      AND status IN ('pending', 'processing', 'completed')
     RETURNING id, generated_at, updated_at
     INTO v_payout_id, v_generated_at, v_updated_at;
 
