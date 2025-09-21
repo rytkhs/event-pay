@@ -32,10 +32,10 @@ process.on("unhandledRejection", (reason) => {
 const originalConsole = { ...console };
 beforeAll(() => {
   // eslint-disable-next-line no-console
-  console.log = jest.fn();
+  // console.log = jest.fn();
   // eslint-disable-next-line no-console
-  console.info = jest.fn();
-  console.warn = jest.fn();
+  // console.info = jest.fn();
+  // console.warn = jest.fn();
   // エラーログは残す
   console.error = originalConsole.error;
 });

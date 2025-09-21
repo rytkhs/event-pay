@@ -24,7 +24,7 @@ const config = {
     "^@tests/(.*)$": "<rootDir>/tests/$1",
   },
   testEnvironment: "node",
-  collectCoverage: true,
+  collectCoverage: false,
   coverageProvider: "v8",
   collectCoverageFrom: [
     "core/**/*.{ts,tsx}",

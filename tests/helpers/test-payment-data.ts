@@ -245,11 +245,21 @@ export async function createTestAttendance(
     guestToken?: string;
   } = {}
 ): Promise<TestAttendanceData> {
+  // 確実に36文字のゲストトークンを生成する関数
+  const generateGuestToken = (): string => {
+    const chars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+    let result = "gst_";
+    for (let i = 0; i < 32; i++) {
+      result += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return result;
+  };
+
   const {
     email = `test-participant-${Date.now()}@example.com`,
     nickname = `テスト参加者_${Math.random().toString(36).substring(2, 8)}`,
     status = "attending",
-    guestToken = `guest_token_${Math.random().toString(36).substring(2, 15)}`,
+    guestToken = generateGuestToken(),
   } = options;
 
   const secureFactory = SecureSupabaseClientFactory.getInstance();
