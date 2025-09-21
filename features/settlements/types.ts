@@ -1,8 +1,3 @@
-import { Database } from "@/types/database";
-
-// SettlementMode は削除済み（常に'destination_charge'だったため不要）
-type SettlementMode = "destination_charge";
-
 /**
  * イベント清算レポートの基本情報
  */
