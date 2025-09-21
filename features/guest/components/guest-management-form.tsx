@@ -35,6 +35,22 @@ interface GuestManagementFormProps {
   canModify: boolean;
 }
 
+/**
+ * Connect Account関連エラーの詳細メッセージを取得
+ */
+function getConnectAccountErrorMessage(errorCode?: string): string {
+  switch (errorCode) {
+    case "CONNECT_ACCOUNT_NOT_FOUND":
+      return "決済の準備ができません。主催者のお支払い受付設定に不備があります。現金決済をご利用いただくか、主催者にお問い合わせください。";
+    case "CONNECT_ACCOUNT_RESTRICTED":
+      return "主催者のお支払い受付が一時的に制限されています。現金決済をご利用いただくか、主催者にお問い合わせください。";
+    case "STRIPE_CONFIG_ERROR":
+      return "決済システムに一時的な問題が発生しています。現金決済をご利用いただくか、しばらく時間をおいて再度お試しください。";
+    default:
+      return "オンライン決済に問題が発生しました。現金決済をご利用いただくか、主催者にお問い合わせください。";
+  }
+}
+
 export function GuestManagementForm({ attendance, canModify }: GuestManagementFormProps) {
   const router = useRouter();
   const { toast } = useToast();
@@ -101,7 +117,34 @@ export function GuestManagementForm({ attendance, canModify }: GuestManagementFo
         // ページをリロードして最新データを表示
         router.refresh();
       } else {
-        setError(result.error || "参加状況の更新に失敗しました。もう一度お試しください。");
+        // Connect Account関連エラーかどうかを判定
+        const isConnectAccountError =
+          result.code === "CONNECT_ACCOUNT_NOT_FOUND" ||
+          result.code === "CONNECT_ACCOUNT_RESTRICTED" ||
+          result.code === "STRIPE_CONFIG_ERROR" ||
+          (result.details as any)?.connectAccountIssue === true;
+
+        if (isConnectAccountError) {
+          // Connect Account問題時は詳細メッセージと代替案を表示
+          const connectErrorMessage = getConnectAccountErrorMessage(result.code);
+          setError(connectErrorMessage);
+
+          // 自動的に現金決済に切り替える提案
+          if (attendanceStatus === "attending" && attendance.event.fee > 0) {
+            setTimeout(() => {
+              if (paymentMethod !== "cash") {
+                setPaymentMethod("cash");
+                toast({
+                  title: "決済方法を変更しました",
+                  description: "オンライン決済に問題があるため、現金決済に変更しました。",
+                  variant: "default",
+                });
+              }
+            }, 1000);
+          }
+        } else {
+          setError(result.error || "参加状況の更新に失敗しました。もう一度お試しください。");
+        }
       }
     } catch (error) {
       handleError(error, {
@@ -192,19 +235,73 @@ export function GuestManagementForm({ attendance, canModify }: GuestManagementFo
 
               {/* エラー・成功メッセージ */}
               {error && (
-                <Alert
-                  variant="destructive"
-                  role="alert"
-                  aria-live="assertive"
-                  ref={errorAlertRef}
-                  tabIndex={-1}
-                >
-                  <AlertCircle className="h-4 w-4" aria-hidden="true" />
-                  <AlertDescription>
-                    <span className="sr-only">エラー：</span>
-                    {error}
-                  </AlertDescription>
-                </Alert>
+                <>
+                  {/* Connect Account関連エラーかどうかを判定 */}
+                  {(() => {
+                    const isConnectError =
+                      error.includes("決済の準備ができません") ||
+                      error.includes("お支払い受付設定に不備") ||
+                      error.includes("一時的に制限されています") ||
+                      error.includes("決済システムに一時的な問題");
+
+                    return isConnectError ? (
+                      <Alert
+                        className="border-orange-200 bg-orange-50"
+                        role="alert"
+                        aria-live="assertive"
+                        ref={errorAlertRef}
+                        tabIndex={-1}
+                      >
+                        <AlertCircle className="h-4 w-4 text-orange-600" aria-hidden="true" />
+                        <AlertDescription className="space-y-3">
+                          <div className="text-orange-800">
+                            <span className="sr-only">オンライン決済エラー：</span>
+                            <div className="font-medium mb-2">オンライン決済に問題があります</div>
+                            <div className="text-sm">{error}</div>
+                          </div>
+
+                          {/* 代替案提示 */}
+                          {attendanceStatus === "attending" &&
+                            attendance.event.fee > 0 &&
+                            paymentMethod !== "cash" && (
+                              <div className="mt-3 flex flex-col sm:flex-row gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setPaymentMethod("cash");
+                                    setError(null);
+                                    toast({
+                                      title: "現金決済に変更",
+                                      description: "決済方法を現金決済に変更しました。",
+                                      variant: "success",
+                                    });
+                                  }}
+                                  className="inline-flex items-center px-3 py-2 text-sm font-medium text-orange-700 bg-orange-100 border border-orange-300 rounded-md hover:bg-orange-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 transition-colors"
+                                >
+                                  <CreditCard className="h-4 w-4 mr-2" />
+                                  現金決済に変更する
+                                </button>
+                              </div>
+                            )}
+                        </AlertDescription>
+                      </Alert>
+                    ) : (
+                      <Alert
+                        variant="destructive"
+                        role="alert"
+                        aria-live="assertive"
+                        ref={errorAlertRef}
+                        tabIndex={-1}
+                      >
+                        <AlertCircle className="h-4 w-4" aria-hidden="true" />
+                        <AlertDescription>
+                          <span className="sr-only">エラー：</span>
+                          {error}
+                        </AlertDescription>
+                      </Alert>
+                    );
+                  })()}
+                </>
               )}
 
               {success && (
