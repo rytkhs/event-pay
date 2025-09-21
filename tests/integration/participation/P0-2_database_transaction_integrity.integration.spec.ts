@@ -398,11 +398,11 @@ describe("P0-2: データベーストランザクション整合性テスト", (
         });
       });
 
-      it("B-3: 実際のPostgreSQL CHECK制約違反によるロールバック", async () => {
-        // 【実DB戦略】payments_amount_check制約違反を実際に発生させる
-        // payments_amount_check: amount >= 0 制約に違反する負の値を使用
+      it("B-3: 負の金額事前バリデーションによる適切なエラーハンドリング", async () => {
+        // 【修正後の動作確認】負の金額が事前バリデーションで適切に拒否されることを検証
+        // issue #123 修正: ストアドプロシージャレベルでの負の値チェック
 
-        const invalidAmount = -1000; // CHECK制約違反: amount < 0
+        const invalidAmount = -1000; // 負の値: セキュリティバグ修正により事前チェックで拒否されるべき
 
         const { data, error } = await DatabaseTestHelper.callStoredProcedure(
           "register_attendance_with_payment",
@@ -413,42 +413,26 @@ describe("P0-2: データベーストランザクション整合性テスト", (
             p_status: "attending",
             p_guest_token: "gst_negative123456789012345678901234",
             p_payment_method: "stripe",
-            p_event_fee: invalidAmount, // ← CHECK制約違反
+            p_event_fee: invalidAmount, // ← 負の値: 事前バリデーションで拒否
           }
         );
 
-        // 【仕様書検証】実際のCHECK制約違反エラー
-        if (error) {
-          // CHECK制約が実際に機能している場合
-          expect(error.message).toMatch(/payments_amount_check|check constraint|negative|amount/i);
-        } else if (data) {
-          // ストアドプロシージャが成功した場合 - ストアドプロシージャ内でのバリデーション
-          console.log("⚠️ 負の値でもストアドプロシージャが成功しました。データ:", data);
-          // この場合、アプリケーションレベルでの事前チェックが機能している
-          expect(data).toBeDefined(); // 成功扱い
-        }
+        // 【修正後の期待結果】負の値は確実にエラーで拒否される
+        expect(error).toBeDefined();
+        expect(error.message).toMatch(/Event fee cannot be negative|negative/i);
+        expect(data).toBeNull();
 
-        // 実際の動作確認: 負の値でも成功する場合は実際に挿入される
-        if (data) {
-          // 実際に成功した場合の検証
-          await DatabaseTestHelper.verifyDatabaseState({
-            attendanceExists: {
-              eventId: testData.paidEvent.id,
-              email: "negative-amount@test.example.com",
-              shouldExist: true, // ← 実際に挿入されている
-            },
-          });
-          console.log("✓ 負の値でもストアドプロシージャが成功 - 実装の動作を確認");
-        } else {
-          // エラーまたはロールバックされた場合
-          await DatabaseTestHelper.verifyDatabaseState({
-            attendanceExists: {
-              eventId: testData.paidEvent.id,
-              email: "negative-amount@test.example.com",
-              shouldExist: false, // ← ロールバックで存在しない
-            },
-          });
-        }
+        // 【重要】attendanceレコードも挿入されていないことを確認
+        // 事前バリデーションのため、データベースレベルでの処理に到達しない
+        await DatabaseTestHelper.verifyDatabaseState({
+          attendanceExists: {
+            eventId: testData.paidEvent.id,
+            email: "negative-amount@test.example.com",
+            shouldExist: false, // ← 事前バリデーションにより処理されない
+          },
+        });
+
+        console.log("✅ issue #123 修正確認: 負の金額が適切に拒否されました");
       });
     });
   });

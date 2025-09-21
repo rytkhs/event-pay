@@ -1241,6 +1241,11 @@ BEGIN
     END;
   END IF;
 
+  -- 負の金額の事前検証（セキュリティ強化）
+  IF p_event_fee IS NOT NULL AND p_event_fee < 0 THEN
+    RAISE EXCEPTION 'Event fee cannot be negative, got: %', p_event_fee;
+  END IF;
+
   -- ゲストトークンの重複チェック
   IF EXISTS(SELECT 1 FROM public.attendances WHERE guest_token = p_guest_token) THEN
     RAISE EXCEPTION 'Guest token already exists: %', LEFT(p_guest_token, 8) || '...';

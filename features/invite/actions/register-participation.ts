@@ -307,6 +307,11 @@ async function executeRegistration(
   let rpcError: PostgrestError | Error | null = null;
 
   try {
+    // 【セキュリティ強化】負の金額を事前にチェック
+    if (event.fee < 0) {
+      throw new Error(`Invalid event fee: ${event.fee}. Fee cannot be negative.`);
+    }
+
     // 【重要デバッグ】RPC呼び出しパラメータをログ出力
     const rpcParams = {
       p_event_id: event.id,
