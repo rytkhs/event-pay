@@ -160,18 +160,6 @@ export function OrganizerDashboard({
               </CardContent>
             </Card>
           </div>
-
-          {/* 最近のアクティビティ（将来的な拡張） */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">最近のアクティビティ</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-gray-500 text-center py-8">
-                参加者の登録・決済状況がここに表示されます（今後実装予定）
-              </p>
-            </CardContent>
-          </Card>
         </TabsContent>
 
         {/* 参加者管理 */}
