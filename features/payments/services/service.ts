@@ -404,6 +404,9 @@ export class PaymentService implements IPaymentService {
       const { destinationAccountId, userEmail, userName, setupFutureUsage } =
         params.destinationCharges;
 
+      // Connect Account の事前検証
+      await this.validateConnectAccount(destinationAccountId);
+
       // Application fee計算
       const feeCalculation = await this.applicationFeeCalculator.calculateApplicationFee(
         params.amount
@@ -1006,6 +1009,129 @@ export class PaymentService implements IPaymentService {
       throw new PaymentError(
         PaymentErrorType.DATABASE_ERROR,
         "決済レコードの削除に失敗しました",
+        error as Error
+      );
+    }
+  }
+
+  /**
+   * Connect Account の事前検証を行う
+   * @param accountId Stripe Connect Account ID
+   * @throws PaymentError Connect Account に問題がある場合
+   */
+  private async validateConnectAccount(accountId: string): Promise<void> {
+    try {
+      // Stripe APIでConnect Account情報を取得
+      const account = await this.stripe.accounts.retrieve(accountId);
+
+      // 1. アカウントが制限されていないかチェック
+      if (account.requirements?.disabled_reason) {
+        logger.warn("Connect Account is restricted", {
+          tag: "connectAccountRestricted",
+          account_id: accountId,
+          disabled_reason: account.requirements.disabled_reason,
+        });
+        throw new PaymentError(
+          PaymentErrorType.CONNECT_ACCOUNT_RESTRICTED,
+          `Connect Account is restricted: ${account.requirements.disabled_reason}`,
+          { accountId, disabledReason: account.requirements.disabled_reason }
+        );
+      }
+
+      // 2. payouts_enabled がtrueかチェック
+      if (!account.payouts_enabled) {
+        logger.warn("Connect Account payouts not enabled", {
+          tag: "connectAccountPayoutsDisabled",
+          account_id: accountId,
+          payouts_enabled: account.payouts_enabled,
+        });
+        throw new PaymentError(
+          PaymentErrorType.CONNECT_ACCOUNT_RESTRICTED,
+          "Connect Account payouts are not enabled",
+          { accountId, payoutsEnabled: account.payouts_enabled }
+        );
+      }
+
+      // 3. transfers capability がactiveかチェック
+      const transfersCap = account.capabilities?.transfers;
+      const isTransfersActive = (() => {
+        if (transfersCap === "active") return true;
+        if (typeof transfersCap === "object" && transfersCap && "status" in transfersCap) {
+          return (transfersCap as any).status === "active";
+        }
+        return false;
+      })();
+
+      if (!isTransfersActive) {
+        logger.warn("Connect Account transfers capability not active", {
+          tag: "connectAccountTransfersInactive",
+          account_id: accountId,
+          transfers_capability: transfersCap,
+        });
+        throw new PaymentError(
+          PaymentErrorType.CONNECT_ACCOUNT_RESTRICTED,
+          "Connect Account transfers capability is not active",
+          { accountId, transfersCapability: transfersCap }
+        );
+      }
+
+      logger.info("Connect Account validation passed", {
+        tag: "connectAccountValidated",
+        account_id: accountId,
+        payouts_enabled: account.payouts_enabled,
+        transfers_capability: transfersCap,
+      });
+    } catch (error) {
+      // PaymentErrorはそのまま再スロー
+      if (error instanceof PaymentError) {
+        throw error;
+      }
+
+      // Stripe APIエラーの場合
+      if (error && typeof error === "object" && "type" in error) {
+        const stripeError = error as { message?: string; type?: string };
+
+        // "No such account" エラーは CONNECT_ACCOUNT_NOT_FOUND として分類
+        if (
+          stripeError.message?.includes("No such account") ||
+          stripeError.message?.includes("does not exist")
+        ) {
+          logger.error("Connect Account not found", {
+            tag: "connectAccountNotFound",
+            account_id: accountId,
+            error_message: stripeError.message,
+          });
+          throw new PaymentError(
+            PaymentErrorType.CONNECT_ACCOUNT_NOT_FOUND,
+            `Connect Account not found: ${accountId}`,
+            error
+          );
+        }
+
+        // その他のStripe APIエラー
+        logger.error("Connect Account validation failed - Stripe API error", {
+          tag: "connectAccountValidationStripeError",
+          account_id: accountId,
+          error_type: stripeError.type,
+          error_message: stripeError.message,
+        });
+        throw new PaymentError(
+          PaymentErrorType.STRIPE_CONFIG_ERROR,
+          `Connect Account validation failed: ${stripeError.message}`,
+          error
+        );
+      }
+
+      // その他の予期しないエラー
+      logger.error("Connect Account validation failed - unexpected error", {
+        tag: "connectAccountValidationUnexpectedError",
+        account_id: accountId,
+        error_name: error instanceof Error ? error.name : "Unknown",
+        error_message: error instanceof Error ? error.message : String(error),
+      });
+      throw new PaymentError(
+        PaymentErrorType.STRIPE_CONFIG_ERROR,
+        "Connect Account validation failed due to unexpected error",
         error as Error
       );
     }

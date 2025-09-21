@@ -277,6 +277,35 @@ const ERROR_MAPPINGS: Record<string, Omit<ErrorDetails, "code">> = {
     shouldAlert: false,
     retryable: true,
   },
+
+  // Stripe Connect関連エラー
+  CONNECT_ACCOUNT_NOT_FOUND: {
+    message: "Stripe Connect Account not found",
+    userMessage:
+      "決済の準備ができません。主催者のお支払い受付設定に不備があります。現金決済をご利用いただくか、主催者にお問い合わせください。",
+    severity: "critical",
+    shouldLog: true,
+    shouldAlert: true,
+    retryable: false,
+  },
+  CONNECT_ACCOUNT_RESTRICTED: {
+    message: "Stripe Connect Account is restricted",
+    userMessage:
+      "主催者のお支払い受付が一時的に制限されています。現金決済をご利用いただくか、主催者にお問い合わせください。",
+    severity: "high",
+    shouldLog: true,
+    shouldAlert: true,
+    retryable: false,
+  },
+  STRIPE_CONFIG_ERROR: {
+    message: "Stripe configuration error",
+    userMessage:
+      "決済システムに一時的な問題が発生しています。しばらく時間をおいて再度お試しいただくか、現金決済をご利用ください。",
+    severity: "critical",
+    shouldLog: true,
+    shouldAlert: true,
+    retryable: true,
+  },
 };
 
 /**
