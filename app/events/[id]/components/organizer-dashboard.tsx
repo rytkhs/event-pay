@@ -2,25 +2,23 @@
 
 import { useState } from "react";
 
-import type { Event } from "@core/types/models";
-import type {
-  GetParticipantsResponse,
-  GetEventPaymentsResponse,
-} from "@core/validation/participant-management";
+import { useRouter } from "next/navigation";
 
+import type { Event } from "@core/types/models";
+import type { GetEventPaymentsResponse } from "@core/validation/participant-management";
+
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 import { EventOverview } from "./event-overview";
 import { FloatingActionMenu } from "./floating-action-menu";
-import { ResponsiveParticipantsManagement } from "./responsive-participants-management";
 import { StatusBar } from "./status-bar";
 
 interface OrganizerDashboardProps {
   eventId: string;
   eventDetail: Event;
   paymentsData: GetEventPaymentsResponse | null;
-  participantsData: GetParticipantsResponse | null;
   stats: { attending_count: number; maybe_count: number } | null;
 }
 
@@ -28,10 +26,10 @@ export function OrganizerDashboard({
   eventId,
   eventDetail,
   paymentsData,
-  participantsData,
   stats,
 }: OrganizerDashboardProps) {
   const [activeTab, setActiveTab] = useState("dashboard");
+  const router = useRouter();
 
   // 統計計算
   const attendingCount = stats?.attending_count || 0;
@@ -50,10 +48,15 @@ export function OrganizerDashboard({
     console.log("Export data not implemented yet");
   };
 
+  const handleManageParticipants = () => {
+    router.push(`/events/${eventId}/participants`);
+  };
+
   return (
     <div className="space-y-6">
       {/* ステータスバー */}
       <StatusBar
+        eventId={eventId}
         attendingCount={attendingCount}
         capacity={eventDetail.capacity || 0}
         totalRevenue={totalRevenue}
@@ -61,29 +64,37 @@ export function OrganizerDashboard({
         unpaidCount={unpaidCount}
       />
 
-      {/* 主催者向けタブ */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-3 lg:w-auto lg:grid-cols-3 bg-white border border-border rounded-lg">
-          <TabsTrigger
-            value="dashboard"
-            className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary"
-          >
-            ダッシュボード
-          </TabsTrigger>
-          <TabsTrigger
-            value="participants"
-            className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary"
-          >
-            参加者管理
-          </TabsTrigger>
-          <TabsTrigger
-            value="overview"
-            className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary"
-          >
-            イベント詳細
-          </TabsTrigger>
-        </TabsList>
+      {/* 主催者向けタブと参加者管理リンク */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1">
+          <TabsList className="grid w-full grid-cols-2 lg:w-auto lg:grid-cols-2 bg-white border border-border rounded-lg">
+            <TabsTrigger
+              value="dashboard"
+              className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary"
+            >
+              ダッシュボード
+            </TabsTrigger>
+            <TabsTrigger
+              value="overview"
+              className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary"
+            >
+              イベント詳細
+            </TabsTrigger>
+          </TabsList>
 
+          {/* 参加者管理リンクボタン */}
+        </Tabs>
+
+        <Button
+          onClick={handleManageParticipants}
+          size="lg"
+          className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700"
+        >
+          🎛️ 参加者を管理する
+        </Button>
+      </div>
+
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
         {/* ダッシュボード */}
         <TabsContent value="dashboard" className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -160,17 +171,6 @@ export function OrganizerDashboard({
               </CardContent>
             </Card>
           </div>
-        </TabsContent>
-
-        {/* 参加者管理 */}
-        <TabsContent value="participants" className="space-y-6">
-          {participantsData && (
-            <ResponsiveParticipantsManagement
-              eventId={eventId}
-              eventFee={eventDetail.fee}
-              initialParticipantsData={participantsData}
-            />
-          )}
         </TabsContent>
 
         {/* イベント詳細 */}

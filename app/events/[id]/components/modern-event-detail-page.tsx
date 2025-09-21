@@ -17,10 +17,7 @@ import { EVENT_STATUS_LABELS } from "@core/types/enums";
 import type { Event } from "@core/types/models";
 import { sanitizeForEventPay } from "@core/utils/sanitize";
 import { formatUtcToJstByType } from "@core/utils/timezone";
-import type {
-  GetParticipantsResponse,
-  GetEventPaymentsResponse,
-} from "@core/validation/participant-management";
+import type { GetEventPaymentsResponse } from "@core/validation/participant-management";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -32,7 +29,6 @@ interface ModernEventDetailPageProps {
   eventId: string;
   eventDetail: Event;
   paymentsData: GetEventPaymentsResponse | null;
-  participantsData: GetParticipantsResponse | null;
   stats: { attending_count: number; maybe_count: number } | null;
 }
 
@@ -40,7 +36,6 @@ export function ModernEventDetailPage({
   eventId,
   eventDetail,
   paymentsData,
-  participantsData,
   stats,
 }: ModernEventDetailPageProps) {
   const router = useRouter();
@@ -167,7 +162,6 @@ export function ModernEventDetailPage({
           eventId={eventId}
           eventDetail={eventDetail}
           paymentsData={paymentsData}
-          participantsData={participantsData}
           stats={stats}
         />
       </div>

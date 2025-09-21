@@ -5,7 +5,6 @@ import { createCachedActions } from "@core/utils/cache-helpers";
 
 import {
   getEventDetailAction,
-  getEventParticipantsAction,
   getEventPaymentsAction,
   getEventStatsAction,
 } from "@features/events";
@@ -18,11 +17,10 @@ interface EventDetailPageProps {
   };
 }
 
-// キャッシュ処理を統一
+// キャッシュ処理を統一（軽量化）
 const cachedActions = createCachedActions({
   getEventDetail: getEventDetailAction,
   getEventPayments: getEventPaymentsAction,
-  getEventParticipants: getEventParticipantsAction,
   getEventStats: getEventStatsAction,
 });
 
@@ -55,16 +53,13 @@ export default async function EventDetailPage({ params }: EventDetailPageProps) 
     const currentUser = await getCurrentUser();
     const isOrganizer = currentUser && currentUser.id === eventDetail.created_by;
 
-    // 主催者の場合のみ統計データと参加者データを取得
+    // 主催者の場合のみ軽量な統計データを取得（参加者詳細データは専用ページで取得）
     let paymentsData: Awaited<ReturnType<typeof cachedActions.getEventPayments>> | null = null;
-    let participantsData: Awaited<ReturnType<typeof cachedActions.getEventParticipants>> | null =
-      null;
-
     let stats: { attending_count: number; maybe_count: number } | null = null;
 
     if (isOrganizer) {
       try {
-        // 基本的な統計データ
+        // 軽量な統計データのみ取得
         const [payRes, statsRes] = await Promise.all([
           cachedActions.getEventPayments(params.id),
           cachedActions.getEventStats(params.id),
@@ -73,19 +68,6 @@ export default async function EventDetailPage({ params }: EventDetailPageProps) 
         if (statsRes?.success) {
           stats = statsRes.data as any;
         }
-
-        // 参加者詳細データ（デフォルトパラメータで初期データを取得）
-        participantsData = await cachedActions.getEventParticipants({
-          eventId: params.id,
-          search: undefined,
-          attendanceStatus: undefined,
-          paymentMethod: undefined,
-          paymentStatus: undefined,
-          sortField: "updated_at",
-          sortOrder: "desc",
-          page: 1,
-          limit: 50,
-        });
       } catch (_) {
         // エラーが発生してもページ表示は継続
       }
@@ -96,7 +78,6 @@ export default async function EventDetailPage({ params }: EventDetailPageProps) 
         eventId={params.id}
         eventDetail={eventDetail}
         paymentsData={paymentsData}
-        participantsData={participantsData}
         stats={stats}
       />
     );
