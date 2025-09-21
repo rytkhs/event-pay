@@ -362,15 +362,37 @@ async function executeRegistration(
       throw createServerActionError("RESOURCE_CONFLICT", "このイベントは定員に達しています");
     }
 
-    // RPC内での重複エラーを適切にハンドリング
+    // RPC内でのゲストトークン重複エラーを適切にハンドリング（極稀なケース）
+    if (errorMessage.includes("Guest token already exists")) {
+      // システム内部でのトークン衝突（極めて稀）
+      logParticipationSecurityEvent(
+        "SUSPICIOUS_ACTIVITY",
+        "Rare guest token collision detected during RPC execution",
+        {
+          eventId: event.id,
+          error: errorMessage,
+          errorCode,
+          errorDetails,
+          tokenLength: processedData.guestToken?.length,
+          tokenPrefix: processedData.guestToken?.substring(0, 8),
+        },
+        { ...securityContext, eventId: event.id }
+      );
+
+      throw createServerActionError(
+        "INTERNAL_ERROR",
+        "システムエラーが発生しました。恐れ入りますが、再度お試しください"
+      );
+    }
+
+    // RPC内でのメール重複エラーを適切にハンドリング
     if (
-      errorMessage.includes("duplicate key") ||
-      errorMessage.includes("already exists") ||
-      errorMessage.includes("unique constraint") ||
-      errorCode === "23505" || // PostgreSQL unique constraint violation
-      errorDetails?.includes("attendances_event_id_email_key")
+      (errorMessage.includes("duplicate key") &&
+        (errorMessage.includes("email") ||
+          errorDetails?.includes("attendances_event_email_unique"))) ||
+      errorDetails?.includes("attendances_event_email_unique")
     ) {
-      // RPC内部での重複検出（レースコンディション発生）
+      // RPC内部でのメール重複検出（レースコンディション発生）
       logParticipationSecurityEvent(
         "DUPLICATE_REGISTRATION",
         "Race condition detected: duplicate email during RPC execution",
