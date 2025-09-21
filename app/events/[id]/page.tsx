@@ -95,7 +95,6 @@ export default async function EventDetailPage({ params }: EventDetailPageProps) 
       <ModernEventDetailPage
         eventId={params.id}
         eventDetail={eventDetail}
-        isOrganizer={isOrganizer || false}
         paymentsData={paymentsData}
         participantsData={participantsData}
         stats={stats}
