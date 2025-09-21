@@ -18,7 +18,6 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { adminAddAttendanceAction } from "@/features/events/actions/admin-add-attendance";
-import { generateGuestUrlAction } from "@/features/events/actions/generate-guest-url";
 import { getEventParticipantsAction } from "@/features/events/actions/get-event-participants";
 import { ParticipantsTable } from "@/features/events/components/participants-table";
 
@@ -142,34 +141,6 @@ export function ResponsiveParticipantsManagement({
   const refreshAllData = useCallback(async () => {
     await handleParamsChange({});
   }, [handleParamsChange]);
-
-  // ゲストURLコピー
-  const handleCopyGuestUrl = async (attendanceId: string) => {
-    try {
-      const res = await generateGuestUrlAction({ eventId, attendanceId });
-      if (!res.success) {
-        toast({
-          title: "コピーできません",
-          description: res.error || "ゲストURL生成に失敗しました",
-          variant: "destructive",
-        });
-        return;
-      }
-      await navigator.clipboard.writeText(res.data.guestUrl);
-      toast({
-        title: "URLをコピーしました",
-        description: res.data.canOnlinePay
-          ? "現在オンライン決済が可能です。"
-          : res.data.reason || "オンライン決済は現在できません。",
-      });
-    } catch {
-      toast({
-        title: "コピーに失敗しました",
-        description: "クリップボードにアクセスできませんでした",
-        variant: "destructive",
-      });
-    }
-  };
 
   return (
     <div className="space-y-6">
