@@ -5,6 +5,8 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
 
+import { PaymentError, PaymentErrorType } from "@core/types/payment-errors";
+
 import { Database } from "@/types/database";
 
 import { IPaymentValidator } from "./services/interface";
@@ -12,8 +14,6 @@ import {
   CreateStripeSessionParams,
   CreateCashPaymentParams,
   UpdatePaymentStatusParams,
-  PaymentError,
-  PaymentErrorType,
   PaymentMethod,
   PaymentStatus,
 } from "./types";

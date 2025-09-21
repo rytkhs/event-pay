@@ -2,9 +2,11 @@
 
 import { z } from "zod";
 
+import type { ErrorCode } from "@core/api/problem-details";
 import { enforceRateLimit, buildKey, POLICIES } from "@core/rate-limit";
 import { SecureSupabaseClientFactory } from "@core/security/secure-client-factory.impl";
 import { getPaymentService } from "@core/services";
+import { PaymentError, PaymentErrorType } from "@core/types/payment-errors";
 import {
   createServerActionError,
   createServerActionSuccess,
@@ -22,6 +24,61 @@ async function ensurePaymentServiceRegistration() {
   } catch (error) {
     console.error("Failed to register PaymentService implementation:", error);
     throw new Error("PaymentService initialization failed");
+  }
+}
+
+/**
+ * PaymentErrorTypeをproblem-details.tsのErrorCodeにマッピング
+ */
+function mapPaymentErrorToErrorCode(paymentErrorType: PaymentErrorType): ErrorCode {
+  switch (paymentErrorType) {
+    // Connect Account関連エラー
+    case PaymentErrorType.CONNECT_ACCOUNT_NOT_FOUND:
+      return "CONNECT_ACCOUNT_NOT_FOUND";
+    case PaymentErrorType.CONNECT_ACCOUNT_RESTRICTED:
+      return "CONNECT_ACCOUNT_RESTRICTED";
+    case PaymentErrorType.STRIPE_CONFIG_ERROR:
+      return "STRIPE_CONFIG_ERROR";
+
+    // 認証・認可エラー
+    case PaymentErrorType.UNAUTHORIZED:
+      return "UNAUTHORIZED";
+    case PaymentErrorType.FORBIDDEN:
+      return "FORBIDDEN";
+
+    // バリデーションエラー
+    case PaymentErrorType.VALIDATION_ERROR:
+    case PaymentErrorType.INVALID_AMOUNT:
+    case PaymentErrorType.INVALID_PAYMENT_METHOD:
+      return "VALIDATION_ERROR";
+
+    // リソース関連エラー
+    case PaymentErrorType.EVENT_NOT_FOUND:
+    case PaymentErrorType.ATTENDANCE_NOT_FOUND:
+    case PaymentErrorType.PAYMENT_NOT_FOUND:
+      return "NOT_FOUND";
+
+    // 競合・重複エラー
+    case PaymentErrorType.PAYMENT_ALREADY_EXISTS:
+    case PaymentErrorType.CONCURRENT_UPDATE:
+      return "RESOURCE_CONFLICT";
+
+    // 決済処理エラー
+    case PaymentErrorType.INSUFFICIENT_FUNDS:
+    case PaymentErrorType.CARD_DECLINED:
+      return "PAYMENT_PROCESSING_ERROR";
+
+    // システムエラー
+    case PaymentErrorType.DATABASE_ERROR:
+      return "DATABASE_ERROR";
+    case PaymentErrorType.STRIPE_API_ERROR:
+    case PaymentErrorType.WEBHOOK_PROCESSING_ERROR:
+      return "EXTERNAL_SERVICE_ERROR";
+
+    // その他
+    case PaymentErrorType.INVALID_STATUS_TRANSITION:
+    default:
+      return "INTERNAL_ERROR";
   }
 }
 
@@ -175,7 +232,30 @@ export async function createGuestStripeSessionAction(
       },
     };
 
-    // トークン検証エラーではなく、決済セッション作成失敗を記録
+    // PaymentError の場合は適切なErrorCodeにマッピング
+    if (error instanceof PaymentError) {
+      const errorCode = mapPaymentErrorToErrorCode(error.type);
+
+      // Connect Account関連エラーは特別な追加情報を含める
+      const additionalDetails =
+        error.type === PaymentErrorType.CONNECT_ACCOUNT_NOT_FOUND ||
+        error.type === PaymentErrorType.CONNECT_ACCOUNT_RESTRICTED ||
+        error.type === PaymentErrorType.STRIPE_CONFIG_ERROR
+          ? {
+              details: {
+                paymentErrorType: error.type,
+                connectAccountIssue: true,
+                alternativePaymentSuggested: true,
+              },
+            }
+          : {};
+
+      logError(getErrorDetails(errorCode), errorContext);
+
+      return createServerActionError(errorCode, error.message, additionalDetails);
+    }
+
+    // PaymentError以外の予期しないエラー
     logError(getErrorDetails("PAYMENT_SESSION_CREATION_FAILED"), errorContext);
 
     const msg = error instanceof Error ? error.message : "Stripe セッション作成に失敗しました";

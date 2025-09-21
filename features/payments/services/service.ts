@@ -11,6 +11,7 @@ import { createPaymentLogger, type PaymentLogger } from "@core/logging/payment-l
 import { stripe } from "@core/stripe/client";
 import * as DestinationCharges from "@core/stripe/destination-charges";
 import { convertStripeError } from "@core/stripe/error-handler";
+import { PaymentError, PaymentErrorType, ErrorHandlingResult } from "@core/types/payment-errors";
 import { assertStripePayment } from "@core/utils/stripe-guards";
 
 import { Database } from "@/types/database";
@@ -27,9 +28,6 @@ import {
   CreateCashPaymentParams,
   CreateCashPaymentResult,
   UpdatePaymentStatusParams,
-  PaymentError,
-  PaymentErrorType,
-  ErrorHandlingResult,
 } from "./types";
 
 /**

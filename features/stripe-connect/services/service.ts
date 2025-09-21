@@ -7,6 +7,7 @@ import Stripe from "stripe";
 
 import { logger } from "@core/logging/app-logger";
 import { stripe, generateIdempotencyKey } from "@core/stripe/client";
+import { convertStripeError } from "@core/stripe/error-handler";
 
 import { Database } from "@/types/database";
 
@@ -184,7 +185,10 @@ export class StripeConnectService implements IStripeConnectService {
       }
 
       if (error instanceof Stripe.errors.StripeError) {
-        throw this.errorHandler.mapStripeError(error, "Express Account作成");
+        throw convertStripeError(error, {
+          operation: "create_express_account",
+          additionalData: { userId: params.userId },
+        });
       }
 
       throw new StripeConnectError(
@@ -243,7 +247,15 @@ export class StripeConnectService implements IStripeConnectService {
       }
 
       if (error instanceof Stripe.errors.StripeError) {
-        throw this.errorHandler.mapStripeError(error, "Account Link生成");
+        throw convertStripeError(error, {
+          operation: "create_account_link",
+          connectAccountId: params.accountId,
+          additionalData: {
+            refresh_url: params.refreshUrl,
+            return_url: params.returnUrl,
+            type: params.type,
+          },
+        });
       }
 
       throw new StripeConnectError(
@@ -339,7 +351,10 @@ export class StripeConnectService implements IStripeConnectService {
       }
 
       if (error instanceof Stripe.errors.StripeError) {
-        throw this.errorHandler.mapStripeError(error, "アカウント情報取得");
+        throw convertStripeError(error, {
+          operation: "get_account_info",
+          connectAccountId: accountId,
+        });
       }
 
       throw new StripeConnectError(
@@ -554,12 +569,15 @@ export class StripeConnectService implements IStripeConnectService {
         throw error;
       }
 
-      // Stripeエラーの場合はマッピング
+      // Stripeエラーの場合は汎用ハンドラーで処理
       if (error && typeof error === "object" && "type" in error) {
-        throw this.errorHandler.mapStripeError(
-          error as unknown as Error,
-          "ビジネスプロファイル更新"
-        );
+        throw convertStripeError(error as Stripe.errors.StripeError, {
+          operation: "update_business_profile",
+          connectAccountId: params.accountId,
+          additionalData: {
+            updated_fields: Object.keys(params.businessProfile),
+          },
+        });
       }
 
       throw new StripeConnectError(

@@ -5,6 +5,7 @@ import { z } from "zod";
 import { enforceRateLimit, buildKey, POLICIES } from "@core/rate-limit";
 import { SecureSupabaseClientFactory } from "@core/security/secure-client-factory.impl";
 import { AdminReason } from "@core/security/secure-client-factory.types";
+import { PaymentError, PaymentErrorType } from "@core/types/payment-errors";
 import {
   type ServerActionResult,
   createServerActionError,
@@ -12,7 +13,6 @@ import {
   type ErrorCode,
 } from "@core/types/server-actions";
 
-import { PaymentError, PaymentErrorType } from "../types";
 import { PaymentValidator } from "../validation";
 
 const inputSchema = z.object({

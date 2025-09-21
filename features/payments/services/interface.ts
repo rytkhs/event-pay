@@ -2,6 +2,8 @@
  * PaymentServiceのインターフェース定義
  */
 
+import { PaymentError, ErrorHandlingResult } from "@core/types/payment-errors";
+
 import {
   Payment,
   PaymentStatus,
@@ -10,8 +12,6 @@ import {
   CreateCashPaymentParams,
   CreateCashPaymentResult,
   UpdatePaymentStatusParams,
-  PaymentError,
-  ErrorHandlingResult,
 } from "./types";
 
 /**

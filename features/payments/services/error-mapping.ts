@@ -1,4 +1,4 @@
-import { ErrorHandlingResult, PaymentErrorType } from "./types";
+import { ErrorHandlingResult, PaymentErrorType } from "@core/types/payment-errors";
 
 // PaymentErrorType -> ユーザー向けハンドリングの集約マップ（網羅必須）
 export const ERROR_HANDLING_BY_TYPE: Record<PaymentErrorType, ErrorHandlingResult> = {
