@@ -202,7 +202,7 @@ describe("清算レポート - 金額計算の正確性", () => {
         amount: 3000, // 全額争議
         status: "lost", // 敗訴
       });
-      createdDisputeIds.push(disputeId);
+      createdDisputeIds.push(disputeId.id);
 
       const adminClient = await secureFactory.createAuditedAdminClient(
         AdminReason.TEST_DATA_SETUP,
@@ -254,7 +254,7 @@ describe("清算レポート - 金額計算の正確性", () => {
         amount: 1000,
         status: "won", // 勝訴
       });
-      createdDisputeIds.push(wonDisputeId);
+      createdDisputeIds.push(wonDisputeId.id);
 
       const adminClient = await secureFactory.createAuditedAdminClient(
         AdminReason.TEST_DATA_SETUP,
