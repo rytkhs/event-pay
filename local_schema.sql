@@ -408,13 +408,31 @@ COMMENT ON FUNCTION "public"."can_manage_invite_links"("p_event_id" "uuid") IS '
 CREATE OR REPLACE FUNCTION "public"."check_attendance_capacity_limit"() RETURNS "trigger"
     LANGUAGE "plpgsql"
     AS $$
-DECLARE event_capacity INTEGER; current_attending_count INTEGER;
+DECLARE
+  event_capacity INTEGER;
+  current_attending_count INTEGER;
 BEGIN
+    -- 【レースコンディション対策強化】参加状況チェック
     IF NEW.status = 'attending' THEN
-        SELECT capacity INTO event_capacity FROM public.events WHERE id = NEW.event_id;
+        -- 【重要】イベント情報を排他ロック付きで取得（レースコンディション対策）
+        SELECT capacity INTO event_capacity
+        FROM public.events
+        WHERE id = NEW.event_id FOR UPDATE;
+
         IF event_capacity IS NOT NULL THEN
-            SELECT COUNT(*) INTO current_attending_count FROM public.attendances WHERE event_id = NEW.event_id AND status = 'attending';
-            IF current_attending_count >= event_capacity THEN RAISE EXCEPTION 'イベントの定員（%名）に達しています。', event_capacity; END IF;
+            -- 【重要】イベントが既にロックされているため、安全に参加者数をカウント
+            -- この時点で同一イベントへの他の参加登録はブロックされる
+            SELECT COUNT(*) INTO current_attending_count 
+            FROM public.attendances 
+            WHERE event_id = NEW.event_id AND status = 'attending';
+
+            -- 定員超過チェック
+            IF current_attending_count >= event_capacity THEN
+                RAISE EXCEPTION 'このイベントは定員（%名）に達しています', event_capacity
+                  USING ERRCODE = 'P0001',
+                        DETAIL = format('Current attendees: %s, Capacity: %s', current_attending_count, event_capacity),
+                        HINT = 'Race condition prevented by exclusive lock in trigger';
+            END IF;
         END IF;
     END IF;
     RETURN NEW;
@@ -1042,34 +1060,45 @@ BEGIN
     RAISE EXCEPTION 'Guest token must have format gst_[32 alphanumeric chars], got: %', LEFT(p_guest_token, 8) || '...';
   END IF;
 
-  -- イベントが存在するか確認し、定員を取得
-  SELECT EXISTS(SELECT 1 FROM public.events WHERE id = p_event_id FOR UPDATE) INTO v_event_exists;
-  IF NOT v_event_exists THEN
-    RAISE EXCEPTION 'Event with ID % does not exist', p_event_id;
-  END IF;
-
-  -- 定員チェック（attending状態の場合のみ）
+  -- 【レースコンディション対策強化】イベント存在確認と定員チェック（attending状態の場合のみ）
   IF p_status = 'attending' THEN
     DECLARE
       v_capacity INTEGER;
       v_current_attendees INTEGER;
     BEGIN
-      -- イベントの定員を取得
-      SELECT capacity INTO v_capacity FROM public.events WHERE id = p_event_id;
+      -- 【重要】イベント情報を排他ロック付きで取得（レースコンディション対策）
+      -- 存在確認と定員取得を一度に実行
+      SELECT capacity INTO v_capacity
+      FROM public.events
+      WHERE id = p_event_id FOR UPDATE;
+      
+      -- イベントが存在しない場合、v_capacity は NULL になる
+      IF v_capacity IS NULL AND NOT EXISTS(SELECT 1 FROM public.events WHERE id = p_event_id) THEN
+        RAISE EXCEPTION 'Event with ID % does not exist', p_event_id;
+      END IF;
 
       -- 定員が設定されている場合のみチェック
       IF v_capacity IS NOT NULL THEN
-        -- 現在の参加者数を取得
+        -- 【重要】イベントが既にロックされているため、他のトランザクションは待機状態
+        -- この時点で安全に参加者数をカウントできる
         SELECT COUNT(*) INTO v_current_attendees
         FROM public.attendances
         WHERE event_id = p_event_id AND status = 'attending';
 
         -- 定員超過チェック
         IF v_current_attendees >= v_capacity THEN
-          RAISE EXCEPTION 'Event capacity (%) has been reached. Current attendees: %', v_capacity, v_current_attendees;
+          RAISE EXCEPTION 'このイベントは定員（%名）に達しています', v_capacity
+            USING ERRCODE = 'P0001',
+                  DETAIL = format('Current attendees: %s, Capacity: %s', v_current_attendees, v_capacity),
+                  HINT = 'Race condition prevented by exclusive lock';
         END IF;
       END IF;
     END;
+  ELSE
+    -- 参加ステータスが 'attending' 以外の場合、イベントの存在確認のみ実行
+    IF NOT EXISTS(SELECT 1 FROM public.events WHERE id = p_event_id) THEN
+      RAISE EXCEPTION 'Event with ID % does not exist', p_event_id;
+    END IF;
   END IF;
 
   -- 負の金額の事前検証（セキュリティ強化）
@@ -1095,12 +1124,51 @@ BEGIN
 
   EXCEPTION
     WHEN unique_violation THEN
-      -- 重複エラーの詳細を提供
-      IF SQLSTATE = '23505' THEN
-        RAISE EXCEPTION 'Guest token already exists (unique constraint violation): %', LEFT(p_guest_token, 8) || '...';
-      ELSE
-        RAISE EXCEPTION 'Unique constraint violation: %', SQLERRM;
-      END IF;
+      -- 【レースコンディション対策】UNIQUE制約違反の適切な処理
+      DECLARE
+        v_constraint_name TEXT;
+        v_capacity_recheck INTEGER;
+        v_current_count_recheck INTEGER;
+      BEGIN
+        -- 違反した制約名を取得
+        GET STACKED DIAGNOSTICS v_constraint_name = CONSTRAINT_NAME;
+
+        -- メールアドレス重複の場合、定員超過の可能性をチェック
+        IF v_constraint_name = 'attendances_event_email_unique' OR SQLERRM LIKE '%attendances_event_email_unique%' THEN
+          -- 容量を再チェックして、本当に定員超過が原因かを確認
+          SELECT capacity INTO v_capacity_recheck FROM public.events WHERE id = p_event_id;
+
+          IF v_capacity_recheck IS NOT NULL THEN
+            SELECT COUNT(*) INTO v_current_count_recheck
+            FROM public.attendances
+            WHERE event_id = p_event_id AND status = 'attending';
+
+            -- 定員に達している場合、適切なエラーメッセージを返す
+            IF v_current_count_recheck >= v_capacity_recheck THEN
+              RAISE EXCEPTION 'このイベントは定員（%名）に達しています', v_capacity_recheck
+                USING ERRCODE = 'P0001',
+                      DETAIL = format('Race condition detected and resolved: attendees=%s, capacity=%s', v_current_count_recheck, v_capacity_recheck),
+                      HINT = 'Concurrent registration attempt blocked';
+            END IF;
+          END IF;
+
+          -- 真の重複の場合
+          RAISE EXCEPTION 'このメールアドレスは既にこのイベントに登録されています'
+            USING ERRCODE = '23505',
+                  DETAIL = format('Email already registered for event %s', p_event_id);
+
+        -- ゲストトークン重複の場合
+        ELSIF v_constraint_name = 'attendances_guest_token_key' OR SQLERRM LIKE '%guest_token%' THEN
+          RAISE EXCEPTION 'Guest token already exists (concurrent request detected): %', LEFT(p_guest_token, 8) || '...'
+            USING ERRCODE = '23505',
+                  DETAIL = 'This may indicate a race condition or duplicate request';
+
+        -- その他のUNIQUE制約違反
+        ELSE
+          RAISE EXCEPTION 'Unique constraint violation: %', SQLERRM
+            USING ERRCODE = '23505';
+        END IF;
+      END;
     WHEN OTHERS THEN
       RAISE EXCEPTION 'Failed to insert attendance: %', SQLERRM;
   END;
