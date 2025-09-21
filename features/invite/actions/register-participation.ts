@@ -349,17 +349,22 @@ async function executeRegistration(
     const errorCode = isPostgrestError(rpcError) ? rpcError.code : undefined;
     const errorDetails = isPostgrestError(rpcError) ? rpcError.details : undefined;
 
-    // RPC内のキャパシティチェックエラーを適切にハンドリング
-    if (errorMessage.includes("Event capacity") && errorMessage.includes("has been reached")) {
-      // RPC内部でのキャパシティ超過（レースコンディション発生）
+    // 【更新】データベース修正後のキャパシティチェックエラーを適切にハンドリング
+    if (
+      (errorMessage.includes("Event capacity") && errorMessage.includes("has been reached")) ||
+      errorMessage.includes("このイベントは定員") ||
+      errorMessage.includes("に達しています")
+    ) {
+      // RPC内部でのキャパシティ超過（レースコンディション対策により検出）
       logParticipationSecurityEvent(
         "CAPACITY_RACE_CONDITION",
-        "Race condition detected: capacity exceeded during RPC execution",
+        "Race condition prevented: capacity exceeded during RPC execution with exclusive lock",
         {
           eventId: event.id,
           error: errorMessage,
           errorCode,
           errorDetails,
+          preventionMethod: "database_exclusive_lock",
         },
         { ...securityContext, eventId: event.id }
       );
@@ -367,12 +372,19 @@ async function executeRegistration(
       throw createServerActionError("RESOURCE_CONFLICT", "このイベントは定員に達しています");
     }
 
-    // RPC内でのゲストトークン重複エラーを適切にハンドリング（極稀なケース）
-    if (errorMessage.includes("Guest token already exists")) {
-      // システム内部でのトークン衝突（極めて稀）
+    // 【更新】データベース修正後のゲストトークン重複エラーを適切にハンドリング（極稀なケース）
+    if (
+      errorMessage.includes("Guest token already exists") ||
+      errorMessage.includes("concurrent request detected")
+    ) {
+      // 同時リクエストによるトークン衝突またはシステム内部でのトークン衝突（極めて稀）
+      const isConcurrentRequest = errorMessage.includes("concurrent request detected");
+
       logParticipationSecurityEvent(
         "SUSPICIOUS_ACTIVITY",
-        "Rare guest token collision detected during RPC execution",
+        isConcurrentRequest
+          ? "Concurrent request detected: possible race condition in guest token generation"
+          : "Rare guest token collision detected during RPC execution",
         {
           eventId: event.id,
           error: errorMessage,
@@ -380,6 +392,7 @@ async function executeRegistration(
           errorDetails,
           tokenLength: processedData.guestToken?.length,
           tokenPrefix: processedData.guestToken?.substring(0, 8),
+          detectionType: isConcurrentRequest ? "concurrent_request" : "token_collision",
         },
         { ...securityContext, eventId: event.id }
       );
@@ -390,17 +403,22 @@ async function executeRegistration(
       );
     }
 
-    // RPC内でのメール重複エラーを適切にハンドリング
+    // 【更新】データベース修正後のメール重複エラーを適切にハンドリング
     if (
       (errorMessage.includes("duplicate key") &&
         (errorMessage.includes("email") ||
           (errorDetails ?? "").includes("attendances_event_email_unique"))) ||
-      (errorDetails ?? "").includes("attendances_event_email_unique")
+      (errorDetails ?? "").includes("attendances_event_email_unique") ||
+      errorMessage.includes("このメールアドレスは既にこのイベントに登録されています")
     ) {
-      // RPC内部でのメール重複検出（レースコンディション発生）
+      // 真のメール重複またはレースコンディション後の再チェック結果
+      const isRaceConditionResolved = errorMessage.includes("Race condition detected and resolved");
+
       logParticipationSecurityEvent(
-        "DUPLICATE_REGISTRATION",
-        "Race condition detected: duplicate email during RPC execution",
+        isRaceConditionResolved ? "CAPACITY_RACE_CONDITION" : "DUPLICATE_REGISTRATION",
+        isRaceConditionResolved
+          ? "Race condition resolved: capacity reached after exclusive lock check"
+          : "Duplicate email registration attempt detected",
         {
           eventId: event.id,
           error: errorMessage,
@@ -411,10 +429,15 @@ async function executeRegistration(
         { ...securityContext, eventId: event.id }
       );
 
-      throw createServerActionError(
-        "DUPLICATE_REGISTRATION",
-        "このメールアドレスは既にこのイベントに登録されています"
-      );
+      // レースコンディション解決後の定員超過 vs 真のメール重複を適切に区別
+      if (isRaceConditionResolved) {
+        throw createServerActionError("RESOURCE_CONFLICT", "このイベントは定員に達しています");
+      } else {
+        throw createServerActionError(
+          "DUPLICATE_REGISTRATION",
+          "このメールアドレスは既にこのイベントに登録されています"
+        );
+      }
     }
 
     // その他のRPCエラー
