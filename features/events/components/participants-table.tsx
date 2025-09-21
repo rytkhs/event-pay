@@ -386,19 +386,22 @@ export function ParticipantsTable({
     switch (status) {
       case "attending":
         return (
-          <Badge variant="default" className="bg-green-100 text-green-800 text-md">
+          <Badge variant="default" className="bg-success/10 text-success border-success/20 text-md">
             ◯
           </Badge>
         );
       case "not_attending":
         return (
-          <Badge variant="secondary" className="bg-red-100 text-red-800 text-md">
+          <Badge
+            variant="secondary"
+            className="bg-destructive/10 text-destructive border-destructive/20 text-md"
+          >
             ✕
           </Badge>
         );
       case "maybe":
         return (
-          <Badge variant="outline" className="bg-yellow-100 text-yellow-800 text-md">
+          <Badge variant="outline" className="bg-warning/10 text-warning border-warning/20 text-md">
             △
           </Badge>
         );
@@ -628,7 +631,7 @@ export function ParticipantsTable({
           {/* 検索 */}
           <div className="flex flex-1 items-center gap-2">
             <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 placeholder="ニックネームで検索..."
                 value={searchQuery}
@@ -650,7 +653,7 @@ export function ParticipantsTable({
 
           {/* フィルター */}
           <div className="flex items-center gap-2">
-            <Filter className="h-4 w-4 text-gray-400" />
+            <Filter className="h-4 w-4 text-muted-foreground" />
 
             <Select
               value={attendanceFilter}
@@ -714,7 +717,7 @@ export function ParticipantsTable({
         {/* テーブル */}
         <div className="rounded-md border overflow-x-auto">
           <table className="w-full min-w-[768px]">
-            <thead className="bg-gray-50">
+            <thead className="bg-muted/30">
               <tr>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   <Checkbox
@@ -876,7 +879,7 @@ export function ParticipantsTable({
         {/* ページネーション */}
         {pagination.totalPages > 1 && (
           <div className="flex items-center justify-between mt-4">
-            <div className="text-sm text-gray-600">
+            <div className="text-sm text-muted-foreground">
               {pagination.total}件中 {(pagination.page - 1) * pagination.limit + 1}-
               {Math.min(pagination.page * pagination.limit, pagination.total)}件を表示
             </div>
