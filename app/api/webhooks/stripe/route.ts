@@ -157,21 +157,148 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     const processingTime = Date.now() - startTime;
-
-    logger.error("Webhook processing error", {
+    const errorContext = {
       tag: "webhook-error",
       error_name: error instanceof Error ? error.name : "Unknown",
       error_message: error instanceof Error ? error.message : String(error),
       processing_time_ms: processingTime,
       request_id: requestId,
       stack: error instanceof Error ? error.stack : undefined,
+    };
+
+    // エラーの種類による詳細分類
+    if (error && typeof error === "object") {
+      const errObj = error as any;
+
+      // Stripe署名検証エラー
+      if (
+        errObj.message?.includes("signature") ||
+        errObj.message?.includes("webhook") ||
+        errObj.name === "StripeSignatureVerificationError"
+      ) {
+        logger.warn("Stripe signature verification failed", {
+          ...errorContext,
+          error_classification: "security_error",
+          severity: "high",
+        });
+        return createProblemResponse("INVALID_REQUEST", {
+          instance: "/api/webhooks/stripe",
+          detail: "Webhook signature verification failed",
+          correlation_id: requestId,
+        });
+      }
+
+      // QStash接続・送信エラー
+      if (
+        errObj.message?.includes("qstash") ||
+        errObj.message?.includes("upstash") ||
+        errObj.message?.includes("publish")
+      ) {
+        logger.error("QStash forwarding failed", {
+          ...errorContext,
+          error_classification: "external_service_error",
+          severity: "critical", // webhook転送失敗は重大
+          qstash_error: true,
+        });
+        return createProblemResponse("EXTERNAL_SERVICE_ERROR", {
+          instance: "/api/webhooks/stripe",
+          detail: "Webhook forwarding to queue failed",
+          correlation_id: requestId,
+          retryable: true,
+        });
+      }
+
+      // ネットワーク・接続エラー
+      if (
+        errObj.message?.includes("fetch") ||
+        errObj.message?.includes("network") ||
+        errObj.message?.includes("timeout") ||
+        errObj.code === "ENOTFOUND" ||
+        errObj.code === "ECONNRESET"
+      ) {
+        logger.warn("Network error in webhook processing", {
+          ...errorContext,
+          error_classification: "network_error",
+          severity: "medium",
+          network_error_code: errObj.code,
+        });
+        return createProblemResponse("EXTERNAL_SERVICE_ERROR", {
+          instance: "/api/webhooks/stripe",
+          detail: "Network connection failed",
+          correlation_id: requestId,
+          retryable: true,
+        });
+      }
+
+      // JSON解析エラー
+      if (
+        errObj instanceof SyntaxError ||
+        errObj.message?.includes("JSON") ||
+        errObj.name === "SyntaxError"
+      ) {
+        logger.warn("Invalid JSON in webhook request", {
+          ...errorContext,
+          error_classification: "client_error",
+          severity: "low",
+        });
+        return createProblemResponse("INVALID_REQUEST", {
+          instance: "/api/webhooks/stripe",
+          detail: "Invalid JSON payload",
+          correlation_id: requestId,
+        });
+      }
+
+      // 環境変数・設定エラー
+      if (
+        errObj.message?.includes("QSTASH_TOKEN") ||
+        errObj.message?.includes("environment") ||
+        errObj.message?.includes("configuration")
+      ) {
+        logger.error("Configuration error in webhook processing", {
+          ...errorContext,
+          error_classification: "config_error",
+          severity: "critical",
+        });
+        return createProblemResponse("INTERNAL_ERROR", {
+          instance: "/api/webhooks/stripe",
+          detail: "Configuration error",
+          correlation_id: requestId,
+        });
+      }
+
+      // IP制限エラー
+      if (
+        errObj.message?.includes("IP") ||
+        errObj.message?.includes("unauthorized") ||
+        errObj.message?.includes("forbidden")
+      ) {
+        logger.warn("IP restriction or authorization failed", {
+          ...errorContext,
+          error_classification: "security_error",
+          severity: "medium",
+        });
+        return createProblemResponse("FORBIDDEN", {
+          instance: "/api/webhooks/stripe",
+          detail: "Access denied",
+          correlation_id: requestId,
+        });
+      }
+    }
+
+    // その他の予期しないエラー（最も重大として扱う）
+    logger.error("Unexpected error in webhook processing", {
+      ...errorContext,
+      error_classification: "system_error",
+      severity: "critical",
+      requires_investigation: true,
     });
 
     // 失敗時はProblem Detailsで500を返し、Stripeにリトライを促す
     return createProblemResponse("INTERNAL_ERROR", {
       instance: "/api/webhooks/stripe",
-      detail: "Webhook forwarding failed",
+      detail: "Unexpected webhook processing failure",
       correlation_id: requestId,
+      retryable: true,
     });
   }
 }

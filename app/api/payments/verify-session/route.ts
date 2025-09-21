@@ -394,14 +394,160 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(result);
   } catch (error) {
-    logger.error("Unexpected error in payment verification", {
+    const correlationId = `verify_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const errorContext = {
       tag: "payment-verify",
       error_name: error instanceof Error ? error.name : "Unknown",
       error_message: error instanceof Error ? error.message : String(error),
+      correlation_id: correlationId,
+      stack: error instanceof Error ? error.stack : undefined,
+    };
+
+    // エラーの種類による詳細分類
+    if (error && typeof error === "object") {
+      const errObj = error as any;
+
+      // Stripe API関連エラー
+      if (errObj.type || errObj.message?.includes("stripe") || errObj.name?.includes("Stripe")) {
+        logger.error("Stripe API error during payment verification", {
+          ...errorContext,
+          error_classification: "stripe_error",
+          severity: "high",
+          stripe_error_type: errObj.type,
+          stripe_error_code: errObj.code,
+        });
+        return createProblemResponse("EXTERNAL_SERVICE_ERROR", {
+          instance: "/api/payments/verify-session",
+          detail: "決済サービスとの通信でエラーが発生しました",
+          correlation_id: correlationId,
+          retryable: true,
+        });
+      }
+
+      // データベースエラー
+      if (
+        errObj.code ||
+        errObj.message?.includes("database") ||
+        errObj.message?.includes("postgres")
+      ) {
+        logger.error("Database error in payment verification", {
+          ...errorContext,
+          error_classification: "database_error",
+          severity: "critical",
+          db_error_code: errObj.code,
+        });
+        return createProblemResponse("DATABASE_ERROR", {
+          instance: "/api/payments/verify-session",
+          detail: "データベースエラーが発生しました",
+          correlation_id: correlationId,
+          retryable: true,
+        });
+      }
+
+      // レート制限エラー
+      if (errObj.message?.includes("rate limit") || errObj.message?.includes("too many requests")) {
+        logger.warn("Rate limit exceeded in payment verification", {
+          ...errorContext,
+          error_classification: "rate_limit_error",
+          severity: "medium",
+        });
+        return createProblemResponse("RATE_LIMITED", {
+          instance: "/api/payments/verify-session",
+          detail: "リクエスト頻度が高すぎます",
+          correlation_id: correlationId,
+        });
+      }
+
+      // 認証・権限エラー
+      if (
+        errObj.message?.includes("auth") ||
+        errObj.message?.includes("token") ||
+        errObj.message?.includes("permission")
+      ) {
+        logger.warn("Authentication error in payment verification", {
+          ...errorContext,
+          error_classification: "auth_error",
+          severity: "medium",
+        });
+        return createProblemResponse("UNAUTHORIZED", {
+          instance: "/api/payments/verify-session",
+          detail: "認証エラーが発生しました",
+          correlation_id: correlationId,
+        });
+      }
+
+      // ネットワーク・接続エラー
+      if (
+        errObj.message?.includes("fetch") ||
+        errObj.message?.includes("network") ||
+        errObj.message?.includes("timeout") ||
+        errObj.code === "ENOTFOUND" ||
+        errObj.code === "ECONNRESET"
+      ) {
+        logger.warn("Network error in payment verification", {
+          ...errorContext,
+          error_classification: "network_error",
+          severity: "medium",
+          network_error_code: errObj.code,
+        });
+        return createProblemResponse("EXTERNAL_SERVICE_ERROR", {
+          instance: "/api/payments/verify-session",
+          detail: "ネットワーク接続エラーが発生しました",
+          correlation_id: correlationId,
+          retryable: true,
+        });
+      }
+
+      // JSON解析エラー
+      if (
+        errObj instanceof SyntaxError ||
+        errObj.message?.includes("JSON") ||
+        errObj.name === "SyntaxError"
+      ) {
+        logger.warn("JSON parsing error in payment verification", {
+          ...errorContext,
+          error_classification: "client_error",
+          severity: "low",
+        });
+        return createProblemResponse("INVALID_REQUEST", {
+          instance: "/api/payments/verify-session",
+          detail: "リクエスト形式が正しくありません",
+          correlation_id: correlationId,
+        });
+      }
+
+      // バリデーションエラー
+      if (
+        errObj.message?.includes("validation") ||
+        errObj.message?.includes("invalid") ||
+        errObj.name === "ValidationError"
+      ) {
+        logger.info("Validation error in payment verification", {
+          ...errorContext,
+          error_classification: "validation_error",
+          severity: "low",
+        });
+        return createProblemResponse("VALIDATION_ERROR", {
+          instance: "/api/payments/verify-session",
+          detail: "入力値が無効です",
+          correlation_id: correlationId,
+        });
+      }
+    }
+
+    // その他の予期しないエラー（最も重大として扱う）
+    logger.error("Unexpected error in payment verification", {
+      ...errorContext,
+      error_classification: "system_error",
+      severity: "critical",
+      requires_investigation: true,
     });
 
     return createProblemResponse("INTERNAL_ERROR", {
       instance: "/api/payments/verify-session",
+      detail: "予期しないエラーが発生しました",
+      correlation_id: correlationId,
+      retryable: true,
     });
   }
 }

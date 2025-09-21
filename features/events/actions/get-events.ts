@@ -1,5 +1,6 @@
 "use server";
 
+import { logger } from "@core/logging/app-logger";
 import { createClient } from "@core/supabase/server";
 import { SortBy, SortOrder, StatusFilter, PaymentFilter } from "@core/types/events";
 import { createServerActionError, type ServerActionResult } from "@core/types/server-actions";
@@ -328,9 +329,90 @@ export async function getEventsAction(options: GetEventsOptions = {}): Promise<G
       totalCount: totalCount || 0,
       hasMore,
     };
-  } catch (_) {
+  } catch (error) {
+    // 詳細なエラー分類とログ記録
+    const correlationId = `get_events_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const errorContext = {
+      tag: "getEventsError",
+      correlation_id: correlationId,
+      filters: {
+        statusFilter: options.statusFilter,
+        paymentFilter: options.paymentFilter,
+        sortBy: options.sortBy,
+        sortOrder: options.sortOrder,
+      },
+      pagination: { limit: options.limit, offset: options.offset },
+      error_name: error instanceof Error ? error.name : "Unknown",
+      error_message: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    };
+
+    // エラーの種類による分類処理
+    if (error && typeof error === "object") {
+      const errObj = error as any;
+
+      // Supabase認証エラー
+      if (errObj.message?.includes("JWT") || errObj.message?.includes("auth")) {
+        logger.warn("Authentication error in getEvents", errorContext);
+        return createServerActionError("UNAUTHORIZED", "認証が必要です", {
+          retryable: false,
+          correlationId: correlationId,
+        });
+      }
+
+      // Supabaseデータベースエラー
+      if (
+        errObj.code ||
+        errObj.message?.includes("database") ||
+        errObj.message?.includes("postgres")
+      ) {
+        logger.error("Database error in getEvents", {
+          ...errorContext,
+          db_error_code: errObj.code,
+          severity: "high",
+        });
+        return createServerActionError("DATABASE_ERROR", "データベースエラーが発生しました", {
+          retryable: true,
+          correlationId: correlationId,
+        });
+      }
+
+      // ネットワーク・接続エラー
+      if (
+        errObj.message?.includes("fetch") ||
+        errObj.message?.includes("network") ||
+        errObj.message?.includes("timeout")
+      ) {
+        logger.warn("Network error in getEvents", errorContext);
+        return createServerActionError("EXTERNAL_SERVICE_ERROR", "接続エラーが発生しました", {
+          retryable: true,
+          correlationId: correlationId,
+        });
+      }
+
+      // バリデーションエラー（既に処理済みだが念のため）
+      if (
+        errObj.message?.includes("validation") ||
+        errObj.message?.includes("invalid") ||
+        errObj.name === "ValidationError"
+      ) {
+        logger.info("Validation error in getEvents", errorContext);
+        return createServerActionError("VALIDATION_ERROR", "入力値が無効です", {
+          retryable: false,
+          correlationId: correlationId,
+        });
+      }
+    }
+
+    // その他の予期しないエラー
+    logger.error("Unexpected error in getEvents", {
+      ...errorContext,
+      severity: "critical", // 予期しないエラーは重要度を上げる
+    });
+
     return createServerActionError("INTERNAL_ERROR", "予期しないエラーが発生しました", {
       retryable: true,
+      correlationId: correlationId,
     });
   }
 }

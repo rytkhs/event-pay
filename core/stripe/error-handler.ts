@@ -5,15 +5,13 @@
 
 import Stripe from "stripe";
 
-import { logger } from "@core/logging/app-logger";
 import { type PaymentErrorClassification, createPaymentLogger } from "@core/logging/payment-logger";
-
-import { PaymentError, PaymentErrorType } from "@features/payments/types";
+import { PaymentError, PaymentErrorType } from "@core/types/payment-errors";
 
 /** Stripeエラー分析結果 */
 export interface StripeErrorAnalysis {
   /** 元のStripeエラー */
-  originalError: Stripe.StripeError;
+  originalError: Stripe.errors.StripeError;
   /** 分類されたPaymentErrorType */
   paymentErrorType: PaymentErrorType;
   /** エラー分類 */
@@ -48,7 +46,7 @@ export interface StripeErrorContext {
  * StripeエラーからPaymentErrorTypeへの分類マッピング
  * issue107で指摘された「No such on_behalf_of」などの具体的なケースに対応
  */
-function classifyStripeError(error: Stripe.StripeError): {
+function classifyStripeError(error: Stripe.errors.StripeError): {
   type: PaymentErrorType;
   classification: PaymentErrorClassification;
   retryable: boolean;
@@ -56,6 +54,9 @@ function classifyStripeError(error: Stripe.StripeError): {
 } {
   const { type: stripeErrorType, code, message } = error;
   const lowerMessage = message?.toLowerCase() || "";
+
+  // Stripe エラータイプを文字列として扱うためのヘルパー
+  const errorType = String(stripeErrorType);
 
   // Connect Account関連エラーの詳細分類
   if (lowerMessage.includes("no such on_behalf_of")) {
@@ -90,7 +91,7 @@ function classifyStripeError(error: Stripe.StripeError): {
   }
 
   // カード決済関連エラー
-  if (stripeErrorType === "card_error") {
+  if (errorType === "card_error") {
     switch (code) {
       case "card_declined":
       case "generic_decline":
@@ -140,7 +141,7 @@ function classifyStripeError(error: Stripe.StripeError): {
   }
 
   // API・認証関連エラー
-  if (stripeErrorType === "authentication_error") {
+  if (errorType === "authentication_error") {
     return {
       type: PaymentErrorType.UNAUTHORIZED,
       classification: "config_error",
@@ -149,7 +150,7 @@ function classifyStripeError(error: Stripe.StripeError): {
     };
   }
 
-  if (stripeErrorType === "permission_error") {
+  if (errorType === "permission_error") {
     return {
       type: PaymentErrorType.FORBIDDEN,
       classification: "config_error",
@@ -159,7 +160,7 @@ function classifyStripeError(error: Stripe.StripeError): {
   }
 
   // レート制限・一時的エラー
-  if (stripeErrorType === "rate_limit_error") {
+  if (errorType === "rate_limit_error") {
     return {
       type: PaymentErrorType.STRIPE_API_ERROR,
       classification: "stripe_error",
@@ -169,7 +170,7 @@ function classifyStripeError(error: Stripe.StripeError): {
   }
 
   // リクエストエラー
-  if (stripeErrorType === "invalid_request_error") {
+  if (errorType === "invalid_request_error") {
     // 設定問題かリクエスト内容の問題かを判別
     if (
       lowerMessage.includes("account") ||
@@ -193,7 +194,7 @@ function classifyStripeError(error: Stripe.StripeError): {
   }
 
   // API・接続エラー
-  if (stripeErrorType === "api_connection_error" || stripeErrorType === "api_error") {
+  if (errorType === "api_connection_error" || errorType === "api_error") {
     return {
       type: PaymentErrorType.STRIPE_API_ERROR,
       classification: "stripe_error",
@@ -203,7 +204,7 @@ function classifyStripeError(error: Stripe.StripeError): {
   }
 
   // Idempotency関連（通常は無害）
-  if (stripeErrorType === "idempotency_error") {
+  if (errorType.includes("idempotency")) {
     return {
       type: PaymentErrorType.STRIPE_API_ERROR,
       classification: "system_error",
@@ -227,7 +228,7 @@ function classifyStripeError(error: Stripe.StripeError): {
 function generateResolutionHints(
   classification: PaymentErrorClassification,
   paymentErrorType: PaymentErrorType,
-  context?: StripeErrorContext
+  _context?: StripeErrorContext
 ): string[] {
   switch (classification) {
     case "config_error":
@@ -317,7 +318,7 @@ export class StripeErrorHandler {
   /**
    * StripeエラーをPaymentErrorに変換し、詳細分析を実行
    */
-  handleStripeError(error: Stripe.StripeError, context?: StripeErrorContext): PaymentError {
+  handleStripeError(error: Stripe.errors.StripeError, context?: StripeErrorContext): PaymentError {
     const analysis = this.analyzeStripeError(error, context);
 
     // 構造化ログでエラーを記録
@@ -351,7 +352,10 @@ export class StripeErrorHandler {
   /**
    * Stripeエラーの詳細分析
    */
-  analyzeStripeError(error: Stripe.StripeError, context?: StripeErrorContext): StripeErrorAnalysis {
+  analyzeStripeError(
+    error: Stripe.errors.StripeError,
+    context?: StripeErrorContext
+  ): StripeErrorAnalysis {
     const classification = classifyStripeError(error);
     const resolutionHints = generateResolutionHints(
       classification.classification,
@@ -374,7 +378,7 @@ export class StripeErrorHandler {
   /**
    * Connect Account関連エラーかどうかを判定
    */
-  isConnectAccountError(error: Stripe.StripeError): boolean {
+  isConnectAccountError(error: Stripe.errors.StripeError): boolean {
     const message = error.message?.toLowerCase() || "";
     return (
       message.includes("no such on_behalf_of") ||
@@ -388,14 +392,14 @@ export class StripeErrorHandler {
   /**
    * リトライ可能なエラーかどうかを判定
    */
-  isRetryable(error: Stripe.StripeError): boolean {
+  isRetryable(error: Stripe.errors.StripeError): boolean {
     return classifyStripeError(error).retryable;
   }
 
   /**
    * エラーの重要度を判定
    */
-  getSeverity(error: Stripe.StripeError): "low" | "medium" | "high" | "critical" {
+  getSeverity(error: Stripe.errors.StripeError): "low" | "medium" | "high" | "critical" {
     return classifyStripeError(error).severity;
   }
 }
@@ -409,7 +413,7 @@ export const stripeErrorHandler = new StripeErrorHandler();
  * 便利関数: StripeエラーをPaymentErrorに変換
  */
 export function convertStripeError(
-  error: Stripe.StripeError,
+  error: Stripe.errors.StripeError,
   context?: StripeErrorContext
 ): PaymentError {
   return stripeErrorHandler.handleStripeError(error, context);
@@ -419,5 +423,7 @@ export function convertStripeError(
  * 便利関数: Connect Account関連エラーかどうかを判定
  */
 export function isConnectAccountError(error: unknown): boolean {
-  return error instanceof Stripe.StripeError && stripeErrorHandler.isConnectAccountError(error);
+  return (
+    error instanceof Stripe.errors.StripeError && stripeErrorHandler.isConnectAccountError(error)
+  );
 }
