@@ -394,8 +394,8 @@ async function executeRegistration(
     if (
       (errorMessage.includes("duplicate key") &&
         (errorMessage.includes("email") ||
-          errorDetails?.includes("attendances_event_email_unique"))) ||
-      errorDetails?.includes("attendances_event_email_unique")
+          (errorDetails ?? "").includes("attendances_event_email_unique"))) ||
+      (errorDetails ?? "").includes("attendances_event_email_unique")
     ) {
       // RPC内部でのメール重複検出（レースコンディション発生）
       logParticipationSecurityEvent(

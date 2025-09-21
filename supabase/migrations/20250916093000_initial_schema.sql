@@ -1275,7 +1275,8 @@ BEGIN
   END;
 
   -- 2. 参加ステータスが'attending'で、イベントが有料の場合、paymentsテーブルに決済記録を挿入
-  IF p_status = 'attending' AND p_event_fee > 0 AND p_payment_method IS NOT NULL THEN
+  -- 注意: この時点では負の値チェックが完了しており、p_event_fee >= 0 が保証されている
+  IF p_status = 'attending' AND p_event_fee IS NOT NULL AND p_event_fee > 0 AND p_payment_method IS NOT NULL THEN
     BEGIN
       INSERT INTO public.payments (attendance_id, amount, method, status)
       VALUES (v_attendance_id, p_event_fee, p_payment_method, 'pending');

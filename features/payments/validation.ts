@@ -197,6 +197,10 @@ export class PaymentValidator implements IPaymentValidator {
     if (!Number.isInteger(amount)) {
       throw new PaymentError(PaymentErrorType.INVALID_AMOUNT, "金額は整数である必要があります");
     }
+    // issue #123 対応: 負の金額チェックを追加
+    if (amount < 0) {
+      throw new PaymentError(PaymentErrorType.INVALID_AMOUNT, "金額は0以上である必要があります");
+    }
     if (amount <= 0) {
       throw new PaymentError(PaymentErrorType.INVALID_AMOUNT, "金額は正の数である必要があります");
     }
