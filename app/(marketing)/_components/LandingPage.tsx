@@ -39,38 +39,19 @@ const faqItems: FAQItem[] = [
 export default function LandingPage(): JSX.Element {
   const router = useRouter();
   const rootRef = useRef<HTMLDivElement | null>(null);
-  const headerRef = useRef<HTMLElement | null>(null);
   const heroRef = useRef<HTMLElement | null>(null);
   const closingRef = useRef<HTMLElement | null>(null);
 
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [headerScrolled, setHeaderScrolled] = useState(false);
   const [floatingVisible, setFloatingVisible] = useState(false);
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(null);
 
-  const handleToggleMobileMenu = useCallback(() => {
-    setMobileMenuOpen((p) => !p);
-  }, []);
-
-  const closeMobileMenu = useCallback(() => {
-    setMobileMenuOpen(false);
-  }, []);
-
-  useEffect(() => {
-    if (typeof document !== "undefined") {
-      document.body.style.overflow = mobileMenuOpen ? "hidden" : "";
-    }
-  }, [mobileMenuOpen]);
-
   const scrollToSection = useCallback((id: string) => {
     const container = rootRef.current;
-    const header = headerRef.current;
     if (!container) return;
     const target = container.querySelector<HTMLElement>(`#${id}`);
-    const headerHeight = header?.offsetHeight ?? 80;
     if (target) {
       const targetTop = target.getBoundingClientRect().top + window.scrollY;
-      const top = targetTop - headerHeight - 20; // padding
+      const top = targetTop - 80 - 20; // header height + padding
       window.scrollTo({ top: Math.max(0, top), behavior: "smooth" });
     }
   }, []);
@@ -81,9 +62,6 @@ export default function LandingPage(): JSX.Element {
 
   useEffect(() => {
     const onScroll = () => {
-      const scrolled = window.scrollY > 50;
-      setHeaderScrolled(scrolled);
-
       const hero = heroRef.current;
       const closing = closingRef.current;
       if (hero && closing) {
@@ -93,18 +71,14 @@ export default function LandingPage(): JSX.Element {
         setFloatingVisible(y > heroBottom && y < closingTop - window.innerHeight);
       }
     };
-    const onResize = () => {
-      if (window.innerWidth > 768) closeMobileMenu();
-      onScroll();
-    };
     window.addEventListener("scroll", onScroll, { passive: true });
-    window.addEventListener("resize", onResize);
+    window.addEventListener("resize", onScroll);
     onScroll();
     return () => {
       window.removeEventListener("scroll", onScroll);
-      window.removeEventListener("resize", onResize);
+      window.removeEventListener("resize", onScroll);
     };
-  }, [closeMobileMenu]);
+  }, []);
 
   useEffect(() => {
     // initial hero animations
@@ -152,82 +126,8 @@ export default function LandingPage(): JSX.Element {
     return () => observer.disconnect();
   }, []);
 
-  const onClickNav = useCallback(
-    (e: React.MouseEvent<HTMLAnchorElement>, href: string) => {
-      e.preventDefault();
-      const id = href.startsWith("#") ? href.slice(1) : href;
-      scrollToSection(id);
-      closeMobileMenu();
-    },
-    [closeMobileMenu, scrollToSection]
-  );
-
-  const headerClassName = useMemo(() => {
-    return `header${headerScrolled ? " scrolled" : ""}`;
-  }, [headerScrolled]);
-
   return (
     <div ref={rootRef} data-lp>
-      <header className={headerClassName} id="header" ref={headerRef}>
-        <div className="header-container">
-          <div className="header-logo">
-            <h1 className="logo-text">みんなの集金</h1>
-          </div>
-          <nav className="header-nav">
-            <a href="#features" className="nav-link" onClick={(e) => onClickNav(e, "#features")}>
-              機能
-            </a>
-            <a href="#pricing" className="nav-link" onClick={(e) => onClickNav(e, "#pricing")}>
-              料金
-            </a>
-            <a href="#faq" className="nav-link" onClick={(e) => onClickNav(e, "#faq")}>
-              FAQ
-            </a>
-            <button
-              className="btn btn-primary header-cta"
-              onClick={() => scrollToSection("closing")}
-            >
-              無料で始める
-            </button>
-          </nav>
-          <button
-            className="mobile-menu-btn"
-            aria-label="Open menu"
-            onClick={handleToggleMobileMenu}
-          >
-            <span></span>
-            <span></span>
-            <span></span>
-          </button>
-        </div>
-      </header>
-
-      <div
-        className={`mobile-menu${mobileMenuOpen ? " active" : ""}`}
-        id="mobileMenu"
-        role="dialog"
-        aria-modal="true"
-      >
-        <nav className="mobile-nav">
-          <a
-            href="#features"
-            className="mobile-nav-link"
-            onClick={(e) => onClickNav(e, "#features")}
-          >
-            機能
-          </a>
-          <a href="#pricing" className="mobile-nav-link" onClick={(e) => onClickNav(e, "#pricing")}>
-            料金
-          </a>
-          <a href="#faq" className="mobile-nav-link" onClick={(e) => onClickNav(e, "#faq")}>
-            FAQ
-          </a>
-          <button className="btn btn-primary mobile-cta" onClick={() => scrollToSection("closing")}>
-            無料で始める
-          </button>
-        </nav>
-      </div>
-
       <section className="hero" ref={heroRef}>
         <div className="container">
           <div className="hero-content">
@@ -530,33 +430,6 @@ export default function LandingPage(): JSX.Element {
           </div>
         </div>
       </section>
-
-      <footer className="footer">
-        <div className="container">
-          <div className="footer-content">
-            <div className="footer-logo">
-              <span className="logo-text">みんなの集金</span>
-            </div>
-            <div className="footer-links">
-              <button type="button" className="footer-link">
-                運営会社
-              </button>
-              <button type="button" className="footer-link">
-                利用規約
-              </button>
-              <button type="button" className="footer-link">
-                プライバシーポリシー
-              </button>
-              <button type="button" className="footer-link">
-                お問い合わせ
-              </button>
-            </div>
-          </div>
-          <div className="footer-bottom">
-            <p>© 2025 みんなの集金. All rights reserved.</p>
-          </div>
-        </div>
-      </footer>
 
       <div className={`floating-cta${floatingVisible ? " visible" : ""}`} id="floatingCta">
         <button
