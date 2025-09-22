@@ -9,10 +9,11 @@ import {
   X,
   CreditCard,
   Banknote,
-  Eye,
-  EyeOff,
-  Copy,
   UserPlus,
+  Copy,
+  TableIcon,
+  LayoutGridIcon,
+  CheckCircle,
 } from "lucide-react";
 
 import { useToast } from "@core/contexts/toast-context";
@@ -33,8 +34,10 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { generateGuestUrlAction } from "@/features/events/actions/generate-guest-url";
-import { getAllCashPaymentIdsAction } from "@/features/events/actions/get-all-cash-payment-ids";
+
+import { SmartBatchSelection } from "./smart-batch-selection";
 
 interface ParticipantsTableEnhancedProps {
   eventId: string;
@@ -45,12 +48,64 @@ interface ParticipantsTableEnhancedProps {
   onFiltersChange: (params: Record<string, string | undefined>) => void;
 }
 
+// バッジヘルパー関数
+function getAttendanceStatusBadge(status: string) {
+  const styles = {
+    attending: {
+      variant: "default" as const,
+      className: "bg-success/10 text-success border-success/20",
+      label: "◯ 参加",
+    },
+    not_attending: {
+      variant: "secondary" as const,
+      className: "bg-destructive/10 text-destructive border-destructive/20",
+      label: "不参加",
+    },
+    maybe: {
+      variant: "outline" as const,
+      className: "bg-yellow-100 text-yellow-800 border-yellow-300",
+      label: "△ 未定",
+    },
+  };
+
+  const style = styles[status as keyof typeof styles] || styles.maybe;
+  return (
+    <Badge variant={style.variant} className={style.className}>
+      {style.label}
+    </Badge>
+  );
+}
+
+function getPaymentMethodBadge(method: string | null) {
+  if (!method) {
+    return <span className="text-gray-400 text-sm">-</span>;
+  }
+
+  const styles = {
+    stripe: { icon: CreditCard, label: "カード", className: "bg-purple-100 text-purple-800" },
+    cash: { icon: Banknote, label: "現金", className: "bg-orange-100 text-orange-800" },
+  };
+
+  const style = styles[method as keyof typeof styles];
+  if (!style) {
+    return <span className="text-gray-400 text-sm">-</span>;
+  }
+
+  const Icon = style.icon;
+  return (
+    <Badge className={style.className}>
+      <Icon className="h-3 w-3 mr-1" />
+      {style.label}
+    </Badge>
+  );
+}
+
 export function ParticipantsTableEnhanced({
-  eventId,
+  eventId: _eventId,
   eventFee,
   participantsData,
   paymentsData: _paymentsData,
-  searchParams,
+  searchParams: _searchParams,
   onFiltersChange,
 }: ParticipantsTableEnhancedProps) {
   const { toast } = useToast();
@@ -59,14 +114,26 @@ export function ParticipantsTableEnhanced({
   // ローカル状態管理
   const [selectedPaymentIds, setSelectedPaymentIds] = useState<string[]>([]);
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
-  const [bulkUpdateMode, setBulkUpdateMode] = useState<"received" | "waived" | null>(null);
   const [viewMode, setViewMode] = useState<"table" | "cards">("table");
-  const [isSelectingAll, setIsSelectingAll] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+  const [isTransitioning, setIsTransitioning] = useState(false);
 
-  // レスポンシブでモバイルの場合はカードレイアウトに自動切り替え
+  // 設定の永続化とレスポンシブ判定
   useEffect(() => {
+    const savedViewMode = localStorage.getItem("event-participants-view-mode") as
+      | "table"
+      | "cards"
+      | null;
+
     const checkScreenSize = () => {
-      setViewMode(window.innerWidth < 768 ? "cards" : "table");
+      const mobile = window.innerWidth < 768;
+      setIsMobile(mobile);
+
+      if (mobile) {
+        setViewMode("cards");
+      } else if (savedViewMode) {
+        setViewMode(savedViewMode);
+      }
     };
 
     checkScreenSize();
@@ -74,10 +141,29 @@ export function ParticipantsTableEnhanced({
     return () => window.removeEventListener("resize", checkScreenSize);
   }, []);
 
+  // View Mode変更時の永続化とアニメーション
+  const handleViewModeChange = (newMode: "table" | "cards") => {
+    if (newMode === viewMode) return;
+
+    setIsTransitioning(true);
+
+    // アニメーション開始
+    setTimeout(() => {
+      setViewMode(newMode);
+      if (!isMobile) {
+        localStorage.setItem("event-participants-view-mode", newMode);
+      }
+
+      setTimeout(() => setIsTransitioning(false), 200);
+    }, 100);
+  };
+
+  // 参加者データ
+  const participants = participantsData.participants;
+  const pagination = participantsData.pagination;
+
   // 現金決済のみをフィルター
-  const cashPayments = participantsData.participants.filter(
-    (p) => p.payment_method === "cash" && p.payment_id
-  );
+  const cashPayments = participants.filter((p) => p.payment_method === "cash" && p.payment_id);
 
   // ページネーションハンドラー
   const handlePageChange = (newPage: number) => {
@@ -100,85 +186,27 @@ export function ParticipantsTableEnhanced({
     }
   };
 
-  // 条件に合致する全件選択
-  const handleSelectAllMatching = async () => {
-    if (isSelectingAll) return;
-    setIsSelectingAll(true);
-
-    try {
-      const filters = {
-        search: typeof searchParams.search === "string" ? searchParams.search : undefined,
-        attendanceStatus:
-          typeof searchParams.attendance === "string" ? searchParams.attendance : undefined,
-        paymentStatus:
-          typeof searchParams.payment_status === "string" ? searchParams.payment_status : undefined,
-      };
-
-      const result = await getAllCashPaymentIdsAction({
-        eventId,
-        filters,
-        max: 5000,
-      });
-
-      if (result.success) {
-        if (result.paymentIds.length === 0) {
-          setSelectedPaymentIds([]);
-          toast({ title: "対象なし", description: "条件に一致する現金決済がありません。" });
-          return;
-        }
-
-        setSelectedPaymentIds(result.paymentIds);
-        toast({
-          title: "全件選択",
-          description: `${result.paymentIds.length}件を選択しました`,
-        });
-      } else {
-        toast({
-          title: "選択に失敗しました",
-          description: result.error || "全件選択に失敗しました",
-          variant: "destructive",
-        });
-      }
-    } catch (error) {
-      toast({
-        title: "選択に失敗しました",
-        description: "全件選択でエラーが発生しました",
-        variant: "destructive",
-      });
-    } finally {
-      setIsSelectingAll(false);
-    }
-  };
-
-  // 個別ステータス更新
+  // 決済状況更新ハンドラー
   const handleUpdatePaymentStatus = async (paymentId: string, status: "received" | "waived") => {
     setIsUpdatingStatus(true);
     try {
-      const paymentActions = getPaymentActions();
-      const result = await paymentActions.updateCashStatus({
-        paymentId,
-        status,
-      });
+      const { updateCashStatus } = getPaymentActions();
+      const result = await updateCashStatus({ paymentId, status });
 
       if (result.success) {
         toast({
-          title: "ステータスを更新しました",
-          description: `決済ステータスを「${status === "received" ? "受領済み" : "免除"}」に更新しました`,
+          title: "決済状況を更新しました",
+          description: `ステータスを「${status === "received" ? "受領" : "免除"}」に変更しました。`,
         });
-        // ページリロードでデータ更新
-        window.location.reload();
+        // 再読み込みトリガー（親コンポーネントの責務）
+        onFiltersChange({});
       } else {
-        toast({
-          title: "エラーが発生しました",
-          description:
-            typeof result.error === "string" ? result.error : "ステータス更新に失敗しました",
-          variant: "destructive",
-        });
+        throw new Error(result.error);
       }
     } catch (error) {
       toast({
-        title: "エラーが発生しました",
-        description: "ステータス更新に失敗しました",
+        title: "更新に失敗しました",
+        description: "しばらく待ってから再度お試しください。",
         variant: "destructive",
       });
     } finally {
@@ -186,403 +214,218 @@ export function ParticipantsTableEnhanced({
     }
   };
 
-  // 一括ステータス更新
-  const handleBulkUpdate = async (status: "received" | "waived") => {
+  // ゲストURL生成
+  const handleCopyGuestUrl = async (attendanceId: string) => {
+    try {
+      const result = await generateGuestUrlAction(attendanceId);
+      if (result.success) {
+        await navigator.clipboard.writeText(result.data.guestUrl);
+        toast({
+          title: "URLをコピーしました",
+          description: "参加者に共有してください。",
+        });
+      } else {
+        throw new Error(result.error);
+      }
+    } catch (error) {
+      toast({
+        title: "URLの生成に失敗しました",
+        description: "しばらく待ってから再度お試しください。",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // 一括操作ハンドラー
+  const handleBulkAction = async (action: "received" | "waived") => {
     if (selectedPaymentIds.length === 0) {
       toast({
-        title: "選択エラー",
-        description: "更新する決済を選択してください",
+        title: "選択してください",
+        description: "操作する決済を選択してください。",
         variant: "destructive",
       });
       return;
     }
 
     setIsUpdatingStatus(true);
-    setBulkUpdateMode(status);
-
     try {
-      const chunkSize = 50;
-      let totalSuccess = 0;
-      let totalFailed = 0;
+      const { updateCashStatus } = getPaymentActions();
 
-      for (let i = 0; i < selectedPaymentIds.length; i += chunkSize) {
-        const chunk = selectedPaymentIds.slice(i, i + chunkSize);
-        const paymentActions = getPaymentActions();
-        const result = await paymentActions.bulkUpdateCashStatus({ paymentIds: chunk, status });
+      const promises = selectedPaymentIds.map((id) =>
+        updateCashStatus({ paymentId: id, status: action })
+      );
 
-        if (result.success) {
-          totalSuccess += result.data.successCount;
-          totalFailed += result.data.failedCount;
-        } else {
-          totalFailed += chunk.length;
-        }
+      const results = await Promise.all(promises);
+      const failures = results.filter((r: any) => !r.success);
+
+      if (failures.length === 0) {
+        toast({
+          title: `${selectedPaymentIds.length}件を更新しました`,
+          description: `ステータスを「${action === "received" ? "受領" : "免除"}」に変更しました。`,
+        });
+        setSelectedPaymentIds([]);
+        onFiltersChange({});
+      } else {
+        toast({
+          title: "一部の更新に失敗しました",
+          description: `${results.length - failures.length}/${results.length}件が成功しました。`,
+          variant: "destructive",
+        });
       }
-
-      toast({
-        title: "一括更新が完了しました",
-        description: `${totalSuccess}件成功、${totalFailed}件失敗`,
-      });
-      setSelectedPaymentIds([]);
-      // ページリロードでデータ更新
-      window.location.reload();
     } catch (error) {
       toast({
-        title: "エラーが発生しました",
-        description: "一括更新に失敗しました",
+        title: "一括更新に失敗しました",
+        description: "しばらく待ってから再度お試しください。",
         variant: "destructive",
       });
     } finally {
       setIsUpdatingStatus(false);
-      setBulkUpdateMode(null);
     }
   };
-
-  // ゲストURLコピー
-  const handleCopyGuestUrl = async (attendanceId: string) => {
-    try {
-      const res = await generateGuestUrlAction({ eventId, attendanceId });
-      if (!res.success) {
-        toast({
-          title: "コピーできません",
-          description: res.error || "ゲストURL生成に失敗しました",
-          variant: "destructive",
-        });
-        return;
-      }
-      await navigator.clipboard.writeText(res.data.guestUrl);
-      toast({
-        title: "URLをコピーしました",
-        description: res.data.canOnlinePay
-          ? "現在オンライン決済が可能です。"
-          : res.data.reason || "オンライン決済は現在できません。",
-      });
-    } catch {
-      toast({
-        title: "コピーに失敗しました",
-        description: "クリップボードにアクセスできませんでした",
-        variant: "destructive",
-      });
-    }
-  };
-
-  // バッジ生成関数
-  const getAttendanceStatusBadge = (status: string) => {
-    switch (status) {
-      case "attending":
-        return (
-          <Badge variant="default" className="bg-success/10 text-success border-success/20">
-            ◯ 参加
-          </Badge>
-        );
-      case "not_attending":
-        return (
-          <Badge
-            variant="secondary"
-            className="bg-destructive/10 text-destructive border-destructive/20"
-          >
-            ✕ 不参加
-          </Badge>
-        );
-      case "maybe":
-        return (
-          <Badge variant="outline" className="bg-warning/10 text-warning border-warning/20">
-            △ 未定
-          </Badge>
-        );
-      default:
-        return <Badge variant="outline">{status}</Badge>;
-    }
-  };
-
-  const getPaymentMethodBadge = (method: string | null) => {
-    if (!method) return null;
-
-    switch (method) {
-      case "stripe":
-        return (
-          <Badge
-            variant="outline"
-            className="bg-purple-100 text-purple-800 flex items-center gap-1"
-          >
-            <CreditCard className="h-3 w-3" />
-            オンライン
-          </Badge>
-        );
-      case "cash":
-        return (
-          <Badge
-            variant="outline"
-            className="bg-orange-100 text-orange-800 flex items-center gap-1"
-          >
-            <Banknote className="h-3 w-3" />
-            現金
-          </Badge>
-        );
-      default:
-        return <Badge variant="outline">{method}</Badge>;
-    }
-  };
-
-  const { participants, pagination } = participantsData;
 
   return (
-    <div className="space-y-4">
-      {/* 一括操作バー */}
-      {selectedPaymentIds.length > 0 && (
-        <Card className="border-blue-200 bg-blue-50">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-blue-800">
-                {selectedPaymentIds.length}件の現金決済を選択中
-              </span>
-              <div className="flex items-center gap-2">
-                <Button
-                  size="sm"
-                  onClick={() => handleBulkUpdate("received")}
-                  disabled={isUpdatingStatus}
-                  className="bg-green-600 hover:bg-green-700"
-                >
-                  <Check className="h-4 w-4 mr-1" />
-                  {bulkUpdateMode === "received" && isUpdatingStatus ? "処理中..." : "一括受領"}
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => handleBulkUpdate("waived")}
-                  disabled={isUpdatingStatus}
-                  className="border-orange-300 text-orange-700 hover:bg-orange-50"
-                >
-                  <X className="h-4 w-4 mr-1" />
-                  {bulkUpdateMode === "waived" && isUpdatingStatus ? "処理中..." : "一括免除"}
-                </Button>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => setSelectedPaymentIds([])}
-                  disabled={isUpdatingStatus}
-                >
-                  選択解除
-                </Button>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* テーブル/カード切り替えボタンと一括選択 */}
-      <Card>
-        <CardHeader>
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <CardTitle className="flex items-center gap-2">
-              参加者一覧（{pagination.total}件）
+    <Card>
+      <CardHeader>
+        <div className="flex flex-col gap-4">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-lg font-semibold">
+              参加者一覧 ({pagination.total}件)
             </CardTitle>
 
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleSelectAllMatching}
-                disabled={isSelectingAll}
+            {/* View Toggle (デスクトップ・タブレットのみ) */}
+            {!isMobile && (
+              <ToggleGroup
+                type="single"
+                value={viewMode}
+                onValueChange={(value: "table" | "cards") => value && handleViewModeChange(value)}
+                className="border rounded-md"
+                aria-label="表示形式を選択"
               >
-                {isSelectingAll ? "全件選択中..." : "現金を全件選択"}
-              </Button>
-
-              <div className="flex items-center border rounded-lg">
-                <Button
-                  variant={viewMode === "table" ? "default" : "ghost"}
-                  size="sm"
-                  onClick={() => setViewMode("table")}
-                  className="rounded-r-none"
-                >
-                  <Eye className="h-4 w-4" />
-                  テーブル
-                </Button>
-                <Button
-                  variant={viewMode === "cards" ? "default" : "ghost"}
-                  size="sm"
-                  onClick={() => setViewMode("cards")}
-                  className="rounded-l-none"
-                >
-                  <EyeOff className="h-4 w-4" />
-                  カード
-                </Button>
-              </div>
-            </div>
+                <ToggleGroupItem value="table" aria-label="テーブル表示">
+                  <TableIcon className="h-4 w-4" />
+                </ToggleGroupItem>
+                <ToggleGroupItem value="cards" aria-label="カード表示">
+                  <LayoutGridIcon className="h-4 w-4" />
+                </ToggleGroupItem>
+              </ToggleGroup>
+            )}
           </div>
-        </CardHeader>
 
-        <CardContent>
-          {participants.length === 0 ? (
-            <div className="text-center py-12 text-gray-500">
-              <UserPlus className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-              <p>参加者が見つかりません</p>
-            </div>
-          ) : viewMode === "table" ? (
-            /* テーブルビュー（デスクトップ） */
-            <div className="rounded-md border overflow-x-auto">
-              <table className="w-full min-w-[768px]">
-                <thead className="bg-muted/30">
-                  <tr>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      <Checkbox
-                        checked={
-                          cashPayments.length > 0 &&
-                          selectedPaymentIds.length ===
-                            cashPayments.filter((p) => p.payment_id).length
-                        }
-                        onCheckedChange={handleSelectAll}
-                        disabled={cashPayments.length === 0}
-                      />
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      ニックネーム
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      参加状況
-                    </th>
-                    {!isFreeEvent && (
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+          {/* Smart Batch Selection */}
+          <SmartBatchSelection
+            participants={participants}
+            selectedPaymentIds={selectedPaymentIds}
+            onSelectionChange={setSelectedPaymentIds}
+            isFreeEvent={isFreeEvent}
+            isUpdating={isUpdatingStatus}
+          />
+
+          {/* 一括操作ボタン（選択時のみ表示） */}
+          {!isFreeEvent && selectedPaymentIds.length > 0 && (
+            <Card className="border-orange-200 bg-orange-50/30">
+              <CardContent className="p-4">
+                <div className="flex flex-col sm:flex-row gap-3 items-center justify-between">
+                  <div className="flex items-center gap-2 text-orange-800">
+                    <span className="font-medium">一括操作</span>
+                    <Badge variant="secondary" className="bg-orange-100 text-orange-800">
+                      {selectedPaymentIds.length}件選択中
+                    </Badge>
+                  </div>
+
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleBulkAction("received")}
+                      disabled={isUpdatingStatus}
+                      className="bg-green-50 border-green-300 text-green-700 hover:bg-green-100 min-h-[44px]"
+                    >
+                      <Check className="h-4 w-4 mr-1" />
+                      一括受領
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleBulkAction("waived")}
+                      disabled={isUpdatingStatus}
+                      className="bg-orange-50 border-orange-300 text-orange-700 hover:bg-orange-100 min-h-[44px]"
+                    >
+                      <X className="h-4 w-4 mr-1" />
+                      一括免除
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      </CardHeader>
+
+      <CardContent>
+        {participants.length === 0 ? (
+          <div className="text-center py-12 text-gray-500">
+            <UserPlus className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+            <p>参加者が見つかりません</p>
+          </div>
+        ) : (
+          <div
+            className={`transition-opacity duration-200 ${isTransitioning ? "opacity-50" : "opacity-100"}`}
+          >
+            {viewMode === "table" ? (
+              /* テーブルビュー（Enhanced Touch Targets対応） */
+              <div className="rounded-md border overflow-x-auto">
+                <table className="w-full" role="table" aria-label="参加者一覧テーブル">
+                  <thead className="bg-muted/30">
+                    <tr className="min-h-[48px]">
+                      <th className="px-3 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-12 sm:w-16">
+                        <Checkbox
+                          checked={
+                            cashPayments.length > 0 &&
+                            selectedPaymentIds.length ===
+                              cashPayments.filter((p) => p.payment_id).length
+                          }
+                          onCheckedChange={handleSelectAll}
+                          disabled={cashPayments.length === 0}
+                          className="h-5 w-5 touch-manipulation" // Enhanced touch target + touch optimization
+                        />
+                      </th>
+                      <th className="px-3 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        ニックネーム
+                      </th>
+                      <th className="px-2 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        参加状況
+                      </th>
+                      <th className="px-2 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         決済方法
                       </th>
-                    )}
-                    {!isFreeEvent && (
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-2 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         決済状況
                       </th>
-                    )}
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      アクション
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {participants.map((participant) => {
-                    const isPaid = !isFreeEvent && isPaymentCompleted(participant.payment_status);
-                    const simpleStatus = toSimplePaymentStatus(participant.payment_status);
-                    const isCashPayment =
-                      participant.payment_method === "cash" && participant.payment_id;
-                    const isSelected = participant.payment_id
-                      ? selectedPaymentIds.includes(participant.payment_id)
-                      : false;
+                      <th className="px-2 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-24 sm:w-32">
+                        アクション
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {participants.map((participant) => {
+                      const isPaid = !isFreeEvent && isPaymentCompleted(participant.payment_status);
+                      const simpleStatus = toSimplePaymentStatus(participant.payment_status);
+                      const isCashPayment =
+                        participant.payment_method === "cash" && participant.payment_id;
+                      const isSelected = participant.payment_id
+                        ? selectedPaymentIds.includes(participant.payment_id)
+                        : false;
 
-                    return (
-                      <tr
-                        key={participant.attendance_id}
-                        className={`${isPaid ? "bg-green-50 border-l-4 !border-l-green-200" : ""}`}
-                      >
-                        <td className="px-4 py-4 whitespace-nowrap">
-                          {isCashPayment ? (
-                            <Checkbox
-                              checked={isSelected}
-                              onCheckedChange={(checked: boolean) =>
-                                hasPaymentId(participant) &&
-                                handleSelectPayment(participant.payment_id, checked)
-                              }
-                              disabled={isUpdatingStatus}
-                            />
-                          ) : (
-                            <span className="text-gray-400">-</span>
-                          )}
-                        </td>
-                        <td className="px-4 py-4 whitespace-nowrap font-medium text-gray-900">
-                          {participant.nickname}
-                        </td>
-                        <td className="px-4 py-4 whitespace-nowrap">
-                          {getAttendanceStatusBadge(participant.status)}
-                        </td>
-                        {!isFreeEvent && (
-                          <td className="px-4 py-4 whitespace-nowrap">
-                            {getPaymentMethodBadge(participant.payment_method)}
-                          </td>
-                        )}
-                        {!isFreeEvent && (
-                          <td className="px-4 py-4 whitespace-nowrap">
-                            <Badge
-                              variant={getSimplePaymentStatusStyle(simpleStatus).variant}
-                              className={getSimplePaymentStatusStyle(simpleStatus).className}
-                            >
-                              {SIMPLE_PAYMENT_STATUS_LABELS[simpleStatus]}
-                            </Badge>
-                          </td>
-                        )}
-                        <td className="px-4 py-4 whitespace-nowrap">
-                          <div className="flex items-center gap-2">
-                            {isCashPayment &&
-                              simpleStatus !== "paid" &&
-                              simpleStatus !== "waived" && (
-                                <>
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={() =>
-                                      hasPaymentId(participant) &&
-                                      handleUpdatePaymentStatus(participant.payment_id, "received")
-                                    }
-                                    disabled={isUpdatingStatus}
-                                    className="h-8 px-2 text-xs bg-green-50 border-green-300 text-green-700 hover:bg-green-100"
-                                  >
-                                    <Check className="h-3 w-3 mr-1" />
-                                    受領
-                                  </Button>
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={() =>
-                                      hasPaymentId(participant) &&
-                                      handleUpdatePaymentStatus(participant.payment_id, "waived")
-                                    }
-                                    disabled={isUpdatingStatus}
-                                    className="h-8 px-2 text-xs bg-orange-50 border-orange-300 text-orange-700 hover:bg-orange-100"
-                                  >
-                                    <X className="h-3 w-3 mr-1" />
-                                    免除
-                                  </Button>
-                                </>
-                              )}
-
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={() => handleCopyGuestUrl(participant.attendance_id)}
-                              className="h-8 px-2 text-xs"
-                              title="ゲスト用URLをコピー"
-                              disabled={participant.status !== "attending"}
-                            >
-                              <Copy className="h-3 w-3 mr-1" />
-                              URL
-                            </Button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            /* カードビュー（モバイル） */
-            <div className="space-y-3">
-              {participants.map((participant) => {
-                const isPaid = !isFreeEvent && isPaymentCompleted(participant.payment_status);
-                const simpleStatus = toSimplePaymentStatus(participant.payment_status);
-                const isCashPayment =
-                  participant.payment_method === "cash" && participant.payment_id;
-                const isSelected = participant.payment_id
-                  ? selectedPaymentIds.includes(participant.payment_id)
-                  : false;
-
-                return (
-                  <Card
-                    key={participant.attendance_id}
-                    className={`${isPaid ? "border-green-200 bg-green-50" : ""} ${
-                      isSelected ? "ring-2 ring-blue-500" : ""
-                    }`}
-                  >
-                    <CardContent className="p-4">
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-3 mb-2">
-                            {isCashPayment && (
+                      return (
+                        <tr
+                          key={participant.attendance_id}
+                          className={`min-h-[48px] hover:bg-gray-50 ${
+                            isPaid ? "bg-green-50 border-l-4 !border-l-green-200" : ""
+                          }`}
+                        >
+                          {/* 選択列 */}
+                          <td className="px-3 sm:px-4 py-3 sm:py-4 whitespace-nowrap">
+                            {isCashPayment ? (
                               <Checkbox
                                 checked={isSelected}
                                 onCheckedChange={(checked: boolean) =>
@@ -590,25 +433,172 @@ export function ParticipantsTableEnhanced({
                                   handleSelectPayment(participant.payment_id, checked)
                                 }
                                 disabled={isUpdatingStatus}
+                                className="h-5 w-5 touch-manipulation" // Enhanced touch target + touch optimization
                               />
+                            ) : (
+                              <span className="text-gray-400 text-xs sm:text-sm">-</span>
                             )}
-                            <h4 className="font-medium text-gray-900">{participant.nickname}</h4>
-                            {getAttendanceStatusBadge(participant.status)}
-                          </div>
+                          </td>
 
-                          {!isFreeEvent && (
-                            <div className="flex items-center gap-3 mb-3">
-                              {getPaymentMethodBadge(participant.payment_method)}
+                          {/* ニックネーム列 */}
+                          <td className="px-3 sm:px-4 py-3 sm:py-4 whitespace-nowrap font-medium text-gray-900 text-sm sm:text-base">
+                            {participant.nickname}
+                          </td>
+
+                          {/* 参加状況列 */}
+                          <td className="px-2 sm:px-4 py-3 sm:py-4 whitespace-nowrap">
+                            {getAttendanceStatusBadge(participant.status)}
+                          </td>
+
+                          {/* 決済方法列 */}
+                          <td className="px-2 sm:px-4 py-3 sm:py-4 whitespace-nowrap">
+                            {getPaymentMethodBadge(participant.payment_method)}
+                          </td>
+
+                          {/* 決済状況列 */}
+                          <td className="px-2 sm:px-4 py-3 sm:py-4 whitespace-nowrap">
+                            {!isFreeEvent && participant.payment_status ? (
                               <Badge
                                 variant={getSimplePaymentStatusStyle(simpleStatus).variant}
                                 className={getSimplePaymentStatusStyle(simpleStatus).className}
                               >
                                 {SIMPLE_PAYMENT_STATUS_LABELS[simpleStatus]}
                               </Badge>
-                            </div>
-                          )}
+                            ) : (
+                              <span className="text-gray-400 text-xs sm:text-sm">-</span>
+                            )}
+                          </td>
 
-                          <div className="flex flex-wrap items-center gap-2">
+                          {/* アクション列 */}
+                          <td className="px-2 sm:px-4 py-3 sm:py-4 whitespace-nowrap">
+                            <div className="flex flex-col gap-1">
+                              {/* 現金決済のクイックアクション */}
+                              {isCashPayment &&
+                                simpleStatus !== "paid" &&
+                                simpleStatus !== "waived" && (
+                                  <div className="flex gap-1">
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() =>
+                                        hasPaymentId(participant) &&
+                                        handleUpdatePaymentStatus(
+                                          participant.payment_id,
+                                          "received"
+                                        )
+                                      }
+                                      disabled={isUpdatingStatus}
+                                      className="bg-green-50 border-green-300 text-green-700 hover:bg-green-100 min-h-[36px] sm:min-h-[32px] min-w-[36px] sm:min-w-[32px] px-1 sm:px-2 text-xs touch-manipulation"
+                                    >
+                                      <Check className="h-3 w-3 sm:h-3 sm:w-3" />
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() =>
+                                        hasPaymentId(participant) &&
+                                        handleUpdatePaymentStatus(participant.payment_id, "waived")
+                                      }
+                                      disabled={isUpdatingStatus}
+                                      className="bg-orange-50 border-orange-300 text-orange-700 hover:bg-orange-100 min-h-[36px] sm:min-h-[32px] min-w-[36px] sm:min-w-[32px] px-1 sm:px-2 text-xs touch-manipulation"
+                                    >
+                                      <X className="h-3 w-3 sm:h-3 sm:w-3" />
+                                    </Button>
+                                  </div>
+                                )}
+
+                              {/* URL共有ボタン */}
+                              {participant.status === "attending" && (
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => handleCopyGuestUrl(participant.attendance_id)}
+                                  className="min-h-[36px] sm:min-h-[32px] min-w-[36px] sm:min-w-[32px] px-1 sm:px-2 text-xs touch-manipulation"
+                                >
+                                  <Copy className="h-3 w-3 sm:h-3 sm:w-3" />
+                                </Button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              /* カードビュー（モバイル最適化） */
+              <div
+                className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4"
+                role="grid"
+                aria-label="参加者一覧"
+              >
+                {participants.map((participant) => {
+                  const isPaid = !isFreeEvent && isPaymentCompleted(participant.payment_status);
+                  const simpleStatus = toSimplePaymentStatus(participant.payment_status);
+                  const isCashPayment =
+                    participant.payment_method === "cash" && participant.payment_id;
+                  const isSelected = participant.payment_id
+                    ? selectedPaymentIds.includes(participant.payment_id)
+                    : false;
+
+                  return (
+                    <Card
+                      key={participant.attendance_id}
+                      className={`${isPaid ? "border-green-200 bg-green-50" : ""} transition-all duration-200 hover:shadow-md focus-within:ring-2 focus-within:ring-blue-500 focus-within:ring-opacity-50`}
+                      role="gridcell"
+                      tabIndex={0}
+                      aria-label={`参加者: ${participant.nickname}, ステータス: ${participant.status === "attending" ? "◯ 参加" : participant.status === "not_attending" ? "不参加" : "△ 未定"}`}
+                    >
+                      <CardContent className="p-4 sm:p-5">
+                        <div className="space-y-4">
+                          {/* ヘッダー部分 */}
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              {/* 選択チェックボックス */}
+                              {isCashPayment && (
+                                <Checkbox
+                                  checked={isSelected}
+                                  onCheckedChange={(checked: boolean) =>
+                                    hasPaymentId(participant) &&
+                                    handleSelectPayment(participant.payment_id, checked)
+                                  }
+                                  disabled={isUpdatingStatus}
+                                  className="h-5 w-5 touch-manipulation" // Enhanced touch target
+                                />
+                              )}
+
+                              {/* 参加者名 */}
+                              <h4 className="font-semibold text-gray-900 text-lg">
+                                {participant.nickname}
+                              </h4>
+                            </div>
+
+                            {/* 決済完了インジケーター */}
+                            {isPaid && (
+                              <div className="flex items-center gap-1 text-green-600 text-sm font-medium">
+                                <CheckCircle className="h-4 w-4" />
+                                完了
+                              </div>
+                            )}
+                          </div>
+
+                          {/* バッジエリア */}
+                          <div className="flex flex-wrap gap-2">
+                            {getAttendanceStatusBadge(participant.status)}
+                            {getPaymentMethodBadge(participant.payment_method)}
+                            {!isFreeEvent && participant.payment_status && (
+                              <Badge
+                                variant={getSimplePaymentStatusStyle(simpleStatus).variant}
+                                className={getSimplePaymentStatusStyle(simpleStatus).className}
+                              >
+                                {SIMPLE_PAYMENT_STATUS_LABELS[simpleStatus]}
+                              </Badge>
+                            )}
+                          </div>
+
+                          {/* アクションボタン群 */}
+                          <div className="flex flex-wrap gap-3 pt-2">
                             {isCashPayment &&
                               simpleStatus !== "paid" &&
                               simpleStatus !== "waived" && (
@@ -621,9 +611,9 @@ export function ParticipantsTableEnhanced({
                                       handleUpdatePaymentStatus(participant.payment_id, "received")
                                     }
                                     disabled={isUpdatingStatus}
-                                    className="bg-green-50 border-green-300 text-green-700 hover:bg-green-100"
+                                    className="bg-green-50 border-green-300 text-green-700 hover:bg-green-100 min-h-[44px] touch-manipulation"
                                   >
-                                    <Check className="h-3 w-3 mr-1" />
+                                    <Check className="h-4 w-4 mr-2" />
                                     受領
                                   </Button>
                                   <Button
@@ -634,53 +624,57 @@ export function ParticipantsTableEnhanced({
                                       handleUpdatePaymentStatus(participant.payment_id, "waived")
                                     }
                                     disabled={isUpdatingStatus}
-                                    className="bg-orange-50 border-orange-300 text-orange-700 hover:bg-orange-100"
+                                    className="bg-orange-50 border-orange-300 text-orange-700 hover:bg-orange-100 min-h-[44px] touch-manipulation"
                                   >
-                                    <X className="h-3 w-3 mr-1" />
+                                    <X className="h-4 w-4 mr-2" />
                                     免除
                                   </Button>
                                 </>
                               )}
 
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={() => handleCopyGuestUrl(participant.attendance_id)}
-                              disabled={participant.status !== "attending"}
-                            >
-                              <Copy className="h-3 w-3 mr-1" />
-                              URL
-                            </Button>
+                            {participant.status === "attending" && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleCopyGuestUrl(participant.attendance_id)}
+                                className="min-h-[44px] touch-manipulation"
+                              >
+                                <Copy className="h-4 w-4 mr-2" />
+                                URL共有
+                              </Button>
+                            )}
                           </div>
                         </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                );
-              })}
-            </div>
-          )}
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
 
-          {/* ページネーション */}
-          {pagination.totalPages > 1 && (
-            <div className="flex items-center justify-between mt-6 pt-4 border-t">
-              <div className="text-sm text-muted-foreground">
+        {/* ページネーション */}
+        {pagination.totalPages > 1 && (
+          <div className="flex items-center justify-between px-4 py-3 sm:px-6 border-t">
+            <div className="flex-1 flex items-center justify-between">
+              <div className="text-sm text-gray-700">
                 {pagination.total}件中 {(pagination.page - 1) * pagination.limit + 1}-
                 {Math.min(pagination.page * pagination.limit, pagination.total)}件を表示
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="flex items-center space-x-2">
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => handlePageChange(pagination.page - 1)}
                   disabled={!pagination.hasPrev}
+                  className="min-h-[44px] min-w-[44px] touch-manipulation" // Enhanced touch target + touch optimization
                 >
                   <ChevronLeft className="h-4 w-4" />
-                  前へ
                 </Button>
 
-                <span className="text-sm px-3 py-1 bg-gray-100 rounded">
+                <span className="text-sm text-gray-700 px-2 sm:px-3">
                   {pagination.page} / {pagination.totalPages}
                 </span>
 
@@ -689,15 +683,15 @@ export function ParticipantsTableEnhanced({
                   size="sm"
                   onClick={() => handlePageChange(pagination.page + 1)}
                   disabled={!pagination.hasNext}
+                  className="min-h-[44px] min-w-[44px] touch-manipulation" // Enhanced touch target + touch optimization
                 >
-                  次へ
                   <ChevronRight className="h-4 w-4" />
                 </Button>
               </div>
             </div>
-          )}
-        </CardContent>
-      </Card>
-    </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }
