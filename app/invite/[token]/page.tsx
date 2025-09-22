@@ -109,57 +109,11 @@ export default async function InvitePage({ params }: InvitePageProps) {
     }
 
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
-        {/* ヘッダーセクション */}
-        <div className="bg-white/80 backdrop-blur-sm shadow-sm border-b border-blue-100">
-          <div className="container mx-auto px-4 py-6 sm:py-8">
-            <div className="max-w-4xl mx-auto text-center">
-              <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-full mb-4 shadow-lg">
-                <svg
-                  className="w-8 h-8 text-white"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M8 7V3a2 2 0 012-2h4a2 2 0 012 2v4m-6 6h6m-6 4h6m-6-8h6"
-                  />
-                </svg>
-              </div>
-              <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-2">
-                <span className="bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-                  みんなの集金
-                </span>{" "}
-                参加申し込み
-              </h1>
-              <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-                イベントの詳細を確認して、参加申し込みを行ってください
-              </p>
-            </div>
-          </div>
-        </div>
-
+      <div className="min-h-screen bg-muted/30">
         {/* メインコンテンツ */}
-        <div className="container mx-auto px-4 py-8 sm:py-12">
-          <div className="max-w-4xl mx-auto">
-            <main role="main">
-              <InviteEventDetail event={validationResult.event} inviteToken={params.token} />
-            </main>
-          </div>
-        </div>
-
-        {/* フッター */}
-        <footer className="bg-white/50 border-t border-gray-200 mt-12">
-          <div className="container mx-auto px-4 py-6">
-            <div className="text-center text-sm text-gray-500">
-              <p>© 2025 みんなの集金. すべての権利を保持しています。</p>
-            </div>
-          </div>
-        </footer>
+        <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+          <InviteEventDetail event={validationResult.event} inviteToken={params.token} />
+        </main>
       </div>
     );
   } catch (_error) {

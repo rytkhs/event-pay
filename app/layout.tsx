@@ -8,6 +8,8 @@ import "./(marketing)/lp.css";
 
 import { ToastProvider } from "@core/contexts/toast-context";
 
+import { HeaderWrapper } from "@components/layout/HeaderWrapper";
+
 import { Toaster } from "@/components/ui/toast";
 import { Tooltip as TooltipProvider } from "@/components/ui/tooltip";
 
@@ -54,7 +56,10 @@ export default function RootLayout({
         suppressHydrationWarning={true}
       >
         <TooltipProvider>
-          <ToastProvider ToasterComponent={Toaster}>{children}</ToastProvider>
+          <ToastProvider ToasterComponent={Toaster}>
+            <HeaderWrapper />
+            {children}
+          </ToastProvider>
         </TooltipProvider>
       </body>
     </html>
