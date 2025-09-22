@@ -38,10 +38,30 @@ function isProduction(): boolean {
   return process.env.NODE_ENV === "production";
 }
 
+/**
+ * Stripe Webhook IP許可リスト検証の有効/無効を判定
+ *
+ * 環境変数 ENABLE_STRIPE_IP_CHECK の制御:
+ * - "false" | "0" | "no" | "off": 強制的に無効化（本番環境でも無効）
+ * - "true" | "1" | "yes" | "on": 強制的に有効化（テスト環境でも有効）
+ * - 未設定または空文字: 本番環境のみ有効、テスト環境では無効
+ *
+ * @returns IP許可リスト検証を実行するかどうか
+ */
 export function shouldEnforceStripeWebhookIpCheck(): boolean {
-  // 既定: 本番で有効、環境変数で明示的に無効化可能
-  const flag = process.env.ENABLE_STRIPE_IP_CHECK;
-  if (flag && /^(?:0|false|no|off)$/i.test(flag)) return false;
+  const explicitSetting = process.env.ENABLE_STRIPE_IP_CHECK?.trim();
+
+  // 明示的に無効化
+  if (explicitSetting && /^(?:0|false|no|off)$/i.test(explicitSetting)) {
+    return false;
+  }
+
+  // 明示的に有効化（テスト環境でも強制的に有効）
+  if (explicitSetting && /^(?:1|true|yes|on)$/i.test(explicitSetting)) {
+    return true;
+  }
+
+  // デフォルト：本番環境のみ有効
   return isProduction();
 }
 

@@ -7,7 +7,7 @@ import { getMaliciousPatternDetails } from "@core/constants/security-patterns";
 import { logger } from "@core/logging/app-logger";
 
 export interface SecurityEvent {
-  type: SecurityEventType;
+  type: SecurityEventType | string;
   severity: SecuritySeverity;
   message: string;
   details?: Record<string, unknown>;
@@ -39,41 +39,95 @@ export type SecuritySeverity = "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
  * @param event セキュリティイベント情報
  */
 export function logSecurityEvent(event: SecurityEvent): void {
-  const logEntry = {
-    timestamp: event.timestamp.toISOString(),
-    type: event.type,
-    severity: event.severity,
+  const maskedIp = maskIP(event.ip);
+  const logFields = {
+    // 統一タグ・セキュリティフィールド
+    tag: "securityEvent",
+    security_type: event.type,
+    security_severity: event.severity,
     message: event.message,
+    user_id: event.userId,
+    event_id: event.eventId,
+    user_agent: event.userAgent,
+    ip: maskedIp,
+    // 標準化フィールド（ECS/OTel 互換）
+    event_category: "security",
+    event_action: typeof event.type === "string" ? String(event.type) : "security_event",
+    // 必要に応じて outcome を呼び出し側で追加
+    timestamp: event.timestamp.toISOString(),
     details: event.details,
-    userAgent: event.userAgent,
-    ip: maskIP(event.ip),
-    userId: event.userId,
-    eventId: event.eventId,
-  };
+  } as Record<string, unknown>;
 
-  // 開発環境では詳細ログを出力
-  if (process.env.NODE_ENV === "development") {
-    logger.warn(`[SECURITY ${event.severity}] ${event.type}`, {
-      tag: "securityEvent",
-      security_type: event.type,
-      security_severity: event.severity,
-      message: event.message,
-      user_id: event.userId,
-      event_id: event.eventId,
-    });
-  }
+  // 重要度に応じてログレベルを選択
+  const level = ((): "info" | "warn" | "error" => {
+    switch (event.severity) {
+      case "LOW":
+        return "info";
+      case "MEDIUM":
+        return "warn";
+      case "HIGH":
+      case "CRITICAL":
+        return "error";
+      default:
+        return "info";
+    }
+  })();
 
-  // 本番環境では適切なログシステムに送信
-  // TODO: 本番環境では外部ログサービス（CloudWatch、Datadog等）に送信
-  if (process.env.NODE_ENV === "production") {
-    // 本番環境でのログ記録実装
-    // 例: await sendToLogService(logEntry);
-  }
+  const logMessage = event.message || `Security event: ${event.type}`;
+  if (level === "info") logger.info(logMessage, logFields);
+  else if (level === "warn") logger.warn(logMessage, logFields);
+  else logger.error(logMessage, logFields);
 
   // 重要度が高い場合はアラートを送信
   if (event.severity === "HIGH" || event.severity === "CRITICAL") {
-    sendSecurityAlert(logEntry);
+    sendSecurityAlert({
+      ...logFields,
+    });
   }
+}
+
+/**
+ * Webhook用のセキュリティイベント簡易ロガー
+ */
+export function logWebhookSecurityEvent(
+  type: string,
+  message: string,
+  details?: Record<string, unknown>,
+  request?: { userAgent?: string; ip?: string; eventId?: string },
+  severity: SecuritySeverity = "LOW"
+): void {
+  logSecurityEvent({
+    type,
+    severity,
+    message,
+    details,
+    userAgent: request?.userAgent,
+    ip: request?.ip,
+    eventId: request?.eventId,
+    timestamp: new Date(),
+  });
+}
+
+/**
+ * QStash用のセキュリティイベント簡易ロガー
+ */
+export function logQstashSecurityEvent(
+  type: string,
+  message: string,
+  details?: Record<string, unknown>,
+  request?: { userAgent?: string; ip?: string; eventId?: string },
+  severity: SecuritySeverity = "LOW"
+): void {
+  logSecurityEvent({
+    type,
+    severity,
+    message,
+    details,
+    userAgent: request?.userAgent,
+    ip: request?.ip,
+    eventId: request?.eventId,
+    timestamp: new Date(),
+  });
 }
 
 /**

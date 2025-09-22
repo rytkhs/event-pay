@@ -13,6 +13,7 @@ import { Client } from "@upstash/qstash";
 import { createProblemResponse } from "@core/api/problem-details";
 import { logger } from "@core/logging/app-logger";
 import { generateSecureUuid } from "@core/security/crypto";
+import { logSecurityEvent } from "@core/security/security-logger";
 import {
   shouldEnforceStripeWebhookIpCheck,
   isStripeWebhookIpAllowed,
@@ -48,10 +49,17 @@ export async function POST(request: NextRequest) {
     if (shouldEnforceStripeWebhookIpCheck()) {
       const allowed = await isStripeWebhookIpAllowed(clientIP);
       if (!allowed) {
-        logger.warn("Webhook request from unauthorized IP", {
-          tag: "security-rejected",
+        logSecurityEvent({
+          type: "WEBHOOK_IP_REJECTED",
+          severity: "MEDIUM",
+          message: "Webhook request from unauthorized IP",
+          details: {
+            request_id: requestId,
+            path: "/api/webhooks/stripe",
+          },
+          userAgent: request.headers.get("user-agent") || undefined,
           ip: clientIP,
-          request_id: requestId,
+          timestamp: new Date(),
         });
         return createProblemResponse("FORBIDDEN", {
           instance: "/api/webhooks/stripe",
@@ -65,9 +73,14 @@ export async function POST(request: NextRequest) {
     const signature = request.headers.get("stripe-signature");
 
     if (!signature) {
-      logger.warn("Missing Stripe signature header", {
-        request_id: requestId,
-        tag: "security-rejected",
+      logSecurityEvent({
+        type: "WEBHOOK_SIGNATURE_MISSING",
+        severity: "MEDIUM",
+        message: "Missing Stripe signature header",
+        details: { request_id: requestId, path: "/api/webhooks/stripe" },
+        userAgent: request.headers.get("user-agent") || undefined,
+        ip: clientIP,
+        timestamp: new Date(),
       });
       return createProblemResponse("INVALID_REQUEST", {
         instance: "/api/webhooks/stripe",
@@ -84,9 +97,14 @@ export async function POST(request: NextRequest) {
     });
 
     if (!verificationResult.isValid || !verificationResult.event) {
-      logger.warn("Webhook signature verification failed", {
-        request_id: requestId,
-        tag: "security-rejected",
+      logSecurityEvent({
+        type: "WEBHOOK_SIGNATURE_INVALID",
+        severity: "MEDIUM",
+        message: "Webhook signature verification failed",
+        details: { request_id: requestId, path: "/api/webhooks/stripe" },
+        userAgent: request.headers.get("user-agent") || undefined,
+        ip: clientIP,
+        timestamp: new Date(),
       });
       return createProblemResponse("INVALID_REQUEST", {
         instance: "/api/webhooks/stripe",

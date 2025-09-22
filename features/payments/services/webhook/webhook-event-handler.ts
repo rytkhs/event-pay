@@ -2,8 +2,8 @@ import { createClient } from "@supabase/supabase-js";
 import Stripe from "stripe";
 
 // import { emitPaymentCompleted, emitPaymentFailed } from "@core/events";
-import { logger } from "@core/logging/app-logger";
 import { getSettlementReportPort } from "@core/ports/settlements";
+import { logWebhookSecurityEvent } from "@core/security/security-logger";
 import { stripe as sharedStripe } from "@core/stripe/client";
 import { getRequiredEnvVar } from "@core/utils/env-helper";
 import { canPromoteStatus } from "@core/utils/payments/status-rank";
@@ -92,10 +92,11 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
             })();
 
             if (!paymentIdFromMetadata) {
-              await logger.info("Webhook security event", {
-                type: "webhook_checkout_completed_missing_payment_id",
-                details: { eventId: event.id, sessionId },
-              });
+              logWebhookSecurityEvent(
+                "webhook_checkout_completed_missing_payment_id",
+                "Webhook security event",
+                { eventId: event.id, sessionId }
+              );
               return { success: true };
             }
 
@@ -112,21 +113,19 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
             }
 
             if (!payment) {
-              await logger.info("Webhook security event", {
-                type: "webhook_checkout_completed_payment_not_found",
-                details: { eventId: event.id, sessionId, paymentIdFromMetadata },
-              });
+              logWebhookSecurityEvent(
+                "webhook_checkout_completed_payment_not_found",
+                "Webhook security event",
+                { eventId: event.id, sessionId, paymentIdFromMetadata }
+              );
               return { success: true };
             }
 
             const updatePayload: Partial<Database["public"]["Tables"]["payments"]["Update"]> = {
               stripe_checkout_session_id: sessionId,
               updated_at: new Date().toISOString(),
+              ...(paymentIntentId ? { stripe_payment_intent_id: paymentIntentId } : {}),
             };
-            if (paymentIntentId) {
-              (updatePayload as { stripe_payment_intent_id?: string }).stripe_payment_intent_id =
-                paymentIntentId;
-            }
 
             const { error: updateError } = await this.supabase
               .from("payments")
@@ -138,15 +137,16 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
               );
             }
 
-            await logger.info("Webhook security event", {
-              type: "webhook_checkout_completed_updated",
-              details: {
+            logWebhookSecurityEvent(
+              "webhook_checkout_completed_updated",
+              "Webhook security event",
+              {
                 eventId: event.id,
                 sessionId,
                 paymentId: payment.id,
                 paymentIntentId: paymentIntentId ?? undefined,
-              },
-            });
+              }
+            );
             return { success: true };
           } catch (e) {
             throw e instanceof Error ? e : new Error("Unknown error");
@@ -192,10 +192,11 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
             }
 
             if (!payment) {
-              await logger.info("Webhook security event", {
-                type: "webhook_checkout_expired_no_payment",
-                details: { eventId: event.id, sessionId },
-              });
+              logWebhookSecurityEvent(
+                "webhook_checkout_expired_no_payment",
+                "Webhook security event",
+                { eventId: event.id, sessionId }
+              );
               return { success: true };
             }
 
@@ -206,14 +207,15 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
                 "failed"
               )
             ) {
-              await logger.info("Webhook security event", {
-                type: "webhook_duplicate_processing_prevented",
-                details: {
+              logWebhookSecurityEvent(
+                "webhook_duplicate_processing_prevented",
+                "Webhook security event",
+                {
                   eventId: event.id,
                   paymentId: payment.id,
                   currentStatus: payment.status,
-                },
-              });
+                }
+              );
               return { success: true };
             }
 
@@ -223,11 +225,8 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
               webhook_processed_at: new Date().toISOString(),
               updated_at: new Date().toISOString(),
               stripe_checkout_session_id: sessionId,
+              ...(paymentIntentId ? { stripe_payment_intent_id: paymentIntentId } : {}),
             };
-            if (paymentIntentId) {
-              (updatePayload as { stripe_payment_intent_id?: string }).stripe_payment_intent_id =
-                paymentIntentId;
-            }
 
             const { error: updateError } = await this.supabase
               .from("payments")
@@ -239,15 +238,16 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
               );
             }
 
-            await logger.info("Webhook security event", {
-              type: "webhook_checkout_expired_processed",
-              details: {
+            logWebhookSecurityEvent(
+              "webhook_checkout_expired_processed",
+              "Webhook security event",
+              {
                 eventId: event.id,
                 paymentId: payment.id,
                 sessionId,
                 paymentIntentId: paymentIntentId ?? undefined,
-              },
-            });
+              }
+            );
             return { success: true, eventId: event.id, paymentId: payment.id };
           } catch (e) {
             throw e instanceof Error ? e : new Error("Unknown error");
@@ -255,9 +255,9 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
         }
         case "checkout.session.async_payment_succeeded":
         case "checkout.session.async_payment_failed": {
-          await logger.info("Webhook security event", {
-            type: "webhook_checkout_event_seen",
-            details: { eventId: event.id, eventType: event.type },
+          logWebhookSecurityEvent("webhook_checkout_event_seen", "Webhook security event", {
+            eventId: event.id,
+            eventType: event.type,
           });
           return { success: true };
         }
@@ -289,24 +289,24 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
 
         default:
           // サポートされていないイベントタイプをログに記録
-          await logger.info("Webhook security event", {
-            type: "webhook_unsupported_event",
-            details: {
-              eventType: event.type,
-              eventId: event.id,
-            },
+          logWebhookSecurityEvent("webhook_unsupported_event", "Webhook security event", {
+            eventType: event.type,
+            eventId: event.id,
           });
           return { success: true };
       }
     } catch (error) {
-      await logger.warn("Webhook suspicious activity", {
-        type: "webhook_processing_error",
-        details: {
+      logWebhookSecurityEvent(
+        "webhook_processing_error",
+        "Webhook suspicious activity",
+        {
           eventType: event.type,
           eventId: event.id,
           error: error instanceof Error ? error.message : "Unknown error",
         },
-      });
+        undefined,
+        "MEDIUM"
+      );
 
       return {
         success: false,
@@ -324,10 +324,11 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
       const paymentRecord = payment as { attendance_id?: string | null } | null;
       const attendanceId: string | null = (paymentRecord?.attendance_id ?? null) as string | null;
       if (!attendanceId) {
-        await logger.info("Webhook security event", {
-          type: "settlement_regenerate_missing_attendance",
-          details: { paymentHasAttendanceId: false },
-        });
+        logWebhookSecurityEvent(
+          "settlement_regenerate_missing_attendance",
+          "Webhook security event",
+          { paymentHasAttendanceId: false }
+        );
         return;
       }
 
@@ -337,10 +338,11 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
         .eq("id", attendanceId)
         .maybeSingle();
       if (attErr || !attendance) {
-        await logger.info("Webhook security event", {
-          type: "settlement_regenerate_attendance_lookup_failed",
-          details: { error: attErr?.message ?? "not_found", attendanceId },
-        });
+        logWebhookSecurityEvent(
+          "settlement_regenerate_attendance_lookup_failed",
+          "Webhook security event",
+          { error: attErr?.message ?? "not_found", attendanceId }
+        );
         return;
       }
 
@@ -351,10 +353,11 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
         .eq("id", eventId)
         .maybeSingle();
       if (evErr || !eventRow) {
-        await logger.info("Webhook security event", {
-          type: "settlement_regenerate_event_lookup_failed",
-          details: { error: evErr?.message ?? "not_found", eventId },
-        });
+        logWebhookSecurityEvent(
+          "settlement_regenerate_event_lookup_failed",
+          "Webhook security event",
+          { error: evErr?.message ?? "not_found", eventId }
+        );
         return;
       }
 
@@ -363,21 +366,22 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
       const settlementPort = getSettlementReportPort();
       const res = await settlementPort.regenerateAfterRefundOrDispute(eventId, createdBy);
       if (!res.success) {
-        await logger.info("Webhook security event", {
-          type: "settlement_regenerate_failed",
-          details: { eventId, createdBy, error: res.error ?? "unknown" },
+        logWebhookSecurityEvent("settlement_regenerate_failed", "Webhook security event", {
+          eventId,
+          createdBy,
+          error: res.error ?? "unknown",
         });
         return;
       }
 
-      await logger.info("Webhook security event", {
-        type: "settlement_regenerate_succeeded",
-        details: { eventId, createdBy, reportId: res.reportId },
+      logWebhookSecurityEvent("settlement_regenerate_succeeded", "Webhook security event", {
+        eventId,
+        createdBy,
+        reportId: res.reportId,
       });
     } catch (e) {
-      await logger.info("Webhook security event", {
-        type: "settlement_regenerate_unexpected_error",
-        details: { error: e instanceof Error ? e.message : "unknown" },
+      logWebhookSecurityEvent("settlement_regenerate_unexpected_error", "Webhook security event", {
+        error: e instanceof Error ? e.message : "unknown",
       });
     }
   }
@@ -454,13 +458,10 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
 
         if (!payment) {
           // 関連レコードがない場合もACK（将来の再同期に委譲）
-          await logger.info("Webhook security event", {
-            type: "webhook_charge_no_payment_record",
-            details: {
-              eventId: event.id,
-              chargeId: charge.id,
-              payment_intent: stripePaymentIntentId ?? undefined,
-            },
+          logWebhookSecurityEvent("webhook_charge_no_payment_record", "Webhook security event", {
+            eventId: event.id,
+            chargeId: charge.id,
+            payment_intent: stripePaymentIntentId ?? undefined,
           });
           return { success: true };
         }
@@ -473,10 +474,11 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
           "paid"
         )
       ) {
-        await logger.info("Webhook security event", {
-          type: "webhook_duplicate_processing_prevented",
-          details: { eventId: event.id, paymentId: payment.id, currentStatus: payment.status },
-        });
+        logWebhookSecurityEvent(
+          "webhook_duplicate_processing_prevented",
+          "Webhook security event",
+          { eventId: event.id, paymentId: payment.id, currentStatus: payment.status }
+        );
         return { success: true };
       }
 
@@ -545,15 +547,12 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
         throw new Error(`Failed to update payment on charge.succeeded: ${updateError.message}`);
       }
 
-      await logger.info("Webhook security event", {
-        type: "webhook_charge_succeeded_processed",
-        details: {
-          eventId: event.id,
-          paymentId: payment.id,
-          chargeId: charge.id,
-          balanceTransactionId: balanceTxnId,
-          transferId: transferId ?? undefined,
-        },
+      logWebhookSecurityEvent("webhook_charge_succeeded_processed", "Webhook security event", {
+        eventId: event.id,
+        paymentId: payment.id,
+        chargeId: charge.id,
+        balanceTransactionId: balanceTxnId,
+        transferId: transferId ?? undefined,
       });
 
       return { success: true, eventId: event.id, paymentId: payment.id };
@@ -605,9 +604,9 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
         }
       }
       if (!payment) {
-        await logger.info("Webhook security event", {
-          type: "webhook_charge_failed_no_payment",
-          details: { eventId: event.id, chargeId: charge.id },
+        logWebhookSecurityEvent("webhook_charge_failed_no_payment", "Webhook security event", {
+          eventId: event.id,
+          chargeId: charge.id,
         });
         return { success: true };
       }
@@ -617,10 +616,11 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
           "failed"
         )
       ) {
-        await logger.info("Webhook security event", {
-          type: "webhook_duplicate_processing_prevented",
-          details: { eventId: event.id, paymentId: payment.id, currentStatus: payment.status },
-        });
+        logWebhookSecurityEvent(
+          "webhook_duplicate_processing_prevented",
+          "Webhook security event",
+          { eventId: event.id, paymentId: payment.id, currentStatus: payment.status }
+        );
         return { success: true };
       }
       const { error: updateError } = await this.supabase
@@ -637,9 +637,10 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
       if (updateError) {
         throw new Error(`Failed to update payment on charge.failed: ${updateError.message}`);
       }
-      await logger.info("Webhook security event", {
-        type: "webhook_charge_failed_processed",
-        details: { eventId: event.id, paymentId: payment.id, chargeId: charge.id },
+      logWebhookSecurityEvent("webhook_charge_failed_processed", "Webhook security event", {
+        eventId: event.id,
+        paymentId: payment.id,
+        chargeId: charge.id,
       });
       return { success: true, eventId: event.id, paymentId: payment.id };
     } catch (error) {
@@ -690,9 +691,9 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
       }
 
       if (!payment) {
-        await logger.info("Webhook security event", {
-          type: "webhook_charge_refunded_no_payment",
-          details: { eventId: event.id, chargeId: charge.id },
+        logWebhookSecurityEvent("webhook_charge_refunded_no_payment", "Webhook security event", {
+          eventId: event.id,
+          chargeId: charge.id,
         });
         return { success: true };
       }
@@ -726,15 +727,16 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
           targetStatus as Database["public"]["Enums"]["payment_status_enum"]
         )
       ) {
-        await logger.info("Webhook security event", {
-          type: "webhook_duplicate_processing_prevented",
-          details: {
+        logWebhookSecurityEvent(
+          "webhook_duplicate_processing_prevented",
+          "Webhook security event",
+          {
             eventId: event.id,
             paymentId: payment.id,
             currentStatus: payment.status,
             targetStatus,
-          },
-        });
+          }
+        );
         return { success: true };
       }
 
@@ -756,14 +758,11 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
         throw new Error(`Failed to update payment on charge.refunded: ${updateError.message}`);
       }
 
-      await logger.info("Webhook security event", {
-        type: "webhook_charge_refunded_processed",
-        details: {
-          eventId: event.id,
-          paymentId: payment.id,
-          refundedAmount: totalRefunded,
-          applicationFeeRefundedAmount,
-        },
+      logWebhookSecurityEvent("webhook_charge_refunded_processed", "Webhook security event", {
+        eventId: event.id,
+        paymentId: payment.id,
+        refundedAmount: totalRefunded,
+        applicationFeeRefundedAmount,
       });
       // 清算レポートの再生成を非同期で実行（失敗してもWebhook処理はACK）
       try {
@@ -781,9 +780,10 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
     event: Stripe.RefundCreatedEvent
   ): Promise<WebhookProcessingResult> {
     const refund = event.data.object as Stripe.Refund;
-    await logger.info("Webhook security event", {
-      type: "webhook_refund_created_seen",
-      details: { eventId: event.id, refundId: refund.id, status: refund.status },
+    logWebhookSecurityEvent("webhook_refund_created_seen", "Webhook security event", {
+      eventId: event.id,
+      refundId: refund.id,
+      status: refund.status,
     });
     return { success: true };
   }
@@ -795,9 +795,10 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
     const status: string | undefined = (refund as { status?: string }).status;
 
     // ログは常に記録
-    await logger.info("Webhook security event", {
-      type: "webhook_refund_updated_seen",
-      details: { eventId: event.id, refundId: refund.id, status },
+    logWebhookSecurityEvent("webhook_refund_updated_seen", "Webhook security event", {
+      eventId: event.id,
+      refundId: refund.id,
+      status,
     });
 
     // 返金がキャンセル/失敗に遷移した場合は、集計値を同期し直す（巻き戻しを許可）
@@ -824,17 +825,17 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
       | Stripe.Refund
       | undefined;
     if (!refund) {
-      await logger.info("Webhook security event", {
-        type: "webhook_refund_failed_no_object",
-        details: { eventId: event.id },
+      logWebhookSecurityEvent("webhook_refund_failed_no_object", "Webhook security event", {
+        eventId: event.id,
       });
       return { success: true };
     }
 
     const chargeId = (refund as { charge?: string | null })?.charge ?? null;
-    await logger.info("Webhook security event", {
-      type: "webhook_refund_failed_seen",
-      details: { eventId: event.id, refundId: refund.id, chargeId },
+    logWebhookSecurityEvent("webhook_refund_failed_seen", "Webhook security event", {
+      eventId: event.id,
+      refundId: refund.id,
+      chargeId,
     });
 
     if (typeof chargeId === "string" && chargeId.length > 0) {
@@ -879,9 +880,9 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
       payment = data ?? null;
     }
     if (!payment) {
-      await logger.info("Webhook security event", {
-        type: "refund_resync_no_payment",
-        details: { eventId, chargeId: charge.id },
+      logWebhookSecurityEvent("refund_resync_no_payment", "Webhook security event", {
+        eventId,
+        chargeId: charge.id,
       });
       return;
     }
@@ -936,9 +937,11 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
       throw new Error(`Failed to resync payment on refund change: ${error.message}`);
     }
 
-    await logger.info("Webhook security event", {
-      type: "refund_resynced_from_charge",
-      details: { eventId, paymentId: payment.id, totalRefunded, targetStatus },
+    logWebhookSecurityEvent("refund_resynced_from_charge", "Webhook security event", {
+      eventId,
+      paymentId: payment.id,
+      totalRefunded,
+      targetStatus,
     });
   }
 
@@ -972,10 +975,11 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
       }
 
       if (!applicationFeeId) {
-        await logger.info("Webhook security event", {
-          type: "webhook_application_fee_refund_no_fee_id",
-          details: { eventId: event.id },
-        });
+        logWebhookSecurityEvent(
+          "webhook_application_fee_refund_no_fee_id",
+          "Webhook security event",
+          { eventId: event.id }
+        );
         return { success: true };
       }
 
@@ -987,10 +991,11 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
         .maybeSingle();
 
       if (!payment) {
-        await logger.info("Webhook security event", {
-          type: "webhook_application_fee_refund_no_payment",
-          details: { eventId: event.id, applicationFeeId },
-        });
+        logWebhookSecurityEvent(
+          "webhook_application_fee_refund_no_payment",
+          "Webhook security event",
+          { eventId: event.id, applicationFeeId }
+        );
         return { success: true };
       }
 
@@ -1008,14 +1013,15 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
         );
         applicationFeeRefundId = items.length > 0 ? items[items.length - 1].id : null;
       } catch (e) {
-        await logger.info("Webhook security event", {
-          type: "webhook_application_fee_refunds_list_failed",
-          details: {
+        logWebhookSecurityEvent(
+          "webhook_application_fee_refunds_list_failed",
+          "Webhook security event",
+          {
             eventId: event.id,
             applicationFeeId,
             error: e instanceof Error ? e.message : "unknown",
-          },
-        });
+          }
+        );
       }
 
       const { error: updateError } = await this.supabase
@@ -1034,15 +1040,16 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
         );
       }
 
-      await logger.info("Webhook security event", {
-        type: "webhook_application_fee_refunded_processed",
-        details: {
+      logWebhookSecurityEvent(
+        "webhook_application_fee_refunded_processed",
+        "Webhook security event",
+        {
           eventId: event.id,
           paymentId: payment.id,
           applicationFeeId,
           applicationFeeRefundedAmount,
-        },
-      });
+        }
+      );
       // プラットフォーム手数料返金も清算値へ影響するため再生成を実行
       try {
         await this.regenerateSettlementSnapshotFromPayment(payment);
@@ -1057,14 +1064,11 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
 
   private async handleDisputeEvent(event: Stripe.Event): Promise<WebhookProcessingResult> {
     const dispute = event.data.object as Stripe.Dispute;
-    await logger.info("Webhook security event", {
-      type: "webhook_dispute_event",
-      details: {
-        eventId: event.id,
-        disputeId: dispute.id,
-        status: dispute.status,
-        type: event.type,
-      },
+    logWebhookSecurityEvent("webhook_dispute_event", "Webhook security event", {
+      eventId: event.id,
+      disputeId: dispute.id,
+      status: dispute.status,
+      type: event.type,
     });
     // Dispute 対象の支払を推定し、DB保存/更新 + 必要に応じてTransferリバーサル/再転送を実行
     try {
@@ -1127,13 +1131,10 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
           .from("payment_disputes")
           .upsert([disputeUpsert], { onConflict: "stripe_dispute_id" });
       } catch (e) {
-        await logger.info("Webhook security event", {
-          type: "dispute_upsert_failed",
-          details: {
-            eventId: event.id,
-            disputeId: dispute.id,
-            error: e instanceof Error ? e.message : "unknown",
-          },
+        logWebhookSecurityEvent("dispute_upsert_failed", "Webhook security event", {
+          eventId: event.id,
+          disputeId: dispute.id,
+          error: e instanceof Error ? e.message : "unknown",
         });
       }
 
@@ -1145,16 +1146,18 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
           /* noop */
         }
       } else {
-        await logger.info("Webhook security event", {
-          type: "settlement_regenerate_payment_not_found_for_dispute",
-          details: { eventId: event.id, chargeId, paymentIntentId: piId },
-        });
+        logWebhookSecurityEvent(
+          "settlement_regenerate_payment_not_found_for_dispute",
+          "Webhook security event",
+          { eventId: event.id, chargeId, paymentIntentId: piId }
+        );
       }
     } catch (e) {
-      await logger.info("Webhook security event", {
-        type: "settlement_regenerate_dispute_path_error",
-        details: { eventId: event.id, error: e instanceof Error ? e.message : "unknown" },
-      });
+      logWebhookSecurityEvent(
+        "settlement_regenerate_dispute_path_error",
+        "Webhook security event",
+        { eventId: event.id, error: e instanceof Error ? e.message : "unknown" }
+      );
     }
     return { success: true };
   }
@@ -1203,10 +1206,11 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
       }
 
       if (!payment) {
-        await logger.info("Webhook security event", {
-          type: "webhook_payment_intent_no_payment_record",
-          details: { eventId: event.id, payment_intent: stripePaymentIntentId },
-        });
+        logWebhookSecurityEvent(
+          "webhook_payment_intent_no_payment_record",
+          "Webhook security event",
+          { eventId: event.id, payment_intent: stripePaymentIntentId }
+        );
         return { success: true };
       }
 
@@ -1224,16 +1228,13 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
         (hasDbAmount && hasPiAmount && piAmount !== paymentAmount) ||
         (hasPiCurrency && piCurrency && piCurrency.toLowerCase() !== expectedCurrency)
       ) {
-        await logger.info("Webhook security event", {
-          type: "webhook_amount_currency_mismatch",
-          details: {
-            eventId: event.id,
-            paymentId: payment.id,
-            expectedAmount: hasDbAmount ? paymentAmount : undefined,
-            actualAmount: hasPiAmount ? piAmount : undefined,
-            expectedCurrency,
-            actualCurrency: hasPiCurrency ? piCurrency : undefined,
-          },
+        logWebhookSecurityEvent("webhook_amount_currency_mismatch", "Webhook security event", {
+          eventId: event.id,
+          paymentId: payment.id,
+          expectedAmount: hasDbAmount ? paymentAmount : undefined,
+          actualAmount: hasPiAmount ? piAmount : undefined,
+          expectedCurrency,
+          actualCurrency: hasPiCurrency ? piCurrency : undefined,
         });
 
         // 終端エラーとして扱う（再試行しても成功しない）
@@ -1254,14 +1255,15 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
           "paid"
         )
       ) {
-        await logger.info("Webhook security event", {
-          type: "webhook_duplicate_processing_prevented",
-          details: {
+        logWebhookSecurityEvent(
+          "webhook_duplicate_processing_prevented",
+          "Webhook security event",
+          {
             eventId: event.id,
             paymentId: payment.id,
             currentStatus: payment.status,
-          },
-        });
+          }
+        );
         return { success: true }; // 重複処理を防止
       }
 
@@ -1291,14 +1293,11 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
 
       if (attendanceError || !attendanceData) {
         // 参加情報取得に失敗した場合は警告ログのみ記録し、決済処理自体は成功扱いにする
-        await logger.info("Webhook security event", {
-          type: "webhook_revenue_update_skipped",
-          details: {
-            eventId: event.id,
-            paymentId: payment.id,
-            reason: "attendance_fetch_failed",
-            error: attendanceError?.message ?? "No attendance data",
-          },
+        logWebhookSecurityEvent("webhook_revenue_update_skipped", "Webhook security event", {
+          eventId: event.id,
+          paymentId: payment.id,
+          reason: "attendance_fetch_failed",
+          error: attendanceError?.message ?? "No attendance data",
         });
       } else {
         const { error: rpcError } = await this.supabase.rpc("update_revenue_summary", {
@@ -1307,27 +1306,21 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
 
         if (rpcError) {
           // 売上集計の更新失敗は警告レベルでログ（決済処理自体は成功）
-          await logger.info("Webhook security event", {
-            type: "webhook_revenue_update_failed",
-            details: {
-              eventId: event.id,
-              paymentId: payment.id,
-              eventIdForRevenue: attendanceData.event_id,
-              error: rpcError.message,
-            },
+          logWebhookSecurityEvent("webhook_revenue_update_failed", "Webhook security event", {
+            eventId: event.id,
+            paymentId: payment.id,
+            eventIdForRevenue: attendanceData.event_id,
+            error: rpcError.message,
           });
         }
       }
 
       // 成功をログに記録
-      await logger.info("Webhook security event", {
-        type: "webhook_payment_succeeded_processed",
-        details: {
-          eventId: event.id,
-          paymentId: payment.id,
-          amount: paymentIntent.amount,
-          currency: paymentIntent.currency,
-        },
+      logWebhookSecurityEvent("webhook_payment_succeeded_processed", "Webhook security event", {
+        eventId: event.id,
+        paymentId: payment.id,
+        amount: paymentIntent.amount,
+        currency: paymentIntent.currency,
       });
 
       return { success: true, eventId: event.id, paymentId: payment.id };
@@ -1374,10 +1367,11 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
         }
       }
       if (!payment) {
-        await logger.info("Webhook security event", {
-          type: "webhook_payment_intent_failed_no_payment",
-          details: { eventId: event.id, payment_intent: stripePaymentIntentId },
-        });
+        logWebhookSecurityEvent(
+          "webhook_payment_intent_failed_no_payment",
+          "Webhook security event",
+          { eventId: event.id, payment_intent: stripePaymentIntentId }
+        );
         return { success: true };
       }
 
@@ -1388,14 +1382,15 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
           "failed"
         )
       ) {
-        await logger.info("Webhook security event", {
-          type: "webhook_duplicate_processing_prevented",
-          details: {
+        logWebhookSecurityEvent(
+          "webhook_duplicate_processing_prevented",
+          "Webhook security event",
+          {
             eventId: event.id,
             paymentId: payment.id,
             currentStatus: payment.status,
-          },
-        });
+          }
+        );
         return { success: true }; // 重複処理を防止
       }
 
@@ -1417,15 +1412,12 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
 
       // 失敗理由をログに記録
       const failureReason = paymentIntent.last_payment_error?.message || "Unknown payment failure";
-      await logger.info("Webhook security event", {
-        type: "webhook_payment_failed_processed",
-        details: {
-          eventId: event.id,
-          paymentId: payment.id,
-          failureReason,
-          amount: paymentIntent.amount,
-          currency: paymentIntent.currency,
-        },
+      logWebhookSecurityEvent("webhook_payment_failed_processed", "Webhook security event", {
+        eventId: event.id,
+        paymentId: payment.id,
+        failureReason,
+        amount: paymentIntent.amount,
+        currency: paymentIntent.currency,
       });
 
       return { success: true, eventId: event.id, paymentId: payment.id };
@@ -1472,10 +1464,11 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
       }
 
       if (!payment) {
-        await logger.info("Webhook security event", {
-          type: "webhook_payment_intent_canceled_no_payment",
-          details: { eventId: event.id, payment_intent: stripePaymentIntentId },
-        });
+        logWebhookSecurityEvent(
+          "webhook_payment_intent_canceled_no_payment",
+          "Webhook security event",
+          { eventId: event.id, payment_intent: stripePaymentIntentId }
+        );
         return { success: true };
       }
 
@@ -1502,10 +1495,11 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
         }
       }
 
-      await logger.info("Webhook security event", {
-        type: "webhook_payment_intent_canceled_processed",
-        details: { eventId: event.id, paymentId: payment.id },
-      });
+      logWebhookSecurityEvent(
+        "webhook_payment_intent_canceled_processed",
+        "Webhook security event",
+        { eventId: event.id, paymentId: payment.id }
+      );
       return { success: true, eventId: event.id, paymentId: payment.id };
     } catch (error) {
       throw error instanceof Error ? error : new Error("Unknown error");

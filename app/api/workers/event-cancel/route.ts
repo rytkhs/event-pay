@@ -8,6 +8,7 @@ import { createProblemResponse } from "@core/api/problem-details";
 import { logger } from "@core/logging/app-logger";
 import { SecureSupabaseClientFactory } from "@core/security/secure-client-factory.impl";
 import { AdminReason } from "@core/security/secure-client-factory.types";
+import { logSecurityEvent } from "@core/security/security-logger";
 import { getClientIP } from "@core/utils/ip-detection";
 
 // 署名検証用Receiver
@@ -42,10 +43,14 @@ export async function POST(request: NextRequest) {
     const rawBody = await request.text();
 
     if (!signature) {
-      logger.warn("Missing QStash signature (event-cancel)", {
-        tag: "event-cancel-security",
-        correlation_id: corr,
+      logSecurityEvent({
+        type: "QSTASH_SIGNATURE_MISSING",
+        severity: "MEDIUM",
+        message: "Missing QStash signature (event-cancel)",
+        details: { correlation_id: corr, path: "/api/workers/event-cancel" },
+        userAgent: request.headers.get("user-agent") || undefined,
         ip: getClientIP(request),
+        timestamp: new Date(),
       });
       return createProblemResponse("UNAUTHORIZED", {
         instance: "/api/workers/event-cancel",
@@ -56,10 +61,14 @@ export async function POST(request: NextRequest) {
     const receiver = getQstashReceiver();
     const isValid = await receiver.verify({ signature, body: rawBody, url });
     if (!isValid) {
-      logger.warn("Invalid QStash signature (event-cancel)", {
-        tag: "event-cancel-security",
-        correlation_id: corr,
+      logSecurityEvent({
+        type: "QSTASH_SIGNATURE_INVALID",
+        severity: "MEDIUM",
+        message: "Invalid QStash signature (event-cancel)",
+        details: { correlation_id: corr, path: "/api/workers/event-cancel" },
+        userAgent: request.headers.get("user-agent") || undefined,
         ip: getClientIP(request),
+        timestamp: new Date(),
       });
       return createProblemResponse("UNAUTHORIZED", {
         instance: "/api/workers/event-cancel",

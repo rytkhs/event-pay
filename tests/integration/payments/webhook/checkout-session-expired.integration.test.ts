@@ -12,7 +12,7 @@
  * - 境界値: メタデータ欠損、PaymentIntent ID null 等
  */
 
-import { NextRequest } from "next/server";
+import { NextRequest as _NextRequest } from "next/server";
 
 import { logger } from "../../../../core/logging/app-logger";
 import { SecureSupabaseClientFactory } from "../../../../core/security/secure-client-factory.impl";
@@ -28,7 +28,7 @@ import {
   TestPaymentEvent,
   TestAttendanceData,
 } from "../../../helpers/test-payment-data";
-import { mockCheckoutSession } from "../../../setup/stripe-mock";
+import { mockCheckoutSession as _mockCheckoutSession } from "../../../setup/stripe-mock";
 import { createTestWebhookEvent } from "../../../setup/stripe-test-helpers";
 import { testDataManager, createConnectTestData } from "../../../setup/test-data-seeds";
 
@@ -155,15 +155,18 @@ describe("checkout.session.expired Webhook統合テスト", () => {
       expect(updatedPayment.updated_at).toBeTruthy();
 
       // Assert: ログ出力検証
-      expect(mockLogger.info).toHaveBeenCalledWith("Webhook security event", {
-        type: "webhook_checkout_expired_processed",
-        details: {
-          eventId: event.id,
-          paymentId: payment.id,
-          sessionId,
-          paymentIntentId,
-        },
-      });
+      expect(mockLogger.info).toHaveBeenCalledWith(
+        "Webhook security event",
+        expect.objectContaining({
+          type: "webhook_checkout_expired_processed",
+          details: expect.objectContaining({
+            eventId: event.id,
+            paymentId: payment.id,
+            sessionId,
+            paymentIntentId,
+          }),
+        })
+      );
     });
 
     test("metadata.payment_id フォールバック突合で決済レコードを更新", async () => {
@@ -273,10 +276,13 @@ describe("checkout.session.expired Webhook統合テスト", () => {
       });
 
       // Assert: セキュリティログ出力
-      expect(mockLogger.info).toHaveBeenCalledWith("Webhook security event", {
-        type: "webhook_checkout_expired_no_payment",
-        details: { eventId: event.id, sessionId: nonExistentSessionId },
-      });
+      expect(mockLogger.info).toHaveBeenCalledWith(
+        "Webhook security event",
+        expect.objectContaining({
+          type: "webhook_checkout_expired_no_payment",
+          details: expect.objectContaining({ eventId: event.id, sessionId: nonExistentSessionId }),
+        })
+      );
     });
 
     test("metadata.payment_id でも見つからない場合の処理", async () => {
@@ -298,10 +304,13 @@ describe("checkout.session.expired Webhook統合テスト", () => {
       });
 
       // Assert: セキュリティログ出力
-      expect(mockLogger.info).toHaveBeenCalledWith("Webhook security event", {
-        type: "webhook_checkout_expired_no_payment",
-        details: { eventId: event.id, sessionId },
-      });
+      expect(mockLogger.info).toHaveBeenCalledWith(
+        "Webhook security event",
+        expect.objectContaining({
+          type: "webhook_checkout_expired_no_payment",
+          details: expect.objectContaining({ eventId: event.id, sessionId }),
+        })
+      );
     });
 
     test("metadata が存在しない場合の処理", async () => {
@@ -321,10 +330,13 @@ describe("checkout.session.expired Webhook統合テスト", () => {
       });
 
       // Assert: セキュリティログ出力
-      expect(mockLogger.info).toHaveBeenCalledWith("Webhook security event", {
-        type: "webhook_checkout_expired_no_payment",
-        details: { eventId: event.id, sessionId },
-      });
+      expect(mockLogger.info).toHaveBeenCalledWith(
+        "Webhook security event",
+        expect.objectContaining({
+          type: "webhook_checkout_expired_no_payment",
+          details: expect.objectContaining({ eventId: event.id, sessionId }),
+        })
+      );
     });
   });
 
@@ -335,7 +347,7 @@ describe("checkout.session.expired Webhook統合テスト", () => {
       ["waived", 28],
       ["completed", 30],
       ["refunded", 40],
-    ])("%s ステータス（ランク %d）からの降格を防止", async (currentStatus, expectedRank) => {
+    ])("%s ステータス（ランク %d）からの降格を防止", async (currentStatus, _expectedRank) => {
       // Arrange: 高位ステータスの決済レコード
       const sessionId = `cs_test_prevent_${currentStatus}_` + Date.now();
 
@@ -395,14 +407,17 @@ describe("checkout.session.expired Webhook統合テスト", () => {
       expect(unchangedPayment.status).toBe(currentStatus);
 
       // Assert: 重複処理防止ログ
-      expect(mockLogger.info).toHaveBeenCalledWith("Webhook security event", {
-        type: "webhook_duplicate_processing_prevented",
-        details: {
-          eventId: event.id,
-          paymentId: payment.id,
-          currentStatus: currentStatus,
-        },
-      });
+      expect(mockLogger.info).toHaveBeenCalledWith(
+        "Webhook security event",
+        expect.objectContaining({
+          type: "webhook_duplicate_processing_prevented",
+          details: expect.objectContaining({
+            eventId: event.id,
+            paymentId: payment.id,
+            currentStatus: currentStatus,
+          }),
+        })
+      );
 
       // Assert: ステータスランク検証（仕様書との整合性）
       expect(canPromoteStatus(currentStatus as any, "failed")).toBe(false);
@@ -446,14 +461,17 @@ describe("checkout.session.expired Webhook統合テスト", () => {
       });
 
       // Assert: 重複処理防止ログ
-      expect(mockLogger.info).toHaveBeenCalledWith("Webhook security event", {
-        type: "webhook_duplicate_processing_prevented",
-        details: {
-          eventId: event.id,
-          paymentId: payment.id,
-          currentStatus: "failed",
-        },
-      });
+      expect(mockLogger.info).toHaveBeenCalledWith(
+        "Webhook security event",
+        expect.objectContaining({
+          type: "webhook_duplicate_processing_prevented",
+          details: expect.objectContaining({
+            eventId: event.id,
+            paymentId: payment.id,
+            currentStatus: "failed",
+          }),
+        })
+      );
     });
   });
 
@@ -513,10 +531,13 @@ describe("checkout.session.expired Webhook統合テスト", () => {
         success: true,
       });
 
-      expect(mockLogger.info).toHaveBeenCalledWith("Webhook security event", {
-        type: "webhook_checkout_expired_no_payment",
-        details: { eventId: event.id, sessionId },
-      });
+      expect(mockLogger.info).toHaveBeenCalledWith(
+        "Webhook security event",
+        expect.objectContaining({
+          type: "webhook_checkout_expired_no_payment",
+          details: expect.objectContaining({ eventId: event.id, sessionId }),
+        })
+      );
     });
 
     test("非文字列型のmetadata.payment_idは無視", async () => {
@@ -535,10 +556,13 @@ describe("checkout.session.expired Webhook統合テスト", () => {
         success: true,
       });
 
-      expect(mockLogger.info).toHaveBeenCalledWith("Webhook security event", {
-        type: "webhook_checkout_expired_no_payment",
-        details: { eventId: event.id, sessionId },
-      });
+      expect(mockLogger.info).toHaveBeenCalledWith(
+        "Webhook security event",
+        expect.objectContaining({
+          type: "webhook_checkout_expired_no_payment",
+          details: expect.objectContaining({ eventId: event.id, sessionId }),
+        })
+      );
     });
 
     test("非文字列型のPaymentIntentは制約エラー", async () => {
@@ -841,14 +865,17 @@ describe("checkout.session.expired Webhook統合テスト", () => {
         success: true,
       });
 
-      expect(mockLogger.info).toHaveBeenCalledWith("Webhook security event", {
-        type: "webhook_duplicate_processing_prevented",
-        details: {
-          eventId: event.id,
-          paymentId: payment.id,
-          currentStatus: "failed",
-        },
-      });
+      expect(mockLogger.info).toHaveBeenCalledWith(
+        "Webhook security event",
+        expect.objectContaining({
+          type: "webhook_duplicate_processing_prevented",
+          details: expect.objectContaining({
+            eventId: event.id,
+            paymentId: payment.id,
+            currentStatus: "failed",
+          }),
+        })
+      );
 
       // Assert: データベース状態は変わらない
       const { data: finalPayment } = await supabase
@@ -898,22 +925,21 @@ describe("checkout.session.expired Webhook統合テスト", () => {
       });
     });
 
-    test("実装ファイルパスの確認", () => {
-      // 仕様書記載の実装ファイルが存在することを確認
-      expect(
-        require("../../../../features/payments/services/webhook/webhook-event-handler")
-          .StripeWebhookEventHandler
-      ).toBeDefined();
-
-      expect(require("../../../../core/utils/payments/status-rank").canPromoteStatus).toBeDefined();
-
-      expect(require("../../../../core/logging/app-logger").logger).toBeDefined();
+    test("実装ファイルパスの確認", async () => {
+      const mod1 = await import(
+        "../../../../features/payments/services/webhook/webhook-event-handler"
+      );
+      expect(mod1.StripeWebhookEventHandler).toBeDefined();
+      const mod2 = await import("../../../../core/utils/payments/status-rank");
+      expect(mod2.canPromoteStatus).toBeDefined();
+      const mod3 = await import("../../../../core/logging/app-logger");
+      expect((mod3 as any).logger).toBeDefined();
     });
 
     test("データベーススキーマ型定義の準拠", () => {
       // 型定義が期待通りに存在することを確認
       type PaymentStatus = Database["public"]["Enums"]["payment_status_enum"];
-      type PaymentTable = Database["public"]["Tables"]["payments"];
+      type _PaymentTable = Database["public"]["Tables"]["payments"];
 
       // この型が正しくインポートできることで間接的に確認
       const mockPaymentStatus: PaymentStatus = "failed";
