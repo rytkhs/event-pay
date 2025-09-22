@@ -12,6 +12,7 @@ import { useErrorHandler } from "@core/hooks/use-error-handler";
 import { ATTENDANCE_STATUS_LABELS } from "@core/types/enums";
 import { deriveEventStatus } from "@core/utils/derive-event-status";
 import { type GuestAttendanceData } from "@core/utils/guest-token";
+import { maskEmail } from "@core/utils/mask";
 import { sanitizeForEventPay } from "@core/utils/sanitize";
 import { formatUtcToJstByType } from "@core/utils/timezone";
 import { canGuestRepay } from "@core/validation/payment-eligibility";
@@ -625,7 +626,7 @@ export function GuestManagementForm({ attendance, canModify }: GuestManagementFo
             <div>
               <h4 className="text-sm font-medium text-gray-700">メールアドレス</h4>
               <p className="mt-1 text-sm text-gray-900 break-all">
-                {sanitizeForEventPay(attendance.email)}
+                {maskEmail(sanitizeForEventPay(attendance.email))}
               </p>
             </div>
 
