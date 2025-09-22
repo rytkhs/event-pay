@@ -1247,8 +1247,13 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
         };
       }
 
-      // 既に処理済みかチェック
-      if (payment.status === "paid") {
+      // 既に処理済みかチェック（ステータスランクによる昇格可能性チェック）
+      if (
+        !canPromoteStatus(
+          payment.status as Database["public"]["Enums"]["payment_status_enum"],
+          "paid"
+        )
+      ) {
         await logger.info("Webhook security event", {
           type: "webhook_duplicate_processing_prevented",
           details: {
