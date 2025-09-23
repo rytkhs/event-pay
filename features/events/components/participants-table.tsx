@@ -14,6 +14,7 @@ import {
   X,
   CreditCard,
   Banknote,
+  MoreVertical,
 } from "lucide-react";
 
 import { useToast } from "@core/contexts/toast-context";
@@ -34,6 +35,12 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -260,10 +267,24 @@ export function ParticipantsTable({
     }
   };
 
+  // Payment Actions実装の動的登録を確保
+  const ensurePaymentActionsRegistration = async () => {
+    try {
+      // PaymentActions実装を動的にインポートして登録
+      await import("@features/payments/core-bindings");
+    } catch (error) {
+      console.error("Failed to register PaymentActions implementation:", error);
+      throw new Error("PaymentActions initialization failed");
+    }
+  };
+
   // 個別ステータス更新
   const handleUpdatePaymentStatus = async (paymentId: string, status: "received" | "waived") => {
     setIsUpdatingStatus(true);
     try {
+      // Payment Actions実装の登録を確保
+      await ensurePaymentActionsRegistration();
+
       const paymentActions = getPaymentActions();
       const result = await paymentActions.updateCashStatus({
         paymentId,
@@ -303,10 +324,12 @@ export function ParticipantsTable({
           });
         }
       }
-    } catch (_error) {
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : "予期しないエラーが発生しました";
       toast({
-        title: "エラーが発生しました",
-        description: "ステータス更新に失敗しました",
+        title: "ステータス更新エラー",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
@@ -329,6 +352,9 @@ export function ParticipantsTable({
     setBulkUpdateMode(status);
 
     try {
+      // Payment Actions実装の登録を確保
+      await ensurePaymentActionsRegistration();
+
       // 50件ずつチャンクして順次実行
       const chunkSize = 50;
       let totalSuccess = 0;
@@ -369,10 +395,12 @@ export function ParticipantsTable({
       });
       setSelectedPaymentIds([]);
       onPaymentStatusUpdate?.();
-    } catch (_error) {
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : "予期しないエラーが発生しました";
       toast({
-        title: "エラーが発生しました",
-        description: "一括更新に失敗しました",
+        title: "一括更新エラー",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
@@ -530,23 +558,37 @@ export function ParticipantsTable({
       const res = await generateGuestUrlAction({ eventId, attendanceId });
       if (!res.success) {
         toast({
-          title: "コピーできません",
+          title: "URLの生成に失敗しました",
           description: res.error || "ゲストURL生成に失敗しました",
           variant: "destructive",
         });
         return;
       }
-      await navigator.clipboard.writeText(res.data.guestUrl);
+
+      try {
+        await navigator.clipboard.writeText(res.data.guestUrl);
+        toast({
+          title: "URLをコピーしました",
+          description: res.data.canOnlinePay
+            ? "現在オンライン決済が可能です。"
+            : res.data.reason || "オンライン決済は現在できません。",
+        });
+      } catch (clipboardError) {
+        // クリップボードアクセスエラーは別途処理
+        toast({
+          title: "クリップボードアクセスエラー",
+          description:
+            "URLは生成されましたが、コピーできませんでした。ブラウザの設定を確認してください。",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      // generateGuestUrlAction自体のエラー
+      const errorMessage =
+        error instanceof Error ? error.message : "予期しないエラーが発生しました";
       toast({
-        title: "URLをコピーしました",
-        description: res.data.canOnlinePay
-          ? "現在オンライン決済が可能です。"
-          : res.data.reason || "オンライン決済は現在できません。",
-      });
-    } catch {
-      toast({
-        title: "コピーに失敗しました",
-        description: "クリップボードにアクセスできませんでした",
+        title: "URLの生成に失敗しました",
+        description: errorMessage,
         variant: "destructive",
       });
     }
@@ -822,50 +864,67 @@ export function ParticipantsTable({
                         </td>
                       )}
                       <td className="px-4 py-4 whitespace-nowrap">
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-1">
+                          {/* 最頻用アクション：受領（現金決済で未完了時のみ直接表示） */}
                           {isCashPayment &&
                             simpleStatus !== "paid" &&
                             simpleStatus !== "waived" && (
-                              <>
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() =>
-                                    hasPaymentId(participant) &&
-                                    handleUpdatePaymentStatus(participant.payment_id, "received")
-                                  }
-                                  disabled={isUpdatingStatus}
-                                  className="h-8 px-2 text-xs bg-green-50 border-green-300 text-green-700 hover:bg-green-100"
-                                >
-                                  <Check className="h-3 w-3 mr-1" />
-                                  受領
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() =>
-                                    hasPaymentId(participant) &&
-                                    handleUpdatePaymentStatus(participant.payment_id, "waived")
-                                  }
-                                  disabled={isUpdatingStatus}
-                                  className="h-8 px-2 text-xs bg-orange-50 border-orange-300 text-orange-700 hover:bg-orange-100"
-                                >
-                                  <X className="h-3 w-3 mr-1" />
-                                  免除
-                                </Button>
-                              </>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() =>
+                                  hasPaymentId(participant) &&
+                                  handleUpdatePaymentStatus(participant.payment_id, "received")
+                                }
+                                disabled={isUpdatingStatus}
+                                className="h-8 w-8 p-0 bg-green-50 border-green-300 text-green-700 hover:bg-green-100"
+                                title="受領済みにする"
+                              >
+                                <Check className="h-3 w-3" />
+                              </Button>
                             )}
 
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => handleCopyGuestUrl(participant.attendance_id)}
-                            className="h-8 px-2 text-xs"
-                            title="ゲスト用URLをコピー"
-                            disabled={participant.status !== "attending"}
-                          >
-                            URLコピー
-                          </Button>
+                          {/* その他のアクション */}
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 w-8 p-0 hover:bg-gray-100"
+                                title="その他のアクション"
+                              >
+                                <MoreVertical className="h-3 w-3" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-40">
+                              {/* 免除アクション（現金決済で未完了時のみ） */}
+                              {isCashPayment &&
+                                simpleStatus !== "paid" &&
+                                simpleStatus !== "waived" && (
+                                  <DropdownMenuItem
+                                    onClick={() =>
+                                      hasPaymentId(participant) &&
+                                      handleUpdatePaymentStatus(participant.payment_id, "waived")
+                                    }
+                                    disabled={isUpdatingStatus}
+                                    className="text-orange-700 focus:text-orange-700"
+                                  >
+                                    <X className="h-3 w-3 mr-2" />
+                                    支払いを免除
+                                  </DropdownMenuItem>
+                                )}
+
+                              {/* URLコピーアクション */}
+                              <DropdownMenuItem
+                                onClick={() => handleCopyGuestUrl(participant.attendance_id)}
+                                disabled={participant.status !== "attending"}
+                                className="text-blue-700 focus:text-blue-700"
+                              >
+                                <span className="h-3 w-3 mr-2">🔗</span>
+                                URLをコピー
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </div>
                       </td>
                     </tr>
