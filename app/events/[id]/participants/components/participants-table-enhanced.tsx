@@ -36,6 +36,13 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { generateGuestUrlAction } from "@/features/events/actions/generate-guest-url";
 import { updateCashStatusAction } from "@/features/payments/actions/update-cash-status";
@@ -204,12 +211,20 @@ export function ParticipantsTableEnhanced({
   const participants = participantsData.participants;
   const pagination = participantsData.pagination;
 
+  // 現在のページサイズ（URLパラメータから取得、デフォルト50）
+  const currentLimit = _searchParams.limit ? parseInt(String(_searchParams.limit), 10) : 50;
+
   // 現金決済のみをフィルター
   const cashPayments = participants.filter((p) => p.payment_method === "cash" && p.payment_id);
 
   // ページネーションハンドラー
   const handlePageChange = (newPage: number) => {
     onFiltersChange({ page: newPage.toString() });
+  };
+
+  // ページサイズ変更ハンドラー
+  const handlePageSizeChange = (newLimit: string) => {
+    onFiltersChange({ limit: newLimit, page: "1" }); // ページサイズ変更時はページを1にリセット
   };
 
   // 選択機能ハンドラー
@@ -731,14 +746,32 @@ export function ParticipantsTableEnhanced({
         )}
 
         {/* ページネーション */}
-        {pagination.totalPages > 1 && (
-          <div className="flex items-center justify-between px-4 py-3 sm:px-6 border-t">
-            <div className="flex-1 flex items-center justify-between">
+        {(pagination.totalPages > 1 || pagination.total > 50) && (
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 px-4 py-3 sm:px-6 border-t">
+            {/* 表示件数情報とページサイズ選択 */}
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
               <div className="text-sm text-gray-700">
                 {pagination.total}件中 {(pagination.page - 1) * pagination.limit + 1}-
                 {Math.min(pagination.page * pagination.limit, pagination.total)}件を表示
               </div>
 
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-gray-600">表示件数:</span>
+                <Select value={currentLimit.toString()} onValueChange={handlePageSizeChange}>
+                  <SelectTrigger className="w-20 h-9 text-sm">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="50">50</SelectItem>
+                    <SelectItem value="100">100</SelectItem>
+                    <SelectItem value="200">200</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            {/* ページネーションボタン（ページが複数ある場合のみ表示） */}
+            {pagination.totalPages > 1 && (
               <div className="flex items-center space-x-2">
                 <Button
                   variant="outline"
@@ -764,7 +797,7 @@ export function ParticipantsTableEnhanced({
                   <ChevronRight className="h-4 w-4" />
                 </Button>
               </div>
-            </div>
+            )}
           </div>
         )}
       </CardContent>
