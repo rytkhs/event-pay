@@ -52,7 +52,7 @@ const SortOrderSchema = z.enum(["asc", "desc"]).default("desc");
 // ページネーション（内部専用）
 const PageSchema = z.number().int().min(1).default(1);
 
-const LimitSchema = z.number().int().min(1).max(100).default(50);
+const LimitSchema = z.number().int().min(1).max(200).default(100);
 
 // 検索クエリ（内部専用）
 const SearchQuerySchema = z
