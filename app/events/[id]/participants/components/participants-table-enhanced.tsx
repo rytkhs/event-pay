@@ -10,11 +10,10 @@ import {
   CreditCard,
   Banknote,
   UserPlus,
-  Copy,
+  // Copy, // 一時的にコメントアウト
   TableIcon,
   LayoutGridIcon,
   CheckCircle,
-  MoreVertical,
   Circle,
   Triangle,
 } from "lucide-react";
@@ -37,12 +36,6 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { generateGuestUrlAction } from "@/features/events/actions/generate-guest-url";
 import { updateCashStatusAction } from "@/features/payments/actions/update-cash-status";
@@ -264,7 +257,7 @@ export function ParticipantsTableEnhanced({
   };
 
   // ゲストURL生成
-  const handleCopyGuestUrl = async (attendanceId: string) => {
+  const _handleCopyGuestUrl = async (attendanceId: string) => {
     try {
       const result = await generateGuestUrlAction({ eventId: _eventId, attendanceId });
       if (result.success) {
@@ -532,8 +525,8 @@ export function ParticipantsTableEnhanced({
 
                           {/* アクション列 */}
                           <td className="px-2 sm:px-4 py-3 sm:py-4 whitespace-nowrap">
-                            <div className="flex items-center gap-2">
-                              {/* 最頻用アクション：受領（現金決済で未完了時のみ直接表示） */}
+                            <div className="flex items-center gap-1 sm:gap-2">
+                              {/* 受領ボタン（現金決済で未完了時のみ） */}
                               {isCashPayment &&
                                 simpleStatus !== "paid" &&
                                 simpleStatus !== "waived" && (
@@ -545,58 +538,48 @@ export function ParticipantsTableEnhanced({
                                       handleUpdatePaymentStatus(participant.payment_id, "received")
                                     }
                                     disabled={isUpdatingStatus}
-                                    className="bg-green-50 border-green-300 text-green-700 hover:bg-green-100 min-h-[40px] min-w-[40px] px-3 shadow-sm hover:shadow-md transition-all duration-200 touch-manipulation"
+                                    className="bg-green-50 border-green-300 text-green-700 hover:bg-green-100 min-h-[36px] min-w-[36px] px-2 sm:px-3 shadow-sm hover:shadow-md transition-all duration-200 touch-manipulation"
                                     title="受領済みにする"
                                   >
-                                    <Check className="h-4 w-4" />
-                                    <span className="hidden sm:inline ml-1">受領</span>
+                                    <Check className="h-3 w-3 sm:h-4 sm:w-4" />
+                                    <span className="hidden lg:inline ml-1 text-xs">受領</span>
                                   </Button>
                                 )}
 
-                              {/* その他のアクション */}
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
+                              {/* 免除ボタン（現金決済で未完了時のみ） */}
+                              {isCashPayment &&
+                                simpleStatus !== "paid" &&
+                                simpleStatus !== "waived" && (
                                   <Button
-                                    variant="ghost"
                                     size="sm"
-                                    className="min-h-[40px] min-w-[40px] hover:bg-gray-100 touch-manipulation"
-                                    title="その他のアクション"
+                                    variant="outline"
+                                    onClick={() =>
+                                      hasPaymentId(participant) &&
+                                      handleUpdatePaymentStatus(participant.payment_id, "waived")
+                                    }
+                                    disabled={isUpdatingStatus}
+                                    className="bg-orange-50 border-orange-300 text-orange-700 hover:bg-orange-100 min-h-[36px] min-w-[36px] px-2 sm:px-3 shadow-sm hover:shadow-md transition-all duration-200 touch-manipulation"
+                                    title="支払いを免除"
                                   >
-                                    <MoreVertical className="h-4 w-4" />
+                                    <X className="h-3 w-3 sm:h-4 sm:w-4" />
+                                    <span className="hidden lg:inline ml-1 text-xs">免除</span>
                                   </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end" className="w-40">
-                                  {/* 免除アクション（現金決済で未完了時のみ） */}
-                                  {isCashPayment &&
-                                    simpleStatus !== "paid" &&
-                                    simpleStatus !== "waived" && (
-                                      <DropdownMenuItem
-                                        onClick={() =>
-                                          hasPaymentId(participant) &&
-                                          handleUpdatePaymentStatus(
-                                            participant.payment_id,
-                                            "waived"
-                                          )
-                                        }
-                                        disabled={isUpdatingStatus}
-                                        className="text-orange-700 focus:text-orange-700"
-                                      >
-                                        <X className="h-3 w-3 mr-2" />
-                                        支払いを免除
-                                      </DropdownMenuItem>
-                                    )}
+                                )}
 
-                                  {/* URLコピーアクション */}
-                                  <DropdownMenuItem
-                                    onClick={() => handleCopyGuestUrl(participant.attendance_id)}
-                                    disabled={participant.status !== "attending"}
-                                    className="text-blue-700 focus:text-blue-700"
-                                  >
-                                    <Copy className="h-3 w-3 mr-2" />
-                                    URLをコピー
-                                  </DropdownMenuItem>
-                                </DropdownMenuContent>
-                              </DropdownMenu>
+                              {/* URLコピーボタン */}
+                              {/* 一時的に機能停止
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => _handleCopyGuestUrl(participant.attendance_id)}
+                                disabled={participant.status !== "attending"}
+                                className="bg-blue-50 border-blue-300 text-blue-700 hover:bg-blue-100 min-h-[36px] min-w-[36px] px-2 sm:px-3 shadow-sm hover:shadow-md transition-all duration-200 touch-manipulation"
+                                title="URLをコピー"
+                              >
+                                <Copy className="h-3 w-3 sm:h-4 sm:w-4" />
+                                <span className="hidden lg:inline ml-1 text-xs">URL</span>
+                              </Button>
+                              */}
                             </div>
                           </td>
                         </tr>
@@ -685,7 +668,7 @@ export function ParticipantsTableEnhanced({
 
                           {/* アクションボタン群 */}
                           <div className="flex flex-wrap gap-3 pt-2">
-                            {/* 最頻用アクション：受領（現金決済で未完了時のみ直接表示） */}
+                            {/* 受領ボタン（現金決済で未完了時のみ） */}
                             {isCashPayment &&
                               simpleStatus !== "paid" &&
                               simpleStatus !== "waived" && (
@@ -704,47 +687,38 @@ export function ParticipantsTableEnhanced({
                                 </Button>
                               )}
 
-                            {/* その他のアクション */}
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
+                            {/* 免除ボタン（現金決済で未完了時のみ） */}
+                            {isCashPayment &&
+                              simpleStatus !== "paid" &&
+                              simpleStatus !== "waived" && (
                                 <Button
-                                  variant="outline"
                                   size="sm"
-                                  className="min-h-[44px] touch-manipulation"
+                                  variant="outline"
+                                  onClick={() =>
+                                    hasPaymentId(participant) &&
+                                    handleUpdatePaymentStatus(participant.payment_id, "waived")
+                                  }
+                                  disabled={isUpdatingStatus}
+                                  className="bg-orange-50 border-orange-300 text-orange-700 hover:bg-orange-100 min-h-[44px] touch-manipulation"
                                 >
-                                  <MoreVertical className="h-4 w-4 mr-2" />
-                                  メニュー
+                                  <X className="h-4 w-4 mr-2" />
+                                  免除
                                 </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end" className="w-44">
-                                {/* 免除アクション（現金決済で未完了時のみ） */}
-                                {isCashPayment &&
-                                  simpleStatus !== "paid" &&
-                                  simpleStatus !== "waived" && (
-                                    <DropdownMenuItem
-                                      onClick={() =>
-                                        hasPaymentId(participant) &&
-                                        handleUpdatePaymentStatus(participant.payment_id, "waived")
-                                      }
-                                      disabled={isUpdatingStatus}
-                                      className="text-orange-700 focus:text-orange-700"
-                                    >
-                                      <X className="h-4 w-4 mr-2" />
-                                      支払いを免除
-                                    </DropdownMenuItem>
-                                  )}
+                              )}
 
-                                {/* URLコピーアクション */}
-                                <DropdownMenuItem
-                                  onClick={() => handleCopyGuestUrl(participant.attendance_id)}
-                                  disabled={participant.status !== "attending"}
-                                  className="text-blue-700 focus:text-blue-700"
-                                >
-                                  <Copy className="h-4 w-4 mr-2" />
-                                  URL共有
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
+                            {/* URLコピーボタン */}
+                            {/* 一時的にコメントアウト
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => _handleCopyGuestUrl(participant.attendance_id)}
+                              disabled={participant.status !== "attending"}
+                              className="bg-blue-50 border-blue-300 text-blue-700 hover:bg-blue-100 min-h-[44px] touch-manipulation"
+                            >
+                              <Copy className="h-4 w-4 mr-2" />
+                              URL共有
+                            </Button>
+                            */}
                           </div>
                         </div>
                       </CardContent>
