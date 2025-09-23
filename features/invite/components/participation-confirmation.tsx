@@ -13,19 +13,23 @@ import { formatUtcToJstByType } from "@core/utils/timezone";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { dismissInviteSuccessAction } from "@/features/invite/actions/invite-success-cookie";
 
 import { type RegisterParticipationData } from "../actions/register-participation";
 
 interface ParticipationConfirmationProps {
   registrationData: RegisterParticipationData;
   event: EventDetail;
+  inviteToken?: string;
 }
 
 export function ParticipationConfirmation({
   registrationData,
   event,
+  inviteToken,
 }: ParticipationConfirmationProps) {
   const [showGuestUrl, setShowGuestUrl] = useState(false);
+  const [dismissed, setDismissed] = useState(false);
   const { copyToClipboard, isCopied } = useClipboard();
 
   // アクセシビリティ用のID生成
@@ -59,6 +63,16 @@ export function ParticipationConfirmation({
   const handleOpenGuestUrl = () => {
     window.open(guestManagementUrl, "_blank");
   };
+
+  const handleDismiss = async () => {
+    if (!inviteToken) return;
+    await dismissInviteSuccessAction(inviteToken);
+    setDismissed(true);
+  };
+
+  if (dismissed) {
+    return null;
+  }
 
   return (
     <div className="space-y-4 sm:space-y-6" role="main" aria-labelledby={`${confirmationId}-title`}>
@@ -298,6 +312,19 @@ export function ParticipationConfirmation({
               URLを知っている人は誰でもあなたの参加状況を変更できます。
             </p>
           </div>
+
+          {/* 表示しないボタン */}
+          {inviteToken && (
+            <div className="pt-2">
+              <Button
+                variant="ghost"
+                className="w-full justify-center text-xs text-gray-500 hover:text-gray-700"
+                onClick={handleDismiss}
+              >
+                この確認を今後表示しない
+              </Button>
+            </div>
+          )}
         </div>
       </Card>
 

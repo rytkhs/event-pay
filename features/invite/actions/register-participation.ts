@@ -1,5 +1,7 @@
 "use server";
 
+import { cookies } from "next/headers";
+
 import type { PostgrestError } from "@supabase/supabase-js";
 import { z } from "zod";
 
@@ -616,6 +618,21 @@ export async function registerParticipationAction(
       attendanceStatus: participationData.attendanceStatus,
       paymentMethod: participationData.paymentMethod,
     };
+    // 10. 申込成功状態をHttpOnlyクッキーで12時間保持（パスは該当招待リンクのみに限定）
+    try {
+      const cookieStore = cookies();
+      const twelveHoursMs = 12 * 60 * 60 * 1000;
+      const expiresAt = new Date(Date.now() + twelveHoursMs);
+      cookieStore.set("invite_success", responseData.guestToken, {
+        httpOnly: true,
+        sameSite: "lax",
+        secure: process.env.NODE_ENV === "production",
+        path: `/invite/${participationData.inviteToken}`,
+        expires: expiresAt,
+      });
+    } catch {
+      // クッキー設定失敗はUX低下に留めるため、ユーザー向けエラーにはしない
+    }
 
     return createServerActionSuccess(responseData, "参加登録が完了しました");
   } catch (error) {

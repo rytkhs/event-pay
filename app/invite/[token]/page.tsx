@@ -1,7 +1,8 @@
-import { headers } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { notFound } from "next/navigation";
 
 import { logInvalidTokenAccess } from "@core/security/security-logger";
+import { validateGuestToken } from "@core/utils/guest-token";
 import { validateInviteToken } from "@core/utils/invite-token";
 import { getClientIPFromHeaders } from "@core/utils/ip-detection";
 import { sanitizeEventDescription } from "@core/utils/sanitize";
@@ -9,6 +10,7 @@ import { sanitizeEventDescription } from "@core/utils/sanitize";
 import { InviteEventDetail } from "@features/invite";
 
 import { ErrorLayout } from "@/components/errors";
+import type { RegisterParticipationData } from "@/features/invite/actions/register-participation";
 
 interface InvitePageProps {
   params: {
@@ -108,11 +110,42 @@ export default async function InvitePage({ params }: InvitePageProps) {
       );
     }
 
+    // 申込成功クッキーが存在する場合、ゲストトークンから確認画面データを復元
+    let initialRegistrationData: RegisterParticipationData | null = null;
+    try {
+      const cookieStore = cookies();
+      const successCookie = cookieStore.get("invite_success");
+      if (successCookie?.value) {
+        const guestToken = successCookie.value;
+        const guestValidation = await validateGuestToken(guestToken);
+        if (guestValidation.isValid && guestValidation.attendance) {
+          initialRegistrationData = {
+            attendanceId: guestValidation.attendance.id,
+            guestToken,
+            requiresAdditionalPayment:
+              guestValidation.attendance.status === "attending" &&
+              (guestValidation.attendance.event?.fee ?? 0) > 0,
+            eventTitle: guestValidation.attendance.event?.title ?? validationResult.event.title,
+            participantNickname: guestValidation.attendance.nickname,
+            participantEmail: guestValidation.attendance.email,
+            attendanceStatus: guestValidation.attendance.status,
+            paymentMethod: guestValidation.attendance.payment?.method,
+          };
+        }
+      }
+    } catch {
+      // 復元失敗は無視（UX優先）
+    }
+
     return (
       <div className="min-h-screen bg-muted/30">
         {/* メインコンテンツ */}
         <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
-          <InviteEventDetail event={validationResult.event} inviteToken={params.token} />
+          <InviteEventDetail
+            event={validationResult.event}
+            inviteToken={params.token}
+            initialRegistrationData={initialRegistrationData}
+          />
         </main>
       </div>
     );

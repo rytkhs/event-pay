@@ -39,11 +39,18 @@ import { ParticipationForm } from "./participation-form";
 interface InviteEventDetailProps {
   event: EventDetail;
   inviteToken: string;
+  initialRegistrationData?: RegisterParticipationData | null;
 }
 
-export function InviteEventDetail({ event, inviteToken }: InviteEventDetailProps): JSX.Element {
+export function InviteEventDetail({
+  event,
+  inviteToken,
+  initialRegistrationData,
+}: InviteEventDetailProps): JSX.Element {
   const [showForm, setShowForm] = useState(false);
-  const [registrationData, setRegistrationData] = useState<RegisterParticipationData | null>(null);
+  const [registrationData, setRegistrationData] = useState<RegisterParticipationData | null>(
+    initialRegistrationData ?? null
+  );
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -131,7 +138,13 @@ export function InviteEventDetail({ event, inviteToken }: InviteEventDetailProps
 
   // 確認ページが表示される場合
   if (registrationData) {
-    return <ParticipationConfirmation registrationData={registrationData} event={event} />;
+    return (
+      <ParticipationConfirmation
+        registrationData={registrationData}
+        event={event}
+        inviteToken={inviteToken}
+      />
+    );
   }
 
   return (
