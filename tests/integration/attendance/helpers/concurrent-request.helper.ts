@@ -114,11 +114,13 @@ export class ConcurrentRequestHelper {
             successResults.push(result.value);
           } else {
             // ServerActionResult で失敗の場合（success: false）
+            // ServerActionError型の場合のプロパティアクセス
+            const errorResult = actionResult as { success: false; code?: string; error?: string };
             failureResults.push({
               reason: actionResult,
               error: {
-                type: actionResult.code || "UNKNOWN",
-                message: actionResult.error || "Unknown error",
+                type: errorResult.code || "UNKNOWN",
+                message: errorResult.error || "Unknown error",
               },
             });
           }

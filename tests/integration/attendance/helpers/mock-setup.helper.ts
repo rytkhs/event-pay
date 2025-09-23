@@ -56,7 +56,7 @@ export class MockSetupHelper {
       });
     }
 
-    return mockFn;
+    return mockFn as jest.MockedFunction<typeof guestTokenUtils.generateGuestToken>;
   }
 
   /**
@@ -133,7 +133,7 @@ export class MockSetupHelper {
 
     try {
       // crypto.randomUUIDが利用可能な場合
-      if (typeof crypto !== "undefined" && crypto.randomUUID) {
+      if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
         mockFn = jest.spyOn(crypto, "randomUUID").mockImplementation(() => {
           const uuid = sequence[currentIndex % sequence.length];
           currentIndex++;
@@ -213,7 +213,8 @@ export class MockSetupHelper {
       if (securityLogger.logParticipationSecurityEvent) {
         mockFn = jest
           .spyOn(securityLogger, "logParticipationSecurityEvent")
-          .mockImplementation((type: string, message: string, details?: any, context?: any) => {
+          .mockImplementation((...args: unknown[]) => {
+            const [type, message, details, context] = args as [string, string, any?, any?];
             capturedLogs.push({ type, message, details, context });
             return Promise.resolve();
           });
@@ -277,10 +278,10 @@ export class MockSetupHelper {
       predictableUUIDs?: string[];
     } = {}
   ): {
-    timeControl?: ReturnType<typeof this.mockSystemTime>;
-    guestTokenDuplication?: ReturnType<typeof this.setupDuplicateGuestTokenTest>;
-    securityLogCapture?: ReturnType<typeof this.captureSecurityLogs>;
-    uuidMock?: ReturnType<typeof this.mockUUIDGeneration>;
+    timeControl?: ReturnType<typeof MockSetupHelper.mockSystemTime>;
+    guestTokenDuplication?: ReturnType<typeof MockSetupHelper.setupDuplicateGuestTokenTest>;
+    securityLogCapture?: ReturnType<typeof MockSetupHelper.captureSecurityLogs>;
+    uuidMock?: ReturnType<typeof MockSetupHelper.mockUUIDGeneration>;
     restoreAll: () => void;
   } {
     const results: any = {};

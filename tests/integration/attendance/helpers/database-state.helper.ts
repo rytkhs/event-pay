@@ -325,8 +325,8 @@ export class DatabaseStateHelper {
     details: {
       attendanceCount: AttendanceCountResult;
       paymentConsistency?: PaymentConsistencyResult;
-      orphanedPayments?: Awaited<ReturnType<typeof this.verifyNoOrphanedPayments>>;
-      duplicateEmails: Awaited<ReturnType<typeof this.verifyNoDuplicateEmails>>;
+      orphanedPayments?: Awaited<ReturnType<typeof DatabaseStateHelper.verifyNoOrphanedPayments>>;
+      duplicateEmails: Awaited<ReturnType<typeof DatabaseStateHelper.verifyNoDuplicateEmails>>;
     };
   }> {
     const {

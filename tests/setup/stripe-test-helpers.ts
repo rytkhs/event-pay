@@ -40,6 +40,7 @@ export const assertCheckoutSessionParams = (
 export const createTestWebhookEvent = (
   type:
     | "checkout.session.completed"
+    | "checkout.session.expired"
     | "payment_intent.succeeded"
     | "payment_intent.payment_failed"
     | "account.updated",
@@ -53,6 +54,14 @@ export const createTestWebhookEvent = (
         ...mockCheckoutSession,
         status: "complete",
         payment_status: "paid",
+        ...overrides,
+      };
+      break;
+    case "checkout.session.expired":
+      baseData = {
+        ...mockCheckoutSession,
+        status: "expired",
+        payment_status: "unpaid",
         ...overrides,
       };
       break;
