@@ -20,7 +20,7 @@ import {
 
 import { useToast } from "@core/contexts/toast-context";
 // import { getPaymentActions } from "@core/services";
-import { extractValidPaymentIds, hasPaymentId } from "@core/utils/data-guards";
+import { hasPaymentId } from "@core/utils/data-guards";
 import {
   toSimplePaymentStatus,
   isPaymentCompleted,
@@ -35,7 +35,6 @@ import type {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
   SelectContent,
@@ -46,8 +45,6 @@ import {
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { generateGuestUrlAction } from "@/features/events/actions/generate-guest-url";
 import { updateCashStatusAction } from "@/features/payments/actions/update-cash-status";
-
-import { SmartBatchSelection } from "./smart-batch-selection";
 
 interface ParticipantsTableEnhancedProps {
   eventId: string;
@@ -163,11 +160,10 @@ export function ParticipantsTableEnhanced({
   const isFreeEvent = eventFee === 0;
 
   // ローカル状態管理
-  const [selectedPaymentIds, setSelectedPaymentIds] = useState<string[]>([]);
-  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
   const [viewMode, setViewMode] = useState<"table" | "cards">("table");
   const [_isMobile, setIsMobile] = useState(false);
   const [isTransitioning, setIsTransitioning] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
 
   // 設定の永続化とレスポンシブ判定
   useEffect(() => {
@@ -214,9 +210,6 @@ export function ParticipantsTableEnhanced({
   // 現在のページサイズ（URLパラメータから取得、デフォルト50）
   const currentLimit = _searchParams.limit ? parseInt(String(_searchParams.limit), 10) : 50;
 
-  // 現金決済のみをフィルター
-  const cashPayments = participants.filter((p) => p.payment_method === "cash" && p.payment_id);
-
   // ページネーションハンドラー
   const handlePageChange = (newPage: number) => {
     onFiltersChange({ page: newPage.toString() });
@@ -227,25 +220,9 @@ export function ParticipantsTableEnhanced({
     onFiltersChange({ limit: newLimit, page: "1" }); // ページサイズ変更時はページを1にリセット
   };
 
-  // 選択機能ハンドラー
-  const handleSelectPayment = (paymentId: string, checked: boolean) => {
-    setSelectedPaymentIds((prev) =>
-      checked ? [...prev, paymentId] : prev.filter((id) => id !== paymentId)
-    );
-  };
-
-  const handleSelectAll = (checked: boolean) => {
-    if (checked) {
-      const cashPaymentIds = extractValidPaymentIds(cashPayments);
-      setSelectedPaymentIds(cashPaymentIds);
-    } else {
-      setSelectedPaymentIds([]);
-    }
-  };
-
   // 決済状況更新ハンドラー
   const handleUpdatePaymentStatus = async (paymentId: string, status: "received" | "waived") => {
-    setIsUpdatingStatus(true);
+    setIsUpdating(true);
     try {
       // 直接サーバーアクションを呼び出し（Next.jsのServer Actionsブリッジを使用）
       const result = await updateCashStatusAction({ paymentId, status });
@@ -267,7 +244,7 @@ export function ParticipantsTableEnhanced({
         variant: "destructive",
       });
     } finally {
-      setIsUpdatingStatus(false);
+      setIsUpdating(false);
     }
   };
 
@@ -290,52 +267,6 @@ export function ParticipantsTableEnhanced({
         description: "しばらく待ってから再度お試しください。",
         variant: "destructive",
       });
-    }
-  };
-
-  // 一括操作ハンドラー
-  const handleBulkAction = async (action: "received" | "waived") => {
-    if (selectedPaymentIds.length === 0) {
-      toast({
-        title: "選択してください",
-        description: "操作する決済を選択してください。",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setIsUpdatingStatus(true);
-    try {
-      // 直接サーバーアクションを呼び出し（1件ずつ）
-      const promises = selectedPaymentIds.map((id) =>
-        updateCashStatusAction({ paymentId: id, status: action })
-      );
-
-      const results = await Promise.all(promises);
-      const failures = results.filter((r: any) => !r.success);
-
-      if (failures.length === 0) {
-        toast({
-          title: `${selectedPaymentIds.length}件を更新しました`,
-          description: `ステータスを「${action === "received" ? "受領" : "免除"}」に変更しました。`,
-        });
-        setSelectedPaymentIds([]);
-        onFiltersChange({});
-      } else {
-        toast({
-          title: "一部の更新に失敗しました",
-          description: `${results.length - failures.length}/${results.length}件が成功しました。`,
-          variant: "destructive",
-        });
-      }
-    } catch (error) {
-      toast({
-        title: "一括更新に失敗しました",
-        description: "しばらく待ってから再度お試しください。",
-        variant: "destructive",
-      });
-    } finally {
-      setIsUpdatingStatus(false);
     }
   };
 
@@ -364,54 +295,6 @@ export function ParticipantsTableEnhanced({
               </ToggleGroupItem>
             </ToggleGroup>
           </div>
-
-          {/* Smart Batch Selection */}
-          <SmartBatchSelection
-            participants={participants}
-            selectedPaymentIds={selectedPaymentIds}
-            onSelectionChange={setSelectedPaymentIds}
-            isFreeEvent={isFreeEvent}
-            isUpdating={isUpdatingStatus}
-          />
-
-          {/* 一括操作ボタン（選択時のみ表示） */}
-          {!isFreeEvent && selectedPaymentIds.length > 0 && (
-            <Card className="border-orange-200 bg-orange-50/30">
-              <CardContent className="p-4">
-                <div className="flex flex-col sm:flex-row gap-3 items-center justify-between">
-                  <div className="flex items-center gap-2 text-orange-800">
-                    <span className="font-medium">一括操作</span>
-                    <Badge variant="secondary" className="bg-orange-100 text-orange-800">
-                      {selectedPaymentIds.length}件選択中
-                    </Badge>
-                  </div>
-
-                  <div className="flex flex-wrap gap-2">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => handleBulkAction("received")}
-                      disabled={isUpdatingStatus}
-                      className="bg-green-50 border-green-300 text-green-700 hover:bg-green-100 min-h-[44px]"
-                    >
-                      <Check className="h-4 w-4 mr-1" />
-                      一括受領
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => handleBulkAction("waived")}
-                      disabled={isUpdatingStatus}
-                      className="bg-orange-50 border-orange-300 text-orange-700 hover:bg-orange-100 min-h-[44px]"
-                    >
-                      <X className="h-4 w-4 mr-1" />
-                      一括免除
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          )}
         </div>
       </CardHeader>
 
@@ -431,18 +314,6 @@ export function ParticipantsTableEnhanced({
                 <table className="w-full" role="table" aria-label="参加者一覧テーブル">
                   <thead className="bg-gradient-to-r from-gray-50 to-gray-100 border-b-2 border-gray-200">
                     <tr className="min-h-[52px]">
-                      <th className="px-4 py-4 text-left text-sm font-semibold text-gray-700 uppercase tracking-wider w-12 sm:w-16">
-                        <Checkbox
-                          checked={
-                            cashPayments.length > 0 &&
-                            selectedPaymentIds.length ===
-                              cashPayments.filter((p) => p.payment_id).length
-                          }
-                          onCheckedChange={handleSelectAll}
-                          disabled={cashPayments.length === 0}
-                          className="h-5 w-5 touch-manipulation" // Enhanced touch target + touch optimization
-                        />
-                      </th>
                       <th className="px-4 py-4 text-left text-sm font-semibold text-gray-700 uppercase tracking-wider">
                         <span className="hidden sm:inline">ニックネーム</span>
                         <span className="sm:hidden">名前</span>
@@ -470,9 +341,6 @@ export function ParticipantsTableEnhanced({
                       const simpleStatus = toSimplePaymentStatus(participant.payment_status);
                       const isCashPayment =
                         participant.payment_method === "cash" && participant.payment_id;
-                      const isSelected = participant.payment_id
-                        ? selectedPaymentIds.includes(participant.payment_id)
-                        : false;
 
                       return (
                         <tr
@@ -480,31 +348,12 @@ export function ParticipantsTableEnhanced({
                           className={`
                             min-h-[52px] transition-all duration-200
                             hover:bg-blue-50 hover:shadow-sm
-                            ${isSelected ? "bg-blue-100 border-l-4 border-l-blue-500" : ""}
                             ${isPaid ? "bg-green-50 border-l-4 border-l-green-500" : ""}
                             focus-within:ring-2 focus-within:ring-blue-500 focus-within:ring-opacity-50
                           `}
                           tabIndex={0}
                           role="row"
-                          aria-selected={isSelected}
                         >
-                          {/* 選択列 */}
-                          <td className="px-3 sm:px-4 py-3 sm:py-4 whitespace-nowrap">
-                            {isCashPayment ? (
-                              <Checkbox
-                                checked={isSelected}
-                                onCheckedChange={(checked: boolean) =>
-                                  hasPaymentId(participant) &&
-                                  handleSelectPayment(participant.payment_id, checked)
-                                }
-                                disabled={isUpdatingStatus}
-                                className="h-5 w-5 touch-manipulation" // Enhanced touch target + touch optimization
-                              />
-                            ) : (
-                              <span className="text-gray-400 text-xs sm:text-sm">-</span>
-                            )}
-                          </td>
-
                           {/* ニックネーム列 */}
                           <td className="px-3 sm:px-4 py-3 sm:py-4 whitespace-nowrap font-medium text-gray-900 text-sm sm:text-base">
                             {participant.nickname}
@@ -552,7 +401,7 @@ export function ParticipantsTableEnhanced({
                                       hasPaymentId(participant) &&
                                       handleUpdatePaymentStatus(participant.payment_id, "received")
                                     }
-                                    disabled={isUpdatingStatus}
+                                    disabled={isUpdating}
                                     className="bg-green-50 border-green-300 text-green-700 hover:bg-green-100 min-h-[36px] min-w-[36px] px-2 sm:px-3 shadow-sm hover:shadow-md transition-all duration-200 touch-manipulation"
                                     title="受領済みにする"
                                   >
@@ -572,7 +421,7 @@ export function ParticipantsTableEnhanced({
                                       hasPaymentId(participant) &&
                                       handleUpdatePaymentStatus(participant.payment_id, "waived")
                                     }
-                                    disabled={isUpdatingStatus}
+                                    disabled={isUpdating}
                                     className="bg-orange-50 border-orange-300 text-orange-700 hover:bg-orange-100 min-h-[36px] min-w-[36px] px-2 sm:px-3 shadow-sm hover:shadow-md transition-all duration-200 touch-manipulation"
                                     title="支払いを免除"
                                   >
@@ -615,9 +464,6 @@ export function ParticipantsTableEnhanced({
                   const simpleStatus = toSimplePaymentStatus(participant.payment_status);
                   const isCashPayment =
                     participant.payment_method === "cash" && participant.payment_id;
-                  const isSelected = participant.payment_id
-                    ? selectedPaymentIds.includes(participant.payment_id)
-                    : false;
 
                   return (
                     <Card
@@ -632,19 +478,6 @@ export function ParticipantsTableEnhanced({
                           {/* ヘッダー部分 */}
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-3">
-                              {/* 選択チェックボックス */}
-                              {isCashPayment && (
-                                <Checkbox
-                                  checked={isSelected}
-                                  onCheckedChange={(checked: boolean) =>
-                                    hasPaymentId(participant) &&
-                                    handleSelectPayment(participant.payment_id, checked)
-                                  }
-                                  disabled={isUpdatingStatus}
-                                  className="h-5 w-5 touch-manipulation" // Enhanced touch target
-                                />
-                              )}
-
                               {/* 参加者名 */}
                               <h4 className="font-semibold text-gray-900 text-lg">
                                 {participant.nickname}
@@ -694,7 +527,7 @@ export function ParticipantsTableEnhanced({
                                     hasPaymentId(participant) &&
                                     handleUpdatePaymentStatus(participant.payment_id, "received")
                                   }
-                                  disabled={isUpdatingStatus}
+                                  disabled={isUpdating}
                                   className="bg-green-50 border-green-300 text-green-700 hover:bg-green-100 min-h-[44px] touch-manipulation"
                                 >
                                   <Check className="h-4 w-4 mr-2" />
@@ -713,7 +546,7 @@ export function ParticipantsTableEnhanced({
                                     hasPaymentId(participant) &&
                                     handleUpdatePaymentStatus(participant.payment_id, "waived")
                                   }
-                                  disabled={isUpdatingStatus}
+                                  disabled={isUpdating}
                                   className="bg-orange-50 border-orange-300 text-orange-700 hover:bg-orange-100 min-h-[44px] touch-manipulation"
                                 >
                                   <X className="h-4 w-4 mr-2" />

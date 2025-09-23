@@ -11,9 +11,8 @@ import type {
 } from "@core/validation/participant-management";
 
 import { ParticipantsActionBar } from "./participants-action-bar";
+import { ParticipantsCompactHeader } from "./participants-compact-header";
 import { ParticipantsFilters } from "./participants-filters";
-import { ParticipantsHeader } from "./participants-header";
-import { ParticipantsStatusCards } from "./participants-status-cards";
 import { ParticipantsTableEnhanced } from "./participants-table-enhanced";
 
 interface ParticipantsManagementLayoutProps {
@@ -82,16 +81,14 @@ export function ParticipantsManagementLayout({
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <div className="space-y-6">
-          {/* ヘッダー */}
-          <ParticipantsHeader eventDetail={eventDetail} onBackClick={handleBackToEvent} />
-
-          {/* ステータスカード */}
-          <ParticipantsStatusCards
+          {/* コンパクトヘッダー（統合型） */}
+          <ParticipantsCompactHeader
+            eventDetail={eventDetail}
             attendingCount={attendingCount}
-            capacity={eventDetail.capacity}
             totalRevenue={totalRevenue}
             unpaidCount={unpaidCount}
             completionRate={completionRate}
+            onBackClick={handleBackToEvent}
           />
 
           {/* アクションバー */}

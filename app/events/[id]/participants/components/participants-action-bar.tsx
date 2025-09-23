@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 
-import { Plus, Download, Filter, RefreshCw, Settings, Mail } from "lucide-react";
+import { Plus, Download, Filter, RefreshCw } from "lucide-react";
 
 import { useToast } from "@core/contexts/toast-context";
 import type { Event } from "@core/types/models";
@@ -161,19 +161,11 @@ export function ParticipantsActionBar({
     window.location.reload();
   };
 
-  const handleSendReminder = () => {
-    // TODO: リマインドメール送信機能
-    toast({
-      title: "開発中",
-      description: "リマインドメール機能は開発中です。",
-    });
-  };
-
   return (
     <>
       <div className="bg-white rounded-lg border shadow-sm p-4">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          {/* 左側：主要アクション */}
+        <div className="flex flex-col gap-4">
+          {/* メイン操作ボタン */}
           <div className="flex flex-wrap items-center gap-3">
             <Button onClick={handleOpenAdd} className="flex items-center gap-2">
               <Plus className="h-4 w-4" />
@@ -194,14 +186,11 @@ export function ParticipantsActionBar({
               <RefreshCw className="h-4 w-4" />
               更新
             </Button>
-          </div>
 
-          {/* 右側：フィルターとその他のアクション */}
-          <div className="flex items-center gap-3">
             <Button
               variant={filtersExpanded ? "default" : "outline"}
               onClick={onFiltersToggle}
-              className="flex items-center gap-2"
+              className="flex items-center gap-2 ml-auto sm:ml-0"
             >
               <Filter className="h-4 w-4" />
               フィルター
@@ -211,21 +200,12 @@ export function ParticipantsActionBar({
                 </Badge>
               )}
             </Button>
+          </div>
 
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleSendReminder}
-              className="flex items-center gap-2"
-            >
-              <Mail className="h-4 w-4" />
-              リマインド
-            </Button>
-
-            <Button variant="ghost" size="sm" className="flex items-center gap-2">
-              <Settings className="h-4 w-4" />
-              設定
-            </Button>
+          {/* 簡潔な説明文 */}
+          <div className="text-sm text-gray-600 flex items-center gap-2">
+            <span>💡</span>
+            各参加者の決済状況を個別に管理できます
           </div>
         </div>
       </div>
