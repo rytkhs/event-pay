@@ -1,3 +1,5 @@
+import { getCurrentUser } from "@core/auth/auth-utils";
+
 import {
   generateSettlementReportAction,
   getSettlementReportsAction,
@@ -14,6 +16,9 @@ import {
   type TestAttendanceData,
 } from "@/tests/helpers/test-payment-data";
 import { deleteTestUser } from "@/tests/helpers/test-user";
+
+// getCurrentUserをモック
+const mockGetCurrentUser = getCurrentUser as jest.MockedFunction<typeof getCurrentUser>;
 
 /**
  * Settlement authentication & authorization integration tests
@@ -67,15 +72,18 @@ describe("Settlement Auth/Authz Integration", () => {
 
   describe("未認証アクセス拒否", () => {
     beforeEach(() => {
-      // Clear TEST_USER_ID to simulate unauthenticated state
-      delete process.env.TEST_USER_ID;
-      delete process.env.TEST_USER_EMAIL;
+      // Clear test user to simulate unauthenticated state
+      mockGetCurrentUser.mockResolvedValue(null);
     });
 
     afterEach(() => {
       // Restore authenticated state for other tests
-      process.env.TEST_USER_ID = ownerUser.id;
-      process.env.TEST_USER_EMAIL = ownerUser.email;
+      mockGetCurrentUser.mockResolvedValue({
+        id: ownerUser.id,
+        email: ownerUser.email,
+        user_metadata: {},
+        app_metadata: {},
+      } as any);
     });
 
     test("generateSettlementReportAction should redirect when unauthenticated", async () => {
@@ -110,14 +118,22 @@ describe("Settlement Auth/Authz Integration", () => {
   describe("他人のイベントアクセス拒否（認可テスト）", () => {
     beforeEach(() => {
       // Set otherUser as authenticated user (not the event owner)
-      process.env.TEST_USER_ID = otherUser.id;
-      process.env.TEST_USER_EMAIL = otherUser.email;
+      mockGetCurrentUser.mockResolvedValue({
+        id: otherUser.id,
+        email: otherUser.email,
+        user_metadata: {},
+        app_metadata: {},
+      } as any);
     });
 
     afterEach(() => {
       // Restore owner user for other tests
-      process.env.TEST_USER_ID = ownerUser.id;
-      process.env.TEST_USER_EMAIL = ownerUser.email;
+      mockGetCurrentUser.mockResolvedValue({
+        id: ownerUser.id,
+        email: ownerUser.email,
+        user_metadata: {},
+        app_metadata: {},
+      } as any);
     });
 
     test("generateSettlementReportAction should fail for non-owner", async () => {
@@ -161,8 +177,12 @@ describe("Settlement Auth/Authz Integration", () => {
   describe("正当な認可でのアクセス（正常系）", () => {
     beforeEach(() => {
       // Set owner as authenticated user
-      process.env.TEST_USER_ID = ownerUser.id;
-      process.env.TEST_USER_EMAIL = ownerUser.email;
+      mockGetCurrentUser.mockResolvedValue({
+        id: ownerUser.id,
+        email: ownerUser.email,
+        user_metadata: {},
+        app_metadata: {},
+      } as any);
     });
 
     test("Event owner should get specific error for missing Stripe Connect setup", async () => {
@@ -235,8 +255,12 @@ describe("Settlement Auth/Authz Integration", () => {
 
   describe("入力バリデーション", () => {
     beforeEach(() => {
-      process.env.TEST_USER_ID = ownerUser.id;
-      process.env.TEST_USER_EMAIL = ownerUser.email;
+      mockGetCurrentUser.mockResolvedValue({
+        id: ownerUser.id,
+        email: ownerUser.email,
+        user_metadata: {},
+        app_metadata: {},
+      } as any);
     });
 
     test("Invalid eventId format should be rejected", async () => {

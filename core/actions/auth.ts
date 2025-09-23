@@ -132,67 +132,65 @@ function formDataToObject(formData: FormData): Record<string, string> {
  */
 export async function loginAction(formData: FormData): Promise<ActionResult<{ user: unknown }>> {
   try {
-    // CSRF対策: Origin/Refererヘッダーの検証（テスト環境では無効化）
-    if (process.env.NODE_ENV !== "test") {
-      const headersList = headers();
-      const origin = headersList.get("origin");
-      const referer = headersList.get("referer");
-      const host = headersList.get("host");
+    // CSRF対策: Origin/Refererヘッダーの検証
+    const headersList = headers();
+    const origin = headersList.get("origin");
+    const referer = headersList.get("referer");
+    const host = headersList.get("host");
 
-      if (!origin && !referer) {
-        await TimingAttackProtection.addConstantDelay();
-        return {
-          success: false,
-          error: "不正なリクエストです",
-        };
-      }
-
-      // 複数環境に対応した許可オリジン設定
-      const getAllowedOrigins = () => {
-        const origins = [];
-
-        // ホストベースのオリジン
-        if (host) {
-          origins.push(`https://${host}`);
-          origins.push(`http://${host}`);
-        }
-
-        // 本番環境URL
-        if (process.env.NEXT_PUBLIC_SITE_URL) {
-          origins.push(process.env.NEXT_PUBLIC_SITE_URL);
-        }
-
-        // 開発環境URL
-        origins.push("http://localhost:3000");
-        origins.push("https://localhost:3000");
-
-        // Vercel Preview環境URL
-        if (process.env.VERCEL_URL) {
-          origins.push(`https://${process.env.VERCEL_URL}`);
-        }
-
-        // 追加の許可オリジン
-        if (process.env.ALLOWED_ORIGINS) {
-          const additionalOrigins = process.env.ALLOWED_ORIGINS.split(",").map((o) => o.trim());
-          origins.push(...additionalOrigins);
-        }
-
-        return [...new Set(origins.filter(Boolean))]; // 重複と空文字を除去
+    if (!origin && !referer) {
+      await TimingAttackProtection.addConstantDelay();
+      return {
+        success: false,
+        error: "不正なリクエストです",
       };
+    }
 
-      const allowedOrigins = getAllowedOrigins();
+    // 複数環境に対応した許可オリジン設定
+    const getAllowedOrigins = () => {
+      const origins = [];
 
-      const isValidOrigin = origin && allowedOrigins.some((allowed) => origin === allowed);
-      const isValidReferer =
-        referer && allowedOrigins.some((allowed) => referer.startsWith(`${allowed}/`));
-
-      if (!isValidOrigin && !isValidReferer) {
-        await TimingAttackProtection.addConstantDelay();
-        return {
-          success: false,
-          error: "CSRF攻撃を検出しました",
-        };
+      // ホストベースのオリジン
+      if (host) {
+        origins.push(`https://${host}`);
+        origins.push(`http://${host}`);
       }
+
+      // 本番環境URL
+      if (process.env.NEXT_PUBLIC_SITE_URL) {
+        origins.push(process.env.NEXT_PUBLIC_SITE_URL);
+      }
+
+      // 開発環境URL
+      origins.push("http://localhost:3000");
+      origins.push("https://localhost:3000");
+
+      // Vercel Preview環境URL
+      if (process.env.VERCEL_URL) {
+        origins.push(`https://${process.env.VERCEL_URL}`);
+      }
+
+      // 追加の許可オリジン
+      if (process.env.ALLOWED_ORIGINS) {
+        const additionalOrigins = process.env.ALLOWED_ORIGINS.split(",").map((o) => o.trim());
+        origins.push(...additionalOrigins);
+      }
+
+      return [...new Set(origins.filter(Boolean))]; // 重複と空文字を除去
+    };
+
+    const allowedOrigins = getAllowedOrigins();
+
+    const isValidOrigin = origin && allowedOrigins.some((allowed) => origin === allowed);
+    const isValidReferer =
+      referer && allowedOrigins.some((allowed) => referer.startsWith(`${allowed}/`));
+
+    if (!isValidOrigin && !isValidReferer) {
+      await TimingAttackProtection.addConstantDelay();
+      return {
+        success: false,
+        error: "CSRF攻撃を検出しました",
+      };
     }
 
     const rawData = formDataToObject(formData);

@@ -9,11 +9,16 @@
  * - 1.1.5 複数決済方法（現金+オンライン）の有料イベント作成
  */
 
+import { getCurrentUser } from "@core/auth/auth-utils";
+
 import { createEventAction } from "@features/events/actions/create-event";
 
 import { deleteTestEvent } from "@/tests/helpers/test-event";
 import { createTestUser, deleteTestUser, type TestUser } from "@/tests/helpers/test-user";
 import type { Database } from "@/types/database";
+
+// getCurrentUserをモック
+const mockGetCurrentUser = getCurrentUser as jest.MockedFunction<typeof getCurrentUser>;
 
 type EventRow = Database["public"]["Tables"]["events"]["Row"];
 
@@ -45,14 +50,17 @@ describe("イベント作成統合テスト - 1.1 基本的なイベント作成
 
   beforeEach(() => {
     // 各テストでユーザーを認証済み状態にする
-    process.env.TEST_USER_ID = testUser.id;
-    process.env.TEST_USER_EMAIL = testUser.email;
+    mockGetCurrentUser.mockResolvedValue({
+      id: testUser.id,
+      email: testUser.email,
+      user_metadata: {},
+      app_metadata: {},
+    } as any);
   });
 
   afterEach(() => {
-    // テスト環境の認証情報をクリア
-    delete process.env.TEST_USER_ID;
-    delete process.env.TEST_USER_EMAIL;
+    // モックをリセット
+    mockGetCurrentUser.mockReset();
   });
 
   /**

@@ -42,9 +42,6 @@ const EVENTPAY_DESCRIPTION_CONFIG = {
   ],
 };
 
-// 緊急時用の一時的無効化機能
-const EMERGENCY_DISABLE_SANITIZATION = process.env.EMERGENCY_DISABLE_XSS_PROTECTION === "true";
-
 /**
  * EventPay統一サニタイズ関数
  * 決済・個人情報を扱うアプリケーション向けの厳格なXSS対策
@@ -52,11 +49,6 @@ const EMERGENCY_DISABLE_SANITIZATION = process.env.EMERGENCY_DISABLE_XSS_PROTECT
  */
 export function sanitizeForEventPay(input: string | null | undefined): string {
   if (!input) return "";
-
-  if (EMERGENCY_DISABLE_SANITIZATION) {
-    // XSS保護が緊急無効化されています
-    return input;
-  }
 
   return DOMPurify.sanitize(input, EVENTPAY_SANITIZE_CONFIG);
 }
@@ -67,11 +59,6 @@ export function sanitizeForEventPay(input: string | null | undefined): string {
  */
 export function sanitizeEventDescription(description: string | null | undefined): string {
   if (!description) return "";
-
-  if (EMERGENCY_DISABLE_SANITIZATION) {
-    // XSS保護が緊急無効化されています
-    return description;
-  }
 
   return DOMPurify.sanitize(description, EVENTPAY_DESCRIPTION_CONFIG);
 }

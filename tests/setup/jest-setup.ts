@@ -44,10 +44,20 @@ afterAll(() => {
   Object.assign(console, originalConsole);
 });
 
+// Supabase認証モックを設定
+import { resetAuthMock } from "./supabase-auth-mock";
+
+// getCurrentUser関数のみをモック化（統合テストでは実際のSupabaseクライアントを使用）
+jest.mock("@core/auth/auth-utils", () => ({
+  getCurrentUser: jest.fn(),
+}));
+
 // 各テスト後にモックをリセット
 afterEach(() => {
   jest.clearAllMocks();
   jest.restoreAllMocks();
+  // Supabase認証モックもリセット
+  resetAuthMock();
 });
 
 export {};

@@ -14,6 +14,10 @@ import { deleteTestEvent } from "@/tests/helpers/test-event";
 import { createTestUser, deleteTestUser, type TestUser } from "@/tests/helpers/test-user";
 import type { Database } from "@/types/database";
 
+// getCurrentUserをモック
+import { getCurrentUser } from "@core/auth/auth-utils";
+const mockGetCurrentUser = getCurrentUser as jest.MockedFunction<typeof getCurrentUser>;
+
 type EventRow = Database["public"]["Tables"]["events"]["Row"];
 
 describe("イベント作成統合テスト - 1.2 データ変換・処理の確認", () => {
@@ -44,14 +48,17 @@ describe("イベント作成統合テスト - 1.2 データ変換・処理の確
 
   beforeEach(() => {
     // 各テストでユーザーを認証済み状態にする
-    process.env.TEST_USER_ID = testUser.id;
-    process.env.TEST_USER_EMAIL = testUser.email;
+    mockGetCurrentUser.mockResolvedValue({
+      id: testUser.id,
+      email: testUser.email,
+      user_metadata: {},
+      app_metadata: {},
+    } as any);
   });
 
   afterEach(() => {
-    // テスト環境の認証情報をクリア
-    delete process.env.TEST_USER_ID;
-    delete process.env.TEST_USER_EMAIL;
+    // モックをリセット
+    mockGetCurrentUser.mockReset();
   });
 
   /**

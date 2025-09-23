@@ -1,5 +1,8 @@
 import { test, expect } from "@playwright/test";
 
+// 認証ガード検証のため、認証状態を使用しない
+test.use({ storageState: { cookies: [], origins: [] } });
+
 test.describe("認証ガード・セッション検証", () => {
   test.beforeEach(async ({ page }) => {
     // デバッグ用のコンソールログを有効化

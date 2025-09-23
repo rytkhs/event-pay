@@ -14,15 +14,11 @@
  * - 環境設定の妥当性確認
  *
  * 💡 方針：
- * - モックは最小限に抑制し、実際の動作を検証
- * - 複雑なモック設定を避け、シンプルで保守しやすいテスト構成
+ * - 実際のStripe署名検証ロジックをテストで検証
+ * - 外部サービス（QStash等）のみモック化
  * - セキュリティが正しく動作することを重視
- * - 実際のシークレット情報は使用せず、テスト専用のダミー値を使用
+ * - テスト専用の署名シークレットを使用
  *
- * 🔒 セキュリティ：
- * - 実際のStripe APIキーやWebhookシークレットはハードコード禁止
- * - 環境変数または完全にモック値を使用
- * - テストでの署名検証は期待される失敗動作を確認
  */
 
 import crypto from "crypto";
@@ -31,6 +27,14 @@ import { NextRequest } from "next/server";
 
 import { POST as StripeWebhookPOST } from "../../../app/api/webhooks/stripe/route";
 import { POST as StripeWorkerPOST } from "../../../app/api/workers/stripe-webhook/route";
+
+// QStash モック（外部サービスはモック化）
+const mockPublishJSON = jest.fn();
+jest.mock("@upstash/qstash", () => ({
+  Client: jest.fn().mockImplementation(() => ({
+    publishJSON: mockPublishJSON,
+  })),
+}));
 
 // テスト用のStripeイベントデータ
 const MOCK_STRIPE_EVENT = {
@@ -58,8 +62,31 @@ const MOCK_STRIPE_EVENT = {
   type: "payment_intent.succeeded",
 } as any;
 
+// 統合テスト用の署名生成（実際のStripe SDKと完全互換）
+function generateValidStripeSignature(payload: string, webhookSecret: string): string {
+  const timestamp = Math.floor(Date.now() / 1000);
+  const signedPayload = `${timestamp}.${payload}`;
+
+  // 実際のStripe SDKと同じ処理：プレフィックスを除去してHMAC生成
+  const signingKey = webhookSecret.replace(/^whsec_[^_]+_/, "");
+  const signature = crypto
+    .createHmac("sha256", signingKey)
+    .update(signedPayload, "utf8")
+    .digest("hex");
+
+  return `t=${timestamp},v1=${signature}`;
+}
+
 describe("🔗 Webhook パイプライン 統合テスト", () => {
   const originalEnv = process.env;
+  // 統合テスト用のwebhook secret（環境変数から取得、フォールバック付き）
+  const TEST_WEBHOOK_SECRET =
+    process.env.STRIPE_WEBHOOK_SECRET_TEST || "whsec_test_integration_webhook_secret_for_testing";
+
+  beforeEach(() => {
+    // モックをクリア
+    jest.clearAllMocks();
+  });
 
   beforeAll(() => {
     // テスト環境の基本設定
@@ -67,12 +94,8 @@ describe("🔗 Webhook パイプライン 統合テスト", () => {
     process.env.APP_BASE_URL = "https://test.eventpay.com";
     process.env.ENABLE_STRIPE_IP_CHECK = "false"; // IP制限を無効化（統合テスト用）
 
-    // Stripe関連の環境変数（環境ファイルまたはCI環境から読み込み）
-    // 実際のシークレットはハードコードせず、環境変数から取得
-    if (!process.env.STRIPE_WEBHOOK_SECRET_TEST) {
-      process.env.STRIPE_WEBHOOK_SECRET_TEST =
-        "whsec_test_integration_dummy_webhook_secret_for_testing_only";
-    }
+    // Stripe関連の環境変数（統合テスト用）
+    process.env.STRIPE_WEBHOOK_SECRET_TEST = TEST_WEBHOOK_SECRET;
     if (!process.env.STRIPE_SECRET_KEY) {
       process.env.STRIPE_SECRET_KEY =
         "sk_test_integration_dummy_stripe_secret_key_for_testing_only";
@@ -129,14 +152,18 @@ describe("🔗 Webhook パイプライン 統合テスト", () => {
       expect(body.detail).toBe("Invalid webhook signature");
     });
 
-    test("署名検証動作の確認（実際の実装動作をテスト）", async () => {
+    test("正常な署名検証とwebhook処理フローを確認", async () => {
+      // 統合テストでは実際のStripe署名検証を実行
       const payload = JSON.stringify(MOCK_STRIPE_EVENT);
-      const signature = generateValidStripeSignature(payload);
+      const validSignature = generateValidStripeSignature(payload, TEST_WEBHOOK_SECRET);
+
+      // QStashを成功に設定
+      mockPublishJSON.mockResolvedValueOnce({ messageId: "msg_test_123" });
 
       const request = new NextRequest("https://test.eventpay.com/api/webhooks/stripe", {
         method: "POST",
         headers: {
-          "stripe-signature": signature,
+          "stripe-signature": validSignature,
           "x-request-id": "req_test_valid_sig",
         },
         body: payload,
@@ -144,24 +171,11 @@ describe("🔗 Webhook パイプライン 統合テスト", () => {
 
       const response = await StripeWebhookPOST(request);
 
-      // 現在のテスト実装では署名検証が失敗することを想定
-      // 実際のプロダクション環境では成功するはず
-      if (response.status === 200) {
-        const body = await response.json();
-        expect(body.received).toBe(true);
-        expect(body.eventId).toBe(MOCK_STRIPE_EVENT.id);
-      } else if (response.status === 400) {
-        // テスト環境では署名検証失敗が期待される（正常動作）
-        const body = await response.json();
-        expect(body.code).toBe("INVALID_REQUEST");
-        expect(["Invalid webhook signature", "Webhook signature verification failed"]).toContain(
-          body.detail
-        );
-      } else if (response.status >= 500) {
-        // QStash接続失敗等の場合は500系エラーが期待される
-        const body = await response.json();
-        expect(body.retryable).toBe(true);
-      }
+      // 統合テストでは正常なフローを検証する
+      expect(response.status).toBe(200);
+      const body = await response.json();
+      expect(body.received).toBe(true);
+      expect(body.eventId).toBe(MOCK_STRIPE_EVENT.id);
     });
   });
 
@@ -206,14 +220,17 @@ describe("🔗 Webhook パイプライン 統合テスト", () => {
 
   describe("🎯 フローテスト", () => {
     test("Webhookエンドポイントからワーカーエンドポイントまでの完全フロー", async () => {
-      // Step 1: Webhook受信エンドポイント
+      // Step 1: Webhook受信エンドポイント（実際のStripe署名検証を実行）
       const payload = JSON.stringify(MOCK_STRIPE_EVENT);
-      const signature = generateValidStripeSignature(payload);
+      const validSignature = generateValidStripeSignature(payload, TEST_WEBHOOK_SECRET);
+
+      // QStashを成功に設定
+      mockPublishJSON.mockResolvedValueOnce({ messageId: "msg_test_flow" });
 
       const webhookRequest = new NextRequest("https://test.eventpay.com/api/webhooks/stripe", {
         method: "POST",
         headers: {
-          "stripe-signature": signature,
+          "stripe-signature": validSignature,
           "x-request-id": "req_test_full_flow",
         },
         body: payload,
@@ -221,45 +238,36 @@ describe("🔗 Webhook パイプライン 統合テスト", () => {
 
       const webhookResponse = await StripeWebhookPOST(webhookRequest);
 
-      // Webhook受信の結果に基づいてフローを検証
-      if (webhookResponse.status === 200) {
-        const webhookBody = await webhookResponse.json();
-        expect(webhookBody.received).toBe(true);
-        expect(webhookBody.eventId).toBe(MOCK_STRIPE_EVENT.id);
+      // 統合テストでは正常なフローを検証
+      expect(webhookResponse.status).toBe(200);
+      const webhookBody = await webhookResponse.json();
+      expect(webhookBody.received).toBe(true);
+      expect(webhookBody.eventId).toBe(MOCK_STRIPE_EVENT.id);
 
-        // Step 2: Worker エンドポイント（実際のQStash署名なしなので401期待）
-        const workerPayload = JSON.stringify({ event: MOCK_STRIPE_EVENT });
-        const workerRequest = new NextRequest(
-          "https://test.eventpay.com/api/workers/stripe-webhook",
-          {
-            method: "POST",
-            headers: {
-              "Upstash-Delivery-Id": "deliv_test_flow",
-            },
-            body: workerPayload,
-          }
-        );
+      // Step 2: Worker エンドポイント（QStash署名なしなので401を確認）
+      const workerPayload = JSON.stringify({ event: MOCK_STRIPE_EVENT });
+      const workerRequest = new NextRequest(
+        "https://test.eventpay.com/api/workers/stripe-webhook",
+        {
+          method: "POST",
+          headers: {
+            "Upstash-Delivery-Id": "deliv_test_flow",
+          },
+          body: workerPayload,
+        }
+      );
 
-        const workerResponse = await StripeWorkerPOST(workerRequest);
-        expect(workerResponse.status).toBe(401); // QStash署名なしで認証エラー
-      } else if (webhookResponse.status === 400) {
-        // 署名検証失敗の場合（テスト環境で期待される動作）
-        const errorBody = await webhookResponse.json();
-        expect(errorBody.code).toBe("INVALID_REQUEST");
-        expect(["Invalid webhook signature", "Webhook signature verification failed"]).toContain(
-          errorBody.detail
-        );
-      } else if (webhookResponse.status >= 500) {
-        // QStash接続失敗等の場合
-        const errorBody = await webhookResponse.json();
-        expect(errorBody.retryable).toBe(true);
-      }
+      const workerResponse = await StripeWorkerPOST(workerRequest);
+      expect(workerResponse.status).toBe(401); // QStash署名なしで認証エラー（期待される動作）
+
+      const workerBody = await workerResponse.json();
+      expect(workerBody.code).toBe("UNAUTHORIZED");
     });
   });
 
   describe("📋 設定・環境テスト", () => {
     test("必要な環境変数が設定されていることを確認", () => {
-      expect(process.env.STRIPE_WEBHOOK_SECRET_TEST).toBeDefined();
+      expect(process.env.STRIPE_WEBHOOK_SECRET_TEST).toBe(TEST_WEBHOOK_SECRET);
       expect(process.env.QSTASH_TOKEN).toBeDefined();
       expect(process.env.QSTASH_CURRENT_SIGNING_KEY).toBeDefined();
       expect(process.env.QSTASH_NEXT_SIGNING_KEY).toBeDefined();
@@ -270,20 +278,3 @@ describe("🔗 Webhook パイプライン 統合テスト", () => {
     });
   });
 });
-
-// Helper functions
-function generateValidStripeSignature(payload: string): string {
-  const timestamp = Math.floor(Date.now() / 1000);
-  const signedPayload = `${timestamp}.${payload}`;
-
-  // テスト専用のダミーシークレットを使用
-  // 実際のWebhookシークレットを使用せず、テスト用のダミー値で署名を生成
-  const testSecret = "test_integration_dummy_webhook_secret";
-
-  const signature = crypto
-    .createHmac("sha256", testSecret)
-    .update(signedPayload, "utf8")
-    .digest("hex");
-
-  return `t=${timestamp},v1=${signature}`;
-}
