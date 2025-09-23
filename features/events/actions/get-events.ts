@@ -18,7 +18,7 @@ import type { Event } from "../types";
 type EventRow = Database["public"]["Tables"]["events"]["Row"];
 
 type EventWithAttendancesCount = EventRow & {
-  attendances?: { count: number };
+  attendances?: { status: string }[];
   public_profiles?: { name: string } | null;
 };
 
@@ -251,7 +251,7 @@ export async function getEventsAction(options: GetEventsOptions = {}): Promise<G
       created_at,
       canceled_at,
       public_profiles!events_created_by_fkey(name),
-      attendances(count)
+      attendances!left(status)
     `)
     );
 
@@ -295,6 +295,11 @@ export async function getEventsAction(options: GetEventsOptions = {}): Promise<G
       const creator_name = event.public_profiles?.name || "不明";
       const computedStatus = deriveEventStatus(event.date, (event as any).canceled_at ?? null);
 
+      // status = 'attending' の参加者のみをカウント
+      const attendances_count = event.attendances
+        ? event.attendances.filter((attendance: any) => attendance.status === "attending").length
+        : 0;
+
       return {
         id: event.id,
         title: event.title,
@@ -304,7 +309,7 @@ export async function getEventsAction(options: GetEventsOptions = {}): Promise<G
         capacity: event.capacity || 0,
         status: computedStatus,
         creator_name,
-        attendances_count: event.attendances?.count || 0,
+        attendances_count,
         created_at: event.created_at,
       };
     });
