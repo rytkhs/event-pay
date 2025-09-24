@@ -658,8 +658,10 @@ export class StripeConnectService implements IStripeConnectService {
   /**
    * アカウントが送金実行に必要な全条件を満たしているかチェックする
    *   - status === 'verified'
-   *   - charges_enabled === true
    *   - payouts_enabled === true
+   *
+   * 注意: destination chargesを使用するため、charges_enabledは不要
+   * （プラットフォームが決済処理を行うため）
    */
   async isAccountReadyForPayout(userId: string): Promise<boolean> {
     try {
