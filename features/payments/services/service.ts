@@ -13,6 +13,7 @@ import { stripe } from "@core/stripe/client";
 import * as DestinationCharges from "@core/stripe/destination-charges";
 import { convertStripeError } from "@core/stripe/error-handler";
 import { PaymentError, PaymentErrorType, ErrorHandlingResult } from "@core/types/payment-errors";
+import { maskSessionId } from "@core/utils/mask";
 import { assertStripePayment } from "@core/utils/stripe-guards";
 
 import { Database } from "@/types/database";
@@ -530,7 +531,7 @@ export class PaymentService implements IPaymentService {
         await this.errorHandler.logError(dbError, {
           operation: "updateDestinationChargesData",
           paymentId: targetPaymentId,
-          sessionId: session.id,
+          sessionId: maskSessionId(session.id),
           destinationAccountId,
           applicationFeeAmount: feeCalculation.applicationFeeAmount,
         });
@@ -543,7 +544,7 @@ export class PaymentService implements IPaymentService {
         tag: "destinationChargesCreated",
         service: "PaymentService",
         paymentId: targetPaymentId,
-        sessionId: session.id,
+        sessionId: maskSessionId(session.id),
         amount: params.amount,
         applicationFeeAmount: feeCalculation.applicationFeeAmount,
         destinationAccountId,
@@ -554,7 +555,7 @@ export class PaymentService implements IPaymentService {
       // 構造化ログでセッション作成成功を記録
       contextLogger.logSessionCreation(true, {
         payment_id: targetPaymentId,
-        stripe_session_id: session.id,
+        stripe_session_id: maskSessionId(session.id),
         session_url: session.url || undefined,
         application_fee_amount: feeCalculation.applicationFeeAmount,
         transfer_group: `event_${params.eventId}_payout`,
@@ -570,7 +571,7 @@ export class PaymentService implements IPaymentService {
       // 最終成功ログ
       contextLogger.operationSuccess("create_stripe_session", {
         payment_id: targetPaymentId,
-        stripe_session_id: session.id,
+        stripe_session_id: maskSessionId(session.id),
         session_url: session.url,
       });
 
