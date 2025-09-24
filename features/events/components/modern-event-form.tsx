@@ -58,7 +58,17 @@ type StepId = (typeof STEPS)[number]["id"];
 /**
  * モダンなマルチステップイベント作成フォーム
  */
-function ModernEventForm(): JSX.Element {
+type ModernEventFormProps = {
+  canUseOnlinePayments?: boolean;
+  connectStatus?: {
+    actionUrl?: string;
+  };
+};
+
+function ModernEventForm({
+  canUseOnlinePayments = false,
+  connectStatus,
+}: ModernEventFormProps): JSX.Element {
   const { form, onSubmit, isPending, isFreeEvent } = useEventForm();
   const [currentStep, setCurrentStep] = useState<StepId>("basic");
   const [completedSteps, setCompletedSteps] = useState<Set<StepId>>(new Set());
@@ -372,7 +382,7 @@ function ModernEventForm(): JSX.Element {
                                         : current.filter((m) => m !== "stripe");
                                     field.onChange(next);
                                   }}
-                                  disabled={isPending}
+                                  disabled={isPending || !canUseOnlinePayments}
                                   className="mt-1"
                                 />
                                 <label
@@ -385,6 +395,17 @@ function ModernEventForm(): JSX.Element {
                                   </div>
                                 </label>
                               </div>
+                              {!canUseOnlinePayments && (
+                                <p className="text-xs text-muted-foreground mt-2">
+                                  オンライン決済を利用するにはStripeアカウントの設定が必要です。
+                                  <a
+                                    href={connectStatus?.actionUrl ?? "/dashboard/connect"}
+                                    className="underline ml-1"
+                                  >
+                                    設定に進む
+                                  </a>
+                                </p>
+                              )}
                             </div>
 
                             <div
