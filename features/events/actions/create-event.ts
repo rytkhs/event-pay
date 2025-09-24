@@ -79,6 +79,11 @@ export async function createEventAction(formData: FormData): Promise<CreateEvent
       return createServerActionError("VALIDATION_ERROR", "入力が不正です");
     }
 
+    // オンライン決済を選択している場合の制約チェックは
+    // クライアント側（ModernEventForm）で実施済み
+    // サーバー側では基本的なバリデーションのみ実行
+    // （アーキテクチャルール: features間の直接依存を回避）
+
     const inviteToken = generateInviteToken();
     const eventData = buildEventData(validatedData, user.id, inviteToken);
 
@@ -182,7 +187,7 @@ function buildEventData(
   location: string | null;
   description: string | null;
   capacity: number | null;
-  registration_deadline: string | null;
+  registration_deadline: string;
   payment_deadline: string | null;
   allow_payment_after_deadline: boolean;
   grace_period_days: number;
@@ -203,9 +208,7 @@ function buildEventData(
     location: validatedData.location ?? null,
     description: validatedData.description ?? null,
     capacity: parseCapacityLocal(validatedData.capacity),
-    registration_deadline: validatedData.registration_deadline
-      ? convertDatetimeLocalToIso(validatedData.registration_deadline)
-      : null,
+    registration_deadline: convertDatetimeLocalToIso(validatedData.registration_deadline),
     // 無料イベント（fee=0）の場合は決済締切も強制的にnullに設定
     payment_deadline:
       fee === 0
