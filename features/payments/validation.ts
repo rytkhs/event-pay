@@ -119,11 +119,18 @@ export class PaymentValidator implements IPaymentValidator {
     }
   }
 
-  async validateUpdatePaymentStatusParams(params: UpdatePaymentStatusParams): Promise<void> {
+  async validateUpdatePaymentStatusParams(
+    params: UpdatePaymentStatusParams,
+    isCancel?: boolean
+  ): Promise<void> {
     try {
       updatePaymentStatusParamsSchema.parse(params);
       await this.validatePaymentExists(params.paymentId);
-      await this.validateStatusTransition(params.paymentId, params.status);
+
+      // キャンセル操作の場合はステータス遷移チェックをスキップ
+      if (!isCancel) {
+        await this.validateStatusTransition(params.paymentId, params.status);
+      }
     } catch (error) {
       if (error instanceof z.ZodError) {
         throw new PaymentError(

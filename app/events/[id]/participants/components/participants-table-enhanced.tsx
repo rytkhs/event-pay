@@ -16,6 +16,7 @@ import {
   CheckCircle,
   Circle,
   Triangle,
+  RotateCcw,
 } from "lucide-react";
 
 import { useToast } from "@core/contexts/toast-context";
@@ -35,6 +36,14 @@ import type {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   Select,
   SelectContent,
@@ -164,6 +173,8 @@ export function ParticipantsTableEnhanced({
   const [_isMobile, setIsMobile] = useState(false);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
+  const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
+  const [cancelingPaymentId, setCancelingPaymentId] = useState<string | null>(null);
 
   // 設定の永続化とレスポンシブ判定
   useEffect(() => {
@@ -246,6 +257,46 @@ export function ParticipantsTableEnhanced({
     } finally {
       setIsUpdating(false);
     }
+  };
+
+  // 決済キャンセルハンドラー
+  const handleCancelPaymentStatus = async (paymentId: string) => {
+    setIsUpdating(true);
+    try {
+      const result = await updateCashStatusAction({
+        paymentId,
+        status: "pending",
+        isCancel: true,
+        notes: "管理者による決済取り消し",
+      });
+
+      if (result.success) {
+        toast({
+          title: "決済を取り消しました",
+          description: "ステータスを「未決済」に戻しました。",
+        });
+        setCancelDialogOpen(false);
+        setCancelingPaymentId(null);
+        // 再読み込みトリガー（親コンポーネントの責務）
+        onFiltersChange({});
+      } else {
+        throw new Error(result.error);
+      }
+    } catch (error) {
+      toast({
+        title: "取り消しに失敗しました",
+        description: "しばらく待ってから再度お試しください。",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  // 取り消しダイアログを開く
+  const openCancelDialog = (paymentId: string) => {
+    setCancelingPaymentId(paymentId);
+    setCancelDialogOpen(true);
   };
 
   // ゲストURL生成
@@ -430,6 +481,25 @@ export function ParticipantsTableEnhanced({
                                   </Button>
                                 )}
 
+                              {/* 取り消しボタン（received/waivedステータス時のみ） */}
+                              {isCashPayment &&
+                                (simpleStatus === "paid" || simpleStatus === "waived") && (
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() =>
+                                      hasPaymentId(participant) &&
+                                      openCancelDialog(participant.payment_id)
+                                    }
+                                    disabled={isUpdating}
+                                    className="bg-gray-50 border-gray-300 text-gray-700 hover:bg-gray-100 min-h-[36px] min-w-[36px] px-2 sm:px-3 shadow-sm hover:shadow-md transition-all duration-200 touch-manipulation"
+                                    title="決済を取り消し"
+                                  >
+                                    <RotateCcw className="h-3 w-3 sm:h-4 sm:w-4" />
+                                    <span className="hidden lg:inline ml-1 text-xs">取消</span>
+                                  </Button>
+                                )}
+
                               {/* URLコピーボタン */}
                               {/* 一時的に機能停止
                               <Button
@@ -554,6 +624,24 @@ export function ParticipantsTableEnhanced({
                                 </Button>
                               )}
 
+                            {/* 取り消しボタン（received/waivedステータス時のみ） */}
+                            {isCashPayment &&
+                              (simpleStatus === "paid" || simpleStatus === "waived") && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() =>
+                                    hasPaymentId(participant) &&
+                                    openCancelDialog(participant.payment_id)
+                                  }
+                                  disabled={isUpdating}
+                                  className="bg-gray-50 border-gray-300 text-gray-700 hover:bg-gray-100 min-h-[44px] touch-manipulation"
+                                >
+                                  <RotateCcw className="h-4 w-4 mr-2" />
+                                  取り消し
+                                </Button>
+                              )}
+
                             {/* URLコピーボタン */}
                             {/* 一時的にコメントアウト
                             <Button
@@ -634,6 +722,39 @@ export function ParticipantsTableEnhanced({
           </div>
         )}
       </CardContent>
+
+      {/* 取り消し確認ダイアログ */}
+      <Dialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>決済取り消しの確認</DialogTitle>
+            <DialogDescription>
+              この決済ステータスを「未決済」に戻します。この操作は実行後でも再度変更可能です。
+              <br />
+              <strong>取り消しますか？</strong>
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setCancelDialogOpen(false);
+                setCancelingPaymentId(null);
+              }}
+              disabled={isUpdating}
+            >
+              キャンセル
+            </Button>
+            <Button
+              onClick={() => cancelingPaymentId && handleCancelPaymentStatus(cancelingPaymentId)}
+              disabled={isUpdating}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              {isUpdating ? "処理中..." : "取り消す"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }

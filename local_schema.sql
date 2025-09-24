@@ -1014,6 +1014,12 @@ CREATE OR REPLACE FUNCTION "public"."prevent_payment_status_rollback"() RETURNS 
     AS $$
 BEGIN
   IF NEW.status IS DISTINCT FROM OLD.status THEN
+    -- キャンセル操作（セッション変数でフラグ設定）の場合は遷移チェックをスキップ
+    IF current_setting('app.allow_payment_cancel', true) = 'true' THEN
+      RETURN NEW;
+    END IF;
+
+    -- 通常のステータス遷移チェック（降格禁止）
     IF public.status_rank(NEW.status) < public.status_rank(OLD.status) THEN
       RAISE EXCEPTION 'Rejecting status rollback: % -> %', OLD.status, NEW.status;
     END IF;
@@ -1371,17 +1377,29 @@ BEGIN
   END IF;
 
   -- 2. 楽観的ロック付きステータス更新
+
+  -- キャンセル操作の場合はセッション変数を設定してトリガーをスキップ
+  IF p_new_status = 'pending' AND v_payment_record.status IN ('received', 'waived') THEN
+    PERFORM set_config('app.allow_payment_cancel', 'true', true);
+  END IF;
+
   UPDATE payments
   SET status = p_new_status,
       paid_at = CASE
         WHEN p_new_status = 'received' THEN now()
         WHEN p_new_status = 'waived' THEN paid_at  -- 免除時はpaid_atは変更しない
+        WHEN p_new_status = 'pending' THEN NULL    -- 未決済時はpaid_atをクリア
         ELSE paid_at
       END,
       version = version + 1
   WHERE id = p_payment_id
     AND version = p_expected_version
     AND method = 'cash';
+
+  -- セッション変数をクリア
+  IF p_new_status = 'pending' THEN
+    PERFORM set_config('app.allow_payment_cancel', 'false', true);
+  END IF;
 
   GET DIAGNOSTICS v_updated_rows = ROW_COUNT;
 
