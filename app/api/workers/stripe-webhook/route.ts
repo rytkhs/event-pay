@@ -18,6 +18,7 @@ import type Stripe from "stripe";
 
 import { createProblemResponse } from "@core/api/problem-details";
 import { logger } from "@core/logging/app-logger";
+import { generateSecureUuid } from "@core/security/crypto";
 import { logSecurityEvent } from "@core/security/security-logger";
 import { getClientIP } from "@core/utils/ip-detection";
 
@@ -45,7 +46,7 @@ interface QStashWebhookBody {
 
 export async function POST(request: NextRequest) {
   const startTime = Date.now();
-  const correlationId = `qstash_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  const correlationId = `qstash_${generateSecureUuid()}`;
 
   try {
     logger.info("QStash worker request received", {

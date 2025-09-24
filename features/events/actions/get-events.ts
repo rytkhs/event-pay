@@ -1,6 +1,7 @@
 "use server";
 
 import { logger } from "@core/logging/app-logger";
+import { generateSecureUuid } from "@core/security/crypto";
 import { createClient } from "@core/supabase/server";
 import { SortBy, SortOrder, StatusFilter, PaymentFilter } from "@core/types/events";
 import { createServerActionError, type ServerActionResult } from "@core/types/server-actions";
@@ -336,7 +337,7 @@ export async function getEventsAction(options: GetEventsOptions = {}): Promise<G
     };
   } catch (error) {
     // 詳細なエラー分類とログ記録
-    const correlationId = `get_events_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const correlationId = `get_events_${generateSecureUuid()}`;
     const errorContext = {
       tag: "getEventsError",
       correlation_id: correlationId,

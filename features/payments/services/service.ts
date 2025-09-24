@@ -8,6 +8,7 @@ import { PostgrestError } from "@supabase/supabase-js";
 
 import { logger } from "@core/logging/app-logger";
 import { createPaymentLogger, type PaymentLogger } from "@core/logging/payment-logger";
+import { generateSecureUuid } from "@core/security/crypto";
 import { stripe } from "@core/stripe/client";
 import * as DestinationCharges from "@core/stripe/destination-charges";
 import { convertStripeError } from "@core/stripe/error-handler";
@@ -64,7 +65,7 @@ export class PaymentService implements IPaymentService {
    * - Action 層では重複チェックを省略してよい（最終判断は本メソッド）。
    */
   async createStripeSession(params: CreateStripeSessionParams): Promise<CreateStripeSessionResult> {
-    const correlationId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const correlationId = `session_${generateSecureUuid()}`;
     const contextLogger = this.paymentLogger.withContext({
       attendance_id: params.attendanceId,
       event_id: params.eventId,
@@ -672,7 +673,7 @@ export class PaymentService implements IPaymentService {
     const contextLogger = this.paymentLogger.withContext({
       payment_id: params.paymentId,
       user_id: params.userId,
-      correlation_id: `status_update_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      correlation_id: `status_update_${generateSecureUuid()}`,
     });
 
     contextLogger.startOperation("update_payment_status", {
@@ -848,7 +849,7 @@ export class PaymentService implements IPaymentService {
   }> {
     const contextLogger = this.paymentLogger.withContext({
       user_id: userId,
-      correlation_id: `bulk_update_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      correlation_id: `bulk_update_${generateSecureUuid()}`,
       bulk_operation_count: updates.length,
     });
 

@@ -18,6 +18,7 @@ import { AdminReason } from "@core/security/secure-client-factory.types";
 import { logSecurityEvent } from "@core/security/security-logger";
 import { stripe } from "@core/stripe/client";
 import { getClientIP } from "@core/utils/ip-detection";
+import { maskSessionId } from "@core/utils/mask";
 
 // リクエストバリデーションスキーマ
 const VerifySessionSchema = z.object({
@@ -109,7 +110,7 @@ export async function GET(request: NextRequest) {
       {
         additionalInfo: {
           attendanceId: attendance_id,
-          sessionId: `${session_id.substring(0, 8)}...`,
+          sessionId: maskSessionId(session_id),
           hasGuestToken: !!guestToken,
         },
       }
@@ -141,7 +142,7 @@ export async function GET(request: NextRequest) {
         message: "Guest token mismatch during payment verification",
         details: {
           attendanceId: attendance_id,
-          sessionId: `${session_id.substring(0, 8)}...`,
+          sessionId: maskSessionId(session_id),
           tokenMatch: false,
         },
         ip: getClientIP(request),
@@ -196,7 +197,7 @@ export async function GET(request: NextRequest) {
       } catch (stripeError) {
         logger.warn("Stripe session retrieval failed (fallback)", {
           tag: "payment-verify",
-          session_id: `${session_id.substring(0, 8)}...`,
+          session_id: maskSessionId(session_id),
           error: stripeError instanceof Error ? stripeError.message : String(stripeError),
         });
       }
@@ -257,8 +258,10 @@ export async function GET(request: NextRequest) {
                 message: "Outdated checkout session detected during verification",
                 details: {
                   attendanceId: attendance_id,
-                  requestedSessionId: `${session_id.substring(0, 8)}...`,
-                  currentSessionId: `${(fallbackPayment.stripe_checkout_session_id as string).substring(0, 8)}...`,
+                  requestedSessionId: maskSessionId(session_id),
+                  currentSessionId: maskSessionId(
+                    fallbackPayment.stripe_checkout_session_id as string
+                  ),
                   paymentId: fallbackPayment.id,
                   reason: "session_outdated",
                 },
@@ -279,7 +282,7 @@ export async function GET(request: NextRequest) {
               message: "Payment matched by fallback using client_reference_id/metadata",
               details: {
                 attendanceId: attendance_id,
-                sessionId: `${session_id.substring(0, 8)}...`,
+                sessionId: maskSessionId(session_id),
                 paymentId: fallbackPayment.id,
                 reason: "fallback_matched",
               },
@@ -298,7 +301,7 @@ export async function GET(request: NextRequest) {
           message: "Payment verification failed - no matching record found with guest token",
           details: {
             attendanceId: attendance_id,
-            sessionId: `${session_id.substring(0, 8)}...`,
+            sessionId: maskSessionId(session_id),
             hasGuestToken: !!guestToken,
             dbErrorCode: dbError?.code,
           },
@@ -321,7 +324,7 @@ export async function GET(request: NextRequest) {
       } catch (stripeError) {
         logger.warn("Stripe session retrieval failed", {
           tag: "payment-verify",
-          session_id: `${session_id.substring(0, 8)}...`, // セキュリティのため一部のみログ
+          session_id: maskSessionId(session_id), // セキュリティのため先頭8文字のみログ
           error: stripeError instanceof Error ? stripeError.message : String(stripeError),
         });
 
@@ -370,7 +373,7 @@ export async function GET(request: NextRequest) {
           tag: "payment-verify",
           stripe_status: paymentStatus,
           db_status: dbStatus,
-          session_id: `${session_id.substring(0, 8)}...`,
+          session_id: maskSessionId(session_id),
           payment_id: payment.id,
         });
 
@@ -394,12 +397,11 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(result);
   } catch (error) {
-    const correlationId = `verify_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    // Problem Details標準の相関ID生成に統一（req_xxxxxxxx形式）
     const errorContext = {
       tag: "payment-verify",
       error_name: error instanceof Error ? error.name : "Unknown",
       error_message: error instanceof Error ? error.message : String(error),
-      correlation_id: correlationId,
       stack: error instanceof Error ? error.stack : undefined,
     };
 
@@ -419,7 +421,6 @@ export async function GET(request: NextRequest) {
         return createProblemResponse("EXTERNAL_SERVICE_ERROR", {
           instance: "/api/payments/verify-session",
           detail: "決済サービスとの通信でエラーが発生しました",
-          correlation_id: correlationId,
           retryable: true,
         });
       }
@@ -439,7 +440,6 @@ export async function GET(request: NextRequest) {
         return createProblemResponse("DATABASE_ERROR", {
           instance: "/api/payments/verify-session",
           detail: "データベースエラーが発生しました",
-          correlation_id: correlationId,
           retryable: true,
         });
       }
@@ -454,7 +454,6 @@ export async function GET(request: NextRequest) {
         return createProblemResponse("RATE_LIMITED", {
           instance: "/api/payments/verify-session",
           detail: "リクエスト頻度が高すぎます",
-          correlation_id: correlationId,
         });
       }
 
@@ -472,7 +471,6 @@ export async function GET(request: NextRequest) {
         return createProblemResponse("UNAUTHORIZED", {
           instance: "/api/payments/verify-session",
           detail: "認証エラーが発生しました",
-          correlation_id: correlationId,
         });
       }
 
@@ -493,7 +491,6 @@ export async function GET(request: NextRequest) {
         return createProblemResponse("EXTERNAL_SERVICE_ERROR", {
           instance: "/api/payments/verify-session",
           detail: "ネットワーク接続エラーが発生しました",
-          correlation_id: correlationId,
           retryable: true,
         });
       }
@@ -512,7 +509,6 @@ export async function GET(request: NextRequest) {
         return createProblemResponse("INVALID_REQUEST", {
           instance: "/api/payments/verify-session",
           detail: "リクエスト形式が正しくありません",
-          correlation_id: correlationId,
         });
       }
 
@@ -530,7 +526,6 @@ export async function GET(request: NextRequest) {
         return createProblemResponse("VALIDATION_ERROR", {
           instance: "/api/payments/verify-session",
           detail: "入力値が無効です",
-          correlation_id: correlationId,
         });
       }
     }
@@ -546,7 +541,6 @@ export async function GET(request: NextRequest) {
     return createProblemResponse("INTERNAL_ERROR", {
       instance: "/api/payments/verify-session",
       detail: "予期しないエラーが発生しました",
-      correlation_id: correlationId,
       retryable: true,
     });
   }

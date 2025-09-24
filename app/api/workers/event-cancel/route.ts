@@ -6,6 +6,7 @@ import { Receiver } from "@upstash/qstash";
 
 import { createProblemResponse } from "@core/api/problem-details";
 import { logger } from "@core/logging/app-logger";
+import { generateSecureUuid } from "@core/security/crypto";
 import { SecureSupabaseClientFactory } from "@core/security/secure-client-factory.impl";
 import { AdminReason } from "@core/security/secure-client-factory.types";
 import { logSecurityEvent } from "@core/security/security-logger";
@@ -28,7 +29,7 @@ interface CancelWorkerBody {
 
 export async function POST(request: NextRequest) {
   const start = Date.now();
-  const corr = `qstash_cancel_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  const corr = `qstash_cancel_${generateSecureUuid()}`;
 
   try {
     logger.info("QStash event-cancel worker received", {
