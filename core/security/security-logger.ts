@@ -5,6 +5,9 @@
 
 import { getMaliciousPatternDetails } from "@core/constants/security-patterns";
 import { logger } from "@core/logging/app-logger";
+// Import mask functions for re-export (used by external modules)
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+import { maskSessionId, maskPaymentId } from "@core/utils/mask";
 
 export interface SecurityEvent {
   type: SecurityEventType | string;
@@ -334,14 +337,21 @@ function maskIP(ip?: string): string | undefined {
 }
 
 /**
- * トークンをマスクします
+ * 一般的なトークンをマスクします（従来形式）
  * @param token トークン
  * @returns マスクされたトークン
+ * @deprecated 新しいコードでは @core/utils/mask の maskSessionId, maskPaymentId を使用してください
  */
 function maskToken(token: string): string {
   if (token.length <= 8) return "***";
   return token.substring(0, 4) + "***" + token.substring(token.length - 4);
 }
+
+/**
+ * セキュリティログ用の統一マスク関数をエクスポート
+ * 外部から利用可能にする
+ */
+export { maskSessionId, maskPaymentId } from "@core/utils/mask";
 
 /**
  * セキュリティアラートを送信します

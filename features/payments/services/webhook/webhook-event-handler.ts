@@ -6,6 +6,7 @@ import { getSettlementReportPort } from "@core/ports/settlements";
 import { logWebhookSecurityEvent } from "@core/security/security-logger";
 import { stripe as sharedStripe } from "@core/stripe/client";
 import { getRequiredEnvVar } from "@core/utils/env-helper";
+import { maskSessionId } from "@core/utils/mask";
 import { canPromoteStatus } from "@core/utils/payments/status-rank";
 
 // Removed @core/services dependency to break circular reference
@@ -95,7 +96,7 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
               logWebhookSecurityEvent(
                 "webhook_checkout_completed_missing_payment_id",
                 "Webhook security event",
-                { eventId: event.id, sessionId }
+                { eventId: event.id, sessionId: maskSessionId(sessionId) }
               );
               return { success: true };
             }
@@ -116,7 +117,7 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
               logWebhookSecurityEvent(
                 "webhook_checkout_completed_payment_not_found",
                 "Webhook security event",
-                { eventId: event.id, sessionId, paymentIdFromMetadata }
+                { eventId: event.id, sessionId: maskSessionId(sessionId), paymentIdFromMetadata }
               );
               return { success: true };
             }
@@ -142,7 +143,7 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
               "Webhook security event",
               {
                 eventId: event.id,
-                sessionId,
+                sessionId: maskSessionId(sessionId),
                 paymentId: payment.id,
                 paymentIntentId: paymentIntentId ?? undefined,
               }
@@ -195,7 +196,7 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
               logWebhookSecurityEvent(
                 "webhook_checkout_expired_no_payment",
                 "Webhook security event",
-                { eventId: event.id, sessionId }
+                { eventId: event.id, sessionId: maskSessionId(sessionId) }
               );
               return { success: true };
             }
@@ -244,7 +245,7 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
               {
                 eventId: event.id,
                 paymentId: payment.id,
-                sessionId,
+                sessionId: maskSessionId(sessionId),
                 paymentIntentId: paymentIntentId ?? undefined,
               }
             );

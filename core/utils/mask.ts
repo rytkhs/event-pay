@@ -45,3 +45,54 @@ export function maskEmail(email: string | null | undefined): string {
   // ドメイン部はそのまま表示
   return `${maskedLocal}@${domainPart}`;
 }
+
+/**
+ * Stripeセッション IDをセキュリティのためにマスクします
+ * 仕様書準拠: 先頭8文字のみ表示し、残りを"..."でマスク
+ *
+ * 例:
+ * - cs_test_1234567890abcdef → cs_test_1...
+ * - cs_live_abcdefgh12345678 → cs_live_a...
+ * - short_id → sho***
+ *
+ * @param sessionId マスクするStripeセッション ID
+ * @returns マスクされたセッション ID
+ */
+export function maskSessionId(sessionId: string | null | undefined): string {
+  if (!sessionId || typeof sessionId !== "string") {
+    return "***";
+  }
+
+  // 8文字以下の場合は全体をマスク（セキュリティ配慮）
+  if (sessionId.length <= 8) {
+    return sessionId.substring(0, 3) + "***";
+  }
+
+  // 仕様書準拠: 先頭8文字 + "..."
+  return `${sessionId.substring(0, 8)}...`;
+}
+
+/**
+ * 決済関連IDをセキュリティのためにマスクします
+ * Payment Intent ID, Setup Intent ID等に使用
+ *
+ * 例:
+ * - pi_1234567890abcdef → pi_12***def
+ * - si_abcdefgh12345678 → si_ab***678
+ *
+ * @param paymentId マスクする決済ID
+ * @returns マスクされた決済ID
+ */
+export function maskPaymentId(paymentId: string | null | undefined): string {
+  if (!paymentId || typeof paymentId !== "string") {
+    return "***";
+  }
+
+  // 8文字以下の場合は全体をマスク
+  if (paymentId.length <= 8) {
+    return paymentId.substring(0, 2) + "***";
+  }
+
+  // 先頭4文字 + *** + 末尾3文字
+  return `${paymentId.substring(0, 4)}***${paymentId.substring(paymentId.length - 3)}`;
+}
