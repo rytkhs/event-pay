@@ -173,7 +173,7 @@ export class PaymentService implements IPaymentService {
         .from("payments")
         .select("id, status, paid_at, created_at, updated_at")
         .eq("attendance_id", params.attendanceId)
-        .in("status", ["paid", "received", "completed", "refunded"])
+        .in("status", ["paid", "received", "completed", "refunded", "waived"])
         .order("paid_at", { ascending: false, nullsFirst: false })
         .order("created_at", { ascending: false })
         .limit(1)
@@ -381,7 +381,7 @@ export class PaymentService implements IPaymentService {
                 .from("payments")
                 .select("id")
                 .eq("attendance_id", params.attendanceId)
-                .in("status", ["paid", "received", "completed", "refunded"])
+                .in("status", ["paid", "received", "completed", "refunded", "waived"])
                 .order("paid_at", { ascending: false, nullsFirst: false })
                 .limit(1)
                 .maybeSingle();
