@@ -11,6 +11,7 @@ import {
   createServerActionSuccess,
   zodErrorToServerActionResponse,
 } from "@core/types/server-actions";
+import { calculateAttendeeCount } from "@core/utils/event-calculations";
 import { checkEditRestrictionsV2, type EventWithAttendances } from "@core/utils/event-restrictions";
 import { extractEventUpdateFormData } from "@core/utils/form-data-extractors";
 import { convertDatetimeLocalToUtc } from "@core/utils/timezone";
@@ -114,15 +115,26 @@ export async function updateEventAction(
       .from("events")
       .select("*, attendances(*)")
       .eq("id", eventId)
+      .eq("created_by", user.id)
       .single();
 
-    if (eventError || !existingEvent) {
-      return createServerActionError("NOT_FOUND", "イベントが見つかりません");
+    // RLSフィルターにより、存在しないイベントまたは権限のないイベントは取得不可
+    if (eventError?.code === "PGRST301" || eventError?.code === "PGRST116" || !existingEvent) {
+      return createServerActionError("FORBIDDEN", "このイベントを編集する権限がありません");
     }
 
-    // 作成者権限チェック
-    if (existingEvent.created_by !== user.id) {
-      return createServerActionError("FORBIDDEN", "このイベントを編集する権限がありません");
+    // 開催済み・キャンセル済みイベントの編集禁止チェック
+    const now = new Date();
+    const eventDate = new Date(existingEvent.date);
+    const isPastEvent = eventDate < now;
+    const isCanceled = Boolean(existingEvent.canceled_at);
+
+    if (isPastEvent) {
+      return createServerActionError("FORBIDDEN", "開催済みのイベントは編集できません");
+    }
+
+    if (isCanceled) {
+      return createServerActionError("FORBIDDEN", "キャンセル済みのイベントは編集できません");
     }
 
     // フォームデータの抽出
@@ -134,8 +146,8 @@ export async function updateEventAction(
       validatedData = updateEventSchema.parse(rawData);
     } catch (error) {
       if (error instanceof z.ZodError) {
-        const firstError = error.errors[0];
-        return createServerActionError("VALIDATION_ERROR", firstError.message);
+        // フィールド別エラーを含む統一形式でレスポンス
+        return zodErrorToServerActionResponse(error);
       }
       throw error;
     }
@@ -223,27 +235,79 @@ export async function updateEventAction(
       }
     }
 
+    // 部分更新時のeffective値による統合バリデーション
+    const effectiveFee =
+      validatedData.fee !== undefined
+        ? typeof validatedData.fee === "number"
+          ? validatedData.fee
+          : Number(validatedData.fee || 0)
+        : (existingEvent.fee ?? 0);
+
+    const effectivePaymentMethods =
+      validatedData.payment_methods !== undefined
+        ? validatedData.payment_methods
+        : existingEvent.payment_methods || [];
+
+    // 有料イベント時の決済方法必須チェック（effective値での検証）
+    if (effectiveFee > 0 && effectivePaymentMethods.length === 0) {
+      return createServerActionError(
+        "VALIDATION_ERROR",
+        "有料イベントでは決済方法の選択が必要です",
+        {
+          details: {
+            fieldErrors: [
+              {
+                field: "payment_methods",
+                message: "有料イベントでは決済方法の選択が必要です",
+              },
+            ],
+          },
+        }
+      );
+    }
+
+    // Stripe決済締切必須関係の差分送信時取りこぼし防止
+    const hasStripe = effectivePaymentMethods.includes("stripe");
+    if (hasStripe) {
+      const effectivePaymentDeadline =
+        validatedData.payment_deadline !== undefined
+          ? validatedData.payment_deadline
+          : existingEvent.payment_deadline;
+
+      if (!effectivePaymentDeadline) {
+        return createServerActionError(
+          "VALIDATION_ERROR",
+          "オンライン決済を選択した場合、決済締切の設定が必要です。既存のイベントでオンライン決済締切が未設定の場合は、編集画面で締切日時を入力してください。",
+          {
+            details: {
+              fieldErrors: [
+                {
+                  field: "payment_deadline",
+                  message:
+                    "オンライン決済を選択した場合、決済締切の設定が必要です。既存のイベントでオンライン決済締切が未設定の場合は、編集画面で締切日時を入力してください。",
+                },
+              ],
+            },
+          }
+        );
+      }
+    }
+
     // 決済完了者（Stripe）の存在を確認（有無だけで良いので軽量に取得）
     const { data: stripePayments, error: paymentsError } = await supabase
       .from("payments")
-      .select("id")
-      .eq("event_id", eventId)
+      .select("id, attendances!inner(event_id)")
+      .eq("attendances.event_id", eventId)
       .eq("method", "stripe")
       .in("status", ["paid", "refunded"])
       .limit(1);
 
-    if (paymentsError) {
-      return createServerActionError("DATABASE_ERROR", "決済状況の確認に失敗しました", {
-        details: { databaseError: paymentsError },
-      });
-    }
+    // 決済状況取得エラー時はフェイルクローズ（UI側と統一）
+    // エラー時は安全側に倒して、決済済み参加者がいるものとして扱う
+    const hasActivePayments = paymentsError ? true : (stripePayments?.length || 0) > 0;
 
-    const hasActivePayments = (stripePayments?.length || 0) > 0;
-
-    // 現在の参加者数（attending のみ）を算出
-    const attendeeCount = (existingEvent.attendances || []).filter(
-      (a: any) => a?.status === "attending"
-    ).length;
+    // 現在の参加者数（attending のみ）を算出 - 共通ユーティリティを使用
+    const attendeeCount = calculateAttendeeCount(existingEvent.attendances || []);
 
     // V2 編集制限（基本項目は常に編集可、金銭系/定員のみ制限）
     const restrictions = checkEditRestrictionsV2(
@@ -290,6 +354,11 @@ export async function updateEventAction(
 
     // 更新データの構築
     const updateData = buildUpdateData(validatedData, existingEvent);
+
+    // 更新データが空の場合は既存データを返す（変更なし）
+    if (Object.keys(updateData).length === 0) {
+      return createServerActionSuccess(existingEvent, "変更はありませんでした");
+    }
 
     // データベース更新
     const { data: updatedEvent, error: updateError } = await supabase
@@ -419,9 +488,8 @@ function buildUpdateData(
   }
 
   if (validatedData.registration_deadline !== undefined) {
-    const newDeadline = validatedData.registration_deadline
-      ? convertDatetimeLocalToIso(validatedData.registration_deadline as string)
-      : undefined;
+    // registration_deadlineは必須項目のため、有効な値のみ更新
+    const newDeadline = convertDatetimeLocalToIso(validatedData.registration_deadline as string);
     if (newDeadline !== existingEvent.registration_deadline) {
       updateData.registration_deadline = newDeadline;
     }
@@ -433,6 +501,21 @@ function buildUpdateData(
       : null;
     if (newDeadline !== existingEvent.payment_deadline) {
       updateData.payment_deadline = newDeadline;
+    }
+  }
+
+  // fee=0 の場合は決済方法を必ず空配列に（payloadに含まれない場合も確実に反映）
+  {
+    const effectiveFee =
+      validatedData.fee !== undefined
+        ? typeof validatedData.fee === "number"
+          ? validatedData.fee
+          : Number(validatedData.fee || 0)
+        : existingEvent.fee;
+
+    if (effectiveFee === 0) {
+      // payloadの有無に関わらず、fee=0の場合は確実にpayment_methodsを空配列にする
+      updateData.payment_methods = [] as Database["public"]["Enums"]["payment_method_enum"][];
     }
   }
 

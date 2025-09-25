@@ -18,6 +18,16 @@ function extractOptionalValue(formData: FormData, key: string): string | undefin
 }
 
 /**
+ * 型安全な値抽出関数（clearable）
+ * 空文字はクリア意図としてそのまま返す（undefinedは未指定）
+ */
+function extractClearableValue(formData: FormData, key: string): string | undefined {
+  const value = formData.get(key) as string | null;
+  if (value === null) return undefined; // 未指定
+  return value; // 空文字はそのまま返す
+}
+
+/**
  * 型安全な値抽出関数（必須）
  * 内部実装用のヘルパー関数
  */
@@ -33,27 +43,35 @@ function extractRequiredValue(formData: FormData, key: string): string {
  * カンマ区切りの文字列と複数の値の両方に対応
  */
 function extractArrayValues(formData: FormData, key: string): string[] | undefined {
-  // まず複数の値で送られていないかチェック
   const values = formData.getAll(key) as string[];
+
+  if (values.length === 0) {
+    // キーが存在するかチェックして、存在する場合は明示的クリア、存在しない場合は未指定
+    return formData.has(key) ? [] : undefined;
+  }
+
+  // 値が1つ以上存在するが、全て空文字列 → 明示的クリア
+  const allEmpty = values.every((v) => v === "");
+  if (allEmpty) {
+    return [];
+  }
 
   if (values.length > 1) {
     // 複数の値が送られている場合（従来の動作）
     const filteredValues = values.filter((v) => v !== null && v !== "");
-    return filteredValues.length > 0 ? filteredValues : undefined;
+    return filteredValues.length > 0 ? filteredValues : [];
   }
 
-  // 単一の値の場合、カンマ区切りの文字列かチェック
+  // 単一の値の場合、カンマ区切りの文字列を考慮
   const singleValue = values[0];
-  if (!singleValue || singleValue === "") {
-    return undefined;
+  if (singleValue === "") {
+    return [];
   }
-
-  // カンマ区切りの文字列を配列に分割
   const splitValues = singleValue
     .split(",")
     .map((v) => v.trim())
     .filter((v) => v !== "");
-  return splitValues.length > 0 ? splitValues : undefined;
+  return splitValues.length > 0 ? splitValues : [];
 }
 
 /**
@@ -71,11 +89,23 @@ function extractNumberValue(formData: FormData, key: string): number | undefined
 }
 
 /**
- * 型安全なブール値抽出関数
+ * 型安全なブール値抽出関数（必須）
  * 内部実装用のヘルパー関数
  */
 function extractBooleanValue(formData: FormData, key: string): boolean {
   const value = formData.get(key) as string | null;
+  return value === "true" || value === "on";
+}
+
+/**
+ * 型安全なブール値抽出関数（オプション）
+ * キーが存在しない場合はundefinedを返す
+ * 更新処理での意図しない上書きを防ぐため
+ */
+function extractOptionalBooleanValue(formData: FormData, key: string): boolean | undefined {
+  const value = formData.get(key) as string | null;
+  // キーが存在しない場合はundefinedを返す（未変更として扱う）
+  if (value === null) return undefined;
   return value === "true" || value === "on";
 }
 
@@ -154,12 +184,15 @@ export function extractEventUpdateFormData(formData: FormData): Partial<UpdateEv
     date: extractor.extractOptionalValue("date"),
     fee: extractor.extractOptionalValue("fee"),
     payment_methods: extractor.extractArrayValues("payment_methods"),
-    location: extractor.extractOptionalValue("location"),
-    description: extractor.extractOptionalValue("description"),
-    capacity: extractor.extractOptionalValue("capacity"),
-    registration_deadline: extractor.extractOptionalValue("registration_deadline"),
-    payment_deadline: extractor.extractOptionalValue("payment_deadline"),
-    allow_payment_after_deadline: extractor.extractBooleanValue("allow_payment_after_deadline"),
+    location: extractClearableValue(formData, "location"),
+    description: extractClearableValue(formData, "description"),
+    capacity: extractClearableValue(formData, "capacity"),
+    registration_deadline: extractOptionalValue(formData, "registration_deadline"),
+    payment_deadline: extractClearableValue(formData, "payment_deadline"),
+    allow_payment_after_deadline: extractOptionalBooleanValue(
+      formData,
+      "allow_payment_after_deadline"
+    ),
     grace_period_days: extractor.extractNumberValue("grace_period_days"),
   };
 }

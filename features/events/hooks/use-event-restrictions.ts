@@ -3,7 +3,19 @@
 import { useCallback } from "react";
 
 import type { EventFormData } from "@core/types/models";
-// import { parseCapacity } from "@core/utils/number-parsers";
+
+export type RestrictionType = "structural" | "conditional" | "advisory";
+
+export interface RestrictionInfo {
+  type: RestrictionType;
+  reason: string;
+  isActive: boolean;
+}
+
+// 制限レベルの分類:
+// - structural: 絶対変更不可（決済済み時の料金・決済方法）
+// - conditional: 条件下で変更不可（定員の参加者数未満への減少）
+// - advisory: 変更可能だが影響あり（参加者への通知推奨）
 
 interface UseEventRestrictionsProps {
   hasAttendees: boolean;
@@ -16,15 +28,62 @@ export function useEventRestrictions({
   attendeeCount,
   hasStripePaid,
 }: UseEventRestrictionsProps) {
-  // 編集制限チェック関数をメモ化（型安全な数値比較）
+  // 編集制限チェック関数をメモ化（制限レベル分類対応）
   const isFieldRestricted = useCallback(
-    (field: string, _formData?: EventFormData): boolean => {
-      // V2: 基本項目は常に編集可。
-      // 金銭系のみ「Stripe決済済みの参加者がいる場合」にロック。
-      if (!hasStripePaid) return false;
-      return field === "fee" || field === "payment_methods";
+    (field: string, formData?: EventFormData): boolean => {
+      // 構造的制限：絶対変更不可
+      if (field === "fee" || field === "payment_methods") {
+        return hasStripePaid;
+      }
+
+      // 条件的制限：条件下で変更不可
+      if (field === "capacity" && formData?.capacity) {
+        const newCapacity = Number(formData.capacity);
+        if (Number.isFinite(newCapacity) && newCapacity > 0) {
+          return newCapacity < attendeeCount;
+        }
+      }
+
+      return false;
     },
-    [hasStripePaid]
+    [hasStripePaid, attendeeCount]
+  );
+
+  // 制限タイプを取得する関数
+  const getFieldRestrictionType = useCallback((field: string): RestrictionType | null => {
+    if (field === "fee" || field === "payment_methods") {
+      return "structural";
+    }
+    if (field === "capacity") {
+      return "conditional";
+    }
+    return null;
+  }, []);
+
+  // 制限情報を取得する関数
+  const getFieldRestrictionInfo = useCallback(
+    (field: string, formData?: EventFormData): RestrictionInfo | null => {
+      const restrictionType = getFieldRestrictionType(field);
+      if (!restrictionType) return null;
+
+      const isActive = isFieldRestricted(field, formData);
+      let reason = "";
+
+      if (field === "fee" && hasStripePaid) {
+        reason = "決済済み参加者がいるため、参加費は変更できません";
+      } else if (field === "payment_methods" && hasStripePaid) {
+        reason = "決済済み参加者がいるため、決済方法は変更できません";
+      } else if (field === "capacity" && hasAttendees) {
+        reason = `現在${attendeeCount}名の参加者がいるため、定員を${attendeeCount}名未満には設定できません`;
+      }
+
+      return {
+        type: restrictionType,
+        reason,
+        isActive,
+      };
+    },
+    [getFieldRestrictionType, isFieldRestricted, hasStripePaid, hasAttendees, attendeeCount]
   );
 
   // フィールド表示名の取得をメモ化
@@ -46,12 +105,22 @@ export function useEventRestrictions({
   // 制限されているフィールドの一覧を取得
   const getRestrictedFields = useCallback(
     (formData?: EventFormData): string[] => {
-      // V2: ロックは参加者の有無ではなく「決済済み参加者の有無」に依存
-      if (!hasStripePaid) return [];
+      const restrictedFields: string[] = [];
 
-      // 実際にロック対象となるのは金銭系のみ
-      const moneyRelated = ["fee", "payment_methods"] as const;
-      return moneyRelated.filter((field) => isFieldRestricted(field, formData));
+      // 定員制限：現在の参加者数未満に減らそうとしている場合
+      if (isFieldRestricted("capacity", formData)) {
+        restrictedFields.push("capacity");
+      }
+
+      // 金銭系制限：Stripe決済済み参加者がいる場合
+      if (hasStripePaid) {
+        const moneyRelated = ["fee", "payment_methods"] as const;
+        restrictedFields.push(
+          ...moneyRelated.filter((field) => isFieldRestricted(field, formData))
+        );
+      }
+
+      return restrictedFields;
     },
     [hasStripePaid, isFieldRestricted]
   );
@@ -59,19 +128,28 @@ export function useEventRestrictions({
   // 制限理由の取得
   const getRestrictionReason = useCallback(
     (field: string): string => {
-      if (!hasStripePaid) return "";
-
       const reasons: Record<string, string> = {
+        capacity: `現在の参加者数（${attendeeCount}名）以上で設定してください`,
         fee: "決済済みの参加者がいるため、参加費の変更はできません",
         payment_methods: "決済済みの参加者がいるため、決済方法の変更はできません",
       };
 
-      return (
-        reasons[field] ||
-        `決済済みの参加者がいるため、${getFieldDisplayName(field)}の変更は制限されています`
-      );
+      if (reasons[field]) {
+        return reasons[field];
+      }
+
+      // フィールド固有の理由がない場合のデフォルトメッセージ
+      if (field === "capacity") {
+        return `定員は現在の参加者数（${attendeeCount}名）以上で設定してください`;
+      }
+
+      if (hasStripePaid) {
+        return `決済済みの参加者がいるため、${getFieldDisplayName(field)}の変更は制限されています`;
+      }
+
+      return "";
     },
-    [hasStripePaid, getFieldDisplayName]
+    [hasStripePaid, attendeeCount, getFieldDisplayName]
   );
 
   // フィールドが編集可能かどうかの判定
@@ -101,5 +179,7 @@ export function useEventRestrictions({
     getRestrictedFields,
     getRestrictedFieldNames,
     getRestrictionReason,
+    getFieldRestrictionType,
+    getFieldRestrictionInfo,
   };
 }

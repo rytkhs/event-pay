@@ -1,13 +1,30 @@
 interface EditRestrictionsNoticeProps {
   hasAttendees: boolean;
   attendeeCount: number;
+  hasStripePaid?: boolean;
 }
 
 export function EditRestrictionsNotice({
   hasAttendees,
   attendeeCount,
+  hasStripePaid = false,
 }: EditRestrictionsNoticeProps) {
   if (!hasAttendees) {
+    return null;
+  }
+
+  // 制限項目を動的に生成
+  const restrictedItems = [];
+
+  if (hasStripePaid) {
+    restrictedItems.push("参加費（決済済み参加者がいるため編集不可）");
+    restrictedItems.push("決済方法（決済済み参加者がいるため編集不可）");
+  }
+
+  restrictedItems.push("定員（現在の参加者数未満への減少は不可、増加は可能）");
+
+  // 制限項目がない場合は表示しない
+  if (restrictedItems.length === 0) {
     return null;
   }
 
@@ -20,13 +37,14 @@ export function EditRestrictionsNotice({
       <div className="mt-2 text-sm text-yellow-700">
         <p>現在{attendeeCount}名の参加者がいるため、以下の項目は編集に制限があります：</p>
         <ul className="mt-2 ml-4 list-disc space-y-1">
-          <li>タイトル（編集不可）</li>
-          <li>参加費（編集不可）</li>
-          <li>決済方法（編集不可）</li>
-          <li>定員（現在の参加者数未満への減少は不可、増加は可能）</li>
+          {restrictedItems.map((item, index) => (
+            <li key={index}>{item}</li>
+          ))}
         </ul>
         <p className="mt-2 text-xs">
-          参加者に影響を与える可能性があるため、これらの項目は変更できません。
+          {hasStripePaid
+            ? "決済済み参加者への影響や返金処理の複雑さを避けるため、一部項目の変更が制限されています。"
+            : "参加者への影響を最小限にするため、定員の減少のみ制限されています。"}
         </p>
       </div>
     </div>

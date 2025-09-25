@@ -18,9 +18,54 @@ export function useEventChanges({
   formData,
   hasValidationErrors = false,
 }: UseEventChangesProps) {
-  // 変更検出機能（型安全な日付比較）
+  // 変更検出機能（型安全・サーバーサイドと整合した比較ロジック）
   const detectChanges = useCallback((): ChangeItem[] => {
     const changes: ChangeItem[] = [];
+
+    // 型安全なフィールド比較関数
+    const isFieldChanged = (field: string, oldValue: any, newValue: any): boolean => {
+      switch (field) {
+        case "fee":
+          // 数値として比較（サーバーサイドと統一）
+          const oldFee = typeof oldValue === "number" ? oldValue : Number(oldValue || 0);
+          const newFee = typeof newValue === "string" ? Number(newValue || 0) : newValue || 0;
+          return oldFee !== newFee;
+
+        case "capacity":
+          // 数値として比較（空文字/null は null として扱う）
+          const oldCapacity = oldValue === "" || oldValue == null ? null : Number(oldValue);
+          const newCapacity = newValue === "" || newValue == null ? null : Number(newValue);
+          return oldCapacity !== newCapacity;
+
+        case "payment_methods":
+          // 配列として比較（順序を無視したSet比較、サーバーサイドと統一）
+          const oldMethods = Array.isArray(oldValue) ? oldValue : [];
+          const newMethods = Array.isArray(newValue) ? newValue : [];
+          const oldSet = new Set(oldMethods);
+          const newSet = new Set(newMethods);
+          return (
+            oldSet.size !== newSet.size || !Array.from(oldSet).every((method) => newSet.has(method))
+          );
+
+        case "allow_payment_after_deadline":
+          // boolean として比較
+          const oldBool = Boolean(oldValue);
+          const newBool = Boolean(newValue);
+          return oldBool !== newBool;
+
+        case "grace_period_days":
+          // 数値として比較
+          const oldGrace = typeof oldValue === "number" ? oldValue : Number(oldValue || 0);
+          const newGrace = typeof newValue === "string" ? Number(newValue || 0) : newValue || 0;
+          return oldGrace !== newGrace;
+
+        default:
+          // 文字列として比較（nullish は空文字として扱う）
+          const oldStr = (oldValue ?? "").toString();
+          const newStr = (newValue ?? "").toString();
+          return oldStr !== newStr;
+      }
+    };
 
     // 各フィールドの変更をチェック
     const fieldChecks = [
@@ -50,20 +95,20 @@ export function useEventChanges({
       },
       {
         field: "fee",
-        oldValue: event.fee?.toString() || "0",
+        oldValue: event.fee ?? 0,
         newValue: formData.fee || "0",
         fieldName: "参加費",
       },
       {
         field: "capacity",
-        oldValue: event.capacity?.toString() || "",
+        oldValue: event.capacity,
         newValue: formData.capacity || "",
         fieldName: "定員",
       },
       {
         field: "payment_methods",
-        oldValue: (event.payment_methods || []).join(", "),
-        newValue: formData.payment_methods.join(", "),
+        oldValue: event.payment_methods || [],
+        newValue: formData.payment_methods || [],
         fieldName: "決済方法",
       },
       {
@@ -80,25 +125,57 @@ export function useEventChanges({
       },
       {
         field: "allow_payment_after_deadline",
-        oldValue: ((event as any).allow_payment_after_deadline ?? false).toString(),
-        newValue: ((formData as any).allow_payment_after_deadline ?? false).toString(),
+        oldValue: (event as any).allow_payment_after_deadline ?? false,
+        newValue: (formData as any).allow_payment_after_deadline ?? false,
         fieldName: "締切後もオンライン決済を許可",
       },
       {
         field: "grace_period_days",
-        oldValue: (((event as any).grace_period_days ?? 0) as number).toString(),
-        newValue: ((formData as any).grace_period_days ?? "0") as string,
+        oldValue: ((event as any).grace_period_days ?? 0) as number,
+        newValue: (formData as any).grace_period_days ?? "0",
         fieldName: "猶予（日）",
       },
     ];
 
     fieldChecks.forEach(({ field, oldValue, newValue, fieldName }) => {
-      if (oldValue !== newValue) {
+      if (isFieldChanged(field, oldValue, newValue)) {
+        // 表示用の値を生成（統一された形式）
+        let displayOldValue: string;
+        let displayNewValue: string;
+
+        if (field === "payment_methods") {
+          displayOldValue = Array.isArray(oldValue) ? oldValue.join(", ") : "";
+          displayNewValue = Array.isArray(newValue) ? newValue.join(", ") : "";
+        } else if (field === "fee") {
+          displayOldValue = (
+            typeof oldValue === "number" ? oldValue : Number(oldValue || 0)
+          ).toString();
+          displayNewValue = (
+            typeof newValue === "string" ? Number(newValue || 0) : newValue || 0
+          ).toString();
+        } else if (field === "capacity") {
+          displayOldValue = oldValue === null ? "" : oldValue.toString();
+          displayNewValue = newValue === "" || newValue == null ? "" : newValue.toString();
+        } else if (field === "allow_payment_after_deadline") {
+          displayOldValue = Boolean(oldValue) ? "許可" : "禁止";
+          displayNewValue = Boolean(newValue) ? "許可" : "禁止";
+        } else if (field === "grace_period_days") {
+          displayOldValue = (
+            typeof oldValue === "number" ? oldValue : Number(oldValue || 0)
+          ).toString();
+          displayNewValue = (
+            typeof newValue === "string" ? Number(newValue || 0) : newValue || 0
+          ).toString();
+        } else {
+          displayOldValue = (oldValue ?? "").toString();
+          displayNewValue = (newValue ?? "").toString();
+        }
+
         changes.push({
           field,
           fieldName,
-          oldValue,
-          newValue,
+          oldValue: displayOldValue,
+          newValue: displayNewValue,
         });
       }
     });

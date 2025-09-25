@@ -43,6 +43,7 @@ export default async function EventEditPage({ params }: EventEditPageProps) {
       date,
       fee,
       capacity,
+      payment_methods,
       registration_deadline,
       payment_deadline,
       allow_payment_after_deadline,
@@ -73,8 +74,8 @@ export default async function EventEditPage({ params }: EventEditPageProps) {
   // Stripe 決済済み参加者の有無を算出
   const { data: stripePaid, error: stripePaidError } = await supabase
     .from("payments")
-    .select("id")
-    .eq("event_id", params.id)
+    .select("id, attendances!inner(event_id)")
+    .eq("attendances.event_id", params.id)
     .eq("method", "stripe")
     .in("status", ["paid", "refunded"])
     .limit(1);
@@ -83,6 +84,11 @@ export default async function EventEditPage({ params }: EventEditPageProps) {
   const hasStripePaid = stripePaidError ? true : (stripePaid?.length ?? 0) > 0;
   // 算出ステータスを付与
   const computedStatus = deriveEventStatus(event.date, (event as any).canceled_at ?? null);
+
+  // 開催済み・キャンセル済みイベントの編集禁止チェック
+  if (computedStatus === "past" || computedStatus === "canceled") {
+    redirect(`/events/${params.id}/forbidden?reason=${computedStatus}`);
+  }
 
   return (
     <div className="min-h-screen bg-muted/30 py-8">

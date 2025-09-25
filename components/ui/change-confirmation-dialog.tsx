@@ -24,6 +24,7 @@ interface ChangeConfirmationDialogProps {
   isOpen: boolean;
   changes: ChangeItem[];
   attendeeCount?: number;
+  hasStripePaid?: boolean;
   onConfirm: (changes: ChangeItem[]) => void;
   onCancel: () => void;
   onClose?: () => void;
@@ -34,6 +35,7 @@ export function ChangeConfirmationDialog({
   isOpen,
   changes,
   attendeeCount = 0,
+  hasStripePaid = false,
   onConfirm,
   onCancel,
   onClose,
@@ -100,40 +102,102 @@ export function ChangeConfirmationDialog({
                 <div>
                   <h4 className="font-medium text-warning">参加者への影響について</h4>
                   <p className="text-sm text-warning/80 mt-1">
-                    {attendeeCount}人の参加者に変更が通知されます。
+                    変更内容により参加者に影響が生じる場合があります。必要に応じて主催者から連絡をお取りください。
                   </p>
                 </div>
               </div>
             </div>
           )}
 
-          {/* 制限項目の警告 */}
-          {hasAttendees &&
-            changes.some((change) =>
-              ["title", "fee", "payment_methods", "capacity"].includes(change.field)
-            ) && (
-              <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-4">
-                <div className="flex items-start gap-3">
-                  <span className="text-destructive text-lg">🚫</span>
-                  <div>
-                    <h4 className="font-medium text-destructive">制限項目の変更</h4>
-                    <p className="text-sm text-destructive/80 mt-1">
-                      参加者がいる場合、通常は変更できない項目が含まれています。
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
+          {/* 制限項目の警告と定員変更の通知 */}
+          {(() => {
+            // 定員変更の解析関数
+            const analyzeCapacityChange = (capacityChange: ChangeItem | undefined) => {
+              if (!capacityChange) return { isDecrease: false, isIncrease: false };
 
-          {/* 通知メールの送信について */}
+              const oldCapacity =
+                capacityChange.oldValue === "" || capacityChange.oldValue == null
+                  ? null
+                  : Number(capacityChange.oldValue);
+              const newCapacity =
+                capacityChange.newValue === "" || capacityChange.newValue == null
+                  ? null
+                  : Number(capacityChange.newValue);
+
+              // 既存定員がnullの場合（制限なし）→新定員が設定された場合は通知なし
+              if (oldCapacity === null && newCapacity !== null)
+                return { isDecrease: false, isIncrease: false };
+              // 新定員がnullの場合（制限なしに変更）→増加扱い
+              if (newCapacity === null && oldCapacity !== null)
+                return { isDecrease: false, isIncrease: true };
+              // 両方とも数値の場合、増減を判定
+              if (oldCapacity !== null && newCapacity !== null) {
+                return {
+                  isDecrease: newCapacity < oldCapacity,
+                  isIncrease: newCapacity > oldCapacity,
+                };
+              }
+              return { isDecrease: false, isIncrease: false };
+            };
+
+            // 金銭系の制限チェック
+            const hasMoneyRestriction =
+              hasAttendees &&
+              hasStripePaid &&
+              changes.some((change) => ["fee", "payment_methods"].includes(change.field));
+
+            // 定員変更の解析
+            const capacityChange = changes.find((change) => change.field === "capacity");
+            const { isDecrease: hasCapacityDecrease, isIncrease: hasCapacityIncrease } =
+              analyzeCapacityChange(capacityChange);
+            const hasCapacityRestriction = hasAttendees && hasCapacityDecrease;
+
+            return (
+              <Fragment>
+                {/* 制限項目の警告 */}
+                {(hasMoneyRestriction || hasCapacityRestriction) && (
+                  <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-4">
+                    <div className="flex items-start gap-3">
+                      <span className="text-destructive text-lg">🚫</span>
+                      <div>
+                        <h4 className="font-medium text-destructive">制限項目の変更</h4>
+                        <p className="text-sm text-destructive/80 mt-1">
+                          {hasMoneyRestriction
+                            ? "決済済み参加者がいるため、参加費・決済方法の変更はできません。"
+                            : "参加者がいるため、定員の減少はできません。"}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* 定員増加の通知 */}
+                {hasAttendees && hasCapacityIncrease && (
+                  <div className="bg-success/10 border border-success/20 rounded-lg p-4">
+                    <div className="flex items-start gap-3">
+                      <span className="text-success text-lg">✅</span>
+                      <div>
+                        <h4 className="font-medium text-success">定員の変更</h4>
+                        <p className="text-sm text-success/80 mt-1">
+                          定員が増加または制限なしに変更されます。参加希望者により多くの機会を提供できます。
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </Fragment>
+            );
+          })()}
+
+          {/* 参加者への変更通知について */}
           {hasAttendees && (
             <div className="bg-info/10 border border-info/20 rounded-lg p-4">
               <div className="flex items-start gap-3">
-                <span className="text-info text-lg">📧</span>
+                <span className="text-info text-lg">ℹ️</span>
                 <div>
-                  <h4 className="font-medium text-info">通知メールの送信</h4>
+                  <h4 className="font-medium text-info">参加者への影響</h4>
                   <p className="text-sm text-info/80 mt-1">
-                    変更内容について参加者に自動で通知メールが送信されます。
+                    変更内容により参加者に影響が生じる場合があります。必要に応じて主催者から個別に連絡をお取りください。
                   </p>
                 </div>
               </div>

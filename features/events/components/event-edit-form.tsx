@@ -3,7 +3,6 @@
 import { useState } from "react";
 
 import type { Event } from "@core/types/models";
-import { sanitizeForEventPay } from "@core/utils/sanitize";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -25,6 +24,11 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 
 import { useEventEditForm, type EventEditFormDataRHF } from "../hooks/use-event-edit-form";
+
+import {
+  UnifiedRestrictionNotice,
+  isFieldStructurallyRestricted,
+} from "./unified-restriction-notice";
 
 interface EventEditFormProps {
   event: Event;
@@ -49,7 +53,6 @@ export function EventEditForm({
     isPending,
     hasAttendees,
     validation,
-    restrictions,
     changes,
     actions,
     isFreeEvent, // 無料イベント判定フラグ
@@ -120,17 +123,14 @@ export function EventEditForm({
             </div>
           )}
 
-          {/* 編集制限の通知（V2: 決済済み時のみ） */}
-          {restrictions.getRestrictedFieldNames().length > 0 && (
-            <div className="bg-blue-50 border border-blue-200 text-blue-700 px-4 py-3 rounded">
-              <p className="font-medium">
-                決済済みの参加者がいるため、一部項目の編集が制限されています
-              </p>
-              <p className="text-sm mt-1">
-                制限項目: {restrictions.getRestrictedFieldNames().join(", ")}
-              </p>
-            </div>
-          )}
+          {/* 統合制限通知 */}
+          <UnifiedRestrictionNotice
+            restrictions={{
+              hasAttendees,
+              attendeeCount,
+              hasStripePaid,
+            }}
+          />
         </CardHeader>
 
         <CardContent>
@@ -154,13 +154,7 @@ export function EventEditForm({
                           タイトル <span className="text-red-500">*</span>
                         </FormLabel>
                         <FormControl>
-                          <Input
-                            {...field}
-                            value={sanitizeForEventPay(field.value)}
-                            disabled={isPending}
-                            maxLength={100}
-                            required
-                          />
+                          <Input {...field} disabled={isPending} maxLength={100} required />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -175,12 +169,7 @@ export function EventEditForm({
                       <FormItem>
                         <FormLabel>場所</FormLabel>
                         <FormControl>
-                          <Input
-                            {...field}
-                            value={sanitizeForEventPay(field.value)}
-                            disabled={isPending}
-                            maxLength={200}
-                          />
+                          <Input {...field} disabled={isPending} maxLength={200} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -210,14 +199,7 @@ export function EventEditForm({
                     name="capacity"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>
-                          定員
-                          {hasAttendees && (
-                            <span className="ml-2 text-sm text-gray-500">
-                              (現在の参加者数以上で設定)
-                            </span>
-                          )}
-                        </FormLabel>
+                        <FormLabel>定員</FormLabel>
                         <FormControl>
                           <Input
                             {...field}
@@ -246,13 +228,7 @@ export function EventEditForm({
                       <FormItem className="md:col-span-2">
                         <FormLabel>説明</FormLabel>
                         <FormControl>
-                          <Textarea
-                            {...field}
-                            value={sanitizeForEventPay(field.value)}
-                            disabled={isPending}
-                            rows={3}
-                            maxLength={1000}
-                          />
+                          <Textarea {...field} disabled={isPending} rows={3} maxLength={1000} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -277,9 +253,6 @@ export function EventEditForm({
                       <FormItem>
                         <FormLabel>
                           参加費（円） <span className="text-red-500">*</span>
-                          {restrictions.isFieldRestricted("fee") && (
-                            <span className="ml-2 text-sm text-gray-500">(編集制限)</span>
-                          )}
                         </FormLabel>
                         <FormControl>
                           <Input
@@ -288,7 +261,14 @@ export function EventEditForm({
                             min="0"
                             step="1"
                             inputMode="numeric"
-                            disabled={isPending || restrictions.isFieldRestricted("fee")}
+                            disabled={
+                              isPending ||
+                              isFieldStructurallyRestricted("fee", {
+                                hasAttendees,
+                                attendeeCount,
+                                hasStripePaid,
+                              })
+                            }
                             required
                           />
                         </FormControl>
@@ -306,9 +286,6 @@ export function EventEditForm({
                         <FormItem>
                           <FormLabel>
                             決済方法 <span className="text-red-500">*</span>
-                            {restrictions.isFieldRestricted("payment_methods") && (
-                              <span className="ml-2 text-sm text-gray-500">(編集制限)</span>
-                            )}
                           </FormLabel>
                           <div className="space-y-2">
                             {[
@@ -329,7 +306,12 @@ export function EventEditForm({
                                     }
                                   }}
                                   disabled={
-                                    isPending || restrictions.isFieldRestricted("payment_methods")
+                                    isPending ||
+                                    isFieldStructurallyRestricted("payment_methods", {
+                                      hasAttendees,
+                                      attendeeCount,
+                                      hasStripePaid,
+                                    })
                                   }
                                 />
                                 <label
@@ -376,6 +358,9 @@ export function EventEditForm({
                         <FormControl>
                           <Input {...field} type="datetime-local" disabled={isPending} />
                         </FormControl>
+                        <FormDescription className="text-xs text-gray-500">
+                          ※ 未入力時は既存の設定が保持されます。
+                        </FormDescription>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -398,7 +383,7 @@ export function EventEditForm({
                 </div>
 
                 {/* 締切後もオンライン決済を許可 + 猶予（日） */}
-                {!isFreeEvent && form.watch("payment_deadline") && (
+                {!isFreeEvent && (form.watch("payment_deadline") || form.watch("date")) && (
                   <div className="space-y-3">
                     <FormField
                       control={form.control}
@@ -418,7 +403,7 @@ export function EventEditForm({
                           <div className="space-y-1 leading-none">
                             <FormLabel>締切後もオンライン決済を許可</FormLabel>
                             <FormDescription>
-                              終了後も支払いを受け付けます（最長30日まで）。
+                              オンライン決済締切（または開催日時）後も支払いを受け付けます（最長30日まで）。
                             </FormDescription>
                           </div>
                         </FormItem>
@@ -450,7 +435,7 @@ export function EventEditForm({
                               />
                             </FormControl>
                             <FormDescription>
-                              オンライン決済締切からの猶予日数（最大30日）。
+                              オンライン決済締切（または開催日時）からの猶予日数（最大30日）。
                             </FormDescription>
                             <FormMessage />
                           </FormItem>
@@ -503,6 +488,7 @@ export function EventEditForm({
         onConfirm={handleConfirmChanges}
         onCancel={() => setShowConfirmDialog(false)}
         attendeeCount={attendeeCount}
+        hasStripePaid={hasStripePaid}
       />
     </>
   );
