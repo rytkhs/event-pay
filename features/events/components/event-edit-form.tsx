@@ -24,11 +24,9 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 
 import { useEventEditForm, type EventEditFormDataRHF } from "../hooks/use-event-edit-form";
+import { useRestrictionContext, useFormDataSnapshot } from "../hooks/use-unified-restrictions";
 
-import {
-  UnifiedRestrictionNotice,
-  isFieldStructurallyRestricted,
-} from "./unified-restriction-notice";
+import { UnifiedRestrictionNoticeV2 } from "./unified-restriction-notice-v2";
 
 interface EventEditFormProps {
   event: Event;
@@ -55,6 +53,7 @@ export function EventEditForm({
     validation,
     changes,
     actions,
+    restrictions,
     isFreeEvent, // 無料イベント判定フラグ
   } = useEventEditForm({
     event,
@@ -62,6 +61,26 @@ export function EventEditForm({
     onSubmit,
     hasStripePaid,
   });
+
+  // 統一制限システム用のデータ（V2表示コンポーネント用）
+  const restrictionContext = useRestrictionContext(
+    {
+      fee: event.fee,
+      capacity: event.capacity,
+      payment_methods: event.payment_methods,
+      title: event.title,
+      description: event.description ?? undefined,
+      location: event.location ?? undefined,
+      date: event.date,
+      registration_deadline: event.registration_deadline ?? undefined,
+      payment_deadline: event.payment_deadline ?? undefined,
+      allow_payment_after_deadline: event.allow_payment_after_deadline ?? undefined,
+      grace_period_days: event.grace_period_days ?? undefined,
+    },
+    { hasAttendees, attendeeCount, hasStripePaid },
+    "upcoming"
+  );
+  const formDataSnapshot = useFormDataSnapshot(form.watch());
 
   const handleSubmit = async (_data: EventEditFormDataRHF) => {
     // 変更検出
@@ -104,9 +123,6 @@ export function EventEditForm({
         <CardHeader className="space-y-4">
           <div className="flex items-center gap-4">
             <CardTitle className="text-2xl font-bold">イベント編集</CardTitle>
-            <div className="px-3 py-1 bg-blue-100 text-blue-800 text-sm rounded-full">
-              React Hook Form 版（テスト中）
-            </div>
           </div>
 
           {/* サーバーエラーの表示 */}
@@ -123,13 +139,11 @@ export function EventEditForm({
             </div>
           )}
 
-          {/* 統合制限通知 */}
-          <UnifiedRestrictionNotice
-            restrictions={{
-              hasAttendees,
-              attendeeCount,
-              hasStripePaid,
-            }}
+          {/* 統合制限通知（V2） */}
+          <UnifiedRestrictionNoticeV2
+            restrictions={restrictionContext}
+            formData={formDataSnapshot}
+            showLevels={["structural", "conditional", "advisory"]}
           />
         </CardHeader>
 
@@ -261,14 +275,7 @@ export function EventEditForm({
                             min="0"
                             step="1"
                             inputMode="numeric"
-                            disabled={
-                              isPending ||
-                              isFieldStructurallyRestricted("fee", {
-                                hasAttendees,
-                                attendeeCount,
-                                hasStripePaid,
-                              })
-                            }
+                            disabled={isPending || restrictions.isFieldRestricted("fee")}
                             required
                           />
                         </FormControl>
@@ -306,12 +313,7 @@ export function EventEditForm({
                                     }
                                   }}
                                   disabled={
-                                    isPending ||
-                                    isFieldStructurallyRestricted("payment_methods", {
-                                      hasAttendees,
-                                      attendeeCount,
-                                      hasStripePaid,
-                                    })
+                                    isPending || restrictions.isFieldRestricted("payment_methods")
                                   }
                                 />
                                 <label

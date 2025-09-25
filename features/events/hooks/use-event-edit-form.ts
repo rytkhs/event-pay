@@ -19,8 +19,12 @@ import {
 import type { ChangeItem } from "@/components/ui/change-confirmation-dialog";
 
 import { useEventChanges } from "./use-event-changes";
-import { useEventRestrictions } from "./use-event-restrictions";
 import { useEventSubmission } from "./use-event-submission";
+import {
+  useUnifiedRestrictions,
+  useRestrictionContext,
+  useFormDataSnapshot,
+} from "./use-unified-restrictions";
 
 interface UseEventEditFormProps {
   event: Event;
@@ -297,8 +301,30 @@ export function useEventEditForm({
   // 現在のフォームデータをメモ化（変更検出のリアクティブ性確保）
   const currentFormData = useMemo(() => getCurrentFormData(), [getCurrentFormData]);
 
+  // 統一制限システムの初期化
+  const restrictionContext = useRestrictionContext(
+    {
+      fee: event.fee,
+      capacity: event.capacity,
+      payment_methods: event.payment_methods,
+      title: event.title,
+      description: event.description ?? undefined,
+      location: event.location ?? undefined,
+      date: event.date,
+      registration_deadline: event.registration_deadline ?? undefined,
+      payment_deadline: event.payment_deadline ?? undefined,
+      allow_payment_after_deadline: event.allow_payment_after_deadline ?? undefined,
+      grace_period_days: event.grace_period_days ?? undefined,
+    },
+    { hasAttendees, attendeeCount, hasStripePaid },
+    "upcoming"
+  );
+  const formDataSnapshot = useFormDataSnapshot(
+    currentFormData as unknown as Record<string, unknown>
+  );
+  const unifiedRestrictions = useUnifiedRestrictions(restrictionContext, formDataSnapshot);
+
   // 分割されたフックの初期化
-  const restrictions = useEventRestrictions({ hasAttendees, attendeeCount, hasStripePaid });
   const changes = useEventChanges({
     event,
     formData: currentFormData,
@@ -474,17 +500,17 @@ export function useEventEditForm({
   // フィールド制限チェック
   const isFieldRestricted = useCallback(
     (field: string): boolean => {
-      return restrictions.isFieldRestricted(field, currentFormData);
+      return unifiedRestrictions.isFieldRestricted(field as any);
     },
-    [restrictions, currentFormData]
+    [unifiedRestrictions]
   );
 
   // フィールド編集可能チェック
   const isFieldEditable = useCallback(
     (field: string): boolean => {
-      return restrictions.isFieldEditable(field, currentFormData);
+      return unifiedRestrictions.isFieldEditable(field as any);
     },
-    [restrictions, currentFormData]
+    [unifiedRestrictions]
   );
 
   // 変更数の取得
@@ -516,10 +542,6 @@ export function useEventEditForm({
     restrictions: {
       isFieldRestricted,
       isFieldEditable,
-      getFieldDisplayName: restrictions.getFieldDisplayName,
-      getRestrictionReason: restrictions.getRestrictionReason,
-      getRestrictedFields: () => restrictions.getRestrictedFields(currentFormData),
-      getRestrictedFieldNames: () => restrictions.getRestrictedFieldNames(currentFormData),
     },
 
     // === 変更検出 ===
