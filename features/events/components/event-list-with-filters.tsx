@@ -39,7 +39,7 @@ export function EventListWithFilters({
   totalCount,
   isLoading: initialLoading = false,
   initialSortBy = "date",
-  initialSortOrder = "asc",
+  initialSortOrder = "desc",
   initialStatusFilter = "all",
   initialPaymentFilter = "all",
   initialDateFilter = {},

@@ -74,7 +74,7 @@ export async function getEventsAction(options: GetEventsOptions = {}): Promise<G
       paymentFilter = "all",
       dateFilter = {},
       sortBy = "date",
-      sortOrder = "asc",
+      sortOrder = "desc",
     } = options;
 
     // パラメータバリデーション
@@ -265,7 +265,7 @@ export async function getEventsAction(options: GetEventsOptions = {}): Promise<G
       eventsQuery = eventsQuery.order("id"); // 一意のソートキーとしてidを使用
     } else {
       // デフォルトソート
-      eventsQuery = eventsQuery.order("date", { ascending: true });
+      eventsQuery = eventsQuery.order("date", { ascending: false });
       eventsQuery = eventsQuery.range(offset, offset + limit - 1);
     }
 

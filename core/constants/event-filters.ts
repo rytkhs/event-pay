@@ -25,7 +25,7 @@ export const PAYMENT_FILTER_OPTIONS: readonly PaymentFilter[] = ["all", "free", 
 
 // デフォルト値
 export const DEFAULT_SORT_BY: SortBy = "date";
-export const DEFAULT_SORT_ORDER: SortOrder = "asc";
+export const DEFAULT_SORT_ORDER: SortOrder = "desc";
 export const DEFAULT_STATUS_FILTER: StatusFilter = "all";
 export const DEFAULT_PAYMENT_FILTER: PaymentFilter = "all";
 
