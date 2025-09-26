@@ -1206,7 +1206,6 @@ CREATE OR REPLACE FUNCTION "public"."register_attendance_with_payment"("p_event_
     AS $_$
 DECLARE
   v_attendance_id UUID;
-  v_event_exists BOOLEAN;
 BEGIN
   -- 入力パラメータの検証
   IF p_event_id IS NULL THEN
@@ -1963,7 +1962,7 @@ CREATE TABLE IF NOT EXISTS "public"."events" (
     "canceled_by" "uuid",
     CONSTRAINT "events_capacity_check" CHECK ((("capacity" IS NULL) OR ("capacity" > 0))),
     CONSTRAINT "events_date_after_creation" CHECK (("date" > "created_at")),
-    CONSTRAINT "events_fee_check" CHECK (("fee" >= 0)),
+    CONSTRAINT "events_fee_check" CHECK ((("fee" = 0) OR (("fee" >= 100) AND ("fee" <= 1000000)))),
     CONSTRAINT "events_grace_period_days_check" CHECK ((("grace_period_days" >= 0) AND ("grace_period_days" <= 30))),
     CONSTRAINT "events_payment_deadline_after_registration" CHECK ((("payment_deadline" IS NULL) OR ("registration_deadline" IS NULL) OR ("payment_deadline" >= "registration_deadline"))),
     CONSTRAINT "events_payment_deadline_within_30d_after_date" CHECK ((("payment_deadline" IS NULL) OR ("payment_deadline" <= ("date" + '30 days'::interval)))),
