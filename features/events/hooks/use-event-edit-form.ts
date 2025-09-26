@@ -265,14 +265,38 @@ export function useEventEditForm({
     }
   }, [isFreeEvent, form]);
 
-  // stripe選択解除時のpayment_deadlineクリア
+  // stripe選択解除時のpayment_deadline および関連フィールドのクリア
   useEffect(() => {
     const paymentMethods = watchedPaymentMethods || [];
 
     if (!paymentMethods.includes("stripe")) {
       const currentPaymentDeadline = form.getValues("payment_deadline");
+      const currentAllowPaymentAfterDeadline = form.getValues("allow_payment_after_deadline");
+      const currentGracePeriodDays = form.getValues("grace_period_days");
+
+      // payment_deadlineをクリア
       if (currentPaymentDeadline && currentPaymentDeadline.trim() !== "") {
         form.setValue("payment_deadline", "", {
+          shouldValidate: true,
+          shouldTouch: false, // 自動クリアは変更扱いしない
+        });
+      }
+
+      // allow_payment_after_deadlineをクリア
+      if (currentAllowPaymentAfterDeadline) {
+        form.setValue("allow_payment_after_deadline", false, {
+          shouldValidate: true,
+          shouldTouch: false, // 自動クリアは変更扱いしない
+        });
+      }
+
+      // grace_period_daysをクリア
+      if (
+        currentGracePeriodDays &&
+        currentGracePeriodDays.trim() !== "" &&
+        currentGracePeriodDays !== "0"
+      ) {
+        form.setValue("grace_period_days", "0", {
           shouldValidate: true,
           shouldTouch: false, // 自動クリアは変更扱いしない
         });
@@ -316,7 +340,7 @@ export function useEventEditForm({
       grace_period_days: event.grace_period_days ?? undefined,
     },
     { hasAttendees, attendeeCount, hasStripePaid },
-    "upcoming"
+    event.status ?? "upcoming"
   );
   const formDataSnapshot = useFormDataSnapshot(
     currentFormData as unknown as Record<string, unknown>

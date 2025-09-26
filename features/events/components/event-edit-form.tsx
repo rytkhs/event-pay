@@ -78,7 +78,7 @@ export function EventEditForm({
       grace_period_days: event.grace_period_days ?? undefined,
     },
     { hasAttendees, attendeeCount, hasStripePaid },
-    "upcoming"
+    event.status ?? "upcoming"
   );
   const formDataSnapshot = useFormDataSnapshot(form.watch());
 

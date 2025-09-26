@@ -68,6 +68,50 @@ export function ChangeConfirmationDialog({
         </DialogHeader>
 
         <div id="change-confirmation-description" className="space-y-4">
+          {/* 副次的変更のサマリー */}
+          {(() => {
+            const secondaryChanges = changes.filter(
+              (change) =>
+                change.newValue.includes("（無料化により自動クリア）") ||
+                change.newValue.includes("（オンライン決済選択解除により自動クリア）")
+            );
+
+            if (secondaryChanges.length > 0) {
+              const freeEventChanges = secondaryChanges.filter((change) =>
+                change.newValue.includes("（無料化により自動クリア）")
+              );
+              const stripeChanges = secondaryChanges.filter((change) =>
+                change.newValue.includes("（オンライン決済選択解除により自動クリア）")
+              );
+
+              return (
+                <div className="bg-info/10 border border-info/20 rounded-lg p-4">
+                  <div className="flex items-start gap-3">
+                    <span className="text-info text-lg">ℹ️</span>
+                    <div>
+                      <h4 className="font-medium text-info">自動的な変更について</h4>
+                      <div className="text-sm text-info/80 mt-1 space-y-1">
+                        {freeEventChanges.length > 0 && (
+                          <p>
+                            <strong>無料化に伴う自動クリア:</strong>{" "}
+                            決済方法、決済締切、締切後決済許可、猶予期間が自動的にクリアされます。
+                          </p>
+                        )}
+                        {stripeChanges.length > 0 && (
+                          <p>
+                            <strong>オンライン決済選択解除に伴う自動クリア:</strong>{" "}
+                            決済締切、締切後決済許可、猶予期間が自動的にクリアされます。
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            }
+            return null;
+          })()}
+
           {/* 変更内容の表示 */}
           {changes.length > 0 && (
             <div className="space-y-3">
@@ -76,7 +120,12 @@ export function ChangeConfirmationDialog({
                 {changes.map((change, index) => (
                   <div
                     key={index}
-                    className="bg-muted/30 p-3 rounded-lg border"
+                    className={`p-3 rounded-lg border ${
+                      change.newValue.includes("（無料化により自動クリア）") ||
+                      change.newValue.includes("（オンライン決済選択解除により自動クリア）")
+                        ? "bg-info/5 border-info/20"
+                        : "bg-muted/30"
+                    }`}
                     data-testid={`change-item-${change.field}`}
                   >
                     <div className="font-medium text-sm text-foreground">{change.fieldName}</div>

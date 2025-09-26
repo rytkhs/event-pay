@@ -158,13 +158,11 @@ export async function updateEventAction(
       ? convertDatetimeLocalToIso(validatedData.date as string)
       : existingEvent.date;
 
-    // registration_deadline: 入力未指定なら既存値、空文字はnull（クリア）
+    // registration_deadline: 入力未指定なら既存値、Zodで空文字はチェック済み
     const effectiveRegDeadlineIso =
       validatedData.registration_deadline !== undefined
-        ? validatedData.registration_deadline
-          ? convertDatetimeLocalToIso(validatedData.registration_deadline as string)
-          : null
-        : (existingEvent.registration_deadline as string | null);
+        ? convertDatetimeLocalToIso(validatedData.registration_deadline as string)
+        : existingEvent.registration_deadline;
 
     // payment_deadline: 入力未指定なら既存値、空文字はnull（クリア）
     const effectivePayDeadlineIso =
@@ -293,7 +291,8 @@ export async function updateEventAction(
       }
     }
 
-    // 決済完了者（Stripe）の存在を確認（有無だけで良いので軽量に取得）
+    // Stripe決済済み参加者の存在を確認（有無だけで良いので軽量に取得）
+    // 注意: 現金決済済みはここには含まれない（仕様：Stripe決済完了者がいる場合のみ金銭系をロック）
     const { data: stripePayments, error: paymentsError } = await supabase
       .from("payments")
       .select("id, attendances!inner(event_id)")
@@ -303,8 +302,8 @@ export async function updateEventAction(
       .limit(1);
 
     // 決済状況取得エラー時はフェイルクローズ（UI側と統一）
-    // エラー時は安全側に倒して、決済済み参加者がいるものとして扱う
-    const hasActivePayments = paymentsError ? true : (stripePayments?.length || 0) > 0;
+    // エラー時は安全側に倒して、Stripe決済済み参加者がいるものとして扱う
+    const hasStripePaid = paymentsError ? true : (stripePayments?.length || 0) > 0;
 
     // 現在の参加者数（attending のみ）を算出 - 共通ユーティリティを使用
     const attendeeCount = calculateAttendeeCount(existingEvent.attendances || []);
@@ -317,7 +316,7 @@ export async function updateEventAction(
         capacity: validatedData.capacity,
         payment_methods: validatedData.payment_methods,
       },
-      { attendeeCount, hasActivePayments }
+      { attendeeCount, hasActivePayments: hasStripePaid }
     );
 
     if (restrictions.length > 0) {
@@ -488,8 +487,9 @@ function buildUpdateData(
   }
 
   if (validatedData.registration_deadline !== undefined) {
-    // registration_deadlineは必須項目のため、有効な値のみ更新
-    const newDeadline = convertDatetimeLocalToIso(validatedData.registration_deadline as string);
+    // Zodバリデーションで空文字は既にチェック済みのため、ここでは有効な値として処理
+    const deadline = validatedData.registration_deadline as string;
+    const newDeadline = convertDatetimeLocalToIso(deadline);
     if (newDeadline !== existingEvent.registration_deadline) {
       updateData.registration_deadline = newDeadline;
     }

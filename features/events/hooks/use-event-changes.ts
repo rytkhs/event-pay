@@ -21,6 +21,131 @@ export function useEventChanges({
   hasValidationErrors = false,
   isFieldEditable,
 }: UseEventChangesProps) {
+  // 副次的クリアの検出機能
+  const detectSecondaryChanges = useCallback((): ChangeItem[] => {
+    const secondaryChanges: ChangeItem[] = [];
+
+    // 参加費が0円になった場合の副次的クリアを検出
+    const currentFee =
+      typeof formData.fee === "string" ? Number(formData.fee || 0) : formData.fee || 0;
+    const originalFee = event.fee ?? 0;
+
+    if (currentFee === 0 && originalFee > 0) {
+      // 決済方法がクリアされる場合
+      const originalPaymentMethods = event.payment_methods || [];
+      const currentPaymentMethods = formData.payment_methods || [];
+
+      if (originalPaymentMethods.length > 0 && currentPaymentMethods.length === 0) {
+        secondaryChanges.push({
+          field: "payment_methods",
+          fieldName: "決済方法",
+          oldValue: originalPaymentMethods.join(", "),
+          newValue: "（無料化により自動クリア）",
+        });
+      }
+
+      // 決済締切がクリアされる場合
+      const originalPaymentDeadline = event.payment_deadline;
+      const currentPaymentDeadline = formData.payment_deadline;
+
+      if (
+        originalPaymentDeadline &&
+        (!currentPaymentDeadline || currentPaymentDeadline.trim() === "")
+      ) {
+        secondaryChanges.push({
+          field: "payment_deadline",
+          fieldName: "決済締切",
+          oldValue: formatUtcToDatetimeLocal(originalPaymentDeadline),
+          newValue: "（無料化により自動クリア）",
+        });
+      }
+
+      // 締切後決済許可がクリアされる場合
+      const originalAllowAfter = event.allow_payment_after_deadline;
+      const currentAllowAfter = formData.allow_payment_after_deadline;
+
+      if (originalAllowAfter && !currentAllowAfter) {
+        secondaryChanges.push({
+          field: "allow_payment_after_deadline",
+          fieldName: "締切後決済許可",
+          oldValue: "許可",
+          newValue: "（無料化により自動クリア）",
+        });
+      }
+
+      // 猶予期間がクリアされる場合
+      const originalGrace = event.grace_period_days ?? 0;
+      const currentGrace =
+        typeof formData.grace_period_days === "string"
+          ? Number(formData.grace_period_days || 0)
+          : formData.grace_period_days || 0;
+
+      if (originalGrace > 0 && currentGrace === 0) {
+        secondaryChanges.push({
+          field: "grace_period_days",
+          fieldName: "猶予期間",
+          oldValue: originalGrace.toString(),
+          newValue: "（無料化により自動クリア）",
+        });
+      }
+    }
+
+    // Stripe選択解除時の副次的クリアを検出
+    const originalPaymentMethods = event.payment_methods || [];
+    const currentPaymentMethods = formData.payment_methods || [];
+    const hadStripe = originalPaymentMethods.includes("stripe");
+    const hasStripe = currentPaymentMethods.includes("stripe");
+
+    if (hadStripe && !hasStripe) {
+      // 決済締切がクリアされる場合
+      const originalPaymentDeadline = event.payment_deadline;
+      const currentPaymentDeadline = formData.payment_deadline;
+
+      if (
+        originalPaymentDeadline &&
+        (!currentPaymentDeadline || currentPaymentDeadline.trim() === "")
+      ) {
+        secondaryChanges.push({
+          field: "payment_deadline",
+          fieldName: "決済締切",
+          oldValue: formatUtcToDatetimeLocal(originalPaymentDeadline),
+          newValue: "（オンライン決済選択解除により自動クリア）",
+        });
+      }
+
+      // 締切後決済許可がクリアされる場合
+      const originalAllowAfter = event.allow_payment_after_deadline;
+      const currentAllowAfter = formData.allow_payment_after_deadline;
+
+      if (originalAllowAfter && !currentAllowAfter) {
+        secondaryChanges.push({
+          field: "allow_payment_after_deadline",
+          fieldName: "締切後決済許可",
+          oldValue: "許可",
+          newValue: "（オンライン決済選択解除により自動クリア）",
+        });
+      }
+
+      // 猶予期間がクリアされる場合
+      const originalGrace = event.grace_period_days ?? 0;
+      const currentGrace =
+        typeof formData.grace_period_days === "string"
+          ? Number(formData.grace_period_days || 0)
+          : formData.grace_period_days || 0;
+
+      if (originalGrace > 0 && currentGrace === 0) {
+        secondaryChanges.push({
+          field: "grace_period_days",
+          fieldName: "猶予期間",
+          oldValue: originalGrace.toString(),
+          newValue: "（オンライン決済選択解除により自動クリア）",
+        });
+      }
+    }
+
+    return secondaryChanges;
+  }, [event, formData]);
+
   // 変更検出機能（型安全・サーバーサイドと整合した比較ロジック）
   const detectChanges = useCallback((): ChangeItem[] => {
     const changes: ChangeItem[] = [];
@@ -187,8 +312,24 @@ export function useEventChanges({
       }
     });
 
-    return changes;
-  }, [event, formData, isFieldEditable]);
+    // 副次的変更を考慮して重複を統合（同一フィールドは1件に集約。副次的変更を優先）
+    const secondaryChanges = detectSecondaryChanges();
+    const mergedChangesByField = new Map<string, ChangeItem>();
+
+    // まず通常変更を格納
+    for (const change of changes) {
+      if (!mergedChangesByField.has(change.field)) {
+        mergedChangesByField.set(change.field, change);
+      }
+    }
+
+    // 副次的変更がある場合は同一フィールドを上書き（説明性の高い表示を優先）
+    for (const secondary of secondaryChanges) {
+      mergedChangesByField.set(secondary.field, secondary);
+    }
+
+    return Array.from(mergedChangesByField.values());
+  }, [event, formData, isFieldEditable, detectSecondaryChanges]);
 
   // 変更があるかどうかをメモ化（バリデーションエラーがある場合は変更なし扱い）
   const hasChanges = useMemo(() => {

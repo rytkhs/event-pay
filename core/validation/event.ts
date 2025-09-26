@@ -119,9 +119,11 @@ export const createEventSchema = z
 
     registration_deadline: z
       .string()
-      .min(1, "参加申込締切は必須です")
+      .min(1, "参加申込締切が空です")
+      .refine((val) => val && val.trim() !== "", "参加申込締切は必須です")
       .transform((val) => sanitizeForEventPay(val.trim())) // XSS対策
-      .refine(validateFutureDate, "参加申込締切は現在時刻より後である必要があります"),
+      .refine(validateFutureDate, "参加申込締切は現在時刻より後である必要があります")
+      .optional(),
 
     payment_deadline: z
       .string()
@@ -280,12 +282,12 @@ export const updateEventSchema = z
 
     fee: z
       .string()
-      .regex(/^\d+$/, "参加費は0〜1,000,000の整数で入力してください")
+      .regex(/^\d+$/, "参加費は0円（無料）または100〜1,000,000円の整数で入力してください")
       .refine((val: string) => {
         if (val === "") return true;
         const n = Number(val);
-        return Number.isInteger(n) && n >= 0 && n <= 1_000_000;
-      }, "参加費は0〜1,000,000の整数で入力してください")
+        return Number.isInteger(n) && (n === 0 || (n >= 100 && n <= 1_000_000));
+      }, "参加費は0円（無料）または100〜1,000,000円の整数で入力してください")
       .transform((val) => (val ? Number(val) : undefined))
       .optional(),
 
@@ -330,6 +332,7 @@ export const updateEventSchema = z
     registration_deadline: z
       .string()
       .min(1, "参加申込締切が空です")
+      .refine((val) => val && val.trim() !== "", "参加申込締切は空文字列では許可されません")
       // 編集では過去日時も保存可能（運用整備用）。現在時刻チェックは行わない。
       // 注意: DBで必須のため、送信する場合は有効な値が必要（空文字列不可）
       .optional(),
@@ -448,9 +451,22 @@ export const updateEventSchema = z
       message: "有料イベントでは決済方法の選択が必要です",
       path: ["payment_methods"],
     }
+  )
+  .refine(
+    (data) => {
+      // 同一リクエストでStripe有効化する場合は決済締切も同時に必須
+      if (Array.isArray(data.payment_methods) && data.payment_methods.includes("stripe")) {
+        return typeof data.payment_deadline === "string" && data.payment_deadline.trim() !== "";
+      }
+      return true;
+    },
+    {
+      message: "オンライン決済を選択した場合、決済締切は必須です",
+      path: ["payment_deadline"],
+    }
   );
 // 更新時は部分更新を考慮し、payment_deadline必須チェックはアクション本体で統合実施
-// Zodスキーマでは基本的なバリデーションのみ行う
+// Zodスキーマでは基本的なバリデーションのみ行う（上記は補助的な早期チェック）
 
 export type CreateEventInput = z.infer<typeof createEventSchema>;
 export type UpdateEventInput = z.infer<typeof updateEventSchema>;
