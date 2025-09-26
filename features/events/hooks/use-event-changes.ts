@@ -11,12 +11,15 @@ interface UseEventChangesProps {
   event: Event;
   formData: EventFormData;
   hasValidationErrors?: boolean;
+  // フィールドが編集可能かを判定する関数（未指定時は全て編集可能とみなす）
+  isFieldEditable?: (field: string) => boolean;
 }
 
 export function useEventChanges({
   event,
   formData,
   hasValidationErrors = false,
+  isFieldEditable,
 }: UseEventChangesProps) {
   // 変更検出機能（型安全・サーバーサイドと整合した比較ロジック）
   const detectChanges = useCallback((): ChangeItem[] => {
@@ -138,6 +141,10 @@ export function useEventChanges({
     ];
 
     fieldChecks.forEach(({ field, oldValue, newValue, fieldName }) => {
+      // 編集不可フィールドは検出対象から除外
+      if (typeof isFieldEditable === "function" && !isFieldEditable(field)) {
+        return;
+      }
       if (isFieldChanged(field, oldValue, newValue)) {
         // 表示用の値を生成（統一された形式）
         let displayOldValue: string;
@@ -181,7 +188,7 @@ export function useEventChanges({
     });
 
     return changes;
-  }, [event, formData]);
+  }, [event, formData, isFieldEditable]);
 
   // 変更があるかどうかをメモ化（バリデーションエラーがある場合は変更なし扱い）
   const hasChanges = useMemo(() => {

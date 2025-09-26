@@ -60,16 +60,9 @@ export const STRIPE_PAID_FEE_RESTRICTION: RestrictionRule = {
   field: "fee",
   level: "structural",
   name: "決済済み参加者による参加費制限",
-  evaluate: (context: RestrictionContext, formData: FormDataSnapshot) => {
-    if (!context.hasStripePaid) {
-      return createEvaluation(false, "制限なし");
-    }
-
-    // フォームデータの参加費と元の参加費を比較
-    const currentFee = safeParseNumber(formData.fee) ?? 0;
-    const originalFee = context.originalEvent.fee ?? 0;
-
-    if (currentFee !== originalFee) {
+  evaluate: (context: RestrictionContext, _formData: FormDataSnapshot) => {
+    // 決済済み参加者がいる場合は常に制限（フォームデータの内容に関係なく）
+    if (context.hasStripePaid) {
       return createEvaluation(
         true,
         "決済済み参加者がいるため、参加費は変更できません",
@@ -88,20 +81,9 @@ export const STRIPE_PAID_PAYMENT_METHODS_RESTRICTION: RestrictionRule = {
   field: "payment_methods",
   level: "structural",
   name: "決済済み参加者による決済方法制限",
-  evaluate: (context: RestrictionContext, formData: FormDataSnapshot) => {
-    if (!context.hasStripePaid) {
-      return createEvaluation(false, "制限なし");
-    }
-
-    // 配列の内容比較（順序無視）
-    const currentMethods = new Set(formData.payment_methods || []);
-    const originalMethods = new Set(context.originalEvent.payment_methods || []);
-
-    const hasChanges =
-      currentMethods.size !== originalMethods.size ||
-      !Array.from(currentMethods).every((method) => originalMethods.has(method));
-
-    if (hasChanges) {
+  evaluate: (context: RestrictionContext, _formData: FormDataSnapshot) => {
+    // 決済済み参加者がいる場合は常に制限（フォームデータの内容に関係なく）
+    if (context.hasStripePaid) {
       return createEvaluation(
         true,
         "決済済み参加者がいるため、決済方法は変更できません",

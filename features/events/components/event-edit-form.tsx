@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 import type { Event } from "@core/types/models";
 
@@ -81,6 +81,15 @@ export function EventEditForm({
     "upcoming"
   );
   const formDataSnapshot = useFormDataSnapshot(form.watch());
+
+  const hasStripeSelected = (form.watch("payment_methods") || []).includes("stripe");
+
+  // Stripe選択時の即時バリデーション
+  useEffect(() => {
+    if (hasStripeSelected && !isFreeEvent) {
+      void form.trigger("payment_deadline");
+    }
+  }, [hasStripeSelected, isFreeEvent, form]);
 
   const handleSubmit = async (_data: EventEditFormDataRHF) => {
     // 変更検出
@@ -229,6 +238,12 @@ export function EventEditForm({
                             }}
                           />
                         </FormControl>
+                        {hasAttendees && (
+                          <FormDescription className="text-xs text-gray-500">
+                            参加者がいるため、定員は現在の参加者数（{attendeeCount}
+                            名）未満に設定できません。
+                          </FormDescription>
+                        )}
                         <FormMessage />
                       </FormItem>
                     )}
@@ -275,10 +290,19 @@ export function EventEditForm({
                             min="0"
                             step="1"
                             inputMode="numeric"
-                            disabled={isPending || restrictions.isFieldRestricted("fee")}
+                            disabled={isPending || !restrictions.isFieldEditable("fee")}
                             required
                           />
                         </FormControl>
+                        {!restrictions.isFieldEditable("fee") ? (
+                          <FormDescription className="text-xs text-gray-500">
+                            決済済み参加者がいるため、この項目は変更できません。
+                          </FormDescription>
+                        ) : (
+                          <FormDescription className="text-sm text-gray-600">
+                            0円（無料）または100円以上で設定してください。
+                          </FormDescription>
+                        )}
                         <FormMessage />
                       </FormItem>
                     )}
@@ -313,7 +337,7 @@ export function EventEditForm({
                                     }
                                   }}
                                   disabled={
-                                    isPending || restrictions.isFieldRestricted("payment_methods")
+                                    isPending || !restrictions.isFieldEditable("payment_methods")
                                   }
                                 />
                                 <label
@@ -325,6 +349,17 @@ export function EventEditForm({
                               </div>
                             ))}
                           </div>
+                          {!restrictions.isFieldEditable("payment_methods") && (
+                            <FormDescription className="text-xs text-gray-500">
+                              決済済み参加者がいるため、この項目は変更できません。
+                            </FormDescription>
+                          )}
+                          {restrictions.isFieldEditable("payment_methods") && (
+                            <FormDescription className="text-xs text-gray-500">
+                              クレジットカード決済（Stripe）を選択する場合は、下部でオンライン決済締切を必ず設定してください
+                              <span className="text-red-500 ml-1 font-bold">*</span>
+                            </FormDescription>
+                          )}
                           <FormMessage />
                         </FormItem>
                       )}
@@ -368,24 +403,29 @@ export function EventEditForm({
                     )}
                   />
 
-                  {/* 支払い締切 */}
-                  <FormField
-                    control={form.control}
-                    name="payment_deadline"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>オンライン決済締切</FormLabel>
-                        <FormControl>
-                          <Input {...field} type="datetime-local" disabled={isPending} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                  {/* 支払い締切（stripe選択時のみ表示） */}
+                  {hasStripeSelected && !isFreeEvent && (
+                    <FormField
+                      control={form.control}
+                      name="payment_deadline"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>オンライン決済締切</FormLabel>
+                          <FormControl>
+                            <Input {...field} type="datetime-local" disabled={isPending} />
+                          </FormControl>
+                          {/* <FormDescription className="text-xs text-red-600">
+                            クレジットカード決済を有効にしたため必須です
+                          </FormDescription> */}
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  )}
                 </div>
 
-                {/* 締切後もオンライン決済を許可 + 猶予（日） */}
-                {!isFreeEvent && (form.watch("payment_deadline") || form.watch("date")) && (
+                {/* 締切後もオンライン決済を許可 + 猶予（日）: stripe選択時のみ */}
+                {hasStripeSelected && !isFreeEvent && (
                   <div className="space-y-3">
                     <FormField
                       control={form.control}

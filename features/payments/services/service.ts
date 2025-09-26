@@ -33,6 +33,16 @@ import {
 } from "./types";
 
 /**
+ * 終端決済状態の定義（完了済みとして扱う状態）
+ */
+const TERMINAL_PAYMENT_STATUSES = ["paid", "received", "completed", "refunded", "waived"] as const;
+
+/**
+ * オープン決済状態の定義（処理継続可能な状態）
+ */
+const OPEN_PAYMENT_STATUSES = ["pending", "failed"] as const;
+
+/**
  * PaymentServiceの実装クラス
  */
 export class PaymentService implements IPaymentService {
@@ -53,16 +63,74 @@ export class PaymentService implements IPaymentService {
   }
 
   /**
+   * 決済レコードの有効時間を計算（状態別優先順位適用）
+   */
+  private calculateEffectiveTime(
+    status: PaymentStatus,
+    paid_at: string | null,
+    updated_at: string | null,
+    created_at: string | null
+  ): string | null {
+    // 終端状態: paid_at > updated_at > created_at
+    if (TERMINAL_PAYMENT_STATUSES.includes(status as any)) {
+      return paid_at ?? updated_at ?? created_at;
+    }
+
+    // オープン状態: updated_at > created_at
+    return updated_at ?? created_at;
+  }
+
+  /**
+   * 決済レコード配列から最新のものを1つ選定（有効時間ベース）
+   */
+  private findLatestPaymentByEffectiveTime<
+    T extends {
+      status: string;
+      paid_at: string | null;
+      updated_at: string | null;
+      created_at: string | null;
+    },
+  >(payments: T[]): T | null {
+    if (!payments?.length) return null;
+
+    return payments
+      .map((payment) => ({
+        ...payment,
+        effectiveTime: this.calculateEffectiveTime(
+          payment.status as PaymentStatus,
+          payment.paid_at,
+          payment.updated_at,
+          payment.created_at
+        ),
+      }))
+      .filter((payment) => payment.effectiveTime) // 有効時間がnullのものを除外
+      .sort((a, b) => {
+        const timeA = new Date(a.effectiveTime || a.created_at || 0).getTime();
+        const timeB = new Date(b.effectiveTime || b.created_at || 0).getTime();
+        if (timeA !== timeB) {
+          return timeB - timeA; // 降順（新しい順）
+        }
+        // 時間が同じ場合はcreated_atで比較
+        const createdA = new Date(a.created_at || 0).getTime();
+        const createdB = new Date(b.created_at || 0).getTime();
+        return createdB - createdA;
+      })[0];
+  }
+
+  /**
    * Stripe決済セッションを作成する
    *
    * 重複作成ガードについて:
    * - 重複検知と一意性の最終責務は本メソッド（Service）に集約する。
    * - 振る舞い（DBの降格禁止ルールに整合）:
-   *   - 参加に紐づく既存決済が支払完了系（paid/received/completed/refunded）の場合は
-   *     PaymentErrorType.PAYMENT_ALREADY_EXISTS を投げる。
+   *   - 参加に紐づく既存決済が支払完了系（paid/received/completed/refunded/waived）の場合は
+   *     【無条件で】PaymentErrorType.PAYMENT_ALREADY_EXISTS を投げる（重複課金防止）。
    *   - openが pending の場合のみ同レコードを再利用（Stripe識別子のリセットと金額更新）。
    *   - openが failed の場合は新規に pending レコードを作成（failed→pending の降格は行わない）。
    *   - DB一意制約違反（23505）は並行作成とみなし、直近の open を再利用する。
+   * - 決済レコードの最新性判定は統一されたeffectiveTime計算ロジックを使用:
+   *   - 終端状態: paid_at > updated_at > created_at の優先順位
+   *   - オープン状態: updated_at > created_at の優先順位
    * - Action 層では重複チェックを省略してよい（最終判断は本メソッド）。
    */
   async createStripeSession(params: CreateStripeSessionParams): Promise<CreateStripeSessionResult> {
@@ -90,6 +158,9 @@ export class PaymentService implements IPaymentService {
         id: string;
         status: PaymentStatus;
         method: PaymentMethod;
+        amount: number;
+        checkout_idempotency_key: string | null;
+        checkout_key_revision: number;
         stripe_payment_intent_id: string | null;
         paid_at: string | null;
         created_at: string | null;
@@ -97,87 +168,55 @@ export class PaymentService implements IPaymentService {
       };
       let openPayment: OpenPaymentRow | null = null;
 
-      const { data: openPending, error: openPendingError } = await this.supabase
+      const { data: openPayments, error: openPaymentsError } = await this.supabase
         .from("payments")
         .select(
           "id, status, method, amount, checkout_idempotency_key, checkout_key_revision, stripe_payment_intent_id, paid_at, created_at, updated_at"
         )
         .eq("attendance_id", params.attendanceId)
-        .eq("status", "pending")
-        .order("updated_at", { ascending: false, nullsFirst: false })
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
+        .in("status", OPEN_PAYMENT_STATUSES);
 
-      if (openPendingError) {
+      if (openPaymentsError) {
         throw new PaymentError(
           PaymentErrorType.DATABASE_ERROR,
-          `決済レコード（open/pending）の検索に失敗しました: ${openPendingError.message}`,
-          openPendingError
+          `決済レコード（open）の検索に失敗しました: ${openPaymentsError.message}`,
+          openPaymentsError
         );
       }
-      if (openPending) {
-        const row = openPending as any;
-        openPayment = {
-          id: row.id,
-          status: row.status as PaymentStatus,
-          method: row.method as PaymentMethod,
-          // hydrate additional fields for idempotency handling
-          amount: row.amount as number,
-          checkout_idempotency_key: (row.checkout_idempotency_key as string) ?? null,
-          checkout_key_revision: (row.checkout_key_revision as number | null) ?? 0,
-          stripe_payment_intent_id: row.stripe_payment_intent_id,
-          paid_at: row.paid_at ?? null,
-          created_at: row.created_at ?? null,
-          updated_at: row.updated_at ?? null,
-        } as any;
-      } else {
-        const { data: openFailed, error: openFailedError } = await this.supabase
-          .from("payments")
-          .select(
-            "id, status, method, amount, checkout_idempotency_key, checkout_key_revision, stripe_payment_intent_id, paid_at, created_at, updated_at"
-          )
-          .eq("attendance_id", params.attendanceId)
-          .eq("status", "failed")
-          .order("updated_at", { ascending: false, nullsFirst: false })
-          .order("created_at", { ascending: false })
-          .limit(1)
-          .maybeSingle();
+      // オープン決済の最新選定（統一されたソートロジック使用）
+      if (openPayments && openPayments.length > 0) {
+        const latestOpen = this.findLatestPaymentByEffectiveTime(openPayments);
 
-        if (openFailedError) {
-          throw new PaymentError(
-            PaymentErrorType.DATABASE_ERROR,
-            `決済レコード（open/failed）の検索に失敗しました: ${openFailedError.message}`,
-            openFailedError
-          );
-        }
-        if (openFailed) {
-          const row = openFailed as any;
+        if (latestOpen) {
           openPayment = {
-            id: row.id,
-            status: row.status as PaymentStatus,
-            method: row.method as PaymentMethod,
+            id: latestOpen.id,
+            status: latestOpen.status as PaymentStatus,
+            method: latestOpen.method as PaymentMethod,
             // hydrate additional fields for idempotency handling
-            amount: row.amount as number,
-            checkout_idempotency_key: (row.checkout_idempotency_key as string) ?? null,
-            checkout_key_revision: (row.checkout_key_revision as number | null) ?? 0,
-            stripe_payment_intent_id: row.stripe_payment_intent_id,
-            paid_at: row.paid_at ?? null,
-            created_at: row.created_at ?? null,
-            updated_at: row.updated_at ?? null,
+            amount: latestOpen.amount as number,
+            // 🔧 型安全な値取得に修正
+            checkout_idempotency_key:
+              typeof latestOpen.checkout_idempotency_key === "string"
+                ? latestOpen.checkout_idempotency_key
+                : null,
+            checkout_key_revision:
+              typeof latestOpen.checkout_key_revision === "number"
+                ? latestOpen.checkout_key_revision
+                : 0,
+            stripe_payment_intent_id: latestOpen.stripe_payment_intent_id,
+            paid_at: latestOpen.paid_at ?? null,
+            created_at: latestOpen.created_at ?? null,
+            updated_at: latestOpen.updated_at ?? null,
           } as any;
         }
       }
 
-      const { data: latestTerminal, error: terminalFindError } = await this.supabase
+      // 終端決済を全件取得してアプリケーション側で正確にソート
+      const { data: terminalPayments, error: terminalFindError } = await this.supabase
         .from("payments")
         .select("id, status, paid_at, created_at, updated_at")
         .eq("attendance_id", params.attendanceId)
-        .in("status", ["paid", "received", "completed", "refunded", "waived"])
-        .order("paid_at", { ascending: false, nullsFirst: false })
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
+        .in("status", TERMINAL_PAYMENT_STATUSES);
 
       if (terminalFindError) {
         throw new PaymentError(
@@ -187,33 +226,21 @@ export class PaymentService implements IPaymentService {
         );
       }
 
-      // 支払完了系が直近に存在する場合は受付不可
-      if (latestTerminal) {
-        if (!openPayment) {
-          throw new PaymentError(
-            PaymentErrorType.PAYMENT_ALREADY_EXISTS,
-            "この参加に対する決済は既に完了済みです"
-          );
-        }
+      const latestTerminal = this.findLatestPaymentByEffectiveTime(terminalPayments);
 
-        const terminalTime = (latestTerminal.paid_at ??
-          latestTerminal.updated_at ??
-          latestTerminal.created_at) as string | null;
-        const openTime = (openPayment.updated_at ?? openPayment.created_at) as string | null;
-        if (
-          terminalTime &&
-          openTime &&
-          new Date(terminalTime).getTime() > new Date(openTime).getTime()
-        ) {
-          throw new PaymentError(
-            PaymentErrorType.PAYMENT_ALREADY_EXISTS,
-            "この参加に対する決済は既に完了済みです"
-          );
-        }
+      // 支払完了系が存在する場合は無条件で受付不可（重複課金防止）
+      if (latestTerminal) {
+        throw new PaymentError(
+          PaymentErrorType.PAYMENT_ALREADY_EXISTS,
+          "この参加に対する決済は既に完了済みです"
+        );
       }
 
       if (openPayment) {
         if ((openPayment.status as PaymentStatus) === "pending") {
+          // 🔧 DB更新前に元の金額を保存（金額変更検知用）
+          const originalAmount = openPayment.amount;
+
           // 再試行: pending は再利用（Stripe識別子のリセットと金額更新）
           const { error: reuseError } = await this.supabase
             .from("payments")
@@ -232,9 +259,22 @@ export class PaymentService implements IPaymentService {
               reuseError
             );
           }
+
+          // 🔧 メモリ上のopenPaymentオブジェクトも新しい金額に同期し、元の金額も記録
+          openPayment = {
+            ...openPayment,
+            amount: params.amount,
+            // 金額変更検知用に元の金額を保存
+            _originalAmount: originalAmount,
+          };
+
           targetPaymentId = openPayment.id as string;
         } else {
           // open が failed の場合は新規 pending を作成（降格禁止ルールに従う）
+          // 🔧 最初からIdempotency Key情報を含めて作成
+          const { generateIdempotencyKey } = await import("@core/stripe/client");
+          const newIdempotencyKey = generateIdempotencyKey("checkout");
+
           const { data: payment, error: insertError } = await this.supabase
             .from("payments")
             .insert({
@@ -242,6 +282,8 @@ export class PaymentService implements IPaymentService {
               method: "stripe",
               amount: params.amount,
               status: "pending",
+              checkout_idempotency_key: newIdempotencyKey,
+              checkout_key_revision: 0,
             })
             .select()
             .single();
@@ -253,7 +295,8 @@ export class PaymentService implements IPaymentService {
                 .from("payments")
                 .select("id, status, updated_at, created_at")
                 .eq("attendance_id", params.attendanceId)
-                .in("status", ["pending", "failed"])
+                .in("status", OPEN_PAYMENT_STATUSES)
+                .order("status", { ascending: true }) // pending(10) < failed(15)
                 .order("updated_at", { ascending: false, nullsFirst: false })
                 .order("created_at", { ascending: false })
                 .limit(1)
@@ -316,6 +359,10 @@ export class PaymentService implements IPaymentService {
         }
       } else {
         // openが無ければ新規作成
+        // 🔧 最初からIdempotency Key情報を含めて作成
+        const { generateIdempotencyKey } = await import("@core/stripe/client");
+        const newIdempotencyKey = generateIdempotencyKey("checkout");
+
         const { data: payment, error: insertError } = await this.supabase
           .from("payments")
           .insert({
@@ -323,6 +370,8 @@ export class PaymentService implements IPaymentService {
             method: "stripe",
             amount: params.amount,
             status: "pending",
+            checkout_idempotency_key: newIdempotencyKey,
+            checkout_key_revision: 0,
           })
           .select()
           .single();
@@ -334,7 +383,7 @@ export class PaymentService implements IPaymentService {
               .from("payments")
               .select("id, status, updated_at, created_at")
               .eq("attendance_id", params.attendanceId)
-              .in("status", ["pending", "failed"])
+              .in("status", OPEN_PAYMENT_STATUSES)
               .order("updated_at", { ascending: false, nullsFirst: false })
               .order("created_at", { ascending: false })
               .limit(1)
@@ -381,7 +430,7 @@ export class PaymentService implements IPaymentService {
                 .from("payments")
                 .select("id")
                 .eq("attendance_id", params.attendanceId)
-                .in("status", ["paid", "received", "completed", "refunded", "waived"])
+                .in("status", TERMINAL_PAYMENT_STATUSES)
                 .order("paid_at", { ascending: false, nullsFirst: false })
                 .limit(1)
                 .maybeSingle();
@@ -459,22 +508,72 @@ export class PaymentService implements IPaymentService {
 
       // Destination charges用のCheckout Session作成
       // Idempotency-Key: ボディ差分（特に金額差）時はキーを回転。そうでなければ再利用
-      let idempotencyKeyToUse: string | null =
-        (openPayment as any)?.checkout_idempotency_key ?? null;
-      let checkoutKeyRevisionToSave: number = (openPayment as any)?.checkout_key_revision ?? 0;
-      const amountChanged = Boolean(
-        openPayment &&
-          (openPayment as any).status === "pending" &&
-          typeof (openPayment as any).amount === "number" &&
-          (openPayment as any).amount !== params.amount
-      );
-      if (!idempotencyKeyToUse || amountChanged) {
-        const { generateIdempotencyKey } = await import("@core/stripe/client");
-        idempotencyKeyToUse = generateIdempotencyKey("checkout");
-        if (openPayment) {
-          checkoutKeyRevisionToSave = ((openPayment as any).checkout_key_revision ?? 0) + 1;
+      let idempotencyKeyToUse: string | null = null;
+      let checkoutKeyRevisionToSave: number = 0;
+
+      if (openPayment && openPayment.status === "pending") {
+        // 既存のpending決済から値を取得
+        idempotencyKeyToUse = openPayment.checkout_idempotency_key;
+        checkoutKeyRevisionToSave = openPayment.checkout_key_revision;
+
+        // 🔧 金額変更検知: DB更新前に保存した元の金額を使用
+        const originalAmount = (openPayment as any)._originalAmount ?? openPayment.amount;
+        const isReusingPayment = targetPaymentId === openPayment.id;
+
+        // 金額変更検知ログ (本格運用時は削除)
+        logger.info("Idempotency key decision", {
+          tag: "idempotencyKeyDecision",
+          service: "PaymentService",
+          attendance_id: params.attendanceId,
+          has_open_payment: !!openPayment,
+          existing_key: openPayment.checkout_idempotency_key
+            ? openPayment.checkout_idempotency_key.substring(0, 12) + "..."
+            : null,
+          key_revision: openPayment.checkout_key_revision,
+          amount_changed:
+            isReusingPayment &&
+            typeof originalAmount === "number" &&
+            originalAmount !== params.amount,
+          final_key: idempotencyKeyToUse?.substring(0, 12) + "...",
+          final_revision: checkoutKeyRevisionToSave,
+        });
+
+        // DB更新前の元の金額と新しい金額を比較
+        const amountChanged =
+          isReusingPayment &&
+          typeof originalAmount === "number" &&
+          originalAmount !== params.amount;
+
+        if (amountChanged) {
+          const { generateIdempotencyKey } = await import("@core/stripe/client");
+          idempotencyKeyToUse = generateIdempotencyKey("checkout");
+          checkoutKeyRevisionToSave = checkoutKeyRevisionToSave + 1;
         }
       }
+
+      // 新規作成時または既存キーが無い場合のみ新生成
+      if (!idempotencyKeyToUse) {
+        const { generateIdempotencyKey } = await import("@core/stripe/client");
+        idempotencyKeyToUse = generateIdempotencyKey("checkout");
+      }
+
+      // 冪等性デバッグ用ログ
+      logger.info("Idempotency key decision", {
+        tag: "idempotencyKeyDecision",
+        service: "PaymentService",
+        attendance_id: params.attendanceId,
+        has_open_payment: !!openPayment,
+        existing_key: openPayment?.checkout_idempotency_key
+          ? openPayment.checkout_idempotency_key.substring(0, 12) + "..."
+          : null,
+        key_revision: openPayment?.checkout_key_revision,
+        amount_changed:
+          openPayment &&
+          typeof openPayment.amount === "number" &&
+          openPayment.amount !== params.amount,
+        final_key: idempotencyKeyToUse?.substring(0, 12) + "...",
+        final_revision: checkoutKeyRevisionToSave,
+      });
       const session = await DestinationCharges.createDestinationCheckoutSession({
         eventId: params.eventId,
         eventTitle: params.eventTitle,
@@ -946,16 +1045,12 @@ export class PaymentService implements IPaymentService {
    */
   async getPaymentByAttendance(attendanceId: string): Promise<Payment | null> {
     try {
-      // open（pending/failed）を優先的に返す
-      const { data: openPayment, error: openError } = await this.supabase
+      // open（pending/failed）を優先的に返す（統一されたソート使用）
+      const { data: openPayments, error: openError } = await this.supabase
         .from("payments")
         .select("*")
         .eq("attendance_id", attendanceId)
-        .in("status", ["pending", "failed"])
-        .order("updated_at", { ascending: false, nullsFirst: false })
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
+        .in("status", OPEN_PAYMENT_STATUSES);
 
       if (openError) {
         throw new PaymentError(
@@ -965,18 +1060,15 @@ export class PaymentService implements IPaymentService {
         );
       }
 
-      if (openPayment) return openPayment as Payment;
+      const latestOpenPayment = this.findLatestPaymentByEffectiveTime(openPayments || []);
+      if (latestOpenPayment) return latestOpenPayment as Payment;
 
-      // openが無い場合は、最新の終端系（paid/received/completed/refunded）を返す
-      const { data: latestTerminal, error: terminalError } = await this.supabase
+      // openが無い場合は、最新の終端系（paid/received/completed/refunded/waived）を返す（統一されたソート使用）
+      const { data: terminalPayments, error: terminalError } = await this.supabase
         .from("payments")
         .select("*")
         .eq("attendance_id", attendanceId)
-        .in("status", ["paid", "received", "completed", "refunded"])
-        .order("paid_at", { ascending: false, nullsFirst: false })
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
+        .in("status", TERMINAL_PAYMENT_STATUSES);
 
       if (terminalError) {
         throw new PaymentError(
@@ -986,8 +1078,9 @@ export class PaymentService implements IPaymentService {
         );
       }
 
-      if (!latestTerminal) return null;
-      return latestTerminal as Payment;
+      const latestTerminalPayment = this.findLatestPaymentByEffectiveTime(terminalPayments || []);
+      if (!latestTerminalPayment) return null;
+      return latestTerminalPayment as Payment;
     } catch (error) {
       if (error instanceof PaymentError) {
         throw error;

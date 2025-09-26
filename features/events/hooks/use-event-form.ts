@@ -40,8 +40,8 @@ const eventFormSchema = z
       .min(1, "参加費は必須です")
       .refine((val) => {
         const num = parseFee(val);
-        return num >= 0 && num <= 1000000;
-      }, "参加費は0以上1000000以下である必要があります"),
+        return num === 0 || (num >= 100 && num <= 1000000);
+      }, "参加費は0円（無料）または100〜1,000,000円である必要があります"),
     payment_methods: z.array(z.enum(["stripe", "cash"])),
     location: z.string().trim().max(200, "場所は200文字以内で入力してください"),
     description: z.string().trim().max(1000, "説明は1000文字以内で入力してください"),
@@ -122,8 +122,12 @@ const eventFormSchema = z
   )
   .refine(
     (data) => {
-      // 決済締切 ≤ 開催日時 + 30日（空文字列は無視）
-      if (data.payment_deadline && data.payment_deadline.trim() !== "" && data.date) {
+      // オンライン決済が選択されている場合のみ、決済締切 ≤ 開催日時 + 30日
+      const hasStripe = Array.isArray(data.payment_methods)
+        ? data.payment_methods.includes("stripe")
+        : false;
+
+      if (hasStripe && data.payment_deadline && data.payment_deadline.trim() !== "" && data.date) {
         try {
           const payUtc = convertDatetimeLocalToUtc(data.payment_deadline);
           const eventUtc = convertDatetimeLocalToUtc(data.date);
@@ -142,8 +146,13 @@ const eventFormSchema = z
   )
   .refine(
     (data) => {
-      // 決済締切が参加申込締切以降であることを確認（空文字列は無視）
+      // オンライン決済が選択されている場合のみ、決済締切が参加申込締切以降であることを確認
+      const hasStripe = Array.isArray(data.payment_methods)
+        ? data.payment_methods.includes("stripe")
+        : false;
+
       if (
+        hasStripe &&
         data.registration_deadline &&
         data.registration_deadline.trim() !== "" &&
         data.payment_deadline &&
@@ -166,7 +175,12 @@ const eventFormSchema = z
   )
   .refine(
     (data) => {
-      // 最終支払期限（payment_deadline + 猶予日） ≤ 開催日時 + 30日
+      // オンライン決済が選択されている場合のみ、最終支払期限（payment_deadline + 猶予日） ≤ 開催日時 + 30日
+      const hasStripe = Array.isArray(data.payment_methods)
+        ? data.payment_methods.includes("stripe")
+        : false;
+
+      if (!hasStripe) return true;
       if (!data.date) return true;
       if (!data.allow_payment_after_deadline) return true;
       if (!data.payment_deadline || data.payment_deadline.trim() === "") return true;
@@ -227,7 +241,6 @@ export const useEventForm = (): {
   isPending: boolean;
   hasErrors: boolean;
   isFreeEvent: boolean;
-  formData: EventFormData;
   errors: Record<string, string | undefined>;
 } => {
   const router = useRouter();
@@ -247,6 +260,7 @@ export const useEventForm = (): {
   // 参加費をリアルタイムで監視
   const watchedFee = form.watch("fee");
   const watchedDate = form.watch("date");
+  const watchedPaymentMethods = form.watch("payment_methods");
   // 空文字列や未入力の場合は無料イベントとして扱わない
   const currentFee = watchedFee && watchedFee.trim() !== "" ? safeParseNumber(watchedFee) : null;
   const isFreeEvent = currentFee === 0;
@@ -266,9 +280,48 @@ export const useEventForm = (): {
     }
   }, [isFreeEvent, form]);
 
-  // 決済方法の選択はStep2でのみ扱うため、ここでのwatchは不要（簡潔化）
+  // 決済方法が変更されたときの処理
+  // オンライン決済が追加された場合：決済締切をプリセット
+  // オンライン決済が削除された場合：決済締切をクリア
+  useEffect(() => {
+    const paymentMethods = form.getValues("payment_methods") || [];
+    const hasOnlinePayment = paymentMethods.includes("stripe");
+    const dateValue = form.getValues("date");
+    const currentPay = form.getValues("payment_deadline");
+
+    if (hasOnlinePayment) {
+      // オンライン決済が選択され、決済締切が空の場合、開催日時でプリセット
+      if (dateValue && (!currentPay || currentPay.trim() === "")) {
+        const eventLocal = new Date(dateValue);
+        if (!Number.isNaN(eventLocal.getTime())) {
+          const now = new Date();
+          const minStart = new Date(now.getTime() + 60 * 60 * 1000);
+          const clamp = (d: Date): Date => {
+            if (d < minStart) return minStart;
+            if (d > eventLocal) return eventLocal;
+            return d;
+          };
+          const suggestPayment = clamp(new Date(eventLocal.getTime() - 1 * 24 * 60 * 60 * 1000));
+
+          form.setValue("payment_deadline", toDatetimeLocalString(suggestPayment), {
+            shouldValidate: true,
+            shouldTouch: false,
+          });
+        }
+      }
+    } else {
+      // オンライン決済が選択されていない場合、決済締切をクリア
+      if (currentPay && currentPay.trim() !== "") {
+        form.setValue("payment_deadline", "", {
+          shouldValidate: true,
+          shouldTouch: false,
+        });
+      }
+    }
+  }, [watchedPaymentMethods, form]);
 
   // 開催日時入力時に、締切サジェスト（申込: -3日 / 決済: -1日）を自動セット（未編集時のみ）
+  // 決済締切は、オンライン決済（stripe）が選択されている場合のみプリセット
   useEffect(() => {
     const dateValue = watchedDate;
     if (!dateValue || dateValue.trim() === "") return;
@@ -295,14 +348,22 @@ export const useEventForm = (): {
 
     const currentReg = form.getValues("registration_deadline");
     const currentPay = form.getValues("payment_deadline");
+    const paymentMethods = form.getValues("payment_methods") || [];
+    const hasOnlinePayment = paymentMethods.includes("stripe");
 
+    // 参加申込締切は常にプリセット
     if (!currentReg || currentReg.trim() === "" || !dirtyFields.registration_deadline) {
       form.setValue("registration_deadline", toDatetimeLocalString(suggestRegistration), {
         shouldValidate: true,
         shouldTouch: false,
       });
     }
-    if (!currentPay || currentPay.trim() === "" || !dirtyFields.payment_deadline) {
+
+    // 決済締切は、オンライン決済が選択されている場合のみプリセット
+    if (
+      hasOnlinePayment &&
+      (!currentPay || currentPay.trim() === "" || !dirtyFields.payment_deadline)
+    ) {
       form.setValue("payment_deadline", toDatetimeLocalString(suggestPayment), {
         shouldValidate: true,
         shouldTouch: false,
@@ -391,9 +452,7 @@ export const useEventForm = (): {
     onSubmit: form.handleSubmit(onSubmit),
     isPending,
     hasErrors,
-    isFreeEvent, // ✨ 新規追加
-    // 既存実装との互換性のため
-    formData: form.watch(),
+    isFreeEvent,
     errors: Object.fromEntries(
       Object.entries(formState.errors).map(([key, error]) => [
         key,

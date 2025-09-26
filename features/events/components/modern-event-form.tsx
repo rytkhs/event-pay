@@ -288,11 +288,14 @@ function ModernEventForm({
                       name="fee"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-base font-medium">参加費 *</FormLabel>
+                          <FormLabel htmlFor="fee-input" className="text-base font-medium">
+                            参加費 *
+                          </FormLabel>
                           <FormControl>
                             <div className="relative max-w-xs">
                               <Input
                                 {...field}
+                                id="fee-input"
                                 type="number"
                                 placeholder="3000"
                                 disabled={isPending}
@@ -305,6 +308,9 @@ function ModernEventForm({
                               </span>
                             </div>
                           </FormControl>
+                          <FormDescription className="text-sm text-gray-600">
+                            0円（無料）または100円以上で設定してください。
+                          </FormDescription>
                           <FormMessage />
                         </FormItem>
                       )}

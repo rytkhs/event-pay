@@ -73,11 +73,11 @@ export const createEventSchema = z
     fee: z
       .string()
       .min(1, "参加費は必須です")
-      .regex(/^\d+$/, "参加費は0〜1,000,000の整数で入力してください")
+      .regex(/^\d+$/, "参加費は0円（無料）または100〜1,000,000円の整数で入力してください")
       .refine((val: string) => {
         const n = Number(val);
-        return Number.isInteger(n) && n >= 0 && n <= 1_000_000;
-      }, "参加費は0〜1,000,000の整数で入力してください")
+        return Number.isInteger(n) && (n === 0 || (n >= 100 && n <= 1_000_000));
+      }, "参加費は0円（無料）または100〜1,000,000円の整数で入力してください")
       .transform((val) => Number(val)),
 
     payment_methods: z

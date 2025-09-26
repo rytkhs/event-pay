@@ -59,8 +59,8 @@ const eventEditFormSchemaBase = z
       .regex(/^\d+$/, "参加費は数値で入力してください")
       .refine((v) => {
         const n = Number(v);
-        return Number.isInteger(n) && n >= 0 && n <= 1_000_000;
-      }, "参加費は0〜1,000,000の整数で入力してください"),
+        return Number.isInteger(n) && (n === 0 || (n >= 100 && n <= 1_000_000));
+      }, "参加費は0円（無料）または100〜1,000,000円の整数で入力してください"),
     capacity: z
       .string()
       .optional()
@@ -202,8 +202,7 @@ function createEventEditFormSchema(attendeeCount: number, existingEvent: Event) 
         return true;
       },
       {
-        message:
-          "オンライン決済を選択した場合、決済締切の設定が必要です。既存のイベントで未設定の場合は締切日時を入力してください。",
+        message: "オンライン決済を選択した場合、決済締切の設定が必要です。",
         path: ["payment_deadline"],
       }
     );
@@ -329,6 +328,7 @@ export function useEventEditForm({
     event,
     formData: currentFormData,
     hasValidationErrors: !form.formState.isValid,
+    isFieldEditable: (field: string) => unifiedRestrictions.isFieldEditable(field as any),
   });
   const submission = useEventSubmission({ eventId: event.id, onSubmit });
 
