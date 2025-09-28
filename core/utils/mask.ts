@@ -48,11 +48,11 @@ export function maskEmail(email: string | null | undefined): string {
 
 /**
  * Stripeセッション IDをセキュリティのためにマスクします
- * 仕様書準拠: 先頭8文字のみ表示し、残りを"..."でマスク
+ * デバッグ性を考慮: 先頭12文字のみ表示し、残りを"..."でマスク
  *
  * 例:
- * - cs_test_1234567890abcdef → cs_test_1...
- * - cs_live_abcdefgh12345678 → cs_live_a...
+ * - cs_test_1234567890abcdef → cs_test_1234...
+ * - cs_live_abcdefgh12345678 → cs_live_abcd...
  * - short_id → sho***
  *
  * @param sessionId マスクするStripeセッション ID
@@ -68,8 +68,8 @@ export function maskSessionId(sessionId: string | null | undefined): string {
     return sessionId.substring(0, 3) + "***";
   }
 
-  // 仕様書準拠: 先頭8文字 + "..."
-  return `${sessionId.substring(0, 8)}...`;
+  // デバッグ性を考慮: 先頭12文字 + "..."
+  return `${sessionId.substring(0, 12)}...`;
 }
 
 /**
