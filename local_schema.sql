@@ -1,5 +1,5 @@
 
-\restrict 4eL9oGH7m3cWoXa8R4wsVGB8Gr7sdw7QEyyiMlgkWufurNwJACtOahEsVV1mvfh
+\restrict 7QwTTHRGDx6Xus9m9bYQVgvS9gzamPLLoB2iFQIdmN89I8393MYkr3jV9WhdcoQ
 
 
 SET statement_timeout = 0;
@@ -716,7 +716,6 @@ BEGIN
         net_payout_amount = v_net_amount,
         updated_at = now()
     WHERE event_id = input_event_id
-      AND status IN ('pending', 'processing', 'completed')
     RETURNING id, generated_at, updated_at
     INTO v_payout_id, v_generated_at, v_updated_at;
 
@@ -1037,7 +1036,6 @@ CREATE OR REPLACE FUNCTION "public"."register_attendance_with_payment"("p_event_
     AS $_$
 DECLARE
   v_attendance_id UUID;
-  v_event_exists BOOLEAN;
 BEGIN
   -- 入力パラメータの検証
   IF p_event_id IS NULL THEN
@@ -1794,7 +1792,7 @@ CREATE TABLE IF NOT EXISTS "public"."events" (
     "canceled_by" "uuid",
     CONSTRAINT "events_capacity_check" CHECK ((("capacity" IS NULL) OR ("capacity" > 0))),
     CONSTRAINT "events_date_after_creation" CHECK (("date" > "created_at")),
-    CONSTRAINT "events_fee_check" CHECK (("fee" >= 0)),
+    CONSTRAINT "events_fee_check" CHECK ((("fee" = 0) OR (("fee" >= 100) AND ("fee" <= 1000000)))),
     CONSTRAINT "events_grace_period_days_check" CHECK ((("grace_period_days" >= 0) AND ("grace_period_days" <= 30))),
     CONSTRAINT "events_payment_deadline_after_registration" CHECK ((("payment_deadline" IS NULL) OR ("registration_deadline" IS NULL) OR ("payment_deadline" >= "registration_deadline"))),
     CONSTRAINT "events_payment_deadline_required_if_stripe" CHECK (((NOT ('stripe'::"public"."payment_method_enum" = ANY ("payment_methods"))) OR ("payment_deadline" IS NOT NULL))),
@@ -3194,6 +3192,6 @@ ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TAB
 
 
 
-\unrestrict 4eL9oGH7m3cWoXa8R4wsVGB8Gr7sdw7QEyyiMlgkWufurNwJACtOahEsVV1mvfh
+\unrestrict 7QwTTHRGDx6Xus9m9bYQVgvS9gzamPLLoB2iFQIdmN89I8393MYkr3jV9WhdcoQ
 
 RESET ALL;
