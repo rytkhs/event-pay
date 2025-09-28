@@ -1,6 +1,6 @@
 "use client";
 
-import { Users, DollarSign, AlertTriangle, TrendingUp, CheckCircle2, XCircle } from "lucide-react";
+import { Users, DollarSign, AlertTriangle } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -10,7 +10,6 @@ interface ParticipantsStatusCardsProps {
   capacity: number | null;
   totalRevenue: number;
   unpaidCount: number;
-  completionRate: number;
 }
 
 export function ParticipantsStatusCards({
@@ -18,7 +17,6 @@ export function ParticipantsStatusCards({
   capacity,
   totalRevenue,
   unpaidCount,
-  completionRate,
 }: ParticipantsStatusCardsProps) {
   // 定員超過状態の判定
   const isOverCapacity = capacity ? attendingCount > capacity : false;
@@ -26,10 +24,9 @@ export function ParticipantsStatusCards({
 
   // 緊急度の判定
   const hasUnpaidPayments = unpaidCount > 0;
-  const lowCompletionRate = completionRate < 80;
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
       {/* 参加者数 */}
       <Card className={isOverCapacity ? "border-red-200 bg-red-50" : ""}>
         <CardContent className="p-6">
@@ -96,49 +93,6 @@ export function ParticipantsStatusCards({
             >
               <AlertTriangle
                 className={`h-6 w-6 ${hasUnpaidPayments ? "text-orange-600" : "text-gray-400"}`}
-              />
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* 決済完了率 */}
-      <Card className={lowCompletionRate ? "border-yellow-200 bg-yellow-50" : ""}>
-        <CardContent className="p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">決済完了率</p>
-              <div className="flex items-center gap-2 mt-2">
-                <p className="text-3xl font-bold text-gray-900">{completionRate}%</p>
-                {completionRate >= 90 ? (
-                  <CheckCircle2 className="h-5 w-5 text-green-500" />
-                ) : completionRate < 80 ? (
-                  <XCircle className="h-5 w-5 text-red-500" />
-                ) : (
-                  <AlertTriangle className="h-5 w-5 text-yellow-500" />
-                )}
-              </div>
-              <p className="text-xs text-gray-500 mt-2">
-                {completionRate >= 90 ? "順調です" : completionRate >= 80 ? "概ね良好" : "要改善"}
-              </p>
-            </div>
-            <div
-              className={`p-2 rounded-full ${
-                completionRate >= 90
-                  ? "bg-green-100"
-                  : completionRate >= 80
-                    ? "bg-yellow-100"
-                    : "bg-red-100"
-              }`}
-            >
-              <TrendingUp
-                className={`h-6 w-6 ${
-                  completionRate >= 90
-                    ? "text-green-600"
-                    : completionRate >= 80
-                      ? "text-yellow-600"
-                      : "text-red-600"
-                }`}
               />
             </div>
           </div>

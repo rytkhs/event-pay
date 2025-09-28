@@ -5,7 +5,8 @@ import { deriveEventStatus } from "@core/utils/derive-event-status";
 import { calculateAttendeeCount } from "@core/utils/event-calculations";
 import { validateEventId } from "@core/validation/event-id";
 
-import { EditRestrictionsNotice, EventEditForm } from "@features/events";
+import { EventEditForm } from "@features/events";
+import { getDetailedAccountStatusAction } from "@features/stripe-connect/actions/account-status-check";
 
 interface EventEditPageProps {
   params: {
@@ -90,6 +91,20 @@ export default async function EventEditPage({ params }: EventEditPageProps) {
     redirect(`/events/${params.id}/forbidden?reason=${computedStatus}`);
   }
 
+  // Stripe Connectの詳細状態を取得し、オンライン決済可否を決定
+  const detailedStatus = await getDetailedAccountStatusAction();
+
+  /**
+   * オンライン決済可否の判定ロジック（編集時）
+   *
+   * getDetailedAccountStatusAction の仕様:
+   * - アカウント未作成/認証不備がある場合: status オブジェクトを返す（CTA表示用）
+   * - 全て正常で決済可能な場合: status を undefined で返す（CTA非表示）
+   *
+   * したがって、status === undefined が「ready」状態を意味する
+   */
+  const canUseOnlinePayments = detailedStatus.success && !detailedStatus.status;
+
   return (
     <div className="min-h-screen bg-muted/30 py-8">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -103,19 +118,13 @@ export default async function EventEditPage({ params }: EventEditPageProps) {
           </div>
 
           {/* V2ではhasStripePaid時のみ制限が発生（fee/payment_methods）。旧Noticeは非表示にする */}
-          {/* ここで独自に注意を出す場合は、hasStripePaidに基づいてメッセージを表示する */}
-          {false && (
-            <EditRestrictionsNotice
-              hasAttendees={attendeeCount > 0}
-              attendeeCount={attendeeCount}
-            />
-          )}
 
           {/* 編集フォーム */}
           <EventEditForm
             event={{ ...(event as any), status: computedStatus }}
             attendeeCount={attendeeCount}
             hasStripePaid={hasStripePaid}
+            canUseOnlinePayments={canUseOnlinePayments}
           />
         </div>
       </div>

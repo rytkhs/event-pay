@@ -1,20 +1,22 @@
 "use client";
 
-import { ArrowLeft, Calendar, MapPin, Users, JapaneseYen } from "lucide-react";
+import { ArrowLeft, Calendar, MapPin, Users, JapaneseYen, AlertTriangle } from "lucide-react";
 
 import type { Event } from "@core/types/models";
 import { sanitizeForEventPay } from "@core/utils/sanitize";
 import { formatUtcToJstByType } from "@core/utils/timezone";
 
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
+import { Separator } from "@/components/ui/separator";
 
 interface ParticipantsCompactHeaderProps {
   eventDetail: Event;
   attendingCount: number;
   totalRevenue: number;
   unpaidCount: number;
-  completionRate: number;
   onBackClick: () => void;
 }
 
@@ -23,7 +25,6 @@ export function ParticipantsCompactHeader({
   attendingCount,
   totalRevenue,
   unpaidCount,
-  completionRate,
   onBackClick,
 }: ParticipantsCompactHeaderProps) {
   // 参加率の計算
@@ -38,164 +39,163 @@ export function ParticipantsCompactHeader({
 
   return (
     <Card className="border-0 shadow-sm">
-      <CardContent className="p-4 sm:p-6">
-        {/* 戻るボタン + イベントタイトル */}
-        <div className="flex items-start gap-3 mb-4">
+      <CardContent className="p-3 sm:p-4 md:p-6">
+        {/* ヘッダー: 戻るボタン + イベントタイトル + 状況バッジ */}
+        <div className="flex items-start gap-2 sm:gap-3 mb-3 sm:mb-4">
           <Button
             variant="ghost"
             size="sm"
             onClick={onBackClick}
-            className="flex-shrink-0 p-2 -ml-2"
+            className="flex-shrink-0 p-2 -ml-2 min-h-[44px] min-w-[44px] sm:p-2 sm:min-h-[auto] sm:min-w-[auto]"
           >
             <ArrowLeft className="h-4 w-4" />
           </Button>
 
           <div className="flex-1 min-w-0">
-            <h1 className="text-xl sm:text-2xl font-bold text-foreground truncate mb-1">
-              {sanitizeForEventPay(eventDetail.title)}
-            </h1>
-            <p className="text-sm text-muted-foreground">参加者管理</p>
+            <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 mb-1">
+              <h1 className="text-base sm:text-lg md:text-xl font-bold text-foreground truncate">
+                {sanitizeForEventPay(eventDetail.title)}
+              </h1>
+              {!isFreeEvent && unpaidCount > 0 && (
+                <Badge
+                  variant="outline"
+                  className="text-orange-600 border-orange-200 bg-orange-50 text-xs self-start"
+                >
+                  <AlertTriangle className="h-3 w-3 mr-1" />
+                  未決済あり
+                </Badge>
+              )}
+            </div>
+            <p className="text-xs sm:text-sm text-muted-foreground">参加者管理</p>
           </div>
         </div>
 
-        {/* イベント基本情報 */}
-        <div className="flex flex-wrap items-center gap-3 sm:gap-4 mb-4 text-sm text-muted-foreground">
-          <div className="flex items-center gap-1">
-            <Calendar className="h-4 w-4" />
-            <span>{formatUtcToJstByType(eventDetail.date, "japanese")}</span>
+        {/* イベント基本情報 - モバイルファースト */}
+        <div className="space-y-2 sm:space-y-0 mb-3 sm:mb-4">
+          {/* 日付と料金（最重要情報）*/}
+          <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+            <div className="flex items-center gap-1">
+              <Calendar className="h-3 w-3" />
+              <span className="text-xs sm:text-sm font-medium">
+                {formatUtcToJstByType(eventDetail.date, "japanese")}
+              </span>
+            </div>
+
+            <Separator orientation="vertical" className="h-3 hidden sm:block" />
+
+            <Badge variant={isFreeEvent ? "secondary" : "default"} className="text-xs">
+              {isFreeEvent ? "無料" : `¥${eventDetail.fee.toLocaleString()}`}
+            </Badge>
           </div>
 
-          {eventDetail.location && (
-            <div className="flex items-center gap-1">
-              <MapPin className="h-4 w-4" />
-              <span>{sanitizeForEventPay(eventDetail.location)}</span>
-            </div>
-          )}
+          {/* 場所と定員（セカンダリ情報）*/}
+          <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+            {eventDetail.location && (
+              <div className="flex items-center gap-1">
+                <MapPin className="h-3 w-3" />
+                <span className="text-xs sm:text-sm truncate max-w-[200px] sm:max-w-none">
+                  {sanitizeForEventPay(eventDetail.location)}
+                </span>
+              </div>
+            )}
 
-          <div className="flex items-center gap-1">
-            <JapaneseYen className="h-4 w-4" />
-            <span>{isFreeEvent ? "無料" : `¥${eventDetail.fee.toLocaleString()}`}</span>
+            {capacity > 0 && (
+              <>
+                {eventDetail.location && (
+                  <Separator orientation="vertical" className="h-3 hidden sm:block" />
+                )}
+                <div className="flex items-center gap-1">
+                  <Users className="h-3 w-3" />
+                  <span className="text-xs sm:text-sm">定員{capacity}名</span>
+                </div>
+              </>
+            )}
           </div>
-
-          {capacity > 0 && (
-            <div className="flex items-center gap-1">
-              <Users className="h-4 w-4" />
-              <span>定員 {capacity}名</span>
-            </div>
-          )}
         </div>
 
-        {/* メトリクス */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          {/* 参加状況 */}
-          <div className="space-y-2">
-            <div className="flex items-center gap-2">
-              <Users className="h-4 w-4 text-blue-600" />
-              <span className="text-sm font-medium text-muted-foreground">参加者数</span>
-            </div>
-            <div className="space-y-1">
+        <Separator className="mb-3 sm:mb-4" />
+
+        {/* メトリクス - モバイルファースト */}
+        <div className="space-y-3 sm:space-y-4">
+          {/* 参加者数（最重要情報） */}
+          <div className="space-y-2 sm:space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <Users className="h-4 w-4 text-blue-600" />
+                <span className="font-medium text-sm sm:text-base">参加者数</span>
+              </div>
               <div className="flex items-baseline gap-1">
-                <span className="text-2xl font-bold text-foreground">{attendingCount}</span>
+                <span className="text-xl sm:text-2xl font-bold">{attendingCount}</span>
                 {capacity > 0 && (
-                  <span className="text-sm text-muted-foreground">/ {capacity}</span>
+                  <span className="text-xs sm:text-sm text-muted-foreground">/{capacity}</span>
                 )}
               </div>
-              {capacity > 0 && (
-                <>
-                  <div className="w-full bg-muted rounded-full h-2">
-                    <div
-                      className="h-2 rounded-full bg-blue-500 transition-all"
-                      style={{ width: `${Math.min(attendanceRate, 100)}%` }}
-                    />
-                  </div>
-                  <div className="text-xs text-muted-foreground">{attendanceRate}%</div>
-                </>
-              )}
             </div>
+            {capacity > 0 && (
+              <div className="space-y-1.5 sm:space-y-2">
+                <Progress value={attendanceRate} className="h-1.5 sm:h-2" />
+                <div className="flex justify-between text-xs text-muted-foreground">
+                  <span>参加率</span>
+                  <span>{attendanceRate}%</span>
+                </div>
+              </div>
+            )}
           </div>
 
-          {/* 収益状況（有料イベントのみ） */}
+          {/* 有料イベントの場合の収益情報 */}
           {!isFreeEvent && (
-            <div className="space-y-2">
-              <div className="flex items-center gap-2">
-                <JapaneseYen className="h-4 w-4 text-green-600" />
-                <span className="text-sm font-medium text-muted-foreground">収益</span>
-              </div>
-              <div className="space-y-1">
-                <div className="text-2xl font-bold text-foreground">
-                  ¥{totalRevenue.toLocaleString()}
-                </div>
-                {expectedRevenue > 0 && (
-                  <>
-                    <div className="w-full bg-muted rounded-full h-2">
-                      <div
-                        className="h-2 rounded-full bg-green-500 transition-all"
-                        style={{
-                          width: `${Math.min((totalRevenue / expectedRevenue) * 100, 100)}%`,
-                        }}
+            <>
+              <Separator />
+              <div className="space-y-3 sm:space-y-0 sm:grid sm:grid-cols-2 sm:gap-4">
+                {/* 集金状況 */}
+                <div className="space-y-2 sm:space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1.5 sm:gap-2">
+                      <JapaneseYen className="h-4 w-4 text-green-600" />
+                      <span className="font-medium text-sm sm:text-base">集金済み</span>
+                    </div>
+                    <span className="text-lg sm:text-xl font-bold">
+                      ¥{totalRevenue.toLocaleString()}
+                    </span>
+                  </div>
+                  {expectedRevenue > 0 && (
+                    <div className="space-y-1.5 sm:space-y-2">
+                      <Progress
+                        value={Math.min((totalRevenue / expectedRevenue) * 100, 100)}
+                        className="h-1.5 sm:h-2"
                       />
+                      <div className="flex justify-between text-xs text-muted-foreground">
+                        <span>予定: ¥{expectedRevenue.toLocaleString()}</span>
+                        <span>{Math.round((totalRevenue / expectedRevenue) * 100)}%</span>
+                      </div>
                     </div>
-                    <div className="text-xs text-muted-foreground">
-                      / ¥{expectedRevenue.toLocaleString()}
+                  )}
+                </div>
+
+                {/* 未決済件数 */}
+                <div className="space-y-2 sm:space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1.5 sm:gap-2">
+                      <AlertTriangle className="h-4 w-4 text-orange-600" />
+                      <span className="font-medium text-sm sm:text-base">未決済</span>
                     </div>
-                  </>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* 未決済件数（有料イベントのみ） */}
-          {!isFreeEvent && (
-            <div className="space-y-2">
-              <div className="flex items-center gap-2">
-                <div className="h-4 w-4 rounded-full bg-orange-100 flex items-center justify-center">
-                  <div className="h-2 w-2 rounded-full bg-orange-600" />
-                </div>
-                <span className="text-sm font-medium text-muted-foreground">未決済</span>
-              </div>
-              <div className="space-y-1">
-                <div className="text-2xl font-bold text-foreground">{unpaidCount}</div>
-                <div className="text-xs text-muted-foreground">件</div>
-              </div>
-            </div>
-          )}
-
-          {/* 決済完了率（有料イベントのみ） */}
-          {!isFreeEvent && (
-            <div className="space-y-2">
-              <div className="flex items-center gap-2">
-                <div className="h-4 w-4 rounded-full bg-purple-100 flex items-center justify-center">
-                  <div className="h-2 w-2 rounded-full bg-purple-600" />
-                </div>
-                <span className="text-sm font-medium text-muted-foreground">完了率</span>
-              </div>
-              <div className="space-y-1">
-                <div className="text-2xl font-bold text-foreground">{completionRate}%</div>
-                <div className="w-full bg-muted rounded-full h-2">
-                  <div
-                    className="h-2 rounded-full bg-purple-500 transition-all"
-                    style={{ width: `${Math.min(completionRate, 100)}%` }}
-                  />
+                    <div className="flex items-center gap-2">
+                      <span className="text-lg sm:text-xl font-bold">{unpaidCount}</span>
+                      {unpaidCount > 0 && (
+                        <Badge
+                          variant="outline"
+                          className="text-orange-600 border-orange-200 text-xs"
+                        >
+                          要確認
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
                 </div>
               </div>
-            </div>
+            </>
           )}
         </div>
-
-        {/* 無料イベントの場合は参加者数を強調 */}
-        {isFreeEvent && (
-          <div className="mt-4 pt-4 border-t border-border">
-            <div className="text-center">
-              <div className="text-sm text-muted-foreground">参加予定者数</div>
-              <div className="text-3xl font-bold text-foreground mt-1">{attendingCount}名</div>
-              {capacity > 0 && (
-                <div className="text-sm text-muted-foreground mt-1">
-                  定員 {capacity}名中 {attendanceRate}%
-                </div>
-              )}
-            </div>
-          </div>
-        )}
       </CardContent>
     </Card>
   );

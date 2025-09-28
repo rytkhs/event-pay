@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 
-import { Plus, Download, Filter, RefreshCw } from "lucide-react";
+import { Plus, Download, Filter, RefreshCw, Zap } from "lucide-react";
 
 import { useToast } from "@core/contexts/toast-context";
 import type { Event } from "@core/types/models";
@@ -25,6 +25,8 @@ interface ParticipantsActionBarProps {
   eventDetail: Event;
   onFiltersToggle: () => void;
   filtersExpanded: boolean;
+  searchParams: { [key: string]: string | string[] | undefined };
+  onFiltersChange: (params: Record<string, string | undefined>) => void;
 }
 
 export function ParticipantsActionBar({
@@ -32,6 +34,8 @@ export function ParticipantsActionBar({
   eventDetail: _eventDetail,
   onFiltersToggle,
   filtersExpanded,
+  searchParams,
+  onFiltersChange,
 }: ParticipantsActionBarProps) {
   const { toast } = useToast();
   const [showAddDialog, setShowAddDialog] = useState(false);
@@ -161,51 +165,133 @@ export function ParticipantsActionBar({
     window.location.reload();
   };
 
+  const handleToggleSmartSort = () => {
+    const smartActive = typeof searchParams.smart === "string";
+    if (smartActive) {
+      onFiltersChange({ smart: undefined, page: "1", limit: undefined });
+    } else {
+      onFiltersChange({ smart: "1", page: "1", limit: "200" });
+    }
+  };
+
   return (
     <>
       <div className="bg-white rounded-lg border shadow-sm p-4">
         <div className="flex flex-col gap-4">
-          {/* メイン操作ボタン */}
-          <div className="flex flex-wrap items-center gap-3">
-            <Button onClick={handleOpenAdd} className="flex items-center gap-2">
+          {/* デスクトップ・タブレット用レイアウト */}
+          <div className="hidden md:flex flex-wrap items-center justify-between gap-3">
+            {/* 左側グループ */}
+            <div className="flex flex-wrap items-center gap-3">
+              <Button onClick={handleOpenAdd} className="flex items-center gap-2">
+                <Plus className="h-4 w-4" />
+                参加者を追加
+              </Button>
+
+              <Button
+                variant={filtersExpanded ? "default" : "outline"}
+                onClick={onFiltersToggle}
+                className="flex items-center gap-2"
+              >
+                <Filter className="h-4 w-4" />
+                フィルター
+                {filtersExpanded && (
+                  <Badge variant="secondary" className="ml-1">
+                    展開中
+                  </Badge>
+                )}
+              </Button>
+
+              <Button
+                variant={typeof searchParams.smart === "string" ? "default" : "outline"}
+                onClick={handleToggleSmartSort}
+                className="flex items-center gap-2"
+                title="重要度優先のオート並び替え"
+              >
+                <Zap className="h-4 w-4" />
+                オートソート
+              </Button>
+            </div>
+
+            {/* 右側グループ */}
+            <div className="flex flex-wrap items-center gap-3">
+              <Button
+                variant="outline"
+                onClick={handleExportCsv}
+                disabled={isExporting}
+                className="flex items-center gap-2"
+              >
+                <Download className="h-4 w-4" />
+                {isExporting ? "エクスポート中..." : "CSV出力"}
+              </Button>
+
+              <Button variant="outline" onClick={handleRefresh} className="flex items-center gap-2">
+                <RefreshCw className="h-4 w-4" />
+                更新
+              </Button>
+            </div>
+          </div>
+
+          {/* モバイル用レイアウト */}
+          <div className="md:hidden flex flex-col gap-3">
+            {/* 1行目: 参加者追加（全幅） */}
+            <Button
+              onClick={handleOpenAdd}
+              className="flex items-center justify-center gap-2 w-full"
+            >
               <Plus className="h-4 w-4" />
               参加者を追加
             </Button>
 
-            <Button
-              variant="outline"
-              onClick={handleExportCsv}
-              disabled={isExporting}
-              className="flex items-center gap-2"
-            >
-              <Download className="h-4 w-4" />
-              {isExporting ? "エクスポート中..." : "CSV出力"}
-            </Button>
+            {/* 2行目: フィルター + CSV */}
+            <div className="flex gap-2">
+              <Button
+                variant={filtersExpanded ? "default" : "outline"}
+                onClick={onFiltersToggle}
+                className="flex items-center gap-2 flex-1"
+              >
+                <Filter className="h-4 w-4" />
+                フィルター
+                {filtersExpanded && (
+                  <Badge variant="secondary" className="ml-1">
+                    展開中
+                  </Badge>
+                )}
+              </Button>
 
-            <Button variant="outline" onClick={handleRefresh} className="flex items-center gap-2">
-              <RefreshCw className="h-4 w-4" />
-              更新
-            </Button>
+              <Button
+                variant="outline"
+                onClick={handleExportCsv}
+                disabled={isExporting}
+                className="flex items-center gap-1 w-16 px-2"
+                title={isExporting ? "エクスポート中..." : "CSV出力"}
+              >
+                <Download className="h-4 w-4" />
+                <span className="hidden sm:inline text-xs">CSV</span>
+              </Button>
+            </div>
 
-            <Button
-              variant={filtersExpanded ? "default" : "outline"}
-              onClick={onFiltersToggle}
-              className="flex items-center gap-2 ml-auto sm:ml-0"
-            >
-              <Filter className="h-4 w-4" />
-              フィルター
-              {filtersExpanded && (
-                <Badge variant="secondary" className="ml-1">
-                  展開中
-                </Badge>
-              )}
-            </Button>
-          </div>
+            {/* 3行目: オートソート + 更新 */}
+            <div className="flex gap-2">
+              <Button
+                variant={typeof searchParams.smart === "string" ? "default" : "outline"}
+                onClick={handleToggleSmartSort}
+                className="flex items-center gap-2 flex-1"
+                title="重要度優先のオート並び替え"
+              >
+                <Zap className="h-4 w-4" />
+                オートソート
+              </Button>
 
-          {/* 簡潔な説明文 */}
-          <div className="text-sm text-gray-600 flex items-center gap-2">
-            <span>💡</span>
-            各参加者の決済状況を個別に管理できます
+              <Button
+                variant="outline"
+                onClick={handleRefresh}
+                className="flex items-center gap-1 w-16 px-2"
+                title="更新"
+              >
+                <RefreshCw className="h-4 w-4" />
+                <span className="hidden sm:inline text-xs">更新</span>
+              </Button>
+            </div>
           </div>
         </div>
       </div>

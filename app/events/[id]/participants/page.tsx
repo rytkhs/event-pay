@@ -97,7 +97,13 @@ export default async function ParticipantsManagementPage({
       typeof searchParams.payment_method === "string" ? searchParams.payment_method : undefined;
     const paymentStatus =
       typeof searchParams.payment_status === "string" ? searchParams.payment_status : undefined;
-    const sortField = typeof searchParams.sort === "string" ? searchParams.sort : "created_at";
+    // smart指定時はサーバー側のsortFieldは安全な既存項目にフォールバック
+    const isSmart = typeof searchParams.smart === "string";
+    const sortField = isSmart
+      ? ("updated_at" as const)
+      : typeof searchParams.sort === "string"
+        ? searchParams.sort
+        : "created_at";
     const sortOrder = searchParams.order === "asc" ? "asc" : "desc";
 
     // 参加者管理に必要なデータを並列取得

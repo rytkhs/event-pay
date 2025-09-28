@@ -9,7 +9,7 @@ import {
   getEventStatsAction,
 } from "@features/events";
 
-import { ModernEventDetailPage } from "./components/modern-event-detail-page";
+import { ModernEventDashboard } from "./components/modern-event-dashboard";
 
 interface EventDetailPageProps {
   params: {
@@ -53,17 +53,18 @@ export default async function EventDetailPage({ params }: EventDetailPageProps) 
     const currentUser = await getCurrentUser();
     const isOrganizer = currentUser && currentUser.id === eventDetail.created_by;
 
-    // 主催者の場合のみ軽量な統計データを取得（参加者詳細データは専用ページで取得）
+    // 主催者の場合のみダッシュボード用データを取得
     let paymentsData: Awaited<ReturnType<typeof cachedActions.getEventPayments>> | null = null;
     let stats: { attending_count: number; maybe_count: number } | null = null;
 
     if (isOrganizer) {
       try {
-        // 軽量な統計データのみ取得
+        // ダッシュボード用の軽量データを並列取得
         const [payRes, statsRes] = await Promise.all([
           cachedActions.getEventPayments(params.id),
           cachedActions.getEventStats(params.id),
         ]);
+
         paymentsData = payRes;
         if (statsRes?.success) {
           stats = statsRes.data as any;
@@ -74,7 +75,7 @@ export default async function EventDetailPage({ params }: EventDetailPageProps) 
     }
 
     return (
-      <ModernEventDetailPage
+      <ModernEventDashboard
         eventId={params.id}
         eventDetail={eventDetail}
         paymentsData={paymentsData}

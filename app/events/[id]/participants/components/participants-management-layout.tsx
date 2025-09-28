@@ -39,10 +39,6 @@ export function ParticipantsManagementLayout({
   ).length;
   const totalRevenue = paymentsData.summary.paidAmount;
   const unpaidCount = paymentsData.summary.unpaidCount;
-  const completionRate =
-    paymentsData.summary.totalPayments > 0
-      ? Math.round((paymentsData.summary.paidCount / paymentsData.summary.totalPayments) * 100)
-      : 0;
 
   const handleBackToEvent = () => {
     router.push(`/events/${eventId}`);
@@ -87,7 +83,6 @@ export function ParticipantsManagementLayout({
             attendingCount={attendingCount}
             totalRevenue={totalRevenue}
             unpaidCount={unpaidCount}
-            completionRate={completionRate}
             onBackClick={handleBackToEvent}
           />
 
@@ -97,6 +92,8 @@ export function ParticipantsManagementLayout({
             eventDetail={eventDetail}
             onFiltersToggle={() => setFiltersExpanded(!filtersExpanded)}
             filtersExpanded={filtersExpanded}
+            searchParams={searchParams}
+            onFiltersChange={handleUpdateFilters}
           />
 
           {/* フィルター（展開可能） */}
@@ -109,14 +106,16 @@ export function ParticipantsManagementLayout({
           )}
 
           {/* 参加者テーブル */}
-          <ParticipantsTableEnhanced
-            eventId={eventId}
-            eventFee={eventDetail.fee}
-            participantsData={participantsData}
-            paymentsData={paymentsData}
-            searchParams={searchParams}
-            onFiltersChange={handleUpdateFilters}
-          />
+          <div className="-mx-4 sm:mx-0">
+            <ParticipantsTableEnhanced
+              eventId={eventId}
+              eventFee={eventDetail.fee}
+              participantsData={participantsData}
+              paymentsData={paymentsData}
+              searchParams={searchParams}
+              onFiltersChange={handleUpdateFilters}
+            />
+          </div>
         </div>
       </div>
     </div>

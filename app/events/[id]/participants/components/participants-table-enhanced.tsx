@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 
 import {
   ChevronLeft,
@@ -17,6 +17,7 @@ import {
   Circle,
   Triangle,
   RotateCcw,
+  Shield,
 } from "lucide-react";
 
 import { useToast } from "@core/contexts/toast-context";
@@ -89,7 +90,7 @@ function getAttendanceStatusIcon(status: string) {
 
   return (
     <div title={style.title}>
-      <Icon className={`${style.className} mx-auto`} aria-label={style.title} />
+      <Icon className={`${style.className}`} aria-label={style.title} />
     </div>
   );
 }
@@ -214,8 +215,78 @@ export function ParticipantsTableEnhanced({
     }, 100);
   };
 
-  // 参加者データ
-  const participants = participantsData.participants;
+  // 参加者データ（スマートソート対応）
+  const smartActive = typeof _searchParams.smart === "string";
+
+  const participants = useMemo(() => {
+    const base = [...participantsData.participants];
+    if (!smartActive) return base;
+
+    const ts = (v: string | null | undefined) => (v ? new Date(v).getTime() : 0);
+
+    const attendanceWeight = (status: string) => {
+      if (isFreeEvent) {
+        return status === "attending" ? 0 : status === "maybe" ? 1 : 2;
+      }
+      return status === "attending" ? 0 : status === "maybe" ? 3 : 4;
+    };
+
+    const simpleWeight = (status: string | null) => {
+      // unpaid=0, paid=1, waived=2, refunded=3
+      const simple = toSimplePaymentStatus(status as any);
+      switch (simple) {
+        case "unpaid":
+          return 0;
+        case "paid":
+          return 1;
+        case "waived":
+          return 2;
+        case "refunded":
+          return 3;
+        default:
+          return 9;
+      }
+    };
+
+    const methodWeight = (method: string | null | undefined) => {
+      // cash=0, unknown(null)=0.5, stripe=1
+      if (!method) return 0.5;
+      return method === "cash" ? 0 : method === "stripe" ? 1 : 0.5;
+    };
+
+    base.sort((a, b) => {
+      const awA = attendanceWeight(a.status);
+      const awB = attendanceWeight(b.status);
+      if (awA !== awB) return awA - awB;
+
+      if (isFreeEvent) {
+        // 参加/未定/不参加 + 更新日時降順
+        const updA = ts(a.attendance_updated_at);
+        const updB = ts(b.attendance_updated_at);
+        return updB - updA;
+      }
+
+      const swA = simpleWeight(a.payment_status as any);
+      const swB = simpleWeight(b.payment_status as any);
+      if (swA !== swB) return swA - swB;
+
+      const mwA = methodWeight(a.payment_method as any);
+      const mwB = methodWeight(b.payment_method as any);
+      if (mwA !== mwB) return mwA - mwB;
+
+      // 支払い日時降順
+      const paidA = ts(a.paid_at);
+      const paidB = ts(b.paid_at);
+      if (paidA !== paidB) return paidB - paidA;
+
+      // 最後に更新日時降順
+      const updA = ts(a.attendance_updated_at);
+      const updB = ts(b.attendance_updated_at);
+      return updB - updA;
+    });
+
+    return base;
+  }, [participantsData.participants, smartActive, isFreeEvent]);
   const pagination = participantsData.pagination;
 
   // 現在のページサイズ（URLパラメータから取得、デフォルト50）
@@ -361,27 +432,27 @@ export function ParticipantsTableEnhanced({
           >
             {viewMode === "table" ? (
               /* テーブルビュー（Enhanced Touch Targets対応） */
-              <div className="rounded-lg border border-gray-200 overflow-hidden shadow-sm">
+              <div className="rounded-lg border border-gray-200 overflow-x-auto shadow-sm -mx-4 sm:mx-0">
                 <table className="w-full" role="table" aria-label="参加者一覧テーブル">
                   <thead className="bg-gradient-to-r from-gray-50 to-gray-100 border-b-2 border-gray-200">
-                    <tr className="min-h-[52px]">
-                      <th className="px-4 py-4 text-left text-sm font-semibold text-gray-700 uppercase tracking-wider">
+                    <tr className="min-h-[30px]">
+                      <th className="px-3 sm:px-4 py-4 text-left text-sm font-semibold text-gray-700 uppercase tracking-wider">
                         <span className="hidden sm:inline">ニックネーム</span>
-                        <span className="sm:hidden">名前</span>
+                        <span className="sm:hidden">ニックネーム</span>
                       </th>
-                      <th className="px-3 sm:px-4 py-4 text-center text-sm font-semibold text-gray-700 uppercase tracking-wider">
+                      <th className="px-3 sm:px-4 py-4 text-left text-sm font-semibold text-gray-700 uppercase tracking-wider">
                         <span className="hidden sm:inline">参加状況</span>
-                        <span className="sm:hidden">参加</span>
+                        <span className="sm:hidden">参加状況</span>
                       </th>
                       <th className="px-3 sm:px-4 py-4 text-left text-sm font-semibold text-gray-700 uppercase tracking-wider">
                         <span className="hidden sm:inline">決済方法</span>
-                        <span className="sm:hidden">方法</span>
+                        <span className="sm:hidden">決済方法</span>
                       </th>
-                      <th className="px-3 sm:px-4 py-4 text-center text-sm font-semibold text-gray-700 uppercase tracking-wider">
+                      <th className="px-3 sm:px-4 py-4 text-left text-sm font-semibold text-gray-700 uppercase tracking-wider">
                         <span className="hidden sm:inline">決済状況</span>
-                        <span className="sm:hidden">状況</span>
+                        <span className="sm:hidden">決済状況</span>
                       </th>
-                      <th className="px-3 sm:px-4 py-4 text-left text-sm font-semibold text-gray-700 uppercase tracking-wider w-24 sm:w-32">
+                      <th className="px-3 sm:px-4 py-4 text-left text-sm font-semibold text-gray-700 uppercase tracking-wider">
                         アクション
                       </th>
                     </tr>
@@ -397,7 +468,7 @@ export function ParticipantsTableEnhanced({
                         <tr
                           key={participant.attendance_id}
                           className={`
-                            min-h-[52px] transition-all duration-200
+                            min-h-[30px] transition-all duration-200
                             hover:bg-blue-50 hover:shadow-sm
                             ${isPaid ? "bg-green-50 border-l-4 border-l-green-500" : ""}
                             focus-within:ring-2 focus-within:ring-blue-500 focus-within:ring-opacity-50
@@ -406,12 +477,12 @@ export function ParticipantsTableEnhanced({
                           role="row"
                         >
                           {/* ニックネーム列 */}
-                          <td className="px-3 sm:px-4 py-3 sm:py-4 whitespace-nowrap font-medium text-gray-900 text-sm sm:text-base">
+                          <td className="px-2 sm:px-4 py-3 sm:py-4 whitespace-nowrap font-medium text-gray-900 text-sm sm:text-base">
                             {participant.nickname}
                           </td>
 
                           {/* 参加状況列 */}
-                          <td className="px-2 sm:px-4 py-3 sm:py-4 whitespace-nowrap text-center">
+                          <td className="pl-2 sm:pl-8 py-3 sm:py-4 whitespace-nowrap">
                             {getAttendanceStatusIcon(participant.status)}
                           </td>
 
@@ -421,10 +492,10 @@ export function ParticipantsTableEnhanced({
                           </td>
 
                           {/* 決済状況列 */}
-                          <td className="px-2 sm:px-4 py-3 sm:py-4 whitespace-nowrap text-center">
+                          <td className="px-2 sm:px-4 py-3 sm:py-4 whitespace-nowrap">
                             {!isFreeEvent && participant.payment_status ? (
                               simpleStatus === "paid" ? (
-                                <CheckCircle className="h-5 w-5 text-green-600 mx-auto" />
+                                <CheckCircle className="h-5 w-5 text-green-600 ml-7" />
                               ) : (
                                 <Badge
                                   variant={getSimplePaymentStatusStyle(simpleStatus).variant}
@@ -434,7 +505,7 @@ export function ParticipantsTableEnhanced({
                                 </Badge>
                               )
                             ) : (
-                              <span className="text-gray-400 text-xs sm:text-sm">-</span>
+                              <span className="text-gray-400 text-xs sm:text-sm pl-8">-</span>
                             )}
                           </td>
 
@@ -476,7 +547,7 @@ export function ParticipantsTableEnhanced({
                                     className="bg-orange-50 border-orange-300 text-orange-700 hover:bg-orange-100 min-h-[36px] min-w-[36px] px-2 sm:px-3 shadow-sm hover:shadow-md transition-all duration-200 touch-manipulation"
                                     title="支払いを免除"
                                   >
-                                    <X className="h-3 w-3 sm:h-4 sm:w-4" />
+                                    <Shield className="h-3 w-3 sm:h-4 sm:w-4" />
                                     <span className="hidden lg:inline ml-1 text-xs">免除</span>
                                   </Button>
                                 )}
@@ -619,7 +690,7 @@ export function ParticipantsTableEnhanced({
                                   disabled={isUpdating}
                                   className="bg-orange-50 border-orange-300 text-orange-700 hover:bg-orange-100 min-h-[44px] touch-manipulation"
                                 >
-                                  <X className="h-4 w-4 mr-2" />
+                                  <Shield className="h-4 w-4 mr-2" />
                                   免除
                                 </Button>
                               )}
