@@ -64,20 +64,6 @@ export function EventStats({ eventData, attendances, payments }: EventStatsProps
   // 期待売上を計算（参加予定者数 × 参加費）
   const expectedRevenue = eventData.fee === 0 ? 0 : attendingCount * eventData.fee;
 
-  // 決済完了率を計算（完了済み決済数 / 有効決済数 × 100）
-  // 有効決済: failed, refundedを除く全決済
-  const validPaymentsCount = Object.entries(paymentStats.count)
-    .filter(([status]) => !["failed", "refunded"].includes(status))
-    .reduce((sum, [, count]) => sum + count, 0);
-
-  const completedPaymentsCount =
-    (paymentStats.count.paid || 0) +
-    (paymentStats.count.received || 0) +
-    (paymentStats.count.completed || 0);
-
-  const paymentCompletionRate =
-    validPaymentsCount > 0 ? Math.round((completedPaymentsCount / validPaymentsCount) * 100) : 0;
-
   // 参加率を計算（参加予定者数 / 定員 × 100）
   const attendanceRate =
     eventData.capacity && eventData.capacity > 0
@@ -145,18 +131,12 @@ export function EventStats({ eventData, attendances, payments }: EventStatsProps
         </div>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="text-center p-3 bg-cyan-50 rounded-lg">
           <div className="text-2xl font-bold text-cyan-600" data-testid="expected-revenue">
             ¥{expectedRevenue.toLocaleString()}
           </div>
           <div className="text-sm text-gray-600">期待売上</div>
-        </div>
-        <div className="text-center p-3 bg-pink-50 rounded-lg">
-          <div className="text-2xl font-bold text-pink-600" data-testid="payment-completion-rate">
-            {paymentCompletionRate}%
-          </div>
-          <div className="text-sm text-gray-600">決済完了率</div>
         </div>
         <div className="text-center p-3 bg-gray-50 rounded-lg">
           <div

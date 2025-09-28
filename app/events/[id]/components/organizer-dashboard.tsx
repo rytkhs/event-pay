@@ -50,20 +50,6 @@ export function OrganizerDashboard({
   const collectionProgress =
     expectedRevenue > 0 ? Math.round((totalRevenue / expectedRevenue) * 100) : 0;
 
-  const handleSendReminder = async (): Promise<void> => {
-    // TODO: リマインドメール送信機能
-    if (process.env.NODE_ENV === "development") {
-      console.log("Send reminder not implemented yet");
-    }
-  };
-
-  const handleExportData = async (): Promise<void> => {
-    // TODO: データ出力機能
-    if (process.env.NODE_ENV === "development") {
-      console.log("Export data not implemented yet");
-    }
-  };
-
   const handleManageParticipants = (): void => {
     router.push(`/events/${eventId}/participants`);
   };
@@ -261,11 +247,7 @@ export function OrganizerDashboard({
       </div>
 
       {/* フローティングアクションメニュー */}
-      <FloatingActionMenu
-        eventId={eventId}
-        onSendReminder={handleSendReminder}
-        onExportData={handleExportData}
-      />
+      <FloatingActionMenu eventId={eventId} eventStatus={eventDetail.status} />
     </div>
   );
 }

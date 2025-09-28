@@ -4,56 +4,51 @@ import { useState } from "react";
 
 import { useRouter } from "next/navigation";
 
-import { Plus, Edit, Mail, Download, Settings, X } from "lucide-react";
+import { Plus, Edit, Settings, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 
 interface FloatingActionMenuProps {
   eventId: string;
-  onSendReminder?: () => void;
-  onExportData?: () => void;
+  eventStatus?: string;
 }
 
-export function FloatingActionMenu({
-  eventId,
-  onSendReminder,
-  onExportData,
-}: FloatingActionMenuProps) {
+export function FloatingActionMenu({ eventId, eventStatus }: FloatingActionMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
   const router = useRouter();
 
+  // 編集可能かどうかの判定（開催済みまたはキャンセル済みは編集不可）
+  const canEdit = eventStatus !== "past" && eventStatus !== "canceled";
+
+  // 使用可能なアクションを動的に生成
   const actions = [
-    {
-      id: "edit",
-      label: "編集",
-      icon: Edit,
-      onClick: () => {
-        router.push(`/events/${eventId}/edit`);
-        setIsOpen(false);
-      },
-      color: "bg-primary hover:bg-primary/90 text-primary-foreground",
-    },
-    {
-      id: "reminder",
-      label: "リマインド送信",
-      icon: Mail,
-      onClick: () => {
-        onSendReminder?.();
-        setIsOpen(false);
-      },
-      color: "bg-warning hover:bg-warning/90 text-warning-foreground",
-    },
-    {
-      id: "export",
-      label: "データ出力",
-      icon: Download,
-      onClick: () => {
-        onExportData?.();
-        setIsOpen(false);
-      },
-      color: "bg-secondary hover:bg-secondary/90 text-secondary-foreground",
-    },
+    ...(canEdit
+      ? [
+          {
+            id: "edit",
+            label: "編集",
+            icon: Edit,
+            onClick: () => {
+              router.push(`/events/${eventId}/edit`);
+              setIsOpen(false);
+            },
+            color: "bg-primary hover:bg-primary/90 text-primary-foreground",
+          },
+        ]
+      : [
+          {
+            id: "edit-disabled",
+            label: `編集不可（${eventStatus === "past" ? "開催済み" : "キャンセル済み"}）`,
+            icon: Edit,
+            onClick: () => {
+              // 何もしない
+              setIsOpen(false);
+            },
+            color: "bg-muted hover:bg-muted/90 text-muted-foreground opacity-50 cursor-not-allowed",
+            disabled: true,
+          },
+        ]),
     {
       id: "settings",
       label: "詳細設定",
@@ -90,12 +85,13 @@ export function FloatingActionMenu({
         {isOpen && (
           <Card className="mb-4 p-2 shadow-lg border-0">
             <div className="flex flex-col gap-2 min-w-[200px]">
-              {actions.map((action) => {
+              {actions.map((action: any) => {
                 const Icon = action.icon;
                 return (
                   <Button
                     key={action.id}
                     onClick={action.onClick}
+                    disabled={action.disabled}
                     className={`
                       justify-start gap-3 h-12
                       ${action.color}
