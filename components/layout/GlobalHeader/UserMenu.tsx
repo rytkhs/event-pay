@@ -136,7 +136,7 @@ export function UserMenu({
         aria-label="ユーザーメニューを開く"
       >
         <User className="h-4 w-4" />
-        <span className="hidden sm:inline max-w-32 truncate">{user.email}</span>
+        <span className="hidden sm:inline max-w-32 truncate">{user.name || user.email}</span>
         <ChevronDown
           className={cn("h-4 w-4 transition-transform duration-200", isOpen && "rotate-180")}
         />
@@ -153,7 +153,9 @@ export function UserMenu({
           <div className="py-1">
             {/* ユーザー情報 */}
             <div className="px-4 py-3 border-b border-border">
-              <p className="text-sm font-medium text-foreground truncate">{user.email}</p>
+              <p className="text-sm font-medium text-foreground truncate">
+                {user.name || user.email}
+              </p>
               <p className="text-xs text-muted-foreground">ログイン中</p>
             </div>
 

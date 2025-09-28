@@ -114,7 +114,7 @@ export function AppHeader({ user, className }: AppHeaderProps) {
               <div className="pt-4 border-t border-border space-y-2">
                 {/* ユーザー情報表示 */}
                 <div className="px-4 py-2">
-                  <p className="text-sm font-medium text-foreground">{user.email}</p>
+                  <p className="text-sm font-medium text-foreground">{user.name || user.email}</p>
                   <p className="text-xs text-muted-foreground">ログイン中</p>
                 </div>
 

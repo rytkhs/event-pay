@@ -1,6 +1,13 @@
 import React from "react";
 
-import { type User } from "@supabase/supabase-js";
+import { type User as SupabaseUser } from "@supabase/supabase-js";
+
+/**
+ * 拡張されたユーザー型（nameプロパティを含む）
+ */
+export interface User extends SupabaseUser {
+  name?: string;
+}
 
 /**
  * ヘッダーバリアント定義
