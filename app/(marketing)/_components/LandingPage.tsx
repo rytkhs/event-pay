@@ -154,13 +154,12 @@ export default function LandingPage(): JSX.Element {
             </div>
             <div className="hero-image">
               <Image
-                src="https://user-gen-media-assets.s3.amazonaws.com/gpt4o_images/c4d341b4-9a1a-4d99-89ed-98dccf05081c.png"
+                src="/images/marketing/hero/mobile-flow-demo.png"
                 alt="スマホ画面での参加表明から決済、自動集計の流れ"
                 className="hero-img"
                 width={1200}
                 height={800}
-                loading="lazy"
-                unoptimized
+                priority
               />
             </div>
           </div>
@@ -173,13 +172,12 @@ export default function LandingPage(): JSX.Element {
           <div className="problems-grid">
             <div className="problem-card">
               <Image
-                src="https://user-gen-media-assets.s3.amazonaws.com/gpt4o_images/20c9bde7-141a-4245-a9d1-d51dbdfe3594.png"
+                src="/images/marketing/problems/line-chaos.png"
                 alt="LINEの返信が散らばる"
                 className="problem-img"
                 width={160}
                 height={160}
                 loading="lazy"
-                unoptimized
               />
               <h3 className="problem-title">LINEの返信が散らばる</h3>
               <p className="problem-text">
@@ -188,39 +186,36 @@ export default function LandingPage(): JSX.Element {
             </div>
             <div className="problem-card">
               <Image
-                src="https://user-gen-media-assets.s3.amazonaws.com/gpt4o_images/ab490c24-995e-4d0c-9744-66ed8d2415d5.png"
+                src="/images/marketing/problems/cash-burden.png"
                 alt="現金回収が負担"
                 className="problem-img"
                 width={160}
                 height={160}
                 loading="lazy"
-                unoptimized
               />
               <h3 className="problem-title">現金回収が負担</h3>
               <p className="problem-text">集める/お釣り/立替/当日ドタキャン…管理がぐちゃぐちゃ。</p>
             </div>
             <div className="problem-card">
               <Image
-                src="https://user-gen-media-assets.s3.amazonaws.com/gpt4o_images/5dc6c287-4eee-4c61-b55d-250e9a805e5d.png"
+                src="/images/marketing/problems/manual-reminder.png"
                 alt="リマインドが手作業"
                 className="problem-img"
                 width={160}
                 height={160}
                 loading="lazy"
-                unoptimized
               />
               <h3 className="problem-title">リマインドが手作業</h3>
               <p className="problem-text">未回答者へ個別メッセージ。週末の時間が消えていく。</p>
             </div>
             <div className="problem-card">
               <Image
-                src="https://user-gen-media-assets.s3.amazonaws.com/gpt4o_images/19732857-0730-4415-9e50-8d83ab3b80f8.png"
+                src="/images/marketing/problems/payment-unclear.png"
                 alt="入金状況が不透明"
                 className="problem-img"
                 width={160}
                 height={160}
                 loading="lazy"
-                unoptimized
               />
               <h3 className="problem-title">入金状況が不透明</h3>
               <p className="problem-text">誰が払った？未払いは？確認にまた時間がかかる。</p>
@@ -244,13 +239,12 @@ export default function LandingPage(): JSX.Element {
               </div>
               <div className="feature-image">
                 <Image
-                  src="https://user-gen-media-assets.s3.amazonaws.com/gpt4o_images/375ad9c4-1a48-4970-8401-88c5208d9f8f.png"
+                  src="/images/marketing/features/sns-sharing.png"
                   alt="招待リンクをSNSで共有"
                   className="feature-img"
                   width={1080}
                   height={720}
                   loading="lazy"
-                  unoptimized
                 />
               </div>
             </div>
@@ -267,13 +261,12 @@ export default function LandingPage(): JSX.Element {
               </div>
               <div className="feature-image">
                 <Image
-                  src="https://user-gen-media-assets.s3.amazonaws.com/gpt4o_images/af1eb29e-7908-424f-a9fa-979a4aac52f0.png"
+                  src="/images/marketing/features/dashboard-overview.png"
                   alt="現金・オンライン決済の一元管理ダッシュボード"
                   className="feature-img"
                   width={1080}
                   height={720}
                   loading="lazy"
-                  unoptimized
                 />
               </div>
             </div>
@@ -290,13 +283,12 @@ export default function LandingPage(): JSX.Element {
               </div>
               <div className="feature-image">
                 <Image
-                  src="https://user-gen-media-assets.s3.amazonaws.com/gpt4o_images/31532885-c150-4a60-baf0-fd13da648dd4.png"
+                  src="/images/marketing/features/notification-settings.png"
                   alt="カレンダーとベルの自動通知"
                   className="feature-img"
                   width={1080}
                   height={720}
                   loading="lazy"
-                  unoptimized
                 />
               </div>
             </div>
@@ -310,52 +302,48 @@ export default function LandingPage(): JSX.Element {
           <div className="use-cases-grid">
             <div className="use-case-card">
               <Image
-                src="https://user-gen-media-assets.s3.amazonaws.com/gpt4o_images/645c7c9c-8142-47a0-95e7-67a727a97d8e.png"
+                src="/images/marketing/use-cases/circle-activities.png"
                 alt="大学・社会人サークル"
                 className="use-case-img"
                 width={200}
                 height={200}
                 loading="lazy"
-                unoptimized
               />
               <h3 className="use-case-title">大学・社会人サークル</h3>
               <p className="use-case-text">合宿、BBQ、打ち上げ、参加費の徴収に。</p>
             </div>
             <div className="use-case-card">
               <Image
-                src="https://user-gen-media-assets.s3.amazonaws.com/gpt4o_images/8b6fc0ab-2e7b-4240-97a5-457ed1828534.png"
+                src="/images/marketing/use-cases/pta-community.png"
                 alt="PTA・町内会"
                 className="use-case-img"
                 width={200}
                 height={200}
                 loading="lazy"
-                unoptimized
               />
               <h3 className="use-case-title">PTA・町内会</h3>
               <p className="use-case-text">バザー/運動会/防災訓練の準備費や参加費に。</p>
             </div>
             <div className="use-case-card">
               <Image
-                src="https://user-gen-media-assets.s3.amazonaws.com/gpt4o_images/810d66ed-e652-4b2d-9a93-065f1fd174d1.png"
+                src="/images/marketing/use-cases/sports-team.png"
                 alt="スポーツチーム"
                 className="use-case-img"
                 width={200}
                 height={200}
                 loading="lazy"
-                unoptimized
               />
               <h3 className="use-case-title">スポーツチーム</h3>
               <p className="use-case-text">練習費・遠征費の集金、出欠管理に。</p>
             </div>
             <div className="use-case-card">
               <Image
-                src="https://user-gen-media-assets.s3.amazonaws.com/gpt4o_images/8ef625fe-765e-4e2f-9098-bd4f5b4cca5c.png"
+                src="/images/marketing/use-cases/company-events.png"
                 alt="社内イベント"
                 className="use-case-img"
                 width={200}
                 height={200}
                 loading="lazy"
-                unoptimized
               />
               <h3 className="use-case-title">社内イベント</h3>
               <p className="use-case-text">懇親会や部活動の会費管理に。</p>
