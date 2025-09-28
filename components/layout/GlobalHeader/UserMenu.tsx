@@ -2,16 +2,14 @@
 
 import { useState, useRef, useEffect, useTransition } from "react";
 
-import { LogOut, User, ChevronDown } from "lucide-react";
+import { LogOut, User, ChevronDown, ChevronRight } from "lucide-react";
 
 import { logoutAction } from "@core/actions/auth";
 import { cn } from "@core/utils";
 
-import { Button } from "@components/ui/button";
 import { Separator } from "@components/ui/separator";
 
 import { userMenuItems } from "./navigation-config";
-import { MobileNavLink } from "./NavLink";
 import { UserMenuProps } from "./types";
 
 /**
@@ -95,28 +93,22 @@ export function UserMenu({
     });
   };
 
-  // モバイル版（シンプルなリストレイアウト）
+  // モバイル版（ログアウトボタンのみ）
   if (isMobile) {
     return (
-      <div className="space-y-2">
-        {userMenuItems.map((item) => (
-          <MobileNavLink key={item.href} href={item.href} icon={item.icon} onClick={onItemClick}>
-            {item.label}
-          </MobileNavLink>
-        ))}
-
-        <div className="pt-2 border-t border-border">
-          <Button
-            variant="ghost"
-            onClick={handleLogoutClick}
-            disabled={isPending}
-            className="w-full justify-start text-red-600 hover:text-red-700 hover:bg-red-50"
-          >
-            <LogOut className="h-4 w-4 mr-2" />
-            {isPending ? "ログアウト中..." : "ログアウト"}
-          </Button>
+      <button
+        onClick={handleLogoutClick}
+        disabled={isPending}
+        className="group w-full flex items-center justify-between px-4 py-4 text-base font-medium transition-all duration-200 text-red-600 hover:text-red-700 hover:bg-red-50/80 rounded-xl disabled:opacity-50"
+      >
+        <div className="flex items-center space-x-3">
+          <LogOut className="h-5 w-5 flex-shrink-0" />
+          <span>{isPending ? "ログアウト中..." : "ログアウト"}</span>
         </div>
-      </div>
+        {!isPending && (
+          <ChevronRight className="h-4 w-4 text-red-400 group-hover:text-red-600 transition-colors" />
+        )}
+      </button>
     );
   }
 

@@ -2,14 +2,12 @@
 
 import { useState, useEffect } from "react";
 
-import { Menu, X } from "lucide-react";
-
 import { cn } from "@core/utils";
 
 import { Button } from "@components/ui/button";
 
 import { navigationConfig, marketingCTA } from "./navigation-config";
-import { NavLink, MobileNavLink } from "./NavLink";
+import { NavLink } from "./NavLink";
 import { MarketingHeaderProps } from "./types";
 
 /**
@@ -18,7 +16,6 @@ import { MarketingHeaderProps } from "./types";
  */
 export function MarketingHeader({ className }: MarketingHeaderProps) {
   const [isScrolled, setIsScrolled] = useState(false);
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   // スクロールによるヘッダーの見た目変更
   useEffect(() => {
@@ -30,15 +27,6 @@ export function MarketingHeader({ className }: MarketingHeaderProps) {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  // モバイルメニューの開閉
-  const handleMobileMenuToggle = () => {
-    setIsMobileMenuOpen(!isMobileMenuOpen);
-  };
-
-  const closeMobileMenu = () => {
-    setIsMobileMenuOpen(false);
-  };
-
   // スムーズスクロール機能（既存のランディングページ機能を再現）
   const handleSmoothScroll = (e: React.MouseEvent<HTMLAnchorElement>, targetId: string) => {
     e.preventDefault();
@@ -49,7 +37,6 @@ export function MarketingHeader({ className }: MarketingHeaderProps) {
         block: "start",
       });
     }
-    closeMobileMenu();
   };
 
   return (
@@ -109,83 +96,38 @@ export function MarketingHeader({ className }: MarketingHeaderProps) {
                 );
               })}
 
+              {/* ログインリンク */}
+              <NavLink
+                href="/login"
+                className="ml-4 text-sm font-medium text-muted-foreground hover:text-foreground border-b-0 hover:border-b-0 hover:bg-transparent"
+              >
+                ログイン
+              </NavLink>
+
               {/* CTA ボタン */}
-              <Button asChild variant={marketingCTA.variant} size="sm" className="ml-4">
+              <Button asChild variant={marketingCTA.variant} size="sm" className="ml-2">
                 <NavLink href={marketingCTA.href}>{marketingCTA.label}</NavLink>
               </Button>
             </nav>
 
-            {/* モバイルメニューボタン */}
-            <button
-              className="md:hidden p-2 rounded-md hover:bg-muted transition-colors"
-              onClick={handleMobileMenuToggle}
-              aria-label="メニューを開く"
-              aria-expanded={isMobileMenuOpen}
-              aria-controls="mobile-menu"
-            >
-              {isMobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-            </button>
+            {/* モバイル用ナビゲーション */}
+            <div className="md:hidden flex items-center space-x-2">
+              {/* モバイル用ログインリンク */}
+              <NavLink
+                href="/login"
+                className="text-sm font-medium text-muted-foreground hover:text-foreground border-b-0 hover:border-b-0 hover:bg-transparent px-2 py-1"
+              >
+                ログイン
+              </NavLink>
+
+              {/* モバイル用CTA ボタン */}
+              <Button asChild variant={marketingCTA.variant} size="sm">
+                <NavLink href={marketingCTA.href}>{marketingCTA.label}</NavLink>
+              </Button>
+            </div>
           </div>
         </div>
       </header>
-
-      {/* モバイルメニュー */}
-      {isMobileMenuOpen && (
-        <div id="mobile-menu" className="fixed inset-0 top-16 z-40 md:hidden" role="menu">
-          {/* オーバーレイ */}
-          <div
-            className="fixed inset-0 bg-black/20 backdrop-blur-sm"
-            onClick={closeMobileMenu}
-            aria-hidden="true"
-          />
-
-          {/* メニューコンテンツ */}
-          <div className="relative bg-background border-b border-border shadow-lg">
-            <nav className="px-4 py-6 space-y-2" role="none">
-              {navigationConfig.marketing.map((item) => {
-                // ハッシュリンクかどうか判定
-                const isHashLink = item.href.startsWith("/#");
-
-                if (isHashLink) {
-                  return (
-                    <a
-                      key={item.href}
-                      href={item.href}
-                      className="flex items-center gap-3 px-4 py-3 text-base font-medium transition-all duration-200 hover:text-primary hover:bg-primary/5 rounded-lg"
-                      onClick={(e) => handleSmoothScroll(e, item.href.substring(1))}
-                      role="menuitem"
-                    >
-                      {item.icon && <span className="h-5 w-5 flex-shrink-0">{item.icon}</span>}
-                      {item.label}
-                    </a>
-                  );
-                }
-
-                return (
-                  <MobileNavLink
-                    key={item.href}
-                    href={item.href}
-                    icon={item.icon}
-                    exactMatch={item.exactMatch}
-                    onClick={closeMobileMenu}
-                  >
-                    {item.label}
-                  </MobileNavLink>
-                );
-              })}
-
-              {/* モバイル用 CTA ボタン */}
-              <div className="pt-4 border-t border-border">
-                <Button asChild variant={marketingCTA.variant} size="default" className="w-full">
-                  <MobileNavLink href={marketingCTA.href} onClick={closeMobileMenu}>
-                    {marketingCTA.label}
-                  </MobileNavLink>
-                </Button>
-              </div>
-            </nav>
-          </div>
-        </div>
-      )}
     </>
   );
 }

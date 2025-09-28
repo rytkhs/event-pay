@@ -1,6 +1,6 @@
 import { createElement } from "react";
 
-import { Home, Calendar, Settings, HelpCircle, CreditCard } from "lucide-react";
+import { Home, Calendar, Settings, FileText, Plus } from "lucide-react";
 
 import { NavigationConfig } from "./types";
 
@@ -47,10 +47,17 @@ export const navigationConfig: NavigationConfig = {
       icon: createElement(Calendar),
       exactMatch: false,
     },
+  ],
+
+  /**
+   * モバイル専用ナビゲーション
+   * ハンバーガーメニューでのみ使用される追加項目
+   */
+  mobile: [
     {
-      label: "設定",
-      href: "/settings",
-      icon: createElement(Settings),
+      label: "新規イベント作成",
+      href: "/events/create",
+      icon: createElement(Plus),
       exactMatch: false,
     },
   ],
@@ -78,18 +85,13 @@ export const marketingCTA = {
  */
 export const userMenuItems = [
   {
-    label: "プロフィール設定",
+    label: "精算レポート",
+    href: "/settlement-reports",
+    icon: createElement(FileText),
+  },
+  {
+    label: "設定",
     href: "/settings/profile",
     icon: createElement(Settings),
-  },
-  {
-    label: "Stripe Connect",
-    href: "/dashboard/connect",
-    icon: createElement(CreditCard),
-  },
-  {
-    label: "ヘルプ",
-    href: "/#faq",
-    icon: createElement(HelpCircle),
   },
 ] as const;

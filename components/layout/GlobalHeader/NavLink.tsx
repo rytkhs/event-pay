@@ -75,8 +75,8 @@ export function MobileNavLink({
   const finalClassName = cn(
     // モバイル向けの基本スタイル（大きなタップ領域）
     "flex items-center gap-3 px-4 py-3 text-base font-medium transition-all duration-200 hover:text-primary hover:bg-primary/5 rounded-lg",
-    className,
-    isActive && (activeClassName ?? defaultActiveClass)
+    isActive && (activeClassName ?? defaultActiveClass),
+    className // classNameを最後にして上書き可能にする
   );
 
   return (

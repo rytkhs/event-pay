@@ -123,6 +123,8 @@ export interface NavigationConfig {
   marketing: NavItem[];
   /** アプリケーションナビゲーション */
   app: NavItem[];
+  /** モバイル専用ナビゲーション（ハンバーガーメニューのみ） */
+  mobile: NavItem[];
   /** ゲストナビゲーション */
   guest: NavItem[];
 }

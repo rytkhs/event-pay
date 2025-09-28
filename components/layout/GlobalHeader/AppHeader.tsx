@@ -1,12 +1,14 @@
 "use client";
 
-import { useState } from "react";
-
-import { Menu, X } from "lucide-react";
+import { Menu, ChevronRight } from "lucide-react";
 
 import { cn } from "@core/utils";
 
-import { navigationConfig } from "./navigation-config";
+import { Button } from "@components/ui/button";
+import { Separator } from "@components/ui/separator";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@components/ui/sheet";
+
+import { navigationConfig, userMenuItems } from "./navigation-config";
 import { NavLink, MobileNavLink } from "./NavLink";
 import { AppHeaderProps } from "./types";
 import { UserMenu } from "./UserMenu";
@@ -16,16 +18,6 @@ import { UserMenu } from "./UserMenu";
  * 認証済みユーザー向けの管理画面で使用
  */
 export function AppHeader({ user, className }: AppHeaderProps) {
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-
-  const handleMobileMenuToggle = () => {
-    setIsMobileMenuOpen(!isMobileMenuOpen);
-  };
-
-  const closeMobileMenu = () => {
-    setIsMobileMenuOpen(false);
-  };
-
   return (
     <>
       {/* メインヘッダー */}
@@ -69,62 +61,99 @@ export function AppHeader({ user, className }: AppHeaderProps) {
                 <UserMenu user={user} />
               </div>
 
-              {/* モバイルメニューボタン */}
-              <button
-                className="md:hidden p-2 rounded-md hover:bg-muted transition-colors"
-                onClick={handleMobileMenuToggle}
-                aria-label="メニューを開く"
-                aria-expanded={isMobileMenuOpen}
-                aria-controls="mobile-menu"
-              >
-                {isMobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-              </button>
+              {/* モバイルメニュー（Sheet） */}
+              <Sheet>
+                <SheetTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="md:hidden"
+                    aria-label="メニューを開く"
+                  >
+                    <Menu className="h-5 w-5" />
+                  </Button>
+                </SheetTrigger>
+                <SheetContent side="right" className="w-full max-w-xs">
+                  <SheetHeader>
+                    <SheetTitle>メニュー</SheetTitle>
+                  </SheetHeader>
+
+                  <div className="mt-6 flex flex-col h-full">
+                    {/* プロフィールセクション */}
+                    <div className="px-4 py-4 bg-muted/30 rounded-xl border border-border/50">
+                      <div className="flex items-center space-x-3">
+                        {/* ユーザーイニシャル */}
+                        <div className="flex-shrink-0 w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
+                          <span className="text-sm font-semibold text-primary">
+                            {(user.name || user.email)?.[0]?.toUpperCase() || "U"}
+                          </span>
+                        </div>
+
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-foreground truncate">
+                            {user.name || user.email}
+                          </p>
+                          <p className="text-xs text-muted-foreground">ログイン中</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* メインナビゲーション */}
+                    <nav className="mt-6 space-y-1">
+                      {[...navigationConfig.app, ...navigationConfig.mobile].map((item) => (
+                        <div key={item.href} className="group">
+                          <MobileNavLink
+                            href={item.href}
+                            exactMatch={item.exactMatch}
+                            className="flex items-center justify-between px-4 py-4 text-base font-medium transition-all duration-200 hover:text-primary hover:bg-primary/5 rounded-xl"
+                          >
+                            <div className="flex items-center space-x-3">
+                              {item.icon && (
+                                <span className="h-5 w-5 flex-shrink-0">{item.icon}</span>
+                              )}
+                              <span>{item.label}</span>
+                            </div>
+                            <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
+                          </MobileNavLink>
+                        </div>
+                      ))}
+                    </nav>
+
+                    <div className="flex-1" />
+
+                    {/* 設定セクション */}
+                    <div className="mt-auto space-y-1">
+                      <Separator className="mb-4" />
+
+                      {userMenuItems.map((item) => (
+                        <div key={item.href} className="group">
+                          <MobileNavLink
+                            href={item.href}
+                            className="flex items-center justify-between px-4 py-4 text-base font-medium transition-all duration-200 hover:text-primary hover:bg-primary/5 rounded-xl"
+                          >
+                            <div className="flex items-center space-x-3">
+                              {item.icon && (
+                                <span className="h-5 w-5 flex-shrink-0">{item.icon}</span>
+                              )}
+                              <span>{item.label}</span>
+                            </div>
+                            <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
+                          </MobileNavLink>
+                        </div>
+                      ))}
+
+                      <Separator className="my-4" />
+
+                      {/* ログアウトセクション */}
+                      <UserMenu user={user} isMobile={true} />
+                    </div>
+                  </div>
+                </SheetContent>
+              </Sheet>
             </div>
           </div>
         </div>
       </header>
-
-      {/* モバイルメニュー */}
-      {isMobileMenuOpen && (
-        <div id="mobile-menu" className="fixed inset-0 top-16 z-40 md:hidden" role="menu">
-          {/* オーバーレイ */}
-          <div
-            className="fixed inset-0 bg-black/20 backdrop-blur-sm"
-            onClick={closeMobileMenu}
-            aria-hidden="true"
-          />
-
-          {/* メニューコンテンツ */}
-          <div className="relative bg-background border-b border-border shadow-lg">
-            <nav className="px-4 py-6 space-y-2" role="none">
-              {/* メインナビゲーション */}
-              {navigationConfig.app.map((item) => (
-                <MobileNavLink
-                  key={item.href}
-                  href={item.href}
-                  icon={item.icon}
-                  exactMatch={item.exactMatch}
-                  onClick={closeMobileMenu}
-                >
-                  {item.label}
-                </MobileNavLink>
-              ))}
-
-              {/* ユーザー情報とメニュー */}
-              <div className="pt-4 border-t border-border space-y-2">
-                {/* ユーザー情報表示 */}
-                <div className="px-4 py-2">
-                  <p className="text-sm font-medium text-foreground">{user.name || user.email}</p>
-                  <p className="text-xs text-muted-foreground">ログイン中</p>
-                </div>
-
-                {/* ユーザーメニューアイテム（モバイル用） */}
-                <UserMenu user={user} isMobile={true} onItemClick={closeMobileMenu} />
-              </div>
-            </nav>
-          </div>
-        </div>
-      )}
     </>
   );
 }
