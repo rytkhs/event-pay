@@ -367,7 +367,7 @@ describe("checkout.session.expired Webhook統合テスト", () => {
       };
 
       // 高位ステータスには必須フィールドを設定
-      if (["paid", "received", "completed", "refunded"].includes(currentStatus)) {
+      if (["paid", "received", "completed", "refunded", "waived"].includes(currentStatus)) {
         updateData.paid_at = new Date().toISOString();
         updateData.stripe_payment_intent_id = `pi_test_${currentStatus}_${Date.now()}`;
       }
