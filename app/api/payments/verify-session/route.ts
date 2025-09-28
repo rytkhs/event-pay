@@ -22,8 +22,18 @@ import { maskSessionId } from "@core/utils/mask";
 
 // リクエストバリデーションスキーマ
 const VerifySessionSchema = z.object({
-  session_id: z.string().min(1, "セッションIDは必須です"),
-  attendance_id: z.string().uuid("有効な参加IDを入力してください"),
+  session_id: z
+    .string({
+      required_error: "セッションIDは必須です",
+      invalid_type_error: "セッションIDは必須です",
+    })
+    .min(1, "セッションIDは必須です"),
+  attendance_id: z
+    .string({
+      required_error: "有効な参加IDを入力してください",
+      invalid_type_error: "有効な参加IDを入力してください",
+    })
+    .uuid("有効な参加IDを入力してください"),
 });
 
 // レスポンス型
@@ -135,15 +145,18 @@ export async function GET(request: NextRequest) {
       .single();
 
     // ゲストトークンの照合確認（セキュリティチェック）
-    if (attendanceData && attendanceData.guest_token !== guestToken) {
+    if (!attendanceData || attendanceData.guest_token !== guestToken) {
       logSecurityEvent({
         type: "SUSPICIOUS_ACTIVITY",
         severity: "HIGH",
-        message: "Guest token mismatch during payment verification",
+        message: attendanceData
+          ? "Guest token mismatch during payment verification"
+          : "Payment verification attempted with non-existent attendance record",
         details: {
           attendanceId: attendance_id,
           sessionId: maskSessionId(session_id),
           tokenMatch: false,
+          attendanceExists: !!attendanceData,
         },
         ip: getClientIP(request),
         timestamp: new Date(),
@@ -177,11 +190,11 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    if (dbError && dbError.code !== "PGRST116") {
+    if (dbError && (dbError as any).code !== "PGRST116") {
       logger.error("Database query failed during payment verification", {
         tag: "payment-verify",
         attendance_id,
-        error: dbError.message,
+        error: (dbError as any).message,
       });
     }
 
@@ -303,7 +316,7 @@ export async function GET(request: NextRequest) {
             attendanceId: attendance_id,
             sessionId: maskSessionId(session_id),
             hasGuestToken: !!guestToken,
-            dbErrorCode: dbError?.code,
+            dbErrorCode: (dbError as any).code,
           },
           ip: getClientIP(request),
           timestamp: new Date(),
@@ -330,7 +343,6 @@ export async function GET(request: NextRequest) {
 
         return createProblemResponse("PAYMENT_SESSION_NOT_FOUND", {
           instance: "/api/payments/verify-session",
-          detail: "Stripe決済セッションの取得に失敗しました",
         });
       }
     }

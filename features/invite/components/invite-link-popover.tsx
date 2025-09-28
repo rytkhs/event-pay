@@ -7,6 +7,7 @@ import { Copy, ExternalLink, RefreshCw, Link, MoreHorizontal } from "lucide-reac
 import { generateInviteTokenAction } from "@core/actions";
 import { useToast } from "@core/contexts/toast-context";
 import { useClipboard } from "@core/hooks/use-clipboard";
+import { cn } from "@core/utils";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,9 +17,14 @@ import { Separator } from "@/components/ui/separator";
 interface InviteLinkPopoverProps {
   eventId: string;
   initialInviteToken?: string;
+  className?: string;
 }
 
-export function InviteLinkPopover({ eventId, initialInviteToken }: InviteLinkPopoverProps) {
+export function InviteLinkPopover({
+  eventId,
+  initialInviteToken,
+  className,
+}: InviteLinkPopoverProps) {
   const [inviteToken, setInviteToken] = useState(initialInviteToken);
   const [inviteUrl, setInviteUrl] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
@@ -115,13 +121,25 @@ export function InviteLinkPopover({ eventId, initialInviteToken }: InviteLinkPop
     return (
       <Button
         variant="outline"
-        size="sm"
+        size="lg"
         onClick={() => handleGenerateToken(false)}
         disabled={isGenerating}
-        className="shrink-0"
+        className={cn(
+          "border-2 border-blue-200 hover:bg-blue-50 hover:border-blue-300 transition-all duration-200",
+          className
+        )}
       >
-        <Link className="mr-2 h-4 w-4" />
-        {isGenerating ? "生成中..." : "招待リンク"}
+        <div className="flex items-center gap-3">
+          <div className="p-2 bg-blue-100 rounded-lg">
+            <Link className="h-5 w-5 text-blue-600" />
+          </div>
+          <div className="text-left">
+            <div className="font-bold">招待リンク</div>
+            <div className="text-xs text-muted-foreground">
+              {isGenerating ? "生成中..." : "リンクを作成"}
+            </div>
+          </div>
+        </div>
       </Button>
     );
   }
@@ -130,10 +148,24 @@ export function InviteLinkPopover({ eventId, initialInviteToken }: InviteLinkPop
   return (
     <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
       <PopoverTrigger asChild>
-        <Button variant="outline" size="sm" className="shrink-0">
-          <Link className="mr-2 h-4 w-4" />
-          招待リンク
-          <MoreHorizontal className="ml-1 h-3 w-3" />
+        <Button
+          variant="outline"
+          size="lg"
+          className={cn(
+            "border-2 border-blue-200 hover:bg-blue-50 hover:border-blue-300 transition-all duration-200",
+            className
+          )}
+        >
+          <div className="flex items-center gap-3 w-full">
+            <div className="p-2 bg-blue-100 rounded-lg">
+              <Link className="h-5 w-5 text-blue-600" />
+            </div>
+            <div className="text-left flex-1">
+              <div className="font-bold">招待リンク</div>
+              <div className="text-xs text-muted-foreground">参加者を招待</div>
+            </div>
+            <MoreHorizontal className="h-4 w-4 text-muted-foreground" />
+          </div>
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-80" align="end">

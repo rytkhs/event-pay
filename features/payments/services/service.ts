@@ -266,7 +266,7 @@ export class PaymentService implements IPaymentService {
             amount: params.amount,
             // 金額変更検知用に元の金額を保存
             _originalAmount: originalAmount,
-          };
+          } as OpenPaymentRow & { _originalAmount: number };
 
           targetPaymentId = openPayment.id as string;
         } else {

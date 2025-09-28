@@ -17,7 +17,6 @@ import {
   Landmark,
 } from "lucide-react";
 
-import { logoutAction } from "@core/actions/auth";
 import { createClient } from "@core/supabase/server";
 import { formatUtcToJst } from "@core/utils/timezone";
 
@@ -34,14 +33,6 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-
-async function handleLogout() {
-  "use server";
-  const result = await logoutAction();
-  if (result.success && result.redirectUrl) {
-    redirect(result.redirectUrl);
-  }
-}
 
 function formatCurrency(amount: number): string {
   return new Intl.NumberFormat("ja-JP", {
@@ -119,32 +110,6 @@ export default async function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-muted/30">
-      {/* ヘッダー */}
-      <header className="bg-background/80 backdrop-blur-sm border-b border-border/50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between h-16">
-            <div className="flex items-center">
-              <h1 className="text-2xl font-bold text-primary">ダッシュボード</h1>
-            </div>
-            <div className="flex items-center space-x-4" data-testid="user-menu">
-              <span className="text-sm text-muted-foreground hidden sm:inline">
-                ようこそ、{user.email}さん
-              </span>
-              <form action={handleLogout}>
-                <Button
-                  type="submit"
-                  variant="outline"
-                  size="sm"
-                  className="border-border hover:bg-muted"
-                >
-                  ログアウト
-                </Button>
-              </form>
-            </div>
-          </div>
-        </div>
-      </header>
-
       <main className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
         {/* 統計カードセクション（4つのカード） */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
