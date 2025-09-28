@@ -272,15 +272,17 @@ export function getRestrictionRulesV2(
     field: "payment_methods",
     check: (existing, updated, context) => {
       if (!context.hasActivePayments) return false;
-      const currentMethods =
-        (existing as Database["public"]["Enums"]["payment_method_enum"][]) || [];
-      const newMethods = (updated as Database["public"]["Enums"]["payment_method_enum"][]) || [];
-      const currentSet = new Set(currentMethods);
-      const isChanged =
-        currentSet.size !== new Set(newMethods).size || !newMethods.every((m) => currentSet.has(m));
-      return isChanged;
+      const current = new Set(
+        (existing as Database["public"]["Enums"]["payment_method_enum"][]) || []
+      );
+      const next = new Set((updated as Database["public"]["Enums"]["payment_method_enum"][]) || []);
+      // 追加は許可、既存の解除は不可（current にあるものが next から消えていたら違反）
+      for (const method of current) {
+        if (!next.has(method)) return true;
+      }
+      return false;
     },
-    message: "決済済みの参加者がいるため、決済方法は変更できません",
+    message: "決済済みの参加者がいるため、既存の決済方法は解除できません",
   };
 
   switch (operation) {

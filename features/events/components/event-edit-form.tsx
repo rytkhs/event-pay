@@ -34,6 +34,7 @@ interface EventEditFormProps {
   onSubmit?: (data: Event) => void;
   serverError?: string;
   hasStripePaid?: boolean;
+  canUseOnlinePayments?: boolean;
 }
 
 export function EventEditForm({
@@ -42,6 +43,7 @@ export function EventEditForm({
   onSubmit,
   serverError,
   hasStripePaid = false,
+  canUseOnlinePayments = false,
 }: EventEditFormProps) {
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [pendingChanges, setPendingChanges] = useState<ChangeItem[]>([]);
@@ -83,6 +85,35 @@ export function EventEditForm({
   const formDataSnapshot = useFormDataSnapshot(form.watch());
 
   const hasStripeSelected = (form.watch("payment_methods") || []).includes("stripe");
+
+  /**
+   * Stripe Connect設定状態の判定
+   * - canUseOnlinePayments: Stripe Connect準備完了（ready状態）
+   * - hasExistingStripe: 既存イベントでStripe設定済み
+   * - hasStripeSelected: 現在フォームでStripeが選択中
+   */
+  const needsStripeSetup = hasStripeSelected && !canUseOnlinePayments;
+
+  // 型安全な決済方法の選択肢
+  // Stripe Connectが準備できていない場合はオンライン決済を選択肢から除外
+  // ただし、既存イベントでStripeが設定済みの場合は編集継続のため選択肢として残す
+  const hasExistingStripe = event.payment_methods?.includes("stripe");
+  const showStripeOption = canUseOnlinePayments || hasExistingStripe;
+
+  const paymentOptions: { value: Event["payment_methods"][number]; label: string }[] = [
+    ...(showStripeOption
+      ? [
+          {
+            value: "stripe" as const,
+            label:
+              hasExistingStripe && !canUseOnlinePayments
+                ? "オンライン決済（要設定確認）"
+                : "オンライン決済",
+          },
+        ]
+      : []),
+    { value: "cash", label: "現金" },
+  ];
 
   // Stripe選択時の即時バリデーション
   useEffect(() => {
@@ -319,26 +350,30 @@ export function EventEditForm({
                             決済方法 <span className="text-red-500">*</span>
                           </FormLabel>
                           <div className="space-y-2">
-                            {[
-                              { value: "stripe", label: "クレジットカード" },
-                              { value: "cash", label: "現金" },
-                            ].map((option) => (
+                            {paymentOptions.map((option) => (
                               <div key={option.value} className="flex items-center space-x-2">
                                 <Checkbox
                                   id={`payment-${option.value}`}
                                   checked={field.value?.includes(option.value)}
                                   onCheckedChange={(checked) => {
+                                    const existingMethods = event.payment_methods || [];
                                     if (checked) {
-                                      field.onChange([...field.value, option.value]);
+                                      const next = [
+                                        ...new Set([...(field.value || []), option.value]),
+                                      ];
+                                      field.onChange(next);
                                     } else {
-                                      field.onChange(
-                                        field.value?.filter((v) => v !== option.value)
+                                      // 既存メソッドの解除は禁止（hasStripePaid時）
+                                      if (hasStripePaid && existingMethods.includes(option.value)) {
+                                        return;
+                                      }
+                                      const next = (field.value || []).filter(
+                                        (v) => v !== option.value
                                       );
+                                      field.onChange(next);
                                     }
                                   }}
-                                  disabled={
-                                    isPending || !restrictions.isFieldEditable("payment_methods")
-                                  }
+                                  disabled={isPending}
                                 />
                                 <label
                                   htmlFor={`payment-${option.value}`}
@@ -349,14 +384,40 @@ export function EventEditForm({
                               </div>
                             ))}
                           </div>
-                          {!restrictions.isFieldEditable("payment_methods") && (
-                            <FormDescription className="text-xs text-gray-500">
-                              決済済み参加者がいるため、この項目は変更できません。
-                            </FormDescription>
+
+                          {/* Stripe Connect設定が必要な場合の警告 */}
+                          {needsStripeSetup && (
+                            <div className="mt-2 p-3 bg-amber-50 border border-amber-200 rounded-md">
+                              <div className="flex items-start space-x-2">
+                                <div className="text-amber-600 mt-0.5">⚠️</div>
+                                <div className="text-sm">
+                                  <p className="text-amber-800 font-medium">
+                                    Stripe Connectの設定が必要です
+                                  </p>
+                                  <p className="text-amber-700 mt-1">
+                                    オンライン決済を受け取るには、Stripe
+                                    Connectアカウントの設定を完了してください。
+                                  </p>
+                                  <a
+                                    href="/dashboard/connect"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center text-amber-700 hover:text-amber-800 underline text-xs mt-1"
+                                  >
+                                    設定画面を開く →
+                                  </a>
+                                </div>
+                              </div>
+                            </div>
                           )}
-                          {restrictions.isFieldEditable("payment_methods") && (
+
+                          {hasStripePaid ? (
                             <FormDescription className="text-xs text-gray-500">
-                              クレジットカード決済（Stripe）を選択する場合は、下部でオンライン決済締切を必ず設定してください
+                              決済済み参加者がいるため、既存の決済方法は解除できません。新しい決済方法の追加は可能です。
+                            </FormDescription>
+                          ) : (
+                            <FormDescription className="text-xs text-gray-500">
+                              オンライン決済を選択する場合は、下部でオンライン決済締切を必ず設定してください
                               <span className="text-red-500 ml-1 font-bold">*</span>
                             </FormDescription>
                           )}
@@ -403,7 +464,7 @@ export function EventEditForm({
                     )}
                   />
 
-                  {/* 支払い締切（stripe選択時のみ表示） */}
+                  {/* 支払い締切（オンライン決済選択時のみ表示） */}
                   {hasStripeSelected && !isFreeEvent && (
                     <FormField
                       control={form.control}
@@ -415,7 +476,7 @@ export function EventEditForm({
                             <Input {...field} type="datetime-local" disabled={isPending} />
                           </FormControl>
                           {/* <FormDescription className="text-xs text-red-600">
-                            クレジットカード決済を有効にしたため必須です
+                            オンライン決済を有効にしたため必須です
                           </FormDescription> */}
                           <FormMessage />
                         </FormItem>
@@ -424,7 +485,7 @@ export function EventEditForm({
                   )}
                 </div>
 
-                {/* 締切後もオンライン決済を許可 + 猶予（日）: stripe選択時のみ */}
+                {/* 締切後もオンライン決済を許可 + 猶予（日）: オンライン決済選択時のみ */}
                 {hasStripeSelected && !isFreeEvent && (
                   <div className="space-y-3">
                     <FormField

@@ -79,10 +79,54 @@ export async function createEventAction(formData: FormData): Promise<CreateEvent
       return createServerActionError("VALIDATION_ERROR", "入力が不正です");
     }
 
-    // オンライン決済を選択している場合の制約チェックは
-    // クライアント側（ModernEventForm）で実施済み
-    // サーバー側では基本的なバリデーションのみ実行
-    // （アーキテクチャルール: features間の直接依存を回避）
+    // オンライン決済の準備状態（Stripe Connect）のサーバー側チェック
+    // - クライアント改ざん防止のため、"stripe"選択時は verified && payouts_enabled を必須とする
+    // - features間の直接依存は避け、DBのアカウント状態で軽量判定する
+    {
+      const fee = Number(rawData.fee);
+      const wantsStripe = Array.isArray((rawData as any).payment_methods)
+        ? ((rawData as any).payment_methods as string[]).includes("stripe")
+        : false;
+
+      if (fee > 0 && wantsStripe) {
+        const factory = SecureSupabaseClientFactory.getInstance();
+        const adminClient = await factory.createAuditedAdminClient(
+          AdminReason.EVENT_MANAGEMENT,
+          "create_event_precheck",
+          {
+            userId: user.id,
+          }
+        );
+
+        const { data: connectAccount, error: connectError } = await adminClient
+          .from("stripe_connect_accounts")
+          .select("status, payouts_enabled")
+          .eq("user_id", user.id)
+          .maybeSingle();
+
+        const isReady =
+          !!connectAccount &&
+          (connectAccount as any).status === "verified" &&
+          (connectAccount as any).payouts_enabled === true;
+
+        if (connectError || !isReady) {
+          return createServerActionError(
+            "VALIDATION_ERROR",
+            "オンライン決済を利用するにはStripe Connectの設定完了が必要です",
+            {
+              details: {
+                fieldErrors: [
+                  {
+                    field: "payment_methods",
+                    message: "Stripe Connectの設定を完了してください（本人確認と入金有効化）",
+                  },
+                ],
+              },
+            }
+          );
+        }
+      }
+    }
 
     const inviteToken = generateInviteToken();
     const eventData = buildEventData(validatedData, user.id, inviteToken);
@@ -208,7 +252,7 @@ function buildEventData(
     location: validatedData.location ?? null,
     description: validatedData.description ?? null,
     capacity: parseCapacityLocal(validatedData.capacity),
-    registration_deadline: convertDatetimeLocalToIso(validatedData.registration_deadline),
+    registration_deadline: convertDatetimeLocalToIso(validatedData.registration_deadline as string),
     // 無料イベント（fee=0）の場合は決済締切も強制的にnullに設定
     payment_deadline:
       fee === 0

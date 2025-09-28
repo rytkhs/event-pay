@@ -291,6 +291,42 @@ export async function updateEventAction(
       }
     }
 
+    // Stripe Connect 準備状態チェック（"stripe" を新規に追加する場合のみ）
+    {
+      const hadStripe = (existingEvent.payment_methods || []).includes("stripe");
+      const addingStripe = hasStripe && !hadStripe && effectiveFee > 0;
+
+      if (addingStripe) {
+        const { data: connectAccount, error: connectError } = await supabase
+          .from("stripe_connect_accounts")
+          .select("status, payouts_enabled")
+          .eq("user_id", user.id)
+          .maybeSingle();
+
+        const isReady =
+          !!connectAccount &&
+          (connectAccount as any).status === "verified" &&
+          (connectAccount as any).payouts_enabled === true;
+
+        if (connectError || !isReady) {
+          return createServerActionError(
+            "VALIDATION_ERROR",
+            "オンライン決済を追加するにはStripe Connectの設定完了が必要です",
+            {
+              details: {
+                fieldErrors: [
+                  {
+                    field: "payment_methods",
+                    message: "Stripe Connectの設定を完了してください（本人確認と入金有効化）",
+                  },
+                ],
+              },
+            }
+          );
+        }
+      }
+    }
+
     // Stripe決済済み参加者の存在を確認（有無だけで良いので軽量に取得）
     // 注意: 現金決済済みはここには含まれない（仕様：Stripe決済完了者がいる場合のみ金銭系をロック）
     const { data: stripePayments, error: paymentsError } = await supabase

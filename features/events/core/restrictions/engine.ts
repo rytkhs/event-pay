@@ -125,7 +125,10 @@ export class RestrictionEngine {
       if (!fieldGroups.has(field)) {
         fieldGroups.set(field, []);
       }
-      fieldGroups.get(field)!.push(restriction);
+      const fieldRestrictions = fieldGroups.get(field);
+      if (fieldRestrictions) {
+        fieldRestrictions.push(restriction);
+      }
     });
 
     // 各フィールドのサマリーを作成
@@ -210,9 +213,11 @@ export class RestrictionEngine {
 
         // キャッシュチェック
         if (this.config.enableCache && this.cache.has(cacheKey)) {
-          const cached = this.cache.get(cacheKey)!;
-          activeRestrictions.push(cached);
-          continue;
+          const cached = this.cache.get(cacheKey);
+          if (cached) {
+            activeRestrictions.push(cached);
+            continue;
+          }
         }
 
         // ルール評価

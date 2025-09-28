@@ -66,7 +66,7 @@ export const STRIPE_PAID_FEE_RESTRICTION: RestrictionRule = {
       return createEvaluation(
         true,
         "決済済み参加者がいるため、参加費は変更できません",
-        `現在${context.attendeeCount}名の参加者のうち、既にクレジットカード決済を完了した参加者がいます。`,
+        `現在${context.attendeeCount}名の参加者のうち、既にオンライン決済を完了した参加者がいます。`,
         "参加費を変更する場合は、決済済み参加者への返金処理が必要になります。"
       );
     }
@@ -81,15 +81,24 @@ export const STRIPE_PAID_PAYMENT_METHODS_RESTRICTION: RestrictionRule = {
   field: "payment_methods",
   level: "structural",
   name: "決済済み参加者による決済方法制限",
-  evaluate: (context: RestrictionContext, _formData: FormDataSnapshot) => {
-    // 決済済み参加者がいる場合は常に制限（フォームデータの内容に関係なく）
-    if (context.hasStripePaid) {
-      return createEvaluation(
-        true,
-        "決済済み参加者がいるため、決済方法は変更できません",
-        "クレジットカード決済を完了した参加者がいるため、決済方法の変更はできません。",
-        "決済方法を変更する場合は、決済済み参加者への対応が必要になります。"
-      );
+  evaluate: (context: RestrictionContext, formData: FormDataSnapshot) => {
+    if (!context.hasStripePaid) {
+      return createEvaluation(false, "制限なし");
+    }
+
+    const original = new Set((context.originalEvent.payment_methods || []) as string[]);
+    const next = new Set((formData.payment_methods || []) as string[]);
+
+    // 追加は許可、既存の解除のみ制限
+    for (const method of original) {
+      if (!next.has(method)) {
+        return createEvaluation(
+          true,
+          "決済済み参加者がいるため、既存の決済方法は解除できません",
+          "オンライン決済を完了した参加者がいるため、既存の決済方法の解除はできません。",
+          "決済方法を追加することは可能です。既存の方法を解除する場合は、決済済み参加者への対応が必要になります。"
+        );
+      }
     }
 
     return createEvaluation(false, "制限なし");
