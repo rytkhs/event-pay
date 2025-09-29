@@ -5,6 +5,8 @@ import { z } from "zod";
 import { verifyEventAccess } from "@core/auth/event-authorization";
 import { logger } from "@core/logging/app-logger";
 import { SecureSupabaseClientFactory } from "@core/security/secure-client-factory.impl";
+import { getPaymentService } from "@core/services/payment-service";
+import { PaymentError } from "@core/types/payment-errors";
 import {
   createServerActionError,
   createServerActionSuccess,
@@ -15,13 +17,30 @@ import { generateGuestToken } from "@core/utils/guest-token";
 import { canCreateStripeSession } from "@core/validation/payment-eligibility";
 
 // 入力検証
-const AddAttendanceInputSchema = z.object({
-  eventId: z.string().uuid(),
-  nickname: z.string().min(1, "ニックネームは必須です").max(50),
-  // MVPではメールを入力しない（将来の通知機能のためにschemaからは削除）
-  status: z.enum(["attending", "maybe", "not_attending"]).default("attending"),
-  bypassCapacity: z.boolean().optional().default(false),
-});
+const AddAttendanceInputSchema = z
+  .object({
+    eventId: z.string().uuid(),
+    nickname: z.string().min(1, "ニックネームは必須です").max(50),
+    // MVPではメールを入力しない（将来の通知機能のためにschemaからは削除）
+    status: z.enum(["attending", "maybe", "not_attending"]).default("attending"),
+    bypassCapacity: z.boolean().optional().default(false),
+    // 手動追加では現金決済のみ
+    paymentMethod: z.enum(["cash"]).optional(),
+  })
+  .refine(
+    (data) => {
+      // attending状態の場合のみ決済方法の基本検証
+      // 実際の有料判定はサーバー側で行うため、ここでは条件付き検証のみ
+      if (data.status === "attending" && data.paymentMethod !== undefined) {
+        return data.paymentMethod === "cash";
+      }
+      return true;
+    },
+    {
+      message: "手動追加では現金決済のみ選択可能です",
+      path: ["paymentMethod"],
+    }
+  );
 
 export type AddAttendanceInput = z.infer<typeof AddAttendanceInputSchema>;
 
@@ -31,10 +50,12 @@ export interface AddAttendanceResult {
   guestUrl: string;
   canOnlinePay: boolean;
   reason?: string;
+  paymentId?: string; // 決済レコードが作成された場合のID
 }
 
 /**
  * 主催者が手動で参加者を追加する（締切制約なし、定員は上書き可能）
+ * - RLSポリシーベースのセキュリティアクセス制御
  * - 専用RPC関数による排他ロック付き定員チェック
  * - レースコンディション対策済み
  * - 定員超過時、bypassCapacity=false なら確認要求エラーを返す
@@ -48,12 +69,13 @@ export async function adminAddAttendanceAction(
   >
 > {
   try {
-    const { eventId, nickname, status, bypassCapacity } = AddAttendanceInputSchema.parse(input);
+    const { eventId, nickname, status, bypassCapacity, paymentMethod } =
+      AddAttendanceInputSchema.parse(input);
 
     // 認証・主催者権限確認（イベント所有者）
     const { user } = await verifyEventAccess(eventId);
 
-    // 認証済みクライアント（RPC関数呼び出し用）
+    // 認証済みクライアント（RLSポリシーベースのアクセス制御）
     const secureFactory = SecureSupabaseClientFactory.getInstance();
     const authenticatedClient = secureFactory.createAuthenticatedClient();
 
@@ -123,6 +145,45 @@ export async function adminAddAttendanceAction(
       return createServerActionError("NOT_FOUND", "イベント情報の取得に失敗しました");
     }
 
+    // 有料イベントでattending状態の場合、決済方法の検証と決済レコード作成
+    let paymentId: string | undefined;
+    if (status === "attending" && eventRow.fee > 0) {
+      // 決済方法が指定されていない場合はエラー
+      if (!paymentMethod) {
+        return createServerActionError(
+          "VALIDATION_ERROR",
+          "有料イベントの参加には決済方法の選択が必要です"
+        );
+      }
+
+      // PaymentServiceを使用して現金決済レコードを作成
+      try {
+        const paymentService = getPaymentService();
+        const result = await paymentService.createCashPayment({
+          attendanceId,
+          amount: eventRow.fee,
+        });
+
+        paymentId = result.paymentId;
+      } catch (error) {
+        // 参加者レコードを削除してロールバック（RLSポリシーで制御）
+        await authenticatedClient.from("attendances").delete().eq("id", attendanceId);
+
+        // PaymentErrorの場合は適切なエラーコードを返す
+        if (error instanceof PaymentError) {
+          return createServerActionError(
+            "DATABASE_ERROR",
+            `決済レコードの作成に失敗しました: ${error.message}`
+          );
+        }
+
+        return createServerActionError(
+          "DATABASE_ERROR",
+          "決済レコード作成処理でエラーが発生しました"
+        );
+      }
+    }
+
     // 決済可否（Stripe）を判定
     const eventForEligibility = {
       id: eventRow.id,
@@ -147,7 +208,7 @@ export async function adminAddAttendanceAction(
       "http://localhost:3000";
     const guestUrl = `${baseUrl}/guest/${guestToken}`;
 
-    // 監査ログ（RPC関数ベース実装）
+    // 監査ログ（RLSポリシーベース実装）
     logger.info("ADMIN_ADD_ATTENDANCE", {
       eventId,
       attendanceId,
@@ -156,7 +217,8 @@ export async function adminAddAttendanceAction(
       nickname,
       email: placeholderEmail.toLowerCase(),
       canOnlinePay: eligibility.isEligible,
-      method: "RPC_WITH_EXCLUSIVE_LOCK", // 排他ロック付きRPC関数使用
+      paymentId,
+      method: "RLS_POLICY_BASED", // RLSポリシーベースのアクセス制御使用
     });
 
     return createServerActionSuccess<AddAttendanceResult>({
@@ -165,6 +227,7 @@ export async function adminAddAttendanceAction(
       guestUrl,
       canOnlinePay: eligibility.isEligible,
       reason: eligibility.reason,
+      paymentId,
     });
   } catch (error) {
     if (error instanceof z.ZodError) {

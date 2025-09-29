@@ -19,6 +19,8 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
 import { adminAddAttendanceAction } from "../actions/admin-add-attendance";
 import { getEventParticipantsAction } from "../actions/get-event-participants";
@@ -52,6 +54,7 @@ export function ParticipantsManagement({
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [addNickname, setAddNickname] = useState("");
   const [addError, setAddError] = useState<string | null>(null);
+  const [paymentMethod, setPaymentMethod] = useState<"cash">("cash");
   // const [addEmail, setAddEmail] = useState("");
   const [isAdding, setIsAdding] = useState(false);
   const [confirmOverCapacity, setConfirmOverCapacity] = useState<null | {
@@ -59,10 +62,14 @@ export function ParticipantsManagement({
     current?: number;
   }>(null);
 
+  // イベントが有料かどうかを判定
+  const isPayingEvent = eventData.fee > 0;
+
   const handleOpenAdd = () => {
     setAddNickname("");
     setConfirmOverCapacity(null);
     setAddError(null);
+    setPaymentMethod("cash"); // 現金固定
     setShowAddDialog(true);
   };
 
@@ -72,6 +79,13 @@ export function ParticipantsManagement({
       setAddError("ニックネームを入力してください");
       return;
     }
+
+    // 有料イベントの場合は決済方法の確認
+    if (isPayingEvent && !paymentMethod) {
+      setAddError("決済方法を選択してください");
+      return;
+    }
+
     setAddError(null);
     setIsAdding(true);
     try {
@@ -80,6 +94,7 @@ export function ParticipantsManagement({
         nickname: addNickname,
         status: "attending",
         bypassCapacity: forceBypass,
+        ...(isPayingEvent && { paymentMethod }),
       });
       if (!result.success) {
         if ((result as any).data?.confirmRequired || (result as any).confirmRequired) {
@@ -95,12 +110,17 @@ export function ParticipantsManagement({
         return;
       }
       const data = result.data as import("../actions/admin-add-attendance").AddAttendanceResult;
-      await navigator.clipboard.writeText((data as any).guestUrl);
+      // 一時的に停止
+      // await navigator.clipboard.writeText((data as any).guestUrl);
+      const successDescription = isPayingEvent
+        ? "参加者を追加しました。現金決済（未払い）として記録されました。"
+        : (data as any).canOnlinePay
+          ? "参加者を追加しました（現在オンライン決済が可能です）"
+          : "参加者を追加しました（オンライン決済は現在できません）";
+
       toast({
         title: "参加者を追加しました",
-        description: (data as any).canOnlinePay
-          ? "ゲストURLをコピーしました（現在オンライン決済が可能です）"
-          : "ゲストURLをコピーしました（オンライン決済は現在できません）",
+        description: successDescription,
       });
       setShowAddDialog(false);
       setConfirmOverCapacity(null);
@@ -220,6 +240,31 @@ export function ParticipantsManagement({
               }}
               required
             />
+
+            {/* 有料イベントの場合は決済方法選択を表示 */}
+            {isPayingEvent && (
+              <div className="space-y-2">
+                <Label htmlFor="payment-method" className="text-sm font-medium">
+                  決済方法 <span className="text-red-500">*</span>
+                </Label>
+                <RadioGroup
+                  value={paymentMethod}
+                  onValueChange={(value: "cash") => setPaymentMethod(value)}
+                  className="flex flex-col space-y-2"
+                >
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="cash" id="cash" />
+                    <Label htmlFor="cash" className="text-sm">
+                      現金 ({eventData.fee.toLocaleString()}円)
+                    </Label>
+                  </div>
+                </RadioGroup>
+                <p className="text-xs text-muted-foreground">
+                  手動追加の場合は現金決済のみ対応しています。
+                </p>
+              </div>
+            )}
+
             {addError && <div className="text-sm text-red-600">{addError}</div>}
             {/* MVPではメールは収集しない */}
             {confirmOverCapacity && (
