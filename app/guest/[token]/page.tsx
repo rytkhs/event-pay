@@ -12,6 +12,7 @@ import { validateGuestToken } from "@core/utils/guest-token";
 import { getClientIPFromHeaders } from "@core/utils/ip-detection";
 import { sanitizeForEventPay } from "@core/utils/sanitize";
 
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { Card } from "@/components/ui/card";
 
 import { GuestPageClient } from "./guest-page-client";
@@ -80,40 +81,13 @@ export default async function GuestPage({ params, searchParams }: GuestPageProps
     const { attendance, canModify } = validation;
 
     return (
-      <div className="min-h-screen bg-muted/30">
+      <div className="min-h-screen bg-muted/20">
         {/* メインコンテンツ */}
         <main
-          className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8"
+          className="max-w-4xl mx-auto px-3 sm:px-4 lg:px-6 py-4 sm:py-6 lg:py-8"
           role="main"
           aria-labelledby="page-title"
         >
-          {/* セキュリティ警告 */}
-          <section aria-labelledby="security-warning-title">
-            <Card
-              className="p-3 sm:p-4 mb-4 sm:mb-6 bg-yellow-50 border-yellow-200"
-              role="region"
-              aria-labelledby="security-warning-title"
-            >
-              <div className="flex items-start space-x-2 sm:space-x-3">
-                <AlertCircle
-                  className="h-4 w-4 sm:h-5 sm:w-5 text-yellow-600 flex-shrink-0 mt-0.5"
-                  aria-hidden="true"
-                />
-                <div className="text-sm min-w-0 flex-1">
-                  <h2 id="security-warning-title" className="font-medium text-yellow-800">
-                    重要：セキュリティについて
-                  </h2>
-                  <div className="text-yellow-700 mt-1 leading-relaxed">
-                    <p>このページのURLは他の人と共有しないでください。</p>
-                    <p className="mt-1">
-                      URLを知っている人は誰でもあなたの参加状況を確認・変更できます。
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </Card>
-          </section>
-
           <GuestPageClient
             attendance={attendance}
             canModify={canModify}
@@ -122,13 +96,25 @@ export default async function GuestPage({ params, searchParams }: GuestPageProps
             guestToken={token}
           />
 
+          {/* セキュリティ警告 */}
+          <section aria-labelledby="security-warning-title" className="mt-6 sm:mt-8 mb-4 sm:mb-6">
+            <Alert variant="warning" className="shadow-sm">
+              <AlertCircle className="h-4 w-4" />
+              <AlertTitle id="security-warning-title">重要：セキュリティについて</AlertTitle>
+              <AlertDescription className="mt-2">
+                <p className="leading-relaxed">このページのURLは他の人と共有しないでください。</p>
+                <p className="mt-1 leading-relaxed">
+                  URLを知っている人は誰でもあなたの参加状況を確認・変更できます。
+                </p>
+              </AlertDescription>
+            </Alert>
+          </section>
+
           {/* フッター情報 */}
-          <footer className="mt-6 sm:mt-8 text-center" role="contentinfo">
-            <div className="text-xs text-muted-foreground leading-relaxed">
+          <footer className="mt-8 sm:mt-12 text-center" role="contentinfo">
+            <div className="text-xs text-muted-foreground leading-relaxed space-y-1 max-w-2xl mx-auto">
               <p>このページは参加者専用の管理ページです。</p>
-              <p className="mt-1">
-                ご質問やご不明点がある場合は、イベント主催者にお問い合わせください。
-              </p>
+              <p>ご質問やご不明点がある場合は、イベント主催者にお問い合わせください。</p>
             </div>
           </footer>
         </main>

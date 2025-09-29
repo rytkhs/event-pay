@@ -127,13 +127,13 @@ export function ParticipationForm({
 
   return (
     <ParticipationErrorBoundary>
-      <Card className="shadow-lg border-2 border-blue-100 bg-gradient-to-b from-white to-blue-50/30">
-        <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-4 -m-px rounded-t-lg">
+      <Card className="shadow-sm border-2 border-primary/20 bg-primary/5">
+        <div className="bg-primary px-6 py-4 -m-px rounded-t-lg">
           <div>
-            <h3 id={`${formId}-title`} className="text-xl font-bold text-white">
+            <h3 id={`${formId}-title`} className="text-xl font-bold text-primary-foreground">
               参加申し込みフォーム
             </h3>
-            <p id={`${formId}-description`} className="text-blue-100 text-sm mt-1">
+            <p id={`${formId}-description`} className="text-primary-foreground/90 text-sm mt-1">
               以下の情報を入力して参加申し込みを完了してください
             </p>
           </div>
@@ -142,7 +142,7 @@ export function ParticipationForm({
           {/* エラー表示 */}
           {isError && error && (
             <Card
-              className="p-3 sm:p-4 border-red-200 bg-red-50"
+              className="p-3 sm:p-4 border-destructive/20 bg-destructive/10"
               role="alert"
               aria-live="assertive"
               id={errorId}
@@ -151,20 +151,22 @@ export function ParticipationForm({
             >
               <div className="flex items-start space-x-2 sm:space-x-3">
                 <AlertTriangle
-                  className="h-4 w-4 sm:h-5 sm:w-5 text-red-600 flex-shrink-0 mt-0.5"
+                  className="h-4 w-4 sm:h-5 sm:w-5 text-destructive flex-shrink-0 mt-0.5"
                   aria-hidden="true"
                 />
                 <div className="flex-1 min-w-0">
-                  <h4 className="font-medium text-red-800 mb-1 text-sm sm:text-base">
+                  <h4 className="font-medium text-destructive mb-1 text-sm sm:text-base">
                     申し込みでエラーが発生しました
                   </h4>
-                  <p className="text-red-700 text-xs sm:text-sm break-words">{error.userMessage}</p>
+                  <p className="text-destructive/80 text-xs sm:text-sm break-words">
+                    {error.userMessage}
+                  </p>
                   {error.retryable && (
                     <Button
                       onClick={clearError}
                       size="sm"
                       variant="outline"
-                      className="mt-2 border-red-300 text-red-700 hover:bg-red-100 text-xs sm:text-sm"
+                      className="mt-2 border-destructive/30 text-destructive hover:bg-destructive/10 text-xs sm:text-sm"
                       aria-describedby={errorId}
                     >
                       再試行
@@ -192,9 +194,9 @@ export function ParticipationForm({
                 name="nickname"
                 render={({ field, fieldState }) => (
                   <FormItem>
-                    <FormLabel className="text-sm font-medium text-gray-700">
+                    <FormLabel className="text-sm font-medium text-foreground">
                       ニックネーム{" "}
-                      <span className="text-red-500" aria-label="必須項目">
+                      <span className="text-destructive" aria-label="必須項目">
                         *
                       </span>
                     </FormLabel>
@@ -226,9 +228,9 @@ export function ParticipationForm({
                 name="email"
                 render={({ field, fieldState }) => (
                   <FormItem>
-                    <FormLabel className="text-sm font-medium text-gray-700">
+                    <FormLabel className="text-sm font-medium text-foreground">
                       メールアドレス{" "}
-                      <span className="text-red-500" aria-label="必須項目">
+                      <span className="text-destructive" aria-label="必須項目">
                         *
                       </span>
                     </FormLabel>
@@ -261,9 +263,12 @@ export function ParticipationForm({
                 name="attendanceStatus"
                 render={({ field, fieldState }) => (
                   <FormItem>
-                    <FormLabel className="text-sm font-medium text-gray-700" id={attendanceGroupId}>
+                    <FormLabel
+                      className="text-sm font-medium text-foreground"
+                      id={attendanceGroupId}
+                    >
                       参加ステータス{" "}
-                      <span className="text-red-500" aria-label="必須項目">
+                      <span className="text-destructive" aria-label="必須項目">
                         *
                       </span>
                     </FormLabel>
@@ -287,7 +292,7 @@ export function ParticipationForm({
                         aria-invalid={fieldState.invalid}
                         role="radiogroup"
                       >
-                        <div className="flex items-center space-x-3 p-3 sm:p-2 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-blue-500">
+                        <div className="flex items-center space-x-3 p-3 sm:p-2 rounded-lg border border-border hover:bg-muted/50 transition-colors focus-within:ring-2 focus-within:ring-ring focus-within:border-ring">
                           <RadioGroupItem
                             value="attending"
                             id={`${formId}-attending`}
@@ -302,14 +307,14 @@ export function ParticipationForm({
                             {event.capacity && (
                               <span
                                 id={`${formId}-attending-description`}
-                                className="text-xs text-gray-500 ml-1 block sm:inline"
+                                className="text-xs text-muted-foreground ml-1 block sm:inline"
                               >
                                 (定員: {event.attendances_count}/{event.capacity}人)
                               </span>
                             )}
                           </Label>
                         </div>
-                        <div className="flex items-center space-x-3 p-3 sm:p-2 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-blue-500">
+                        <div className="flex items-center space-x-3 p-3 sm:p-2 rounded-lg border border-border hover:bg-muted/50 transition-colors focus-within:ring-2 focus-within:ring-ring focus-within:border-ring">
                           <RadioGroupItem
                             value="not_attending"
                             id={`${formId}-not_attending`}
@@ -322,7 +327,7 @@ export function ParticipationForm({
                             不参加
                           </Label>
                         </div>
-                        <div className="flex items-center space-x-3 p-3 sm:p-2 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-blue-500">
+                        <div className="flex items-center space-x-3 p-3 sm:p-2 rounded-lg border border-border hover:bg-muted/50 transition-colors focus-within:ring-2 focus-within:ring-ring focus-within:border-ring">
                           <RadioGroupItem
                             value="maybe"
                             id={`${formId}-maybe`}
@@ -353,9 +358,12 @@ export function ParticipationForm({
                   name="paymentMethod"
                   render={({ field, fieldState }) => (
                     <FormItem>
-                      <FormLabel className="text-sm font-medium text-gray-700" id={paymentGroupId}>
+                      <FormLabel
+                        className="text-sm font-medium text-foreground"
+                        id={paymentGroupId}
+                      >
                         決済方法{" "}
-                        <span className="text-red-500" aria-label="必須項目">
+                        <span className="text-destructive" aria-label="必須項目">
                           *
                         </span>
                       </FormLabel>
@@ -376,7 +384,7 @@ export function ParticipationForm({
                             .map((method) => (
                               <div
                                 key={method}
-                                className="flex items-start space-x-3 p-3 sm:p-2 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-blue-500"
+                                className="flex items-start space-x-3 p-3 sm:p-2 rounded-lg border border-border hover:bg-muted/50 transition-colors focus-within:ring-2 focus-within:ring-ring focus-within:border-ring"
                               >
                                 <RadioGroupItem
                                   value={method}
@@ -392,7 +400,7 @@ export function ParticipationForm({
                                   {method === "stripe" && (
                                     <div
                                       id={`${formId}-${method}-description`}
-                                      className="text-xs text-gray-500 mt-1"
+                                      className="text-xs text-muted-foreground mt-1"
                                     >
                                       クレジットカード決済
                                     </div>
@@ -400,7 +408,7 @@ export function ParticipationForm({
                                   {method === "cash" && (
                                     <div
                                       id={`${formId}-${method}-description`}
-                                      className="text-xs text-gray-500 mt-1"
+                                      className="text-xs text-muted-foreground mt-1"
                                     >
                                       当日現金支払い
                                     </div>
@@ -416,11 +424,11 @@ export function ParticipationForm({
                         role={fieldState.error ? "alert" : undefined}
                       />
                       <div
-                        className="text-xs text-gray-500 mt-2 p-2 bg-blue-50 rounded-lg"
+                        className="text-xs text-muted-foreground mt-2 p-2 bg-primary/10 rounded-lg"
                         role="note"
                         aria-label="決済方法についての注意事項"
                       >
-                        決済方法を選択してください。決済は後ほど処理されます。
+                        決済方法を選択してください。
                       </div>
                     </FormItem>
                   )}
@@ -430,15 +438,15 @@ export function ParticipationForm({
               {/* 参加費表示 */}
               {showFeeInfo && (
                 <div
-                  className={`p-3 sm:p-4 rounded-lg ${isPaidEvent ? "bg-blue-50" : "bg-green-50"}`}
+                  className={`p-3 sm:p-4 rounded-lg ${isPaidEvent ? "bg-primary/10" : "bg-success/10"}`}
                   role="region"
                   aria-label="参加費情報"
                 >
                   <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-gray-700">参加費</span>
+                    <span className="text-sm font-medium text-foreground">参加費</span>
                     <span
                       className={`text-lg sm:text-xl font-semibold ${
-                        isPaidEvent ? "text-blue-600" : "text-green-600"
+                        isPaidEvent ? "text-primary" : "text-success"
                       }`}
                       aria-label={
                         isPaidEvent ? `参加費 ${event.fee.toLocaleString()}円` : "参加費 無料"
@@ -455,7 +463,7 @@ export function ParticipationForm({
                 <Button
                   type="submit"
                   disabled={isSubmitting || !form.formState.isValid}
-                  className="w-full sm:flex-1 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white h-12 text-base font-semibold shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                  className="w-full sm:flex-1 bg-primary hover:bg-primary/90 text-primary-foreground h-12 text-base font-semibold shadow-sm hover:shadow-md transform hover:scale-105 transition-all duration-200 focus:ring-2 focus:ring-ring focus:ring-offset-2"
                   aria-describedby={
                     isSubmitting
                       ? "submit-status"
@@ -466,7 +474,7 @@ export function ParticipationForm({
                 >
                   {isSubmitting ? (
                     <div className="flex items-center gap-2">
-                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      <div className="w-4 h-4 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin" />
                       申し込み中...
                     </div>
                   ) : (
@@ -491,7 +499,7 @@ export function ParticipationForm({
                   variant="outline"
                   onClick={onCancel}
                   disabled={isSubmitting}
-                  className="w-full sm:flex-1 h-12 text-base font-medium border-2 hover:bg-gray-50 transition-colors focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                  className="w-full sm:flex-1 h-12 text-base font-medium border-2 hover:bg-muted/50 transition-colors focus:ring-2 focus:ring-ring focus:ring-offset-2"
                 >
                   <div className="flex items-center gap-2">
                     <XCircle className="h-4 w-4" />

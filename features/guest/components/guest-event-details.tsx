@@ -53,7 +53,6 @@ export function GuestEventDetails({ attendance }: GuestEventDetailsProps) {
             <DollarSign className="h-5 w-5 text-gray-500 flex-shrink-0" />
             <div>
               <span className="font-medium text-gray-900">¥{event.fee.toLocaleString()}</span>
-              <span className="text-sm text-gray-500 ml-2">（懇親会込み）</span>
             </div>
           </div>
         )}

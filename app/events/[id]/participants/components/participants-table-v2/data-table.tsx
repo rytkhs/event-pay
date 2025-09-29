@@ -107,7 +107,7 @@ export function DataTable<TData, TValue>({
           {table.getRowModel().rows?.length ? (
             table.getRowModel().rows.map((row) => {
               const baseClassName =
-                "min-h-[30px] transition-all duration-200 hover:bg-blue-50 hover:shadow-sm focus-within:ring-2 focus-within:ring-blue-500 focus-within:ring-opacity-50";
+                "min-h-[30px] transition-all duration-200 focus-within:ring-2 focus-within:ring-blue-500 focus-within:ring-opacity-50";
               const customClassName = getRowClassName?.(row) || "";
               const combinedClassName = customClassName
                 ? `${baseClassName} ${customClassName}`

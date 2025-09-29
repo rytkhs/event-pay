@@ -5,7 +5,6 @@ import { usePathname } from "next/navigation";
 
 import { User, CreditCard, Shield, ArrowLeft } from "lucide-react";
 
-import { Badge } from "@/components/ui/badge";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -25,21 +24,18 @@ const settingsPages = [
     href: "/settings/profile",
     icon: User,
     description: "基本情報とアカウント設定",
-    status: "completed", // completed, warning, incomplete
   },
   {
     title: "支払い設定",
     href: "/settings/payments",
     icon: CreditCard,
     description: "Stripe Connect と決済管理",
-    status: "warning",
   },
   {
-    title: "セキュリティ",
+    title: "パスワード",
     href: "/settings/security",
     icon: Shield,
-    description: "パスワードとアカウント保護",
-    status: "completed",
+    description: "パスワードの変更",
   },
 ];
 
@@ -88,12 +84,6 @@ export default function SettingsLayout({ children }: SettingsLayoutProps) {
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        <Badge
-                          variant={page.status === "completed" ? "default" : "secondary"}
-                          className="hidden sm:inline-flex"
-                        >
-                          {page.status === "completed" ? "完了" : "要設定"}
-                        </Badge>
                         <div className="h-5 w-5 text-muted-foreground">
                           <svg
                             className="w-full h-full"

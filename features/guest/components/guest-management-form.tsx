@@ -396,12 +396,12 @@ export function GuestManagementForm({ attendance, canModify }: GuestManagementFo
                         {
                           value: "stripe" as const,
                           label: "オンライン決済",
-                          description: "クレジットカード・銀行振込",
+                          description: "クレジットカード・Apple Pay・Google Pay",
                         },
                         {
                           value: "cash" as const,
-                          label: "当日現金払い",
-                          description: "会場での現金支払い",
+                          label: "現金払い",
+                          description: "直接現金でお支払い",
                         },
                       ].map((option) => (
                         <label
@@ -452,12 +452,12 @@ export function GuestManagementForm({ attendance, canModify }: GuestManagementFo
                     </p>
                     {paymentMethod === "stripe" && (
                       <p className="text-xs text-blue-700 mt-1 leading-relaxed">
-                        クレジットカード決済の場合、決済手続きのご案内をメールでお送りします。
+                        クレジットカード決済の場合、決済を完了するボタンから決済に進みます。
                       </p>
                     )}
                     {paymentMethod === "cash" && (
                       <p className="text-xs text-blue-700 mt-1 leading-relaxed">
-                        現金決済の場合、イベント当日に会場でお支払いください。
+                        現金決済の場合、直接現金で支払いください。
                       </p>
                     )}
                   </div>

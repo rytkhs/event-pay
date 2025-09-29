@@ -85,7 +85,7 @@ export function CardsView({
         return (
           <Card
             key={p.attendance_id}
-            className={`${isPaid ? "border-green-200 bg-green-50" : ""} transition-all duration-200 hover:shadow-md`}
+            className={`${isPaid ? "border-green-200 bg-green-50" : ""} transition-all duration-200`}
             role="gridcell"
             tabIndex={0}
             aria-label={`参加者: ${p.nickname}`}
