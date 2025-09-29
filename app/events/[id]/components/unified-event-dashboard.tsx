@@ -24,7 +24,7 @@ import { Separator } from "@/components/ui/separator";
 
 interface UnifiedEventDashboardProps {
   attendingCount: number;
-  capacity: number;
+  capacity: number | null;
   maybeCount?: number;
   totalRevenue: number;
   expectedRevenue: number;
@@ -48,7 +48,8 @@ export function UnifiedEventDashboard({
   const [showDetails, setShowDetails] = useState(false);
 
   // 参加率と集金進捗率の計算
-  const attendanceRate = capacity > 0 ? Math.round((attendingCount / capacity) * 100) : 0;
+  const attendanceRate =
+    capacity && capacity > 0 ? Math.round((attendingCount / capacity) * 100) : 0;
   const collectionProgress =
     expectedRevenue > 0 ? Math.round((totalRevenue / expectedRevenue) * 100) : 0;
 
@@ -152,19 +153,25 @@ export function UnifiedEventDashboard({
               <div className="flex items-baseline justify-between">
                 <div className="flex items-baseline gap-2">
                   <span className="text-2xl font-bold">{attendingCount}</span>
-                  <span className="text-muted-foreground">/ {capacity}人</span>
+                  {capacity !== null && (
+                    <span className="text-muted-foreground">/ {capacity}人</span>
+                  )}
                 </div>
-                <span className={`text-lg font-bold ${attendanceStatus.color}`}>
-                  {attendanceRate}%
-                </span>
+                {capacity !== null && (
+                  <span className={`text-lg font-bold ${attendanceStatus.color}`}>
+                    {attendanceRate}%
+                  </span>
+                )}
               </div>
 
-              <Progress value={attendanceRate} className="h-3">
-                <div
-                  className={`h-full rounded-full transition-all ${attendanceStatus.bgColor}`}
-                  style={{ width: `${Math.min(attendanceRate, 100)}%` }}
-                />
-              </Progress>
+              {capacity !== null && (
+                <Progress value={attendanceRate} className="h-3">
+                  <div
+                    className={`h-full rounded-full transition-all ${attendanceStatus.bgColor}`}
+                    style={{ width: `${Math.min(attendanceRate, 100)}%` }}
+                  />
+                </Progress>
+              )}
 
               {maybeCount > 0 && (
                 <div className="flex items-center gap-1 text-sm text-muted-foreground">

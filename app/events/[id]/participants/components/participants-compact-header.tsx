@@ -28,8 +28,9 @@ export function ParticipantsCompactHeader({
   onBackClick,
 }: ParticipantsCompactHeaderProps) {
   // 参加率の計算
-  const capacity = eventDetail.capacity ?? 0;
-  const attendanceRate = capacity > 0 ? Math.round((attendingCount / capacity) * 100) : 0;
+  const capacity = eventDetail.capacity;
+  const attendanceRate =
+    capacity && capacity > 0 ? Math.round((attendingCount / capacity) * 100) : 0;
 
   // 期待収益の計算
   const expectedRevenue = eventDetail.fee * attendingCount;
@@ -99,7 +100,7 @@ export function ParticipantsCompactHeader({
               </div>
             )}
 
-            {capacity > 0 && (
+            {capacity !== null && (
               <>
                 {eventDetail.location && (
                   <Separator orientation="vertical" className="h-3 hidden sm:block" />
@@ -126,12 +127,12 @@ export function ParticipantsCompactHeader({
               </div>
               <div className="flex items-baseline gap-1">
                 <span className="text-xl sm:text-2xl font-bold">{attendingCount}</span>
-                {capacity > 0 && (
+                {capacity !== null && (
                   <span className="text-xs sm:text-sm text-muted-foreground">/{capacity}</span>
                 )}
               </div>
             </div>
-            {capacity > 0 && (
+            {capacity !== null && (
               <div className="space-y-1.5 sm:space-y-2">
                 <Progress value={attendanceRate} className="h-1.5 sm:h-2" />
                 <div className="flex justify-between text-xs text-muted-foreground">

@@ -42,7 +42,7 @@ export function ModernEventDashboard({
   const isFreeEvent = eventDetail.fee === 0;
 
   // 基本設定
-  const capacity = eventDetail.capacity ?? 0;
+  const capacity = eventDetail.capacity;
 
   const handleBackToEvents = () => {
     router.push("/events");

@@ -46,7 +46,9 @@ export const EventCard = memo(function EventCard({ event }: EventCardProps) {
 
   // 参加者数表示をメモ化
   const attendanceText = useMemo(() => {
-    return `${event.attendances_count || 0}/${event.capacity}名`;
+    const count = event.attendances_count || 0;
+    // 定員がnullの場合は定員表示しない（無制限）
+    return event.capacity === null ? `${count}名` : `${count}/${event.capacity}名`;
   }, [event.attendances_count, event.capacity]);
 
   // XSS対策: タイトルと場所をサニタイズ

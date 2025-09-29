@@ -84,13 +84,13 @@ export function AttentionAlerts({
       type: severity,
       icon: DollarSign,
       title: `${unpaidCount}件の未決済があります`,
-      description: `未収金額: ¥${unpaidAmount.toLocaleString()} | 参加予定者への連絡をおすすめします`,
+      description: `未収金額: ¥${unpaidAmount.toLocaleString()} `,
       badge: `${unpaidCount}件`,
     });
   }
 
-  // 定員間近の警告
-  if (event.capacity && event.capacity > 0) {
+  // 定員間近の警告（定員が設定されている場合のみ）
+  if (event.capacity !== null && event.capacity > 0) {
     const attendanceRate = (attendingCount / event.capacity) * 100;
     if (attendanceRate >= 90) {
       alerts.push({

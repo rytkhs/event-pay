@@ -83,7 +83,7 @@ export function GuestEventDetails({ attendance }: GuestEventDetailsProps) {
             </div>
           )}
 
-          {typeof event.capacity === "number" && (
+          {event.capacity !== null && typeof event.capacity === "number" && (
             <div>
               <h3 className="font-medium text-gray-900 mb-2 flex items-center">
                 <Users className="h-4 w-4 mr-2" />

@@ -77,13 +77,15 @@ export function EventInfoCompact({ event }: EventInfoCompactProps) {
 
             {/* 定員・参加費 */}
             <div className="space-y-3">
-              <div className="flex items-start gap-2">
-                <Users className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
-                <div className="min-w-0 flex-1">
-                  <p className="text-xs font-medium text-muted-foreground">定員</p>
-                  <p className="text-sm text-foreground leading-tight">{event.capacity}人</p>
+              {event.capacity !== null && (
+                <div className="flex items-start gap-2">
+                  <Users className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-medium text-muted-foreground">定員</p>
+                    <p className="text-sm text-foreground leading-tight">{event.capacity}人</p>
+                  </div>
                 </div>
-              </div>
+              )}
 
               <div className="flex items-start gap-2">
                 <Banknote className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />

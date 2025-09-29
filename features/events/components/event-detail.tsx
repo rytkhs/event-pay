@@ -66,10 +66,12 @@ export function EventDetail({ event }: EventDetailProps) {
             <p className="mt-1 text-sm text-gray-900">{formatCurrency(event.fee)}</p>
           </div>
 
-          <div>
-            <h3 className="text-sm font-medium text-gray-700">定員</h3>
-            <p className="mt-1 text-sm text-gray-900">定員 {event.capacity}人</p>
-          </div>
+          {event.capacity !== null && (
+            <div>
+              <h3 className="text-sm font-medium text-gray-700">定員</h3>
+              <p className="mt-1 text-sm text-gray-900">定員 {event.capacity}人</p>
+            </div>
+          )}
         </div>
 
         <div className="space-y-4">
