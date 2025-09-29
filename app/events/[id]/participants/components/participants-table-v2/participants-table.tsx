@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useEffect, useMemo, useState, startTransition } from "react";
+import React, { useCallback, useEffect, useMemo, useState, startTransition, useRef } from "react";
 
 import { useRouter } from "next/navigation";
 
@@ -17,6 +17,7 @@ import type {
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
   SelectContent,
@@ -25,6 +26,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { bulkUpdateCashStatusAction } from "@/features/payments/actions/bulk-update-cash-status";
 import { updateCashStatusAction } from "@/features/payments/actions/update-cash-status";
 
 import { CardsView } from "./cards-view";
@@ -53,6 +55,8 @@ export function ParticipantsTableV2({
   const [viewMode, setViewMode] = useState<"table" | "cards">("table");
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
+  const [isBulkUpdating, setIsBulkUpdating] = useState(false);
+  const [selectedPaymentIds, setSelectedPaymentIds] = useState<string[]>([]);
 
   // localStorage によるビュー永続化 + モバイル時は強制cards
   useEffect(() => {
@@ -91,6 +95,41 @@ export function ParticipantsTableV2({
   const participants = useMemo(() => {
     return conditionalSmartSort(localParticipants, isFreeEvent, smartActive);
   }, [localParticipants, isFreeEvent, smartActive]);
+
+  // 現金決済で一括操作可能な参加者のみフィルタ
+  const bulkOperableParticipants = useMemo(() => {
+    return participants.filter(
+      (p) =>
+        p.payment_method === "cash" &&
+        p.payment_id &&
+        p.payment_status !== "received" &&
+        p.payment_status !== "waived"
+    );
+  }, [participants]);
+
+  // 現在選択されている現金決済のpayment_id配列
+  const validSelectedPaymentIds = useMemo(() => {
+    const validIds = new Set(bulkOperableParticipants.map((p) => p.payment_id).filter(Boolean));
+    return selectedPaymentIds.filter((id) => validIds.has(id));
+  }, [selectedPaymentIds, bulkOperableParticipants]);
+
+  // 全選択/全解除の状態判定
+  const isAllSelected =
+    bulkOperableParticipants.length > 0 &&
+    validSelectedPaymentIds.length === bulkOperableParticipants.length;
+  const isIndeterminate =
+    validSelectedPaymentIds.length > 0 &&
+    validSelectedPaymentIds.length < bulkOperableParticipants.length;
+
+  // 全選択チェックボックスの ref
+  const selectAllCheckboxRef = useRef<HTMLButtonElement>(null);
+
+  // indeterminate状態を設定
+  useEffect(() => {
+    if (selectAllCheckboxRef.current) {
+      (selectAllCheckboxRef.current as any).indeterminate = isIndeterminate;
+    }
+  }, [isIndeterminate]);
 
   const { pagination } = initialData;
   const pageIndex = Math.max(0, (pagination.page || 1) - 1);
@@ -195,6 +234,131 @@ export function ParticipantsTableV2({
     [toast, router, localParticipants, applyLocal]
   );
 
+  const handleBulkReceive = useCallback(async () => {
+    if (validSelectedPaymentIds.length === 0) {
+      toast({
+        title: "選択エラー",
+        description: "受領対象の決済を選択してください。",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsBulkUpdating(true);
+    const prev = localParticipants;
+    const targetIds = [...validSelectedPaymentIds];
+
+    // 楽観的更新：選択された決済を「received」に変更
+    setLocalParticipants((current) =>
+      current.map((p) =>
+        p.payment_id && targetIds.includes(p.payment_id) ? { ...p, payment_status: "received" } : p
+      )
+    );
+
+    try {
+      const result = await bulkUpdateCashStatusAction({
+        paymentIds: targetIds,
+        status: "received",
+      });
+
+      if (result.success) {
+        const { successCount, failedCount } = result.data;
+        toast({
+          title: "一括受領が完了しました",
+          description: `${successCount}件受領、${failedCount > 0 ? `${failedCount}件失敗` : "全て成功"}`,
+        });
+        // 選択解除
+        setSelectedPaymentIds([]);
+        // 軽量再検証
+        startTransition(() => router.refresh());
+      } else {
+        throw new Error(result.error);
+      }
+    } catch (error) {
+      // ロールバック
+      setLocalParticipants(prev);
+      const errorMessage = error instanceof Error ? error.message : "一括受領に失敗しました";
+      toast({
+        title: "一括更新に失敗しました",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    } finally {
+      setIsBulkUpdating(false);
+    }
+  }, [validSelectedPaymentIds, localParticipants, toast, router]);
+
+  const handleBulkWaive = useCallback(async () => {
+    if (validSelectedPaymentIds.length === 0) {
+      toast({
+        title: "選択エラー",
+        description: "免除対象の決済を選択してください。",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsBulkUpdating(true);
+    const prev = localParticipants;
+    const targetIds = [...validSelectedPaymentIds];
+
+    // 楽観的更新：選択された決済を「waived」に変更
+    setLocalParticipants((current) =>
+      current.map((p) =>
+        p.payment_id && targetIds.includes(p.payment_id) ? { ...p, payment_status: "waived" } : p
+      )
+    );
+
+    try {
+      const result = await bulkUpdateCashStatusAction({
+        paymentIds: targetIds,
+        status: "waived",
+      });
+
+      if (result.success) {
+        const { successCount, failedCount } = result.data;
+        toast({
+          title: "一括免除が完了しました",
+          description: `${successCount}件免除、${failedCount > 0 ? `${failedCount}件失敗` : "全て成功"}`,
+        });
+        // 選択解除
+        setSelectedPaymentIds([]);
+        // 軽量再検証
+        startTransition(() => router.refresh());
+      } else {
+        throw new Error(result.error);
+      }
+    } catch (error) {
+      // ロールバック
+      setLocalParticipants(prev);
+      const errorMessage = error instanceof Error ? error.message : "一括免除に失敗しました";
+      toast({
+        title: "一括更新に失敗しました",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    } finally {
+      setIsBulkUpdating(false);
+    }
+  }, [validSelectedPaymentIds, localParticipants, toast, router]);
+
+  // 全選択/全解除ハンドラー
+  const handleSelectAll = useCallback(() => {
+    if (isAllSelected) {
+      setSelectedPaymentIds([]);
+    } else {
+      const allIds = bulkOperableParticipants.map((p) => p.payment_id).filter(Boolean) as string[];
+      setSelectedPaymentIds(allIds);
+    }
+  }, [isAllSelected, bulkOperableParticipants]);
+
+  // 個別選択ハンドラー
+  const handleSelectPayment = useCallback((paymentId: string, checked: boolean) => {
+    setSelectedPaymentIds((prev) =>
+      checked ? [...prev, paymentId] : prev.filter((id) => id !== paymentId)
+    );
+  }, []);
+
   const handleCancel = useCallback(
     async (paymentId: string) => {
       setIsUpdating(true);
@@ -244,8 +408,25 @@ export function ParticipantsTableV2({
           onCancel: handleCancel,
           isUpdating,
         },
+        bulkSelection: !isFreeEvent
+          ? {
+              selectedPaymentIds: validSelectedPaymentIds,
+              onSelect: handleSelectPayment,
+              isDisabled: isBulkUpdating || isUpdating,
+            }
+          : undefined,
       }),
-    [eventFee, isUpdating, handleReceive, handleWaive, handleCancel]
+    [
+      eventFee,
+      isUpdating,
+      handleReceive,
+      handleWaive,
+      handleCancel,
+      isFreeEvent,
+      validSelectedPaymentIds,
+      handleSelectPayment,
+      isBulkUpdating,
+    ]
   );
 
   // pagination/sorting handlers -> URLパラメータ更新
@@ -306,6 +487,56 @@ export function ParticipantsTableV2({
             </ToggleGroupItem>
           </ToggleGroup>
         </div>
+
+        {/* 一括操作UI */}
+        {!isFreeEvent && bulkOperableParticipants.length > 0 && (
+          <div className="border-t pt-4 mt-4">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+              {/* 全選択チェックボックス */}
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  ref={selectAllCheckboxRef}
+                  id="select-all"
+                  checked={isAllSelected}
+                  onCheckedChange={handleSelectAll}
+                  disabled={isBulkUpdating || isUpdating}
+                />
+                <label htmlFor="select-all" className="text-sm font-medium cursor-pointer">
+                  全て選択 ({bulkOperableParticipants.length}件対象)
+                </label>
+              </div>
+
+              {/* 選択状況と一括操作ボタン */}
+              <div className="flex items-center gap-3">
+                {validSelectedPaymentIds.length > 0 && (
+                  <span className="text-sm text-gray-600">
+                    {validSelectedPaymentIds.length}件選択中
+                  </span>
+                )}
+
+                <div className="flex items-center gap-2">
+                  <Button
+                    size="sm"
+                    onClick={handleBulkReceive}
+                    disabled={validSelectedPaymentIds.length === 0 || isBulkUpdating || isUpdating}
+                    className="bg-green-600 hover:bg-green-700 text-white"
+                  >
+                    {isBulkUpdating ? "処理中..." : "一括受領"}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={handleBulkWaive}
+                    disabled={validSelectedPaymentIds.length === 0 || isBulkUpdating || isUpdating}
+                    className="border-orange-300 text-orange-700 hover:bg-orange-50"
+                  >
+                    {isBulkUpdating ? "処理中..." : "一括免除"}
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </CardHeader>
       <CardContent>
         <div
@@ -330,6 +561,15 @@ export function ParticipantsTableV2({
               onReceive={handleReceive}
               onWaive={handleWaive}
               onCancel={handleCancel}
+              bulkSelection={
+                !isFreeEvent
+                  ? {
+                      selectedPaymentIds: validSelectedPaymentIds,
+                      onSelect: handleSelectPayment,
+                      isDisabled: isBulkUpdating || isUpdating,
+                    }
+                  : undefined
+              }
             />
           )}
         </div>

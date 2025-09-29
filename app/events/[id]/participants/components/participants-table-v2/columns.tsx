@@ -15,6 +15,7 @@ import type { ParticipantView } from "@core/validation/participant-management";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 
 export interface ActionsCellHandlers {
   onReceive: (paymentId: string) => void;
@@ -23,13 +24,55 @@ export interface ActionsCellHandlers {
   isUpdating?: boolean;
 }
 
+export interface BulkSelectionConfig {
+  selectedPaymentIds: string[];
+  onSelect: (paymentId: string, checked: boolean) => void;
+  isDisabled?: boolean;
+}
+
 export function buildParticipantsColumns(opts: {
   eventFee: number;
   handlers: ActionsCellHandlers;
+  bulkSelection?: BulkSelectionConfig;
 }): ColumnDef<ParticipantView>[] {
   const isFreeEvent = opts.eventFee === 0;
+  const { bulkSelection } = opts;
 
-  return [
+  const columns: ColumnDef<ParticipantView>[] = [];
+
+  // チェックボックス列（一括選択有効時のみ）
+  if (bulkSelection) {
+    columns.push({
+      id: "select",
+      header: "",
+      cell: ({ row }) => {
+        const p = row.original;
+        const isCashPayment = p.payment_method === "cash" && p.payment_id;
+        const isOperatable =
+          isCashPayment && p.payment_status !== "received" && p.payment_status !== "waived";
+
+        if (!isOperatable) {
+          return <div className="w-4" />; // 空の領域を確保
+        }
+
+        if (!p.payment_id) return <div className="w-4" />;
+
+        const paymentId = p.payment_id;
+        const isSelected = bulkSelection.selectedPaymentIds.includes(paymentId);
+        return (
+          <Checkbox
+            checked={isSelected}
+            onCheckedChange={(checked) => bulkSelection.onSelect(paymentId, checked === true)}
+            disabled={bulkSelection.isDisabled}
+            aria-label="選択"
+          />
+        );
+      },
+      enableSorting: false,
+    });
+  }
+
+  columns.push(
     {
       accessorKey: "nickname",
       header: "ニックネーム",
@@ -150,6 +193,8 @@ export function buildParticipantsColumns(opts: {
         );
       },
       enableSorting: false,
-    },
-  ];
+    }
+  );
+
+  return columns;
 }

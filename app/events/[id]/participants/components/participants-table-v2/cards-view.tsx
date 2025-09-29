@@ -16,6 +16,13 @@ import type { ParticipantView } from "@core/validation/participant-management";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
+
+export interface BulkSelectionConfig {
+  selectedPaymentIds: string[];
+  onSelect: (paymentId: string, checked: boolean) => void;
+  isDisabled?: boolean;
+}
 
 export interface CardsViewProps {
   participants: ParticipantView[];
@@ -24,6 +31,7 @@ export interface CardsViewProps {
   onReceive: (paymentId: string) => void;
   onWaive: (paymentId: string) => void;
   onCancel: (paymentId: string) => void;
+  bulkSelection?: BulkSelectionConfig;
 }
 
 export function CardsView({
@@ -33,6 +41,7 @@ export function CardsView({
   onReceive,
   onWaive,
   onCancel,
+  bulkSelection,
 }: CardsViewProps) {
   const isFreeEvent = eventFee === 0;
 
@@ -70,6 +79,8 @@ export function CardsView({
         const isPaid = !isFreeEvent && isPaymentCompleted(p.payment_status);
         const simple = toSimplePaymentStatus(p.payment_status as any);
         const isCashPayment = p.payment_method === "cash" && p.payment_id;
+        const isOperatable = isCashPayment && simple !== "paid" && simple !== "waived";
+        const isSelected = bulkSelection?.selectedPaymentIds.includes(p.payment_id || "") || false;
 
         return (
           <Card
@@ -82,7 +93,22 @@ export function CardsView({
             <CardContent className="p-4 sm:p-5">
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <h4 className="font-semibold text-gray-900 text-lg">{p.nickname}</h4>
+                  <div className="flex items-center gap-3">
+                    {bulkSelection && isOperatable && p.payment_id && (
+                      <Checkbox
+                        checked={isSelected}
+                        onCheckedChange={(checked) => {
+                          const paymentId = p.payment_id;
+                          if (paymentId) {
+                            bulkSelection.onSelect(paymentId, checked === true);
+                          }
+                        }}
+                        disabled={bulkSelection.isDisabled}
+                        aria-label="選択"
+                      />
+                    )}
+                    <h4 className="font-semibold text-gray-900 text-lg">{p.nickname}</h4>
+                  </div>
                   {isPaid && (
                     <div className="flex items-center gap-1 text-green-600 text-sm font-medium">
                       完了
