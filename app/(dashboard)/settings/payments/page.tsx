@@ -25,8 +25,10 @@ export default async function PaymentSettingsPage() {
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle>支払い設定</CardTitle>
-          <CardDescription>Stripe Connectアカウントの管理と支払い受け取り設定</CardDescription>
+          <CardTitle className="text-lg">Stripe Connect アカウント</CardTitle>
+          <CardDescription>
+            決済受け取りのためのStripe Connectアカウントを管理します
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           {success && status ? (

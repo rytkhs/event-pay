@@ -20,8 +20,8 @@ export default async function SecuritySettingsPage() {
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle>セキュリティ設定</CardTitle>
-          <CardDescription>アカウントのセキュリティを管理します</CardDescription>
+          <CardTitle className="text-lg">パスワード変更</CardTitle>
+          <CardDescription>アカウントのログインパスワードを変更できます</CardDescription>
         </CardHeader>
         <CardContent>
           <PasswordChangeForm />
