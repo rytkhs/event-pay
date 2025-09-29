@@ -1,6 +1,8 @@
 "use client";
 
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState, startTransition } from "react";
+
+import { useRouter } from "next/navigation";
 
 import { SortingState, Row } from "@tanstack/react-table";
 import { ChevronLeft, ChevronRight, LayoutGridIcon, TableIcon } from "lucide-react";
@@ -46,6 +48,7 @@ export function ParticipantsTableV2({
 }: ParticipantsTableV2Props) {
   const { toast } = useToast();
   const isFreeEvent = eventFee === 0;
+  const router = useRouter();
 
   const [viewMode, setViewMode] = useState<"table" | "cards">("table");
   const [isTransitioning, setIsTransitioning] = useState(false);
@@ -74,12 +77,20 @@ export function ParticipantsTableV2({
     }, 100);
   };
 
+  // ローカル参加者状態（楽観的更新用）
+  const [localParticipants, setLocalParticipants] = useState(initialData.participants);
+
+  // props更新時に同期
+  useEffect(() => {
+    setLocalParticipants(initialData.participants);
+  }, [initialData.participants]);
+
   // スマートソート対応の参加者データ
   const smartActive = typeof searchParams.smart === "string";
 
   const participants = useMemo(() => {
-    return conditionalSmartSort(initialData.participants, isFreeEvent, smartActive);
-  }, [initialData.participants, isFreeEvent, smartActive]);
+    return conditionalSmartSort(localParticipants, isFreeEvent, smartActive);
+  }, [localParticipants, isFreeEvent, smartActive]);
 
   const { pagination } = initialData;
   const pageIndex = Math.max(0, (pagination.page || 1) - 1);
@@ -105,9 +116,21 @@ export function ParticipantsTableV2({
   }, [initialSorting, sortId, sortDesc]);
 
   // handlers
+  const applyLocal = useCallback(
+    (paymentId: string, nextStatus: "received" | "waived" | "pending") => {
+      setLocalParticipants((prev) =>
+        prev.map((p) => (p.payment_id === paymentId ? { ...p, payment_status: nextStatus } : p))
+      );
+    },
+    []
+  );
+
   const handleReceive = useCallback(
     async (paymentId: string) => {
       setIsUpdating(true);
+      const prev = localParticipants;
+      // 楽観的更新
+      applyLocal(paymentId, "received");
       try {
         const result = await updateCashStatusAction({ paymentId, status: "received" });
         if (result.success) {
@@ -115,11 +138,14 @@ export function ParticipantsTableV2({
             title: "決済状況を更新しました",
             description: "ステータスを「受領」に変更しました。",
           });
-          onParamsChange({});
+          // 軽量再検証（ページ遷移なし）
+          startTransition(() => router.refresh());
         } else {
           throw new Error(result.error);
         }
       } catch (error) {
+        // ロールバック
+        setLocalParticipants(prev);
         const errorMessage =
           error instanceof Error ? error.message : "予期しないエラーが発生しました";
         toast({
@@ -131,12 +157,15 @@ export function ParticipantsTableV2({
         setIsUpdating(false);
       }
     },
-    [toast, onParamsChange]
+    [toast, router, localParticipants, applyLocal]
   );
 
   const handleWaive = useCallback(
     async (paymentId: string) => {
       setIsUpdating(true);
+      const prev = localParticipants;
+      // 楽観的更新
+      applyLocal(paymentId, "waived");
       try {
         const result = await updateCashStatusAction({ paymentId, status: "waived" });
         if (result.success) {
@@ -144,11 +173,14 @@ export function ParticipantsTableV2({
             title: "決済状況を更新しました",
             description: "ステータスを「免除」に変更しました。",
           });
-          onParamsChange({});
+          // 軽量再検証（ページ遷移なし）
+          startTransition(() => router.refresh());
         } else {
           throw new Error(result.error);
         }
       } catch (error) {
+        // ロールバック
+        setLocalParticipants(prev);
         const errorMessage =
           error instanceof Error ? error.message : "予期しないエラーが発生しました";
         toast({
@@ -160,12 +192,15 @@ export function ParticipantsTableV2({
         setIsUpdating(false);
       }
     },
-    [toast, onParamsChange]
+    [toast, router, localParticipants, applyLocal]
   );
 
   const handleCancel = useCallback(
     async (paymentId: string) => {
       setIsUpdating(true);
+      const prev = localParticipants;
+      // 楽観的更新
+      applyLocal(paymentId, "pending");
       try {
         const result = await updateCashStatusAction({
           paymentId,
@@ -178,11 +213,14 @@ export function ParticipantsTableV2({
             title: "決済を取り消しました",
             description: "ステータスを「未決済」に戻しました。",
           });
-          onParamsChange({});
+          // 軽量再検証（ページ遷移なし）
+          startTransition(() => router.refresh());
         } else {
           throw new Error(result.error);
         }
       } catch {
+        // ロールバック
+        setLocalParticipants(prev);
         toast({
           title: "取り消しに失敗しました",
           description: "しばらく待ってから再度お試しください。",
@@ -192,7 +230,7 @@ export function ParticipantsTableV2({
         setIsUpdating(false);
       }
     },
-    [toast, onParamsChange]
+    [toast, router, localParticipants, applyLocal]
   );
 
   // columns
