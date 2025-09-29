@@ -104,3 +104,20 @@ export const isPaymentUnpaid = (status: PaymentStatus | null | undefined): boole
   const simpleStatus = toSimplePaymentStatus(status);
   return simpleStatus === "unpaid" || simpleStatus === "refunded";
 };
+
+/**
+ * SimplePaymentStatus から対応する PaymentStatus 配列へのマッピング
+ * フィルター処理でDBクエリに使用
+ */
+export const getPaymentStatusesFromSimple = (simple: SimplePaymentStatus): PaymentStatus[] => {
+  switch (simple) {
+    case "unpaid":
+      return ["pending", "failed"];
+    case "paid":
+      return ["paid", "received", "completed"];
+    case "refunded":
+      return ["refunded"];
+    case "waived":
+      return ["waived"];
+  }
+};

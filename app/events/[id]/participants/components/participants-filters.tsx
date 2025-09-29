@@ -3,6 +3,10 @@
 import { useState, useEffect } from "react";
 
 import { Search, X, Filter } from "lucide-react";
+import {
+  type SimplePaymentStatus,
+  SIMPLE_PAYMENT_STATUS_LABELS,
+} from "@core/utils/payment-status-mapper";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -36,8 +40,11 @@ export function ParticipantsFilters({
   const [paymentMethodFilter, setPaymentMethodFilter] = useState(
     typeof searchParams.payment_method === "string" ? searchParams.payment_method : "all"
   );
-  const [paymentStatusFilter, setPaymentStatusFilter] = useState(
-    typeof searchParams.payment_status === "string" ? searchParams.payment_status : "all"
+  const [paymentStatusFilter, setPaymentStatusFilter] = useState<SimplePaymentStatus | "all">(
+    typeof searchParams.payment_status === "string" &&
+      ["unpaid", "paid", "refunded", "waived"].includes(searchParams.payment_status)
+      ? (searchParams.payment_status as SimplePaymentStatus)
+      : "all"
   );
   const [sortField, setSortField] = useState(
     typeof searchParams.sort === "string" ? searchParams.sort : "created_at"
@@ -54,7 +61,10 @@ export function ParticipantsFilters({
       typeof searchParams.payment_method === "string" ? searchParams.payment_method : "all"
     );
     setPaymentStatusFilter(
-      typeof searchParams.payment_status === "string" ? searchParams.payment_status : "all"
+      typeof searchParams.payment_status === "string" &&
+        ["unpaid", "paid", "refunded", "waived"].includes(searchParams.payment_status)
+        ? (searchParams.payment_status as SimplePaymentStatus)
+        : "all"
     );
     setSortField(typeof searchParams.sort === "string" ? searchParams.sort : "created_at");
     setSortOrder(searchParams.order === "asc" ? "asc" : "desc");
@@ -89,7 +99,8 @@ export function ParticipantsFilters({
   };
 
   const handlePaymentStatusFilter = (value: string) => {
-    setPaymentStatusFilter(value);
+    const typedValue = value as SimplePaymentStatus | "all";
+    setPaymentStatusFilter(typedValue);
     onFiltersChange({
       payment_status: value === "all" ? undefined : value,
       page: "1",
@@ -237,13 +248,12 @@ export function ParticipantsFilters({
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">全て</SelectItem>
-                    <SelectItem value="paid">支払済み</SelectItem>
-                    <SelectItem value="received">受領済み</SelectItem>
-                    <SelectItem value="completed">完了</SelectItem>
-                    <SelectItem value="pending">未決済</SelectItem>
-                    <SelectItem value="failed">失敗</SelectItem>
-                    <SelectItem value="refunded">返金済み</SelectItem>
-                    <SelectItem value="waived">免除</SelectItem>
+                    <SelectItem value="unpaid">{SIMPLE_PAYMENT_STATUS_LABELS.unpaid}</SelectItem>
+                    <SelectItem value="paid">{SIMPLE_PAYMENT_STATUS_LABELS.paid}</SelectItem>
+                    <SelectItem value="refunded">
+                      {SIMPLE_PAYMENT_STATUS_LABELS.refunded}
+                    </SelectItem>
+                    <SelectItem value="waived">{SIMPLE_PAYMENT_STATUS_LABELS.waived}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

@@ -151,16 +151,7 @@ export function ParticipantsTable({
     setPaymentStatusFilter(value);
     onParamsChange({
       paymentStatus:
-        value === "all"
-          ? undefined
-          : (value as
-              | "pending"
-              | "paid"
-              | "failed"
-              | "received"
-              | "refunded"
-              | "waived"
-              | "completed"),
+        value === "all" ? undefined : (value as "unpaid" | "paid" | "refunded" | "waived"),
       page: 1,
     });
   };

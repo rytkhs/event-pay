@@ -4,6 +4,10 @@ import { verifyEventAccess, handleDatabaseError } from "@core/auth/event-authori
 import { logger } from "@core/logging/app-logger";
 import { createClient } from "@core/supabase/server";
 import {
+  type SimplePaymentStatus,
+  getPaymentStatusesFromSimple,
+} from "@core/utils/payment-status-mapper";
+import {
   GetParticipantsParamsSchema,
   type GetParticipantsResponse,
   type ParticipantView,
@@ -33,23 +37,26 @@ export async function getEventParticipantsAction(
       limit,
     } = validatedParams;
 
+    // =============================
+    // 支払フィルターがある場合は inner join
+    // =============================
+    const hasPaymentFilters = !!paymentMethod || !!paymentStatus;
+    const paymentsJoin = hasPaymentFilters ? "payments!inner" : "payments!left";
+
     // 共通の認証・権限確認処理
     const { user, eventId: validatedEventId } = await verifyEventAccess(eventId);
 
     const supabase = createClient();
 
     // ベースクエリの構築
-    let query = supabase
-      .from("attendances")
-      .select(
-        `
+    const selectColumns = `
         id,
         nickname,
         email,
         status,
         created_at,
         updated_at,
-        payments!left (
+        ${paymentsJoin} (
           id,
           method,
           status,
@@ -58,9 +65,11 @@ export async function getEventParticipantsAction(
           version,
           created_at,
           updated_at
-        )
-      `
-      )
+        )`;
+
+    let query = supabase
+      .from("attendances")
+      .select(selectColumns)
       .eq("event_id", validatedEventId)
       // 最新決済を取得: 1) paid_at DESC NULLS LAST 2) created_at DESC 3) updated_at DESC
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -78,7 +87,7 @@ export async function getEventParticipantsAction(
     // 件数取得用クエリ（同じ条件）
     let countQuery = supabase
       .from("attendances")
-      .select("id, payments!left(id)", {
+      .select(`id, ${paymentsJoin}(id)`, {
         count: "exact",
         head: true,
       })
@@ -119,8 +128,18 @@ export async function getEventParticipantsAction(
       countQuery = countQuery.eq("payments.method", paymentMethod);
     }
     if (paymentStatus) {
-      query = query.eq("payments.status", paymentStatus);
-      countQuery = countQuery.eq("payments.status", paymentStatus);
+      // SimplePaymentStatus を対応する PaymentStatus 配列に変換してフィルタリング
+      const detailedStatuses = getPaymentStatusesFromSimple(paymentStatus as SimplePaymentStatus);
+
+      if (detailedStatuses.length === 1) {
+        // 単一ステータスの場合は eq を使用
+        query = query.eq("payments.status", detailedStatuses[0]);
+        countQuery = countQuery.eq("payments.status", detailedStatuses[0]);
+      } else {
+        // 複数ステータスの場合は in を使用
+        query = query.in("payments.status", detailedStatuses);
+        countQuery = countQuery.in("payments.status", detailedStatuses);
+      }
     }
 
     // ソート処理

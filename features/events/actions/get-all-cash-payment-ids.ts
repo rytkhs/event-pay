@@ -6,6 +6,10 @@ import { SecureSupabaseClientFactory } from "@core/security/secure-client-factor
 import { AdminReason } from "@core/security/secure-client-factory.types";
 import { createClient } from "@core/supabase/server";
 import {
+  type SimplePaymentStatus,
+  getPaymentStatusesFromSimple,
+} from "@core/utils/payment-status-mapper";
+import {
   GetAllCashPaymentIdsParamsSchema,
   type GetAllCashPaymentIdsResponse,
 } from "@core/validation/participant-management";
@@ -57,7 +61,15 @@ export async function getAllCashPaymentIdsAction(
       query = query.eq("status", filters.attendanceStatus);
     }
     if (filters?.paymentStatus) {
-      query = query.eq("payments.status", filters.paymentStatus);
+      const detailedStatuses = getPaymentStatusesFromSimple(
+        filters.paymentStatus as SimplePaymentStatus
+      );
+
+      if (detailedStatuses.length === 1) {
+        query = query.eq("payments.status", detailedStatuses[0]);
+      } else {
+        query = query.in("payments.status", detailedStatuses);
+      }
     }
 
     // 総件数取得用のクエリ（limit 無し、head:true）
@@ -76,7 +88,15 @@ export async function getAllCashPaymentIdsAction(
       countQuery = countQuery.eq("status", filters.attendanceStatus);
     }
     if (filters?.paymentStatus) {
-      countQuery = countQuery.eq("payments.status", filters.paymentStatus);
+      const detailedStatuses = getPaymentStatusesFromSimple(
+        filters.paymentStatus as SimplePaymentStatus
+      );
+
+      if (detailedStatuses.length === 1) {
+        countQuery = countQuery.eq("payments.status", detailedStatuses[0]);
+      } else {
+        countQuery = countQuery.in("payments.status", detailedStatuses);
+      }
     }
 
     // 上限 + 1 で取得

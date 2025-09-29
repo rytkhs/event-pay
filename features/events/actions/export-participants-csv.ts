@@ -8,6 +8,10 @@ import { enforceRateLimit, buildKey, POLICIES } from "@core/rate-limit";
 import { SecureSupabaseClientFactory } from "@core/security/secure-client-factory.impl";
 import { AdminReason } from "@core/security/secure-client-factory.types";
 import { createClient } from "@core/supabase/server";
+import {
+  type SimplePaymentStatus,
+  getPaymentStatusesFromSimple,
+} from "@core/utils/payment-status-mapper";
 import { formatUtcToJstSafe } from "@core/utils/timezone";
 import { ExportParticipantsCsvParamsSchema } from "@core/validation/participant-management";
 
@@ -111,9 +115,17 @@ export async function exportParticipantsCsvAction(params: unknown): Promise<{
       query = query.eq("payments.method", filters.paymentMethod);
     }
 
-    // 決済ステータスフィルター（payments.status）
+    // 決済ステータスフィルター（payments.status）- SimplePaymentStatusから詳細ステータスに変換
     if (filters?.paymentStatus) {
-      query = query.eq("payments.status", filters.paymentStatus);
+      const detailedStatuses = getPaymentStatusesFromSimple(
+        filters.paymentStatus as SimplePaymentStatus
+      );
+
+      if (detailedStatuses.length === 1) {
+        query = query.eq("payments.status", detailedStatuses[0]);
+      } else {
+        query = query.in("payments.status", detailedStatuses);
+      }
     }
 
     // データ取得（ページネーションなし - 全件取得）
@@ -239,9 +251,7 @@ interface CsvParticipant {
 function generateCsvContent(participants: CsvParticipant[], columns: string[]): string {
   // CSV ヘッダー行の生成
   const headerMap: Record<string, string> = {
-    attendance_id: "参加ID",
     nickname: "ニックネーム",
-    email: "メールアドレス",
     status: "参加ステータス",
     payment_method: "決済方法",
     payment_status: "決済ステータス",
@@ -261,14 +271,8 @@ function generateCsvContent(participants: CsvParticipant[], columns: string[]): 
       let value: string | number = "";
 
       switch (column) {
-        case "attendance_id":
-          value = participant.id;
-          break;
         case "nickname":
           value = participant.nickname;
-          break;
-        case "email":
-          value = participant.email;
           break;
         case "status":
           // 参加ステータスの日本語化
@@ -283,7 +287,7 @@ function generateCsvContent(participants: CsvParticipant[], columns: string[]): 
           if (latestPayment?.method) {
             const methodMap: Record<string, string> = {
               stripe: "オンライン決済",
-              cash: "現金",
+              cash: "現金決済",
             };
             value = methodMap[latestPayment.method] || latestPayment.method;
           }
@@ -292,9 +296,9 @@ function generateCsvContent(participants: CsvParticipant[], columns: string[]): 
           if (latestPayment?.status) {
             const statusMap: Record<string, string> = {
               pending: "未決済",
-              paid: "決済完了",
+              paid: "決済済",
               failed: "決済失敗",
-              received: "現金受領",
+              received: "受領済",
               refunded: "返金済み",
               waived: "免除",
               completed: "完了",
