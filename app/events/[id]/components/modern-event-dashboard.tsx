@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 
-import { ArrowLeft, Calendar, MapPin } from "lucide-react";
+import { ArrowLeft, Calendar, MapPin, Edit } from "lucide-react";
 
 import { EVENT_STATUS_LABELS } from "@core/types/enums";
 import type { Event } from "@core/types/models";
@@ -48,6 +48,14 @@ export function ModernEventDashboard({
     router.push("/events");
   };
 
+  // 編集可能かどうかの判定（開催済みまたはキャンセル済みは編集不可）
+  const canEdit = eventDetail.status !== "past" && eventDetail.status !== "canceled";
+
+  const handleEditEvent = () => {
+    if (!canEdit) return;
+    router.push(`/events/${eventId}/edit`);
+  };
+
   const getStatusBadge = (status: string) => {
     const statusText = EVENT_STATUS_LABELS[status as keyof typeof EVENT_STATUS_LABELS] || status;
 
@@ -91,7 +99,7 @@ export function ModernEventDashboard({
     <div className="min-h-screen bg-gray-50/50">
       {/* コンパクトヘッダー */}
       <div className="bg-white border-b border-border/50">
-        <div className="max-w-4xl mx-auto px-4 py-3">
+        <div className="max-w-4xl mx-auto px-4 py-4">
           <div className="flex items-center gap-3">
             <Button
               onClick={handleBackToEvents}
@@ -123,17 +131,39 @@ export function ModernEventDashboard({
                 </div>
               </div>
             </div>
+
+            {/* イベント編集ボタン */}
+            <Button
+              onClick={handleEditEvent}
+              variant="outline"
+              size="sm"
+              disabled={!canEdit}
+              className={`flex-shrink-0 h-9 px-3 transition-all duration-200 ${
+                canEdit
+                  ? "hover:bg-orange-50 hover:border-orange-300 border-orange-200"
+                  : "opacity-50 cursor-not-allowed"
+              }`}
+              title={
+                canEdit
+                  ? "イベント設定を編集"
+                  : eventDetail.status === "past"
+                    ? "開催済みのイベントは編集できません"
+                    : "キャンセル済みのイベントは編集できません"
+              }
+            >
+              <Edit className={`h-4 w-4 ${canEdit ? "text-orange-600" : "text-gray-400"}`} />
+              <span className="ml-1.5 hidden sm:inline font-medium">編集</span>
+            </Button>
           </div>
         </div>
       </div>
 
       {/* メインコンテンツ - モバイルファースト縦積みレイアウト */}
       <div className="max-w-4xl mx-auto px-4 py-6 space-y-6">
-        {/* FAB風クイックアクション */}
+        {/* クイックアクション */}
         <QuickActionsGrid
           eventId={eventId}
           inviteToken={eventDetail.invite_token || undefined}
-          eventStatus={eventDetail.status}
           attendingCount={attendingCount}
         />
 
