@@ -1,6 +1,6 @@
 import { createElement } from "react";
 
-import { Home, Calendar, Settings, FileText, Plus } from "lucide-react";
+import { Home, Calendar, Settings, Plus } from "lucide-react";
 
 import { NavigationConfig } from "./types";
 
@@ -84,14 +84,14 @@ export const marketingCTA = {
  * ユーザーメニューの設定
  */
 export const userMenuItems = [
-  {
-    label: "精算レポート",
-    href: "/settlement-reports",
-    icon: createElement(FileText),
-  },
+  // {
+  //   label: "精算レポート",
+  //   href: "/settlement-reports",
+  //   icon: createElement(FileText),
+  // },
   {
     label: "設定",
-    href: "/settings/profile",
+    href: "/settings",
     icon: createElement(Settings),
   },
 ] as const;
