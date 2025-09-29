@@ -23,6 +23,7 @@ import {
 import { useToast } from "@core/contexts/toast-context";
 // import { getPaymentActions } from "@core/services";
 import { hasPaymentId } from "@core/utils/data-guards";
+import { conditionalSmartSort } from "@core/utils/participant-smart-sort";
 import {
   toSimplePaymentStatus,
   isPaymentCompleted,
@@ -219,74 +220,8 @@ export function ParticipantsTableEnhanced({
   const smartActive = typeof _searchParams.smart === "string";
 
   const participants = useMemo(() => {
-    const base = [...participantsData.participants];
-    if (!smartActive) return base;
-
-    const ts = (v: string | null | undefined) => (v ? new Date(v).getTime() : 0);
-
-    const attendanceWeight = (status: string) => {
-      if (isFreeEvent) {
-        return status === "attending" ? 0 : status === "maybe" ? 1 : 2;
-      }
-      return status === "attending" ? 0 : status === "maybe" ? 3 : 4;
-    };
-
-    const simpleWeight = (status: string | null) => {
-      // unpaid=0, paid=1, waived=2, refunded=3
-      const simple = toSimplePaymentStatus(status as any);
-      switch (simple) {
-        case "unpaid":
-          return 0;
-        case "paid":
-          return 1;
-        case "waived":
-          return 2;
-        case "refunded":
-          return 3;
-        default:
-          return 9;
-      }
-    };
-
-    const methodWeight = (method: string | null | undefined) => {
-      // cash=0, unknown(null)=0.5, stripe=1
-      if (!method) return 0.5;
-      return method === "cash" ? 0 : method === "stripe" ? 1 : 0.5;
-    };
-
-    base.sort((a, b) => {
-      const awA = attendanceWeight(a.status);
-      const awB = attendanceWeight(b.status);
-      if (awA !== awB) return awA - awB;
-
-      if (isFreeEvent) {
-        // 参加/未定/不参加 + 更新日時降順
-        const updA = ts(a.attendance_updated_at);
-        const updB = ts(b.attendance_updated_at);
-        return updB - updA;
-      }
-
-      const swA = simpleWeight(a.payment_status as any);
-      const swB = simpleWeight(b.payment_status as any);
-      if (swA !== swB) return swA - swB;
-
-      const mwA = methodWeight(a.payment_method as any);
-      const mwB = methodWeight(b.payment_method as any);
-      if (mwA !== mwB) return mwA - mwB;
-
-      // 支払い日時降順
-      const paidA = ts(a.paid_at);
-      const paidB = ts(b.paid_at);
-      if (paidA !== paidB) return paidB - paidA;
-
-      // 最後に更新日時降順
-      const updA = ts(a.attendance_updated_at);
-      const updB = ts(b.attendance_updated_at);
-      return updB - updA;
-    });
-
-    return base;
-  }, [participantsData.participants, smartActive, isFreeEvent]);
+    return conditionalSmartSort(participantsData.participants, isFreeEvent, smartActive);
+  }, [participantsData.participants, isFreeEvent, smartActive]);
   const pagination = participantsData.pagination;
 
   // 現在のページサイズ（URLパラメータから取得、デフォルト50）

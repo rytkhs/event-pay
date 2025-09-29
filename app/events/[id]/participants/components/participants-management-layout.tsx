@@ -13,7 +13,7 @@ import type {
 import { ParticipantsActionBar } from "./participants-action-bar";
 import { ParticipantsCompactHeader } from "./participants-compact-header";
 import { ParticipantsFilters } from "./participants-filters";
-import { ParticipantsTableEnhanced } from "./participants-table-enhanced";
+import { ParticipantsTableV2 } from "./participants-table-v2/participants-table";
 
 interface ParticipantsManagementLayoutProps {
   eventId: string;
@@ -107,13 +107,12 @@ export function ParticipantsManagementLayout({
 
           {/* 参加者テーブル */}
           <div className="-mx-4 sm:mx-0">
-            <ParticipantsTableEnhanced
+            <ParticipantsTableV2
               eventId={eventId}
               eventFee={eventDetail.fee}
-              participantsData={participantsData}
-              paymentsData={paymentsData}
+              initialData={participantsData}
               searchParams={searchParams}
-              onFiltersChange={handleUpdateFilters}
+              onParamsChange={handleUpdateFilters}
             />
           </div>
         </div>
