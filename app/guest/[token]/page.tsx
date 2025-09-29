@@ -13,7 +13,6 @@ import { getClientIPFromHeaders } from "@core/utils/ip-detection";
 import { sanitizeForEventPay } from "@core/utils/sanitize";
 
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
-import { Card } from "@/components/ui/card";
 
 import { GuestPageClient } from "./guest-page-client";
 
