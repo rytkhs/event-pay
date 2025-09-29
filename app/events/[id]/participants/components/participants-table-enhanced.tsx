@@ -404,7 +404,6 @@ export function ParticipantsTableEnhanced({
                           key={participant.attendance_id}
                           className={`
                             min-h-[30px] transition-all duration-200
-                            hover:bg-blue-50 hover:shadow-sm
                             ${isPaid ? "bg-green-50 border-l-4 border-l-green-500" : ""}
                             focus-within:ring-2 focus-within:ring-blue-500 focus-within:ring-opacity-50
                           `}
@@ -544,7 +543,7 @@ export function ParticipantsTableEnhanced({
                   return (
                     <Card
                       key={participant.attendance_id}
-                      className={`${isPaid ? "border-green-200 bg-green-50" : ""} transition-all duration-200 hover:shadow-md focus-within:ring-2 focus-within:ring-blue-500 focus-within:ring-opacity-50`}
+                      className={`${isPaid ? "border-green-200 bg-green-50" : ""} transition-all duration-200 focus-within:ring-2 focus-within:ring-blue-500 focus-within:ring-opacity-50`}
                       role="gridcell"
                       tabIndex={0}
                       aria-label={`参加者: ${participant.nickname}, ステータス: ${participant.status === "attending" ? "◯ 参加" : participant.status === "not_attending" ? "不参加" : "△ 未定"}`}
