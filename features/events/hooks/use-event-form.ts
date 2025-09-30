@@ -8,6 +8,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
+import { useToast } from "@core/contexts/toast-context";
 import { logger } from "@core/logging/app-logger";
 import { safeParseNumber, parseFee } from "@core/utils/number-parsers";
 import { convertDatetimeLocalToUtc } from "@core/utils/timezone";
@@ -203,7 +204,7 @@ const eventFormSchema = z
   );
 
 // Zodスキーマの推論型をフォーム型として使用（resolverとの互換性のため）
-type EventFormData = z.infer<typeof eventFormSchema>;
+export type EventFormData = z.infer<typeof eventFormSchema>;
 
 // react-hook-form用のデフォルト値
 const defaultValues: EventFormData = {
@@ -245,6 +246,7 @@ export const useEventForm = (): {
 } => {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
+  const { toast } = useToast();
 
   // react-hook-formの初期化
   const form = useForm<EventFormData>({
@@ -419,8 +421,18 @@ export const useEventForm = (): {
         const result = await createEventAction(formData);
 
         if (result.success) {
-          // 成功時はイベント詳細ページにリダイレクト
-          router.push(`/events/${result.data.id}`);
+          // 成功トースト通知を表示
+          toast({
+            title: "イベントを作成しました！",
+            description: `「${data.title}」の作成が完了しました`,
+            variant: "success",
+            duration: 3000,
+          });
+
+          // ユーザーが成功を認識できるよう、短いディレイ後にリダイレクト
+          setTimeout(() => {
+            router.push(`/events/${result.data.id}`);
+          }, 1000);
         } else {
           // エラー時はフォームにエラーを設定
           form.setError("root", {

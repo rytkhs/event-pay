@@ -2,15 +2,17 @@
 
 import { useEffect, useState } from "react";
 
-import { format } from "date-fns-tz";
+import { format } from "date-fns";
 import { CheckIcon, CalendarIcon, MapPinIcon, UsersIcon } from "lucide-react";
 
+import { calculateNetAmount, calculateStripeFee, formatCurrency } from "@core/utils/fee-calculator";
 import { getCurrentJstTime } from "@core/utils/timezone";
 
 import { cn } from "@/components/ui/_lib/cn";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
+import { DateTimePicker } from "@/components/ui/date-time-picker";
 import {
   Form,
   FormControl,
@@ -24,6 +26,9 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 
 import { useEventForm } from "../hooks/use-event-form";
+
+import { EventConfirmationSummary } from "./event-confirmation-summary";
+import { EventFormTimeline } from "./event-form-timeline";
 
 // ステップの定義
 const STEPS = [
@@ -77,15 +82,25 @@ function ModernEventForm({
   const paymentMethods = form.watch("payment_methods");
   const isOnlineSelected = Array.isArray(paymentMethods) && paymentMethods.includes("stripe");
 
-  // SSR不整合を避けるため、datetime-localのmin値をクライアント側で設定
-  const [minDatetimeLocal, setMinDatetimeLocal] = useState<string | undefined>(undefined);
+  // 参加費を監視（手取り表示用）
+  const watchedFee = form.watch("fee");
+  const feeAmount = watchedFee && watchedFee.trim() !== "" ? Number(watchedFee) : 0;
+
+  // SSR不整合を避けるため、DateTimePickerのmin値をクライアント側で設定
+  const [minDateObject, setMinDateObject] = useState<Date | undefined>(undefined);
 
   useEffect(() => {
     const now = getCurrentJstTime();
     now.setHours(now.getHours() + 1);
-    const minValue = format(now, "yyyy-MM-dd'T'HH:mm", { timeZone: "Asia/Tokyo" });
-    setMinDatetimeLocal(minValue);
+    setMinDateObject(now);
   }, []);
+
+  // フォームの値を監視（タイムライン表示用）
+  const watchedDate = form.watch("date");
+  const watchedRegistrationDeadline = form.watch("registration_deadline");
+  const watchedPaymentDeadline = form.watch("payment_deadline");
+  const watchedGracePeriodDays = form.watch("grace_period_days");
+  const watchedAllowPaymentAfterDeadline = form.watch("allow_payment_after_deadline");
 
   // ステップの進行状況を管理
   const currentStepIndex = STEPS.findIndex((step) => step.id === currentStep);
@@ -247,11 +262,11 @@ function ModernEventForm({
                     name="title"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="text-base font-medium">イベント名 *</FormLabel>
+                        <FormLabel className="text-base font-medium">タイトル *</FormLabel>
                         <FormControl>
                           <Input
                             {...field}
-                            placeholder="素敵なイベント名を入力してください"
+                            placeholder="例：月例勉強会、夏合宿、会費の集金など"
                             disabled={isPending}
                             maxLength={100}
                             className="h-12 text-base"
@@ -270,12 +285,19 @@ function ModernEventForm({
                         <FormItem>
                           <FormLabel className="text-base font-medium">開催日時 *</FormLabel>
                           <FormControl>
-                            <Input
-                              {...field}
-                              type="datetime-local"
+                            <DateTimePicker
+                              value={field.value ? new Date(field.value) : undefined}
+                              onChange={(date) => {
+                                if (date) {
+                                  const formatted = format(date, "yyyy-MM-dd'T'HH:mm");
+                                  field.onChange(formatted);
+                                } else {
+                                  field.onChange("");
+                                }
+                              }}
+                              placeholder="開催日時を選択"
                               disabled={isPending}
-                              min={minDatetimeLocal}
-                              className="h-12"
+                              minDate={minDateObject}
                             />
                           </FormControl>
                           <FormMessage />
@@ -311,6 +333,18 @@ function ModernEventForm({
                           <FormDescription className="text-sm text-gray-600">
                             0円（無料）または100円以上で設定してください。
                           </FormDescription>
+                          {feeAmount >= 100 && canUseOnlinePayments && (
+                            <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-md">
+                              <p className="text-sm text-blue-900">
+                                オンライン決済時の予想手取り:{" "}
+                                {formatCurrency(calculateNetAmount(feeAmount))}円
+                              </p>
+                              <p className="text-xs text-blue-700 mt-1">
+                                （参加費 {formatCurrency(feeAmount)}円 - Stripe手数料{" "}
+                                {formatCurrency(calculateStripeFee(feeAmount))}円）
+                              </p>
+                            </div>
+                          )}
                           <FormMessage />
                         </FormItem>
                       )}
@@ -338,12 +372,19 @@ function ModernEventForm({
                       <FormItem>
                         <FormLabel className="text-base font-medium">参加申込締切 *</FormLabel>
                         <FormControl>
-                          <Input
-                            {...field}
-                            type="datetime-local"
+                          <DateTimePicker
+                            value={field.value ? new Date(field.value) : undefined}
+                            onChange={(date) => {
+                              if (date) {
+                                const formatted = format(date, "yyyy-MM-dd'T'HH:mm");
+                                field.onChange(formatted);
+                              } else {
+                                field.onChange("");
+                              }
+                            }}
+                            placeholder="参加申込締切を選択"
                             disabled={isPending}
-                            min={minDatetimeLocal}
-                            className="h-12 max-w-md"
+                            minDate={minDateObject}
                           />
                         </FormControl>
                         <FormDescription>この日時以降は申込できません</FormDescription>
@@ -467,7 +508,6 @@ function ModernEventForm({
                     </div>
                   )}
 
-                  {/* オンライン決済関連設定（オンライン決済選択時のみ表示） */}
                   {!isFreeEvent && isOnlineSelected && (
                     <div className="border border-blue-200 rounded-lg p-6 bg-blue-50/30 space-y-6">
                       <div className="flex items-center space-x-2 mb-4">
@@ -485,15 +525,23 @@ function ModernEventForm({
                               オンライン決済締切 *
                             </FormLabel>
                             <FormControl>
-                              <Input
-                                {...field}
-                                type="datetime-local"
+                              <DateTimePicker
+                                value={field.value ? new Date(field.value) : undefined}
+                                onChange={(date) => {
+                                  if (date) {
+                                    const formatted = format(date, "yyyy-MM-dd'T'HH:mm");
+                                    field.onChange(formatted);
+                                  } else {
+                                    field.onChange("");
+                                  }
+                                }}
+                                placeholder="オンライン決済締切を選択"
                                 disabled={isPending}
-                                min={minDatetimeLocal}
-                                className="h-12 max-w-md"
                               />
                             </FormControl>
-                            <FormDescription>この日時以降はオンライン決済不可</FormDescription>
+                            <FormDescription>
+                              開催日時から30日以内で設定してください（開催後の設定も可能）
+                            </FormDescription>
                             <FormMessage />
                           </FormItem>
                         )}
@@ -567,6 +615,21 @@ function ModernEventForm({
                         )}
                       </div>
                     </div>
+                  )}
+
+                  {/* タイムライン表示（提案3） - オンライン決済設定の後に表示 */}
+                  {watchedRegistrationDeadline && watchedDate && (
+                    <EventFormTimeline
+                      registrationDeadline={watchedRegistrationDeadline}
+                      paymentDeadline={isOnlineSelected ? watchedPaymentDeadline : undefined}
+                      eventDate={watchedDate}
+                      gracePeriodDays={
+                        isOnlineSelected && watchedAllowPaymentAfterDeadline
+                          ? watchedGracePeriodDays
+                          : undefined
+                      }
+                      className="mt-6"
+                    />
                   )}
                 </div>
               )}
@@ -663,57 +726,12 @@ function ModernEventForm({
                     </p>
                   </div>
 
-                  {/* 入力内容のサマリー表示 */}
-                  <div className="bg-gray-50 rounded-lg p-6 space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div>
-                        <h4 className="font-medium text-gray-900 mb-2">基本情報</h4>
-                        <div className="space-y-2 text-sm">
-                          <div>
-                            <span className="text-gray-600">イベント名:</span>{" "}
-                            {form.getValues("title") || "未設定"}
-                          </div>
-                          <div>
-                            <span className="text-gray-600">開催日時:</span>{" "}
-                            {form.getValues("date") || "未設定"}
-                          </div>
-                          <div>
-                            <span className="text-gray-600">場所:</span>{" "}
-                            {form.getValues("location") || "未設定"}
-                          </div>
-                          <div>
-                            <span className="text-gray-600">定員:</span>{" "}
-                            {form.getValues("capacity") || "制限なし"}名
-                          </div>
-                        </div>
-                      </div>
-                      <div>
-                        <h4 className="font-medium text-gray-900 mb-2">決済・締切</h4>
-                        <div className="space-y-2 text-sm">
-                          <div>
-                            <span className="text-gray-600">参加費:</span>{" "}
-                            {form.getValues("fee") || 0}円
-                          </div>
-                          <div>
-                            <span className="text-gray-600">申込締切:</span>{" "}
-                            {form.getValues("registration_deadline") || "未設定"}
-                          </div>
-                          <div>
-                            <span className="text-gray-600">決済締切:</span>{" "}
-                            {form.getValues("payment_deadline") || "未設定"}
-                          </div>
-                          {!isFreeEvent && (
-                            <div>
-                              <span className="text-gray-600">決済方法:</span>{" "}
-                              {Array.isArray(form.getValues("payment_methods"))
-                                ? form.getValues("payment_methods").join(", ")
-                                : "未設定"}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+                  {/* 改善された確認サマリー */}
+                  <EventConfirmationSummary
+                    form={form}
+                    isFreeEvent={isFreeEvent}
+                    onEditStep={goToStep}
+                  />
 
                   {/* 全体のエラーメッセージ */}
                   {form.formState.errors.root && (
