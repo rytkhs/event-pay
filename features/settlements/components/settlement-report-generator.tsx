@@ -176,7 +176,7 @@ export function SettlementReportGenerator({
             <h4 className="font-medium text-blue-900 mb-2">選択中のイベント</h4>
             <div className="grid grid-cols-2 gap-2 text-sm">
               <div>
-                <span className="font-medium text-blue-800">イベント名:</span>
+                <span className="font-medium text-blue-800">タイトル:</span>
                 <br />
                 <span className="text-blue-700">{selectedEvent.title}</span>
               </div>

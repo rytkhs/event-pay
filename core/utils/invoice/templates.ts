@@ -133,7 +133,7 @@ export function generateInvoiceHTML(data: InvoiceData): string {
   <table class="items-table">
     <thead>
       <tr>
-        <th>イベント名</th>
+        <th>タイトル</th>
         <th>参加者</th>
         <th>決済日</th>
         <th class="amount">決済金額</th>

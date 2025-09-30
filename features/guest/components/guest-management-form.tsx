@@ -551,7 +551,7 @@ export function GuestManagementForm({ attendance, canModify }: GuestManagementFo
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             <div>
-              <h4 className="text-sm font-medium text-gray-700">イベント名</h4>
+              <h4 className="text-sm font-medium text-gray-700">タイトル</h4>
               <p className="mt-1 text-sm text-gray-900 break-words">
                 {sanitizeForEventPay(attendance.event.title)}
               </p>

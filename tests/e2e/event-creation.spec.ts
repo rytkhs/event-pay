@@ -20,7 +20,7 @@ test.describe("イベント作成（E2E）", () => {
     const paymentDeadline = "2025-12-24T20:00"; // 決済締切
 
     // Step 1: 基本情報
-    await page.getByLabel("イベント名 *").fill("テスト勉強会");
+    await page.getByLabel("タイトル *").fill("テスト勉強会");
     await page.getByLabel("開催日時 *").fill(futureDateString);
     await page.getByLabel("参加費 *").fill("1000");
 
@@ -89,7 +89,7 @@ test.describe("イベント作成（E2E）", () => {
     const registrationDeadline = "2025-12-25T23:59"; // 申込締切
 
     // Step 1: 基本情報（無料イベント）
-    await page.getByLabel("イベント名 *").fill("無料勉強会");
+    await page.getByLabel("タイトル *").fill("無料勉強会");
     await page.getByLabel("開催日時 *").fill(futureDateString);
     await page.getByLabel("参加費 *").fill("0");
 
@@ -135,8 +135,8 @@ test.describe("イベント作成（E2E）", () => {
     // onChangeモードでは入力値の変更が必要なので、各フィールドに何かを入力してから削除してバリデーションを発生させる
 
     // タイトル欄に文字を入力してから削除
-    await page.getByLabel("イベント名 *").fill("a");
-    await page.getByLabel("イベント名 *").fill("");
+    await page.getByLabel("タイトル *").fill("a");
+    await page.getByLabel("タイトル *").fill("");
 
     // 開催日時欄に有効な日時を入力してから削除
     await page.getByLabel("開催日時 *").fill("2025-12-25T15:00");
@@ -160,12 +160,12 @@ test.describe("イベント作成（E2E）", () => {
     const pastDate = new Date(Date.now() - 60 * 60 * 1000);
     const pastDateString = pastDate.toISOString().slice(0, 16);
 
-    await page.getByLabel("イベント名 *").fill("テストイベント");
+    await page.getByLabel("タイトル *").fill("テストイベント");
     await page.getByLabel("開催日時 *").fill(pastDateString);
     await page.getByLabel("参加費 *").fill("1000");
 
     // タイトル欄をクリックしてフォーカスを移動（バリデーションをトリガー）
-    await page.getByLabel("イベント名 *").click();
+    await page.getByLabel("タイトル *").click();
 
     // エラーメッセージが表示されることを確認
     await expect(page.getByText("開催日時は現在時刻より後である必要があります")).toBeVisible();
@@ -182,7 +182,7 @@ test.describe("イベント作成（E2E）", () => {
     const registrationDeadline = new Date(Date.now() + 30 * 60 * 1000).toISOString().slice(0, 16);
 
     // Step 1: 基本情報（有料イベント）
-    await page.getByLabel("イベント名 *").fill("テストイベント");
+    await page.getByLabel("タイトル *").fill("テストイベント");
     await page.getByLabel("開催日時 *").fill(futureDateString);
     await page.getByLabel("参加費 *").fill("1000");
 
@@ -212,7 +212,7 @@ test.describe("イベント作成（E2E）", () => {
     const deadlineDateString = deadlineDate.toISOString().slice(0, 16);
 
     // Step 1: 基本情報
-    await page.getByLabel("イベント名 *").fill("テストイベント");
+    await page.getByLabel("タイトル *").fill("テストイベント");
     await page.getByLabel("開催日時 *").fill(eventDateString);
     await page.getByLabel("参加費 *").fill("0");
 
@@ -244,7 +244,7 @@ test.describe("イベント作成（E2E）", () => {
     const paymentDeadlineString = paymentDeadline.toISOString().slice(0, 16);
 
     // Step 1: 基本情報（有料イベント）
-    await page.getByLabel("イベント名 *").fill("テストイベント");
+    await page.getByLabel("タイトル *").fill("テストイベント");
     await page.getByLabel("開催日時 *").fill(eventDateString);
     await page.getByLabel("参加費 *").fill("1000");
 
@@ -284,7 +284,7 @@ test.describe("イベント作成（E2E）", () => {
     const paymentDeadlineString = paymentDeadline.toISOString().slice(0, 16);
 
     // Step 1: 基本情報（有料イベント）
-    await page.getByLabel("イベント名 *").fill("テストイベント");
+    await page.getByLabel("タイトル *").fill("テストイベント");
     await page.getByLabel("開催日時 *").fill(eventDateString);
     await page.getByLabel("参加費 *").fill("1000");
 
@@ -314,10 +314,10 @@ test.describe("イベント作成（E2E）", () => {
     // 101文字のタイトルを作成
     const longTitle = "あ".repeat(101);
 
-    await page.getByLabel("イベント名 *").fill(longTitle);
+    await page.getByLabel("タイトル *").fill(longTitle);
 
     // 実際に入力された値が100文字に制限されていることを確認
-    const titleValue = await page.getByLabel("イベント名 *").inputValue();
+    const titleValue = await page.getByLabel("タイトル *").inputValue();
     expect(titleValue.length).toBe(100);
   });
 
@@ -329,7 +329,7 @@ test.describe("イベント作成（E2E）", () => {
     const registrationDeadline = new Date(Date.now() + 30 * 60 * 1000).toISOString().slice(0, 16);
 
     // Step 1: 基本情報
-    await page.getByLabel("イベント名 *").fill("テストイベント");
+    await page.getByLabel("タイトル *").fill("テストイベント");
     await page.getByLabel("開催日時 *").fill(futureDateString);
     await page.getByLabel("参加費 *").fill("0");
 
@@ -361,7 +361,7 @@ test.describe("イベント作成（E2E）", () => {
     const registrationDeadline = new Date(Date.now() + 30 * 60 * 1000).toISOString().slice(0, 16);
 
     // Step 1: 基本情報
-    await page.getByLabel("イベント名 *").fill("テストイベント");
+    await page.getByLabel("タイトル *").fill("テストイベント");
     await page.getByLabel("開催日時 *").fill(futureDateString);
     await page.getByLabel("参加費 *").fill("1000");
 
@@ -387,7 +387,7 @@ test.describe("イベント作成（E2E）", () => {
     await page.getByRole("button", { name: "リセット" }).click();
 
     // フォームがクリアされて Step 1 に戻ることを確認
-    await expect(page.getByLabel("イベント名 *")).toHaveValue("");
+    await expect(page.getByLabel("タイトル *")).toHaveValue("");
     await expect(page.getByLabel("開催日時 *")).toHaveValue("");
     await expect(page.getByLabel("参加費 *")).toHaveValue("");
   });
