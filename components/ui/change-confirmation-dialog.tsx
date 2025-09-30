@@ -57,17 +57,20 @@ export function ChangeConfirmationDialog({
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogContent
-        className="sm:max-w-[600px]"
+        className="sm:max-w-[600px] flex flex-col max-h-[calc(100vh-2rem)]"
         aria-describedby="change-confirmation-description"
       >
-        <DialogHeader>
+        <DialogHeader className="flex-shrink-0">
           <DialogTitle>変更内容を確認</DialogTitle>
           <DialogDescription>
             以下の変更内容をご確認ください。変更を適用する場合は「更新」をクリックしてください。
           </DialogDescription>
         </DialogHeader>
 
-        <div id="change-confirmation-description" className="space-y-4">
+        <div
+          id="change-confirmation-description"
+          className="space-y-4 overflow-y-auto flex-1 min-h-0 pr-2"
+        >
           {/* 副次的変更のサマリー */}
           {(() => {
             const secondaryChanges = changes.filter(
@@ -254,7 +257,7 @@ export function ChangeConfirmationDialog({
           )}
         </div>
 
-        <DialogFooter className="flex-col sm:flex-row gap-2">
+        <DialogFooter className="flex-col sm:flex-row gap-2 flex-shrink-0 pt-4 border-t">
           <Button
             type="button"
             variant="outline"
