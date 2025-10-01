@@ -207,9 +207,8 @@ export class PaymentSessionIdempotencyTestHelper {
     const pendingCount =
       payments?.filter((p: any) => ["pending", "failed"].includes(p.status)).length || 0;
     const terminalCount =
-      payments?.filter((p: any) =>
-        ["paid", "received", "completed", "refunded", "waived"].includes(p.status)
-      ).length || 0;
+      payments?.filter((p: any) => ["paid", "received", "refunded", "waived"].includes(p.status))
+        .length || 0;
 
     return {
       payments: payments || [],
@@ -235,9 +234,7 @@ export class PaymentSessionIdempotencyTestHelper {
     const {
       amount = this.setup.event.fee,
       stripePaymentIntentId = status === "pending" ? null : `pi_test_${status}_${Date.now()}`,
-      paidAt = ["paid", "received", "completed", "refunded", "waived"].includes(status)
-        ? new Date()
-        : null,
+      paidAt = ["paid", "received", "refunded", "waived"].includes(status) ? new Date() : null,
       checkoutIdempotencyKey = null,
       checkoutKeyRevision = 0,
     } = options;

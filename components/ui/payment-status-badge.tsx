@@ -22,10 +22,6 @@ const PAYMENT_STATUS_PROPS: Record<PaymentStatus, { color: string; label: string
     color: "bg-success/10 text-success border-success/20",
     label: PAYMENT_STATUS_LABELS.received,
   },
-  completed: {
-    color: "bg-success/10 text-success border-success/20",
-    label: PAYMENT_STATUS_LABELS.completed,
-  },
   refunded: {
     color: "bg-info/10 text-info border-info/20",
     label: PAYMENT_STATUS_LABELS.refunded,

@@ -638,6 +638,17 @@ export type Database = {
       };
     };
     Functions: {
+      admin_add_attendance_with_capacity_check: {
+        Args: {
+          p_bypass_capacity?: boolean;
+          p_email: string;
+          p_event_id: string;
+          p_guest_token: string;
+          p_nickname: string;
+          p_status: Database["public"]["Enums"]["attendance_status_enum"];
+        };
+        Returns: string;
+      };
       calc_refund_dispute_summary: {
         Args: { p_event_id: string };
         Returns: Json;
@@ -868,14 +879,7 @@ export type Database = {
         | "security_investigation";
       attendance_status_enum: "attending" | "not_attending" | "maybe";
       payment_method_enum: "stripe" | "cash";
-      payment_status_enum:
-        | "pending"
-        | "paid"
-        | "failed"
-        | "received"
-        | "completed"
-        | "refunded"
-        | "waived";
+      payment_status_enum: "pending" | "paid" | "failed" | "received" | "refunded" | "waived";
       security_severity_enum: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
       stripe_account_status_enum: "unverified" | "onboarding" | "verified" | "restricted";
       suspicious_activity_type_enum:
@@ -1024,15 +1028,7 @@ export const Constants = {
       ],
       attendance_status_enum: ["attending", "not_attending", "maybe"],
       payment_method_enum: ["stripe", "cash"],
-      payment_status_enum: [
-        "pending",
-        "paid",
-        "failed",
-        "received",
-        "completed",
-        "refunded",
-        "waived",
-      ],
+      payment_status_enum: ["pending", "paid", "failed", "received", "refunded", "waived"],
       security_severity_enum: ["LOW", "MEDIUM", "HIGH", "CRITICAL"],
       stripe_account_status_enum: ["unverified", "onboarding", "verified", "restricted"],
       suspicious_activity_type_enum: [

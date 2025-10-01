@@ -193,7 +193,7 @@ export async function getEventParticipantsAction(
       payments: Array<{
         id: string;
         method: "stripe" | "cash";
-        status: "pending" | "paid" | "failed" | "received" | "refunded" | "waived" | "completed";
+        status: "pending" | "paid" | "failed" | "received" | "refunded" | "waived";
         amount: number;
         paid_at: string | null;
         version: number;

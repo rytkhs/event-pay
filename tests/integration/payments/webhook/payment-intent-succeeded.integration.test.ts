@@ -636,33 +636,31 @@ describe("payment_intent.succeeded Webhook統合テスト", () => {
         expect(updatedPayment.status).toBe("paid");
       });
 
-      it("completed -> paid への降格は防止される", async () => {
-        const paymentIntentId = `pi_completed_to_paid_${Date.now()}`;
+      it("received -> paid への降格は防止される", async () => {
+        const paymentIntentId = `pi_received_to_paid_${Date.now()}`;
         const payment = await createPendingTestPayment(testAttendance.id, {
           amount: 1500,
           stripeAccountId: testUser.stripeConnectAccountId,
         });
 
-        // 段階的に正当なステータス遷移を行う: pending -> paid -> completed
+        // received ステータスに更新（現金決済済み）
         await supabase
           .from("payments")
           .update({
-            status: "paid",
+            status: "received",
+            method: "cash",
             paid_at: new Date().toISOString(),
-            stripe_payment_intent_id: `pi_temp_${Date.now()}`,
           })
           .eq("id", payment.id);
 
-        await supabase.from("payments").update({ status: "completed" }).eq("id", payment.id);
-
-        // 実際にcompletedに更新されたかを確認
+        // 実際にreceivedに更新されたかを確認
         const { data: beforePayment } = await supabase
           .from("payments")
           .select("status")
           .eq("id", payment.id)
           .single();
 
-        expect(beforePayment.status).toBe("completed");
+        expect(beforePayment.status).toBe("received");
 
         const evt = createPaymentIntentEvent(paymentIntentId, {
           metadata: { payment_id: payment.id },
@@ -673,14 +671,14 @@ describe("payment_intent.succeeded Webhook統合テスト", () => {
 
         expect(res.status).toBe(200);
 
-        // ステータスは変更されていない（completed のまま）
+        // ステータスは変更されていない（received のまま）
         const { data: unchangedPayment } = await supabase
           .from("payments")
           .select("status")
           .eq("id", payment.id)
           .single();
 
-        expect(unchangedPayment.status).toBe("completed");
+        expect(unchangedPayment.status).toBe("received");
       });
     });
 

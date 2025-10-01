@@ -150,9 +150,9 @@ function calculatePaymentSummary(
   let unpaidCount = 0;
   let unpaidAmount = 0;
 
-  // 決済済みステータス（paid, received, completed, waived）
+  // 決済済みステータス（paid, received, waived）
   // waived(免除)は管理者による意図的な決済完了として扱う
-  const paidStatuses = new Set<PaymentStatus>(["paid", "received", "completed", "waived"]);
+  const paidStatuses = new Set<PaymentStatus>(["paid", "received", "waived"]);
   // 未決済ステータス（pending, failed, refunded）
   // refunded(返金済)は実質的に未収金のため未決済として扱う
   const unpaidStatuses = new Set<PaymentStatus>(["pending", "failed", "refunded"]);

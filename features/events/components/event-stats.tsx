@@ -42,9 +42,8 @@ export function EventStats({ eventData, attendances, payments }: EventStatsProps
     } as Record<string, number> & { total: number; count: Record<string, number> }
   );
 
-  // 売上合計を計算（paid + received + completed）
-  const totalRevenue =
-    (paymentStats.paid || 0) + (paymentStats.received || 0) + (paymentStats.completed || 0);
+  // 売上合計を計算（paid + received）
+  const totalRevenue = (paymentStats.paid || 0) + (paymentStats.received || 0);
 
   // Stripe決済分を計算
   const stripeRevenue = paymentStats.paid_stripe || 0;
@@ -54,9 +53,6 @@ export function EventStats({ eventData, attendances, payments }: EventStatsProps
 
   // 返金済み金額を計算
   const refundedAmount = paymentStats.refunded || 0;
-
-  // 無料イベント完了分を計算
-  const completedAmount = paymentStats.completed || 0;
 
   // 未決済金額を計算
   const pendingAmount = paymentStats.pending || 0;
@@ -149,15 +145,9 @@ export function EventStats({ eventData, attendances, payments }: EventStatsProps
         </div>
       </div>
 
-      {/* 詳細な決済情報（返金・完了情報） */}
-      {(refundedAmount > 0 || completedAmount > 0) && (
+      {/* 詳細な決済情報（返金情報） */}
+      {refundedAmount > 0 && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="text-center p-3 bg-slate-50 rounded-lg">
-            <div className="text-2xl font-bold text-slate-600" data-testid="completed-amount">
-              ¥{completedAmount.toLocaleString()}
-            </div>
-            <div className="text-sm text-gray-600">無料完了</div>
-          </div>
           <div className="text-center p-3 bg-red-50 rounded-lg">
             <div className="text-2xl font-bold text-red-600" data-testid="refunded-amount">
               ¥{refundedAmount.toLocaleString()}

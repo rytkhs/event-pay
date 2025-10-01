@@ -116,7 +116,7 @@ export async function getDashboardDataAction(): Promise<ServerActionResult<Dashb
           for (const attendance of attendances) {
             // 支払いが未完了の参加者の参加費を合算
             const hasCompletedPayment = attendance.payments?.some((payment: any) =>
-              ["paid", "received", "completed"].includes(payment.status)
+              ["paid", "received"].includes(payment.status)
             );
 
             if (!hasCompletedPayment) {

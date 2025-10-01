@@ -273,7 +273,6 @@ npm run check:enum-consistency
      | "paid"
      | "failed"
      | "received"
-     | "completed"
      | "refunded"
      | "waived"
      | "new_status"; // 新しい値を追加

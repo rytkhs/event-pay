@@ -97,7 +97,6 @@ CREATE TYPE "public"."payment_status_enum" AS ENUM (
     'paid',
     'failed',
     'received',
-    'completed',
     'refunded',
     'waived'
 );
@@ -106,7 +105,7 @@ CREATE TYPE "public"."payment_status_enum" AS ENUM (
 ALTER TYPE "public"."payment_status_enum" OWNER TO "postgres";
 
 
-COMMENT ON TYPE "public"."payment_status_enum" IS '決済状況 (completedは無料イベント用)';
+COMMENT ON TYPE "public"."payment_status_enum" IS '決済状況';
 
 
 
@@ -1635,9 +1634,8 @@ CREATE OR REPLACE FUNCTION "public"."status_rank"("p" "public"."payment_status_e
     WHEN 'pending'   THEN 10
     WHEN 'failed'    THEN 15
     WHEN 'paid'      THEN 20
-    WHEN 'received'  THEN 25
-    WHEN 'waived'    THEN 28
-    WHEN 'completed' THEN 30
+    WHEN 'received'  THEN 20
+    WHEN 'waived'    THEN 25
     WHEN 'refunded'  THEN 40
     ELSE 0
   END;
@@ -1765,7 +1763,7 @@ CREATE OR REPLACE FUNCTION "public"."update_guest_attendance_with_payment"("p_at
       LIMIT 1;
 
       IF v_payment_id IS NOT NULL THEN
-        IF v_payment_status IN ('paid', 'received', 'completed', 'waived') THEN
+        IF v_payment_status IN ('paid', 'received', 'waived') THEN
           RAISE EXCEPTION 'EVP_PAYMENT_FINALIZED_IMMUTABLE: Payment is finalized; cannot modify method/amount';
         ELSE
           UPDATE public.payments
@@ -1799,7 +1797,7 @@ CREATE OR REPLACE FUNCTION "public"."update_guest_attendance_with_payment"("p_at
           DELETE FROM public.payments WHERE id = v_payment_id;
           INSERT INTO public.system_logs(operation_type, details)
           VALUES ('unpaid_payment_deleted', jsonb_build_object('attendanceId', p_attendance_id, 'paymentId', v_payment_id, 'previousStatus', v_payment_status));
-        ELSIF v_payment_status IN ('paid', 'received', 'completed') THEN
+        ELSIF v_payment_status IN ('paid', 'received') THEN
           IF v_payment_method = 'cash' THEN
             UPDATE public.payments SET status = 'refunded' WHERE id = v_payment_id;
             INSERT INTO public.system_logs(operation_type, details)
@@ -1865,10 +1863,10 @@ BEGIN
 
     -- 売上集計
     SELECT
-        COALESCE(SUM(CASE WHEN p.status IN ('paid','received','completed') THEN p.amount ELSE 0 END),0),
+        COALESCE(SUM(CASE WHEN p.status IN ('paid','received') THEN p.amount ELSE 0 END),0),
         COALESCE(SUM(CASE WHEN p.method='stripe' AND p.status='paid' THEN p.amount ELSE 0 END),0),
-        COALESCE(SUM(CASE WHEN p.method='cash' AND p.status IN ('received','completed') THEN p.amount ELSE 0 END),0),
-        COUNT(CASE WHEN p.status IN ('paid','received','completed') THEN 1 END),
+        COALESCE(SUM(CASE WHEN p.method='cash' AND p.status='received' THEN p.amount ELSE 0 END),0),
+        COUNT(CASE WHEN p.status IN ('paid','received') THEN 1 END),
         COUNT(CASE WHEN p.status='pending' THEN 1 END)
       INTO total_revenue, stripe_revenue, cash_revenue, paid_count, pending_count
       FROM public.payments p
@@ -2084,7 +2082,7 @@ CREATE TABLE IF NOT EXISTS "public"."payments" (
     CONSTRAINT "chk_payments_application_fee_refunded_amount_non_negative" CHECK (("application_fee_refunded_amount" >= 0)),
     CONSTRAINT "chk_payments_refunded_amount_non_negative" CHECK (("refunded_amount" >= 0)),
     CONSTRAINT "payments_amount_check" CHECK (("amount" >= 0)),
-    CONSTRAINT "payments_paid_at_when_completed" CHECK (((("status" = ANY (ARRAY['paid'::"public"."payment_status_enum", 'received'::"public"."payment_status_enum", 'completed'::"public"."payment_status_enum"])) AND ("paid_at" IS NOT NULL)) OR ("status" <> ALL (ARRAY['paid'::"public"."payment_status_enum", 'received'::"public"."payment_status_enum", 'completed'::"public"."payment_status_enum"])))),
+    CONSTRAINT "payments_paid_at_when_paid" CHECK (((("status" = ANY (ARRAY['paid'::"public"."payment_status_enum", 'received'::"public"."payment_status_enum"])) AND ("paid_at" IS NOT NULL)) OR ("status" <> ALL (ARRAY['paid'::"public"."payment_status_enum", 'received'::"public"."payment_status_enum"])))),
     CONSTRAINT "payments_stripe_intent_required" CHECK (((("method" = 'stripe'::"public"."payment_method_enum") AND ("status" = 'pending'::"public"."payment_status_enum")) OR (("method" = 'stripe'::"public"."payment_method_enum") AND ("status" <> 'pending'::"public"."payment_status_enum") AND ("stripe_payment_intent_id" IS NOT NULL)) OR ("method" <> 'stripe'::"public"."payment_method_enum")))
 );
 

@@ -172,7 +172,6 @@ export class TestDataManager {
           | "pending"
           | "paid"
           | "failed"
-          | "completed"
           | "refunded"
           | "waived",
         method: "stripe" as const,
@@ -183,7 +182,7 @@ export class TestDataManager {
         created_at: new Date("2000-01-01T00:00:00.000Z").toISOString(),
         updated_at: new Date("2000-01-01T00:00:00.000Z").toISOString(),
         paid_at:
-          existingPayment.status === "paid" || existingPayment.status === "completed"
+          existingPayment.status === "paid" || existingPayment.status === "received"
             ? FIXED_TIME.toISOString()
             : null,
       };

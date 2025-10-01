@@ -82,7 +82,6 @@ export function InviteEventDetail({
         return "default";
       case "ongoing":
         return "secondary";
-      case "completed":
       case "cancelled":
         return "destructive";
       default:
@@ -96,8 +95,6 @@ export function InviteEventDetail({
         return <CheckCircle className="h-4 w-4" />;
       case "ongoing":
         return <Star className="h-4 w-4" />;
-      case "completed":
-        return <CheckCircle className="h-4 w-4" />;
       case "cancelled":
         return <XCircle className="h-4 w-4" />;
       default:

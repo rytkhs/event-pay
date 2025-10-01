@@ -236,11 +236,16 @@ export async function createPaidTestEvent(
   fee: number = 1000,
   capacity: number | null = null
 ): Promise<TestEvent> {
+  // 有料イベントの場合は payment_deadline も必要
+  const futureDate = new Date(Date.now() + 60 * 60 * 1000);
+  const paymentDeadline = new Date(futureDate.getTime() - 15 * 60 * 1000).toISOString(); // イベント開始15分前
+
   return createTestEvent(createdBy, {
     title: `有料テストイベント（${fee}円）`,
     fee,
     capacity,
     payment_methods: ["stripe"],
+    payment_deadline: paymentDeadline,
   });
 }
 

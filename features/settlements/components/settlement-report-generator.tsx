@@ -108,9 +108,7 @@ export function SettlementReportGenerator({
   };
 
   // 生成可能なイベントのフィルタ
-  const eligibleEvents = availableEvents.filter(
-    (event) => event.status === "completed" || event.status === "past"
-  );
+  const eligibleEvents = availableEvents.filter((event) => event.status === "past");
 
   return (
     <Card>

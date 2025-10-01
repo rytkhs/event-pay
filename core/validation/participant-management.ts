@@ -17,7 +17,6 @@ export const PaymentStatusEnum = z.enum([
   "received",
   "refunded",
   "waived",
-  "completed",
 ]);
 
 // 利便性のために値配列をエクスポート（runtime 用）
@@ -235,7 +234,7 @@ const PaymentSummarySchema = z.object({
   unpaidCount: z.number().int().min(0),
   unpaidAmount: z.number().int().min(0),
 
-  // 決済済み（paid, received, completed）
+  // 決済済み（paid, received）
   paidCount: z.number().int().min(0),
   paidAmount: z.number().int().min(0),
 });

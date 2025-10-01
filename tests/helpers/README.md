@@ -163,7 +163,7 @@ const userWithoutConnect = userFixtures.withoutConnect;
 
 // 決済データ
 const pendingPayment = paymentFixtures.pending;
-const completedPayment = paymentFixtures.completed;
+const paidPayment = paymentFixtures.paid;
 
 // テストシナリオ
 const normalFlow = scenarioFixtures.normalPaymentFlow;

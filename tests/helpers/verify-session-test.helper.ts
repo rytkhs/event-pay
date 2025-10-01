@@ -317,7 +317,7 @@ export class VerifySessionTestHelper {
       method: "stripe" as const,
       application_fee_amount: 100,
       tax_included: false,
-      paid_at: ["paid", "completed", "received"].includes(status) ? new Date().toISOString() : null,
+      paid_at: ["paid", "received"].includes(status) ? new Date().toISOString() : null,
       ...overrides,
       // overridesの後で再度設定してユニーク性を保証
       stripe_payment_intent_id: uniqueStripeIntentId,

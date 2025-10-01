@@ -734,7 +734,6 @@ export function ParticipantsTable({
                   <SelectItem value="all">全て</SelectItem>
                   <SelectItem value="paid">支払済み</SelectItem>
                   <SelectItem value="received">受領済み</SelectItem>
-                  <SelectItem value="completed">完了</SelectItem>
                   <SelectItem value="pending">未決済</SelectItem>
                   <SelectItem value="failed">失敗</SelectItem>
                   <SelectItem value="refunded">返金済み</SelectItem>

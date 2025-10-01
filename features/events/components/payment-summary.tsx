@@ -49,11 +49,6 @@ export function PaymentSummary({ summary, isLoading = false }: PaymentSummaryPro
   > = {
     paid: { bg: "bg-blue-50", text: "text-blue-600", label: PAYMENT_STATUS_LABELS.paid },
     received: { bg: "bg-green-50", text: "text-green-600", label: PAYMENT_STATUS_LABELS.received },
-    completed: {
-      bg: "bg-emerald-50",
-      text: "text-emerald-600",
-      label: PAYMENT_STATUS_LABELS.completed,
-    },
     pending: { bg: "bg-yellow-50", text: "text-yellow-600", label: PAYMENT_STATUS_LABELS.pending },
     failed: { bg: "bg-red-50", text: "text-red-600", label: PAYMENT_STATUS_LABELS.failed },
     refunded: {

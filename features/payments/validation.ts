@@ -19,15 +19,7 @@ import {
 } from "./types";
 
 // Zodスキーマ定義（内部使用専用）
-const paymentStatusSchema = z.enum([
-  "pending",
-  "paid",
-  "received",
-  "failed",
-  "completed",
-  "refunded",
-  "waived",
-]);
+const paymentStatusSchema = z.enum(["pending", "paid", "received", "failed", "refunded", "waived"]);
 
 // サービス層（Stripeに渡す直前の最終パラメータ）用スキーマ（内部使用専用）
 const createStripeSessionParamsSchema = z.object({

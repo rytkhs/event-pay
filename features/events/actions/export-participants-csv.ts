@@ -301,7 +301,6 @@ function generateCsvContent(participants: CsvParticipant[], columns: string[]): 
               received: "受領済",
               refunded: "返金済み",
               waived: "免除",
-              completed: "完了",
             };
             value = statusMap[latestPayment.status] || latestPayment.status;
           }

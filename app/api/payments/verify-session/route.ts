@@ -379,7 +379,7 @@ export async function GET(request: NextRequest) {
     // DBとStripeのステータスが一致しない場合の処理
     if (payment && paymentStatus === "success") {
       const dbStatus = payment.status;
-      if (!["paid", "completed", "received"].includes(dbStatus)) {
+      if (!["paid", "received"].includes(dbStatus)) {
         // Webhook処理が遅延している可能性があるため、warning レベル
         logger.warn("Payment status mismatch between Stripe and DB", {
           tag: "payment-verify",

@@ -11,7 +11,7 @@ import type { PaymentStatus } from "@core/types/enums";
  */
 export type SimplePaymentStatus =
   | "unpaid" // pending / failed - 未決済（支払待ち + 失敗）
-  | "paid" // paid / received / completed - 決済完了（方法問わず）
+  | "paid" // paid / received - 決済完了（方法問わず）
   | "refunded" // refunded - 返金済み
   | "waived"; // waived - 免除（無料参加など主催者判断）
 
@@ -33,7 +33,6 @@ export const toSimplePaymentStatus = (
       return "waived";
     case "paid":
     case "received":
-    case "completed":
     default:
       return "paid";
   }
@@ -114,7 +113,7 @@ export const getPaymentStatusesFromSimple = (simple: SimplePaymentStatus): Payme
     case "unpaid":
       return ["pending", "failed"];
     case "paid":
-      return ["paid", "received", "completed"];
+      return ["paid", "received"];
     case "refunded":
       return ["refunded"];
     case "waived":

@@ -116,17 +116,6 @@ export const paymentFixtures = {
     stripe_account_id: "acct_1S95RCEJRRCbin0V",
   },
 
-  completed: {
-    id: "pay_test_completed",
-    amount: 1500,
-    status: "completed" as const,
-    method: "stripe" as const,
-    application_fee_amount: 150,
-    stripe_account_id: "acct_1S95RCEJRRCbin0V",
-    paid_at: new Date().toISOString(),
-    stripe_payment_intent_id: "pi_test_completed",
-  },
-
   failed: {
     id: "pay_test_failed",
     amount: 1500,

@@ -12,11 +12,9 @@ export function statusRank(status: PaymentStatus): number {
     case "paid":
       return 20;
     case "received":
-      return 25;
+      return 20;
     case "waived":
-      return 28;
-    case "completed":
-      return 30;
+      return 25;
     case "refunded":
       return 40;
     default:

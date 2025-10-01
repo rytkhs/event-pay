@@ -17,7 +17,6 @@ export type PaymentStatus =
   | "paid" // 決済済（Stripe決済完了）
   | "failed" // 決済失敗（Stripe決済失敗）
   | "received" // 受領済（現金決済受領）
-  | "completed" // 完了（無料イベント参加確定）
   | "refunded" // 返金済（Stripe返金処理完了）
   | "waived"; // 免除（管理者による手動免除）
 
@@ -29,7 +28,6 @@ export const PAYMENT_STATUS_LABELS: Record<PaymentStatus, string> = {
   paid: "決済済",
   failed: "決済失敗",
   received: "受領済",
-  completed: "完了",
   refunded: "返金済",
   waived: "免除",
 };

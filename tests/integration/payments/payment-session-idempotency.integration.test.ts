@@ -349,17 +349,6 @@ describe("決済セッション作成冪等性・並行制御統合テスト", (
       console.log(`✓ paid決済ガードテスト完了 - エラータイプ: ${result.errorType}`);
     });
 
-    test("completed決済存在時にセッション作成を拒否すること", async () => {
-      const result = await testHelper.testTerminalStateGuard("completed");
-
-      // 検証
-      expect(result.errorThrown).toBe(true);
-      expect(result.errorType).toBe(PaymentErrorType.PAYMENT_ALREADY_EXISTS);
-      expect(result.errorMessage).toBe("この参加に対する決済は既に完了済みです");
-
-      console.log(`✓ completed決済ガードテスト完了`);
-    });
-
     test("refunded決済存在時にセッション作成を拒否すること", async () => {
       const result = await testHelper.testTerminalStateGuard("refunded");
 
@@ -389,7 +378,7 @@ describe("決済セッション作成冪等性・並行制御統合テスト", (
        *
        * このテストが失敗した場合:
        * features/payments/services/service.ts:160行目を確認し、
-       * .in("status", ["paid", "received", "completed", "refunded", "waived"])
+       * .in("status", ["paid", "received", "refunded", "waived"])
        * にwaivedを追加する必要がある。
        */
       const result = await testHelper.testTerminalStateGuard("waived");
@@ -461,7 +450,7 @@ describe("決済セッション作成冪等性・並行制御統合テスト", (
 
     test("降格禁止ルールの確認", async () => {
       // 各ステータスから別のステータスに降格されないことを確認
-      const terminalStatuses = ["paid", "received", "completed", "refunded", "waived"];
+      const terminalStatuses = ["paid", "received", "refunded", "waived"];
 
       for (const status of terminalStatuses) {
         // テスト前にクリーンアップ

@@ -204,13 +204,7 @@ export function canCreateStripeSession(
   const isValidStatus = allowedPaymentStatuses.includes(paymentStatus);
 
   // 決済完了済み状態の除外
-  const finalizedStatuses: PaymentStatus[] = [
-    "paid",
-    "received",
-    "completed",
-    "refunded",
-    "waived",
-  ];
+  const finalizedStatuses: PaymentStatus[] = ["paid", "received", "refunded", "waived"];
   const isNotFinalized = !paymentStatus || !finalizedStatuses.includes(paymentStatus);
 
   const extendedChecks = {

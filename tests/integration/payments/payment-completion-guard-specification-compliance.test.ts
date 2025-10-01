@@ -153,10 +153,10 @@ waived ステータスの決済が存在するにも関わらず、完了済み�
 【実装の問題箇所】
 ファイル: features/payments/services/service.ts
 行: 176
-現在の実装: .in("status", ["paid", "received", "completed", "refunded"])
+現在の実装: .in("status", ["paid", "received", "refunded"])
 
 【必要な修正】
-.in("status", ["paid", "received", "completed", "refunded", "waived"])
+.in("status", ["paid", "received", "refunded", "waived"])
 
 【修正理由】
 仕様書では waived は決済が免除された状態として終端系に分類されており、
@@ -228,7 +228,7 @@ ${
 
   describe("🚨 終端系ステータス完全性検証", () => {
     test("全ての終端系ステータスが完了済みガードをトリガーすること", async () => {
-      const terminalStatuses = ["paid", "received", "completed", "refunded", "waived"] as const;
+      const terminalStatuses = ["paid", "received", "refunded", "waived"] as const;
       const results: Record<string, boolean> = {};
 
       for (const status of terminalStatuses) {
@@ -275,8 +275,8 @@ ${violations.map((v) => `- ${v}`).join("\n")}
 
 【修正が必要な箇所】
 features/payments/services/service.ts:176行目
-現在: .in("status", ["paid", "received", "completed", "refunded"])
-修正: .in("status", ["paid", "received", "completed", "refunded", "waived"])
+現在: .in("status", ["paid", "received", "refunded"])
+修正: .in("status", ["paid", "received", "refunded", "waived"])
 
 【すべての終端系ステータスの結果】
 ${terminalStatuses.map((s) => `${s}: ${results[s] ? "✅" : "❌"}`).join("\n")}
@@ -355,8 +355,8 @@ ${terminalStatuses.map((s) => `${s}: ${results[s] ? "✅" : "❌"}`).join("\n")}
 
   describe("エラー詳細の仕様書適合性", () => {
     test("完了済みガードエラーの詳細が仕様書通りであること", async () => {
-      // completed決済を作成
-      await createPaymentWithStatus(testAttendance.id, "completed");
+      // paid決済を作成
+      await createPaymentWithStatus(testAttendance.id, "paid");
 
       try {
         await paymentService.createStripeSession(baseSessionParams);
@@ -389,7 +389,7 @@ ${terminalStatuses.map((s) => `${s}: ${results[s] ? "✅" : "❌"}`).join("\n")}
       });
 
       // 2番目の決済（新しいpaid_at） - これが選択されるべき
-      await createPaymentWithStatus(testAttendance.id, "completed", {
+      await createPaymentWithStatus(testAttendance.id, "received", {
         paidAt: time3, // 最新
         createdAt: time1, // 古いcreated_at
       });

@@ -381,9 +381,7 @@ export function GuestManagementForm({ attendance, canModify }: GuestManagementFo
                   </legend>
                   {/* 決済完了済みの場合は選択不可とし注意文言のみ表示 */}
                   {attendance.payment?.status &&
-                  ["paid", "received", "completed", "waived"].includes(
-                    attendance.payment.status
-                  ) ? (
+                  ["paid", "received", "waived"].includes(attendance.payment.status) ? (
                     <Alert className="border-blue-200 bg-blue-50" role="alert">
                       <CheckCircle className="h-4 w-4 text-blue-600" aria-hidden="true" />
                       <AlertDescription>

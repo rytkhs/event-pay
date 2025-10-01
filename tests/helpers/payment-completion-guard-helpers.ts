@@ -60,9 +60,7 @@ export async function createPaymentWithStatus(
     status,
     paid_at:
       paidAt?.toISOString() ??
-      (["paid", "received", "completed", "refunded", "waived"].includes(status)
-        ? now.toISOString()
-        : null),
+      (["paid", "received", "refunded", "waived"].includes(status) ? now.toISOString() : null),
     created_at: createdAt?.toISOString() ?? now.toISOString(),
     updated_at: updatedAt?.toISOString() ?? now.toISOString(),
     stripe_payment_intent_id:
@@ -122,7 +120,7 @@ export async function createPaymentsInSequence(
       method: spec.method || "stripe",
       createdAt: timestamp,
       updatedAt: timestamp,
-      paidAt: ["paid", "received", "completed", "refunded", "waived"].includes(spec.status)
+      paidAt: ["paid", "received", "refunded", "waived"].includes(spec.status)
         ? timestamp
         : undefined,
     });
@@ -218,13 +216,7 @@ export function calculateExpectedGuardBehavior(
   openPayments: Array<{ status: PaymentStatus; updated_at: string | null; created_at: string }>
 ): GuardTestResult {
   // 仕様書による終端系ステータス（waived含む）
-  const SPEC_TERMINAL_STATUSES: PaymentStatus[] = [
-    "paid",
-    "received",
-    "completed",
-    "refunded",
-    "waived",
-  ];
+  const SPEC_TERMINAL_STATUSES: PaymentStatus[] = ["paid", "received", "refunded", "waived"];
 
   // 終端決済の存在確認
   const latestTerminal = terminalPayments
@@ -270,15 +262,7 @@ export function calculateExpectedGuardBehavior(
 export async function testAllStatusGuardBehavior(
   attendanceId: string
 ): Promise<Record<PaymentStatus, boolean>> {
-  const statuses: PaymentStatus[] = [
-    "pending",
-    "failed",
-    "paid",
-    "received",
-    "completed",
-    "refunded",
-    "waived",
-  ];
+  const statuses: PaymentStatus[] = ["pending", "failed", "paid", "received", "refunded", "waived"];
   const results: Record<PaymentStatus, boolean> = {} as any;
 
   const secureFactory = SecureSupabaseClientFactory.getInstance();
@@ -303,7 +287,7 @@ export async function testAllStatusGuardBehavior(
     // （このヘルパーでは状態作成のみ行い、実際のテストは呼び出し元で実行）
 
     // 仕様書による期待値を設定
-    const SPEC_TERMINAL_STATUSES = ["paid", "received", "completed", "refunded", "waived"];
+    const SPEC_TERMINAL_STATUSES = ["paid", "received", "refunded", "waived"];
     results[status] = SPEC_TERMINAL_STATUSES.includes(status);
   }
 

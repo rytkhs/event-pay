@@ -28,6 +28,7 @@ import { AdminReason } from "@core/security/secure-client-factory.types";
 import { getPaymentService } from "@core/services";
 import { PaymentError, PaymentErrorType } from "@core/types/payment-errors";
 import { statusRank } from "@core/utils/payments/status-rank";
+
 import { CreateStripeSessionParams } from "@features/payments/types";
 
 import {
@@ -48,13 +49,12 @@ const SPEC_STATUS_RANKS = {
   pending: 10,
   failed: 15,
   paid: 20,
-  received: 25,
-  waived: 28,
-  completed: 30,
+  received: 20, // paidと同じランク（両方とも「支払い完了」状態）
+  waived: 25,
   refunded: 40,
 } as const;
 
-const SPEC_TERMINAL_STATUSES = ["paid", "received", "completed", "refunded", "waived"] as const;
+const SPEC_TERMINAL_STATUSES = ["paid", "received", "refunded", "waived"] as const;
 const SPEC_OPEN_STATUSES = ["pending", "failed"] as const;
 
 describe("決済完了済みガード統合テスト", () => {
@@ -185,10 +185,10 @@ describe("決済完了済みガード統合テスト", () => {
       //
       // 【問題箇所】
       // features/payments/services/service.ts:176行目
-      // `.in("status", ["paid", "received", "completed", "refunded"])`
+      // `.in("status", ["paid", "received", "refunded"])`
       //
       // 【修正方法】
-      // `.in("status", ["paid", "received", "completed", "refunded", "waived"])`
+      // `.in("status", ["paid", "received", "refunded", "waived"])`
       //
       // 【理由】
       // 仕様書では waived は終端系ステータス（ランク: 28）として定義されており、
@@ -358,40 +358,6 @@ describe("決済完了済みガード統合テスト", () => {
         amount: testEvent.fee,
         status: "received",
         paid_at: new Date().toISOString(),
-      });
-
-      const sessionParams: CreateStripeSessionParams = {
-        attendanceId: testAttendance.id,
-        amount: testEvent.fee,
-        eventId: testEvent.id,
-        actorId: testAttendance.id,
-        eventTitle: testEvent.title,
-        successUrl: "https://example.com/success",
-        cancelUrl: "https://example.com/cancel",
-        destinationCharges: {
-          destinationAccountId: testUser.stripeConnectAccountId!,
-          userEmail: testAttendance.email,
-          userName: testAttendance.nickname,
-        },
-      };
-
-      await expect(paymentService.createStripeSession(sessionParams)).rejects.toThrow(
-        expect.objectContaining({
-          type: PaymentErrorType.PAYMENT_ALREADY_EXISTS,
-          message: "この参加に対する決済は既に完了済みです",
-        })
-      );
-    });
-
-    test("completed決済存在時の拒否", async () => {
-      // completed決済を事前作成
-      await adminClient.from("payments").insert({
-        attendance_id: testAttendance.id,
-        method: "stripe",
-        amount: testEvent.fee,
-        status: "completed",
-        paid_at: new Date().toISOString(),
-        stripe_payment_intent_id: "pi_test_completed",
       });
 
       const sessionParams: CreateStripeSessionParams = {
@@ -700,12 +666,12 @@ describe("決済完了済みガード統合テスト", () => {
 
   describe("エラーハンドリング", () => {
     test("PaymentError.PAYMENT_ALREADY_EXISTS の詳細", async () => {
-      // completed決済を作成
+      // paid決済を作成
       await adminClient.from("payments").insert({
         attendance_id: testAttendance.id,
         method: "stripe",
         amount: testEvent.fee,
-        status: "completed",
+        status: "paid",
         paid_at: new Date().toISOString(),
         stripe_payment_intent_id: "pi_test_error_details",
       });
@@ -761,7 +727,7 @@ describe("決済完了済みガード統合テスト", () => {
         attendance_id: testAttendance.id,
         method: "stripe",
         amount: testEvent.fee,
-        status: "completed",
+        status: "paid",
         paid_at: time3.toISOString(), // 最新
         created_at: time2.toISOString(),
         stripe_payment_intent_id: "pi_test_sort_2",

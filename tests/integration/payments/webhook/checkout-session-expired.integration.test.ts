@@ -343,9 +343,8 @@ describe("checkout.session.expired Webhook統合テスト", () => {
   describe("🚫 異常系: ステータス降格防止", () => {
     test.each([
       ["paid", 20],
-      ["received", 25],
-      ["waived", 28],
-      ["completed", 30],
+      ["received", 20],
+      ["waived", 25],
       ["refunded", 40],
     ])("%s ステータス（ランク %d）からの降格を防止", async (currentStatus, _expectedRank) => {
       // Arrange: 高位ステータスの決済レコード
@@ -367,7 +366,7 @@ describe("checkout.session.expired Webhook統合テスト", () => {
       };
 
       // 高位ステータスには必須フィールドを設定
-      if (["paid", "received", "completed", "refunded", "waived"].includes(currentStatus)) {
+      if (["paid", "received", "refunded", "waived"].includes(currentStatus)) {
         updateData.paid_at = new Date().toISOString();
         updateData.stripe_payment_intent_id = `pi_test_${currentStatus}_${Date.now()}`;
       }
@@ -739,10 +738,10 @@ describe("checkout.session.expired Webhook統合テスト", () => {
             await supabase
               .from("payments")
               .update({
-                status: "completed",
+                status: "received",
                 stripe_checkout_session_id: sessionId,
                 paid_at: new Date().toISOString(),
-                stripe_payment_intent_id: `pi_test_log_completed_${Date.now()}`,
+                stripe_payment_intent_id: `pi_test_log_received_${Date.now()}`,
               })
               .eq("id", payment.id);
 
@@ -752,7 +751,7 @@ describe("checkout.session.expired Webhook統合テスト", () => {
           expectedDetails: (data: any) => ({
             eventId: data.event.id,
             paymentId: data.payment.id,
-            currentStatus: "completed",
+            currentStatus: "received",
           }),
         },
         {
@@ -893,7 +892,6 @@ describe("checkout.session.expired Webhook統合テスト", () => {
       const statusTests = [
         { current: "paid", target: "failed", expected: false },
         { current: "received", target: "failed", expected: false },
-        { current: "completed", target: "failed", expected: false },
         { current: "refunded", target: "failed", expected: false },
         { current: "pending", target: "failed", expected: true },
         { current: "failed", target: "failed", expected: false }, // 同一ステータス
@@ -914,9 +912,8 @@ describe("checkout.session.expired Webhook統合テスト", () => {
         pending: 10,
         failed: 15,
         paid: 20,
-        received: 25,
-        waived: 28,
-        completed: 30,
+        received: 20,
+        waived: 25,
         refunded: 40,
       };
 

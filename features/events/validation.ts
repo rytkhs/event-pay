@@ -56,7 +56,7 @@ export const inviteGenerationSchema = z.object({
 export const participantFilterSchema = z.object({
   status: z.enum(["confirmed", "pending", "canceled"]).optional(),
   payment_status: z
-    .enum(["pending", "paid", "received", "failed", "completed", "refunded", "waived"])
+    .enum(["pending", "paid", "received", "failed", "refunded", "waived"])
     .optional(),
   search: z.string().max(100, "検索キーワードは100文字以内である必要があります").optional(),
 });

@@ -137,7 +137,6 @@ export async function updateGuestAttendanceAction(
     const finalizedPaymentStatuses: Array<Database["public"]["Enums"]["payment_status_enum"]> = [
       "paid",
       "received",
-      "completed",
       "waived",
     ];
 

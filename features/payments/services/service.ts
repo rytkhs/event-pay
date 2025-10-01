@@ -35,7 +35,7 @@ import {
 /**
  * 終端決済状態の定義（完了済みとして扱う状態）
  */
-const TERMINAL_PAYMENT_STATUSES = ["paid", "received", "completed", "refunded", "waived"] as const;
+const TERMINAL_PAYMENT_STATUSES = ["paid", "received", "refunded", "waived"] as const;
 
 /**
  * オープン決済状態の定義（処理継続可能な状態）
@@ -123,7 +123,7 @@ export class PaymentService implements IPaymentService {
    * 重複作成ガードについて:
    * - 重複検知と一意性の最終責務は本メソッド（Service）に集約する。
    * - 振る舞い（DBの降格禁止ルールに整合）:
-   *   - 参加に紐づく既存決済が支払完了系（paid/received/completed/refunded/waived）の場合は
+   *   - 参加に紐づく既存決済が支払完了系（paid/received/refunded/waived）の場合は
    *     【無条件で】PaymentErrorType.PAYMENT_ALREADY_EXISTS を投げる（重複課金防止）。
    *   - openが pending の場合のみ同レコードを再利用（Stripe識別子のリセットと金額更新）。
    *   - openが failed の場合は新規に pending レコードを作成（failed→pending の降格は行わない）。
@@ -1063,7 +1063,7 @@ export class PaymentService implements IPaymentService {
       const latestOpenPayment = this.findLatestPaymentByEffectiveTime(openPayments || []);
       if (latestOpenPayment) return latestOpenPayment as Payment;
 
-      // openが無い場合は、最新の終端系（paid/received/completed/refunded/waived）を返す（統一されたソート使用）
+      // openが無い場合は、最新の終端系（paid/received/refunded/waived）を返す（統一されたソート使用）
       const { data: terminalPayments, error: terminalError } = await this.supabase
         .from("payments")
         .select("*")
