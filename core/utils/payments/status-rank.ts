@@ -15,6 +15,8 @@ export function statusRank(status: PaymentStatus): number {
       return 20;
     case "waived":
       return 25;
+    case "canceled":
+      return 35;
     case "refunded":
       return 40;
     default:

@@ -13,7 +13,8 @@ export type SimplePaymentStatus =
   | "unpaid" // pending / failed - 未決済（支払待ち + 失敗）
   | "paid" // paid / received - 決済完了（方法問わず）
   | "refunded" // refunded - 返金済み
-  | "waived"; // waived - 免除（無料参加など主催者判断）
+  | "waived" // waived - 免除（無料参加など主催者判断）
+  | "canceled"; // canceled - キャンセル済（申込みトランザクションの取り消し）
 
 /**
  * バックエンドの PaymentStatus を UI 用の SimplePaymentStatus にマッピング
@@ -27,6 +28,8 @@ export const toSimplePaymentStatus = (
     case "pending":
     case "failed":
       return "unpaid";
+    case "canceled":
+      return "canceled";
     case "refunded":
       return "refunded";
     case "waived":
@@ -46,6 +49,7 @@ export const SIMPLE_PAYMENT_STATUS_LABELS: Record<SimplePaymentStatus, string> =
   paid: "決済済",
   refunded: "返金済",
   waived: "免除",
+  canceled: "キャンセル済",
 };
 
 /**
@@ -68,6 +72,14 @@ export const getSimplePaymentStatusStyle = (status: SimplePaymentStatus) => {
         iconColor: "text-green-600",
         bgColor: "bg-green-50",
         borderColor: "border-green-400",
+      };
+    case "canceled":
+      return {
+        variant: "secondary" as const,
+        className: "bg-gray-100 text-gray-800",
+        iconColor: "text-gray-600",
+        bgColor: "bg-gray-50",
+        borderColor: "border-gray-400",
       };
     case "refunded":
       return {
@@ -98,10 +110,11 @@ export const isPaymentCompleted = (status: PaymentStatus | null | undefined): bo
 
 /**
  * 未決済ステータス（ハイライト表示対象）かどうかの判定
+ * canceled/refunded は会計上の終端であり、未収金ではないため false を返す
  */
 export const isPaymentUnpaid = (status: PaymentStatus | null | undefined): boolean => {
   const simpleStatus = toSimplePaymentStatus(status);
-  return simpleStatus === "unpaid" || simpleStatus === "refunded";
+  return simpleStatus === "unpaid";
 };
 
 /**
@@ -114,6 +127,8 @@ export const getPaymentStatusesFromSimple = (simple: SimplePaymentStatus): Payme
       return ["pending", "failed"];
     case "paid":
       return ["paid", "received"];
+    case "canceled":
+      return ["canceled"];
     case "refunded":
       return ["refunded"];
     case "waived":

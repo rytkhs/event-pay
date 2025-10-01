@@ -122,7 +122,8 @@ export function buildParticipantsColumns(opts: {
       header: "決済状況",
       cell: ({ row }) => {
         const status = row.original.payment_status;
-        if (isFreeEvent || !status)
+        const isCanceledPayment = status === "canceled";
+        if (isFreeEvent || !status || isCanceledPayment)
           return <span className="text-gray-400 text-xs sm:text-sm">-</span>;
         const simple = toSimplePaymentStatus(status as any);
         if (simple === "paid") {

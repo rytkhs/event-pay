@@ -396,8 +396,11 @@ export function ParticipantsTableEnhanced({
                     {participants.map((participant) => {
                       const isPaid = !isFreeEvent && isPaymentCompleted(participant.payment_status);
                       const simpleStatus = toSimplePaymentStatus(participant.payment_status);
+                      const isCanceledPayment = participant.payment_status === "canceled";
                       const isCashPayment =
-                        participant.payment_method === "cash" && participant.payment_id;
+                        participant.payment_method === "cash" &&
+                        participant.payment_id &&
+                        !isCanceledPayment;
 
                       return (
                         <tr
@@ -422,12 +425,16 @@ export function ParticipantsTableEnhanced({
 
                           {/* 決済方法列 */}
                           <td className="px-2 sm:px-4 py-3 sm:py-4 whitespace-nowrap">
-                            {getPaymentMethodBadge(participant.payment_method)}
+                            {isCanceledPayment ? (
+                              <span className="text-gray-400 text-sm">-</span>
+                            ) : (
+                              getPaymentMethodBadge(participant.payment_method)
+                            )}
                           </td>
 
                           {/* 決済状況列 */}
                           <td className="px-2 sm:px-4 py-3 sm:py-4 whitespace-nowrap">
-                            {!isFreeEvent && participant.payment_status ? (
+                            {!isFreeEvent && participant.payment_status && !isCanceledPayment ? (
                               simpleStatus === "paid" ? (
                                 <CheckCircle className="h-5 w-5 text-green-600 ml-7" />
                               ) : (

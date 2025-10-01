@@ -17,6 +17,7 @@ export const PaymentStatusEnum = z.enum([
   "received",
   "refunded",
   "waived",
+  "canceled",
 ]);
 
 // 利便性のために値配列をエクスポート（runtime 用）

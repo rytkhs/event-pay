@@ -18,7 +18,8 @@ export type PaymentStatus =
   | "failed" // 決済失敗（Stripe決済失敗）
   | "received" // 受領済（現金決済受領）
   | "refunded" // 返金済（Stripe返金処理完了）
-  | "waived"; // 免除（管理者による手動免除）
+  | "waived" // 免除（管理者による手動免除）
+  | "canceled"; // キャンセル済（申込みトランザクションの取り消し）
 
 /**
  * PaymentStatusの日本語表示名（UI用）
@@ -30,4 +31,5 @@ export const PAYMENT_STATUS_LABELS: Record<PaymentStatus, string> = {
   received: "受領済",
   refunded: "返金済",
   waived: "免除",
+  canceled: "キャンセル済",
 };

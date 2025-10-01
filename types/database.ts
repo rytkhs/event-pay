@@ -879,7 +879,14 @@ export type Database = {
         | "security_investigation";
       attendance_status_enum: "attending" | "not_attending" | "maybe";
       payment_method_enum: "stripe" | "cash";
-      payment_status_enum: "pending" | "paid" | "failed" | "received" | "refunded" | "waived";
+      payment_status_enum:
+        | "pending"
+        | "paid"
+        | "failed"
+        | "received"
+        | "refunded"
+        | "waived"
+        | "canceled";
       security_severity_enum: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
       stripe_account_status_enum: "unverified" | "onboarding" | "verified" | "restricted";
       suspicious_activity_type_enum:
@@ -1028,7 +1035,15 @@ export const Constants = {
       ],
       attendance_status_enum: ["attending", "not_attending", "maybe"],
       payment_method_enum: ["stripe", "cash"],
-      payment_status_enum: ["pending", "paid", "failed", "received", "refunded", "waived"],
+      payment_status_enum: [
+        "pending",
+        "paid",
+        "failed",
+        "received",
+        "refunded",
+        "waived",
+        "canceled",
+      ],
       security_severity_enum: ["LOW", "MEDIUM", "HIGH", "CRITICAL"],
       stripe_account_status_enum: ["unverified", "onboarding", "verified", "restricted"],
       suspicious_activity_type_enum: [

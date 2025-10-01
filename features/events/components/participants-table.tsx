@@ -806,9 +806,12 @@ export function ParticipantsTable({
                   // 決済済みのハイライト判定（無料イベントではハイライトしない）
                   const isPaid = !isFreeEvent && isPaymentCompleted(participant.payment_status);
                   const simpleStatus = toSimplePaymentStatus(participant.payment_status);
+                  const isCanceledPayment = participant.payment_status === "canceled";
 
                   const isCashPayment =
-                    participant.payment_method === "cash" && participant.payment_id;
+                    participant.payment_method === "cash" &&
+                    participant.payment_id &&
+                    !isCanceledPayment;
                   const isSelected = participant.payment_id
                     ? selectedPaymentIds.includes(participant.payment_id)
                     : false;
@@ -840,17 +843,25 @@ export function ParticipantsTable({
                       </td>
                       {!isFreeEvent && (
                         <td className="px-4 py-4 whitespace-nowrap">
-                          {getPaymentMethodBadge(participant.payment_method)}
+                          {isCanceledPayment ? (
+                            <span className="text-gray-400">-</span>
+                          ) : (
+                            getPaymentMethodBadge(participant.payment_method)
+                          )}
                         </td>
                       )}
                       {!isFreeEvent && (
                         <td className="px-4 py-4 whitespace-nowrap">
-                          <Badge
-                            variant={getSimplePaymentStatusStyle(simpleStatus).variant}
-                            className={getSimplePaymentStatusStyle(simpleStatus).className}
-                          >
-                            {SIMPLE_PAYMENT_STATUS_LABELS[simpleStatus]}
-                          </Badge>
+                          {isCanceledPayment ? (
+                            <span className="text-gray-400">-</span>
+                          ) : (
+                            <Badge
+                              variant={getSimplePaymentStatusStyle(simpleStatus).variant}
+                              className={getSimplePaymentStatusStyle(simpleStatus).className}
+                            >
+                              {SIMPLE_PAYMENT_STATUS_LABELS[simpleStatus]}
+                            </Badge>
+                          )}
                         </td>
                       )}
                       <td className="px-4 py-4 whitespace-nowrap">

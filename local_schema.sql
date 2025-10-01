@@ -98,14 +98,15 @@ CREATE TYPE "public"."payment_status_enum" AS ENUM (
     'failed',
     'received',
     'refunded',
-    'waived'
+    'waived',
+    'canceled'
 );
 
 
 ALTER TYPE "public"."payment_status_enum" OWNER TO "postgres";
 
 
-COMMENT ON TYPE "public"."payment_status_enum" IS '決済状況';
+COMMENT ON TYPE "public"."payment_status_enum" IS '決済状況: pending, paid, failed, received, refunded, waived, canceled';
 
 
 
@@ -1580,6 +1581,7 @@ CREATE OR REPLACE FUNCTION "public"."status_rank"("p" "public"."payment_status_e
     WHEN 'paid'      THEN 20
     WHEN 'received'  THEN 20
     WHEN 'waived'    THEN 25
+    WHEN 'canceled'  THEN 35
     WHEN 'refunded'  THEN 40
     ELSE 0
   END;
@@ -1589,7 +1591,7 @@ $$;
 ALTER FUNCTION "public"."status_rank"("p" "public"."payment_status_enum") OWNER TO "postgres";
 
 
-COMMENT ON FUNCTION "public"."status_rank"("p" "public"."payment_status_enum") IS 'Returns precedence rank of payment statuses. Higher is more terminal (prevents rollback).';
+COMMENT ON FUNCTION "public"."status_rank"("p" "public"."payment_status_enum") IS 'Returns precedence rank of payment statuses. Higher is more terminal (prevents rollback). Updated to include canceled (rank 35).';
 
 
 
@@ -1805,13 +1807,14 @@ BEGIN
         RAISE EXCEPTION 'Event not found: %', p_event_id;
     END IF;
 
-    -- 売上集計
+    -- 売上集計（canceled と refunded を除外）
     SELECT
         COALESCE(SUM(CASE WHEN p.status IN ('paid','received') THEN p.amount ELSE 0 END),0),
         COALESCE(SUM(CASE WHEN p.method='stripe' AND p.status='paid' THEN p.amount ELSE 0 END),0),
         COALESCE(SUM(CASE WHEN p.method='cash' AND p.status='received' THEN p.amount ELSE 0 END),0),
         COUNT(CASE WHEN p.status IN ('paid','received') THEN 1 END),
-        COUNT(CASE WHEN p.status='pending' THEN 1 END)
+        -- 未収集計: pending と failed のみ（canceled と refunded を除外）
+        COUNT(CASE WHEN p.status IN ('pending','failed') THEN 1 END)
       INTO total_revenue, stripe_revenue, cash_revenue, paid_count, pending_count
       FROM public.payments p
       JOIN public.attendances a ON p.attendance_id = a.id
@@ -1840,7 +1843,7 @@ $$;
 ALTER FUNCTION "public"."update_revenue_summary"("p_event_id" "uuid") OWNER TO "postgres";
 
 
-COMMENT ON FUNCTION "public"."update_revenue_summary"("p_event_id" "uuid") IS 'イベント売上サマリー: fee_config ベースの手数料計算';
+COMMENT ON FUNCTION "public"."update_revenue_summary"("p_event_id" "uuid") IS 'イベント売上サマリー: fee_config ベースの手数料計算。canceled/refunded を売上・未収から除外。';
 
 
 

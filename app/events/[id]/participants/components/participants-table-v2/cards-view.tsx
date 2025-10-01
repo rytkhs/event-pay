@@ -78,7 +78,8 @@ export function CardsView({
       {participants.map((p) => {
         const isPaid = !isFreeEvent && isPaymentCompleted(p.payment_status);
         const simple = toSimplePaymentStatus(p.payment_status as any);
-        const isCashPayment = p.payment_method === "cash" && p.payment_id;
+        const isCanceledPayment = p.payment_status === "canceled";
+        const isCashPayment = p.payment_method === "cash" && p.payment_id && !isCanceledPayment;
         const isOperatable = isCashPayment && simple !== "paid" && simple !== "waived";
         const isSelected = bulkSelection?.selectedPaymentIds.includes(p.payment_id || "") || false;
 
@@ -118,14 +119,20 @@ export function CardsView({
 
                 <div className="flex flex-wrap gap-2">
                   {getAttendanceBadge(p.status)}
-                  {getPaymentMethodBadge(p.payment_method)}
-                  {!isFreeEvent && p.payment_status && (
-                    <Badge
-                      variant={getSimplePaymentStatusStyle(simple).variant}
-                      className={`${getSimplePaymentStatusStyle(simple).className} font-medium px-3 py-1 shadow-sm`}
-                    >
-                      {SIMPLE_PAYMENT_STATUS_LABELS[simple]}
-                    </Badge>
+                  {isCanceledPayment ? (
+                    <span className="text-gray-400 text-sm">-</span>
+                  ) : (
+                    <>
+                      {getPaymentMethodBadge(p.payment_method)}
+                      {!isFreeEvent && p.payment_status && (
+                        <Badge
+                          variant={getSimplePaymentStatusStyle(simple).variant}
+                          className={`${getSimplePaymentStatusStyle(simple).className} font-medium px-3 py-1 shadow-sm`}
+                        >
+                          {SIMPLE_PAYMENT_STATUS_LABELS[simple]}
+                        </Badge>
+                      )}
+                    </>
                   )}
                 </div>
 
