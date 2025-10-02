@@ -30,6 +30,10 @@ const PAYMENT_STATUS_PROPS: Record<PaymentStatus, { color: string; label: string
     color: "bg-muted/50 text-muted-foreground border-muted",
     label: PAYMENT_STATUS_LABELS.waived,
   },
+  canceled: {
+    color: "bg-muted/50 text-muted-foreground border-muted",
+    label: PAYMENT_STATUS_LABELS.canceled,
+  },
 };
 
 interface PaymentStatusBadgeProps {

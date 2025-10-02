@@ -120,7 +120,7 @@ export function EventFormTimeline({
                 </div>
                 <div className="flex-1 pt-1">
                   <div className="flex flex-wrap items-baseline gap-2">
-                    <h4 className="text-sm font-semibold">決済締切</h4>
+                    <h4 className="text-sm font-semibold">オンライン決済締切</h4>
                     {eventDateObj && (
                       <span className="text-xs text-muted-foreground">
                         {formatRelativeTime(payDeadlineDate, eventDateObj)}

@@ -381,13 +381,11 @@ export function GuestManagementForm({ attendance, canModify }: GuestManagementFo
                   </legend>
                   {/* 決済完了済みの場合は選択不可とし注意文言のみ表示 */}
                   {attendance.payment?.status &&
-                  ["paid", "received", "waived", "refunded", "canceled"].includes(
-                    attendance.payment.status
-                  ) ? (
+                  ["paid", "received", "waived", "refunded"].includes(attendance.payment.status) ? (
                     <Alert className="border-blue-200 bg-blue-50" role="alert">
                       <CheckCircle className="h-4 w-4 text-blue-600" aria-hidden="true" />
                       <AlertDescription>
-                        この参加者の決済は完了しています。支払方法を変更することはできません。
+                        決済が完了しています。支払方法を変更することはできません。
                       </AlertDescription>
                     </Alert>
                   ) : (
@@ -510,35 +508,6 @@ export function GuestManagementForm({ attendance, canModify }: GuestManagementFo
                   リセット
                 </button>
               </div>
-
-              {/* 決済フロー案内 */}
-              {attendanceStatus === "attending" &&
-                attendance.event.fee > 0 &&
-                paymentMethod === "stripe" &&
-                hasChanges && (
-                  <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
-                    <div className="flex items-start space-x-2">
-                      <CreditCard
-                        className="h-4 w-4 text-blue-600 flex-shrink-0 mt-0.5"
-                        aria-hidden="true"
-                      />
-                      <div className="text-xs text-blue-800 leading-relaxed">
-                        <p className="font-medium">
-                          {attendance.payment?.status &&
-                          ["failed", "pending"].includes(attendance.payment.status)
-                            ? "再決済について"
-                            : "オンライン決済について"}
-                        </p>
-                        <p className="mt-1">
-                          {attendance.payment?.status &&
-                          ["failed", "pending"].includes(attendance.payment.status)
-                            ? "「再決済を実行」をクリックすると、新しいStripe決済ページに移動します。"
-                            : "「変更を保存」をクリックすると、参加状況の更新後に自動的にStripe決済ページに移動します。"}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                )}
             </form>
           </Card>
         </section>
