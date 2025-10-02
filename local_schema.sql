@@ -1,5 +1,5 @@
 
-\restrict L8R1g8vRir7CWSTbgm5rzf8odrobbxXVReSccur3gCTrm9Ua0va19LnCjoZNI16
+\restrict kT0Y6JoTIvcceTypClHRnBet1FHfa8CCkdS2xn8ZyR521iMu4GHHk31rkVMsOEH
 
 
 SET statement_timeout = 0;
@@ -1709,12 +1709,18 @@ BEGIN
     LIMIT 1;
 
     IF v_payment_id IS NOT NULL THEN
-      IF v_payment_status IN ('paid', 'received', 'waived', 'refunded') THEN
-        RAISE EXCEPTION 'EVP_PAYMENT_FINALIZED_IMMUTABLE: Payment is finalized; cannot modify method/amount';
+      IF v_payment_status IN ('paid', 'received', 'waived') THEN
+        -- 既に確定済みの有効な決済がある場合は再利用（何もしない）
+        -- 不参加→再参加の場合でも、既存の決済を維持する
+        NULL; -- 明示的に何もしないことを示す
+      ELSIF v_payment_status = 'refunded' THEN
+        -- 返金済み = 決済が無効化されているため、新規決済レコードが必要
+        v_payment_id := NULL;
       ELSIF v_payment_status = 'canceled' THEN
-        -- 終端状態のレコードは新規レコードを再作成するため再利用しない
+        -- キャンセル済みレコードは新規レコードを再作成するため再利用しない
         v_payment_id := NULL;
       ELSIF v_payment_status NOT IN ('paid', 'received', 'waived', 'refunded', 'canceled') THEN
+        -- pending, failed などの未確定状態は更新可能
         UPDATE public.payments
         SET method = p_payment_method,
             amount = p_event_fee,
@@ -2830,6 +2836,16 @@ CREATE POLICY "guest_token_can_access_own_attendance" ON "public"."attendances" 
 
 
 
+CREATE POLICY "guest_token_can_view_own_payments" ON "public"."payments" FOR SELECT TO "authenticated", "anon" USING ((EXISTS ( SELECT 1
+   FROM "public"."attendances" "a"
+  WHERE (("a"."id" = "payments"."attendance_id") AND ("a"."guest_token" IS NOT NULL) AND (("a"."guest_token")::"text" = "public"."get_guest_token"())))));
+
+
+
+COMMENT ON POLICY "guest_token_can_view_own_payments" ON "public"."payments" IS 'ゲストトークンを持つユーザーが自分の参加に関連する決済情報を閲覧できるポリシー。既存のUPDATEポリシーに対応するSELECTポリシー。';
+
+
+
 ALTER TABLE "public"."payment_disputes" ENABLE ROW LEVEL SECURITY;
 
 
@@ -3389,6 +3405,6 @@ ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TAB
 
 
 
-\unrestrict L8R1g8vRir7CWSTbgm5rzf8odrobbxXVReSccur3gCTrm9Ua0va19LnCjoZNI16
+\unrestrict kT0Y6JoTIvcceTypClHRnBet1FHfa8CCkdS2xn8ZyR521iMu4GHHk31rkVMsOEH
 
 RESET ALL;

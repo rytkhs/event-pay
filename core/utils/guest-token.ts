@@ -98,13 +98,20 @@ export async function validateGuestToken(guestToken: string): Promise<{
 
 /**
  * RLS形式のデータを従来形式に変換
+ *
+ * 注意: Supabaseの関連テーブル取得(.select("relation:table(...)"))では、
+ * .limit(1)を指定していても配列で返されることがあります。
+ * そのため、eventとpaymentの両方で配列→オブジェクトへの変換を行っています。
  */
 function convertToLegacyFormat(rlsData: RLSGuestAttendanceData): GuestAttendanceData {
-  // RLS から取得した event オブジェクトをそのまま使用
+  // event と payment は配列またはオブジェクトの可能性があるため、正規化
   const event = Array.isArray(rlsData.event) ? rlsData.event[0] : rlsData.event;
+  const payment = Array.isArray(rlsData.payment) ? rlsData.payment[0] : rlsData.payment;
+
   return {
     ...rlsData,
     event: event as GuestAttendanceData["event"],
+    payment: payment || null,
   };
 }
 

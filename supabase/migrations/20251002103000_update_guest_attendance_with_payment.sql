@@ -73,12 +73,18 @@ BEGIN
     LIMIT 1;
 
     IF v_payment_id IS NOT NULL THEN
-      IF v_payment_status IN ('paid', 'received', 'waived', 'refunded') THEN
-        RAISE EXCEPTION 'EVP_PAYMENT_FINALIZED_IMMUTABLE: Payment is finalized; cannot modify method/amount';
+      IF v_payment_status IN ('paid', 'received', 'waived') THEN
+        -- 既に確定済みの有効な決済がある場合は再利用（何もしない）
+        -- 不参加→再参加の場合でも、既存の決済を維持する
+        NULL; -- 明示的に何もしないことを示す
+      ELSIF v_payment_status = 'refunded' THEN
+        -- 返金済み = 決済が無効化されているため、新規決済レコードが必要
+        v_payment_id := NULL;
       ELSIF v_payment_status = 'canceled' THEN
-        -- 終端状態のレコードは新規レコードを再作成するため再利用しない
+        -- キャンセル済みレコードは新規レコードを再作成するため再利用しない
         v_payment_id := NULL;
       ELSIF v_payment_status NOT IN ('paid', 'received', 'waived', 'refunded', 'canceled') THEN
+        -- pending, failed などの未確定状態は更新可能
         UPDATE public.payments
         SET method = p_payment_method,
             amount = p_event_fee,
