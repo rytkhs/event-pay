@@ -30,7 +30,9 @@ const AttendanceStatusFilterSchema = z.enum(["attending", "not_attending", "mayb
 const PaymentMethodFilterSchema = z.enum(["stripe", "cash"]).optional();
 
 // UI用決済ステータスフィルター（内部専用） - SimplePaymentStatus
-const SimplePaymentStatusFilterSchema = z.enum(["unpaid", "paid", "refunded", "waived"]).optional();
+const SimplePaymentStatusFilterSchema = z
+  .enum(["unpaid", "paid", "refunded", "waived", "canceled"])
+  .optional();
 
 // ソートフィールド（内部専用）
 const ParticipantSortFieldSchema = z

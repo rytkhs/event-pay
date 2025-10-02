@@ -33,7 +33,8 @@ import {
 } from "./types";
 
 /**
- * 終端決済状態の定義（完了済みとして扱う状態）
+ * 終端決済状態の定義（決済完了系の状態）
+ * 注: canceledは含めない（再参加時に新しい決済を受け付けるため）
  */
 const TERMINAL_PAYMENT_STATUSES = ["paid", "received", "refunded", "waived"] as const;
 
@@ -71,12 +72,12 @@ export class PaymentService implements IPaymentService {
     updated_at: string | null,
     created_at: string | null
   ): string | null {
-    // 終端状態: paid_at > updated_at > created_at
+    // 決済完了状態: paid_at > updated_at > created_at
     if (TERMINAL_PAYMENT_STATUSES.includes(status as any)) {
       return paid_at ?? updated_at ?? created_at;
     }
 
-    // オープン状態: updated_at > created_at
+    // 未完了状態（pending/failed/canceled）: updated_at > created_at
     return updated_at ?? created_at;
   }
 
@@ -127,10 +128,11 @@ export class PaymentService implements IPaymentService {
    *     【無条件で】PaymentErrorType.PAYMENT_ALREADY_EXISTS を投げる（重複課金防止）。
    *   - openが pending の場合のみ同レコードを再利用（Stripe識別子のリセットと金額更新）。
    *   - openが failed の場合は新規に pending レコードを作成（failed→pending の降格は行わない）。
+   *   - canceled の決済がある場合は無視して新規作成（再参加時のシナリオ）。
    *   - DB一意制約違反（23505）は並行作成とみなし、直近の open を再利用する。
    * - 決済レコードの最新性判定は統一されたeffectiveTime計算ロジックを使用:
-   *   - 終端状態: paid_at > updated_at > created_at の優先順位
-   *   - オープン状態: updated_at > created_at の優先順位
+   *   - 決済完了状態（paid/received/refunded/waived）: paid_at > updated_at > created_at の優先順位
+   *   - 未完了状態（pending/failed/canceled）: updated_at > created_at の優先順位
    * - Action 層では重複チェックを省略してよい（最終判断は本メソッド）。
    */
   async createStripeSession(params: CreateStripeSessionParams): Promise<CreateStripeSessionResult> {
@@ -1042,6 +1044,8 @@ export class PaymentService implements IPaymentService {
 
   /**
    * 参加記録IDから決済情報を取得する
+   *
+   * 注: canceledの決済は返さない（履歴として残るのみで、再参加時は新しい決済を作成するため）
    */
   async getPaymentByAttendance(attendanceId: string): Promise<Payment | null> {
     try {
@@ -1063,7 +1067,7 @@ export class PaymentService implements IPaymentService {
       const latestOpenPayment = this.findLatestPaymentByEffectiveTime(openPayments || []);
       if (latestOpenPayment) return latestOpenPayment as Payment;
 
-      // openが無い場合は、最新の終端系（paid/received/refunded/waived）を返す（統一されたソート使用）
+      // openが無い場合は、最新の決済完了系（paid/received/refunded/waived）を返す（統一されたソート使用）
       const { data: terminalPayments, error: terminalError } = await this.supabase
         .from("payments")
         .select("*")

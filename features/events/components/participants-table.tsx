@@ -151,7 +151,9 @@ export function ParticipantsTable({
     setPaymentStatusFilter(value);
     onParamsChange({
       paymentStatus:
-        value === "all" ? undefined : (value as "unpaid" | "paid" | "refunded" | "waived"),
+        value === "all"
+          ? undefined
+          : (value as "unpaid" | "paid" | "refunded" | "waived" | "canceled"),
       page: 1,
     });
   };
@@ -738,6 +740,7 @@ export function ParticipantsTable({
                   <SelectItem value="failed">失敗</SelectItem>
                   <SelectItem value="refunded">返金済み</SelectItem>
                   <SelectItem value="waived">免除</SelectItem>
+                  <SelectItem value="canceled">キャンセル済み</SelectItem>
                 </SelectContent>
               </Select>
             )}

@@ -1864,6 +1864,7 @@ BEGIN
     END IF;
 
     -- 売上集計（canceled と refunded を除外）
+    -- 注意: 入金があれば attendance.status に関わらず売上として計上（会計原則）
     SELECT
         COALESCE(SUM(CASE WHEN p.status IN ('paid','received') THEN p.amount ELSE 0 END),0),
         COALESCE(SUM(CASE WHEN p.method='stripe' AND p.status='paid' THEN p.amount ELSE 0 END),0),
@@ -1899,7 +1900,7 @@ $$;
 ALTER FUNCTION "public"."update_revenue_summary"("p_event_id" "uuid") OWNER TO "postgres";
 
 
-COMMENT ON FUNCTION "public"."update_revenue_summary"("p_event_id" "uuid") IS 'イベント売上サマリー: fee_config ベースの手数料計算。canceled/refunded を売上・未収から除外。';
+COMMENT ON FUNCTION "public"."update_revenue_summary"("p_event_id" "uuid") IS 'イベント売上サマリー: fee_config ベースの手数料計算。canceled/refunded を売上・未収から除外。入金があれば参加状態に関わらず売上として計上。';
 
 
 

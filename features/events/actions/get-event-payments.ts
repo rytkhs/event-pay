@@ -27,7 +27,7 @@ export async function getEventPaymentsAction(eventId: string): Promise<GetEventP
 
   const supabase = createClient();
 
-  // 決済データ取得
+  // 決済データ取得（attendance.statusも含める）
   const { data: payments, error } = await supabase
     .from("payments")
     .select(
@@ -40,7 +40,7 @@ export async function getEventPaymentsAction(eventId: string): Promise<GetEventP
       paid_at,
       created_at,
       updated_at,
-      attendances!inner(event_id)
+      attendances!inner(event_id, status)
     `
     )
     .eq("attendances.event_id", validatedEventId);
@@ -55,6 +55,7 @@ export async function getEventPaymentsAction(eventId: string): Promise<GetEventP
     amount: payment.amount,
     status: payment.status,
     attendance_id: payment.attendance_id,
+    attendance_status: payment.attendances.status,
     paid_at: payment.paid_at,
     created_at: payment.created_at,
     updated_at: payment.updated_at,
@@ -118,12 +119,18 @@ export async function getEventPaymentsAction(eventId: string): Promise<GetEventP
 
 /**
  * 決済データから集計情報を計算
+ *
+ * 設計方針（会計原則に基づく）:
+ * - 入金があれば参加状態に関わらず売上として計上
+ * - 売上の内訳（参加者分/キャンセル分）は UI 側で判別
+ * - キャンセル後決済分は将来的にキャンセル料として扱える
  */
 function calculatePaymentSummary(
   payments: Array<{
     method: "stripe" | "cash";
     amount: number;
     status: PaymentStatus;
+    attendance_status: "attending" | "not_attending" | "maybe";
   }>
 ): PaymentSummary {
   const totalPayments = payments.length;
@@ -171,7 +178,8 @@ function calculatePaymentSummary(
       statusStat.totalAmount += payment.amount;
     }
 
-    // 決済済み・未決済集計
+    // 決済済み・未決済集計（参加状態に関わらず）
+    // 会計原則: 入金があれば売上として計上
     if (paidStatuses.has(payment.status)) {
       paidCount += 1;
       paidAmount += payment.amount;
@@ -179,6 +187,7 @@ function calculatePaymentSummary(
       unpaidCount += 1;
       unpaidAmount += payment.amount;
     }
+    // terminal statuses are tracked via statusMap and excluded from unpaid
   });
 
   // 方法別結果配列作成

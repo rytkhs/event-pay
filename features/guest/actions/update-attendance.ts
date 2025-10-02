@@ -138,6 +138,7 @@ export async function updateGuestAttendanceAction(
       "paid",
       "received",
       "waived",
+      "refunded",
     ];
 
     // finalized 後の決済方法変更をサーバ側でも明示的に拒否

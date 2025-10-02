@@ -301,6 +301,7 @@ function generateCsvContent(participants: CsvParticipant[], columns: string[]): 
               received: "受領済",
               refunded: "返金済み",
               waived: "免除",
+              canceled: "", // 初めから不参加の人と見た目をわけないので空文字
             };
             value = statusMap[latestPayment.status] || latestPayment.status;
           }
