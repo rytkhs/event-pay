@@ -5,13 +5,9 @@
 
 // Components
 export * from "./components/event-card";
-export * from "./components/event-detail";
 export * from "./components/modern-event-form";
 export * from "./components/event-list";
 export * from "./components/event-filters";
-export * from "./components/participants-table";
-export * from "./components/event-actions";
-export * from "./components/participants-management";
 export * from "./components/payment-status-alert";
 export * from "./components/event-list-with-filters";
 export * from "./components/event-loading";
