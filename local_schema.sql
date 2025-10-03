@@ -1,5 +1,4 @@
 
-\restrict kT0Y6JoTIvcceTypClHRnBet1FHfa8CCkdS2xn8ZyR521iMu4GHHk31rkVMsOEH
 
 
 SET statement_timeout = 0;
@@ -2092,7 +2091,7 @@ CREATE TABLE IF NOT EXISTS "public"."payments" (
     CONSTRAINT "chk_payments_refunded_amount_non_negative" CHECK (("refunded_amount" >= 0)),
     CONSTRAINT "payments_amount_check" CHECK (("amount" >= 0)),
     CONSTRAINT "payments_paid_at_when_paid" CHECK (((("status" = ANY (ARRAY['paid'::"public"."payment_status_enum", 'received'::"public"."payment_status_enum"])) AND ("paid_at" IS NOT NULL)) OR ("status" <> ALL (ARRAY['paid'::"public"."payment_status_enum", 'received'::"public"."payment_status_enum"])))),
-    CONSTRAINT "payments_stripe_intent_required" CHECK (((("method" = 'stripe'::"public"."payment_method_enum") AND ("status" = 'pending'::"public"."payment_status_enum")) OR (("method" = 'stripe'::"public"."payment_method_enum") AND ("status" <> 'pending'::"public"."payment_status_enum") AND ("stripe_payment_intent_id" IS NOT NULL)) OR ("method" <> 'stripe'::"public"."payment_method_enum")))
+    CONSTRAINT "payments_stripe_intent_required" CHECK (((("method" = 'stripe'::"public"."payment_method_enum") AND ("status" = 'pending'::"public"."payment_status_enum")) OR (("method" = 'stripe'::"public"."payment_method_enum") AND ("status" = 'canceled'::"public"."payment_status_enum")) OR (("method" = 'stripe'::"public"."payment_method_enum") AND ("status" <> ALL (ARRAY['pending'::"public"."payment_status_enum", 'canceled'::"public"."payment_status_enum"])) AND ("stripe_payment_intent_id" IS NOT NULL)) OR ("method" <> 'stripe'::"public"."payment_method_enum")))
 );
 
 
@@ -2168,6 +2167,10 @@ COMMENT ON COLUMN "public"."payments"."tax_included" IS 'Whether the application
 
 
 COMMENT ON COLUMN "public"."payments"."version" IS 'Optimistic lock version to prevent concurrent updates';
+
+
+
+COMMENT ON CONSTRAINT "payments_stripe_intent_required" ON "public"."payments" IS 'Ensures stripe_payment_intent_id is present for stripe payments except pending and canceled statuses. Canceled is a terminal state for unpaid transactions.';
 
 
 
@@ -3405,6 +3408,5 @@ ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TAB
 
 
 
-\unrestrict kT0Y6JoTIvcceTypClHRnBet1FHfa8CCkdS2xn8ZyR521iMu4GHHk31rkVMsOEH
 
 RESET ALL;

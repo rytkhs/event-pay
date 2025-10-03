@@ -25,5 +25,28 @@ export function statusRank(status: PaymentStatus): number {
 }
 
 export function canPromoteStatus(current: PaymentStatus, target: PaymentStatus): boolean {
-  return statusRank(target) > statusRank(current);
+  // 同じステータスへの遷移は許可（冪等性）
+  if (current === target) return true;
+
+  const currentRank = statusRank(current);
+  const targetRank = statusRank(target);
+
+  // 基本的に降格は禁止
+  if (targetRank < currentRank) return false;
+
+  // canceled は未決済系（pending/failed）からのみ遷移可能
+  if (target === "canceled") {
+    return current === "pending" || current === "failed";
+  }
+
+  // canceled からは他のステータスに遷移できない（終端状態）
+  if (current === "canceled") return false;
+
+  // refunded は決済完了系（paid/received/waived）からのみ遷移可能
+  if (target === "refunded") {
+    return current === "paid" || current === "received" || current === "waived";
+  }
+
+  // その他は昇格ルールに従う
+  return targetRank >= currentRank;
 }
