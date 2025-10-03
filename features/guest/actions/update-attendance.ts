@@ -195,8 +195,11 @@ export async function updateGuestAttendanceAction(
     if (error) {
       // RPC関数からのエラーメッセージを安定したコードベースで処理
       const errorCode = error.code || "";
-      const isRegistrationFull =
-        error.message?.includes("registration_full") || errorCode === "23514";
+      const errorMessage = error.message || "";
+
+      // 定員超過エラーの検出（RPC関数の実際のエラーメッセージに基づく）
+      const isCapacityReached =
+        errorMessage.includes("Event capacity") && errorMessage.includes("has been reached");
 
       // 開発環境では詳細エラーログを出力
       if (process.env.NODE_ENV === "development") {
@@ -204,13 +207,14 @@ export async function updateGuestAttendanceAction(
         logger.error("Guest attendance update error", {
           tag: "updateGuestAttendance",
           error_code: errorCode,
-          error_message: error.message,
+          error_message: errorMessage,
           attendanceId: attendance.id,
           eventId: attendance.event.id,
+          isCapacityReached,
         });
       }
 
-      if (isRegistrationFull) {
+      if (isCapacityReached) {
         return createServerActionError(
           "ATTENDANCE_CAPACITY_REACHED",
           "申し訳ございませんが、定員に達したため参加登録できませんでした"

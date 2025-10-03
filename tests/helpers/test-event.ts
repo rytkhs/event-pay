@@ -15,6 +15,7 @@ export interface TestEvent {
   invite_token: string;
   created_by: string;
   payment_methods?: Database["public"]["Enums"]["payment_method_enum"][];
+  participants?: Array<{ email: string; nickname: string }>;
 }
 
 export interface CreateTestEventOptions {
@@ -189,7 +190,10 @@ export async function createTestEventWithParticipants(
 
   console.log(`Created ${participantCount} test participants for event ${event.id}`);
 
-  return event;
+  return {
+    ...event,
+    participants: participants.map((p) => ({ email: p.email, nickname: p.nickname })),
+  };
 }
 
 /**
