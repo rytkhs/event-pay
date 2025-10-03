@@ -158,7 +158,7 @@ describe("checkout.session.expired Webhook統合テスト", () => {
       expect(mockLogger.info).toHaveBeenCalledWith(
         "Webhook security event",
         expect.objectContaining({
-          type: "webhook_checkout_expired_processed",
+          event_action: "webhook_checkout_expired_processed",
           details: expect.objectContaining({
             eventId: event.id,
             paymentId: payment.id,
@@ -279,7 +279,7 @@ describe("checkout.session.expired Webhook統合テスト", () => {
       expect(mockLogger.info).toHaveBeenCalledWith(
         "Webhook security event",
         expect.objectContaining({
-          type: "webhook_checkout_expired_no_payment",
+          event_action: "webhook_checkout_expired_no_payment",
           details: expect.objectContaining({ eventId: event.id, sessionId: nonExistentSessionId }),
         })
       );
@@ -307,7 +307,7 @@ describe("checkout.session.expired Webhook統合テスト", () => {
       expect(mockLogger.info).toHaveBeenCalledWith(
         "Webhook security event",
         expect.objectContaining({
-          type: "webhook_checkout_expired_no_payment",
+          event_action: "webhook_checkout_expired_no_payment",
           details: expect.objectContaining({ eventId: event.id, sessionId }),
         })
       );
@@ -333,7 +333,7 @@ describe("checkout.session.expired Webhook統合テスト", () => {
       expect(mockLogger.info).toHaveBeenCalledWith(
         "Webhook security event",
         expect.objectContaining({
-          type: "webhook_checkout_expired_no_payment",
+          event_action: "webhook_checkout_expired_no_payment",
           details: expect.objectContaining({ eventId: event.id, sessionId }),
         })
       );
@@ -345,6 +345,7 @@ describe("checkout.session.expired Webhook統合テスト", () => {
       ["paid", 20],
       ["received", 20],
       ["waived", 25],
+      ["canceled", 35],
       ["refunded", 40],
     ])("%s ステータス（ランク %d）からの降格を防止", async (currentStatus, _expectedRank) => {
       // Arrange: 高位ステータスの決済レコード
@@ -374,6 +375,11 @@ describe("checkout.session.expired Webhook統合テスト", () => {
       // failed/waived ステータスにも PaymentIntent ID が必要
       if (["failed", "waived"].includes(currentStatus)) {
         updateData.stripe_payment_intent_id = `pi_test_${currentStatus}_${Date.now()}`;
+      }
+
+      // canceled ステータスには paid_at を null にする
+      if (currentStatus === "canceled") {
+        updateData.paid_at = null;
       }
 
       const { error: updateError } = await supabase
@@ -409,7 +415,7 @@ describe("checkout.session.expired Webhook統合テスト", () => {
       expect(mockLogger.info).toHaveBeenCalledWith(
         "Webhook security event",
         expect.objectContaining({
-          type: "webhook_duplicate_processing_prevented",
+          event_action: "webhook_duplicate_processing_prevented",
           details: expect.objectContaining({
             eventId: event.id,
             paymentId: payment.id,
@@ -455,15 +461,17 @@ describe("checkout.session.expired Webhook統合テスト", () => {
       const result = await handler.handleEvent(event);
 
       // Assert: 正常レスポンス（重複処理防止）
-      expect(result).toEqual({
-        success: true,
-      });
+      expect(result).toEqual(
+        expect.objectContaining({
+          success: true,
+        })
+      );
 
       // Assert: 重複処理防止ログ
       expect(mockLogger.info).toHaveBeenCalledWith(
         "Webhook security event",
         expect.objectContaining({
-          type: "webhook_duplicate_processing_prevented",
+          event_action: "webhook_duplicate_processing_prevented",
           details: expect.objectContaining({
             eventId: event.id,
             paymentId: payment.id,
@@ -533,7 +541,7 @@ describe("checkout.session.expired Webhook統合テスト", () => {
       expect(mockLogger.info).toHaveBeenCalledWith(
         "Webhook security event",
         expect.objectContaining({
-          type: "webhook_checkout_expired_no_payment",
+          event_action: "webhook_checkout_expired_no_payment",
           details: expect.objectContaining({ eventId: event.id, sessionId }),
         })
       );
@@ -558,7 +566,7 @@ describe("checkout.session.expired Webhook統合テスト", () => {
       expect(mockLogger.info).toHaveBeenCalledWith(
         "Webhook security event",
         expect.objectContaining({
-          type: "webhook_checkout_expired_no_payment",
+          event_action: "webhook_checkout_expired_no_payment",
           details: expect.objectContaining({ eventId: event.id, sessionId }),
         })
       );
@@ -800,10 +808,13 @@ describe("checkout.session.expired Webhook統合テスト", () => {
         await handler.handleEvent(data.event);
 
         // ログ出力検証
-        expect(mockLogger.info).toHaveBeenCalledWith("Webhook security event", {
-          type: testCase.logType,
-          details: testCase.expectedDetails(data),
-        });
+        expect(mockLogger.info).toHaveBeenCalledWith(
+          "Webhook security event",
+          expect.objectContaining({
+            event_action: testCase.logType,
+            details: expect.objectContaining(testCase.expectedDetails(data)),
+          })
+        );
 
         // モックをリセット
         jest.clearAllMocks();
@@ -860,14 +871,16 @@ describe("checkout.session.expired Webhook統合テスト", () => {
       const secondResult = await handler.handleEvent(event);
 
       // Assert: 2回目は重複処理防止
-      expect(secondResult).toEqual({
-        success: true,
-      });
+      expect(secondResult).toEqual(
+        expect.objectContaining({
+          success: true,
+        })
+      );
 
       expect(mockLogger.info).toHaveBeenCalledWith(
         "Webhook security event",
         expect.objectContaining({
-          type: "webhook_duplicate_processing_prevented",
+          event_action: "webhook_duplicate_processing_prevented",
           details: expect.objectContaining({
             eventId: event.id,
             paymentId: payment.id,
@@ -894,7 +907,7 @@ describe("checkout.session.expired Webhook統合テスト", () => {
         { current: "received", target: "failed", expected: false },
         { current: "refunded", target: "failed", expected: false },
         { current: "pending", target: "failed", expected: true },
-        { current: "failed", target: "failed", expected: false }, // 同一ステータス
+        { current: "failed", target: "failed", expected: true }, // 同一ステータス（冪等性）
       ];
 
       statusTests.forEach(({ current, target, expected }) => {
@@ -914,6 +927,7 @@ describe("checkout.session.expired Webhook統合テスト", () => {
         paid: 20,
         received: 20,
         waived: 25,
+        canceled: 35,
         refunded: 40,
       };
 

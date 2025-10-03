@@ -51,6 +51,7 @@ const SPEC_STATUS_RANKS = {
   paid: 20,
   received: 20, // paidと同じランク（両方とも「支払い完了」状態）
   waived: 25,
+  canceled: 35,
   refunded: 40,
 } as const;
 
