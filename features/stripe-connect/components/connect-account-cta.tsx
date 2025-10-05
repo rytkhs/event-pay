@@ -12,7 +12,7 @@ interface ConnectAccountCtaProps {
 }
 
 /**
- * Stripe Connectアカウント設定を促すCTAコンポーネント
+ * Stripe入金設定を促すCTAコンポーネント
  */
 export function ConnectAccountCta({ status }: ConnectAccountCtaProps) {
   const getIcon = () => {

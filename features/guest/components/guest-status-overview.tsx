@@ -84,7 +84,8 @@ export function GuestStatusOverview({
   const shouldShowPayment =
     attendance.status === "attending" &&
     attendance.event.fee > 0 &&
-    !isPaymentCompleted(attendance.payment?.status as any);
+    !isPaymentCompleted(attendance.payment?.status as any) &&
+    attendance.payment?.method !== "cash";
 
   // 決済セッション作成の可否（期限/猶予/最終上限を考慮）
   const eligibility = canCreateStripeSession(attendance as any, attendance.event as any);
@@ -143,16 +144,16 @@ export function GuestStatusOverview({
               )}
             </Button>
           )}
-          {/* 期限超過などで決済不可の場合の案内 */}
-          {shouldShowPayment && !isProcessingPayment && !eligibility.isEligible && (
-            <div className="text-sm text-red-600" aria-live="polite">
-              決済期限を過ぎているため、現在このイベントでは決済できません。
-            </div>
-          )}
           <Button variant="secondary" onClick={scrollToTarget}>
             <Ticket className="h-4 w-4 mr-2" /> 参加状況を変更
           </Button>
         </div>
+        {/* 期限超過などで決済不可の場合の案内 */}
+        {shouldShowPayment && !isProcessingPayment && !eligibility.isEligible && (
+          <div className="mt-3 text-sm text-red-600" aria-live="polite">
+            {eligibility.reason || "現在このイベントでは決済できません。"}
+          </div>
+        )}
       </div>
     </Card>
   );

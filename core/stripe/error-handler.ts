@@ -234,14 +234,14 @@ function generateResolutionHints(
     case "config_error":
       if (paymentErrorType === PaymentErrorType.CONNECT_ACCOUNT_NOT_FOUND) {
         return [
-          "主催者のStripe Connect設定を確認",
-          "Connect Accountの存在確認",
+          "主催者のStripeアカウント設定を確認",
+          "アカウントの存在確認",
           "現金決済への切り替えを案内",
         ];
       }
       if (paymentErrorType === PaymentErrorType.CONNECT_ACCOUNT_RESTRICTED) {
         return [
-          "Connect Accountの制限理由を確認",
+          "アカウントの制限理由を確認",
           "Stripeダッシュボードでの制限解除作業",
           "現金決済への切り替えを案内",
         ];

@@ -47,7 +47,7 @@ export function registerStripeConnectAdapters(): void {
           stripeAccountId: accountId,
         });
       } catch (error) {
-        console.error("Stripe Connect adapter error:", error);
+        console.error("Stripe アカウント adapter error:", error);
         throw error;
       }
     },
@@ -69,7 +69,7 @@ export function registerStripeConnectAdapters(): void {
         const account = await service.getConnectAccountByUser(userId);
         return account ? { status: account.status as StripeAccountStatusLike } : null;
       } catch (error) {
-        console.error("Stripe Connect adapter error:", error);
+        console.error("Stripe アカウント adapter error:", error);
         throw error;
       }
     },
@@ -102,7 +102,7 @@ export function registerStripeConnectAdapters(): void {
             : undefined,
         };
       } catch (error) {
-        console.error("Stripe Connect adapter error:", error);
+        console.error("Stripe アカウント adapter error:", error);
         throw error;
       }
     },
@@ -129,7 +129,7 @@ export function registerStripeConnectAdapters(): void {
           stripeAccountId: input.stripeAccountId,
         });
       } catch (error) {
-        console.error("Stripe Connect adapter error:", error);
+        console.error("Stripe アカウント adapter error:", error);
         throw error;
       }
     },

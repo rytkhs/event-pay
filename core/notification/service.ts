@@ -45,7 +45,7 @@ export class NotificationService implements INotificationService {
       }
 
       const template: EmailTemplate = {
-        subject: "Stripe Connectアカウントの認証が完了しました",
+        subject: "Stripeアカウントの認証が完了しました",
         body: this.createAccountVerifiedEmailBody(userInfo.name || "ユーザー"),
         htmlBody: this.createAccountVerifiedEmailHtml(userInfo.name || "ユーザー"),
       };
@@ -79,7 +79,7 @@ export class NotificationService implements INotificationService {
       }
 
       const template: EmailTemplate = {
-        subject: "Stripe Connectアカウントに制限が設定されました",
+        subject: "Stripeアカウントに制限が設定されました",
         body: this.createAccountRestrictedEmailBody(
           userInfo.name || "ユーザー",
           data.restrictionReason,
@@ -101,8 +101,8 @@ export class NotificationService implements INotificationService {
 
       // 管理者にもアラートを送信
       await this.emailService.sendAdminAlert({
-        subject: "Stripe Connectアカウント制限",
-        message: `ユーザー ${data.userId} のStripe Connectアカウント ${data.accountId} に制限が設定されました。`,
+        subject: "Stripeアカウント制限",
+        message: `ユーザー ${data.userId} のStripeアカウント ${data.accountId} に制限が設定されました。`,
         details: {
           userId: data.userId,
           accountId: data.accountId,
@@ -139,7 +139,7 @@ export class NotificationService implements INotificationService {
         }
 
         const template: EmailTemplate = {
-          subject: "Stripe Connectアカウントの状態が更新されました",
+          subject: "Stripeアカウントの状態が更新されました",
           body: this.createStatusChangeEmailBody(
             userInfo.name || "ユーザー",
             data.oldStatus,
@@ -230,7 +230,7 @@ ${userName} 様
 
 みんなの集金をご利用いただき、ありがとうございます。
 
-Stripe Connectアカウントの認証が完了しました。
+Stripeアカウントの認証が完了しました。
 これで、イベントの売上を自動的に受け取ることができるようになりました。
 
 今後、イベント終了後に自動的に売上が送金されます。
@@ -262,7 +262,7 @@ Stripe Connectアカウントの認証が完了しました。
     <p>みんなの集金をご利用いただき、ありがとうございます。</p>
 
     <div style="background-color: #f0f9ff; border: 1px solid #0ea5e9; border-radius: 8px; padding: 16px; margin: 20px 0;">
-      <p style="margin: 0; font-weight: bold; color: #0ea5e9;">✅ Stripe Connectアカウントの認証が完了しました</p>
+      <p style="margin: 0; font-weight: bold; color: #0ea5e9;">✅ Stripeアカウントの認証が完了しました</p>
     </div>
 
     <p>これで、イベントの売上を自動的に受け取ることができるようになりました。</p>
@@ -296,7 +296,7 @@ ${userName} 様
 
 みんなの集金をご利用いただき、ありがとうございます。
 
-Stripe Connectアカウントに制限が設定されました。
+Stripeアカウントに制限が設定されました。
     `;
 
     if (restrictionReason) {
@@ -369,7 +369,7 @@ Stripe Connectアカウントに制限が設定されました。
     <p>みんなの集金をご利用いただき、ありがとうございます。</p>
 
     <div style="background-color: #fef2f2; border: 1px solid #f87171; border-radius: 8px; padding: 16px; margin: 20px 0;">
-      <p style="margin: 0; font-weight: bold; color: #dc2626;">⚠️ Stripe Connectアカウントに制限が設定されました</p>
+      <p style="margin: 0; font-weight: bold; color: #dc2626;">⚠️ Stripeアカウントに制限が設定されました</p>
       ${restrictionReason ? `<p style="margin: 10px 0 0 0;">制限理由: ${restrictionReason}</p>` : ""}
     </div>
 
@@ -410,7 +410,7 @@ ${userName} 様
 
 みんなの集金をご利用いただき、ありがとうございます。
 
-Stripe Connectアカウントの状態が更新されました。
+Stripeアカウントの状態が更新されました。
 
 変更内容:
 - 状態: ${statusMap[oldStatus] || oldStatus} → ${statusMap[newStatus] || newStatus}

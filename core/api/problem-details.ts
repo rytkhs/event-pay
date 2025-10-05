@@ -276,14 +276,14 @@ const ERROR_DEFINITIONS: Record<string, ErrorDefinition> = {
     type: "https://api.eventpay.app/errors/connect_account_not_found",
     title: "Connect Account Not Found",
     defaultStatus: 422,
-    defaultDetail: "Stripe Connect Account が見つかりません",
+    defaultDetail: "Stripeアカウント が見つかりません",
     retryable: false,
   },
   CONNECT_ACCOUNT_RESTRICTED: {
     type: "https://api.eventpay.app/errors/connect_account_restricted",
     title: "Connect Account Restricted",
     defaultStatus: 422,
-    defaultDetail: "Stripe Connect Account が制限されています",
+    defaultDetail: "Stripeアカウント が制限されています",
     retryable: false,
   },
   STRIPE_CONFIG_ERROR: {

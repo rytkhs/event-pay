@@ -18,63 +18,15 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 
 export default function RegisterPage() {
   const { form, onSubmit, isPending } = useRegisterFormRHF(registerAction, {
     enableFocusManagement: true,
   });
 
-  // パスワード強度の表示
   const password = form.watch("password");
   const passwordConfirm = form.watch("passwordConfirm");
-
-  const getPasswordStrength = (password: string) => {
-    if (!password) {
-      return { level: 0, text: "", color: "text-gray-500", feedback: "" };
-    }
-
-    let score = 0;
-    const feedback = [];
-
-    if (password.length >= 8) {
-      score += 1;
-    } else {
-      feedback.push("8文字以上");
-    }
-
-    if (/[A-Z]/.test(password)) {
-      score += 1;
-    } else {
-      feedback.push("大文字");
-    }
-
-    if (/[a-z]/.test(password)) {
-      score += 1;
-    } else {
-      feedback.push("小文字");
-    }
-
-    if (/\d/.test(password)) {
-      score += 1;
-    } else {
-      feedback.push("数字");
-    }
-
-    const levels = [
-      { level: 0, text: "弱い", color: "text-red-500" },
-      { level: 1, text: "弱い", color: "text-red-500" },
-      { level: 2, text: "普通", color: "text-yellow-500" },
-      { level: 3, text: "強い", color: "text-green-500" },
-      { level: 4, text: "とても強い", color: "text-green-600" },
-    ];
-
-    return {
-      ...levels[score],
-      feedback: feedback.length > 0 ? `必要: ${feedback.join(", ")}` : "OK",
-    };
-  };
-
-  const passwordStrength = getPasswordStrength(password);
 
   return (
     <>
@@ -82,8 +34,10 @@ export default function RegisterPage() {
         <div className="w-full max-w-md space-y-8">
           <Card>
             <CardHeader className="text-center">
-              <CardTitle className="text-3xl font-bold">会員登録</CardTitle>
-              <CardDescription className="text-sm">
+              <CardTitle as="h1" className="text-2xl sm:text-3xl font-bold">
+                会員登録
+              </CardTitle>
+              <CardDescription className="text-xs sm:text-sm">
                 みんなの集金アカウントを作成してください
               </CardDescription>
             </CardHeader>
@@ -91,7 +45,7 @@ export default function RegisterPage() {
               <Form {...form}>
                 <form
                   onSubmit={onSubmit}
-                  className="space-y-6"
+                  className="space-y-4 sm:space-y-6"
                   noValidate
                   data-testid="register-form"
                 >
@@ -101,12 +55,12 @@ export default function RegisterPage() {
                     name="name"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>名前</FormLabel>
+                        <FormLabel>ユーザーネーム</FormLabel>
                         <FormControl>
                           <Input
                             {...field}
                             type="text"
-                            placeholder="山田太郎"
+                            placeholder="ユーザーネームを入力"
                             disabled={isPending}
                             autoComplete="name"
                             required
@@ -149,9 +103,8 @@ export default function RegisterPage() {
                       <FormItem>
                         <FormLabel>パスワード</FormLabel>
                         <FormControl>
-                          <Input
+                          <PasswordInput
                             {...field}
-                            type="password"
                             placeholder="パスワードを入力"
                             disabled={isPending}
                             autoComplete="new-password"
@@ -159,18 +112,6 @@ export default function RegisterPage() {
                             data-testid="password-input"
                           />
                         </FormControl>
-                        {password && (
-                          <div className="text-sm">
-                            <span className={`font-medium ${passwordStrength.color}`}>
-                              強度: {passwordStrength.text}
-                            </span>
-                            {passwordStrength.feedback !== "OK" && (
-                              <span className="text-muted-foreground ml-2">
-                                ({passwordStrength.feedback})
-                              </span>
-                            )}
-                          </div>
-                        )}
                         <FormMessage />
                       </FormItem>
                     )}
@@ -184,9 +125,8 @@ export default function RegisterPage() {
                       <FormItem>
                         <FormLabel>パスワード確認</FormLabel>
                         <FormControl>
-                          <Input
+                          <PasswordInput
                             {...field}
-                            type="password"
                             placeholder="パスワードを再度入力"
                             disabled={isPending}
                             autoComplete="new-password"
@@ -265,7 +205,7 @@ export default function RegisterPage() {
                     {isPending ? "登録中..." : "アカウントを作成"}
                   </Button>
 
-                  <div className="text-center text-sm text-muted-foreground">
+                  <div className="text-center text-xs sm:text-sm text-muted-foreground">
                     すでにアカウントをお持ちの方は{" "}
                     <Link
                       href="/login"
@@ -281,7 +221,10 @@ export default function RegisterPage() {
         </div>
       </main>
 
-      <footer className="text-center text-sm text-muted-foreground py-4" role="contentinfo">
+      <footer
+        className="text-center text-xs sm:text-sm text-muted-foreground py-4"
+        role="contentinfo"
+      >
         <p>みんなの集金 - 出欠も集金も、ひとつのリンクで完了</p>
       </footer>
     </>

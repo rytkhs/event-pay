@@ -87,13 +87,18 @@ export default function UpdatePasswordPage() {
           <PasswordStatusIcon type="error" message={passwordConfirmation.state.error} />
         )}
 
-        <div className="text-xs text-gray-500">上記と同じパスワードを入力してください</div>
+        <div className="text-xs sm:text-sm text-gray-500">
+          上記と同じパスワードを入力してください
+        </div>
       </div>
 
       <AuthSubmitButton isPending={isPending}>パスワード更新</AuthSubmitButton>
 
-      <div className="text-center text-sm text-gray-600">
-        <Link href="/login" className="text-blue-600 hover:text-blue-500 hover:underline">
+      <div className="text-center">
+        <Link
+          href="/login"
+          className="inline-block py-2 text-sm sm:text-base text-blue-600 hover:text-blue-500 hover:underline"
+        >
           ログインページに戻る
         </Link>
       </div>

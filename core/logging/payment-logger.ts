@@ -96,7 +96,7 @@ export function generateRecoverySuggestions(
   switch (classification) {
     case "config_error":
       return [
-        "主催者にStripe Connect設定の確認を依頼",
+        "主催者にStripeアカウント設定の確認を依頼",
         "現金決済への変更を案内",
         "設定完了後の再試行を案内",
       ];

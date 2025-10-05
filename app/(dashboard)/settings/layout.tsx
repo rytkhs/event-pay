@@ -29,7 +29,7 @@ const settingsPages = [
     title: "支払い設定",
     href: "/settings/payments",
     icon: CreditCard,
-    description: "Stripe Connect と決済管理",
+    description: "Stripe設定 と決済管理",
   },
   {
     title: "パスワード",

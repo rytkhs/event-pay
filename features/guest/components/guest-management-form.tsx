@@ -183,13 +183,7 @@ export function GuestManagementForm({ attendance, canModify }: GuestManagementFo
     attendanceStatus !== attendance.status ||
     (attendanceStatus === "attending" &&
       attendance.event.fee > 0 &&
-      paymentMethod !== attendance.payment?.method) ||
-    // 再決済が必要なケース：参加中で同じ決済方法だが決済が失敗/未完了状態
-    (attendanceStatus === "attending" &&
-      attendance.event.fee > 0 &&
-      attendance.payment?.method === paymentMethod &&
-      attendance.payment?.status &&
-      ["failed", "pending"].includes(attendance.payment.status));
+      paymentMethod !== attendance.payment?.method);
 
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -450,7 +444,7 @@ export function GuestManagementForm({ attendance, canModify }: GuestManagementFo
                     </p>
                     {paymentMethod === "stripe" && (
                       <p className="text-xs text-blue-700 mt-1 leading-relaxed">
-                        クレジットカード決済の場合、決済を完了するボタンから決済に進みます。
+                        オンライン決済の場合、決済を完了するボタンから決済に進みます。
                       </p>
                     )}
                     {paymentMethod === "cash" && (

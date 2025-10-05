@@ -1,5 +1,5 @@
 /**
- * Stripe Connect オンボーディングフォームコンポーネント
+ * Stripe 入金設定オンボーディングフォームコンポーネント
  */
 
 "use client";
@@ -89,12 +89,12 @@ export function OnboardingForm({ refreshUrl, returnUrl, onPrefillAndStart }: Onb
   };
 
   const getMccPresetOptions = () => [
+    { value: "other", label: "Stripeで選択" },
     { value: "business_services", label: "イベント・コミュニティ運営" },
     { value: "membership_org", label: "会員制組織・クラブ" },
     { value: "recreation_services", label: "スポーツ・レクリエーション" },
     { value: "educational_services", label: "教育・研修サービス" },
     { value: "software_services", label: "ソフトウェア・技術サービス" },
-    { value: "other", label: "その他（具体的に選択）" },
   ];
 
   return (
@@ -102,12 +102,12 @@ export function OnboardingForm({ refreshUrl, returnUrl, onPrefillAndStart }: Onb
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <CreditCard className="h-5 w-5" />
-          Stripe Connect アカウント設定
+          Stripe 入金設定
         </CardTitle>
         <CardDescription>
-          オンライン決済を有効化するために、Stripe Connectアカウントの設定が必要です。
+          オンライン決済の売上を受け取るため、Stripeの設定が必要です。
           <br />
-          初回設定は約3〜5分で完了します。
+          初回設定は約3〜5分で完了し、途中保存もできます。
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-8">
@@ -269,12 +269,12 @@ export function OnboardingForm({ refreshUrl, returnUrl, onPrefillAndStart }: Onb
                         />
                       </FormControl>
                       <FormDescription>
-                        活動の目的、頻度、参加費の用途などを含めてください（10〜280文字）
+                        活動の目的、頻度、参加費の用途などを含めてください（30〜280文字）
                         {watchProductDescription && (
                           <div className="mt-1">
                             <Badge
                               variant={
-                                watchProductDescription.length >= 10 ? "default" : "secondary"
+                                watchProductDescription.length >= 30 ? "default" : "secondary"
                               }
                             >
                               {watchProductDescription.length}/280文字
@@ -325,7 +325,7 @@ export function OnboardingForm({ refreshUrl, returnUrl, onPrefillAndStart }: Onb
                 <strong>ご準備いただくもの：</strong>
                 <ul className="mt-2 space-y-1 text-sm">
                   <li>• 本人確認書類（運転免許証、パスポートなど）</li>
-                  <li>• 銀行口座情報（通帳またはキャッシュカード）</li>
+                  <li>• 銀行口座情報（Stripeのページで入力します）</li>
                   <li>• 所要時間：約3〜5分（途中保存可能）</li>
                 </ul>
               </AlertDescription>
@@ -339,7 +339,7 @@ export function OnboardingForm({ refreshUrl, returnUrl, onPrefillAndStart }: Onb
                   設定を開始しています...
                 </>
               ) : (
-                "Stripe Connect 設定を開始"
+                "Stripeで設定を始める"
               )}
             </Button>
           </form>
@@ -353,7 +353,7 @@ export function OnboardingForm({ refreshUrl, returnUrl, onPrefillAndStart }: Onb
           </p>
           <p>
             <strong>手数料について：</strong>
-            Stripe決済手数料（3.6%）が売上から差し引かれます。プラットフォーム手数料は現在無料です。
+            Stripe決済手数料（3.6%）がオンライン決済の売上から差し引かれます。プラットフォーム手数料は現在無料です。
           </p>
         </div>
       </CardContent>

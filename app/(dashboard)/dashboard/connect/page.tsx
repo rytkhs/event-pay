@@ -1,5 +1,5 @@
 /**
- * Stripe Connect 設定ページ
+ * Stripe 入金設定ページ
  */
 
 import { Suspense } from "react";
@@ -17,14 +17,16 @@ import {
   createUserStripeConnectService,
   prefillAndStartOnboardingAction,
   getConnectAccountStatusAction,
+  checkExpressDashboardAccessAction,
+  createExpressDashboardLoginLinkAction,
 } from "@features/stripe-connect";
 
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export const metadata: Metadata = {
-  title: "Stripe Connect 設定 | みんなの集金",
-  description: "売上受取用のStripe Connectアカウントを設定します",
+  title: "売上受取設定 | みんなの集金",
+  description: "Stripeで売上の受け取り方法を設定します",
 };
 
 interface ConnectPageProps {
@@ -61,8 +63,14 @@ async function ConnectContent({ searchParams }: ConnectPageProps) {
       <div className="max-w-4xl mx-auto space-y-8">
         <div className="text-center space-y-2">
           <h1 className="text-3xl font-bold">売上受取設定</h1>
+        </div>
+
+        <div className="bg-muted/40 border border-muted/60 rounded-lg p-4 text-sm text-muted-foreground space-y-1">
           <p className="text-muted-foreground">
-            イベントの売上を受け取るためのStripe Connectアカウントを設定します
+            売上を受け取るために、Stripeの設定画面で入金設定を行います。
+          </p>
+          <p>
+            入力内容はStripeに直接送信され、当サービスではカード情報や身分証の画像を保持しません。
           </p>
         </div>
 
@@ -87,6 +95,7 @@ async function ConnectContent({ searchParams }: ConnectPageProps) {
             refreshUrl={refreshUrl}
             status={await (async () => {
               const r = await getConnectAccountStatusAction();
+              const expressAccess = await checkExpressDashboardAccessAction();
               return {
                 hasAccount: true,
                 accountId: r.data?.accountId,
@@ -106,8 +115,10 @@ async function ConnectContent({ searchParams }: ConnectPageProps) {
                   pending_verification: [],
                 },
                 capabilities: r.data?.capabilities,
+                expressDashboardAvailable: expressAccess.success,
               };
             })()}
+            expressDashboardAction={createExpressDashboardLoginLinkAction}
           />
         )}
       </div>

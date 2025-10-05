@@ -6,7 +6,7 @@ import { calculateAttendeeCount } from "@core/utils/event-calculations";
 import { validateEventId } from "@core/validation/event-id";
 
 import { EventEditForm } from "@features/events";
-import { getDetailedAccountStatusAction } from "@features/stripe-connect/actions/account-status-check";
+import { getDetailedAccountStatusAction } from "@features/stripe-connect";
 
 interface EventEditPageProps {
   params: {

@@ -392,11 +392,11 @@ export function EventEditForm({
                                 <div className="text-amber-600 mt-0.5">⚠️</div>
                                 <div className="text-sm">
                                   <p className="text-amber-800 font-medium">
-                                    Stripe Connectの設定が必要です
+                                    Stripeアカウントの設定が必要です
                                   </p>
                                   <p className="text-amber-700 mt-1">
                                     オンライン決済を受け取るには、Stripe
-                                    Connectアカウントの設定を完了してください。
+                                    アカウントの設定を完了してください。
                                   </p>
                                   <a
                                     href="/dashboard/connect"

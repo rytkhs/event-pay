@@ -66,8 +66,7 @@ export const STRIPE_PAID_FEE_RESTRICTION: RestrictionRule = {
       return createEvaluation(
         true,
         "決済済み参加者がいるため、参加費は変更できません",
-        `現在${context.attendeeCount}名の参加者のうち、既にオンライン決済を完了した参加者がいます。`,
-        "参加費を変更する場合は、決済済み参加者への返金処理が必要になります。"
+        `現在${context.attendeeCount}名の参加者のうち、既にオンライン決済を完了した参加者がいます。`
       );
     }
 
@@ -167,8 +166,7 @@ export const ATTENDEE_IMPACT_ADVISORY: RestrictionRule = {
     if (hasChanges) {
       return createWarning(
         "変更内容により参加者に影響が生じる場合があります",
-        `現在${context.attendeeCount}名の参加者がいます。イベント情報の変更により参加者に混乱や不利益が生じる可能性があります。`,
-        "重要な変更を行った場合は、参加者への個別連絡を検討してください。"
+        `現在${context.attendeeCount}名の参加者がいます。イベント情報の変更により参加者に混乱や不利益が生じる可能性があります。`
       );
     }
 
@@ -237,8 +235,7 @@ export const DATE_CHANGE_ADVISORY: RestrictionRule = {
     if (currentDate && originalDate && currentDate !== originalDate) {
       return createWarning(
         "イベント日時の変更は参加者に大きく影響します",
-        `現在${context.attendeeCount}名の参加者が登録済みです。日時の変更により参加できなくなる可能性があります。`,
-        "日時を変更する場合は、必ず参加者全員に事前に連絡し、都合を確認してください。"
+        `現在${context.attendeeCount}名の参加者が登録済みです。日時の変更により参加できなくなる可能性があります。`
       );
     }
 
@@ -269,8 +266,7 @@ export const CAPACITY_REDUCTION_ADVISORY: RestrictionRule = {
     ) {
       return createWarning(
         "定員を削減すると新規参加者の登録に影響します",
-        `定員を${originalCapacity}名から${newCapacity}名に削減しようとしています。`,
-        "定員削減により新規参加者が登録できなくなる可能性があります。必要に応じて既存参加者への告知を検討してください。"
+        `定員を${originalCapacity}名から${newCapacity}名に削減しようとしています。`
       );
     }
 

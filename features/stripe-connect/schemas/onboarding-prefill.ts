@@ -1,20 +1,19 @@
 /**
- * Stripe Connect オンボーディング事前入力のバリデーションスキーマ
+ * Stripe 入金設定オンボーディング事前入力のバリデーションスキーマ
  */
 
 import { z } from "zod";
 
 // MCCプリセット定義（初期版、後で調整）
 export const MCC_PRESETS = {
-  // 一般的で安全なMCC（Stripeデフォルト）
-  software_services: "5734", // Computer Software Stores
-  // コミュニティ・イベント関連（要確認）
+  // Stripe側で選択してもらうためのデフォルト値
+  other: "other",
+  // 参考選択肢（任意）
   business_services: "7392", // Management, Consulting, and Public Relations Services
   membership_org: "8699", // Membership Organizations
   recreation_services: "7997", // Membership Clubs (Sports, Recreation, Athletic)
   educational_services: "8299", // Schools and Educational Services
-  // その他
-  other: "other",
+  software_services: "5734", // Computer Software Stores
 } as const;
 
 export type MCCPreset = keyof typeof MCC_PRESETS;
@@ -135,7 +134,7 @@ export const getDefaultPrefillValues = (): Partial<OnboardingPrefillInput> => {
 
   return {
     hasWebsite: false,
-    mccPreset: "business_services",
+    mccPreset: "other",
     refreshUrl: `${baseUrl}/dashboard/connect/refresh`,
     returnUrl: `${baseUrl}/dashboard/connect/return`,
   };

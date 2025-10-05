@@ -402,7 +402,7 @@ export function ParticipationForm({
                                       id={`${formId}-${method}-description`}
                                       className="text-xs text-muted-foreground mt-1"
                                     >
-                                      クレジットカード決済
+                                      クレジットカード、Apple Pay、Google Payなど
                                     </div>
                                   )}
                                   {method === "cash" && (
@@ -410,7 +410,7 @@ export function ParticipationForm({
                                       id={`${formId}-${method}-description`}
                                       className="text-xs text-muted-foreground mt-1"
                                     >
-                                      当日現金支払い
+                                      直接現金でお支払い
                                     </div>
                                   )}
                                 </Label>

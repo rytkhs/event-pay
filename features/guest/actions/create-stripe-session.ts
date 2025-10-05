@@ -188,14 +188,14 @@ export async function createGuestStripeSessionAction(
   if (connectError || !connectAccount) {
     return createServerActionError(
       "RESOURCE_CONFLICT",
-      "このイベントにはStripe Connectアカウントが設定されていません。"
+      "決済の準備ができません。主催者のお支払い受付設定に不備があります。現金決済をご利用いただくか、主催者にお問い合わせください。"
     );
   }
 
   if (!connectAccount.payouts_enabled) {
     return createServerActionError(
       "RESOURCE_CONFLICT",
-      "Stripe Connectアカウントの入金機能 (payouts) が無効化されています。"
+      "主催者のお支払い受付が一時的に制限されています。現金決済をご利用いただくか、主催者にお問い合わせください。"
     );
   }
 

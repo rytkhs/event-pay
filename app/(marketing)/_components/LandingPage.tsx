@@ -133,12 +133,12 @@ export default function LandingPage(): JSX.Element {
           <div className="hero-content">
             <div className="hero-text">
               <h1 className="hero-title">
-                出欠も集金も、
+                出欠から集金まで、
                 <br />
                 ひとつのリンクで完了。
               </h1>
               <p className="hero-description">
-                参加者は登録不要。主催者は出欠と入金の状況が自動でまとまるから、集計ミスと催促のストレスがぐっと減ります。
+                参加者は登録不要。出欠と集金を自動化し、参加の確認や集金のストレスをなくしましょう。
               </p>
               <div className="hero-chips">
                 <span className="chip">参加者登録不要</span>

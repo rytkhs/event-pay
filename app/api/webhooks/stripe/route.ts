@@ -21,6 +21,7 @@ import {
 import { getWebhookSecrets, stripe as sharedStripe } from "@core/stripe/client";
 import { getClientIP } from "@core/utils/ip-detection";
 
+import { StripeWebhookEventHandler } from "@features/payments/services/webhook/webhook-event-handler";
 import { StripeWebhookSignatureVerifier } from "@features/payments/services/webhook/webhook-signature-verifier";
 
 // QStashクライアント初期化
@@ -122,7 +123,61 @@ export async function POST(request: NextRequest) {
       tag: "webhookProcessing",
     });
 
-    // QStashに転送（完全なイベントデータを送信）
+    // テスト環境での同期処理モード（E2Eテスト用）
+    // SKIP_QSTASH_IN_TEST=true の場合、QStashをスキップして直接処理
+    const shouldProcessSync = process.env.SKIP_QSTASH_IN_TEST === "true";
+
+    if (shouldProcessSync) {
+      logger.info("Test mode: Processing webhook synchronously (QStash skipped)", {
+        event_id: event.id,
+        event_type: event.type,
+        request_id: requestId,
+        tag: "webhook-test-mode",
+      });
+
+      try {
+        // workerの処理を直接実行
+        const handler = new StripeWebhookEventHandler();
+        const result = await handler.handleEvent(event);
+
+        const processingTime = Date.now() - startTime;
+
+        logger.info("Webhook processed synchronously", {
+          event_id: event.id,
+          event_type: event.type,
+          success: result.success,
+          processing_time_ms: processingTime,
+          request_id: requestId,
+          tag: "webhook-test-mode",
+        });
+
+        return NextResponse.json({
+          received: true,
+          eventId: event.id,
+          eventType: event.type,
+          processed: result.success,
+          testMode: true,
+          requestId,
+          processingTimeMs: processingTime,
+        });
+      } catch (error) {
+        logger.error("Webhook synchronous processing failed", {
+          event_id: event.id,
+          event_type: event.type,
+          error: error instanceof Error ? error.message : "Unknown error",
+          request_id: requestId,
+          tag: "webhook-test-mode",
+        });
+
+        return createProblemResponse("INTERNAL_ERROR", {
+          instance: "/api/webhooks/stripe",
+          detail: "Webhook processing failed in test mode",
+          correlation_id: requestId,
+        });
+      }
+    }
+
+    // 本番環境: QStashに転送（完全なイベントデータを送信）
     const workerUrl = `${process.env.APP_BASE_URL || process.env.NEXTAUTH_URL}/api/workers/stripe-webhook`;
     // const workerUrl = "https://de438ee16cfb.ngrok-free.app/api/workers/stripe-webhook";
 

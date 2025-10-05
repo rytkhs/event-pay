@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useTransition } from "react";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Eye, EyeOff, Loader2, Mail } from "lucide-react";
+import { Loader2, Mail } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
@@ -20,6 +20,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { updateEmailAction } from "@/features/settings/actions/update-email";
 
 const emailChangeSchema = z.object({
@@ -38,7 +39,6 @@ interface EmailChangeFormProps {
 
 export function EmailChangeForm({ currentEmail }: EmailChangeFormProps) {
   const [isPending, startTransition] = useTransition();
-  const [showPassword, setShowPassword] = useState(false);
   const { toast } = useToast();
 
   const form = useForm<EmailChangeFormData>({
@@ -115,22 +115,7 @@ export function EmailChangeForm({ currentEmail }: EmailChangeFormProps) {
               <FormItem>
                 <FormLabel>現在のパスワード</FormLabel>
                 <FormControl>
-                  <div className="relative">
-                    <Input
-                      type={showPassword ? "text" : "password"}
-                      placeholder="現在のパスワードを入力"
-                      {...field}
-                    />
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                      onClick={() => setShowPassword(!showPassword)}
-                    >
-                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    </Button>
-                  </div>
+                  <PasswordInput placeholder="現在のパスワードを入力" {...field} />
                 </FormControl>
                 <FormDescription>
                   セキュリティのため、現在のパスワードの入力が必要です

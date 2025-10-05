@@ -18,6 +18,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 
 export default function LoginPage() {
   const { form, onSubmit, isPending } = useLoginFormRHF(loginAction, {
@@ -30,14 +31,21 @@ export default function LoginPage() {
         <div className="w-full max-w-md space-y-8">
           <Card>
             <CardHeader className="text-center">
-              <CardTitle className="text-3xl font-bold">ログイン</CardTitle>
-              <CardDescription className="text-sm">
+              <CardTitle as="h1" className="text-2xl sm:text-3xl font-bold">
+                ログイン
+              </CardTitle>
+              <CardDescription className="text-xs sm:text-sm">
                 みんなの集金アカウントにログインしてください
               </CardDescription>
             </CardHeader>
             <CardContent>
               <Form {...form}>
-                <form onSubmit={onSubmit} className="space-y-6" noValidate data-testid="login-form">
+                <form
+                  onSubmit={onSubmit}
+                  className="space-y-4 sm:space-y-6"
+                  noValidate
+                  data-testid="login-form"
+                >
                   {/* メールアドレス */}
                   <FormField
                     control={form.control}
@@ -69,9 +77,8 @@ export default function LoginPage() {
                       <FormItem>
                         <FormLabel>パスワード</FormLabel>
                         <FormControl>
-                          <Input
+                          <PasswordInput
                             {...field}
-                            type="password"
                             placeholder="パスワードを入力"
                             disabled={isPending}
                             autoComplete="current-password"
@@ -106,7 +113,7 @@ export default function LoginPage() {
                     )}
                   />
 
-                  <div className="flex items-center justify-between text-sm">
+                  <div className="flex items-center justify-between text-xs sm:text-sm">
                     <div></div>
                     <Link
                       href="/reset-password"
@@ -131,7 +138,7 @@ export default function LoginPage() {
                     {isPending ? "ログイン中..." : "ログイン"}
                   </Button>
 
-                  <div className="text-center text-sm text-muted-foreground">
+                  <div className="text-center text-xs sm:text-sm text-muted-foreground">
                     アカウントをお持ちでない方は{" "}
                     <Link
                       href="/register"
@@ -147,7 +154,10 @@ export default function LoginPage() {
         </div>
       </main>
 
-      <footer className="text-center text-sm text-muted-foreground py-4" role="contentinfo">
+      <footer
+        className="text-center text-xs sm:text-sm text-muted-foreground py-4"
+        role="contentinfo"
+      >
         <p>みんなの集金 - 出欠も集金も、ひとつのリンクで完了</p>
       </footer>
     </>

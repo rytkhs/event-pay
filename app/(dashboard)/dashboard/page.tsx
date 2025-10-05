@@ -18,13 +18,13 @@ import { createClient } from "@core/supabase/server";
 import { formatUtcToJst } from "@core/utils/timezone";
 
 import { getDashboardDataAction } from "@features/events/actions/get-dashboard-stats";
-import { getDetailedAccountStatusAction } from "@features/stripe-connect/actions/account-status-check";
 import {
+  getDetailedAccountStatusAction,
   checkExpressDashboardAccessAction,
   createExpressDashboardLoginLinkAction,
-} from "@features/stripe-connect/actions/express-dashboard";
-import { getStripeBalanceAction } from "@features/stripe-connect/actions/get-balance";
-import { ConnectAccountCta } from "@features/stripe-connect/components/connect-account-cta";
+  getStripeBalanceAction,
+  ConnectAccountCta,
+} from "@features/stripe-connect";
 
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";

@@ -69,7 +69,7 @@ export async function getDetailedAccountStatusAction(): Promise<{
           statusType: "no_account",
           title: "決済機能を有効にしましょう",
           description:
-            "オンライン決済を有効化するために、Stripe Connectアカウントの設定が必要です。設定は約3〜5分で完了します。",
+            "オンライン決済を有効化するために、Stripeアカウントの設定が必要です。設定は約3〜5分で完了します。",
           actionText: "アカウント設定を開始",
           actionUrl: "/dashboard/connect",
           severity: "info",
@@ -88,7 +88,7 @@ export async function getDetailedAccountStatusAction(): Promise<{
           statusType: "unverified",
           title: "アカウント認証を完了してください",
           description:
-            "Stripe Connectアカウントの認証が完了していません。認証を完了することで決済を受け取れるようになります。",
+            "Stripeアカウントの認証が完了していません。認証を完了することで決済を受け取れるようになります。",
           actionText: "認証を完了する",
           actionUrl: "/dashboard/connect?action=complete",
           severity: "warning",

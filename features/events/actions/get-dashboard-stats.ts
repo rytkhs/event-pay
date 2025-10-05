@@ -1,5 +1,6 @@
 "use server";
 
+import { getCurrentUser } from "@core/auth/auth-utils";
 import { createClient } from "@core/supabase/server";
 import { createServerActionError, type ServerActionResult } from "@core/types/server-actions";
 import { deriveEventStatus } from "@core/utils/derive-event-status";
@@ -30,18 +31,14 @@ export interface DashboardData {
 
 export async function getDashboardDataAction(): Promise<ServerActionResult<DashboardData>> {
   try {
-    const supabase = createClient();
-
     // 認証確認
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
+    const user = await getCurrentUser();
 
-    if (authError || !user) {
+    if (!user) {
       return createServerActionError("UNAUTHORIZED", "認証が必要です");
     }
 
+    const supabase = createClient();
     const now = new Date();
 
     // ユーザーのイベント一覧取得
@@ -100,13 +97,14 @@ export async function getDashboardDataAction(): Promise<ServerActionResult<Dashb
     let unpaidFeesTotal = 0;
     for (const event of upcomingEvents) {
       if (event.fee > 0) {
+        // LEFT JOINでpaymentsを取得（決済レコードがない参加者も含める）
         const { data: attendances } = await supabase
           .from("attendances")
           .select(
             `
             id,
             status,
-            payments!inner(status)
+            payments(status)
           `
           )
           .eq("event_id", event.id)
@@ -115,9 +113,13 @@ export async function getDashboardDataAction(): Promise<ServerActionResult<Dashb
         if (attendances) {
           for (const attendance of attendances) {
             // 支払いが未完了の参加者の参加費を合算
-            const hasCompletedPayment = attendance.payments?.some((payment: any) =>
-              ["paid", "received"].includes(payment.status)
-            );
+            // paymentsが空配列またはnullの場合も未払いとして扱う
+            const hasCompletedPayment =
+              attendance.payments &&
+              attendance.payments.length > 0 &&
+              attendance.payments.some((payment: any) =>
+                ["paid", "received"].includes(payment.status)
+              );
 
             if (!hasCompletedPayment) {
               unpaidFeesTotal += event.fee;

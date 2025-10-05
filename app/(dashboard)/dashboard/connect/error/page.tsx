@@ -15,7 +15,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 
 export const metadata: Metadata = {
   title: "設定エラー | みんなの集金",
-  description: "Stripe Connect設定中にエラーが発生しました",
+  description: "Stripeアカウント設定中にエラーが発生しました",
 };
 
 interface ErrorPageProps {
@@ -27,7 +27,7 @@ interface ErrorPageProps {
 function ErrorContent({ searchParams }: ErrorPageProps) {
   const errorMessage = searchParams.message
     ? decodeURIComponent(searchParams.message)
-    : "Stripe Connect設定中に予期しないエラーが発生しました";
+    : "Stripeアカウント設定中に予期しないエラーが発生しました";
 
   return (
     <div className="container mx-auto py-16 px-4">
@@ -38,9 +38,7 @@ function ErrorContent({ searchParams }: ErrorPageProps) {
               <AlertTriangle className="h-6 w-6 text-red-600" />
             </div>
             <CardTitle className="text-xl">設定エラー</CardTitle>
-            <CardDescription>
-              Stripe Connectアカウントの設定中にエラーが発生しました
-            </CardDescription>
+            <CardDescription>Stripeアカウントの設定中にエラーが発生しました</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <Alert variant="destructive">

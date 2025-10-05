@@ -13,7 +13,16 @@ function isAuthPath(pathname: string): boolean {
 
 function isPublicPath(pathname: string): boolean {
   // 明示的な公開ページ。その他はデフォルトで保護扱い
-  const publicExact = ["/", "/favicon.ico", "/login", "/register", "/reset-password"];
+  const publicExact = [
+    "/",
+    "/favicon.ico",
+    "/login",
+    "/register",
+    "/reset-password",
+    "/verify-otp",
+    "/verify-email",
+    "/confirm",
+  ];
   if (publicExact.includes(pathname)) return true;
   const publicPrefixes = ["/guest/", "/invite/", "/auth/reset-password/"];
   return publicPrefixes.some((p) => pathname.startsWith(p));

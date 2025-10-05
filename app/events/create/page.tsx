@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@core/supabase/server";
 
 import { ModernEventForm } from "@features/events";
-import { getDetailedAccountStatusAction } from "@features/stripe-connect/actions/account-status-check";
+import { getDetailedAccountStatusAction } from "@features/stripe-connect";
 
 export default async function CreateEventPage() {
   const supabase = await createClient();

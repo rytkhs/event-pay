@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useTransition } from "react";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Eye, EyeOff, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
@@ -19,7 +19,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { updatePasswordAction } from "@/features/settings/actions/update-password";
 
 const passwordSchema = z
@@ -43,9 +43,6 @@ type PasswordFormData = z.infer<typeof passwordSchema>;
 
 export function PasswordChangeForm() {
   const [isPending, startTransition] = useTransition();
-  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
-  const [showNewPassword, setShowNewPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const { toast } = useToast();
 
   const form = useForm<PasswordFormData>({
@@ -100,26 +97,7 @@ export function PasswordChangeForm() {
               <FormItem>
                 <FormLabel>現在のパスワード</FormLabel>
                 <FormControl>
-                  <div className="relative">
-                    <Input
-                      type={showCurrentPassword ? "text" : "password"}
-                      placeholder="現在のパスワードを入力"
-                      {...field}
-                    />
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                      onClick={() => setShowCurrentPassword(!showCurrentPassword)}
-                    >
-                      {showCurrentPassword ? (
-                        <EyeOff className="h-4 w-4" />
-                      ) : (
-                        <Eye className="h-4 w-4" />
-                      )}
-                    </Button>
-                  </div>
+                  <PasswordInput placeholder="現在のパスワードを入力" {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -133,26 +111,7 @@ export function PasswordChangeForm() {
               <FormItem>
                 <FormLabel>新しいパスワード</FormLabel>
                 <FormControl>
-                  <div className="relative">
-                    <Input
-                      type={showNewPassword ? "text" : "password"}
-                      placeholder="新しいパスワードを入力"
-                      {...field}
-                    />
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                      onClick={() => setShowNewPassword(!showNewPassword)}
-                    >
-                      {showNewPassword ? (
-                        <EyeOff className="h-4 w-4" />
-                      ) : (
-                        <Eye className="h-4 w-4" />
-                      )}
-                    </Button>
-                  </div>
+                  <PasswordInput placeholder="新しいパスワードを入力" {...field} />
                 </FormControl>
                 <FormDescription>8文字以上で、大文字・小文字・数字を含めてください</FormDescription>
                 <FormMessage />
@@ -167,26 +126,7 @@ export function PasswordChangeForm() {
               <FormItem>
                 <FormLabel>確認用パスワード</FormLabel>
                 <FormControl>
-                  <div className="relative">
-                    <Input
-                      type={showConfirmPassword ? "text" : "password"}
-                      placeholder="新しいパスワードを再入力"
-                      {...field}
-                    />
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    >
-                      {showConfirmPassword ? (
-                        <EyeOff className="h-4 w-4" />
-                      ) : (
-                        <Eye className="h-4 w-4" />
-                      )}
-                    </Button>
-                  </div>
+                  <PasswordInput placeholder="新しいパスワードを再入力" {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>

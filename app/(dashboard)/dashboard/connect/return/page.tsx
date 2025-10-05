@@ -15,7 +15,7 @@ import { Card, CardContent } from "@/components/ui/card";
 
 export const metadata: Metadata = {
   title: "設定完了処理中 | みんなの集金",
-  description: "Stripe Connect設定の完了処理を行っています",
+  description: "Stripeアカウント設定の完了処理を行っています",
 };
 
 async function ReturnContent() {
@@ -36,7 +36,7 @@ function LoadingContent() {
             <div className="text-center space-y-2">
               <h2 className="text-lg font-semibold">設定を完了しています</h2>
               <p className="text-sm text-muted-foreground">
-                Stripe Connectアカウントの設定完了処理を行っています。
+                Stripeアカウントの設定完了処理を行っています。
                 <br />
                 しばらくお待ちください...
               </p>
