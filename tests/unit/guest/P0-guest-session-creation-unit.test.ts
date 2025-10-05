@@ -599,7 +599,8 @@ describe("P0決済セッション作成（正常系: ゲスト）ユニットテ
       expect(result).toEqual({
         success: false,
         code: "RESOURCE_CONFLICT",
-        error: "このイベントにはStripe Connectアカウントが設定されていません。",
+        error:
+          "決済の準備ができません。主催者のお支払い受付設定に不備があります。現金決済をご利用いただくか、主催者にお問い合わせください。",
         correlationId: expect.any(String),
         retryable: false,
       });
@@ -678,7 +679,8 @@ describe("P0決済セッション作成（正常系: ゲスト）ユニットテ
       expect(result).toEqual({
         success: false,
         code: "RESOURCE_CONFLICT",
-        error: "Stripe Connectアカウントの入金機能 (payouts) が無効化されています。",
+        error:
+          "主催者のお支払い受付が一時的に制限されています。現金決済をご利用いただくか、主催者にお問い合わせください。",
         correlationId: expect.any(String),
         retryable: false,
       });
