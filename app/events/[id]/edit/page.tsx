@@ -1,11 +1,14 @@
+import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
+
+import { ArrowLeft, ChevronRight } from "lucide-react";
 
 import { createClient } from "@core/supabase/server";
 import { deriveEventStatus } from "@core/utils/derive-event-status";
 import { calculateAttendeeCount } from "@core/utils/event-calculations";
 import { validateEventId } from "@core/validation/event-id";
 
-import { EventEditForm } from "@features/events";
+import { ModernEventEditForm } from "@features/events/components/modern-event-edit-form";
 import { getDetailedAccountStatusAction } from "@features/stripe-connect";
 
 interface EventEditPageProps {
@@ -109,23 +112,33 @@ export default async function EventEditPage({ params }: EventEditPageProps) {
     <div className="min-h-screen bg-muted/30 py-8">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="space-y-6">
-          {/* ページヘッダー */}
-          <div className="text-center">
-            <h1 className="text-3xl font-bold text-foreground">イベント編集</h1>
-            <p className="mt-2 text-sm text-muted-foreground">
-              イベント「{event.title}」の設定を編集します
-            </p>
+          {/* 戻るリンク */}
+          <div>
+            <Link
+              href={`/events/${params.id}`}
+              className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              イベント詳細に戻る
+            </Link>
           </div>
 
-          {/* V2ではhasStripePaid時のみ制限が発生（fee/payment_methods）。旧Noticeは非表示にする */}
+          {/* 編集フォーム（新しいマルチステップ版） */}
+          <ModernEventEditForm
+            event={{ ...(event as any), status: computedStatus }}
+            attendeeCount={attendeeCount}
+            hasStripePaid={hasStripePaid}
+            canUseOnlinePayments={canUseOnlinePayments}
+          />
 
-          {/* 編集フォーム */}
+          {/* 旧フォーム（バックアップ用にコメントアウト）
           <EventEditForm
             event={{ ...(event as any), status: computedStatus }}
             attendeeCount={attendeeCount}
             hasStripePaid={hasStripePaid}
             canUseOnlinePayments={canUseOnlinePayments}
           />
+          */}
         </div>
       </div>
     </div>
