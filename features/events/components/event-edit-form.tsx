@@ -21,6 +21,7 @@ import {
   FormDescription,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 
 import { useEventEditForm, type EventEditFormDataRHF } from "../hooks/use-event-edit-form";
@@ -491,24 +492,21 @@ export function EventEditForm({
                     <FormField
                       control={form.control}
                       name="allow_payment_after_deadline"
-                      render={() => (
-                        <FormItem className="flex flex-row items-start space-x-3 space-y-0">
-                          <FormControl>
-                            <Checkbox
-                              checked={Boolean(form.watch("allow_payment_after_deadline"))}
-                              onCheckedChange={(checked) => {
-                                form.setValue("allow_payment_after_deadline", checked === true);
-                                void form.trigger();
-                              }}
-                              disabled={isPending}
-                            />
-                          </FormControl>
+                      render={({ field }) => (
+                        <FormItem className="flex flex-row items-center justify-between space-x-3 space-y-0">
                           <div className="space-y-1 leading-none">
-                            <FormLabel>締切後もオンライン決済を許可</FormLabel>
+                            <FormLabel>締切後も決済を許可</FormLabel>
                             <FormDescription>
                               オンライン決済締切（または開催日時）後も支払いを受け付けます（最長30日まで）。
                             </FormDescription>
                           </div>
+                          <FormControl>
+                            <Switch
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                              disabled={isPending}
+                            />
+                          </FormControl>
                         </FormItem>
                       )}
                     />

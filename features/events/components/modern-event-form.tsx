@@ -23,6 +23,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 
 import { useEventForm } from "../hooks/use-event-form";
@@ -262,7 +263,9 @@ function ModernEventForm({
                     name="title"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="text-base font-medium">タイトル *</FormLabel>
+                        <FormLabel className="text-base font-medium">
+                          タイトル <span className="text-red-500">*</span>
+                        </FormLabel>
                         <FormControl>
                           <Input
                             {...field}
@@ -283,7 +286,9 @@ function ModernEventForm({
                       name="date"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-base font-medium">開催日時 *</FormLabel>
+                          <FormLabel className="text-base font-medium">
+                            開催日時 <span className="text-red-500">*</span>
+                          </FormLabel>
                           <FormControl>
                             <DateTimePicker
                               value={field.value ? new Date(field.value) : undefined}
@@ -311,7 +316,7 @@ function ModernEventForm({
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel htmlFor="fee-input" className="text-base font-medium">
-                            参加費 *
+                            参加費 <span className="text-red-500">*</span>
                           </FormLabel>
                           <FormControl>
                             <div className="relative max-w-xs">
@@ -370,7 +375,9 @@ function ModernEventForm({
                     name="registration_deadline"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="text-base font-medium">参加申込締切 *</FormLabel>
+                        <FormLabel className="text-base font-medium">
+                          参加申込締切 <span className="text-red-500">*</span>
+                        </FormLabel>
                         <FormControl>
                           <DateTimePicker
                             value={field.value ? new Date(field.value) : undefined}
@@ -401,7 +408,7 @@ function ModernEventForm({
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel className="text-base font-medium">
-                            利用可能な決済方法 *
+                            利用可能な決済方法 <span className="text-red-500">*</span>
                           </FormLabel>
                           <div
                             className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-3"
@@ -522,7 +529,7 @@ function ModernEventForm({
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel className="text-base font-medium">
-                              オンライン決済締切 *
+                              オンライン決済締切 <span className="text-red-500">*</span>
                             </FormLabel>
                             <FormControl>
                               <DateTimePicker
@@ -552,26 +559,23 @@ function ModernEventForm({
                         <FormField
                           control={form.control}
                           name="allow_payment_after_deadline"
-                          render={() => (
-                            <FormItem className="flex flex-row items-start space-x-3 space-y-0">
-                              <FormControl>
-                                <Checkbox
-                                  checked={Boolean(form.watch("allow_payment_after_deadline"))}
-                                  onCheckedChange={(checked: boolean) => {
-                                    form.setValue("allow_payment_after_deadline", checked === true);
-                                    void form.trigger();
-                                  }}
-                                  disabled={isPending}
-                                />
-                              </FormControl>
+                          render={({ field }) => (
+                            <FormItem className="flex flex-row items-center justify-between space-x-3 space-y-0">
                               <div className="space-y-1 leading-none">
                                 <FormLabel className="text-base font-medium">
-                                  締切後もオンライン決済を許可
+                                  締切後も決済を許可
                                 </FormLabel>
                                 <FormDescription>
                                   決済締切後も一定期間オンライン決済を受け付けます（最長30日まで）
                                 </FormDescription>
                               </div>
+                              <FormControl>
+                                <Switch
+                                  checked={field.value}
+                                  onCheckedChange={field.onChange}
+                                  disabled={isPending}
+                                />
+                              </FormControl>
                             </FormItem>
                           )}
                         />
