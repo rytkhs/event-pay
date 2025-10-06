@@ -2,6 +2,8 @@
  * メール通知サービスの実装
  */
 
+import * as React from "react";
+
 import { Resend } from "resend";
 
 import { logger } from "@core/logging/app-logger";
@@ -28,30 +30,19 @@ export class EmailNotificationService implements IEmailNotificationService {
   }
 
   /**
-   * メール送信
+   * メール送信（React Emailテンプレート使用）
    */
   async sendEmail(params: { to: string; template: EmailTemplate }): Promise<NotificationResult> {
     try {
       const { to, template } = params;
 
-      const emailData: any = {
+      const result = await this.resend.emails.send({
         from: template.from || this.fromEmail,
         to: [to],
         subject: template.subject,
-        text: template.body,
-      };
-
-      // HTMLボディが指定されている場合は追加
-      if (template.htmlBody) {
-        emailData.html = template.htmlBody;
-      }
-
-      // Reply-Toが指定されている場合は追加
-      if (template.replyTo) {
-        emailData.reply_to = template.replyTo;
-      }
-
-      const result = await this.resend.emails.send(emailData);
+        react: template.react,
+        ...(template.replyTo && { reply_to: template.replyTo }),
+      });
 
       if (result.error) {
         return {
@@ -89,15 +80,16 @@ export class EmailNotificationService implements IEmailNotificationService {
     try {
       const { subject, message, details } = params;
 
-      let body = message;
-      if (details) {
-        body += "\n\n詳細情報:\n";
-        body += JSON.stringify(details, null, 2);
-      }
+      // Dynamic import to avoid build-time issues
+      const { default: AdminAlertEmail } = await import("@/emails/admin/AdminAlertEmail");
 
       const template: EmailTemplate = {
         subject: `[EventPay Alert] ${subject}`,
-        body: body,
+        react: React.createElement(AdminAlertEmail, {
+          subject,
+          message,
+          details,
+        }),
         from: this.fromEmail,
       };
 

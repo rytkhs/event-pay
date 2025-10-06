@@ -7,7 +7,6 @@ export { EmailNotificationService } from "./email-service";
 export type {
   INotificationService,
   IEmailNotificationService,
-  NotificationTemplate,
   EmailTemplate,
   NotificationResult,
   StripeConnectNotificationData,

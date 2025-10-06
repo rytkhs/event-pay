@@ -2,6 +2,8 @@
  * 通知サービスの型定義
  */
 
+import * as React from "react";
+
 /**
  * 通知結果
  */
@@ -12,18 +14,11 @@ export interface NotificationResult {
 }
 
 /**
- * 通知テンプレート基底インターフェース
+ * React Emailコンポーネントを使用したメールテンプレート
  */
-export interface NotificationTemplate {
+export interface EmailTemplate {
   subject: string;
-  body: string;
-}
-
-/**
- * メールテンプレート
- */
-export interface EmailTemplate extends NotificationTemplate {
-  htmlBody?: string;
+  react: React.ReactElement;
   from?: string;
   replyTo?: string;
 }
