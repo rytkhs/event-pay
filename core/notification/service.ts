@@ -5,6 +5,8 @@ import * as React from "react";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+import { logger } from "@core/logging/app-logger";
+
 import { Database } from "@/types/database";
 
 import { EmailNotificationService } from "./email-service";
@@ -15,6 +17,8 @@ import {
   StripeConnectNotificationData,
   AccountStatusChangeNotification,
   AccountRestrictedNotification,
+  ParticipationRegisteredNotification,
+  PaymentCompletedNotification,
   EmailTemplate,
 } from "./types";
 
@@ -104,8 +108,8 @@ export class NotificationService implements INotificationService {
         template,
       });
 
-      // 管理者にもアラートを送信
-      await this.emailService.sendAdminAlert({
+      // 管理者にもアラートを送信（失敗してもユーザー通知の結果には影響させない）
+      const adminAlertResult = await this.emailService.sendAdminAlert({
         subject: "Stripeアカウント制限",
         message: `ユーザー ${data.userId} のStripeアカウント ${data.accountId} に制限が設定されました。`,
         details: {
@@ -115,6 +119,16 @@ export class NotificationService implements INotificationService {
           requiredActions: data.requiredActions,
         },
       });
+
+      // 管理者アラートが失敗してもログのみ記録（ユーザー通知の成功/失敗は返す）
+      if (!adminAlertResult.success) {
+        // email-service側で詳細なログは記録済みなので、ここでは簡潔に
+        logger.warn("Admin alert failed for account restriction", {
+          tag: "notificationService",
+          user_id: data.userId,
+          account_id: data.accountId,
+        });
+      }
 
       return result;
     } catch (error) {
@@ -203,6 +217,82 @@ export class NotificationService implements INotificationService {
       };
     } catch (_error) {
       return null;
+    }
+  }
+
+  /**
+   * 参加登録完了通知を送信
+   */
+  async sendParticipationRegisteredNotification(
+    data: ParticipationRegisteredNotification
+  ): Promise<NotificationResult> {
+    try {
+      const { default: ParticipationRegisteredEmail } = await import(
+        "@/emails/participation/ParticipationRegisteredEmail"
+      );
+
+      // ゲストURLを構築
+      const baseUrl =
+        process.env.NEXT_PUBLIC_APP_URL ||
+        process.env.NEXT_PUBLIC_SITE_URL ||
+        process.env.APP_BASE_URL ||
+        process.env.NEXTAUTH_URL ||
+        "http://localhost:3000";
+      const guestUrl = `${baseUrl}/guest/${data.guestToken}`;
+
+      const template: EmailTemplate = {
+        subject: `【みんなの集金】${data.eventTitle} - 参加登録完了`,
+        react: React.createElement(ParticipationRegisteredEmail, {
+          nickname: data.nickname,
+          eventTitle: data.eventTitle,
+          eventDate: data.eventDate,
+          attendanceStatus: data.attendanceStatus,
+          guestUrl,
+        }),
+      };
+
+      return await this.emailService.sendEmail({
+        to: data.email,
+        template,
+      });
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : "通知送信中にエラーが発生しました",
+      };
+    }
+  }
+
+  /**
+   * 決済完了通知を送信
+   */
+  async sendPaymentCompletedNotification(
+    data: PaymentCompletedNotification
+  ): Promise<NotificationResult> {
+    try {
+      const { default: PaymentCompletedEmail } = await import(
+        "@/emails/payment/PaymentCompletedEmail"
+      );
+
+      const template: EmailTemplate = {
+        subject: `【みんなの集金】${data.eventTitle} - お支払い完了`,
+        react: React.createElement(PaymentCompletedEmail, {
+          nickname: data.nickname,
+          eventTitle: data.eventTitle,
+          amount: data.amount,
+          paidAt: data.paidAt,
+        }),
+      };
+
+      return await this.emailService.sendEmail({
+        to: data.email,
+        template,
+      });
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : "通知送信中にエラーが発生しました",
+      };
     }
   }
 

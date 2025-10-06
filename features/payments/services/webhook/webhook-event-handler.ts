@@ -2,6 +2,8 @@ import { createClient } from "@supabase/supabase-js";
 import Stripe from "stripe";
 
 // import { emitPaymentCompleted, emitPaymentFailed } from "@core/events";
+import { logger } from "@core/logging/app-logger";
+import { NotificationService } from "@core/notification";
 import { getSettlementReportPort } from "@core/ports/settlements";
 import { logWebhookSecurityEvent } from "@core/security/security-logger";
 import { stripe as sharedStripe } from "@core/stripe/client";
@@ -555,6 +557,56 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
         balanceTransactionId: balanceTxnId,
         transferId: transferId ?? undefined,
       });
+
+      // 決済完了通知を送信（失敗してもログのみ記録）
+      // NOTE: payment_intent.succeeded ではなく charge.succeeded で通知を送信する理由:
+      // 1. 重複送信の防止（両方のイベントが発火するため）
+      // 2. charge.succeeded では balance_transaction と transfer の情報も取得可能
+      // 3. 実際の課金が完了した時点で通知するのがユーザー体験として適切
+      try {
+        const { data: attendance, error: fetchError } = await this.supabase
+          .from("attendances")
+          .select("email, nickname, event:events(title)")
+          .eq("id", payment.attendance_id)
+          .single();
+
+        if (fetchError || !attendance) {
+          logger.warn("Failed to fetch attendance for payment notification", {
+            tag: "paymentNotification",
+            paymentId: payment.id,
+            attendanceId: payment.attendance_id,
+            error_message: fetchError?.message || "Attendance not found",
+          });
+          // 早期リターン: 通知失敗はwebhook処理を停止させない
+        } else {
+          interface AttendanceWithEvent {
+            email: string;
+            nickname: string;
+            event: { title: string } | { title: string }[];
+          }
+
+          const typedAttendance = attendance as unknown as AttendanceWithEvent;
+          const eventData = Array.isArray(typedAttendance.event)
+            ? typedAttendance.event[0]
+            : typedAttendance.event;
+
+          const notificationService = new NotificationService(this.supabase);
+          await notificationService.sendPaymentCompletedNotification({
+            email: typedAttendance.email,
+            nickname: typedAttendance.nickname,
+            eventTitle: eventData.title,
+            amount: payment.amount,
+            paidAt: new Date().toISOString(),
+          });
+        }
+      } catch (error) {
+        // 通知失敗はログのみ記録、webhook処理は継続
+        logger.warn("Failed to send payment completion notification", {
+          tag: "paymentNotification",
+          paymentId: payment.id,
+          error_message: error instanceof Error ? error.message : "Unknown error",
+        });
+      }
 
       return { success: true, eventId: event.id, paymentId: payment.id };
     } catch (error) {
@@ -1331,6 +1383,11 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
         amount: paymentIntent.amount,
         currency: paymentIntent.currency,
       });
+
+      // NOTE: 決済完了通知は charge.succeeded で送信
+      // payment_intent.succeeded と charge.succeeded の両方が発火するため、
+      // 重複送信を避けるため charge.succeeded でのみ通知を送信している
+      // （charge.succeeded では balance_transaction と transfer の情報も取得可能）
 
       return { success: true, eventId: event.id, paymentId: payment.id };
     } catch (error) {

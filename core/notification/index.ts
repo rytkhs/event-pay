@@ -12,4 +12,6 @@ export type {
   StripeConnectNotificationData,
   AccountStatusChangeNotification,
   AccountRestrictedNotification,
+  ParticipationRegisteredNotification,
+  PaymentCompletedNotification,
 } from "./types";

@@ -11,6 +11,12 @@ export interface NotificationResult {
   success: boolean;
   messageId?: string;
   error?: string;
+  /** エラータイプ（一時的または恒久的） */
+  errorType?: "transient" | "permanent";
+  /** リトライ回数 */
+  retryCount?: number;
+  /** Resendのステータスコード */
+  statusCode?: number;
 }
 
 /**
@@ -53,6 +59,30 @@ export interface AccountRestrictedNotification extends StripeConnectNotification
 }
 
 /**
+ * 参加登録完了通知データ
+ */
+export interface ParticipationRegisteredNotification {
+  email: string;
+  nickname: string;
+  eventTitle: string;
+  eventDate: string;
+  attendanceStatus: "attending" | "maybe" | "not_attending";
+  guestToken: string;
+  inviteToken: string;
+}
+
+/**
+ * 決済完了通知データ
+ */
+export interface PaymentCompletedNotification {
+  email: string;
+  nickname: string;
+  eventTitle: string;
+  amount: number;
+  paidAt: string;
+}
+
+/**
  * 通知サービスインターフェース
  */
 export interface INotificationService {
@@ -74,6 +104,18 @@ export interface INotificationService {
   sendAccountStatusChangeNotification(
     data: AccountStatusChangeNotification
   ): Promise<NotificationResult>;
+
+  /**
+   * 参加登録完了通知を送信
+   */
+  sendParticipationRegisteredNotification(
+    data: ParticipationRegisteredNotification
+  ): Promise<NotificationResult>;
+
+  /**
+   * 決済完了通知を送信
+   */
+  sendPaymentCompletedNotification(data: PaymentCompletedNotification): Promise<NotificationResult>;
 }
 
 /**
@@ -93,4 +135,19 @@ export interface IEmailNotificationService {
     message: string;
     details?: Record<string, any>;
   }): Promise<NotificationResult>;
+}
+
+/**
+ * Resendエラータイプ
+ */
+export type ResendErrorType = "transient" | "permanent";
+
+/**
+ * Resendエラー情報
+ */
+export interface ResendErrorInfo {
+  type: ResendErrorType;
+  message: string;
+  statusCode?: number;
+  name?: string;
 }

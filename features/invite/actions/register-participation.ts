@@ -5,6 +5,8 @@ import { cookies } from "next/headers";
 import type { PostgrestError } from "@supabase/supabase-js";
 import { z } from "zod";
 
+import { logger } from "@core/logging/app-logger";
+import { NotificationService } from "@core/notification";
 import { SecureSupabaseClientFactory } from "@core/security/secure-client-factory.impl";
 import {
   logParticipationSecurityEvent,
@@ -632,6 +634,28 @@ export async function registerParticipationAction(
       });
     } catch {
       // クッキー設定失敗はUX低下に留めるため、ユーザー向けエラーにはしない
+    }
+
+    // 11. 参加登録完了通知を送信（失敗してもログのみ記録）
+    try {
+      const supabase = createClient();
+      const notificationService = new NotificationService(supabase);
+      await notificationService.sendParticipationRegisteredNotification({
+        email: processedData.sanitizedEmail,
+        nickname: processedData.sanitizedNickname,
+        eventTitle: event.title,
+        eventDate: event.date,
+        attendanceStatus: participationData.attendanceStatus,
+        guestToken: processedData.guestToken,
+        inviteToken: participationData.inviteToken,
+      });
+    } catch (error) {
+      // 通知失敗はログのみ記録、本処理は継続
+      logger.warn("Failed to send participation notification", {
+        tag: "participationNotification",
+        attendanceId: newAttendanceId,
+        error_message: error instanceof Error ? error.message : "Unknown error",
+      });
     }
 
     return createServerActionSuccess(responseData, "参加登録が完了しました");
