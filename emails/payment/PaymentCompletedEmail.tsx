@@ -2,6 +2,7 @@ import * as React from "react";
 
 import { Heading, Text } from "@react-email/components";
 
+import { Button } from "../_components/Button";
 import { Section } from "../_components/Section";
 import { EmailLayout } from "../_layout/EmailLayout";
 
@@ -10,6 +11,7 @@ export interface PaymentCompletedEmailProps {
   eventTitle: string;
   amount: number;
   paidAt: string;
+  receiptUrl?: string;
 }
 
 export const PaymentCompletedEmail = ({
@@ -17,6 +19,7 @@ export const PaymentCompletedEmail = ({
   eventTitle,
   amount,
   paidAt,
+  receiptUrl,
 }: PaymentCompletedEmailProps) => {
   const formattedAmount = new Intl.NumberFormat("ja-JP", {
     style: "currency",
@@ -97,9 +100,13 @@ export const PaymentCompletedEmail = ({
         </Text>
       </div>
 
-      <Text style={{ margin: "0 0 16px 0", fontSize: "16px", lineHeight: "24px" }}>
-        イベント当日をお楽しみください。
-      </Text>
+      {receiptUrl && (
+        <div style={{ margin: "20px 0", textAlign: "center" }}>
+          <Button href={receiptUrl} variant="primary">
+            レシートを表示
+          </Button>
+        </div>
+      )}
 
       <Text
         style={{
@@ -109,7 +116,7 @@ export const PaymentCompletedEmail = ({
           color: "#6b7280",
         }}
       >
-        ご不明な点がございましたら、イベント主催者にお問い合わせください。
+        ご不明な点がございましたら、主催者にお問い合わせください。
       </Text>
     </EmailLayout>
   );

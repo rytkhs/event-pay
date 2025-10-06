@@ -124,7 +124,7 @@ export const ParticipationRegisteredEmail = ({
       >
         このリンクは他の人と共有しないでください。
         <br />
-        ご不明な点がございましたら、イベント主催者にお問い合わせください。
+        ご不明な点がございましたら、主催者にお問い合わせください。
       </Text>
     </EmailLayout>
   );

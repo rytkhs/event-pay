@@ -23,7 +23,7 @@ export default function GuestNotFoundPage() {
     >
       <div className="mb-6 p-4 bg-info/10 border border-info/20 rounded-lg">
         <p className="text-sm text-info">
-          管理URLを紛失された場合は、イベント主催者にお問い合わせください。
+          管理URLを紛失された場合は、主催者にお問い合わせください。
         </p>
       </div>
     </ErrorLayout>

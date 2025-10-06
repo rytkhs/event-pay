@@ -113,7 +113,7 @@ export default async function GuestPage({ params, searchParams }: GuestPageProps
           <footer className="mt-8 sm:mt-12 text-center" role="contentinfo">
             <div className="text-xs text-muted-foreground leading-relaxed space-y-1 max-w-2xl mx-auto">
               <p>このページは参加者専用の管理ページです。</p>
-              <p>ご質問やご不明点がある場合は、イベント主催者にお問い合わせください。</p>
+              <p>ご不明点がある場合は、主催者にお問い合わせください。</p>
             </div>
           </footer>
         </main>

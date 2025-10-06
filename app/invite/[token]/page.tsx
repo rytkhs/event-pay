@@ -44,7 +44,7 @@ export default async function InvitePage({ params }: InvitePageProps) {
           severity="medium"
           title="無効な招待リンク"
           message={validationResult.errorMessage || "この招待リンクは無効または期限切れです"}
-          description="正しい招待リンクをご確認いただくか、イベント主催者にお問い合わせください。"
+          description="正しい招待リンクをご確認いただくか、主催者にお問い合わせください。"
           showRetry={false}
           showHome={true}
           enableLogging={false}

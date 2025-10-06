@@ -281,6 +281,7 @@ export class NotificationService implements INotificationService {
           eventTitle: data.eventTitle,
           amount: data.amount,
           paidAt: data.paidAt,
+          receiptUrl: data.receiptUrl,
         }),
       };
 

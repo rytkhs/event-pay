@@ -597,6 +597,7 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
             eventTitle: eventData.title,
             amount: payment.amount,
             paidAt: new Date().toISOString(),
+            receiptUrl: charge.receipt_url ?? undefined,
           });
         }
       } catch (error) {

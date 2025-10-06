@@ -11,6 +11,7 @@ import { useToast } from "@core/contexts/toast-context";
 import { useErrorHandler } from "@core/hooks/use-error-handler";
 import { ATTENDANCE_STATUS_LABELS } from "@core/types/enums";
 import { deriveEventStatus } from "@core/utils/derive-event-status";
+import { getModificationRestrictionReason } from "@core/utils/guest-restrictions";
 import { type GuestAttendanceData } from "@core/utils/guest-token";
 import { maskEmail } from "@core/utils/mask";
 import { sanitizeForEventPay } from "@core/utils/sanitize";
@@ -50,6 +51,21 @@ function getConnectAccountErrorMessage(errorCode?: string): string {
     default:
       return "オンライン決済に問題が発生しました。現金決済をご利用いただくか、主催者にお問い合わせください。";
   }
+}
+
+/**
+ * 変更不可の理由に応じたメッセージを取得
+ */
+function getModificationRestrictionMessage(attendance: GuestAttendanceData): string {
+  const reason = getModificationRestrictionReason(attendance);
+
+  if (reason === "canceled") {
+    return "このイベントは中止されているため、参加状況を変更できません。";
+  } else if (reason === "deadline_passed") {
+    return "参加登録の締切を過ぎているため、参加状況を変更できません。";
+  }
+
+  return "参加状況の変更期限を過ぎているため、現在変更できません。";
 }
 
 export function GuestManagementForm({ attendance, canModify }: GuestManagementFormProps) {
@@ -196,9 +212,9 @@ export function GuestManagementForm({ attendance, canModify }: GuestManagementFo
               <span className="sr-only" id="modification-disabled-title">
                 参加状況変更不可
               </span>
-              参加状況の変更期限を過ぎているため、現在変更できません。
+              {getModificationRestrictionMessage(attendance)}
               <br />
-              ご質問やご不明点がある場合は、イベント主催者にお問い合わせください。
+              ご質問やご不明点がある場合は、主催者にお問い合わせください。
             </AlertDescription>
           </Alert>
 

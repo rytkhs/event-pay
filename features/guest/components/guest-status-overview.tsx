@@ -4,9 +4,13 @@ import React from "react";
 
 import { Ticket, CreditCard, Clock, CheckCircle, AlertCircle } from "lucide-react";
 
+import { getPaymentDeadlineStatus } from "@core/utils/guest-restrictions";
 import { type GuestAttendanceData } from "@core/utils/guest-token";
 import { toSimplePaymentStatus, isPaymentCompleted } from "@core/utils/payment-status-mapper";
-import { canCreateStripeSession } from "@core/validation/payment-eligibility";
+import {
+  canCreateStripeSession,
+  type PaymentEligibilityResult,
+} from "@core/validation/payment-eligibility";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -16,6 +20,33 @@ interface GuestStatusOverviewProps {
   scrollTargetId?: string;
   onPaymentClick?: () => Promise<void>;
   isProcessingPayment?: boolean;
+}
+
+/**
+ * 決済可否状況に応じたメッセージを取得
+ */
+function getPaymentEligibilityMessage(
+  attendance: GuestAttendanceData,
+  eligibility: PaymentEligibilityResult
+): React.ReactNode {
+  const deadlineStatus = getPaymentDeadlineStatus(attendance);
+
+  if (deadlineStatus === "grace_period") {
+    return (
+      <div className="text-orange-600 bg-orange-50 p-3 rounded-md border border-orange-200">
+        <p className="font-medium">決済期限を過ぎています。お早めに決済を完了してください。</p>
+        <p className="mt-1 text-xs">
+          猶予中のため、まだ決済が可能です。期限が過ぎると決済できなくなります。
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="text-red-600">
+      {eligibility.reason || "現在このイベントでは決済できません。"}
+    </div>
+  );
 }
 
 export function GuestStatusOverview({
@@ -148,11 +179,29 @@ export function GuestStatusOverview({
             <Ticket className="h-4 w-4 mr-2" /> 参加状況を変更
           </Button>
         </div>
-        {/* 期限超過などで決済不可の場合の案内 */}
-        {shouldShowPayment && !isProcessingPayment && !eligibility.isEligible && (
-          <div className="mt-3 text-sm text-red-600" aria-live="polite">
-            {eligibility.reason || "現在このイベントでは決済できません。"}
-          </div>
+        {/* 期限超過などで決済不可、または猶予期間中の場合の案内 */}
+        {shouldShowPayment && !isProcessingPayment && (
+          <>
+            {/* 決済不可の場合 */}
+            {!eligibility.isEligible && (
+              <div className="mt-3 text-sm" aria-live="polite">
+                {getPaymentEligibilityMessage(attendance, eligibility)}
+              </div>
+            )}
+            {/* 猶予期間中の警告（決済可能だが注意喚起） */}
+            {eligibility.isEligible && getPaymentDeadlineStatus(attendance) === "grace_period" && (
+              <div className="mt-3 text-sm" aria-live="polite">
+                <div className="text-orange-600 bg-orange-50 p-3 rounded-md border border-orange-200">
+                  <p className="font-medium">
+                    決済期限を過ぎています。お早めに決済を完了してください。
+                  </p>
+                  <p className="mt-1 text-xs">
+                    猶予中のため、まだ決済が可能です。期限が過ぎると決済できなくなります。
+                  </p>
+                </div>
+              </div>
+            )}
+          </>
         )}
       </div>
     </Card>

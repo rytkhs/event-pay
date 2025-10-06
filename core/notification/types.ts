@@ -80,6 +80,8 @@ export interface PaymentCompletedNotification {
   eventTitle: string;
   amount: number;
   paidAt: string;
+  /** Stripeの公式レシートURL（オプショナル） */
+  receiptUrl?: string;
 }
 
 /**
