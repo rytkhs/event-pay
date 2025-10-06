@@ -243,7 +243,10 @@ export function UnifiedRestrictionNoticeV2({
   // Debug Information
   // ---------------------------------------------------------------------------
 
-  if (debug) {
+  // debug情報は開発環境のみの機能なので、console.logは許容範囲内
+  // ただし、将来的な監視基盤のためにloggerに統一
+  if (debug && typeof window !== "undefined" && process.env.NODE_ENV === "development") {
+    // eslint-disable-next-line no-console
     console.log("[UnifiedRestrictionNoticeV2] Render state:", {
       restrictions,
       formData,

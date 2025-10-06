@@ -6,6 +6,8 @@
 
 import { useCallback, useMemo, useState, useEffect, useDeferredValue, useRef } from "react";
 
+import { logger } from "@core/logging/app-logger";
+
 import {
   RestrictionContext,
   FormDataSnapshot,
@@ -172,9 +174,12 @@ export function useUnifiedRestrictions(
       }));
 
       if (debug) {
-        console.log("[useUnifiedRestrictions] Evaluation completed", {
-          restrictionState,
-          fieldRestrictions: Object.fromEntries(fieldRestrictions),
+        logger.debug("Unified restrictions evaluation completed", {
+          tag: "use-unified-restrictions",
+          structural_count: restrictionState.structural.length,
+          conditional_count: restrictionState.conditional.length,
+          advisory_count: restrictionState.advisory.length,
+          field_restrictions_count: fieldRestrictions.size,
         });
       }
     } catch (error) {
@@ -197,7 +202,11 @@ export function useUnifiedRestrictions(
       }));
 
       if (debug) {
-        console.error("[useUnifiedRestrictions] Evaluation failed", error);
+        logger.error("Unified restrictions evaluation failed", {
+          tag: "use-unified-restrictions",
+          error_name: error instanceof Error ? error.name : "Unknown",
+          error_message: errorMessage,
+        });
       }
     }
   }, [stableContext, stableFormData, disableAutoUpdate, debug, fallbackOnError]);
@@ -216,7 +225,12 @@ export function useUnifiedRestrictions(
     const unsubscribeChange = engineRef.current?.onRestrictionChange(
       (event: RestrictionChangeEvent) => {
         if (debug) {
-          console.log("[useUnifiedRestrictions] Restriction changed", event);
+          logger.debug("Restriction changed", {
+            tag: "use-unified-restrictions",
+            restriction_field: event.field,
+            old_value: event.oldValue,
+            new_value: event.newValue,
+          });
         }
       }
     );

@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { Metadata } from "next";
 
 import { getCurrentUser } from "@core/auth/auth-utils";
+import { logger } from "@core/logging/app-logger";
 import { createCachedActions } from "@core/utils/cache-helpers";
 
 import {
@@ -141,7 +142,12 @@ export default async function ParticipantsManagementPage({
       />
     );
   } catch (error) {
-    console.error("Participants management page error:", error);
+    logger.error("Participants management page error", {
+      tag: "participants-page",
+      event_id: params?.id,
+      error_name: error instanceof Error ? error.name : "Unknown",
+      error_message: error instanceof Error ? error.message : String(error),
+    });
     throw error;
   }
 }

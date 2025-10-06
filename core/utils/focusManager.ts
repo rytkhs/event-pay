@@ -113,7 +113,6 @@ export class FocusManager {
         }
       } catch {
         // フォーカス処理でエラーが発生した場合は無視
-        // console.warn("Focus trap error:", error);
       }
     };
 
@@ -137,7 +136,7 @@ export class FocusManager {
         element.focus();
       }
     } catch {
-      // console.warn("Focus restore error:", error);
+      // フォーカス復元エラーは無視
     }
   }
 
@@ -155,7 +154,7 @@ export class FocusManager {
         errorElement.focus();
       }
     } catch {
-      // console.warn("Focus first error failed:", error);
+      // フォーカスエラーは無視
     }
   }
 

@@ -27,7 +27,6 @@ export const useFocusManagement = (): FocusManagementHook => {
       sortedElements[0].focus();
     } catch {
       // エラーログを出力しない（アクセシビリティ機能の警告は不要）
-      // console.warn("Focus first error failed:", error);
     }
   }, []);
 

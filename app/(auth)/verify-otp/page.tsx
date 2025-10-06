@@ -69,7 +69,6 @@ function VerifyOtpContent() {
         }
       }
     } catch {
-      // console.error("OTP verification error:", _);
       setError("認証に失敗しました。再度お試しください。");
     } finally {
       setLoading(false);

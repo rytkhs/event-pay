@@ -2,6 +2,8 @@
  * 制限エンジン - 制限判定の中核ロジック
  */
 
+import { logger } from "@core/logging/app-logger";
+
 import { ALL_RESTRICTION_RULES } from "./rules";
 import {
   RestrictionContext,
@@ -75,10 +77,12 @@ export class RestrictionEngine {
 
       if (this.config.debug) {
         const duration = performance.now() - startTime;
-        console.log(`[RestrictionEngine] Evaluation completed in ${duration.toFixed(2)}ms`, {
-          context,
-          formData,
-          result: restrictionState,
+        logger.debug(`Restriction evaluation completed in ${duration.toFixed(2)}ms`, {
+          tag: "restriction-engine",
+          duration_ms: duration,
+          has_structural: restrictionState.structural.length > 0,
+          has_conditional: restrictionState.conditional.length > 0,
+          has_advisory: restrictionState.advisory.length > 0,
         });
       }
 
@@ -321,7 +325,11 @@ export class RestrictionEngine {
       try {
         callback(event);
       } catch (error) {
-        console.error("Error in restriction change callback:", error);
+        logger.error("Error in restriction change callback", {
+          tag: "restriction-engine",
+          error_name: error instanceof Error ? error.name : "Unknown",
+          error_message: error instanceof Error ? error.message : String(error),
+        });
       }
     });
   }
@@ -331,14 +339,23 @@ export class RestrictionEngine {
    */
   private emitError(event: RestrictionErrorEvent): void {
     if (this.config.debug) {
-      console.error("[RestrictionEngine] Error:", event);
+      logger.error("Restriction Engine error", {
+        tag: "restriction-engine",
+        error_type: event.type,
+        error_message: event.message,
+        field: event.field,
+      });
     }
 
     this.listeners.onError.forEach((callback) => {
       try {
         callback(event);
       } catch (error) {
-        console.error("Error in restriction error callback:", error);
+        logger.error("Error in restriction error callback", {
+          tag: "restriction-engine",
+          error_name: error instanceof Error ? error.name : "Unknown",
+          error_message: error instanceof Error ? error.message : String(error),
+        });
       }
     });
   }

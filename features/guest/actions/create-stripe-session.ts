@@ -3,6 +3,7 @@
 import { z } from "zod";
 
 import type { ErrorCode } from "@core/api/problem-details";
+import { logger } from "@core/logging/app-logger";
 import { enforceRateLimit, buildKey, POLICIES } from "@core/rate-limit";
 import { SecureSupabaseClientFactory } from "@core/security/secure-client-factory.impl";
 import { getPaymentService } from "@core/services";
@@ -22,7 +23,11 @@ async function ensurePaymentServiceRegistration() {
     // PaymentService実装を動的にインポートして登録
     await import("@features/payments/core-bindings");
   } catch (error) {
-    console.error("Failed to register PaymentService implementation:", error);
+    logger.error("Failed to register PaymentService implementation", {
+      tag: "payment-service-init",
+      error_name: error instanceof Error ? error.name : "Unknown",
+      error_message: error instanceof Error ? error.message : String(error),
+    });
     throw new Error("PaymentService initialization failed");
   }
 }

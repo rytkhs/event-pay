@@ -5,6 +5,7 @@
 
 import { createClient } from "@supabase/supabase-js";
 
+import { logger } from "@core/logging/app-logger";
 import {
   registerStripeConnectPort,
   type StripeAccountStatus,
@@ -47,7 +48,12 @@ export function registerStripeConnectAdapters(): void {
           stripeAccountId: accountId,
         });
       } catch (error) {
-        console.error("Stripe アカウント adapter error:", error);
+        logger.error("Stripe Connect adapter error: updateAccountFromWebhook", {
+          tag: "stripe-connect-adapter",
+          account_id: accountId,
+          error_name: error instanceof Error ? error.name : "Unknown",
+          error_message: error instanceof Error ? error.message : String(error),
+        });
         throw error;
       }
     },
@@ -69,7 +75,12 @@ export function registerStripeConnectAdapters(): void {
         const account = await service.getConnectAccountByUser(userId);
         return account ? { status: account.status as StripeAccountStatusLike } : null;
       } catch (error) {
-        console.error("Stripe アカウント adapter error:", error);
+        logger.error("Stripe Connect adapter error: getConnectAccountByUser", {
+          tag: "stripe-connect-adapter",
+          user_id: userId,
+          error_name: error instanceof Error ? error.name : "Unknown",
+          error_message: error instanceof Error ? error.message : String(error),
+        });
         throw error;
       }
     },
@@ -102,7 +113,12 @@ export function registerStripeConnectAdapters(): void {
             : undefined,
         };
       } catch (error) {
-        console.error("Stripe アカウント adapter error:", error);
+        logger.error("Stripe Connect adapter error: getAccountInfo", {
+          tag: "stripe-connect-adapter",
+          account_id: accountId,
+          error_name: error instanceof Error ? error.name : "Unknown",
+          error_message: error instanceof Error ? error.message : String(error),
+        });
         throw error;
       }
     },
@@ -129,7 +145,13 @@ export function registerStripeConnectAdapters(): void {
           stripeAccountId: input.stripeAccountId,
         });
       } catch (error) {
-        console.error("Stripe アカウント adapter error:", error);
+        logger.error("Stripe Connect adapter error: updateAccountStatus", {
+          tag: "stripe-connect-adapter",
+          user_id: input.userId,
+          stripe_account_id: input.stripeAccountId,
+          error_name: error instanceof Error ? error.name : "Unknown",
+          error_message: error instanceof Error ? error.message : String(error),
+        });
         throw error;
       }
     },

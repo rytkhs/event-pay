@@ -5,6 +5,8 @@
 
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 
+import { logger } from "@core/logging/app-logger";
+
 import type { Database } from "@/types/database";
 
 /**
@@ -72,9 +74,10 @@ export function extractAuthTokensFromHeaders(headers: Headers): AuthHeaderOption
  */
 export function debugAuthHeaders(options: AuthHeaderOptions): void {
   if (process.env.NODE_ENV === "development") {
-    console.log("🔐 Auth Headers Debug:", {
-      inviteToken: options.inviteToken ? `${options.inviteToken.substring(0, 8)}...` : "None",
-      guestToken: options.guestToken ? `${options.guestToken.substring(0, 8)}...` : "None",
+    logger.debug("Auth Headers Debug", {
+      tag: "auth-headers",
+      invite_token: options.inviteToken ? `${options.inviteToken.substring(0, 8)}...` : "None",
+      guest_token: options.guestToken ? `${options.guestToken.substring(0, 8)}...` : "None",
     });
   }
 }
