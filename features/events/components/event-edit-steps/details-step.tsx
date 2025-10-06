@@ -35,7 +35,6 @@ export function DetailsStep({
   control,
   isPending,
   changedFields,
-  errors,
   hasAttendees,
   attendeeCount,
 }: DetailsStepProps) {

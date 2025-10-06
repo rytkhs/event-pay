@@ -42,7 +42,6 @@ export function PaymentSettingsStep({
   control,
   isPending,
   changedFields,
-  errors,
   isFreeEvent,
   hasStripeSelected,
   canUseOnlinePayments,

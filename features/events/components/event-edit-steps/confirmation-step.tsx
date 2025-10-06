@@ -3,11 +3,9 @@
 import { Check } from "lucide-react";
 
 import type { Event } from "@core/types/models";
-import { formatUtcToDatetimeLocal } from "@core/utils/timezone";
 
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-
 import type { ChangeItem } from "@/components/ui/change-confirmation-dialog";
 
 import { EventFormTimeline } from "../event-form-timeline";

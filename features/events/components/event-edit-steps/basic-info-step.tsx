@@ -37,9 +37,7 @@ export function BasicInfoStep({
   control,
   isPending,
   changedFields,
-  errors,
   isFieldEditable,
-  event,
 }: BasicInfoStepProps) {
   return (
     <Card>
