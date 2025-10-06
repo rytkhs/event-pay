@@ -228,8 +228,8 @@ export function useUnifiedRestrictions(
           logger.debug("Restriction changed", {
             tag: "use-unified-restrictions",
             restriction_field: event.field,
-            old_value: event.oldValue,
-            new_value: event.newValue,
+            old_value: event.previousRestriction,
+            new_value: event.restriction,
           });
         }
       }
