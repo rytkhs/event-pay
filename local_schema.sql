@@ -2849,6 +2849,14 @@ COMMENT ON POLICY "guest_token_can_view_own_payments" ON "public"."payments" IS 
 
 
 
+CREATE POLICY "invite_token_can_view_attendances" ON "public"."attendances" FOR SELECT TO "authenticated", "anon" USING ("public"."can_access_event"("event_id"));
+
+
+
+COMMENT ON POLICY "invite_token_can_view_attendances" ON "public"."attendances" IS '招待トークンを持つユーザーがイベントの参加者情報を閲覧可能にする。定員判定のための参加者数カウントに使用される。';
+
+
+
 ALTER TABLE "public"."payment_disputes" ENABLE ROW LEVEL SECURITY;
 
 
