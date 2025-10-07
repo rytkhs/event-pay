@@ -1,13 +1,13 @@
 [data-lp] {
   /* ミント×ネイビーカラーパレット */
-  --main-color: #2ec4b6; /* メインカラー（プライマリ） */
+  --main-color: #22a6ac; /* メインカラー（プライマリ） */
   --accent-color: #3a86ff; /* サブカラー（アクセント） */
   --base-color: #ffffff; /* 面 */
   --secondary-bg: #f8fafc; /* 背景 */
   --text-color: #0b1220; /* 本文テキスト */
   --sub-text: #475569; /* サブテキスト */
   --dark-bg: #0f172a; /* ディープネイビー */
-  --light-mint: rgba(46, 196, 182, 0.1); /* 薄いミント */
+  --light-mint: rgba(34, 166, 172, 0.1); /* 薄いターコイズティール */
 
   /* 追加のステータス色 */
   --success-color: #16a34a; /* 成功 */
@@ -72,7 +72,7 @@
 }
 
 [data-lp] .btn-primary:hover {
-  background-color: #26a498;
+  background-color: #1b8589;
   transform: translateY(-2px);
 }
 
@@ -109,7 +109,7 @@
   width: 100%;
   background: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(10px);
-  border-bottom: 1px solid rgba(0, 163, 136, 0.1);
+  border-bottom: 1px solid rgba(34, 166, 172, 0.1);
   z-index: 1000;
   transition: var(--transition);
   padding: 16px 0;
@@ -181,7 +181,7 @@
   left: 0;
   width: 100%;
   background: white;
-  border-bottom: 1px solid rgba(0, 163, 136, 0.1);
+  border-bottom: 1px solid rgba(34, 166, 172, 0.1);
   z-index: 999;
   padding: 20px;
 }
@@ -700,12 +700,12 @@
 }
 
 [data-lp] .floating-cta .btn {
-  box-shadow: 0 4px 12px rgba(46, 196, 182, 0.3);
+  box-shadow: 0 4px 12px rgba(34, 166, 172, 0.3);
   background-color: var(--main-color);
 }
 
 [data-lp] .floating-cta .btn:hover {
-  background-color: #26a498;
+  background-color: #1b8589;
 }
 
 /* レスポンシブ */

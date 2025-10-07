@@ -16,6 +16,8 @@ const config = {
   moduleFileExtensions: ["ts", "tsx", "js", "json"],
   moduleDirectories: ["node_modules", "<rootDir>"],
   moduleNameMapper: {
+    // Mock server-only package for Jest tests
+    "^server-only$": "<rootDir>/tests/mocks/server-only.js",
     "^@/(.*)$": "<rootDir>/$1",
     "^@core/(.*)$": "<rootDir>/core/$1",
     "^@features/(.*)$": "<rootDir>/features/$1",
