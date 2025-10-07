@@ -6,7 +6,6 @@ import { z } from "zod";
 
 import { getCurrentUser } from "@core/auth/auth-utils";
 import { SecureSupabaseClientFactory } from "@core/security/secure-client-factory.impl";
-import { AdminReason } from "@core/security/secure-client-factory.types";
 import { logSecurityEvent } from "@core/security/security-logger";
 import {
   type ServerActionResult,
@@ -90,15 +89,9 @@ export async function createEventAction(formData: FormData): Promise<CreateEvent
 
       if (fee > 0 && wantsStripe) {
         const factory = SecureSupabaseClientFactory.getInstance();
-        const adminClient = await factory.createAuditedAdminClient(
-          AdminReason.EVENT_MANAGEMENT,
-          "create_event_precheck",
-          {
-            userId: user.id,
-          }
-        );
+        const authenticatedClient = factory.createAuthenticatedClient();
 
-        const { data: connectAccount, error: connectError } = await adminClient
+        const { data: connectAccount, error: connectError } = await authenticatedClient
           .from("stripe_connect_accounts")
           .select("status, payouts_enabled")
           .eq("user_id", user.id)
@@ -131,19 +124,11 @@ export async function createEventAction(formData: FormData): Promise<CreateEvent
     const inviteToken = generateInviteToken();
     const eventData = buildEventData(validatedData, user.id, inviteToken);
 
-    // Service Roleクライアントを使用してRLS制約を回避
+    // 認証済みクライアントを使用（RLSポリシーで自分のイベント作成を許可）
     const secureFactory = SecureSupabaseClientFactory.getInstance();
-    const adminClient = await secureFactory.createAuditedAdminClient(
-      AdminReason.EVENT_MANAGEMENT,
-      "create_event",
-      {
-        userId: user.id,
-        eventTitle: eventData.title,
-        inviteToken: eventData.invite_token,
-      }
-    );
+    const authenticatedClient = secureFactory.createAuthenticatedClient();
 
-    const { data: createdEvent, error: dbError } = await adminClient
+    const { data: createdEvent, error: dbError } = await authenticatedClient
       .from("events")
       .insert(eventData)
       .select()

@@ -870,13 +870,6 @@ export type Database = {
       };
     };
     Enums: {
-      admin_reason_enum:
-        | "user_cleanup"
-        | "test_data_setup"
-        | "system_maintenance"
-        | "emergency_access"
-        | "data_migration"
-        | "security_investigation";
       attendance_status_enum: "attending" | "not_attending" | "maybe";
       payment_method_enum: "stripe" | "cash";
       payment_status_enum:
@@ -1025,14 +1018,6 @@ export const Constants = {
   },
   public: {
     Enums: {
-      admin_reason_enum: [
-        "user_cleanup",
-        "test_data_setup",
-        "system_maintenance",
-        "emergency_access",
-        "data_migration",
-        "security_investigation",
-      ],
       attendance_status_enum: ["attending", "not_attending", "maybe"],
       payment_method_enum: ["stripe", "cash"],
       payment_status_enum: [

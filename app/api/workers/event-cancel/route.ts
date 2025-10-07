@@ -99,7 +99,7 @@ export async function POST(request: NextRequest) {
     // 管理者クライアント（Service Role）で参加者メールを取得
     const secureFactory = SecureSupabaseClientFactory.getInstance();
     const admin = await secureFactory.createAuditedAdminClient(
-      AdminReason.EVENT_MANAGEMENT,
+      AdminReason.NOTIFICATION_PROCESSING,
       "event-cancel-worker",
       { additionalInfo: { correlation_id: corr, eventId } }
     );

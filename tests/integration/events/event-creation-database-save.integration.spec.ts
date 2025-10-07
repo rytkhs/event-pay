@@ -606,33 +606,26 @@ describe("イベント作成統合テスト - 1.3 データベース保存の確
         const event = result.data;
         createdEventIds.push(event.id);
 
-        // Service Roleクライアントで作成されたデータに直接アクセス可能であることを確認
+        // 認証済みクライアントで作成されたイベントにアクセス可能であることを確認
         const secureFactory = SecureSupabaseClientFactory.getInstance();
 
-        // 監査付きAdminクライアントを使用
-        const adminClient = await secureFactory.createAuditedAdminClient(
-          AdminReason.EVENT_MANAGEMENT,
-          "RLS bypass verification test",
-          {
-            eventId: event.id,
-            userId: testUser.id,
-          }
-        );
+        // 認証済みクライアントを使用（RLSポリシーで自分のイベントにアクセス可能）
+        const authenticatedClient = secureFactory.createAuthenticatedClient();
 
-        // RLS制約を回避してイベントにアクセス可能
-        const { data: adminEventAccess, error: adminError } = await adminClient
+        // RLSポリシーに従って自分のイベントにアクセス可能
+        const { data: eventAccess, error: accessError } = await authenticatedClient
           .from("events")
           .select("id, title, created_by, created_at, updated_at, invite_token")
           .eq("id", event.id)
           .single();
 
-        expect(adminError).toBeNull();
-        expect(adminEventAccess).toBeDefined();
-        if (adminEventAccess) {
-          expect(adminEventAccess.id).toBe(event.id);
-          expect(adminEventAccess.title).toBe("Service Role権限テスト");
-          expect(adminEventAccess.created_by).toBe(testUser.id);
-          expect(adminEventAccess.invite_token).toBeDefined();
+        expect(accessError).toBeNull();
+        expect(eventAccess).toBeDefined();
+        if (eventAccess) {
+          expect(eventAccess.id).toBe(event.id);
+          expect(eventAccess.title).toBe("Service Role権限テスト");
+          expect(eventAccess.created_by).toBe(testUser.id);
+          expect(eventAccess.invite_token).toBeDefined();
         }
       }
     });

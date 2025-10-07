@@ -2,8 +2,6 @@
  * メール通知サービスの実装
  */
 
-import "server-only";
-
 import { randomUUID } from "crypto";
 
 import * as React from "react";

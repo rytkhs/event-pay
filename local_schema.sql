@@ -59,19 +59,6 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp" WITH SCHEMA "extensions";
 
 
 
-CREATE TYPE "public"."admin_reason_enum" AS ENUM (
-    'user_cleanup',
-    'test_data_setup',
-    'system_maintenance',
-    'emergency_access',
-    'data_migration',
-    'security_investigation'
-);
-
-
-ALTER TYPE "public"."admin_reason_enum" OWNER TO "postgres";
-
-
 CREATE TYPE "public"."attendance_status_enum" AS ENUM (
     'attending',
     'not_attending',
@@ -2772,6 +2759,14 @@ CREATE POLICY "Service role can manage settlements" ON "public"."settlements" TO
 
 
 CREATE POLICY "Service role can manage stripe/payout info" ON "public"."stripe_connect_accounts" TO "service_role" USING (true) WITH CHECK (true);
+
+
+
+CREATE POLICY "Users can insert their own events" ON "public"."events" FOR INSERT TO "authenticated" WITH CHECK (("auth"."uid"() = "created_by"));
+
+
+
+COMMENT ON POLICY "Users can insert their own events" ON "public"."events" IS '認証済みユーザーが自分のイベント(created_by = auth.uid())を作成できるようにするポリシー';
 
 
 

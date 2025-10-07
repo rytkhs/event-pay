@@ -4,15 +4,7 @@
 // 循環依存を避けるため、ここでは再エクスポートしません
 // 必要な場合は direct import を使用: import { GuestErrorCode } from "@core/security/guest-token-errors";
 
-// 管理者権限使用理由
-export enum AdminReason {
-  USER_CLEANUP = "user_cleanup",
-  TEST_DATA_SETUP = "test_data_setup",
-  SYSTEM_MAINTENANCE = "system_maintenance",
-  EMERGENCY_ACCESS = "emergency_access",
-  DATA_MIGRATION = "data_migration",
-  SECURITY_INVESTIGATION = "security_investigation",
-}
+import type { AdminReason } from "@core/security/secure-client-factory.types";
 
 // 疑わしい活動の種類
 export enum SuspiciousActivityType {

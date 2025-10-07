@@ -2,8 +2,6 @@
 
 import { verifyEventAccess, handleDatabaseError } from "@core/auth/event-authorization";
 import { logger } from "@core/logging/app-logger";
-import { SecureSupabaseClientFactory } from "@core/security/secure-client-factory.impl";
-import { AdminReason } from "@core/security/secure-client-factory.types";
 import { createClient } from "@core/supabase/server";
 import {
   type SimplePaymentStatus,
@@ -30,11 +28,6 @@ export async function getAllCashPaymentIdsAction(
     const { user, eventId: validatedEventId } = await verifyEventAccess(eventId);
 
     const supabase = createClient();
-    const factory = SecureSupabaseClientFactory.getInstance();
-    const admin = await factory.createAuditedAdminClient(
-      AdminReason.CSV_EXPORT,
-      "app/events/actions/get-all-cash-payment-ids"
-    );
 
     // attendances をベースに latest payments を 1 件だけ付ける
     let query = supabase
@@ -125,7 +118,7 @@ export async function getAllCashPaymentIdsAction(
     const resultIds = truncated ? paymentIds.slice(0, max) : paymentIds;
 
     // 監査ログ（件数のみ）
-    await admin.from("system_logs").insert({
+    await supabase.from("system_logs").insert({
       operation_type: "collect_cash_payment_ids",
       details: {
         event_id: validatedEventId,

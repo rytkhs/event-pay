@@ -56,7 +56,7 @@ export class DatabaseStateHelper {
     try {
       const clientFactory = SecureSupabaseClientFactory.getInstance();
       const adminClient = await clientFactory.createAuditedAdminClient(
-        AdminReason.TEST_DATA_CLEANUP,
+        AdminReason.TEST_DATA_SETUP,
         "Verifying attendance count for race condition test"
       );
 
@@ -106,7 +106,7 @@ export class DatabaseStateHelper {
     try {
       const clientFactory = SecureSupabaseClientFactory.getInstance();
       const adminClient = await clientFactory.createAuditedAdminClient(
-        AdminReason.TEST_DATA_CLEANUP,
+        AdminReason.TEST_DATA_SETUP,
         "Verifying payment consistency for race condition test"
       );
 
@@ -185,7 +185,7 @@ export class DatabaseStateHelper {
     try {
       const clientFactory = SecureSupabaseClientFactory.getInstance();
       const adminClient = await clientFactory.createAuditedAdminClient(
-        AdminReason.TEST_DATA_CLEANUP,
+        AdminReason.TEST_DATA_SETUP,
         "Checking for orphaned payments in race condition test"
       );
 
@@ -246,7 +246,7 @@ export class DatabaseStateHelper {
     try {
       const clientFactory = SecureSupabaseClientFactory.getInstance();
       const adminClient = await clientFactory.createAuditedAdminClient(
-        AdminReason.TEST_DATA_CLEANUP,
+        AdminReason.TEST_DATA_SETUP,
         "Checking for duplicate emails in race condition test"
       );
 

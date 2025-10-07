@@ -115,7 +115,7 @@ export async function GET(request: NextRequest) {
     // ゲストトークンでの権限確認は事前に実施済み（APIレベルでヘッダー検証）
     const secureClientFactory = SecureSupabaseClientFactory.getInstance();
     const supabase = await secureClientFactory.createAuditedAdminClient(
-      AdminReason.SECURITY_INVESTIGATION,
+      AdminReason.PAYMENT_PROCESSING,
       "PAYMENT_SESSION_VERIFICATION",
       {
         additionalInfo: {

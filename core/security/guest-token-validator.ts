@@ -119,7 +119,7 @@ export class RLSGuestTokenValidator implements IGuestTokenValidator {
       const guestClient = this.clientFactory.createGuestClient(token);
 
       // ゲストトークンで直接attendanceを検索
-      let { data: attendance, error } = await guestClient
+      const { data: attendance, error } = await guestClient
         .from("attendances")
         .select(
           `
@@ -140,43 +140,6 @@ export class RLSGuestTokenValidator implements IGuestTokenValidator {
         )
         .eq("guest_token", token)
         .single(); // トークンが有効なら必ず1件のみ取得される
-
-      // テスト環境でRLSが機能しない場合のフォールバック
-      if ((error || !attendance) && process.env.NODE_ENV === "test") {
-        // Service Roleを使って直接クエリを実行
-        const adminClient = await this.clientFactory.createAuditedAdminClient(
-          "TEST_DATA_SETUP" as any,
-          "Fallback guest token validation in test environment",
-          { testMode: true }
-        );
-
-        const { data: fallbackAttendance, error: fallbackError } = await adminClient
-          .from("attendances")
-          .select(
-            `
-            id,
-            event_id,
-            status,
-            guest_token,
-            event:events (
-              id,
-              date,
-              registration_deadline,
-              payment_deadline,
-              allow_payment_after_deadline,
-              grace_period_days,
-              canceled_at
-            )
-          `
-          )
-          .eq("guest_token", token)
-          .single();
-
-        if (!fallbackError && fallbackAttendance) {
-          attendance = fallbackAttendance;
-          error = null;
-        }
-      }
 
       if (error || !attendance) {
         await this.safeLogGuestAccess(token, "VALIDATE_TOKEN_DETAILS", false, {
@@ -261,7 +224,7 @@ export class RLSGuestTokenValidator implements IGuestTokenValidator {
       const guestClient = this.clientFactory.createGuestClient(token);
 
       // 詳細な参加データを取得
-      let { data: attendance, error } = await guestClient
+      const { data: attendance, error } = await guestClient
         .from("attendances")
         .select(
           `
@@ -301,61 +264,6 @@ export class RLSGuestTokenValidator implements IGuestTokenValidator {
         .order("created_at", { ascending: false, referencedTable: "payments" })
         .limit(1, { referencedTable: "payments" })
         .single();
-
-      // テスト環境でRLSが機能しない場合のフォールバック
-      if ((error || !attendance) && process.env.NODE_ENV === "test") {
-        // Service Roleを使って直接クエリを実行
-        const adminClient = await this.clientFactory.createAuditedAdminClient(
-          "TEST_DATA_SETUP" as any,
-          "Fallback guest token validation with details in test environment",
-          { testMode: true }
-        );
-
-        const { data: fallbackAttendance, error: fallbackError } = await adminClient
-          .from("attendances")
-          .select(
-            `
-            id,
-            nickname,
-            email,
-            status,
-            guest_token,
-            created_at,
-            updated_at,
-            event:events (
-              id,
-              title,
-              description,
-              date,
-              location,
-              fee,
-              capacity,
-              registration_deadline,
-              payment_deadline,
-              allow_payment_after_deadline,
-              grace_period_days,
-              created_by,
-              canceled_at
-            ),
-            payment:payments (
-              id,
-              amount,
-              method,
-              status,
-              created_at
-            )
-          `
-          )
-          .eq("guest_token", token)
-          .order("created_at", { ascending: false, referencedTable: "payments" })
-          .limit(1, { referencedTable: "payments" })
-          .single();
-
-        if (!fallbackError && fallbackAttendance) {
-          attendance = fallbackAttendance;
-          error = null;
-        }
-      }
 
       if (error || !attendance) {
         await this.safeLogGuestAccess(token, "VALIDATE_TOKEN_DETAILS", false, {

@@ -103,7 +103,7 @@ test.describe("招待リンクアクセス（E2E）", () => {
     await expect(page.getByText("無効な招待リンク").first()).toBeVisible();
     // エラーメッセージまたは説明文が表示されることを確認
     await expect(
-      page.getByText("正しい招待リンクをご確認いただくか、イベント主催者にお問い合わせください")
+      page.getByText("正しい招待リンクをご確認いただくか、主催者にお問い合わせください")
     ).toBeVisible();
 
     // 参加申し込みボタンが表示されないことを確認

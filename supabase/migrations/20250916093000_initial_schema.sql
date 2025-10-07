@@ -60,19 +60,6 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp" WITH SCHEMA "extensions";
 
 
 
-CREATE TYPE "public"."admin_reason_enum" AS ENUM (
-    'user_cleanup',
-    'test_data_setup',
-    'system_maintenance',
-    'emergency_access',
-    'data_migration',
-    'security_investigation'
-);
-
-
-ALTER TYPE "public"."admin_reason_enum" OWNER TO "postgres";
-
-
 CREATE TYPE "public"."attendance_status_enum" AS ENUM (
     'attending',
     'not_attending',

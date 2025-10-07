@@ -5,8 +5,6 @@ import { headers } from "next/headers";
 import { verifyEventAccess } from "@core/auth/event-authorization";
 import { logger } from "@core/logging/app-logger";
 import { enforceRateLimit, buildKey, POLICIES } from "@core/rate-limit";
-import { SecureSupabaseClientFactory } from "@core/security/secure-client-factory.impl";
-import { AdminReason } from "@core/security/secure-client-factory.types";
 import { createClient } from "@core/supabase/server";
 import {
   type SimplePaymentStatus,
@@ -57,11 +55,6 @@ export async function exportParticipantsCsvAction(params: unknown): Promise<{
     }
 
     const supabase = createClient();
-    const factory = SecureSupabaseClientFactory.getInstance();
-    const admin = await factory.createAuditedAdminClient(
-      AdminReason.CSV_EXPORT,
-      "app/events/actions/export-participants-csv"
-    );
 
     // CSVデータ取得用クエリの構築
     let query = supabase
@@ -187,7 +180,7 @@ export async function exportParticipantsCsvAction(params: unknown): Promise<{
     const filename = `participants-${validatedEventId}-${dateStr}.csv`;
 
     // 監査ログ記録
-    await admin.from("system_logs").insert({
+    await supabase.from("system_logs").insert({
       operation_type: "participants_csv_export",
       details: {
         event_id: validatedEventId,

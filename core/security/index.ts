@@ -77,17 +77,9 @@ export {
 // } from "./crypto";
 
 // ====================================================================
-// 7. 管理者操作
-// ====================================================================
-// 循環依存を回避するため、admin-operationsは直接インポートしてください:
-// import { AdminOperations, deleteUserById } from "@core/security/admin-operations";
-export type { AdminOperationResult } from "./admin-operations.types";
-
-// ====================================================================
 // 5. 統合セキュリティファクトリー
 // ====================================================================
 
-import { AdminOperations } from "./admin-operations";
 import { RLSGuestTokenValidator } from "./guest-token-validator";
 import { SecureSupabaseClientFactory } from "./secure-client-factory.impl";
 
@@ -100,7 +92,6 @@ export class SecuritySystemFactory {
   private static instance: SecuritySystemFactory;
   private clientFactory: SecureSupabaseClientFactory;
   private guestValidator: RLSGuestTokenValidator;
-  private adminOps: AdminOperations;
 
   private constructor() {
     // セキュアクライアントファクトリーを初期化
@@ -108,9 +99,6 @@ export class SecuritySystemFactory {
 
     // ゲストトークンバリデーターを初期化
     this.guestValidator = new RLSGuestTokenValidator();
-
-    // 管理者操作を初期化
-    this.adminOps = new AdminOperations();
   }
 
   /**
@@ -138,13 +126,6 @@ export class SecuritySystemFactory {
   }
 
   /**
-   * 管理者操作を取得
-   */
-  public getAdminOperations(): AdminOperations {
-    return this.adminOps;
-  }
-
-  /**
    * システム全体の健全性チェック
    */
   public async healthCheck(): Promise<{
@@ -159,7 +140,6 @@ export class SecuritySystemFactory {
       // 各コンポーネントの健全性をチェック
       components.clientFactory = true;
       components.guestValidator = true;
-      components.adminOps = true;
 
       const healthyComponents = Object.values(components).filter(Boolean).length;
       const totalComponents = Object.keys(components).length;
