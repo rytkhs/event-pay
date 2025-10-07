@@ -17,6 +17,7 @@ export enum AdminReason {
   SECURITY_INVESTIGATION = "security_investigation",
   PAYOUT_PROCESSING = "payout_processing",
   PAYMENT_PROCESSING = "payment_processing",
+  REMINDER_PROCESSING = "reminder_processing",
   CSV_EXPORT = "csv_export",
   EVENT_MANAGEMENT = "event_management",
 }

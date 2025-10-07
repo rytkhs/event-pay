@@ -3,10 +3,15 @@
  */
 
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { addDays, startOfDay, endOfDay } from "date-fns";
+import { addDays } from "date-fns";
 
 import { logger } from "@core/logging/app-logger";
-import { getCurrentJstTime, formatUtcToJst } from "@core/utils/timezone";
+import {
+  getCurrentJstTime,
+  formatUtcToJst,
+  formatDateToJstYmd,
+  convertJstDateToUtcRange,
+} from "@core/utils/timezone";
 
 import type { Database } from "@/types/database";
 
@@ -88,23 +93,27 @@ export class ReminderService {
   private supabase: SupabaseClient<Database, "public">;
   private emailService: IEmailNotificationService;
 
-  constructor(supabase: SupabaseClient<Database, "public">) {
+  constructor(
+    supabase: SupabaseClient<Database, "public">,
+    emailService?: IEmailNotificationService
+  ) {
     this.supabase = supabase;
-    this.emailService = new EmailNotificationService();
+    this.emailService = emailService || new EmailNotificationService();
   }
 
   /**
    * すべてのリマインダーを送信
+   * 各リマインダー種別を並列実行して効率化
    */
   async sendAllReminders(): Promise<ReminderSummary[]> {
-    const summaries: ReminderSummary[] = [];
+    // 3種のリマインダーを並列実行
+    const [responseDeadline, paymentDeadline, eventStart] = await Promise.all([
+      this.sendResponseDeadlineReminders(),
+      this.sendPaymentDeadlineReminders(),
+      this.sendEventStartReminders(),
+    ]);
 
-    // 各リマインダーを順次実行
-    summaries.push(await this.sendResponseDeadlineReminders());
-    summaries.push(await this.sendPaymentDeadlineReminders());
-    summaries.push(await this.sendEventStartReminders());
-
-    return summaries;
+    return [responseDeadline, paymentDeadline, eventStart];
   }
 
   /**
@@ -136,7 +145,6 @@ export class ReminderService {
         `
         )
         .eq("status", "maybe")
-        .not("events.registration_deadline", "is", null)
         .gte("events.registration_deadline", start.toISOString())
         .lte("events.registration_deadline", end.toISOString())
         .is("events.canceled_at", null);
@@ -234,7 +242,8 @@ export class ReminderService {
         .lte("events.payment_deadline", end.toISOString())
         .is("events.canceled_at", null)
         .order("paid_at", { foreignTable: "payments", ascending: false, nullsFirst: false })
-        .order("created_at", { foreignTable: "payments", ascending: false });
+        .order("created_at", { foreignTable: "payments", ascending: false })
+        .limit(1, { foreignTable: "payments" });
 
       if (error) {
         logger.error("Failed to fetch payment deadline targets", { error });
@@ -247,14 +256,7 @@ export class ReminderService {
         };
       }
 
-      // 各attendanceの最新の決済レコードのみを取得（クライアント側でフィルタリング）
-      const uniqueTargets = new Map<string, PaymentDeadlineTarget>();
-      for (const target of targets as any[]) {
-        if (!uniqueTargets.has(target.id)) {
-          uniqueTargets.set(target.id, target as PaymentDeadlineTarget);
-        }
-      }
-      const typedTargets = Array.from(uniqueTargets.values());
+      const typedTargets = targets as unknown as PaymentDeadlineTarget[];
 
       logger.info("Payment deadline targets fetched", {
         totalTargets: typedTargets.length,
@@ -332,7 +334,8 @@ export class ReminderService {
         .lte("events.date", end.toISOString())
         .is("events.canceled_at", null)
         .order("paid_at", { foreignTable: "payments", ascending: false, nullsFirst: false })
-        .order("created_at", { foreignTable: "payments", ascending: false });
+        .order("created_at", { foreignTable: "payments", ascending: false })
+        .limit(1, { foreignTable: "payments" });
 
       if (error) {
         logger.error("Failed to fetch event start targets", { error });
@@ -345,22 +348,7 @@ export class ReminderService {
         };
       }
 
-      // 各attendanceの最新の決済レコードのみを取得（クライアント側でフィルタリング）
-      const uniqueTargets = new Map<string, EventStartTarget>();
-      for (const target of targets as any[]) {
-        if (!uniqueTargets.has(target.id)) {
-          // paymentsが配列の場合は最初の要素のみを保持
-          const processedTarget = {
-            ...target,
-            payments:
-              target.payments && Array.isArray(target.payments)
-                ? target.payments.slice(0, 1)
-                : target.payments,
-          };
-          uniqueTargets.set(target.id, processedTarget as EventStartTarget);
-        }
-      }
-      const typedTargets = Array.from(uniqueTargets.values());
+      const typedTargets = targets as unknown as EventStartTarget[];
 
       logger.info("Event start targets fetched", {
         totalTargets: typedTargets.length,
@@ -503,22 +491,23 @@ export class ReminderService {
   }
 
   /**
-   * 翌日のJST日付範囲を取得
+   * 翌日のJST日付範囲を取得（UTC境界で正確に比較するため）
    */
   private getTomorrowJstRange(): { start: Date; end: Date } {
     const nowJst = getCurrentJstTime();
     const tomorrowJst = addDays(nowJst, 1);
+    const jstYmd = formatDateToJstYmd(tomorrowJst); // 'YYYY-MM-DD'形式
 
-    const start = startOfDay(tomorrowJst);
-    const end = endOfDay(tomorrowJst);
+    // JST日付の00:00:00〜23:59:59.999をUTC範囲に変換
+    const { startOfDay, endOfDay } = convertJstDateToUtcRange(jstYmd);
 
-    return { start, end };
+    return { start: startOfDay, end: endOfDay };
   }
 
   /**
    * バッチ送信処理
    */
-  private async sendBatch<T>(
+  private async sendBatch<T extends { id: string; events: { id: string } }>(
     targets: T[],
     sendFn: (target: T) => Promise<void>,
     batchSize: number = 50
@@ -533,10 +522,18 @@ export class ReminderService {
         try {
           await sendFn(target);
           successCount++;
+          logger.info("Reminder sent successfully", {
+            attendanceId: target.id,
+            eventId: target.events.id,
+          });
         } catch (error) {
           const errorMessage = error instanceof Error ? error.message : String(error);
           failures.push({ target, error: errorMessage });
-          logger.error("Failed to send reminder", { error: errorMessage });
+          logger.error("Failed to send reminder", {
+            attendanceId: target.id,
+            eventId: target.events.id,
+            error: errorMessage,
+          });
         }
       }
 
@@ -552,8 +549,8 @@ export class ReminderService {
   /**
    * ゲスト用URLを生成
    */
-  private generateGuestUrl(eventId: string, guestToken: string): string {
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://event-pay.vercel.app";
-    return `${baseUrl}/guest/${eventId}?token=${guestToken}`;
+  private generateGuestUrl(_eventId: string, guestToken: string): string {
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://event-pay.com";
+    return `${baseUrl}/guest/${guestToken}`;
   }
 }

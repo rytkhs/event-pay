@@ -6,7 +6,8 @@ import { validateCronSecret } from "@core/cron-auth";
 import { logger } from "@core/logging/app-logger";
 import { EmailNotificationService } from "@core/notification/email-service";
 import { ReminderService } from "@core/notification/reminder-service";
-import { createClient } from "@core/supabase/server";
+import { getSecureClientFactory } from "@core/security/secure-client-factory.impl";
+import { AdminReason } from "@core/security/secure-client-factory.types";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -30,10 +31,25 @@ export async function GET(request: NextRequest) {
   try {
     logger.info("Starting reminder cron job");
 
-    const supabase = createClient();
+    // RLSを回避するため管理者クライアントを使用
+    const clientFactory = getSecureClientFactory();
+    const supabase = await clientFactory.createAuditedAdminClient(
+      AdminReason.REMINDER_PROCESSING,
+      "cron:send-reminders - automated reminder email sending for deadlines and events",
+      {
+        operationType: "SELECT",
+        accessedTables: ["attendances", "events", "payments"],
+        additionalInfo: {
+          cronPath: "/api/cron/send-reminders",
+          executionTime: new Date().toISOString(),
+          reminderTypes: ["response_deadline", "payment_deadline", "event_start"],
+        },
+      }
+    );
+
     const reminderService = new ReminderService(supabase);
 
-    // すべてのリマインダーを送信
+    // すべてのリマインダーを並列送信
     const summaries = await reminderService.sendAllReminders();
 
     // 送信結果の集計
