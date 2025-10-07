@@ -3,6 +3,8 @@ import * as React from "react";
 import { Heading, Text } from "@react-email/components";
 
 import { Button } from "../_components/Button";
+import { Divider } from "../_components/Divider";
+import { InfoCard } from "../_components/InfoCard";
 import { Section } from "../_components/Section";
 import { EmailLayout } from "../_layout/EmailLayout";
 
@@ -37,83 +39,123 @@ export const PaymentCompletedEmail = ({
 
   return (
     <EmailLayout preheader="お支払いが完了しました">
-      <Heading
+      <Text
         style={{
-          color: "#2563eb",
-          fontSize: "24px",
-          lineHeight: "32px",
-          margin: "0 0 20px 0",
+          margin: "0 0 8px 0",
+          fontSize: "28px",
+          lineHeight: "36px",
+          fontWeight: "700",
+          color: "#1e293b",
         }}
       >
-        お支払い完了
-      </Heading>
-
-      <Text style={{ margin: "0 0 16px 0", fontSize: "16px", lineHeight: "24px" }}>
-        {nickname} 様
+        💳 お支払い完了
       </Text>
-
-      <Text style={{ margin: "0 0 16px 0", fontSize: "16px", lineHeight: "24px" }}>
-        みんなの集金をご利用いただき、ありがとうございます。
-      </Text>
-
-      <Section variant="success">
-        <Text
-          style={{
-            margin: 0,
-            fontWeight: "bold",
-            color: "#059669",
-            fontSize: "16px",
-            lineHeight: "24px",
-          }}
-        >
-          ✅ お支払いが完了しました
-        </Text>
-      </Section>
 
       <Text
         style={{
-          margin: "20px 0 8px 0",
+          margin: "0 0 32px 0",
           fontSize: "16px",
           lineHeight: "24px",
-          fontWeight: "bold",
+          color: "#64748b",
         }}
       >
-        お支払い内容
+        {nickname} 様
       </Text>
+
+      <Section variant="success">
+        <div style={{ textAlign: "center" }}>
+          <div
+            style={{
+              backgroundColor: "#22c55e",
+              borderRadius: "50%",
+              width: "64px",
+              height: "64px",
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: "32px",
+              margin: "0 0 16px 0",
+            }}
+          >
+            ✓
+          </div>
+          <Text
+            style={{
+              margin: 0,
+              fontWeight: "700",
+              color: "#166534",
+              fontSize: "20px",
+              lineHeight: "28px",
+            }}
+          >
+            お支払いが完了しました
+          </Text>
+          <Text
+            style={{
+              margin: "8px 0 0 0",
+              fontSize: "15px",
+              lineHeight: "22px",
+              color: "#15803d",
+            }}
+          >
+            ありがとうございます!
+          </Text>
+        </div>
+      </Section>
+
+      <Divider />
+
+      <Heading
+        as="h2"
+        style={{
+          fontSize: "20px",
+          lineHeight: "28px",
+          margin: "0 0 16px 0",
+          color: "#1e293b",
+          fontWeight: "600",
+        }}
+      >
+        📋 お支払い内容
+      </Heading>
 
       <div
         style={{
-          backgroundColor: "#f9fafb",
-          padding: "16px",
-          borderRadius: "8px",
-          margin: "0 0 20px 0",
+          backgroundColor: "#f8fafc",
+          borderRadius: "12px",
+          padding: "24px",
+          border: "1px solid #e2e8f0",
         }}
       >
-        <Text style={{ margin: "0 0 8px 0", fontSize: "16px", lineHeight: "24px" }}>
-          <strong>イベント名:</strong> {eventTitle}
-        </Text>
-        <Text style={{ margin: "0 0 8px 0", fontSize: "16px", lineHeight: "24px" }}>
-          <strong>お支払い金額:</strong> {formattedAmount}
-        </Text>
-        <Text style={{ margin: 0, fontSize: "14px", lineHeight: "20px", color: "#6b7280" }}>
-          お支払い日時: {formattedDate}
-        </Text>
+        <InfoCard label="イベント名" value={eventTitle} icon="🎉" />
+        <InfoCard label="お支払い金額" value={formattedAmount} icon="💰" />
+        <InfoCard label="お支払い日時" value={formattedDate} icon="📅" />
       </div>
 
       {receiptUrl && (
-        <div style={{ margin: "20px 0", textAlign: "center" }}>
-          <Button href={receiptUrl} variant="primary">
-            レシートを表示
-          </Button>
-        </div>
+        <>
+          <Divider />
+          <Text
+            style={{
+              margin: "0 0 16px 0",
+              fontSize: "16px",
+              lineHeight: "24px",
+              color: "#475569",
+              textAlign: "center",
+            }}
+          >
+            レシートは以下のボタンからご確認いただけます。
+          </Text>
+          <Button href={receiptUrl}>レシートを表示</Button>
+        </>
       )}
 
       <Text
         style={{
-          margin: "20px 0 0 0",
+          margin: "32px 0 0 0",
           fontSize: "14px",
           lineHeight: "20px",
-          color: "#6b7280",
+          color: "#64748b",
+          textAlign: "center",
         }}
       >
         ご不明な点がございましたら、主催者にお問い合わせください。

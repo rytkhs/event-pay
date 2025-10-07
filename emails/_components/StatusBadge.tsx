@@ -1,25 +1,41 @@
 import * as React from "react";
 
-import { Text } from "@react-email/components";
-
 interface StatusBadgeProps {
   status: "enabled" | "disabled";
   label: string;
 }
 
 export const StatusBadge = ({ status, label }: StatusBadgeProps) => {
-  const color = status === "enabled" ? "#059669" : "#dc2626";
+  const styles = {
+    enabled: {
+      backgroundColor: "#dcfce7",
+      color: "#166534",
+      borderColor: "#86efac",
+    },
+    disabled: {
+      backgroundColor: "#fee2e2",
+      color: "#991b1b",
+      borderColor: "#fca5a5",
+    },
+  };
+
+  const style = styles[status];
 
   return (
-    <Text
+    <span
       style={{
-        color,
-        margin: 0,
+        backgroundColor: style.backgroundColor,
+        color: style.color,
+        border: `1px solid ${style.borderColor}`,
+        padding: "4px 12px",
+        borderRadius: "12px",
         fontSize: "14px",
+        fontWeight: "600",
+        display: "inline-block",
         lineHeight: "20px",
       }}
     >
       {label}
-    </Text>
+    </span>
   );
 };

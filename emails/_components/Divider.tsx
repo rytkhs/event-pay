@@ -7,8 +7,9 @@ export const Divider = () => {
     <Hr
       style={{
         border: "none",
-        borderTop: "1px solid #e5e7eb",
-        margin: "30px 0",
+        borderTop: "2px solid #e5e7eb",
+        margin: "32px 0",
+        opacity: 0.6,
       }}
     />
   );

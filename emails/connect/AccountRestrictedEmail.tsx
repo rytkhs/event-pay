@@ -3,6 +3,7 @@ import * as React from "react";
 import { Heading, Text } from "@react-email/components";
 
 import { Button } from "../_components/Button";
+import { Divider } from "../_components/Divider";
 import { Section } from "../_components/Section";
 import { EmailLayout } from "../_layout/EmailLayout";
 
@@ -21,92 +22,139 @@ export const AccountRestrictedEmail = ({
 }: AccountRestrictedEmailProps) => {
   return (
     <EmailLayout preheader="Stripeアカウントに制限が設定されました">
-      <Heading
+      <Text
         style={{
-          color: "#dc2626",
-          fontSize: "24px",
-          lineHeight: "32px",
-          margin: "0 0 20px 0",
+          margin: "0 0 8px 0",
+          fontSize: "28px",
+          lineHeight: "36px",
+          fontWeight: "700",
+          color: "#1e293b",
         }}
       >
-        アカウント制限通知
-      </Heading>
-
-      <Text style={{ margin: "0 0 16px 0", fontSize: "16px", lineHeight: "24px" }}>
-        {userName} 様
+        ⚠️ アカウント制限通知
       </Text>
 
-      <Text style={{ margin: "0 0 16px 0", fontSize: "16px", lineHeight: "24px" }}>
-        みんなの集金をご利用いただき、ありがとうございます。
+      <Text
+        style={{
+          margin: "0 0 32px 0",
+          fontSize: "16px",
+          lineHeight: "24px",
+          color: "#64748b",
+        }}
+      >
+        {userName} 様
       </Text>
 
       <Section variant="danger">
         <Text
           style={{
             margin: 0,
-            fontWeight: "bold",
-            color: "#dc2626",
-            fontSize: "16px",
-            lineHeight: "24px",
+            fontWeight: "700",
+            color: "#991b1b",
+            fontSize: "18px",
+            lineHeight: "28px",
           }}
         >
-          ⚠️ Stripeアカウントに制限が設定されました
+          🚨 Stripeアカウントに制限が設定されました
         </Text>
         {restrictionReason && (
           <Text
             style={{
-              margin: "10px 0 0 0",
-              fontSize: "14px",
-              lineHeight: "20px",
-              color: "#374151",
+              margin: "12px 0 0 0",
+              fontSize: "15px",
+              lineHeight: "22px",
+              color: "#7f1d1d",
+              backgroundColor: "#fef2f2",
+              padding: "12px",
+              borderRadius: "6px",
+              border: "1px solid #fca5a5",
             }}
           >
-            制限理由: {restrictionReason}
+            <strong>制限理由:</strong> {restrictionReason}
           </Text>
         )}
       </Section>
 
       {requiredActions && requiredActions.length > 0 && (
         <>
+          <Divider />
           <Heading
-            as="h3"
+            as="h2"
             style={{
-              fontSize: "18px",
+              fontSize: "20px",
               lineHeight: "28px",
-              margin: "20px 0 10px 0",
-              color: "#1f2937",
+              margin: "0 0 16px 0",
+              color: "#1e293b",
+              fontWeight: "600",
             }}
           >
-            必要なアクション:
+            📋 必要なアクション
           </Heading>
-          <ul
+          <div
             style={{
-              margin: "0 0 16px 0",
-              paddingLeft: "20px",
-              fontSize: "16px",
-              lineHeight: "24px",
+              backgroundColor: "#fffbeb",
+              borderRadius: "12px",
+              padding: "20px",
+              border: "2px solid #fde047",
+              borderLeft: "6px solid #eab308",
             }}
           >
             {requiredActions.map((action, index) => (
-              <li key={index}>{action}</li>
+              <div
+                key={index}
+                style={{
+                  display: "flex",
+                  alignItems: "flex-start",
+                  marginBottom: index < requiredActions.length - 1 ? "12px" : "0",
+                }}
+              >
+                <span
+                  style={{
+                    backgroundColor: "#eab308",
+                    color: "#ffffff",
+                    borderRadius: "50%",
+                    width: "24px",
+                    height: "24px",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    marginRight: "12px",
+                    fontSize: "12px",
+                    fontWeight: "600",
+                    flexShrink: 0,
+                  }}
+                >
+                  {index + 1}
+                </span>
+                <Text
+                  style={{
+                    margin: 0,
+                    fontSize: "15px",
+                    lineHeight: "24px",
+                    color: "#713f12",
+                  }}
+                >
+                  {action}
+                </Text>
+              </div>
             ))}
-          </ul>
+          </div>
         </>
       )}
 
-      {dashboardUrl && (
-        <div style={{ margin: "20px 0", textAlign: "center" }}>
-          <Button href={dashboardUrl} variant="primary">
-            Stripeダッシュボードを開く
-          </Button>
-        </div>
-      )}
+      {dashboardUrl && <Button href={dashboardUrl}>Stripeダッシュボードを開く</Button>}
 
-      <Text style={{ margin: "0 0 16px 0", fontSize: "16px", lineHeight: "24px" }}>
+      <Text
+        style={{
+          margin: "32px 0 0 0",
+          fontSize: "14px",
+          lineHeight: "20px",
+          color: "#64748b",
+          textAlign: "center",
+        }}
+      >
         制限を解除するには、上記のアクションを完了してください。
-      </Text>
-
-      <Text style={{ margin: "0 0 16px 0", fontSize: "16px", lineHeight: "24px" }}>
+        <br />
         ご不明な点がございましたら、お気軽にお問い合わせください。
       </Text>
     </EmailLayout>
