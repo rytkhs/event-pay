@@ -1,3 +1,5 @@
+import "server-only";
+
 import Stripe from "stripe";
 
 import { getTransferGroupForEvent } from "@core/utils/stripe";

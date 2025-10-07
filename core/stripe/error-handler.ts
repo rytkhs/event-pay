@@ -3,6 +3,8 @@
  * Stripe APIエラーの統一的な処理と分類を提供
  */
 
+import "server-only";
+
 import Stripe from "stripe";
 
 import { type PaymentErrorClassification, createPaymentLogger } from "@core/logging/payment-logger";

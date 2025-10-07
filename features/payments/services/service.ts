@@ -2,6 +2,8 @@
  * PaymentServiceの基本実装
  */
 
+import "server-only";
+
 import type { SupabaseClient } from "@supabase/supabase-js";
 // import type { PostgrestError } from "@supabase/supabase-js";
 import { PostgrestError } from "@supabase/supabase-js";

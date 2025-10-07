@@ -2,6 +2,8 @@
  * StripeConnectServiceの基本実装
  */
 
+import "server-only";
+
 import { type SupabaseClient } from "@supabase/supabase-js";
 import Stripe from "stripe";
 

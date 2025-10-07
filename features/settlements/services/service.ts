@@ -1,3 +1,5 @@
+import "server-only";
+
 import { SupabaseClient } from "@supabase/supabase-js";
 
 import { logger } from "@core/logging/app-logger";

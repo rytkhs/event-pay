@@ -5,6 +5,8 @@
  * 管理者権限の使用を監査し、ゲストトークンによる透過的なアクセス制御を提供
  */
 
+import "server-only";
+
 // next/headers は テスト環境では利用できないため動的インポート
 import type { NextRequest, NextResponse } from "next/server";
 
