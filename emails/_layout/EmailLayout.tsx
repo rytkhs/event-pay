@@ -48,7 +48,7 @@ export const EmailLayout = ({ preheader, children }: EmailLayoutProps) => {
             {/* ヘッダー */}
             <Section
               style={{
-                background: "#22A6AC",
+                background: "#24A6B5",
                 padding: "32px 40px",
                 textAlign: "center",
               }}

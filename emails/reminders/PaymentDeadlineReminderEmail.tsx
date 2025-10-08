@@ -167,7 +167,7 @@ export const PaymentDeadlineReminderEmail = ({
         <Link
           href={paymentUrl}
           style={{
-            color: "#667eea",
+            color: "#24A6B5",
             textDecoration: "underline",
             wordBreak: "break-all",
           }}

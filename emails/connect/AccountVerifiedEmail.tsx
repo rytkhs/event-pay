@@ -86,7 +86,7 @@ export const AccountVerifiedEmail = ({ userName }: AccountVerifiedEmailProps) =>
         <div style={{ display: "flex", alignItems: "flex-start", marginBottom: "16px" }}>
           <div
             style={{
-              backgroundColor: "#667eea",
+              backgroundColor: "#24A6B5",
               borderRadius: "8px",
               width: "40px",
               height: "40px",
@@ -120,7 +120,7 @@ export const AccountVerifiedEmail = ({ userName }: AccountVerifiedEmailProps) =>
         <div style={{ display: "flex", alignItems: "flex-start" }}>
           <div
             style={{
-              backgroundColor: "#667eea",
+              backgroundColor: "#24A6B5",
               borderRadius: "8px",
               width: "40px",
               height: "40px",

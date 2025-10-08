@@ -196,7 +196,7 @@ export const EventStartReminderEmail = ({
               <Link
                 href={guestUrl}
                 style={{
-                  color: "#667eea",
+                  color: "#24A6B5",
                   textDecoration: "underline",
                   fontWeight: "600",
                 }}
@@ -235,7 +235,7 @@ export const EventStartReminderEmail = ({
         <Link
           href={guestUrl}
           style={{
-            color: "#667eea",
+            color: "#24A6B5",
             textDecoration: "underline",
             wordBreak: "break-all",
           }}

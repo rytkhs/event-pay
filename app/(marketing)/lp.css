@@ -1,13 +1,13 @@
 [data-lp] {
   /* ミント×ネイビーカラーパレット */
-  --main-color: #22a6ac; /* メインカラー（プライマリ） */
+  --main-color: #24a6b5; /* メインカラー（プライマリ） */
   --accent-color: #3a86ff; /* サブカラー（アクセント） */
   --base-color: #ffffff; /* 面 */
   --secondary-bg: #f8fafc; /* 背景 */
   --text-color: #0b1220; /* 本文テキスト */
   --sub-text: #475569; /* サブテキスト */
   --dark-bg: #0f172a; /* ディープネイビー */
-  --light-mint: rgba(34, 166, 172, 0.1); /* 薄いターコイズティール */
+  --light-mint: rgba(36, 166, 181, 0.1); /* 薄いターコイズティール */
 
   /* 追加のステータス色 */
   --success-color: #16a34a; /* 成功 */
@@ -72,7 +72,7 @@
 }
 
 [data-lp] .btn-primary:hover {
-  background-color: #1b8589;
+  background-color: #1d8591;
   transform: translateY(-2px);
 }
 
@@ -109,7 +109,7 @@
   width: 100%;
   background: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(10px);
-  border-bottom: 1px solid rgba(34, 166, 172, 0.1);
+  border-bottom: 1px solid rgba(36, 166, 181, 0.1);
   z-index: 1000;
   transition: var(--transition);
   padding: 16px 0;
@@ -181,7 +181,7 @@
   left: 0;
   width: 100%;
   background: white;
-  border-bottom: 1px solid rgba(34, 166, 172, 0.1);
+  border-bottom: 1px solid rgba(36, 166, 181, 0.1);
   z-index: 999;
   padding: 20px;
 }
@@ -469,6 +469,24 @@
   border-radius: 12px;
   padding: 40px;
   box-shadow: var(--card-shadow);
+  position: relative;
+}
+
+[data-lp] .campaign-badge {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 20px;
+}
+
+[data-lp] .campaign-badge-text {
+  display: inline-block;
+  background: var(--light-mint);
+  color: var(--main-color);
+  padding: 6px 16px;
+  border-radius: 16px;
+  font-size: 14px;
+  font-weight: 600;
+  border: 1px solid rgba(36, 166, 181, 0.2);
 }
 
 [data-lp] .pricing-item {
@@ -511,7 +529,7 @@
   font-size: 14px;
   color: var(--sub-text);
   margin-top: 24px;
-  text-align: center;
+  text-align: left;
 }
 
 /* 料金アラート */
@@ -700,12 +718,12 @@
 }
 
 [data-lp] .floating-cta .btn {
-  box-shadow: 0 4px 12px rgba(34, 166, 172, 0.3);
+  box-shadow: 0 4px 12px rgba(36, 166, 181, 0.3);
   background-color: var(--main-color);
 }
 
 [data-lp] .floating-cta .btn:hover {
-  background-color: #1b8589;
+  background-color: #1d8591;
 }
 
 /* レスポンシブ */
@@ -782,6 +800,11 @@
   [data-lp] .pricing-card {
     padding: 24px;
     margin: 0 16px;
+  }
+
+  [data-lp] .campaign-badge-text {
+    font-size: 13px;
+    padding: 5px 14px;
   }
 
   [data-lp] .closing-title {

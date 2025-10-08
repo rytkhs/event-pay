@@ -13,8 +13,8 @@ export const Button = ({ href, children, variant = "primary", fullWidth = false 
   const isPrimary = variant === "primary";
 
   const baseStyles = {
-    backgroundColor: isPrimary ? "#667eea" : "#ffffff",
-    color: isPrimary ? "#ffffff" : "#667eea",
+    backgroundColor: isPrimary ? "#24A6B5" : "#ffffff",
+    color: isPrimary ? "#ffffff" : "#24A6B5",
     padding: "14px 32px",
     borderRadius: "8px",
     textDecoration: "none",
@@ -23,7 +23,7 @@ export const Button = ({ href, children, variant = "primary", fullWidth = false 
     fontSize: "16px",
     lineHeight: "24px",
     textAlign: "center" as const,
-    border: isPrimary ? "none" : "2px solid #667eea",
+    border: isPrimary ? "none" : "2px solid #24A6B5",
     transition: "all 0.2s ease",
   };
 
