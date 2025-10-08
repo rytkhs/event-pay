@@ -381,60 +381,6 @@ export type Database = {
           },
         ];
       };
-      scheduler_locks: {
-        Row: {
-          acquired_at: string;
-          created_at: string;
-          expires_at: string;
-          lock_name: string;
-          metadata: Json | null;
-          process_id: string | null;
-        };
-        Insert: {
-          acquired_at?: string;
-          created_at?: string;
-          expires_at: string;
-          lock_name: string;
-          metadata?: Json | null;
-          process_id?: string | null;
-        };
-        Update: {
-          acquired_at?: string;
-          created_at?: string;
-          expires_at?: string;
-          lock_name?: string;
-          metadata?: Json | null;
-          process_id?: string | null;
-        };
-        Relationships: [];
-      };
-      security_audit_log: {
-        Row: {
-          details: Json | null;
-          event_type: string;
-          id: number;
-          ip_address: unknown | null;
-          timestamp: string | null;
-          user_role: string | null;
-        };
-        Insert: {
-          details?: Json | null;
-          event_type: string;
-          id?: number;
-          ip_address?: unknown | null;
-          timestamp?: string | null;
-          user_role?: string | null;
-        };
-        Update: {
-          details?: Json | null;
-          event_type?: string;
-          id?: number;
-          ip_address?: unknown | null;
-          timestamp?: string | null;
-          user_role?: string | null;
-        };
-        Relationships: [];
-      };
       settlements: {
         Row: {
           created_at: string;
@@ -575,21 +521,18 @@ export type Database = {
         Row: {
           created_at: string;
           details: Json | null;
-          executed_at: string;
           id: number;
           operation_type: string;
         };
         Insert: {
           created_at?: string;
           details?: Json | null;
-          executed_at?: string;
           id?: number;
           operation_type: string;
         };
         Update: {
           created_at?: string;
           details?: Json | null;
-          executed_at?: string;
           id?: number;
           operation_type?: string;
         };
@@ -673,62 +616,9 @@ export type Database = {
         Args: { p_event_id: string };
         Returns: boolean;
       };
-      cleanup_expired_scheduler_locks: {
-        Args: Record<PropertyKey, never>;
-        Returns: {
-          deleted_count: number;
-          expired_locks: Json;
-        }[];
-      };
       clear_test_guest_token: {
         Args: Record<PropertyKey, never>;
         Returns: undefined;
-      };
-      extend_scheduler_lock: {
-        Args: {
-          p_extend_minutes?: number;
-          p_lock_name: string;
-          p_process_id: string;
-        };
-        Returns: boolean;
-      };
-      find_eligible_events_basic: {
-        Args: {
-          p_days_after_event?: number;
-          p_limit?: number;
-          p_minimum_amount?: number;
-          p_user_id?: string;
-        };
-        Returns: {
-          created_at: string;
-          created_by: string;
-          event_date: string;
-          event_id: string;
-          fee: number;
-          paid_attendances_count: number;
-          title: string;
-          total_stripe_sales: number;
-        }[];
-      };
-      find_eligible_events_with_details: {
-        Args: { p_days_after_event?: number; p_limit?: number };
-        Returns: {
-          charges_enabled: boolean;
-          created_at: string;
-          created_by: string;
-          eligible: boolean;
-          event_date: string;
-          event_id: string;
-          fee: number;
-          ineligible_reason: string;
-          net_payout_amount: number;
-          paid_attendances_count: number;
-          payouts_enabled: boolean;
-          platform_fee: number;
-          title: string;
-          total_stripe_fee: number;
-          total_stripe_sales: number;
-        }[];
       };
       generate_settlement_report: {
         Args: { input_created_by: string; input_event_id: string };
@@ -765,18 +655,6 @@ export type Database = {
       get_min_payout_amount: {
         Args: Record<PropertyKey, never>;
         Returns: number;
-      };
-      get_scheduler_lock_status: {
-        Args: { p_lock_name?: string };
-        Returns: {
-          acquired_at: string;
-          expires_at: string;
-          is_expired: boolean;
-          lock_name: string;
-          metadata: Json;
-          process_id: string;
-          time_remaining_minutes: number;
-        }[];
       };
       get_settlement_report_details: {
         Args: {
@@ -820,10 +698,6 @@ export type Database = {
         };
         Returns: string;
       };
-      release_scheduler_lock: {
-        Args: { p_lock_name: string; p_process_id?: string };
-        Returns: boolean;
-      };
       rpc_bulk_update_payment_status_safe: {
         Args: { p_notes?: string; p_payment_updates: Json; p_user_id: string };
         Returns: Json;
@@ -845,15 +719,6 @@ export type Database = {
       status_rank: {
         Args: { p: Database["public"]["Enums"]["payment_status_enum"] };
         Returns: number;
-      };
-      try_acquire_scheduler_lock: {
-        Args: {
-          p_lock_name: string;
-          p_metadata?: Json;
-          p_process_id?: string;
-          p_ttl_minutes?: number;
-        };
-        Returns: boolean;
       };
       update_guest_attendance_with_payment: {
         Args: {

@@ -214,22 +214,6 @@ export class ConnectWebhookHandler {
         });
       }
 
-      // 監査ログ
-      try {
-        await this.supabase.from("security_audit_log").insert({
-          event_type: "stripe_connect_account_deauthorized",
-          user_role: "system",
-          details: {
-            application_id: application.id,
-            account_id: accountId,
-            user_id: userId,
-            deauthorized_at: new Date().toISOString(),
-          },
-        });
-      } catch {
-        /* optional */
-      }
-
       logger.info("Processed account.application.deauthorized", {
         tag: "accountDeauthorized",
         account_id: accountId,
@@ -401,27 +385,6 @@ export class ConnectWebhookHandler {
           timestamp: new Date().toISOString(),
         },
       };
-
-      // セキュリティログテーブルに記録（存在する場合）
-      try {
-        const { error } = await this.supabase.from("security_audit_log").insert(logData);
-
-        if (error && error.code !== "42P01") {
-          // テーブルが存在しない場合は無視
-          logger.error("Failed to log account update", {
-            tag: "accountUpdateLogFailed",
-            error_code: error.code,
-            error_message: error.message,
-          });
-        }
-      } catch (dbError) {
-        // データベースエラーは無視（ログ機能は必須ではない）
-        logger.debug("Security log table not available", {
-          tag: "securityLogTableUnavailable",
-          error_name: dbError instanceof Error ? dbError.name : "Unknown",
-          error_message: dbError instanceof Error ? dbError.message : String(dbError),
-        });
-      }
     } catch (error) {
       logger.error("Error logging account update", {
         tag: "accountUpdateLogError",

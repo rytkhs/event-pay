@@ -543,43 +543,6 @@ $$;
 ALTER FUNCTION "public"."check_attendance_capacity_limit"() OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."cleanup_expired_scheduler_locks"() RETURNS TABLE("deleted_count" integer, "expired_locks" "jsonb")
-    LANGUAGE "plpgsql" SECURITY DEFINER
-    AS $$
-DECLARE
-  _deleted_count int := 0;
-  _expired_locks jsonb;
-BEGIN
-  -- 削除対象の期限切れロック情報を記録
-  SELECT jsonb_agg(
-    jsonb_build_object(
-      'lock_name', lock_name,
-      'acquired_at', acquired_at,
-      'expires_at', expires_at,
-      'process_id', process_id
-    )
-  ) INTO _expired_locks
-  FROM public.scheduler_locks
-  WHERE expires_at < now();
-
-  -- 期限切れロックを削除
-  DELETE FROM public.scheduler_locks
-  WHERE expires_at < now();
-
-  GET DIAGNOSTICS _deleted_count = ROW_COUNT;
-
-  RETURN QUERY SELECT _deleted_count, COALESCE(_expired_locks, '[]'::jsonb);
-END;
-$$;
-
-
-ALTER FUNCTION "public"."cleanup_expired_scheduler_locks"() OWNER TO "postgres";
-
-
-COMMENT ON FUNCTION "public"."cleanup_expired_scheduler_locks"() IS '期限切れロックの一括削除。定期的な実行を推奨';
-
-
-
 CREATE OR REPLACE FUNCTION "public"."clear_test_guest_token"() RETURNS "void"
     LANGUAGE "plpgsql" SECURITY DEFINER
     AS $$
@@ -591,140 +554,6 @@ $$;
 
 
 ALTER FUNCTION "public"."clear_test_guest_token"() OWNER TO "postgres";
-
-
-CREATE OR REPLACE FUNCTION "public"."extend_scheduler_lock"("p_lock_name" "text", "p_process_id" "text", "p_extend_minutes" integer DEFAULT 30) RETURNS boolean
-    LANGUAGE "plpgsql" SECURITY DEFINER
-    AS $$
-DECLARE
-  _updated_count int := 0;
-BEGIN
-  -- 指定されたプロセスIDのロックのTTLを延長
-  UPDATE public.scheduler_locks
-  SET expires_at = now() + (p_extend_minutes || ' minutes')::interval,
-      metadata = metadata || jsonb_build_object('last_heartbeat', now()::text)
-  WHERE lock_name = p_lock_name
-    AND process_id = p_process_id
-    AND expires_at > now(); -- 期限切れでないことを確認
-
-  GET DIAGNOSTICS _updated_count = ROW_COUNT;
-
-  -- 更新できた場合は成功
-  RETURN _updated_count > 0;
-END;
-$$;
-
-
-ALTER FUNCTION "public"."extend_scheduler_lock"("p_lock_name" "text", "p_process_id" "text", "p_extend_minutes" integer) OWNER TO "postgres";
-
-
-COMMENT ON FUNCTION "public"."extend_scheduler_lock"("p_lock_name" "text", "p_process_id" "text", "p_extend_minutes" integer) IS 'スケジューラーロックのTTL延長（ハートビート用）。process_id一致時のみ延長可能';
-
-
-
-CREATE OR REPLACE FUNCTION "public"."find_eligible_events_basic"("p_days_after_event" integer DEFAULT 5, "p_minimum_amount" integer DEFAULT NULL::integer, "p_limit" integer DEFAULT 100, "p_user_id" "uuid" DEFAULT NULL::"uuid") RETURNS TABLE("event_id" "uuid", "title" character varying, "event_date" timestamp with time zone, "fee" integer, "created_by" "uuid", "created_at" timestamp with time zone, "paid_attendances_count" bigint, "total_stripe_sales" integer)
-    LANGUAGE "plpgsql"
-    AS $$
-BEGIN
-    RETURN QUERY
-    WITH target_events AS (
-        SELECT e.*
-          FROM public.events e
-         WHERE e.canceled_at IS NULL
-           AND NOW() >= (e.date + interval '24 hours')
-           AND e.date <= (CURRENT_DATE - p_days_after_event)
-           AND (p_user_id IS NULL OR e.created_by = p_user_id)
-    ), sales AS (
-        SELECT a.event_id, COUNT(*) AS paid_attendances_count, SUM(p.amount)::INT AS total_stripe_sales
-          FROM public.attendances a
-          JOIN public.payments p ON p.attendance_id = a.id
-         WHERE p.method = 'stripe' AND p.status = 'paid'
-         GROUP BY a.event_id
-    )
-    SELECT
-        t.id AS event_id,
-        t.title,
-        t.date AS event_date,
-        t.fee,
-        t.created_by,
-        t.created_at,
-        COALESCE(s.paid_attendances_count,0) AS paid_attendances_count,
-        COALESCE(s.total_stripe_sales,0)      AS total_stripe_sales
-      FROM target_events t
-      LEFT JOIN sales s ON s.event_id = t.id
-     WHERE COALESCE(s.total_stripe_sales,0) >= COALESCE(p_minimum_amount, public.get_min_payout_amount())
-     LIMIT p_limit;
-END;
-$$;
-
-
-ALTER FUNCTION "public"."find_eligible_events_basic"("p_days_after_event" integer, "p_minimum_amount" integer, "p_limit" integer, "p_user_id" "uuid") OWNER TO "postgres";
-
-
-CREATE OR REPLACE FUNCTION "public"."find_eligible_events_with_details"("p_days_after_event" integer DEFAULT 5, "p_limit" integer DEFAULT 50) RETURNS TABLE("event_id" "uuid", "title" character varying, "event_date" timestamp with time zone, "fee" integer, "created_by" "uuid", "created_at" timestamp with time zone, "paid_attendances_count" bigint, "total_stripe_sales" integer, "total_stripe_fee" integer, "platform_fee" integer, "net_payout_amount" integer, "charges_enabled" boolean, "payouts_enabled" boolean, "eligible" boolean, "ineligible_reason" "text")
-    LANGUAGE "plpgsql"
-    AS $$
-BEGIN
-    RETURN QUERY
-    WITH ended_events AS (
-        SELECT e.*
-        FROM public.events e
-        WHERE e.canceled_at IS NULL
-          AND NOW() >= (e.date + interval '24 hours')
-          AND e.date <= (current_date - p_days_after_event)
-        LIMIT p_limit
-    ),
-    sales AS (
-        SELECT a.event_id,
-               COUNT(*) FILTER (WHERE p.status = 'paid')                        AS paid_attendances_count,
-               COALESCE(SUM(p.amount) FILTER (WHERE p.status = 'paid'),0)::INT AS total_stripe_sales,
-               public.calc_total_stripe_fee(a.event_id)                        AS total_stripe_fee
-        FROM public.attendances a
-        JOIN public.payments p ON p.attendance_id = a.id AND p.method = 'stripe'
-        WHERE a.event_id IN (SELECT id FROM ended_events)
-        GROUP BY a.event_id
-    ),
-    accounts AS (
-        SELECT sca.user_id,
-               sca.status,
-               sca.charges_enabled,
-               sca.payouts_enabled,
-               e.id AS event_id
-        FROM public.stripe_connect_accounts sca
-        JOIN ended_events e ON sca.user_id = e.created_by
-    )
-    SELECT
-        ee.id AS event_id,
-        ee.title,
-        ee.date AS event_date,
-        ee.fee,
-        ee.created_by,
-        ee.created_at,
-        COALESCE(s.paid_attendances_count,0) AS paid_attendances_count,
-        COALESCE(s.total_stripe_sales,0)     AS total_stripe_sales,
-        COALESCE(s.total_stripe_fee,0)       AS total_stripe_fee,
-        0                                    AS platform_fee,
-        COALESCE(s.total_stripe_sales,0) - COALESCE(s.total_stripe_fee,0) AS net_payout_amount,
-        a.charges_enabled,
-        a.payouts_enabled,
-        (a.status = 'verified' AND a.payouts_enabled) AS eligible,
-        CASE
-          WHEN a.status <> 'verified' THEN 'Stripe account not verified'
-          WHEN NOT a.payouts_enabled THEN 'Payouts not enabled'
-          ELSE NULL
-        END AS ineligible_reason
-    FROM ended_events ee
-    LEFT JOIN sales s ON s.event_id = ee.id
-    LEFT JOIN accounts a ON a.event_id = ee.id;
-END;
-$$;
-
-
-ALTER FUNCTION "public"."find_eligible_events_with_details"("p_days_after_event" integer, "p_limit" integer) OWNER TO "postgres";
-
-
-COMMENT ON FUNCTION "public"."find_eligible_events_with_details"("p_days_after_event" integer, "p_limit" integer) IS '送金候補イベントを取得（verified status要件付き、charges_enabled / payouts_enabled チェック）';
-
 
 
 CREATE OR REPLACE FUNCTION "public"."generate_settlement_report"("input_event_id" "uuid", "input_created_by" "uuid") RETURNS TABLE("report_id" "uuid", "already_exists" boolean, "returned_event_id" "uuid", "event_title" character varying, "event_date" timestamp with time zone, "created_by" "uuid", "stripe_account_id" character varying, "transfer_group" "text", "total_stripe_sales" integer, "total_stripe_fee" integer, "total_application_fee" integer, "net_payout_amount" integer, "payment_count" integer, "refunded_count" integer, "total_refunded_amount" integer, "dispute_count" integer, "total_disputed_amount" integer, "report_generated_at" timestamp with time zone, "report_updated_at" timestamp with time zone)
@@ -971,33 +800,6 @@ ALTER FUNCTION "public"."get_min_payout_amount"() OWNER TO "postgres";
 
 
 COMMENT ON FUNCTION "public"."get_min_payout_amount"() IS '最小送金金額（円）を返すユーティリティ関数。fee_config に設定が無い場合はデフォルト 100 円。';
-
-
-
-CREATE OR REPLACE FUNCTION "public"."get_scheduler_lock_status"("p_lock_name" "text" DEFAULT NULL::"text") RETURNS TABLE("lock_name" "text", "acquired_at" timestamp with time zone, "expires_at" timestamp with time zone, "time_remaining_minutes" integer, "process_id" "text", "metadata" "jsonb", "is_expired" boolean)
-    LANGUAGE "plpgsql" SECURITY DEFINER
-    AS $$
-BEGIN
-  RETURN QUERY
-  SELECT
-    sl.lock_name,
-    sl.acquired_at,
-    sl.expires_at,
-    EXTRACT(EPOCH FROM (sl.expires_at - now()) / 60)::int as time_remaining_minutes,
-    sl.process_id,
-    sl.metadata,
-    sl.expires_at < now() as is_expired
-  FROM public.scheduler_locks sl
-  WHERE (p_lock_name IS NULL OR sl.lock_name = p_lock_name)
-  ORDER BY sl.acquired_at DESC;
-END;
-$$;
-
-
-ALTER FUNCTION "public"."get_scheduler_lock_status"("p_lock_name" "text") OWNER TO "postgres";
-
-
-COMMENT ON FUNCTION "public"."get_scheduler_lock_status"("p_lock_name" "text") IS 'ロック状態の監視・デバッグ用関数';
 
 
 
@@ -1303,37 +1105,6 @@ COMMENT ON FUNCTION "public"."register_attendance_with_payment"("p_event_id" "uu
 
 
 
-CREATE OR REPLACE FUNCTION "public"."release_scheduler_lock"("p_lock_name" "text", "p_process_id" "text" DEFAULT NULL::"text") RETURNS boolean
-    LANGUAGE "plpgsql" SECURITY DEFINER
-    AS $$
-DECLARE
-  _deleted_count int := 0;
-BEGIN
-  -- process_id が指定されている場合は一致するもののみ削除
-  IF p_process_id IS NOT NULL THEN
-    DELETE FROM public.scheduler_locks
-    WHERE lock_name = p_lock_name
-      AND (process_id = p_process_id OR process_id IS NULL);
-  ELSE
-    -- process_id 未指定の場合は無条件削除
-    DELETE FROM public.scheduler_locks
-    WHERE lock_name = p_lock_name;
-  END IF;
-
-  GET DIAGNOSTICS _deleted_count = ROW_COUNT;
-
-  RETURN _deleted_count > 0;
-END;
-$$;
-
-
-ALTER FUNCTION "public"."release_scheduler_lock"("p_lock_name" "text", "p_process_id" "text") OWNER TO "postgres";
-
-
-COMMENT ON FUNCTION "public"."release_scheduler_lock"("p_lock_name" "text", "p_process_id" "text") IS 'スケジューラーロック解放。process_id指定で安全な解放が可能';
-
-
-
 CREATE OR REPLACE FUNCTION "public"."rpc_bulk_update_payment_status_safe"("p_payment_updates" "jsonb", "p_user_id" "uuid", "p_notes" "text" DEFAULT NULL::"text") RETURNS json
     LANGUAGE "plpgsql" SECURITY DEFINER
     AS $$
@@ -1578,53 +1349,6 @@ ALTER FUNCTION "public"."status_rank"("p" "public"."payment_status_enum") OWNER 
 
 
 COMMENT ON FUNCTION "public"."status_rank"("p" "public"."payment_status_enum") IS 'Returns precedence rank of payment statuses. Higher is more terminal (prevents rollback). Updated to include canceled (rank 35).';
-
-
-
-CREATE OR REPLACE FUNCTION "public"."try_acquire_scheduler_lock"("p_lock_name" "text", "p_ttl_minutes" integer DEFAULT 180, "p_process_id" "text" DEFAULT NULL::"text", "p_metadata" "jsonb" DEFAULT '{}'::"jsonb") RETURNS boolean
-    LANGUAGE "plpgsql" SECURITY DEFINER
-    AS $$
-DECLARE
-  _inserted boolean := false;
-BEGIN
-  -- 期限切れロックの自動削除
-  DELETE FROM public.scheduler_locks
-  WHERE lock_name = p_lock_name AND expires_at < now();
-
-  -- ロック取得を試行
-  BEGIN
-    INSERT INTO public.scheduler_locks (
-      lock_name,
-      acquired_at,
-      expires_at,
-      process_id,
-      metadata
-    )
-    VALUES (
-      p_lock_name,
-      now(),
-      now() + (p_ttl_minutes || ' minutes')::interval,
-      p_process_id,
-      p_metadata
-    );
-
-    _inserted := true;
-
-  EXCEPTION
-    WHEN unique_violation THEN
-      -- ロック取得失敗（既に他のプロセスが保持中）
-      _inserted := false;
-  END;
-
-  RETURN _inserted;
-END;
-$$;
-
-
-ALTER FUNCTION "public"."try_acquire_scheduler_lock"("p_lock_name" "text", "p_ttl_minutes" integer, "p_process_id" "text", "p_metadata" "jsonb") OWNER TO "postgres";
-
-
-COMMENT ON FUNCTION "public"."try_acquire_scheduler_lock"("p_lock_name" "text", "p_ttl_minutes" integer, "p_process_id" "text", "p_metadata" "jsonb") IS 'スケジューラーロック取得。TTL付きで自動期限切れを防ぐ';
 
 
 
@@ -2186,55 +1910,6 @@ CREATE OR REPLACE VIEW "public"."public_profiles" AS
 ALTER VIEW "public"."public_profiles" OWNER TO "postgres";
 
 
-CREATE TABLE IF NOT EXISTS "public"."scheduler_locks" (
-    "lock_name" "text" NOT NULL,
-    "acquired_at" timestamp with time zone DEFAULT "now"() NOT NULL,
-    "expires_at" timestamp with time zone NOT NULL,
-    "process_id" "text",
-    "metadata" "jsonb" DEFAULT '{}'::"jsonb",
-    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL
-);
-
-
-ALTER TABLE "public"."scheduler_locks" OWNER TO "postgres";
-
-
-COMMENT ON TABLE "public"."scheduler_locks" IS 'スケジューラー排他制御用テーブル。行ロックによる確実な単一実行を保証する';
-
-
-
-CREATE TABLE IF NOT EXISTS "public"."security_audit_log" (
-    "id" bigint NOT NULL,
-    "event_type" "text" NOT NULL,
-    "user_role" "text",
-    "ip_address" "inet",
-    "details" "jsonb",
-    "timestamp" timestamp with time zone DEFAULT "now"()
-);
-
-
-ALTER TABLE "public"."security_audit_log" OWNER TO "postgres";
-
-
-COMMENT ON TABLE "public"."security_audit_log" IS 'セキュリティ監査ログテーブル';
-
-
-
-CREATE SEQUENCE IF NOT EXISTS "public"."security_audit_log_id_seq"
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-
-ALTER SEQUENCE "public"."security_audit_log_id_seq" OWNER TO "postgres";
-
-
-ALTER SEQUENCE "public"."security_audit_log_id_seq" OWNED BY "public"."security_audit_log"."id";
-
-
-
 CREATE TABLE IF NOT EXISTS "public"."settlements" (
     "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
     "event_id" "uuid" NOT NULL,
@@ -2310,7 +1985,6 @@ CREATE TABLE IF NOT EXISTS "public"."system_logs" (
     "id" bigint NOT NULL,
     "operation_type" character varying(50) NOT NULL,
     "details" "jsonb",
-    "executed_at" timestamp with time zone DEFAULT "now"() NOT NULL,
     "created_at" timestamp with time zone DEFAULT "now"() NOT NULL
 );
 
@@ -2334,10 +2008,6 @@ ALTER SEQUENCE "public"."system_logs_id_seq" OWNER TO "postgres";
 
 
 ALTER SEQUENCE "public"."system_logs_id_seq" OWNED BY "public"."system_logs"."id";
-
-
-
-ALTER TABLE ONLY "public"."security_audit_log" ALTER COLUMN "id" SET DEFAULT "nextval"('"public"."security_audit_log_id_seq"'::"regclass");
 
 
 
@@ -2392,16 +2062,6 @@ ALTER TABLE ONLY "public"."payments"
 
 ALTER TABLE ONLY "public"."settlements"
     ADD CONSTRAINT "payouts_pkey" PRIMARY KEY ("id");
-
-
-
-ALTER TABLE ONLY "public"."scheduler_locks"
-    ADD CONSTRAINT "scheduler_locks_pkey" PRIMARY KEY ("lock_name");
-
-
-
-ALTER TABLE ONLY "public"."security_audit_log"
-    ADD CONSTRAINT "security_audit_log_pkey" PRIMARY KEY ("id");
 
 
 
@@ -2562,10 +2222,6 @@ CREATE INDEX "idx_payments_transfer_group" ON "public"."payments" USING "btree" 
 
 
 CREATE INDEX "idx_payments_webhook_event" ON "public"."payments" USING "btree" ("webhook_event_id");
-
-
-
-CREATE INDEX "idx_scheduler_locks_expires_at" ON "public"."scheduler_locks" USING "btree" ("expires_at");
 
 
 
@@ -2738,10 +2394,6 @@ CREATE POLICY "Safe event access policy" ON "public"."events" FOR SELECT TO "aut
 
 
 
-CREATE POLICY "Service role can access security logs" ON "public"."security_audit_log" TO "service_role" USING (true);
-
-
-
 CREATE POLICY "Service role can access system logs" ON "public"."system_logs" TO "service_role" USING (true);
 
 
@@ -2856,12 +2508,6 @@ ALTER TABLE "public"."payment_disputes" ENABLE ROW LEVEL SECURITY;
 
 
 ALTER TABLE "public"."payments" ENABLE ROW LEVEL SECURITY;
-
-
-ALTER TABLE "public"."scheduler_locks" ENABLE ROW LEVEL SECURITY;
-
-
-ALTER TABLE "public"."security_audit_log" ENABLE ROW LEVEL SECURITY;
 
 
 ALTER TABLE "public"."settlements" ENABLE ROW LEVEL SECURITY;
@@ -3099,33 +2745,9 @@ GRANT ALL ON FUNCTION "public"."check_attendance_capacity_limit"() TO "service_r
 
 
 
-GRANT ALL ON FUNCTION "public"."cleanup_expired_scheduler_locks"() TO "anon";
-GRANT ALL ON FUNCTION "public"."cleanup_expired_scheduler_locks"() TO "authenticated";
-GRANT ALL ON FUNCTION "public"."cleanup_expired_scheduler_locks"() TO "service_role";
-
-
-
 GRANT ALL ON FUNCTION "public"."clear_test_guest_token"() TO "anon";
 GRANT ALL ON FUNCTION "public"."clear_test_guest_token"() TO "authenticated";
 GRANT ALL ON FUNCTION "public"."clear_test_guest_token"() TO "service_role";
-
-
-
-GRANT ALL ON FUNCTION "public"."extend_scheduler_lock"("p_lock_name" "text", "p_process_id" "text", "p_extend_minutes" integer) TO "anon";
-GRANT ALL ON FUNCTION "public"."extend_scheduler_lock"("p_lock_name" "text", "p_process_id" "text", "p_extend_minutes" integer) TO "authenticated";
-GRANT ALL ON FUNCTION "public"."extend_scheduler_lock"("p_lock_name" "text", "p_process_id" "text", "p_extend_minutes" integer) TO "service_role";
-
-
-
-GRANT ALL ON FUNCTION "public"."find_eligible_events_basic"("p_days_after_event" integer, "p_minimum_amount" integer, "p_limit" integer, "p_user_id" "uuid") TO "anon";
-GRANT ALL ON FUNCTION "public"."find_eligible_events_basic"("p_days_after_event" integer, "p_minimum_amount" integer, "p_limit" integer, "p_user_id" "uuid") TO "authenticated";
-GRANT ALL ON FUNCTION "public"."find_eligible_events_basic"("p_days_after_event" integer, "p_minimum_amount" integer, "p_limit" integer, "p_user_id" "uuid") TO "service_role";
-
-
-
-GRANT ALL ON FUNCTION "public"."find_eligible_events_with_details"("p_days_after_event" integer, "p_limit" integer) TO "anon";
-GRANT ALL ON FUNCTION "public"."find_eligible_events_with_details"("p_days_after_event" integer, "p_limit" integer) TO "authenticated";
-GRANT ALL ON FUNCTION "public"."find_eligible_events_with_details"("p_days_after_event" integer, "p_limit" integer) TO "service_role";
 
 
 
@@ -3150,12 +2772,6 @@ GRANT ALL ON FUNCTION "public"."get_guest_token"() TO "service_role";
 GRANT ALL ON FUNCTION "public"."get_min_payout_amount"() TO "anon";
 GRANT ALL ON FUNCTION "public"."get_min_payout_amount"() TO "authenticated";
 GRANT ALL ON FUNCTION "public"."get_min_payout_amount"() TO "service_role";
-
-
-
-GRANT ALL ON FUNCTION "public"."get_scheduler_lock_status"("p_lock_name" "text") TO "anon";
-GRANT ALL ON FUNCTION "public"."get_scheduler_lock_status"("p_lock_name" "text") TO "authenticated";
-GRANT ALL ON FUNCTION "public"."get_scheduler_lock_status"("p_lock_name" "text") TO "service_role";
 
 
 
@@ -3191,12 +2807,6 @@ GRANT ALL ON FUNCTION "public"."register_attendance_with_payment"("p_event_id" "
 
 
 
-GRANT ALL ON FUNCTION "public"."release_scheduler_lock"("p_lock_name" "text", "p_process_id" "text") TO "anon";
-GRANT ALL ON FUNCTION "public"."release_scheduler_lock"("p_lock_name" "text", "p_process_id" "text") TO "authenticated";
-GRANT ALL ON FUNCTION "public"."release_scheduler_lock"("p_lock_name" "text", "p_process_id" "text") TO "service_role";
-
-
-
 GRANT ALL ON FUNCTION "public"."rpc_bulk_update_payment_status_safe"("p_payment_updates" "jsonb", "p_user_id" "uuid", "p_notes" "text") TO "anon";
 GRANT ALL ON FUNCTION "public"."rpc_bulk_update_payment_status_safe"("p_payment_updates" "jsonb", "p_user_id" "uuid", "p_notes" "text") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."rpc_bulk_update_payment_status_safe"("p_payment_updates" "jsonb", "p_user_id" "uuid", "p_notes" "text") TO "service_role";
@@ -3218,12 +2828,6 @@ GRANT ALL ON FUNCTION "public"."set_test_guest_token"("token" "text") TO "servic
 GRANT ALL ON FUNCTION "public"."status_rank"("p" "public"."payment_status_enum") TO "anon";
 GRANT ALL ON FUNCTION "public"."status_rank"("p" "public"."payment_status_enum") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."status_rank"("p" "public"."payment_status_enum") TO "service_role";
-
-
-
-GRANT ALL ON FUNCTION "public"."try_acquire_scheduler_lock"("p_lock_name" "text", "p_ttl_minutes" integer, "p_process_id" "text", "p_metadata" "jsonb") TO "anon";
-GRANT ALL ON FUNCTION "public"."try_acquire_scheduler_lock"("p_lock_name" "text", "p_ttl_minutes" integer, "p_process_id" "text", "p_metadata" "jsonb") TO "authenticated";
-GRANT ALL ON FUNCTION "public"."try_acquire_scheduler_lock"("p_lock_name" "text", "p_ttl_minutes" integer, "p_process_id" "text", "p_metadata" "jsonb") TO "service_role";
 
 
 
@@ -3306,24 +2910,6 @@ GRANT ALL ON TABLE "public"."users" TO "service_role";
 GRANT ALL ON TABLE "public"."public_profiles" TO "anon";
 GRANT ALL ON TABLE "public"."public_profiles" TO "authenticated";
 GRANT ALL ON TABLE "public"."public_profiles" TO "service_role";
-
-
-
-GRANT ALL ON TABLE "public"."scheduler_locks" TO "anon";
-GRANT ALL ON TABLE "public"."scheduler_locks" TO "authenticated";
-GRANT ALL ON TABLE "public"."scheduler_locks" TO "service_role";
-
-
-
-GRANT ALL ON TABLE "public"."security_audit_log" TO "anon";
-GRANT ALL ON TABLE "public"."security_audit_log" TO "authenticated";
-GRANT ALL ON TABLE "public"."security_audit_log" TO "service_role";
-
-
-
-GRANT ALL ON SEQUENCE "public"."security_audit_log_id_seq" TO "anon";
-GRANT ALL ON SEQUENCE "public"."security_audit_log_id_seq" TO "authenticated";
-GRANT ALL ON SEQUENCE "public"."security_audit_log_id_seq" TO "service_role";
 
 
 
