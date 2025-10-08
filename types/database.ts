@@ -519,22 +519,85 @@ export type Database = {
       };
       system_logs: {
         Row: {
+          action: string;
+          actor_identifier: string | null;
+          actor_type: Database["public"]["Enums"]["actor_type_enum"];
           created_at: string;
-          details: Json | null;
+          dedupe_key: string | null;
+          error_code: string | null;
+          error_message: string | null;
+          error_stack: string | null;
           id: number;
-          operation_type: string;
+          idempotency_key: string | null;
+          ip_address: unknown | null;
+          log_category: Database["public"]["Enums"]["log_category_enum"];
+          log_level: Database["public"]["Enums"]["log_level_enum"];
+          message: string;
+          metadata: Json | null;
+          outcome: Database["public"]["Enums"]["log_outcome_enum"];
+          request_id: string | null;
+          resource_id: string | null;
+          resource_type: string | null;
+          session_id: string | null;
+          stripe_event_id: string | null;
+          stripe_request_id: string | null;
+          tags: string[] | null;
+          user_agent: string | null;
+          user_id: string | null;
         };
         Insert: {
+          action: string;
+          actor_identifier?: string | null;
+          actor_type?: Database["public"]["Enums"]["actor_type_enum"];
           created_at?: string;
-          details?: Json | null;
+          dedupe_key?: string | null;
+          error_code?: string | null;
+          error_message?: string | null;
+          error_stack?: string | null;
           id?: number;
-          operation_type: string;
+          idempotency_key?: string | null;
+          ip_address?: unknown | null;
+          log_category: Database["public"]["Enums"]["log_category_enum"];
+          log_level?: Database["public"]["Enums"]["log_level_enum"];
+          message: string;
+          metadata?: Json | null;
+          outcome?: Database["public"]["Enums"]["log_outcome_enum"];
+          request_id?: string | null;
+          resource_id?: string | null;
+          resource_type?: string | null;
+          session_id?: string | null;
+          stripe_event_id?: string | null;
+          stripe_request_id?: string | null;
+          tags?: string[] | null;
+          user_agent?: string | null;
+          user_id?: string | null;
         };
         Update: {
+          action?: string;
+          actor_identifier?: string | null;
+          actor_type?: Database["public"]["Enums"]["actor_type_enum"];
           created_at?: string;
-          details?: Json | null;
+          dedupe_key?: string | null;
+          error_code?: string | null;
+          error_message?: string | null;
+          error_stack?: string | null;
           id?: number;
-          operation_type?: string;
+          idempotency_key?: string | null;
+          ip_address?: unknown | null;
+          log_category?: Database["public"]["Enums"]["log_category_enum"];
+          log_level?: Database["public"]["Enums"]["log_level_enum"];
+          message?: string;
+          metadata?: Json | null;
+          outcome?: Database["public"]["Enums"]["log_outcome_enum"];
+          request_id?: string | null;
+          resource_id?: string | null;
+          resource_type?: string | null;
+          session_id?: string | null;
+          stripe_event_id?: string | null;
+          stripe_request_id?: string | null;
+          tags?: string[] | null;
+          user_agent?: string | null;
+          user_id?: string | null;
         };
         Relationships: [];
       };
@@ -735,7 +798,23 @@ export type Database = {
       };
     };
     Enums: {
+      actor_type_enum: "user" | "guest" | "system" | "webhook" | "service_role" | "anonymous";
       attendance_status_enum: "attending" | "not_attending" | "maybe";
+      log_category_enum:
+        | "authentication"
+        | "authorization"
+        | "event_management"
+        | "attendance"
+        | "payment"
+        | "settlement"
+        | "stripe_webhook"
+        | "stripe_connect"
+        | "email"
+        | "export"
+        | "security"
+        | "system";
+      log_level_enum: "debug" | "info" | "warn" | "error" | "critical";
+      log_outcome_enum: "success" | "failure" | "unknown";
       payment_method_enum: "stripe" | "cash";
       payment_status_enum:
         | "pending"
@@ -883,7 +962,24 @@ export const Constants = {
   },
   public: {
     Enums: {
+      actor_type_enum: ["user", "guest", "system", "webhook", "service_role", "anonymous"],
       attendance_status_enum: ["attending", "not_attending", "maybe"],
+      log_category_enum: [
+        "authentication",
+        "authorization",
+        "event_management",
+        "attendance",
+        "payment",
+        "settlement",
+        "stripe_webhook",
+        "stripe_connect",
+        "email",
+        "export",
+        "security",
+        "system",
+      ],
+      log_level_enum: ["debug", "info", "warn", "error", "critical"],
+      log_outcome_enum: ["success", "failure", "unknown"],
       payment_method_enum: ["stripe", "cash"],
       payment_status_enum: [
         "pending",

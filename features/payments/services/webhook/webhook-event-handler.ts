@@ -550,6 +550,25 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
         throw new Error(`Failed to update payment on charge.succeeded: ${updateError.message}`);
       }
 
+      // 監査ログ記録
+      const { logPayment } = await import("@core/logging/system-logger");
+      await logPayment({
+        action: "payment.status_update",
+        message: `Payment status updated to paid via webhook`,
+        resource_id: payment.id,
+        outcome: "success",
+        stripe_request_id: event.request?.id ?? undefined,
+        dedupe_key: `webhook:payment_update:${event.id}`,
+        metadata: {
+          old_status: payment.status,
+          new_status: "paid",
+          amount: payment.amount,
+          charge_id: charge.id,
+          balance_transaction_id: balanceTxnId,
+          stripe_event_id: event.id,
+        },
+      });
+
       logWebhookSecurityEvent("webhook_charge_succeeded_processed", "Webhook security event", {
         eventId: event.id,
         paymentId: payment.id,

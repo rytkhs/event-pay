@@ -6,6 +6,7 @@ import { Client } from "@upstash/qstash";
 
 import { verifyEventAccess } from "@core/auth/event-authorization";
 import { logger } from "@core/logging/app-logger";
+import { logEventManagement } from "@core/logging/system-logger";
 import { createClient } from "@core/supabase/server";
 import {
   createServerActionError,
@@ -50,6 +51,19 @@ export async function cancelEventAction(
     if (updateError) {
       return createServerActionError("EVENT_CANCEL_FAILED", "イベントの中止に失敗しました");
     }
+
+    // 監査ログ記録
+    await logEventManagement({
+      action: "event.cancel",
+      message: `Event canceled: ${eventId}`,
+      user_id: user.id,
+      resource_id: eventId,
+      outcome: "success",
+      metadata: {
+        canceled_at: new Date().toISOString(),
+        message: params.message,
+      },
+    });
 
     // キャッシュ無効化
     revalidatePath("/events");

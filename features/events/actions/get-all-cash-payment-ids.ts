@@ -2,6 +2,7 @@
 
 import { verifyEventAccess, handleDatabaseError } from "@core/auth/event-authorization";
 import { logger } from "@core/logging/app-logger";
+import { logPayment } from "@core/logging/system-logger";
 import { createClient } from "@core/supabase/server";
 import {
   type SimplePaymentStatus,
@@ -111,18 +112,20 @@ export async function getAllCashPaymentIdsAction(
     }>;
 
     const paymentIds = attendances
-      .map((a) => (a.payments && a.payments[0] ? a.payments[0].id : null))
+      .map((a) => a.payments?.[0]?.id ?? null)
       .filter((id): id is string => Boolean(id));
 
     const truncated = paymentIds.length > max;
     const resultIds = truncated ? paymentIds.slice(0, max) : paymentIds;
 
-    // 監査ログ（件数のみ）
-    await supabase.from("system_logs").insert({
-      operation_type: "collect_cash_payment_ids",
-      details: {
+    // 監査ログ記録（新system_logsスキーマ対応 - service role経由）
+    await logPayment({
+      action: "cash_payment_ids.collect",
+      message: `Collected ${resultIds.length} cash payment IDs${truncated ? " (truncated)" : ""}`,
+      user_id: user.id,
+      outcome: "success",
+      metadata: {
         event_id: validatedEventId,
-        user_id: user.id,
         requested_max: max,
         returned_count: resultIds.length,
         truncated,

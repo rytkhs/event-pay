@@ -59,6 +59,23 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp" WITH SCHEMA "extensions";
 
 
 
+CREATE TYPE "public"."actor_type_enum" AS ENUM (
+    'user',
+    'guest',
+    'system',
+    'webhook',
+    'service_role',
+    'anonymous'
+);
+
+
+ALTER TYPE "public"."actor_type_enum" OWNER TO "postgres";
+
+
+COMMENT ON TYPE "public"."actor_type_enum" IS 'アクター種別（操作実行者の分類）';
+
+
+
 CREATE TYPE "public"."attendance_status_enum" AS ENUM (
     'attending',
     'not_attending',
@@ -67,6 +84,59 @@ CREATE TYPE "public"."attendance_status_enum" AS ENUM (
 
 
 ALTER TYPE "public"."attendance_status_enum" OWNER TO "postgres";
+
+
+CREATE TYPE "public"."log_category_enum" AS ENUM (
+    'authentication',
+    'authorization',
+    'event_management',
+    'attendance',
+    'payment',
+    'settlement',
+    'stripe_webhook',
+    'stripe_connect',
+    'email',
+    'export',
+    'security',
+    'system'
+);
+
+
+ALTER TYPE "public"."log_category_enum" OWNER TO "postgres";
+
+
+COMMENT ON TYPE "public"."log_category_enum" IS 'ログカテゴリ（アプリケーションドメイン別）';
+
+
+
+CREATE TYPE "public"."log_level_enum" AS ENUM (
+    'debug',
+    'info',
+    'warn',
+    'error',
+    'critical'
+);
+
+
+ALTER TYPE "public"."log_level_enum" OWNER TO "postgres";
+
+
+COMMENT ON TYPE "public"."log_level_enum" IS 'ログレベル（RFC 5424準拠）';
+
+
+
+CREATE TYPE "public"."log_outcome_enum" AS ENUM (
+    'success',
+    'failure',
+    'unknown'
+);
+
+
+ALTER TYPE "public"."log_outcome_enum" OWNER TO "postgres";
+
+
+COMMENT ON TYPE "public"."log_outcome_enum" IS '処理結果（OpenTelemetry準拠）';
+
 
 
 CREATE TYPE "public"."payment_method_enum" AS ENUM (
@@ -1014,10 +1084,12 @@ BEGIN
 
   -- ゲストトークンの重複チェック
   IF EXISTS(SELECT 1 FROM public.attendances WHERE guest_token = p_guest_token) THEN
-    RAISE EXCEPTION 'Guest token already exists: %', LEFT(p_guest_token, 8) || '...';
+    RAISE EXCEPTION 'Guest token % already exists (duplicate request)', LEFT(p_guest_token, 8) || '...'
+      USING ERRCODE = '23505',
+            DETAIL = 'This guest token is already in use';
   END IF;
 
-  -- 1. attendancesテーブルに参加記録を挿入
+  -- 1. 参加記録を挿入
   BEGIN
     INSERT INTO public.attendances (event_id, nickname, email, status, guest_token)
     VALUES (p_event_id, p_nickname, p_email, p_status, p_guest_token)
@@ -1030,46 +1102,18 @@ BEGIN
 
   EXCEPTION
     WHEN unique_violation THEN
-      -- 【レースコンディション対策】UNIQUE制約違反の適切な処理
+      -- UNIQUE制約違反の適切な処理
       DECLARE
         v_constraint_name TEXT;
-        v_capacity_recheck INTEGER;
-        v_current_count_recheck INTEGER;
       BEGIN
         -- 違反した制約名を取得
         GET STACKED DIAGNOSTICS v_constraint_name = CONSTRAINT_NAME;
 
-        -- メールアドレス重複の場合、定員超過の可能性をチェック
-        IF v_constraint_name = 'attendances_event_email_unique' OR SQLERRM LIKE '%attendances_event_email_unique%' THEN
-          -- 容量を再チェックして、本当に定員超過が原因かを確認
-          SELECT capacity INTO v_capacity_recheck FROM public.events WHERE id = p_event_id;
-
-          IF v_capacity_recheck IS NOT NULL THEN
-            SELECT COUNT(*) INTO v_current_count_recheck
-            FROM public.attendances
-            WHERE event_id = p_event_id AND status = 'attending';
-
-            -- 定員に達している場合、適切なエラーメッセージを返す
-            IF v_current_count_recheck >= v_capacity_recheck THEN
-              RAISE EXCEPTION 'このイベントは定員（%名）に達しています', v_capacity_recheck
-                USING ERRCODE = 'P0001',
-                      DETAIL = format('Race condition detected and resolved: attendees=%s, capacity=%s', v_current_count_recheck, v_capacity_recheck),
-                      HINT = 'Concurrent registration attempt blocked';
-            END IF;
-          END IF;
-
-          -- 真の重複の場合
-          RAISE EXCEPTION 'このメールアドレスは既にこのイベントに登録されています'
-            USING ERRCODE = '23505',
-                  DETAIL = format('Email already registered for event %s', p_event_id);
-
-        -- ゲストトークン重複の場合
-        ELSIF v_constraint_name = 'attendances_guest_token_key' OR SQLERRM LIKE '%guest_token%' THEN
+        -- 制約別のエラーメッセージ
+        IF v_constraint_name = 'attendances_guest_token_key' OR SQLERRM LIKE '%guest_token%' THEN
           RAISE EXCEPTION 'Guest token already exists (concurrent request detected): %', LEFT(p_guest_token, 8) || '...'
             USING ERRCODE = '23505',
                   DETAIL = 'This may indicate a race condition or duplicate request';
-
-        -- その他のUNIQUE制約違反
         ELSE
           RAISE EXCEPTION 'Unique constraint violation: %', SQLERRM
             USING ERRCODE = '23505';
@@ -1081,17 +1125,50 @@ BEGIN
 
   -- 2. 参加ステータスが'attending'で、イベントが有料の場合、paymentsテーブルに決済記録を挿入
   -- 注意: この時点では負の値チェックが完了しており、p_event_fee >= 0 が保証されている
-  IF p_status = 'attending' AND p_event_fee IS NOT NULL AND p_event_fee > 0 AND p_payment_method IS NOT NULL THEN
-    BEGIN
-      INSERT INTO public.payments (attendance_id, amount, method, status)
-      VALUES (v_attendance_id, p_event_fee, p_payment_method, 'pending');
-    EXCEPTION
-      WHEN OTHERS THEN
-        -- 決済記録の挿入に失敗した場合、参加記録も削除してロールバック
-        DELETE FROM public.attendances WHERE id = v_attendance_id;
-        RAISE EXCEPTION 'Failed to insert payment record: %', SQLERRM;
-    END;
-  END IF;
+  DECLARE
+    v_payment_id UUID;
+  BEGIN
+    IF p_status = 'attending' AND p_event_fee IS NOT NULL AND p_event_fee > 0 AND p_payment_method IS NOT NULL THEN
+      BEGIN
+        INSERT INTO public.payments (attendance_id, amount, method, status)
+        VALUES (v_attendance_id, p_event_fee, p_payment_method, 'pending')
+        RETURNING id INTO v_payment_id;
+      EXCEPTION
+        WHEN OTHERS THEN
+          -- 決済記録の挿入に失敗した場合、参加記録も削除してロールバック
+          DELETE FROM public.attendances WHERE id = v_attendance_id;
+          RAISE EXCEPTION 'Failed to insert payment record: %', SQLERRM;
+      END;
+    END IF;
+
+    -- 3. 監査ログ記録
+    INSERT INTO public.system_logs (
+      log_category,
+      action,
+      message,
+      actor_type,
+      resource_type,
+      resource_id,
+      outcome,
+      metadata
+    )
+    VALUES (
+      'attendance',
+      'attendance.register',
+      'Attendance registered',
+      (CASE WHEN p_guest_token IS NOT NULL THEN 'guest' ELSE 'system' END)::actor_type_enum,
+      'attendance',
+      v_attendance_id::text,
+      'success',
+      jsonb_build_object(
+        'event_id', p_event_id,
+        'status', p_status,
+        'has_payment', (v_payment_id IS NOT NULL),
+        'payment_method', p_payment_method,
+        'email', p_email
+      )
+    );
+  END;
 
   RETURN v_attendance_id;
 END;
@@ -1101,7 +1178,7 @@ $_$;
 ALTER FUNCTION "public"."register_attendance_with_payment"("p_event_id" "uuid", "p_nickname" character varying, "p_email" character varying, "p_status" "public"."attendance_status_enum", "p_guest_token" character varying, "p_payment_method" "public"."payment_method_enum", "p_event_fee" integer) OWNER TO "postgres";
 
 
-COMMENT ON FUNCTION "public"."register_attendance_with_payment"("p_event_id" "uuid", "p_nickname" character varying, "p_email" character varying, "p_status" "public"."attendance_status_enum", "p_guest_token" character varying, "p_payment_method" "public"."payment_method_enum", "p_event_fee" integer) IS 'イベント参加登録と決済レコード作成を一括で実行する関数（gst_形式トークン対応）';
+COMMENT ON FUNCTION "public"."register_attendance_with_payment"("p_event_id" "uuid", "p_nickname" character varying, "p_email" character varying, "p_status" "public"."attendance_status_enum", "p_guest_token" character varying, "p_payment_method" "public"."payment_method_enum", "p_event_fee" integer) IS 'Register attendance with automatic payment record creation and audit logging';
 
 
 
@@ -1154,19 +1231,32 @@ BEGIN
     END;
   END LOOP;
 
-  -- 一括処理の監査ログ
-  INSERT INTO system_logs (operation_type, details, created_at)
+  -- 一括処理の監査ログ（新スキーマ対応）
+  INSERT INTO public.system_logs (
+    log_category,
+    action,
+    message,
+    actor_type,
+    user_id,
+    resource_type,
+    outcome,
+    metadata
+  )
   VALUES (
-    'payment_bulk_status_update_safe',
+    'payment',
+    'payment.bulk_status_update',
+    format('Bulk payment status update completed: %s success, %s failures', v_success_count, v_failure_count),
+    'user',
+    p_user_id,
+    'payment',
+    CASE WHEN v_failure_count = 0 THEN 'success'::log_outcome_enum ELSE 'failure'::log_outcome_enum END,
     jsonb_build_object(
-      'user_id', p_user_id,
       'total_count', jsonb_array_length(p_payment_updates),
       'success_count', v_success_count,
       'failure_count', v_failure_count,
       'failures', v_failures,
       'notes', p_notes
-    ),
-    now()
+    )
   );
 
   -- 結果返却
@@ -1184,7 +1274,7 @@ $$;
 ALTER FUNCTION "public"."rpc_bulk_update_payment_status_safe"("p_payment_updates" "jsonb", "p_user_id" "uuid", "p_notes" "text") OWNER TO "postgres";
 
 
-COMMENT ON FUNCTION "public"."rpc_bulk_update_payment_status_safe"("p_payment_updates" "jsonb", "p_user_id" "uuid", "p_notes" "text") IS 'Bulk payment status update with optimistic locking and detailed failure reporting';
+COMMENT ON FUNCTION "public"."rpc_bulk_update_payment_status_safe"("p_payment_updates" "jsonb", "p_user_id" "uuid", "p_notes" "text") IS 'Bulk payment status update with optimistic locking and detailed failure reporting (新system_logsスキーマ対応)';
 
 
 
@@ -1278,22 +1368,36 @@ BEGIN
       USING ERRCODE = '40001'; -- serialization_failure
   END IF;
 
-  -- 3. 監査ログ記録
-  INSERT INTO system_logs (operation_type, details, created_at)
+  -- 3. 監査ログ記録（新スキーマ対応）
+  INSERT INTO public.system_logs (
+    log_category,
+    action,
+    message,
+    actor_type,
+    user_id,
+    resource_type,
+    resource_id,
+    outcome,
+    metadata
+  )
   VALUES (
-    'payment_status_update_safe',
+    'payment',
+    'payment.status_update',
+    format('Payment status updated from %s to %s', v_payment_record.status, p_new_status),
+    'user',
+    p_user_id,
+    'payment',
+    p_payment_id::text,
+    'success',
     jsonb_build_object(
-      'payment_id', p_payment_id,
       'old_status', v_payment_record.status,
       'new_status', p_new_status,
       'expected_version', p_expected_version,
       'new_version', v_payment_record.version + 1,
-      'user_id', p_user_id,
       'notes', p_notes,
       'event_id', v_event_record.id,
       'attendance_id', v_attendance_record.id
-    ),
-    now()
+    )
   );
 
   -- 4. 結果返却
@@ -1312,7 +1416,7 @@ $$;
 ALTER FUNCTION "public"."rpc_update_payment_status_safe"("p_payment_id" "uuid", "p_new_status" "public"."payment_status_enum", "p_expected_version" integer, "p_user_id" "uuid", "p_notes" "text") OWNER TO "postgres";
 
 
-COMMENT ON FUNCTION "public"."rpc_update_payment_status_safe"("p_payment_id" "uuid", "p_new_status" "public"."payment_status_enum", "p_expected_version" integer, "p_user_id" "uuid", "p_notes" "text") IS 'Optimistic-lock aware payment status update with audit logging';
+COMMENT ON FUNCTION "public"."rpc_update_payment_status_safe"("p_payment_id" "uuid", "p_new_status" "public"."payment_status_enum", "p_expected_version" integer, "p_user_id" "uuid", "p_notes" "text") IS 'Optimistic-lock aware payment status update with audit logging (新system_logsスキーマ対応)';
 
 
 
@@ -1468,61 +1572,135 @@ BEGIN
         WHERE id = v_payment_id
           AND status IN ('pending', 'failed');
 
-        INSERT INTO public.system_logs(operation_type, details)
+        -- 監査ログ記録（新スキーマ対応）
+        INSERT INTO public.system_logs (
+          log_category,
+          action,
+          message,
+          actor_type,
+          resource_type,
+          resource_id,
+          outcome,
+          metadata
+        )
         VALUES (
-          'payment_canceled',
+          'payment',
+          'payment.canceled',
+          'Payment canceled due to attendance status change',
+          'system',
+          'payment',
+          v_payment_id::text,
+          'success',
           jsonb_build_object(
-            'attendanceId', p_attendance_id,
-            'paymentId', v_payment_id,
-            'previousStatus', v_payment_status,
-            'newStatus', 'canceled',
-            'attendanceStatus', p_status
+            'attendance_id', p_attendance_id,
+            'previous_status', v_payment_status,
+            'new_status', 'canceled',
+            'attendance_status', p_status
           )
         );
       ELSIF v_payment_status IN ('paid', 'received') THEN
-        INSERT INTO public.system_logs(operation_type, details)
+        -- 監査ログ記録（新スキーマ対応）
+        INSERT INTO public.system_logs (
+          log_category,
+          action,
+          message,
+          actor_type,
+          resource_type,
+          resource_id,
+          outcome,
+          metadata
+        )
         VALUES (
-          'payment_status_maintained_on_cancel',
+          'payment',
+          'payment.status_maintained',
+          'Payment status maintained on attendance cancel (already paid)',
+          'system',
+          'payment',
+          v_payment_id::text,
+          'success',
           jsonb_build_object(
-            'attendanceId', p_attendance_id,
-            'paymentId', v_payment_id,
-            'paymentStatus', v_payment_status,
-            'paymentMethod', v_payment_method,
-            'attendanceStatus', p_status
+            'attendance_id', p_attendance_id,
+            'payment_status', v_payment_status,
+            'payment_method', v_payment_method,
+            'attendance_status', p_status
           )
         );
       ELSIF v_payment_status = 'waived' THEN
-        INSERT INTO public.system_logs(operation_type, details)
+        -- 監査ログ記録（新スキーマ対応）
+        INSERT INTO public.system_logs (
+          log_category,
+          action,
+          message,
+          actor_type,
+          resource_type,
+          resource_id,
+          outcome,
+          metadata
+        )
         VALUES (
-          'waived_payment_kept',
+          'payment',
+          'payment.waived_kept',
+          'Waived payment kept on attendance cancel',
+          'system',
+          'payment',
+          v_payment_id::text,
+          'success',
           jsonb_build_object(
-            'attendanceId', p_attendance_id,
-            'paymentId', v_payment_id,
-            'paymentStatus', v_payment_status,
-            'attendanceStatus', p_status
+            'attendance_id', p_attendance_id,
+            'payment_status', v_payment_status,
+            'attendance_status', p_status
           )
         );
       ELSIF v_payment_status = 'canceled' THEN
-        -- 再キャンセル時は重複ログを避けるため控えめな監査ログのみ記録
-        INSERT INTO public.system_logs(operation_type, details)
+        -- 監査ログ記録（新スキーマ対応）
+        INSERT INTO public.system_logs (
+          log_category,
+          action,
+          message,
+          actor_type,
+          resource_type,
+          resource_id,
+          outcome,
+          metadata
+        )
         VALUES (
-          'payment_canceled_duplicate',
+          'payment',
+          'payment.canceled_duplicate',
+          'Payment already canceled (duplicate cancel attempt)',
+          'system',
+          'payment',
+          v_payment_id::text,
+          'success',
           jsonb_build_object(
-            'attendanceId', p_attendance_id,
-            'paymentId', v_payment_id,
-            'paymentStatus', v_payment_status,
-            'attendanceStatus', p_status
+            'attendance_id', p_attendance_id,
+            'payment_status', v_payment_status,
+            'attendance_status', p_status
           )
         );
       ELSIF v_payment_status = 'refunded' THEN
-        INSERT INTO public.system_logs(operation_type, details)
+        -- 監査ログ記録（新スキーマ対応）
+        INSERT INTO public.system_logs (
+          log_category,
+          action,
+          message,
+          actor_type,
+          resource_type,
+          resource_id,
+          outcome,
+          metadata
+        )
         VALUES (
-          'refund_status_maintained_on_cancel',
+          'payment',
+          'payment.refund_maintained',
+          'Refund status maintained on attendance cancel',
+          'system',
+          'payment',
+          v_payment_id::text,
+          'success',
           jsonb_build_object(
-            'attendanceId', p_attendance_id,
-            'paymentId', v_payment_id,
-            'paymentStatus', v_payment_status,
-            'attendanceStatus', p_status
+            'attendance_id', p_attendance_id,
+            'payment_status', v_payment_status,
+            'attendance_status', p_status
           )
         );
       END IF;
@@ -1537,7 +1715,7 @@ $$;
 ALTER FUNCTION "public"."update_guest_attendance_with_payment"("p_attendance_id" "uuid", "p_status" "public"."attendance_status_enum", "p_payment_method" "public"."payment_method_enum", "p_event_fee" integer) OWNER TO "postgres";
 
 
-COMMENT ON FUNCTION "public"."update_guest_attendance_with_payment"("p_attendance_id" "uuid", "p_status" "public"."attendance_status_enum", "p_payment_method" "public"."payment_method_enum", "p_event_fee" integer) IS 'ゲスト参加状況更新と決済処理（参加キャンセル時の決済処理安全化版）';
+COMMENT ON FUNCTION "public"."update_guest_attendance_with_payment"("p_attendance_id" "uuid", "p_status" "public"."attendance_status_enum", "p_payment_method" "public"."payment_method_enum", "p_event_fee" integer) IS 'Update guest attendance with payment handling (新system_logsスキーマ対応)';
 
 
 
@@ -1983,16 +2161,153 @@ COMMENT ON TABLE "public"."stripe_connect_accounts" IS 'Stripe Connectアカウ�
 
 CREATE TABLE IF NOT EXISTS "public"."system_logs" (
     "id" bigint NOT NULL,
-    "operation_type" character varying(50) NOT NULL,
-    "details" "jsonb",
-    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "log_level" "public"."log_level_enum" DEFAULT 'info'::"public"."log_level_enum" NOT NULL,
+    "log_category" "public"."log_category_enum" NOT NULL,
+    "actor_type" "public"."actor_type_enum" DEFAULT 'system'::"public"."actor_type_enum" NOT NULL,
+    "actor_identifier" "text",
+    "user_id" "uuid",
+    "action" "text" NOT NULL,
+    "resource_type" "text",
+    "resource_id" "text",
+    "ip_address" "inet",
+    "user_agent" "text",
+    "message" "text" NOT NULL,
+    "outcome" "public"."log_outcome_enum" DEFAULT 'success'::"public"."log_outcome_enum" NOT NULL,
+    "request_id" "text",
+    "session_id" "text",
+    "stripe_request_id" "text",
+    "stripe_event_id" "text",
+    "idempotency_key" "text",
+    "metadata" "jsonb",
+    "tags" "text"[],
+    "error_code" "text",
+    "error_message" "text",
+    "error_stack" "text",
+    "dedupe_key" "text"
 );
 
 
 ALTER TABLE "public"."system_logs" OWNER TO "postgres";
 
 
-COMMENT ON TABLE "public"."system_logs" IS 'システムログテーブル';
+COMMENT ON TABLE "public"."system_logs" IS 'アプリケーション監査ログテーブル（ECS、OpenTelemetry、OWASP準拠）
+
+用途:
+- 認証・認可イベントの記録
+- CRUD操作の監査証跡
+- 決済・清算処理の追跡
+- セキュリティイベントの検出
+- Stripe連携の障害調査
+
+保存期間: 1年（パフォーマンス要件に応じて定期削除推奨）
+アクセス制御: service_role のみ（RLS有効）';
+
+
+
+COMMENT ON COLUMN "public"."system_logs"."id" IS '一意な識別子（自動採番）';
+
+
+
+COMMENT ON COLUMN "public"."system_logs"."created_at" IS 'ログ記録日時（UTC）';
+
+
+
+COMMENT ON COLUMN "public"."system_logs"."log_level" IS 'ログレベル（debug/info/warn/error/critical）';
+
+
+
+COMMENT ON COLUMN "public"."system_logs"."log_category" IS 'ログカテゴリ（アプリケーションドメイン別）';
+
+
+
+COMMENT ON COLUMN "public"."system_logs"."actor_type" IS '【Who】アクター種別（user/guest/system/webhook/service_role/anonymous）';
+
+
+
+COMMENT ON COLUMN "public"."system_logs"."actor_identifier" IS '【Who】アクター識別子（user_id、guest_token、webhook名、IPアドレス等）';
+
+
+
+COMMENT ON COLUMN "public"."system_logs"."user_id" IS '【Who】認証済みユーザーID（auth.users.id への外部キー）';
+
+
+
+COMMENT ON COLUMN "public"."system_logs"."action" IS '【What】実行されたアクション（例: event.create, payment.update, user.login）';
+
+
+
+COMMENT ON COLUMN "public"."system_logs"."resource_type" IS '【What】操作対象のリソース種別（例: event, payment, attendance）';
+
+
+
+COMMENT ON COLUMN "public"."system_logs"."resource_id" IS '【What】操作対象のリソースID（UUID、Stripe ID等）';
+
+
+
+COMMENT ON COLUMN "public"."system_logs"."ip_address" IS '【Where】クライアントIPアドレス（PII保護のためマスキング推奨）';
+
+
+
+COMMENT ON COLUMN "public"."system_logs"."user_agent" IS '【Where】User-Agent文字列（ブラウザ・デバイス情報）';
+
+
+
+COMMENT ON COLUMN "public"."system_logs"."message" IS '【Why】人間可読なログメッセージ';
+
+
+
+COMMENT ON COLUMN "public"."system_logs"."outcome" IS '【How】処理結果（success/failure/unknown）';
+
+
+
+COMMENT ON COLUMN "public"."system_logs"."request_id" IS 'リクエストID（分散トレーシング用）';
+
+
+
+COMMENT ON COLUMN "public"."system_logs"."session_id" IS 'セッションID（ユーザーセッション追跡用）';
+
+
+
+COMMENT ON COLUMN "public"."system_logs"."stripe_request_id" IS 'Stripe Request-Id（Stripe API障害調査用）';
+
+
+
+COMMENT ON COLUMN "public"."system_logs"."stripe_event_id" IS 'Stripe Event ID（Webhook処理追跡用）';
+
+
+
+COMMENT ON COLUMN "public"."system_logs"."idempotency_key" IS 'Stripe Idempotency-Key（冪等性保証用）';
+
+
+
+COMMENT ON COLUMN "public"."system_logs"."metadata" IS '構造化された追加情報（JSONB形式、柔軟な拡張用）';
+
+
+
+COMMENT ON COLUMN "public"."system_logs"."tags" IS 'フリータグ配列（検索・集計用）';
+
+
+
+COMMENT ON COLUMN "public"."system_logs"."error_code" IS 'エラーコード（failure時のみ、アプリ定義）';
+
+
+
+COMMENT ON COLUMN "public"."system_logs"."error_message" IS 'エラーメッセージ（failure時のみ）';
+
+
+
+COMMENT ON COLUMN "public"."system_logs"."error_stack" IS 'スタックトレース（failure時のみ、開発環境推奨）';
+
+
+
+COMMENT ON COLUMN "public"."system_logs"."dedupe_key" IS '重複防止キー（冪等性保証用）。同一キーのログは1度のみ記録される。
+NULL値の場合は重複チェックなし。
+形式例:
+- Webhook: webhook:{stripe_event_id}
+- Transaction: tx:{action}:{resource_id}:{timestamp_ms}
+- Idempotent: idempotent:{idempotency_key}
+- Custom: {log_category}:{unique_identifier}';
 
 
 
@@ -2261,6 +2576,58 @@ CREATE INDEX "idx_stripe_connect_accounts_user_id" ON "public"."stripe_connect_a
 
 
 
+CREATE INDEX "idx_system_logs_action" ON "public"."system_logs" USING "btree" ("action", "created_at" DESC);
+
+
+
+CREATE INDEX "idx_system_logs_category" ON "public"."system_logs" USING "btree" ("log_category", "created_at" DESC);
+
+
+
+CREATE INDEX "idx_system_logs_created_at" ON "public"."system_logs" USING "btree" ("created_at" DESC);
+
+
+
+CREATE UNIQUE INDEX "idx_system_logs_dedupe_key" ON "public"."system_logs" USING "btree" ("dedupe_key") WHERE ("dedupe_key" IS NOT NULL);
+
+
+
+CREATE INDEX "idx_system_logs_errors" ON "public"."system_logs" USING "btree" ("log_level", "created_at" DESC) WHERE ("log_level" = ANY (ARRAY['error'::"public"."log_level_enum", 'critical'::"public"."log_level_enum"]));
+
+
+
+CREATE INDEX "idx_system_logs_level" ON "public"."system_logs" USING "btree" ("log_level", "created_at" DESC);
+
+
+
+CREATE INDEX "idx_system_logs_metadata" ON "public"."system_logs" USING "gin" ("metadata");
+
+
+
+CREATE INDEX "idx_system_logs_request_id" ON "public"."system_logs" USING "btree" ("request_id") WHERE ("request_id" IS NOT NULL);
+
+
+
+CREATE INDEX "idx_system_logs_resource" ON "public"."system_logs" USING "btree" ("resource_type", "resource_id", "created_at" DESC) WHERE (("resource_type" IS NOT NULL) AND ("resource_id" IS NOT NULL));
+
+
+
+CREATE INDEX "idx_system_logs_stripe_event" ON "public"."system_logs" USING "btree" ("stripe_event_id") WHERE ("stripe_event_id" IS NOT NULL);
+
+
+
+CREATE INDEX "idx_system_logs_stripe_request" ON "public"."system_logs" USING "btree" ("stripe_request_id") WHERE ("stripe_request_id" IS NOT NULL);
+
+
+
+CREATE INDEX "idx_system_logs_tags" ON "public"."system_logs" USING "gin" ("tags");
+
+
+
+CREATE INDEX "idx_system_logs_user_id" ON "public"."system_logs" USING "btree" ("user_id") WHERE ("user_id" IS NOT NULL);
+
+
+
 CREATE UNIQUE INDEX "uniq_settlements_event_generated_date_jst" ON "public"."settlements" USING "btree" ("event_id", ((("generated_at" AT TIME ZONE 'Asia/Tokyo'::"text"))::"date"));
 
 
@@ -2345,6 +2712,11 @@ ALTER TABLE ONLY "public"."stripe_connect_accounts"
 
 
 
+ALTER TABLE ONLY "public"."system_logs"
+    ADD CONSTRAINT "system_logs_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "auth"."users"("id") ON DELETE SET NULL;
+
+
+
 ALTER TABLE ONLY "public"."users"
     ADD CONSTRAINT "users_id_fkey" FOREIGN KEY ("id") REFERENCES "auth"."users"("id") ON DELETE CASCADE;
 
@@ -2391,10 +2763,6 @@ COMMENT ON POLICY "Guests can view event organizer stripe accounts" ON "public".
 
 
 CREATE POLICY "Safe event access policy" ON "public"."events" FOR SELECT TO "authenticated", "anon" USING ("public"."can_access_event"("id"));
-
-
-
-CREATE POLICY "Service role can access system logs" ON "public"."system_logs" TO "service_role" USING (true);
 
 
 
@@ -2517,6 +2885,10 @@ ALTER TABLE "public"."stripe_connect_accounts" ENABLE ROW LEVEL SECURITY;
 
 
 ALTER TABLE "public"."system_logs" ENABLE ROW LEVEL SECURITY;
+
+
+CREATE POLICY "system_logs are accessible only by service_role" ON "public"."system_logs" TO "service_role" USING (true) WITH CHECK (true);
+
 
 
 ALTER TABLE "public"."users" ENABLE ROW LEVEL SECURITY;
@@ -2925,14 +3297,10 @@ GRANT ALL ON TABLE "public"."stripe_connect_accounts" TO "service_role";
 
 
 
-GRANT ALL ON TABLE "public"."system_logs" TO "anon";
-GRANT ALL ON TABLE "public"."system_logs" TO "authenticated";
 GRANT ALL ON TABLE "public"."system_logs" TO "service_role";
 
 
 
-GRANT ALL ON SEQUENCE "public"."system_logs_id_seq" TO "anon";
-GRANT ALL ON SEQUENCE "public"."system_logs_id_seq" TO "authenticated";
 GRANT ALL ON SEQUENCE "public"."system_logs_id_seq" TO "service_role";
 
 

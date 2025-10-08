@@ -372,10 +372,14 @@ export class ConnectWebhookHandler {
     }
   ): Promise<void> {
     try {
-      const logData = {
-        event_type: "stripe_connect_account_updated",
+      const { logStripeConnect } = await import("@core/logging/system-logger");
+
+      await logStripeConnect({
+        action: "stripe_connect_account_updated",
+        message: `Stripe Connect account status updated from ${oldStatus} to ${accountInfo.status}`,
         user_id: userId,
-        details: {
+        outcome: "success",
+        metadata: {
           accountId,
           oldStatus,
           newStatus: accountInfo.status,
@@ -384,7 +388,7 @@ export class ConnectWebhookHandler {
           requirements: accountInfo.requirements,
           timestamp: new Date().toISOString(),
         },
-      };
+      });
     } catch (error) {
       logger.error("Error logging account update", {
         tag: "accountUpdateLogError",

@@ -254,6 +254,31 @@ export class SecureSupabaseClientFactory implements ISecureSupabaseClientFactory
       };
 
       logger.info("Admin access logged", { reason, context });
+
+      // DB監査ログへの記録
+      // 注意: ここではまだクライアントを作成していないため、動的インポートで logToSystemLogs を使用
+      const { logToSystemLogs } = await import("@core/logging/system-logger");
+      await logToSystemLogs(
+        {
+          log_category: "security",
+          action: "admin.access",
+          message: `Admin access: ${reason}`,
+          actor_type: "service_role",
+          actor_identifier: reason,
+          user_id: auditContext?.userId,
+          ip_address: auditContext?.ipAddress,
+          user_agent: auditContext?.userAgent,
+          outcome: "success",
+          metadata: {
+            reason,
+            context,
+            operation_type: auditContext?.operationType,
+            accessed_tables: auditContext?.accessedTables,
+            additional_info: auditContext?.additionalInfo,
+          },
+        },
+        { alsoLogToPino: false } // pinoへの重複記録を避ける
+      );
     } catch (error) {
       throw new AdminAccessError(
         AdminAccessErrorCode.AUDIT_LOG_FAILED,

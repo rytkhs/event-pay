@@ -4,6 +4,7 @@ import { headers } from "next/headers";
 
 import { verifyEventAccess } from "@core/auth/event-authorization";
 import { logger } from "@core/logging/app-logger";
+import { logExport } from "@core/logging/system-logger";
 import { enforceRateLimit, buildKey, POLICIES } from "@core/rate-limit";
 import { createClient } from "@core/supabase/server";
 import {
@@ -32,9 +33,10 @@ export async function exportParticipantsCsvAction(params: unknown): Promise<{
     const validatedParams = ExportParticipantsCsvParamsSchema.parse(params);
     const { eventId, filters, columns } = validatedParams;
 
-    // IP アドレス取得（情報ログ用）
+    // IP アドレス取得（先頭のみ、監査ログ用）
     const headersList = headers();
-    const ip = headersList.get("x-forwarded-for") || "unknown";
+    const rawIp = headersList.get("x-forwarded-for") || headersList.get("x-real-ip");
+    const ip = rawIp ? rawIp.split(",")[0].trim() : undefined;
 
     // 共通の認証・権限確認処理
     const { user, eventId: validatedEventId } = await verifyEventAccess(eventId);
@@ -179,25 +181,20 @@ export async function exportParticipantsCsvAction(params: unknown): Promise<{
       now.getDate().toString().padStart(2, "0");
     const filename = `participants-${validatedEventId}-${dateStr}.csv`;
 
-    // 監査ログ記録
-    await supabase.from("system_logs").insert({
-      operation_type: "participants_csv_export",
-      details: {
-        event_id: validatedEventId,
-        user_id: user.id,
+    // 監査ログ記録（新system_logsスキーマ対応 - service role経由）
+    await logExport({
+      action: "participants.csv_export",
+      message: `Exported ${csvSource.length} participants to CSV`,
+      user_id: user.id,
+      resource_type: "event",
+      resource_id: validatedEventId,
+      ip_address: ip,
+      metadata: {
         participant_count: csvSource.length,
         filters: filters || {},
         columns,
         filename,
-        ip_address: ip,
       },
-    });
-
-    logger.info("Participants CSV export completed", {
-      eventId: validatedEventId,
-      userId: user.id,
-      participantCount: csvSource.length,
-      filename,
     });
 
     return {

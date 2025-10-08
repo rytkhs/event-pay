@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import { createProblemResponse } from "@core/api/problem-details";
 import { validateCronSecret } from "@core/cron-auth";
 import { logger } from "@core/logging/app-logger";
+import { logEmail } from "@core/logging/system-logger";
 import { EmailNotificationService } from "@core/notification/email-service";
 import { ReminderService } from "@core/notification/reminder-service";
 import { getSecureClientFactory } from "@core/security/secure-client-factory.impl";
@@ -60,6 +61,19 @@ export async function GET(request: NextRequest) {
       summaries,
       totalSent,
       totalFailed,
+    });
+
+    // 監査ログ記録
+    await logEmail({
+      action: "email.reminder_batch",
+      message: `Reminder cron job completed`,
+      actor_type: "system",
+      outcome: "success",
+      metadata: {
+        total_sent: totalSent,
+        total_failed: totalFailed,
+        summaries: summaries,
+      },
     });
 
     // 失敗率が10%を超えた場合、管理者にアラート

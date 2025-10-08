@@ -5,6 +5,7 @@ import { headers } from "next/headers";
 import { z } from "zod";
 
 import { getCurrentUser } from "@core/auth/auth-utils";
+import { logEventManagement } from "@core/logging/system-logger";
 import { SecureSupabaseClientFactory } from "@core/security/secure-client-factory.impl";
 import { logSecurityEvent } from "@core/security/security-logger";
 import {
@@ -146,6 +147,20 @@ export async function createEventAction(formData: FormData): Promise<CreateEvent
         retryable: true,
       });
     }
+
+    // 監査ログ記録
+    await logEventManagement({
+      action: "event.create",
+      message: `Event created: ${createdEvent.id}`,
+      user_id: user.id,
+      resource_id: createdEvent.id,
+      outcome: "success",
+      metadata: {
+        title: eventData.title,
+        fee: eventData.fee,
+        payment_methods: eventData.payment_methods,
+      },
+    });
 
     return createServerActionSuccess(createdEvent);
   } catch (error) {

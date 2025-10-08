@@ -4,6 +4,7 @@ import { z } from "zod";
 
 import { verifyEventAccess } from "@core/auth/event-authorization";
 import { logger } from "@core/logging/app-logger";
+import { logAttendance } from "@core/logging/system-logger";
 import { SecureSupabaseClientFactory } from "@core/security/secure-client-factory.impl";
 import { getPaymentService } from "@core/services/payment-service";
 import { PaymentError } from "@core/types/payment-errors";
@@ -219,6 +220,24 @@ export async function adminAddAttendanceAction(
       canOnlinePay: eligibility.isEligible,
       paymentId,
       method: "RLS_POLICY_BASED", // RLSポリシーベースのアクセス制御使用
+    });
+
+    // DB監査ログ記録
+    await logAttendance({
+      action: "attendance.admin_add",
+      message: `Admin added attendance: ${attendanceId}`,
+      user_id: user.id,
+      actor_type: "user",
+      resource_id: attendanceId,
+      outcome: "success",
+      metadata: {
+        event_id: eventId,
+        nickname,
+        email: placeholderEmail.toLowerCase(),
+        status,
+        bypass_capacity: bypassCapacity,
+        payment_id: paymentId,
+      },
     });
 
     return createServerActionSuccess<AddAttendanceResult>({

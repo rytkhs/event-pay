@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 
 import { z } from "zod";
 
+import { logEventManagement } from "@core/logging/system-logger";
 import { createClient } from "@core/supabase/server";
 import {
   type ServerActionResult,
@@ -412,6 +413,20 @@ export async function updateEventAction(
     if (!updatedEvent) {
       return createServerActionError("DATABASE_ERROR", "イベントの更新に失敗しました");
     }
+
+    // 監査ログ記録
+    await logEventManagement({
+      action: "event.update",
+      message: `Event updated: ${eventId}`,
+      user_id: user.id,
+      resource_id: eventId,
+      outcome: "success",
+      metadata: {
+        updated_fields: Object.keys(updateData),
+        has_fee_change: updateData.fee !== undefined,
+        has_payment_methods_change: updateData.payment_methods !== undefined,
+      },
+    });
 
     // キャッシュの無効化
     revalidatePath("/events");

@@ -664,6 +664,23 @@ export class PaymentService implements IPaymentService {
         transfer_group: `event_${params.eventId}_payout`,
       });
 
+      // 監査ログ記録
+      const { logPayment } = await import("@core/logging/system-logger");
+      await logPayment({
+        action: "checkout.session_create",
+        message: `Checkout session created: ${targetPaymentId}`,
+        resource_id: targetPaymentId,
+        outcome: "success",
+        stripe_request_id: session.id,
+        idempotency_key: idempotencyKeyToUse,
+        metadata: {
+          event_id: params.eventId,
+          amount: session.amount_total,
+          application_fee: feeCalculation.applicationFeeAmount,
+          destination_account: destinationAccountId,
+        },
+      });
+
       if (!session.url) {
         throw new PaymentError(
           PaymentErrorType.STRIPE_API_ERROR,
@@ -930,6 +947,20 @@ export class PaymentService implements IPaymentService {
         "指定された決済レコードが見つかりません"
       );
     }
+
+    // 監査ログ記録
+    const { logPayment } = await import("@core/logging/system-logger");
+    await logPayment({
+      action: "payment.status_update",
+      message: `Payment status updated: ${params.paymentId}`,
+      resource_id: params.paymentId,
+      outcome: "success",
+      metadata: {
+        new_status: params.status,
+        update_source: "service",
+        paid_at: params.paidAt?.toISOString(),
+      },
+    });
   }
 
   /**
@@ -1206,6 +1237,16 @@ export class PaymentService implements IPaymentService {
           error
         );
       }
+
+      // 監査ログ記録
+      const { logPayment } = await import("@core/logging/system-logger");
+      await logPayment({
+        action: "payment.delete",
+        message: `Payment deleted: ${paymentId}`,
+        resource_id: paymentId,
+        outcome: "success",
+        metadata: { reason: "manual_deletion" },
+      });
     } catch (error) {
       if (error instanceof PaymentError) {
         throw error;

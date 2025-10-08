@@ -444,6 +444,23 @@ export class StripeConnectService implements IStripeConnectService {
         throw this.errorHandler.mapDatabaseError(error, "Connect Accountステータス更新");
       }
 
+      // 監査ログ記録
+      if (updatedRows && updatedRows.length > 0) {
+        const { logStripeConnect } = await import("@core/logging/system-logger");
+        await logStripeConnect({
+          action: "connect.account_update",
+          message: `Stripe Connect account updated: ${userId}`,
+          user_id: userId,
+          outcome: "success",
+          metadata: {
+            updated_fields: Object.keys(updateData),
+            status,
+            charges_enabled: chargesEnabled,
+            payouts_enabled: payoutsEnabled,
+          },
+        });
+      }
+
       // 該当行が存在せず更新件数0件の場合のフェイルセーフ
       if (!updatedRows || updatedRows.length === 0) {
         // Insertには stripe_account_id が必須

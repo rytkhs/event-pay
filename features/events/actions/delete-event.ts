@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 
 import { verifyEventAccess } from "@core/auth/event-authorization";
+import { logEventManagement } from "@core/logging/system-logger";
 import { createClient } from "@core/supabase/server";
 import {
   createServerActionError,
@@ -66,6 +67,15 @@ export async function deleteEventAction(eventId: string): Promise<ServerActionRe
       }
       return createServerActionError("EVENT_DELETE_FAILED", "イベントの削除に失敗しました");
     }
+
+    // 監査ログ記録
+    await logEventManagement({
+      action: "event.delete",
+      message: `Event deleted: ${validatedEventId}`,
+      user_id: user.id,
+      resource_id: validatedEventId,
+      outcome: "success",
+    });
 
     // キャッシュを無効化
     revalidatePath("/events");
