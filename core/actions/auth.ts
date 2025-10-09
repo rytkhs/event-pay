@@ -545,7 +545,7 @@ export async function verifyOtpAction(formData: FormData): Promise<ActionResult>
     const { email, otp, type } = result.data;
     const supabase = createClient();
 
-    const { data: verifiedData, error: verifiedError } = await supabase.auth.verifyOtp({
+    const { error: verifiedError } = await supabase.auth.verifyOtp({
       email,
       token: otp,
       type: type as EmailOtpType,
@@ -569,33 +569,6 @@ export async function verifyOtpAction(formData: FormData): Promise<ActionResult>
         success: false,
         error: errorMessage,
       };
-    }
-
-    // OTP確認成功後、ユーザープロファイル作成
-    if (type === "signup" && verifiedData?.user) {
-      try {
-        const { error: profileError } = await supabase.from("users").insert({
-          id: verifiedData.user.id,
-          name: verifiedData.user.user_metadata?.name || "",
-        });
-
-        if (profileError) {
-          logger.error("Profile creation failed", {
-            tag: "profileCreationFailed",
-            user_id: verifiedData.user.id,
-            error_message: profileError.message,
-          });
-          // プロファイル作成エラーは非致命的として扱う
-        }
-      } catch (profileError) {
-        logger.error("Profile creation error", {
-          tag: "profileCreationError",
-          user_id: verifiedData.user?.id,
-          error_name: profileError instanceof Error ? profileError.name : "Unknown",
-          error_message:
-            profileError instanceof Error ? profileError.message : String(profileError),
-        });
-      }
     }
 
     return {

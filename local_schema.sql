@@ -1799,7 +1799,10 @@ COMMENT ON FUNCTION "public"."update_revenue_summary"("p_event_id" "uuid") IS '�
 CREATE OR REPLACE FUNCTION "public"."update_updated_at_column"() RETURNS "trigger"
     LANGUAGE "plpgsql"
     AS $$
-BEGIN NEW.updated_at = NOW(); RETURN NEW; END;
+BEGIN
+  NEW.updated_at = now();
+  RETURN NEW;
+END;
 $$;
 
 
@@ -2741,6 +2744,10 @@ CREATE POLICY "Creators can view payments" ON "public"."payments" FOR SELECT TO 
 
 
 
+CREATE POLICY "Creators can view their own events" ON "public"."events" FOR SELECT TO "authenticated" USING (("auth"."uid"() = "created_by"));
+
+
+
 CREATE POLICY "Guest token update payment details" ON "public"."payments" FOR UPDATE TO "authenticated", "anon" USING ((EXISTS ( SELECT 1
    FROM ("public"."attendances" "a"
      JOIN "public"."events" "e" ON (("a"."event_id" = "e"."id")))
@@ -2779,14 +2786,6 @@ CREATE POLICY "Service role can manage settlements" ON "public"."settlements" TO
 
 
 CREATE POLICY "Service role can manage stripe/payout info" ON "public"."stripe_connect_accounts" TO "service_role" USING (true) WITH CHECK (true);
-
-
-
-CREATE POLICY "Users can insert their own events" ON "public"."events" FOR INSERT TO "authenticated" WITH CHECK (("auth"."uid"() = "created_by"));
-
-
-
-COMMENT ON POLICY "Users can insert their own events" ON "public"."events" IS '認証済みユーザーが自分のイベント(created_by = auth.uid())を作成できるようにするポリシー';
 
 
 

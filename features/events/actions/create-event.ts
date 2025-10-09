@@ -1,10 +1,13 @@
 "use server";
 
+import { randomUUID } from "crypto";
+
 import { headers } from "next/headers";
 
 import { z } from "zod";
 
 import { getCurrentUser } from "@core/auth/auth-utils";
+import { logger } from "@core/logging/app-logger";
 import { logEventManagement } from "@core/logging/system-logger";
 import { SecureSupabaseClientFactory } from "@core/security/secure-client-factory.impl";
 import { logSecurityEvent } from "@core/security/security-logger";
@@ -40,10 +43,20 @@ type FormDataFields = {
 };
 
 export async function createEventAction(formData: FormData): Promise<CreateEventResult> {
+  const requestId = randomUUID();
+  const actionLogger = logger.withContext({
+    tag: "eventCreation",
+    request_id: requestId,
+  });
+
+  actionLogger.info("Event creation action invoked");
+
   try {
     const user = await getCurrentUser();
 
     if (!user) {
+      actionLogger.warn("Event creation attempted without authentication");
+
       // セキュリティログの記録
       const headersList = headers();
       logSecurityEvent({
@@ -74,8 +87,16 @@ export async function createEventAction(formData: FormData): Promise<CreateEvent
       validatedData = createEventSchema.parse(rawData);
     } catch (validationError) {
       if (validationError instanceof z.ZodError) {
+        actionLogger.warn("Event creation validation failed", {
+          user_id: user.id,
+          issues: validationError.issues,
+        });
         return zodErrorToServerActionResponse(validationError);
       }
+      actionLogger.error("Event creation validation encountered unexpected error", {
+        user_id: user.id,
+        error: validationError instanceof Error ? validationError.message : validationError,
+      });
       return createServerActionError("VALIDATION_ERROR", "入力が不正です");
     }
 
@@ -104,6 +125,12 @@ export async function createEventAction(formData: FormData): Promise<CreateEvent
           (connectAccount as any).payouts_enabled === true;
 
         if (connectError || !isReady) {
+          actionLogger.warn("Stripe Connect not ready for paid event creation", {
+            user_id: user.id,
+            connect_error: connectError?.message,
+            connect_status: connectAccount?.status,
+            connect_payouts_enabled: connectAccount?.payouts_enabled,
+          });
           return createServerActionError(
             "VALIDATION_ERROR",
             "オンライン決済を利用するにはStripe Connectの設定完了が必要です",
@@ -129,6 +156,13 @@ export async function createEventAction(formData: FormData): Promise<CreateEvent
     const secureFactory = SecureSupabaseClientFactory.getInstance();
     const authenticatedClient = secureFactory.createAuthenticatedClient();
 
+    actionLogger.info("Attempting to insert event", {
+      user_id: user.id,
+      fee: eventData.fee,
+      payment_methods: eventData.payment_methods,
+      created_by: eventData.created_by,
+    });
+
     const { data: createdEvent, error: dbError } = await authenticatedClient
       .from("events")
       .insert(eventData)
@@ -136,6 +170,14 @@ export async function createEventAction(formData: FormData): Promise<CreateEvent
       .single();
 
     if (dbError) {
+      actionLogger.error("Event creation failed at database insert", {
+        user_id: user.id,
+        error_code: dbError.code,
+        error_message: dbError.message,
+        hint: dbError.hint,
+        details: dbError.details,
+        rls_suspected: dbError.code === "42501",
+      });
       return createServerActionError("DATABASE_ERROR", "イベントの作成に失敗しました", {
         retryable: true,
         details: { dbError },
@@ -143,10 +185,18 @@ export async function createEventAction(formData: FormData): Promise<CreateEvent
     }
 
     if (!createdEvent) {
+      actionLogger.error("Event creation did not return created event", {
+        user_id: user.id,
+      });
       return createServerActionError("DATABASE_ERROR", "イベントの作成に失敗しました", {
         retryable: true,
       });
     }
+
+    actionLogger.info("Event created successfully", {
+      user_id: user.id,
+      event_id: createdEvent.id,
+    });
 
     // 監査ログ記録
     await logEventManagement({
@@ -165,8 +215,15 @@ export async function createEventAction(formData: FormData): Promise<CreateEvent
     return createServerActionSuccess(createdEvent);
   } catch (error) {
     if (error instanceof z.ZodError) {
+      actionLogger.error("Event creation caught ZodError in catch", {
+        issues: error.issues,
+      });
       return zodErrorToServerActionResponse(error);
     }
+    actionLogger.error("Event creation action threw unexpected error", {
+      error_message: error instanceof Error ? error.message : String(error),
+      error_stack: error instanceof Error ? error.stack : undefined,
+    });
     return createServerActionError("INTERNAL_ERROR", "予期しないエラーが発生しました", {
       retryable: true,
       details: { originalError: error },
