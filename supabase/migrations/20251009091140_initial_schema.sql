@@ -21,11 +21,11 @@ SET row_security = off;
 
 
 
-COMMENT ON SCHEMA "public" IS '清算RPC関数のクリーンアップ完了 - 一貫性のないロジックを持つ未使用関数を削除 (calc_payout_amount, process_event_payout, get_settlement_aggregations)';
+COMMENT ON SCHEMA "public" IS 'アプリケーション公開スキーマ';
 
 
 
-CREATE EXTENSION IF NOT EXISTS "pg_graphql" WITH SCHEMA "graphql";
+-- pg_graphql is not used; extension creation removed
 
 
 

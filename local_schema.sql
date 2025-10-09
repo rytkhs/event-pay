@@ -20,7 +20,7 @@ CREATE EXTENSION IF NOT EXISTS "pg_net" WITH SCHEMA "extensions";
 
 
 
-COMMENT ON SCHEMA "public" IS '清算RPC関数のクリーンアップ完了 - 一貫性のないロジックを持つ未使用関数を削除 (calc_payout_amount, process_event_payout, get_settlement_aggregations)';
+COMMENT ON SCHEMA "public" IS 'アプリケーション公開スキーマ';
 
 
 
@@ -179,7 +179,7 @@ ALTER TYPE "public"."stripe_account_status_enum" OWNER TO "postgres";
 
 CREATE OR REPLACE FUNCTION "public"."admin_add_attendance_with_capacity_check"("p_event_id" "uuid", "p_nickname" character varying, "p_email" character varying, "p_status" "public"."attendance_status_enum", "p_guest_token" character varying, "p_bypass_capacity" boolean DEFAULT false) RETURNS "uuid"
     LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO 'public', 'pg_temp'
+    SET "search_path" TO 'pg_catalog', 'public', 'pg_temp'
     AS $$
 DECLARE
   v_attendance_id UUID;
@@ -409,7 +409,7 @@ COMMENT ON FUNCTION "public"."calc_total_stripe_fee"("p_event_id" "uuid", "p_bas
 
 CREATE OR REPLACE FUNCTION "public"."can_access_attendance"("p_attendance_id" "uuid") RETURNS boolean
     LANGUAGE "plpgsql" STABLE SECURITY DEFINER
-    SET "search_path" TO 'public', 'pg_temp'
+    SET "search_path" TO 'pg_catalog', 'public', 'pg_temp'
     AS $$
 DECLARE
   event_id_for_attendance UUID;
@@ -459,7 +459,7 @@ COMMENT ON FUNCTION "public"."can_access_attendance"("p_attendance_id" "uuid") I
 
 CREATE OR REPLACE FUNCTION "public"."can_access_event"("p_event_id" "uuid") RETURNS boolean
     LANGUAGE "plpgsql" STABLE SECURITY DEFINER
-    SET "search_path" TO 'public', 'pg_temp'
+    SET "search_path" TO 'pg_catalog', 'public', 'pg_temp'
     AS $$
 DECLARE
   current_user_id UUID;
@@ -526,7 +526,7 @@ COMMENT ON FUNCTION "public"."can_access_event"("p_event_id" "uuid") IS 'イベ�
 
 CREATE OR REPLACE FUNCTION "public"."can_manage_invite_links"("p_event_id" "uuid") RETURNS boolean
     LANGUAGE "plpgsql" STABLE SECURITY DEFINER
-    SET "search_path" TO 'public', 'pg_temp'
+    SET "search_path" TO 'pg_catalog', 'public', 'pg_temp'
     AS $$
 DECLARE
   current_user_id UUID;
@@ -555,7 +555,7 @@ COMMENT ON FUNCTION "public"."can_manage_invite_links"("p_event_id" "uuid") IS '
 
 
 CREATE OR REPLACE FUNCTION "public"."check_attendance_capacity_limit"() RETURNS "trigger"
-    LANGUAGE "plpgsql"
+    LANGUAGE "plpgsql" SECURITY DEFINER
     AS $$
 DECLARE
   event_capacity INTEGER;
@@ -594,7 +594,7 @@ ALTER FUNCTION "public"."check_attendance_capacity_limit"() OWNER TO "app_define
 
 CREATE OR REPLACE FUNCTION "public"."generate_settlement_report"("input_event_id" "uuid", "input_created_by" "uuid") RETURNS TABLE("report_id" "uuid", "already_exists" boolean, "returned_event_id" "uuid", "event_title" character varying, "event_date" timestamp with time zone, "created_by" "uuid", "stripe_account_id" character varying, "transfer_group" "text", "total_stripe_sales" integer, "total_stripe_fee" integer, "total_application_fee" integer, "net_payout_amount" integer, "payment_count" integer, "refunded_count" integer, "total_refunded_amount" integer, "dispute_count" integer, "total_disputed_amount" integer, "report_generated_at" timestamp with time zone, "report_updated_at" timestamp with time zone)
     LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO 'public', 'pg_temp'
+    SET "search_path" TO 'pg_catalog', 'public', 'pg_temp'
     AS $$
 DECLARE
     v_payout_id UUID;
@@ -751,7 +751,7 @@ ALTER FUNCTION "public"."generate_settlement_report"("input_event_id" "uuid", "i
 
 
 CREATE OR REPLACE FUNCTION "public"."get_event_creator_name"("p_creator_id" "uuid") RETURNS "text"
-    LANGUAGE "plpgsql" STABLE
+    LANGUAGE "plpgsql" STABLE SECURITY DEFINER
     SET "search_path" TO 'public', 'pg_temp'
     AS $$
 BEGIN
@@ -765,7 +765,7 @@ ALTER FUNCTION "public"."get_event_creator_name"("p_creator_id" "uuid") OWNER TO
 
 CREATE OR REPLACE FUNCTION "public"."get_guest_token"() RETURNS "text"
     LANGUAGE "plpgsql" STABLE SECURITY DEFINER
-    SET "search_path" TO 'public', 'pg_temp'
+    SET "search_path" TO 'pg_catalog', 'public', 'pg_temp'
     AS $$
 DECLARE
   token TEXT;
@@ -844,7 +844,7 @@ COMMENT ON FUNCTION "public"."get_min_payout_amount"() IS '最小送金金額（
 
 CREATE OR REPLACE FUNCTION "public"."get_settlement_report_details"("input_created_by" "uuid", "input_event_ids" "uuid"[] DEFAULT NULL::"uuid"[], "p_from_date" timestamp with time zone DEFAULT NULL::timestamp with time zone, "p_to_date" timestamp with time zone DEFAULT NULL::timestamp with time zone, "p_limit" integer DEFAULT 50, "p_offset" integer DEFAULT 0) RETURNS TABLE("report_id" "uuid", "event_id" "uuid", "event_title" character varying, "event_date" timestamp with time zone, "stripe_account_id" character varying, "transfer_group" character varying, "generated_at" timestamp with time zone, "total_stripe_sales" integer, "total_stripe_fee" integer, "total_application_fee" integer, "net_payout_amount" integer, "payment_count" integer, "refunded_count" integer, "total_refunded_amount" integer)
     LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO 'public', 'pg_temp'
+    SET "search_path" TO 'pg_catalog', 'public', 'pg_temp'
     AS $$
 BEGIN
     RETURN QUERY
@@ -937,7 +937,7 @@ COMMENT ON FUNCTION "public"."handle_new_user"() IS 'auth.usersテーブルに�
 
 CREATE OR REPLACE FUNCTION "public"."hash_guest_token"("token" "text") RETURNS character varying
     LANGUAGE "plpgsql" IMMUTABLE SECURITY DEFINER
-    SET "search_path" TO 'public', 'pg_temp'
+    SET "search_path" TO 'pg_catalog', 'public', 'pg_temp'
     AS $$
 BEGIN
     -- Use pgcrypto.digest(bytea, text) with convert_to to avoid implicit cast errors
@@ -978,7 +978,7 @@ ALTER FUNCTION "public"."prevent_payment_status_rollback"() OWNER TO "postgres";
 
 CREATE OR REPLACE FUNCTION "public"."register_attendance_with_payment"("p_event_id" "uuid", "p_nickname" character varying, "p_email" character varying, "p_status" "public"."attendance_status_enum", "p_guest_token" character varying, "p_payment_method" "public"."payment_method_enum" DEFAULT NULL::"public"."payment_method_enum", "p_event_fee" integer DEFAULT 0) RETURNS "uuid"
     LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO 'public', 'pg_temp'
+    SET "search_path" TO 'pg_catalog', 'public', 'pg_temp'
     AS $_$
 DECLARE
   v_attendance_id UUID;
@@ -1158,7 +1158,7 @@ COMMENT ON FUNCTION "public"."register_attendance_with_payment"("p_event_id" "uu
 
 CREATE OR REPLACE FUNCTION "public"."rpc_bulk_update_payment_status_safe"("p_payment_updates" "jsonb", "p_user_id" "uuid", "p_notes" "text" DEFAULT NULL::"text") RETURNS json
     LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO 'public', 'pg_temp'
+    SET "search_path" TO 'pg_catalog', 'public', 'pg_temp'
     AS $$
 DECLARE
   v_update_item     jsonb;
@@ -1255,7 +1255,7 @@ COMMENT ON FUNCTION "public"."rpc_bulk_update_payment_status_safe"("p_payment_up
 
 CREATE OR REPLACE FUNCTION "public"."rpc_guest_get_attendance"() RETURNS TABLE("attendance_id" "uuid", "nickname" character varying, "email" character varying, "status" "public"."attendance_status_enum", "guest_token" character varying, "event_id" "uuid", "event_title" character varying, "event_date" timestamp with time zone, "event_fee" integer, "created_by" "uuid", "registration_deadline" timestamp with time zone, "payment_deadline" timestamp with time zone, "canceled_at" timestamp with time zone)
     LANGUAGE "plpgsql" STABLE SECURITY DEFINER
-    SET "search_path" TO 'public', 'pg_temp'
+    SET "search_path" TO 'pg_catalog', 'public', 'pg_temp'
     AS $$
 BEGIN
     RETURN QUERY
@@ -1286,13 +1286,12 @@ ALTER FUNCTION "public"."rpc_guest_get_attendance"() OWNER TO "app_definer";
 
 CREATE OR REPLACE FUNCTION "public"."rpc_guest_get_latest_payment"("p_attendance_id" "uuid") RETURNS integer
     LANGUAGE "plpgsql" STABLE SECURITY DEFINER
-    SET "search_path" TO 'public', 'pg_temp'
+    SET "search_path" TO 'pg_catalog', 'public', 'pg_temp'
     AS $$
 DECLARE
     v_amount integer;
     v_token text;
 BEGIN
-    -- Ensure the caller (guest) owns the attendance via guest token
     v_token := public.get_guest_token();
     IF v_token IS NULL THEN
         RAISE EXCEPTION 'missing guest token';
@@ -1322,7 +1321,7 @@ ALTER FUNCTION "public"."rpc_guest_get_latest_payment"("p_attendance_id" "uuid")
 
 CREATE OR REPLACE FUNCTION "public"."rpc_public_attending_count"("p_event_id" "uuid") RETURNS integer
     LANGUAGE "plpgsql" STABLE SECURITY DEFINER
-    SET "search_path" TO 'public', 'pg_temp'
+    SET "search_path" TO 'pg_catalog', 'public', 'pg_temp'
     AS $$
 DECLARE
     v_count integer := 0;
@@ -1346,7 +1345,7 @@ ALTER FUNCTION "public"."rpc_public_attending_count"("p_event_id" "uuid") OWNER 
 
 CREATE OR REPLACE FUNCTION "public"."rpc_public_check_duplicate_email"("p_event_id" "uuid", "p_email" "text") RETURNS boolean
     LANGUAGE "plpgsql" STABLE SECURITY DEFINER
-    SET "search_path" TO 'public', 'pg_temp'
+    SET "search_path" TO 'pg_catalog', 'public', 'pg_temp'
     AS $$
 DECLARE
     v_exists boolean := false;
@@ -1372,10 +1371,9 @@ ALTER FUNCTION "public"."rpc_public_check_duplicate_email"("p_event_id" "uuid", 
 
 CREATE OR REPLACE FUNCTION "public"."rpc_public_get_connect_account"("p_event_id" "uuid", "p_creator_id" "uuid") RETURNS TABLE("stripe_account_id" character varying, "payouts_enabled" boolean)
     LANGUAGE "plpgsql" STABLE SECURITY DEFINER
-    SET "search_path" TO 'public', 'pg_temp'
+    SET "search_path" TO 'pg_catalog', 'public', 'pg_temp'
     AS $$
 BEGIN
-    -- Validate event access for public/guest callers
     IF NOT public.can_access_event(p_event_id) THEN
         RAISE EXCEPTION 'not allowed';
     END IF;
@@ -1396,7 +1394,7 @@ ALTER FUNCTION "public"."rpc_public_get_connect_account"("p_event_id" "uuid", "p
 
 CREATE OR REPLACE FUNCTION "public"."rpc_public_get_event"("p_invite_token" "text") RETURNS TABLE("id" "uuid", "title" character varying, "date" timestamp with time zone, "location" character varying, "description" "text", "fee" integer, "capacity" integer, "payment_methods" "public"."payment_method_enum"[], "registration_deadline" timestamp with time zone, "payment_deadline" timestamp with time zone, "invite_token" character varying, "canceled_at" timestamp with time zone, "attendances_count" integer)
     LANGUAGE "plpgsql" STABLE SECURITY DEFINER
-    SET "search_path" TO 'public', 'pg_temp'
+    SET "search_path" TO 'pg_catalog', 'public', 'pg_temp'
     AS $$
 BEGIN
     RETURN QUERY
@@ -1430,7 +1428,7 @@ ALTER FUNCTION "public"."rpc_public_get_event"("p_invite_token" "text") OWNER TO
 
 CREATE OR REPLACE FUNCTION "public"."rpc_update_payment_status_safe"("p_payment_id" "uuid", "p_new_status" "public"."payment_status_enum", "p_expected_version" integer, "p_user_id" "uuid", "p_notes" "text" DEFAULT NULL::"text") RETURNS json
     LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO 'public', 'pg_temp'
+    SET "search_path" TO 'pg_catalog', 'public', 'pg_temp'
     AS $$
 DECLARE
   v_updated_rows     integer;
@@ -1596,7 +1594,7 @@ COMMENT ON FUNCTION "public"."status_rank"("p" "public"."payment_status_enum") I
 
 CREATE OR REPLACE FUNCTION "public"."update_guest_attendance_with_payment"("p_attendance_id" "uuid", "p_status" "public"."attendance_status_enum", "p_payment_method" "public"."payment_method_enum" DEFAULT NULL::"public"."payment_method_enum", "p_event_fee" integer DEFAULT 0) RETURNS "void"
     LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO 'public', 'pg_temp'
+    SET "search_path" TO 'pg_catalog', 'public', 'pg_temp'
     AS $$
 DECLARE
   v_event_id UUID;
@@ -1875,7 +1873,7 @@ ALTER FUNCTION "public"."update_payment_version"() OWNER TO "postgres";
 
 CREATE OR REPLACE FUNCTION "public"."update_revenue_summary"("p_event_id" "uuid") RETURNS json
     LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO 'public', 'pg_temp'
+    SET "search_path" TO 'pg_catalog', 'public', 'pg_temp'
     AS $$
 DECLARE
     total_revenue INTEGER;
@@ -2562,10 +2560,6 @@ CREATE UNIQUE INDEX "attendances_event_email_unique" ON "public"."attendances" U
 
 
 
-CREATE UNIQUE INDEX "events_invite_token_unique" ON "public"."events" USING "btree" ("invite_token") WHERE ("invite_token" IS NOT NULL);
-
-
-
 CREATE INDEX "idx_attendances_event_guest" ON "public"."attendances" USING "btree" ("event_id", "guest_token");
 
 
@@ -2807,10 +2801,6 @@ CREATE INDEX "idx_system_logs_tags" ON "public"."system_logs" USING "gin" ("tags
 
 
 CREATE INDEX "idx_system_logs_user_id" ON "public"."system_logs" USING "btree" ("user_id") WHERE ("user_id" IS NOT NULL);
-
-
-
-CREATE INDEX "stripe_connect_accounts_user_id_idx" ON "public"."stripe_connect_accounts" USING "btree" ("user_id");
 
 
 
@@ -3371,42 +3361,36 @@ GRANT ALL ON FUNCTION "public"."rpc_bulk_update_payment_status_safe"("p_payment_
 
 
 
-REVOKE ALL ON FUNCTION "public"."rpc_guest_get_attendance"() FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."rpc_guest_get_attendance"() TO "authenticated";
 GRANT ALL ON FUNCTION "public"."rpc_guest_get_attendance"() TO "service_role";
 GRANT ALL ON FUNCTION "public"."rpc_guest_get_attendance"() TO "anon";
 
 
 
-REVOKE ALL ON FUNCTION "public"."rpc_guest_get_latest_payment"("p_attendance_id" "uuid") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."rpc_guest_get_latest_payment"("p_attendance_id" "uuid") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."rpc_guest_get_latest_payment"("p_attendance_id" "uuid") TO "service_role";
 GRANT ALL ON FUNCTION "public"."rpc_guest_get_latest_payment"("p_attendance_id" "uuid") TO "anon";
 
 
 
-REVOKE ALL ON FUNCTION "public"."rpc_public_attending_count"("p_event_id" "uuid") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."rpc_public_attending_count"("p_event_id" "uuid") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."rpc_public_attending_count"("p_event_id" "uuid") TO "service_role";
 GRANT ALL ON FUNCTION "public"."rpc_public_attending_count"("p_event_id" "uuid") TO "anon";
 
 
 
-REVOKE ALL ON FUNCTION "public"."rpc_public_check_duplicate_email"("p_event_id" "uuid", "p_email" "text") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."rpc_public_check_duplicate_email"("p_event_id" "uuid", "p_email" "text") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."rpc_public_check_duplicate_email"("p_event_id" "uuid", "p_email" "text") TO "service_role";
 GRANT ALL ON FUNCTION "public"."rpc_public_check_duplicate_email"("p_event_id" "uuid", "p_email" "text") TO "anon";
 
 
 
-REVOKE ALL ON FUNCTION "public"."rpc_public_get_connect_account"("p_event_id" "uuid", "p_creator_id" "uuid") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."rpc_public_get_connect_account"("p_event_id" "uuid", "p_creator_id" "uuid") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."rpc_public_get_connect_account"("p_event_id" "uuid", "p_creator_id" "uuid") TO "service_role";
 GRANT ALL ON FUNCTION "public"."rpc_public_get_connect_account"("p_event_id" "uuid", "p_creator_id" "uuid") TO "anon";
 
 
 
-REVOKE ALL ON FUNCTION "public"."rpc_public_get_event"("p_invite_token" "text") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."rpc_public_get_event"("p_invite_token" "text") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."rpc_public_get_event"("p_invite_token" "text") TO "service_role";
 GRANT ALL ON FUNCTION "public"."rpc_public_get_event"("p_invite_token" "text") TO "anon";

@@ -1,9 +1,11 @@
--- DB Hardening: anon minimization, FORCE RLS, function context prep, and public RPCs
--- Plan: 1.a (remove anon table grants, use RPC/views) + 2.a (prep for app_definer)
+-- Security micro-fixes: search_path hardening, BYPASSRLS, revoke CREATE, drop partial UNIQUE, remove pg_graphql
 
 BEGIN;
 
--- 1) Create dedicated definer role (idempotent)
+-- 1) Harden public schema: prevent arbitrary object creation by PUBLIC
+REVOKE CREATE ON SCHEMA public FROM PUBLIC;
+
+-- 1.b) Create definer role if missing and baseline grants
 DO $$
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'app_definer') THEN
@@ -12,12 +14,8 @@ BEGIN
 END
 $$;
 
--- Allow postgres to SET ROLE to app_definer for ownership transfer
 GRANT app_definer TO postgres;
-
 GRANT USAGE, CREATE ON SCHEMA public TO app_definer;
-
--- Grant minimal object privileges required for SECURITY DEFINER functions
 GRANT SELECT ON TABLE public.events TO app_definer;
 GRANT SELECT, INSERT, UPDATE ON TABLE public.attendances TO app_definer;
 GRANT SELECT, INSERT, UPDATE ON TABLE public.payments TO app_definer;
@@ -28,8 +26,10 @@ GRANT SELECT ON TABLE public.stripe_connect_accounts TO app_definer;
 GRANT SELECT ON TABLE public.payment_disputes TO app_definer;
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO app_definer;
 
--- 2) Enforce RLS on sensitive tables (superuser still bypasses; functions owned by postgres unaffected)
--- Note: public_profiles is a VIEW, not a table, so FORCE RLS is not applicable
+-- 2) Ensure app_definer can bypass RLS (NOLOGIN definer-only role)
+ALTER ROLE app_definer WITH BYPASSRLS;
+
+-- 2.a) Enforce FORCE RLS on sensitive tables
 ALTER TABLE public.events FORCE ROW LEVEL SECURITY;
 ALTER TABLE public.payments FORCE ROW LEVEL SECURITY;
 ALTER TABLE public.attendances FORCE ROW LEVEL SECURITY;
@@ -39,7 +39,10 @@ ALTER TABLE public.stripe_connect_accounts FORCE ROW LEVEL SECURITY;
 ALTER TABLE public.system_logs FORCE ROW LEVEL SECURITY;
 ALTER TABLE public.fee_config FORCE ROW LEVEL SECURITY;
 
--- 3) Revoke direct anon access to tables/sequences (migrating to RPC/view model)
+-- 3) Unify invite_token uniqueness: drop partial UNIQUE index (table constraint remains canonical)
+DROP INDEX IF EXISTS public.events_invite_token_unique;
+
+-- 3.b) Revoke direct anon access to tables/sequences (prefer RPC/views)
 REVOKE ALL ON TABLE public.events FROM anon;
 REVOKE ALL ON TABLE public.attendances FROM anon;
 REVOKE ALL ON TABLE public.payments FROM anon;
@@ -49,13 +52,53 @@ REVOKE ALL ON TABLE public.settlements FROM anon;
 REVOKE ALL ON TABLE public.stripe_connect_accounts FROM anon;
 REVOKE ALL ON TABLE public.fee_config FROM anon;
 
--- tighten future defaults as well (functions already handled in initial schema)
 ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public REVOKE ALL ON TABLES FROM anon;
 ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public REVOKE ALL ON SEQUENCES FROM anon;
 
--- 4) Public-safe RPCs for anonymous access
+-- 4) Ensure trigger function runs with stable privileges
+ALTER FUNCTION public.check_attendance_capacity_limit() SECURITY DEFINER;
 
--- 4-1) Public event fetch via invite token with minimal columns + attending count
+-- 5) Standardize SECURITY DEFINER function search_path to prevent hijacking via untrusted schemas
+-- Note: use pg_catalog first, then public, and pg_temp last
+-- Existing definitions may set search_path; this overrides it safely
+ALTER FUNCTION public.admin_add_attendance_with_capacity_check(uuid, character varying, character varying, public.attendance_status_enum, character varying, boolean)
+  SET search_path = pg_catalog, public, pg_temp;
+ALTER FUNCTION public.can_access_attendance(uuid)
+  SET search_path = pg_catalog, public, pg_temp;
+ALTER FUNCTION public.can_access_event(uuid)
+  SET search_path = pg_catalog, public, pg_temp;
+ALTER FUNCTION public.can_manage_invite_links(uuid)
+  SET search_path = pg_catalog, public, pg_temp;
+ALTER FUNCTION public.get_guest_token()
+  SET search_path = pg_catalog, public, pg_temp;
+ALTER FUNCTION public.hash_guest_token(text)
+  SET search_path = pg_catalog, public, pg_temp;
+ALTER FUNCTION public.generate_settlement_report(uuid, uuid)
+  SET search_path = pg_catalog, public, pg_temp;
+ALTER FUNCTION public.get_settlement_report_details(uuid, uuid[], timestamp with time zone, timestamp with time zone, integer, integer)
+  SET search_path = pg_catalog, public, pg_temp;
+ALTER FUNCTION public.register_attendance_with_payment(uuid, character varying, character varying, public.attendance_status_enum, character varying, public.payment_method_enum, integer)
+  SET search_path = pg_catalog, public, pg_temp;
+ALTER FUNCTION public.rpc_update_payment_status_safe(uuid, public.payment_status_enum, integer, uuid, text)
+  SET search_path = pg_catalog, public, pg_temp;
+ALTER FUNCTION public.rpc_bulk_update_payment_status_safe(jsonb, uuid, text)
+  SET search_path = pg_catalog, public, pg_temp;
+ALTER FUNCTION public.update_guest_attendance_with_payment(uuid, public.attendance_status_enum, public.payment_method_enum, integer)
+  SET search_path = pg_catalog, public, pg_temp;
+ALTER FUNCTION public.update_revenue_summary(uuid)
+  SET search_path = pg_catalog, public, pg_temp;
+
+-- Public/guest RPCs will be defined below with hardened search_path
+
+-- 6) Revoke PUBLIC execute on functions; grant minimal back for RLS helper functions
+REVOKE EXECUTE ON ALL FUNCTIONS IN SCHEMA public FROM PUBLIC;
+ALTER DEFAULT PRIVILEGES FOR ROLE app_definer IN SCHEMA public REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC;
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres   IN SCHEMA public REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC;
+
+GRANT EXECUTE ON FUNCTION public.get_guest_token() TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.can_access_event(uuid) TO anon, authenticated;
+
+-- 7) Define public-safe RPCs (search_path hardened) and grant anon execute
 CREATE OR REPLACE FUNCTION public.rpc_public_get_event(p_invite_token text)
 RETURNS TABLE (
     id uuid,
@@ -73,7 +116,7 @@ RETURNS TABLE (
     attendances_count integer
 )
 LANGUAGE plpgsql STABLE SECURITY DEFINER
-SET search_path = public, pg_temp
+SET search_path = pg_catalog, public, pg_temp
 AS $$
 BEGIN
     RETURN QUERY
@@ -100,14 +143,12 @@ BEGIN
       AND public.can_access_event(e.id);
 END;
 $$;
-
 GRANT EXECUTE ON FUNCTION public.rpc_public_get_event(text) TO anon;
 
--- 4-2) Public attending count by event id (for capacity checks)
 CREATE OR REPLACE FUNCTION public.rpc_public_attending_count(p_event_id uuid)
 RETURNS integer
 LANGUAGE plpgsql STABLE SECURITY DEFINER
-SET search_path = public, pg_temp
+SET search_path = pg_catalog, public, pg_temp
 AS $$
 DECLARE
     v_count integer := 0;
@@ -124,10 +165,8 @@ BEGIN
     RETURN v_count;
 END;
 $$;
-
 GRANT EXECUTE ON FUNCTION public.rpc_public_attending_count(uuid) TO anon;
 
--- 4-3) Guest attendance fetch via X-Guest-Token header
 CREATE OR REPLACE FUNCTION public.rpc_guest_get_attendance()
 RETURNS TABLE (
     attendance_id uuid,
@@ -145,7 +184,7 @@ RETURNS TABLE (
     canceled_at timestamptz
 )
 LANGUAGE plpgsql STABLE SECURITY DEFINER
-SET search_path = public, pg_temp
+SET search_path = pg_catalog, public, pg_temp
 AS $$
 BEGIN
     RETURN QUERY
@@ -169,31 +208,12 @@ BEGIN
     LIMIT 1;
 END;
 $$;
-
 GRANT EXECUTE ON FUNCTION public.rpc_guest_get_attendance() TO anon;
 
--- 5) Helpful indexes for settlement/attendance lookups
--- Note: payments table uses attendance_id not event_id
-CREATE INDEX IF NOT EXISTS idx_payments_attendance_status
-  ON public.payments (attendance_id, status, created_at);
-
-CREATE INDEX IF NOT EXISTS idx_payments_status_paid
-  ON public.payments (status, paid_at) WHERE status = 'paid';
-
-CREATE INDEX IF NOT EXISTS idx_attendances_event_guest
-  ON public.attendances (event_id, guest_token);
-
-CREATE INDEX IF NOT EXISTS idx_attendances_event_status
-  ON public.attendances (event_id, status);
-
-CREATE INDEX IF NOT EXISTS idx_settlements_event_created
-  ON public.settlements (event_id, created_at);
-
--- 6) Public duplicate email check RPC (for anon capacity/dup checks)
 CREATE OR REPLACE FUNCTION public.rpc_public_check_duplicate_email(p_event_id uuid, p_email text)
 RETURNS boolean
 LANGUAGE plpgsql STABLE SECURITY DEFINER
-SET search_path = public, pg_temp
+SET search_path = pg_catalog, public, pg_temp
 AS $$
 DECLARE
     v_exists boolean := false;
@@ -212,16 +232,82 @@ BEGIN
     RETURN v_exists;
 END;
 $$;
-
 GRANT EXECUTE ON FUNCTION public.rpc_public_check_duplicate_email(uuid, text) TO anon;
 
--- 7) Function security context adjustments
--- Convert read-only helpers to SECURITY INVOKER (enforce caller RLS)
-ALTER FUNCTION public.get_min_payout_amount() SECURITY INVOKER;
-ALTER FUNCTION public.status_rank(public.payment_status_enum) SECURITY INVOKER;
-ALTER FUNCTION public.get_event_creator_name(uuid) SECURITY INVOKER;
+CREATE OR REPLACE FUNCTION public.rpc_guest_get_latest_payment(p_attendance_id uuid)
+RETURNS integer
+LANGUAGE plpgsql STABLE SECURITY DEFINER
+SET search_path = pg_catalog, public, pg_temp
+AS $$
+DECLARE
+    v_amount integer;
+    v_token text;
+BEGIN
+    v_token := public.get_guest_token();
+    IF v_token IS NULL THEN
+        RAISE EXCEPTION 'missing guest token';
+    END IF;
 
--- Transfer SECURITY DEFINER ownership to app_definer to avoid superuser context
+    IF NOT EXISTS (
+        SELECT 1 FROM public.attendances a
+        WHERE a.id = p_attendance_id AND a.guest_token = v_token
+    ) THEN
+        RAISE EXCEPTION 'not allowed';
+    END IF;
+
+    SELECT p.amount
+      INTO v_amount
+    FROM public.payments p
+    WHERE p.attendance_id = p_attendance_id
+    ORDER BY p.created_at DESC
+    LIMIT 1;
+
+    RETURN v_amount; -- may be null
+END;
+$$;
+GRANT EXECUTE ON FUNCTION public.rpc_guest_get_latest_payment(uuid) TO anon;
+
+CREATE OR REPLACE FUNCTION public.rpc_public_get_connect_account(p_event_id uuid, p_creator_id uuid)
+RETURNS TABLE (
+    stripe_account_id character varying(255),
+    payouts_enabled boolean
+)
+LANGUAGE plpgsql STABLE SECURITY DEFINER
+SET search_path = pg_catalog, public, pg_temp
+AS $$
+BEGIN
+    IF NOT public.can_access_event(p_event_id) THEN
+        RAISE EXCEPTION 'not allowed';
+    END IF;
+
+    RETURN QUERY
+    SELECT s.stripe_account_id, s.payouts_enabled
+    FROM public.stripe_connect_accounts s
+    JOIN public.events e ON e.created_by = s.user_id
+    WHERE e.id = p_event_id
+      AND e.created_by = p_creator_id
+    LIMIT 1;
+END;
+$$;
+GRANT EXECUTE ON FUNCTION public.rpc_public_get_connect_account(uuid, uuid) TO anon;
+
+-- 8) Helpful indexes (idempotent)
+CREATE INDEX IF NOT EXISTS idx_payments_attendance_status
+  ON public.payments (attendance_id, status, created_at);
+
+CREATE INDEX IF NOT EXISTS idx_payments_status_paid
+  ON public.payments (status, paid_at) WHERE status = 'paid';
+
+CREATE INDEX IF NOT EXISTS idx_attendances_event_guest
+  ON public.attendances (event_id, guest_token);
+
+CREATE INDEX IF NOT EXISTS idx_attendances_event_status
+  ON public.attendances (event_id, status);
+
+CREATE INDEX IF NOT EXISTS idx_settlements_event_created
+  ON public.settlements (event_id, created_at);
+
+-- 9) Align ownership of SECURITY DEFINER functions to app_definer
 ALTER FUNCTION public.generate_settlement_report(uuid, uuid) OWNER TO app_definer;
 ALTER FUNCTION public.register_attendance_with_payment(uuid, character varying, character varying, public.attendance_status_enum, character varying, public.payment_method_enum, integer) OWNER TO app_definer;
 ALTER FUNCTION public.update_guest_attendance_with_payment(uuid, public.attendance_status_enum, public.payment_method_enum, integer) OWNER TO app_definer;
@@ -232,11 +318,11 @@ ALTER FUNCTION public.can_access_event(uuid) OWNER TO app_definer;
 ALTER FUNCTION public.can_access_attendance(uuid) OWNER TO app_definer;
 ALTER FUNCTION public.can_manage_invite_links(uuid) OWNER TO app_definer;
 ALTER FUNCTION public.check_attendance_capacity_limit() OWNER TO app_definer;
-
--- Transfer new public RPCs ownership to app_definer as well
 ALTER FUNCTION public.rpc_public_get_event(text) OWNER TO app_definer;
 ALTER FUNCTION public.rpc_public_attending_count(uuid) OWNER TO app_definer;
 ALTER FUNCTION public.rpc_guest_get_attendance() OWNER TO app_definer;
 ALTER FUNCTION public.rpc_public_check_duplicate_email(uuid, text) OWNER TO app_definer;
+ALTER FUNCTION public.rpc_guest_get_latest_payment(uuid) OWNER TO app_definer;
+ALTER FUNCTION public.rpc_public_get_connect_account(uuid, uuid) OWNER TO app_definer;
 
 COMMIT;
