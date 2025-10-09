@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 
-import { Users, ExternalLink } from "lucide-react";
+import { Users, ChevronRight } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { InviteLinkPopover } from "@/features/invite/components/invite-link-popover";
@@ -50,7 +50,7 @@ export function QuickActionsGrid({
                 </div>
               </div>
             </div>
-            <ExternalLink className="h-5 w-5 opacity-70" />
+            <ChevronRight className="h-5 w-5 opacity-70" />
           </div>
         </Button>
 

@@ -11,6 +11,8 @@ import { validateEventId } from "@core/validation/event-id";
 import { ModernEventEditForm } from "@features/events/components/modern-event-edit-form";
 import { getDetailedAccountStatusAction } from "@features/stripe-connect";
 
+import { EventDangerZone } from "./components/event-danger-zone";
+
 interface EventEditPageProps {
   params: {
     id: string;
@@ -129,6 +131,13 @@ export default async function EventEditPage({ params }: EventEditPageProps) {
             attendeeCount={attendeeCount}
             hasStripePaid={hasStripePaid}
             canUseOnlinePayments={canUseOnlinePayments}
+          />
+
+          {/* 危険な操作（削除・中止） */}
+          <EventDangerZone
+            eventId={params.id}
+            eventTitle={event.title}
+            eventStatus={computedStatus}
           />
 
           {/* 旧フォーム（バックアップ用にコメントアウト）
