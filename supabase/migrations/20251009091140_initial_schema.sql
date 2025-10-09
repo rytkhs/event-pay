@@ -13,7 +13,8 @@ SET client_min_messages = warning;
 SET row_security = off;
 
 
-CREATE EXTENSION IF NOT EXISTS "pg_net" WITH SCHEMA "extensions";
+-- Removed unused extension pg_net
+-- (not required by current schema)
 
 
 
@@ -45,14 +46,14 @@ CREATE EXTENSION IF NOT EXISTS "pgcrypto" WITH SCHEMA "extensions";
 
 
 
-CREATE EXTENSION IF NOT EXISTS "supabase_vault" WITH SCHEMA "vault";
+-- Removed unused extension supabase_vault
 
 
 
 
 
 
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp" WITH SCHEMA "extensions";
+-- Removed unused extension uuid-ossp (we use gen_random_uuid() from pgcrypto)
 
 
 
@@ -166,15 +167,7 @@ COMMENT ON TYPE "public"."payment_status_enum" IS '決済状況: pending, paid, 
 
 
 
-CREATE TYPE "public"."security_severity_enum" AS ENUM (
-    'LOW',
-    'MEDIUM',
-    'HIGH',
-    'CRITICAL'
-);
-
-
-ALTER TYPE "public"."security_severity_enum" OWNER TO "postgres";
+-- Removed unused enum: security_severity_enum (dropped from initial schema)
 
 
 CREATE TYPE "public"."stripe_account_status_enum" AS ENUM (
@@ -188,22 +181,12 @@ CREATE TYPE "public"."stripe_account_status_enum" AS ENUM (
 ALTER TYPE "public"."stripe_account_status_enum" OWNER TO "postgres";
 
 
-CREATE TYPE "public"."suspicious_activity_type_enum" AS ENUM (
-    'EMPTY_RESULT_SET',
-    'ADMIN_ACCESS_ATTEMPT',
-    'INVALID_TOKEN_PATTERN',
-    'RATE_LIMIT_EXCEEDED',
-    'UNAUTHORIZED_RLS_BYPASS',
-    'BULK_DATA_ACCESS',
-    'UNUSUAL_ACCESS_PATTERN'
-);
-
-
-ALTER TYPE "public"."suspicious_activity_type_enum" OWNER TO "postgres";
+-- Removed unused enum: suspicious_activity_type_enum (dropped from initial schema)
 
 
 CREATE OR REPLACE FUNCTION "public"."admin_add_attendance_with_capacity_check"("p_event_id" "uuid", "p_nickname" character varying, "p_email" character varying, "p_status" "public"."attendance_status_enum", "p_guest_token" character varying, "p_bypass_capacity" boolean DEFAULT false) RETURNS "uuid"
     LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'pg_temp'
     AS $$
 DECLARE
   v_attendance_id UUID;
@@ -433,6 +416,7 @@ COMMENT ON FUNCTION "public"."calc_total_stripe_fee"("p_event_id" "uuid", "p_bas
 
 CREATE OR REPLACE FUNCTION "public"."can_access_attendance"("p_attendance_id" "uuid") RETURNS boolean
     LANGUAGE "plpgsql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public', 'pg_temp'
     AS $$
 DECLARE
   event_id_for_attendance UUID;
@@ -482,6 +466,7 @@ COMMENT ON FUNCTION "public"."can_access_attendance"("p_attendance_id" "uuid") I
 
 CREATE OR REPLACE FUNCTION "public"."can_access_event"("p_event_id" "uuid") RETURNS boolean
     LANGUAGE "plpgsql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public', 'pg_temp'
     AS $$
 DECLARE
   current_user_id UUID;
@@ -548,6 +533,7 @@ COMMENT ON FUNCTION "public"."can_access_event"("p_event_id" "uuid") IS 'イベ�
 
 CREATE OR REPLACE FUNCTION "public"."can_manage_invite_links"("p_event_id" "uuid") RETURNS boolean
     LANGUAGE "plpgsql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public', 'pg_temp'
     AS $$
 DECLARE
   current_user_id UUID;
@@ -613,21 +599,12 @@ $$;
 ALTER FUNCTION "public"."check_attendance_capacity_limit"() OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."clear_test_guest_token"() RETURNS "void"
-    LANGUAGE "plpgsql" SECURITY DEFINER
-    AS $$
-BEGIN
-  -- テスト用設定をクリア
-  PERFORM set_config('test.guest_token', '', false);
-END;
-$$;
 
-
-ALTER FUNCTION "public"."clear_test_guest_token"() OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."generate_settlement_report"("input_event_id" "uuid", "input_created_by" "uuid") RETURNS TABLE("report_id" "uuid", "already_exists" boolean, "returned_event_id" "uuid", "event_title" character varying, "event_date" timestamp with time zone, "created_by" "uuid", "stripe_account_id" character varying, "transfer_group" "text", "total_stripe_sales" integer, "total_stripe_fee" integer, "total_application_fee" integer, "net_payout_amount" integer, "payment_count" integer, "refunded_count" integer, "total_refunded_amount" integer, "dispute_count" integer, "total_disputed_amount" integer, "report_generated_at" timestamp with time zone, "report_updated_at" timestamp with time zone)
     LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'pg_temp'
     AS $$
 DECLARE
     v_payout_id UUID;
@@ -755,7 +732,7 @@ BEGIN
 
     -- Return enriched record
     report_id := v_payout_id;
-    already_exists := NOT v_was_update;
+    already_exists := v_was_update;
     returned_event_id := input_event_id;
     event_title := v_event_data.title;
     event_date := v_event_data.date;
@@ -785,6 +762,7 @@ ALTER FUNCTION "public"."generate_settlement_report"("input_event_id" "uuid", "i
 
 CREATE OR REPLACE FUNCTION "public"."get_event_creator_name"("p_creator_id" "uuid") RETURNS "text"
     LANGUAGE "plpgsql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public', 'pg_temp'
     AS $$
 BEGIN
     RETURN (SELECT name FROM public.users WHERE id = p_creator_id);
@@ -797,6 +775,7 @@ ALTER FUNCTION "public"."get_event_creator_name"("p_creator_id" "uuid") OWNER TO
 
 CREATE OR REPLACE FUNCTION "public"."get_guest_token"() RETURNS "text"
     LANGUAGE "plpgsql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public', 'pg_temp'
     AS $$
 DECLARE
   token TEXT;
@@ -875,6 +854,7 @@ COMMENT ON FUNCTION "public"."get_min_payout_amount"() IS '最小送金金額（
 
 CREATE OR REPLACE FUNCTION "public"."get_settlement_report_details"("input_created_by" "uuid", "input_event_ids" "uuid"[] DEFAULT NULL::"uuid"[], "p_from_date" timestamp with time zone DEFAULT NULL::timestamp with time zone, "p_to_date" timestamp with time zone DEFAULT NULL::timestamp with time zone, "p_limit" integer DEFAULT 50, "p_offset" integer DEFAULT 0) RETURNS TABLE("report_id" "uuid", "event_id" "uuid", "event_title" character varying, "event_date" timestamp with time zone, "stripe_account_id" character varying, "transfer_group" character varying, "generated_at" timestamp with time zone, "total_stripe_sales" integer, "total_stripe_fee" integer, "total_application_fee" integer, "net_payout_amount" integer, "payment_count" integer, "refunded_count" integer, "total_refunded_amount" integer)
     LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'pg_temp'
     AS $$
 BEGIN
     RETURN QUERY
@@ -944,6 +924,7 @@ COMMENT ON FUNCTION "public"."get_settlement_report_details"("input_created_by" 
 
 CREATE OR REPLACE FUNCTION "public"."handle_new_user"() RETURNS "trigger"
     LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'pg_temp'
     AS $$
 BEGIN
   -- auth.usersからのメタデータを使用してpublic.usersにプロファイルを作成
@@ -966,6 +947,7 @@ COMMENT ON FUNCTION "public"."handle_new_user"() IS 'auth.usersテーブルに�
 
 CREATE OR REPLACE FUNCTION "public"."hash_guest_token"("token" "text") RETURNS character varying
     LANGUAGE "plpgsql" IMMUTABLE SECURITY DEFINER
+    SET "search_path" TO 'public', 'pg_temp'
     AS $$
 BEGIN
     RETURN encode(digest(token, 'sha256'), 'hex');
@@ -1005,6 +987,7 @@ ALTER FUNCTION "public"."prevent_payment_status_rollback"() OWNER TO "postgres";
 
 CREATE OR REPLACE FUNCTION "public"."register_attendance_with_payment"("p_event_id" "uuid", "p_nickname" character varying, "p_email" character varying, "p_status" "public"."attendance_status_enum", "p_guest_token" character varying, "p_payment_method" "public"."payment_method_enum" DEFAULT NULL::"public"."payment_method_enum", "p_event_fee" integer DEFAULT 0) RETURNS "uuid"
     LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'pg_temp'
     AS $_$
 DECLARE
   v_attendance_id UUID;
@@ -1184,6 +1167,7 @@ COMMENT ON FUNCTION "public"."register_attendance_with_payment"("p_event_id" "uu
 
 CREATE OR REPLACE FUNCTION "public"."rpc_bulk_update_payment_status_safe"("p_payment_updates" "jsonb", "p_user_id" "uuid", "p_notes" "text" DEFAULT NULL::"text") RETURNS json
     LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'pg_temp'
     AS $$
 DECLARE
   v_update_item     jsonb;
@@ -1280,6 +1264,7 @@ COMMENT ON FUNCTION "public"."rpc_bulk_update_payment_status_safe"("p_payment_up
 
 CREATE OR REPLACE FUNCTION "public"."rpc_update_payment_status_safe"("p_payment_id" "uuid", "p_new_status" "public"."payment_status_enum", "p_expected_version" integer, "p_user_id" "uuid", "p_notes" "text" DEFAULT NULL::"text") RETURNS json
     LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'pg_temp'
     AS $$
 DECLARE
   v_updated_rows     integer;
@@ -1420,17 +1405,7 @@ COMMENT ON FUNCTION "public"."rpc_update_payment_status_safe"("p_payment_id" "uu
 
 
 
-CREATE OR REPLACE FUNCTION "public"."set_test_guest_token"("token" "text") RETURNS "void"
-    LANGUAGE "plpgsql" SECURITY DEFINER
-    AS $$
-BEGIN
-  -- テスト用設定を使用（セッション全体で有効）
-  PERFORM set_config('test.guest_token', token, false);
-END;
-$$;
 
-
-ALTER FUNCTION "public"."set_test_guest_token"("token" "text") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."status_rank"("p" "public"."payment_status_enum") RETURNS integer
@@ -1737,6 +1712,7 @@ ALTER FUNCTION "public"."update_payment_version"() OWNER TO "postgres";
 
 CREATE OR REPLACE FUNCTION "public"."update_revenue_summary"("p_event_id" "uuid") RETURNS json
     LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'pg_temp'
     AS $$
 DECLARE
     total_revenue INTEGER;
@@ -1898,7 +1874,7 @@ COMMENT ON TABLE "public"."fee_config" IS '手数料設定テーブル（シン�
 
 
 
-COMMENT ON COLUMN "public"."fee_config"."stripe_base_rate" IS 'Stripe 決済手数料の割合 (0.039 = 3.9%)';
+COMMENT ON COLUMN "public"."fee_config"."stripe_base_rate" IS 'Stripe 決済手数料の割合 (0.036 = 3.6%)';
 
 
 
@@ -2737,10 +2713,15 @@ CREATE POLICY "Creators can update own events" ON "public"."events" FOR UPDATE T
 
 
 
-CREATE POLICY "Creators can view payments" ON "public"."payments" FOR SELECT TO "authenticated" USING ((EXISTS ( SELECT 1
-   FROM ("public"."attendances" "a"
-     JOIN "public"."events" "e" ON (("a"."event_id" = "e"."id")))
-  WHERE (("a"."id" = "payments"."attendance_id") AND ("e"."created_by" = "auth"."uid"())))));
+-- Removed duplicate: Creators can view payments (use event_creators_can_view_payments)
+-- CREATE POLICY "Creators can view payments" ... (replaced below)
+--
+-- Keeping canonical policy name only.
+--
+-- CREATE POLICY "Creators can view payments" ON "public"."payments" FOR SELECT TO "authenticated" USING (...);
+--
+-- Actual canonical policy remains:
+-- duplicate canonical policy removed (defined above)
 
 
 
@@ -2839,6 +2820,7 @@ CREATE POLICY "event_creators_can_view_attendances" ON "public"."attendances" FO
 
 
 
+-- Canonical policy retained (no changes)
 CREATE POLICY "event_creators_can_view_payments" ON "public"."payments" FOR SELECT TO "authenticated" USING ((EXISTS ( SELECT 1
    FROM ("public"."attendances" "a"
      JOIN "public"."events" "e" ON (("a"."event_id" = "e"."id")))
@@ -3068,25 +3050,21 @@ GRANT USAGE ON SCHEMA "public" TO "service_role";
 
 
 
-GRANT ALL ON FUNCTION "public"."admin_add_attendance_with_capacity_check"("p_event_id" "uuid", "p_nickname" character varying, "p_email" character varying, "p_status" "public"."attendance_status_enum", "p_guest_token" character varying, "p_bypass_capacity" boolean) TO "anon";
 GRANT ALL ON FUNCTION "public"."admin_add_attendance_with_capacity_check"("p_event_id" "uuid", "p_nickname" character varying, "p_email" character varying, "p_status" "public"."attendance_status_enum", "p_guest_token" character varying, "p_bypass_capacity" boolean) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."admin_add_attendance_with_capacity_check"("p_event_id" "uuid", "p_nickname" character varying, "p_email" character varying, "p_status" "public"."attendance_status_enum", "p_guest_token" character varying, "p_bypass_capacity" boolean) TO "service_role";
 
 
 
-GRANT ALL ON FUNCTION "public"."calc_refund_dispute_summary"("p_event_id" "uuid") TO "anon";
 GRANT ALL ON FUNCTION "public"."calc_refund_dispute_summary"("p_event_id" "uuid") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."calc_refund_dispute_summary"("p_event_id" "uuid") TO "service_role";
 
 
 
-GRANT ALL ON FUNCTION "public"."calc_total_application_fee"("p_event_id" "uuid") TO "anon";
 GRANT ALL ON FUNCTION "public"."calc_total_application_fee"("p_event_id" "uuid") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."calc_total_application_fee"("p_event_id" "uuid") TO "service_role";
 
 
 
-GRANT ALL ON FUNCTION "public"."calc_total_stripe_fee"("p_event_id" "uuid", "p_base_rate" numeric, "p_fixed_fee" integer) TO "anon";
 GRANT ALL ON FUNCTION "public"."calc_total_stripe_fee"("p_event_id" "uuid", "p_base_rate" numeric, "p_fixed_fee" integer) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."calc_total_stripe_fee"("p_event_id" "uuid", "p_base_rate" numeric, "p_fixed_fee" integer) TO "service_role";
 
@@ -3104,31 +3082,24 @@ GRANT ALL ON FUNCTION "public"."can_access_event"("p_event_id" "uuid") TO "servi
 
 
 
-GRANT ALL ON FUNCTION "public"."can_manage_invite_links"("p_event_id" "uuid") TO "anon";
 GRANT ALL ON FUNCTION "public"."can_manage_invite_links"("p_event_id" "uuid") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."can_manage_invite_links"("p_event_id" "uuid") TO "service_role";
 
 
 
-GRANT ALL ON FUNCTION "public"."check_attendance_capacity_limit"() TO "anon";
 GRANT ALL ON FUNCTION "public"."check_attendance_capacity_limit"() TO "authenticated";
 GRANT ALL ON FUNCTION "public"."check_attendance_capacity_limit"() TO "service_role";
 
 
 
-GRANT ALL ON FUNCTION "public"."clear_test_guest_token"() TO "anon";
-GRANT ALL ON FUNCTION "public"."clear_test_guest_token"() TO "authenticated";
-GRANT ALL ON FUNCTION "public"."clear_test_guest_token"() TO "service_role";
 
 
 
-GRANT ALL ON FUNCTION "public"."generate_settlement_report"("input_event_id" "uuid", "input_created_by" "uuid") TO "anon";
 GRANT ALL ON FUNCTION "public"."generate_settlement_report"("input_event_id" "uuid", "input_created_by" "uuid") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."generate_settlement_report"("input_event_id" "uuid", "input_created_by" "uuid") TO "service_role";
 
 
 
-GRANT ALL ON FUNCTION "public"."get_event_creator_name"("p_creator_id" "uuid") TO "anon";
 GRANT ALL ON FUNCTION "public"."get_event_creator_name"("p_creator_id" "uuid") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."get_event_creator_name"("p_creator_id" "uuid") TO "service_role";
 
@@ -3140,33 +3111,29 @@ GRANT ALL ON FUNCTION "public"."get_guest_token"() TO "service_role";
 
 
 
-GRANT ALL ON FUNCTION "public"."get_min_payout_amount"() TO "anon";
 GRANT ALL ON FUNCTION "public"."get_min_payout_amount"() TO "authenticated";
 GRANT ALL ON FUNCTION "public"."get_min_payout_amount"() TO "service_role";
 
 
 
-GRANT ALL ON FUNCTION "public"."get_settlement_report_details"("input_created_by" "uuid", "input_event_ids" "uuid"[], "p_from_date" timestamp with time zone, "p_to_date" timestamp with time zone, "p_limit" integer, "p_offset" integer) TO "anon";
 GRANT ALL ON FUNCTION "public"."get_settlement_report_details"("input_created_by" "uuid", "input_event_ids" "uuid"[], "p_from_date" timestamp with time zone, "p_to_date" timestamp with time zone, "p_limit" integer, "p_offset" integer) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."get_settlement_report_details"("input_created_by" "uuid", "input_event_ids" "uuid"[], "p_from_date" timestamp with time zone, "p_to_date" timestamp with time zone, "p_limit" integer, "p_offset" integer) TO "service_role";
 
 
 
 REVOKE ALL ON FUNCTION "public"."handle_new_user"() FROM PUBLIC;
-GRANT ALL ON FUNCTION "public"."handle_new_user"() TO "anon";
 GRANT ALL ON FUNCTION "public"."handle_new_user"() TO "authenticated";
 GRANT ALL ON FUNCTION "public"."handle_new_user"() TO "service_role";
 GRANT ALL ON FUNCTION "public"."handle_new_user"() TO "supabase_auth_admin";
 
 
 
-GRANT ALL ON FUNCTION "public"."hash_guest_token"("token" "text") TO "anon";
 GRANT ALL ON FUNCTION "public"."hash_guest_token"("token" "text") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."hash_guest_token"("token" "text") TO "service_role";
 
 
 
-GRANT ALL ON FUNCTION "public"."prevent_payment_status_rollback"() TO "anon";
+REVOKE ALL ON FUNCTION "public"."prevent_payment_status_rollback"() FROM "anon";
 GRANT ALL ON FUNCTION "public"."prevent_payment_status_rollback"() TO "authenticated";
 GRANT ALL ON FUNCTION "public"."prevent_payment_status_rollback"() TO "service_role";
 
@@ -3178,25 +3145,19 @@ GRANT ALL ON FUNCTION "public"."register_attendance_with_payment"("p_event_id" "
 
 
 
-GRANT ALL ON FUNCTION "public"."rpc_bulk_update_payment_status_safe"("p_payment_updates" "jsonb", "p_user_id" "uuid", "p_notes" "text") TO "anon";
 GRANT ALL ON FUNCTION "public"."rpc_bulk_update_payment_status_safe"("p_payment_updates" "jsonb", "p_user_id" "uuid", "p_notes" "text") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."rpc_bulk_update_payment_status_safe"("p_payment_updates" "jsonb", "p_user_id" "uuid", "p_notes" "text") TO "service_role";
 
 
 
-GRANT ALL ON FUNCTION "public"."rpc_update_payment_status_safe"("p_payment_id" "uuid", "p_new_status" "public"."payment_status_enum", "p_expected_version" integer, "p_user_id" "uuid", "p_notes" "text") TO "anon";
 GRANT ALL ON FUNCTION "public"."rpc_update_payment_status_safe"("p_payment_id" "uuid", "p_new_status" "public"."payment_status_enum", "p_expected_version" integer, "p_user_id" "uuid", "p_notes" "text") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."rpc_update_payment_status_safe"("p_payment_id" "uuid", "p_new_status" "public"."payment_status_enum", "p_expected_version" integer, "p_user_id" "uuid", "p_notes" "text") TO "service_role";
 
 
 
-GRANT ALL ON FUNCTION "public"."set_test_guest_token"("token" "text") TO "anon";
-GRANT ALL ON FUNCTION "public"."set_test_guest_token"("token" "text") TO "authenticated";
-GRANT ALL ON FUNCTION "public"."set_test_guest_token"("token" "text") TO "service_role";
 
 
 
-GRANT ALL ON FUNCTION "public"."status_rank"("p" "public"."payment_status_enum") TO "anon";
 GRANT ALL ON FUNCTION "public"."status_rank"("p" "public"."payment_status_enum") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."status_rank"("p" "public"."payment_status_enum") TO "service_role";
 
@@ -3209,19 +3170,16 @@ GRANT ALL ON FUNCTION "public"."update_guest_attendance_with_payment"("p_attenda
 
 
 
-GRANT ALL ON FUNCTION "public"."update_payment_version"() TO "anon";
 GRANT ALL ON FUNCTION "public"."update_payment_version"() TO "authenticated";
 GRANT ALL ON FUNCTION "public"."update_payment_version"() TO "service_role";
 
 
 
-GRANT ALL ON FUNCTION "public"."update_revenue_summary"("p_event_id" "uuid") TO "anon";
 GRANT ALL ON FUNCTION "public"."update_revenue_summary"("p_event_id" "uuid") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."update_revenue_summary"("p_event_id" "uuid") TO "service_role";
 
 
 
-GRANT ALL ON FUNCTION "public"."update_updated_at_column"() TO "anon";
 GRANT ALL ON FUNCTION "public"."update_updated_at_column"() TO "authenticated";
 GRANT ALL ON FUNCTION "public"."update_updated_at_column"() TO "service_role";
 
@@ -3321,7 +3279,8 @@ ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON SEQ
 
 
 ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON FUNCTIONS TO "postgres";
-ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON FUNCTIONS TO "anon";
+-- Remove default anon EXECUTE on future functions; require explicit GRANT per function
+ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" REVOKE ALL ON FUNCTIONS FROM "anon";
 ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON FUNCTIONS TO "authenticated";
 ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON FUNCTIONS TO "service_role";
 
@@ -3372,6 +3331,3 @@ RESET ALL;
 --
 
 CREATE OR REPLACE TRIGGER "trigger_handle_new_user" AFTER INSERT ON "auth"."users" FOR EACH ROW EXECUTE FUNCTION "public"."handle_new_user"();
-
-
-
