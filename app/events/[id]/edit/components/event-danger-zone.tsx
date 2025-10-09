@@ -40,7 +40,7 @@ export function EventDangerZone({ eventId, eventTitle, eventStatus }: EventDange
       if (result.success) {
         toast({
           title: "イベントを中止しました",
-          description: "参加者への通知を順次実行します",
+          description: "必要に応じて参加者へ連絡してください。",
           variant: "success",
         });
         setCancelDialogOpen(false);
@@ -97,7 +97,7 @@ export function EventDangerZone({ eventId, eventTitle, eventStatus }: EventDange
             <div className="flex-1">
               <h3 className="font-semibold text-sm mb-1">イベントを中止する</h3>
               <p className="text-sm text-muted-foreground">
-                参加者の決済リンクが無効になり、イベントは「キャンセル」ステータスになります。参加者には中止通知が送信されます。
+                参加者の決済リンクが無効になり、イベントは「キャンセル」ステータスになります。
               </p>
             </div>
             <Dialog open={isCancelDialogOpen} onOpenChange={setCancelDialogOpen}>
