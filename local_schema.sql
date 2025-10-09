@@ -2562,6 +2562,10 @@ CREATE UNIQUE INDEX "attendances_event_email_unique" ON "public"."attendances" U
 
 
 
+CREATE UNIQUE INDEX "events_invite_token_unique" ON "public"."events" USING "btree" ("invite_token") WHERE ("invite_token" IS NOT NULL);
+
+
+
 CREATE INDEX "idx_attendances_event_guest" ON "public"."attendances" USING "btree" ("event_id", "guest_token");
 
 
@@ -2803,6 +2807,10 @@ CREATE INDEX "idx_system_logs_tags" ON "public"."system_logs" USING "gin" ("tags
 
 
 CREATE INDEX "idx_system_logs_user_id" ON "public"."system_logs" USING "btree" ("user_id") WHERE ("user_id" IS NOT NULL);
+
+
+
+CREATE INDEX "stripe_connect_accounts_user_id_idx" ON "public"."stripe_connect_accounts" USING "btree" ("user_id");
 
 
 
@@ -3237,78 +3245,91 @@ GRANT ALL ON SCHEMA "public" TO "app_definer";
 
 
 
+REVOKE ALL ON FUNCTION "public"."admin_add_attendance_with_capacity_check"("p_event_id" "uuid", "p_nickname" character varying, "p_email" character varying, "p_status" "public"."attendance_status_enum", "p_guest_token" character varying, "p_bypass_capacity" boolean) FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."admin_add_attendance_with_capacity_check"("p_event_id" "uuid", "p_nickname" character varying, "p_email" character varying, "p_status" "public"."attendance_status_enum", "p_guest_token" character varying, "p_bypass_capacity" boolean) TO "anon";
 GRANT ALL ON FUNCTION "public"."admin_add_attendance_with_capacity_check"("p_event_id" "uuid", "p_nickname" character varying, "p_email" character varying, "p_status" "public"."attendance_status_enum", "p_guest_token" character varying, "p_bypass_capacity" boolean) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."admin_add_attendance_with_capacity_check"("p_event_id" "uuid", "p_nickname" character varying, "p_email" character varying, "p_status" "public"."attendance_status_enum", "p_guest_token" character varying, "p_bypass_capacity" boolean) TO "service_role";
 
 
 
+REVOKE ALL ON FUNCTION "public"."calc_refund_dispute_summary"("p_event_id" "uuid") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."calc_refund_dispute_summary"("p_event_id" "uuid") TO "anon";
 GRANT ALL ON FUNCTION "public"."calc_refund_dispute_summary"("p_event_id" "uuid") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."calc_refund_dispute_summary"("p_event_id" "uuid") TO "service_role";
 
 
 
+REVOKE ALL ON FUNCTION "public"."calc_total_application_fee"("p_event_id" "uuid") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."calc_total_application_fee"("p_event_id" "uuid") TO "anon";
 GRANT ALL ON FUNCTION "public"."calc_total_application_fee"("p_event_id" "uuid") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."calc_total_application_fee"("p_event_id" "uuid") TO "service_role";
 
 
 
+REVOKE ALL ON FUNCTION "public"."calc_total_stripe_fee"("p_event_id" "uuid", "p_base_rate" numeric, "p_fixed_fee" integer) FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."calc_total_stripe_fee"("p_event_id" "uuid", "p_base_rate" numeric, "p_fixed_fee" integer) TO "anon";
 GRANT ALL ON FUNCTION "public"."calc_total_stripe_fee"("p_event_id" "uuid", "p_base_rate" numeric, "p_fixed_fee" integer) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."calc_total_stripe_fee"("p_event_id" "uuid", "p_base_rate" numeric, "p_fixed_fee" integer) TO "service_role";
 
 
 
+REVOKE ALL ON FUNCTION "public"."can_access_attendance"("p_attendance_id" "uuid") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."can_access_attendance"("p_attendance_id" "uuid") TO "anon";
 GRANT ALL ON FUNCTION "public"."can_access_attendance"("p_attendance_id" "uuid") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."can_access_attendance"("p_attendance_id" "uuid") TO "service_role";
 
 
 
+REVOKE ALL ON FUNCTION "public"."can_access_event"("p_event_id" "uuid") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."can_access_event"("p_event_id" "uuid") TO "anon";
 GRANT ALL ON FUNCTION "public"."can_access_event"("p_event_id" "uuid") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."can_access_event"("p_event_id" "uuid") TO "service_role";
 
 
 
+REVOKE ALL ON FUNCTION "public"."can_manage_invite_links"("p_event_id" "uuid") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."can_manage_invite_links"("p_event_id" "uuid") TO "anon";
 GRANT ALL ON FUNCTION "public"."can_manage_invite_links"("p_event_id" "uuid") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."can_manage_invite_links"("p_event_id" "uuid") TO "service_role";
 
 
 
+REVOKE ALL ON FUNCTION "public"."check_attendance_capacity_limit"() FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."check_attendance_capacity_limit"() TO "anon";
 GRANT ALL ON FUNCTION "public"."check_attendance_capacity_limit"() TO "authenticated";
 GRANT ALL ON FUNCTION "public"."check_attendance_capacity_limit"() TO "service_role";
 
 
 
+REVOKE ALL ON FUNCTION "public"."generate_settlement_report"("input_event_id" "uuid", "input_created_by" "uuid") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."generate_settlement_report"("input_event_id" "uuid", "input_created_by" "uuid") TO "anon";
 GRANT ALL ON FUNCTION "public"."generate_settlement_report"("input_event_id" "uuid", "input_created_by" "uuid") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."generate_settlement_report"("input_event_id" "uuid", "input_created_by" "uuid") TO "service_role";
 
 
 
+REVOKE ALL ON FUNCTION "public"."get_event_creator_name"("p_creator_id" "uuid") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."get_event_creator_name"("p_creator_id" "uuid") TO "anon";
 GRANT ALL ON FUNCTION "public"."get_event_creator_name"("p_creator_id" "uuid") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."get_event_creator_name"("p_creator_id" "uuid") TO "service_role";
 
 
 
+REVOKE ALL ON FUNCTION "public"."get_guest_token"() FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."get_guest_token"() TO "anon";
 GRANT ALL ON FUNCTION "public"."get_guest_token"() TO "authenticated";
 GRANT ALL ON FUNCTION "public"."get_guest_token"() TO "service_role";
 
 
 
+REVOKE ALL ON FUNCTION "public"."get_min_payout_amount"() FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."get_min_payout_amount"() TO "anon";
 GRANT ALL ON FUNCTION "public"."get_min_payout_amount"() TO "authenticated";
 GRANT ALL ON FUNCTION "public"."get_min_payout_amount"() TO "service_role";
 
 
 
+REVOKE ALL ON FUNCTION "public"."get_settlement_report_details"("input_created_by" "uuid", "input_event_ids" "uuid"[], "p_from_date" timestamp with time zone, "p_to_date" timestamp with time zone, "p_limit" integer, "p_offset" integer) FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."get_settlement_report_details"("input_created_by" "uuid", "input_event_ids" "uuid"[], "p_from_date" timestamp with time zone, "p_to_date" timestamp with time zone, "p_limit" integer, "p_offset" integer) TO "anon";
 GRANT ALL ON FUNCTION "public"."get_settlement_report_details"("input_created_by" "uuid", "input_event_ids" "uuid"[], "p_from_date" timestamp with time zone, "p_to_date" timestamp with time zone, "p_limit" integer, "p_offset" integer) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."get_settlement_report_details"("input_created_by" "uuid", "input_event_ids" "uuid"[], "p_from_date" timestamp with time zone, "p_to_date" timestamp with time zone, "p_limit" integer, "p_offset" integer) TO "service_role";
@@ -3323,71 +3344,83 @@ GRANT ALL ON FUNCTION "public"."handle_new_user"() TO "supabase_auth_admin";
 
 
 
+REVOKE ALL ON FUNCTION "public"."hash_guest_token"("token" "text") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."hash_guest_token"("token" "text") TO "anon";
 GRANT ALL ON FUNCTION "public"."hash_guest_token"("token" "text") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."hash_guest_token"("token" "text") TO "service_role";
 
 
 
+REVOKE ALL ON FUNCTION "public"."prevent_payment_status_rollback"() FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."prevent_payment_status_rollback"() TO "authenticated";
 GRANT ALL ON FUNCTION "public"."prevent_payment_status_rollback"() TO "service_role";
 
 
 
+REVOKE ALL ON FUNCTION "public"."register_attendance_with_payment"("p_event_id" "uuid", "p_nickname" character varying, "p_email" character varying, "p_status" "public"."attendance_status_enum", "p_guest_token" character varying, "p_payment_method" "public"."payment_method_enum", "p_event_fee" integer) FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."register_attendance_with_payment"("p_event_id" "uuid", "p_nickname" character varying, "p_email" character varying, "p_status" "public"."attendance_status_enum", "p_guest_token" character varying, "p_payment_method" "public"."payment_method_enum", "p_event_fee" integer) TO "anon";
 GRANT ALL ON FUNCTION "public"."register_attendance_with_payment"("p_event_id" "uuid", "p_nickname" character varying, "p_email" character varying, "p_status" "public"."attendance_status_enum", "p_guest_token" character varying, "p_payment_method" "public"."payment_method_enum", "p_event_fee" integer) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."register_attendance_with_payment"("p_event_id" "uuid", "p_nickname" character varying, "p_email" character varying, "p_status" "public"."attendance_status_enum", "p_guest_token" character varying, "p_payment_method" "public"."payment_method_enum", "p_event_fee" integer) TO "service_role";
 
 
 
+REVOKE ALL ON FUNCTION "public"."rpc_bulk_update_payment_status_safe"("p_payment_updates" "jsonb", "p_user_id" "uuid", "p_notes" "text") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."rpc_bulk_update_payment_status_safe"("p_payment_updates" "jsonb", "p_user_id" "uuid", "p_notes" "text") TO "anon";
 GRANT ALL ON FUNCTION "public"."rpc_bulk_update_payment_status_safe"("p_payment_updates" "jsonb", "p_user_id" "uuid", "p_notes" "text") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."rpc_bulk_update_payment_status_safe"("p_payment_updates" "jsonb", "p_user_id" "uuid", "p_notes" "text") TO "service_role";
 
 
 
+REVOKE ALL ON FUNCTION "public"."rpc_guest_get_attendance"() FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."rpc_guest_get_attendance"() TO "authenticated";
 GRANT ALL ON FUNCTION "public"."rpc_guest_get_attendance"() TO "service_role";
 GRANT ALL ON FUNCTION "public"."rpc_guest_get_attendance"() TO "anon";
 
 
 
+REVOKE ALL ON FUNCTION "public"."rpc_guest_get_latest_payment"("p_attendance_id" "uuid") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."rpc_guest_get_latest_payment"("p_attendance_id" "uuid") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."rpc_guest_get_latest_payment"("p_attendance_id" "uuid") TO "service_role";
 GRANT ALL ON FUNCTION "public"."rpc_guest_get_latest_payment"("p_attendance_id" "uuid") TO "anon";
 
 
 
+REVOKE ALL ON FUNCTION "public"."rpc_public_attending_count"("p_event_id" "uuid") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."rpc_public_attending_count"("p_event_id" "uuid") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."rpc_public_attending_count"("p_event_id" "uuid") TO "service_role";
 GRANT ALL ON FUNCTION "public"."rpc_public_attending_count"("p_event_id" "uuid") TO "anon";
 
 
 
+REVOKE ALL ON FUNCTION "public"."rpc_public_check_duplicate_email"("p_event_id" "uuid", "p_email" "text") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."rpc_public_check_duplicate_email"("p_event_id" "uuid", "p_email" "text") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."rpc_public_check_duplicate_email"("p_event_id" "uuid", "p_email" "text") TO "service_role";
 GRANT ALL ON FUNCTION "public"."rpc_public_check_duplicate_email"("p_event_id" "uuid", "p_email" "text") TO "anon";
 
 
 
+REVOKE ALL ON FUNCTION "public"."rpc_public_get_connect_account"("p_event_id" "uuid", "p_creator_id" "uuid") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."rpc_public_get_connect_account"("p_event_id" "uuid", "p_creator_id" "uuid") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."rpc_public_get_connect_account"("p_event_id" "uuid", "p_creator_id" "uuid") TO "service_role";
 GRANT ALL ON FUNCTION "public"."rpc_public_get_connect_account"("p_event_id" "uuid", "p_creator_id" "uuid") TO "anon";
 
 
 
+REVOKE ALL ON FUNCTION "public"."rpc_public_get_event"("p_invite_token" "text") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."rpc_public_get_event"("p_invite_token" "text") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."rpc_public_get_event"("p_invite_token" "text") TO "service_role";
 GRANT ALL ON FUNCTION "public"."rpc_public_get_event"("p_invite_token" "text") TO "anon";
 
 
 
+REVOKE ALL ON FUNCTION "public"."rpc_update_payment_status_safe"("p_payment_id" "uuid", "p_new_status" "public"."payment_status_enum", "p_expected_version" integer, "p_user_id" "uuid", "p_notes" "text") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."rpc_update_payment_status_safe"("p_payment_id" "uuid", "p_new_status" "public"."payment_status_enum", "p_expected_version" integer, "p_user_id" "uuid", "p_notes" "text") TO "anon";
 GRANT ALL ON FUNCTION "public"."rpc_update_payment_status_safe"("p_payment_id" "uuid", "p_new_status" "public"."payment_status_enum", "p_expected_version" integer, "p_user_id" "uuid", "p_notes" "text") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."rpc_update_payment_status_safe"("p_payment_id" "uuid", "p_new_status" "public"."payment_status_enum", "p_expected_version" integer, "p_user_id" "uuid", "p_notes" "text") TO "service_role";
 
 
 
+REVOKE ALL ON FUNCTION "public"."status_rank"("p" "public"."payment_status_enum") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."status_rank"("p" "public"."payment_status_enum") TO "anon";
 GRANT ALL ON FUNCTION "public"."status_rank"("p" "public"."payment_status_enum") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."status_rank"("p" "public"."payment_status_enum") TO "service_role";
@@ -3401,18 +3434,21 @@ GRANT ALL ON FUNCTION "public"."update_guest_attendance_with_payment"("p_attenda
 
 
 
+REVOKE ALL ON FUNCTION "public"."update_payment_version"() FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."update_payment_version"() TO "anon";
 GRANT ALL ON FUNCTION "public"."update_payment_version"() TO "authenticated";
 GRANT ALL ON FUNCTION "public"."update_payment_version"() TO "service_role";
 
 
 
+REVOKE ALL ON FUNCTION "public"."update_revenue_summary"("p_event_id" "uuid") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."update_revenue_summary"("p_event_id" "uuid") TO "anon";
 GRANT ALL ON FUNCTION "public"."update_revenue_summary"("p_event_id" "uuid") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."update_revenue_summary"("p_event_id" "uuid") TO "service_role";
 
 
 
+REVOKE ALL ON FUNCTION "public"."update_updated_at_column"() FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."update_updated_at_column"() TO "anon";
 GRANT ALL ON FUNCTION "public"."update_updated_at_column"() TO "authenticated";
 GRANT ALL ON FUNCTION "public"."update_updated_at_column"() TO "service_role";

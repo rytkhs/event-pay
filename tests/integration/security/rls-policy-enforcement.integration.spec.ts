@@ -329,21 +329,17 @@ describe("RLS Policy Enforcement Integration Tests", () => {
       // 正しいゲストトークンを使用したクライアント
       const guestClient = factory.createGuestClient(testGuestToken);
 
-      // attendancesテーブルから直接データを取得してみる
-      const { data: attendances, error } = await guestClient
-        .from("attendances")
-        .select("id, event_id, nickname");
+      // 公開RPC経由で参加データを取得
+      const { data: rpcRow, error } = await (guestClient as any)
+        .rpc("rpc_guest_get_attendance")
+        .single();
 
       expect(error).toBeNull();
-      expect(attendances).toBeDefined();
+      expect(rpcRow).toBeDefined();
 
-      if (attendances) {
-        // RLSにより、自分の参加データのみ取得できることを確認
-        expect(attendances).toHaveLength(1);
-        expect(attendances[0].id).toBe(testAttendanceId);
-        expect(attendances[0].event_id).toBe(testEventId);
-        expect(attendances[0].nickname).toBe("Test Participant");
-      }
+      // 自分の参加データのみ取得できることを確認
+      expect((rpcRow as any).attendance_id).toBe(testAttendanceId);
+      expect((rpcRow as any).event_id).toBe(testEventId);
     });
 
     test("無効なゲストトークンでは何のデータも取得できない", async () => {
@@ -352,33 +348,31 @@ describe("RLS Policy Enforcement Integration Tests", () => {
       // 無効なゲストトークンを使用したクライアント（存在しないが形式は正しい）
       const invalidGuestClient = factory.createGuestClient("gst_nonexistent_token_12345678901234");
 
-      const { data: attendances, error } = await invalidGuestClient
-        .from("attendances")
-        .select("id, event_id, nickname");
+      const { data: rpcRow, error } = await (invalidGuestClient as any)
+        .rpc("rpc_guest_get_attendance")
+        .single();
 
       // RLSにより、データが取得できないことを確認
-      expect(attendances).toEqual([]);
+      expect(rpcRow).toBeNull();
     });
 
     test("招待トークンによるイベントアクセスが正しく分離されている", async () => {
       const factory = SecureSupabaseClientFactory.getInstance();
       const anonClient = factory.createReadOnlyClient();
 
-      // 招待トークンによる直接的なイベントアクセスをテスト
-      const { data: events, error } = await anonClient
-        .from("events")
-        .select("id, title, invite_token")
-        .eq("invite_token", testInviteToken);
+      // 公開RPCで招待トークンに紐づくイベントをテスト
+      const { data: events, error } = await (anonClient as any).rpc("rpc_public_get_event", {
+        p_invite_token: testInviteToken,
+      });
 
       expect(error).toBeNull();
       expect(events).toBeDefined();
 
-      if (events) {
-        // 該当する招待トークンのイベントのみ取得できることを確認
-        expect(events).toHaveLength(1);
-        expect(events[0].id).toBe(testEventId);
-        expect(events[0].title).toBe("Test Event for RLS");
-      }
+      // 該当する招待トークンのイベントのみ取得できることを確認
+      const row = Array.isArray(events) ? events[0] : undefined;
+      expect(row).toBeDefined();
+      expect(row?.id).toBe(testEventId);
+      expect(row?.title).toBe("Test Event for RLS");
     });
   });
 
@@ -387,14 +381,11 @@ describe("RLS Policy Enforcement Integration Tests", () => {
       const factory = SecureSupabaseClientFactory.getInstance();
       const guestClient = factory.createGuestClient(testGuestToken);
 
-      // 他のユーザーのイベントにはアクセスできないことを確認
-      const { data: otherEvents, error } = await guestClient
-        .from("events")
-        .select("id, title")
-        .eq("id", anotherEventId);
-
-      // RLSにより、他のイベントにはアクセスできない
-      expect(otherEvents).toEqual([]);
+      // RLSにより、他のイベントにはアクセスできない（RPCでもゲート）
+      const { data: denied, error } = await (guestClient as any).rpc("rpc_public_attending_count", {
+        p_event_id: anotherEventId,
+      });
+      expect(error).not.toBeNull();
     });
 
     test("読み取り専用クライアントもRLSポリシーに従う", async () => {

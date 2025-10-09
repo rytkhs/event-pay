@@ -118,30 +118,12 @@ export class RLSGuestTokenValidator implements IGuestTokenValidator {
       // ゲストクライアントを使用してRLSポリシーを有効化
       const guestClient = this.clientFactory.createGuestClient(token);
 
-      // ゲストトークンで直接attendanceを検索
-      const { data: attendance, error } = await guestClient
-        .from("attendances")
-        .select(
-          `
-          id,
-          event_id,
-          status,
-          guest_token,
-          event:events (
-            id,
-            date,
-            registration_deadline,
-            payment_deadline,
-            allow_payment_after_deadline,
-            grace_period_days,
-            canceled_at
-          )
-        `
-        )
-        .eq("guest_token", token)
-        .single(); // トークンが有効なら必ず1件のみ取得される
+      // 公開RPCに置換（最小列）
+      const { data: rpcRow, error } = await (guestClient as any)
+        .rpc("rpc_guest_get_attendance")
+        .single();
 
-      if (error || !attendance) {
+      if (error || !rpcRow) {
         await this.safeLogGuestAccess(token, "VALIDATE_TOKEN_DETAILS", false, {
           errorCode: GuestErrorCode.TOKEN_NOT_FOUND,
           errorMessage: error?.message,
@@ -157,18 +139,20 @@ export class RLSGuestTokenValidator implements IGuestTokenValidator {
         };
       }
 
-      // 変更可能性をチェック
-      // -----------------------------
-      // event が配列で返るケースへの防御的対応
-      // 単体オブジェクトに正規化してから変更可能性を判定
-      // -----------------------------
-      const eventData = Array.isArray(attendance.event) ? attendance.event[0] : attendance.event;
+      // RPCの最小列からイベント情報を正規化
+      const eventData = {
+        id: (rpcRow as any).event_id,
+        date: (rpcRow as any).event_date,
+        registration_deadline: (rpcRow as any).registration_deadline,
+        payment_deadline: (rpcRow as any).payment_deadline,
+        canceled_at: (rpcRow as any).canceled_at,
+      } as any;
       const canModify = this.checkCanModify(eventData);
 
       // 成功をログに記録
       await this.safeLogGuestAccess(token, "VALIDATE_TOKEN_DETAILS", true, {
-        attendanceId: attendance.id,
-        eventId: eventData ? eventData.id : "",
+        attendanceId: (rpcRow as any).attendance_id,
+        eventId: eventData ? (eventData as any).id : "",
         tableName: "attendances",
         operationType: "SELECT",
         resultCount: 1,
@@ -176,8 +160,8 @@ export class RLSGuestTokenValidator implements IGuestTokenValidator {
 
       return {
         isValid: true,
-        attendanceId: attendance.id,
-        eventId: eventData ? eventData.id : "",
+        attendanceId: (rpcRow as any).attendance_id,
+        eventId: eventData ? (eventData as any).id : "",
         canModify,
       };
     } catch (error) {
