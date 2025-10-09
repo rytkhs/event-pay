@@ -679,10 +679,6 @@ export type Database = {
         Args: { p_event_id: string };
         Returns: boolean;
       };
-      clear_test_guest_token: {
-        Args: Record<PropertyKey, never>;
-        Returns: undefined;
-      };
       generate_settlement_report: {
         Args: { input_created_by: string; input_event_id: string };
         Returns: {
@@ -765,6 +761,61 @@ export type Database = {
         Args: { p_notes?: string; p_payment_updates: Json; p_user_id: string };
         Returns: Json;
       };
+      rpc_guest_get_attendance: {
+        Args: Record<PropertyKey, never>;
+        Returns: {
+          attendance_id: string;
+          canceled_at: string;
+          created_by: string;
+          email: string;
+          event_date: string;
+          event_fee: number;
+          event_id: string;
+          event_title: string;
+          guest_token: string;
+          nickname: string;
+          payment_deadline: string;
+          registration_deadline: string;
+          status: Database["public"]["Enums"]["attendance_status_enum"];
+        }[];
+      };
+      rpc_guest_get_latest_payment: {
+        Args: { p_attendance_id: string };
+        Returns: number;
+      };
+      rpc_public_attending_count: {
+        Args: { p_event_id: string };
+        Returns: number;
+      };
+      rpc_public_check_duplicate_email: {
+        Args: { p_email: string; p_event_id: string };
+        Returns: boolean;
+      };
+      rpc_public_get_connect_account: {
+        Args: { p_creator_id: string; p_event_id: string };
+        Returns: {
+          payouts_enabled: boolean;
+          stripe_account_id: string;
+        }[];
+      };
+      rpc_public_get_event: {
+        Args: { p_invite_token: string };
+        Returns: {
+          attendances_count: number;
+          canceled_at: string;
+          capacity: number;
+          date: string;
+          description: string;
+          fee: number;
+          id: string;
+          invite_token: string;
+          location: string;
+          payment_deadline: string;
+          payment_methods: Database["public"]["Enums"]["payment_method_enum"][];
+          registration_deadline: string;
+          title: string;
+        }[];
+      };
       rpc_update_payment_status_safe: {
         Args: {
           p_expected_version: number;
@@ -774,10 +825,6 @@ export type Database = {
           p_user_id: string;
         };
         Returns: Json;
-      };
-      set_test_guest_token: {
-        Args: { token: string };
-        Returns: undefined;
       };
       status_rank: {
         Args: { p: Database["public"]["Enums"]["payment_status_enum"] };
@@ -824,16 +871,7 @@ export type Database = {
         | "refunded"
         | "waived"
         | "canceled";
-      security_severity_enum: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
       stripe_account_status_enum: "unverified" | "onboarding" | "verified" | "restricted";
-      suspicious_activity_type_enum:
-        | "EMPTY_RESULT_SET"
-        | "ADMIN_ACCESS_ATTEMPT"
-        | "INVALID_TOKEN_PATTERN"
-        | "RATE_LIMIT_EXCEEDED"
-        | "UNAUTHORIZED_RLS_BYPASS"
-        | "BULK_DATA_ACCESS"
-        | "UNUSUAL_ACCESS_PATTERN";
     };
     CompositeTypes: {
       [_ in never]: never;
@@ -990,17 +1028,7 @@ export const Constants = {
         "waived",
         "canceled",
       ],
-      security_severity_enum: ["LOW", "MEDIUM", "HIGH", "CRITICAL"],
       stripe_account_status_enum: ["unverified", "onboarding", "verified", "restricted"],
-      suspicious_activity_type_enum: [
-        "EMPTY_RESULT_SET",
-        "ADMIN_ACCESS_ATTEMPT",
-        "INVALID_TOKEN_PATTERN",
-        "RATE_LIMIT_EXCEEDED",
-        "UNAUTHORIZED_RLS_BYPASS",
-        "BULK_DATA_ACCESS",
-        "UNUSUAL_ACCESS_PATTERN",
-      ],
     },
   },
 } as const;

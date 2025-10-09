@@ -90,39 +90,21 @@ export async function validateInviteToken(token: string): Promise<InviteValidati
   }
 
   try {
-    // 読み取り専用クライアント（匿名ロール）を使用してRLSポリシーを適用
+    // 読み取り専用クライアント（匿名ロール） + 招待トークンヘッダー
     const secureFactory = SecureSupabaseClientFactory.getInstance();
-    // RLSポリシーで can_access_event() が request.headers.x-invite-token を参照するため、
-    // 招待トークンをヘッダーに付与したリードオンリークライアントを生成する
     const anonClient = secureFactory.createReadOnlyClient({
-      headers: {
-        "x-invite-token": token,
-      },
+      headers: { "x-invite-token": token },
     });
 
-    // 招待トークンでイベントを取得
-    const { data: event, error } = await anonClient
-      .from("events")
-      .select(
-        `
-        id,
-        title,
-        date,
-        location,
-        description,
-        fee,
-        capacity,
-        payment_methods,
-        registration_deadline,
-        payment_deadline,
-        invite_token,
-        canceled_at
-      `
-      )
-      .eq("invite_token", token)
-      .single();
+    // 公開RPCでイベント情報+参加者数を取得
+    const { data: rpcData, error: rpcError } = await (anonClient as any).rpc(
+      "rpc_public_get_event",
+      { p_invite_token: token }
+    );
 
-    if (error || !event) {
+    const evRow = Array.isArray(rpcData) ? rpcData[0] : undefined;
+
+    if (rpcError || !evRow) {
       return {
         isValid: false,
         canRegister: false,
@@ -130,43 +112,10 @@ export async function validateInviteToken(token: string): Promise<InviteValidati
         errorCode: "TOKEN_NOT_FOUND",
       };
     }
+    const event = evRow as any;
+    const actualAttendancesCount = Number(event.attendances_count) || 0;
 
-    // 参加者数を別途取得（参加ステータスのみをカウント）
-    const { count: attendances_count, error: countError } = await anonClient
-      .from("attendances")
-      .select("*", { count: "exact", head: true })
-      .eq("event_id", event.id)
-      .eq("status", "attending");
-
-    // DBエラー時は安全のため参加者数を取得できないとして処理
-    if (countError) {
-      if (process.env.NODE_ENV === "development") {
-        logger.error("Failed to fetch participant count", {
-          tag: "inviteTokenValidation",
-          error_name: countError instanceof Error ? countError.name : "Unknown",
-          error_message: countError instanceof Error ? countError.message : String(countError),
-        });
-      }
-      // セキュリティのため、エラー時は定員超過扱いとする
-      const actualAttendancesCount = event.capacity || 0;
-
-      const eventDetail: EventDetail = {
-        ...(event as any),
-        attendances_count: actualAttendancesCount,
-      };
-
-      return {
-        isValid: true,
-        event: eventDetail,
-        canRegister: false,
-        errorMessage: "現在参加登録を受け付けることができません。しばらく後にお試しください。",
-        errorCode: "UNKNOWN_ERROR",
-      };
-    }
-
-    const actualAttendancesCount = attendances_count || 0;
-
-    const computedStatus = deriveEventStatus(event.date, (event as any).canceled_at ?? null);
+    const computedStatus = deriveEventStatus(event.date, event.canceled_at ?? null);
     const eventDetail: EventDetail = {
       ...(event as any),
       status: computedStatus as any,
@@ -240,35 +189,37 @@ export async function validateInviteToken(token: string): Promise<InviteValidati
  */
 export async function checkEventCapacity(
   eventId: string,
-  capacity: number | null
+  capacity: number | null,
+  inviteToken?: string
 ): Promise<boolean> {
   if (!capacity) {
     return false; // 定員制限なし
   }
 
   try {
-    const supabase = createClient();
+    const secureFactory = SecureSupabaseClientFactory.getInstance();
+    const client = secureFactory.createReadOnlyClient({
+      headers: inviteToken ? { "x-invite-token": inviteToken } : {},
+    });
 
-    // 参加ステータスの参加者をカウント
-    const { count, error } = await supabase
-      .from("attendances")
-      .select("*", { count: "exact", head: true })
-      .eq("event_id", eventId)
-      .eq("status", "attending");
+    const { data, error } = await (client as any).rpc("rpc_public_attending_count", {
+      p_event_id: eventId,
+    });
 
     if (error) {
       if (process.env.NODE_ENV === "development") {
         logger.error("Failed to check event capacity", {
           tag: "inviteTokenValidation",
-          error_name: error instanceof Error ? error.name : "Unknown",
-          error_message: error instanceof Error ? error.message : String(error),
+          error_name: (error as any)?.name ?? "Unknown",
+          error_message: (error as any)?.message ?? String(error),
           event_id: eventId,
         });
       }
       return true; // 安全のため、エラー時は定員超過とみなす
     }
 
-    return (count || 0) >= capacity;
+    const count = Number(data) || 0;
+    return count >= capacity;
   } catch (error) {
     if (process.env.NODE_ENV === "development") {
       logger.error("Failed to check event capacity", {
@@ -288,30 +239,37 @@ export async function checkEventCapacity(
  * @param {string} email - 確認するメールアドレス
  * @returns {Promise<boolean>} 既に登録済みの場合はtrue
  */
-export async function checkDuplicateEmail(eventId: string, email: string): Promise<boolean> {
+export async function checkDuplicateEmail(
+  eventId: string,
+  email: string,
+  inviteToken?: string
+): Promise<boolean> {
   try {
-    const supabase = createClient();
+    // 招待トークンヘッダーが必要なため、呼び出し側でvalidateInviteToken済み前提
+    // ここでは匿名RPCに委譲
+    const secureFactory = SecureSupabaseClientFactory.getInstance();
+    const client = secureFactory.createReadOnlyClient({
+      headers: inviteToken ? { "x-invite-token": inviteToken } : {},
+    });
 
-    const { data, error } = await supabase
-      .from("attendances")
-      .select("id")
-      .eq("event_id", eventId)
-      .eq("email", email)
-      .limit(1);
+    const { data, error } = await (client as any).rpc("rpc_public_check_duplicate_email", {
+      p_event_id: eventId,
+      p_email: email,
+    });
 
     if (error) {
       if (process.env.NODE_ENV === "development") {
         logger.error("Failed to check email duplication", {
           tag: "inviteTokenValidation",
-          error_name: error instanceof Error ? error.name : "Unknown",
-          error_message: error instanceof Error ? error.message : String(error),
+          error_name: (error as any)?.name ?? "Unknown",
+          error_message: (error as any)?.message ?? String(error),
           event_id: eventId,
         });
       }
       return true; // 安全のため、エラー時は重複とみなす
     }
 
-    return (data?.length || 0) > 0;
+    return Boolean(data);
   } catch (_error) {
     return true; // 安全のため、エラー時は重複とみなす
   }

@@ -28,35 +28,14 @@ export class ImprovedGuestTokenValidator {
     });
 
     try {
-      // RLSポリシーが自動的にguest_tokenでフィルタリング
-      const { data: attendance, error } = await clientWithGuestToken
-        .from("attendances")
-        .select(
-          `
-          id,
-          nickname,
-          email,
-          status,
-          guest_token,
-          created_at,
-          updated_at,
-          event:events (
-            id,
-            title,
-            description,
-            date,
-            location,
-            fee,
-            capacity,
-            registration_deadline,
-            payment_deadline,
-            created_by
-          )
-        `
-        )
-        .single(); // RLSにより該当する1件のみが取得される
+      // 匿名テーブルSELECTを廃止し、公開RPC経由で取得
+      const { data: rpcData, error } = await (clientWithGuestToken as any).rpc(
+        "rpc_guest_get_attendance"
+      );
 
-      if (error || !attendance) {
+      const row = Array.isArray(rpcData) ? rpcData[0] : rpcData;
+
+      if (error || !row) {
         return {
           isValid: false,
           errorMessage: "参加データが見つかりません",
@@ -64,6 +43,26 @@ export class ImprovedGuestTokenValidator {
           errorCode: "TOKEN_NOT_FOUND" as const,
         };
       }
+
+      const attendance = {
+        id: row.attendance_id,
+        nickname: row.nickname,
+        email: row.email,
+        status: row.status,
+        guest_token: row.guest_token,
+        created_at: undefined,
+        updated_at: undefined,
+        event: {
+          id: row.event_id,
+          title: row.event_title,
+          date: row.event_date,
+          fee: row.event_fee,
+          created_by: row.created_by,
+          registration_deadline: row.registration_deadline,
+          payment_deadline: row.payment_deadline,
+          canceled_at: row.canceled_at,
+        },
+      } as any;
 
       return {
         isValid: true,

@@ -213,7 +213,7 @@ async function validateEmailDuplication(
   securityContext: { userAgent?: string; ip?: string }
 ): Promise<void> {
   // サニタイズ済みメールアドレスの重複チェック
-  const isDuplicate = await checkDuplicateEmail(event.id, sanitizedEmail);
+  const isDuplicate = await checkDuplicateEmail(event.id, sanitizedEmail, event.invite_token);
   if (isDuplicate) {
     // 重複エラー試行をログに記録
     logParticipationSecurityEvent(
@@ -486,14 +486,12 @@ async function verifyGuestTokenStorage(
     const secureClientFactory = SecureSupabaseClientFactory.getInstance();
     const supabase = await secureClientFactory.createGuestClient(expectedGuestToken);
 
-    const { data: savedAttendance, error: verifyError } = await supabase
-      .from("attendances")
-      .select("id, guest_token")
-      .eq("id", attendanceId)
+    const { data: rpcRow, error: verifyError } = await (supabase as any)
+      .rpc("rpc_guest_get_attendance")
       .single();
 
     // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-    if (verifyError || !savedAttendance) {
+    if (verifyError || !rpcRow) {
       logParticipationSecurityEvent(
         "SUSPICIOUS_ACTIVITY",
         "Failed to verify guest token storage",
@@ -504,7 +502,7 @@ async function verifyGuestTokenStorage(
         },
         { ...securityContext, eventId: event.id }
       );
-    } else if (savedAttendance.guest_token !== expectedGuestToken) {
+    } else if ((rpcRow as any).guest_token !== expectedGuestToken) {
       logParticipationSecurityEvent(
         "SUSPICIOUS_ACTIVITY",
         "Guest token mismatch after storage (plain text comparison)",
@@ -512,9 +510,9 @@ async function verifyGuestTokenStorage(
           eventId: event.id,
           attendanceId,
           expectedTokenLength: expectedGuestToken.length,
-          savedTokenLength: savedAttendance.guest_token?.length,
+          savedTokenLength: ((rpcRow as any).guest_token as string | undefined)?.length,
           expectedPrefix: expectedGuestToken.substring(0, 4),
-          savedPrefix: savedAttendance.guest_token?.substring(0, 4),
+          savedPrefix: ((rpcRow as any).guest_token as string | undefined)?.substring(0, 4),
         },
         { ...securityContext, eventId: event.id }
       );

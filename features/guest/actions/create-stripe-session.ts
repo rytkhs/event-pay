@@ -173,22 +173,20 @@ export async function createGuestStripeSessionAction(
   const paymentService = getPaymentService();
 
   // 5.1 既存の決済レコードがあれば金額は payments.amount を優先する
-  const { data: existingPayment } = await guestClient
-    .from("payments")
-    .select("amount")
-    .eq("attendance_id", attendance.id)
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
+  const { data: latestAmountRpc } = await (guestClient as any)
+    .rpc("rpc_guest_get_latest_payment", { p_attendance_id: attendance.id })
+    .single();
+  const existingPayment = latestAmountRpc ? { amount: latestAmountRpc as number } : undefined;
 
   const amountToCharge = existingPayment?.amount ?? event.fee;
 
   // 5.2 Stripe Connect アカウント取得 (Destination charges 前提)
-  const { data: connectAccount, error: connectError } = await guestClient
-    .from("stripe_connect_accounts")
-    .select("stripe_account_id, payouts_enabled")
-    .eq("user_id", event.created_by)
-    .maybeSingle();
+  const { data: connectAccount, error: connectError } = await (guestClient as any)
+    .rpc("rpc_public_get_connect_account", {
+      p_event_id: event.id,
+      p_creator_id: event.created_by,
+    })
+    .single();
 
   if (connectError || !connectAccount) {
     return createServerActionError(

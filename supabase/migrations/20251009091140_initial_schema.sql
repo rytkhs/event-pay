@@ -950,7 +950,8 @@ CREATE OR REPLACE FUNCTION "public"."hash_guest_token"("token" "text") RETURNS c
     SET "search_path" TO 'public', 'pg_temp'
     AS $$
 BEGIN
-    RETURN encode(digest(token, 'sha256'), 'hex');
+    -- Use pgcrypto.digest(bytea, text) with convert_to to avoid implicit cast errors
+    RETURN encode(extensions.digest(convert_to(token, 'UTF8'), 'sha256'::text), 'hex');
 END;
 $$;
 
