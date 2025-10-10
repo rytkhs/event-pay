@@ -1,7 +1,6 @@
 import { logger } from "@core/logging/app-logger";
 import { generateRandomBytes, toBase64UrlSafe } from "@core/security/crypto";
 import { SecureSupabaseClientFactory } from "@core/security/secure-client-factory.impl";
-import { createClient } from "@core/supabase/server";
 import { deriveEventStatus } from "@core/utils/derive-event-status";
 
 import type { Database } from "@/types/database";
@@ -198,12 +197,11 @@ export async function checkEventCapacity(
 
   try {
     const secureFactory = SecureSupabaseClientFactory.getInstance();
-    const client = secureFactory.createReadOnlyClient({
-      headers: inviteToken ? { "x-invite-token": inviteToken } : {},
-    });
+    const client = secureFactory.createReadOnlyClient();
 
     const { data, error } = await (client as any).rpc("rpc_public_attending_count", {
       p_event_id: eventId,
+      p_invite_token: inviteToken,
     });
 
     if (error) {

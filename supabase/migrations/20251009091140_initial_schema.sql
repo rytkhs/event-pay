@@ -456,7 +456,6 @@ CREATE OR REPLACE FUNCTION "public"."can_access_event"("p_event_id" "uuid") RETU
     AS $$
 DECLARE
   current_user_id UUID;
-  invite_token_var TEXT;
   guest_token_var TEXT;
 BEGIN
   BEGIN
@@ -464,12 +463,6 @@ BEGIN
     current_user_id := (current_setting('request.jwt.claims', true)::json->>'sub')::uuid;
   EXCEPTION WHEN OTHERS THEN
     current_user_id := NULL;
-  END;
-
-  BEGIN
-    invite_token_var := current_setting('request.headers', true)::json->>'x-invite-token';
-  EXCEPTION WHEN OTHERS THEN
-    invite_token_var := NULL;
   END;
 
   BEGIN
@@ -483,18 +476,6 @@ BEGIN
       SELECT 1 FROM events
       WHERE id = p_event_id
         AND created_by = current_user_id
-    ) THEN
-      RETURN TRUE;
-    END IF;
-  END IF;
-
-  IF invite_token_var IS NOT NULL AND invite_token_var != '' THEN
-    IF EXISTS (
-      SELECT 1 FROM events
-      WHERE id = p_event_id
-        AND events.invite_token = invite_token_var
-        AND events.canceled_at IS NULL
-        AND events.date > NOW()
     ) THEN
       RETURN TRUE;
     END IF;
@@ -518,7 +499,7 @@ $$;
 ALTER FUNCTION "public"."can_access_event"("p_event_id" "uuid") OWNER TO "postgres";
 
 
-COMMENT ON FUNCTION "public"."can_access_event"("p_event_id" "uuid") IS 'イベントアクセス権限（主催者・招待トークン・ゲストトークン）';
+COMMENT ON FUNCTION "public"."can_access_event"("p_event_id" "uuid") IS 'イベントアクセス権限（主催者・ゲストトークンのみ）';
 
 
 CREATE OR REPLACE FUNCTION "public"."can_manage_invite_links"("p_event_id" "uuid") RETURNS boolean
@@ -2606,11 +2587,12 @@ BEGIN
         ) AS attendances_count
     FROM public.events e
     WHERE e.invite_token = p_invite_token
-      AND public.can_access_event(e.id);
+      AND e.canceled_at IS NULL
+      AND e.date > NOW();
 END;
 $$;
 
-CREATE OR REPLACE FUNCTION public.rpc_public_attending_count(p_event_id uuid)
+CREATE OR REPLACE FUNCTION public.rpc_public_attending_count(p_event_id uuid, p_invite_token text)
 RETURNS integer
 LANGUAGE plpgsql STABLE SECURITY DEFINER
 SET search_path = pg_catalog, public, pg_temp
@@ -2618,7 +2600,13 @@ AS $$
 DECLARE
     v_count integer := 0;
 BEGIN
-    IF NOT public.can_access_event(p_event_id) THEN
+    IF NOT EXISTS (
+      SELECT 1 FROM public.events
+      WHERE id = p_event_id
+        AND invite_token = p_invite_token
+        AND canceled_at IS NULL
+        AND date > NOW()
+    ) THEN
         RAISE EXCEPTION 'not allowed';
     END IF;
 
@@ -2672,7 +2660,6 @@ BEGIN
     LIMIT 1;
 END;
 $$;
--- Removed: duplicate per-function anon GRANT; consolidated at the end
 
 CREATE OR REPLACE FUNCTION public.rpc_public_check_duplicate_email(p_event_id uuid, p_email text)
 RETURNS boolean
@@ -2728,7 +2715,6 @@ BEGIN
     RETURN v_amount; -- may be null
 END;
 $$;
--- Removed: duplicate per-function anon GRANT; consolidated at the end
 
 CREATE OR REPLACE FUNCTION public.rpc_public_get_connect_account(p_event_id uuid, p_creator_id uuid)
 RETURNS TABLE (
@@ -2896,7 +2882,7 @@ GRANT USAGE ON SCHEMA "public" TO "service_role";
 
 -- Public RPC grants for anon role
 GRANT EXECUTE ON FUNCTION public.rpc_public_get_event(text) TO anon, authenticated;
-GRANT EXECUTE ON FUNCTION public.rpc_public_attending_count(uuid) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.rpc_public_attending_count(uuid, text) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.rpc_guest_get_attendance() TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.rpc_public_check_duplicate_email(uuid, text) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.rpc_guest_get_latest_payment(uuid) TO anon, authenticated;
@@ -2976,7 +2962,7 @@ ALTER FUNCTION public.register_attendance_with_payment(uuid, character varying, 
 ALTER FUNCTION public.rpc_bulk_update_payment_status_safe(jsonb, uuid, text) OWNER TO app_definer;
 ALTER FUNCTION public.rpc_guest_get_attendance() OWNER TO app_definer;
 ALTER FUNCTION public.rpc_guest_get_latest_payment(uuid) OWNER TO app_definer;
-ALTER FUNCTION public.rpc_public_attending_count(uuid) OWNER TO app_definer;
+ALTER FUNCTION public.rpc_public_attending_count(uuid, text) OWNER TO app_definer;
 ALTER FUNCTION public.rpc_public_check_duplicate_email(uuid, text) OWNER TO app_definer;
 ALTER FUNCTION public.rpc_public_get_connect_account(uuid, uuid) OWNER TO app_definer;
 ALTER FUNCTION public.rpc_public_get_event(text) OWNER TO app_definer;

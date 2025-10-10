@@ -185,7 +185,11 @@ async function validateCapacity(
 ): Promise<void> {
   // 参加ステータスが"attending"の場合の容量チェック
   if (participationData.attendanceStatus === "attending") {
-    const isCapacityReached = await checkEventCapacity(event.id, event.capacity);
+    const isCapacityReached = await checkEventCapacity(
+      event.id,
+      event.capacity,
+      participationData.inviteToken
+    );
     if (isCapacityReached) {
       // 定員超過試行をログに記録
       logParticipationSecurityEvent(
