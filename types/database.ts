@@ -450,21 +450,21 @@ export type Database = {
         };
         Relationships: [
           {
-            foreignKeyName: "payouts_event_id_fkey";
+            foreignKeyName: "settlements_event_id_fkey";
             columns: ["event_id"];
             isOneToOne: false;
             referencedRelation: "events";
             referencedColumns: ["id"];
           },
           {
-            foreignKeyName: "payouts_user_id_fkey";
+            foreignKeyName: "settlements_user_id_fkey";
             columns: ["user_id"];
             isOneToOne: false;
             referencedRelation: "public_profiles";
             referencedColumns: ["id"];
           },
           {
-            foreignKeyName: "payouts_user_id_fkey";
+            foreignKeyName: "settlements_user_id_fkey";
             columns: ["user_id"];
             isOneToOne: false;
             referencedRelation: "users";

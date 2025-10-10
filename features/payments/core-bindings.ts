@@ -6,7 +6,6 @@
 import { SecureSupabaseClientFactory } from "@core/security/secure-client-factory.impl";
 import { AdminReason } from "@core/security/secure-client-factory.types";
 import paymentRegistry from "@core/services/payment-registry";
-import { createClient } from "@core/supabase/server";
 
 import { updateCashStatusAction, bulkUpdateCashStatusAction } from "./actions";
 import { PaymentService, PaymentErrorHandler } from "./services";
@@ -16,9 +15,6 @@ const paymentActionsImpl = {
   updateCashStatus: updateCashStatusAction,
   bulkUpdateCashStatus: bulkUpdateCashStatusAction,
 };
-
-// Payment Service Instance
-let paymentServiceInstance: PaymentService | null = null;
 
 const paymentServiceImpl = {
   async createStripeSession(params: any) {
@@ -34,22 +30,28 @@ const paymentServiceImpl = {
   },
 
   async createCashPayment(params: any) {
-    if (!paymentServiceInstance) {
-      const supabaseClient = createClient();
-      const errorHandler = new PaymentErrorHandler();
-      paymentServiceInstance = new PaymentService(supabaseClient, errorHandler);
-    }
-    return paymentServiceInstance.createCashPayment(params);
+    // 現金決済レコード作成は管理者（service_role）クライアントで実行
+    const factory = SecureSupabaseClientFactory.getInstance();
+    const adminClient = await factory.createAuditedAdminClient(
+      AdminReason.PAYMENT_PROCESSING,
+      "features/payments/core-bindings createCashPayment"
+    );
+    const errorHandler = new PaymentErrorHandler();
+    const paymentService = new PaymentService(adminClient, errorHandler);
+    return paymentService.createCashPayment(params);
   },
 
   async updatePaymentStatus(params: any) {
-    if (!paymentServiceInstance) {
-      const supabaseClient = createClient();
-      const errorHandler = new PaymentErrorHandler();
-      paymentServiceInstance = new PaymentService(supabaseClient, errorHandler);
-    }
     try {
-      await paymentServiceInstance.updatePaymentStatus(params);
+      // 決済ステータス更新は管理者（service_role）クライアントで実行
+      const factory = SecureSupabaseClientFactory.getInstance();
+      const adminClient = await factory.createAuditedAdminClient(
+        AdminReason.PAYMENT_PROCESSING,
+        "features/payments/core-bindings updatePaymentStatus"
+      );
+      const errorHandler = new PaymentErrorHandler();
+      const paymentService = new PaymentService(adminClient, errorHandler);
+      await paymentService.updatePaymentStatus(params);
       return { success: true as const, data: null };
     } catch (error: any) {
       return {

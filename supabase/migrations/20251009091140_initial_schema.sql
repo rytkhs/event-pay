@@ -1,6 +1,11 @@
 
 
 
+-- ============================================================================
+-- Migration: initial_schema
+-- Description: みんなの集金 - 初期スキーマ定義
+-- ============================================================================
+
 SET statement_timeout = 0;
 SET lock_timeout = 0;
 SET idle_in_transaction_session_timeout = 0;
@@ -12,53 +17,41 @@ SET xmloption = content;
 SET client_min_messages = warning;
 SET row_security = off;
 
-
--- Removed unused extension pg_net
--- (not required by current schema)
-
-
-
-
-
+-- ============================================================================
+-- SECTION 1: Schema & Extensions
+-- ============================================================================
 
 COMMENT ON SCHEMA "public" IS 'アプリケーション公開スキーマ';
-
-
-
--- pg_graphql is not used; extension creation removed
-
-
-
-
-
 
 CREATE EXTENSION IF NOT EXISTS "pg_stat_statements" WITH SCHEMA "extensions";
 
 
-
-
-
-
 CREATE EXTENSION IF NOT EXISTS "pgcrypto" WITH SCHEMA "extensions";
 
+-- ============================================================================
+-- SECTION 2: Security Roles & Permissions
+-- ============================================================================
 
+-- Security hardening: app_definer role and schema access control
+REVOKE CREATE ON SCHEMA public FROM PUBLIC;
 
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'app_definer') THEN
+        CREATE ROLE app_definer NOLOGIN;
+    END IF;
+END
+$$;
 
+GRANT app_definer TO postgres;
+GRANT USAGE, CREATE ON SCHEMA public TO app_definer;
 
+-- Enable RLS bypass for app_definer (NOLOGIN definer-only role)
+ALTER ROLE app_definer WITH BYPASSRLS;
 
--- Removed unused extension supabase_vault
-
-
-
-
-
-
--- Removed unused extension uuid-ossp (we use gen_random_uuid() from pgcrypto)
-
-
-
-
-
+-- ============================================================================
+-- SECTION 3: Custom Types (ENUMs)
+-- ============================================================================
 
 CREATE TYPE "public"."actor_type_enum" AS ENUM (
     'user',
@@ -74,7 +67,6 @@ ALTER TYPE "public"."actor_type_enum" OWNER TO "postgres";
 
 
 COMMENT ON TYPE "public"."actor_type_enum" IS 'アクター種別（操作実行者の分類）';
-
 
 
 CREATE TYPE "public"."attendance_status_enum" AS ENUM (
@@ -109,7 +101,6 @@ ALTER TYPE "public"."log_category_enum" OWNER TO "postgres";
 COMMENT ON TYPE "public"."log_category_enum" IS 'ログカテゴリ（アプリケーションドメイン別）';
 
 
-
 CREATE TYPE "public"."log_level_enum" AS ENUM (
     'debug',
     'info',
@@ -125,7 +116,6 @@ ALTER TYPE "public"."log_level_enum" OWNER TO "postgres";
 COMMENT ON TYPE "public"."log_level_enum" IS 'ログレベル（RFC 5424準拠）';
 
 
-
 CREATE TYPE "public"."log_outcome_enum" AS ENUM (
     'success',
     'failure',
@@ -137,7 +127,6 @@ ALTER TYPE "public"."log_outcome_enum" OWNER TO "postgres";
 
 
 COMMENT ON TYPE "public"."log_outcome_enum" IS '処理結果（OpenTelemetry準拠）';
-
 
 
 CREATE TYPE "public"."payment_method_enum" AS ENUM (
@@ -166,10 +155,6 @@ ALTER TYPE "public"."payment_status_enum" OWNER TO "postgres";
 COMMENT ON TYPE "public"."payment_status_enum" IS '決済状況: pending, paid, failed, received, refunded, waived, canceled';
 
 
-
--- Removed unused enum: security_severity_enum (dropped from initial schema)
-
-
 CREATE TYPE "public"."stripe_account_status_enum" AS ENUM (
     'unverified',
     'onboarding',
@@ -180,13 +165,13 @@ CREATE TYPE "public"."stripe_account_status_enum" AS ENUM (
 
 ALTER TYPE "public"."stripe_account_status_enum" OWNER TO "postgres";
 
-
--- Removed unused enum: suspicious_activity_type_enum (dropped from initial schema)
-
+-- ============================================================================
+-- SECTION 4: Functions (Business Logic)
+-- ============================================================================
 
 CREATE OR REPLACE FUNCTION "public"."admin_add_attendance_with_capacity_check"("p_event_id" "uuid", "p_nickname" character varying, "p_email" character varying, "p_status" "public"."attendance_status_enum", "p_guest_token" character varying, "p_bypass_capacity" boolean DEFAULT false) RETURNS "uuid"
     LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO 'public', 'pg_temp'
+    SET "search_path" TO 'pg_catalog', 'public', 'pg_temp'
     AS $$
 DECLARE
   v_attendance_id UUID;
@@ -213,7 +198,12 @@ BEGIN
   END IF;
 
   -- 現在のユーザーIDを取得
-  v_current_user_id := auth.uid();
+  BEGIN
+    v_current_user_id := NULL;
+    v_current_user_id := (current_setting('request.jwt.claims', true)::json->>'sub')::uuid;
+  EXCEPTION WHEN OTHERS THEN
+    v_current_user_id := NULL;
+  END;
   IF v_current_user_id IS NULL THEN
     RAISE EXCEPTION 'User must be authenticated' USING ERRCODE = '42501';
   END IF;
@@ -295,8 +285,7 @@ $$;
 ALTER FUNCTION "public"."admin_add_attendance_with_capacity_check"("p_event_id" "uuid", "p_nickname" character varying, "p_email" character varying, "p_status" "public"."attendance_status_enum", "p_guest_token" character varying, "p_bypass_capacity" boolean) OWNER TO "postgres";
 
 
-COMMENT ON FUNCTION "public"."admin_add_attendance_with_capacity_check"("p_event_id" "uuid", "p_nickname" character varying, "p_email" character varying, "p_status" "public"."attendance_status_enum", "p_guest_token" character varying, "p_bypass_capacity" boolean) IS '主催者用参加者追加関数（レースコンディション対策付き）。排他ロックによる定員チェックと主催者権限確認を実行。';
-
+COMMENT ON FUNCTION "public"."admin_add_attendance_with_capacity_check"("p_event_id" "uuid", "p_nickname" character varying, "p_email" character varying, "p_status" "public"."attendance_status_enum", "p_guest_token" character varying, "p_bypass_capacity" boolean) IS '主催者用参加者追加（排他ロック・定員チェック・レースコンディション対策）';
 
 
 CREATE OR REPLACE FUNCTION "public"."calc_refund_dispute_summary"("p_event_id" "uuid") RETURNS json
@@ -354,8 +343,7 @@ $$;
 ALTER FUNCTION "public"."calc_refund_dispute_summary"("p_event_id" "uuid") OWNER TO "postgres";
 
 
-COMMENT ON FUNCTION "public"."calc_refund_dispute_summary"("p_event_id" "uuid") IS 'イベント単位の返金・Dispute集計（won以外のDisputeを控除対象とする）';
-
+COMMENT ON FUNCTION "public"."calc_refund_dispute_summary"("p_event_id" "uuid") IS '返金・Dispute集計（won以外を控除対象）';
 
 
 CREATE OR REPLACE FUNCTION "public"."calc_total_application_fee"("p_event_id" "uuid") RETURNS integer
@@ -380,8 +368,7 @@ $$;
 ALTER FUNCTION "public"."calc_total_application_fee"("p_event_id" "uuid") OWNER TO "postgres";
 
 
-COMMENT ON FUNCTION "public"."calc_total_application_fee"("p_event_id" "uuid") IS 'イベント単位でアプリケーション手数料（プラットフォーム手数料）を合計計算。部分返金された決済も含める。';
-
+COMMENT ON FUNCTION "public"."calc_total_application_fee"("p_event_id" "uuid") IS 'アプリケーション手数料の合計（部分返金含む）';
 
 
 CREATE OR REPLACE FUNCTION "public"."calc_total_stripe_fee"("p_event_id" "uuid", "p_base_rate" numeric DEFAULT NULL::numeric, "p_fixed_fee" integer DEFAULT NULL::integer) RETURNS integer
@@ -410,13 +397,12 @@ $$;
 ALTER FUNCTION "public"."calc_total_stripe_fee"("p_event_id" "uuid", "p_base_rate" numeric, "p_fixed_fee" integer) OWNER TO "postgres";
 
 
-COMMENT ON FUNCTION "public"."calc_total_stripe_fee"("p_event_id" "uuid", "p_base_rate" numeric, "p_fixed_fee" integer) IS 'Calculate total Stripe fees for an event, including both paid and refunded payments. Prefers stored balance_transaction fee per payment; fallback to rate+fixed calculation if missing.';
-
+COMMENT ON FUNCTION "public"."calc_total_stripe_fee"("p_event_id" "uuid", "p_base_rate" numeric, "p_fixed_fee" integer) IS 'Stripe手数料合計（balance_transaction優先、フォールバック計算あり）';
 
 
 CREATE OR REPLACE FUNCTION "public"."can_access_attendance"("p_attendance_id" "uuid") RETURNS boolean
     LANGUAGE "plpgsql" STABLE SECURITY DEFINER
-    SET "search_path" TO 'public', 'pg_temp'
+    SET "search_path" TO 'pg_catalog', 'public', 'pg_temp'
     AS $$
 DECLARE
   event_id_for_attendance UUID;
@@ -460,20 +446,24 @@ $$;
 ALTER FUNCTION "public"."can_access_attendance"("p_attendance_id" "uuid") OWNER TO "postgres";
 
 
-COMMENT ON FUNCTION "public"."can_access_attendance"("p_attendance_id" "uuid") IS '参加者情報アクセス権限チェック関数。イベントアクセス権限またはゲストトークンによるアクセスをチェック。';
-
+COMMENT ON FUNCTION "public"."can_access_attendance"("p_attendance_id" "uuid") IS '参加者アクセス権限チェック（イベント権限 or ゲストトークン）';
 
 
 CREATE OR REPLACE FUNCTION "public"."can_access_event"("p_event_id" "uuid") RETURNS boolean
     LANGUAGE "plpgsql" STABLE SECURITY DEFINER
-    SET "search_path" TO 'public', 'pg_temp'
+    SET "search_path" TO 'pg_catalog', 'public', 'pg_temp'
     AS $$
 DECLARE
   current_user_id UUID;
   invite_token_var TEXT;
   guest_token_var TEXT;
 BEGIN
-  current_user_id := auth.uid();
+  BEGIN
+    current_user_id := NULL;
+    current_user_id := (current_setting('request.jwt.claims', true)::json->>'sub')::uuid;
+  EXCEPTION WHEN OTHERS THEN
+    current_user_id := NULL;
+  END;
 
   BEGIN
     invite_token_var := current_setting('request.headers', true)::json->>'x-invite-token';
@@ -527,18 +517,22 @@ $$;
 ALTER FUNCTION "public"."can_access_event"("p_event_id" "uuid") OWNER TO "postgres";
 
 
-COMMENT ON FUNCTION "public"."can_access_event"("p_event_id" "uuid") IS 'イベントアクセス権限チェック関数。主催者権限、招待トークン、ゲストトークンによるアクセスを安全にチェック。循環参照なし。';
-
+COMMENT ON FUNCTION "public"."can_access_event"("p_event_id" "uuid") IS 'イベントアクセス権限（主催者・招待トークン・ゲストトークン）';
 
 
 CREATE OR REPLACE FUNCTION "public"."can_manage_invite_links"("p_event_id" "uuid") RETURNS boolean
     LANGUAGE "plpgsql" STABLE SECURITY DEFINER
-    SET "search_path" TO 'public', 'pg_temp'
+    SET "search_path" TO 'pg_catalog', 'public', 'pg_temp'
     AS $$
 DECLARE
   current_user_id UUID;
 BEGIN
-  current_user_id := auth.uid();
+  BEGIN
+    current_user_id := NULL;
+    current_user_id := (current_setting('request.jwt.claims', true)::json->>'sub')::uuid;
+  EXCEPTION WHEN OTHERS THEN
+    current_user_id := NULL;
+  END;
 
   -- 認証済みユーザーの主催者権限のみ
   IF current_user_id IS NOT NULL AND EXISTS (
@@ -557,8 +551,7 @@ $$;
 ALTER FUNCTION "public"."can_manage_invite_links"("p_event_id" "uuid") OWNER TO "postgres";
 
 
-COMMENT ON FUNCTION "public"."can_manage_invite_links"("p_event_id" "uuid") IS '招待リンク管理権限チェック関数。イベント主催者のみが管理可能。';
-
+COMMENT ON FUNCTION "public"."can_manage_invite_links"("p_event_id" "uuid") IS '招待リンク管理権限（主催者のみ）';
 
 
 CREATE OR REPLACE FUNCTION "public"."check_attendance_capacity_limit"() RETURNS "trigger"
@@ -599,12 +592,9 @@ $$;
 ALTER FUNCTION "public"."check_attendance_capacity_limit"() OWNER TO "postgres";
 
 
-
-
-
 CREATE OR REPLACE FUNCTION "public"."generate_settlement_report"("input_event_id" "uuid", "input_created_by" "uuid") RETURNS TABLE("report_id" "uuid", "already_exists" boolean, "returned_event_id" "uuid", "event_title" character varying, "event_date" timestamp with time zone, "created_by" "uuid", "stripe_account_id" character varying, "transfer_group" "text", "total_stripe_sales" integer, "total_stripe_fee" integer, "total_application_fee" integer, "net_payout_amount" integer, "payment_count" integer, "refunded_count" integer, "total_refunded_amount" integer, "dispute_count" integer, "total_disputed_amount" integer, "report_generated_at" timestamp with time zone, "report_updated_at" timestamp with time zone)
     LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO 'public', 'pg_temp'
+    SET "search_path" TO 'pg_catalog', 'public', 'pg_temp'
     AS $$
 DECLARE
     v_payout_id UUID;
@@ -627,6 +617,12 @@ DECLARE
     v_updated_at TIMESTAMPTZ;
 BEGIN
     -- Validation
+    IF (current_setting('request.jwt.claims', true) IS NULL) THEN
+        RAISE EXCEPTION 'missing jwt claims';
+    END IF;
+    IF ((current_setting('request.jwt.claims', true)::json->>'sub')::uuid IS DISTINCT FROM input_created_by) THEN
+        RAISE EXCEPTION 'Unauthorized: caller does not match created_by';
+    END IF;
     IF input_event_id IS NULL OR input_created_by IS NULL THEN
         RAISE EXCEPTION 'event_id and created_by are required';
     END IF;
@@ -762,9 +758,11 @@ ALTER FUNCTION "public"."generate_settlement_report"("input_event_id" "uuid", "i
 
 CREATE OR REPLACE FUNCTION "public"."get_event_creator_name"("p_creator_id" "uuid") RETURNS "text"
     LANGUAGE "plpgsql" STABLE SECURITY DEFINER
-    SET "search_path" TO 'public', 'pg_temp'
+    SET "search_path" TO 'pg_catalog', 'public', 'pg_temp'
     AS $$
 BEGIN
+    -- SECURITY DEFINER required: users table has "own record only" RLS policy
+    -- This function allows reading other users' names (public info for event display)
     RETURN (SELECT name FROM public.users WHERE id = p_creator_id);
 END;
 $$;
@@ -773,9 +771,12 @@ $$;
 ALTER FUNCTION "public"."get_event_creator_name"("p_creator_id" "uuid") OWNER TO "postgres";
 
 
+COMMENT ON FUNCTION "public"."get_event_creator_name"("p_creator_id" "uuid") IS 'イベント主催者名取得（SECURITY DEFINER: users RLS回避、公開情報として扱う）';
+
+
 CREATE OR REPLACE FUNCTION "public"."get_guest_token"() RETURNS "text"
     LANGUAGE "plpgsql" STABLE SECURITY DEFINER
-    SET "search_path" TO 'public', 'pg_temp'
+    SET "search_path" TO 'pg_catalog', 'public', 'pg_temp'
     AS $$
 DECLARE
   token TEXT;
@@ -792,31 +793,8 @@ BEGIN
   END;
 
   -- 2. カスタムヘッダーから取得（現在の実装）
-  -- 正しい形式: current_setting('request.headers', true)::json->>'header-name'
   BEGIN
     SELECT current_setting('request.headers', true)::json->>'x-guest-token' INTO token;
-    IF token IS NOT NULL AND token != '' THEN
-      RETURN token;
-    END IF;
-  EXCEPTION
-    WHEN OTHERS THEN
-      NULL; -- 続行
-  END;
-
-  -- 3. アプリケーション設定から取得（テスト用）
-  BEGIN
-    SELECT current_setting('app.guest_token', true) INTO token;
-    IF token IS NOT NULL AND token != '' THEN
-      RETURN token;
-    END IF;
-  EXCEPTION
-    WHEN OTHERS THEN
-      NULL; -- 続行
-  END;
-
-  -- 4. テスト用の直接設定（テスト環境専用）
-  BEGIN
-    SELECT current_setting('test.guest_token', true) INTO token;
     IF token IS NOT NULL AND token != '' THEN
       RETURN token;
     END IF;
@@ -834,8 +812,7 @@ $$;
 ALTER FUNCTION "public"."get_guest_token"() OWNER TO "postgres";
 
 
-COMMENT ON FUNCTION "public"."get_guest_token"() IS 'ゲストトークンを複数の方法（JWTクレーム、ヘッダー、設定）から取得するヘルパー関数。フォールバック機能付き。正しいヘッダーアクセス形式を使用。';
-
+COMMENT ON FUNCTION "public"."get_guest_token"() IS 'ゲストトークンをJWTクレームまたはHTTPヘッダー（x-guest-token）から取得。本番環境ではヘッダー経由を使用。';
 
 
 CREATE OR REPLACE FUNCTION "public"."get_min_payout_amount"() RETURNS integer
@@ -851,12 +828,19 @@ ALTER FUNCTION "public"."get_min_payout_amount"() OWNER TO "postgres";
 COMMENT ON FUNCTION "public"."get_min_payout_amount"() IS '最小送金金額（円）を返すユーティリティ関数。fee_config に設定が無い場合はデフォルト 100 円。';
 
 
-
 CREATE OR REPLACE FUNCTION "public"."get_settlement_report_details"("input_created_by" "uuid", "input_event_ids" "uuid"[] DEFAULT NULL::"uuid"[], "p_from_date" timestamp with time zone DEFAULT NULL::timestamp with time zone, "p_to_date" timestamp with time zone DEFAULT NULL::timestamp with time zone, "p_limit" integer DEFAULT 50, "p_offset" integer DEFAULT 0) RETURNS TABLE("report_id" "uuid", "event_id" "uuid", "event_title" character varying, "event_date" timestamp with time zone, "stripe_account_id" character varying, "transfer_group" character varying, "generated_at" timestamp with time zone, "total_stripe_sales" integer, "total_stripe_fee" integer, "total_application_fee" integer, "net_payout_amount" integer, "payment_count" integer, "refunded_count" integer, "total_refunded_amount" integer)
     LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO 'public', 'pg_temp'
+    SET "search_path" TO 'pg_catalog', 'public', 'pg_temp'
     AS $$
 BEGIN
+    -- 呼び出し元ユーザーの検証（引数を信頼しない）
+    IF (current_setting('request.jwt.claims', true) IS NULL) THEN
+        RAISE EXCEPTION 'missing jwt claims';
+    END IF;
+    IF ((current_setting('request.jwt.claims', true)::json->>'sub')::uuid IS DISTINCT FROM input_created_by) THEN
+        RAISE EXCEPTION 'Unauthorized: caller does not match created_by';
+    END IF;
+
     RETURN QUERY
     SELECT
         p.id AS report_id,
@@ -921,10 +905,9 @@ ALTER FUNCTION "public"."get_settlement_report_details"("input_created_by" "uuid
 COMMENT ON FUNCTION "public"."get_settlement_report_details"("input_created_by" "uuid", "input_event_ids" "uuid"[], "p_from_date" timestamp with time zone, "p_to_date" timestamp with time zone, "p_limit" integer, "p_offset" integer) IS '一貫した決済ステータスフィルタリング（paid + refunded）を適用した清算レポート詳細。他の清算関数との一貫性を保つためpayment_count計算を修正。';
 
 
-
 CREATE OR REPLACE FUNCTION "public"."handle_new_user"() RETURNS "trigger"
     LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO 'public', 'pg_temp'
+    SET "search_path" TO 'pg_catalog', 'public', 'pg_temp'
     AS $$
 BEGIN
   -- auth.usersからのメタデータを使用してpublic.usersにプロファイルを作成
@@ -944,10 +927,9 @@ ALTER FUNCTION "public"."handle_new_user"() OWNER TO "postgres";
 COMMENT ON FUNCTION "public"."handle_new_user"() IS 'auth.usersテーブルに新しいユーザーが作成された際に、自動的にpublic.usersテーブルにプロファイルレコードを作成する関数';
 
 
-
 CREATE OR REPLACE FUNCTION "public"."hash_guest_token"("token" "text") RETURNS character varying
     LANGUAGE "plpgsql" IMMUTABLE SECURITY DEFINER
-    SET "search_path" TO 'public', 'pg_temp'
+    SET "search_path" TO 'pg_catalog', 'public', 'pg_temp'
     AS $$
 BEGIN
     -- Use pgcrypto.digest(bytea, text) with convert_to to avoid implicit cast errors
@@ -959,8 +941,7 @@ $$;
 ALTER FUNCTION "public"."hash_guest_token"("token" "text") OWNER TO "postgres";
 
 
-COMMENT ON FUNCTION "public"."hash_guest_token"("token" "text") IS 'ゲストトークンをSHA-256でハッシュ化する関数（監査ログ用）';
-
+COMMENT ON FUNCTION "public"."hash_guest_token"("token" "text") IS 'ゲストトークンSHA-256ハッシュ（監査ログ用）';
 
 
 CREATE OR REPLACE FUNCTION "public"."prevent_payment_status_rollback"() RETURNS "trigger"
@@ -968,8 +949,8 @@ CREATE OR REPLACE FUNCTION "public"."prevent_payment_status_rollback"() RETURNS 
     AS $$
 BEGIN
   IF NEW.status IS DISTINCT FROM OLD.status THEN
-    -- キャンセル操作（セッション変数でフラグ設定）の場合は遷移チェックをスキップ
-    IF current_setting('app.allow_payment_cancel', true) = 'true' THEN
+    -- 内部RPC専用バイパス（難読化キー）
+    IF current_setting('app.internal_rpc_bypass_c8f2a1b3', true) = 'true' THEN
       RETURN NEW;
     END IF;
 
@@ -988,7 +969,7 @@ ALTER FUNCTION "public"."prevent_payment_status_rollback"() OWNER TO "postgres";
 
 CREATE OR REPLACE FUNCTION "public"."register_attendance_with_payment"("p_event_id" "uuid", "p_nickname" character varying, "p_email" character varying, "p_status" "public"."attendance_status_enum", "p_guest_token" character varying, "p_payment_method" "public"."payment_method_enum" DEFAULT NULL::"public"."payment_method_enum", "p_event_fee" integer DEFAULT 0) RETURNS "uuid"
     LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO 'public', 'pg_temp'
+    SET "search_path" TO 'pg_catalog', 'public', 'pg_temp'
     AS $_$
 DECLARE
   v_attendance_id UUID;
@@ -1149,7 +1130,8 @@ BEGIN
         'status', p_status,
         'has_payment', (v_payment_id IS NOT NULL),
         'payment_method', p_payment_method,
-        'email', p_email
+        -- PII削減: emailはハッシュ化して保存
+        'email_hash', encode(extensions.digest(convert_to(p_email, 'UTF8'), 'sha256'::text), 'hex')
       )
     );
   END;
@@ -1159,16 +1141,15 @@ END;
 $_$;
 
 
-ALTER FUNCTION "public"."register_attendance_with_payment"("p_event_id" "uuid", "p_nickname" character varying, "p_email" character varying, "p_status" "public"."attendance_status_enum", "p_guest_token" character varying, "p_payment_method" "public"."payment_method_enum", "p_event_fee" integer) OWNER TO "postgres";
+ALTER FUNCTION "public"."register_attendance_with_payment"("p_event_id" "uuid", "p_nickname" character varying, "p_email" character varying, "p_status" "public"."attendance_status_enum", "p_guest_token" character varying, "p_payment_method" "public"."payment_method_enum", "p_event_fee" integer) OWNER TO "app_definer";
 
 
-COMMENT ON FUNCTION "public"."register_attendance_with_payment"("p_event_id" "uuid", "p_nickname" character varying, "p_email" character varying, "p_status" "public"."attendance_status_enum", "p_guest_token" character varying, "p_payment_method" "public"."payment_method_enum", "p_event_fee" integer) IS 'Register attendance with automatic payment record creation and audit logging';
-
+COMMENT ON FUNCTION "public"."register_attendance_with_payment"("p_event_id" "uuid", "p_nickname" character varying, "p_email" character varying, "p_status" "public"."attendance_status_enum", "p_guest_token" character varying, "p_payment_method" "public"."payment_method_enum", "p_event_fee" integer) IS '参加登録（決済レコード自動作成・監査ログ）';
 
 
 CREATE OR REPLACE FUNCTION "public"."rpc_bulk_update_payment_status_safe"("p_payment_updates" "jsonb", "p_user_id" "uuid", "p_notes" "text" DEFAULT NULL::"text") RETURNS json
     LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO 'public', 'pg_temp'
+    SET "search_path" TO 'pg_catalog', 'public', 'pg_temp'
     AS $$
 DECLARE
   v_update_item     jsonb;
@@ -1180,6 +1161,13 @@ DECLARE
   v_failures        jsonb := '[]'::jsonb;
   v_result          json;
 BEGIN
+  -- 呼び出し元ユーザーの検証（引数p_user_idと照合）
+  IF (current_setting('request.jwt.claims', true) IS NULL) THEN
+    RAISE EXCEPTION 'missing jwt claims';
+  END IF;
+  IF ((current_setting('request.jwt.claims', true)::json->>'sub')::uuid IS DISTINCT FROM p_user_id) THEN
+    RAISE EXCEPTION 'Unauthorized: caller does not match p_user_id' USING ERRCODE = 'P0001';
+  END IF;
   -- 入力検証
   IF jsonb_array_length(p_payment_updates) > 50 THEN
     RAISE EXCEPTION 'Too many payments to update at once (max 50)'
@@ -1259,13 +1247,12 @@ $$;
 ALTER FUNCTION "public"."rpc_bulk_update_payment_status_safe"("p_payment_updates" "jsonb", "p_user_id" "uuid", "p_notes" "text") OWNER TO "postgres";
 
 
-COMMENT ON FUNCTION "public"."rpc_bulk_update_payment_status_safe"("p_payment_updates" "jsonb", "p_user_id" "uuid", "p_notes" "text") IS 'Bulk payment status update with optimistic locking and detailed failure reporting (新system_logsスキーマ対応)';
-
+COMMENT ON FUNCTION "public"."rpc_bulk_update_payment_status_safe"("p_payment_updates" "jsonb", "p_user_id" "uuid", "p_notes" "text") IS '決済ステータス一括更新（楽観ロック・詳細失敗報告）';
 
 
 CREATE OR REPLACE FUNCTION "public"."rpc_update_payment_status_safe"("p_payment_id" "uuid", "p_new_status" "public"."payment_status_enum", "p_expected_version" integer, "p_user_id" "uuid", "p_notes" "text" DEFAULT NULL::"text") RETURNS json
     LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO 'public', 'pg_temp'
+    SET "search_path" TO 'pg_catalog', 'public', 'pg_temp'
     AS $$
 DECLARE
   v_updated_rows     integer;
@@ -1274,6 +1261,13 @@ DECLARE
   v_event_record     events%ROWTYPE;
   v_result           json;
 BEGIN
+  -- 呼び出し元ユーザーの検証（引数p_user_idと照合）
+  IF (current_setting('request.jwt.claims', true) IS NULL) THEN
+    RAISE EXCEPTION 'missing jwt claims';
+  END IF;
+  IF ((current_setting('request.jwt.claims', true)::json->>'sub')::uuid IS DISTINCT FROM p_user_id) THEN
+    RAISE EXCEPTION 'Unauthorized: caller does not match p_user_id' USING ERRCODE = 'P0001';
+  END IF;
   -- 個別にSELECTして各ROWTYPE変数へ格納（複数 INTO 禁止エラー回避）
   SELECT *
     INTO v_payment_record
@@ -1325,7 +1319,7 @@ BEGIN
 
   -- キャンセル操作の場合はセッション変数を設定してトリガーをスキップ
   IF p_new_status = 'pending' AND v_payment_record.status IN ('received', 'waived') THEN
-    PERFORM set_config('app.allow_payment_cancel', 'true', true);
+    PERFORM set_config('app.internal_rpc_bypass_c8f2a1b3', 'true', true);
   END IF;
 
   UPDATE payments
@@ -1343,7 +1337,7 @@ BEGIN
 
   -- セッション変数をクリア
   IF p_new_status = 'pending' THEN
-    PERFORM set_config('app.allow_payment_cancel', 'false', true);
+    PERFORM set_config('app.internal_rpc_bypass_c8f2a1b3', 'false', true);
   END IF;
 
   GET DIAGNOSTICS v_updated_rows = ROW_COUNT;
@@ -1402,11 +1396,7 @@ $$;
 ALTER FUNCTION "public"."rpc_update_payment_status_safe"("p_payment_id" "uuid", "p_new_status" "public"."payment_status_enum", "p_expected_version" integer, "p_user_id" "uuid", "p_notes" "text") OWNER TO "postgres";
 
 
-COMMENT ON FUNCTION "public"."rpc_update_payment_status_safe"("p_payment_id" "uuid", "p_new_status" "public"."payment_status_enum", "p_expected_version" integer, "p_user_id" "uuid", "p_notes" "text") IS 'Optimistic-lock aware payment status update with audit logging (新system_logsスキーマ対応)';
-
-
-
-
+COMMENT ON FUNCTION "public"."rpc_update_payment_status_safe"("p_payment_id" "uuid", "p_new_status" "public"."payment_status_enum", "p_expected_version" integer, "p_user_id" "uuid", "p_notes" "text") IS '決済ステータス更新（楽観ロック・監査ログ）';
 
 
 CREATE OR REPLACE FUNCTION "public"."status_rank"("p" "public"."payment_status_enum") RETURNS integer
@@ -1428,13 +1418,12 @@ $$;
 ALTER FUNCTION "public"."status_rank"("p" "public"."payment_status_enum") OWNER TO "postgres";
 
 
-COMMENT ON FUNCTION "public"."status_rank"("p" "public"."payment_status_enum") IS 'Returns precedence rank of payment statuses. Higher is more terminal (prevents rollback). Updated to include canceled (rank 35).';
-
+COMMENT ON FUNCTION "public"."status_rank"("p" "public"."payment_status_enum") IS '決済ステータス優先度（高いほど終端状態、降格防止用）';
 
 
 CREATE OR REPLACE FUNCTION "public"."update_guest_attendance_with_payment"("p_attendance_id" "uuid", "p_status" "public"."attendance_status_enum", "p_payment_method" "public"."payment_method_enum" DEFAULT NULL::"public"."payment_method_enum", "p_event_fee" integer DEFAULT 0) RETURNS "void"
     LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO 'public', 'pg_temp'
+    SET "search_path" TO 'pg_catalog', 'public', 'pg_temp'
     AS $$
 DECLARE
   v_event_id UUID;
@@ -1448,6 +1437,7 @@ DECLARE
   v_canceled_at TIMESTAMPTZ;
   v_reg_deadline TIMESTAMPTZ;
   v_event_date TIMESTAMPTZ;
+  v_guest_token TEXT;
 BEGIN
   -- 参加記録の存在確認と現在のステータス取得
   SELECT event_id, status INTO v_event_id, v_current_status
@@ -1456,6 +1446,18 @@ BEGIN
 
   IF NOT FOUND THEN
     RAISE EXCEPTION 'Attendance record not found';
+  END IF;
+
+  -- ゲスト本人確認（SECURITY DEFINERによりRLSがバイパスされるため明示チェック）
+  v_guest_token := public.get_guest_token();
+  IF v_guest_token IS NULL OR v_guest_token = '' THEN
+    RAISE EXCEPTION 'Guest token is required';
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM public.attendances a
+    WHERE a.id = p_attendance_id AND a.guest_token = v_guest_token
+  ) THEN
+    RAISE EXCEPTION 'Unauthorized: guest does not own this attendance';
   END IF;
 
   -- イベント締切・開始・キャンセルチェック
@@ -1688,11 +1690,10 @@ END;
 $$;
 
 
-ALTER FUNCTION "public"."update_guest_attendance_with_payment"("p_attendance_id" "uuid", "p_status" "public"."attendance_status_enum", "p_payment_method" "public"."payment_method_enum", "p_event_fee" integer) OWNER TO "postgres";
+ALTER FUNCTION "public"."update_guest_attendance_with_payment"("p_attendance_id" "uuid", "p_status" "public"."attendance_status_enum", "p_payment_method" "public"."payment_method_enum", "p_event_fee" integer) OWNER TO "app_definer";
 
 
-COMMENT ON FUNCTION "public"."update_guest_attendance_with_payment"("p_attendance_id" "uuid", "p_status" "public"."attendance_status_enum", "p_payment_method" "public"."payment_method_enum", "p_event_fee" integer) IS 'Update guest attendance with payment handling (新system_logsスキーマ対応)';
-
+COMMENT ON FUNCTION "public"."update_guest_attendance_with_payment"("p_attendance_id" "uuid", "p_status" "public"."attendance_status_enum", "p_payment_method" "public"."payment_method_enum", "p_event_fee" integer) IS 'ゲスト参加更新（決済処理・監査ログ）';
 
 
 CREATE OR REPLACE FUNCTION "public"."update_payment_version"() RETURNS "trigger"
@@ -1713,7 +1714,7 @@ ALTER FUNCTION "public"."update_payment_version"() OWNER TO "postgres";
 
 CREATE OR REPLACE FUNCTION "public"."update_revenue_summary"("p_event_id" "uuid") RETURNS json
     LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO 'public', 'pg_temp'
+    SET "search_path" TO 'pg_catalog', 'public', 'pg_temp'
     AS $$
 DECLARE
     total_revenue INTEGER;
@@ -1769,8 +1770,7 @@ $$;
 ALTER FUNCTION "public"."update_revenue_summary"("p_event_id" "uuid") OWNER TO "postgres";
 
 
-COMMENT ON FUNCTION "public"."update_revenue_summary"("p_event_id" "uuid") IS 'イベント売上サマリー: fee_config ベースの手数料計算。canceled/refunded を売上・未収から除外。入金があれば参加状態に関わらず売上として計上。';
-
+COMMENT ON FUNCTION "public"."update_revenue_summary"("p_event_id" "uuid") IS '売上サマリー（canceled/refunded除外、入金を売上計上）';
 
 
 CREATE OR REPLACE FUNCTION "public"."update_updated_at_column"() RETURNS "trigger"
@@ -1785,10 +1785,12 @@ $$;
 
 ALTER FUNCTION "public"."update_updated_at_column"() OWNER TO "postgres";
 
+-- ============================================================================
+-- SECTION 5: Tables
+-- ============================================================================
+
 SET default_tablespace = '';
-
 SET default_table_access_method = "heap";
-
 
 CREATE TABLE IF NOT EXISTS "public"."attendances" (
     "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
@@ -1800,7 +1802,8 @@ CREATE TABLE IF NOT EXISTS "public"."attendances" (
     "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
     "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
     CONSTRAINT "attendances_email_check" CHECK ((("email")::"text" ~* '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$'::"text")),
-    CONSTRAINT "attendances_nickname_check" CHECK (("length"(TRIM(BOTH FROM "nickname")) >= 1))
+    CONSTRAINT "attendances_nickname_check" CHECK (("length"(TRIM(BOTH FROM "nickname")) >= 1)),
+    CONSTRAINT "attendances_guest_token_format_check" CHECK ((("guest_token")::"text" ~ '^gst_[A-Za-z0-9_-]{32}$'::"text"))
 );
 
 
@@ -1810,9 +1813,7 @@ ALTER TABLE "public"."attendances" OWNER TO "postgres";
 COMMENT ON TABLE "public"."attendances" IS 'イベントへの出欠情報';
 
 
-
 COMMENT ON COLUMN "public"."attendances"."guest_token" IS 'ゲストアクセス用のトークン。gst_プレフィックス付き（Base64形式、合計36文字：gst_ + 32文字）';
-
 
 
 CREATE TABLE IF NOT EXISTS "public"."events" (
@@ -1838,11 +1839,11 @@ CREATE TABLE IF NOT EXISTS "public"."events" (
     CONSTRAINT "events_date_after_creation" CHECK (("date" > "created_at")),
     CONSTRAINT "events_fee_check" CHECK ((("fee" = 0) OR (("fee" >= 100) AND ("fee" <= 1000000)))),
     CONSTRAINT "events_grace_period_days_check" CHECK ((("grace_period_days" >= 0) AND ("grace_period_days" <= 30))),
-    CONSTRAINT "events_payment_deadline_after_registration" CHECK ((("payment_deadline" IS NULL) OR ("registration_deadline" IS NULL) OR ("payment_deadline" >= "registration_deadline"))),
+    CONSTRAINT "events_payment_deadline_after_registration" CHECK ((("payment_deadline" IS NULL) OR ("payment_deadline" >= "registration_deadline"))),
     CONSTRAINT "events_payment_deadline_required_if_stripe" CHECK (((NOT ('stripe'::"public"."payment_method_enum" = ANY ("payment_methods"))) OR ("payment_deadline" IS NOT NULL))),
     CONSTRAINT "events_payment_deadline_within_30d_after_date" CHECK ((("payment_deadline" IS NULL) OR ("payment_deadline" <= ("date" + '30 days'::interval)))),
     CONSTRAINT "events_payment_methods_check" CHECK (("array_length"("payment_methods", 1) > 0)),
-    CONSTRAINT "events_registration_deadline_before_event" CHECK ((("registration_deadline" IS NULL) OR ("registration_deadline" <= "date")))
+    CONSTRAINT "events_registration_deadline_before_event" CHECK (("registration_deadline" <= "date"))
 );
 
 
@@ -1850,7 +1851,6 @@ ALTER TABLE "public"."events" OWNER TO "postgres";
 
 
 COMMENT ON TABLE "public"."events" IS 'イベント情報';
-
 
 
 CREATE TABLE IF NOT EXISTS "public"."fee_config" (
@@ -1874,25 +1874,19 @@ ALTER TABLE "public"."fee_config" OWNER TO "postgres";
 COMMENT ON TABLE "public"."fee_config" IS '手数料設定テーブル（シングルトン）';
 
 
-
 COMMENT ON COLUMN "public"."fee_config"."stripe_base_rate" IS 'Stripe 決済手数料の割合 (0.036 = 3.6%)';
-
 
 
 COMMENT ON COLUMN "public"."fee_config"."stripe_fixed_fee" IS 'Stripe 決済手数料の固定額 (円)';
 
 
-
 COMMENT ON COLUMN "public"."fee_config"."min_payout_amount" IS '最小送金金額 (円)';
-
 
 
 COMMENT ON COLUMN "public"."fee_config"."platform_tax_rate" IS 'Platform consumption tax rate (e.g., 10.00 for 10%)';
 
 
-
 COMMENT ON COLUMN "public"."fee_config"."is_tax_included" IS 'Whether platform fees are calculated as tax-included (true=内税, false=外税)';
-
 
 
 CREATE TABLE IF NOT EXISTS "public"."payment_disputes" (
@@ -1917,7 +1911,6 @@ ALTER TABLE "public"."payment_disputes" OWNER TO "postgres";
 
 
 COMMENT ON TABLE "public"."payment_disputes" IS 'Stripe Dispute records linked to payments for aggregation and audit.';
-
 
 
 CREATE TABLE IF NOT EXISTS "public"."payments" (
@@ -1970,77 +1963,58 @@ ALTER TABLE "public"."payments" OWNER TO "postgres";
 COMMENT ON TABLE "public"."payments" IS '決済情報（Destination charges対応）';
 
 
-
 COMMENT ON COLUMN "public"."payments"."application_fee_amount" IS 'プラットフォーム手数料（円）';
-
 
 
 COMMENT ON COLUMN "public"."payments"."stripe_checkout_session_id" IS 'Stripe Checkout Session ID';
 
 
-
 COMMENT ON COLUMN "public"."payments"."transfer_group" IS 'イベント単位の送金グループ識別子';
-
 
 
 COMMENT ON COLUMN "public"."payments"."stripe_charge_id" IS 'Stripe Charge ID（確定時に保存）';
 
 
-
 COMMENT ON COLUMN "public"."payments"."stripe_balance_transaction_id" IS 'Stripe Balance Transaction ID';
-
 
 
 COMMENT ON COLUMN "public"."payments"."stripe_customer_id" IS 'Stripe Customer ID（将来の継続課金用）';
 
 
-
 COMMENT ON COLUMN "public"."payments"."stripe_transfer_id" IS 'Stripe Transfer ID（自動Transfer相関用）';
-
 
 
 COMMENT ON COLUMN "public"."payments"."refunded_amount" IS '返金累積額（円）';
 
 
-
 COMMENT ON COLUMN "public"."payments"."destination_account_id" IS 'Stripe Connect宛先アカウントID';
-
 
 
 COMMENT ON COLUMN "public"."payments"."application_fee_id" IS 'Stripe Application Fee ID';
 
 
-
 COMMENT ON COLUMN "public"."payments"."application_fee_refund_id" IS 'Stripe Application Fee Refund ID';
-
 
 
 COMMENT ON COLUMN "public"."payments"."application_fee_refunded_amount" IS 'プラットフォーム手数料返金額（円）';
 
 
-
 COMMENT ON COLUMN "public"."payments"."application_fee_tax_rate" IS 'Tax rate applied to application fee (e.g., 10.00 for 10%)';
-
 
 
 COMMENT ON COLUMN "public"."payments"."application_fee_tax_amount" IS 'Tax amount in yen (integer)';
 
 
-
 COMMENT ON COLUMN "public"."payments"."application_fee_excl_tax" IS 'Application fee excluding tax in yen (integer)';
-
 
 
 COMMENT ON COLUMN "public"."payments"."tax_included" IS 'Whether the application_fee_amount includes tax (true=tax included, false=tax excluded)';
 
 
-
 COMMENT ON COLUMN "public"."payments"."version" IS 'Optimistic lock version to prevent concurrent updates';
 
 
-
 COMMENT ON CONSTRAINT "payments_stripe_intent_required" ON "public"."payments" IS 'Ensures stripe_payment_intent_id is present for stripe payments except pending and canceled statuses. Canceled is a terminal state for unpaid transactions.';
-
 
 
 CREATE TABLE IF NOT EXISTS "public"."users" (
@@ -2055,7 +2029,6 @@ ALTER TABLE "public"."users" OWNER TO "postgres";
 
 
 COMMENT ON TABLE "public"."users" IS '運営者情報（Supabase auth.usersと同期）';
-
 
 
 CREATE OR REPLACE VIEW "public"."public_profiles" AS
@@ -2089,8 +2062,8 @@ CREATE TABLE IF NOT EXISTS "public"."settlements" (
     "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
     "total_disputed_amount" integer DEFAULT 0 NOT NULL,
     "dispute_count" integer DEFAULT 0 NOT NULL,
-    CONSTRAINT "payouts_amounts_non_negative" CHECK ((("total_stripe_sales" >= 0) AND ("total_stripe_fee" >= 0) AND ("platform_fee" >= 0) AND ("net_payout_amount" >= 0))),
-    CONSTRAINT "payouts_calculation_reasonable" CHECK ((("net_payout_amount" <= "total_stripe_sales") AND ("net_payout_amount" >= 0)))
+    CONSTRAINT "settlements_amounts_non_negative" CHECK ((("total_stripe_sales" >= 0) AND ("total_stripe_fee" >= 0) AND ("platform_fee" >= 0) AND ("net_payout_amount" >= 0))),
+    CONSTRAINT "settlements_calculation_reasonable" CHECK ((("net_payout_amount" <= "total_stripe_sales") AND ("net_payout_amount" >= 0)))
 );
 
 
@@ -2100,25 +2073,19 @@ ALTER TABLE "public"."settlements" OWNER TO "postgres";
 COMMENT ON TABLE "public"."settlements" IS '運営者への売上清算履歴（レポート・スナップショット用途）';
 
 
-
 COMMENT ON COLUMN "public"."settlements"."stripe_account_id" IS 'Stripe Connect Account ID';
-
 
 
 COMMENT ON COLUMN "public"."settlements"."retry_count" IS '清算処理のリトライ回数';
 
 
-
 COMMENT ON COLUMN "public"."settlements"."last_error" IS '最後に発生したエラーメッセージ';
-
 
 
 COMMENT ON COLUMN "public"."settlements"."transfer_group" IS 'イベント単位の送金グループ識別子';
 
 
-
 COMMENT ON COLUMN "public"."settlements"."generated_at" IS 'レポート生成日時';
-
 
 
 CREATE TABLE IF NOT EXISTS "public"."stripe_connect_accounts" (
@@ -2136,7 +2103,6 @@ ALTER TABLE "public"."stripe_connect_accounts" OWNER TO "postgres";
 
 
 COMMENT ON TABLE "public"."stripe_connect_accounts" IS 'Stripe Connectアカウント情報';
-
 
 
 CREATE TABLE IF NOT EXISTS "public"."system_logs" (
@@ -2184,101 +2150,76 @@ COMMENT ON TABLE "public"."system_logs" IS 'アプリケーション監査ログ
 アクセス制御: service_role のみ（RLS有効）';
 
 
-
 COMMENT ON COLUMN "public"."system_logs"."id" IS '一意な識別子（自動採番）';
-
 
 
 COMMENT ON COLUMN "public"."system_logs"."created_at" IS 'ログ記録日時（UTC）';
 
 
-
 COMMENT ON COLUMN "public"."system_logs"."log_level" IS 'ログレベル（debug/info/warn/error/critical）';
-
 
 
 COMMENT ON COLUMN "public"."system_logs"."log_category" IS 'ログカテゴリ（アプリケーションドメイン別）';
 
 
-
 COMMENT ON COLUMN "public"."system_logs"."actor_type" IS '【Who】アクター種別（user/guest/system/webhook/service_role/anonymous）';
-
 
 
 COMMENT ON COLUMN "public"."system_logs"."actor_identifier" IS '【Who】アクター識別子（user_id、guest_token、webhook名、IPアドレス等）';
 
 
-
 COMMENT ON COLUMN "public"."system_logs"."user_id" IS '【Who】認証済みユーザーID（auth.users.id への外部キー）';
-
 
 
 COMMENT ON COLUMN "public"."system_logs"."action" IS '【What】実行されたアクション（例: event.create, payment.update, user.login）';
 
 
-
 COMMENT ON COLUMN "public"."system_logs"."resource_type" IS '【What】操作対象のリソース種別（例: event, payment, attendance）';
-
 
 
 COMMENT ON COLUMN "public"."system_logs"."resource_id" IS '【What】操作対象のリソースID（UUID、Stripe ID等）';
 
 
-
 COMMENT ON COLUMN "public"."system_logs"."ip_address" IS '【Where】クライアントIPアドレス（PII保護のためマスキング推奨）';
-
 
 
 COMMENT ON COLUMN "public"."system_logs"."user_agent" IS '【Where】User-Agent文字列（ブラウザ・デバイス情報）';
 
 
-
 COMMENT ON COLUMN "public"."system_logs"."message" IS '【Why】人間可読なログメッセージ';
-
 
 
 COMMENT ON COLUMN "public"."system_logs"."outcome" IS '【How】処理結果（success/failure/unknown）';
 
 
-
 COMMENT ON COLUMN "public"."system_logs"."request_id" IS 'リクエストID（分散トレーシング用）';
-
 
 
 COMMENT ON COLUMN "public"."system_logs"."session_id" IS 'セッションID（ユーザーセッション追跡用）';
 
 
-
 COMMENT ON COLUMN "public"."system_logs"."stripe_request_id" IS 'Stripe Request-Id（Stripe API障害調査用）';
-
 
 
 COMMENT ON COLUMN "public"."system_logs"."stripe_event_id" IS 'Stripe Event ID（Webhook処理追跡用）';
 
 
-
 COMMENT ON COLUMN "public"."system_logs"."idempotency_key" IS 'Stripe Idempotency-Key（冪等性保証用）';
-
 
 
 COMMENT ON COLUMN "public"."system_logs"."metadata" IS '構造化された追加情報（JSONB形式、柔軟な拡張用）';
 
 
-
 COMMENT ON COLUMN "public"."system_logs"."tags" IS 'フリータグ配列（検索・集計用）';
-
 
 
 COMMENT ON COLUMN "public"."system_logs"."error_code" IS 'エラーコード（failure時のみ、アプリ定義）';
 
 
-
 COMMENT ON COLUMN "public"."system_logs"."error_message" IS 'エラーメッセージ（failure時のみ）';
 
 
-
 COMMENT ON COLUMN "public"."system_logs"."error_stack" IS 'スタックトレース（failure時のみ、開発環境推奨）';
-
 
 
 COMMENT ON COLUMN "public"."system_logs"."dedupe_key" IS '重複防止キー（冪等性保証用）。同一キーのログは1度のみ記録される。
@@ -2288,7 +2229,6 @@ NULL値の場合は重複チェックなし。
 - Transaction: tx:{action}:{resource_id}:{timestamp_ms}
 - Idempotent: idempotent:{idempotency_key}
 - Custom: {log_category}:{unique_identifier}';
-
 
 
 CREATE SEQUENCE IF NOT EXISTS "public"."system_logs_id_seq"
@@ -2304,91 +2244,76 @@ ALTER SEQUENCE "public"."system_logs_id_seq" OWNER TO "postgres";
 
 ALTER SEQUENCE "public"."system_logs_id_seq" OWNED BY "public"."system_logs"."id";
 
-
-
 ALTER TABLE ONLY "public"."system_logs" ALTER COLUMN "id" SET DEFAULT "nextval"('"public"."system_logs_id_seq"'::"regclass");
 
-
+-- ============================================================================
+-- SECTION 6: Primary Keys & Unique Constraints
+-- ============================================================================
 
 ALTER TABLE ONLY "public"."attendances"
     ADD CONSTRAINT "attendances_guest_token_key" UNIQUE ("guest_token");
-
 
 
 ALTER TABLE ONLY "public"."attendances"
     ADD CONSTRAINT "attendances_pkey" PRIMARY KEY ("id");
 
 
-
 ALTER TABLE ONLY "public"."events"
     ADD CONSTRAINT "events_invite_token_key" UNIQUE ("invite_token");
-
 
 
 ALTER TABLE ONLY "public"."events"
     ADD CONSTRAINT "events_pkey" PRIMARY KEY ("id");
 
 
-
 ALTER TABLE ONLY "public"."fee_config"
     ADD CONSTRAINT "fee_config_pkey" PRIMARY KEY ("id");
-
 
 
 ALTER TABLE ONLY "public"."payment_disputes"
     ADD CONSTRAINT "payment_disputes_pkey" PRIMARY KEY ("id");
 
 
-
 ALTER TABLE ONLY "public"."payment_disputes"
     ADD CONSTRAINT "payment_disputes_stripe_dispute_id_key" UNIQUE ("stripe_dispute_id");
-
 
 
 ALTER TABLE ONLY "public"."payments"
     ADD CONSTRAINT "payments_pkey" PRIMARY KEY ("id");
 
 
-
 ALTER TABLE ONLY "public"."payments"
     ADD CONSTRAINT "payments_stripe_payment_intent_id_key" UNIQUE ("stripe_payment_intent_id");
 
 
-
 ALTER TABLE ONLY "public"."settlements"
-    ADD CONSTRAINT "payouts_pkey" PRIMARY KEY ("id");
-
+    ADD CONSTRAINT "settlements_pkey" PRIMARY KEY ("id");
 
 
 ALTER TABLE ONLY "public"."stripe_connect_accounts"
     ADD CONSTRAINT "stripe_connect_accounts_pkey" PRIMARY KEY ("user_id");
 
 
-
 ALTER TABLE ONLY "public"."stripe_connect_accounts"
     ADD CONSTRAINT "stripe_connect_accounts_stripe_account_id_key" UNIQUE ("stripe_account_id");
-
 
 
 ALTER TABLE ONLY "public"."system_logs"
     ADD CONSTRAINT "system_logs_pkey" PRIMARY KEY ("id");
 
 
-
 ALTER TABLE ONLY "public"."users"
     ADD CONSTRAINT "users_pkey" PRIMARY KEY ("id");
 
+-- ============================================================================
+-- SECTION 7: Indexes (Performance Optimization)
+-- ============================================================================
 
-
-CREATE UNIQUE INDEX "attendances_event_email_unique" ON "public"."attendances" USING "btree" ("event_id", "email");
-
+CREATE UNIQUE INDEX "attendances_event_email_unique" ON "public"."attendances" USING "btree" ("event_id", lower("email"));
 
 
 CREATE INDEX "idx_attendances_event_id" ON "public"."attendances" USING "btree" ("event_id");
 
-
-
-CREATE INDEX "idx_attendances_event_id_guest_token" ON "public"."attendances" USING "btree" ("event_id", "guest_token") WHERE (("guest_token" IS NOT NULL) AND (("guest_token")::"text" ~ '^gst_[a-zA-Z0-9_-]{32}$'::"text"));
 
 
 
@@ -2396,395 +2321,497 @@ CREATE INDEX "idx_attendances_event_id_id" ON "public"."attendances" USING "btre
 
 
 
-CREATE INDEX "idx_attendances_guest_token" ON "public"."attendances" USING "btree" ("guest_token") WHERE ("guest_token" IS NOT NULL);
-
-
-
-CREATE INDEX "idx_attendances_guest_token_active" ON "public"."attendances" USING "btree" ("guest_token") WHERE (("guest_token" IS NOT NULL) AND (("guest_token")::"text" ~ '^gst_[a-zA-Z0-9_-]{32}$'::"text"));
 
 
 
 CREATE INDEX "idx_events_canceled_at" ON "public"."events" USING "btree" ("canceled_at");
 
 
-
 CREATE INDEX "idx_events_created_by" ON "public"."events" USING "btree" ("created_by");
-
 
 
 CREATE INDEX "idx_events_created_by_date" ON "public"."events" USING "btree" ("created_by", "date");
 
 
-
 CREATE INDEX "idx_events_date" ON "public"."events" USING "btree" ("date");
-
 
 
 CREATE INDEX "idx_events_deadlines" ON "public"."events" USING "btree" ("registration_deadline", "payment_deadline", "date") WHERE (("registration_deadline" IS NOT NULL) OR ("payment_deadline" IS NOT NULL));
 
 
-
 CREATE INDEX "idx_events_invite_token" ON "public"."events" USING "btree" ("invite_token") WHERE ("invite_token" IS NOT NULL);
-
 
 
 CREATE INDEX "idx_payment_disputes_charge_id" ON "public"."payment_disputes" USING "btree" ("charge_id");
 
 
-
 CREATE INDEX "idx_payment_disputes_dispute_status" ON "public"."payment_disputes" USING "btree" ("status");
-
 
 
 CREATE INDEX "idx_payment_disputes_payment_id" ON "public"."payment_disputes" USING "btree" ("payment_id");
 
 
-
 CREATE INDEX "idx_payment_disputes_pi_id" ON "public"."payment_disputes" USING "btree" ("payment_intent_id");
-
 
 
 CREATE INDEX "idx_payments_attendance_id" ON "public"."payments" USING "btree" ("attendance_id");
 
 
-
 CREATE INDEX "idx_payments_balance_txn" ON "public"."payments" USING "btree" ("stripe_balance_transaction_id");
-
 
 
 CREATE INDEX "idx_payments_balance_txn_fee" ON "public"."payments" USING "btree" ("stripe_balance_transaction_fee");
 
 
-
 CREATE INDEX "idx_payments_balance_txn_net" ON "public"."payments" USING "btree" ("stripe_balance_transaction_net");
-
 
 
 CREATE INDEX "idx_payments_checkout_idempotency_key" ON "public"."payments" USING "btree" ("checkout_idempotency_key") WHERE ("checkout_idempotency_key" IS NOT NULL);
 
 
-
 CREATE INDEX "idx_payments_checkout_session" ON "public"."payments" USING "btree" ("stripe_checkout_session_id");
-
 
 
 CREATE INDEX "idx_payments_customer_id" ON "public"."payments" USING "btree" ("stripe_customer_id");
 
 
-
 CREATE INDEX "idx_payments_destination_account" ON "public"."payments" USING "btree" ("destination_account_id");
-
 
 
 CREATE INDEX "idx_payments_id_version" ON "public"."payments" USING "btree" ("id", "version");
 
 
-
 CREATE INDEX "idx_payments_method_status_paid" ON "public"."payments" USING "btree" ("method", "status") WHERE (("method" = 'stripe'::"public"."payment_method_enum") AND ("status" = 'paid'::"public"."payment_status_enum"));
-
 
 
 CREATE INDEX "idx_payments_refunded_amount" ON "public"."payments" USING "btree" ("refunded_amount") WHERE ("refunded_amount" > 0);
 
 
-
 CREATE INDEX "idx_payments_status" ON "public"."payments" USING "btree" ("status");
-
 
 
 CREATE INDEX "idx_payments_stripe_account_id" ON "public"."payments" USING "btree" ("stripe_account_id");
 
 
-
 CREATE UNIQUE INDEX "idx_payments_stripe_charge_id" ON "public"."payments" USING "btree" ("stripe_charge_id") WHERE ("stripe_charge_id" IS NOT NULL);
-
-
-
-CREATE INDEX "idx_payments_stripe_payment_intent" ON "public"."payments" USING "btree" ("stripe_payment_intent_id");
-
 
 
 CREATE INDEX "idx_payments_tax_included" ON "public"."payments" USING "btree" ("tax_included");
 
 
-
 CREATE INDEX "idx_payments_tax_rate" ON "public"."payments" USING "btree" ("application_fee_tax_rate");
-
 
 
 CREATE INDEX "idx_payments_transfer_group" ON "public"."payments" USING "btree" ("transfer_group");
 
 
-
 CREATE INDEX "idx_payments_webhook_event" ON "public"."payments" USING "btree" ("webhook_event_id");
-
 
 
 CREATE INDEX "idx_settlements_event_generated_at" ON "public"."settlements" USING "btree" ("event_id", "generated_at");
 
 
-
 CREATE INDEX "idx_settlements_event_id" ON "public"."settlements" USING "btree" ("event_id");
-
 
 
 CREATE INDEX "idx_settlements_generated_date_jst" ON "public"."settlements" USING "btree" (((("generated_at" AT TIME ZONE 'Asia/Tokyo'::"text"))::"date"));
 
 
-
 CREATE INDEX "idx_settlements_stripe_account" ON "public"."settlements" USING "btree" ("stripe_account_id");
-
 
 
 CREATE INDEX "idx_settlements_transfer_group" ON "public"."settlements" USING "btree" ("transfer_group");
 
 
-
 CREATE INDEX "idx_settlements_user_id" ON "public"."settlements" USING "btree" ("user_id");
-
 
 
 CREATE INDEX "idx_stripe_connect_accounts_status" ON "public"."stripe_connect_accounts" USING "btree" ("status");
 
 
-
 CREATE INDEX "idx_stripe_connect_accounts_stripe_account_id" ON "public"."stripe_connect_accounts" USING "btree" ("stripe_account_id");
-
 
 
 CREATE INDEX "idx_stripe_connect_accounts_user_id" ON "public"."stripe_connect_accounts" USING "btree" ("user_id");
 
 
-
 CREATE INDEX "idx_system_logs_action" ON "public"."system_logs" USING "btree" ("action", "created_at" DESC);
-
 
 
 CREATE INDEX "idx_system_logs_category" ON "public"."system_logs" USING "btree" ("log_category", "created_at" DESC);
 
 
-
 CREATE INDEX "idx_system_logs_created_at" ON "public"."system_logs" USING "btree" ("created_at" DESC);
-
 
 
 CREATE UNIQUE INDEX "idx_system_logs_dedupe_key" ON "public"."system_logs" USING "btree" ("dedupe_key") WHERE ("dedupe_key" IS NOT NULL);
 
 
-
 CREATE INDEX "idx_system_logs_errors" ON "public"."system_logs" USING "btree" ("log_level", "created_at" DESC) WHERE ("log_level" = ANY (ARRAY['error'::"public"."log_level_enum", 'critical'::"public"."log_level_enum"]));
-
 
 
 CREATE INDEX "idx_system_logs_level" ON "public"."system_logs" USING "btree" ("log_level", "created_at" DESC);
 
 
-
 CREATE INDEX "idx_system_logs_metadata" ON "public"."system_logs" USING "gin" ("metadata");
-
 
 
 CREATE INDEX "idx_system_logs_request_id" ON "public"."system_logs" USING "btree" ("request_id") WHERE ("request_id" IS NOT NULL);
 
 
-
 CREATE INDEX "idx_system_logs_resource" ON "public"."system_logs" USING "btree" ("resource_type", "resource_id", "created_at" DESC) WHERE (("resource_type" IS NOT NULL) AND ("resource_id" IS NOT NULL));
-
 
 
 CREATE INDEX "idx_system_logs_stripe_event" ON "public"."system_logs" USING "btree" ("stripe_event_id") WHERE ("stripe_event_id" IS NOT NULL);
 
 
-
 CREATE INDEX "idx_system_logs_stripe_request" ON "public"."system_logs" USING "btree" ("stripe_request_id") WHERE ("stripe_request_id" IS NOT NULL);
-
 
 
 CREATE INDEX "idx_system_logs_tags" ON "public"."system_logs" USING "gin" ("tags");
 
 
-
 CREATE INDEX "idx_system_logs_user_id" ON "public"."system_logs" USING "btree" ("user_id") WHERE ("user_id" IS NOT NULL);
-
 
 
 CREATE UNIQUE INDEX "uniq_settlements_event_generated_date_jst" ON "public"."settlements" USING "btree" ("event_id", ((("generated_at" AT TIME ZONE 'Asia/Tokyo'::"text"))::"date"));
 
 
-
 CREATE UNIQUE INDEX "unique_open_payment_per_attendance" ON "public"."payments" USING "btree" ("attendance_id") WHERE ("status" = 'pending'::"public"."payment_status_enum");
 
-
+-- ============================================================================
+-- SECTION 8: Triggers
+-- ============================================================================
 
 CREATE OR REPLACE TRIGGER "check_attendance_capacity_before_insert_or_update" BEFORE INSERT OR UPDATE ON "public"."attendances" FOR EACH ROW EXECUTE FUNCTION "public"."check_attendance_capacity_limit"();
 
-
-
 CREATE OR REPLACE TRIGGER "trg_prevent_payment_status_rollback" BEFORE UPDATE ON "public"."payments" FOR EACH ROW EXECUTE FUNCTION "public"."prevent_payment_status_rollback"();
-
-
 
 CREATE OR REPLACE TRIGGER "trigger_update_payment_version" BEFORE UPDATE ON "public"."payments" FOR EACH ROW EXECUTE FUNCTION "public"."update_payment_version"();
 
-
-
 CREATE OR REPLACE TRIGGER "update_attendances_updated_at" BEFORE UPDATE ON "public"."attendances" FOR EACH ROW EXECUTE FUNCTION "public"."update_updated_at_column"();
-
-
 
 CREATE OR REPLACE TRIGGER "update_events_updated_at" BEFORE UPDATE ON "public"."events" FOR EACH ROW EXECUTE FUNCTION "public"."update_updated_at_column"();
 
-
-
 CREATE OR REPLACE TRIGGER "update_payments_updated_at" BEFORE UPDATE ON "public"."payments" FOR EACH ROW EXECUTE FUNCTION "public"."update_updated_at_column"();
-
-
 
 CREATE OR REPLACE TRIGGER "update_settlements_updated_at" BEFORE UPDATE ON "public"."settlements" FOR EACH ROW EXECUTE FUNCTION "public"."update_updated_at_column"();
 
-
-
 CREATE OR REPLACE TRIGGER "update_stripe_connect_accounts_updated_at" BEFORE UPDATE ON "public"."stripe_connect_accounts" FOR EACH ROW EXECUTE FUNCTION "public"."update_updated_at_column"();
-
-
 
 CREATE OR REPLACE TRIGGER "update_users_updated_at" BEFORE UPDATE ON "public"."users" FOR EACH ROW EXECUTE FUNCTION "public"."update_updated_at_column"();
 
-
+-- ============================================================================
+-- SECTION 9: Foreign Keys
+-- ============================================================================
 
 ALTER TABLE ONLY "public"."attendances"
     ADD CONSTRAINT "attendances_event_id_fkey" FOREIGN KEY ("event_id") REFERENCES "public"."events"("id") ON DELETE CASCADE;
 
-
-
 ALTER TABLE ONLY "public"."events"
     ADD CONSTRAINT "events_canceled_by_fkey" FOREIGN KEY ("canceled_by") REFERENCES "public"."users"("id");
-
-
 
 ALTER TABLE ONLY "public"."events"
     ADD CONSTRAINT "events_created_by_fkey" FOREIGN KEY ("created_by") REFERENCES "public"."users"("id") ON DELETE CASCADE;
 
-
-
 ALTER TABLE ONLY "public"."payment_disputes"
     ADD CONSTRAINT "payment_disputes_payment_id_fkey" FOREIGN KEY ("payment_id") REFERENCES "public"."payments"("id") ON DELETE SET NULL;
-
-
 
 ALTER TABLE ONLY "public"."payments"
     ADD CONSTRAINT "payments_attendance_id_fkey" FOREIGN KEY ("attendance_id") REFERENCES "public"."attendances"("id") ON DELETE CASCADE;
 
-
+ALTER TABLE ONLY "public"."settlements"
+    ADD CONSTRAINT "settlements_event_id_fkey" FOREIGN KEY ("event_id") REFERENCES "public"."events"("id") ON DELETE CASCADE;
 
 ALTER TABLE ONLY "public"."settlements"
-    ADD CONSTRAINT "payouts_event_id_fkey" FOREIGN KEY ("event_id") REFERENCES "public"."events"("id") ON DELETE CASCADE;
-
-
-
-ALTER TABLE ONLY "public"."settlements"
-    ADD CONSTRAINT "payouts_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE CASCADE;
-
-
+    ADD CONSTRAINT "settlements_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE CASCADE;
 
 ALTER TABLE ONLY "public"."stripe_connect_accounts"
     ADD CONSTRAINT "stripe_connect_accounts_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE CASCADE;
 
-
-
 ALTER TABLE ONLY "public"."system_logs"
     ADD CONSTRAINT "system_logs_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "auth"."users"("id") ON DELETE SET NULL;
-
-
 
 ALTER TABLE ONLY "public"."users"
     ADD CONSTRAINT "users_id_fkey" FOREIGN KEY ("id") REFERENCES "auth"."users"("id") ON DELETE CASCADE;
 
+-- ============================================================================
+-- SECTION 10.A: Security defaults & definer grants
+-- ============================================================================
 
+-- Grant minimal table access to app_definer role (SECURITY DEFINER functions only)
+-- app_definer has BYPASSRLS + NOLOGIN, these grants enable function execution without exposing direct user access
+-- Minimized: only SELECT + limited write operations needed by SECURITY DEFINER functions
+-- NOTE: UPDATE privilege is needed for FOR UPDATE locks in SECURITY DEFINER functions
+GRANT SELECT, UPDATE ON TABLE public.events TO app_definer;
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.attendances TO app_definer;
+GRANT SELECT, INSERT, UPDATE ON TABLE public.payments TO app_definer;
+GRANT SELECT, INSERT, UPDATE ON TABLE public.settlements TO app_definer;
+GRANT SELECT, INSERT ON TABLE public.users TO app_definer;
+GRANT SELECT ON TABLE public.public_profiles TO app_definer;
+GRANT SELECT ON TABLE public.fee_config TO app_definer;
+GRANT SELECT ON TABLE public.stripe_connect_accounts TO app_definer;
+GRANT SELECT ON TABLE public.payment_disputes TO app_definer;
+GRANT INSERT ON TABLE public.system_logs TO app_definer;
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO app_definer;
+
+
+-- Security: Revoke default function execute, add public-safe RPCs
+REVOKE EXECUTE ON ALL FUNCTIONS IN SCHEMA public FROM PUBLIC;
+ALTER DEFAULT PRIVILEGES FOR ROLE app_definer IN SCHEMA public REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC;
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres   IN SCHEMA public REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC;
+
+GRANT EXECUTE ON FUNCTION public.get_guest_token() TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.can_access_event(uuid) TO anon, authenticated;
+
+CREATE OR REPLACE FUNCTION public.rpc_public_get_event(p_invite_token text)
+RETURNS TABLE (
+    id uuid,
+    title character varying(255),
+    date timestamptz,
+    location character varying(500),
+    description text,
+    fee integer,
+    capacity integer,
+    payment_methods public.payment_method_enum[],
+    registration_deadline timestamptz,
+    payment_deadline timestamptz,
+    invite_token character varying(255),
+    canceled_at timestamptz,
+    attendances_count integer
+)
+LANGUAGE plpgsql STABLE SECURITY DEFINER
+SET search_path = pg_catalog, public, pg_temp
+AS $$
+BEGIN
+    RETURN QUERY
+    SELECT
+        e.id,
+        e.title,
+        e.date,
+        e.location,
+        e.description,
+        e.fee,
+        e.capacity,
+        e.payment_methods,
+        e.registration_deadline,
+        e.payment_deadline,
+        e.invite_token,
+        e.canceled_at,
+        (
+          SELECT COUNT(*)::int
+          FROM public.attendances a
+          WHERE a.event_id = e.id AND a.status = 'attending'
+        ) AS attendances_count
+    FROM public.events e
+    WHERE e.invite_token = p_invite_token
+      AND public.can_access_event(e.id);
+END;
+$$;
+-- Removed: duplicate per-function anon GRANT; consolidated at the end
+
+CREATE OR REPLACE FUNCTION public.rpc_public_attending_count(p_event_id uuid)
+RETURNS integer
+LANGUAGE plpgsql STABLE SECURITY DEFINER
+SET search_path = pg_catalog, public, pg_temp
+AS $$
+DECLARE
+    v_count integer := 0;
+BEGIN
+    IF NOT public.can_access_event(p_event_id) THEN
+        RAISE EXCEPTION 'not allowed';
+    END IF;
+
+    SELECT COUNT(*)::int INTO v_count
+    FROM public.attendances a
+    WHERE a.event_id = p_event_id
+      AND a.status = 'attending';
+
+    RETURN v_count;
+END;
+$$;
+-- Removed: duplicate per-function anon GRANT; consolidated at the end
+
+CREATE OR REPLACE FUNCTION public.rpc_guest_get_attendance()
+RETURNS TABLE (
+    attendance_id uuid,
+    nickname character varying(50),
+    email character varying(255),
+    status public.attendance_status_enum,
+    guest_token character varying(36),
+    event_id uuid,
+    event_title character varying(255),
+    event_date timestamptz,
+    event_fee integer,
+    created_by uuid,
+    registration_deadline timestamptz,
+    payment_deadline timestamptz,
+    canceled_at timestamptz
+)
+LANGUAGE plpgsql STABLE SECURITY DEFINER
+SET search_path = pg_catalog, public, pg_temp
+AS $$
+BEGIN
+    RETURN QUERY
+    SELECT
+        a.id,
+        a.nickname,
+        a.email,
+        a.status,
+        a.guest_token,
+        e.id,
+        e.title,
+        e.date,
+        e.fee,
+        e.created_by,
+        e.registration_deadline,
+        e.payment_deadline,
+        e.canceled_at
+    FROM public.attendances a
+    JOIN public.events e ON e.id = a.event_id
+    WHERE a.guest_token = public.get_guest_token()
+    LIMIT 1;
+END;
+$$;
+-- Removed: duplicate per-function anon GRANT; consolidated at the end
+
+CREATE OR REPLACE FUNCTION public.rpc_public_check_duplicate_email(p_event_id uuid, p_email text)
+RETURNS boolean
+LANGUAGE plpgsql STABLE SECURITY DEFINER
+SET search_path = pg_catalog, public, pg_temp
+AS $$
+DECLARE
+    v_exists boolean := false;
+BEGIN
+    IF NOT public.can_access_event(p_event_id) THEN
+        RAISE EXCEPTION 'not allowed';
+    END IF;
+
+    SELECT EXISTS (
+        SELECT 1
+        FROM public.attendances a
+        WHERE a.event_id = p_event_id
+          AND lower(a.email) = lower(p_email)
+    ) INTO v_exists;
+
+    RETURN v_exists;
+END;
+$$;
+-- Removed: duplicate per-function anon GRANT; consolidated at the end
+
+CREATE OR REPLACE FUNCTION public.rpc_guest_get_latest_payment(p_attendance_id uuid)
+RETURNS integer
+LANGUAGE plpgsql STABLE SECURITY DEFINER
+SET search_path = pg_catalog, public, pg_temp
+AS $$
+DECLARE
+    v_amount integer;
+    v_token text;
+BEGIN
+    v_token := public.get_guest_token();
+    IF v_token IS NULL THEN
+        RAISE EXCEPTION 'missing guest token';
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM public.attendances a
+        WHERE a.id = p_attendance_id AND a.guest_token = v_token
+    ) THEN
+        RAISE EXCEPTION 'not allowed';
+    END IF;
+
+    SELECT p.amount
+      INTO v_amount
+    FROM public.payments p
+    WHERE p.attendance_id = p_attendance_id
+    ORDER BY p.created_at DESC
+    LIMIT 1;
+
+    RETURN v_amount; -- may be null
+END;
+$$;
+-- Removed: duplicate per-function anon GRANT; consolidated at the end
+
+CREATE OR REPLACE FUNCTION public.rpc_public_get_connect_account(p_event_id uuid, p_creator_id uuid)
+RETURNS TABLE (
+    stripe_account_id character varying(255),
+    payouts_enabled boolean
+)
+LANGUAGE plpgsql STABLE SECURITY DEFINER
+SET search_path = pg_catalog, public, pg_temp
+AS $$
+BEGIN
+    IF NOT public.can_access_event(p_event_id) THEN
+        RAISE EXCEPTION 'not allowed';
+    END IF;
+
+    RETURN QUERY
+    SELECT s.stripe_account_id, s.payouts_enabled
+    FROM public.stripe_connect_accounts s
+    JOIN public.events e ON e.created_by = s.user_id
+    WHERE e.id = p_event_id
+      AND e.created_by = p_creator_id
+    LIMIT 1;
+END;
+$$;
+-- Removed: duplicate per-function anon GRANT; consolidated at the end
+
+-- Performance indexes
+CREATE INDEX IF NOT EXISTS idx_payments_attendance_status
+  ON public.payments (attendance_id, status, created_at);
+
+CREATE INDEX IF NOT EXISTS idx_payments_status_paid
+  ON public.payments (status, paid_at) WHERE status = 'paid';
+
+CREATE INDEX IF NOT EXISTS idx_attendances_event_guest
+  ON public.attendances (event_id, guest_token);
+
+CREATE INDEX IF NOT EXISTS idx_attendances_event_status
+  ON public.attendances (event_id, status);
+
+CREATE INDEX IF NOT EXISTS idx_settlements_event_created
+  ON public.settlements (event_id, created_at);
+
+CREATE INDEX IF NOT EXISTS idx_payments_attendance_latest
+  ON public.payments (attendance_id, paid_at DESC, created_at DESC, updated_at DESC);
+
+-- ============================================================================
+-- SECTION 10: Row Level Security (RLS) Policies
+-- ============================================================================
 
 CREATE POLICY "Creators can delete own events" ON "public"."events" FOR DELETE TO "authenticated" USING (("auth"."uid"() = "created_by"));
 
-
-
 CREATE POLICY "Creators can insert own events" ON "public"."events" FOR INSERT TO "authenticated" WITH CHECK (("auth"."uid"() = "created_by"));
-
-
 
 CREATE POLICY "Creators can update own events" ON "public"."events" FOR UPDATE TO "authenticated" USING (("auth"."uid"() = "created_by")) WITH CHECK (("auth"."uid"() = "created_by"));
 
-
-
--- Removed duplicate: Creators can view payments (use event_creators_can_view_payments)
--- CREATE POLICY "Creators can view payments" ... (replaced below)
---
--- Keeping canonical policy name only.
---
--- CREATE POLICY "Creators can view payments" ON "public"."payments" FOR SELECT TO "authenticated" USING (...);
---
--- Actual canonical policy remains:
--- duplicate canonical policy removed (defined above)
-
-
-
 CREATE POLICY "Creators can view their own events" ON "public"."events" FOR SELECT TO "authenticated" USING (("auth"."uid"() = "created_by"));
-
-
-
-CREATE POLICY "Guest token update payment details" ON "public"."payments" FOR UPDATE TO "authenticated", "anon" USING ((EXISTS ( SELECT 1
-   FROM ("public"."attendances" "a"
-     JOIN "public"."events" "e" ON (("a"."event_id" = "e"."id")))
-  WHERE (("a"."id" = "payments"."attendance_id") AND ("a"."guest_token" IS NOT NULL) AND (("a"."guest_token")::"text" = "public"."get_guest_token"()) AND ("e"."canceled_at" IS NULL) AND (("e"."payment_deadline" IS NULL) OR ("e"."payment_deadline" > "now"())) AND ("e"."date" > "now"()))))) WITH CHECK ((EXISTS ( SELECT 1
-   FROM ("public"."attendances" "a"
-     JOIN "public"."events" "e" ON (("a"."event_id" = "e"."id")))
-  WHERE (("a"."id" = "payments"."attendance_id") AND ("a"."guest_token" IS NOT NULL) AND (("a"."guest_token")::"text" = "public"."get_guest_token"()) AND ("e"."canceled_at" IS NULL) AND (("e"."payment_deadline" IS NULL) OR ("e"."payment_deadline" > "now"())) AND ("e"."date" > "now"())))));
-
-
 
 CREATE POLICY "Guests can view event organizer stripe accounts" ON "public"."stripe_connect_accounts" FOR SELECT TO "anon" USING ((("public"."get_guest_token"() IS NOT NULL) AND (EXISTS ( SELECT 1
    FROM ("public"."attendances" "a"
      JOIN "public"."events" "e" ON (("a"."event_id" = "e"."id")))
   WHERE ((("a"."guest_token")::"text" = "public"."get_guest_token"()) AND ("e"."created_by" = "stripe_connect_accounts"."user_id"))))));
 
-
-
 COMMENT ON POLICY "Guests can view event organizer stripe accounts" ON "public"."stripe_connect_accounts" IS 'ゲストトークンを持つ匿名ユーザーが、自身が参加しているイベントの主催者のStripe Connectアカウント情報（決済処理に必要な最小限の情報）にのみアクセス可能';
-
-
 
 CREATE POLICY "Safe event access policy" ON "public"."events" FOR SELECT TO "authenticated", "anon" USING ("public"."can_access_event"("id"));
 
+CREATE POLICY "Service role can manage attendances" ON "public"."attendances" FOR ALL TO "service_role" USING (true) WITH CHECK (true);
 
+CREATE POLICY "Service role can manage payments" ON "public"."payments" FOR ALL TO "service_role" USING (true) WITH CHECK (true);
 
-CREATE POLICY "Service role can manage attendances" ON "public"."attendances" TO "service_role" USING (true) WITH CHECK (true);
+CREATE POLICY "Service role can manage settlements" ON "public"."settlements" FOR ALL TO "service_role" USING (true) WITH CHECK (true);
 
+CREATE POLICY "Service role can manage stripe/payout info" ON "public"."stripe_connect_accounts" FOR ALL TO "service_role" USING (true) WITH CHECK (true);
 
-
-CREATE POLICY "Service role can manage payments" ON "public"."payments" TO "service_role" USING (true) WITH CHECK (true);
-
-
-
-CREATE POLICY "Service role can manage settlements" ON "public"."settlements" TO "service_role" USING (true) WITH CHECK (true);
-
-
-
-CREATE POLICY "Service role can manage stripe/payout info" ON "public"."stripe_connect_accounts" TO "service_role" USING (true) WITH CHECK (true);
-
-
-
-CREATE POLICY "Users can manage own stripe accounts" ON "public"."stripe_connect_accounts" TO "authenticated" USING (("auth"."uid"() = "user_id")) WITH CHECK (("auth"."uid"() = "user_id"));
-
-
+CREATE POLICY "Users can manage own stripe accounts" ON "public"."stripe_connect_accounts" FOR ALL TO "authenticated" USING (("auth"."uid"() = "user_id")) WITH CHECK (("auth"."uid"() = "user_id"));
 
 CREATE POLICY "Users can update own profile" ON "public"."users" FOR UPDATE TO "authenticated" USING (("auth"."uid"() = "id")) WITH CHECK (("auth"."uid"() = "id"));
 
-
-
 CREATE POLICY "Users can view own profile" ON "public"."users" FOR SELECT TO "authenticated" USING (("auth"."uid"() = "id"));
 
-
-
 ALTER TABLE "public"."attendances" ENABLE ROW LEVEL SECURITY;
-
+ALTER TABLE "public"."attendances" FORCE ROW LEVEL SECURITY;
 
 CREATE POLICY "dispute_select_event_owner" ON "public"."payment_disputes" FOR SELECT TO "authenticated" USING ((EXISTS ( SELECT 1
    FROM (("public"."payments" "p"
@@ -2792,20 +2819,14 @@ CREATE POLICY "dispute_select_event_owner" ON "public"."payment_disputes" FOR SE
      JOIN "public"."events" "e" ON (("e"."id" = "a"."event_id")))
   WHERE (("p"."id" = "payment_disputes"."payment_id") AND ("e"."created_by" = "auth"."uid"())))));
 
-
-
 CREATE POLICY "event_creators_can_insert_attendances" ON "public"."attendances" FOR INSERT TO "authenticated" WITH CHECK ((EXISTS ( SELECT 1
    FROM "public"."events" "e"
   WHERE (("e"."id" = "attendances"."event_id") AND ("e"."created_by" = "auth"."uid"())))));
-
-
 
 CREATE POLICY "event_creators_can_insert_payments" ON "public"."payments" FOR INSERT TO "authenticated" WITH CHECK ((EXISTS ( SELECT 1
    FROM ("public"."attendances" "a"
      JOIN "public"."events" "e" ON (("a"."event_id" = "e"."id")))
   WHERE (("a"."id" = "payments"."attendance_id") AND ("e"."created_by" = "auth"."uid"())))));
-
-
 
 CREATE POLICY "event_creators_can_update_attendances" ON "public"."attendances" FOR UPDATE TO "authenticated" USING ((EXISTS ( SELECT 1
    FROM "public"."events" "e"
@@ -2813,516 +2834,164 @@ CREATE POLICY "event_creators_can_update_attendances" ON "public"."attendances" 
    FROM "public"."events" "e"
   WHERE (("e"."id" = "attendances"."event_id") AND ("e"."created_by" = "auth"."uid"())))));
 
-
-
 CREATE POLICY "event_creators_can_view_attendances" ON "public"."attendances" FOR SELECT TO "authenticated" USING ((EXISTS ( SELECT 1
    FROM "public"."events" "e"
   WHERE (("e"."id" = "attendances"."event_id") AND ("e"."created_by" = "auth"."uid"())))));
 
-
-
--- Canonical policy retained (no changes)
 CREATE POLICY "event_creators_can_view_payments" ON "public"."payments" FOR SELECT TO "authenticated" USING ((EXISTS ( SELECT 1
    FROM ("public"."attendances" "a"
      JOIN "public"."events" "e" ON (("a"."event_id" = "e"."id")))
   WHERE (("a"."id" = "payments"."attendance_id") AND ("e"."created_by" = "auth"."uid"())))));
 
-
-
 ALTER TABLE "public"."events" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "public"."events" FORCE ROW LEVEL SECURITY;
 
-
-CREATE POLICY "guest_token_can_access_own_attendance" ON "public"."attendances" TO "authenticated", "anon" USING ((("guest_token")::"text" = "public"."get_guest_token"())) WITH CHECK ((("guest_token")::"text" = "public"."get_guest_token"()));
-
-
+-- ゲストは自分の参加情報の参照のみ許可（FOR SELECTに限定）
+CREATE POLICY "guest_can_select_own_attendance" ON "public"."attendances" FOR SELECT TO "authenticated", "anon" USING ((("guest_token")::"text" = "public"."get_guest_token"()));
 
 CREATE POLICY "guest_token_can_view_own_payments" ON "public"."payments" FOR SELECT TO "authenticated", "anon" USING ((EXISTS ( SELECT 1
    FROM "public"."attendances" "a"
   WHERE (("a"."id" = "payments"."attendance_id") AND ("a"."guest_token" IS NOT NULL) AND (("a"."guest_token")::"text" = "public"."get_guest_token"())))));
 
+COMMENT ON POLICY "guest_token_can_view_own_payments" ON "public"."payments" IS 'ゲストトークンを持つユーザーが自分の参加に関連する決済情報を閲覧できるポリシー。';
 
-
-COMMENT ON POLICY "guest_token_can_view_own_payments" ON "public"."payments" IS 'ゲストトークンを持つユーザーが自分の参加に関連する決済情報を閲覧できるポリシー。既存のUPDATEポリシーに対応するSELECTポリシー。';
-
-
-
-CREATE POLICY "invite_token_can_view_attendances" ON "public"."attendances" FOR SELECT TO "authenticated", "anon" USING ("public"."can_access_event"("event_id"));
-
-
-
-COMMENT ON POLICY "invite_token_can_view_attendances" ON "public"."attendances" IS '招待トークンを持つユーザーがイベントの参加者情報を閲覧可能にする。定員判定のための参加者数カウントに使用される。';
-
-
+-- REMOVED: 招待リンク所持者への参加者一覧直接公開はPII漏えいリスクのため削除
 
 ALTER TABLE "public"."payment_disputes" ENABLE ROW LEVEL SECURITY;
-
+ALTER TABLE "public"."payment_disputes" FORCE ROW LEVEL SECURITY;
 
 ALTER TABLE "public"."payments" ENABLE ROW LEVEL SECURITY;
-
+ALTER TABLE "public"."payments" FORCE ROW LEVEL SECURITY;
 
 ALTER TABLE "public"."settlements" ENABLE ROW LEVEL SECURITY;
-
+ALTER TABLE "public"."settlements" FORCE ROW LEVEL SECURITY;
 
 ALTER TABLE "public"."stripe_connect_accounts" ENABLE ROW LEVEL SECURITY;
-
+ALTER TABLE "public"."stripe_connect_accounts" FORCE ROW LEVEL SECURITY;
 
 ALTER TABLE "public"."system_logs" ENABLE ROW LEVEL SECURITY;
-
+ALTER TABLE "public"."system_logs" FORCE ROW LEVEL SECURITY;
 
 CREATE POLICY "system_logs are accessible only by service_role" ON "public"."system_logs" TO "service_role" USING (true) WITH CHECK (true);
 
+-- fee_config: READ-ONLY singleton, accessed via helper functions or direct SELECT
+ALTER TABLE "public"."fee_config" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "public"."fee_config" FORCE ROW LEVEL SECURITY;
 
+CREATE POLICY "fee_config_read_only" ON "public"."fee_config" FOR SELECT TO "authenticated", "service_role" USING (true);
 
 ALTER TABLE "public"."users" ENABLE ROW LEVEL SECURITY;
-
+ALTER TABLE "public"."users" FORCE ROW LEVEL SECURITY;
 
 CREATE POLICY "users_can_view_own_stripe_accounts" ON "public"."stripe_connect_accounts" FOR SELECT TO "authenticated" USING (("user_id" = "auth"."uid"()));
 
-
-
-
-
 ALTER PUBLICATION "supabase_realtime" OWNER TO "postgres";
 
-
-
-
+-- ============================================================================
+-- SECTION 11: Grants & Ownership (Consolidated)
+--  - 集約: 既存のGRANT/REVOKE/OWNER/DEFAULT PRIVILEGESを本セクションに統一
+-- ============================================================================
 
 GRANT USAGE ON SCHEMA "public" TO "postgres";
 GRANT USAGE ON SCHEMA "public" TO "anon";
 GRANT USAGE ON SCHEMA "public" TO "authenticated";
 GRANT USAGE ON SCHEMA "public" TO "service_role";
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-GRANT ALL ON FUNCTION "public"."admin_add_attendance_with_capacity_check"("p_event_id" "uuid", "p_nickname" character varying, "p_email" character varying, "p_status" "public"."attendance_status_enum", "p_guest_token" character varying, "p_bypass_capacity" boolean) TO "authenticated";
-GRANT ALL ON FUNCTION "public"."admin_add_attendance_with_capacity_check"("p_event_id" "uuid", "p_nickname" character varying, "p_email" character varying, "p_status" "public"."attendance_status_enum", "p_guest_token" character varying, "p_bypass_capacity" boolean) TO "service_role";
-
-
-
-GRANT ALL ON FUNCTION "public"."calc_refund_dispute_summary"("p_event_id" "uuid") TO "authenticated";
-GRANT ALL ON FUNCTION "public"."calc_refund_dispute_summary"("p_event_id" "uuid") TO "service_role";
-
-
-
-GRANT ALL ON FUNCTION "public"."calc_total_application_fee"("p_event_id" "uuid") TO "authenticated";
-GRANT ALL ON FUNCTION "public"."calc_total_application_fee"("p_event_id" "uuid") TO "service_role";
-
-
-
-GRANT ALL ON FUNCTION "public"."calc_total_stripe_fee"("p_event_id" "uuid", "p_base_rate" numeric, "p_fixed_fee" integer) TO "authenticated";
-GRANT ALL ON FUNCTION "public"."calc_total_stripe_fee"("p_event_id" "uuid", "p_base_rate" numeric, "p_fixed_fee" integer) TO "service_role";
-
-
-
-GRANT ALL ON FUNCTION "public"."can_access_attendance"("p_attendance_id" "uuid") TO "anon";
-GRANT ALL ON FUNCTION "public"."can_access_attendance"("p_attendance_id" "uuid") TO "authenticated";
-GRANT ALL ON FUNCTION "public"."can_access_attendance"("p_attendance_id" "uuid") TO "service_role";
-
-
-
-GRANT ALL ON FUNCTION "public"."can_access_event"("p_event_id" "uuid") TO "anon";
-GRANT ALL ON FUNCTION "public"."can_access_event"("p_event_id" "uuid") TO "authenticated";
-GRANT ALL ON FUNCTION "public"."can_access_event"("p_event_id" "uuid") TO "service_role";
-
-
-
-GRANT ALL ON FUNCTION "public"."can_manage_invite_links"("p_event_id" "uuid") TO "authenticated";
-GRANT ALL ON FUNCTION "public"."can_manage_invite_links"("p_event_id" "uuid") TO "service_role";
-
-
-
-GRANT ALL ON FUNCTION "public"."check_attendance_capacity_limit"() TO "authenticated";
-GRANT ALL ON FUNCTION "public"."check_attendance_capacity_limit"() TO "service_role";
-
-
-
-
-
-
-GRANT ALL ON FUNCTION "public"."generate_settlement_report"("input_event_id" "uuid", "input_created_by" "uuid") TO "authenticated";
-GRANT ALL ON FUNCTION "public"."generate_settlement_report"("input_event_id" "uuid", "input_created_by" "uuid") TO "service_role";
-
-
-
-GRANT ALL ON FUNCTION "public"."get_event_creator_name"("p_creator_id" "uuid") TO "authenticated";
-GRANT ALL ON FUNCTION "public"."get_event_creator_name"("p_creator_id" "uuid") TO "service_role";
-
-
-
-GRANT ALL ON FUNCTION "public"."get_guest_token"() TO "anon";
-GRANT ALL ON FUNCTION "public"."get_guest_token"() TO "authenticated";
-GRANT ALL ON FUNCTION "public"."get_guest_token"() TO "service_role";
-
-
-
-GRANT ALL ON FUNCTION "public"."get_min_payout_amount"() TO "authenticated";
-GRANT ALL ON FUNCTION "public"."get_min_payout_amount"() TO "service_role";
-
-
-
-GRANT ALL ON FUNCTION "public"."get_settlement_report_details"("input_created_by" "uuid", "input_event_ids" "uuid"[], "p_from_date" timestamp with time zone, "p_to_date" timestamp with time zone, "p_limit" integer, "p_offset" integer) TO "authenticated";
-GRANT ALL ON FUNCTION "public"."get_settlement_report_details"("input_created_by" "uuid", "input_event_ids" "uuid"[], "p_from_date" timestamp with time zone, "p_to_date" timestamp with time zone, "p_limit" integer, "p_offset" integer) TO "service_role";
-
-
-
+-- Public RPC grants for anon role
+GRANT EXECUTE ON FUNCTION public.rpc_public_get_event(text) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.rpc_public_attending_count(uuid) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.rpc_guest_get_attendance() TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.rpc_public_check_duplicate_email(uuid, text) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.rpc_guest_get_latest_payment(uuid) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.rpc_public_get_connect_account(uuid, uuid) TO anon, authenticated;
+
+-- Function EXECUTEs (authenticated/service_role)
+GRANT EXECUTE ON FUNCTION "public"."admin_add_attendance_with_capacity_check"("p_event_id" "uuid", "p_nickname" character varying, "p_email" character varying, "p_status" "public"."attendance_status_enum", "p_guest_token" character varying, "p_bypass_capacity" boolean) TO "authenticated", "service_role";
+GRANT EXECUTE ON FUNCTION "public"."calc_refund_dispute_summary"("p_event_id" "uuid") TO "authenticated", "service_role";
+GRANT EXECUTE ON FUNCTION "public"."calc_total_application_fee"("p_event_id" "uuid") TO "authenticated", "service_role";
+GRANT EXECUTE ON FUNCTION "public"."calc_total_stripe_fee"("p_event_id" "uuid", "p_base_rate" numeric, "p_fixed_fee" integer) TO "authenticated", "service_role";
+GRANT EXECUTE ON FUNCTION "public"."can_access_attendance"("p_attendance_id" "uuid") TO "authenticated", "service_role";
+GRANT EXECUTE ON FUNCTION "public"."can_access_event"("p_event_id" "uuid") TO "authenticated", "service_role";
+GRANT EXECUTE ON FUNCTION "public"."can_manage_invite_links"("p_event_id" "uuid") TO "authenticated", "service_role";
+GRANT EXECUTE ON FUNCTION "public"."get_event_creator_name"("p_creator_id" "uuid") TO "authenticated", "service_role";
+GRANT EXECUTE ON FUNCTION "public"."get_guest_token"() TO "authenticated", "service_role";
+GRANT EXECUTE ON FUNCTION "public"."get_min_payout_amount"() TO "authenticated", "service_role";
+GRANT EXECUTE ON FUNCTION "public"."get_settlement_report_details"("input_created_by" "uuid", "input_event_ids" "uuid"[], "p_from_date" timestamp with time zone, "p_to_date" timestamp with time zone, "p_limit" integer, "p_offset" integer) TO "authenticated", "service_role";
+GRANT EXECUTE ON FUNCTION "public"."register_attendance_with_payment"("p_event_id" "uuid", "p_nickname" character varying, "p_email" character varying, "p_status" "public"."attendance_status_enum", "p_guest_token" character varying, "p_payment_method" "public"."payment_method_enum", "p_event_fee" integer) TO "authenticated", "service_role";
+GRANT EXECUTE ON FUNCTION "public"."status_rank"("p" "public"."payment_status_enum") TO "authenticated", "service_role";
+GRANT EXECUTE ON FUNCTION "public"."update_revenue_summary"("p_event_id" "uuid") TO "authenticated", "service_role";
+
+-- Service role only RPCs
+REVOKE EXECUTE ON FUNCTION "public"."generate_settlement_report"("input_event_id" "uuid", "input_created_by" "uuid") FROM "authenticated";
+GRANT  EXECUTE ON FUNCTION "public"."generate_settlement_report"("input_event_id" "uuid", "input_created_by" "uuid") TO   "service_role";
+REVOKE EXECUTE ON FUNCTION "public"."rpc_bulk_update_payment_status_safe"("p_payment_updates" "jsonb", "p_user_id" "uuid", "p_notes" "text") FROM "authenticated";
+GRANT  EXECUTE ON FUNCTION "public"."rpc_bulk_update_payment_status_safe"("p_payment_updates" "jsonb", "p_user_id" "uuid", "p_notes" "text") TO   "service_role";
+REVOKE EXECUTE ON FUNCTION "public"."rpc_update_payment_status_safe"("p_payment_id" "uuid", "p_new_status" "public"."payment_status_enum", "p_expected_version" integer, "p_user_id" "uuid", "p_notes" "text") FROM "authenticated";
+GRANT  EXECUTE ON FUNCTION "public"."rpc_update_payment_status_safe"("p_payment_id" "uuid", "p_new_status" "public"."payment_status_enum", "p_expected_version" integer, "p_user_id" "uuid", "p_notes" "text") TO   "service_role";
+
+-- Trigger-only function adjustments
 REVOKE ALL ON FUNCTION "public"."handle_new_user"() FROM PUBLIC;
-GRANT ALL ON FUNCTION "public"."handle_new_user"() TO "authenticated";
-GRANT ALL ON FUNCTION "public"."handle_new_user"() TO "service_role";
-GRANT ALL ON FUNCTION "public"."handle_new_user"() TO "supabase_auth_admin";
-
-
-
-GRANT ALL ON FUNCTION "public"."hash_guest_token"("token" "text") TO "authenticated";
-GRANT ALL ON FUNCTION "public"."hash_guest_token"("token" "text") TO "service_role";
-
-
-
-REVOKE ALL ON FUNCTION "public"."prevent_payment_status_rollback"() FROM "anon";
-GRANT ALL ON FUNCTION "public"."prevent_payment_status_rollback"() TO "authenticated";
-GRANT ALL ON FUNCTION "public"."prevent_payment_status_rollback"() TO "service_role";
-
-
-
-GRANT ALL ON FUNCTION "public"."register_attendance_with_payment"("p_event_id" "uuid", "p_nickname" character varying, "p_email" character varying, "p_status" "public"."attendance_status_enum", "p_guest_token" character varying, "p_payment_method" "public"."payment_method_enum", "p_event_fee" integer) TO "anon";
-GRANT ALL ON FUNCTION "public"."register_attendance_with_payment"("p_event_id" "uuid", "p_nickname" character varying, "p_email" character varying, "p_status" "public"."attendance_status_enum", "p_guest_token" character varying, "p_payment_method" "public"."payment_method_enum", "p_event_fee" integer) TO "authenticated";
-GRANT ALL ON FUNCTION "public"."register_attendance_with_payment"("p_event_id" "uuid", "p_nickname" character varying, "p_email" character varying, "p_status" "public"."attendance_status_enum", "p_guest_token" character varying, "p_payment_method" "public"."payment_method_enum", "p_event_fee" integer) TO "service_role";
-
-
-
-GRANT ALL ON FUNCTION "public"."rpc_bulk_update_payment_status_safe"("p_payment_updates" "jsonb", "p_user_id" "uuid", "p_notes" "text") TO "authenticated";
-GRANT ALL ON FUNCTION "public"."rpc_bulk_update_payment_status_safe"("p_payment_updates" "jsonb", "p_user_id" "uuid", "p_notes" "text") TO "service_role";
-
-
-
-GRANT ALL ON FUNCTION "public"."rpc_update_payment_status_safe"("p_payment_id" "uuid", "p_new_status" "public"."payment_status_enum", "p_expected_version" integer, "p_user_id" "uuid", "p_notes" "text") TO "authenticated";
-GRANT ALL ON FUNCTION "public"."rpc_update_payment_status_safe"("p_payment_id" "uuid", "p_new_status" "public"."payment_status_enum", "p_expected_version" integer, "p_user_id" "uuid", "p_notes" "text") TO "service_role";
-
-
-
-
-
-
-GRANT ALL ON FUNCTION "public"."status_rank"("p" "public"."payment_status_enum") TO "authenticated";
-GRANT ALL ON FUNCTION "public"."status_rank"("p" "public"."payment_status_enum") TO "service_role";
-
-
-
+GRANT  EXECUTE ON FUNCTION "public"."handle_new_user"() TO "authenticated", "service_role", "supabase_auth_admin";
 REVOKE ALL ON FUNCTION "public"."update_guest_attendance_with_payment"("p_attendance_id" "uuid", "p_status" "public"."attendance_status_enum", "p_payment_method" "public"."payment_method_enum", "p_event_fee" integer) FROM PUBLIC;
-GRANT ALL ON FUNCTION "public"."update_guest_attendance_with_payment"("p_attendance_id" "uuid", "p_status" "public"."attendance_status_enum", "p_payment_method" "public"."payment_method_enum", "p_event_fee" integer) TO "anon";
-GRANT ALL ON FUNCTION "public"."update_guest_attendance_with_payment"("p_attendance_id" "uuid", "p_status" "public"."attendance_status_enum", "p_payment_method" "public"."payment_method_enum", "p_event_fee" integer) TO "authenticated";
-GRANT ALL ON FUNCTION "public"."update_guest_attendance_with_payment"("p_attendance_id" "uuid", "p_status" "public"."attendance_status_enum", "p_payment_method" "public"."payment_method_enum", "p_event_fee" integer) TO "service_role";
+GRANT  EXECUTE ON FUNCTION "public"."update_guest_attendance_with_payment"("p_attendance_id" "uuid", "p_status" "public"."attendance_status_enum", "p_payment_method" "public"."payment_method_enum", "p_event_fee" integer) TO "anon", "authenticated", "service_role";
+REVOKE ALL ON FUNCTION "public"."prevent_payment_status_rollback"() FROM "anon";
 
-
-
-GRANT ALL ON FUNCTION "public"."update_payment_version"() TO "authenticated";
-GRANT ALL ON FUNCTION "public"."update_payment_version"() TO "service_role";
-
-
-
-GRANT ALL ON FUNCTION "public"."update_revenue_summary"("p_event_id" "uuid") TO "authenticated";
-GRANT ALL ON FUNCTION "public"."update_revenue_summary"("p_event_id" "uuid") TO "service_role";
-
-
-
-GRANT ALL ON FUNCTION "public"."update_updated_at_column"() TO "authenticated";
-GRANT ALL ON FUNCTION "public"."update_updated_at_column"() TO "service_role";
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-GRANT ALL ON TABLE "public"."attendances" TO "anon";
-GRANT ALL ON TABLE "public"."attendances" TO "authenticated";
-GRANT ALL ON TABLE "public"."attendances" TO "service_role";
-
-
-
-GRANT ALL ON TABLE "public"."events" TO "anon";
-GRANT ALL ON TABLE "public"."events" TO "authenticated";
-GRANT ALL ON TABLE "public"."events" TO "service_role";
-
-
-
-GRANT ALL ON TABLE "public"."fee_config" TO "anon";
-GRANT ALL ON TABLE "public"."fee_config" TO "authenticated";
-GRANT ALL ON TABLE "public"."fee_config" TO "service_role";
-
-
-
-GRANT ALL ON TABLE "public"."payment_disputes" TO "anon";
-GRANT ALL ON TABLE "public"."payment_disputes" TO "authenticated";
-GRANT ALL ON TABLE "public"."payment_disputes" TO "service_role";
-
-
-
-GRANT ALL ON TABLE "public"."payments" TO "anon";
-GRANT ALL ON TABLE "public"."payments" TO "authenticated";
-GRANT ALL ON TABLE "public"."payments" TO "service_role";
-
-
-
-GRANT ALL ON TABLE "public"."users" TO "anon";
-GRANT ALL ON TABLE "public"."users" TO "authenticated";
-GRANT ALL ON TABLE "public"."users" TO "service_role";
-
-
-
-GRANT ALL ON TABLE "public"."public_profiles" TO "anon";
-GRANT ALL ON TABLE "public"."public_profiles" TO "authenticated";
-GRANT ALL ON TABLE "public"."public_profiles" TO "service_role";
-
-
-
-GRANT ALL ON TABLE "public"."settlements" TO "anon";
-GRANT ALL ON TABLE "public"."settlements" TO "authenticated";
-GRANT ALL ON TABLE "public"."settlements" TO "service_role";
-
-
-
-GRANT ALL ON TABLE "public"."stripe_connect_accounts" TO "anon";
-GRANT ALL ON TABLE "public"."stripe_connect_accounts" TO "authenticated";
-GRANT ALL ON TABLE "public"."stripe_connect_accounts" TO "service_role";
-
-
-
+-- Tables & sequences
+GRANT ALL ON TABLE "public"."attendances" TO "authenticated", "service_role";
+GRANT ALL ON TABLE "public"."events"      TO "authenticated", "service_role";
+REVOKE ALL ON TABLE "public"."fee_config"  FROM "authenticated"; GRANT SELECT ON TABLE "public"."fee_config" TO "authenticated"; GRANT ALL ON TABLE "public"."fee_config" TO "service_role";
+GRANT ALL ON TABLE "public"."payment_disputes" TO "authenticated", "service_role";
+REVOKE ALL ON TABLE "public"."payments" FROM "authenticated"; GRANT SELECT ON TABLE "public"."payments" TO "authenticated"; GRANT ALL ON TABLE "public"."payments" TO "service_role";
+GRANT ALL ON TABLE "public"."users"       TO "authenticated", "service_role";
+GRANT SELECT ON TABLE "public"."public_profiles" TO "authenticated", "service_role";
+REVOKE ALL ON TABLE "public"."settlements" FROM "authenticated"; GRANT ALL ON TABLE "public"."settlements" TO "service_role";
+GRANT ALL ON TABLE "public"."stripe_connect_accounts" TO "authenticated", "service_role";
 GRANT ALL ON TABLE "public"."system_logs" TO "service_role";
-
-
-
 GRANT ALL ON SEQUENCE "public"."system_logs_id_seq" TO "service_role";
 
-
-
-
-
-
-
-
-
+-- Default privileges: service_role only (explicit grants for authenticated)
 ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON SEQUENCES TO "postgres";
-ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON SEQUENCES TO "anon";
-ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON SEQUENCES TO "authenticated";
 ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON SEQUENCES TO "service_role";
-
-
-
-
-
-
 ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON FUNCTIONS TO "postgres";
--- Remove default anon EXECUTE on future functions; require explicit GRANT per function
 ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" REVOKE ALL ON FUNCTIONS FROM "anon";
-ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON FUNCTIONS TO "authenticated";
 ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON FUNCTIONS TO "service_role";
-
-
-
-
-
-
 ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TABLES TO "postgres";
-ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TABLES TO "anon";
-ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TABLES TO "authenticated";
 ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TABLES TO "service_role";
 
+-- Ownership alignment for SECURITY DEFINER functions
+ALTER FUNCTION public.admin_add_attendance_with_capacity_check(uuid, character varying, character varying, public.attendance_status_enum, character varying, boolean) OWNER TO app_definer;
+ALTER FUNCTION public.calc_refund_dispute_summary(uuid) OWNER TO app_definer;
+ALTER FUNCTION public.calc_total_application_fee(uuid) OWNER TO app_definer;
+ALTER FUNCTION public.calc_total_stripe_fee(uuid, numeric, integer) OWNER TO app_definer;
+ALTER FUNCTION public.can_access_attendance(uuid) OWNER TO app_definer;
+ALTER FUNCTION public.can_access_event(uuid) OWNER TO app_definer;
+ALTER FUNCTION public.can_manage_invite_links(uuid) OWNER TO app_definer;
+ALTER FUNCTION public.check_attendance_capacity_limit() OWNER TO app_definer;
+ALTER FUNCTION public.generate_settlement_report(uuid, uuid) OWNER TO app_definer;
+ALTER FUNCTION public.get_event_creator_name(uuid) OWNER TO app_definer;
+ALTER FUNCTION public.get_guest_token() OWNER TO app_definer;
+ALTER FUNCTION public.get_min_payout_amount() OWNER TO app_definer;
+ALTER FUNCTION public.get_settlement_report_details(uuid, uuid[], timestamp with time zone, timestamp with time zone, integer, integer) OWNER TO app_definer;
+ALTER FUNCTION public.handle_new_user() OWNER TO app_definer;
+ALTER FUNCTION public.hash_guest_token(text) OWNER TO app_definer;
+ALTER FUNCTION public.prevent_payment_status_rollback() OWNER TO app_definer;
+ALTER FUNCTION public.register_attendance_with_payment(uuid, character varying, character varying, public.attendance_status_enum, character varying, public.payment_method_enum, integer) OWNER TO app_definer;
+ALTER FUNCTION public.rpc_bulk_update_payment_status_safe(jsonb, uuid, text) OWNER TO app_definer;
+ALTER FUNCTION public.rpc_guest_get_attendance() OWNER TO app_definer;
+ALTER FUNCTION public.rpc_guest_get_latest_payment(uuid) OWNER TO app_definer;
+ALTER FUNCTION public.rpc_public_attending_count(uuid) OWNER TO app_definer;
+ALTER FUNCTION public.rpc_public_check_duplicate_email(uuid, text) OWNER TO app_definer;
+ALTER FUNCTION public.rpc_public_get_connect_account(uuid, uuid) OWNER TO app_definer;
+ALTER FUNCTION public.rpc_public_get_event(text) OWNER TO app_definer;
+ALTER FUNCTION public.rpc_update_payment_status_safe(uuid, public.payment_status_enum, integer, uuid, text) OWNER TO app_definer;
+ALTER FUNCTION public.status_rank(public.payment_status_enum) OWNER TO app_definer;
+ALTER FUNCTION public.update_guest_attendance_with_payment(uuid, public.attendance_status_enum, public.payment_method_enum, integer) OWNER TO app_definer;
+ALTER FUNCTION public.update_payment_version() OWNER TO app_definer;
+ALTER FUNCTION public.update_revenue_summary(uuid) OWNER TO app_definer;
+ALTER FUNCTION public.update_updated_at_column() OWNER TO app_definer;
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+-- Minimize app_definer privileges
+REVOKE CREATE ON SCHEMA public FROM app_definer;
 
 
 RESET ALL;

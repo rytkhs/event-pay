@@ -3,6 +3,8 @@ import "server-only";
 import { SupabaseClient } from "@supabase/supabase-js";
 
 import { logger } from "@core/logging/app-logger";
+import { SecureSupabaseClientFactory } from "@core/security/secure-client-factory.impl";
+import { AdminReason } from "@core/security/secure-client-factory.types";
 import { createClient } from "@core/supabase/server";
 import { toCsvCell } from "@core/utils/csv";
 import {
@@ -53,8 +55,14 @@ export class SettlementReportService {
         createdBy,
       });
 
-      // RPC関数を直接呼び出し（競合条件を回避＋完全データ取得）
-      const { data, error } = (await this.supabase.rpc("generate_settlement_report", {
+      // RPC関数は管理者（service_role）クライアントで実行（権限整合）
+      const factory = SecureSupabaseClientFactory.getInstance();
+      const adminClient = await factory.createAuditedAdminClient(
+        AdminReason.PAYMENT_PROCESSING,
+        "features/settlements/services/service generateSettlementReport"
+      );
+
+      const { data, error } = (await adminClient.rpc("generate_settlement_report", {
         input_event_id: eventId,
         input_created_by: createdBy,
       })) as { data: GenerateSettlementReportRpcRow[] | null; error: any };
