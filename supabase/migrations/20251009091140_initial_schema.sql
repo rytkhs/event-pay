@@ -45,6 +45,7 @@ $$;
 
 GRANT app_definer TO postgres;
 GRANT USAGE, CREATE ON SCHEMA public TO app_definer;
+GRANT USAGE ON SCHEMA extensions TO app_definer;
 
 -- Enable RLS bypass for app_definer (NOLOGIN definer-only role)
 ALTER ROLE app_definer WITH BYPASSRLS;
@@ -2608,7 +2609,6 @@ BEGIN
       AND public.can_access_event(e.id);
 END;
 $$;
--- Removed: duplicate per-function anon GRANT; consolidated at the end
 
 CREATE OR REPLACE FUNCTION public.rpc_public_attending_count(p_event_id uuid)
 RETURNS integer
@@ -2630,7 +2630,6 @@ BEGIN
     RETURN v_count;
 END;
 $$;
--- Removed: duplicate per-function anon GRANT; consolidated at the end
 
 CREATE OR REPLACE FUNCTION public.rpc_guest_get_attendance()
 RETURNS TABLE (
@@ -2697,7 +2696,6 @@ BEGIN
     RETURN v_exists;
 END;
 $$;
--- Removed: duplicate per-function anon GRANT; consolidated at the end
 
 CREATE OR REPLACE FUNCTION public.rpc_guest_get_latest_payment(p_attendance_id uuid)
 RETURNS integer
@@ -2754,7 +2752,6 @@ BEGIN
     LIMIT 1;
 END;
 $$;
--- Removed: duplicate per-function anon GRANT; consolidated at the end
 
 -- Performance indexes
 CREATE INDEX IF NOT EXISTS idx_payments_attendance_status
