@@ -12,11 +12,10 @@
  */
 
 import { jest } from "@jest/globals";
+
 import { SecureSupabaseClientFactory } from "../../../core/security/secure-client-factory.impl";
 import { AdminReason } from "../../../core/security/secure-client-factory.types";
-
 import type { Database } from "../../../types/database";
-
 import {
   createTestUserWithConnect,
   createPaidTestEvent,

@@ -762,7 +762,7 @@ export type Database = {
         Returns: Json;
       };
       rpc_guest_get_attendance: {
-        Args: Record<PropertyKey, never>;
+        Args: { p_guest_token: string };
         Returns: {
           attendance_id: string;
           canceled_at: string;
@@ -774,17 +774,22 @@ export type Database = {
           event_title: string;
           guest_token: string;
           nickname: string;
+          payment_amount: number;
+          payment_created_at: string;
           payment_deadline: string;
+          payment_id: string;
+          payment_method: Database["public"]["Enums"]["payment_method_enum"];
+          payment_status: Database["public"]["Enums"]["payment_status_enum"];
           registration_deadline: string;
           status: Database["public"]["Enums"]["attendance_status_enum"];
         }[];
       };
       rpc_guest_get_latest_payment: {
-        Args: { p_attendance_id: string };
+        Args: { p_attendance_id: string; p_guest_token: string };
         Returns: number;
       };
       rpc_public_attending_count: {
-        Args: { p_event_id: string };
+        Args: { p_event_id: string; p_invite_token: string };
         Returns: number;
       };
       rpc_public_check_duplicate_email: {
@@ -834,6 +839,7 @@ export type Database = {
         Args: {
           p_attendance_id: string;
           p_event_fee?: number;
+          p_guest_token: string;
           p_payment_method?: Database["public"]["Enums"]["payment_method_enum"];
           p_status: Database["public"]["Enums"]["attendance_status_enum"];
         };

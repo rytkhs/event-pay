@@ -174,7 +174,10 @@ export async function createGuestStripeSessionAction(
 
   // 5.1 既存の決済レコードがあれば金額は payments.amount を優先する
   const { data: latestAmountRpc } = await (guestClient as any)
-    .rpc("rpc_guest_get_latest_payment", { p_attendance_id: attendance.id })
+    .rpc("rpc_guest_get_latest_payment", {
+      p_attendance_id: attendance.id,
+      p_guest_token: guestToken,
+    })
     .single();
   const existingPayment = latestAmountRpc ? { amount: latestAmountRpc as number } : undefined;
 

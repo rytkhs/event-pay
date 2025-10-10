@@ -187,6 +187,7 @@ export async function updateGuestAttendanceAction(
     //     （例）fee を 0 → 500 に変更した直後にゲストが「不参加→参加」を送信した場合など。
     const { error } = await guestClient.rpc("update_guest_attendance_with_payment", {
       p_attendance_id: attendance.id,
+      p_guest_token: guestToken,
       p_status: validatedStatus.data,
       p_payment_method: validatedPaymentMethod,
       p_event_fee: attendance.event.fee,

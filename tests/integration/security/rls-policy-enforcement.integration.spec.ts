@@ -218,6 +218,7 @@ describe("RLS Policy Enforcement Integration Tests", () => {
 
       const { error: rpcError } = await guestClient.rpc("update_guest_attendance_with_payment", {
         p_attendance_id: testAttendanceId,
+        p_guest_token: testGuestToken,
         p_status: "not_attending",
         p_payment_method: null,
         p_event_fee: 0,
@@ -383,7 +384,7 @@ describe("RLS Policy Enforcement Integration Tests", () => {
 
       // 公開RPC経由で参加データを取得
       const { data: rpcRow, error } = await (guestClient as any)
-        .rpc("rpc_guest_get_attendance")
+        .rpc("rpc_guest_get_attendance", { p_guest_token: testGuestToken })
         .single();
 
       expect(error).toBeNull();
@@ -401,7 +402,7 @@ describe("RLS Policy Enforcement Integration Tests", () => {
       const invalidGuestClient = factory.createGuestClient("gst_nonexistent_token_12345678901234");
 
       const { data: rpcRow } = await (invalidGuestClient as any)
-        .rpc("rpc_guest_get_attendance")
+        .rpc("rpc_guest_get_attendance", { p_guest_token: "gst_nonexistent_token_12345678901234" })
         .single();
 
       // RLSにより、データが取得できないことを確認
@@ -523,12 +524,14 @@ describe("RLS Policy Enforcement Integration Tests", () => {
       const [r1, r2] = await Promise.all([
         (guestA as any).rpc("update_guest_attendance_with_payment", {
           p_attendance_id: aIns.data.id,
+          p_guest_token: tokenA,
           p_status: "attending",
           p_payment_method: null,
           p_event_fee: 0,
         }),
         (guestB as any).rpc("update_guest_attendance_with_payment", {
           p_attendance_id: bIns.data.id,
+          p_guest_token: tokenB,
           p_status: "attending",
           p_payment_method: null,
           p_event_fee: 0,
@@ -835,18 +838,16 @@ describe("RLS Policy Enforcement Integration Tests", () => {
     test("system_logs: anon cannot INSERT; admin can SELECT", async () => {
       const factory = SecureSupabaseClientFactory.getInstance();
       const anon = factory.createReadOnlyClient();
-      const ins = await anon
-        .from("system_logs")
-        .insert({
-          id: 999999,
-          created_at: new Date().toISOString(),
-          log_level: "info",
-          log_category: "system",
-          actor_type: "system",
-          action: "test",
-          message: "x",
-          outcome: "success",
-        });
+      const ins = await anon.from("system_logs").insert({
+        id: 999999,
+        created_at: new Date().toISOString(),
+        log_level: "info",
+        log_category: "system",
+        actor_type: "system",
+        action: "test",
+        message: "x",
+        outcome: "success",
+      });
       expect(ins.error).not.toBeNull();
 
       const admin = await factory.createAuditedAdminClient(
@@ -903,29 +904,26 @@ describe("RLS Policy Enforcement Integration Tests", () => {
       // insert two payments with controlled created_at for deterministic ordering
       const createdEarly = new Date(Date.now() - 2000).toISOString();
       const createdLate = new Date(Date.now() + 10).toISOString();
-      await admin
-        .from("payments")
-        .insert({
-          attendance_id: attIns.data.id,
-          amount: 300,
-          method: "cash",
-          status: "pending",
-          created_at: createdEarly,
-        });
-      await admin
-        .from("payments")
-        .insert({
-          attendance_id: attIns.data.id,
-          amount: 700,
-          method: "cash",
-          status: "received",
-          paid_at: new Date().toISOString(),
-          created_at: createdLate,
-        });
+      await admin.from("payments").insert({
+        attendance_id: attIns.data.id,
+        amount: 300,
+        method: "cash",
+        status: "pending",
+        created_at: createdEarly,
+      });
+      await admin.from("payments").insert({
+        attendance_id: attIns.data.id,
+        amount: 700,
+        method: "cash",
+        status: "received",
+        paid_at: new Date().toISOString(),
+        created_at: createdLate,
+      });
 
       const guest = factory.createGuestClient(token);
       const { data, error } = await (guest as any).rpc("rpc_guest_get_latest_payment", {
         p_attendance_id: attIns.data.id,
+        p_guest_token: token,
       });
       expect(error).toBeNull();
       // created_at DESC ordering means last inserted (700) should be returned

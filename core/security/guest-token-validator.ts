@@ -120,7 +120,7 @@ export class RLSGuestTokenValidator implements IGuestTokenValidator {
 
       // 公開RPCに置換（最小列）
       const { data: rpcRow, error } = await (guestClient as any)
-        .rpc("rpc_guest_get_attendance")
+        .rpc("rpc_guest_get_attendance", { p_guest_token: token })
         .single();
 
       if (error || !rpcRow) {
@@ -207,10 +207,9 @@ export class RLSGuestTokenValidator implements IGuestTokenValidator {
     try {
       const guestClient = this.clientFactory.createGuestClient(token);
 
-      // 詳細な参加データを取得
-      // 公開RPCに置換（最小フィールド）
+      // 詳細な参加データを取得（最新支払い1件を含む）
       const { data: rpcRow, error } = await (guestClient as any)
-        .rpc("rpc_guest_get_attendance")
+        .rpc("rpc_guest_get_attendance", { p_guest_token: token })
         .single();
 
       if (error || !rpcRow) {
@@ -252,6 +251,17 @@ export class RLSGuestTokenValidator implements IGuestTokenValidator {
         resultCount: 1,
       });
 
+      // 支払い情報を整形（存在する場合のみ）
+      const payment = (rpcRow as any).payment_id
+        ? {
+            id: (rpcRow as any).payment_id as string,
+            amount: Number((rpcRow as any).payment_amount),
+            method: (rpcRow as any).payment_method,
+            status: (rpcRow as any).payment_status,
+            created_at: (rpcRow as any).payment_created_at,
+          }
+        : null;
+
       return {
         isValid: true,
         attendance: {
@@ -264,7 +274,7 @@ export class RLSGuestTokenValidator implements IGuestTokenValidator {
             ...eventData,
             title: sanitizeForEventPay((rpcRow as any).event_title),
           },
-          payment: null,
+          payment,
         } as RLSGuestAttendanceData,
         canModify,
       };

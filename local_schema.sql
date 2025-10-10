@@ -20,6 +20,12 @@ CREATE EXTENSION IF NOT EXISTS "pg_net" WITH SCHEMA "extensions";
 
 
 
+CREATE SCHEMA IF NOT EXISTS "private";
+
+
+ALTER SCHEMA "private" OWNER TO "postgres";
+
+
 COMMENT ON SCHEMA "public" IS 'アプリケーション公開スキーマ';
 
 
@@ -175,6 +181,30 @@ CREATE TYPE "public"."stripe_account_status_enum" AS ENUM (
 
 
 ALTER TYPE "public"."stripe_account_status_enum" OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "private"."_get_guest_token_from_header"() RETURNS "text"
+    LANGUAGE "plpgsql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'pg_catalog', 'private', 'pg_temp'
+    AS $$
+DECLARE
+  token TEXT;
+BEGIN
+  BEGIN
+    SELECT current_setting('request.headers', true)::json->>'x-guest-token' INTO token;
+    IF token IS NOT NULL AND token != '' THEN
+      RETURN token;
+    END IF;
+  EXCEPTION
+    WHEN OTHERS THEN
+      RETURN NULL;
+  END;
+  RETURN NULL;
+END;
+$$;
+
+
+ALTER FUNCTION "private"."_get_guest_token_from_header"() OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."admin_add_attendance_with_capacity_check"("p_event_id" "uuid", "p_nickname" character varying, "p_email" character varying, "p_status" "public"."attendance_status_enum", "p_guest_token" character varying, "p_bypass_capacity" boolean DEFAULT false) RETURNS "uuid"
@@ -468,7 +498,6 @@ CREATE OR REPLACE FUNCTION "public"."can_access_event"("p_event_id" "uuid") RETU
     AS $$
 DECLARE
   current_user_id UUID;
-  invite_token_var TEXT;
   guest_token_var TEXT;
 BEGIN
   BEGIN
@@ -479,13 +508,7 @@ BEGIN
   END;
 
   BEGIN
-    invite_token_var := current_setting('request.headers', true)::json->>'x-invite-token';
-  EXCEPTION WHEN OTHERS THEN
-    invite_token_var := NULL;
-  END;
-
-  BEGIN
-    guest_token_var := public.get_guest_token();
+    guest_token_var := private._get_guest_token_from_header();
   EXCEPTION WHEN OTHERS THEN
     guest_token_var := NULL;
   END;
@@ -495,18 +518,6 @@ BEGIN
       SELECT 1 FROM events
       WHERE id = p_event_id
         AND created_by = current_user_id
-    ) THEN
-      RETURN TRUE;
-    END IF;
-  END IF;
-
-  IF invite_token_var IS NOT NULL AND invite_token_var != '' THEN
-    IF EXISTS (
-      SELECT 1 FROM events
-      WHERE id = p_event_id
-        AND events.invite_token = invite_token_var
-        AND events.canceled_at IS NULL
-        AND events.date > NOW()
     ) THEN
       RETURN TRUE;
     END IF;
@@ -530,7 +541,7 @@ $$;
 ALTER FUNCTION "public"."can_access_event"("p_event_id" "uuid") OWNER TO "app_definer";
 
 
-COMMENT ON FUNCTION "public"."can_access_event"("p_event_id" "uuid") IS 'イベントアクセス権限（主催者・招待トークン・ゲストトークン）';
+COMMENT ON FUNCTION "public"."can_access_event"("p_event_id" "uuid") IS 'イベントアクセス権限（主催者・ゲストトークンのみ）';
 
 
 
@@ -797,7 +808,7 @@ CREATE OR REPLACE FUNCTION "public"."get_guest_token"() RETURNS "text"
 DECLARE
   token TEXT;
 BEGIN
-  -- 1. JWTクレームから取得（推奨、将来実装）
+  -- JWTクレームからのみ取得
   BEGIN
     SELECT (current_setting('request.jwt.claims', true)::json->>'guest_token') INTO token;
     IF token IS NOT NULL AND token != '' THEN
@@ -805,21 +816,9 @@ BEGIN
     END IF;
   EXCEPTION
     WHEN OTHERS THEN
-      NULL; -- 続行
+      RETURN NULL;
   END;
 
-  -- 2. カスタムヘッダーから取得（現在の実装）
-  BEGIN
-    SELECT current_setting('request.headers', true)::json->>'x-guest-token' INTO token;
-    IF token IS NOT NULL AND token != '' THEN
-      RETURN token;
-    END IF;
-  EXCEPTION
-    WHEN OTHERS THEN
-      NULL; -- 続行
-  END;
-
-  -- すべて失敗した場合はNULLを返す
   RETURN NULL;
 END;
 $$;
@@ -828,7 +827,7 @@ $$;
 ALTER FUNCTION "public"."get_guest_token"() OWNER TO "app_definer";
 
 
-COMMENT ON FUNCTION "public"."get_guest_token"() IS 'ゲストトークンをJWTクレームまたはHTTPヘッダー（x-guest-token）から取得。本番環境ではヘッダー経由を使用。';
+COMMENT ON FUNCTION "public"."get_guest_token"() IS 'ゲストトークンをJWTクレームから取得。';
 
 
 
@@ -1273,11 +1272,16 @@ COMMENT ON FUNCTION "public"."rpc_bulk_update_payment_status_safe"("p_payment_up
 
 
 
-CREATE OR REPLACE FUNCTION "public"."rpc_guest_get_attendance"() RETURNS TABLE("attendance_id" "uuid", "nickname" character varying, "email" character varying, "status" "public"."attendance_status_enum", "guest_token" character varying, "event_id" "uuid", "event_title" character varying, "event_date" timestamp with time zone, "event_fee" integer, "created_by" "uuid", "registration_deadline" timestamp with time zone, "payment_deadline" timestamp with time zone, "canceled_at" timestamp with time zone)
+CREATE OR REPLACE FUNCTION "public"."rpc_guest_get_attendance"("p_guest_token" "text") RETURNS TABLE("attendance_id" "uuid", "nickname" character varying, "email" character varying, "status" "public"."attendance_status_enum", "guest_token" character varying, "event_id" "uuid", "event_title" character varying, "event_date" timestamp with time zone, "event_fee" integer, "created_by" "uuid", "registration_deadline" timestamp with time zone, "payment_deadline" timestamp with time zone, "canceled_at" timestamp with time zone, "payment_id" "uuid", "payment_amount" integer, "payment_method" "public"."payment_method_enum", "payment_status" "public"."payment_status_enum", "payment_created_at" timestamp with time zone)
     LANGUAGE "plpgsql" STABLE SECURITY DEFINER
     SET "search_path" TO 'pg_catalog', 'public', 'pg_temp'
     AS $$
+DECLARE
+    v_token text;
 BEGIN
+    -- p_guest_token がNULLの場合はヘッダーから取得
+    v_token := COALESCE(p_guest_token, private._get_guest_token_from_header());
+
     RETURN QUERY
     SELECT
         a.id,
@@ -1292,34 +1296,44 @@ BEGIN
         e.created_by,
         e.registration_deadline,
         e.payment_deadline,
-        e.canceled_at
+        e.canceled_at,
+        lp.id AS payment_id,
+        lp.amount AS payment_amount,
+        lp.method AS payment_method,
+        lp.status AS payment_status,
+        lp.created_at AS payment_created_at
     FROM public.attendances a
     JOIN public.events e ON e.id = a.event_id
-    WHERE a.guest_token = public.get_guest_token()
+    LEFT JOIN LATERAL (
+        SELECT p.id, p.amount, p.method, p.status, p.created_at, p.paid_at, p.updated_at
+        FROM public.payments p
+        WHERE p.attendance_id = a.id
+        ORDER BY p.paid_at DESC NULLS LAST, p.created_at DESC, p.updated_at DESC
+        LIMIT 1
+    ) lp ON TRUE
+    WHERE a.guest_token = v_token
     LIMIT 1;
 END;
 $$;
 
 
-ALTER FUNCTION "public"."rpc_guest_get_attendance"() OWNER TO "app_definer";
+ALTER FUNCTION "public"."rpc_guest_get_attendance"("p_guest_token" "text") OWNER TO "app_definer";
 
 
-CREATE OR REPLACE FUNCTION "public"."rpc_guest_get_latest_payment"("p_attendance_id" "uuid") RETURNS integer
+CREATE OR REPLACE FUNCTION "public"."rpc_guest_get_latest_payment"("p_attendance_id" "uuid", "p_guest_token" "text") RETURNS integer
     LANGUAGE "plpgsql" STABLE SECURITY DEFINER
     SET "search_path" TO 'pg_catalog', 'public', 'pg_temp'
     AS $$
 DECLARE
     v_amount integer;
-    v_token text;
 BEGIN
-    v_token := public.get_guest_token();
-    IF v_token IS NULL THEN
+    IF p_guest_token IS NULL THEN
         RAISE EXCEPTION 'missing guest token';
     END IF;
 
     IF NOT EXISTS (
         SELECT 1 FROM public.attendances a
-        WHERE a.id = p_attendance_id AND a.guest_token = v_token
+        WHERE a.id = p_attendance_id AND a.guest_token = p_guest_token
     ) THEN
         RAISE EXCEPTION 'not allowed';
     END IF;
@@ -1336,17 +1350,23 @@ END;
 $$;
 
 
-ALTER FUNCTION "public"."rpc_guest_get_latest_payment"("p_attendance_id" "uuid") OWNER TO "app_definer";
+ALTER FUNCTION "public"."rpc_guest_get_latest_payment"("p_attendance_id" "uuid", "p_guest_token" "text") OWNER TO "app_definer";
 
 
-CREATE OR REPLACE FUNCTION "public"."rpc_public_attending_count"("p_event_id" "uuid") RETURNS integer
+CREATE OR REPLACE FUNCTION "public"."rpc_public_attending_count"("p_event_id" "uuid", "p_invite_token" "text") RETURNS integer
     LANGUAGE "plpgsql" STABLE SECURITY DEFINER
     SET "search_path" TO 'pg_catalog', 'public', 'pg_temp'
     AS $$
 DECLARE
     v_count integer := 0;
 BEGIN
-    IF NOT public.can_access_event(p_event_id) THEN
+    IF NOT EXISTS (
+      SELECT 1 FROM public.events
+      WHERE id = p_event_id
+        AND invite_token = p_invite_token
+        AND canceled_at IS NULL
+        AND date > NOW()
+    ) THEN
         RAISE EXCEPTION 'not allowed';
     END IF;
 
@@ -1360,7 +1380,7 @@ END;
 $$;
 
 
-ALTER FUNCTION "public"."rpc_public_attending_count"("p_event_id" "uuid") OWNER TO "app_definer";
+ALTER FUNCTION "public"."rpc_public_attending_count"("p_event_id" "uuid", "p_invite_token" "text") OWNER TO "app_definer";
 
 
 CREATE OR REPLACE FUNCTION "public"."rpc_public_check_duplicate_email"("p_event_id" "uuid", "p_email" "text") RETURNS boolean
@@ -1438,7 +1458,8 @@ BEGIN
         ) AS attendances_count
     FROM public.events e
     WHERE e.invite_token = p_invite_token
-      AND public.can_access_event(e.id);
+      AND e.canceled_at IS NULL
+      AND e.date > NOW();
 END;
 $$;
 
@@ -1619,7 +1640,7 @@ COMMENT ON FUNCTION "public"."status_rank"("p" "public"."payment_status_enum") I
 
 
 
-CREATE OR REPLACE FUNCTION "public"."update_guest_attendance_with_payment"("p_attendance_id" "uuid", "p_status" "public"."attendance_status_enum", "p_payment_method" "public"."payment_method_enum" DEFAULT NULL::"public"."payment_method_enum", "p_event_fee" integer DEFAULT 0) RETURNS "void"
+CREATE OR REPLACE FUNCTION "public"."update_guest_attendance_with_payment"("p_attendance_id" "uuid", "p_guest_token" "text", "p_status" "public"."attendance_status_enum", "p_payment_method" "public"."payment_method_enum" DEFAULT NULL::"public"."payment_method_enum", "p_event_fee" integer DEFAULT 0) RETURNS "void"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'pg_catalog', 'public', 'pg_temp'
     AS $$
@@ -1635,7 +1656,7 @@ DECLARE
   v_canceled_at TIMESTAMPTZ;
   v_reg_deadline TIMESTAMPTZ;
   v_event_date TIMESTAMPTZ;
-  v_guest_token TEXT;
+
 BEGIN
   -- 参加記録の存在確認と現在のステータス取得
   SELECT event_id, status INTO v_event_id, v_current_status
@@ -1646,14 +1667,13 @@ BEGIN
     RAISE EXCEPTION 'Attendance record not found';
   END IF;
 
-  -- ゲスト本人確認（SECURITY DEFINERによりRLSがバイパスされるため明示チェック）
-  v_guest_token := public.get_guest_token();
-  IF v_guest_token IS NULL OR v_guest_token = '' THEN
+  -- ゲスト本人確認（引数で渡されたトークンを使用）
+  IF p_guest_token IS NULL OR p_guest_token = '' THEN
     RAISE EXCEPTION 'Guest token is required';
   END IF;
   IF NOT EXISTS (
     SELECT 1 FROM public.attendances a
-    WHERE a.id = p_attendance_id AND a.guest_token = v_guest_token
+    WHERE a.id = p_attendance_id AND a.guest_token = p_guest_token
   ) THEN
     RAISE EXCEPTION 'Unauthorized: guest does not own this attendance';
   END IF;
@@ -1888,10 +1908,10 @@ END;
 $$;
 
 
-ALTER FUNCTION "public"."update_guest_attendance_with_payment"("p_attendance_id" "uuid", "p_status" "public"."attendance_status_enum", "p_payment_method" "public"."payment_method_enum", "p_event_fee" integer) OWNER TO "app_definer";
+ALTER FUNCTION "public"."update_guest_attendance_with_payment"("p_attendance_id" "uuid", "p_guest_token" "text", "p_status" "public"."attendance_status_enum", "p_payment_method" "public"."payment_method_enum", "p_event_fee" integer) OWNER TO "app_definer";
 
 
-COMMENT ON FUNCTION "public"."update_guest_attendance_with_payment"("p_attendance_id" "uuid", "p_status" "public"."attendance_status_enum", "p_payment_method" "public"."payment_method_enum", "p_event_fee" integer) IS 'ゲスト参加更新（決済処理・監査ログ）';
+COMMENT ON FUNCTION "public"."update_guest_attendance_with_payment"("p_attendance_id" "uuid", "p_guest_token" "text", "p_status" "public"."attendance_status_enum", "p_payment_method" "public"."payment_method_enum", "p_event_fee" integer) IS 'ゲスト参加更新（決済処理・監査ログ）';
 
 
 
@@ -2945,10 +2965,10 @@ CREATE POLICY "Creators can view their own events" ON "public"."events" FOR SELE
 
 
 
-CREATE POLICY "Guests can view event organizer stripe accounts" ON "public"."stripe_connect_accounts" FOR SELECT TO "anon" USING ((("public"."get_guest_token"() IS NOT NULL) AND (EXISTS ( SELECT 1
+CREATE POLICY "Guests can view event organizer stripe accounts" ON "public"."stripe_connect_accounts" FOR SELECT TO "anon" USING ((("private"."_get_guest_token_from_header"() IS NOT NULL) AND (EXISTS ( SELECT 1
    FROM ("public"."attendances" "a"
      JOIN "public"."events" "e" ON (("a"."event_id" = "e"."id")))
-  WHERE ((("a"."guest_token")::"text" = "public"."get_guest_token"()) AND ("e"."created_by" = "stripe_connect_accounts"."user_id"))))));
+  WHERE ((("a"."guest_token")::"text" = "private"."_get_guest_token_from_header"()) AND ("e"."created_by" = "stripe_connect_accounts"."user_id"))))));
 
 
 
@@ -3043,13 +3063,13 @@ CREATE POLICY "fee_config_read_only" ON "public"."fee_config" FOR SELECT TO "aut
 
 
 
-CREATE POLICY "guest_can_select_own_attendance" ON "public"."attendances" FOR SELECT TO "authenticated", "anon" USING ((("guest_token")::"text" = "public"."get_guest_token"()));
+CREATE POLICY "guest_can_select_own_attendance" ON "public"."attendances" FOR SELECT TO "authenticated", "anon" USING ((("guest_token")::"text" = "private"."_get_guest_token_from_header"()));
 
 
 
 CREATE POLICY "guest_token_can_view_own_payments" ON "public"."payments" FOR SELECT TO "authenticated", "anon" USING ((EXISTS ( SELECT 1
    FROM "public"."attendances" "a"
-  WHERE (("a"."id" = "payments"."attendance_id") AND ("a"."guest_token" IS NOT NULL) AND (("a"."guest_token")::"text" = "public"."get_guest_token"())))));
+  WHERE (("a"."id" = "payments"."attendance_id") AND ("a"."guest_token" IS NOT NULL) AND (("a"."guest_token")::"text" = "private"."_get_guest_token_from_header"())))));
 
 
 
@@ -3088,6 +3108,13 @@ CREATE POLICY "users_can_view_own_stripe_accounts" ON "public"."stripe_connect_a
 ALTER PUBLICATION "supabase_realtime" OWNER TO "postgres";
 
 
+
+
+
+GRANT USAGE ON SCHEMA "private" TO "app_definer";
+GRANT USAGE ON SCHEMA "private" TO "anon";
+GRANT USAGE ON SCHEMA "private" TO "authenticated";
+GRANT USAGE ON SCHEMA "private" TO "service_role";
 
 
 
@@ -3255,6 +3282,11 @@ GRANT USAGE ON SCHEMA "public" TO "app_definer";
 
 
 
+GRANT ALL ON FUNCTION "private"."_get_guest_token_from_header"() TO "anon";
+GRANT ALL ON FUNCTION "private"."_get_guest_token_from_header"() TO "authenticated";
+
+
+
 REVOKE ALL ON FUNCTION "public"."admin_add_attendance_with_capacity_check"("p_event_id" "uuid", "p_nickname" character varying, "p_email" character varying, "p_status" "public"."attendance_status_enum", "p_guest_token" character varying, "p_bypass_capacity" boolean) FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."admin_add_attendance_with_capacity_check"("p_event_id" "uuid", "p_nickname" character varying, "p_email" character varying, "p_status" "public"."attendance_status_enum", "p_guest_token" character varying, "p_bypass_capacity" boolean) TO "anon";
 GRANT ALL ON FUNCTION "public"."admin_add_attendance_with_capacity_check"("p_event_id" "uuid", "p_nickname" character varying, "p_email" character varying, "p_status" "public"."attendance_status_enum", "p_guest_token" character varying, "p_bypass_capacity" boolean) TO "authenticated";
@@ -3379,21 +3411,21 @@ GRANT ALL ON FUNCTION "public"."rpc_bulk_update_payment_status_safe"("p_payment_
 
 
 
-GRANT ALL ON FUNCTION "public"."rpc_guest_get_attendance"() TO "anon";
-GRANT ALL ON FUNCTION "public"."rpc_guest_get_attendance"() TO "authenticated";
-GRANT ALL ON FUNCTION "public"."rpc_guest_get_attendance"() TO "service_role";
+GRANT ALL ON FUNCTION "public"."rpc_guest_get_attendance"("p_guest_token" "text") TO "anon";
+GRANT ALL ON FUNCTION "public"."rpc_guest_get_attendance"("p_guest_token" "text") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."rpc_guest_get_attendance"("p_guest_token" "text") TO "service_role";
 
 
 
-GRANT ALL ON FUNCTION "public"."rpc_guest_get_latest_payment"("p_attendance_id" "uuid") TO "anon";
-GRANT ALL ON FUNCTION "public"."rpc_guest_get_latest_payment"("p_attendance_id" "uuid") TO "authenticated";
-GRANT ALL ON FUNCTION "public"."rpc_guest_get_latest_payment"("p_attendance_id" "uuid") TO "service_role";
+GRANT ALL ON FUNCTION "public"."rpc_guest_get_latest_payment"("p_attendance_id" "uuid", "p_guest_token" "text") TO "anon";
+GRANT ALL ON FUNCTION "public"."rpc_guest_get_latest_payment"("p_attendance_id" "uuid", "p_guest_token" "text") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."rpc_guest_get_latest_payment"("p_attendance_id" "uuid", "p_guest_token" "text") TO "service_role";
 
 
 
-GRANT ALL ON FUNCTION "public"."rpc_public_attending_count"("p_event_id" "uuid") TO "anon";
-GRANT ALL ON FUNCTION "public"."rpc_public_attending_count"("p_event_id" "uuid") TO "authenticated";
-GRANT ALL ON FUNCTION "public"."rpc_public_attending_count"("p_event_id" "uuid") TO "service_role";
+GRANT ALL ON FUNCTION "public"."rpc_public_attending_count"("p_event_id" "uuid", "p_invite_token" "text") TO "anon";
+GRANT ALL ON FUNCTION "public"."rpc_public_attending_count"("p_event_id" "uuid", "p_invite_token" "text") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."rpc_public_attending_count"("p_event_id" "uuid", "p_invite_token" "text") TO "service_role";
 
 
 
@@ -3428,10 +3460,10 @@ GRANT ALL ON FUNCTION "public"."status_rank"("p" "public"."payment_status_enum")
 
 
 
-REVOKE ALL ON FUNCTION "public"."update_guest_attendance_with_payment"("p_attendance_id" "uuid", "p_status" "public"."attendance_status_enum", "p_payment_method" "public"."payment_method_enum", "p_event_fee" integer) FROM PUBLIC;
-GRANT ALL ON FUNCTION "public"."update_guest_attendance_with_payment"("p_attendance_id" "uuid", "p_status" "public"."attendance_status_enum", "p_payment_method" "public"."payment_method_enum", "p_event_fee" integer) TO "anon";
-GRANT ALL ON FUNCTION "public"."update_guest_attendance_with_payment"("p_attendance_id" "uuid", "p_status" "public"."attendance_status_enum", "p_payment_method" "public"."payment_method_enum", "p_event_fee" integer) TO "authenticated";
-GRANT ALL ON FUNCTION "public"."update_guest_attendance_with_payment"("p_attendance_id" "uuid", "p_status" "public"."attendance_status_enum", "p_payment_method" "public"."payment_method_enum", "p_event_fee" integer) TO "service_role";
+REVOKE ALL ON FUNCTION "public"."update_guest_attendance_with_payment"("p_attendance_id" "uuid", "p_guest_token" "text", "p_status" "public"."attendance_status_enum", "p_payment_method" "public"."payment_method_enum", "p_event_fee" integer) FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."update_guest_attendance_with_payment"("p_attendance_id" "uuid", "p_guest_token" "text", "p_status" "public"."attendance_status_enum", "p_payment_method" "public"."payment_method_enum", "p_event_fee" integer) TO "anon";
+GRANT ALL ON FUNCTION "public"."update_guest_attendance_with_payment"("p_attendance_id" "uuid", "p_guest_token" "text", "p_status" "public"."attendance_status_enum", "p_payment_method" "public"."payment_method_enum", "p_event_fee" integer) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."update_guest_attendance_with_payment"("p_attendance_id" "uuid", "p_guest_token" "text", "p_status" "public"."attendance_status_enum", "p_payment_method" "public"."payment_method_enum", "p_event_fee" integer) TO "service_role";
 
 
 

@@ -30,7 +30,8 @@ export class ImprovedGuestTokenValidator {
     try {
       // 匿名テーブルSELECTを廃止し、公開RPC経由で取得
       const { data: rpcData, error } = await (clientWithGuestToken as any).rpc(
-        "rpc_guest_get_attendance"
+        "rpc_guest_get_attendance",
+        { p_guest_token: guestToken }
       );
 
       const row = Array.isArray(rpcData) ? rpcData[0] : rpcData;
