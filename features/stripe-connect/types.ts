@@ -76,6 +76,12 @@ export interface AccountInfo {
     past_due: string[];
     pending_verification: string[];
     disabled_reason?: string;
+    current_deadline?: number | null; // Unix timestamp: 要件充足の期限
+    errors?: Array<{
+      code: string;
+      reason: string;
+      requirement: string;
+    }>;
   };
   capabilities?: {
     card_payments?: "active" | "inactive" | "pending";
