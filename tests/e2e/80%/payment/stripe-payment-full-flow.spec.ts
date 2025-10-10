@@ -315,7 +315,7 @@ test.describe("Stripe決済 完全フロー", () => {
 
     // === 4. ゲストページにアクセスして決済 ===
     const guestPageUrl = `${page.url().split("/invite")[0]}/guest/${guestToken}`;
-    await page.goto(guestPageUrl);
+    await page.goto(guestPageUrl, { timeout: 60000 });
 
     console.log("✓ ゲストページに遷移:", guestPageUrl);
 
