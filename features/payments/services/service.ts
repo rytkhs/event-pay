@@ -240,11 +240,12 @@ export class PaymentService implements IPaymentService {
         );
       }
 
+      // Idempotency 管理用の変数（後続分岐で必ず設定する）
+      let idempotencyKeyToUse!: string; // definite assignment
+      let checkoutKeyRevisionToSave: number = 0;
+
       if (openPayment) {
         if ((openPayment.status as PaymentStatus) === "pending") {
-          // 🔧 DB更新前に元の金額を保存（金額変更検知用）
-          const originalAmount = openPayment.amount;
-
           // 再試行: pending は再利用（Stripe識別子のリセットと金額更新）
           const { error: reuseError } = await this.supabase
             .from("payments")
@@ -264,13 +265,11 @@ export class PaymentService implements IPaymentService {
             );
           }
 
-          // 🔧 メモリ上のopenPaymentオブジェクトも新しい金額に同期し、元の金額も記録
+          // メモリ上のopenPaymentオブジェクトも新しい金額に同期
           openPayment = {
             ...openPayment,
             amount: params.amount,
-            // 金額変更検知用に元の金額を保存
-            _originalAmount: originalAmount,
-          } as OpenPaymentRow & { _originalAmount: number };
+          } as OpenPaymentRow;
 
           targetPaymentId = openPayment.id as string;
         } else {
@@ -335,6 +334,13 @@ export class PaymentService implements IPaymentService {
                   }
 
                   targetPaymentId = concurrentOpen.id as string;
+                  // 同時実行で既存pendingを再利用する場合も新しいキー&リビジョン+1
+                  {
+                    const { generateIdempotencyKey } = await import("@core/stripe/client");
+                    idempotencyKeyToUse = generateIdempotencyKey("checkout");
+                    checkoutKeyRevisionToSave =
+                      ((concurrentOpen as any).checkout_key_revision ?? 0) + 1;
+                  }
                 } else {
                   throw new PaymentError(
                     PaymentErrorType.DATABASE_ERROR,
@@ -359,6 +365,9 @@ export class PaymentService implements IPaymentService {
           } else {
             assertStripePayment(payment, "payment lookup");
             targetPaymentId = payment.id;
+            // 新規作成（failed->pending）：作成時に付与したキーを使用、rev=0
+            idempotencyKeyToUse = newIdempotencyKey;
+            checkoutKeyRevisionToSave = 0;
           }
         }
       } else {
@@ -463,6 +472,9 @@ export class PaymentService implements IPaymentService {
         } else {
           assertStripePayment(payment, "payment lookup");
           targetPaymentId = payment.id;
+          // 新規作成（openなし->pending）：作成時に付与したキーを使用、rev=0
+          idempotencyKeyToUse = newIdempotencyKey;
+          checkoutKeyRevisionToSave = 0;
         }
       }
 
@@ -511,73 +523,26 @@ export class PaymentService implements IPaymentService {
       }
 
       // Destination charges用のCheckout Session作成
-      // Idempotency-Key: ボディ差分（特に金額差）時はキーを回転。そうでなければ再利用
-      let idempotencyKeyToUse: string | null = null;
-      let checkoutKeyRevisionToSave: number = 0;
-
+      // Idempotency-Key: 常に新規発行（パラメータ差分によるStripeエラーを根絶）
       if (openPayment && openPayment.status === "pending") {
-        // 既存のpending決済から値を取得
-        idempotencyKeyToUse = openPayment.checkout_idempotency_key;
-        checkoutKeyRevisionToSave = openPayment.checkout_key_revision;
+        // pending再利用時も毎回キーを回転し、リビジョンを+1する
+        const { generateIdempotencyKey } = await import("@core/stripe/client");
+        idempotencyKeyToUse = generateIdempotencyKey("checkout");
+        checkoutKeyRevisionToSave = (openPayment.checkout_key_revision ?? 0) + 1;
 
-        // 🔧 金額変更検知: DB更新前に保存した元の金額を使用
-        const originalAmount = (openPayment as any)._originalAmount ?? openPayment.amount;
-        const isReusingPayment = targetPaymentId === openPayment.id;
-
-        // 金額変更検知ログ (本格運用時は削除)
+        // 簡素なデバッグログ（キーはマスクして出力）
         logger.info("Idempotency key decision", {
           tag: "idempotencyKeyDecision",
           service: "PaymentService",
           attendance_id: params.attendanceId,
-          has_open_payment: !!openPayment,
-          existing_key: openPayment.checkout_idempotency_key
-            ? openPayment.checkout_idempotency_key.substring(0, 12) + "..."
-            : null,
-          key_revision: openPayment.checkout_key_revision,
-          amount_changed:
-            isReusingPayment &&
-            typeof originalAmount === "number" &&
-            originalAmount !== params.amount,
-          final_key: idempotencyKeyToUse?.substring(0, 12) + "...",
+          has_open_payment: true,
+          final_key: idempotencyKeyToUse.substring(0, 12) + "...",
           final_revision: checkoutKeyRevisionToSave,
         });
-
-        // DB更新前の元の金額と新しい金額を比較
-        const amountChanged =
-          isReusingPayment &&
-          typeof originalAmount === "number" &&
-          originalAmount !== params.amount;
-
-        if (amountChanged) {
-          const { generateIdempotencyKey } = await import("@core/stripe/client");
-          idempotencyKeyToUse = generateIdempotencyKey("checkout");
-          checkoutKeyRevisionToSave = checkoutKeyRevisionToSave + 1;
-        }
       }
 
-      // 新規作成時または既存キーが無い場合のみ新生成
-      if (!idempotencyKeyToUse) {
-        const { generateIdempotencyKey } = await import("@core/stripe/client");
-        idempotencyKeyToUse = generateIdempotencyKey("checkout");
-      }
-
-      // 冪等性デバッグ用ログ
-      logger.info("Idempotency key decision", {
-        tag: "idempotencyKeyDecision",
-        service: "PaymentService",
-        attendance_id: params.attendanceId,
-        has_open_payment: !!openPayment,
-        existing_key: openPayment?.checkout_idempotency_key
-          ? openPayment.checkout_idempotency_key.substring(0, 12) + "..."
-          : null,
-        key_revision: openPayment?.checkout_key_revision,
-        amount_changed:
-          openPayment &&
-          typeof openPayment.amount === "number" &&
-          openPayment.amount !== params.amount,
-        final_key: idempotencyKeyToUse?.substring(0, 12) + "...",
-        final_revision: checkoutKeyRevisionToSave,
-      });
+      // 新規/failed または同時実行で新規openを再利用する場合のキー設定は、
+      // それぞれの分岐で明示的に行う（下記のinsert/concurrent分岐内）。
       const session = await DestinationCharges.createDestinationCheckoutSession({
         eventId: params.eventId,
         eventTitle: params.eventTitle,
@@ -594,7 +559,7 @@ export class PaymentService implements IPaymentService {
           event_title: params.eventTitle,
         },
         setupFutureUsage,
-        idempotencyKey: idempotencyKeyToUse ?? undefined,
+        idempotencyKey: idempotencyKeyToUse,
       });
 
       // --- DB に Destination charges 関連情報を保存 (リトライ付き) ---
