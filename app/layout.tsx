@@ -44,6 +44,11 @@ export const metadata: Metadata = {
     type: "website",
   },
   icons: {
+    icon: [
+      { url: "/icon.svg", type: "image/svg+xml", sizes: "any" },
+      { url: "/favicon.ico", sizes: "48x48" },
+    ],
+    apple: [{ url: "/apple-icon", sizes: "180x180", type: "image/png" }],
     other: [{ rel: "mask-icon", url: "/safari-pinned-tab.svg", color: "#24a6b5" }],
   },
 };

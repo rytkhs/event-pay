@@ -16,6 +16,10 @@ function isPublicPath(pathname: string): boolean {
   const publicExact = [
     "/",
     "/favicon.ico",
+    "/icon.svg",
+    "/apple-icon",
+    "/apple-icon.png",
+    "/safari-pinned-tab.svg",
     "/login",
     "/register",
     "/reset-password",

@@ -10,13 +10,23 @@ export const contentType = "image/png";
 export default function Icon(): ImageResponse {
   return new ImageResponse(
     (
-      <svg width="180" height="180" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
-        <rect width="200" height="200" fill="transparent" />
-        <path d="M 100 60 Q 120 80, 100 100 Q 80 80, 100 60" fill="#24a6b5" />
-        <path d="M 140 100 Q 120 120, 100 100 Q 120 80, 140 100" fill="#24a6b5" fillOpacity="0.8" />
-        <path d="M 100 140 Q 80 120, 100 100 Q 120 120, 100 140" fill="#24a6b5" fillOpacity="0.6" />
-        <path d="M 60 100 Q 80 80, 100 100 Q 80 120, 60 100" fill="#24a6b5" fillOpacity="0.4" />
-      </svg>
+      <div
+        style={{
+          width: "100%",
+          height: "100%",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          backgroundColor: "#ffffff",
+        }}
+      >
+        <svg width="180" height="180" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+          <path d="M 16 0 Q 24 8, 16 16 Q 8 8, 16 0" fill="#24a6b5" />
+          <path d="M 32 16 Q 24 24, 16 16 Q 24 8, 32 16" fill="#24a6b5" fillOpacity="0.8" />
+          <path d="M 16 32 Q 8 24, 16 16 Q 24 24, 16 32" fill="#24a6b5" fillOpacity="0.6" />
+          <path d="M 0 16 Q 8 8, 16 16 Q 8 24, 0 16" fill="#24a6b5" fillOpacity="0.4" />
+        </svg>
+      </div>
     ),
     {
       ...size,
