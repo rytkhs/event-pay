@@ -43,6 +43,9 @@ export const metadata: Metadata = {
       "参加者は登録不要。主催者は出欠と入金の状況が自動でまとまるから、集計ミスと催促のストレスがぐっと減ります。",
     type: "website",
   },
+  icons: {
+    other: [{ rel: "mask-icon", url: "/safari-pinned-tab.svg", color: "#24a6b5" }],
+  },
 };
 
 export default function RootLayout({
