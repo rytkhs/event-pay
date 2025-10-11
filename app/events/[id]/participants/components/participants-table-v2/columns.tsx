@@ -49,7 +49,9 @@ export function buildParticipantsColumns(opts: {
         const p = row.original;
         const isCashPayment = p.payment_method === "cash" && p.payment_id;
         const isOperatable =
-          isCashPayment && p.payment_status !== "received" && p.payment_status !== "waived";
+          p.status === "attending" &&
+          isCashPayment &&
+          (p.payment_status === "pending" || p.payment_status === "failed");
 
         if (!isOperatable) {
           return <div className="w-4" />; // 空の領域を確保
@@ -103,6 +105,10 @@ export function buildParticipantsColumns(opts: {
       accessorKey: "payment_method",
       header: "決済方法",
       cell: ({ row }) => {
+        const p = row.original;
+        const showMethod = p.status === "attending" && p.payment_status !== "canceled";
+        if (!showMethod) return <span className="text-gray-400 text-sm">-</span>;
+
         const method = row.original.payment_method;
         if (!method) return <span className="text-gray-400 text-sm">-</span>;
         const isStripe = method === "stripe";
@@ -121,9 +127,11 @@ export function buildParticipantsColumns(opts: {
       accessorKey: "payment_status",
       header: "決済状況",
       cell: ({ row }) => {
-        const status = row.original.payment_status;
+        const p = row.original;
+        const status = p.payment_status;
         const isCanceledPayment = status === "canceled";
-        if (isFreeEvent || !status || isCanceledPayment)
+        const isNotAttending = p.status !== "attending";
+        if (isFreeEvent || !status || isCanceledPayment || isNotAttending)
           return <span className="text-gray-400 text-xs sm:text-sm">-</span>;
         const simple = toSimplePaymentStatus(status as any);
         if (simple === "paid") {
@@ -151,10 +159,14 @@ export function buildParticipantsColumns(opts: {
         const simple = toSimplePaymentStatus(p.payment_status as any);
         const isCashPayment = p.payment_method === "cash" && p.payment_id;
         const { onReceive, onWaive, onCancel, isUpdating } = opts.handlers;
+        const canOperateCash =
+          p.status === "attending" &&
+          isCashPayment &&
+          (p.payment_status === "pending" || p.payment_status === "failed");
 
         return (
           <div className="flex items-center gap-2">
-            {isCashPayment && simple !== "paid" && simple !== "waived" && (
+            {canOperateCash && (
               <Button
                 size="sm"
                 variant="outline"
@@ -166,7 +178,7 @@ export function buildParticipantsColumns(opts: {
                 <Check className="h-4 w-4" />
               </Button>
             )}
-            {isCashPayment && simple !== "paid" && simple !== "waived" && (
+            {canOperateCash && (
               <Button
                 size="sm"
                 variant="outline"
@@ -178,18 +190,20 @@ export function buildParticipantsColumns(opts: {
                 <Shield className="h-4 w-4" />
               </Button>
             )}
-            {isCashPayment && (simple === "paid" || simple === "waived") && (
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => hasPaymentId(p) && onCancel(p.payment_id)}
-                disabled={!!isUpdating}
-                className="bg-gray-50 border-gray-300 text-gray-700 hover:bg-gray-100 min-h-[36px] min-w-[36px] px-2 sm:px-3 shadow-sm hover:shadow-md"
-                title="決済を取り消し"
-              >
-                <RotateCcw className="h-4 w-4" />
-              </Button>
-            )}
+            {p.status === "attending" &&
+              isCashPayment &&
+              (simple === "paid" || simple === "waived") && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => hasPaymentId(p) && onCancel(p.payment_id)}
+                  disabled={!!isUpdating}
+                  className="bg-gray-50 border-gray-300 text-gray-700 hover:bg-gray-100 min-h-[36px] min-w-[36px] px-2 sm:px-3 shadow-sm hover:shadow-md"
+                  title="決済を取り消し"
+                >
+                  <RotateCcw className="h-4 w-4" />
+                </Button>
+              )}
           </div>
         );
       },

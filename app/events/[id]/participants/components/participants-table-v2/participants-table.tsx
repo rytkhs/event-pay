@@ -100,10 +100,10 @@ export function ParticipantsTableV2({
   const bulkOperableParticipants = useMemo(() => {
     return participants.filter(
       (p) =>
+        p.status === "attending" &&
         p.payment_method === "cash" &&
         p.payment_id &&
-        p.payment_status !== "received" &&
-        p.payment_status !== "waived"
+        (p.payment_status === "pending" || p.payment_status === "failed")
     );
   }, [participants]);
 

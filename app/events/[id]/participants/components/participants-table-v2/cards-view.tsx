@@ -80,7 +80,10 @@ export function CardsView({
         const simple = toSimplePaymentStatus(p.payment_status as any);
         const isCanceledPayment = p.payment_status === "canceled";
         const isCashPayment = p.payment_method === "cash" && p.payment_id && !isCanceledPayment;
-        const isOperatable = isCashPayment && simple !== "paid" && simple !== "waived";
+        const isOperatable =
+          p.status === "attending" &&
+          isCashPayment &&
+          (p.payment_status === "pending" || p.payment_status === "failed");
         const isSelected = bulkSelection?.selectedPaymentIds.includes(p.payment_id || "") || false;
 
         return (
@@ -119,12 +122,12 @@ export function CardsView({
 
                 <div className="flex flex-wrap gap-2">
                   {getAttendanceBadge(p.status)}
-                  {isCanceledPayment ? (
+                  {p.status !== "attending" || isCanceledPayment ? (
                     <span className="text-gray-400 text-sm">-</span>
                   ) : (
                     <>
                       {getPaymentMethodBadge(p.payment_method)}
-                      {!isFreeEvent && p.payment_status && (
+                      {!isFreeEvent && p.payment_status && p.status === "attending" && (
                         <Badge
                           variant={getSimplePaymentStatusStyle(simple).variant}
                           className={`${getSimplePaymentStatusStyle(simple).className} font-medium px-3 py-1 shadow-sm`}
@@ -137,7 +140,7 @@ export function CardsView({
                 </div>
 
                 <div className="flex flex-wrap gap-3 pt-2">
-                  {isCashPayment && simple !== "paid" && simple !== "waived" && (
+                  {isOperatable && (
                     <Button
                       size="sm"
                       variant="outline"
@@ -149,7 +152,7 @@ export function CardsView({
                       受領
                     </Button>
                   )}
-                  {isCashPayment && simple !== "paid" && simple !== "waived" && (
+                  {isOperatable && (
                     <Button
                       size="sm"
                       variant="outline"
@@ -161,18 +164,20 @@ export function CardsView({
                       免除
                     </Button>
                   )}
-                  {isCashPayment && (simple === "paid" || simple === "waived") && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => hasPaymentId(p) && onCancel(p.payment_id)}
-                      disabled={!!isUpdating}
-                      className="bg-gray-50 border-gray-300 text-gray-700 hover:bg-gray-100 min-h-[44px]"
-                    >
-                      <RotateCcw className="h-4 w-4 mr-2" />
-                      取り消し
-                    </Button>
-                  )}
+                  {p.status === "attending" &&
+                    isCashPayment &&
+                    (simple === "paid" || simple === "waived") && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => hasPaymentId(p) && onCancel(p.payment_id)}
+                        disabled={!!isUpdating}
+                        className="bg-gray-50 border-gray-300 text-gray-700 hover:bg-gray-100 min-h-[44px]"
+                      >
+                        <RotateCcw className="h-4 w-4 mr-2" />
+                        取り消し
+                      </Button>
+                    )}
                 </div>
               </div>
             </CardContent>
