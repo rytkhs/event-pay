@@ -4,7 +4,6 @@ import { z } from "zod";
 
 import { enforceRateLimit, buildKey, POLICIES } from "@core/rate-limit";
 import { SecureSupabaseClientFactory } from "@core/security/secure-client-factory.impl";
-import { AdminReason } from "@core/security/secure-client-factory.types";
 import { PaymentError, PaymentErrorType } from "@core/types/payment-errors";
 import {
   type ServerActionResult,
@@ -159,13 +158,7 @@ export async function updateCashStatusAction(
       );
     }
 
-    // 楽観的ロック付きRPCで更新
-    const admin = await factory.createAuditedAdminClient(
-      AdminReason.PAYMENT_PROCESSING,
-      "features/payments/actions/update-cash-status"
-    );
-
-    const { data: _rpcResult, error: rpcError } = await admin.rpc(
+    const { data: _rpcResult, error: rpcError } = await supabase.rpc(
       "rpc_update_payment_status_safe",
       {
         p_payment_id: paymentId,

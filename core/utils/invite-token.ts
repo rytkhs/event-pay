@@ -253,6 +253,7 @@ export async function checkDuplicateEmail(
     const { data, error } = await (client as any).rpc("rpc_public_check_duplicate_email", {
       p_event_id: eventId,
       p_email: email,
+      p_invite_token: inviteToken,
     });
 
     if (error) {

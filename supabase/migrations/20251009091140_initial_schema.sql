@@ -1950,7 +1950,8 @@ CREATE TABLE IF NOT EXISTS "public"."payments" (
     CONSTRAINT "chk_payments_refunded_amount_non_negative" CHECK (("refunded_amount" >= 0)),
     CONSTRAINT "payments_amount_check" CHECK (("amount" >= 0)),
     CONSTRAINT "payments_paid_at_when_paid" CHECK (((("status" = ANY (ARRAY['paid'::"public"."payment_status_enum", 'received'::"public"."payment_status_enum"])) AND ("paid_at" IS NOT NULL)) OR ("status" <> ALL (ARRAY['paid'::"public"."payment_status_enum", 'received'::"public"."payment_status_enum"])))),
-    CONSTRAINT "payments_stripe_intent_required" CHECK (((("method" = 'stripe'::"public"."payment_method_enum") AND ("status" = 'pending'::"public"."payment_status_enum")) OR (("method" = 'stripe'::"public"."payment_method_enum") AND ("status" = 'canceled'::"public"."payment_status_enum")) OR (("method" = 'stripe'::"public"."payment_method_enum") AND ("status" <> ALL (ARRAY['pending'::"public"."payment_status_enum", 'canceled'::"public"."payment_status_enum"])) AND ("stripe_payment_intent_id" IS NOT NULL)) OR ("method" <> 'stripe'::"public"."payment_method_enum")))
+    CONSTRAINT "payments_stripe_intent_required" CHECK (((("method" = 'stripe'::"public"."payment_method_enum") AND ("status" = 'pending'::"public"."payment_status_enum")) OR (("method" = 'stripe'::"public"."payment_method_enum") AND ("status" = 'canceled'::"public"."payment_status_enum")) OR (("method" = 'stripe'::"public"."payment_method_enum") AND ("status" <> ALL (ARRAY['pending'::"public"."payment_status_enum", 'canceled'::"public"."payment_status_enum"])) AND ("stripe_payment_intent_id" IS NOT NULL)) OR ("method" <> 'stripe'::"public"."payment_method_enum"))),
+    CONSTRAINT "payments_method_status_consistency" CHECK (((("status" <> 'paid'::"public"."payment_status_enum") OR ("method" = 'stripe'::"public"."payment_method_enum")) AND (("status" <> 'received'::"public"."payment_status_enum") OR ("method" = 'cash'::"public"."payment_method_enum")) AND (("status" <> 'failed'::"public"."payment_status_enum") OR ("method" = 'stripe'::"public"."payment_method_enum"))))
 );
 
 
@@ -2698,7 +2699,7 @@ BEGIN
 END;
 $$;
 
-CREATE OR REPLACE FUNCTION public.rpc_public_check_duplicate_email(p_event_id uuid, p_email text)
+CREATE OR REPLACE FUNCTION public.rpc_public_check_duplicate_email(p_event_id uuid, p_email text, p_invite_token text)
 RETURNS boolean
 LANGUAGE plpgsql STABLE SECURITY DEFINER
 SET search_path = pg_catalog, public, pg_temp
@@ -2706,10 +2707,16 @@ AS $$
 DECLARE
     v_exists boolean := false;
 BEGIN
-    IF NOT public.can_access_event(p_event_id) THEN
+    -- 招待トークンを使ってイベントの存在を検証することで、権限チェックを代替します。
+    -- これにより、有効な招待リンクを知っているユーザーからのリクエストを許可します。
+    IF NOT EXISTS (
+        SELECT 1 FROM public.events
+        WHERE id = p_event_id AND invite_token = p_invite_token
+    ) THEN
         RAISE EXCEPTION 'not allowed';
     END IF;
 
+    -- 既存のメールアドレス重複チェック処理
     SELECT EXISTS (
         SELECT 1
         FROM public.attendances a
@@ -2922,7 +2929,7 @@ GRANT USAGE ON SCHEMA "private" TO "service_role";
 GRANT EXECUTE ON FUNCTION public.rpc_public_get_event(text) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.rpc_public_attending_count(uuid, text) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.rpc_guest_get_attendance(text) TO anon, authenticated;
-GRANT EXECUTE ON FUNCTION public.rpc_public_check_duplicate_email(uuid, text) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.rpc_public_check_duplicate_email(uuid, text, text) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.rpc_guest_get_latest_payment(uuid, text) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.rpc_public_get_connect_account(uuid, uuid) TO anon, authenticated;
 
@@ -2945,10 +2952,8 @@ GRANT EXECUTE ON FUNCTION "public"."update_revenue_summary"("p_event_id" "uuid")
 -- Service role only RPCs
 REVOKE EXECUTE ON FUNCTION "public"."generate_settlement_report"("input_event_id" "uuid", "input_created_by" "uuid") FROM "authenticated";
 GRANT  EXECUTE ON FUNCTION "public"."generate_settlement_report"("input_event_id" "uuid", "input_created_by" "uuid") TO   "service_role";
-REVOKE EXECUTE ON FUNCTION "public"."rpc_bulk_update_payment_status_safe"("p_payment_updates" "jsonb", "p_user_id" "uuid", "p_notes" "text") FROM "authenticated";
-GRANT  EXECUTE ON FUNCTION "public"."rpc_bulk_update_payment_status_safe"("p_payment_updates" "jsonb", "p_user_id" "uuid", "p_notes" "text") TO   "service_role";
-REVOKE EXECUTE ON FUNCTION "public"."rpc_update_payment_status_safe"("p_payment_id" "uuid", "p_new_status" "public"."payment_status_enum", "p_expected_version" integer, "p_user_id" "uuid", "p_notes" "text") FROM "authenticated";
-GRANT  EXECUTE ON FUNCTION "public"."rpc_update_payment_status_safe"("p_payment_id" "uuid", "p_new_status" "public"."payment_status_enum", "p_expected_version" integer, "p_user_id" "uuid", "p_notes" "text") TO   "service_role";
+GRANT  EXECUTE ON FUNCTION "public"."rpc_bulk_update_payment_status_safe"("p_payment_updates" "jsonb", "p_user_id" "uuid", "p_notes" "text") TO "authenticated", "service_role";
+GRANT  EXECUTE ON FUNCTION "public"."rpc_update_payment_status_safe"("p_payment_id" "uuid", "p_new_status" "public"."payment_status_enum", "p_expected_version" integer, "p_user_id" "uuid", "p_notes" "text") TO "authenticated", "service_role";
 
 -- Trigger-only function adjustments
 REVOKE ALL ON FUNCTION "public"."handle_new_user"() FROM PUBLIC;
@@ -3002,7 +3007,7 @@ GRANT EXECUTE ON FUNCTION private._get_guest_token_from_header() TO anon, authen
 ALTER FUNCTION public.rpc_guest_get_attendance(text) OWNER TO app_definer;
 ALTER FUNCTION public.rpc_guest_get_latest_payment(uuid, text) OWNER TO app_definer;
 ALTER FUNCTION public.rpc_public_attending_count(uuid, text) OWNER TO app_definer;
-ALTER FUNCTION public.rpc_public_check_duplicate_email(uuid, text) OWNER TO app_definer;
+ALTER FUNCTION public.rpc_public_check_duplicate_email(uuid, text, text) OWNER TO app_definer;
 ALTER FUNCTION public.rpc_public_get_connect_account(uuid, uuid) OWNER TO app_definer;
 ALTER FUNCTION public.rpc_public_get_event(text) OWNER TO app_definer;
 ALTER FUNCTION public.rpc_update_payment_status_safe(uuid, public.payment_status_enum, integer, uuid, text) OWNER TO app_definer;

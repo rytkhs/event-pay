@@ -4,7 +4,6 @@ import { z } from "zod";
 
 import { enforceRateLimit, buildKey, POLICIES } from "@core/rate-limit";
 import { SecureSupabaseClientFactory } from "@core/security/secure-client-factory.impl";
-import { AdminReason } from "@core/security/secure-client-factory.types";
 import { PaymentError, PaymentErrorType } from "@core/types/payment-errors";
 import {
   type ServerActionResult,
@@ -172,12 +171,6 @@ export async function bulkUpdateCashStatusAction(
       });
     }
 
-    // 楽観的ロック対応の一括更新用RPCを使用
-    const admin = await factory.createAuditedAdminClient(
-      AdminReason.PAYMENT_PROCESSING,
-      "features/payments/actions/bulk-update-cash-status"
-    );
-
     // 一括更新用のデータを構築（version情報を含める）
     const updateData = cashPayments.map((payment) => ({
       payment_id: payment.id,
@@ -185,7 +178,7 @@ export async function bulkUpdateCashStatusAction(
       new_status: status,
     }));
 
-    const { data: rpcResult, error: rpcError } = await admin.rpc(
+    const { data: rpcResult, error: rpcError } = await supabase.rpc(
       "rpc_bulk_update_payment_status_safe",
       {
         p_payment_updates: updateData,

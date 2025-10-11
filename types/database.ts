@@ -793,7 +793,7 @@ export type Database = {
         Returns: number;
       };
       rpc_public_check_duplicate_email: {
-        Args: { p_email: string; p_event_id: string };
+        Args: { p_email: string; p_event_id: string; p_invite_token: string };
         Returns: boolean;
       };
       rpc_public_get_connect_account: {

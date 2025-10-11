@@ -1383,17 +1383,23 @@ $$;
 ALTER FUNCTION "public"."rpc_public_attending_count"("p_event_id" "uuid", "p_invite_token" "text") OWNER TO "app_definer";
 
 
-CREATE OR REPLACE FUNCTION "public"."rpc_public_check_duplicate_email"("p_event_id" "uuid", "p_email" "text") RETURNS boolean
+CREATE OR REPLACE FUNCTION "public"."rpc_public_check_duplicate_email"("p_event_id" "uuid", "p_email" "text", "p_invite_token" "text") RETURNS boolean
     LANGUAGE "plpgsql" STABLE SECURITY DEFINER
     SET "search_path" TO 'pg_catalog', 'public', 'pg_temp'
     AS $$
 DECLARE
     v_exists boolean := false;
 BEGIN
-    IF NOT public.can_access_event(p_event_id) THEN
+    -- 招待トークンを使ってイベントの存在を検証することで、権限チェックを代替します。
+    -- これにより、有効な招待リンクを知っているユーザーからのリクエストを許可します。
+    IF NOT EXISTS (
+        SELECT 1 FROM public.events
+        WHERE id = p_event_id AND invite_token = p_invite_token
+    ) THEN
         RAISE EXCEPTION 'not allowed';
     END IF;
 
+    -- 既存のメールアドレス重複チェック処理
     SELECT EXISTS (
         SELECT 1
         FROM public.attendances a
@@ -1406,7 +1412,7 @@ END;
 $$;
 
 
-ALTER FUNCTION "public"."rpc_public_check_duplicate_email"("p_event_id" "uuid", "p_email" "text") OWNER TO "app_definer";
+ALTER FUNCTION "public"."rpc_public_check_duplicate_email"("p_event_id" "uuid", "p_email" "text", "p_invite_token" "text") OWNER TO "app_definer";
 
 
 CREATE OR REPLACE FUNCTION "public"."rpc_public_get_connect_account"("p_event_id" "uuid", "p_creator_id" "uuid") RETURNS TABLE("stripe_account_id" character varying, "payouts_enabled" boolean)
@@ -2188,6 +2194,7 @@ CREATE TABLE IF NOT EXISTS "public"."payments" (
     CONSTRAINT "chk_payments_application_fee_refunded_amount_non_negative" CHECK (("application_fee_refunded_amount" >= 0)),
     CONSTRAINT "chk_payments_refunded_amount_non_negative" CHECK (("refunded_amount" >= 0)),
     CONSTRAINT "payments_amount_check" CHECK (("amount" >= 0)),
+    CONSTRAINT "payments_method_status_consistency" CHECK (((("status" <> 'paid'::"public"."payment_status_enum") OR ("method" = 'stripe'::"public"."payment_method_enum")) AND (("status" <> 'received'::"public"."payment_status_enum") OR ("method" = 'cash'::"public"."payment_method_enum")) AND (("status" <> 'failed'::"public"."payment_status_enum") OR ("method" = 'stripe'::"public"."payment_method_enum")))),
     CONSTRAINT "payments_paid_at_when_paid" CHECK (((("status" = ANY (ARRAY['paid'::"public"."payment_status_enum", 'received'::"public"."payment_status_enum"])) AND ("paid_at" IS NOT NULL)) OR ("status" <> ALL (ARRAY['paid'::"public"."payment_status_enum", 'received'::"public"."payment_status_enum"])))),
     CONSTRAINT "payments_stripe_intent_required" CHECK (((("method" = 'stripe'::"public"."payment_method_enum") AND ("status" = 'pending'::"public"."payment_status_enum")) OR (("method" = 'stripe'::"public"."payment_method_enum") AND ("status" = 'canceled'::"public"."payment_status_enum")) OR (("method" = 'stripe'::"public"."payment_method_enum") AND ("status" <> ALL (ARRAY['pending'::"public"."payment_status_enum", 'canceled'::"public"."payment_status_enum"])) AND ("stripe_payment_intent_id" IS NOT NULL)) OR ("method" <> 'stripe'::"public"."payment_method_enum")))
 );
@@ -3407,6 +3414,7 @@ GRANT ALL ON FUNCTION "public"."register_attendance_with_payment"("p_event_id" "
 
 REVOKE ALL ON FUNCTION "public"."rpc_bulk_update_payment_status_safe"("p_payment_updates" "jsonb", "p_user_id" "uuid", "p_notes" "text") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."rpc_bulk_update_payment_status_safe"("p_payment_updates" "jsonb", "p_user_id" "uuid", "p_notes" "text") TO "anon";
+GRANT ALL ON FUNCTION "public"."rpc_bulk_update_payment_status_safe"("p_payment_updates" "jsonb", "p_user_id" "uuid", "p_notes" "text") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."rpc_bulk_update_payment_status_safe"("p_payment_updates" "jsonb", "p_user_id" "uuid", "p_notes" "text") TO "service_role";
 
 
@@ -3429,9 +3437,9 @@ GRANT ALL ON FUNCTION "public"."rpc_public_attending_count"("p_event_id" "uuid",
 
 
 
-GRANT ALL ON FUNCTION "public"."rpc_public_check_duplicate_email"("p_event_id" "uuid", "p_email" "text") TO "anon";
-GRANT ALL ON FUNCTION "public"."rpc_public_check_duplicate_email"("p_event_id" "uuid", "p_email" "text") TO "authenticated";
-GRANT ALL ON FUNCTION "public"."rpc_public_check_duplicate_email"("p_event_id" "uuid", "p_email" "text") TO "service_role";
+GRANT ALL ON FUNCTION "public"."rpc_public_check_duplicate_email"("p_event_id" "uuid", "p_email" "text", "p_invite_token" "text") TO "anon";
+GRANT ALL ON FUNCTION "public"."rpc_public_check_duplicate_email"("p_event_id" "uuid", "p_email" "text", "p_invite_token" "text") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."rpc_public_check_duplicate_email"("p_event_id" "uuid", "p_email" "text", "p_invite_token" "text") TO "service_role";
 
 
 
@@ -3449,6 +3457,7 @@ GRANT ALL ON FUNCTION "public"."rpc_public_get_event"("p_invite_token" "text") T
 
 REVOKE ALL ON FUNCTION "public"."rpc_update_payment_status_safe"("p_payment_id" "uuid", "p_new_status" "public"."payment_status_enum", "p_expected_version" integer, "p_user_id" "uuid", "p_notes" "text") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."rpc_update_payment_status_safe"("p_payment_id" "uuid", "p_new_status" "public"."payment_status_enum", "p_expected_version" integer, "p_user_id" "uuid", "p_notes" "text") TO "anon";
+GRANT ALL ON FUNCTION "public"."rpc_update_payment_status_safe"("p_payment_id" "uuid", "p_new_status" "public"."payment_status_enum", "p_expected_version" integer, "p_user_id" "uuid", "p_notes" "text") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."rpc_update_payment_status_safe"("p_payment_id" "uuid", "p_new_status" "public"."payment_status_enum", "p_expected_version" integer, "p_user_id" "uuid", "p_notes" "text") TO "service_role";
 
 
