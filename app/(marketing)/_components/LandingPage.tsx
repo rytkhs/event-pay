@@ -3,6 +3,7 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 
 import Image from "next/image";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 import "../lp.css";
@@ -14,9 +15,9 @@ type FAQItem = {
 
 const faqItems: FAQItem[] = [
   {
-    question: "本当に無料で使えますか？",
+    question: "利用料金はいくらですか？",
     answer:
-      "はい。登録料・月額利用料・プラットフォーム手数料は無料です（期間限定）。オンライン決済時は決済代行会社の手数料のみ発生します。",
+      "基本料金はありません。また、リリース記念期間中、プラットフォーム手数料も無料で提供しています。オンライン決済時は決済代行会社の手数料(3.6%)のみ発生します。",
   },
   {
     question: "参加者にアカウント作成は必要ですか？",
@@ -24,11 +25,12 @@ const faqItems: FAQItem[] = [
   },
   {
     question: "現金とオンラインの両方で集金できますか？",
-    answer: "はい。両方に対応し、入金状況を1つの画面で確認できます。",
+    answer: "はい。現金の場合は対面で集金する必要がありますが、入金状況を1つの画面で管理できます。",
   },
   {
-    question: "リマインドのタイミングは設定できますか？",
-    answer: "可能です。締切日の◯日前や未払い発生時など、柔軟に設定できます。",
+    question: "リマインドのタイミングは？",
+    answer:
+      "参加締切、オンライン決済締切、イベント開催日を設定している場合、それぞれ前日の朝9時頃に自動でリマインドメールが送信されます。",
   },
   {
     question: "CSVなどでデータをエクスポートできますか？",
@@ -138,11 +140,13 @@ export default function LandingPage(): JSX.Element {
                 ひとつのリンクで完了。
               </h1>
               <p className="hero-description">
-                参加者は登録不要。出欠と集金を自動化し、参加の確認や集金のストレスをなくしましょう。
+                参加の確認から集金まで、リンクの共有だけで完了できる新しいサービスです。
+                <br />
+                いつもの集金を、簡単にクレジットカード決済対応にできます。
               </p>
               <div className="hero-chips">
                 <span className="chip">参加者登録不要</span>
-                <span className="chip">現金・オンライン対応</span>
+                <span className="chip">現金・オンライン決済対応</span>
                 <span className="chip">自動リマインド</span>
               </div>
               <div className="hero-cta">
@@ -168,7 +172,7 @@ export default function LandingPage(): JSX.Element {
 
       <section className="problems" id="problems">
         <div className="container">
-          <h2 className="section-title">イベントの準備、こんな「ムダ」がありませんか？</h2>
+          <h2 className="section-title">こんな集金のストレスはありませんか？</h2>
           <div className="problems-grid">
             <div className="problem-card">
               <Image
@@ -179,10 +183,8 @@ export default function LandingPage(): JSX.Element {
                 height={160}
                 loading="lazy"
               />
-              <h3 className="problem-title">LINEの返信が散らばる</h3>
-              <p className="problem-text">
-                既読はつくのに、誰が参加かは結局スプレッドシートで手入力。
-              </p>
+              <h3 className="problem-title">LINEの返事が散らばる</h3>
+              <p className="problem-text">誰が参加かは結局スプレッドシートで手入力。</p>
             </div>
             <div className="problem-card">
               <Image
@@ -193,8 +195,10 @@ export default function LandingPage(): JSX.Element {
                 height={160}
                 loading="lazy"
               />
-              <h3 className="problem-title">現金回収が負担</h3>
-              <p className="problem-text">集める/お釣り/立替/当日ドタキャン…管理がぐちゃぐちゃ。</p>
+              <h3 className="problem-title">集金作業が負担</h3>
+              <p className="problem-text">
+                集める/お釣り/立替/ドタキャン…集計作業で時間を消費。未払いの確認も気まずい。
+              </p>
             </div>
             <div className="problem-card">
               <Image
@@ -206,19 +210,7 @@ export default function LandingPage(): JSX.Element {
                 loading="lazy"
               />
               <h3 className="problem-title">リマインドが手作業</h3>
-              <p className="problem-text">未回答者へ個別メッセージ。週末の時間が消えていく。</p>
-            </div>
-            <div className="problem-card">
-              <Image
-                src="/images/marketing/problems/payment-unclear.png"
-                alt="入金状況が不透明"
-                className="problem-img"
-                width={160}
-                height={160}
-                loading="lazy"
-              />
-              <h3 className="problem-title">入金状況が不透明</h3>
-              <p className="problem-text">誰が払った？未払いは？確認にまた時間がかかる。</p>
+              <p className="problem-text">未回答者へメッセージ。週末の時間が消えていく。</p>
             </div>
           </div>
         </div>
@@ -234,18 +226,20 @@ export default function LandingPage(): JSX.Element {
                 <span className="feature-label">かんたん共有</span>
                 <h3 className="feature-title">参加者はワンタップ回答、登録不要。</h3>
                 <p className="feature-description">
-                  イベント作成→URL発行→LINEやSNSで送るだけ。日程調整の感覚で、すぐに出欠の回答が集まります。
+                  イベント作成→URL発行→LINEやSNSで送るだけ。参加者はリンクから回答するだけ。
                 </p>
               </div>
               <div className="feature-image">
-                <Image
-                  src="/images/marketing/features/sns-sharing.png"
-                  alt="招待リンクをSNSで共有"
-                  className="feature-img"
-                  width={1080}
-                  height={720}
-                  loading="lazy"
-                />
+                <Link href="/images/marketing/features/sns-sharing.png" target="_blank">
+                  <Image
+                    src="/images/marketing/features/sns-sharing.png"
+                    alt="招待リンクをSNSで共有"
+                    className="feature-img"
+                    width={1080}
+                    height={720}
+                    loading="lazy"
+                  />
+                </Link>
               </div>
             </div>
           </div>
@@ -260,14 +254,16 @@ export default function LandingPage(): JSX.Element {
                 </p>
               </div>
               <div className="feature-image">
-                <Image
-                  src="/images/marketing/features/dashboard-overview.png"
-                  alt="現金・オンライン決済の一元管理ダッシュボード"
-                  className="feature-img"
-                  width={1080}
-                  height={720}
-                  loading="lazy"
-                />
+                <Link href="/images/marketing/features/dashboard-overview.png" target="_blank">
+                  <Image
+                    src="/images/marketing/features/dashboard-overview.png"
+                    alt="現金・オンライン決済の一元管理ダッシュボード"
+                    className="feature-img"
+                    width={1080}
+                    height={720}
+                    loading="lazy"
+                  />
+                </Link>
               </div>
             </div>
           </div>
@@ -276,9 +272,9 @@ export default function LandingPage(): JSX.Element {
             <div className="feature-content">
               <div className="feature-text">
                 <span className="feature-label">自動リマインド</span>
-                <h3 className="feature-title">未回答・未払いにだけ、自動でやさしく催促。</h3>
+                <h3 className="feature-title">未定・未払いにだけ、自動でリマインド。</h3>
                 <p className="feature-description">
-                  締切前に自動通知。主催者はもう個別に追いかける必要がありません。
+                  締切前に自動でリマインド。面倒な催促はもう必要ありません。
                 </p>
               </div>
               <div className="feature-image">
@@ -310,7 +306,7 @@ export default function LandingPage(): JSX.Element {
                 loading="lazy"
               />
               <h3 className="use-case-title">大学・社会人サークル</h3>
-              <p className="use-case-text">合宿、BBQ、打ち上げ、参加費の徴収に。</p>
+              <p className="use-case-text">合宿、BBQ、打ち上げ、会費の徴収に。</p>
             </div>
             <div className="use-case-card">
               <Image
@@ -322,7 +318,7 @@ export default function LandingPage(): JSX.Element {
                 loading="lazy"
               />
               <h3 className="use-case-title">PTA・町内会</h3>
-              <p className="use-case-text">バザー/運動会/防災訓練の準備費や参加費に。</p>
+              <p className="use-case-text">バザー/運動会/イベントの準備費や参加費に。</p>
             </div>
             <div className="use-case-card">
               <Image
@@ -336,40 +332,25 @@ export default function LandingPage(): JSX.Element {
               <h3 className="use-case-title">スポーツチーム</h3>
               <p className="use-case-text">練習費・遠征費の集金、出欠管理に。</p>
             </div>
-            <div className="use-case-card">
-              <Image
-                src="/images/marketing/use-cases/company-events.png"
-                alt="社内イベント"
-                className="use-case-img"
-                width={200}
-                height={200}
-                loading="lazy"
-              />
-              <h3 className="use-case-title">社内イベント</h3>
-              <p className="use-case-text">懇親会や部活動の会費管理に。</p>
-            </div>
           </div>
         </div>
       </section>
 
       <section className="pricing" id="pricing">
         <div className="container">
-          <h2 className="section-title">まずは無料でシンプルに始められます</h2>
+          <h2 className="section-title">まずは無料でシンプルに利用できます</h2>
           <div className="pricing-card">
-            <div className="pricing-item">
-              <span className="pricing-label">初期費用</span>
-              <span className="pricing-value">0円</span>
-            </div>
-            <div className="pricing-item">
-              <span className="pricing-label">月額費用</span>
-              <span className="pricing-value">0円</span>
+            <div className="campaign-badge">
+              <span className="campaign-badge-text">リリース記念</span>
             </div>
             <div className="pricing-item highlight">
               <span className="pricing-label">プラットフォーム手数料</span>
-              <span className="pricing-value accent">期間限定 0円</span>
+              <span className="pricing-value accent">無料</span>
             </div>
             <p className="pricing-note">
-              ※オンライン決済をご利用の場合のみ、決済代行会社の手数料（例: 3.6%）が発生します。
+              ※終了時期未定
+              <br />
+              ※オンライン決済の場合のみ、決済代行会社の手数料（3.6%）が発生します。
             </p>
           </div>
         </div>
@@ -403,18 +384,11 @@ export default function LandingPage(): JSX.Element {
 
       <section className="closing" id="closing" ref={closingRef}>
         <div className="container">
-          <h2 className="closing-title">
-            もう集金に追われない。
-            <br />
-            準備に集中して、イベントをもっと楽しもう。
-          </h2>
+          <h2 className="closing-title">集金のストレスから解放されましょう!</h2>
           <div className="closing-cta">
             <button className="btn btn-primary btn-large closing-main-cta" onClick={handleSignUp}>
               無料でイベントを作成
             </button>
-            <p className="micro-copy">
-              メールアドレスのみ・30秒で完了。クレジットカード登録は不要です。
-            </p>
           </div>
         </div>
       </section>
