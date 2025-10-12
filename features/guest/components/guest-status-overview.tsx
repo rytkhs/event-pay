@@ -175,7 +175,7 @@ export function GuestStatusOverview({
               )}
             </Button>
           )}
-          <Button variant="secondary" onClick={scrollToTarget}>
+          <Button variant="outline" onClick={scrollToTarget}>
             <Ticket className="h-4 w-4 mr-2" /> 参加状況を変更
           </Button>
         </div>

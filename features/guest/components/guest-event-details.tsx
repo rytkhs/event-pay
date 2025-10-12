@@ -21,10 +21,7 @@ export function GuestEventDetails({ attendance }: GuestEventDetailsProps) {
   return (
     <Card className="p-6">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-lg font-semibold text-gray-900 flex items-center">
-          <div className="text-xl mr-2">📋</div>
-          イベント詳細
-        </h2>
+        <h2 className="text-lg font-semibold text-gray-900 flex items-center">イベント詳細</h2>
         <button
           onClick={() => setIsExpanded(!isExpanded)}
           className="flex items-center text-sm text-blue-600 hover:text-blue-700 transition-colors"

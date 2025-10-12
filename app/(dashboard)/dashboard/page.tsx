@@ -125,7 +125,7 @@ export default async function DashboardPage() {
         </div>
         {/* 統計カードセクション（4つのカード） */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6 sm:mb-8">
-          <Card className="hover:shadow-md transition-shadow border-0 shadow-sm">
+          <Card className="border-0 shadow-sm">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 sm:pb-3">
               <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground leading-tight">
                 開催予定イベント
@@ -140,7 +140,7 @@ export default async function DashboardPage() {
             </CardContent>
           </Card>
 
-          <Card className="hover:shadow-md transition-shadow border-0 shadow-sm">
+          <Card className="border-0 shadow-sm">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 sm:pb-3">
               <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground leading-tight">
                 参加予定者
@@ -155,7 +155,7 @@ export default async function DashboardPage() {
             </CardContent>
           </Card>
 
-          <Card className="hover:shadow-md transition-shadow border-0 shadow-sm">
+          <Card className="border-0 shadow-sm">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 sm:pb-3">
               <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground leading-tight">
                 未決済の参加費
@@ -170,7 +170,7 @@ export default async function DashboardPage() {
             </CardContent>
           </Card>
 
-          <Card className="hover:shadow-md transition-shadow border-0 shadow-sm">
+          <Card className="border-0 shadow-sm">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 sm:pb-3">
               <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground leading-tight">
                 アカウント残高

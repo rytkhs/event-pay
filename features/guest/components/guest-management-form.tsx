@@ -239,7 +239,6 @@ export function GuestManagementForm({ attendance, canModify }: GuestManagementFo
                   id="attendance-form-title"
                   className="text-lg font-semibold text-gray-900 flex items-center mb-6"
                 >
-                  <div className="text-xl mr-2">⚙️</div>
                   参加管理
                 </h2>
               </div>

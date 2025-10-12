@@ -55,12 +55,12 @@ export default function RegisterPage() {
                     name="name"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>ユーザーネーム・団体名など</FormLabel>
+                        <FormLabel>ユーザーネーム</FormLabel>
                         <FormControl>
                           <Input
                             {...field}
                             type="text"
-                            placeholder="ユーザーネーム・団体名などを入力"
+                            placeholder="ユーザーネームを入力"
                             disabled={isPending}
                             autoComplete="name"
                             required
