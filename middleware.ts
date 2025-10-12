@@ -93,6 +93,6 @@ export async function middleware(request: NextRequest) {
 export const config = {
   matcher: [
     // APIや静的アセット等は対象外
-    "/((?!api|_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml|manifest.webmanifest).*)",
+    "/((?!api|_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml|manifest.webmanifest|images).*)",
   ],
 };
