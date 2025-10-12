@@ -69,6 +69,39 @@ export type Database = {
           },
         ];
       };
+      contacts: {
+        Row: {
+          created_at: string;
+          email: string;
+          fingerprint_hash: string;
+          id: string;
+          ip_hash: string | null;
+          message: string;
+          name: string;
+          user_agent: string | null;
+        };
+        Insert: {
+          created_at?: string;
+          email: string;
+          fingerprint_hash: string;
+          id?: string;
+          ip_hash?: string | null;
+          message: string;
+          name: string;
+          user_agent?: string | null;
+        };
+        Update: {
+          created_at?: string;
+          email?: string;
+          fingerprint_hash?: string;
+          id?: string;
+          ip_hash?: string | null;
+          message?: string;
+          name?: string;
+          user_agent?: string | null;
+        };
+        Relationships: [];
+      };
       events: {
         Row: {
           allow_payment_after_deadline: boolean;

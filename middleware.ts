@@ -26,6 +26,9 @@ function isPublicPath(pathname: string): boolean {
     "/verify-otp",
     "/verify-email",
     "/confirm",
+    "/contact",
+    "/terms",
+    "/privacy",
   ];
   if (publicExact.includes(pathname)) return true;
   const publicPrefixes = ["/guest/", "/invite/", "/auth/reset-password/"];

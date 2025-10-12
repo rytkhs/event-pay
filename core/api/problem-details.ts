@@ -457,3 +457,90 @@ export function createQueryValidationError(
     message,
   };
 }
+
+/**
+ * Server Actions用のProblem Detailsレスポンスヘルパー
+ */
+export const problem = {
+  /**
+   * バリデーションエラー (422)
+   */
+  validationError(options: { detail?: string; errors?: ValidationError[] } = {}) {
+    return createProblem("VALIDATION_ERROR", {
+      status: 422,
+      detail: options.detail,
+      errors: options.errors,
+      retryable: false,
+    });
+  },
+
+  /**
+   * リソース競合エラー (409)
+   */
+  resourceConflict(options: { detail?: string } = {}) {
+    return createProblem("RESOURCE_CONFLICT", {
+      status: 409,
+      detail: options.detail,
+      retryable: true,
+    });
+  },
+
+  /**
+   * レート制限エラー (429)
+   */
+  rateLimited(options: { retryAfterSec?: number } = {}) {
+    const problem = createProblem("RATE_LIMITED", {
+      status: 429,
+      retryable: true,
+    });
+    // retryAfterSecを追加フィールドとして返却（ヘッダー用）
+    return {
+      ...problem,
+      retryAfterSec: options.retryAfterSec,
+    };
+  },
+
+  /**
+   * 内部エラー (500)
+   */
+  internalError(options: { detail?: string } = {}) {
+    return createProblem("INTERNAL_ERROR", {
+      status: 500,
+      detail: options.detail,
+      retryable: true,
+    });
+  },
+
+  /**
+   * 認証エラー (401)
+   */
+  unauthorized(options: { detail?: string } = {}) {
+    return createProblem("UNAUTHORIZED", {
+      status: 401,
+      detail: options.detail,
+      retryable: false,
+    });
+  },
+
+  /**
+   * 認可エラー (403)
+   */
+  forbidden(options: { detail?: string } = {}) {
+    return createProblem("FORBIDDEN", {
+      status: 403,
+      detail: options.detail,
+      retryable: false,
+    });
+  },
+
+  /**
+   * Not Found (404)
+   */
+  notFound(options: { detail?: string } = {}) {
+    return createProblem("NOT_FOUND", {
+      status: 404,
+      detail: options.detail,
+      retryable: false,
+    });
+  },
+};

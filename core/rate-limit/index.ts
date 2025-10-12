@@ -263,6 +263,12 @@ export const POLICIES: Record<string, RateLimitPolicy> = {
     window: "5 m",
     blockMs: 15 * 60 * 1000,
   },
+  "contact.submit": {
+    scope: "contact.submit",
+    limit: 5,
+    window: "1 m",
+    blockMs: 5 * 60 * 1000,
+  },
 };
 
 export * from "./types";
