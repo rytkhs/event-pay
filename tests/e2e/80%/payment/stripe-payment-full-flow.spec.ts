@@ -246,7 +246,7 @@ test.describe("Stripe決済 完全フロー", () => {
 
     // === 3. ゲストとして参加表明 ===
     // 招待リンクにアクセス
-    await page.goto(inviteUrl);
+    await page.goto(inviteUrl, { timeout: 60000 });
 
     // イベント詳細が表示されるまで待機
     await page.waitForTimeout(1000);
@@ -273,7 +273,7 @@ test.describe("Stripe決済 完全フロー", () => {
     await page.getByRole("button", { name: "参加申し込みを完了する" }).click();
 
     // 確認ページへの遷移を待つ
-    await page.waitForTimeout(2000);
+    await page.waitForTimeout(5000);
 
     console.log("✓ 参加表明完了");
 
@@ -437,15 +437,5 @@ test.describe("Stripe決済 完全フロー", () => {
 
     // テスト成功
     console.log("🎉 Stripe決済完全フローテスト 成功（Stripe CLI統合版）");
-  });
-
-  test("異常系: 決済キャンセル", async ({ page: _page }) => {
-    // TODO: 決済キャンセルフローのテスト
-    test.skip();
-  });
-
-  test("異常系: カード決済失敗", async ({ page: _page }) => {
-    // TODO: カード決済失敗フローのテスト（STRIPE_TEST_CARDS.DECLINED使用）
-    test.skip();
   });
 });

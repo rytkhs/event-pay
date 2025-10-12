@@ -5,6 +5,7 @@
 import crypto from "crypto";
 
 import { createClient } from "@supabase/supabase-js";
+import type { User as SupabaseAuthUser } from "@supabase/supabase-js";
 
 import { generateGuestToken } from "@core/utils/guest-token";
 import { generateInviteToken } from "@core/utils/invite-token";
@@ -35,6 +36,20 @@ let testUserId: string | null = null;
 
 export const FIXED_TIME = new Date("2026-01-01T12:00:00.000Z");
 
+async function findAuthUserByEmail(email: string): Promise<SupabaseAuthUser | null> {
+  const { data, error } = await supabaseAdmin.auth.admin.listUsers({
+    page: 1,
+    perPage: 200,
+  });
+
+  if (error) {
+    console.warn("Failed to list auth users while searching by email:", error);
+    return null;
+  }
+
+  return data.users.find((user) => user.email === email) ?? null;
+}
+
 /**
  * テストデータ作成・管理クラス
  */
@@ -44,26 +59,56 @@ export class TestDataManager {
    */
   static async createUserWithConnect() {
     const now = new Date();
+    const testEmail = "test-e2e@example.com";
+    const testPassword = "test-password-123";
+    const displayName = "E2Eテストユーザー";
 
-    // 1. まずSupabase Authでユーザー作成
-    const { data: authUser, error: authError } = await supabaseAdmin.auth.admin.createUser({
-      email: "test-e2e@example.com",
-      password: "test-password-123",
-      user_metadata: { name: "E2Eテストユーザー" },
-      email_confirm: true,
-    });
+    let authUser: SupabaseAuthUser | null = await findAuthUserByEmail(testEmail);
 
-    if (authError || !authUser.user) {
-      throw new Error(`Auth user creation failed: ${authError?.message}`);
+    if (!authUser) {
+      const { data, error: authError } = await supabaseAdmin.auth.admin.createUser({
+        email: testEmail,
+        password: testPassword,
+        user_metadata: { name: displayName, test_user: true },
+        email_confirm: true,
+      });
+
+      if (authError) {
+        if (authError.message?.includes("already been registered")) {
+          authUser = await findAuthUserByEmail(testEmail);
+        } else {
+          throw new Error(`Auth user creation failed: ${authError.message}`);
+        }
+      } else {
+        authUser = data.user ?? null;
+      }
+    }
+
+    if (!authUser) {
+      throw new Error("Auth user creation failed: user could not be retrieved");
     }
 
     // テストユーザーIDを保存
-    testUserId = authUser.user.id;
+    testUserId = authUser.id;
+
+    const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(authUser.id, {
+      email_confirm: true,
+      user_metadata: {
+        ...authUser.user_metadata,
+        name: displayName,
+        test_user: true,
+        updated_at: now.toISOString(),
+      },
+    });
+
+    if (updateError) {
+      throw new Error(`Auth user update failed: ${updateError.message}`);
+    }
 
     // 2. users テーブルにレコード作成
     const userData = {
-      id: authUser.user.id,
-      name: "E2Eテストユーザー",
+      id: authUser.id,
+      name: displayName,
       created_at: now.toISOString(), // 現在時刻を使用（DB制約を満たすため）
       updated_at: now.toISOString(),
     };
@@ -78,7 +123,7 @@ export class TestDataManager {
 
     // 3. Connect アカウント作成
     const connectData = {
-      user_id: authUser.user.id,
+      user_id: authUser.id,
       stripe_account_id: TEST_IDS.CONNECT_ACCOUNT_ID,
       payouts_enabled: true,
       charges_enabled: true,

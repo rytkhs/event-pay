@@ -1,3 +1,5 @@
+import { randomBytes } from "node:crypto";
+
 import { SecureSupabaseClientFactory } from "@core/security/secure-client-factory.impl";
 import { AdminReason } from "@core/security/secure-client-factory.types";
 import { generateInviteToken } from "@core/utils/invite-token";
@@ -133,6 +135,11 @@ export async function createTestEvent(
   };
 }
 
+function generateTestGuestToken(): string {
+  const randomPart = randomBytes(24).toString("base64url");
+  return `gst_${randomPart.slice(0, 32)}`;
+}
+
 /**
  * 複数の参加者が既に登録されているテストイベントを作成する
  *
@@ -175,7 +182,7 @@ export async function createTestEventWithParticipants(
       nickname: `テスト参加者${i + 1}`,
       email: `test-participant-${uniqueSuffix}@example.com`,
       status: "attending" as const,
-      guest_token: `guest_token_${uniqueSuffix}`,
+      guest_token: generateTestGuestToken(),
     };
   });
 
