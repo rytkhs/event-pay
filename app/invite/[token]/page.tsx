@@ -146,6 +146,22 @@ export default async function InvitePage({ params }: InvitePageProps) {
             inviteToken={params.token}
             initialRegistrationData={initialRegistrationData}
           />
+          {/* 主催者の特商法リンク（到達容易性） */}
+          {(() => {
+            const organizerId = (validationResult.event as any)?.created_by as string | undefined;
+            if (!organizerId) return null;
+            return (
+              <div className="mt-8 text-center">
+                <a
+                  href={`/tokushoho/${organizerId}`}
+                  className="text-xs underline text-muted-foreground hover:no-underline"
+                  aria-label="主催者の特定商取引法に基づく表記を確認する"
+                >
+                  特定商取引法に基づく表記（主催者）
+                </a>
+              </div>
+            );
+          })()}
         </main>
       </div>
     );

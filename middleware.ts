@@ -29,9 +29,10 @@ function isPublicPath(pathname: string): boolean {
     "/contact",
     "/terms",
     "/privacy",
+    "/tokushoho",
   ];
   if (publicExact.includes(pathname)) return true;
-  const publicPrefixes = ["/guest/", "/invite/", "/auth/reset-password/"];
+  const publicPrefixes = ["/guest/", "/invite/", "/auth/reset-password/", "/tokushoho/"];
   return publicPrefixes.some((p) => pathname.startsWith(p));
 }
 

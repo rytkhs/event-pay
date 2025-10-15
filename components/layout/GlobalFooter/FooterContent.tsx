@@ -14,24 +14,22 @@ export function FooterContent({ variant, className }: FooterContentProps): JSX.E
   const displaySettings = footerConfig.displaySettings[variant];
 
   const containerStyles = cn(
-    "flex flex-col gap-4 items-center",
-    "md:grid md:grid-cols-3 md:items-center md:gap-4",
+    "flex flex-col gap-1 items-center",
+    "md:grid md:grid-cols-2 md:items-center md:gap-2",
     className
   );
 
   return (
     <div className={containerStyles}>
-      {/* ブランディング（左） */}
-      {displaySettings.showBranding && (
-        <FooterBranding variant={variant} className="justify-self-start" />
-      )}
-
-      {/* コピーライト（中央） */}
-      {displaySettings.showCopyright && (
-        <div className="order-last md:order-none justify-self-center">
-          <p className="text-sm text-muted-foreground text-center">
-            {footerConfig.brand.copyright}
-          </p>
+      {/* ブランディング + コピーライト（左） */}
+      {(displaySettings.showBranding || displaySettings.showCopyright) && (
+        <div className="flex flex-col items-center gap-2 order-last md:order-none md:items-start justify-self-start">
+          {displaySettings.showBranding && <FooterBranding variant={variant} />}
+          {displaySettings.showCopyright && (
+            <p className="text-sm text-muted-foreground text-center md:text-left">
+              {footerConfig.brand.copyright}
+            </p>
+          )}
         </div>
       )}
 

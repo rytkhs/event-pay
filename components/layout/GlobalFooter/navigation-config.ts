@@ -15,6 +15,11 @@ export const footerNavigationLinks: FooterLink[] = [
     ariaLabel: "みんなの集金のプライバシーポリシーを確認する",
   },
   {
+    label: "特定商取引法に基づく表記",
+    href: "/tokushoho/platform",
+    ariaLabel: "みんなの集金プラットフォームの特定商取引法に基づく表記",
+  },
+  {
     label: "お問い合わせ",
     href: "/contact",
     ariaLabel: "みんなの集金へのお問い合わせフォーム",

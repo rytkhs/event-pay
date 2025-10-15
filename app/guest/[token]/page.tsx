@@ -111,9 +111,20 @@ export default async function GuestPage({ params, searchParams }: GuestPageProps
 
           {/* フッター情報 */}
           <footer className="mt-8 sm:mt-12 text-center" role="contentinfo">
-            <div className="text-xs text-muted-foreground leading-relaxed space-y-1 max-w-2xl mx-auto">
+            <div className="text-xs text-muted-foreground leading-relaxed space-y-2 max-w-2xl mx-auto">
               <p>このページは参加者専用の管理ページです。</p>
               <p>ご不明点がある場合は、主催者にお問い合わせください。</p>
+              {attendance?.event?.created_by ? (
+                <p>
+                  <a
+                    href={`/tokushoho/${attendance.event.created_by}`}
+                    className="underline hover:no-underline"
+                    aria-label="主催者の特定商取引法に基づく表記を確認する"
+                  >
+                    特定商取引法に基づく表記（主催者）
+                  </a>
+                </p>
+              ) : null}
             </div>
           </footer>
         </main>

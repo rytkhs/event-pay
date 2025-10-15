@@ -21,9 +21,10 @@ export function FooterLinks({
   const linkBaseStyles = cn(
     "text-muted-foreground hover:text-foreground hover:text-primary",
     "transition-colors duration-200",
-    "text-sm md:text-base",
+    "text-sm ",
     "focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background",
-    "rounded-sm px-1 py-0.5"
+    "rounded-sm px-1 py-0.5",
+    "md:whitespace-nowrap"
   );
 
   const containerStyles = cn("flex flex-col items-center gap-2", "md:flex-row md:gap-6", className);
