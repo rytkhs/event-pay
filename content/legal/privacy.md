@@ -46,18 +46,19 @@ lastUpdated: 2025-10-14
 
 - 事業者はGoogle Analytics 4（GA4）を用いて利用状況を計測することがあります。GoogleはCookie等を利用して情報を収集し、サイトの利用状況の分析やレポートの作成を行います。
 - 事業者はGAの広告機能を有効化していません。収集情報の詳細や取り扱いはGoogleのプライバシーポリシーをご参照ください。
-- オプトアウト: ユーザーはGoogle提供のブラウザアドオン等により計測を無効化できます(https://tools.google.com/dlpage/gaoptout)。
+- オプトアウト: ユーザーはGoogle提供のブラウザアドオン等により計測を無効化できます。
 
 #### 7. 第三者提供・委託・外国にある第三者
 
 - 事業者は、以下の業務委託先・連携先に対し、利用目的の達成に必要な範囲で個人情報を提供・共有する場合があります。提供先の所在国は米国等を含む場合があり、APPIに基づき、当該第三者の個人情報保護体制に関する情報は各社の公表資料をご確認ください。
   - Stripe, Inc.（決済処理・KYC/審査）: https://stripe.com/privacy
   - Supabase（BaaS/データベース/RLS）: https://supabase.com/privacy
-  - Vercel, Inc.（ホスティング/CDN）: https://vercel.com/legal/privacy-policy
-  - Upstash, Inc.（レート制限/キーバリューストア）: https://upstash.com/legal/privacy
+  - Cloudflare, Inc.（ホスティング/CDN）: https://www.cloudflare.com/privacypolicy
+  - Upstash, Inc.（レート制限/キーバリューストア）: https://upstash.com/trust/privacy.pdf
   - Google LLC（解析）: https://policies.google.com/privacy
 - 事業者はクレジットカード情報の処理をStripeに委託しており、カード情報は自ら保有しません。
 - 法令に基づく提供、公的機関からの照会、権利の保護のために必要な提供を行うことがあります。
+- 特定商取引法に基づく開示：主催者の表示対象情報を、請求者に提供する場合（法令に基づく提供）。提供に際しては請求者の正当性を確認し、必要最小限の範囲で開示します。
 - 共同利用: 現時点で共同利用は行っていません。
 
 #### 8. 安全管理措置
