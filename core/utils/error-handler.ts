@@ -440,14 +440,14 @@ export async function handleApiError(response: Response): Promise<ErrorDetails> 
     const contentType = response.headers.get("content-type") || "";
 
     if (contentType.includes("application/problem+json")) {
-      const problem = await response.json();
+      const problem = (await response.json()) as Record<string, unknown>;
       const code = typeof problem?.code === "string" ? problem.code : "UNKNOWN_ERROR";
       return getErrorDetails(code);
     }
 
     // 非 Problem Details の JSON でも code や message を尊重
     if (contentType.includes("application/json")) {
-      const body = await response.json();
+      const body = (await response.json()) as Record<string, unknown>;
       const code = typeof body?.code === "string" ? body.code : undefined;
       if (code) return getErrorDetails(code);
     }

@@ -205,7 +205,7 @@ class ApiClient {
           lastError = ApiError.fromProblemDetails(problem);
         } else if (contentType?.includes("application/json")) {
           // 非 Problem Details の JSON エラーは汎用エラーとして扱う
-          const body = await response.json();
+          const body = (await response.json()) as Record<string, unknown>;
           const code = typeof body.code === "string" ? body.code : "HTTP_ERROR";
           const detail = typeof body.detail === "string" ? body.detail : undefined;
           const message =
