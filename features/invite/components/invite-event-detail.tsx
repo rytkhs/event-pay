@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState, useEffect } from "react";
 
 // アイコンインポート
 import {
@@ -15,6 +15,7 @@ import {
   AlertCircle,
   Calendar as CalendarIcon,
   Star,
+  Loader2,
 } from "lucide-react";
 
 import { PAYMENT_METHOD_LABELS } from "@core/constants/payment-methods";
@@ -24,6 +25,7 @@ import { sanitizeEventDescription, sanitizeForEventPay } from "@core/utils/sanit
 import { formatUtcToJstByType } from "@core/utils/timezone";
 import { type ParticipationFormData } from "@core/validation/participation";
 
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -39,13 +41,32 @@ import { ParticipationForm } from "./participation-form";
 interface InviteEventDetailProps {
   event: EventDetail;
   inviteToken: string;
+  initialRegistrationData?: RegisterParticipationData | null;
 }
 
-export function InviteEventDetail({ event, inviteToken }: InviteEventDetailProps): JSX.Element {
+export function InviteEventDetail({
+  event,
+  inviteToken,
+  initialRegistrationData,
+}: InviteEventDetailProps): JSX.Element {
   const [showForm, setShowForm] = useState(false);
-  const [registrationData, setRegistrationData] = useState<RegisterParticipationData | null>(null);
+  const [registrationData, setRegistrationData] = useState<RegisterParticipationData | null>(
+    initialRegistrationData ?? null
+  );
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const formRef = useRef<HTMLDivElement>(null);
+
+  // 申し込み完了時に上部へスクロール
+  useEffect(() => {
+    if (registrationData && !initialRegistrationData) {
+      // ページの上部にスムーススクロール
+      window.scrollTo({
+        top: 0,
+        behavior: "smooth",
+      });
+    }
+  }, [registrationData, initialRegistrationData]);
 
   const formatCurrency = (amount: number): string => {
     return amount === 0 ? "無料" : `${amount.toLocaleString()}円`;
@@ -61,7 +82,6 @@ export function InviteEventDetail({ event, inviteToken }: InviteEventDetailProps
         return "default";
       case "ongoing":
         return "secondary";
-      case "completed":
       case "cancelled":
         return "destructive";
       default:
@@ -75,8 +95,6 @@ export function InviteEventDetail({ event, inviteToken }: InviteEventDetailProps
         return <CheckCircle className="h-4 w-4" />;
       case "ongoing":
         return <Star className="h-4 w-4" />;
-      case "completed":
-        return <CheckCircle className="h-4 w-4" />;
       case "cancelled":
         return <XCircle className="h-4 w-4" />;
       default:
@@ -131,27 +149,29 @@ export function InviteEventDetail({ event, inviteToken }: InviteEventDetailProps
 
   // 確認ページが表示される場合
   if (registrationData) {
-    return <ParticipationConfirmation registrationData={registrationData} event={event} />;
+    return (
+      <ParticipationConfirmation
+        registrationData={registrationData}
+        event={event}
+        inviteToken={inviteToken}
+      />
+    );
   }
 
   return (
     <div className="space-y-4 sm:space-y-6">
       {/* エラーメッセージ */}
       {error && (
-        <Card className="p-4 sm:p-5 bg-red-50 border-red-200 shadow-md">
-          <div className="flex items-start space-x-3">
-            <AlertCircle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
-            <div>
-              <h4 className="text-sm font-medium text-red-800 mb-1">エラーが発生しました</h4>
-              <p className="text-sm text-red-700">{error}</p>
-            </div>
-          </div>
-        </Card>
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>エラーが発生しました</AlertTitle>
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
       )}
 
       {/* イベントタイトル＆ステータスカード */}
-      <Card className="overflow-hidden shadow-lg">
-        <div className="bg-gradient-to-r from-blue-600 via-blue-700 to-indigo-700 px-6 py-8 text-white">
+      <Card className="overflow-hidden shadow-sm">
+        <div className="bg-primary px-6 py-8 text-primary-foreground">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div className="flex-1">
               <h2 className="text-2xl sm:text-3xl font-bold break-words mb-2">
@@ -164,15 +184,6 @@ export function InviteEventDetail({ event, inviteToken }: InviteEventDetailProps
                 </Badge>
               </div>
             </div>
-            {event.fee > 0 && (
-              <div className="bg-white/10 backdrop-blur-sm rounded-lg px-4 py-3 text-center">
-                <div className="flex items-center justify-center gap-1 text-sm text-blue-100">
-                  <DollarSign className="h-4 w-4" />
-                  参加費
-                </div>
-                <div className="text-2xl font-bold">{formatCurrency(event.fee)}</div>
-              </div>
-            )}
           </div>
         </div>
       </Card>
@@ -180,45 +191,45 @@ export function InviteEventDetail({ event, inviteToken }: InviteEventDetailProps
       {/* イベント基本情報カード */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* 開催情報 */}
-        <Card className="shadow-md hover:shadow-lg transition-shadow duration-200">
+        <Card className="shadow-sm hover:shadow-md transition-shadow duration-200">
           <CardHeader className="pb-4">
             <CardTitle className="text-lg flex items-center gap-2">
-              <Calendar className="h-5 w-5 text-blue-600" />
+              <Calendar className="h-5 w-5 text-primary" />
               開催情報
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex items-start gap-3">
-              <CalendarIcon className="h-5 w-5 text-gray-500 mt-0.5 flex-shrink-0" />
+              <CalendarIcon className="h-5 w-5 text-muted-foreground mt-0.5 flex-shrink-0" />
               <div className="flex-1">
-                <div className="text-sm text-gray-600">開催日時</div>
-                <div className="font-medium text-gray-900 break-words">
+                <div className="text-sm text-muted-foreground">開催日時</div>
+                <div className="font-medium text-foreground break-words">
                   {formatUtcToJstByType(event.date, "japanese")}
                 </div>
               </div>
             </div>
 
             <div className="flex items-start gap-3">
-              <MapPin className="h-5 w-5 text-gray-500 mt-0.5 flex-shrink-0" />
+              <MapPin className="h-5 w-5 text-muted-foreground mt-0.5 flex-shrink-0" />
               <div className="flex-1">
-                <div className="text-sm text-gray-600">開催場所</div>
-                <div className="font-medium text-gray-900 break-words">
+                <div className="text-sm text-muted-foreground">開催場所</div>
+                <div className="font-medium text-foreground break-words">
                   {sanitizeForEventPay(event.location ?? "未定")}
                 </div>
               </div>
             </div>
 
             <div className="flex items-start gap-3">
-              <Users className="h-5 w-5 text-gray-500 mt-0.5 flex-shrink-0" />
+              <Users className="h-5 w-5 text-muted-foreground mt-0.5 flex-shrink-0" />
               <div className="flex-1">
-                <div className="text-sm text-gray-600">定員</div>
-                <div className="font-medium text-gray-900">
+                <div className="text-sm text-muted-foreground">定員</div>
+                <div className="font-medium text-foreground">
                   {event.capacity === null ? (
-                    <span className="text-green-600">制限なし</span>
+                    <span className="text-success">制限なし</span>
                   ) : event.capacity === 0 ? (
-                    <span className="text-red-600">募集停止</span>
+                    <span className="text-destructive">募集停止</span>
                   ) : event.capacity < 0 ? (
-                    <span className="text-red-600">無効な定員</span>
+                    <span className="text-destructive">無効な定員</span>
                   ) : (
                     <div className="flex items-center gap-2">
                       <span>
@@ -242,21 +253,36 @@ export function InviteEventDetail({ event, inviteToken }: InviteEventDetailProps
         </Card>
 
         {/* 申込・決済情報 */}
-        <Card className="shadow-md hover:shadow-lg transition-shadow duration-200">
+        <Card className="shadow-sm hover:shadow-md transition-shadow duration-200">
           <CardHeader className="pb-4">
             <CardTitle className="text-lg flex items-center gap-2">
-              <Clock className="h-5 w-5 text-blue-600" />
+              <Clock className="h-5 w-5 text-primary" />
               申込・決済情報
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
+            {/* 参加費表示 */}
+            <div className="flex items-start gap-3">
+              <DollarSign
+                className={`h-5 w-5 mt-0.5 flex-shrink-0 ${event.fee === 0 ? "text-success" : "text-muted-foreground"}`}
+              />
+              <div className="flex-1">
+                <div className="text-sm text-muted-foreground">参加費</div>
+                <div
+                  className={`font-bold text-lg ${event.fee === 0 ? "text-success" : "text-foreground"}`}
+                >
+                  {formatCurrency(event.fee)}
+                </div>
+              </div>
+            </div>
+
             {event.registration_deadline && (
               <div className="flex items-start gap-3">
-                <Clock className="h-5 w-5 text-gray-500 mt-0.5 flex-shrink-0" />
+                <Clock className="h-5 w-5 text-muted-foreground mt-0.5 flex-shrink-0" />
                 <div className="flex-1">
-                  <div className="text-sm text-gray-600">申込締切</div>
+                  <div className="text-sm text-muted-foreground">申込締切</div>
                   <div className="flex items-center gap-2">
-                    <span className="font-medium text-gray-900 break-words">
+                    <span className="font-medium text-foreground break-words">
                       {formatUtcToJstByType(event.registration_deadline, "japanese")}
                     </span>
                     {isRegistrationDeadlinePassed && (
@@ -271,10 +297,10 @@ export function InviteEventDetail({ event, inviteToken }: InviteEventDetailProps
 
             {event.payment_deadline && (
               <div className="flex items-start gap-3">
-                <CreditCard className="h-5 w-5 text-gray-500 mt-0.5 flex-shrink-0" />
+                <CreditCard className="h-5 w-5 text-muted-foreground mt-0.5 flex-shrink-0" />
                 <div className="flex-1">
-                  <div className="text-sm text-gray-600">オンライン決済締切</div>
-                  <div className="font-medium text-gray-900 break-words">
+                  <div className="text-sm text-muted-foreground">オンライン決済締切</div>
+                  <div className="font-medium text-foreground break-words">
                     {formatUtcToJstByType(event.payment_deadline, "japanese")}
                   </div>
                 </div>
@@ -283,9 +309,9 @@ export function InviteEventDetail({ event, inviteToken }: InviteEventDetailProps
 
             {event.fee > 0 && (
               <div className="flex items-start gap-3">
-                <CreditCard className="h-5 w-5 text-gray-500 mt-0.5 flex-shrink-0" />
+                <CreditCard className="h-5 w-5 text-muted-foreground mt-0.5 flex-shrink-0" />
                 <div className="flex-1">
-                  <div className="text-sm text-gray-600">決済方法</div>
+                  <div className="text-sm text-muted-foreground">決済方法</div>
                   <div className="flex flex-wrap gap-1 mt-1">
                     {event.payment_methods.map((method) => (
                       <Badge key={method} variant="outline" className="text-xs">
@@ -296,28 +322,18 @@ export function InviteEventDetail({ event, inviteToken }: InviteEventDetailProps
                 </div>
               </div>
             )}
-
-            {event.fee === 0 && (
-              <div className="flex items-start gap-3">
-                <CheckCircle className="h-5 w-5 text-green-500 mt-0.5 flex-shrink-0" />
-                <div className="flex-1">
-                  <div className="text-sm text-gray-600">参加費</div>
-                  <div className="font-medium text-green-600">無料</div>
-                </div>
-              </div>
-            )}
           </CardContent>
         </Card>
       </div>
 
       {/* イベント詳細説明 */}
       {event.description && (
-        <Card className="shadow-md">
+        <Card className="shadow-sm">
           <CardHeader>
             <CardTitle className="text-lg">イベント詳細</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="prose prose-sm max-w-none text-gray-700 whitespace-pre-wrap break-words">
+            <div className="prose prose-sm max-w-none text-muted-foreground whitespace-pre-wrap break-words">
               {sanitizeEventDescription(event.description)}
             </div>
           </CardContent>
@@ -325,24 +341,35 @@ export function InviteEventDetail({ event, inviteToken }: InviteEventDetailProps
       )}
 
       {/* 参加申し込みCTAセクション */}
-      <Card className="border-2 border-blue-100 bg-gradient-to-br from-blue-50 to-indigo-50 shadow-lg">
+      <Card className="border-2 border-primary/20 bg-primary/5 shadow-sm">
         <CardContent className="pt-6">
           <div className="text-center space-y-4">
             {canRegister ? (
               <>
                 <div className="space-y-2">
-                  <h3 className="text-xl font-bold text-gray-900">参加申し込み</h3>
-                  <p className="text-sm text-gray-600">下のボタンから参加申し込みを開始できます</p>
+                  <h3 className="text-xl font-bold text-foreground">参加申し込み</h3>
+                  <p className="text-sm text-muted-foreground">
+                    下のボタンから参加申し込みを開始できます
+                  </p>
                 </div>
                 <Button
-                  onClick={() => setShowForm(true)}
+                  onClick={() => {
+                    setShowForm(true);
+                    // フォーム表示後にスクロール
+                    setTimeout(() => {
+                      formRef.current?.scrollIntoView({
+                        behavior: "smooth",
+                        block: "start",
+                      });
+                    }, 100);
+                  }}
                   disabled={isSubmitting}
-                  className="w-full sm:w-auto bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-8 py-4 text-lg font-semibold shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 min-w-[200px]"
+                  className="w-full sm:w-auto bg-primary hover:bg-primary/90 text-primary-foreground px-8 py-4 text-lg font-semibold shadow-sm hover:shadow-md transform hover:scale-105 transition-all duration-200 min-w-[200px]"
                   size="lg"
                 >
                   {isSubmitting ? (
                     <div className="flex items-center gap-2">
-                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      <Loader2 className="h-4 w-4 animate-spin" />
                       処理中...
                     </div>
                   ) : (
@@ -352,18 +379,18 @@ export function InviteEventDetail({ event, inviteToken }: InviteEventDetailProps
                     </div>
                   )}
                 </Button>
-                <div className="text-xs text-gray-500">✓ 簡単な情報入力だけで申し込み完了</div>
+                <div className="text-xs text-muted-foreground">
+                  ✓ 簡単な情報入力だけで申し込み完了
+                </div>
               </>
             ) : (
               <>
-                <div className="space-y-2">
-                  <h3 className="text-xl font-bold text-gray-700">参加申し込み受付終了</h3>
-                  <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                    <div className="flex items-center justify-center gap-2 mb-3">
-                      <XCircle className="h-6 w-6 text-red-500" />
-                      <span className="font-medium text-red-800">申し込みできません</span>
-                    </div>
-                    <div className="text-sm text-red-700 space-y-1">
+                <div className="space-y-4">
+                  <h3 className="text-xl font-bold text-muted-foreground">参加申し込み受付終了</h3>
+                  <Alert variant="destructive" className="shadow-sm">
+                    <XCircle className="h-4 w-4" />
+                    <AlertTitle>申し込みできません</AlertTitle>
+                    <AlertDescription className="space-y-2 mt-2">
                       {isCapacityReached && (
                         <div className="flex items-center gap-2">
                           <Users className="h-4 w-4" />
@@ -382,8 +409,8 @@ export function InviteEventDetail({ event, inviteToken }: InviteEventDetailProps
                           <span>このイベントは申し込みを受け付けていません</span>
                         </div>
                       )}
-                    </div>
-                  </div>
+                    </AlertDescription>
+                  </Alert>
                 </div>
                 <Button
                   disabled
@@ -401,16 +428,18 @@ export function InviteEventDetail({ event, inviteToken }: InviteEventDetailProps
 
       {/* 参加申し込みフォーム */}
       {showForm && (
-        <ParticipationForm
-          event={event}
-          inviteToken={inviteToken}
-          onSubmit={handleParticipationSubmit}
-          onCancel={() => {
-            setShowForm(false);
-            setError(null);
-          }}
-          isSubmitting={isSubmitting}
-        />
+        <div ref={formRef} className="scroll-mt-4">
+          <ParticipationForm
+            event={event}
+            inviteToken={inviteToken}
+            onSubmit={handleParticipationSubmit}
+            onCancel={() => {
+              setShowForm(false);
+              setError(null);
+            }}
+            isSubmitting={isSubmitting}
+          />
+        </div>
       )}
     </div>
   );

@@ -280,7 +280,7 @@ export function PaymentStatusAlert({
           textColor: "text-orange-800",
           title: "決済がキャンセルされました",
           description:
-            "決済処理がキャンセルされました。参加費の決済を完了するには、ページ下部の再決済ボタンから決済をやり直してください。",
+            "決済処理がキャンセルされました。参加費の決済を完了するには、決済を完了するボタンからやり直してください。",
         };
       case "failed":
         return {
@@ -290,7 +290,7 @@ export function PaymentStatusAlert({
           textColor: "text-red-800",
           title: "決済に失敗しました",
           description:
-            "決済処理に失敗しました。カード情報を確認の上、ページ下部の再決済ボタンから決済をやり直してください。",
+            "決済処理に失敗しました。カード情報を確認の上、決済を完了するボタンからやり直してください。",
         };
       default:
         // ポーリング上限に達した場合のガイダンスを追加

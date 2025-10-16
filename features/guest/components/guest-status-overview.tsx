@@ -4,8 +4,13 @@ import React from "react";
 
 import { Ticket, CreditCard, Clock, CheckCircle, AlertCircle } from "lucide-react";
 
+import { getPaymentDeadlineStatus } from "@core/utils/guest-restrictions";
 import { type GuestAttendanceData } from "@core/utils/guest-token";
-import { canCreateStripeSession } from "@core/validation/payment-eligibility";
+import { toSimplePaymentStatus, isPaymentCompleted } from "@core/utils/payment-status-mapper";
+import {
+  canCreateStripeSession,
+  type PaymentEligibilityResult,
+} from "@core/validation/payment-eligibility";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -15,6 +20,33 @@ interface GuestStatusOverviewProps {
   scrollTargetId?: string;
   onPaymentClick?: () => Promise<void>;
   isProcessingPayment?: boolean;
+}
+
+/**
+ * 決済可否状況に応じたメッセージを取得
+ */
+function getPaymentEligibilityMessage(
+  attendance: GuestAttendanceData,
+  eligibility: PaymentEligibilityResult
+): React.ReactNode {
+  const deadlineStatus = getPaymentDeadlineStatus(attendance);
+
+  if (deadlineStatus === "grace_period") {
+    return (
+      <div className="text-orange-600 bg-orange-50 p-3 rounded-md border border-orange-200">
+        <p className="font-medium">決済期限を過ぎています。お早めに決済を完了してください。</p>
+        <p className="mt-1 text-xs">
+          猶予中のため、まだ決済が可能です。期限が過ぎると決済できなくなります。
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="text-red-600">
+      {eligibility.reason || "現在このイベントでは決済できません。"}
+    </div>
+  );
 }
 
 export function GuestStatusOverview({
@@ -30,11 +62,11 @@ export function GuestStatusOverview({
   const participationIcon = () => {
     switch (attendance.status) {
       case "attending":
-        return <CheckCircle className="h-6 w-6 text-green-600" />;
+        return <CheckCircle className="h-6 w-6 text-success" />;
       case "not_attending":
-        return <AlertCircle className="h-6 w-6 text-red-600" />;
+        return <AlertCircle className="h-6 w-6 text-destructive" />;
       default:
-        return <Clock className="h-6 w-6 text-yellow-600" />;
+        return <Clock className="h-6 w-6 text-warning" />;
     }
   };
 
@@ -50,31 +82,31 @@ export function GuestStatusOverview({
   };
 
   const paymentIcon = () => {
-    const status = attendance.payment?.status;
-    switch (status) {
+    const simpleStatus = toSimplePaymentStatus(attendance.payment?.status as any);
+    switch (simpleStatus) {
       case "paid":
-      case "completed":
-      case "received":
       case "waived":
-        return <CheckCircle className="h-6 w-6 text-green-600" />;
-      case "pending":
-        return <Clock className="h-6 w-6 text-orange-600" />;
+        return <CheckCircle className="h-6 w-6 text-success" />;
+      case "unpaid":
+        return <Clock className="h-6 w-6 text-warning" />;
+      case "refunded":
+        return <AlertCircle className="h-6 w-6 text-info" />;
       default:
-        return <AlertCircle className="h-6 w-6 text-gray-400" />;
+        return <AlertCircle className="h-6 w-6 text-muted-foreground" />;
     }
   };
 
   const paymentText = () => {
-    const status = attendance.payment?.status;
     if (!attendance.event.fee || attendance.event.fee <= 0) return "決済不要";
-    switch (status) {
+    const simpleStatus = toSimplePaymentStatus(attendance.payment?.status as any);
+    switch (simpleStatus) {
       case "paid":
-      case "completed":
-      case "received":
-      case "waived":
         return "決済完了";
-      case "pending":
-        return "未決済";
+      case "waived":
+        return "免除";
+      case "refunded":
+        return "返金済み";
+      case "unpaid":
       default:
         return "未決済";
     }
@@ -83,41 +115,41 @@ export function GuestStatusOverview({
   const shouldShowPayment =
     attendance.status === "attending" &&
     attendance.event.fee > 0 &&
-    attendance.payment?.status !== "paid" &&
-    attendance.payment?.status !== "completed" &&
-    attendance.payment?.status !== "received" &&
-    attendance.payment?.status !== "waived";
+    !isPaymentCompleted(attendance.payment?.status as any) &&
+    attendance.payment?.method !== "cash";
 
   // 決済セッション作成の可否（期限/猶予/最終上限を考慮）
   const eligibility = canCreateStripeSession(attendance as any, attendance.event as any);
   const paymentDisabled = isProcessingPayment || !eligibility.isEligible;
 
   return (
-    <Card className="p-6">
-      <h2 className="text-lg font-semibold text-gray-900 mb-4">現在の状況</h2>
+    <Card className="p-4 sm:p-6 shadow-sm">
+      <h2 className="text-lg font-semibold text-card-foreground mb-4">現在の状況</h2>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-        <div className="bg-gray-50 rounded-lg p-4">
+        <div className="bg-muted/50 rounded-lg p-4 transition-colors hover:bg-muted/70">
           <div className="flex items-center space-x-3 mb-2">
-            <Ticket className="h-5 w-5 text-gray-500" />
-            <span className="text-sm font-medium text-gray-700">参加状況</span>
+            <Ticket className="h-5 w-5 text-muted-foreground" />
+            <span className="text-sm font-medium text-muted-foreground">参加状況</span>
           </div>
           <div className="flex items-center space-x-2">
             {participationIcon()}
-            <span className="text-lg font-semibold text-gray-900">{participationText()}</span>
+            <span className="text-lg font-semibold text-card-foreground">
+              {participationText()}
+            </span>
           </div>
         </div>
 
-        <div className="bg-gray-50 rounded-lg p-4">
+        <div className="bg-muted/50 rounded-lg p-4 transition-colors hover:bg-muted/70">
           <div className="flex items-center space-x-3 mb-2">
-            <CreditCard className="h-5 w-5 text-gray-500" />
-            <span className="text-sm font-medium text-gray-700">決済状況</span>
+            <CreditCard className="h-5 w-5 text-muted-foreground" />
+            <span className="text-sm font-medium text-muted-foreground">決済状況</span>
           </div>
           <div className="flex items-center space-x-2">
             {paymentIcon()}
             <div className="flex flex-col">
-              <span className="text-lg font-semibold text-gray-900">{paymentText()}</span>
+              <span className="text-lg font-semibold text-card-foreground">{paymentText()}</span>
               {attendance.event.fee > 0 && (
-                <span className="text-sm text-gray-500">
+                <span className="text-sm text-muted-foreground font-mono">
                   ¥{(attendance.payment?.amount ?? attendance.event.fee).toLocaleString()}
                 </span>
               )}
@@ -126,8 +158,8 @@ export function GuestStatusOverview({
         </div>
       </div>
 
-      <div className="border-t border-gray-200 pt-4">
-        <h3 className="text-sm font-medium text-gray-700 mb-3">次に行うこと:</h3>
+      <div className="border-t border-border pt-4">
+        <h3 className="text-sm font-medium text-muted-foreground mb-3">次に行うこと:</h3>
         <div className="flex flex-col sm:flex-row gap-3">
           {shouldShowPayment && (
             <Button onClick={onPaymentClick || scrollToTarget} disabled={paymentDisabled}>
@@ -143,16 +175,34 @@ export function GuestStatusOverview({
               )}
             </Button>
           )}
-          {/* 期限超過などで決済不可の場合の案内 */}
-          {shouldShowPayment && !isProcessingPayment && !eligibility.isEligible && (
-            <div className="text-sm text-red-600" aria-live="polite">
-              決済期限を過ぎているため、現在このイベントでは決済できません。
-            </div>
-          )}
-          <Button variant="secondary" onClick={scrollToTarget}>
+          <Button variant="outline" onClick={scrollToTarget}>
             <Ticket className="h-4 w-4 mr-2" /> 参加状況を変更
           </Button>
         </div>
+        {/* 期限超過などで決済不可、または猶予期間中の場合の案内 */}
+        {shouldShowPayment && !isProcessingPayment && (
+          <>
+            {/* 決済不可の場合 */}
+            {!eligibility.isEligible && (
+              <div className="mt-3 text-sm" aria-live="polite">
+                {getPaymentEligibilityMessage(attendance, eligibility)}
+              </div>
+            )}
+            {/* 猶予期間中の警告（決済可能だが注意喚起） */}
+            {eligibility.isEligible && getPaymentDeadlineStatus(attendance) === "grace_period" && (
+              <div className="mt-3 text-sm" aria-live="polite">
+                <div className="text-orange-600 bg-orange-50 p-3 rounded-md border border-orange-200">
+                  <p className="font-medium">
+                    決済期限を過ぎています。お早めに決済を完了してください。
+                  </p>
+                  <p className="mt-1 text-xs">
+                    猶予中のため、まだ決済が可能です。期限が過ぎると決済できなくなります。
+                  </p>
+                </div>
+              </div>
+            )}
+          </>
+        )}
       </div>
     </Card>
   );

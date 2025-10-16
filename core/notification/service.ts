@@ -1,7 +1,11 @@
 /**
  * 通知サービスの実装
  */
+import * as React from "react";
+
 import type { SupabaseClient } from "@supabase/supabase-js";
+
+import { logger } from "@core/logging/app-logger";
 
 import { Database } from "@/types/database";
 
@@ -13,6 +17,8 @@ import {
   StripeConnectNotificationData,
   AccountStatusChangeNotification,
   AccountRestrictedNotification,
+  ParticipationRegisteredNotification,
+  PaymentCompletedNotification,
   EmailTemplate,
 } from "./types";
 
@@ -44,10 +50,15 @@ export class NotificationService implements INotificationService {
         };
       }
 
+      const { default: AccountVerifiedEmail } = await import(
+        "@/emails/connect/AccountVerifiedEmail"
+      );
+
       const template: EmailTemplate = {
-        subject: "Stripe Connectアカウントの認証が完了しました",
-        body: this.createAccountVerifiedEmailBody(userInfo.name || "ユーザー"),
-        htmlBody: this.createAccountVerifiedEmailHtml(userInfo.name || "ユーザー"),
+        subject: "Stripeアカウントの認証が完了しました",
+        react: React.createElement(AccountVerifiedEmail, {
+          userName: userInfo.name || "ユーザー",
+        }),
       };
 
       return await this.emailService.sendEmail({
@@ -78,20 +89,18 @@ export class NotificationService implements INotificationService {
         };
       }
 
+      const { default: AccountRestrictedEmail } = await import(
+        "@/emails/connect/AccountRestrictedEmail"
+      );
+
       const template: EmailTemplate = {
-        subject: "Stripe Connectアカウントに制限が設定されました",
-        body: this.createAccountRestrictedEmailBody(
-          userInfo.name || "ユーザー",
-          data.restrictionReason,
-          data.requiredActions,
-          data.dashboardUrl
-        ),
-        htmlBody: this.createAccountRestrictedEmailHtml(
-          userInfo.name || "ユーザー",
-          data.restrictionReason,
-          data.requiredActions,
-          data.dashboardUrl
-        ),
+        subject: "Stripeアカウントに制限が設定されました",
+        react: React.createElement(AccountRestrictedEmail, {
+          userName: userInfo.name || "ユーザー",
+          restrictionReason: data.restrictionReason,
+          requiredActions: data.requiredActions,
+          dashboardUrl: data.dashboardUrl,
+        }),
       };
 
       const result = await this.emailService.sendEmail({
@@ -99,10 +108,10 @@ export class NotificationService implements INotificationService {
         template,
       });
 
-      // 管理者にもアラートを送信
-      await this.emailService.sendAdminAlert({
-        subject: "Stripe Connectアカウント制限",
-        message: `ユーザー ${data.userId} のStripe Connectアカウント ${data.accountId} に制限が設定されました。`,
+      // 管理者にもアラートを送信（失敗してもユーザー通知の結果には影響させない）
+      const adminAlertResult = await this.emailService.sendAdminAlert({
+        subject: "Stripeアカウント制限",
+        message: `ユーザー ${data.userId} のStripeアカウント ${data.accountId} に制限が設定されました。`,
         details: {
           userId: data.userId,
           accountId: data.accountId,
@@ -110,6 +119,16 @@ export class NotificationService implements INotificationService {
           requiredActions: data.requiredActions,
         },
       });
+
+      // 管理者アラートが失敗してもログのみ記録（ユーザー通知の成功/失敗は返す）
+      if (!adminAlertResult.success) {
+        // email-service側で詳細なログは記録済みなので、ここでは簡潔に
+        logger.warn("Admin alert failed for account restriction", {
+          tag: "notificationService",
+          user_id: data.userId,
+          account_id: data.accountId,
+        });
+      }
 
       return result;
     } catch (error) {
@@ -138,22 +157,19 @@ export class NotificationService implements INotificationService {
           };
         }
 
+        const { default: AccountStatusChangedEmail } = await import(
+          "@/emails/connect/AccountStatusChangedEmail"
+        );
+
         const template: EmailTemplate = {
-          subject: "Stripe Connectアカウントの状態が更新されました",
-          body: this.createStatusChangeEmailBody(
-            userInfo.name || "ユーザー",
-            data.oldStatus,
-            data.newStatus,
-            data.chargesEnabled,
-            data.payoutsEnabled
-          ),
-          htmlBody: this.createStatusChangeEmailHtml(
-            userInfo.name || "ユーザー",
-            data.oldStatus,
-            data.newStatus,
-            data.chargesEnabled,
-            data.payoutsEnabled
-          ),
+          subject: "Stripeアカウントの状態が更新されました",
+          react: React.createElement(AccountStatusChangedEmail, {
+            userName: userInfo.name || "ユーザー",
+            oldStatus: data.oldStatus,
+            newStatus: data.newStatus,
+            chargesEnabled: data.chargesEnabled,
+            payoutsEnabled: data.payoutsEnabled,
+          }),
         };
 
         return await this.emailService.sendEmail({
@@ -205,6 +221,83 @@ export class NotificationService implements INotificationService {
   }
 
   /**
+   * 参加登録完了通知を送信
+   */
+  async sendParticipationRegisteredNotification(
+    data: ParticipationRegisteredNotification
+  ): Promise<NotificationResult> {
+    try {
+      const { default: ParticipationRegisteredEmail } = await import(
+        "@/emails/participation/ParticipationRegisteredEmail"
+      );
+
+      // ゲストURLを構築
+      const baseUrl =
+        process.env.NEXT_PUBLIC_APP_URL ||
+        process.env.NEXT_PUBLIC_SITE_URL ||
+        process.env.APP_BASE_URL ||
+        process.env.NEXTAUTH_URL ||
+        "http://localhost:3000";
+      const guestUrl = `${baseUrl}/guest/${data.guestToken}`;
+
+      const template: EmailTemplate = {
+        subject: `【みんなの集金】${data.eventTitle} - 参加登録完了`,
+        react: React.createElement(ParticipationRegisteredEmail, {
+          nickname: data.nickname,
+          eventTitle: data.eventTitle,
+          eventDate: data.eventDate,
+          attendanceStatus: data.attendanceStatus,
+          guestUrl,
+        }),
+      };
+
+      return await this.emailService.sendEmail({
+        to: data.email,
+        template,
+      });
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : "通知送信中にエラーが発生しました",
+      };
+    }
+  }
+
+  /**
+   * 決済完了通知を送信
+   */
+  async sendPaymentCompletedNotification(
+    data: PaymentCompletedNotification
+  ): Promise<NotificationResult> {
+    try {
+      const { default: PaymentCompletedEmail } = await import(
+        "@/emails/payment/PaymentCompletedEmail"
+      );
+
+      const template: EmailTemplate = {
+        subject: `【みんなの集金】${data.eventTitle} - お支払い完了`,
+        react: React.createElement(PaymentCompletedEmail, {
+          nickname: data.nickname,
+          eventTitle: data.eventTitle,
+          amount: data.amount,
+          paidAt: data.paidAt,
+          receiptUrl: data.receiptUrl,
+        }),
+      };
+
+      return await this.emailService.sendEmail({
+        to: data.email,
+        template,
+      });
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : "通知送信中にエラーが発生しました",
+      };
+    }
+  }
+
+  /**
    * 状態変更の通知が必要かチェック
    */
   private shouldNotifyStatusChange(oldStatus: string, newStatus: string): boolean {
@@ -219,265 +312,5 @@ export class NotificationService implements INotificationService {
     return importantTransitions.some(
       (transition) => transition.from === oldStatus && transition.to === newStatus
     );
-  }
-
-  /**
-   * アカウント認証完了メール本文を作成
-   */
-  private createAccountVerifiedEmailBody(userName: string): string {
-    return `
-${userName} 様
-
-EventPayをご利用いただき、ありがとうございます。
-
-Stripe Connectアカウントの認証が完了しました。
-これで、イベントの売上を自動的に受け取ることができるようになりました。
-
-今後、イベント終了後に自動的に売上が送金されます。
-送金状況はダッシュボードからご確認いただけます。
-
-ご不明な点がございましたら、お気軽にお問い合わせください。
-
-EventPay チーム
-    `.trim();
-  }
-
-  /**
-   * アカウント認証完了メールHTML本文を作成
-   */
-  private createAccountVerifiedEmailHtml(userName: string): string {
-    return `
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <title>アカウント認証完了</title>
-</head>
-<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
-  <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
-    <h2 style="color: #2563eb;">アカウント認証完了</h2>
-
-    <p>${userName} 様</p>
-
-    <p>EventPayをご利用いただき、ありがとうございます。</p>
-
-    <div style="background-color: #f0f9ff; border: 1px solid #0ea5e9; border-radius: 8px; padding: 16px; margin: 20px 0;">
-      <p style="margin: 0; font-weight: bold; color: #0ea5e9;">✅ Stripe Connectアカウントの認証が完了しました</p>
-    </div>
-
-    <p>これで、イベントの売上を自動的に受け取ることができるようになりました。</p>
-
-    <ul>
-      <li>イベント終了後に自動的に売上が送金されます</li>
-      <li>送金状況はダッシュボードからご確認いただけます</li>
-    </ul>
-
-    <p>ご不明な点がございましたら、お気軽にお問い合わせください。</p>
-
-    <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 30px 0;">
-    <p style="color: #6b7280; font-size: 14px;">EventPay チーム</p>
-  </div>
-</body>
-</html>
-    `.trim();
-  }
-
-  /**
-   * アカウント制限メール本文を作成
-   */
-  private createAccountRestrictedEmailBody(
-    userName: string,
-    restrictionReason?: string,
-    requiredActions?: string[],
-    dashboardUrl?: string
-  ): string {
-    let body = `
-${userName} 様
-
-EventPayをご利用いただき、ありがとうございます。
-
-Stripe Connectアカウントに制限が設定されました。
-    `;
-
-    if (restrictionReason) {
-      body += `\n制限理由: ${restrictionReason}\n`;
-    }
-
-    if (requiredActions && requiredActions.length > 0) {
-      body += "\n必要なアクション:\n";
-      requiredActions.forEach((action) => {
-        body += `- ${action}\n`;
-      });
-    }
-
-    if (dashboardUrl) {
-      body += `\nStripeダッシュボードで詳細をご確認ください: ${dashboardUrl}\n`;
-    }
-
-    body += `
-制限を解除するには、上記のアクションを完了してください。
-ご不明な点がございましたら、お気軽にお問い合わせください。
-
-EventPay チーム
-    `;
-
-    return body.trim();
-  }
-
-  /**
-   * アカウント制限メールHTML本文を作成
-   */
-  private createAccountRestrictedEmailHtml(
-    userName: string,
-    restrictionReason?: string,
-    requiredActions?: string[],
-    dashboardUrl?: string
-  ): string {
-    let actionsHtml = "";
-    if (requiredActions && requiredActions.length > 0) {
-      actionsHtml = "<h3>必要なアクション:</h3><ul>";
-      requiredActions.forEach((action) => {
-        actionsHtml += `<li>${action}</li>`;
-      });
-      actionsHtml += "</ul>";
-    }
-
-    let dashboardHtml = "";
-    if (dashboardUrl) {
-      dashboardHtml = `
-        <div style="margin: 20px 0;">
-          <a href="${dashboardUrl}" style="background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
-            Stripeダッシュボードを開く
-          </a>
-        </div>
-      `;
-    }
-
-    return `
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <title>アカウント制限通知</title>
-</head>
-<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
-  <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
-    <h2 style="color: #dc2626;">アカウント制限通知</h2>
-
-    <p>${userName} 様</p>
-
-    <p>EventPayをご利用いただき、ありがとうございます。</p>
-
-    <div style="background-color: #fef2f2; border: 1px solid #f87171; border-radius: 8px; padding: 16px; margin: 20px 0;">
-      <p style="margin: 0; font-weight: bold; color: #dc2626;">⚠️ Stripe Connectアカウントに制限が設定されました</p>
-      ${restrictionReason ? `<p style="margin: 10px 0 0 0;">制限理由: ${restrictionReason}</p>` : ""}
-    </div>
-
-    ${actionsHtml}
-
-    ${dashboardHtml}
-
-    <p>制限を解除するには、上記のアクションを完了してください。</p>
-    <p>ご不明な点がございましたら、お気軽にお問い合わせください。</p>
-
-    <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 30px 0;">
-    <p style="color: #6b7280; font-size: 14px;">EventPay チーム</p>
-  </div>
-</body>
-</html>
-    `.trim();
-  }
-
-  /**
-   * 状態変更メール本文を作成
-   */
-  private createStatusChangeEmailBody(
-    userName: string,
-    oldStatus: string,
-    newStatus: string,
-    chargesEnabled: boolean,
-    payoutsEnabled: boolean
-  ): string {
-    const statusMap: Record<string, string> = {
-      unverified: "未認証",
-      onboarding: "認証中",
-      verified: "認証済み",
-      restricted: "制限中",
-    };
-
-    return `
-${userName} 様
-
-EventPayをご利用いただき、ありがとうございます。
-
-Stripe Connectアカウントの状態が更新されました。
-
-変更内容:
-- 状態: ${statusMap[oldStatus] || oldStatus} → ${statusMap[newStatus] || newStatus}
-- 決済受取: ${chargesEnabled ? "有効" : "無効"}
-- 送金: ${payoutsEnabled ? "有効" : "無効"}
-
-${newStatus === "verified" ? "これで、イベントの売上を自動的に受け取ることができるようになりました。" : ""}
-
-ご不明な点がございましたら、お気軽にお問い合わせください。
-
-EventPay チーム
-    `.trim();
-  }
-
-  /**
-   * 状態変更メールHTML本文を作成
-   */
-  private createStatusChangeEmailHtml(
-    userName: string,
-    oldStatus: string,
-    newStatus: string,
-    chargesEnabled: boolean,
-    payoutsEnabled: boolean
-  ): string {
-    const statusMap: Record<string, string> = {
-      unverified: "未認証",
-      onboarding: "認証中",
-      verified: "認証済み",
-      restricted: "制限中",
-    };
-
-    const statusColor =
-      newStatus === "verified" ? "#059669" : newStatus === "restricted" ? "#dc2626" : "#2563eb";
-
-    return `
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <title>アカウント状態更新</title>
-</head>
-<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
-  <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
-    <h2 style="color: ${statusColor};">アカウント状態更新</h2>
-
-    <p>${userName} 様</p>
-
-    <p>EventPayをご利用いただき、ありがとうございます。</p>
-
-    <div style="background-color: #f9fafb; border: 1px solid #d1d5db; border-radius: 8px; padding: 16px; margin: 20px 0;">
-      <h3 style="margin-top: 0;">変更内容:</h3>
-      <ul style="margin: 0;">
-        <li>状態: ${statusMap[oldStatus] || oldStatus} → <strong style="color: ${statusColor};">${statusMap[newStatus] || newStatus}</strong></li>
-        <li>決済受取: ${chargesEnabled ? '<span style="color: #059669;">有効</span>' : '<span style="color: #dc2626;">無効</span>'}</li>
-        <li>送金: ${payoutsEnabled ? '<span style="color: #059669;">有効</span>' : '<span style="color: #dc2626;">無効</span>'}</li>
-      </ul>
-    </div>
-
-    ${newStatus === "verified" ? '<div style="background-color: #f0fdf4; border: 1px solid #22c55e; border-radius: 8px; padding: 16px; margin: 20px 0;"><p style="margin: 0; color: #059669; font-weight: bold;">✅ これで、イベントの売上を自動的に受け取ることができるようになりました。</p></div>' : ""}
-
-    <p>ご不明な点がございましたら、お気軽にお問い合わせください。</p>
-
-    <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 30px 0;">
-    <p style="color: #6b7280; font-size: 14px;">EventPay チーム</p>
-  </div>
-</body>
-</html>
-    `.trim();
   }
 }

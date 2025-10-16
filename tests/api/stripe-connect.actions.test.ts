@@ -12,12 +12,10 @@ jest.mock("@features/stripe-connect/services", () => {
       createExpressAccount: jest
         .fn()
         .mockResolvedValue({ accountId: "acct_test", status: "unverified" }),
-      createAccountLink: jest
-        .fn()
-        .mockResolvedValue({
-          url: "https://connect.stripe.com/setup/s/abc",
-          expiresAt: Math.floor(Date.now() / 1000) + 300,
-        }),
+      createAccountLink: jest.fn().mockResolvedValue({
+        url: "https://connect.stripe.com/setup/e/acct_test/session_token",
+        expiresAt: Math.floor(Date.now() / 1000) + 300,
+      }),
     }),
   };
 });

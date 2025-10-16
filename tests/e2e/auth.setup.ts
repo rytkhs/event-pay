@@ -44,11 +44,11 @@ setup("authenticate", async ({ page }) => {
 
   // フォームの要素が表示されるまで待機
   await expect(page.getByLabel("メールアドレス")).toBeVisible({ timeout: 10000 });
-  await expect(page.getByLabel("パスワード")).toBeVisible();
+  await expect(page.locator('input[type="password"]')).toBeVisible();
 
   // フォームを入力してログイン
   await page.getByLabel("メールアドレス").fill(username);
-  await page.getByLabel("パスワード").fill(password);
+  await page.locator('input[type="password"]').fill(password);
   await page.getByRole("button", { name: "ログイン" }).click();
 
   // ログイン後のリダイレクト先を待機し、URLを検証

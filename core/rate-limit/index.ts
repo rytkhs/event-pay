@@ -1,3 +1,5 @@
+import "server-only";
+
 import { NextRequest, NextResponse } from "next/server";
 
 import { createProblemResponse } from "@core/api/problem-details";
@@ -260,6 +262,12 @@ export const POLICIES: Record<string, RateLimitPolicy> = {
     limit: 5,
     window: "5 m",
     blockMs: 15 * 60 * 1000,
+  },
+  "contact.submit": {
+    scope: "contact.submit",
+    limit: 5,
+    window: "1 m",
+    blockMs: 5 * 60 * 1000,
   },
 };
 

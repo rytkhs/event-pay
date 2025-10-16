@@ -51,7 +51,7 @@ export const userFixtures = {
     id: "user_test_with_connect",
     email: "test-with-connect@example.com",
     hasStripeConnect: true,
-    stripeConnectAccountId: "acct_1RwIFbCZwTLGDVBd",
+    stripeConnectAccountId: "acct_1S95RCEJRRCbin0V",
     payoutsEnabled: true,
     chargesEnabled: true,
   },
@@ -68,7 +68,7 @@ export const userFixtures = {
     id: "user_test_payouts_disabled",
     email: "test-payouts-disabled@example.com",
     hasStripeConnect: true,
-    stripeConnectAccountId: "acct_1RwIFbCZwTLGDVBd",
+    stripeConnectAccountId: "acct_1S95RCEJRRCbin0V",
     payoutsEnabled: false,
     chargesEnabled: true,
   },
@@ -113,18 +113,7 @@ export const paymentFixtures = {
     status: "pending" as const,
     method: "stripe" as const,
     application_fee_amount: 150,
-    stripe_account_id: "acct_1RwIFbCZwTLGDVBd",
-  },
-
-  completed: {
-    id: "pay_test_completed",
-    amount: 1500,
-    status: "completed" as const,
-    method: "stripe" as const,
-    application_fee_amount: 150,
-    stripe_account_id: "acct_1RwIFbCZwTLGDVBd",
-    paid_at: new Date().toISOString(),
-    stripe_payment_intent_id: "pi_test_completed",
+    stripe_account_id: "acct_1S95RCEJRRCbin0V",
   },
 
   failed: {
@@ -133,7 +122,7 @@ export const paymentFixtures = {
     status: "failed" as const,
     method: "stripe" as const,
     application_fee_amount: 150,
-    stripe_account_id: "acct_1RwIFbCZwTLGDVBd",
+    stripe_account_id: "acct_1S95RCEJRRCbin0V",
   },
 
   withExistingAmount: {
@@ -142,7 +131,7 @@ export const paymentFixtures = {
     status: "pending" as const,
     method: "stripe" as const,
     application_fee_amount: 200,
-    stripe_account_id: "acct_1RwIFbCZwTLGDVBd",
+    stripe_account_id: "acct_1S95RCEJRRCbin0V",
   },
 };
 
@@ -153,9 +142,9 @@ export const checkoutParamsFixtures = {
   basic: {
     mode: "payment" as const,
     currency: "jpy",
-    on_behalf_of: "acct_1RwIFbCZwTLGDVBd",
+    on_behalf_of: "acct_1S95RCEJRRCbin0V",
     transfer_data: {
-      destination: "acct_1RwIFbCZwTLGDVBd",
+      destination: "acct_1S95RCEJRRCbin0V",
     },
     application_fee_amount: 150,
     metadata: {
@@ -170,9 +159,9 @@ export const checkoutParamsFixtures = {
   withExistingAmount: {
     mode: "payment" as const,
     currency: "jpy",
-    on_behalf_of: "acct_1RwIFbCZwTLGDVBd",
+    on_behalf_of: "acct_1S95RCEJRRCbin0V",
     transfer_data: {
-      destination: "acct_1RwIFbCZwTLGDVBd",
+      destination: "acct_1S95RCEJRRCbin0V",
     },
     application_fee_amount: 200, // 既存金額ベース
     metadata: {
@@ -211,9 +200,9 @@ export const webhookEventFixtures = {
       amount_received: 1500,
       currency: "jpy",
       application_fee_amount: 150,
-      on_behalf_of: "acct_1RwIFbCZwTLGDVBd",
+      on_behalf_of: "acct_1S95RCEJRRCbin0V",
       transfer_data: {
-        destination: "acct_1RwIFbCZwTLGDVBd",
+        destination: "acct_1S95RCEJRRCbin0V",
       },
       metadata: {
         payment_id: "pay_test_pending",
@@ -246,7 +235,7 @@ export const webhookEventFixtures = {
 export const connectAccountFixtures = {
   active: {
     ...mockConnectAccount,
-    id: "acct_1RwIFbCZwTLGDVBd",
+    id: "acct_1S95RCEJRRCbin0V",
     payouts_enabled: true,
     charges_enabled: true,
     details_submitted: true,

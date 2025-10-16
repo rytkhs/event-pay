@@ -2,19 +2,14 @@ import { notFound, redirect } from "next/navigation";
 
 import { getCurrentUser } from "@core/auth/auth-utils";
 import { createCachedActions } from "@core/utils/cache-helpers";
-import { sanitizeEventDescription } from "@core/utils/sanitize";
 
 import {
-  EventActions,
-  EventDetail,
-  ParticipantsManagement,
-  getEventAttendancesAction,
   getEventDetailAction,
-  getEventParticipantsAction,
   getEventPaymentsAction,
   getEventStatsAction,
 } from "@features/events";
-import { InviteLink } from "@features/invite";
+
+import { ModernEventDashboard } from "./components/modern-event-dashboard";
 
 interface EventDetailPageProps {
   params: {
@@ -22,12 +17,10 @@ interface EventDetailPageProps {
   };
 }
 
-// キャッシュ処理を統一
+// キャッシュ処理を統一（軽量化）
 const cachedActions = createCachedActions({
   getEventDetail: getEventDetailAction,
-  getEventAttendances: getEventAttendancesAction,
   getEventPayments: getEventPaymentsAction,
-  getEventParticipants: getEventParticipantsAction,
   getEventStats: getEventStatsAction,
 });
 
@@ -60,82 +53,34 @@ export default async function EventDetailPage({ params }: EventDetailPageProps) 
     const currentUser = await getCurrentUser();
     const isOrganizer = currentUser && currentUser.id === eventDetail.created_by;
 
-    // 主催者の場合のみ統計データと参加者データを取得
-    let attendances: Awaited<ReturnType<typeof cachedActions.getEventAttendances>> = [];
+    // 主催者の場合のみダッシュボード用データを取得
     let paymentsData: Awaited<ReturnType<typeof cachedActions.getEventPayments>> | null = null;
-    let participantsData: Awaited<ReturnType<typeof cachedActions.getEventParticipants>> | null =
-      null;
-
     let stats: { attending_count: number; maybe_count: number } | null = null;
 
     if (isOrganizer) {
       try {
-        // 基本的な統計データ
-        const [attRes, payRes, statsRes] = await Promise.all([
-          cachedActions.getEventAttendances(params.id),
+        // ダッシュボード用の軽量データを並列取得
+        const [payRes, statsRes] = await Promise.all([
           cachedActions.getEventPayments(params.id),
           cachedActions.getEventStats(params.id),
         ]);
-        attendances = attRes;
+
         paymentsData = payRes;
         if (statsRes?.success) {
           stats = statsRes.data as any;
         }
-
-        // 参加者詳細データ（デフォルトパラメータで初期データを取得）
-        participantsData = await cachedActions.getEventParticipants({
-          eventId: params.id,
-          search: undefined,
-          attendanceStatus: undefined,
-          paymentMethod: undefined,
-          paymentStatus: undefined,
-          sortField: "updated_at",
-          sortOrder: "desc",
-          page: 1,
-          limit: 50,
-        });
       } catch (_) {
         // エラーが発生してもページ表示は継続
       }
     }
 
     return (
-      <div className="container mx-auto px-4 py-8">
-        <div className="max-w-4xl mx-auto space-y-6">
-          <div className="flex justify-between items-start">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">イベント詳細</h1>
-            </div>
-            <EventActions
-              eventId={params.id}
-              attendingCount={stats?.attending_count || 0}
-              maybeCount={stats?.maybe_count || 0}
-              hasPayments={(paymentsData?.summary.totalPayments || 0) > 0}
-            />
-          </div>
-
-          <EventDetail event={eventDetail} />
-
-          {/* 主催者のみに参加者管理セクションを表示 */}
-          {isOrganizer && participantsData && paymentsData && (
-            <ParticipantsManagement
-              eventId={params.id}
-              eventData={eventDetail}
-              initialAttendances={attendances}
-              initialPaymentsData={paymentsData}
-              initialParticipantsData={participantsData}
-            />
-          )}
-
-          {/* 主催者のみに招待リンクを表示 */}
-          {isOrganizer && (
-            <InviteLink
-              eventId={params.id}
-              initialInviteToken={eventDetail.invite_token || undefined}
-            />
-          )}
-        </div>
-      </div>
+      <ModernEventDashboard
+        eventId={params.id}
+        eventDetail={eventDetail}
+        paymentsData={paymentsData}
+        stats={stats}
+      />
     );
   } catch (error) {
     // 予期しないエラーの場合は500エラーとして処理
@@ -149,21 +94,19 @@ export async function generateMetadata({ params }: EventDetailPageProps) {
     const eventDetailResult = await cachedActions.getEventDetail(params.id);
     if (!eventDetailResult.success) {
       return {
-        title: "イベント詳細 - EventPay",
+        title: "イベント詳細 - みんなの集金",
         description: "イベントの詳細情報",
       };
     }
 
     const eventDetail = eventDetailResult.data;
     return {
-      title: `${eventDetail.title} - EventPay`,
-      description: sanitizeEventDescription(
-        eventDetail.description || `${eventDetail.title}の詳細情報`
-      ),
+      title: `${eventDetail.title} - みんなの集金`,
+      description: `${eventDetail.title}の詳細情報と参加者管理`,
     };
   } catch {
     return {
-      title: "イベント詳細 - EventPay",
+      title: "イベント詳細 - みんなの集金",
       description: "イベントの詳細情報",
     };
   }

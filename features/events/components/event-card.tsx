@@ -1,11 +1,16 @@
+"use client";
+
 import { memo, useMemo } from "react";
 
 import Link from "next/link";
+
+import { CalendarIcon, MapPinIcon, UsersIcon } from "lucide-react";
 
 import { EVENT_STATUS_LABELS } from "@core/types/enums";
 import { sanitizeForEventPay } from "@core/utils/sanitize";
 import { formatUtcToJstByType } from "@core/utils/timezone";
 
+import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 import { Event } from "../types";
@@ -16,10 +21,10 @@ interface EventCardProps {
 
 // ステータスマッピングを外部で定義してメモ化
 const STATUS_CONFIG = {
-  upcoming: { text: EVENT_STATUS_LABELS.upcoming, styles: "bg-green-100 text-green-800" },
-  ongoing: { text: EVENT_STATUS_LABELS.ongoing, styles: "bg-blue-100 text-blue-800" },
-  past: { text: EVENT_STATUS_LABELS.past, styles: "bg-gray-100 text-gray-800" },
-  canceled: { text: EVENT_STATUS_LABELS.canceled, styles: "bg-red-100 text-red-800" },
+  upcoming: { text: EVENT_STATUS_LABELS.upcoming, variant: "default" as const },
+  ongoing: { text: EVENT_STATUS_LABELS.ongoing, variant: "default" as const },
+  past: { text: EVENT_STATUS_LABELS.past, variant: "secondary" as const },
+  canceled: { text: EVENT_STATUS_LABELS.canceled, variant: "destructive" as const },
 } as const;
 
 export const EventCard = memo(function EventCard({ event }: EventCardProps) {
@@ -31,7 +36,7 @@ export const EventCard = memo(function EventCard({ event }: EventCardProps) {
   // ステータス情報をメモ化（型安全にキーを解決）
   const statusInfo = useMemo(() => {
     const key = event.status as keyof typeof STATUS_CONFIG;
-    return STATUS_CONFIG[key] ?? { text: event.status, styles: "bg-gray-100 text-gray-800" };
+    return STATUS_CONFIG[key] ?? { text: event.status, variant: "secondary" as const };
   }, [event.status]);
 
   // 料金表示をメモ化
@@ -41,7 +46,9 @@ export const EventCard = memo(function EventCard({ event }: EventCardProps) {
 
   // 参加者数表示をメモ化
   const attendanceText = useMemo(() => {
-    return `${event.attendances_count || 0}/${event.capacity}名`;
+    const count = event.attendances_count || 0;
+    // 定員がnullの場合は定員表示しない（無制限）
+    return event.capacity === null ? `${count}名` : `${count}/${event.capacity}名`;
   }, [event.attendances_count, event.capacity]);
 
   // XSS対策: タイトルと場所をサニタイズ
@@ -54,27 +61,54 @@ export const EventCard = memo(function EventCard({ event }: EventCardProps) {
   }, [event.location]);
 
   return (
-    <Card data-testid="event-card" className="hover:shadow-lg transition-shadow">
-      <Link href={`/events/${event.id}`}>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-xl" data-testid="event-title">
+    <Link href={`/events/${event.id}`} className="block">
+      <Card
+        data-testid="event-card"
+        className="border border-border/50 hover:border-border hover:shadow-md transition-all duration-200 h-full overflow-hidden"
+      >
+        <CardHeader className="pb-4">
+          {/* ステータスバッジ - 上部に移動 */}
+          <div className="flex items-center justify-between mb-2">
+            <Badge variant={statusInfo.variant} className="text-xs">
+              {statusInfo.text}
+            </Badge>
+            <span className="text-xs text-muted-foreground font-medium">{formattedFee}</span>
+          </div>
+
+          {/* タイトル */}
+          <CardTitle
+            className="text-lg font-semibold leading-tight line-clamp-2 mb-0"
+            data-testid="event-title"
+          >
             {sanitizedTitle}
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-2">
-          <p className="text-muted-foreground">{formattedDate}</p>
-          <p className="text-muted-foreground">{sanitizedLocation}</p>
-          <div className="flex justify-between items-center">
-            <span className="text-lg font-bold">{formattedFee}</span>
-            <span className="text-sm text-muted-foreground">{attendanceText}</span>
+
+        <CardContent className="pt-0 space-y-4">
+          {/* 日時・場所（アイコン統一） */}
+          <div className="space-y-2">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <CalendarIcon className="h-4 w-4 shrink-0" />
+              <span className="truncate">{formattedDate}</span>
+            </div>
+            {sanitizedLocation && (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <MapPinIcon className="h-4 w-4 shrink-0" />
+                <span className="truncate">{sanitizedLocation}</span>
+              </div>
+            )}
           </div>
-          <div className="flex justify-between items-center pt-2">
-            <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusInfo.styles}`}>
-              {statusInfo.text}
-            </span>
+
+          {/* 参加者数 */}
+          <div className="flex items-center justify-between pt-2 border-t border-border/50">
+            <div className="flex items-center gap-2 text-sm">
+              <UsersIcon className="h-4 w-4 text-muted-foreground" />
+              <span className="text-muted-foreground">参加者</span>
+            </div>
+            <span className="text-sm font-medium">{attendanceText}</span>
           </div>
         </CardContent>
-      </Link>
-    </Card>
+      </Card>
+    </Link>
   );
 });

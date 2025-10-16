@@ -18,6 +18,8 @@ import type Stripe from "stripe";
 
 import { createProblemResponse } from "@core/api/problem-details";
 import { logger } from "@core/logging/app-logger";
+import { generateSecureUuid } from "@core/security/crypto";
+import { logSecurityEvent } from "@core/security/security-logger";
 import { getClientIP } from "@core/utils/ip-detection";
 
 import "@/app/_init/feature-registrations";
@@ -44,7 +46,7 @@ interface QStashWebhookBody {
 
 export async function POST(request: NextRequest) {
   const startTime = Date.now();
-  const correlationId = `qstash_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  const correlationId = `qstash_${generateSecureUuid()}`;
 
   try {
     logger.info("QStash worker request received", {
@@ -62,11 +64,18 @@ export async function POST(request: NextRequest) {
     const rawBody = await request.text();
 
     if (!signature) {
-      logger.warn("Missing QStash signature", {
-        tag: "qstash-security",
-        correlation_id: correlationId,
-        request_id: correlationId,
+      logSecurityEvent({
+        type: "QSTASH_SIGNATURE_MISSING",
+        severity: "MEDIUM",
+        message: "Missing QStash signature",
+        details: {
+          correlation_id: correlationId,
+          request_id: correlationId,
+          path: "/api/workers/stripe-webhook",
+        },
+        userAgent: request.headers.get("user-agent") || undefined,
         ip: getClientIP(request),
+        timestamp: new Date(),
       });
       return createProblemResponse("UNAUTHORIZED", {
         instance: "/api/workers/stripe-webhook",
@@ -83,12 +92,19 @@ export async function POST(request: NextRequest) {
     });
 
     if (!isValid) {
-      logger.warn("Invalid QStash signature", {
-        tag: "qstash-security",
-        correlation_id: correlationId,
-        request_id: correlationId,
-        signature_preview: signature.substring(0, 20) + "...",
+      logSecurityEvent({
+        type: "QSTASH_SIGNATURE_INVALID",
+        severity: "MEDIUM",
+        message: "Invalid QStash signature",
+        details: {
+          correlation_id: correlationId,
+          request_id: correlationId,
+          signature_preview: signature.substring(0, 20) + "...",
+          path: "/api/workers/stripe-webhook",
+        },
+        userAgent: request.headers.get("user-agent") || undefined,
         ip: getClientIP(request),
+        timestamp: new Date(),
       });
       return createProblemResponse("UNAUTHORIZED", {
         instance: "/api/workers/stripe-webhook",
@@ -154,14 +170,36 @@ export async function POST(request: NextRequest) {
 
     const processingTime = Date.now() - startTime;
 
-    // ハンドラが致命的（terminal）失敗を返した場合はHTTP 500で返却し再試行を促す
+    // ハンドラが失敗を返した場合の処理
     if (
       processingResult &&
       typeof processingResult === "object" &&
-      (processingResult as any).success === false &&
-      (processingResult as any).terminal === true
+      (processingResult as any).success === false
     ) {
-      logger.error("QStash webhook processing terminal failure", {
+      // 終端エラー（terminal: true）の場合
+      if ((processingResult as any).terminal === true) {
+        logger.error("QStash webhook processing terminal failure", {
+          tag: "qstash-processing",
+          correlation_id: correlationId,
+          request_id: correlationId,
+          event_id: stripeEvent.id,
+          event_type: stripeEvent.type,
+          delivery_id: deliveryId,
+          processing_time_ms: processingTime,
+          reason: (processingResult as any).reason,
+          error: (processingResult as any).error,
+        });
+
+        return createProblemResponse("INTERNAL_ERROR", {
+          instance: "/api/workers/stripe-webhook",
+          detail:
+            (processingResult as any).error || "Worker failed with terminal error. Will not retry.",
+          correlation_id: correlationId,
+        });
+      }
+
+      // 非終端エラー（terminal: false または undefined）の場合
+      logger.error("QStash webhook processing retryable failure", {
         tag: "qstash-processing",
         correlation_id: correlationId,
         request_id: correlationId,
@@ -171,13 +209,14 @@ export async function POST(request: NextRequest) {
         processing_time_ms: processingTime,
         reason: (processingResult as any).reason,
         error: (processingResult as any).error,
+        terminal: false,
       });
 
       return createProblemResponse("INTERNAL_ERROR", {
         instance: "/api/workers/stripe-webhook",
         detail:
           (processingResult as any).error ||
-          "Worker failed with terminal error. QStash should retry.",
+          "Worker failed with retryable error. QStash will retry.",
         correlation_id: correlationId,
       });
     }

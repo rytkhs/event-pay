@@ -2,9 +2,12 @@
 
 import { verifyEventAccess, handleDatabaseError } from "@core/auth/event-authorization";
 import { logger } from "@core/logging/app-logger";
-import { SecureSupabaseClientFactory } from "@core/security/secure-client-factory.impl";
-import { AdminReason } from "@core/security/secure-client-factory.types";
+import { logPayment } from "@core/logging/system-logger";
 import { createClient } from "@core/supabase/server";
+import {
+  type SimplePaymentStatus,
+  getPaymentStatusesFromSimple,
+} from "@core/utils/payment-status-mapper";
 import {
   GetAllCashPaymentIdsParamsSchema,
   type GetAllCashPaymentIdsResponse,
@@ -26,11 +29,6 @@ export async function getAllCashPaymentIdsAction(
     const { user, eventId: validatedEventId } = await verifyEventAccess(eventId);
 
     const supabase = createClient();
-    const factory = SecureSupabaseClientFactory.getInstance();
-    const admin = await factory.createAuditedAdminClient(
-      AdminReason.CSV_EXPORT,
-      "app/events/actions/get-all-cash-payment-ids"
-    );
 
     // attendances をベースに latest payments を 1 件だけ付ける
     let query = supabase
@@ -57,7 +55,15 @@ export async function getAllCashPaymentIdsAction(
       query = query.eq("status", filters.attendanceStatus);
     }
     if (filters?.paymentStatus) {
-      query = query.eq("payments.status", filters.paymentStatus);
+      const detailedStatuses = getPaymentStatusesFromSimple(
+        filters.paymentStatus as SimplePaymentStatus
+      );
+
+      if (detailedStatuses.length === 1) {
+        query = query.eq("payments.status", detailedStatuses[0]);
+      } else {
+        query = query.in("payments.status", detailedStatuses);
+      }
     }
 
     // 総件数取得用のクエリ（limit 無し、head:true）
@@ -76,7 +82,15 @@ export async function getAllCashPaymentIdsAction(
       countQuery = countQuery.eq("status", filters.attendanceStatus);
     }
     if (filters?.paymentStatus) {
-      countQuery = countQuery.eq("payments.status", filters.paymentStatus);
+      const detailedStatuses = getPaymentStatusesFromSimple(
+        filters.paymentStatus as SimplePaymentStatus
+      );
+
+      if (detailedStatuses.length === 1) {
+        countQuery = countQuery.eq("payments.status", detailedStatuses[0]);
+      } else {
+        countQuery = countQuery.in("payments.status", detailedStatuses);
+      }
     }
 
     // 上限 + 1 で取得
@@ -98,18 +112,20 @@ export async function getAllCashPaymentIdsAction(
     }>;
 
     const paymentIds = attendances
-      .map((a) => (a.payments && a.payments[0] ? a.payments[0].id : null))
+      .map((a) => a.payments?.[0]?.id ?? null)
       .filter((id): id is string => Boolean(id));
 
     const truncated = paymentIds.length > max;
     const resultIds = truncated ? paymentIds.slice(0, max) : paymentIds;
 
-    // 監査ログ（件数のみ）
-    await admin.from("system_logs").insert({
-      operation_type: "collect_cash_payment_ids",
-      details: {
+    // 監査ログ記録（新system_logsスキーマ対応 - service role経由）
+    await logPayment({
+      action: "cash_payment_ids.collect",
+      message: `Collected ${resultIds.length} cash payment IDs${truncated ? " (truncated)" : ""}`,
+      user_id: user.id,
+      outcome: "success",
+      metadata: {
         event_id: validatedEventId,
-        user_id: user.id,
         requested_max: max,
         returned_count: resultIds.length,
         truncated,

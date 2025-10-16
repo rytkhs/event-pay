@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
  * メディアクエリの状態を管理するカスタムフック
  * パフォーマンス最適化のため、リスナーベースで状態を更新
  */
-function useMediaQuery(query: string): boolean {
+export function useMediaQuery(query: string): boolean {
   const [matches, setMatches] = useState(false);
 
   useEffect(() => {

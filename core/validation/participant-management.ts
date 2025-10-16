@@ -17,7 +17,7 @@ export const PaymentStatusEnum = z.enum([
   "received",
   "refunded",
   "waived",
-  "completed",
+  "canceled",
 ]);
 
 // 利便性のために値配列をエクスポート（runtime 用）
@@ -29,8 +29,8 @@ const AttendanceStatusFilterSchema = z.enum(["attending", "not_attending", "mayb
 // 決済方法フィルター（内部専用）
 const PaymentMethodFilterSchema = z.enum(["stripe", "cash"]).optional();
 
-// 決済ステータスフィルター（内部専用）
-const PaymentStatusFilterSchema = PaymentStatusEnum.optional();
+// UI用決済ステータスフィルター（内部専用） - SimplePaymentStatus
+const SimplePaymentStatusFilterSchema = z.enum(["unpaid", "paid", "refunded", "waived"]).optional();
 
 // ソートフィールド（内部専用）
 const ParticipantSortFieldSchema = z
@@ -52,7 +52,7 @@ const SortOrderSchema = z.enum(["asc", "desc"]).default("desc");
 // ページネーション（内部専用）
 const PageSchema = z.number().int().min(1).default(1);
 
-const LimitSchema = z.number().int().min(1).max(100).default(50);
+const LimitSchema = z.number().int().min(1).max(200).default(100);
 
 // 検索クエリ（内部専用）
 const SearchQuerySchema = z
@@ -67,7 +67,7 @@ export const GetParticipantsParamsSchema = z.object({
   search: SearchQuerySchema,
   attendanceStatus: AttendanceStatusFilterSchema,
   paymentMethod: PaymentMethodFilterSchema,
-  paymentStatus: PaymentStatusFilterSchema,
+  paymentStatus: SimplePaymentStatusFilterSchema, // SimplePaymentStatusを使用
   sortField: ParticipantSortFieldSchema,
   sortOrder: SortOrderSchema,
   page: PageSchema,
@@ -84,15 +84,13 @@ export const ExportParticipantsCsvParamsSchema = z.object({
       search: SearchQuerySchema,
       attendanceStatus: AttendanceStatusFilterSchema,
       paymentMethod: PaymentMethodFilterSchema,
-      paymentStatus: PaymentStatusFilterSchema,
+      paymentStatus: SimplePaymentStatusFilterSchema, // SimplePaymentStatusを使用
     })
     .optional(),
   columns: z
     .array(
       z.enum([
-        "attendance_id",
         "nickname",
-        "email",
         "status",
         "payment_method",
         "payment_status",
@@ -103,15 +101,7 @@ export const ExportParticipantsCsvParamsSchema = z.object({
       ])
     )
     .optional()
-    .default([
-      "attendance_id",
-      "nickname",
-      "email",
-      "status",
-      "payment_method",
-      "payment_status",
-      "paid_at",
-    ]),
+    .default(["nickname", "status", "payment_method", "payment_status", "paid_at"]),
 });
 
 export type ExportParticipantsCsvParams = z.infer<typeof ExportParticipantsCsvParamsSchema>;
@@ -124,7 +114,7 @@ export const GetAllCashPaymentIdsParamsSchema = z.object({
       search: SearchQuerySchema,
       attendanceStatus: AttendanceStatusFilterSchema,
       // paymentMethod はサーバー側で cash を強制するため受け取らない
-      paymentStatus: PaymentStatusFilterSchema,
+      paymentStatus: SimplePaymentStatusFilterSchema, // SimplePaymentStatusを使用
     })
     .optional(),
   // 取得上限（+1 で打ち切り判定に利用）。過度なメモリ消費を避けるため 5000 に制限
@@ -197,7 +187,7 @@ export const GetParticipantsResponseSchema = z.object({
     search: z.string().optional(),
     attendanceStatus: AttendanceStatusFilterSchema,
     paymentMethod: PaymentMethodFilterSchema,
-    paymentStatus: PaymentStatusFilterSchema,
+    paymentStatus: SimplePaymentStatusFilterSchema, // SimplePaymentStatusを使用
   }),
   sort: z.object({
     field: ParticipantSortFieldSchema,
@@ -245,7 +235,7 @@ const PaymentSummarySchema = z.object({
   unpaidCount: z.number().int().min(0),
   unpaidAmount: z.number().int().min(0),
 
-  // 決済済み（paid, received, completed）
+  // 決済済み（paid, received）
   paidCount: z.number().int().min(0),
   paidAmount: z.number().int().min(0),
 });

@@ -70,7 +70,6 @@ describe("既存payments.amount優先ロジック検証", () => {
         amount: 1500, // params.amount
         status: "pending",
         stripe_payment_intent_id: null,
-        stripe_session_id: null,
         stripe_checkout_session_id: null,
       };
 
@@ -101,7 +100,7 @@ describe("既存payments.amount優先ロジック検証", () => {
         platformFeeAmount: Math.floor(testAmount * 0.025), // 2.5%手数料想定
         eventId: "event_123",
         eventTitle: "Test Event",
-        destinationAccountId: "acct_1RwIFbCZwTLGDVBd",
+        destinationAccountId: "acct_1S95RCEJRRCbin0V",
         metadata: {
           payment_id: "payment_123",
           attendance_id: "attendance_123",

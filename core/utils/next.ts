@@ -1,3 +1,7 @@
+import { logger } from "@core/logging/app-logger";
+
+import { getClientIPFromHeaders } from "./ip-detection";
+
 /**
  * Next.js ナビゲーション（redirect等）が投げる制御例外の検知ユーティリティ
  *
@@ -15,4 +19,55 @@ export function isNextRedirectError(err: unknown): boolean {
   } catch {
     return false;
   }
+}
+
+/**
+ * テスト環境でも安全にNext.js headers()を呼び出すためのヘルパー関数
+ *
+ * @param fallbackContext テスト環境等でheaders()が利用できない場合のフォールバック値
+ * @returns ヘッダー情報またはフォールバック値
+ */
+export async function getSafeHeaders(fallbackContext?: {
+  userAgent?: string;
+  ip?: string;
+}): Promise<{
+  headersList: { get: (name: string) => string | null } | null;
+  context: { userAgent?: string; ip?: string };
+}> {
+  let headersList: { get: (name: string) => string | null } | null = null;
+  let context: { userAgent?: string; ip?: string };
+
+  try {
+    // next/headersから動的にheaders()をインポート（ESModules対応）
+    const { headers } = await import("next/headers");
+    headersList = headers();
+
+    if (headersList) {
+      // 実際のヘッダーから情報を抽出
+      const userAgent = headersList.get("user-agent") ?? undefined;
+      const ip = getClientIPFromHeaders(headersList);
+      context = { userAgent, ip };
+    } else {
+      throw new Error("headers() returned null");
+    }
+  } catch (error) {
+    // headers()が利用できない場合（テスト環境など）
+    logger.warn("next/headers not available, using fallback context", {
+      tag: "headersUnavailable",
+      error_message: error instanceof Error ? error.message : String(error),
+      environment: process.env.NODE_ENV,
+      fallback: fallbackContext ? "provided" : "default",
+    });
+
+    // headersList を null に設定
+    headersList = null;
+
+    // フォールバック値を使用
+    context = fallbackContext || {
+      userAgent: process.env.NODE_ENV === "test" ? "test-environment" : "unknown",
+      ip: "127.0.0.1",
+    };
+  }
+
+  return { headersList, context };
 }

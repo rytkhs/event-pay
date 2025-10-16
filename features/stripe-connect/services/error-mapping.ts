@@ -10,13 +10,13 @@ import { StripeConnectErrorType, ErrorHandlingResult } from "./types";
 export const ERROR_HANDLING_BY_TYPE: Record<StripeConnectErrorType, ErrorHandlingResult> = {
   // ユーザーエラー
   [StripeConnectErrorType.ACCOUNT_ALREADY_EXISTS]: {
-    userMessage: "既にStripe Connectアカウントが存在します。",
+    userMessage: "既にStripeアカウントが存在します。",
     shouldRetry: false,
     logLevel: "info",
     shouldNotifyAdmin: false,
   },
   [StripeConnectErrorType.ACCOUNT_NOT_FOUND]: {
-    userMessage: "Stripe Connectアカウントが見つかりません。",
+    userMessage: "Stripeアカウントが見つかりません。",
     shouldRetry: false,
     logLevel: "warn",
     shouldNotifyAdmin: false,

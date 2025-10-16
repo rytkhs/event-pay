@@ -1,3 +1,5 @@
+import "server-only";
+
 import { NextRequest, NextResponse } from "next/server";
 
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
@@ -6,7 +8,6 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { logger } from "@core/logging/app-logger";
 import { COOKIE_CONFIG, AUTH_CONFIG, getCookieConfig } from "@core/security";
 import { getSessionManager } from "@core/session/manager";
-import { getRequiredEnvVar } from "@core/utils/env-helper";
 
 import type { Database } from "@/types/database";
 
@@ -18,8 +19,27 @@ interface MiddlewareSupabaseConfig {
 }
 
 export class SupabaseClientFactory {
-  private static readonly URL = getRequiredEnvVar("NEXT_PUBLIC_SUPABASE_URL");
-  private static readonly ANON_KEY = getRequiredEnvVar("NEXT_PUBLIC_SUPABASE_ANON_KEY");
+  private static get URL(): string {
+    const value = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    if (!value) {
+      const key = "NEXT_PUBLIC_SUPABASE_URL";
+      const message = `Missing required environment variable: ${key}`;
+      logger.error(message, { tag: "envVarMissing", variable_name: key });
+      throw new Error(message);
+    }
+    return value;
+  }
+
+  private static get ANON_KEY(): string {
+    const value = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    if (!value) {
+      const key = "NEXT_PUBLIC_SUPABASE_ANON_KEY";
+      const message = `Missing required environment variable: ${key}`;
+      logger.error(message, { tag: "envVarMissing", variable_name: key });
+      throw new Error(message);
+    }
+    return value;
+  }
   private static sessionManager = getSessionManager();
 
   static createServerClient(context: "server"): SupabaseClient<Database>;
@@ -60,17 +80,25 @@ export class SupabaseClientFactory {
 
     return createServerClient<Database>(this.URL, this.ANON_KEY, {
       cookies: {
-        get(name: string) {
-          return request.cookies.get(name)?.value;
+        getAll() {
+          return request.cookies.getAll();
         },
-        set(name: string, value: string, options: CookieOptions) {
-          response.cookies.set(name, value, {
-            ...options,
-            ...cookieConfig,
+        setAll(cookiesToSet: { name: string; value: string; options: CookieOptions }[]) {
+          // Next.js Middlewareでは、リクエストとレスポンスの両方に反映する
+          cookiesToSet.forEach(({ name, value }) => {
+            try {
+              request.cookies.set(name, value);
+            } catch (_) {
+              // ignore – request.cookies may be immutable in some contexts
+            }
           });
-        },
-        remove(name: string, options: CookieOptions) {
-          response.cookies.delete({ name, ...options });
+
+          cookiesToSet.forEach(({ name, value, options }) => {
+            response.cookies.set(name, value, {
+              ...options,
+              ...cookieConfig,
+            });
+          });
         },
       },
     }) as unknown as SupabaseClient<Database>;
@@ -93,6 +121,7 @@ export class SupabaseClientFactory {
 
       cookieStore = {
         get: () => undefined,
+        getAll: () => [] as { name: string; value: string }[],
         set: () => {},
         delete: () => {},
       };
@@ -100,23 +129,26 @@ export class SupabaseClientFactory {
 
     return createServerClient<Database>(this.URL, this.ANON_KEY, {
       cookies: {
-        get(name: string) {
-          return cookieStore.get(name)?.value;
+        getAll() {
+          try {
+            return cookieStore.getAll();
+          } catch (_) {
+            return [] as { name: string; value: string }[];
+          }
         },
-        set(name: string, value: string, options: CookieOptions) {
-          cookieStore.set(name, value, {
-            ...options,
-            ...COOKIE_CONFIG,
-            maxAge:
-              name === AUTH_CONFIG.cookieNames.session
-                ? AUTH_CONFIG.session.maxAge
-                : options.maxAge != null
-                  ? options.maxAge
-                  : undefined,
-          });
-        },
-        remove(name: string) {
-          cookieStore.delete(name);
+        setAll(cookiesToSet: { name: string; value: string; options: CookieOptions }[]) {
+          try {
+            cookiesToSet.forEach(({ name, value, options }) => {
+              const mergedOptions: CookieOptions = { ...options, ...COOKIE_CONFIG };
+              // 明示的なmaxAgeが無い場合のみ、セッションクッキーのmaxAgeを上書き
+              if (options.maxAge == null && name === AUTH_CONFIG.cookieNames.session) {
+                mergedOptions.maxAge = AUTH_CONFIG.session.maxAge;
+              }
+              cookieStore.set(name, value, mergedOptions);
+            });
+          } catch (error) {
+            // Server Componentなど書き込み不可の環境では無視
+          }
         },
       },
     }) as unknown as SupabaseClient<Database>;

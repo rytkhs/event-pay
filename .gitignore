@@ -99,3 +99,8 @@ tmp/
 # Playwright authentication state
 playwright/.auth/
 .env.test
+
+.tbls.yml
+jdbc-driver.jar
+schemaspy.jar
+tbls.deb

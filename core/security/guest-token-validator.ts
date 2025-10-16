@@ -17,7 +17,6 @@ import { validateGuestTokenFormat } from "./crypto";
 import { SecureSupabaseClientFactory } from "./secure-client-factory.impl";
 import { IGuestTokenValidator } from "./secure-client-factory.interface";
 import {
-  AdminReason,
   GuestErrorCode,
   GuestTokenErrorFactory,
   GuestValidationResult,
@@ -116,36 +115,15 @@ export class RLSGuestTokenValidator implements IGuestTokenValidator {
     }
 
     try {
-      // サービスロール権限でゲストトークンを直接検証（RLSバイパス）
-      const serviceClient = await this.clientFactory.createAuditedAdminClient(
-        AdminReason.SECURITY_INVESTIGATION,
-        "VALIDATE_GUEST_TOKEN"
-      );
+      // ゲストクライアントを使用してRLSポリシーを有効化
+      const guestClient = this.clientFactory.createGuestClient(token);
 
-      // ゲストトークンで直接attendanceを検索
-      const { data: attendance, error } = await serviceClient
-        .from("attendances")
-        .select(
-          `
-          id,
-          event_id,
-          status,
-          guest_token,
-          event:events (
-            id,
-            date,
-            registration_deadline,
-            payment_deadline,
-            allow_payment_after_deadline,
-            grace_period_days,
-            canceled_at
-          )
-        `
-        )
-        .eq("guest_token", token)
-        .single(); // トークンが有効なら必ず1件のみ取得される
+      // 公開RPCに置換（最小列）
+      const { data: rpcRow, error } = await (guestClient as any)
+        .rpc("rpc_guest_get_attendance", { p_guest_token: token })
+        .single();
 
-      if (error || !attendance) {
+      if (error || !rpcRow) {
         await this.safeLogGuestAccess(token, "VALIDATE_TOKEN_DETAILS", false, {
           errorCode: GuestErrorCode.TOKEN_NOT_FOUND,
           errorMessage: error?.message,
@@ -161,18 +139,20 @@ export class RLSGuestTokenValidator implements IGuestTokenValidator {
         };
       }
 
-      // 変更可能性をチェック
-      // -----------------------------
-      // event が配列で返るケースへの防御的対応
-      // 単体オブジェクトに正規化してから変更可能性を判定
-      // -----------------------------
-      const eventData = Array.isArray(attendance.event) ? attendance.event[0] : attendance.event;
+      // RPCの最小列からイベント情報を正規化
+      const eventData = {
+        id: (rpcRow as any).event_id,
+        date: (rpcRow as any).event_date,
+        registration_deadline: (rpcRow as any).registration_deadline,
+        payment_deadline: (rpcRow as any).payment_deadline,
+        canceled_at: (rpcRow as any).canceled_at,
+      } as any;
       const canModify = this.checkCanModify(eventData);
 
       // 成功をログに記録
       await this.safeLogGuestAccess(token, "VALIDATE_TOKEN_DETAILS", true, {
-        attendanceId: attendance.id,
-        eventId: eventData ? eventData.id : "",
+        attendanceId: (rpcRow as any).attendance_id,
+        eventId: eventData ? (eventData as any).id : "",
         tableName: "attendances",
         operationType: "SELECT",
         resultCount: 1,
@@ -180,8 +160,8 @@ export class RLSGuestTokenValidator implements IGuestTokenValidator {
 
       return {
         isValid: true,
-        attendanceId: attendance.id,
-        eventId: eventData ? eventData.id : "",
+        attendanceId: (rpcRow as any).attendance_id,
+        eventId: eventData ? (eventData as any).id : "",
         canModify,
       };
     } catch (error) {
@@ -225,55 +205,14 @@ export class RLSGuestTokenValidator implements IGuestTokenValidator {
     }
 
     try {
-      // サービスロール権限でゲストトークンを直接検証
-      const serviceClient = await this.clientFactory.createAuditedAdminClient(
-        AdminReason.SECURITY_INVESTIGATION,
-        "GET_GUEST_ATTENDANCE_DETAILS"
-      );
+      const guestClient = this.clientFactory.createGuestClient(token);
 
-      // 詳細な参加データを取得
-      const { data: attendance, error } = await serviceClient
-        .from("attendances")
-        .select(
-          `
-          id,
-          nickname,
-          email,
-          status,
-          guest_token,
-          created_at,
-          updated_at,
-          event:events (
-            id,
-            title,
-            description,
-            date,
-            location,
-            fee,
-            capacity,
-            registration_deadline,
-            payment_deadline,
-            allow_payment_after_deadline,
-            grace_period_days,
-            created_by,
-            canceled_at
-          ),
-          payment:payments (
-            id,
-            amount,
-            method,
-            status,
-            created_at
-          )
-        `
-        )
-        .eq("guest_token", token)
-        // payments は UNIQUE 制約で 1 件が想定だが、将来複数行を許容する拡張に備え最新順で並べ替え
-        .order("created_at", { ascending: false, referencedTable: "payments" })
-        .limit(1, { referencedTable: "payments" })
+      // 詳細な参加データを取得（最新支払い1件を含む）
+      const { data: rpcRow, error } = await (guestClient as any)
+        .rpc("rpc_guest_get_attendance", { p_guest_token: token })
         .single();
 
-      if (error || !attendance) {
+      if (error || !rpcRow) {
         await this.safeLogGuestAccess(token, "VALIDATE_TOKEN_DETAILS", false, {
           errorCode: GuestErrorCode.TOKEN_NOT_FOUND,
           errorMessage: error?.message,
@@ -290,49 +229,52 @@ export class RLSGuestTokenValidator implements IGuestTokenValidator {
         };
       }
 
-      // イベントデータの存在確認と正規化
-      const eventData = Array.isArray(attendance.event) ? attendance.event[0] : attendance.event;
+      const eventData = {
+        id: (rpcRow as any).event_id,
+        title: (rpcRow as any).event_title,
+        date: (rpcRow as any).event_date,
+        fee: (rpcRow as any).event_fee,
+        registration_deadline: (rpcRow as any).registration_deadline,
+        payment_deadline: (rpcRow as any).payment_deadline,
+        created_by: (rpcRow as any).created_by,
+        canceled_at: (rpcRow as any).canceled_at,
+      } as any;
 
-      if (!eventData) {
-        return {
-          isValid: false,
-          errorMessage: "イベントデータが見つかりません",
-          canModify: false,
-          errorCode: GuestErrorCode.EVENT_NOT_FOUND,
-        };
-      }
-
-      // 支払いデータの正規化
-      const paymentData = attendance.payment
-        ? Array.isArray(attendance.payment)
-          ? attendance.payment[0]
-          : attendance.payment
-        : null;
-
-      // 変更可能かどうかの判定
       const canModify = this.checkCanModifyAttendance(eventData);
 
       // 成功をログに記録
       await this.safeLogGuestAccess(token, "VALIDATE_TOKEN_DETAILS", true, {
-        attendanceId: attendance.id,
+        attendanceId: (rpcRow as any).attendance_id,
         eventId: eventData ? eventData.id : "",
         tableName: "attendances",
         operationType: "SELECT",
         resultCount: 1,
       });
 
+      // 支払い情報を整形（存在する場合のみ）
+      const payment = (rpcRow as any).payment_id
+        ? {
+            id: (rpcRow as any).payment_id as string,
+            amount: Number((rpcRow as any).payment_amount),
+            method: (rpcRow as any).payment_method,
+            status: (rpcRow as any).payment_status,
+            created_at: (rpcRow as any).payment_created_at,
+          }
+        : null;
+
       return {
         isValid: true,
         attendance: {
-          ...attendance,
-          nickname: sanitizeForEventPay(attendance.nickname),
+          id: (rpcRow as any).attendance_id,
+          nickname: (rpcRow as any).nickname,
+          email: (rpcRow as any).email,
+          status: (rpcRow as any).status,
+          guest_token: (rpcRow as any).guest_token,
           event: {
             ...eventData,
-            title: sanitizeForEventPay(eventData.title),
-            description: eventData.description ? sanitizeForEventPay(eventData.description) : null,
-            location: eventData.location ? sanitizeForEventPay(eventData.location) : null,
+            title: sanitizeForEventPay((rpcRow as any).event_title),
           },
-          payment: paymentData,
+          payment,
         } as RLSGuestAttendanceData,
         canModify,
       };

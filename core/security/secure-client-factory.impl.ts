@@ -5,6 +5,8 @@
  * 管理者権限の使用を監査し、ゲストトークンによる透過的なアクセス制御を提供
  */
 
+import "server-only";
+
 // next/headers は テスト環境では利用できないため動的インポート
 import type { NextRequest, NextResponse } from "next/server";
 
@@ -13,7 +15,6 @@ import type { CookieOptions } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
 
 import { logger } from "@core/logging/app-logger";
-import { getRequiredEnvVar } from "@core/utils/env-helper";
 
 import { COOKIE_CONFIG, AUTH_CONFIG, getCookieConfig } from "./config";
 import { validateGuestTokenFormat } from "./crypto";
@@ -39,9 +40,33 @@ export class SecureSupabaseClientFactory implements ISecureSupabaseClientFactory
   // Security auditor removed
 
   constructor() {
-    this.supabaseUrl = getRequiredEnvVar("NEXT_PUBLIC_SUPABASE_URL");
-    this.anonKey = getRequiredEnvVar("NEXT_PUBLIC_SUPABASE_ANON_KEY");
-    this.serviceRoleKey = getRequiredEnvVar("SUPABASE_SERVICE_ROLE_KEY");
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    if (!url) {
+      const key = "NEXT_PUBLIC_SUPABASE_URL";
+      const message = `Missing required environment variable: ${key}`;
+      logger.error(message, { tag: "envVarMissing", variable_name: key });
+      throw new Error(message);
+    }
+
+    const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    if (!anon) {
+      const key = "NEXT_PUBLIC_SUPABASE_ANON_KEY";
+      const message = `Missing required environment variable: ${key}`;
+      logger.error(message, { tag: "envVarMissing", variable_name: key });
+      throw new Error(message);
+    }
+
+    const service = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    if (!service) {
+      const key = "SUPABASE_SERVICE_ROLE_KEY";
+      const message = `Missing required environment variable: ${key}`;
+      logger.error(message, { tag: "envVarMissing", variable_name: key });
+      throw new Error(message);
+    }
+
+    this.supabaseUrl = url;
+    this.anonKey = anon;
+    this.serviceRoleKey = service;
 
     // Security auditor removed
   }
@@ -229,6 +254,31 @@ export class SecureSupabaseClientFactory implements ISecureSupabaseClientFactory
       };
 
       logger.info("Admin access logged", { reason, context });
+
+      // DB監査ログへの記録
+      // 注意: ここではまだクライアントを作成していないため、動的インポートで logToSystemLogs を使用
+      const { logToSystemLogs } = await import("@core/logging/system-logger");
+      await logToSystemLogs(
+        {
+          log_category: "security",
+          action: "admin.access",
+          message: `Admin access: ${reason}`,
+          actor_type: "service_role",
+          actor_identifier: reason,
+          user_id: auditContext?.userId,
+          ip_address: auditContext?.ipAddress,
+          user_agent: auditContext?.userAgent,
+          outcome: "success",
+          metadata: {
+            reason,
+            context,
+            operation_type: auditContext?.operationType,
+            accessed_tables: auditContext?.accessedTables,
+            additional_info: auditContext?.additionalInfo,
+          },
+        },
+        { alsoLogToPino: false } // pinoへの重複記録を避ける
+      );
     } catch (error) {
       throw new AdminAccessError(
         AdminAccessErrorCode.AUDIT_LOG_FAILED,

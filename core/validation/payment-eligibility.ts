@@ -184,7 +184,7 @@ export function canCreateStripeSession(
   options: StripeSessionOptions = {}
 ): PaymentEligibilityResult {
   const {
-    allowedPaymentStatuses = [null, "failed", "pending"],
+    allowedPaymentStatuses = [null, "failed", "pending", "refunded"],
     allowedPaymentMethods = [null, "stripe"],
   } = options;
 
@@ -203,14 +203,8 @@ export function canCreateStripeSession(
   const isValidMethod = allowedPaymentMethods.includes(paymentMethod);
   const isValidStatus = allowedPaymentStatuses.includes(paymentStatus);
 
-  // 決済完了済み状態の除外
-  const finalizedStatuses: PaymentStatus[] = [
-    "paid",
-    "received",
-    "completed",
-    "refunded",
-    "waived",
-  ];
+  // 決済完了済み状態の除外（refundedは再決済可能なため除外しない）
+  const finalizedStatuses: PaymentStatus[] = ["paid", "received", "waived"];
   const isNotFinalized = !paymentStatus || !finalizedStatuses.includes(paymentStatus);
 
   const extendedChecks = {
@@ -222,7 +216,7 @@ export function canCreateStripeSession(
   let reason: string | undefined = baseResult.reason;
 
   if (!reason && !isValidMethod) {
-    reason = "この参加者の支払方法はオンライン決済ではありません。";
+    reason = "オンライン決済は利用できません。";
   } else if (!reason && !isNotFinalized) {
     reason = "すでに決済は完了（または返金済み）しています。";
   } else if (!reason && !isValidStatus) {

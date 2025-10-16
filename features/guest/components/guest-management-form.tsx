@@ -11,7 +11,9 @@ import { useToast } from "@core/contexts/toast-context";
 import { useErrorHandler } from "@core/hooks/use-error-handler";
 import { ATTENDANCE_STATUS_LABELS } from "@core/types/enums";
 import { deriveEventStatus } from "@core/utils/derive-event-status";
+import { getModificationRestrictionReason } from "@core/utils/guest-restrictions";
 import { type GuestAttendanceData } from "@core/utils/guest-token";
+import { maskEmail } from "@core/utils/mask";
 import { sanitizeForEventPay } from "@core/utils/sanitize";
 import { formatUtcToJstByType } from "@core/utils/timezone";
 import { canGuestRepay } from "@core/validation/payment-eligibility";
@@ -33,6 +35,37 @@ import { updateGuestAttendanceAction } from "../actions";
 interface GuestManagementFormProps {
   attendance: GuestAttendanceData;
   canModify: boolean;
+}
+
+/**
+ * Connect Account関連エラーの詳細メッセージを取得
+ */
+function getConnectAccountErrorMessage(errorCode?: string): string {
+  switch (errorCode) {
+    case "CONNECT_ACCOUNT_NOT_FOUND":
+      return "決済の準備ができません。主催者のお支払い受付設定に不備があります。現金決済をご利用いただくか、主催者にお問い合わせください。";
+    case "CONNECT_ACCOUNT_RESTRICTED":
+      return "主催者のお支払い受付が一時的に制限されています。現金決済をご利用いただくか、主催者にお問い合わせください。";
+    case "STRIPE_CONFIG_ERROR":
+      return "決済システムに一時的な問題が発生しています。現金決済をご利用いただくか、しばらく時間をおいて再度お試しください。";
+    default:
+      return "オンライン決済に問題が発生しました。現金決済をご利用いただくか、主催者にお問い合わせください。";
+  }
+}
+
+/**
+ * 変更不可の理由に応じたメッセージを取得
+ */
+function getModificationRestrictionMessage(attendance: GuestAttendanceData): string {
+  const reason = getModificationRestrictionReason(attendance);
+
+  if (reason === "canceled") {
+    return "このイベントは中止されているため、参加状況を変更できません。";
+  } else if (reason === "deadline_passed") {
+    return "参加登録の締切を過ぎているため、参加状況を変更できません。";
+  }
+
+  return "参加状況の変更期限を過ぎているため、現在変更できません。";
 }
 
 export function GuestManagementForm({ attendance, canModify }: GuestManagementFormProps) {
@@ -101,7 +134,34 @@ export function GuestManagementForm({ attendance, canModify }: GuestManagementFo
         // ページをリロードして最新データを表示
         router.refresh();
       } else {
-        setError(result.error || "参加状況の更新に失敗しました。もう一度お試しください。");
+        // Connect Account関連エラーかどうかを判定
+        const isConnectAccountError =
+          result.code === "CONNECT_ACCOUNT_NOT_FOUND" ||
+          result.code === "CONNECT_ACCOUNT_RESTRICTED" ||
+          result.code === "STRIPE_CONFIG_ERROR" ||
+          (result.details as any)?.connectAccountIssue === true;
+
+        if (isConnectAccountError) {
+          // Connect Account問題時は詳細メッセージと代替案を表示
+          const connectErrorMessage = getConnectAccountErrorMessage(result.code);
+          setError(connectErrorMessage);
+
+          // 自動的に現金決済に切り替える提案
+          if (attendanceStatus === "attending" && attendance.event.fee > 0) {
+            setTimeout(() => {
+              if (paymentMethod !== "cash") {
+                setPaymentMethod("cash");
+                toast({
+                  title: "決済方法を変更しました",
+                  description: "オンライン決済に問題があるため、現金決済に変更しました。",
+                  variant: "default",
+                });
+              }
+            }, 1000);
+          }
+        } else {
+          setError(result.error || "参加状況の更新に失敗しました。もう一度お試しください。");
+        }
       }
     } catch (error) {
       handleError(error, {
@@ -139,13 +199,7 @@ export function GuestManagementForm({ attendance, canModify }: GuestManagementFo
     attendanceStatus !== attendance.status ||
     (attendanceStatus === "attending" &&
       attendance.event.fee > 0 &&
-      paymentMethod !== attendance.payment?.method) ||
-    // 再決済が必要なケース：参加中で同じ決済方法だが決済が失敗/未完了状態
-    (attendanceStatus === "attending" &&
-      attendance.event.fee > 0 &&
-      attendance.payment?.method === paymentMethod &&
-      attendance.payment?.status &&
-      ["failed", "pending"].includes(attendance.payment.status));
+      paymentMethod !== attendance.payment?.method);
 
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -158,9 +212,9 @@ export function GuestManagementForm({ attendance, canModify }: GuestManagementFo
               <span className="sr-only" id="modification-disabled-title">
                 参加状況変更不可
               </span>
-              参加状況の変更期限を過ぎているため、現在変更できません。
+              {getModificationRestrictionMessage(attendance)}
               <br />
-              ご質問やご不明点がある場合は、イベント主催者にお問い合わせください。
+              ご質問やご不明点がある場合は、主催者にお問い合わせください。
             </AlertDescription>
           </Alert>
 
@@ -185,26 +239,79 @@ export function GuestManagementForm({ attendance, canModify }: GuestManagementFo
                   id="attendance-form-title"
                   className="text-lg font-semibold text-gray-900 flex items-center mb-6"
                 >
-                  <div className="text-xl mr-2">⚙️</div>
                   参加管理
                 </h2>
               </div>
 
               {/* エラー・成功メッセージ */}
               {error && (
-                <Alert
-                  variant="destructive"
-                  role="alert"
-                  aria-live="assertive"
-                  ref={errorAlertRef}
-                  tabIndex={-1}
-                >
-                  <AlertCircle className="h-4 w-4" aria-hidden="true" />
-                  <AlertDescription>
-                    <span className="sr-only">エラー：</span>
-                    {error}
-                  </AlertDescription>
-                </Alert>
+                <>
+                  {/* Connect Account関連エラーかどうかを判定 */}
+                  {(() => {
+                    const isConnectError =
+                      error.includes("決済の準備ができません") ||
+                      error.includes("お支払い受付設定に不備") ||
+                      error.includes("一時的に制限されています") ||
+                      error.includes("決済システムに一時的な問題");
+
+                    return isConnectError ? (
+                      <Alert
+                        className="border-orange-200 bg-orange-50"
+                        role="alert"
+                        aria-live="assertive"
+                        ref={errorAlertRef}
+                        tabIndex={-1}
+                      >
+                        <AlertCircle className="h-4 w-4 text-orange-600" aria-hidden="true" />
+                        <AlertDescription className="space-y-3">
+                          <div className="text-orange-800">
+                            <span className="sr-only">オンライン決済エラー：</span>
+                            <div className="font-medium mb-2">オンライン決済に問題があります</div>
+                            <div className="text-sm">{error}</div>
+                          </div>
+
+                          {/* 代替案提示 */}
+                          {attendanceStatus === "attending" &&
+                            attendance.event.fee > 0 &&
+                            paymentMethod !== "cash" && (
+                              <div className="mt-3 flex flex-col sm:flex-row gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setPaymentMethod("cash");
+                                    setError(null);
+                                    toast({
+                                      title: "現金決済に変更",
+                                      description: "決済方法を現金決済に変更しました。",
+                                      variant: "success",
+                                    });
+                                  }}
+                                  className="inline-flex items-center px-3 py-2 text-sm font-medium text-orange-700 bg-orange-100 border border-orange-300 rounded-md hover:bg-orange-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 transition-colors"
+                                >
+                                  <CreditCard className="h-4 w-4 mr-2" />
+                                  現金決済に変更する
+                                </button>
+                              </div>
+                            )}
+                        </AlertDescription>
+                      </Alert>
+                    ) : (
+                      <Alert
+                        variant="destructive"
+                        role="alert"
+                        aria-live="assertive"
+                        ref={errorAlertRef}
+                        tabIndex={-1}
+                      >
+                        <AlertCircle className="h-4 w-4" aria-hidden="true" />
+                        <AlertDescription>
+                          <span className="sr-only">エラー：</span>
+                          {error}
+                        </AlertDescription>
+                      </Alert>
+                    );
+                  })()}
+                </>
               )}
 
               {success && (
@@ -283,13 +390,11 @@ export function GuestManagementForm({ attendance, canModify }: GuestManagementFo
                   </legend>
                   {/* 決済完了済みの場合は選択不可とし注意文言のみ表示 */}
                   {attendance.payment?.status &&
-                  ["paid", "received", "completed", "waived"].includes(
-                    attendance.payment.status
-                  ) ? (
+                  ["paid", "received", "waived", "refunded"].includes(attendance.payment.status) ? (
                     <Alert className="border-blue-200 bg-blue-50" role="alert">
                       <CheckCircle className="h-4 w-4 text-blue-600" aria-hidden="true" />
                       <AlertDescription>
-                        この参加者の決済は完了しています。支払方法を変更することはできません。
+                        決済が完了しています。支払方法を変更することはできません。
                       </AlertDescription>
                     </Alert>
                   ) : (
@@ -298,12 +403,12 @@ export function GuestManagementForm({ attendance, canModify }: GuestManagementFo
                         {
                           value: "stripe" as const,
                           label: "オンライン決済",
-                          description: "クレジットカード・銀行振込",
+                          description: "クレジットカード・Apple Pay・Google Pay",
                         },
                         {
                           value: "cash" as const,
-                          label: "当日現金払い",
-                          description: "会場での現金支払い",
+                          label: "現金払い",
+                          description: "直接現金でお支払い",
                         },
                       ].map((option) => (
                         <label
@@ -354,12 +459,12 @@ export function GuestManagementForm({ attendance, canModify }: GuestManagementFo
                     </p>
                     {paymentMethod === "stripe" && (
                       <p className="text-xs text-blue-700 mt-1 leading-relaxed">
-                        クレジットカード決済の場合、決済手続きのご案内をメールでお送りします。
+                        オンライン決済の場合、決済を完了するボタンから決済に進みます。
                       </p>
                     )}
                     {paymentMethod === "cash" && (
                       <p className="text-xs text-blue-700 mt-1 leading-relaxed">
-                        現金決済の場合、イベント当日に会場でお支払いください。
+                        現金決済の場合、直接現金で支払いください。
                       </p>
                     )}
                   </div>
@@ -412,35 +517,6 @@ export function GuestManagementForm({ attendance, canModify }: GuestManagementFo
                   リセット
                 </button>
               </div>
-
-              {/* 決済フロー案内 */}
-              {attendanceStatus === "attending" &&
-                attendance.event.fee > 0 &&
-                paymentMethod === "stripe" &&
-                hasChanges && (
-                  <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
-                    <div className="flex items-start space-x-2">
-                      <CreditCard
-                        className="h-4 w-4 text-blue-600 flex-shrink-0 mt-0.5"
-                        aria-hidden="true"
-                      />
-                      <div className="text-xs text-blue-800 leading-relaxed">
-                        <p className="font-medium">
-                          {attendance.payment?.status &&
-                          ["failed", "pending"].includes(attendance.payment.status)
-                            ? "再決済について"
-                            : "オンライン決済について"}
-                        </p>
-                        <p className="mt-1">
-                          {attendance.payment?.status &&
-                          ["failed", "pending"].includes(attendance.payment.status)
-                            ? "「再決済を実行」をクリックすると、新しいStripe決済ページに移動します。"
-                            : "「変更を保存」をクリックすると、参加状況の更新後に自動的にStripe決済ページに移動します。"}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                )}
             </form>
           </Card>
         </section>
@@ -453,7 +529,7 @@ export function GuestManagementForm({ attendance, canModify }: GuestManagementFo
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             <div>
-              <h4 className="text-sm font-medium text-gray-700">イベント名</h4>
+              <h4 className="text-sm font-medium text-gray-700">タイトル</h4>
               <p className="mt-1 text-sm text-gray-900 break-words">
                 {sanitizeForEventPay(attendance.event.title)}
               </p>
@@ -528,7 +604,7 @@ export function GuestManagementForm({ attendance, canModify }: GuestManagementFo
             <div>
               <h4 className="text-sm font-medium text-gray-700">メールアドレス</h4>
               <p className="mt-1 text-sm text-gray-900 break-all">
-                {sanitizeForEventPay(attendance.email)}
+                {maskEmail(sanitizeForEventPay(attendance.email))}
               </p>
             </div>
 

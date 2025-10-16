@@ -115,12 +115,34 @@ interface EventsPageProps {
 
 export default async function EventsPage({ searchParams }: EventsPageProps) {
   return (
-    <div data-testid="events-page-container" className="container mx-auto px-4 py-8">
+    <div data-testid="events-page-container" className="container mx-auto px-4 py-6">
+      {/* モダンヘッダー - 新規作成ボタン統合 */}
       <div data-testid="events-page-header" className="mb-8">
-        <h1 className="text-3xl font-bold">イベント一覧</h1>
-        <Button asChild className="mt-4">
-          <Link href="/events/create">新しいイベントを作成</Link>
-        </Button>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">イベント一覧</h1>
+            <p className="text-muted-foreground mt-1">みんなの集金でイベントを管理しましょう</p>
+          </div>
+          <Button
+            asChild
+            size="default"
+            className="w-fit sm:w-auto"
+            data-testid="create-event-button"
+          >
+            <Link href="/events/create" className="inline-flex items-center gap-2">
+              <svg
+                className="h-4 w-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2}
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+              </svg>
+              新しいイベント
+            </Link>
+          </Button>
+        </div>
       </div>
 
       <Suspense fallback={<EventLoading />}>

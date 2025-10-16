@@ -102,7 +102,7 @@ export const mockPaymentIntent: Stripe.PaymentIntent = {
   livemode: false,
   metadata: {},
   next_action: null,
-  on_behalf_of: "acct_1RwIFbCZwTLGDVBd",
+  on_behalf_of: "acct_1S95RCEJRRCbin0V",
   payment_method: null,
   payment_method_configuration_details: null,
   payment_method_options: {},
@@ -116,7 +116,7 @@ export const mockPaymentIntent: Stripe.PaymentIntent = {
   statement_descriptor_suffix: null,
   status: "requires_payment_method",
   transfer_data: {
-    destination: "acct_1RwIFbCZwTLGDVBd",
+    destination: "acct_1S95RCEJRRCbin0V",
   },
   transfer_group: null,
   source: null,
@@ -124,7 +124,7 @@ export const mockPaymentIntent: Stripe.PaymentIntent = {
 
 // Connect Account のモックデータ
 export const mockConnectAccount: Stripe.Account = {
-  id: "acct_1RwIFbCZwTLGDVBd",
+  id: "acct_1S95RCEJRRCbin0V",
   object: "account",
   business_profile: null,
   business_type: null,
@@ -146,7 +146,7 @@ export const mockConnectAccount: Stripe.Account = {
     object: "list",
     data: [],
     has_more: false,
-    url: "/v1/accounts/acct_1RwIFbCZwTLGDVBd/external_accounts",
+    url: "/v1/accounts/acct_1S95RCEJRRCbin0V/external_accounts",
   },
   future_requirements: {
     alternatives: [],
@@ -241,7 +241,7 @@ export const createMockWebhookEvent = (type: string, data: Record<string, unknow
   ({
     id: `evt_test_${Math.random().toString(36).substring(2, 15)}`,
     object: "event",
-    account: "acct_1RwIFbCZwTLGDVBd",
+    account: "acct_1S95RCEJRRCbin0V",
     api_version: "2024-04-10",
     created: Math.floor(Date.now() / 1000),
     data: {

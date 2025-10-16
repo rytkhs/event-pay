@@ -1,3 +1,5 @@
+import "server-only";
+
 import Stripe from "stripe";
 
 import { getTransferGroupForEvent } from "@core/utils/stripe";
@@ -68,7 +70,7 @@ export async function createDestinationCheckoutSession(
               unit_amount: amount,
               product_data: {
                 name: eventTitle,
-                description: `EventPay - ${eventTitle}`,
+                description: `みんなの集金 - ${eventTitle}`,
               },
             },
             quantity: 1,

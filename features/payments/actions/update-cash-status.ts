@@ -4,7 +4,7 @@ import { z } from "zod";
 
 import { enforceRateLimit, buildKey, POLICIES } from "@core/rate-limit";
 import { SecureSupabaseClientFactory } from "@core/security/secure-client-factory.impl";
-import { AdminReason } from "@core/security/secure-client-factory.types";
+import { PaymentError, PaymentErrorType } from "@core/types/payment-errors";
 import {
   type ServerActionResult,
   createServerActionError,
@@ -12,13 +12,13 @@ import {
   type ErrorCode,
 } from "@core/types/server-actions";
 
-import { PaymentError, PaymentErrorType } from "../types";
 import { PaymentValidator } from "../validation";
 
 const inputSchema = z.object({
   paymentId: z.string().uuid(),
-  status: z.enum(["received", "waived"]),
+  status: z.enum(["received", "waived", "pending"]),
   notes: z.string().max(1000).optional(),
+  isCancel: z.boolean().optional(),
 });
 
 function mapPaymentError(type: PaymentErrorType): ErrorCode {
@@ -52,7 +52,7 @@ function mapPaymentError(type: PaymentErrorType): ErrorCode {
 
 export async function updateCashStatusAction(
   input: unknown
-): Promise<ServerActionResult<{ paymentId: string; status: "received" | "waived" }>> {
+): Promise<ServerActionResult<{ paymentId: string; status: "received" | "waived" | "pending" }>> {
   try {
     const parsed = inputSchema.safeParse(input);
     if (!parsed.success) {
@@ -60,7 +60,7 @@ export async function updateCashStatusAction(
         details: { zodErrors: parsed.error.errors },
       });
     }
-    const { paymentId, status, notes } = parsed.data;
+    const { paymentId, status, notes, isCancel } = parsed.data;
 
     const factory = SecureSupabaseClientFactory.getInstance();
     const supabase = await factory.createAuthenticatedClient();
@@ -138,10 +138,13 @@ export async function updateCashStatusAction(
 
     // ステータス遷移などのビジネスルール検証
     try {
-      await new PaymentValidator(supabase).validateUpdatePaymentStatusParams({
-        paymentId,
-        status,
-      });
+      await new PaymentValidator(supabase).validateUpdatePaymentStatusParams(
+        {
+          paymentId,
+          status,
+        },
+        isCancel
+      );
     } catch (validationError) {
       if (validationError instanceof PaymentError) {
         return createServerActionError(
@@ -155,13 +158,7 @@ export async function updateCashStatusAction(
       );
     }
 
-    // 楽観的ロック付きRPCで更新
-    const admin = await factory.createAuditedAdminClient(
-      AdminReason.PAYMENT_PROCESSING,
-      "features/payments/actions/update-cash-status"
-    );
-
-    const { data: _rpcResult, error: rpcError } = await admin.rpc(
+    const { data: _rpcResult, error: rpcError } = await supabase.rpc(
       "rpc_update_payment_status_safe",
       {
         p_payment_id: paymentId,

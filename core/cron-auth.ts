@@ -1,5 +1,7 @@
 // Cron API認証ロジック
 
+import "server-only";
+
 import { AUTH_CONFIG } from "@core/constants/auth-config";
 import { logger } from "@core/logging/app-logger";
 

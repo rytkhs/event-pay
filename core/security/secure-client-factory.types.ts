@@ -8,17 +8,14 @@ import { GuestErrorCode } from "./guest-token-errors";
  * 管理者権限使用の理由を定義するenum
  */
 export enum AdminReason {
-  USER_CLEANUP = "user_cleanup",
   TEST_DATA_SETUP = "test_data_setup",
   TEST_DATA_CLEANUP = "test_data_cleanup",
   SYSTEM_MAINTENANCE = "system_maintenance",
-  EMERGENCY_ACCESS = "emergency_access",
-  DATA_MIGRATION = "data_migration",
-  SECURITY_INVESTIGATION = "security_investigation",
-  PAYOUT_PROCESSING = "payout_processing",
   PAYMENT_PROCESSING = "payment_processing",
-  CSV_EXPORT = "csv_export",
-  EVENT_MANAGEMENT = "event_management",
+  REMINDER_PROCESSING = "reminder_processing",
+  NOTIFICATION_PROCESSING = "notification_processing",
+  LOGGING = "logging",
+  ACCOUNT_DELETION = "account_deletion",
 }
 
 // エラーハンドリングは専用ファイルから再エクスポート
@@ -37,7 +34,6 @@ export enum AdminAccessErrorCode {
   UNAUTHORIZED_REASON = "UNAUTHORIZED_REASON",
   MISSING_CONTEXT = "MISSING_CONTEXT",
   AUDIT_LOG_FAILED = "AUDIT_LOG_FAILED",
-  EMERGENCY_ACCESS_REQUIRED = "EMERGENCY_ACCESS_REQUIRED",
 }
 
 /**

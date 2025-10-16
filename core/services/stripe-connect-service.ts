@@ -4,6 +4,7 @@
  * Portsパターンによる依存関係の逆転
  */
 
+import { logger } from "@core/logging/app-logger";
 import { getStripeConnectPort, type StripeAccountStatus } from "@core/ports/stripe-connect";
 
 // 型エイリアス（後方互換性のため）
@@ -21,7 +22,12 @@ export function createStripeConnectService(): IStripeConnectService {
         const port = getStripeConnectPort();
         return await port.updateAccountFromWebhook(accountId, status);
       } catch (error) {
-        console.error("Stripe Connect service error:", error);
+        logger.error("Stripe Connect service error", {
+          tag: "stripe-connect-service",
+          account_id: accountId,
+          error_name: error instanceof Error ? error.name : "Unknown",
+          error_message: error instanceof Error ? error.message : String(error),
+        });
         throw error;
       }
     },

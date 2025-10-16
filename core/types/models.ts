@@ -23,7 +23,7 @@ export interface Event {
   capacity: number | null;
   status: "upcoming" | "ongoing" | "past" | "canceled"; // 算出値（DBカラムではない）
   payment_methods: Database["public"]["Enums"]["payment_method_enum"][];
-  registration_deadline: string | null;
+  registration_deadline: string;
   payment_deadline: string | null;
   allow_payment_after_deadline: boolean;
   grace_period_days: number;
@@ -50,19 +50,32 @@ export interface EventDetail extends Event {
 /**
  * イベント作成・更新用型
  * フォームデータに対応（既存実装用）
+ *
+ * @note データ型の不整合について:
+ * - Event.fee は number, EventFormData.fee は string
+ * - Event.capacity は number|null, EventFormData.capacity は string
+ * この不整合により以下の問題が発生する可能性があります:
+ * 1. 型変換処理の複雑化
+ * 2. 変更検出ロジックの不整合
+ * 3. バリデーション処理の重複
+ *
+ * @todo 将来的な改善提案:
+ * - EventFormData を数値型に統一する
+ * - または Event型 を文字列型に統一する
+ * - 型変換処理を統一的なユーティリティ関数に集約する
  */
 export interface EventFormData {
   title: string;
   description: string;
   location: string;
   date: string;
-  fee: string; // フォームでは文字列
-  capacity: string; // フォームでは文字列
+  fee: string; // 注意: Event.fee は number, 型変換処理が必要
+  capacity: string; // 注意: Event.capacity は number|null, 型変換処理が必要
   payment_methods: string[]; // 既存実装では配列
   registration_deadline: string;
   payment_deadline: string;
   allow_payment_after_deadline?: boolean;
-  grace_period_days?: string; // 数値入力だがフォームでは文字列
+  grace_period_days?: string; // 注意: Event.grace_period_days は number, 型変換処理が必要
 }
 
 // ====================================================================

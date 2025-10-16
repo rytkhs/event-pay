@@ -25,7 +25,9 @@
       "@core/actions/*": ["./core/actions/*"],
       "@features/*": ["./features/*"],
       "@components/*": ["./components/*"],
-      "@/types/*": ["./types/*"]
+      "@/types/*": ["./types/*"],
+      "@tests/*": ["./tests/*"],
+      "server-only": ["./tests/mocks/server-only.js"]
     }
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts", "types/**/*.ts"],

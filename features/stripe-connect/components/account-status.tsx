@@ -1,5 +1,5 @@
 /**
- * Stripe Connect アカウントステータス表示コンポーネント
+ * Stripe 入金設定ステータス表示コンポーネント
  */
 
 "use client";
@@ -15,6 +15,7 @@ import {
   ArrowUpDown,
   RefreshCw,
   ExternalLink,
+  ShieldCheck,
 } from "lucide-react";
 
 import { STRIPE_ACCOUNT_STATUS_LABELS } from "@core/types/enums";
@@ -41,14 +42,16 @@ interface AccountStatusData {
     card_payments?: "active" | "inactive" | "pending";
     transfers?: "active" | "inactive" | "pending";
   };
+  expressDashboardAvailable?: boolean;
 }
 
 interface AccountStatusProps {
   refreshUrl: string;
   status: AccountStatusData;
+  expressDashboardAction?: (formData: FormData) => Promise<void>;
 }
 
-export function AccountStatus({ refreshUrl, status }: AccountStatusProps) {
+export function AccountStatus({ refreshUrl, status, expressDashboardAction }: AccountStatusProps) {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const accountData = status;
   const hasDueRequirements = Boolean(
@@ -111,10 +114,10 @@ export function AccountStatus({ refreshUrl, status }: AccountStatusProps) {
           <div>
             <CardTitle className="flex items-center gap-2">
               <CreditCard className="h-5 w-5" />
-              Stripe Connect アカウント
+              Stripe 入金設定
             </CardTitle>
             <CardDescription>
-              売上受取用アカウントの設定状況です。未完了の項目がある場合は「設定を更新する」から続きが行えます。
+              売上の入金設定の状況です。未完了の項目がある場合は「Stripeで設定を続行」から再設定してください。
             </CardDescription>
           </div>
           <Button onClick={handleRefresh} variant="outline" size="sm" disabled={isRefreshing}>
@@ -140,10 +143,6 @@ export function AccountStatus({ refreshUrl, status }: AccountStatusProps) {
           </Badge>
         </div>
 
-        {/* 機能ステータス */}
-        <div className="text-sm text-muted-foreground">
-          決済はプラットフォーム側で処理されます。
-        </div>
         <div className="grid gap-4 md:grid-cols-1">
           <div className="flex items-center justify-between p-3 border rounded-lg">
             <div className="flex items-center gap-2">
@@ -158,11 +157,11 @@ export function AccountStatus({ refreshUrl, status }: AccountStatusProps) {
 
         {/* 要求事項がある場合の表示 */}
         {hasDueRequirements && (
-          <Alert variant={accountData.requirements?.past_due?.length ? "destructive" : undefined}>
+          <Alert variant={accountData.requirements?.past_due?.length ? "destructive" : "warning"}>
             <AlertCircle className="h-4 w-4" />
             <AlertDescription>
               <strong>アカウント情報の更新が必要です。</strong>{" "}
-              Stripeで必要事項の入力を完了してください。
+              Stripeの案内に従って、本人確認書類や入金口座などの不足情報を入力してください。
             </AlertDescription>
           </Alert>
         )}
@@ -173,18 +172,32 @@ export function AccountStatus({ refreshUrl, status }: AccountStatusProps) {
             <a href={refreshUrl} className="flex-1">
               <Button type="button" className="w-full">
                 <ExternalLink className="h-4 w-4 mr-2" />
-                {accountData.status === "unverified" ? "設定を完了する" : "設定を更新する"}
+                {accountData.status === "unverified"
+                  ? "Stripeで設定を始める"
+                  : "Stripeで設定を続行"}
               </Button>
             </a>
           </div>
         )}
 
+        {accountData.status === "verified" &&
+          accountData.payoutsEnabled &&
+          accountData.expressDashboardAvailable &&
+          expressDashboardAction && (
+            <form action={expressDashboardAction} className="flex">
+              <Button type="submit" variant="outline" className="w-full">
+                <ShieldCheck className="h-4 w-4 mr-2" />
+                Stripeで売上・入金を確認
+              </Button>
+            </form>
+          )}
+
         {/* 成功メッセージ */}
         {accountData.status === "verified" && accountData.payoutsEnabled && (
-          <Alert>
+          <Alert variant="success">
             <CheckCircle className="h-4 w-4" />
             <AlertDescription>
-              <strong>設定完了！</strong> Stripe Connectアカウントの設定が完了しました。
+              <strong>設定完了！</strong> Stripeでの入金設定が完了しました。
               オンライン決済が有効化されました。
             </AlertDescription>
           </Alert>

@@ -38,7 +38,12 @@ export const assertCheckoutSessionParams = (
 
 // テスト用のWebhookイベントを作成する関数
 export const createTestWebhookEvent = (
-  type: "checkout.session.completed" | "payment_intent.succeeded" | "payment_intent.payment_failed",
+  type:
+    | "checkout.session.completed"
+    | "checkout.session.expired"
+    | "payment_intent.succeeded"
+    | "payment_intent.payment_failed"
+    | "account.updated",
   overrides: Record<string, unknown> = {}
 ): Stripe.Event => {
   let baseData: Record<string, unknown>;
@@ -49,6 +54,14 @@ export const createTestWebhookEvent = (
         ...mockCheckoutSession,
         status: "complete",
         payment_status: "paid",
+        ...overrides,
+      };
+      break;
+    case "checkout.session.expired":
+      baseData = {
+        ...mockCheckoutSession,
+        status: "expired",
+        payment_status: "unpaid",
         ...overrides,
       };
       break;
@@ -69,6 +82,29 @@ export const createTestWebhookEvent = (
           code: "card_declined",
           message: "Your card was declined.",
         },
+        ...overrides,
+      };
+      break;
+    case "account.updated":
+      baseData = {
+        id: "acct_test_123456789",
+        object: "account",
+        business_profile: {
+          mcc: "5734",
+          name: "Test Business",
+        },
+        capabilities: {
+          card_payments: "active",
+          transfers: "active",
+        },
+        charges_enabled: true,
+        created: Math.floor(Date.now() / 1000),
+        country: "JP",
+        default_currency: "jpy",
+        details_submitted: true,
+        email: "test@example.com",
+        payouts_enabled: true,
+        type: "express",
         ...overrides,
       };
       break;

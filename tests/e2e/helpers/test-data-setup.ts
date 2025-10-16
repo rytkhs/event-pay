@@ -5,8 +5,10 @@
 import crypto from "crypto";
 
 import { createClient } from "@supabase/supabase-js";
+import type { User as SupabaseAuthUser } from "@supabase/supabase-js";
 
 import { generateGuestToken } from "@core/utils/guest-token";
+import { generateInviteToken } from "@core/utils/invite-token";
 
 import type { Database } from "@/types/database";
 
@@ -26,13 +28,27 @@ const supabaseAdmin = createClient<Database>(
 export const TEST_IDS = {
   EVENT_ID: "87654321-4321-4321-4321-cba987654321",
   ATTENDANCE_ID: "11111111-2222-3333-4444-555555555555",
-  CONNECT_ACCOUNT_ID: "acct_1RwIFbCZwTLGDVBd",
+  CONNECT_ACCOUNT_ID: "acct_1S95RCEJRRCbin0V",
 } as const;
 
 // 動的に生成されるテストユーザーID
 let testUserId: string | null = null;
 
 export const FIXED_TIME = new Date("2026-01-01T12:00:00.000Z");
+
+async function findAuthUserByEmail(email: string): Promise<SupabaseAuthUser | null> {
+  const { data, error } = await supabaseAdmin.auth.admin.listUsers({
+    page: 1,
+    perPage: 200,
+  });
+
+  if (error) {
+    console.warn("Failed to list auth users while searching by email:", error);
+    return null;
+  }
+
+  return data.users.find((user) => user.email === email) ?? null;
+}
 
 /**
  * テストデータ作成・管理クラス
@@ -42,27 +58,59 @@ export class TestDataManager {
    * Connect設定済みユーザーを作成
    */
   static async createUserWithConnect() {
-    // 1. まずSupabase Authでユーザー作成
-    const { data: authUser, error: authError } = await supabaseAdmin.auth.admin.createUser({
-      email: "test-e2e@example.com",
-      password: "test-password-123",
-      user_metadata: { name: "E2Eテストユーザー" },
-      email_confirm: true,
-    });
+    const now = new Date();
+    const testEmail = "test-e2e@example.com";
+    const testPassword = "test-password-123";
+    const displayName = "E2Eテストユーザー";
 
-    if (authError || !authUser.user) {
-      throw new Error(`Auth user creation failed: ${authError?.message}`);
+    let authUser: SupabaseAuthUser | null = await findAuthUserByEmail(testEmail);
+
+    if (!authUser) {
+      const { data, error: authError } = await supabaseAdmin.auth.admin.createUser({
+        email: testEmail,
+        password: testPassword,
+        user_metadata: { name: displayName, test_user: true },
+        email_confirm: true,
+      });
+
+      if (authError) {
+        if (authError.message?.includes("already been registered")) {
+          authUser = await findAuthUserByEmail(testEmail);
+        } else {
+          throw new Error(`Auth user creation failed: ${authError.message}`);
+        }
+      } else {
+        authUser = data.user ?? null;
+      }
+    }
+
+    if (!authUser) {
+      throw new Error("Auth user creation failed: user could not be retrieved");
     }
 
     // テストユーザーIDを保存
-    testUserId = authUser.user.id;
+    testUserId = authUser.id;
+
+    const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(authUser.id, {
+      email_confirm: true,
+      user_metadata: {
+        ...authUser.user_metadata,
+        name: displayName,
+        test_user: true,
+        updated_at: now.toISOString(),
+      },
+    });
+
+    if (updateError) {
+      throw new Error(`Auth user update failed: ${updateError.message}`);
+    }
 
     // 2. users テーブルにレコード作成
     const userData = {
-      id: authUser.user.id,
-      name: "E2Eテストユーザー",
-      created_at: FIXED_TIME.toISOString(),
-      updated_at: FIXED_TIME.toISOString(),
+      id: authUser.id,
+      name: displayName,
+      created_at: now.toISOString(), // 現在時刻を使用（DB制約を満たすため）
+      updated_at: now.toISOString(),
     };
 
     const { error: userError } = await supabaseAdmin
@@ -75,13 +123,13 @@ export class TestDataManager {
 
     // 3. Connect アカウント作成
     const connectData = {
-      user_id: authUser.user.id,
+      user_id: authUser.id,
       stripe_account_id: TEST_IDS.CONNECT_ACCOUNT_ID,
       payouts_enabled: true,
       charges_enabled: true,
       status: "verified" as const,
-      created_at: FIXED_TIME.toISOString(),
-      updated_at: FIXED_TIME.toISOString(),
+      created_at: now.toISOString(), // 現在時刻を使用
+      updated_at: now.toISOString(),
     };
 
     const { error: connectError } = await supabaseAdmin
@@ -103,6 +151,15 @@ export class TestDataManager {
       throw new Error("User must be created before creating event");
     }
 
+    // 現在時刻を基準に未来の日付を設定（テスト実行時に期限が過ぎないようにする）
+    const now = new Date();
+    const eventDate = new Date(now.getTime() + 48 * 60 * 60 * 1000); // 現在から+2日後
+    const registrationDeadline = new Date(now.getTime() + 24 * 60 * 60 * 1000); // 現在から+1日後
+    const paymentDeadline = new Date(now.getTime() + 36 * 60 * 60 * 1000); // 現在から+1.5日後
+
+    // 招待トークンを生成
+    const inviteToken = generateInviteToken();
+
     // テスト用イベントデータを組み立て
     const eventData: Database["public"]["Tables"]["events"]["Insert"] = {
       id: TEST_IDS.EVENT_ID,
@@ -111,12 +168,14 @@ export class TestDataManager {
       description: "E2Eテスト用に作成された有料イベントです。",
       location: "オンライン",
       fee: 3000,
-      date: new Date(FIXED_TIME.getTime() + 48 * 60 * 60 * 1000).toISOString(), // +2days after created_at
-      registration_deadline: new Date(FIXED_TIME.getTime() + 24 * 60 * 60 * 1000).toISOString(), // +1day
+      date: eventDate.toISOString(),
+      registration_deadline: registrationDeadline.toISOString(),
+      payment_deadline: paymentDeadline.toISOString(),
       payment_methods: ["stripe"],
+      invite_token: inviteToken,
       canceled_at: null,
-      created_at: FIXED_TIME.toISOString(),
-      updated_at: FIXED_TIME.toISOString(),
+      created_at: now.toISOString(), // 現在時刻を使用（DB制約を満たすため）
+      updated_at: now.toISOString(),
     };
 
     const { error } = await supabaseAdmin.from("events").upsert(eventData, { onConflict: "id" });
@@ -142,6 +201,8 @@ export class TestDataManager {
   ) {
     const { status = "attending", existingPayment } = options;
 
+    const now = new Date();
+
     const attendanceData = {
       id: TEST_IDS.ATTENDANCE_ID,
       event_id: TEST_IDS.EVENT_ID,
@@ -149,8 +210,8 @@ export class TestDataManager {
       email: "e2e-participant@example.com",
       status: status as "attending" | "not_attending" | "maybe",
       guest_token: generateGuestToken(),
-      created_at: FIXED_TIME.toISOString(),
-      updated_at: FIXED_TIME.toISOString(),
+      created_at: now.toISOString(), // 現在時刻を使用（DB制約を満たすため）
+      updated_at: now.toISOString(),
     };
 
     const { error: attendanceError } = await supabaseAdmin
@@ -172,7 +233,6 @@ export class TestDataManager {
           | "pending"
           | "paid"
           | "failed"
-          | "completed"
           | "refunded"
           | "waived",
         method: "stripe" as const,
@@ -180,11 +240,11 @@ export class TestDataManager {
         // 新しいIdempotency関連カラムを明示的に設定（null許可だが統一性のため）
         checkout_idempotency_key: null,
         checkout_key_revision: 0,
-        created_at: new Date("2000-01-01T00:00:00.000Z").toISOString(),
-        updated_at: new Date("2000-01-01T00:00:00.000Z").toISOString(),
+        created_at: now.toISOString(), // 現在時刻を使用
+        updated_at: now.toISOString(),
         paid_at:
-          existingPayment.status === "paid" || existingPayment.status === "completed"
-            ? FIXED_TIME.toISOString()
+          existingPayment.status === "paid" || existingPayment.status === "received"
+            ? now.toISOString()
             : null,
       };
 

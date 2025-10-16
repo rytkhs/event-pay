@@ -4,6 +4,8 @@
  * 具体的なハンドラ登録はfeature層で行う（Ports & Adapters Pattern）
  */
 
+import { logger } from "@core/logging/app-logger";
+
 import { getEventRegistry } from "./payment-events";
 
 /**
@@ -22,7 +24,9 @@ export function initializeEventSystem(): void {
  */
 export async function setupEventHandlers(): Promise<void> {
   // 空実装 - 実際のハンドラ登録は各feature層で行われる
-  console.log("Event registry initialized. Handlers will be registered by feature adapters.");
+  logger.info("Event registry initialized. Handlers will be registered by feature adapters.", {
+    tag: "event-setup",
+  });
 }
 
 // サーバーサイドでの初期化

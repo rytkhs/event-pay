@@ -74,10 +74,10 @@ export function ErrorCard({
 
   // 重要度に応じた境界線の色
   const severityBorderClasses = {
-    low: "border-gray-200",
-    medium: "border-orange-200",
-    high: "border-red-200",
-    critical: "border-red-300 shadow-red-100",
+    low: "border-muted",
+    medium: "border-warning/30",
+    high: "border-destructive/30",
+    critical: "border-destructive/50 shadow-destructive/10",
   };
 
   return (
@@ -98,9 +98,9 @@ export function ErrorCard({
 
         {/* エラー情報 */}
         <div className="mb-6">
-          <h1 className={cn("font-bold text-gray-900 mb-2", styles.title)}>{title}</h1>
-          <p className={cn("text-gray-600 mb-2", styles.message)}>{message}</p>
-          {description && <p className="text-sm text-gray-500">{description}</p>}
+          <h1 className={cn("font-bold text-foreground mb-2", styles.title)}>{title}</h1>
+          <p className={cn("text-muted-foreground mb-2", styles.message)}>{message}</p>
+          {description && <p className="text-sm text-muted-foreground">{description}</p>}
         </div>
 
         {/* 子コンテンツ（追加情報など） */}
@@ -109,18 +109,18 @@ export function ErrorCard({
         {/* 開発環境でのエラー詳細 */}
         {process.env.NODE_ENV === "development" && error && (
           <details className="mb-6 text-left">
-            <summary className="cursor-pointer text-sm text-gray-500 mb-2 hover:text-gray-700">
+            <summary className="cursor-pointer text-sm text-muted-foreground mb-2 hover:text-foreground">
               エラー詳細（開発環境のみ）
             </summary>
-            <div className="text-xs bg-gray-100 p-3 rounded border overflow-auto max-h-40">
+            <div className="text-xs bg-muted/30 p-3 rounded border overflow-auto max-h-40">
               <div className="mb-2">
                 <strong>エラーメッセージ:</strong>
-                <pre className="mt-1 text-red-600">{error.message}</pre>
+                <pre className="mt-1 text-destructive">{error.message}</pre>
               </div>
               {error.stack && (
                 <div>
                   <strong>スタックトレース:</strong>
-                  <pre className="mt-1 text-gray-700 whitespace-pre-wrap">{error.stack}</pre>
+                  <pre className="mt-1 text-foreground whitespace-pre-wrap">{error.stack}</pre>
                 </div>
               )}
             </div>
@@ -184,23 +184,26 @@ export function NotificationErrorCard({
   className = "",
 }: NotificationErrorCardProps) {
   return (
-    <Card className={cn("p-4 border-red-200 bg-red-50", className)}>
+    <Card className={cn("p-4 border-destructive/20 bg-destructive/10", className)}>
       <div className="flex items-start space-x-3">
         <ErrorIcon category="client" size="sm" className="flex-shrink-0 mt-0.5" />
         <div className="flex-1 min-w-0">
-          <h3 className="text-sm font-medium text-red-800 mb-1">{title}</h3>
-          <p className="text-sm text-red-700 mb-3">{message}</p>
+          <h3 className="text-sm font-medium text-destructive mb-1">{title}</h3>
+          <p className="text-sm text-destructive/80 mb-3">{message}</p>
           <div className="flex space-x-2">
             {onRetry && (
               <button
                 onClick={onRetry}
-                className="text-sm text-red-800 hover:text-red-900 font-medium underline"
+                className="text-sm text-destructive hover:text-destructive/80 font-medium underline"
               >
                 再試行
               </button>
             )}
             {onDismiss && (
-              <button onClick={onDismiss} className="text-sm text-red-600 hover:text-red-700">
+              <button
+                onClick={onDismiss}
+                className="text-sm text-destructive/80 hover:text-destructive"
+              >
                 閉じる
               </button>
             )}

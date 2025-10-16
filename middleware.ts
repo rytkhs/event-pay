@@ -13,9 +13,26 @@ function isAuthPath(pathname: string): boolean {
 
 function isPublicPath(pathname: string): boolean {
   // 明示的な公開ページ。その他はデフォルトで保護扱い
-  const publicExact = ["/", "/favicon.ico", "/login", "/register", "/reset-password"];
+  const publicExact = [
+    "/",
+    "/favicon.ico",
+    "/icon.svg",
+    "/apple-icon",
+    "/apple-icon.png",
+    "/safari-pinned-tab.svg",
+    "/login",
+    "/register",
+    "/reset-password",
+    "/verify-otp",
+    "/verify-email",
+    "/confirm",
+    "/contact",
+    "/terms",
+    "/privacy",
+    "/tokushoho",
+  ];
   if (publicExact.includes(pathname)) return true;
-  const publicPrefixes = ["/guest/", "/invite/", "/auth/reset-password/"];
+  const publicPrefixes = ["/guest/", "/invite/", "/auth/reset-password/", "/tokushoho/"];
   return publicPrefixes.some((p) => pathname.startsWith(p));
 }
 
@@ -80,6 +97,6 @@ export async function middleware(request: NextRequest) {
 export const config = {
   matcher: [
     // APIや静的アセット等は対象外
-    "/((?!api|_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml|manifest.webmanifest).*)",
+    "/((?!api|_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml|manifest.webmanifest|images).*)",
   ],
 };

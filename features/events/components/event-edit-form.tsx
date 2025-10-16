@@ -1,9 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 import type { Event } from "@core/types/models";
-import { sanitizeForEventPay } from "@core/utils/sanitize";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -22,9 +21,13 @@ import {
   FormDescription,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 
 import { useEventEditForm, type EventEditFormDataRHF } from "../hooks/use-event-edit-form";
+import { useRestrictionContext, useFormDataSnapshot } from "../hooks/use-unified-restrictions";
+
+import { UnifiedRestrictionNoticeV2 } from "./unified-restriction-notice-v2";
 
 interface EventEditFormProps {
   event: Event;
@@ -32,6 +35,7 @@ interface EventEditFormProps {
   onSubmit?: (data: Event) => void;
   serverError?: string;
   hasStripePaid?: boolean;
+  canUseOnlinePayments?: boolean;
 }
 
 export function EventEditForm({
@@ -40,6 +44,7 @@ export function EventEditForm({
   onSubmit,
   serverError,
   hasStripePaid = false,
+  canUseOnlinePayments = false,
 }: EventEditFormProps) {
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [pendingChanges, setPendingChanges] = useState<ChangeItem[]>([]);
@@ -49,9 +54,9 @@ export function EventEditForm({
     isPending,
     hasAttendees,
     validation,
-    restrictions,
     changes,
     actions,
+    restrictions,
     isFreeEvent, // 無料イベント判定フラグ
   } = useEventEditForm({
     event,
@@ -59,6 +64,64 @@ export function EventEditForm({
     onSubmit,
     hasStripePaid,
   });
+
+  // 統一制限システム用のデータ（V2表示コンポーネント用）
+  const restrictionContext = useRestrictionContext(
+    {
+      fee: event.fee,
+      capacity: event.capacity,
+      payment_methods: event.payment_methods,
+      title: event.title,
+      description: event.description ?? undefined,
+      location: event.location ?? undefined,
+      date: event.date,
+      registration_deadline: event.registration_deadline ?? undefined,
+      payment_deadline: event.payment_deadline ?? undefined,
+      allow_payment_after_deadline: event.allow_payment_after_deadline ?? undefined,
+      grace_period_days: event.grace_period_days ?? undefined,
+    },
+    { hasAttendees, attendeeCount, hasStripePaid },
+    event.status ?? "upcoming"
+  );
+  const formDataSnapshot = useFormDataSnapshot(form.watch());
+
+  const hasStripeSelected = (form.watch("payment_methods") || []).includes("stripe");
+
+  /**
+   * Stripe Connect設定状態の判定
+   * - canUseOnlinePayments: Stripe Connect準備完了（ready状態）
+   * - hasExistingStripe: 既存イベントでStripe設定済み
+   * - hasStripeSelected: 現在フォームでStripeが選択中
+   */
+  const needsStripeSetup = hasStripeSelected && !canUseOnlinePayments;
+
+  // 型安全な決済方法の選択肢
+  // Stripe Connectが準備できていない場合はオンライン決済を選択肢から除外
+  // ただし、既存イベントでStripeが設定済みの場合は編集継続のため選択肢として残す
+  const hasExistingStripe = event.payment_methods?.includes("stripe");
+  const showStripeOption = canUseOnlinePayments || hasExistingStripe;
+
+  const paymentOptions: { value: Event["payment_methods"][number]; label: string }[] = [
+    ...(showStripeOption
+      ? [
+          {
+            value: "stripe" as const,
+            label:
+              hasExistingStripe && !canUseOnlinePayments
+                ? "オンライン決済（要設定確認）"
+                : "オンライン決済",
+          },
+        ]
+      : []),
+    { value: "cash", label: "現金" },
+  ];
+
+  // Stripe選択時の即時バリデーション
+  useEffect(() => {
+    if (hasStripeSelected && !isFreeEvent) {
+      void form.trigger("payment_deadline");
+    }
+  }, [hasStripeSelected, isFreeEvent, form]);
 
   const handleSubmit = async (_data: EventEditFormDataRHF) => {
     // 変更検出
@@ -101,9 +164,6 @@ export function EventEditForm({
         <CardHeader className="space-y-4">
           <div className="flex items-center gap-4">
             <CardTitle className="text-2xl font-bold">イベント編集</CardTitle>
-            <div className="px-3 py-1 bg-blue-100 text-blue-800 text-sm rounded-full">
-              React Hook Form 版（テスト中）
-            </div>
           </div>
 
           {/* サーバーエラーの表示 */}
@@ -120,17 +180,12 @@ export function EventEditForm({
             </div>
           )}
 
-          {/* 編集制限の通知（V2: 決済済み時のみ） */}
-          {restrictions.getRestrictedFieldNames().length > 0 && (
-            <div className="bg-blue-50 border border-blue-200 text-blue-700 px-4 py-3 rounded">
-              <p className="font-medium">
-                決済済みの参加者がいるため、一部項目の編集が制限されています
-              </p>
-              <p className="text-sm mt-1">
-                制限項目: {restrictions.getRestrictedFieldNames().join(", ")}
-              </p>
-            </div>
-          )}
+          {/* 統合制限通知（V2） */}
+          <UnifiedRestrictionNoticeV2
+            restrictions={restrictionContext}
+            formData={formDataSnapshot}
+            showLevels={["structural", "conditional", "advisory"]}
+          />
         </CardHeader>
 
         <CardContent>
@@ -154,13 +209,7 @@ export function EventEditForm({
                           タイトル <span className="text-red-500">*</span>
                         </FormLabel>
                         <FormControl>
-                          <Input
-                            {...field}
-                            value={sanitizeForEventPay(field.value)}
-                            disabled={isPending}
-                            maxLength={100}
-                            required
-                          />
+                          <Input {...field} disabled={isPending} maxLength={100} required />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -175,12 +224,7 @@ export function EventEditForm({
                       <FormItem>
                         <FormLabel>場所</FormLabel>
                         <FormControl>
-                          <Input
-                            {...field}
-                            value={sanitizeForEventPay(field.value)}
-                            disabled={isPending}
-                            maxLength={200}
-                          />
+                          <Input {...field} disabled={isPending} maxLength={200} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -210,14 +254,7 @@ export function EventEditForm({
                     name="capacity"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>
-                          定員
-                          {hasAttendees && (
-                            <span className="ml-2 text-sm text-gray-500">
-                              (現在の参加者数以上で設定)
-                            </span>
-                          )}
-                        </FormLabel>
+                        <FormLabel>定員</FormLabel>
                         <FormControl>
                           <Input
                             {...field}
@@ -233,6 +270,12 @@ export function EventEditForm({
                             }}
                           />
                         </FormControl>
+                        {hasAttendees && (
+                          <FormDescription className="text-xs text-gray-500">
+                            参加者がいるため、定員は現在の参加者数（{attendeeCount}
+                            名）未満に設定できません。
+                          </FormDescription>
+                        )}
                         <FormMessage />
                       </FormItem>
                     )}
@@ -246,13 +289,7 @@ export function EventEditForm({
                       <FormItem className="md:col-span-2">
                         <FormLabel>説明</FormLabel>
                         <FormControl>
-                          <Textarea
-                            {...field}
-                            value={sanitizeForEventPay(field.value)}
-                            disabled={isPending}
-                            rows={3}
-                            maxLength={1000}
-                          />
+                          <Textarea {...field} disabled={isPending} rows={3} maxLength={1000} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -277,9 +314,6 @@ export function EventEditForm({
                       <FormItem>
                         <FormLabel>
                           参加費（円） <span className="text-red-500">*</span>
-                          {restrictions.isFieldRestricted("fee") && (
-                            <span className="ml-2 text-sm text-gray-500">(編集制限)</span>
-                          )}
                         </FormLabel>
                         <FormControl>
                           <Input
@@ -288,10 +322,19 @@ export function EventEditForm({
                             min="0"
                             step="1"
                             inputMode="numeric"
-                            disabled={isPending || restrictions.isFieldRestricted("fee")}
+                            disabled={isPending || !restrictions.isFieldEditable("fee")}
                             required
                           />
                         </FormControl>
+                        {!restrictions.isFieldEditable("fee") ? (
+                          <FormDescription className="text-xs text-gray-500">
+                            決済済み参加者がいるため、この項目は変更できません。
+                          </FormDescription>
+                        ) : (
+                          <FormDescription className="text-sm text-gray-600">
+                            0円（無料）または100円以上で設定してください。
+                          </FormDescription>
+                        )}
                         <FormMessage />
                       </FormItem>
                     )}
@@ -306,31 +349,32 @@ export function EventEditForm({
                         <FormItem>
                           <FormLabel>
                             決済方法 <span className="text-red-500">*</span>
-                            {restrictions.isFieldRestricted("payment_methods") && (
-                              <span className="ml-2 text-sm text-gray-500">(編集制限)</span>
-                            )}
                           </FormLabel>
                           <div className="space-y-2">
-                            {[
-                              { value: "stripe", label: "クレジットカード" },
-                              { value: "cash", label: "現金" },
-                            ].map((option) => (
+                            {paymentOptions.map((option) => (
                               <div key={option.value} className="flex items-center space-x-2">
                                 <Checkbox
                                   id={`payment-${option.value}`}
                                   checked={field.value?.includes(option.value)}
                                   onCheckedChange={(checked) => {
+                                    const existingMethods = event.payment_methods || [];
                                     if (checked) {
-                                      field.onChange([...field.value, option.value]);
+                                      const next = [
+                                        ...new Set([...(field.value || []), option.value]),
+                                      ];
+                                      field.onChange(next);
                                     } else {
-                                      field.onChange(
-                                        field.value?.filter((v) => v !== option.value)
+                                      // 既存メソッドの解除は禁止（hasStripePaid時）
+                                      if (hasStripePaid && existingMethods.includes(option.value)) {
+                                        return;
+                                      }
+                                      const next = (field.value || []).filter(
+                                        (v) => v !== option.value
                                       );
+                                      field.onChange(next);
                                     }
                                   }}
-                                  disabled={
-                                    isPending || restrictions.isFieldRestricted("payment_methods")
-                                  }
+                                  disabled={isPending}
                                 />
                                 <label
                                   htmlFor={`payment-${option.value}`}
@@ -341,6 +385,43 @@ export function EventEditForm({
                               </div>
                             ))}
                           </div>
+
+                          {/* Stripe Connect設定が必要な場合の警告 */}
+                          {needsStripeSetup && (
+                            <div className="mt-2 p-3 bg-amber-50 border border-amber-200 rounded-md">
+                              <div className="flex items-start space-x-2">
+                                <div className="text-amber-600 mt-0.5">⚠️</div>
+                                <div className="text-sm">
+                                  <p className="text-amber-800 font-medium">
+                                    Stripeアカウントの設定が必要です
+                                  </p>
+                                  <p className="text-amber-700 mt-1">
+                                    オンライン決済を受け取るには、Stripe
+                                    アカウントの設定を完了してください。
+                                  </p>
+                                  <a
+                                    href="/dashboard/connect"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center text-amber-700 hover:text-amber-800 underline text-xs mt-1"
+                                  >
+                                    設定画面を開く →
+                                  </a>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+
+                          {hasStripePaid ? (
+                            <FormDescription className="text-xs text-gray-500">
+                              決済済み参加者がいるため、既存の決済方法は解除できません。新しい決済方法の追加は可能です。
+                            </FormDescription>
+                          ) : (
+                            <FormDescription className="text-xs text-gray-500">
+                              オンライン決済を選択する場合は、下部でオンライン決済締切を必ず設定してください
+                              <span className="text-red-500 ml-1 font-bold">*</span>
+                            </FormDescription>
+                          )}
                           <FormMessage />
                         </FormItem>
                       )}
@@ -376,51 +457,56 @@ export function EventEditForm({
                         <FormControl>
                           <Input {...field} type="datetime-local" disabled={isPending} />
                         </FormControl>
+                        <FormDescription className="text-xs text-gray-500">
+                          ※ 未入力時は既存の設定が保持されます。
+                        </FormDescription>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
 
-                  {/* 支払い締切 */}
-                  <FormField
-                    control={form.control}
-                    name="payment_deadline"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>オンライン決済締切</FormLabel>
-                        <FormControl>
-                          <Input {...field} type="datetime-local" disabled={isPending} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                  {/* 支払い締切（オンライン決済選択時のみ表示） */}
+                  {hasStripeSelected && !isFreeEvent && (
+                    <FormField
+                      control={form.control}
+                      name="payment_deadline"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>オンライン決済締切</FormLabel>
+                          <FormControl>
+                            <Input {...field} type="datetime-local" disabled={isPending} />
+                          </FormControl>
+                          {/* <FormDescription className="text-xs text-red-600">
+                            オンライン決済を有効にしたため必須です
+                          </FormDescription> */}
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  )}
                 </div>
 
-                {/* 締切後もオンライン決済を許可 + 猶予（日） */}
-                {!isFreeEvent && form.watch("payment_deadline") && (
+                {/* 締切後もオンライン決済を許可 + 猶予（日）: オンライン決済選択時のみ */}
+                {hasStripeSelected && !isFreeEvent && (
                   <div className="space-y-3">
                     <FormField
                       control={form.control}
                       name="allow_payment_after_deadline"
-                      render={() => (
-                        <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                      render={({ field }) => (
+                        <FormItem className="flex flex-row items-center justify-between space-x-3 space-y-0">
+                          <div className="space-y-1 leading-none">
+                            <FormLabel>締切後も決済を許可</FormLabel>
+                            <FormDescription>
+                              オンライン決済締切（または開催日時）後も支払いを受け付けます（最長30日まで）。
+                            </FormDescription>
+                          </div>
                           <FormControl>
-                            <Checkbox
-                              checked={Boolean(form.watch("allow_payment_after_deadline"))}
-                              onCheckedChange={(checked) => {
-                                form.setValue("allow_payment_after_deadline", checked === true);
-                                void form.trigger();
-                              }}
+                            <Switch
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
                               disabled={isPending}
                             />
                           </FormControl>
-                          <div className="space-y-1 leading-none">
-                            <FormLabel>締切後もオンライン決済を許可</FormLabel>
-                            <FormDescription>
-                              終了後も支払いを受け付けます（最長30日まで）。
-                            </FormDescription>
-                          </div>
                         </FormItem>
                       )}
                     />
@@ -450,7 +536,7 @@ export function EventEditForm({
                               />
                             </FormControl>
                             <FormDescription>
-                              オンライン決済締切からの猶予日数（最大30日）。
+                              オンライン決済締切（または開催日時）からの猶予日数（最大30日）。
                             </FormDescription>
                             <FormMessage />
                           </FormItem>
@@ -503,6 +589,7 @@ export function EventEditForm({
         onConfirm={handleConfirmChanges}
         onCancel={() => setShowConfirmDialog(false)}
         attendeeCount={attendeeCount}
+        hasStripePaid={hasStripePaid}
       />
     </>
   );

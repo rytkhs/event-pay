@@ -11,53 +11,53 @@
     --popover: 0 0% 100%;
     --popover-foreground: 222.2 84% 4.9%;
 
-    /* EventPay Custom Brand Colors */
-    --primary: 263 85% 60%; /* Modern purple-blue gradient base */
+    /* EventPay ミント×ネイビーカラーパレット */
+    --primary: 186 67% 43%; /* ターコイズティール（メインカラー #24A6B5） */
     --primary-foreground: 210 40% 98%;
-    --secondary: 199 89% 48%; /* Bright cyan accent */
+    --secondary: 221 100% 62%; /* コーンフラワーブルー（アクセントカラー） */
     --secondary-foreground: 210 40% 98%;
 
-    --muted: 210 40% 96%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 142 76% 50%; /* Fresh green accent */
-    --accent-foreground: 355 25% 20%;
-    --destructive: 0 84.2% 60.2%;
+    --muted: 210 40% 98%; /* 背景色 #f8fafc */
+    --muted-foreground: 217 19% 35%; /* サブテキスト #475569 */
+    --accent: 186 67% 43%; /* ターコイズティール（アクセント） */
+    --accent-foreground: 221 59% 9%; /* ダークテキスト */
+    --destructive: 0 84% 60%; /* エラー色 #ef4444 */
     --destructive-foreground: 210 40% 98%;
 
-    /* Enhanced success/warning colors */
-    --success: 142 76% 50%; /* Green for completed actions */
-    --success-foreground: 355 25% 20%;
-    --warning: 38 92% 50%; /* Amber for cautions */
-    --warning-foreground: 26 83% 14%;
-    --info: 199 89% 48%; /* Blue for information */
+    /* ミント×ネイビーステータス色 */
+    --success: 142 76% 36%; /* 成功色 #16a34a */
+    --success-foreground: 210 40% 98%;
+    --warning: 38 92% 50%; /* 注意色 #f59e0b */
+    --warning-foreground: 221 59% 9%;
+    --info: 199 89% 48%; /* 情報色 #0ea5e9 */
     --info-foreground: 210 40% 98%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 263 85% 60%;
+    --border: 217 32% 89%; /* 枠線色 #e2e8f0 */
+    --input: 217 32% 89%; /* 入力フィールド枠線 */
+    --ring: 186 67% 43%; /* フォーカスリング（ターコイズティール） */
     --radius: 0.5rem;
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
+    --background: 221 49% 11%; /* ディープネイビー背景 #0f172a */
     --foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%;
+    --card: 221 49% 13%; /* カードは少し明るく */
     --card-foreground: 210 40% 98%;
-    --popover: 222.2 84% 4.9%;
+    --popover: 221 49% 13%;
     --popover-foreground: 210 40% 98%;
-    --primary: 217.2 91.2% 59.8%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 62.8% 30.6%;
+    --primary: 186 67% 50%; /* ターコイズティール（ダークモードでは少し明るく） */
+    --primary-foreground: 221 49% 11%;
+    --secondary: 221 100% 70%; /* コーンフラワーブルー（少し明るく） */
+    --secondary-foreground: 221 49% 11%;
+    --muted: 221 49% 15%; /* ミュート背景 */
+    --muted-foreground: 217 19% 65%; /* ミュートテキスト */
+    --accent: 186 67% 50%; /* アクセント（ターコイズティール） */
+    --accent-foreground: 221 49% 11%;
+    --destructive: 0 84% 70%; /* エラー色（少し明るく） */
     --destructive-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 224.3 76.3% 94.1%;
+    --border: 221 39% 25%; /* ダークモードの枠線 */
+    --input: 221 39% 25%; /* ダークモードの入力フィールド */
+    --ring: 186 67% 50%; /* フォーカスリング */
   }
 }
 

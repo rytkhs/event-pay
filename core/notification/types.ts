@@ -2,6 +2,8 @@
  * 通知サービスの型定義
  */
 
+import * as React from "react";
+
 /**
  * 通知結果
  */
@@ -9,21 +11,20 @@ export interface NotificationResult {
   success: boolean;
   messageId?: string;
   error?: string;
+  /** エラータイプ（一時的または恒久的） */
+  errorType?: "transient" | "permanent";
+  /** リトライ回数 */
+  retryCount?: number;
+  /** Resendのステータスコード */
+  statusCode?: number;
 }
 
 /**
- * 通知テンプレート基底インターフェース
+ * React Emailコンポーネントを使用したメールテンプレート
  */
-export interface NotificationTemplate {
+export interface EmailTemplate {
   subject: string;
-  body: string;
-}
-
-/**
- * メールテンプレート
- */
-export interface EmailTemplate extends NotificationTemplate {
-  htmlBody?: string;
+  react: React.ReactElement;
   from?: string;
   replyTo?: string;
 }
@@ -58,6 +59,32 @@ export interface AccountRestrictedNotification extends StripeConnectNotification
 }
 
 /**
+ * 参加登録完了通知データ
+ */
+export interface ParticipationRegisteredNotification {
+  email: string;
+  nickname: string;
+  eventTitle: string;
+  eventDate: string;
+  attendanceStatus: "attending" | "maybe" | "not_attending";
+  guestToken: string;
+  inviteToken: string;
+}
+
+/**
+ * 決済完了通知データ
+ */
+export interface PaymentCompletedNotification {
+  email: string;
+  nickname: string;
+  eventTitle: string;
+  amount: number;
+  paidAt: string;
+  /** Stripeの公式レシートURL（オプショナル） */
+  receiptUrl?: string;
+}
+
+/**
  * 通知サービスインターフェース
  */
 export interface INotificationService {
@@ -79,6 +106,18 @@ export interface INotificationService {
   sendAccountStatusChangeNotification(
     data: AccountStatusChangeNotification
   ): Promise<NotificationResult>;
+
+  /**
+   * 参加登録完了通知を送信
+   */
+  sendParticipationRegisteredNotification(
+    data: ParticipationRegisteredNotification
+  ): Promise<NotificationResult>;
+
+  /**
+   * 決済完了通知を送信
+   */
+  sendPaymentCompletedNotification(data: PaymentCompletedNotification): Promise<NotificationResult>;
 }
 
 /**
@@ -98,4 +137,19 @@ export interface IEmailNotificationService {
     message: string;
     details?: Record<string, any>;
   }): Promise<NotificationResult>;
+}
+
+/**
+ * Resendエラータイプ
+ */
+export type ResendErrorType = "transient" | "permanent";
+
+/**
+ * Resendエラー情報
+ */
+export interface ResendErrorInfo {
+  type: ResendErrorType;
+  message: string;
+  statusCode?: number;
+  name?: string;
 }

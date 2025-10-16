@@ -77,12 +77,14 @@ export function AuthFormWrapper({
 
   return (
     <>
-      <main className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-        <div className={`w-full ${maxWidthStyles[maxWidth]} space-y-8`}>
+      <main className="min-h-screen flex items-center justify-center bg-gray-50 py-8 md:py-12 px-4 sm:px-6 lg:px-8">
+        <div className={`w-full ${maxWidthStyles[maxWidth]} space-y-6 md:space-y-8`}>
           <Card>
             <CardHeader className="text-center">
-              <h1 className="text-3xl font-bold">{title}</h1>
-              {subtitle && <CardDescription className="text-sm">{subtitle}</CardDescription>}
+              <h1 className="text-2xl md:text-3xl font-bold">{title}</h1>
+              {subtitle && (
+                <CardDescription className="text-sm md:text-base">{subtitle}</CardDescription>
+              )}
             </CardHeader>
             <CardContent>
               <form
@@ -97,14 +99,14 @@ export function AuthFormWrapper({
                       }
                     : undefined
                 }
-                className={`space-y-6 ${className}`}
+                className={`space-y-4 md:space-y-6 ${className}`}
                 noValidate
                 aria-describedby={state.error ? "form-error" : undefined}
                 data-testid={testId}
               >
                 <AuthFormMessages state={state} />
 
-                <fieldset className="space-y-4">{children}</fieldset>
+                <fieldset className="space-y-3 md:space-y-4">{children}</fieldset>
               </form>
             </CardContent>
           </Card>
@@ -112,7 +114,7 @@ export function AuthFormWrapper({
       </main>
 
       <footer className="text-center text-sm text-gray-600 py-4" role="contentinfo">
-        <p>EventPay - 小規模コミュニティ向けイベント出欠管理・集金ツール</p>
+        <p>みんなの集金 - 出欠も集金も、ひとつのリンクで完了</p>
       </footer>
     </>
   );

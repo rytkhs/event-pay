@@ -37,17 +37,7 @@ const validateOptionalFutureDate = (val: string) => {
   }
 };
 
-const validatePositiveNumber = (val: string) => {
-  if (!val) return false;
-  const num = Number(val);
-  return Number.isFinite(num) && num >= 0 && num <= 1000000;
-};
-
-const validateOptionalPositiveNumber = (val: string) => {
-  if (!val) return true;
-  const num = Number(val);
-  return Number.isFinite(num) && num >= 0 && num <= 1000000;
-};
+// （旧）数値バリデーションは未使用のため削除
 
 const validateCapacity = (val: string) => {
   if (!val) return true;
@@ -63,20 +53,6 @@ const validateTitle = (val: string) => {
 const validateOptionalText = (val: string, maxLength: number) => {
   if (!val) return true;
   return val.length <= maxLength;
-};
-
-// より具体的なエラーメッセージを返す検証関数
-const validatePaymentMethodsWithMessage = (methods: string[]) => {
-  if (!methods || methods.length === 0) return "決済方法を選択してください";
-
-  // 全ての決済方法が有効かチェック
-  if (!methods.every((method) => isValidPaymentMethod(method)))
-    return "有効な決済方法を選択してください";
-
-  // 重複を除いて最低1つの決済方法が必要
-  if ([...new Set(methods)].length === 0) return "決済方法を選択してください";
-
-  return true;
 };
 
 export const createEventSchema = z
@@ -97,8 +73,11 @@ export const createEventSchema = z
     fee: z
       .string()
       .min(1, "参加費は必須です")
-      .transform((val) => sanitizeForEventPay(val.trim())) // XSS対策
-      .refine(validatePositiveNumber, "参加費は0以上1000000以下である必要があります")
+      .regex(/^\d+$/, "参加費は0円（無料）または100〜1,000,000円の整数で入力してください")
+      .refine((val: string) => {
+        const n = Number(val);
+        return Number.isInteger(n) && (n === 0 || (n >= 100 && n <= 1_000_000));
+      }, "参加費は0円（無料）または100〜1,000,000円の整数で入力してください")
       .transform((val) => Number(val)),
 
     payment_methods: z
@@ -113,31 +92,37 @@ export const createEventSchema = z
       .string()
       .max(200, "場所は200文字以内で入力してください")
       .refine((val) => validateOptionalText(val, 200), "場所は200文字以内で入力してください")
-      .transform((val) => (val ? sanitizeForEventPay(val.trim()) : val))
+      .transform((val) => {
+        // 空文字やundefinedでも必ずサニタイズを実行（updateスキーマと統一）
+        const sanitized = sanitizeForEventPay(val || "");
+        return sanitized.trim() ? sanitized : null;
+      })
       .optional(),
 
     description: z
       .string()
       .max(1000, "説明は1000文字以内で入力してください")
       .refine((val) => validateOptionalText(val, 1000), "説明は1000文字以内で入力してください")
-      .transform((val) => (val ? sanitizeForEventPay(val.trim()) : val))
+      .transform((val) => {
+        // 空文字やundefinedでも必ずサニタイズを実行（updateスキーマと統一）
+        const sanitized = sanitizeForEventPay(val || "");
+        return sanitized.trim() ? sanitized : null;
+      })
       .optional(),
 
     capacity: z
       .string()
       .transform((val) => (val ? sanitizeForEventPay(val.trim()) : val)) // XSS対策
-      .refine(validateCapacity, "定員は1以上10000以下である必要があります")
+      .refine(validateCapacity, "定員は1以上10,000以下である必要があります")
       .transform((val) => (val ? Number(val) : null))
       .optional(),
 
     registration_deadline: z
       .string()
-      .transform((val) => (val ? sanitizeForEventPay(val.trim()) : val)) // XSS対策
-      // 作成時は未来必須（仕様）
-      .refine(
-        (val) => (val ? validateOptionalFutureDate(val) : true),
-        "参加申込締切は現在時刻より後である必要があります"
-      )
+      .min(1, "参加申込締切が空です")
+      .refine((val) => val && val.trim() !== "", "参加申込締切は必須です")
+      .transform((val) => sanitizeForEventPay(val.trim())) // XSS対策
+      .refine(validateFutureDate, "参加申込締切は現在時刻より後である必要があります")
       .optional(),
 
     payment_deadline: z
@@ -181,6 +166,22 @@ export const createEventSchema = z
     {
       message: "参加申込締切は開催日時以前に設定してください",
       path: ["registration_deadline"],
+    }
+  )
+  .refine(
+    (data) => {
+      // オンライン決済選択時は決済締切が必須
+      const hasStripe = Array.isArray(data.payment_methods)
+        ? data.payment_methods.includes("stripe")
+        : false;
+      if (hasStripe) {
+        return Boolean(data.payment_deadline && String(data.payment_deadline).trim() !== "");
+      }
+      return true;
+    },
+    {
+      message: "オンライン決済を選択した場合、決済締切は必須です",
+      path: ["payment_deadline"],
     }
   )
   .refine(
@@ -281,27 +282,24 @@ export const updateEventSchema = z
 
     fee: z
       .string()
-      .refine(validateOptionalPositiveNumber, "参加費は0以上1000000以下である必要があります")
+      .regex(/^\d+$/, "参加費は0円（無料）または100〜1,000,000円の整数で入力してください")
+      .refine((val: string) => {
+        if (val === "") return true;
+        const n = Number(val);
+        return Number.isInteger(n) && (n === 0 || (n >= 100 && n <= 1_000_000));
+      }, "参加費は0円（無料）または100〜1,000,000円の整数で入力してください")
       .transform((val) => (val ? Number(val) : undefined))
       .optional(),
 
     payment_methods: z
       .array(z.string())
-      .refine(
-        (methods) => {
-          const result = validatePaymentMethodsWithMessage(methods);
-          return result === true;
-        },
-        (methods) => ({
-          message: validatePaymentMethodsWithMessage(methods) as string,
-        })
-      )
+      .optional()
       .transform((methods) => {
         // 型安全な変換: string[] → payment_method_enum[]
+        if (!methods) return undefined;
         const uniqueMethods = [...new Set(methods)]; // 重複を除去
         return uniqueMethods.filter(isValidPaymentMethod);
-      })
-      .optional(),
+      }),
 
     location: z
       .string()
@@ -327,13 +325,16 @@ export const updateEventSchema = z
 
     capacity: z
       .string()
-      .refine(validateCapacity, "定員は1以上10000以下である必要があります")
+      .refine(validateCapacity, "定員は1以上10,000以下である必要があります")
       .transform((val) => (val ? Number(val) : null))
       .optional(),
 
     registration_deadline: z
       .string()
+      .min(1, "参加申込締切が空です")
+      .refine((val) => val && val.trim() !== "", "参加申込締切は空文字列では許可されません")
       // 編集では過去日時も保存可能（運用整備用）。現在時刻チェックは行わない。
+      // 注意: DBで必須のため、送信する場合は有効な値が必要（空文字列不可）
       .optional(),
 
     payment_deadline: z
@@ -450,7 +451,22 @@ export const updateEventSchema = z
       message: "有料イベントでは決済方法の選択が必要です",
       path: ["payment_methods"],
     }
+  )
+  .refine(
+    (data) => {
+      // 同一リクエストでStripe有効化する場合は決済締切も同時に必須
+      if (Array.isArray(data.payment_methods) && data.payment_methods.includes("stripe")) {
+        return typeof data.payment_deadline === "string" && data.payment_deadline.trim() !== "";
+      }
+      return true;
+    },
+    {
+      message: "オンライン決済を選択した場合、決済締切は必須です",
+      path: ["payment_deadline"],
+    }
   );
+// 更新時は部分更新を考慮し、payment_deadline必須チェックはアクション本体で統合実施
+// Zodスキーマでは基本的なバリデーションのみ行う（上記は補助的な早期チェック）
 
 export type CreateEventInput = z.infer<typeof createEventSchema>;
 export type UpdateEventInput = z.infer<typeof updateEventSchema>;

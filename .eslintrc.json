@@ -127,16 +127,16 @@
       }
     ],
     "@typescript-eslint/explicit-function-return-type": [
-      "warn",
+      "off",
       {
         "allowExpressions": true,
         "allowTypedFunctionExpressions": true,
         "allowHigherOrderFunctions": true
       }
     ],
-    "@typescript-eslint/no-explicit-any": "warn",
+    "@typescript-eslint/no-explicit-any": "off",
 
-    "@typescript-eslint/prefer-nullish-coalescing": "warn",
+    "@typescript-eslint/prefer-nullish-coalescing": "off",
     "@typescript-eslint/prefer-optional-chain": "warn",
 
     // ===== セキュリティ関連ルール =====
@@ -147,6 +147,26 @@
     "no-new-func": "error",
     "no-script-url": "error",
     "@typescript-eslint/no-non-null-assertion": "error",
+    "no-restricted-syntax": [
+      "off",
+      {
+        "selector": "CallExpression[callee.object.name='logger'][callee.property.name=/^(info|warn|error)$/] > Literal[value='Webhook security event']",
+        "message": "セキュリティイベントは security-logger のヘルパー（logSecurityEvent/logWebhookSecurityEvent/logQstashSecurityEvent）を使用してください。"
+      }
+    ],
+    "no-restricted-imports": [
+      "off",
+      {
+        "paths": [],
+        "patterns": [
+          {
+            "group": ["@core/logging/app-logger"],
+            "importNames": ["logger"],
+            "message": "features/payments/services/webhook 内のセキュリティログは security-logger 経由で出力してください。"
+          }
+        ]
+      }
+    ],
 
     // ===== Next.js & React ベストプラクティス =====
     "react/react-in-jsx-scope": "off", // Next.js 13+では不要

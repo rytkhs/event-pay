@@ -106,6 +106,14 @@ export interface IStripeConnectService {
    * @throws StripeConnectError ログインリンク生成に失敗した場合
    */
   createLoginLink(accountId: string): Promise<{ url: string; created: number }>;
+
+  /**
+   * Stripe Connectアカウントの残高を取得する
+   * @param accountId Stripe Connect Account ID
+   * @returns 利用可能残高（JPY）
+   * @throws StripeConnectError 残高取得に失敗した場合
+   */
+  getAccountBalance(accountId: string): Promise<number>;
 }
 
 /**

@@ -21,9 +21,9 @@ export default function GuestNotFoundPage() {
       showHome={true}
       enableLogging={false}
     >
-      <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-        <p className="text-sm text-blue-700">
-          管理URLを紛失された場合は、イベント主催者にお問い合わせください。
+      <div className="mb-6 p-4 bg-info/10 border border-info/20 rounded-lg">
+        <p className="text-sm text-info">
+          管理URLを紛失された場合は、主催者にお問い合わせください。
         </p>
       </div>
     </ErrorLayout>

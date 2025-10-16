@@ -128,7 +128,7 @@ function VerifyEmailContent() {
             <h2 className="font-semibold text-blue-900 mb-2">次の手順</h2>
             <ol className="text-sm text-blue-800 space-y-1 list-decimal list-inside">
               <li>メールボックスを確認してください</li>
-              <li>EventPayからの確認メールを開いてください</li>
+              <li>みんなの集金からの確認メールを開いてください</li>
               <li>メール内の6桁の確認コードをコピーしてください</li>
               <li>
                 <Link

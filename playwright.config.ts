@@ -26,8 +26,8 @@ export default defineConfig({
   use: {
     baseURL: process.env.PLAYWRIGHT_BASE_URL || "http://localhost:3000",
     trace: "retain-on-failure",
-    video: "retain-on-failure",
-    screenshot: "only-on-failure",
+    video: "on",
+    screenshot: "on",
     viewport: { width: 1280, height: 800 },
     timezoneId: "Asia/Tokyo",
   },
@@ -42,6 +42,14 @@ export default defineConfig({
         storageState: "playwright/.auth/user.json",
       },
       dependencies: ["setup"],
+    },
+    {
+      name: "chromium-unauthenticated",
+      use: {
+        ...devices["Desktop Chrome"],
+        // No authentication state (for registration, login tests)
+        storageState: { cookies: [], origins: [] },
+      },
     },
   ],
 });

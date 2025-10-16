@@ -6,9 +6,8 @@
  * - {CHECKOUT_SESSION_ID}テンプレート置換ロジックが正しく機能すること
  */
 
-import { PaymentService, PaymentErrorHandler } from "../../../features/payments/services/service";
 import { ApplicationFeeCalculator } from "../../../features/payments/services/fee-config/application-fee-calculator";
-
+import { PaymentService, PaymentErrorHandler } from "../../../features/payments/services/service";
 // Stripe destination-charges モジュールをモック
 jest.mock("../../../core/stripe/destination-charges", () => {
   const originalModule = jest.requireActual("../../../core/stripe/destination-charges");
@@ -41,7 +40,7 @@ describe("PaymentService - sessionUrl生成とテンプレート置換", () => {
 
   // テスト用の固定データ
   const testData = {
-    connectAccountId: "acct_1RwIFbCZwTLGDVBd",
+    connectAccountId: "acct_1S95RCEJRRCbin0V",
     amount: 1000,
     eventId: "event_test_123",
     attendanceId: "attendance_test_456",

@@ -30,15 +30,21 @@ export default function ResetPasswordPage() {
 
       <AuthSubmitButton isPending={isPending}>リセットメール送信</AuthSubmitButton>
 
-      <div className="text-center space-y-2">
-        <div className="text-sm text-gray-600">
-          <Link href="/login" className="text-blue-600 hover:text-blue-500 hover:underline">
+      <div className="text-center space-y-3 sm:space-y-2">
+        <div>
+          <Link
+            href="/login"
+            className="inline-block py-2 text-sm sm:text-base text-blue-600 hover:text-blue-500 hover:underline"
+          >
             ログインページに戻る
           </Link>
         </div>
-        <div className="text-sm text-gray-600">
+        <div className="text-sm sm:text-base text-gray-600">
           アカウントをお持ちでない方は{" "}
-          <Link href="/register" className="text-blue-600 hover:text-blue-500 hover:underline">
+          <Link
+            href="/register"
+            className="inline-block py-1 text-blue-600 hover:text-blue-500 hover:underline"
+          >
             新規登録
           </Link>
         </div>

@@ -1,3 +1,5 @@
+import { randomBytes } from "node:crypto";
+
 import { SecureSupabaseClientFactory } from "@core/security/secure-client-factory.impl";
 import { AdminReason } from "@core/security/secure-client-factory.types";
 import { generateInviteToken } from "@core/utils/invite-token";
@@ -15,6 +17,7 @@ export interface TestEvent {
   invite_token: string;
   created_by: string;
   payment_methods?: Database["public"]["Enums"]["payment_method_enum"][];
+  participants?: Array<{ email: string; nickname: string }>;
 }
 
 export interface CreateTestEventOptions {
@@ -60,6 +63,9 @@ export async function createTestEvent(
   const futureDate = new Date(Date.now() + 60 * 60 * 1000);
   const futureDateString = futureDate.toISOString();
 
+  // デフォルトの申込締切（イベント開始30分前）
+  const defaultRegistrationDeadline = new Date(futureDate.getTime() - 30 * 60 * 1000).toISOString();
+
   // 招待トークンを生成
   const inviteToken = generateInviteToken();
 
@@ -71,7 +77,7 @@ export async function createTestEvent(
     payment_methods: [],
     location: "テスト会場",
     description: "E2Eテスト用のイベントです",
-    registration_deadline: null,
+    registration_deadline: defaultRegistrationDeadline,
     payment_deadline: null,
     canceled_at: null,
   };
@@ -92,7 +98,7 @@ export async function createTestEvent(
     fee: eventOptions.fee,
     capacity: eventOptions.capacity,
     payment_methods: eventOptions.payment_methods,
-    registration_deadline: eventOptions.registration_deadline || null,
+    registration_deadline: eventOptions.registration_deadline || defaultRegistrationDeadline,
     payment_deadline: eventOptions.payment_deadline || null,
     canceled_at: eventOptions.canceled_at ?? null,
     invite_token: inviteToken,
@@ -127,6 +133,11 @@ export async function createTestEvent(
     created_by: createdEvent.created_by,
     payment_methods: createdEvent.payment_methods,
   };
+}
+
+function generateTestGuestToken(): string {
+  const randomPart = randomBytes(24).toString("base64url");
+  return `gst_${randomPart.slice(0, 32)}`;
 }
 
 /**
@@ -171,7 +182,7 @@ export async function createTestEventWithParticipants(
       nickname: `テスト参加者${i + 1}`,
       email: `test-participant-${uniqueSuffix}@example.com`,
       status: "attending" as const,
-      guest_token: `guest_token_${uniqueSuffix}`,
+      guest_token: generateTestGuestToken(),
     };
   });
 
@@ -186,7 +197,10 @@ export async function createTestEventWithParticipants(
 
   console.log(`Created ${participantCount} test participants for event ${event.id}`);
 
-  return event;
+  return {
+    ...event,
+    participants: participants.map((p) => ({ email: p.email, nickname: p.nickname })),
+  };
 }
 
 /**
@@ -233,11 +247,16 @@ export async function createPaidTestEvent(
   fee: number = 1000,
   capacity: number | null = null
 ): Promise<TestEvent> {
+  // 有料イベントの場合は payment_deadline も必要
+  const futureDate = new Date(Date.now() + 60 * 60 * 1000);
+  const paymentDeadline = new Date(futureDate.getTime() - 15 * 60 * 1000).toISOString(); // イベント開始15分前
+
   return createTestEvent(createdBy, {
     title: `有料テストイベント（${fee}円）`,
     fee,
     capacity,
     payment_methods: ["stripe"],
+    payment_deadline: paymentDeadline,
   });
 }
 

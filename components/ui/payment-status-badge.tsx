@@ -7,32 +7,32 @@ import { PAYMENT_STATUS_LABELS, type PaymentStatus } from "./_lib/types";
  */
 const PAYMENT_STATUS_PROPS: Record<PaymentStatus, { color: string; label: string }> = {
   pending: {
-    color: "bg-yellow-100 text-yellow-800",
+    color: "bg-warning/10 text-warning border-warning/20",
     label: PAYMENT_STATUS_LABELS.pending,
   },
   paid: {
-    color: "bg-green-100 text-green-800",
+    color: "bg-success/10 text-success border-success/20",
     label: PAYMENT_STATUS_LABELS.paid,
   },
   failed: {
-    color: "bg-red-100 text-red-800",
+    color: "bg-destructive/10 text-destructive border-destructive/20",
     label: PAYMENT_STATUS_LABELS.failed,
   },
   received: {
-    color: "bg-green-100 text-green-800",
+    color: "bg-success/10 text-success border-success/20",
     label: PAYMENT_STATUS_LABELS.received,
   },
-  completed: {
-    color: "bg-green-100 text-green-800",
-    label: PAYMENT_STATUS_LABELS.completed,
-  },
   refunded: {
-    color: "bg-blue-100 text-blue-800",
+    color: "bg-info/10 text-info border-info/20",
     label: PAYMENT_STATUS_LABELS.refunded,
   },
   waived: {
-    color: "bg-gray-100 text-gray-800",
+    color: "bg-muted/50 text-muted-foreground border-muted",
     label: PAYMENT_STATUS_LABELS.waived,
+  },
+  canceled: {
+    color: "bg-muted/50 text-muted-foreground border-muted",
+    label: PAYMENT_STATUS_LABELS.canceled,
   },
 };
 
@@ -51,7 +51,10 @@ interface PaymentStatusBadgeProps {
 export function PaymentStatusBadge({ status, className = "" }: PaymentStatusBadgeProps) {
   if (!status) {
     return (
-      <Badge variant="outline" className={`bg-gray-100 text-gray-600 ${className}`}>
+      <Badge
+        variant="outline"
+        className={`bg-muted/50 text-muted-foreground border-muted ${className}`}
+      >
         未登録
       </Badge>
     );
@@ -83,7 +86,7 @@ export function PaymentStatusSpan({ status, className = "" }: PaymentStatusBadge
   if (!status) {
     return (
       <span
-        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600 ${className}`}
+        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-muted/50 text-muted-foreground ${className}`}
       >
         未登録
       </span>
@@ -95,7 +98,7 @@ export function PaymentStatusSpan({ status, className = "" }: PaymentStatusBadge
     // フォールバック: 未定義ステータスの場合
     return (
       <span
-        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600 ${className}`}
+        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-muted/50 text-muted-foreground ${className}`}
       >
         {status}
       </span>

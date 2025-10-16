@@ -133,7 +133,7 @@ export function generateInvoiceHTML(data: InvoiceData): string {
   <table class="items-table">
     <thead>
       <tr>
-        <th>イベント名</th>
+        <th>タイトル</th>
         <th>参加者</th>
         <th>決済日</th>
         <th class="amount">決済金額</th>
@@ -193,7 +193,7 @@ export function generateInvoiceHTML(data: InvoiceData): string {
   }
 
   <div class="footer">
-    この請求書は EventPay システムにより自動生成されました。<br>
+    この請求書は みんなの集金 システムにより自動生成されました。<br>
     お問い合わせ: ${billFrom.email}
   </div>
 </body>
@@ -299,7 +299,7 @@ export function createTaxDisplayInfo(calculation: {
 
 /** MVP段階のデフォルト会社情報 */
 export const DEFAULT_COMPANY_INFO: InvoiceData["billFrom"] = {
-  businessName: "EventPay",
+  businessName: "みんなの集金",
   address: "",
   email: "support@eventpay.jp",
   // 課税事業者になったら設定

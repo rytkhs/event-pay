@@ -5,7 +5,6 @@ import { headers } from "next/headers";
 import { PAYMENT_METHODS } from "@core/constants/payment-methods";
 import { validateGuestTokenFormat } from "@core/security/crypto";
 import { SecureSupabaseClientFactory } from "@core/security/secure-client-factory.impl";
-import { AdminReason } from "@core/security/secure-client-factory.types";
 import {
   logInvalidTokenAccess,
   logParticipationSecurityEvent,
@@ -33,10 +32,21 @@ import type { UpdateGuestAttendanceData } from "../types";
 export async function updateGuestAttendanceAction(
   formData: FormData
 ): Promise<ServerActionResult<UpdateGuestAttendanceData>> {
-  const headersList = headers();
-  const userAgent = headersList.get("user-agent") || undefined;
-  const ip = getClientIPFromHeaders(headersList);
-  const securityContext = { userAgent, ip };
+  // テスト環境ではheaders()が利用できないため、安全に取得
+  let securityContext: { userAgent?: string; ip?: string } = {};
+  try {
+    const headersList = headers();
+    const userAgent = headersList.get("user-agent") || undefined;
+    const ip = getClientIPFromHeaders(headersList);
+    securityContext = { userAgent, ip };
+  } catch (error) {
+    // テスト環境など、headers()が利用できない場合は空のコンテキストを使用
+    if (process.env.NODE_ENV === "test") {
+      securityContext = { userAgent: "test-agent", ip: "127.0.0.1" };
+    } else {
+      securityContext = {};
+    }
+  }
 
   // フォームデータの取得（スコープを関数全体に拡大）
   const guestToken = formData.get("guestToken") as string;
@@ -127,8 +137,8 @@ export async function updateGuestAttendanceAction(
     const finalizedPaymentStatuses: Array<Database["public"]["Enums"]["payment_status_enum"]> = [
       "paid",
       "received",
-      "completed",
       "waived",
+      "refunded",
     ];
 
     // finalized 後の決済方法変更をサーバ側でも明示的に拒否
@@ -165,13 +175,9 @@ export async function updateGuestAttendanceAction(
       }
     }
 
-    // 監査付きの service_role クライアントを取得
+    // ゲストクライアントを取得してRLSポリシーを適用
     const secureFactory = SecureSupabaseClientFactory.getInstance();
-    const adminClient = await secureFactory.createAuditedAdminClient(
-      AdminReason.PAYMENT_PROCESSING,
-      "update_guest_attendance_with_payment",
-      { ipAddress: ip, userAgent, guestToken }
-    );
+    const guestClient = secureFactory.createGuestClient(guestToken);
 
     // データベース更新の実行（定員チェックはRPC関数内で実行される）
     // NOTE: `p_event_fee` は冗長に見えるが、以下の理由で呼び出し時に確定した金額を明示的に渡している。
@@ -179,8 +185,9 @@ export async function updateGuestAttendanceAction(
     //   2. 将来の早割・クーポン等、ゲストごとに金額が変わる拡張を見越して、個別金額をRPCに渡す設計としている。
     //   3. events.fee をRPC内で都度参照すると、トランザクション外の変更が決済金額に反映され整合性が崩れるリスクがあるため。
     //     （例）fee を 0 → 500 に変更した直後にゲストが「不参加→参加」を送信した場合など。
-    const { error } = await adminClient.rpc("update_guest_attendance_with_payment", {
+    const { error } = await guestClient.rpc("update_guest_attendance_with_payment", {
       p_attendance_id: attendance.id,
+      p_guest_token: guestToken,
       p_status: validatedStatus.data,
       p_payment_method: validatedPaymentMethod,
       p_event_fee: attendance.event.fee,
@@ -189,8 +196,11 @@ export async function updateGuestAttendanceAction(
     if (error) {
       // RPC関数からのエラーメッセージを安定したコードベースで処理
       const errorCode = error.code || "";
-      const isRegistrationFull =
-        error.message?.includes("registration_full") || errorCode === "23514";
+      const errorMessage = error.message || "";
+
+      // 定員超過エラーの検出（RPC関数の実際のエラーメッセージに基づく）
+      const isCapacityReached =
+        errorMessage.includes("Event capacity") && errorMessage.includes("has been reached");
 
       // 開発環境では詳細エラーログを出力
       if (process.env.NODE_ENV === "development") {
@@ -198,13 +208,14 @@ export async function updateGuestAttendanceAction(
         logger.error("Guest attendance update error", {
           tag: "updateGuestAttendance",
           error_code: errorCode,
-          error_message: error.message,
+          error_message: errorMessage,
           attendanceId: attendance.id,
           eventId: attendance.event.id,
+          isCapacityReached,
         });
       }
 
-      if (isRegistrationFull) {
+      if (isCapacityReached) {
         return createServerActionError(
           "ATTENDANCE_CAPACITY_REACHED",
           "申し訳ございませんが、定員に達したため参加登録できませんでした"

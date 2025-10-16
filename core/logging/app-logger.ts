@@ -83,31 +83,85 @@ const pinoLogger = createPinoLogger();
  */
 export const logger = {
   /**
+   * ログフィールドを正規化（セキュリティ系の既存ばらつきを吸収）
+   */
+  _normalize(msg: string, fields?: EventPayLogFields): EventPayLogFields {
+    const merged: EventPayLogFields = { ...(fields || {}) };
+
+    // 旧来のセキュリティ系タグを securityEvent に収束
+    if (
+      merged.tag === "security-rejected" ||
+      merged.tag === "qstash-security" ||
+      merged.tag === "event-cancel-security"
+    ) {
+      merged.tag = "securityEvent";
+      if (!(merged as any).security_type && typeof (merged as any).type === "string") {
+        (merged as any).security_type = (merged as any).type;
+      }
+      if (!(merged as any).security_severity) {
+        (merged as any).security_severity = "MEDIUM";
+      }
+    }
+
+    // Webhook系の散在ログ: メッセージや type から securityEvent に寄せる
+    if (merged.tag == null) {
+      const typeVal = (merged as any)?.type;
+      if (typeof typeVal === "string") {
+        if (
+          typeVal.startsWith("webhook_") ||
+          typeVal.startsWith("qstash_") ||
+          typeVal.startsWith("refund_") ||
+          typeVal.startsWith("settlement_") ||
+          typeVal.startsWith("dispute_")
+        ) {
+          merged.tag = "securityEvent";
+          if (!(merged as any).security_type) (merged as any).security_type = typeVal;
+          if (!(merged as any).security_severity) (merged as any).security_severity = "MEDIUM";
+        }
+      }
+
+      // メッセージが固定のセキュリティイベント
+      if (merged.tag == null && msg === "Webhook security event") {
+        merged.tag = "securityEvent";
+        if (typeof (merged as any)?.type === "string" && !(merged as any).security_type) {
+          (merged as any).security_type = (merged as any).type;
+        }
+        if (!(merged as any).security_severity) (merged as any).security_severity = "MEDIUM";
+      }
+    }
+
+    return merged;
+  },
+  /**
    * デバッグレベルログ（開発環境のみ出力）
    */
   debug(msg: string, fields?: EventPayLogFields) {
-    pinoLogger.debug(fields || {}, msg);
+    const normalized = (this as any)._normalize(msg, fields);
+    pinoLogger.debug(normalized, msg);
   },
 
   /**
    * 情報レベルログ
    */
   info(msg: string, fields?: EventPayLogFields) {
-    pinoLogger.info(fields || {}, msg);
+    const normalized = (this as any)._normalize(msg, fields);
+    pinoLogger.info(normalized, msg);
   },
 
   /**
    * 警告レベルログ
    */
   warn(msg: string, fields?: EventPayLogFields) {
-    pinoLogger.warn(fields || {}, msg);
+    const normalized = (this as any)._normalize(msg, fields);
+    pinoLogger.warn(normalized, msg);
   },
 
   /**
    * エラーレベルログ
    */
   error(msg: string, fields?: EventPayLogFields) {
-    pinoLogger.error(fields || {}, msg);
+    const normalized = (this as any)._normalize(msg, fields);
+    pinoLogger.error(normalized, msg);
   },
 
   /**
@@ -123,10 +177,14 @@ export const logger = {
     });
 
     return {
-      debug: (msg: string, fields?: EventPayLogFields) => child.debug(fields || {}, msg),
-      info: (msg: string, fields?: EventPayLogFields) => child.info(fields || {}, msg),
-      warn: (msg: string, fields?: EventPayLogFields) => child.warn(fields || {}, msg),
-      error: (msg: string, fields?: EventPayLogFields) => child.error(fields || {}, msg),
+      debug: (msg: string, fields?: EventPayLogFields) =>
+        child.debug((logger as any)._normalize(msg, fields), msg),
+      info: (msg: string, fields?: EventPayLogFields) =>
+        child.info((logger as any)._normalize(msg, fields), msg),
+      warn: (msg: string, fields?: EventPayLogFields) =>
+        child.warn((logger as any)._normalize(msg, fields), msg),
+      error: (msg: string, fields?: EventPayLogFields) =>
+        child.error((logger as any)._normalize(msg, fields), msg),
     };
   },
 
@@ -139,10 +197,14 @@ export const logger = {
     const child = pinoLogger.child(context);
 
     return {
-      debug: (msg: string, fields?: EventPayLogFields) => child.debug(fields || {}, msg),
-      info: (msg: string, fields?: EventPayLogFields) => child.info(fields || {}, msg),
-      warn: (msg: string, fields?: EventPayLogFields) => child.warn(fields || {}, msg),
-      error: (msg: string, fields?: EventPayLogFields) => child.error(fields || {}, msg),
+      debug: (msg: string, fields?: EventPayLogFields) =>
+        child.debug((logger as any)._normalize(msg, fields), msg),
+      info: (msg: string, fields?: EventPayLogFields) =>
+        child.info((logger as any)._normalize(msg, fields), msg),
+      warn: (msg: string, fields?: EventPayLogFields) =>
+        child.warn((logger as any)._normalize(msg, fields), msg),
+      error: (msg: string, fields?: EventPayLogFields) =>
+        child.error((logger as any)._normalize(msg, fields), msg),
     };
   },
 

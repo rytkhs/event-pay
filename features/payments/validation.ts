@@ -5,6 +5,8 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
 
+import { PaymentError, PaymentErrorType } from "@core/types/payment-errors";
+
 import { Database } from "@/types/database";
 
 import { IPaymentValidator } from "./services/interface";
@@ -12,22 +14,12 @@ import {
   CreateStripeSessionParams,
   CreateCashPaymentParams,
   UpdatePaymentStatusParams,
-  PaymentError,
-  PaymentErrorType,
   PaymentMethod,
   PaymentStatus,
 } from "./types";
 
 // Zodスキーマ定義（内部使用専用）
-const paymentStatusSchema = z.enum([
-  "pending",
-  "paid",
-  "received",
-  "failed",
-  "completed",
-  "refunded",
-  "waived",
-]);
+const paymentStatusSchema = z.enum(["pending", "paid", "received", "failed", "refunded", "waived"]);
 
 // サービス層（Stripeに渡す直前の最終パラメータ）用スキーマ（内部使用専用）
 const createStripeSessionParamsSchema = z.object({
@@ -119,11 +111,18 @@ export class PaymentValidator implements IPaymentValidator {
     }
   }
 
-  async validateUpdatePaymentStatusParams(params: UpdatePaymentStatusParams): Promise<void> {
+  async validateUpdatePaymentStatusParams(
+    params: UpdatePaymentStatusParams,
+    isCancel?: boolean
+  ): Promise<void> {
     try {
       updatePaymentStatusParamsSchema.parse(params);
       await this.validatePaymentExists(params.paymentId);
-      await this.validateStatusTransition(params.paymentId, params.status);
+
+      // キャンセル操作の場合はステータス遷移チェックをスキップ
+      if (!isCancel) {
+        await this.validateStatusTransition(params.paymentId, params.status);
+      }
     } catch (error) {
       if (error instanceof z.ZodError) {
         throw new PaymentError(
@@ -196,6 +195,10 @@ export class PaymentValidator implements IPaymentValidator {
   async validatePaymentAmount(amount: number): Promise<void> {
     if (!Number.isInteger(amount)) {
       throw new PaymentError(PaymentErrorType.INVALID_AMOUNT, "金額は整数である必要があります");
+    }
+    // issue #123 対応: 負の金額チェックを追加
+    if (amount < 0) {
+      throw new PaymentError(PaymentErrorType.INVALID_AMOUNT, "金額は0以上である必要があります");
     }
     if (amount <= 0) {
       throw new PaymentError(PaymentErrorType.INVALID_AMOUNT, "金額は正の数である必要があります");

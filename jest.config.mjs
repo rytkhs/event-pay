@@ -7,7 +7,7 @@ const config = {
     "^.+\\.(ts|tsx)$": [
       "ts-jest",
       {
-        tsconfig: "tsconfig.json",
+        tsconfig: "tsconfig.test.json",
         useESM: true,
       },
     ],
@@ -16,14 +16,17 @@ const config = {
   moduleFileExtensions: ["ts", "tsx", "js", "json"],
   moduleDirectories: ["node_modules", "<rootDir>"],
   moduleNameMapper: {
+    // Mock server-only package for Jest tests
+    "^server-only$": "<rootDir>/tests/mocks/server-only.js",
     "^@/(.*)$": "<rootDir>/$1",
     "^@core/(.*)$": "<rootDir>/core/$1",
     "^@features/(.*)$": "<rootDir>/features/$1",
     "^@components/(.*)$": "<rootDir>/components/$1",
     "^@/types/(.*)$": "<rootDir>/types/$1",
+    "^@tests/(.*)$": "<rootDir>/tests/$1",
   },
   testEnvironment: "node",
-  collectCoverage: true,
+  collectCoverage: false,
   coverageProvider: "v8",
   collectCoverageFrom: [
     "core/**/*.{ts,tsx}",

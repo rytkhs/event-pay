@@ -3,6 +3,8 @@
  * Webhook処理での境界違反を解消するためのEvent-Driven Architecture
  */
 
+import { logger } from "@core/logging/app-logger";
+
 // Event Types
 export interface PaymentWebhookEvent {
   type: "payment.completed" | "payment.failed" | "payment.refunded";
@@ -48,7 +50,13 @@ class EventRegistry {
     // Log failures but don't throw (fail-soft approach)
     results.forEach((result, index) => {
       if (result.status === "rejected") {
-        console.error(`Payment event handler ${index} failed:`, result.reason);
+        logger.error("Payment event handler failed", {
+          tag: "payment-event",
+          handler_index: index,
+          event_type: event.type,
+          payment_id: event.paymentId,
+          error_reason: String(result.reason),
+        });
       }
     });
   }
@@ -59,7 +67,13 @@ class EventRegistry {
     // Log failures but don't throw (fail-soft approach)
     results.forEach((result, index) => {
       if (result.status === "rejected") {
-        console.error(`Stripe account event handler ${index} failed:`, result.reason);
+        logger.error("Stripe account event handler failed", {
+          tag: "stripe-account-event",
+          handler_index: index,
+          event_type: event.type,
+          account_id: event.accountId,
+          error_reason: String(result.reason),
+        });
       }
     });
   }

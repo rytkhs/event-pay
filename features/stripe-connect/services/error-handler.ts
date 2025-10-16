@@ -79,11 +79,12 @@ export class StripeConnectErrorHandler implements IStripeConnectErrorHandler {
         POSTGRES_ERROR_CODE_MAPPING[postgrestError.code] || StripeConnectErrorType.DATABASE_ERROR;
 
       // UNIQUE違反(23505)のうち、stripe_account_id衝突を明示的に分類
-      // detailsに衝突カラムが含まれることが多いため、簡易に判定
+      // 正確な制約名で判定（より安全で確実）
       const isStripeAccountIdConflict =
         postgrestError.code === "23505" &&
         typeof postgrestError.details === "string" &&
-        /stripe_account_id/i.test(postgrestError.details);
+        (postgrestError.details.includes("stripe_connect_accounts_stripe_account_id_key") ||
+          /stripe_account_id/i.test(postgrestError.details));
       if (isStripeAccountIdConflict) {
         errorType = StripeConnectErrorType.VALIDATION_ERROR;
       }

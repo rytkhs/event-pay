@@ -14,8 +14,8 @@ import { handleOnboardingRefreshAction } from "@features/stripe-connect";
 import { Card, CardContent } from "@/components/ui/card";
 
 export const metadata: Metadata = {
-  title: "設定を再開 | EventPay",
-  description: "Stripe Connect設定を再開しています",
+  title: "設定を再開 | みんなの集金",
+  description: "Stripeアカウント設定を再開しています",
 };
 
 async function RefreshContent() {
@@ -36,7 +36,7 @@ function LoadingContent() {
             <div className="text-center space-y-2">
               <h2 className="text-lg font-semibold">設定を再開しています</h2>
               <p className="text-sm text-muted-foreground">
-                Stripe Connectアカウントの設定画面に戻ります。
+                Stripeアカウントの設定画面に戻ります。
                 <br />
                 しばらくお待ちください...
               </p>

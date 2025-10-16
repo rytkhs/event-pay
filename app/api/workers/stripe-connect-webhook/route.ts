@@ -12,6 +12,7 @@ import Stripe from "stripe";
 
 import { createProblemResponse } from "@core/api/problem-details";
 import { logger } from "@core/logging/app-logger";
+import { generateSecureUuid } from "@core/security/crypto";
 import { getClientIP } from "@core/utils/ip-detection";
 
 import "@/app/_init/feature-registrations";
@@ -28,7 +29,7 @@ const getQstashReceiver = () => {
 
 export async function POST(request: NextRequest) {
   const start = Date.now();
-  const corr = `qstash_connect_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  const corr = `qstash_connect_${generateSecureUuid()}`;
 
   try {
     logger.info("Connect QStash worker request received", {

@@ -21,10 +21,7 @@ export function GuestEventDetails({ attendance }: GuestEventDetailsProps) {
   return (
     <Card className="p-6">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-lg font-semibold text-gray-900 flex items-center">
-          <div className="text-xl mr-2">📋</div>
-          イベント詳細
-        </h2>
+        <h2 className="text-lg font-semibold text-gray-900 flex items-center">イベント詳細</h2>
         <button
           onClick={() => setIsExpanded(!isExpanded)}
           className="flex items-center text-sm text-blue-600 hover:text-blue-700 transition-colors"
@@ -53,7 +50,6 @@ export function GuestEventDetails({ attendance }: GuestEventDetailsProps) {
             <DollarSign className="h-5 w-5 text-gray-500 flex-shrink-0" />
             <div>
               <span className="font-medium text-gray-900">¥{event.fee.toLocaleString()}</span>
-              <span className="text-sm text-gray-500 ml-2">（懇親会込み）</span>
             </div>
           </div>
         )}
@@ -84,7 +80,7 @@ export function GuestEventDetails({ attendance }: GuestEventDetailsProps) {
             </div>
           )}
 
-          {typeof event.capacity === "number" && (
+          {event.capacity !== null && typeof event.capacity === "number" && (
             <div>
               <h3 className="font-medium text-gray-900 mb-2 flex items-center">
                 <Users className="h-4 w-4 mr-2" />

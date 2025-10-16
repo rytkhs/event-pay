@@ -47,7 +47,7 @@ export class ConnectWebhookHandler {
   static async create(): Promise<ConnectWebhookHandler> {
     const secureFactory = SecureSupabaseClientFactory.getInstance();
     const adminClient = await secureFactory.createAuditedAdminClient(
-      AdminReason.SYSTEM_MAINTENANCE,
+      AdminReason.PAYMENT_PROCESSING,
       "Stripe Connect webhook processing"
     );
 
@@ -214,22 +214,6 @@ export class ConnectWebhookHandler {
         });
       }
 
-      // 監査ログ
-      try {
-        await this.supabase.from("security_audit_log").insert({
-          event_type: "stripe_connect_account_deauthorized",
-          user_role: "system",
-          details: {
-            application_id: application.id,
-            account_id: accountId,
-            user_id: userId,
-            deauthorized_at: new Date().toISOString(),
-          },
-        });
-      } catch {
-        /* optional */
-      }
-
       logger.info("Processed account.application.deauthorized", {
         tag: "accountDeauthorized",
         account_id: accountId,
@@ -388,10 +372,14 @@ export class ConnectWebhookHandler {
     }
   ): Promise<void> {
     try {
-      const logData = {
-        event_type: "stripe_connect_account_updated",
+      const { logStripeConnect } = await import("@core/logging/system-logger");
+
+      await logStripeConnect({
+        action: "stripe_connect_account_updated",
+        message: `Stripe Connect account status updated from ${oldStatus} to ${accountInfo.status}`,
         user_id: userId,
-        details: {
+        outcome: "success",
+        metadata: {
           accountId,
           oldStatus,
           newStatus: accountInfo.status,
@@ -400,28 +388,7 @@ export class ConnectWebhookHandler {
           requirements: accountInfo.requirements,
           timestamp: new Date().toISOString(),
         },
-      };
-
-      // セキュリティログテーブルに記録（存在する場合）
-      try {
-        const { error } = await this.supabase.from("security_audit_log").insert(logData);
-
-        if (error && error.code !== "42P01") {
-          // テーブルが存在しない場合は無視
-          logger.error("Failed to log account update", {
-            tag: "accountUpdateLogFailed",
-            error_code: error.code,
-            error_message: error.message,
-          });
-        }
-      } catch (dbError) {
-        // データベースエラーは無視（ログ機能は必須ではない）
-        logger.debug("Security log table not available", {
-          tag: "securityLogTableUnavailable",
-          error_name: dbError instanceof Error ? dbError.name : "Unknown",
-          error_message: dbError instanceof Error ? dbError.message : String(dbError),
-        });
-      }
+      });
     } catch (error) {
       logger.error("Error logging account update", {
         tag: "accountUpdateLogError",

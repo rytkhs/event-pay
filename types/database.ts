@@ -69,6 +69,39 @@ export type Database = {
           },
         ];
       };
+      contacts: {
+        Row: {
+          created_at: string;
+          email: string;
+          fingerprint_hash: string;
+          id: string;
+          ip_hash: string | null;
+          message: string;
+          name: string;
+          user_agent: string | null;
+        };
+        Insert: {
+          created_at?: string;
+          email: string;
+          fingerprint_hash: string;
+          id?: string;
+          ip_hash?: string | null;
+          message: string;
+          name: string;
+          user_agent?: string | null;
+        };
+        Update: {
+          created_at?: string;
+          email?: string;
+          fingerprint_hash?: string;
+          id?: string;
+          ip_hash?: string | null;
+          message?: string;
+          name?: string;
+          user_agent?: string | null;
+        };
+        Relationships: [];
+      };
       events: {
         Row: {
           allow_payment_after_deadline: boolean;
@@ -86,7 +119,7 @@ export type Database = {
           location: string | null;
           payment_deadline: string | null;
           payment_methods: Database["public"]["Enums"]["payment_method_enum"][];
-          registration_deadline: string | null;
+          registration_deadline: string;
           title: string;
           updated_at: string;
         };
@@ -106,7 +139,7 @@ export type Database = {
           location?: string | null;
           payment_deadline?: string | null;
           payment_methods: Database["public"]["Enums"]["payment_method_enum"][];
-          registration_deadline?: string | null;
+          registration_deadline: string;
           title: string;
           updated_at?: string;
         };
@@ -126,7 +159,7 @@ export type Database = {
           location?: string | null;
           payment_deadline?: string | null;
           payment_methods?: Database["public"]["Enums"]["payment_method_enum"][];
-          registration_deadline?: string | null;
+          registration_deadline?: string;
           title?: string;
           updated_at?: string;
         };
@@ -291,7 +324,6 @@ export type Database = {
           stripe_customer_id: string | null;
           stripe_fee_details: Json | null;
           stripe_payment_intent_id: string | null;
-          stripe_session_id: string | null;
           stripe_transfer_id: string | null;
           tax_included: boolean;
           transfer_group: string | null;
@@ -328,7 +360,6 @@ export type Database = {
           stripe_customer_id?: string | null;
           stripe_fee_details?: Json | null;
           stripe_payment_intent_id?: string | null;
-          stripe_session_id?: string | null;
           stripe_transfer_id?: string | null;
           tax_included?: boolean;
           transfer_group?: string | null;
@@ -365,7 +396,6 @@ export type Database = {
           stripe_customer_id?: string | null;
           stripe_fee_details?: Json | null;
           stripe_payment_intent_id?: string | null;
-          stripe_session_id?: string | null;
           stripe_transfer_id?: string | null;
           tax_included?: boolean;
           transfer_group?: string | null;
@@ -384,60 +414,6 @@ export type Database = {
           },
         ];
       };
-      scheduler_locks: {
-        Row: {
-          acquired_at: string;
-          created_at: string;
-          expires_at: string;
-          lock_name: string;
-          metadata: Json | null;
-          process_id: string | null;
-        };
-        Insert: {
-          acquired_at?: string;
-          created_at?: string;
-          expires_at: string;
-          lock_name: string;
-          metadata?: Json | null;
-          process_id?: string | null;
-        };
-        Update: {
-          acquired_at?: string;
-          created_at?: string;
-          expires_at?: string;
-          lock_name?: string;
-          metadata?: Json | null;
-          process_id?: string | null;
-        };
-        Relationships: [];
-      };
-      security_audit_log: {
-        Row: {
-          details: Json | null;
-          event_type: string;
-          id: number;
-          ip_address: unknown | null;
-          timestamp: string | null;
-          user_role: string | null;
-        };
-        Insert: {
-          details?: Json | null;
-          event_type: string;
-          id?: number;
-          ip_address?: unknown | null;
-          timestamp?: string | null;
-          user_role?: string | null;
-        };
-        Update: {
-          details?: Json | null;
-          event_type?: string;
-          id?: number;
-          ip_address?: unknown | null;
-          timestamp?: string | null;
-          user_role?: string | null;
-        };
-        Relationships: [];
-      };
       settlements: {
         Row: {
           created_at: string;
@@ -451,8 +427,6 @@ export type Database = {
           platform_fee: number;
           processed_at: string | null;
           retry_count: number;
-          settlement_mode: Database["public"]["Enums"]["settlement_mode_enum"] | null;
-          status: Database["public"]["Enums"]["payout_status_enum"];
           stripe_account_id: string;
           total_disputed_amount: number;
           total_stripe_fee: number;
@@ -475,8 +449,6 @@ export type Database = {
           platform_fee?: number;
           processed_at?: string | null;
           retry_count?: number;
-          settlement_mode?: Database["public"]["Enums"]["settlement_mode_enum"] | null;
-          status?: Database["public"]["Enums"]["payout_status_enum"];
           stripe_account_id: string;
           total_disputed_amount?: number;
           total_stripe_fee?: number;
@@ -499,8 +471,6 @@ export type Database = {
           platform_fee?: number;
           processed_at?: string | null;
           retry_count?: number;
-          settlement_mode?: Database["public"]["Enums"]["settlement_mode_enum"] | null;
-          status?: Database["public"]["Enums"]["payout_status_enum"];
           stripe_account_id?: string;
           total_disputed_amount?: number;
           total_stripe_fee?: number;
@@ -513,21 +483,21 @@ export type Database = {
         };
         Relationships: [
           {
-            foreignKeyName: "payouts_event_id_fkey";
+            foreignKeyName: "settlements_event_id_fkey";
             columns: ["event_id"];
             isOneToOne: false;
             referencedRelation: "events";
             referencedColumns: ["id"];
           },
           {
-            foreignKeyName: "payouts_user_id_fkey";
+            foreignKeyName: "settlements_user_id_fkey";
             columns: ["user_id"];
             isOneToOne: false;
             referencedRelation: "public_profiles";
             referencedColumns: ["id"];
           },
           {
-            foreignKeyName: "payouts_user_id_fkey";
+            foreignKeyName: "settlements_user_id_fkey";
             columns: ["user_id"];
             isOneToOne: false;
             referencedRelation: "users";
@@ -582,44 +552,110 @@ export type Database = {
       };
       system_logs: {
         Row: {
+          action: string;
+          actor_identifier: string | null;
+          actor_type: Database["public"]["Enums"]["actor_type_enum"];
           created_at: string;
-          details: Json | null;
-          executed_at: string;
+          dedupe_key: string | null;
+          error_code: string | null;
+          error_message: string | null;
+          error_stack: string | null;
           id: number;
-          operation_type: string;
+          idempotency_key: string | null;
+          ip_address: unknown | null;
+          log_category: Database["public"]["Enums"]["log_category_enum"];
+          log_level: Database["public"]["Enums"]["log_level_enum"];
+          message: string;
+          metadata: Json | null;
+          outcome: Database["public"]["Enums"]["log_outcome_enum"];
+          request_id: string | null;
+          resource_id: string | null;
+          resource_type: string | null;
+          session_id: string | null;
+          stripe_event_id: string | null;
+          stripe_request_id: string | null;
+          tags: string[] | null;
+          user_agent: string | null;
+          user_id: string | null;
         };
         Insert: {
+          action: string;
+          actor_identifier?: string | null;
+          actor_type?: Database["public"]["Enums"]["actor_type_enum"];
           created_at?: string;
-          details?: Json | null;
-          executed_at?: string;
+          dedupe_key?: string | null;
+          error_code?: string | null;
+          error_message?: string | null;
+          error_stack?: string | null;
           id?: number;
-          operation_type: string;
+          idempotency_key?: string | null;
+          ip_address?: unknown | null;
+          log_category: Database["public"]["Enums"]["log_category_enum"];
+          log_level?: Database["public"]["Enums"]["log_level_enum"];
+          message: string;
+          metadata?: Json | null;
+          outcome?: Database["public"]["Enums"]["log_outcome_enum"];
+          request_id?: string | null;
+          resource_id?: string | null;
+          resource_type?: string | null;
+          session_id?: string | null;
+          stripe_event_id?: string | null;
+          stripe_request_id?: string | null;
+          tags?: string[] | null;
+          user_agent?: string | null;
+          user_id?: string | null;
         };
         Update: {
+          action?: string;
+          actor_identifier?: string | null;
+          actor_type?: Database["public"]["Enums"]["actor_type_enum"];
           created_at?: string;
-          details?: Json | null;
-          executed_at?: string;
+          dedupe_key?: string | null;
+          error_code?: string | null;
+          error_message?: string | null;
+          error_stack?: string | null;
           id?: number;
-          operation_type?: string;
+          idempotency_key?: string | null;
+          ip_address?: unknown | null;
+          log_category?: Database["public"]["Enums"]["log_category_enum"];
+          log_level?: Database["public"]["Enums"]["log_level_enum"];
+          message?: string;
+          metadata?: Json | null;
+          outcome?: Database["public"]["Enums"]["log_outcome_enum"];
+          request_id?: string | null;
+          resource_id?: string | null;
+          resource_type?: string | null;
+          session_id?: string | null;
+          stripe_event_id?: string | null;
+          stripe_request_id?: string | null;
+          tags?: string[] | null;
+          user_agent?: string | null;
+          user_id?: string | null;
         };
         Relationships: [];
       };
       users: {
         Row: {
           created_at: string;
+          deleted_at: string | null;
           id: string;
+          is_deleted: boolean;
           name: string;
           updated_at: string;
         };
         Insert: {
           created_at?: string;
+          deleted_at?: string | null;
           id: string;
+          is_deleted?: boolean;
           name: string;
           updated_at?: string;
         };
         Update: {
           created_at?: string;
+          deleted_at?: string | null;
           id?: string;
+          is_deleted?: boolean;
           name?: string;
           updated_at?: string;
         };
@@ -647,15 +683,16 @@ export type Database = {
       };
     };
     Functions: {
-      calc_payout_amount: {
-        Args: { p_event_id: string };
-        Returns: {
-          net_payout_amount: number;
-          platform_fee: number;
-          stripe_payment_count: number;
-          total_stripe_fee: number;
-          total_stripe_sales: number;
-        }[];
+      admin_add_attendance_with_capacity_check: {
+        Args: {
+          p_bypass_capacity?: boolean;
+          p_email: string;
+          p_event_id: string;
+          p_guest_token: string;
+          p_nickname: string;
+          p_status: Database["public"]["Enums"]["attendance_status_enum"];
+        };
+        Returns: string;
       };
       calc_refund_dispute_summary: {
         Args: { p_event_id: string };
@@ -681,68 +718,12 @@ export type Database = {
         Args: { p_event_id: string };
         Returns: boolean;
       };
-      cleanup_expired_scheduler_locks: {
-        Args: Record<PropertyKey, never>;
-        Returns: {
-          deleted_count: number;
-          expired_locks: Json;
-        }[];
-      };
-      clear_test_guest_token: {
-        Args: Record<PropertyKey, never>;
-        Returns: undefined;
-      };
-      extend_scheduler_lock: {
-        Args: {
-          p_extend_minutes?: number;
-          p_lock_name: string;
-          p_process_id: string;
-        };
-        Returns: boolean;
-      };
-      find_eligible_events_basic: {
-        Args: {
-          p_days_after_event?: number;
-          p_limit?: number;
-          p_minimum_amount?: number;
-          p_user_id?: string;
-        };
-        Returns: {
-          created_at: string;
-          created_by: string;
-          event_date: string;
-          event_id: string;
-          fee: number;
-          paid_attendances_count: number;
-          title: string;
-          total_stripe_sales: number;
-        }[];
-      };
-      find_eligible_events_with_details: {
-        Args: { p_days_after_event?: number; p_limit?: number };
-        Returns: {
-          charges_enabled: boolean;
-          created_at: string;
-          created_by: string;
-          eligible: boolean;
-          event_date: string;
-          event_id: string;
-          fee: number;
-          ineligible_reason: string;
-          net_payout_amount: number;
-          paid_attendances_count: number;
-          payouts_enabled: boolean;
-          platform_fee: number;
-          title: string;
-          total_stripe_fee: number;
-          total_stripe_sales: number;
-        }[];
-      };
       generate_settlement_report: {
         Args: { input_created_by: string; input_event_id: string };
         Returns: {
           already_exists: boolean;
           created_by: string;
+          dispute_count: number;
           event_date: string;
           event_title: string;
           net_payout_amount: number;
@@ -752,9 +733,9 @@ export type Database = {
           report_id: string;
           report_updated_at: string;
           returned_event_id: string;
-          settlement_mode: string;
           stripe_account_id: string;
           total_application_fee: number;
+          total_disputed_amount: number;
           total_refunded_amount: number;
           total_stripe_fee: number;
           total_stripe_sales: number;
@@ -772,30 +753,6 @@ export type Database = {
       get_min_payout_amount: {
         Args: Record<PropertyKey, never>;
         Returns: number;
-      };
-      get_scheduler_lock_status: {
-        Args: { p_lock_name?: string };
-        Returns: {
-          acquired_at: string;
-          expires_at: string;
-          is_expired: boolean;
-          lock_name: string;
-          metadata: Json;
-          process_id: string;
-          time_remaining_minutes: number;
-        }[];
-      };
-      get_settlement_aggregations: {
-        Args: { p_event_id: string };
-        Returns: {
-          avg_application_fee: number;
-          payment_count: number;
-          refunded_count: number;
-          total_application_fee: number;
-          total_application_fee_refunded: number;
-          total_refunded_amount: number;
-          total_stripe_sales: number;
-        }[];
       };
       get_settlement_report_details: {
         Args: {
@@ -815,8 +772,6 @@ export type Database = {
           payment_count: number;
           refunded_count: number;
           report_id: string;
-          settlement_mode: Database["public"]["Enums"]["settlement_mode_enum"];
-          status: Database["public"]["Enums"]["payout_status_enum"];
           stripe_account_id: string;
           total_application_fee: number;
           total_refunded_amount: number;
@@ -827,10 +782,6 @@ export type Database = {
       };
       hash_guest_token: {
         Args: { token: string };
-        Returns: string;
-      };
-      process_event_payout: {
-        Args: { p_event_id: string; p_user_id: string };
         Returns: string;
       };
       register_attendance_with_payment: {
@@ -845,13 +796,69 @@ export type Database = {
         };
         Returns: string;
       };
-      release_scheduler_lock: {
-        Args: { p_lock_name: string; p_process_id?: string };
-        Returns: boolean;
-      };
       rpc_bulk_update_payment_status_safe: {
         Args: { p_notes?: string; p_payment_updates: Json; p_user_id: string };
         Returns: Json;
+      };
+      rpc_guest_get_attendance: {
+        Args: { p_guest_token: string };
+        Returns: {
+          attendance_id: string;
+          canceled_at: string;
+          created_by: string;
+          email: string;
+          event_date: string;
+          event_fee: number;
+          event_id: string;
+          event_title: string;
+          guest_token: string;
+          nickname: string;
+          payment_amount: number;
+          payment_created_at: string;
+          payment_deadline: string;
+          payment_id: string;
+          payment_method: Database["public"]["Enums"]["payment_method_enum"];
+          payment_status: Database["public"]["Enums"]["payment_status_enum"];
+          registration_deadline: string;
+          status: Database["public"]["Enums"]["attendance_status_enum"];
+        }[];
+      };
+      rpc_guest_get_latest_payment: {
+        Args: { p_attendance_id: string; p_guest_token: string };
+        Returns: number;
+      };
+      rpc_public_attending_count: {
+        Args: { p_event_id: string; p_invite_token: string };
+        Returns: number;
+      };
+      rpc_public_check_duplicate_email: {
+        Args: { p_email: string; p_event_id: string; p_invite_token: string };
+        Returns: boolean;
+      };
+      rpc_public_get_connect_account: {
+        Args: { p_creator_id: string; p_event_id: string };
+        Returns: {
+          payouts_enabled: boolean;
+          stripe_account_id: string;
+        }[];
+      };
+      rpc_public_get_event: {
+        Args: { p_invite_token: string };
+        Returns: {
+          attendances_count: number;
+          canceled_at: string;
+          capacity: number;
+          date: string;
+          description: string;
+          fee: number;
+          id: string;
+          invite_token: string;
+          location: string;
+          payment_deadline: string;
+          payment_methods: Database["public"]["Enums"]["payment_method_enum"][];
+          registration_deadline: string;
+          title: string;
+        }[];
       };
       rpc_update_payment_status_safe: {
         Args: {
@@ -863,27 +870,15 @@ export type Database = {
         };
         Returns: Json;
       };
-      set_test_guest_token: {
-        Args: { token: string };
-        Returns: undefined;
-      };
       status_rank: {
         Args: { p: Database["public"]["Enums"]["payment_status_enum"] };
         Returns: number;
-      };
-      try_acquire_scheduler_lock: {
-        Args: {
-          p_lock_name: string;
-          p_metadata?: Json;
-          p_process_id?: string;
-          p_ttl_minutes?: number;
-        };
-        Returns: boolean;
       };
       update_guest_attendance_with_payment: {
         Args: {
           p_attendance_id: string;
           p_event_fee?: number;
+          p_guest_token: string;
           p_payment_method?: Database["public"]["Enums"]["payment_method_enum"];
           p_status: Database["public"]["Enums"]["attendance_status_enum"];
         };
@@ -895,35 +890,33 @@ export type Database = {
       };
     };
     Enums: {
-      admin_reason_enum:
-        | "user_cleanup"
-        | "test_data_setup"
-        | "system_maintenance"
-        | "emergency_access"
-        | "data_migration"
-        | "security_investigation";
+      actor_type_enum: "user" | "guest" | "system" | "webhook" | "service_role" | "anonymous";
       attendance_status_enum: "attending" | "not_attending" | "maybe";
+      log_category_enum:
+        | "authentication"
+        | "authorization"
+        | "event_management"
+        | "attendance"
+        | "payment"
+        | "settlement"
+        | "stripe_webhook"
+        | "stripe_connect"
+        | "email"
+        | "export"
+        | "security"
+        | "system";
+      log_level_enum: "debug" | "info" | "warn" | "error" | "critical";
+      log_outcome_enum: "success" | "failure" | "unknown";
       payment_method_enum: "stripe" | "cash";
       payment_status_enum:
         | "pending"
         | "paid"
         | "failed"
         | "received"
-        | "completed"
         | "refunded"
-        | "waived";
-      payout_status_enum: "pending" | "processing" | "completed" | "failed";
-      security_severity_enum: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
-      settlement_mode_enum: "destination_charge";
+        | "waived"
+        | "canceled";
       stripe_account_status_enum: "unverified" | "onboarding" | "verified" | "restricted";
-      suspicious_activity_type_enum:
-        | "EMPTY_RESULT_SET"
-        | "ADMIN_ACCESS_ATTEMPT"
-        | "INVALID_TOKEN_PATTERN"
-        | "RATE_LIMIT_EXCEEDED"
-        | "UNAUTHORIZED_RLS_BYPASS"
-        | "BULK_DATA_ACCESS"
-        | "UNUSUAL_ACCESS_PATTERN";
     };
     CompositeTypes: {
       [_ in never]: never;
@@ -1052,38 +1045,35 @@ export const Constants = {
   },
   public: {
     Enums: {
-      admin_reason_enum: [
-        "user_cleanup",
-        "test_data_setup",
-        "system_maintenance",
-        "emergency_access",
-        "data_migration",
-        "security_investigation",
-      ],
+      actor_type_enum: ["user", "guest", "system", "webhook", "service_role", "anonymous"],
       attendance_status_enum: ["attending", "not_attending", "maybe"],
+      log_category_enum: [
+        "authentication",
+        "authorization",
+        "event_management",
+        "attendance",
+        "payment",
+        "settlement",
+        "stripe_webhook",
+        "stripe_connect",
+        "email",
+        "export",
+        "security",
+        "system",
+      ],
+      log_level_enum: ["debug", "info", "warn", "error", "critical"],
+      log_outcome_enum: ["success", "failure", "unknown"],
       payment_method_enum: ["stripe", "cash"],
       payment_status_enum: [
         "pending",
         "paid",
         "failed",
         "received",
-        "completed",
         "refunded",
         "waived",
+        "canceled",
       ],
-      payout_status_enum: ["pending", "processing", "completed", "failed"],
-      security_severity_enum: ["LOW", "MEDIUM", "HIGH", "CRITICAL"],
-      settlement_mode_enum: ["destination_charge"],
       stripe_account_status_enum: ["unverified", "onboarding", "verified", "restricted"],
-      suspicious_activity_type_enum: [
-        "EMPTY_RESULT_SET",
-        "ADMIN_ACCESS_ATTEMPT",
-        "INVALID_TOKEN_PATTERN",
-        "RATE_LIMIT_EXCEEDED",
-        "UNAUTHORIZED_RLS_BYPASS",
-        "BULK_DATA_ACCESS",
-        "UNUSUAL_ACCESS_PATTERN",
-      ],
     },
   },
 } as const;

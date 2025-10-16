@@ -5,6 +5,19 @@ import { createClient } from "@core/supabase/server";
 
 import { createUserStripeConnectService } from "../services";
 
+/**
+ * UI表示用のStripe Connectアカウントステータス
+ *
+ * NOTE: これはDB用のenum（unverified, onboarding, verified, restricted）とは
+ *      役割が異なるUI専用の派生ステータス
+ *
+ * DB用enum → UI用ステータスのマッピング:
+ * - アカウント未存在 → no_account
+ * - unverified → unverified
+ * - onboarding/verified (要件不備あり) → requirements_due
+ * - verified (要件なし) → ready (ただしCTA非表示のためundefinedで返却)
+ * - restricted → requirements_due
+ */
 export type ConnectAccountStatusType =
   | "no_account" // アカウント未作成
   | "unverified" // アカウント作成済みだが未認証
@@ -56,7 +69,7 @@ export async function getDetailedAccountStatusAction(): Promise<{
           statusType: "no_account",
           title: "決済機能を有効にしましょう",
           description:
-            "オンライン決済を有効化するために、Stripe Connectアカウントの設定が必要です。設定は約3〜5分で完了します。",
+            "オンライン決済を有効化するために、Stripeアカウントの設定が必要です。設定は約3〜5分で完了します。",
           actionText: "アカウント設定を開始",
           actionUrl: "/dashboard/connect",
           severity: "info",
@@ -75,7 +88,7 @@ export async function getDetailedAccountStatusAction(): Promise<{
           statusType: "unverified",
           title: "アカウント認証を完了してください",
           description:
-            "Stripe Connectアカウントの認証が完了していません。認証を完了することで決済を受け取れるようになります。",
+            "Stripeアカウントの認証が完了していません。認証を完了することで決済を受け取れるようになります。",
           actionText: "認証を完了する",
           actionUrl: "/dashboard/connect?action=complete",
           severity: "warning",
@@ -114,9 +127,16 @@ export async function getDetailedAccountStatusAction(): Promise<{
     }
 
     // 7. 全て正常（CTAを表示しない）
+    /**
+     * 決済可能状態（ready）の場合は意図的に status を undefined で返却
+     * 理由:
+     * - UI側でCTAを非表示にするため
+     * - 判定側では !status の条件で「ready」状態を検出する
+     * - statusType: "ready" を明示的に返すと、CTAコンポーネントが表示されてしまう
+     */
     return {
       success: true,
-      status: undefined, // CTAを表示しない
+      status: undefined, // ready状態 = CTA非表示
     };
   } catch (error) {
     logger.error("Failed to check detailed account status", {

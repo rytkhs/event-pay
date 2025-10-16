@@ -258,10 +258,10 @@ export class GuestTokenError extends Error {
         return "参加情報が見つかりません。リンクが正しいか確認してください。";
 
       case GuestErrorCode.TOKEN_EXPIRED:
-        return "このリンクは期限切れです。イベント主催者にお問い合わせください。";
+        return "このリンクは期限切れです。主催者にお問い合わせください。";
 
       case GuestErrorCode.TOKEN_REVOKED:
-        return "このリンクは無効になっています。イベント主催者にお問い合わせください。";
+        return "このリンクは無効になっています。主催者にお問い合わせください。";
 
       case GuestErrorCode.MODIFICATION_NOT_ALLOWED:
         return "参加情報の変更期限を過ぎています。変更が必要な場合は主催者にお問い合わせください。";

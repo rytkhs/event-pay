@@ -1,7 +1,8 @@
-import { headers } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { notFound } from "next/navigation";
 
 import { logInvalidTokenAccess } from "@core/security/security-logger";
+import { validateGuestToken } from "@core/utils/guest-token";
 import { validateInviteToken } from "@core/utils/invite-token";
 import { getClientIPFromHeaders } from "@core/utils/ip-detection";
 import { sanitizeEventDescription } from "@core/utils/sanitize";
@@ -9,6 +10,7 @@ import { sanitizeEventDescription } from "@core/utils/sanitize";
 import { InviteEventDetail } from "@features/invite";
 
 import { ErrorLayout } from "@/components/errors";
+import type { RegisterParticipationData } from "@/features/invite/actions/register-participation";
 
 interface InvitePageProps {
   params: {
@@ -42,7 +44,7 @@ export default async function InvitePage({ params }: InvitePageProps) {
           severity="medium"
           title="無効な招待リンク"
           message={validationResult.errorMessage || "この招待リンクは無効または期限切れです"}
-          description="正しい招待リンクをご確認いただくか、イベント主催者にお問い合わせください。"
+          description="正しい招待リンクをご確認いただくか、主催者にお問い合わせください。"
           showRetry={false}
           showHome={true}
           enableLogging={false}
@@ -108,58 +110,59 @@ export default async function InvitePage({ params }: InvitePageProps) {
       );
     }
 
+    // 申込成功クッキーが存在する場合、ゲストトークンから確認画面データを復元
+    let initialRegistrationData: RegisterParticipationData | null = null;
+    try {
+      const cookieStore = cookies();
+      const successCookie = cookieStore.get("invite_success");
+      if (successCookie?.value) {
+        const guestToken = successCookie.value;
+        const guestValidation = await validateGuestToken(guestToken);
+        if (guestValidation.isValid && guestValidation.attendance) {
+          initialRegistrationData = {
+            attendanceId: guestValidation.attendance.id,
+            guestToken,
+            requiresAdditionalPayment:
+              guestValidation.attendance.status === "attending" &&
+              (guestValidation.attendance.event?.fee ?? 0) > 0,
+            eventTitle: guestValidation.attendance.event?.title ?? validationResult.event.title,
+            participantNickname: guestValidation.attendance.nickname,
+            participantEmail: guestValidation.attendance.email,
+            attendanceStatus: guestValidation.attendance.status,
+            paymentMethod: guestValidation.attendance.payment?.method,
+          };
+        }
+      }
+    } catch {
+      // 復元失敗は無視（UX優先）
+    }
+
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
-        {/* ヘッダーセクション */}
-        <div className="bg-white/80 backdrop-blur-sm shadow-sm border-b border-blue-100">
-          <div className="container mx-auto px-4 py-6 sm:py-8">
-            <div className="max-w-4xl mx-auto text-center">
-              <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-full mb-4 shadow-lg">
-                <svg
-                  className="w-8 h-8 text-white"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M8 7V3a2 2 0 012-2h4a2 2 0 012 2v4m-6 6h6m-6 4h6m-6-8h6"
-                  />
-                </svg>
-              </div>
-              <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-2">
-                <span className="bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-                  EventPay
-                </span>{" "}
-                参加申し込み
-              </h1>
-              <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-                イベントの詳細を確認して、参加申し込みを行ってください
-              </p>
-            </div>
-          </div>
-        </div>
-
+      <div className="min-h-screen bg-muted/30">
         {/* メインコンテンツ */}
-        <div className="container mx-auto px-4 py-8 sm:py-12">
-          <div className="max-w-4xl mx-auto">
-            <main role="main">
-              <InviteEventDetail event={validationResult.event} inviteToken={params.token} />
-            </main>
-          </div>
-        </div>
-
-        {/* フッター */}
-        <footer className="bg-white/50 border-t border-gray-200 mt-12">
-          <div className="container mx-auto px-4 py-6">
-            <div className="text-center text-sm text-gray-500">
-              <p>© 2025 EventPay. すべての権利を保持しています。</p>
-            </div>
-          </div>
-        </footer>
+        <main className="container mx-auto px-4 py-6 sm:py-8 max-w-4xl">
+          <InviteEventDetail
+            event={validationResult.event}
+            inviteToken={params.token}
+            initialRegistrationData={initialRegistrationData}
+          />
+          {/* 主催者の特商法リンク（到達容易性） */}
+          {(() => {
+            const organizerId = (validationResult.event as any)?.created_by as string | undefined;
+            if (!organizerId) return null;
+            return (
+              <div className="mt-8 text-center">
+                <a
+                  href={`/tokushoho/${organizerId}`}
+                  className="text-xs underline text-muted-foreground hover:no-underline"
+                  aria-label="主催者の特定商取引法に基づく表記を確認する"
+                >
+                  特定商取引法に基づく表記（主催者）
+                </a>
+              </div>
+            );
+          })()}
+        </main>
       </div>
     );
   } catch (_error) {
@@ -185,7 +188,7 @@ export async function generateMetadata({ params }: InvitePageProps) {
   try {
     if (!params?.token) {
       return {
-        title: "イベント参加申し込み - EventPay",
+        title: "イベント参加申し込み - みんなの集金",
         description: "イベントへの参加申し込み",
       };
     }
@@ -194,19 +197,19 @@ export async function generateMetadata({ params }: InvitePageProps) {
 
     if (!validationResult.isValid || !validationResult.event) {
       return {
-        title: "無効な招待リンク - EventPay",
+        title: "無効な招待リンク - みんなの集金",
         description: "招待リンクが無効または期限切れです",
       };
     }
 
     const event = validationResult.event;
     return {
-      title: `${event.title} - 参加申し込み | EventPay`,
+      title: `${event.title} - 参加申し込み | みんなの集金`,
       description: sanitizeEventDescription(event.description || `${event.title}への参加申し込み`),
     };
   } catch {
     return {
-      title: "イベント参加申し込み - EventPay",
+      title: "イベント参加申し込み - みんなの集金",
       description: "イベントへの参加申し込み",
     };
   }

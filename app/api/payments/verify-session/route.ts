@@ -18,11 +18,22 @@ import { AdminReason } from "@core/security/secure-client-factory.types";
 import { logSecurityEvent } from "@core/security/security-logger";
 import { stripe } from "@core/stripe/client";
 import { getClientIP } from "@core/utils/ip-detection";
+import { maskSessionId } from "@core/utils/mask";
 
 // リクエストバリデーションスキーマ
 const VerifySessionSchema = z.object({
-  session_id: z.string().min(1, "セッションIDは必須です"),
-  attendance_id: z.string().uuid("有効な参加IDを入力してください"),
+  session_id: z
+    .string({
+      required_error: "セッションIDは必須です",
+      invalid_type_error: "セッションIDは必須です",
+    })
+    .min(1, "セッションIDは必須です"),
+  attendance_id: z
+    .string({
+      required_error: "有効な参加IDを入力してください",
+      invalid_type_error: "有効な参加IDを入力してください",
+    })
+    .uuid("有効な参加IDを入力してください"),
 });
 
 // レスポンス型
@@ -104,12 +115,12 @@ export async function GET(request: NextRequest) {
     // ゲストトークンでの権限確認は事前に実施済み（APIレベルでヘッダー検証）
     const secureClientFactory = SecureSupabaseClientFactory.getInstance();
     const supabase = await secureClientFactory.createAuditedAdminClient(
-      AdminReason.SECURITY_INVESTIGATION,
+      AdminReason.PAYMENT_PROCESSING,
       "PAYMENT_SESSION_VERIFICATION",
       {
         additionalInfo: {
           attendanceId: attendance_id,
-          sessionId: `${session_id.substring(0, 8)}...`,
+          sessionId: maskSessionId(session_id),
           hasGuestToken: !!guestToken,
         },
       }
@@ -134,15 +145,18 @@ export async function GET(request: NextRequest) {
       .single();
 
     // ゲストトークンの照合確認（セキュリティチェック）
-    if (attendanceData && attendanceData.guest_token !== guestToken) {
+    if (!attendanceData || attendanceData.guest_token !== guestToken) {
       logSecurityEvent({
         type: "SUSPICIOUS_ACTIVITY",
         severity: "HIGH",
-        message: "Guest token mismatch during payment verification",
+        message: attendanceData
+          ? "Guest token mismatch during payment verification"
+          : "Payment verification attempted with non-existent attendance record",
         details: {
           attendanceId: attendance_id,
-          sessionId: `${session_id.substring(0, 8)}...`,
+          sessionId: maskSessionId(session_id),
           tokenMatch: false,
+          attendanceExists: !!attendanceData,
         },
         ip: getClientIP(request),
         timestamp: new Date(),
@@ -176,11 +190,11 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    if (dbError && dbError.code !== "PGRST116") {
+    if (dbError && (dbError as any).code !== "PGRST116") {
       logger.error("Database query failed during payment verification", {
         tag: "payment-verify",
         attendance_id,
-        error: dbError.message,
+        error: (dbError as any).message,
       });
     }
 
@@ -196,7 +210,7 @@ export async function GET(request: NextRequest) {
       } catch (stripeError) {
         logger.warn("Stripe session retrieval failed (fallback)", {
           tag: "payment-verify",
-          session_id: `${session_id.substring(0, 8)}...`,
+          session_id: maskSessionId(session_id),
           error: stripeError instanceof Error ? stripeError.message : String(stripeError),
         });
       }
@@ -257,8 +271,10 @@ export async function GET(request: NextRequest) {
                 message: "Outdated checkout session detected during verification",
                 details: {
                   attendanceId: attendance_id,
-                  requestedSessionId: `${session_id.substring(0, 8)}...`,
-                  currentSessionId: `${(fallbackPayment.stripe_checkout_session_id as string).substring(0, 8)}...`,
+                  requestedSessionId: maskSessionId(session_id),
+                  currentSessionId: maskSessionId(
+                    fallbackPayment.stripe_checkout_session_id as string
+                  ),
                   paymentId: fallbackPayment.id,
                   reason: "session_outdated",
                 },
@@ -279,7 +295,7 @@ export async function GET(request: NextRequest) {
               message: "Payment matched by fallback using client_reference_id/metadata",
               details: {
                 attendanceId: attendance_id,
-                sessionId: `${session_id.substring(0, 8)}...`,
+                sessionId: maskSessionId(session_id),
                 paymentId: fallbackPayment.id,
                 reason: "fallback_matched",
               },
@@ -298,9 +314,9 @@ export async function GET(request: NextRequest) {
           message: "Payment verification failed - no matching record found with guest token",
           details: {
             attendanceId: attendance_id,
-            sessionId: `${session_id.substring(0, 8)}...`,
+            sessionId: maskSessionId(session_id),
             hasGuestToken: !!guestToken,
-            dbErrorCode: dbError?.code,
+            dbErrorCode: (dbError as any).code,
           },
           ip: getClientIP(request),
           timestamp: new Date(),
@@ -321,13 +337,12 @@ export async function GET(request: NextRequest) {
       } catch (stripeError) {
         logger.warn("Stripe session retrieval failed", {
           tag: "payment-verify",
-          session_id: `${session_id.substring(0, 8)}...`, // セキュリティのため一部のみログ
+          session_id: maskSessionId(session_id), // セキュリティのため先頭8文字のみログ
           error: stripeError instanceof Error ? stripeError.message : String(stripeError),
         });
 
         return createProblemResponse("PAYMENT_SESSION_NOT_FOUND", {
           instance: "/api/payments/verify-session",
-          detail: "Stripe決済セッションの取得に失敗しました",
         });
       }
     }
@@ -364,13 +379,13 @@ export async function GET(request: NextRequest) {
     // DBとStripeのステータスが一致しない場合の処理
     if (payment && paymentStatus === "success") {
       const dbStatus = payment.status;
-      if (!["paid", "completed", "received"].includes(dbStatus)) {
+      if (!["paid", "received"].includes(dbStatus)) {
         // Webhook処理が遅延している可能性があるため、warning レベル
         logger.warn("Payment status mismatch between Stripe and DB", {
           tag: "payment-verify",
           stripe_status: paymentStatus,
           db_status: dbStatus,
-          session_id: `${session_id.substring(0, 8)}...`,
+          session_id: maskSessionId(session_id),
           payment_id: payment.id,
         });
 
@@ -394,14 +409,151 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(result);
   } catch (error) {
-    logger.error("Unexpected error in payment verification", {
+    // Problem Details標準の相関ID生成に統一（req_xxxxxxxx形式）
+    const errorContext = {
       tag: "payment-verify",
       error_name: error instanceof Error ? error.name : "Unknown",
       error_message: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    };
+
+    // エラーの種類による詳細分類
+    if (error && typeof error === "object") {
+      const errObj = error as any;
+
+      // Stripe API関連エラー
+      if (errObj.type || errObj.message?.includes("stripe") || errObj.name?.includes("Stripe")) {
+        logger.error("Stripe API error during payment verification", {
+          ...errorContext,
+          error_classification: "stripe_error",
+          severity: "high",
+          stripe_error_type: errObj.type,
+          stripe_error_code: errObj.code,
+        });
+        return createProblemResponse("EXTERNAL_SERVICE_ERROR", {
+          instance: "/api/payments/verify-session",
+          detail: "決済サービスとの通信でエラーが発生しました",
+          retryable: true,
+        });
+      }
+
+      // データベースエラー
+      if (
+        errObj.code ||
+        errObj.message?.includes("database") ||
+        errObj.message?.includes("postgres")
+      ) {
+        logger.error("Database error in payment verification", {
+          ...errorContext,
+          error_classification: "database_error",
+          severity: "critical",
+          db_error_code: errObj.code,
+        });
+        return createProblemResponse("DATABASE_ERROR", {
+          instance: "/api/payments/verify-session",
+          detail: "データベースエラーが発生しました",
+          retryable: true,
+        });
+      }
+
+      // レート制限エラー
+      if (errObj.message?.includes("rate limit") || errObj.message?.includes("too many requests")) {
+        logger.warn("Rate limit exceeded in payment verification", {
+          ...errorContext,
+          error_classification: "rate_limit_error",
+          severity: "medium",
+        });
+        return createProblemResponse("RATE_LIMITED", {
+          instance: "/api/payments/verify-session",
+          detail: "リクエスト頻度が高すぎます",
+        });
+      }
+
+      // 認証・権限エラー
+      if (
+        errObj.message?.includes("auth") ||
+        errObj.message?.includes("token") ||
+        errObj.message?.includes("permission")
+      ) {
+        logger.warn("Authentication error in payment verification", {
+          ...errorContext,
+          error_classification: "auth_error",
+          severity: "medium",
+        });
+        return createProblemResponse("UNAUTHORIZED", {
+          instance: "/api/payments/verify-session",
+          detail: "認証エラーが発生しました",
+        });
+      }
+
+      // ネットワーク・接続エラー
+      if (
+        errObj.message?.includes("fetch") ||
+        errObj.message?.includes("network") ||
+        errObj.message?.includes("timeout") ||
+        errObj.code === "ENOTFOUND" ||
+        errObj.code === "ECONNRESET"
+      ) {
+        logger.warn("Network error in payment verification", {
+          ...errorContext,
+          error_classification: "network_error",
+          severity: "medium",
+          network_error_code: errObj.code,
+        });
+        return createProblemResponse("EXTERNAL_SERVICE_ERROR", {
+          instance: "/api/payments/verify-session",
+          detail: "ネットワーク接続エラーが発生しました",
+          retryable: true,
+        });
+      }
+
+      // JSON解析エラー
+      if (
+        errObj instanceof SyntaxError ||
+        errObj.message?.includes("JSON") ||
+        errObj.name === "SyntaxError"
+      ) {
+        logger.warn("JSON parsing error in payment verification", {
+          ...errorContext,
+          error_classification: "client_error",
+          severity: "low",
+        });
+        return createProblemResponse("INVALID_REQUEST", {
+          instance: "/api/payments/verify-session",
+          detail: "リクエスト形式が正しくありません",
+        });
+      }
+
+      // バリデーションエラー
+      if (
+        errObj.message?.includes("validation") ||
+        errObj.message?.includes("invalid") ||
+        errObj.name === "ValidationError"
+      ) {
+        logger.info("Validation error in payment verification", {
+          ...errorContext,
+          error_classification: "validation_error",
+          severity: "low",
+        });
+        return createProblemResponse("VALIDATION_ERROR", {
+          instance: "/api/payments/verify-session",
+          detail: "入力値が無効です",
+        });
+      }
+    }
+
+    // その他の予期しないエラー（最も重大として扱う）
+    logger.error("Unexpected error in payment verification", {
+      ...errorContext,
+      error_classification: "system_error",
+      severity: "critical",
+      requires_investigation: true,
     });
 
     return createProblemResponse("INTERNAL_ERROR", {
       instance: "/api/payments/verify-session",
+      detail: "予期しないエラーが発生しました",
+      retryable: true,
     });
   }
 }

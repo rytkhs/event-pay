@@ -1,4 +1,4 @@
-import { ErrorHandlingResult, PaymentErrorType } from "./types";
+import { ErrorHandlingResult, PaymentErrorType } from "@core/types/payment-errors";
 
 // PaymentErrorType -> ユーザー向けハンドリングの集約マップ（網羅必須）
 export const ERROR_HANDLING_BY_TYPE: Record<PaymentErrorType, ErrorHandlingResult> = {
@@ -81,6 +81,24 @@ export const ERROR_HANDLING_BY_TYPE: Record<PaymentErrorType, ErrorHandlingResul
   [PaymentErrorType.WEBHOOK_PROCESSING_ERROR]: {
     userMessage: "決済処理の確認中です。しばらくお待ちください。",
     shouldRetry: false,
+    logLevel: "error",
+  },
+  [PaymentErrorType.CONNECT_ACCOUNT_NOT_FOUND]: {
+    userMessage:
+      "決済の準備ができません。主催者のお支払い受付設定に不備があります。現金決済をご利用いただくか、主催者にお問い合わせください。",
+    shouldRetry: false,
+    logLevel: "error",
+  },
+  [PaymentErrorType.CONNECT_ACCOUNT_RESTRICTED]: {
+    userMessage:
+      "主催者のお支払い受付が一時的に制限されています。現金決済をご利用いただくか、主催者にお問い合わせください。",
+    shouldRetry: false,
+    logLevel: "error",
+  },
+  [PaymentErrorType.STRIPE_CONFIG_ERROR]: {
+    userMessage:
+      "決済システムに一時的な問題が発生しています。しばらく時間をおいて再度お試しいただくか、現金決済をご利用ください。",
+    shouldRetry: true,
     logLevel: "error",
   },
 };

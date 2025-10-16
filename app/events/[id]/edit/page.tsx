@@ -1,11 +1,17 @@
+import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
+
+import { ArrowLeft } from "lucide-react";
 
 import { createClient } from "@core/supabase/server";
 import { deriveEventStatus } from "@core/utils/derive-event-status";
 import { calculateAttendeeCount } from "@core/utils/event-calculations";
 import { validateEventId } from "@core/validation/event-id";
 
-import { EditRestrictionsNotice, EventEditForm } from "@features/events";
+import { ModernEventEditForm } from "@features/events/components/modern-event-edit-form";
+import { getDetailedAccountStatusAction } from "@features/stripe-connect";
+
+import { EventDangerZone } from "./components/event-danger-zone";
 
 interface EventEditPageProps {
   params: {
@@ -43,6 +49,7 @@ export default async function EventEditPage({ params }: EventEditPageProps) {
       date,
       fee,
       capacity,
+      payment_methods,
       registration_deadline,
       payment_deadline,
       allow_payment_after_deadline,
@@ -73,8 +80,8 @@ export default async function EventEditPage({ params }: EventEditPageProps) {
   // Stripe 決済済み参加者の有無を算出
   const { data: stripePaid, error: stripePaidError } = await supabase
     .from("payments")
-    .select("id")
-    .eq("event_id", params.id)
+    .select("id, attendances!inner(event_id)")
+    .eq("attendances.event_id", params.id)
     .eq("method", "stripe")
     .in("status", ["paid", "refunded"])
     .limit(1);
@@ -84,33 +91,63 @@ export default async function EventEditPage({ params }: EventEditPageProps) {
   // 算出ステータスを付与
   const computedStatus = deriveEventStatus(event.date, (event as any).canceled_at ?? null);
 
+  // 開催済み・キャンセル済みイベントの編集禁止チェック
+  if (computedStatus === "past" || computedStatus === "canceled") {
+    redirect(`/events/${params.id}/forbidden?reason=${computedStatus}`);
+  }
+
+  // Stripe Connectの詳細状態を取得し、オンライン決済可否を決定
+  const detailedStatus = await getDetailedAccountStatusAction();
+
+  /**
+   * オンライン決済可否の判定ロジック（編集時）
+   *
+   * getDetailedAccountStatusAction の仕様:
+   * - アカウント未作成/認証不備がある場合: status オブジェクトを返す（CTA表示用）
+   * - 全て正常で決済可能な場合: status を undefined で返す（CTA非表示）
+   *
+   * したがって、status === undefined が「ready」状態を意味する
+   */
+  const canUseOnlinePayments = detailedStatus.success && !detailedStatus.status;
+
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
+    <div className="min-h-screen bg-muted/30 py-8">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="space-y-6">
-          {/* ページヘッダー */}
-          <div className="text-center">
-            <h1 className="text-3xl font-bold text-gray-900">イベント編集</h1>
-            <p className="mt-2 text-sm text-gray-600">
-              イベント「{event.title}」の設定を編集します
-            </p>
+          {/* 戻るリンク */}
+          <div>
+            <Link
+              href={`/events/${params.id}`}
+              className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              イベント詳細に戻る
+            </Link>
           </div>
 
-          {/* V2ではhasStripePaid時のみ制限が発生（fee/payment_methods）。旧Noticeは非表示にする */}
-          {/* ここで独自に注意を出す場合は、hasStripePaidに基づいてメッセージを表示する */}
-          {false && (
-            <EditRestrictionsNotice
-              hasAttendees={attendeeCount > 0}
-              attendeeCount={attendeeCount}
-            />
-          )}
+          {/* 編集フォーム（新しいマルチステップ版） */}
+          <ModernEventEditForm
+            event={{ ...(event as any), status: computedStatus }}
+            attendeeCount={attendeeCount}
+            hasStripePaid={hasStripePaid}
+            canUseOnlinePayments={canUseOnlinePayments}
+          />
 
-          {/* 編集フォーム */}
+          {/* 危険な操作（削除・中止） */}
+          <EventDangerZone
+            eventId={params.id}
+            eventTitle={event.title}
+            eventStatus={computedStatus}
+          />
+
+          {/* 旧フォーム（バックアップ用にコメントアウト）
           <EventEditForm
             event={{ ...(event as any), status: computedStatus }}
             attendeeCount={attendeeCount}
             hasStripePaid={hasStripePaid}
+            canUseOnlinePayments={canUseOnlinePayments}
           />
+          */}
         </div>
       </div>
     </div>
@@ -119,7 +156,7 @@ export default async function EventEditPage({ params }: EventEditPageProps) {
 
 export function generateMetadata() {
   return {
-    title: "イベント編集 - EventPay",
+    title: "イベント編集 - みんなの集金",
     description: "イベント情報の編集画面",
   };
 }

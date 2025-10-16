@@ -10,13 +10,21 @@ import { useErrorHandler } from "@core/hooks/use-error-handler";
 import { logger } from "@core/logging/app-logger";
 import type { Event, EventFormData } from "@core/types/models";
 import { safeParseNumber, parseFee } from "@core/utils/number-parsers";
-import { convertDatetimeLocalToUtc, formatUtcToDatetimeLocal } from "@core/utils/timezone";
+import {
+  convertDatetimeLocalToUtc,
+  formatUtcToDatetimeLocal,
+  isUtcDateFuture,
+} from "@core/utils/timezone";
 
 import type { ChangeItem } from "@/components/ui/change-confirmation-dialog";
 
 import { useEventChanges } from "./use-event-changes";
-import { useEventRestrictions } from "./use-event-restrictions";
 import { useEventSubmission } from "./use-event-submission";
+import {
+  useUnifiedRestrictions,
+  useRestrictionContext,
+  useFormDataSnapshot,
+} from "./use-unified-restrictions";
 
 interface UseEventEditFormProps {
   event: Event;
@@ -34,15 +42,33 @@ const eventEditFormSchemaBase = z
       .max(100, "タイトルは100文字以内で入力してください"),
     description: z.string().max(1000, "説明は1000文字以内で入力してください"),
     location: z.string().max(200, "場所は200文字以内で入力してください"),
-    date: z.string().min(1, "開催日時は必須です"),
+    date: z
+      .string()
+      .min(1, "開催日時は必須です")
+      .refine((val) => {
+        if (!val) return false;
+        try {
+          const utcDate = convertDatetimeLocalToUtc(val);
+          return isUtcDateFuture(utcDate);
+        } catch {
+          return false;
+        }
+      }, "開催日時は現在時刻より後である必要があります"),
     fee: z
       .string()
       .regex(/^\d+$/, "参加費は数値で入力してください")
       .refine((v) => {
         const n = Number(v);
-        return Number.isInteger(n) && n >= 0 && n <= 1_000_000;
-      }, "参加費は0〜1,000,000の整数で入力してください"),
-    capacity: z.string().optional(),
+        return Number.isInteger(n) && (n === 0 || (n >= 100 && n <= 1_000_000));
+      }, "参加費は0円（無料）または100〜1,000,000円の整数で入力してください"),
+    capacity: z
+      .string()
+      .optional()
+      .refine((val) => {
+        if (!val || val.trim() === "") return true;
+        const cap = Number(val);
+        return Number.isInteger(cap) && cap >= 1 && cap <= 10_000;
+      }, "定員は1以上10,000以下である必要があります"),
     payment_methods: z.array(z.string()), // min制約を削除
     registration_deadline: z.string().optional(),
     payment_deadline: z.string().optional(),
@@ -62,21 +88,8 @@ const eventEditFormSchemaBase = z
       path: ["payment_methods"],
     }
   )
-  .refine(
-    (data) => {
-      if (!data.date) return true;
-      try {
-        const eventUtc = convertDatetimeLocalToUtc(data.date);
-        return eventUtc > new Date();
-      } catch {
-        return false;
-      }
-    },
-    {
-      message: "開催日時は現在時刻より後である必要があります",
-      path: ["date"],
-    }
-  )
+  // NOTE: 新しく入力する開催日時は未来である必要があります。
+  // 既存の過去イベントの編集禁止はページレベルで実装済みです。
   .refine(
     (data) => {
       if (!data.registration_deadline || !data.date) return true;
@@ -130,45 +143,69 @@ const eventEditFormSchemaBase = z
   )
   .refine(
     (data) => {
-      // 最終支払期限（payment_deadline + 猶予日） ≤ date + 30日
-      if (!data.payment_deadline || !data.date) return true;
-      try {
-        const payUtc = convertDatetimeLocalToUtc(data.payment_deadline);
-        const eventUtc = convertDatetimeLocalToUtc(data.date);
-        const grace = data.allow_payment_after_deadline ? Number(data.grace_period_days ?? "0") : 0;
-        if (!Number.isInteger(grace) || grace < 0 || grace > 30) return false;
-        const finalDue = new Date(payUtc.getTime() + grace * 24 * 60 * 60 * 1000);
-        const maxUtc = new Date(eventUtc.getTime() + 30 * 24 * 60 * 60 * 1000);
-        return finalDue <= maxUtc;
-      } catch {
-        return false;
+      // 猶予ON時: final_payment_limit <= date + 30日 を満たすように grace_period_days を制限
+      if (data.allow_payment_after_deadline && data.date) {
+        try {
+          const baseUtc = data.payment_deadline
+            ? convertDatetimeLocalToUtc(data.payment_deadline)
+            : convertDatetimeLocalToUtc(data.date); // effective_payment_deadline（サーバー仕様と統一）
+          const eventUtc = convertDatetimeLocalToUtc(data.date);
+          const grace = Number(data.grace_period_days ?? "0") || 0;
+          if (!Number.isInteger(grace) || grace < 0 || grace > 30) return false;
+          const finalCandidate = new Date(baseUtc.getTime() + grace * 24 * 60 * 60 * 1000);
+          const eventPlus30d = new Date(eventUtc.getTime() + 30 * 24 * 60 * 60 * 1000);
+          return finalCandidate <= eventPlus30d;
+        } catch {
+          return false;
+        }
       }
+      return true;
     },
     {
-      message: "最終支払期限は開催日時から30日以内に設定してください",
+      message: "猶予を含む最終支払期限は開催日時から30日以内にしてください",
       path: ["grace_period_days"],
     }
   );
-
 // フォームデータ型（react-hook-form用）
 export type EventEditFormDataRHF = z.infer<typeof eventEditFormSchemaBase>;
 
-// 参加者数依存の capacity バリデーションを追加するスキーマ
-function createEventEditFormSchema(attendeeCount: number) {
-  return eventEditFormSchemaBase.refine(
-    (data) => {
-      // 未入力（制限なし）は許可
-      if (!data.capacity || data.capacity.trim() === "") return true;
-      const cap = Number(data.capacity);
-      if (!Number.isInteger(cap)) return false;
-      if (cap < 1 || cap > 10_000) return false;
-      return cap >= attendeeCount;
-    },
-    {
-      message: `定員は現在の参加者数（${attendeeCount}名）以上で設定してください`,
-      path: ["capacity"],
-    }
-  );
+// 参加者数依存の capacity バリデーションと既存値考慮のスキーマ
+function createEventEditFormSchema(attendeeCount: number, existingEvent: Event) {
+  return eventEditFormSchemaBase
+    .refine(
+      (data) => {
+        // 未入力（制限なし）は許可
+        if (!data.capacity || data.capacity.trim() === "") return true;
+        const cap = Number(data.capacity);
+        // 基本的な制限はbaseスキーマで処理済み、ここでは参加者数の制限のみチェック
+        return cap >= attendeeCount;
+      },
+      {
+        message: `定員は現在の参加者数（${attendeeCount}名）以上で設定してください`,
+        path: ["capacity"],
+      }
+    )
+    .refine(
+      (data) => {
+        // オンライン決済選択時は決済締切が必須（existing値も考慮）
+        const hasStripe = Array.isArray(data.payment_methods)
+          ? data.payment_methods.includes("stripe")
+          : false;
+        if (hasStripe) {
+          // フォーム値または既存値のいずれかに締切が設定されていればOK
+          const hasFormDeadline = Boolean(
+            data.payment_deadline && String(data.payment_deadline).trim() !== ""
+          );
+          const hasExistingDeadline = Boolean(existingEvent.payment_deadline);
+          return hasFormDeadline || hasExistingDeadline;
+        }
+        return true;
+      },
+      {
+        message: "オンライン決済を選択した場合、決済締切の設定が必要です。",
+        path: ["payment_deadline"],
+      }
+    );
 }
 
 export function useEventEditForm({
@@ -182,6 +219,8 @@ export function useEventEditForm({
   const { submitWithErrorHandling } = useErrorHandler();
 
   // 初期値をメモ化（型安全）
+  // registration_deadline: DBでNOT NULL制約のため既存値を使用（変更検出問題を回避）
+  // payment_deadline: 存在する場合は既存値を使用、stripe選択解除時は動的にクリア
   const initialFormData = useMemo<EventEditFormDataRHF>(
     () => ({
       title: event.title || "",
@@ -191,7 +230,7 @@ export function useEventEditForm({
       fee: event.fee?.toString() || "0",
       capacity: event.capacity?.toString() || "",
       payment_methods: event.payment_methods || [],
-      registration_deadline: formatUtcToDatetimeLocal(event.registration_deadline || ""),
+      registration_deadline: formatUtcToDatetimeLocal(event.registration_deadline),
       payment_deadline: formatUtcToDatetimeLocal(event.payment_deadline || ""),
       allow_payment_after_deadline: (event as any).allow_payment_after_deadline ?? false,
       grace_period_days: ((event as any).grace_period_days ?? 0).toString(),
@@ -201,7 +240,7 @@ export function useEventEditForm({
 
   // react-hook-formの初期化
   const form = useForm<EventEditFormDataRHF>({
-    resolver: zodResolver(createEventEditFormSchema(attendeeCount)),
+    resolver: zodResolver(createEventEditFormSchema(attendeeCount, event)),
     defaultValues: initialFormData,
     mode: "all", // クロスフィールドバリデーション対応
     reValidateMode: "onChange",
@@ -216,6 +255,9 @@ export function useEventEditForm({
   const currentFee = watchedFee && watchedFee.trim() !== "" ? safeParseNumber(watchedFee) : null;
   const isFreeEvent = currentFee === 0;
 
+  // 決済方法をリアルタイムで監視
+  const watchedPaymentMethods = form.watch("payment_methods");
+
   // 無料イベントの場合は決済方法をクリア
   useEffect(() => {
     if (isFreeEvent) {
@@ -223,26 +265,44 @@ export function useEventEditForm({
     }
   }, [isFreeEvent, form]);
 
-  // 開催日時が入力・変更された場合、未入力の締切（参加申込・オンライン決済）をdateで自動プリセット
+  // stripe選択解除時のpayment_deadline および関連フィールドのクリア
   useEffect(() => {
-    const dateValue = form.getValues("date");
-    if (!dateValue || dateValue.trim() === "") return;
-    const reg = form.getValues("registration_deadline");
-    const pay = form.getValues("payment_deadline");
-    if (!reg || reg.trim() === "") {
-      form.setValue("registration_deadline", dateValue, {
-        shouldValidate: true,
-        shouldTouch: true,
-      });
+    const paymentMethods = watchedPaymentMethods || [];
+
+    if (!paymentMethods.includes("stripe")) {
+      const currentPaymentDeadline = form.getValues("payment_deadline");
+      const currentAllowPaymentAfterDeadline = form.getValues("allow_payment_after_deadline");
+      const currentGracePeriodDays = form.getValues("grace_period_days");
+
+      // payment_deadlineをクリア
+      if (currentPaymentDeadline && currentPaymentDeadline.trim() !== "") {
+        form.setValue("payment_deadline", "", {
+          shouldValidate: true,
+          shouldTouch: false, // 自動クリアは変更扱いしない
+        });
+      }
+
+      // allow_payment_after_deadlineをクリア
+      if (currentAllowPaymentAfterDeadline) {
+        form.setValue("allow_payment_after_deadline", false, {
+          shouldValidate: true,
+          shouldTouch: false, // 自動クリアは変更扱いしない
+        });
+      }
+
+      // grace_period_daysをクリア
+      if (
+        currentGracePeriodDays &&
+        currentGracePeriodDays.trim() !== "" &&
+        currentGracePeriodDays !== "0"
+      ) {
+        form.setValue("grace_period_days", "0", {
+          shouldValidate: true,
+          shouldTouch: false, // 自動クリアは変更扱いしない
+        });
+      }
     }
-    if (!pay || pay.trim() === "") {
-      form.setValue("payment_deadline", dateValue, {
-        shouldValidate: true,
-        shouldTouch: true,
-      });
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [form.watch("date")]);
+  }, [watchedPaymentMethods, form]);
 
   // 現在のフォームデータを取得（EventFormData形式に変換、numeric フィールドの型安全性確保）
   const getCurrentFormData = useCallback((): EventFormData => {
@@ -264,12 +324,35 @@ export function useEventEditForm({
   // 現在のフォームデータをメモ化（変更検出のリアクティブ性確保）
   const currentFormData = useMemo(() => getCurrentFormData(), [getCurrentFormData]);
 
+  // 統一制限システムの初期化
+  const restrictionContext = useRestrictionContext(
+    {
+      fee: event.fee,
+      capacity: event.capacity,
+      payment_methods: event.payment_methods,
+      title: event.title,
+      description: event.description ?? undefined,
+      location: event.location ?? undefined,
+      date: event.date,
+      registration_deadline: event.registration_deadline ?? undefined,
+      payment_deadline: event.payment_deadline ?? undefined,
+      allow_payment_after_deadline: event.allow_payment_after_deadline ?? undefined,
+      grace_period_days: event.grace_period_days ?? undefined,
+    },
+    { hasAttendees, attendeeCount, hasStripePaid },
+    event.status ?? "upcoming"
+  );
+  const formDataSnapshot = useFormDataSnapshot(
+    currentFormData as unknown as Record<string, unknown>
+  );
+  const unifiedRestrictions = useUnifiedRestrictions(restrictionContext, formDataSnapshot);
+
   // 分割されたフックの初期化
-  const restrictions = useEventRestrictions({ hasAttendees, attendeeCount, hasStripePaid });
   const changes = useEventChanges({
     event,
     formData: currentFormData,
     hasValidationErrors: !form.formState.isValid,
+    isFieldEditable: (field: string) => unifiedRestrictions.isFieldEditable(field as any),
   });
   const submission = useEventSubmission({ eventId: event.id, onSubmit });
 
@@ -320,7 +403,17 @@ export function useEventEditForm({
             return;
           }
 
-          // submitWithErrorHandling を使用してエラーハンドリングを統一
+          // @note エラーハンドリングの重複について:
+          // 現在3段階でエラーハンドリングが実行される:
+          // 1. submitWithErrorHandling（グローバルエラーハンドリング）
+          // 2. submission.submitForm（送信固有のエラーハンドリング）
+          // 3. form.setError（react-hook-formエラー設定）
+          //
+          // @todo 将来的な改善提案:
+          // - エラーハンドリングを2段階に簡素化
+          // - Zodエラーの複数エラー対応を統一
+          // - エラーメッセージの一元管理
+
           const result = await submitWithErrorHandling(
             () =>
               submission.submitForm(formData, detectedChanges, (errors) => {
@@ -371,7 +464,7 @@ export function useEventEditForm({
         startTransition(async () => {
           try {
             // EventFormData形式に変換（numeric フィールドの型安全性確保）
-            const formData: EventFormData = {
+            const fullFormData: EventFormData = {
               title: data.title,
               description: data.description,
               location: data.location,
@@ -385,8 +478,11 @@ export function useEventEditForm({
               grace_period_days: data.grace_period_days || "0",
             };
 
-            // 実際の送信処理
-            const result = await submission.submitForm(formData, changeList, (errors) => {
+            // 確認された変更のみを含むフォームデータを作成
+            const selectedFormData = submission.prepareSubmissionData(fullFormData, changeList);
+
+            // 実際の送信処理（選択された変更のみ）
+            const result = await submission.submitForm(selectedFormData, changeList, (errors) => {
               // エラーをreact-hook-formに設定
               Object.entries(errors).forEach(([field, message]) => {
                 if (field === "general") {
@@ -428,17 +524,17 @@ export function useEventEditForm({
   // フィールド制限チェック
   const isFieldRestricted = useCallback(
     (field: string): boolean => {
-      return restrictions.isFieldRestricted(field, currentFormData);
+      return unifiedRestrictions.isFieldRestricted(field as any);
     },
-    [restrictions, currentFormData]
+    [unifiedRestrictions]
   );
 
   // フィールド編集可能チェック
   const isFieldEditable = useCallback(
     (field: string): boolean => {
-      return restrictions.isFieldEditable(field, currentFormData);
+      return unifiedRestrictions.isFieldEditable(field as any);
     },
-    [restrictions, currentFormData]
+    [unifiedRestrictions]
   );
 
   // 変更数の取得
@@ -470,10 +566,6 @@ export function useEventEditForm({
     restrictions: {
       isFieldRestricted,
       isFieldEditable,
-      getFieldDisplayName: restrictions.getFieldDisplayName,
-      getRestrictionReason: restrictions.getRestrictionReason,
-      getRestrictedFields: () => restrictions.getRestrictedFields(currentFormData),
-      getRestrictedFieldNames: () => restrictions.getRestrictedFieldNames(currentFormData),
     },
 
     // === 変更検出 ===

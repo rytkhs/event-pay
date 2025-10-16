@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 
-// import { useRouter } from "next/navigation";
+import { AlertCircle } from "lucide-react";
 
 import { useToast } from "@core/contexts/toast-context";
 import { useErrorHandler } from "@core/hooks/use-error-handler";
@@ -15,6 +15,8 @@ import {
   GuestEventDetails,
   createGuestStripeSessionAction,
 } from "@features/guest";
+
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 
 interface GuestPageClientProps {
   attendance: GuestAttendanceData;
@@ -83,6 +85,17 @@ export function GuestPageClient({
 
   return (
     <>
+      {/* 中止イベントバナー */}
+      {(attendance.event as any).canceled_at && (
+        <Alert variant="destructive" className="mb-6">
+          <AlertCircle className="h-5 w-5" />
+          <AlertTitle>イベントは中止されました</AlertTitle>
+          <AlertDescription>
+            このイベントは中止されています。詳細については主催者にお問い合わせください。
+          </AlertDescription>
+        </Alert>
+      )}
+
       {/* ステータス概要 */}
       <section className="mb-6 sm:mb-8">
         <GuestStatusOverview

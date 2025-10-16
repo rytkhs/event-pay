@@ -72,16 +72,16 @@ const codeIconMap: Partial<Record<ErrorCode, LucideIcon>> = {
  * エラーカテゴリに応じた色クラスマッピング
  */
 const categoryColorMap: Record<ErrorCategory, string> = {
-  network: "text-red-500",
-  auth: "text-amber-500",
-  validation: "text-orange-500",
-  business: "text-blue-500",
-  server: "text-red-600",
-  client: "text-orange-500",
-  security: "text-red-600",
-  payment: "text-red-500",
-  "not-found": "text-gray-500",
-  unknown: "text-gray-600",
+  network: "text-destructive",
+  auth: "text-warning",
+  validation: "text-warning",
+  business: "text-info",
+  server: "text-destructive",
+  client: "text-warning",
+  security: "text-destructive",
+  payment: "text-destructive",
+  "not-found": "text-muted-foreground",
+  unknown: "text-muted-foreground",
 };
 
 /**

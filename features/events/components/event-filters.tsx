@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 
+import { ChevronDown, ChevronUp, Search, Filter } from "lucide-react";
 import { z } from "zod";
 
 import {
@@ -11,10 +12,10 @@ import {
   PAYMENT_FILTER_LABELS,
 } from "@core/constants/event-filters";
 
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -34,6 +35,9 @@ interface EventFiltersProps {
   onPaymentFilterChange: (payment: PaymentFilter) => void;
   onClearFilters: () => void;
   isFiltered?: boolean;
+  // 検索機能のプロップを追加
+  searchQuery?: string;
+  onSearchQueryChange?: (query: string) => void;
 }
 
 export function EventFilters({
@@ -45,8 +49,11 @@ export function EventFilters({
   onPaymentFilterChange,
   onClearFilters,
   isFiltered = false,
+  searchQuery = "",
+  onSearchQueryChange,
 }: EventFiltersProps) {
   const [dateError, setDateError] = useState<string>("");
+  const [isOpen, setIsOpen] = useState(false);
   const startDateRef = useRef<HTMLInputElement>(null);
   const endDateRef = useRef<HTMLInputElement>(null);
 
@@ -122,88 +129,139 @@ export function EventFilters({
   };
 
   return (
-    <Card data-testid="event-filters">
-      <CardHeader>
-        <CardTitle>フィルター</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {/* ステータスフィルター */}
-        <div className="space-y-2">
-          <Label htmlFor="status-filter">ステータス</Label>
-          <Select value={statusFilter} onValueChange={handleStatusChange}>
-            <SelectTrigger data-testid="status-filter" aria-label="イベントステータスでフィルター">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {STATUS_FILTER_OPTIONS.map((option) => (
-                <SelectItem key={option} value={option}>
-                  {STATUS_FILTER_LABELS[option]}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+    <div data-testid="event-filters" className="w-full space-y-4">
+      {/* メイン検索バー - 主役 */}
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <Input
+          type="text"
+          placeholder="タイトル・場所で検索..."
+          value={searchQuery}
+          onChange={(e) => onSearchQueryChange?.(e.target.value)}
+          className="pl-10 h-12 text-base"
+          data-testid="search-input"
+        />
+      </div>
 
-        {/* 決済状況フィルター */}
-        <div className="space-y-2">
-          <Label htmlFor="payment-filter">料金</Label>
-          <Select value={paymentFilter} onValueChange={handlePaymentChange}>
-            <SelectTrigger data-testid="payment-filter" aria-label="料金設定でフィルター">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {PAYMENT_FILTER_OPTIONS.map((option) => (
-                <SelectItem key={option} value={option}>
-                  {PAYMENT_FILTER_LABELS[option]}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+      {/* クイックフィルター & アクティブフィルター表示 */}
+      <div className="flex flex-wrap items-center gap-2">
+        {/* アクティブフィルター表示 */}
+        {statusFilter !== "all" && (
+          <Badge variant="secondary" className="text-xs">
+            {STATUS_FILTER_LABELS[statusFilter]}
+          </Badge>
+        )}
+        {paymentFilter !== "all" && (
+          <Badge variant="secondary" className="text-xs">
+            {PAYMENT_FILTER_LABELS[paymentFilter]}
+          </Badge>
+        )}
+        {(dateFilter.start || dateFilter.end) && (
+          <Badge variant="secondary" className="text-xs">
+            {dateFilter.start || "---"} 〜 {dateFilter.end || "---"}
+          </Badge>
+        )}
+        {isFiltered && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleClearFilters}
+            className="h-6 px-2 text-xs"
+            aria-label="フィルターをクリア"
+          >
+            すべてクリア
+          </Button>
+        )}
+      </div>
 
-        {/* 日付範囲フィルター */}
-        <div className="space-y-2">
-          <Label>開催日</Label>
-          <div className="space-y-2">
-            <div>
-              <Label htmlFor="start-date" className="text-xs text-muted-foreground">
-                開始日
-              </Label>
-              <Input
-                ref={startDateRef}
-                id="start-date"
-                type="date"
-                value={dateFilter.start || ""}
-                onChange={(e) => handleDateChange("start", e.target.value)}
-              />
+      {/* 詳細フィルター（収折式） */}
+      <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+        <CollapsibleTrigger asChild>
+          <Button
+            variant="outline"
+            size="sm"
+            className="w-full sm:w-auto"
+            data-testid="toggle-filters"
+          >
+            <Filter className="mr-2 h-4 w-4" />
+            詳細フィルター
+            {isOpen ? (
+              <ChevronUp className="ml-2 h-4 w-4" />
+            ) : (
+              <ChevronDown className="ml-2 h-4 w-4" />
+            )}
+          </Button>
+        </CollapsibleTrigger>
+
+        <CollapsibleContent className="space-y-4 pt-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 p-4 bg-muted/30 rounded-lg">
+            {/* ステータス */}
+            <div className="space-y-2">
+              <label htmlFor="status-filter" className="text-sm font-medium">
+                ステータス
+              </label>
+              <Select value={statusFilter} onValueChange={handleStatusChange}>
+                <SelectTrigger id="status-filter" data-testid="status-filter">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {STATUS_FILTER_OPTIONS.map((option) => (
+                    <SelectItem key={option} value={option}>
+                      {STATUS_FILTER_LABELS[option]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
-            <div>
-              <Label htmlFor="end-date" className="text-xs text-muted-foreground">
-                終了日
-              </Label>
-              <Input
-                ref={endDateRef}
-                id="end-date"
-                type="date"
-                value={dateFilter.end || ""}
-                onChange={(e) => handleDateChange("end", e.target.value)}
-              />
+
+            {/* 料金 */}
+            <div className="space-y-2">
+              <label htmlFor="payment-filter" className="text-sm font-medium">
+                料金
+              </label>
+              <Select value={paymentFilter} onValueChange={handlePaymentChange}>
+                <SelectTrigger id="payment-filter" data-testid="payment-filter">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {PAYMENT_FILTER_OPTIONS.map((option) => (
+                    <SelectItem key={option} value={option}>
+                      {PAYMENT_FILTER_LABELS[option]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
-            {dateError && <p className="text-destructive text-sm mt-1">{dateError}</p>}
+
+            {/* 日付範囲 */}
+            <div className="space-y-2 sm:col-span-2 lg:col-span-1">
+              <fieldset>
+                <legend className="text-sm font-medium">期間</legend>
+                <div className="flex items-center gap-2 mt-2">
+                  <Input
+                    ref={startDateRef}
+                    type="date"
+                    value={dateFilter.start || ""}
+                    onChange={(e) => handleDateChange("start", e.target.value)}
+                    aria-label="開始日"
+                  />
+                  <span className="text-muted-foreground text-sm">〜</span>
+                  <Input
+                    ref={endDateRef}
+                    type="date"
+                    value={dateFilter.end || ""}
+                    onChange={(e) => handleDateChange("end", e.target.value)}
+                    aria-label="終了日"
+                  />
+                </div>
+              </fieldset>
+            </div>
           </div>
-        </div>
+        </CollapsibleContent>
+      </Collapsible>
 
-        {/* フィルター解除 */}
-        <Button
-          variant="outline"
-          onClick={handleClearFilters}
-          disabled={!isFiltered}
-          className="w-full"
-          aria-label={isFiltered ? "フィルターをクリア" : "フィルターが設定されていません"}
-        >
-          フィルターをクリア
-        </Button>
-      </CardContent>
-    </Card>
+      {/* エラー表示 */}
+      {dateError && <p className="text-destructive text-sm">{dateError}</p>}
+    </div>
   );
 }

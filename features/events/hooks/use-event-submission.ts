@@ -45,19 +45,34 @@ export function useEventSubmission({ eventId, onSubmit }: UseEventSubmissionProp
   // フォーム送信処理（型安全）
   const submitForm = useCallback(
     async (
-      formData: EventFormData,
+      formData: EventFormData | Partial<EventFormData>,
       changes: ChangeItem[],
       setErrors: (errors: FormErrors) => void
     ): Promise<SubmitResult> => {
       try {
-        // FormDataオブジェクトの構築
+        // FormDataオブジェクトの構築（clearable項目は空文字も送信してクリア意図を伝える）
         const formDataObj = new FormData();
+        const clearable = new Set([
+          "location",
+          "description",
+          "capacity",
+          "payment_deadline",
+          "payment_methods",
+        ]);
 
         Object.entries(formData).forEach(([key, value]) => {
           if (Array.isArray(value)) {
-            value.forEach((v) => formDataObj.append(key, v));
+            if (value.length === 0 && clearable.has(key)) {
+              // 空配列はクリア意図として空文字を1つ送る
+              formDataObj.append(key, "");
+            } else {
+              value.forEach((v) => formDataObj.append(key, v));
+            }
           } else if (typeof value === "boolean") {
             formDataObj.append(key, String(value));
+          } else if (value === "" && clearable.has(key)) {
+            // 空文字でも明示的に送る（クリア）
+            formDataObj.append(key, "");
           } else if (value !== "") {
             formDataObj.append(key, value);
           }
@@ -83,9 +98,48 @@ export function useEventSubmission({ eventId, onSubmit }: UseEventSubmissionProp
           }
           return { success: true, data: dataWithStatus };
         } else {
-          // 失敗時の処理
+          // 失敗時の処理 - 詳細なエラー情報を解析してフィールド別エラーを設定
           const errorMessage = result.success === false ? result.error : "エラーが発生しました";
-          setErrors({ general: errorMessage });
+
+          // サーバーエラーの詳細を解析してフィールド別エラーを設定
+          const errors: FormErrors = {};
+
+          // result.successがfalseの場合のみfieldErrorsやdetailsにアクセス可能
+          if (!result.success) {
+            // fieldErrorsがある場合（Zodバリデーションエラー）
+            if (result.fieldErrors && Array.isArray(result.fieldErrors)) {
+              result.fieldErrors.forEach((fieldError) => {
+                if (fieldError.field && fieldError.message) {
+                  errors[fieldError.field as keyof FormErrors] = fieldError.message;
+                }
+              });
+            }
+
+            // details内のfieldErrorsがある場合（カスタムバリデーションエラー）
+            if (result.details?.fieldErrors && Array.isArray(result.details.fieldErrors)) {
+              result.details.fieldErrors.forEach((fieldError: any) => {
+                if (fieldError.field && fieldError.message) {
+                  errors[fieldError.field as keyof FormErrors] = fieldError.message;
+                }
+              });
+            }
+
+            // violationsがある場合（制限違反エラー）
+            if (result.details?.violations && Array.isArray(result.details.violations)) {
+              result.details.violations.forEach((violation: any) => {
+                if (violation.field && violation.reason) {
+                  errors[violation.field as keyof FormErrors] = violation.reason;
+                }
+              });
+            }
+          }
+
+          // フィールド別エラーが設定されていない場合はgeneralエラーを設定
+          if (Object.keys(errors).length === 0) {
+            errors.general = errorMessage;
+          }
+
+          setErrors(errors);
           return { success: false, error: errorMessage };
         }
       } catch (error) {
@@ -150,40 +204,50 @@ export function useEventSubmission({ eventId, onSubmit }: UseEventSubmissionProp
       }
     });
 
+    // 無料イベント（fee=0）の整合性強制維持
+    // 注意: これは変更確認ダイアログで明示されない副次的変更を含む
+    // ユーザーが参加費を0円に変更した場合、決済関連項目を自動的にクリアして
+    // データの一貫性を保つ（無料イベントに決済手段は不要なため）
+    const feeValue = Number(formData.fee || "0");
+    if (feeValue === 0) {
+      // 無料イベントの場合、決済関連項目を強制的にクリアして整合性を保つ
+      submissionData.payment_methods = []; // 決済方法をクリア
+      submissionData.payment_deadline = ""; // 決済締切をクリア
+      submissionData.allow_payment_after_deadline = false; // 締切後決済を無効化
+      submissionData.grace_period_days = "0"; // 猶予日数をリセット
+    }
+
     return submissionData;
   }, []);
 
   // FormDataオブジェクトの構築
   const buildFormData = useCallback((data: EventFormData): FormData => {
     const formDataObj = new FormData();
+    const clearable = new Set([
+      "location",
+      "description",
+      "capacity",
+      "payment_deadline",
+      "payment_methods",
+    ]);
 
     Object.entries(data).forEach(([key, value]) => {
       if (Array.isArray(value)) {
-        value.forEach((v) => formDataObj.append(key, v));
+        if (value.length === 0 && clearable.has(key)) {
+          formDataObj.append(key, "");
+        } else {
+          value.forEach((v) => formDataObj.append(key, v));
+        }
       } else if (typeof value === "boolean") {
         formDataObj.append(key, String(value));
+      } else if (value === "" && clearable.has(key)) {
+        formDataObj.append(key, "");
       } else if (value !== "") {
         formDataObj.append(key, value);
       }
     });
 
     return formDataObj;
-  }, []);
-
-  // 送信データの検証
-  const validateSubmissionData = useCallback((formData: EventFormData): boolean => {
-    // 基本的な必須フィールドのチェック
-    if (!formData.title?.trim()) {
-      return false;
-    }
-    if (!formData.date?.trim()) {
-      return false;
-    }
-    if (!formData.payment_methods || formData.payment_methods.length === 0) {
-      return false;
-    }
-
-    return true;
   }, []);
 
   // レスポンス処理
@@ -236,7 +300,6 @@ export function useEventSubmission({ eventId, onSubmit }: UseEventSubmissionProp
     submitForm,
     prepareSubmissionData,
     buildFormData,
-    validateSubmissionData,
     handleSubmissionResponse,
     handleSubmissionError,
     getSubmissionStatus,

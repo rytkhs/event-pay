@@ -2,10 +2,12 @@
 
 import { z } from "zod";
 
+import type { ErrorCode } from "@core/api/problem-details";
+import { logger } from "@core/logging/app-logger";
 import { enforceRateLimit, buildKey, POLICIES } from "@core/rate-limit";
 import { SecureSupabaseClientFactory } from "@core/security/secure-client-factory.impl";
-import { AdminReason } from "@core/security/secure-client-factory.types";
 import { getPaymentService } from "@core/services";
+import { PaymentError, PaymentErrorType } from "@core/types/payment-errors";
 import {
   createServerActionError,
   createServerActionSuccess,
@@ -21,8 +23,67 @@ async function ensurePaymentServiceRegistration() {
     // PaymentService実装を動的にインポートして登録
     await import("@features/payments/core-bindings");
   } catch (error) {
-    console.error("Failed to register PaymentService implementation:", error);
+    logger.error("Failed to register PaymentService implementation", {
+      tag: "payment-service-init",
+      error_name: error instanceof Error ? error.name : "Unknown",
+      error_message: error instanceof Error ? error.message : String(error),
+    });
     throw new Error("PaymentService initialization failed");
+  }
+}
+
+/**
+ * PaymentErrorTypeをproblem-details.tsのErrorCodeにマッピング
+ */
+function mapPaymentErrorToErrorCode(paymentErrorType: PaymentErrorType): ErrorCode {
+  switch (paymentErrorType) {
+    // Connect Account関連エラー
+    case PaymentErrorType.CONNECT_ACCOUNT_NOT_FOUND:
+      return "CONNECT_ACCOUNT_NOT_FOUND";
+    case PaymentErrorType.CONNECT_ACCOUNT_RESTRICTED:
+      return "CONNECT_ACCOUNT_RESTRICTED";
+    case PaymentErrorType.STRIPE_CONFIG_ERROR:
+      return "STRIPE_CONFIG_ERROR";
+
+    // 認証・認可エラー
+    case PaymentErrorType.UNAUTHORIZED:
+      return "UNAUTHORIZED";
+    case PaymentErrorType.FORBIDDEN:
+      return "FORBIDDEN";
+
+    // バリデーションエラー
+    case PaymentErrorType.VALIDATION_ERROR:
+    case PaymentErrorType.INVALID_AMOUNT:
+    case PaymentErrorType.INVALID_PAYMENT_METHOD:
+      return "VALIDATION_ERROR";
+
+    // リソース関連エラー
+    case PaymentErrorType.EVENT_NOT_FOUND:
+    case PaymentErrorType.ATTENDANCE_NOT_FOUND:
+    case PaymentErrorType.PAYMENT_NOT_FOUND:
+      return "NOT_FOUND";
+
+    // 競合・重複エラー
+    case PaymentErrorType.PAYMENT_ALREADY_EXISTS:
+    case PaymentErrorType.CONCURRENT_UPDATE:
+      return "RESOURCE_CONFLICT";
+
+    // 決済処理エラー
+    case PaymentErrorType.INSUFFICIENT_FUNDS:
+    case PaymentErrorType.CARD_DECLINED:
+      return "PAYMENT_PROCESSING_ERROR";
+
+    // システムエラー
+    case PaymentErrorType.DATABASE_ERROR:
+      return "DATABASE_ERROR";
+    case PaymentErrorType.STRIPE_API_ERROR:
+    case PaymentErrorType.WEBHOOK_PROCESSING_ERROR:
+      return "EXTERNAL_SERVICE_ERROR";
+
+    // その他
+    case PaymentErrorType.INVALID_STATUS_TRANSITION:
+    default:
+      return "INTERNAL_ERROR";
   }
 }
 
@@ -103,46 +164,44 @@ export async function createGuestStripeSessionAction(
     return createServerActionError("RESOURCE_CONFLICT", "無料イベントでは決済は不要です。");
   }
 
-  // 5. 決済サービス呼び出し (Admin)
+  // 5. 決済サービス呼び出し (Guest)
   const factory = SecureSupabaseClientFactory.getInstance();
-  const admin = await factory.createAuditedAdminClient(
-    AdminReason.PAYMENT_PROCESSING,
-    "app/guest/actions/create-stripe-session"
-  );
+  const guestClient = factory.createGuestClient(guestToken);
 
   // PaymentService実装の登録を確実に実行
   await ensurePaymentServiceRegistration();
   const paymentService = getPaymentService();
 
   // 5.1 既存の決済レコードがあれば金額は payments.amount を優先する
-  const { data: existingPayment } = await admin
-    .from("payments")
-    .select("amount")
-    .eq("attendance_id", attendance.id)
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
+  const { data: latestAmountRpc } = await (guestClient as any)
+    .rpc("rpc_guest_get_latest_payment", {
+      p_attendance_id: attendance.id,
+      p_guest_token: guestToken,
+    })
+    .single();
+  const existingPayment = latestAmountRpc ? { amount: latestAmountRpc as number } : undefined;
 
   const amountToCharge = existingPayment?.amount ?? event.fee;
 
   // 5.2 Stripe Connect アカウント取得 (Destination charges 前提)
-  const { data: connectAccount, error: connectError } = await admin
-    .from("stripe_connect_accounts")
-    .select("stripe_account_id, payouts_enabled")
-    .eq("user_id", event.created_by)
-    .maybeSingle();
+  const { data: connectAccount, error: connectError } = await (guestClient as any)
+    .rpc("rpc_public_get_connect_account", {
+      p_event_id: event.id,
+      p_creator_id: event.created_by,
+    })
+    .single();
 
   if (connectError || !connectAccount) {
     return createServerActionError(
       "RESOURCE_CONFLICT",
-      "このイベントにはStripe Connectアカウントが設定されていません。"
+      "決済の準備ができません。主催者のお支払い受付設定に不備があります。現金決済をご利用いただくか、主催者にお問い合わせください。"
     );
   }
 
   if (!connectAccount.payouts_enabled) {
     return createServerActionError(
       "RESOURCE_CONFLICT",
-      "Stripe Connectアカウントの入金機能 (payouts) が無効化されています。"
+      "主催者のお支払い受付が一時的に制限されています。現金決済をご利用いただくか、主催者にお問い合わせください。"
     );
   }
 
@@ -179,7 +238,30 @@ export async function createGuestStripeSessionAction(
       },
     };
 
-    // トークン検証エラーではなく、決済セッション作成失敗を記録
+    // PaymentError の場合は適切なErrorCodeにマッピング
+    if (error instanceof PaymentError) {
+      const errorCode = mapPaymentErrorToErrorCode(error.type);
+
+      // Connect Account関連エラーは特別な追加情報を含める
+      const additionalDetails =
+        error.type === PaymentErrorType.CONNECT_ACCOUNT_NOT_FOUND ||
+        error.type === PaymentErrorType.CONNECT_ACCOUNT_RESTRICTED ||
+        error.type === PaymentErrorType.STRIPE_CONFIG_ERROR
+          ? {
+              details: {
+                paymentErrorType: error.type,
+                connectAccountIssue: true,
+                alternativePaymentSuggested: true,
+              },
+            }
+          : {};
+
+      logError(getErrorDetails(errorCode), errorContext);
+
+      return createServerActionError(errorCode, error.message, additionalDetails);
+    }
+
+    // PaymentError以外の予期しないエラー
     logError(getErrorDetails("PAYMENT_SESSION_CREATION_FAILED"), errorContext);
 
     const msg = error instanceof Error ? error.message : "Stripe セッション作成に失敗しました";

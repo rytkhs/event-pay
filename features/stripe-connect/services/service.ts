@@ -2,11 +2,14 @@
  * StripeConnectServiceの基本実装
  */
 
+import "server-only";
+
 import { type SupabaseClient } from "@supabase/supabase-js";
 import Stripe from "stripe";
 
 import { logger } from "@core/logging/app-logger";
 import { stripe, generateIdempotencyKey } from "@core/stripe/client";
+import { convertStripeError } from "@core/stripe/error-handler";
 
 import { Database } from "@/types/database";
 
@@ -62,12 +65,18 @@ export class StripeConnectService implements IStripeConnectService {
       // 既存アカウントの重複チェック（DB）
       const existingAccount = await this.getConnectAccountByUser(userId);
       if (existingAccount) {
-        throw new StripeConnectError(
-          StripeConnectErrorType.ACCOUNT_ALREADY_EXISTS,
-          `ユーザー ${userId} には既にStripe Connectアカウントが存在します`,
-          undefined,
-          { userId, existingAccountId: existingAccount.stripe_account_id }
-        );
+        // べき等性を確保: エラーではなく既存アカウント情報を返す
+        logger.info("Existing Stripe Connect account found, returning existing account", {
+          tag: "stripeConnectIdempotencyCheck",
+          user_id: userId,
+          existing_account_id: existingAccount.stripe_account_id,
+          existing_status: existingAccount.status,
+        });
+
+        return {
+          accountId: existingAccount.stripe_account_id,
+          status: existingAccount.status,
+        };
       }
 
       // Stripe側の既存アカウント確認（emailでリスト→metadata.actor_idで照合）
@@ -184,7 +193,10 @@ export class StripeConnectService implements IStripeConnectService {
       }
 
       if (error instanceof Stripe.errors.StripeError) {
-        throw this.errorHandler.mapStripeError(error, "Express Account作成");
+        throw convertStripeError(error, {
+          operation: "create_express_account",
+          additionalData: { userId: params.userId },
+        });
       }
 
       throw new StripeConnectError(
@@ -243,7 +255,15 @@ export class StripeConnectService implements IStripeConnectService {
       }
 
       if (error instanceof Stripe.errors.StripeError) {
-        throw this.errorHandler.mapStripeError(error, "Account Link生成");
+        throw convertStripeError(error, {
+          operation: "create_account_link",
+          connectAccountId: params.accountId,
+          additionalData: {
+            refresh_url: params.refreshUrl,
+            return_url: params.returnUrl,
+            type: params.type,
+          },
+        });
       }
 
       throw new StripeConnectError(
@@ -266,24 +286,78 @@ export class StripeConnectService implements IStripeConnectService {
       // Stripeからアカウント情報を取得
       const account = await this.stripe.accounts.retrieve(accountId);
 
-      // ステータスの判定（優先度: restricted > verified > onboarding > unverified）
+      // ステータスの判定（Stripe Connect Best Practices準拠）
+      // 判定フロー:
+      //   1. 実質的な制限（platform停止/拒否/違反）→ restricted
+      //   2. 完全有効化（詳細提出済 && payouts有効 && transfers有効）→ verified
+      //   3. 詳細提出済みだが未有効化/審査中 → onboarding
+      //   4. 未提出 → unverified
       let status: Database["public"]["Enums"]["stripe_account_status_enum"] = "unverified";
-      if (account.requirements?.disabled_reason) {
-        status = "restricted";
-      } else {
-        const transfersCap = (() => {
-          const cap = (account.capabilities as any)?.transfers;
-          if (typeof cap === "string") return cap === "active";
-          if (cap && typeof cap === "object" && "status" in cap)
-            return (cap as any).status === "active";
-          return false;
-        })();
 
-        if (account.details_submitted && transfersCap && account.payouts_enabled) {
-          status = "verified";
-        } else if (account.details_submitted) {
-          status = "onboarding";
-        }
+      const disabledReason = account.requirements?.disabled_reason || "";
+      const detailsSubmitted = !!account.details_submitted;
+      const payoutsEnabled = !!account.payouts_enabled;
+
+      // transfers capability のステータス判定
+      const transfersCap = (() => {
+        const cap = (account.capabilities as any)?.transfers;
+        if (typeof cap === "string") return cap === "active";
+        if (cap && typeof cap === "object" && "status" in cap)
+          return (cap as any).status === "active";
+        return false;
+      })();
+
+      // 1. 実質的制限（要件未充足 "requirements.*" は除外）
+      //    - platform_paused: プラットフォームによる一時停止
+      //    - rejected.*: Stripeによる拒否（例: rejected.fraud, rejected.terms_of_service）
+      //    - その他の深刻な理由
+      const isHardRestricted =
+        disabledReason &&
+        !disabledReason.startsWith("requirements.") &&
+        disabledReason !== "pending_verification" &&
+        disabledReason !== "under_review";
+
+      if (isHardRestricted) {
+        status = "restricted";
+        logger.info("Account classified as restricted due to hard restriction", {
+          tag: "accountStatusClassification",
+          account_id: accountId,
+          status: "restricted",
+          disabled_reason: disabledReason,
+          details_submitted: detailsSubmitted,
+        });
+      } else if (detailsSubmitted && payoutsEnabled && transfersCap) {
+        // 2. 完全有効化
+        status = "verified";
+        logger.info("Account classified as verified", {
+          tag: "accountStatusClassification",
+          account_id: accountId,
+          status: "verified",
+          details_submitted: detailsSubmitted,
+          payouts_enabled: payoutsEnabled,
+          transfers_active: transfersCap,
+        });
+      } else if (detailsSubmitted) {
+        // 3. 提出済みだが未有効化/審査中
+        status = "onboarding";
+        logger.info("Account classified as onboarding", {
+          tag: "accountStatusClassification",
+          account_id: accountId,
+          status: "onboarding",
+          details_submitted: detailsSubmitted,
+          payouts_enabled: payoutsEnabled,
+          transfers_active: transfersCap,
+          disabled_reason: disabledReason || null,
+        });
+      } else {
+        // 4. 未提出 → デフォルトの "unverified" のまま
+        logger.info("Account classified as unverified", {
+          tag: "accountStatusClassification",
+          account_id: accountId,
+          status: "unverified",
+          details_submitted: detailsSubmitted,
+          disabled_reason: disabledReason || null,
+        });
       }
 
       // requirements は undefined の場合や disabled_reason 未設定の場合のキー追加を避ける
@@ -294,6 +368,12 @@ export class StripeConnectService implements IStripeConnectService {
             past_due: string[];
             pending_verification: string[];
             disabled_reason?: string;
+            current_deadline?: number | null;
+            errors?: Array<{
+              code: string;
+              reason: string;
+              requirement: string;
+            }>;
           }
         | undefined = undefined;
       if (account.requirements) {
@@ -302,9 +382,17 @@ export class StripeConnectService implements IStripeConnectService {
           eventually_due: account.requirements.eventually_due || [],
           past_due: account.requirements.past_due || [],
           pending_verification: account.requirements.pending_verification || [],
+          current_deadline: account.requirements.current_deadline ?? null,
         };
         if (account.requirements.disabled_reason) {
           requirements.disabled_reason = account.requirements.disabled_reason;
+        }
+        if (account.requirements.errors && Array.isArray(account.requirements.errors)) {
+          requirements.errors = account.requirements.errors.map((err: any) => ({
+            code: err.code || "unknown",
+            reason: err.reason || "",
+            requirement: err.requirement || "",
+          }));
         }
       }
 
@@ -339,7 +427,10 @@ export class StripeConnectService implements IStripeConnectService {
       }
 
       if (error instanceof Stripe.errors.StripeError) {
-        throw this.errorHandler.mapStripeError(error, "アカウント情報取得");
+        throw convertStripeError(error, {
+          operation: "get_account_info",
+          connectAccountId: accountId,
+        });
       }
 
       throw new StripeConnectError(
@@ -419,6 +510,23 @@ export class StripeConnectService implements IStripeConnectService {
 
       if (error) {
         throw this.errorHandler.mapDatabaseError(error, "Connect Accountステータス更新");
+      }
+
+      // 監査ログ記録
+      if (updatedRows && updatedRows.length > 0) {
+        const { logStripeConnect } = await import("@core/logging/system-logger");
+        await logStripeConnect({
+          action: "connect.account_update",
+          message: `Stripe Connect account updated: ${userId}`,
+          user_id: userId,
+          outcome: "success",
+          metadata: {
+            updated_fields: Object.keys(updateData),
+            status,
+            charges_enabled: chargesEnabled,
+            payouts_enabled: payoutsEnabled,
+          },
+        });
       }
 
       // 該当行が存在せず更新件数0件の場合のフェイルセーフ
@@ -554,12 +662,15 @@ export class StripeConnectService implements IStripeConnectService {
         throw error;
       }
 
-      // Stripeエラーの場合はマッピング
+      // Stripeエラーの場合は汎用ハンドラーで処理
       if (error && typeof error === "object" && "type" in error) {
-        throw this.errorHandler.mapStripeError(
-          error as unknown as Error,
-          "ビジネスプロファイル更新"
-        );
+        throw convertStripeError(error as Stripe.errors.StripeError, {
+          operation: "update_business_profile",
+          connectAccountId: params.accountId,
+          additionalData: {
+            updated_fields: Object.keys(params.businessProfile),
+          },
+        });
       }
 
       throw new StripeConnectError(
@@ -634,8 +745,10 @@ export class StripeConnectService implements IStripeConnectService {
   /**
    * アカウントが送金実行に必要な全条件を満たしているかチェックする
    *   - status === 'verified'
-   *   - charges_enabled === true
    *   - payouts_enabled === true
+   *
+   * 注意: destination chargesを使用するため、charges_enabledは不要
+   * （プラットフォームが決済処理を行うため）
    */
   async isAccountReadyForPayout(userId: string): Promise<boolean> {
     try {
@@ -692,6 +805,47 @@ export class StripeConnectService implements IStripeConnectService {
       throw new StripeConnectError(
         StripeConnectErrorType.UNKNOWN_ERROR,
         "ログインリンクの生成に失敗しました",
+        error as Error,
+        { accountId }
+      );
+    }
+  }
+
+  /**
+   * Stripe Connectアカウントの残高を取得する
+   * @param accountId Stripe Connect Account ID
+   * @returns 利用可能残高（JPY）
+   */
+  async getAccountBalance(accountId: string): Promise<number> {
+    try {
+      validateStripeAccountId(accountId);
+
+      logger.info("Stripe Connect残高取得を開始", { accountId });
+
+      // Stripe APIで残高を取得
+      const balance = await this.stripe.balance.retrieve({
+        stripeAccount: accountId,
+      });
+
+      // JPYの利用可能残高を取得
+      const jpy = balance.available.find((b) => b.currency === "jpy");
+      const availableAmount = jpy ? jpy.amount : 0;
+
+      logger.info("Stripe Connect残高取得完了", {
+        accountId,
+        availableAmount,
+      });
+
+      return availableAmount;
+    } catch (error) {
+      logger.error("Stripe Connect残高取得エラー", {
+        accountId,
+        error: error instanceof Error ? error.message : String(error),
+      });
+
+      throw new StripeConnectError(
+        StripeConnectErrorType.STRIPE_API_ERROR,
+        "アカウント残高の取得に失敗しました",
         error as Error,
         { accountId }
       );

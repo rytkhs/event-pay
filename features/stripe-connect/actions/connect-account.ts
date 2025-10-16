@@ -20,7 +20,7 @@ import { isNextRedirectError } from "@core/utils/next";
 
 import { OnboardingPrefillSchema, buildBusinessProfile } from "../schemas/onboarding-prefill";
 import { createUserStripeConnectService } from "../services";
-import { StripeConnectError, StripeConnectErrorType } from "../types";
+import { StripeConnectError } from "../types";
 
 // 入力検証に起因するエラーかを判定
 function isValidationError(err: unknown): boolean {
@@ -233,77 +233,27 @@ export async function createConnectAccountAction(formData: FormData): Promise<vo
     if (isNextRedirectError(error)) {
       throw error as Error;
     }
-    // フォールフォワード失敗時の実エラーを最終エラーとして扱う
-    let finalError: unknown = error;
-    let hadFallbackFailure = false;
 
-    // 競合（同時実行）対策: 既存アカウントがすでに作成されていた場合はフォールフォワード
-    if (
-      error instanceof StripeConnectError &&
-      error.type === StripeConnectErrorType.ACCOUNT_ALREADY_EXISTS
-    ) {
-      try {
-        const supabase = createClient();
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
-        if (user) {
-          const stripeConnectService = createUserStripeConnectService();
-          const existing = await stripeConnectService.getConnectAccountByUser(user.id);
-          if (existing) {
-            // 直ちにAccount Linkを生成してリダイレクト（検証を再適用）
-            const { refreshUrl, returnUrl } = validateAndNormalizeRedirectUrls(formData);
-            const accountLink = await stripeConnectService.createAccountLink({
-              accountId: existing.stripe_account_id,
-              refreshUrl,
-              returnUrl,
-              type: "account_onboarding",
-              collectionOptions: { fields: "eventually_due" },
-            });
-            redirect(accountLink.url);
-          }
-        }
-      } catch (fallbackError) {
-        // ここでも redirect は再スロー
-        if (isNextRedirectError(fallbackError)) {
-          throw fallbackError as Error;
-        }
-        hadFallbackFailure = true;
-        finalError = fallbackError;
-        logger.warn("ACCOUNT_ALREADY_EXISTS fallback failed", {
-          tag: "connectAccountFallbackFailed",
-          error_name: fallbackError instanceof Error ? fallbackError.name : "Unknown",
-          error_message:
-            fallbackError instanceof Error ? fallbackError.message : String(fallbackError),
-        });
-      }
-    }
-
-    // 構造化ログ（fallbackが失敗した場合は両方のコンテキストを出力）
+    // 構造化ログ
     logger.error("Stripe Connect Account Link generation error", {
       tag: "connectAccountLinkGenerationError",
-      error_name: finalError instanceof Error ? finalError.name : "Unknown",
-      error_message: finalError instanceof Error ? finalError.message : String(finalError),
-      original_error: hadFallbackFailure
-        ? error instanceof Error
-          ? error.message
-          : String(error)
-        : undefined,
+      error_name: error instanceof Error ? error.name : "Unknown",
+      error_message: error instanceof Error ? error.message : String(error),
       timestamp: new Date().toISOString(),
     });
 
     // 入力検証に起因するエラーはテスト容易性と一貫性のため再スロー（リダイレクトしない）
-    if (isValidationError(finalError)) {
-      throw finalError instanceof Error ? finalError : new Error(String(finalError));
+    if (isValidationError(error)) {
+      throw error instanceof Error ? error : new Error(String(error));
     }
 
-    if (finalError instanceof StripeConnectError) {
-      const errorMessage = encodeURIComponent(finalError.message);
-      redirect(`/dashboard/connect/error?message=${errorMessage}&type=${finalError.type}`);
+    if (error instanceof StripeConnectError) {
+      const errorMessage = encodeURIComponent(error.message);
+      redirect(`/dashboard/connect/error?message=${errorMessage}&type=${error.type}`);
     }
 
     const errorMessage = encodeURIComponent(
-      finalError instanceof Error ? finalError.message : "アカウント設定中にエラーが発生しました"
+      error instanceof Error ? error.message : "アカウント設定中にエラーが発生しました"
     );
     redirect(`/dashboard/connect/error?message=${errorMessage}`);
   }

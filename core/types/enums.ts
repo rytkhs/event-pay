@@ -68,9 +68,9 @@ export type PaymentStatus =
   | "paid" // 決済済（Stripe決済完了）
   | "failed" // 決済失敗（Stripe決済失敗）
   | "received" // 受領済（現金決済受領）
-  | "completed" // 完了（無料イベント参加確定）
   | "refunded" // 返金済（Stripe返金処理完了）
-  | "waived"; // 免除（管理者による手動免除）
+  | "waived" // 免除（管理者による手動免除）
+  | "canceled"; // キャンセル済（申込みトランザクションの取り消し）
 
 /**
  * 決済ステータスの定数定義
@@ -80,9 +80,9 @@ export const PAYMENT_STATUS = {
   PAID: "paid" as const,
   FAILED: "failed" as const,
   RECEIVED: "received" as const,
-  COMPLETED: "completed" as const,
   REFUNDED: "refunded" as const,
   WAIVED: "waived" as const,
+  CANCELED: "canceled" as const,
 } as const;
 
 /**
@@ -144,33 +144,11 @@ export const STRIPE_ACCOUNT_STATUS_VALUES: StripeAccountStatus[] =
   Object.values(STRIPE_ACCOUNT_STATUS);
 
 // ====================================================================
-// 送金ステータス型
+// 注意: Payout機能は削除済み
 // ====================================================================
-/**
- * 送金状況を表すENUM型
- */
-export type PayoutStatus =
-  | "pending" // 送金待ち（イベント終了後5日以内）
-  | "processing" // 処理中（送金手続き実行中）
-  | "completed" // 完了（送金完了）
-  | "failed" // 失敗（送金処理失敗、要手動対応）
-  | "processing_error"; // 送金処理中のアプリ内エラー（再実行対象）
-
-/**
- * 送金ステータスの定数定義
- */
-export const PAYOUT_STATUS = {
-  PENDING: "pending" as const,
-  PROCESSING: "processing" as const,
-  COMPLETED: "completed" as const,
-  FAILED: "failed" as const,
-  PROCESSING_ERROR: "processing_error" as const,
-} as const;
-
-/**
- * 送金ステータスの有効な値の配列
- */
-export const PAYOUT_STATUS_VALUES: PayoutStatus[] = Object.values(PAYOUT_STATUS);
+// Destination Charges移行により、リアルタイム送金となったため
+// 別途payout処理は不要となりました。
+// settlements テーブルはレポート・スナップショット用途のみです。
 
 // ====================================================================
 // ヘルパー関数
@@ -212,9 +190,9 @@ export const PAYMENT_STATUS_LABELS: Record<PaymentStatus, string> = {
   paid: "決済済",
   failed: "決済失敗",
   received: "受領済",
-  completed: "完了",
   refunded: "返金済",
   waived: "免除",
+  canceled: "キャンセル済",
 };
 
 /**
@@ -236,13 +214,4 @@ export const STRIPE_ACCOUNT_STATUS_LABELS: Record<StripeAccountStatus, string> =
   restricted: "制限中",
 };
 
-/**
- * PayoutStatusの日本語表示名
- */
-export const PAYOUT_STATUS_LABELS: Record<PayoutStatus, string> = {
-  pending: "送金待ち",
-  processing: "処理中",
-  completed: "送金完了",
-  failed: "送金失敗",
-  processing_error: "処理エラー",
-};
+// PayoutStatus関連のラベルは削除済み（Destination Charges移行により不要）

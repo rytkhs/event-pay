@@ -1,6 +1,10 @@
+import "server-only";
+
 import { SupabaseClient } from "@supabase/supabase-js";
 
 import { logger } from "@core/logging/app-logger";
+import { SecureSupabaseClientFactory } from "@core/security/secure-client-factory.impl";
+import { AdminReason } from "@core/security/secure-client-factory.types";
 import { createClient } from "@core/supabase/server";
 import { toCsvCell } from "@core/utils/csv";
 import {
@@ -51,13 +55,17 @@ export class SettlementReportService {
         createdBy,
       });
 
-      // RPC関数を直接呼び出し（競合条件を回避＋完全データ取得）
-      const { data, error } = await this.supabase
-        .rpc("generate_settlement_report", {
-          input_event_id: eventId,
-          input_created_by: createdBy,
-        })
-        .single<GenerateSettlementReportRpcRow>();
+      // RPC関数は管理者（service_role）クライアントで実行（権限整合）
+      const factory = SecureSupabaseClientFactory.getInstance();
+      const adminClient = await factory.createAuditedAdminClient(
+        AdminReason.PAYMENT_PROCESSING,
+        "features/settlements/services/service generateSettlementReport"
+      );
+
+      const { data, error } = (await adminClient.rpc("generate_settlement_report", {
+        input_event_id: eventId,
+        input_created_by: createdBy,
+      })) as { data: GenerateSettlementReportRpcRow[] | null; error: any };
 
       // エラーハンドリング
       if (error) {
@@ -72,8 +80,11 @@ export class SettlementReportService {
         };
       }
 
+      // 配列の最初の要素を取得（RPC関数は常に1行を返す）
+      const resultRow = data && data.length > 0 ? data[0] : null;
+
       // 何らかの理由でデータが取得できなかった場合はエラー扱い
-      if (!data?.report_id) {
+      if (!resultRow?.report_id) {
         logger.error("RPC returned no data", {
           tag: "settlementReportRpcNoData",
           eventId,
@@ -86,41 +97,40 @@ export class SettlementReportService {
 
       // レスポンスデータを構築
       const reportData: SettlementReportData = {
-        eventId: data.event_id,
-        eventTitle: data.event_title,
-        eventDate: data.event_date,
-        createdBy: data.created_by,
-        stripeAccountId: data.stripe_account_id,
-        transferGroup: data.transfer_group,
-        generatedAt: new Date(data.generated_at),
+        eventId: resultRow.returned_event_id,
+        eventTitle: resultRow.event_title,
+        eventDate: resultRow.event_date,
+        createdBy: resultRow.created_by,
+        stripeAccountId: resultRow.stripe_account_id,
+        transferGroup: resultRow.transfer_group,
+        generatedAt: new Date(resultRow.report_generated_at),
 
-        totalStripeSales: data.total_stripe_sales,
-        totalStripeFee: data.total_stripe_fee,
-        totalApplicationFee: data.total_application_fee,
-        netPayoutAmount: data.net_payout_amount,
+        totalStripeSales: resultRow.total_stripe_sales,
+        totalStripeFee: resultRow.total_stripe_fee,
+        totalApplicationFee: resultRow.total_application_fee,
+        netPayoutAmount: resultRow.net_payout_amount,
 
-        totalPaymentCount: data.payment_count,
-        refundedCount: data.refunded_count,
-        totalRefundedAmount: data.total_refunded_amount,
-        disputeCount: data.dispute_count,
-        totalDisputedAmount: data.total_disputed_amount,
+        totalPaymentCount: resultRow.payment_count,
+        refundedCount: resultRow.refunded_count,
+        totalRefundedAmount: resultRow.total_refunded_amount,
+        disputeCount: resultRow.dispute_count,
+        totalDisputedAmount: resultRow.total_disputed_amount,
 
-        settlementMode: data.settlement_mode as "destination_charge",
-        status: "completed",
+        // settlementMode と status は削除済み（常に'destination_charge', 'completed'だったため不要）
       };
 
-      const alreadyExists = data.already_exists ?? false;
+      const alreadyExists = resultRow.already_exists ?? false;
 
       logger.info("Settlement report generated successfully (RPC)", {
         tag: "settlementReportGenerated",
         eventId,
-        reportId: data.report_id,
+        reportId: resultRow.report_id,
         alreadyExists,
       });
 
       return {
         success: true,
-        reportId: data.report_id,
+        reportId: resultRow.report_id,
         reportData,
         alreadyExists,
       };
@@ -211,8 +221,7 @@ export class SettlementReportService {
           disputeCount: row.dispute_count,
           totalDisputedAmount: row.total_disputed_amount,
 
-          settlementMode: row.settlement_mode,
-          status: "completed",
+          // settlementMode と status は削除済み（常に'destination_charge', 'completed'だったため不要）
         })
       );
     } catch (error) {
@@ -267,7 +276,7 @@ export class SettlementReportService {
         totalRefundedAmount: report.totalRefundedAmount,
         disputeCount: report.disputeCount,
         totalDisputedAmount: report.totalDisputedAmount,
-        settlementMode: report.settlementMode,
+        settlementMode: "destination_charge",
         transferGroup: report.transferGroup,
         stripeAccountId: report.stripeAccountId,
       }));
@@ -275,7 +284,7 @@ export class SettlementReportService {
       // CSV ヘッダー（常にダブルクォートで囲む）
       const headers = [
         "イベントID",
-        "イベント名",
+        "タイトル",
         "イベント日",
         "レポート生成日時",
         "売上合計",

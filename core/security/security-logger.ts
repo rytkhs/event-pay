@@ -5,9 +5,12 @@
 
 import { getMaliciousPatternDetails } from "@core/constants/security-patterns";
 import { logger } from "@core/logging/app-logger";
+// Import mask functions for re-export (used by external modules)
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+import { maskSessionId, maskPaymentId } from "@core/utils/mask";
 
 export interface SecurityEvent {
-  type: SecurityEventType;
+  type: SecurityEventType | string;
   severity: SecuritySeverity;
   message: string;
   details?: Record<string, unknown>;
@@ -39,41 +42,99 @@ export type SecuritySeverity = "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
  * @param event セキュリティイベント情報
  */
 export function logSecurityEvent(event: SecurityEvent): void {
-  const logEntry = {
-    timestamp: event.timestamp.toISOString(),
-    type: event.type,
-    severity: event.severity,
+  const maskedIp = maskIP(event.ip);
+  const logFields = {
+    // 統一タグ・セキュリティフィールド
+    tag: "securityEvent",
+    security_type: event.type,
+    security_severity: event.severity,
     message: event.message,
+    user_id: event.userId,
+    event_id: event.eventId,
+    user_agent: event.userAgent,
+    ip: maskedIp,
+    // 標準化フィールド（ECS/OTel 互換）
+    event_category: "security",
+    event_action: typeof event.type === "string" ? String(event.type) : "security_event",
+    // 必要に応じて outcome を呼び出し側で追加
+    timestamp: event.timestamp.toISOString(),
     details: event.details,
-    userAgent: event.userAgent,
-    ip: maskIP(event.ip),
-    userId: event.userId,
-    eventId: event.eventId,
-  };
+  } as Record<string, unknown>;
 
-  // 開発環境では詳細ログを出力
-  if (process.env.NODE_ENV === "development") {
-    logger.warn(`[SECURITY ${event.severity}] ${event.type}`, {
-      tag: "securityEvent",
-      security_type: event.type,
-      security_severity: event.severity,
-      message: event.message,
-      user_id: event.userId,
-      event_id: event.eventId,
+  // 重要度に応じてログレベルを選択
+  const level = ((): "info" | "warn" | "error" => {
+    switch (event.severity) {
+      case "LOW":
+        return "info";
+      case "MEDIUM":
+        return "warn";
+      case "HIGH":
+      case "CRITICAL":
+        return "error";
+      default:
+        return "info";
+    }
+  })();
+
+  const logMessage = event.message || `Security event: ${event.type}`;
+  if (level === "info") logger.info(logMessage, logFields);
+  else if (level === "warn") logger.warn(logMessage, logFields);
+  else logger.error(logMessage, logFields);
+
+  // 重要度が高い場合はアラートを送信（fire-and-forget方式）
+  if (event.severity === "HIGH" || event.severity === "CRITICAL") {
+    // 非同期処理をバックグラウンドで実行（呼び出し側をブロックしない）
+    sendSecurityAlert({
+      ...logFields,
+    }).catch((error) => {
+      // アラート送信の失敗は致命的ではないため、エラーログのみ記録
+      console.error("[SecurityAlert] Unhandled error in sendSecurityAlert:", error);
     });
   }
+}
 
-  // 本番環境では適切なログシステムに送信
-  // TODO: 本番環境では外部ログサービス（CloudWatch、Datadog等）に送信
-  if (process.env.NODE_ENV === "production") {
-    // 本番環境でのログ記録実装
-    // 例: await sendToLogService(logEntry);
-  }
+/**
+ * Webhook用のセキュリティイベント簡易ロガー
+ */
+export function logWebhookSecurityEvent(
+  type: string,
+  message: string,
+  details?: Record<string, unknown>,
+  request?: { userAgent?: string; ip?: string; eventId?: string },
+  severity: SecuritySeverity = "LOW"
+): void {
+  logSecurityEvent({
+    type,
+    severity,
+    message,
+    details,
+    userAgent: request?.userAgent,
+    ip: request?.ip,
+    eventId: request?.eventId,
+    timestamp: new Date(),
+  });
+}
 
-  // 重要度が高い場合はアラートを送信
-  if (event.severity === "HIGH" || event.severity === "CRITICAL") {
-    sendSecurityAlert(logEntry);
-  }
+/**
+ * QStash用のセキュリティイベント簡易ロガー
+ */
+export function logQstashSecurityEvent(
+  type: string,
+  message: string,
+  details?: Record<string, unknown>,
+  request?: { userAgent?: string; ip?: string; eventId?: string },
+  severity: SecuritySeverity = "LOW"
+): void {
+  logSecurityEvent({
+    type,
+    severity,
+    message,
+    details,
+    userAgent: request?.userAgent,
+    ip: request?.ip,
+    eventId: request?.eventId,
+    timestamp: new Date(),
+  });
 }
 
 /**
@@ -280,9 +341,10 @@ function maskIP(ip?: string): string | undefined {
 }
 
 /**
- * トークンをマスクします
+ * 一般的なトークンをマスクします（従来形式）
  * @param token トークン
  * @returns マスクされたトークン
+ * @deprecated 新しいコードでは @core/utils/mask の maskSessionId, maskPaymentId を使用してください
  */
 function maskToken(token: string): string {
   if (token.length <= 8) return "***";
@@ -290,10 +352,16 @@ function maskToken(token: string): string {
 }
 
 /**
- * セキュリティアラートを送信します
+ * セキュリティログ用の統一マスク関数をエクスポート
+ * 外部から利用可能にする
+ */
+export { maskSessionId, maskPaymentId } from "@core/utils/mask";
+
+/**
+ * セキュリティアラートを送信します（非同期）
  * @param logEntry ログエントリ
  */
-function sendSecurityAlert(logEntry: Record<string, unknown>): void {
+async function sendSecurityAlert(logEntry: Record<string, unknown>): Promise<void> {
   // 開発環境では警告を出力
   if (process.env.NODE_ENV === "development") {
     logger.error("🚨 SECURITY ALERT", {
@@ -302,10 +370,35 @@ function sendSecurityAlert(logEntry: Record<string, unknown>): void {
     });
   }
 
-  // 本番環境では適切なアラートシステムに送信
-  // TODO: 本番環境ではSlack、メール、SMS等でアラート送信
+  // 本番環境では管理者にメールアラートを送信
   if (process.env.NODE_ENV === "production") {
-    // 例: await sendSlackAlert(logEntry);
-    // 例: await sendEmailAlert(logEntry);
+    try {
+      // Dynamic importでメール送信サービスを読み込み
+      const { EmailNotificationService } = await import("@core/notification/email-service");
+      const emailService = new EmailNotificationService();
+
+      // セキュリティアラートのサマリーを作成
+      const securityType = String(logEntry.security_type || "UNKNOWN");
+      const severity = String(logEntry.security_severity || "UNKNOWN");
+      const message = String(logEntry.message || "Security event detected");
+
+      // アラートメールを送信（失敗してもアプリケーションは停止しない）
+      await emailService.sendAdminAlert({
+        subject: `🚨 Security Alert [${severity}]: ${securityType}`,
+        message: message,
+        details: {
+          ...logEntry,
+          // タイムスタンプを読みやすい形式に変換
+          alert_time: new Date().toISOString(),
+        },
+      });
+    } catch (error) {
+      // アラート送信失敗をログに記録（循環参照を避けるためconsole.error使用）
+      console.error("[SecurityAlert] Failed to send security alert email:", {
+        error_name: error instanceof Error ? error.name : "Unknown",
+        error_message: error instanceof Error ? error.message : String(error),
+        security_type: logEntry.security_type,
+      });
+    }
   }
 }
