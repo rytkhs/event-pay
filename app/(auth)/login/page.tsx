@@ -158,7 +158,7 @@ export default function LoginPage() {
         className="text-center text-xs sm:text-sm text-muted-foreground py-4"
         role="contentinfo"
       >
-        <p>みんなの集金 - 出欠も集金も、ひとつのリンクで完了</p>
+        <p>みんなの集金 - 出欠から集金まで、ひとつのリンクで完了</p>
       </footer>
     </>
   );
