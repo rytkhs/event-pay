@@ -1854,7 +1854,7 @@ CREATE TABLE IF NOT EXISTS "public"."fee_config" (
     "id" integer DEFAULT 1 NOT NULL,
     "stripe_base_rate" numeric(5,4) DEFAULT 0.0360 NOT NULL,
     "stripe_fixed_fee" integer DEFAULT 0 NOT NULL,
-    "platform_fee_rate" numeric(5,4) DEFAULT 0 NOT NULL,
+    "platform_fee_rate" numeric(5,4) DEFAULT 0.013 NOT NULL,
     "platform_fixed_fee" integer DEFAULT 0 NOT NULL,
     "min_platform_fee" integer DEFAULT 0 NOT NULL,
     "max_platform_fee" integer DEFAULT 0 NOT NULL,

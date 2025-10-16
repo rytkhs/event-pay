@@ -17,7 +17,7 @@ const faqItems: FAQItem[] = [
   {
     question: "利用料金はいくらですか？",
     answer:
-      "基本料金はありません。また、リリース記念期間中、プラットフォーム手数料も無料で提供しています。オンライン決済時は決済代行会社の手数料(3.6%)のみ発生します。",
+      "基本料金はありません。オンライン決済された参加費に対し、プラットフォーム利用手数料(1.3%)を申し受けます。 なお、上記手数料とは別に、決済代行会社の手数料(3.6%)が差し引かれます。",
   },
   {
     question: "参加者にアカウント作成は必要ですか？",
@@ -340,17 +340,22 @@ export default function LandingPage(): JSX.Element {
         <div className="container">
           <h2 className="section-title">まずは無料でシンプルに利用できます</h2>
           <div className="pricing-card">
-            <div className="campaign-badge">
-              <span className="campaign-badge-text">リリース記念</span>
+            <div className="pricing-item">
+              <span className="pricing-label">初期費用</span>
+              <span className="pricing-value">0円</span>
+            </div>
+            <div className="pricing-item">
+              <span className="pricing-label">月額費用</span>
+              <span className="pricing-value">0円</span>
             </div>
             <div className="pricing-item highlight">
               <span className="pricing-label">プラットフォーム手数料</span>
-              <span className="pricing-value accent">無料</span>
+              <span className="pricing-value accent">1.3%</span>
             </div>
             <p className="pricing-note">
-              ※終了時期未定
+              ※オンライン決済された参加費に対し、プラットフォーム手数料を申し受けます。現金決済分には手数料はかかりません。
               <br />
-              ※オンライン決済の場合のみ、決済代行会社の手数料（3.6%）が発生します。
+              ※オンライン決済の場合、決済代行会社の手数料（3.6%）が別途差し引かれます。
             </p>
           </div>
         </div>

@@ -353,7 +353,7 @@ export function OnboardingForm({ refreshUrl, returnUrl, onPrefillAndStart }: Onb
           </p>
           <p>
             <strong>手数料について：</strong>
-            Stripe決済手数料（3.6%）がオンライン決済の売上から差し引かれます。プラットフォーム手数料は現在無料です。
+            Stripe決済手数料（3.6%）とプラットフォーム手数料（1.3%）がオンライン決済の売上から差し引かれます。
           </p>
         </div>
       </CardContent>

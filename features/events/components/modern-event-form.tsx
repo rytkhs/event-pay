@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { format } from "date-fns";
 import { CheckIcon, CalendarIcon, MapPinIcon, UsersIcon } from "lucide-react";
 
-import { calculateNetAmount, calculateStripeFee, formatCurrency } from "@core/utils/fee-calculator";
+import { calculateNetAmount, formatCurrency } from "@core/utils/fee-calculator";
 import { getCurrentJstTime } from "@core/utils/timezone";
 
 import { cn } from "@/components/ui/_lib/cn";
@@ -345,8 +345,7 @@ function ModernEventForm({
                                 {formatCurrency(calculateNetAmount(feeAmount))}円
                               </p>
                               <p className="text-xs text-blue-700 mt-1">
-                                （参加費 {formatCurrency(feeAmount)}円 - Stripe手数料{" "}
-                                {formatCurrency(calculateStripeFee(feeAmount))}円）
+                                （参加費 {formatCurrency(feeAmount)}円 - 各種手数料）
                               </p>
                             </div>
                           )}

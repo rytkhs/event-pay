@@ -91,7 +91,7 @@ test.describe("Stripe決済 ケース3-1: Webhook処理と決済完了確認", (
       method: "stripe",
       status: "pending",
       destination_account_id: TEST_IDS.CONNECT_ACCOUNT_ID,
-      application_fee_amount: 0,
+      application_fee_amount: Math.round(1000 * 0.013),
     });
 
     if (paymentError) {
@@ -198,7 +198,7 @@ test.describe("Stripe決済 ケース3-1: Webhook処理と決済完了確認", (
       method: "stripe",
       status: "pending",
       destination_account_id: TEST_IDS.CONNECT_ACCOUNT_ID,
-      application_fee_amount: 0,
+      application_fee_amount: Math.round(2000 * 0.013),
     });
 
     if (paymentError) {
@@ -278,7 +278,7 @@ test.describe("Stripe決済 ケース3-1: Webhook処理と決済完了確認", (
      *
      * 期待結果:
      * - `destination`フィールドが正しいConnect アカウントIDであることを確認
-     * - `application_fee_amount`が正しく設定されていることを確認（MVP版では0円）
+     * - `application_fee_amount`が正しく設定されていることを確認（1.3%）
      * - Destination chargesが正しく機能
      */
 
@@ -313,7 +313,7 @@ test.describe("Stripe決済 ケース3-1: Webhook処理と決済完了確認", (
       method: "stripe",
       status: "pending",
       destination_account_id: TEST_IDS.CONNECT_ACCOUNT_ID,
-      application_fee_amount: 0, // MVP版では0円
+      application_fee_amount: Math.round(3000 * 0.013), // 1.3%
       stripe_payment_intent_id: paymentIntentId,
     });
 
@@ -334,7 +334,7 @@ test.describe("Stripe決済 ケース3-1: Webhook処理と決済完了確認", (
       status: "succeeded",
       payment_intent: paymentIntentId,
       destination: TEST_IDS.CONNECT_ACCOUNT_ID, // Destination Charges
-      application_fee_amount: 0, // MVP版では0円
+      application_fee_amount: Math.round(3000 * 0.013), // 1.3%
       transfer_data: {
         destination: TEST_IDS.CONNECT_ACCOUNT_ID,
       },
@@ -367,13 +367,14 @@ test.describe("Stripe決済 ケース3-1: Webhook処理と決済完了確認", (
     expect(payment.destination_account_id).toBe(TEST_IDS.CONNECT_ACCOUNT_ID);
     console.log("✓ destinationがConnect アカウントIDと一致");
 
-    // application_fee_amountが正しく設定されていることを確認（MVP版では0円）
-    expect(payment.application_fee_amount).toBe(0);
-    console.log("✓ application_fee_amountが0円（MVP版）");
+    // application_fee_amountが正しく設定されていることを確認（1.3%）
+    const expectedFee = Math.round(3000 * 0.013);
+    expect(payment.application_fee_amount).toBe(expectedFee);
+    console.log("✓ application_fee_amountが1.3%で計算されている");
 
     // ペイロードのdestinationフィールドを確認
     expect(chargeData.destination).toBe(TEST_IDS.CONNECT_ACCOUNT_ID);
-    expect(chargeData.application_fee_amount).toBe(0);
+    expect(chargeData.application_fee_amount).toBe(expectedFee);
     console.log("✓ ペイロードのDestination Charges設定が正しい");
 
     console.log("✅ ケース3-1-3 完了");

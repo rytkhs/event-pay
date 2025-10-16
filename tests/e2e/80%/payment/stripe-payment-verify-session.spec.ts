@@ -319,7 +319,7 @@ test.describe("Stripe決済 ケース3-2: セッション検証API", () => {
       status: "pending",
       stripe_checkout_session_id: checkoutSessionId,
       destination_account_id: TEST_IDS.CONNECT_ACCOUNT_ID,
-      application_fee_amount: 0,
+      application_fee_amount: Math.round(1000 * 0.013),
     });
 
     if (paymentError) {

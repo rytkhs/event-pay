@@ -222,8 +222,9 @@ test.describe("Stripe決済 ケース1-1: 初回決済フロー", () => {
     // Destination charges関連の検証
     expect(payment.destination_account_id).toBeTruthy();
     expect(payment.destination_account_id).toBe(TEST_IDS.CONNECT_ACCOUNT_ID);
-    // MVPではプラットフォーム手数料は0円
-    expect(payment.application_fee_amount).toBe(0);
+    // プラットフォーム手数料は1.3%
+    const expectedFee = Math.round(1000 * 0.013); // 13円
+    expect(payment.application_fee_amount).toBe(expectedFee);
     expect(typeof payment.application_fee_amount).toBe("number");
 
     // 冪等性キーの検証

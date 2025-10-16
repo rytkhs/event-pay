@@ -1,6 +1,6 @@
 "use client";
 
-import { calculateNetAmount, calculateStripeFee, formatCurrency } from "@core/utils/fee-calculator";
+import { calculateNetAmount, formatCurrency } from "@core/utils/fee-calculator";
 
 import { Card } from "@/components/ui/card";
 
@@ -19,7 +19,6 @@ export function FeeCalculatorDisplay({ fee, className = "" }: FeeCalculatorDispl
     return null;
   }
 
-  const stripeFee = calculateStripeFee(fee);
   const netAmount = calculateNetAmount(fee);
 
   return (
@@ -32,8 +31,8 @@ export function FeeCalculatorDisplay({ fee, className = "" }: FeeCalculatorDispl
             <span className="font-medium">{formatCurrency(fee)}円</span>
           </div>
           <div className="flex justify-between items-center text-red-600">
-            <span>− Stripe手数料 (3.6%)</span>
-            <span>−{formatCurrency(stripeFee)}円</span>
+            <span>− 各種手数料</span>
+            <span>−{formatCurrency(fee - netAmount)}円</span>
           </div>
           <div className="pt-2 border-t border-gray-200">
             <div className="flex justify-between items-center">
