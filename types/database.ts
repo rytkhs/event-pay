@@ -637,19 +637,25 @@ export type Database = {
       users: {
         Row: {
           created_at: string;
+          deleted_at: string | null;
           id: string;
+          is_deleted: boolean;
           name: string;
           updated_at: string;
         };
         Insert: {
           created_at?: string;
+          deleted_at?: string | null;
           id: string;
+          is_deleted?: boolean;
           name: string;
           updated_at?: string;
         };
         Update: {
           created_at?: string;
+          deleted_at?: string | null;
           id?: string;
+          is_deleted?: boolean;
           name?: string;
           updated_at?: string;
         };

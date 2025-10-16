@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@core/supabase/server";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { AccountDeleteDangerZone } from "@/features/settings/components/account-delete-danger-zone";
 import { EmailChangeForm } from "@/features/settings/components/email-change-form";
 import { ProfileForm } from "@/features/settings/components/profile-form";
 
@@ -47,6 +48,9 @@ export default async function ProfileSettingsPage() {
           <EmailChangeForm currentEmail={user.email || ""} />
         </CardContent>
       </Card>
+
+      {/* アカウント削除（デンジャーゾーン） */}
+      <AccountDeleteDangerZone />
     </div>
   );
 }

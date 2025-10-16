@@ -2044,6 +2044,21 @@ COMMENT ON COLUMN "public"."attendances"."guest_token" IS 'ゲストアクセス
 
 
 
+CREATE TABLE IF NOT EXISTS "public"."contacts" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "name" "text" NOT NULL,
+    "email" "text" NOT NULL,
+    "message" "text" NOT NULL,
+    "fingerprint_hash" "text" NOT NULL,
+    "user_agent" "text",
+    "ip_hash" "text",
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL
+);
+
+
+ALTER TABLE "public"."contacts" OWNER TO "postgres";
+
+
 CREATE TABLE IF NOT EXISTS "public"."events" (
     "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
     "created_by" "uuid" NOT NULL,
@@ -2285,7 +2300,10 @@ CREATE TABLE IF NOT EXISTS "public"."users" (
     "id" "uuid" NOT NULL,
     "name" character varying(255) NOT NULL,
     "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
-    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL
+    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "is_deleted" boolean DEFAULT false NOT NULL,
+    "deleted_at" timestamp with time zone,
+    CONSTRAINT "users_soft_delete_consistency" CHECK (("is_deleted" = ("deleted_at" IS NOT NULL)))
 );
 
 ALTER TABLE ONLY "public"."users" FORCE ROW LEVEL SECURITY;
@@ -2298,11 +2316,24 @@ COMMENT ON TABLE "public"."users" IS '運営者情報（Supabase auth.usersと�
 
 
 
+COMMENT ON COLUMN "public"."users"."is_deleted" IS '論理削除フラグ（trueの場合、公開プロフィール等から除外）';
+
+
+
+COMMENT ON COLUMN "public"."users"."deleted_at" IS '論理削除の実行日時（タイムスタンプ）';
+
+
+
+COMMENT ON CONSTRAINT "users_soft_delete_consistency" ON "public"."users" IS 'is_deletedとdeleted_atの整合性を保証（is_deleted=true ⇔ deleted_at is not null）';
+
+
+
 CREATE OR REPLACE VIEW "public"."public_profiles" AS
  SELECT "id",
     "name",
     "created_at"
-   FROM "public"."users";
+   FROM "public"."users"
+  WHERE ("is_deleted" = false);
 
 
 ALTER VIEW "public"."public_profiles" OWNER TO "postgres";
@@ -2566,6 +2597,11 @@ ALTER TABLE ONLY "public"."attendances"
 
 
 
+ALTER TABLE ONLY "public"."contacts"
+    ADD CONSTRAINT "contacts_pkey" PRIMARY KEY ("id");
+
+
+
 ALTER TABLE ONLY "public"."events"
     ADD CONSTRAINT "events_invite_token_key" UNIQUE ("invite_token");
 
@@ -2643,6 +2679,10 @@ CREATE INDEX "idx_attendances_event_id_id" ON "public"."attendances" USING "btre
 
 
 CREATE INDEX "idx_attendances_event_status" ON "public"."attendances" USING "btree" ("event_id", "status");
+
+
+
+CREATE INDEX "idx_contacts_created_at" ON "public"."contacts" USING "btree" ("created_at" DESC);
 
 
 
@@ -2862,11 +2902,19 @@ CREATE INDEX "idx_system_logs_user_id" ON "public"."system_logs" USING "btree" (
 
 
 
+CREATE INDEX "idx_users_is_deleted" ON "public"."users" USING "btree" ("is_deleted") WHERE "is_deleted";
+
+
+
 CREATE UNIQUE INDEX "uniq_settlements_event_generated_date_jst" ON "public"."settlements" USING "btree" ("event_id", ((("generated_at" AT TIME ZONE 'Asia/Tokyo'::"text"))::"date"));
 
 
 
 CREATE UNIQUE INDEX "unique_open_payment_per_attendance" ON "public"."payments" USING "btree" ("attendance_id") WHERE ("status" = 'pending'::"public"."payment_status_enum");
+
+
+
+CREATE UNIQUE INDEX "ux_contacts_fingerprint" ON "public"."contacts" USING "btree" ("fingerprint_hash");
 
 
 
@@ -3016,6 +3064,17 @@ CREATE POLICY "Users can view own profile" ON "public"."users" FOR SELECT TO "au
 
 
 ALTER TABLE "public"."attendances" ENABLE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "public"."contacts" ENABLE ROW LEVEL SECURITY;
+
+
+CREATE POLICY "contacts_insert_public" ON "public"."contacts" FOR INSERT WITH CHECK (true);
+
+
+
+CREATE POLICY "contacts_no_select" ON "public"."contacts" FOR SELECT USING (false);
+
 
 
 CREATE POLICY "dispute_select_event_owner" ON "public"."payment_disputes" FOR SELECT TO "authenticated" USING ((EXISTS ( SELECT 1
@@ -3516,6 +3575,12 @@ GRANT ALL ON TABLE "public"."attendances" TO "anon";
 GRANT ALL ON TABLE "public"."attendances" TO "authenticated";
 GRANT ALL ON TABLE "public"."attendances" TO "service_role";
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE "public"."attendances" TO "app_definer";
+
+
+
+GRANT ALL ON TABLE "public"."contacts" TO "anon";
+GRANT ALL ON TABLE "public"."contacts" TO "authenticated";
+GRANT ALL ON TABLE "public"."contacts" TO "service_role";
 
 
 

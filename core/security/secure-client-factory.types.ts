@@ -15,6 +15,7 @@ export enum AdminReason {
   REMINDER_PROCESSING = "reminder_processing",
   NOTIFICATION_PROCESSING = "notification_processing",
   LOGGING = "logging",
+  ACCOUNT_DELETION = "account_deletion",
 }
 
 // エラーハンドリングは専用ファイルから再エクスポート
