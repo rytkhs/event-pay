@@ -549,7 +549,7 @@ describe("決済セッション検証API 統合テスト (リファクタリン�
       const result = await response.json();
 
       expect(response.status).toBe(404);
-      expect(result.code).toBe("PAYMENT_SESSION_NOT_FOUND");
+      expect((result as { code: string }).code).toBe("PAYMENT_SESSION_NOT_FOUND");
 
       // 突合失敗のセキュリティログ確認
       expect(mockLogSecurityEvent).toHaveBeenCalledWith({

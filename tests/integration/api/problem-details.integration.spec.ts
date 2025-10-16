@@ -6,14 +6,14 @@ describe("Problem Details integration - retryable and correlation id", () => {
     expect(res.status).toBe(500);
     const cid = res.headers.get("X-Correlation-ID");
     expect(cid).toBeTruthy();
-    const body = await res.json();
+    const body = (await res.json()) as { retryable: boolean; correlation_id: string };
     expect(body.retryable).toBe(true);
     expect(body.correlation_id).toBe(cid);
   });
 
   test("VALIDATION_ERROR is not retryable", async () => {
     const res = createProblemResponse("VALIDATION_ERROR", { instance: "/api/x" });
-    const body = await res.json();
+    const body = (await res.json()) as { retryable: boolean };
     expect(body.retryable).toBe(false);
     expect(res.status).toBe(422);
   });

@@ -512,7 +512,7 @@ export class VerifySessionTestHelper {
     });
 
     const response = await verifySessionHandler(request);
-    const result = await response.json();
+    const result = (await response.json()) as { success: boolean; payment_status: string };
 
     // フォールバック成功の検証（実際のStripe APIでは作成直後はpending）
     expect(result.success).toBe(true);
@@ -558,7 +558,7 @@ export class VerifySessionTestHelper {
 
     // エラーメッセージを検証（指定されている場合）
     if (scenario.expectedMessage) {
-      expect(result.detail).toContain(scenario.expectedMessage);
+      expect((result as { detail: string }).detail).toContain(scenario.expectedMessage);
     }
 
     // eslint-disable-next-line no-console

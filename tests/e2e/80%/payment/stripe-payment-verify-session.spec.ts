@@ -229,7 +229,7 @@ test.describe("Stripe決済 ケース3-2: セッション検証API", () => {
     expect(response.ok).toBe(false);
     expect(response.status).toBe(400); // MISSING_PARAMETER
 
-    const errorData = await response.json();
+    const errorData = (await response.json()) as { type: string; detail: string };
     console.log("✓ エラーレスポンス:", errorData);
 
     // Problem Details形式のレスポンス確認
@@ -273,7 +273,7 @@ test.describe("Stripe決済 ケース3-2: セッション検証API", () => {
     // 実装では、attendance_idとゲストトークンが一致しない、または決済レコードが見つからない場合は404
     expect([404, 500]).toContain(response.status);
 
-    const errorData = await response.json();
+    const errorData = (await response.json()) as { type: string; detail?: string };
     console.log("✓ エラーレスポンス:", errorData);
 
     // エラーレスポンスであることを確認
@@ -366,7 +366,7 @@ test.describe("Stripe決済 ケース3-2: セッション検証API", () => {
     // 実装では、ゲストトークン不一致の場合はPAYMENT_SESSION_NOT_FOUND (404)を返す
     expect(response.status).toBe(404);
 
-    const errorData = await response.json();
+    const errorData = (await response.json()) as { type: string; detail?: string };
     console.log("✓ エラーレスポンス:", errorData);
 
     // エラーレスポンスであることを確認
