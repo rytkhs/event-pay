@@ -43,13 +43,5 @@ export default defineConfig({
       },
       dependencies: ["setup"],
     },
-    {
-      name: "chromium-unauthenticated",
-      use: {
-        ...devices["Desktop Chrome"],
-        // No authentication state (for registration, login tests)
-        storageState: { cookies: [], origins: [] },
-      },
-    },
   ],
 });
