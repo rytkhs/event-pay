@@ -1,46 +1,27 @@
-import DOMPurify from "isomorphic-dompurify";
+import sanitizeHtml from "sanitize-html";
 
-// EventPay特化のDOMPurify設定（すべてのHTMLタグを除去）
-const EVENTPAY_SANITIZE_CONFIG = {
-  ALLOWED_TAGS: [], // すべてのタグを禁止
-  ALLOWED_ATTR: [], // すべての属性を禁止
-  KEEP_CONTENT: true, // タグ内のテキストは保持
-  REMOVE_SCRIPT_TYPE_ATTR: true,
-  FORBID_TAGS: ["style", "script", "iframe", "object", "embed", "svg", "math"],
-  FORBID_ATTR: [
-    "style",
-    "onerror",
-    "onload",
-    "onclick",
-    "onmouseover",
-    "onfocus",
-    "onblur",
-    "onchange",
-    "onsubmit",
-    "javascript",
-  ],
+// EventPay特化のサニタイズ設定（すべてのHTMLタグを除去）
+const EVENTPAY_SANITIZE_CONFIG: sanitizeHtml.IOptions = {
+  allowedTags: [],
+  allowedAttributes: {},
 };
 
 // イベント説明文用設定（改行のみ許可）
-const EVENTPAY_DESCRIPTION_CONFIG = {
-  ALLOWED_TAGS: ["br"], // 改行タグのみ許可
-  ALLOWED_ATTR: [], // すべての属性を禁止
-  KEEP_CONTENT: true,
-  REMOVE_SCRIPT_TYPE_ATTR: true,
-  FORBID_TAGS: ["style", "script", "iframe", "object", "embed", "svg", "math"],
-  FORBID_ATTR: [
-    "style",
-    "onerror",
-    "onload",
-    "onclick",
-    "onmouseover",
-    "onfocus",
-    "onblur",
-    "onchange",
-    "onsubmit",
-    "javascript",
-  ],
+const EVENTPAY_DESCRIPTION_CONFIG: sanitizeHtml.IOptions = {
+  allowedTags: ["br"],
+  allowedAttributes: {},
 };
+
+/**
+ * 危険な可能性のあるプロトコル文字列を除去する
+ * @param text
+ * @returns
+ */
+function removeDangerousProtocols(text: string): string {
+  // javascript:, vbscript:, data: などの危険なプロトコルを先頭から除去
+  // 安全性を優先し、意図しないマッチの可能性よりも確実なブロックを重視する
+  return text.replace(/^\s*(javascript|vbscript|data):/i, "");
+}
 
 /**
  * EventPay統一サニタイズ関数
@@ -50,7 +31,8 @@ const EVENTPAY_DESCRIPTION_CONFIG = {
 export function sanitizeForEventPay(input: string | null | undefined): string {
   if (!input) return "";
 
-  return DOMPurify.sanitize(input, EVENTPAY_SANITIZE_CONFIG);
+  const sanitized = sanitizeHtml(input, EVENTPAY_SANITIZE_CONFIG);
+  return removeDangerousProtocols(sanitized);
 }
 
 /**
@@ -60,5 +42,6 @@ export function sanitizeForEventPay(input: string | null | undefined): string {
 export function sanitizeEventDescription(description: string | null | undefined): string {
   if (!description) return "";
 
-  return DOMPurify.sanitize(description, EVENTPAY_DESCRIPTION_CONFIG);
+  const sanitized = sanitizeHtml(description, EVENTPAY_DESCRIPTION_CONFIG);
+  return removeDangerousProtocols(sanitized);
 }
