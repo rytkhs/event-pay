@@ -1,6 +1,5 @@
 
 
-
 SET statement_timeout = 0;
 SET lock_timeout = 0;
 SET idle_in_transaction_session_timeout = 0;
@@ -329,6 +328,7 @@ COMMENT ON FUNCTION "public"."admin_add_attendance_with_capacity_check"("p_event
 
 CREATE OR REPLACE FUNCTION "public"."calc_refund_dispute_summary"("p_event_id" "uuid") RETURNS json
     LANGUAGE "plpgsql"
+    SET "search_path" TO 'pg_catalog', 'public', 'pg_temp'
     AS $$
 DECLARE
     v_total_refunded_amount INTEGER := 0;
@@ -388,6 +388,7 @@ COMMENT ON FUNCTION "public"."calc_refund_dispute_summary"("p_event_id" "uuid") 
 
 CREATE OR REPLACE FUNCTION "public"."calc_total_application_fee"("p_event_id" "uuid") RETURNS integer
     LANGUAGE "plpgsql"
+    SET "search_path" TO 'pg_catalog', 'public', 'pg_temp'
     AS $$
 DECLARE
     v_total_fee INTEGER;
@@ -414,6 +415,7 @@ COMMENT ON FUNCTION "public"."calc_total_application_fee"("p_event_id" "uuid") I
 
 CREATE OR REPLACE FUNCTION "public"."calc_total_stripe_fee"("p_event_id" "uuid", "p_base_rate" numeric DEFAULT NULL::numeric, "p_fixed_fee" integer DEFAULT NULL::integer) RETURNS integer
     LANGUAGE "plpgsql"
+    SET "search_path" TO 'pg_catalog', 'public', 'pg_temp'
     AS $$
 DECLARE
     v_rate   NUMERIC := COALESCE(p_base_rate,  (SELECT stripe_base_rate  FROM public.fee_config LIMIT 1), 0.036);
@@ -582,6 +584,7 @@ COMMENT ON FUNCTION "public"."can_manage_invite_links"("p_event_id" "uuid") IS '
 
 CREATE OR REPLACE FUNCTION "public"."check_attendance_capacity_limit"() RETURNS "trigger"
     LANGUAGE "plpgsql"
+    SET "search_path" TO 'pg_catalog', 'public', 'pg_temp'
     AS $$
 DECLARE
   event_capacity INTEGER;
@@ -833,6 +836,7 @@ COMMENT ON FUNCTION "public"."get_guest_token"() IS 'ゲストトークンをJWT
 
 CREATE OR REPLACE FUNCTION "public"."get_min_payout_amount"() RETURNS integer
     LANGUAGE "sql" STABLE
+    SET "search_path" TO 'pg_catalog', 'public', 'pg_temp'
     AS $$
     SELECT COALESCE((SELECT min_payout_amount FROM public.fee_config LIMIT 1), 100);
 $$;
@@ -966,6 +970,7 @@ COMMENT ON FUNCTION "public"."hash_guest_token"("token" "text") IS 'ゲストト
 
 CREATE OR REPLACE FUNCTION "public"."prevent_payment_status_rollback"() RETURNS "trigger"
     LANGUAGE "plpgsql"
+    SET "search_path" TO 'pg_catalog', 'public', 'pg_temp'
     AS $$
 BEGIN
   IF NEW.status IS DISTINCT FROM OLD.status THEN
@@ -1923,6 +1928,7 @@ COMMENT ON FUNCTION "public"."update_guest_attendance_with_payment"("p_attendanc
 
 CREATE OR REPLACE FUNCTION "public"."update_payment_version"() RETURNS "trigger"
     LANGUAGE "plpgsql"
+    SET "search_path" TO 'pg_catalog', 'public', 'pg_temp'
     AS $$
 BEGIN
   -- UPDATE 時に version を自動インクリメント（手動更新された場合のフォールバック）
@@ -2001,6 +2007,7 @@ COMMENT ON FUNCTION "public"."update_revenue_summary"("p_event_id" "uuid") IS '�
 
 CREATE OR REPLACE FUNCTION "public"."update_updated_at_column"() RETURNS "trigger"
     LANGUAGE "plpgsql"
+    SET "search_path" TO 'pg_catalog', 'public', 'pg_temp'
     AS $$
 BEGIN
   NEW.updated_at = now();
@@ -2103,7 +2110,7 @@ CREATE TABLE IF NOT EXISTS "public"."fee_config" (
     "id" integer DEFAULT 1 NOT NULL,
     "stripe_base_rate" numeric(5,4) DEFAULT 0.0360 NOT NULL,
     "stripe_fixed_fee" integer DEFAULT 0 NOT NULL,
-    "platform_fee_rate" numeric(5,4) DEFAULT 0 NOT NULL,
+    "platform_fee_rate" numeric(5,4) DEFAULT 0.013 NOT NULL,
     "platform_fixed_fee" integer DEFAULT 0 NOT NULL,
     "min_platform_fee" integer DEFAULT 0 NOT NULL,
     "max_platform_fee" integer DEFAULT 0 NOT NULL,
@@ -3682,7 +3689,6 @@ ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TAB
 ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TABLES TO "anon";
 ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TABLES TO "authenticated";
 ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TABLES TO "service_role";
-
 
 
 
