@@ -1,36 +1,114 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# みんなの集金 (EventPay)
 
-## Getting Started
+小規模コミュニティ向けのイベント出欠管理・集金ツール。
+会計担当者の負担を大幅に削減することを目標に、Next.js 14 App Router と Supabase、Stripe、Cloudflare Workers を組み合わせて構築しています。
 
-First, run the development server:
+## 技術スタック
+- Framework: Next.js 14 (App Router + Server Actions)
+- BaaS: Supabase (@supabase/ssr, supabase-js)
+- Payment: Stripe (Connect Express)
+- UI: Tailwind CSS + shadcn/ui (@radix-ui/*)
+- フォーム: React Hook Form + Zod
+- セキュリティ: @upstash/ratelimit
+- タイムゾーン: date-fns + date-fns-tz
+- サニタイゼーション: sanitize-html（エディタ用）
+- ロギング: pino (+ pino-pretty)
+- テスト: Jest + Playwright + Testing Library
+- Hosting/Runtime: Cloudflare Workers via OpenNext (@opennextjs/cloudflare)
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+## 必要要件
+- Node.js 20 以上
+- npm 10 以上
+- Supabase CLI（DB ローカル操作用）
+- Stripe CLI（Webhook 転送用）
+- Cloudflare Wrangler（デプロイ・型生成）
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## セットアップ
+1. 依存関係のインストール
+   ```bash
+   npm install
+   ```
+2. 環境変数
+   - `.env.example` を `.env.local` にコピーして値を設定
+   ```bash
+   cp .env.example .env.local
+   ```
+   - 主要項目（抜粋）
+     - NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY
+     - STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET, NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
+     - STRIPE_CONNECT_WEBHOOK_SECRET
+     - NEXT_PUBLIC_APP_URL, NEXTAUTH_SECRET, NEXTAUTH_URL
+     - UPSTASH_REDIS_REST_URL, UPSTASH_REDIS_REST_TOKEN, RL_HMAC_SECRET
+     - RESEND_API_KEY, FROM_EMAIL, ADMIN_EMAIL
+3. Supabase（任意: ローカル DB を使う場合）
+   ```bash
+   npm run db:reset     # DB リセット
+   npm run db:migrate   # マイグレーション適用
+   npm run db:seed      # シード投入
+   ```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## 開発
+- アプリ起動
+  ```bash
+  npm run dev
+  ```
+  - Next.js をローカルで起動し、ログを pino-pretty で整形表示します。
+- Stripe Webhook 転送
+  ```bash
+  npm run stripe:listen
+  ```
+  - `http://localhost:3000/api/webhooks/stripe` と `.../stripe-connect` に転送。
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## テスト
+- ユニットテスト
+  ```bash
+  npm run test:unit
+  # 監視モード
+  npm run test:unit:watch
+  # カバレッジ
+  npm run test:unit:coverage
+  ```
+- E2E テスト（Playwright）
+  ```bash
+  npm run test:e2e
+  # 画面表示つき
+  npm run test:e2e:headed
+  # デバッグ
+  npm run test:e2e:debug
+  ```
+- まとめ実行
+  ```bash
+  npm run test
+  ```
+- テスト前準備（DB リセット）
+  ```bash
+  npm run test:setup
+  ```
+- E2E とサーバ同時起動
+  ```bash
+  npm run test:with-server
+  ```
 
-## Learn More
+## Cloudflare Workers へのデプロイ（OpenNext）
+- プレビュー
+  ```bash
+  npm run preview
+  ```
+- 本番デプロイ
+  ```bash
+  npm run deploy
+  ```
+- アセットのみアップロード（必要時）
+  ```bash
+  npm run upload
+  ```
+- 型生成（Wrangler）
+  ```bash
+  npm run cf-typegen
+  ```
+- 設定ファイル
+  - `open-next.config.ts`: R2 インクリメンタルキャッシュを有効化
+  - `wrangler.jsonc`: `.open-next/worker.js` をエントリポイントとして設定。`NEXT_INC_CACHE_R2_BUCKET` を事前に作成してください。
 
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## セキュリティとヘッダー
+- `next.config.mjs` で推奨セキュリティヘッダー（CSP, HSTS, Permissions-Policy など）を付与。

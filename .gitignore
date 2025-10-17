@@ -8,6 +8,7 @@
 
 # testing
 /coverage
+/.jest-cache
 
 # next.js
 /.next/
@@ -40,8 +41,7 @@ next-env.d.ts
 .cursor/
 .claude/
 
-# Development containers
-.devcontainer/
+
 
 # Environment files
 .env
@@ -49,6 +49,7 @@ next-env.d.ts
 .env.development.local
 .env.test.local
 .env.production.local
+!.env.example
 
 # Supabase
 supabase/.temp/
@@ -65,3 +66,44 @@ Thumbs.db
 
 docs/
 CLAUDE.md
+GEMINI.md
+
+uploads/
+usage_tracking2.json
+
+scripts/
+supabase/migrations/20250624185107_setup_utility_functions.sql
+supabase/seed.sql
+
+playwright-report/
+test-results/
+
+.kiro/
+
+.github/
+.windsurf/
+STRIPE_PAYOUT_IMPROVEMENT_PLAN.md
+STRIPE_PAYOUT_TASKS.md
+comprehensive-review-checklist.md
+temp.md
+temp2.md
+
+ADR-0001-core-features-architecture.md
+REFAC_RUNBOOK.md
+strage/
+DIRECTORY_STRUCTURE.md
+ARCHITECTURE_RULES.md
+tmp/
+
+# Playwright authentication state
+playwright/.auth/
+.env.test
+
+.tbls.yml
+jdbc-driver.jar
+schemaspy.jar
+tbls.deb
+
+.open-next/
+.wrangler/
+.dev.vars

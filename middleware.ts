@@ -1,0 +1,144 @@
+import { NextResponse, type NextRequest } from "next/server";
+
+import { createServerClient } from "@supabase/ssr";
+
+const AFTER_LOGIN_REDIRECT_PATH = "/dashboard";
+
+function isAuthPath(pathname: string): boolean {
+  // 認証ページ: ログイン済みならホームへ誘導
+  // 注意: パスワードリセット関連はログイン済みでもアクセス許可
+  if (pathname === "/login" || pathname === "/register") return true;
+  return false;
+}
+
+function isPublicPath(pathname: string): boolean {
+  // 明示的な公開ページ。その他はデフォルトで保護扱い
+  const publicExact = [
+    "/",
+    "/favicon.ico",
+    "/icon.svg",
+    "/apple-icon",
+    "/apple-icon.png",
+    "/safari-pinned-tab.svg",
+    "/login",
+    "/register",
+    "/reset-password",
+    "/verify-otp",
+    "/verify-email",
+    "/confirm",
+    "/contact",
+    "/terms",
+    "/privacy",
+    "/tokushoho",
+  ];
+  if (publicExact.includes(pathname)) return true;
+  const publicPrefixes = ["/guest/", "/invite/", "/auth/reset-password/", "/tokushoho/"];
+  return publicPrefixes.some((p) => pathname.startsWith(p));
+}
+
+export async function middleware(request: NextRequest) {
+  const requestId = request.headers.get("x-request-id") ?? crypto.randomUUID();
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set("x-request-id", requestId);
+
+  // CSP用のnonceを生成し、ヘッダー経由でNextへ伝播（App Routerは x-nonce を内部スクリプト/スタイルに反映）
+  const nonce = (() => {
+    try {
+      if (typeof btoa !== "undefined" && typeof crypto?.randomUUID === "function") {
+        // ランダムUUIDをBase64化（末尾の=は除去）
+        return btoa(crypto.randomUUID()).replace(/=+$/g, "");
+      }
+      const bytes = new Uint8Array(16);
+      crypto.getRandomValues(bytes);
+      let raw = "";
+      for (let i = 0; i < bytes.length; i++) raw += String.fromCharCode(bytes[i]);
+      return btoa(raw).replace(/=+$/g, "");
+    } catch {
+      // フォールバック（UUIDのハイフン除去）
+      return requestId.replace(/-/g, "");
+    }
+  })();
+  requestHeaders.set("x-nonce", nonce);
+
+  // ベースレスポンス（ヘッダー伝播）
+  const response = NextResponse.next({
+    request: {
+      headers: requestHeaders,
+    },
+  });
+  response.headers.set("x-request-id", requestId);
+  response.headers.set("x-nonce", nonce);
+
+  // 本番のみ：動的に生成したnonceでCSPを付与（dev/preview は next.config.mjs の固定CSPを使用）
+  if (process.env.NODE_ENV === "production") {
+    const cspDirectives = [
+      "default-src 'self'",
+      `script-src 'self' 'nonce-${nonce}' https://js.stripe.com https://maps.googleapis.com`,
+      "script-src-attr 'none'",
+      `style-src 'self' 'nonce-${nonce}' https://fonts.googleapis.com`,
+      "style-src-elem 'self' 'unsafe-inline' https://fonts.googleapis.com",
+      "style-src-attr 'unsafe-inline'",
+      "img-src 'self' data: blob: https://maps.gstatic.com https://*.googleapis.com https://*.ggpht.com",
+      "font-src 'self' https://fonts.gstatic.com",
+      "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.stripe.com https://checkout.stripe.com https://maps.googleapis.com",
+      "frame-src 'self' https://js.stripe.com https://hooks.stripe.com https://checkout.stripe.com",
+      "object-src 'none'",
+      "base-uri 'self'",
+      "form-action 'self' https://checkout.stripe.com",
+      "frame-ancestors 'none'",
+      "upgrade-insecure-requests",
+    ].join("; ");
+    response.headers.set("Content-Security-Policy", cspDirectives);
+  }
+
+  // Supabase SSRクライアント（Cookieの双方向同期: getAll / setAll）
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return request.cookies.getAll();
+        },
+        setAll(cookies) {
+          cookies.forEach(({ name, value, options }) => {
+            request.cookies.set({ name, value, ...options });
+            response.cookies.set({ name, value, ...options });
+          });
+        },
+      },
+    }
+  );
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const pathname = request.nextUrl.pathname;
+
+  // 認証ガード: 公開以外はログイン必須
+  if (!isPublicPath(pathname) && !user) {
+    const redirectUrl = new URL("/login", request.url);
+    redirectUrl.searchParams.set("redirectTo", pathname);
+    const redirectResponse = NextResponse.redirect(redirectUrl, { headers: response.headers });
+    redirectResponse.headers.set("x-request-id", requestId);
+    return redirectResponse;
+  }
+
+  // ログイン済みが認証ページへ来たらホームへ
+  if (isAuthPath(pathname) && user) {
+    const dashboardUrl = new URL(AFTER_LOGIN_REDIRECT_PATH, request.url);
+    const redirectResponse = NextResponse.redirect(dashboardUrl, { headers: response.headers });
+    redirectResponse.headers.set("x-request-id", requestId);
+    return redirectResponse;
+  }
+
+  return response;
+}
+
+export const config = {
+  matcher: [
+    // APIや静的アセット等は対象外
+    "/((?!api|_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml|manifest.webmanifest|images).*)",
+  ],
+};

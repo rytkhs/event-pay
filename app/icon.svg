@@ -1,0 +1,7 @@
+<svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- 回転対称な形 - バランスとハーモニー (32x32最適化) -->
+  <path d="M 16 0 Q 24 8, 16 16 Q 8 8, 16 0" fill="#24a6b5"/>
+  <path d="M 32 16 Q 24 24, 16 16 Q 24 8, 32 16" fill="#24a6b5" opacity="0.8"/>
+  <path d="M 16 32 Q 8 24, 16 16 Q 24 24, 16 32" fill="#24a6b5" opacity="0.6"/>
+  <path d="M 0 16 Q 8 8, 16 16 Q 8 24, 0 16" fill="#24a6b5" opacity="0.4"/>
+</svg>
