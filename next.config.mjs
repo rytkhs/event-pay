@@ -1,3 +1,5 @@
+import { initOpenNextCloudflareForDev } from "@opennextjs/cloudflare";
+
 /** @type {import('next').NextConfig} */
 const isDev = process.env.NODE_ENV === "development";
 
@@ -112,3 +114,5 @@ const nextConfig = {
 };
 
 export default nextConfig;
+
+initOpenNextCloudflareForDev();

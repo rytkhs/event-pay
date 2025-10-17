@@ -1,8 +1,5 @@
 import { ImageResponse } from "next/og";
 
-// Route segment config
-export const runtime = "edge";
-
 // 180x180 Apple touch icon generated from the SVG paths for brand consistency
 export const size = { width: 180, height: 180 };
 export const contentType = "image/png";

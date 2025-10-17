@@ -80,7 +80,6 @@ test-results/
 
 .kiro/
 
-\!memo.md
 .github/
 .windsurf/
 STRIPE_PAYOUT_IMPROVEMENT_PLAN.md
@@ -104,3 +103,6 @@ playwright/.auth/
 jdbc-driver.jar
 schemaspy.jar
 tbls.deb
+
+.open-next/
+.wrangler/
