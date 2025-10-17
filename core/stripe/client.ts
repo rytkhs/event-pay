@@ -33,6 +33,8 @@ const stripeSecretKey = getRequiredEnvVar("STRIPE_SECRET_KEY");
 export const stripe = new Stripe(stripeSecretKey, {
   apiVersion:
     (process.env.STRIPE_API_VERSION as Stripe.LatestApiVersion | undefined) ?? "2024-04-10",
+  // Cloudflare Workers use the Fetch API for their API requests.
+  httpClient: Stripe.createFetchHttpClient(),
   // 自動リトライ設定（429/5xx/接続エラー対応）
   maxNetworkRetries: 3,
   // タイムアウト設定（30秒）
