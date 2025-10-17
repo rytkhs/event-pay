@@ -41,6 +41,25 @@ export async function middleware(request: NextRequest) {
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set("x-request-id", requestId);
 
+  // CSP用のnonceを生成し、ヘッダー経由でNextへ伝播（App Routerは x-nonce を内部スクリプト/スタイルに反映）
+  const nonce = (() => {
+    try {
+      if (typeof btoa !== "undefined" && typeof crypto?.randomUUID === "function") {
+        // ランダムUUIDをBase64化（末尾の=は除去）
+        return btoa(crypto.randomUUID()).replace(/=+$/g, "");
+      }
+      const bytes = new Uint8Array(16);
+      crypto.getRandomValues(bytes);
+      let raw = "";
+      for (let i = 0; i < bytes.length; i++) raw += String.fromCharCode(bytes[i]);
+      return btoa(raw).replace(/=+$/g, "");
+    } catch {
+      // フォールバック（UUIDのハイフン除去）
+      return requestId.replace(/-/g, "");
+    }
+  })();
+  requestHeaders.set("x-nonce", nonce);
+
   // ベースレスポンス（ヘッダー伝播）
   const response = NextResponse.next({
     request: {
@@ -48,6 +67,29 @@ export async function middleware(request: NextRequest) {
     },
   });
   response.headers.set("x-request-id", requestId);
+  response.headers.set("x-nonce", nonce);
+
+  // 本番のみ：動的に生成したnonceでCSPを付与（dev/preview は next.config.mjs の固定CSPを使用）
+  if (process.env.NODE_ENV === "production") {
+    const cspDirectives = [
+      "default-src 'self'",
+      `script-src 'self' 'nonce-${nonce}' https://js.stripe.com https://maps.googleapis.com`,
+      "script-src-attr 'none'",
+      `style-src 'self' 'nonce-${nonce}' https://fonts.googleapis.com`,
+      "style-src-elem 'self' 'unsafe-inline' https://fonts.googleapis.com",
+      "style-src-attr 'unsafe-inline'",
+      "img-src 'self' data: blob: https://maps.gstatic.com https://*.googleapis.com https://*.ggpht.com",
+      "font-src 'self' https://fonts.gstatic.com",
+      "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.stripe.com https://checkout.stripe.com https://maps.googleapis.com",
+      "frame-src 'self' https://js.stripe.com https://hooks.stripe.com https://checkout.stripe.com",
+      "object-src 'none'",
+      "base-uri 'self'",
+      "form-action 'self' https://checkout.stripe.com",
+      "frame-ancestors 'none'",
+      "upgrade-insecure-requests",
+    ].join("; ");
+    response.headers.set("Content-Security-Policy", cspDirectives);
+  }
 
   // Supabase SSRクライアント（Cookieの双方向同期: getAll / setAll）
   const supabase = createServerClient(

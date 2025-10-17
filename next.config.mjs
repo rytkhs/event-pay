@@ -7,11 +7,10 @@ const isDev = process.env.NODE_ENV === "development";
 // CSPの 'unsafe-inline' を除去する構成への移行を推奨（本ファイルはヘッダー側のみで完結する安全側の暫定案）
 const csp = [
   "default-src 'self'",
-  // 開発時は利便性のため 'unsafe-inline' と 'unsafe-eval' を許可
-  // 本番ではインラインを許可せず、外部スクリプトの明示許可のみにする（nonce導入後にさらに強化）
+  // プレビューを安定させるため、暫定的に常時 'unsafe-inline' を許可（本番はnonce化で撤廃予定）
   isDev
     ? "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://maps.googleapis.com"
-    : "script-src 'self' https://js.stripe.com https://maps.googleapis.com",
+    : "script-src 'self' 'unsafe-inline' https://js.stripe.com https://maps.googleapis.com",
   // インライン属性のスクリプトは許可しない
   "script-src-attr 'none'",
   // Styleは可能ならnonce/hashへ移行（当面は最小限の 'unsafe-inline' を許可）
@@ -65,10 +64,14 @@ const securityHeaders = [
 const nextConfig = {
   // セキュリティヘッダー
   async headers() {
+    // 本番はCSPをmiddlewareの動的ヘッダーに一元化（ここではCSPを発行しない）
+    const isProd = process.env.NODE_ENV === "production";
+    const headersForAll = securityHeaders.filter((h) => h.key !== "Content-Security-Policy");
+    const headersToSend = isProd ? headersForAll : securityHeaders;
     return [
       {
         source: "/(.*)",
-        headers: securityHeaders,
+        headers: headersToSend,
       },
     ];
   },
