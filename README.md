@@ -1,314 +1,114 @@
-# EventPay - イベント参加費用管理システム
+# みんなの集金 (EventPay)
 
-EventPay は、Next.js、TypeScript、Supabase、Stripe を使用して構築されたイベント参加費用管理システムです。大学サークルや社会人サークルなどの小規模コミュニティにおける会計担当者の負担を軽減することを目的としています。
+小規模コミュニティ向けのイベント出欠管理・集金ツール。
+会計担当者の負担を大幅に削減することを目標に、Next.js 14 App Router と Supabase、Stripe、Cloudflare Workers を組み合わせて構築しています。
 
-## 主な機能
+## 技術スタック
+- Framework: Next.js 14 (App Router + Server Actions)
+- BaaS: Supabase (@supabase/ssr, supabase-js)
+- Payment: Stripe (Connect Express)
+- UI: Tailwind CSS + shadcn/ui (@radix-ui/*)
+- フォーム: React Hook Form + Zod
+- セキュリティ: @upstash/ratelimit
+- タイムゾーン: date-fns + date-fns-tz
+- サニタイゼーション: sanitize-html（エディタ用）
+- ロギング: pino (+ pino-pretty)
+- テスト: Jest + Playwright + Testing Library
+- Hosting/Runtime: Cloudflare Workers via OpenNext (@opennextjs/cloudflare)
 
-### 運営者向け
+## 必要要件
+- Node.js 20 以上
+- npm 10 以上
+- Supabase CLI（DB ローカル操作用）
+- Stripe CLI（Webhook 転送用）
+- Cloudflare Wrangler（デプロイ・型生成）
 
-- **イベント管理**: イベントの作成、編集、削除、招待リンクの発行
-- **参加者管理**: 参加状況・決済状況のリアルタイム確認、現金決済のステータス更新
-- **収益管理**: イベント売上の確認、Stripe Connect オンボーディング、送金履歴の表示
-
-### 参加者向け
-
-- **簡単な参加表明**: 招待リンクからニックネーム入力のみで参加登録
-- **柔軟な決済**: Stripe（クレジットカード）または現金での支払い選択
-- **参加情報の確認・変更**: 専用URLから自身の参加状況を管理
-
-
-### 技術スタック
-
-| カテゴリ              | 技術・サービス  | 備考                                  |
-| --------------------- | --------------- | ------------------------------------- |
-| **フレームワーク**    | Next.js (React) | App Router を利用したフルスタック開発 |
-| **言語**              | TypeScript      | 型安全性の確保                        |
-| **BaaS**              | Supabase        | 認証、データベース(PostgreSQL)        |
-| **決済**              | Stripe          | Stripe Connect Express を利用         |
-| **UI**                | Tailwind CSS    | スタイリング                          |
-| **UI コンポーネント** | Shadcn/ui       | アクセシビリティの高いコンポーネント  |
-| **状態管理**          | Zustand         | シンプルなクライアント状態管理        |
-| **ホスティング**      | Vercel          |                                       |
-| **メール配信**        | Resend          | トランザクションメール送信            |
-
-## 開発環境のセットアップ
-
-### 前提条件
-
-以下のツールがインストールされている必要があります：
-
-- Node.js v22.15.0 以上（推奨：nvm 使用）
-- npm または yarn
-- Git
-- Supabase CLI
-- Stripe CLI（Stripe 連携をテストする場合）
-
-### セットアップ手順
-
-1. **リポジトリのクローン**
-
-   ```bash
-   git clone <repository-url>
-   cd event-pay
-   ```
-
-2. **Node.js のバージョン設定（nvm を使用する場合）**
-
-   ```bash
-   nvm install
-   nvm use
-   ```
-
-3. **依存関係のインストール**
-
+## セットアップ
+1. 依存関係のインストール
    ```bash
    npm install
    ```
-
-4. **環境変数の設定**
-
+2. 環境変数
+   - `.env.example` を `.env.local` にコピーして値を設定
    ```bash
    cp .env.example .env.local
    ```
-
-   `.env.local`ファイルを編集し、必要な環境変数を設定してください。
-
-5. **Supabase のセットアップ**
-
+   - 主要項目（抜粋）
+     - NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY
+     - STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET, NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
+     - STRIPE_CONNECT_WEBHOOK_SECRET
+     - NEXT_PUBLIC_APP_URL, NEXTAUTH_SECRET, NEXTAUTH_URL
+     - UPSTASH_REDIS_REST_URL, UPSTASH_REDIS_REST_TOKEN, RL_HMAC_SECRET
+     - RESEND_API_KEY, FROM_EMAIL, ADMIN_EMAIL
+3. Supabase（任意: ローカル DB を使う場合）
    ```bash
-   # Supabase CLIのインストール（まだの場合）
-   # 推奨: devDependencyとしてインストール
-   npm install supabase --save-dev
-
-   # Supabaseローカル環境の起動
-   npx supabase start
-
-   # データベースのマイグレーション実行
-   npm run db:migrate
-
-   # シードデータの投入（必要な場合）
-   npm run db:seed
+   npm run db:reset     # DB リセット
+   npm run db:migrate   # マイグレーション適用
+   npm run db:seed      # シード投入
    ```
 
-6. **開発サーバーの起動**
+## 開発
+- アプリ起動
+  ```bash
+  npm run dev
+  ```
+  - Next.js をローカルで起動し、ログを pino-pretty で整形表示します。
+- Stripe Webhook 転送
+  ```bash
+  npm run stripe:listen
+  ```
+  - `http://localhost:3000/api/webhooks/stripe` と `.../stripe-connect` に転送。
 
-   ```bash
-   npm run dev
-   ```
+## テスト
+- ユニットテスト
+  ```bash
+  npm run test:unit
+  # 監視モード
+  npm run test:unit:watch
+  # カバレッジ
+  npm run test:unit:coverage
+  ```
+- E2E テスト（Playwright）
+  ```bash
+  npm run test:e2e
+  # 画面表示つき
+  npm run test:e2e:headed
+  # デバッグ
+  npm run test:e2e:debug
+  ```
+- まとめ実行
+  ```bash
+  npm run test
+  ```
+- テスト前準備（DB リセット）
+  ```bash
+  npm run test:setup
+  ```
+- E2E とサーバ同時起動
+  ```bash
+  npm run test:with-server
+  ```
 
-   [http://localhost:3000](http://localhost:3000) でアプリケーションにアクセスできます。
+## Cloudflare Workers へのデプロイ（OpenNext）
+- プレビュー
+  ```bash
+  npm run preview
+  ```
+- 本番デプロイ
+  ```bash
+  npm run deploy
+  ```
+- アセットのみアップロード（必要時）
+  ```bash
+  npm run upload
+  ```
+- 型生成（Wrangler）
+  ```bash
+  npm run cf-typegen
+  ```
+- 設定ファイル
+  - `open-next.config.ts`: R2 インクリメンタルキャッシュを有効化
+  - `wrangler.jsonc`: `.open-next/worker.js` をエントリポイントとして設定。`NEXT_INC_CACHE_R2_BUCKET` を事前に作成してください。
 
-## 利用可能なスクリプト
-
-- `npm run dev` - 開発サーバーの起動
-- `npm run build` - プロダクションビルドの作成
-- `npm run start` - プロダクションサーバーの起動
-- `npm run lint` - ESLint の実行
-- `npm run typecheck` - TypeScript の型チェック
-- `npm run test` - テストの実行
-- `npm run test:watch` - テストの監視モード
-- `npm run test:coverage` - カバレッジレポート付きテスト
-- `npm run test:security` - セキュリティテストの実行
-- `npm run db:reset` - データベースのリセット
-- `npm run db:migrate` - マイグレーションの実行
-- `npm run db:seed` - シードデータの投入
-- `npm run stripe:listen` - Stripe Webhook のローカルリスナー起動
-
-## プロジェクト構成
-
-```
-event-pay/
-├── app/                  # Next.js App Router
-│   ├── (auth)/           # 認証関連ページ
-│   ├── (dashboard)/      # 認証後ダッシュボード
-│   └── api/              # APIエンドポイント
-├── components/           # UIコンポーネント
-├── lib/                  # ライブラリ、ユーティリティ
-│   ├── supabase/         # Supabaseクライアント設定
-│   └── stripe/           # Stripeクライアント設定
-├── docs/                 # プロジェクトドキュメント
-│   └── v2/               # 最新ドキュメント
-└── supabase/             # Supabaseマイグレーション
-```
-
-## データベース設計 (ER図)
-
-```mermaid
-erDiagram
-    users {
-        uuid id PK "REFERENCES auth.users(id)"
-        string email UK
-        string name
-        timestamp created_at
-        timestamp updated_at
-    }
-
-    events {
-        uuid id PK
-        uuid created_by FK "REFERENCES users(id)"
-        string title
-        timestamp date
-        string location
-        integer fee
-        integer capacity
-        text description
-        timestamp registration_deadline
-        timestamp payment_deadline
-        payment_method_enum[] payment_methods
-        string invite_token UK
-        string status
-        timestamp created_at
-        timestamp updated_at
-    }
-
-    attendances {
-        uuid id PK
-        uuid event_id FK "REFERENCES events(id)"
-        string nickname
-        string email
-        string status
-        string guest_token UK
-        timestamp created_at
-        timestamp updated_at
-    }
-
-    payments {
-        uuid id PK
-        uuid attendance_id FK, UK "REFERENCES attendances(id)"
-        string method
-        integer amount
-        string status
-        string stripe_payment_intent_id UK
-        timestamp paid_at
-        timestamp created_at
-        timestamp updated_at
-    }
-
-    stripe_connect_accounts {
-        uuid user_id PK, FK "REFERENCES users(id)"
-        string stripe_account_id UK
-        string status
-        boolean charges_enabled
-        boolean payouts_enabled
-        timestamp created_at
-        timestamp updated_at
-    }
-
-    payouts {
-        uuid id PK
-        uuid event_id FK "REFERENCES events(id)"
-        uuid user_id FK "REFERENCES users(id)"
-        integer total_stripe_sales
-        integer total_stripe_fee
-        integer platform_fee
-        integer net_payout_amount
-        string status
-        string stripe_transfer_id UK
-        timestamp processed_at
-        text notes
-        timestamp created_at
-        timestamp updated_at
-    }
-
-    users ||--o{ events : "creates"
-    users ||--|| stripe_connect_accounts : "owns"
-    users ||--o{ payouts : "receives"
-    events ||--o{ attendances : "has"
-    events ||--o{ payouts : "generates"
-    attendances ||--|| payments : "has one"
-```
-
-## 環境変数
-
-以下の環境変数を`.env.local`に設定する必要があります：
-
-### Supabase 設定
-
-- `NEXT_PUBLIC_SUPABASE_URL` - Supabase プロジェクトの URL
-- `NEXT_PUBLIC_SUPABASE_ANON_KEY` - Supabase の匿名キー
-- `SUPABASE_SERVICE_ROLE_KEY` - Supabase のサービスロールキー
-
-### Stripe 設定
-
-- `STRIPE_SECRET_KEY` - Stripe のシークレットキー SK
-- `STRIPE_WEBHOOK_SECRET` - Stripe Webhook シークレット
-- `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` - Stripe の公開可能キー
-
-### アプリケーション設定
-
-- `NEXT_PUBLIC_APP_URL` - アプリケーションの URL（デフォルト：http://localhost:3000）
-- `NEXT_PUBLIC_MIN_PAYOUT_AMOUNT` - 最小送金金額（円）。デフォルト 100 円。変更すると送金条件が一括で更新されます。
-- `NEXT_PUBLIC_SITE_URL` - アプリケーションのURL
-- `STRIPE_SECRET_KEY` - Stripeのシークレットキー
-- `STRIPE_WEBHOOK_SECRET` - StripeのWebhookシークレットキー
-- `RESEND_API_KEY` - ResendのAPIキー
-- `COOKIE_SECRET` - Cookieの署名・暗号化に使用する32文字以上の秘密鍵
-
-## 開発ガイド
-
-### Enum型管理
-
-EventPayでは、データベースのEnum型とTypeScriptの型定義の整合性を保つため、自動チェック機能を提供しています。
-
-#### 整合性チェックの実行
-
-```bash
-# Enum型の整合性をチェック
-npm run check:enum-consistency
-```
-
-#### Enum型の変更手順
-
-1. **データベース側の変更（マイグレーション）**
-   ```sql
-   -- 例: payment_status_enum に新しいステータスを追加
-   ALTER TYPE public.payment_status_enum ADD VALUE 'new_status';
-   ```
-
-2. **TypeScript側の変更**
-   ```typescript
-   // types/enums.ts を更新
-   export type PaymentStatus =
-     | "pending"
-     | "paid"
-     | "failed"
-     | "received"
-     | "refunded"
-     | "waived"
-     | "new_status"; // 新しい値を追加
-   ```
-
-3. **整合性の確認**
-   ```bash
-   npm run check:enum-consistency
-   ```
-
-#### CI/CDでの自動チェック
-
-GitHub ActionsのQuality Assuranceワークフローで、Enum型の整合性が自動的にチェックされます。不整合がある場合、CIが失敗してプルリクエストのマージがブロックされます。
-
-#### 対象のEnum型
-
-- `event_status_enum` - イベントステータス
-- `payment_method_enum` - 決済方法
-- `payment_status_enum` - 決済ステータス
-- `attendance_status_enum` - 参加ステータス
-- `stripe_account_status_enum` - Stripe Connectアカウントステータス
-- `payout_status_enum` - 送金ステータス
-
-### 手数料・設定管理
-
-EventPayの手数料計算と設定は、`fee_config`テーブルで一元管理されています。
-
-#### 設定変更時の注意事項
-
-1. **手数料設定の変更**: 必ず`fee_config`テーブルのレコードを更新してください
-2. **最小送金額の変更**: `fee_config.min_payout_amount`を更新してください
-3. **整合性確認**: 変更後は`npm run test __tests__/lib/services/payout/fee-consistency.test.ts`を実行してください
-
-## Learn More
-
-- [Next.js Documentation](https://nextjs.org/docs)
-- [Supabase Documentation](https://supabase.com/docs)
-- [Stripe Documentation](https://stripe.com/docs)
-- [TypeScript Documentation](https://www.typescriptlang.org/docs/)
+## セキュリティとヘッダー
+- `next.config.mjs` で推奨セキュリティヘッダー（CSP, HSTS, Permissions-Policy など）を付与。
