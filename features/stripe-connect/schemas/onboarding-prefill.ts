@@ -4,8 +4,6 @@
 
 import { z } from "zod";
 
-import { getEnv } from "@core/utils/cloudflare-env";
-
 // MCCプリセット定義（初期版、後で調整）
 export const MCC_PRESETS = {
   // Stripe側で選択してもらうためのデフォルト値
@@ -74,7 +72,7 @@ export const OnboardingPrefillSchema = z
   .refine(
     (data) => {
       // websiteUrlのHTTPS検証（本番のみ）
-      if (data.websiteUrl && getEnv().NODE_ENV === "production") {
+      if (data.websiteUrl && process.env.NODE_ENV === "production") {
         return data.websiteUrl.startsWith("https://");
       }
       return true;
@@ -132,7 +130,7 @@ export const buildBusinessProfile = (data: OnboardingPrefillData) => {
  */
 export const getDefaultPrefillValues = (): Partial<OnboardingPrefillInput> => {
   const baseUrl =
-    getEnv().NEXT_PUBLIC_APP_URL || getEnv().NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+    process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
 
   return {
     hasWebsite: false,

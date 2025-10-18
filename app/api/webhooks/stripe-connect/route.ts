@@ -18,7 +18,7 @@ import {
   shouldEnforceStripeWebhookIpCheck,
   isStripeWebhookIpAllowed,
 } from "@core/security/stripe-ip-allowlist";
-import { stripe, getConnectWebhookSecrets } from "@core/stripe/client";
+import { getStripe, getConnectWebhookSecrets } from "@core/stripe/client";
 import { getClientIP } from "@core/utils/ip-detection";
 
 import { StripeWebhookSignatureVerifier } from "@features/payments";
@@ -77,7 +77,7 @@ export async function POST(request: NextRequest) {
 
     // 共通の署名検証ロジックを使用
     // Security logging replaced with standard logger
-    const verifier = new StripeWebhookSignatureVerifier(stripe, webhookSecrets);
+    const verifier = new StripeWebhookSignatureVerifier(getStripe(), webhookSecrets);
 
     connectLogger.debug("Starting Connect webhook signature verification");
     const verification = await verifier.verifySignature({ payload, signature });

@@ -11,7 +11,7 @@ import { PostgrestError } from "@supabase/supabase-js";
 import { logger } from "@core/logging/app-logger";
 import { createPaymentLogger, type PaymentLogger } from "@core/logging/payment-logger";
 import { generateSecureUuid } from "@core/security/crypto";
-import { stripe } from "@core/stripe/client";
+import { getStripe } from "@core/stripe/client";
 import * as DestinationCharges from "@core/stripe/destination-charges";
 import { convertStripeError } from "@core/stripe/error-handler";
 import { PaymentError, PaymentErrorType, ErrorHandlingResult } from "@core/types/payment-errors";
@@ -50,7 +50,7 @@ const OPEN_PAYMENT_STATUSES = ["pending", "failed"] as const;
  */
 export class PaymentService implements IPaymentService {
   private supabase: SupabaseClient<Database, "public">;
-  private stripe = stripe;
+  private stripe = getStripe();
   private errorHandler: IPaymentErrorHandler;
   private applicationFeeCalculator: ApplicationFeeCalculator;
   private paymentLogger: PaymentLogger;

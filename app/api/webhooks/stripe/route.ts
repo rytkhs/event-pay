@@ -18,7 +18,7 @@ import {
   shouldEnforceStripeWebhookIpCheck,
   isStripeWebhookIpAllowed,
 } from "@core/security/stripe-ip-allowlist";
-import { getWebhookSecrets, stripe as sharedStripe } from "@core/stripe/client";
+import { getWebhookSecrets, getStripe } from "@core/stripe/client";
 import { getClientIP } from "@core/utils/ip-detection";
 
 import { StripeWebhookEventHandler } from "@features/payments/services/webhook/webhook-event-handler";
@@ -91,7 +91,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Stripe署名検証
-    const signatureVerifier = new StripeWebhookSignatureVerifier(sharedStripe, getWebhookSecrets());
+    const signatureVerifier = new StripeWebhookSignatureVerifier(getStripe(), getWebhookSecrets());
     const verificationResult = await signatureVerifier.verifySignature({
       payload,
       signature,

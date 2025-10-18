@@ -4,7 +4,7 @@ import Stripe from "stripe";
 
 import { getTransferGroupForEvent } from "@core/utils/stripe";
 
-import { stripe, generateIdempotencyKey, createStripeRequestOptions } from "./client";
+import { getStripe, generateIdempotencyKey, createStripeRequestOptions } from "./client";
 import { retryWithIdempotency } from "./idempotency-retry";
 
 // Destination charges用のCheckout Session作成パラメータ（内部専用）
@@ -59,7 +59,7 @@ export async function createDestinationCheckoutSession(
   const resolvedKey = idempotencyKey ?? generateIdempotencyKey("checkout");
 
   const createSession = () => {
-    return stripe.checkout.sessions.create(
+    return getStripe().checkout.sessions.create(
       {
         mode: "payment",
         payment_method_types: ["card"],
@@ -118,17 +118,20 @@ export async function createOrRetrieveCustomer(
 
   if (email) {
     try {
-      const searchResult = await stripe.customers.search({ query: `email:"${email}"`, limit: 1 });
+      const searchResult = await getStripe().customers.search({
+        query: `email:"${email}"`,
+        limit: 1,
+      });
       if (searchResult?.data?.length > 0) {
         return searchResult.data[0] as Stripe.Customer;
       }
     } catch (_e) {
-      const existingCustomers = await stripe.customers.list({ email, limit: 1 });
+      const existingCustomers = await getStripe().customers.list({ email, limit: 1 });
       if (existingCustomers.data.length > 0) {
         return existingCustomers.data[0];
       }
     }
   }
 
-  return await stripe.customers.create({ email, name, metadata });
+  return await getStripe().customers.create({ email, name, metadata });
 }

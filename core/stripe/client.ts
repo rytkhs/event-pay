@@ -8,91 +8,90 @@ import { logger } from "@core/logging/app-logger";
 import { getEnv } from "@core/utils/cloudflare-env";
 import { getRequiredEnvVar } from "@core/utils/env-helper";
 
-// サーバーサイドで必須となる環境変数のみチェックする
-const serverRequiredEnvVars = {
-  STRIPE_SECRET_KEY: getEnv().STRIPE_SECRET_KEY,
-} as const;
+// 遅延初期化された Stripe クライアント（Cloudflare実行時のみ作成）
+let cachedStripe: Stripe | undefined;
 
-for (const [key, value] of Object.entries(serverRequiredEnvVars)) {
-  if (!value) {
-    throw new Error(`Missing required environment variable: ${key}`);
+export function getStripe(): Stripe {
+  if (cachedStripe) return cachedStripe;
+
+  const env = getEnv();
+  const stripeSecretKey = getRequiredEnvVar("STRIPE_SECRET_KEY");
+
+  const instance = new Stripe(stripeSecretKey, {
+    apiVersion:
+      (env.STRIPE_API_VERSION as Stripe.LatestApiVersion | undefined) ?? "2025-07-30.basil",
+    // Cloudflare Workers use the Fetch API for their API requests.
+    httpClient: Stripe.createFetchHttpClient(),
+    // 自動リトライ設定（429/5xx/接続エラー対応）
+    maxNetworkRetries: 3,
+    // タイムアウト設定（30秒）
+    timeout: 30000,
+    appInfo: {
+      name: "EventPay",
+      version: "0.1.0",
+    },
+  });
+
+  // Publishable Key はクライアント用。サーバー専用プロセスでは未設定でも動作させる。
+  if (!env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY) {
+    logger.warn(
+      "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY is not set – client-side Stripe.js may fail to initialize",
+      { tag: "stripeEnvCheck" }
+    );
   }
-}
 
-// Publishable Key はクライアント用。サーバー専用プロセスでは未設定でも動作させる。
-if (!getEnv().NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY) {
-  logger.warn(
-    "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY is not set – client-side Stripe.js may fail to initialize",
-    {
-      tag: "stripeEnvCheck",
-    }
-  );
-}
+  // 重複登録防止フラグ
+  const hasRegisteredHooks = (global as unknown as { __stripeHooks?: boolean }).__stripeHooks;
 
-// Stripeクライアントの初期化（Destination charges対応）
-const stripeSecretKey = getRequiredEnvVar("STRIPE_SECRET_KEY");
-export const stripe = new Stripe(stripeSecretKey, {
-  apiVersion: (getEnv().STRIPE_API_VERSION as Stripe.LatestApiVersion | undefined) ?? "2024-04-10",
-  // Cloudflare Workers use the Fetch API for their API requests.
-  httpClient: Stripe.createFetchHttpClient(),
-  // 自動リトライ設定（429/5xx/接続エラー対応）
-  maxNetworkRetries: 3,
-  // タイムアウト設定（30秒）
-  timeout: 30000,
-  appInfo: {
-    name: "EventPay",
-    version: "1.0.0",
-  },
-});
+  // 本番ではログを抑制。必要なときだけ `STRIPE_LOG_VERBOSE=true` を設定して有効化する
+  const shouldEnableStripeLogging =
+    env.NODE_ENV !== "production" || env.STRIPE_LOG_VERBOSE === "true";
 
-// We'll insert event hooks once to avoid duplicate registration in hot reload environments.
-const hasRegisteredHooks = (global as unknown as { __stripeHooks?: boolean }).__stripeHooks;
+  if (!hasRegisteredHooks && shouldEnableStripeLogging) {
+    (global as unknown as { __stripeHooks?: boolean }).__stripeHooks = true;
 
-// 本番ではログを抑制。必要なときだけ `STRIPE_LOG_VERBOSE=true` を設定して有効化する
-const shouldEnableStripeLogging =
-  getEnv().NODE_ENV !== "production" || getEnv().STRIPE_LOG_VERBOSE === "true";
-
-if (!hasRegisteredHooks && shouldEnableStripeLogging) {
-  (global as unknown as { __stripeHooks?: boolean }).__stripeHooks = true;
-
-  // Stripe request hook
-  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-  // @ts-ignore - stripe typings don't expose "request" event yet
-  if (typeof (stripe as unknown as { on?: unknown }).on === "function") {
-    (
-      stripe as unknown as {
-        on: (event: string, cb: (arg: Record<string, unknown>) => void) => void;
-      }
-    ).on("request", (req: Record<string, unknown>) => {
-      logger.info("Stripe request initiated", {
-        tag: "stripeRequest",
-        stripe_request_id: req.requestId as string | undefined,
-        idempotency_key: req.idempotencyKey as string | undefined,
-        method: req.method as string | undefined,
-        path: req.path as string | undefined,
-        stripe_account: req.stripeAccount as string | undefined,
-      });
-    });
-
-    // Stripe response hook
+    // Stripe request hook
     // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-    // @ts-ignore - stripe typings don't expose "response" event yet
-    (
-      stripe as unknown as {
-        on: (event: string, cb: (arg: Record<string, unknown>) => void) => void;
-      }
-    ).on("response", (res: Record<string, unknown>) => {
-      logger.info("Stripe response received", {
-        tag: "stripeResponse",
-        stripe_request_id: res.requestId as string | undefined,
-        status: res.statusCode as number | undefined,
-        latency_ms: res.elapsed as number | undefined,
-        stripe_should_retry: (res.headers as Record<string, unknown> | undefined)?.[
-          "stripe-should-retry"
-        ] as string | undefined,
+    // @ts-ignore - stripe typings don't expose "request" event yet
+    if (typeof (instance as unknown as { on?: unknown }).on === "function") {
+      (
+        instance as unknown as {
+          on: (event: string, cb: (arg: Record<string, unknown>) => void) => void;
+        }
+      ).on("request", (req: Record<string, unknown>) => {
+        logger.info("Stripe request initiated", {
+          tag: "stripeRequest",
+          stripe_request_id: req.requestId as string | undefined,
+          idempotency_key: req.idempotencyKey as string | undefined,
+          method: req.method as string | undefined,
+          path: req.path as string | undefined,
+          stripe_account: req.stripeAccount as string | undefined,
+        });
       });
-    });
+
+      // Stripe response hook
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-ignore - stripe typings don't expose "response" event yet
+      (
+        instance as unknown as {
+          on: (event: string, cb: (arg: Record<string, unknown>) => void) => void;
+        }
+      ).on("response", (res: Record<string, unknown>) => {
+        logger.info("Stripe response received", {
+          tag: "stripeResponse",
+          stripe_request_id: res.requestId as string | undefined,
+          status: res.statusCode as number | undefined,
+          latency_ms: res.elapsed as number | undefined,
+          stripe_should_retry: (res.headers as Record<string, unknown> | undefined)?.[
+            "stripe-should-retry"
+          ] as string | undefined,
+        });
+      });
+    }
   }
+
+  cachedStripe = instance;
+  return instance;
 }
 
 /**

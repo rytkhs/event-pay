@@ -16,7 +16,7 @@ import { withRateLimit, buildKey, POLICIES } from "@core/rate-limit";
 import { SecureSupabaseClientFactory } from "@core/security/secure-client-factory.impl";
 import { AdminReason } from "@core/security/secure-client-factory.types";
 import { logSecurityEvent } from "@core/security/security-logger";
-import { stripe } from "@core/stripe/client";
+import { getStripe } from "@core/stripe/client";
 import { getClientIP } from "@core/utils/ip-detection";
 import { maskSessionId } from "@core/utils/mask";
 
@@ -204,7 +204,7 @@ export async function GET(request: NextRequest) {
     if (!payment) {
       // フォールバック: StripeのSessionから internal payment_id を推定
       try {
-        checkoutSession = await stripe.checkout.sessions.retrieve(session_id, {
+        checkoutSession = await getStripe().checkout.sessions.retrieve(session_id, {
           expand: ["payment_intent"],
         });
       } catch (stripeError) {
@@ -331,7 +331,7 @@ export async function GET(request: NextRequest) {
     // Stripe Checkout Session を未取得の場合のみ取得
     if (!checkoutSession) {
       try {
-        checkoutSession = await stripe.checkout.sessions.retrieve(session_id, {
+        checkoutSession = await getStripe().checkout.sessions.retrieve(session_id, {
           expand: ["payment_intent"],
         });
       } catch (stripeError) {

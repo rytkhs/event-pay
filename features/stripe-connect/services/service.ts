@@ -8,7 +8,7 @@ import { type SupabaseClient } from "@supabase/supabase-js";
 import Stripe from "stripe";
 
 import { logger } from "@core/logging/app-logger";
-import { stripe, generateIdempotencyKey } from "@core/stripe/client";
+import { getStripe, generateIdempotencyKey } from "@core/stripe/client";
 import { convertStripeError } from "@core/stripe/error-handler";
 import { getEnv } from "@core/utils/cloudflare-env";
 
@@ -41,7 +41,7 @@ import {
  */
 export class StripeConnectService implements IStripeConnectService {
   private supabase: SupabaseClient<Database, "public">;
-  private stripe = stripe;
+  private stripe = getStripe();
   private errorHandler: IStripeConnectErrorHandler;
 
   constructor(
@@ -315,8 +315,8 @@ export class StripeConnectService implements IStripeConnectService {
       const isHardRestricted =
         disabledReason &&
         !disabledReason.startsWith("requirements.") &&
-        disabledReason !== "pending_verification" &&
-        disabledReason !== "under_review";
+        disabledReason !== ("pending_verification" as string) &&
+        disabledReason !== ("under_review" as string);
 
       if (isHardRestricted) {
         status = "restricted";
