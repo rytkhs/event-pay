@@ -11,6 +11,7 @@ import { Loader2, CreditCard, Shield, Zap, Globe, FileText, Copy, CheckCircle } 
 import { useForm } from "react-hook-form";
 
 import { logger } from "@core/logging/app-logger";
+import { getEnv } from "@core/utils/cloudflare-env";
 
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -239,7 +240,7 @@ export function OnboardingForm({ refreshUrl, returnUrl, onPrefillAndStart }: Onb
                     </FormControl>
                     <FormDescription>
                       公式ウェブサイト、SNSアカウント、モバイルアプリ、いずれかのURLをご入力ください。
-                      {process.env.NODE_ENV === "production" && (
+                      {getEnv().NODE_ENV === "production" && (
                         <Badge variant="secondary" className="ml-2">
                           HTTPS必須
                         </Badge>

@@ -5,12 +5,14 @@
 
 import { logger } from "@core/logging/app-logger";
 
+import { getEnv } from "./cloudflare-env";
+
 /**
  * 必須環境変数を取得
  * 値が存在しない場合は明確なエラーメッセージでthrow
  */
 export function getRequiredEnvVar(key: string): string {
-  const value = process.env[key];
+  const value = (getEnv() as unknown as Record<string, string | undefined>)[key];
   if (!value) {
     const errorMessage = `Missing required environment variable: ${key}`;
     logger.error(errorMessage, {
@@ -27,7 +29,7 @@ export function getRequiredEnvVar(key: string): string {
  * 値が存在しない場合はdefaultValueまたはundefinedを返す
  */
 export function getOptionalEnvVar(key: string, defaultValue?: string): string | undefined {
-  return process.env[key] ?? defaultValue;
+  return (getEnv() as unknown as Record<string, string | undefined>)[key] ?? defaultValue;
 }
 
 /**
@@ -37,9 +39,10 @@ export function getOptionalEnvVar(key: string, defaultValue?: string): string | 
 export function validateRequiredEnvVars(keys: string[]): Record<string, string> {
   const missing: string[] = [];
   const result: Record<string, string> = {};
+  const env = getEnv() as unknown as Record<string, string | undefined>;
 
   for (const key of keys) {
-    const value = process.env[key];
+    const value = env[key];
     if (!value) {
       missing.push(key);
     } else {
@@ -64,7 +67,7 @@ export function validateRequiredEnvVars(keys: string[]): Record<string, string> 
  * 本番で必要だが開発で任意の変数に対して警告を出力
  */
 export function warnIfMissingOptionalEnvVar(key: string, description?: string): void {
-  if (!process.env[key]) {
+  if (!(getEnv() as unknown as Record<string, string | undefined>)[key]) {
     const message = `Environment variable ${key} is not set${description ? ` - ${description}` : ""}`;
     logger.warn(message, {
       tag: "envVarOptionalMissing",

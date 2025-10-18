@@ -18,6 +18,7 @@ import {
 import { PAYMENT_METHOD_LABELS } from "@core/constants/payment-methods";
 import { useClipboard } from "@core/hooks/use-clipboard";
 import { ATTENDANCE_STATUS_LABELS } from "@core/types/enums";
+import { getEnv } from "@core/utils/cloudflare-env";
 import { EventDetail } from "@core/utils/invite-token";
 import { sanitizeForEventPay } from "@core/utils/sanitize";
 import { formatUtcToJstByType } from "@core/utils/timezone";
@@ -51,7 +52,7 @@ export function ParticipationConfirmation({
   const guestUrlSectionId = "guest-url-section";
 
   // ゲスト管理URLの生成
-  const guestManagementUrl = `${process.env.NEXT_PUBLIC_APP_URL || window.location.origin}/guest/${registrationData.guestToken}`;
+  const guestManagementUrl = `${getEnv().NEXT_PUBLIC_APP_URL || window.location.origin}/guest/${registrationData.guestToken}`;
 
   // 参加ステータスの日本語表示
   const getAttendanceStatusText = (status: string) => {

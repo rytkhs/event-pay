@@ -1,3 +1,5 @@
+import { getEnv } from "@core/utils/cloudflare-env";
+
 import { type PlatformFeeConfig, type StripeFeeConfig } from "./service";
 
 /**
@@ -34,7 +36,7 @@ export class FeeConfigCacheStrategy {
 
   constructor(
     private readonly ttl: number = 1000 * 60 * 10, // 10分
-    private readonly environment: string = process.env.NODE_ENV || "development",
+    private readonly environment: string = getEnv().NODE_ENV || "development",
     maxFailsafeAge: number = 1000 * 60 * 60 // 1時間
   ) {
     this.maxFailsafeAge = maxFailsafeAge;

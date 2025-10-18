@@ -6,6 +6,8 @@
 import { logger, type LogLevel } from "@core/logging/app-logger";
 import { logSecurityEvent, type SecurityEventType } from "@core/security/security-logger";
 
+import { getEnv } from "./cloudflare-env";
+
 export interface ErrorDetails {
   code: string;
   message: string;
@@ -421,7 +423,7 @@ export function getUserErrorMessage(
 
   if (error instanceof Error) {
     // 開発環境では詳細なエラーメッセージを表示
-    if (process.env.NODE_ENV === "development") {
+    if (getEnv().NODE_ENV === "development") {
       return error.message;
     }
   }

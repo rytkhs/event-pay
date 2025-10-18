@@ -2,6 +2,8 @@
 
 import { cookies } from "next/headers";
 
+import { getEnv } from "@core/utils/cloudflare-env";
+
 /**
  * 申込成功状態を示す HttpOnly クッキーを削除するサーバーアクション
  * - 対象パスは特定の招待トークンページに限定
@@ -13,7 +15,7 @@ export async function dismissInviteSuccessAction(inviteToken: string): Promise<{
     cookieStore.set("invite_success", "", {
       httpOnly: true,
       sameSite: "lax",
-      secure: process.env.NODE_ENV === "production",
+      secure: getEnv().NODE_ENV === "production",
       path: `/invite/${inviteToken}`,
       expires: new Date(0),
     });

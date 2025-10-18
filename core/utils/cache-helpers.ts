@@ -5,12 +5,14 @@
 
 import { cache } from "react";
 
+import { getEnv } from "./cloudflare-env";
+
 /**
  * 本番環境でのみReact.cache()を適用するヘルパー関数
  * 開発環境では元の関数をそのまま返すことで、デバッグを容易にする
  */
 function conditionalCache<T extends (...args: never[]) => unknown>(fn: T): T {
-  return (process.env.NODE_ENV === "production" ? cache(fn) : fn) as T;
+  return (getEnv().NODE_ENV === "production" ? cache(fn) : fn) as T;
 }
 
 /**

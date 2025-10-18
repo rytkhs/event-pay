@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 import { createServerClient } from "@supabase/ssr";
+import { getEnv } from "@core/utils/cloudflare-env";
 
 const AFTER_LOGIN_REDIRECT_PATH = "/dashboard";
 
@@ -70,7 +71,7 @@ export async function middleware(request: NextRequest) {
   response.headers.set("x-nonce", nonce);
 
   // 本番のみ：動的に生成したnonceでCSPを付与（dev/preview は next.config.mjs の固定CSPを使用）
-  if (process.env.NODE_ENV === "production") {
+  if (getEnv().NODE_ENV === "production") {
     const cspDirectives = [
       "default-src 'self'",
       `script-src 'self' 'nonce-${nonce}' https://js.stripe.com https://maps.googleapis.com`,
@@ -93,8 +94,8 @@ export async function middleware(request: NextRequest) {
 
   // Supabase SSRクライアント（Cookieの双方向同期: getAll / setAll）
   const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    getEnv().NEXT_PUBLIC_SUPABASE_URL!,
+    getEnv().NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
         getAll() {

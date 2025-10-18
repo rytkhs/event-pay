@@ -2,6 +2,8 @@ import { createHash } from "crypto";
 
 import { NextRequest } from "next/server";
 
+import { getEnv } from "./cloudflare-env";
+
 /**
  * ヘッダーアクセス用のインターフェース
  * NextRequest.headers、Web API Headers、Next.js ReadonlyHeaders すべてに対応
@@ -103,7 +105,7 @@ function normalizeIP(ip: string): string {
   // 基本的な検証
   if (!isValidIP(trimmedIP)) {
     // 本番環境では適切なログシステムに出力
-    if ((process.env.NODE_ENV as string) === "development") {
+    if (getEnv().NODE_ENV === "development") {
       import("@core/logging/app-logger").then(({ logger }) =>
         logger.warn("Invalid IP address detected. Using fallback.", {
           tag: "ipDetection",
@@ -247,7 +249,7 @@ export function getClientIP(requestOrHeaders: NextRequest | HeaderLike): string 
   // 選択されたIPアドレスがある場合
   if (selectedIP) {
     // セキュリティログ: 低信頼度ヘッダーの使用を警告
-    if (selectedTrust === "low" && process.env.NODE_ENV === "development") {
+    if (selectedTrust === "low" && getEnv().NODE_ENV === "development") {
       import("@core/logging/app-logger").then(({ logger }) =>
         logger.warn("Using low-trust IP header", {
           tag: "ipDetection",
@@ -260,7 +262,7 @@ export function getClientIP(requestOrHeaders: NextRequest | HeaderLike): string 
   }
 
   // 全てのプロキシヘッダーが存在しない場合のフォールバック戦略
-  if ((process.env.NODE_ENV as string) === "development") {
+  if (getEnv().NODE_ENV === "development") {
     // 開発環境ではlocalhostを返す
     return "127.0.0.1";
   } else {
@@ -270,7 +272,7 @@ export function getClientIP(requestOrHeaders: NextRequest | HeaderLike): string 
       "headers" in requestOrHeaders ? generateFallbackIdentifier(requestOrHeaders) : "127.0.0.1"; // Headersのみの場合はlocalhostを使用
 
     // 本番環境では適切なログシステムに出力
-    if ((process.env.NODE_ENV as string) === "development") {
+    if (getEnv().NODE_ENV === "development") {
       import("@core/logging/app-logger").then(({ logger }) =>
         logger.warn("No valid client IP found, using fallback identifier", {
           tag: "ipDetection",
@@ -371,7 +373,7 @@ export function getClientIPFromHeaders(headersList: HeaderLike): string {
   // 選択されたIPアドレスがある場合
   if (selectedIP) {
     // セキュリティログ: 低信頼度ヘッダーの使用を警告
-    if (selectedTrust === "low" && process.env.NODE_ENV === "development") {
+    if (selectedTrust === "low" && getEnv().NODE_ENV === "development") {
       import("@core/logging/app-logger").then(({ logger }) =>
         logger.warn("[Server Component] Using low-trust IP header", {
           tag: "ipDetection",

@@ -5,6 +5,8 @@ import { deriveEventStatus } from "@core/utils/derive-event-status";
 
 import type { Database } from "@/types/database";
 
+import { getEnv } from "./cloudflare-env";
+
 /**
  * 暗号学的に安全な招待トークンを生成します。
  * 24バイトのランダムデータをURLセーフなBase64でエンコードし、プレフィックスを追加します（36文字）。
@@ -164,7 +166,7 @@ export async function validateInviteToken(token: string): Promise<InviteValidati
       canRegister: true,
     };
   } catch (error) {
-    if (process.env.NODE_ENV === "development") {
+    if (getEnv().NODE_ENV === "development") {
       logger.error("Failed to validate invite token", {
         tag: "inviteTokenValidation",
         error_name: error instanceof Error ? error.name : "Unknown",
@@ -205,7 +207,7 @@ export async function checkEventCapacity(
     });
 
     if (error) {
-      if (process.env.NODE_ENV === "development") {
+      if (getEnv().NODE_ENV === "development") {
         logger.error("Failed to check event capacity", {
           tag: "inviteTokenValidation",
           error_name: (error as any)?.name ?? "Unknown",
@@ -219,7 +221,7 @@ export async function checkEventCapacity(
     const count = Number(data) || 0;
     return count >= capacity;
   } catch (error) {
-    if (process.env.NODE_ENV === "development") {
+    if (getEnv().NODE_ENV === "development") {
       logger.error("Failed to check event capacity", {
         tag: "inviteTokenValidation",
         error_name: error instanceof Error ? error.name : "Unknown",
@@ -257,7 +259,7 @@ export async function checkDuplicateEmail(
     });
 
     if (error) {
-      if (process.env.NODE_ENV === "development") {
+      if (getEnv().NODE_ENV === "development") {
         logger.error("Failed to check email duplication", {
           tag: "inviteTokenValidation",
           error_name: (error as any)?.name ?? "Unknown",

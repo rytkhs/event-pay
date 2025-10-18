@@ -20,6 +20,7 @@ import { createProblemResponse } from "@core/api/problem-details";
 import { logger } from "@core/logging/app-logger";
 import { generateSecureUuid } from "@core/security/crypto";
 import { logSecurityEvent } from "@core/security/security-logger";
+import { getEnv } from "@core/utils/cloudflare-env";
 import { getClientIP } from "@core/utils/ip-detection";
 
 import "@/app/_init/feature-registrations";
@@ -27,8 +28,8 @@ import { StripeWebhookEventHandler } from "@features/payments/services/webhook/w
 
 // QStash署名検証用のReceiver初期化
 const getQstashReceiver = () => {
-  const currentKey = process.env.QSTASH_CURRENT_SIGNING_KEY;
-  const nextKey = process.env.QSTASH_NEXT_SIGNING_KEY;
+  const currentKey = getEnv().QSTASH_CURRENT_SIGNING_KEY;
+  const nextKey = getEnv().QSTASH_NEXT_SIGNING_KEY;
 
   if (!currentKey || !nextKey) {
     throw new Error("QStash signing keys are required");
@@ -58,7 +59,7 @@ export async function POST(request: NextRequest) {
 
     // QStash署名検証
     // const url = request.nextUrl.toString();
-    const url = `${process.env.APP_BASE_URL || process.env.NEXTAUTH_URL}/api/workers/stripe-webhook`;
+    const url = `${getEnv().APP_BASE_URL || getEnv().NEXTAUTH_URL}/api/workers/stripe-webhook`;
     const signature = request.headers.get("Upstash-Signature");
     const deliveryId = request.headers.get("Upstash-Delivery-Id");
     const rawBody = await request.text();

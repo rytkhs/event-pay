@@ -5,11 +5,12 @@ import crypto from "crypto";
 import Stripe from "stripe";
 
 import { logger } from "@core/logging/app-logger";
+import { getEnv } from "@core/utils/cloudflare-env";
 import { getRequiredEnvVar } from "@core/utils/env-helper";
 
 // サーバーサイドで必須となる環境変数のみチェックする
 const serverRequiredEnvVars = {
-  STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY,
+  STRIPE_SECRET_KEY: getEnv().STRIPE_SECRET_KEY,
 } as const;
 
 for (const [key, value] of Object.entries(serverRequiredEnvVars)) {
@@ -19,7 +20,7 @@ for (const [key, value] of Object.entries(serverRequiredEnvVars)) {
 }
 
 // Publishable Key はクライアント用。サーバー専用プロセスでは未設定でも動作させる。
-if (!process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY) {
+if (!getEnv().NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY) {
   logger.warn(
     "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY is not set – client-side Stripe.js may fail to initialize",
     {
@@ -31,8 +32,7 @@ if (!process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY) {
 // Stripeクライアントの初期化（Destination charges対応）
 const stripeSecretKey = getRequiredEnvVar("STRIPE_SECRET_KEY");
 export const stripe = new Stripe(stripeSecretKey, {
-  apiVersion:
-    (process.env.STRIPE_API_VERSION as Stripe.LatestApiVersion | undefined) ?? "2024-04-10",
+  apiVersion: (getEnv().STRIPE_API_VERSION as Stripe.LatestApiVersion | undefined) ?? "2024-04-10",
   // Cloudflare Workers use the Fetch API for their API requests.
   httpClient: Stripe.createFetchHttpClient(),
   // 自動リトライ設定（429/5xx/接続エラー対応）
@@ -50,7 +50,7 @@ const hasRegisteredHooks = (global as unknown as { __stripeHooks?: boolean }).__
 
 // 本番ではログを抑制。必要なときだけ `STRIPE_LOG_VERBOSE=true` を設定して有効化する
 const shouldEnableStripeLogging =
-  process.env.NODE_ENV !== "production" || process.env.STRIPE_LOG_VERBOSE === "true";
+  getEnv().NODE_ENV !== "production" || getEnv().STRIPE_LOG_VERBOSE === "true";
 
 if (!hasRegisteredHooks && shouldEnableStripeLogging) {
   (global as unknown as { __stripeHooks?: boolean }).__stripeHooks = true;
@@ -103,14 +103,14 @@ if (!hasRegisteredHooks && shouldEnableStripeLogging) {
  * いずれか存在するものを順序付き配列で返す。
  */
 export const getWebhookSecrets = (): string[] => {
-  const isProd = process.env.NODE_ENV === "production" || process.env.VERCEL_ENV === "production";
+  const env = getEnv();
+  const isProd = env.NODE_ENV === "production" || env.VERCEL_ENV === "production";
   const primary = isProd
-    ? process.env.STRIPE_WEBHOOK_SECRET
-    : (process.env.STRIPE_WEBHOOK_SECRET_TEST ?? process.env.STRIPE_WEBHOOK_SECRET);
+    ? env.STRIPE_WEBHOOK_SECRET
+    : (env.STRIPE_WEBHOOK_SECRET_TEST ?? env.STRIPE_WEBHOOK_SECRET);
   const secondary = isProd
-    ? process.env.STRIPE_WEBHOOK_SECRET_SECONDARY
-    : (process.env.STRIPE_WEBHOOK_SECRET_TEST_SECONDARY ??
-      process.env.STRIPE_WEBHOOK_SECRET_SECONDARY);
+    ? env.STRIPE_WEBHOOK_SECRET_SECONDARY
+    : (env.STRIPE_WEBHOOK_SECRET_TEST_SECONDARY ?? env.STRIPE_WEBHOOK_SECRET_SECONDARY);
   const secrets = [primary, secondary].filter(
     (s): s is string => typeof s === "string" && s.length > 0
   );
@@ -128,14 +128,15 @@ export const getWebhookSecrets = (): string[] => {
  * - テスト: STRIPE_CONNECT_WEBHOOK_SECRET_TEST (primary), STRIPE_CONNECT_WEBHOOK_SECRET_TEST_SECONDARY
  */
 export const getConnectWebhookSecrets = (): string[] => {
-  const isProd = process.env.NODE_ENV === "production" || process.env.VERCEL_ENV === "production";
+  const env = getEnv();
+  const isProd = env.NODE_ENV === "production" || env.VERCEL_ENV === "production";
   const primary = isProd
-    ? process.env.STRIPE_CONNECT_WEBHOOK_SECRET
-    : (process.env.STRIPE_CONNECT_WEBHOOK_SECRET_TEST ?? process.env.STRIPE_CONNECT_WEBHOOK_SECRET);
+    ? env.STRIPE_CONNECT_WEBHOOK_SECRET
+    : (env.STRIPE_CONNECT_WEBHOOK_SECRET_TEST ?? env.STRIPE_CONNECT_WEBHOOK_SECRET);
   const secondary = isProd
-    ? process.env.STRIPE_CONNECT_WEBHOOK_SECRET_SECONDARY
-    : (process.env.STRIPE_CONNECT_WEBHOOK_SECRET_TEST_SECONDARY ??
-      process.env.STRIPE_CONNECT_WEBHOOK_SECRET_SECONDARY);
+    ? env.STRIPE_CONNECT_WEBHOOK_SECRET_SECONDARY
+    : (env.STRIPE_CONNECT_WEBHOOK_SECRET_TEST_SECONDARY ??
+      env.STRIPE_CONNECT_WEBHOOK_SECRET_SECONDARY);
   const secrets = [primary, secondary].filter(
     (s): s is string => typeof s === "string" && s.length > 0
   );

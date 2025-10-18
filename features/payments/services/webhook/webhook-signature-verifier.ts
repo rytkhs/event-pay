@@ -1,6 +1,7 @@
 import Stripe from "stripe";
 
 import { logger } from "@core/logging/app-logger";
+import { getEnv } from "@core/utils/cloudflare-env";
 
 export interface WebhookSignatureVerifier {
   /**
@@ -18,7 +19,7 @@ export class StripeWebhookSignatureVerifier implements WebhookSignatureVerifier 
   private readonly webhookSecrets: string[];
   // 許容秒数は環境変数で調整可能（デフォルト300秒=5分）
   private readonly maxTimestampAge = Number.parseInt(
-    process.env.STRIPE_WEBHOOK_TIMESTAMP_TOLERANCE || "300",
+    getEnv().STRIPE_WEBHOOK_TIMESTAMP_TOLERANCE || "300",
     10
   );
 

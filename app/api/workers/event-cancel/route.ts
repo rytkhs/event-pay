@@ -10,12 +10,13 @@ import { generateSecureUuid } from "@core/security/crypto";
 import { SecureSupabaseClientFactory } from "@core/security/secure-client-factory.impl";
 import { AdminReason } from "@core/security/secure-client-factory.types";
 import { logSecurityEvent } from "@core/security/security-logger";
+import { getEnv } from "@core/utils/cloudflare-env";
 import { getClientIP } from "@core/utils/ip-detection";
 
 // 署名検証用Receiver
 function getQstashReceiver() {
-  const currentKey = process.env.QSTASH_CURRENT_SIGNING_KEY;
-  const nextKey = process.env.QSTASH_NEXT_SIGNING_KEY;
+  const currentKey = getEnv().QSTASH_CURRENT_SIGNING_KEY;
+  const nextKey = getEnv().QSTASH_NEXT_SIGNING_KEY;
   if (!currentKey || !nextKey) {
     throw new Error("QStash signing keys are required");
   }
@@ -40,7 +41,7 @@ export async function POST(request: NextRequest) {
     // 署名検証
     const signature = request.headers.get("Upstash-Signature");
     const deliveryId = request.headers.get("Upstash-Delivery-Id");
-    const url = `${process.env.APP_BASE_URL || process.env.NEXTAUTH_URL}/api/workers/event-cancel`;
+    const url = `${getEnv().APP_BASE_URL || getEnv().NEXTAUTH_URL}/api/workers/event-cancel`;
     const rawBody = await request.text();
 
     if (!signature) {

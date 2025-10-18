@@ -14,6 +14,7 @@ import {
   createServerActionSuccess,
   type ServerActionResult,
 } from "@core/types/server-actions";
+import { getEnv } from "@core/utils/cloudflare-env";
 import { validateGuestToken } from "@core/utils/guest-token";
 import { getClientIPFromHeaders } from "@core/utils/ip-detection";
 import { attendanceStatusSchema, paymentMethodSchema } from "@core/validation/participation";
@@ -41,7 +42,7 @@ export async function updateGuestAttendanceAction(
     securityContext = { userAgent, ip };
   } catch (error) {
     // テスト環境など、headers()が利用できない場合は空のコンテキストを使用
-    if (process.env.NODE_ENV === "test") {
+    if (getEnv().NODE_ENV === "test") {
       securityContext = { userAgent: "test-agent", ip: "127.0.0.1" };
     } else {
       securityContext = {};
@@ -70,7 +71,7 @@ export async function updateGuestAttendanceAction(
       logInvalidTokenAccess(guestToken, "guest", securityContext);
 
       // 開発環境では詳細ログも出力
-      if (process.env.NODE_ENV === "development") {
+      if (getEnv().NODE_ENV === "development") {
         const { logger } = await import("@core/logging/app-logger");
         logger.warn("無効なゲストトークンによるアクセス", {
           tag: "updateGuestAttendance",
@@ -203,7 +204,7 @@ export async function updateGuestAttendanceAction(
         errorMessage.includes("Event capacity") && errorMessage.includes("has been reached");
 
       // 開発環境では詳細エラーログを出力
-      if (process.env.NODE_ENV === "development") {
+      if (getEnv().NODE_ENV === "development") {
         const { logger } = await import("@core/logging/app-logger");
         logger.error("Guest attendance update error", {
           tag: "updateGuestAttendance",
@@ -229,7 +230,7 @@ export async function updateGuestAttendanceAction(
     }
 
     // 更新成功時のログ
-    if (process.env.NODE_ENV === "development") {
+    if (getEnv().NODE_ENV === "development") {
       const { logger } = await import("@core/logging/app-logger");
       logger.info("Guest attendance updated successfully", {
         tag: "updateGuestAttendance",
@@ -265,7 +266,7 @@ export async function updateGuestAttendanceAction(
     );
 
     // 本番環境では適切なログシステムでエラーログを記録
-    if (process.env.NODE_ENV === "development") {
+    if (getEnv().NODE_ENV === "development") {
       const { logger } = await import("@core/logging/app-logger");
       logger.error("Unexpected error in updateGuestAttendanceAction", {
         tag: "updateGuestAttendance",

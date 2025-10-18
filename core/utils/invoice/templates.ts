@@ -3,6 +3,8 @@
  * 将来の課税事業者対応のため、税額表示プレースホルダを含む
  */
 
+// import { getEnv } from "../cloudflare-env";
+
 /** 税額表示情報 */
 export interface TaxDisplayInfo {
   /** 税率（%表示用）*/
@@ -293,7 +295,7 @@ export function createTaxDisplayInfo(calculation: {
     taxAmount: calculation.taxCalculation.taxAmount,
     isTaxIncluded: calculation.taxCalculation.isTaxIncluded,
     // T番号は環境変数から取得（将来実装）
-    invoiceNumber: process.env.INVOICE_REGISTRATION_NUMBER,
+    // invoiceNumber: getEnv().INVOICE_REGISTRATION_NUMBER,
   };
 }
 
@@ -303,5 +305,5 @@ export const DEFAULT_COMPANY_INFO: InvoiceData["billFrom"] = {
   address: "",
   email: "support@eventpay.jp",
   // 課税事業者になったら設定
-  invoiceRegistrationNumber: process.env.INVOICE_REGISTRATION_NUMBER,
+  // invoiceRegistrationNumber: getEnv().INVOICE_REGISTRATION_NUMBER,
 };
