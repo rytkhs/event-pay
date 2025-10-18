@@ -1,13 +1,13 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 import { createServerClient } from "@supabase/ssr";
+
 import { getEnv } from "@core/utils/cloudflare-env";
 
 const AFTER_LOGIN_REDIRECT_PATH = "/dashboard";
 
 function isAuthPath(pathname: string): boolean {
-  // 認証ページ: ログイン済みならホームへ誘導
-  // 注意: パスワードリセット関連はログイン済みでもアクセス許可
+  // 認証ページ: ログイン済みならホームへ誘導（パスワードリセット関連は例外）
   if (pathname === "/login" || pathname === "/register") return true;
   return false;
 }
@@ -42,11 +42,10 @@ export async function middleware(request: NextRequest) {
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set("x-request-id", requestId);
 
-  // CSP用のnonceを生成し、ヘッダー経由でNextへ伝播（App Routerは x-nonce を内部スクリプト/スタイルに反映）
+  // CSP用のnonceを生成し、ヘッダー経由でNextへ伝播（App Routerは x-nonce と CSP の 'nonce-...' を認識）
   const nonce = (() => {
     try {
       if (typeof btoa !== "undefined" && typeof crypto?.randomUUID === "function") {
-        // ランダムUUIDをBase64化（末尾の=は除去）
         return btoa(crypto.randomUUID()).replace(/=+$/g, "");
       }
       const bytes = new Uint8Array(16);
@@ -55,7 +54,6 @@ export async function middleware(request: NextRequest) {
       for (let i = 0; i < bytes.length; i++) raw += String.fromCharCode(bytes[i]);
       return btoa(raw).replace(/=+$/g, "");
     } catch {
-      // フォールバック（UUIDのハイフン除去）
       return requestId.replace(/-/g, "");
     }
   })();
@@ -70,19 +68,24 @@ export async function middleware(request: NextRequest) {
   response.headers.set("x-request-id", requestId);
   response.headers.set("x-nonce", nonce);
 
-  // 本番のみ：動的に生成したnonceでCSPを付与（dev/preview は next.config.mjs の固定CSPを使用）
+  // 本番のみ：動的に生成した nonce で CSP を付与（開発/プレビューは next.config 側の静的CSPを使用）
   if (getEnv().NODE_ENV === "production") {
     const cspDirectives = [
       "default-src 'self'",
-      `script-src 'self' 'nonce-${nonce}' https://js.stripe.com https://maps.googleapis.com`,
+      // strict-dynamic を併用し、nonce 付きルートスクリプトからの信頼伝播を許可
+      `script-src 'self' 'nonce-${nonce}' https://js.stripe.com https://maps.googleapis.com 'strict-dynamic'`,
       "script-src-attr 'none'",
-      `style-src 'self' 'nonce-${nonce}' https://fonts.googleapis.com`,
-      "style-src-elem 'self' 'unsafe-inline' https://fonts.googleapis.com",
-      "style-src-attr 'unsafe-inline'",
+      // style は Level 3 の -elem/-attr で厳格化（属性インラインは不許可）
+      `style-src-elem 'self' 'nonce-${nonce}' https://fonts.googleapis.com`,
+      "style-src-attr 'none'",
+      // 画像系は Maps 関連と data/blob を許可
       "img-src 'self' data: blob: https://maps.gstatic.com https://*.googleapis.com https://*.ggpht.com",
       "font-src 'self' https://fonts.gstatic.com",
-      "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.stripe.com https://checkout.stripe.com https://maps.googleapis.com",
-      "frame-src 'self' https://js.stripe.com https://hooks.stripe.com https://checkout.stripe.com",
+      // Stripe/Supabase/Maps などへの接続を明示
+      "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.stripe.com https://checkout.stripe.com https://m.stripe.network https://q.stripe.com https://maps.googleapis.com",
+      // Stripe 3DS/Checkout のために frame を許可
+      "frame-src 'self' https://hooks.stripe.com https://checkout.stripe.com https://js.stripe.com",
+      // セキュリティ強化系
       "object-src 'none'",
       "base-uri 'self'",
       "form-action 'self' https://checkout.stripe.com",
@@ -139,7 +142,7 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    // APIや静的アセット等は対象外
+    // APIや静的アセット等は対象外（CSPはHTMLレスポンスにのみ付与）
     "/((?!api|_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml|manifest.webmanifest|images).*)",
   ],
 };
