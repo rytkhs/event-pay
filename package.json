@@ -81,7 +81,7 @@
     "react-hook-form": "^7.59.0",
     "resend": "^4.8.0",
     "sanitize-html": "^2.17.0",
-    "stripe": "^15.0.0",
+    "stripe": "^19.1.0",
     "supabase": "^2.34.3",
     "tailwind-merge": "^3.3.1",
     "tailwindcss-animate": "^1.0.7",
