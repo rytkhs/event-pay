@@ -17,7 +17,7 @@ import { jest } from "@jest/globals";
 
 import { SecureSupabaseClientFactory } from "@core/security/secure-client-factory.impl";
 import { AdminReason } from "@core/security/secure-client-factory.types";
-import { stripe } from "@core/stripe/client";
+import { getStripe } from "@core/stripe/client";
 
 import type { Database } from "@/types/database";
 
@@ -207,7 +207,7 @@ export class VerifySessionTestHelper {
     } = options;
 
     try {
-      const session = await stripe.checkout.sessions.create({
+      const session = await getStripe().checkout.sessions.create({
         payment_method_types: ["card"],
         line_items: [
           {
@@ -247,7 +247,7 @@ export class VerifySessionTestHelper {
     metadata: Record<string, string> = {}
   ): Promise<string> {
     try {
-      const session = await stripe.checkout.sessions.create({
+      const session = await getStripe().checkout.sessions.create({
         payment_method_types: ["card"],
         line_items: [
           {

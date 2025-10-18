@@ -18,7 +18,7 @@ export const mockCheckoutSession: Stripe.Checkout.Session = {
   allow_promotion_codes: null,
   amount_subtotal: 1000,
   amount_total: 1000,
-  automatic_tax: { enabled: false, liability: null, status: null },
+  automatic_tax: { enabled: false, liability: null, status: null, provider: null },
   billing_address_collection: null,
   cancel_url: "http://localhost:3000/cancel",
   client_reference_id: null,
@@ -59,7 +59,6 @@ export const mockCheckoutSession: Stripe.Checkout.Session = {
   setup_intent: null,
   shipping_address_collection: null,
   shipping_cost: null,
-  shipping_details: null,
   shipping_options: [],
   status: "open",
   submit_type: null,
@@ -72,6 +71,12 @@ export const mockCheckoutSession: Stripe.Checkout.Session = {
   },
   ui_mode: "hosted",
   url: "https://checkout.stripe.com/c/pay/cs_test_1234567890abcdefghijklmnopqrstuvwxyz#fidkdWxOYHwnPyd1blpxYHZxWjA0VDM0NWdLUGRLYGRfUWNHZklcVlxhSEZyMFRdUmJXc3VdRmJfU1NqVmFOaGFLNzc3VjEwYkx0XEBmbWZPRWZGZzJTSXNLVzJxZTJHYjNxTGhWZDZfVTJLNDNfcnJJSycpJ2N3amhWYHdzYHcnP3F3cGApJ2lkfGpwcVF8dWAnPyd2bGtiaWBabHFgaCcpJ2BrZGdpYFVpZGZgbWppYWB3dic%2FcXdwYCkndnF3YHVCJykpZHdxdHVpZmRpYWNmanFxYWBqZGZqY2Rqd2FqZGRrJ3gl",
+  adaptive_pricing: null,
+  collected_information: null,
+  discounts: [],
+  origin_context: null,
+  permissions: null,
+  wallet_options: null,
 };
 
 // PaymentIntent のモックデータ
@@ -96,7 +101,6 @@ export const mockPaymentIntent: Stripe.PaymentIntent = {
   currency: "jpy",
   customer: null,
   description: null,
-  invoice: null,
   last_payment_error: null,
   latest_charge: null,
   livemode: false,
@@ -107,6 +111,7 @@ export const mockPaymentIntent: Stripe.PaymentIntent = {
   payment_method_configuration_details: null,
   payment_method_options: {},
   payment_method_types: ["card"],
+  excluded_payment_method_types: null,
   processing: null,
   receipt_email: null,
   review: null,
@@ -203,6 +208,7 @@ export const mockConnectAccount: Stripe.Account = {
     },
     invoices: {
       default_account_tax_ids: null,
+      hosted_payment_method_save: null,
     },
     payments: {
       statement_descriptor: "EVENTPAY",

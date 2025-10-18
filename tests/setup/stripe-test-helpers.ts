@@ -245,6 +245,7 @@ export const createMockConnectAccount = (
       },
       invoices: {
         default_account_tax_ids: null,
+        hosted_payment_method_save: null,
       },
       payments: {
         statement_descriptor: "EVENTPAY",
