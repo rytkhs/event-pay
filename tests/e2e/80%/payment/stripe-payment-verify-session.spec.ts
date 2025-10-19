@@ -109,7 +109,7 @@ test.describe("Stripe決済 ケース3-2: セッション検証API", () => {
     }
 
     const stripe = await import("stripe").then(
-      (m) => new m.default(stripeSecretKey, { apiVersion: "2025-07-30.basil" })
+      (m) => new m.default(stripeSecretKey, { apiVersion: "2025-09-30.clover" })
     );
 
     // Checkout Sessionを取得

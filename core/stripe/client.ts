@@ -19,7 +19,7 @@ export function getStripe(): Stripe {
 
   const instance = new Stripe(stripeSecretKey, {
     apiVersion:
-      (env.STRIPE_API_VERSION as Stripe.LatestApiVersion | undefined) ?? "2025-07-30.basil",
+      (env.STRIPE_API_VERSION as Stripe.LatestApiVersion | undefined) ?? "2025-09-30.clover",
     // Cloudflare Workers use the Fetch API for their API requests.
     httpClient: Stripe.createFetchHttpClient(),
     // 自動リトライ設定（429/5xx/接続エラー対応）
