@@ -10,39 +10,41 @@ const OG_IMAGE_SIZE = {
   height: 630,
 } as const;
 
+// セーフゾーン（LINE対応）
+const SAFE_ZONE = {
+  width: 630,
+  height: 630,
+  left: (1200 - 630) / 2,
+  top: 0,
+} as const;
+
 // ブランドカラー
 const BRAND_COLORS = {
   primary: "#24A6B5",
   secondary: "#3A86FF",
-  primaryLight: "#2DBCCD",
   primaryDark: "#1B8694",
   accent: "#FFB800",
   white: "#ffffff",
   dark: "#0b1220",
-  gray: "#6b7280",
-  overlayLight: "rgba(255, 255, 255, 0.15)",
-  overlayDark: "rgba(0, 0, 0, 0.2)",
+  overlayLight: "rgba(255, 255, 255, 0.2)",
 } as const;
 
-// フォント設定
+// フォント設定 - モバイル最適化
 const FONT_CONFIG = {
   size: {
-    hero: 72,
-    title: 56,
-    subtitle: 28,
-    body: 22,
-    small: 18,
-    tiny: 16,
+    hero: 68, // より読みやすく
+    title: 52, // イベントタイトル
+    subtitle: 32, // サブテキスト
+    body: 28, // 詳細情報
+    small: 22, // 補足
   },
   weight: {
     bold: 700,
     semibold: 600,
     medium: 500,
-    normal: 400,
   },
 } as const;
 
-// 型定義
 type EventOGProps = {
   eventTitle: string;
   eventDate: string;
@@ -51,7 +53,7 @@ type EventOGProps = {
   eventCapacity?: number | null;
 };
 
-// 改善されたアイコン - より洗練されたデザイン
+// シンプルなアイコン
 function EventPayIcon({ size = 48 }: { size?: number }) {
   return (
     <svg
@@ -69,30 +71,18 @@ function EventPayIcon({ size = 48 }: { size?: number }) {
   );
 }
 
-// 装飾的な背景要素
-function DecorativeBackground() {
+// 簡素化された背景
+function SimpleBackground() {
   return (
     <>
       <div
         style={{
           position: "absolute",
-          top: "-100px",
-          right: "-100px",
-          width: "400px",
-          height: "400px",
-          background: `radial-gradient(circle, ${BRAND_COLORS.primaryLight}40 0%, transparent 70%)`,
-          borderRadius: "50%",
-          display: "flex",
-        }}
-      />
-      <div
-        style={{
-          position: "absolute",
-          bottom: "-150px",
-          left: "-150px",
+          top: "-150px",
+          right: "-150px",
           width: "500px",
           height: "500px",
-          background: `radial-gradient(circle, ${BRAND_COLORS.secondary}30 0%, transparent 70%)`,
+          background: `radial-gradient(circle, ${BRAND_COLORS.primaryDark}30 0%, transparent 70%)`,
           borderRadius: "50%",
           display: "flex",
         }}
@@ -100,45 +90,16 @@ function DecorativeBackground() {
       <div
         style={{
           position: "absolute",
-          top: "50%",
-          left: "10%",
-          width: "200px",
-          height: "200px",
-          background: `radial-gradient(circle, ${BRAND_COLORS.accent}20 0%, transparent 60%)`,
+          bottom: "-100px",
+          left: "-100px",
+          width: "400px",
+          height: "400px",
+          background: `radial-gradient(circle, ${BRAND_COLORS.secondary}25 0%, transparent 70%)`,
           borderRadius: "50%",
           display: "flex",
         }}
       />
     </>
-  );
-}
-
-// 視覚的な特徴バッジ
-function FeatureBadge({ icon, text }: { icon: string; text: string }) {
-  return (
-    <div
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: "8px",
-        padding: "10px 20px",
-        background: BRAND_COLORS.overlayLight,
-        borderRadius: "24px",
-        border: `1px solid ${BRAND_COLORS.overlayLight}`,
-        backdropFilter: "blur(10px)",
-      }}
-    >
-      <span style={{ fontSize: "24px" }}>{icon}</span>
-      <span
-        style={{
-          fontSize: FONT_CONFIG.size.small,
-          fontWeight: FONT_CONFIG.weight.semibold,
-          color: BRAND_COLORS.white,
-        }}
-      >
-        {text}
-      </span>
-    </div>
   );
 }
 
@@ -152,11 +113,11 @@ function HomepageOG() {
         display: "flex",
         position: "relative",
         overflow: "hidden",
-        background: `linear-gradient(135deg, ${BRAND_COLORS.primary} 0%, ${BRAND_COLORS.primaryDark} 50%, ${BRAND_COLORS.secondary} 100%)`,
+        background: `linear-gradient(135deg, ${BRAND_COLORS.primary} 0%, ${BRAND_COLORS.primaryDark} 100%)`,
         fontFamily: '"Hiragino Sans", "Yu Gothic", "Meiryo", sans-serif',
       }}
     >
-      <DecorativeBackground />
+      <SimpleBackground />
 
       <div
         style={{
@@ -169,15 +130,16 @@ function HomepageOG() {
           zIndex: 1,
         }}
       >
-        {/* ヘッダー部分 */}
+        {/* ヘッダー - セーフゾーン内 */}
         <div
           style={{
             display: "flex",
             alignItems: "center",
             gap: "16px",
+            marginLeft: `${SAFE_ZONE.left}px`,
           }}
         >
-          <EventPayIcon size={56} />
+          <EventPayIcon size={52} />
           <div
             style={{
               display: "flex",
@@ -191,22 +153,24 @@ function HomepageOG() {
           </div>
         </div>
 
-        {/* メインコンテンツ */}
+        {/* メインコンテンツ - セーフゾーン内に集約 */}
         <div
           style={{
             display: "flex",
             flexDirection: "column",
             flex: 1,
             justifyContent: "center",
-            gap: "32px",
-            marginTop: "-40px",
+            alignItems: "center",
+            gap: "24px",
           }}
         >
+          {/* メインキャッチコピー - 1行15文字以内 */}
           <div
             style={{
               display: "flex",
               flexDirection: "column",
-              gap: "16px",
+              alignItems: "center",
+              gap: "12px",
             }}
           >
             <div
@@ -216,27 +180,16 @@ function HomepageOG() {
                 fontWeight: FONT_CONFIG.weight.bold,
                 color: BRAND_COLORS.white,
                 lineHeight: 1.2,
-                textShadow: "0 4px 16px rgba(0, 0, 0, 0.4)",
-                letterSpacing: "-0.02em",
+                textShadow: "0 4px 16px rgba(0, 0, 0, 0.5)",
+                letterSpacing: "0.02em",
+                textAlign: "center",
               }}
             >
-              出欠から集金まで、
-            </div>
-            <div
-              style={{
-                display: "flex",
-                fontSize: FONT_CONFIG.size.hero,
-                fontWeight: FONT_CONFIG.weight.bold,
-                color: BRAND_COLORS.white,
-                lineHeight: 1.2,
-                textShadow: "0 4px 16px rgba(0, 0, 0, 0.4)",
-                letterSpacing: "-0.02em",
-              }}
-            >
-              ひとつのリンクで完了。
+              集金を、もっと簡単に
             </div>
           </div>
 
+          {/* サブコピー - シンプルに */}
           <div
             style={{
               display: "flex",
@@ -244,34 +197,46 @@ function HomepageOG() {
               fontWeight: FONT_CONFIG.weight.medium,
               color: BRAND_COLORS.white,
               opacity: 0.95,
-              lineHeight: 1.5,
-              maxWidth: "700px",
+              lineHeight: 1.4,
+              textAlign: "center",
+              maxWidth: "550px",
             }}
           >
-            参加の確認から集金まで、
+            出欠管理から決済まで
             <br />
-            リンクの共有だけで完了できる新しいサービスです。
+            リンク1つで完結
           </div>
 
-          {/* 特徴バッジ */}
+          {/* 1つのキーバッジのみ */}
           <div
             style={{
               display: "flex",
-              gap: "16px",
-              marginTop: "8px",
+              alignItems: "center",
+              gap: "12px",
+              padding: "14px 32px",
+              background: BRAND_COLORS.overlayLight,
+              borderRadius: "30px",
+              border: `2px solid ${BRAND_COLORS.white}40`,
+              marginTop: "12px",
             }}
           >
-            <FeatureBadge icon="💳" text="オンライン決済" />
-            <FeatureBadge icon="✅" text="出欠管理" />
-            <FeatureBadge icon="📊" text="自動集計" />
+            <span
+              style={{
+                fontSize: FONT_CONFIG.size.body,
+                fontWeight: FONT_CONFIG.weight.bold,
+                color: BRAND_COLORS.white,
+              }}
+            >
+              無料で始める
+            </span>
           </div>
         </div>
 
-        {/* フッター */}
+        {/* フッター - 最小限に */}
         <div
           style={{
             display: "flex",
-            justifyContent: "space-between",
+            justifyContent: "center",
             alignItems: "center",
           }}
         >
@@ -280,7 +245,8 @@ function HomepageOG() {
               display: "flex",
               fontSize: FONT_CONFIG.size.small,
               color: BRAND_COLORS.white,
-              opacity: 0.8,
+              opacity: 0.85,
+              fontWeight: FONT_CONFIG.weight.medium,
             }}
           >
             シンプル・安全・スムーズ
@@ -292,10 +258,12 @@ function HomepageOG() {
 }
 
 // イベント招待ページ用OG画像 - 大幅改善版
-function EventOG({ eventTitle, eventDate, eventLocation, eventFee, eventCapacity }: EventOGProps) {
+function EventOG({ eventTitle, eventDate, eventFee }: EventOGProps) {
   const formattedDate = formatUtcToJstByType(eventDate, "japanese");
-  const feeText = eventFee === 0 ? "参加無料" : `¥${eventFee.toLocaleString()}`;
-  const capacityText = eventCapacity ? `定員${eventCapacity}名` : null;
+  const feeText = eventFee === 0 ? "無料" : `¥${eventFee.toLocaleString()}`;
+
+  // タイトルを短縮（30文字まで）
+  const shortTitle = eventTitle.length > 30 ? `${eventTitle.substring(0, 30)}...` : eventTitle;
 
   return (
     <div
@@ -305,11 +273,11 @@ function EventOG({ eventTitle, eventDate, eventLocation, eventFee, eventCapacity
         display: "flex",
         position: "relative",
         overflow: "hidden",
-        background: `linear-gradient(135deg, ${BRAND_COLORS.primary} 0%, ${BRAND_COLORS.primaryDark} 50%, ${BRAND_COLORS.secondary} 100%)`,
+        background: `linear-gradient(135deg, ${BRAND_COLORS.primary} 0%, ${BRAND_COLORS.primaryDark} 100%)`,
         fontFamily: '"Hiragino Sans", "Yu Gothic", "Meiryo", sans-serif',
       }}
     >
-      <DecorativeBackground />
+      <SimpleBackground />
 
       <div
         style={{
@@ -337,11 +305,11 @@ function EventOG({ eventTitle, eventDate, eventLocation, eventFee, eventCapacity
               gap: "12px",
             }}
           >
-            <EventPayIcon size={44} />
+            <EventPayIcon size={40} />
             <div
               style={{
                 display: "flex",
-                fontSize: FONT_CONFIG.size.body,
+                fontSize: FONT_CONFIG.size.small,
                 fontWeight: FONT_CONFIG.weight.bold,
                 color: BRAND_COLORS.white,
               }}
@@ -364,23 +332,25 @@ function EventOG({ eventTitle, eventDate, eventLocation, eventFee, eventCapacity
           </div>
         </div>
 
-        {/* メインコンテンツ */}
+        {/* メインコンテンツ - セーフゾーン内に集約 */}
         <div
           style={{
             display: "flex",
             flexDirection: "column",
             flex: 1,
             justifyContent: "center",
-            gap: "32px",
-            marginTop: "-20px",
+            alignItems: "center",
+            gap: "28px",
           }}
         >
-          {/* イベントタイトル */}
+          {/* イベントタイトル - 中央配置 */}
           <div
             style={{
               display: "flex",
               flexDirection: "column",
-              gap: "12px",
+              alignItems: "center",
+              gap: "8px",
+              maxWidth: "700px",
             }}
           >
             <div
@@ -391,7 +361,7 @@ function EventOG({ eventTitle, eventDate, eventLocation, eventFee, eventCapacity
                 color: BRAND_COLORS.white,
                 opacity: 0.9,
                 textTransform: "uppercase",
-                letterSpacing: "0.1em",
+                letterSpacing: "0.15em",
               }}
             >
               Event
@@ -403,26 +373,21 @@ function EventOG({ eventTitle, eventDate, eventLocation, eventFee, eventCapacity
                 fontWeight: FONT_CONFIG.weight.bold,
                 color: BRAND_COLORS.white,
                 lineHeight: 1.3,
-                textShadow: "0 4px 12px rgba(0, 0, 0, 0.4)",
-                maxWidth: "900px",
+                textShadow: "0 4px 12px rgba(0, 0, 0, 0.5)",
+                textAlign: "center",
               }}
             >
-              {eventTitle}
+              {shortTitle}
             </div>
           </div>
 
-          {/* イベント詳細カード */}
+          {/* 簡潔な情報表示 */}
           <div
             style={{
               display: "flex",
               flexDirection: "column",
               gap: "16px",
-              padding: "32px",
-              background: BRAND_COLORS.overlayLight,
-              borderRadius: "20px",
-              border: `1px solid ${BRAND_COLORS.overlayLight}`,
-              backdropFilter: "blur(10px)",
-              maxWidth: "800px",
+              alignItems: "center",
             }}
           >
             {/* 日時 */}
@@ -430,137 +395,54 @@ function EventOG({ eventTitle, eventDate, eventLocation, eventFee, eventCapacity
               style={{
                 display: "flex",
                 alignItems: "center",
-                gap: "16px",
+                gap: "12px",
+                padding: "12px 28px",
+                background: BRAND_COLORS.overlayLight,
+                borderRadius: "16px",
               }}
             >
-              <div
+              <span
                 style={{
-                  width: "40px",
-                  height: "40px",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  background: BRAND_COLORS.overlayLight,
-                  borderRadius: "10px",
-                  fontSize: "24px",
-                }}
-              >
-                📅
-              </div>
-              <div
-                style={{
-                  display: "flex",
                   fontSize: FONT_CONFIG.size.body,
                   fontWeight: FONT_CONFIG.weight.semibold,
                   color: BRAND_COLORS.white,
                 }}
               >
                 {formattedDate}
-              </div>
+              </span>
             </div>
 
-            {/* 場所 */}
-            {eventLocation && (
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "16px",
-                }}
-              >
-                <div
-                  style={{
-                    width: "40px",
-                    height: "40px",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    background: BRAND_COLORS.overlayLight,
-                    borderRadius: "10px",
-                    fontSize: "24px",
-                  }}
-                >
-                  📍
-                </div>
-                <div
-                  style={{
-                    display: "flex",
-                    fontSize: FONT_CONFIG.size.body,
-                    fontWeight: FONT_CONFIG.weight.semibold,
-                    color: BRAND_COLORS.white,
-                  }}
-                >
-                  {eventLocation}
-                </div>
-              </div>
-            )}
-
-            {/* 参加費と定員 */}
+            {/* 参加費 - 強調 */}
             <div
               style={{
                 display: "flex",
-                gap: "16px",
-                marginTop: "8px",
+                alignItems: "center",
+                gap: "12px",
+                padding: "16px 36px",
+                background: eventFee === 0 ? BRAND_COLORS.accent : BRAND_COLORS.overlayLight,
+                borderRadius: "20px",
+                border: eventFee === 0 ? "none" : `2px solid ${BRAND_COLORS.white}40`,
               }}
             >
-              <div
+              <span
                 style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "12px",
-                  padding: "12px 20px",
-                  background:
-                    eventFee === 0 ? `${BRAND_COLORS.accent}20` : BRAND_COLORS.overlayLight,
-                  borderRadius: "12px",
-                  border: eventFee === 0 ? `2px solid ${BRAND_COLORS.accent}` : "none",
+                  fontSize: FONT_CONFIG.size.subtitle,
+                  fontWeight: FONT_CONFIG.weight.bold,
+                  color: eventFee === 0 ? BRAND_COLORS.dark : BRAND_COLORS.white,
                 }}
               >
-                <span style={{ fontSize: "24px" }}>💰</span>
-                <span
-                  style={{
-                    fontSize: FONT_CONFIG.size.body,
-                    fontWeight: FONT_CONFIG.weight.bold,
-                    color: eventFee === 0 ? BRAND_COLORS.accent : BRAND_COLORS.white,
-                  }}
-                >
-                  {feeText}
-                </span>
-              </div>
-
-              {capacityText && (
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "12px",
-                    padding: "12px 20px",
-                    background: BRAND_COLORS.overlayLight,
-                    borderRadius: "12px",
-                  }}
-                >
-                  <span style={{ fontSize: "24px" }}>👥</span>
-                  <span
-                    style={{
-                      fontSize: FONT_CONFIG.size.body,
-                      fontWeight: FONT_CONFIG.weight.semibold,
-                      color: BRAND_COLORS.white,
-                    }}
-                  >
-                    {capacityText}
-                  </span>
-                </div>
-              )}
+                {feeText}
+              </span>
             </div>
           </div>
         </div>
 
-        {/* フッター */}
+        {/* フッター - シンプルに */}
         <div
           style={{
             display: "flex",
             justifyContent: "center",
             alignItems: "center",
-            gap: "12px",
           }}
         >
           <div
@@ -568,50 +450,11 @@ function EventOG({ eventTitle, eventDate, eventLocation, eventFee, eventCapacity
               display: "flex",
               fontSize: FONT_CONFIG.size.small,
               color: BRAND_COLORS.white,
-              opacity: 0.9,
+              opacity: 0.85,
+              fontWeight: FONT_CONFIG.weight.medium,
             }}
           >
-            ✅ 出欠登録
-          </div>
-          <div
-            style={{
-              display: "flex",
-              fontSize: FONT_CONFIG.size.small,
-              color: BRAND_COLORS.white,
-              opacity: 0.6,
-            }}
-          >
-            •
-          </div>
-          <div
-            style={{
-              display: "flex",
-              fontSize: FONT_CONFIG.size.small,
-              color: BRAND_COLORS.white,
-              opacity: 0.9,
-            }}
-          >
-            💳 オンライン決済
-          </div>
-          <div
-            style={{
-              display: "flex",
-              fontSize: FONT_CONFIG.size.small,
-              color: BRAND_COLORS.white,
-              opacity: 0.6,
-            }}
-          >
-            •
-          </div>
-          <div
-            style={{
-              display: "flex",
-              fontSize: FONT_CONFIG.size.small,
-              color: BRAND_COLORS.white,
-              opacity: 0.9,
-            }}
-          >
-            📊 自動集計
+            出欠登録・オンライン決済・自動集計
           </div>
         </div>
       </div>
