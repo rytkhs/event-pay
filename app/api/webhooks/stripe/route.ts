@@ -18,7 +18,8 @@ import {
   shouldEnforceStripeWebhookIpCheck,
   isStripeWebhookIpAllowed,
 } from "@core/security/stripe-ip-allowlist";
-import { getWebhookSecrets, stripe as sharedStripe } from "@core/stripe/client";
+import { getWebhookSecrets, getStripe } from "@core/stripe/client";
+import { getEnv } from "@core/utils/cloudflare-env";
 import { getClientIP } from "@core/utils/ip-detection";
 
 import { StripeWebhookEventHandler } from "@features/payments/services/webhook/webhook-event-handler";
@@ -26,7 +27,7 @@ import { StripeWebhookSignatureVerifier } from "@features/payments/services/webh
 
 // QStashクライアント初期化
 const getQstashClient = () => {
-  const token = process.env.QSTASH_TOKEN;
+  const token = getEnv().QSTASH_TOKEN;
   if (!token) {
     throw new Error("QSTASH_TOKEN environment variable is required");
   }
@@ -91,7 +92,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Stripe署名検証
-    const signatureVerifier = new StripeWebhookSignatureVerifier(sharedStripe, getWebhookSecrets());
+    const signatureVerifier = new StripeWebhookSignatureVerifier(getStripe(), getWebhookSecrets());
     const verificationResult = await signatureVerifier.verifySignature({
       payload,
       signature,
@@ -125,7 +126,8 @@ export async function POST(request: NextRequest) {
 
     // テスト環境での同期処理モード（E2Eテスト用）
     // SKIP_QSTASH_IN_TEST=true の場合、QStashをスキップして直接処理
-    const shouldProcessSync = process.env.SKIP_QSTASH_IN_TEST === "true";
+    const shouldProcessSync =
+      (getEnv().SKIP_QSTASH_IN_TEST ?? process.env.SKIP_QSTASH_IN_TEST) === "true";
 
     if (shouldProcessSync) {
       logger.info("Test mode: Processing webhook synchronously (QStash skipped)", {
@@ -178,7 +180,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 本番環境: QStashに転送（完全なイベントデータを送信）
-    const workerUrl = `${process.env.APP_BASE_URL || process.env.NEXTAUTH_URL}/api/workers/stripe-webhook`;
+    const workerUrl = `${getEnv().APP_BASE_URL || getEnv().NEXTAUTH_URL}/api/workers/stripe-webhook`;
     // const workerUrl = "https://de438ee16cfb.ngrok-free.app/api/workers/stripe-webhook";
 
     // 完全なイベントデータを送信（イベント再取得を不要にする）

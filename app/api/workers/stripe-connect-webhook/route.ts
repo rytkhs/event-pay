@@ -13,14 +13,15 @@ import Stripe from "stripe";
 import { createProblemResponse } from "@core/api/problem-details";
 import { logger } from "@core/logging/app-logger";
 import { generateSecureUuid } from "@core/security/crypto";
+import { getEnv } from "@core/utils/cloudflare-env";
 import { getClientIP } from "@core/utils/ip-detection";
 
 import "@/app/_init/feature-registrations";
 import { ConnectWebhookHandler } from "@features/payments/services/webhook/connect-webhook-handler";
 
 const getQstashReceiver = () => {
-  const currentKey = process.env.QSTASH_CURRENT_SIGNING_KEY;
-  const nextKey = process.env.QSTASH_NEXT_SIGNING_KEY;
+  const currentKey = getEnv().QSTASH_CURRENT_SIGNING_KEY;
+  const nextKey = getEnv().QSTASH_NEXT_SIGNING_KEY;
   if (!currentKey || !nextKey) {
     throw new Error("QStash signing keys are required");
   }
@@ -41,7 +42,7 @@ export async function POST(request: NextRequest) {
     const signature = request.headers.get("Upstash-Signature");
     const deliveryId = request.headers.get("Upstash-Delivery-Id");
     // const url = request.nextUrl.toString();
-    const url = `${process.env.APP_BASE_URL || process.env.NEXTAUTH_URL}/api/workers/stripe-connect-webhook`;
+    const url = `${getEnv().APP_BASE_URL || getEnv().NEXTAUTH_URL}/api/workers/stripe-connect-webhook`;
     const rawBody = await request.text();
 
     if (!signature) {

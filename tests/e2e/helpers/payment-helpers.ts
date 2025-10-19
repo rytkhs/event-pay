@@ -277,7 +277,7 @@ export async function completeCheckoutSessionViaWebhook(
   }
 
   const stripe = await import("stripe").then(
-    (m) => new m.default(stripeSecretKey, { apiVersion: "2024-04-10" })
+    (m) => new m.default(stripeSecretKey, { apiVersion: "2025-09-30.clover" })
   );
 
   // Checkout Sessionを取得
@@ -572,7 +572,7 @@ async function triggerWebhookManually(
   }
 
   const stripe = await import("stripe").then(
-    (m) => new m.default(stripeSecretKey, { apiVersion: "2024-04-10" })
+    (m) => new m.default(stripeSecretKey, { apiVersion: "2025-09-30.clover" })
   );
 
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET_TEST || process.env.STRIPE_WEBHOOK_SECRET;
@@ -670,7 +670,7 @@ export async function sendStripeWebhook(
   }
 
   const stripe = await import("stripe").then(
-    (m) => new m.default(stripeSecretKey, { apiVersion: "2024-04-10" })
+    (m) => new m.default(stripeSecretKey, { apiVersion: "2025-09-30.clover" })
   );
 
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET_TEST || process.env.STRIPE_WEBHOOK_SECRET;

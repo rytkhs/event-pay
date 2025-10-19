@@ -9,7 +9,6 @@ import { Client } from "@upstash/qstash";
 import type Stripe from "stripe";
 
 // Feature adapters initialization (ensure core ports are registered)
-import "@/app/_init/feature-registrations";
 
 import { createProblemResponse } from "@core/api/problem-details";
 import { logger } from "@core/logging/app-logger";
@@ -18,16 +17,17 @@ import {
   shouldEnforceStripeWebhookIpCheck,
   isStripeWebhookIpAllowed,
 } from "@core/security/stripe-ip-allowlist";
-import { stripe, getConnectWebhookSecrets } from "@core/stripe/client";
+import { getStripe, getConnectWebhookSecrets } from "@core/stripe/client";
+import { getEnv } from "@core/utils/cloudflare-env";
 import { getClientIP } from "@core/utils/ip-detection";
 
-import { StripeWebhookSignatureVerifier } from "@features/payments";
+import { StripeWebhookSignatureVerifier } from "@features/payments/services/webhook/webhook-signature-verifier";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic"; // Webhookは常に動的処理
 
 const getQstashClient = () => {
-  const token = process.env.QSTASH_TOKEN;
+  const token = getEnv().QSTASH_TOKEN;
   if (!token) throw new Error("QSTASH_TOKEN is required");
   return new Client({ token });
 };
@@ -77,7 +77,7 @@ export async function POST(request: NextRequest) {
 
     // 共通の署名検証ロジックを使用
     // Security logging replaced with standard logger
-    const verifier = new StripeWebhookSignatureVerifier(stripe, webhookSecrets);
+    const verifier = new StripeWebhookSignatureVerifier(getStripe(), webhookSecrets);
 
     connectLogger.debug("Starting Connect webhook signature verification");
     const verification = await verifier.verifySignature({ payload, signature });
@@ -96,7 +96,7 @@ export async function POST(request: NextRequest) {
     });
 
     // QStash に publish（完全なイベントデータを送信）
-    const workerUrl = `${process.env.APP_BASE_URL || process.env.NEXTAUTH_URL}/api/workers/stripe-connect-webhook`;
+    const workerUrl = `${getEnv().APP_BASE_URL || getEnv().NEXTAUTH_URL}/api/workers/stripe-connect-webhook`;
     connectLogger.debug("Publishing Connect webhook to QStash", {
       worker_url: workerUrl,
       event_id: event.id,

@@ -2,6 +2,8 @@ import { redirect } from "next/navigation";
 
 import { createClient } from "@core/supabase/server";
 
+export const dynamic = "force-dynamic";
+
 export default async function SettingsPage() {
   // 認証状態チェック
   const supabase = createClient();

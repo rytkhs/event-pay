@@ -2,6 +2,8 @@ import { redirect } from "next/navigation";
 
 import { createClient } from "@core/supabase/server";
 
+export const dynamic = "force-dynamic";
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { AccountDeleteDangerZone } from "@/features/settings/components/account-delete-danger-zone";
 import { EmailChangeForm } from "@/features/settings/components/email-change-form";

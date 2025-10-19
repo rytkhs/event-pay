@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 
+export const dynamic = "force-dynamic";
+
 import { registerAction } from "@core/actions/auth";
 
 import { useRegisterFormRHF } from "@features/auth";

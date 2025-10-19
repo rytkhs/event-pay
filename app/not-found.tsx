@@ -5,6 +5,8 @@
 
 import { NotFoundLayout } from "@/components/errors";
 
+export const dynamic = "force-dynamic";
+
 /**
  * ルートレベルの404エラーページ
  */

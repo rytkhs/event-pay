@@ -6,6 +6,7 @@ import * as React from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { logger } from "@core/logging/app-logger";
+import { getEnv } from "@core/utils/cloudflare-env";
 
 import { Database } from "@/types/database";
 
@@ -235,8 +236,8 @@ export class NotificationService implements INotificationService {
       const baseUrl =
         process.env.NEXT_PUBLIC_APP_URL ||
         process.env.NEXT_PUBLIC_SITE_URL ||
-        process.env.APP_BASE_URL ||
-        process.env.NEXTAUTH_URL ||
+        getEnv().APP_BASE_URL ||
+        getEnv().NEXTAUTH_URL ||
         "http://localhost:3000";
       const guestUrl = `${baseUrl}/guest/${data.guestToken}`;
 

@@ -2,6 +2,8 @@ import { redirect } from "next/navigation";
 
 import { createClient } from "@core/supabase/server";
 
+export const dynamic = "force-dynamic";
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { PasswordChangeForm } from "@/features/settings/components/password-change-form";
 

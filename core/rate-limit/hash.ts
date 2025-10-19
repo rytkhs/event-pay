@@ -1,9 +1,19 @@
 import { createHmac } from "crypto";
 
-const HMAC_SECRET = process.env.RL_HMAC_SECRET || "dev-rl-hmac-secret";
+import { getEnv } from "@core/utils/cloudflare-env";
+
+let cachedHmacSecret: string;
+
+function getHmacSecret(): string {
+  if (!cachedHmacSecret) {
+    const env = getEnv();
+    cachedHmacSecret = env.RL_HMAC_SECRET || "dev-rl-hmac-secret";
+  }
+  return cachedHmacSecret;
+}
 
 export function hmacSha256Hex(value: string): string {
-  return createHmac("sha256", HMAC_SECRET).update(value).digest("hex");
+  return createHmac("sha256", getHmacSecret()).update(value).digest("hex");
 }
 
 // メールやトークンなどPIIはそのまま使わずHMACの先頭16文字に短縮

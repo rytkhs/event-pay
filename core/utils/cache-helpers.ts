@@ -10,7 +10,8 @@ import { cache } from "react";
  * 開発環境では元の関数をそのまま返すことで、デバッグを容易にする
  */
 function conditionalCache<T extends (...args: never[]) => unknown>(fn: T): T {
-  return (process.env.NODE_ENV === "production" ? cache(fn) : fn) as T;
+  const isProduction = process.env.NODE_ENV === "production";
+  return (isProduction ? cache(fn) : fn) as T;
 }
 
 /**

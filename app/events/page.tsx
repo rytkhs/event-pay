@@ -3,6 +3,8 @@ import React, { Suspense } from "react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
+export const dynamic = "force-dynamic";
+
 import {
   DEFAULT_SORT_BY,
   DEFAULT_SORT_ORDER,

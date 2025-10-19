@@ -51,7 +51,8 @@ export function ParticipationConfirmation({
   const guestUrlSectionId = "guest-url-section";
 
   // ゲスト管理URLの生成
-  const guestManagementUrl = `${process.env.NEXT_PUBLIC_APP_URL || window.location.origin}/guest/${registrationData.guestToken}`;
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || window.location.origin;
+  const guestManagementUrl = `${baseUrl}/guest/${registrationData.guestToken}`;
 
   // 参加ステータスの日本語表示
   const getAttendanceStatusText = (status: string) => {

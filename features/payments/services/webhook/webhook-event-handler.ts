@@ -6,7 +6,7 @@ import { logger } from "@core/logging/app-logger";
 import { NotificationService } from "@core/notification";
 import { getSettlementReportPort } from "@core/ports/settlements";
 import { logWebhookSecurityEvent } from "@core/security/security-logger";
-import { stripe as sharedStripe } from "@core/stripe/client";
+import { getStripe } from "@core/stripe/client";
 import { getRequiredEnvVar } from "@core/utils/env-helper";
 import { maskSessionId } from "@core/utils/mask";
 import { canPromoteStatus } from "@core/utils/payments/status-rank";
@@ -74,7 +74,6 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
           return await this.handleRefundCreated(event as unknown as Stripe.RefundCreatedEvent);
 
         // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-        // @ts-expect-error Stripe typings may not yet include this literal
         case "refund.failed":
           return await this.handleRefundFailed(event as unknown as Stripe.Event);
 
@@ -398,7 +397,7 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
       let piOrCharge: Stripe.PaymentIntent | Stripe.Charge = charge as unknown as Stripe.Charge;
       if ((charge as { payment_intent?: string | null }).payment_intent) {
         try {
-          const expanded = await sharedStripe.paymentIntents.retrieve(
+          const expanded = await getStripe().paymentIntents.retrieve(
             (charge as { payment_intent: string }).payment_intent,
             { expand: ["latest_charge.balance_transaction", "latest_charge.transfer"] }
           );
@@ -408,7 +407,7 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
         }
       } else {
         try {
-          const retrieved = await sharedStripe.charges.retrieve(charge.id, {
+          const retrieved = await getStripe().charges.retrieve(charge.id, {
             expand: ["balance_transaction", "transfer"],
           });
           piOrCharge = retrieved;
@@ -779,7 +778,7 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
         // application_fee_id が保存されていれば合計返金額と最新の返金IDを取得
         const paymentWithFee = payment as unknown as { application_fee_id?: string | null };
         if (paymentWithFee?.application_fee_id) {
-          const afrList = await sharedStripe.applicationFees.listRefunds(
+          const afrList = await getStripe().applicationFees.listRefunds(
             paymentWithFee.application_fee_id,
             { limit: 100 }
           );
@@ -934,7 +933,7 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
     allowDemotion = false
   ): Promise<void> {
     // 最新のChargeを取得
-    const charge = await sharedStripe.charges.retrieve(chargeId);
+    const charge = await getStripe().charges.retrieve(chargeId);
     await this.applyRefundAggregateFromCharge(charge as Stripe.Charge, eventId, allowDemotion);
   }
 
@@ -977,7 +976,7 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
     try {
       const paymentWithFee = payment as unknown as { application_fee_id?: string | null };
       if (paymentWithFee?.application_fee_id) {
-        const afrList = await sharedStripe.applicationFees.listRefunds(
+        const afrList = await getStripe().applicationFees.listRefunds(
           paymentWithFee.application_fee_id,
           { limit: 100 }
         );
@@ -1084,7 +1083,7 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
       let applicationFeeRefundedAmount = 0;
       let applicationFeeRefundId: string | null = null;
       try {
-        const afrList = await sharedStripe.applicationFees.listRefunds(applicationFeeId, {
+        const afrList = await getStripe().applicationFees.listRefunds(applicationFeeId, {
           limit: 100,
         });
         const items = (afrList.data ?? []) as Stripe.FeeRefund[];

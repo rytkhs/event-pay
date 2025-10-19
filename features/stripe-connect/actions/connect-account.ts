@@ -16,6 +16,7 @@ import {
   isAllowedConnectPath,
 } from "@core/routes/stripe-connect";
 import { createClient } from "@core/supabase/server";
+import { getEnv } from "@core/utils/cloudflare-env";
 import { isNextRedirectError } from "@core/utils/next";
 
 import { OnboardingPrefillSchema, buildBusinessProfile } from "../schemas/onboarding-prefill";
@@ -62,21 +63,22 @@ function validateAndNormalizeRedirectUrls(formData: FormData): {
   const { refreshUrl, returnUrl } = validationResult.data;
 
   const getAllowedOrigins = () => {
+    const env = getEnv();
     const origins: string[] = [];
-    if (process.env.NEXT_PUBLIC_APP_URL) {
-      origins.push(process.env.NEXT_PUBLIC_APP_URL);
+    if (env.NEXT_PUBLIC_APP_URL) {
+      origins.push(env.NEXT_PUBLIC_APP_URL);
     }
-    if (process.env.NEXT_PUBLIC_SITE_URL) {
-      origins.push(process.env.NEXT_PUBLIC_SITE_URL);
+    if (env.NEXT_PUBLIC_SITE_URL) {
+      origins.push(env.NEXT_PUBLIC_SITE_URL);
     }
     origins.push("http://localhost:3000");
     origins.push("https://localhost:3000");
-    if (process.env.VERCEL_URL) {
-      origins.push(`https://${process.env.VERCEL_URL}`);
+    if (env.VERCEL_URL) {
+      origins.push(`https://${env.VERCEL_URL}`);
     }
-    if (process.env.ALLOWED_ORIGINS) {
+    if (env.ALLOWED_ORIGINS) {
       origins.push(
-        ...process.env.ALLOWED_ORIGINS.split(",")
+        ...env.ALLOWED_ORIGINS.split(",")
           .map((o) => o.trim())
           .filter(Boolean)
       );
@@ -477,9 +479,7 @@ export async function handleOnboardingRefreshAction(): Promise<void> {
 
     // 2. 必要情報の準備（ベースURL → refresh/return URL）
     const baseUrl =
-      process.env.NEXT_PUBLIC_APP_URL ||
-      process.env.NEXT_PUBLIC_SITE_URL ||
-      "http://localhost:3000";
+      getEnv().NEXT_PUBLIC_APP_URL || getEnv().NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
     const refreshUrl = `${baseUrl}${CONNECT_REFRESH_PATH}`;
     const returnUrl = `${baseUrl}${CONNECT_RETURN_PATH}`;
 

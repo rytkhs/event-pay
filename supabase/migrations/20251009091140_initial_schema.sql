@@ -298,6 +298,7 @@ COMMENT ON FUNCTION "public"."admin_add_attendance_with_capacity_check"("p_event
 
 CREATE OR REPLACE FUNCTION "public"."calc_refund_dispute_summary"("p_event_id" "uuid") RETURNS json
     LANGUAGE "plpgsql"
+    SET "search_path" TO 'pg_catalog', 'public', 'pg_temp'
     AS $$
 DECLARE
     v_total_refunded_amount INTEGER := 0;
@@ -356,6 +357,7 @@ COMMENT ON FUNCTION "public"."calc_refund_dispute_summary"("p_event_id" "uuid") 
 
 CREATE OR REPLACE FUNCTION "public"."calc_total_application_fee"("p_event_id" "uuid") RETURNS integer
     LANGUAGE "plpgsql"
+    SET "search_path" TO 'pg_catalog', 'public', 'pg_temp'
     AS $$
 DECLARE
     v_total_fee INTEGER;
@@ -381,6 +383,7 @@ COMMENT ON FUNCTION "public"."calc_total_application_fee"("p_event_id" "uuid") I
 
 CREATE OR REPLACE FUNCTION "public"."calc_total_stripe_fee"("p_event_id" "uuid", "p_base_rate" numeric DEFAULT NULL::numeric, "p_fixed_fee" integer DEFAULT NULL::integer) RETURNS integer
     LANGUAGE "plpgsql"
+    SET "search_path" TO 'pg_catalog', 'public', 'pg_temp'
     AS $$
 DECLARE
     v_rate   NUMERIC := COALESCE(p_base_rate,  (SELECT stripe_base_rate  FROM public.fee_config LIMIT 1), 0.036);
@@ -566,6 +569,7 @@ COMMENT ON FUNCTION "public"."can_manage_invite_links"("p_event_id" "uuid") IS '
 
 CREATE OR REPLACE FUNCTION "public"."check_attendance_capacity_limit"() RETURNS "trigger"
     LANGUAGE "plpgsql"
+    SET "search_path" TO 'pg_catalog', 'public', 'pg_temp'
     AS $$
 DECLARE
   event_capacity INTEGER;
@@ -815,6 +819,7 @@ COMMENT ON FUNCTION "public"."get_guest_token"() IS 'ゲストトークンをJWT
 
 CREATE OR REPLACE FUNCTION "public"."get_min_payout_amount"() RETURNS integer
     LANGUAGE "sql" STABLE
+    SET "search_path" TO 'pg_catalog', 'public', 'pg_temp'
     AS $$
     SELECT COALESCE((SELECT min_payout_amount FROM public.fee_config LIMIT 1), 100);
 $$;
@@ -944,6 +949,7 @@ COMMENT ON FUNCTION "public"."hash_guest_token"("token" "text") IS 'ゲストト
 
 CREATE OR REPLACE FUNCTION "public"."prevent_payment_status_rollback"() RETURNS "trigger"
     LANGUAGE "plpgsql"
+    SET "search_path" TO 'pg_catalog', 'public', 'pg_temp'
     AS $$
 BEGIN
   IF NEW.status IS DISTINCT FROM OLD.status THEN
@@ -1695,6 +1701,7 @@ COMMENT ON FUNCTION "public"."update_guest_attendance_with_payment"("p_attendanc
 
 CREATE OR REPLACE FUNCTION "public"."update_payment_version"() RETURNS "trigger"
     LANGUAGE "plpgsql"
+    SET "search_path" TO 'pg_catalog', 'public', 'pg_temp'
     AS $$
 BEGIN
   -- UPDATE 時に version を自動インクリメント（手動更新された場合のフォールバック）
@@ -1772,6 +1779,7 @@ COMMENT ON FUNCTION "public"."update_revenue_summary"("p_event_id" "uuid") IS '�
 
 CREATE OR REPLACE FUNCTION "public"."update_updated_at_column"() RETURNS "trigger"
     LANGUAGE "plpgsql"
+    SET "search_path" TO 'pg_catalog', 'public', 'pg_temp'
     AS $$
 BEGIN
   NEW.updated_at = now();
@@ -2804,13 +2812,11 @@ CREATE INDEX IF NOT EXISTS idx_payments_attendance_latest
 -- SECTION 10: Row Level Security (RLS) Policies
 -- ============================================================================
 
-CREATE POLICY "Creators can delete own events" ON "public"."events" FOR DELETE TO "authenticated" USING (("auth"."uid"() = "created_by"));
+CREATE POLICY "Creators can delete own events" ON "public"."events" FOR DELETE TO "authenticated" USING ((SELECT auth.uid()) = "created_by");
 
-CREATE POLICY "Creators can insert own events" ON "public"."events" FOR INSERT TO "authenticated" WITH CHECK (("auth"."uid"() = "created_by"));
+CREATE POLICY "Creators can insert own events" ON "public"."events" FOR INSERT TO "authenticated" WITH CHECK ((SELECT auth.uid()) = "created_by");
 
-CREATE POLICY "Creators can update own events" ON "public"."events" FOR UPDATE TO "authenticated" USING (("auth"."uid"() = "created_by")) WITH CHECK (("auth"."uid"() = "created_by"));
-
-CREATE POLICY "Creators can view their own events" ON "public"."events" FOR SELECT TO "authenticated" USING (("auth"."uid"() = "created_by"));
+CREATE POLICY "Creators can update own events" ON "public"."events" FOR UPDATE TO "authenticated" USING ((SELECT auth.uid()) = "created_by") WITH CHECK ((SELECT auth.uid()) = "created_by");
 
 CREATE POLICY "Guests can view event organizer stripe accounts" ON "public"."stripe_connect_accounts" FOR SELECT TO "anon" USING ((("private"."_get_guest_token_from_header"() IS NOT NULL) AND (EXISTS ( SELECT 1
    FROM ("public"."attendances" "a"
@@ -2829,11 +2835,11 @@ CREATE POLICY "Service role can manage settlements" ON "public"."settlements" FO
 
 CREATE POLICY "Service role can manage stripe/payout info" ON "public"."stripe_connect_accounts" FOR ALL TO "service_role" USING (true) WITH CHECK (true);
 
-CREATE POLICY "Users can manage own stripe accounts" ON "public"."stripe_connect_accounts" FOR ALL TO "authenticated" USING (("auth"."uid"() = "user_id")) WITH CHECK (("auth"."uid"() = "user_id"));
+CREATE POLICY "Users can manage own stripe accounts" ON "public"."stripe_connect_accounts" FOR ALL TO "authenticated" USING ((SELECT auth.uid()) = "user_id") WITH CHECK ((SELECT auth.uid()) = "user_id");
 
-CREATE POLICY "Users can update own profile" ON "public"."users" FOR UPDATE TO "authenticated" USING (("auth"."uid"() = "id")) WITH CHECK (("auth"."uid"() = "id"));
+CREATE POLICY "Users can update own profile" ON "public"."users" FOR UPDATE TO "authenticated" USING ((SELECT auth.uid()) = "id") WITH CHECK ((SELECT auth.uid()) = "id");
 
-CREATE POLICY "Users can view own profile" ON "public"."users" FOR SELECT TO "authenticated" USING (("auth"."uid"() = "id"));
+CREATE POLICY "Users can view own profile" ON "public"."users" FOR SELECT TO "authenticated" USING ((SELECT auth.uid()) = "id");
 
 ALTER TABLE "public"."attendances" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "public"."attendances" FORCE ROW LEVEL SECURITY;
@@ -2842,31 +2848,31 @@ CREATE POLICY "dispute_select_event_owner" ON "public"."payment_disputes" FOR SE
    FROM (("public"."payments" "p"
      JOIN "public"."attendances" "a" ON (("a"."id" = "p"."attendance_id")))
      JOIN "public"."events" "e" ON (("e"."id" = "a"."event_id")))
-  WHERE (("p"."id" = "payment_disputes"."payment_id") AND ("e"."created_by" = "auth"."uid"())))));
+  WHERE (("p"."id" = "payment_disputes"."payment_id") AND ("e"."created_by" = (SELECT auth.uid()))))));
 
 CREATE POLICY "event_creators_can_insert_attendances" ON "public"."attendances" FOR INSERT TO "authenticated" WITH CHECK ((EXISTS ( SELECT 1
    FROM "public"."events" "e"
-  WHERE (("e"."id" = "attendances"."event_id") AND ("e"."created_by" = "auth"."uid"())))));
+  WHERE (("e"."id" = "attendances"."event_id") AND ("e"."created_by" = (SELECT auth.uid()))))));
 
 CREATE POLICY "event_creators_can_insert_payments" ON "public"."payments" FOR INSERT TO "authenticated" WITH CHECK ((EXISTS ( SELECT 1
    FROM ("public"."attendances" "a"
      JOIN "public"."events" "e" ON (("a"."event_id" = "e"."id")))
-  WHERE (("a"."id" = "payments"."attendance_id") AND ("e"."created_by" = "auth"."uid"())))));
+  WHERE (("a"."id" = "payments"."attendance_id") AND ("e"."created_by" = (SELECT auth.uid()))))));
 
 CREATE POLICY "event_creators_can_update_attendances" ON "public"."attendances" FOR UPDATE TO "authenticated" USING ((EXISTS ( SELECT 1
    FROM "public"."events" "e"
-  WHERE (("e"."id" = "attendances"."event_id") AND ("e"."created_by" = "auth"."uid"()))))) WITH CHECK ((EXISTS ( SELECT 1
+  WHERE (("e"."id" = "attendances"."event_id") AND ("e"."created_by" = (SELECT auth.uid())))))) WITH CHECK ((EXISTS ( SELECT 1
    FROM "public"."events" "e"
-  WHERE (("e"."id" = "attendances"."event_id") AND ("e"."created_by" = "auth"."uid"())))));
+  WHERE (("e"."id" = "attendances"."event_id") AND ("e"."created_by" = (SELECT auth.uid()))))));
 
 CREATE POLICY "event_creators_can_view_attendances" ON "public"."attendances" FOR SELECT TO "authenticated" USING ((EXISTS ( SELECT 1
    FROM "public"."events" "e"
-  WHERE (("e"."id" = "attendances"."event_id") AND ("e"."created_by" = "auth"."uid"())))));
+  WHERE (("e"."id" = "attendances"."event_id") AND ("e"."created_by" = (SELECT auth.uid()))))));
 
 CREATE POLICY "event_creators_can_view_payments" ON "public"."payments" FOR SELECT TO "authenticated" USING ((EXISTS ( SELECT 1
    FROM ("public"."attendances" "a"
      JOIN "public"."events" "e" ON (("a"."event_id" = "e"."id")))
-  WHERE (("a"."id" = "payments"."attendance_id") AND ("e"."created_by" = "auth"."uid"())))));
+  WHERE (("a"."id" = "payments"."attendance_id") AND ("e"."created_by" = (SELECT auth.uid()))))));
 
 ALTER TABLE "public"."events" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "public"."events" FORCE ROW LEVEL SECURITY;
@@ -2908,7 +2914,6 @@ CREATE POLICY "fee_config_read_only" ON "public"."fee_config" FOR SELECT TO "aut
 ALTER TABLE "public"."users" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "public"."users" FORCE ROW LEVEL SECURITY;
 
-CREATE POLICY "users_can_view_own_stripe_accounts" ON "public"."stripe_connect_accounts" FOR SELECT TO "authenticated" USING (("user_id" = "auth"."uid"()));
 
 ALTER PUBLICATION "supabase_realtime" OWNER TO "postgres";
 

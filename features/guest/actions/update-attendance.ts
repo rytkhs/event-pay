@@ -265,7 +265,7 @@ export async function updateGuestAttendanceAction(
     );
 
     // 本番環境では適切なログシステムでエラーログを記録
-    if (process.env.NODE_ENV === "development") {
+    if (process.env.NODE_ENV === "production") {
       const { logger } = await import("@core/logging/app-logger");
       logger.error("Unexpected error in updateGuestAttendanceAction", {
         tag: "updateGuestAttendance",

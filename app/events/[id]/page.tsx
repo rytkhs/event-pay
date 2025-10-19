@@ -1,5 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 
+export const dynamic = "force-dynamic";
+
 import { getCurrentUser } from "@core/auth/auth-utils";
 import { createCachedActions } from "@core/utils/cache-helpers";
 

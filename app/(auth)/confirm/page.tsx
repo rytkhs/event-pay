@@ -1,5 +1,7 @@
 import Link from "next/link";
 
+export const dynamic = "force-dynamic";
+
 interface ConfirmPageProps {
   searchParams: {
     email?: string;

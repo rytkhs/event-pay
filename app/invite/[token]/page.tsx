@@ -1,6 +1,8 @@
 import { cookies, headers } from "next/headers";
 import { notFound } from "next/navigation";
 
+import type { Metadata } from "next";
+
 import { logInvalidTokenAccess } from "@core/security/security-logger";
 import { validateGuestToken } from "@core/utils/guest-token";
 import { validateInviteToken } from "@core/utils/invite-token";
@@ -184,12 +186,17 @@ export default async function InvitePage({ params }: InvitePageProps) {
 }
 
 // ページメタデータ生成
-export async function generateMetadata({ params }: InvitePageProps) {
+export async function generateMetadata({ params }: InvitePageProps): Promise<Metadata> {
   try {
     if (!params?.token) {
       return {
         title: "イベント参加申し込み - みんなの集金",
         description: "イベントへの参加申し込み",
+        openGraph: {
+          title: "イベント参加申し込み - みんなの集金",
+          description: "イベントへの参加申し込み",
+          type: "website",
+        },
       };
     }
 
@@ -199,18 +206,47 @@ export async function generateMetadata({ params }: InvitePageProps) {
       return {
         title: "無効な招待リンク - みんなの集金",
         description: "招待リンクが無効または期限切れです",
+        openGraph: {
+          title: "無効な招待リンク - みんなの集金",
+          description: "招待リンクが無効または期限切れです",
+          type: "website",
+        },
       };
     }
 
     const event = validationResult.event;
+
+    // 静的OG画像を使用
+    const ogImageUrl = "/og/event-default.png";
+
     return {
       title: `${event.title} - 参加申し込み | みんなの集金`,
       description: sanitizeEventDescription(event.description || `${event.title}への参加申し込み`),
+      openGraph: {
+        title: `${event.title} - 参加申し込み | みんなの集金`,
+        description: sanitizeEventDescription(
+          event.description || `${event.title}への参加申し込み`
+        ),
+        type: "website",
+        images: [
+          {
+            url: ogImageUrl,
+            width: 1200,
+            height: 630,
+            alt: `${event.title} - 参加申し込み | みんなの集金`,
+          },
+        ],
+      },
     };
   } catch {
     return {
       title: "イベント参加申し込み - みんなの集金",
       description: "イベントへの参加申し込み",
+      openGraph: {
+        title: "イベント参加申し込み - みんなの集金",
+        description: "イベントへの参加申し込み",
+        type: "website",
+      },
     };
   }
 }
