@@ -1,5 +1,3 @@
-import { getEnv } from "@core/utils/cloudflare-env";
-
 import { type PlatformFeeConfig, type StripeFeeConfig } from "./service";
 
 /**
@@ -34,12 +32,16 @@ export class FeeConfigCacheStrategy {
   /** フェイルセーフ用の最大キャッシュ保持期間: 1時間 */
   private readonly maxFailsafeAge: number;
 
+  /** 環境名 */
+  private readonly environment: string;
+
   constructor(
     private readonly ttl: number = 1000 * 60 * 10, // 10分
-    private readonly environment: string = getEnv().NODE_ENV || "development",
+    environment?: string,
     maxFailsafeAge: number = 1000 * 60 * 60 // 1時間
   ) {
     this.maxFailsafeAge = maxFailsafeAge;
+    this.environment = environment ?? process.env.NODE_ENV ?? "development";
   }
 
   /**

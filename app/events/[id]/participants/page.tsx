@@ -2,6 +2,8 @@ import { notFound, redirect } from "next/navigation";
 
 import { Metadata } from "next";
 
+export const dynamic = "force-dynamic";
+
 import { getCurrentUser } from "@core/auth/auth-utils";
 import { logger } from "@core/logging/app-logger";
 import { createCachedActions } from "@core/utils/cache-helpers";

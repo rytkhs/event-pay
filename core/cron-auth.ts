@@ -4,6 +4,7 @@ import "server-only";
 
 import { AUTH_CONFIG } from "@core/constants/auth-config";
 import { logger } from "@core/logging/app-logger";
+import { getEnv } from "@core/utils/cloudflare-env";
 
 interface AuthResult {
   isValid: boolean;
@@ -24,7 +25,7 @@ interface RequestWithHeaders {
  */
 export function validateCronSecret(request: RequestWithHeaders): AuthResult {
   // 環境変数からCRON_SECRETを取得
-  const expectedSecret = process.env.CRON_SECRET;
+  const expectedSecret = getEnv().CRON_SECRET;
   if (!expectedSecret) {
     return {
       isValid: false,

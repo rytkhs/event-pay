@@ -6,6 +6,7 @@
  */
 
 import { apiClient } from "@core/api/client";
+import { getEnv } from "@core/utils/cloudflare-env";
 
 const STRIPE_IPS_JSON_URL = "https://stripe.com/files/ips/ips_webhooks.json";
 const DEFAULT_TTL_MS = 24 * 60 * 60 * 1000; // 24h
@@ -26,7 +27,7 @@ function now(): number {
 }
 
 function parseExtraIpsFromEnv(): string[] {
-  const extra = process.env.STRIPE_WEBHOOK_ALLOWED_IPS_EXTRA?.trim();
+  const extra = getEnv().STRIPE_WEBHOOK_ALLOWED_IPS_EXTRA?.trim();
   if (!extra) return [];
   return extra
     .split(/[,\n\s]+/)
@@ -49,7 +50,7 @@ function isProduction(): boolean {
  * @returns IP許可リスト検証を実行するかどうか
  */
 export function shouldEnforceStripeWebhookIpCheck(): boolean {
-  const explicitSetting = process.env.ENABLE_STRIPE_IP_CHECK?.trim();
+  const explicitSetting = getEnv().ENABLE_STRIPE_IP_CHECK?.trim();
 
   // 明示的に無効化
   if (explicitSetting && /^(?:0|false|no|off)$/i.test(explicitSetting)) {

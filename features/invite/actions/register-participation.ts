@@ -19,7 +19,6 @@ import {
   createServerActionSuccess,
   zodErrorToServerActionResponse,
 } from "@core/types/server-actions";
-import { getEnv } from "@core/utils/cloudflare-env";
 import { generateGuestToken } from "@core/utils/guest-token";
 import {
   validateInviteToken,
@@ -523,7 +522,7 @@ async function verifyGuestTokenStorage(
       );
     } else {
       // 検証成功：通常の処理として扱い、詳細ログは開発環境でのみ記録
-      if (getEnv().NODE_ENV === "development") {
+      if (process.env.NODE_ENV === "development") {
         logParticipationSecurityEvent(
           "SUSPICIOUS_ACTIVITY", // TODO: 将来的にはSUCCESS_AUDITなど専用型を追加
           "Guest token storage verification completed successfully",
@@ -631,7 +630,7 @@ export async function registerParticipationAction(
       cookieStore.set("invite_success", responseData.guestToken, {
         httpOnly: true,
         sameSite: "lax",
-        secure: getEnv().NODE_ENV === "production",
+        secure: process.env.NODE_ENV === "production",
         path: `/invite/${participationData.inviteToken}`,
         expires: expiresAt,
       });

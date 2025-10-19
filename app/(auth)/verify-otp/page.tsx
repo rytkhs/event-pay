@@ -2,6 +2,8 @@
 
 import { useState, useEffect, Suspense, useRef } from "react";
 
+export const dynamic = "force-dynamic";
+
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
 

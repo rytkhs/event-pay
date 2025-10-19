@@ -1,6 +1,5 @@
 import { logger } from "@core/logging/app-logger";
 
-import { getEnv } from "./cloudflare-env";
 import { getClientIPFromHeaders } from "./ip-detection";
 
 /**
@@ -56,7 +55,7 @@ export async function getSafeHeaders(fallbackContext?: {
     logger.warn("next/headers not available, using fallback context", {
       tag: "headersUnavailable",
       error_message: error instanceof Error ? error.message : String(error),
-      environment: getEnv().NODE_ENV,
+      environment: process.env.NODE_ENV,
       fallback: fallbackContext ? "provided" : "default",
     });
 
@@ -65,7 +64,7 @@ export async function getSafeHeaders(fallbackContext?: {
 
     // フォールバック値を使用
     context = fallbackContext || {
-      userAgent: getEnv().NODE_ENV === "test" ? "test-environment" : "unknown",
+      userAgent: process.env.NODE_ENV === "test" ? "test-environment" : "unknown",
       ip: "127.0.0.1",
     };
   }

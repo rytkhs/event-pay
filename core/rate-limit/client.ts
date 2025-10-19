@@ -2,6 +2,7 @@ import { Ratelimit } from "@upstash/ratelimit";
 import { Redis } from "@upstash/redis";
 
 import { logger } from "@core/logging/app-logger";
+import { getEnv } from "@core/utils/cloudflare-env";
 
 import type { RateLimitPolicy } from "./types";
 
@@ -11,8 +12,8 @@ let redisClient: Redis | null = null;
 export function getRedisClient(): Redis | null {
   try {
     if (redisClient) return redisClient;
-    const url = process.env.UPSTASH_REDIS_REST_URL;
-    const token = process.env.UPSTASH_REDIS_REST_TOKEN;
+    const url = getEnv().UPSTASH_REDIS_REST_URL;
+    const token = getEnv().UPSTASH_REDIS_REST_TOKEN;
     if (url && token) {
       redisClient = new Redis({ url, token });
       return redisClient;

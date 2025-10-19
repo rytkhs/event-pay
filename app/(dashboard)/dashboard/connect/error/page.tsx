@@ -4,6 +4,8 @@
 
 import { Suspense } from "react";
 
+export const dynamic = "force-dynamic";
+
 import Link from "next/link";
 
 import { AlertTriangle, ArrowLeft, RefreshCw } from "lucide-react";

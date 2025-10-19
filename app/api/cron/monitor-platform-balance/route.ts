@@ -5,6 +5,7 @@ import { createProblemResponse } from "@core/api/problem-details";
 import { validateCronSecret, logCronActivity } from "@core/cron-auth";
 import { EmailNotificationService } from "@core/notification/email-service";
 import { getStripe } from "@core/stripe/client";
+import { getEnv } from "@core/utils/cloudflare-env";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -23,7 +24,7 @@ export async function GET(request: NextRequest) {
     });
   }
 
-  const minThreshold = Number.parseInt(process.env.PLATFORM_BALANCE_MIN_JPY || "0", 10);
+  const minThreshold = Number.parseInt(getEnv().PLATFORM_BALANCE_MIN_JPY || "0", 10);
 
   try {
     const bal = await getStripe().balance.retrieve();

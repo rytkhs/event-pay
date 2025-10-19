@@ -13,6 +13,7 @@ import {
   createServerActionSuccess,
   type ServerActionResult,
 } from "@core/types/server-actions";
+import { getEnv } from "@core/utils/cloudflare-env";
 
 type CancelEventInput = {
   eventId: string;
@@ -20,7 +21,7 @@ type CancelEventInput = {
 };
 
 function getQstashClient() {
-  const token = process.env.QSTASH_TOKEN;
+  const token = getEnv().QSTASH_TOKEN;
   if (!token) {
     throw new Error("QSTASH_TOKEN environment variable is required");
   }
@@ -75,7 +76,7 @@ export async function cancelEventAction(
       if (!updatedRows || updatedRows.length === 0) {
         return createServerActionSuccess({ status: "canceled" as const }, "イベントを中止しました");
       }
-      const workerUrl = `${process.env.APP_BASE_URL || process.env.NEXTAUTH_URL}/api/workers/event-cancel`;
+      const workerUrl = `${getEnv().APP_BASE_URL || getEnv().NEXTAUTH_URL}/api/workers/event-cancel`;
       const body = { eventId, message: params.message };
 
       const qstash = getQstashClient();

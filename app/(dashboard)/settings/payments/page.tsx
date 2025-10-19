@@ -2,6 +2,8 @@ import { Suspense } from "react";
 
 import { redirect } from "next/navigation";
 
+export const dynamic = "force-dynamic";
+
 import { CONNECT_REFRESH_PATH } from "@core/routes/stripe-connect";
 import { createClient } from "@core/supabase/server";
 

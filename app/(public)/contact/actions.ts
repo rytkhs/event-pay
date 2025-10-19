@@ -17,6 +17,7 @@ import {
   createServerActionError,
   createServerActionSuccess,
 } from "@core/types/server-actions";
+import { getEnv } from "@core/utils/cloudflare-env";
 import { getClientIPFromHeaders } from "@core/utils/ip-detection";
 import { sanitizeForEventPay } from "@core/utils/sanitize";
 import { formatUtcToJst, formatDateToJstYmd } from "@core/utils/timezone";
@@ -109,7 +110,7 @@ export async function submitContact(input: ContactInput) {
 
   // 5. メタデータ収集
   const userAgent = h.get("user-agent") ?? null;
-  const ipHash = process.env.RL_HMAC_SECRET && ip ? hmacSha256Hex(ip) : null;
+  const ipHash = getEnv().RL_HMAC_SECRET && ip ? hmacSha256Hex(ip) : null;
 
   // 6. DB保存
   const supabase = createClient();
@@ -171,7 +172,7 @@ export async function submitContact(input: ContactInput) {
       const emailService = new EmailNotificationService();
 
       const result = await emailService.sendEmail({
-        to: process.env.ADMIN_EMAIL || "admin@eventpay.jp",
+        to: getEnv().ADMIN_EMAIL || "admin@eventpay.jp",
         template: {
           subject: "【みんなの集金】新しいお問い合わせが届きました",
           react: React.createElement(AdminContactNotice, {
@@ -200,7 +201,7 @@ export async function submitContact(input: ContactInput) {
     }
 
     // Slack通知（任意）
-    if (process.env.SLACK_CONTACT_WEBHOOK_URL) {
+    if (getEnv().SLACK_CONTACT_WEBHOOK_URL) {
       try {
         const jstStr = formatUtcToJst(receivedAt, "yyyy-MM-dd HH:mm 'JST'");
         const slackText = `[Contact] ${nameSanitized} <${email}>\n受信: ${jstStr}\n\n${excerpt}`;

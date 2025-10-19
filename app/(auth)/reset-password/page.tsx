@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 
+export const dynamic = "force-dynamic";
+
 import { resetPasswordAction } from "@core/actions/auth";
 
 import { useAuthForm, AuthFormWrapper, AuthEmailField, AuthSubmitButton } from "@features/auth";

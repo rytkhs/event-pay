@@ -20,28 +20,39 @@ interface MiddlewareSupabaseConfig {
 }
 
 export class SupabaseClientFactory {
-  private static get URL(): string {
-    const value = getEnv().NEXT_PUBLIC_SUPABASE_URL;
-    if (!value) {
-      const key = "NEXT_PUBLIC_SUPABASE_URL";
-      const message = `Missing required environment variable: ${key}`;
-      logger.error(message, { tag: "envVarMissing", variable_name: key });
-      throw new Error(message);
+  private static sessionManager = getSessionManager();
+  private static cachedUrl: string;
+  private static cachedAnonKey: string;
+
+  private static getURL(): string {
+    if (!this.cachedUrl) {
+      const env = getEnv();
+      const value = env.NEXT_PUBLIC_SUPABASE_URL;
+      if (!value) {
+        const key = "NEXT_PUBLIC_SUPABASE_URL";
+        const message = `Missing required environment variable: ${key}`;
+        logger.error(message, { tag: "envVarMissing", variable_name: key });
+        throw new Error(message);
+      }
+      this.cachedUrl = value;
     }
-    return value;
+    return this.cachedUrl;
   }
 
-  private static get ANON_KEY(): string {
-    const value = getEnv().NEXT_PUBLIC_SUPABASE_ANON_KEY;
-    if (!value) {
-      const key = "NEXT_PUBLIC_SUPABASE_ANON_KEY";
-      const message = `Missing required environment variable: ${key}`;
-      logger.error(message, { tag: "envVarMissing", variable_name: key });
-      throw new Error(message);
+  private static getAnonKey(): string {
+    if (!this.cachedAnonKey) {
+      const env = getEnv();
+      const value = env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+      if (!value) {
+        const key = "NEXT_PUBLIC_SUPABASE_ANON_KEY";
+        const message = `Missing required environment variable: ${key}`;
+        logger.error(message, { tag: "envVarMissing", variable_name: key });
+        throw new Error(message);
+      }
+      this.cachedAnonKey = value;
     }
-    return value;
+    return this.cachedAnonKey;
   }
-  private static sessionManager = getSessionManager();
 
   static createServerClient(context: "server"): SupabaseClient<Database>;
   static createServerClient(context: "api"): SupabaseClient<Database>;
@@ -79,7 +90,7 @@ export class SupabaseClientFactory {
 
     const cookieConfig = getCookieConfig(isHttps);
 
-    return createServerClient<Database>(this.URL, this.ANON_KEY, {
+    return createServerClient<Database>(this.getURL(), this.getAnonKey(), {
       cookies: {
         getAll() {
           return request.cookies.getAll();
@@ -128,7 +139,7 @@ export class SupabaseClientFactory {
       };
     }
 
-    return createServerClient<Database>(this.URL, this.ANON_KEY, {
+    return createServerClient<Database>(this.getURL(), this.getAnonKey(), {
       cookies: {
         getAll() {
           try {

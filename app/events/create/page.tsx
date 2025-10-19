@@ -2,6 +2,8 @@ import { redirect } from "next/navigation";
 
 import { createClient } from "@core/supabase/server";
 
+export const dynamic = "force-dynamic";
+
 import { ModernEventForm } from "@features/events";
 import { getDetailedAccountStatusAction } from "@features/stripe-connect";
 

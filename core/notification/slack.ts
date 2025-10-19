@@ -4,6 +4,7 @@
  */
 
 import { logger } from "@core/logging/app-logger";
+import { getEnv } from "@core/utils/cloudflare-env";
 
 /**
  * Slack Webhook経由でメッセージを送信
@@ -14,7 +15,7 @@ export async function sendSlackText(
   text: string,
   webhookUrl?: string
 ): Promise<{ success: boolean; error?: string }> {
-  const url = webhookUrl || process.env.SLACK_CONTACT_WEBHOOK_URL;
+  const url = webhookUrl || getEnv().SLACK_CONTACT_WEBHOOK_URL;
 
   // Webhook URLが設定されていない場合はスキップ（正常終了）
   if (!url) {

@@ -6,7 +6,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import React from "react";
+import { Component } from "react";
 
 import { ErrorLayout } from "./error-layout";
 import { logError, addBreadcrumb } from "./error-logger";
@@ -21,7 +21,7 @@ interface ErrorBoundaryState {
 /**
  * 統一されたError Boundaryコンポーネント
  */
-export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
+export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
   constructor(props: ErrorBoundaryProps) {
     super(props);
     this.state = { hasError: false };

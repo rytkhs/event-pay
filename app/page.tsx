@@ -1,9 +1,11 @@
-import dynamic from "next/dynamic";
+import dynamicImport from "next/dynamic";
 import { redirect } from "next/navigation";
 
 import { createClient } from "@core/supabase/server";
 
-const LandingPage = dynamic(() => import("./(marketing)/_components/LandingPage"), {
+export const dynamic = "force-dynamic";
+
+const LandingPage = dynamicImport(() => import("./(marketing)/_components/LandingPage"), {
   ssr: false,
 });
 

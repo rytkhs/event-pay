@@ -69,7 +69,7 @@ export async function middleware(request: NextRequest) {
   response.headers.set("x-nonce", nonce);
 
   // 本番のみ：動的に生成した nonce で CSP を付与（開発/プレビューは next.config 側の静的CSPを使用）
-  if (getEnv().NODE_ENV === "production") {
+  if (process.env.NODE_ENV === "production") {
     const cspDirectives = [
       "default-src 'self'",
       // strict-dynamic を併用し、nonce 付きルートスクリプトからの信頼伝播を許可
@@ -96,9 +96,10 @@ export async function middleware(request: NextRequest) {
   }
 
   // Supabase SSRクライアント（Cookieの双方向同期: getAll / setAll）
+  const env = getEnv();
   const supabase = createServerClient(
-    getEnv().NEXT_PUBLIC_SUPABASE_URL!,
-    getEnv().NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    env.NEXT_PUBLIC_SUPABASE_URL,
+    env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
     {
       cookies: {
         getAll() {

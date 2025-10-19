@@ -108,7 +108,7 @@ function validateAndNormalizeRedirectUrls(formData: FormData): {
   }
 
   // 本番はHTTPSのみ許可（Stripe推奨）
-  const isProd = getEnv().NODE_ENV === "production";
+  const isProd = process.env.NODE_ENV === "production";
   if (isProd) {
     if (refresh.protocol !== "https:" || ret.protocol !== "https:") {
       throw new Error("本番環境ではHTTPSのリダイレクトURLのみ許可されています");

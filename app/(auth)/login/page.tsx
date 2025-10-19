@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 
+export const dynamic = "force-dynamic";
+
 import { loginAction } from "@core/actions/auth";
 
 import { useLoginFormRHF } from "@features/auth";

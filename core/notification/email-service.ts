@@ -9,6 +9,7 @@ import * as React from "react";
 import { Resend } from "resend";
 
 import { logger } from "@core/logging/app-logger";
+import { getEnv } from "@core/utils/cloudflare-env";
 
 import {
   IEmailNotificationService,
@@ -153,8 +154,8 @@ function sleep(ms: number): Promise<void> {
 function validateEmailConfig(): { fromEmail: string; adminEmail: string } {
   const isDev = process.env.NODE_ENV === "development" || process.env.NODE_ENV === "test";
 
-  let fromEmail = process.env.FROM_EMAIL;
-  let adminEmail = process.env.ADMIN_EMAIL;
+  let fromEmail = getEnv().FROM_EMAIL;
+  let adminEmail = getEnv().ADMIN_EMAIL;
 
   // 本番環境では必須
   if (!isDev) {
@@ -199,7 +200,7 @@ export class EmailNotificationService implements IEmailNotificationService {
   private adminEmail: string;
 
   constructor() {
-    const apiKey = process.env.RESEND_API_KEY;
+    const apiKey = getEnv().RESEND_API_KEY;
     if (!apiKey) {
       throw new Error("RESEND_API_KEY environment variable is required");
     }

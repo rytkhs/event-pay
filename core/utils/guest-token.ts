@@ -6,8 +6,6 @@ import {
 
 import type { Database } from "@/types/database";
 
-import { getEnv } from "./cloudflare-env";
-
 /**
  * ゲスト管理機能のためのユーティリティ関数
  *
@@ -80,7 +78,7 @@ export async function validateGuestToken(guestToken: string): Promise<{
       errorCode: rlsResult.errorCode,
     };
   } catch (error) {
-    if (getEnv().NODE_ENV === "development") {
+    if (process.env.NODE_ENV === "development") {
       const { logger } = await import("@core/logging/app-logger");
       logger.error("ゲストトークン検証エラー", {
         tag: "guestToken",

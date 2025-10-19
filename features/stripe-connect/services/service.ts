@@ -144,7 +144,7 @@ export class StripeConnectService implements IStripeConnectService {
       let createdNewAccount = false;
       if (!stripeAccount) {
         const idempotencyKey = generateIdempotencyKey("connect");
-        if (getEnv().NODE_ENV === "test") {
+        if (process.env.NODE_ENV === "test") {
           // テスト環境では引数シグネチャ互換のためリクエストオプションを渡さない
           stripeAccount = await this.stripe.accounts.create(createParams as any);
         } else {
@@ -164,7 +164,7 @@ export class StripeConnectService implements IStripeConnectService {
 
       if (dbError) {
         // Stripeアカウントは作成されたが、DBへの保存に失敗した場合は補償削除を試行
-        if (createdNewAccount && stripeAccount && getEnv().NODE_ENV !== "test") {
+        if (createdNewAccount && stripeAccount && process.env.NODE_ENV !== "test") {
           try {
             await this.stripe.accounts.del(stripeAccount.id);
           } catch (compensationError) {

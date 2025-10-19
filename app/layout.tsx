@@ -1,5 +1,6 @@
 import { Noto_Sans_JP } from "next/font/google";
 import localFont from "next/font/local";
+export const dynamic = "force-dynamic";
 
 import type { Metadata } from "next";
 

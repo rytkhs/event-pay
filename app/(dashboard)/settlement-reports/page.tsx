@@ -2,6 +2,8 @@ import React from "react";
 
 import { redirect } from "next/navigation";
 
+export const dynamic = "force-dynamic";
+
 import { getCurrentUser } from "@core/auth/auth-utils";
 import { createClient } from "@core/supabase/server";
 import { deriveEventStatus } from "@core/utils/derive-event-status";

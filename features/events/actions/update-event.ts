@@ -12,6 +12,7 @@ import {
   createServerActionSuccess,
   zodErrorToServerActionResponse,
 } from "@core/types/server-actions";
+import { getEnv } from "@core/utils/cloudflare-env";
 import { calculateAttendeeCount } from "@core/utils/event-calculations";
 import { checkEditRestrictionsV2, type EventWithAttendances } from "@core/utils/event-restrictions";
 import { extractEventUpdateFormData } from "@core/utils/form-data-extractors";
@@ -36,8 +37,8 @@ export async function updateEventAction(
       const origins = [];
 
       // 本番環境URL
-      if (process.env.NEXT_PUBLIC_SITE_URL) {
-        origins.push(process.env.NEXT_PUBLIC_SITE_URL);
+      if (getEnv().NEXT_PUBLIC_SITE_URL) {
+        origins.push(getEnv().NEXT_PUBLIC_SITE_URL);
       }
 
       // 開発環境URL
@@ -45,13 +46,15 @@ export async function updateEventAction(
       origins.push("https://localhost:3000");
 
       // Vercel Preview環境URL（動的に生成される）
-      if (process.env.VERCEL_URL) {
-        origins.push(`https://${process.env.VERCEL_URL}`);
+      if (getEnv().VERCEL_URL) {
+        origins.push(`https://${getEnv().VERCEL_URL}`);
       }
 
       // 追加の許可オリジン（環境変数で設定可能）
-      if (process.env.ALLOWED_ORIGINS) {
-        const additionalOrigins = process.env.ALLOWED_ORIGINS.split(",").map((o) => o.trim());
+      if (getEnv().ALLOWED_ORIGINS) {
+        const additionalOrigins = getEnv()
+          .ALLOWED_ORIGINS.split(",")
+          .map((o) => o.trim());
         origins.push(...additionalOrigins);
       }
 

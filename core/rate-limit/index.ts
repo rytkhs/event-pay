@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { createProblemResponse } from "@core/api/problem-details";
 import { logger } from "@core/logging/app-logger";
+import { getEnv } from "@core/utils/cloudflare-env";
 
 import { getLimiterForPolicy, getRedisClient } from "./client";
 import { protectIdentifier } from "./hash";
@@ -22,13 +23,13 @@ function parseWindowMs(window: RateLimitPolicy["window"]): number {
 }
 
 function shouldFailClosed(globalFailClosed: boolean, isPublicPaymentScope: boolean): boolean {
-  const publicFailClosed = process.env.RL_FAIL_CLOSED_PUBLIC === "true";
+  const publicFailClosed = getEnv().RL_FAIL_CLOSED_PUBLIC === "true";
   return globalFailClosed || (isPublicPaymentScope && publicFailClosed);
 }
 
 export async function enforceRateLimit(opts: EnforceOptions): Promise<EnforceResult> {
   const { keys, policy } = opts;
-  const allowIfStoreError = opts.allowIfStoreError ?? process.env.RL_FAIL_CLOSED !== "true";
+  const allowIfStoreError = opts.allowIfStoreError ?? getEnv().RL_FAIL_CLOSED !== "true";
 
   // ペナルティ優先
   const now = Date.now();
@@ -46,7 +47,7 @@ export async function enforceRateLimit(opts: EnforceOptions): Promise<EnforceRes
       }
     } catch (error) {
       const failClosed = shouldFailClosed(
-        process.env.RL_FAIL_CLOSED === "true",
+        getEnv().RL_FAIL_CLOSED === "true",
         policy.scope.startsWith("stripe.")
       );
       logger.warn("Rate limit penalty TTL read error", {
@@ -87,7 +88,7 @@ export async function enforceRateLimit(opts: EnforceOptions): Promise<EnforceRes
               await redis.set(penaltyKey, "1", { ex: retryAfter });
             } catch (error) {
               const failClosed = shouldFailClosed(
-                process.env.RL_FAIL_CLOSED === "true",
+                getEnv().RL_FAIL_CLOSED === "true",
                 policy.scope.startsWith("stripe.")
               );
               logger.warn("Rate limit penalty set error", {
@@ -115,7 +116,7 @@ export async function enforceRateLimit(opts: EnforceOptions): Promise<EnforceRes
     }
   } catch (error) {
     const failClosed = shouldFailClosed(
-      process.env.RL_FAIL_CLOSED === "true",
+      getEnv().RL_FAIL_CLOSED === "true",
       policy.scope.startsWith("stripe.")
     );
     logger.warn("Rate limit store error", {
