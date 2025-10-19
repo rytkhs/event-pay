@@ -1,7 +1,5 @@
 import "server-only";
 
-import crypto from "crypto";
-
 import Stripe from "stripe";
 
 import { logger } from "@core/logging/app-logger";
@@ -160,17 +158,9 @@ export const generateIdempotencyKey = (prefix?: string): string => {
     const uuid = (globalThis.crypto as Crypto).randomUUID();
     return prefix ? `${prefix}_${uuid}` : uuid;
   }
-
-  // Fallback: cryptographically secure random bytes -> hex
-  try {
-    const buf = crypto.randomBytes(16); // 128 bits
-    const hex = buf.toString("hex"); // 32 hex chars
-    return prefix ? `${prefix}_${hex}` : hex;
-  } catch {
-    // Last resort: pseudo-random (not recommended for production)
-    const fallback = `fallback_${Math.random().toString(36).slice(2)}_${Date.now()}`;
-    return prefix ? `${prefix}_${fallback}` : fallback;
-  }
+  // Last resort: pseudo-random (not recommended for production)
+  const fallback = `fallback_${Math.random().toString(36).slice(2)}_${Date.now()}`;
+  return prefix ? `${prefix}_${fallback}` : fallback;
 };
 
 /**
