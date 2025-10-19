@@ -1,0 +1,58 @@
+<svg width="1200" height="630" viewBox="0 0 1200 630" xmlns="http://www.w3.org/2000/svg">
+  <!-- 背景グラデーション -->
+  <defs>
+    <linearGradient id="bgGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#ffffff;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#e8f7f9;stop-opacity:1" />
+    </linearGradient>
+
+    <linearGradient id="accentGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#24a6b5;stop-opacity:0.1" />
+      <stop offset="50%" style="stop-color:#3a86ff;stop-opacity:0.1" />
+      <stop offset="100%" style="stop-color:#24a6b5;stop-opacity:0.1" />
+    </linearGradient>
+  </defs>
+
+  <!-- 背景 -->
+  <rect width="1200" height="630" fill="url(#bgGradient)"/>
+
+  <!-- アイコン（拡大版） -->
+  <g transform="translate(500, 150) scale(4)">
+    <path d="M 16 0 Q 24 8, 16 16 Q 8 8, 16 0" fill="#24a6b5"/>
+    <path d="M 32 16 Q 24 24, 16 16 Q 24 8, 32 16" fill="#24a6b5" opacity="0.8"/>
+    <path d="M 16 32 Q 8 24, 16 16 Q 24 24, 16 32" fill="#24a6b5" opacity="0.6"/>
+    <path d="M 0 16 Q 8 8, 16 16 Q 8 24, 0 16" fill="#24a6b5" opacity="0.4"/>
+  </g>
+
+  <!-- サービス名 -->
+  <text x="600" y="350" font-family="'Zen Kaku Gothic New', 'Noto Sans JP', sans-serif" font-size="72" font-weight="700" fill="#24a6b5" text-anchor="middle">
+    みんなの集金
+  </text>
+
+  <!-- キャッチコピー -->
+  <text x="600" y="420" font-family="'Zen Kaku Gothic New', 'Noto Sans JP', sans-serif" font-size="32" font-weight="400" fill="#333333" text-anchor="middle">
+    出欠から集金まで、ひとつのリンクで完了。
+  </text>
+
+  <!-- 下部の特徴ポイント -->
+  <g transform="translate(0, 480)">
+    <!-- アイコン1 -->
+    <circle cx="320" cy="30" r="8" fill="#3a86ff"/>
+    <text x="345" y="37" font-family="'Zen Kaku Gothic New', 'Noto Sans JP', sans-serif" font-size="22" fill="#555555">
+      オンライン決済
+    </text>
+
+    <!-- アイコン2 -->
+    <circle cx="530" cy="30" r="8" fill="#3a86ff"/>
+    <text x="555" y="37" font-family="'Zen Kaku Gothic New', 'Noto Sans JP', sans-serif" font-size="22" fill="#555555">
+      自動集計
+    </text>
+
+    <!-- アイコン3 -->
+    <circle cx="730" cy="30" r="8" fill="#3a86ff"/>
+    <text x="755" y="37" font-family="'Zen Kaku Gothic New', 'Noto Sans JP', sans-serif" font-size="22" fill="#555555">
+      登録不要
+    </text>
+  </g>
+
+</svg>

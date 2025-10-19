@@ -43,7 +43,7 @@ export const metadata: Metadata = {
     type: "website",
     images: [
       {
-        url: "/api/og?type=homepage",
+        url: "/og/homepage.png",
         width: 1200,
         height: 630,
         alt: "みんなの集金 - 出欠から集金まで、ひとつのリンクで完了",
@@ -55,7 +55,7 @@ export const metadata: Metadata = {
       { url: "/icon.svg", type: "image/svg+xml", sizes: "any" },
       { url: "/favicon.ico", sizes: "48x48" },
     ],
-    apple: [{ url: "/apple-icon", sizes: "180x180", type: "image/png" }],
+    apple: [{ url: "/apple-icon.png", sizes: "180x180", type: "image/png" }],
     other: [{ rel: "mask-icon", url: "/safari-pinned-tab.svg", color: "#24a6b5" }],
   },
 };

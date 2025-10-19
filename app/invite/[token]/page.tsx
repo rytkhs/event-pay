@@ -216,25 +216,8 @@ export async function generateMetadata({ params }: InvitePageProps): Promise<Met
 
     const event = validationResult.event;
 
-    // OG画像用のクエリパラメータを構築
-    const ogParams = new URLSearchParams({
-      type: "event",
-      eventTitle: event.title,
-      eventDate: event.date,
-      eventFee: event.fee.toString(),
-    });
-
-    // 場所がnullでない場合のみ追加
-    if (event.location) {
-      ogParams.set("eventLocation", event.location);
-    }
-
-    // 定員がnullでない場合のみ追加
-    if (event.capacity !== null) {
-      ogParams.set("eventCapacity", event.capacity.toString());
-    }
-
-    const ogImageUrl = `/api/og?${ogParams.toString()}`;
+    // 静的OG画像を使用
+    const ogImageUrl = "/og/event-default.png";
 
     return {
       title: `${event.title} - 参加申し込み | みんなの集金`,
