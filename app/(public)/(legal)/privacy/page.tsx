@@ -1,9 +1,9 @@
-import { renderMarkdownFromFile } from "@core/utils/markdown";
+import { renderMarkdownFromPublic } from "@core/utils/markdown";
 
 export const dynamic = "force-static";
 
 export default async function Page() {
-  const { html, frontmatter } = await renderMarkdownFromFile("content/legal/privacy.md");
+  const { html, frontmatter } = await renderMarkdownFromPublic("/legal/privacy.md");
   return (
     <div>
       <h2>{frontmatter.title ?? "プライバシーポリシー"}</h2>

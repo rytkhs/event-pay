@@ -49,6 +49,23 @@ export async function renderMarkdownFromFile(relativePath: string) {
   };
 }
 
+export async function renderMarkdownFromString(content: string) {
+  const parsed = matter(content);
+
+  const processor = unified()
+    .use(remarkParse)
+    .use(remarkGfm)
+    .use(remarkRehype)
+    .use(rehypeSanitize)
+    .use(rehypeStringify);
+
+  const file = await processor.process(parsed.content);
+  return {
+    html: String(file.value),
+    frontmatter: (parsed.data || {}) as MarkdownFrontmatter,
+  };
+}
+
 export async function renderFirstExistingMarkdownFile(
   relativePaths: string[]
 ): Promise<{ result: RenderedMarkdown; usedPath: string } | null> {
@@ -68,4 +85,16 @@ export async function listMarkdownSlugsUnder(directoryRelativePath: string): Pro
   return entries
     .filter((e) => e.isFile() && e.name.endsWith(".md") && !e.name.startsWith("_"))
     .map((e) => e.name.replace(/\.md$/, ""));
+}
+
+export async function renderMarkdownFromPublic(pathFromPublicRoot: string) {
+  // Build absolute URL for same-origin fetch in server context
+  const base = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+  const url = new URL(pathFromPublicRoot, base);
+  const res = await fetch(url.toString(), { next: { revalidate: 60 * 60 * 24 } });
+  if (!res.ok) {
+    throw new Error(`Failed to fetch ${url.toString()}: ${res.status}`);
+  }
+  const md = await res.text();
+  return renderMarkdownFromString(md);
 }
