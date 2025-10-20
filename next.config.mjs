@@ -95,6 +95,10 @@ const nextConfig = {
     dangerouslyAllowSVG: false,
     contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
   },
+
+  experimental: {
+    serverComponentsExternalPackages: ["pino"],
+  },
 };
 
 export default withBundleAnalyzer({

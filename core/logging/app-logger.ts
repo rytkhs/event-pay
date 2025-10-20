@@ -50,18 +50,15 @@ function createPinoLogger() {
       ...baseConfig,
     });
   } else {
-    // 本番環境: JSON 出力（Datadog 等への送信用）
+    // 本番環境: Cloudflare Workers向けにconsoleへJSONとして出す
     return pino({
-      ...baseConfig,
-      formatters: {
-        // Datadog 互換フォーマット
-        level: (label) => ({ level: label }),
-        log: (object) => ({
-          ...object,
-          // Datadog のタグフォーマット
-          ddtags: object.tag ? `tag:${object.tag}` : undefined,
-        }),
+      level: process.env.PINO_LOG_LEVEL ?? "info", // 環境変数でログレベルを制御
+      browser: {
+        asObject: true,
+        write: (o) => console.log(JSON.stringify(o)),
       },
+      base: undefined, // baseはbrowserモードだと効きにくいことがあるためundefinedにしchildで付与
+      timestamp: pino.stdTimeFunctions.isoTime,
     });
   }
 }
