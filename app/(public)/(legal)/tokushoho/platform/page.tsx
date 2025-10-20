@@ -1,9 +1,9 @@
-import { renderMarkdownFromFile } from "@core/utils/markdown";
+import { renderMarkdownFromPublic } from "@core/utils/markdown";
 
 export const dynamic = "force-static";
 
 export default async function Page() {
-  const { html, frontmatter } = await renderMarkdownFromFile("content/legal/tokushoho/platform.md");
+  const { html, frontmatter } = await renderMarkdownFromPublic("/legal/tokushoho/platform.md");
   const heading = frontmatter.title ?? "特定商取引法に基づく表記";
 
   return (

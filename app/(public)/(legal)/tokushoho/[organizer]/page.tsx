@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 
 import { createClient } from "@core/supabase/server";
-import { renderMarkdownFromFile } from "@core/utils/markdown";
+import { renderMarkdownFromPublic } from "@core/utils/markdown";
 import { sanitizeForEventPay } from "@core/utils/sanitize";
 
 export const dynamic = "force-dynamic";
@@ -10,9 +10,7 @@ type Params = { organizer: string };
 
 export default async function Page({ params }: { params: Params }) {
   try {
-    const { html, frontmatter } = await renderMarkdownFromFile(
-      "content/legal/tokushoho/organizer.md"
-    );
+    const { html, frontmatter } = await renderMarkdownFromPublic("/legal/tokushoho/organizer.md");
     // 主催者ニックネーム取得（未認証でも呼べる範囲でベストエフォート）
     let organizerNickname = "";
     try {
