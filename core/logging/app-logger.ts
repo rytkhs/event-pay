@@ -1,7 +1,5 @@
 import pino from "pino";
 
-import { getEnv } from "@core/utils/cloudflare-env";
-
 /**
  * EventPay 構造化ログシステム
  *
@@ -54,7 +52,7 @@ function createPinoLogger() {
   } else {
     // 本番環境: Cloudflare Workers向けにレベル別consoleメソッドへオブジェクトのまま渡す
     return pino({
-      level: getEnv().PINO_LOG_LEVEL ?? "info", // 環境変数でログレベルを制御
+      level: process.env.PINO_LOG_LEVEL ?? "info", // 環境変数でログレベルを制御
       browser: {
         asObject: true,
         write: {
