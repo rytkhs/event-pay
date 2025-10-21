@@ -50,12 +50,17 @@ function createPinoLogger() {
       ...baseConfig,
     });
   } else {
-    // 本番環境: Cloudflare Workers向けにconsoleへJSONとして出す
+    // 本番環境: Cloudflare Workers向けにレベル別consoleメソッドへオブジェクトのまま渡す
     return pino({
       level: process.env.PINO_LOG_LEVEL ?? "info", // 環境変数でログレベルを制御
       browser: {
         asObject: true,
-        write: (o) => console.log(JSON.stringify(o)),
+        write: {
+          info: (o) => console.info(o),
+          warn: (o) => console.warn(o),
+          error: (o) => console.error(o),
+          debug: (o) => console.debug(o),
+        },
       },
       base: undefined, // baseはbrowserモードだと効きにくいことがあるためundefinedにしchildで付与
       timestamp: pino.stdTimeFunctions.isoTime,

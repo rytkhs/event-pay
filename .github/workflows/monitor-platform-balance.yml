@@ -1,0 +1,23 @@
+name: Monitor Platform Balance
+
+on:
+  schedule:
+    - cron: "0 9 * * *" # 毎日 UTC 9:00 (JST 18:00)
+  workflow_dispatch: # 手動実行を許可
+
+jobs:
+  monitor-platform-balance:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Monitor Platform Balance
+        run: |
+          response=$(curl -s -w "\n%{http_code}" -X GET \
+            "${{ secrets.APP_URL }}/api/cron/monitor-platform-balance" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}")
+          http_code=$(echo "$response" | tail -n1)
+          body=$(echo "$response" | sed '$d')
+          echo "Response: $body"
+          if [ "$http_code" -ne 200 ]; then
+            echo "Error: HTTP $http_code"
+            exit 1
+          fi
