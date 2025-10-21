@@ -1,10 +1,8 @@
-import pino from "pino";
-
 /**
  * EventPay 構造化ログシステム
  *
  * - 本番環境: JSON 形式で構造化ログ出力
- * - 開発環境: pino-pretty で人間可読な出力
+ * - 開発環境: JSON 形式で構造化ログ出力
  * - Stripe request-id、Idempotency-Key、タグ機能対応
  * - Datadog 等 APM への送信準備
  */
@@ -29,46 +27,6 @@ export interface EventPayLogFields {
   /** その他のコンテキスト */
   [key: string]: unknown;
 }
-
-/** Pino インスタンスの作成 */
-function createPinoLogger() {
-  const isDevelopment = process.env.NODE_ENV !== "production";
-
-  const baseConfig = {
-    level: isDevelopment ? "debug" : "info",
-    base: {
-      service: "eventpay",
-      env: process.env.NODE_ENV || "development",
-      version: process.env.npm_package_version || "1.0.0",
-    },
-  };
-
-  if (isDevelopment) {
-    // 開発環境: worker を使う transport は使用しない（Next.js dev で thread-stream が落ちるため）
-    // 代わりに JSON を stdout に出し、CLI 側で `pino-pretty` にパイプして整形する
-    return pino({
-      ...baseConfig,
-    });
-  } else {
-    // 本番環境: Cloudflare Workers向けにレベル別consoleメソッドへオブジェクトのまま渡す
-    return pino({
-      level: process.env.PINO_LOG_LEVEL ?? "info", // 環境変数でログレベルを制御
-      browser: {
-        asObject: true,
-        write: {
-          info: (o) => console.info(o),
-          warn: (o) => console.warn(o),
-          error: (o) => console.error(o),
-          debug: (o) => console.debug(o),
-        },
-      },
-      base: undefined, // baseはbrowserモードだと効きにくいことがあるためundefinedにしchildで付与
-      timestamp: pino.stdTimeFunctions.isoTime,
-    });
-  }
-}
-
-const pinoLogger = createPinoLogger();
 
 /**
  * EventPay 専用ロガー
@@ -139,7 +97,18 @@ export const logger = {
    */
   debug(msg: string, fields?: EventPayLogFields) {
     const normalized = (this as any)._normalize(msg, fields);
-    pinoLogger.debug(normalized, msg);
+    // eslint-disable-next-line no-console
+    console.debug(
+      JSON.stringify({
+        level: "debug",
+        msg,
+        timestamp: new Date().toISOString(),
+        service: "eventpay",
+        env: process.env.NODE_ENV || "development",
+        version: process.env.npm_package_version || "1.0.0",
+        ...normalized,
+      })
+    );
   },
 
   /**
@@ -147,7 +116,18 @@ export const logger = {
    */
   info(msg: string, fields?: EventPayLogFields) {
     const normalized = (this as any)._normalize(msg, fields);
-    pinoLogger.info(normalized, msg);
+    // eslint-disable-next-line no-console
+    console.info(
+      JSON.stringify({
+        level: "info",
+        msg,
+        timestamp: new Date().toISOString(),
+        service: "eventpay",
+        env: process.env.NODE_ENV || "development",
+        version: process.env.npm_package_version || "1.0.0",
+        ...normalized,
+      })
+    );
   },
 
   /**
@@ -155,7 +135,18 @@ export const logger = {
    */
   warn(msg: string, fields?: EventPayLogFields) {
     const normalized = (this as any)._normalize(msg, fields);
-    pinoLogger.warn(normalized, msg);
+    // eslint-disable-next-line no-console
+    console.warn(
+      JSON.stringify({
+        level: "warn",
+        msg,
+        timestamp: new Date().toISOString(),
+        service: "eventpay",
+        env: process.env.NODE_ENV || "development",
+        version: process.env.npm_package_version || "1.0.0",
+        ...normalized,
+      })
+    );
   },
 
   /**
@@ -163,7 +154,18 @@ export const logger = {
    */
   error(msg: string, fields?: EventPayLogFields) {
     const normalized = (this as any)._normalize(msg, fields);
-    pinoLogger.error(normalized, msg);
+    // eslint-disable-next-line no-console
+    console.error(
+      JSON.stringify({
+        level: "error",
+        msg,
+        timestamp: new Date().toISOString(),
+        service: "eventpay",
+        env: process.env.NODE_ENV || "development",
+        version: process.env.npm_package_version || "1.0.0",
+        ...normalized,
+      })
+    );
   },
 
   /**
@@ -173,20 +175,17 @@ export const logger = {
    * @param context 追加のコンテキスト
    */
   withStripeContext(stripe_request_id: string, context?: EventPayLogFields) {
-    const child = pinoLogger.child({
-      stripe_request_id,
-      ...context,
-    });
+    const mergedContext = { stripe_request_id, ...context };
 
     return {
       debug: (msg: string, fields?: EventPayLogFields) =>
-        child.debug((logger as any)._normalize(msg, fields), msg),
+        logger.debug(msg, { ...mergedContext, ...fields }),
       info: (msg: string, fields?: EventPayLogFields) =>
-        child.info((logger as any)._normalize(msg, fields), msg),
+        logger.info(msg, { ...mergedContext, ...fields }),
       warn: (msg: string, fields?: EventPayLogFields) =>
-        child.warn((logger as any)._normalize(msg, fields), msg),
+        logger.warn(msg, { ...mergedContext, ...fields }),
       error: (msg: string, fields?: EventPayLogFields) =>
-        child.error((logger as any)._normalize(msg, fields), msg),
+        logger.error(msg, { ...mergedContext, ...fields }),
     };
   },
 
@@ -196,22 +195,20 @@ export const logger = {
    * @param context ログコンテキスト
    */
   withContext(context: EventPayLogFields) {
-    const child = pinoLogger.child(context);
-
     return {
       debug: (msg: string, fields?: EventPayLogFields) =>
-        child.debug((logger as any)._normalize(msg, fields), msg),
+        logger.debug(msg, { ...context, ...fields }),
       info: (msg: string, fields?: EventPayLogFields) =>
-        child.info((logger as any)._normalize(msg, fields), msg),
+        logger.info(msg, { ...context, ...fields }),
       warn: (msg: string, fields?: EventPayLogFields) =>
-        child.warn((logger as any)._normalize(msg, fields), msg),
+        logger.warn(msg, { ...context, ...fields }),
       error: (msg: string, fields?: EventPayLogFields) =>
-        child.error((logger as any)._normalize(msg, fields), msg),
+        logger.error(msg, { ...context, ...fields }),
     };
   },
 
   /**
-   * 生の Pino インスタンスへのアクセス（高度な用途）
+   * 生のロガーインスタンスへのアクセス（互換性のため空オブジェクト）
    */
-  raw: pinoLogger,
+  raw: {},
 } as const;

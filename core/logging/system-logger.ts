@@ -10,8 +10,9 @@ import "server-only";
 
 import { createClient } from "@supabase/supabase-js";
 
-import { logger } from "./app-logger";
 import { getEnv } from "@core/utils/cloudflare-env";
+
+import { logger } from "./app-logger";
 
 // ============================================================================
 // 型定義
