@@ -4,28 +4,39 @@
 	"name": "event-pay",
 	"compatibility_date": "2025-10-11",
 	"compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+	"keep_vars": true,
 	"minify": true,
 	"assets": {
 		"directory": ".open-next/assets",
 		"binding": "ASSETS"
 	},
+	"services": [
+		{
+			"binding": "WORKER_SELF_REFERENCE",
+			"service": "event-pay"
+		}
+	],
+	"placement": {
+		"mode": "smart"
+	},
+	"routes": [
+		{
+			"pattern": "minnano-shukin.com",
+			"custom_domain": true
+		}
+  ],
 	"r2_buckets": [
-		// Use R2 incremental cache
-		// See https://opennext.js.org/cloudflare/caching
 		{
 			"binding": "NEXT_INC_CACHE_R2_BUCKET",
-			// Create the bucket before deploying
-			// You can change the bucket name if you want
-			// See https://developers.cloudflare.com/workers/wrangler/commands/#r2-bucket-create
 			"bucket_name": "cache"
 		}
 	],
 	"observability": {
 		"logs": {
 			"enabled": true,
-			"head_sampling_rate": 1,
+			"head_sampling_rate": 0.1,
 			"invocation_logs": true,
-			"persist": true
 		}
-	}
+	},
+	"send_metrics": false
 }
