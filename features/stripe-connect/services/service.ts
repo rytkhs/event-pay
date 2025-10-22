@@ -283,6 +283,16 @@ export class StripeConnectService implements IStripeConnectService {
       // Stripe Account IDの形式チェック
       validateStripeAccountId(accountId);
 
+      // デバッグログ: Stripe API呼び出し前の情報
+      logger.info("Stripe API Call Debug Info", {
+        tag: "stripeApiCallDebug",
+        operation: "get_account_info",
+        account_id: accountId,
+        account_id_length: accountId.length,
+        account_id_starts_with: accountId.substring(0, 10),
+        timestamp: new Date().toISOString(),
+      });
+
       // Stripeからアカウント情報を取得
       const account = await this.stripe.accounts.retrieve(accountId);
 
@@ -422,6 +432,20 @@ export class StripeConnectService implements IStripeConnectService {
         capabilities,
       };
     } catch (error) {
+      // デバッグログ: エラーの詳細情報を出力
+      logger.error("Stripe API Call Failed", {
+        tag: "stripeApiCallError",
+        operation: "get_account_info",
+        account_id: accountId,
+        error_name: error instanceof Error ? error.name : "Unknown",
+        error_message: error instanceof Error ? error.message : String(error),
+        error_type: error instanceof Stripe.errors.StripeError ? error.type : "Unknown",
+        error_code: error instanceof Stripe.errors.StripeError ? error.code : "Unknown",
+        error_status_code:
+          error instanceof Stripe.errors.StripeError ? error.statusCode : "Unknown",
+        timestamp: new Date().toISOString(),
+      });
+
       if (error instanceof StripeConnectError) {
         throw error;
       }

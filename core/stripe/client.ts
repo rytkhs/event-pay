@@ -15,6 +15,19 @@ export function getStripe(): Stripe {
   const env = getEnv();
   const stripeSecretKey = getRequiredEnvVar("STRIPE_SECRET_KEY");
 
+  // デバッグログ: APIキーの詳細情報を出力
+  logger.info("Stripe API Key Debug Info", {
+    tag: "stripeApiKeyDebug",
+    key_length: stripeSecretKey.length,
+    key_starts_with: stripeSecretKey.substring(0, 10),
+    key_ends_with: stripeSecretKey.substring(stripeSecretKey.length - 10),
+    key_has_newlines: stripeSecretKey.includes("\n"),
+    key_has_spaces: stripeSecretKey.includes(" "),
+    key_has_tabs: stripeSecretKey.includes("\t"),
+    node_env: env.NODE_ENV,
+    vercel_env: env.VERCEL_ENV,
+  });
+
   const instance = new Stripe(stripeSecretKey, {
     apiVersion:
       (env.STRIPE_API_VERSION as Stripe.LatestApiVersion | undefined) ?? "2025-09-30.clover",
