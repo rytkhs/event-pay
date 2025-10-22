@@ -15,22 +15,22 @@ export const RATE_LIMIT_CONFIG = {
   // ログインAPI
   login: {
     windowMs: 15 * 60 * 1000, // 15分
-    maxAttempts: 10, // 10回まで
+    maxAttempts: 15, // 15回まで
     blockDurationMs: 30 * 60 * 1000, // 30分ブロック
   },
 
   // パスワードリセットAPI
   passwordReset: {
     windowMs: 60 * 60 * 1000, // 1時間
-    maxAttempts: 3, // 3回まで
-    blockDurationMs: 24 * 60 * 60 * 1000, // 24時間ブロック
+    maxAttempts: 5, // 5回まで
+    blockDurationMs: 2 * 60 * 60 * 1000, // 2時間ブロック
   },
 
   // メール再送信API（未確認ユーザーログイン時）
   emailResend: {
     windowMs: 60 * 1000, // 1分
-    maxAttempts: 2, // 2回まで
-    blockDurationMs: 5 * 60 * 1000, // 5分ブロック
+    maxAttempts: 6, // 6回まで
+    blockDurationMs: 3 * 60 * 1000, // 3分ブロック
   },
 
   // 招待リンク関連API（参加登録と同一設定）
