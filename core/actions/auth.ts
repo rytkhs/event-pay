@@ -297,42 +297,11 @@ export async function loginAction(formData: FormData): Promise<ActionResult<{ us
         typeof (signInError as any).message === "string" &&
         (signInError as any).message === "Email not confirmed"
       ) {
-        try {
-          // 開発環境では確認メールを自動再送信
-          if (process.env.NODE_ENV === "development") {
-            const { error: resendError } = await supabase.auth.resend({
-              type: "signup",
-              email: sanitizedEmail,
-            });
-
-            if (resendError) {
-              logger.error("Email confirmation resend failed", {
-                tag: "emailResendFailed",
-                error_message: resendError.message,
-                sanitized_email: sanitizedEmail.replace(/(.)(.*)(@.*)/, "$1***$3"),
-              });
-            }
-          }
-
-          return {
-            success: false,
-            error: "メールアドレスの確認が必要です。確認メールを再送信しました。",
-            redirectUrl: `/verify-email?email=${encodeURIComponent(sanitizedEmail)}`,
-          };
-        } catch (resendError) {
-          logger.error("Email resend process failed", {
-            tag: "emailResendProcessFailed",
-            error_name: resendError instanceof Error ? resendError.name : "Unknown",
-            error_message: resendError instanceof Error ? resendError.message : String(resendError),
-            sanitized_email: sanitizedEmail.replace(/(.)(.*)(@.*)/, "$1***$3"),
-          });
-
-          return {
-            success: false,
-            error: "メールアドレスの確認が必要です。",
-            redirectUrl: `/verify-email?email=${encodeURIComponent(sanitizedEmail)}`,
-          };
-        }
+        return {
+          success: false,
+          error: "メールアドレスの確認が必要です。",
+          redirectUrl: `/verify-email?email=${encodeURIComponent(sanitizedEmail)}`,
+        };
       }
 
       // ユーザー列挙攻撃対策: 統一されたエラーメッセージ
