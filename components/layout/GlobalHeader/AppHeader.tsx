@@ -73,79 +73,79 @@ export function AppHeader({ user, className }: AppHeaderProps) {
                     <Menu className="h-5 w-5" />
                   </Button>
                 </SheetTrigger>
-                <SheetContent side="right" className="w-full max-w-xs">
-                  <SheetHeader>
+                <SheetContent side="right" className="w-full max-w-xs flex flex-col">
+                  <SheetHeader className="flex-shrink-0">
                     <SheetTitle>メニュー</SheetTitle>
                   </SheetHeader>
 
-                  <div className="mt-6 flex flex-col h-full">
-                    {/* プロフィールセクション */}
-                    <div className="px-4 py-4 bg-muted/30 rounded-xl border border-border/50">
-                      <div className="flex items-center space-x-3">
-                        {/* ユーザーイニシャル */}
-                        <div className="flex-shrink-0 w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
-                          <span className="text-sm font-semibold text-primary">
-                            {(user.name || user.email)?.[0]?.toUpperCase() || "U"}
-                          </span>
-                        </div>
+                  <div className="flex-1 overflow-y-auto">
+                    <div className="mt-6 space-y-6">
+                      {/* プロフィールセクション */}
+                      <div className="px-4 py-4 bg-muted/30 rounded-xl border border-border/50">
+                        <div className="flex items-center space-x-3">
+                          {/* ユーザーイニシャル */}
+                          <div className="flex-shrink-0 w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
+                            <span className="text-sm font-semibold text-primary">
+                              {(user.name || user.email)?.[0]?.toUpperCase() || "U"}
+                            </span>
+                          </div>
 
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-foreground truncate">
-                            {user.name || user.email}
-                          </p>
-                          <p className="text-xs text-muted-foreground">ログイン中</p>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-foreground truncate">
+                              {user.name || user.email}
+                            </p>
+                            <p className="text-xs text-muted-foreground">ログイン中</p>
+                          </div>
                         </div>
                       </div>
-                    </div>
 
-                    {/* メインナビゲーション */}
-                    <nav className="mt-6 space-y-1">
-                      {[...navigationConfig.app, ...navigationConfig.mobile].map((item) => (
-                        <div key={item.href} className="group">
-                          <MobileNavLink
-                            href={item.href}
-                            exactMatch={item.exactMatch}
-                            className="flex items-center justify-between px-4 py-4 text-base font-medium transition-all duration-200 hover:text-primary hover:bg-primary/5 rounded-xl"
-                          >
-                            <div className="flex items-center space-x-3">
-                              {item.icon && (
-                                <span className="h-5 w-5 flex-shrink-0">{item.icon}</span>
-                              )}
-                              <span>{item.label}</span>
-                            </div>
-                            <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
-                          </MobileNavLink>
-                        </div>
-                      ))}
-                    </nav>
+                      {/* メインナビゲーション */}
+                      <nav className="space-y-1">
+                        {[...navigationConfig.app, ...navigationConfig.mobile].map((item) => (
+                          <div key={item.href} className="group">
+                            <MobileNavLink
+                              href={item.href}
+                              exactMatch={item.exactMatch}
+                              className="flex items-center justify-between px-4 py-4 text-base font-medium transition-all duration-200 hover:text-primary hover:bg-primary/5 rounded-xl"
+                            >
+                              <div className="flex items-center space-x-3">
+                                {item.icon && (
+                                  <span className="h-5 w-5 flex-shrink-0">{item.icon}</span>
+                                )}
+                                <span>{item.label}</span>
+                              </div>
+                              <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
+                            </MobileNavLink>
+                          </div>
+                        ))}
+                      </nav>
 
-                    <div className="flex-1" />
+                      {/* 設定セクション */}
+                      <div className="space-y-1">
+                        <Separator className="mb-4" />
 
-                    {/* 設定セクション */}
-                    <div className="mt-auto space-y-1">
-                      <Separator className="mb-4" />
+                        {userMenuItems.map((item) => (
+                          <div key={item.href} className="group">
+                            <MobileNavLink
+                              href={item.href}
+                              className="flex items-center justify-between px-4 py-4 text-base font-medium transition-all duration-200 hover:text-primary hover:bg-primary/5 rounded-xl"
+                            >
+                              <div className="flex items-center space-x-3">
+                                {item.icon && (
+                                  <span className="h-5 w-5 flex-shrink-0">{item.icon}</span>
+                                )}
+                                <span>{item.label}</span>
+                              </div>
+                              <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
+                            </MobileNavLink>
+                          </div>
+                        ))}
 
-                      {userMenuItems.map((item) => (
-                        <div key={item.href} className="group">
-                          <MobileNavLink
-                            href={item.href}
-                            className="flex items-center justify-between px-4 py-4 text-base font-medium transition-all duration-200 hover:text-primary hover:bg-primary/5 rounded-xl"
-                          >
-                            <div className="flex items-center space-x-3">
-                              {item.icon && (
-                                <span className="h-5 w-5 flex-shrink-0">{item.icon}</span>
-                              )}
-                              <span>{item.label}</span>
-                            </div>
-                            <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
-                          </MobileNavLink>
-                        </div>
-                      ))}
+                        <Separator className="my-4" />
 
-                      <Separator className="my-4" />
-
-                      {/* ログアウトセクション */}
-                      <UserMenu user={user} isMobile={true} />
+                        {/* ログアウトセクション */}
+                        <UserMenu user={user} isMobile={true} />
+                      </div>
                     </div>
                   </div>
                 </SheetContent>
