@@ -57,7 +57,7 @@ export function MarketingHeader({ className }: MarketingHeaderProps) {
             <div className="flex items-center">
               <NavLink
                 href="/"
-                className="text-xl sm:text-2xl font-bold text-primary hover:bg-transparent border-b-0 hover:border-b-0"
+                className="text-lg sm:text-xl md:text-2xl font-bold text-primary hover:bg-transparent border-b-0 hover:border-b-0 whitespace-nowrap"
                 exactMatch={true}
               >
                 みんなの集金
@@ -111,17 +111,17 @@ export function MarketingHeader({ className }: MarketingHeaderProps) {
             </nav>
 
             {/* モバイル用ナビゲーション */}
-            <div className="md:hidden flex items-center space-x-2">
+            <div className="md:hidden flex items-center space-x-1">
               {/* モバイル用ログインリンク */}
               <NavLink
                 href="/login"
-                className="text-sm font-medium text-muted-foreground hover:text-foreground border-b-0 hover:border-b-0 hover:bg-transparent px-2 py-1"
+                className="text-xs sm:text-sm font-medium text-muted-foreground hover:text-foreground border-b-0 hover:border-b-0 hover:bg-transparent px-1 py-1 whitespace-nowrap"
               >
                 ログイン
               </NavLink>
 
               {/* モバイル用CTA ボタン */}
-              <Button asChild variant={marketingCTA.variant} size="sm">
+              <Button asChild variant={marketingCTA.variant} size="sm" className="text-xs">
                 <NavLink href={marketingCTA.href}>{marketingCTA.label}</NavLink>
               </Button>
             </div>
