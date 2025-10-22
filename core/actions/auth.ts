@@ -88,11 +88,7 @@ const updatePasswordSchema = z
     password: z
       .string()
       .min(8, "パスワードは8文字以上で入力してください")
-      .max(128)
-      .regex(
-        /^(?=.*[A-Z])(?=.*[a-z])(?=.*\d)/,
-        "パスワードは大文字・小文字・数字を含む必要があります"
-      ),
+      .max(128, "パスワードは128文字以内で入力してください"),
     passwordConfirm: z.string(),
   })
   .refine((data) => data.password === data.passwordConfirm, {
@@ -560,7 +556,7 @@ export async function verifyOtpAction(formData: FormData): Promise<ActionResult>
 
       let errorMessage = "確認コードが正しくありません";
       if ((verifiedError as any)?.message?.includes("expired")) {
-        errorMessage = "確認コードの有効期限が切れています";
+        errorMessage = "確認コードが無効、もしくは有効期限が切れています";
       } else if ((verifiedError as any)?.message?.includes("invalid")) {
         errorMessage = "無効な確認コードです";
       }

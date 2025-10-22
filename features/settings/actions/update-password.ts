@@ -11,11 +11,8 @@ const updatePasswordSchema = z.object({
   currentPassword: z.string().min(1, "現在のパスワードを入力してください"),
   newPassword: z
     .string()
-    .min(8, "新しいパスワードは8文字以上で入力してください")
-    .regex(
-      /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/,
-      "新しいパスワードには大文字・小文字・数字を含めてください"
-    ),
+    .min(8, "パスワードは8文字以上で入力してください")
+    .max(128, "パスワードは128文字以内で入力してください"),
 });
 
 export async function updatePasswordAction(formData: FormData): Promise<ActionResult> {
