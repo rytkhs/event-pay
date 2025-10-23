@@ -80,7 +80,7 @@ const resetPasswordSchema = z.object({
 const verifyOtpSchema = z.object({
   email: z.string().email("有効なメールアドレスを入力してください"),
   otp: z.string().regex(/^\d{6}$/, "6桁の数字を入力してください"),
-  type: z.enum(["signup", "recovery", "email_change"]),
+  type: z.enum(["email", "recovery", "email_change"]),
 });
 
 const updatePasswordSchema = z
@@ -88,11 +88,7 @@ const updatePasswordSchema = z
     password: z
       .string()
       .min(8, "パスワードは8文字以上で入力してください")
-      .max(128)
-      .regex(
-        /^(?=.*[A-Z])(?=.*[a-z])(?=.*\d)/,
-        "パスワードは大文字・小文字・数字を含む必要があります"
-      ),
+      .max(128, "パスワードは128文字以内で入力してください"),
     passwordConfirm: z.string(),
   })
   .refine((data) => data.password === data.passwordConfirm, {
@@ -301,42 +297,11 @@ export async function loginAction(formData: FormData): Promise<ActionResult<{ us
         typeof (signInError as any).message === "string" &&
         (signInError as any).message === "Email not confirmed"
       ) {
-        try {
-          // 開発環境では確認メールを自動再送信
-          if (process.env.NODE_ENV === "development") {
-            const { error: resendError } = await supabase.auth.resend({
-              type: "signup",
-              email: sanitizedEmail,
-            });
-
-            if (resendError) {
-              logger.error("Email confirmation resend failed", {
-                tag: "emailResendFailed",
-                error_message: resendError.message,
-                sanitized_email: sanitizedEmail.replace(/(.)(.*)(@.*)/, "$1***$3"),
-              });
-            }
-          }
-
-          return {
-            success: false,
-            error: "メールアドレスの確認が必要です。確認メールを再送信しました。",
-            redirectUrl: `/verify-email?email=${encodeURIComponent(sanitizedEmail)}`,
-          };
-        } catch (resendError) {
-          logger.error("Email resend process failed", {
-            tag: "emailResendProcessFailed",
-            error_name: resendError instanceof Error ? resendError.name : "Unknown",
-            error_message: resendError instanceof Error ? resendError.message : String(resendError),
-            sanitized_email: sanitizedEmail.replace(/(.)(.*)(@.*)/, "$1***$3"),
-          });
-
-          return {
-            success: false,
-            error: "メールアドレスの確認が必要です。",
-            redirectUrl: `/verify-email?email=${encodeURIComponent(sanitizedEmail)}`,
-          };
-        }
+        return {
+          success: false,
+          error: "メールアドレスの確認が必要です。",
+          redirectUrl: `/verify-email?email=${encodeURIComponent(sanitizedEmail)}`,
+        };
       }
 
       // ユーザー列挙攻撃対策: 統一されたエラーメッセージ
@@ -560,7 +525,7 @@ export async function verifyOtpAction(formData: FormData): Promise<ActionResult>
 
       let errorMessage = "確認コードが正しくありません";
       if ((verifiedError as any)?.message?.includes("expired")) {
-        errorMessage = "確認コードの有効期限が切れています";
+        errorMessage = "確認コードが無効、もしくは有効期限が切れています";
       } else if ((verifiedError as any)?.message?.includes("invalid")) {
         errorMessage = "無効な確認コードです";
       }
@@ -571,10 +536,25 @@ export async function verifyOtpAction(formData: FormData): Promise<ActionResult>
       };
     }
 
+    // タイプに応じてリダイレクト先を決定
+    let redirectUrl = "/dashboard";
+    let message = "メールアドレスが確認されました";
+
+    if (type === "recovery") {
+      redirectUrl = "/reset-password/update";
+      message = "パスワードリセットの確認が完了しました";
+    } else if (type === "email") {
+      redirectUrl = "/dashboard";
+      message = "メールアドレスが確認されました";
+    } else if (type === "email_change") {
+      redirectUrl = "/settings";
+      message = "メールアドレス変更が完了しました";
+    }
+
     return {
       success: true,
-      message: "メールアドレスが確認されました",
-      redirectUrl: "/dashboard",
+      message,
+      redirectUrl,
     };
   } catch (error) {
     logger.error("Verify OTP action error", {
@@ -595,6 +575,7 @@ export async function verifyOtpAction(formData: FormData): Promise<ActionResult>
 export async function resendOtpAction(formData: FormData): Promise<ActionResult> {
   try {
     const email = formData.get("email")?.toString();
+    const type = formData.get("type")?.toString() || "signup";
 
     if (!email || !z.string().email().safeParse(email).success) {
       return {
@@ -632,10 +613,24 @@ export async function resendOtpAction(formData: FormData): Promise<ActionResult>
 
     const supabase = createClient();
 
-    const { error } = await supabase.auth.resend({
-      type: "signup",
-      email,
-    });
+    // タイプに応じて適切なメソッドを呼び出し
+    let result;
+    if (type === "recovery") {
+      result = await supabase.auth.resetPasswordForEmail(email);
+    } else if (type === "signup" || type === "email_change") {
+      result = await supabase.auth.resend({
+        type: type as "signup" | "email_change",
+        email,
+      });
+    } else {
+      // phone_change, sms などは現在サポートしていない
+      return {
+        success: false,
+        error: "このタイプの再送信は現在サポートしていません",
+      };
+    }
+
+    const { error } = result;
 
     if (error) {
       logger.error("Resend OTP failed", {
@@ -736,24 +731,16 @@ export async function resetPasswordAction(formData: FormData): Promise<ActionRes
     // タイミング攻撃対策: 常に一定時間確保
     let resetResult: { data: unknown; error: unknown } | null = null;
     await TimingAttackProtection.normalizeResponseTime(async () => {
-      resetResult = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/reset-password/update`,
-      });
+      resetResult = await supabase.auth.resetPasswordForEmail(email);
     }, 300);
 
-    if (!resetResult) {
-      // セキュリティ上、成功・失敗に関わらず同じメッセージを返す（ユーザー列挙攻撃対策）
-      return {
-        success: true,
-        message: "パスワードリセットメールを送信しました（登録済みのアドレスの場合）",
-      };
-    }
-    const { error } = resetResult;
-
-    if (error) {
-      logger.error("Reset password failed", {
-        tag: "resetPasswordFailed",
-        error_message: (error as any)?.message ?? String(error),
+    // セキュリティ上、成功・失敗に関わらず同じメッセージを返す（ユーザー列挙攻撃対策）
+    // エラーがあってもログに記録するだけで、ユーザーには同じメッセージを返す
+    if (resetResult && (resetResult as any).error) {
+      logger.error("Reset password OTP failed", {
+        tag: "resetPasswordOtpFailed",
+        error_message:
+          ((resetResult as any).error as any)?.message ?? String((resetResult as any).error),
         sanitized_email: email.replace(/(.)(.*)(@.*)/, "$1***$3"),
       });
     }
@@ -761,7 +748,9 @@ export async function resetPasswordAction(formData: FormData): Promise<ActionRes
     // セキュリティ上、成功・失敗に関わらず同じメッセージを返す（ユーザー列挙攻撃対策）
     return {
       success: true,
-      message: "パスワードリセットメールを送信しました（登録済みのアドレスの場合）",
+      message: "パスワードリセット用の確認コードを送信しました（登録済みのアドレスの場合）",
+      needsVerification: true,
+      redirectUrl: `/verify-otp?email=${encodeURIComponent(email)}&type=recovery`,
     };
   } catch (error) {
     logger.error("Reset password action error", {
@@ -795,6 +784,16 @@ export async function updatePasswordAction(formData: FormData): Promise<ActionRe
 
     const { password } = result.data;
     const supabase = createClient();
+
+    // セッション存在チェック
+    const { data: userData } = await supabase.auth.getUser();
+    if (!userData?.user) {
+      return {
+        success: false,
+        error: "セッションが期限切れです。確認コードを再入力してください",
+        redirectUrl: "/verify-otp",
+      };
+    }
 
     const { error } = await supabase.auth.updateUser({
       password,

@@ -10,13 +10,13 @@ import { useAuthForm, AuthFormWrapper, AuthEmailField, AuthSubmitButton } from "
 
 export default function ResetPasswordPage() {
   const { state, formAction, isPending } = useAuthForm(resetPasswordAction, {
-    redirectOnSuccess: false, // メール送信成功時はリダイレクトしない
+    redirectOnSuccess: true, // OTP送信成功時はverify-otpページにリダイレクト
   });
 
   return (
     <AuthFormWrapper
       title="パスワードリセット"
-      subtitle="登録されたメールアドレスにリセット用のリンクを送信します"
+      subtitle="登録されたメールアドレスに確認コードを送信します"
       state={state}
       isPending={isPending}
       action={formAction}
@@ -30,7 +30,7 @@ export default function ResetPasswordPage() {
         required
       />
 
-      <AuthSubmitButton isPending={isPending}>リセットメール送信</AuthSubmitButton>
+      <AuthSubmitButton isPending={isPending}>確認コード送信</AuthSubmitButton>
 
       <div className="text-center space-y-3 sm:space-y-2">
         <div>

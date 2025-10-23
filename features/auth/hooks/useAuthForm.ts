@@ -186,7 +186,13 @@ export function useLoginFormRHF<T extends ServerActionResult>(
           const redirectUrl = result.redirectUrl || "/dashboard";
           router.push(redirectUrl);
         } else {
-          // サーバーエラーをフォームエラーとして設定
+          // エラー時でもリダイレクトが必要な場合（例：未確認ユーザー）
+          if (result.redirectUrl) {
+            router.push(result.redirectUrl);
+            return; // リダイレクトするのでエラーメッセージは設定しない
+          }
+
+          // 通常のエラー処理
           if (result.fieldErrors) {
             Object.entries(result.fieldErrors).forEach(([field, errors]) => {
               if (errors && errors.length > 0) {

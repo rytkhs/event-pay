@@ -33,7 +33,20 @@ const notoSansJp = Noto_Sans_JP({
   weight: ["100", "300", "400", "500", "700", "900"],
 });
 
+// 環境に応じたベースURLを取得
+const getBaseUrl = () => {
+  if (process.env.NODE_ENV === "production") {
+    return (
+      process.env.NEXT_PUBLIC_SITE_URL ||
+      process.env.NEXT_PUBLIC_APP_URL ||
+      "https://minnano-shukin.com"
+    );
+  }
+  return "http://localhost:3000";
+};
+
 export const metadata: Metadata = {
+  metadataBase: new URL(getBaseUrl()),
   title: "みんなの集金 - 出欠から集金まで、ひとつのリンクで完了",
   description: "参加の確認から集金まで、リンクの共有だけで完了できる新しいサービスです。",
   keywords: "イベント管理, 出欠管理, 集金, コミュニティ, オンライン決済, みんなの集金",

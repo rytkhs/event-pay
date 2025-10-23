@@ -2,6 +2,8 @@
 
 import { redirect } from "next/navigation";
 
+import Stripe from "stripe";
+
 import { logger } from "@core/logging/app-logger";
 import { createClient } from "@core/supabase/server";
 import { isNextRedirectError } from "@core/utils/next";
@@ -171,10 +173,16 @@ export async function checkExpressDashboardAccessAction(): Promise<ExpressDashbo
 
     return { success: true };
   } catch (error) {
+    // デバッグログ: エラーの詳細情報を出力
     logger.error("Failed to check Express Dashboard access", {
       tag: "expressDashboardAccessCheckError",
       error_name: error instanceof Error ? error.name : "Unknown",
       error_message: error instanceof Error ? error.message : String(error),
+      error_stack: error instanceof Error ? error.stack : undefined,
+      error_type: error instanceof Stripe.errors.StripeError ? error.type : "Unknown",
+      error_code: error instanceof Stripe.errors.StripeError ? error.code : "Unknown",
+      error_status_code: error instanceof Stripe.errors.StripeError ? error.statusCode : "Unknown",
+      timestamp: new Date().toISOString(),
     });
 
     return {

@@ -22,6 +22,7 @@ function VerifyOtpContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const email = searchParams.get("email");
+  const type = searchParams.get("type") || "signup";
 
   // カウントダウンタイマー
   useEffect(() => {
@@ -36,9 +37,10 @@ function VerifyOtpContent() {
   // メールアドレスがない場合はリダイレクト
   useEffect(() => {
     if (!email) {
-      router.push("/register");
+      const redirectPath = type === "recovery" ? "/reset-password" : "/register";
+      router.push(redirectPath);
     }
-  }, [email, router]);
+  }, [email, router, type]);
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -53,7 +55,7 @@ function VerifyOtpContent() {
       const formData = new FormData();
       formData.append("email", email);
       formData.append("otp", otp.trim());
-      formData.append("type", "signup");
+      formData.append("type", type);
 
       const result = await verifyOtpAction(formData);
 
@@ -96,6 +98,7 @@ function VerifyOtpContent() {
     try {
       const formData = new FormData();
       formData.append("email", email);
+      formData.append("type", type);
 
       const result = await resendOtpAction(formData);
 
@@ -151,10 +154,14 @@ function VerifyOtpContent() {
       <div className="w-full max-w-md bg-white p-8 rounded-lg shadow-md space-y-6">
         {/* ヘッダー */}
         <header className="text-center">
-          <h1 className="text-2xl font-bold text-gray-900">確認コードを入力</h1>
+          <h1 className="text-2xl font-bold text-gray-900">
+            {type === "recovery" ? "パスワードリセット確認コード" : "確認コードを入力"}
+          </h1>
           <p className="mt-2 text-gray-600">
             <span className="font-mono text-sm">{email}</span>{" "}
-            に送信された6桁のコードを入力してください
+            {type === "recovery"
+              ? "に送信されたパスワードリセット用の確認コードを入力してください"
+              : "に送信された6桁のコードを入力してください"}
           </p>
         </header>
 
@@ -259,8 +266,11 @@ function VerifyOtpContent() {
         {/* フッター */}
         <footer className="text-center">
           <div className="text-xs text-gray-400">
-            <Link href="/login" className="hover:text-gray-600 underline">
-              ログインページに戻る
+            <Link
+              href={type === "recovery" ? "/reset-password" : "/login"}
+              className="hover:text-gray-600 underline"
+            >
+              {type === "recovery" ? "パスワードリセットに戻る" : "ログインページに戻る"}
             </Link>
           </div>
         </footer>

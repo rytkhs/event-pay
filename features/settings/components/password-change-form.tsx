@@ -27,11 +27,8 @@ const passwordSchema = z
     currentPassword: z.string().min(1, "現在のパスワードを入力してください"),
     newPassword: z
       .string()
-      .min(8, "新しいパスワードは8文字以上で入力してください")
-      .regex(
-        /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/,
-        "新しいパスワードには大文字・小文字・数字を含めてください"
-      ),
+      .min(8, "パスワードは8文字以上で入力してください")
+      .max(128, "パスワードは128文字以内で入力してください"),
     confirmPassword: z.string().min(1, "確認用パスワードを入力してください"),
   })
   .refine((data) => data.newPassword === data.confirmPassword, {
@@ -113,7 +110,7 @@ export function PasswordChangeForm() {
                 <FormControl>
                   <PasswordInput placeholder="新しいパスワードを入力" {...field} />
                 </FormControl>
-                <FormDescription>8文字以上で、大文字・小文字・数字を含めてください</FormDescription>
+                <FormDescription>8文字以上で入力してください</FormDescription>
                 <FormMessage />
               </FormItem>
             )}

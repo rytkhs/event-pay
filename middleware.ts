@@ -26,6 +26,7 @@ function isPublicPath(pathname: string): boolean {
     "/reset-password",
     "/verify-otp",
     "/verify-email",
+    "/reset-password/update",
     "/confirm",
     "/contact",
     "/terms",
@@ -33,7 +34,13 @@ function isPublicPath(pathname: string): boolean {
     "/tokushoho",
   ];
   if (publicExact.includes(pathname)) return true;
-  const publicPrefixes = ["/guest/", "/invite/", "/auth/reset-password/", "/tokushoho/"];
+  const publicPrefixes = [
+    "/guest/",
+    "/invite/",
+    "/auth/reset-password/",
+    "/tokushoho/",
+    "/reset-password/",
+  ];
   return publicPrefixes.some((p) => pathname.startsWith(p));
 }
 
@@ -81,8 +88,10 @@ export async function middleware(request: NextRequest) {
       // 画像系は Maps 関連と data/blob を許可
       "img-src 'self' data: blob: https://maps.gstatic.com https://*.googleapis.com https://*.ggpht.com",
       "font-src 'self' https://fonts.gstatic.com",
-      // Stripe/Supabase/Maps などへの接続を明示
-      "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.stripe.com https://checkout.stripe.com https://m.stripe.network https://q.stripe.com https://maps.googleapis.com",
+      // Stripe/Supabase/Maps などへの接続を明示（開発環境ではローカルSupabaseも許可）
+      process.env.NODE_ENV !== "production"
+        ? "connect-src 'self' http://127.0.0.1:54321 https://*.supabase.co wss://*.supabase.co https://api.stripe.com https://checkout.stripe.com https://m.stripe.network https://q.stripe.com https://maps.googleapis.com"
+        : "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.stripe.com https://checkout.stripe.com https://m.stripe.network https://q.stripe.com https://maps.googleapis.com",
       // Stripe 3DS/Checkout のために frame を許可
       "frame-src 'self' https://hooks.stripe.com https://checkout.stripe.com https://js.stripe.com",
       // セキュリティ強化系

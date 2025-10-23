@@ -52,7 +52,7 @@ export default function UpdatePasswordPage() {
         type="password"
         name="password"
         label="新しいパスワード"
-        placeholder="英数字を含む8文字以上"
+        placeholder="8文字以上"
         value={passwordConfirmation.state.password}
         onChange={(e) => passwordConfirmation.actions.setPassword(e.target.value)}
         autoComplete="new-password"
@@ -86,10 +86,6 @@ export default function UpdatePasswordPage() {
         {passwordConfirmation.validation.iconType === "error" && (
           <PasswordStatusIcon type="error" message={passwordConfirmation.state.error} />
         )}
-
-        <div className="text-xs sm:text-sm text-gray-500">
-          上記と同じパスワードを入力してください
-        </div>
       </div>
 
       <AuthSubmitButton isPending={isPending}>パスワード更新</AuthSubmitButton>
