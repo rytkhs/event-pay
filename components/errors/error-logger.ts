@@ -95,7 +95,7 @@ class ErrorLogger {
     }
 
     // ローカルストレージに保存（デバッグ用）
-    this.saveToLocalStorage(logEntry);
+    // this.saveToLocalStorage(logEntry);
   }
 
   /**
@@ -226,7 +226,7 @@ class ErrorLogger {
 const errorLogger = new ErrorLogger({
   enabled: process.env.NODE_ENV === "production",
   environment: (process.env.NODE_ENV as "development" | "preview" | "production") || "development",
-  sampleRate: 1.0, // 本番環境では適切な値に調整
+  sampleRate: 0.1, // 本番環境では適切な値に調整
   includeStackTrace: true,
   includeUserInfo: false, // プライバシーを考慮
   includeBreadcrumbs: true,
