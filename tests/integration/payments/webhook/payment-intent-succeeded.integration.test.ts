@@ -63,7 +63,7 @@ describe("payment_intent.succeeded Webhook統合テスト", () => {
     testAttendance = await createTestAttendance(testEvent.id);
 
     // Supabaseクライアント取得
-    const factory = SecureSupabaseClientFactory.getInstance();
+    const factory = SecureSupabaseClientFactory.create();
     supabase = await factory.createAuditedAdminClient(
       AdminReason.TEST_DATA_SETUP,
       "payment_intent.succeeded webhook test setup",

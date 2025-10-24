@@ -487,7 +487,7 @@ async function verifyGuestTokenStorage(
   securityContext: { userAgent?: string; ip?: string }
 ): Promise<void> {
   try {
-    const secureClientFactory = SecureSupabaseClientFactory.getInstance();
+    const secureClientFactory = SecureSupabaseClientFactory.create();
     const supabase = await secureClientFactory.createGuestClient(expectedGuestToken);
 
     const { data: rpcRow, error: verifyError } = await (supabase as any)

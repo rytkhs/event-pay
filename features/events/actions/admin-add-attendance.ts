@@ -77,7 +77,7 @@ export async function adminAddAttendanceAction(
     const { user } = await verifyEventAccess(eventId);
 
     // 認証済みクライアント（RLSポリシーベースのアクセス制御）
-    const secureFactory = SecureSupabaseClientFactory.getInstance();
+    const secureFactory = SecureSupabaseClientFactory.create();
     const authenticatedClient = secureFactory.createAuthenticatedClient();
 
     // ゲストトークン生成

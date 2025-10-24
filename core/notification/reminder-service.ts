@@ -17,6 +17,7 @@ import type { Database } from "@/types/database";
 
 import { EmailNotificationService } from "./email-service";
 import type { IEmailNotificationService } from "./types";
+import { getEnv } from "@core/utils/cloudflare-env";
 
 /**
  * リマインダー送信結果のサマリー
@@ -550,7 +551,7 @@ export class ReminderService {
    * ゲスト用URLを生成
    */
   private generateGuestUrl(_eventId: string, guestToken: string): string {
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://event-pay.com";
+    const baseUrl = getEnv().NEXT_PUBLIC_APP_URL || "https://minnano-shukin.com";
     return `${baseUrl}/guest/${guestToken}`;
   }
 }

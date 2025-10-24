@@ -37,8 +37,9 @@ export async function updateEventAction(
       const origins = [];
 
       // 本番環境URL
-      if (getEnv().NEXT_PUBLIC_SITE_URL) {
-        origins.push(getEnv().NEXT_PUBLIC_SITE_URL);
+      const siteUrl = getEnv().NEXT_PUBLIC_SITE_URL;
+      if (siteUrl) {
+        origins.push(siteUrl);
       }
 
       // 開発環境URL
@@ -51,12 +52,12 @@ export async function updateEventAction(
       }
 
       // 追加の許可オリジン（環境変数で設定可能）
-      if (getEnv().ALLOWED_ORIGINS) {
-        const additionalOrigins = getEnv()
-          .ALLOWED_ORIGINS.split(",")
-          .map((o) => o.trim());
-        origins.push(...additionalOrigins);
-      }
+      // if (getEnv().ALLOWED_ORIGINS) {
+      //   const additionalOrigins = getEnv()
+      //     .ALLOWED_ORIGINS.split(",")
+      //     .map((o) => o.trim());
+      //   origins.push(...additionalOrigins);
+      // }
 
       return [...new Set(origins)]; // 重複を除去
     };

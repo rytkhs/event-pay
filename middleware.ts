@@ -32,6 +32,7 @@ function isPublicPath(pathname: string): boolean {
     "/terms",
     "/privacy",
     "/tokushoho",
+    "/debug",
   ];
   if (publicExact.includes(pathname)) return true;
   const publicPrefixes = [
@@ -106,23 +107,26 @@ export async function middleware(request: NextRequest) {
 
   // Supabase SSRクライアント（Cookieの双方向同期: getAll / setAll）
   const env = getEnv();
-  const supabase = createServerClient(
-    env.NEXT_PUBLIC_SUPABASE_URL,
-    env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-    {
-      cookies: {
-        getAll() {
-          return request.cookies.getAll();
-        },
-        setAll(cookies) {
-          cookies.forEach(({ name, value, options }) => {
-            request.cookies.set({ name, value, ...options });
-            response.cookies.set({ name, value, ...options });
-          });
-        },
+  const supabaseUrl = env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseKey = env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+  if (!supabaseUrl || !supabaseKey) {
+    return NextResponse.json({ error: "Missing Supabase configuration" }, { status: 500 });
+  }
+
+  const supabase = createServerClient(supabaseUrl, supabaseKey, {
+    cookies: {
+      getAll() {
+        return request.cookies.getAll();
       },
-    }
-  );
+      setAll(cookies: Array<{ name: string; value: string; options?: any }>) {
+        cookies.forEach(({ name, value, options }) => {
+          request.cookies.set({ name, value, ...options });
+          response.cookies.set({ name, value, ...options });
+        });
+      },
+    },
+  });
 
   const {
     data: { user },

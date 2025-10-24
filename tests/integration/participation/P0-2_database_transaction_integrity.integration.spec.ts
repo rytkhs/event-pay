@@ -70,7 +70,7 @@ class DatabaseTestHelper {
    * attendancesテーブルに直接挿入（管理者権限・RLSバイパス）
    */
   static async createDirectAttendance(data: DirectAttendanceData): Promise<any> {
-    const clientFactory = SecureSupabaseClientFactory.getInstance();
+    const clientFactory = SecureSupabaseClientFactory.create();
     const adminClient = await clientFactory.createAuditedAdminClient(
       AdminReason.TEST_DATA_SETUP,
       "P0-2_DIRECT_ATTENDANCE_INSERT"
@@ -90,7 +90,7 @@ class DatabaseTestHelper {
    * paymentsテーブルに直接挿入（制約違反テスト用）
    */
   static async createDirectPayment(data: DirectPaymentData): Promise<any> {
-    const clientFactory = SecureSupabaseClientFactory.getInstance();
+    const clientFactory = SecureSupabaseClientFactory.create();
     const adminClient = await clientFactory.createAuditedAdminClient(
       AdminReason.TEST_DATA_SETUP,
       "P0-2_DIRECT_PAYMENT_INSERT"
@@ -113,7 +113,7 @@ class DatabaseTestHelper {
     functionName: string,
     params: Record<string, any>
   ): Promise<{ data: any; error: any }> {
-    const clientFactory = SecureSupabaseClientFactory.getInstance();
+    const clientFactory = SecureSupabaseClientFactory.create();
     const adminClient = await clientFactory.createAuditedAdminClient(
       AdminReason.TEST_DATA_SETUP,
       "P0-2_STORED_PROCEDURE_CALL"
@@ -189,7 +189,7 @@ class DatabaseTestHelper {
     paymentExists?: { attendanceId: string; shouldExist: boolean };
     attendanceCount?: { eventId: string; expectedCount: number };
   }): Promise<void> {
-    const clientFactory = SecureSupabaseClientFactory.getInstance();
+    const clientFactory = SecureSupabaseClientFactory.create();
     const adminClient = await clientFactory.createAuditedAdminClient(
       AdminReason.TEST_DATA_SETUP,
       "P0-2_DATABASE_STATE_VERIFICATION"
@@ -339,7 +339,7 @@ describe("P0-2: データベーストランザクション整合性テスト", (
         });
 
         // 5. paymentレコードも存在しないことを確認
-        const clientFactory = SecureSupabaseClientFactory.getInstance();
+        const clientFactory = SecureSupabaseClientFactory.create();
         const adminClient = await clientFactory.createAuditedAdminClient(
           AdminReason.TEST_DATA_SETUP,
           "P0-2_PAYMENT_ROLLBACK_VERIFICATION"
@@ -480,7 +480,7 @@ describe("P0-2: データベーストランザクション整合性テスト", (
         // この場合、別の参加者だが、何らかの制約違反でpaymentsに挿入できない状況を作る
 
         // まず、paymentsテーブルに直接制約違反を引き起こす
-        const clientFactory = SecureSupabaseClientFactory.getInstance();
+        const clientFactory = SecureSupabaseClientFactory.create();
         const adminClient = await clientFactory.createAuditedAdminClient(
           AdminReason.TEST_DATA_SETUP,
           "P0-2_CONSTRAINT_VIOLATION_TEST"
@@ -525,7 +525,7 @@ describe("P0-2: データベーストランザクション整合性テスト", (
         // セットアップ: 既存のゲストトークンを作成
         const duplicateToken = "gst_duplicate12345678901234567890123";
 
-        const clientFactory = SecureSupabaseClientFactory.getInstance();
+        const clientFactory = SecureSupabaseClientFactory.create();
         const adminClient = await clientFactory.createAuditedAdminClient(
           AdminReason.TEST_DATA_SETUP,
           "P0-2_GUEST_TOKEN_DUPLICATE_TEST"
@@ -593,7 +593,7 @@ describe("P0-2: データベーストランザクション整合性テスト", (
         // セットアップ: 既存の参加者を作成
         const duplicateEmail = "duplicate@test.example.com";
 
-        const clientFactory = SecureSupabaseClientFactory.getInstance();
+        const clientFactory = SecureSupabaseClientFactory.create();
         const adminClient = await clientFactory.createAuditedAdminClient(
           AdminReason.TEST_DATA_SETUP,
           "P0-2_EMAIL_DUPLICATE_TEST"

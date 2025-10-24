@@ -113,7 +113,7 @@ export async function GET(request: NextRequest) {
 
     // attendances テーブル経由で payment 情報を取得（サービスロールでRLSをバイパス）
     // ゲストトークンでの権限確認は事前に実施済み（APIレベルでヘッダー検証）
-    const secureClientFactory = SecureSupabaseClientFactory.getInstance();
+    const secureClientFactory = SecureSupabaseClientFactory.create();
     const supabase = await secureClientFactory.createAuditedAdminClient(
       AdminReason.PAYMENT_PROCESSING,
       "PAYMENT_SESSION_VERIFICATION",

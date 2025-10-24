@@ -74,7 +74,7 @@ test.describe("イベント編集 V2（E2E）", () => {
     // 参加者作成 + payments に paid を1件作る
     const attendance = await createTestAttendance(event.id, {});
 
-    const adminClient = await SecureSupabaseClientFactory.getInstance().createAuditedAdminClient(
+    const adminClient = await SecureSupabaseClientFactory.create().createAuditedAdminClient(
       AdminReason.TEST_DATA_SETUP,
       `Insert paid payment for event ${event.id}`,
       {

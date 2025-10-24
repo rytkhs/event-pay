@@ -1,6 +1,7 @@
 import { logger } from "@core/logging/app-logger";
 import { generateRandomBytes, toBase64UrlSafe } from "@core/security/crypto";
 import { SecureSupabaseClientFactory } from "@core/security/secure-client-factory.impl";
+import { getEnv } from "@core/utils/cloudflare-env";
 import { deriveEventStatus } from "@core/utils/derive-event-status";
 
 import type { Database } from "@/types/database";
@@ -90,7 +91,7 @@ export async function validateInviteToken(token: string): Promise<InviteValidati
 
   try {
     // 読み取り専用クライアント（匿名ロール） + 招待トークンヘッダー
-    const secureFactory = SecureSupabaseClientFactory.getInstance();
+    const secureFactory = SecureSupabaseClientFactory.create();
     const anonClient = secureFactory.createReadOnlyClient({
       headers: { "x-invite-token": token },
     });
@@ -164,7 +165,8 @@ export async function validateInviteToken(token: string): Promise<InviteValidati
       canRegister: true,
     };
   } catch (error) {
-    if (process.env.NODE_ENV === "development") {
+    const env = getEnv();
+    if (env.NODE_ENV === "development") {
       logger.error("Failed to validate invite token", {
         tag: "inviteTokenValidation",
         error_name: error instanceof Error ? error.name : "Unknown",
@@ -196,7 +198,7 @@ export async function checkEventCapacity(
   }
 
   try {
-    const secureFactory = SecureSupabaseClientFactory.getInstance();
+    const secureFactory = SecureSupabaseClientFactory.create();
     const client = secureFactory.createReadOnlyClient();
 
     const { data, error } = await (client as any).rpc("rpc_public_attending_count", {
@@ -205,7 +207,8 @@ export async function checkEventCapacity(
     });
 
     if (error) {
-      if (process.env.NODE_ENV === "development") {
+      const env = getEnv();
+      if (env.NODE_ENV === "development") {
         logger.error("Failed to check event capacity", {
           tag: "inviteTokenValidation",
           error_name: (error as any)?.name ?? "Unknown",
@@ -219,7 +222,8 @@ export async function checkEventCapacity(
     const count = Number(data) || 0;
     return count >= capacity;
   } catch (error) {
-    if (process.env.NODE_ENV === "development") {
+    const env = getEnv();
+    if (env.NODE_ENV === "development") {
       logger.error("Failed to check event capacity", {
         tag: "inviteTokenValidation",
         error_name: error instanceof Error ? error.name : "Unknown",
@@ -245,7 +249,7 @@ export async function checkDuplicateEmail(
   try {
     // 招待トークンヘッダーが必要なため、呼び出し側でvalidateInviteToken済み前提
     // ここでは匿名RPCに委譲
-    const secureFactory = SecureSupabaseClientFactory.getInstance();
+    const secureFactory = SecureSupabaseClientFactory.create();
     const client = secureFactory.createReadOnlyClient({
       headers: inviteToken ? { "x-invite-token": inviteToken } : {},
     });
@@ -257,7 +261,8 @@ export async function checkDuplicateEmail(
     });
 
     if (error) {
-      if (process.env.NODE_ENV === "development") {
+      const env = getEnv();
+      if (env.NODE_ENV === "development") {
         logger.error("Failed to check email duplication", {
           tag: "inviteTokenValidation",
           error_name: (error as any)?.name ?? "Unknown",

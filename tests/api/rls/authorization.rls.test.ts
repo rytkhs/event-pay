@@ -32,7 +32,7 @@ describe("RLS Authorization for attendances/payments", () => {
     other = await createTestUser(`rls-other-${Date.now()}@example.com`, "Passw0rd!A");
 
     // 管理クライアントで初期データ投入（RLSバイパス）
-    const adminClient = await SecureSupabaseClientFactory.getInstance().createAuditedAdminClient(
+    const adminClient = await SecureSupabaseClientFactory.create().createAuditedAdminClient(
       AdminReason.TEST_DATA_SETUP,
       "RLS test setup: events/attendances/payments",
       { accessedTables: ["public.events", "public.attendances", "public.payments"] }
@@ -88,7 +88,7 @@ describe("RLS Authorization for attendances/payments", () => {
   });
 
   afterAll(async () => {
-    const adminClient = await SecureSupabaseClientFactory.getInstance().createAuditedAdminClient(
+    const adminClient = await SecureSupabaseClientFactory.create().createAuditedAdminClient(
       AdminReason.TEST_DATA_CLEANUP,
       "RLS test cleanup",
       { accessedTables: ["public.events", "public.attendances", "public.payments"] }

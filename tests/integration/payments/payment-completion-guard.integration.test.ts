@@ -74,7 +74,7 @@ describe("決済完了済みガード統合テスト", () => {
     paymentService = getPaymentService();
 
     // 管理者クライアントを作成
-    const secureFactory = SecureSupabaseClientFactory.getInstance();
+    const secureFactory = SecureSupabaseClientFactory.create();
     adminClient = await secureFactory.createAuditedAdminClient(
       AdminReason.TEST_DATA_SETUP,
       "Payment completion guard integration test setup",

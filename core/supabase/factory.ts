@@ -21,37 +21,29 @@ interface MiddlewareSupabaseConfig {
 
 export class SupabaseClientFactory {
   private static sessionManager = getSessionManager();
-  private static cachedUrl: string;
-  private static cachedAnonKey: string;
 
   private static getURL(): string {
-    if (!this.cachedUrl) {
-      const env = getEnv();
-      const value = env.NEXT_PUBLIC_SUPABASE_URL;
-      if (!value) {
-        const key = "NEXT_PUBLIC_SUPABASE_URL";
-        const message = `Missing required environment variable: ${key}`;
-        logger.error(message, { tag: "envVarMissing", variable_name: key });
-        throw new Error(message);
-      }
-      this.cachedUrl = value;
+    const env = getEnv();
+    const value = env.NEXT_PUBLIC_SUPABASE_URL;
+    if (!value) {
+      const key = "NEXT_PUBLIC_SUPABASE_URL";
+      const message = `Missing required environment variable: ${key}`;
+      logger.error(message, { tag: "envVarMissing", variable_name: key });
+      throw new Error(message);
     }
-    return this.cachedUrl;
+    return value;
   }
 
   private static getAnonKey(): string {
-    if (!this.cachedAnonKey) {
-      const env = getEnv();
-      const value = env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-      if (!value) {
-        const key = "NEXT_PUBLIC_SUPABASE_ANON_KEY";
-        const message = `Missing required environment variable: ${key}`;
-        logger.error(message, { tag: "envVarMissing", variable_name: key });
-        throw new Error(message);
-      }
-      this.cachedAnonKey = value;
+    const env = getEnv();
+    const value = env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    if (!value) {
+      const key = "NEXT_PUBLIC_SUPABASE_ANON_KEY";
+      const message = `Missing required environment variable: ${key}`;
+      logger.error(message, { tag: "envVarMissing", variable_name: key });
+      throw new Error(message);
     }
-    return this.cachedAnonKey;
+    return value;
   }
 
   static createServerClient(context: "server"): SupabaseClient<Database>;
@@ -128,7 +120,7 @@ export class SupabaseClientFactory {
       logger.warn("next/headers not available, using empty cookie store", {
         tag: "cookieStoreUnavailable",
         error_message: error instanceof Error ? error.message : String(error),
-        environment: process.env.NODE_ENV,
+        environment: getEnv().NODE_ENV,
       });
 
       cookieStore = {

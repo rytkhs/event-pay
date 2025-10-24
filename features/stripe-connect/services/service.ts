@@ -10,6 +10,7 @@ import Stripe from "stripe";
 import { logger } from "@core/logging/app-logger";
 import { getStripe, generateIdempotencyKey } from "@core/stripe/client";
 import { convertStripeError } from "@core/stripe/error-handler";
+import { getEnv } from "@core/utils/cloudflare-env";
 
 import { Database } from "@/types/database";
 
@@ -40,7 +41,6 @@ import {
  */
 export class StripeConnectService implements IStripeConnectService {
   private supabase: SupabaseClient<Database, "public">;
-  private stripe = getStripe();
   private errorHandler: IStripeConnectErrorHandler;
 
   constructor(
@@ -49,6 +49,13 @@ export class StripeConnectService implements IStripeConnectService {
   ) {
     this.supabase = supabaseClient;
     this.errorHandler = errorHandler;
+  }
+
+  /**
+   * Stripeクライアントを取得（遅延初期化）
+   */
+  private getStripeClient(): Stripe {
+    return getStripe();
   }
 
   /**
@@ -84,7 +91,8 @@ export class StripeConnectService implements IStripeConnectService {
       let stripeAccount: Stripe.Account | null = null;
       try {
         // 型定義に search が無いStripeバージョンでもビルドを通すため、動的呼び出し
-        const accountsResource = this.stripe.accounts as unknown as {
+        const stripe = this.getStripeClient();
+        const accountsResource = stripe.accounts as unknown as {
           search?: (params: { query: string }) => Promise<{ data: unknown[] }>;
         };
         if (accountsResource?.search) {
@@ -143,11 +151,13 @@ export class StripeConnectService implements IStripeConnectService {
       let createdNewAccount = false;
       if (!stripeAccount) {
         const idempotencyKey = generateIdempotencyKey("connect");
-        if (process.env.NODE_ENV === "test") {
+        const stripe = this.getStripeClient();
+        const env = getEnv();
+        if (env.NODE_ENV === "test") {
           // テスト環境では引数シグネチャ互換のためリクエストオプションを渡さない
-          stripeAccount = await this.stripe.accounts.create(createParams as any);
+          stripeAccount = await stripe.accounts.create(createParams as any);
         } else {
-          stripeAccount = await this.stripe.accounts.create(createParams, { idempotencyKey });
+          stripeAccount = await stripe.accounts.create(createParams, { idempotencyKey });
         }
         createdNewAccount = true;
       }
@@ -163,9 +173,11 @@ export class StripeConnectService implements IStripeConnectService {
 
       if (dbError) {
         // Stripeアカウントは作成されたが、DBへの保存に失敗した場合は補償削除を試行
-        if (createdNewAccount && stripeAccount && process.env.NODE_ENV !== "test") {
+        const env = getEnv();
+        if (createdNewAccount && stripeAccount && env.NODE_ENV !== "test") {
           try {
-            await this.stripe.accounts.del(stripeAccount.id);
+            const stripe = this.getStripeClient();
+            await stripe.accounts.del(stripeAccount.id);
           } catch (compensationError) {
             // 補償削除の失敗はログに残し、上位へはDBエラーとしてマッピングして伝搬
             logger.error("Failed to compensate (delete) created Stripe account", {
@@ -243,7 +255,8 @@ export class StripeConnectService implements IStripeConnectService {
         createParams.collection_options = collectionOptions;
       }
 
-      const accountLink = await this.stripe.accountLinks.create(createParams);
+      const stripe = this.getStripeClient();
+      const accountLink = await stripe.accountLinks.create(createParams);
 
       return {
         url: accountLink.url,
@@ -294,7 +307,8 @@ export class StripeConnectService implements IStripeConnectService {
       });
 
       // Stripeからアカウント情報を取得
-      const account = await this.stripe.accounts.retrieve(accountId);
+      const stripe = this.getStripeClient();
+      const account = await stripe.accounts.retrieve(accountId);
 
       // ステータスの判定（Stripe Connect Best Practices準拠）
       // 判定フロー:
@@ -660,7 +674,8 @@ export class StripeConnectService implements IStripeConnectService {
       // Stripe APIでビジネスプロファイルを更新
       const idempotencyKey = generateIdempotencyKey(`update-profile-${accountId}`);
 
-      await this.stripe.accounts.update(
+      const stripe = this.getStripeClient();
+      await stripe.accounts.update(
         accountId,
         {
           business_profile: updateData,
@@ -806,7 +821,8 @@ export class StripeConnectService implements IStripeConnectService {
       validateStripeAccountId(accountId);
 
       // Stripeからログインリンクを生成
-      const loginLink = await this.stripe.accounts.createLoginLink(accountId);
+      const stripe = this.getStripeClient();
+      const loginLink = await stripe.accounts.createLoginLink(accountId);
 
       logger.info("Login link created successfully", {
         tag: "stripeConnectLoginLinkCreated",
@@ -847,7 +863,8 @@ export class StripeConnectService implements IStripeConnectService {
       logger.info("Stripe Connect残高取得を開始", { accountId });
 
       // Stripe APIで残高を取得
-      const balance = await this.stripe.balance.retrieve({
+      const stripe = this.getStripeClient();
+      const balance = await stripe.balance.retrieve({
         stripeAccount: accountId,
       });
 

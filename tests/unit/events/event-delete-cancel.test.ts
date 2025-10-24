@@ -9,7 +9,7 @@ describe("イベントの削除/中止ロジック", () => {
   it("参加者0・決済0のイベントは削除可能", async () => {
     const user = await createTestUser(email, password, { skipProfileCreation: true });
 
-    const factory = SecureSupabaseClientFactory.getInstance();
+    const factory = SecureSupabaseClientFactory.create();
     const admin = await factory.createAuditedAdminClient(
       AdminReason.TEST_DATA_SETUP,
       "unit-delete-cancel:create"
@@ -41,7 +41,7 @@ describe("イベントの削除/中止ロジック", () => {
       skipProfileCreation: true,
     });
 
-    const factory = SecureSupabaseClientFactory.getInstance();
+    const factory = SecureSupabaseClientFactory.create();
     const admin = await factory.createAuditedAdminClient(
       AdminReason.TEST_DATA_SETUP,
       "unit-delete-cancel:create2"

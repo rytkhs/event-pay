@@ -104,7 +104,7 @@ export class PaymentSessionIdempotencyTestHelper {
     });
 
     // 4. 管理者クライアント作成
-    const factory = SecureSupabaseClientFactory.getInstance();
+    const factory = SecureSupabaseClientFactory.create();
     const adminClient = await factory.createAuditedAdminClient(
       AdminReason.TEST_DATA_SETUP,
       "Payment session idempotency test setup",

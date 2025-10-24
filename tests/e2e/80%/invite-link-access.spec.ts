@@ -135,7 +135,7 @@ test.describe("招待リンクアクセス（E2E）", () => {
   });
 
   test("異常系：参加申込期限切れのトークンでエラーページが表示される", async ({ page }) => {
-    const secureFactory = SecureSupabaseClientFactory.getInstance();
+    const secureFactory = SecureSupabaseClientFactory.create();
     const adminClient = await secureFactory.createAuditedAdminClient(
       AdminReason.TEST_DATA_SETUP,
       "Creating expired deadline event for invite link access test",

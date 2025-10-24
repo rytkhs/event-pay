@@ -62,7 +62,7 @@ export async function updateCashStatusAction(
     }
     const { paymentId, status, notes, isCancel } = parsed.data;
 
-    const factory = SecureSupabaseClientFactory.getInstance();
+    const factory = SecureSupabaseClientFactory.create();
     const supabase = await factory.createAuthenticatedClient();
     const {
       data: { user },

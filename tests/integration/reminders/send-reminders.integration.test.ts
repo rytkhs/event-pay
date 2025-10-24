@@ -52,7 +52,7 @@ describe("リマインダー送信 統合テスト", () => {
   const createdEventIds: string[] = [];
   const createdAttendanceIds: string[] = [];
   const createdPaymentIds: string[] = [];
-  const secureFactory = SecureSupabaseClientFactory.getInstance();
+  const secureFactory = SecureSupabaseClientFactory.create();
   const originalCronSecret = process.env.CRON_SECRET;
 
   beforeAll(async () => {

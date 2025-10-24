@@ -3,6 +3,8 @@
  * 決済・個人情報を扱うアプリケーションとして最高レベルのセキュリティを確保
  */
 
+import { getEnv } from "@core/utils/cloudflare-env";
+
 // レート制限設定
 export const RATE_LIMIT_CONFIG = {
   // ユーザー登録API
@@ -109,23 +111,25 @@ export const COOKIE_CONFIG = {
   httpOnly: true,
   // 強制セキュア設定: 環境変数で明示的に無効化されない限り、HTTPS環境では常にsecure=true
   secure: (() => {
+    const env = getEnv();
     // 環境変数でセキュア設定を強制する場合
-    if (process.env.FORCE_SECURE_COOKIES === "true") {
+    if (env.FORCE_SECURE_COOKIES === "true") {
       return true;
     }
     // 環境変数で明示的に無効化されている場合（開発環境のみ）
-    if (process.env.FORCE_SECURE_COOKIES === "false" && process.env.NODE_ENV === "development") {
+    if (env.FORCE_SECURE_COOKIES === "false" && env.NODE_ENV === "development") {
       return false;
     }
     // デフォルト: 本番環境またはHTTPS URLの場合はsecure=true
     return (
-      process.env.NODE_ENV === "production" ||
-      process.env.NEXT_PUBLIC_APP_URL?.startsWith("https://") ||
-      false
+      env.NODE_ENV === "production" || env.NEXT_PUBLIC_APP_URL?.startsWith("https://") || false
     );
   })(),
   sameSite: "lax" as const, // 決済アプリケーションでの最適バランス（セキュリティ + UX）
-  domain: process.env.NODE_ENV === "production" ? process.env.COOKIE_DOMAIN : undefined,
+  domain: (() => {
+    const env = getEnv();
+    return env.NODE_ENV === "production" ? env.COOKIE_DOMAIN : undefined;
+  })(),
   path: "/",
   maxAge: 24 * 60 * 60, // 24時間（秒単位）
 } as const;

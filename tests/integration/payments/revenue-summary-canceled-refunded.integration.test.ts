@@ -36,7 +36,7 @@ describe("売上集計: canceled/refunded の扱い（回帰テスト）", () =>
     });
 
     // Supabaseクライアント取得
-    const factory = SecureSupabaseClientFactory.getInstance();
+    const factory = SecureSupabaseClientFactory.create();
     supabase = await factory.createAuditedAdminClient(
       AdminReason.TEST_DATA_SETUP,
       "revenue summary test setup",

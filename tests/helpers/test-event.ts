@@ -43,7 +43,7 @@ export async function createTestEvent(
   createdBy: string,
   options: CreateTestEventOptions = {}
 ): Promise<TestEvent> {
-  const secureFactory = SecureSupabaseClientFactory.getInstance();
+  const secureFactory = SecureSupabaseClientFactory.create();
 
   // 監査付き管理者クライアントを作成
   const adminClient = await secureFactory.createAuditedAdminClient(
@@ -157,7 +157,7 @@ export async function createTestEventWithParticipants(
   const event = await createTestEvent(createdBy, options);
 
   // 参加者を作成
-  const secureFactory = SecureSupabaseClientFactory.getInstance();
+  const secureFactory = SecureSupabaseClientFactory.create();
   const adminClient = await secureFactory.createAuditedAdminClient(
     AdminReason.TEST_DATA_SETUP,
     `Creating test participants for event ${event.id}`,
@@ -209,7 +209,7 @@ export async function createTestEventWithParticipants(
  * @param eventId 削除するイベントID
  */
 export async function deleteTestEvent(eventId: string): Promise<void> {
-  const secureFactory = SecureSupabaseClientFactory.getInstance();
+  const secureFactory = SecureSupabaseClientFactory.create();
 
   const adminClient = await secureFactory.createAuditedAdminClient(
     AdminReason.TEST_DATA_CLEANUP,

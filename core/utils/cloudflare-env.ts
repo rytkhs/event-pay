@@ -5,17 +5,33 @@
 
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 
-let cachedEnv: ReturnType<typeof getCloudflareContext>["env"] | undefined;
+import { logger } from "@core/logging/app-logger";
 
 /**
  * Cloudflare環境変数にアクセスするためのヘルパー関数
  * @returns Cloudflare環境変数オブジェクト
  */
 export function getEnv() {
-  if (!cachedEnv) {
-    cachedEnv = getCloudflareContext().env;
+  try {
+    const env = getCloudflareContext().env;
+    const envKeys = Object.keys(env);
+    logger.debug("Cloudflare環境変数を使用", {
+      tag: "envAccess",
+      source: "cloudflare",
+      envKeys: envKeys,
+      envCount: envKeys.length,
+    });
+    return env;
+  } catch {
+    const envKeys = Object.keys(process.env);
+    logger.debug("process.envをフォールバックとして使用", {
+      tag: "envAccess",
+      source: "process",
+      envKeys: envKeys,
+      envCount: envKeys.length,
+    });
+    return process.env as unknown as Record<string, string | undefined>;
   }
-  return cachedEnv;
 }
 
 /**
@@ -29,8 +45,24 @@ export function getEnv() {
 export async function getEnvAsync() {
   try {
     const { env } = await getCloudflareContext({ async: true });
+    const envKeys = Object.keys(env);
+    logger.debug("Cloudflare環境変数を使用（非同期）", {
+      tag: "envAccess",
+      source: "cloudflare",
+      async: true,
+      envKeys: envKeys,
+      envCount: envKeys.length,
+    });
     return env;
   } catch {
+    const envKeys = Object.keys(process.env);
+    logger.debug("process.envをフォールバックとして使用（非同期）", {
+      tag: "envAccess",
+      source: "process",
+      async: true,
+      envKeys: envKeys,
+      envCount: envKeys.length,
+    });
     return process.env as unknown as Record<string, string | undefined>;
   }
 }

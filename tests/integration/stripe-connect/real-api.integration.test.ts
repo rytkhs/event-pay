@@ -20,7 +20,7 @@ describe("Stripe Connect Real API Integration", () => {
 
   beforeEach(async () => {
     // 実Supabaseクライアントを使用（モックなし）
-    const factory = SecureSupabaseClientFactory.getInstance();
+    const factory = SecureSupabaseClientFactory.create();
     const adminClient = await factory.createAuditedAdminClient(
       AdminReason.TEST_DATA_SETUP,
       "Stripe Connect Real API Integration Test",

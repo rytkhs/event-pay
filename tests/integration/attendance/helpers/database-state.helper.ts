@@ -54,7 +54,7 @@ export class DatabaseStateHelper {
     status: AttendanceStatus = "attending"
   ): Promise<AttendanceCountResult> {
     try {
-      const clientFactory = SecureSupabaseClientFactory.getInstance();
+      const clientFactory = SecureSupabaseClientFactory.create();
       const adminClient = await clientFactory.createAuditedAdminClient(
         AdminReason.TEST_DATA_SETUP,
         "Verifying attendance count for race condition test"
@@ -104,7 +104,7 @@ export class DatabaseStateHelper {
    */
   static async verifyPaymentConsistency(eventId: string): Promise<PaymentConsistencyResult> {
     try {
-      const clientFactory = SecureSupabaseClientFactory.getInstance();
+      const clientFactory = SecureSupabaseClientFactory.create();
       const adminClient = await clientFactory.createAuditedAdminClient(
         AdminReason.TEST_DATA_SETUP,
         "Verifying payment consistency for race condition test"
@@ -183,7 +183,7 @@ export class DatabaseStateHelper {
     orphanedPayments?: any[];
   }> {
     try {
-      const clientFactory = SecureSupabaseClientFactory.getInstance();
+      const clientFactory = SecureSupabaseClientFactory.create();
       const adminClient = await clientFactory.createAuditedAdminClient(
         AdminReason.TEST_DATA_SETUP,
         "Checking for orphaned payments in race condition test"
@@ -244,7 +244,7 @@ export class DatabaseStateHelper {
     duplicateEmails?: string[];
   }> {
     try {
-      const clientFactory = SecureSupabaseClientFactory.getInstance();
+      const clientFactory = SecureSupabaseClientFactory.create();
       const adminClient = await clientFactory.createAuditedAdminClient(
         AdminReason.TEST_DATA_SETUP,
         "Checking for duplicate emails in race condition test"

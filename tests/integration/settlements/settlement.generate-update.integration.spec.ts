@@ -26,7 +26,7 @@ describe("清算レポート生成・更新（正常フロー）", () => {
   let attendance: TestAttendanceData;
   const createdPaymentIds: string[] = [];
 
-  const secureFactory = SecureSupabaseClientFactory.getInstance();
+  const secureFactory = SecureSupabaseClientFactory.create();
   let adminClient: any;
 
   beforeAll(async () => {
@@ -227,7 +227,7 @@ describe("清算レポート生成（返金・争議シナリオ）", () => {
   const createdPaymentIds: string[] = [];
   const createdDisputeIds: string[] = [];
 
-  const secureFactory = SecureSupabaseClientFactory.getInstance();
+  const secureFactory = SecureSupabaseClientFactory.create();
   let adminClient: any;
 
   beforeAll(async () => {

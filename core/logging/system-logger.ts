@@ -179,7 +179,7 @@ export async function logToSystemLogs(
   try {
     // service_role クライアントを作成（RLS回避のため）
     // 循環依存回避のため、監査なしの直接クライアントを使用
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseUrl = getEnv().NEXT_PUBLIC_SUPABASE_URL;
     const serviceRoleKey = getEnv().SUPABASE_SERVICE_ROLE_KEY;
 
     if (!supabaseUrl || !serviceRoleKey) {
