@@ -30,7 +30,7 @@ describe("清算レポート - 金額計算の正確性", () => {
   const createdPaymentIds: string[] = [];
   const createdDisputeIds: string[] = [];
 
-  const secureFactory = SecureSupabaseClientFactory.getInstance();
+  const secureFactory = SecureSupabaseClientFactory.create();
 
   beforeAll(async () => {
     // Create organizer with Stripe Connect

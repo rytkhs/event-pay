@@ -176,7 +176,7 @@ export async function updateGuestAttendanceAction(
     }
 
     // ゲストクライアントを取得してRLSポリシーを適用
-    const secureFactory = SecureSupabaseClientFactory.getInstance();
+    const secureFactory = SecureSupabaseClientFactory.create();
     const guestClient = secureFactory.createGuestClient(guestToken);
 
     // データベース更新の実行（定員チェックはRPC関数内で実行される）

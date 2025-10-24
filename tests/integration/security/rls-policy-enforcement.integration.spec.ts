@@ -32,7 +32,7 @@ describe("RLS Policy Enforcement Integration Tests", () => {
 
   beforeAll(async () => {
     // テストデータのセットアップ
-    const factory = SecureSupabaseClientFactory.getInstance();
+    const factory = SecureSupabaseClientFactory.create();
 
     // テスト用のサービスロールクライアント（セットアップのみ）
     const setupClient = await factory.createAuditedAdminClient(
@@ -147,7 +147,7 @@ describe("RLS Policy Enforcement Integration Tests", () => {
 
   afterAll(async () => {
     // クリーンアップ
-    const factory = SecureSupabaseClientFactory.getInstance();
+    const factory = SecureSupabaseClientFactory.create();
     const cleanupClient = await factory.createAuditedAdminClient(
       AdminReason.TEST_DATA_CLEANUP,
       "cleanup test data for RLS policy tests"
@@ -213,7 +213,7 @@ describe("RLS Policy Enforcement Integration Tests", () => {
 
     test("ゲストクライアントで参加状況を更新できる", async () => {
       // RPCを直接呼び出してエラーの詳細を確認
-      const factory = SecureSupabaseClientFactory.getInstance();
+      const factory = SecureSupabaseClientFactory.create();
       const guestClient = factory.createGuestClient(testGuestToken);
 
       const { error: rpcError } = await guestClient.rpc("update_guest_attendance_with_payment", {
@@ -377,7 +377,7 @@ describe("RLS Policy Enforcement Integration Tests", () => {
 
   describe("Data Isolation Verification", () => {
     test("ゲストトークンによるデータアクセスが正しく分離されている", async () => {
-      const factory = SecureSupabaseClientFactory.getInstance();
+      const factory = SecureSupabaseClientFactory.create();
 
       // 正しいゲストトークンを使用したクライアント
       const guestClient = factory.createGuestClient(testGuestToken);
@@ -396,7 +396,7 @@ describe("RLS Policy Enforcement Integration Tests", () => {
     });
 
     test("無効なゲストトークンでは何のデータも取得できない", async () => {
-      const factory = SecureSupabaseClientFactory.getInstance();
+      const factory = SecureSupabaseClientFactory.create();
 
       // 無効なゲストトークンを使用したクライアント（存在しないが形式は正しい）
       const invalidGuestClient = factory.createGuestClient("gst_nonexistent_token_12345678901234");
@@ -410,7 +410,7 @@ describe("RLS Policy Enforcement Integration Tests", () => {
     });
 
     test("招待トークンによるイベントアクセスが正しく分離されている", async () => {
-      const factory = SecureSupabaseClientFactory.getInstance();
+      const factory = SecureSupabaseClientFactory.create();
       // 招待トークンヘッダーを設定した読み取り専用クライアント
       const anonClient = factory.createReadOnlyClient({
         headers: {
@@ -439,7 +439,7 @@ describe("RLS Policy Enforcement Integration Tests", () => {
 
   describe("Service Role Bypass Prevention", () => {
     test("ゲストクライアントはRLSポリシーに従ってアクセス制御される", async () => {
-      const factory = SecureSupabaseClientFactory.getInstance();
+      const factory = SecureSupabaseClientFactory.create();
       const guestClient = factory.createGuestClient(testGuestToken);
 
       // RLSにより、他のイベントにはアクセスできない（RPCでもゲート）
@@ -450,7 +450,7 @@ describe("RLS Policy Enforcement Integration Tests", () => {
     });
 
     test("読み取り専用クライアントもRLSポリシーに従う", async () => {
-      const factory = SecureSupabaseClientFactory.getInstance();
+      const factory = SecureSupabaseClientFactory.create();
       const anonClient = factory.createReadOnlyClient();
 
       // 招待トークンなしでは限定的なアクセスのみ可能
@@ -463,7 +463,7 @@ describe("RLS Policy Enforcement Integration Tests", () => {
 
   describe("Capacity and Concurrency", () => {
     test("容量1のイベントで同時参加リクエストの一方が拒否される", async () => {
-      const factory = SecureSupabaseClientFactory.getInstance();
+      const factory = SecureSupabaseClientFactory.create();
       const admin = await factory.createAuditedAdminClient(
         AdminReason.TEST_DATA_SETUP,
         "setup capacity race test"
@@ -554,7 +554,7 @@ describe("RLS Policy Enforcement Integration Tests", () => {
 
   describe("Unique Pending Payments", () => {
     test("同一参加に対し未確定(pending)決済は1件に抑止される", async () => {
-      const factory = SecureSupabaseClientFactory.getInstance();
+      const factory = SecureSupabaseClientFactory.create();
       const admin = await factory.createAuditedAdminClient(
         AdminReason.TEST_DATA_SETUP,
         "setup unique pending test"
@@ -622,7 +622,7 @@ describe("RLS Policy Enforcement Integration Tests", () => {
 
   describe("Event Closure Guards", () => {
     test("登録締切後はゲスト更新が拒否される", async () => {
-      const factory = SecureSupabaseClientFactory.getInstance();
+      const factory = SecureSupabaseClientFactory.create();
       const admin = await factory.createAuditedAdminClient(
         AdminReason.TEST_DATA_SETUP,
         "setup event closure guard test"
@@ -669,7 +669,7 @@ describe("RLS Policy Enforcement Integration Tests", () => {
       // アプリロジックの期待: 更新は拒否される
       expect(result.success).toBe(false);
       // スキーマの期待: ステータスは変更されていない（not_attendingのまま）
-      const verifyFactory = SecureSupabaseClientFactory.getInstance();
+      const verifyFactory = SecureSupabaseClientFactory.create();
       const adminVerify = await verifyFactory.createAuditedAdminClient(
         AdminReason.TEST_DATA_SETUP,
         "verify closure guard"
@@ -685,7 +685,7 @@ describe("RLS Policy Enforcement Integration Tests", () => {
 
   describe("Invite Header Requirement", () => {
     test("ヘッダー未設定ではrpc_public_get_eventは返らない", async () => {
-      const factory = SecureSupabaseClientFactory.getInstance();
+      const factory = SecureSupabaseClientFactory.create();
       const anon = factory.createReadOnlyClient();
 
       const { data: events, error } = await (anon as any).rpc("rpc_public_get_event", {
@@ -700,7 +700,7 @@ describe("RLS Policy Enforcement Integration Tests", () => {
 
   describe("Public Attending Count RPC", () => {
     test("invite header required; with header returns correct count", async () => {
-      const factory = SecureSupabaseClientFactory.getInstance();
+      const factory = SecureSupabaseClientFactory.create();
       const admin = await factory.createAuditedAdminClient(
         AdminReason.TEST_DATA_SETUP,
         "setup event for attending count"
@@ -779,7 +779,7 @@ describe("RLS Policy Enforcement Integration Tests", () => {
 
   describe("Public Connect Account RPC", () => {
     test("guest can fetch minimal connect account info for event organizer", async () => {
-      const factory = SecureSupabaseClientFactory.getInstance();
+      const factory = SecureSupabaseClientFactory.create();
       const anonWithHeader = factory.createReadOnlyClient({
         headers: { "x-invite-token": testInviteToken },
       });
@@ -799,7 +799,7 @@ describe("RLS Policy Enforcement Integration Tests", () => {
     });
 
     test("mismatched creator_id returns empty", async () => {
-      const factory = SecureSupabaseClientFactory.getInstance();
+      const factory = SecureSupabaseClientFactory.create();
       const anonWithHeader = factory.createReadOnlyClient({
         headers: { "x-invite-token": testInviteToken },
       });
@@ -817,7 +817,7 @@ describe("RLS Policy Enforcement Integration Tests", () => {
 
   describe("RLS boundaries for fee_config/system_logs", () => {
     test("fee_config: admin can UPDATE (read-only for normal roles)", async () => {
-      const factory = SecureSupabaseClientFactory.getInstance();
+      const factory = SecureSupabaseClientFactory.create();
       const admin = await factory.createAuditedAdminClient(
         AdminReason.TEST_DATA_SETUP,
         "update fee_config for test"
@@ -836,7 +836,7 @@ describe("RLS Policy Enforcement Integration Tests", () => {
     });
 
     test("system_logs: anon cannot INSERT; admin can SELECT", async () => {
-      const factory = SecureSupabaseClientFactory.getInstance();
+      const factory = SecureSupabaseClientFactory.create();
       const anon = factory.createReadOnlyClient();
       const ins = await anon.from("system_logs").insert({
         id: 999999,
@@ -861,7 +861,7 @@ describe("RLS Policy Enforcement Integration Tests", () => {
 
   describe("Latest payment via RPC", () => {
     test("rpc_guest_get_latest_payment returns most recently created amount", async () => {
-      const factory = SecureSupabaseClientFactory.getInstance();
+      const factory = SecureSupabaseClientFactory.create();
       const admin = await factory.createAuditedAdminClient(
         AdminReason.TEST_DATA_SETUP,
         "setup payments for latest payment rpc"

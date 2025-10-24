@@ -165,7 +165,7 @@ export async function createGuestStripeSessionAction(
   }
 
   // 5. 決済サービス呼び出し (Guest)
-  const factory = SecureSupabaseClientFactory.getInstance();
+  const factory = SecureSupabaseClientFactory.create();
   const guestClient = factory.createGuestClient(guestToken);
 
   // PaymentService実装の登録を確実に実行

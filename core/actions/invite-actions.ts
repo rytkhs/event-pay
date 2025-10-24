@@ -43,7 +43,7 @@ export async function generateInviteTokenAction(
     }
 
     // セキュアなSupabaseクライアントを取得
-    const factory = SecureSupabaseClientFactory.getInstance();
+    const factory = SecureSupabaseClientFactory.create();
     const client = await factory.createAuthenticatedClient();
 
     // イベントの存在確認と所有者チェック

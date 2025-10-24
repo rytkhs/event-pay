@@ -6,12 +6,7 @@ import { logger } from "@core/logging/app-logger";
 import { getEnv } from "@core/utils/cloudflare-env";
 import { getRequiredEnvVar } from "@core/utils/env-helper";
 
-// 遅延初期化された Stripe クライアント（Cloudflare実行時のみ作成）
-let cachedStripe: Stripe | undefined;
-
 export function getStripe(): Stripe {
-  if (cachedStripe) return cachedStripe;
-
   const env = getEnv();
   const stripeSecretKey = getRequiredEnvVar("STRIPE_SECRET_KEY");
 
@@ -101,7 +96,6 @@ export function getStripe(): Stripe {
     }
   }
 
-  cachedStripe = instance;
   return instance;
 }
 

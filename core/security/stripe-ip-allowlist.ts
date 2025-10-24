@@ -36,7 +36,8 @@ function parseExtraIpsFromEnv(): string[] {
 }
 
 function isProduction(): boolean {
-  return process.env.NODE_ENV === "production";
+  const env = getEnv();
+  return env.NODE_ENV === "production";
 }
 
 /**

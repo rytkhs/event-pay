@@ -56,7 +56,7 @@ export class SettlementReportService {
       });
 
       // RPC関数は管理者（service_role）クライアントで実行（権限整合）
-      const factory = SecureSupabaseClientFactory.getInstance();
+      const factory = SecureSupabaseClientFactory.create();
       const adminClient = await factory.createAuditedAdminClient(
         AdminReason.PAYMENT_PROCESSING,
         "features/settlements/services/service generateSettlementReport"

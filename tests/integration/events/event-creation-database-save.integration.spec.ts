@@ -554,7 +554,7 @@ describe("イベント作成統合テスト - 1.3 データベース保存の確
 
         // 実際にAdminClientでデータが保存されているか確認
         // SecureSupabaseClientFactoryを使用してデータを直接確認
-        const secureFactory = SecureSupabaseClientFactory.getInstance();
+        const secureFactory = SecureSupabaseClientFactory.create();
         const adminClient = await secureFactory.createAuditedAdminClient(
           AdminReason.TEST_DATA_SETUP,
           "Verifying RLS bypass in test",
@@ -607,7 +607,7 @@ describe("イベント作成統合テスト - 1.3 データベース保存の確
         createdEventIds.push(event.id);
 
         // 認証済みクライアントで作成されたイベントにアクセス可能であることを確認
-        const secureFactory = SecureSupabaseClientFactory.getInstance();
+        const secureFactory = SecureSupabaseClientFactory.create();
 
         // 認証済みクライアントを使用（RLSポリシーで自分のイベントにアクセス可能）
         const authenticatedClient = secureFactory.createAuthenticatedClient();

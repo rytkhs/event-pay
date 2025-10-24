@@ -66,7 +66,8 @@ export class AccountLockoutService {
   }
 
   private static getConfig() {
-    return process.env.NODE_ENV === "test" ? TEST_ACCOUNT_LOCKOUT_CONFIG : ACCOUNT_LOCKOUT_CONFIG;
+    const env = getEnv();
+    return env.NODE_ENV === "test" ? TEST_ACCOUNT_LOCKOUT_CONFIG : ACCOUNT_LOCKOUT_CONFIG;
   }
 
   /**

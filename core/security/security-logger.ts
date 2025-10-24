@@ -5,6 +5,7 @@
 
 import { getMaliciousPatternDetails } from "@core/constants/security-patterns";
 import { logger } from "@core/logging/app-logger";
+import { getEnv } from "@core/utils/cloudflare-env";
 // Import mask functions for re-export (used by external modules)
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { maskSessionId, maskPaymentId } from "@core/utils/mask";
@@ -363,7 +364,8 @@ export { maskSessionId, maskPaymentId } from "@core/utils/mask";
  */
 async function sendSecurityAlert(logEntry: Record<string, unknown>): Promise<void> {
   // 開発環境では警告を出力
-  if (process.env.NODE_ENV === "development") {
+  const env = getEnv();
+  if (env.NODE_ENV === "development") {
     logger.error("🚨 SECURITY ALERT", {
       tag: "securityAlert",
       alert_data: logEntry,
@@ -371,7 +373,7 @@ async function sendSecurityAlert(logEntry: Record<string, unknown>): Promise<voi
   }
 
   // 本番環境では管理者にメールアラートを送信
-  if (process.env.NODE_ENV === "production") {
+  if (env.NODE_ENV === "production") {
     try {
       // Dynamic importでメール送信サービスを読み込み
       const { EmailNotificationService } = await import("@core/notification/email-service");

@@ -22,7 +22,7 @@ describe("Payment constraints & triggers (schema-level)", () => {
     await createPendingTestPayment(attendance.id, { amount: event.fee, method: "stripe" });
 
     // 2nd pending should violate unique partial index
-    const admin = await SecureSupabaseClientFactory.getInstance().createAuditedAdminClient(
+    const admin = await SecureSupabaseClientFactory.create().createAuditedAdminClient(
       AdminReason.TEST_DATA_SETUP,
       "Insert 2nd pending payment to trigger unique partial index",
       { accessedTables: ["public.payments"], operationType: "INSERT" }
@@ -51,7 +51,7 @@ describe("Payment constraints & triggers (schema-level)", () => {
     const event = await createPaidTestEvent(user.id, { fee: 1500, paymentMethods: ["stripe"] });
     const attendance = await createTestAttendance(event.id, { status: "attending" });
 
-    const admin = await SecureSupabaseClientFactory.getInstance().createAuditedAdminClient(
+    const admin = await SecureSupabaseClientFactory.create().createAuditedAdminClient(
       AdminReason.TEST_DATA_SETUP,
       "Insert stripe payment without intent_id to trigger CHECK",
       { accessedTables: ["public.payments"], operationType: "INSERT" }
@@ -82,7 +82,7 @@ describe("Payment constraints & triggers (schema-level)", () => {
     const attendance = await createTestAttendance(event.id, { status: "attending" });
 
     // 現金支払いをreceivedに設定（CHECK対策としてpaid_atを必ず設定）
-    const admin = await SecureSupabaseClientFactory.getInstance().createAuditedAdminClient(
+    const admin = await SecureSupabaseClientFactory.create().createAuditedAdminClient(
       AdminReason.TEST_DATA_SETUP,
       "Create cash payment and then attempt rollback",
       { accessedTables: ["public.payments"], operationType: "INSERT" }
@@ -122,7 +122,7 @@ describe("Payment constraints & triggers (schema-level)", () => {
     const event = await createPaidTestEvent(user.id, { fee: 1000, paymentMethods: ["cash"] });
     const attendance = await createTestAttendance(event.id, { status: "attending" });
 
-    const admin = await SecureSupabaseClientFactory.getInstance().createAuditedAdminClient(
+    const admin = await SecureSupabaseClientFactory.create().createAuditedAdminClient(
       AdminReason.TEST_DATA_SETUP,
       "Insert payment with paid status but missing paid_at"
     );
@@ -149,7 +149,7 @@ describe("Payment constraints & triggers (schema-level)", () => {
     const event = await createPaidTestEvent(user.id, { fee: 1200, paymentMethods: ["stripe"] });
     const attendance = await createTestAttendance(event.id, { status: "attending" });
 
-    const admin = await SecureSupabaseClientFactory.getInstance().createAuditedAdminClient(
+    const admin = await SecureSupabaseClientFactory.create().createAuditedAdminClient(
       AdminReason.TEST_DATA_SETUP,
       "Insert negative amount and duplicate intent id"
     );

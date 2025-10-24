@@ -36,7 +36,7 @@ describe("決済キャンセル処理統合テスト", () => {
   beforeAll(async () => {
     console.log("🔧 決済キャンセル処理統合テスト セットアップ開始");
 
-    const secureFactory = SecureSupabaseClientFactory.getInstance();
+    const secureFactory = SecureSupabaseClientFactory.create();
     adminClient = await secureFactory.createAuditedAdminClient(
       AdminReason.TEST_DATA_SETUP,
       "Payment cancellation integration test setup",

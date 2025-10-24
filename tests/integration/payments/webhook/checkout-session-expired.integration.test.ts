@@ -62,7 +62,7 @@ describe("checkout.session.expired Webhook統合テスト", () => {
     testAttendance = await createTestAttendance(testEvent.id);
 
     // Supabaseクライアント取得
-    const factory = SecureSupabaseClientFactory.getInstance();
+    const factory = SecureSupabaseClientFactory.create();
     supabase = await factory.createAuditedAdminClient(
       AdminReason.TEST_DATA_SETUP,
       "checkout.session.expired webhook test setup",

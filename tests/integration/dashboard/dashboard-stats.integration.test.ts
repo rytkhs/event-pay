@@ -39,7 +39,7 @@ describe("ダッシュボード統計情報 統合テスト", () => {
   const createdEventIds: string[] = [];
   const createdAttendanceIds: string[] = [];
   const createdPaymentIds: string[] = [];
-  const secureFactory = SecureSupabaseClientFactory.getInstance();
+  const secureFactory = SecureSupabaseClientFactory.create();
 
   beforeAll(async () => {
     // テスト用ユーザーを作成

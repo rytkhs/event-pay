@@ -152,7 +152,8 @@ function sleep(ms: number): Promise<void> {
  * 環境変数をバリデーション
  */
 function validateEmailConfig(): { fromEmail: string; adminEmail: string } {
-  const isDev = process.env.NODE_ENV === "development" || process.env.NODE_ENV === "test";
+  const env = getEnv();
+  const isDev = env.NODE_ENV === "development" || env.NODE_ENV === "test";
 
   let fromEmail = getEnv().FROM_EMAIL;
   let adminEmail = getEnv().ADMIN_EMAIL;

@@ -46,7 +46,7 @@ function setupAllowedHeaders() {
 // テスト内で createClient をモックする（DB操作はadmin clientを委譲し、auth.getUserのみテストユーザーを返す）
 async function mockSupabaseCreateClient(user: TestUser) {
   jest.resetModules();
-  const adminClient = await SecureSupabaseClientFactory.getInstance().createAuditedAdminClient(
+  const adminClient = await SecureSupabaseClientFactory.create().createAuditedAdminClient(
     AdminReason.TEST_DATA_SETUP,
     "event-edit integration",
     {
@@ -376,7 +376,7 @@ describe("イベント編集 統合テスト", () => {
 
     // 認証なしのモック
     jest.resetModules();
-    const adminClient = await SecureSupabaseClientFactory.getInstance().createAuditedAdminClient(
+    const adminClient = await SecureSupabaseClientFactory.create().createAuditedAdminClient(
       AdminReason.TEST_DATA_SETUP,
       "event-edit integration (unauth)",
       { operationType: "SELECT", accessedTables: ["public.events"] }

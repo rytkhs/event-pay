@@ -15,6 +15,7 @@ import type { CookieOptions } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
 
 import { logger } from "@core/logging/app-logger";
+import { getEnv } from "@core/utils/cloudflare-env";
 
 import { COOKIE_CONFIG, AUTH_CONFIG, getCookieConfig } from "./config";
 import { validateGuestTokenFormat } from "./crypto";
@@ -33,68 +34,76 @@ import {
  * セキュアSupabaseクライアントファクトリーの実装
  */
 export class SecureSupabaseClientFactory implements ISecureSupabaseClientFactory {
-  private static instance: SecureSupabaseClientFactory;
-  private readonly supabaseUrl: string;
-  private readonly anonKey: string;
-  private readonly serviceRoleKey: string;
   // Security auditor removed
 
   constructor() {
-    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    if (!url) {
-      const key = "NEXT_PUBLIC_SUPABASE_URL";
-      const message = `Missing required environment variable: ${key}`;
-      logger.error(message, { tag: "envVarMissing", variable_name: key });
-      throw new Error(message);
-    }
-
-    const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-    if (!anon) {
-      const key = "NEXT_PUBLIC_SUPABASE_ANON_KEY";
-      const message = `Missing required environment variable: ${key}`;
-      logger.error(message, { tag: "envVarMissing", variable_name: key });
-      throw new Error(message);
-    }
-
-    const service = process.env.SUPABASE_SERVICE_ROLE_KEY;
-    if (!service) {
-      const key = "SUPABASE_SERVICE_ROLE_KEY";
-      const message = `Missing required environment variable: ${key}`;
-      logger.error(message, { tag: "envVarMissing", variable_name: key });
-      throw new Error(message);
-    }
-
-    this.supabaseUrl = url;
-    this.anonKey = anon;
-    this.serviceRoleKey = service;
-
+    // 環境変数はメソッド内で動的に取得するため、コンストラクタでは初期化しない
     // Security auditor removed
   }
 
   /**
-   * シングルトンインスタンスを取得
-   */
-  public static getInstance(): SecureSupabaseClientFactory {
-    if (!SecureSupabaseClientFactory.instance) {
-      SecureSupabaseClientFactory.instance = new SecureSupabaseClientFactory();
-    }
-    return SecureSupabaseClientFactory.instance;
-  }
-
-  /**
-   * 新しいインスタンスを作成（テスト用）
+   * 新しいインスタンスを作成
    */
   public static create(): SecureSupabaseClientFactory {
     return new SecureSupabaseClientFactory();
   }
 
   /**
+   * Supabase URLを取得
+   */
+  private getSupabaseUrl(): string {
+    const env = getEnv();
+    const value = env.NEXT_PUBLIC_SUPABASE_URL;
+    if (!value) {
+      const key = "NEXT_PUBLIC_SUPABASE_URL";
+      const message = `Missing required environment variable: ${key}`;
+      logger.error(message, { tag: "envVarMissing", variable_name: key });
+      throw new Error(message);
+    }
+    return value;
+  }
+
+  /**
+   * Supabase Anon Keyを取得
+   */
+  private getAnonKey(): string {
+    const env = getEnv();
+    const value = env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    if (!value) {
+      const key = "NEXT_PUBLIC_SUPABASE_ANON_KEY";
+      const message = `Missing required environment variable: ${key}`;
+      logger.error(message, { tag: "envVarMissing", variable_name: key });
+      throw new Error(message);
+    }
+    return value;
+  }
+
+  /**
+   * Supabase Service Role Keyを取得
+   */
+  private getServiceRoleKey(): string {
+    const env = getEnv();
+    const value = env.SUPABASE_SERVICE_ROLE_KEY;
+    if (!value) {
+      const key = "SUPABASE_SERVICE_ROLE_KEY";
+      const message = `Missing required environment variable: ${key}`;
+      logger.error(message, { tag: "envVarMissing", variable_name: key });
+      throw new Error(message);
+    }
+    return value;
+  }
+
+  /**
    * 通常の認証済みクライアントを作成
    */
   createAuthenticatedClient(options?: ClientCreationOptions) {
+    const env = getEnv();
+    const supabaseUrl = this.getSupabaseUrl();
+    const anonKey = this.getAnonKey();
+
     // テスト環境またはヘッダーが利用できない場合はブラウザクライアントを作成
-    if (process.env.NODE_ENV === "test" || typeof document !== "undefined") {
-      return createBrowserClient(this.supabaseUrl, this.anonKey, {
+    if (env.NODE_ENV === "test" || typeof document !== "undefined") {
+      return createBrowserClient(supabaseUrl, anonKey, {
         auth: {
           persistSession: options?.persistSession ?? true,
           autoRefreshToken: options?.autoRefreshToken ?? true,
@@ -113,7 +122,7 @@ export class SecureSupabaseClientFactory implements ISecureSupabaseClientFactory
       cookieStore = cookies();
     } catch (error) {
       // next/headersが利用できない場合はブラウザクライアントを作成
-      return createBrowserClient(this.supabaseUrl, this.anonKey, {
+      return createBrowserClient(supabaseUrl, anonKey, {
         auth: {
           persistSession: options?.persistSession ?? true,
           autoRefreshToken: options?.autoRefreshToken ?? true,
@@ -124,7 +133,7 @@ export class SecureSupabaseClientFactory implements ISecureSupabaseClientFactory
       });
     }
 
-    return createServerClient(this.supabaseUrl, this.anonKey, {
+    return createServerClient(supabaseUrl, anonKey, {
       cookies: {
         get(name: string) {
           return cookieStore.get(name)?.value;
@@ -161,6 +170,9 @@ export class SecureSupabaseClientFactory implements ISecureSupabaseClientFactory
    * SSR環境でも安全に動作するよう環境を考慮
    */
   createGuestClient(token: string, options?: ClientCreationOptions) {
+    const supabaseUrl = this.getSupabaseUrl();
+    const anonKey = this.getAnonKey();
+
     // トークンの基本フォーマット検証
     if (!validateGuestTokenFormat(token)) {
       throw new GuestTokenError(
@@ -175,7 +187,7 @@ export class SecureSupabaseClientFactory implements ISecureSupabaseClientFactory
 
     if (isServerSide) {
       // サーバーサイドでは createServerClient を使用（ただしcookiesは不要）
-      return createServerClient(this.supabaseUrl, this.anonKey, {
+      return createServerClient(supabaseUrl, anonKey, {
         cookies: {
           get: () => undefined,
           set: () => {},
@@ -194,7 +206,7 @@ export class SecureSupabaseClientFactory implements ISecureSupabaseClientFactory
       });
     } else {
       // クライアントサイドでは createClient を使用
-      return createClient(this.supabaseUrl, this.anonKey, {
+      return createClient(supabaseUrl, anonKey, {
         auth: {
           persistSession: options?.persistSession ?? false, // ゲストセッションは永続化しない
           autoRefreshToken: options?.autoRefreshToken ?? false,
@@ -288,7 +300,10 @@ export class SecureSupabaseClientFactory implements ISecureSupabaseClientFactory
     }
 
     // 管理者クライアントを作成
-    return createClient(this.supabaseUrl, this.serviceRoleKey, {
+    const supabaseUrl = this.getSupabaseUrl();
+    const serviceRoleKey = this.getServiceRoleKey();
+
+    return createClient(supabaseUrl, serviceRoleKey, {
       auth: {
         autoRefreshToken: options?.autoRefreshToken ?? false,
         persistSession: options?.persistSession ?? false,
@@ -308,7 +323,10 @@ export class SecureSupabaseClientFactory implements ISecureSupabaseClientFactory
    * 読み取り専用クライアントを作成
    */
   createReadOnlyClient(options?: ClientCreationOptions) {
-    return createClient(this.supabaseUrl, this.anonKey, {
+    const supabaseUrl = this.getSupabaseUrl();
+    const anonKey = this.getAnonKey();
+
+    return createClient(supabaseUrl, anonKey, {
       auth: {
         persistSession: options?.persistSession ?? false,
         autoRefreshToken: options?.autoRefreshToken ?? false,
@@ -330,13 +348,16 @@ export class SecureSupabaseClientFactory implements ISecureSupabaseClientFactory
     response: NextResponse,
     options?: ClientCreationOptions
   ) {
+    const supabaseUrl = this.getSupabaseUrl();
+    const anonKey = this.getAnonKey();
+
     // HTTPS接続を動的に検出
     const isHttps =
       request.url.startsWith("https://") || request.headers.get("x-forwarded-proto") === "https";
 
     const cookieConfig = getCookieConfig(isHttps);
 
-    return createServerClient(this.supabaseUrl, this.anonKey, {
+    return createServerClient(supabaseUrl, anonKey, {
       cookies: {
         get(name: string) {
           return request.cookies.get(name)?.value;
@@ -368,7 +389,10 @@ export class SecureSupabaseClientFactory implements ISecureSupabaseClientFactory
    * ブラウザ用クライアントを作成
    */
   createBrowserClient(options?: ClientCreationOptions) {
-    return createBrowserClient(this.supabaseUrl, this.anonKey, {
+    const supabaseUrl = this.getSupabaseUrl();
+    const anonKey = this.getAnonKey();
+
+    return createBrowserClient(supabaseUrl, anonKey, {
       auth: {
         persistSession: options?.persistSession ?? true,
         autoRefreshToken: options?.autoRefreshToken ?? true,
@@ -384,8 +408,8 @@ export class SecureSupabaseClientFactory implements ISecureSupabaseClientFactory
 }
 
 /**
- * セキュアクライアントファクトリーのシングルトンインスタンスを取得
+ * セキュアクライアントファクトリーのインスタンスを取得
  */
 export function getSecureClientFactory(): SecureSupabaseClientFactory {
-  return SecureSupabaseClientFactory.getInstance();
+  return SecureSupabaseClientFactory.create();
 }

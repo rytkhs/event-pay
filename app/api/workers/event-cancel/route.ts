@@ -98,7 +98,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 管理者クライアント（Service Role）で参加者メールを取得
-    const secureFactory = SecureSupabaseClientFactory.getInstance();
+    const secureFactory = SecureSupabaseClientFactory.create();
     const admin = await secureFactory.createAuditedAdminClient(
       AdminReason.NOTIFICATION_PROCESSING,
       "event-cancel-worker",

@@ -325,7 +325,7 @@ describe("P0決済セッション作成 真の統合テスト", () => {
  * 決済機能の統合テストに必要な最低限の手数料設定を挿入
  */
 async function setupFeeConfigForIntegrationTest(): Promise<void> {
-  const secureFactory = SecureSupabaseClientFactory.getInstance();
+  const secureFactory = SecureSupabaseClientFactory.create();
   const adminClient = await secureFactory.createAuditedAdminClient(
     AdminReason.TEST_DATA_SETUP,
     "Setup fee_config for integration tests",

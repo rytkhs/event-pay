@@ -110,7 +110,7 @@ export async function createEventAction(formData: FormData): Promise<CreateEvent
         : false;
 
       if (fee > 0 && wantsStripe) {
-        const factory = SecureSupabaseClientFactory.getInstance();
+        const factory = SecureSupabaseClientFactory.create();
         const authenticatedClient = factory.createAuthenticatedClient();
 
         const { data: connectAccount, error: connectError } = await authenticatedClient
@@ -153,7 +153,7 @@ export async function createEventAction(formData: FormData): Promise<CreateEvent
     const eventData = buildEventData(validatedData, user.id, inviteToken);
 
     // 認証済みクライアントを使用（RLSポリシーで自分のイベント作成を許可）
-    const secureFactory = SecureSupabaseClientFactory.getInstance();
+    const secureFactory = SecureSupabaseClientFactory.create();
     const authenticatedClient = secureFactory.createAuthenticatedClient();
 
     actionLogger.info("Attempting to insert event", {

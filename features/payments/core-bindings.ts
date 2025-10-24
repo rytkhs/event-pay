@@ -19,7 +19,7 @@ const paymentActionsImpl = {
 const paymentServiceImpl = {
   async createStripeSession(params: any) {
     // Stripe決済セッション作成時はAdminクライアントを使用（RLS回避のため）
-    const factory = SecureSupabaseClientFactory.getInstance();
+    const factory = SecureSupabaseClientFactory.create();
     const adminClient = await factory.createAuditedAdminClient(
       AdminReason.PAYMENT_PROCESSING,
       "features/payments/core-bindings createStripeSession"
@@ -31,7 +31,7 @@ const paymentServiceImpl = {
 
   async createCashPayment(params: any) {
     // 現金決済レコード作成は管理者（service_role）クライアントで実行
-    const factory = SecureSupabaseClientFactory.getInstance();
+    const factory = SecureSupabaseClientFactory.create();
     const adminClient = await factory.createAuditedAdminClient(
       AdminReason.PAYMENT_PROCESSING,
       "features/payments/core-bindings createCashPayment"
@@ -44,7 +44,7 @@ const paymentServiceImpl = {
   async updatePaymentStatus(params: any) {
     try {
       // 決済ステータス更新は管理者（service_role）クライアントで実行
-      const factory = SecureSupabaseClientFactory.getInstance();
+      const factory = SecureSupabaseClientFactory.create();
       const adminClient = await factory.createAuditedAdminClient(
         AdminReason.PAYMENT_PROCESSING,
         "features/payments/core-bindings updatePaymentStatus"

@@ -29,7 +29,7 @@ export async function generateGuestUrlAction(input: unknown): Promise<
     // 主催者権限確認
     await verifyEventAccess(eventId);
 
-    const factory = SecureSupabaseClientFactory.getInstance();
+    const factory = SecureSupabaseClientFactory.create();
     const authenticatedClient = factory.createAuthenticatedClient();
 
     // attendance と event を取得（guest_token, 決済可否判定用）

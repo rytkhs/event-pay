@@ -19,7 +19,7 @@ describe("Event constraints (schema-level)", () => {
   afterAll(async () => {
     // cleanup events
     try {
-      const adminClient = await SecureSupabaseClientFactory.getInstance().createAuditedAdminClient(
+      const adminClient = await SecureSupabaseClientFactory.create().createAuditedAdminClient(
         AdminReason.TEST_DATA_CLEANUP,
         "Cleaning up event constraints test events",
         { accessedTables: ["public.events"], operationType: "DELETE" }
@@ -39,7 +39,7 @@ describe("Event constraints (schema-level)", () => {
   });
 
   test("stripe利用時のpayment_deadline必須CHECK", async () => {
-    const factory = SecureSupabaseClientFactory.getInstance();
+    const factory = SecureSupabaseClientFactory.create();
     const admin = await factory.createAuditedAdminClient(
       AdminReason.TEST_DATA_SETUP,
       "Insert event with stripe method and null payment_deadline to trigger CHECK",
@@ -80,7 +80,7 @@ describe("Event constraints (schema-level)", () => {
   });
 
   test("registration_deadline <= dateのCHECK", async () => {
-    const factory = SecureSupabaseClientFactory.getInstance();
+    const factory = SecureSupabaseClientFactory.create();
     const admin = await factory.createAuditedAdminClient(
       AdminReason.TEST_DATA_SETUP,
       "Insert event with registration_deadline after event date to trigger CHECK",
@@ -121,7 +121,7 @@ describe("Event constraints (schema-level)", () => {
   });
 
   test("events_fee_check: fee must be 0 or within [100, 1_000_000]", async () => {
-    const factory = SecureSupabaseClientFactory.getInstance();
+    const factory = SecureSupabaseClientFactory.create();
     const admin = await factory.createAuditedAdminClient(
       AdminReason.TEST_DATA_SETUP,
       "events fee boundary checks",
@@ -195,7 +195,7 @@ describe("Event constraints (schema-level)", () => {
   });
 
   test("events_capacity_check: capacity must be > 0 or null", async () => {
-    const factory = SecureSupabaseClientFactory.getInstance();
+    const factory = SecureSupabaseClientFactory.create();
     const admin = await factory.createAuditedAdminClient(
       AdminReason.TEST_DATA_SETUP,
       "events capacity checks",
@@ -264,7 +264,7 @@ describe("Event constraints (schema-level)", () => {
   });
 
   test("events_payment_deadline_within_30d_after_date & methods not empty (methods empty allowed by schema)", async () => {
-    const factory = SecureSupabaseClientFactory.getInstance();
+    const factory = SecureSupabaseClientFactory.create();
     const admin = await factory.createAuditedAdminClient(
       AdminReason.TEST_DATA_SETUP,
       "events deadline window and methods checks",

@@ -126,8 +126,7 @@ export async function POST(request: NextRequest) {
 
     // テスト環境での同期処理モード（E2Eテスト用）
     // SKIP_QSTASH_IN_TEST=true の場合、QStashをスキップして直接処理
-    const shouldProcessSync =
-      (getEnv().SKIP_QSTASH_IN_TEST ?? process.env.SKIP_QSTASH_IN_TEST) === "true";
+    const shouldProcessSync = getEnv().SKIP_QSTASH_IN_TEST === "true";
 
     if (shouldProcessSync) {
       logger.info("Test mode: Processing webhook synchronously (QStash skipped)", {

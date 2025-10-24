@@ -42,7 +42,7 @@ describe("🚨 決済完了済みガード 仕様書適合性検証", () => {
     paymentService = getPaymentService();
 
     // fee_configのテストデータをセットアップ
-    const secureFactory = SecureSupabaseClientFactory.getInstance();
+    const secureFactory = SecureSupabaseClientFactory.create();
     const adminClient = await secureFactory.createAuditedAdminClient(
       AdminReason.TEST_DATA_SETUP,
       "Setting up fee config for payment completion guard test",

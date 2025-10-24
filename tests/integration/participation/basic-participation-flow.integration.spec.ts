@@ -287,7 +287,7 @@ describe("P0-1: 基本参加登録フロー統合テスト", () => {
         "@core/security/secure-client-factory.impl"
       );
       const { AdminReason } = await import("@core/security/secure-client-factory.types");
-      const clientFactory = SecureSupabaseClientFactory.getInstance();
+      const clientFactory = SecureSupabaseClientFactory.create();
       const adminClient = await clientFactory.createAuditedAdminClient(
         AdminReason.TEST_DATA_SETUP,
         "TEST_DB_VERIFICATION_CAPACITY_COUNT"
@@ -323,7 +323,7 @@ class DatabaseAssertions {
       "@core/security/secure-client-factory.impl"
     );
     const { AdminReason } = await import("@core/security/secure-client-factory.types");
-    const clientFactory = SecureSupabaseClientFactory.getInstance();
+    const clientFactory = SecureSupabaseClientFactory.create();
     const adminClient = await clientFactory.createAuditedAdminClient(
       AdminReason.TEST_DATA_SETUP,
       "TEST_DB_VERIFICATION_ATTENDANCE"
@@ -358,7 +358,7 @@ class DatabaseAssertions {
       "@core/security/secure-client-factory.impl"
     );
     const { AdminReason } = await import("@core/security/secure-client-factory.types");
-    const clientFactory = SecureSupabaseClientFactory.getInstance();
+    const clientFactory = SecureSupabaseClientFactory.create();
     const adminClient = await clientFactory.createAuditedAdminClient(
       AdminReason.TEST_DATA_SETUP,
       "TEST_DB_VERIFICATION_PAYMENT"
@@ -390,7 +390,7 @@ class DatabaseAssertions {
       "@core/security/secure-client-factory.impl"
     );
     const { AdminReason } = await import("@core/security/secure-client-factory.types");
-    const clientFactory = SecureSupabaseClientFactory.getInstance();
+    const clientFactory = SecureSupabaseClientFactory.create();
     const adminClient = await clientFactory.createAuditedAdminClient(
       AdminReason.TEST_DATA_SETUP,
       "TEST_DB_VERIFICATION_NO_PAYMENT"

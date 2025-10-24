@@ -69,7 +69,7 @@ export async function bulkUpdateCashStatusAction(
     }
     const { paymentIds, status, notes } = parsed.data;
 
-    const factory = SecureSupabaseClientFactory.getInstance();
+    const factory = SecureSupabaseClientFactory.create();
     const supabase = await factory.createAuthenticatedClient();
     const {
       data: { user },

@@ -45,7 +45,7 @@ export class ConnectWebhookHandler {
    * 監査付きのWebhookハンドラーを作成
    */
   static async create(): Promise<ConnectWebhookHandler> {
-    const secureFactory = SecureSupabaseClientFactory.getInstance();
+    const secureFactory = SecureSupabaseClientFactory.create();
     const adminClient = await secureFactory.createAuditedAdminClient(
       AdminReason.PAYMENT_PROCESSING,
       "Stripe Connect webhook processing"

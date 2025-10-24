@@ -82,7 +82,7 @@ export interface RLSGuestTokenValidationResult {
  * - エラーハンドリングの強化
  */
 export class RLSGuestTokenValidator implements IGuestTokenValidator {
-  private readonly clientFactory = SecureSupabaseClientFactory.getInstance();
+  private readonly clientFactory = SecureSupabaseClientFactory.create();
   // Security auditor removed
 
   constructor() {
