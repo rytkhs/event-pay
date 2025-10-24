@@ -13,15 +13,15 @@ import { logger } from "@core/logging/app-logger";
  */
 export function getEnv() {
   try {
-    const env = getCloudflareContext().env;
-    const envKeys = Object.keys(env);
-    logger.debug("Cloudflare環境変数を使用", {
-      tag: "envAccess",
-      source: "cloudflare",
-      envKeys: envKeys,
-      envCount: envKeys.length,
-    });
-    return env;
+    // const env = getCloudflareContext().env;
+    // const envKeys = Object.keys(env);
+    // logger.debug("Cloudflare環境変数を使用", {
+    //   tag: "envAccess",
+    //   source: "cloudflare",
+    //   envKeys: envKeys,
+    //   envCount: envKeys.length,
+    // });
+    // return env;
   } catch {
     const envKeys = Object.keys(process.env);
     logger.debug("process.envをフォールバックとして使用", {
