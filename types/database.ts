@@ -129,7 +129,7 @@ export type Database = {
           canceled_by?: string | null;
           capacity?: number | null;
           created_at?: string;
-          created_by: string;
+          created_by?: string;
           date: string;
           description?: string | null;
           fee?: number;
@@ -562,7 +562,7 @@ export type Database = {
           error_stack: string | null;
           id: number;
           idempotency_key: string | null;
-          ip_address: unknown | null;
+          ip_address: unknown;
           log_category: Database["public"]["Enums"]["log_category_enum"];
           log_level: Database["public"]["Enums"]["log_level_enum"];
           message: string;
@@ -589,7 +589,7 @@ export type Database = {
           error_stack?: string | null;
           id?: number;
           idempotency_key?: string | null;
-          ip_address?: unknown | null;
+          ip_address?: unknown;
           log_category: Database["public"]["Enums"]["log_category_enum"];
           log_level?: Database["public"]["Enums"]["log_level_enum"];
           message: string;
@@ -616,7 +616,7 @@ export type Database = {
           error_stack?: string | null;
           id?: number;
           idempotency_key?: string | null;
-          ip_address?: unknown | null;
+          ip_address?: unknown;
           log_category?: Database["public"]["Enums"]["log_category_enum"];
           log_level?: Database["public"]["Enums"]["log_level_enum"];
           message?: string;
@@ -710,10 +710,7 @@ export type Database = {
         Args: { p_attendance_id: string };
         Returns: boolean;
       };
-      can_access_event: {
-        Args: { p_event_id: string };
-        Returns: boolean;
-      };
+      can_access_event: { Args: { p_event_id: string }; Returns: boolean };
       can_manage_invite_links: {
         Args: { p_event_id: string };
         Returns: boolean;
@@ -746,14 +743,8 @@ export type Database = {
         Args: { p_creator_id: string };
         Returns: string;
       };
-      get_guest_token: {
-        Args: Record<PropertyKey, never>;
-        Returns: string;
-      };
-      get_min_payout_amount: {
-        Args: Record<PropertyKey, never>;
-        Returns: number;
-      };
+      get_guest_token: { Args: never; Returns: string };
+      get_min_payout_amount: { Args: never; Returns: number };
       get_settlement_report_details: {
         Args: {
           input_created_by: string;
@@ -780,10 +771,7 @@ export type Database = {
           transfer_group: string;
         }[];
       };
-      hash_guest_token: {
-        Args: { token: string };
-        Returns: string;
-      };
+      hash_guest_token: { Args: { token: string }; Returns: string };
       register_attendance_with_payment: {
         Args: {
           p_email: string;
@@ -807,9 +795,15 @@ export type Database = {
           canceled_at: string;
           created_by: string;
           email: string;
+          event_allow_payment_after_deadline: boolean;
+          event_capacity: number;
           event_date: string;
+          event_description: string;
           event_fee: number;
+          event_grace_period_days: number;
           event_id: string;
+          event_location: string;
+          event_payment_methods: Database["public"]["Enums"]["payment_method_enum"][];
           event_title: string;
           guest_token: string;
           nickname: string;
@@ -884,10 +878,7 @@ export type Database = {
         };
         Returns: undefined;
       };
-      update_revenue_summary: {
-        Args: { p_event_id: string };
-        Returns: Json;
-      };
+      update_revenue_summary: { Args: { p_event_id: string }; Returns: Json };
     };
     Enums: {
       actor_type_enum: "user" | "guest" | "system" | "webhook" | "service_role" | "anonymous";
