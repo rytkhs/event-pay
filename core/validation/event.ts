@@ -59,9 +59,9 @@ export const createEventSchema = z
   .object({
     title: z
       .string()
-      .min(1, "タイトルは必須です")
-      .max(100, "タイトルは100文字以内で入力してください")
-      .refine(validateTitle, "タイトルは1文字以上100文字以内で入力してください")
+      .min(1, "イベント名は必須です")
+      .max(100, "イベント名は100文字以内で入力してください")
+      .refine(validateTitle, "イベント名は1文字以上100文字以内で入力してください")
       .transform((val) => sanitizeForEventPay(val.trim())),
 
     date: z
@@ -268,9 +268,9 @@ export const updateEventSchema = z
   .object({
     title: z
       .string()
-      .min(1, "タイトルが空です")
-      .max(100, "タイトルは100文字以内で入力してください")
-      .refine((val) => val.trim().length > 0, "タイトルは必須です")
+      .min(1, "イベント名が空です")
+      .max(100, "イベント名は100文字以内で入力してください")
+      .refine((val) => val.trim().length > 0, "イベント名は必須です")
       .transform((val) => sanitizeForEventPay(val.trim()))
       .optional(),
 

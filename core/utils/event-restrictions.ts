@@ -108,7 +108,7 @@ function getRestrictionRules(operation: RestrictionContext["operation"]): Restri
     {
       field: "title",
       check: (existing, updated) => existing !== updated,
-      message: "参加者がいるため、タイトルは変更できません",
+      message: "参加者がいるため、イベント名は変更できません",
     },
     {
       field: "fee",

@@ -30,8 +30,8 @@ const createStripeSessionParamsSchema = z.object({
     .positive("金額は正の数である必要があります"),
   eventTitle: z
     .string()
-    .min(1, "イベントタイトルは必須です")
-    .max(200, "イベントタイトルは200文字以内である必要があります"),
+    .min(1, "イベント名は必須です")
+    .max(200, "イベント名は200文字以内である必要があります"),
   successUrl: z.string().url("成功時URLは有効なURLである必要があります"),
   cancelUrl: z.string().url("キャンセル時URLは有効なURLである必要があります"),
 });

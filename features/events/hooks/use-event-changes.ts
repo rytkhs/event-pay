@@ -201,7 +201,7 @@ export function useEventChanges({
         field: "title",
         oldValue: event.title || "",
         newValue: formData.title,
-        fieldName: "タイトル",
+        fieldName: "イベント名",
       },
       {
         field: "description",

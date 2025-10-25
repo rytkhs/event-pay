@@ -157,7 +157,7 @@ export function ConfirmationStep({
           <h4 className="text-sm font-semibold mb-3">更新後の設定</h4>
           <div className="space-y-2 text-sm">
             <div className="flex justify-between py-2 border-b">
-              <span className="text-gray-600">タイトル</span>
+              <span className="text-gray-600">イベント名</span>
               <span className="font-medium">{event.title}</span>
             </div>
             <div className="flex justify-between py-2 border-b">

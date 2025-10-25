@@ -31,7 +31,7 @@ export default async function SettlementReportsPage() {
     offset: 0,
   });
 
-  // イベント選択肢（タイトル・日付）
+  // イベント選択肢（イベント名・日付）
   const { data: events } = await supabase
     .from("events")
     .select("id, title, date")

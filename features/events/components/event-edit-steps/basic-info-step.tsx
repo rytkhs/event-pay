@@ -31,7 +31,7 @@ interface BasicInfoStepProps {
 
 /**
  * イベント編集: 基本情報入力ステップ
- * タイトル、開催日時、参加費を入力
+ * イベント名、開催日時、参加費を入力
  */
 export function BasicInfoStep({
   control,
@@ -55,7 +55,7 @@ export function BasicInfoStep({
         </div>
 
         <div className="space-y-6">
-          {/* タイトル */}
+          {/* イベント名 */}
           <FormField
             control={control}
             name="title"
@@ -66,7 +66,7 @@ export function BasicInfoStep({
                     <div className="w-2 h-2 rounded-full bg-orange-500" title="変更済み" />
                   )}
                   <FormLabel>
-                    タイトル <span className="text-red-500">*</span>
+                    イベント名 <span className="text-red-500">*</span>
                     {changedFields.has("title") && (
                       <Badge
                         variant="outline"

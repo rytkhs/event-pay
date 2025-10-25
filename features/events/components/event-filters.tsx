@@ -135,7 +135,7 @@ export function EventFilters({
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
           type="text"
-          placeholder="タイトル・場所で検索..."
+          placeholder="イベント名・場所で検索..."
           value={searchQuery}
           onChange={(e) => onSearchQueryChange?.(e.target.value)}
           className="pl-10 h-12 text-base"

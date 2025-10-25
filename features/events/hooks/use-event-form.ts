@@ -21,8 +21,8 @@ const eventFormSchema = z
     title: z
       .string()
       .trim()
-      .min(1, "タイトルは必須です")
-      .max(100, "タイトルは100文字以内で入力してください"),
+      .min(1, "イベント名は必須です")
+      .max(100, "イベント名は100文字以内で入力してください"),
     date: z
       .string()
       .min(1, "開催日時は必須です")

@@ -119,9 +119,9 @@ function VerifyEmailContent() {
             </svg>
           </div>
           <h1 className="text-2xl font-bold text-gray-900 mb-2">メールをご確認ください</h1>
-          <p className="text-gray-600 text-sm">
+          {/* <p className="text-gray-600 text-sm">
             <span className="font-mono text-sm">{email}</span> に確認メールを送信しました
-          </p>
+          </p> */}
         </header>
 
         {/* メイン内容 */}

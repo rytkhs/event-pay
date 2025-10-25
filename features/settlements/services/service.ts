@@ -284,7 +284,7 @@ export class SettlementReportService {
       // CSV ヘッダー（常にダブルクォートで囲む）
       const headers = [
         "イベントID",
-        "タイトル",
+        "イベント名",
         "イベント日",
         "レポート生成日時",
         "売上合計",
