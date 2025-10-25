@@ -73,12 +73,44 @@ export function GuestManagementForm({ attendance, canModify }: GuestManagementFo
   const { toast } = useToast();
   const { handleError } = useErrorHandler();
   const [attendanceStatus, setAttendanceStatus] = useState(attendance.status);
-  const [paymentMethod, setPaymentMethod] = useState(attendance.payment?.method || "stripe");
+  // 利用可能な決済方法から適切な初期値を選択
+  const getInitialPaymentMethod = () => {
+    const availableMethods = attendance.event.payment_methods || [];
+    const currentMethod = attendance.payment?.method;
+
+    // 現在の決済方法が利用可能な場合はそれを使用
+    if (currentMethod && availableMethods.includes(currentMethod)) {
+      return currentMethod;
+    }
+
+    // 現在の決済方法が利用不可能になった場合の警告表示用フラグ
+    if (currentMethod && !availableMethods.includes(currentMethod)) {
+      // 利用可能な方法の中から優先順位で選択
+      if (availableMethods.includes("stripe")) return "stripe";
+      if (availableMethods.includes("cash")) return "cash";
+    }
+
+    // 利用可能な方法の中から優先順位で選択
+    if (availableMethods.includes("stripe")) return "stripe";
+    if (availableMethods.includes("cash")) return "cash";
+
+    // デフォルト値（通常は発生しない）
+    return "stripe";
+  };
+
+  const [paymentMethod, setPaymentMethod] = useState(getInitialPaymentMethod());
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const errorAlertRef = useRef<HTMLDivElement | null>(null);
+
+  // 決済方法が変更されたかどうかをチェック
+  const isPaymentMethodChanged = () => {
+    const availableMethods = attendance.event.payment_methods || [];
+    const currentMethod = attendance.payment?.method;
+    return currentMethod && !availableMethods.includes(currentMethod);
+  };
 
   // 再決済ボタン表示条件
   const canRepayResult = canGuestRepay(attendance, {
@@ -100,7 +132,7 @@ export function GuestManagementForm({ attendance, canModify }: GuestManagementFo
   // リセット処理
   const handleReset = () => {
     setAttendanceStatus(attendance.status);
-    setPaymentMethod(attendance.payment?.method || "stripe");
+    setPaymentMethod(getInitialPaymentMethod());
     setError(null);
     setSuccess(null);
   };
@@ -399,53 +431,86 @@ export function GuestManagementForm({ attendance, canModify }: GuestManagementFo
                     </Alert>
                   ) : (
                     <div className="space-y-2">
-                      {[
-                        {
-                          value: "stripe" as const,
-                          label: "オンライン決済",
-                          description: "クレジットカード・Apple Pay・Google Pay",
-                        },
-                        {
-                          value: "cash" as const,
-                          label: "現金払い",
-                          description: "直接現金でお支払い",
-                        },
-                      ].map((option) => (
-                        <label
-                          key={option.value}
-                          className={`flex items-start p-3 rounded-lg border-2 cursor-pointer transition-all ${
-                            paymentMethod === option.value
-                              ? "border-blue-300 bg-blue-50"
-                              : "border-gray-200 hover:border-gray-300"
-                          }`}
-                        >
-                          <input
-                            type="radio"
-                            name="paymentMethod"
-                            value={option.value}
-                            checked={paymentMethod === option.value}
-                            onChange={(e) =>
-                              setPaymentMethod(e.target.value as typeof paymentMethod)
-                            }
-                            className="sr-only"
-                          />
-                          <div
-                            className={`w-4 h-4 rounded-full border-2 mr-3 mt-0.5 flex items-center justify-center flex-shrink-0 ${
+                      {/* 決済方法が変更された場合の警告 */}
+                      {isPaymentMethodChanged() && (
+                        <Alert className="border-yellow-200 bg-yellow-50" role="alert">
+                          <AlertCircle className="h-4 w-4 text-yellow-600" aria-hidden="true" />
+                          <AlertDescription>
+                            以前選択していた決済方法が利用できなくなりました。新しい決済方法を選択してください。
+                          </AlertDescription>
+                        </Alert>
+                      )}
+
+                      {(() => {
+                        // イベントで許可されている決済方法のみを表示
+                        const availablePaymentMethods = [
+                          {
+                            value: "stripe" as const,
+                            label: "オンライン決済",
+                            description: "クレジットカード・Apple Pay・Google Pay",
+                          },
+                          {
+                            value: "cash" as const,
+                            label: "現金払い",
+                            description: "直接現金でお支払い",
+                          },
+                        ].filter((option) =>
+                          attendance.event.payment_methods?.includes(option.value)
+                        );
+
+                        // 利用可能な決済方法がない場合の処理
+                        if (availablePaymentMethods.length === 0) {
+                          return (
+                            <Alert className="border-orange-200 bg-orange-50" role="alert">
+                              <AlertCircle className="h-4 w-4 text-orange-600" aria-hidden="true" />
+                              <AlertDescription>
+                                このイベントでは決済方法が設定されていません。主催者にお問い合わせください。
+                              </AlertDescription>
+                            </Alert>
+                          );
+                        }
+
+                        return availablePaymentMethods.map((option) => (
+                          <label
+                            key={option.value}
+                            className={`flex items-start p-3 rounded-lg border-2 cursor-pointer transition-all ${
                               paymentMethod === option.value
-                                ? "border-blue-500 bg-blue-500"
-                                : "border-gray-300"
+                                ? "border-blue-300 bg-blue-50"
+                                : "border-gray-200 hover:border-gray-300"
                             }`}
                           >
-                            {paymentMethod === option.value && (
-                              <div className="w-2 h-2 rounded-full bg-white"></div>
-                            )}
-                          </div>
-                          <div>
-                            <div className="text-sm font-medium text-gray-900">{option.label}</div>
-                            <div className="text-xs text-gray-500 mt-0.5">{option.description}</div>
-                          </div>
-                        </label>
-                      ))}
+                            <input
+                              type="radio"
+                              name="paymentMethod"
+                              value={option.value}
+                              checked={paymentMethod === option.value}
+                              onChange={(e) =>
+                                setPaymentMethod(e.target.value as typeof paymentMethod)
+                              }
+                              className="sr-only"
+                            />
+                            <div
+                              className={`w-4 h-4 rounded-full border-2 mr-3 mt-0.5 flex items-center justify-center flex-shrink-0 ${
+                                paymentMethod === option.value
+                                  ? "border-blue-500 bg-blue-500"
+                                  : "border-gray-300"
+                              }`}
+                            >
+                              {paymentMethod === option.value && (
+                                <div className="w-2 h-2 rounded-full bg-white"></div>
+                              )}
+                            </div>
+                            <div>
+                              <div className="text-sm font-medium text-gray-900">
+                                {option.label}
+                              </div>
+                              <div className="text-xs text-gray-500 mt-0.5">
+                                {option.description}
+                              </div>
+                            </div>
+                          </label>
+                        ));
+                      })()}
                     </div>
                   )}
 
@@ -529,7 +594,7 @@ export function GuestManagementForm({ attendance, canModify }: GuestManagementFo
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             <div>
-              <h4 className="text-sm font-medium text-gray-700">タイトル</h4>
+              <h4 className="text-sm font-medium text-gray-700">イベント名</h4>
               <p className="mt-1 text-sm text-gray-900 break-words">
                 {sanitizeForEventPay(attendance.event.title)}
               </p>

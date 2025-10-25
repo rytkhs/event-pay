@@ -148,6 +148,7 @@ export async function validateInviteToken(token: string): Promise<InviteValidati
     if (event.registration_deadline) {
       const now = new Date();
       const deadline = new Date(event.registration_deadline);
+
       if (now > deadline) {
         return {
           isValid: true,
