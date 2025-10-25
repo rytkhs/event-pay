@@ -31,13 +31,11 @@ jest.mock("next/headers", () => ({
   headers: jest.fn(() => mockHeaders),
 }));
 
-// ヘルパー: CSRF用ヘッダーを設定
 function setupAllowedHeaders() {
   mockHeaders = {
     get: (name: string) => {
       const n = name.toLowerCase();
-      if (n === "origin") return "http://localhost:3000"; // 許可オリジン
-      if (n === "referer") return "http://localhost:3000/events/edit";
+      if (n === "user-agent") return "test-user-agent";
       return null;
     },
   };

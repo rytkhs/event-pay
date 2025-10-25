@@ -10,7 +10,6 @@ import {
   TimingAttackProtection,
   InputSanitizer,
   ACCOUNT_LOCKOUT_CONFIG,
-  TEST_ACCOUNT_LOCKOUT_CONFIG,
   type LockoutResult,
   type LockoutStatus,
 } from "@core/auth-security";
@@ -80,7 +79,7 @@ const resetPasswordSchema = z.object({
 const verifyOtpSchema = z.object({
   email: z.string().email("有効なメールアドレスを入力してください"),
   otp: z.string().regex(/^\d{6}$/, "6桁の数字を入力してください"),
-  type: z.enum(["email", "recovery", "email_change"]),
+  type: z.enum(["email", "recovery", "email_change", "signup"]),
 });
 
 const updatePasswordSchema = z
@@ -121,62 +120,6 @@ function formDataToObject(formData: FormData): Record<string, string> {
  */
 export async function loginAction(formData: FormData): Promise<ActionResult<{ user: unknown }>> {
   try {
-    // CSRF対策: Origin/Refererヘッダーの検証
-    const headersList = headers();
-    const origin = headersList.get("origin");
-    const referer = headersList.get("referer");
-    const host = headersList.get("host");
-
-    if (!origin && !referer) {
-      await TimingAttackProtection.addConstantDelay();
-      return {
-        success: false,
-        error: "不正なリクエストです",
-      };
-    }
-
-    // 複数環境に対応した許可オリジン設定
-    const getAllowedOrigins = () => {
-      const origins = [];
-
-      // ホストベースのオリジン
-      if (host) {
-        origins.push(`https://${host}`);
-        origins.push(`http://${host}`);
-      }
-
-      // 本番環境URL
-      if (process.env.NEXT_PUBLIC_SITE_URL) {
-        origins.push(process.env.NEXT_PUBLIC_SITE_URL);
-      }
-
-      // 開発環境URL
-      origins.push("http://localhost:3000");
-      origins.push("https://localhost:3000");
-
-      // 追加の許可オリジン
-      // if (env.ALLOWED_ORIGINS) {
-      //   const additionalOrigins = env.ALLOWED_ORIGINS.split(",").map((o) => o.trim());
-      //   origins.push(...additionalOrigins);
-      // }
-
-      return [...new Set(origins.filter(Boolean))]; // 重複と空文字を除去
-    };
-
-    const allowedOrigins = getAllowedOrigins();
-
-    const isValidOrigin = origin && allowedOrigins.some((allowed) => origin === allowed);
-    const isValidReferer =
-      referer && allowedOrigins.some((allowed) => referer.startsWith(`${allowed}/`));
-
-    if (!isValidOrigin && !isValidReferer) {
-      await TimingAttackProtection.addConstantDelay();
-      return {
-        success: false,
-        error: "CSRF攻撃を検出しました",
-      };
-    }
-
     const rawData = formDataToObject(formData);
     const result = loginSchema.safeParse(rawData);
 
@@ -539,6 +482,9 @@ export async function verifyOtpAction(formData: FormData): Promise<ActionResult>
     } else if (type === "email_change") {
       redirectUrl = "/settings";
       message = "メールアドレス変更が完了しました";
+    } else if (type === "signup") {
+      redirectUrl = "/dashboard";
+      message = "アカウント登録が完了しました";
     }
 
     return {

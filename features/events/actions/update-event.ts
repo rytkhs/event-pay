@@ -12,7 +12,6 @@ import {
   createServerActionSuccess,
   zodErrorToServerActionResponse,
 } from "@core/types/server-actions";
-import { getEnv } from "@core/utils/cloudflare-env";
 import { calculateAttendeeCount } from "@core/utils/event-calculations";
 import { checkEditRestrictionsV2, type EventWithAttendances } from "@core/utils/event-restrictions";
 import { extractEventUpdateFormData } from "@core/utils/form-data-extractors";
@@ -32,68 +31,6 @@ export async function updateEventAction(
   formData: FormData
 ): Promise<UpdateEventResult> {
   try {
-    // CSRF対策: Origin/Refererヘッダーチェック（複数環境対応）
-    const getAllowedOrigins = () => {
-      const origins = [];
-
-      // 本番環境URL
-      const siteUrl = getEnv().NEXT_PUBLIC_SITE_URL;
-      if (siteUrl) {
-        origins.push(siteUrl);
-      }
-
-      // 開発環境URL
-      origins.push("http://localhost:3000");
-      origins.push("https://localhost:3000");
-
-      // Vercel Preview環境URL（動的に生成される）
-      if (getEnv().VERCEL_URL) {
-        origins.push(`https://${getEnv().VERCEL_URL}`);
-      }
-
-      // 追加の許可オリジン（環境変数で設定可能）
-      // if (getEnv().ALLOWED_ORIGINS) {
-      //   const additionalOrigins = getEnv()
-      //     .ALLOWED_ORIGINS.split(",")
-      //     .map((o) => o.trim());
-      //   origins.push(...additionalOrigins);
-      // }
-
-      return [...new Set(origins)]; // 重複を除去
-    };
-
-    const allowedOrigins = getAllowedOrigins();
-
-    // Edge Runtimeではheadersを直接取得
-    const { headers } = await import("next/headers");
-    const headersList = headers();
-    const requestOrigin = headersList.get("origin");
-    const referer = headersList.get("referer");
-    const requestMethod = headersList.get("x-http-method-override") || "POST";
-
-    // OPTIONS リクエストの場合は追加検証を実行
-    if (requestMethod === "OPTIONS") {
-      // プリフライトリクエストでは Origin ヘッダーが必須
-      if (!requestOrigin) {
-        return createServerActionError("UNAUTHORIZED", "無効なリクエストです");
-      }
-    }
-
-    // オリジンの正規化関数（末尾スラッシュを除去）
-    const normalizeOrigin = (origin: string) => origin.replace(/\/$/, "");
-
-    // Origin または Referer のいずれかが許可されたオリジンと一致するかチェック
-    const isValidOrigin =
-      requestOrigin &&
-      allowedOrigins.some((allowed) => normalizeOrigin(requestOrigin) === normalizeOrigin(allowed));
-    const isValidReferer =
-      referer && allowedOrigins.some((allowed) => referer.startsWith(normalizeOrigin(allowed)));
-
-    // より厳密なチェック: 少なくとも一つのヘッダーが存在し、有効である必要がある
-    if ((!requestOrigin && !referer) || (!isValidOrigin && !isValidReferer)) {
-      return createServerActionError("UNAUTHORIZED", "無効なリクエストです");
-    }
-
     const supabase = createClient();
 
     // イベントIDのバリデーション（UUID形式）
