@@ -204,7 +204,7 @@ export function EventFormTimeline({
             <div className="text-center bg-white/60 rounded-md py-2">
               <p className="text-xs text-muted-foreground">申込受付期間</p>
               <p className="text-sm font-medium mt-0.5">
-                {calculateTimeGap(regDeadlineDate, eventDateObj)}
+                {calculateTimeGap(new Date(), regDeadlineDate)}
               </p>
             </div>
             {hasPaymentDeadline && (

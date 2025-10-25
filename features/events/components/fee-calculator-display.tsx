@@ -31,7 +31,7 @@ export function FeeCalculatorDisplay({ fee, className = "" }: FeeCalculatorDispl
             <span className="font-medium">{formatCurrency(fee)}円</span>
           </div>
           <div className="flex justify-between items-center text-red-600">
-            <span>− 各種手数料</span>
+            <span>− 手数料</span>
             <span>−{formatCurrency(fee - netAmount)}円</span>
           </div>
           <div className="pt-2 border-t border-gray-200">
