@@ -12,7 +12,7 @@ import { PaymentStatusAlert } from "@features/events";
 import {
   GuestManagementForm,
   GuestStatusOverview,
-  GuestEventDetails,
+  // GuestEventDetails,
   createGuestStripeSessionAction,
 } from "@features/guest";
 
@@ -118,9 +118,9 @@ export function GuestPageClient({
       )}
 
       {/* イベント詳細 */}
-      <section className="mb-6 sm:mb-8">
+      {/* <section className="mb-6 sm:mb-8">
         <GuestEventDetails attendance={attendance} />
-      </section>
+      </section> */}
 
       {/* ゲスト管理フォーム */}
       <section id="guest-form-section">
