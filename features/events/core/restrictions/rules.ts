@@ -74,14 +74,14 @@ export const STRIPE_PAID_FEE_RESTRICTION: RestrictionRule = {
   },
 };
 
-/** 決済済み参加者がいる場合の決済方法制限 */
-export const STRIPE_PAID_PAYMENT_METHODS_RESTRICTION: RestrictionRule = {
-  id: "stripe_paid_payment_methods_restriction",
+/** 参加者がいる場合の決済方法制限 */
+export const ATTENDEE_PAYMENT_METHODS_RESTRICTION: RestrictionRule = {
+  id: "attendee_payment_methods_restriction",
   field: "payment_methods",
   level: "structural",
-  name: "決済済み参加者による決済方法制限",
+  name: "参加者による決済方法制限",
   evaluate: (context: RestrictionContext, formData: FormDataSnapshot) => {
-    if (!context.hasStripePaid) {
+    if (!context.hasAttendees) {
       return createEvaluation(false, "制限なし");
     }
 
@@ -93,9 +93,9 @@ export const STRIPE_PAID_PAYMENT_METHODS_RESTRICTION: RestrictionRule = {
       if (!next.has(method)) {
         return createEvaluation(
           true,
-          "決済済み参加者がいるため、既存の決済方法は解除できません",
-          "オンライン決済を完了した参加者がいるため、既存の決済方法の解除はできません。",
-          "決済方法を追加することは可能です。既存の方法を解除する場合は、決済済み参加者への対応が必要になります。"
+          "参加者がいるため、既存の決済方法は解除できません",
+          "参加者が登録済みのため、既存の決済方法の解除はできません。",
+          "決済方法を追加することは可能です。既存の方法を解除する場合は、参加者への対応が必要になります。"
         );
       }
     }
@@ -282,7 +282,7 @@ export const CAPACITY_REDUCTION_ADVISORY: RestrictionRule = {
 export const ALL_RESTRICTION_RULES: RestrictionRule[] = [
   // 構造的制限
   STRIPE_PAID_FEE_RESTRICTION,
-  STRIPE_PAID_PAYMENT_METHODS_RESTRICTION,
+  ATTENDEE_PAYMENT_METHODS_RESTRICTION,
 
   // 条件的制限
   ATTENDEE_COUNT_CAPACITY_RESTRICTION,

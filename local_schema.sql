@@ -1277,7 +1277,7 @@ COMMENT ON FUNCTION "public"."rpc_bulk_update_payment_status_safe"("p_payment_up
 
 
 
-CREATE OR REPLACE FUNCTION "public"."rpc_guest_get_attendance"("p_guest_token" "text") RETURNS TABLE("attendance_id" "uuid", "nickname" character varying, "email" character varying, "status" "public"."attendance_status_enum", "guest_token" character varying, "event_id" "uuid", "event_title" character varying, "event_date" timestamp with time zone, "event_fee" integer, "created_by" "uuid", "registration_deadline" timestamp with time zone, "payment_deadline" timestamp with time zone, "canceled_at" timestamp with time zone, "payment_id" "uuid", "payment_amount" integer, "payment_method" "public"."payment_method_enum", "payment_status" "public"."payment_status_enum", "payment_created_at" timestamp with time zone)
+CREATE OR REPLACE FUNCTION "public"."rpc_guest_get_attendance"("p_guest_token" "text") RETURNS TABLE("attendance_id" "uuid", "nickname" character varying, "email" character varying, "status" "public"."attendance_status_enum", "guest_token" character varying, "event_id" "uuid", "event_title" character varying, "event_date" timestamp with time zone, "event_location" character varying, "event_fee" integer, "event_capacity" integer, "event_description" "text", "event_payment_methods" "public"."payment_method_enum"[], "event_allow_payment_after_deadline" boolean, "event_grace_period_days" smallint, "created_by" "uuid", "registration_deadline" timestamp with time zone, "payment_deadline" timestamp with time zone, "canceled_at" timestamp with time zone, "payment_id" "uuid", "payment_amount" integer, "payment_method" "public"."payment_method_enum", "payment_status" "public"."payment_status_enum", "payment_created_at" timestamp with time zone)
     LANGUAGE "plpgsql" STABLE SECURITY DEFINER
     SET "search_path" TO 'pg_catalog', 'public', 'pg_temp'
     AS $$
@@ -1297,7 +1297,13 @@ BEGIN
         e.id,
         e.title,
         e.date,
+        e.location,
         e.fee,
+        e.capacity,
+        e.description,
+        e.payment_methods,
+        e.allow_payment_after_deadline,
+        e.grace_period_days,
         e.created_by,
         e.registration_deadline,
         e.payment_deadline,
@@ -2068,7 +2074,7 @@ ALTER TABLE "public"."contacts" OWNER TO "postgres";
 
 CREATE TABLE IF NOT EXISTS "public"."events" (
     "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
-    "created_by" "uuid" NOT NULL,
+    "created_by" "uuid" DEFAULT "auth"."uid"() NOT NULL,
     "title" character varying(255) NOT NULL,
     "date" timestamp with time zone NOT NULL,
     "location" character varying(500),
@@ -2103,6 +2109,10 @@ ALTER TABLE "public"."events" OWNER TO "postgres";
 
 
 COMMENT ON TABLE "public"."events" IS 'イベント情報';
+
+
+
+COMMENT ON COLUMN "public"."events"."created_by" IS 'Event creator user ID. Automatically set to auth.uid() if not provided during insert.';
 
 
 
@@ -3011,19 +3021,19 @@ ALTER TABLE ONLY "public"."users"
 
 
 
-CREATE POLICY "Creators can delete own events" ON "public"."events" FOR DELETE TO "authenticated" USING (("auth"."uid"() = "created_by"));
+CREATE POLICY "Creators can delete own events" ON "public"."events" FOR DELETE TO "authenticated" USING ((( SELECT "auth"."uid"() AS "uid") = "created_by"));
 
 
 
-CREATE POLICY "Creators can insert own events" ON "public"."events" FOR INSERT TO "authenticated" WITH CHECK (("auth"."uid"() = "created_by"));
+CREATE POLICY "Creators can insert own events" ON "public"."events" FOR INSERT TO "authenticated" WITH CHECK ((( SELECT "auth"."uid"() AS "uid") = "created_by"));
 
 
 
-CREATE POLICY "Creators can update own events" ON "public"."events" FOR UPDATE TO "authenticated" USING (("auth"."uid"() = "created_by")) WITH CHECK (("auth"."uid"() = "created_by"));
+CREATE POLICY "Creators can update own events" ON "public"."events" FOR UPDATE TO "authenticated" USING ((( SELECT "auth"."uid"() AS "uid") = "created_by")) WITH CHECK ((( SELECT "auth"."uid"() AS "uid") = "created_by"));
 
 
 
-CREATE POLICY "Creators can view their own events" ON "public"."events" FOR SELECT TO "authenticated" USING (("auth"."uid"() = "created_by"));
+CREATE POLICY "Event access policy" ON "public"."events" FOR SELECT TO "authenticated", "anon" USING ((("auth"."uid"() = "created_by") OR "public"."can_access_event"("id")));
 
 
 
@@ -3035,10 +3045,6 @@ CREATE POLICY "Guests can view event organizer stripe accounts" ON "public"."str
 
 
 COMMENT ON POLICY "Guests can view event organizer stripe accounts" ON "public"."stripe_connect_accounts" IS 'ゲストトークンを持つ匿名ユーザーが、自身が参加しているイベントの主催者のStripe Connectアカウント情報（決済処理に必要な最小限の情報）にのみアクセス可能';
-
-
-
-CREATE POLICY "Safe event access policy" ON "public"."events" FOR SELECT TO "authenticated", "anon" USING ("public"."can_access_event"("id"));
 
 
 
@@ -3058,15 +3064,15 @@ CREATE POLICY "Service role can manage stripe/payout info" ON "public"."stripe_c
 
 
 
-CREATE POLICY "Users can manage own stripe accounts" ON "public"."stripe_connect_accounts" TO "authenticated" USING (("auth"."uid"() = "user_id")) WITH CHECK (("auth"."uid"() = "user_id"));
+CREATE POLICY "Users can manage own stripe accounts" ON "public"."stripe_connect_accounts" TO "authenticated" USING ((( SELECT "auth"."uid"() AS "uid") = "user_id")) WITH CHECK ((( SELECT "auth"."uid"() AS "uid") = "user_id"));
 
 
 
-CREATE POLICY "Users can update own profile" ON "public"."users" FOR UPDATE TO "authenticated" USING (("auth"."uid"() = "id")) WITH CHECK (("auth"."uid"() = "id"));
+CREATE POLICY "Users can update own profile" ON "public"."users" FOR UPDATE TO "authenticated" USING ((( SELECT "auth"."uid"() AS "uid") = "id")) WITH CHECK ((( SELECT "auth"."uid"() AS "uid") = "id"));
 
 
 
-CREATE POLICY "Users can view own profile" ON "public"."users" FOR SELECT TO "authenticated" USING (("auth"."uid"() = "id"));
+CREATE POLICY "Users can view own profile" ON "public"."users" FOR SELECT TO "authenticated" USING ((( SELECT "auth"."uid"() AS "uid") = "id"));
 
 
 
@@ -3088,41 +3094,41 @@ CREATE POLICY "dispute_select_event_owner" ON "public"."payment_disputes" FOR SE
    FROM (("public"."payments" "p"
      JOIN "public"."attendances" "a" ON (("a"."id" = "p"."attendance_id")))
      JOIN "public"."events" "e" ON (("e"."id" = "a"."event_id")))
-  WHERE (("p"."id" = "payment_disputes"."payment_id") AND ("e"."created_by" = "auth"."uid"())))));
+  WHERE (("p"."id" = "payment_disputes"."payment_id") AND ("e"."created_by" = ( SELECT "auth"."uid"() AS "uid"))))));
 
 
 
 CREATE POLICY "event_creators_can_insert_attendances" ON "public"."attendances" FOR INSERT TO "authenticated" WITH CHECK ((EXISTS ( SELECT 1
    FROM "public"."events" "e"
-  WHERE (("e"."id" = "attendances"."event_id") AND ("e"."created_by" = "auth"."uid"())))));
+  WHERE (("e"."id" = "attendances"."event_id") AND ("e"."created_by" = ( SELECT "auth"."uid"() AS "uid"))))));
 
 
 
 CREATE POLICY "event_creators_can_insert_payments" ON "public"."payments" FOR INSERT TO "authenticated" WITH CHECK ((EXISTS ( SELECT 1
    FROM ("public"."attendances" "a"
      JOIN "public"."events" "e" ON (("a"."event_id" = "e"."id")))
-  WHERE (("a"."id" = "payments"."attendance_id") AND ("e"."created_by" = "auth"."uid"())))));
+  WHERE (("a"."id" = "payments"."attendance_id") AND ("e"."created_by" = ( SELECT "auth"."uid"() AS "uid"))))));
 
 
 
 CREATE POLICY "event_creators_can_update_attendances" ON "public"."attendances" FOR UPDATE TO "authenticated" USING ((EXISTS ( SELECT 1
    FROM "public"."events" "e"
-  WHERE (("e"."id" = "attendances"."event_id") AND ("e"."created_by" = "auth"."uid"()))))) WITH CHECK ((EXISTS ( SELECT 1
+  WHERE (("e"."id" = "attendances"."event_id") AND ("e"."created_by" = ( SELECT "auth"."uid"() AS "uid")))))) WITH CHECK ((EXISTS ( SELECT 1
    FROM "public"."events" "e"
-  WHERE (("e"."id" = "attendances"."event_id") AND ("e"."created_by" = "auth"."uid"())))));
+  WHERE (("e"."id" = "attendances"."event_id") AND ("e"."created_by" = ( SELECT "auth"."uid"() AS "uid"))))));
 
 
 
 CREATE POLICY "event_creators_can_view_attendances" ON "public"."attendances" FOR SELECT TO "authenticated" USING ((EXISTS ( SELECT 1
    FROM "public"."events" "e"
-  WHERE (("e"."id" = "attendances"."event_id") AND ("e"."created_by" = "auth"."uid"())))));
+  WHERE (("e"."id" = "attendances"."event_id") AND ("e"."created_by" = ( SELECT "auth"."uid"() AS "uid"))))));
 
 
 
 CREATE POLICY "event_creators_can_view_payments" ON "public"."payments" FOR SELECT TO "authenticated" USING ((EXISTS ( SELECT 1
    FROM ("public"."attendances" "a"
      JOIN "public"."events" "e" ON (("a"."event_id" = "e"."id")))
-  WHERE (("a"."id" = "payments"."attendance_id") AND ("e"."created_by" = "auth"."uid"())))));
+  WHERE (("a"."id" = "payments"."attendance_id") AND ("e"."created_by" = ( SELECT "auth"."uid"() AS "uid"))))));
 
 
 
@@ -3170,10 +3176,6 @@ CREATE POLICY "system_logs are accessible only by service_role" ON "public"."sys
 
 
 ALTER TABLE "public"."users" ENABLE ROW LEVEL SECURITY;
-
-
-CREATE POLICY "users_can_view_own_stripe_accounts" ON "public"."stripe_connect_accounts" FOR SELECT TO "authenticated" USING (("user_id" = "auth"."uid"()));
-
 
 
 

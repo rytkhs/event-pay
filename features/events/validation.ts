@@ -8,8 +8,8 @@ import { z } from "zod";
 export const eventSchema = z.object({
   title: z
     .string()
-    .min(1, "イベントタイトルは必須です")
-    .max(200, "イベントタイトルは200文字以内である必要があります"),
+    .min(1, "イベント名は必須です")
+    .max(200, "イベント名は200文字以内である必要があります"),
   description: z.string().max(2000, "説明は2000文字以内である必要があります").optional(),
   event_date: z.string().datetime("有効な日時を入力してください"),
   location: z.string().max(500, "開催場所は500文字以内である必要があります").optional(),

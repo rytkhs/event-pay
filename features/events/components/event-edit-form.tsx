@@ -199,14 +199,14 @@ export function EventEditForm({
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {/* タイトル */}
+                  {/* イベント名 */}
                   <FormField
                     control={form.control}
                     name="title"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>
-                          タイトル <span className="text-red-500">*</span>
+                          イベント名 <span className="text-red-500">*</span>
                         </FormLabel>
                         <FormControl>
                           <Input {...field} disabled={isPending} maxLength={100} required />
@@ -364,8 +364,8 @@ export function EventEditForm({
                                       ];
                                       field.onChange(next);
                                     } else {
-                                      // 既存メソッドの解除は禁止（hasStripePaid時）
-                                      if (hasStripePaid && existingMethods.includes(option.value)) {
+                                      // 既存メソッドの解除は禁止（hasAttendees時）
+                                      if (hasAttendees && existingMethods.includes(option.value)) {
                                         return;
                                       }
                                       const next = (field.value || []).filter(

@@ -51,7 +51,7 @@ export const EventCard = memo(function EventCard({ event }: EventCardProps) {
     return event.capacity === null ? `${count}名` : `${count}/${event.capacity}名`;
   }, [event.attendances_count, event.capacity]);
 
-  // XSS対策: タイトルと場所をサニタイズ
+  // XSS対策: イベント名と場所をサニタイズ
   const sanitizedTitle = useMemo(() => {
     return sanitizeForEventPay(event.title);
   }, [event.title]);
@@ -75,7 +75,7 @@ export const EventCard = memo(function EventCard({ event }: EventCardProps) {
             <span className="text-xs text-muted-foreground font-medium">{formattedFee}</span>
           </div>
 
-          {/* タイトル */}
+          {/* イベント名 */}
           <CardTitle
             className="text-lg font-semibold leading-tight line-clamp-2 mb-0"
             data-testid="event-title"

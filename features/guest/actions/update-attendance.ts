@@ -2,7 +2,6 @@
 
 import { headers } from "next/headers";
 
-import { PAYMENT_METHODS } from "@core/constants/payment-methods";
 import { validateGuestTokenFormat } from "@core/security/crypto";
 import { SecureSupabaseClientFactory } from "@core/security/secure-client-factory.impl";
 import {
@@ -120,15 +119,13 @@ export async function updateGuestAttendanceAction(
       validatedPaymentMethod =
         paymentValidation.data as Database["public"]["Enums"]["payment_method_enum"];
 
-      // 決済方法の利用可能性チェック
-      if (validatedPaymentMethod === "stripe" && !PAYMENT_METHODS.includes("stripe")) {
+      // イベントで許可されている決済方法かチェック
+      const allowedPaymentMethods = attendance.event.payment_methods || [];
+      if (!allowedPaymentMethods.includes(validatedPaymentMethod)) {
         return createServerActionError(
-          "EXTERNAL_SERVICE_ERROR",
-          "オンライン決済は現在利用できません"
+          "VALIDATION_ERROR",
+          "このイベントでは選択された決済方法は利用できません"
         );
-      }
-      if (validatedPaymentMethod === "cash" && !PAYMENT_METHODS.includes("cash")) {
-        return createServerActionError("EXTERNAL_SERVICE_ERROR", "現金決済は現在利用できません");
       }
     }
 

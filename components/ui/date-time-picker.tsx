@@ -50,7 +50,7 @@ export function DateTimePicker({
       newDate.setHours(selectedDate.getHours());
       newDate.setMinutes(selectedDate.getMinutes());
     } else {
-      newDate.setHours(19); // デフォルト19:00
+      newDate.setHours(12); // デフォルト12:00
       newDate.setMinutes(0);
     }
 

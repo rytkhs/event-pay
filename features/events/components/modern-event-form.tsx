@@ -264,7 +264,7 @@ function ModernEventForm({
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel className="text-base font-medium">
-                          タイトル <span className="text-red-500">*</span>
+                          イベント名 <span className="text-red-500">*</span>
                         </FormLabel>
                         <FormControl>
                           <Input
@@ -345,7 +345,7 @@ function ModernEventForm({
                                 {formatCurrency(calculateNetAmount(feeAmount))}円
                               </p>
                               <p className="text-xs text-blue-700 mt-1">
-                                （参加費 {formatCurrency(feeAmount)}円 - 各種手数料）
+                                （参加費 {formatCurrency(feeAmount)}円 - 手数料）
                               </p>
                             </div>
                           )}

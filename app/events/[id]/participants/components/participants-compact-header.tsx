@@ -41,7 +41,7 @@ export function ParticipantsCompactHeader({
   return (
     <Card className="border-0 shadow-sm">
       <CardContent className="p-3 sm:p-4 md:p-6">
-        {/* ヘッダー: 戻るボタン + イベントタイトル + 状況バッジ */}
+        {/* ヘッダー: 戻るボタン + イベント名 + 状況バッジ */}
         <div className="flex items-start gap-2 sm:gap-3 mb-3 sm:mb-4">
           <Button
             variant="ghost"

@@ -46,6 +46,7 @@ export interface RLSGuestAttendanceData {
     capacity: number | null;
     registration_deadline: string | null;
     payment_deadline: string | null;
+    payment_methods: Database["public"]["Enums"]["payment_method_enum"][];
     allow_payment_after_deadline?: boolean;
     grace_period_days?: number | null;
     created_by: string;
@@ -124,7 +125,7 @@ export class RLSGuestTokenValidator implements IGuestTokenValidator {
         .single();
 
       if (error || !rpcRow) {
-        await this.safeLogGuestAccess(token, "VALIDATE_TOKEN_DETAILS", false, {
+        await this.safeLogGuestAccess(token, "VALIDATE_TOKEN_RPC_FAILED", false, {
           errorCode: GuestErrorCode.TOKEN_NOT_FOUND,
           errorMessage: error?.message,
           tableName: "attendances",
@@ -145,6 +146,7 @@ export class RLSGuestTokenValidator implements IGuestTokenValidator {
         date: (rpcRow as any).event_date,
         registration_deadline: (rpcRow as any).registration_deadline,
         payment_deadline: (rpcRow as any).payment_deadline,
+        payment_methods: (rpcRow as any).event_payment_methods || [],
         canceled_at: (rpcRow as any).canceled_at,
       } as any;
       const canModify = this.checkCanModify(eventData);
@@ -233,7 +235,13 @@ export class RLSGuestTokenValidator implements IGuestTokenValidator {
         id: (rpcRow as any).event_id,
         title: (rpcRow as any).event_title,
         date: (rpcRow as any).event_date,
+        location: (rpcRow as any).event_location,
         fee: (rpcRow as any).event_fee,
+        capacity: (rpcRow as any).event_capacity,
+        description: (rpcRow as any).event_description,
+        payment_methods: (rpcRow as any).event_payment_methods,
+        allow_payment_after_deadline: (rpcRow as any).event_allow_payment_after_deadline,
+        grace_period_days: (rpcRow as any).event_grace_period_days,
         registration_deadline: (rpcRow as any).registration_deadline,
         payment_deadline: (rpcRow as any).payment_deadline,
         created_by: (rpcRow as any).created_by,

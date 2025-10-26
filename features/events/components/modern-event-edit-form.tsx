@@ -28,7 +28,7 @@ const STEPS = [
   {
     id: "basic",
     title: "基本情報",
-    description: "タイトル、日時、参加費",
+    description: "イベント名、日時、参加費",
     icon: CalendarIcon,
   },
   {
@@ -363,6 +363,7 @@ export function ModernEventEditForm({
                 hasStripeSelected={hasStripeSelected}
                 canUseOnlinePayments={canUseOnlinePayments}
                 hasStripePaid={hasStripePaid}
+                hasAttendees={hasAttendees}
                 event={event}
                 watchedAllowPaymentAfterDeadline={watchedAllowPaymentAfterDeadline}
               />

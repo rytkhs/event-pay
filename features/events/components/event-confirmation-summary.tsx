@@ -98,9 +98,9 @@ export function EventConfirmationSummary({
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
-          {/* タイトル */}
+          {/* イベント名 */}
           <div>
-            <div className="text-xs text-gray-500 mb-1">タイトル</div>
+            <div className="text-xs text-gray-500 mb-1">イベント名</div>
             <div className="text-base font-semibold text-gray-900">
               {formData.title || <span className="text-red-500">未設定</span>}
             </div>

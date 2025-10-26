@@ -2653,7 +2653,13 @@ RETURNS TABLE (
     event_id uuid,
     event_title character varying(255),
     event_date timestamptz,
+    event_location character varying(500),
     event_fee integer,
+    event_capacity integer,
+    event_description text,
+    event_payment_methods public.payment_method_enum[],
+    event_allow_payment_after_deadline boolean,
+    event_grace_period_days smallint,
     created_by uuid,
     registration_deadline timestamptz,
     payment_deadline timestamptz,
@@ -2683,7 +2689,13 @@ BEGIN
         e.id,
         e.title,
         e.date,
+        e.location,
         e.fee,
+        e.capacity,
+        e.description,
+        e.payment_methods,
+        e.allow_payment_after_deadline,
+        e.grace_period_days,
         e.created_by,
         e.registration_deadline,
         e.payment_deadline,
@@ -2825,7 +2837,16 @@ CREATE POLICY "Guests can view event organizer stripe accounts" ON "public"."str
 
 COMMENT ON POLICY "Guests can view event organizer stripe accounts" ON "public"."stripe_connect_accounts" IS 'ゲストトークンを持つ匿名ユーザーが、自身が参加しているイベントの主催者のStripe Connectアカウント情報（決済処理に必要な最小限の情報）にのみアクセス可能';
 
-CREATE POLICY "Safe event access policy" ON "public"."events" FOR SELECT TO "authenticated", "anon" USING ("public"."can_access_event"("id"));
+CREATE POLICY "Event access policy" ON "public"."events"
+FOR SELECT
+TO "authenticated", "anon"
+USING (
+  -- 作成者は常にアクセス可能（can_access_event関数を使わない）
+  (auth.uid() = created_by)
+  OR
+  -- それ以外はcan_access_event関数で判定
+  ("public"."can_access_event"("id"))
+);
 
 CREATE POLICY "Service role can manage attendances" ON "public"."attendances" FOR ALL TO "service_role" USING (true) WITH CHECK (true);
 

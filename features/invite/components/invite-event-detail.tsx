@@ -169,7 +169,7 @@ export function InviteEventDetail({
         </Alert>
       )}
 
-      {/* イベントタイトル＆ステータスカード */}
+      {/* イベント名＆ステータスカード */}
       <Card className="overflow-hidden shadow-sm">
         <div className="bg-primary px-6 py-8 text-primary-foreground">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">

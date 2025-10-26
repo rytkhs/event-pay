@@ -151,7 +151,7 @@ export function ParticipationConfirmation({
             <div className="grid gap-4">
               <div>
                 <h4 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
-                  タイトル
+                  イベント名
                 </h4>
                 <p className="mt-1 text-base font-medium text-foreground">
                   {sanitizeForEventPay(registrationData.eventTitle)}
