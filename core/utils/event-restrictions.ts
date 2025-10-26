@@ -19,6 +19,7 @@ interface RestrictionContext {
   operation: "update" | "delete" | "payment_change" | "capacity_change";
   attendeeCount: number;
   hasActivePayments?: boolean;
+  hasAttendees?: boolean;
 }
 
 /**
@@ -271,7 +272,7 @@ export function getRestrictionRulesV2(
   const paymentMethodsRule: RestrictionRule = {
     field: "payment_methods",
     check: (existing, updated, context) => {
-      if (!context.hasActivePayments) return false;
+      if (!context.hasAttendees) return false;
       const current = new Set(
         (existing as Database["public"]["Enums"]["payment_method_enum"][]) || []
       );
@@ -282,7 +283,7 @@ export function getRestrictionRulesV2(
       }
       return false;
     },
-    message: "決済済みの参加者がいるため、既存の決済方法は解除できません",
+    message: "参加者がいるため、既存の決済方法は解除できません",
   };
 
   switch (operation) {
@@ -304,12 +305,13 @@ export function getRestrictionRulesV2(
 export function checkEditRestrictionsV2(
   existingEvent: EventWithAttendances,
   newData: Partial<EventRow>,
-  params: { attendeeCount: number; hasActivePayments: boolean }
+  params: { attendeeCount: number; hasActivePayments: boolean; hasAttendees?: boolean }
 ): EditRestrictionViolation[] {
   const context: RestrictionContext = {
     operation: "update",
     attendeeCount: params.attendeeCount,
     hasActivePayments: params.hasActivePayments,
+    hasAttendees: params.hasAttendees ?? params.attendeeCount > 0,
   };
 
   const violations: EditRestrictionViolation[] = [];

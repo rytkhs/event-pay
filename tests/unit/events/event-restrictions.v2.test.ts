@@ -60,12 +60,12 @@ describe("checkEditRestrictionsV2", () => {
     expect(violations.find((v) => v.field === "fee")).toBeTruthy();
   });
 
-  test("hasActivePayments=true で payment_methods がロックされる", () => {
+  test("hasAttendees=true で payment_methods がロックされる", () => {
     const event = createEvent({ payment_methods: ["stripe"] as any }, [{ id: "a1" } as any]);
     const violations = checkEditRestrictionsV2(
       event,
       { payment_methods: ["cash"] as any },
-      { attendeeCount: 1, hasActivePayments: true }
+      { attendeeCount: 1, hasActivePayments: false, hasAttendees: true }
     );
     expect(violations.find((v) => v.field === "payment_methods")).toBeTruthy();
   });

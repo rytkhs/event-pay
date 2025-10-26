@@ -363,6 +363,7 @@ export function ModernEventEditForm({
                 hasStripeSelected={hasStripeSelected}
                 canUseOnlinePayments={canUseOnlinePayments}
                 hasStripePaid={hasStripePaid}
+                hasAttendees={hasAttendees}
                 event={event}
                 watchedAllowPaymentAfterDeadline={watchedAllowPaymentAfterDeadline}
               />

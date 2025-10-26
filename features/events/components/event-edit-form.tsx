@@ -364,8 +364,8 @@ export function EventEditForm({
                                       ];
                                       field.onChange(next);
                                     } else {
-                                      // 既存メソッドの解除は禁止（hasStripePaid時）
-                                      if (hasStripePaid && existingMethods.includes(option.value)) {
+                                      // 既存メソッドの解除は禁止（hasAttendees時）
+                                      if (hasAttendees && existingMethods.includes(option.value)) {
                                         return;
                                       }
                                       const next = (field.value || []).filter(

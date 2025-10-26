@@ -294,7 +294,7 @@ export async function updateEventAction(
         capacity: validatedData.capacity,
         payment_methods: validatedData.payment_methods,
       },
-      { attendeeCount, hasActivePayments: hasStripePaid }
+      { attendeeCount, hasActivePayments: hasStripePaid, hasAttendees: attendeeCount > 0 }
     );
 
     if (restrictions.length > 0) {

@@ -30,6 +30,7 @@ interface PaymentSettingsStepProps {
   hasStripeSelected: boolean;
   canUseOnlinePayments: boolean;
   hasStripePaid: boolean;
+  hasAttendees: boolean;
   event: Event;
   watchedAllowPaymentAfterDeadline: boolean;
 }
@@ -45,7 +46,8 @@ export function PaymentSettingsStep({
   isFreeEvent,
   hasStripeSelected,
   canUseOnlinePayments,
-  hasStripePaid,
+  hasStripePaid: _hasStripePaid,
+  hasAttendees,
   event,
   watchedAllowPaymentAfterDeadline,
 }: PaymentSettingsStepProps) {
@@ -159,8 +161,8 @@ export function PaymentSettingsStep({
                               const next = [...new Set([...(field.value || []), option.value])];
                               field.onChange(next);
                             } else {
-                              // 既存メソッドの解除は禁止（hasStripePaid時）
-                              if (hasStripePaid && existingMethods.includes(option.value)) {
+                              // 既存メソッドの解除は禁止（hasAttendees時）
+                              if (hasAttendees && existingMethods.includes(option.value)) {
                                 return;
                               }
                               const next = (field.value || []).filter((v) => v !== option.value);
@@ -205,9 +207,9 @@ export function PaymentSettingsStep({
                     </div>
                   )}
 
-                  {hasStripePaid ? (
+                  {hasAttendees ? (
                     <FormDescription className="text-xs text-gray-500">
-                      決済済み参加者がいるため、既存の決済方法は解除できません。新しい決済方法の追加は可能です。
+                      参加者がいるため、既存の決済方法は解除できません。新しい決済方法の追加は可能です。
                     </FormDescription>
                   ) : (
                     <FormDescription className="text-xs text-gray-500">

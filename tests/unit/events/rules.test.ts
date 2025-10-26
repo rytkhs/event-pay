@@ -4,7 +4,7 @@
 
 import {
   STRIPE_PAID_FEE_RESTRICTION,
-  STRIPE_PAID_PAYMENT_METHODS_RESTRICTION,
+  ATTENDEE_PAYMENT_METHODS_RESTRICTION,
   ATTENDEE_COUNT_CAPACITY_RESTRICTION,
   FREE_EVENT_PAYMENT_ADVISORY,
   PAID_EVENT_PAYMENT_REQUIRED_ADVISORY,
@@ -68,42 +68,44 @@ describe("STRIPE_PAID_FEE_RESTRICTION", () => {
     expect(result.details).toContain("5名の参加者");
   });
 
-  it("決済済み参加者がいても参加費が変更されていない場合は制限なし", async () => {
+  it("決済済み参加者がいる場合は参加費が変更されていなくても制限あり", async () => {
     const context = createTestContext({
       hasStripePaid: true,
+      attendeeCount: 3,
       originalEvent: { fee: 1000, capacity: null, payment_methods: [] },
     });
     const formData = createTestFormData({ fee: 1000 });
 
     const result = await Promise.resolve(STRIPE_PAID_FEE_RESTRICTION.evaluate(context, formData));
 
-    expect(result.isRestricted).toBe(false);
-    expect(result.message).toBe("制限なし");
+    expect(result.isRestricted).toBe(true);
+    expect(result.message).toBe("決済済み参加者がいるため、参加費は変更できません");
+    expect(result.details).toContain("3名の参加者");
   });
 });
 
-describe("STRIPE_PAID_PAYMENT_METHODS_RESTRICTION", () => {
-  it("決済済み参加者がいない場合は制限なし", async () => {
-    const context = createTestContext({ hasStripePaid: false });
+describe("ATTENDEE_PAYMENT_METHODS_RESTRICTION", () => {
+  it("参加者がいない場合は制限なし", async () => {
+    const context = createTestContext({ hasAttendees: false });
     const formData = createTestFormData({ payment_methods: ["stripe", "cash"] });
 
     const result = await Promise.resolve(
-      STRIPE_PAID_PAYMENT_METHODS_RESTRICTION.evaluate(context, formData)
+      ATTENDEE_PAYMENT_METHODS_RESTRICTION.evaluate(context, formData)
     );
 
     expect(result.isRestricted).toBe(false);
     expect(result.message).toBe("制限なし");
   });
 
-  it("決済済み参加者がいて既存の決済方法を解除しようとする場合は制限あり（追加のみは可）", async () => {
+  it("参加者がいて既存の決済方法を解除しようとする場合は制限あり（追加のみは可）", async () => {
     const context = createTestContext({
-      hasStripePaid: true,
+      hasAttendees: true,
       originalEvent: { fee: 1000, capacity: null, payment_methods: ["stripe"] },
     });
     // 追加のみ（OK）
     const addOnly = createTestFormData({ payment_methods: ["stripe", "cash"] });
     const addOnlyResult = await Promise.resolve(
-      STRIPE_PAID_PAYMENT_METHODS_RESTRICTION.evaluate(context, addOnly)
+      ATTENDEE_PAYMENT_METHODS_RESTRICTION.evaluate(context, addOnly)
     );
     expect(addOnlyResult.isRestricted).toBe(false);
     expect(addOnlyResult.message).toBe("制限なし");
@@ -111,10 +113,10 @@ describe("STRIPE_PAID_PAYMENT_METHODS_RESTRICTION", () => {
     // 解除を含む（NG）
     const removal = createTestFormData({ payment_methods: ["cash"] });
     const removalResult = await Promise.resolve(
-      STRIPE_PAID_PAYMENT_METHODS_RESTRICTION.evaluate(context, removal)
+      ATTENDEE_PAYMENT_METHODS_RESTRICTION.evaluate(context, removal)
     );
     expect(removalResult.isRestricted).toBe(true);
-    expect(removalResult.message).toBe("決済済み参加者がいるため、既存の決済方法は解除できません");
+    expect(removalResult.message).toBe("参加者がいるため、既存の決済方法は解除できません");
   });
 });
 
