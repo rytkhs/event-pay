@@ -2971,7 +2971,7 @@ GRANT EXECUTE ON FUNCTION "public"."get_event_creator_name"("p_creator_id" "uuid
 GRANT EXECUTE ON FUNCTION "public"."get_guest_token"() TO "authenticated", "service_role";
 GRANT EXECUTE ON FUNCTION "public"."get_min_payout_amount"() TO "authenticated", "service_role";
 GRANT EXECUTE ON FUNCTION "public"."get_settlement_report_details"("input_created_by" "uuid", "input_event_ids" "uuid"[], "p_from_date" timestamp with time zone, "p_to_date" timestamp with time zone, "p_limit" integer, "p_offset" integer) TO "authenticated", "service_role";
-GRANT EXECUTE ON FUNCTION "public"."register_attendance_with_payment"("p_event_id" "uuid", "p_nickname" character varying, "p_email" character varying, "p_status" "public"."attendance_status_enum", "p_guest_token" character varying, "p_payment_method" "public"."payment_method_enum", "p_event_fee" integer) TO "authenticated", "service_role";
+GRANT EXECUTE ON FUNCTION "public"."register_attendance_with_payment"("p_event_id" "uuid", "p_nickname" character varying, "p_email" character varying, "p_status" "public"."attendance_status_enum", "p_guest_token" character varying, "p_payment_method" "public"."payment_method_enum", "p_event_fee" integer) TO "anon", "authenticated", "service_role";
 GRANT EXECUTE ON FUNCTION "public"."status_rank"("p" "public"."payment_status_enum") TO "authenticated", "service_role";
 GRANT EXECUTE ON FUNCTION "public"."update_revenue_summary"("p_event_id" "uuid") TO "authenticated", "service_role";
 

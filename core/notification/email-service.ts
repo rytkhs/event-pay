@@ -151,11 +151,12 @@ function sleep(ms: number): Promise<void> {
 /**
  * 環境変数をバリデーション
  */
-function validateEmailConfig(): { fromEmail: string; adminEmail: string } {
+function validateEmailConfig(): { fromEmail: string; fromName: string; adminEmail: string } {
   const env = getEnv();
   const isDev = env.NODE_ENV === "development" || env.NODE_ENV === "test";
 
   let fromEmail = getEnv().FROM_EMAIL;
+  let fromName = getEnv().FROM_NAME;
   let adminEmail = getEnv().ADMIN_EMAIL;
 
   // 本番環境では必須
@@ -181,6 +182,14 @@ function validateEmailConfig(): { fromEmail: string; adminEmail: string } {
     });
   }
 
+  if (!fromName) {
+    fromName = "みんなの集金";
+    logger.warn("FROM_NAME not set, using default", {
+      tag: "emailService",
+      default_value: fromName,
+    });
+  }
+
   if (!adminEmail) {
     adminEmail = "admin@eventpay.jp";
     logger.warn("ADMIN_EMAIL not set, using default", {
@@ -189,7 +198,7 @@ function validateEmailConfig(): { fromEmail: string; adminEmail: string } {
     });
   }
 
-  return { fromEmail, adminEmail };
+  return { fromEmail, fromName, adminEmail };
 }
 
 /**
@@ -198,6 +207,7 @@ function validateEmailConfig(): { fromEmail: string; adminEmail: string } {
 export class EmailNotificationService implements IEmailNotificationService {
   private resend: Resend;
   private fromEmail: string;
+  private fromName: string;
   private adminEmail: string;
 
   constructor() {
@@ -211,7 +221,32 @@ export class EmailNotificationService implements IEmailNotificationService {
     // 環境変数をバリデーション
     const config = validateEmailConfig();
     this.fromEmail = config.fromEmail;
+    this.fromName = config.fromName;
     this.adminEmail = config.adminEmail;
+  }
+
+  /**
+   * fromフィールドを構築する
+   * 優先順位: template.fromName + template.fromEmail > デフォルト値
+   */
+  private buildFromField(template: EmailTemplate): string {
+    // 1. template.fromNameとtemplate.fromEmailが指定されている場合
+    if (template.fromName && template.fromEmail) {
+      return `${template.fromName} <${template.fromEmail}>`;
+    }
+
+    // 2. template.fromNameのみ指定されている場合
+    if (template.fromName) {
+      return `${template.fromName} <${this.fromEmail}>`;
+    }
+
+    // 3. template.fromEmailのみ指定されている場合
+    if (template.fromEmail) {
+      return `${this.fromName} <${template.fromEmail}>`;
+    }
+
+    // 4. デフォルト値を使用
+    return `${this.fromName} <${this.fromEmail}>`;
   }
 
   /**
@@ -225,11 +260,14 @@ export class EmailNotificationService implements IEmailNotificationService {
     // ログ用にマスクされたメールアドレス
     const maskedTo = maskEmail(to);
 
+    // fromフィールドの構築
+    const fromField = this.buildFromField(template);
+
     for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
       try {
         // タイムアウト付きでメール送信を実行
         const result = await this.sendEmailWithTimeout({
-          from: template.from || this.fromEmail,
+          from: fromField,
           to: [to],
           subject: template.subject,
           react: template.react,
@@ -405,7 +443,8 @@ export class EmailNotificationService implements IEmailNotificationService {
           message,
           details,
         }),
-        from: this.fromEmail,
+        fromEmail: this.fromEmail,
+        fromName: this.fromName,
       };
 
       const result = await this.sendEmail({
