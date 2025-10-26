@@ -25,7 +25,8 @@ export interface NotificationResult {
 export interface EmailTemplate {
   subject: string;
   react: React.ReactElement;
-  from?: string;
+  fromEmail?: string; // 送信者メールアドレス
+  fromName?: string; // 送信者名
   replyTo?: string;
 }
 
