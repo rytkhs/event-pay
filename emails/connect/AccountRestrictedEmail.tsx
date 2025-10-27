@@ -1,10 +1,8 @@
 import * as React from "react";
 
-import { Heading, Text } from "@react-email/components";
+import { Heading, Text, Hr } from "@react-email/components";
 
 import { Button } from "../_components/Button";
-import { Divider } from "../_components/Divider";
-import { Section } from "../_components/Section";
 import { EmailLayout } from "../_layout/EmailLayout";
 
 export interface AccountRestrictedEmailProps {
@@ -20,23 +18,18 @@ export const AccountRestrictedEmail = ({
   requiredActions,
   dashboardUrl,
 }: AccountRestrictedEmailProps) => {
+  const hasActions = Array.isArray(requiredActions) && requiredActions.length > 0;
+
+  const preheader = hasActions
+    ? "アカウントに制限が設定されました — 対応が必要です"
+    : "アカウントに制限が設定されました — 詳細をご確認ください";
+
   return (
-    <EmailLayout preheader="Stripeアカウントに制限が設定されました">
+    <EmailLayout preheader={preheader}>
+      {/* 宛名 */}
       <Text
         style={{
           margin: "0 0 8px 0",
-          fontSize: "28px",
-          lineHeight: "36px",
-          fontWeight: "700",
-          color: "#1e293b",
-        }}
-      >
-        ⚠️ アカウント制限通知
-      </Text>
-
-      <Text
-        style={{
-          margin: "0 0 32px 0",
           fontSize: "16px",
           lineHeight: "24px",
           color: "#64748b",
@@ -45,117 +38,107 @@ export const AccountRestrictedEmail = ({
         {userName} 様
       </Text>
 
-      <Section variant="danger">
+      {/* タイトル */}
+      <Heading
+        as="h1"
+        style={{
+          margin: "0 0 16px 0",
+          fontSize: "24px",
+          lineHeight: "32px",
+          fontWeight: 600,
+          color: "#0f172a",
+        }}
+      >
+        アカウントに制限が設定されました
+      </Heading>
+
+      {/* アラートボックス（簡素・高コントラスト） */}
+      <div
+        style={{
+          backgroundColor: "#fef2f2",
+          borderLeft: "4px solid #dc2626",
+          padding: "16px 20px",
+          borderRadius: 4,
+          marginBottom: 24,
+        }}
+      >
         <Text
           style={{
             margin: 0,
-            fontWeight: "700",
-            color: "#991b1b",
-            fontSize: "18px",
-            lineHeight: "28px",
+            fontSize: "15px",
+            lineHeight: "22px",
+            color: "#7f1d1d",
           }}
         >
-          🚨 Stripeアカウントに制限が設定されました
+          アカウントに一部の機能制限が適用されています。内容をご確認のうえ、必要な対応をお願いします。
         </Text>
         {restrictionReason && (
           <Text
             style={{
-              margin: "12px 0 0 0",
-              fontSize: "15px",
-              lineHeight: "22px",
+              margin: "8px 0 0 0",
+              fontSize: "14px",
+              lineHeight: "20px",
               color: "#7f1d1d",
-              backgroundColor: "#fef2f2",
-              padding: "12px",
-              borderRadius: "6px",
-              border: "1px solid #fca5a5",
             }}
           >
             <strong>制限理由:</strong> {restrictionReason}
           </Text>
         )}
-      </Section>
+      </div>
 
-      {requiredActions && requiredActions.length > 0 && (
+      {/* 必要な対応（番号付き・スキャン可能） */}
+      {hasActions && (
         <>
-          <Divider />
           <Heading
             as="h2"
             style={{
-              fontSize: "20px",
-              lineHeight: "28px",
-              margin: "0 0 16px 0",
-              color: "#1e293b",
-              fontWeight: "600",
+              fontSize: "18px",
+              lineHeight: "24px",
+              margin: "0 0 12px 0",
+              color: "#0f172a",
+              fontWeight: 600,
             }}
           >
-            📋 必要なアクション
+            必要な対応
           </Heading>
-          <div
+
+          <ol
             style={{
-              backgroundColor: "#fffbeb",
-              borderRadius: "12px",
-              padding: "20px",
-              border: "2px solid #fde047",
-              borderLeft: "6px solid #eab308",
+              margin: "0 0 24px 20px",
+              padding: 0,
+              color: "#374151",
+              fontSize: "15px",
+              lineHeight: "24px",
             }}
           >
-            {requiredActions.map((action, index) => (
-              <div
-                key={index}
-                style={{
-                  display: "flex",
-                  alignItems: "flex-start",
-                  marginBottom: index < requiredActions.length - 1 ? "12px" : "0",
-                }}
-              >
-                <span
-                  style={{
-                    backgroundColor: "#eab308",
-                    color: "#ffffff",
-                    borderRadius: "50%",
-                    width: "24px",
-                    height: "24px",
-                    display: "inline-flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    marginRight: "12px",
-                    fontSize: "12px",
-                    fontWeight: "600",
-                    flexShrink: 0,
-                  }}
-                >
-                  {index + 1}
-                </span>
-                <Text
-                  style={{
-                    margin: 0,
-                    fontSize: "15px",
-                    lineHeight: "24px",
-                    color: "#713f12",
-                  }}
-                >
-                  {action}
-                </Text>
-              </div>
+            {requiredActions?.map((action, index) => (
+              <li key={index} style={{ marginBottom: 8 }}>
+                {action}
+              </li>
             ))}
-          </div>
+          </ol>
         </>
       )}
 
-      {dashboardUrl && <Button href={dashboardUrl}>Stripeダッシュボードを開く</Button>}
+      {/* CTA（単一・明確） */}
+      {dashboardUrl && (
+        <div style={{ margin: "0 0 24px 0" }}>
+          <Button href={dashboardUrl}>ダッシュボードで対応する</Button>
+        </div>
+      )}
 
+      <Hr style={{ borderColor: "#e2e8f0", margin: "24px 0" }} />
+
+      {/* 補足と連絡手段 */}
       <Text
         style={{
-          margin: "32px 0 0 0",
+          margin: 0,
           fontSize: "14px",
           lineHeight: "20px",
           color: "#64748b",
-          textAlign: "center",
         }}
       >
-        制限を解除するには、上記のアクションを完了してください。
-        <br />
-        ご不明な点がございましたら、お気軽にお問い合わせください。
+        ご不明な点がございましたら、サポートからお問い合わせください。
       </Text>
     </EmailLayout>
   );

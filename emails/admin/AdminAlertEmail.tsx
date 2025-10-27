@@ -1,9 +1,7 @@
 import * as React from "react";
 
-import { Heading, Text } from "@react-email/components";
+import { Heading, Text, Hr } from "@react-email/components";
 
-import { Divider } from "../_components/Divider";
-import { Section } from "../_components/Section";
 import { EmailLayout } from "../_layout/EmailLayout";
 
 export interface AdminAlertEmailProps {
@@ -13,29 +11,51 @@ export interface AdminAlertEmailProps {
 }
 
 export const AdminAlertEmail = ({ subject, message, details }: AdminAlertEmailProps) => {
+  // 値を安全に文字列化
+  const toDisplay = (v: any) => {
+    if (v === null || v === undefined) return "-";
+    if (typeof v === "string" || typeof v === "number" || typeof v === "boolean") return String(v);
+    try {
+      return JSON.stringify(v, null, 2);
+    } catch {
+      return String(v);
+    }
+  };
+
   return (
     <EmailLayout preheader={`[EventPay Alert] ${subject}`}>
-      <Text
+      {/* タイトル */}
+      <Heading
+        as="h1"
         style={{
-          margin: "0 0 8px 0",
-          fontSize: "28px",
-          lineHeight: "36px",
-          fontWeight: "700",
-          color: "#1e293b",
+          margin: "0 0 16px 0",
+          fontSize: "22px",
+          lineHeight: "30px",
+          fontWeight: 600,
+          color: "#0f172a",
         }}
       >
-        🚨 システムアラート
-      </Text>
+        システムアラート
+      </Heading>
 
-      <Section variant="danger">
+      {/* 警告ブロック（簡素・高コントラスト） */}
+      <div
+        style={{
+          backgroundColor: "#fef2f2",
+          borderLeft: "4px solid #ef4444",
+          padding: "14px 16px",
+          borderRadius: 4,
+          margin: "0 0 24px 0",
+        }}
+      >
         <Heading
           as="h2"
           style={{
-            fontSize: "20px",
-            lineHeight: "28px",
-            margin: "0 0 12px 0",
-            color: "#991b1b",
-            fontWeight: "600",
+            margin: "0 0 8px 0",
+            fontSize: "18px",
+            lineHeight: "24px",
+            color: "#7f1d1d",
+            fontWeight: 600,
           }}
         >
           {subject}
@@ -43,64 +63,103 @@ export const AdminAlertEmail = ({ subject, message, details }: AdminAlertEmailPr
         <Text
           style={{
             margin: 0,
-            fontSize: "16px",
-            lineHeight: "24px",
-            whiteSpace: "pre-wrap",
+            fontSize: "14px",
+            lineHeight: "20px",
             color: "#7f1d1d",
+            whiteSpace: "pre-wrap",
           }}
         >
           {message}
         </Text>
-      </Section>
+      </div>
 
+      {/* 詳細情報 */}
       {details && (
         <>
-          <Divider />
           <Heading
-            as="h3"
+            as="h2"
             style={{
+              margin: "0 0 12px 0",
               fontSize: "18px",
-              lineHeight: "28px",
-              margin: "0 0 16px 0",
-              color: "#1e293b",
-              fontWeight: "600",
+              lineHeight: "24px",
+              color: "#0f172a",
+              fontWeight: 600,
             }}
           >
-            📊 詳細情報
+            詳細情報
           </Heading>
+
           <div
             style={{
-              backgroundColor: "#1e293b",
-              borderRadius: "12px",
-              padding: "20px",
-              border: "2px solid #334155",
+              border: "1px solid #e2e8f0",
+              borderRadius: 8,
+              overflow: "hidden",
+              marginBottom: 24,
             }}
           >
-            <pre
-              style={{
-                margin: 0,
-                fontSize: "13px",
-                lineHeight: "20px",
-                overflow: "auto",
-                fontFamily:
-                  'ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace',
-                color: "#e2e8f0",
-                whiteSpace: "pre-wrap",
-                wordWrap: "break-word",
-              }}
-            >
-              {JSON.stringify(details, null, 2)}
-            </pre>
+            {Object.entries(details).map(([k, v], idx) => (
+              <div
+                key={k + idx}
+                style={{
+                  padding: "12px 14px",
+                  borderBottom: "1px solid #e2e8f0",
+                  backgroundColor: idx % 2 === 0 ? "#ffffff" : "#f8fafc",
+                }}
+              >
+                <Text
+                  style={{
+                    margin: "0 0 4px 0",
+                    fontSize: "12px",
+                    lineHeight: "18px",
+                    color: "#64748b",
+                    fontWeight: 500,
+                    letterSpacing: "0.2px",
+                  }}
+                >
+                  {k}
+                </Text>
+                {typeof v === "object" && v !== null ? (
+                  <pre
+                    style={{
+                      margin: 0,
+                      fontSize: "12px",
+                      lineHeight: "18px",
+                      whiteSpace: "pre-wrap",
+                      wordBreak: "break-word",
+                      fontFamily:
+                        'ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace',
+                      color: "#0f172a",
+                    }}
+                  >
+                    {toDisplay(v)}
+                  </pre>
+                ) : (
+                  <Text
+                    style={{
+                      margin: 0,
+                      fontSize: "14px",
+                      lineHeight: "20px",
+                      color: "#0f172a",
+                      wordBreak: "break-word",
+                    }}
+                  >
+                    {toDisplay(v)}
+                  </Text>
+                )}
+              </div>
+            ))}
           </div>
         </>
       )}
 
+      <Hr style={{ borderColor: "#e2e8f0", margin: "16px 0" }} />
+
       <Text
         style={{
-          margin: "32px 0 0 0",
-          fontSize: "14px",
-          lineHeight: "20px",
-          color: "#64748b",
+          margin: 0,
+          fontSize: "12px",
+          lineHeight: "18px",
+          color: "#94a3b8",
           textAlign: "center",
         }}
       >

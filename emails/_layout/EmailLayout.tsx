@@ -18,10 +18,18 @@ interface EmailLayoutProps {
 }
 
 export const EmailLayout = ({ preheader, children }: EmailLayoutProps) => {
+  const year = new Date().getFullYear();
+
   return (
     <Html lang="ja">
-      <Head />
+      <Head>
+        {/* Dark Mode 基本対応 */}
+        <meta name="color-scheme" content="light dark" />
+        <meta name="supported-color-schemes" content="light dark" />
+      </Head>
+
       {preheader && <Preview>{preheader}</Preview>}
+
       <Tailwind>
         <Body
           style={{
@@ -32,34 +40,35 @@ export const EmailLayout = ({ preheader, children }: EmailLayoutProps) => {
             padding: 0,
           }}
         >
-          {/* スペーサー */}
-          <div style={{ height: "40px" }} />
+          {/* スペーサー（外側余白） */}
+          <div style={{ height: "32px" }} />
 
           <Container
             style={{
+              width: "100%",
               maxWidth: "600px",
               margin: "0 auto",
               backgroundColor: "#ffffff",
-              borderRadius: "16px",
-              boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)",
+              border: "1px solid #e5e7eb",
+              borderRadius: "8px",
               overflow: "hidden",
             }}
           >
-            {/* ヘッダー */}
+            {/* ヘッダー（軽量） */}
             <Section
               style={{
-                background: "#24A6B5",
-                padding: "32px 40px",
+                padding: "24px 24px 0 24px",
                 textAlign: "center",
               }}
             >
               <Heading
+                as="h2"
                 style={{
-                  color: "#ffffff",
-                  fontSize: "28px",
-                  fontWeight: "700",
+                  color: "#24A6B5",
+                  fontSize: "20px",
+                  fontWeight: 600,
                   margin: 0,
-                  letterSpacing: "0.5px",
+                  letterSpacing: "0.2px",
                 }}
               >
                 みんなの集金
@@ -67,45 +76,48 @@ export const EmailLayout = ({ preheader, children }: EmailLayoutProps) => {
             </Section>
 
             {/* メインコンテンツ */}
-            <Section style={{ padding: "40px" }}>{children}</Section>
+            <Section style={{ padding: "24px" }}>{children}</Section>
 
-            {/* フッター */}
+            {/* フッター（実用リンクを集約） */}
             <Section
               style={{
                 backgroundColor: "#f9fafb",
-                padding: "32px 40px",
+                padding: "20px 24px",
                 borderTop: "1px solid #e5e7eb",
               }}
             >
               <Text
                 style={{
                   color: "#6b7280",
-                  fontSize: "14px",
+                  fontSize: "13px",
                   lineHeight: "20px",
-                  margin: "0 0 12px 0",
-                  textAlign: "center",
-                }}
-              >
-                © 2025 みんなの集金 - イベント出欠管理・集金ツール
-              </Text>
-              <Text
-                style={{
-                  color: "#9ca3af",
-                  fontSize: "12px",
-                  lineHeight: "16px",
                   margin: 0,
                   textAlign: "center",
                 }}
               >
-                このメールに心当たりがない場合は、破棄していただいて構いません。
+                © {year} みんなの集金
               </Text>
+
+              {/* <Text
+                style={{
+                  color: "#94a3b8",
+                  fontSize: "12px",
+                  lineHeight: "18px",
+                  margin: "8px 0 0 0",
+                  textAlign: "center",
+                }}
+              >
+                このメールに心当たりがない場合は、破棄してください。
+              </Text> */}
             </Section>
           </Container>
 
-          {/* スペーサー */}
-          <div style={{ height: "40px" }} />
+          {/* スペーサー（外側余白） */}
+          <div style={{ height: "32px" }} />
         </Body>
       </Tailwind>
     </Html>
   );
 };
+
+export default EmailLayout;
