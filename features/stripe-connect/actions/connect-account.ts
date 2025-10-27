@@ -444,8 +444,8 @@ export async function handleOnboardingReturnAction(): Promise<void> {
       });
     }
 
-    // ダッシュボードにリダイレクト（成功メッセージ付き）
-    redirect("/dashboard?connect=success");
+    // 設定ページにリダイレクト（成功メッセージ付き）
+    redirect("/settings/payments?connect=success");
   } catch (error) {
     if (isNextRedirectError(error)) {
       throw error as Error;

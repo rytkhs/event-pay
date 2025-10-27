@@ -270,7 +270,7 @@ export function PaymentStatusAlert({
           bgColor: "bg-green-50 border-green-200",
           textColor: "text-green-800",
           title: verifiedStatus ? "決済が完了しました（検証済み）" : "決済が完了しました",
-          description: `${sanitizeForEventPay(eventTitle)}の参加費の決済が正常に完了しました。参加登録が確定されました。`,
+          description: `${sanitizeForEventPay(eventTitle)}の参加費の決済が正常に完了しました。`,
         };
       case "canceled":
         return {
