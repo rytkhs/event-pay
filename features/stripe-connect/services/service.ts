@@ -121,8 +121,7 @@ export class StripeConnectService implements IStripeConnectService {
         ...(businessType ? { business_type: businessType } : {}),
         ...(country === "JP" ? { default_currency: "jpy" } : {}),
         capabilities: {
-          // MVPではオンボーディング簡略化のためcard_paymentsは要求しない
-          // card_payments: { requested: true },
+          card_payments: { requested: true },
           transfers: { requested: true },
         },
         metadata: {
