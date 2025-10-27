@@ -340,12 +340,12 @@ export default function LandingPage(): JSX.Element {
         <div className="container">
           <h2 className="section-title">まずは無料でシンプルに利用できます</h2>
           <div className="pricing-card">
-            <div className="pricing-item">
+            {/* <div className="pricing-item">
               <span className="pricing-label">初期費用</span>
               <span className="pricing-value">0円</span>
-            </div>
+            </div> */}
             <div className="pricing-item">
-              <span className="pricing-label">月額費用</span>
+              <span className="pricing-label">月額料金</span>
               <span className="pricing-value">0円</span>
             </div>
             <div className="pricing-item highlight">
