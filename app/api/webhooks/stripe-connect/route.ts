@@ -95,6 +95,87 @@ export async function POST(request: NextRequest) {
       event_type: event.type,
     });
 
+    // テスト環境での同期処理モード（E2Eテスト用）
+    // SKIP_QSTASH_IN_TEST=true の場合、QStashをスキップして直接処理
+    const shouldProcessSync = getEnv().SKIP_QSTASH_IN_TEST === "true";
+
+    if (shouldProcessSync) {
+      connectLogger.info("Test mode: Processing connect webhook synchronously (QStash skipped)", {
+        event_id: event.id,
+        event_type: event.type,
+        tag: "connectWebhook-test-mode",
+      });
+
+      try {
+        // workerの処理を直接実行
+        const { ConnectWebhookHandler } = await import(
+          "@features/payments/services/webhook/connect-webhook-handler"
+        );
+        const handler = await ConnectWebhookHandler.create();
+
+        let _result: any = { success: true };
+
+        // イベントタイプに応じて処理
+        switch (event.type) {
+          case "account.updated": {
+            const accountObj = event.data.object as Stripe.Account;
+            _result = await handler.handleAccountUpdated(accountObj);
+            break;
+          }
+          case "account.application.deauthorized": {
+            const applicationObj = event.data.object as Stripe.Application;
+            _result = await handler.handleAccountApplicationDeauthorized(
+              applicationObj,
+              (event as any).account
+            );
+            break;
+          }
+          case "payout.paid": {
+            const payout = event.data.object as Stripe.Payout;
+            _result = await handler.handlePayoutPaid(payout);
+            break;
+          }
+          case "payout.failed": {
+            const payout = event.data.object as Stripe.Payout;
+            _result = await handler.handlePayoutFailed(payout);
+            break;
+          }
+          default: {
+            connectLogger.info("Connect event ignored (unsupported type)", {
+              type: event.type,
+              event_id: event.id,
+            });
+          }
+        }
+
+        connectLogger.info("Connect webhook processed synchronously", {
+          event_id: event.id,
+          event_type: event.type,
+          testMode: true,
+          tag: "connectWebhook-test-mode",
+        });
+
+        return NextResponse.json({
+          received: true,
+          eventId: event.id,
+          eventType: event.type,
+          testMode: true,
+        });
+      } catch (error) {
+        connectLogger.error("Connect webhook synchronous processing failed", {
+          event_id: event.id,
+          event_type: event.type,
+          error: error instanceof Error ? error.message : "Unknown error",
+          tag: "connectWebhook-test-mode",
+        });
+
+        return createProblemResponse("INTERNAL_ERROR", {
+          instance: "/api/webhooks/stripe-connect",
+          detail: "Connect webhook processing failed in test mode",
+        });
+      }
+    }
+
     // QStash に publish（完全なイベントデータを送信）
     const workerUrl = `${getEnv().APP_BASE_URL || getEnv().NEXTAUTH_URL}/api/workers/stripe-connect-webhook`;
     connectLogger.debug("Publishing Connect webhook to QStash", {
