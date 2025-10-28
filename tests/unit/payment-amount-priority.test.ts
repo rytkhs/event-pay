@@ -97,7 +97,7 @@ describe("既存payments.amount優先ロジック検証", () => {
       const testAmount = 1750;
       const expectedCheckoutParams = {
         amount: testAmount,
-        platformFeeAmount: Math.floor(testAmount * 0.025), // 2.5%手数料想定
+        platformFeeAmount: Math.floor(testAmount * 0.049), // 4.9%手数料想定
         eventId: "event_123",
         eventTitle: "Test Event",
         destinationAccountId: "acct_1S95RCEJRRCbin0V",
@@ -109,13 +109,13 @@ describe("既存payments.amount優先ロジック検証", () => {
       };
 
       expect(expectedCheckoutParams.amount).toBe(1750);
-      expect(expectedCheckoutParams.platformFeeAmount).toBe(43); // floor(1750 * 0.025)
+      expect(expectedCheckoutParams.platformFeeAmount).toBe(85); // floor(1750 * 0.049)
       expect(expectedCheckoutParams.metadata.payment_id).toBe("payment_123");
     });
 
     it("手数料計算が正しい金額で実行される", () => {
       const amounts = [1000, 1500, 2000, 2500];
-      const feeRate = 0.025; // 2.5%
+      const feeRate = 0.049; // 4.9%
 
       amounts.forEach((amount) => {
         const expectedFee = Math.floor(amount * feeRate);
@@ -124,9 +124,9 @@ describe("既存payments.amount優先ロジック検証", () => {
       });
 
       // 具体例
-      expect(Math.floor(1000 * 0.025)).toBe(25);
-      expect(Math.floor(1500 * 0.025)).toBe(37);
-      expect(Math.floor(2000 * 0.025)).toBe(50);
+      expect(Math.floor(1000 * 0.049)).toBe(49);
+      expect(Math.floor(1500 * 0.049)).toBe(73);
+      expect(Math.floor(2000 * 0.049)).toBe(98);
     });
   });
 

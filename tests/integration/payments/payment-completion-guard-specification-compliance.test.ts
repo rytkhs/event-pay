@@ -56,7 +56,7 @@ describe("🚨 決済完了済みガード 仕様書適合性検証", () => {
     await adminClient.from("fee_config").upsert({
       stripe_base_rate: 0.039,
       stripe_fixed_fee: 15,
-      platform_fee_rate: 0.1,
+      platform_fee_rate: 0.049,
       platform_fixed_fee: 0,
       min_platform_fee: 50,
       max_platform_fee: 1000,

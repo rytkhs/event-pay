@@ -21,7 +21,7 @@ export function calculateStripeFee(amount: number): number {
  */
 export function calculateNetAmount(amount: number): number {
   if (amount < 100) return 0;
-  const PLATFORM_FEE_RATE = 0.013; // 1.3%
+  const PLATFORM_FEE_RATE = 0.049; // 4.9%
   const stripeFee = calculateStripeFee(amount);
   const platformFee = Math.round(amount * PLATFORM_FEE_RATE);
   return amount - stripeFee - platformFee;
