@@ -278,6 +278,8 @@ export class RLSGuestTokenValidator implements IGuestTokenValidator {
           email: (rpcRow as any).email,
           status: (rpcRow as any).status,
           guest_token: (rpcRow as any).guest_token,
+          created_at: (rpcRow as any).attendance_created_at,
+          updated_at: (rpcRow as any).attendance_updated_at,
           event: {
             ...eventData,
             title: sanitizeForEventPay((rpcRow as any).event_title),
