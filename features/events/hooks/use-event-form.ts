@@ -432,7 +432,7 @@ export const useEventForm = (): {
           // ユーザーが成功を認識できるよう、短いディレイ後にリダイレクト
           setTimeout(() => {
             router.push(`/events/${result.data.id}`);
-          }, 1000);
+          }, 500);
         } else {
           // エラー時はフォームにエラーを設定
           form.setError("root", {

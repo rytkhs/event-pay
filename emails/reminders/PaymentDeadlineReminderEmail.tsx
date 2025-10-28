@@ -143,7 +143,7 @@ export const PaymentDeadlineReminderEmail = ({
 
         <div style={{ padding: "14px 16px" }}>
           <Text style={{ margin: "0 0 2px 0", fontSize: 13, color: "#64748b", fontWeight: 500 }}>
-            イベント費
+            参加費
           </Text>
           <Text style={{ margin: 0, fontSize: 18, color: "#0f172a", fontWeight: 600 }}>
             {formattedFee}

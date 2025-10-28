@@ -14,9 +14,9 @@ export interface ParticipationRegisteredEmailProps {
 }
 
 const STATUS_TEXT: Record<"attending" | "maybe" | "not_attending", string> = {
-  attending: "参加する",
-  maybe: "検討中",
-  not_attending: "欠席",
+  attending: "参加",
+  maybe: "未定",
+  not_attending: "不参加",
 };
 
 const statusTheme = (status: "attending" | "maybe" | "not_attending") => {
