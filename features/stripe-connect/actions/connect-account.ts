@@ -19,7 +19,6 @@ import { createClient } from "@core/supabase/server";
 import { getEnv } from "@core/utils/cloudflare-env";
 import { isNextRedirectError } from "@core/utils/next";
 
-import { OnboardingPrefillSchema, buildBusinessProfile } from "../schemas/onboarding-prefill";
 import { createUserStripeConnectService } from "../services";
 import { StripeConnectError } from "../types";
 
@@ -611,156 +610,54 @@ export async function checkConnectPermissionsAction(): Promise<{
 }
 
 /**
- * オンボーディング事前入力とAccount Link生成を行うServer Action
- * 認証・認可チェックを強化し、フォールバック機能を実装
+ * シンプルなオンボーディング開始処理
+ * Connectアカウント作成とAccount Link生成のみを行う
  */
-export async function prefillAndStartOnboardingAction(formData: FormData): Promise<void> {
+export async function startOnboardingAction(): Promise<void> {
   try {
     // 1. 認証チェック
-    const supabase = createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
+    const user = await getAuthenticatedUser();
 
-    if (authError) {
-      logger.error("Prefill onboarding auth error", {
-        tag: "prefillOnboardingAuthError",
-        error_name: authError.name,
-        error_message: authError.message,
-      });
-      throw new Error("認証に失敗しました");
-    }
+    // 2. 必要情報の準備（ベースURL → refresh/return URL）
+    const baseUrl =
+      getEnv().NEXT_PUBLIC_APP_URL || getEnv().NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+    const refreshUrl = `${baseUrl}${CONNECT_REFRESH_PATH}`;
+    const returnUrl = `${baseUrl}${CONNECT_RETURN_PATH}`;
 
-    if (!user) {
-      logger.warn("Unauthenticated user attempted prefill onboarding", {
-        tag: "prefillOnboardingUnauthenticated",
-      });
-      throw new Error("認証が必要です");
-    }
-
-    if (!user.email) {
-      logger.error("User has no email address for prefill onboarding", {
-        tag: "prefillOnboardingNoEmail",
-        user_id: user.id,
-      });
-      throw new Error("メールアドレスが設定されていません");
-    }
-
-    // 2. フォームデータの抽出と検証
-    const toStrOrUndef = (key: string): string | undefined => {
-      const v = formData.get(key);
-      return typeof v === "string" && v.trim() !== "" ? v : undefined;
-    };
-
-    const rawData = {
-      hasWebsite: formData.get("hasWebsite") === "true",
-      websiteUrl: toStrOrUndef("websiteUrl"),
-      productDescription: toStrOrUndef("productDescription"),
-      mccPreset: toStrOrUndef("mccPreset") ?? "",
-      customMcc: toStrOrUndef("customMcc"),
-      refreshUrl: toStrOrUndef("refreshUrl") ?? "",
-      returnUrl: toStrOrUndef("returnUrl") ?? "",
-    };
-
-    // Zodスキーマでバリデーション
-    const validatedData = OnboardingPrefillSchema.parse(rawData);
-
-    // 3. StripeConnectServiceを初期化（ユーザーセッション使用、RLS適用）
+    // 3. StripeConnectServiceを初期化
     const stripeConnectService = createUserStripeConnectService();
 
-    // 4. 既存のアカウントをチェック、存在しない場合は作成
-    let existingAccount = await stripeConnectService.getConnectAccountByUser(user.id);
-
-    if (!existingAccount) {
+    // 4. 既存アカウントを取得（無ければ作成）
+    let account = await stripeConnectService.getConnectAccountByUser(user.id);
+    if (!account) {
       await stripeConnectService.createExpressAccount({
         userId: user.id,
-        email: user.email,
-        country: "JP", // 日本固定
+        email: user.email || `${user.id}@example.com`,
+        country: "JP",
         businessType: "individual",
       });
-
-      // 作成後に再取得
-      existingAccount = await stripeConnectService.getConnectAccountByUser(user.id);
-      if (!existingAccount) {
-        logger.error("Failed to fetch account after creation for prefill", {
-          tag: "prefillAccountFetchAfterCreationFailed",
-          user_id: user.id,
-        });
-        throw new Error("アカウント作成後の取得に失敗しました");
+      account = await stripeConnectService.getConnectAccountByUser(user.id);
+      if (!account) {
+        throw new Error("アカウント情報の取得に失敗しました");
       }
     }
 
-    // 5. ビジネスプロファイルの事前入力（フォールバック機能付き）
-    let prefillSuccess = false;
-    const businessProfile = buildBusinessProfile(validatedData);
-
-    if (Object.keys(businessProfile).length > 0) {
-      try {
-        const updateResult = await stripeConnectService.updateBusinessProfile({
-          accountId: existingAccount.stripe_account_id,
-          businessProfile,
-        });
-
-        prefillSuccess = updateResult.success;
-
-        if (prefillSuccess) {
-          logger.info("Business profile prefill successful", {
-            tag: "prefillOnboardingSuccess",
-            user_id: user.id,
-            account_id: existingAccount.stripe_account_id,
-            updated_fields: updateResult.updatedFields,
-          });
-        }
-      } catch (prefillError) {
-        // 事前入力の失敗は致命的ではない。警告ログを記録して続行
-        prefillSuccess = false;
-        logger.warn("Business profile prefill failed, continuing without prefill", {
-          tag: "prefillOnboardingFailed",
-          user_id: user.id,
-          account_id: existingAccount.stripe_account_id,
-          error_name: prefillError instanceof Error ? prefillError.name : "Unknown",
-          error_message:
-            prefillError instanceof Error ? prefillError.message : String(prefillError),
-        });
-      }
-    }
-
-    // 6. Account Link生成（fields=eventually_dueでより多くの情報を収集）
+    // 5. Account Linkを生成して即リダイレクト
     const accountLink = await stripeConnectService.createAccountLink({
-      accountId: existingAccount.stripe_account_id,
-      refreshUrl: validatedData.refreshUrl,
-      returnUrl: validatedData.returnUrl,
+      accountId: account.stripe_account_id,
+      refreshUrl,
+      returnUrl,
       type: "account_onboarding",
-      collectionOptions: {
-        fields: "eventually_due", // アップフロント登録でより多くの情報を一度に収集
-      },
+      collectionOptions: { fields: "eventually_due" },
     });
 
-    // 7. ログ記録（KPI計測用）
-    // Account Link URL は機微トークンを含むためフル値をログに残さない
-    const maskedUrl = (() => {
-      try {
-        const u = new URL(accountLink.url);
-        // パス末尾の8文字のみを残してマスク
-        const tail = u.pathname.slice(-8);
-        return `${u.origin}/…/${tail}`;
-      } catch {
-        return "[masked]";
-      }
-    })();
-
-    logger.info("Onboarding started with prefill", {
-      tag: "onboardingStarted",
+    // 6. ログ記録
+    logger.info("Simple onboarding started", {
+      tag: "simpleOnboardingStarted",
       user_id: user.id,
-      account_id: existingAccount.stripe_account_id,
-      prefill_success: prefillSuccess,
-      has_website: validatedData.hasWebsite,
-      mcc_preset: validatedData.mccPreset,
-      account_link_url_masked: maskedUrl,
+      account_id: account.stripe_account_id,
     });
 
-    // 8. Account LinkのURLにリダイレクト
     redirect(accountLink.url);
   } catch (error) {
     // redirect 例外はそのまま再スロー（エラー扱いしない）
@@ -769,17 +666,12 @@ export async function prefillAndStartOnboardingAction(formData: FormData): Promi
     }
 
     // 構造化ログ
-    logger.error("Prefill onboarding error", {
-      tag: "prefillOnboardingError",
+    logger.error("Simple onboarding error", {
+      tag: "simpleOnboardingError",
       error_name: error instanceof Error ? error.name : "Unknown",
       error_message: error instanceof Error ? error.message : String(error),
       timestamp: new Date().toISOString(),
     });
-
-    // 入力検証エラーはそのまま再スロー（リダイレクトしない）
-    if (isValidationError(error)) {
-      throw error instanceof Error ? error : new Error(String(error));
-    }
 
     // StripeConnectErrorによるエラーページリダイレクト
     if (error instanceof StripeConnectError) {

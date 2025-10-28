@@ -3,7 +3,7 @@ export {
   getConnectAccountStatusAction,
   handleOnboardingReturnAction,
   handleOnboardingRefreshAction,
-  prefillAndStartOnboardingAction,
+  startOnboardingAction,
 } from "./connect-account";
 
 export { getStripeBalanceAction } from "./get-balance";
