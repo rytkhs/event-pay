@@ -8,6 +8,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 
 import { logger } from "@core/logging/app-logger";
+import { sendSlackText } from "@core/notification/slack";
 import {
   CONNECT_REFRESH_PATH,
   CONNECT_RETURN_PATH,
@@ -203,6 +204,10 @@ export async function createConnectAccountAction(formData: FormData): Promise<vo
         email: user.email,
         country: "JP", // 日本固定
         businessType: "individual",
+        businessProfile: {
+          productDescription:
+            "イベントを運営しています。イベントの参加者が参加費を支払う際、イベント管理プラットフォームのみんなの集金を使って参加費が決済されます。",
+        },
       });
 
       // 作成後に再取得
@@ -436,6 +441,34 @@ export async function handleOnboardingReturnAction(): Promise<void> {
           payoutsEnabled: accountInfo.payoutsEnabled,
         })
       );
+
+      // Slack通知（Connectオンボーディング完了）
+      try {
+        const timestamp = new Date().toISOString();
+        const slackText = `[Stripe Connect Onboarding Completed]
+ユーザーID: ${user.id}
+Stripe Account ID: ${account.stripe_account_id}
+ステータス: ${accountInfo.status}
+Charges Enabled: ${accountInfo.chargesEnabled ? "Yes" : "No"}
+Payouts Enabled: ${accountInfo.payoutsEnabled ? "Yes" : "No"}
+完了時刻: ${timestamp}`;
+
+        const slackResult = await sendSlackText(slackText);
+
+        if (!slackResult.success) {
+          logger.warn("Connect onboarding Slack notification failed", {
+            tag: "connectOnboardingSlackFailed",
+            user_id: user.id,
+            slack_error: slackResult.error,
+          });
+        }
+      } catch (error) {
+        logger.error("Connect onboarding Slack notification exception", {
+          tag: "connectOnboardingSlackException",
+          user_id: user.id,
+          error_message: error instanceof Error ? error.message : String(error),
+        });
+      }
     } else {
       logger.warn("Account not found during onboarding complete", {
         tag: "connectOnboardingCompleteAccountNotFound",
@@ -493,6 +526,10 @@ export async function handleOnboardingRefreshAction(): Promise<void> {
         email: user.email || `${user.id}@example.com`,
         country: "JP",
         businessType: "individual",
+        businessProfile: {
+          productDescription:
+            "イベントを運営しています。イベントの参加者が参加費を支払う際、イベント管理プラットフォームのみんなの集金を使って参加費が決済されます。",
+        },
       });
       account = await stripeConnectService.getConnectAccountByUser(user.id);
       if (!account) {
@@ -635,6 +672,10 @@ export async function startOnboardingAction(): Promise<void> {
         email: user.email || `${user.id}@example.com`,
         country: "JP",
         businessType: "individual",
+        businessProfile: {
+          productDescription:
+            "イベントを運営しています。イベントの参加者が参加費を支払う際、イベント管理プラットフォームのみんなの集金を使って参加費が決済されます。",
+        },
       });
       account = await stripeConnectService.getConnectAccountByUser(user.id);
       if (!account) {

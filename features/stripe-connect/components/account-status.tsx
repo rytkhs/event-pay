@@ -6,6 +6,8 @@
 
 import { useState } from "react";
 
+import Link from "next/link";
+
 import {
   CheckCircle,
   AlertCircle,
@@ -16,6 +18,7 @@ import {
   RefreshCw,
   ExternalLink,
   ShieldCheck,
+  BookOpen,
 } from "lucide-react";
 
 import { STRIPE_ACCOUNT_STATUS_LABELS } from "@core/types/enums";
@@ -119,6 +122,18 @@ export function AccountStatus({ refreshUrl, status, expressDashboardAction }: Ac
             <CardDescription>
               売上の入金設定の状況です。未完了の項目がある場合は「Stripeで設定を続行」から再設定してください。
             </CardDescription>
+            <div className="pt-2">
+              <Link
+                href="/dashboard/connect/guide"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 text-md text-blue-600 hover:text-blue-800 hover:underline"
+              >
+                <BookOpen className="h-4 w-4" />
+                設定回答の参考ページを見る
+                <ExternalLink className="h-3 w-3" />
+              </Link>
+            </div>
           </div>
           <Button onClick={handleRefresh} variant="outline" size="sm" disabled={isRefreshing}>
             {isRefreshing ? (

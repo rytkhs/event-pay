@@ -30,7 +30,7 @@ const faqItems: FAQItem[] = [
   {
     question: "リマインドのタイミングは？",
     answer:
-      "参加締切、オンライン決済締切、イベント開催日を設定している場合、それぞれ前日の朝9時頃に自動でリマインドメールが送信されます。",
+      "参加締切、オンライン決済締切、イベント開催日を設定している場合、それぞれ前日の午前9時頃に自動でリマインドメールが送信されます。",
   },
   {
     question: "CSVなどでデータをエクスポートできますか？",
@@ -145,7 +145,7 @@ export default function LandingPage(): JSX.Element {
                 いつもの集金を、簡単にクレジットカード決済対応にできます。
               </p>
               <div className="hero-chips">
-                <span className="chip">参加者登録不要</span>
+                <span className="chip">参加者はアカウント不要</span>
                 <span className="chip">現金・オンライン決済対応</span>
                 <span className="chip">自動リマインド</span>
               </div>

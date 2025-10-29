@@ -6,6 +6,7 @@ import { Receiver } from "@upstash/qstash";
 
 import { createProblemResponse } from "@core/api/problem-details";
 import { logger } from "@core/logging/app-logger";
+import { sendSlackText } from "@core/notification/slack";
 import { generateSecureUuid } from "@core/security/crypto";
 import { SecureSupabaseClientFactory } from "@core/security/secure-client-factory.impl";
 import { AdminReason } from "@core/security/secure-client-factory.types";
@@ -126,6 +127,51 @@ export async function POST(request: NextRequest) {
     }
 
     const emails = (attendees || []).map((a) => a.email).filter(Boolean);
+
+    // イベント情報を取得（Slack通知用）
+    const { data: eventInfo, error: eventError } = await admin
+      .from("events")
+      .select("title, created_by")
+      .eq("id", eventId)
+      .single();
+
+    // Slack通知（管理者向け）
+    if (!eventError && eventInfo) {
+      try {
+        // 主催者名を取得
+        const { data: creatorName } = await admin.rpc("get_event_creator_name", {
+          p_creator_id: eventInfo.created_by,
+        });
+
+        const timestamp = new Date().toISOString();
+        const customMessageStr = message ? `\nカスタムメッセージ: ${message}` : "";
+
+        const slackText = `[Event Cancel Alert]
+イベント名: ${eventInfo.title}
+イベントID: ${eventId}
+主催者: ${creatorName || "Unknown User"}
+通知対象人数: ${emails.length}人
+キャンセル時刻: ${timestamp}${customMessageStr}`;
+
+        const slackResult = await sendSlackText(slackText);
+
+        if (!slackResult.success) {
+          logger.warn("Event cancel Slack notification failed", {
+            tag: "eventCancelSlackFailed",
+            correlation_id: corr,
+            event_id: eventId,
+            slack_error: slackResult.error,
+          });
+        }
+      } catch (error) {
+        logger.error("Event cancel Slack notification exception", {
+          tag: "eventCancelSlackException",
+          correlation_id: corr,
+          event_id: eventId,
+          error_message: error instanceof Error ? error.message : String(error),
+        });
+      }
+    }
 
     // TODO: NotificationService が整備され次第、以下で一斉送信を実装する
     // const notification = new NotificationService(admin);

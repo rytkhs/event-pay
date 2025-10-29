@@ -14,6 +14,7 @@ import {
   type LockoutStatus,
 } from "@core/auth-security";
 import { logger } from "@core/logging/app-logger";
+import { sendSlackText } from "@core/notification/slack";
 import { enforceRateLimit, buildKey, POLICIES } from "@core/rate-limit/index";
 import { createClient } from "@core/supabase/server";
 import { getClientIPFromHeaders } from "@core/utils/ip-detection";
@@ -401,6 +402,32 @@ export async function registerAction(formData: FormData): Promise<ActionResult<{
     }
 
     // Database Triggerがpublic.usersプロファイルを自動作成
+
+    // Slack通知（新規アカウント作成）
+    queueMicrotask(async () => {
+      try {
+        const timestamp = new Date().toISOString();
+        const jstStr = formatUtcToJst(new Date(), "yyyy-MM-dd HH:mm 'JST'");
+
+        const slackText = `[Account Created]
+ユーザー: ${sanitizedName}
+登録時刻: ${jstStr} (${timestamp})`;
+
+        const slackResult = await sendSlackText(slackText);
+
+        if (!slackResult.success) {
+          logger.warn("Account creation Slack notification failed", {
+            tag: "accountCreationSlackFailed",
+            error: slackResult.error,
+          });
+        }
+      } catch (error) {
+        logger.error("Account creation Slack notification exception", {
+          tag: "accountCreationSlackException",
+          error_message: error instanceof Error ? error.message : String(error),
+        });
+      }
+    });
 
     // 登録成功（メール確認が必要）
     return {

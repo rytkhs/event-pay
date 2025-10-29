@@ -6,6 +6,7 @@ import type { PostgrestError } from "@supabase/supabase-js";
 import Stripe from "stripe";
 
 import { logger, type LogLevel } from "@core/logging/app-logger";
+import { sendSlackText } from "@core/notification/slack";
 
 import {
   ERROR_HANDLING_BY_TYPE,
@@ -202,10 +203,10 @@ export class StripeConnectErrorHandler implements IStripeConnectErrorHandler {
   }
 
   /**
-   * 管理者に通知する（実装は後続タスクで詳細化）
+   * 管理者に通知する
    */
   private async notifyAdmin(error: StripeConnectError): Promise<void> {
-    // TODO: 実際の通知実装（メール、Slack、ログ集約システムなど）
+    // ログ出力
     logger.error("Admin notification required for StripeConnect error", {
       tag: "stripeConnectAdminNotification",
       service: "stripe-connect",
@@ -213,5 +214,35 @@ export class StripeConnectErrorHandler implements IStripeConnectErrorHandler {
       message: error.message,
       metadata: error.metadata,
     });
+
+    // Slack通知
+    try {
+      const timestamp = new Date().toISOString();
+      const metadataStr = error.metadata
+        ? `\nメタデータ: ${JSON.stringify(error.metadata, null, 2)}`
+        : "";
+
+      const slackText = `[StripeConnect Error Alert]
+エラータイプ: ${error.type}
+メッセージ: ${error.message}
+発生時刻: ${timestamp}${metadataStr}`;
+
+      const slackResult = await sendSlackText(slackText);
+
+      if (!slackResult.success) {
+        logger.warn("StripeConnect Slack notification failed", {
+          tag: "stripeConnectSlackFailed",
+          service: "stripe-connect",
+          error_type: error.type,
+          slack_error: slackResult.error,
+        });
+      }
+    } catch (error) {
+      logger.error("StripeConnect Slack notification exception", {
+        tag: "stripeConnectSlackException",
+        service: "stripe-connect",
+        error_message: error instanceof Error ? error.message : String(error),
+      });
+    }
   }
 }
