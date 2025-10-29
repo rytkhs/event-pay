@@ -66,7 +66,7 @@ export default function OnboardingGuidePage() {
           <Link href="/dashboard/connect">
             <Button variant="ghost" size="sm" className="mb-4">
               <ArrowLeft className="h-4 w-4 mr-2" />
-              設定ページに戻る
+              売上受取設定に戻る
             </Button>
           </Link>
           <div className="flex items-center gap-2 sm:gap-3">
