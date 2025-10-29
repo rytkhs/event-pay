@@ -203,6 +203,10 @@ export async function createConnectAccountAction(formData: FormData): Promise<vo
         email: user.email,
         country: "JP", // 日本固定
         businessType: "individual",
+        businessProfile: {
+          productDescription:
+            "イベントを運営しています。イベントの参加者が参加費を支払う際、イベント管理プラットフォームのみんなの集金を使って参加費が決済されます。",
+        },
       });
 
       // 作成後に再取得
@@ -493,6 +497,10 @@ export async function handleOnboardingRefreshAction(): Promise<void> {
         email: user.email || `${user.id}@example.com`,
         country: "JP",
         businessType: "individual",
+        businessProfile: {
+          productDescription:
+            "イベントを運営しています。イベントの参加者が参加費を支払う際、イベント管理プラットフォームのみんなの集金を使って参加費が決済されます。",
+        },
       });
       account = await stripeConnectService.getConnectAccountByUser(user.id);
       if (!account) {
@@ -635,6 +643,10 @@ export async function startOnboardingAction(): Promise<void> {
         email: user.email || `${user.id}@example.com`,
         country: "JP",
         businessType: "individual",
+        businessProfile: {
+          productDescription:
+            "イベントを運営しています。イベントの参加者が参加費を支払う際、イベント管理プラットフォームのみんなの集金を使って参加費が決済されます。",
+        },
       });
       account = await stripeConnectService.getConnectAccountByUser(user.id);
       if (!account) {
