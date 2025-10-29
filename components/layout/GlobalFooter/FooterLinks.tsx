@@ -27,7 +27,7 @@ export function FooterLinks({
     "md:whitespace-nowrap"
   );
 
-  const containerStyles = cn("flex flex-col items-center gap-2", "md:flex-row md:gap-6", className);
+  const containerStyles = cn("flex flex-col items-center gap-0", "md:flex-row md:gap-2", className);
 
   return (
     <nav className={containerStyles} role="navigation" aria-label="フッターナビゲーション">
