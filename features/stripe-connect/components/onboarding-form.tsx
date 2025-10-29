@@ -6,7 +6,9 @@
 
 import { useState } from "react";
 
-import { Loader2, CreditCard, Shield, Zap, Globe } from "lucide-react";
+import Link from "next/link";
+
+import { Loader2, CreditCard, Shield, Zap, Globe, BookOpen, ExternalLink } from "lucide-react";
 
 import { logger } from "@core/logging/app-logger";
 
@@ -49,6 +51,18 @@ export function OnboardingForm({ onStartOnboarding }: OnboardingFormProps) {
           <br />
           初回設定は約3〜5分で完了し、途中保存もできます。
         </CardDescription>
+        <div className="pt-2">
+          <Link
+            href="/dashboard/connect/guide"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1 text-md text-blue-600 hover:text-blue-800 hover:underline"
+          >
+            <BookOpen className="h-4 w-4" />
+            回答に迷ったら：設定回答の参考ページを見る
+            <ExternalLink className="h-3 w-3" />
+          </Link>
+        </div>
       </CardHeader>
       <CardContent className="space-y-8">
         {/* 簡単な説明 */}
