@@ -120,10 +120,10 @@ export function ParticipationConfirmation({
       >
         <CheckCircle className="h-5 w-5" />
         <AlertTitle id={`${confirmationId}-title`} className="text-green-800">
-          参加申し込みが完了しました！
+          参加申し込みが完了しました!
         </AlertTitle>
         <AlertDescription className="text-green-700">
-          ご登録いただいた内容を確認し、管理URLをブックマークしてください
+          ご登録いただいた内容を確認し、管理URLをブックマークしてください。URLは参加登録メールでも確認できます。
         </AlertDescription>
       </Alert>
 
