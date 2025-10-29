@@ -4,13 +4,14 @@ import { headers } from "next/headers";
 /* no-op */
 import { notFound } from "next/navigation";
 
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, Calendar } from "lucide-react";
 import type { Metadata } from "next";
 
 import { logInvalidTokenAccess, logUnexpectedGuestPageError } from "@core/security/security-logger";
 import { validateGuestToken } from "@core/utils/guest-token";
 import { getClientIPFromHeaders } from "@core/utils/ip-detection";
 import { sanitizeForEventPay } from "@core/utils/sanitize";
+import { formatUtcToJstByType } from "@core/utils/timezone";
 
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 
@@ -87,6 +88,25 @@ export default async function GuestPage({ params, searchParams }: GuestPageProps
           role="main"
           aria-labelledby="page-title"
         >
+          {/* イベント ヘッダー（イベント名と開催日時） */}
+          <header
+            className="mb-6 sm:mb-8 rounded-lg border border-border/50 bg-gradient-to-br from-card to-card/50 shadow-sm p-5 sm:p-6"
+            aria-live="polite"
+          >
+            <h1
+              id="page-title"
+              className="text-xl sm:text-2xl font-bold tracking-tight mb-4 text-foreground"
+            >
+              {sanitizeForEventPay(attendance.event.title)}
+            </h1>
+            <div className="flex items-center gap-2.5 text-base sm:text-lg text-muted-foreground">
+              <Calendar className="h-5 w-5 sm:h-6 sm:w-6 flex-shrink-0 text-primary" />
+              <span className="font-medium">
+                {formatUtcToJstByType(attendance.event.date, "japanese")}
+              </span>
+            </div>
+          </header>
+
           <GuestPageClient
             attendance={attendance}
             canModify={canModify}
