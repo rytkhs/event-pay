@@ -1277,7 +1277,7 @@ COMMENT ON FUNCTION "public"."rpc_bulk_update_payment_status_safe"("p_payment_up
 
 
 
-CREATE OR REPLACE FUNCTION "public"."rpc_guest_get_attendance"("p_guest_token" "text") RETURNS TABLE("attendance_id" "uuid", "nickname" character varying, "email" character varying, "status" "public"."attendance_status_enum", "guest_token" character varying, "event_id" "uuid", "event_title" character varying, "event_date" timestamp with time zone, "event_location" character varying, "event_fee" integer, "event_capacity" integer, "event_description" "text", "event_payment_methods" "public"."payment_method_enum"[], "event_allow_payment_after_deadline" boolean, "event_grace_period_days" smallint, "created_by" "uuid", "registration_deadline" timestamp with time zone, "payment_deadline" timestamp with time zone, "canceled_at" timestamp with time zone, "payment_id" "uuid", "payment_amount" integer, "payment_method" "public"."payment_method_enum", "payment_status" "public"."payment_status_enum", "payment_created_at" timestamp with time zone)
+CREATE OR REPLACE FUNCTION "public"."rpc_guest_get_attendance"("p_guest_token" "text") RETURNS TABLE("attendance_id" "uuid", "nickname" character varying, "email" character varying, "status" "public"."attendance_status_enum", "guest_token" character varying, "attendance_created_at" timestamp with time zone, "attendance_updated_at" timestamp with time zone, "event_id" "uuid", "event_title" character varying, "event_date" timestamp with time zone, "event_location" character varying, "event_fee" integer, "event_capacity" integer, "event_description" "text", "event_payment_methods" "public"."payment_method_enum"[], "event_allow_payment_after_deadline" boolean, "event_grace_period_days" smallint, "created_by" "uuid", "registration_deadline" timestamp with time zone, "payment_deadline" timestamp with time zone, "canceled_at" timestamp with time zone, "payment_id" "uuid", "payment_amount" integer, "payment_method" "public"."payment_method_enum", "payment_status" "public"."payment_status_enum", "payment_created_at" timestamp with time zone)
     LANGUAGE "plpgsql" STABLE SECURITY DEFINER
     SET "search_path" TO 'pg_catalog', 'public', 'pg_temp'
     AS $$
@@ -1294,6 +1294,8 @@ BEGIN
         a.email,
         a.status,
         a.guest_token,
+        a.created_at AS attendance_created_at,
+        a.updated_at AS attendance_updated_at,
         e.id,
         e.title,
         e.date,
@@ -2120,7 +2122,7 @@ CREATE TABLE IF NOT EXISTS "public"."fee_config" (
     "id" integer DEFAULT 1 NOT NULL,
     "stripe_base_rate" numeric(5,4) DEFAULT 0.0360 NOT NULL,
     "stripe_fixed_fee" integer DEFAULT 0 NOT NULL,
-    "platform_fee_rate" numeric(5,4) DEFAULT 0.013 NOT NULL,
+    "platform_fee_rate" numeric(5,4) DEFAULT 0.049 NOT NULL,
     "platform_fixed_fee" integer DEFAULT 0 NOT NULL,
     "min_platform_fee" integer DEFAULT 0 NOT NULL,
     "max_platform_fee" integer DEFAULT 0 NOT NULL,
@@ -3721,4 +3723,3 @@ ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TAB
 
 
 
-RESET ALL;
