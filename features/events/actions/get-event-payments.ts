@@ -166,10 +166,13 @@ function calculatePaymentSummary(
 
   // 集計処理
   payments.forEach((payment) => {
-    // 方法別集計
-    const methodStat = methodMap.get(payment.method) as { count: number; totalAmount: number };
-    methodStat.count += 1;
-    methodStat.totalAmount += payment.amount;
+    // 方法別集計（完了済みのみカウント）
+    // UIで「○件完了」と表示するため、完了済みステータスのみを集計
+    if (paidStatuses.has(payment.status)) {
+      const methodStat = methodMap.get(payment.method) as { count: number; totalAmount: number };
+      methodStat.count += 1;
+      methodStat.totalAmount += payment.amount;
+    }
 
     // ステータス別集計（未知ステータスはスキップ）
     const statusStat = statusMap.get(payment.status);
