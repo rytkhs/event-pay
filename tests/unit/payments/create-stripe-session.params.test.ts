@@ -71,9 +71,9 @@ describe("PaymentService - Stripe Checkout パラメータ検証", () => {
 
     mockApplicationFeeCalculator.calculateApplicationFee.mockResolvedValue({
       amount: testData.amount,
-      applicationFeeAmount: testData.calculatedFee,
+      applicationFeeAmount: Math.floor(testData.amount * 0.049), // 4.9%
       config: {
-        platform_fee_rate: 0.1,
+        platform_fee_rate: 0.049,
         platform_fixed_fee: 0,
         min_platform_fee: 50,
         max_platform_fee: 1000,
@@ -81,15 +81,15 @@ describe("PaymentService - Stripe Checkout パラメータ検証", () => {
         is_tax_included: true,
       },
       calculation: {
-        rateFee: testData.calculatedFee,
+        rateFee: Math.floor(testData.amount * 0.049),
         fixedFee: 0,
-        beforeClipping: testData.calculatedFee,
-        afterMinimum: testData.calculatedFee,
-        afterMaximum: testData.calculatedFee,
+        beforeClipping: Math.floor(testData.amount * 0.049),
+        afterMinimum: Math.floor(testData.amount * 0.049),
+        afterMaximum: Math.floor(testData.amount * 0.049),
       },
       taxCalculation: {
         taxRate: 0,
-        feeExcludingTax: testData.calculatedFee,
+        feeExcludingTax: Math.floor(testData.amount * 0.049),
         taxAmount: 0,
         isTaxIncluded: true,
       },

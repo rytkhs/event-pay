@@ -2,6 +2,10 @@ import { NextResponse, type NextRequest } from "next/server";
 
 import { createServerClient } from "@supabase/ssr";
 
+import {
+  shouldShowMaintenancePage,
+  getMaintenancePageHTML,
+} from "@core/maintenance/maintenance-page";
 import { getEnv } from "@core/utils/cloudflare-env";
 
 const AFTER_LOGIN_REDIRECT_PATH = "/dashboard";
@@ -49,6 +53,25 @@ export async function middleware(request: NextRequest) {
   const requestId = request.headers.get("x-request-id") ?? crypto.randomUUID();
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set("x-request-id", requestId);
+  const pathname = request.nextUrl.pathname;
+
+  // メンテナンスモードチェック（最優先）
+  const env = getEnv();
+  const maintenanceMode = env.MAINTENANCE_MODE;
+  const bypassToken = env.MAINTENANCE_BYPASS_TOKEN;
+  const searchParams = request.nextUrl.searchParams;
+
+  if (shouldShowMaintenancePage(pathname, searchParams, maintenanceMode, bypassToken)) {
+    return new NextResponse(getMaintenancePageHTML(), {
+      status: 503,
+      headers: {
+        "Content-Type": "text/html; charset=utf-8",
+        "Cache-Control": "no-store",
+        "Retry-After": "3600",
+        "x-request-id": requestId,
+      },
+    });
+  }
 
   // CSP用のnonceを生成し、ヘッダー経由でNextへ伝播（App Routerは x-nonce と CSP の 'nonce-...' を認識）
   const nonce = (() => {
@@ -106,7 +129,6 @@ export async function middleware(request: NextRequest) {
   }
 
   // Supabase SSRクライアント（Cookieの双方向同期: getAll / setAll）
-  const env = getEnv();
   const supabaseUrl = env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseKey = env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
@@ -132,8 +154,6 @@ export async function middleware(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const pathname = request.nextUrl.pathname;
-
   // 認証ガード: 公開以外はログイン必須
   if (!isPublicPath(pathname) && !user) {
     const redirectUrl = new URL("/login", request.url);
@@ -157,6 +177,7 @@ export async function middleware(request: NextRequest) {
 export const config = {
   matcher: [
     // APIや静的アセット等は対象外（CSPはHTMLレスポンスにのみ付与）
-    "/((?!api|_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml|manifest.webmanifest|images).*)",
+    // webhooks はメンテナンスモードでも常にアクセス可能
+    "/((?!api/webhooks|_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml|manifest.webmanifest|images).*)",
   ],
 };

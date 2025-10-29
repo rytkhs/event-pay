@@ -121,8 +121,7 @@ export class StripeConnectService implements IStripeConnectService {
         ...(businessType ? { business_type: businessType } : {}),
         ...(country === "JP" ? { default_currency: "jpy" } : {}),
         capabilities: {
-          // MVPではオンボーディング簡略化のためcard_paymentsは要求しない
-          // card_payments: { requested: true },
+          card_payments: { requested: true },
           transfers: { requested: true },
         },
         metadata: {
@@ -854,7 +853,7 @@ export class StripeConnectService implements IStripeConnectService {
   /**
    * Stripe Connectアカウントの残高を取得する
    * @param accountId Stripe Connect Account ID
-   * @returns 利用可能残高（JPY）
+   * @returns 利用可能残高（JPY）- available + pending の合計
    */
   async getAccountBalance(accountId: string): Promise<number> {
     try {
@@ -868,16 +867,22 @@ export class StripeConnectService implements IStripeConnectService {
         stripeAccount: accountId,
       });
 
-      // JPYの利用可能残高を取得
-      const jpy = balance.available.find((b) => b.currency === "jpy");
-      const availableAmount = jpy ? jpy.amount : 0;
+      // JPYの利用可能残高を取得（available + pending）
+      const availableJpy = balance.available.find((b) => b.currency === "jpy");
+      const pendingJpy = balance.pending.find((b) => b.currency === "jpy");
+
+      const availableAmount = availableJpy ? availableJpy.amount : 0;
+      const pendingAmount = pendingJpy ? pendingJpy.amount : 0;
+      const totalAmount = availableAmount + pendingAmount;
 
       logger.info("Stripe Connect残高取得完了", {
         accountId,
         availableAmount,
+        pendingAmount,
+        totalAmount,
       });
 
-      return availableAmount;
+      return totalAmount;
     } catch (error) {
       logger.error("Stripe Connect残高取得エラー", {
         accountId,

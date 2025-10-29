@@ -324,7 +324,7 @@ function ModernEventForm({
                                 {...field}
                                 id="fee-input"
                                 type="number"
-                                placeholder="3000"
+                                placeholder="0または100以上"
                                 disabled={isPending}
                                 min="0"
                                 max="1000000"

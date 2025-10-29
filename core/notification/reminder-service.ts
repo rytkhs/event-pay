@@ -6,6 +6,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { addDays } from "date-fns";
 
 import { logger } from "@core/logging/app-logger";
+import { getEnv } from "@core/utils/cloudflare-env";
 import {
   getCurrentJstTime,
   formatUtcToJst,
@@ -17,7 +18,6 @@ import type { Database } from "@/types/database";
 
 import { EmailNotificationService } from "./email-service";
 import type { IEmailNotificationService } from "./types";
-import { getEnv } from "@core/utils/cloudflare-env";
 
 /**
  * リマインダー送信結果のサマリー
@@ -458,17 +458,6 @@ export class ReminderService {
 
     const guestUrl = this.generateGuestUrl(target.events.id, target.guest_token);
 
-    // 決済ステータスを判定
-    let paymentStatus: "paid" | "cash" | "unpaid" = "unpaid";
-    if (target.payments && target.payments.length > 0) {
-      const payment = target.payments[0];
-      if (payment.status === "paid") {
-        paymentStatus = "paid";
-      } else if (payment.method === "cash") {
-        paymentStatus = "cash";
-      }
-    }
-
     const result = await this.emailService.sendEmail({
       to: target.email,
       template: {
@@ -479,8 +468,6 @@ export class ReminderService {
           eventDate: formatUtcToJst(target.events.date, "yyyy/MM/dd HH:mm"),
           eventLocation: target.events.location,
           eventDescription: target.events.description,
-          participationFee: target.events.fee,
-          paymentStatus,
           guestUrl,
         }),
       },

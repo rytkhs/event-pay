@@ -1,9 +1,8 @@
 import * as React from "react";
 
-import { Heading, Text, Link } from "@react-email/components";
+import { Heading, Text, Link, Hr } from "@react-email/components";
 
 import { Button } from "../_components/Button";
-import { Section } from "../_components/Section";
 import { EmailLayout } from "../_layout/EmailLayout";
 
 export interface PaymentDeadlineReminderEmailProps {
@@ -25,152 +24,163 @@ export const PaymentDeadlineReminderEmail = ({
   paymentDeadline,
   paymentUrl,
 }: PaymentDeadlineReminderEmailProps) => {
-  return (
-    <EmailLayout preheader={`${eventTitle}の決済期限が明日までとなっています。`}>
-      <Heading
-        style={{
-          color: "#1f2937",
-          fontSize: "24px",
-          lineHeight: "32px",
-          margin: "0 0 20px 0",
-        }}
-      >
-        決済期限のリマインダー
-      </Heading>
+  const formattedFee = new Intl.NumberFormat("ja-JP", {
+    style: "currency",
+    currency: "JPY",
+  }).format(participationFee || 0);
 
+  const formattedEventDate = new Date(eventDate).toLocaleString("ja-JP", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: "Asia/Tokyo",
+  });
+
+  const formattedDeadline = new Date(paymentDeadline).toLocaleString("ja-JP", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: "Asia/Tokyo",
+  });
+
+  return (
+    <EmailLayout preheader={`決済期限 ${formattedDeadline} まで`}>
+      {/* 宛名 */}
       <Text
         style={{
-          margin: "0 0 16px 0",
+          margin: "0 0 8px 0",
           fontSize: "16px",
           lineHeight: "24px",
+          color: "#64748b",
         }}
       >
         {nickname} 様
       </Text>
 
-      <Section variant="danger">
-        <Text
-          style={{
-            margin: "0 0 12px 0",
-            fontSize: "16px",
-            lineHeight: "24px",
-            fontWeight: "600",
-          }}
-        >
-          🔔 決済期限が明日までとなっています
-        </Text>
-        <Text
-          style={{
-            margin: "0",
-            fontSize: "14px",
-            lineHeight: "20px",
-          }}
-        >
-          以下のイベントへの参加費のお支払い期限が近づいています。
-          <br />
-          お早めに決済をお済ませください。
-        </Text>
-      </Section>
+      {/* タイトル */}
+      <Heading
+        as="h1"
+        style={{
+          margin: "0 0 16px 0",
+          fontSize: "24px",
+          lineHeight: "32px",
+          fontWeight: 600,
+          color: "#0f172a",
+        }}
+      >
+        決済期限が近づいています
+      </Heading>
 
-      <Section variant="default">
-        <Heading
-          as="h3"
-          style={{
-            fontSize: "18px",
-            lineHeight: "28px",
-            margin: "0 0 12px 0",
-            color: "#1f2937",
-          }}
-        >
-          📅 イベント情報
-        </Heading>
+      {/* アラート（緊急度） */}
+      <div
+        style={{
+          backgroundColor: "#fef2f2",
+          borderLeft: "4px solid #ef4444",
+          padding: "12px 16px",
+          borderRadius: 4,
+          marginBottom: 24,
+        }}
+      >
         <Text
           style={{
-            margin: "0 0 8px 0",
-            fontSize: "16px",
-            lineHeight: "24px",
-            fontWeight: "600",
+            margin: 0,
+            fontSize: 15,
+            lineHeight: "22px",
+            color: "#991b1b",
+            fontWeight: 600,
           }}
         >
-          {eventTitle}
+          決済期限が近づいています（{formattedDeadline} まで）
         </Text>
         <Text
           style={{
-            margin: "0 0 4px 0",
-            fontSize: "14px",
+            margin: "4px 0 0 0",
+            fontSize: 14,
             lineHeight: "20px",
-            color: "#6b7280",
+            color: "#7f1d1d",
           }}
         >
-          📍 日時: {eventDate}
+          以下のイベント費の決済をお早めに完了してください。
         </Text>
-        {eventLocation && (
-          <Text
-            style={{
-              margin: "0 0 4px 0",
-              fontSize: "14px",
-              lineHeight: "20px",
-              color: "#6b7280",
-            }}
-          >
-            📍 場所: {eventLocation}
+      </div>
+
+      {/* 情報カード */}
+      <div
+        style={{
+          backgroundColor: "#ffffff",
+          border: "1px solid #e2e8f0",
+          borderRadius: 8,
+          overflow: "hidden",
+          marginBottom: 24,
+        }}
+      >
+        <div style={{ padding: "14px 16px", borderBottom: "1px solid #e2e8f0" }}>
+          <Text style={{ margin: "0 0 2px 0", fontSize: 13, color: "#64748b", fontWeight: 500 }}>
+            イベント名
           </Text>
+          <Text style={{ margin: 0, fontSize: 15, color: "#0f172a" }}>{eventTitle}</Text>
+        </div>
+
+        <div style={{ padding: "14px 16px", borderBottom: "1px solid #e2e8f0" }}>
+          <Text style={{ margin: "0 0 2px 0", fontSize: 13, color: "#64748b", fontWeight: 500 }}>
+            日時
+          </Text>
+          <Text style={{ margin: 0, fontSize: 15, color: "#0f172a" }}>{formattedEventDate}</Text>
+        </div>
+
+        {eventLocation && (
+          <div style={{ padding: "14px 16px", borderBottom: "1px solid #e2e8f0" }}>
+            <Text style={{ margin: "0 0 2px 0", fontSize: 13, color: "#64748b", fontWeight: 500 }}>
+              場所
+            </Text>
+            <Text style={{ margin: 0, fontSize: 15, color: "#0f172a" }}>{eventLocation}</Text>
+          </div>
         )}
-        <Text
-          style={{
-            margin: "0 0 12px 0",
-            fontSize: "18px",
-            lineHeight: "28px",
-            color: "#1f2937",
-            fontWeight: "700",
-          }}
-        >
-          💰 参加費: ¥{(participationFee || 0).toLocaleString()}
-        </Text>
-        <Text
-          style={{
-            margin: "0",
-            fontSize: "14px",
-            lineHeight: "20px",
-            color: "#ef4444",
-            fontWeight: "600",
-          }}
-        >
-          ⏱️ 決済期限: {paymentDeadline}
-        </Text>
-      </Section>
 
+        <div style={{ padding: "14px 16px" }}>
+          <Text style={{ margin: "0 0 2px 0", fontSize: 13, color: "#64748b", fontWeight: 500 }}>
+            参加費
+          </Text>
+          <Text style={{ margin: 0, fontSize: 18, color: "#0f172a", fontWeight: 600 }}>
+            {formattedFee}
+          </Text>
+        </div>
+      </div>
+
+      {/* CTA */}
+      <div style={{ marginBottom: 24 }}>
+        <Button href={paymentUrl} variant="primary" fullWidth>
+          決済を完了する
+        </Button>
+      </div>
+
+      <Hr style={{ borderColor: "#e2e8f0", margin: "24px 0" }} />
+
+      {/* フォールバックリンク */}
       <Text
         style={{
-          margin: "20px 0 16px 0",
-          fontSize: "16px",
-          lineHeight: "24px",
-        }}
-      >
-        以下のボタンから決済を完了できます。
-      </Text>
-
-      <Button href={paymentUrl} variant="primary" fullWidth>
-        決済を完了する
-      </Button>
-
-      <Text
-        style={{
-          margin: "16px 0 0 0",
-          fontSize: "14px",
+          margin: 0,
+          fontSize: 14,
           lineHeight: "20px",
-          color: "#6b7280",
+          color: "#64748b",
         }}
       >
-        ボタンが機能しない場合は、以下のURLをブラウザにコピーしてください:
-        <br />
+        ボタンが機能しない場合は、以下のURLをブラウザにコピーしてください。
+      </Text>
+      <Text
+        style={{
+          margin: "6px 0 0 0",
+          fontSize: 14,
+          lineHeight: "20px",
+        }}
+      >
         <Link
           href={paymentUrl}
-          style={{
-            color: "#24A6B5",
-            textDecoration: "underline",
-            wordBreak: "break-all",
-          }}
+          style={{ color: "#2563eb", textDecoration: "underline", wordBreak: "break-all" }}
         >
           {paymentUrl}
         </Link>

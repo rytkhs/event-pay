@@ -312,9 +312,9 @@ export function ParticipationConfirmation({
           {/* セキュリティ警告 */}
           <Alert variant="destructive" className="border-orange-200 bg-orange-50">
             <AlertTriangle className="h-4 w-4" />
-            <AlertTitle className="text-orange-900">重要な注意事項</AlertTitle>
+            <AlertTitle className="text-orange-900">注意事項</AlertTitle>
             <AlertDescription className="text-orange-800">
-              この管理URLは他の人と共有しないでください。URLを知っている人は誰でもあなたの参加状況を変更できます。
+              このリンクは個人用です。第三者と共有しないでください。
             </AlertDescription>
           </Alert>
         </div>

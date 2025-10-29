@@ -11,7 +11,7 @@ import {
   AccountStatus,
   OnboardingForm,
   createUserStripeConnectService,
-  prefillAndStartOnboardingAction,
+  startOnboardingAction,
   getConnectAccountStatusAction,
   checkExpressDashboardAccessAction,
   createExpressDashboardLoginLinkAction,
@@ -58,7 +58,7 @@ async function PaymentSettingsContent() {
         <OnboardingForm
           refreshUrl={refreshUrl}
           returnUrl={returnUrl}
-          onPrefillAndStart={prefillAndStartOnboardingAction}
+          onStartOnboarding={startOnboardingAction}
         />
       ) : (
         <AccountStatus

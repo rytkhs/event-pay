@@ -1,11 +1,8 @@
 import * as React from "react";
 
-import { Heading, Text } from "@react-email/components";
+import { Heading, Text, Hr } from "@react-email/components";
 
 import { Button } from "../_components/Button";
-import { Divider } from "../_components/Divider";
-import { InfoCard } from "../_components/InfoCard";
-import { Section } from "../_components/Section";
 import { EmailLayout } from "../_layout/EmailLayout";
 
 export interface ParticipationRegisteredEmailProps {
@@ -16,25 +13,20 @@ export interface ParticipationRegisteredEmailProps {
   guestUrl: string;
 }
 
-const getStatusText = (status: "attending" | "maybe" | "not_attending"): string => {
-  switch (status) {
-    case "attending":
-      return "参加する";
-    case "maybe":
-      return "検討中";
-    case "not_attending":
-      return "欠席";
-  }
+const STATUS_TEXT: Record<"attending" | "maybe" | "not_attending", string> = {
+  attending: "参加",
+  maybe: "未定",
+  not_attending: "不参加",
 };
 
-const getStatusEmoji = (status: "attending" | "maybe" | "not_attending"): string => {
+const statusTheme = (status: "attending" | "maybe" | "not_attending") => {
   switch (status) {
     case "attending":
-      return "✅";
+      return { border: "#22c55e", text: "#166534", bg: "#f0fdf4" };
     case "maybe":
-      return "🤔";
-    case "not_attending":
-      return "❌";
+      return { border: "#f59e0b", text: "#92400e", bg: "#fffbeb" };
+    default:
+      return { border: "#e5e7eb", text: "#374151", bg: "#f9fafb" };
   }
 };
 
@@ -54,30 +46,15 @@ export const ParticipationRegisteredEmail = ({
     timeZone: "Asia/Tokyo",
   });
 
-  const statusVariant =
-    attendanceStatus === "attending"
-      ? "success"
-      : attendanceStatus === "not_attending"
-        ? "danger"
-        : "warning";
+  const theme = statusTheme(attendanceStatus);
+  const statusText = STATUS_TEXT[attendanceStatus];
 
   return (
-    <EmailLayout preheader="イベント参加登録が完了しました">
+    <EmailLayout preheader={`${eventTitle}の参加登録が完了しました（${statusText}）`}>
+      {/* 宛名 */}
       <Text
         style={{
           margin: "0 0 8px 0",
-          fontSize: "28px",
-          lineHeight: "36px",
-          fontWeight: "700",
-          color: "#1e293b",
-        }}
-      >
-        {getStatusEmoji(attendanceStatus)} 参加登録完了
-      </Text>
-
-      <Text
-        style={{
-          margin: "0 0 32px 0",
           fontSize: "16px",
           lineHeight: "24px",
           color: "#64748b",
@@ -86,80 +63,172 @@ export const ParticipationRegisteredEmail = ({
         {nickname} 様
       </Text>
 
-      <Text
+      {/* 見出し */}
+      <Heading
+        as="h1"
         style={{
           margin: "0 0 24px 0",
-          fontSize: "16px",
-          lineHeight: "24px",
-          color: "#475569",
+          fontSize: "24px",
+          lineHeight: "32px",
+          fontWeight: "600",
+          color: "#0f172a",
         }}
       >
-        イベントへの参加登録が完了しました。
-      </Text>
+        参加登録が完了しました
+      </Heading>
 
-      <Section variant={statusVariant}>
-        <Heading
-          as="h2"
-          style={{
-            fontSize: "20px",
-            lineHeight: "28px",
-            margin: "0 0 16px 0",
-            color: "#1e293b",
-            fontWeight: "600",
-          }}
-        >
-          📅 イベント情報
-        </Heading>
-        <InfoCard label="イベント名" value={eventTitle} icon="🎉" />
-        <InfoCard label="開催日時" value={formattedDate} icon="📆" />
-        <InfoCard
-          label="参加状況"
-          value={`${getStatusEmoji(attendanceStatus)} ${getStatusText(attendanceStatus)}`}
-          icon="👤"
-        />
-      </Section>
-
-      <Divider />
-
-      <Text
-        style={{
-          margin: "0 0 20px 0",
-          fontSize: "16px",
-          lineHeight: "24px",
-          color: "#475569",
-          textAlign: "center",
-        }}
-      >
-        以下のボタンから、いつでも参加状況の確認や変更ができます。
-      </Text>
-
-      <Button href={guestUrl}>参加状況を確認する</Button>
-
+      {/* ステータス通知 */}
       <div
         style={{
-          backgroundColor: "#fef3c7",
-          borderRadius: "8px",
-          padding: "16px",
-          border: "1px solid #fbbf24",
-          margin: "24px 0 0 0",
+          backgroundColor: theme.bg,
+          borderLeft: `4px solid ${theme.border}`,
+          padding: "12px 16px",
+          borderRadius: "4px",
+          marginBottom: "24px",
         }}
       >
         <Text
           style={{
             margin: 0,
-            fontSize: "14px",
-            lineHeight: "20px",
-            color: "#92400e",
-            textAlign: "center",
+            fontSize: "15px",
+            lineHeight: "22px",
+            color: theme.text,
           }}
         >
-          🔒 このリンクは個人用です。他の人と共有しないでください。
+          現在の参加状況：{statusText}
         </Text>
       </div>
 
+      {/* イベント情報 */}
+      <Heading
+        as="h2"
+        style={{
+          fontSize: "18px",
+          lineHeight: "24px",
+          margin: "0 0 12px 0",
+          color: "#0f172a",
+          fontWeight: "600",
+        }}
+      >
+        イベント情報
+      </Heading>
+
+      <div
+        style={{
+          backgroundColor: "#ffffff",
+          border: "1px solid #e2e8f0",
+          borderRadius: "8px",
+          overflow: "hidden",
+          marginBottom: "24px",
+        }}
+      >
+        <div style={{ padding: "14px 16px", borderBottom: "1px solid #e2e8f0" }}>
+          <Text
+            style={{
+              margin: "0 0 4px 0",
+              fontSize: "13px",
+              lineHeight: "18px",
+              color: "#64748b",
+              fontWeight: 500,
+            }}
+          >
+            イベント名
+          </Text>
+          <Text style={{ margin: 0, fontSize: "15px", lineHeight: "22px", color: "#0f172a" }}>
+            {eventTitle}
+          </Text>
+        </div>
+
+        <div style={{ padding: "14px 16px", borderBottom: "1px solid #e2e8f0" }}>
+          <Text
+            style={{
+              margin: "0 0 4px 0",
+              fontSize: "13px",
+              lineHeight: "18px",
+              color: "#64748b",
+              fontWeight: 500,
+            }}
+          >
+            開催日時
+          </Text>
+          <Text style={{ margin: 0, fontSize: "15px", lineHeight: "22px", color: "#0f172a" }}>
+            {formattedDate}
+          </Text>
+        </div>
+
+        <div style={{ padding: "14px 16px" }}>
+          <Text
+            style={{
+              margin: "0 0 4px 0",
+              fontSize: "13px",
+              lineHeight: "18px",
+              color: "#64748b",
+              fontWeight: 500,
+            }}
+          >
+            参加状況
+          </Text>
+          <Text style={{ margin: 0, fontSize: "15px", lineHeight: "22px", color: "#0f172a" }}>
+            {statusText}
+          </Text>
+        </div>
+      </div>
+
+      {/* CTA */}
+      <div style={{ marginBottom: "24px" }}>
+        <Button href={guestUrl}>参加状況を確認・変更する</Button>
+        <Text
+          style={{
+            margin: "8px 0 0 0",
+            fontSize: "14px",
+            lineHeight: "20px",
+            color: "#64748b",
+            wordBreak: "break-all",
+          }}
+        >
+          または、次のURLにアクセスしてください：
+          <br />
+          <a
+            href={guestUrl}
+            style={{
+              color: "#3b82f6",
+              textDecoration: "underline",
+            }}
+          >
+            {guestUrl}
+          </a>
+        </Text>
+      </div>
+
+      <Hr style={{ borderColor: "#e2e8f0", margin: "24px 0" }} />
+
+      {/* 個別リンクの注意 */}
+      <div
+        style={{
+          backgroundColor: "#f9fafb",
+          border: "1px solid #e5e7eb",
+          borderRadius: "6px",
+          padding: "12px 16px",
+          marginBottom: "12px",
+        }}
+      >
+        <Text
+          style={{
+            margin: 0,
+            fontSize: "13px",
+            lineHeight: "20px",
+            color: "#475569",
+            textAlign: "center",
+          }}
+        >
+          このリンクは個人用です。第三者と共有しないでください。
+        </Text>
+      </div>
+
+      {/* お問い合わせ */}
       <Text
         style={{
-          margin: "24px 0 0 0",
+          margin: 0,
           fontSize: "14px",
           lineHeight: "20px",
           color: "#64748b",

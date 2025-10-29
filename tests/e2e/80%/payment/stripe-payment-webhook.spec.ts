@@ -382,10 +382,10 @@ test.describe("Stripe決済 ケース3-1: Webhook処理と決済完了確認", (
     expect(payment.destination_account_id).toBe(TEST_IDS.CONNECT_ACCOUNT_ID);
     console.log("✓ destinationがConnect アカウントIDと一致");
 
-    // application_fee_amountが正しく設定されていることを確認（1.3%）
-    const expectedFee = Math.round(3000 * 0.013);
+    // application_fee_amountが正しく設定されていることを確認（4.9%）
+    const expectedFee = Math.round(3000 * 0.049);
     expect(payment.application_fee_amount).toBe(expectedFee);
-    console.log("✓ application_fee_amountが1.3%で計算されている");
+    console.log("✓ application_fee_amountが4.9%で計算されている");
 
     // ペイロードのdestinationフィールドを確認
     expect(chargeData.destination).toBe(TEST_IDS.CONNECT_ACCOUNT_ID);

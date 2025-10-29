@@ -35,20 +35,8 @@ export default function GlobalError({ error, reset }: GlobalErrorProps) {
   };
 
   const handleSupport = () => {
-    const supportEmail = process.env.NEXT_PUBLIC_SUPPORT_EMAIL || "support@eventpay.jp";
-    const subject = "みんなの集金 - 重大なエラーが発生しました";
-    const body = `
-エラーが発生しました。以下の情報をお送りします：
-
-エラーメッセージ: ${error.message}
-発生時刻: ${new Date().toISOString()}
-ページURL: ${typeof window !== "undefined" ? window.location.href : "不明"}
-ユーザーエージェント: ${typeof window !== "undefined" ? window.navigator.userAgent : "不明"}
-
-${error.digest ? `エラーID: ${error.digest}` : ""}
-    `.trim();
-
-    window.location.href = `mailto:${supportEmail}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    // お問い合わせページにリダイレクト
+    window.location.href = "/contact";
   };
 
   return (

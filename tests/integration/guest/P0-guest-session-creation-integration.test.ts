@@ -352,7 +352,7 @@ async function setupFeeConfigForIntegrationTest(): Promise<void> {
       id: 1,
       stripe_base_rate: 0.036, // 3.6%
       stripe_fixed_fee: 0, // 0円
-      platform_fee_rate: 0.0, // 0%
+      platform_fee_rate: 0.049, // 4.9%
       platform_fixed_fee: 0, // 0円
       min_platform_fee: 0, // 0円
       max_platform_fee: 0, // 0円

@@ -791,7 +791,9 @@ export type Database = {
       rpc_guest_get_attendance: {
         Args: { p_guest_token: string };
         Returns: {
+          attendance_created_at: string;
           attendance_id: string;
+          attendance_updated_at: string;
           canceled_at: string;
           created_by: string;
           email: string;
