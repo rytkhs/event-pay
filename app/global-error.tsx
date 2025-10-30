@@ -8,6 +8,8 @@
 
 import { useEffect } from "react";
 
+import * as Sentry from "@sentry/nextjs";
+
 import { ErrorLayout } from "@/components/errors";
 
 interface GlobalErrorProps {
@@ -17,12 +19,8 @@ interface GlobalErrorProps {
 
 export default function GlobalError({ error, reset }: GlobalErrorProps) {
   useEffect(() => {
-    // グローバルエラーの発生をトラッキング
-    // 本番環境では重要度が最高レベル
-    if (process.env.NODE_ENV === "production") {
-      // 外部モニタリングサービスに送信
-      // 例: Sentry, DataDog, New Relic等
-    }
+    // グローバルエラーを Sentry に送信
+    Sentry.captureException(error);
   }, [error]);
 
   const handleReset = () => {

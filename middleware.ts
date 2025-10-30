@@ -39,6 +39,7 @@ function isPublicPath(pathname: string): boolean {
     "/debug",
     "/auth/callback",
     "/auth/auth-code-error",
+    "/sentry-example-page",
   ];
   if (publicExact.includes(pathname)) return true;
   const publicPrefixes = [
