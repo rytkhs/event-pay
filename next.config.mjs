@@ -8,17 +8,17 @@ const isProd = process.env.NODE_ENV === "production";
 const csp = [
   "default-src 'self'",
   isDev
-    ? "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://maps.googleapis.com"
-    : "script-src 'self' 'unsafe-inline' https://js.stripe.com https://maps.googleapis.com",
+    ? "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://maps.googleapis.com https://www.googletagmanager.com"
+    : "script-src 'self' 'unsafe-inline' https://js.stripe.com https://maps.googleapis.com https://www.googletagmanager.com",
   "script-src-attr 'none'",
   // style は Level 3 を使うなら -elem/-attr に統一
   "style-src-elem 'self' 'unsafe-inline' https://fonts.googleapis.com",
   isDev ? "style-src-attr 'unsafe-inline'" : "style-src-attr 'none'",
-  "img-src 'self' data: blob: https://maps.gstatic.com https://*.googleapis.com https://*.ggpht.com",
+  "img-src 'self' data: blob: https://maps.gstatic.com https://*.googleapis.com https://*.ggpht.com https://www.google-analytics.com",
   "font-src 'self' https://fonts.gstatic.com",
   isDev
-    ? "connect-src 'self' http://127.0.0.1:54321 https://*.supabase.co wss://*.supabase.co https://api.stripe.com https://checkout.stripe.com https://m.stripe.network https://q.stripe.com https://maps.googleapis.com"
-    : "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.stripe.com https://checkout.stripe.com https://m.stripe.network https://q.stripe.com https://maps.googleapis.com",
+    ? "connect-src 'self' http://127.0.0.1:54321 https://*.supabase.co wss://*.supabase.co https://api.stripe.com https://checkout.stripe.com https://m.stripe.network https://q.stripe.com https://maps.googleapis.com https://www.google-analytics.com https://www.googletagmanager.com"
+    : "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.stripe.com https://checkout.stripe.com https://m.stripe.network https://q.stripe.com https://maps.googleapis.com https://www.google-analytics.com https://www.googletagmanager.com",
   "frame-src 'self' https://js.stripe.com https://hooks.stripe.com https://checkout.stripe.com",
   "object-src 'none'",
   "base-uri 'self'",
