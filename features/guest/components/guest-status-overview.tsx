@@ -124,12 +124,12 @@ export function GuestStatusOverview({
 
   return (
     <Card className="p-4 sm:p-6 shadow-sm">
-      <h2 className="text-lg font-semibold text-card-foreground mb-4">現在の状況</h2>
+      <h2 className="text-lg font-semibold text-card-foreground mb-4">登録状況</h2>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
         <div className="bg-muted/50 rounded-lg p-4 transition-colors hover:bg-muted/70">
           <div className="flex items-center space-x-3 mb-2">
             <Ticket className="h-5 w-5 text-muted-foreground" />
-            <span className="text-sm font-medium text-muted-foreground">参加状況</span>
+            <span className="text-sm font-medium text-muted-foreground">参加ステータス</span>
           </div>
           <div className="flex items-center space-x-2">
             {participationIcon()}
@@ -159,7 +159,7 @@ export function GuestStatusOverview({
       </div>
 
       <div className="border-t border-border pt-4">
-        <h3 className="text-sm font-medium text-muted-foreground mb-3">次に行うこと:</h3>
+        <h3 className="text-sm font-medium text-muted-foreground mb-3">アクション:</h3>
         <div className="flex flex-col sm:flex-row gap-3">
           {shouldShowPayment && (
             <Button onClick={onPaymentClick || scrollToTarget} disabled={paymentDisabled}>

@@ -302,7 +302,7 @@ export function useRegisterFormRHF<T extends ServerActionResult>(
       } catch (_) {
         form.setError("root", {
           type: "manual",
-          message: "会員登録中にエラーが発生しました。もう一度お試しください。",
+          message: "アカウント作成中にエラーが発生しました。もう一度お試しください。",
         });
       }
     });

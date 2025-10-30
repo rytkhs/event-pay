@@ -37,6 +37,8 @@ function isPublicPath(pathname: string): boolean {
     "/privacy",
     "/tokushoho",
     "/debug",
+    "/auth/callback",
+    "/auth/auth-code-error",
   ];
   if (publicExact.includes(pathname)) return true;
   const publicPrefixes = [
