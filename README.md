@@ -110,5 +110,22 @@
   - `open-next.config.ts`: R2 インクリメンタルキャッシュを有効化
   - `wrangler.jsonc`: `.open-next/worker.js` をエントリポイントとして設定。`NEXT_INC_CACHE_R2_BUCKET` を事前に作成してください。
 
+## 定期実行タスク（GitHub Actions）
+
+定期実行タスクはGitHub Actionsで管理されています。
+
+### 設定済みワークフロー
+- **Send Reminders**: 毎日 UTC 0:00 (JST 9:00) に実行
+- **Monitor Platform Balance**: 毎日 UTC 9:00 (JST 18:00) に実行
+
+### GitHub Secrets設定
+リポジトリの Settings > Secrets and variables > Actions で以下を設定：
+
+- `APP_URL`: `https://minnano-shukin.com`
+- `CRON_SECRET`: 既存の`CRON_SECRET`環境変数の値
+
+### 手動実行
+各ワークフローは独立しており、GitHub Actionsの「Actions」タブから個別に手動実行も可能です。
+
 ## セキュリティとヘッダー
 - `next.config.mjs` で推奨セキュリティヘッダー（CSP, HSTS, Permissions-Policy など）を付与。
