@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { logSanitizationEvent, logValidationFailure } from "@core/security/security-logger";
+import { logger } from "@core/logging/app-logger";
 import { sanitizeForEventPay } from "@core/utils/sanitize";
 
 // 招待トークンの検証スキーマ
@@ -165,7 +165,15 @@ export const validateParticipationField = (
 
       // バリデーション失敗をログに記録
       if (request) {
-        logValidationFailure(String(name), errorMessage, value, request);
+        logger.warn("Validation failed", {
+          tag: "validation",
+          field: String(name),
+          error: errorMessage,
+          inputLength: value?.length,
+          user_agent: request.userAgent,
+          ip: request.ip,
+          event_id: request.eventId,
+        });
       }
     }
   }
@@ -202,12 +210,15 @@ export const validateParticipationFormWithDuplicateCheck = async (
         // バリデーション失敗をログに記録
         if (request) {
           const fieldValue = formData[fieldPath];
-          logValidationFailure(
-            String(fieldPath),
-            errorMessage,
-            typeof fieldValue === "string" ? fieldValue : undefined,
-            { ...request, eventId }
-          );
+          logger.warn("Validation failed", {
+            tag: "validation",
+            field: String(fieldPath),
+            error: errorMessage,
+            inputLength: typeof fieldValue === "string" ? fieldValue.length : undefined,
+            user_agent: request.userAgent,
+            ip: request.ip,
+            event_id: eventId,
+          });
         }
       });
     } else {
@@ -248,8 +259,16 @@ export const sanitizeParticipationInput = {
     const sanitized = sanitizeForEventPay(trimmed);
 
     // サニタイゼーションログを記録
-    if (request) {
-      logSanitizationEvent(trimmed, sanitized, "nickname", request);
+    if (request && trimmed !== sanitized) {
+      logger.info("Sanitization applied", {
+        tag: "sanitization",
+        field: "nickname",
+        originalLength: trimmed.length,
+        sanitizedLength: sanitized.length,
+        user_agent: request.userAgent,
+        ip: request.ip,
+        event_id: request.eventId,
+      });
     }
 
     return sanitized;
@@ -275,8 +294,16 @@ export const sanitizeParticipationInput = {
     const sanitized = sanitizeForEventPay(normalized);
 
     // サニタイゼーションログを記録
-    if (request) {
-      logSanitizationEvent(normalized, sanitized, "email", request);
+    if (request && normalized !== sanitized) {
+      logger.info("Sanitization applied", {
+        tag: "sanitization",
+        field: "email",
+        originalLength: normalized.length,
+        sanitizedLength: sanitized.length,
+        user_agent: request.userAgent,
+        ip: request.ip,
+        event_id: request.eventId,
+      });
     }
 
     return sanitized;

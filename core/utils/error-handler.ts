@@ -4,7 +4,6 @@
  */
 
 import { logger, type LogLevel } from "@core/logging/app-logger";
-import { logSecurityEvent, type SecurityEventType } from "@core/security/security-logger";
 
 export interface ErrorDetails {
   code: string;
@@ -341,61 +340,24 @@ export function getErrorDetails(code: string): ErrorDetails {
 export function logError(error: ErrorDetails, context?: ErrorContext): void {
   if (!error.shouldLog) return;
 
-  // セキュリティ関連エラーの場合はセキュリティログに記録
-  const securityEventTypes: Record<string, SecurityEventType> = {
-    SUSPICIOUS_ACTIVITY: "SUSPICIOUS_ACTIVITY",
-    XSS_ATTEMPT: "XSS_ATTEMPT",
-    RATE_LIMIT_EXCEEDED: "RATE_LIMIT_EXCEEDED",
-    INVALID_TOKEN: "INVALID_TOKEN",
-    INVALID_GUEST_TOKEN: "INVALID_TOKEN",
-    DUPLICATE_REGISTRATION: "DUPLICATE_REGISTRATION",
-    VALIDATION_ERROR: "VALIDATION_FAILURE",
-  };
+  // すべて app-logger に集約
+  const logLevel: LogLevel =
+    error.severity === "high" || error.severity === "critical" ? "error" : "warn";
 
-  const securityEventType = securityEventTypes[error.code];
-  if (securityEventType) {
-    logSecurityEvent({
-      type: securityEventType,
-      severity: error.severity.toUpperCase() as "LOW" | "MEDIUM" | "HIGH" | "CRITICAL",
-      message: error.message,
-      details: {
-        code: error.code,
-        action: context?.action,
-        ...context?.additionalData,
-      },
-      userAgent: context?.userAgent,
-      ip: context?.ip,
-      userId: context?.userId,
-      eventId: context?.eventId,
-      timestamp: new Date(),
-    });
+  const fields = {
+    tag: "errorHandler",
+    error_code: error.code,
+    severity: error.severity,
+    user_id: context?.userId,
+    event_id: context?.eventId,
+    action: context?.action,
+    ...context?.additionalData,
+  } as const;
+
+  if (logLevel === "error") {
+    logger.error(error.message, fields);
   } else {
-    // 一般的なエラーログ
-    const logLevel: LogLevel =
-      error.severity === "high" || error.severity === "critical" ? "error" : "warn";
-
-    // ログレベルに応じたログ出力
-    if (logLevel === "error") {
-      logger.error(error.message, {
-        tag: "errorHandler",
-        error_code: error.code,
-        severity: error.severity,
-        user_id: context?.userId,
-        event_id: context?.eventId,
-        action: context?.action,
-        ...context?.additionalData,
-      });
-    } else {
-      logger.warn(error.message, {
-        tag: "errorHandler",
-        error_code: error.code,
-        severity: error.severity,
-        user_id: context?.userId,
-        event_id: context?.eventId,
-        action: context?.action,
-        ...context?.additionalData,
-      });
-    }
+    logger.warn(error.message, fields);
   }
 }
 

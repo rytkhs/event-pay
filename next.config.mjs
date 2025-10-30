@@ -1,5 +1,6 @@
 import { initOpenNextCloudflareForDev } from "@opennextjs/cloudflare";
 import withBundleAnalyzer from "@next/bundle-analyzer";
+import { StatsWriterPlugin } from "webpack-stats-plugin";
 
 const isDev = process.env.NODE_ENV === "development";
 const isProd = process.env.NODE_ENV === "production";
@@ -65,6 +66,12 @@ const nextConfig = {
   webpack: (config, { isServer }) => {
     if (!isServer) {
       config.resolve = config.resolve || {};
+      config.resolve.alias = {
+        ...(config.resolve.alias ?? {}),
+        "@react-email/tailwind": false,
+        "@react-email/render": false,
+        "react-email": false,
+      };
       config.resolve.fallback = {
         ...config.resolve.fallback,
         fs: false,
