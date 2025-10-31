@@ -95,6 +95,7 @@ const guestStripeSessionSchema = z.object({
   guestToken: z.string().min(36, "ゲストトークンが無効です"),
   successUrl: z.string().url(),
   cancelUrl: z.string().url(),
+  gaClientId: z.string().optional(), // GA4 Client ID（アナリティクス追跡用）
 });
 
 export async function createGuestStripeSessionAction(
@@ -107,7 +108,7 @@ export async function createGuestStripeSessionAction(
       details: { zodErrors: parsed.error.errors },
     });
   }
-  const { guestToken, successUrl, cancelUrl } = parsed.data;
+  const { guestToken, successUrl, cancelUrl, gaClientId } = parsed.data;
 
   // 2. guestToken 検証 & 参加データ取得
   const tokenResult = await validateGuestToken(guestToken);
@@ -221,6 +222,7 @@ export async function createGuestStripeSessionAction(
       successUrl,
       cancelUrl,
       destinationCharges: destinationChargesConfig,
+      gaClientId, // GA4 Client IDを渡す
     });
 
     return createServerActionSuccess({

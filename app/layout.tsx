@@ -1,15 +1,15 @@
 import { Noto_Sans_JP } from "next/font/google";
 import localFont from "next/font/local";
+
 export const dynamic = "force-dynamic";
 import { GoogleAnalytics } from "@next/third-parties/google";
-
 import type { Metadata } from "next";
 
 import "./globals.css";
 import "./(marketing)/lp.css";
 
-import { ToastProvider } from "@core/contexts/toast-context";
 import { getGA4Config } from "@core/analytics/config";
+import { ToastProvider } from "@core/contexts/toast-context";
 
 import { FooterWrapper } from "@components/layout/FooterWrapper";
 import { HeaderWrapper } from "@components/layout/HeaderWrapper";

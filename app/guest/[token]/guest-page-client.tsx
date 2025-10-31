@@ -4,6 +4,8 @@ import { useState } from "react";
 
 import { AlertCircle } from "lucide-react";
 
+import { ga4Client } from "@core/analytics/ga4-client";
+import type { BeginCheckoutParams } from "@core/analytics/event-types";
 import { useToast } from "@core/contexts/toast-context";
 import { useErrorHandler } from "@core/hooks/use-error-handler";
 import { type GuestAttendanceData } from "@core/utils/guest-token";
@@ -53,22 +55,51 @@ export function GuestPageClient({
         return url.toString();
       };
 
-      const result = await createGuestStripeSessionAction({
-        guestToken: attendance.guest_token,
-        successUrl: buildRedirectUrl("success"),
-        cancelUrl: buildRedirectUrl("canceled"),
-      });
+      // GA4 Client IDを取得
+      const gaClientId = await ga4Client.getClientId();
 
-      if (result.success && result.data) {
-        // Stripe Checkoutページにリダイレクト
-        window.location.href = result.data.sessionUrl;
-      } else {
-        toast({
-          title: "決済エラー",
-          description: !result.success ? result.error : "決済セッションの作成に失敗しました。",
-          variant: "destructive",
+      // begin_checkoutイベントのパラメータを構築
+      const beginCheckoutParams: BeginCheckoutParams = {
+        event_id: attendance.event.id,
+        currency: "JPY",
+        value: attendance.event.fee,
+        items: [
+          {
+            item_id: attendance.event.id,
+            item_name: attendance.event.title,
+            price: attendance.event.fee,
+            quantity: 1,
+          },
+        ],
+      };
+
+      // begin_checkoutイベントを送信し、送信完了後にCheckoutセッションを作成
+      const proceedToCheckout = async () => {
+        const result = await createGuestStripeSessionAction({
+          guestToken: attendance.guest_token,
+          successUrl: buildRedirectUrl("success"),
+          cancelUrl: buildRedirectUrl("canceled"),
+          gaClientId: gaClientId ?? undefined, // Client IDを渡す
         });
-      }
+
+        if (result.success && result.data) {
+          // Stripe Checkoutページにリダイレクト
+          window.location.href = result.data.sessionUrl;
+        } else {
+          toast({
+            title: "決済エラー",
+            description: !result.success ? result.error : "決済セッションの作成に失敗しました。",
+            variant: "destructive",
+          });
+          setIsProcessingPayment(false);
+        }
+      };
+
+      // event_callbackを使用してイベント送信後にリダイレクト
+      ga4Client.sendEventWithCallback(
+        { name: "begin_checkout", params: beginCheckoutParams },
+        proceedToCheckout
+      );
     } catch (error) {
       handleError(error, {
         action: "create_stripe_session",
@@ -78,7 +109,6 @@ export function GuestPageClient({
           eventId: attendance.event.id,
         },
       });
-    } finally {
       setIsProcessingPayment(false);
     }
   };

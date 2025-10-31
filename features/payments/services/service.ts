@@ -553,6 +553,7 @@ export class PaymentService implements IPaymentService {
         successUrl: params.successUrl,
         cancelUrl: params.cancelUrl,
         actorId: params.actorId,
+        gaClientId: params.gaClientId, // GA4 Client IDを渡す
         metadata: {
           payment_id: targetPaymentId,
           attendance_id: params.attendanceId,
