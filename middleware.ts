@@ -108,9 +108,9 @@ export async function middleware(request: NextRequest) {
       // strict-dynamic を併用し、nonce 付きルートスクリプトからの信頼伝播を許可
       `script-src 'self' 'nonce-${nonce}' https://js.stripe.com https://maps.googleapis.com https://www.googletagmanager.com 'strict-dynamic'`,
       "script-src-attr 'none'",
-      // style は Level 3 の -elem/-attr で厳格化（属性インラインは不許可）
+      // style は Level 3 の -elem/-attr で厳格化（属性インラインは許可）
       `style-src-elem 'self' 'nonce-${nonce}' https://fonts.googleapis.com`,
-      "style-src-attr 'none'",
+      "style-src-attr 'unsafe-inline'",
       // 画像系は Maps 関連と data/blob を許可
       "img-src 'self' data: blob: https://maps.gstatic.com https://*.googleapis.com https://*.ggpht.com https://www.google-analytics.com",
       "font-src 'self' https://fonts.gstatic.com",
