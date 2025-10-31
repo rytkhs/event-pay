@@ -1,7 +1,7 @@
 import { Noto_Sans_JP } from "next/font/google";
 import localFont from "next/font/local";
 export const dynamic = "force-dynamic";
-import Script from "next/script";
+import { GoogleAnalytics } from "@next/third-parties/google";
 
 import type { Metadata } from "next";
 
@@ -9,6 +9,7 @@ import "./globals.css";
 import "./(marketing)/lp.css";
 
 import { ToastProvider } from "@core/contexts/toast-context";
+import { getGA4Config } from "@core/analytics/config";
 
 import { FooterWrapper } from "@components/layout/FooterWrapper";
 import { HeaderWrapper } from "@components/layout/HeaderWrapper";
@@ -87,23 +88,10 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>): JSX.Element {
+  const ga4Config = getGA4Config();
+
   return (
     <html lang="en" suppressHydrationWarning={true}>
-      <head>
-        {/* Google tag (gtag.js) */}
-        <Script
-          src="https://www.googletagmanager.com/gtag/js?id=G-5KCSZCX4JL"
-          strategy="afterInteractive"
-        />
-        <Script id="google-analytics" strategy="afterInteractive">
-          {`
-            window.dataLayer = window.dataLayer || [];
-            function gtag(){dataLayer.push(arguments);}
-            gtag('js', new Date());
-            gtag('config', 'G-5KCSZCX4JL');
-          `}
-        </Script>
-      </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} ${notoSansJp.className} antialiased`}
         suppressHydrationWarning={true}
@@ -115,6 +103,7 @@ export default function RootLayout({
             <FooterWrapper />
           </ToastProvider>
         </TooltipProvider>
+        {ga4Config.enabled && <GoogleAnalytics gaId={ga4Config.measurementId} />}
       </body>
     </html>
   );
