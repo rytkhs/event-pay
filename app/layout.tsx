@@ -64,6 +64,14 @@ export const metadata: Metadata = {
       },
     ],
   },
+  twitter: {
+    card: "summary",
+    title: "みんなの集金 - 出欠から集金まで、ひとつのリンクで完了",
+    description: "参加の確認から集金まで、リンクの共有だけで完了できる新しいサービスです。",
+    images: ["/og/homepage.png"],
+    site: "@minnano_shukin",
+    creator: "@minnano_shukin",
+  },
   icons: {
     icon: [
       { url: "/icon.svg", type: "image/svg+xml", sizes: "any" },

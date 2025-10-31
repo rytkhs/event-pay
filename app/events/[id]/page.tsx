@@ -1,5 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 
+import type { Metadata } from "next";
+
 export const dynamic = "force-dynamic";
 
 import { getCurrentUser } from "@core/auth/auth-utils";
@@ -91,25 +93,66 @@ export default async function EventDetailPage({ params }: EventDetailPageProps) 
 }
 
 // ページメタデータ生成（動的タイトル設定）
-export async function generateMetadata({ params }: EventDetailPageProps) {
+export async function generateMetadata({ params }: EventDetailPageProps): Promise<Metadata> {
   try {
     const eventDetailResult = await cachedActions.getEventDetail(params.id);
     if (!eventDetailResult.success) {
       return {
         title: "イベント詳細 - みんなの集金",
         description: "イベントの詳細情報",
+        openGraph: {
+          title: "イベント詳細 - みんなの集金",
+          description: "イベントの詳細情報",
+          type: "website",
+        },
+        twitter: {
+          card: "summary",
+          title: "イベント詳細 - みんなの集金",
+          description: "イベントの詳細情報",
+        },
       };
     }
 
     const eventDetail = eventDetailResult.data;
+    const ogImageUrl = "/og/event-default.png";
+
     return {
       title: `${eventDetail.title} - みんなの集金`,
       description: `${eventDetail.title}の詳細情報と参加者管理`,
+      openGraph: {
+        title: `${eventDetail.title} - みんなの集金`,
+        description: `${eventDetail.title}の詳細情報と参加者管理`,
+        type: "website",
+        images: [
+          {
+            url: ogImageUrl,
+            width: 1200,
+            height: 630,
+            alt: `${eventDetail.title} - みんなの集金`,
+          },
+        ],
+      },
+      twitter: {
+        card: "summary",
+        title: `${eventDetail.title} - みんなの集金`,
+        description: `${eventDetail.title}の詳細情報と参加者管理`,
+        images: [ogImageUrl],
+      },
     };
   } catch {
     return {
       title: "イベント詳細 - みんなの集金",
       description: "イベントの詳細情報",
+      openGraph: {
+        title: "イベント詳細 - みんなの集金",
+        description: "イベントの詳細情報",
+        type: "website",
+      },
+      twitter: {
+        card: "summary",
+        title: "イベント詳細 - みんなの集金",
+        description: "イベントの詳細情報",
+      },
     };
   }
 }

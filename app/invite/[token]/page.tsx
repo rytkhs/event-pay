@@ -197,6 +197,11 @@ export async function generateMetadata({ params }: InvitePageProps): Promise<Met
           description: "イベントへの参加申し込み",
           type: "website",
         },
+        twitter: {
+          card: "summary",
+          title: "イベント参加申し込み - みんなの集金",
+          description: "イベントへの参加申し込み",
+        },
       };
     }
 
@@ -210,6 +215,11 @@ export async function generateMetadata({ params }: InvitePageProps): Promise<Met
           title: "無効な招待リンク - みんなの集金",
           description: "招待リンクが無効または期限切れです",
           type: "website",
+        },
+        twitter: {
+          card: "summary",
+          title: "無効な招待リンク - みんなの集金",
+          description: "招待リンクが無効または期限切れです",
         },
       };
     }
@@ -237,6 +247,14 @@ export async function generateMetadata({ params }: InvitePageProps): Promise<Met
           },
         ],
       },
+      twitter: {
+        card: "summary",
+        title: `${event.title} - 参加申し込み | みんなの集金`,
+        description: sanitizeEventDescription(
+          event.description || `${event.title}への参加申し込み`
+        ),
+        images: [ogImageUrl],
+      },
     };
   } catch {
     return {
@@ -246,6 +264,11 @@ export async function generateMetadata({ params }: InvitePageProps): Promise<Met
         title: "イベント参加申し込み - みんなの集金",
         description: "イベントへの参加申し込み",
         type: "website",
+      },
+      twitter: {
+        card: "summary",
+        title: "イベント参加申し込み - みんなの集金",
+        description: "イベントへの参加申し込み",
       },
     };
   }
