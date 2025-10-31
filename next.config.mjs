@@ -13,7 +13,7 @@ const csp = [
   "script-src-attr 'none'",
   // style は Level 3 を使うなら -elem/-attr に統一
   "style-src-elem 'self' 'unsafe-inline' https://fonts.googleapis.com",
-  isDev ? "style-src-attr 'unsafe-inline'" : "style-src-attr 'none'",
+  "style-src-attr 'unsafe-inline'",
   "img-src 'self' data: blob: https://maps.gstatic.com https://*.googleapis.com https://*.ggpht.com https://www.google-analytics.com",
   "font-src 'self' https://fonts.gstatic.com",
   isDev
