@@ -7,8 +7,9 @@
 
 import { useEffect } from "react";
 
-import { ErrorLayout } from "@/components/errors";
 import { ga4Client } from "@core/analytics/ga4-client";
+
+import { ErrorLayout } from "@/components/errors";
 
 interface ErrorPageProps {
   error: Error & { digest?: string };
