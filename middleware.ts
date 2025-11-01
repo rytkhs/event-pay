@@ -106,7 +106,7 @@ export async function middleware(request: NextRequest) {
     const cspDirectives = [
       "default-src 'self'",
       // strict-dynamic を併用し、nonce 付きルートスクリプトからの信頼伝播を許可
-      `script-src 'self' 'nonce-${nonce}' https://js.stripe.com https://maps.googleapis.com https://www.googletagmanager.com 'strict-dynamic'`,
+      `script-src 'self' 'nonce-${nonce}' https://js.stripe.com https://connect-js.stripe.com https://maps.googleapis.com https://www.googletagmanager.com 'strict-dynamic'`,
       "script-src-attr 'none'",
       // style は Level 3 の -elem/-attr で厳格化（属性インラインは許可）
       `style-src-elem 'self' 'nonce-${nonce}' https://fonts.googleapis.com`,
@@ -116,10 +116,10 @@ export async function middleware(request: NextRequest) {
       "font-src 'self' https://fonts.gstatic.com",
       // Stripe/Supabase/Maps などへの接続を明示（開発環境ではローカルSupabaseも許可）
       process.env.NODE_ENV !== "production"
-        ? "connect-src 'self' http://127.0.0.1:54321 https://*.supabase.co wss://*.supabase.co https://api.stripe.com https://checkout.stripe.com https://m.stripe.network https://q.stripe.com https://maps.googleapis.com https://www.google-analytics.com https://www.googletagmanager.com"
-        : "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.stripe.com https://checkout.stripe.com https://m.stripe.network https://q.stripe.com https://maps.googleapis.com https://www.google-analytics.com https://www.googletagmanager.com",
-      // Stripe 3DS/Checkout のために frame を許可
-      "frame-src 'self' https://hooks.stripe.com https://checkout.stripe.com https://js.stripe.com",
+        ? "connect-src 'self' http://127.0.0.1:54321 https://*.supabase.co wss://*.supabase.co https://api.stripe.com https://checkout.stripe.com https://connect.stripe.com https://express.stripe.com https://dashboard.stripe.com https://connect-js.stripe.com https://m.stripe.network https://q.stripe.com https://maps.googleapis.com https://www.google-analytics.com https://www.googletagmanager.com"
+        : "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.stripe.com https://checkout.stripe.com https://connect.stripe.com https://express.stripe.com https://dashboard.stripe.com https://connect-js.stripe.com https://m.stripe.network https://q.stripe.com https://maps.googleapis.com https://www.google-analytics.com https://www.googletagmanager.com",
+      // Stripe 3DS/Checkout/Connect のために frame を許可
+      "frame-src 'self' https://hooks.stripe.com https://checkout.stripe.com https://js.stripe.com https://connect.stripe.com https://express.stripe.com",
       // セキュリティ強化系
       "object-src 'none'",
       "base-uri 'self'",
