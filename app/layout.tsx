@@ -71,7 +71,7 @@ export const metadata: Metadata = {
     ],
   },
   twitter: {
-    card: "summary",
+    card: "summary_large_image",
     title: "みんなの集金 - 出欠から集金まで、ひとつのリンクで完了",
     description: "参加の確認から集金まで、リンクの共有だけで完了できる新しいサービスです。",
     images: ["/og/homepage.png"],
