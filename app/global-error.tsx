@@ -9,6 +9,7 @@
 import { useEffect } from "react";
 
 import { ErrorLayout } from "@/components/errors";
+import { ga4Client } from "@core/analytics/ga4-client";
 
 interface GlobalErrorProps {
   error: Error & { digest?: string };
@@ -17,6 +18,15 @@ interface GlobalErrorProps {
 
 export default function GlobalError({ error, reset }: GlobalErrorProps) {
   useEffect(() => {
+    // グローバルエラーをGA4に送信
+    ga4Client.sendEvent({
+      name: "exception",
+      params: {
+        description: `Global Error: ${error.message}${error.digest ? ` (${error.digest})` : ""}`,
+        fatal: true,
+      },
+    });
+
     // グローバルエラーの発生をトラッキング
     // 本番環境では重要度が最高レベル
     if (process.env.NODE_ENV === "production") {

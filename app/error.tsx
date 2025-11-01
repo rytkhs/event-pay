@@ -5,7 +5,10 @@
 
 "use client";
 
+import { useEffect } from "react";
+
 import { ErrorLayout } from "@/components/errors";
+import { ga4Client } from "@core/analytics/ga4-client";
 
 interface ErrorPageProps {
   error: Error & { digest?: string };
@@ -17,6 +20,17 @@ interface ErrorPageProps {
  * layout.tsx以下の全てのページでエラーが発生した際に表示される
  */
 export default function RootErrorPage({ error, reset }: ErrorPageProps) {
+  // エラー発生時にGA4にexceptionイベントを送信
+  useEffect(() => {
+    ga4Client.sendEvent({
+      name: "exception",
+      params: {
+        description: error.message || "Unknown error",
+        fatal: true,
+      },
+    });
+  }, [error]);
+
   return (
     <ErrorLayout
       code="500"
