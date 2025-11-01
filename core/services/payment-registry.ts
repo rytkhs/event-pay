@@ -54,6 +54,8 @@ export interface CreateStripeSessionParams {
   eventTitle: string;
   successUrl: string;
   cancelUrl: string;
+  /** GA4 Client ID（アナリティクス追跡用） */
+  gaClientId?: string;
   transferGroup?: string;
   /**
    * Destination charges用パラメータ

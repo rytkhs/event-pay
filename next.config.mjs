@@ -8,22 +8,23 @@ const isProd = process.env.NODE_ENV === "production";
 const csp = [
   "default-src 'self'",
   isDev
-    ? "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://maps.googleapis.com https://www.googletagmanager.com"
-    : "script-src 'self' 'unsafe-inline' https://js.stripe.com https://maps.googleapis.com https://www.googletagmanager.com",
+    ? "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://connect-js.stripe.com https://maps.googleapis.com https://*.googletagmanager.com"
+    : "script-src 'self' 'unsafe-inline' https://js.stripe.com https://connect-js.stripe.com https://maps.googleapis.com https://*.googletagmanager.com",
   "script-src-attr 'none'",
   // style は Level 3 を使うなら -elem/-attr に統一
   "style-src-elem 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "style-src-attr 'unsafe-inline'",
-  "img-src 'self' data: blob: https://maps.gstatic.com https://*.googleapis.com https://*.ggpht.com https://www.google-analytics.com",
+  "img-src 'self' data: blob: https://maps.gstatic.com https://*.googleapis.com https://*.ggpht.com https://*.google-analytics.com https://*.googletagmanager.com",
   "font-src 'self' https://fonts.gstatic.com",
   isDev
-    ? "connect-src 'self' http://127.0.0.1:54321 https://*.supabase.co wss://*.supabase.co https://api.stripe.com https://checkout.stripe.com https://m.stripe.network https://q.stripe.com https://maps.googleapis.com https://www.google-analytics.com https://www.googletagmanager.com"
-    : "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.stripe.com https://checkout.stripe.com https://m.stripe.network https://q.stripe.com https://maps.googleapis.com https://www.google-analytics.com https://www.googletagmanager.com",
-  "frame-src 'self' https://js.stripe.com https://hooks.stripe.com https://checkout.stripe.com",
+    ? "connect-src 'self' http://127.0.0.1:54321 https://*.supabase.co wss://*.supabase.co https://api.stripe.com https://checkout.stripe.com https://connect.stripe.com https://express.stripe.com https://dashboard.stripe.com https://connect-js.stripe.com https://m.stripe.network https://q.stripe.com https://maps.googleapis.com https://*.google-analytics.com https://*.analytics.google.com https://*.googletagmanager.com"
+    : "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.stripe.com https://checkout.stripe.com https://connect.stripe.com https://express.stripe.com https://dashboard.stripe.com https://connect-js.stripe.com https://m.stripe.network https://q.stripe.com https://maps.googleapis.com https://*.google-analytics.com https://*.analytics.google.com https://*.googletagmanager.com",
+  "frame-src 'self' https://js.stripe.com https://hooks.stripe.com https://checkout.stripe.com https://connect.stripe.com https://express.stripe.com",
   "object-src 'none'",
   "base-uri 'self'",
   "form-action 'self' https://checkout.stripe.com",
   "frame-ancestors 'none'",
+  "report-uri /api/csp-report",
   ...(isProd ? ["upgrade-insecure-requests"] : []),
 ].join("; ");
 

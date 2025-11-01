@@ -5,6 +5,7 @@ import { useState, useEffect } from "react";
 import { Copy, ExternalLink, RefreshCw, Link, MoreHorizontal } from "lucide-react";
 
 import { generateInviteTokenAction } from "@core/actions";
+import { ga4Client } from "@core/analytics/ga4-client";
 import { useToast } from "@core/contexts/toast-context";
 import { useClipboard } from "@core/hooks/use-clipboard";
 import { cn } from "@core/utils";
@@ -99,6 +100,14 @@ export function InviteLinkPopover({
 
   const handleShare = () => {
     if (typeof navigator !== "undefined" && navigator.share && inviteUrl) {
+      // GA4イベントを送信
+      ga4Client.sendEvent({
+        name: "invite_shared",
+        params: {
+          event_id: eventId,
+        },
+      });
+
       navigator
         .share({
           title: "イベントに参加しませんか？",

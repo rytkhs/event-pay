@@ -1,6 +1,17 @@
+import type { Metadata } from "next";
+
+import { getCanonicalUrl } from "@core/utils/canonical-url";
 import { renderMarkdownFromPublic } from "@core/utils/markdown";
 
 export const dynamic = "force-static";
+
+export async function generateMetadata(): Promise<Metadata> {
+  return {
+    alternates: {
+      canonical: getCanonicalUrl("/tokushoho/platform"),
+    },
+  };
+}
 
 export default async function Page() {
   const { html, frontmatter } = await renderMarkdownFromPublic("/legal/tokushoho/platform.md");

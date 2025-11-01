@@ -18,6 +18,7 @@ interface CreateDestinationCheckoutParams {
   successUrl: string;
   cancelUrl: string;
   actorId: string; // idempotency_key生成用（認証ユーザー=users.id / ゲスト=attendances.id）
+  gaClientId?: string; // GA4 Client ID（アナリティクス追跡用）
   metadata?: Record<string, string>;
   setupFutureUsage?: "off_session";
   idempotencyKey?: string; // 既存キーの再利用用（任意）
@@ -37,6 +38,7 @@ export async function createDestinationCheckoutSession(
     successUrl,
     cancelUrl,
     actorId,
+    gaClientId,
     metadata = {},
     setupFutureUsage,
     idempotencyKey,
@@ -53,6 +55,7 @@ export async function createDestinationCheckoutSession(
   const sessionMetadata = {
     event_id: eventId,
     actor_id: actorId,
+    ...(gaClientId ? { ga_client_id: gaClientId } : {}),
     ...metadata,
   };
 

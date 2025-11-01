@@ -34,6 +34,7 @@ const createStripeSessionParamsSchema = z.object({
     .max(200, "イベント名は200文字以内である必要があります"),
   successUrl: z.string().url("成功時URLは有効なURLである必要があります"),
   cancelUrl: z.string().url("キャンセル時URLは有効なURLである必要があります"),
+  gaClientId: z.string().optional(),
 });
 
 // 現金決済用スキーマ（内部使用専用）

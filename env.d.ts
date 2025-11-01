@@ -100,6 +100,14 @@ declare namespace NodeJS {
     ALLOWED_ORIGINS?: string;
 
     // ===========================
+    // Google Analytics 4 Configuration（オプショナル）
+    // ===========================
+    /** GA4 Measurement ID（G-で始まる識別子、例: G-XXXXXXXXXX） */
+    NEXT_PUBLIC_GA_MEASUREMENT_ID?: string;
+    /** GA4 Measurement Protocol API Secret（サーバー側イベント送信用） */
+    GA_API_SECRET?: string;
+
+    // ===========================
     // Security - Webhook IP Control (Optional)
     // ===========================
     /**

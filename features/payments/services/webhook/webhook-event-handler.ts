@@ -104,7 +104,7 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
 
             const { data: payment, error: fetchError } = await this.supabase
               .from("payments")
-              .select("id, stripe_payment_intent_id")
+              .select("id, stripe_payment_intent_id, amount, attendance_id")
               .eq("id", paymentIdFromMetadata)
               .maybeSingle();
 
@@ -149,6 +149,72 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
                 paymentIntentId: paymentIntentId ?? undefined,
               }
             );
+
+            // GA4購入イベントの送信（失敗してもwebhook処理は継続）
+            try {
+              // メタデータからGA4 Client IDを取得
+              const metadata = (session as unknown as { metadata?: Record<string, unknown> | null })
+                ?.metadata;
+              const gaClientId: string | null =
+                metadata && typeof metadata["ga_client_id"] === "string"
+                  ? metadata["ga_client_id"]
+                  : null;
+
+              if (gaClientId) {
+                // attendanceからイベント情報を取得
+                const { data: attendance, error: attendanceError } = await this.supabase
+                  .from("attendances")
+                  .select("event:events(id, title)")
+                  .eq("id", payment.attendance_id)
+                  .single();
+
+                if (attendanceError || !attendance) {
+                  logger.warn("[GA4] Failed to fetch event info for purchase tracking", {
+                    tag: "ga4-webhook",
+                    payment_id: payment.id,
+                    attendance_id: payment.attendance_id,
+                    error_message: attendanceError?.message || "Attendance not found",
+                  });
+                } else {
+                  interface AttendanceWithEvent {
+                    event: { id: string; title: string } | { id: string; title: string }[];
+                  }
+
+                  const typedAttendance = attendance as unknown as AttendanceWithEvent;
+                  const eventData = Array.isArray(typedAttendance.event)
+                    ? typedAttendance.event[0]
+                    : typedAttendance.event;
+
+                  // PaymentAnalyticsServiceを使用してGA4購入イベントを送信
+                  const { paymentAnalytics } = await import(
+                    "@features/payments/services/analytics/payment-analytics"
+                  );
+
+                  await paymentAnalytics.trackPurchaseCompletion({
+                    clientId: gaClientId,
+                    transactionId: sessionId,
+                    eventId: eventData.id,
+                    eventTitle: eventData.title,
+                    amount: payment.amount,
+                  });
+                }
+              } else {
+                logger.debug("[GA4] No GA4 Client ID in checkout session metadata", {
+                  tag: "ga4-webhook",
+                  session_id: maskSessionId(sessionId),
+                  payment_id: payment.id,
+                });
+              }
+            } catch (gaError) {
+              // GA4イベント送信の失敗はログのみ記録、webhook処理は継続
+              logger.warn("[GA4] Failed to send purchase event", {
+                tag: "ga4-webhook",
+                payment_id: payment.id,
+                session_id: maskSessionId(sessionId),
+                error_message: gaError instanceof Error ? gaError.message : "Unknown error",
+              });
+            }
+
             return { success: true };
           } catch (e) {
             throw e instanceof Error ? e : new Error("Unknown error");

@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 
 import { Loader2, Save, CreditCard, AlertCircle, CheckCircle } from "lucide-react";
 
+import { ga4Client } from "@core/analytics/ga4-client";
 import { PAYMENT_METHOD_LABELS } from "@core/constants/payment-methods";
 import { useToast } from "@core/contexts/toast-context";
 import { useErrorHandler } from "@core/hooks/use-error-handler";
@@ -156,6 +157,16 @@ export function GuestManagementForm({ attendance, canModify }: GuestManagementFo
       const result = await updateGuestAttendanceAction(formData);
 
       if (result.success) {
+        // 参加登録成功時にGA4イベントを送信
+        if (attendanceStatus === "attending") {
+          ga4Client.sendEvent({
+            name: "event_registration",
+            params: {
+              event_id: attendance.event.id,
+            },
+          });
+        }
+
         setSuccess("参加状況を更新しました");
         toast({
           title: "保存完了",

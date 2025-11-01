@@ -106,7 +106,7 @@ export async function generateMetadata({ params }: EventDetailPageProps): Promis
           type: "website",
         },
         twitter: {
-          card: "summary",
+          card: "summary_large_image",
           title: "イベント詳細 - みんなの集金",
           description: "イベントの詳細情報",
         },
@@ -133,7 +133,7 @@ export async function generateMetadata({ params }: EventDetailPageProps): Promis
         ],
       },
       twitter: {
-        card: "summary",
+        card: "summary_large_image",
         title: `${eventDetail.title} - みんなの集金`,
         description: `${eventDetail.title}の詳細情報と参加者管理`,
         images: [ogImageUrl],
@@ -149,7 +149,7 @@ export async function generateMetadata({ params }: EventDetailPageProps): Promis
         type: "website",
       },
       twitter: {
-        card: "summary",
+        card: "summary_large_image",
         title: "イベント詳細 - みんなの集金",
         description: "イベントの詳細情報",
       },

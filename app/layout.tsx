@@ -1,17 +1,21 @@
 import { Noto_Sans_JP } from "next/font/google";
 import localFont from "next/font/local";
-export const dynamic = "force-dynamic";
-import Script from "next/script";
 
+export const dynamic = "force-dynamic";
+import { GoogleAnalytics } from "@next/third-parties/google";
 import type { Metadata } from "next";
 
 import "./globals.css";
 import "./(marketing)/lp.css";
 
+import { getGA4Config } from "@core/analytics/config";
 import { ToastProvider } from "@core/contexts/toast-context";
+import { generateOrganizationSchema, generateWebSiteSchema } from "@core/seo/jsonld-schemas";
+import { getCanonicalUrl } from "@core/utils/canonical-url";
 
 import { FooterWrapper } from "@components/layout/FooterWrapper";
 import { HeaderWrapper } from "@components/layout/HeaderWrapper";
+import { JsonLd } from "@components/seo/JsonLd";
 
 import { Toaster } from "@/components/ui/toast";
 import { Tooltip as TooltipProvider } from "@/components/ui/tooltip";
@@ -50,7 +54,9 @@ export const metadata: Metadata = {
   metadataBase: new URL(getBaseUrl()),
   title: "みんなの集金 - 出欠から集金まで、ひとつのリンクで完了",
   description: "参加の確認から集金まで、リンクの共有だけで完了できる新しいサービスです。",
-  keywords: "イベント管理, 出欠管理, 集金, コミュニティ, オンライン決済, みんなの集金",
+  alternates: {
+    canonical: getCanonicalUrl("/"),
+  },
   openGraph: {
     title: "みんなの集金 - 出欠から集金まで、ひとつのリンクで完了",
     description: "参加の確認から集金まで、リンクの共有だけで完了できる新しいサービスです。",
@@ -65,7 +71,7 @@ export const metadata: Metadata = {
     ],
   },
   twitter: {
-    card: "summary",
+    card: "summary_large_image",
     title: "みんなの集金 - 出欠から集金まで、ひとつのリンクで完了",
     description: "参加の確認から集金まで、リンクの共有だけで完了できる新しいサービスです。",
     images: ["/og/homepage.png"],
@@ -87,27 +93,19 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>): JSX.Element {
+  const ga4Config = getGA4Config();
+
+  // 構造化データ（JSON-LD）を生成
+  const organizationSchema = generateOrganizationSchema();
+  const webSiteSchema = generateWebSiteSchema();
+
   return (
-    <html lang="en" suppressHydrationWarning={true}>
-      <head>
-        {/* Google tag (gtag.js) */}
-        <Script
-          src="https://www.googletagmanager.com/gtag/js?id=G-5KCSZCX4JL"
-          strategy="afterInteractive"
-        />
-        <Script id="google-analytics" strategy="afterInteractive">
-          {`
-            window.dataLayer = window.dataLayer || [];
-            function gtag(){dataLayer.push(arguments);}
-            gtag('js', new Date());
-            gtag('config', 'G-5KCSZCX4JL');
-          `}
-        </Script>
-      </head>
+    <html lang="ja" suppressHydrationWarning={true}>
       <body
         className={`${geistSans.variable} ${geistMono.variable} ${notoSansJp.className} antialiased`}
         suppressHydrationWarning={true}
       >
+        <JsonLd data={[organizationSchema, webSiteSchema]} />
         <TooltipProvider>
           <ToastProvider ToasterComponent={Toaster}>
             <HeaderWrapper />
@@ -115,6 +113,7 @@ export default function RootLayout({
             <FooterWrapper />
           </ToastProvider>
         </TooltipProvider>
+        {ga4Config.enabled && <GoogleAnalytics gaId={ga4Config.measurementId} />}
       </body>
     </html>
   );

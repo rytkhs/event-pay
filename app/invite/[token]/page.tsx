@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 
 import { logInvalidTokenAccess } from "@core/security/security-logger";
+import { getCanonicalUrl } from "@core/utils/canonical-url";
 import { validateGuestToken } from "@core/utils/guest-token";
 import { validateInviteToken } from "@core/utils/invite-token";
 import { getClientIPFromHeaders } from "@core/utils/ip-detection";
@@ -192,13 +193,17 @@ export async function generateMetadata({ params }: InvitePageProps): Promise<Met
       return {
         title: "イベント参加申し込み - みんなの集金",
         description: "イベントへの参加申し込み",
+        robots: "noindex, nofollow", // 招待ページは検索エンジンにインデックスされないようにする
+        alternates: {
+          canonical: getCanonicalUrl("/invite"),
+        },
         openGraph: {
           title: "イベント参加申し込み - みんなの集金",
           description: "イベントへの参加申し込み",
           type: "website",
         },
         twitter: {
-          card: "summary",
+          card: "summary_large_image",
           title: "イベント参加申し込み - みんなの集金",
           description: "イベントへの参加申し込み",
         },
@@ -211,13 +216,17 @@ export async function generateMetadata({ params }: InvitePageProps): Promise<Met
       return {
         title: "無効な招待リンク - みんなの集金",
         description: "招待リンクが無効または期限切れです",
+        robots: "noindex, nofollow", // 招待ページは検索エンジンにインデックスされないようにする
+        alternates: {
+          canonical: getCanonicalUrl(`/invite/${params.token}`),
+        },
         openGraph: {
           title: "無効な招待リンク - みんなの集金",
           description: "招待リンクが無効または期限切れです",
           type: "website",
         },
         twitter: {
-          card: "summary",
+          card: "summary_large_image",
           title: "無効な招待リンク - みんなの集金",
           description: "招待リンクが無効または期限切れです",
         },
@@ -232,6 +241,10 @@ export async function generateMetadata({ params }: InvitePageProps): Promise<Met
     return {
       title: `${event.title} - 参加申し込み | みんなの集金`,
       description: sanitizeEventDescription(event.description || `${event.title}への参加申し込み`),
+      robots: "noindex, nofollow", // 招待ページは検索エンジンにインデックスされないようにする
+      alternates: {
+        canonical: getCanonicalUrl(`/invite/${params.token}`),
+      },
       openGraph: {
         title: `${event.title} - 参加申し込み | みんなの集金`,
         description: sanitizeEventDescription(
@@ -248,7 +261,7 @@ export async function generateMetadata({ params }: InvitePageProps): Promise<Met
         ],
       },
       twitter: {
-        card: "summary",
+        card: "summary_large_image",
         title: `${event.title} - 参加申し込み | みんなの集金`,
         description: sanitizeEventDescription(
           event.description || `${event.title}への参加申し込み`
@@ -260,13 +273,17 @@ export async function generateMetadata({ params }: InvitePageProps): Promise<Met
     return {
       title: "イベント参加申し込み - みんなの集金",
       description: "イベントへの参加申し込み",
+      robots: "noindex, nofollow", // 招待ページは検索エンジンにインデックスされないようにする
+      alternates: {
+        canonical: getCanonicalUrl(`/invite/${params?.token || ""}`),
+      },
       openGraph: {
         title: "イベント参加申し込み - みんなの集金",
         description: "イベントへの参加申し込み",
         type: "website",
       },
       twitter: {
-        card: "summary",
+        card: "summary_large_image",
         title: "イベント参加申し込み - みんなの集金",
         description: "イベントへの参加申し込み",
       },

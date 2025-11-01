@@ -1,12 +1,23 @@
 import { notFound } from "next/navigation";
 
+import type { Metadata } from "next";
+
 import { createClient } from "@core/supabase/server";
+import { getCanonicalUrl } from "@core/utils/canonical-url";
 import { renderMarkdownFromPublic } from "@core/utils/markdown";
 import { sanitizeForEventPay } from "@core/utils/sanitize";
 
 export const dynamic = "force-dynamic";
 
 type Params = { organizer: string };
+
+export async function generateMetadata({ params }: { params: Params }): Promise<Metadata> {
+  return {
+    alternates: {
+      canonical: getCanonicalUrl(`/tokushoho/${params.organizer}`),
+    },
+  };
+}
 
 export default async function Page({ params }: { params: Params }) {
   try {

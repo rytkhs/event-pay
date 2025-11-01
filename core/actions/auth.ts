@@ -1,6 +1,6 @@
 "use server";
 
-import { headers } from "next/headers";
+import { cookies, headers } from "next/headers";
 
 import type { EmailOtpType, AuthResponse } from "@supabase/supabase-js";
 import { z } from "zod";
@@ -17,6 +17,7 @@ import { logger } from "@core/logging/app-logger";
 import { sendSlackText } from "@core/notification/slack";
 import { enforceRateLimit, buildKey, POLICIES } from "@core/rate-limit/index";
 import { createClient } from "@core/supabase/server";
+import { extractClientIdFromGaCookie } from "@core/utils/ga-cookie";
 import { getClientIPFromHeaders } from "@core/utils/ip-detection";
 import { formatUtcToJst } from "@core/utils/timezone";
 
@@ -262,6 +263,40 @@ export async function loginAction(formData: FormData): Promise<ActionResult<{ us
     // ログイン成功: 失敗回数とロックをクリア
     await AccountLockoutService.clearFailedAttempts(sanitizedEmail);
 
+    // GA4: ログインイベントを送信（非同期、エラーは無視）
+    queueMicrotask(async () => {
+      try {
+        const { ga4Server } = await import("@core/analytics/ga4-server");
+
+        // _ga CookieからClient IDを取得
+        const cookieStore = await cookies();
+        const gaCookie = cookieStore.get("_ga")?.value;
+        const clientId = extractClientIdFromGaCookie(gaCookie);
+
+        // ユーザーIDを取得（Client IDがない場合のフォールバック）
+        const userId = signInData?.user?.id;
+
+        await ga4Server.sendEvent(
+          {
+            name: "login",
+            params: {
+              method: "password",
+            },
+          },
+          clientId ?? undefined,
+          userId,
+          undefined, // sessionId（現時点では未設定）
+          undefined // engagementTimeMsec（現時点では未設定）
+        );
+      } catch (error) {
+        // GA4送信エラーはログインの成功に影響しない
+        logger.debug("[GA4] Failed to send login event", {
+          tag: "ga4LoginEventFailed",
+          error_message: error instanceof Error ? error.message : String(error),
+        });
+      }
+    });
+
     // ログイン成功（メール確認済み）
     return {
       success: true,
@@ -402,6 +437,39 @@ export async function registerAction(formData: FormData): Promise<ActionResult<{
     }
 
     // Database Triggerがpublic.usersプロファイルを自動作成
+
+    // GA4: サインアップイベントを送信（非同期、エラーは無視）
+    queueMicrotask(async () => {
+      try {
+        const { ga4Server } = await import("@core/analytics/ga4-server");
+
+        // _ga CookieからClient IDを取得
+        const cookieStore = await cookies();
+        const gaCookie = cookieStore.get("_ga")?.value;
+        const clientId = extractClientIdFromGaCookie(gaCookie);
+
+        // ユーザーIDを取得（Client IDがない場合のフォールバック）
+        const userId = signUpData?.user?.id;
+
+        await ga4Server.sendEvent(
+          {
+            name: "sign_up",
+            params: {
+              method: "password",
+            },
+          },
+          clientId ?? undefined,
+          userId,
+          undefined, // sessionId（現時点では未設定）
+          undefined // engagementTimeMsec（現時点では未設定）
+        );
+      } catch (error) {
+        logger.debug("[GA4] Failed to send sign_up event", {
+          tag: "ga4SignUpEventFailed",
+          error_message: error instanceof Error ? error.message : String(error),
+        });
+      }
+    });
 
     // Slack通知（新規アカウント作成）
     queueMicrotask(async () => {
@@ -794,6 +862,15 @@ export async function logoutAction(): Promise<ActionResult> {
   try {
     const supabase = createClient();
 
+    // ユーザーIDを取得（GA4イベント送信用）
+    let userId: string | undefined;
+    try {
+      const { data: userData } = await supabase.auth.getUser();
+      userId = userData?.user?.id;
+    } catch {
+      // ユーザー取得エラーは無視
+    }
+
     // ログアウト実行（認証状態に関係なく実行）
     const { error } = await supabase.auth.signOut();
 
@@ -809,6 +886,34 @@ export async function logoutAction(): Promise<ActionResult> {
         redirectUrl: "/login",
       };
     }
+
+    // GA4: ログアウトイベントを送信（非同期、エラーは無視）
+    queueMicrotask(async () => {
+      try {
+        const { ga4Server } = await import("@core/analytics/ga4-server");
+
+        // _ga CookieからClient IDを取得
+        const cookieStore = await cookies();
+        const gaCookie = cookieStore.get("_ga")?.value;
+        const clientId = extractClientIdFromGaCookie(gaCookie);
+
+        await ga4Server.sendEvent(
+          {
+            name: "logout",
+            params: {},
+          },
+          clientId ?? undefined,
+          userId,
+          undefined, // sessionId（現時点では未設定）
+          undefined // engagementTimeMsec（現時点では未設定）
+        );
+      } catch (error) {
+        logger.debug("[GA4] Failed to send logout event", {
+          tag: "ga4LogoutEventFailed",
+          error_message: error instanceof Error ? error.message : String(error),
+        });
+      }
+    });
 
     return {
       success: true,
