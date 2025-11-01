@@ -10,6 +10,7 @@ import "./(marketing)/lp.css";
 
 import { getGA4Config } from "@core/analytics/config";
 import { ToastProvider } from "@core/contexts/toast-context";
+import { getCanonicalUrl } from "@core/utils/canonical-url";
 
 import { FooterWrapper } from "@components/layout/FooterWrapper";
 import { HeaderWrapper } from "@components/layout/HeaderWrapper";
@@ -52,6 +53,9 @@ export const metadata: Metadata = {
   title: "みんなの集金 - 出欠から集金まで、ひとつのリンクで完了",
   description: "参加の確認から集金まで、リンクの共有だけで完了できる新しいサービスです。",
   keywords: "イベント管理, 出欠管理, 集金, コミュニティ, オンライン決済, みんなの集金",
+  alternates: {
+    canonical: getCanonicalUrl("/"),
+  },
   openGraph: {
     title: "みんなの集金 - 出欠から集金まで、ひとつのリンクで完了",
     description: "参加の確認から集金まで、リンクの共有だけで完了できる新しいサービスです。",
