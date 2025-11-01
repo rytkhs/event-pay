@@ -23,22 +23,37 @@ export class GA4ServerService {
    * サーバー側からイベントを送信する（Measurement Protocol）
    *
    * @param event - 送信するGA4イベント
-   * @param clientId - GA4 Client ID
+   * @param clientId - GA4 Client ID（オプショナル、_ga Cookieから取得した値）
+   * @param userId - ユーザーID（オプショナル、clientIdがない場合のフォールバック）
+   * @param sessionId - セッションID（オプショナル、正の整数）
+   * @param engagementTimeMsec - エンゲージメント時間（ミリ秒、オプショナル）
    */
-  async sendEvent(event: GA4Event, clientId: string): Promise<void> {
+  async sendEvent(
+    event: GA4Event,
+    clientId?: string,
+    userId?: string,
+    sessionId?: number,
+    engagementTimeMsec?: number
+  ): Promise<void> {
     if (!this.config.enabled || !this.config.apiSecret) {
       logger.debug("[GA4] Server event skipped (disabled or no API secret)", {
         tag: "ga4-server",
         event_name: event.name,
         client_id: clientId,
+        user_id: userId,
       });
       return;
     }
 
-    if (!clientId || !this.isValidClientId(clientId)) {
-      logger.warn("[GA4] Invalid client ID format", {
+    // Client IDの検証（ある場合のみ）
+    const validClientId = clientId && this.isValidClientId(clientId) ? clientId : null;
+
+    // Client IDもUserIdもない場合は送信できない
+    if (!validClientId && !userId) {
+      logger.warn("[GA4] Neither client ID nor user ID provided", {
         tag: "ga4-server",
         client_id: clientId,
+        user_id: userId,
         event_name: event.name,
       });
       return;
@@ -46,15 +61,37 @@ export class GA4ServerService {
 
     const url = `${this.MEASUREMENT_PROTOCOL_URL}?measurement_id=${this.config.measurementId}&api_secret=${this.config.apiSecret}`;
 
-    const payload = {
-      client_id: clientId,
+    // イベントパラメータに共通パラメータを追加
+    const eventParams: Record<string, unknown> = { ...event.params };
+    if (sessionId !== undefined && sessionId > 0) {
+      eventParams.session_id = sessionId;
+    }
+    if (engagementTimeMsec !== undefined && engagementTimeMsec >= 0) {
+      eventParams.engagement_time_msec = engagementTimeMsec;
+    }
+
+    // ペイロードを構築（client_id優先、なければuser_id）
+    const payload: {
+      client_id?: string;
+      user_id?: string;
+      events: Array<{
+        name: string;
+        params: Record<string, unknown>;
+      }>;
+    } = {
       events: [
         {
           name: event.name,
-          params: event.params,
+          params: eventParams,
         },
       ],
     };
+
+    if (validClientId) {
+      payload.client_id = validClientId;
+    } else if (userId) {
+      payload.user_id = userId;
+    }
 
     try {
       const response = await fetch(url, {
@@ -72,7 +109,9 @@ export class GA4ServerService {
       logger.info("[GA4] Server event sent successfully", {
         tag: "ga4-server",
         event_name: event.name,
-        client_id: clientId,
+        client_id: validClientId,
+        user_id: userId,
+        session_id: sessionId,
       });
 
       if (this.config.debug) {
@@ -86,7 +125,8 @@ export class GA4ServerService {
       logger.error("[GA4] Failed to send server event", {
         tag: "ga4-server",
         event_name: event.name,
-        client_id: clientId,
+        client_id: validClientId,
+        user_id: userId,
         error: error instanceof Error ? error.message : String(error),
       });
 

@@ -43,6 +43,10 @@ export interface CreateStripeSessionParams {
   successUrl: string;
   cancelUrl: string;
   /**
+   * GA4 Client ID（アナリティクス追跡用）
+   */
+  gaClientId?: string;
+  /**
    * Strip でのグルーピング用識別子
    * - Checkout -> PaymentIntent に付与し、のちの Transfer と突合するために使用
    */

@@ -33,11 +33,17 @@ export interface BaseEventParams {
 }
 
 /**
+ * 認証方法の型定義
+ * GA4推奨イベントのmethodパラメータで使用
+ */
+export type AuthMethod = "password" | "google" | "github" | string;
+
+/**
  * サインアップイベントのパラメータ
  */
 export interface SignUpEventParams extends BaseEventParams {
   /** 認証方法 */
-  method: "email" | "social";
+  method: AuthMethod;
 }
 
 /**
@@ -45,7 +51,7 @@ export interface SignUpEventParams extends BaseEventParams {
  */
 export interface LoginEventParams extends BaseEventParams {
   /** 認証方法 */
-  method: "email" | "social";
+  method: AuthMethod;
 }
 
 /**

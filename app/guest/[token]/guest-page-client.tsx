@@ -4,8 +4,8 @@ import { useState } from "react";
 
 import { AlertCircle } from "lucide-react";
 
-import { ga4Client } from "@core/analytics/ga4-client";
 import type { BeginCheckoutParams } from "@core/analytics/event-types";
+import { ga4Client } from "@core/analytics/ga4-client";
 import { useToast } from "@core/contexts/toast-context";
 import { useErrorHandler } from "@core/hooks/use-error-handler";
 import { type GuestAttendanceData } from "@core/utils/guest-token";

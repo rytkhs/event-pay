@@ -8,6 +8,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
+import type { EventCreatedParams } from "@core/analytics/event-types";
+import { ga4Client } from "@core/analytics/ga4-client";
 import { useToast } from "@core/contexts/toast-context";
 import { logger } from "@core/logging/app-logger";
 import { safeParseNumber, parseFee } from "@core/utils/number-parsers";
@@ -421,6 +423,29 @@ export const useEventForm = (): {
         const result = await createEventAction(formData);
 
         if (result.success) {
+          // GA4イベント送信: event_created
+          try {
+            const eventCreatedParams: EventCreatedParams = {
+              event_id: result.data.id,
+              event_title: data.title,
+              event_date: data.date,
+              amount: parseFee(data.fee),
+              currency: "JPY",
+            };
+
+            ga4Client.sendEvent({
+              name: "event_created",
+              params: eventCreatedParams,
+            });
+          } catch (analyticsError) {
+            // アナリティクスエラーはユーザー体験に影響を与えないようログのみ
+            logger.warn("Failed to send event_created analytics", {
+              tag: "eventCreation",
+              error:
+                analyticsError instanceof Error ? analyticsError.message : String(analyticsError),
+            });
+          }
+
           // 成功トースト通知を表示
           toast({
             title: "イベントを作成しました！",
