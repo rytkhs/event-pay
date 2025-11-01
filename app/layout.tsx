@@ -91,7 +91,7 @@ export default function RootLayout({
   const ga4Config = getGA4Config();
 
   return (
-    <html lang="en" suppressHydrationWarning={true}>
+    <html lang="ja" suppressHydrationWarning={true}>
       <body
         className={`${geistSans.variable} ${geistMono.variable} ${notoSansJp.className} antialiased`}
         suppressHydrationWarning={true}
