@@ -125,6 +125,7 @@ export async function middleware(request: NextRequest) {
       "base-uri 'self'",
       "form-action 'self' https://checkout.stripe.com",
       "frame-ancestors 'none'",
+      "report-uri /api/csp-report",
       "upgrade-insecure-requests",
     ].join("; ");
     response.headers.set("Content-Security-Policy", cspDirectives);

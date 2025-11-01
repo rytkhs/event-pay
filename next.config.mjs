@@ -24,6 +24,7 @@ const csp = [
   "base-uri 'self'",
   "form-action 'self' https://checkout.stripe.com",
   "frame-ancestors 'none'",
+  "report-uri /api/csp-report",
   ...(isProd ? ["upgrade-insecure-requests"] : []),
 ].join("; ");
 
