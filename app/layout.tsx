@@ -10,10 +10,12 @@ import "./(marketing)/lp.css";
 
 import { getGA4Config } from "@core/analytics/config";
 import { ToastProvider } from "@core/contexts/toast-context";
+import { generateOrganizationSchema, generateWebSiteSchema } from "@core/seo/jsonld-schemas";
 import { getCanonicalUrl } from "@core/utils/canonical-url";
 
 import { FooterWrapper } from "@components/layout/FooterWrapper";
 import { HeaderWrapper } from "@components/layout/HeaderWrapper";
+import { JsonLd } from "@components/seo/JsonLd";
 
 import { Toaster } from "@/components/ui/toast";
 import { Tooltip as TooltipProvider } from "@/components/ui/tooltip";
@@ -52,7 +54,6 @@ export const metadata: Metadata = {
   metadataBase: new URL(getBaseUrl()),
   title: "みんなの集金 - 出欠から集金まで、ひとつのリンクで完了",
   description: "参加の確認から集金まで、リンクの共有だけで完了できる新しいサービスです。",
-  keywords: "イベント管理, 出欠管理, 集金, コミュニティ, オンライン決済, みんなの集金",
   alternates: {
     canonical: getCanonicalUrl("/"),
   },
@@ -94,12 +95,17 @@ export default function RootLayout({
 }>): JSX.Element {
   const ga4Config = getGA4Config();
 
+  // 構造化データ（JSON-LD）を生成
+  const organizationSchema = generateOrganizationSchema();
+  const webSiteSchema = generateWebSiteSchema();
+
   return (
     <html lang="ja" suppressHydrationWarning={true}>
       <body
         className={`${geistSans.variable} ${geistMono.variable} ${notoSansJp.className} antialiased`}
         suppressHydrationWarning={true}
       >
+        <JsonLd data={[organizationSchema, webSiteSchema]} />
         <TooltipProvider>
           <ToastProvider ToasterComponent={Toaster}>
             <HeaderWrapper />
