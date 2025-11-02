@@ -8,7 +8,6 @@ import { AlertCircle, Calendar } from "lucide-react";
 import type { Metadata } from "next";
 
 import { logInvalidTokenAccess, logUnexpectedGuestPageError } from "@core/security/security-logger";
-import { getCanonicalUrl } from "@core/utils/canonical-url";
 import { validateGuestToken } from "@core/utils/guest-token";
 import { getClientIPFromHeaders } from "@core/utils/ip-detection";
 import { sanitizeForEventPay } from "@core/utils/sanitize";
@@ -36,11 +35,11 @@ export async function generateMetadata({ params }: GuestPageProps): Promise<Meta
 
   if (!validation.isValid || !validation.attendance) {
     return {
-      title: "参加状況管理 - みんなの集金",
+      title: "ゲストページ",
       description: "イベント参加状況の管理ページ",
       robots: "noindex, nofollow",
       alternates: {
-        canonical: getCanonicalUrl(`/guest/${token}`),
+        canonical: "./",
       },
     };
   }
@@ -48,11 +47,11 @@ export async function generateMetadata({ params }: GuestPageProps): Promise<Meta
   const eventTitle = sanitizeForEventPay(validation.attendance.event.title);
 
   return {
-    title: `${eventTitle} - 参加状況管理 | みんなの集金`,
+    title: `${eventTitle} - ゲストページ`,
     description: `${eventTitle}の参加状況を確認・変更できます`,
     robots: "noindex, nofollow", // ゲストページは検索エンジンにインデックスされないようにする
     alternates: {
-      canonical: getCanonicalUrl(`/guest/${token}`),
+      canonical: "./",
     },
   };
 }
