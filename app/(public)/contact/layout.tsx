@@ -1,10 +1,8 @@
 import type { Metadata } from "next";
 
-import { getCanonicalUrl } from "@core/utils/canonical-url";
-
 export const metadata: Metadata = {
   alternates: {
-    canonical: getCanonicalUrl("/contact"),
+    canonical: "./",
   },
 };
 

@@ -4,7 +4,6 @@ import { redirect } from "next/navigation";
 import type { Metadata } from "next";
 
 import { createClient } from "@core/supabase/server";
-import { getCanonicalUrl } from "@core/utils/canonical-url";
 
 export const dynamic = "force-dynamic";
 
@@ -14,8 +13,8 @@ const LandingPage = dynamicImport(() => import("./(marketing)/_components/Landin
 
 export async function generateMetadata(): Promise<Metadata> {
   return {
-    alternates: {
-      canonical: getCanonicalUrl("/"),
+    title: {
+      absolute: "みんなの集金 - 出欠から集金まで、ひとつのリンクで完了",
     },
   };
 }

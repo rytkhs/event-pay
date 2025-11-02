@@ -98,16 +98,16 @@ export async function generateMetadata({ params }: EventDetailPageProps): Promis
     const eventDetailResult = await cachedActions.getEventDetail(params.id);
     if (!eventDetailResult.success) {
       return {
-        title: "イベント詳細 - みんなの集金",
+        title: "イベント詳細",
         description: "イベントの詳細情報",
         openGraph: {
-          title: "イベント詳細 - みんなの集金",
+          title: "イベント詳細",
           description: "イベントの詳細情報",
           type: "website",
         },
         twitter: {
           card: "summary_large_image",
-          title: "イベント詳細 - みんなの集金",
+          title: "イベント詳細",
           description: "イベントの詳細情報",
         },
       };
@@ -117,40 +117,40 @@ export async function generateMetadata({ params }: EventDetailPageProps): Promis
     const ogImageUrl = "/og/event-default.png";
 
     return {
-      title: `${eventDetail.title} - みんなの集金`,
-      description: `${eventDetail.title}の詳細情報と参加者管理`,
+      title: eventDetail.title,
+      description: `${eventDetail.title}の詳細情報`,
       openGraph: {
-        title: `${eventDetail.title} - みんなの集金`,
-        description: `${eventDetail.title}の詳細情報と参加者管理`,
+        title: eventDetail.title,
+        description: `${eventDetail.title}の詳細情報`,
         type: "website",
         images: [
           {
             url: ogImageUrl,
             width: 1200,
             height: 630,
-            alt: `${eventDetail.title} - みんなの集金`,
+            alt: eventDetail.title,
           },
         ],
       },
       twitter: {
         card: "summary_large_image",
-        title: `${eventDetail.title} - みんなの集金`,
-        description: `${eventDetail.title}の詳細情報と参加者管理`,
+        title: eventDetail.title,
+        description: `${eventDetail.title}の詳細情報`,
         images: [ogImageUrl],
       },
     };
   } catch {
     return {
-      title: "イベント詳細 - みんなの集金",
+      title: "イベント詳細",
       description: "イベントの詳細情報",
       openGraph: {
-        title: "イベント詳細 - みんなの集金",
+        title: "イベント詳細",
         description: "イベントの詳細情報",
         type: "website",
       },
       twitter: {
         card: "summary_large_image",
-        title: "イベント詳細 - みんなの集金",
+        title: "イベント詳細",
         description: "イベントの詳細情報",
       },
     };

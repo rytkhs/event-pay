@@ -11,7 +11,6 @@ import "./(marketing)/lp.css";
 import { getGA4Config } from "@core/analytics/config";
 import { ToastProvider } from "@core/contexts/toast-context";
 import { generateOrganizationSchema, generateWebSiteSchema } from "@core/seo/jsonld-schemas";
-import { getCanonicalUrl } from "@core/utils/canonical-url";
 
 import { FooterWrapper } from "@components/layout/FooterWrapper";
 import { HeaderWrapper } from "@components/layout/HeaderWrapper";
@@ -52,15 +51,19 @@ const getBaseUrl = () => {
 
 export const metadata: Metadata = {
   metadataBase: new URL(getBaseUrl()),
-  title: "みんなの集金 - 出欠から集金まで、ひとつのリンクで完了",
+  title: {
+    default: "みんなの集金",
+    template: "%s | みんなの集金",
+  },
   description: "参加の確認から集金まで、リンクの共有だけで完了できる新しいサービスです。",
   alternates: {
-    canonical: getCanonicalUrl("/"),
+    canonical: "./",
   },
   openGraph: {
     title: "みんなの集金 - 出欠から集金まで、ひとつのリンクで完了",
     description: "参加の確認から集金まで、リンクの共有だけで完了できる新しいサービスです。",
     type: "website",
+    locale: "ja_JP",
     images: [
       {
         url: "/og/homepage.png",
