@@ -1,10 +1,6 @@
-import dynamicImport from "next/dynamic";
-
 import type { Metadata } from "next";
 
-const LandingPage = dynamicImport(() => import("./_components/LandingPage"), {
-  ssr: false,
-});
+import LandingPage from "./_components/LandingPage";
 
 export async function generateMetadata(): Promise<Metadata> {
   return {

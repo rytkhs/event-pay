@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 
-import { MarketingHeader } from "@components/layout/GlobalHeader";
 import { StaticFooter } from "@components/layout/GlobalFooter/StaticFooter";
+import { MarketingHeader } from "@components/layout/GlobalHeader";
 
 /**
  * マーケティングレイアウト

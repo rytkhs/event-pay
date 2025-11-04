@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 
-import { HeaderWrapper } from "@components/layout/HeaderWrapper";
 import { FooterWrapper } from "@components/layout/FooterWrapper";
+import { HeaderWrapper } from "@components/layout/HeaderWrapper";
 
 /**
  * アプリケーションレイアウト

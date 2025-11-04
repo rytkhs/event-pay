@@ -157,6 +157,14 @@ export async function middleware(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
+  // トップページの認証リダイレクト: 認証済みユーザーをダッシュボードへ
+  if (pathname === "/" && user) {
+    const dashboardUrl = new URL(AFTER_LOGIN_REDIRECT_PATH, request.url);
+    const redirectResponse = NextResponse.redirect(dashboardUrl, { headers: response.headers });
+    redirectResponse.headers.set("x-request-id", requestId);
+    return redirectResponse;
+  }
+
   // 認証ガード: 公開以外はログイン必須
   if (!isPublicPath(pathname) && !user) {
     const redirectUrl = new URL("/login", request.url);
