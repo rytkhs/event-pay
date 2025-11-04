@@ -72,6 +72,7 @@ export default function LandingPage(): JSX.Element {
                 width={160}
                 height={160}
                 loading="lazy"
+                sizes="(max-width: 768px) 160px, 200px"
               />
               <h3 className="problem-title">LINEの返事が散らばる</h3>
               <p className="problem-text">誰が参加かは結局スプレッドシートで手入力。</p>
@@ -84,6 +85,7 @@ export default function LandingPage(): JSX.Element {
                 width={160}
                 height={160}
                 loading="lazy"
+                sizes="(max-width: 768px) 160px, 200px"
               />
               <h3 className="problem-title">集金作業が負担</h3>
               <p className="problem-text">
@@ -98,6 +100,7 @@ export default function LandingPage(): JSX.Element {
                 width={160}
                 height={160}
                 loading="lazy"
+                sizes="(max-width: 768px) 160px, 200px"
               />
               <h3 className="problem-title">リマインドが手作業</h3>
               <p className="problem-text">未回答者へメッセージ。週末の時間が消えていく。</p>
@@ -128,6 +131,7 @@ export default function LandingPage(): JSX.Element {
                     width={1080}
                     height={720}
                     loading="lazy"
+                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 80vw, 864px"
                   />
                 </Link>
               </div>
@@ -152,6 +156,7 @@ export default function LandingPage(): JSX.Element {
                     width={1080}
                     height={720}
                     loading="lazy"
+                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 80vw, 864px"
                   />
                 </Link>
               </div>
@@ -175,6 +180,7 @@ export default function LandingPage(): JSX.Element {
                   width={1080}
                   height={720}
                   loading="lazy"
+                  sizes="(max-width: 768px) 100vw, (max-width: 1200px) 80vw, 864px"
                 />
               </div>
             </div>
@@ -194,6 +200,7 @@ export default function LandingPage(): JSX.Element {
                 width={200}
                 height={200}
                 loading="lazy"
+                sizes="(max-width: 768px) 200px, 240px"
               />
               <h3 className="use-case-title">大学・社会人サークル</h3>
               <p className="use-case-text">合宿、BBQ、打ち上げ、会費の徴収に。</p>
@@ -206,6 +213,7 @@ export default function LandingPage(): JSX.Element {
                 width={200}
                 height={200}
                 loading="lazy"
+                sizes="(max-width: 768px) 200px, 240px"
               />
               <h3 className="use-case-title">PTA・町内会</h3>
               <p className="use-case-text">バザー/運動会/イベントの準備費や参加費に。</p>
@@ -218,6 +226,7 @@ export default function LandingPage(): JSX.Element {
                 width={200}
                 height={200}
                 loading="lazy"
+                sizes="(max-width: 768px) 200px, 240px"
               />
               <h3 className="use-case-title">スポーツチーム</h3>
               <p className="use-case-text">練習費・遠征費の集金、出欠管理に。</p>
