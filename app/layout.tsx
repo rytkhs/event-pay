@@ -1,7 +1,6 @@
 import { Noto_Sans_JP } from "next/font/google";
 import localFont from "next/font/local";
 
-export const dynamic = "force-dynamic";
 import { GoogleAnalytics } from "@next/third-parties/google";
 import type { Metadata } from "next";
 
@@ -12,8 +11,6 @@ import { getGA4Config } from "@core/analytics/config";
 import { ToastProvider } from "@core/contexts/toast-context";
 import { generateOrganizationSchema, generateWebSiteSchema } from "@core/seo/jsonld-schemas";
 
-import { FooterWrapper } from "@components/layout/FooterWrapper";
-import { HeaderWrapper } from "@components/layout/HeaderWrapper";
 import { JsonLd } from "@components/seo/JsonLd";
 
 import { Toaster } from "@/components/ui/toast";
@@ -30,11 +27,12 @@ const geistMono = localFont({
   weight: "100 900",
 });
 
+// Noto Sans JPの可変フォント最適化
+// weight配列を指定しないことで、可変フォントの全ウェイト範囲を単一ファイルでカバー
 const notoSansJp = Noto_Sans_JP({
   subsets: ["latin"],
   display: "swap",
   variable: "--font-noto-sans-jp",
-  weight: ["100", "300", "400", "500", "700", "900"],
 });
 
 // 環境に応じたベースURLを取得
@@ -110,11 +108,7 @@ export default function RootLayout({
       >
         <JsonLd data={[organizationSchema, webSiteSchema]} />
         <TooltipProvider>
-          <ToastProvider ToasterComponent={Toaster}>
-            <HeaderWrapper />
-            {children}
-            <FooterWrapper />
-          </ToastProvider>
+          <ToastProvider ToasterComponent={Toaster}>{children}</ToastProvider>
         </TooltipProvider>
         {ga4Config.enabled && <GoogleAnalytics gaId={ga4Config.measurementId} />}
       </body>
