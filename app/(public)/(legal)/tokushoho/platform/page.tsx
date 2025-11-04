@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-import { renderMarkdownFromPublic } from "@core/utils/markdown";
+import { renderMarkdownFromFile } from "@core/utils/markdown";
 
 export const dynamic = "force-static";
 
@@ -13,7 +13,7 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function Page() {
-  const { html, frontmatter } = await renderMarkdownFromPublic("/legal/tokushoho/platform.md");
+  const { html, frontmatter } = await renderMarkdownFromFile("public/legal/tokushoho/platform.md");
   const heading = frontmatter.title ?? "特定商取引法に基づく表記";
 
   return (
