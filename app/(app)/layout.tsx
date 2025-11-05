@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 
-import { FooterWrapper } from "@components/layout/FooterWrapper";
+import { GlobalFooter } from "@components/layout/GlobalFooter";
 import { HeaderWrapper } from "@components/layout/HeaderWrapper";
 
 /**
@@ -20,7 +20,7 @@ export default function AppLayout({ children }: { children: ReactNode }): JSX.El
     <>
       <HeaderWrapper />
       <main>{children}</main>
-      <FooterWrapper />
+      <GlobalFooter />
     </>
   );
 }
