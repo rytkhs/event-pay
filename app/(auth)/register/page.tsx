@@ -1,6 +1,8 @@
 "use client";
 
 export const dynamic = "force-dynamic";
+import { Suspense } from "react";
+
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 
@@ -85,7 +87,7 @@ function GoogleSubmitButton({ label }: { label: string }) {
   );
 }
 
-export default function RegisterPage() {
+function RegisterForm() {
   const searchParams = useSearchParams();
   const next = searchParams.get("redirectTo") ?? "/";
   const { form, onSubmit, isPending } = useRegisterFormRHF(registerAction, {
@@ -304,5 +306,21 @@ export default function RegisterPage() {
         <p>みんなの集金 - 出欠から集金まで、ひとつのリンクで完了</p>
       </footer>
     </>
+  );
+}
+
+export default function RegisterPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center bg-muted/30">
+          <div className="text-center">
+            <div className="text-sm text-muted-foreground">読み込み中...</div>
+          </div>
+        </div>
+      }
+    >
+      <RegisterForm />
+    </Suspense>
   );
 }

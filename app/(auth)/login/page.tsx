@@ -1,5 +1,7 @@
 "use client";
 
+import { Suspense } from "react";
+
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 
@@ -86,7 +88,7 @@ function GoogleSubmitButton() {
   );
 }
 
-export default function LoginPage() {
+function LoginForm() {
   const searchParams = useSearchParams();
   const next = searchParams.get("redirectTo") ?? "/";
   const { form, onSubmit, isPending } = useLoginFormRHF(loginAction, {
@@ -238,5 +240,21 @@ export default function LoginPage() {
         <p>みんなの集金 - 出欠から集金まで、ひとつのリンクで完了</p>
       </footer>
     </>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center bg-muted/30">
+          <div className="text-center">
+            <div className="text-sm text-muted-foreground">読み込み中...</div>
+          </div>
+        </div>
+      }
+    >
+      <LoginForm />
+    </Suspense>
   );
 }
