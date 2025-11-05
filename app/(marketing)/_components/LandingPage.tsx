@@ -1,17 +1,13 @@
-"use client";
-
-import React, { useCallback, useEffect, useRef, useState } from "react";
-
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 
 import "../lp.css";
 
-type FAQItem = {
-  question: string;
-  answer: string;
-};
+import { ClosingSection } from "./ClosingSection";
+import { FAQAccordion, type FAQItem } from "./FAQAccordion";
+import { FloatingCTA } from "./FloatingCTA";
+import { HeroSection } from "./HeroSection";
+import { ScrollAnimations } from "./ScrollAnimations";
 
 const faqItems: FAQItem[] = [
   {
@@ -39,136 +35,30 @@ const faqItems: FAQItem[] = [
 ];
 
 export default function LandingPage(): JSX.Element {
-  const router = useRouter();
-  const rootRef = useRef<HTMLDivElement | null>(null);
-  const heroRef = useRef<HTMLElement | null>(null);
-  const closingRef = useRef<HTMLElement | null>(null);
-
-  const [floatingVisible, setFloatingVisible] = useState(false);
-  const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(null);
-
-  const scrollToSection = useCallback((id: string) => {
-    const container = rootRef.current;
-    if (!container) return;
-    const target = container.querySelector<HTMLElement>(`#${id}`);
-    if (target) {
-      const targetTop = target.getBoundingClientRect().top + window.scrollY;
-      const top = targetTop - 80 - 20; // header height + padding
-      window.scrollTo({ top: Math.max(0, top), behavior: "smooth" });
-    }
-  }, []);
-
-  const handleSignUp = useCallback(() => {
-    router.push("/register");
-  }, [router]);
-
-  useEffect(() => {
-    const onScroll = () => {
-      const hero = heroRef.current;
-      const closing = closingRef.current;
-      if (hero && closing) {
-        const heroBottom = hero.offsetTop + hero.offsetHeight;
-        const closingTop = closing.offsetTop;
-        const y = window.scrollY;
-        setFloatingVisible(y > heroBottom && y < closingTop - window.innerHeight);
-      }
-    };
-    window.addEventListener("scroll", onScroll, { passive: true });
-    window.addEventListener("resize", onScroll);
-    onScroll();
-    return () => {
-      window.removeEventListener("scroll", onScroll);
-      window.removeEventListener("resize", onScroll);
-    };
-  }, []);
-
-  useEffect(() => {
-    // initial hero animations
-    const root = rootRef.current;
-    if (!root) return;
-    const selectors = [".hero-title", ".hero-description", ".hero-chips", ".hero-cta"];
-    const elements: HTMLElement[] = selectors
-      .map((s) => Array.from(root.querySelectorAll<HTMLElement>(s)))
-      .flat();
-    elements.forEach((el) => {
-      el.style.opacity = "0";
-      el.style.transform = "translateY(30px)";
-      el.style.transition = "opacity 0.6s ease, transform 0.6s ease";
-    });
-    elements.forEach((el, index) => {
-      setTimeout(() => {
-        el.style.opacity = "1";
-        el.style.transform = "translateY(0)";
-      }, index * 200);
-    });
-
-    // scroll animations
-    const animateTargets = root.querySelectorAll<HTMLElement>(
-      ".problem-card, .use-case-card, .feature"
-    );
-    animateTargets.forEach((el) => {
-      el.style.opacity = "0";
-      el.style.transform = "translateY(30px)";
-      el.style.transition = "opacity 0.6s ease, transform 0.6s ease";
-    });
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            const el = entry.target as HTMLElement;
-            el.style.opacity = "1";
-            el.style.transform = "translateY(0)";
-          }
-        });
-      },
-      { threshold: 0.1, rootMargin: "0px 0px -50px 0px" }
-    );
-    animateTargets.forEach((el) => observer.observe(el));
-
-    return () => observer.disconnect();
-  }, []);
-
   return (
-    <div ref={rootRef} data-lp>
-      <section className="hero" ref={heroRef}>
-        <div className="container">
-          <div className="hero-content">
-            <div className="hero-text">
-              <h1 className="hero-title">
-                出欠から集金まで、
-                <br />
-                ひとつのリンクで完了。
-              </h1>
-              <p className="hero-description">
-                参加の確認から集金まで、リンクの共有だけで完了できる新しいサービスです。
-                <br />
-                いつもの集金を、簡単にクレジットカード決済対応にできます。
-              </p>
-              <div className="hero-chips">
-                <span className="chip">参加者はアカウント不要</span>
-                <span className="chip">現金・オンライン決済対応</span>
-                <span className="chip">自動リマインド</span>
-              </div>
-              <div className="hero-cta">
-                <button className="btn btn-primary btn-large hero-main-cta" onClick={handleSignUp}>
-                  無料でイベントを作成
-                </button>
-                <p className="micro-copy">メールアドレスだけ、30秒で完了</p>
-              </div>
-            </div>
-            <div className="hero-image">
-              <Image
-                src="/images/marketing/hero/mobile-flow-demo.png"
-                alt="スマホ画面での参加表明から決済、自動集計の流れ"
-                className="hero-img"
-                width={1200}
-                height={800}
-                priority
-              />
-            </div>
-          </div>
-        </div>
-      </section>
+    <div data-lp>
+      <HeroSection
+        title={
+          <>
+            出欠から集金まで、
+            <br />
+            ひとつのリンクで完了。
+          </>
+        }
+        description={
+          <>
+            参加の確認から集金まで、リンクの共有だけで完了できる新しいイベント管理 &
+            集金ツールです。
+            <br />
+            いつもの集金を、キャッシュレスにしませんか?
+          </>
+        }
+        chips={["参加者はアカウント不要", "現金・オンライン決済対応", "自動リマインド"]}
+        ctaText="無料でイベントを作成"
+        microCopy="メールアドレスだけ、30秒で完了"
+        imageSrc="/images/marketing/hero/mobile-flow-demo.png"
+        imageAlt="スマホ画面から紙飛行機が飛んでいるイラスト"
+      />
 
       <section className="problems" id="problems">
         <div className="container">
@@ -182,6 +72,7 @@ export default function LandingPage(): JSX.Element {
                 width={160}
                 height={160}
                 loading="lazy"
+                sizes="(max-width: 768px) 160px, 200px"
               />
               <h3 className="problem-title">LINEの返事が散らばる</h3>
               <p className="problem-text">誰が参加かは結局スプレッドシートで手入力。</p>
@@ -194,6 +85,7 @@ export default function LandingPage(): JSX.Element {
                 width={160}
                 height={160}
                 loading="lazy"
+                sizes="(max-width: 768px) 160px, 200px"
               />
               <h3 className="problem-title">集金作業が負担</h3>
               <p className="problem-text">
@@ -208,6 +100,7 @@ export default function LandingPage(): JSX.Element {
                 width={160}
                 height={160}
                 loading="lazy"
+                sizes="(max-width: 768px) 160px, 200px"
               />
               <h3 className="problem-title">リマインドが手作業</h3>
               <p className="problem-text">未回答者へメッセージ。週末の時間が消えていく。</p>
@@ -238,6 +131,7 @@ export default function LandingPage(): JSX.Element {
                     width={1080}
                     height={720}
                     loading="lazy"
+                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 80vw, 864px"
                   />
                 </Link>
               </div>
@@ -262,6 +156,7 @@ export default function LandingPage(): JSX.Element {
                     width={1080}
                     height={720}
                     loading="lazy"
+                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 80vw, 864px"
                   />
                 </Link>
               </div>
@@ -285,6 +180,7 @@ export default function LandingPage(): JSX.Element {
                   width={1080}
                   height={720}
                   loading="lazy"
+                  sizes="(max-width: 768px) 100vw, (max-width: 1200px) 80vw, 864px"
                 />
               </div>
             </div>
@@ -304,6 +200,7 @@ export default function LandingPage(): JSX.Element {
                 width={200}
                 height={200}
                 loading="lazy"
+                sizes="(max-width: 768px) 200px, 240px"
               />
               <h3 className="use-case-title">大学・社会人サークル</h3>
               <p className="use-case-text">合宿、BBQ、打ち上げ、会費の徴収に。</p>
@@ -316,6 +213,7 @@ export default function LandingPage(): JSX.Element {
                 width={200}
                 height={200}
                 loading="lazy"
+                sizes="(max-width: 768px) 200px, 240px"
               />
               <h3 className="use-case-title">PTA・町内会</h3>
               <p className="use-case-text">バザー/運動会/イベントの準備費や参加費に。</p>
@@ -328,6 +226,7 @@ export default function LandingPage(): JSX.Element {
                 width={200}
                 height={200}
                 loading="lazy"
+                sizes="(max-width: 768px) 200px, 240px"
               />
               <h3 className="use-case-title">スポーツチーム</h3>
               <p className="use-case-text">練習費・遠征費の集金、出欠管理に。</p>
@@ -340,10 +239,6 @@ export default function LandingPage(): JSX.Element {
         <div className="container">
           <h2 className="section-title">まずは無料でシンプルに利用できます</h2>
           <div className="pricing-card">
-            {/* <div className="pricing-item">
-              <span className="pricing-label">初期費用</span>
-              <span className="pricing-value">0円</span>
-            </div> */}
             <div className="pricing-item">
               <span className="pricing-label">月額料金</span>
               <span className="pricing-value">0円</span>
@@ -364,48 +259,20 @@ export default function LandingPage(): JSX.Element {
       <section className="faq" id="faq">
         <div className="container">
           <h2 className="section-title">よくあるご質問</h2>
-          <div className="faq-list">
-            {faqItems.map((item, idx) => {
-              const isActive = openFaqIndex === idx;
-              return (
-                <div key={item.question} className={`faq-item${isActive ? " active" : ""}`}>
-                  <button
-                    className="faq-question"
-                    onClick={() => setOpenFaqIndex(isActive ? null : idx)}
-                    aria-expanded={isActive}
-                  >
-                    <span>{item.question}</span>
-                    <span className="faq-icon">+</span>
-                  </button>
-                  <div className="faq-answer" aria-hidden={!isActive}>
-                    <p>{item.answer}</p>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+          <FAQAccordion items={faqItems} />
         </div>
       </section>
 
-      <section className="closing" id="closing" ref={closingRef}>
-        <div className="container">
-          <h2 className="closing-title">集金のストレスから解放されましょう!</h2>
-          <div className="closing-cta">
-            <button className="btn btn-primary btn-large closing-main-cta" onClick={handleSignUp}>
-              無料でイベントを作成
-            </button>
-          </div>
-        </div>
-      </section>
+      <ClosingSection title="集金のストレスから解放されましょう!" ctaText="無料でイベントを作成" />
 
-      <div className={`floating-cta${floatingVisible ? " visible" : ""}`} id="floatingCta">
-        <button
-          className="btn btn-primary floating-cta-btn"
-          onClick={() => scrollToSection("closing")}
-        >
-          無料で始める
-        </button>
-      </div>
+      <FloatingCTA
+        text="無料で始める"
+        targetSectionId="closing"
+        heroSectionId="hero"
+        closingSectionId="closing"
+      />
+
+      <ScrollAnimations selectors={[".problem-card", ".use-case-card", ".feature"]} />
     </div>
   );
 }

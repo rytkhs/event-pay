@@ -2,7 +2,7 @@ import Link from "next/link";
 
 import { cn } from "@core/utils";
 
-import { FooterLinksProps } from "./types";
+import { FooterLink } from "./types";
 
 /**
  * フッターリンク群コンポーネント
@@ -11,9 +11,11 @@ import { FooterLinksProps } from "./types";
  */
 export function FooterLinks({
   links,
-  variant: _variant,
   className,
-}: FooterLinksProps): JSX.Element {
+}: {
+  links: FooterLink[];
+  className?: string;
+}): JSX.Element {
   if (links.length === 0) {
     return <div className={className} />;
   }
