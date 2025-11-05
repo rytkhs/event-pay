@@ -3,15 +3,14 @@ import { cn } from "@core/utils";
 import { FooterBranding } from "./FooterBranding";
 import { FooterLinks } from "./FooterLinks";
 import { footerNavigationLinks, footerConfig } from "./navigation-config";
-import { FooterContentProps } from "./types";
 
 /**
  * フッターコンテンツコンポーネント
  *
  * フッターの主要コンテンツ（ブランディング + ナビゲーション）を表示します
  */
-export function FooterContent({ variant, className }: FooterContentProps): JSX.Element {
-  const displaySettings = footerConfig.displaySettings[variant];
+export function FooterContent({ className }: { className?: string }): JSX.Element {
+  const displaySettings = footerConfig.displaySettings;
 
   const containerStyles = cn(
     "flex flex-col gap-1 items-center",
@@ -24,7 +23,7 @@ export function FooterContent({ variant, className }: FooterContentProps): JSX.E
       {/* ブランディング + コピーライト（左） */}
       {(displaySettings.showBranding || displaySettings.showCopyright) && (
         <div className="flex flex-col items-center gap-2 order-last md:order-none md:items-start justify-self-start">
-          {displaySettings.showBranding && <FooterBranding variant={variant} />}
+          {displaySettings.showBranding && <FooterBranding />}
           {displaySettings.showCopyright && (
             <p className="text-sm text-muted-foreground text-center md:text-left">
               {footerConfig.brand.copyright}
@@ -35,7 +34,7 @@ export function FooterContent({ variant, className }: FooterContentProps): JSX.E
 
       {/* ナビゲーションリンク（右） */}
       {displaySettings.showNavigation && (
-        <FooterLinks links={footerNavigationLinks} variant={variant} className="justify-self-end" />
+        <FooterLinks links={footerNavigationLinks} className="justify-self-end" />
       )}
     </div>
   );

@@ -39,18 +39,11 @@ export const footerConfig = {
   },
 
   /**
-   * バリアント別の表示制御
+   * 表示制御
    */
   displaySettings: {
-    compact: {
-      showBranding: true,
-      showNavigation: true,
-      showCopyright: true,
-    },
-    minimal: {
-      showBranding: false,
-      showNavigation: false,
-      showCopyright: true,
-    },
+    showBranding: true,
+    showNavigation: true,
+    showCopyright: true,
   },
 } as const;
