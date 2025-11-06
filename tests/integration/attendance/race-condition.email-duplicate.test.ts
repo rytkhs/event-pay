@@ -15,6 +15,7 @@ import { describe, it, expect, beforeEach, afterEach, jest } from "@jest/globals
 
 import type { ParticipationFormData } from "@core/validation/participation";
 
+import { MockSetupHelper } from "@tests/helpers/mock-setup.helper";
 import {
   createTestUserWithConnect,
   createPaidTestEvent,
@@ -27,7 +28,6 @@ import type { Database } from "@/types/database";
 
 import { ConcurrentRequestHelper } from "./helpers/concurrent-request.helper";
 import { DatabaseStateHelper } from "./helpers/database-state.helper";
-import { MockSetupHelper } from "./helpers/mock-setup.helper";
 
 // テスト用型定義
 type AttendanceStatus = Database["public"]["Enums"]["attendance_status_enum"];

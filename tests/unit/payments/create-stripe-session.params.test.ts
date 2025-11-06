@@ -10,6 +10,7 @@ import * as DestinationCharges from "../../../core/stripe/destination-charges";
 import { ApplicationFeeCalculator } from "../../../features/payments/services/fee-config/application-fee-calculator";
 import { PaymentService, PaymentErrorHandler } from "../../../features/payments/services/service";
 import { createMockStripeClient } from "../../setup/stripe-mock";
+import { createMockSupabaseClient } from "../../setup/supabase-auth-mock";
 
 // Stripe destination-charges モジュールをモック
 jest.mock("../../../core/stripe/destination-charges", () => {
@@ -23,13 +24,6 @@ jest.mock("../../../core/stripe/destination-charges", () => {
 
 // Application fee calculator をモック
 jest.mock("../../../features/payments/services/fee-config/application-fee-calculator");
-
-// Supabaseクライアントのモック作成関数
-const createMockSupabaseClient = () => {
-  return {
-    from: jest.fn(),
-  };
-};
 
 describe("PaymentService - Stripe Checkout パラメータ検証", () => {
   let paymentService: PaymentService;
@@ -67,18 +61,19 @@ describe("PaymentService - Stripe Checkout パラメータ検証", () => {
     mockApplicationFeeCalculator = {
       calculateApplicationFee: jest.fn(),
       calculateApplicationFeeBatch: jest.fn(),
-    } as jest.Mocked<ApplicationFeeCalculator>;
+      validateConfig: jest.fn(),
+    } as unknown as jest.Mocked<ApplicationFeeCalculator>;
 
     mockApplicationFeeCalculator.calculateApplicationFee.mockResolvedValue({
       amount: testData.amount,
       applicationFeeAmount: Math.floor(testData.amount * 0.049), // 4.9%
       config: {
-        platform_fee_rate: 0.049,
-        platform_fixed_fee: 0,
-        min_platform_fee: 50,
-        max_platform_fee: 1000,
-        tax_rate: 0,
-        is_tax_included: true,
+        rate: 0.049,
+        fixedFee: 0,
+        minimumFee: 50,
+        maximumFee: 1000,
+        taxRate: 0,
+        isTaxIncluded: true,
       },
       calculation: {
         rateFee: Math.floor(testData.amount * 0.049),
@@ -230,8 +225,29 @@ describe("PaymentService - Stripe Checkout パラメータ検証", () => {
       const expectedFee = 150;
 
       mockApplicationFeeCalculator.calculateApplicationFee.mockResolvedValue({
+        amount: decimalAmount,
         applicationFeeAmount: expectedFee,
-        netAmount: decimalAmount - expectedFee,
+        config: {
+          rate: 0.1,
+          fixedFee: 0,
+          minimumFee: 50,
+          maximumFee: 1000,
+          taxRate: 0,
+          isTaxIncluded: true,
+        },
+        calculation: {
+          rateFee: expectedFee,
+          fixedFee: 0,
+          beforeClipping: expectedFee,
+          afterMinimum: expectedFee,
+          afterMaximum: expectedFee,
+        },
+        taxCalculation: {
+          taxRate: 0,
+          feeExcludingTax: expectedFee,
+          taxAmount: 0,
+          isTaxIncluded: true,
+        },
       });
 
       // Act

@@ -251,6 +251,24 @@ describe("StripeWebhookSignatureVerifier", () => {
       expect(result.error).toBe("invalid_signature");
     });
 
+    it("未来のタイムスタンプは検証に失敗する", async () => {
+      // 現在時刻から1時間後
+      const futureTimestamp = Math.floor(Date.now() / 1000) + 3600;
+      const futureSignature = `t=${futureTimestamp},v1=future_signature_hash`;
+
+      (mockStripe.webhooks.constructEvent as jest.Mock).mockImplementation(() => {
+        throw new Error("Request timestamp too far in future");
+      });
+
+      const result = await verifier.verifySignature({
+        payload: TEST_PAYLOAD,
+        signature: futureSignature,
+      });
+
+      expect(result.isValid).toBe(false);
+      expect(result.error).toBe("invalid_signature");
+    });
+
     it("不正な署名形式で失敗する", async () => {
       const malformedSignature = "invalid_format";
 
@@ -404,6 +422,30 @@ describe("StripeWebhookSignatureVerifier", () => {
       );
 
       loggerSpy.mockRestore();
+    });
+  });
+
+  describe("タイムスタンプ抽出テスト", () => {
+    it("署名からタイムスタンプを正しく抽出する", async () => {
+      const timestamp = Math.floor(Date.now() / 1000);
+      const signature = `t=${timestamp},v1=test_signature`;
+      const mockEvent = { id: "evt_test_789", type: "invoice.paid" };
+      const validSignature = generateTestWebhookSignature(TEST_PAYLOAD, TEST_WEBHOOK_SECRET);
+
+      (mockStripe.webhooks.constructEvent as jest.Mock).mockReturnValue(mockEvent);
+
+      await verifier.verifySignature({
+        payload: TEST_PAYLOAD,
+        signature: validSignature,
+      });
+
+      // constructEventが正しいタイムスタンプで呼び出されることを確認
+      expect(mockStripe.webhooks.constructEvent).toHaveBeenCalledWith(
+        TEST_PAYLOAD,
+        validSignature,
+        TEST_WEBHOOK_SECRET,
+        300 // デフォルトの許容秒数
+      );
     });
   });
 });

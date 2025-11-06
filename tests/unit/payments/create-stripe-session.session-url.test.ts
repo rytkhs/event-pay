@@ -6,8 +6,11 @@
  * - {CHECKOUT_SESSION_ID}テンプレート置換ロジックが正しく機能すること
  */
 
+import * as DestinationCharges from "../../../core/stripe/destination-charges";
 import { ApplicationFeeCalculator } from "../../../features/payments/services/fee-config/application-fee-calculator";
 import { PaymentService, PaymentErrorHandler } from "../../../features/payments/services/service";
+import { createMockSupabaseClient } from "../../setup/supabase-auth-mock";
+
 // Stripe destination-charges モジュールをモック
 jest.mock("../../../core/stripe/destination-charges", () => {
   const originalModule = jest.requireActual("../../../core/stripe/destination-charges");
@@ -20,15 +23,6 @@ jest.mock("../../../core/stripe/destination-charges", () => {
 
 // Application fee calculator をモック
 jest.mock("../../../features/payments/services/fee-config/application-fee-calculator");
-
-import * as DestinationCharges from "../../../core/stripe/destination-charges";
-
-// Supabaseクライアントのモック作成関数
-const createMockSupabaseClient = () => {
-  return {
-    from: jest.fn(),
-  };
-};
 
 describe("PaymentService - sessionUrl生成とテンプレート置換", () => {
   let paymentService: PaymentService;
