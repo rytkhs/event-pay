@@ -149,6 +149,51 @@ export const createMockSupabaseClient = () => ({
 });
 
 /**
+ * 決済テスト用のSupabaseクライアントモック生成
+ *
+ * PaymentServiceのテストで使用されるクエリパターンに対応したモック設定
+ */
+export const createMockSupabaseClientForPayments = (options?: { paymentId?: string }) => {
+  const { paymentId = "payment_test_abc123" } = options || {};
+
+  const baseClient = createMockSupabaseClient();
+
+  // payments テーブル用のクエリビルダーモックを設定
+  (baseClient.from as jest.Mock).mockImplementation((table: string) => {
+    if (table === "payments") {
+      return {
+        select: jest.fn().mockReturnThis(),
+        eq: jest.fn().mockReturnThis(),
+        in: jest.fn().mockReturnThis(),
+        order: jest.fn().mockReturnThis(),
+        limit: jest.fn().mockReturnThis(),
+        maybeSingle: jest.fn().mockResolvedValue({ data: null, error: null }),
+        insert: jest.fn().mockReturnThis(),
+        update: jest.fn().mockReturnThis(),
+        single: jest.fn().mockResolvedValue({
+          data: { id: paymentId },
+          error: null,
+        }),
+      };
+    }
+    // その他のテーブル用のデフォルト設定
+    return {
+      select: jest.fn().mockReturnThis(),
+      eq: jest.fn().mockReturnThis(),
+      in: jest.fn().mockReturnThis(),
+      order: jest.fn().mockReturnThis(),
+      limit: jest.fn().mockReturnThis(),
+      maybeSingle: jest.fn().mockResolvedValue({ data: null, error: null }),
+      insert: jest.fn().mockReturnThis(),
+      update: jest.fn().mockReturnThis(),
+      single: jest.fn().mockResolvedValue({ data: {}, error: null }),
+    };
+  });
+
+  return baseClient;
+};
+
+/**
  * テストヘルパー関数
  */
 export const setTestUser = (user: MockUser) => {
