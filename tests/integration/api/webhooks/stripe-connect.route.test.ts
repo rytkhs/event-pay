@@ -20,7 +20,6 @@ describe("/api/webhooks/stripe-connect (receiver)", () => {
   beforeEach(() => {
     process.env.QSTASH_TOKEN = "test_qstash_token";
     process.env.NODE_ENV = "test";
-    jest.clearAllMocks();
   });
 
   function createRequest(payload: string, headersInit?: Record<string, string>) {

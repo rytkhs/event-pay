@@ -13,118 +13,43 @@
 
 import { jest } from "@jest/globals";
 
-import { SecureSupabaseClientFactory } from "../../../core/security/secure-client-factory.impl";
-import { AdminReason } from "../../../core/security/secure-client-factory.types";
 import type { Database } from "../../../types/database";
 import {
-  createTestUserWithConnect,
-  createPaidTestEvent,
   createTestAttendance,
-  cleanupTestPaymentData,
-  type TestPaymentUser,
+  createPaidTestEvent,
+  createTestPaymentWithStatus,
   type TestPaymentEvent,
 } from "../../helpers/test-payment-data";
+
+import {
+  setupPaymentCancellationTest,
+  type PaymentCancellationTestSetup,
+} from "./payment-cancellation-test-setup";
 
 type PaymentStatus = Database["public"]["Enums"]["payment_status_enum"];
 type AttendanceStatus = Database["public"]["Enums"]["attendance_status_enum"];
 
 describe("決済キャンセル処理統合テスト", () => {
-  let adminClient: any;
-  let testUser: TestPaymentUser;
-  let testEvent: TestPaymentEvent;
+  let setup: PaymentCancellationTestSetup;
 
   beforeAll(async () => {
-    console.log("🔧 決済キャンセル処理統合テスト セットアップ開始");
-
-    const secureFactory = SecureSupabaseClientFactory.create();
-    adminClient = await secureFactory.createAuditedAdminClient(
-      AdminReason.TEST_DATA_SETUP,
-      "Payment cancellation integration test setup",
-      {
-        operationType: "INSERT",
-        accessedTables: ["public.users", "public.events", "public.attendances", "public.payments"],
-        additionalInfo: { testContext: "payment-cancellation-integration" },
-      }
-    );
-
-    // テストユーザー作成
-    testUser = await createTestUserWithConnect(`cancel-test-${Date.now()}@example.com`);
-
-    // 有料テストイベント作成
-    testEvent = await createPaidTestEvent(testUser.id, {
-      title: "決済キャンセルテストイベント",
-      fee: 1000,
-    });
-
-    console.log(`✅ テストデータセットアップ完了 - Event: ${testEvent.id}`);
+    setup = await setupPaymentCancellationTest();
   });
 
   afterAll(async () => {
-    console.log("🧹 テストデータクリーンアップ開始");
-
-    // 関連データを削除
-    await cleanupTestPaymentData([testUser], [testEvent]);
-
-    console.log("✅ テストデータクリーンアップ完了");
+    await setup.cleanup();
   });
 
   beforeEach(async () => {
     // 各テスト前に古い attendances をクリーンアップ
-    await adminClient.from("attendances").delete().eq("event_id", testEvent.id);
+    await setup.adminClient.from("attendances").delete().eq("event_id", setup.testEvent.id);
   });
-
-  /**
-   * ヘルパー: テスト用の参加者を作成（ローカル）
-   */
-  async function createLocalTestAttendance(
-    status: AttendanceStatus = "attending"
-  ): Promise<{ id: string; event_id: string }> {
-    return await createTestAttendance(testEvent.id, {
-      email: `participant-${Date.now()}@example.com`,
-      nickname: `テスト参加者-${Date.now()}`,
-      status,
-    });
-  }
-
-  /**
-   * ヘルパー: 決済レコードを作成
-   */
-  async function createTestPayment(
-    attendanceId: string,
-    status: PaymentStatus,
-    method: "cash" | "stripe" = "cash"
-  ): Promise<{ id: string; status: PaymentStatus }> {
-    const paymentData: any = {
-      attendance_id: attendanceId,
-      amount: 1000,
-      method,
-      status,
-    };
-
-    // 高位ステータスには必須フィールドを設定
-    if (["paid", "received", "refunded", "waived"].includes(status)) {
-      paymentData.paid_at = new Date().toISOString();
-    }
-
-    if (["paid", "failed", "waived"].includes(status)) {
-      paymentData.stripe_payment_intent_id = `pi_test_${status}_${Date.now()}`;
-    }
-
-    const { data, error } = await adminClient
-      .from("payments")
-      .insert(paymentData)
-      .select()
-      .single();
-
-    if (error) throw error;
-    return data;
-  }
 
   /**
    * ヘルパー: 監査ログを取得
    */
   async function getSystemLogs(attendanceId: string): Promise<any[]> {
-    const { data, error } = await adminClient
+    const { data, error } = await setup.adminClient
       .from("system_logs")
       .select("*")
       .filter("details->>attendanceId", "eq", attendanceId)
@@ -137,11 +62,19 @@ describe("決済キャンセル処理統合テスト", () => {
   describe("未決済系（pending/failed）のキャンセル", () => {
     test("pending → canceled: 参加キャンセル時に pending は canceled に遷移", async () => {
       // Arrange
-      const attendance = await createLocalTestAttendance("attending");
-      const payment = await createTestPayment(attendance.id, "pending");
+      const attendance = await createTestAttendance(setup.testEvent.id, {
+        email: `participant-${Date.now()}@example.com`,
+        nickname: `テスト参加者-${Date.now()}`,
+        status: "attending",
+      });
+      const payment = await createTestPaymentWithStatus(attendance.id, {
+        amount: 1000,
+        status: "pending",
+        method: "cash",
+      });
 
       // Act: 参加をキャンセル（not_attending に変更）
-      const { error } = await adminClient.rpc("update_guest_attendance_with_payment", {
+      const { error } = await setup.adminClient.rpc("update_guest_attendance_with_payment", {
         p_attendance_id: attendance.id,
         p_status: "not_attending",
         p_payment_method: null,
@@ -152,7 +85,7 @@ describe("決済キャンセル処理統合テスト", () => {
       expect(error).toBeNull();
 
       // 決済ステータスが canceled に更新されたことを確認
-      const { data: updatedPayment } = await adminClient
+      const { data: updatedPayment } = await setup.adminClient
         .from("payments")
         .select("*")
         .eq("id", payment.id)
@@ -171,11 +104,19 @@ describe("決済キャンセル処理統合テスト", () => {
 
     test("failed → canceled: 参加キャンセル時に failed は canceled に遷移", async () => {
       // Arrange
-      const attendance = await createLocalTestAttendance("attending");
-      const payment = await createTestPayment(attendance.id, "failed");
+      const attendance = await createTestAttendance(setup.testEvent.id, {
+        email: `participant-${Date.now()}@example.com`,
+        nickname: `テスト参加者-${Date.now()}`,
+        status: "attending",
+      });
+      const payment = await createTestPaymentWithStatus(attendance.id, {
+        amount: 1000,
+        status: "failed",
+        method: "cash",
+      });
 
       // Act
-      const { error } = await adminClient.rpc("update_guest_attendance_with_payment", {
+      const { error } = await setup.adminClient.rpc("update_guest_attendance_with_payment", {
         p_attendance_id: attendance.id,
         p_status: "not_attending",
         p_payment_method: null,
@@ -185,7 +126,7 @@ describe("決済キャンセル処理統合テスト", () => {
       // Assert
       expect(error).toBeNull();
 
-      const { data: updatedPayment } = await adminClient
+      const { data: updatedPayment } = await setup.adminClient
         .from("payments")
         .select("*")
         .eq("id", payment.id)
@@ -201,11 +142,19 @@ describe("決済キャンセル処理統合テスト", () => {
 
     test("pending → maybe でも canceled に遷移", async () => {
       // Arrange
-      const attendance = await createLocalTestAttendance("attending");
-      const payment = await createTestPayment(attendance.id, "pending");
+      const attendance = await createTestAttendance(setup.testEvent.id, {
+        email: `participant-${Date.now()}@example.com`,
+        nickname: `テスト参加者-${Date.now()}`,
+        status: "attending",
+      });
+      const payment = await createTestPaymentWithStatus(attendance.id, {
+        amount: 1000,
+        status: "pending",
+        method: "cash",
+      });
 
       // Act: 未定に変更
-      const { error } = await adminClient.rpc("update_guest_attendance_with_payment", {
+      const { error } = await setup.adminClient.rpc("update_guest_attendance_with_payment", {
         p_attendance_id: attendance.id,
         p_status: "maybe",
         p_payment_method: null,
@@ -215,7 +164,7 @@ describe("決済キャンセル処理統合テスト", () => {
       // Assert
       expect(error).toBeNull();
 
-      const { data: updatedPayment } = await adminClient
+      const { data: updatedPayment } = await setup.adminClient
         .from("payments")
         .select("*")
         .eq("id", payment.id)
@@ -228,13 +177,22 @@ describe("決済キャンセル処理統合テスト", () => {
   describe("決済完了（paid/received）のキャンセル", () => {
     test("paid: 参加キャンセル時に paid ステータスは維持される", async () => {
       // Arrange
-      const attendance = await createLocalTestAttendance("attending");
-      const payment = await createTestPayment(attendance.id, "paid", "stripe");
+      const attendance = await createTestAttendance(setup.testEvent.id, {
+        email: `participant-${Date.now()}@example.com`,
+        nickname: `テスト参加者-${Date.now()}`,
+        status: "attending",
+      });
+      const payment = await createTestPaymentWithStatus(attendance.id, {
+        amount: 1000,
+        status: "paid",
+        method: "stripe",
+        stripePaymentIntentId: `pi_test_paid_${Date.now()}`,
+      });
 
       const originalPaidAt = payment.paid_at;
 
       // Act
-      const { error } = await adminClient.rpc("update_guest_attendance_with_payment", {
+      const { error } = await setup.adminClient.rpc("update_guest_attendance_with_payment", {
         p_attendance_id: attendance.id,
         p_status: "not_attending",
         p_payment_method: null,
@@ -245,7 +203,7 @@ describe("決済キャンセル処理統合テスト", () => {
       expect(error).toBeNull();
 
       // 決済ステータスが paid のまま維持されることを確認
-      const { data: updatedPayment } = await adminClient
+      const { data: updatedPayment } = await setup.adminClient
         .from("payments")
         .select("*")
         .eq("id", payment.id)
@@ -266,11 +224,19 @@ describe("決済キャンセル処理統合テスト", () => {
 
     test("received: 参加キャンセル時に received ステータスは維持される", async () => {
       // Arrange
-      const attendance = await createLocalTestAttendance("attending");
-      const payment = await createTestPayment(attendance.id, "received", "cash");
+      const attendance = await createTestAttendance(setup.testEvent.id, {
+        email: `participant-${Date.now()}@example.com`,
+        nickname: `テスト参加者-${Date.now()}`,
+        status: "attending",
+      });
+      const payment = await createTestPaymentWithStatus(attendance.id, {
+        amount: 1000,
+        status: "received",
+        method: "cash",
+      });
 
       // Act
-      const { error } = await adminClient.rpc("update_guest_attendance_with_payment", {
+      const { error } = await setup.adminClient.rpc("update_guest_attendance_with_payment", {
         p_attendance_id: attendance.id,
         p_status: "not_attending",
         p_payment_method: null,
@@ -280,7 +246,7 @@ describe("決済キャンセル処理統合テスト", () => {
       // Assert
       expect(error).toBeNull();
 
-      const { data: updatedPayment } = await adminClient
+      const { data: updatedPayment } = await setup.adminClient
         .from("payments")
         .select("*")
         .eq("id", payment.id)
@@ -301,11 +267,19 @@ describe("決済キャンセル処理統合テスト", () => {
   describe("waived（免除）のキャンセル", () => {
     test("waived: 参加キャンセル時に waived ステータスは維持される", async () => {
       // Arrange
-      const attendance = await createLocalTestAttendance("attending");
-      const payment = await createTestPayment(attendance.id, "waived");
+      const attendance = await createTestAttendance(setup.testEvent.id, {
+        email: `participant-${Date.now()}@example.com`,
+        nickname: `テスト参加者-${Date.now()}`,
+        status: "attending",
+      });
+      const payment = await createTestPaymentWithStatus(attendance.id, {
+        amount: 1000,
+        status: "waived",
+        method: "cash",
+      });
 
       // Act
-      const { error } = await adminClient.rpc("update_guest_attendance_with_payment", {
+      const { error } = await setup.adminClient.rpc("update_guest_attendance_with_payment", {
         p_attendance_id: attendance.id,
         p_status: "not_attending",
         p_payment_method: null,
@@ -315,7 +289,7 @@ describe("決済キャンセル処理統合テスト", () => {
       // Assert
       expect(error).toBeNull();
 
-      const { data: updatedPayment } = await adminClient
+      const { data: updatedPayment } = await setup.adminClient
         .from("payments")
         .select("*")
         .eq("id", payment.id)
@@ -333,11 +307,19 @@ describe("決済キャンセル処理統合テスト", () => {
   describe("refunded（返金済み）のキャンセル", () => {
     test("refunded: 参加キャンセル時に refunded ステータスは維持される", async () => {
       // Arrange
-      const attendance = await createLocalTestAttendance("attending");
-      const payment = await createTestPayment(attendance.id, "refunded");
+      const attendance = await createTestAttendance(setup.testEvent.id, {
+        email: `participant-${Date.now()}@example.com`,
+        nickname: `テスト参加者-${Date.now()}`,
+        status: "attending",
+      });
+      const payment = await createTestPaymentWithStatus(attendance.id, {
+        amount: 1000,
+        status: "refunded",
+        method: "cash",
+      });
 
       // Act
-      const { error } = await adminClient.rpc("update_guest_attendance_with_payment", {
+      const { error } = await setup.adminClient.rpc("update_guest_attendance_with_payment", {
         p_attendance_id: attendance.id,
         p_status: "not_attending",
         p_payment_method: null,
@@ -347,7 +329,7 @@ describe("決済キャンセル処理統合テスト", () => {
       // Assert
       expect(error).toBeNull();
 
-      const { data: updatedPayment } = await adminClient
+      const { data: updatedPayment } = await setup.adminClient
         .from("payments")
         .select("*")
         .eq("id", payment.id)
@@ -366,11 +348,19 @@ describe("決済キャンセル処理統合テスト", () => {
   describe("canceled の冪等性", () => {
     test("canceled → canceled: 再キャンセル時に canceled ステータスは維持される", async () => {
       // Arrange
-      const attendance = await createLocalTestAttendance("not_attending");
-      const payment = await createTestPayment(attendance.id, "canceled");
+      const attendance = await createTestAttendance(setup.testEvent.id, {
+        email: `participant-${Date.now()}@example.com`,
+        nickname: `テスト参加者-${Date.now()}`,
+        status: "not_attending",
+      });
+      const payment = await createTestPaymentWithStatus(attendance.id, {
+        amount: 1000,
+        status: "canceled",
+        method: "cash",
+      });
 
       // Act: 再度キャンセル（すでに not_attending だが、maybe → not_attending などを想定）
-      const { error } = await adminClient.rpc("update_guest_attendance_with_payment", {
+      const { error } = await setup.adminClient.rpc("update_guest_attendance_with_payment", {
         p_attendance_id: attendance.id,
         p_status: "not_attending",
         p_payment_method: null,
@@ -380,7 +370,7 @@ describe("決済キャンセル処理統合テスト", () => {
       // Assert
       expect(error).toBeNull();
 
-      const { data: updatedPayment } = await adminClient
+      const { data: updatedPayment } = await setup.adminClient
         .from("payments")
         .select("*")
         .eq("id", payment.id)
@@ -400,15 +390,15 @@ describe("決済キャンセル処理統合テスト", () => {
 
     beforeAll(async () => {
       // 無料テストイベント作成
-      freeEvent = await createPaidTestEvent(testUser.id, {
+      freeEvent = await createPaidTestEvent(setup.testUser.id, {
         title: "無料キャンセルテストイベント",
         fee: 0,
       });
     });
 
     afterAll(async () => {
-      await adminClient.from("attendances").delete().eq("event_id", freeEvent.id);
-      await adminClient.from("events").delete().eq("id", freeEvent.id);
+      await setup.adminClient.from("attendances").delete().eq("event_id", freeEvent.id);
+      await setup.adminClient.from("events").delete().eq("id", freeEvent.id);
     });
 
     test("無料イベント: 参加キャンセル時に決済レコードは作成されない", async () => {
@@ -420,7 +410,7 @@ describe("決済キャンセル処理統合テスト", () => {
       });
 
       // Act
-      const { error } = await adminClient.rpc("update_guest_attendance_with_payment", {
+      const { error } = await setup.adminClient.rpc("update_guest_attendance_with_payment", {
         p_attendance_id: attendance.id,
         p_status: "not_attending",
         p_payment_method: null,
@@ -431,7 +421,7 @@ describe("決済キャンセル処理統合テスト", () => {
       expect(error).toBeNull();
 
       // 決済レコードが存在しないことを確認
-      const { data: payments } = await adminClient
+      const { data: payments } = await setup.adminClient
         .from("payments")
         .select("*")
         .eq("attendance_id", attendance.id);
@@ -443,11 +433,19 @@ describe("決済キャンセル処理統合テスト", () => {
   describe("参加再登録（canceled → pending）", () => {
     test("canceled から再参加すると新しい pending レコードが作成される", async () => {
       // Arrange: 一度キャンセルした参加者
-      const attendance = await createLocalTestAttendance("not_attending");
-      const canceledPayment = await createTestPayment(attendance.id, "canceled");
+      const attendance = await createTestAttendance(setup.testEvent.id, {
+        email: `participant-${Date.now()}@example.com`,
+        nickname: `テスト参加者-${Date.now()}`,
+        status: "not_attending",
+      });
+      const canceledPayment = await createTestPaymentWithStatus(attendance.id, {
+        amount: 1000,
+        status: "canceled",
+        method: "cash",
+      });
 
       // Act: 再度参加に変更
-      const { error } = await adminClient.rpc("update_guest_attendance_with_payment", {
+      const { error } = await setup.adminClient.rpc("update_guest_attendance_with_payment", {
         p_attendance_id: attendance.id,
         p_status: "attending",
         p_payment_method: "cash",
@@ -458,7 +456,7 @@ describe("決済キャンセル処理統合テスト", () => {
       expect(error).toBeNull();
 
       // 新しい pending レコードが作成され、canceled レコードは維持されることを確認
-      const { data: payments } = await adminClient
+      const { data: payments } = await setup.adminClient
         .from("payments")
         .select("*")
         .eq("attendance_id", attendance.id)

@@ -10,10 +10,6 @@ import { describe, it, expect, beforeEach, jest } from "@jest/globals";
 
 // PaymentServiceの金額優先ロジックを直接テストする
 describe("既存payments.amount優先ロジック検証", () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
-  });
-
   // 既存payments.amount優先ロジックの単体テスト
   describe("金額優先ロジック", () => {
     it("既存payment.amount ?? event.fee のロジック検証", () => {

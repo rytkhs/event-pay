@@ -1,38 +1,43 @@
 //
 
-import { createConnectAccountAction } from "../../features/stripe-connect/actions/connect-account";
+import { createConnectAccountAction } from "@features/stripe-connect/actions/connect-account";
 
-// Stripe / service 層のモック（最小）
+import { setupStripeConnectServiceMock } from "../../setup/stripe-connect-mock";
+import { setupSupabaseClientMocks } from "../../setup/common-mocks";
+import { createMockSupabaseClient, setTestUserById } from "../../setup/supabase-auth-mock";
+
+// Stripe Connect サービスのモック（共通モックを使用）
 jest.mock("@features/stripe-connect/services", () => {
-  const actual = jest.requireActual("@features/stripe-connect/services");
-  return {
-    ...actual,
-    createUserStripeConnectService: jest.fn().mockReturnValue({
-      getConnectAccountByUser: jest.fn().mockResolvedValue(null),
-      createExpressAccount: jest
-        .fn()
-        .mockResolvedValue({ accountId: "acct_test", status: "unverified" }),
-      createAccountLink: jest.fn().mockResolvedValue({
-        url: "https://connect.stripe.com/setup/e/acct_test/session_token",
-        expiresAt: Math.floor(Date.now() / 1000) + 300,
-      }),
-    }),
-  };
+  return setupStripeConnectServiceMock({
+    getConnectAccountByUser: null,
+    createExpressAccount: {
+      accountId: "acct_test",
+      status: "unverified",
+    },
+    createAccountLink: {
+      url: "https://connect.stripe.com/setup/e/acct_test/session_token",
+      expiresAt: Math.floor(Date.now() / 1000) + 300,
+    },
+  });
 });
 
-// Supabase 認証モック
+// Supabase 認証モック（共通モックを使用）
 jest.mock("@core/supabase/server", () => ({
-  createClient: () => ({
-    auth: {
-      getUser: async () => ({
-        data: { user: { id: "user_test", email: "u@example.com" } },
-        error: null,
-      }),
-    },
-  }),
+  createClient: jest.fn(),
 }));
 
 describe("Stripe Connect actions", () => {
+  let mockSupabase: ReturnType<typeof setupSupabaseClientMocks>;
+
+  beforeAll(() => {
+    // 共通モックを使用してSupabaseクライアントを設定
+    mockSupabase = setupSupabaseClientMocks();
+    // テスト用ユーザーを設定
+    setTestUserById("user_test", "u@example.com");
+    const { createClient } = require("@core/supabase/server");
+    (createClient as jest.MockedFunction<typeof createClient>).mockReturnValue(mockSupabase as any);
+  });
+
   beforeEach(() => {
     process.env.NODE_ENV = "test";
     process.env.NEXT_PUBLIC_APP_URL = "http://localhost:3000";

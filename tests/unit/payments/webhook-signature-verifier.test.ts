@@ -57,11 +57,6 @@ describe("StripeWebhookSignatureVerifier", () => {
 
     // 環境変数をテスト用にリセット
     delete process.env.STRIPE_WEBHOOK_TIMESTAMP_TOLERANCE;
-    jest.clearAllMocks();
-  });
-
-  afterEach(() => {
-    jest.restoreAllMocks();
   });
 
   describe("正常系", () => {

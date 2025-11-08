@@ -9,50 +9,53 @@
  * - 1.1.5 複数決済方法（現金+オンライン）の有料イベント作成
  */
 
-import { getCurrentUser } from "@core/auth/auth-utils";
-
 import { createEventAction } from "@features/events/actions/create-event";
 
-import { deleteTestEvent } from "@/tests/helpers/test-event";
-import { createTestUser, deleteTestUser, type TestUser } from "@/tests/helpers/test-user";
-import type { Database } from "@/types/database";
+import { setupAuthMocks } from "@tests/setup/common-mocks";
+import {
+  createCommonTestSetup,
+  createTestDataCleanupHelper,
+  type CommonTestSetup,
+} from "@tests/setup/common-test-setup";
 
-// getCurrentUserをモック
-const mockGetCurrentUser = getCurrentUser as jest.MockedFunction<typeof getCurrentUser>;
+import { getFutureDateTimeLocal } from "@/tests/helpers/test-datetime";
+import { createFormDataFromEvent as createFormDataFromEventHelper } from "@/tests/helpers/test-form-data";
+import type { Database } from "@/types/database";
 
 type EventRow = Database["public"]["Tables"]["events"]["Row"];
 
 describe("イベント作成統合テスト - 1.1 基本的なイベント作成", () => {
-  let testUser: TestUser;
-  const createdEventIds: string[] = [];
+  let setup: CommonTestSetup;
+  let mockGetCurrentUser: ReturnType<typeof setupAuthMocks>;
+  let cleanupHelper: ReturnType<typeof createTestDataCleanupHelper>;
 
   beforeAll(async () => {
-    // テスト用ユーザーを作成
-    testUser = await createTestUser(
-      `event-creation-test-${Date.now()}@example.com`,
-      "TestPassword123"
-    );
+    setup = await createCommonTestSetup({
+      testName: `event-creation-test-${Date.now()}`,
+      withConnect: false,
+    });
+    // 共通モック関数を使用して認証モックを設定
+    mockGetCurrentUser = setupAuthMocks(setup.testUser);
+
+    // createTestDataCleanupHelperを使用してクリーンアップ処理を標準化
+    cleanupHelper = createTestDataCleanupHelper(setup.adminClient);
   });
 
   afterAll(async () => {
-    // 作成したイベントをクリーンアップ
-    for (const eventId of createdEventIds) {
-      try {
-        await deleteTestEvent(eventId);
-      } catch (error) {
-        console.warn(`Failed to cleanup event ${eventId}:`, error);
-      }
+    try {
+      // テスト実行（必要に応じて）
+    } finally {
+      // 必ずクリーンアップを実行
+      await cleanupHelper.cleanup();
+      await setup.cleanup();
     }
-
-    // テストユーザーを削除
-    await deleteTestUser(testUser.email);
   });
 
   beforeEach(() => {
     // 各テストでユーザーを認証済み状態にする
     mockGetCurrentUser.mockResolvedValue({
-      id: testUser.id,
-      email: testUser.email,
+      id: setup.testUser.id,
+      email: setup.testUser.email,
       user_metadata: {},
       app_metadata: {},
     } as any);
@@ -64,7 +67,7 @@ describe("イベント作成統合テスト - 1.1 基本的なイベント作成
   });
 
   /**
-   * テストヘルパー: FormDataを作成する
+   * テストヘルパー: FormDataを作成する（共通ヘルパーを使用）
    */
   function createFormDataFromEvent(eventData: {
     title: string;
@@ -79,56 +82,14 @@ describe("イベント作成統合テスト - 1.1 基本的なイベント作成
     allow_payment_after_deadline?: boolean;
     grace_period_days?: string;
   }): FormData {
-    const formData = new FormData();
-
-    formData.append("title", eventData.title);
-    formData.append("date", eventData.date);
-    formData.append("fee", eventData.fee);
-
-    // 決済方法（配列から文字列に変換）
-    if (eventData.payment_methods) {
-      formData.append("payment_methods", eventData.payment_methods.join(","));
-    } else {
-      formData.append("payment_methods", "");
-    }
-
-    // オプショナルフィールド
-    if (eventData.location) {
-      formData.append("location", eventData.location);
-    }
-    if (eventData.description) {
-      formData.append("description", eventData.description);
-    }
-    if (eventData.capacity) {
-      formData.append("capacity", eventData.capacity);
-    }
-    if (eventData.registration_deadline) {
-      formData.append("registration_deadline", eventData.registration_deadline);
-    }
-    if (eventData.payment_deadline) {
-      formData.append("payment_deadline", eventData.payment_deadline);
-    }
-    if (eventData.allow_payment_after_deadline) {
-      formData.append(
-        "allow_payment_after_deadline",
-        String(eventData.allow_payment_after_deadline)
-      );
-    }
-    if (eventData.grace_period_days) {
-      formData.append("grace_period_days", eventData.grace_period_days);
-    }
-
-    return formData;
+    return createFormDataFromEventHelper(eventData);
   }
 
   /**
-   * テストヘルパー: 将来の日時を生成する
+   * テストヘルパー: 将来の日時を生成する（共通ヘルパーを使用）
    */
   function getFutureDateTime(hoursFromNow: number = 24): string {
-    // テスト実行時間を考慮してより長い時間を設定
-    const futureDate = new Date(Date.now() + (hoursFromNow + 1) * 60 * 60 * 1000);
-    // datetime-localフォーマット（YYYY-MM-DDTHH:mm）
-    return futureDate.toISOString().slice(0, 16);
+    return getFutureDateTimeLocal(hoursFromNow);
   }
 
   /**
@@ -151,7 +112,7 @@ describe("イベント作成統合テスト - 1.1 基本的なイベント作成
     expect(event.location).toBe(expectedData.location ?? null);
     expect(event.description).toBe(expectedData.description ?? null);
     expect(event.capacity).toBe(expectedData.capacity ?? null);
-    expect(event.created_by).toBe(testUser.id);
+    expect(event.created_by).toBe(setup.testUser.id);
     expect(event.invite_token).toBeDefined();
     expect(event.invite_token).not.toBeNull();
     if (event.invite_token) {
@@ -179,7 +140,7 @@ describe("イベント作成統合テスト - 1.1 基本的なイベント作成
       expect(result.success).toBe(true);
       if (result.success) {
         const event = result.data;
-        createdEventIds.push(event.id);
+        cleanupHelper.trackEvent(event.id);
 
         validateCreatedEvent(event, {
           title: "最小限無料イベント",
@@ -223,7 +184,7 @@ describe("イベント作成統合テスト - 1.1 基本的なイベント作成
       expect(result.success).toBe(true);
       if (result.success) {
         const event = result.data;
-        createdEventIds.push(event.id);
+        cleanupHelper.trackEvent(event.id);
 
         // 無料イベントの場合、決済関連の設定はすべてリセットされる
         expect(event.payment_methods).toEqual([]);
@@ -261,7 +222,7 @@ describe("イベント作成統合テスト - 1.1 基本的なイベント作成
       expect(result.success).toBe(true);
       if (result.success) {
         const event = result.data;
-        createdEventIds.push(event.id);
+        cleanupHelper.trackEvent(event.id);
 
         validateCreatedEvent(event, {
           title: "全項目入力イベント",
@@ -309,7 +270,7 @@ describe("イベント作成統合テスト - 1.1 基本的なイベント作成
       expect(result.success).toBe(true);
       if (result.success) {
         const event = result.data;
-        createdEventIds.push(event.id);
+        cleanupHelper.trackEvent(event.id);
 
         validateCreatedEvent(event, {
           title: "現金決済のみイベント",
@@ -348,7 +309,7 @@ describe("イベント作成統合テスト - 1.1 基本的なイベント作成
       expect(result.success).toBe(true);
       if (result.success) {
         const event = result.data;
-        createdEventIds.push(event.id);
+        cleanupHelper.trackEvent(event.id);
 
         validateCreatedEvent(event, {
           title: "オンライン決済のみイベント",
@@ -394,7 +355,7 @@ describe("イベント作成統合テスト - 1.1 基本的なイベント作成
       expect(result.success).toBe(true);
       if (result.success) {
         const event = result.data;
-        createdEventIds.push(event.id);
+        cleanupHelper.trackEvent(event.id);
 
         validateCreatedEvent(event, {
           title: "複数決済方法イベント",
@@ -439,7 +400,7 @@ describe("イベント作成統合テスト - 1.1 基本的なイベント作成
       expect(result.success).toBe(true);
       if (result.success) {
         const event = result.data;
-        createdEventIds.push(event.id);
+        cleanupHelper.trackEvent(event.id);
 
         // 重複が除去されて2つの方法のみが保存される
         expect(event.payment_methods).toContain("cash");
@@ -468,7 +429,7 @@ describe("イベント作成統合テスト - 1.1 基本的なイベント作成
       expect(result.success).toBe(true);
       if (result.success) {
         const event = result.data;
-        createdEventIds.push(event.id);
+        cleanupHelper.trackEvent(event.id);
 
         // UTC形式のISO文字列として保存される（+00:00またはZ形式）
         expect(event.date).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{3})?(\+00:00|Z)$/);
@@ -508,7 +469,7 @@ describe("イベント作成統合テスト - 1.1 基本的なイベント作成
       expect(result.success).toBe(true);
       if (result.success) {
         const event = result.data;
-        createdEventIds.push(event.id);
+        cleanupHelper.trackEvent(event.id);
 
         // 文字列が適切に数値に変換される
         expect(typeof event.fee).toBe("number");
@@ -544,7 +505,7 @@ describe("イベント作成統合テスト - 1.1 基本的なイベント作成
       expect(result.success).toBe(true);
       if (result.success) {
         const event = result.data;
-        createdEventIds.push(event.id);
+        cleanupHelper.trackEvent(event.id);
 
         // 招待トークンが生成される
         expect(event.invite_token).toBeDefined();
@@ -575,10 +536,10 @@ describe("イベント作成統合テスト - 1.1 基本的なイベント作成
       expect(result.success).toBe(true);
       if (result.success) {
         const event = result.data;
-        createdEventIds.push(event.id);
+        cleanupHelper.trackEvent(event.id);
 
         // 作成者IDが正しく設定される
-        expect(event.created_by).toBe(testUser.id);
+        expect(event.created_by).toBe(setup.testUser.id);
 
         // 作成日時・更新日時が適切に設定される
         expect(event.created_at).toBeDefined();
@@ -624,7 +585,7 @@ describe("イベント作成統合テスト - 1.1 基本的なイベント作成
         expect(typeof result.data).toBe("object");
 
         const event = result.data;
-        createdEventIds.push(event.id);
+        cleanupHelper.trackEvent(event.id);
 
         // 必須フィールドの存在確認
         const requiredFields = [

@@ -11,16 +11,18 @@ import type {
   ParticipantView,
 } from "@core/validation/participant-management";
 
-// テスト対象コンポーネント
-import { ParticipantsTableEnhanced } from "@/app/events/[id]/participants/components/participants-table-enhanced";
-
-// getPaymentActions をモック
-const mockUpdateCashStatus = jest.fn();
-jest.mock("@core/services", () => ({
-  getPaymentActions: () => ({
-    updateCashStatus: mockUpdateCashStatus,
-  }),
+// updateCashStatusAction をモック
+jest.mock("@/features/payments/actions/update-cash-status", () => ({
+  updateCashStatusAction: jest.fn(),
 }));
+
+// テスト対象コンポーネント
+import { ParticipantsTableEnhanced } from "@/app/(app)/events/[id]/participants/components/participants-table-enhanced";
+import { updateCashStatusAction } from "@/features/payments/actions/update-cash-status";
+
+const mockUpdateCashStatus = updateCashStatusAction as jest.MockedFunction<
+  typeof updateCashStatusAction
+>;
 
 // トーストの視認性を担保するため、ToastProvider を使わずに useToast をモック
 const toastSpy = jest.fn();
@@ -150,13 +152,9 @@ describe("ParticipantsTableEnhanced - 現金決済の受領/免除", () => {
       />
     );
 
-    // メニューを開く
-    const moreButton = screen.getByTitle("その他のアクション");
-    await userEvent.click(moreButton);
-
-    // 免除メニュー項目をクリック
-    const waiveItem = await screen.findByText("支払いを免除");
-    await userEvent.click(waiveItem);
+    // 免除ボタンをクリック（直接表示されている）
+    const waiveButton = await screen.findByRole("button", { name: /免除/i });
+    await userEvent.click(waiveButton);
 
     await waitFor(() => {
       expect(mockUpdateCashStatus).toHaveBeenCalledTimes(1);

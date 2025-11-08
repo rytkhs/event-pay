@@ -1,19 +1,18 @@
 import { SecureSupabaseClientFactory } from "@core/security/secure-client-factory.impl";
 import { AdminReason } from "@core/security/secure-client-factory.types";
 
+import { cleanupTestData } from "@tests/setup/common-cleanup";
+import { createPaymentTestSetup } from "@tests/setup/common-test-setup";
+
 import {
-  createTestUserWithConnect,
-  createPaidTestEvent,
   createTestAttendance,
   createPaidStripePayment,
   addRefundToPayment,
   createPaymentDispute,
-  cleanupTestPaymentData,
   type TestPaymentUser,
   type TestPaymentEvent,
   type TestAttendanceData,
 } from "@/tests/helpers/test-payment-data";
-import { deleteTestUser } from "@/tests/helpers/test-user";
 
 /**
  * Settlement integration tests - Amount calculation accuracy
@@ -29,35 +28,38 @@ describe("清算レポート - 金額計算の正確性", () => {
   let attendance2: TestAttendanceData;
   const createdPaymentIds: string[] = [];
   const createdDisputeIds: string[] = [];
-
+  let setup: Awaited<ReturnType<typeof createPaymentTestSetup>>;
   const secureFactory = SecureSupabaseClientFactory.create();
 
   beforeAll(async () => {
-    // Create organizer with Stripe Connect
-    organizer = await createTestUserWithConnect("settlement-calc-organizer@example.com");
-
-    // Create paid event
-    event = await createPaidTestEvent(organizer.id, {
-      title: "金額計算テストイベント",
-      fee: 2000,
-      capacity: 10,
+    // Use payment test setup (includes event and one attendance)
+    setup = await createPaymentTestSetup({
+      testName: `settlement-amount-calculation-${Date.now()}`,
+      eventFee: 2000,
+      paymentMethods: ["stripe"],
+      accessedTables: [
+        "public.events",
+        "public.attendances",
+        "public.payments",
+        "public.payment_disputes",
+        "public.settlements",
+      ],
     });
+    organizer = setup.testUser as TestPaymentUser;
+    event = setup.testEvent;
+    attendance1 = setup.testAttendance;
 
-    // Create two attendances for multiple payments
-    attendance1 = await createTestAttendance(event.id, {
-      nickname: "参加者1",
-    });
+    // Create second attendance for multiple payments
     attendance2 = await createTestAttendance(event.id, {
       nickname: "参加者2",
     });
   });
 
   afterAll(async () => {
-    // Cleanup test data
-    await cleanupTestPaymentData({
+    // Cleanup second attendance and payments created during tests
+    await cleanupTestData({
       paymentIds: createdPaymentIds,
-      eventIds: [event.id],
-      userIds: [organizer.id],
+      attendanceIds: [attendance2.id], // attendance1 is cleaned up by setup.cleanup()
     });
 
     if (createdDisputeIds.length > 0) {
@@ -70,7 +72,8 @@ describe("清算レポート - 金額計算の正確性", () => {
       await adminClient.from("payment_disputes").delete().in("id", createdDisputeIds);
     }
 
-    await deleteTestUser(organizer.id);
+    // setup.cleanup()はevent、attendance1、userも含めてクリーンアップする
+    await setup.cleanup();
   });
 
   describe("基本的な金額計算", () => {

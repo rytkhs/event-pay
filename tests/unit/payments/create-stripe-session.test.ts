@@ -64,10 +64,12 @@ describe("PaymentService - Stripe Checkout セッション作成", () => {
     mockStripe = createMockStripeClient();
 
     // Application fee calculator のモック設定（共通モック関数を使用）
+    // minimumFee: 50 がデフォルトで適用されるため、計算結果49は50になる
     mockApplicationFeeCalculator = createMockApplicationFeeCalculator({
       amount: testData.amount,
       rate: 0.049,
-      applicationFeeAmount: Math.floor(testData.amount * 0.049), // 4.9%
+      minimumFee: 50, // デフォルト値（明示的に指定）
+      applicationFeeAmount: Math.max(Math.floor(testData.amount * 0.049), 50), // 4.9% + minimumFee適用
     });
 
     // PaymentErrorHandler インスタンス作成
@@ -99,10 +101,6 @@ describe("PaymentService - Stripe Checkout セッション作成", () => {
       email: testData.userEmail,
       name: testData.userName,
     });
-  });
-
-  afterEach(() => {
-    jest.clearAllMocks();
   });
 
   describe("パラメータ検証", () => {
@@ -161,10 +159,12 @@ describe("PaymentService - Stripe Checkout セッション作成", () => {
         );
 
         // Assert - 計算された手数料が destination-charges に渡されること
+        // minimumFee: 50 が適用されるため、計算結果49は50になる
         const calculatedFee = Math.floor(testData.amount * 0.049);
+        const expectedFee = Math.max(calculatedFee, 50); // minimumFee適用
         expect(mockCreateDestinationCheckoutSession).toHaveBeenCalledWith(
           expect.objectContaining({
-            platformFeeAmount: calculatedFee,
+            platformFeeAmount: expectedFee,
           })
         );
       });
@@ -384,13 +384,15 @@ describe("PaymentService - Stripe Checkout セッション作成", () => {
         });
 
         // Assert - 全パラメータの統合検証
+        // minimumFee: 50 が適用されるため、計算結果49は50になる
         const calculatedFee = Math.floor(testData.amount * 0.049);
+        const expectedFee = Math.max(calculatedFee, 50); // minimumFee適用
         expect(mockCreateDestinationCheckoutSession).toHaveBeenCalledWith({
           eventId: testData.eventId,
           eventTitle: testData.eventTitle,
           amount: testData.amount,
           destinationAccountId: testData.connectAccountId,
-          platformFeeAmount: calculatedFee,
+          platformFeeAmount: expectedFee,
           customerId: expect.any(String), // Customer作成結果
           successUrl: testData.successUrl,
           cancelUrl: testData.cancelUrl,

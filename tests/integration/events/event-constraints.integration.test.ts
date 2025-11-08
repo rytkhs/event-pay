@@ -3,38 +3,37 @@ import { describe, test, expect, beforeAll, afterAll } from "@jest/globals";
 import { SecureSupabaseClientFactory } from "@core/security/secure-client-factory.impl";
 import { AdminReason } from "@core/security/secure-client-factory.types";
 
-import { createTestUser, deleteTestUser, type TestUser } from "@tests/helpers/test-user";
+import {
+  createCommonTestSetup,
+  createTestDataCleanupHelper,
+  type CommonTestSetup,
+} from "@tests/setup/common-test-setup";
 
 describe("Event constraints (schema-level)", () => {
-  let organizer: TestUser;
-  const createdEventIds: string[] = [];
+  let setup: CommonTestSetup;
+  let cleanupHelper: ReturnType<typeof createTestDataCleanupHelper>;
 
   beforeAll(async () => {
-    organizer = await createTestUser(
-      `event-constraints-${Date.now()}@example.com`,
-      "TestPassword123!"
-    );
+    setup = await createCommonTestSetup({
+      testName: `event-constraints-test-${Date.now()}`,
+      withConnect: false,
+      accessedTables: ["public.events"],
+    });
+
+    // createTestDataCleanupHelperを使用してクリーンアップ処理を標準化
+    cleanupHelper = createTestDataCleanupHelper(setup.adminClient);
   });
 
   afterAll(async () => {
-    // cleanup events
     try {
-      const adminClient = await SecureSupabaseClientFactory.create().createAuditedAdminClient(
-        AdminReason.TEST_DATA_CLEANUP,
-        "Cleaning up event constraints test events",
-        { accessedTables: ["public.events"], operationType: "DELETE" }
-      );
-      if (createdEventIds.length > 0) {
-        await adminClient.from("events").delete().in("id", createdEventIds);
-      }
-    } catch {
+      // テストデータのクリーンアップ（createTestDataCleanupHelperを使用）
+      await cleanupHelper.cleanup();
+    } catch (error) {
       // best-effort cleanup
-    }
-
-    try {
-      await deleteTestUser(organizer.email);
-    } catch {
-      // ignore
+      console.warn("Cleanup failed:", error);
+    } finally {
+      // テストユーザーをクリーンアップ
+      await setup.cleanup();
     }
   });
 
@@ -63,7 +62,7 @@ describe("Event constraints (schema-level)", () => {
         payment_deadline: null, // invalid with stripe
         payment_methods: ["stripe"],
         invite_token: `inv_${Math.random().toString(36).slice(2, 18)}`,
-        created_by: organizer.id,
+        created_by: setup.testUser.id,
       })
       .select("id")
       .single();
@@ -75,7 +74,7 @@ describe("Event constraints (schema-level)", () => {
     }
 
     if (data?.id) {
-      createdEventIds.push(data.id);
+      cleanupHelper.trackEvent(data.id);
     }
   });
 
@@ -104,7 +103,7 @@ describe("Event constraints (schema-level)", () => {
         payment_deadline: null,
         payment_methods: ["cash"],
         invite_token: `inv_${Math.random().toString(36).slice(2, 18)}`,
-        created_by: organizer.id,
+        created_by: setup.testUser.id,
       })
       .select("id")
       .single();
@@ -116,7 +115,7 @@ describe("Event constraints (schema-level)", () => {
     }
 
     if (data?.id) {
-      createdEventIds.push(data.id);
+      cleanupHelper.trackEvent(data.id);
     }
   });
 
@@ -146,7 +145,7 @@ describe("Event constraints (schema-level)", () => {
         payment_deadline: null,
         payment_methods: ["cash"],
         invite_token: `inv_${Math.random().toString(36).slice(2, 18)}`,
-        created_by: organizer.id,
+        created_by: setup.testUser.id,
       })
       .select("id")
       .single();
@@ -166,12 +165,12 @@ describe("Event constraints (schema-level)", () => {
         payment_deadline: null,
         payment_methods: ["cash"],
         invite_token: `inv_${Math.random().toString(36).slice(2, 18)}`,
-        created_by: organizer.id,
+        created_by: setup.testUser.id,
       })
       .select("id")
       .single();
     expect(ok.error).toBeNull();
-    if (ok.data?.id) createdEventIds.push(ok.data.id);
+    if (ok.data?.id) cleanupHelper.trackEvent(ok.data.id);
 
     // fee > 1_000_000 should fail
     const { error: highFeeErr } = await admin
@@ -187,7 +186,7 @@ describe("Event constraints (schema-level)", () => {
         payment_deadline: null,
         payment_methods: ["cash"],
         invite_token: `inv_${Math.random().toString(36).slice(2, 18)}`,
-        created_by: organizer.id,
+        created_by: setup.testUser.id,
       })
       .select("id")
       .single();
@@ -217,7 +216,7 @@ describe("Event constraints (schema-level)", () => {
         payment_deadline: null,
         payment_methods: ["cash"],
         invite_token: `inv_${Math.random().toString(36).slice(2, 18)}`,
-        created_by: organizer.id,
+        created_by: setup.testUser.id,
       })
       .select("id")
       .single();
@@ -236,7 +235,7 @@ describe("Event constraints (schema-level)", () => {
         payment_deadline: null,
         payment_methods: ["cash"],
         invite_token: `inv_${Math.random().toString(36).slice(2, 18)}`,
-        created_by: organizer.id,
+        created_by: setup.testUser.id,
       })
       .select("id")
       .single();
@@ -255,12 +254,12 @@ describe("Event constraints (schema-level)", () => {
         payment_deadline: null,
         payment_methods: ["cash"],
         invite_token: `inv_${Math.random().toString(36).slice(2, 18)}`,
-        created_by: organizer.id,
+        created_by: setup.testUser.id,
       })
       .select("id")
       .single();
     expect(okNull.error).toBeNull();
-    if (okNull.data?.id) createdEventIds.push(okNull.data.id);
+    if (okNull.data?.id) cleanupHelper.trackEvent(okNull.data.id);
   });
 
   test("events_payment_deadline_within_30d_after_date & methods not empty (methods empty allowed by schema)", async () => {
@@ -288,7 +287,7 @@ describe("Event constraints (schema-level)", () => {
         payment_deadline: over30d.toISOString(),
         payment_methods: ["cash"],
         invite_token: `inv_${Math.random().toString(36).slice(2, 18)}`,
-        created_by: organizer.id,
+        created_by: setup.testUser.id,
       })
       .select("id")
       .single();
@@ -307,7 +306,7 @@ describe("Event constraints (schema-level)", () => {
         payment_deadline: null,
         payment_methods: [],
         invite_token: `inv_${Math.random().toString(36).slice(2, 18)}`,
-        created_by: organizer.id,
+        created_by: setup.testUser.id,
       })
       .select("id")
       .single();

@@ -23,6 +23,8 @@ test.describe("お問い合わせフォーム", () => {
     await expect(page.getByTestId("contact-submit-button")).toBeVisible();
   });
 
+  // Note: 統合テスト（submit-contact.integration.test.ts）で実装済みのため、E2Eテストはスキップ
+  // 統合テストでServer Actionの動作を検証し、E2EテストではUIのバリデーションのみを検証
   test.skip("有効な入力で送信が成功する", async ({ page }) => {
     // フォーム入力
     await page.getByTestId("contact-name-input").fill("山田 太郎");
@@ -108,6 +110,8 @@ test.describe("お問い合わせフォーム", () => {
     await expect(submitButton).toHaveText("送信中...");
   });
 
+  // Note: 統合テスト（submit-contact.integration.test.ts）で実装済みのため、E2Eテストはスキップ
+  // レート制限の動作は統合テストで検証済み。E2EテストではUIの表示のみを検証する想定
   test.skip("レート制限に達した場合エラーメッセージが表示される", async ({ page }) => {
     // 複数回送信してレート制限をトリガー
     for (let i = 0; i < 6; i++) {

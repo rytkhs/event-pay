@@ -1,48 +1,47 @@
+import { setupSupabaseClientMocks } from "../../setup/common-mocks";
+import { setupStripeConnectServiceMock } from "../../setup/stripe-connect-mock";
+import { createMockSupabaseClient, setTestUserById } from "../../setup/supabase-auth-mock";
+
 import {
   handleOnboardingReturnAction,
   handleOnboardingRefreshAction,
-} from "../../features/stripe-connect/actions/connect-account";
+} from "@features/stripe-connect/actions/connect-account";
 
+// Supabase 認証モック（共通モックを使用）
 jest.mock("@core/supabase/server", () => ({
-  createClient: () => ({
-    auth: {
-      getUser: async () => ({
-        data: { user: { id: "user_test", email: "u@example.com" } },
-        error: null,
-      }),
-    },
-  }),
+  createClient: jest.fn(),
 }));
 
-// jest.mock は先頭にホイストされるため、外部の const 参照は避ける。
-// 代わりにモジュールからモック関数群をエクスポートし、各テストで参照・設定する。
+// Stripe Connect サービスのモック（共通モックを使用）
 jest.mock("@features/stripe-connect/services", () => {
   const actual = jest.requireActual("@features/stripe-connect/services");
-  const mockFns = {
-    getConnectAccountByUser: jest.fn(),
-    getAccountInfo: jest.fn().mockResolvedValue({
+  return setupStripeConnectServiceMock({
+    getAccountInfo: {
       accountId: "acct_test",
       status: "onboarding",
       chargesEnabled: false,
       payoutsEnabled: false,
-    }),
-    updateAccountStatus: jest.fn(),
-    createAccountLink: jest.fn().mockResolvedValue({
+    },
+    createAccountLink: {
       url: "https://connect.stripe.com/setup/e/acct_test/session_token",
       expiresAt: Math.floor(Date.now() / 1000) + 300,
-    }),
-    createExpressAccount: jest.fn(),
-  };
-  return {
-    ...actual,
-    __mockFns: mockFns,
-    createUserStripeConnectService: jest.fn().mockReturnValue(mockFns),
-  };
+    },
+  });
 });
 
 describe("Stripe Connect return/refresh actions", () => {
+  let mockSupabase: ReturnType<typeof setupSupabaseClientMocks>;
+
+  beforeAll(() => {
+    // 共通モックを使用してSupabaseクライアントを設定
+    mockSupabase = setupSupabaseClientMocks();
+    // テスト用ユーザーを設定
+    setTestUserById("user_test", "u@example.com");
+    const { createClient } = require("@core/supabase/server");
+    (createClient as jest.MockedFunction<typeof createClient>).mockReturnValue(mockSupabase as any);
+  });
+
   beforeEach(() => {
-    jest.clearAllMocks();
     process.env.NODE_ENV = "test";
     process.env.NEXT_PUBLIC_APP_URL = "http://localhost:3000";
   });

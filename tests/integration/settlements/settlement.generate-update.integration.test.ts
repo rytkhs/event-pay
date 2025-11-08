@@ -1,19 +1,17 @@
 import { SecureSupabaseClientFactory } from "@core/security/secure-client-factory.impl";
 import { AdminReason } from "@core/security/secure-client-factory.types";
 
+import { cleanupTestData } from "@tests/setup/common-cleanup";
+import { createPaymentTestSetup } from "@tests/setup/common-test-setup";
+
 import {
-  createTestUserWithConnect,
-  createPaidTestEvent,
-  createTestAttendance,
   createPaidStripePayment,
   createRefundedStripePayment,
   createPaymentDispute,
-  cleanupTestPaymentData,
   type TestPaymentUser,
   type TestPaymentEvent,
   type TestAttendanceData,
 } from "@/tests/helpers/test-payment-data";
-import { deleteTestUser } from "@/tests/helpers/test-user";
 
 /**
  * Settlement integration tests (normal flow)
@@ -25,30 +23,26 @@ describe("清算レポート生成・更新（正常フロー）", () => {
   let event: TestPaymentEvent;
   let attendance: TestAttendanceData;
   const createdPaymentIds: string[] = [];
-
-  const secureFactory = SecureSupabaseClientFactory.create();
+  let setup: Awaited<ReturnType<typeof createPaymentTestSetup>>;
   let adminClient: any;
 
   beforeAll(async () => {
-    adminClient = await secureFactory.createAuditedAdminClient(
-      AdminReason.TEST_DATA_SETUP,
-      "Settlement integration test setup",
-      {
-        accessedTables: [
-          "public.events",
-          "public.attendances",
-          "public.payments",
-          "public.settlements",
-        ],
-      }
-    );
-
-    organizer = await createTestUserWithConnect();
-    event = await createPaidTestEvent(organizer.id, { fee: 1500, title: "Settlement Test Event" });
-    attendance = await createTestAttendance(event.id, {
-      email: `settlement-attendee-${Date.now()}@example.com`,
-      nickname: "清算統合テスト参加者",
+    // Use payment test setup (includes event and attendance)
+    setup = await createPaymentTestSetup({
+      testName: `settlement-generate-update-${Date.now()}`,
+      eventFee: 1500,
+      paymentMethods: ["stripe"],
+      accessedTables: [
+        "public.events",
+        "public.attendances",
+        "public.payments",
+        "public.settlements",
+      ],
     });
+    organizer = setup.testUser as TestPaymentUser;
+    adminClient = setup.adminClient;
+    event = setup.testEvent;
+    attendance = setup.testAttendance;
 
     // Insert two PAID Stripe payments
     const p1 = await createPaidStripePayment(attendance.id, {
@@ -67,18 +61,19 @@ describe("清算レポート生成・更新（正常フロー）", () => {
   });
 
   afterAll(async () => {
-    await cleanupTestPaymentData({
-      paymentIds: createdPaymentIds,
-      attendanceIds: [attendance.id],
-      eventIds: [event.id],
-      userIds: [organizer.id],
-    });
+    // Cleanup payments created during tests
+    if (createdPaymentIds.length > 0) {
+      await cleanupTestData({
+        paymentIds: createdPaymentIds,
+      });
+    }
 
-    await deleteTestUser(organizer.email);
+    // setup.cleanup()はevent、attendance、userも含めてクリーンアップする
+    await setup.cleanup();
   });
 
   test("初回生成時に新しい清算スナップショットが挿入される", async () => {
-    const { data, error } = await adminClient.rpc("generate_settlement_report", {
+    const { data, error } = await setup.adminClient.rpc("generate_settlement_report", {
       input_event_id: event.id,
       input_created_by: organizer.id,
     });
@@ -121,7 +116,7 @@ describe("清算レポート生成・更新（正常フロー）", () => {
     });
     createdPaymentIds.push(p3.id);
 
-    const { data, error } = await adminClient.rpc("generate_settlement_report", {
+    const { data, error } = await setup.adminClient.rpc("generate_settlement_report", {
       input_event_id: event.id,
       input_created_by: organizer.id,
     });
@@ -148,7 +143,7 @@ describe("清算レポート生成・更新（正常フロー）", () => {
     // should return the same report_id (demonstrating the date-based conflict resolution).
 
     // Call the RPC again (should be same JST day as previous tests)
-    const { data, error } = await adminClient.rpc("generate_settlement_report", {
+    const { data, error } = await setup.adminClient.rpc("generate_settlement_report", {
       input_event_id: event.id,
       input_created_by: organizer.id,
     });
@@ -173,7 +168,7 @@ describe("清算レポート生成・更新（正常フロー）", () => {
 
   test("Stripe Connectアカウント情報の詳細検証", async () => {
     // Generate fresh report to verify Connect account details
-    const { data, error } = await adminClient.rpc("generate_settlement_report", {
+    const { data, error } = await setup.adminClient.rpc("generate_settlement_report", {
       input_event_id: event.id,
       input_created_by: organizer.id,
     });
@@ -226,50 +221,50 @@ describe("清算レポート生成（返金・争議シナリオ）", () => {
   let attendance: TestAttendanceData;
   const createdPaymentIds: string[] = [];
   const createdDisputeIds: string[] = [];
-
+  let setup: Awaited<ReturnType<typeof createPaymentTestSetup>>;
   const secureFactory = SecureSupabaseClientFactory.create();
-  let adminClient: any;
 
   beforeAll(async () => {
-    adminClient = await secureFactory.createAuditedAdminClient(
-      AdminReason.TEST_DATA_SETUP,
-      "Settlement refund/dispute integration test setup",
-      {
-        accessedTables: [
-          "public.events",
-          "public.attendances",
-          "public.payments",
-          "public.payment_disputes",
-          "public.settlements",
-        ],
-      }
-    );
-
-    organizer = await createTestUserWithConnect();
-    event = await createPaidTestEvent(organizer.id, {
-      fee: 2000,
-      title: "Settlement Refund/Dispute Test Event",
+    // Use payment test setup (includes event and attendance)
+    setup = await createPaymentTestSetup({
+      testName: `settlement-refund-dispute-${Date.now()}`,
+      eventFee: 2000,
+      paymentMethods: ["stripe"],
+      accessedTables: [
+        "public.events",
+        "public.attendances",
+        "public.payments",
+        "public.payment_disputes",
+        "public.settlements",
+      ],
     });
-    attendance = await createTestAttendance(event.id, {
-      email: `settlement-refund-attendee-${Date.now()}@example.com`,
-      nickname: "返金・争議統合テスト参加者",
-    });
+    organizer = setup.testUser as TestPaymentUser;
+    event = setup.testEvent;
+    attendance = setup.testAttendance;
   });
 
   afterAll(async () => {
-    // Cleanup disputes first (foreign key dependency)
-    if (createdDisputeIds.length > 0) {
-      await adminClient.from("payment_disputes").delete().in("id", createdDisputeIds);
+    try {
+      // Cleanup disputes first (foreign key dependency)
+      if (createdDisputeIds.length > 0) {
+        const adminClient = await secureFactory.createAuditedAdminClient(
+          AdminReason.TEST_DATA_CLEANUP,
+          "Cleanup test disputes",
+          { accessedTables: ["public.payment_disputes"] }
+        );
+        await adminClient.from("payment_disputes").delete().in("id", createdDisputeIds);
+      }
+
+      // Cleanup payments created during tests
+      if (createdPaymentIds.length > 0) {
+        await cleanupTestData({
+          paymentIds: createdPaymentIds,
+        });
+      }
+    } finally {
+      // setup.cleanup()はevent、attendance、userも含めてクリーンアップする
+      await setup.cleanup();
     }
-
-    await cleanupTestPaymentData({
-      paymentIds: createdPaymentIds,
-      attendanceIds: [attendance.id],
-      eventIds: [event.id],
-      userIds: [organizer.id],
-    });
-
-    await deleteTestUser(organizer.email);
   });
 
   test("返金がある場合の差引計算が正確に行われる", async () => {
@@ -294,7 +289,7 @@ describe("清算レポート生成（返金・争議シナリオ）", () => {
 
     createdPaymentIds.push(p1.id, p2.id);
 
-    const { data, error } = await adminClient.rpc("generate_settlement_report", {
+    const { data, error } = await setup.adminClient.rpc("generate_settlement_report", {
       input_event_id: event.id,
       input_created_by: organizer.id,
     });
@@ -330,7 +325,7 @@ describe("清算レポート生成（返金・争議シナリオ）", () => {
   test("争議（dispute）がある場合の集計が正確に行われる", async () => {
     // Clear previous test data
     if (createdPaymentIds.length > 0) {
-      await adminClient.from("payments").delete().in("id", createdPaymentIds);
+      await setup.adminClient.from("payments").delete().in("id", createdPaymentIds);
       createdPaymentIds.length = 0;
     }
 
@@ -362,7 +357,7 @@ describe("清算レポート生成（返金・争議シナリオ）", () => {
     createdPaymentIds.push(p1.id, p2.id);
     createdDisputeIds.push(dispute.id);
 
-    const { data, error } = await adminClient.rpc("generate_settlement_report", {
+    const { data, error } = await setup.adminClient.rpc("generate_settlement_report", {
       input_event_id: event.id,
       input_created_by: organizer.id,
     });
@@ -399,11 +394,11 @@ describe("清算レポート生成（返金・争議シナリオ）", () => {
   test("返金と争議が混在する複雑なシナリオ", async () => {
     // Clear previous test data
     if (createdPaymentIds.length > 0) {
-      await adminClient.from("payments").delete().in("id", createdPaymentIds);
+      await setup.adminClient.from("payments").delete().in("id", createdPaymentIds);
       createdPaymentIds.length = 0;
     }
     if (createdDisputeIds.length > 0) {
-      await adminClient.from("payment_disputes").delete().in("id", createdDisputeIds);
+      await setup.adminClient.from("payment_disputes").delete().in("id", createdDisputeIds);
       createdDisputeIds.length = 0;
     }
 
@@ -444,7 +439,7 @@ describe("清算レポート生成（返金・争議シナリオ）", () => {
     createdPaymentIds.push(p1.id, p2.id, p3.id);
     createdDisputeIds.push(dispute.id);
 
-    const { data, error } = await adminClient.rpc("generate_settlement_report", {
+    const { data, error } = await setup.adminClient.rpc("generate_settlement_report", {
       input_event_id: event.id,
       input_created_by: organizer.id,
     });

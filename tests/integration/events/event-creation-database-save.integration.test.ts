@@ -9,50 +9,51 @@
  * - 1.3.5 RLS（Row Level Security）を回避した管理者権限での保存
  */
 
-import { getCurrentUser } from "@core/auth/auth-utils";
 import { SecureSupabaseClientFactory } from "@core/security/secure-client-factory.impl";
 import { AdminReason } from "@core/security/secure-client-factory.types";
 import { validateInviteToken } from "@core/utils/invite-token";
 
 import { createEventAction } from "@features/events/actions/create-event";
 
-import { deleteTestEvent } from "@/tests/helpers/test-event";
-import { createTestUser, deleteTestUser, type TestUser } from "@/tests/helpers/test-user";
+import { getFutureDateTimeLocal } from "@/tests/helpers/test-datetime";
+import { createFormDataFromEvent as createFormDataFromEventHelper } from "@/tests/helpers/test-form-data";
 import type { Database } from "@/types/database";
 
-// getCurrentUserをモック
-const mockGetCurrentUser = getCurrentUser as jest.MockedFunction<typeof getCurrentUser>;
+import { setupAuthMocks } from "@tests/setup/common-mocks";
+import { createCommonTestSetup, type CommonTestSetup } from "@tests/setup/common-test-setup";
+import { cleanupTestData } from "@tests/setup/common-cleanup";
 
 type EventRow = Database["public"]["Tables"]["events"]["Row"];
 
 describe("イベント作成統合テスト - 1.3 データベース保存の確認", () => {
-  let testUser: TestUser;
+  let setup: CommonTestSetup;
+  let mockGetCurrentUser: ReturnType<typeof setupAuthMocks>;
   const createdEventIds: string[] = [];
 
   beforeAll(async () => {
-    // テスト用ユーザーを作成
-    testUser = await createTestUser(`db-save-test-${Date.now()}@example.com`, "TestPassword123");
+    setup = await createCommonTestSetup({
+      testName: `event-creation-database-save-test-${Date.now()}`,
+      withConnect: false,
+    });
+    // 共通モック関数を使用して認証モックを設定
+    mockGetCurrentUser = setupAuthMocks(setup.testUser);
   });
 
   afterAll(async () => {
-    // 作成したイベントをクリーンアップ
-    for (const eventId of createdEventIds) {
-      try {
-        await deleteTestEvent(eventId);
-      } catch (error) {
-        console.warn(`Failed to cleanup event ${eventId}:`, error);
-      }
+    try {
+      // テスト実行（必要に応じて）
+    } finally {
+      // 必ずクリーンアップを実行
+      await cleanupTestData({ eventIds: createdEventIds });
+      await setup.cleanup();
     }
-
-    // テストユーザーを削除
-    await deleteTestUser(testUser.email);
   });
 
   beforeEach(() => {
     // 各テストでユーザーを認証済み状態にする
     mockGetCurrentUser.mockResolvedValue({
-      id: testUser.id,
-      email: testUser.email,
+      id: setup.testUser.id,
+      email: setup.testUser.email,
       user_metadata: {},
       app_metadata: {},
     } as any);
@@ -64,7 +65,7 @@ describe("イベント作成統合テスト - 1.3 データベース保存の確
   });
 
   /**
-   * テストヘルパー: FormDataを作成する
+   * テストヘルパー: FormDataを作成する（共通ヘルパーを使用）
    */
   function createFormDataFromEvent(eventData: {
     title: string;
@@ -79,56 +80,15 @@ describe("イベント作成統合テスト - 1.3 データベース保存の確
     allow_payment_after_deadline?: boolean;
     grace_period_days?: string;
   }): FormData {
-    const formData = new FormData();
-
-    formData.append("title", eventData.title);
-    formData.append("date", eventData.date);
-    formData.append("fee", eventData.fee);
-
-    // 決済方法（配列から文字列に変換）
-    if (eventData.payment_methods) {
-      formData.append("payment_methods", eventData.payment_methods.join(","));
-    } else {
-      formData.append("payment_methods", "");
-    }
-
-    // オプショナルフィールド
-    if (eventData.location) {
-      formData.append("location", eventData.location);
-    }
-    if (eventData.description) {
-      formData.append("description", eventData.description);
-    }
-    if (eventData.capacity) {
-      formData.append("capacity", eventData.capacity);
-    }
-    if (eventData.registration_deadline) {
-      formData.append("registration_deadline", eventData.registration_deadline);
-    }
-    if (eventData.payment_deadline) {
-      formData.append("payment_deadline", eventData.payment_deadline);
-    }
-    if (eventData.allow_payment_after_deadline) {
-      formData.append(
-        "allow_payment_after_deadline",
-        String(eventData.allow_payment_after_deadline)
-      );
-    }
-    if (eventData.grace_period_days) {
-      formData.append("grace_period_days", eventData.grace_period_days);
-    }
-
-    return formData;
+    return createFormDataFromEventHelper(eventData);
   }
 
   /**
-   * テストヘルパー: 将来の日時を生成する
+   * テストヘルパー: 将来の日時を生成する（共通ヘルパーを使用）
    */
   function getFutureDateTime(hoursFromNow: number = 24): string {
     // テスト実行時間を考慮してより長い時間を設定（安全マージン）
-    const futureDate = new Date(Date.now() + (hoursFromNow + 2) * 60 * 60 * 1000);
-    // datetime-localフォーマット（YYYY-MM-DDTHH:mm）
-    return futureDate.toISOString().slice(0, 16);
+    return getFutureDateTimeLocal(hoursFromNow + 1);
   }
 
   describe("1.3.1 招待トークンが自動生成される", () => {
@@ -276,7 +236,7 @@ describe("イベント作成統合テスト - 1.3 データベース保存の確
         createdEventIds.push(event.id);
 
         // 作成者IDが認証済みユーザーのIDと一致することを確認
-        expect(event.created_by).toBe(testUser.id);
+        expect(event.created_by).toBe(setup.testUser.id);
         expect(event.created_by).toMatch(
           /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/
         ); // UUID形式
@@ -316,8 +276,8 @@ describe("イベント作成統合テスト - 1.3 データベース保存の確
         createdEventIds.push(result1.data.id, result2.data.id);
 
         // 両方のイベントの作成者IDが同じであることを確認
-        expect(result1.data.created_by).toBe(testUser.id);
-        expect(result2.data.created_by).toBe(testUser.id);
+        expect(result1.data.created_by).toBe(setup.testUser.id);
+        expect(result2.data.created_by).toBe(setup.testUser.id);
         expect(result1.data.created_by).toBe(result2.data.created_by);
       }
     });
@@ -550,7 +510,7 @@ describe("イベント作成統合テスト - 1.3 データベース保存の確
         // イベントが正常に作成されていることを確認
         expect(event.id).toBeDefined();
         expect(event.title).toBe("RLS回避テスト");
-        expect(event.created_by).toBe(testUser.id);
+        expect(event.created_by).toBe(setup.testUser.id);
 
         // 実際にAdminClientでデータが保存されているか確認
         // SecureSupabaseClientFactoryを使用してデータを直接確認
@@ -579,7 +539,7 @@ describe("イベント作成統合テスト - 1.3 データベース保存の確
         if (dbEvent) {
           expect(dbEvent.id).toBe(event.id);
           expect(dbEvent.title).toBe("RLS回避テスト");
-          expect(dbEvent.created_by).toBe(testUser.id);
+          expect(dbEvent.created_by).toBe(setup.testUser.id);
         }
       }
     });
@@ -624,7 +584,7 @@ describe("イベント作成統合テスト - 1.3 データベース保存の確
         if (eventAccess) {
           expect(eventAccess.id).toBe(event.id);
           expect(eventAccess.title).toBe("Service Role権限テスト");
-          expect(eventAccess.created_by).toBe(testUser.id);
+          expect(eventAccess.created_by).toBe(setup.testUser.id);
           expect(eventAccess.invite_token).toBeDefined();
         }
       }
@@ -664,7 +624,7 @@ describe("イベント作成統合テスト - 1.3 データベース保存の確
         // （実際の監査ログは統合テストの出力で確認可能）
         // 監査ログ機能の動作確認として、イベントが適切に作成されたことで検証とする
         expect(event.id).toBeDefined();
-        expect(event.created_by).toBe(testUser.id);
+        expect(event.created_by).toBe(setup.testUser.id);
         expect(event.invite_token).toBeDefined();
 
         // 実際の監査ログはテスト実行時にコンソール出力で確認される：

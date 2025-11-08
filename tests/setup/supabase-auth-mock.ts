@@ -128,6 +128,10 @@ export const createMockSupabaseClient = () => ({
   auth: {
     getUser: () => supabaseAuthMock.getUser(),
     getSession: () => supabaseAuthMock.getSession(),
+    signInWithPassword: jest.fn().mockResolvedValue({
+      data: { user: null, session: null },
+      error: null,
+    }),
   },
   // RPC関数のモック（settlement tests用）
   rpc: jest.fn().mockResolvedValue({ data: [], error: null }),

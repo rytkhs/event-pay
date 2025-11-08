@@ -1,12 +1,13 @@
 import { jest } from "@jest/globals";
 
-// next/headers をモック
-let mockHeaders: { get: (name: string) => string | null } | undefined;
+import { setupNextCacheMocks, setupNextHeadersMocks } from "../../setup/common-mocks";
+
+// next/headers をモック（共通関数を使用するため、モック化のみ宣言）
 jest.mock("next/headers", () => ({
-  headers: jest.fn(() => mockHeaders),
+  headers: jest.fn(),
 }));
 
-// next/cache をモック
+// next/cache をモック（共通関数を使用するため、モック化のみ宣言）
 jest.mock("next/cache", () => ({
   revalidatePath: jest.fn(),
 }));
@@ -17,16 +18,15 @@ type AnyFn = (...args: any[]) => any;
 describe("updateEventAction", () => {
   beforeEach(() => {
     jest.resetModules();
-    jest.clearAllMocks();
-    mockHeaders = {
-      get: (name: string) => {
-        const n = name.toLowerCase();
-        if (n === "origin") return "http://localhost:3000";
-        if (n === "referer") return "http://localhost:3000/events/evt-1/edit";
-        if (n === "x-http-method-override") return "POST";
-        return null;
-      },
-    };
+    // 共通モックを使用してNext.js headersとcacheを設定
+    const mockHeaders = setupNextHeadersMocks({
+      origin: "http://localhost:3000",
+      referer: "http://localhost:3000/events/evt-1/edit",
+      "x-http-method-override": "POST",
+    });
+    const { headers } = require("next/headers");
+    (headers as jest.MockedFunction<typeof headers>).mockReturnValue(mockHeaders as any);
+    setupNextCacheMocks();
   });
 
   function mockSupabaseWith(options: {
@@ -37,16 +37,22 @@ describe("updateEventAction", () => {
   }) {
     const captured = { updateData: undefined as any };
 
+    // single: 1回目: 既存, 2回目: 更新後
+    const singleMock = jest
+      .fn()
+      .mockResolvedValueOnce({ data: options.existingEvent, error: null })
+      .mockResolvedValueOnce({
+        data: options.updatedEvent ?? options.existingEvent,
+        error: null,
+      });
+
     const eventsQuery: any = {
       select: jest.fn(() => eventsQuery),
       eq: jest.fn(() => eventsQuery),
-      // single: 1回目: 既存, 2回目: 更新後
-      single: (jest.fn() as AnyFn)
-        .mockResolvedValueOnce({ data: options.existingEvent, error: null })
-        .mockResolvedValueOnce({
-          data: options.updatedEvent ?? options.existingEvent,
-          error: null,
-        }),
+      single: jest.fn(() => {
+        // single() が呼ばれた時にPromiseを返す
+        return singleMock();
+      }),
       update: jest.fn((data: any) => {
         captured.updateData = data;
         return eventsQuery;
@@ -69,7 +75,10 @@ describe("updateEventAction", () => {
 
     const mockSupabase = {
       auth: {
-        getUser: jest.fn().mockResolvedValue({ data: { user: { id: "user-1" } }, error: null }),
+        getUser: jest.fn().mockResolvedValue({
+          data: { user: { id: "00000000-0000-0000-0000-000000000001" } },
+          error: null,
+        }) as any,
       },
       from: jest.fn((table: string) => {
         if (table === "events") return eventsQuery;
@@ -87,7 +96,7 @@ describe("updateEventAction", () => {
   it("fee=0 のみ更新で payment_methods が [] にクリアされる", async () => {
     const existingEvent = {
       id: "evt-1",
-      created_by: "user-1",
+      created_by: "00000000-0000-0000-0000-000000000001",
       title: "t",
       date: new Date(Date.now() + 3600_000).toISOString(),
       registration_deadline: new Date(Date.now() + 600_000).toISOString(),
@@ -115,7 +124,7 @@ describe("updateEventAction", () => {
   it("空欄送信で location/description/capacity/payment_deadline がクリアされる (reg_deadlineは不変)", async () => {
     const existingEvent = {
       id: "evt-2",
-      created_by: "user-1",
+      created_by: "00000000-0000-0000-0000-000000000001",
       title: "t",
       date: new Date(Date.now() + 3600_000).toISOString(),
       registration_deadline: new Date(Date.now() + 600_000).toISOString(),

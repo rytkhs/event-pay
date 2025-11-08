@@ -32,7 +32,7 @@ import {
   PaymentSessionIdempotencyTestHelper,
   IdempotencyTestValidators,
   type IdempotencyTestSetup,
-} from "../../helpers/payment-session-idempotency-test.helper";
+} from "../../helpers/test-payment-session-idempotency";
 
 // PaymentService実装の確実な登録
 import "@features/payments/core-bindings";
@@ -88,11 +88,6 @@ describe("決済セッション作成冪等性・並行制御統合テスト", (
           status: "open",
         });
       });
-  });
-
-  afterEach(() => {
-    // モックをリセット
-    jest.restoreAllMocks();
   });
 
   afterAll(async () => {

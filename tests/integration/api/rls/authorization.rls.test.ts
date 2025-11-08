@@ -2,11 +2,15 @@ import crypto from "crypto";
 
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 
-import { SecureSupabaseClientFactory } from "../../../core/security/secure-client-factory.impl";
-import { AdminReason } from "../../../core/security/secure-client-factory.types";
-import { generateGuestToken } from "../../../core/utils/guest-token";
+import { cleanupTestData } from "../../../setup/common-cleanup";
+import {
+  createMultiUserTestSetup,
+  type MultiUserTestSetup,
+} from "../../../setup/common-test-setup";
+
+import { generateGuestToken } from "@core/utils/guest-token";
 import type { Database } from "../../../types/database";
-import { createTestUser, deleteTestUser, type TestUser } from "../../helpers/test-user";
+import type { TestUser } from "../../helpers/test-user";
 
 /**
  * RLS 認可 準統合テスト
@@ -19,6 +23,7 @@ const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
 const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "";
 
 describe("RLS Authorization for attendances/payments", () => {
+  let setup: MultiUserTestSetup;
   let owner: TestUser;
   let other: TestUser;
 
@@ -27,16 +32,18 @@ describe("RLS Authorization for attendances/payments", () => {
   const paymentId = crypto.randomUUID();
 
   beforeAll(async () => {
-    // ユーザー作成
-    owner = await createTestUser(`rls-owner-${Date.now()}@example.com`, "Passw0rd!A");
-    other = await createTestUser(`rls-other-${Date.now()}@example.com`, "Passw0rd!A");
+    // ユーザー作成（createMultiUserTestSetupを使用）
+    setup = await createMultiUserTestSetup({
+      testName: `rls-auth-test-${Date.now()}`,
+      userCount: 2,
+      withConnect: [true, false], // 最初のユーザーはConnect設定済み、2番目は未設定
+    });
+    owner = setup.users[0];
+    other = setup.users[1];
 
     // 管理クライアントで初期データ投入（RLSバイパス）
-    const adminClient = await SecureSupabaseClientFactory.create().createAuditedAdminClient(
-      AdminReason.TEST_DATA_SETUP,
-      "RLS test setup: events/attendances/payments",
-      { accessedTables: ["public.events", "public.attendances", "public.payments"] }
-    );
+    // setup.adminClientを使用
+    const adminClient = setup.adminClient;
 
     const now = new Date().toISOString();
     const registrationDeadline = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
@@ -88,17 +95,15 @@ describe("RLS Authorization for attendances/payments", () => {
   });
 
   afterAll(async () => {
-    const adminClient = await SecureSupabaseClientFactory.create().createAuditedAdminClient(
-      AdminReason.TEST_DATA_CLEANUP,
-      "RLS test cleanup",
-      { accessedTables: ["public.events", "public.attendances", "public.payments"] }
-    );
-
-    await adminClient.from("payments").delete().eq("id", paymentId);
-    await adminClient.from("attendances").delete().eq("id", attendanceId);
-    await adminClient.from("events").delete().eq("id", eventId);
-
-    await Promise.allSettled([deleteTestUser(owner.email), deleteTestUser(other.email)]);
+    // Cleanup using common cleanup function
+    await cleanupTestData({
+      paymentIds: [paymentId],
+      attendanceIds: [attendanceId],
+      eventIds: [eventId],
+      userEmails: [owner.email, other.email],
+    });
+    // セットアップのクリーンアップ
+    await setup.cleanup();
   });
 
   test("主催者は自イベントのattendancesを取得できる", async () => {

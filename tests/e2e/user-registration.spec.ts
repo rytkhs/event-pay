@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 
-import { getOtpFromEmail, clearMailbox } from "../helpers/mailpit-helper";
+import { getOtpFromEmail, clearMailbox } from "../helpers/test-mailpit";
 import { deleteTestUser, type TestUser } from "../helpers/test-user";
 test.use({ storageState: { cookies: [], origins: [] } });
 

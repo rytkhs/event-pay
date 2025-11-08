@@ -19,37 +19,23 @@ import {
   type TestPaymentEvent,
   type TestAttendanceData,
 } from "@/tests/helpers/test-payment-data";
-import { testDataManager, createConnectTestData } from "@/tests/setup/test-data-seeds";
+
+import {
+  setupRevenueSummaryTest,
+  type RevenueSummaryTestSetup,
+} from "./revenue-summary-test-setup";
 
 describe("売上集計: canceled/refunded の扱い（回帰テスト）", () => {
-  let supabase: any;
-  let testUser: any;
+  let setup: RevenueSummaryTestSetup;
   let testEvent: TestPaymentEvent;
 
   beforeAll(async () => {
-    // テストデータの準備
-    const { activeUser } = await createConnectTestData();
-    testUser = activeUser;
-    testEvent = await createPaidTestEvent(activeUser.id, {
-      title: `Revenue Summary Test Event ${Date.now()}`,
-      fee: 1000,
-    });
-
-    // Supabaseクライアント取得
-    const factory = SecureSupabaseClientFactory.create();
-    supabase = await factory.createAuditedAdminClient(
-      AdminReason.TEST_DATA_SETUP,
-      "revenue summary test setup",
-      {
-        operationType: "SELECT",
-        accessedTables: ["public.payments", "public.attendances", "public.events"],
-        additionalInfo: { testContext: "revenue-summary-integration" },
-      }
-    );
+    setup = await setupRevenueSummaryTest();
+    testEvent = setup.testEvent;
   });
 
   afterAll(async () => {
-    await testDataManager.cleanupTestData();
+    await setup.cleanup();
   });
 
   /**
@@ -73,7 +59,7 @@ describe("売上集計: canceled/refunded の扱い（回帰テスト）", () =>
       paymentData.stripe_payment_intent_id = `pi_test_${Date.now()}_${Math.random()
         .toString(36)
         .slice(2, 8)}`;
-      paymentData.stripe_account_id = testUser.stripeConnectAccountId;
+      paymentData.stripe_account_id = setup.testUser.stripeConnectAccountId;
     }
 
     if (status === "paid" || status === "refunded") {
@@ -88,7 +74,7 @@ describe("売上集計: canceled/refunded の扱い（回帰テスト）", () =>
       paymentData.refunded_amount = amount;
     }
 
-    const { data, error } = await supabase
+    const { data, error } = await setup.supabase
       .from("payments")
       .insert(paymentData)
       .select("id")
@@ -103,7 +89,7 @@ describe("売上集計: canceled/refunded の扱い（回帰テスト）", () =>
 
   describe("会計原則に基づく売上集計", () => {
     it("総売上: paid/received の全てを計上（参加状態に関わらず）", async () => {
-      const event = await createPaidTestEvent(testUser.id, {
+      const event = await createPaidTestEvent(setup.testUser.id, {
         title: `Revenue Test 1 ${Date.now()}`,
         fee: 1000,
       });
@@ -111,7 +97,7 @@ describe("売上集計: canceled/refunded の扱い（回帰テスト）", () =>
       const attendance2 = await createTestAttendance(event.id);
 
       // attendance2 を not_attending に変更
-      await supabase
+      await setup.supabase
         .from("attendances")
         .update({ status: "not_attending" })
         .eq("id", attendance2.id);
@@ -121,7 +107,7 @@ describe("売上集計: canceled/refunded の扱い（回帰テスト）", () =>
       await createPayment(attendance2.id, "paid", 1000);
 
       // 売上集計
-      const { data: revenue, error } = await supabase.rpc("update_revenue_summary", {
+      const { data: revenue, error } = await setup.supabase.rpc("update_revenue_summary", {
         p_event_id: event.id,
       });
 
@@ -132,7 +118,7 @@ describe("売上集計: canceled/refunded の扱い（回帰テスト）", () =>
     });
 
     it("未収集計: pending と failed のみ対象", async () => {
-      const event = await createPaidTestEvent(testUser.id, {
+      const event = await createPaidTestEvent(setup.testUser.id, {
         title: `Revenue Test 2 ${Date.now()}`,
         fee: 1000,
       });
@@ -144,7 +130,7 @@ describe("売上集計: canceled/refunded の扱い（回帰テスト）", () =>
       await createPayment(attendance2.id, "failed", 1000);
       await createPayment(attendance3.id, "paid", 1000);
 
-      const { data: revenue, error } = await supabase.rpc("update_revenue_summary", {
+      const { data: revenue, error } = await setup.supabase.rpc("update_revenue_summary", {
         p_event_id: event.id,
       });
 
@@ -156,7 +142,7 @@ describe("売上集計: canceled/refunded の扱い（回帰テスト）", () =>
 
   describe("canceled ステータスの扱い", () => {
     it("canceled は売上・未収いずれからも除外される", async () => {
-      const event = await createPaidTestEvent(testUser.id, {
+      const event = await createPaidTestEvent(setup.testUser.id, {
         title: `Canceled Test 1 ${Date.now()}`,
         fee: 1000,
       });
@@ -170,7 +156,7 @@ describe("売上集計: canceled/refunded の扱い（回帰テスト）", () =>
       await createPayment(attendance3.id, "paid", 1000);
       await createPayment(attendance4.id, "received", 1000);
 
-      const { data: revenue, error } = await supabase.rpc("update_revenue_summary", {
+      const { data: revenue, error } = await setup.supabase.rpc("update_revenue_summary", {
         p_event_id: event.id,
       });
 
@@ -185,7 +171,7 @@ describe("売上集計: canceled/refunded の扱い（回帰テスト）", () =>
     });
 
     it("多数の canceled が混在しても正しく除外される", async () => {
-      const event = await createPaidTestEvent(testUser.id, {
+      const event = await createPaidTestEvent(setup.testUser.id, {
         title: `Canceled Test 2 ${Date.now()}`,
         fee: 1000,
       });
@@ -209,7 +195,7 @@ describe("売上集計: canceled/refunded の扱い（回帰テスト）", () =>
       await createPayment(attendances[8].id, "paid", 1000);
       await createPayment(attendances[9].id, "paid", 1000);
 
-      const { data: revenue, error } = await supabase.rpc("update_revenue_summary", {
+      const { data: revenue, error } = await setup.supabase.rpc("update_revenue_summary", {
         p_event_id: event.id,
       });
 
@@ -222,7 +208,7 @@ describe("売上集計: canceled/refunded の扱い（回帰テスト）", () =>
 
   describe("refunded ステータスの扱い", () => {
     it("refunded は売上・未収いずれからも除外される", async () => {
-      const event = await createPaidTestEvent(testUser.id, {
+      const event = await createPaidTestEvent(setup.testUser.id, {
         title: `Refunded Test 1 ${Date.now()}`,
         fee: 1000,
       });
@@ -236,7 +222,7 @@ describe("売上集計: canceled/refunded の扱い（回帰テスト）", () =>
       await createPayment(attendance3.id, "received", 1000);
       await createPayment(attendance4.id, "refunded", 1000); // 返金済み
 
-      const { data: revenue, error } = await supabase.rpc("update_revenue_summary", {
+      const { data: revenue, error } = await setup.supabase.rpc("update_revenue_summary", {
         p_event_id: event.id,
       });
 
@@ -249,7 +235,7 @@ describe("売上集計: canceled/refunded の扱い（回帰テスト）", () =>
     });
 
     it("複数の refunded が混在しても正しく除外される", async () => {
-      const event = await createPaidTestEvent(testUser.id, {
+      const event = await createPaidTestEvent(setup.testUser.id, {
         title: `Refunded Test 2 ${Date.now()}`,
         fee: 1000,
       });
@@ -268,7 +254,7 @@ describe("売上集計: canceled/refunded の扱い（回帰テスト）", () =>
       await createPayment(attendances[4].id, "refunded", 1000);
       await createPayment(attendances[5].id, "received", 1000);
 
-      const { data: revenue, error } = await supabase.rpc("update_revenue_summary", {
+      const { data: revenue, error } = await setup.supabase.rpc("update_revenue_summary", {
         p_event_id: event.id,
       });
 
@@ -280,7 +266,7 @@ describe("売上集計: canceled/refunded の扱い（回帰テスト）", () =>
 
   describe("全ステータス混在の総合テスト", () => {
     it("全ステータスが混在する場合も正しく集計される", async () => {
-      const event = await createPaidTestEvent(testUser.id, {
+      const event = await createPaidTestEvent(setup.testUser.id, {
         title: `Mixed Test ${Date.now()}`,
         fee: 1000,
       });
@@ -302,7 +288,7 @@ describe("売上集計: canceled/refunded の扱い（回帰テスト）", () =>
       await createPayment(attendances[6].id, "refunded", 1000);
       await createPayment(attendances[7].id, "paid", 1000);
 
-      const { data: revenue, error } = await supabase.rpc("update_revenue_summary", {
+      const { data: revenue, error } = await setup.supabase.rpc("update_revenue_summary", {
         p_event_id: event.id,
       });
 
@@ -320,12 +306,12 @@ describe("売上集計: canceled/refunded の扱い（回帰テスト）", () =>
 
   describe("エッジケース", () => {
     it("決済レコードが0件の場合も正常に処理される", async () => {
-      const emptyEvent = await createPaidTestEvent(testUser.id, {
+      const emptyEvent = await createPaidTestEvent(setup.testUser.id, {
         title: `Empty Event ${Date.now()}`,
         fee: 1000,
       });
 
-      const { data: revenue, error } = await supabase.rpc("update_revenue_summary", {
+      const { data: revenue, error } = await setup.supabase.rpc("update_revenue_summary", {
         p_event_id: emptyEvent.id,
       });
 
@@ -336,7 +322,7 @@ describe("売上集計: canceled/refunded の扱い（回帰テスト）", () =>
     });
 
     it("全て canceled の場合、売上・未収ともに0になる", async () => {
-      const event = await createPaidTestEvent(testUser.id, {
+      const event = await createPaidTestEvent(setup.testUser.id, {
         title: `All Canceled Event ${Date.now()}`,
         fee: 1000,
       });
@@ -353,7 +339,7 @@ describe("売上集計: canceled/refunded の扱い（回帰テスト）", () =>
         await createPayment(attendance.id, "canceled", 1000);
       }
 
-      const { data: revenue, error } = await supabase.rpc("update_revenue_summary", {
+      const { data: revenue, error } = await setup.supabase.rpc("update_revenue_summary", {
         p_event_id: event.id,
       });
 
@@ -364,7 +350,7 @@ describe("売上集計: canceled/refunded の扱い（回帰テスト）", () =>
     });
 
     it("全て refunded の場合、売上・未収ともに0になる", async () => {
-      const event = await createPaidTestEvent(testUser.id, {
+      const event = await createPaidTestEvent(setup.testUser.id, {
         title: `All Refunded Event ${Date.now()}`,
         fee: 1000,
       });
@@ -381,7 +367,7 @@ describe("売上集計: canceled/refunded の扱い（回帰テスト）", () =>
         await createPayment(attendance.id, "refunded", 1000);
       }
 
-      const { data: revenue, error } = await supabase.rpc("update_revenue_summary", {
+      const { data: revenue, error } = await setup.supabase.rpc("update_revenue_summary", {
         p_event_id: event.id,
       });
 
@@ -394,7 +380,7 @@ describe("売上集計: canceled/refunded の扱い（回帰テスト）", () =>
 
   describe("設計書準拠: キャンセル（決済済み）の扱い", () => {
     it("決済完了後に not_attending に変更しても売上に計上される（会計原則）", async () => {
-      const event = await createPaidTestEvent(testUser.id, {
+      const event = await createPaidTestEvent(setup.testUser.id, {
         title: `Accounting Test ${Date.now()}`,
         fee: 1000,
       });
@@ -406,12 +392,12 @@ describe("売上集計: canceled/refunded の扱い（回帰テスト）", () =>
       await createPayment(attendance2.id, "paid", 1000);
 
       // attendance2 を not_attending に変更（参加キャンセル）
-      await supabase
+      await setup.supabase
         .from("attendances")
         .update({ status: "not_attending" })
         .eq("id", attendance2.id);
 
-      const { data: revenue, error } = await supabase.rpc("update_revenue_summary", {
+      const { data: revenue, error } = await setup.supabase.rpc("update_revenue_summary", {
         p_event_id: event.id,
       });
 

@@ -16,20 +16,18 @@ import {
   resetPaymentState,
   calculateExpectedGuardBehavior,
 } from "../../helpers/payment-completion-guard-helpers";
-import {
-  createTestUserWithConnect,
-  createPaidTestEvent,
-  createTestAttendance,
-  cleanupTestPaymentData,
-  type TestPaymentUser,
-  type TestPaymentEvent,
-  type TestAttendanceData,
+import type {
+  TestPaymentUser,
+  TestPaymentEvent,
+  TestAttendanceData,
 } from "../../helpers/test-payment-data";
+import { createPaymentTestSetup, type PaymentTestSetup } from "../../setup/common-test-setup";
 
 // PaymentService実装の確実な登録
 import "@features/payments/core-bindings";
 
 describe("🚨 決済完了済みガード 仕様書適合性検証", () => {
+  let setup: PaymentTestSetup;
   let testUser: TestPaymentUser;
   let testEvent: TestPaymentEvent;
   let testAttendance: TestAttendanceData;
@@ -41,7 +39,24 @@ describe("🚨 決済完了済みガード 仕様書適合性検証", () => {
 
     paymentService = getPaymentService();
 
-    // fee_configのテストデータをセットアップ
+    // 共通決済テストセットアップを使用
+    setup = await createPaymentTestSetup({
+      testName: `spec-compliance-test-${Date.now()}`,
+      eventFee: 1000,
+      accessedTables: [
+        "public.users",
+        "public.events",
+        "public.attendances",
+        "public.payments",
+        "public.fee_config",
+      ],
+    });
+
+    testUser = setup.testUser;
+    testEvent = setup.testEvent;
+    testAttendance = setup.testAttendance;
+
+    // fee_configのテストデータをセットアップ（共通セットアップで設定されていない場合のフォールバック）
     const secureFactory = SecureSupabaseClientFactory.create();
     const adminClient = await secureFactory.createAuditedAdminClient(
       AdminReason.TEST_DATA_SETUP,
@@ -65,17 +80,6 @@ describe("🚨 決済完了済みガード 仕様書適合性検証", () => {
       is_tax_included: true,
     });
 
-    // テスト用データ作成
-    testUser = await createTestUserWithConnect(`spec-compliance-test-${Date.now()}@example.com`);
-    testEvent = await createPaidTestEvent(testUser.id, {
-      title: "仕様書適合性検証イベント",
-      fee: 1000,
-    });
-    testAttendance = await createTestAttendance(testEvent.id, {
-      email: `spec-compliance-participant-${Date.now()}@example.com`,
-      nickname: "仕様書検証参加者",
-    });
-
     baseSessionParams = {
       attendanceId: testAttendance.id,
       amount: testEvent.fee,
@@ -95,11 +99,8 @@ describe("🚨 決済完了済みガード 仕様書適合性検証", () => {
   });
 
   afterAll(async () => {
-    await cleanupTestPaymentData({
-      attendanceIds: [testAttendance.id],
-      eventIds: [testEvent.id],
-      userIds: [testUser.id],
-    });
+    // 共通クリーンアップ関数を使用
+    await setup.cleanup();
   });
 
   beforeEach(async () => {

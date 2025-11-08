@@ -1,4 +1,6 @@
-import { getCurrentUser } from "@core/auth/auth-utils";
+import { cleanupTestData } from "@tests/setup/common-cleanup";
+import { setupAuthMocks } from "@tests/setup/common-mocks";
+import { createCommonTestSetup, createPaymentTestSetup } from "@tests/setup/common-test-setup";
 
 import {
   generateSettlementReportAction,
@@ -6,19 +8,12 @@ import {
   exportSettlementReportsAction,
 } from "@/features/settlements/actions";
 import {
-  createTestUserWithConnect,
   createPaidTestEvent,
-  createTestAttendance,
   createPaidStripePayment,
-  cleanupTestPaymentData,
   type TestPaymentUser,
   type TestPaymentEvent,
   type TestAttendanceData,
 } from "@/tests/helpers/test-payment-data";
-import { deleteTestUser } from "@/tests/helpers/test-user";
-
-// getCurrentUserをモック
-const mockGetCurrentUser = getCurrentUser as jest.MockedFunction<typeof getCurrentUser>;
 
 /**
  * Settlement authentication & authorization integration tests
@@ -30,31 +25,38 @@ describe("Settlement Auth/Authz Integration", () => {
   let otherUser: TestPaymentUser;
   let eventData: TestPaymentEvent;
   let attendanceData: TestAttendanceData;
+  let mockGetCurrentUser: ReturnType<typeof setupAuthMocks>;
+  let ownerSetup: Awaited<ReturnType<typeof createPaymentTestSetup>>;
+  let otherSetup: Awaited<ReturnType<typeof createCommonTestSetup>>;
 
   beforeAll(async () => {
-    // Create two users: event owner and another user
-    ownerUser = await createTestUserWithConnect(
-      `settlement-owner-${Date.now()}@example.com`,
-      `acct_${Date.now()}`
-    );
-
-    otherUser = await createTestUserWithConnect(
-      `settlement-other-${Date.now()}@example.com`,
-      `acct_${Date.now()}_other`
-    );
-
-    // Create event owned by ownerUser
-    eventData = await createPaidTestEvent(ownerUser.id, {
-      title: "Auth Test Event",
-      fee: 1500,
+    // Create owner user with payment test setup (includes event and attendance)
+    ownerSetup = await createPaymentTestSetup({
+      testName: `settlement-auth-owner-${Date.now()}`,
+      eventFee: 1500,
+      paymentMethods: ["stripe"],
+      accessedTables: [
+        "public.events",
+        "public.attendances",
+        "public.payments",
+        "public.settlements",
+      ],
     });
+    ownerUser = ownerSetup.testUser as TestPaymentUser;
+    eventData = ownerSetup.testEvent;
+    attendanceData = ownerSetup.testAttendance;
 
-    // Create attendance and paid payment
-    attendanceData = await createTestAttendance(eventData.id, {
-      nickname: "Test Participant",
-      email: "participant@example.com",
+    // Create other user using common setup (no event needed)
+    otherSetup = await createCommonTestSetup({
+      testName: `settlement-auth-other-${Date.now()}`,
+      withConnect: true,
     });
+    otherUser = otherSetup.testUser as TestPaymentUser;
 
+    // Setup auth mocks
+    mockGetCurrentUser = setupAuthMocks(ownerUser);
+
+    // Create paid payment for the attendance
     await createPaidStripePayment(attendanceData.id, {
       amount: 1500,
       applicationFeeAmount: 150,
@@ -62,12 +64,14 @@ describe("Settlement Auth/Authz Integration", () => {
   });
 
   afterAll(async () => {
-    await cleanupTestPaymentData({
-      eventIds: [eventData.id],
-      userIds: [ownerUser.id, otherUser.id],
-    });
-
-    await Promise.allSettled([deleteTestUser(ownerUser.email), deleteTestUser(otherUser.email)]);
+    try {
+      // テスト実行（必要に応じて）
+    } finally {
+      // 必ずクリーンアップを実行
+      // ownerSetup.cleanup()はeventDataとattendanceDataも含めてクリーンアップする
+      await ownerSetup.cleanup();
+      await otherSetup.cleanup();
+    }
   });
 
   describe("未認証アクセス拒否", () => {
@@ -244,10 +248,9 @@ describe("Settlement Auth/Authz Integration", () => {
         expect(Array.isArray(result.reports)).toBe(true);
         expect(result.reports.length).toBe(0);
       } finally {
-        // Clean up the test event
-        await cleanupTestPaymentData({
+        // Clean up the test event using common cleanup
+        await cleanupTestData({
           eventIds: [otherEvent.id],
-          userIds: [],
         });
       }
     });

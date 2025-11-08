@@ -10,89 +10,44 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach } from "@jest/globals";
-import {
-  createTestUserWithConnect,
-  createPaidTestEvent,
-  cleanupTestPaymentData,
-  type TestPaymentUser,
-  type TestPaymentEvent,
-} from "@tests/helpers/test-payment-data";
-import { createTestUser, deleteTestUser } from "@tests/helpers/test-user";
-
-import { logger } from "@core/logging/app-logger";
-import { logParticipationSecurityEvent } from "@core/security/security-logger";
-import { createClient } from "@core/supabase/server";
 
 import { registerParticipationAction } from "@features/invite/actions/register-participation";
-import type { RegisterParticipationData } from "@features/invite/actions/register-participation";
+
+import {
+  createPaidTestEvent,
+  cleanupTestPaymentData,
+  type TestPaymentEvent,
+} from "@tests/helpers/test-payment-data";
 
 import type { Database } from "@/types/database";
+
+import {
+  setupBasicParticipationFlowTest,
+  type BasicParticipationFlowTestSetup,
+} from "./basic-participation-flow-test-setup";
 
 type AttendanceStatus = Database["public"]["Enums"]["attendance_status_enum"];
 type PaymentMethod = Database["public"]["Enums"]["payment_method_enum"];
 
-interface TestData {
-  user: TestPaymentUser;
-  eventId: string;
-  inviteToken: string;
-}
-
-// セキュリティログキャプチャ用
-let securityLogs: Array<{
-  type: string;
-  message: string;
-  details?: any;
-}> = [];
-
-// テストデータ格納変数
-let testData: TestData;
-
 describe("P0-1: 基本参加登録フロー統合テスト", () => {
+  let setup: BasicParticipationFlowTestSetup;
+
   beforeEach(async () => {
-    // テストデータクリーンアップ
-    await cleanupTestPaymentData({});
-
-    // セキュリティログキャプチャ開始
-    securityLogs = [];
-    jest
-      .spyOn(require("@core/security/security-logger"), "logParticipationSecurityEvent")
-      .mockImplementation((...args: any[]) => {
-        const [type, message, details] = args;
-        securityLogs.push({ type, message, details });
-      });
-
-    // テストユーザーとイベント作成
-    const user = await createTestUserWithConnect();
-    const event = await createPaidTestEvent(user.id, {
+    setup = await setupBasicParticipationFlowTest({
       fee: 0, // 無料イベント用
       paymentMethods: [],
     });
-
-    testData = {
-      user,
-      eventId: event.id,
-      inviteToken: event.invite_token,
-    };
   });
 
   afterEach(async () => {
-    // モックをリセット
-    jest.restoreAllMocks();
-
-    // テストデータクリーンアップ
-    if (testData) {
-      await cleanupTestPaymentData({
-        eventIds: [testData.eventId],
-        userIds: [testData.user.id],
-      });
-    }
+    await setup.cleanup();
   });
 
   describe("TC-P0-1-1: 無料イベント参加登録フロー", () => {
     it("無料イベントへの参加登録が仕様書通りに完了する", async () => {
       // テストデータ準備
       const participationFormData = new FormData();
-      participationFormData.append("inviteToken", testData.inviteToken);
+      participationFormData.append("inviteToken", setup.testData.inviteToken);
       participationFormData.append("nickname", "テスト太郎");
       participationFormData.append("email", "test@example.com");
       participationFormData.append("attendanceStatus", "attending");
@@ -126,7 +81,7 @@ describe("P0-1: 基本参加登録フロー統合テスト", () => {
 
       // データベース状態検証
       await DatabaseAssertions.verifyAttendanceCreated(
-        testData.eventId,
+        setup.testData.eventId,
         "test@example.com",
         "attending"
       );
@@ -136,8 +91,8 @@ describe("P0-1: 基本参加登録フロー統合テスト", () => {
 
       // セキュリティログ検証
       SecurityLogAssertions.verifySuccessfulRegistration(
-        securityLogs,
-        testData.eventId,
+        setup.securityLogs,
+        setup.testData.eventId,
         "attending"
       );
     });
@@ -147,8 +102,9 @@ describe("P0-1: 基本参加登録フロー統合テスト", () => {
     let paidEventData: TestPaymentEvent;
 
     beforeEach(async () => {
-      // 有料イベントを作成
-      paidEventData = await createPaidTestEvent(testData.user.id, {
+      // 注意: テスト内での追加データ作成のため、個別関数を使用
+      // セットアップは無料イベント用のため、有料イベントを追加で作成する必要がある
+      paidEventData = await createPaidTestEvent(setup.testData.user.id, {
         fee: 1500,
         capacity: 20,
         paymentMethods: ["stripe"],
@@ -210,7 +166,7 @@ describe("P0-1: 基本参加登録フロー統合テスト", () => {
 
       // セキュリティログ検証
       SecurityLogAssertions.verifySuccessfulRegistration(
-        securityLogs,
+        setup.securityLogs,
         paidEventData.id,
         "attending"
       );
@@ -222,7 +178,7 @@ describe("P0-1: 基本参加登録フロー統合テスト", () => {
 
     beforeEach(async () => {
       // 有料イベントを作成（未定でも有料・無料関係なくテスト可能）
-      maybeEventData = await createPaidTestEvent(testData.user.id, {
+      maybeEventData = await createPaidTestEvent(setup.testData.user.id, {
         fee: 1000,
         capacity: 15,
         paymentMethods: ["stripe"],
@@ -303,7 +259,11 @@ describe("P0-1: 基本参加登録フロー統合テスト", () => {
       expect(attendingCount).toBe(0); // 「maybe」は定員にカウントされない
 
       // セキュリティログ検証
-      SecurityLogAssertions.verifySuccessfulRegistration(securityLogs, maybeEventData.id, "maybe");
+      SecurityLogAssertions.verifySuccessfulRegistration(
+        setup.securityLogs,
+        maybeEventData.id,
+        "maybe"
+      );
     });
   });
 });
