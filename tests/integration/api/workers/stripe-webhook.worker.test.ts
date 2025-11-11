@@ -1,17 +1,19 @@
+import { webhookEventFixtures } from "../../../fixtures/payment-test-fixtures";
+import { createPendingTestPayment } from "../../../helpers/test-payment-data";
 import {
   setupStripeWebhookWorkerTest,
   setupBeforeEach,
   type StripeWebhookWorkerTestSetup,
-} from "../../../api/workers/stripe-webhook-worker-test-setup";
-import { POST as WorkerPOST } from "../../../app/api/workers/stripe-webhook/route";
-import { webhookEventFixtures } from "../../fixtures/payment-test-fixtures";
-import { createPendingTestPayment } from "../../helpers/test-payment-data";
+} from "../../api/workers/stripe-webhook-worker-test-setup";
+
+let WorkerPOST: typeof import("../../../../app/api/workers/stripe-webhook/route").POST;
 
 describe("/api/workers/stripe-webhook (worker)", () => {
   let setup: StripeWebhookWorkerTestSetup;
 
   beforeAll(async () => {
     setup = await setupStripeWebhookWorkerTest();
+    ({ POST: WorkerPOST } = await import("../../../../app/api/workers/stripe-webhook/route"));
   });
 
   afterAll(async () => {
@@ -31,12 +33,14 @@ describe("/api/workers/stripe-webhook (worker)", () => {
     });
 
     const evt = webhookEventFixtures.paymentIntentSucceeded();
+    const paymentIntentId = `pi_${pending.id}`;
     // metadata.payment_id をシードした pending に合わせる
     (evt.data.object as any).metadata = {
       payment_id: pending.id,
       attendance_id: attendance.id,
       event_title: event.title,
     };
+    (evt.data.object as any).id = paymentIntentId;
 
     const req1 = setup.createRequest({ event: evt });
     const res1 = await WorkerPOST(req1);
@@ -56,11 +60,13 @@ describe("/api/workers/stripe-webhook (worker)", () => {
     });
 
     const evt = webhookEventFixtures.checkoutCompleted();
+    const paymentIntentId = `pi_${pending.id}`;
     (evt.data.object as any).metadata = {
       payment_id: pending.id,
       attendance_id: attendance.id,
       event_title: event.title,
     };
+    (evt.data.object as any).payment_intent = paymentIntentId;
 
     const req = setup.createRequest({ event: evt });
     const res = await WorkerPOST(req);

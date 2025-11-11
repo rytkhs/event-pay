@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 
-import { POST as ConnectWorkerPOST } from "../../../app/api/workers/stripe-connect-webhook/route";
+import { POST as ConnectWorkerPOST } from "../../../../app/api/workers/stripe-connect-webhook/route";
 
 // QStash Receiver.verify を常にtrueにする
 const mockVerify = jest.fn();

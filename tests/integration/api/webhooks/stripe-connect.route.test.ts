@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 
-import { POST as ConnectWebhookPOST } from "../../../app/api/webhooks/stripe-connect/route";
+import { POST as ConnectWebhookPOST } from "../../../../app/api/webhooks/stripe-connect/route";
 
 const mockPublishJSON = jest.fn();
 jest.mock("@upstash/qstash", () => ({
@@ -10,7 +10,7 @@ jest.mock("@upstash/qstash", () => ({
 }));
 
 const mockVerifySignature = jest.fn();
-jest.mock("@features/payments", () => ({
+jest.mock("@features/payments/services/webhook/webhook-signature-verifier", () => ({
   StripeWebhookSignatureVerifier: jest.fn().mockImplementation(() => ({
     verifySignature: (...args: unknown[]) => mockVerifySignature(...args),
   })),
@@ -20,6 +20,10 @@ describe("/api/webhooks/stripe-connect (receiver)", () => {
   beforeEach(() => {
     process.env.QSTASH_TOKEN = "test_qstash_token";
     process.env.NODE_ENV = "test";
+    // QStashへのpublishをテストするため、SKIP_QSTASH_IN_TESTを未設定にする
+    delete process.env.SKIP_QSTASH_IN_TEST;
+    mockVerifySignature.mockClear();
+    mockPublishJSON.mockClear();
   });
 
   function createRequest(payload: string, headersInit?: Record<string, string>) {
@@ -118,8 +122,25 @@ describe("/api/webhooks/stripe-connect (receiver)", () => {
       const fakeConnectEvent = {
         id: "evt_connect_123",
         type: "account.updated",
+        object: "event",
         account: "acct_test_123",
-      };
+        data: {
+          object: {
+            id: "acct_test_123",
+            object: "account",
+            metadata: {
+              actor_id: "test_user_id",
+            },
+          } as any,
+        },
+        created: Math.floor(Date.now() / 1000),
+        livemode: false,
+        pending_webhooks: 1,
+        request: {
+          id: null,
+          idempotency_key: null,
+        },
+      } as any;
       mockVerifySignature.mockResolvedValueOnce({
         isValid: true,
         event: fakeConnectEvent,
@@ -138,8 +159,16 @@ describe("/api/webhooks/stripe-connect (receiver)", () => {
           received: true,
           eventId: fakeConnectEvent.id,
           eventType: fakeConnectEvent.type,
+          qstashMessageId: "msg_connect_123",
         })
       );
+
+      // publishJSON の引数検証
+      expect(mockPublishJSON).toHaveBeenCalledTimes(1);
+      const call = mockPublishJSON.mock.calls[0][0];
+      expect(call.url).toContain("/api/workers/stripe-connect-webhook");
+      expect(call.deduplicationId).toBe(fakeConnectEvent.id);
+      expect(call.body).toEqual({ event: fakeConnectEvent });
     });
   });
 });

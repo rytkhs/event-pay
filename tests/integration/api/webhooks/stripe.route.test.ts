@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 
-import { POST as StripeWebhookPOST } from "../../../app/api/webhooks/stripe/route";
+import { POST as StripeWebhookPOST } from "../../../../app/api/webhooks/stripe/route";
 
 const mockPublishJSON = jest.fn();
 jest.mock("@upstash/qstash", () => ({

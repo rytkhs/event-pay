@@ -19,6 +19,10 @@ import {
   type VerifySessionTestContext,
 } from "./verify-session-test-setup";
 
+// モックは他のインポートより前に宣言する必要がある
+jest.mock("@core/security/security-logger");
+jest.mock("@core/rate-limit");
+
 describe("🔒 セキュリティテスト", () => {
   let context: VerifySessionTestContext;
 

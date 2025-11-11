@@ -16,6 +16,9 @@ import {
   type VerifySessionTestContext,
 } from "./verify-session-test-setup";
 
+jest.mock("@core/security/security-logger");
+jest.mock("@core/rate-limit");
+
 describe("🔍 仕様書の実装差異検出テスト", () => {
   let context: VerifySessionTestContext;
 

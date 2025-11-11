@@ -2,10 +2,16 @@
  * Verify Session API: レート制限テスト
  */
 
-import { describe, test, expect, beforeAll, afterAll, afterEach, beforeEach } from "@jest/globals";
 import { NextRequest, NextResponse } from "next/server";
 
+import { describe, test, expect, beforeAll, afterAll, afterEach, beforeEach } from "@jest/globals";
+
+// モックは他のインポートより前に宣言する必要がある
+jest.mock("@core/security/security-logger");
+jest.mock("@core/rate-limit");
+
 import { POLICIES } from "@core/rate-limit";
+
 import { GET as verifySessionHandler } from "@/app/api/payments/verify-session/route";
 
 import {

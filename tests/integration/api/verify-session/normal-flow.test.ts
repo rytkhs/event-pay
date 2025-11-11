@@ -4,6 +4,10 @@
 
 import { describe, test, expect, beforeAll, afterAll, afterEach, beforeEach } from "@jest/globals";
 
+// モックは他のインポートより前に宣言する必要がある
+jest.mock("@core/security/security-logger");
+jest.mock("@core/rate-limit");
+
 import type { VerifySessionScenario } from "@tests/helpers/test-verify-session";
 
 import { GET as verifySessionHandler } from "@/app/api/payments/verify-session/route";
