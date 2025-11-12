@@ -183,10 +183,13 @@ export async function updateEventAction(
           : Number(validatedData.fee || 0)
         : (existingEvent.fee ?? 0);
 
+    // fee=0 の場合は決済方法を空配列にする
     const effectivePaymentMethods =
-      validatedData.payment_methods !== undefined
-        ? validatedData.payment_methods
-        : existingEvent.payment_methods || [];
+      effectiveFee === 0
+        ? []
+        : validatedData.payment_methods !== undefined
+          ? validatedData.payment_methods
+          : existingEvent.payment_methods || [];
 
     // 有料イベント時の決済方法必須チェック（effective値での検証）
     if (effectiveFee > 0 && effectivePaymentMethods.length === 0) {

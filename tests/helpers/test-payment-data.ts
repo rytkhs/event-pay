@@ -4,6 +4,8 @@
  * Connect設定済み/未設定ユーザー、有料イベント、pending paymentsの作成
  */
 
+import type { SupabaseClient } from "@supabase/supabase-js";
+
 import { SecureSupabaseClientFactory } from "@core/security/secure-client-factory.impl";
 import { AdminReason } from "@core/security/secure-client-factory.types";
 import { generateInviteToken } from "@core/utils/invite-token";
@@ -419,6 +421,7 @@ export async function createCompleteTestScenario(scenarioName: string = "payment
   paidEvent: TestPaymentEvent;
   freeEvent: TestPaymentEvent;
   attendance: TestAttendanceData;
+  attendanceForExistingAmount: TestAttendanceData;
   pendingPayment: TestPaymentData;
   existingAmountPayment: TestPaymentData;
 }> {
@@ -445,11 +448,17 @@ export async function createCompleteTestScenario(scenarioName: string = "payment
     }),
   ]);
 
-  // 3. 参加者を作成
-  const attendance = await createTestAttendance(paidEvent.id, {
-    email: `${scenarioName}-participant@example.com`,
-    nickname: `${scenarioName}参加者`,
-  });
+  // 3. 参加者を作成（2つの異なる attendance を作成して、それぞれに payment を作成できるようにする）
+  const [attendance, attendanceForExistingAmount] = await Promise.all([
+    createTestAttendance(paidEvent.id, {
+      email: `${scenarioName}-participant@example.com`,
+      nickname: `${scenarioName}参加者`,
+    }),
+    createTestAttendance(paidEvent.id, {
+      email: `${scenarioName}-participant-existing-amount@example.com`,
+      nickname: `${scenarioName}参加者（既存金額）`,
+    }),
+  ]);
 
   // 4. 決済データを作成
   const [pendingPayment, existingAmountPayment] = await Promise.all([
@@ -457,7 +466,7 @@ export async function createCompleteTestScenario(scenarioName: string = "payment
       amount: paidEvent.fee,
       stripeAccountId: userWithConnect.stripeConnectAccountId,
     }),
-    createTestPaymentWithExistingAmount(attendance.id, 2000, {
+    createTestPaymentWithExistingAmount(attendanceForExistingAmount.id, 2000, {
       stripeAccountId: userWithConnect.stripeConnectAccountId,
     }),
   ]);
@@ -472,6 +481,7 @@ export async function createCompleteTestScenario(scenarioName: string = "payment
     paidEvent,
     freeEvent,
     attendance,
+    attendanceForExistingAmount,
     pendingPayment,
     existingAmountPayment,
   };
@@ -734,6 +744,81 @@ export async function createPaymentDispute(
 }
 
 /**
+ * 汎用的なテスト用決済を作成（複数のステータスに対応）
+ *
+ * @param attendanceId 参加ID
+ * @param options 決済オプション
+ * @returns 作成された決済データ
+ */
+export async function createTestPaymentWithStatus(
+  attendanceId: string,
+  options: {
+    amount: number;
+    status: Database["public"]["Enums"]["payment_status_enum"];
+    method: Database["public"]["Enums"]["payment_method_enum"];
+    stripePaymentIntentId?: string;
+  }
+): Promise<TestPaymentData> {
+  const {
+    amount,
+    status,
+    method,
+    stripePaymentIntentId = method === "stripe"
+      ? `pi_test_${Math.random().toString(36).substring(2, 15)}`
+      : null,
+  } = options;
+
+  const secureFactory = SecureSupabaseClientFactory.create();
+  const adminClient = await secureFactory.createAuditedAdminClient(
+    AdminReason.TEST_DATA_SETUP,
+    `Creating test payment with status ${status} for attendance: ${attendanceId}`,
+    {
+      operationType: "INSERT",
+      accessedTables: ["public.payments"],
+      additionalInfo: {
+        testContext: "test-payment-creation",
+        attendanceId,
+        amount,
+        status,
+        method,
+      },
+    }
+  );
+
+  const paidAt = ["paid", "received"].includes(status) ? new Date().toISOString() : null;
+
+  const paymentData: PaymentInsert = {
+    attendance_id: attendanceId,
+    amount,
+    status,
+    method,
+    paid_at: paidAt,
+    stripe_payment_intent_id: stripePaymentIntentId,
+    tax_included: false,
+  };
+
+  const { data: payment, error } = await adminClient
+    .from("payments")
+    .insert(paymentData)
+    .select()
+    .single();
+
+  if (error) {
+    throw new Error(`Failed to create test payment: ${error.message}`);
+  }
+
+  return {
+    id: payment.id,
+    amount: payment.amount,
+    status: payment.status,
+    method: payment.method,
+    attendance_id: payment.attendance_id,
+    application_fee_amount: payment.application_fee_amount || 0,
+    stripe_account_id: payment.stripe_account_id || undefined,
+  };
+}
+
+/**
  * 返金済みのStripe決済を作成（統合テスト用）
  * - status = 'refunded'
  * - refunded_amount を設定
@@ -804,4 +889,133 @@ export async function createRefundedStripePayment(
     application_fee_amount: paymentData.application_fee_amount || 0,
     stripe_account_id: paymentData.stripe_account_id || undefined,
   };
+}
+
+/**
+ * ダッシュボード統計テスト用: 簡易イベント作成
+ *
+ * AdminClientを使用してイベントを作成し、作成したIDを配列に追加する
+ * dashboard-stats.integration.test.ts で使用される簡易版
+ */
+export async function createEventForDashboardStats(
+  adminClient: SupabaseClient<Database>,
+  createdBy: string,
+  createdEventIds: string[],
+  options: {
+    title: string;
+    date: string;
+    fee: number;
+    canceled_at?: string | null;
+  }
+): Promise<Database["public"]["Tables"]["events"]["Row"]> {
+  const eventDate = new Date(options.date);
+  const registrationDeadline = new Date(eventDate.getTime() - 12 * 60 * 60 * 1000);
+  const paymentDeadline = new Date(eventDate.getTime() - 6 * 60 * 60 * 1000);
+
+  const { data: event, error } = await adminClient
+    .from("events")
+    .insert({
+      title: options.title,
+      date: options.date,
+      fee: options.fee,
+      created_by: createdBy,
+      registration_deadline: registrationDeadline.toISOString(),
+      payment_deadline: options.fee > 0 ? paymentDeadline.toISOString() : null,
+      payment_methods: options.fee > 0 ? ["stripe"] : [],
+      canceled_at: options.canceled_at || null,
+      invite_token: `test-token-${Date.now()}-${Math.random()}`,
+    })
+    .select()
+    .single();
+
+  if (error) {
+    throw new Error(`Failed to create event: ${error.message}`);
+  }
+
+  createdEventIds.push(event.id);
+  return event;
+}
+
+/**
+ * ダッシュボード統計テスト用: 簡易参加者作成
+ *
+ * AdminClientを使用して参加者を作成し、作成したIDを配列に追加する
+ * dashboard-stats.integration.test.ts で使用される簡易版
+ */
+export async function createAttendanceForDashboardStats(
+  adminClient: SupabaseClient<Database>,
+  eventId: string,
+  createdAttendanceIds: string[],
+  status: "attending" | "not_attending" | "maybe",
+  nickname: string
+): Promise<Database["public"]["Tables"]["attendances"]["Row"]> {
+  // emailを生成（正規表現制約に適合する形式）
+  const randomId = Math.random().toString(36).substring(2, 12);
+  const email = `test${randomId}@example.com`;
+
+  // guest_tokenを36文字以内に収める（gst_プレフィックス + 32文字のBase64）
+  const randomBytes =
+    Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+  const guestToken = `gst_${randomBytes.substring(0, 32)}`;
+
+  const { data: attendance, error } = await adminClient
+    .from("attendances")
+    .insert({
+      event_id: eventId,
+      email: email,
+      nickname: nickname,
+      status: status,
+      guest_token: guestToken,
+    })
+    .select()
+    .single();
+
+  if (error) {
+    throw new Error(`Failed to create attendance: ${error.message}`);
+  }
+
+  createdAttendanceIds.push(attendance.id);
+  return attendance;
+}
+
+/**
+ * ダッシュボード統計テスト用: 簡易決済作成
+ *
+ * AdminClientを使用して決済を作成し、作成したIDを配列に追加する
+ * dashboard-stats.integration.test.ts で使用される簡易版
+ */
+export async function createPaymentForDashboardStats(
+  adminClient: SupabaseClient<Database>,
+  attendanceId: string,
+  createdPaymentIds: string[],
+  amount: number,
+  status: "paid" | "received" | "pending" | "failed",
+  method: "stripe" | "cash"
+): Promise<Database["public"]["Tables"]["payments"]["Row"]> {
+  // statusが"paid"または"received"の場合はpaid_atを設定
+  const paidAt = ["paid", "received"].includes(status) ? new Date().toISOString() : null;
+
+  // Stripe決済の場合はstripe_payment_intent_idが必須
+  const stripePaymentIntentId =
+    method === "stripe" ? `pi_test_${Math.random().toString(36).substring(2, 15)}` : null;
+
+  const { data: payment, error } = await adminClient
+    .from("payments")
+    .insert({
+      attendance_id: attendanceId,
+      amount: amount,
+      status: status,
+      method: method,
+      paid_at: paidAt,
+      stripe_payment_intent_id: stripePaymentIntentId,
+    })
+    .select()
+    .single();
+
+  if (error) {
+    throw new Error(`Failed to create payment: ${error.message}`);
+  }
+
+  createdPaymentIds.push(payment.id);
+  return payment;
 }

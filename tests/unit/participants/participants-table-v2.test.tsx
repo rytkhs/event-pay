@@ -19,6 +19,21 @@ jest.mock("@core/utils/participant-smart-sort", () => ({
   conditionalSmartSort: mockConditionalSmartSort,
 }));
 
+// next/navigation の useRouter をモック
+const mockRefresh = jest.fn();
+jest.mock("next/navigation", () => ({
+  useRouter: () => ({
+    refresh: mockRefresh,
+    push: jest.fn(),
+    replace: jest.fn(),
+    prefetch: jest.fn(),
+    back: jest.fn(),
+    forward: jest.fn(),
+  }),
+  usePathname: () => "/events/event-1/participants",
+  useSearchParams: () => new URLSearchParams(),
+}));
+
 import React from "react";
 
 import { render, screen, waitFor } from "@testing-library/react";
@@ -31,7 +46,7 @@ import type {
 } from "@core/validation/participant-management";
 
 // テスト対象コンポーネント
-import { ParticipantsTableV2 } from "@/app/events/[id]/participants/components/participants-table-v2/participants-table";
+import { ParticipantsTableV2 } from "@/app/(app)/events/[id]/participants/components/participants-table-v2/participants-table";
 
 // LocalStorage をモック
 const mockLocalStorage = {
@@ -121,12 +136,9 @@ describe("ParticipantsTableV2", () => {
   };
 
   beforeEach(() => {
-    jest.clearAllMocks();
     mockLocalStorage.getItem.mockReturnValue(null);
-  });
-
-  afterEach(() => {
     jest.clearAllMocks();
+    mockRefresh.mockClear();
   });
 
   describe("基本表示", () => {

@@ -213,6 +213,11 @@ export async function GET(request: NextRequest) {
           session_id: maskSessionId(session_id),
           error: stripeError instanceof Error ? stripeError.message : String(stripeError),
         });
+
+        // Stripe APIエラーの場合は即座に404を返す
+        return createProblemResponse("PAYMENT_SESSION_NOT_FOUND", {
+          instance: "/api/payments/verify-session",
+        });
       }
 
       if (checkoutSession) {
@@ -316,7 +321,7 @@ export async function GET(request: NextRequest) {
             attendanceId: attendance_id,
             sessionId: maskSessionId(session_id),
             hasGuestToken: !!guestToken,
-            dbErrorCode: (dbError as any).code,
+            dbErrorCode: dbError ? (dbError as any).code : undefined,
           },
           ip: getClientIP(request),
           timestamp: new Date(),
@@ -345,6 +350,13 @@ export async function GET(request: NextRequest) {
           instance: "/api/payments/verify-session",
         });
       }
+    }
+
+    // checkoutSession が null の場合は処理を中断
+    if (!checkoutSession) {
+      return createProblemResponse("PAYMENT_SESSION_NOT_FOUND", {
+        instance: "/api/payments/verify-session",
+      });
     }
 
     // セッションステータスから決済状況を判定

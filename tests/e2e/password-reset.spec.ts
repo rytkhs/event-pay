@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 
-import { getPasswordResetLinkFromEmail, clearMailbox } from "../helpers/mailpit-helper";
+import { getPasswordResetLinkFromEmail, clearMailbox } from "../helpers/test-mailpit";
 import { createTestUser, deleteTestUser, type TestUser } from "../helpers/test-user";
 
 // 認証なしでアクセス

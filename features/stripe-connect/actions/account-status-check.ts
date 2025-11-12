@@ -22,6 +22,7 @@ export type ConnectAccountStatusType =
   | "no_account" // アカウント未作成
   | "unverified" // アカウント作成済みだが未認証
   | "requirements_due" // 認証済みだが要件不備
+  | "pending_review" // 提出済み情報の審査待ち
   | "ready"; // 全て完了
 
 export interface DetailedAccountStatus {
@@ -80,6 +81,23 @@ export async function getDetailedAccountStatusAction(): Promise<{
     // 4. アカウント詳細情報を取得
     const accountInfo = await stripeConnectService.getAccountInfo(account.stripe_account_id);
 
+    const requirements = accountInfo.requirements ?? {
+      currently_due: [],
+      eventually_due: [],
+      past_due: [],
+      pending_verification: [],
+    };
+
+    const hasPastDue = (requirements.past_due?.length ?? 0) > 0;
+    const hasCurrentlyDue = (requirements.currently_due?.length ?? 0) > 0;
+    const hasEventuallyDue = (requirements.eventually_due?.length ?? 0) > 0;
+    const hasPendingVerification = (requirements.pending_verification?.length ?? 0) > 0;
+    const hasPendingCapabilities = Boolean(
+      accountInfo.capabilities &&
+        (accountInfo.capabilities.card_payments === "pending" ||
+          accountInfo.capabilities.transfers === "pending")
+    );
+
     // 5. ステータス別の判定
     if (accountInfo.status === "unverified") {
       return {
@@ -97,16 +115,7 @@ export async function getDetailedAccountStatusAction(): Promise<{
     }
 
     // 6. 要件チェック（認証済みだが追加情報が必要）
-    const hasRequirements =
-      accountInfo.requirements &&
-      (accountInfo.requirements.currently_due.length > 0 ||
-        accountInfo.requirements.past_due.length > 0 ||
-        accountInfo.requirements.eventually_due.length > 0);
-
-    if (hasRequirements) {
-      const hasPastDue = (accountInfo.requirements?.past_due.length || 0) > 0;
-      const hasCurrentlyDue = (accountInfo.requirements?.currently_due.length || 0) > 0;
-
+    if (hasPastDue || hasCurrentlyDue || hasEventuallyDue) {
       return {
         success: true,
         status: {
@@ -122,6 +131,21 @@ export async function getDetailedAccountStatusAction(): Promise<{
           actionText: "情報を更新する",
           actionUrl: "/dashboard/connect?action=update",
           severity: hasPastDue ? "error" : hasCurrentlyDue ? "warning" : "info",
+        },
+      };
+    }
+
+    if (accountInfo.status === "onboarding" && (hasPendingVerification || hasPendingCapabilities)) {
+      return {
+        success: true,
+        status: {
+          statusType: "pending_review",
+          title: "提出内容をStripeが審査中です",
+          description:
+            "提出いただいた情報をStripeが確認しています。審査完了までしばらくお待ちください。進捗はStripeの設定画面で確認できます。",
+          actionText: "提出内容を確認",
+          actionUrl: "/settings/payments",
+          severity: "info",
         },
       };
     }

@@ -366,3 +366,70 @@ export const testPaymentData = {
     application_fee_amount: 150,
   },
 };
+
+/**
+ * ApplicationFeeCalculator モック生成
+ *
+ * 決済テスト用のApplicationFeeCalculatorモックを生成
+ * カスタマイズ可能なオプションパラメータで手数料計算結果を設定
+ */
+export const createMockApplicationFeeCalculator = (options?: {
+  amount?: number;
+  applicationFeeAmount?: number;
+  rate?: number;
+  fixedFee?: number;
+  minimumFee?: number;
+  maximumFee?: number;
+  taxRate?: number;
+  isTaxIncluded?: boolean;
+}) => {
+  const {
+    amount = 1000,
+    applicationFeeAmount,
+    rate = 0.049,
+    fixedFee = 0,
+    minimumFee = 50,
+    maximumFee = 1000,
+    taxRate = 0,
+    isTaxIncluded = true,
+  } = options || {};
+
+  // applicationFeeAmountが指定されていない場合は、rateから計算
+  const calculatedFee = applicationFeeAmount ?? Math.floor(amount * rate) + fixedFee;
+
+  // min/max適用
+  const afterMinimum = Math.max(calculatedFee, minimumFee);
+  const afterMaximum = Math.min(afterMinimum, maximumFee);
+
+  return {
+    calculateApplicationFee: jest.fn().mockResolvedValue({
+      amount,
+      applicationFeeAmount: afterMaximum,
+      config: {
+        rate,
+        fixedFee,
+        minimumFee,
+        maximumFee,
+        taxRate,
+        isTaxIncluded,
+      },
+      calculation: {
+        rateFee: Math.floor(amount * rate),
+        fixedFee,
+        beforeClipping: calculatedFee,
+        afterMinimum,
+        afterMaximum,
+      },
+      taxCalculation: {
+        taxRate,
+        feeExcludingTax: afterMaximum,
+        taxAmount: 0,
+        isTaxIncluded,
+      },
+    }),
+    calculateApplicationFeeBatch: jest.fn(),
+    validateConfig: jest.fn(),
+  } as unknown as jest.Mocked<
+    import("../../features/payments/services/fee-config/application-fee-calculator").ApplicationFeeCalculator
+  >;
+};

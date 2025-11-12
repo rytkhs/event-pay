@@ -7,7 +7,7 @@ import "@testing-library/jest-dom";
 import userEvent from "@testing-library/user-event";
 import { ColumnDef } from "@tanstack/react-table";
 
-import { DataTable } from "@/app/events/[id]/participants/components/participants-table-v2/data-table";
+import { DataTable } from "@/app/(app)/events/[id]/participants/components/participants-table-v2/data-table";
 
 interface TestData {
   id: string;
@@ -44,10 +44,6 @@ const defaultProps = {
 };
 
 describe("DataTable", () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
-  });
-
   describe("基本表示", () => {
     it("テーブルが正しく表示される", () => {
       render(<DataTable {...defaultProps} />);
@@ -129,7 +125,7 @@ describe("DataTable", () => {
       const dataRows = rows.slice(1);
 
       dataRows.forEach((row) => {
-        expect(row).toHaveClass("hover:bg-blue-50");
+        expect(row).toHaveClass("hover:bg-muted/50");
       });
     });
 

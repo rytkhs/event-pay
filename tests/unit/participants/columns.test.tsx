@@ -11,7 +11,7 @@ import type { ParticipantView } from "@core/validation/participant-management";
 import {
   buildParticipantsColumns,
   type ActionsCellHandlers,
-} from "@/app/events/[id]/participants/components/participants-table-v2/columns";
+} from "@/app/(app)/events/[id]/participants/components/participants-table-v2/columns";
 
 // モックハンドラー
 const mockHandlers: ActionsCellHandlers = {
@@ -70,10 +70,6 @@ function TestTableRow({
 }
 
 describe("buildParticipantsColumns", () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
-  });
-
   describe("ニックネーム列", () => {
     it("ニックネームが正しく表示される", () => {
       render(<TestTableRow participant={mockParticipant} eventFee={1000} />);

@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/table";
 
 export const metadata: Metadata = {
-  title: "設定に迷ったら | みんなの集金",
+  title: "設定に迷ったら",
   description: "Stripe設定時に入力する項目と回答の参考",
 };
 

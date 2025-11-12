@@ -545,9 +545,7 @@ function ModernEventForm({
                                 disabled={isPending}
                               />
                             </FormControl>
-                            <FormDescription>
-                              開催日時から30日以内で設定してください（開催後の設定も可能）
-                            </FormDescription>
+                            <FormDescription>（後払いも可能）</FormDescription>
                             <FormMessage />
                           </FormItem>
                         )}

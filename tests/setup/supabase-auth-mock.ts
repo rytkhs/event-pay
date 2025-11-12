@@ -128,6 +128,10 @@ export const createMockSupabaseClient = () => ({
   auth: {
     getUser: () => supabaseAuthMock.getUser(),
     getSession: () => supabaseAuthMock.getSession(),
+    signInWithPassword: jest.fn().mockResolvedValue({
+      data: { user: null, session: null },
+      error: null,
+    }),
   },
   // RPC関数のモック（settlement tests用）
   rpc: jest.fn().mockResolvedValue({ data: [], error: null }),
@@ -147,6 +151,51 @@ export const createMockSupabaseClient = () => ({
   }),
   // 他の必要なメソッドがあればここに追加
 });
+
+/**
+ * 決済テスト用のSupabaseクライアントモック生成
+ *
+ * PaymentServiceのテストで使用されるクエリパターンに対応したモック設定
+ */
+export const createMockSupabaseClientForPayments = (options?: { paymentId?: string }) => {
+  const { paymentId = "payment_test_abc123" } = options || {};
+
+  const baseClient = createMockSupabaseClient();
+
+  // payments テーブル用のクエリビルダーモックを設定
+  (baseClient.from as jest.Mock).mockImplementation((table: string) => {
+    if (table === "payments") {
+      return {
+        select: jest.fn().mockReturnThis(),
+        eq: jest.fn().mockReturnThis(),
+        in: jest.fn().mockReturnThis(),
+        order: jest.fn().mockReturnThis(),
+        limit: jest.fn().mockReturnThis(),
+        maybeSingle: jest.fn().mockResolvedValue({ data: null, error: null }),
+        insert: jest.fn().mockReturnThis(),
+        update: jest.fn().mockReturnThis(),
+        single: jest.fn().mockResolvedValue({
+          data: { id: paymentId },
+          error: null,
+        }),
+      };
+    }
+    // その他のテーブル用のデフォルト設定
+    return {
+      select: jest.fn().mockReturnThis(),
+      eq: jest.fn().mockReturnThis(),
+      in: jest.fn().mockReturnThis(),
+      order: jest.fn().mockReturnThis(),
+      limit: jest.fn().mockReturnThis(),
+      maybeSingle: jest.fn().mockResolvedValue({ data: null, error: null }),
+      insert: jest.fn().mockReturnThis(),
+      update: jest.fn().mockReturnThis(),
+      single: jest.fn().mockResolvedValue({ data: {}, error: null }),
+    };
+  });
+
+  return baseClient;
+};
 
 /**
  * テストヘルパー関数

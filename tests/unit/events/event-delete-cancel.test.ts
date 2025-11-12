@@ -1,33 +1,53 @@
-import { SecureSupabaseClientFactory } from "../../../core/security/secure-client-factory.impl";
-import { AdminReason } from "../../../core/security/secure-client-factory.types";
-import { createTestUser } from "../../helpers/test-user";
+import { describe, it, expect, beforeAll, afterAll } from "@jest/globals";
+
+import { createCommonTestSetup, type CommonTestSetup } from "../../setup/common-test-setup";
 
 describe("イベントの削除/中止ロジック", () => {
-  const email = `unit-user-${Date.now()}@example.com`;
-  const password = "Password123!";
+  let setup: CommonTestSetup;
+
+  beforeAll(async () => {
+    setup = await createCommonTestSetup({
+      testName: `event-delete-cancel-test-${Date.now()}`,
+      withConnect: false,
+      accessedTables: ["public.events", "public.attendances", "public.payments"],
+    });
+  });
+
+  afterAll(async () => {
+    try {
+      // テスト実行（必要に応じて）
+    } finally {
+      // 必ずクリーンアップを実行
+      await setup.cleanup();
+    }
+  });
 
   it("参加者0・決済0のイベントは削除可能", async () => {
-    const user = await createTestUser(email, password, { skipProfileCreation: true });
-
-    const factory = SecureSupabaseClientFactory.create();
-    const admin = await factory.createAuditedAdminClient(
-      AdminReason.TEST_DATA_SETUP,
-      "unit-delete-cancel:create"
-    );
+    const admin = setup.adminClient;
 
     // イベント作成（無料・招待トークン付き）
-    const { data: created } = await admin
+    const eventDate = new Date(Date.now() + 60 * 60 * 1000);
+    const registrationDeadline = new Date(eventDate.getTime() - 30 * 60 * 1000); // イベント開始30分前
+
+    const { data: created, error: insertError } = await admin
       .from("events")
       .insert({
         title: "削除テスト用イベント",
-        date: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+        date: eventDate.toISOString(),
         fee: 0,
-        payment_methods: [],
-        created_by: user.id,
+        payment_methods: ["cash"], // 空配列は不可（制約違反）
+        registration_deadline: registrationDeadline.toISOString(),
+        location: "テスト会場",
+        description: "削除テスト用",
+        created_by: setup.testUser.id,
         invite_token: "inv_unit_test_token_aaaaaaaaaaaaaaaaaaaaaa",
       })
       .select("id, created_by")
       .single();
+
+    if (insertError) {
+      throw new Error(`Failed to create event: ${insertError.message}`);
+    }
 
     expect(created).toBeTruthy();
 
@@ -37,29 +57,33 @@ describe("イベントの削除/中止ロジック", () => {
   });
 
   it("参加者1以上 or 決済1以上のイベントは中止にすべき", async () => {
-    const user = await createTestUser(`unit-user2-${Date.now()}@example.com`, password, {
-      skipProfileCreation: true,
-    });
-
-    const factory = SecureSupabaseClientFactory.create();
-    const admin = await factory.createAuditedAdminClient(
-      AdminReason.TEST_DATA_SETUP,
-      "unit-delete-cancel:create2"
-    );
+    const admin = setup.adminClient;
 
     // 有料イベント作成
-    const { data: ev } = await admin
+    const eventDate = new Date(Date.now() + 60 * 60 * 1000);
+    const registrationDeadline = new Date(eventDate.getTime() - 30 * 60 * 1000); // イベント開始30分前
+    const paymentDeadline = new Date(eventDate.getTime() - 15 * 60 * 1000); // イベント開始15分前（stripe使用時は必須）
+
+    const { data: ev, error: insertError } = await admin
       .from("events")
       .insert({
         title: "中止テスト用イベント",
-        date: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+        date: eventDate.toISOString(),
         fee: 1000,
         payment_methods: ["stripe"],
-        created_by: user.id,
+        registration_deadline: registrationDeadline.toISOString(),
+        payment_deadline: paymentDeadline.toISOString(), // stripe使用時は必須
+        location: "テスト会場",
+        description: "中止テスト用",
+        created_by: setup.testUser.id,
         invite_token: "inv_unit_test_token_bbbbbbbbbbbbbbbbbbbbbbbb",
       })
       .select("id, created_by")
       .single();
+
+    if (insertError) {
+      throw new Error(`Failed to create event: ${insertError.message}`);
+    }
 
     expect(ev).toBeTruthy();
 

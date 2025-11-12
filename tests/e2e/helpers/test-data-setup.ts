@@ -1,14 +1,18 @@
 /**
  * E2Eテスト用データセットアップヘルパー
  * APIルートではなくSupabase直接操作でテストデータを管理
+ *
+ * 注意: E2Eテストでは固定ID（TEST_IDS）が必要なため、
+ * test-payment-data.ts の関数を使用しつつ、固定IDを設定する処理を追加
  */
 import crypto from "crypto";
 
 import { createClient } from "@supabase/supabase-js";
-import type { User as SupabaseAuthUser } from "@supabase/supabase-js";
 
 import { generateGuestToken } from "@core/utils/guest-token";
 import { generateInviteToken } from "@core/utils/invite-token";
+
+import { createTestUserWithConnect } from "@tests/helpers/test-payment-data";
 
 import type { Database } from "@/types/database";
 
@@ -36,111 +40,60 @@ let testUserId: string | null = null;
 
 export const FIXED_TIME = new Date("2026-01-01T12:00:00.000Z");
 
-async function findAuthUserByEmail(email: string): Promise<SupabaseAuthUser | null> {
-  const { data, error } = await supabaseAdmin.auth.admin.listUsers({
-    page: 1,
-    perPage: 200,
-  });
-
-  if (error) {
-    console.warn("Failed to list auth users while searching by email:", error);
-    return null;
-  }
-
-  return data.users.find((user) => user.email === email) ?? null;
-}
-
 /**
  * テストデータ作成・管理クラス
  */
 export class TestDataManager {
   /**
    * Connect設定済みユーザーを作成
+   *
+   * test-payment-data.ts の createTestUserWithConnect() を使用しつつ、
+   * E2Eテスト専用の固定メールアドレスと固定ConnectアカウントIDを設定
    */
   static async createUserWithConnect() {
     const now = new Date();
     const testEmail = "test-e2e@example.com";
     const testPassword = "test-password-123";
-    const displayName = "E2Eテストユーザー";
 
-    let authUser: SupabaseAuthUser | null = await findAuthUserByEmail(testEmail);
-
-    if (!authUser) {
-      const { data, error: authError } = await supabaseAdmin.auth.admin.createUser({
-        email: testEmail,
-        password: testPassword,
-        user_metadata: { name: displayName, test_user: true },
-        email_confirm: true,
-      });
-
-      if (authError) {
-        if (authError.message?.includes("already been registered")) {
-          authUser = await findAuthUserByEmail(testEmail);
-        } else {
-          throw new Error(`Auth user creation failed: ${authError.message}`);
-        }
-      } else {
-        authUser = data.user ?? null;
-      }
-    }
-
-    if (!authUser) {
-      throw new Error("Auth user creation failed: user could not be retrieved");
-    }
-
-    // テストユーザーIDを保存
-    testUserId = authUser.id;
-
-    const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(authUser.id, {
-      email_confirm: true,
-      user_metadata: {
-        ...authUser.user_metadata,
-        name: displayName,
-        test_user: true,
-        updated_at: now.toISOString(),
-      },
+    // test-payment-data.ts の関数を使用してユーザーとConnectアカウントを作成
+    const testUser = await createTestUserWithConnect(testEmail, testPassword, {
+      stripeAccountId: TEST_IDS.CONNECT_ACCOUNT_ID,
+      payoutsEnabled: true,
+      chargesEnabled: true,
     });
 
-    if (updateError) {
-      throw new Error(`Auth user update failed: ${updateError.message}`);
-    }
+    // テストユーザーIDを保存
+    testUserId = testUser.id;
 
-    // 2. users テーブルにレコード作成
-    const userData = {
-      id: authUser.id,
-      name: displayName,
-      created_at: now.toISOString(), // 現在時刻を使用（DB制約を満たすため）
-      updated_at: now.toISOString(),
-    };
-
-    const { error: userError } = await supabaseAdmin
+    // users テーブルからユーザー情報を取得（name を取得するため）
+    const { data: userData, error: userError } = await supabaseAdmin
       .from("users")
-      .upsert(userData, { onConflict: "id" });
+      .select("id, name")
+      .eq("id", testUser.id)
+      .single();
 
     if (userError) {
-      throw new Error(`User creation failed: ${userError.message}`);
+      throw new Error(`Failed to fetch user data: ${userError.message}`);
     }
 
-    // 3. Connect アカウント作成
-    const connectData = {
-      user_id: authUser.id,
-      stripe_account_id: TEST_IDS.CONNECT_ACCOUNT_ID,
-      payouts_enabled: true,
-      charges_enabled: true,
-      status: "verified" as const,
-      created_at: now.toISOString(), // 現在時刻を使用
-      updated_at: now.toISOString(),
+    // E2Eテスト用の戻り値形式に変換
+    return {
+      user: {
+        id: testUser.id,
+        name: userData?.name || "E2Eテストユーザー",
+        created_at: now.toISOString(),
+        updated_at: now.toISOString(),
+      },
+      connect: {
+        user_id: testUser.id,
+        stripe_account_id: TEST_IDS.CONNECT_ACCOUNT_ID,
+        payouts_enabled: true,
+        charges_enabled: true,
+        status: "verified" as const,
+        created_at: now.toISOString(),
+        updated_at: now.toISOString(),
+      },
     };
-
-    const { error: connectError } = await supabaseAdmin
-      .from("stripe_connect_accounts")
-      .upsert(connectData, { onConflict: "stripe_account_id" });
-
-    if (connectError) {
-      throw new Error(`Connect account creation failed: ${connectError.message}`);
-    }
-
-    return { user: userData, connect: connectData };
   }
 
   /**

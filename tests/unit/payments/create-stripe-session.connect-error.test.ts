@@ -1,5 +1,7 @@
 import { createGuestStripeSessionAction } from "@features/guest/actions/create-stripe-session";
 
+import { setupRateLimitMocks } from "@tests/setup/common-mocks";
+
 // モック: ゲストトークン検証は常に有効な参加データを返す
 jest.mock("@core/utils/guest-token", () => ({
   __esModule: true,
@@ -32,58 +34,77 @@ jest.mock("@core/utils/guest-token", () => ({
   })),
 }));
 
-// モック: レートリミットは常に許可
-jest.mock("@core/rate-limit", () => ({
-  __esModule: true,
-  enforceRateLimit: jest.fn(async () => ({ allowed: true })),
-  buildKey: jest.fn(() => "RL:payment.createSession:attendance:att_1"),
-  POLICIES: {
-    "payment.createSession": {
-      scope: "payment.createSession",
-      limit: 3,
-      window: "10 s",
-      blockMs: 20000,
-    },
-  },
-}));
-
-// モック: 管理者Supabaseクライアント（payments と stripe_connect_accounts へのクエリを最小限で再現）
-type MaybeSingleResult = { data: any; error: any };
-
-let connectAccountResponse: MaybeSingleResult = { data: null, error: null };
-
-function createMockAdminClient() {
-  const makeBuilder = (table: string) => {
-    const builder: any = {
-      select: () => builder,
-      eq: () => builder,
-      order: () => builder,
-      limit: () => builder,
-      maybeSingle: async () => {
-        if (table === "payments") {
-          return { data: null, error: null };
-        }
-        if (table === "stripe_connect_accounts") {
-          return connectAccountResponse;
-        }
-        return { data: null, error: null };
-      },
-    };
-    return builder;
-  };
-
+// モック: レートリミット（共通関数を使用するため、モック化のみ宣言）
+jest.mock("@core/rate-limit", () => {
+  const actual = jest.requireActual("@core/rate-limit");
   return {
-    from: (table: string) => makeBuilder(table),
+    ...actual,
+    __esModule: true,
+    enforceRateLimit: jest.fn(),
+    withRateLimit: jest.fn(),
+    buildKey: jest.fn(),
+    POLICIES: {
+      ...actual.POLICIES,
+      "payment.createSession": {
+        scope: "payment.createSession",
+        limit: 3,
+        window: "10 s",
+        blockMs: 20000,
+      },
+    },
+  };
+});
+
+// モック: Connectアカウント取得の結果を制御
+let connectAccountResponse: { data: any; error: any } = { data: null, error: null };
+let latestPaymentResponse: { data: any; error: any } = { data: null, error: null };
+
+// モック: ゲストクライアントのrpcメソッド
+function createMockGuestClient() {
+  return {
+    rpc: jest.fn((functionName: string) => {
+      if (functionName === "rpc_public_get_connect_account") {
+        return {
+          single: jest.fn().mockResolvedValue(connectAccountResponse),
+        };
+      }
+      if (functionName === "rpc_guest_get_latest_payment") {
+        return {
+          single: jest.fn().mockResolvedValue(latestPaymentResponse),
+        };
+      }
+      return {
+        single: jest.fn().mockResolvedValue({ data: null, error: null }),
+      };
+    }),
   } as any;
 }
 
+// モック: SecureSupabaseClientFactory
 jest.mock("@core/security/secure-client-factory.impl", () => ({
   __esModule: true,
   SecureSupabaseClientFactory: {
-    getInstance: jest.fn(() => ({
-      createAuditedAdminClient: jest.fn(async () => createMockAdminClient()),
+    create: jest.fn(() => ({
+      createGuestClient: jest.fn(() => createMockGuestClient()),
     })),
   },
+}));
+
+// モック: PaymentService
+jest.mock("@core/services", () => ({
+  __esModule: true,
+  getPaymentService: jest.fn(() => ({
+    createStripeSession: jest.fn().mockResolvedValue({
+      sessionUrl: "https://checkout.stripe.com/test",
+      sessionId: "cs_test_123",
+    }),
+  })),
+}));
+
+// モック: core-bindings（PaymentServiceの登録を回避）
+jest.mock("@features/payments/core-bindings", () => ({
+  __esModule: true,
+  registerPaymentImplementations: jest.fn(),
 }));
 
 describe("createGuestStripeSessionAction - Connectアカウント未設定/無効化", () => {
@@ -93,9 +114,15 @@ describe("createGuestStripeSessionAction - Connectアカウント未設定/無�
     cancelUrl: "https://example.com/cancel",
   };
 
+  beforeAll(() => {
+    // 共通モック関数を使用してレート制限を設定
+    setupRateLimitMocks(true, "RL:payment.createSession:attendance:att_1");
+  });
+
   beforeEach(() => {
     // 既定は「未設定」
     connectAccountResponse = { data: null, error: null };
+    latestPaymentResponse = { data: null, error: null };
   });
 
   it("Connectアカウント未設定時はRESOURCE_CONFLICTエラーを返す", async () => {
@@ -107,7 +134,7 @@ describe("createGuestStripeSessionAction - Connectアカウント未設定/無�
     // @ts-expect-error jest 実行時の型は緩く扱う
     expect(result.code).toBe("RESOURCE_CONFLICT");
     // @ts-expect-error 同上
-    expect(result.error).toContain("Stripe Connectアカウントが設定されていません");
+    expect(result.error).toContain("決済の準備ができません");
   });
 
   it("payouts_enabled=false時はRESOURCE_CONFLICTエラーを返す", async () => {
@@ -122,6 +149,6 @@ describe("createGuestStripeSessionAction - Connectアカウント未設定/無�
     // @ts-expect-error jest 実行時の型は緩く扱う
     expect(result.code).toBe("RESOURCE_CONFLICT");
     // @ts-expect-error 同上
-    expect(result.error).toContain("入金機能 (payouts) が無効化されています");
+    expect(result.error).toContain("主催者のお支払い受付が一時的に制限されています");
   });
 });

@@ -5,22 +5,16 @@
 import { jest } from "@jest/globals";
 
 import { loginAction } from "../../../core/actions/auth";
+import { setupNextHeadersMocks } from "../../setup/common-mocks";
+import { createMockSupabaseClient } from "../../setup/supabase-auth-mock";
 
-// Next.js headers モック
-let mockHeaders: { get: (name: string) => string | null } | undefined;
-
+// Next.js headers モック（共通関数を使用するため、モック化のみ宣言）
 jest.mock("next/headers", () => ({
-  headers: jest.fn(() => mockHeaders),
+  headers: jest.fn(),
 }));
 
-// Supabase client をモック化
-const mockSupabaseAuth = {
-  signInWithPassword: jest.fn() as jest.MockedFunction<any>,
-};
-
-const mockSupabase = {
-  auth: mockSupabaseAuth,
-};
+// Supabase client をモック化（共通モックを使用）
+const mockSupabase = createMockSupabaseClient();
 
 jest.mock("../../../core/supabase/server", () => ({
   createClient: jest.fn(() => mockSupabase),
@@ -29,8 +23,12 @@ jest.mock("../../../core/supabase/server", () => ({
 // auth-securityモジュールをモック化
 jest.mock("../../../core/auth-security", () => ({
   TimingAttackProtection: {
-    addConstantDelay: jest.fn(),
-    normalizeResponseTime: jest.fn(),
+    addConstantDelay: jest.fn(async (_baseDelayMs?: number) => {
+      // モックでは何もしない
+    }),
+    normalizeResponseTime: jest.fn(async (fn: () => Promise<any>) => {
+      await fn();
+    }),
   },
   InputSanitizer: {
     sanitizeEmail: jest.fn((email: string) => email),
@@ -50,16 +48,12 @@ jest.mock("../../../core/auth-security", () => ({
 }));
 
 describe("loginAction", () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
-    mockHeaders = undefined;
-  });
-
-  // ヘッダーをセットアップするヘルパー関数
+  // ヘッダーをセットアップするヘルパー関数（共通関数を使用）
   const setupHeaders = (headers: Record<string, string>) => {
-    mockHeaders = {
-      get: (name: string) => headers[name.toLowerCase()] || null,
-    };
+    const mockHeaders = setupNextHeadersMocks(headers);
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { headers: headersFn } = require("next/headers");
+    (headersFn as jest.MockedFunction<typeof headersFn>).mockReturnValue(mockHeaders as any);
   };
 
   describe("入力バリデーション", () => {
@@ -80,18 +74,24 @@ describe("loginAction", () => {
       const result = await loginAction(formData);
 
       expect(result.success).toBe(false);
-      expect(result.error).toContain("有効なメールアドレス");
+      // バリデーションエラー時は汎用的なエラーメッセージが返される
+      expect(result.error).toBe("入力内容を確認してください");
+      // 詳細なエラーはfieldErrorsに含まれる
+      expect(result.fieldErrors?.email?.[0]).toContain("有効なメールアドレス");
     });
 
-    it("パスワードが短すぎる場合は拒否される", async () => {
+    it("パスワードが空の場合は拒否される", async () => {
       const formData = new FormData();
       formData.append("email", "test@example.com");
-      formData.append("password", "123"); // 短すぎるパスワード
+      formData.append("password", ""); // 空のパスワード
 
       const result = await loginAction(formData);
 
       expect(result.success).toBe(false);
-      expect(result.error).toContain("8文字以上");
+      // バリデーションエラー時は汎用的なエラーメッセージが返される
+      expect(result.error).toBe("入力内容を確認してください");
+      // 詳細なエラーはfieldErrorsに含まれる
+      expect(result.fieldErrors?.password?.[0]).toBe("パスワードを入力してください");
     });
 
     it("必須フィールドが不足している場合は拒否される", async () => {
@@ -115,7 +115,7 @@ describe("loginAction", () => {
     });
 
     it("Supabaseの認証エラーは適切に処理される", async () => {
-      mockSupabaseAuth.signInWithPassword.mockResolvedValue({
+      (mockSupabase.auth.signInWithPassword as jest.MockedFunction<any>).mockResolvedValue({
         data: { user: null },
         error: { message: "Invalid login credentials" },
       });
@@ -127,11 +127,14 @@ describe("loginAction", () => {
       const result = await loginAction(formData);
 
       expect(result.success).toBe(false);
-      expect(result.error).toContain("認証");
+      // ユーザー列挙攻撃対策により、統一されたエラーメッセージが返される
+      expect(result.error).toBe("メールアドレスまたはパスワードが正しくありません");
     });
 
     it("Supabaseの予期しないエラーは適切に処理される", async () => {
-      mockSupabaseAuth.signInWithPassword.mockRejectedValue(new Error("Network error"));
+      (mockSupabase.auth.signInWithPassword as jest.MockedFunction<any>).mockRejectedValue(
+        new Error("Network error")
+      );
 
       const formData = new FormData();
       formData.append("email", "test@example.com");

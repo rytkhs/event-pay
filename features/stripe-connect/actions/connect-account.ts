@@ -137,6 +137,7 @@ interface ConnectAccountStatusResult {
     status?: string;
     chargesEnabled: boolean;
     payoutsEnabled: boolean;
+    reviewStatus?: "pending_review" | "requirements_due" | "none";
     requirements?: {
       currently_due: string[];
       eventually_due: string[];
@@ -336,6 +337,32 @@ export async function getConnectAccountStatusAction(): Promise<ConnectAccountSta
       });
     }
 
+    const requirements = accountInfo.requirements ?? {
+      currently_due: [],
+      eventually_due: [],
+      past_due: [],
+      pending_verification: [],
+    };
+
+    const hasDueRequirements =
+      (requirements.currently_due?.length ?? 0) > 0 || (requirements.past_due?.length ?? 0) > 0;
+    const hasPendingVerification = (requirements.pending_verification?.length ?? 0) > 0;
+    const hasPendingCapabilities = Boolean(
+      accountInfo.capabilities &&
+        (accountInfo.capabilities.card_payments === "pending" ||
+          accountInfo.capabilities.transfers === "pending")
+    );
+
+    let reviewStatus: "pending_review" | "requirements_due" | "none" = "none";
+    if (hasDueRequirements) {
+      reviewStatus = "requirements_due";
+    } else if (
+      accountInfo.status === "onboarding" &&
+      (hasPendingVerification || hasPendingCapabilities)
+    ) {
+      reviewStatus = "pending_review";
+    }
+
     return {
       success: true,
       data: {
@@ -344,7 +371,8 @@ export async function getConnectAccountStatusAction(): Promise<ConnectAccountSta
         status: accountInfo.status,
         chargesEnabled: accountInfo.chargesEnabled,
         payoutsEnabled: accountInfo.payoutsEnabled,
-        requirements: accountInfo.requirements,
+        reviewStatus,
+        requirements,
         capabilities: accountInfo.capabilities,
       },
     };

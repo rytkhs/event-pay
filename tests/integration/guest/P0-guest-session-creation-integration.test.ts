@@ -20,78 +20,33 @@
  */
 
 import { enforceRateLimit, buildKey, POLICIES } from "../../../core/rate-limit";
-import { SecureSupabaseClientFactory } from "../../../core/security/secure-client-factory.impl";
-import { AdminReason } from "../../../core/security/secure-client-factory.types";
 import { validateGuestToken } from "../../../core/utils/guest-token";
 import { canCreateStripeSession } from "../../../core/validation/payment-eligibility";
 import { createGuestStripeSessionAction } from "../../../features/guest/actions/create-stripe-session";
+
 import {
-  createTestUserWithConnect,
-  createPaidTestEvent,
-  createTestAttendance,
-  cleanupTestPaymentData,
-  type TestPaymentUser,
-  type TestPaymentEvent,
-  type TestAttendanceData,
-} from "../../helpers/test-payment-data";
+  setupGuestSessionCreationTest,
+  type GuestSessionCreationTestSetup,
+} from "./guest-session-creation-test-setup";
 
 // 真の統合テスト - モックは使用しない
 // 実際のStripe Test Mode、Supabase、Redisと直接連携
 
 describe("P0決済セッション作成 真の統合テスト", () => {
-  // テストデータ（実際のDBに作成される）
-  let testUser: TestPaymentUser;
-  let testEvent: TestPaymentEvent;
-  let testAttendance: TestAttendanceData;
+  let setup: GuestSessionCreationTestSetup;
 
   beforeAll(async () => {
-    // 真の統合テストでは実際のDBにテストデータを作成
-    console.log("🔧 統合テスト用データセットアップ開始");
-
-    // 統合テスト用: fee_config デフォルトデータ挿入
-    await setupFeeConfigForIntegrationTest();
-
-    testUser = await createTestUserWithConnect(
-      `integration-test-organizer-${Date.now()}@example.com`,
-      "TestPassword123!",
-      {
-        stripeAccountId: `acct_test_integration_${Math.random().toString(36).slice(2, 10)}`,
-        payoutsEnabled: true,
-        chargesEnabled: true,
-      }
-    );
-
-    testEvent = await createPaidTestEvent(testUser.id, {
-      fee: 2500,
-      title: "統合テストイベント",
-    });
-
-    testAttendance = await createTestAttendance(testEvent.id, {
-      email: "integration-test-guest@example.com",
-      nickname: "統合テスト参加者",
-      status: "attending",
-    });
-
-    console.log("✅ 統合テスト用データセットアップ完了");
+    setup = await setupGuestSessionCreationTest();
   });
 
   afterAll(async () => {
-    // 統合テスト後のクリーンアップ
-    console.log("🧹 統合テストデータクリーンアップ開始");
-
-    await cleanupTestPaymentData({
-      attendanceIds: [testAttendance.id],
-      eventIds: [testEvent.id],
-      userIds: [testUser.id],
-    });
-
-    console.log("✅ 統合テストデータクリーンアップ完了");
+    await setup.cleanup();
   });
 
   describe("🔄 実システム連携テスト", () => {
     it("実際のStripe Test ModeでCheckoutセッション作成の統合テストが動作する", async () => {
       const input = {
-        guestToken: testAttendance.guest_token,
+        guestToken: setup.testAttendance.guest_token,
         successUrl: "https://example.com/success",
         cancelUrl: "https://example.com/cancel",
       };
@@ -121,7 +76,7 @@ describe("P0決済セッション作成 真の統合テスト", () => {
 
     it("実際のレート制限が動作する", async () => {
       const input = {
-        guestToken: testAttendance.guest_token,
+        guestToken: setup.testAttendance.guest_token,
         successUrl: "https://example.com/success",
         cancelUrl: "https://example.com/cancel",
       };
@@ -168,12 +123,12 @@ describe("P0決済セッション作成 真の統合テスト", () => {
   describe("🔍 実際のバリデーション動作テスト", () => {
     it("実際のSupabaseでゲストトークン検証が動作する", async () => {
       // 実際のvalidateGuestToken関数を使用
-      const result = await validateGuestToken(testAttendance.guest_token);
+      const result = await validateGuestToken(setup.testAttendance.guest_token);
 
       expect(result.isValid).toBe(true);
       expect(result.attendance).toBeTruthy();
-      expect(result.attendance?.id).toBe(testAttendance.id);
-      expect(result.attendance?.event.id).toBe(testEvent.id);
+      expect(result.attendance?.id).toBe(setup.testAttendance.id);
+      expect(result.attendance?.event.id).toBe(setup.testEvent.id);
       expect(result.canModify).toBe(true);
 
       console.log("✅ 統合テスト: 実際のSupabaseでのトークン検証確認済み");
@@ -182,7 +137,7 @@ describe("P0決済セッション作成 真の統合テスト", () => {
     it("実際の決済許可条件チェックが動作する", async () => {
       // 実際のcanCreateStripeSession関数を使用
       const { validateGuestToken: realValidate } = await import("../../../core/utils/guest-token");
-      const tokenResult = await realValidate(testAttendance.guest_token);
+      const tokenResult = await realValidate(setup.testAttendance.guest_token);
 
       if (!tokenResult.isValid || !tokenResult.attendance) {
         throw new Error("テストデータ作成に問題があります");
@@ -222,7 +177,7 @@ describe("P0決済セッション作成 真の統合テスト", () => {
 
     it("不正なURL形式で実際にバリデーションエラーが返される", async () => {
       const input = {
-        guestToken: testAttendance.guest_token,
+        guestToken: setup.testAttendance.guest_token,
         successUrl: "not-a-valid-url",
         cancelUrl: "https://example.com/cancel",
       };
@@ -239,9 +194,9 @@ describe("P0決済セッション作成 真の統合テスト", () => {
 
   describe("🏗️ インフラ依存性テスト", () => {
     it("実際のレート制限キー生成が動作する", async () => {
-      const attendanceId: string = Array.isArray(testAttendance.id)
-        ? testAttendance.id[0]
-        : testAttendance.id;
+      const attendanceId: string = Array.isArray(setup.testAttendance.id)
+        ? setup.testAttendance.id[0]
+        : setup.testAttendance.id;
       const key = buildKey({
         scope: "payment.createSession",
         attendanceId,
@@ -285,7 +240,7 @@ describe("P0決済セッション作成 真の統合テスト", () => {
       // 7. 決済レコード更新 (Supabase)
 
       const input = {
-        guestToken: testAttendance.guest_token,
+        guestToken: setup.testAttendance.guest_token,
         successUrl: "https://integration-test.com/success",
         cancelUrl: "https://integration-test.com/cancel",
       };
@@ -319,55 +274,3 @@ describe("P0決済セッション作成 真の統合テスト", () => {
     }, 20000); // 20秒タイムアウト
   });
 });
-
-/**
- * 統合テスト用: fee_config デフォルトデータをセットアップ
- * 決済機能の統合テストに必要な最低限の手数料設定を挿入
- */
-async function setupFeeConfigForIntegrationTest(): Promise<void> {
-  const secureFactory = SecureSupabaseClientFactory.create();
-  const adminClient = await secureFactory.createAuditedAdminClient(
-    AdminReason.TEST_DATA_SETUP,
-    "Setup fee_config for integration tests",
-    {
-      operationType: "UPSERT",
-      accessedTables: ["public.fee_config"],
-      additionalInfo: {
-        testContext: "integration-test-setup",
-      },
-    }
-  );
-
-  try {
-    // 既存のfee_configを確認
-    const { data: existing } = await adminClient.from("fee_config").select("*").limit(1);
-
-    if (existing && existing.length > 0) {
-      console.log("✓ fee_config already exists, skipping setup");
-      return;
-    }
-
-    // デフォルト手数料設定を挿入（実際のスキーマに合わせる）
-    const { error } = await adminClient.from("fee_config").insert({
-      id: 1,
-      stripe_base_rate: 0.036, // 3.6%
-      stripe_fixed_fee: 0, // 0円
-      platform_fee_rate: 0.049, // 4.9%
-      platform_fixed_fee: 0, // 0円
-      min_platform_fee: 0, // 0円
-      max_platform_fee: 0, // 0円
-      min_payout_amount: 100, // 100円
-      platform_tax_rate: 10.0, // 10%
-      is_tax_included: true, // 内税
-    });
-
-    if (error) {
-      throw new Error(`Failed to setup fee_config: ${error.message}`);
-    }
-
-    console.log("✓ fee_config setup completed for integration tests");
-  } catch (error) {
-    console.error("❌ Failed to setup fee_config:", error);
-    throw error;
-  }
-}
