@@ -95,7 +95,7 @@ export async function setupRaceConditionTest(options?: {
       title: `${mergedEventOptions.title}（無料）`,
       capacity: null,
       fee: 0,
-      payment_methods: [] as PaymentMethod[],
+      paymentMethods: [] as PaymentMethod[],
     });
     testData = { organizer, testEvent, freeEvent };
   } else {

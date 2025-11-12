@@ -4,6 +4,8 @@
  * Connect設定済み/未設定ユーザー、有料イベント、pending paymentsの作成
  */
 
+import type { SupabaseClient } from "@supabase/supabase-js";
+
 import { SecureSupabaseClientFactory } from "@core/security/secure-client-factory.impl";
 import { AdminReason } from "@core/security/secure-client-factory.types";
 import { generateInviteToken } from "@core/utils/invite-token";
@@ -896,9 +898,7 @@ export async function createRefundedStripePayment(
  * dashboard-stats.integration.test.ts で使用される簡易版
  */
 export async function createEventForDashboardStats(
-  adminClient: ReturnType<
-    Awaited<ReturnType<typeof SecureSupabaseClientFactory.create>["createAuditedAdminClient"]>
-  >,
+  adminClient: SupabaseClient<Database>,
   createdBy: string,
   createdEventIds: string[],
   options: {
@@ -943,9 +943,7 @@ export async function createEventForDashboardStats(
  * dashboard-stats.integration.test.ts で使用される簡易版
  */
 export async function createAttendanceForDashboardStats(
-  adminClient: ReturnType<
-    Awaited<ReturnType<typeof SecureSupabaseClientFactory.create>["createAuditedAdminClient"]>
-  >,
+  adminClient: SupabaseClient<Database>,
   eventId: string,
   createdAttendanceIds: string[],
   status: "attending" | "not_attending" | "maybe",
@@ -987,9 +985,7 @@ export async function createAttendanceForDashboardStats(
  * dashboard-stats.integration.test.ts で使用される簡易版
  */
 export async function createPaymentForDashboardStats(
-  adminClient: ReturnType<
-    Awaited<ReturnType<typeof SecureSupabaseClientFactory.create>["createAuditedAdminClient"]>
-  >,
+  adminClient: SupabaseClient<Database>,
   attendanceId: string,
   createdPaymentIds: string[],
   amount: number,

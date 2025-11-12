@@ -30,7 +30,11 @@ export async function setupStripeConnectRealApiTest(): Promise<StripeConnectReal
   });
 
   // StripeConnectServiceを作成（実Supabaseクライアントを使用）
-  const service = new StripeConnectService(commonSetup.adminClient);
+  const { StripeConnectErrorHandler } = await import(
+    "@features/stripe-connect/services/error-handler"
+  );
+  const errorHandler = new StripeConnectErrorHandler();
+  const service = new StripeConnectService(commonSetup.adminClient, errorHandler);
 
   const createdStripeAccountIds: string[] = [];
 

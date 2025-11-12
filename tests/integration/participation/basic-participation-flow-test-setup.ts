@@ -2,6 +2,8 @@
  * 基本参加登録フロー統合テスト共通セットアップ
  */
 
+import * as securityLogger from "@core/security/security-logger";
+
 import type { TestPaymentUser } from "@tests/helpers/test-payment-data";
 import { createPaymentTestSetup } from "@tests/setup/common-test-setup";
 
@@ -34,7 +36,7 @@ export interface BasicParticipationFlowTestSetup {
  */
 export async function setupBasicParticipationFlowTest(options?: {
   fee?: number;
-  paymentMethods?: string[];
+  paymentMethods?: ("stripe" | "cash")[];
 }): Promise<BasicParticipationFlowTestSetup> {
   // 決済テスト用のセットアップを作成
   const paymentSetup = await createPaymentTestSetup({
@@ -46,7 +48,7 @@ export async function setupBasicParticipationFlowTest(options?: {
   // セキュリティログキャプチャ開始
   const securityLogs: SecurityLogEntry[] = [];
   const securityLogSpy = jest
-    .spyOn(require("@core/security/security-logger"), "logParticipationSecurityEvent")
+    .spyOn(securityLogger, "logParticipationSecurityEvent")
     .mockImplementation((...args: any[]) => {
       const [type, message, details] = args;
       securityLogs.push({ type, message, details });

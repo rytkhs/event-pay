@@ -430,6 +430,6 @@ export const createMockApplicationFeeCalculator = (options?: {
     calculateApplicationFeeBatch: jest.fn(),
     validateConfig: jest.fn(),
   } as unknown as jest.Mocked<
-    import("../../../features/payments/services/fee-config/application-fee-calculator").ApplicationFeeCalculator
+    import("../../features/payments/services/fee-config/application-fee-calculator").ApplicationFeeCalculator
   >;
 };

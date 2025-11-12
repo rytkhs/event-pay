@@ -84,8 +84,10 @@ export async function setupGuestSessionCreationTest(): Promise<GuestSessionCreat
     mockCanCreateStripeSession: canCreateStripeSession as jest.MockedFunction<
       typeof canCreateStripeSession
     >,
-    mockEnforceRateLimit: rateLimitMocks.mockEnforceRateLimit,
-    mockBuildKey: buildKey as jest.MockedFunction<typeof buildKey>,
+    mockEnforceRateLimit: rateLimitMocks.mockEnforceRateLimit as any as jest.MockedFunction<
+      typeof enforceRateLimit
+    >,
+    mockBuildKey: rateLimitMocks.mockBuildKey as any as jest.MockedFunction<typeof buildKey>,
     mockCreateDestinationCheckoutSession:
       DestinationCharges.createDestinationCheckoutSession as jest.MockedFunction<
         typeof DestinationCharges.createDestinationCheckoutSession
