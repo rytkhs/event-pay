@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { AlertCircle, CreditCard, RefreshCw } from "lucide-react";
+import { AlertCircle, CreditCard, RefreshCw, Clock } from "lucide-react";
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -23,6 +23,8 @@ export function ConnectAccountCta({ status }: ConnectAccountCtaProps) {
         return <RefreshCw className="h-5 w-5" />;
       case "requirements_due":
         return <AlertCircle className="h-5 w-5" />;
+      case "pending_review":
+        return <Clock className="h-5 w-5" />;
       default:
         return <CreditCard className="h-5 w-5" />;
     }

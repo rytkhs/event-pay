@@ -116,6 +116,7 @@ async function ConnectContent({ searchParams }: ConnectPageProps) {
                   past_due: [],
                   pending_verification: [],
                 },
+                reviewStatus: r.data?.reviewStatus,
                 capabilities: r.data?.capabilities,
                 expressDashboardAvailable: expressAccess.success,
               };

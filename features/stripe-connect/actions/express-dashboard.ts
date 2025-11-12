@@ -62,36 +62,7 @@ export async function createExpressDashboardLoginLinkAction(): Promise<void> {
       return;
     }
 
-    // 4. アカウント状態を確認
-    const accountInfo = await stripeConnectService.getAccountInfo(account.stripe_account_id);
-
-    // Expressダッシュボードのログインリンクはオンボーディング未完了では作成不可のため、verifiedに限定
-    if (accountInfo.status !== "verified") {
-      const statusTagMap: Record<string, string> = {
-        unverified: "expressDashboardUnverified",
-        onboarding: "expressDashboardOnboarding",
-        restricted: "expressDashboardRestricted",
-      };
-
-      const messageMap: Record<string, string> = {
-        unverified: "verification_required",
-        onboarding: "onboarding_required",
-        restricted: "account_restricted",
-      };
-
-      const status = accountInfo.status as keyof typeof statusTagMap;
-
-      logger.warn("Non-verified account attempted Express Dashboard access", {
-        tag: statusTagMap[status] ?? "expressDashboardAccessDenied",
-        user_id: user.id,
-        account_id: account.stripe_account_id,
-        status: accountInfo.status,
-      });
-      redirect(`/dashboard/connect?message=${messageMap[status] ?? "onboarding_required"}`);
-      return;
-    }
-
-    // 5. Stripe Connect Service を使用してログインリンクを生成
+    // 4. Stripe Connect Service を使用してログインリンクを生成
     const loginLink = await stripeConnectService.createLoginLink(account.stripe_account_id);
 
     logger.info("Express Dashboard login link created successfully", {
@@ -148,26 +119,6 @@ export async function checkExpressDashboardAccessAction(): Promise<ExpressDashbo
       return {
         success: false,
         error: "Stripe Connectアカウントが設定されていません",
-      };
-    }
-
-    // 4. アカウント状態の確認
-    const accountInfo = await stripeConnectService.getAccountInfo(account.stripe_account_id);
-
-    // Expressダッシュボード表示は verified 限定
-    if (accountInfo.status !== "verified") {
-      let errorMessage = "Stripe Connectアカウントの設定が完了していません";
-      if (accountInfo.status === "unverified") {
-        errorMessage = "Stripe Connectアカウントの認証が未完了です";
-      } else if (accountInfo.status === "onboarding") {
-        errorMessage = "Stripe Connectのオンボーディングを完了してください";
-      } else if (accountInfo.status === "restricted") {
-        errorMessage = "Stripe Connectアカウントに制限があります";
-      }
-
-      return {
-        success: false,
-        error: errorMessage,
       };
     }
 
