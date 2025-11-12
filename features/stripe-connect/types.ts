@@ -8,6 +8,10 @@ import type { LogLevel } from "@core/logging/app-logger";
 
 import { Database } from "@/types/database";
 
+// 新しい型定義をエクスポート
+export * from "./types/status-classification";
+export * from "./types/status-sync";
+
 // Stripe Connectアカウントステータスの型（データベースのenumに合わせる）
 export type StripeAccountStatus = Database["public"]["Enums"]["stripe_account_status_enum"];
 
