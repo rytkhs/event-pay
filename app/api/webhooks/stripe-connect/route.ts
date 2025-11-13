@@ -1,5 +1,11 @@
 /**
  * Stripe Connect Webhook エンドポイント
+ *
+ * 処理フロー:
+ * 1. IP許可リスト検証（本番環境のみ）
+ * 2. Webhook署名検証（ローテーション対応）
+ * 3. account.updatedイベントの検証
+ * 4. QStashへの転送（非同期処理）
  */
 
 import type { NextRequest } from "next/server";

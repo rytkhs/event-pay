@@ -140,9 +140,9 @@ export async function getDetailedAccountStatusAction(): Promise<{
         success: true,
         status: {
           statusType: "pending_review",
-          title: "提出内容をStripeが審査中です",
+          title: "Stripeが審査中です",
           description:
-            "提出いただいた情報をStripeが確認しています。審査完了までしばらくお待ちください。進捗はStripeの設定画面で確認できます。",
+            "提出いただいた情報をStripeが確認しています。審査完了までしばらくお待ちください。",
           actionText: "提出内容を確認",
           actionUrl: "/settings/payments",
           severity: "info",
