@@ -134,7 +134,9 @@ interface ConnectAccountStatusResult {
   data?: {
     hasAccount: boolean;
     accountId?: string;
-    status?: string;
+    dbStatus?: string; // Database Status (unverified/onboarding/verified/restricted)
+    uiStatus: string; // UI Status (no_account/unverified/requirements_due/ready/restricted)
+    status?: string; // 後方互換性のため維持
     chargesEnabled: boolean;
     payoutsEnabled: boolean;
     reviewStatus?: "pending_review" | "requirements_due" | "none";
@@ -269,6 +271,9 @@ export async function createConnectAccountAction(formData: FormData): Promise<vo
 /**
  * Stripe Connect アカウントステータスを取得するServer Action
  * 認証・認可チェックを強化し、詳細なログ出力とエラーハンドリングを実装
+ *
+ * UIStatusMapperを使用してUI Statusを計算
+ * StatusSyncServiceを使用してステータス同期を実行
  */
 export async function getConnectAccountStatusAction(): Promise<ConnectAccountStatusResult> {
   try {
@@ -308,56 +313,98 @@ export async function getConnectAccountStatusAction(): Promise<ConnectAccountSta
     const account = await stripeConnectService.getConnectAccountByUser(user.id);
 
     if (!account) {
+      // 要件 2.2: アカウント未作成の場合は no_account を返す
+      const { UIStatusMapper } = await import("../services/ui-status-mapper");
+      const mapper = new UIStatusMapper();
+      const uiStatus = mapper.mapToUIStatus(null);
+
       return {
         success: true,
         data: {
           hasAccount: false,
+          uiStatus,
           chargesEnabled: false,
           payoutsEnabled: false,
         },
       };
     }
 
-    // 4. Stripeから最新の情報を取得
+    // 4. StatusSyncServiceを使用してステータス同期を実行
+    const { StatusSyncService } = await import("../services/status-sync-service");
+    const statusSyncService = new StatusSyncService(stripeConnectService);
 
-    const accountInfo = await stripeConnectService.getAccountInfo(account.stripe_account_id);
-
-    // 5. データベースの情報が古い場合は更新
-    const needsUpdate =
-      account.status !== accountInfo.status ||
-      account.charges_enabled !== accountInfo.chargesEnabled ||
-      account.payouts_enabled !== accountInfo.payoutsEnabled;
-
-    if (needsUpdate) {
-      await stripeConnectService.updateAccountStatus({
-        userId: user.id,
-        status: accountInfo.status,
-        chargesEnabled: accountInfo.chargesEnabled,
-        payoutsEnabled: accountInfo.payoutsEnabled,
+    try {
+      await statusSyncService.syncAccountStatus(user.id, account.stripe_account_id, {
+        maxRetries: 3,
+      });
+    } catch (syncError) {
+      // 同期エラーはログに記録するが、キャッシュされたステータスを使用して続行
+      logger.warn("Status sync failed, using cached status", {
+        tag: "statusSyncFailedUsingCache",
+        user_id: user.id,
+        account_id: account.stripe_account_id,
+        error_message: syncError instanceof Error ? syncError.message : String(syncError),
       });
     }
 
-    const requirements = accountInfo.requirements ?? {
-      currently_due: [],
-      eventually_due: [],
-      past_due: [],
-      pending_verification: [],
-    };
+    // 5. 最新のアカウント情報を取得（同期後）
+    const updatedAccount = await stripeConnectService.getConnectAccountByUser(user.id);
+    if (!updatedAccount) {
+      throw new Error("アカウント情報の取得に失敗しました");
+    }
 
+    // 6. Stripeから最新の情報を取得してUI Statusを計算
+    const { getStripe } = await import("@core/stripe/client");
+    const stripe = getStripe();
+    const stripeAccount = await stripe.accounts.retrieve(updatedAccount.stripe_account_id);
+
+    // 7. UIStatusMapperを使用してUI Statusを計算（要件 2.1-2.6）
+    const { UIStatusMapper } = await import("../services/ui-status-mapper");
+    const mapper = new UIStatusMapper();
+    const uiStatus = mapper.mapToUIStatus(updatedAccount.status, stripeAccount);
+
+    // 8. requirements と capabilities の整形
+    const requirements = stripeAccount.requirements
+      ? {
+          currently_due: stripeAccount.requirements.currently_due || [],
+          eventually_due: stripeAccount.requirements.eventually_due || [],
+          past_due: stripeAccount.requirements.past_due || [],
+          pending_verification: stripeAccount.requirements.pending_verification || [],
+        }
+      : {
+          currently_due: [],
+          eventually_due: [],
+          past_due: [],
+          pending_verification: [],
+        };
+
+    const capabilities = stripeAccount.capabilities
+      ? {
+          card_payments:
+            typeof stripeAccount.capabilities.card_payments === "string"
+              ? (stripeAccount.capabilities.card_payments as "active" | "inactive" | "pending")
+              : (stripeAccount.capabilities.card_payments as any)?.status,
+          transfers:
+            typeof stripeAccount.capabilities.transfers === "string"
+              ? (stripeAccount.capabilities.transfers as "active" | "inactive" | "pending")
+              : (stripeAccount.capabilities.transfers as any)?.status,
+        }
+      : undefined;
+
+    // 9. 後方互換性のためのreviewStatus計算
     const hasDueRequirements =
       (requirements.currently_due?.length ?? 0) > 0 || (requirements.past_due?.length ?? 0) > 0;
     const hasPendingVerification = (requirements.pending_verification?.length ?? 0) > 0;
     const hasPendingCapabilities = Boolean(
-      accountInfo.capabilities &&
-        (accountInfo.capabilities.card_payments === "pending" ||
-          accountInfo.capabilities.transfers === "pending")
+      capabilities &&
+        (capabilities.card_payments === "pending" || capabilities.transfers === "pending")
     );
 
     let reviewStatus: "pending_review" | "requirements_due" | "none" = "none";
     if (hasDueRequirements) {
       reviewStatus = "requirements_due";
     } else if (
-      accountInfo.status === "onboarding" &&
+      updatedAccount.status === "onboarding" &&
       (hasPendingVerification || hasPendingCapabilities)
     ) {
       reviewStatus = "pending_review";
@@ -367,13 +414,15 @@ export async function getConnectAccountStatusAction(): Promise<ConnectAccountSta
       success: true,
       data: {
         hasAccount: true,
-        accountId: account.stripe_account_id,
-        status: accountInfo.status,
-        chargesEnabled: accountInfo.chargesEnabled,
-        payoutsEnabled: accountInfo.payoutsEnabled,
+        accountId: updatedAccount.stripe_account_id,
+        dbStatus: updatedAccount.status,
+        uiStatus,
+        status: updatedAccount.status, // 後方互換性のため
+        chargesEnabled: updatedAccount.charges_enabled,
+        payoutsEnabled: updatedAccount.payouts_enabled,
         reviewStatus,
         requirements,
-        capabilities: accountInfo.capabilities,
+        capabilities,
       },
     };
   } catch (error) {
@@ -425,6 +474,10 @@ async function getAuthenticatedUser() {
 /**
  * オンボーディング完了後の処理を行うServer Action
  * 認証・認可チェックを強化し、詳細なログ出力を実装
+ *
+ * StatusSyncServiceを使用してリトライ付き同期を実装
+ * エラーハンドリングを強化
+ * キャッシュされたステータスを使用してフォールバック
  */
 export async function handleOnboardingReturnAction(): Promise<void> {
   try {
@@ -434,43 +487,48 @@ export async function handleOnboardingReturnAction(): Promise<void> {
     // 2. StripeConnectServiceを初期化（ユーザーセッション使用、RLS適用）
     const stripeConnectService = createUserStripeConnectService();
 
-    // 3. アカウント情報を取得して最新状態に同期（軽量リトライ付き）
+    // 3. アカウント情報を取得
     const account = await stripeConnectService.getConnectAccountByUser(user.id);
 
     if (account) {
-      const retry = async <T>(
-        fn: () => Promise<T>,
-        attempts = 3,
-        baseDelayMs = 200
-      ): Promise<T> => {
-        let lastErr: unknown;
-        for (let i = 0; i < attempts; i++) {
-          try {
-            return await fn();
-          } catch (e) {
-            lastErr = e;
-            // Stripe 側の整合に多少の遅延がある場合に備え、指数バックオフで再試行
-            const delay = baseDelayMs * Math.pow(2, i);
-            await new Promise((resolve) => setTimeout(resolve, delay));
-          }
+      // 4. StatusSyncServiceを使用してリトライ付き同期を実装
+      const { StatusSyncService } = await import("../services/status-sync-service");
+      const statusSyncService = new StatusSyncService(stripeConnectService);
+
+      let accountInfo;
+      try {
+        // リトライ付きでステータス同期を実行
+        await statusSyncService.syncAccountStatus(user.id, account.stripe_account_id, {
+          maxRetries: 3,
+          initialBackoffMs: 200,
+        });
+
+        // 同期後の最新情報を取得
+        accountInfo = await stripeConnectService.getAccountInfo(account.stripe_account_id);
+      } catch (syncError) {
+        // 要件 9.4: 同期エラー時はキャッシュされたステータスを使用
+        logger.warn("Status sync failed during onboarding return, using cached status", {
+          tag: "onboardingReturnSyncFailed",
+          user_id: user.id,
+          account_id: account.stripe_account_id,
+          error_message: syncError instanceof Error ? syncError.message : String(syncError),
+        });
+
+        // キャッシュされたステータスを使用（DBから取得）
+        const cachedAccount = await stripeConnectService.getConnectAccountByUser(user.id);
+        if (cachedAccount) {
+          accountInfo = {
+            accountId: cachedAccount.stripe_account_id,
+            status: cachedAccount.status,
+            chargesEnabled: cachedAccount.charges_enabled,
+            payoutsEnabled: cachedAccount.payouts_enabled,
+          };
+        } else {
+          throw new Error("アカウント情報の取得に失敗しました");
         }
-        throw lastErr instanceof Error ? lastErr : new Error(String(lastErr));
-      };
+      }
 
-      const accountInfo = await retry(() =>
-        stripeConnectService.getAccountInfo(account.stripe_account_id)
-      );
-
-      await retry(() =>
-        stripeConnectService.updateAccountStatus({
-          userId: user.id,
-          status: accountInfo.status,
-          chargesEnabled: accountInfo.chargesEnabled,
-          payoutsEnabled: accountInfo.payoutsEnabled,
-        })
-      );
-
-      // Slack通知（Connectオンボーディング完了）
+      // 5. Slack通知（Connectオンボーディング完了）
       try {
         const timestamp = new Date().toISOString();
         const slackText = `[Stripe Connect Onboarding Completed]
