@@ -59,6 +59,89 @@ export class StripeConnectService implements IStripeConnectService {
   }
 
   /**
+   * Stripe Account Objectのrequirementsを整形
+   * @param requirements Stripe Account Requirements
+   * @returns 整形されたrequirements情報
+   */
+  private formatRequirements(requirements: Stripe.Account.Requirements | undefined):
+    | {
+        currently_due: string[];
+        eventually_due: string[];
+        past_due: string[];
+        pending_verification: string[];
+        disabled_reason?: string;
+        current_deadline?: number | null;
+        errors?: Array<{
+          code: string;
+          reason: string;
+          requirement: string;
+        }>;
+      }
+    | undefined {
+    if (!requirements) return undefined;
+
+    const formatted: {
+      currently_due: string[];
+      eventually_due: string[];
+      past_due: string[];
+      pending_verification: string[];
+      disabled_reason?: string;
+      current_deadline?: number | null;
+      errors?: Array<{
+        code: string;
+        reason: string;
+        requirement: string;
+      }>;
+    } = {
+      currently_due: requirements.currently_due || [],
+      eventually_due: requirements.eventually_due || [],
+      past_due: requirements.past_due || [],
+      pending_verification: requirements.pending_verification || [],
+      current_deadline: requirements.current_deadline ?? null,
+    };
+
+    if (requirements.disabled_reason) {
+      formatted.disabled_reason = requirements.disabled_reason;
+    }
+
+    if (requirements.errors && Array.isArray(requirements.errors)) {
+      formatted.errors = requirements.errors.map((err: any) => ({
+        code: err.code || "unknown",
+        reason: err.reason || "",
+        requirement: err.requirement || "",
+      }));
+    }
+
+    return formatted;
+  }
+
+  /**
+   * Stripe Account Objectのcapabilitiesを整形
+   * string型とobject型の両方に対応
+   * @param capabilities Stripe Account Capabilities
+   * @returns 整形されたcapabilities情報
+   */
+  private formatCapabilities(capabilities: Stripe.Account.Capabilities | undefined):
+    | {
+        card_payments?: "active" | "inactive" | "pending";
+        transfers?: "active" | "inactive" | "pending";
+      }
+    | undefined {
+    if (!capabilities) return undefined;
+
+    const mapCapability = (cap: unknown): "active" | "inactive" | "pending" | undefined => {
+      if (typeof cap === "string") return cap as any;
+      if (cap && typeof cap === "object" && "status" in (cap as any)) return (cap as any).status;
+      return undefined;
+    };
+
+    return {
+      card_payments: mapCapability((capabilities as any).card_payments),
+      transfers: mapCapability((capabilities as any).transfers),
+    };
+  }
+
+  /**
    * Stripe Express Accountを作成する
    */
   async createExpressAccount(
@@ -309,129 +392,27 @@ export class StripeConnectService implements IStripeConnectService {
       const stripe = this.getStripeClient();
       const account = await stripe.accounts.retrieve(accountId);
 
-      // ステータスの判定（Stripe Connect Best Practices準拠）
-      // 判定フロー:
-      //   1. 実質的な制限（platform停止/拒否/違反）→ restricted
-      //   2. 完全有効化（詳細提出済 && payouts有効 && transfers有効）→ verified
-      //   3. 詳細提出済みだが未有効化/審査中 → onboarding
-      //   4. 未提出 → unverified
-      let status: Database["public"]["Enums"]["stripe_account_status_enum"] = "unverified";
+      // 新しい分類器を使用してステータスを判定
+      const { AccountStatusClassifier } = await import("./account-status-classifier");
+      const classifier = new AccountStatusClassifier();
+      const classificationResult = classifier.classify(account);
+      const status = classificationResult.status;
 
-      const disabledReason = account.requirements?.disabled_reason || "";
-      const detailsSubmitted = !!account.details_submitted;
-      const payoutsEnabled = !!account.payouts_enabled;
+      // ログ出力
+      logger.info("Account classified", {
+        tag: "accountStatusClassification",
+        account_id: accountId,
+        status: status,
+        gate: classificationResult.metadata.gate,
+        reason: classificationResult.reason,
+        details_submitted: account.details_submitted,
+        payouts_enabled: account.payouts_enabled,
+        disabled_reason: account.requirements?.disabled_reason || null,
+      });
 
-      // transfers capability のステータス判定
-      const transfersCap = (() => {
-        const cap = (account.capabilities as any)?.transfers;
-        if (typeof cap === "string") return cap === "active";
-        if (cap && typeof cap === "object" && "status" in cap)
-          return (cap as any).status === "active";
-        return false;
-      })();
-
-      // 1. 実質的制限（要件未充足 "requirements.*" は除外）
-      //    - platform_paused: プラットフォームによる一時停止
-      //    - rejected.*: Stripeによる拒否（例: rejected.fraud, rejected.terms_of_service）
-      //    - その他の深刻な理由
-      const isHardRestricted =
-        disabledReason &&
-        !disabledReason.startsWith("requirements.") &&
-        disabledReason !== ("pending_verification" as string) &&
-        disabledReason !== ("under_review" as string);
-
-      if (isHardRestricted) {
-        status = "restricted";
-        logger.info("Account classified as restricted due to hard restriction", {
-          tag: "accountStatusClassification",
-          account_id: accountId,
-          status: "restricted",
-          disabled_reason: disabledReason,
-          details_submitted: detailsSubmitted,
-        });
-      } else if (detailsSubmitted && payoutsEnabled && transfersCap) {
-        // 2. 完全有効化
-        status = "verified";
-        logger.info("Account classified as verified", {
-          tag: "accountStatusClassification",
-          account_id: accountId,
-          status: "verified",
-          details_submitted: detailsSubmitted,
-          payouts_enabled: payoutsEnabled,
-          transfers_active: transfersCap,
-        });
-      } else if (detailsSubmitted) {
-        // 3. 提出済みだが未有効化/審査中
-        status = "onboarding";
-        logger.info("Account classified as onboarding", {
-          tag: "accountStatusClassification",
-          account_id: accountId,
-          status: "onboarding",
-          details_submitted: detailsSubmitted,
-          payouts_enabled: payoutsEnabled,
-          transfers_active: transfersCap,
-          disabled_reason: disabledReason || null,
-        });
-      } else {
-        // 4. 未提出 → デフォルトの "unverified" のまま
-        logger.info("Account classified as unverified", {
-          tag: "accountStatusClassification",
-          account_id: accountId,
-          status: "unverified",
-          details_submitted: detailsSubmitted,
-          disabled_reason: disabledReason || null,
-        });
-      }
-
-      // requirements は undefined の場合や disabled_reason 未設定の場合のキー追加を避ける
-      let requirements:
-        | {
-            currently_due: string[];
-            eventually_due: string[];
-            past_due: string[];
-            pending_verification: string[];
-            disabled_reason?: string;
-            current_deadline?: number | null;
-            errors?: Array<{
-              code: string;
-              reason: string;
-              requirement: string;
-            }>;
-          }
-        | undefined = undefined;
-      if (account.requirements) {
-        requirements = {
-          currently_due: account.requirements.currently_due || [],
-          eventually_due: account.requirements.eventually_due || [],
-          past_due: account.requirements.past_due || [],
-          pending_verification: account.requirements.pending_verification || [],
-          current_deadline: account.requirements.current_deadline ?? null,
-        };
-        if (account.requirements.disabled_reason) {
-          requirements.disabled_reason = account.requirements.disabled_reason;
-        }
-        if (account.requirements.errors && Array.isArray(account.requirements.errors)) {
-          requirements.errors = account.requirements.errors.map((err: any) => ({
-            code: err.code || "unknown",
-            reason: err.reason || "",
-            requirement: err.requirement || "",
-          }));
-        }
-      }
-
-      // capabilities は string または { status: string } の両方に対応
-      const mapCapability = (cap: unknown): "active" | "inactive" | "pending" | undefined => {
-        if (typeof cap === "string") return cap as any;
-        if (cap && typeof cap === "object" && "status" in (cap as any)) return (cap as any).status;
-        return undefined;
-      };
-
-      const capabilities = account.capabilities
-        ? {
-            card_payments: mapCapability((account.capabilities as any).card_payments),
-            transfers: mapCapability((account.capabilities as any).transfers),
-          }
-        : undefined;
+      // requirements と capabilities の整形（既存ロジック維持）
+      const requirements = this.formatRequirements(account.requirements);
+      const capabilities = this.formatCapabilities(account.capabilities);
 
       return {
         accountId: account.id,
