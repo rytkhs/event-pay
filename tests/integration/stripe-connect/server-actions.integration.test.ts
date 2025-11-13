@@ -52,11 +52,16 @@ describe("Server Actions Integration Tests", () => {
       );
       const statusSyncService = new StatusSyncService(setup.service);
 
-      await expect(
-        statusSyncService.syncAccountStatus(setup.testUser.id, createResult.accountId, {
+      const stripeAccount = await statusSyncService.syncAccountStatus(
+        setup.testUser.id,
+        createResult.accountId,
+        {
           maxRetries: 3,
-        })
-      ).resolves.not.toThrow();
+        }
+      );
+
+      expect(stripeAccount).toBeDefined();
+      expect(stripeAccount.id).toBe(createResult.accountId);
 
       const account = await setup.service.getConnectAccountByUser(setup.testUser.id);
       expect(account).toBeDefined();

@@ -71,6 +71,11 @@ export interface AccountInfo {
   status: StripeAccountStatus;
   chargesEnabled: boolean;
   payoutsEnabled: boolean;
+  /**
+   * Stripe Account オブジェクト
+   * StatusSyncServiceがAPI呼び出しを削減するために返す
+   */
+  stripeAccount: import("stripe").Stripe.Account;
   email?: string;
   country?: string;
   businessType?: string;

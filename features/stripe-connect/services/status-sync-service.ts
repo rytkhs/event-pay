@@ -68,12 +68,13 @@ export class StatusSyncService {
    * @param userId ユーザーID
    * @param accountId Stripe Account ID
    * @param options 同期オプション
+   * @returns 同期後のStripe Accountオブジェクト
    */
   async syncAccountStatus(
     userId: string,
     accountId: string,
     options: SyncOptions = {}
-  ): Promise<void> {
+  ): Promise<Stripe.Account> {
     const maxRetries = options.maxRetries ?? 3;
     const initialBackoffMs = options.initialBackoffMs ?? 1000;
     let lastError: Error | undefined;
@@ -102,7 +103,7 @@ export class StatusSyncService {
           attempt: attempt + 1,
         });
 
-        return;
+        return accountInfo.stripeAccount;
       } catch (error) {
         lastError = error as Error;
 

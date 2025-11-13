@@ -42,6 +42,13 @@ const createMockAccountInfo = (overrides?: Partial<AccountInfo>): AccountInfo =>
     status: "verified",
     chargesEnabled: true,
     payoutsEnabled: true,
+    stripeAccount: {
+      id: "acct_test_123",
+      object: "account",
+      details_submitted: true,
+      charges_enabled: true,
+      payouts_enabled: true,
+    } as Stripe.Account,
     ...overrides,
   };
 };
@@ -57,7 +64,7 @@ describe("StatusSyncService", () => {
   });
 
   describe("syncAccountStatus", () => {
-    it("成功時はアカウント情報を取得してステータスを更新する", async () => {
+    it("成功時はアカウント情報を取得してステータスを更新し、Stripe Accountを返す", async () => {
       const userId = "user_123";
       const accountId = "acct_test_123";
       const accountInfo = createMockAccountInfo();
@@ -65,7 +72,7 @@ describe("StatusSyncService", () => {
       mockStripeConnectService.getAccountInfo.mockResolvedValue(accountInfo);
       mockStripeConnectService.updateAccountStatus.mockResolvedValue();
 
-      await service.syncAccountStatus(userId, accountId);
+      const result = await service.syncAccountStatus(userId, accountId);
 
       expect(mockStripeConnectService.getAccountInfo).toHaveBeenCalledWith(accountId);
       expect(mockStripeConnectService.updateAccountStatus).toHaveBeenCalledWith({
@@ -77,6 +84,7 @@ describe("StatusSyncService", () => {
         classificationMetadata: accountInfo.classificationMetadata,
         trigger: "ondemand",
       });
+      expect(result).toBe(accountInfo.stripeAccount);
     });
 
     it("リトライ可能なエラーの場合は指数バックオフでリトライする", async () => {
@@ -95,13 +103,14 @@ describe("StatusSyncService", () => {
 
       mockStripeConnectService.updateAccountStatus.mockResolvedValue();
 
-      await service.syncAccountStatus(userId, accountId, {
+      const result = await service.syncAccountStatus(userId, accountId, {
         maxRetries: 3,
         initialBackoffMs: 100,
       });
 
       expect(mockStripeConnectService.getAccountInfo).toHaveBeenCalledTimes(3);
       expect(mockStripeConnectService.updateAccountStatus).toHaveBeenCalledTimes(1);
+      expect(result).toBe(accountInfo.stripeAccount);
     });
 
     it("リトライ不可能なエラーの場合は即座に例外をスローする", async () => {

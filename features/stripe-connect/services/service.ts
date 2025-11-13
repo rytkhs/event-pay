@@ -419,6 +419,7 @@ export class StripeConnectService implements IStripeConnectService {
         status: status,
         chargesEnabled: account.charges_enabled || false,
         payoutsEnabled: account.payouts_enabled || false,
+        stripeAccount: account,
         email: account.email || undefined,
         country: account.country || undefined,
         businessType: account.business_type || undefined,

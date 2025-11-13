@@ -333,10 +333,16 @@ export async function getConnectAccountStatusAction(): Promise<ConnectAccountSta
     const { StatusSyncService } = await import("../services/status-sync-service");
     const statusSyncService = new StatusSyncService(stripeConnectService);
 
+    let stripeAccount;
     try {
-      await statusSyncService.syncAccountStatus(user.id, account.stripe_account_id, {
-        maxRetries: 3,
-      });
+      // 同期処理でStripe Accountオブジェクトを取得（API呼び出しを1回に削減）
+      stripeAccount = await statusSyncService.syncAccountStatus(
+        user.id,
+        account.stripe_account_id,
+        {
+          maxRetries: 3,
+        }
+      );
     } catch (syncError) {
       // 同期エラーはログに記録するが、キャッシュされたステータスを使用して続行
       logger.warn("Status sync failed, using cached status", {
@@ -345,6 +351,11 @@ export async function getConnectAccountStatusAction(): Promise<ConnectAccountSta
         account_id: account.stripe_account_id,
         error_message: syncError instanceof Error ? syncError.message : String(syncError),
       });
+
+      // フォールバック: Stripeから直接取得
+      const { getStripe } = await import("@core/stripe/client");
+      const stripe = getStripe();
+      stripeAccount = await stripe.accounts.retrieve(account.stripe_account_id);
     }
 
     // 5. 最新のアカウント情報を取得（同期後）
@@ -352,11 +363,6 @@ export async function getConnectAccountStatusAction(): Promise<ConnectAccountSta
     if (!updatedAccount) {
       throw new Error("アカウント情報の取得に失敗しました");
     }
-
-    // 6. Stripeから最新の情報を取得してUI Statusを計算
-    const { getStripe } = await import("@core/stripe/client");
-    const stripe = getStripe();
-    const stripeAccount = await stripe.accounts.retrieve(updatedAccount.stripe_account_id);
 
     // 7. UIStatusMapperを使用してUI Statusを計算（要件 2.1-2.6）
     const { UIStatusMapper } = await import("../services/ui-status-mapper");
@@ -497,14 +503,28 @@ export async function handleOnboardingReturnAction(): Promise<void> {
 
       let accountInfo;
       try {
-        // リトライ付きでステータス同期を実行
-        await statusSyncService.syncAccountStatus(user.id, account.stripe_account_id, {
-          maxRetries: 3,
-          initialBackoffMs: 200,
-        });
+        // リトライ付きでステータス同期を実行（Stripe Accountオブジェクトを取得）
+        const stripeAccount = await statusSyncService.syncAccountStatus(
+          user.id,
+          account.stripe_account_id,
+          {
+            maxRetries: 3,
+            initialBackoffMs: 200,
+          }
+        );
 
-        // 同期後の最新情報を取得
-        accountInfo = await stripeConnectService.getAccountInfo(account.stripe_account_id);
+        // 同期後の最新情報を取得（DBから）
+        const updatedAccount = await stripeConnectService.getConnectAccountByUser(user.id);
+        if (!updatedAccount) {
+          throw new Error("アカウント情報の取得に失敗しました");
+        }
+
+        accountInfo = {
+          accountId: updatedAccount.stripe_account_id,
+          status: updatedAccount.status,
+          chargesEnabled: updatedAccount.charges_enabled,
+          payoutsEnabled: updatedAccount.payouts_enabled,
+        };
       } catch (syncError) {
         // 要件 9.4: 同期エラー時はキャッシュされたステータスを使用
         logger.warn("Status sync failed during onboarding return, using cached status", {
