@@ -101,22 +101,21 @@ async function ConnectContent({ searchParams }: ConnectPageProps) {
               return {
                 hasAccount: true,
                 accountId: r.data?.accountId,
-                status:
-                  r.data?.status === "unverified" ||
-                  r.data?.status === "onboarding" ||
-                  r.data?.status === "verified" ||
-                  r.data?.status === "restricted"
-                    ? (r.data?.status as any)
-                    : null,
+                dbStatus: r.data?.dbStatus as
+                  | "unverified"
+                  | "onboarding"
+                  | "verified"
+                  | "restricted"
+                  | undefined,
+                uiStatus: (r.data?.uiStatus ?? "no_account") as
+                  | "no_account"
+                  | "unverified"
+                  | "requirements_due"
+                  | "ready"
+                  | "restricted",
                 chargesEnabled: r.data?.chargesEnabled ?? false,
                 payoutsEnabled: r.data?.payoutsEnabled ?? false,
-                requirements: r.data?.requirements ?? {
-                  currently_due: [],
-                  eventually_due: [],
-                  past_due: [],
-                  pending_verification: [],
-                },
-                reviewStatus: r.data?.reviewStatus,
+                requirements: r.data?.requirements,
                 capabilities: r.data?.capabilities,
                 expressDashboardAvailable: expressAccess.success,
               };

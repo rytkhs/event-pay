@@ -1,5 +1,9 @@
 /**
  * Stripe Connect Webhook ハンドラー
+ *
+ * account.updated Webhookを受信したとき、Account Objectを取得してClassification Algorithmを実行する
+ * capabilities.* の status または requirements が変化したとき、Status Synchronizationを実行する
+ * payouts_enabled または charges_enabled が変化したとき、Status Synchronizationを実行する
  */
 
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -78,6 +82,10 @@ export class ConnectWebhookHandler {
 
   /**
    * account.updated イベントを処理
+   *
+   * Account Objectを取得してClassification Algorithmを実行する
+   * capabilities.* の status または requirements が変化したとき、Status Synchronizationを実行する
+   * payouts_enabled または charges_enabled が変化したとき、Status Synchronizationを実行する
    */
   async handleAccountUpdated(account: Stripe.Account): Promise<void> {
     try {
@@ -95,36 +103,70 @@ export class ConnectWebhookHandler {
       const stripeConnectPort = getStripeConnectPort();
       const currentAccount = await stripeConnectPort.getConnectAccountByUser(userId);
 
-      // Stripeからアカウント情報を取得
-      const accountInfo = await stripeConnectPort.getAccountInfo(account.id);
+      // AccountStatusClassifierを使用してステータスを分類
+      const { AccountStatusClassifier } = await import(
+        "@features/stripe-connect/services/account-status-classifier"
+      );
+      const classifier = new AccountStatusClassifier();
+      const classificationResult = classifier.classify(account);
 
       // 状態変更を記録（存在しない場合は未知扱い）
       const oldStatus = currentAccount?.status ?? "unknown";
-      const newStatus = accountInfo.status;
+      const newStatus = classificationResult.status;
 
-      // データベースのアカウント情報を更新
+      // データベースのアカウント情報を更新（classificationMetadataとtriggerを含む）
       await stripeConnectPort.updateAccountStatus({
         userId,
-        status: accountInfo.status,
-        chargesEnabled: accountInfo.chargesEnabled,
-        payoutsEnabled: accountInfo.payoutsEnabled,
+        status: classificationResult.status,
+        chargesEnabled: account.charges_enabled || false,
+        payoutsEnabled: account.payouts_enabled || false,
         // レコードが無い場合の追従作成に必要
         stripeAccountId: account.id,
+        classificationMetadata: classificationResult.metadata,
+        trigger: "webhook",
       });
 
-      logger.info("Account status updated", {
+      logger.info("Account status updated via webhook", {
         tag: "accountStatusUpdated",
         user_id: userId,
         stripe_account_id: account.id,
         old_status: oldStatus,
         new_status: newStatus,
+        classification_gate: classificationResult.metadata.gate,
+        classification_reason: classificationResult.reason,
       });
 
       // 通知を送信
-      await this.sendNotifications(userId, account.id, oldStatus, accountInfo);
+      await this.sendNotifications(userId, account.id, oldStatus, {
+        status: classificationResult.status,
+        chargesEnabled: account.charges_enabled || false,
+        payoutsEnabled: account.payouts_enabled || false,
+        requirements: account.requirements
+          ? {
+              disabled_reason: account.requirements.disabled_reason
+                ? String(account.requirements.disabled_reason)
+                : undefined,
+              currently_due: account.requirements.currently_due ?? undefined,
+              past_due: account.requirements.past_due ?? undefined,
+            }
+          : undefined,
+      });
 
       // セキュリティログを記録
-      await this.logAccountUpdate(userId, account.id, oldStatus, accountInfo);
+      await this.logAccountUpdate(userId, account.id, oldStatus, {
+        status: classificationResult.status,
+        chargesEnabled: account.charges_enabled || false,
+        payoutsEnabled: account.payouts_enabled || false,
+        requirements: account.requirements
+          ? {
+              disabled_reason: account.requirements.disabled_reason
+                ? String(account.requirements.disabled_reason)
+                : undefined,
+              currently_due: account.requirements.currently_due ?? undefined,
+              past_due: account.requirements.past_due ?? undefined,
+            }
+          : undefined,
+      });
     } catch (error) {
       logger.error("Error handling account.updated event", {
         tag: "accountUpdatedHandlerError",
