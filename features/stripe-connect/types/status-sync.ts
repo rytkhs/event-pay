@@ -3,10 +3,6 @@
  * エラーハンドリング、リトライ、レート制限に関する型定義
  */
 
-// StatusSyncErrorとStatusSyncErrorTypeはservices/status-sync-service.tsで定義されています
-import type { StatusSyncError } from "../services/status-sync-service";
-export type { StatusSyncError, StatusSyncErrorType } from "../services/status-sync-service";
-
 /**
  * Status Sync Options
  * ステータス同期のオプション
@@ -32,7 +28,7 @@ export interface StatusSyncResult {
   /** 試行回数 */
   attempts: number;
   /** エラー情報（失敗時） */
-  error?: StatusSyncError;
+  error?: Error;
   /** 同期にかかった時間（ミリ秒） */
   durationMs: number;
 }
@@ -60,9 +56,6 @@ export interface RateLimitResult {
   /** リセットまでの時間（秒） */
   resetInSeconds: number;
 }
-
-// StatusChangeLogはaudit-log.tsで定義されています
-export type { StatusChangeLog } from "./audit-log";
 
 /**
  * Webhook Event Type

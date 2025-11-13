@@ -10,7 +10,6 @@ import { Database } from "@/types/database";
 
 // 新しい型定義をエクスポート
 export * from "./types/status-classification";
-export * from "./types/status-sync";
 export * from "./types/audit-log";
 
 // Stripe Connectアカウントステータスの型（データベースのenumに合わせる）

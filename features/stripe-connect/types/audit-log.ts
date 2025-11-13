@@ -4,8 +4,12 @@
  * @module features/stripe-connect/types/audit-log
  */
 
-import { StripeAccountStatus } from "../types";
+import type { Database } from "@/types/database";
+
 import { ClassificationMetadata } from "./status-classification";
+
+// 循環依存を避けるため、直接database型から取得
+type StripeAccountStatus = Database["public"]["Enums"]["stripe_account_status_enum"];
 
 /**
  * ステータス変更のトリガー種別

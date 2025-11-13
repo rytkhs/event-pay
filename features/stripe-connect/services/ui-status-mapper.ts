@@ -12,6 +12,7 @@
  */
 
 import type Stripe from "stripe";
+
 import type { DatabaseStatus, UIStatus } from "../types/status-classification";
 
 export class UIStatusMapper {
