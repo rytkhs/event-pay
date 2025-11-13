@@ -1,5 +1,6 @@
 /**
  * Stripe 入金設定ステータス表示コンポーネント
+ * UI Statusに基づいて適切なビューを表示
  */
 
 "use client";
@@ -8,133 +9,91 @@ import { useState } from "react";
 
 import Link from "next/link";
 
-import {
-  CheckCircle,
-  AlertCircle,
-  Clock,
-  XCircle,
-  CreditCard,
-  ArrowUpDown,
-  RefreshCw,
-  ExternalLink,
-  ShieldCheck,
-  BookOpen,
-} from "lucide-react";
+import { CreditCard, ArrowUpDown, RefreshCw, ExternalLink, BookOpen } from "lucide-react";
 
-import { STRIPE_ACCOUNT_STATUS_LABELS } from "@core/types/enums";
-
-// Actions are now injected via props to avoid circular dependency
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Badge, type BadgeProps } from "@/components/ui/badge";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
-type ReviewStatus = "pending_review" | "requirements_due" | "none";
+import type { AccountStatusData } from "../types/status-classification";
 
-interface AccountStatusData {
-  hasAccount: boolean;
-  accountId?: string;
-  status: "unverified" | "onboarding" | "verified" | "restricted" | null;
-  chargesEnabled: boolean;
-  payoutsEnabled: boolean;
-  reviewStatus?: ReviewStatus;
-  requirements?: {
-    currently_due: string[];
-    eventually_due: string[];
-    past_due: string[];
-    pending_verification: string[];
-  };
-  capabilities?: {
-    card_payments?: "active" | "inactive" | "pending";
-    transfers?: "active" | "inactive" | "pending";
-  };
-  expressDashboardAvailable?: boolean;
-}
+import {
+  NoAccountView,
+  UnverifiedView,
+  RequirementsDueView,
+  RestrictedView,
+  ReadyView,
+} from "./status-views";
 
 interface AccountStatusProps {
   refreshUrl: string;
   status: AccountStatusData;
   expressDashboardAction?: (formData: FormData) => Promise<void>;
+  expressDashboardAvailable?: boolean;
 }
 
-export function AccountStatus({ refreshUrl, status, expressDashboardAction }: AccountStatusProps) {
+export function AccountStatus({
+  refreshUrl,
+  status,
+  expressDashboardAction,
+  expressDashboardAvailable,
+}: AccountStatusProps) {
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const accountData = status;
-  const requirements = accountData.requirements ?? {
-    currently_due: [],
-    eventually_due: [],
-    past_due: [],
-    pending_verification: [],
-  };
-  const hasDueRequirements = Boolean(
-    (requirements.currently_due?.length ?? 0) > 0 || (requirements.past_due?.length ?? 0) > 0
-  );
-  const reviewStatus: ReviewStatus =
-    accountData.reviewStatus ?? (hasDueRequirements ? "requirements_due" : "none");
-  const isReviewPending = reviewStatus === "pending_review";
-  const isRequirementsDue = reviewStatus === "requirements_due";
-  const shouldShowAction =
-    accountData.status !== "verified" || isRequirementsDue || !accountData.payoutsEnabled;
+
   const handleRefresh = async () => {
     setIsRefreshing(true);
     // サーバーコンポーネントを再評価するにはページをリロード（または router.refresh()）
     window.location.reload();
   };
 
-  const getStatusIcon = (status: string | null, currentReviewStatus: ReviewStatus) => {
-    switch (status) {
-      case "verified":
-        return <CheckCircle className="h-4 w-4 text-green-500" />;
-      case "onboarding":
-        if (currentReviewStatus === "pending_review") {
-          return <Clock className="h-4 w-4 text-blue-500" />;
-        }
-        return <Clock className="h-4 w-4 text-yellow-500" />;
-      case "restricted":
-        return <XCircle className="h-4 w-4 text-red-500" />;
+  // UI Statusに基づいてビューを切り替え
+  const renderStatusView = () => {
+    switch (status.uiStatus) {
+      case "no_account":
+        return <NoAccountView refreshUrl={refreshUrl} />;
       case "unverified":
-      default:
-        return <AlertCircle className="h-4 w-4 text-gray-500" />;
-    }
-  };
-
-  const getStatusText = (status: string | null, currentReviewStatus: ReviewStatus) => {
-    if (!status) return "未設定";
-    if (status === "onboarding") {
-      if (currentReviewStatus === "pending_review") {
-        return "審査中";
-      }
-      if (currentReviewStatus === "requirements_due") {
-        return "設定中";
-      }
-    }
-    return (
-      STRIPE_ACCOUNT_STATUS_LABELS[status as keyof typeof STRIPE_ACCOUNT_STATUS_LABELS] || "未設定"
-    );
-  };
-
-  const getStatusVariant = (
-    status: string | null,
-    currentReviewStatus: ReviewStatus
-  ): BadgeProps["variant"] => {
-    switch (status) {
-      case "verified":
-        return "default";
-      case "onboarding":
-        if (currentReviewStatus === "pending_review") {
-          return "info";
-        }
-        return "secondary";
+        return <UnverifiedView refreshUrl={refreshUrl} />;
+      case "requirements_due":
+        return (
+          <RequirementsDueView
+            status={status}
+            refreshUrl={refreshUrl}
+            expressDashboardAction={expressDashboardAction}
+            expressDashboardAvailable={expressDashboardAvailable}
+          />
+        );
       case "restricted":
-        return "destructive";
+        return <RestrictedView />;
+      case "ready":
+        return (
+          <ReadyView
+            status={status}
+            expressDashboardAction={expressDashboardAction}
+            expressDashboardAvailable={expressDashboardAvailable}
+          />
+        );
       default:
-        return "outline";
+        return null;
     }
   };
 
-  if (!accountData?.hasAccount) {
-    return null; // OnboardingFormが表示される
-  }
+  // UI Statusバッジの表示
+  const getUIStatusBadge = () => {
+    switch (status.uiStatus) {
+      case "no_account":
+        return <Badge variant="outline">未設定</Badge>;
+      case "unverified":
+        return <Badge variant="outline">未認証</Badge>;
+      case "requirements_due":
+        return <Badge variant="secondary">設定中</Badge>;
+      case "restricted":
+        return <Badge variant="destructive">制限あり</Badge>;
+      case "ready":
+        return <Badge variant="default">設定完了</Badge>;
+      default:
+        return <Badge variant="outline">不明</Badge>;
+    }
+  };
 
   return (
     <Card>
@@ -174,94 +133,30 @@ export function AccountStatus({ refreshUrl, status, expressDashboardAction }: Ac
         {/* ステータス概要 */}
         <div className="flex items-center justify-between p-4 border rounded-lg">
           <div className="flex items-center gap-3">
-            {getStatusIcon(accountData.status, reviewStatus)}
             <div>
               <div className="font-semibold">アカウントステータス</div>
             </div>
           </div>
-          <Badge variant={getStatusVariant(accountData.status, reviewStatus)}>
-            {getStatusText(accountData.status, reviewStatus)}
-          </Badge>
+          {getUIStatusBadge()}
         </div>
 
-        <div className="grid gap-4 md:grid-cols-1">
-          <div className="flex items-center justify-between p-3 border rounded-lg">
-            <div className="flex items-center gap-2">
-              <ArrowUpDown className="h-4 w-4" />
-              <span className="text-sm font-medium">送金</span>
+        {/* 送金ステータス（アカウントが存在する場合のみ） */}
+        {status.hasAccount && (
+          <div className="grid gap-4 md:grid-cols-1">
+            <div className="flex items-center justify-between p-3 border rounded-lg">
+              <div className="flex items-center gap-2">
+                <ArrowUpDown className="h-4 w-4" />
+                <span className="text-sm font-medium">送金</span>
+              </div>
+              <Badge variant={status.payoutsEnabled ? "default" : "outline"}>
+                {status.payoutsEnabled ? "有効" : "無効"}
+              </Badge>
             </div>
-            <Badge variant={accountData.payoutsEnabled ? "default" : "outline"}>
-              {accountData.payoutsEnabled ? "有効" : "無効"}
-            </Badge>
-          </div>
-        </div>
-
-        {/* 要求事項がある場合の表示 */}
-        {isRequirementsDue && (
-          <Alert variant={accountData.requirements?.past_due?.length ? "destructive" : "warning"}>
-            <AlertCircle className="h-4 w-4" />
-            <AlertDescription>
-              <strong>アカウント情報の更新が必要です。</strong>{" "}
-              Stripeの案内に従って、本人確認書類や入金口座などの不足情報を入力してください。
-            </AlertDescription>
-          </Alert>
-        )}
-
-        {isReviewPending && (
-          <Alert variant="info">
-            <Clock className="h-4 w-4" />
-            <AlertDescription>
-              <strong>Stripeが提出情報を審査中です。</strong> 審査には数日かかる場合があります。
-              審査が完了すると自動で入金設定が有効になります。
-            </AlertDescription>
-          </Alert>
-        )}
-
-        {/* アクションボタン */}
-        {shouldShowAction && (
-          <div className="flex gap-2">
-            {isReviewPending && accountData.expressDashboardAvailable && expressDashboardAction ? (
-              <form action={expressDashboardAction} className="flex-1">
-                <Button type="submit" className="w-full">
-                  <ExternalLink className="h-4 w-4 mr-2" />
-                  Stripeダッシュボードで状況を確認
-                </Button>
-              </form>
-            ) : (
-              <a href={refreshUrl} className="flex-1">
-                <Button type="button" className="w-full">
-                  <ExternalLink className="h-4 w-4 mr-2" />
-                  {accountData.status === "unverified"
-                    ? "Stripeで設定を始める"
-                    : "Stripeで設定を続行"}
-                </Button>
-              </a>
-            )}
           </div>
         )}
 
-        {accountData.status === "verified" &&
-          accountData.payoutsEnabled &&
-          accountData.expressDashboardAvailable &&
-          expressDashboardAction && (
-            <form action={expressDashboardAction} className="flex">
-              <Button type="submit" variant="outline" className="w-full">
-                <ShieldCheck className="h-4 w-4 mr-2" />
-                Stripeで売上・入金を確認
-              </Button>
-            </form>
-          )}
-
-        {/* 成功メッセージ */}
-        {accountData.status === "verified" && accountData.payoutsEnabled && (
-          <Alert variant="success">
-            <CheckCircle className="h-4 w-4" />
-            <AlertDescription>
-              <strong>設定完了！</strong> Stripeでの入金設定が完了しました。
-              オンライン決済が有効化されました。
-            </AlertDescription>
-          </Alert>
-        )}
+        {/* UI Status別のビューを表示 */}
+        {renderStatusView()}
       </CardContent>
     </Card>
   );
