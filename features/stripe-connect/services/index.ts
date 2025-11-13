@@ -7,6 +7,7 @@ export { StripeConnectService } from "./service";
 export { StripeConnectErrorHandler } from "./error-handler";
 export { StatusSyncService, StatusSyncError, StatusSyncErrorType } from "./status-sync-service";
 export type { SyncOptions } from "./status-sync-service";
+export { logStatusChange } from "./audit-logger";
 
 // インターフェース
 export type { IStripeConnectService, IStripeConnectErrorHandler } from "./interface";

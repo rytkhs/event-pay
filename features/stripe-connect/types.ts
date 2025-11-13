@@ -11,6 +11,7 @@ import { Database } from "@/types/database";
 // 新しい型定義をエクスポート
 export * from "./types/status-classification";
 export * from "./types/status-sync";
+export * from "./types/audit-log";
 
 // Stripe Connectアカウントステータスの型（データベースのenumに合わせる）
 export type StripeAccountStatus = Database["public"]["Enums"]["stripe_account_status_enum"];
@@ -91,6 +92,18 @@ export interface AccountInfo {
     card_payments?: "active" | "inactive" | "pending";
     transfers?: "active" | "inactive" | "pending";
   };
+  /**
+   * 分類メタデータ（監査ログ用）
+   */
+  classificationMetadata?: {
+    gate: 1 | 2 | 3 | 4 | 5;
+    details_submitted: boolean;
+    payouts_enabled: boolean;
+    transfers_active: boolean;
+    card_payments_active: boolean;
+    has_due_requirements: boolean;
+    disabled_reason?: string;
+  };
 }
 
 // アカウントステータス更新パラメータ
@@ -100,6 +113,23 @@ export interface UpdateAccountStatusParams {
   chargesEnabled: boolean;
   payoutsEnabled: boolean;
   stripeAccountId?: string;
+  /**
+   * 分類メタデータ（監査ログ用）
+   * AccountStatusClassifierから取得した分類情報
+   */
+  classificationMetadata?: {
+    gate: 1 | 2 | 3 | 4 | 5;
+    details_submitted: boolean;
+    payouts_enabled: boolean;
+    transfers_active: boolean;
+    card_payments_active: boolean;
+    has_due_requirements: boolean;
+    disabled_reason?: string;
+  };
+  /**
+   * ステータス変更のトリガー（監査ログ用）
+   */
+  trigger?: "webhook" | "ondemand" | "manual";
 }
 
 // ビジネスプロファイル更新パラメータ

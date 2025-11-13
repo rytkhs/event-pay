@@ -74,6 +74,8 @@ describe("StatusSyncService", () => {
         chargesEnabled: accountInfo.chargesEnabled,
         payoutsEnabled: accountInfo.payoutsEnabled,
         stripeAccountId: accountId,
+        classificationMetadata: accountInfo.classificationMetadata,
+        trigger: "ondemand",
       });
     });
 

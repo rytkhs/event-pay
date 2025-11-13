@@ -33,6 +33,15 @@ export interface StripeConnectPort {
       currently_due?: string[];
       past_due?: string[];
     };
+    classificationMetadata?: {
+      gate: 1 | 2 | 3 | 4 | 5;
+      details_submitted: boolean;
+      payouts_enabled: boolean;
+      transfers_active: boolean;
+      card_payments_active: boolean;
+      has_due_requirements: boolean;
+      disabled_reason?: string;
+    };
   }>;
 
   updateAccountStatus(input: {
@@ -41,6 +50,16 @@ export interface StripeConnectPort {
     chargesEnabled: boolean;
     payoutsEnabled: boolean;
     stripeAccountId?: string;
+    classificationMetadata?: {
+      gate: 1 | 2 | 3 | 4 | 5;
+      details_submitted: boolean;
+      payouts_enabled: boolean;
+      transfers_active: boolean;
+      card_payments_active: boolean;
+      has_due_requirements: boolean;
+      disabled_reason?: string;
+    };
+    trigger?: "webhook" | "ondemand" | "manual";
   }): Promise<void>;
 }
 

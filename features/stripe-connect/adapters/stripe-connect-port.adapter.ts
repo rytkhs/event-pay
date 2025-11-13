@@ -111,6 +111,7 @@ export function registerStripeConnectAdapters(): void {
                 past_due: accountInfo.requirements.past_due,
               }
             : undefined,
+          classificationMetadata: accountInfo.classificationMetadata,
         };
       } catch (error) {
         logger.error("Stripe Connect adapter error: getAccountInfo", {
@@ -143,6 +144,8 @@ export function registerStripeConnectAdapters(): void {
           chargesEnabled: input.chargesEnabled,
           payoutsEnabled: input.payoutsEnabled,
           stripeAccountId: input.stripeAccountId,
+          classificationMetadata: input.classificationMetadata,
+          trigger: input.trigger,
         });
       } catch (error) {
         logger.error("Stripe Connect adapter error: updateAccountStatus", {

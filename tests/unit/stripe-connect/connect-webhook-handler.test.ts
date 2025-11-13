@@ -161,6 +161,11 @@ describe("ConnectWebhookHandler", () => {
         chargesEnabled: false,
         payoutsEnabled: false,
         stripeAccountId: "acct_test_123",
+        classificationMetadata: expect.objectContaining({
+          gate: 5,
+          details_submitted: false,
+        }),
+        trigger: "webhook",
       });
     });
 
@@ -211,6 +216,14 @@ describe("ConnectWebhookHandler", () => {
         chargesEnabled: true,
         payoutsEnabled: true,
         stripeAccountId: "acct_test_123",
+        classificationMetadata: expect.objectContaining({
+          gate: 5,
+          details_submitted: true,
+          payouts_enabled: true,
+          transfers_active: true,
+          card_payments_active: true,
+        }),
+        trigger: "webhook",
       });
     });
 
@@ -261,6 +274,11 @@ describe("ConnectWebhookHandler", () => {
         chargesEnabled: false,
         payoutsEnabled: false,
         stripeAccountId: "acct_test_123",
+        classificationMetadata: expect.objectContaining({
+          gate: 1,
+          disabled_reason: "platform_paused",
+        }),
+        trigger: "webhook",
       });
     });
 
@@ -305,6 +323,11 @@ describe("ConnectWebhookHandler", () => {
         chargesEnabled: false,
         payoutsEnabled: false,
         stripeAccountId: "acct_test_123",
+        classificationMetadata: expect.objectContaining({
+          gate: 2,
+          disabled_reason: "under_review",
+        }),
+        trigger: "webhook",
       });
     });
 

@@ -83,13 +83,15 @@ export class StatusSyncService {
         // Stripeからアカウント情報を取得
         const accountInfo = await this.stripeConnectService.getAccountInfo(accountId);
 
-        // データベースのステータスを更新
+        // データベースのステータスを更新（classificationMetadataとtriggerを含む）
         await this.stripeConnectService.updateAccountStatus({
           userId,
           status: accountInfo.status,
           chargesEnabled: accountInfo.chargesEnabled,
           payoutsEnabled: accountInfo.payoutsEnabled,
           stripeAccountId: accountId,
+          classificationMetadata: accountInfo.classificationMetadata,
+          trigger: "ondemand",
         });
 
         logger.info("Status sync successful", {

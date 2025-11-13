@@ -114,7 +114,7 @@ export class ConnectWebhookHandler {
       const oldStatus = currentAccount?.status ?? "unknown";
       const newStatus = classificationResult.status;
 
-      // データベースのアカウント情報を更新
+      // データベースのアカウント情報を更新（classificationMetadataとtriggerを含む）
       await stripeConnectPort.updateAccountStatus({
         userId,
         status: classificationResult.status,
@@ -122,6 +122,8 @@ export class ConnectWebhookHandler {
         payoutsEnabled: account.payouts_enabled || false,
         // レコードが無い場合の追従作成に必要
         stripeAccountId: account.id,
+        classificationMetadata: classificationResult.metadata,
+        trigger: "webhook",
       });
 
       logger.info("Account status updated via webhook", {

@@ -424,6 +424,7 @@ export class StripeConnectService implements IStripeConnectService {
         businessType: account.business_type || undefined,
         requirements,
         capabilities,
+        classificationMetadata: classificationResult.metadata,
       };
     } catch (error) {
       // デバッグログ: エラーの詳細情報を出力
@@ -499,7 +500,15 @@ export class StripeConnectService implements IStripeConnectService {
    */
   async updateAccountStatus(params: UpdateAccountStatusParams): Promise<void> {
     try {
-      const { userId, status, chargesEnabled, payoutsEnabled, stripeAccountId } = params;
+      const {
+        userId,
+        status,
+        chargesEnabled,
+        payoutsEnabled,
+        stripeAccountId,
+        classificationMetadata,
+        trigger = "manual",
+      } = params;
 
       validateUserId(userId);
 
@@ -507,6 +516,16 @@ export class StripeConnectService implements IStripeConnectService {
         // オプションで指定された場合のみ形式検証
         validateStripeAccountId(stripeAccountId);
       }
+
+      // 現在のステータスを取得（ステータス変更検知用）
+      const { data: currentAccount } = await this.supabase
+        .from("stripe_connect_accounts")
+        .select("status, stripe_account_id")
+        .eq("user_id", userId)
+        .maybeSingle();
+
+      const previousStatus = currentAccount?.status || null;
+      const accountId = stripeAccountId || currentAccount?.stripe_account_id || "";
 
       const updateData: Database["public"]["Tables"]["stripe_connect_accounts"]["Update"] = {
         status: status,
@@ -530,21 +549,37 @@ export class StripeConnectService implements IStripeConnectService {
         throw this.errorHandler.mapDatabaseError(error, "Connect Accountステータス更新");
       }
 
-      // 監査ログ記録
-      if (updatedRows && updatedRows.length > 0) {
-        const { logStripeConnect } = await import("@core/logging/system-logger");
-        await logStripeConnect({
-          action: "connect.account_update",
-          message: `Stripe Connect account updated: ${userId}`,
-          user_id: userId,
-          outcome: "success",
-          metadata: {
-            updated_fields: Object.keys(updateData),
-            status,
-            charges_enabled: chargesEnabled,
-            payouts_enabled: payoutsEnabled,
-          },
-        });
+      // ステータス変更時の監査ログ記録
+      if (updatedRows && updatedRows.length > 0 && previousStatus !== status) {
+        // classificationMetadataが提供されている場合のみ詳細ログを記録
+        if (classificationMetadata && accountId) {
+          const { logStatusChange } = await import("./audit-logger");
+          await logStatusChange({
+            timestamp: new Date().toISOString(),
+            user_id: userId,
+            stripe_account_id: accountId,
+            previous_status: previousStatus,
+            new_status: status,
+            trigger,
+            classification_metadata: classificationMetadata,
+          });
+        } else {
+          // フォールバック: 基本的な監査ログ
+          const { logStripeConnect } = await import("@core/logging/system-logger");
+          await logStripeConnect({
+            action: "connect.status_change",
+            message: `Stripe Connect account status changed from ${previousStatus} to ${status}`,
+            user_id: userId,
+            outcome: "success",
+            metadata: {
+              previous_status: previousStatus,
+              new_status: status,
+              trigger,
+              charges_enabled: chargesEnabled,
+              payouts_enabled: payoutsEnabled,
+            },
+          });
+        }
       }
 
       // 該当行が存在せず更新件数0件の場合のフェイルセーフ

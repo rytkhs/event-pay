@@ -3,38 +3,9 @@
  * エラーハンドリング、リトライ、レート制限に関する型定義
  */
 
-/**
- * Status Sync Error Type
- * ステータス同期エラーの分類
- */
-export enum StatusSyncErrorType {
-  /** Stripe APIエラー */
-  STRIPE_API_ERROR = "STRIPE_API_ERROR",
-  /** ネットワークエラー */
-  NETWORK_ERROR = "NETWORK_ERROR",
-  /** レート制限エラー */
-  RATE_LIMIT_ERROR = "RATE_LIMIT_ERROR",
-  /** データベースエラー */
-  DATABASE_ERROR = "DATABASE_ERROR",
-  /** バリデーションエラー */
-  VALIDATION_ERROR = "VALIDATION_ERROR",
-}
-
-/**
- * Status Sync Error
- * ステータス同期エラークラス
- */
-export class StatusSyncError extends Error {
-  constructor(
-    public type: StatusSyncErrorType,
-    message: string,
-    public retryable: boolean,
-    public originalError?: Error
-  ) {
-    super(message);
-    this.name = "StatusSyncError";
-  }
-}
+// StatusSyncErrorとStatusSyncErrorTypeはservices/status-sync-service.tsで定義されています
+import type { StatusSyncError } from "../services/status-sync-service";
+export type { StatusSyncError, StatusSyncErrorType } from "../services/status-sync-service";
 
 /**
  * Status Sync Options
@@ -90,34 +61,8 @@ export interface RateLimitResult {
   resetInSeconds: number;
 }
 
-/**
- * Status Change Log
- * ステータス変更の監査ログ
- */
-export interface StatusChangeLog {
-  /** タイムスタンプ */
-  timestamp: string;
-  /** ユーザーID */
-  user_id: string;
-  /** Stripe Account ID */
-  stripe_account_id: string;
-  /** 変更前のステータス */
-  previous_status: string | null;
-  /** 変更後のステータス */
-  new_status: string;
-  /** トリガー */
-  trigger: "webhook" | "ondemand" | "manual";
-  /** 分類メタデータ */
-  classification_metadata: {
-    gate: 1 | 2 | 3 | 4 | 5;
-    details_submitted: boolean;
-    payouts_enabled: boolean;
-    transfers_active: boolean;
-    card_payments_active: boolean;
-    has_due_requirements: boolean;
-    disabled_reason?: string;
-  };
-}
+// StatusChangeLogはaudit-log.tsで定義されています
+export type { StatusChangeLog } from "./audit-log";
 
 /**
  * Webhook Event Type
