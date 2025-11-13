@@ -5,6 +5,10 @@
 // サービスクラス
 export { StripeConnectService } from "./service";
 export { StripeConnectErrorHandler } from "./error-handler";
+export { StatusSyncService, StatusSyncError, StatusSyncErrorType } from "./status-sync-service";
+export { StatusSyncRateLimiter } from "./status-sync-rate-limiter";
+export type { SyncOptions } from "./status-sync-service";
+export type { RateLimitResult } from "./status-sync-rate-limiter";
 
 // インターフェース
 export type { IStripeConnectService, IStripeConnectErrorHandler } from "./interface";
