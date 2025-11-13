@@ -99,6 +99,8 @@ export interface AccountStatusData {
     card_payments?: "active" | "inactive" | "pending";
     transfers?: "active" | "inactive" | "pending";
   };
+  /** Express Dashboardへのアクセスが可能か */
+  expressDashboardAvailable?: boolean;
 }
 
 /**

@@ -29,15 +29,9 @@ interface AccountStatusProps {
   refreshUrl: string;
   status: AccountStatusData;
   expressDashboardAction?: (formData: FormData) => Promise<void>;
-  expressDashboardAvailable?: boolean;
 }
 
-export function AccountStatus({
-  refreshUrl,
-  status,
-  expressDashboardAction,
-  expressDashboardAvailable,
-}: AccountStatusProps) {
+export function AccountStatus({ refreshUrl, status, expressDashboardAction }: AccountStatusProps) {
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   const handleRefresh = async () => {
@@ -59,7 +53,7 @@ export function AccountStatus({
             status={status}
             refreshUrl={refreshUrl}
             expressDashboardAction={expressDashboardAction}
-            expressDashboardAvailable={expressDashboardAvailable}
+            expressDashboardAvailable={status.expressDashboardAvailable}
           />
         );
       case "restricted":
@@ -69,7 +63,7 @@ export function AccountStatus({
           <ReadyView
             status={status}
             expressDashboardAction={expressDashboardAction}
-            expressDashboardAvailable={expressDashboardAvailable}
+            expressDashboardAvailable={status.expressDashboardAvailable}
           />
         );
       default:
