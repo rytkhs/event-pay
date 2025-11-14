@@ -40,9 +40,9 @@ export default function LandingPage(): JSX.Element {
       <HeroSection
         title={
           <>
-            出欠から集金まで、
+            いつもの集金を、
             <br />
-            ひとつのリンクで完了。
+            キャッシュレスに。
           </>
         }
         description={
