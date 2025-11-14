@@ -114,7 +114,7 @@ export function AuthFormWrapper({
       </main>
 
       <footer className="text-center text-sm text-gray-600 py-4" role="contentinfo">
-        <p>みんなの集金 - 出欠から集金まで、ひとつのリンクで完了</p>
+        <p>みんなの集金 - いつもの集金を、キャッシュレスに</p>
       </footer>
     </>
   );

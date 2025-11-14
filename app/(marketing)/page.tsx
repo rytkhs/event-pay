@@ -7,7 +7,7 @@ export const dynamic = "force-static";
 export async function generateMetadata(): Promise<Metadata> {
   return {
     title: {
-      absolute: "みんなの集金 - 出欠から集金まで、ひとつのリンクで完了",
+      absolute: "みんなの集金 - いつもの集金を、キャッシュレスに",
     },
   };
 }

@@ -237,7 +237,7 @@ function LoginForm() {
         className="text-center text-xs sm:text-sm text-muted-foreground py-4"
         role="contentinfo"
       >
-        <p>みんなの集金 - 出欠から集金まで、ひとつのリンクで完了</p>
+        <p>みんなの集金 - いつもの集金を、キャッシュレスに</p>
       </footer>
     </>
   );
