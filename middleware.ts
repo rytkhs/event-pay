@@ -129,7 +129,7 @@ export async function middleware(request: NextRequest) {
       ? // 静的ページ: nonceなし、'unsafe-inline'を許可（nonceがあると'unsafe-inline'が無視されるため）
         [
           "default-src 'self'",
-          "script-src 'self' 'unsafe-inline' https://js.stripe.com https://connect-js.stripe.com https://maps.googleapis.com https://*.googletagmanager.com",
+          "script-src 'self' 'unsafe-inline' https://js.stripe.com https://connect-js.stripe.com https://maps.googleapis.com https://*.googletagmanager.com https://static.cloudflareinsights.com",
           "script-src-attr 'none'",
           "style-src-elem 'self' 'unsafe-inline' https://fonts.googleapis.com",
           "style-src-attr 'unsafe-inline'",
@@ -148,7 +148,7 @@ export async function middleware(request: NextRequest) {
         [
           "default-src 'self'",
           // strict-dynamic を併用し、nonce 付きルートスクリプトからの信頼伝播を許可
-          `script-src 'self' 'nonce-${nonce}' https://js.stripe.com https://connect-js.stripe.com https://maps.googleapis.com https://*.googletagmanager.com 'strict-dynamic'`,
+          `script-src 'self' 'nonce-${nonce}' https://js.stripe.com https://connect-js.stripe.com https://maps.googleapis.com https://*.googletagmanager.com https://static.cloudflareinsights.com 'strict-dynamic'`,
           "script-src-attr 'none'",
           // style は Level 3 の -elem/-attr で厳格化（属性インラインは許可）
           `style-src-elem 'self' 'nonce-${nonce}' https://fonts.googleapis.com`,
