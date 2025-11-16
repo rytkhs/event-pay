@@ -12,6 +12,7 @@ import {
   createServerActionSuccess,
   zodErrorToServerActionResponse,
 } from "@core/types/server-actions";
+import { deriveEventStatus } from "@core/utils/derive-event-status";
 import { calculateAttendeeCount } from "@core/utils/event-calculations";
 import { checkEditRestrictionsV2, type EventWithAttendances } from "@core/utils/event-restrictions";
 import { extractEventUpdateFormData } from "@core/utils/form-data-extractors";
@@ -65,17 +66,14 @@ export async function updateEventAction(
       return createServerActionError("FORBIDDEN", "このイベントを編集する権限がありません");
     }
 
-    // 開催済み・キャンセル済みイベントの編集禁止チェック
-    const now = new Date();
-    const eventDate = new Date(existingEvent.date);
-    const isPastEvent = eventDate < now;
-    const isCanceled = Boolean(existingEvent.canceled_at);
+    // ステータスベースの編集禁止チェック
+    const eventStatus = deriveEventStatus(existingEvent.date, existingEvent.canceled_at);
 
-    if (isPastEvent) {
+    if (eventStatus === "past") {
       return createServerActionError("FORBIDDEN", "開催済みのイベントは編集できません");
     }
 
-    if (isCanceled) {
+    if (eventStatus === "canceled") {
       return createServerActionError("FORBIDDEN", "キャンセル済みのイベントは編集できません");
     }
 
