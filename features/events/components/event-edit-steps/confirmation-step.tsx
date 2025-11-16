@@ -27,7 +27,6 @@ interface ConfirmationStepProps {
  * 変更内容の一覧とタイムラインを表示
  */
 export function ConfirmationStep({
-  event,
   changes,
   attendeeCount,
   hasStripePaid,

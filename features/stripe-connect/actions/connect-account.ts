@@ -504,14 +504,10 @@ export async function handleOnboardingReturnAction(): Promise<void> {
       let accountInfo;
       try {
         // リトライ付きでステータス同期を実行（Stripe Accountオブジェクトを取得）
-        const stripeAccount = await statusSyncService.syncAccountStatus(
-          user.id,
-          account.stripe_account_id,
-          {
-            maxRetries: 3,
-            initialBackoffMs: 200,
-          }
-        );
+        await statusSyncService.syncAccountStatus(user.id, account.stripe_account_id, {
+          maxRetries: 3,
+          initialBackoffMs: 200,
+        });
 
         // 同期後の最新情報を取得（DBから）
         const updatedAccount = await stripeConnectService.getConnectAccountByUser(user.id);
