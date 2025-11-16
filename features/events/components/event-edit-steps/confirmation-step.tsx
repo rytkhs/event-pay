@@ -150,45 +150,6 @@ export function ConfirmationStep({
         eventDate={watchedDate}
         gracePeriodDays={watchedGracePeriodDays}
       />
-
-      {/* 現在の設定サマリー */}
-      <Card>
-        <CardContent className="pt-6">
-          <h4 className="text-sm font-semibold mb-3">更新後の設定</h4>
-          <div className="space-y-2 text-sm">
-            <div className="flex justify-between py-2 border-b">
-              <span className="text-gray-600">イベント名</span>
-              <span className="font-medium">{event.title}</span>
-            </div>
-            <div className="flex justify-between py-2 border-b">
-              <span className="text-gray-600">参加費</span>
-              <span className="font-medium">
-                {event.fee === 0 ? "無料" : `${event.fee?.toLocaleString()}円`}
-              </span>
-            </div>
-            {event.capacity && (
-              <div className="flex justify-between py-2 border-b">
-                <span className="text-gray-600">定員</span>
-                <span className="font-medium">{event.capacity}名</span>
-              </div>
-            )}
-            {event.location && (
-              <div className="flex justify-between py-2 border-b">
-                <span className="text-gray-600">場所</span>
-                <span className="font-medium">{event.location}</span>
-              </div>
-            )}
-            {event.payment_methods && event.payment_methods.length > 0 && (
-              <div className="flex justify-between py-2 border-b">
-                <span className="text-gray-600">決済方法</span>
-                <span className="font-medium">
-                  {event.payment_methods.map(formatPaymentMethod).join(", ")}
-                </span>
-              </div>
-            )}
-          </div>
-        </CardContent>
-      </Card>
     </div>
   );
 }
