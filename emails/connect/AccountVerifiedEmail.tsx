@@ -102,7 +102,7 @@ export const AccountVerifiedEmail = ({ userName }: AccountVerifiedEmailProps) =>
               color: "#64748b",
             }}
           >
-            イベント終了後に自動的に売上が送金されます。
+            自動的に売上が送金されます。
           </Text>
         </div>
 
