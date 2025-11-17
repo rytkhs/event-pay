@@ -92,7 +92,7 @@ export const AccountVerifiedEmail = ({ userName }: AccountVerifiedEmailProps) =>
               fontWeight: 600,
             }}
           >
-            自動送金
+            オンライン決済
           </Text>
           <Text
             style={{
@@ -102,7 +102,7 @@ export const AccountVerifiedEmail = ({ userName }: AccountVerifiedEmailProps) =>
               color: "#64748b",
             }}
           >
-            イベント終了後に自動的に売上が送金されます。
+            オンライン決済が選択可能になりました。
           </Text>
         </div>
 
@@ -127,7 +127,7 @@ export const AccountVerifiedEmail = ({ userName }: AccountVerifiedEmailProps) =>
               color: "#64748b",
             }}
           >
-            ダッシュボードからいつでも送金履歴とステータスを確認できます。
+            ダッシュボードからいつでも送金履歴やステータスを確認できます。
           </Text>
         </div>
       </div>
