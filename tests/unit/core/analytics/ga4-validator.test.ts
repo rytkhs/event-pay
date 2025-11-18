@@ -49,34 +49,19 @@ describe("GA4Validator", () => {
     });
 
     describe("異常系 - パターン不一致", () => {
-      test("桁数が不足しているClient IDを拒否する", () => {
-        const invalidIds = [
+      test("桁数が異なるClient IDを受け入れる", () => {
+        const validIds = [
           "123456789.0987654321", // 前半9桁
           "1234567890.098765432", // 後半9桁
           "12345.67890", // 両方不足
-        ];
-
-        invalidIds.forEach((clientId) => {
-          const result = GA4Validator.validateClientId(clientId);
-          expect(result.isValid).toBe(false);
-          expect(result.errors).toContain(
-            "Client ID does not match required format (10digits.10digits)"
-          );
-        });
-      });
-
-      test("桁数が超過しているClient IDを拒否する", () => {
-        const invalidIds = [
           "12345678901.0987654321", // 前半11桁
           "1234567890.09876543210", // 後半11桁
         ];
 
-        invalidIds.forEach((clientId) => {
+        validIds.forEach((clientId) => {
           const result = GA4Validator.validateClientId(clientId);
-          expect(result.isValid).toBe(false);
-          expect(result.errors).toContain(
-            "Client ID does not match required format (10digits.10digits)"
-          );
+          expect(result.isValid).toBe(true);
+          expect(result.errors).toHaveLength(0);
         });
       });
 

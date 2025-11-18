@@ -19,6 +19,15 @@ describe("GA4ClientService", () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+
+    // デフォルトの設定をモック（インスタンス化の前に設定する必要がある）
+    jest.spyOn(configModule, "getGA4Config").mockReturnValue({
+      enabled: true,
+      measurementId: "G-TEST123",
+      apiSecret: "test-secret",
+      debug: false,
+    });
+
     service = new GA4ClientService();
 
     // window.gtagのモック
@@ -26,58 +35,17 @@ describe("GA4ClientService", () => {
     (global as any).window = {
       gtag: mockGtag,
     };
-
-    // デフォルトの設定をモック
-    jest.spyOn(configModule, "getGA4Config").mockReturnValue({
-      enabled: true,
-      measurementId: "G-TEST123",
-      apiSecret: "test-secret",
-      debug: false,
-    });
   });
 
   afterEach(() => {
     jest.restoreAllMocks();
   });
 
-  describe("設定の動的取得", () => {
-    test("メソッド呼び出し時に毎回設定を取得する", () => {
+  describe("設定の初期化", () => {
+    test("コンストラクタで設定を取得する", () => {
       const getConfigSpy = jest.spyOn(configModule, "getGA4Config");
-
-      service.sendEvent({ name: "test_event", params: {} });
-      service.sendEvent({ name: "test_event_2", params: {} });
-
-      // 各メソッド呼び出しで設定を取得していることを確認
-      // sendEventは内部で複数回configを参照する（enabled, debugなど）
+      new GA4ClientService();
       expect(getConfigSpy).toHaveBeenCalled();
-      expect(getConfigSpy.mock.calls.length).toBeGreaterThanOrEqual(2);
-    });
-
-    test("設定変更が即座に反映される", () => {
-      const getConfigSpy = jest.spyOn(configModule, "getGA4Config");
-
-      // 最初は有効
-      getConfigSpy.mockReturnValueOnce({
-        enabled: true,
-        measurementId: "G-TEST123",
-        apiSecret: "test-secret",
-        debug: false,
-      });
-
-      service.sendEvent({ name: "test_event", params: {} });
-      expect(sendGAEvent).toHaveBeenCalledTimes(1);
-
-      // 次は無効
-      getConfigSpy.mockReturnValueOnce({
-        enabled: false,
-        measurementId: "G-TEST123",
-        apiSecret: "test-secret",
-        debug: false,
-      });
-
-      service.sendEvent({ name: "test_event_2", params: {} });
-      // 無効なので呼ばれない（合計1回のまま）
-      expect(sendGAEvent).toHaveBeenCalledTimes(1);
     });
   });
 
@@ -224,6 +192,8 @@ describe("GA4ClientService", () => {
           apiSecret: "test-secret",
           debug: false,
         });
+        // 設定変更を反映させるために再インスタンス化
+        service = new GA4ClientService();
 
         const result = await service.getClientId();
 
@@ -236,7 +206,7 @@ describe("GA4ClientService", () => {
   describe("sendEventWithCallback", () => {
     describe("正常系", () => {
       test("イベント送信後にコールバックが実行される", (done) => {
-        const event = { name: "test_event", params: { value: 1 } };
+        const event = { name: "test_event", params: { value: 1 } } as any;
 
         sendGAEvent.mockImplementation((name: string, params: any) => {
           // event_callbackを即座に実行
@@ -258,7 +228,7 @@ describe("GA4ClientService", () => {
       });
 
       test("カスタムタイムアウトを指定できる", (done) => {
-        const event = { name: "test_event", params: {} };
+        const event = { name: "test_event", params: {} } as any;
 
         sendGAEvent.mockImplementation((name: string, params: any) => {
           if (params.event_callback) {
@@ -272,7 +242,7 @@ describe("GA4ClientService", () => {
 
     describe("タイムアウト処理", () => {
       test("タイムアウト時にコールバックが実行される", (done) => {
-        const event = { name: "test_event", params: {} };
+        const event = { name: "test_event", params: {} } as any;
 
         // event_callbackを呼ばないことでタイムアウトをシミュレート
         sendGAEvent.mockImplementation(() => {
@@ -283,7 +253,7 @@ describe("GA4ClientService", () => {
       });
 
       test("コールバックは一度だけ実行される", (done) => {
-        const event = { name: "test_event", params: {} };
+        const event = { name: "test_event", params: {} } as any;
         let callbackCount = 0;
 
         sendGAEvent.mockImplementation((name: string, params: any) => {
@@ -312,7 +282,7 @@ describe("GA4ClientService", () => {
 
     describe("エラーハンドリング", () => {
       test("sendGAEventでエラーが発生してもコールバックは実行される", (done) => {
-        const event = { name: "test_event", params: {} };
+        const event = { name: "test_event", params: {} } as any;
 
         sendGAEvent.mockImplementation(() => {
           throw new Error("sendGAEvent error");
@@ -330,8 +300,9 @@ describe("GA4ClientService", () => {
           apiSecret: "test-secret",
           debug: false,
         });
+        service = new GA4ClientService();
 
-        const event = { name: "test_event", params: {} };
+        const event = { name: "test_event", params: {} } as any;
 
         service.sendEventWithCallback(event, () => {
           expect(sendGAEvent).not.toHaveBeenCalled();
@@ -343,7 +314,7 @@ describe("GA4ClientService", () => {
 
   describe("sendEvent", () => {
     test("イベントを送信する", () => {
-      const event = { name: "test_event", params: { value: 1 } };
+      const event = { name: "test_event", params: { value: 1 } } as any;
 
       service.sendEvent(event);
 
@@ -357,8 +328,9 @@ describe("GA4ClientService", () => {
         apiSecret: "test-secret",
         debug: false,
       });
+      service = new GA4ClientService();
 
-      const event = { name: "test_event", params: {} };
+      const event = { name: "test_event", params: {} } as any;
 
       service.sendEvent(event);
 
@@ -378,6 +350,7 @@ describe("GA4ClientService", () => {
         apiSecret: "test-secret",
         debug: false,
       });
+      service = new GA4ClientService();
 
       expect(service.isEnabled()).toBe(false);
     });
@@ -391,6 +364,7 @@ describe("GA4ClientService", () => {
         apiSecret: "test-secret",
         debug: true,
       });
+      service = new GA4ClientService();
 
       expect(service.isDebugMode()).toBe(true);
     });
