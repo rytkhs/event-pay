@@ -11,13 +11,30 @@ import { logger } from "@core/logging/app-logger";
 
 import { getGA4Config } from "./config";
 import type { GA4Event } from "./event-types";
+import { GA4Error, GA4ErrorCode } from "./ga4-error";
 
 /**
  * GA4サーバー側サービスクラス
  */
 export class GA4ServerService {
-  private config = getGA4Config();
   private readonly MEASUREMENT_PROTOCOL_URL = "https://www.google-analytics.com/mp/collect";
+  private readonly MAX_RETRIES = 3;
+  private readonly MAX_RETRY_DELAY = 10000;
+  private readonly MAX_JITTER = 1000;
+
+  /**
+   * 設定を動的に取得するgetter
+   */
+  private get config() {
+    return getGA4Config();
+  }
+
+  /**
+   * コンストラクタ
+   *
+   * @param fetcher - fetch関数（依存性注入用、テスト時にモック可能）
+   */
+  constructor(private readonly fetcher: typeof fetch = fetch) {}
 
   /**
    * サーバー側からイベントを送信する（Measurement Protocol）
@@ -94,7 +111,7 @@ export class GA4ServerService {
     }
 
     try {
-      const response = await fetch(url, {
+      const response = await this.fetchWithRetry(url, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -103,7 +120,11 @@ export class GA4ServerService {
       });
 
       if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        throw new GA4Error(
+          `HTTP ${response.status}: ${response.statusText}`,
+          GA4ErrorCode.API_ERROR,
+          { status: response.status }
+        );
       }
 
       logger.info("[GA4] Server event sent successfully", {
@@ -127,14 +148,16 @@ export class GA4ServerService {
         event_name: event.name,
         client_id: validClientId,
         user_id: userId,
-        error: error instanceof Error ? error.message : String(error),
+        error: error instanceof GA4Error ? error.message : String(error),
+        error_code: error instanceof GA4Error ? error.code : undefined,
+        error_context: error instanceof GA4Error ? error.context : undefined,
       });
 
       // エラーの詳細をデバッグログに出力
-      if (this.config.debug && error instanceof Error) {
+      if (this.config.debug) {
         logger.debug("[GA4] Server event error details", {
           tag: "ga4-server",
-          error_stack: error.stack,
+          error_stack: error instanceof Error ? error.stack : undefined,
           payload: JSON.stringify(payload),
         });
       }
@@ -177,7 +200,7 @@ export class GA4ServerService {
     };
 
     try {
-      const response = await fetch(url, {
+      const response = await this.fetchWithRetry(url, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -186,7 +209,11 @@ export class GA4ServerService {
       });
 
       if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        throw new GA4Error(
+          `HTTP ${response.status}: ${response.statusText}`,
+          GA4ErrorCode.API_ERROR,
+          { status: response.status }
+        );
       }
 
       logger.info("[GA4] Server batch events sent successfully", {
@@ -209,9 +236,78 @@ export class GA4ServerService {
         event_count: events.length,
         event_names: events.map((e) => e.name).join(", "),
         client_id: clientId,
-        error: error instanceof Error ? error.message : String(error),
+        error: error instanceof GA4Error ? error.message : String(error),
+        error_code: error instanceof GA4Error ? error.code : undefined,
+        error_context: error instanceof GA4Error ? error.context : undefined,
       });
     }
+  }
+
+  /**
+   * リトライロジック付きfetch
+   *
+   * 指数バックオフとランダムジッターを使用して、一時的なエラーに対してリトライを実行する
+   *
+   * @param url - リクエストURL
+   * @param options - fetchオプション
+   * @param maxRetries - 最大リトライ回数（デフォルト: MAX_RETRIES）
+   * @returns Response オブジェクト
+   * @throws GA4Error リトライが全て失敗した場合
+   */
+  private async fetchWithRetry(
+    url: string,
+    options: RequestInit,
+    maxRetries: number = this.MAX_RETRIES
+  ): Promise<Response> {
+    let lastError: Error | null = null;
+
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+      try {
+        const response = await this.fetcher(url, options);
+
+        // 5xxエラーの場合はリトライ対象
+        if (response.status >= 500 && response.status < 600) {
+          throw new GA4Error(
+            `HTTP ${response.status}: ${response.statusText}`,
+            GA4ErrorCode.API_ERROR,
+            { status: response.status, attempt: attempt + 1 }
+          );
+        }
+
+        // 成功またはリトライ不要なエラー（4xx）の場合は即座に返す
+        return response;
+      } catch (error) {
+        lastError = error instanceof Error ? error : new Error(String(error));
+
+        // 最後の試行以外は待機してリトライ
+        if (attempt < maxRetries - 1) {
+          // 指数バックオフ: 2^attempt * 1000ms、最大MAX_RETRY_DELAYまで
+          const baseDelay = Math.min(1000 * Math.pow(2, attempt), this.MAX_RETRY_DELAY);
+          // ランダムジッター: 0〜MAX_JITTERミリ秒
+          const jitter = Math.random() * this.MAX_JITTER;
+          const delay = baseDelay + jitter;
+
+          if (this.config.debug) {
+            logger.debug("[GA4] Retrying after error", {
+              tag: "ga4-server",
+              attempt: attempt + 1,
+              max_retries: maxRetries,
+              delay_ms: Math.round(delay),
+              error: lastError.message,
+            });
+          }
+
+          // 待機
+          await new Promise((resolve) => setTimeout(resolve, delay));
+        }
+      }
+    }
+
+    // 全てのリトライが失敗
+    throw new GA4Error("Retry exhausted", GA4ErrorCode.RETRY_EXHAUSTED, {
+      lastError: lastError?.message,
+      attempts: maxRetries,
+    });
   }
 
   /**
@@ -254,5 +350,5 @@ export class GA4ServerService {
   }
 }
 
-// シングルトンインスタンス
+// シングルトンインスタンス（デフォルトのfetchを使用）
 export const ga4Server = new GA4ServerService();
