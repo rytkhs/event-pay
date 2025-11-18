@@ -357,9 +357,10 @@ export class GA4ServerService {
       client_id: clientId,
     });
 
-    // 並列処理でバッチを送信
-    const results = await Promise.allSettled(
-      batches.map((batch, index) => this.sendBatch(batch, clientId, index))
+    // 並列処理でバッチを送信（同時実行数を制限）
+    const results = await this.runWithConcurrencyLimit(
+      batches.map((batch, index) => () => this.sendBatch(batch, clientId, index)),
+      5 // 同時5バッチまで
     );
 
     // 結果集計
@@ -545,15 +546,37 @@ export class GA4ServerService {
   }
 
   /**
-   * Client IDフォーマット検証（XXXXXXXXXX.YYYYYYYYYY）
+   * 並列実行数を制限してタスクを実行する
    *
-   * @param clientId - 検証するClient ID
-   * @returns boolean 有効なフォーマットの場合はtrue
+   * @param tasks - 実行するタスク（Promiseを返す関数）の配列
+   * @param concurrency - 最大同時実行数
+   * @returns PromiseSettledResultの配列
    */
-  private isValidClientId(clientId: string): boolean {
-    // GA4 Client IDの形式: 数字.数字（例: 1234567890.1234567890）
-    const clientIdPattern = /^\d+\.\d+$/;
-    return clientIdPattern.test(clientId);
+  private async runWithConcurrencyLimit<T>(
+    tasks: (() => Promise<T>)[],
+    concurrency: number
+  ): Promise<PromiseSettledResult<T>[]> {
+    const results: PromiseSettledResult<T>[] = new Array(tasks.length);
+    let currentIndex = 0;
+
+    const worker = async () => {
+      while (currentIndex < tasks.length) {
+        const index = currentIndex++;
+        try {
+          const value = await tasks[index]();
+          results[index] = { status: "fulfilled", value };
+        } catch (reason) {
+          results[index] = { status: "rejected", reason };
+        }
+      }
+    };
+
+    const workers = Array(Math.min(concurrency, tasks.length))
+      .fill(null)
+      .map(() => worker());
+
+    await Promise.all(workers);
+    return results;
   }
 
   /**

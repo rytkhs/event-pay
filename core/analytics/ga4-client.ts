@@ -9,6 +9,8 @@
 
 import { sendGAEvent } from "@next/third-parties/google";
 
+import { logger } from "@core/logging/app-logger";
+
 import { getGA4Config } from "./config";
 import type { GA4Event } from "./event-types";
 import { GA4Validator } from "./ga4-validator";
@@ -17,12 +19,10 @@ import { GA4Validator } from "./ga4-validator";
  * GA4クライアント側サービスクラス
  */
 export class GA4ClientService {
-  /**
-   * 設定を動的に取得する
-   * 環境変数の変更を即座に反映するため、getterとして実装
-   */
-  private get config() {
-    return getGA4Config();
+  private readonly config: ReturnType<typeof getGA4Config>;
+
+  constructor() {
+    this.config = getGA4Config();
   }
 
   /**
@@ -47,7 +47,11 @@ export class GA4ClientService {
   sendEvent(event: GA4Event): void {
     if (!this.config.enabled) {
       if (this.config.debug) {
-        console.log("[GA4] Event skipped (disabled):", event);
+        logger.debug("[GA4] Event skipped (disabled)", {
+          tag: "ga4-client",
+          event_name: event.name,
+          params: event.params,
+        });
       }
       return;
     }
@@ -56,10 +60,18 @@ export class GA4ClientService {
       sendGAEvent(event.name, event.params);
 
       if (this.config.debug) {
-        console.log("[GA4] Event sent:", event);
+        logger.debug("[GA4] Event sent", {
+          tag: "ga4-client",
+          event_name: event.name,
+          params: event.params,
+        });
       }
     } catch (error) {
-      console.error("[GA4] Failed to send event:", error);
+      logger.error("[GA4] Failed to send event", {
+        tag: "ga4-client",
+        event_name: event.name,
+        error: error instanceof Error ? error.message : String(error),
+      });
     }
   }
 
@@ -88,34 +100,35 @@ export class GA4ClientService {
   async getClientId(timeoutMs: number = 3000): Promise<string | null> {
     if (!this.config.enabled) {
       if (this.config.debug) {
-        console.log("[GA4] Client ID request skipped (disabled)");
+        logger.debug("[GA4] Client ID request skipped (disabled)", { tag: "ga4-client" });
       }
       return null;
     }
 
     return new Promise((resolve) => {
       let resolved = false;
+      let timeoutId: NodeJS.Timeout | null = null;
 
       // 二重解決を防ぐsafeResolveパターン
       const safeResolve = (value: string | null) => {
         if (!resolved) {
           resolved = true;
+          if (timeoutId) clearTimeout(timeoutId);
           resolve(value);
         }
       };
 
       // タイムアウト設定
-      const timeoutId = setTimeout(() => {
+      timeoutId = setTimeout(() => {
         if (this.config.debug) {
-          console.log("[GA4] Client ID retrieval timed out");
+          logger.debug("[GA4] Client ID retrieval timed out", { tag: "ga4-client" });
         }
         safeResolve(null);
       }, timeoutMs);
 
       if (typeof window === "undefined" || !window.gtag) {
-        clearTimeout(timeoutId);
         if (this.config.debug) {
-          console.log("[GA4] gtag not available, returning null");
+          logger.debug("[GA4] gtag not available, returning null", { tag: "ga4-client" });
         }
         safeResolve(null);
         return;
@@ -123,26 +136,32 @@ export class GA4ClientService {
 
       try {
         window.gtag("get", this.config.measurementId, "client_id", (clientId: string) => {
-          clearTimeout(timeoutId);
-
           // Client ID検証
           const validation = GA4Validator.validateClientId(clientId);
           if (!validation.isValid) {
             if (this.config.debug) {
-              console.log("[GA4] Invalid client ID received:", validation.errors);
+              logger.debug("[GA4] Invalid client ID received", {
+                tag: "ga4-client",
+                errors: validation.errors,
+              });
             }
             safeResolve(null);
             return;
           }
 
           if (this.config.debug) {
-            console.log("[GA4] Client ID retrieved:", clientId);
+            logger.debug("[GA4] Client ID retrieved", {
+              tag: "ga4-client",
+              client_id: clientId,
+            });
           }
           safeResolve(clientId);
         });
       } catch (error) {
-        clearTimeout(timeoutId);
-        console.error("[GA4] Failed to get client ID:", error);
+        logger.error("[GA4] Failed to get client ID", {
+          tag: "ga4-client",
+          error: error instanceof Error ? error.message : String(error),
+        });
         safeResolve(null);
       }
     });
@@ -184,7 +203,10 @@ export class GA4ClientService {
   sendEventWithCallback(event: GA4Event, callback: () => void, timeoutMs: number = 2000): void {
     if (!this.config.enabled) {
       if (this.config.debug) {
-        console.log("[GA4] Event with callback skipped (disabled):", event);
+        logger.debug("[GA4] Event with callback skipped (disabled)", {
+          tag: "ga4-client",
+          event_name: event.name,
+        });
       }
       // GA4が無効でも、コールバックは実行する
       callback();
@@ -204,6 +226,10 @@ export class GA4ClientService {
     // タイムアウト設定
     const timeoutId = setTimeout(() => {
       if (this.config.debug) {
+        logger.debug("[GA4] Event callback timed out", {
+          tag: "ga4-client",
+          event_name: event.name,
+        });
       }
       safeCallback();
     }, timeoutMs);
@@ -224,10 +250,18 @@ export class GA4ClientService {
       sendGAEvent(eventWithCallback.name, eventWithCallback.params);
 
       if (this.config.debug) {
+        logger.debug("[GA4] Event with callback sent", {
+          tag: "ga4-client",
+          event_name: event.name,
+        });
       }
     } catch (error) {
       clearTimeout(timeoutId);
-      console.error("[GA4] Failed to send event with callback:", error);
+      logger.error("[GA4] Failed to send event with callback", {
+        tag: "ga4-client",
+        event_name: event.name,
+        error: error instanceof Error ? error.message : String(error),
+      });
       // エラーが発生してもコールバックは実行する
       safeCallback();
     }

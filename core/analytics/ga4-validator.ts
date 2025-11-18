@@ -21,8 +21,8 @@ export interface ValidationResult {
  * Validator for GA4 client IDs and event parameters
  */
 export class GA4Validator {
-  /** Pattern for valid GA4 client IDs: exactly 10 digits, a period, and exactly 10 digits */
-  private static readonly CLIENT_ID_PATTERN = /^\d{10}\.\d{10}$/;
+  /** Pattern for valid GA4 client IDs: numbers.numbers (variable length) */
+  private static readonly CLIENT_ID_PATTERN = /^\d+\.\d+$/;
 
   /** Pattern for valid parameter names: alphanumeric and underscores, 1-40 characters */
   private static readonly PARAM_NAME_PATTERN = /^[a-zA-Z0-9_]{1,40}$/;

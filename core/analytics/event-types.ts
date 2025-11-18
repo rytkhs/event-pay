@@ -197,16 +197,54 @@ export interface ExceptionParams {
  * };
  * ```
  */
-export type GA4Event =
-  | { name: "sign_up"; params: SignUpEventParams }
-  | { name: "login"; params: LoginEventParams }
-  | { name: "logout"; params: BaseEventParams }
-  | { name: "event_created"; params: EventCreatedParams }
-  | { name: "event_registration"; params: EventRegistrationParams }
-  | { name: "invite_shared"; params: InviteSharedParams }
-  | { name: "begin_checkout"; params: BeginCheckoutParams }
-  | { name: "purchase"; params: PurchaseParams }
-  | { name: "exception"; params: ExceptionParams };
+/**
+ * イベント名とパラメータ型のマッピング
+ */
+type EventMap = {
+  sign_up: SignUpEventParams;
+  login: LoginEventParams;
+  logout: BaseEventParams;
+  event_created: EventCreatedParams;
+  event_registration: EventRegistrationParams;
+  invite_shared: InviteSharedParams;
+  begin_checkout: BeginCheckoutParams;
+  purchase: PurchaseParams;
+  exception: ExceptionParams;
+};
+
+/**
+ * GA4イベント送信用の統合型
+ *
+ * 型安全なイベント送信を保証します。
+ * 各イベント名に対して適切なパラメータ型が強制されます。
+ *
+ * @example
+ * ```typescript
+ * // 正しい型の使用
+ * const event: GA4Event = {
+ *   name: 'purchase',
+ *   params: {
+ *     transaction_id: 'T12345',
+ *     event_id: 'E123',
+ *     currency: 'JPY',
+ *     value: 99.99,
+ *     items: [{ item_id: 'I1', item_name: 'Item', price: 99.99, quantity: 1 }],
+ *   },
+ * };
+ *
+ * // 型エラー: purchaseイベントにはtransaction_idが必須
+ * const invalidEvent: GA4Event = {
+ *   name: 'purchase',
+ *   params: { value: 99.99 }, // コンパイルエラー
+ * };
+ * ```
+ */
+export type GA4Event = {
+  [K in keyof EventMap]: {
+    name: K;
+    params: EventMap[K];
+  };
+}[keyof EventMap];
 
 /**
  * イベントパラメータの型ガード関数
