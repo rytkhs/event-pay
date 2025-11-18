@@ -34,18 +34,59 @@ export class GA4ServerService {
   /**
    * コンストラクタ
    *
+   * 依存性注入をサポートし、テスト時にモックfetchを使用できます。
+   *
    * @param fetcher - fetch関数（依存性注入用、テスト時にモック可能）
+   *
+   * @example
+   * ```typescript
+   * // デフォルトのfetchを使用
+   * const service = new GA4ServerService();
+   *
+   * // テスト用にモックfetchを注入
+   * const mockFetch = jest.fn();
+   * const testService = new GA4ServerService(mockFetch);
+   * ```
    */
   constructor(private readonly fetcher: typeof fetch = fetch) {}
 
   /**
    * サーバー側からイベントを送信する（Measurement Protocol）
    *
+   * Client IDとイベントパラメータの検証を自動的に実行します。
+   * 5xxエラーの場合は自動的にリトライします（最大3回、指数バックオフ）。
+   * Client IDまたはUser IDのいずれかが必須です。
+   *
    * @param event - 送信するGA4イベント
    * @param clientId - GA4 Client ID（オプショナル、_ga Cookieから取得した値）
    * @param userId - ユーザーID（オプショナル、clientIdがない場合のフォールバック）
    * @param sessionId - セッションID（オプショナル、正の整数）
    * @param engagementTimeMsec - エンゲージメント時間（ミリ秒、オプショナル）
+   *
+   * @example
+   * ```typescript
+   * // Client IDを使用
+   * await ga4Server.sendEvent(
+   *   {
+   *     name: 'purchase',
+   *     params: {
+   *       transaction_id: 'T12345',
+   *       value: 99.99,
+   *       currency: 'JPY',
+   *     },
+   *   },
+   *   '1234567890.0987654321'
+   * );
+   *
+   * // User IDとセッション情報を使用
+   * await ga4Server.sendEvent(
+   *   event,
+   *   undefined,
+   *   'user123',
+   *   1234567890,
+   *   5000
+   * );
+   * ```
    */
   async sendEvent(
     event: GA4Event,
@@ -204,10 +245,25 @@ export class GA4ServerService {
 
   /**
    * 複数のイベントを一度に送信する（バッチ送信）
-   * イベントを25個ずつに分割し、並列処理で送信する
+   *
+   * イベントを25個ずつに自動分割し、並列処理で送信します。
+   * 各イベントのパラメータは自動的に検証・サニタイズされます。
+   * 一部のバッチが失敗しても、他のバッチの送信は継続されます。
    *
    * @param events - 送信するGA4イベントの配列
    * @param clientId - GA4 Client ID
+   *
+   * @example
+   * ```typescript
+   * const events = [
+   *   { name: 'page_view', params: { page_title: 'Home' } },
+   *   { name: 'scroll', params: { percent_scrolled: 90 } },
+   *   // ... 最大数百イベント
+   * ];
+   *
+   * // 自動的に25イベントずつに分割して並列送信
+   * await ga4Server.sendEvents(events, clientId);
+   * ```
    */
   async sendEvents(events: GA4Event[], clientId: string): Promise<void> {
     if (!this.config.enabled || !this.config.apiSecret) {
@@ -334,7 +390,10 @@ export class GA4ServerService {
   }
 
   /**
-   * 単一バッチの送信
+   * 単一バッチの送信（内部メソッド）
+   *
+   * リトライロジックを使用してバッチを送信します。
+   * 送信に失敗した場合はエラーをスローし、Promise.allSettledで捕捉されます。
    *
    * @param batch - 送信するイベントの配列（検証済み）
    * @param clientId - GA4 Client ID
@@ -409,15 +468,25 @@ export class GA4ServerService {
   }
 
   /**
-   * リトライロジック付きfetch
+   * リトライロジック付きfetch（内部メソッド）
    *
-   * 指数バックオフとランダムジッターを使用して、一時的なエラーに対してリトライを実行する
+   * 指数バックオフとランダムジッターを使用して、一時的なエラーに対してリトライを実行します。
+   * - 5xxエラー: リトライ対象
+   * - 4xxエラー: リトライせず即座に返す
+   * - バックオフ: 2^attempt × 1000ms（最大10秒）
+   * - ジッター: 0〜1000msのランダム遅延
    *
    * @param url - リクエストURL
    * @param options - fetchオプション
-   * @param maxRetries - 最大リトライ回数（デフォルト: MAX_RETRIES）
+   * @param maxRetries - 最大リトライ回数（デフォルト: 3）
    * @returns Response オブジェクト
    * @throws GA4Error リトライが全て失敗した場合
+   *
+   * @example
+   * ```typescript
+   * // 内部で自動的に使用されます
+   * const response = await this.fetchWithRetry(url, options);
+   * ```
    */
   private async fetchWithRetry(
     url: string,
@@ -490,7 +559,16 @@ export class GA4ServerService {
   /**
    * GA4が有効かどうかを確認する
    *
+   * 環境変数 `NEXT_PUBLIC_GA4_ENABLED` の値を動的に取得します。
+   *
    * @returns boolean GA4が有効な場合はtrue
+   *
+   * @example
+   * ```typescript
+   * if (ga4Server.isEnabled()) {
+   *   await ga4Server.sendEvent(event, clientId);
+   * }
+   * ```
    */
   isEnabled(): boolean {
     return this.config.enabled;
@@ -499,7 +577,17 @@ export class GA4ServerService {
   /**
    * Measurement Protocol APIが利用可能かどうかを確認する
    *
+   * GA4が有効で、かつAPI Secretが設定されている場合にtrueを返します。
+   * 環境変数 `GA4_API_SECRET` の値を動的に取得します。
+   *
    * @returns boolean API Secretが設定されている場合はtrue
+   *
+   * @example
+   * ```typescript
+   * if (ga4Server.isMeasurementProtocolAvailable()) {
+   *   // サーバー側イベント送信が可能
+   * }
+   * ```
    */
   isMeasurementProtocolAvailable(): boolean {
     return this.config.enabled && !!this.config.apiSecret;
@@ -508,7 +596,17 @@ export class GA4ServerService {
   /**
    * デバッグモードかどうかを確認する
    *
+   * 環境変数 `NEXT_PUBLIC_GA4_DEBUG` の値を動的に取得します。
+   * デバッグモードが有効な場合、詳細なログが出力されます。
+   *
    * @returns boolean デバッグモードの場合はtrue
+   *
+   * @example
+   * ```typescript
+   * if (ga4Server.isDebugMode()) {
+   *   console.log('GA4 debug mode is enabled');
+   * }
+   * ```
    */
   isDebugMode(): boolean {
     return this.config.debug;

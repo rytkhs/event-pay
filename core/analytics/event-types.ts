@@ -22,7 +22,17 @@ export type GA4EventName =
 
 /**
  * GA4イベントパラメータの値型
- * GA4仕様に準拠した型制約
+ *
+ * GA4仕様に準拠した型制約により、コンパイル時に型エラーを検出します。
+ * 許可される値の型: string, number, boolean, undefined
+ *
+ * @example
+ * ```typescript
+ * const validValue: GA4ParamValue = "text"; // OK
+ * const validNumber: GA4ParamValue = 123; // OK
+ * const validBoolean: GA4ParamValue = true; // OK
+ * const invalidValue: GA4ParamValue = { nested: "object" }; // コンパイルエラー
+ * ```
  */
 export type GA4ParamValue = string | number | boolean | undefined;
 
@@ -162,7 +172,30 @@ export interface ExceptionParams {
 
 /**
  * GA4イベント送信用の統合型
- * 型安全なイベント送信を保証する
+ *
+ * 型安全なイベント送信を保証します。
+ * 各イベント名に対して適切なパラメータ型が強制されます。
+ *
+ * @example
+ * ```typescript
+ * // 正しい型の使用
+ * const event: GA4Event = {
+ *   name: 'purchase',
+ *   params: {
+ *     transaction_id: 'T12345',
+ *     event_id: 'E123',
+ *     currency: 'JPY',
+ *     value: 99.99,
+ *     items: [{ item_id: 'I1', item_name: 'Item', price: 99.99, quantity: 1 }],
+ *   },
+ * };
+ *
+ * // 型エラー: purchaseイベントにはtransaction_idが必須
+ * const invalidEvent: GA4Event = {
+ *   name: 'purchase',
+ *   params: { value: 99.99 }, // コンパイルエラー
+ * };
+ * ```
  */
 export type GA4Event =
   | { name: "sign_up"; params: SignUpEventParams }

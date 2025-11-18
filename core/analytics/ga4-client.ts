@@ -28,7 +28,21 @@ export class GA4ClientService {
   /**
    * カスタムイベントを送信する
    *
+   * GA4が無効な場合は送信をスキップします。
+   * デバッグモードが有効な場合は、送信内容をコンソールに出力します。
+   *
    * @param event - 送信するGA4イベント
+   *
+   * @example
+   * ```typescript
+   * ga4Client.sendEvent({
+   *   name: 'page_view',
+   *   params: {
+   *     page_title: 'Home',
+   *     page_location: window.location.href,
+   *   },
+   * });
+   * ```
    */
   sendEvent(event: GA4Event): void {
     if (!this.config.enabled) {
@@ -52,10 +66,24 @@ export class GA4ClientService {
   /**
    * GA4 Client IDを取得する（Stripe決済用）
    *
-   * タイムアウト処理とClient ID検証を含む
+   * タイムアウト処理とClient ID検証を含みます。
+   * Client IDは `数字10桁.数字10桁` の形式で検証されます。
+   * タイムアウトまたは検証失敗時はnullを返します。
    *
    * @param timeoutMs - タイムアウト時間（ミリ秒）、デフォルトは3000ms
    * @returns Promise<string | null> Client ID、取得できない場合はnull
+   *
+   * @example
+   * ```typescript
+   * // デフォルトタイムアウト（3000ms）
+   * const clientId = await ga4Client.getClientId();
+   * if (clientId) {
+   *   console.log('Client ID:', clientId);
+   * }
+   *
+   * // カスタムタイムアウト
+   * const clientId = await ga4Client.getClientId(5000);
+   * ```
    */
   async getClientId(timeoutMs: number = 3000): Promise<string | null> {
     if (!this.config.enabled) {
@@ -123,11 +151,35 @@ export class GA4ClientService {
   /**
    * イベント送信後にコールバックを実行する
    *
-   * タイムアウト処理とコールバック二重実行防止を含む
+   * タイムアウト処理とコールバック二重実行防止を含みます。
+   * GA4が無効な場合でも、コールバックは必ず実行されます。
+   * タイムアウト時間内にGA4からの応答がない場合、自動的にコールバックを実行します。
    *
    * @param event - 送信するGA4イベント
    * @param callback - イベント送信後に実行するコールバック関数
    * @param timeoutMs - タイムアウト時間（ミリ秒）、デフォルトは2000ms
+   *
+   * @example
+   * ```typescript
+   * // デフォルトタイムアウト（2000ms）
+   * ga4Client.sendEventWithCallback(
+   *   {
+   *     name: 'purchase',
+   *     params: {
+   *       transaction_id: 'T12345',
+   *       value: 99.99,
+   *       currency: 'JPY',
+   *     },
+   *   },
+   *   () => {
+   *     console.log('イベント送信完了');
+   *     // 次の処理へ進む
+   *   }
+   * );
+   *
+   * // カスタムタイムアウト
+   * ga4Client.sendEventWithCallback(event, callback, 3000);
+   * ```
    */
   sendEventWithCallback(event: GA4Event, callback: () => void, timeoutMs: number = 2000): void {
     if (!this.config.enabled) {
@@ -152,7 +204,6 @@ export class GA4ClientService {
     // タイムアウト設定
     const timeoutId = setTimeout(() => {
       if (this.config.debug) {
-        console.log("[GA4] Event callback timeout reached:", event.name);
       }
       safeCallback();
     }, timeoutMs);
@@ -185,7 +236,16 @@ export class GA4ClientService {
   /**
    * GA4が有効かどうかを確認する
    *
+   * 環境変数 `NEXT_PUBLIC_GA4_ENABLED` の値を動的に取得します。
+   *
    * @returns boolean GA4が有効な場合はtrue
+   *
+   * @example
+   * ```typescript
+   * if (ga4Client.isEnabled()) {
+   *   // GA4が有効な場合の処理
+   * }
+   * ```
    */
   isEnabled(): boolean {
     return this.config.enabled;
@@ -194,7 +254,17 @@ export class GA4ClientService {
   /**
    * デバッグモードかどうかを確認する
    *
+   * 環境変数 `NEXT_PUBLIC_GA4_DEBUG` の値を動的に取得します。
+   * デバッグモードが有効な場合、詳細なログが出力されます。
+   *
    * @returns boolean デバッグモードの場合はtrue
+   *
+   * @example
+   * ```typescript
+   * if (ga4Client.isDebugMode()) {
+   *   console.log('GA4 debug mode is enabled');
+   * }
+   * ```
    */
   isDebugMode(): boolean {
     return this.config.debug;
