@@ -12,6 +12,7 @@ import { logger } from "@core/logging/app-logger";
 import { getGA4Config } from "./config";
 import type { GA4Event } from "./event-types";
 import { GA4Error, GA4ErrorCode } from "./ga4-error";
+import { GA4Validator } from "./ga4-validator";
 
 /**
  * GA4サーバー側サービスクラス
@@ -62,12 +63,24 @@ export class GA4ServerService {
       return;
     }
 
-    // Client IDの検証（ある場合のみ）
-    const validClientId = clientId && this.isValidClientId(clientId) ? clientId : null;
+    // Client ID検証（GA4Validator使用）
+    let validClientId: string | null = null;
+    if (clientId) {
+      const validation = GA4Validator.validateClientId(clientId);
+      if (validation.isValid) {
+        validClientId = clientId;
+      } else if (this.config.debug) {
+        logger.debug("[GA4] Invalid client ID", {
+          tag: "ga4-server",
+          client_id: clientId,
+          errors: validation.errors,
+        });
+      }
+    }
 
     // Client IDもUserIdもない場合は送信できない
     if (!validClientId && !userId) {
-      logger.warn("[GA4] Neither client ID nor user ID provided", {
+      logger.warn("[GA4] Neither valid client ID nor user ID provided", {
         tag: "ga4-server",
         client_id: clientId,
         user_id: userId,
@@ -76,10 +89,34 @@ export class GA4ServerService {
       return;
     }
 
+    // パラメータ検証とサニタイズ（GA4Validator使用）
+    const paramValidation = GA4Validator.validateAndSanitizeParams(
+      event.params as Record<string, unknown>,
+      this.config.debug
+    );
+
+    // sanitizedParamsが存在しない、または元のパラメータが空でないのにサニタイズ後が空の場合はエラー
+    if (
+      !paramValidation.sanitizedParams ||
+      (Object.keys(event.params).length > 0 &&
+        Object.keys(paramValidation.sanitizedParams).length === 0)
+    ) {
+      logger.warn("[GA4] Event parameters validation failed", {
+        tag: "ga4-server",
+        event_name: event.name,
+        original_param_count: Object.keys(event.params).length,
+        sanitized_param_count: paramValidation.sanitizedParams
+          ? Object.keys(paramValidation.sanitizedParams).length
+          : 0,
+        errors: paramValidation.errors,
+      });
+      return;
+    }
+
     const url = `${this.MEASUREMENT_PROTOCOL_URL}?measurement_id=${this.config.measurementId}&api_secret=${this.config.apiSecret}`;
 
-    // イベントパラメータに共通パラメータを追加
-    const eventParams: Record<string, unknown> = { ...event.params };
+    // 検証済みパラメータに共通パラメータを追加
+    const eventParams: Record<string, unknown> = { ...paramValidation.sanitizedParams };
     if (sessionId !== undefined && sessionId > 0) {
       eventParams.session_id = sessionId;
     }
@@ -180,10 +217,13 @@ export class GA4ServerService {
       return;
     }
 
-    if (!clientId || !this.isValidClientId(clientId)) {
-      logger.warn("[GA4] Invalid client ID format for batch events", {
+    // Client ID検証（GA4Validator使用）
+    const validation = GA4Validator.validateClientId(clientId);
+    if (!validation.isValid) {
+      logger.warn("[GA4] Invalid client ID for batch events", {
         tag: "ga4-server",
         client_id: clientId,
+        errors: validation.errors,
         event_count: events.length,
       });
       return;
@@ -191,12 +231,65 @@ export class GA4ServerService {
 
     const url = `${this.MEASUREMENT_PROTOCOL_URL}?measurement_id=${this.config.measurementId}&api_secret=${this.config.apiSecret}`;
 
+    // 各イベントのパラメータを検証し、無効なイベントをフィルタリング
+    const validatedEvents = events
+      .map((event) => {
+        const paramValidation = GA4Validator.validateAndSanitizeParams(
+          event.params as Record<string, unknown>,
+          this.config.debug
+        );
+
+        // sanitizedParamsが存在し、かつ元のパラメータが空でないのにサニタイズ後が空でない場合のみ有効
+        if (
+          paramValidation.sanitizedParams &&
+          !(
+            Object.keys(event.params).length > 0 &&
+            Object.keys(paramValidation.sanitizedParams).length === 0
+          )
+        ) {
+          return {
+            name: event.name,
+            params: paramValidation.sanitizedParams,
+          };
+        }
+
+        // 無効なイベントをログに記録
+        if (this.config.debug) {
+          logger.debug("[GA4] Skipping invalid event in batch", {
+            tag: "ga4-server",
+            event_name: event.name,
+            original_param_count: Object.keys(event.params).length,
+            sanitized_param_count: paramValidation.sanitizedParams
+              ? Object.keys(paramValidation.sanitizedParams).length
+              : 0,
+            errors: paramValidation.errors,
+          });
+        }
+
+        return null;
+      })
+      .filter(
+        (
+          e
+        ): e is {
+          name: GA4Event["name"];
+          params: Record<string, unknown>;
+        } => e !== null
+      );
+
+    // 有効なイベントがない場合は送信しない
+    if (validatedEvents.length === 0) {
+      logger.warn("[GA4] No valid events in batch after validation", {
+        tag: "ga4-server",
+        original_count: events.length,
+        client_id: clientId,
+      });
+      return;
+    }
+
     const payload = {
       client_id: clientId,
-      events: events.map((event) => ({
-        name: event.name,
-        params: event.params,
-      })),
+      events: validatedEvents,
     };
 
     try {
@@ -218,23 +311,24 @@ export class GA4ServerService {
 
       logger.info("[GA4] Server batch events sent successfully", {
         tag: "ga4-server",
-        event_count: events.length,
-        event_names: events.map((e) => e.name).join(", "),
+        event_count: validatedEvents.length,
+        original_count: events.length,
+        event_names: validatedEvents.map((e) => e?.name ?? "unknown").join(", "),
         client_id: clientId,
       });
 
       if (this.config.debug) {
         logger.debug("[GA4] Server batch events payload", {
           tag: "ga4-server",
-          event_count: events.length,
+          event_count: validatedEvents.length,
           payload: JSON.stringify(payload),
         });
       }
     } catch (error) {
       logger.error("[GA4] Failed to send server batch events", {
         tag: "ga4-server",
-        event_count: events.length,
-        event_names: events.map((e) => e.name).join(", "),
+        event_count: validatedEvents.length,
+        event_names: validatedEvents.map((e) => e?.name ?? "unknown").join(", "),
         client_id: clientId,
         error: error instanceof GA4Error ? error.message : String(error),
         error_code: error instanceof GA4Error ? error.code : undefined,

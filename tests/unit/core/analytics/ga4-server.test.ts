@@ -159,6 +159,31 @@ describe("GA4ServerService", () => {
         );
       });
 
+      test("パラメータが検証とサニタイズされる", async () => {
+        mockFetch.mockResolvedValue({
+          ok: true,
+          status: 200,
+          statusText: "OK",
+        } as Response);
+
+        // 長い文字列を含むパラメータ
+        const longString = "a".repeat(150);
+        await service.sendEvent(
+          {
+            name: "sign_up",
+            params: { method: "email", description: longString } as any,
+          },
+          "1234567890.0987654321"
+        );
+
+        const callArgs = mockFetch.mock.calls[0];
+        const body = JSON.parse(callArgs[1].body);
+
+        // 文字列が100文字に切り詰められていることを確認
+        expect(body.events[0].params.description).toHaveLength(100);
+        expect(body.events[0].params.method).toBe("email");
+      });
+
       test("User IDでイベントを送信できる", async () => {
         mockFetch.mockResolvedValue({
           ok: true,
@@ -247,6 +272,33 @@ describe("GA4ServerService", () => {
 
         expect(mockFetch).not.toHaveBeenCalled();
       });
+
+      test("無効なパラメータ名を含む場合は送信しない", async () => {
+        await service.sendEvent(
+          {
+            name: "sign_up",
+            params: { "invalid-param": "value" } as any, // ハイフンは無効
+          },
+          "1234567890.0987654321"
+        );
+
+        expect(mockFetch).not.toHaveBeenCalled();
+      });
+
+      test("全てのパラメータが無効な場合は送信しない", async () => {
+        await service.sendEvent(
+          {
+            name: "sign_up",
+            params: {
+              "invalid-param-1": "value1",
+              "invalid-param-2": "value2",
+            } as any,
+          },
+          "1234567890.0987654321"
+        );
+
+        expect(mockFetch).not.toHaveBeenCalled();
+      });
     });
   });
 
@@ -273,6 +325,50 @@ describe("GA4ServerService", () => {
         expect(body.events).toHaveLength(2);
         expect(body.client_id).toBe("1234567890.0987654321");
       });
+
+      test("無効なイベントをフィルタリングして有効なイベントのみ送信する", async () => {
+        mockFetch.mockResolvedValue({
+          ok: true,
+          status: 200,
+          statusText: "OK",
+        } as Response);
+
+        const events = [
+          { name: "sign_up" as const, params: { method: "email" } }, // 有効
+          { name: "login" as const, params: { "invalid-param": "value" } as any }, // 無効
+          { name: "logout" as const, params: { valid_param: "value" } as any }, // 有効
+        ];
+
+        await service.sendEvents(events as any, "1234567890.0987654321");
+
+        expect(mockFetch).toHaveBeenCalledTimes(1);
+        const callArgs = mockFetch.mock.calls[0];
+        const body = JSON.parse(callArgs[1].body);
+
+        // 有効な2つのイベントのみが送信される
+        expect(body.events).toHaveLength(2);
+        expect(body.events[0].name).toBe("sign_up");
+        expect(body.events[1].name).toBe("logout");
+      });
+
+      test("パラメータがサニタイズされる", async () => {
+        mockFetch.mockResolvedValue({
+          ok: true,
+          status: 200,
+          statusText: "OK",
+        } as Response);
+
+        const longString = "a".repeat(150);
+        const events = [{ name: "sign_up" as const, params: { description: longString } as any }];
+
+        await service.sendEvents(events as any, "1234567890.0987654321");
+
+        const callArgs = mockFetch.mock.calls[0];
+        const body = JSON.parse(callArgs[1].body);
+
+        // 文字列が100文字に切り詰められていることを確認
+        expect(body.events[0].params.description).toHaveLength(100);
+      });
     });
 
     describe("エラーハンドリング", () => {
@@ -295,6 +391,17 @@ describe("GA4ServerService", () => {
         const events = [{ name: "logout" as const, params: {} }];
 
         await service.sendEvents(events, "1234567890.0987654321");
+
+        expect(mockFetch).not.toHaveBeenCalled();
+      });
+
+      test("全てのイベントが無効な場合は送信しない", async () => {
+        const events = [
+          { name: "sign_up" as const, params: { "invalid-param-1": "value1" } as any },
+          { name: "login" as const, params: { "invalid-param-2": "value2" } as any },
+        ];
+
+        await service.sendEvents(events as any, "1234567890.0987654321");
 
         expect(mockFetch).not.toHaveBeenCalled();
       });

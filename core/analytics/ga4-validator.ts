@@ -128,8 +128,9 @@ export class GA4Validator {
       }
     }
 
+    // 空のパラメータも有効とする（GA4はパラメータなしのイベントを許可）
     return {
-      isValid: Object.keys(sanitizedParams).length > 0,
+      isValid: true,
       errors,
       sanitizedParams,
     };
