@@ -32,6 +32,14 @@ export {
   isExceptionEvent,
 } from "./event-types";
 
+// エラーハンドリング
+export { GA4Error, GA4ErrorCode } from "./ga4-error";
+export type { GA4ErrorCodeType } from "./ga4-error";
+
+// バリデーション
+export { GA4Validator } from "./ga4-validator";
+export type { ValidationResult } from "./ga4-validator";
+
 // クライアント側サービス
 export { GA4ClientService, ga4Client } from "./ga4-client";
 
