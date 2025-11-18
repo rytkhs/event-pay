@@ -21,6 +21,20 @@ export type GA4EventName =
   | "exception";
 
 /**
+ * GA4イベントパラメータの値型
+ * GA4仕様に準拠した型制約
+ */
+export type GA4ParamValue = string | number | boolean | undefined;
+
+/**
+ * GA4イベントパラメータ
+ * 厳密な型制約により、GA4仕様への準拠を保証
+ */
+export interface GA4EventParams {
+  [key: string]: GA4ParamValue | GA4ParamValue[] | Record<string, GA4ParamValue>;
+}
+
+/**
  * 基本イベントパラメータ
  */
 export interface BaseEventParams {
@@ -30,6 +44,8 @@ export interface BaseEventParams {
   event_label?: string;
   /** イベント値 */
   value?: number;
+  /** イベントコールバック（クライアント側のみ） */
+  event_callback?: () => void;
 }
 
 /**
