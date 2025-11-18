@@ -326,6 +326,113 @@ describe("GA4ServerService", () => {
         expect(body.client_id).toBe("1234567890.0987654321");
       });
 
+      test("25個以下のイベントは1つのバッチで送信される", async () => {
+        mockFetch.mockResolvedValue({
+          ok: true,
+          status: 200,
+          statusText: "OK",
+        } as Response);
+
+        // 25個のイベントを作成
+        const events = Array.from({ length: 25 }, (_, i) => ({
+          name: "logout" as const,
+          params: { index: i },
+        }));
+
+        await service.sendEvents(events as any, "1234567890.0987654321");
+
+        // 1回のfetch呼び出しのみ
+        expect(mockFetch).toHaveBeenCalledTimes(1);
+        const callArgs = mockFetch.mock.calls[0];
+        const body = JSON.parse(callArgs[1].body);
+
+        expect(body.events).toHaveLength(25);
+      });
+
+      test("26個以上のイベントは複数のバッチに分割される", async () => {
+        mockFetch.mockResolvedValue({
+          ok: true,
+          status: 200,
+          statusText: "OK",
+        } as Response);
+
+        // 30個のイベントを作成（25個 + 5個に分割されるはず）
+        const events = Array.from({ length: 30 }, (_, i) => ({
+          name: "logout" as const,
+          params: { index: i },
+        }));
+
+        await service.sendEvents(events as any, "1234567890.0987654321");
+
+        // 2回のfetch呼び出し（25個 + 5個）
+        expect(mockFetch).toHaveBeenCalledTimes(2);
+
+        // 最初のバッチは25個
+        const firstBatch = JSON.parse(mockFetch.mock.calls[0][1].body);
+        expect(firstBatch.events).toHaveLength(25);
+
+        // 2番目のバッチは5個
+        const secondBatch = JSON.parse(mockFetch.mock.calls[1][1].body);
+        expect(secondBatch.events).toHaveLength(5);
+      });
+
+      test("60個のイベントは3つのバッチに分割される", async () => {
+        mockFetch.mockResolvedValue({
+          ok: true,
+          status: 200,
+          statusText: "OK",
+        } as Response);
+
+        // 60個のイベントを作成（25 + 25 + 10に分割されるはず）
+        const events = Array.from({ length: 60 }, (_, i) => ({
+          name: "logout" as const,
+          params: { index: i },
+        }));
+
+        await service.sendEvents(events as any, "1234567890.0987654321");
+
+        // 3回のfetch呼び出し
+        expect(mockFetch).toHaveBeenCalledTimes(3);
+
+        // 各バッチのサイズを確認
+        const batch1 = JSON.parse(mockFetch.mock.calls[0][1].body);
+        const batch2 = JSON.parse(mockFetch.mock.calls[1][1].body);
+        const batch3 = JSON.parse(mockFetch.mock.calls[2][1].body);
+
+        expect(batch1.events).toHaveLength(25);
+        expect(batch2.events).toHaveLength(25);
+        expect(batch3.events).toHaveLength(10);
+      });
+
+      test("バッチは並列処理される", async () => {
+        const delays: number[] = [];
+        mockFetch.mockImplementation(async () => {
+          const startTime = Date.now();
+          await new Promise((resolve) => setTimeout(resolve, 10));
+          delays.push(Date.now() - startTime);
+          return {
+            ok: true,
+            status: 200,
+            statusText: "OK",
+          } as Response;
+        });
+
+        // 50個のイベントを作成（2つのバッチに分割）
+        const events = Array.from({ length: 50 }, (_, i) => ({
+          name: "logout" as const,
+          params: { index: i },
+        }));
+
+        const startTime = Date.now();
+        await service.sendEvents(events as any, "1234567890.0987654321");
+        const totalTime = Date.now() - startTime;
+
+        // 並列処理なので、合計時間は2つのバッチの合計時間より短いはず
+        // （各バッチが10ms待機するが、並列なので合計は約10ms程度）
+        expect(totalTime).toBeLessThan(30); // 余裕を持って30ms未満
+        expect(mockFetch).toHaveBeenCalledTimes(2);
+      });
+
       test("無効なイベントをフィルタリングして有効なイベントのみ送信する", async () => {
         mockFetch.mockResolvedValue({
           ok: true,
@@ -368,6 +475,63 @@ describe("GA4ServerService", () => {
 
         // 文字列が100文字に切り詰められていることを確認
         expect(body.events[0].params.description).toHaveLength(100);
+      });
+    });
+
+    describe("部分失敗時の動作", () => {
+      test("一部のバッチが失敗しても他のバッチは送信される", async () => {
+        let callCount = 0;
+        // 最初の3回の呼び出しは失敗（バッチ0のリトライ）、残りは成功（バッチ1）
+        mockFetch.mockImplementation(async () => {
+          callCount++;
+          if (callCount <= 3) {
+            return {
+              ok: false,
+              status: 500,
+              statusText: "Internal Server Error",
+            } as Response;
+          }
+          return {
+            ok: true,
+            status: 200,
+            statusText: "OK",
+          } as Response;
+        });
+
+        // 50個のイベントを作成（2つのバッチに分割）
+        const events = Array.from({ length: 50 }, (_, i) => ({
+          name: "logout" as const,
+          params: { index: i },
+        }));
+
+        await service.sendEvents(events as any, "1234567890.0987654321");
+
+        // 並列処理のため、正確な呼び出し回数は保証できないが、
+        // 少なくとも4回以上呼び出される（バッチ0の3回 + バッチ1の1回以上）
+        expect(mockFetch).toHaveBeenCalled();
+        expect(callCount).toBeGreaterThanOrEqual(4);
+      });
+
+      test("全てのバッチが失敗してもエラーをスローしない", async () => {
+        mockFetch.mockResolvedValue({
+          ok: false,
+          status: 500,
+          statusText: "Internal Server Error",
+        } as Response);
+
+        // 50個のイベントを作成（2つのバッチに分割）
+        const events = Array.from({ length: 50 }, (_, i) => ({
+          name: "logout" as const,
+          params: { index: i },
+        }));
+
+        // エラーをスローせずに完了する
+        await expect(
+          service.sendEvents(events as any, "1234567890.0987654321")
+        ).resolves.not.toThrow();
+
+        // 各バッチが3回ずつリトライ（2バッチ × 3回 = 6回）
+        expect(mockFetch).toHaveBeenCalledTimes(6);
       });
     });
 

@@ -22,6 +22,7 @@ export class GA4ServerService {
   private readonly MAX_RETRIES = 3;
   private readonly MAX_RETRY_DELAY = 10000;
   private readonly MAX_JITTER = 1000;
+  private readonly MAX_EVENTS_PER_BATCH = 25;
 
   /**
    * 設定を動的に取得するgetter
@@ -203,6 +204,7 @@ export class GA4ServerService {
 
   /**
    * 複数のイベントを一度に送信する（バッチ送信）
+   * イベントを25個ずつに分割し、並列処理で送信する
    *
    * @param events - 送信するGA4イベントの配列
    * @param clientId - GA4 Client ID
@@ -228,8 +230,6 @@ export class GA4ServerService {
       });
       return;
     }
-
-    const url = `${this.MEASUREMENT_PROTOCOL_URL}?measurement_id=${this.config.measurementId}&api_secret=${this.config.apiSecret}`;
 
     // 各イベントのパラメータを検証し、無効なイベントをフィルタリング
     const validatedEvents = events
@@ -287,10 +287,80 @@ export class GA4ServerService {
       return;
     }
 
+    // イベントを25個ずつに分割
+    const batches: Array<{ name: string; params: Record<string, unknown> }[]> = [];
+    for (let i = 0; i < validatedEvents.length; i += this.MAX_EVENTS_PER_BATCH) {
+      batches.push(validatedEvents.slice(i, i + this.MAX_EVENTS_PER_BATCH));
+    }
+
+    logger.info("[GA4] Starting batch processing", {
+      tag: "ga4-server",
+      total_events: validatedEvents.length,
+      total_batches: batches.length,
+      max_events_per_batch: this.MAX_EVENTS_PER_BATCH,
+      client_id: clientId,
+    });
+
+    // 並列処理でバッチを送信
+    const results = await Promise.allSettled(
+      batches.map((batch, index) => this.sendBatch(batch, clientId, index))
+    );
+
+    // 結果集計
+    const succeeded = results.filter((r) => r.status === "fulfilled").length;
+    const failed = results.filter((r) => r.status === "rejected").length;
+
+    logger.info("[GA4] Batch processing completed", {
+      tag: "ga4-server",
+      total_batches: batches.length,
+      succeeded_batches: succeeded,
+      failed_batches: failed,
+      total_events: validatedEvents.length,
+      client_id: clientId,
+    });
+
+    // 失敗したバッチの詳細をログに記録
+    if (failed > 0 && this.config.debug) {
+      results.forEach((result, index) => {
+        if (result.status === "rejected") {
+          logger.debug("[GA4] Batch failed", {
+            tag: "ga4-server",
+            batch_index: index,
+            error: result.reason,
+          });
+        }
+      });
+    }
+  }
+
+  /**
+   * 単一バッチの送信
+   *
+   * @param batch - 送信するイベントの配列（検証済み）
+   * @param clientId - GA4 Client ID
+   * @param batchIndex - バッチのインデックス（ログ用）
+   * @throws GA4Error 送信に失敗した場合
+   */
+  private async sendBatch(
+    batch: Array<{ name: string; params: Record<string, unknown> }>,
+    clientId: string,
+    batchIndex: number
+  ): Promise<void> {
+    const url = `${this.MEASUREMENT_PROTOCOL_URL}?measurement_id=${this.config.measurementId}&api_secret=${this.config.apiSecret}`;
+
     const payload = {
       client_id: clientId,
-      events: validatedEvents,
+      events: batch,
     };
+
+    if (this.config.debug) {
+      logger.debug("[GA4] Sending batch", {
+        tag: "ga4-server",
+        batch_index: batchIndex,
+        batch_size: batch.length,
+        event_names: batch.map((e) => e.name).join(", "),
+      });
+    }
 
     try {
       const response = await this.fetchWithRetry(url, {
@@ -303,37 +373,38 @@ export class GA4ServerService {
 
       if (!response.ok) {
         throw new GA4Error(
-          `HTTP ${response.status}: ${response.statusText}`,
+          `Batch ${batchIndex} failed: HTTP ${response.status}`,
           GA4ErrorCode.API_ERROR,
-          { status: response.status }
+          { batch_index: batchIndex, status: response.status, batch_size: batch.length }
         );
       }
 
-      logger.info("[GA4] Server batch events sent successfully", {
+      logger.info("[GA4] Batch sent successfully", {
         tag: "ga4-server",
-        event_count: validatedEvents.length,
-        original_count: events.length,
-        event_names: validatedEvents.map((e) => e?.name ?? "unknown").join(", "),
-        client_id: clientId,
+        batch_index: batchIndex,
+        batch_size: batch.length,
+        event_names: batch.map((e) => e.name).join(", "),
       });
 
       if (this.config.debug) {
-        logger.debug("[GA4] Server batch events payload", {
+        logger.debug("[GA4] Batch payload", {
           tag: "ga4-server",
-          event_count: validatedEvents.length,
+          batch_index: batchIndex,
           payload: JSON.stringify(payload),
         });
       }
     } catch (error) {
-      logger.error("[GA4] Failed to send server batch events", {
+      logger.error("[GA4] Failed to send batch", {
         tag: "ga4-server",
-        event_count: validatedEvents.length,
-        event_names: validatedEvents.map((e) => e?.name ?? "unknown").join(", "),
-        client_id: clientId,
+        batch_index: batchIndex,
+        batch_size: batch.length,
         error: error instanceof GA4Error ? error.message : String(error),
         error_code: error instanceof GA4Error ? error.code : undefined,
         error_context: error instanceof GA4Error ? error.context : undefined,
       });
+
+      // エラーを再スローして、Promise.allSettledで捕捉できるようにする
+      throw error;
     }
   }
 
