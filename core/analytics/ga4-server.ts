@@ -619,7 +619,7 @@ export class GA4ServerService {
   /**
    * デバッグモードかどうかを確認する
    *
-   * 環境変数 `NEXT_PUBLIC_GA4_DEBUG` の値を動的に取得します。
+   * `NODE_ENV === "development"` の場合にtrueを返します。
    * デバッグモードが有効な場合、詳細なログが出力されます。
    *
    * @returns boolean デバッグモードの場合はtrue

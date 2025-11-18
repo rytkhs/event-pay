@@ -81,6 +81,7 @@ export class GA4ClientService {
    * タイムアウト処理とClient ID検証を含みます。
    * Client IDは `数字10桁.数字10桁` の形式で検証されます。
    * タイムアウトまたは検証失敗時はnullを返します。
+   * window.gtagが利用可能になるまで待機します。
    *
    * @param timeoutMs - タイムアウト時間（ミリ秒）、デフォルトは3000ms
    * @returns Promise<string | null> Client ID、取得できない場合はnull
@@ -108,12 +109,14 @@ export class GA4ClientService {
     return new Promise((resolve) => {
       let resolved = false;
       let timeoutId: NodeJS.Timeout | null = null;
+      let intervalId: NodeJS.Timeout | null = null;
 
       // 二重解決を防ぐsafeResolveパターン
       const safeResolve = (value: string | null) => {
         if (!resolved) {
           resolved = true;
           if (timeoutId) clearTimeout(timeoutId);
+          if (intervalId) clearInterval(intervalId);
           resolve(value);
         }
       };
@@ -126,43 +129,51 @@ export class GA4ClientService {
         safeResolve(null);
       }, timeoutMs);
 
-      if (typeof window === "undefined" || !window.gtag) {
-        if (this.config.debug) {
-          logger.debug("[GA4] gtag not available, returning null", { tag: "ga4-client" });
-        }
-        safeResolve(null);
-        return;
-      }
+      const checkGtag = () => {
+        if (typeof window !== "undefined" && window.gtag) {
+          try {
+            window.gtag("get", this.config.measurementId, "client_id", (clientId: string) => {
+              // Client ID検証
+              const validation = GA4Validator.validateClientId(clientId);
+              if (!validation.isValid) {
+                if (this.config.debug) {
+                  logger.debug("[GA4] Invalid client ID received", {
+                    tag: "ga4-client",
+                    errors: validation.errors,
+                  });
+                }
+                safeResolve(null);
+                return;
+              }
 
-      try {
-        window.gtag("get", this.config.measurementId, "client_id", (clientId: string) => {
-          // Client ID検証
-          const validation = GA4Validator.validateClientId(clientId);
-          if (!validation.isValid) {
-            if (this.config.debug) {
-              logger.debug("[GA4] Invalid client ID received", {
-                tag: "ga4-client",
-                errors: validation.errors,
-              });
-            }
-            safeResolve(null);
-            return;
-          }
-
-          if (this.config.debug) {
-            logger.debug("[GA4] Client ID retrieved", {
-              tag: "ga4-client",
-              client_id: clientId,
+              if (this.config.debug) {
+                logger.debug("[GA4] Client ID retrieved", {
+                  tag: "ga4-client",
+                  client_id: clientId,
+                });
+              }
+              safeResolve(clientId);
             });
+          } catch (error) {
+            logger.error("[GA4] Failed to get client ID", {
+              tag: "ga4-client",
+              error: error instanceof Error ? error.message : String(error),
+            });
+            safeResolve(null);
           }
-          safeResolve(clientId);
-        });
-      } catch (error) {
-        logger.error("[GA4] Failed to get client ID", {
-          tag: "ga4-client",
-          error: error instanceof Error ? error.message : String(error),
-        });
-        safeResolve(null);
+          return true;
+        }
+        return false;
+      };
+
+      // 即時チェック
+      if (!checkGtag()) {
+        // 利用できない場合はポーリング開始 (100ms間隔)
+        intervalId = setInterval(() => {
+          if (checkGtag()) {
+            if (intervalId) clearInterval(intervalId);
+          }
+        }, 100);
       }
     });
   }
@@ -288,7 +299,7 @@ export class GA4ClientService {
   /**
    * デバッグモードかどうかを確認する
    *
-   * 環境変数 `NEXT_PUBLIC_GA4_DEBUG` の値を動的に取得します。
+   * `NODE_ENV === "development"` の場合にtrueを返します。
    * デバッグモードが有効な場合、詳細なログが出力されます。
    *
    * @returns boolean デバッグモードの場合はtrue
