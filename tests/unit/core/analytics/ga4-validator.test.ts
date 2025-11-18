@@ -312,7 +312,8 @@ describe("GA4Validator", () => {
       test("空のパラメータオブジェクトを処理する", () => {
         const result = GA4Validator.validateAndSanitizeParams({});
 
-        expect(result.isValid).toBe(false);
+        // GA4はパラメータなしのイベントを許可するため、空のオブジェクトも有効
+        expect(result.isValid).toBe(true);
         expect(result.sanitizedParams).toEqual({});
       });
 
@@ -324,7 +325,8 @@ describe("GA4Validator", () => {
 
         const result = GA4Validator.validateAndSanitizeParams(params);
 
-        expect(result.isValid).toBe(false);
+        // 無効なパラメータは除外されるが、空の結果も有効（パラメータなしのイベント）
+        expect(result.isValid).toBe(true);
         expect(result.sanitizedParams).toEqual({});
       });
 
