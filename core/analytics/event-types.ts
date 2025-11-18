@@ -200,7 +200,21 @@ export interface ExceptionParams {
 /**
  * イベント名とパラメータ型のマッピング
  */
+/**
+ * ページビューイベントのパラメータ
+ */
+export interface PageViewParams extends BaseEventParams {
+  /** ページのタイトル */
+  page_title?: string;
+  /** ページの場所（URL） */
+  page_location?: string;
+}
+
+/**
+ * イベント名とパラメータ型のマッピング
+ */
 type EventMap = {
+  page_view: PageViewParams;
   sign_up: SignUpEventParams;
   login: LoginEventParams;
   logout: BaseEventParams;
@@ -249,6 +263,12 @@ export type GA4Event = {
 /**
  * イベントパラメータの型ガード関数
  */
+export function isPageViewEvent(
+  event: GA4Event
+): event is { name: "page_view"; params: PageViewParams } {
+  return event.name === "page_view";
+}
+
 export function isSignUpEvent(
   event: GA4Event
 ): event is { name: "sign_up"; params: SignUpEventParams } {
