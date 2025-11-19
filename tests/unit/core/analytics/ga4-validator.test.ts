@@ -5,6 +5,45 @@
 import { GA4Validator } from "../../../../core/analytics/ga4-validator";
 
 describe("GA4Validator", () => {
+  describe("sanitizeClientId", () => {
+    test("GA1.1.プレフィックスを除去する", () => {
+      const result = GA4Validator.sanitizeClientId("GA1.1.1234567890.0987654321");
+      expect(result).toBe("1234567890.0987654321");
+    });
+
+    test("GA1.2.プレフィックスを除去する", () => {
+      const result = GA4Validator.sanitizeClientId("GA1.2.1234567890.0987654321");
+      expect(result).toBe("1234567890.0987654321");
+    });
+
+    test("複数桁のGAバージョンを処理する", () => {
+      const result = GA4Validator.sanitizeClientId("GA10.20.1234567890.0987654321");
+      expect(result).toBe("1234567890.0987654321");
+    });
+
+    test("プレフィックスがない場合はそのまま返す", () => {
+      const result = GA4Validator.sanitizeClientId("1234567890.0987654321");
+      expect(result).toBe("1234567890.0987654321");
+    });
+
+    test("空文字を処理する", () => {
+      const result = GA4Validator.sanitizeClientId("");
+      expect(result).toBe("");
+    });
+
+    test("無効な形式はそのまま返す（検証は別メソッドで行う）", () => {
+      const invalid = "invalid-format";
+      const result = GA4Validator.sanitizeClientId(invalid);
+      expect(result).toBe(invalid);
+    });
+
+    test("GA1.のみで終わる場合はそのまま返す", () => {
+      const partial = "GA1.1";
+      const result = GA4Validator.sanitizeClientId(partial);
+      expect(result).toBe(partial);
+    });
+  });
+
   describe("validateClientId", () => {
     describe("正常系", () => {
       test("正しい形式のClient IDを受け入れる", () => {
@@ -69,18 +108,14 @@ describe("GA4Validator", () => {
         const result = GA4Validator.validateClientId("12345678900987654321");
 
         expect(result.isValid).toBe(false);
-        expect(result.errors).toContain(
-          "Client ID does not match required format (10digits.10digits)"
-        );
+        expect(result.errors).toContain("Client ID does not match required format (digits.digits)");
       });
 
       test("複数のピリオドを含むClient IDを拒否する", () => {
         const result = GA4Validator.validateClientId("1234567890.0987.654321");
 
         expect(result.isValid).toBe(false);
-        expect(result.errors).toContain(
-          "Client ID does not match required format (10digits.10digits)"
-        );
+        expect(result.errors).toContain("Client ID does not match required format (digits.digits)");
       });
 
       test("数字以外の文字を含むClient IDを拒否する", () => {
@@ -95,7 +130,7 @@ describe("GA4Validator", () => {
           const result = GA4Validator.validateClientId(clientId);
           expect(result.isValid).toBe(false);
           expect(result.errors).toContain(
-            "Client ID does not match required format (10digits.10digits)"
+            "Client ID does not match required format (digits.digits)"
           );
         });
       });
@@ -108,9 +143,7 @@ describe("GA4Validator", () => {
         expect(result.isValid).toBe(false);
         expect(result.errors.length).toBeGreaterThan(1);
         expect(result.errors).toContain("Client ID contains invalid prefix: GA1.");
-        expect(result.errors).toContain(
-          "Client ID does not match required format (10digits.10digits)"
-        );
+        expect(result.errors).toContain("Client ID does not match required format (digits.digits)");
       });
     });
   });

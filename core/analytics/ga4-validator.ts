@@ -47,6 +47,39 @@ export class GA4Validator {
    * }
    * ```
    */
+  /**
+   * Sanitizes a GA4 client ID by removing the prefix (e.g., "GA1.1.")
+   *
+   * @param clientId - The raw client ID (e.g., from _ga cookie)
+   * @returns The sanitized client ID (e.g., "1234567890.1234567890")
+   */
+  static sanitizeClientId(clientId: string): string {
+    if (!clientId) return "";
+
+    // Remove "GAx.x." prefix if present
+    // Example: GA1.1.1234567890.1234567890 -> 1234567890.1234567890
+    const prefixMatch = clientId.match(/^GA\d+\.\d+\.(.+)$/);
+    if (prefixMatch && prefixMatch[1]) {
+      return prefixMatch[1];
+    }
+
+    return clientId;
+  }
+
+  /**
+   * Validates a GA4 client ID
+   *
+   * @param clientId - The client ID to validate
+   * @returns Validation result with any errors found
+   *
+   * @example
+   * ```typescript
+   * const result = GA4Validator.validateClientId("1234567890.0987654321");
+   * if (!result.isValid) {
+   *   console.error("Invalid client ID:", result.errors);
+   * }
+   * ```
+   */
   static validateClientId(clientId: string): ValidationResult {
     const errors: string[] = [];
 
@@ -62,9 +95,9 @@ export class GA4Validator {
       }
     }
 
-    // Validate pattern: 10 digits, period, 10 digits
+    // Validate pattern: digits.digits (variable length)
     if (!this.CLIENT_ID_PATTERN.test(clientId)) {
-      errors.push("Client ID does not match required format (10digits.10digits)");
+      errors.push("Client ID does not match required format (digits.digits)");
     }
 
     return {
