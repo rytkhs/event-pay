@@ -58,7 +58,16 @@ export function GuestPageClient({
       // GA4 Client IDを取得
       const gaClientId = await ga4Client.getClientId();
 
-      // begin_checkoutイベントのパラメータを構築
+      // 2. Server Actionを開始 (非同期)
+      const sessionCreationPromise = createGuestStripeSessionAction({
+        guestToken: attendance.guest_token,
+        successUrl: buildRedirectUrl("success"),
+        cancelUrl: buildRedirectUrl("canceled"),
+        gaClientId: gaClientId ?? undefined,
+      });
+
+      // 3. GA4イベント送信 (Fire and Forget)
+      // Server Actionの完了を待たずに送信処理を行う
       const beginCheckoutParams: BeginCheckoutParams = {
         event_id: attendance.event.id,
         currency: "JPY",
@@ -72,34 +81,22 @@ export function GuestPageClient({
           },
         ],
       };
+      ga4Client.sendEvent({ name: "begin_checkout", params: beginCheckoutParams });
 
-      // begin_checkoutイベントを送信し、送信完了後にCheckoutセッションを作成
-      const proceedToCheckout = async () => {
-        const result = await createGuestStripeSessionAction({
-          guestToken: attendance.guest_token,
-          successUrl: buildRedirectUrl("success"),
-          cancelUrl: buildRedirectUrl("canceled"),
-          gaClientId: gaClientId ?? undefined, // Client IDを渡す
+      // 4. Server Actionの結果を待機
+      const result = await sessionCreationPromise;
+
+      if (result.success && result.data) {
+        // Stripe Checkoutページにリダイレクト
+        window.location.href = result.data.sessionUrl;
+      } else {
+        toast({
+          title: "決済エラー",
+          description: !result.success ? result.error : "決済セッションの作成に失敗しました。",
+          variant: "destructive",
         });
-
-        if (result.success && result.data) {
-          // Stripe Checkoutページにリダイレクト
-          window.location.href = result.data.sessionUrl;
-        } else {
-          toast({
-            title: "決済エラー",
-            description: !result.success ? result.error : "決済セッションの作成に失敗しました。",
-            variant: "destructive",
-          });
-          setIsProcessingPayment(false);
-        }
-      };
-
-      // event_callbackを使用してイベント送信後にリダイレクト
-      ga4Client.sendEventWithCallback(
-        { name: "begin_checkout", params: beginCheckoutParams },
-        proceedToCheckout
-      );
+        setIsProcessingPayment(false);
+      }
     } catch (error) {
       handleError(error, {
         action: "create_stripe_session",
