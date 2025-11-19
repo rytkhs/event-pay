@@ -1,5 +1,6 @@
 import { Noto_Sans_JP } from "next/font/google";
 import localFont from "next/font/local";
+import { headers } from "next/headers";
 
 import { GoogleAnalytics } from "@next/third-parties/google";
 import type { Metadata } from "next";
@@ -95,6 +96,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>): JSX.Element {
   const ga4Config = getGA4Config();
+  const nonce = headers().get("x-nonce") ?? undefined;
 
   // 構造化データ（JSON-LD）を生成
   const organizationSchema = generateOrganizationSchema();
@@ -106,11 +108,11 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} ${notoSansJp.className} antialiased`}
         suppressHydrationWarning={true}
       >
-        <JsonLd data={[organizationSchema, webSiteSchema]} />
+        <JsonLd data={[organizationSchema, webSiteSchema]} nonce={nonce} />
         <TooltipProvider>
           <ToastProvider ToasterComponent={Toaster}>{children}</ToastProvider>
         </TooltipProvider>
-        {ga4Config.enabled && <GoogleAnalytics gaId={ga4Config.measurementId} />}
+        {ga4Config.enabled && <GoogleAnalytics gaId={ga4Config.measurementId} nonce={nonce} />}
       </body>
     </html>
   );

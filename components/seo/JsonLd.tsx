@@ -8,9 +8,17 @@ import type { WithContext } from "schema-dts";
  *
  * @param data - WithContext型のスキーマオブジェクトまたはその配列
  */
-export function JsonLd<T extends WithContext<any>>({ data }: { data: T | T[] }): JSX.Element {
+export function JsonLd<T extends WithContext<any>>({
+  data,
+  nonce,
+}: {
+  data: T | T[];
+  nonce?: string;
+}): JSX.Element {
   // JSON-LDを文字列化し、XSS対策として "<" をエスケープ
   const jsonLd = JSON.stringify(data).replace(/</g, "\\u003c");
 
-  return <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLd }} />;
+  return (
+    <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLd }} nonce={nonce} />
+  );
 }
