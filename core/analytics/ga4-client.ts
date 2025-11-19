@@ -83,22 +83,22 @@ export class GA4ClientService {
    * タイムアウトまたは検証失敗時はnullを返します。
    * window.gtagが利用可能になるまで待機します。
    *
-   * @param timeoutMs - タイムアウト時間（ミリ秒）、デフォルトは3000ms
+   * @param timeoutMs - タイムアウト時間（ミリ秒）、デフォルトは200ms
    * @returns Promise<string | null> Client ID、取得できない場合はnull
    *
    * @example
    * ```typescript
-   * // デフォルトタイムアウト（3000ms）
+   * // デフォルトタイムアウト（200ms）
    * const clientId = await ga4Client.getClientId();
    * if (clientId) {
    *   console.log('Client ID:', clientId);
    * }
    *
    * // カスタムタイムアウト
-   * const clientId = await ga4Client.getClientId(5000);
+   * const clientId = await ga4Client.getClientId(500);
    * ```
    */
-  async getClientId(timeoutMs: number = 3000): Promise<string | null> {
+  async getClientId(timeoutMs: number = 200): Promise<string | null> {
     if (!this.config.enabled) {
       if (this.config.debug) {
         logger.debug("[GA4] Client ID request skipped (disabled)", { tag: "ga4-client" });
@@ -168,12 +168,12 @@ export class GA4ClientService {
 
       // 即時チェック
       if (!checkGtag()) {
-        // 利用できない場合はポーリング開始 (100ms間隔)
+        // 利用できない場合はポーリング開始 (40ms間隔)
         intervalId = setInterval(() => {
           if (checkGtag()) {
             if (intervalId) clearInterval(intervalId);
           }
-        }, 100);
+        }, 40);
       }
     });
   }
