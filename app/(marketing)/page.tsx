@@ -4,7 +4,14 @@ import type { Metadata } from "next";
 
 import { createClient } from "@core/supabase/server";
 
-import LandingPage from "./_components/LandingPage";
+import { CTASection } from "./_components/CTASection";
+import { FAQSection } from "./_components/FAQSection";
+import { FeaturesSection } from "./_components/FeaturesSection";
+import { HeroSection } from "./_components/HeroSection";
+import { HowItWorksSection } from "./_components/HowItWorksSection";
+import { PricingSection } from "./_components/PricingSection";
+import { ProblemsSection } from "./_components/ProblemsSection";
+import { UseCasesSection } from "./_components/UseCasesSection";
 
 export const dynamic = "force-dynamic";
 
@@ -27,5 +34,16 @@ export default async function Home() {
     redirect("/dashboard");
   }
 
-  return <LandingPage />;
+  return (
+    <div className="min-h-screen flex flex-col w-full overflow-x-hidden">
+      <HeroSection />
+      <ProblemsSection />
+      <FeaturesSection />
+      <UseCasesSection />
+      <HowItWorksSection />
+      <PricingSection />
+      <FAQSection />
+      <CTASection />
+    </div>
+  );
 }

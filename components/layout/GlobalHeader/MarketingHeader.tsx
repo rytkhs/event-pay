@@ -4,8 +4,6 @@ import { useState, useEffect } from "react";
 
 import { cn } from "@core/utils";
 
-import { Button } from "@components/ui/button";
-
 import { navigationConfig, marketingCTA } from "./navigation-config";
 import { NavLink } from "./NavLink";
 import { MarketingHeaderProps } from "./types";
@@ -99,15 +97,18 @@ export function MarketingHeader({ className }: MarketingHeaderProps) {
               {/* ログインリンク */}
               <NavLink
                 href="/login"
-                className="ml-4 text-sm font-medium text-muted-foreground hover:text-foreground border-b-0 hover:border-b-0 hover:bg-transparent"
+                className="ml-4 text-sm font-bold text-primary hover:underline border-b-0 hover:border-b-0 hover:bg-transparent"
               >
                 ログイン
               </NavLink>
 
               {/* CTA ボタン */}
-              <Button asChild variant={marketingCTA.variant} size="sm" className="ml-2">
-                <NavLink href={marketingCTA.href}>{marketingCTA.label}</NavLink>
-              </Button>
+              <a
+                href={marketingCTA.href}
+                className="ml-2 bg-primary hover:bg-primary/80 text-white px-5 py-2 rounded-full font-bold transition-all shadow-lg hover:shadow-blue-200"
+              >
+                {marketingCTA.label}
+              </a>
             </nav>
 
             {/* モバイル用ナビゲーション */}
@@ -115,15 +116,18 @@ export function MarketingHeader({ className }: MarketingHeaderProps) {
               {/* モバイル用ログインリンク */}
               <NavLink
                 href="/login"
-                className="text-xs sm:text-sm font-medium text-muted-foreground hover:text-foreground border-b-0 hover:border-b-0 hover:bg-transparent px-1 py-1 whitespace-nowrap"
+                className="text-xs sm:text-sm font-bold text-primary hover:underline border-b-0 hover:border-b-0 hover:bg-transparent px-1 py-1 whitespace-nowrap"
               >
                 ログイン
               </NavLink>
 
               {/* モバイル用CTA ボタン */}
-              <Button asChild variant={marketingCTA.variant} size="sm" className="text-xs">
-                <NavLink href={marketingCTA.href}>{marketingCTA.label}</NavLink>
-              </Button>
+              <a
+                href={marketingCTA.href}
+                className="text-xs bg-primary hover:bg-primary/80 text-white px-4 py-2 rounded-full font-bold transition-all shadow-lg hover:shadow-blue-200 whitespace-nowrap"
+              >
+                {marketingCTA.label}
+              </a>
             </div>
           </div>
         </div>

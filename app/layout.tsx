@@ -6,7 +6,6 @@ import { GoogleAnalytics } from "@next/third-parties/google";
 import type { Metadata } from "next";
 
 import "./globals.css";
-import "./(marketing)/lp.css";
 
 import { getGA4Config } from "@core/analytics/config";
 import { ToastProvider } from "@core/contexts/toast-context";
