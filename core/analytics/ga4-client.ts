@@ -133,12 +133,17 @@ export class GA4ClientService {
         if (typeof window !== "undefined" && window.gtag) {
           try {
             window.gtag("get", this.config.measurementId, "client_id", (clientId: string) => {
+              // プレフィックス（GA1.1.など）を除去してサニタイズ
+              const sanitizedClientId = GA4Validator.sanitizeClientId(clientId);
+
               // Client ID検証
-              const validation = GA4Validator.validateClientId(clientId);
+              const validation = GA4Validator.validateClientId(sanitizedClientId);
               if (!validation.isValid) {
                 if (this.config.debug) {
                   logger.debug("[GA4] Invalid client ID received", {
                     tag: "ga4-client",
+                    original_client_id: clientId,
+                    sanitized_client_id: sanitizedClientId,
                     errors: validation.errors,
                   });
                 }
@@ -149,10 +154,11 @@ export class GA4ClientService {
               if (this.config.debug) {
                 logger.debug("[GA4] Client ID retrieved", {
                   tag: "ga4-client",
-                  client_id: clientId,
+                  original_client_id: clientId,
+                  sanitized_client_id: sanitizedClientId,
                 });
               }
-              safeResolve(clientId);
+              safeResolve(sanitizedClientId);
             });
           } catch (error) {
             logger.error("[GA4] Failed to get client ID", {
