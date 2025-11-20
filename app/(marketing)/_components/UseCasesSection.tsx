@@ -40,10 +40,7 @@ export const UseCasesSection: React.FC = () => {
 
         <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
           {cases.map((c, i) => (
-            <div
-              key={i}
-              className="bg-white p-6 rounded-xl shadow-sm border border-slate-100 hover:-translate-y-1 transition-transform duration-300"
-            >
+            <div key={i} className="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
               <div
                 className={`w-12 h-12 rounded-lg ${c.color} flex items-center justify-center mb-4`}
               >

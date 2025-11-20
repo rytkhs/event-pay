@@ -41,7 +41,7 @@ export const ProblemsSection: React.FC = () => {
           {problems.map((item, idx) => (
             <div
               key={idx}
-              className="bg-slate-50 p-8 rounded-2xl border border-slate-100 hover:shadow-lg transition-shadow"
+              className="bg-slate-50 p-8 rounded-2xl border border-slate-100 transition-shadow"
             >
               <div className="w-14 h-14 bg-destructive/10 rounded-full flex items-center justify-center mb-6">
                 <item.icon className="text-destructive w-7 h-7" />
