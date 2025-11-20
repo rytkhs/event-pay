@@ -17,8 +17,8 @@ export const CTASection: React.FC = () => {
             まずは次回のイベントで、使い心地を試してみてください。
           </p>
           <a
-            href="/signup"
-            className="inline-flex items-center gap-2 bg-white text-primary font-bold px-8 py-4 rounded-full hover:bg-slate-50 transition-colors shadow-lg"
+            href="/register"
+            className="inline-flex items-center gap-2 bg-white text-primary font-bold px-8 py-4 rounded-full hover:bg-gray-100 transition-colors shadow-lg"
           >
             無料でアカウントを作成する
             <ArrowRight size={20} />
