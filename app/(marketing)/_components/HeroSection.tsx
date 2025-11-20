@@ -20,7 +20,7 @@ export const HeroSection: React.FC = () => {
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary/40 opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-3 w-3 bg-primary"></span>
               </span>
-              サークル・コミュニティ専用ツール
+              サークル・コミュニティ向けイベント管理 & 集金アプリ
             </div>
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-slate-900 leading-tight mb-6">
               出欠確認と集金を、

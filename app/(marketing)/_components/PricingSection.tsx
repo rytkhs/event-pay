@@ -1,5 +1,7 @@
 import React from "react";
 
+import Image from "next/image";
+
 import { Check } from "lucide-react";
 
 export const PricingSection: React.FC = () => {
@@ -59,20 +61,31 @@ export const PricingSection: React.FC = () => {
             <div className="h-px w-full bg-slate-200 md:hidden"></div>
 
             <div className="flex-1 text-center md:text-left">
-              <p className="text-sm text-slate-500 font-bold uppercase tracking-wider mb-2">
-                プラットフォーム利用料
-              </p>
+              <div className="flex items-center justify-center md:justify-start gap-2 mb-2">
+                <p className="text-sm text-slate-500 font-bold uppercase tracking-wider">
+                  プラットフォーム利用料
+                </p>
+                <span className="bg-red-100 text-red-600 text-xs px-2 py-0.5 rounded-full font-bold">
+                  業界最安水準
+                </span>
+              </div>
               <div className="flex items-baseline justify-center md:justify-start gap-1">
                 <span className="text-5xl font-bold text-primary">1.3</span>
                 <span className="text-2xl font-bold text-slate-700">%</span>
               </div>
               <p className="text-xs text-slate-500 mt-3 leading-relaxed">
-                ※決済総額に対して申し受けます。
-                <br />
-                ※オンライン決済(Stripe)利用時は、別途Stripe手数料(3.6%)が差し引かれます。
+                ※利用料はオンライン決済に対して申し受けます。また、別途Stripe手数料(3.6%)が差し引かれます。
                 <br />
                 ※「参加費」に手数料を含めて設定することで、幹事さんの持ち出し負担をゼロにできます。
               </p>
+              <div className="mt-6 flex justify-center md:justify-start">
+                <Image
+                  src="/images/powered-by-stripe.svg"
+                  alt="Powered by Stripe"
+                  width={120}
+                  height={26}
+                />
+              </div>
             </div>
           </div>
         </div>
