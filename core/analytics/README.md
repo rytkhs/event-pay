@@ -56,7 +56,7 @@ GA4の仕様に準拠したパラメータ検証を実装しました。
 ```bash
 # 必須
 NEXT_PUBLIC_GA4_MEASUREMENT_ID=G-XXXXXXXXXX
-GA4_API_SECRET=your-api-secret
+GA_API_SECRET=your-api-secret
 
 # オプション
 NEXT_PUBLIC_GA4_ENABLED=true

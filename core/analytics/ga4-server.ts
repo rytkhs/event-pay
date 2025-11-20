@@ -108,9 +108,11 @@ export class GA4ServerService {
     // Client ID検証（GA4Validator使用）
     let validClientId: string | null = null;
     if (clientId) {
-      const validation = GA4Validator.validateClientId(clientId);
+      // プレフィックス（GA1.1.など）を除去してサニタイズ
+      const sanitizedClientId = GA4Validator.sanitizeClientId(clientId);
+      const validation = GA4Validator.validateClientId(sanitizedClientId);
       if (validation.isValid) {
-        validClientId = clientId;
+        validClientId = sanitizedClientId;
       } else if (this.config.debug) {
         logger.debug("[GA4] Invalid client ID", {
           tag: "ga4-server",
@@ -196,6 +198,7 @@ export class GA4ServerService {
           "Content-Type": "application/json",
         },
         body: JSON.stringify(payload),
+        cache: "no-store",
       });
 
       if (!response.ok) {
@@ -276,7 +279,9 @@ export class GA4ServerService {
     }
 
     // Client ID検証（GA4Validator使用）
-    const validation = GA4Validator.validateClientId(clientId);
+    // プレフィックス（GA1.1.など）を除去してサニタイズ
+    const sanitizedClientId = GA4Validator.sanitizeClientId(clientId);
+    const validation = GA4Validator.validateClientId(sanitizedClientId);
     if (!validation.isValid) {
       logger.warn("[GA4] Invalid client ID for batch events", {
         tag: "ga4-server",
@@ -359,7 +364,7 @@ export class GA4ServerService {
 
     // 並列処理でバッチを送信（同時実行数を制限）
     const results = await this.runWithConcurrencyLimit(
-      batches.map((batch, index) => () => this.sendBatch(batch, clientId, index)),
+      batches.map((batch, index) => () => this.sendBatch(batch, sanitizedClientId, index)),
       5 // 同時5バッチまで
     );
 
@@ -429,6 +434,7 @@ export class GA4ServerService {
           "Content-Type": "application/json",
         },
         body: JSON.stringify(payload),
+        cache: "no-store",
       });
 
       if (!response.ok) {
@@ -601,7 +607,7 @@ export class GA4ServerService {
    * Measurement Protocol APIが利用可能かどうかを確認する
    *
    * GA4が有効で、かつAPI Secretが設定されている場合にtrueを返します。
-   * 環境変数 `GA4_API_SECRET` の値を動的に取得します。
+   * 環境変数 `GA_API_SECRET` の値を動的に取得します。
    *
    * @returns boolean API Secretが設定されている場合はtrue
    *

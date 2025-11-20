@@ -88,17 +88,17 @@ export class GA4ClientService {
    *
    * @example
    * ```typescript
-   * // デフォルトタイムアウト（200ms）
+   * // デフォルトタイムアウト（1000ms）
    * const clientId = await ga4Client.getClientId();
    * if (clientId) {
    *   console.log('Client ID:', clientId);
    * }
    *
    * // カスタムタイムアウト
-   * const clientId = await ga4Client.getClientId(500);
+   * const clientId = await ga4Client.getClientId(1000);
    * ```
    */
-  async getClientId(timeoutMs: number = 200): Promise<string | null> {
+  async getClientId(timeoutMs: number = 1000): Promise<string | null> {
     if (!this.config.enabled) {
       if (this.config.debug) {
         logger.debug("[GA4] Client ID request skipped (disabled)", { tag: "ga4-client" });
@@ -108,8 +108,8 @@ export class GA4ClientService {
 
     return new Promise((resolve) => {
       let resolved = false;
-      let timeoutId: NodeJS.Timeout | null = null;
-      let intervalId: NodeJS.Timeout | null = null;
+      let timeoutId: ReturnType<typeof setTimeout> | null = null;
+      let intervalId: ReturnType<typeof setInterval> | null = null;
 
       // 二重解決を防ぐsafeResolveパターン
       const safeResolve = (value: string | null) => {
@@ -133,12 +133,17 @@ export class GA4ClientService {
         if (typeof window !== "undefined" && window.gtag) {
           try {
             window.gtag("get", this.config.measurementId, "client_id", (clientId: string) => {
+              // プレフィックス（GA1.1.など）を除去してサニタイズ
+              const sanitizedClientId = GA4Validator.sanitizeClientId(clientId);
+
               // Client ID検証
-              const validation = GA4Validator.validateClientId(clientId);
+              const validation = GA4Validator.validateClientId(sanitizedClientId);
               if (!validation.isValid) {
                 if (this.config.debug) {
                   logger.debug("[GA4] Invalid client ID received", {
                     tag: "ga4-client",
+                    original_client_id: clientId,
+                    sanitized_client_id: sanitizedClientId,
                     errors: validation.errors,
                   });
                 }
@@ -149,10 +154,11 @@ export class GA4ClientService {
               if (this.config.debug) {
                 logger.debug("[GA4] Client ID retrieved", {
                   tag: "ga4-client",
-                  client_id: clientId,
+                  original_client_id: clientId,
+                  sanitized_client_id: sanitizedClientId,
                 });
               }
-              safeResolve(clientId);
+              safeResolve(sanitizedClientId);
             });
           } catch (error) {
             logger.error("[GA4] Failed to get client ID", {
@@ -168,12 +174,12 @@ export class GA4ClientService {
 
       // 即時チェック
       if (!checkGtag()) {
-        // 利用できない場合はポーリング開始 (40ms間隔)
+        // 利用できない場合はポーリング開始 (100ms間隔)
         intervalId = setInterval(() => {
           if (checkGtag()) {
             if (intervalId) clearInterval(intervalId);
           }
-        }, 40);
+        }, 100);
       }
     });
   }
@@ -235,7 +241,7 @@ export class GA4ClientService {
     };
 
     // タイムアウト設定
-    const timeoutId = setTimeout(() => {
+    const timeoutId: ReturnType<typeof setTimeout> = setTimeout(() => {
       if (this.config.debug) {
         logger.debug("[GA4] Event callback timed out", {
           tag: "ga4-client",

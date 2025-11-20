@@ -89,7 +89,39 @@ describe("GA4ClientService", () => {
     });
 
     describe("Client ID検証", () => {
-      test("無効なClient IDを拒否する", async () => {
+      test("GA1.1.プレフィックス付きのClient IDを正しく処理する", async () => {
+        const prefixedClientId = "GA1.1.1234567890.0987654321";
+        const expectedClientId = "1234567890.0987654321";
+
+        (global as any).window.gtag = jest.fn((command, targetId, config, callback) => {
+          if (command === "get" && config === "client_id" && typeof callback === "function") {
+            // 実際のwindow.gtagはプレフィックス付きで返す
+            callback(prefixedClientId);
+          }
+        });
+
+        const result = await service.getClientId();
+
+        // サニタイズ後の値が返されるべき
+        expect(result).toBe(expectedClientId);
+      });
+
+      test("GA1.2.プレフィックス付きのClient IDを正しく処理する", async () => {
+        const prefixedClientId = "GA1.2.9876543210.1234567890";
+        const expectedClientId = "9876543210.1234567890";
+
+        (global as any).window.gtag = jest.fn((command, targetId, config, callback) => {
+          if (command === "get" && config === "client_id" && typeof callback === "function") {
+            callback(prefixedClientId);
+          }
+        });
+
+        const result = await service.getClientId();
+
+        expect(result).toBe(expectedClientId);
+      });
+
+      test("不完全なプレフィックスのClient IDを拒否する", async () => {
         const invalidClientId = "GA1.1234567890.0987654321";
 
         (global as any).window.gtag = jest.fn((command, targetId, config, callback) => {
