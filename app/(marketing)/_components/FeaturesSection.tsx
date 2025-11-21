@@ -1,6 +1,6 @@
 import React from "react";
 
-import { Zap, CreditCard, BellRing } from "lucide-react";
+import { Zap, CreditCard, BellRing, Check } from "lucide-react";
 
 import { FadeIn } from "./ui/FadeIn";
 
@@ -71,9 +71,25 @@ export const FeaturesSection: React.FC = () => {
                   <br />
                   一つのリストで。
                 </h3>
-                <p className="text-slate-300 text-lg leading-relaxed">
-                  完全キャッシュレス化が難しいコミュニティでも安心。「事前に払いたい人」はオンライン決済（Stripe）で、「当日払いたい人」は現金で。管理画面では両方のステータスを一元管理できます。
+                <p className="text-slate-300 text-lg leading-relaxed mb-6">
+                  完全キャッシュレス化が難しいコミュニティでも安心。「事前に払いたい人」はオンライン決済で、「当日払いたい人」は現金で。管理画面では両方のステータスを一元管理できます。
                 </p>
+                <ul className="space-y-3">
+                  <li className="flex items-start gap-3">
+                    <div className="bg-primary/20 p-1 rounded-full text-primary mt-0.5">
+                      <Check size={14} strokeWidth={3} />
+                    </div>
+                    <span className="text-slate-200 text-md">オンライン決済は自動で入金確認</span>
+                  </li>
+                  <li className="flex items-start gap-3">
+                    <div className="bg-primary/20 p-1 rounded-full text-primary mt-0.5">
+                      <Check size={14} strokeWidth={3} />
+                    </div>
+                    <span className="text-slate-200 text-md">
+                      現金集金も「受領」ボタン一つで管理
+                    </span>
+                  </li>
+                </ul>
               </FadeIn>
             </div>
             <div className="flex-1">

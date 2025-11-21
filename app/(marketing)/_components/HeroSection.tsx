@@ -26,23 +26,25 @@ export const HeroSection: React.FC = () => {
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary/40 opacity-75"></span>
                   <span className="relative inline-flex rounded-full h-3 w-3 bg-primary"></span>
                 </span>
-                サークル・コミュニティ向けイベント管理 &amp; 集金アプリ
+                イベント管理 &amp; 集金アプリ
               </div>
             </FadeIn>
 
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-slate-900 leading-tight mb-6">
-              出欠確認と集金を、
+              サークルの集金
               <br />
-              <span className="text-primary">これひとつで。</span>
+              出欠管理は、これひとつ。
+              <br />
+              <span className="text-primary">キャッシュレス派も現金派も。</span>
             </h1>
 
             <FadeIn delay={0.3}>
               <p className="text-lg md:text-xl text-slate-600 mb-8 leading-relaxed">
-                最もシンプルなイベント管理。
+                アプリ不要、ログイン不要。招待リンクを送るだけで、
                 <br className="hidden md:block" />
-                参加者はアカウント登録不要。現金もクレカも一元管理で、
+                面倒なExcel管理や小銭のやり取りから解放されます。
                 <br className="hidden md:block" />
-                幹事さんの負担を劇的に減らします。
+                幹事の負担を劇的に減らす、新しいスタンダード。
               </p>
             </FadeIn>
 
@@ -56,7 +58,9 @@ export const HeroSection: React.FC = () => {
                   <ArrowRight size={20} />
                 </Link>
               </div>
-              <p className="mt-4 text-slate-500 text-sm">初期費用・月額費 0円 / 1分で作成完了</p>
+              <p className="mt-4 text-slate-500 text-sm">
+                初期費用・月額費 0円 / 現金集金なら完全無料
+              </p>
             </FadeIn>
           </div>
 
