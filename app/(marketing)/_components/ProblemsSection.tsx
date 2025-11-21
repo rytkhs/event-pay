@@ -2,6 +2,9 @@ import React from "react";
 
 import { Coins, UserX, Calculator } from "lucide-react";
 
+import { FadeIn } from "./ui/FadeIn";
+import { StaggerContainer, StaggerItem } from "./ui/StaggerContainer";
+
 export const ProblemsSection: React.FC = () => {
   const problems = [
     {
@@ -24,7 +27,7 @@ export const ProblemsSection: React.FC = () => {
   return (
     <section className="py-20 bg-white">
       <div className="container mx-auto px-4 md:px-6">
-        <div className="text-center max-w-3xl mx-auto mb-16">
+        <FadeIn direction="up" className="text-center max-w-3xl mx-auto mb-16">
           <h2 className="text-3xl md:text-4xl font-bold text-slate-800 mb-4">
             幹事さん、集金業務で
             <br />
@@ -35,11 +38,11 @@ export const ProblemsSection: React.FC = () => {
             していませんか？
           </h2>
           <p className="text-slate-500">楽しいはずのイベントも、お金の管理で台無しに。</p>
-        </div>
+        </FadeIn>
 
-        <div className="grid md:grid-cols-3 gap-8">
+        <StaggerContainer className="grid md:grid-cols-3 gap-8">
           {problems.map((item, idx) => (
-            <div
+            <StaggerItem
               key={idx}
               className="bg-slate-50 p-8 rounded-2xl border border-slate-100 transition-shadow"
             >
@@ -48,9 +51,9 @@ export const ProblemsSection: React.FC = () => {
               </div>
               <h3 className="text-xl font-bold text-slate-800 mb-3">{item.title}</h3>
               <p className="text-slate-600 leading-relaxed">{item.desc}</p>
-            </div>
+            </StaggerItem>
           ))}
-        </div>
+        </StaggerContainer>
       </div>
     </section>
   );

@@ -1,5 +1,8 @@
 import React from "react";
 
+import { FadeIn } from "./ui/FadeIn";
+import { StaggerContainer, StaggerItem } from "./ui/StaggerContainer";
+
 export const FAQSection: React.FC = () => {
   const faqs = [
     {
@@ -31,35 +34,37 @@ export const FAQSection: React.FC = () => {
   return (
     <section id="faq" className="py-20 bg-white">
       <div className="container mx-auto px-4 md:px-6">
-        <div className="text-center mb-12">
+        <FadeIn direction="up" className="text-center mb-12">
           <h2 className="text-3xl font-bold text-slate-800">よくある質問</h2>
-        </div>
+        </FadeIn>
 
-        <div className="max-w-3xl mx-auto space-y-4">
+        <StaggerContainer className="max-w-3xl mx-auto space-y-4">
           {faqs.map((item, index) => (
-            <details key={index} className="group bg-slate-50 rounded-xl">
-              <summary className="flex justify-between items-center font-medium cursor-pointer list-none p-6">
-                <span className="text-lg font-bold text-slate-800">Q. {item.q}</span>
-                <span className="transition group-open:rotate-180">
-                  <svg
-                    fill="none"
-                    height="24"
-                    shapeRendering="geometricPrecision"
-                    stroke="currentColor"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="1.5"
-                    viewBox="0 0 24 24"
-                    width="24"
-                  >
-                    <path d="M6 9l6 6 6-6"></path>
-                  </svg>
-                </span>
-              </summary>
-              <div className="text-slate-600 px-6 pb-6 leading-relaxed">A. {item.a}</div>
-            </details>
+            <StaggerItem key={index}>
+              <details className="group bg-slate-50 rounded-xl">
+                <summary className="flex justify-between items-center font-medium cursor-pointer list-none p-6">
+                  <span className="text-lg font-bold text-slate-800">Q. {item.q}</span>
+                  <span className="transition group-open:rotate-180">
+                    <svg
+                      fill="none"
+                      height="24"
+                      shapeRendering="geometricPrecision"
+                      stroke="currentColor"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="1.5"
+                      viewBox="0 0 24 24"
+                      width="24"
+                    >
+                      <path d="M6 9l6 6 6-6"></path>
+                    </svg>
+                  </span>
+                </summary>
+                <div className="text-slate-600 px-6 pb-6 leading-relaxed">A. {item.a}</div>
+              </details>
+            </StaggerItem>
           ))}
-        </div>
+        </StaggerContainer>
       </div>
     </section>
   );
