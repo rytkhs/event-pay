@@ -1,7 +1,5 @@
 import React from "react";
 
-import Image from "next/image";
-
 import { Check } from "lucide-react";
 
 import { FadeIn } from "./ui/FadeIn";
@@ -113,14 +111,6 @@ export const PricingSection: React.FC = () => {
                     </span>
                   </p>
                 </div>
-                {/* <div className="mt-6 flex justify-center md:justify-start">
-                  <Image
-                    src="/images/powered-by-stripe.svg"
-                    alt="Powered by Stripe"
-                    width={120}
-                    height={26}
-                  />
-                </div> */}
               </div>
             </div>
           </FadeIn>

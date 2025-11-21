@@ -2,6 +2,7 @@
 
 import React from "react";
 
+import Image from "next/image";
 import Link from "next/link";
 
 import { CheckCircle2, ArrowRight } from "lucide-react";
@@ -11,7 +12,7 @@ import { FadeIn } from "./ui/FadeIn";
 
 export const HeroSection: React.FC = () => {
   return (
-    <section className="relative pt-32 pb-20 md:pt-40 md:pb-32 overflow-hidden bg-gradient-to-br from-primary/5 via-white to-secondary/5">
+    <section className="relative pt-24 pb-20 md:pt-28 md:pb-32 overflow-hidden bg-gradient-to-br from-primary/5 via-white to-secondary/5">
       {/* Decorative Background Shapes */}
       <div className="absolute top-0 right-0 -translate-y-12 translate-x-1/3 w-96 h-96 bg-primary/20 rounded-full blur-3xl"></div>
       <div className="absolute bottom-0 left-0 translate-y-1/4 -translate-x-1/4 w-80 h-80 bg-secondary/20 rounded-full blur-3xl"></div>
@@ -26,7 +27,7 @@ export const HeroSection: React.FC = () => {
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary/40 opacity-75"></span>
                   <span className="relative inline-flex rounded-full h-3 w-3 bg-primary"></span>
                 </span>
-                イベント管理 &amp; 集金アプリ
+                イベント管理 &amp; 集金
               </div>
             </FadeIn>
 
@@ -58,9 +59,86 @@ export const HeroSection: React.FC = () => {
                   <ArrowRight size={20} />
                 </Link>
               </div>
-              <p className="mt-4 text-slate-500 text-sm">
+              <p className="mt-4 text-slate-500 text-sm mb-6">
                 初期費用・月額費 0円 / 現金集金なら完全無料
               </p>
+
+              <div className="flex flex-wrap justify-center md:justify-start items-center gap-x-6 gap-y-4">
+                {/* Credit Cards */}
+                <div className="flex items-center gap-4">
+                  <Image
+                    src="/images/cards/visa.svg"
+                    alt="Visa"
+                    width={48}
+                    height={32}
+                    className="h-7 w-auto"
+                  />
+                  <Image
+                    src="/images/cards/mastercard.svg"
+                    alt="Mastercard"
+                    width={48}
+                    height={32}
+                    className="h-7 w-auto"
+                  />
+                  <Image
+                    src="/images/cards/jcb.gif"
+                    alt="JCB"
+                    width={48}
+                    height={32}
+                    className="h-7 w-auto"
+                  />
+                  <Image
+                    src="/images/cards/amex.png"
+                    alt="Amex"
+                    width={48}
+                    height={32}
+                    className="h-7 w-auto"
+                  />
+                  <Image
+                    src="/images/cards/diners.gif"
+                    alt="Diners"
+                    width={48}
+                    height={32}
+                    className="h-7 w-auto"
+                  />
+                  <Image
+                    src="/images/cards/discover.png"
+                    alt="Discover"
+                    width={48}
+                    height={32}
+                    className="h-7 w-auto"
+                  />
+                </div>
+
+                {/* Divider for desktop */}
+                <div className="hidden lg:block h-8 w-px bg-slate-200"></div>
+
+                {/* Wallets & Stripe */}
+                <div className="flex items-center gap-5">
+                  <Image
+                    src="/images/cards/apple-pay.svg"
+                    alt="Apple Pay"
+                    width={56}
+                    height={32}
+                    className="h-7 w-auto"
+                  />
+                  <Image
+                    src="/images/cards/google-pay.png"
+                    alt="Google Pay"
+                    width={56}
+                    height={32}
+                    className="h-7 w-auto"
+                  />
+                  <div className="h-6 w-px bg-slate-300 mx-1"></div>
+                  <Image
+                    src="/images/powered-by-stripe.svg"
+                    alt="Powered by Stripe"
+                    width={120}
+                    height={32}
+                    className="h-7 w-auto"
+                  />
+                </div>
+              </div>
             </FadeIn>
           </div>
 
