@@ -1,58 +1,125 @@
 <svg width="1200" height="630" viewBox="0 0 1200 630" xmlns="http://www.w3.org/2000/svg">
-  <!-- 背景グラデーション -->
   <defs>
-    <linearGradient id="bgGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#ffffff;stop-opacity:1" />
-      <stop offset="100%" style="stop-color:#e8f7f9;stop-opacity:1" />
-    </linearGradient>
+    <!-- フォント設定（システムフォント優先） -->
+    <style>
+      .text-base { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
+      .font-bold { font-weight: 700; }
+      .font-medium { font-weight: 500; }
+    </style>
 
-    <linearGradient id="accentGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-      <stop offset="0%" style="stop-color:#24a6b5;stop-opacity:0.1" />
-      <stop offset="50%" style="stop-color:#3a86ff;stop-opacity:0.1" />
-      <stop offset="100%" style="stop-color:#24a6b5;stop-opacity:0.1" />
-    </linearGradient>
+    <!-- ドロップシャドウ（スマホ用） -->
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="20" stdDeviation="25" flood-color="#1A2035" flood-opacity="0.15"/>
+    </filter>
+
+    <!-- ドロップシャドウ（ボタン用） -->
+    <filter id="btn-shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#2EB0B0" flood-opacity="0.3"/>
+    </filter>
   </defs>
 
   <!-- 背景 -->
-  <rect width="1200" height="630" fill="url(#bgGradient)"/>
+  <rect width="1200" height="630" fill="#F4FBFB"/>
 
-  <!-- アイコン（拡大版） -->
-  <g transform="translate(500, 150) scale(4)">
-    <path d="M 16 0 Q 24 8, 16 16 Q 8 8, 16 0" fill="#24a6b5"/>
-    <path d="M 32 16 Q 24 24, 16 16 Q 24 8, 32 16" fill="#24a6b5" opacity="0.8"/>
-    <path d="M 16 32 Q 8 24, 16 16 Q 24 24, 16 32" fill="#24a6b5" opacity="0.6"/>
-    <path d="M 0 16 Q 8 8, 16 16 Q 8 24, 0 16" fill="#24a6b5" opacity="0.4"/>
+  <!-- 背景の装飾（右側の円） -->
+  <circle cx="1050" cy="315" r="350" fill="#E0F2F2" opacity="0.6"/>
+
+  <!-- 左側：テキストエリア -->
+  <g transform="translate(80, 160)">
+    <!-- バッジ -->
+    <rect x="0" y="-60" width="260" height="36" rx="18" fill="#E6F7F7"/>
+    <text x="130" y="-36" font-size="16" fill="#2EB0B0" text-anchor="middle" dominant-baseline="middle" class="text-base font-bold">初期費用・月額固定費 0円</text>
+
+    <!-- メインコピー -->
+    <text x="0" y="40" font-size="64" fill="#1A2035" class="text-base font-bold" line-height="1.4">
+      <tspan x="0" dy="0">出欠確認と集金を、</tspan>
+      <tspan x="0" dy="84">これひとつで。</tspan>
+    </text>
+
+    <!-- サブコピー -->
+    <text x="0" y="160" font-size="24" fill="#555555" class="text-base font-medium" line-height="1.6">
+      <tspan x="0" dy="0">招待リンクを送るだけ。</tspan>
+      <tspan x="0" dy="36">もっともシンプルなイベント管理ツール</tspan>
+    </text>
+
+    <!-- CTAボタン風装飾 -->
+    <g transform="translate(0, 220)">
+      <rect width="280" height="60" rx="30" fill="#2EB0B0" filter="url(#btn-shadow)"/>
+      <text x="140" y="32" font-size="20" fill="#FFFFFF" text-anchor="middle" dominant-baseline="middle" class="text-base font-bold">無料でイベントを作る</text>
+    </g>
+
+    <!-- ロゴエリア -->
+    <g transform="translate(0, 360)">
+       <!-- 指定されたブランドロゴ (1.3倍にスケールして配置) -->
+       <g transform="scale(1.3)">
+         <path d="M 16 0 Q 24 8, 16 16 Q 8 8, 16 0" fill="#24a6b5"/>
+         <path d="M 32 16 Q 24 24, 16 16 Q 24 8, 32 16" fill="#24a6b5" opacity="0.8"/>
+         <path d="M 16 32 Q 8 24, 16 16 Q 24 24, 16 32" fill="#24a6b5" opacity="0.6"/>
+         <path d="M 0 16 Q 8 8, 16 16 Q 8 24, 0 16" fill="#24a6b5" opacity="0.4"/>
+       </g>
+       <!-- ロゴテキスト -->
+       <text x="56" y="28" font-size="26" fill="#1A2035" class="text-base font-bold">みんなの集金</text>
+    </g>
   </g>
 
-  <!-- サービス名 -->
-  <text x="600" y="350" font-family="'Zen Kaku Gothic New', 'Noto Sans JP', sans-serif" font-size="72" font-weight="700" fill="#24a6b5" text-anchor="middle">
-    みんなの集金
-  </text>
+  <!-- 右側：スマホモックアップ -->
+  <g transform="translate(700, 80)" filter="url(#shadow)">
+    <!-- スマホ本体 -->
+    <rect x="0" y="0" width="340" height="680" rx="40" fill="#FFFFFF" stroke="#F0F0F0" stroke-width="2"/>
 
-  <!-- キャッチコピー -->
-  <text x="600" y="420" font-family="'Zen Kaku Gothic New', 'Noto Sans JP', sans-serif" font-size="32" font-weight="400" fill="#333333" text-anchor="middle">
-    いつもの集金を、キャッシュレスに。
-  </text>
+    <!-- 画面内コンテンツ -->
+    <g transform="translate(20, 40)">
+      <!-- ヘッダー -->
+      <text x="0" y="20" font-size="12" fill="#888888" class="text-base">8/25(土) 18:00〜</text>
+      <text x="0" y="50" font-size="22" fill="#1A2035" class="text-base font-bold">夏の納涼会 @渋谷</text>
+      <text x="0" y="75" font-size="14" fill="#555555" class="text-base">会費: ¥3,500</text>
 
-  <!-- 下部の特徴ポイント -->
-  <g transform="translate(0, 480)">
-    <!-- アイコン1 -->
-    <circle cx="320" cy="30" r="8" fill="#3a86ff"/>
-    <text x="345" y="37" font-family="'Zen Kaku Gothic New', 'Noto Sans JP', sans-serif" font-size="22" fill="#555555">
-      オンライン決済
-    </text>
+      <line x1="0" y1="95" x2="300" y2="95" stroke="#EEEEEE" stroke-width="1"/>
 
-    <!-- アイコン2 -->
-    <circle cx="530" cy="30" r="8" fill="#3a86ff"/>
-    <text x="555" y="37" font-family="'Zen Kaku Gothic New', 'Noto Sans JP', sans-serif" font-size="22" fill="#555555">
-      自動集計
-    </text>
+      <!-- 参加ステータス -->
+      <g transform="translate(0, 120)">
+        <text x="0" y="0" font-size="14" fill="#1A2035" class="text-base font-bold">参加ステータス</text>
+        <g transform="translate(0, 20)">
+          <!-- 参加ボタン（Active） -->
+          <rect width="90" height="40" rx="8" fill="#E6F7F7" stroke="#2EB0B0" stroke-width="2"/>
+          <text x="45" y="25" font-size="14" fill="#2EB0B0" text-anchor="middle" class="text-base font-bold">参加</text>
 
-    <!-- アイコン3 -->
-    <circle cx="730" cy="30" r="8" fill="#3a86ff"/>
-    <text x="755" y="37" font-family="'Zen Kaku Gothic New', 'Noto Sans JP', sans-serif" font-size="22" fill="#555555">
-      登録不要
-    </text>
+          <!-- 不参加ボタン -->
+          <rect x="100" y="0" width="90" height="40" rx="8" fill="#FFFFFF" stroke="#EEEEEE" stroke-width="1"/>
+          <text x="145" y="25" font-size="14" fill="#888888" text-anchor="middle" class="text-base">不参加</text>
+
+          <!-- 未定ボタン -->
+          <rect x="200" y="0" width="90" height="40" rx="8" fill="#FFFFFF" stroke="#EEEEEE" stroke-width="1"/>
+          <text x="245" y="25" font-size="14" fill="#888888" text-anchor="middle" class="text-base">未定</text>
+        </g>
+      </g>
+
+      <!-- お支払い方法 -->
+      <g transform="translate(0, 210)">
+        <text x="0" y="0" font-size="14" fill="#1A2035" class="text-base font-bold">お支払い方法</text>
+
+        <!-- オンライン決済（選択中） -->
+        <g transform="translate(0, 20)">
+          <rect width="300" height="50" rx="8" fill="#FFFFFF" stroke="#2EB0B0" stroke-width="2"/>
+          <circle cx="25" cy="25" r="8" fill="#FFFFFF" stroke="#2EB0B0" stroke-width="2"/>
+          <circle cx="25" cy="25" r="4" fill="#2EB0B0"/>
+          <text x="45" y="30" font-size="14" fill="#1A2035" class="text-base font-bold">オンライン決済</text>
+        </g>
+
+        <!-- 現金払い -->
+        <g transform="translate(0, 80)">
+          <rect width="300" height="50" rx="8" fill="#FAFAFA" stroke="#EEEEEE" stroke-width="1"/>
+          <circle cx="25" cy="25" r="8" fill="#FFFFFF" stroke="#CCCCCC" stroke-width="2"/>
+          <text x="45" y="30" font-size="14" fill="#555555" class="text-base">現金払い</text>
+        </g>
+      </g>
+
+      <!-- 確定ボタン -->
+      <g transform="translate(0, 360)">
+        <rect width="300" height="50" rx="25" fill="#2EB0B0"/>
+        <text x="150" y="32" font-size="16" fill="#FFFFFF" text-anchor="middle" class="text-base font-bold">登録する</text>
+      </g>
+
+    </g>
   </g>
-
 </svg>
