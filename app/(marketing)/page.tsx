@@ -18,7 +18,7 @@ export const dynamic = "force-dynamic";
 export async function generateMetadata(): Promise<Metadata> {
   return {
     title: {
-      absolute: "みんなの集金 - いつもの集金を、キャッシュレスに",
+      absolute: "みんなの集金 - 集金ストレスをゼロに",
     },
   };
 }
