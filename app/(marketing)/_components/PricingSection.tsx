@@ -32,14 +32,6 @@ export const PricingSection: React.FC = () => {
                     </span>
                   </div>
                   <div className="flex items-center gap-3">
-                    <div className="bg-success/10 p-1 rounded-full">
-                      <Check size={16} className="text-success" />
-                    </div>
-                    <span className="font-medium">
-                      現金集金の管理機能：<span className="font-bold">無料</span>
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-3">
                     <div className="bg-green-100 p-1 rounded-full">
                       <Check size={16} className="text-green-600" />
                     </div>
@@ -98,9 +90,7 @@ export const PricingSection: React.FC = () => {
                 </div>
 
                 <div className="mt-4 bg-primary/5 border border-primary/20 p-4 rounded-xl text-left">
-                  <p className="text-sm font-bold text-slate-800 mb-1">
-                    💡 幹事さんの負担は実質0円に！
-                  </p>
+                  <p className="text-sm font-bold text-slate-800 mb-1">幹事さんの負担は実質0円に</p>
                   <p className="text-xs text-slate-600 leading-relaxed">
                     参加費に手数料分を上乗せして設定すれば、幹事さんの持ち出しはありません。
                     <br />
