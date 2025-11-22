@@ -27,12 +27,12 @@ export const HeroSection: React.FC = () => {
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary/40 opacity-75"></span>
                   <span className="relative inline-flex rounded-full h-3 w-3 bg-primary"></span>
                 </span>
-                イベント管理 &amp; 集金ツール
+                集金ストレスをゼロに
               </div>
             </FadeIn>
 
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-slate-900 leading-tight mb-6">
-              サークルの集金
+              イベントの集金
               <br />
               出欠確認は、これひとつ。
               <br />
