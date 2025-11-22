@@ -1,98 +1,101 @@
 <svg width="1200" height="630" viewBox="0 0 1200 630" xmlns="http://www.w3.org/2000/svg">
-  <!-- 背景グラデーション -->
   <defs>
-    <linearGradient id="inviteBgGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#e6f9fb;stop-opacity:1" />
-      <stop offset="50%" style="stop-color:#f0f9ff;stop-opacity:1" />
-      <stop offset="100%" style="stop-color:#e3f2ff;stop-opacity:1" />
-    </linearGradient>
+    <style>
+      .text-base { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
+      .font-bold { font-weight: 700; }
+      .font-medium { font-weight: 500; }
+    </style>
 
-    <linearGradient id="cardGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" style="stop-color:#ffffff;stop-opacity:1" />
-      <stop offset="100%" style="stop-color:#fafeff;stop-opacity:1" />
-    </linearGradient>
-
-    <!-- シャドウ効果 -->
-    <filter id="cardShadow" x="-20%" y="-20%" width="140%" height="140%">
-      <feGaussianBlur in="SourceAlpha" stdDeviation="8"/>
-      <feOffset dx="0" dy="4" result="offsetblur"/>
-      <feComponentTransfer>
-        <feFuncA type="linear" slope="0.15"/>
-      </feComponentTransfer>
-      <feMerge>
-        <feMergeNode/>
-        <feMergeNode in="SourceGraphic"/>
-      </feMerge>
+    <!-- カード用ドロップシャドウ -->
+    <filter id="card-shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="15" stdDeviation="30" flood-color="#1A2035" flood-opacity="0.15"/>
     </filter>
 
-    <!-- セーフゾーンガイド（開発用：本番では削除可能） -->
-    <clipPath id="safeZone">
-      <rect x="285" y="0" width="630" height="630"/>
-    </clipPath>
+    <!-- ボタン用ドロップシャドウ -->
+    <filter id="btn-shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#2EB0B0" flood-opacity="0.3"/>
+    </filter>
   </defs>
 
-  <!-- 背景 -->
-  <rect width="1200" height="630" fill="url(#inviteBgGradient)"/>
+  <!-- 背景：ブランドカラーの淡いパターン -->
+  <rect width="1200" height="630" fill="#F4FBFB"/>
+  <circle cx="0" cy="0" r="400" fill="#E0F2F2" opacity="0.5"/>
+  <circle cx="1200" cy="630" r="400" fill="#E0F2F2" opacity="0.5"/>
 
-  <!-- メインカード（セーフゾーン内） -->
-  <rect x="315" y="80" width="570" height="470" rx="20" fill="url(#cardGradient)" filter="url(#cardShadow)"/>
-  <rect x="315" y="80" width="570" height="470" rx="20" fill="none" stroke="#24a6b5" stroke-width="2" opacity="0.2"/>
+  <!-- 中央のカード（招待状メタファー） -->
+  <g transform="translate(300, 65)" filter="url(#card-shadow)">
+    <rect width="600" height="500" rx="24" fill="#FFFFFF"/>
 
-  <!-- アイコンとサービス名を中央寄せ -->
-  <g transform="translate(365, 130)">
-    <!-- アイコン -->
-    <!-- <g transform="scale(3.0)"> -->
-    <g transform="translate(0,-20) scale(2.8)">
-      <path d="M 16 0 Q 24 8, 16 16 Q 8 8, 16 0" fill="#24a6b5"/>
-      <path d="M 32 16 Q 24 24, 16 16 Q 24 8, 32 16" fill="#24a6b5" opacity="0.85"/>
-      <path d="M 16 32 Q 8 24, 16 16 Q 24 24, 16 32" fill="#24a6b5" opacity="0.7"/>
-      <path d="M 0 16 Q 8 8, 16 16 Q 8 24, 0 16" fill="#24a6b5" opacity="0.55"/>
+    <!-- カード上部のアクセントバー -->
+    <path d="M0 24 Q0 0 24 0 L576 0 Q600 0 600 24 L600 32 L0 32 Z" fill="#2EB0B0"/>
+
+    <!-- コンテンツエリア -->
+    <g transform="translate(300, 80)">
+
+      <!-- アイコン：メール/招待状 -->
+      <circle cx="0" cy="40" r="40" fill="#E6F7F7"/>
+      <g transform="translate(-20, 20) scale(1.0)">
+        <!-- 封筒アイコン -->
+        <path d="M4 8 L36 8 C38.2 8 40 9.8 40 12 L40 32 C40 34.2 38.2 36 36 36 L4 36 C1.8 36 0 34.2 0 32 L0 12 C0 9.8 1.8 8 4 8 Z" fill="#2EB0B0"/>
+        <path d="M0 12 L20 24 L40 12" stroke="white" stroke-width="3" fill="none"/>
+      </g>
+
+      <!-- メインタイトル -->
+      <text x="0" y="130" font-size="42" fill="#1A2035" text-anchor="middle" class="text-base font-bold">招待が届きました</text>
+
+      <!-- サブテキスト -->
+      <text x="0" y="170" font-size="20" fill="#555555" text-anchor="middle" class="text-base font-medium">
+        イベントの案内が届いています。
+      </text>
+
+      <!-- 情報アイコン列（日時・場所・お金） -->
+      <g transform="translate(-160, 220)">
+        <!-- 日時 -->
+        <g transform="translate(0, 0)">
+          <rect width="80" height="80" rx="16" fill="#FAFAFA"/>
+          <rect x="20" y="25" width="40" height="35" rx="4" stroke="#1A2035" stroke-width="2" fill="none"/>
+          <line x1="20" y1="35" x2="60" y2="35" stroke="#1A2035" stroke-width="2"/>
+          <line x1="30" y1="20" x2="30" y2="30" stroke="#1A2035" stroke-width="2"/>
+          <line x1="50" y1="20" x2="50" y2="30" stroke="#1A2035" stroke-width="2"/>
+          <text x="40" y="75" font-size="12" fill="#555555" text-anchor="middle" class="text-base font-bold">日時</text>
+        </g>
+
+        <!-- 場所 -->
+        <g transform="translate(120, 0)">
+          <rect width="80" height="80" rx="16" fill="#FAFAFA"/>
+          <path d="M40 25 C32 25 26 31 26 38 C26 48 40 60 40 60 C40 60 54 48 54 38 C54 31 48 25 40 25 Z" stroke="#1A2035" stroke-width="2" fill="none"/>
+          <circle cx="40" cy="38" r="4" fill="#1A2035"/>
+          <text x="40" y="75" font-size="12" fill="#555555" text-anchor="middle" class="text-base font-bold">場所</text>
+        </g>
+
+        <!-- 会費 -->
+        <g transform="translate(240, 0)">
+          <rect width="80" height="80" rx="16" fill="#FAFAFA"/>
+          <circle cx="40" cy="42" r="18" stroke="#1A2035" stroke-width="2" fill="none"/>
+          <text x="40" y="48" font-size="20" fill="#1A2035" text-anchor="middle" class="text-base font-bold">¥</text>
+          <text x="40" y="75" font-size="12" fill="#555555" text-anchor="middle" class="text-base font-bold">会費</text>
+        </g>
+      </g>
+
+      <!-- CTAボタン -->
+      <g transform="translate(0, 350)">
+        <rect x="-140" y="0" width="280" height="60" rx="30" fill="#2EB0B0" filter="url(#btn-shadow)"/>
+        <text x="0" y="36" font-size="20" fill="#FFFFFF" text-anchor="middle" class="text-base font-bold">詳細を確認</text>
+      </g>
+
     </g>
-
-    <!-- サービス名 -->
-    <text x="140" y="50" font-family="'IPAGothic', 'Noto Sans JP', 'Hiragino Sans', sans-serif" font-size="30" font-weight="700" fill="#24a6b5" letter-spacing="1">
-      みんなの集金
-    </text>
   </g>
 
-  <!-- メインメッセージ（セーフゾーン中央） -->
-  <text x="600" y="290" font-family="'IPAGothic', 'Noto Sans JP', 'Hiragino Sans', sans-serif" font-size="64" font-weight="800" fill="#1a1a1a" text-anchor="middle" letter-spacing="2">
-    招待が届きました
-  </text>
-
-  <!-- サブメッセージ（セーフゾーン内） -->
-  <text x="600" y="355" font-family="'IPAGothic', 'Noto Sans JP', 'Hiragino Sans', sans-serif" font-size="28" font-weight="500" fill="#4a4a4a" text-anchor="middle" letter-spacing="0.5">
-    参加・決済をワンリンクで
-  </text>
-
-  <!-- アクション表示（セーフゾーン内に3つ配置） -->
-  <g transform="translate(0, 430)">
-    <!-- ステップ1 -->
-    <g transform="translate(420, 0)">
-      <circle cx="0" cy="0" r="14" fill="#3a86ff" opacity="0.15"/>
-      <circle cx="0" cy="0" r="7" fill="#3a86ff"/>
-      <text x="22" y="7" font-family="'IPAGothic', 'Noto Sans JP', sans-serif" font-size="22" font-weight="600" fill="#333333">
-        参加
-      </text>
+  <!-- フッターロゴ -->
+  <g transform="translate(600, 590)">
+    <g transform="translate(-85, -10) scale(0.8)">
+       <path d="M 16 0 Q 24 8, 16 16 Q 8 8, 16 0" fill="#24a6b5"/>
+       <path d="M 32 16 Q 24 24, 16 16 Q 24 8, 32 16" fill="#24a6b5" opacity="0.8"/>
+       <path d="M 16 32 Q 8 24, 16 16 Q 24 24, 16 32" fill="#24a6b5" opacity="0.6"/>
+       <path d="M 0 16 Q 8 8, 16 16 Q 8 24, 0 16" fill="#24a6b5" opacity="0.4"/>
     </g>
-
-    <!-- ステップ2 -->
-    <g transform="translate(570, 0)">
-      <circle cx="0" cy="0" r="14" fill="#3a86ff" opacity="0.15"/>
-      <circle cx="0" cy="0" r="7" fill="#3a86ff"/>
-      <text x="22" y="7" font-family="'IPAGothic', 'Noto Sans JP', sans-serif" font-size="22" font-weight="600" fill="#333333">
-        決済
-      </text>
-    </g>
-
-    <!-- ステップ3 -->
-    <g transform="translate(700, 0)">
-      <circle cx="0" cy="0" r="14" fill="#3a86ff" opacity="0.15"/>
-      <circle cx="0" cy="0" r="7" fill="#3a86ff"/>
-      <text x="22" y="7" font-family="'IPAGothic', 'Noto Sans JP', sans-serif" font-size="22" font-weight="600" fill="#333333">
-        完了
-      </text>
-    </g>
+    <text x="-50" y="12" font-size="16" fill="#888888" class="text-base font-medium">Powered by</text>
+    <text x="45" y="12" font-size="18" fill="#1A2035" class="text-base font-bold">みんなの集金</text>
   </g>
 
 </svg>
