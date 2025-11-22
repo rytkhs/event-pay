@@ -282,7 +282,7 @@ export function GuestManagementForm({ attendance, canModify }: GuestManagementFo
                   id="attendance-form-title"
                   className="text-lg font-semibold text-gray-900 flex items-center mb-6"
                 >
-                  参加管理
+                  参加状況を変更
                 </h2>
               </div>
 
