@@ -6,6 +6,7 @@ import { Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 
+import { Lock } from "lucide-react";
 import { useFormStatus } from "react-dom";
 
 import { registerAction } from "@core/actions/auth";
@@ -135,7 +136,7 @@ function RegisterForm() {
                           <Input
                             {...field}
                             type="text"
-                            placeholder="集金たろう"
+                            placeholder="例: 集金 太郎"
                             disabled={isPending}
                             autoComplete="name"
                             required
@@ -205,15 +206,22 @@ function RegisterForm() {
                     </div>
                   )}
 
-                  {/* 送信ボタン */}
-                  <Button
-                    type="submit"
-                    className="w-full"
-                    disabled={isPending}
-                    data-testid="submit-button"
-                  >
-                    {isPending ? "登録中..." : "アカウントを作成"}
-                  </Button>
+                  {/* 送信ボタンとセキュリティ表示 */}
+                  <div className="space-y-2">
+                    <Button
+                      type="submit"
+                      className="w-full"
+                      disabled={isPending}
+                      data-testid="submit-button"
+                    >
+                      {isPending ? "登録中..." : "アカウントを作成"}
+                    </Button>
+
+                    <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
+                      <Lock className="h-3 w-3" />
+                      <span>通信は暗号化され、安全に保護されます</span>
+                    </div>
+                  </div>
 
                   {/* 利用規約同意の注釈 */}
                   <p className="text-xs text-muted-foreground text-center">
