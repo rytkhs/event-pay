@@ -25,31 +25,32 @@
   <circle cx="1050" cy="315" r="350" fill="#E0F2F2" opacity="0.6"/>
 
   <!-- 左側：テキストエリア -->
-  <g transform="translate(80, 160)">
+  <g transform="translate(80, 140)">
     <!-- バッジ -->
     <rect x="0" y="-60" width="260" height="36" rx="18" fill="#E6F7F7"/>
     <text x="130" y="-36" font-size="16" fill="#2EB0B0" text-anchor="middle" dominant-baseline="middle" class="text-base font-bold">初期費用・月額固定費 0円</text>
 
     <!-- メインコピー -->
     <text x="0" y="40" font-size="64" fill="#1A2035" class="text-base font-bold" line-height="1.4">
-      <tspan x="0" dy="0">出欠確認と集金を、</tspan>
-      <tspan x="0" dy="84">これひとつで。</tspan>
+      <tspan x="0" dy="0">イベントの集金</tspan>
+      <tspan x="0" dy="78">出欠確認は、</tspan>
+      <tspan x="0" dy="78">これひとつ。</tspan>
     </text>
 
     <!-- サブコピー -->
-    <text x="0" y="160" font-size="24" fill="#555555" class="text-base font-medium" line-height="1.6">
+    <text x="0" y="245" font-size="24" fill="#555555" class="text-base font-medium" line-height="1.6">
       <tspan x="0" dy="0">招待リンクを送るだけ。</tspan>
       <tspan x="0" dy="36">もっともシンプルなイベント管理ツール</tspan>
     </text>
 
     <!-- CTAボタン風装飾 -->
-    <g transform="translate(0, 220)">
+    <g transform="translate(0, 300)">
       <rect width="280" height="60" rx="30" fill="#2EB0B0" filter="url(#btn-shadow)"/>
       <text x="140" y="32" font-size="20" fill="#FFFFFF" text-anchor="middle" dominant-baseline="middle" class="text-base font-bold">無料でイベントを作る</text>
     </g>
 
     <!-- ロゴエリア -->
-    <g transform="translate(0, 360)">
+    <g transform="translate(0, 400)">
        <!-- 指定されたブランドロゴ (1.3倍にスケールして配置) -->
        <g transform="scale(1.3)">
          <path d="M 16 0 Q 24 8, 16 16 Q 8 8, 16 0" fill="#24a6b5"/>
