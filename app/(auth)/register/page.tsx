@@ -17,6 +17,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -95,7 +96,7 @@ function RegisterForm() {
 
   return (
     <>
-      <main className="min-h-screen flex items-center justify-center bg-muted/30 py-12 px-4 sm:px-6 lg:px-8">
+      <main className="h-auto flex items-center justify-center bg-muted/30 py-10 px-4 sm:px-6 lg:px-8">
         <div className="w-full max-w-md space-y-8">
           <Card>
             <CardHeader className="text-center">
@@ -107,6 +108,15 @@ function RegisterForm() {
               </CardDescription>
             </CardHeader>
             <CardContent>
+              <form action={startGoogleOAuth} className="space-y-4">
+                <input type="hidden" name="next" value={next} />
+                <GoogleSubmitButton label="Googleで続行" />
+              </form>
+              <div className="flex items-center my-6">
+                <div className="h-px flex-1 bg-border" />
+                <span className="mx-3 text-xs text-muted-foreground">または</span>
+                <div className="h-px flex-1 bg-border" />
+              </div>
               <Form {...form}>
                 <form
                   onSubmit={onSubmit}
@@ -120,18 +130,21 @@ function RegisterForm() {
                     name="name"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>ユーザーネーム</FormLabel>
+                        <FormLabel>表示名</FormLabel>
                         <FormControl>
                           <Input
                             {...field}
                             type="text"
-                            placeholder="ユーザーネームを入力"
+                            placeholder="集金たろう"
                             disabled={isPending}
                             autoComplete="name"
                             required
                             data-testid="name-input"
                           />
                         </FormControl>
+                        <FormDescription className="text-xs sm:text-sm">
+                          イベント作成者として表示される名前です(変更可能)
+                        </FormDescription>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -177,6 +190,9 @@ function RegisterForm() {
                             data-testid="password-input"
                           />
                         </FormControl>
+                        <FormDescription className="text-xs sm:text-sm">
+                          8文字以上で設定してください
+                        </FormDescription>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -233,22 +249,13 @@ function RegisterForm() {
                   </div>
                 </form>
               </Form>
-              <div className="flex items-center my-6">
-                <div className="h-px flex-1 bg-border" />
-                <span className="mx-3 text-xs text-muted-foreground">または</span>
-                <div className="h-px flex-1 bg-border" />
-              </div>
-              <form action={startGoogleOAuth} className="space-y-4">
-                <input type="hidden" name="next" value={next} />
-                <GoogleSubmitButton label="Googleでアカウントを作成" />
-              </form>
             </CardContent>
           </Card>
         </div>
       </main>
 
       <footer
-        className="text-center text-xs sm:text-sm text-muted-foreground py-4"
+        className="text-center text-xs sm:text-sm text-muted-foreground py-1"
         role="contentinfo"
       >
         <p>みんなの集金 - 集金ストレスをゼロに</p>

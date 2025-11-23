@@ -32,7 +32,7 @@ const registerSchema = z.object({
     .string()
     .transform((str) => str.trim()) // 最初にトリム
     .refine((trimmed) => trimmed.length >= 1, {
-      message: "名前を入力してください",
+      message: "表示名を入力してください",
     })
     .refine((trimmed) => trimmed.length <= 100, {
       message: "名前は100文字以内で入力してください",

@@ -97,7 +97,7 @@ function LoginForm() {
 
   return (
     <>
-      <main className="min-h-screen flex items-center justify-center bg-muted/30 py-12 px-4 sm:px-6 lg:px-8">
+      <main className="h-auto flex items-center justify-center bg-muted/30 py-10 px-4 sm:px-6 lg:px-8">
         <div className="w-full max-w-md space-y-8">
           <Card>
             <CardHeader className="text-center">
@@ -109,6 +109,15 @@ function LoginForm() {
               </CardDescription>
             </CardHeader>
             <CardContent>
+              <form action={startGoogleOAuth} className="space-y-4">
+                <input type="hidden" name="next" value={next} />
+                <GoogleSubmitButton />
+              </form>
+              <div className="flex items-center my-6">
+                <div className="h-px flex-1 bg-border" />
+                <span className="mx-3 text-xs text-muted-foreground">または</span>
+                <div className="h-px flex-1 bg-border" />
+              </div>
               <Form {...form}>
                 <form
                   onSubmit={onSubmit}
@@ -219,22 +228,13 @@ function LoginForm() {
                   </div>
                 </form>
               </Form>
-              <div className="flex items-center my-6">
-                <div className="h-px flex-1 bg-border" />
-                <span className="mx-3 text-xs text-muted-foreground">または</span>
-                <div className="h-px flex-1 bg-border" />
-              </div>
-              <form action={startGoogleOAuth} className="space-y-4">
-                <input type="hidden" name="next" value={next} />
-                <GoogleSubmitButton />
-              </form>
             </CardContent>
           </Card>
         </div>
       </main>
 
       <footer
-        className="text-center text-xs sm:text-sm text-muted-foreground py-4"
+        className="text-center text-xs sm:text-sm text-muted-foreground py-1"
         role="contentinfo"
       >
         <p>みんなの集金 - 集金ストレスをゼロに</p>

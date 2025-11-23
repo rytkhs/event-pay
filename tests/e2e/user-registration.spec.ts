@@ -79,7 +79,7 @@ test.describe("ユーザー登録フロー（E2E）", () => {
     await page.getByTestId("submit-button").click();
 
     // バリデーションエラーが表示されることを確認
-    await expect(page.locator("text=名前を入力してください")).toBeVisible();
+    await expect(page.locator("text=表示名を入力してください")).toBeVisible();
     await expect(page.locator("text=メールアドレスを入力してください")).toBeVisible();
     await expect(page.locator("text=パスワードは8文字以上で入力してください")).toBeVisible();
 
