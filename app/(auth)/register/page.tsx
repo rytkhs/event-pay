@@ -93,9 +93,6 @@ function RegisterForm() {
     enableFocusManagement: true,
   });
 
-  const password = form.watch("password");
-  const passwordConfirm = form.watch("passwordConfirm");
-
   return (
     <>
       <main className="min-h-screen flex items-center justify-center bg-muted/30 py-12 px-4 sm:px-6 lg:px-8">
@@ -178,28 +175,6 @@ function RegisterForm() {
                             autoComplete="new-password"
                             required
                             data-testid="password-input"
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  {/* パスワード確認 */}
-                  <FormField
-                    control={form.control}
-                    name="passwordConfirm"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>パスワード確認</FormLabel>
-                        <FormControl>
-                          <PasswordInput
-                            {...field}
-                            placeholder="パスワードを再度入力"
-                            disabled={isPending}
-                            autoComplete="new-password"
-                            required
-                            data-testid="password-confirm-input"
                           />
                         </FormControl>
                         <FormMessage />

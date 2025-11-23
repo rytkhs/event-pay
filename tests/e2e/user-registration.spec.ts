@@ -46,7 +46,6 @@ test.describe("ユーザー登録フロー（E2E）", () => {
     await page.getByTestId("name-input").fill(testName);
     await page.getByTestId("email-input").fill(testEmail);
     await page.getByTestId("password-input").fill(testPassword);
-    await page.getByTestId("password-confirm-input").fill(testPassword);
 
     // フォームを送信
     await page.getByTestId("submit-button").click();
@@ -88,23 +87,6 @@ test.describe("ユーザー登録フロー（E2E）", () => {
     await expect(page).toHaveURL("/register");
   });
 
-  test("異常系：パスワードが一致しない場合エラーが表示される", async ({ page }) => {
-    await page.goto("/register");
-
-    // フォームに入力（パスワードのみ不一致）
-    await page.getByTestId("name-input").fill("テストユーザー");
-    await page.getByTestId("email-input").fill("test@example.com");
-    await page.getByTestId("password-input").fill("Password123");
-    await page.getByTestId("password-confirm-input").fill("DifferentPassword123");
-
-    // フォームを送信
-    await page.getByTestId("submit-button").click();
-
-    // パスワード不一致エラーが表示されることを確認
-    await expect(page.locator("text=パスワードが一致しません")).toBeVisible();
-    await expect(page).toHaveURL("/register");
-  });
-
   test("異常系：短いパスワードの場合エラーが表示される", async ({ page }) => {
     await page.goto("/register");
 
@@ -115,7 +97,6 @@ test.describe("ユーザー登録フロー（E2E）", () => {
     // 短いパスワードを入力
     const shortPassword = "pass";
     await page.getByTestId("password-input").fill(shortPassword);
-    await page.getByTestId("password-confirm-input").fill(shortPassword);
 
     // フォームを送信
     await page.getByTestId("submit-button").click();
@@ -137,7 +118,6 @@ test.describe("ユーザー登録フロー（E2E）", () => {
     await page.getByTestId("name-input").fill("テストユーザー");
     await page.getByTestId("email-input").fill(existingEmail);
     await page.getByTestId("password-input").fill("TestPassword123");
-    await page.getByTestId("password-confirm-input").fill("TestPassword123");
 
     // フォームを送信
     await page.getByTestId("submit-button").click();
@@ -181,16 +161,11 @@ test.describe("ユーザー登録フロー（E2E）", () => {
     await expect(page.getByTestId("name-input")).toHaveAttribute("required");
     await expect(page.getByTestId("email-input")).toHaveAttribute("required");
     await expect(page.getByTestId("password-input")).toHaveAttribute("required");
-    await expect(page.getByTestId("password-confirm-input")).toHaveAttribute("required");
 
     // autocomplete属性の確認（HTML属性名は小文字）
     await expect(page.getByTestId("name-input")).toHaveAttribute("autocomplete", "name");
     await expect(page.getByTestId("email-input")).toHaveAttribute("autocomplete", "email");
     await expect(page.getByTestId("password-input")).toHaveAttribute(
-      "autocomplete",
-      "new-password"
-    );
-    await expect(page.getByTestId("password-confirm-input")).toHaveAttribute(
       "autocomplete",
       "new-password"
     );
@@ -238,7 +213,6 @@ test.describe("ユーザー登録フロー（E2E）", () => {
     await page.getByTestId("name-input").fill(testName);
     await page.getByTestId("email-input").fill(testEmail);
     await page.getByTestId("password-input").fill(testPassword);
-    await page.getByTestId("password-confirm-input").fill(testPassword);
 
     await page.getByTestId("submit-button").click();
 
@@ -288,7 +262,6 @@ test.describe("ユーザー登録フロー（E2E）", () => {
     await page.getByTestId("name-input").fill(testName);
     await page.getByTestId("email-input").fill(testEmail);
     await page.getByTestId("password-input").fill(testPassword);
-    await page.getByTestId("password-confirm-input").fill(testPassword);
 
     await page.getByTestId("submit-button").click();
 
@@ -339,7 +312,6 @@ test.describe("ユーザー登録フロー（E2E）", () => {
     await page.getByTestId("name-input").fill(testName);
     await page.getByTestId("email-input").fill(testEmail);
     await page.getByTestId("password-input").fill(testPassword);
-    await page.getByTestId("password-confirm-input").fill(testPassword);
 
     await page.getByTestId("submit-button").click();
 
