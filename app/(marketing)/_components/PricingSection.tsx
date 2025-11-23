@@ -1,7 +1,8 @@
 import React from "react";
 
-import { Check } from "lucide-react";
 import Image from "next/image";
+
+import { Check } from "lucide-react";
 
 import { FadeIn } from "./ui/FadeIn";
 

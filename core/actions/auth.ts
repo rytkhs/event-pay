@@ -65,9 +65,6 @@ const registerSchema = z
     email: z.string().email("有効なメールアドレスを入力してください").max(254),
     password: z.string().min(8, "パスワードは8文字以上で入力してください").max(128),
     passwordConfirm: z.string(),
-    termsAgreed: z.string().refine((value) => value === "true", {
-      message: "利用規約に同意してください",
-    }),
   })
   .refine((data) => data.password === data.passwordConfirm, {
     message: "パスワードが一致しません",
@@ -336,19 +333,7 @@ export async function registerAction(formData: FormData): Promise<ActionResult<{
       };
     }
 
-    const { name, email, password, termsAgreed } = result.data;
-
-    // 利用規約同意チェック
-    if (termsAgreed !== "true") {
-      await TimingAttackProtection.addConstantDelay();
-      return {
-        success: false,
-        fieldErrors: {
-          termsAgreed: ["利用規約に同意してください"],
-        },
-        error: "利用規約に同意してください",
-      };
-    }
+    const { name, email, password } = result.data;
 
     // 入力値サニタイゼーション（Zodバリデーション後なので基本的なサニタイゼーションのみ）
     const sanitizedEmail = InputSanitizer.sanitizeEmail(email);

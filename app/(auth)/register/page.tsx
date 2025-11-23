@@ -14,7 +14,6 @@ import { useRegisterFormRHF } from "@features/auth";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
 import {
   Form,
   FormControl,
@@ -203,46 +202,7 @@ function RegisterForm() {
                             data-testid="password-confirm-input"
                           />
                         </FormControl>
-                        {passwordConfirm && password && passwordConfirm !== password && (
-                          <div className="text-sm text-destructive">パスワードが一致しません</div>
-                        )}
                         <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  {/* 利用規約同意 */}
-                  <FormField
-                    control={form.control}
-                    name="termsAgreed"
-                    render={({ field }) => (
-                      <FormItem className="flex flex-row items-start space-x-3 space-y-0">
-                        <FormControl>
-                          <Checkbox
-                            checked={field.value}
-                            onCheckedChange={field.onChange}
-                            disabled={isPending}
-                            aria-required="true"
-                            aria-describedby="terms-description"
-                            data-testid="terms-checkbox"
-                          />
-                        </FormControl>
-                        <div className="space-y-1 leading-none">
-                          <FormLabel className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                            <Link
-                              href="/terms"
-                              className="text-primary hover:text-primary/80 underline"
-                              target="_blank"
-                              rel="noopener noreferrer"
-                            >
-                              利用規約
-                            </Link>
-                            に同意します
-                          </FormLabel>
-                          <div id="terms-description" className="text-xs text-muted-foreground">
-                            みんなの集金をご利用いただくには利用規約への同意が必要です
-                          </div>
-                        </div>
                       </FormItem>
                     )}
                   />
@@ -251,16 +211,6 @@ function RegisterForm() {
                   {form.formState.errors.root && (
                     <div className="bg-destructive/10 border border-destructive/20 text-destructive px-4 py-3 rounded">
                       {form.formState.errors.root.message}
-                    </div>
-                  )}
-
-                  {/* 利用規約エラーメッセージ */}
-                  {form.formState.errors.termsAgreed && (
-                    <div
-                      className="bg-destructive/10 border border-destructive/20 text-destructive px-4 py-3 rounded"
-                      data-testid="terms-error"
-                    >
-                      {form.formState.errors.termsAgreed.message}
                     </div>
                   )}
 
@@ -273,6 +223,29 @@ function RegisterForm() {
                   >
                     {isPending ? "登録中..." : "アカウントを作成"}
                   </Button>
+
+                  {/* 利用規約同意の注釈 */}
+                  <p className="text-xs text-muted-foreground text-center">
+                    送信することで、
+                    <Link
+                      href="/terms"
+                      className="text-primary hover:text-primary/80 underline"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      利用規約
+                    </Link>
+                    と
+                    <Link
+                      href="/privacy"
+                      className="text-primary hover:text-primary/80 underline"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      プライバシーポリシー
+                    </Link>
+                    に同意したものとみなされます。
+                  </p>
 
                   <div className="text-center text-xs sm:text-sm text-muted-foreground">
                     すでにアカウントをお持ちの方は{" "}
