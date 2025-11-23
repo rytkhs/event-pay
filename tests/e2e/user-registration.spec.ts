@@ -39,7 +39,7 @@ test.describe("ユーザー登録フロー（E2E）", () => {
     await expect(page).toHaveURL("/register");
 
     // ページの基本要素が表示されていることを確認
-    await expect(page.getByRole("heading", { name: "会員登録" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "アカウント作成" })).toBeVisible();
     await expect(page.getByTestId("register-form")).toBeVisible();
 
     // フォームに入力
@@ -47,9 +47,6 @@ test.describe("ユーザー登録フロー（E2E）", () => {
     await page.getByTestId("email-input").fill(testEmail);
     await page.getByTestId("password-input").fill(testPassword);
     await page.getByTestId("password-confirm-input").fill(testPassword);
-
-    // 利用規約に同意
-    await page.getByTestId("terms-checkbox").check();
 
     // フォームを送信
     await page.getByTestId("submit-button").click();
@@ -99,7 +96,6 @@ test.describe("ユーザー登録フロー（E2E）", () => {
     await page.getByTestId("email-input").fill("test@example.com");
     await page.getByTestId("password-input").fill("Password123");
     await page.getByTestId("password-confirm-input").fill("DifferentPassword123");
-    await page.getByTestId("terms-checkbox").check();
 
     // フォームを送信
     await page.getByTestId("submit-button").click();
@@ -120,32 +116,12 @@ test.describe("ユーザー登録フロー（E2E）", () => {
     const shortPassword = "pass";
     await page.getByTestId("password-input").fill(shortPassword);
     await page.getByTestId("password-confirm-input").fill(shortPassword);
-    await page.getByTestId("terms-checkbox").check();
 
     // フォームを送信
     await page.getByTestId("submit-button").click();
 
     // パスワード長エラーが表示されることを確認
     await expect(page.locator("text=パスワードは8文字以上で入力してください")).toBeVisible();
-    await expect(page).toHaveURL("/register");
-  });
-
-  test("異常系：利用規約に同意しない場合エラーが表示される", async ({ page }) => {
-    await page.goto("/register");
-
-    // フォームに入力（利用規約のチェックを外す）
-    await page.getByTestId("name-input").fill("テストユーザー");
-    await page.getByTestId("email-input").fill("test@example.com");
-    await page.getByTestId("password-input").fill("TestPassword123");
-    await page.getByTestId("password-confirm-input").fill("TestPassword123");
-    // 利用規約チェックボックスは意図的にチェックしない
-
-    // フォームを送信
-    await page.getByTestId("submit-button").click();
-
-    // 利用規約同意エラーが表示されることを確認
-    await expect(page.getByTestId("terms-error")).toBeVisible();
-    await expect(page.getByTestId("terms-error")).toContainText("利用規約に同意してください");
     await expect(page).toHaveURL("/register");
   });
 
@@ -162,7 +138,6 @@ test.describe("ユーザー登録フロー（E2E）", () => {
     await page.getByTestId("email-input").fill(existingEmail);
     await page.getByTestId("password-input").fill("TestPassword123");
     await page.getByTestId("password-confirm-input").fill("TestPassword123");
-    await page.getByTestId("terms-checkbox").check();
 
     // フォームを送信
     await page.getByTestId("submit-button").click();
@@ -202,11 +177,6 @@ test.describe("ユーザー登録フロー（E2E）", () => {
   test("アクセシビリティ：フォーカス管理とaria属性の確認", async ({ page }) => {
     await page.goto("/register");
 
-    // 利用規約チェックボックスのaria属性を確認
-    const termsCheckbox = page.getByTestId("terms-checkbox");
-    await expect(termsCheckbox).toHaveAttribute("aria-required", "true");
-    await expect(termsCheckbox).toHaveAttribute("aria-describedby", "terms-description");
-
     // 必須フィールドのrequired属性を確認
     await expect(page.getByTestId("name-input")).toHaveAttribute("required");
     await expect(page.getByTestId("email-input")).toHaveAttribute("required");
@@ -233,7 +203,7 @@ test.describe("ユーザー登録フロー（E2E）", () => {
 
     // フォームが適切に表示されることを確認
     await expect(page.getByTestId("register-form")).toBeVisible();
-    await expect(page.getByRole("heading", { name: "会員登録" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "アカウント作成" })).toBeVisible();
 
     // ボタンが全幅で表示されることを確認
     const submitButton = page.getByTestId("submit-button");
@@ -269,7 +239,7 @@ test.describe("ユーザー登録フロー（E2E）", () => {
     await page.getByTestId("email-input").fill(testEmail);
     await page.getByTestId("password-input").fill(testPassword);
     await page.getByTestId("password-confirm-input").fill(testPassword);
-    await page.getByTestId("terms-checkbox").check();
+
     await page.getByTestId("submit-button").click();
 
     // 2. OTP入力ページへ遷移確認
@@ -319,7 +289,7 @@ test.describe("ユーザー登録フロー（E2E）", () => {
     await page.getByTestId("email-input").fill(testEmail);
     await page.getByTestId("password-input").fill(testPassword);
     await page.getByTestId("password-confirm-input").fill(testPassword);
-    await page.getByTestId("terms-checkbox").check();
+
     await page.getByTestId("submit-button").click();
 
     // OTP入力ページへ遷移確認
@@ -336,18 +306,14 @@ test.describe("ユーザー登録フロー（E2E）", () => {
     await page.getByRole("button", { name: "確認" }).click();
 
     // 4. エラーメッセージの表示確認（複数の可能性のあるエラーメッセージに対応）
-    const errorLocator = page.locator('[role="alert"]');
+    // Next.jsのroute announcerを除外して、実際のエラーメッセージのみを取得
+    const errorLocator = page.locator('[role="alert"]:not([id="__next-route-announcer__"])');
     await expect(errorLocator).toBeVisible({ timeout: 5000 });
 
-    // エラーメッセージの内容を確認
-    const errorText = await errorLocator.textContent();
-    const expectedErrors = [
-      "確認コードが正しくありません",
-      "無効な確認コードです",
-      "認証に失敗しました",
-    ];
-    const hasExpectedError = expectedErrors.some((msg) => errorText?.includes(msg));
-    expect(hasExpectedError).toBe(true);
+    // Playwrightのアサーションで、キーワードの存在を確認
+    await expect(errorLocator).toContainText(/無効|正しくありません|認証に失敗/, {
+      timeout: 3000,
+    });
 
     // URLが変わっていないことを確認（リダイレクトされていない）
     await expect(page).toHaveURL(
@@ -374,7 +340,7 @@ test.describe("ユーザー登録フロー（E2E）", () => {
     await page.getByTestId("email-input").fill(testEmail);
     await page.getByTestId("password-input").fill(testPassword);
     await page.getByTestId("password-confirm-input").fill(testPassword);
-    await page.getByTestId("terms-checkbox").check();
+
     await page.getByTestId("submit-button").click();
 
     // OTP入力ページへ遷移確認
@@ -395,10 +361,11 @@ test.describe("ユーザー登録フロー（E2E）", () => {
     const resendButton = page.getByRole("button", { name: "コードを再送信" });
     await resendButton.click();
 
-    // 再送信成功を確認（再送信ボタンが無効化され、カウントダウンが表示される）
-    await expect(resendButton).toBeDisabled({ timeout: 3000 });
-    // カウントダウンテキストの表示を確認（60秒から開始）
-    await expect(page.locator("text=/再送信まで \\d+秒/")).toBeVisible({ timeout: 2000 });
+    // 再送信成功を確認(カウントダウンボタンが表示され、無効化されている)
+    const countdownButton = page.getByRole("button", { name: /再送信まで \d+秒/ });
+    await expect(countdownButton).toBeDisabled({ timeout: 3000 });
+    // カウントダウンテキストの表示を確認
+    await expect(countdownButton).toBeVisible({ timeout: 2000 });
 
     // 3. 新しいOTPを取得
     console.log(`Fetching new OTP after resend for ${testEmail}...`);
