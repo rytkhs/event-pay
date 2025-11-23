@@ -49,7 +49,7 @@ setup("authenticate", async ({ page }) => {
   // フォームを入力してログイン
   await page.getByLabel("メールアドレス").fill(username);
   await page.locator('input[type="password"]').fill(password);
-  await page.getByRole("button", { name: "ログイン" }).click();
+  await page.getByTestId("login-form").getByRole("button", { name: "ログイン" }).click();
 
   // ログイン後のリダイレクト先を待機し、URLを検証
   // ホーム画面にリダイレクトされることを期待

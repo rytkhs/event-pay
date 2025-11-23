@@ -6,6 +6,7 @@ import { Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 
+import { Lock } from "lucide-react";
 import { useFormStatus } from "react-dom";
 
 import { registerAction } from "@core/actions/auth";
@@ -14,10 +15,10 @@ import { useRegisterFormRHF } from "@features/auth";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -94,12 +95,9 @@ function RegisterForm() {
     enableFocusManagement: true,
   });
 
-  const password = form.watch("password");
-  const passwordConfirm = form.watch("passwordConfirm");
-
   return (
     <>
-      <main className="min-h-screen flex items-center justify-center bg-muted/30 py-12 px-4 sm:px-6 lg:px-8">
+      <main className="h-auto flex items-center justify-center bg-muted/30 py-10 px-4 sm:px-6 lg:px-8">
         <div className="w-full max-w-md space-y-8">
           <Card>
             <CardHeader className="text-center">
@@ -111,6 +109,15 @@ function RegisterForm() {
               </CardDescription>
             </CardHeader>
             <CardContent>
+              <form action={startGoogleOAuth} className="space-y-4">
+                <input type="hidden" name="next" value={next} />
+                <GoogleSubmitButton label="Googleで続行" />
+              </form>
+              <div className="flex items-center my-6">
+                <div className="h-px flex-1 bg-border" />
+                <span className="mx-3 text-xs text-muted-foreground">または</span>
+                <div className="h-px flex-1 bg-border" />
+              </div>
               <Form {...form}>
                 <form
                   onSubmit={onSubmit}
@@ -124,18 +131,21 @@ function RegisterForm() {
                     name="name"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>ユーザーネーム</FormLabel>
+                        <FormLabel>表示名</FormLabel>
                         <FormControl>
                           <Input
                             {...field}
                             type="text"
-                            placeholder="ユーザーネームを入力"
+                            placeholder="例: 集金 太郎"
                             disabled={isPending}
                             autoComplete="name"
                             required
                             data-testid="name-input"
                           />
                         </FormControl>
+                        <FormDescription className="text-xs sm:text-sm">
+                          イベント作成者として表示される名前です(変更可能)
+                        </FormDescription>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -181,68 +191,10 @@ function RegisterForm() {
                             data-testid="password-input"
                           />
                         </FormControl>
+                        <FormDescription className="text-xs sm:text-sm">
+                          8文字以上で設定してください
+                        </FormDescription>
                         <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  {/* パスワード確認 */}
-                  <FormField
-                    control={form.control}
-                    name="passwordConfirm"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>パスワード確認</FormLabel>
-                        <FormControl>
-                          <PasswordInput
-                            {...field}
-                            placeholder="パスワードを再度入力"
-                            disabled={isPending}
-                            autoComplete="new-password"
-                            required
-                            data-testid="password-confirm-input"
-                          />
-                        </FormControl>
-                        {passwordConfirm && password && passwordConfirm !== password && (
-                          <div className="text-sm text-destructive">パスワードが一致しません</div>
-                        )}
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  {/* 利用規約同意 */}
-                  <FormField
-                    control={form.control}
-                    name="termsAgreed"
-                    render={({ field }) => (
-                      <FormItem className="flex flex-row items-start space-x-3 space-y-0">
-                        <FormControl>
-                          <Checkbox
-                            checked={field.value}
-                            onCheckedChange={field.onChange}
-                            disabled={isPending}
-                            aria-required="true"
-                            aria-describedby="terms-description"
-                            data-testid="terms-checkbox"
-                          />
-                        </FormControl>
-                        <div className="space-y-1 leading-none">
-                          <FormLabel className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                            <Link
-                              href="/terms"
-                              className="text-primary hover:text-primary/80 underline"
-                              target="_blank"
-                              rel="noopener noreferrer"
-                            >
-                              利用規約
-                            </Link>
-                            に同意します
-                          </FormLabel>
-                          <div id="terms-description" className="text-xs text-muted-foreground">
-                            みんなの集金をご利用いただくには利用規約への同意が必要です
-                          </div>
-                        </div>
                       </FormItem>
                     )}
                   />
@@ -254,25 +206,45 @@ function RegisterForm() {
                     </div>
                   )}
 
-                  {/* 利用規約エラーメッセージ */}
-                  {form.formState.errors.termsAgreed && (
-                    <div
-                      className="bg-destructive/10 border border-destructive/20 text-destructive px-4 py-3 rounded"
-                      data-testid="terms-error"
+                  {/* 送信ボタンとセキュリティ表示 */}
+                  <div className="space-y-2">
+                    <Button
+                      type="submit"
+                      className="w-full"
+                      disabled={isPending}
+                      data-testid="submit-button"
                     >
-                      {form.formState.errors.termsAgreed.message}
-                    </div>
-                  )}
+                      {isPending ? "登録中..." : "アカウントを作成"}
+                    </Button>
 
-                  {/* 送信ボタン */}
-                  <Button
-                    type="submit"
-                    className="w-full"
-                    disabled={isPending}
-                    data-testid="submit-button"
-                  >
-                    {isPending ? "登録中..." : "アカウントを作成"}
-                  </Button>
+                    <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
+                      <Lock className="h-3 w-3" />
+                      <span>通信は暗号化され、安全に保護されます</span>
+                    </div>
+                  </div>
+
+                  {/* 利用規約同意の注釈 */}
+                  <p className="text-xs text-muted-foreground text-center">
+                    送信することで、
+                    <Link
+                      href="/terms"
+                      className="text-primary hover:text-primary/80 underline"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      利用規約
+                    </Link>
+                    と
+                    <Link
+                      href="/privacy"
+                      className="text-primary hover:text-primary/80 underline"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      プライバシーポリシー
+                    </Link>
+                    に同意したものとみなされます。
+                  </p>
 
                   <div className="text-center text-xs sm:text-sm text-muted-foreground">
                     すでにアカウントをお持ちの方は{" "}
@@ -285,25 +257,16 @@ function RegisterForm() {
                   </div>
                 </form>
               </Form>
-              <div className="flex items-center my-6">
-                <div className="h-px flex-1 bg-border" />
-                <span className="mx-3 text-xs text-muted-foreground">または</span>
-                <div className="h-px flex-1 bg-border" />
-              </div>
-              <form action={startGoogleOAuth} className="space-y-4">
-                <input type="hidden" name="next" value={next} />
-                <GoogleSubmitButton label="Googleでアカウントを作成" />
-              </form>
             </CardContent>
           </Card>
         </div>
       </main>
 
       <footer
-        className="text-center text-xs sm:text-sm text-muted-foreground py-4"
+        className="text-center text-xs sm:text-sm text-muted-foreground py-1"
         role="contentinfo"
       >
-        <p>みんなの集金 - いつもの集金を、キャッシュレスに</p>
+        <p>みんなの集金 - 集金ストレスをゼロに</p>
       </footer>
     </>
   );

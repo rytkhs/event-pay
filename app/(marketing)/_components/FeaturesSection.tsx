@@ -2,6 +2,7 @@ import React from "react";
 
 import { Zap, CreditCard, BellRing, Check } from "lucide-react";
 
+import { ParticipantTableMock } from "./ParticipantTableMock";
 import { FadeIn } from "./ui/FadeIn";
 
 export const FeaturesSection: React.FC = () => {
@@ -94,115 +95,9 @@ export const FeaturesSection: React.FC = () => {
             </div>
             <div className="flex-1">
               <FadeIn direction="left" delay={0.2}>
-                <div className="bg-white/5 rounded-2xl p-8 border border-white/10 flex justify-center">
+                <div className="bg-white/5 rounded-2xl px-4 py-8 border border-white/10 flex justify-center">
                   {/* Abstract UI for Hybrid Payment - Participant Table Mock */}
-                  <div className="w-full max-w-md bg-white rounded-xl text-slate-800 overflow-hidden shadow-2xl text-sm">
-                    {/* Header */}
-                    <div className="bg-slate-100 border-b border-slate-200 px-4 py-3 flex items-center">
-                      <div className="flex gap-1.5">
-                        <div className="w-3 h-3 rounded-full bg-[#FF5F56] border border-[#E0443E]"></div>
-                        <div className="w-3 h-3 rounded-full bg-[#FFBD2E] border border-[#DEA123]"></div>
-                        <div className="w-3 h-3 rounded-full bg-[#27C93F] border border-[#1AAB29]"></div>
-                      </div>
-                      <div className="flex-1 text-center font-bold text-slate-600 text-xs">
-                        参加者一覧
-                      </div>
-                      <div className="w-10"></div>
-                    </div>
-
-                    {/* Table Header */}
-                    <div className="grid grid-cols-12 gap-2 p-2 bg-slate-50/50 border-b border-slate-100 text-xs font-medium text-slate-500">
-                      <div className="col-span-3 pl-2">ニックネーム</div>
-                      <div className="col-span-2 text-center">参加</div>
-                      <div className="col-span-3 text-center">決済方法</div>
-                      <div className="col-span-2 text-center">状況</div>
-                      <div className="col-span-2 text-center">アクション</div>
-                    </div>
-
-                    {/* Rows */}
-                    <div className="divide-y divide-slate-100">
-                      {/* Row 1: Online Payment (Paid) */}
-                      <div className="grid grid-cols-12 gap-2 p-3 items-center hover:bg-slate-50 transition-colors">
-                        <div className="col-span-3 font-bold text-slate-700 truncate pl-2">
-                          田中 太郎
-                        </div>
-                        <div className="col-span-2 flex justify-center">
-                          <span className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded text-[10px] font-bold border border-blue-200">
-                            参加
-                          </span>
-                        </div>
-                        <div className="col-span-3 flex justify-center">
-                          <span className="bg-purple-100 text-purple-700 px-2 py-0.5 rounded text-[10px] font-bold border border-purple-200">
-                            オンライン
-                          </span>
-                        </div>
-                        <div className="col-span-2 flex justify-center">
-                          <span className="bg-green-100 text-green-700 px-2 py-0.5 rounded text-[10px] font-bold border border-green-200">
-                            済
-                          </span>
-                        </div>
-                        <div className="col-span-2 flex justify-center">
-                          <div className="w-6 h-6 rounded bg-slate-100 text-slate-300 flex items-center justify-center">
-                            -
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Row 2: Cash Payment (Pending) */}
-                      <div className="grid grid-cols-12 gap-2 p-3 items-center hover:bg-slate-50 transition-colors bg-orange-50/30">
-                        <div className="col-span-3 font-bold text-slate-700 truncate pl-2">
-                          鈴木 次郎
-                        </div>
-                        <div className="col-span-2 flex justify-center">
-                          <span className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded text-[10px] font-bold border border-blue-200">
-                            参加
-                          </span>
-                        </div>
-                        <div className="col-span-3 flex justify-center">
-                          <span className="bg-orange-100 text-orange-700 px-2 py-0.5 rounded text-[10px] font-bold border border-orange-200">
-                            現金
-                          </span>
-                        </div>
-                        <div className="col-span-2 flex justify-center">
-                          <span className="bg-slate-100 text-slate-500 px-2 py-0.5 rounded text-[10px] font-bold border border-slate-200">
-                            未
-                          </span>
-                        </div>
-                        <div className="col-span-2 flex justify-center">
-                          <button className="bg-green-500 hover:bg-green-600 text-white text-[10px] px-2 py-1 rounded font-bold shadow-sm transition-all transform hover:scale-105">
-                            受領
-                          </button>
-                        </div>
-                      </div>
-
-                      {/* Row 3: Cash Payment (Paid) */}
-                      <div className="grid grid-cols-12 gap-2 p-3 items-center hover:bg-slate-50 transition-colors">
-                        <div className="col-span-3 font-bold text-slate-700 truncate pl-2">
-                          佐藤 花子
-                        </div>
-                        <div className="col-span-2 flex justify-center">
-                          <span className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded text-[10px] font-bold border border-blue-200">
-                            参加
-                          </span>
-                        </div>
-                        <div className="col-span-3 flex justify-center">
-                          <span className="bg-orange-100 text-orange-700 px-2 py-0.5 rounded text-[10px] font-bold border border-orange-200">
-                            現金
-                          </span>
-                        </div>
-                        <div className="col-span-2 flex justify-center">
-                          <span className="bg-green-100 text-green-700 px-2 py-0.5 rounded text-[10px] font-bold border border-green-200">
-                            済
-                          </span>
-                        </div>
-                        <div className="col-span-2 flex justify-center">
-                          <div className="w-6 h-6 rounded bg-slate-100 text-slate-300 flex items-center justify-center">
-                            -
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+                  <ParticipantTableMock />
                 </div>
               </FadeIn>
             </div>

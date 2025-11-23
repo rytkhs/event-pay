@@ -122,21 +122,14 @@ const loginSchema = z.object({
   rememberMe: z.boolean().optional(),
 });
 
-const registerSchema = z
-  .object({
-    name: z.string().min(1, "名前を入力してください").max(50, "名前は50文字以内で入力してください"),
-    email: z
-      .string()
-      .min(1, "メールアドレスを入力してください")
-      .email("有効なメールアドレスを入力してください"),
-    password: z.string().min(8, "パスワードは8文字以上で入力してください"),
-    passwordConfirm: z.string().min(1, "パスワード確認を入力してください"),
-    termsAgreed: z.boolean().refine((val) => val === true, "利用規約に同意してください"),
-  })
-  .refine((data) => data.password === data.passwordConfirm, {
-    message: "パスワードが一致しません",
-    path: ["passwordConfirm"],
-  });
+const registerSchema = z.object({
+  name: z.string().min(1, "表示名を入力してください").max(50, "名前は50文字以内で入力してください"),
+  email: z
+    .string()
+    .min(1, "メールアドレスを入力してください")
+    .email("有効なメールアドレスを入力してください"),
+  password: z.string().min(8, "パスワードは8文字以上で入力してください"),
+});
 
 type LoginFormDataRHF = z.infer<typeof loginSchema>;
 type RegisterFormDataRHF = z.infer<typeof registerSchema>;
@@ -245,8 +238,6 @@ export function useRegisterFormRHF<T extends ServerActionResult>(
       name: "",
       email: "",
       password: "",
-      passwordConfirm: "",
-      termsAgreed: false,
     },
     mode: "onBlur",
   });
@@ -259,8 +250,7 @@ export function useRegisterFormRHF<T extends ServerActionResult>(
         formData.append("name", data.name);
         formData.append("email", data.email);
         formData.append("password", data.password);
-        formData.append("passwordConfirm", data.passwordConfirm);
-        formData.append("termsAgreed", data.termsAgreed.toString());
+        formData.append("termsAgreed", "true"); // 暗黙的に同意とみなす
 
         const result = await action(formData);
 
