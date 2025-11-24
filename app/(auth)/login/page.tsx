@@ -14,7 +14,6 @@ import { useLoginFormRHF } from "@features/auth";
 import { GoogleLoginButton, LINELoginButton } from "@/components/auth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
 import {
   Form,
   FormControl,
@@ -113,30 +112,7 @@ function LoginForm() {
                     )}
                   />
 
-                  {/* ログイン状態を保持 */}
-                  <FormField
-                    control={form.control}
-                    name="rememberMe"
-                    render={({ field }) => (
-                      <FormItem className="flex flex-row items-start space-x-3 space-y-0">
-                        <FormControl>
-                          <Checkbox
-                            checked={field.value}
-                            onCheckedChange={field.onChange}
-                            disabled={isPending}
-                          />
-                        </FormControl>
-                        <div className="space-y-1 leading-none">
-                          <FormLabel className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                            ログイン状態を保持
-                          </FormLabel>
-                        </div>
-                      </FormItem>
-                    )}
-                  />
-
-                  <div className="flex items-center justify-between text-xs sm:text-sm">
-                    <div></div>
+                  <div className="flex items-center justify-end text-xs sm:text-sm">
                     <Link
                       href="/reset-password"
                       className="text-primary hover:text-primary/80 underline focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1 rounded"

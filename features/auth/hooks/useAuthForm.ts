@@ -119,7 +119,6 @@ const loginSchema = z.object({
     .min(1, "メールアドレスを入力してください")
     .email("有効なメールアドレスを入力してください"),
   password: z.string().min(1, "パスワードを入力してください"),
-  rememberMe: z.boolean().optional(),
 });
 
 const registerSchema = z.object({
@@ -153,7 +152,6 @@ export function useLoginFormRHF<T extends ServerActionResult>(
     defaultValues: {
       email: "",
       password: "",
-      rememberMe: false,
     },
     mode: "onBlur",
   });
@@ -165,9 +163,6 @@ export function useLoginFormRHF<T extends ServerActionResult>(
         const formData = new FormData();
         formData.append("email", data.email);
         formData.append("password", data.password);
-        if (data.rememberMe) {
-          formData.append("rememberMe", "true");
-        }
 
         const result = await action(formData);
 
