@@ -111,7 +111,7 @@ function RegisterForm() {
             <CardContent>
               <form action={startGoogleOAuth} className="space-y-4">
                 <input type="hidden" name="next" value={next} />
-                <GoogleSubmitButton label="Googleで続行" />
+                <GoogleSubmitButton label="Googleでログイン" />
               </form>
               <div className="flex items-center my-6">
                 <div className="h-px flex-1 bg-border" />

@@ -104,7 +104,7 @@ export const PaymentDeadlineReminderEmail = ({
             color: "#7f1d1d",
           }}
         >
-          以下のイベント費の決済をお早めに完了してください。
+          以下の参加費の決済をお早めに完了してください。
         </Text>
       </div>
 
