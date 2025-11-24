@@ -365,6 +365,14 @@ FROM_EMAIL=noreply@example.com
 ADMIN_EMAIL=admin@example.com
 ```
 
+#### LINE ログイン
+```env
+NEXT_PUBLIC_LINE_CHANNEL_ID=your-channel-id
+LINE_CHANNEL_SECRET=your-channel-secret
+```
+**Callback URL**: `${NEXT_PUBLIC_APP_URL}/auth/callback/line`
+
+
 ### オプション環境変数
 
 #### Cron認証
