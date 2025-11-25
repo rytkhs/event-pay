@@ -9,7 +9,12 @@ import {
   LINE_OAUTH_CONFIG,
   LINE_ERROR_CODES,
 } from "@core/auth/line-constants";
-import { buildOrigin, createLineOAuthCookieOptions } from "@core/auth/line-utils";
+import {
+  buildOrigin,
+  createLineOAuthCookieOptions,
+  generateCodeVerifier,
+  generateCodeChallenge,
+} from "@core/auth/line-utils";
 import { logger } from "@core/logging/app-logger";
 import { getEnv } from "@core/utils/cloudflare-env";
 
@@ -38,13 +43,22 @@ export async function GET(request: Request) {
 
   cookieStore.set(LINE_OAUTH_COOKIES.STATE, state, cookieOptions);
 
-  // LINEの認可URLを構築
+  // PKCE用のcode_verifierとcode_challengeを生成
+  const codeVerifier = generateCodeVerifier();
+  const codeChallenge = generateCodeChallenge(codeVerifier);
+
+  // code_verifierをCookieに保存
+  cookieStore.set(LINE_OAUTH_COOKIES.CODE_VERIFIER, codeVerifier, cookieOptions);
+
+  // LINEの認可URLを構築（PKCE対応）
   const params = new URLSearchParams({
     response_type: "code",
     client_id: channelId,
     redirect_uri: redirectUri,
     state: state,
     scope: LINE_OAUTH_CONFIG.SCOPE,
+    code_challenge: codeChallenge,
+    code_challenge_method: LINE_OAUTH_CONFIG.CODE_CHALLENGE_METHOD,
   });
 
   // nextパラメータの処理

@@ -31,10 +31,12 @@ export async function GET(request: Request) {
   const cookieStore = cookies();
   const storedState = cookieStore.get(LINE_OAUTH_COOKIES.STATE)?.value;
   const nextPath = cookieStore.get(LINE_OAUTH_COOKIES.NEXT)?.value ?? "/dashboard";
+  const codeVerifier = cookieStore.get(LINE_OAUTH_COOKIES.CODE_VERIFIER)?.value;
 
   // 検証後はCookieを即削除（ワンタイム利用）
   cookieStore.delete(LINE_OAUTH_COOKIES.STATE);
   cookieStore.delete(LINE_OAUTH_COOKIES.NEXT);
+  cookieStore.delete(LINE_OAUTH_COOKIES.CODE_VERIFIER);
 
   if (!code || !state || !storedState || state !== storedState) {
     logger.error("CSRF validation failed", {
@@ -66,6 +68,7 @@ export async function GET(request: Request) {
         redirect_uri: redirectUri,
         client_id: channelId,
         client_secret: channelSecret,
+        ...(codeVerifier && { code_verifier: codeVerifier }),
       }),
     });
 

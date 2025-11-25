@@ -1,3 +1,5 @@
+import * as crypto from "crypto";
+
 import type { ResponseCookie } from "next/dist/compiled/@edge-runtime/cookies";
 import { headers } from "next/headers";
 
@@ -30,4 +32,35 @@ export function createLineOAuthCookieOptions(): Partial<ResponseCookie> {
     path: "/",
     maxAge: LINE_OAUTH_CONFIG.STATE_COOKIE_MAX_AGE,
   };
+}
+
+/**
+ * PKCE用のcode_verifierを生成
+ * RFC7636準拠: 43〜128文字のランダムな文字列
+ * 使用可能文字: a-z, A-Z, 0-9, -._~
+ */
+export function generateCodeVerifier(): string {
+  // 43文字（最小値）のランダムな文字列を生成
+  // crypto.randomBytes(32)を使用すると、Base64URLエンコード後に43文字になる
+  const buffer = crypto.randomBytes(32);
+  return base64UrlEncode(buffer.toString("base64"));
+}
+
+/**
+ * PKCE用のcode_challengeを生成
+ * code_verifierをSHA256でハッシュ化し、Base64URL形式にエンコード
+ */
+export function generateCodeChallenge(codeVerifier: string): string {
+  const hash = crypto.createHash("sha256").update(codeVerifier).digest("base64");
+  return base64UrlEncode(hash);
+}
+
+/**
+ * Base64形式の文字列をBase64URL形式に変換
+ * - パディング（=）を削除
+ * - + を - に置換
+ * - / を _ に置換
+ */
+function base64UrlEncode(str: string): string {
+  return str.replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "");
 }

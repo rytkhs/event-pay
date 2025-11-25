@@ -13,12 +13,14 @@ export const LINE_API = {
 export const LINE_OAUTH_COOKIES = {
   STATE: "line_oauth_state",
   NEXT: "line_oauth_next",
+  CODE_VERIFIER: "line_oauth_code_verifier",
 } as const;
 
 // タイムアウト設定
 export const LINE_OAUTH_CONFIG = {
   STATE_COOKIE_MAX_AGE: 60 * 10, // 10分
   SCOPE: "profile openid email",
+  CODE_CHALLENGE_METHOD: "S256", // LINEはS256のみサポート
 } as const;
 
 // エラーコード
