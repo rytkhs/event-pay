@@ -48,6 +48,8 @@ function isPublicPath(pathname: string): boolean {
     "/tokushoho",
     "/debug",
     "/auth/callback",
+    "/auth/callback/line",
+    "/auth/line",
     "/auth/auth-code-error",
   ];
   if (publicExact.includes(pathname)) return true;
