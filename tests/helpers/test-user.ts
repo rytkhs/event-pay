@@ -116,19 +116,24 @@ export async function createTestUser(
  */
 async function findExistingTestUser(adminClient: any, email: string): Promise<any | null> {
   try {
-    const { data: users, error } = await adminClient.auth.admin.listUsers({
-      page: 1,
-      perPage: 1000, // 多めに設定して確実にキャッチ
-    });
+    const { data: existingUser, error } = await adminClient
+      .from("users")
+      .select("id, email")
+      .eq("email", email)
+      .single();
 
     if (error) {
-      console.warn(`Warning: Failed to list users: ${error.message}`);
+      // PGRST116はレコードが見つからないエラー（正常ケース）
+      if (error.code === "PGRST116") {
+        return null;
+      }
+      console.warn(`Warning: Failed to find user by email: ${error.message}`);
       return null;
     }
 
-    return users.users.find((user: { email?: string }) => user.email === email) || null;
+    return existingUser;
   } catch (error) {
-    console.warn(`Warning: Exception while listing users:`, error);
+    console.warn(`Warning: Exception while finding user:`, error);
     return null;
   }
 }

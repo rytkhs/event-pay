@@ -111,19 +111,16 @@ export async function GET(request: Request) {
     );
 
     // 5. ユーザーの検索・作成・更新
-    const {
-      data: { users },
-      error: listError,
-    } = await supabaseAdmin.auth.admin.listUsers();
-
-    if (listError) {
-      throw listError;
-    }
-
-    const existingUser = users.find((user) => user.email === email);
+    // public.usersからメールアドレスで検索
+    const { data: existingUser } = await supabaseAdmin
+      .from("users")
+      .select("id, email")
+      .eq("email", email)
+      .single();
 
     const userMetadata = {
       full_name: profile.name,
+      name: profile.name, // トリガーで使用
       avatar_url: profile.picture,
       provider: "line",
       line_user_id: profile.sub,
@@ -133,7 +130,7 @@ export async function GET(request: Request) {
     let isNewUser = false;
 
     if (existingUser) {
-      // 既存ユーザー: メタデータを更新
+      // 既存ユーザー: auth.usersのメタデータのみ更新
       const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
         existingUser.id,
         { user_metadata: userMetadata }
@@ -145,7 +142,7 @@ export async function GET(request: Request) {
 
       userId = existingUser.id;
     } else {
-      // 新規ユーザー: 作成
+      // 新規ユーザー: auth.usersを作成（トリガーがpublic.usersも自動作成）
       isNewUser = true;
       const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
         email: email,

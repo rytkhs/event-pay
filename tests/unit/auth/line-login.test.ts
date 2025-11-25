@@ -40,9 +40,9 @@ jest.mock("@core/logging/app-logger", () => ({
 
 // Supabase関連のモック
 const mockSupabaseAdmin = {
+  from: jest.fn(),
   auth: {
     admin: {
-      listUsers: jest.fn(),
       updateUserById: jest.fn(),
       createUser: jest.fn(),
       generateLink: jest.fn(),
@@ -175,10 +175,16 @@ describe("LINE Login Auth Flow", () => {
           }),
         });
 
-      // Supabase Mocks
-      mockSupabaseAdmin.auth.admin.listUsers.mockResolvedValue({
-        data: { users: [{ id: "existing-user-id", email: "test@example.com" }] },
-        error: null,
+      // Supabase Mocks - public.usersテーブルからの検索をモック
+      const mockSelect = {
+        eq: jest.fn().mockReturnThis(),
+        single: jest.fn().mockResolvedValue({
+          data: { id: "existing-user-id", email: "test@example.com" },
+          error: null,
+        }),
+      };
+      mockSupabaseAdmin.from.mockReturnValue({
+        select: jest.fn().mockReturnValue(mockSelect),
       });
       mockSupabaseAdmin.auth.admin.updateUserById.mockResolvedValue({ error: null });
       mockSupabaseAdmin.auth.admin.generateLink.mockResolvedValue({
@@ -195,7 +201,10 @@ describe("LINE Login Auth Flow", () => {
       );
       const response = await authCallbackLineGet(request);
 
-      // 検証
+      // 検証 - public.usersテーブルから検索されたか
+      expect(mockSupabaseAdmin.from).toHaveBeenCalledWith("users");
+      expect(mockSelect.eq).toHaveBeenCalledWith("email", "test@example.com");
+
       expect(mockSupabaseAdmin.auth.admin.updateUserById).toHaveBeenCalledWith(
         "existing-user-id",
         expect.objectContaining({
@@ -229,10 +238,16 @@ describe("LINE Login Auth Flow", () => {
           json: async () => ({ email: "new@example.com", sub: "line-user-new", name: "New User" }),
         });
 
-      // Supabase Mocks
-      mockSupabaseAdmin.auth.admin.listUsers.mockResolvedValue({
-        data: { users: [] }, // No existing user
-        error: null,
+      // Supabase Mocks - public.usersテーブルで見つからない場合のモック
+      const mockSelect = {
+        eq: jest.fn().mockReturnThis(),
+        single: jest.fn().mockResolvedValue({
+          data: null,
+          error: { code: "PGRST116" }, // Not found error
+        }),
+      };
+      mockSupabaseAdmin.from.mockReturnValue({
+        select: jest.fn().mockReturnValue(mockSelect),
       });
       mockSupabaseAdmin.auth.admin.createUser.mockResolvedValue({
         data: { user: { id: "new-user-id" } },
@@ -252,7 +267,10 @@ describe("LINE Login Auth Flow", () => {
       );
       const response = await authCallbackLineGet(request);
 
-      // 検証
+      // 検証 - public.usersテーブルから検索されたか
+      expect(mockSupabaseAdmin.from).toHaveBeenCalledWith("users");
+      expect(mockSelect.eq).toHaveBeenCalledWith("email", "new@example.com");
+
       expect(mockSupabaseAdmin.auth.admin.createUser).toHaveBeenCalledWith(
         expect.objectContaining({
           email: "new@example.com",
