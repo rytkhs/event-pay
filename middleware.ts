@@ -11,7 +11,7 @@ import { getEnv } from "@core/utils/cloudflare-env";
 const AFTER_LOGIN_REDIRECT_PATH = "/dashboard";
 
 function isAuthPath(pathname: string): boolean {
-  // 認証ページ: ログイン済みならホームへ誘導（パスワードリセット関連は例外）
+  // 認証ページ: ログイン済みならダッシュボードへ誘導（パスワードリセット関連は例外）
   if (pathname === "/login" || pathname === "/register") return true;
   return false;
 }
@@ -19,6 +19,7 @@ function isAuthPath(pathname: string): boolean {
 function isStaticPage(pathname: string): boolean {
   // SSGされた静的ページのリスト
   const staticPages = [
+    "/",
     "/privacy", // プライバシーポリシー
     "/terms", // 利用規約
     "/tokushoho/platform", // 特定商取引法（プラットフォーム）
@@ -206,16 +207,38 @@ export async function middleware(request: NextRequest) {
   if (!isPublicPath(pathname) && !user) {
     const redirectUrl = new URL("/login", request.url);
     redirectUrl.searchParams.set("redirectTo", pathname);
-    const redirectResponse = NextResponse.redirect(redirectUrl, { headers: response.headers });
+    const redirectResponse = NextResponse.redirect(redirectUrl);
+
+    // 元のresponseからすべてのCookieをコピー（Cloudflare Workers環境での同期問題対策）
+    response.cookies.getAll().forEach((cookie) => {
+      redirectResponse.cookies.set(cookie);
+    });
+
+    // その他のヘッダーもコピー
     redirectResponse.headers.set("x-request-id", requestId);
+    if (!isStatic && nonce) {
+      redirectResponse.headers.set("x-nonce", nonce);
+    }
+
     return redirectResponse;
   }
 
-  // ログイン済みが認証ページへ来たらホームへ
+  // ログイン済みが認証ページへ来たらダッシュボードへ
   if (isAuthPath(pathname) && user) {
     const dashboardUrl = new URL(AFTER_LOGIN_REDIRECT_PATH, request.url);
-    const redirectResponse = NextResponse.redirect(dashboardUrl, { headers: response.headers });
+    const redirectResponse = NextResponse.redirect(dashboardUrl);
+
+    // 元のresponseからすべてのCookieをコピー（Cloudflare Workers環境での同期問題対策）
+    response.cookies.getAll().forEach((cookie) => {
+      redirectResponse.cookies.set(cookie);
+    });
+
+    // その他のヘッダーもコピー
     redirectResponse.headers.set("x-request-id", requestId);
+    if (!isStatic && nonce) {
+      redirectResponse.headers.set("x-nonce", nonce);
+    }
+
     return redirectResponse;
   }
 
