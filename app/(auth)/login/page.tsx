@@ -8,6 +8,7 @@ import { useSearchParams } from "next/navigation";
 export const dynamic = "force-dynamic";
 
 import { loginAction } from "@core/actions/auth";
+import { LINE_ERROR_MESSAGES } from "@core/auth/line-error-messages";
 
 import { useLoginFormRHF } from "@features/auth";
 
@@ -30,6 +31,9 @@ import { startGoogleOAuth } from "./actions";
 function LoginForm() {
   const searchParams = useSearchParams();
   const next = searchParams.get("redirectTo") ?? "/dashboard";
+  const errorCode = searchParams.get("error");
+  const errorMessage = errorCode ? LINE_ERROR_MESSAGES[errorCode] : null;
+
   const { form, onSubmit, isPending } = useLoginFormRHF(loginAction, {
     enableFocusManagement: true,
   });
@@ -55,6 +59,16 @@ function LoginForm() {
                   <GoogleLoginButton />
                 </form>
               </div>
+
+              {/* OAuthエラーメッセージ */}
+              {errorMessage && (
+                <div
+                  className="mt-4 bg-destructive/10 border border-destructive/20 text-destructive px-4 py-3 rounded text-sm"
+                  data-testid="oauth-error-message"
+                >
+                  {errorMessage}
+                </div>
+              )}
               <div className="flex items-center my-6">
                 <div className="h-px flex-1 bg-border" />
                 <span className="mx-3 text-xs text-muted-foreground">または</span>

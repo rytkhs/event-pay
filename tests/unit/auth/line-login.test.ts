@@ -285,5 +285,33 @@ describe("LINE Login Auth Flow", () => {
       expect(response.status).toBe(307);
       expect(response.headers.get("Location")).toBe("http://localhost:3000/dashboard");
     });
+
+    it("should redirect to login with email_required error when email is missing from LINE profile", async () => {
+      // LINE API Mocks - emailがnullの場合
+      (global.fetch as jest.Mock)
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({ id_token: "mock-id-token" }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({
+            sub: "line-user-123",
+            name: "Test User",
+            picture: "http://example.com/pic.jpg",
+            // emailがない
+          }),
+        });
+
+      const request = new Request(
+        `http://localhost:3000/auth/callback/line?code=${mockCode}&state=${mockState}`
+      );
+      const response = await authCallbackLineGet(request);
+
+      expect(response.status).toBe(307);
+      expect(response.headers.get("Location")).toBe(
+        "http://localhost:3000/login?error=line_email_required"
+      );
+    });
   });
 });
