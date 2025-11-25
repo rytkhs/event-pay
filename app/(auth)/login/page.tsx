@@ -29,7 +29,7 @@ import { startGoogleOAuth } from "./actions";
 
 function LoginForm() {
   const searchParams = useSearchParams();
-  const next = searchParams.get("redirectTo") ?? "/";
+  const next = searchParams.get("redirectTo") ?? "/dashboard";
   const { form, onSubmit, isPending } = useLoginFormRHF(loginAction, {
     enableFocusManagement: true,
   });

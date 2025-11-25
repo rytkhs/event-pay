@@ -176,7 +176,6 @@ export async function GET(request: Request) {
     const { data: sessionData, error: sessionError } = await supabase.auth.verifyOtp({
       token_hash: linkData.properties.hashed_token,
       type: "email",
-      email: email,
     });
 
     if (sessionError || !sessionData.session) {
