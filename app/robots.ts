@@ -7,17 +7,6 @@ export default function robots(): MetadataRoute.Robots {
     rules: [
       {
         userAgent: "*",
-        allow: [
-          "/",
-          "/login",
-          "/register",
-          "/reset-password",
-          "/verify-email",
-          "/contact",
-          "/terms",
-          "/privacy",
-          "/tokushoho/",
-        ],
         disallow: [
           "/guest/",
           "/invite/",
@@ -27,7 +16,6 @@ export default function robots(): MetadataRoute.Robots {
           "/payouts/",
           "/api/",
           "/auth/",
-          "/debug",
           "/_next/",
         ],
       },
