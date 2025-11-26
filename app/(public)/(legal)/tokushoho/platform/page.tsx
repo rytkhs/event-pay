@@ -6,6 +6,8 @@ export const dynamic = "force-static";
 
 export async function generateMetadata(): Promise<Metadata> {
   return {
+    title: "特定商取引法に基づく表記",
+    description: "みんなの集金の特定商取引法に基づく表記です。",
     alternates: {
       canonical: "./",
     },
