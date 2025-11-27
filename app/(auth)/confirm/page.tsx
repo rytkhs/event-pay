@@ -15,12 +15,12 @@ export default async function ConfirmPage({ searchParams }: ConfirmPageProps) {
   // エラーがある場合の表示
   if (error) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="w-full flex justify-center py-10 px-4 sm:px-6 lg:px-8">
         <div className="w-full max-w-md bg-white p-8 rounded-lg shadow-md space-y-6">
-          <header className="text-center">
+          <div className="text-center">
             <h1 className="text-2xl font-bold text-red-600">確認エラー</h1>
-          </header>
-          <main className="space-y-4">
+          </div>
+          <div className="space-y-4">
             <div className="p-3 rounded-md text-sm bg-red-50 text-red-800 border border-red-200">
               {decodeURIComponent(error)}
             </div>
@@ -29,7 +29,7 @@ export default async function ConfirmPage({ searchParams }: ConfirmPageProps) {
                 登録ページに戻る
               </Link>
             </div>
-          </main>
+          </div>
         </div>
       </div>
     );
@@ -37,15 +37,15 @@ export default async function ConfirmPage({ searchParams }: ConfirmPageProps) {
 
   // 通常の確認待ちページ
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
+    <div className="w-full flex justify-center py-10 px-4 sm:px-6 lg:px-8">
       <div className="w-full max-w-md bg-white p-8 rounded-lg shadow-md space-y-6">
         {/* ヘッダー */}
-        <header className="text-center">
+        <div className="text-center">
           <h1 className="text-2xl font-bold text-gray-900">メールアドレスを確認してください</h1>
-        </header>
+        </div>
 
         {/* メイン情報 */}
-        <main className="space-y-4">
+        <div className="space-y-4">
           <div className="space-y-2">
             <p className="text-gray-700">確認メールを送信しました</p>
             {email && (
@@ -78,16 +78,16 @@ export default async function ConfirmPage({ searchParams }: ConfirmPageProps) {
               </Link>
             )}
           </div>
-        </main>
+        </div>
 
         {/* フッター情報 */}
-        <footer className="text-center space-y-2">
+        <div className="text-center space-y-2">
           <div className="text-xs text-gray-400">
             <Link href="/login" className="hover:text-gray-600 underline">
               ログインページに戻る
             </Link>
           </div>
-        </footer>
+        </div>
       </div>
     </div>
   );

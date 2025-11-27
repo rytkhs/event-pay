@@ -77,7 +77,7 @@ export function AuthFormWrapper({
 
   return (
     <>
-      <main className="min-h-screen flex items-center justify-center bg-gray-50 py-8 md:py-12 px-4 sm:px-6 lg:px-8">
+      <div className="w-full flex flex-col items-center py-12 px-4 sm:px-6 lg:px-8">
         <div className={`w-full ${maxWidthStyles[maxWidth]} space-y-6 md:space-y-8`}>
           <Card>
             <CardHeader className="text-center">
@@ -111,11 +111,7 @@ export function AuthFormWrapper({
             </CardContent>
           </Card>
         </div>
-      </main>
-
-      <footer className="text-center text-sm text-gray-600 py-4" role="contentinfo">
-        <p>みんなの集金 - 集金ストレスをゼロに</p>
-      </footer>
+      </div>
     </>
   );
 }
