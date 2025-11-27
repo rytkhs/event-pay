@@ -38,7 +38,7 @@ export default async function Page({ params }: { params: Params }) {
     const heading = frontmatter.title ?? "特定商取引法に基づく表記";
     return (
       <div>
-        <h2>{heading}</h2>
+        <h1 className="text-2xl font-bold">{heading}</h1>
         <div className="my-6" dangerouslySetInnerHTML={{ __html: injectedHtml }} />
         {frontmatter.lastUpdated ? (
           <p className="text-sm text-muted-foreground">

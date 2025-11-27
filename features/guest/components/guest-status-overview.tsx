@@ -62,11 +62,11 @@ export function GuestStatusOverview({
   const participationIcon = () => {
     switch (attendance.status) {
       case "attending":
-        return <CheckCircle className="h-6 w-6 text-success" />;
+        return <CheckCircle className="h-6 w-6 text-success" aria-hidden="true" />;
       case "not_attending":
-        return <AlertCircle className="h-6 w-6 text-destructive" />;
+        return <AlertCircle className="h-6 w-6 text-destructive" aria-hidden="true" />;
       default:
-        return <Clock className="h-6 w-6 text-warning" />;
+        return <Clock className="h-6 w-6 text-warning" aria-hidden="true" />;
     }
   };
 
@@ -86,13 +86,13 @@ export function GuestStatusOverview({
     switch (simpleStatus) {
       case "paid":
       case "waived":
-        return <CheckCircle className="h-6 w-6 text-success" />;
+        return <CheckCircle className="h-6 w-6 text-success" aria-hidden="true" />;
       case "unpaid":
-        return <Clock className="h-6 w-6 text-warning" />;
+        return <Clock className="h-6 w-6 text-warning" aria-hidden="true" />;
       case "refunded":
-        return <AlertCircle className="h-6 w-6 text-info" />;
+        return <AlertCircle className="h-6 w-6 text-info" aria-hidden="true" />;
       default:
-        return <AlertCircle className="h-6 w-6 text-muted-foreground" />;
+        return <AlertCircle className="h-6 w-6 text-muted-foreground" aria-hidden="true" />;
     }
   };
 
@@ -128,7 +128,7 @@ export function GuestStatusOverview({
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
         <div className="bg-muted/50 rounded-lg p-4 transition-colors hover:bg-muted/70">
           <div className="flex items-center space-x-3 mb-2">
-            <Ticket className="h-5 w-5 text-muted-foreground" />
+            <Ticket className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
             <span className="text-sm font-medium text-muted-foreground">参加ステータス</span>
           </div>
           <div className="flex items-center space-x-2">
@@ -141,7 +141,7 @@ export function GuestStatusOverview({
 
         <div className="bg-muted/50 rounded-lg p-4 transition-colors hover:bg-muted/70">
           <div className="flex items-center space-x-3 mb-2">
-            <CreditCard className="h-5 w-5 text-muted-foreground" />
+            <CreditCard className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
             <span className="text-sm font-medium text-muted-foreground">決済状況</span>
           </div>
           <div className="flex items-center space-x-2">
@@ -170,13 +170,13 @@ export function GuestStatusOverview({
                 </>
               ) : (
                 <>
-                  <CreditCard className="h-4 w-4 mr-2" /> 決済を完了する
+                  <CreditCard className="h-4 w-4 mr-2" aria-hidden="true" /> 決済を完了する
                 </>
               )}
             </Button>
           )}
           <Button variant="outline" onClick={scrollToTarget}>
-            <Ticket className="h-4 w-4 mr-2" /> 参加状況を変更
+            <Ticket className="h-4 w-4 mr-2" aria-hidden="true" /> 参加状況を変更
           </Button>
         </div>
         {/* 期限超過などで決済不可、または猶予期間中の場合の案内 */}

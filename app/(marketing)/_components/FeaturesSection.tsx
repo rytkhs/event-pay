@@ -14,7 +14,7 @@ export const FeaturesSection: React.FC = () => {
             <h2 className="text-3xl md:text-4xl font-bold mb-6">
               その悩み、「みんなの集金」なら解決できます。
             </h2>
-            <div className="w-20 h-1.5 bg-primary mx-auto rounded-full"></div>
+            <div className="w-20 h-1.5 bg-primary mx-auto rounded-full" aria-hidden="true"></div>
           </FadeIn>
         </div>
 
@@ -44,7 +44,7 @@ export const FeaturesSection: React.FC = () => {
             <div className="flex-1 order-1 md:order-2">
               <FadeIn direction="left" delay={0.2}>
                 <div className="flex items-center gap-3 text-primary font-bold mb-3">
-                  <Zap size={24} />
+                  <Zap size={24} aria-hidden="true" />
                   <span>圧倒的な手軽さ</span>
                 </div>
                 <h3 className="text-2xl md:text-3xl font-bold mb-4">
@@ -64,7 +64,7 @@ export const FeaturesSection: React.FC = () => {
             <div className="flex-1">
               <FadeIn direction="right" delay={0.2}>
                 <div className="flex items-center gap-3 text-primary font-bold mb-3">
-                  <CreditCard size={24} />
+                  <CreditCard size={24} aria-hidden="true" />
                   <span>ハイブリッド決済</span>
                 </div>
                 <h3 className="text-2xl md:text-3xl font-bold mb-4">
@@ -78,13 +78,13 @@ export const FeaturesSection: React.FC = () => {
                 <ul className="space-y-3">
                   <li className="flex items-start gap-3">
                     <div className="bg-primary/20 p-1 rounded-full text-primary mt-0.5">
-                      <Check size={14} strokeWidth={3} />
+                      <Check size={14} strokeWidth={3} aria-hidden="true" />
                     </div>
                     <span className="text-slate-200 text-md">オンライン決済は自動で入金確認</span>
                   </li>
                   <li className="flex items-start gap-3">
                     <div className="bg-primary/20 p-1 rounded-full text-primary mt-0.5">
-                      <Check size={14} strokeWidth={3} />
+                      <Check size={14} strokeWidth={3} aria-hidden="true" />
                     </div>
                     <span className="text-slate-200 text-md">
                       現金集金も「受領」ボタン一つで管理
@@ -111,7 +111,7 @@ export const FeaturesSection: React.FC = () => {
                   {/* Abstract UI for Notification */}
                   <div className="bg-white rounded-xl shadow-2xl max-w-sm mx-auto p-4 flex gap-3 items-start">
                     <div className="bg-primary/10 p-2 rounded-full">
-                      <BellRing className="text-primary w-5 h-5" />
+                      <BellRing className="text-primary w-5 h-5" aria-hidden="true" />
                     </div>
                     <div>
                       <p className="font-bold text-slate-800 text-sm mb-1">
@@ -130,7 +130,7 @@ export const FeaturesSection: React.FC = () => {
             <div className="flex-1 order-1 md:order-2">
               <FadeIn direction="left" delay={0.2}>
                 <div className="flex items-center gap-3 text-primary font-bold mb-3">
-                  <BellRing size={24} />
+                  <BellRing size={24} aria-hidden="true" />
                   <span>自動化で負担軽減</span>
                 </div>
                 <h3 className="text-2xl md:text-3xl font-bold mb-4">

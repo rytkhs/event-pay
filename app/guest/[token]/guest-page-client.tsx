@@ -115,7 +115,7 @@ export function GuestPageClient({
       {/* 中止イベントバナー */}
       {(attendance.event as any).canceled_at && (
         <Alert variant="destructive" className="mb-6">
-          <AlertCircle className="h-5 w-5" />
+          <AlertCircle className="h-5 w-5" aria-hidden="true" />
           <AlertTitle>イベントは中止されました</AlertTitle>
           <AlertDescription>
             このイベントは中止されています。詳細については主催者にお問い合わせください。

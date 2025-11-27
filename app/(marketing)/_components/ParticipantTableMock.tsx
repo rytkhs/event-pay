@@ -50,9 +50,18 @@ export const ParticipantTableMock: React.FC = () => {
       {/* Header */}
       <div className="bg-slate-100 border-b border-slate-200 px-4 py-3 flex items-center">
         <div className="flex gap-1.5">
-          <div className="w-3 h-3 rounded-full bg-[#FF5F56] border border-[#E0443E]"></div>
-          <div className="w-3 h-3 rounded-full bg-[#FFBD2E] border border-[#DEA123]"></div>
-          <div className="w-3 h-3 rounded-full bg-[#27C93F] border border-[#1AAB29]"></div>
+          <div
+            className="w-3 h-3 rounded-full bg-[#FF5F56] border border-[#E0443E]"
+            aria-hidden="true"
+          ></div>
+          <div
+            className="w-3 h-3 rounded-full bg-[#FFBD2E] border border-[#DEA123]"
+            aria-hidden="true"
+          ></div>
+          <div
+            className="w-3 h-3 rounded-full bg-[#27C93F] border border-[#1AAB29]"
+            aria-hidden="true"
+          ></div>
         </div>
         <div className="flex-1 text-center font-bold text-slate-600 text-xs">参加者一覧</div>
         <div className="w-10"></div>
@@ -124,7 +133,7 @@ export const ParticipantTableMock: React.FC = () => {
                     className="bg-slate-400 hover:bg-slate-500 text-white text-[10px] px-2 py-1 rounded font-bold shadow-sm transition-all transform hover:scale-105 active:scale-95 flex items-center gap-1"
                     title="受領を取り消す"
                   >
-                    <RotateCcw size={12} />
+                    <RotateCcw size={12} aria-hidden="true" />
                   </button>
                 )
               ) : (

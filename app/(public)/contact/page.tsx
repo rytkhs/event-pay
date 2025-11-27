@@ -26,7 +26,7 @@ export default function ContactPage() {
   const { form, onSubmit, isPending, isSuccess, resetSuccess } = useContactForm();
 
   return (
-    <main className="min-h-screen bg-muted/30 py-16 sm:py-24">
+    <div className="min-h-screen bg-muted/30 py-16 sm:py-24">
       <div className="container mx-auto w-full max-w-2xl space-y-8 px-4 sm:px-6 lg:px-8">
         <div className="text-center">
           <h1 className="text-3xl sm:text-4xl font-bold text-foreground mb-2">お問い合わせ</h1>
@@ -37,7 +37,9 @@ export default function ContactPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-xl sm:text-2xl">お問い合わせフォーム</CardTitle>
+            <CardTitle as="h2" className="text-xl sm:text-2xl">
+              お問い合わせフォーム
+            </CardTitle>
             <CardDescription>フォームに必要事項をご記入の上、送信してください。</CardDescription>
           </CardHeader>
 
@@ -46,7 +48,7 @@ export default function ContactPage() {
               // 送信完了メッセージ
               <div className="space-y-6 text-center py-8">
                 <div className="flex justify-center">
-                  <CheckCircle2 className="h-16 w-16 text-green-600" />
+                  <CheckCircle2 className="h-16 w-16 text-green-600" aria-hidden="true" />
                 </div>
                 <div className="space-y-2">
                   <h2 className="text-2xl font-semibold text-foreground">送信完了</h2>
@@ -81,7 +83,10 @@ export default function ContactPage() {
                         </FormLabel>
                         <FormControl>
                           <div className="relative">
-                            <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                            <User
+                              className="absolute left-3 top-3 h-4 w-4 text-muted-foreground"
+                              aria-hidden="true"
+                            />
                             <Input
                               {...field}
                               type="text"
@@ -108,7 +113,10 @@ export default function ContactPage() {
                         </FormLabel>
                         <FormControl>
                           <div className="relative">
-                            <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                            <Mail
+                              className="absolute left-3 top-3 h-4 w-4 text-muted-foreground"
+                              aria-hidden="true"
+                            />
                             <Input
                               {...field}
                               type="email"
@@ -137,7 +145,10 @@ export default function ContactPage() {
                         </FormLabel>
                         <FormControl>
                           <div className="relative">
-                            <MessageSquare className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                            <MessageSquare
+                              className="absolute left-3 top-3 h-4 w-4 text-muted-foreground"
+                              aria-hidden="true"
+                            />
                             <Textarea
                               {...field}
                               placeholder="お問い合わせ内容をご記入ください&#10;&#10;例：&#10;・機能に関する質問&#10;・不具合の報告&#10;・新機能のご要望"
@@ -206,6 +217,6 @@ export default function ContactPage() {
           </CardContent>
         </Card>
       </div>
-    </main>
+    </div>
   );
 }

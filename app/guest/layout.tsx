@@ -19,7 +19,7 @@ export default function GuestLayout({ children }: { children: ReactNode }): JSX.
   return (
     <>
       <GlobalHeader variant="guest" />
-      <main>{children}</main>
+      {children}
       <GlobalFooter />
     </>
   );

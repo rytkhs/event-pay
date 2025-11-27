@@ -331,7 +331,7 @@ export function GuestManagementForm({ attendance, canModify }: GuestManagementFo
                                   }}
                                   className="inline-flex items-center px-3 py-2 text-sm font-medium text-orange-700 bg-orange-100 border border-orange-300 rounded-md hover:bg-orange-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 transition-colors"
                                 >
-                                  <CreditCard className="h-4 w-4 mr-2" />
+                                  <CreditCard className="h-4 w-4 mr-2" aria-hidden="true" />
                                   現金決済に変更する
                                 </button>
                               </div>
@@ -550,7 +550,10 @@ export function GuestManagementForm({ attendance, canModify }: GuestManagementFo
               {/* 変更警告 */}
               {hasChanges && (
                 <div className="flex items-start space-x-2 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                  <AlertCircle className="h-5 w-5 text-yellow-600 flex-shrink-0 mt-0.5" />
+                  <AlertCircle
+                    className="h-5 w-5 text-yellow-600 flex-shrink-0 mt-0.5"
+                    aria-hidden="true"
+                  />
                   <div className="text-sm text-yellow-800">
                     変更が保存されていません。「変更を保存」ボタンをクリックして保存してください。
                   </div>
@@ -575,7 +578,7 @@ export function GuestManagementForm({ attendance, canModify }: GuestManagementFo
                     </>
                   ) : (
                     <>
-                      <Save className="h-4 w-4 mr-2" />
+                      <Save className="h-4 w-4 mr-2" aria-hidden="true" />
                       変更を保存
                     </>
                   )}

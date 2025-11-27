@@ -46,6 +46,7 @@ export const FAQSection: React.FC = () => {
                   <span className="text-lg font-bold text-slate-800">Q. {item.q}</span>
                   <span className="transition group-open:rotate-180">
                     <svg
+                      aria-hidden="true"
                       fill="none"
                       height="24"
                       shapeRendering="geometricPrecision"

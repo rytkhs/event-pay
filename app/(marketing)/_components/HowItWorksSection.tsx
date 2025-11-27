@@ -15,12 +15,15 @@ export const HowItWorksSection: React.FC = () => {
 
         <StaggerContainer className="grid md:grid-cols-3 gap-8 relative">
           {/* Connecting Line (Desktop) */}
-          <div className="hidden md:block absolute top-12 left-0 w-full h-0.5 bg-slate-100 -z-10 transform scale-x-75"></div>
+          <div
+            className="hidden md:block absolute top-12 left-0 w-full h-0.5 bg-slate-100 -z-10 transform scale-x-75"
+            aria-hidden="true"
+          ></div>
 
           {/* Step 1 */}
           <StaggerItem className="flex flex-col items-center text-center">
             <div className="w-24 h-24 bg-white border-4 border-primary/20 rounded-full flex items-center justify-center mb-6 shadow-sm">
-              <CalendarPlus className="text-primary w-10 h-10" />
+              <CalendarPlus className="text-primary w-10 h-10" aria-hidden="true" />
             </div>
             <span className="text-primary font-bold mb-2 tracking-widest">STEP 01</span>
             <h3 className="text-xl font-bold text-slate-800 mb-3">イベント作成</h3>
@@ -32,7 +35,7 @@ export const HowItWorksSection: React.FC = () => {
           {/* Step 2 */}
           <StaggerItem className="flex flex-col items-center text-center">
             <div className="w-24 h-24 bg-white border-4 border-primary/20 rounded-full flex items-center justify-center mb-6 shadow-sm">
-              <Share2 className="text-primary w-10 h-10" />
+              <Share2 className="text-primary w-10 h-10" aria-hidden="true" />
             </div>
             <span className="text-primary font-bold mb-2 tracking-widest">STEP 02</span>
             <h3 className="text-xl font-bold text-slate-800 mb-3">リンクをシェア</h3>
@@ -44,7 +47,7 @@ export const HowItWorksSection: React.FC = () => {
           {/* Step 3 */}
           <StaggerItem className="flex flex-col items-center text-center">
             <div className="w-24 h-24 bg-white border-4 border-primary/20 rounded-full flex items-center justify-center mb-6 shadow-sm">
-              <PiggyBank className="text-primary w-10 h-10" />
+              <PiggyBank className="text-primary w-10 h-10" aria-hidden="true" />
             </div>
             <span className="text-primary font-bold mb-2 tracking-widest">STEP 03</span>
             <h3 className="text-xl font-bold text-slate-800 mb-3">あとは待つだけ</h3>

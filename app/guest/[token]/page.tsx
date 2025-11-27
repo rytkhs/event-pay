@@ -85,14 +85,10 @@ export default async function GuestPage({ params, searchParams }: GuestPageProps
         {/* メインコンテンツ */}
         <main
           className="max-w-4xl mx-auto px-3 sm:px-4 lg:px-6 py-4 sm:py-6 lg:py-8"
-          role="main"
           aria-labelledby="page-title"
         >
           {/* イベント ヘッダー（イベント名と開催日時） */}
-          <header
-            className="mb-6 sm:mb-8 rounded-lg border border-border/50 bg-gradient-to-br from-card to-card/50 shadow-sm p-5 sm:p-6"
-            aria-live="polite"
-          >
+          <header className="mb-6 sm:mb-8 rounded-lg border border-border/50 bg-gradient-to-br from-card to-card/50 shadow-sm p-5 sm:p-6">
             <h1
               id="page-title"
               className="text-xl sm:text-2xl font-bold tracking-tight mb-4 text-foreground"
@@ -100,7 +96,10 @@ export default async function GuestPage({ params, searchParams }: GuestPageProps
               {sanitizeForEventPay(attendance.event.title)}
             </h1>
             <div className="flex items-center gap-2.5 text-base sm:text-lg text-muted-foreground">
-              <Calendar className="h-5 w-5 sm:h-6 sm:w-6 flex-shrink-0 text-primary" />
+              <Calendar
+                className="h-5 w-5 sm:h-6 sm:w-6 flex-shrink-0 text-primary"
+                aria-hidden="true"
+              />
               <span className="font-medium">
                 {formatUtcToJstByType(attendance.event.date, "japanese")}
               </span>
@@ -118,7 +117,7 @@ export default async function GuestPage({ params, searchParams }: GuestPageProps
           {/* セキュリティ警告 */}
           <section aria-labelledby="security-warning-title" className="mt-6 sm:mt-8 mb-4 sm:mb-6">
             <Alert variant="warning" className="shadow-sm">
-              <AlertCircle className="h-4 w-4" />
+              <AlertCircle className="h-4 w-4" aria-hidden="true" />
               <AlertTitle id="security-warning-title">重要：セキュリティについて</AlertTitle>
               <AlertDescription className="mt-2">
                 <p className="leading-relaxed">このページのURLは他の人と共有しないでください。</p>
@@ -130,7 +129,7 @@ export default async function GuestPage({ params, searchParams }: GuestPageProps
           </section>
 
           {/* フッター情報 */}
-          <footer className="mt-8 sm:mt-12 text-center" role="contentinfo">
+          <section className="mt-8 sm:mt-12 text-center" aria-labelledby="guest-page-footer-info">
             <div className="text-xs text-muted-foreground leading-relaxed space-y-2 max-w-2xl mx-auto">
               <p>このページは参加者専用の管理ページです。</p>
               <p>ご不明点がある場合は、主催者にお問い合わせください。</p>
@@ -146,7 +145,7 @@ export default async function GuestPage({ params, searchParams }: GuestPageProps
                 </p>
               ) : null}
             </div>
-          </footer>
+          </section>
         </main>
       </div>
     );
