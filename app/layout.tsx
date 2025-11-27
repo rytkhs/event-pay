@@ -37,14 +37,7 @@ const notoSansJp = Noto_Sans_JP({
 
 // 環境に応じたベースURLを取得
 const getBaseUrl = () => {
-  if (process.env.NODE_ENV === "production") {
-    return (
-      process.env.NEXT_PUBLIC_SITE_URL ||
-      process.env.NEXT_PUBLIC_APP_URL ||
-      "https://minnano-shukin.com"
-    );
-  }
-  return "http://localhost:3000";
+  return process.env.NEXT_PUBLIC_APP_URL || "https://minnano-shukin.com";
 };
 
 export const metadata: Metadata = {

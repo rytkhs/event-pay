@@ -79,6 +79,7 @@ export async function requestAccountDeletionAction(formData: FormData): Promise<
         is_deleted: true,
         deleted_at: new Date().toISOString(),
         name: "退会ユーザー",
+        email: null,
         updated_at: new Date().toISOString(),
       })
       .eq("id", user.id);

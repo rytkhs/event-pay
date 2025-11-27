@@ -12,9 +12,8 @@ type Params = { organizer: string };
 
 export async function generateMetadata({ params: _params }: { params: Params }): Promise<Metadata> {
   return {
-    alternates: {
-      canonical: "./",
-    },
+    title: "特定商取引法に基づく表記",
+    robots: "noindex, nofollow",
   };
 }
 
