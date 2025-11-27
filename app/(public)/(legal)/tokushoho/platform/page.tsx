@@ -9,7 +9,7 @@ export async function generateMetadata(): Promise<Metadata> {
     title: "特定商取引法に基づく表記",
     description: "みんなの集金の特定商取引法に基づく表記です。",
     alternates: {
-      canonical: "./",
+      canonical: "/tokushoho/platform",
     },
   };
 }
@@ -20,7 +20,7 @@ export default async function Page() {
 
   return (
     <div>
-      <h2>{heading}</h2>
+      <h1 className="text-2xl font-bold">{heading}</h1>
       <div className="my-6" dangerouslySetInnerHTML={{ __html: html }} />
       {frontmatter.lastUpdated ? (
         <p className="text-sm text-muted-foreground">

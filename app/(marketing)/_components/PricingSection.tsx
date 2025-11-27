@@ -27,7 +27,7 @@ export const PricingSection: React.FC = () => {
                 <div className="space-y-4">
                   <div className="flex items-center gap-3">
                     <div className="bg-success/10 p-1 rounded-full">
-                      <Check size={16} className="text-success" />
+                      <Check size={16} className="text-success" aria-hidden="true" />
                     </div>
                     <span className="font-medium">
                       イベント作成数：<span className="font-bold">無制限</span>
@@ -35,33 +35,33 @@ export const PricingSection: React.FC = () => {
                   </div>
                   <div className="flex items-center gap-3">
                     <div className="bg-green-100 p-1 rounded-full">
-                      <Check size={16} className="text-green-600" />
+                      <Check size={16} className="text-green-600" aria-hidden="true" />
                     </div>
                     <span className="font-medium">招待リンクの発行</span>
                   </div>
                   <div className="flex items-center gap-3">
                     <div className="bg-green-100 p-1 rounded-full">
-                      <Check size={16} className="text-green-600" />
+                      <Check size={16} className="text-green-600" aria-hidden="true" />
                     </div>
                     <span className="font-medium">Stripe連携によるオンライン決済</span>
                   </div>
                   <div className="flex items-center gap-3">
                     <div className="bg-green-100 p-1 rounded-full">
-                      <Check size={16} className="text-green-600" />
+                      <Check size={16} className="text-green-600" aria-hidden="true" />
                     </div>
                     <span className="font-medium">自動リマインドメール</span>
                   </div>
                   <div className="flex items-center gap-3">
                     <div className="bg-green-100 p-1 rounded-full">
-                      <Check size={16} className="text-green-600" />
+                      <Check size={16} className="text-green-600" aria-hidden="true" />
                     </div>
                     <span className="font-medium">参加者リストのCSV出力</span>
                   </div>
                 </div>
               </div>
 
-              <div className="w-px h-32 bg-slate-200 hidden md:block"></div>
-              <div className="h-px w-full bg-slate-200 md:hidden"></div>
+              <div className="w-px h-32 bg-slate-200 hidden md:block" aria-hidden="true"></div>
+              <div className="h-px w-full bg-slate-200 md:hidden" aria-hidden="true"></div>
 
               <div className="flex-1 text-center md:text-left">
                 <div className="mb-8">
@@ -159,7 +159,7 @@ export const PricingSection: React.FC = () => {
                 </div>
 
                 {/* Divider for desktop */}
-                <div className="hidden lg:block h-8 w-px bg-slate-600"></div>
+                <div className="hidden lg:block h-8 w-px bg-slate-600" aria-hidden="true"></div>
 
                 {/* Wallets & Stripe */}
                 <div className="flex items-center gap-5">
@@ -177,7 +177,7 @@ export const PricingSection: React.FC = () => {
                     height={32}
                     className="h-7 w-auto"
                   />
-                  <div className="h-6 w-px bg-slate-600 mx-1"></div>
+                  <div className="h-6 w-px bg-slate-600 mx-1" aria-hidden="true"></div>
                   <Image
                     src="/images/powered-by-stripe.svg"
                     alt="Powered by Stripe"

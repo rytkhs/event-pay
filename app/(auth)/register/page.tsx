@@ -38,7 +38,7 @@ function RegisterForm() {
 
   return (
     <>
-      <main className="h-auto flex items-center justify-center bg-muted/30 py-10 px-4 sm:px-6 lg:px-8">
+      <div className="w-full flex justify-center py-10 px-4 sm:px-6 lg:px-8">
         <div className="w-full max-w-md space-y-8">
           <Card>
             <CardHeader className="text-center">
@@ -204,14 +204,7 @@ function RegisterForm() {
             </CardContent>
           </Card>
         </div>
-      </main>
-
-      <footer
-        className="text-center text-xs sm:text-sm text-muted-foreground py-1"
-        role="contentinfo"
-      >
-        <p>みんなの集金 - 集金ストレスをゼロに</p>
-      </footer>
+      </div>
     </>
   );
 }

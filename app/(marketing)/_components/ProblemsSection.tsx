@@ -47,7 +47,7 @@ export const ProblemsSection: React.FC = () => {
               className="bg-slate-50 p-8 rounded-2xl border border-slate-100 transition-shadow"
             >
               <div className="w-14 h-14 bg-destructive/10 rounded-full flex items-center justify-center mb-6">
-                <item.icon className="text-destructive w-7 h-7" />
+                <item.icon className="text-destructive w-7 h-7" aria-hidden="true" />
               </div>
               <h3 className="text-xl font-bold text-slate-800 mb-3">{item.title}</h3>
               <p className="text-slate-600 leading-relaxed">{item.desc}</p>

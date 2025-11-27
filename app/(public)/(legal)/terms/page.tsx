@@ -10,7 +10,7 @@ export async function generateMetadata(): Promise<Metadata> {
     description:
       "みんなの集金の利用規約です。本サービスのご利用にあたって同意いただく事項を定めています。",
     alternates: {
-      canonical: "./",
+      canonical: "/terms",
     },
   };
 }
@@ -19,7 +19,7 @@ export default async function Page() {
   const { html, frontmatter } = await renderMarkdownFromFile("public/legal/terms.md");
   return (
     <div>
-      <h2>{frontmatter.title ?? "利用規約"}</h2>
+      <h1 className="text-2xl font-bold">{frontmatter.title ?? "利用規約"}</h1>
       <div className="my-6" dangerouslySetInnerHTML={{ __html: html }} />
       {frontmatter.lastUpdated ? (
         <p className="text-sm text-muted-foreground">

@@ -26,10 +26,10 @@ export const metadata: Metadata = {
  */
 export default function AuthLayout({ children }: { children: ReactNode }): JSX.Element {
   return (
-    <>
+    <div className="min-h-screen flex flex-col">
       <GlobalHeader variant="minimal" />
-      <main>{children}</main>
+      <main className="flex-grow flex flex-col justify-center bg-gray-50">{children}</main>
       <GlobalFooter />
-    </>
+    </div>
   );
 }

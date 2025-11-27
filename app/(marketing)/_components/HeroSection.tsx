@@ -14,8 +14,14 @@ export const HeroSection: React.FC = () => {
   return (
     <section className="relative pt-24 pb-20 md:pt-28 md:pb-32 overflow-hidden bg-gradient-to-br from-primary/5 via-white to-secondary/5">
       {/* Decorative Background Shapes */}
-      <div className="absolute top-0 right-0 -translate-y-12 translate-x-1/3 w-96 h-96 bg-primary/20 rounded-full blur-3xl"></div>
-      <div className="absolute bottom-0 left-0 translate-y-1/4 -translate-x-1/4 w-80 h-80 bg-secondary/20 rounded-full blur-3xl"></div>
+      <div
+        className="absolute top-0 right-0 -translate-y-12 translate-x-1/3 w-96 h-96 bg-primary/20 rounded-full blur-3xl"
+        aria-hidden="true"
+      ></div>
+      <div
+        className="absolute bottom-0 left-0 translate-y-1/4 -translate-x-1/4 w-80 h-80 bg-secondary/20 rounded-full blur-3xl"
+        aria-hidden="true"
+      ></div>
 
       <div className="container mx-auto px-4 md:px-6 relative z-10">
         <div className="flex flex-col md:flex-row items-center gap-12 lg:gap-20">
@@ -23,7 +29,7 @@ export const HeroSection: React.FC = () => {
           <div className="flex-1 text-center md:text-left">
             <FadeIn delay={0.1}>
               <div className="inline-flex items-center gap-2 bg-primary/10 text-primary px-4 py-1.5 rounded-full text-sm font-bold mb-6">
-                <span className="relative flex h-3 w-3">
+                <span className="relative flex h-3 w-3" aria-hidden="true">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary/40 opacity-75"></span>
                   <span className="relative inline-flex rounded-full h-3 w-3 bg-primary"></span>
                 </span>
@@ -56,7 +62,7 @@ export const HeroSection: React.FC = () => {
                   className="w-full sm:w-auto bg-primary hover:bg-primary/90 text-primary-foreground text-lg font-bold px-8 py-4 rounded-full shadow-xl hover:shadow-primary/20 transition-all flex items-center justify-center gap-2"
                 >
                   今すぐ無料でイベントを作る
-                  <ArrowRight size={20} />
+                  <ArrowRight size={20} aria-hidden="true" />
                 </Link>
               </div>
               <p className="mt-4 text-slate-500 text-sm mb-6">
@@ -111,7 +117,7 @@ export const HeroSection: React.FC = () => {
                 </div>
 
                 {/* Divider for desktop */}
-                <div className="hidden lg:block h-8 w-px bg-slate-200"></div>
+                <div className="hidden lg:block h-8 w-px bg-slate-200" aria-hidden="true"></div>
 
                 {/* Wallets & Stripe */}
                 <div className="flex items-center gap-5">
@@ -129,7 +135,7 @@ export const HeroSection: React.FC = () => {
                     height={32}
                     className="h-7 w-auto"
                   />
-                  <div className="h-6 w-px bg-slate-300 mx-1"></div>
+                  <div className="h-6 w-px bg-slate-300 mx-1" aria-hidden="true"></div>
                   <Image
                     src="/images/powered-by-stripe.svg"
                     alt="Powered by Stripe"
@@ -146,7 +152,10 @@ export const HeroSection: React.FC = () => {
           <div className="flex-1 w-full max-w-lg md:max-w-none flex justify-center relative">
             <FadeIn direction="up" delay={0.5} className="relative z-10">
               {/* Phone Mockup - CSS Only */}
-              <div className="relative w-72 h-[550px] bg-slate-900 rounded-[3rem] border-8 border-slate-900 shadow-2xl overflow-hidden">
+              <div
+                className="relative w-72 h-[550px] bg-slate-900 rounded-[3rem] border-8 border-slate-900 shadow-2xl overflow-hidden"
+                aria-hidden="true"
+              >
                 {/* Notch */}
                 <div className="absolute top-0 left-1/2 -translate-x-1/2 h-6 w-32 bg-slate-900 rounded-b-xl z-20"></div>
 
@@ -165,7 +174,7 @@ export const HeroSection: React.FC = () => {
                   </div>
 
                   {/* Attendance Form UI Mock */}
-                  <div className="p-4 flex-1 overflow-y-auto bg-slate-50">
+                  <div className="p-4 flex-1 overflow-y-auto bg-slate-50" aria-hidden="true">
                     <div className="bg-white p-4 rounded-xl shadow-sm mb-4">
                       <p className="font-bold text-slate-700 mb-3">参加ステータス</p>
                       <div className="flex gap-2 mb-4">
@@ -194,9 +203,9 @@ export const HeroSection: React.FC = () => {
                         </div>
                       </div>
 
-                      <button className="w-full mt-6 bg-primary text-primary-foreground font-bold py-3 rounded-lg text-sm shadow-lg">
+                      <div className="w-full mt-6 bg-primary text-primary-foreground font-bold py-3 rounded-lg text-sm shadow-lg text-center">
                         参加を確定する
-                      </button>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -216,7 +225,7 @@ export const HeroSection: React.FC = () => {
               >
                 <div className="flex items-center gap-3">
                   <div className="bg-success/10 p-2 rounded-full">
-                    <CheckCircle2 className="text-success w-6 h-6" />
+                    <CheckCircle2 className="text-success w-6 h-6" aria-hidden="true" />
                   </div>
                   <div>
                     <p className="text-xs text-slate-500 font-bold uppercase">集金完了!</p>

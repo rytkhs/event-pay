@@ -122,9 +122,9 @@ function VerifyOtpContent() {
 
   if (success) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="w-full flex justify-center py-10 px-4 sm:px-6 lg:px-8">
         <div className="w-full max-w-md bg-white p-8 rounded-lg shadow-md space-y-6">
-          <div className="text-center">
+          <div className="text-center" role="status" aria-live="polite">
             <div className="mx-auto w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mb-4">
               <svg
                 className="w-6 h-6 text-green-600"
@@ -150,10 +150,10 @@ function VerifyOtpContent() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
+    <div className="w-full flex justify-center py-10 px-4 sm:px-6 lg:px-8">
       <div className="w-full max-w-md bg-white p-8 rounded-lg shadow-md space-y-6">
         {/* ヘッダー */}
-        <header className="text-center">
+        <div className="text-center">
           <h1 className="text-2xl font-bold text-gray-900">
             {type === "recovery" ? "パスワードリセット確認コード" : "確認コードを入力"}
           </h1>
@@ -163,10 +163,10 @@ function VerifyOtpContent() {
               ? "に送信されたパスワードリセット用の確認コードを入力してください"
               : "に送信された6桁のコードを入力してください"}
           </p>
-        </header>
+        </div>
 
         {/* フォーム */}
-        <main>
+        <div>
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
               <label htmlFor="otp" className="sr-only">
@@ -261,10 +261,10 @@ function VerifyOtpContent() {
                   : "コードを再送信"}
             </button>
           </div>
-        </main>
+        </div>
 
         {/* フッター */}
-        <footer className="text-center">
+        <div className="text-center">
           <div className="text-xs text-gray-400">
             <Link
               href={type === "recovery" ? "/reset-password" : "/login"}
@@ -273,7 +273,7 @@ function VerifyOtpContent() {
               {type === "recovery" ? "パスワードリセットに戻る" : "ログインページに戻る"}
             </Link>
           </div>
-        </footer>
+        </div>
       </div>
     </div>
   );
@@ -283,7 +283,7 @@ export default function VerifyOtpPage() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="w-full flex justify-center py-10 px-4 sm:px-6 lg:px-8">
           <div className="w-full max-w-md bg-white p-8 rounded-lg shadow-md space-y-6">
             <div className="text-center">
               <div className="mx-auto w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mb-4">

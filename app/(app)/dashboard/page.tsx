@@ -109,7 +109,7 @@ export default async function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-muted/30">
-      <main className="max-w-7xl mx-auto py-4 sm:py-6 lg:py-8 px-3 sm:px-4 lg:px-8">
+      <div className="max-w-7xl mx-auto py-4 sm:py-6 lg:py-8 px-3 sm:px-4 lg:px-8">
         {/* ダッシュボードヘッダー */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6 sm:mb-8">
           <div>
@@ -289,7 +289,7 @@ export default async function DashboardPage() {
             </Link>
           </Button>
         </div>
-      </main>
+      </div>
     </div>
   );
 }

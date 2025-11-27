@@ -191,11 +191,7 @@ export async function generateMetadata({ params }: InvitePageProps): Promise<Met
     if (!params?.token) {
       return {
         title: "イベント参加申し込み",
-        description: "イベントへの参加申し込み",
-        robots: "noindex, nofollow", // 招待ページは検索エンジンにインデックスされないようにする
-        alternates: {
-          canonical: "./",
-        },
+        robots: "noindex, nofollow",
         openGraph: {
           title: "イベント参加申し込み",
           description: "イベントへの参加申し込み",
@@ -206,6 +202,7 @@ export async function generateMetadata({ params }: InvitePageProps): Promise<Met
           title: "イベント参加申し込み",
           description: "イベントへの参加申し込み",
         },
+        referrer: "no-referrer",
       };
     }
 
@@ -214,11 +211,7 @@ export async function generateMetadata({ params }: InvitePageProps): Promise<Met
     if (!validationResult.isValid || !validationResult.event) {
       return {
         title: "無効な招待リンク",
-        description: "招待リンクが無効または期限切れです",
-        robots: "noindex, nofollow", // 招待ページは検索エンジンにインデックスされないようにする
-        alternates: {
-          canonical: "./",
-        },
+        robots: "noindex, nofollow",
         openGraph: {
           title: "無効な招待リンク",
           description: "招待リンクが無効または期限切れです",
@@ -229,6 +222,7 @@ export async function generateMetadata({ params }: InvitePageProps): Promise<Met
           title: "無効な招待リンク",
           description: "招待リンクが無効または期限切れです",
         },
+        referrer: "no-referrer",
       };
     }
 
@@ -240,10 +234,7 @@ export async function generateMetadata({ params }: InvitePageProps): Promise<Met
     return {
       title: `${event.title} - 参加申し込み`,
       description: sanitizeEventDescription(event.description || `${event.title}への参加申し込み`),
-      robots: "noindex, nofollow", // 招待ページは検索エンジンにインデックスされないようにする
-      alternates: {
-        canonical: "./",
-      },
+      robots: "noindex, nofollow",
       openGraph: {
         title: `${event.title} - 参加申し込み`,
         description: sanitizeEventDescription(
@@ -267,15 +258,12 @@ export async function generateMetadata({ params }: InvitePageProps): Promise<Met
         ),
         images: [ogImageUrl],
       },
+      referrer: "no-referrer",
     };
   } catch {
     return {
       title: "イベント参加申し込み",
-      description: "イベントへの参加申し込み",
-      robots: "noindex, nofollow", // 招待ページは検索エンジンにインデックスされないようにする
-      alternates: {
-        canonical: "./",
-      },
+      robots: "noindex, nofollow",
       openGraph: {
         title: "イベント参加申し込み",
         description: "イベントへの参加申し込み",
@@ -286,6 +274,7 @@ export async function generateMetadata({ params }: InvitePageProps): Promise<Met
         title: "イベント参加申し込み",
         description: "イベントへの参加申し込み",
       },
+      referrer: "no-referrer",
     };
   }
 }

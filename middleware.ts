@@ -31,11 +31,6 @@ function isPublicPath(pathname: string): boolean {
   // 明示的な公開ページ。その他はデフォルトで保護扱い
   const publicExact = [
     "/",
-    "/favicon.ico",
-    "/icon.svg",
-    "/apple-icon",
-    "/apple-icon.png",
-    "/safari-pinned-tab.svg",
     "/login",
     "/register",
     "/reset-password",
@@ -247,8 +242,6 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    // APIや静的アセット等は対象外（CSPはHTMLレスポンスにのみ付与）
-    // webhooks はメンテナンスモードでも常にアクセス可能
-    "/((?!api/webhooks|_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml|manifest.webmanifest|images).*)",
+    "/((?!api/webhooks|api/csp-report|_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml|manifest.webmanifest|images|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };

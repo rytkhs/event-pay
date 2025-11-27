@@ -17,7 +17,7 @@ export function GlobalFooter({ className }: { className?: string }): JSX.Element
   const containerStyles = cn("container mx-auto px-4 sm:px-6 lg:px-8", "max-w-7xl");
 
   return (
-    <footer className={footerStyles} role="contentinfo" aria-label="サイトフッター">
+    <footer className={footerStyles} aria-label="サイトフッター">
       <div className={containerStyles}>
         {/* フッターコンテンツ */}
         {(displaySettings.showBranding ||

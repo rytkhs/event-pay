@@ -99,10 +99,10 @@ function VerifyEmailContent() {
   const emailProvider = getEmailProvider(email);
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
+    <div className="w-full flex justify-center py-10 px-4 sm:px-6 lg:px-8">
       <div className="w-full max-w-md bg-white p-8 rounded-lg shadow-md space-y-6">
         {/* ヘッダー */}
-        <header className="text-center">
+        <div className="text-center">
           <div className="mx-auto w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mb-4">
             <svg
               className="w-8 h-8 text-blue-600"
@@ -122,10 +122,10 @@ function VerifyEmailContent() {
           {/* <p className="text-gray-600 text-sm">
             <span className="font-mono text-sm">{email}</span> に確認メールを送信しました
           </p> */}
-        </header>
+        </div>
 
         {/* メイン内容 */}
-        <main className="space-y-6">
+        <div className="space-y-6">
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
             <h2 className="font-semibold text-blue-900 mb-2">次の手順</h2>
             <ol className="text-sm text-blue-800 space-y-1 list-decimal list-inside">
@@ -213,10 +213,10 @@ function VerifyEmailContent() {
               </button>
             </div>
           </div>
-        </main>
+        </div>
 
         {/* フッター */}
-        <footer className="text-center pt-6 border-t">
+        <div className="text-center pt-6 border-t">
           <div className="text-xs text-gray-400 space-y-2">
             <div>
               <Link
@@ -232,7 +232,7 @@ function VerifyEmailContent() {
               </Link>
             </div>
           </div>
-        </footer>
+        </div>
       </div>
     </div>
   );
@@ -242,7 +242,7 @@ export default function VerifyEmailPage() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="w-full flex justify-center py-10 px-4 sm:px-6 lg:px-8">
           <div className="w-full max-w-md bg-white p-8 rounded-lg shadow-md space-y-6">
             <div className="text-center">
               <div className="mx-auto w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mb-4">

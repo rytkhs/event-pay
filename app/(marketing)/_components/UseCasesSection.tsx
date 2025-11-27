@@ -54,7 +54,7 @@ export const UseCasesSection: React.FC = () => {
               <div
                 className={`w-12 h-12 rounded-lg ${c.color} flex items-center justify-center mb-4`}
               >
-                <c.icon size={24} />
+                <c.icon size={24} aria-hidden="true" />
               </div>
               <h3 className="font-bold text-slate-800 mb-2">{c.title}</h3>
               <p className="text-sm text-slate-500 leading-relaxed">{c.desc}</p>
