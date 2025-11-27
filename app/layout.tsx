@@ -46,13 +46,12 @@ export const metadata: Metadata = {
     default: "みんなの集金",
     template: "%s | みんなの集金",
   },
-  description: "参加の確認から集金まで、リンクの共有だけで完了できる新しいサービスです。",
-  alternates: {
-    canonical: "./",
-  },
+  description:
+    "参加の確認から集金まで、招待リンクをLINEで共有するだけで完了できるイベント管理 & 集金アプリです。いつもの集金を、キャッシュレスにしませんか?",
   openGraph: {
     title: "みんなの集金 - 集金ストレスをゼロに",
-    description: "参加の確認から集金まで、リンクの共有だけで完了できる新しいサービスです。",
+    description:
+      "参加の確認から集金まで、招待リンクをLINEで共有するだけで完了できるイベント管理 & 集金アプリです。いつもの集金を、キャッシュレスにしませんか?",
     type: "website",
     locale: "ja_JP",
     images: [
@@ -67,7 +66,8 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: "みんなの集金 - 集金ストレスをゼロに",
-    description: "参加の確認から集金まで、リンクの共有だけで完了できる新しいサービスです。",
+    description:
+      "参加の確認から集金まで、招待リンクをLINEで共有するだけで完了できるイベント管理 & 集金アプリです。いつもの集金を、キャッシュレスにしませんか?",
     images: ["/og/homepage.png"],
     site: "@minnano_shukin",
     creator: "@minnano_shukin",

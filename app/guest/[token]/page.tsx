@@ -36,11 +36,8 @@ export async function generateMetadata({ params }: GuestPageProps): Promise<Meta
   if (!validation.isValid || !validation.attendance) {
     return {
       title: "ゲストページ",
-      description: "イベント参加状況の管理ページ",
       robots: "noindex, nofollow",
-      alternates: {
-        canonical: "./",
-      },
+      referrer: "no-referrer",
     };
   }
 
@@ -48,11 +45,8 @@ export async function generateMetadata({ params }: GuestPageProps): Promise<Meta
 
   return {
     title: `${eventTitle} - ゲストページ`,
-    description: `${eventTitle}の参加状況を確認・変更できます`,
-    robots: "noindex, nofollow", // ゲストページは検索エンジンにインデックスされないようにする
-    alternates: {
-      canonical: "./",
-    },
+    robots: "noindex, nofollow",
+    referrer: "no-referrer",
   };
 }
 

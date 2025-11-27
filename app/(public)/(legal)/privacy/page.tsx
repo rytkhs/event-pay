@@ -10,7 +10,7 @@ export async function generateMetadata(): Promise<Metadata> {
     description:
       "みんなの集金のプライバシーポリシーです。個人情報の取り扱いについて説明しています。",
     alternates: {
-      canonical: "./",
+      canonical: "/privacy",
     },
   };
 }
@@ -19,7 +19,7 @@ export default async function Page() {
   const { html, frontmatter } = await renderMarkdownFromFile("public/legal/privacy.md");
   return (
     <div>
-      <h2>{frontmatter.title ?? "プライバシーポリシー"}</h2>
+      <h1 className="text-2xl font-bold">{frontmatter.title ?? "プライバシーポリシー"}</h1>
       <div className="my-6" dangerouslySetInnerHTML={{ __html: html }} />
       {frontmatter.lastUpdated ? (
         <p className="text-sm text-muted-foreground">
