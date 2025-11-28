@@ -87,31 +87,31 @@ export const HeroSection: React.FC = () => {
                     className="h-7 w-auto"
                   />
                   <Image
-                    src="/images/cards/jcb.gif"
+                    src="/images/cards/jcb.webp"
                     alt="JCB"
-                    width={48}
-                    height={32}
+                    width={73}
+                    height={56}
                     className="h-7 w-auto"
                   />
                   <Image
-                    src="/images/cards/amex.png"
+                    src="/images/cards/amex.webp"
                     alt="Amex"
-                    width={48}
-                    height={32}
+                    width={56}
+                    height={56}
                     className="h-7 w-auto"
                   />
                   <Image
-                    src="/images/cards/diners.gif"
+                    src="/images/cards/diners.webp"
                     alt="Diners"
-                    width={48}
-                    height={32}
+                    width={76}
+                    height={56}
                     className="h-7 w-auto"
                   />
                   <Image
-                    src="/images/cards/discover.png"
+                    src="/images/cards/discover.webp"
                     alt="Discover"
-                    width={48}
-                    height={32}
+                    width={88}
+                    height={56}
                     className="h-7 w-auto"
                   />
                 </div>
@@ -129,10 +129,10 @@ export const HeroSection: React.FC = () => {
                     className="h-7 w-auto"
                   />
                   <Image
-                    src="/images/cards/google-pay.png"
+                    src="/images/cards/google-pay.webp"
                     alt="Google Pay"
-                    width={56}
-                    height={32}
+                    width={105}
+                    height={56}
                     className="h-7 w-auto"
                   />
                   <div className="h-6 w-px bg-slate-300 mx-1" aria-hidden="true"></div>

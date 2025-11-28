@@ -1,5 +1,4 @@
 import { Noto_Sans_JP } from "next/font/google";
-import localFont from "next/font/local";
 import { headers } from "next/headers";
 
 import { GoogleAnalytics } from "@next/third-parties/google";
@@ -9,23 +8,16 @@ import "./globals.css";
 
 import { getGA4Config } from "@core/analytics/config";
 import { ToastProvider } from "@core/contexts/toast-context";
-import { generateOrganizationSchema, generateWebSiteSchema } from "@core/seo/jsonld-schemas";
+import {
+  generateOrganizationSchema,
+  generateWebSiteSchema,
+  generateSoftwareApplicationSchema,
+} from "@core/seo/jsonld-schemas";
 
 import { JsonLd } from "@components/seo/JsonLd";
 
 import { Toaster } from "@/components/ui/toast";
 import { Tooltip as TooltipProvider } from "@/components/ui/tooltip";
-
-const geistSans = localFont({
-  src: "./fonts/GeistVF.woff",
-  variable: "--font-geist-sans",
-  weight: "100 900",
-});
-const geistMono = localFont({
-  src: "./fonts/GeistMonoVF.woff",
-  variable: "--font-geist-mono",
-  weight: "100 900",
-});
 
 // Noto Sans JPの可変フォント最適化
 // weight配列を指定しないことで、可変フォントの全ウェイト範囲を単一ファイルでカバー
@@ -49,7 +41,7 @@ export const metadata: Metadata = {
   description:
     "参加の確認から集金まで、招待リンクをLINEで共有するだけで完了できるイベント管理 & 集金アプリです。いつもの集金を、キャッシュレスにしませんか?",
   openGraph: {
-    title: "みんなの集金 - 集金ストレスをゼロに",
+    title: "みんなの集金 - 集金ストレスをゼロに。",
     description:
       "参加の確認から集金まで、招待リンクをLINEで共有するだけで完了できるイベント管理 & 集金アプリです。いつもの集金を、キャッシュレスにしませんか?",
     type: "website",
@@ -59,13 +51,13 @@ export const metadata: Metadata = {
         url: "/og/homepage.png",
         width: 1200,
         height: 630,
-        alt: "みんなの集金 - 集金ストレスをゼロに",
+        alt: "みんなの集金 - 集金ストレスをゼロに。",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "みんなの集金 - 集金ストレスをゼロに",
+    title: "みんなの集金 - 集金ストレスをゼロに。",
     description:
       "参加の確認から集金まで、招待リンクをLINEで共有するだけで完了できるイベント管理 & 集金アプリです。いつもの集金を、キャッシュレスにしませんか?",
     images: ["/og/homepage.png"],
@@ -93,14 +85,15 @@ export default function RootLayout({
   // 構造化データ（JSON-LD）を生成
   const organizationSchema = generateOrganizationSchema();
   const webSiteSchema = generateWebSiteSchema();
+  const softwareApplicationSchema = generateSoftwareApplicationSchema();
 
   return (
     <html lang="ja" suppressHydrationWarning={true}>
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} ${notoSansJp.className} antialiased`}
-        suppressHydrationWarning={true}
-      >
-        <JsonLd data={[organizationSchema, webSiteSchema]} nonce={nonce} />
+      <body className={`${notoSansJp.className} antialiased`} suppressHydrationWarning={true}>
+        <JsonLd
+          data={[organizationSchema, webSiteSchema, softwareApplicationSchema]}
+          nonce={nonce}
+        />
         <TooltipProvider>
           <ToastProvider ToasterComponent={Toaster}>{children}</ToastProvider>
         </TooltipProvider>
