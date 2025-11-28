@@ -8,7 +8,11 @@ import "./globals.css";
 
 import { getGA4Config } from "@core/analytics/config";
 import { ToastProvider } from "@core/contexts/toast-context";
-import { generateOrganizationSchema, generateWebSiteSchema } from "@core/seo/jsonld-schemas";
+import {
+  generateOrganizationSchema,
+  generateWebSiteSchema,
+  generateSoftwareApplicationSchema,
+} from "@core/seo/jsonld-schemas";
 
 import { JsonLd } from "@components/seo/JsonLd";
 
@@ -81,11 +85,15 @@ export default function RootLayout({
   // 構造化データ（JSON-LD）を生成
   const organizationSchema = generateOrganizationSchema();
   const webSiteSchema = generateWebSiteSchema();
+  const softwareApplicationSchema = generateSoftwareApplicationSchema();
 
   return (
     <html lang="ja" suppressHydrationWarning={true}>
       <body className={`${notoSansJp.className} antialiased`} suppressHydrationWarning={true}>
-        <JsonLd data={[organizationSchema, webSiteSchema]} nonce={nonce} />
+        <JsonLd
+          data={[organizationSchema, webSiteSchema, softwareApplicationSchema]}
+          nonce={nonce}
+        />
         <TooltipProvider>
           <ToastProvider ToasterComponent={Toaster}>{children}</ToastProvider>
         </TooltipProvider>
