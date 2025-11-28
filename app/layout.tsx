@@ -49,7 +49,7 @@ export const metadata: Metadata = {
   description:
     "参加の確認から集金まで、招待リンクをLINEで共有するだけで完了できるイベント管理 & 集金アプリです。いつもの集金を、キャッシュレスにしませんか?",
   openGraph: {
-    title: "みんなの集金 - 集金ストレスをゼロに",
+    title: "みんなの集金 - 集金ストレスをゼロに。",
     description:
       "参加の確認から集金まで、招待リンクをLINEで共有するだけで完了できるイベント管理 & 集金アプリです。いつもの集金を、キャッシュレスにしませんか?",
     type: "website",
@@ -59,13 +59,13 @@ export const metadata: Metadata = {
         url: "/og/homepage.png",
         width: 1200,
         height: 630,
-        alt: "みんなの集金 - 集金ストレスをゼロに",
+        alt: "みんなの集金 - 集金ストレスをゼロに。",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "みんなの集金 - 集金ストレスをゼロに",
+    title: "みんなの集金 - 集金ストレスをゼロに。",
     description:
       "参加の確認から集金まで、招待リンクをLINEで共有するだけで完了できるイベント管理 & 集金アプリです。いつもの集金を、キャッシュレスにしませんか?",
     images: ["/og/homepage.png"],
