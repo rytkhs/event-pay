@@ -1,9 +1,8 @@
-"use client";
-
 import React from "react";
 
+import Link from "next/link";
+
 import { ArrowRight } from "lucide-react";
-import { m } from "motion/react";
 
 import { FadeIn } from "./ui/FadeIn";
 
@@ -22,15 +21,13 @@ export const CTASection: React.FC = () => {
             <p className="text-primary-foreground/100 mb-8 text-lg">
               まずは次回のイベントで、使い心地を試してみてください。
             </p>
-            <m.a
+            <Link
               href="/register"
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              className="inline-flex items-center gap-2 bg-white text-primary font-bold px-8 py-4 rounded-full hover:bg-gray-100 transition-colors shadow-lg"
+              className="inline-flex items-center gap-2 bg-white text-primary font-bold px-8 py-4 rounded-full hover:bg-gray-100 transition-all duration-200 shadow-lg hover:scale-105 active:scale-95"
             >
               無料でアカウントを作成する
               <ArrowRight size={20} aria-hidden="true" />
-            </m.a>
+            </Link>
           </div>
         </FadeIn>
       </div>
