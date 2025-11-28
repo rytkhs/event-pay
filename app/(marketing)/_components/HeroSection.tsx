@@ -66,7 +66,7 @@ export const HeroSection: React.FC = () => {
                 </Link>
               </div>
               <p className="mt-4 text-slate-500 text-sm mb-6">
-                初期費用・月額費 0円 / 現金集金なら完全無料
+                初期費用・月額料金 0円 / 現金集金なら完全無料
               </p>
 
               <div className="flex flex-wrap justify-center md:justify-start items-center gap-x-6 gap-y-4">
