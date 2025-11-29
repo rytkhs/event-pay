@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 
 export default function LegalLayout({ children }: { children: ReactNode }) {
   return (
-    <div className="min-h-screen mx-auto max-w-3xl px-4 py-16 sm:py-24">
+    <div className="min-h-screen mx-auto max-w-3xl px-4 pt-24 pb-16 sm:py-24">
       <article
         className="
         prose
