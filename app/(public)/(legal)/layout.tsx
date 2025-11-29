@@ -11,8 +11,11 @@ export default function LegalLayout({ children }: { children: ReactNode }) {
         dark:prose-invert
         prose-p:leading-tight
         prose-p:my-2
-        prose-h4:leading-tight
-        prose-h4:mt-4 mb-1
+        prose-h2:text-base
+        prose-h2:font-semibold
+        prose-h2:leading-tight
+        prose-h2:mt-4
+        prose-h2:mb-2
         prose-li:leading-tight
         prose-li:my-1"
       >
