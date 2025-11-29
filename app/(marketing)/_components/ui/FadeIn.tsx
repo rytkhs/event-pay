@@ -1,8 +1,9 @@
 "use client";
 
-import React, { useRef } from "react";
+import React from "react";
 
-import { m, useInView } from "motion/react";
+import { cn } from "@/core/utils";
+import { useInView } from "@/hooks/use-in-view";
 
 type Direction = "up" | "down" | "left" | "right" | "none";
 
@@ -23,52 +24,38 @@ export const FadeIn: React.FC<FadeInProps> = ({
   className = "",
   once = true,
 }) => {
-  const ref = useRef(null);
-  const isInView = useInView(ref, { once, margin: "0px 0px -50px 0px" });
+  const { ref, isInView } = useInView({ once, rootMargin: "0px 0px -50px 0px" });
 
-  const getInitialProps = () => {
+  const getTransformClass = () => {
     switch (direction) {
       case "up":
-        return { opacity: 0, y: 20 };
+        return "translate-y-8";
       case "down":
-        return { opacity: 0, y: -20 };
+        return "-translate-y-8";
       case "left":
-        return { opacity: 0, x: 20 };
+        return "translate-x-8";
       case "right":
-        return { opacity: 0, x: -20 };
+        return "-translate-x-8";
       case "none":
       default:
-        return { opacity: 0 };
-    }
-  };
-
-  const getAnimateProps = () => {
-    switch (direction) {
-      case "up":
-      case "down":
-        return { opacity: 1, y: 0 };
-      case "left":
-      case "right":
-        return { opacity: 1, x: 0 };
-      case "none":
-      default:
-        return { opacity: 1 };
+        return "";
     }
   };
 
   return (
-    <m.div
+    <div
       ref={ref}
-      initial={getInitialProps()}
-      animate={isInView ? getAnimateProps() : getInitialProps()}
-      transition={{
-        duration,
-        delay,
-        ease: "easeOut",
+      className={cn(
+        "transition-all ease-out",
+        isInView ? "opacity-100 translate-x-0 translate-y-0" : `opacity-0 ${getTransformClass()}`,
+        className
+      )}
+      style={{
+        transitionDuration: `${duration}s`,
+        transitionDelay: `${delay}s`,
       }}
-      className={className}
     >
       {children}
-    </m.div>
+    </div>
   );
 };

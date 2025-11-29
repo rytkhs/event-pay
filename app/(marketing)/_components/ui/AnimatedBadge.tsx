@@ -1,9 +1,10 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useState } from "react";
 
 import { CheckCircle2 } from "lucide-react";
-import { m } from "motion/react";
+
+import { cn } from "@/core/utils";
 
 interface AnimatedBadgeProps {
   className?: string;
@@ -13,12 +14,22 @@ interface AnimatedBadgeProps {
  * Floating animated badge showing collection completion status
  */
 export const AnimatedBadge: React.FC<AnimatedBadgeProps> = ({ className }) => {
+  const [isVisible, setIsVisible] = useState(false);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsVisible(true);
+    }, 800);
+    return () => clearTimeout(timer);
+  }, []);
+
   return (
-    <m.div
-      initial={{ opacity: 0, scale: 0.8, y: 20 }}
-      animate={{ opacity: 1, scale: 1, y: 0 }}
-      transition={{ delay: 0.8, duration: 0.5 }}
-      className={className}
+    <div
+      className={cn(
+        "transition-all duration-500 ease-out",
+        isVisible ? "opacity-100 scale-100 translate-y-0" : "opacity-0 scale-90 translate-y-4",
+        className
+      )}
     >
       <div
         className="bg-white p-4 rounded-xl shadow-xl border border-slate-100 animate-bounce"
@@ -34,6 +45,6 @@ export const AnimatedBadge: React.FC<AnimatedBadgeProps> = ({ className }) => {
           </div>
         </div>
       </div>
-    </m.div>
+    </div>
   );
 };

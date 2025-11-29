@@ -1,8 +1,9 @@
 "use client";
 
-import React, { useRef } from "react";
+import React, { Children, cloneElement, isValidElement } from "react";
 
-import { m, useInView, Variants } from "motion/react";
+import { cn } from "@/core/utils";
+import { useInView } from "@/hooks/use-in-view";
 
 interface StaggerContainerProps {
   children: React.ReactNode;
@@ -19,52 +20,48 @@ export const StaggerContainer: React.FC<StaggerContainerProps> = ({
   className = "",
   once = true,
 }) => {
-  const ref = useRef(null);
-  const isInView = useInView(ref, { once, margin: "0px 0px -100px 0px" });
-
-  const containerVariants: Variants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: {
-        delayChildren: delay,
-        staggerChildren: staggerDelay,
-      },
-    },
-  };
+  const { ref, isInView } = useInView({ once, rootMargin: "0px 0px -100px 0px" });
 
   return (
-    <m.div
-      ref={ref}
-      variants={containerVariants}
-      initial="hidden"
-      animate={isInView ? "visible" : "hidden"}
-      className={className}
-    >
-      {children}
-    </m.div>
+    <div ref={ref} className={className}>
+      {Children.map(children, (child, index) => {
+        if (!isValidElement(child)) return child;
+
+        // Pass props to StaggerItem children
+        // We check if the child type is StaggerItem to be safe, or just pass props to any component
+        // that accepts them. Here we assume children are StaggerItem or compatible.
+        return cloneElement(child as React.ReactElement<any>, {
+          isInView,
+          delay: delay + index * staggerDelay,
+        });
+      })}
+    </div>
   );
 };
 
-export const StaggerItem: React.FC<{
+interface StaggerItemProps {
   children: React.ReactNode;
   className?: string;
-}> = ({ children, className = "" }) => {
-  const itemVariants: Variants = {
-    hidden: { opacity: 0, y: 20 },
-    visible: {
-      opacity: 1,
-      y: 0,
-      transition: {
-        duration: 0.5,
-        ease: "easeOut",
-      },
-    },
-  };
+  isInView?: boolean; // Injected by StaggerContainer
+  delay?: number; // Injected by StaggerContainer
+}
 
+export const StaggerItem: React.FC<StaggerItemProps> = ({
+  children,
+  className = "",
+  isInView = false,
+  delay = 0,
+}) => {
   return (
-    <m.div variants={itemVariants} className={className}>
+    <div
+      className={cn(
+        "transition-all duration-500 ease-out",
+        isInView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8",
+        className
+      )}
+      style={{ transitionDelay: `${delay}s` }}
+    >
       {children}
-    </m.div>
+    </div>
   );
 };
