@@ -23,7 +23,7 @@ export function FooterLinks({
   const linkBaseStyles = cn(
     "text-muted-foreground hover:text-foreground hover:text-primary",
     "transition-colors duration-200",
-    "text-sm ",
+    "text-xs",
     "focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background",
     "rounded-sm px-1 py-0.5",
     "md:whitespace-nowrap"
