@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, useTransition } from "react";
+import { useState, useRef, useEffect } from "react";
 
 import { LogOut, User, ChevronDown, ChevronRight } from "lucide-react";
 
@@ -16,12 +16,7 @@ import { UserMenuProps } from "./types";
  * ログアウト処理関数
  */
 const performLogout = async () => {
-  const result = await logoutAction();
-  if (result.success && result.redirectUrl) {
-    window.location.href = result.redirectUrl;
-  } else {
-    window.location.href = "/login";
-  }
+  await logoutAction();
 };
 
 /**
@@ -38,7 +33,7 @@ export function UserMenu({
   onItemClick?: () => void;
 }) {
   const [isOpen, setIsOpen] = useState(false);
-  const [isPending, startTransition] = useTransition();
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
 
@@ -80,17 +75,17 @@ export function UserMenu({
     onItemClick?.();
   };
 
-  const handleLogoutClick = () => {
-    startTransition(async () => {
-      try {
-        await performLogout();
-        closeMenu();
-      } catch (error) {
-        console.error("Logout failed:", error);
-        // エラーが発生してもメニューを閉じる
-        closeMenu();
-      }
-    });
+  const handleLogoutClick = async () => {
+    setIsLoggingOut(true);
+    try {
+      await performLogout();
+      // リダイレクトが実行されるため、以降の処理は不要
+    } catch (error) {
+      console.error("Logout failed:", error);
+      // エラー時も強制的にログインページへリダイレクト
+      window.location.href = "/login";
+    }
+    // setIsLoggingOut(false) は不要（ページが破棄されるため）
   };
 
   // モバイル版（ログアウトボタンのみ）
@@ -98,14 +93,14 @@ export function UserMenu({
     return (
       <button
         onClick={handleLogoutClick}
-        disabled={isPending}
+        disabled={isLoggingOut}
         className="group w-full flex items-center justify-between px-4 py-4 text-base font-medium transition-all duration-200 text-red-600 hover:text-red-700 hover:bg-red-50/80 rounded-xl disabled:opacity-50"
       >
         <div className="flex items-center space-x-3">
           <LogOut className="h-5 w-5 flex-shrink-0" />
-          <span>{isPending ? "ログアウト中..." : "ログアウト"}</span>
+          <span>{isLoggingOut ? "ログアウト中..." : "ログアウト"}</span>
         </div>
-        {!isPending && (
+        {!isLoggingOut && (
           <ChevronRight className="h-4 w-4 text-red-400 group-hover:text-red-600 transition-colors" />
         )}
       </button>
@@ -177,12 +172,12 @@ export function UserMenu({
             <div className="py-1">
               <button
                 onClick={handleLogoutClick}
-                disabled={isPending}
+                disabled={isLoggingOut}
                 className="group flex items-center w-full px-4 py-2 text-sm text-red-600 hover:text-red-700 hover:bg-red-50 transition-colors disabled:opacity-50"
                 role="menuitem"
               >
                 <LogOut className="h-4 w-4 mr-3" />
-                {isPending ? "ログアウト中..." : "ログアウト"}
+                {isLoggingOut ? "ログアウト中..." : "ログアウト"}
               </button>
             </div>
           </div>
