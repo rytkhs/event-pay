@@ -1,13 +1,11 @@
-"use client";
-
 import React from "react";
 
 import Image from "next/image";
 import Link from "next/link";
 
-import { CheckCircle2, ArrowRight } from "lucide-react";
-import { m } from "motion/react";
+import { ArrowRight } from "lucide-react";
 
+import { AnimatedBadge } from "./ui/AnimatedBadge";
 import { FadeIn } from "./ui/FadeIn";
 
 export const HeroSection: React.FC = () => {
@@ -66,7 +64,7 @@ export const HeroSection: React.FC = () => {
                 </Link>
               </div>
               <p className="mt-4 text-slate-500 text-sm mb-6">
-                初期費用・月額費 0円 / 現金集金なら完全無料
+                初期費用・月額料金 0円 / 現金集金なら完全無料
               </p>
 
               <div className="flex flex-wrap justify-center md:justify-start items-center gap-x-6 gap-y-4">
@@ -213,27 +211,7 @@ export const HeroSection: React.FC = () => {
             </FadeIn>
 
             {/* Floating Badge */}
-            <m.div
-              initial={{ opacity: 0, scale: 0.8, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              transition={{ delay: 0.8, duration: 0.5 }}
-              className="absolute top-20 -left-12 md:-left-20 z-20"
-            >
-              <div
-                className="bg-white p-4 rounded-xl shadow-xl border border-slate-100 animate-bounce"
-                style={{ animationDuration: "3s" }}
-              >
-                <div className="flex items-center gap-3">
-                  <div className="bg-success/10 p-2 rounded-full">
-                    <CheckCircle2 className="text-success w-6 h-6" aria-hidden="true" />
-                  </div>
-                  <div>
-                    <p className="text-xs text-slate-500 font-bold uppercase">集金完了!</p>
-                    <p className="text-sm font-bold text-slate-800">¥35,000 集金済み</p>
-                  </div>
-                </div>
-              </div>
-            </m.div>
+            <AnimatedBadge className="absolute top-20 -left-12 md:-left-20 z-20" />
           </div>
         </div>
       </div>
