@@ -5,6 +5,7 @@ import type { Metadata } from "next";
 export const dynamic = "force-dynamic";
 
 import { getCurrentUser } from "@core/auth/auth-utils";
+import { logger } from "@core/logging/app-logger";
 import { createCachedActions } from "@core/utils/cache-helpers";
 
 import {
@@ -73,8 +74,14 @@ export default async function EventDetailPage({ params }: EventDetailPageProps) 
         if (statsRes?.success) {
           stats = statsRes.data as any;
         }
-      } catch (_) {
+      } catch (error) {
         // エラーが発生してもページ表示は継続
+        logger.warn("Event dashboard data fetch failed", {
+          tag: "event-dashboard-data-fetch-failed",
+          event_id: params.id,
+          error_name: error instanceof Error ? error.name : "Unknown",
+          error_message: error instanceof Error ? error.message : String(error),
+        });
       }
     }
 
@@ -88,6 +95,12 @@ export default async function EventDetailPage({ params }: EventDetailPageProps) 
     );
   } catch (error) {
     // 予期しないエラーの場合は500エラーとして処理
+    logger.error("Event detail page error", {
+      tag: "event-detail-page",
+      event_id: params?.id,
+      error_name: error instanceof Error ? error.name : "Unknown",
+      error_message: error instanceof Error ? error.message : String(error),
+    });
     throw error;
   }
 }
