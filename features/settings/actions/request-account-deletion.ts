@@ -21,7 +21,6 @@ const deletionRequestSchema = z.object({
       message: "確認語句が一致しません",
     }),
   agreeIrreversible: z.literal("on"),
-  agreeFinanceRetention: z.literal("on"),
   agreeStripeDisable: z.literal("on"),
 });
 
