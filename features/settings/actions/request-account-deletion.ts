@@ -52,7 +52,29 @@ export async function requestAccountDeletionAction(formData: FormData): Promise<
 
     const supabase = createClient();
 
-    // Stripe Connect 無効化（可能範囲）: DB上の状態を未検証でも無効化（best-effort）
+    // 1. Supabase Authのソフトデリート機能を使用
+    const factory = getSecureClientFactory();
+    const admin = await factory.createAuditedAdminClient(
+      AdminReason.ACCOUNT_DELETION,
+      `User soft deletion: ${user.id}`,
+      {
+        userId: user.id,
+        operationType: "DELETE",
+        accessedTables: ["auth.users", "public.users", "public.line_accounts"],
+      }
+    );
+
+    const { error: deleteError } = await admin.auth.admin.deleteUser(user.id, true);
+    if (deleteError) {
+      logger.error("Auth user soft delete failed", {
+        tag: "authUserSoftDeleteFailed",
+        user_id: user.id,
+        error_message: (deleteError as any)?.message ?? String(deleteError),
+      });
+      return { success: false, error: "アカウントの処理に失敗しました" };
+    }
+
+    // 2. Stripe Connect 無効化（可能範囲）: DB上の状態を未検証でも無効化（best-effort）
     try {
       // features adaptersの自動登録はサーバ環境で副作用import済み
       const { getStripeConnectPort } = await import("@/core/ports/stripe-connect");
@@ -71,7 +93,7 @@ export async function requestAccountDeletionAction(formData: FormData): Promise<
       });
     }
 
-    // 論理削除: public.users の is_deleted フラグを設定
+    // 3. 論理削除: public.users の is_deleted フラグを設定
     const { error: anonError } = await supabase
       .from("users")
       .update({
@@ -91,24 +113,16 @@ export async function requestAccountDeletionAction(formData: FormData): Promise<
       return { success: false, error: "アカウントの処理に失敗しました" };
     }
 
-    const factory = getSecureClientFactory();
-    const admin = await factory.createAuditedAdminClient(
-      AdminReason.ACCOUNT_DELETION,
-      `User soft deletion: ${user.id}`,
-      {
-        userId: user.id,
-        operationType: "DELETE",
-        accessedTables: ["auth.users", "public.users"],
-      }
-    );
-
-    // Supabase Authのソフトデリート機能を使用
-    const { error: deleteError } = await admin.auth.admin.deleteUser(user.id, true);
-    if (deleteError) {
-      logger.error("Auth user soft delete failed", {
-        tag: "authUserSoftDeleteFailed",
+    // 4. 物理削除: line_accounts の個人情報を完全削除
+    const { error: lineAccountError } = await admin
+      .from("line_accounts")
+      .delete()
+      .eq("auth_user_id", user.id);
+    if (lineAccountError) {
+      logger.error("LINE account deletion failed", {
+        tag: "lineAccountDeletionFailed",
         user_id: user.id,
-        error_message: (deleteError as any)?.message ?? String(deleteError),
+        error_message: lineAccountError.message,
       });
       return { success: false, error: "アカウントの処理に失敗しました" };
     }

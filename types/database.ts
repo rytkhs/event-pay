@@ -1,31 +1,6 @@
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
 export type Database = {
-  graphql_public: {
-    Tables: {
-      [_ in never]: never;
-    };
-    Views: {
-      [_ in never]: never;
-    };
-    Functions: {
-      graphql: {
-        Args: {
-          extensions?: Json;
-          operationName?: string;
-          query?: string;
-          variables?: Json;
-        };
-        Returns: Json;
-      };
-    };
-    Enums: {
-      [_ in never]: never;
-    };
-    CompositeTypes: {
-      [_ in never]: never;
-    };
-  };
   public: {
     Tables: {
       attendances: {
@@ -232,6 +207,42 @@ export type Database = {
           platform_tax_rate?: number;
           stripe_base_rate?: number;
           stripe_fixed_fee?: number;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      line_accounts: {
+        Row: {
+          auth_user_id: string;
+          channel_id: string;
+          created_at: string;
+          display_name: string | null;
+          email: string | null;
+          id: string;
+          line_sub: string;
+          picture_url: string | null;
+          updated_at: string;
+        };
+        Insert: {
+          auth_user_id: string;
+          channel_id: string;
+          created_at?: string;
+          display_name?: string | null;
+          email?: string | null;
+          id?: string;
+          line_sub: string;
+          picture_url?: string | null;
+          updated_at?: string;
+        };
+        Update: {
+          auth_user_id?: string;
+          channel_id?: string;
+          created_at?: string;
+          display_name?: string | null;
+          email?: string | null;
+          id?: string;
+          line_sub?: string;
+          picture_url?: string | null;
           updated_at?: string;
         };
         Relationships: [];
@@ -638,6 +649,7 @@ export type Database = {
         Row: {
           created_at: string;
           deleted_at: string | null;
+          email: string | null;
           id: string;
           is_deleted: boolean;
           name: string;
@@ -646,6 +658,7 @@ export type Database = {
         Insert: {
           created_at?: string;
           deleted_at?: string | null;
+          email?: string | null;
           id: string;
           is_deleted?: boolean;
           name: string;
@@ -654,6 +667,7 @@ export type Database = {
         Update: {
           created_at?: string;
           deleted_at?: string | null;
+          email?: string | null;
           id?: string;
           is_deleted?: boolean;
           name?: string;
@@ -1033,9 +1047,6 @@ export type CompositeTypes<
     : never;
 
 export const Constants = {
-  graphql_public: {
-    Enums: {},
-  },
   public: {
     Enums: {
       actor_type_enum: ["user", "guest", "system", "webhook", "service_role", "anonymous"],
