@@ -43,9 +43,9 @@ const mockSupabaseAdmin = {
   from: jest.fn(),
   auth: {
     admin: {
-      updateUserById: jest.fn(),
       createUser: jest.fn(),
       generateLink: jest.fn(),
+      getUserById: jest.fn(),
     },
   },
 };
@@ -121,6 +121,7 @@ describe("LINE Login Auth Flow", () => {
   describe("GET /auth/callback/line", () => {
     const mockState = "test-state";
     const mockCode = "test-code";
+    const mockChannelId = "test-channel-id";
 
     beforeEach(() => {
       // デフォルトでstate検証が通るように設定
@@ -157,7 +158,10 @@ describe("LINE Login Auth Flow", () => {
       );
     });
 
-    it("should successfully login existing user", async () => {
+    it("should successfully login existing LINE user (linked in line_accounts)", async () => {
+      const lineSub = "line-user-123";
+      const userId = "existing-user-id";
+
       // LINE Token API Mock
       (global.fetch as jest.Mock)
         .mockResolvedValueOnce({
@@ -169,30 +173,51 @@ describe("LINE Login Auth Flow", () => {
           ok: true,
           json: async () => ({
             email: "test@example.com",
-            sub: "line-user-123",
+            sub: lineSub,
             name: "Test User",
             picture: "http://example.com/pic.jpg",
           }),
         });
 
-      // Supabase Mocks - public.usersテーブルからの検索をモック
-      const mockSelect = {
+      // line_accountsテーブルから既存の紐付けを返す
+      const mockLineAccountsSelect = {
         eq: jest.fn().mockReturnThis(),
         single: jest.fn().mockResolvedValue({
-          data: { id: "existing-user-id", email: "test@example.com" },
+          data: { auth_user_id: userId },
           error: null,
         }),
       };
-      mockSupabaseAdmin.from.mockReturnValue({
-        select: jest.fn().mockReturnValue(mockSelect),
+
+      const mockLineAccountsUpdate = {
+        eq: jest.fn().mockReturnThis(),
+        update: jest.fn().mockReturnThis(),
+      };
+
+      mockSupabaseAdmin.from.mockImplementation((table) => {
+        if (table === "line_accounts") {
+          return {
+            select: jest.fn().mockReturnValue(mockLineAccountsSelect),
+            update: jest.fn((data) => {
+              mockLineAccountsUpdate.update(data);
+              return mockLineAccountsUpdate;
+            }),
+          };
+        }
+        return { select: jest.fn(), insert: jest.fn(), update: jest.fn() };
       });
-      mockSupabaseAdmin.auth.admin.updateUserById.mockResolvedValue({ error: null });
+
+      mockSupabaseAdmin.auth.admin.getUserById.mockResolvedValue({
+        data: { user: { id: userId, email: "test@example.com" } },
+        error: null,
+      });
+
       mockSupabaseAdmin.auth.admin.generateLink.mockResolvedValue({
         data: { properties: { hashed_token: "mock-hash" } },
         error: null,
       });
+
       mockSupabaseClient.auth.verifyOtp.mockResolvedValue({
-        data: { session: { user: { id: "existing-user-id" } } },
+        data: { session: { user: { id: userId } } },
         error: null,
       });
 
@@ -201,24 +226,17 @@ describe("LINE Login Auth Flow", () => {
       );
       const response = await authCallbackLineGet(request);
 
-      // 検証 - public.usersテーブルから検索されたか
-      expect(mockSupabaseAdmin.from).toHaveBeenCalledWith("users");
-      expect(mockSelect.eq).toHaveBeenCalledWith("email", "test@example.com");
+      // 検証 - line_accountsテーブルから検索されたか
+      expect(mockSupabaseAdmin.from).toHaveBeenCalledWith("line_accounts");
+      expect(mockLineAccountsSelect.eq).toHaveBeenCalledWith("channel_id", mockChannelId);
+      expect(mockLineAccountsSelect.eq).toHaveBeenCalledWith("line_sub", lineSub);
 
-      expect(mockSupabaseAdmin.auth.admin.updateUserById).toHaveBeenCalledWith(
-        "existing-user-id",
-        expect.objectContaining({
-          user_metadata: expect.objectContaining({
-            provider: "line",
-            line_user_id: "line-user-123",
-          }),
-        })
-      );
-
-      expect(mockSupabaseClient.auth.verifyOtp).toHaveBeenCalledWith(
+      // プロフィール情報が更新されたか
+      expect(mockLineAccountsUpdate.update).toHaveBeenCalledWith(
         expect.objectContaining({
           email: "test@example.com",
-          type: "email",
+          display_name: "Test User",
+          picture_url: "http://example.com/pic.jpg",
         })
       );
 
@@ -226,7 +244,11 @@ describe("LINE Login Auth Flow", () => {
       expect(response.headers.get("Location")).toBe("http://localhost:3000/dashboard");
     });
 
-    it("should successfully register new user", async () => {
+    it("should link existing email user with new LINE account", async () => {
+      const lineSub = "line-user-new";
+      const email = "test@example.com";
+      const existingUserId = "existing-user-id";
+
       // LINE API Mocks
       (global.fetch as jest.Mock)
         .mockResolvedValueOnce({
@@ -235,30 +257,64 @@ describe("LINE Login Auth Flow", () => {
         })
         .mockResolvedValueOnce({
           ok: true,
-          json: async () => ({ email: "new@example.com", sub: "line-user-new", name: "New User" }),
+          json: async () => ({
+            email,
+            sub: lineSub,
+            name: "Test User",
+            picture: "http://example.com/pic.jpg",
+          }),
         });
 
-      // Supabase Mocks - public.usersテーブルで見つからない場合のモック
-      const mockSelect = {
+      // line_accountsテーブルで見つからない
+      const mockLineAccountsSelect = {
         eq: jest.fn().mockReturnThis(),
         single: jest.fn().mockResolvedValue({
           data: null,
-          error: { code: "PGRST116" }, // Not found error
+          error: { code: "PGRST116" },
         }),
       };
-      mockSupabaseAdmin.from.mockReturnValue({
-        select: jest.fn().mockReturnValue(mockSelect),
-      });
-      mockSupabaseAdmin.auth.admin.createUser.mockResolvedValue({
-        data: { user: { id: "new-user-id" } },
+
+      // public.usersテーブルで既存ユーザーが見つかる
+      const mockUsersSelect = {
+        eq: jest.fn().mockReturnThis(),
+        single: jest.fn().mockResolvedValue({
+          data: { id: existingUserId },
+          error: null,
+        }),
+      };
+
+      const mockLineAccountsInsert = jest.fn().mockResolvedValue({
+        data: {},
         error: null,
       });
+
+      mockSupabaseAdmin.from.mockImplementation((table) => {
+        if (table === "line_accounts") {
+          return {
+            select: jest.fn().mockReturnValue(mockLineAccountsSelect),
+            insert: mockLineAccountsInsert,
+          };
+        }
+        if (table === "users") {
+          return {
+            select: jest.fn().mockReturnValue(mockUsersSelect),
+          };
+        }
+        return { select: jest.fn(), insert: jest.fn() };
+      });
+
+      mockSupabaseAdmin.auth.admin.getUserById.mockResolvedValue({
+        data: { user: { id: existingUserId, email } },
+        error: null,
+      });
+
       mockSupabaseAdmin.auth.admin.generateLink.mockResolvedValue({
         data: { properties: { hashed_token: "mock-hash" } },
         error: null,
       });
+
       mockSupabaseClient.auth.verifyOtp.mockResolvedValue({
-        data: { session: { user: { id: "new-user-id" } } },
+        data: { session: { user: { id: existingUserId } } },
         error: null,
       });
 
@@ -267,18 +323,18 @@ describe("LINE Login Auth Flow", () => {
       );
       const response = await authCallbackLineGet(request);
 
-      // 検証 - public.usersテーブルから検索されたか
+      // 検証
+      expect(mockSupabaseAdmin.from).toHaveBeenCalledWith("line_accounts");
       expect(mockSupabaseAdmin.from).toHaveBeenCalledWith("users");
-      expect(mockSelect.eq).toHaveBeenCalledWith("email", "new@example.com");
+      expect(mockUsersSelect.eq).toHaveBeenCalledWith("email", email);
 
-      expect(mockSupabaseAdmin.auth.admin.createUser).toHaveBeenCalledWith(
+      // line_accountsに紐付けが作成されたか
+      expect(mockLineAccountsInsert).toHaveBeenCalledWith(
         expect.objectContaining({
-          email: "new@example.com",
-          email_confirm: true,
-          user_metadata: expect.objectContaining({
-            provider: "line",
-            line_user_id: "line-user-new",
-          }),
+          auth_user_id: existingUserId,
+          channel_id: mockChannelId,
+          line_sub: lineSub,
+          email,
         })
       );
 
@@ -286,7 +342,147 @@ describe("LINE Login Auth Flow", () => {
       expect(response.headers.get("Location")).toBe("http://localhost:3000/dashboard");
     });
 
-    it("should redirect to login with email_required error when email is missing from LINE profile", async () => {
+    it("should successfully register new user with LINE", async () => {
+      const lineSub = "line-user-new";
+      const email = "new@example.com";
+      const newUserId = "new-user-id";
+
+      // LINE API Mocks
+      (global.fetch as jest.Mock)
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({ id_token: "mock-id-token" }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({
+            email,
+            sub: lineSub,
+            name: "New User",
+            picture: "http://example.com/pic.jpg",
+          }),
+        });
+
+      // line_accountsテーブルで見つからない
+      const mockLineAccountsSelect = {
+        eq: jest.fn().mockReturnThis(),
+        single: jest.fn().mockResolvedValue({
+          data: null,
+          error: { code: "PGRST116" },
+        }),
+      };
+
+      // public.usersテーブルでも見つからない
+      const mockUsersSelect = {
+        eq: jest.fn().mockReturnThis(),
+        single: jest.fn().mockResolvedValue({
+          data: null,
+          error: { code: "PGRST116" },
+        }),
+      };
+
+      const mockLineAccountsInsert = jest.fn().mockResolvedValue({
+        data: {},
+        error: null,
+      });
+
+      mockSupabaseAdmin.from.mockImplementation((table) => {
+        if (table === "line_accounts") {
+          return {
+            select: jest.fn().mockReturnValue(mockLineAccountsSelect),
+            insert: mockLineAccountsInsert,
+          };
+        }
+        if (table === "users") {
+          return {
+            select: jest.fn().mockReturnValue(mockUsersSelect),
+          };
+        }
+        return { select: jest.fn(), insert: jest.fn() };
+      });
+
+      mockSupabaseAdmin.auth.admin.createUser.mockResolvedValue({
+        data: { user: { id: newUserId } },
+        error: null,
+      });
+
+      mockSupabaseAdmin.auth.admin.getUserById.mockResolvedValue({
+        data: { user: { id: newUserId, email } },
+        error: null,
+      });
+
+      mockSupabaseAdmin.auth.admin.generateLink.mockResolvedValue({
+        data: { properties: { hashed_token: "mock-hash" } },
+        error: null,
+      });
+
+      mockSupabaseClient.auth.verifyOtp.mockResolvedValue({
+        data: { session: { user: { id: newUserId } } },
+        error: null,
+      });
+
+      const request = new Request(
+        `http://localhost:3000/auth/callback/line?code=${mockCode}&state=${mockState}`
+      );
+      const response = await authCallbackLineGet(request);
+
+      // 検証 - 新規ユーザーが作成されたか
+      expect(mockSupabaseAdmin.auth.admin.createUser).toHaveBeenCalledWith(
+        expect.objectContaining({
+          email,
+          email_confirm: true,
+          user_metadata: expect.objectContaining({
+            provider: "line",
+            line_user_id: lineSub,
+          }),
+        })
+      );
+
+      // line_accountsに紐付けが作成されたか
+      expect(mockLineAccountsInsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          auth_user_id: newUserId,
+          channel_id: mockChannelId,
+          line_sub: lineSub,
+          email,
+        })
+      );
+
+      expect(response.status).toBe(307);
+      expect(response.headers.get("Location")).toBe("http://localhost:3000/dashboard");
+    });
+
+    it("should redirect to login with error when sub is missing from LINE profile", async () => {
+      // LINE API Mocks - subがnullの場合
+      (global.fetch as jest.Mock)
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({ id_token: "mock-id-token" }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({
+            email: "test@example.com",
+            name: "Test User",
+            picture: "http://example.com/pic.jpg",
+            // subがない
+          }),
+        });
+
+      const request = new Request(
+        `http://localhost:3000/auth/callback/line?code=${mockCode}&state=${mockState}`
+      );
+      const response = await authCallbackLineGet(request);
+
+      expect(response.status).toBe(307);
+      expect(response.headers.get("Location")).toBe(
+        "http://localhost:3000/login?error=line_auth_failed"
+      );
+    });
+
+    it("should redirect to login with email_required error when email is missing for new user", async () => {
+      const lineSub = "line-user-123";
+
       // LINE API Mocks - emailがnullの場合
       (global.fetch as jest.Mock)
         .mockResolvedValueOnce({
@@ -296,12 +492,30 @@ describe("LINE Login Auth Flow", () => {
         .mockResolvedValueOnce({
           ok: true,
           json: async () => ({
-            sub: "line-user-123",
+            sub: lineSub,
             name: "Test User",
             picture: "http://example.com/pic.jpg",
             // emailがない
           }),
         });
+
+      // line_accountsテーブルで見つからない
+      const mockLineAccountsSelect = {
+        eq: jest.fn().mockReturnThis(),
+        single: jest.fn().mockResolvedValue({
+          data: null,
+          error: { code: "PGRST116" },
+        }),
+      };
+
+      mockSupabaseAdmin.from.mockImplementation((table) => {
+        if (table === "line_accounts") {
+          return {
+            select: jest.fn().mockReturnValue(mockLineAccountsSelect),
+          };
+        }
+        return { select: jest.fn() };
+      });
 
       const request = new Request(
         `http://localhost:3000/auth/callback/line?code=${mockCode}&state=${mockState}`

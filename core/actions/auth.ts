@@ -1,6 +1,8 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { cookies, headers } from "next/headers";
+import { redirect } from "next/navigation";
 
 import type { EmailOtpType, AuthResponse } from "@supabase/supabase-js";
 import { z } from "zod";
@@ -853,17 +855,13 @@ export async function logoutAction(): Promise<ActionResult> {
     // ログアウト実行（認証状態に関係なく実行）
     const { error } = await supabase.auth.signOut();
 
+    revalidatePath("/", "layout");
+
     if (error) {
       logger.warn("Logout error (non-critical)", {
         tag: "logoutError",
         error_message: error.message,
       });
-      // ログアウトエラーでも成功として扱う（既にログアウト状態の可能性）
-      return {
-        success: true,
-        message: "ログアウトしました",
-        redirectUrl: "/login",
-      };
     }
 
     // GA4: ログアウトイベントを送信（非同期、エラーは無視）
@@ -893,12 +891,6 @@ export async function logoutAction(): Promise<ActionResult> {
         });
       }
     });
-
-    return {
-      success: true,
-      message: "ログアウトしました",
-      redirectUrl: "/login",
-    };
   } catch (error) {
     logger.error("Logout action error", {
       tag: "logoutActionError",
@@ -906,11 +898,6 @@ export async function logoutAction(): Promise<ActionResult> {
       error_message: error instanceof Error ? error.message : String(error),
     });
     await TimingAttackProtection.addConstantDelay();
-    // ログアウトは基本的に失敗しない処理として扱う
-    return {
-      success: true,
-      message: "ログアウトしました",
-      redirectUrl: "/login",
-    };
   }
+  redirect("/login");
 }

@@ -94,10 +94,11 @@ export async function GET(request: Request) {
 
     const profile = (await verifyResponse.json()) as LineVerifyResponse;
     const email = profile.email;
+    const lineSub = profile.sub;
 
-    if (!email) {
-      logger.error("Email not found in LINE profile", { tag: "lineLoginEmailMissing" });
-      return NextResponse.redirect(`${origin}/login?error=${LINE_ERROR_CODES.EMAIL_REQUIRED}`);
+    if (!lineSub) {
+      logger.error("Subject (sub) not found in LINE profile", { tag: "lineLoginSubMissing" });
+      return NextResponse.redirect(`${origin}/login?error=${LINE_ERROR_CODES.AUTH_FAILED}`);
     }
 
     // 4. Supabase Admin操作（Service Role使用）
@@ -107,63 +108,162 @@ export async function GET(request: Request) {
       "line-auth-callback",
       {
         additionalInfo: {
-          line_user_id: profile.sub,
+          line_user_id: lineSub,
           email: email,
         },
       }
     );
 
     // 5. ユーザーの検索・作成・更新
-    // public.usersからメールアドレスで検索
-    const { data: existingUser } = await supabaseAdmin
-      .from("users")
-      .select("id, email")
-      .eq("email", email)
-      .single();
-
-    const userMetadata = {
-      full_name: profile.name,
-      name: profile.name, // トリガーで使用
-      avatar_url: profile.picture,
-      provider: "line",
-      line_user_id: profile.sub,
-    };
-
     let userId: string;
     let isNewUser = false;
 
-    if (existingUser) {
-      // 既存ユーザー: auth.usersのメタデータのみ更新
-      const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
-        existingUser.id,
-        { user_metadata: userMetadata }
-      );
+    // A. line_accounts テーブルを検索 (channel_id, line_sub)
+    const { data: existingLineAccount, error: lineAccountError } = await supabaseAdmin
+      .from("line_accounts")
+      .select("auth_user_id")
+      .eq("channel_id", channelId)
+      .eq("line_sub", lineSub)
+      .single();
+
+    if (lineAccountError && lineAccountError.code !== "PGRST116") {
+      // PGRST116 = no rows found (想定内のエラー)
+      logger.error("Failed to query line_accounts", {
+        tag: "lineAccountQueryError",
+        error: lineAccountError,
+      });
+      throw lineAccountError;
+    }
+
+    if (existingLineAccount) {
+      // A-1. 既に紐付いているユーザーがいる場合
+      userId = existingLineAccount.auth_user_id;
+
+      // プロフィール情報の更新（非同期で良いが、ここではawaitしておく）
+      const { error: updateError } = await supabaseAdmin
+        .from("line_accounts")
+        .update({
+          email: email,
+          display_name: profile.name,
+          picture_url: profile.picture,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("channel_id", channelId)
+        .eq("line_sub", lineSub);
 
       if (updateError) {
+        logger.error("Failed to update line_accounts", {
+          tag: "lineAccountUpdateError",
+          error: updateError,
+        });
         throw updateError;
       }
-
-      userId = existingUser.id;
     } else {
-      // 新規ユーザー: auth.usersを作成（トリガーがpublic.usersも自動作成）
-      isNewUser = true;
-      const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
-        email: email,
-        email_confirm: true, // LINE認証済みのため確認済みにする
-        user_metadata: userMetadata,
-      });
+      // A-2. まだ紐付いていない場合 -> Emailで既存ユーザーを探す
+      let existingAuthUser = null;
 
-      if (createError || !newUser.user) {
-        throw createError;
+      if (email) {
+        const { data: user, error: userQueryError } = await supabaseAdmin
+          .from("users") // public.users ? auth.users ? -> public.users has id, email usually synced
+          .select("id")
+          .eq("email", email)
+          .single();
+
+        if (userQueryError && userQueryError.code !== "PGRST116") {
+          // PGRST116 = no rows found (想定内のエラー)
+          logger.error("Failed to query users table", {
+            tag: "usersQueryError",
+            error: userQueryError,
+          });
+          throw userQueryError;
+        }
+        existingAuthUser = user;
       }
 
-      userId = newUser.user.id;
+      if (existingAuthUser) {
+        // B-1. Emailが一致する既存ユーザーがいる -> 紐付けを作成
+        userId = existingAuthUser.id;
+
+        const { error: insertError } = await supabaseAdmin.from("line_accounts").insert({
+          auth_user_id: userId,
+          channel_id: channelId,
+          line_sub: lineSub,
+          email: email,
+          display_name: profile.name,
+          picture_url: profile.picture,
+        });
+
+        if (insertError) {
+          logger.error("Failed to insert line_accounts for existing user", {
+            tag: "lineAccountInsertError",
+            error: insertError,
+          });
+          throw insertError;
+        }
+      } else {
+        // B-2. Emailも一致しない（完全新規 or Emailなし） -> 新規ユーザー作成
+        if (!email) {
+          // Emailがない場合はエラーにする
+          logger.error("Email not found in LINE profile for new user", {
+            tag: "lineLoginEmailMissing",
+          });
+          return NextResponse.redirect(`${origin}/login?error=${LINE_ERROR_CODES.EMAIL_REQUIRED}`);
+        }
+
+        isNewUser = true;
+        const userMetadata = {
+          full_name: profile.name,
+          name: profile.name,
+          avatar_url: profile.picture,
+          provider: "line",
+          line_user_id: lineSub,
+        };
+
+        const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
+          email: email,
+          email_confirm: true,
+          user_metadata: userMetadata,
+        });
+
+        if (createError || !newUser.user) {
+          throw createError;
+        }
+
+        userId = newUser.user.id;
+
+        // line_accounts に紐付け作成
+        const { error: insertError } = await supabaseAdmin.from("line_accounts").insert({
+          auth_user_id: userId,
+          channel_id: channelId,
+          line_sub: lineSub,
+          email: email,
+          display_name: profile.name,
+          picture_url: profile.picture,
+        });
+
+        if (insertError) {
+          logger.error("Failed to insert line_accounts for new user", {
+            tag: "lineAccountInsertError",
+            error: insertError,
+          });
+          throw insertError;
+        }
+      }
     }
 
     // 6. Magic Linkを使用したセッション確立
+
+    // userId から email を取得する (確実なEmailを使うため)
+    const { data: userForLogin, error: userError } =
+      await supabaseAdmin.auth.admin.getUserById(userId);
+    if (userError || !userForLogin?.user?.email) {
+      throw new Error("Failed to get user email for login");
+    }
+    const loginEmail = userForLogin.user.email;
+
     const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
       type: "magiclink",
-      email: email,
+      email: loginEmail,
     });
 
     if (linkError || !linkData?.properties?.hashed_token) {

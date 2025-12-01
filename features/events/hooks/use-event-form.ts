@@ -44,7 +44,7 @@ const eventFormSchema = z
       .refine((val) => {
         const num = parseFee(val);
         return num === 0 || (num >= 100 && num <= 1000000);
-      }, "参加費は0円（無料）または100〜1,000,000円である必要があります"),
+      }, "参加費は0円(無料)または100円以上である必要があります"),
     payment_methods: z.array(z.enum(["stripe", "cash"])),
     location: z.string().trim().max(200, "場所は200文字以内で入力してください"),
     description: z.string().trim().max(1000, "説明は1000文字以内で入力してください"),

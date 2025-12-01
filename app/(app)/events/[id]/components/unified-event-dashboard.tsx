@@ -15,7 +15,6 @@ import {
 
 import type { GetEventPaymentsResponse } from "@core/validation/participant-management";
 
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -53,70 +52,6 @@ export function UnifiedEventDashboard({
   const collectionProgress =
     expectedRevenue > 0 ? Math.round((totalRevenue / expectedRevenue) * 100) : 0;
 
-  // ステータス判定
-  const getAttendanceStatus = () => {
-    if (attendanceRate >= 90)
-      return {
-        color: "text-green-600",
-        bgColor: "bg-green-500",
-        label: "満員間近",
-        variant: "default" as const,
-      };
-    if (attendanceRate >= 70)
-      return {
-        color: "text-blue-600",
-        bgColor: "bg-blue-500",
-        label: "順調",
-        variant: "default" as const,
-      };
-    if (attendanceRate >= 50)
-      return {
-        color: "text-yellow-600",
-        bgColor: "bg-yellow-500",
-        label: "進行中",
-        variant: "secondary" as const,
-      };
-    return {
-      color: "text-gray-600",
-      bgColor: "bg-gray-400",
-      label: "募集中",
-      variant: "secondary" as const,
-    };
-  };
-
-  const getCollectionStatus = () => {
-    if (collectionProgress >= 95)
-      return {
-        color: "text-green-600",
-        bgColor: "bg-green-500",
-        label: "完了間近",
-        variant: "default" as const,
-      };
-    if (collectionProgress >= 80)
-      return {
-        color: "text-blue-600",
-        bgColor: "bg-blue-500",
-        label: "順調",
-        variant: "default" as const,
-      };
-    if (collectionProgress >= 50)
-      return {
-        color: "text-yellow-600",
-        bgColor: "bg-yellow-500",
-        label: "進行中",
-        variant: "secondary" as const,
-      };
-    return {
-      color: "text-gray-600",
-      bgColor: "bg-gray-400",
-      label: "開始",
-      variant: "secondary" as const,
-    };
-  };
-
-  const attendanceStatus = getAttendanceStatus();
-  const collectionStatus = getCollectionStatus();
-
   // 決済方法別の統計
   const stripeCount =
     paymentsData?.summary?.byMethod?.find((m) => m.method === "stripe")?.count ?? 0;
@@ -139,14 +74,9 @@ export function UnifiedEventDashboard({
         <div className="space-y-6">
           {/* 参加状況 */}
           <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Users className="h-5 w-5 text-blue-600" />
-                <span className="font-medium">参加状況</span>
-              </div>
-              <Badge variant={attendanceStatus.variant} className="text-xs">
-                {attendanceStatus.label}
-              </Badge>
+            <div className="flex items-center gap-2">
+              <Users className="h-5 w-5 text-blue-600" />
+              <span className="font-medium">参加状況</span>
             </div>
 
             <div className="space-y-2">
@@ -158,20 +88,11 @@ export function UnifiedEventDashboard({
                   )}
                 </div>
                 {capacity !== null && (
-                  <span className={`text-lg font-bold ${attendanceStatus.color}`}>
-                    {attendanceRate}%
-                  </span>
+                  <span className="text-lg font-bold text-blue-600">{attendanceRate}%</span>
                 )}
               </div>
 
-              {capacity !== null && (
-                <Progress value={attendanceRate} className="h-3">
-                  <div
-                    className={`h-full rounded-full transition-all ${attendanceStatus.bgColor}`}
-                    style={{ width: `${Math.min(attendanceRate, 100)}%` }}
-                  />
-                </Progress>
-              )}
+              {capacity !== null && <Progress value={attendanceRate} className="h-3" />}
 
               {maybeCount > 0 && (
                 <div className="flex items-center gap-1 text-sm text-muted-foreground">
@@ -185,14 +106,9 @@ export function UnifiedEventDashboard({
           {/* 集金状況（有料イベントのみ） */}
           {!isFreeEvent && (
             <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <TrendingUp className="h-5 w-5 text-green-600" />
-                  <span className="font-medium">集金状況</span>
-                </div>
-                <Badge variant={collectionStatus.variant} className="text-xs">
-                  {collectionStatus.label}
-                </Badge>
+              <div className="flex items-center gap-2">
+                <TrendingUp className="h-5 w-5 text-green-600" />
+                <span className="font-medium">集金状況</span>
               </div>
 
               <div className="space-y-2">
@@ -203,17 +119,10 @@ export function UnifiedEventDashboard({
                       / ¥{expectedRevenue.toLocaleString()}
                     </span>
                   </div>
-                  <span className={`text-lg font-bold ${collectionStatus.color}`}>
-                    {collectionProgress}%
-                  </span>
+                  <span className="text-lg font-bold text-green-600">{collectionProgress}%</span>
                 </div>
 
-                <Progress value={collectionProgress} className="h-3">
-                  <div
-                    className={`h-full rounded-full transition-all ${collectionStatus.bgColor}`}
-                    style={{ width: `${Math.min(collectionProgress, 100)}%` }}
-                  />
-                </Progress>
+                <Progress value={collectionProgress} className="h-3" />
 
                 {unpaidCount > 0 && (
                   <div className="flex items-center justify-between text-sm">

@@ -127,10 +127,20 @@ export default async function ParticipantsManagementPage({
 
     // これらのアクションは直接データを返すため、successプロパティは存在しない
     if (!participantsResult?.participants) {
+      logger.error("Participants data fetch failed", {
+        tag: "participants-data-fetch-failed",
+        event_id: params.id,
+        result: participantsResult,
+      });
       throw new Error("参加者データの取得に失敗しました");
     }
 
     if (!paymentsResult?.summary) {
+      logger.error("Payments data fetch failed", {
+        tag: "payments-data-fetch-failed",
+        event_id: params.id,
+        result: paymentsResult,
+      });
       throw new Error("決済データの取得に失敗しました");
     }
 

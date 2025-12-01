@@ -22,7 +22,7 @@ export function FooterContent({ className }: { className?: string }): JSX.Elemen
     <div className={containerStyles}>
       {/* ブランディング + コピーライト（左） */}
       {(displaySettings.showBranding || displaySettings.showCopyright) && (
-        <div className="flex flex-col items-center gap-2 order-last md:order-none md:items-start justify-self-start">
+        <div className="flex flex-col items-center gap-0 sm:gap-1 order-last md:order-none md:items-start justify-self-start">
           {displaySettings.showBranding && <FooterBranding />}
           {displaySettings.showCopyright && (
             <p className="text-sm text-muted-foreground text-center md:text-left">

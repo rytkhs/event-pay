@@ -21,7 +21,7 @@ export const HeroSection: React.FC = () => {
         aria-hidden="true"
       ></div>
 
-      <div className="container mx-auto px-4 md:px-6 relative z-10">
+      <div className="container max-w-7xl mx-auto px-4 md:px-6 relative z-10">
         <div className="flex flex-col md:flex-row items-center gap-12 lg:gap-20">
           {/* Text Content */}
           <div className="flex-1 text-center md:text-left">

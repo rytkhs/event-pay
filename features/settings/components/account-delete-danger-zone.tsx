@@ -17,15 +17,10 @@ export function AccountDeleteDangerZone(): JSX.Element {
   const [isPending, startTransition] = useTransition();
 
   const [agreeIrreversible, setAgreeIrreversible] = useState(false);
-  const [agreeFinanceRetention, setAgreeFinanceRetention] = useState(false);
   const [agreeStripeDisable, setAgreeStripeDisable] = useState(false);
   const [confirmText, setConfirmText] = useState("");
 
-  const canSubmit =
-    agreeIrreversible &&
-    agreeFinanceRetention &&
-    agreeStripeDisable &&
-    confirmText.trim().length > 0;
+  const canSubmit = agreeIrreversible && agreeStripeDisable && confirmText.trim().length > 0;
 
   const onSubmit = () => {
     if (!canSubmit) return;
@@ -33,7 +28,6 @@ export function AccountDeleteDangerZone(): JSX.Element {
       const formData = new FormData();
       formData.append("confirmText", confirmText);
       formData.append("agreeIrreversible", agreeIrreversible ? "on" : "");
-      formData.append("agreeFinanceRetention", agreeFinanceRetention ? "on" : "");
       formData.append("agreeStripeDisable", agreeStripeDisable ? "on" : "");
 
       const result = await requestAccountDeletionAction(formData);
@@ -55,7 +49,7 @@ export function AccountDeleteDangerZone(): JSX.Element {
           <AlertTriangle className="h-5 w-5" /> アカウント削除
         </CardTitle>
         <CardDescription>
-          この操作は取り消せません。会計・清算等の記録は法令等に基づき保持されます。Stripe連携は無効化/解除されます。
+          この操作は取り消せません。Stripe連携は無効化/解除されます。
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -70,16 +64,7 @@ export function AccountDeleteDangerZone(): JSX.Element {
               不可逆な操作であることを理解しました
             </Label>
           </div>
-          <div className="flex items-start gap-2">
-            <Checkbox
-              id="agreeFinanceRetention"
-              checked={agreeFinanceRetention}
-              onCheckedChange={(v) => setAgreeFinanceRetention(Boolean(v))}
-            />
-            <Label htmlFor="agreeFinanceRetention" className="text-sm">
-              財務記録は保持されることを理解しました
-            </Label>
-          </div>
+
           <div className="flex items-start gap-2">
             <Checkbox
               id="agreeStripeDisable"
