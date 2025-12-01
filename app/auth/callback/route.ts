@@ -23,7 +23,13 @@ export async function GET(request: Request) {
     const { data, error } = await supabase.auth.exchangeCodeForSession(code);
     if (!error && data?.user) {
       // OAuth認証が成功した場合、新規登録か既存ログインかを判定
-      const isNewUser = data.user.created_at === data.user.last_sign_in_at;
+      const createdAt = new Date(data.user.created_at).getTime();
+      const lastSignInAt = data.user.last_sign_in_at
+        ? new Date(data.user.last_sign_in_at).getTime()
+        : createdAt;
+
+      // 許容誤差5秒
+      const isNewUser = Math.abs(createdAt - lastSignInAt) < 5000;
 
       // GA4: OAuth認証イベントを送信（非同期、エラーは無視）
       queueMicrotask(async () => {
