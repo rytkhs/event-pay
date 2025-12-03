@@ -8,6 +8,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { getMaliciousPatternDetails } from "@core/constants/security-patterns";
 import { logger } from "@core/logging/app-logger";
+import { waitUntil } from "@core/utils/cloudflare-ctx";
 import { getEnv } from "@core/utils/cloudflare-env";
 
 function createSupabaseClient(): SupabaseClient | null {
@@ -97,15 +98,14 @@ export function logSecurityEvent(event: SecurityEvent): void {
   else if (level === "warn") logger.warn(logMessage, logFields);
   else logger.error(logMessage, logFields);
 
-  // 重要度が高い場合はアラートを送信（fire-and-forget方式）
+  // 重要度が高い場合はアラートを送信（waitUntilでバックグラウンド実行）
   if (event.severity === "HIGH" || event.severity === "CRITICAL") {
-    // 非同期処理をバックグラウンドで実行（呼び出し側をブロックしない）
-    sendSecurityAlert({
-      ...logFields,
-    }).catch((error) => {
-      // アラート送信の失敗は致命的ではないため、エラーログのみ記録
-      console.error("[SecurityAlert] Unhandled error in sendSecurityAlert:", error);
-    });
+    // waitUntilでバックグラウンド実行（呼び出し側をブロックしない）
+    waitUntil(
+      sendSecurityAlert({
+        ...logFields,
+      })
+    );
   }
 }
 

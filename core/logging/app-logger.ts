@@ -35,6 +35,8 @@ export interface EventPayLogFields {
 import { createClient } from "@supabase/supabase-js";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+import { waitUntil } from "@core/utils/cloudflare-ctx";
+
 import { shouldLogError } from "./deduplication";
 
 /**
@@ -247,9 +249,12 @@ export const logger = {
 
   /**
    * エラーレベルログ
+   * Cloudflare WorkersのwaitUntilを使用するため、呼び出し元でのawaitは不要
    */
   error(msg: string, fields?: EventPayLogFields) {
     const normalized = (this as any)._normalize(msg, fields);
+
+    // 1. コンソール出力 (Cloudflare Logs用)
     // eslint-disable-next-line no-console
     console.error(
       JSON.stringify({
@@ -262,11 +267,9 @@ export const logger = {
       })
     );
 
-    // Supabaseへの保存
-    persistErrorToSupabase("error", msg, normalized).catch((e) => {
-      // eslint-disable-next-line no-console
-      console.error("[AppLogger] Failed to persist to Supabase:", e);
-    });
+    // 2. DB保存 (waitUntilでバックグラウンド実行)
+    // ここでawaitせず、PromiseをwaitUntilに渡す
+    waitUntil(persistErrorToSupabase("error", msg, normalized));
   },
 
   /**
