@@ -354,7 +354,8 @@ export function ParticipantsActionBar({
                   </div>
                 </RadioGroup>
                 <p className="text-xs text-muted-foreground">
-                  手動追加の場合は現金決済のみ対応しています。
+                  手動追加は現金のみ対応しています。
+                  オンライン決済を利用したい場合は招待リンクから登録するよう案内してください。
                 </p>
               </div>
             )}
