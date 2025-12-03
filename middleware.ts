@@ -242,6 +242,6 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/((?!api/webhooks|api/cron|api/csp-report|api/health|healthz|readyz|_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml|manifest.webmanifest|.well-known|apple-app-site-association|assetlinks.json|sw.js|service-worker.js|images|.*\\.(?:svg|png|jpg|jpeg|gif|webp|json|css|js)$).*)",
+    "/((?!api/webhooks|api/cron|api/csp-report|api/errors|api/health|healthz|readyz|_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml|manifest.webmanifest|.well-known|apple-app-site-association|assetlinks.json|sw.js|service-worker.js|images|.*\\.(?:svg|png|jpg|jpeg|gif|webp|json|css|js)$).*)",
   ],
 };

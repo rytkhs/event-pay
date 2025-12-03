@@ -1,6 +1,6 @@
 "use client";
 
-import React, { Children, cloneElement, isValidElement } from "react";
+import React, { Children, cloneElement, isValidElement, Fragment } from "react";
 
 import { cn } from "@/core/utils";
 import { useInView } from "@/hooks/use-in-view";
@@ -30,6 +30,12 @@ export const StaggerContainer: React.FC<StaggerContainerProps> = ({
         // Pass props to StaggerItem children
         // We check if the child type is StaggerItem to be safe, or just pass props to any component
         // that accepts them. Here we assume children are StaggerItem or compatible.
+
+        // Skip passing props to DOM elements and Fragments to avoid warnings
+        if (typeof child.type === "string" || child.type === Fragment) {
+          return child;
+        }
+
         return cloneElement(child as React.ReactElement<any>, {
           isInView,
           delay: delay + index * staggerDelay,

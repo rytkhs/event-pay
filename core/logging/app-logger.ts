@@ -24,8 +24,109 @@ export interface EventPayLogFields {
   tag?: string;
   /** リトライ回数 */
   retry?: number;
+  /** エラースタック */
+  error_stack?: string;
+  /** エラーコード */
+  error_code?: string;
   /** その他のコンテキスト */
   [key: string]: unknown;
+}
+
+import { createClient } from "@supabase/supabase-js";
+import type { SupabaseClient } from "@supabase/supabase-js";
+
+import { waitUntil } from "@core/utils/cloudflare-ctx";
+
+import { shouldLogError } from "./deduplication";
+
+/**
+ * エラーオブジェクトまたは文字列から安全にスタックトレースを取得
+ */
+function extractErrorStack(error: unknown): string | undefined {
+  if (!error) return undefined;
+
+  // Error オブジェクトの場合
+  if (error instanceof Error) {
+    return error.stack;
+  }
+
+  // stack プロパティを持つオブジェクトの場合
+  if (typeof error === "object" && "stack" in error && typeof error.stack === "string") {
+    return error.stack;
+  }
+
+  // 文字列の場合
+  if (typeof error === "string") {
+    return error;
+  }
+
+  return undefined;
+}
+
+function createSupabaseClient(): SupabaseClient | null {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (!supabaseUrl || !supabaseKey) {
+    console.error("Supabase URL or key not found");
+    return null;
+  }
+
+  return createClient(supabaseUrl, supabaseKey, {
+    auth: { persistSession: false },
+  });
+}
+
+/**
+ * エラーをSupabaseにも記録する拡張メソッド
+ */
+async function persistErrorToSupabase(
+  level: LogLevel,
+  msg: string,
+  fields: EventPayLogFields
+): Promise<void> {
+  // 本番環境かつerrorレベル以上のみDB保存
+  if (process.env.NODE_ENV !== "production" || level === "debug" || level === "info") {
+    return;
+  }
+
+  try {
+    // error_stackの安全な取得
+    const errorStack = fields.error_stack || extractErrorStack((fields as any).error);
+
+    // 重複チェック
+    const shouldLog = await shouldLogError(msg, errorStack);
+    if (!shouldLog) {
+      return; // 重複エラーはスキップ
+    }
+
+    const supabase = createSupabaseClient();
+    if (!supabase) {
+      return;
+    }
+
+    await supabase.from("system_logs").insert({
+      log_level: level,
+      log_category: fields.tag || "application_error",
+      actor_type: "system",
+      user_id: fields.user_id,
+      action: "error_occurred",
+      message: msg,
+      outcome: "failure",
+      error_code: fields.error_code,
+      error_message: msg,
+      error_stack: errorStack,
+      stripe_request_id: fields.stripe_request_id,
+      idempotency_key: fields.idempotency_key,
+      metadata: fields as any,
+      tags: fields.tag ? [fields.tag] : [],
+      dedupe_key: (fields as any).dedupe_key, // 重複排除用
+    });
+  } catch (e) {
+    // DB保存失敗は致命的ではないため、コンソールログのみ
+    // eslint-disable-next-line no-console
+    console.error("[AppLogger] Failed to persist to Supabase:", e);
+  }
 }
 
 /**
@@ -148,9 +249,12 @@ export const logger = {
 
   /**
    * エラーレベルログ
+   * Cloudflare WorkersのwaitUntilを使用するため、呼び出し元でのawaitは不要
    */
   error(msg: string, fields?: EventPayLogFields) {
     const normalized = (this as any)._normalize(msg, fields);
+
+    // 1. コンソール出力 (Cloudflare Logs用)
     // eslint-disable-next-line no-console
     console.error(
       JSON.stringify({
@@ -162,6 +266,10 @@ export const logger = {
         ...normalized,
       })
     );
+
+    // 2. DB保存 (waitUntilでバックグラウンド実行)
+    // ここでawaitせず、PromiseをwaitUntilに渡す
+    waitUntil(persistErrorToSupabase("error", msg, normalized));
   },
 
   /**

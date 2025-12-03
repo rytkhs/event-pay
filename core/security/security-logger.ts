@@ -3,12 +3,27 @@
  * セキュリティ関連のイベントを統一的に記録・監視します
  */
 
+import { createClient } from "@supabase/supabase-js";
+import type { SupabaseClient } from "@supabase/supabase-js";
+
 import { getMaliciousPatternDetails } from "@core/constants/security-patterns";
 import { logger } from "@core/logging/app-logger";
+import { waitUntil } from "@core/utils/cloudflare-ctx";
 import { getEnv } from "@core/utils/cloudflare-env";
-// Import mask functions for re-export (used by external modules)
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-import { maskSessionId, maskPaymentId } from "@core/utils/mask";
+
+function createSupabaseClient(): SupabaseClient | null {
+  const env = getEnv();
+  const supabaseUrl = env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseKey = env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (!supabaseUrl || !supabaseKey) {
+    return null;
+  }
+
+  return createClient(supabaseUrl, supabaseKey, {
+    auth: { persistSession: false },
+  });
+}
 
 export interface SecurityEvent {
   type: SecurityEventType | string;
@@ -83,15 +98,14 @@ export function logSecurityEvent(event: SecurityEvent): void {
   else if (level === "warn") logger.warn(logMessage, logFields);
   else logger.error(logMessage, logFields);
 
-  // 重要度が高い場合はアラートを送信（fire-and-forget方式）
+  // 重要度が高い場合はアラートを送信（waitUntilでバックグラウンド実行）
   if (event.severity === "HIGH" || event.severity === "CRITICAL") {
-    // 非同期処理をバックグラウンドで実行（呼び出し側をブロックしない）
-    sendSecurityAlert({
-      ...logFields,
-    }).catch((error) => {
-      // アラート送信の失敗は致命的ではないため、エラーログのみ記録
-      console.error("[SecurityAlert] Unhandled error in sendSecurityAlert:", error);
-    });
+    // waitUntilでバックグラウンド実行（呼び出し側をブロックしない）
+    waitUntil(
+      sendSecurityAlert({
+        ...logFields,
+      })
+    );
   }
 }
 
@@ -373,31 +387,51 @@ async function sendSecurityAlert(logEntry: Record<string, unknown>): Promise<voi
     });
   }
 
-  // 本番環境では管理者にメールアラートを送信
   if (env.NODE_ENV === "production") {
     try {
-      // Dynamic importでメール送信サービスを読み込み
-      const { EmailNotificationService } = await import("@core/notification/email-service");
-      const emailService = new EmailNotificationService();
+      // 1. Supabaseに保存
+      const supabase = createSupabaseClient();
 
-      // セキュリティアラートのサマリーを作成
-      const securityType = String(logEntry.security_type || "UNKNOWN");
-      const severity = String(logEntry.security_severity || "UNKNOWN");
-      const message = String(logEntry.message || "Security event detected");
+      if (supabase) {
+        await supabase.from("system_logs").insert({
+          log_level: "error",
+          log_category: "security",
+          actor_type: "unknown",
+          action: "security_event",
+          message: String(logEntry.message || "Security event"),
+          outcome: "blocked",
+          ip_address: logEntry.ip as string,
+          user_agent: logEntry.user_agent as string,
+          metadata: logEntry as any,
+          tags: ["securityAlert", String(logEntry.security_type || "unknown")],
+        });
+      }
 
-      // アラートメールを送信（失敗してもアプリケーションは停止しない）
-      await emailService.sendAdminAlert({
-        subject: `🚨 Security Alert [${severity}]: ${securityType}`,
-        message: message,
-        details: {
-          ...logEntry,
-          // タイムスタンプを読みやすい形式に変換
-          alert_time: new Date().toISOString(),
-        },
-      });
+      // 2. メール通知 (HIGH/CRITICAL のみ)
+      if (logEntry.security_severity === "HIGH" || logEntry.security_severity === "CRITICAL") {
+        const { EmailNotificationService } = await import("@core/notification/email-service");
+        const emailService = new EmailNotificationService();
+
+        // セキュリティアラートのサマリーを作成
+        const securityType = String(logEntry.security_type || "UNKNOWN");
+        const severity = String(logEntry.security_severity || "UNKNOWN");
+        const message = String(logEntry.message || "Security event detected");
+
+        // アラートメールを送信（失敗してもアプリケーションは停止しない）
+        await emailService.sendAdminAlert({
+          subject: `🚨 Security Alert [${severity}]: ${securityType}`,
+          message: message,
+          details: {
+            ...logEntry,
+            // タイムスタンプを読みやすい形式に変換
+            alert_time: new Date().toISOString(),
+          },
+        });
+      }
     } catch (error) {
       // アラート送信失敗をログに記録（循環参照を避けるためconsole.error使用）
-      console.error("[SecurityAlert] Failed to send security alert email:", {
+      // eslint-disable-next-line no-console
+      console.error("[SecurityAlert] Failed to save or notify:", {
         error_name: error instanceof Error ? error.name : "Unknown",
         error_message: error instanceof Error ? error.message : String(error),
         security_type: logEntry.security_type,

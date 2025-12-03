@@ -14,6 +14,7 @@ import {
   generateSoftwareApplicationSchema,
 } from "@core/seo/jsonld-schemas";
 
+import { GlobalErrorListener } from "@components/errors/global-error-listener";
 import { JsonLd } from "@components/seo/JsonLd";
 
 import { Toaster } from "@/components/ui/toast";
@@ -90,6 +91,7 @@ export default function RootLayout({
   return (
     <html lang="ja" suppressHydrationWarning={true}>
       <body className={`${notoSansJp.className} antialiased`} suppressHydrationWarning={true}>
+        <GlobalErrorListener />
         <JsonLd
           data={[organizationSchema, webSiteSchema, softwareApplicationSchema]}
           nonce={nonce}

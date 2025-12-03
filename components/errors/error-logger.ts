@@ -127,7 +127,7 @@ class ErrorLogger {
    * エラーレポートを外部サービスに送信
    */
   private async sendErrorReport(logEntry: ErrorLogEntry): Promise<void> {
-    if (!this.config.apiEndpoint || !this.config.apiKey) {
+    if (!this.config.apiEndpoint) {
       return;
     }
 
@@ -138,19 +138,21 @@ class ErrorLogger {
 
     // レポートデータを準備
     const reportData = {
-      ...logEntry,
+      error: logEntry.error,
       stackTrace: this.config.includeStackTrace ? logEntry.stackTrace : undefined,
       user: this.config.includeUserInfo ? logEntry.user : undefined,
       breadcrumbs: this.config.includeBreadcrumbs ? logEntry.breadcrumbs : undefined,
+      page: logEntry.page,
+      environment: logEntry.environment,
     };
 
     const response = await fetch(this.config.apiEndpoint, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${this.config.apiKey}`,
       },
       body: JSON.stringify(reportData),
+      keepalive: true,
     });
 
     if (!response.ok) {
@@ -226,13 +228,11 @@ class ErrorLogger {
 const errorLogger = new ErrorLogger({
   enabled: process.env.NODE_ENV === "production",
   environment: (process.env.NODE_ENV as "development" | "preview" | "production") || "development",
-  sampleRate: 0.1, // 本番環境では適切な値に調整
+  sampleRate: 1.0,
   includeStackTrace: true,
-  includeUserInfo: false, // プライバシーを考慮
+  includeUserInfo: false,
   includeBreadcrumbs: true,
-  // 本番環境では実際のエンドポイントとAPIキーを設定
-  apiEndpoint: process.env.ERROR_REPORTING_ENDPOINT,
-  apiKey: process.env.ERROR_REPORTING_API_KEY,
+  apiEndpoint: "/api/errors",
 });
 
 export { ErrorLogger, errorLogger };
