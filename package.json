@@ -7,8 +7,9 @@
     "dev": "FORCE_COLOR=true next dev",
     "build": "next build",
     "preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
-    "deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
+    "deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy -- --keep-vars --outdir dist --upload-source-maps --var SENTRY_RELEASE:$(sentry-cli releases propose-version)",
     "upload": "opennextjs-cloudflare build && opennextjs-cloudflare upload",
+    "cf:deploy": "opennextjs-cloudflare deploy -- --keep-vars --outdir dist --upload-source-maps && npm run sentry:sourcemaps --var SENTRY_RELEASE:$(sentry-cli releases propose-version) && npm run sentry:sourcemaps",
     "cf-typegen": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts",
     "start": "next start",
     "email:dev": "email dev",
@@ -39,7 +40,9 @@
     "test:coverage": "npm run test:unit:coverage && npm run test:integration:coverage",
     "test:setup": "npx supabase db reset --local && echo 'Test environment ready'",
     "test:with-server": "PLAYWRIGHT_START_SERVER=1 npm run test:e2e",
-    "test:payments": "jest --config=jest.config.mjs --testPathPattern=payments --runInBand"
+    "test:payments": "jest --config=jest.config.mjs --testPathPattern=payments --runInBand",
+    "sentry:sourcemaps": "_SENTRY_RELEASE=$(sentry-cli releases propose-version) && sentry-cli releases new $_SENTRY_RELEASE --org=tkhs --project=event-pay && sentry-cli sourcemaps upload --org=tkhs --project=event-pay --release=$_SENTRY_RELEASE --strip-prefix 'dist/..' dist",
+    "postdeploy": "npm run sentry:sourcemaps"
   },
   "dependencies": {
     "@11ty/gray-matter": "^2.0.1",
@@ -104,6 +107,7 @@
     "@next/bundle-analyzer": "^15.5.6",
     "@playwright/test": "^1.47.2",
     "@react-email/preview-server": "^4.2.12",
+    "@sentry/cli": "^2.58.2",
     "@tailwindcss/typography": "0.5.19",
     "@testing-library/jest-dom": "^6.8.0",
     "@testing-library/react": "^16.3.0",

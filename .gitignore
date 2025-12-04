@@ -111,3 +111,6 @@ logger-architecture.md
 monitoring_test.md
 MONITORING.md
 storage/
+
+# Sentry Config File
+.sentryclirc

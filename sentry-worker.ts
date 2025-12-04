@@ -5,11 +5,9 @@ import openNextWorker from "./.open-next/worker.js";
 
 export default Sentry.withSentry(
   (env: any) => {
-    const { id: versionId } = env.CF_VERSION_METADATA || {};
-
     return {
       dsn: env.SENTRY_DSN,
-      release: versionId,
+      release: env.SENTRY_RELEASE,
       sendDefaultPii: true,
       enableLogs: true,
       tracesSampleRate: 1.0,
