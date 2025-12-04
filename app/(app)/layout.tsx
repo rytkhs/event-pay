@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 
 import { createClient } from "@core/supabase/server";
 
-import { GlobalFooter } from "@components/layout/GlobalFooter";
+// import { GlobalFooter } from "@components/layout/GlobalFooter";
 import { GlobalHeader } from "@components/layout/GlobalHeader";
 
 /**
@@ -40,7 +40,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
     <>
       <GlobalHeader user={currentUser} variant="app" />
       <main>{children}</main>
-      <GlobalFooter />
+      {/* <GlobalFooter /> */}
     </>
   );
 }

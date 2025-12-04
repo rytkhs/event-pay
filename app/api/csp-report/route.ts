@@ -154,7 +154,7 @@ export async function POST(request: NextRequest) {
 
     const violation = report["csp-report"];
 
-    // CSP違反をセキュリティログに記録
+    // CSP違反をセキュリティログに記録(fire and forget)
     logSecurityEvent({
       type: "CSP_VIOLATION",
       severity: "MEDIUM",

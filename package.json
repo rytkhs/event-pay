@@ -42,6 +42,7 @@
     "test:payments": "jest --config=jest.config.mjs --testPathPattern=payments --runInBand"
   },
   "dependencies": {
+    "@11ty/gray-matter": "^2.0.1",
     "@hookform/resolvers": "^5.1.1",
     "@next/third-parties": "^16.0.1",
     "@opennextjs/cloudflare": "^1.11.0",
@@ -124,7 +125,6 @@
     "eslint-plugin-react": "^7.37.5",
     "eslint-plugin-react-hooks": "^4.6.2",
     "globals": "^16.3.0",
-    "gray-matter": "4.0.3",
     "husky": "^9.1.7",
     "jest": "^29.7.0",
     "jest-environment-jsdom": "^30.1.2",

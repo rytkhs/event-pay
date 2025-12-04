@@ -106,3 +106,8 @@ tbls.deb
 .open-next/
 .wrangler/
 .dev.vars
+
+logger-architecture.md
+monitoring_test.md
+MONITORING.md
+storage/
