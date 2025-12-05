@@ -9,9 +9,6 @@ export async function generateMetadata(): Promise<Metadata> {
     title: "プライバシーポリシー",
     description:
       "みんなの集金のプライバシーポリシーです。個人情報の取り扱いについて説明しています。",
-    alternates: {
-      canonical: "/privacy",
-    },
   };
 }
 
