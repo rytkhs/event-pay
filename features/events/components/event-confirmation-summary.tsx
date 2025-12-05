@@ -146,7 +146,7 @@ export function EventConfirmationSummary({
           {/* イベント説明 */}
           {formData.description && (
             <div>
-              <div className="text-xs text-gray-500 mb-1">イベントの説明</div>
+              <div className="text-xs text-gray-500 mb-1">イベントの説明・詳細</div>
               <div className="flex items-start space-x-2">
                 <FileTextIcon className="w-4 h-4 text-gray-400 mt-1 flex-shrink-0" />
                 <div className="text-sm text-gray-700 whitespace-pre-wrap break-words max-h-32 overflow-y-auto bg-gray-50 rounded p-3 w-full">

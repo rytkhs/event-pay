@@ -6,6 +6,7 @@
 // Components
 export * from "./components/event-card";
 export * from "./components/modern-event-form";
+export * from "./components/single-page-event-form";
 export * from "./components/modern-event-edit-form";
 export * from "./components/event-list";
 export * from "./components/event-filters";
