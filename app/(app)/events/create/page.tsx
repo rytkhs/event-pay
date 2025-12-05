@@ -4,7 +4,7 @@ import { createClient } from "@core/supabase/server";
 
 export const dynamic = "force-dynamic";
 
-import { ModernEventForm } from "@features/events";
+import { SinglePageEventForm } from "@features/events";
 import { getDetailedAccountStatusAction } from "@features/stripe-connect";
 
 export default async function CreateEventPage() {
@@ -37,7 +37,7 @@ export default async function CreateEventPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-muted/30 to-accent/5 py-8">
       <div className="container mx-auto px-4">
-        <ModernEventForm
+        <SinglePageEventForm
           canUseOnlinePayments={canUseOnlinePayments}
           connectStatus={detailedStatus.status}
         />
