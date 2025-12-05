@@ -9,7 +9,7 @@
     "preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
     "deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy -- --keep-vars --outdir dist --upload-source-maps --var SENTRY_RELEASE:$(sentry-cli releases propose-version)",
     "upload": "opennextjs-cloudflare build && opennextjs-cloudflare upload",
-    "cf:deploy": "opennextjs-cloudflare deploy -- --keep-vars --outdir dist --upload-source-maps && npm run sentry:sourcemaps --var SENTRY_RELEASE:$(sentry-cli releases propose-version) && npm run sentry:sourcemaps",
+    "cf:deploy": "opennextjs-cloudflare deploy -- --keep-vars --outdir dist --upload-source-maps --var SENTRY_RELEASE:$(sentry-cli releases propose-version) && npm run sentry:sourcemaps",
     "cf-typegen": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts",
     "start": "next start",
     "email:dev": "email dev",
