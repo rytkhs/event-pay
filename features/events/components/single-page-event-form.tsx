@@ -132,7 +132,7 @@ function SinglePageEventForm({
   return (
     <div className="w-full max-w-7xl mx-auto pb-32">
       {/* Header */}
-      <header className="mb-8">
+      <header className="mb-6">
         <div className="flex items-center gap-2 mb-2">
           <a
             href="/dashboard"
@@ -142,12 +142,9 @@ function SinglePageEventForm({
             ダッシュボードに戻る
           </a>
         </div>
-        <h1 className="text-2xl md:text-3xl font-extrabold text-slate-900 tracking-tight">
+        <h1 className="text-xl md:text-2xl font-bold text-slate-900 tracking-tight">
           新しいイベントを作成
         </h1>
-        <p className="text-sm md:text-base text-slate-500 mt-2">
-          イベントの基本情報を入力し、集金の準備を始めましょう。
-        </p>
       </header>
 
       <Form {...form}>
