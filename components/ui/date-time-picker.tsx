@@ -32,6 +32,10 @@ export function DateTimePicker({
   const [selectedDate, setSelectedDate] = React.useState<Date | undefined>(value);
   const [isOpen, setIsOpen] = React.useState(false);
 
+  React.useEffect(() => {
+    setSelectedDate(value);
+  }, [value]);
+
   // 時間の選択肢を生成（0-23時）
   const hours = Array.from({ length: 24 }, (_, i) => i);
   // 分の選択肢を生成（0, 15, 30, 45）

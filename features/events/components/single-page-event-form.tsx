@@ -645,7 +645,7 @@ function SinglePageEventForm({
                     <p className="text-sm font-medium">
                       日時を入力すると
                       <br />
-                      スケジュールプレビューが表示されます
+                      タイムラインプレビューが表示されます
                     </p>
                   </CardContent>
                 </Card>

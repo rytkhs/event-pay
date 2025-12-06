@@ -317,7 +317,7 @@ export function EventFormTimeline({
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <h3 className="text-base font-semibold flex items-center gap-2">
-            <Calendar className="h-4 w-4" /> スケジュールプレビュー
+            <Calendar className="h-4 w-4" /> タイムラインプレビュー
           </h3>
           {hasCriticalErrors && (
             <span className="text-xs text-destructive bg-destructive/10 px-2 py-1 rounded flex items-center gap-1">
