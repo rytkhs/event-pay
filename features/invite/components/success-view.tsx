@@ -1,6 +1,10 @@
+"use client";
+
 import React from "react";
 
 import { CheckCircle, Copy, ExternalLink } from "lucide-react";
+
+import { useToast } from "@/core/contexts/toast-context";
 
 import type { RegisterParticipationData } from "../actions/register-participation";
 
@@ -9,6 +13,7 @@ interface SuccessViewProps {
 }
 
 export const SuccessView: React.FC<SuccessViewProps> = ({ data }) => {
+  const { toast } = useToast();
   const baseUrl =
     process.env.NEXT_PUBLIC_APP_URL ??
     (typeof window !== "undefined" ? window.location.origin : "");
@@ -16,7 +21,10 @@ export const SuccessView: React.FC<SuccessViewProps> = ({ data }) => {
 
   const copyToClipboard = () => {
     navigator.clipboard.writeText(derivedGuestUrl);
-    alert("リンクをコピーしました");
+    toast({
+      title: "リンクをコピーしました",
+      variant: "success",
+    });
   };
 
   return (
@@ -45,7 +53,7 @@ export const SuccessView: React.FC<SuccessViewProps> = ({ data }) => {
             <p className="text-sm text-slate-600 mb-4">
               以下のリンクから、いつでも出欠状況の変更や支払い状況の確認が可能です。
               <br />
-              <span className="text-warning font-bold">このURLを必ず保存してください。</span>
+              確認メールからもアクセスできます。
             </p>
 
             <div className="flex items-center gap-2">
