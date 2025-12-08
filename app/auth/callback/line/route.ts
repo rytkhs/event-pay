@@ -32,13 +32,15 @@ export async function GET(request: Request) {
   const storedState = cookieStore.get(LINE_OAUTH_COOKIES.STATE)?.value;
   const nextPath = cookieStore.get(LINE_OAUTH_COOKIES.NEXT)?.value ?? "/dashboard";
   const codeVerifier = cookieStore.get(LINE_OAUTH_COOKIES.CODE_VERIFIER)?.value;
+  const storedNonce = cookieStore.get(LINE_OAUTH_COOKIES.NONCE)?.value;
 
   // 検証後はCookieを即削除（ワンタイム利用）
   cookieStore.delete(LINE_OAUTH_COOKIES.STATE);
   cookieStore.delete(LINE_OAUTH_COOKIES.NEXT);
   cookieStore.delete(LINE_OAUTH_COOKIES.CODE_VERIFIER);
+  cookieStore.delete(LINE_OAUTH_COOKIES.NONCE);
 
-  if (!code || !state || !storedState || state !== storedState) {
+  if (!code || !state || !storedState || state !== storedState || !storedNonce) {
     logger.error("CSRF validation failed", {
       tag: "lineLoginCsrfFailed",
       state,
@@ -89,6 +91,7 @@ export async function GET(request: Request) {
       body: new URLSearchParams({
         id_token: lineData.id_token,
         client_id: channelId,
+        nonce: storedNonce,
       }),
     });
 

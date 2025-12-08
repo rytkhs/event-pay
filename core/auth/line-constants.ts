@@ -14,6 +14,7 @@ export const LINE_OAUTH_COOKIES = {
   STATE: "line_oauth_state",
   NEXT: "line_oauth_next",
   CODE_VERIFIER: "line_oauth_code_verifier",
+  NONCE: "line_oauth_nonce",
 } as const;
 
 // タイムアウト設定

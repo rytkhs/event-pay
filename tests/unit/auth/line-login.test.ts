@@ -93,10 +93,19 @@ describe("LINE Login Auth Flow", () => {
       );
       expect(location).toContain("scope=profile+openid+email");
       expect(location).toContain("state=");
+      expect(location).toContain("nonce=");
 
       // Cookieにstateがセットされたか確認
       expect(mockCookies.set).toHaveBeenCalledWith(
         "line_oauth_state",
+        expect.any(String),
+        expect.objectContaining({
+          httpOnly: true,
+          path: "/",
+        })
+      );
+      expect(mockCookies.set).toHaveBeenCalledWith(
+        "line_oauth_nonce",
         expect.any(String),
         expect.objectContaining({
           httpOnly: true,
@@ -128,6 +137,7 @@ describe("LINE Login Auth Flow", () => {
       mockCookies.get.mockImplementation((name) => {
         if (name === "line_oauth_state") return { value: mockState };
         if (name === "line_oauth_next") return { value: "/dashboard" };
+        if (name === "line_oauth_nonce") return { value: "test-nonce" };
         return undefined;
       });
 
@@ -147,6 +157,23 @@ describe("LINE Login Auth Flow", () => {
 
     it("should redirect to error page if state mismatch", async () => {
       mockCookies.get.mockReturnValue({ value: "different-state" });
+      const request = new Request(
+        `http://localhost:3000/auth/callback/line?code=${mockCode}&state=${mockState}`
+      );
+      const response = await authCallbackLineGet(request);
+
+      expect(response.status).toBe(307);
+      expect(response.headers.get("Location")).toBe(
+        "http://localhost:3000/login?error=line_state_mismatch"
+      );
+    });
+
+    it("should redirect to error page if nonce is missing", async () => {
+      mockCookies.get.mockImplementation((name) => {
+        if (name === "line_oauth_state") return { value: mockState };
+        // nonce is missing
+        return undefined;
+      });
       const request = new Request(
         `http://localhost:3000/auth/callback/line?code=${mockCode}&state=${mockState}`
       );

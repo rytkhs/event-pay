@@ -43,6 +43,10 @@ export async function GET(request: Request) {
 
   cookieStore.set(LINE_OAUTH_COOKIES.STATE, state, cookieOptions);
 
+  // nonce生成と保存 (OpenID Connect リプレイアタック対策)
+  const nonce = crypto.randomBytes(32).toString("hex");
+  cookieStore.set(LINE_OAUTH_COOKIES.NONCE, nonce, cookieOptions);
+
   // PKCE用のcode_verifierとcode_challengeを生成
   const codeVerifier = generateCodeVerifier();
   const codeChallenge = generateCodeChallenge(codeVerifier);
@@ -56,6 +60,7 @@ export async function GET(request: Request) {
     client_id: channelId,
     redirect_uri: redirectUri,
     state: state,
+    nonce: nonce,
     scope: LINE_OAUTH_CONFIG.SCOPE,
     code_challenge: codeChallenge,
     code_challenge_method: LINE_OAUTH_CONFIG.CODE_CHALLENGE_METHOD,
