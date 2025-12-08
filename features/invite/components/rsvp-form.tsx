@@ -45,8 +45,8 @@ export const RsvpForm: React.FC<RsvpFormProps> = ({
       inviteToken,
       nickname: "",
       email: "",
-      attendanceStatus: "attending" as const, // Mock default is JOIN
-      paymentMethod: "stripe" as const, // Mock default is ONLINE
+      attendanceStatus: "attending" as const,
+      paymentMethod: "stripe" as const,
     },
     mode: "onChange",
   });
@@ -100,7 +100,7 @@ export const RsvpForm: React.FC<RsvpFormProps> = ({
       })}
       className="bg-white rounded-2xl shadow-lg border border-slate-100 p-6 sm:p-8"
     >
-      <h2 className="text-xl font-bold text-slate-900 mb-6">参加申し込み</h2>
+      <h2 className="text-xl font-bold text-slate-900 mb-6">参加登録</h2>
 
       {isError && error && (
         <div className="mb-6 p-4 bg-red-50 text-red-600 rounded-lg text-sm">
@@ -123,9 +123,9 @@ export const RsvpForm: React.FC<RsvpFormProps> = ({
             id="nickname"
             className={`w-full px-4 py-2 rounded-lg border ${
               errors.nickname
-                ? "border-red-500 focus:ring-red-200"
-                : "border-slate-300 focus:ring-indigo-200"
-            } focus:border-indigo-500 focus:ring focus:outline-none transition-all`}
+                ? "border-destructive focus:ring-destructive/20"
+                : "border-input focus:ring-ring/50"
+            } focus:border-primary focus:ring focus:outline-none transition-all`}
             placeholder="例: たなか"
           />
           {errors.nickname && (
@@ -144,13 +144,13 @@ export const RsvpForm: React.FC<RsvpFormProps> = ({
             id="email"
             className={`w-full px-4 py-2 rounded-lg border ${
               errors.email
-                ? "border-red-500 focus:ring-red-200"
-                : "border-slate-300 focus:ring-indigo-200"
-            } focus:border-indigo-500 focus:ring focus:outline-none transition-all`}
+                ? "border-destructive focus:ring-destructive/20"
+                : "border-input focus:ring-ring/50"
+            } focus:border-primary focus:ring focus:outline-none transition-all`}
             placeholder="例: user@example.com"
           />
           <p className="text-xs text-slate-500 mt-1">
-            ※ 申し込み完了メールや、ゲスト用管理リンクが送信されます。
+            ※ 登録完了メールや、参加者マイページURLが送信されます。
           </p>
           {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email.message}</p>}
         </div>
@@ -166,13 +166,13 @@ export const RsvpForm: React.FC<RsvpFormProps> = ({
               onClick={() => handleStatusChange("attending")}
               className={`flex flex-col items-center justify-center p-3 rounded-xl border-2 transition-all ${
                 watchedStatus === "attending"
-                  ? "border-indigo-600 bg-indigo-50 text-indigo-700"
-                  : "border-slate-200 hover:border-indigo-200 text-slate-600"
+                  ? "border-primary bg-primary/10 text-primary"
+                  : "border-slate-200 hover:border-primary/40 text-slate-600"
               }`}
             >
               <CheckCircle2
                 className={`w-6 h-6 mb-1 ${
-                  watchedStatus === "attending" ? "fill-indigo-600 text-white" : ""
+                  watchedStatus === "attending" ? "fill-primary text-white" : ""
                 }`}
               />
               <span className="text-sm font-bold">参加</span>
@@ -183,13 +183,13 @@ export const RsvpForm: React.FC<RsvpFormProps> = ({
               onClick={() => handleStatusChange("maybe")}
               className={`flex flex-col items-center justify-center p-3 rounded-xl border-2 transition-all ${
                 watchedStatus === "maybe"
-                  ? "border-orange-400 bg-orange-50 text-orange-700"
-                  : "border-slate-200 hover:border-orange-200 text-slate-600"
+                  ? "border-warning bg-warning/10 text-warning-foreground"
+                  : "border-slate-200 hover:border-warning/40 text-slate-600"
               }`}
             >
               <HelpCircle
                 className={`w-6 h-6 mb-1 ${
-                  watchedStatus === "maybe" ? "fill-orange-400 text-white" : ""
+                  watchedStatus === "maybe" ? "fill-warning text-white" : ""
                 }`}
               />
               <span className="text-sm font-bold">未定</span>
@@ -212,8 +212,12 @@ export const RsvpForm: React.FC<RsvpFormProps> = ({
               <span className="text-sm font-bold">不参加</span>
             </button>
           </div>
+          <p className="text-xs text-slate-500 mt-2 leading-relaxed">
+            出欠は申込締切まで何度でも変更できます。
+            予定がわからない場合は「未定」で登録することをおすすめします。
+          </p>
           {watchedStatus === "maybe" && (
-            <p className="text-xs text-orange-600 mt-2 bg-orange-50 p-2 rounded">
+            <p className="text-xs text-warning-foreground mt-2 bg-warning/10 p-2 rounded">
               ※ 「未定」は定員に含まれず、決済も発生しません。参加確定時に変更してください。
             </p>
           )}
@@ -230,14 +234,14 @@ export const RsvpForm: React.FC<RsvpFormProps> = ({
                 <label
                   className={`flex items-center p-4 border rounded-xl cursor-pointer transition-all ${
                     watchedPaymentMethod === "stripe"
-                      ? "border-indigo-600 bg-indigo-50 ring-1 ring-indigo-600"
+                      ? "border-primary bg-primary/10 ring-1 ring-primary"
                       : "border-slate-200 hover:bg-slate-50"
                   }`}
                 >
                   <input
                     type="radio"
                     value="stripe"
-                    className="w-4 h-4 text-indigo-600 focus:ring-indigo-500 border-gray-300"
+                    className="w-4 h-4 text-primary focus:ring-primary border-gray-300"
                     {...register("paymentMethod")}
                   />
                   <div className="ml-3 flex-1">
@@ -245,7 +249,7 @@ export const RsvpForm: React.FC<RsvpFormProps> = ({
                       <CreditCard className="w-4 h-4" /> オンライン決済
                     </span>
                     <span className="block text-xs text-slate-500 mt-0.5">
-                      Stripe経由でクレジットカード / Apple Pay / Google Pay
+                      クレジットカード / Apple Pay / Google Payなど
                     </span>
                   </div>
                 </label>
@@ -255,22 +259,22 @@ export const RsvpForm: React.FC<RsvpFormProps> = ({
                 <label
                   className={`flex items-center p-4 border rounded-xl cursor-pointer transition-all ${
                     watchedPaymentMethod === "cash"
-                      ? "border-indigo-600 bg-indigo-50 ring-1 ring-indigo-600"
+                      ? "border-primary bg-primary/10 ring-1 ring-primary"
                       : "border-slate-200 hover:bg-slate-50"
                   }`}
                 >
                   <input
                     type="radio"
                     value="cash"
-                    className="w-4 h-4 text-indigo-600 focus:ring-indigo-500 border-gray-300"
+                    className="w-4 h-4 text-primary focus:ring-primary border-gray-300"
                     {...register("paymentMethod")}
                   />
                   <div className="ml-3 flex-1">
                     <span className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                      <Banknote className="w-4 h-4" /> 現金払い
+                      <Banknote className="w-4 h-4" /> 現金決済
                     </span>
                     <span className="block text-xs text-slate-500 mt-0.5">
-                      当日、受付にてお支払いください
+                      現金で直接お支払いください
                     </span>
                   </div>
                 </label>
@@ -286,13 +290,13 @@ export const RsvpForm: React.FC<RsvpFormProps> = ({
         <button
           type="submit"
           disabled={isSubmitting}
-          className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3.5 px-6 rounded-xl shadow-lg shadow-indigo-200 transition-all flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
+          className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold py-3.5 px-6 rounded-xl shadow-lg shadow-primary/20 transition-all flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
         >
           {isSubmitting ? (
             <Loader2 className="w-5 h-5 animate-spin" />
           ) : (
             <>
-              {isJoin && watchedPaymentMethod === "stripe" ? "登録して決済へ進む" : "登録する"}
+              登録する
               <ArrowRight className="w-5 h-5" />
             </>
           )}

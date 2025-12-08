@@ -36,9 +36,9 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ event }) => {
 
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden mb-6">
-      <div className="bg-indigo-600 px-6 py-4 text-white">
+      <div className="bg-primary px-6 py-4 text-primary-foreground">
         <div className="flex items-center justify-between mb-2">
-          <span className="bg-indigo-500 bg-opacity-50 text-xs font-semibold px-2.5 py-1 rounded-full border border-indigo-400">
+          <span className="bg-primary/80 text-xs font-semibold px-2.5 py-1 rounded-full border border-primary-foreground/30">
             {statusLabel}
           </span>
           <span className="text-primary-foreground/70 text-sm">作成者: {event.organizer_name}</span>
@@ -49,7 +49,7 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ event }) => {
       <div className="p-6 space-y-5">
         {/* Date & Time */}
         <div className="flex items-start space-x-3">
-          <Calendar className="w-5 h-5 text-indigo-600 mt-1 flex-shrink-0" />
+          <Calendar className="w-5 h-5 text-primary mt-1 flex-shrink-0" />
           <div>
             <p className="font-semibold text-slate-900">
               {formatUtcToJst(event.date, "yyyy年MM月dd日")}
@@ -64,7 +64,7 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ event }) => {
         {/* Location */}
         {event.location && (
           <div className="flex items-start space-x-3">
-            <MapPin className="w-5 h-5 text-indigo-600 mt-1 flex-shrink-0" />
+            <MapPin className="w-5 h-5 text-primary mt-1 flex-shrink-0" />
             <div>
               <p className="font-semibold text-slate-900">{event.location}</p>
             </div>
@@ -73,33 +73,33 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ event }) => {
 
         {/* Fee */}
         <div className="flex items-start space-x-3">
-          <Banknote className="w-5 h-5 text-indigo-600 mt-1 flex-shrink-0" />
+          <Banknote className="w-5 h-5 text-primary mt-1 flex-shrink-0" />
           <div>
             <p className="font-semibold text-slate-900">
               {event.fee > 0 ? `${event.fee.toLocaleString()}円` : "無料"}
             </p>
-            {event.fee > 0 && (
+            {/* {event.fee > 0 && (
               <p className="text-xs text-slate-500">オンライン決済 / 現金払い 対応</p>
-            )}
+            )} */}
           </div>
         </div>
 
         {/* Capacity */}
         <div className="flex items-start space-x-3">
-          <Users className="w-5 h-5 text-indigo-600 mt-1 flex-shrink-0" />
+          <Users className="w-5 h-5 text-primary mt-1 flex-shrink-0" />
           <div className="w-full">
             <div className="flex justify-between items-end mb-1">
               <span className="font-semibold text-slate-900">参加状況</span>
               <span
-                className={`text-sm font-medium ${isNearCapacity ? "text-orange-500" : "text-slate-600"}`}
+                className={`text-sm font-medium ${isNearCapacity ? "text-warning" : "text-slate-600"}`}
               >
-                {event.attendances_count} / {isCapacitySet ? `${event.capacity}名` : "無制限"}
+                {event.attendances_count} / {isCapacitySet ? `${event.capacity}名` : "制限なし"}
               </span>
             </div>
             {isCapacitySet && event.capacity && (
               <div className="w-full bg-slate-100 rounded-full h-2">
                 <div
-                  className={`h-2 rounded-full ${isNearCapacity ? "bg-orange-400" : "bg-indigo-500"}`}
+                  className={`h-2 rounded-full ${isNearCapacity ? "bg-warning" : "bg-primary"}`}
                   style={{
                     width: `${Math.min((event.attendances_count / event.capacity) * 100, 100)}%`,
                   }}
@@ -107,7 +107,7 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ event }) => {
               </div>
             )}
             {isNearCapacity && (
-              <p className="text-xs text-orange-500 mt-1 flex items-center">
+              <p className="text-xs text-warning mt-1 flex items-center">
                 <AlertCircle className="w-3 h-3 mr-1" /> 残りわずかです
               </p>
             )}
@@ -131,7 +131,7 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ event }) => {
               )}
               {event.payment_deadline && (
                 <p>
-                  決済締切:{" "}
+                  オンライン決済締切:{" "}
                   <span className="font-medium text-slate-800">
                     {formatUtcToJstByType(event.payment_deadline, "japanese")}
                   </span>

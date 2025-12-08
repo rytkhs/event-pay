@@ -72,13 +72,8 @@ export function InviteEventDetail({
     }
   };
 
-  // ゲストURLの生成 (クライアントサイド)
-  const guestUrl = registrationData?.guestToken
-    ? `${window.location.origin}/guest/${registrationData.guestToken}`
-    : "";
-
   if (registrationData) {
-    return <SuccessView data={registrationData} guestUrl={guestUrl} />;
+    return <SuccessView data={registrationData} />;
   }
 
   return (
