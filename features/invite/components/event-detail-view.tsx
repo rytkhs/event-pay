@@ -41,8 +41,7 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ event }) => {
           <span className="bg-indigo-500 bg-opacity-50 text-xs font-semibold px-2.5 py-1 rounded-full border border-indigo-400">
             {statusLabel}
           </span>
-          {/* Organizer info is not currently available in EventDetail */}
-          {/* <span className="text-indigo-100 text-sm">主催: {event.organizer}</span> */}
+          <span className="text-primary-foreground/70 text-sm">作成者: {event.organizer_name}</span>
         </div>
         <h1 className="text-2xl font-bold leading-tight">{event.title}</h1>
       </div>

@@ -150,7 +150,7 @@ export default async function InvitePage({ params }: InvitePageProps) {
           />
           {/* 主催者の特商法リンク（到達容易性） */}
           {(() => {
-            const organizerId = (validationResult.event as any)?.created_by as string | undefined;
+            const organizerId = validationResult.event?.created_by;
             if (!organizerId) return null;
             return (
               <div className="mt-8 text-center">
