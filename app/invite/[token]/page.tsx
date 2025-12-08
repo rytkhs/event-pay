@@ -159,7 +159,7 @@ export default async function InvitePage({ params }: InvitePageProps) {
                   className="text-xs underline text-muted-foreground hover:no-underline"
                   aria-label="主催者の特定商取引法に基づく表記を確認する"
                 >
-                  特定商取引法に基づく表記（主催者）
+                  特定商取引法に基づく表記（イベント）
                 </a>
               </div>
             );
