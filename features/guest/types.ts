@@ -91,3 +91,12 @@ export class GuestError extends Error {
     this.name = "GuestError";
   }
 }
+
+// ゲストの状況シナリオ
+export enum GuestScenario {
+  PAID = "PAID",
+  PENDING_CASH = "PENDING_CASH",
+  PENDING_ONLINE = "PENDING_ONLINE",
+  MAYBE = "MAYBE",
+  NOT_ATTENDING = "NOT_ATTENDING",
+}
