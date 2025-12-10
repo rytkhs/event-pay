@@ -159,7 +159,7 @@ export function GuestPageClient({
   };
 
   return (
-    <div className="space-y-6 pb-20">
+    <div className="space-y-6">
       {/* Canceled Event Alert */}
       {(attendance.event as any).canceled_at && (
         <Alert variant="destructive">
@@ -229,7 +229,7 @@ export function GuestPageClient({
           </div>
         )}
         <div>
-          <p>© Minna no Shukin</p>
+          <p>© みんなの集金</p>
         </div>
       </footer>
 

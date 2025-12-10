@@ -24,6 +24,15 @@ import { type GuestAttendanceData } from "@core/utils/guest-token";
 
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import {
+  Drawer,
+  DrawerClose,
+  DrawerContent,
+  DrawerDescription,
+  DrawerFooter,
+  DrawerHeader,
+  DrawerTitle,
+} from "@/components/ui/drawer";
 
 import { updateGuestAttendanceAction } from "../actions";
 import { type AttendanceStatus, type PaymentMethod } from "../types";
@@ -105,8 +114,6 @@ export const GuestStatusEditModal: React.FC<GuestStatusEditModalProps> = ({
     }
   }, [isOpen, attendance]);
 
-  if (!isOpen) return null;
-
   // Handlers
   const handleSave = async () => {
     setIsSubmitting(true);
@@ -185,226 +192,215 @@ export const GuestStatusEditModal: React.FC<GuestStatusEditModalProps> = ({
   );
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center pointer-events-none">
-      {/* Backdrop */}
-      <div
-        className="absolute inset-0 bg-black/60 backdrop-blur-sm pointer-events-auto animate-fadeIn"
-        onClick={onClose}
-        role="button"
-        tabIndex={0}
-        aria-label="モーダルを閉じる"
-        onKeyDown={(e) => {
-          if (e.key === "Enter" || e.key === " ") {
-            e.preventDefault();
-            onClose();
-          }
-        }}
-      />
-
-      {/* Modal Content */}
-      <div className="bg-white w-full max-w-md mx-auto rounded-t-2xl sm:rounded-2xl p-6 pointer-events-auto shadow-2xl transform animate-slideUp max-h-[90vh] overflow-y-auto">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-xl font-bold text-gray-900">ステータス変更</h2>
-          <button
-            onClick={onClose}
-            className="p-2 bg-gray-100 rounded-full hover:bg-gray-200 transition-colors"
-          >
+    <Drawer open={isOpen} onOpenChange={(open: boolean) => !open && onClose()}>
+      <DrawerContent className="max-w-md mx-auto">
+        <DrawerHeader className="relative">
+          <DrawerTitle>ステータス変更</DrawerTitle>
+          <DrawerDescription className="sr-only">
+            ゲストの参加状況と支払い方法を変更します。
+          </DrawerDescription>
+          <DrawerClose className="absolute right-4 top-4 p-2 bg-gray-100 rounded-full hover:bg-gray-200 transition-colors">
             <X className="w-5 h-5 text-gray-500" />
-          </button>
-        </div>
+            <span className="sr-only">閉じる</span>
+          </DrawerClose>
+        </DrawerHeader>
 
-        {/* Modification Disabled Warning */}
-        {!canModify && (
-          <div className="mb-6">
-            <Alert variant="destructive">
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>{getModificationRestrictionMessage(attendance)}</AlertDescription>
-            </Alert>
-          </div>
-        )}
-
-        {/* Global Error */}
-        {error && (
-          <div className="mb-6">
-            <Alert variant="destructive">
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          </div>
-        )}
-
-        {/* 1. Attendance Selection */}
-        <div className="mb-8">
-          <span className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">
-            出欠確認
-          </span>
-          <div className="grid grid-cols-3 gap-3">
-            <button
-              onClick={() => canModify && setAttendanceStatus("attending")}
-              disabled={!canModify}
-              className={`flex flex-col items-center justify-center p-3 rounded-xl border-2 transition-all disabled:opacity-50 ${
-                attendanceStatus === "attending"
-                  ? "border-emerald-500 bg-emerald-50 text-emerald-700"
-                  : "border-transparent bg-gray-100 text-gray-500 hover:bg-gray-200"
-              }`}
-            >
-              <UserCheck
-                className={`w-6 h-6 mb-1 ${attendanceStatus === "attending" ? "fill-emerald-200" : ""}`}
-              />
-              <span className="text-sm font-bold">参加</span>
-            </button>
-
-            <button
-              onClick={() => canModify && setAttendanceStatus("maybe")}
-              disabled={!canModify}
-              className={`flex flex-col items-center justify-center p-3 rounded-xl border-2 transition-all disabled:opacity-50 ${
-                attendanceStatus === "maybe"
-                  ? "border-amber-500 bg-amber-50 text-amber-800" // using amber for Maybe
-                  : "border-transparent bg-gray-100 text-gray-500 hover:bg-gray-200"
-              }`}
-            >
-              <HelpCircle className="w-6 h-6 mb-1" />
-              <span className="text-sm font-bold">未定</span>
-            </button>
-
-            <button
-              onClick={() => canModify && setAttendanceStatus("not_attending")}
-              disabled={!canModify}
-              className={`flex flex-col items-center justify-center p-3 rounded-xl border-2 transition-all disabled:opacity-50 ${
-                attendanceStatus === "not_attending"
-                  ? "border-gray-500 bg-gray-100 text-gray-800"
-                  : "border-transparent bg-gray-100 text-gray-500 hover:bg-gray-200"
-              }`}
-            >
-              <UserMinus className="w-6 h-6 mb-1" />
-              <span className="text-sm font-bold">不参加</span>
-            </button>
-          </div>
-        </div>
-
-        {/* 2. Payment Method (Conditional) */}
-        {attendanceStatus === "attending" && (attendance.event.fee ?? 0) > 0 && (
-          <div className="mb-8 animate-fadeIn">
-            <span className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">
-              支払い方法
-            </span>
-
-            {isPaid ? (
-              <Alert className="border-blue-200 bg-blue-50">
-                <Check className="h-4 w-4 text-blue-600" />
-                <AlertDescription className="text-blue-800">
-                  決済が完了しているため、支払い方法は変更できません。
-                </AlertDescription>
-              </Alert>
-            ) : availableMethods.length === 0 ? (
+        <div className="p-6 overflow-y-auto max-h-[80vh]">
+          {/* Modification Disabled Warning */}
+          {!canModify && (
+            <div className="mb-6">
               <Alert variant="destructive">
                 <AlertCircle className="h-4 w-4" />
-                <AlertDescription>
-                  利用可能な決済方法がありません。主催者にお問い合わせください。
-                </AlertDescription>
+                <AlertDescription>{getModificationRestrictionMessage(attendance)}</AlertDescription>
               </Alert>
-            ) : (
-              <div className="space-y-3">
-                {/* Stripe Option */}
-                {availableMethods.includes("stripe") && (
-                  <button
-                    onClick={() => canModify && setPaymentMethod("stripe")}
-                    disabled={!canModify}
-                    className={`w-full flex items-center justify-between p-4 rounded-xl border-2 transition-all disabled:opacity-50 ${
-                      paymentMethod === "stripe"
-                        ? "border-indigo-500 bg-indigo-50 shadow-sm relative overflow-hidden"
-                        : "border-gray-100 bg-white hover:border-gray-200"
-                    }`}
-                  >
-                    <div className="flex items-center gap-4 relative z-10">
-                      <div
-                        className={`p-3 rounded-full ${paymentMethod === "stripe" ? "bg-indigo-200 text-indigo-700" : "bg-gray-100 text-gray-500"}`}
-                      >
-                        <CreditCard className="w-6 h-6" />
-                      </div>
-                      <div className="text-left">
-                        <p
-                          className={`font-bold ${paymentMethod === "stripe" ? "text-indigo-900" : "text-gray-800"}`}
-                        >
-                          オンライン決済
-                        </p>
-                        <p className="text-xs text-gray-500">クレカ / Apple Pay / Google Pay</p>
-                      </div>
-                    </div>
-                    {paymentMethod === "stripe" && (
-                      <Check className="w-5 h-5 text-indigo-600 relative z-10" />
-                    )}
-                  </button>
-                )}
-
-                {/* Cash Option */}
-                {availableMethods.includes("cash") && (
-                  <button
-                    onClick={() => canModify && setPaymentMethod("cash")}
-                    disabled={!canModify}
-                    className={`w-full flex items-center justify-between p-4 rounded-xl border-2 transition-all disabled:opacity-50 ${
-                      paymentMethod === "cash"
-                        ? "border-blue-500 bg-blue-50 shadow-sm"
-                        : "border-gray-100 bg-white hover:border-gray-200"
-                    }`}
-                  >
-                    <div className="flex items-center gap-4">
-                      <div
-                        className={`p-3 rounded-full ${paymentMethod === "cash" ? "bg-blue-200 text-blue-700" : "bg-gray-100 text-gray-500"}`}
-                      >
-                        <Banknote className="w-6 h-6" />
-                      </div>
-                      <div className="text-left">
-                        <p
-                          className={`font-bold ${paymentMethod === "cash" ? "text-blue-900" : "text-gray-800"}`}
-                        >
-                          当日現金払い
-                        </p>
-                        <p className="text-xs text-gray-500">受付にてお支払い</p>
-                      </div>
-                    </div>
-                    {paymentMethod === "cash" && <Check className="w-5 h-5 text-blue-600" />}
-                  </button>
-                )}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Message for Non-Attending/Maybe */}
-        {attendanceStatus === "not_attending" && (
-          <div className="bg-gray-50 p-4 rounded-xl mb-8 text-center text-sm text-gray-500 animate-fadeIn">
-            ご連絡ありがとうございます。またのご参加をお待ちしております。
-          </div>
-        )}
-
-        {attendanceStatus === "maybe" && (
-          <div className="bg-gray-50 p-4 rounded-xl mb-8 text-center text-sm text-gray-500 animate-fadeIn">
-            回答期限までに再度ステータスの更新をお願いいたします。
-          </div>
-        )}
-
-        {/* Action Button */}
-        <Button
-          onClick={handleSave}
-          disabled={
-            !canModify ||
-            isSubmitting ||
-            (attendanceStatus === "attending" && (attendance.event.fee ?? 0) > 0 && !paymentMethod)
-          }
-          className="w-full bg-gray-900 text-white font-bold h-14 rounded-xl shadow-lg disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98] transition-all"
-        >
-          {isSubmitting ? (
-            <>
-              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              保存中...
-            </>
-          ) : (
-            "内容を保存する"
+            </div>
           )}
-        </Button>
-      </div>
-    </div>
+
+          {/* Global Error */}
+          {error && (
+            <div className="mb-6">
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            </div>
+          )}
+
+          {/* 1. Attendance Selection */}
+          <div className="mb-8">
+            <span className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">
+              出欠確認
+            </span>
+            <div className="grid grid-cols-3 gap-3">
+              <button
+                onClick={() => canModify && setAttendanceStatus("attending")}
+                disabled={!canModify}
+                className={`flex flex-col items-center justify-center p-3 rounded-xl border-2 transition-all disabled:opacity-50 ${
+                  attendanceStatus === "attending"
+                    ? "border-emerald-500 bg-emerald-50 text-emerald-700"
+                    : "border-transparent bg-gray-100 text-gray-500 hover:bg-gray-200"
+                }`}
+              >
+                <UserCheck
+                  className={`w-6 h-6 mb-1 ${attendanceStatus === "attending" ? "fill-emerald-200" : ""}`}
+                />
+                <span className="text-sm font-bold">参加</span>
+              </button>
+
+              <button
+                onClick={() => canModify && setAttendanceStatus("maybe")}
+                disabled={!canModify}
+                className={`flex flex-col items-center justify-center p-3 rounded-xl border-2 transition-all disabled:opacity-50 ${
+                  attendanceStatus === "maybe"
+                    ? "border-amber-500 bg-amber-50 text-amber-800"
+                    : "border-transparent bg-gray-100 text-gray-500 hover:bg-gray-200"
+                }`}
+              >
+                <HelpCircle className="w-6 h-6 mb-1" />
+                <span className="text-sm font-bold">未定</span>
+              </button>
+
+              <button
+                onClick={() => canModify && setAttendanceStatus("not_attending")}
+                disabled={!canModify}
+                className={`flex flex-col items-center justify-center p-3 rounded-xl border-2 transition-all disabled:opacity-50 ${
+                  attendanceStatus === "not_attending"
+                    ? "border-gray-500 bg-gray-100 text-gray-800"
+                    : "border-transparent bg-gray-100 text-gray-500 hover:bg-gray-200"
+                }`}
+              >
+                <UserMinus className="w-6 h-6 mb-1" />
+                <span className="text-sm font-bold">不参加</span>
+              </button>
+            </div>
+          </div>
+
+          {/* 2. Payment Method (Conditional) */}
+          {attendanceStatus === "attending" && (attendance.event.fee ?? 0) > 0 && (
+            <div className="mb-8 animate-fadeIn">
+              <span className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">
+                支払い方法
+              </span>
+
+              {isPaid ? (
+                <Alert className="border-blue-200 bg-blue-50">
+                  <Check className="h-4 w-4 text-blue-600" />
+                  <AlertDescription className="text-blue-800">
+                    決済が完了しているため、支払い方法は変更できません。
+                  </AlertDescription>
+                </Alert>
+              ) : availableMethods.length === 0 ? (
+                <Alert variant="destructive">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>
+                    利用可能な決済方法がありません。主催者にお問い合わせください。
+                  </AlertDescription>
+                </Alert>
+              ) : (
+                <div className="space-y-3">
+                  {/* Stripe Option */}
+                  {availableMethods.includes("stripe") && (
+                    <button
+                      onClick={() => canModify && setPaymentMethod("stripe")}
+                      disabled={!canModify}
+                      className={`w-full flex items-center justify-between p-4 rounded-xl border-2 transition-all disabled:opacity-50 ${
+                        paymentMethod === "stripe"
+                          ? "border-indigo-500 bg-indigo-50 shadow-sm relative overflow-hidden"
+                          : "border-gray-100 bg-white hover:border-gray-200"
+                      }`}
+                    >
+                      <div className="flex items-center gap-4 relative z-10">
+                        <div
+                          className={`p-3 rounded-full ${paymentMethod === "stripe" ? "bg-indigo-200 text-indigo-700" : "bg-gray-100 text-gray-500"}`}
+                        >
+                          <CreditCard className="w-6 h-6" />
+                        </div>
+                        <div className="text-left">
+                          <p
+                            className={`font-bold ${paymentMethod === "stripe" ? "text-indigo-900" : "text-gray-800"}`}
+                          >
+                            オンライン決済
+                          </p>
+                          <p className="text-xs text-gray-500">クレカ / Apple Pay / Google Pay</p>
+                        </div>
+                      </div>
+                      {paymentMethod === "stripe" && (
+                        <Check className="w-5 h-5 text-indigo-600 relative z-10" />
+                      )}
+                    </button>
+                  )}
+
+                  {/* Cash Option */}
+                  {availableMethods.includes("cash") && (
+                    <button
+                      onClick={() => canModify && setPaymentMethod("cash")}
+                      disabled={!canModify}
+                      className={`w-full flex items-center justify-between p-4 rounded-xl border-2 transition-all disabled:opacity-50 ${
+                        paymentMethod === "cash"
+                          ? "border-blue-500 bg-blue-50 shadow-sm"
+                          : "border-gray-100 bg-white hover:border-gray-200"
+                      }`}
+                    >
+                      <div className="flex items-center gap-4">
+                        <div
+                          className={`p-3 rounded-full ${paymentMethod === "cash" ? "bg-blue-200 text-blue-700" : "bg-gray-100 text-gray-500"}`}
+                        >
+                          <Banknote className="w-6 h-6" />
+                        </div>
+                        <div className="text-left">
+                          <p
+                            className={`font-bold ${paymentMethod === "cash" ? "text-blue-900" : "text-gray-800"}`}
+                          >
+                            当日現金払い
+                          </p>
+                          <p className="text-xs text-gray-500">受付にてお支払い</p>
+                        </div>
+                      </div>
+                      {paymentMethod === "cash" && <Check className="w-5 h-5 text-blue-600" />}
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Message for Non-Attending/Maybe */}
+          {attendanceStatus === "not_attending" && (
+            <div className="bg-gray-50 p-4 rounded-xl mb-8 text-center text-sm text-gray-500 animate-fadeIn">
+              ご連絡ありがとうございます。またのご参加をお待ちしております。
+            </div>
+          )}
+
+          {attendanceStatus === "maybe" && (
+            <div className="bg-gray-50 p-4 rounded-xl mb-8 text-center text-sm text-gray-500 animate-fadeIn">
+              回答期限までに再度ステータスの更新をお願いいたします。
+            </div>
+          )}
+        </div>
+
+        <DrawerFooter className="p-6 pt-0">
+          <Button
+            onClick={handleSave}
+            disabled={
+              !canModify ||
+              isSubmitting ||
+              (attendanceStatus === "attending" &&
+                (attendance.event.fee ?? 0) > 0 &&
+                !paymentMethod)
+            }
+            className="w-full bg-gray-900 text-white font-bold h-14 rounded-xl shadow-lg disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98] transition-all"
+          >
+            {isSubmitting ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                保存中...
+              </>
+            ) : (
+              "内容を保存する"
+            )}
+          </Button>
+        </DrawerFooter>
+      </DrawerContent>
+    </Drawer>
   );
 };
