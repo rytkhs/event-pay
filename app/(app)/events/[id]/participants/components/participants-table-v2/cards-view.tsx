@@ -2,7 +2,7 @@
 
 import React from "react";
 
-import { Check, RotateCcw, Shield } from "lucide-react";
+import { Check, RotateCcw } from "lucide-react";
 
 import { hasPaymentId } from "@core/utils/data-guards";
 import {
@@ -29,7 +29,6 @@ export interface CardsViewProps {
   eventFee: number;
   isUpdating?: boolean;
   onReceive: (paymentId: string) => void;
-  onWaive: (paymentId: string) => void;
   onCancel: (paymentId: string) => void;
   bulkSelection?: BulkSelectionConfig;
 }
@@ -39,7 +38,6 @@ export function CardsView({
   eventFee,
   isUpdating,
   onReceive,
-  onWaive,
   onCancel,
   bulkSelection,
 }: CardsViewProps) {
@@ -150,18 +148,6 @@ export function CardsView({
                     >
                       <Check className="h-4 w-4 mr-2" />
                       受領
-                    </Button>
-                  )}
-                  {isOperatable && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => hasPaymentId(p) && onWaive(p.payment_id)}
-                      disabled={!!isUpdating}
-                      className="bg-orange-50 border-orange-300 text-orange-700 hover:bg-orange-100 min-h-[44px]"
-                    >
-                      <Shield className="h-4 w-4 mr-2" />
-                      免除
                     </Button>
                   )}
                   {p.status === "attending" &&

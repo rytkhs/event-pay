@@ -3,7 +3,7 @@
 import React from "react";
 
 import type { ColumnDef } from "@tanstack/react-table";
-import { Check, RotateCcw, Shield } from "lucide-react";
+import { Check, RotateCcw } from "lucide-react";
 
 import { hasPaymentId } from "@core/utils/data-guards";
 import {
@@ -19,7 +19,6 @@ import { Checkbox } from "@/components/ui/checkbox";
 
 export interface ActionsCellHandlers {
   onReceive: (paymentId: string) => void;
-  onWaive: (paymentId: string) => void;
   onCancel: (paymentId: string) => void;
   isUpdating?: boolean;
 }
@@ -158,7 +157,7 @@ export function buildParticipantsColumns(opts: {
         const p = row.original;
         const simple = toSimplePaymentStatus(p.payment_status as any);
         const isCashPayment = p.payment_method === "cash" && p.payment_id;
-        const { onReceive, onWaive, onCancel, isUpdating } = opts.handlers;
+        const { onReceive, onCancel, isUpdating } = opts.handlers;
         const canOperateCash =
           p.status === "attending" &&
           isCashPayment &&
@@ -176,18 +175,6 @@ export function buildParticipantsColumns(opts: {
                 title="受領済みにする"
               >
                 <Check className="h-4 w-4" />
-              </Button>
-            )}
-            {canOperateCash && (
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => hasPaymentId(p) && onWaive(p.payment_id)}
-                disabled={!!isUpdating}
-                className="bg-orange-50 border-orange-300 text-orange-700 hover:bg-orange-100 min-h-[36px] min-w-[36px] px-2 sm:px-3 shadow-sm hover:shadow-md"
-                title="支払いを免除"
-              >
-                <Shield className="h-4 w-4" />
               </Button>
             )}
             {p.status === "attending" &&

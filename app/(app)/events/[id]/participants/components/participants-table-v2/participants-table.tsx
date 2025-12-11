@@ -181,41 +181,6 @@ export function ParticipantsTableV2({
     [toast, router, localParticipants, applyLocal]
   );
 
-  const handleWaive = useCallback(
-    async (paymentId: string) => {
-      setIsUpdating(true);
-      const prev = localParticipants;
-      // 楽観的更新
-      applyLocal(paymentId, "waived");
-      try {
-        const result = await updateCashStatusAction({ paymentId, status: "waived" });
-        if (result.success) {
-          toast({
-            title: "決済状況を更新しました",
-            description: "ステータスを「免除」に変更しました。",
-          });
-          // 軽量再検証（ページ遷移なし）
-          startTransition(() => router.refresh());
-        } else {
-          throw new Error(result.error);
-        }
-      } catch (error) {
-        // ロールバック
-        setLocalParticipants(prev);
-        const errorMessage =
-          error instanceof Error ? error.message : "予期しないエラーが発生しました";
-        toast({
-          title: "更新に失敗しました",
-          description: errorMessage,
-          variant: "destructive",
-        });
-      } finally {
-        setIsUpdating(false);
-      }
-    },
-    [toast, router, localParticipants, applyLocal]
-  );
-
   const handleBulkReceive = useCallback(async () => {
     if (validSelectedPaymentIds.length === 0) {
       toast({
@@ -376,7 +341,6 @@ export function ParticipantsTableV2({
         eventFee,
         handlers: {
           onReceive: handleReceive,
-          onWaive: handleWaive,
           onCancel: handleCancel,
           isUpdating,
         },
@@ -392,7 +356,6 @@ export function ParticipantsTableV2({
       eventFee,
       isUpdating,
       handleReceive,
-      handleWaive,
       handleCancel,
       isFreeEvent,
       validSelectedPaymentIds,
@@ -481,7 +444,6 @@ export function ParticipantsTableV2({
               eventFee={eventFee}
               isUpdating={isUpdating}
               onReceive={handleReceive}
-              onWaive={handleWaive}
               onCancel={handleCancel}
               bulkSelection={
                 !isFreeEvent
