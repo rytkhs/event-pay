@@ -203,7 +203,8 @@ export type DateFormatType =
   | "japanese" // yyyy年MM月dd日 HH:mm
   | "standard" // yyyy/MM/dd HH:mm
   | "iso" // yyyy-MM-dd HH:mm:ss
-  | "time-only"; // HH:mm
+  | "time-only" // HH:mm
+  | "compact"; // MM/dd HH:mm
 
 /**
  * 統一的な日付フォーマット関数
@@ -215,6 +216,7 @@ export function formatUtcToJstByType(dateString: string, type: DateFormatType): 
     standard: "yyyy/MM/dd HH:mm",
     iso: "yyyy-MM-dd HH:mm:ss",
     "time-only": "HH:mm",
+    compact: "MM/dd HH:mm",
   };
 
   return formatUtcToJstSafe(dateString, formatMap[type]);

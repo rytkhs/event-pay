@@ -3,10 +3,10 @@
 import type { Event } from "@core/types/models";
 import type { GetEventPaymentsResponse } from "@core/validation/participant-management";
 
-import { AttentionAlerts } from "./attention-alerts";
-import { EventInfoCompact } from "./event-info-compact";
-import { QuickActionsGrid } from "./quick-actions-grid";
-import { UnifiedEventDashboard } from "./unified-event-dashboard";
+import { AttentionAlertsCompact } from "./overview/attention-alerts-compact";
+import { EventInfoAccordion } from "./overview/event-info-accordion";
+import { InviteLinkCard } from "./overview/invite-link-card";
+import { KpiCardsGrid } from "./overview/kpi-cards-grid";
 
 interface EventOverviewTabProps {
   eventId: string;
@@ -27,20 +27,22 @@ export function EventOverviewTab({
   const totalRevenue = paymentsData?.summary?.paidAmount ?? 0;
   const expectedRevenue = eventDetail.fee * attendingCount;
   const unpaidCount = paymentsData?.summary?.unpaidCount ?? 0;
-  // const isFreeEvent = eventDetail.fee === 0; // Assuming this is needed for dashboard, otherwise just calculation
+  const unpaidAmount = paymentsData?.summary?.unpaidAmount ?? 0;
   const isFreeEvent = eventDetail.fee === 0;
 
   // 基本設定
   const capacity = eventDetail.capacity;
-  const unpaidAmount = paymentsData?.summary?.unpaidAmount ?? 0;
 
   return (
-    <div className="max-w-5xl mx-auto px-4 py-6 space-y-6">
-      {/* クイックアクション */}
-      <QuickActionsGrid eventId={eventId} inviteToken={eventDetail.invite_token || undefined} />
+    <div className="max-w-3xl mx-auto px-4 py-6 space-y-5">
+      {/* 1. 招待リンク（最重要CTA） */}
+      <InviteLinkCard
+        eventId={eventId}
+        initialInviteToken={eventDetail.invite_token || undefined}
+      />
 
-      {/* 統合ダッシュボード */}
-      <UnifiedEventDashboard
+      {/* 2. KPIカード群（一覧性重視） */}
+      <KpiCardsGrid
         attendingCount={attendingCount}
         capacity={capacity}
         maybeCount={maybeCount}
@@ -52,8 +54,8 @@ export function EventOverviewTab({
         paymentsData={paymentsData}
       />
 
-      {/* 要注意事項（条件に基づいて表示） */}
-      <AttentionAlerts
+      {/* 3. 注意事項（条件付き表示 - コンパクト） */}
+      <AttentionAlertsCompact
         event={eventDetail}
         unpaidCount={unpaidCount}
         unpaidAmount={unpaidAmount}
@@ -61,8 +63,8 @@ export function EventOverviewTab({
         isFreeEvent={isFreeEvent}
       />
 
-      {/* イベント基本情報 */}
-      <EventInfoCompact event={eventDetail} />
+      {/* 4. イベント情報（アコーディオン形式） */}
+      <EventInfoAccordion event={eventDetail} />
     </div>
   );
 }
