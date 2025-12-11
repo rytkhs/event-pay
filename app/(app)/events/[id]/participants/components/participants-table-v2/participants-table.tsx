@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useEffect, useMemo, useState, startTransition, useRef } from "react";
+import React, { useCallback, useEffect, useMemo, useState, startTransition } from "react";
 
 import { useRouter } from "next/navigation";
 
@@ -17,7 +17,6 @@ import type {
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
   SelectContent,
@@ -29,6 +28,7 @@ import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { bulkUpdateCashStatusAction } from "@/features/payments/actions/bulk-update-cash-status";
 import { updateCashStatusAction } from "@/features/payments/actions/update-cash-status";
 
+import { BulkActionBar } from "./bulk-action-bar";
 import { CardsView } from "./cards-view";
 import { buildParticipantsColumns } from "./columns";
 import { DataTable } from "./data-table";
@@ -112,24 +112,6 @@ export function ParticipantsTableV2({
     const validIds = new Set(bulkOperableParticipants.map((p) => p.payment_id).filter(Boolean));
     return selectedPaymentIds.filter((id) => validIds.has(id));
   }, [selectedPaymentIds, bulkOperableParticipants]);
-
-  // 全選択/全解除の状態判定
-  const isAllSelected =
-    bulkOperableParticipants.length > 0 &&
-    validSelectedPaymentIds.length === bulkOperableParticipants.length;
-  const isIndeterminate =
-    validSelectedPaymentIds.length > 0 &&
-    validSelectedPaymentIds.length < bulkOperableParticipants.length;
-
-  // 全選択チェックボックスの ref
-  const selectAllCheckboxRef = useRef<HTMLButtonElement>(null);
-
-  // indeterminate状態を設定
-  useEffect(() => {
-    if (selectAllCheckboxRef.current) {
-      (selectAllCheckboxRef.current as any).indeterminate = isIndeterminate;
-    }
-  }, [isIndeterminate]);
 
   const { pagination } = initialData;
   const pageIndex = Math.max(0, (pagination.page || 1) - 1);
@@ -342,16 +324,6 @@ export function ParticipantsTableV2({
     }
   }, [validSelectedPaymentIds, localParticipants, toast, router]);
 
-  // 全選択/全解除ハンドラー
-  const handleSelectAll = useCallback(() => {
-    if (isAllSelected) {
-      setSelectedPaymentIds([]);
-    } else {
-      const allIds = bulkOperableParticipants.map((p) => p.payment_id).filter(Boolean) as string[];
-      setSelectedPaymentIds(allIds);
-    }
-  }, [isAllSelected, bulkOperableParticipants]);
-
   // 個別選択ハンドラー
   const handleSelectPayment = useCallback((paymentId: string, checked: boolean) => {
     setSelectedPaymentIds((prev) =>
@@ -487,56 +459,6 @@ export function ParticipantsTableV2({
             </ToggleGroupItem>
           </ToggleGroup>
         </div>
-
-        {/* 一括操作UI */}
-        {!isFreeEvent && bulkOperableParticipants.length > 0 && (
-          <div className="border-t pt-4 mt-4">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-              {/* 全選択チェックボックス */}
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  ref={selectAllCheckboxRef}
-                  id="select-all"
-                  checked={isAllSelected}
-                  onCheckedChange={handleSelectAll}
-                  disabled={isBulkUpdating || isUpdating}
-                />
-                <label htmlFor="select-all" className="text-sm font-medium cursor-pointer">
-                  全て選択 ({bulkOperableParticipants.length}件対象)
-                </label>
-              </div>
-
-              {/* 選択状況と一括操作ボタン */}
-              <div className="flex items-center gap-3">
-                {validSelectedPaymentIds.length > 0 && (
-                  <span className="text-sm text-gray-600">
-                    {validSelectedPaymentIds.length}件選択中
-                  </span>
-                )}
-
-                <div className="flex items-center gap-2">
-                  <Button
-                    size="sm"
-                    onClick={handleBulkReceive}
-                    disabled={validSelectedPaymentIds.length === 0 || isBulkUpdating || isUpdating}
-                    className="bg-green-600 hover:bg-green-700 text-white"
-                  >
-                    {isBulkUpdating ? "処理中..." : "一括受領"}
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={handleBulkWaive}
-                    disabled={validSelectedPaymentIds.length === 0 || isBulkUpdating || isUpdating}
-                    className="border-orange-300 text-orange-700 hover:bg-orange-50"
-                  >
-                    {isBulkUpdating ? "処理中..." : "一括免除"}
-                  </Button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
       </CardHeader>
       <CardContent>
         <div
@@ -628,6 +550,18 @@ export function ParticipantsTableV2({
           </div>
         )}
       </CardContent>
+
+      {/* 下部固定の一括操作バー */}
+      {!isFreeEvent && (
+        <BulkActionBar
+          selectedCount={validSelectedPaymentIds.length}
+          totalOperableCount={bulkOperableParticipants.length}
+          onBulkReceive={handleBulkReceive}
+          onBulkWaive={handleBulkWaive}
+          onClearSelection={() => setSelectedPaymentIds([])}
+          isProcessing={isBulkUpdating || isUpdating}
+        />
+      )}
     </Card>
   );
 }
