@@ -8,7 +8,6 @@ import type { GetParticipantsResponse } from "@core/validation/participant-manag
 import { ParticipantsActionBarV2 } from "../participants/components/participants-action-bar-v2";
 import { ParticipantsFilterSheet } from "../participants/components/participants-filter-sheet";
 import { ParticipantsStatusTabs } from "../participants/components/participants-status-tabs";
-import { ParticipantsSummaryAlert } from "../participants/components/participants-summary-alert";
 import { ParticipantsTableV2 } from "../participants/components/participants-table-v2/participants-table";
 
 interface EventParticipantsTabProps {
@@ -39,21 +38,6 @@ export function EventParticipantsTab({
     };
   }, [participantsData]);
 
-  // 未払い情報の計算
-  const unpaidInfo = useMemo(() => {
-    if (isFreeEvent) return { count: 0, amount: 0 };
-    const unpaidParticipants = participantsData.participants.filter(
-      (p) =>
-        p.status === "attending" &&
-        p.payment_method &&
-        (p.payment_status === "pending" || p.payment_status === "failed")
-    );
-    return {
-      count: unpaidParticipants.length,
-      amount: unpaidParticipants.length * eventDetail.fee,
-    };
-  }, [participantsData, isFreeEvent, eventDetail.fee]);
-
   // 現在のステータスフィルター
   const activeStatus =
     typeof searchParams.attendance === "string" ? searchParams.attendance : "all";
@@ -61,14 +45,6 @@ export function EventParticipantsTab({
   const handleStatusChange = (status: string) => {
     onUpdateFilters({
       attendance: status === "all" ? undefined : status,
-      page: "1",
-    });
-  };
-
-  const handleViewUnpaid = () => {
-    onUpdateFilters({
-      attendance: "attending",
-      payment_status: "unpaid",
       page: "1",
     });
   };
@@ -90,15 +66,6 @@ export function EventParticipantsTab({
             />
           }
         />
-
-        {/* 未払いアラート（有料イベントのみ） */}
-        {!isFreeEvent && (
-          <ParticipantsSummaryAlert
-            unpaidCount={unpaidInfo.count}
-            unpaidAmount={unpaidInfo.amount}
-            onViewUnpaid={handleViewUnpaid}
-          />
-        )}
 
         {/* ステータスタブ（リスト直上） */}
         <ParticipantsStatusTabs

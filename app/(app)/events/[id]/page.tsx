@@ -102,14 +102,7 @@ export default async function EventDetailPage({
     ] = [
       cachedActions.getEventPayments(params.id),
       cachedActions.getEventStats(params.id),
-      // 参加者データは常に取得しておいても良いが、パフォーマンス重視なら分岐する
-      // 今回はタブ遷移の高速化のため、あるいはデータ依存関係が低いため
-      // タブがparticipantsの場合のみ重いParticipants fetchを行う戦略も可。
-      // しかし、タブ切り替え時のUX向上のためサーバー側で全部取ってしまうのも手。
-      // ここでは、明示的にタブがoverview以外なら取得、あるいはoverviewでも
-      // 裏でキャッシュに乗せる意味で取得してもよいが、一旦シンプルに分岐なしで取得するか、
-      // 負荷軽減のため参加者タブのみ取得するか。
-      // 「参加者管理」が重くなる可能性を考慮し、tab=participantsの時のみfetchする形をとる。
+
       tab === "participants"
         ? cachedActions.getEventParticipants({
             eventId: params.id,

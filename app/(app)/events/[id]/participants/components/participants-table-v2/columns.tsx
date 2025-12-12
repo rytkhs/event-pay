@@ -3,7 +3,7 @@
 import React from "react";
 
 import type { ColumnDef } from "@tanstack/react-table";
-import { Check, RotateCcw } from "lucide-react";
+import { Banknote, Check, CreditCard, RotateCcw } from "lucide-react";
 
 import { hasPaymentId } from "@core/utils/data-guards";
 import {
@@ -114,9 +114,13 @@ export function buildParticipantsColumns(opts: {
         const className = isStripe
           ? "bg-purple-100 text-purple-800 border-purple-200"
           : "bg-orange-100 text-orange-800 border-orange-200";
+        const Icon = isStripe ? CreditCard : Banknote;
         return (
-          <Badge className={`${className} font-medium px-3 py-1 shadow-sm`}>
-            {isStripe ? "オンライン決済" : "現金"}
+          <Badge
+            className={`${className} font-medium px-3 py-1 shadow-sm flex items-center gap-1.5 w-fit`}
+          >
+            <Icon className="h-3.5 w-3.5" />
+            {isStripe ? "オンライン" : "現金"}
           </Badge>
         );
       },

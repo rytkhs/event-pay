@@ -9,7 +9,7 @@ import { ChevronLeft, ChevronRight, LayoutGridIcon, TableIcon } from "lucide-rea
 
 import { useToast } from "@core/contexts/toast-context";
 import { conditionalSmartSort } from "@core/utils/participant-smart-sort";
-import { isPaymentCompleted } from "@core/utils/payment-status-mapper";
+import { isPaymentUnpaid } from "@core/utils/payment-status-mapper";
 import type {
   GetParticipantsResponse,
   ParticipantView,
@@ -390,8 +390,9 @@ export function ParticipantsTableV2({
   const getRowClassName = useCallback(
     (row: Row<ParticipantView>) => {
       const p = row.original;
-      const isPaid = !isFreeEvent && isPaymentCompleted(p.payment_status);
-      return isPaid ? "bg-green-50 border-l-4 border-l-green-500" : "";
+      const isActionRequired =
+        !isFreeEvent && p.status === "attending" && isPaymentUnpaid(p.payment_status);
+      return isActionRequired ? "bg-red-50 border-l-4 !border-l-red-500" : "";
     },
     [isFreeEvent]
   );
