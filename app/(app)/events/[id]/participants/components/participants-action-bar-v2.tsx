@@ -2,7 +2,7 @@
 
 import { useState, type ReactNode } from "react";
 
-import { Plus, Download, RefreshCw, Zap, Search, X } from "lucide-react";
+import { Plus, Download, RefreshCw, Zap, Search, X, ListTodo, MoreVertical } from "lucide-react";
 
 import { useToast } from "@core/contexts/toast-context";
 import type { Event } from "@core/types/models";
@@ -16,6 +16,12 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -28,6 +34,8 @@ interface ParticipantsActionBarV2Props {
   searchParams: { [key: string]: string | string[] | undefined };
   onFiltersChange: (params: Record<string, string | undefined>) => void;
   filterTrigger: ReactNode;
+  isSelectionMode?: boolean;
+  onToggleSelectionMode?: () => void;
 }
 
 export function ParticipantsActionBarV2({
@@ -36,6 +44,8 @@ export function ParticipantsActionBarV2({
   searchParams,
   onFiltersChange,
   filterTrigger,
+  isSelectionMode = false,
+  onToggleSelectionMode,
 }: ParticipantsActionBarV2Props) {
   const { toast } = useToast();
   const [showAddDialog, setShowAddDialog] = useState(false);
@@ -54,6 +64,7 @@ export function ParticipantsActionBarV2({
     typeof searchParams.search === "string" ? searchParams.search : ""
   );
   const [isSearchFocused, setIsSearchFocused] = useState(false);
+  const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
 
   // イベントが有料かどうかを判定
   const isPayingEvent = eventDetail.fee > 0;
@@ -209,105 +220,167 @@ export function ParticipantsActionBarV2({
     <>
       <div className="bg-white rounded-lg border shadow-sm">
         {/* 統合ツールバー */}
-        <div className="flex flex-wrap items-center gap-2 p-3">
-          {/* インライン検索 - デスクトップ */}
-          <div className="hidden md:flex items-center flex-1 max-w-xs">
-            <div
-              className={cn(
-                "relative flex-1 transition-all duration-200",
-                isSearchFocused && "ring-2 ring-primary ring-offset-1 rounded-md"
-              )}
-            >
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="検索..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-                onFocus={() => setIsSearchFocused(true)}
-                onBlur={() => setIsSearchFocused(false)}
-                className="pl-9 pr-8 h-9 border-gray-200"
-              />
-              {searchQuery && (
-                <button
-                  onClick={handleClearSearch}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 p-1 hover:bg-gray-100 rounded"
+        <div className="flex items-center gap-2 p-3 h-14">
+          {/* 左側：検索エリア (Mobile対応) */}
+          <div className="flex items-center flex-1 min-w-0">
+            {/* Mobile: 検索展開時のみInput表示 */}
+            {isMobileSearchOpen ? (
+              <div className="flex items-center flex-1 gap-2 animate-in fade-in slide-in-from-left-2 direction-normal duration-200">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="検索..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+                    autoFocus
+                    className="pl-9 pr-8 h-9 text-base md:text-sm"
+                  />
+                  {searchQuery && (
+                    <button
+                      onClick={handleClearSearch}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 p-1 hover:bg-gray-100 rounded-full"
+                    >
+                      <X className="h-3 w-3 text-gray-400" />
+                    </button>
+                  )}
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setIsMobileSearchOpen(false)}
+                  className="shrink-0 h-9 w-9 p-0"
                 >
-                  <X className="h-3 w-3 text-gray-400" />
-                </button>
-              )}
-            </div>
-          </div>
+                  <X className="h-5 w-5 text-gray-500" />
+                </Button>
+              </div>
+            ) : (
+              // 通常表示
+              <div className="flex items-center w-full gap-2">
+                {/* Desktop Search */}
+                <div className="hidden md:flex items-center flex-1 max-w-xs">
+                  <div
+                    className={cn(
+                      "relative flex-1 transition-all duration-200",
+                      isSearchFocused && "ring-2 ring-primary ring-offset-1 rounded-md"
+                    )}
+                  >
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="検索..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+                      onFocus={() => setIsSearchFocused(true)}
+                      onBlur={() => setIsSearchFocused(false)}
+                      className="pl-9 pr-8 h-9 border-gray-200"
+                    />
+                    {searchQuery && (
+                      <button
+                        onClick={handleClearSearch}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 p-1 hover:bg-gray-100 rounded"
+                      >
+                        <X className="h-3 w-3 text-gray-400" />
+                      </button>
+                    )}
+                  </div>
+                </div>
 
-          {/* フィルター */}
-          {filterTrigger}
+                {/* Mobile Search Trigger */}
+                <div className="md:hidden">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setIsMobileSearchOpen(true)}
+                    className="h-9 w-9 p-0"
+                  >
+                    <Search className="h-5 w-5 text-gray-600" />
+                  </Button>
+                </div>
 
-          {/* オートソート */}
-          <Button
-            variant={smartActive ? "default" : "outline"}
-            size="sm"
-            onClick={handleToggleSmartSort}
-            className="gap-1.5 h-9"
-            title="重要度優先のオート並び替え"
-          >
-            <Zap className="h-4 w-4" />
-            <span className="hidden sm:inline">オートソート</span>
-          </Button>
-
-          {/* スペーサー */}
-          <div className="flex-1" />
-
-          {/* 右側アクション */}
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleExportCsv}
-              disabled={isExporting}
-              className="gap-1.5 h-9"
-              title="CSV出力"
-            >
-              <Download className="h-4 w-4" />
-              <span className="hidden lg:inline">{isExporting ? "出力中..." : "CSV"}</span>
-            </Button>
-
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleRefresh}
-              className="gap-1.5 h-9"
-              title="更新"
-            >
-              <RefreshCw className="h-4 w-4" />
-            </Button>
-
-            <Button size="sm" onClick={handleOpenAdd} className="gap-1.5 h-9">
-              <Plus className="h-4 w-4" />
-              <span className="hidden sm:inline">追加</span>
-            </Button>
-          </div>
-        </div>
-
-        {/* モバイル検索 - 展開式 */}
-        <div className="md:hidden px-3 pb-3">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="ニックネームで検索..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-              className="pl-9 pr-8"
-            />
-            {searchQuery && (
-              <button
-                onClick={handleClearSearch}
-                className="absolute right-2 top-1/2 -translate-y-1/2 p-1 hover:bg-gray-100 rounded"
-              >
-                <X className="h-3 w-3 text-gray-400" />
-              </button>
+                {/* フィルター */}
+                {filterTrigger}
+              </div>
             )}
           </div>
+
+          {/* 右側アクション群 (検索非展開時のみ) */}
+          {!isMobileSearchOpen && (
+            <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+              {/* 選択モード切替 (Mobile & Desktop) */}
+              {isPayingEvent && onToggleSelectionMode && (
+                <Button
+                  variant={isSelectionMode ? "secondary" : "ghost"}
+                  size="sm"
+                  onClick={onToggleSelectionMode}
+                  className={cn("h-9 w-9 p-0", isSelectionMode && "bg-gray-100 text-primary")}
+                  title={isSelectionMode ? "選択モード終了" : "選択モード (一括操作)"}
+                >
+                  <ListTodo className="h-5 w-5" />
+                </Button>
+              )}
+
+              {/* 追加ボタン (Primary) */}
+              <Button size="sm" onClick={handleOpenAdd} className="gap-1.5 h-9 px-3">
+                <Plus className="h-4 w-4" />
+                <span className="hidden sm:inline">追加</span>
+              </Button>
+
+              {/* その他アクション (Dropdown for Mobile) */}
+              <div className="md:hidden">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="sm" className="h-9 w-9 p-0">
+                      <MoreVertical className="h-5 w-5 text-gray-600" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={handleToggleSmartSort}>
+                      <Zap className="h-4 w-4 mr-2" />
+                      オートソート {smartActive ? "(ON)" : "(OFF)"}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={handleExportCsv} disabled={isExporting}>
+                      <Download className="h-4 w-4 mr-2" />
+                      CSVエクスポート
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={handleRefresh}>
+                      <RefreshCw className="h-4 w-4 mr-2" />
+                      更新
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+
+              {/* Desktop Actions (そのまま表示) */}
+              <div className="hidden md:flex items-center gap-2">
+                <Button
+                  variant={smartActive ? "default" : "outline"}
+                  size="sm"
+                  onClick={handleToggleSmartSort}
+                  className="gap-1.5 h-9"
+                  title="重要度優先のオート並び替え"
+                >
+                  <Zap className="h-4 w-4" />
+                  <span className="hidden lg:inline">ソート</span>
+                </Button>
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleExportCsv}
+                  disabled={isExporting}
+                  className="gap-1.5 h-9"
+                >
+                  <Download className="h-4 w-4" />
+                  <span className="hidden lg:inline">CSV</span>
+                </Button>
+
+                <Button variant="outline" size="sm" onClick={handleRefresh} className="h-9 w-9 p-0">
+                  <RefreshCw className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 

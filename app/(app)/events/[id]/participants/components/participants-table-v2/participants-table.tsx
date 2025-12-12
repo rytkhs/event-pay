@@ -39,6 +39,8 @@ export interface ParticipantsTableV2Props {
   initialData: GetParticipantsResponse;
   searchParams: { [key: string]: string | string[] | undefined };
   onParamsChange: (params: Record<string, string | undefined>) => void;
+  isSelectionMode?: boolean;
+  onSelectionModeChange?: (isSelectionMode: boolean) => void;
 }
 
 export function ParticipantsTableV2({
@@ -47,6 +49,8 @@ export function ParticipantsTableV2({
   initialData,
   searchParams,
   onParamsChange,
+  isSelectionMode = false,
+  onSelectionModeChange,
 }: ParticipantsTableV2Props) {
   const { toast } = useToast();
   const isFreeEvent = eventFee === 0;
@@ -70,6 +74,13 @@ export function ParticipantsTableV2({
     window.addEventListener("resize", check);
     return () => window.removeEventListener("resize", check);
   }, []);
+
+  // 選択モードがOFFになったら選択状態をクリア
+  useEffect(() => {
+    if (!isSelectionMode) {
+      setSelectedPaymentIds([]);
+    }
+  }, [isSelectionMode]);
 
   const handleViewModeChange = (newMode: "table" | "cards") => {
     if (newMode === viewMode) return;
@@ -344,13 +355,14 @@ export function ParticipantsTableV2({
           onCancel: handleCancel,
           isUpdating,
         },
-        bulkSelection: !isFreeEvent
-          ? {
-              selectedPaymentIds: validSelectedPaymentIds,
-              onSelect: handleSelectPayment,
-              isDisabled: isBulkUpdating || isUpdating,
-            }
-          : undefined,
+        bulkSelection:
+          !isFreeEvent && isSelectionMode
+            ? {
+                selectedPaymentIds: validSelectedPaymentIds,
+                onSelect: handleSelectPayment,
+                isDisabled: isBulkUpdating || isUpdating,
+              }
+            : undefined,
       }),
     [
       eventFee,
@@ -361,6 +373,7 @@ export function ParticipantsTableV2({
       validSelectedPaymentIds,
       handleSelectPayment,
       isBulkUpdating,
+      isSelectionMode,
     ]
   );
 
@@ -447,7 +460,7 @@ export function ParticipantsTableV2({
               onReceive={handleReceive}
               onCancel={handleCancel}
               bulkSelection={
-                !isFreeEvent
+                !isFreeEvent && isSelectionMode
                   ? {
                       selectedPaymentIds: validSelectedPaymentIds,
                       onSelect: handleSelectPayment,
@@ -521,7 +534,10 @@ export function ParticipantsTableV2({
           totalOperableCount={bulkOperableParticipants.length}
           onBulkReceive={handleBulkReceive}
           onBulkWaive={handleBulkWaive}
-          onClearSelection={() => setSelectedPaymentIds([])}
+          onClearSelection={() => {
+            setSelectedPaymentIds([]);
+            if (onSelectionModeChange) onSelectionModeChange(false);
+          }}
           isProcessing={isBulkUpdating || isUpdating}
         />
       )}

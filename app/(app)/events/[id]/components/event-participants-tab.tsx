@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 
 import type { Event } from "@core/types/models";
 import type { GetParticipantsResponse } from "@core/validation/participant-management";
@@ -26,6 +26,9 @@ export function EventParticipantsTab({
   onUpdateFilters,
 }: EventParticipantsTabProps) {
   const isFreeEvent = eventDetail.fee === 0;
+
+  // 選択モード（一括操作用）の状態管理
+  const [isSelectionMode, setIsSelectionMode] = useState(false);
 
   // 参加状況の集計（全参加者から計算）
   const statusCounts = useMemo(() => {
@@ -58,6 +61,8 @@ export function EventParticipantsTab({
           eventDetail={eventDetail}
           searchParams={searchParams}
           onFiltersChange={onUpdateFilters}
+          isSelectionMode={isSelectionMode}
+          onToggleSelectionMode={() => setIsSelectionMode((prev) => !prev)}
           filterTrigger={
             <ParticipantsFilterSheet
               searchParams={searchParams}
@@ -82,6 +87,8 @@ export function EventParticipantsTab({
             initialData={participantsData}
             searchParams={searchParams}
             onParamsChange={onUpdateFilters}
+            isSelectionMode={isSelectionMode}
+            onSelectionModeChange={setIsSelectionMode}
           />
         </div>
       </div>
