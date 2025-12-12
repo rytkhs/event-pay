@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 
-import { ArrowLeft, Calendar, Edit, Eye, MapPin } from "lucide-react";
+import { ArrowLeft, Calendar, Edit, MapPin } from "lucide-react";
 
 import { EVENT_STATUS_LABELS } from "@core/types/enums";
 import type { Event } from "@core/types/models";
@@ -32,12 +32,6 @@ export function EventDetailHeader({ eventDetail, activeTab, onTabChange }: Event
   const handleEditEvent = () => {
     if (!canEdit) return;
     router.push(`/events/${eventDetail.id}/edit`);
-  };
-
-  const handlePreviewEvent = () => {
-    if (eventDetail.invite_token) {
-      window.open(`/guest/${eventDetail.invite_token}`, "_blank");
-    }
   };
 
   const getStatusBadge = (status: string) => {
@@ -114,19 +108,6 @@ export function EventDetailHeader({ eventDetail, activeTab, onTabChange }: Event
             </div>
 
             <div className="flex items-center gap-2">
-              {/* プレビューボタン */}
-              {eventDetail.invite_token && (
-                <Button
-                  onClick={handlePreviewEvent}
-                  variant="outline"
-                  size="sm"
-                  className="hidden sm:flex h-9"
-                >
-                  <Eye className="h-4 w-4 mr-1.5" />
-                  <span className="font-medium">プレビュー</span>
-                </Button>
-              )}
-
               {/* 編集ボタン */}
               <Button
                 onClick={handleEditEvent}

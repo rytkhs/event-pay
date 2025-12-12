@@ -3,7 +3,7 @@
 import type { Event } from "@core/types/models";
 import type { GetEventPaymentsResponse } from "@core/validation/participant-management";
 
-import { AttentionAlertsCompact } from "./overview/attention-alerts-compact";
+// import { AttentionAlertsCompact } from "./overview/attention-alerts-compact";
 import { EventInfoAccordion } from "./overview/event-info-accordion";
 import { InviteLinkCard } from "./overview/invite-link-card";
 import { KpiCardsGrid } from "./overview/kpi-cards-grid";
@@ -55,13 +55,13 @@ export function EventOverviewTab({
       />
 
       {/* 3. 注意事項（条件付き表示 - コンパクト） */}
-      <AttentionAlertsCompact
+      {/* <AttentionAlertsCompact
         event={eventDetail}
         unpaidCount={unpaidCount}
         unpaidAmount={unpaidAmount}
         attendingCount={attendingCount}
         isFreeEvent={isFreeEvent}
-      />
+      /> */}
 
       {/* 4. イベント情報（アコーディオン形式） */}
       <EventInfoAccordion event={eventDetail} />
