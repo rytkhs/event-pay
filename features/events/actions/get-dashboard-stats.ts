@@ -24,19 +24,6 @@ export interface RecentEvent {
   capacity: number | null;
 }
 
-export interface DashboardData {
-  stats: DashboardStats;
-  recentEvents: RecentEvent[];
-}
-
-type AttendanceWithPayments = Database["public"]["Tables"]["attendances"]["Row"] & {
-  payments: Database["public"]["Tables"]["payments"]["Row"][];
-};
-
-type EventForStats = Pick<Database["public"]["Tables"]["events"]["Row"], "id" | "fee"> & {
-  attendances: AttendanceWithPayments[];
-};
-
 type EventForRecent = Pick<
   Database["public"]["Tables"]["events"]["Row"],
   "id" | "title" | "date" | "fee" | "capacity" | "canceled_at"
@@ -44,40 +31,63 @@ type EventForRecent = Pick<
   attendances: Pick<Database["public"]["Tables"]["attendances"]["Row"], "status">[];
 };
 
-export async function getDashboardDataAction(): Promise<ServerActionResult<DashboardData>> {
+/**
+ * ダッシュボード統計情報を取得する（RPC版）
+ */
+export async function getDashboardStatsAction(): Promise<ServerActionResult<DashboardStats>> {
   try {
-    // 認証確認
     const user = await getCurrentUser();
-
     if (!user) {
       return createServerActionError("UNAUTHORIZED", "認証が必要です");
     }
 
     const supabase = createClient();
-    const nowIso = new Date().toISOString();
 
-    // 並行して実行するクエリ:
-    // 1. 開催予定のイベント（統計計算用）- 必要なフィールドのみ取得
-    // 注: データベースの日時比較はUTCで行うため、JavaScriptのISO文字列を使用します
-    const upcomingEventsPromise = supabase
-      .from("events")
-      .select(
-        `
-        id,
-        fee,
-        attendances (
-          status,
-          payments (status)
-        )
-      `
-      )
-      .eq("created_by", user.id)
-      .gt("date", nowIso)
-      .is("canceled_at", null)
-      .overrideTypes<EventForStats[], { merge: false }>();
+    // RPCを呼び出して統計を取得
+    // get_dashboard_stats returns setof record, so we expect an array
+    const { data, error } = await supabase.rpc("get_dashboard_stats");
 
-    // 2. 最近のイベント（リスト表示用）- 上位5件
-    const recentEventsPromise = supabase
+    if (error) {
+      throw error;
+    }
+
+    const statsRow = data?.[0] || {
+      upcoming_events_count: 0,
+      total_upcoming_participants: 0,
+      unpaid_fees_total: 0,
+    };
+
+    return {
+      success: true,
+      data: {
+        upcomingEventsCount: statsRow.upcoming_events_count,
+        totalUpcomingParticipants: statsRow.total_upcoming_participants,
+        unpaidFeesTotal: Number(statsRow.unpaid_fees_total),
+        stripeAccountBalance: 0, // Stripe fetch is handled separately
+      },
+    };
+  } catch (error) {
+    return createServerActionError("INTERNAL_ERROR", "ダッシュボード統計の取得に失敗しました", {
+      retryable: true,
+      details: { originalError: error },
+    });
+  }
+}
+
+/**
+ * 最近のイベントを取得する
+ */
+export async function getRecentEventsAction(): Promise<ServerActionResult<RecentEvent[]>> {
+  try {
+    const user = await getCurrentUser();
+    if (!user) {
+      return createServerActionError("UNAUTHORIZED", "認証が必要です");
+    }
+
+    const supabase = createClient();
+
+    // 最近のイベント（リスト表示用）- 上位5件
+    const { data: recentEventsRaw, error } = await supabase
       .from("events")
       .select(
         `
@@ -95,56 +105,11 @@ export async function getDashboardDataAction(): Promise<ServerActionResult<Dashb
       .limit(5)
       .overrideTypes<EventForRecent[], { merge: false }>();
 
-    // Promise.allで並列実行
-    const [upcomingResult, recentResult] = await Promise.all([
-      upcomingEventsPromise,
-      recentEventsPromise,
-    ]);
-
-    if (upcomingResult.error) {
-      throw upcomingResult.error;
-    }
-    if (recentResult.error) {
-      throw recentResult.error;
+    if (error) {
+      throw error;
     }
 
-    const upcomingEvents = upcomingResult.data || [];
-    const recentEventsRaw = recentResult.data || [];
-
-    // ① 開催予定イベント数
-    const upcomingEventsCount = upcomingEvents.length;
-
-    // ② 参加予定者総数 & ③ 未回収の参加費合計
-    let totalUpcomingParticipants = 0;
-    let unpaidFeesTotal = 0;
-
-    for (const event of upcomingEvents) {
-      // 参加ステータスが "attending" の人のみを対象
-      const attendingParticipants =
-        event.attendances?.filter((a) => a.status === "attending") || [];
-
-      totalUpcomingParticipants += attendingParticipants.length;
-
-      // 未回収の計算（有料イベントのみ）
-      if (event.fee > 0) {
-        for (const attendance of attendingParticipants) {
-          // 支払いが完了しているかチェック
-          // paymentsが含まれない、または空、またはステータスがpaid/receivedのものがない
-          const payments = attendance.payments || [];
-          const hasCompletedPayment = payments.some((p) => ["paid", "received"].includes(p.status));
-
-          if (!hasCompletedPayment) {
-            unpaidFeesTotal += event.fee;
-          }
-        }
-      }
-    }
-
-    // ④ Stripeアカウント残高（一時的に0に設定、後でダッシュボードで取得）
-    const stripeAccountBalance = 0;
-
-    // 最近のイベントフォーマット
-    const recentEvents: RecentEvent[] = recentEventsRaw.map((event) => {
+    const recentEvents: RecentEvent[] = (recentEventsRaw || []).map((event) => {
       const attendances = event.attendances || [];
       const attendances_count = attendances.filter((a) => a.status === "attending").length;
 
@@ -161,18 +126,10 @@ export async function getDashboardDataAction(): Promise<ServerActionResult<Dashb
 
     return {
       success: true,
-      data: {
-        stats: {
-          upcomingEventsCount,
-          totalUpcomingParticipants,
-          unpaidFeesTotal,
-          stripeAccountBalance,
-        },
-        recentEvents,
-      },
+      data: recentEvents,
     };
   } catch (error) {
-    return createServerActionError("INTERNAL_ERROR", "ダッシュボード情報の取得に失敗しました", {
+    return createServerActionError("INTERNAL_ERROR", "最近のイベント取得に失敗しました", {
       retryable: true,
       details: { originalError: error },
     });
