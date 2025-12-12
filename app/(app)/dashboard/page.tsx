@@ -20,8 +20,6 @@ import {
 } from "./components/skeletons";
 import { StripeAccountCard } from "./components/stripe-account-card";
 
-export const dynamic = "force-dynamic";
-
 export default async function DashboardPage() {
   // 認証状態チェック
   const supabase = createClient();

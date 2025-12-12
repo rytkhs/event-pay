@@ -1,10 +1,51 @@
 "use server";
 
+import { unstable_cache } from "next/cache";
+
+import { logger } from "@core/logging/app-logger";
+import { getStripe } from "@core/stripe/client";
 import { createClient } from "@core/supabase/server";
 import { createServerActionError, type ServerActionResult } from "@core/types/server-actions";
 
 import { StripeConnectErrorHandler } from "../services/error-handler";
 import { StripeConnectService } from "../services/service";
+
+/**
+ * Stripe残高取得のキャッシュ関数を生成
+ * Revalidate: 5分 (300秒)
+ * accountIdをkeyPartsに含めてアカウントごとにキャッシュを分離
+ */
+const getCachedBalance = (accountId: string) =>
+  unstable_cache(
+    async () => {
+      logger.info("Stripe Connect残高取得を開始 (Cached)", { accountId });
+
+      const stripe = getStripe();
+      const balance = await stripe.balance.retrieve({
+        stripeAccount: accountId,
+      });
+
+      // JPYの利用可能残高を取得（available + pending）
+      const availableJpy = balance.available.find((b) => b.currency === "jpy");
+      const pendingJpy = balance.pending.find((b) => b.currency === "jpy");
+
+      const availableAmount = availableJpy ? availableJpy.amount : 0;
+      const pendingAmount = pendingJpy ? pendingJpy.amount : 0;
+      const totalAmount = availableAmount + pendingAmount;
+
+      logger.info("Stripe Connect残高取得完了 (Cached)", {
+        accountId,
+        totalAmount,
+      });
+
+      return totalAmount;
+    },
+    ["stripe-connect-balance", accountId],
+    {
+      revalidate: 300,
+      tags: ["stripe-balance", `stripe-balance-${accountId}`],
+    }
+  )();
 
 /**
  * ユーザーのStripe Connectアカウント残高を取得する
@@ -40,7 +81,8 @@ export async function getStripeBalanceAction(): Promise<ServerActionResult<numbe
     }
 
     // 残高を取得
-    const balance = await stripeService.getAccountBalance(connectAccount.stripe_account_id);
+    // 残高を取得 (キャッシュを使用)
+    const balance = await getCachedBalance(connectAccount.stripe_account_id);
 
     return {
       success: true,
