@@ -71,7 +71,7 @@ GEMINI.md
 uploads/
 usage_tracking2.json
 
-scripts/
+# scripts/
 supabase/migrations/20250624185107_setup_utility_functions.sql
 supabase/seed.sql
 

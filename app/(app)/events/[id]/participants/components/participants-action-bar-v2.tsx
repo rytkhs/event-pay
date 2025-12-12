@@ -2,7 +2,7 @@
 
 import { useState, type ReactNode } from "react";
 
-import { Plus, Download, RefreshCw, Zap, Search, X, ListTodo, MoreVertical } from "lucide-react";
+import { Plus, Download, RefreshCw, Search, X, ListTodo, MoreVertical } from "lucide-react";
 
 import { useToast } from "@core/contexts/toast-context";
 import type { Event } from "@core/types/models";
@@ -27,6 +27,8 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { adminAddAttendanceAction } from "@/features/events/actions/admin-add-attendance";
 import { exportParticipantsCsvAction } from "@/features/events/actions/export-participants-csv";
+
+import { SmartSortToggle } from "./smart-sort-toggle";
 
 interface ParticipantsActionBarV2Props {
   eventId: string;
@@ -196,12 +198,15 @@ export function ParticipantsActionBarV2({
     window.location.reload();
   };
 
-  const handleToggleSmartSort = () => {
-    const smartActive = typeof searchParams.smart === "string";
-    if (smartActive) {
-      onFiltersChange({ smart: undefined, page: "1", limit: undefined });
+  const smartActive = searchParams.smart !== "0";
+
+  const handleToggleSmartSort = (checked: boolean) => {
+    if (checked) {
+      // ON (Default)
+      onFiltersChange({ smart: undefined, page: "1" });
     } else {
-      onFiltersChange({ smart: "1", page: "1", limit: "200" });
+      // OFF
+      onFiltersChange({ smart: "0", page: "1" });
     }
   };
 
@@ -213,8 +218,6 @@ export function ParticipantsActionBarV2({
     setSearchQuery("");
     onFiltersChange({ search: undefined, page: "1" });
   };
-
-  const smartActive = typeof searchParams.smart === "string";
 
   return (
     <>
@@ -334,11 +337,14 @@ export function ParticipantsActionBarV2({
                       <MoreVertical className="h-5 w-5 text-gray-600" />
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={handleToggleSmartSort}>
-                      <Zap className="h-4 w-4 mr-2" />
-                      オートソート {smartActive ? "(ON)" : "(OFF)"}
-                    </DropdownMenuItem>
+                  <DropdownMenuContent align="end" className="w-56">
+                    <div className="p-2 border-b mb-1">
+                      <SmartSortToggle
+                        isActive={smartActive}
+                        onToggle={handleToggleSmartSort}
+                        showLabel={true}
+                      />
+                    </div>
                     <DropdownMenuItem onClick={handleExportCsv} disabled={isExporting}>
                       <Download className="h-4 w-4 mr-2" />
                       CSVエクスポート
@@ -353,16 +359,12 @@ export function ParticipantsActionBarV2({
 
               {/* Desktop Actions (そのまま表示) */}
               <div className="hidden md:flex items-center gap-2">
-                <Button
-                  variant={smartActive ? "default" : "outline"}
-                  size="sm"
-                  onClick={handleToggleSmartSort}
-                  className="gap-1.5 h-9"
-                  title="重要度優先のオート並び替え"
-                >
-                  <Zap className="h-4 w-4" />
-                  <span className="hidden lg:inline">ソート</span>
-                </Button>
+                <SmartSortToggle
+                  isActive={smartActive}
+                  onToggle={handleToggleSmartSort}
+                  showLabel={false}
+                  className="h-9"
+                />
 
                 <Button
                   variant="outline"

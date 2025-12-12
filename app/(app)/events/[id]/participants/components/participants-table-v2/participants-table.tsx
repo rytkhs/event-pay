@@ -101,7 +101,7 @@ export function ParticipantsTableV2({
   }, [initialData.participants]);
 
   // スマートソート対応の参加者データ
-  const smartActive = typeof searchParams.smart === "string";
+  const smartActive = searchParams.smart !== "0";
 
   const participants = useMemo(() => {
     return conditionalSmartSort(localParticipants, isFreeEvent, smartActive);
