@@ -5,7 +5,7 @@ import { createClient } from "@core/supabase/server";
 import { createServerActionError, type ServerActionResult } from "@core/types/server-actions";
 import { deriveEventStatus } from "@core/utils/derive-event-status";
 
-// import { getStripeBalanceAction } from "@features/stripe-connect/actions/get-balance";
+import type { Database } from "@/types/database";
 
 export interface DashboardStats {
   upcomingEventsCount: number;
@@ -29,6 +29,21 @@ export interface DashboardData {
   recentEvents: RecentEvent[];
 }
 
+type AttendanceWithPayments = Database["public"]["Tables"]["attendances"]["Row"] & {
+  payments: Database["public"]["Tables"]["payments"]["Row"][];
+};
+
+type EventForStats = Pick<Database["public"]["Tables"]["events"]["Row"], "id" | "fee"> & {
+  attendances: AttendanceWithPayments[];
+};
+
+type EventForRecent = Pick<
+  Database["public"]["Tables"]["events"]["Row"],
+  "id" | "title" | "date" | "fee" | "capacity" | "canceled_at"
+> & {
+  attendances: Pick<Database["public"]["Tables"]["attendances"]["Row"], "status">[];
+};
+
 export async function getDashboardDataAction(): Promise<ServerActionResult<DashboardData>> {
   try {
     // 認証確認
@@ -39,10 +54,30 @@ export async function getDashboardDataAction(): Promise<ServerActionResult<Dashb
     }
 
     const supabase = createClient();
-    const now = new Date();
+    const nowIso = new Date().toISOString();
 
-    // ユーザーのイベント一覧取得
-    const eventsResult = await supabase
+    // 並行して実行するクエリ:
+    // 1. 開催予定のイベント（統計計算用）- 必要なフィールドのみ取得
+    // 注: データベースの日時比較はUTCで行うため、JavaScriptのISO文字列を使用します
+    const upcomingEventsPromise = supabase
+      .from("events")
+      .select(
+        `
+        id,
+        fee,
+        attendances (
+          status,
+          payments (status)
+        )
+      `
+      )
+      .eq("created_by", user.id)
+      .gt("date", nowIso)
+      .is("canceled_at", null)
+      .overrideTypes<EventForStats[], { merge: false }>();
+
+    // 2. 最近のイベント（リスト表示用）- 上位5件
+    const recentEventsPromise = supabase
       .from("events")
       .select(
         `
@@ -51,79 +86,55 @@ export async function getDashboardDataAction(): Promise<ServerActionResult<Dashb
         date,
         fee,
         capacity,
-        payment_deadline,
-        registration_deadline,
-        created_at,
-        canceled_at
+        canceled_at,
+        attendances (status)
       `
       )
       .eq("created_by", user.id)
-      .order("created_at", { ascending: false });
+      .order("created_at", { ascending: false })
+      .limit(5)
+      .overrideTypes<EventForRecent[], { merge: false }>();
 
-    if (eventsResult.error) {
-      return createServerActionError("DATABASE_ERROR", "イベント情報の取得に失敗しました", {
-        retryable: true,
-        details: { dbError: eventsResult.error },
-      });
+    // Promise.allで並列実行
+    const [upcomingResult, recentResult] = await Promise.all([
+      upcomingEventsPromise,
+      recentEventsPromise,
+    ]);
+
+    if (upcomingResult.error) {
+      throw upcomingResult.error;
+    }
+    if (recentResult.error) {
+      throw recentResult.error;
     }
 
-    const events = eventsResult.data || [];
-
-    // 開催予定のイベントをフィルタリング
-    const upcomingEvents = events.filter((event: any) => {
-      const eventDate = new Date(event.date);
-      const isNotCanceled = !event.canceled_at;
-      const isFuture = eventDate > now;
-      return isNotCanceled && isFuture;
-    });
+    const upcomingEvents = upcomingResult.data || [];
+    const recentEventsRaw = recentResult.data || [];
 
     // ① 開催予定イベント数
     const upcomingEventsCount = upcomingEvents.length;
 
-    // ② 参加予定者総数を計算
+    // ② 参加予定者総数 & ③ 未回収の参加費合計
     let totalUpcomingParticipants = 0;
-    for (const event of upcomingEvents) {
-      const { data: attendances } = await supabase
-        .from("attendances")
-        .select("status")
-        .eq("event_id", event.id);
-
-      const attendingCount =
-        attendances?.filter((attendance: any) => attendance.status === "attending").length || 0;
-      totalUpcomingParticipants += attendingCount;
-    }
-
-    // ③ 未回収の参加費合計を計算
     let unpaidFeesTotal = 0;
+
     for (const event of upcomingEvents) {
+      // 参加ステータスが "attending" の人のみを対象
+      const attendingParticipants =
+        event.attendances?.filter((a) => a.status === "attending") || [];
+
+      totalUpcomingParticipants += attendingParticipants.length;
+
+      // 未回収の計算（有料イベントのみ）
       if (event.fee > 0) {
-        // LEFT JOINでpaymentsを取得（決済レコードがない参加者も含める）
-        const { data: attendances } = await supabase
-          .from("attendances")
-          .select(
-            `
-            id,
-            status,
-            payments(status)
-          `
-          )
-          .eq("event_id", event.id)
-          .eq("status", "attending");
+        for (const attendance of attendingParticipants) {
+          // 支払いが完了しているかチェック
+          // paymentsが含まれない、または空、またはステータスがpaid/receivedのものがない
+          const payments = attendance.payments || [];
+          const hasCompletedPayment = payments.some((p) => ["paid", "received"].includes(p.status));
 
-        if (attendances) {
-          for (const attendance of attendances) {
-            // 支払いが未完了の参加者の参加費を合算
-            // paymentsが空配列またはnullの場合も未払いとして扱う
-            const hasCompletedPayment =
-              attendance.payments &&
-              attendance.payments.length > 0 &&
-              attendance.payments.some((payment: any) =>
-                ["paid", "received"].includes(payment.status)
-              );
-
-            if (!hasCompletedPayment) {
-              unpaidFeesTotal += event.fee;
-            }
+          if (!hasCompletedPayment) {
+            unpaidFeesTotal += event.fee;
           }
         }
       }
@@ -132,30 +143,21 @@ export async function getDashboardDataAction(): Promise<ServerActionResult<Dashb
     // ④ Stripeアカウント残高（一時的に0に設定、後でダッシュボードで取得）
     const stripeAccountBalance = 0;
 
-    // 最近のイベント5件（参加者数を含む）
-    const recentEventsWithStats = await Promise.all(
-      events.slice(0, 5).map(async (event: any) => {
-        const { data: attendances } = await supabase
-          .from("attendances")
-          .select("status")
-          .eq("event_id", event.id);
+    // 最近のイベントフォーマット
+    const recentEvents: RecentEvent[] = recentEventsRaw.map((event) => {
+      const attendances = event.attendances || [];
+      const attendances_count = attendances.filter((a) => a.status === "attending").length;
 
-        const attendances_count =
-          attendances?.filter((attendance: any) => attendance.status === "attending").length || 0;
-
-        const computedStatus = deriveEventStatus(event.date, (event as any).canceled_at ?? null);
-
-        return {
-          id: event.id,
-          title: event.title,
-          date: event.date,
-          status: computedStatus,
-          fee: event.fee,
-          attendances_count,
-          capacity: event.capacity,
-        };
-      })
-    );
+      return {
+        id: event.id,
+        title: event.title,
+        date: event.date,
+        status: deriveEventStatus(event.date, event.canceled_at),
+        fee: event.fee,
+        attendances_count,
+        capacity: event.capacity,
+      };
+    });
 
     return {
       success: true,
@@ -166,7 +168,7 @@ export async function getDashboardDataAction(): Promise<ServerActionResult<Dashb
           unpaidFeesTotal,
           stripeAccountBalance,
         },
-        recentEvents: recentEventsWithStats,
+        recentEvents,
       },
     };
   } catch (error) {
