@@ -26,7 +26,7 @@ export function InviteLinkCard({ eventId, initialInviteToken }: InviteLinkCardPr
 
   useEffect(() => {
     if (initialInviteToken && typeof window !== "undefined") {
-      setInviteUrl(`${window.location.origin}/invite/${initialInviteToken}`);
+      setInviteUrl(`${process.env.NEXT_PUBLIC_APP_URL}/invite/${initialInviteToken}`);
     }
   }, [initialInviteToken]);
 
@@ -40,7 +40,7 @@ export function InviteLinkCard({ eventId, initialInviteToken }: InviteLinkCardPr
 
       if (result.success && result.token) {
         setInviteToken(result.token);
-        setInviteUrl(`${window.location.origin}/invite/${result.token}`);
+        setInviteUrl(`${process.env.NEXT_PUBLIC_APP_URL}/invite/${result.token}`);
 
         const message = forceRegenerate
           ? "新しい招待リンクを生成しました"
