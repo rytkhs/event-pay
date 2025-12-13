@@ -10,7 +10,7 @@ import { deriveEventStatus } from "@core/utils/derive-event-status";
 import { calculateAttendeeCount } from "@core/utils/event-calculations";
 import { validateEventId } from "@core/validation/event-id";
 
-import { ModernEventEditForm } from "@features/events/components/modern-event-edit-form";
+import { SinglePageEventEditForm } from "@features/events/components/single-page-event-edit-form";
 import { getDetailedAccountStatusAction } from "@features/stripe-connect";
 
 import { EventDangerZone } from "./components/event-danger-zone";
@@ -114,7 +114,7 @@ export default async function EventEditPage({ params }: EventEditPageProps) {
 
   return (
     <div className="min-h-screen bg-muted/30 py-8">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-12">
         <div className="space-y-6">
           {/* 戻るリンク */}
           <div>
@@ -127,8 +127,8 @@ export default async function EventEditPage({ params }: EventEditPageProps) {
             </Link>
           </div>
 
-          {/* 編集フォーム（新しいマルチステップ版） */}
-          <ModernEventEditForm
+          {/* 編集フォーム（シングルページ版） */}
+          <SinglePageEventEditForm
             event={{ ...(event as any), status: computedStatus }}
             attendeeCount={attendeeCount}
             hasStripePaid={hasStripePaid}
