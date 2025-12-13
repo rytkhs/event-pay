@@ -6,7 +6,7 @@ import type { GetEventPaymentsResponse } from "@core/validation/participant-mana
 
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { TooltipWrapper, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface KpiCardsGridProps {
   attendingCount: number;
@@ -50,7 +50,7 @@ export function KpiCardsGrid({
             </div>
             <span className="text-xs font-medium text-blue-700">参加者数</span>
             {maybeCount > 0 && (
-              <TooltipWrapper>
+              <Tooltip>
                 <TooltipTrigger asChild>
                   <div className="flex items-center gap-1 text-xs text-muted-foreground cursor-help">
                     <Clock className="h-3 w-3" />
@@ -60,7 +60,7 @@ export function KpiCardsGrid({
                 <TooltipContent>
                   <p>未定: {maybeCount}人</p>
                 </TooltipContent>
-              </TooltipWrapper>
+              </Tooltip>
             )}
           </div>
 
@@ -101,7 +101,7 @@ export function KpiCardsGrid({
                 <TrendingUp className="h-4 w-4 text-green-600" />
               </div>
               <span className="text-xs font-medium text-green-700">集金進捗</span>
-              <TooltipWrapper>
+              <Tooltip>
                 <TooltipTrigger asChild>
                   <button type="button" className="cursor-help">
                     <HelpCircle className="h-3 w-3 text-muted-foreground" />
@@ -110,7 +110,7 @@ export function KpiCardsGrid({
                 <TooltipContent>
                   <p>参加確定者の支払い状況</p>
                 </TooltipContent>
-              </TooltipWrapper>
+              </Tooltip>
             </div>
 
             <div className="space-y-2">

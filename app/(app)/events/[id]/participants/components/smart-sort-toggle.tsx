@@ -5,7 +5,7 @@ import { Sparkles } from "lucide-react";
 import { cn } from "@/components/ui/_lib/cn";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { TooltipWrapper, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface SmartSortToggleProps {
   isActive: boolean;
@@ -60,11 +60,11 @@ export function SmartSortToggle({
   }
 
   return (
-    <TooltipWrapper delayDuration={300}>
+    <Tooltip delayDuration={300}>
       <TooltipTrigger asChild>{content}</TooltipTrigger>
       <TooltipContent>
         <p>オートソート (重要度順)</p>
       </TooltipContent>
-    </TooltipWrapper>
+    </Tooltip>
   );
 }

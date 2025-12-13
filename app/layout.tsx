@@ -18,7 +18,7 @@ import { GlobalErrorListener } from "@components/errors/global-error-listener";
 import { JsonLd } from "@components/seo/JsonLd";
 
 import { Toaster } from "@/components/ui/toast";
-import { Tooltip as TooltipProvider } from "@/components/ui/tooltip";
+import { TooltipProvider } from "@/components/ui/tooltip";
 
 // Noto Sans JPの可変フォント最適化
 // weight配列を指定しないことで、可変フォントの全ウェイト範囲を単一ファイルでカバー
