@@ -3,9 +3,9 @@ import type { ReactNode } from "react";
 import { createClient } from "@core/supabase/server";
 
 import { AppSidebar } from "@components/layout/AppSidebar";
+import { Header } from "@components/layout/Header";
 
-import { Separator } from "@/components/ui/separator";
-import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
+import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 
 /**
  * アプリケーションレイアウト
@@ -36,11 +36,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
     <SidebarProvider>
       <AppSidebar user={currentUser} />
       <SidebarInset>
-        <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4 bg-background z-10">
-          <SidebarTrigger className="-ml-1" />
-          <Separator orientation="vertical" className="mr-2 h-4" />
-          {/* Breadcrumbs can be added here in the future */}
-        </header>
+        <Header />
         <main className="flex-1 flex flex-col p-4 w-full max-w-7xl mx-auto">{children}</main>
       </SidebarInset>
     </SidebarProvider>
