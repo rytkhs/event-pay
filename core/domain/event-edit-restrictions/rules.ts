@@ -50,6 +50,50 @@ const createWarning = (
   suggestedAction,
 });
 
+/**
+ * 値の等価性チェック
+ * 型違い、null/空文字、日付の秒数差、文字列の空白を吸収して比較します
+ */
+const areValuesEqual = (a: unknown, b: unknown): boolean => {
+  // 1. 厳密な等価性
+  if (a === b) return true;
+
+  // 2. null/undefined/空文字の同一視
+  const isEmpty = (v: unknown) => v === null || v === undefined || v === "";
+  if (isEmpty(a) && isEmpty(b)) return true;
+  if (isEmpty(a) || isEmpty(b)) return false;
+
+  // 3. 数値としての比較
+  const numA = safeParseNumber(a);
+  const numB = safeParseNumber(b);
+  if (numA !== null && numB !== null) {
+    return numA === numB;
+  }
+
+  // 4. 日付としての比較（秒・ミリ秒を無視して分単位で比較）
+  const toDate = (v: unknown): Date | null => {
+    if (v instanceof Date) return v;
+    if (typeof v === "string" && /^\d{4}[-/]\d{2}[-/]\d{2}/.test(v)) {
+      const d = new Date(v);
+      return isNaN(d.getTime()) ? null : d;
+    }
+    return null;
+  };
+
+  const dateA = toDate(a);
+  const dateB = toDate(b);
+
+  if (dateA && dateB) {
+    // タイムスタンプを60000ms（1分）で割って切り捨て、分単位の整数にする
+    const minutesA = Math.floor(dateA.getTime() / 60000);
+    const minutesB = Math.floor(dateB.getTime() / 60000);
+    return minutesA === minutesB;
+  }
+
+  // 5. 文字列としての比較（前後の空白を削除して比較）
+  return String(a).trim() === String(b).trim();
+};
+
 // =============================================================================
 // Structural Restrictions - 構造的制限（絶対変更不可）
 // =============================================================================
@@ -153,11 +197,18 @@ export const ATTENDEE_IMPACT_ADVISORY: RestrictionRule = {
       return createEvaluation(false, "制限なし");
     }
 
+    // 監視対象の重要フィールド
     const criticalFields = ["title", "date", "location", "fee"] as const;
+
     const hasChanges = criticalFields.some((field) => {
       const current = formData[field];
       const original = (context.originalEvent as Record<string, unknown>)[field];
-      return current !== original && current !== null && current !== undefined && current !== "";
+
+      // フォームに含まれていないフィールドは無視
+      if (current === undefined) return false;
+
+      // 等価性チェックを使用（型やフォーマットの違いを吸収）
+      return !areValuesEqual(current, original);
     });
 
     if (hasChanges) {
@@ -229,7 +280,12 @@ export const DATE_CHANGE_ADVISORY: RestrictionRule = {
     const currentDate = formData.date;
     const originalDate = context.originalEvent.date;
 
-    if (currentDate && originalDate && currentDate !== originalDate) {
+    if (currentDate === undefined) {
+      return createEvaluation(false, "制限なし");
+    }
+
+    // 等価性チェックを使用
+    if (!areValuesEqual(currentDate, originalDate)) {
       return createWarning(
         "イベント日時の変更は参加者に大きく影響します",
         `現在${context.attendeeCount}名の参加者が登録済みです。日時の変更により参加できなくなる可能性があります。`
