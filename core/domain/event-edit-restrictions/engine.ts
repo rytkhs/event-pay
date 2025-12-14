@@ -172,7 +172,7 @@ export class RestrictionEngine {
 
     for (const rule of this.rules) {
       try {
-        const cacheKey = this.generateCacheKey(rule.id, context, formData);
+        const cacheKey = this.generateCacheKey(rule, context, formData);
 
         if (this.config.enableCache && this.cache.has(cacheKey)) {
           const cached = this.cache.get(cacheKey);
@@ -226,16 +226,17 @@ export class RestrictionEngine {
 
   /** キャッシュキーの生成 */
   private generateCacheKey(
-    ruleId: string,
+    rule: RestrictionRule,
     context: RestrictionContext,
     formData: FormDataSnapshot
   ): string {
     const keyData = {
-      ruleId,
+      ruleId: rule.id,
+      field: rule.field,
       hasAttendees: context.hasAttendees,
       attendeeCount: context.attendeeCount,
       hasStripePaid: context.hasStripePaid,
-      relevantFormData: this.extractRelevantFormData(ruleId, formData),
+      relevantFormData: this.extractRelevantFormData(rule.id, formData),
     };
 
     return JSON.stringify(keyData);

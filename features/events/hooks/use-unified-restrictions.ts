@@ -105,10 +105,10 @@ export function useUnifiedRestrictions(
 
   // 制限エンジンのシングルトンインスタンス
   const engineRef = useRef<RestrictionEngine | null>(null);
+  const evaluationTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   if (!engineRef.current) {
     engineRef.current = createRestrictionEngine({
       debug,
-      evaluationThrottleMs: evaluationDelayMs,
       enableCache: true,
     });
   }
@@ -135,18 +135,9 @@ export function useUnifiedRestrictions(
   const deferredFormData = useDeferredValue(formData);
 
   // 依存配列の安定化
-  const stableContext = useMemo(
-    () => context,
-    [
-      context.hasAttendees,
-      context.attendeeCount,
-      context.hasStripePaid,
-      context.eventStatus,
-      JSON.stringify(context.originalEvent), // Deep comparison for nested object
-    ]
-  );
+  const stableContext = useMemo(() => context, [context]);
 
-  const stableFormData = useMemo(() => deferredFormData, [JSON.stringify(deferredFormData)]);
+  const stableFormData = useMemo(() => deferredFormData, [deferredFormData]);
 
   // ---------------------------------------------------------------------------
   // Restriction Evaluation
@@ -216,8 +207,13 @@ export function useUnifiedRestrictions(
   useEffect(() => {
     if (disableAutoUpdate) return;
 
-    // 初回評価
-    evaluateRestrictions();
+    if (evaluationTimeoutRef.current) {
+      clearTimeout(evaluationTimeoutRef.current);
+    }
+
+    evaluationTimeoutRef.current = setTimeout(() => {
+      void evaluateRestrictions();
+    }, evaluationDelayMs);
 
     // イベントリスナー設定
     const unsubscribeChange = engineRef.current?.onRestrictionChange(
@@ -242,10 +238,14 @@ export function useUnifiedRestrictions(
 
     // クリーンアップ
     return () => {
+      if (evaluationTimeoutRef.current) {
+        clearTimeout(evaluationTimeoutRef.current);
+        evaluationTimeoutRef.current = null;
+      }
       unsubscribeChange?.();
       unsubscribeError?.();
     };
-  }, [evaluateRestrictions, debug, disableAutoUpdate]);
+  }, [evaluateRestrictions, debug, disableAutoUpdate, evaluationDelayMs]);
 
   // ---------------------------------------------------------------------------
   // Helper Functions (Memoized)
@@ -262,7 +262,11 @@ export function useUnifiedRestrictions(
   const isFieldEditable = useCallback(
     (field: RestrictableField): boolean => {
       const summary = state.fieldRestrictions.get(field);
-      return summary?.isEditable ?? true;
+      if (!summary) return true;
+      const hasStructuralRestriction = summary.activeRestrictions.some(
+        (r) => r.rule.level === "structural"
+      );
+      return !hasStructuralRestriction;
     },
     [state.fieldRestrictions]
   );
@@ -439,30 +443,57 @@ export function useRestrictionContext(
   },
   eventStatus: "upcoming" | "ongoing" | "past" | "canceled" = "upcoming"
 ): RestrictionContext {
+  const { hasAttendees, attendeeCount, hasStripePaid } = attendanceInfo;
+  const {
+    fee,
+    capacity,
+    payment_methods,
+    title,
+    description,
+    location,
+    date,
+    registration_deadline,
+    payment_deadline,
+    allow_payment_after_deadline,
+    grace_period_days,
+  } = event;
+
   return useMemo(
     () => ({
-      ...attendanceInfo,
+      hasAttendees,
+      attendeeCount,
+      hasStripePaid,
       eventStatus,
       originalEvent: {
-        fee: event.fee ?? null,
-        capacity: event.capacity ?? null,
-        payment_methods: event.payment_methods ?? [],
-        title: event.title,
-        description: event.description,
-        location: event.location,
-        date: event.date,
-        registration_deadline: event.registration_deadline,
-        payment_deadline: event.payment_deadline,
-        allow_payment_after_deadline: event.allow_payment_after_deadline,
-        grace_period_days: event.grace_period_days,
+        fee: fee ?? null,
+        capacity: capacity ?? null,
+        payment_methods: payment_methods ?? [],
+        title,
+        description,
+        location,
+        date,
+        registration_deadline,
+        payment_deadline,
+        allow_payment_after_deadline,
+        grace_period_days,
       },
     }),
     [
-      attendanceInfo.hasAttendees,
-      attendanceInfo.attendeeCount,
-      attendanceInfo.hasStripePaid,
+      hasAttendees,
+      attendeeCount,
+      hasStripePaid,
       eventStatus,
-      JSON.stringify(event), // Deep comparison
+      fee,
+      capacity,
+      payment_methods,
+      title,
+      description,
+      location,
+      date,
+      registration_deadline,
+      payment_deadline,
+      allow_payment_after_deadline,
+      grace_period_days,
     ]
   );
 }
@@ -486,6 +517,6 @@ export function useFormDataSnapshot(formValues: Record<string, unknown>): FormDa
       grace_period_days: formValues.grace_period_days as string | number | undefined,
       ...formValues,
     }),
-    [JSON.stringify(formValues)]
+    [formValues]
   );
 }
