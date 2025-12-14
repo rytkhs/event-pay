@@ -203,7 +203,7 @@ function getRestrictionRules(operation: RestrictionContext["operation"]): Restri
  * 参加者がいる場合のイベント編集制限をチェック（既存API互換）
  */
 /**
- * @deprecated V2ロジック（checkEditRestrictionsV2）へ移行しました。新規コードでは使用しないでください。
+ * @deprecated event-edit-restrictions ドメイン（core/domain/event-edit-restrictions）へ移行しました。新規コードでは使用しないでください。
  */
 export function checkEditRestrictions(
   existingEvent: EventWithAttendances,
@@ -233,101 +233,4 @@ export function checkDeleteRestrictions(
       attendeeCount,
     }
   );
-}
-
-/**
- * ===== V2: 編集可否ロジック（破壊的置換用） =====
- * - 基本項目（title/location/description/date/registration_deadline/payment_deadline）は常に編集可
- * - capacity: 参加者数未満には減らせない（null は常に可）
- * - 金銭系（fee/payment_methods）: Stripe 決済完了者が1名以上いる場合のみ変更不可
- */
-
-/**
- * V2用 ルール定義
- */
-export function getRestrictionRulesV2(
-  operation: RestrictionContext["operation"]
-): RestrictionRule[] {
-  const capacityRule: RestrictionRule = {
-    field: "capacity",
-    check: (_existing, updated, context) => {
-      const newCapacity = updated as number | null;
-      if (newCapacity === null || newCapacity === undefined) return false; // nullは常に可
-      // 参加者数未満への減少は禁止
-      return newCapacity < (context.attendeeCount || 0);
-    },
-    message: (context) =>
-      `定員は現在の参加者数（${context.attendeeCount}名）以上で設定してください`,
-  };
-
-  const feeRule: RestrictionRule = {
-    field: "fee",
-    check: (existing, updated, context) => {
-      if (!context.hasActivePayments) return false;
-      return updated !== undefined && updated !== existing;
-    },
-    message: "決済済みの参加者がいるため、参加費は変更できません",
-  };
-
-  const paymentMethodsRule: RestrictionRule = {
-    field: "payment_methods",
-    check: (existing, updated, context) => {
-      if (!context.hasAttendees) return false;
-      const current = new Set(
-        (existing as Database["public"]["Enums"]["payment_method_enum"][]) || []
-      );
-      const next = new Set((updated as Database["public"]["Enums"]["payment_method_enum"][]) || []);
-      // 追加は許可、既存の解除は不可（current にあるものが next から消えていたら違反）
-      for (const method of current) {
-        if (!next.has(method)) return true;
-      }
-      return false;
-    },
-    message: "参加者がいるため、既存の決済方法は解除できません",
-  };
-
-  switch (operation) {
-    case "update":
-      // 更新では capacity + 金銭系のみを制限
-      return [capacityRule, feeRule, paymentMethodsRule];
-    case "payment_change":
-      return [feeRule, paymentMethodsRule];
-    case "capacity_change":
-      return [capacityRule];
-    default:
-      return [];
-  }
-}
-
-/**
- * V2: 編集制限チェック
- */
-export function checkEditRestrictionsV2(
-  existingEvent: EventWithAttendances,
-  newData: Partial<EventRow>,
-  params: { attendeeCount: number; hasActivePayments: boolean; hasAttendees?: boolean }
-): EditRestrictionViolation[] {
-  const context: RestrictionContext = {
-    operation: "update",
-    attendeeCount: params.attendeeCount,
-    hasActivePayments: params.hasActivePayments,
-    hasAttendees: params.hasAttendees ?? params.attendeeCount > 0,
-  };
-
-  const violations: EditRestrictionViolation[] = [];
-  const rules = getRestrictionRulesV2(context.operation);
-
-  for (const rule of rules) {
-    const existingValue = getFieldValue(existingEvent, rule.field);
-    const newValue = getFieldValue(newData, rule.field);
-    const shouldCheck = newValue !== undefined; // 指定されたフィールドのみチェック
-    if (shouldCheck && rule.check(existingValue, newValue, context)) {
-      violations.push({
-        field: rule.field,
-        message: typeof rule.message === "function" ? rule.message(context) : rule.message,
-      });
-    }
-  }
-
-  return violations;
 }

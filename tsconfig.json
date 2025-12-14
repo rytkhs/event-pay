@@ -22,6 +22,7 @@
     "paths": {
       "@/*": ["./*"],
       "@core/*": ["./core/*"],
+      "@core/domain/*": ["./core/domain/*"],
       "@core/actions/*": ["./core/actions/*"],
       "@features/*": ["./features/*"],
       "@components/*": ["./components/*"],

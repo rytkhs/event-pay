@@ -39,8 +39,8 @@ export * from "./hooks/useEventFilter";
 export * from "./types";
 export * from "./validation";
 
-// Core Restrictions System
-export * from "./core/restrictions";
+// Core Restrictions System (deprecated: use @core/domain/event-edit-restrictions)
+// export * from "./core/restrictions";
 
 // Re-export filter/sort types from core for backward compatibility
 export type { SortBy, SortOrder, StatusFilter, PaymentFilter } from "@core/types/events";

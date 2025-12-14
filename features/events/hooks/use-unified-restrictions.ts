@@ -6,8 +6,6 @@
 
 import { useCallback, useMemo, useState, useEffect, useDeferredValue, useRef } from "react";
 
-import { logger } from "@core/logging/app-logger";
-
 import {
   RestrictionContext,
   FormDataSnapshot,
@@ -18,8 +16,8 @@ import {
   RestrictionEngine,
   createRestrictionEngine,
   FieldRestrictionMap,
-} from "../core/restrictions";
-
+} from "@core/domain/event-edit-restrictions";
+import { logger } from "@core/logging/app-logger";
 // =============================================================================
 // Hook Types - フック専用型定義
 // =============================================================================

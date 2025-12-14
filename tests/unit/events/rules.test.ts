@@ -8,11 +8,9 @@ import {
   ATTENDEE_COUNT_CAPACITY_RESTRICTION,
   FREE_EVENT_PAYMENT_ADVISORY,
   PAID_EVENT_PAYMENT_REQUIRED_ADVISORY,
-} from "../../../features/events/core/restrictions/rules";
-import type {
-  RestrictionContext,
-  FormDataSnapshot,
-} from "../../../features/events/core/restrictions/types";
+  type RestrictionContext,
+  type FormDataSnapshot,
+} from "@core/domain/event-edit-restrictions";
 
 // =============================================================================
 // Test Helpers - テストヘルパー

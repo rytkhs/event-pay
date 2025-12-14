@@ -8,15 +8,16 @@ import React, { useMemo } from "react";
 
 import { InfoIcon, AlertTriangleIcon, XCircleIcon } from "lucide-react";
 
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Badge } from "@/components/ui/badge";
-
 import {
   RestrictionContext,
   FormDataSnapshot,
   RestrictionLevel,
   ActiveRestriction,
-} from "../core/restrictions";
+} from "@core/domain/event-edit-restrictions";
+
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+
 import { useUnifiedRestrictions } from "../hooks/use-unified-restrictions";
 
 // =============================================================================
