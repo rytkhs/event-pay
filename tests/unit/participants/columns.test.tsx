@@ -13,10 +13,9 @@ import {
   type ActionsCellHandlers,
 } from "@/app/(app)/events/[id]/participants/components/participants-table-v2/columns";
 
-// モックハンドラー
+// モックハンドラー（現在の実装に合わせた型）
 const mockHandlers: ActionsCellHandlers = {
   onReceive: jest.fn(),
-  onWaive: jest.fn(),
   onCancel: jest.fn(),
   isUpdating: false,
 };
@@ -70,6 +69,10 @@ function TestTableRow({
 }
 
 describe("buildParticipantsColumns", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
   describe("ニックネーム列", () => {
     it("ニックネームが正しく表示される", () => {
       render(<TestTableRow participant={mockParticipant} eventFee={1000} />);
@@ -105,7 +108,7 @@ describe("buildParticipantsColumns", () => {
     it("オンライン決済バッジが表示される", () => {
       const stripeParticipant = { ...mockParticipant, payment_method: "stripe" as const };
       render(<TestTableRow participant={stripeParticipant} eventFee={1000} />);
-      expect(screen.getByText("オンライン決済")).toBeInTheDocument();
+      expect(screen.getByText("オンライン")).toBeInTheDocument();
     });
 
     it("決済方法がない場合", () => {
@@ -134,11 +137,10 @@ describe("buildParticipantsColumns", () => {
   });
 
   describe("アクション列", () => {
-    it("現金決済で未決済の場合、受領と免除ボタンが表示される", () => {
+    it("現金決済で未決済の場合、受領ボタンが表示される", () => {
       render(<TestTableRow participant={mockParticipant} eventFee={1000} />);
 
       expect(screen.getByTitle("受領済みにする")).toBeInTheDocument();
-      expect(screen.getByTitle("支払いを免除")).toBeInTheDocument();
     });
 
     it("決済完了の場合、取り消しボタンが表示される", () => {
@@ -153,7 +155,6 @@ describe("buildParticipantsColumns", () => {
       render(<TestTableRow participant={stripeParticipant} eventFee={1000} />);
 
       expect(screen.queryByTitle("受領済みにする")).not.toBeInTheDocument();
-      expect(screen.queryByTitle("支払いを免除")).not.toBeInTheDocument();
     });
 
     it("受領ボタンクリックでハンドラーが呼ばれる", async () => {
@@ -164,16 +165,6 @@ describe("buildParticipantsColumns", () => {
       await user.click(receiveButton);
 
       expect(mockHandlers.onReceive).toHaveBeenCalledWith("pay-1");
-    });
-
-    it("免除ボタンクリックでハンドラーが呼ばれる", async () => {
-      const user = userEvent.setup();
-      render(<TestTableRow participant={mockParticipant} eventFee={1000} />);
-
-      const waiveButton = screen.getByTitle("支払いを免除");
-      await user.click(waiveButton);
-
-      expect(mockHandlers.onWaive).toHaveBeenCalledWith("pay-1");
     });
 
     it("取り消しボタンクリックでハンドラーが呼ばれる", async () => {

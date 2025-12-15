@@ -99,7 +99,7 @@ export function EventManagementPage({
 
         {/* 参加者管理タブコンテンツ */}
         <TabsContent value="participants" className="mt-0 focus-visible:outline-none">
-          {participantsData && paymentsData ? (
+          {participantsData ? (
             <EventParticipantsTab
               eventId={eventId}
               eventDetail={eventDetail}

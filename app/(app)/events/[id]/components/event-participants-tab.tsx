@@ -30,16 +30,18 @@ export function EventParticipantsTab({
   // 選択モード（一括操作用）の状態管理
   const [isSelectionMode, setIsSelectionMode] = useState(false);
 
-  // 参加状況の集計（全参加者から計算）
+  // 全参加者データ
+  const allParticipants = participantsData.participants;
+
+  // 参加状況の集計（全参加者から計算 - フィルタ前のデータを使用）
   const statusCounts = useMemo(() => {
-    const participants = participantsData.participants;
     return {
-      all: participantsData.pagination.total,
-      attending: participants.filter((p) => p.status === "attending").length,
-      maybe: participants.filter((p) => p.status === "maybe").length,
-      not_attending: participants.filter((p) => p.status === "not_attending").length,
+      all: allParticipants.length,
+      attending: allParticipants.filter((p) => p.status === "attending").length,
+      maybe: allParticipants.filter((p) => p.status === "maybe").length,
+      not_attending: allParticipants.filter((p) => p.status === "not_attending").length,
     };
-  }, [participantsData]);
+  }, [allParticipants]);
 
   // 現在のステータスフィルター
   const activeStatus =
@@ -84,7 +86,7 @@ export function EventParticipantsTab({
           <ParticipantsTableV2
             eventId={eventId}
             eventFee={eventDetail.fee}
-            initialData={participantsData}
+            allParticipants={allParticipants}
             searchParams={searchParams}
             onParamsChange={onUpdateFilters}
             isSelectionMode={isSelectionMode}

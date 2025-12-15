@@ -9,11 +9,8 @@ import { ChevronLeft, ChevronRight, LayoutGridIcon, TableIcon } from "lucide-rea
 
 import { useToast } from "@core/contexts/toast-context";
 import { conditionalSmartSort } from "@core/utils/participant-smart-sort";
-import { isPaymentUnpaid } from "@core/utils/payment-status-mapper";
-import type {
-  GetParticipantsResponse,
-  ParticipantView,
-} from "@core/validation/participant-management";
+import { isPaymentUnpaid, toSimplePaymentStatus } from "@core/utils/payment-status-mapper";
+import type { ParticipantView } from "@core/validation/participant-management";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -36,7 +33,7 @@ import { DataTable } from "./data-table";
 export interface ParticipantsTableV2Props {
   eventId: string;
   eventFee: number;
-  initialData: GetParticipantsResponse;
+  allParticipants: ParticipantView[];
   searchParams: { [key: string]: string | string[] | undefined };
   onParamsChange: (params: Record<string, string | undefined>) => void;
   isSelectionMode?: boolean;
@@ -46,7 +43,7 @@ export interface ParticipantsTableV2Props {
 export function ParticipantsTableV2({
   eventId: _eventId,
   eventFee,
-  initialData,
+  allParticipants,
   searchParams,
   onParamsChange,
   isSelectionMode = false,
@@ -93,30 +90,91 @@ export function ParticipantsTableV2({
   };
 
   // ローカル参加者状態（楽観的更新用）
-  const [localParticipants, setLocalParticipants] = useState(initialData.participants);
+  const [localParticipants, setLocalParticipants] = useState(allParticipants);
 
   // props更新時に同期
   useEffect(() => {
-    setLocalParticipants(initialData.participants);
-  }, [initialData.participants]);
+    setLocalParticipants(allParticipants);
+  }, [allParticipants]);
 
-  // スマートソート対応の参加者データ
+  // =======================================================
+  // クライアントサイドフィルタリング
+  // =======================================================
+  const filteredParticipants = useMemo(() => {
+    let result = localParticipants;
+
+    // 検索フィルタ（ニックネーム/メール部分一致）
+    const search = typeof searchParams.search === "string" ? searchParams.search.toLowerCase() : "";
+    if (search) {
+      result = result.filter(
+        (p) => p.nickname.toLowerCase().includes(search) || p.email.toLowerCase().includes(search)
+      );
+    }
+
+    // 出席ステータスフィルタ
+    const attendance = typeof searchParams.attendance === "string" ? searchParams.attendance : null;
+    if (attendance && attendance !== "all") {
+      result = result.filter((p) => p.status === attendance);
+    }
+
+    // 決済方法フィルタ
+    const paymentMethod =
+      typeof searchParams.payment_method === "string" ? searchParams.payment_method : null;
+    if (paymentMethod) {
+      result = result.filter((p) => p.payment_method === paymentMethod);
+    }
+
+    // 決済ステータスフィルタ (SimplePaymentStatus)
+    const paymentStatus =
+      typeof searchParams.payment_status === "string" ? searchParams.payment_status : null;
+    if (paymentStatus) {
+      result = result.filter((p) => {
+        const simple = toSimplePaymentStatus(p.payment_status);
+        return simple === paymentStatus;
+      });
+    }
+
+    return result;
+  }, [localParticipants, searchParams]);
+
+  // =======================================================
+  // スマートソート（全フィルタ済みデータに対して）
+  // =======================================================
   const smartActive = searchParams.smart !== "0";
+  const sortedParticipants = useMemo(() => {
+    return conditionalSmartSort(filteredParticipants, isFreeEvent, smartActive);
+  }, [filteredParticipants, isFreeEvent, smartActive]);
 
-  const participants = useMemo(() => {
-    return conditionalSmartSort(localParticipants, isFreeEvent, smartActive);
-  }, [localParticipants, isFreeEvent, smartActive]);
+  // =======================================================
+  // クライアントサイドページネーション
+  // =======================================================
+  const page = typeof searchParams.page === "string" ? parseInt(searchParams.page, 10) : 1;
+  const limit = typeof searchParams.limit === "string" ? parseInt(searchParams.limit, 10) : 150;
 
-  // 現金決済で一括操作可能な参加者のみフィルタ
+  const paginatedParticipants = useMemo(() => {
+    const start = (page - 1) * limit;
+    return sortedParticipants.slice(start, start + limit);
+  }, [sortedParticipants, page, limit]);
+
+  // ページネーション情報
+  const totalCount = filteredParticipants.length;
+  const totalPages = Math.ceil(totalCount / limit);
+  const hasNext = page < totalPages;
+  const hasPrev = page > 1;
+
+  // =======================================================
+  // 一括操作関連
+  // =======================================================
+  // 現金決済で一括操作可能な参加者のみフィルタ（フィルタ済みデータから）
   const bulkOperableParticipants = useMemo(() => {
-    return participants.filter(
+    return sortedParticipants.filter(
       (p) =>
         p.status === "attending" &&
         p.payment_method === "cash" &&
         p.payment_id &&
         (p.payment_status === "pending" || p.payment_status === "failed")
     );
-  }, [participants]);
+  }, [sortedParticipants]);
 
   // 現在選択されている現金決済のpayment_id配列
   const validSelectedPaymentIds = useMemo(() => {
@@ -124,12 +182,9 @@ export function ParticipantsTableV2({
     return selectedPaymentIds.filter((id) => validIds.has(id));
   }, [selectedPaymentIds, bulkOperableParticipants]);
 
-  const { pagination } = initialData;
-  const pageIndex = Math.max(0, (pagination.page || 1) - 1);
-  const pageSize = pagination.limit || 50;
-  const pageCount = pagination.totalPages || 1;
-
-  // SortingState 初期化（sort, order）
+  // =======================================================
+  // ソート状態
+  // =======================================================
   const initialSorting: SortingState = useMemo(() => {
     const sort = typeof searchParams.sort === "string" ? searchParams.sort : undefined;
     const order =
@@ -140,14 +195,15 @@ export function ParticipantsTableV2({
 
   const [sorting, setSorting] = useState<SortingState>(initialSorting);
 
-  // SortingState の同期
   const sortId = initialSorting[0]?.id;
   const sortDesc = initialSorting[0]?.desc;
   useEffect(() => {
     setSorting(initialSorting);
   }, [initialSorting, sortId, sortDesc]);
 
-  // handlers
+  // =======================================================
+  // ハンドラー
+  // =======================================================
   const applyLocal = useCallback(
     (paymentId: string, nextStatus: "received" | "waived" | "pending") => {
       setLocalParticipants((prev) =>
@@ -161,7 +217,6 @@ export function ParticipantsTableV2({
     async (paymentId: string) => {
       setIsUpdating(true);
       const prev = localParticipants;
-      // 楽観的更新
       applyLocal(paymentId, "received");
       try {
         const result = await updateCashStatusAction({ paymentId, status: "received" });
@@ -170,13 +225,11 @@ export function ParticipantsTableV2({
             title: "決済状況を更新しました",
             description: "ステータスを「受領」に変更しました。",
           });
-          // 軽量再検証（ページ遷移なし）
           startTransition(() => router.refresh());
         } else {
           throw new Error(result.error);
         }
       } catch (error) {
-        // ロールバック
         setLocalParticipants(prev);
         const errorMessage =
           error instanceof Error ? error.message : "予期しないエラーが発生しました";
@@ -206,7 +259,6 @@ export function ParticipantsTableV2({
     const prev = localParticipants;
     const targetIds = [...validSelectedPaymentIds];
 
-    // 楽観的更新：選択された決済を「received」に変更
     setLocalParticipants((current) =>
       current.map((p) =>
         p.payment_id && targetIds.includes(p.payment_id) ? { ...p, payment_status: "received" } : p
@@ -225,15 +277,12 @@ export function ParticipantsTableV2({
           title: "一括受領が完了しました",
           description: `${successCount}件受領、${failedCount > 0 ? `${failedCount}件失敗` : "全て成功"}`,
         });
-        // 選択解除
         setSelectedPaymentIds([]);
-        // 軽量再検証
         startTransition(() => router.refresh());
       } else {
         throw new Error(result.error);
       }
     } catch (error) {
-      // ロールバック
       setLocalParticipants(prev);
       const errorMessage = error instanceof Error ? error.message : "一括受領に失敗しました";
       toast({
@@ -260,7 +309,6 @@ export function ParticipantsTableV2({
     const prev = localParticipants;
     const targetIds = [...validSelectedPaymentIds];
 
-    // 楽観的更新：選択された決済を「waived」に変更
     setLocalParticipants((current) =>
       current.map((p) =>
         p.payment_id && targetIds.includes(p.payment_id) ? { ...p, payment_status: "waived" } : p
@@ -279,15 +327,12 @@ export function ParticipantsTableV2({
           title: "一括免除が完了しました",
           description: `${successCount}件免除、${failedCount > 0 ? `${failedCount}件失敗` : "全て成功"}`,
         });
-        // 選択解除
         setSelectedPaymentIds([]);
-        // 軽量再検証
         startTransition(() => router.refresh());
       } else {
         throw new Error(result.error);
       }
     } catch (error) {
-      // ロールバック
       setLocalParticipants(prev);
       const errorMessage = error instanceof Error ? error.message : "一括免除に失敗しました";
       toast({
@@ -300,7 +345,6 @@ export function ParticipantsTableV2({
     }
   }, [validSelectedPaymentIds, localParticipants, toast, router]);
 
-  // 個別選択ハンドラー
   const handleSelectPayment = useCallback((paymentId: string, checked: boolean) => {
     setSelectedPaymentIds((prev) =>
       checked ? [...prev, paymentId] : prev.filter((id) => id !== paymentId)
@@ -311,7 +355,6 @@ export function ParticipantsTableV2({
     async (paymentId: string) => {
       setIsUpdating(true);
       const prev = localParticipants;
-      // 楽観的更新
       applyLocal(paymentId, "pending");
       try {
         const result = await updateCashStatusAction({
@@ -325,13 +368,11 @@ export function ParticipantsTableV2({
             title: "決済を取り消しました",
             description: "ステータスを「未決済」に戻しました。",
           });
-          // 軽量再検証（ページ遷移なし）
           startTransition(() => router.refresh());
         } else {
           throw new Error(result.error);
         }
       } catch {
-        // ロールバック
         setLocalParticipants(prev);
         toast({
           title: "取り消しに失敗しました",
@@ -410,17 +451,11 @@ export function ParticipantsTableV2({
     [isFreeEvent]
   );
 
-  // view
-  const currentLimit =
-    typeof searchParams.limit === "string" ? parseInt(String(searchParams.limit), 10) : 50;
-
   return (
     <Card>
       <CardHeader>
         <div className="flex items-center justify-between">
-          <CardTitle className="text-lg font-semibold">
-            参加者一覧 ({initialData.pagination.total}件)
-          </CardTitle>
+          <CardTitle className="text-lg font-semibold">参加者一覧 ({totalCount}件)</CardTitle>
           <ToggleGroup
             type="single"
             value={viewMode}
@@ -444,17 +479,17 @@ export function ParticipantsTableV2({
           {viewMode === "table" ? (
             <DataTable
               columns={columns}
-              data={participants}
-              pageIndex={pageIndex}
-              pageSize={pageSize}
-              pageCount={pageCount}
+              data={paginatedParticipants}
+              pageIndex={page - 1}
+              pageSize={limit}
+              pageCount={totalPages}
               sorting={sorting}
               onSortingChange={handleSortingChange}
               getRowClassName={getRowClassName}
             />
           ) : (
             <CardsView
-              participants={participants}
+              participants={paginatedParticipants}
               eventFee={eventFee}
               isUpdating={isUpdating}
               onReceive={handleReceive}
@@ -472,51 +507,47 @@ export function ParticipantsTableV2({
           )}
         </div>
 
-        {(initialData.pagination.totalPages > 1 || initialData.pagination.total > 50) && (
+        {(totalPages > 1 || totalCount > 150) && (
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 px-4 py-3 sm:px-6 border-t">
             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
               <div className="text-sm text-gray-700">
-                {initialData.pagination.total}件中{" "}
-                {(initialData.pagination.page - 1) * initialData.pagination.limit + 1}-
-                {Math.min(
-                  initialData.pagination.page * initialData.pagination.limit,
-                  initialData.pagination.total
-                )}
+                {totalCount}件中 {(page - 1) * limit + 1}-{Math.min(page * limit, totalCount)}
                 件を表示
               </div>
               <div className="flex items-center gap-2">
                 <span className="text-sm text-gray-600">表示件数:</span>
-                <Select value={String(currentLimit)} onValueChange={handlePageSizeChange}>
+                <Select value={String(limit)} onValueChange={handlePageSizeChange}>
                   <SelectTrigger className="w-20 h-9 text-sm">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="50">50</SelectItem>
                     <SelectItem value="100">100</SelectItem>
+                    <SelectItem value="150">150</SelectItem>
                     <SelectItem value="200">200</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
             </div>
-            {initialData.pagination.totalPages > 1 && (
+            {totalPages > 1 && (
               <div className="flex items-center space-x-2">
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => handlePageChange(pageIndex - 1)}
-                  disabled={!initialData.pagination.hasPrev}
+                  onClick={() => handlePageChange(page - 2)}
+                  disabled={!hasPrev}
                   className="min-h-[44px] min-w-[44px]"
                 >
                   <ChevronLeft className="h-4 w-4" />
                 </Button>
                 <span className="text-sm text-gray-700 px-2 sm:px-3">
-                  {initialData.pagination.page} / {initialData.pagination.totalPages}
+                  {page} / {totalPages}
                 </span>
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => handlePageChange(pageIndex + 1)}
-                  disabled={!initialData.pagination.hasNext}
+                  onClick={() => handlePageChange(page)}
+                  disabled={!hasNext}
                   className="min-h-[44px] min-w-[44px]"
                 >
                   <ChevronRight className="h-4 w-4" />
