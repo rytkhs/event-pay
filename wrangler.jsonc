@@ -42,5 +42,28 @@
 			"invocation_logs": true,
 		}
 	},
-	"send_metrics": false
+	"send_metrics": false,
+	"env": {
+		"demo": {
+			"name": "event-pay-demo",
+			"routes": [
+				{
+					"pattern": "demo.minnano-shukin.com",
+					"custom_domain": true,
+				},
+			],
+			"services": [
+				{
+					"binding": "WORKER_SELF_REFERENCE",
+					"service": "event-pay-demo",
+				},
+			],
+			"r2_buckets": [
+				{
+					"binding": "NEXT_INC_CACHE_R2_BUCKET",
+					"bucket_name": "cache",
+				},
+			],
+		},
+	},
 }

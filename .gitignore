@@ -114,3 +114,5 @@ storage/
 
 # Sentry Config File
 .sentryclirc
+
+.env.demo
