@@ -34,6 +34,8 @@ export function isValidInviteToken(token: string): boolean {
 // 招待検証用のイベント詳細情報
 export interface EventDetail {
   id: string;
+  created_by: string;
+  organizer_name: string;
   title: string;
   date: string;
   location: string | null;

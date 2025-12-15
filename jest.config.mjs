@@ -28,6 +28,7 @@ const config = {
     "^@upstash/ratelimit$": "<rootDir>/tests/mocks/upstash-ratelimit.js",
     "^@/(.*)$": "<rootDir>/$1",
     "^@core/(.*)$": "<rootDir>/core/$1",
+    "^@core/domain/(.*)$": "<rootDir>/core/domain/$1",
     "^@features/(.*)$": "<rootDir>/features/$1",
     "^@components/(.*)$": "<rootDir>/components/$1",
     "^@/types/(.*)$": "<rootDir>/types/$1",

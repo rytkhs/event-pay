@@ -4,6 +4,11 @@ import { revalidatePath } from "next/cache";
 
 import { z } from "zod";
 
+import {
+  buildRestrictionContext,
+  createFormDataSnapshot,
+  evaluateEventEditViolations,
+} from "@core/domain/event-edit-restrictions";
 import { logEventManagement } from "@core/logging/system-logger";
 import { createClient } from "@core/supabase/server";
 import {
@@ -14,7 +19,6 @@ import {
 } from "@core/types/server-actions";
 import { deriveEventStatus } from "@core/utils/derive-event-status";
 import { calculateAttendeeCount } from "@core/utils/event-calculations";
-import { checkEditRestrictionsV2, type EventWithAttendances } from "@core/utils/event-restrictions";
 import { extractEventUpdateFormData } from "@core/utils/form-data-extractors";
 import { convertDatetimeLocalToUtc } from "@core/utils/timezone";
 import { updateEventSchema, type UpdateEventFormData } from "@core/validation/event";
@@ -286,22 +290,76 @@ export async function updateEventAction(
 
     // 現在の参加者数（attending のみ）を算出 - 共通ユーティリティを使用
     const attendeeCount = calculateAttendeeCount(existingEvent.attendances || []);
+    const hasAttendees = attendeeCount > 0;
 
-    // V2 編集制限（基本項目は常に編集可、金銭系/定員のみ制限）
-    const restrictions = checkEditRestrictionsV2(
-      existingEvent as unknown as EventWithAttendances,
+    const restrictionContext = buildRestrictionContext(
       {
-        fee: validatedData.fee,
-        capacity: validatedData.capacity,
-        payment_methods: validatedData.payment_methods,
+        fee: existingEvent.fee,
+        capacity: existingEvent.capacity,
+        payment_methods: existingEvent.payment_methods ?? [],
+        title: existingEvent.title,
+        description: existingEvent.description ?? undefined,
+        location: existingEvent.location ?? undefined,
+        date: existingEvent.date,
+        registration_deadline: existingEvent.registration_deadline ?? undefined,
+        payment_deadline: existingEvent.payment_deadline ?? undefined,
+        allow_payment_after_deadline:
+          (existingEvent as any).allow_payment_after_deadline ?? undefined,
+        grace_period_days: (existingEvent as any).grace_period_days ?? undefined,
       },
-      { attendeeCount, hasActivePayments: hasStripePaid, hasAttendees: attendeeCount > 0 }
+      { hasAttendees, attendeeCount, hasStripePaid },
+      eventStatus
     );
 
-    if (restrictions.length > 0) {
+    const effectiveCapacity =
+      validatedData.capacity !== undefined ? validatedData.capacity : existingEvent.capacity;
+    const effectiveTitle = validatedData.title ?? existingEvent.title;
+    const effectiveDescription =
+      validatedData.description !== undefined
+        ? validatedData.description
+        : (existingEvent.description ?? undefined);
+    const effectiveLocation =
+      validatedData.location !== undefined
+        ? validatedData.location
+        : (existingEvent.location ?? undefined);
+    const effectiveRegistrationDeadline = effectiveRegDeadlineIso ?? undefined;
+    const effectivePaymentDeadline = effectivePayDeadlineIso ?? undefined;
+    const effectiveGracePeriodDays =
+      validatedData.grace_period_days !== undefined
+        ? validatedData.grace_period_days
+        : ((existingEvent as any).grace_period_days ?? undefined);
+
+    const formDataSnapshot = createFormDataSnapshot({
+      fee: effectiveFee,
+      capacity: effectiveCapacity,
+      payment_methods: effectivePaymentMethods,
+      title: effectiveTitle,
+      description: effectiveDescription ?? undefined,
+      location: effectiveLocation ?? undefined,
+      date: effectiveDateIso,
+      registration_deadline: effectiveRegistrationDeadline,
+      payment_deadline: effectivePaymentDeadline,
+      allow_payment_after_deadline: effectiveAllowAfter,
+      grace_period_days: effectiveGracePeriodDays,
+    });
+
+    const restrictionPatch = Object.fromEntries(
+      Object.entries(validatedData).filter(([, value]) => value !== undefined)
+    );
+
+    const fieldViolations = await evaluateEventEditViolations({
+      context: restrictionContext,
+      formData: formDataSnapshot,
+      patch: restrictionPatch,
+    });
+
+    if (fieldViolations.length > 0) {
       return createServerActionError("RESOURCE_CONFLICT", "編集制限により変更できません", {
         details: {
-          violations: restrictions,
+          violations: fieldViolations.map((violation) => ({
+            field: violation.field,
+            message: violation.message,
+          })),
         },
       });
     }

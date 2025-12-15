@@ -1,7 +1,7 @@
 /**
  * ダッシュボード統計情報 統合テスト
  *
- * getDashboardDataAction の統合テストを実装し、以下を検証します：
+ * getDashboardStatsAction / getRecentEventsAction の統合テストを実装し、以下を検証します：
  * - 開催予定イベント数の正確な計算
  * - 参加予定者総数の集計（複数イベント横断）
  * - 未回収参加費の集計（決済ステータス考慮）
@@ -20,8 +20,12 @@ import { getCurrentUser } from "@core/auth/auth-utils";
 import { SecureSupabaseClientFactory } from "@core/security/secure-client-factory.impl";
 import { AdminReason } from "@core/security/secure-client-factory.types";
 import { createClient } from "@core/supabase/server";
+import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 
-import { getDashboardDataAction } from "@features/events/actions/get-dashboard-stats";
+import {
+  getDashboardStatsAction,
+  getRecentEventsAction,
+} from "@features/events/actions/get-dashboard-stats";
 
 import { setupAuthMocks } from "@tests/setup/common-mocks";
 import {
@@ -66,6 +70,8 @@ describe("ダッシュボード統計情報 統合テスト", () => {
     await setup.cleanup();
   });
 
+  // ...
+
   beforeEach(async () => {
     // 認証モックを再設定（共通モック設定を使用）
     mockGetCurrentUser.mockResolvedValue({
@@ -75,8 +81,25 @@ describe("ダッシュボード統計情報 統合テスト", () => {
       app_metadata: {},
     } as any);
 
-    // createClientをモックしてadminクライアントを返す（RLSをバイパス）
-    mockCreateClient.mockReturnValue(setup.adminClient as any);
+    // テストユーザーとしてログインしたクライアントを作成してモックに返す
+    // これにより、Server Action内で auth.uid() が正しく機能するようになる
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+
+    const authClient = createSupabaseClient(supabaseUrl, supabaseAnonKey);
+
+    // ログイン処理
+    const { error } = await authClient.auth.signInWithPassword({
+      email: setup.testUser.email,
+      password: setup.testUser.password,
+    });
+
+    if (error) {
+      throw new Error(`Failed to sign in test user: ${error.message}`);
+    }
+
+    // Server Actionがこのクライアントを使用する
+    mockCreateClient.mockReturnValue(authClient as any);
   });
 
   afterEach(async () => {
@@ -97,7 +120,7 @@ describe("ダッシュボード統計情報 統合テスト", () => {
       // getCurrentUserをnullを返すように設定（未認証状態をシミュレート）
       mockGetCurrentUser.mockResolvedValue(null as any);
 
-      const result = await getDashboardDataAction();
+      const result = await getDashboardStatsAction();
 
       expect(result.success).toBe(false);
       if (!result.success) {
@@ -124,11 +147,11 @@ describe("ダッシュボード統計情報 統合テスト", () => {
       });
       cleanupHelper.trackEvent(event2.id);
 
-      const result = await getDashboardDataAction();
+      const result = await getDashboardStatsAction();
 
       expect(result.success).toBe(true);
       if (result.success) {
-        expect(result.data.stats.upcomingEventsCount).toBe(2);
+        expect(result.data.upcomingEventsCount).toBe(2);
       }
     });
 
@@ -149,11 +172,11 @@ describe("ダッシュボード統計情報 統合テスト", () => {
       });
       cleanupHelper.trackEvent(event2.id);
 
-      const result = await getDashboardDataAction();
+      const result = await getDashboardStatsAction();
 
       expect(result.success).toBe(true);
       if (result.success) {
-        expect(result.data.stats.upcomingEventsCount).toBe(1);
+        expect(result.data.upcomingEventsCount).toBe(1);
       }
     });
   });
@@ -216,11 +239,11 @@ describe("ダッシュボード統計情報 統合テスト", () => {
       );
       cleanupHelper.trackAttendance(attendance2_2.id);
 
-      const result = await getDashboardDataAction();
+      const result = await getDashboardStatsAction();
 
       expect(result.success).toBe(true);
       if (result.success) {
-        expect(result.data.stats.totalUpcomingParticipants).toBe(5);
+        expect(result.data.totalUpcomingParticipants).toBe(5);
       }
     });
 
@@ -265,11 +288,11 @@ describe("ダッシュボード統計情報 統合テスト", () => {
       );
       cleanupHelper.trackAttendance(attendanceD.id);
 
-      const result = await getDashboardDataAction();
+      const result = await getDashboardStatsAction();
 
       expect(result.success).toBe(true);
       if (result.success) {
-        expect(result.data.stats.totalUpcomingParticipants).toBe(2);
+        expect(result.data.totalUpcomingParticipants).toBe(2);
       }
     });
   });
@@ -340,12 +363,12 @@ describe("ダッシュボード統計情報 統合テスト", () => {
       );
       cleanupHelper.trackPayment(paymentC.id);
 
-      const result = await getDashboardDataAction();
+      const result = await getDashboardStatsAction();
 
       expect(result.success).toBe(true);
       if (result.success) {
         // 未払いはB + C = 6000円
-        expect(result.data.stats.unpaidFeesTotal).toBe(6000);
+        expect(result.data.unpaidFeesTotal).toBe(6000);
       }
     });
 
@@ -382,11 +405,11 @@ describe("ダッシュボード統計情報 統合テスト", () => {
       );
       cleanupHelper.trackAttendance(attendance3.id);
 
-      const result = await getDashboardDataAction();
+      const result = await getDashboardStatsAction();
 
       expect(result.success).toBe(true);
       if (result.success) {
-        expect(result.data.stats.unpaidFeesTotal).toBe(0);
+        expect(result.data.unpaidFeesTotal).toBe(0);
       }
     });
 
@@ -436,12 +459,12 @@ describe("ダッシュボード統計情報 統合テスト", () => {
       );
       cleanupHelper.trackPayment(paymentB.id);
 
-      const result = await getDashboardDataAction();
+      const result = await getDashboardStatsAction();
 
       expect(result.success).toBe(true);
       if (result.success) {
         // 未回収はBのみ = 2000円
-        expect(result.data.stats.unpaidFeesTotal).toBe(2000);
+        expect(result.data.unpaidFeesTotal).toBe(2000);
       }
     });
 
@@ -463,12 +486,12 @@ describe("ダッシュボード統計情報 統合テスト", () => {
       );
       cleanupHelper.trackAttendance(attendance.id);
 
-      const result = await getDashboardDataAction();
+      const result = await getDashboardStatsAction();
 
       expect(result.success).toBe(true);
       if (result.success) {
         // 決済レコードがないので未回収 = 5000円
-        expect(result.data.stats.unpaidFeesTotal).toBe(5000);
+        expect(result.data.unpaidFeesTotal).toBe(5000);
       }
     });
   });
@@ -487,11 +510,11 @@ describe("ダッシュボード統計情報 統合テスト", () => {
         await new Promise((resolve) => setTimeout(resolve, 10));
       }
 
-      const result = await getDashboardDataAction();
+      const result = await getRecentEventsAction();
 
       expect(result.success).toBe(true);
       if (result.success) {
-        expect(result.data.recentEvents.length).toBe(5);
+        expect(result.data.length).toBe(5);
       }
     });
 
@@ -536,11 +559,11 @@ describe("ダッシュボード統計情報 統合テスト", () => {
       ); // maybeは含まれない
       cleanupHelper.trackAttendance(attendance4.id);
 
-      const result = await getDashboardDataAction();
+      const result = await getRecentEventsAction();
 
       expect(result.success).toBe(true);
       if (result.success) {
-        const recentEvent = result.data.recentEvents.find((e) => e.id === event.id);
+        const recentEvent = result.data.find((e: any) => e.id === event.id);
         expect(recentEvent).toBeDefined();
         expect(recentEvent?.attendances_count).toBe(3);
       }
@@ -574,12 +597,12 @@ describe("ダッシュボード統計情報 統合テスト", () => {
       );
       cleanupHelper.trackEvent(canceledEvent.id);
 
-      const result = await getDashboardDataAction();
+      const result = await getRecentEventsAction();
 
       expect(result.success).toBe(true);
       if (result.success) {
-        const futureEventResult = result.data.recentEvents.find((e) => e.id === futureEvent.id);
-        const canceledEventResult = result.data.recentEvents.find((e) => e.id === canceledEvent.id);
+        const futureEventResult = result.data.find((e: any) => e.id === futureEvent.id);
+        const canceledEventResult = result.data.find((e: any) => e.id === canceledEvent.id);
 
         expect(futureEventResult?.status).toBe("upcoming");
         expect(canceledEventResult?.status).toBe("canceled");
@@ -615,15 +638,21 @@ describe("ダッシュボード統計情報 統合テスト", () => {
         );
         mockCreateClient.mockReturnValue(newUserAdminClient as any);
 
-        const result = await getDashboardDataAction();
+        const statsResult = await getDashboardStatsAction();
+        const recentResult = await getRecentEventsAction();
 
-        expect(result.success).toBe(true);
-        if (result.success) {
-          expect(result.data.stats.upcomingEventsCount).toBe(0);
-          expect(result.data.stats.totalUpcomingParticipants).toBe(0);
-          expect(result.data.stats.unpaidFeesTotal).toBe(0);
-          expect(result.data.stats.stripeAccountBalance).toBe(0);
-          expect(result.data.recentEvents).toEqual([]);
+        expect(statsResult.success).toBe(true);
+        expect(recentResult.success).toBe(true);
+
+        if (statsResult.success) {
+          expect(statsResult.data.upcomingEventsCount).toBe(0);
+          expect(statsResult.data.totalUpcomingParticipants).toBe(0);
+          expect(statsResult.data.unpaidFeesTotal).toBe(0);
+          expect(statsResult.data.stripeAccountBalance).toBe(0);
+        }
+
+        if (recentResult.success) {
+          expect(recentResult.data).toEqual([]);
         }
       } finally {
         // テスト失敗時も確実にクリーンアップ
@@ -660,14 +689,20 @@ describe("ダッシュボード統計情報 統合テスト", () => {
       });
       cleanupHelper.trackEvent(event2.id);
 
-      const result = await getDashboardDataAction();
+      const statsResult = await getDashboardStatsAction();
+      const recentResult = await getRecentEventsAction();
 
-      expect(result.success).toBe(true);
-      if (result.success) {
+      expect(statsResult.success).toBe(true);
+      expect(recentResult.success).toBe(true);
+
+      if (statsResult.success) {
         // キャンセル済みイベントは開催予定にカウントされない
-        expect(result.data.stats.upcomingEventsCount).toBe(0);
+        expect(statsResult.data.upcomingEventsCount).toBe(0);
+      }
+
+      if (recentResult.success) {
         // ただし recentEvents には含まれる
-        expect(result.data.recentEvents.length).toBeGreaterThan(0);
+        expect(recentResult.data.length).toBeGreaterThan(0);
       }
     });
   });
@@ -751,18 +786,18 @@ describe("ダッシュボード統計情報 統合テスト", () => {
       );
       cleanupHelper.trackPayment(payment2.id);
 
-      const result = await getDashboardDataAction();
+      const result = await getDashboardStatsAction();
 
       expect(result.success).toBe(true);
       if (result.success) {
         // 開催予定イベント: 無料イベント + 有料イベント = 2件
-        expect(result.data.stats.upcomingEventsCount).toBe(2);
+        expect(result.data.upcomingEventsCount).toBe(2);
 
         // 参加予定者: 無料2名 + 有料2名 = 4名
-        expect(result.data.stats.totalUpcomingParticipants).toBe(4);
+        expect(result.data.totalUpcomingParticipants).toBe(4);
 
         // 未回収参加費: 有料イベントの未払い1名のみ = 2000円
-        expect(result.data.stats.unpaidFeesTotal).toBe(2000);
+        expect(result.data.unpaidFeesTotal).toBe(2000);
       }
     });
   });

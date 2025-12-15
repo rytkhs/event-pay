@@ -307,7 +307,7 @@ export async function getEventsAction(options: GetEventsOptions = {}): Promise<G
         date: event.date,
         location: event.location || "",
         fee: event.fee,
-        capacity: event.capacity || 0,
+        capacity: event.capacity,
         status: computedStatus,
         creator_name,
         attendances_count,

@@ -22,6 +22,7 @@ export interface TestEvent {
 
 export interface CreateTestEventOptions {
   title?: string;
+  date?: string;
   fee?: number;
   capacity?: number | null;
   payment_methods?: Database["public"]["Enums"]["payment_method_enum"][];
@@ -70,8 +71,9 @@ export async function createTestEvent(
   const inviteToken = generateInviteToken();
 
   // デフォルト値を設定
-  const defaultOptions: Required<CreateTestEventOptions> = {
+  const defaultOptions: Required<Omit<CreateTestEventOptions, "date">> & { date: string } = {
     title: "テスト用イベント",
+    date: futureDateString,
     fee: 0, // デフォルトは無料
     capacity: null, // デフォルトは定員なし
     payment_methods: [],
@@ -92,7 +94,7 @@ export async function createTestEvent(
   // イベントデータを構築
   const eventData: EventInsert = {
     title: eventOptions.title,
-    date: futureDateString,
+    date: eventOptions.date,
     location: eventOptions.location,
     description: eventOptions.description,
     fee: eventOptions.fee,

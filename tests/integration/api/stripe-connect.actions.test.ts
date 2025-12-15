@@ -1,6 +1,7 @@
 //
 
 import { createConnectAccountAction } from "@features/stripe-connect/actions/connect-account";
+import { getStripeBalanceAction } from "@features/stripe-connect/actions/get-balance";
 import { setupSupabaseClientMocks } from "../../setup/common-mocks";
 import { createMockSupabaseClient, setTestUserById } from "../../setup/supabase-auth-mock";
 
@@ -26,6 +27,23 @@ jest.mock("@features/stripe-connect/services", () => {
 // Supabase 認証モック（共通モックを使用）
 jest.mock("@core/supabase/server", () => ({
   createClient: jest.fn(),
+}));
+
+jest.mock("next/cache", () => ({
+  unstable_cache: (fn: any) => fn,
+  revalidateTag: jest.fn(),
+}));
+
+jest.mock("@core/stripe/client", () => ({
+  getStripe: jest.fn(() => ({
+    balance: {
+      retrieve: jest.fn().mockResolvedValue({
+        available: [{ currency: "jpy", amount: 1000 }],
+        pending: [{ currency: "jpy", amount: 500 }],
+      }),
+    },
+  })),
+  generateIdempotencyKey: jest.fn(() => "test_idempotency_key"),
 }));
 
 jest.mock("@core/utils/cloudflare-env", () => {
@@ -104,5 +122,40 @@ describe("Stripe Connect actions", () => {
 
     // 後片付け
     process.env.NODE_ENV = "test";
+  });
+
+  describe("getStripeBalanceAction", () => {
+    it("should return cached balance (calculated from available + pending)", async () => {
+      // Use a valid UUID to pass validateUserId check in real Service
+      const validUserId = "550e8400-e29b-41d4-a716-446655440000";
+      setTestUserById(validUserId, "u@example.com");
+
+      // Mock Supabase to return a connect account
+      (mockSupabase.from as jest.Mock).mockImplementation((tableName) => {
+        if (tableName === "stripe_connect_accounts") {
+          return {
+            select: jest.fn().mockReturnThis(),
+            eq: jest.fn().mockReturnThis(),
+            maybeSingle: jest.fn().mockResolvedValue({
+              data: { stripe_account_id: "acct_test_123" },
+              error: null,
+            }),
+          } as any;
+        }
+        // default fallback
+        return {
+          select: jest.fn().mockReturnThis(),
+          eq: jest.fn().mockReturnThis(),
+          maybeSingle: jest.fn().mockResolvedValue({ data: null, error: null }),
+        } as any;
+      });
+
+      const result = await getStripeBalanceAction();
+      expect(result.success).toBe(true);
+      if (result.success) {
+        // 1000 + 500 = 1500
+        expect(result.data).toBe(1500);
+      }
+    });
   });
 });

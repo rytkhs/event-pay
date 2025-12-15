@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 
 import { AlertCircle } from "lucide-react";
 
@@ -8,14 +8,19 @@ import type { BeginCheckoutParams } from "@core/analytics/event-types";
 import { ga4Client } from "@core/analytics/ga4-client";
 import { useToast } from "@core/contexts/toast-context";
 import { useErrorHandler } from "@core/hooks/use-error-handler";
+import { getPaymentDeadlineStatus } from "@core/utils/guest-restrictions";
 import { type GuestAttendanceData } from "@core/utils/guest-token";
+import { canCreateStripeSession } from "@core/validation/payment-eligibility";
 
 import { PaymentStatusAlert } from "@features/events";
 import {
-  GuestManagementForm,
-  GuestStatusOverview,
-  // GuestEventDetails,
+  GuestStatusCard,
+  GuestActionArea,
+  GuestEventSummary,
+  GuestSettingsArea,
+  GuestStatusEditModal,
   createGuestStripeSessionAction,
+  GuestScenario,
 } from "@features/guest";
 
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
@@ -35,14 +40,57 @@ export function GuestPageClient({
   sessionId,
   guestToken,
 }: GuestPageClientProps) {
-  // const router = useRouter();
   const { toast } = useToast();
   const { handleError } = useErrorHandler();
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
-  // Stripe決済セッション作成処理
+  // --- Validation Logic Restoration ---
+
+  // 1. Payment Eligibility (Deadline, Capacity, etc.)
+  // Note: canCreateStripeSession takes (attendance, event). Casting might be needed if types mismatch strictly,
+  // but GuestAttendanceData usually matches or extends what's needed.
+  // In GuestStatusOverview it was: canCreateStripeSession(attendance as any, attendance.event as any)
+  const eligibility = canCreateStripeSession(attendance as any, attendance.event as any);
+
+  // 2. Grace Period Status
+  const deadlineStatus = getPaymentDeadlineStatus(attendance);
+  const isGracePeriod = deadlineStatus === "grace_period";
+
+  // 3. Invalid Payment Method (Selected method is no longer allowed)
+  const isPaymentMethodInvalid = useMemo(() => {
+    const availableMethods = attendance.event.payment_methods || [];
+    const currentMethod = attendance.payment?.method;
+    // If user has a method selected (e.g. stripe) but it's not in availableMethods anymore
+    if (currentMethod && !availableMethods.includes(currentMethod)) {
+      return true;
+    }
+    return false;
+  }, [attendance]);
+
+  // Derive Scenario
+  const scenario = useMemo((): GuestScenario => {
+    if (attendance.status === "not_attending") return GuestScenario.NOT_ATTENDING;
+    if (attendance.status === "maybe") return GuestScenario.MAYBE;
+
+    // Attending
+    const fee = attendance.event.fee ?? 0;
+    if (fee === 0) return GuestScenario.PAID; // Free event treated as Paid/Confirmed
+
+    const isPaid =
+      attendance.payment?.status &&
+      ["paid", "received", "waived", "refunded"].includes(attendance.payment.status);
+
+    if (isPaid) return GuestScenario.PAID;
+
+    if (attendance.payment?.method === "cash") return GuestScenario.PENDING_CASH;
+
+    return GuestScenario.PENDING_ONLINE;
+  }, [attendance]);
+
+  // Stripe Payment Handler
   const handleStripePayment = async () => {
-    if (!attendance || attendance.event.fee <= 0) return;
+    if (!attendance || (attendance.event.fee ?? 0) <= 0) return;
 
     setIsProcessingPayment(true);
     try {
@@ -111,11 +159,11 @@ export function GuestPageClient({
   };
 
   return (
-    <>
-      {/* 中止イベントバナー */}
+    <div className="space-y-6">
+      {/* Canceled Event Alert */}
       {(attendance.event as any).canceled_at && (
-        <Alert variant="destructive" className="mb-6">
-          <AlertCircle className="h-5 w-5" aria-hidden="true" />
+        <Alert variant="destructive">
+          <AlertCircle className="h-5 w-5" />
           <AlertTitle>イベントは中止されました</AlertTitle>
           <AlertDescription>
             このイベントは中止されています。詳細については主催者にお問い合わせください。
@@ -123,17 +171,7 @@ export function GuestPageClient({
         </Alert>
       )}
 
-      {/* ステータス概要 */}
-      <section className="mb-6 sm:mb-8">
-        <GuestStatusOverview
-          attendance={attendance}
-          scrollTargetId="guest-form-section"
-          onPaymentClick={handleStripePayment}
-          isProcessingPayment={isProcessingPayment}
-        />
-      </section>
-
-      {/* 決済結果表示 */}
+      {/* Payment Result Alert */}
       {payment && (
         <PaymentStatusAlert
           sessionId={sessionId}
@@ -144,15 +182,64 @@ export function GuestPageClient({
         />
       )}
 
-      {/* イベント詳細 */}
-      {/* <section className="mb-6 sm:mb-8">
-        <GuestEventDetails attendance={attendance} />
-      </section> */}
-
-      {/* ゲスト管理フォーム */}
-      <section id="guest-form-section">
-        <GuestManagementForm attendance={attendance} canModify={canModify} />
+      {/* 1. Status Card */}
+      <section className="animate-slideUp">
+        <GuestStatusCard
+          scenario={scenario}
+          attendance={attendance}
+          isPaymentInvalid={isPaymentMethodInvalid}
+        />
       </section>
-    </>
+
+      {/* 2. Action Area */}
+      <section className="animate-slideUp delay-100">
+        <GuestActionArea
+          scenario={scenario}
+          onPay={handleStripePayment}
+          onOpenModal={() => setIsModalOpen(true)}
+          isProcessingPayment={isProcessingPayment}
+          isEligible={eligibility.isEligible}
+          ineligibilityReason={eligibility.reason}
+          isGracePeriod={isGracePeriod}
+          isPaymentInvalid={isPaymentMethodInvalid}
+        />
+      </section>
+
+      {/* 3. Event Summary */}
+      <section className="animate-slideUp delay-200">
+        <GuestEventSummary attendance={attendance} />
+      </section>
+
+      {/* 4. Settings Area */}
+      <section className="animate-slideUp delay-300">
+        <GuestSettingsArea onOpenModal={() => setIsModalOpen(true)} />
+      </section>
+
+      {/* Footer is simpler in client or page? Mock had footer component. */}
+      {/* Footer */}
+      <footer className="py-8 text-center text-gray-400 text-xs space-y-3">
+        {attendance.event.created_by && (
+          <div className="flex justify-center gap-4">
+            <a
+              href={`/tokushoho/${attendance.event.created_by}`}
+              className="hover:text-gray-600 underline"
+            >
+              特定商取引法に基づく表記
+            </a>
+          </div>
+        )}
+        <div>
+          <p>© みんなの集金</p>
+        </div>
+      </footer>
+
+      {/* Edit Modal */}
+      <GuestStatusEditModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        attendance={attendance}
+        canModify={canModify}
+      />
+    </div>
   );
 }

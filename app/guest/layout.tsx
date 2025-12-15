@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 
-import { GlobalFooter } from "@components/layout/GlobalFooter";
-import { GlobalHeader } from "@components/layout/GlobalHeader";
+// import { GlobalFooter } from "@components/layout/GlobalFooter";
+// import { GlobalHeader } from "@components/layout/GlobalHeader";
 
 /**
  * ゲストページレイアウト
@@ -18,9 +18,9 @@ import { GlobalHeader } from "@components/layout/GlobalHeader";
 export default function GuestLayout({ children }: { children: ReactNode }): JSX.Element {
   return (
     <>
-      <GlobalHeader variant="guest" />
+      {/* <GlobalHeader variant="guest" /> */}
       {children}
-      <GlobalFooter />
+      {/* <GlobalFooter /> */}
     </>
   );
 }

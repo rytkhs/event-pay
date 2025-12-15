@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 
 import type { Event } from "@core/types/models";
 
@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   ChangeConfirmationDialog,
   type ChangeItem,
+  type ValidationAnalysis,
 } from "@/components/ui/change-confirmation-dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -23,6 +24,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
+import type { RestrictableField } from "@/core/domain/event-edit-restrictions";
 
 import { useEventEditForm, type EventEditFormDataRHF } from "../hooks/use-event-edit-form";
 import { useRestrictionContext, useFormDataSnapshot } from "../hooks/use-unified-restrictions";
@@ -140,12 +142,58 @@ export function EventEditForm({
     setShowConfirmDialog(true);
   };
 
-  const handleConfirmChanges = async (confirmedChanges: ChangeItem[]) => {
+  // 変更検出
+  const validationAnalysis = useMemo<ValidationAnalysis>(() => {
+    const blockingErrors: string[] = [];
+    const advisoryWarnings: string[] = [];
+    const secondaryChanges: ChangeItem[] = [];
+    const normalChanges: ChangeItem[] = [];
+    const r = restrictions.details; // Unified Restriction Result
+
+    pendingChanges.forEach((change) => {
+      // 1. 副次的変更の検出
+      if (
+        change.newValue.includes("（無料化により自動クリア）") ||
+        change.newValue.includes("（オンライン決済選択解除により自動クリア）")
+      ) {
+        secondaryChanges.push(change);
+        return;
+      }
+
+      // 2. 統一制限システムによるバリデーション
+      const field = change.field as RestrictableField;
+      const restrictionMessage = r.getFieldMessage(field);
+      const restrictionLevel = r.getFieldRestrictionLevel(field);
+
+      if (
+        restrictionMessage &&
+        (restrictionLevel === "structural" || restrictionLevel === "conditional")
+      ) {
+        blockingErrors.push(`${change.fieldName}: ${restrictionMessage}`);
+      } else if (restrictionMessage && restrictionLevel === "advisory") {
+        if (!advisoryWarnings.includes(restrictionMessage)) {
+          advisoryWarnings.push(restrictionMessage);
+        }
+      }
+
+      normalChanges.push(change);
+    });
+
+    return {
+      blockingErrors,
+      advisoryWarnings,
+      secondaryChanges,
+      normalChanges,
+      hasBlockingErrors: blockingErrors.length > 0,
+    };
+  }, [pendingChanges, restrictions.details]);
+
+  const handleConfirmChanges = async () => {
     setShowConfirmDialog(false);
 
     try {
       const formData = form.getValues();
-      await actions.submitFormWithChanges(formData, confirmedChanges);
+      await actions.submitFormWithChanges(formData, pendingChanges);
     } catch (_error) {
       form.setError("root", {
         type: "manual",
@@ -585,11 +633,10 @@ export function EventEditForm({
       {/* 変更確認ダイアログ */}
       <ChangeConfirmationDialog
         isOpen={showConfirmDialog}
-        changes={pendingChanges}
+        analysis={validationAnalysis}
         onConfirm={handleConfirmChanges}
         onCancel={() => setShowConfirmDialog(false)}
         attendeeCount={attendeeCount}
-        hasStripePaid={hasStripePaid}
       />
     </>
   );

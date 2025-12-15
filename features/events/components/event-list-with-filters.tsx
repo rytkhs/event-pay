@@ -51,7 +51,7 @@ export function EventListWithFilters({
   // ページネーション
   const { currentPage, pageSize, setPage } = usePagination({
     defaultPage: 1,
-    defaultPageSize: 10,
+    defaultPageSize: 24,
   });
 
   // Zodスキーマによるバリデーション

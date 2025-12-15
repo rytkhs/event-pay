@@ -1,6 +1,31 @@
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
 export type Database = {
+  graphql_public: {
+    Tables: {
+      [_ in never]: never;
+    };
+    Views: {
+      [_ in never]: never;
+    };
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json;
+          operationName?: string;
+          query?: string;
+          variables?: Json;
+        };
+        Returns: Json;
+      };
+    };
+    Enums: {
+      [_ in never]: never;
+    };
+    CompositeTypes: {
+      [_ in never]: never;
+    };
+  };
   public: {
     Tables: {
       attendances: {
@@ -753,6 +778,14 @@ export type Database = {
           transfer_group: string;
         }[];
       };
+      get_dashboard_stats: {
+        Args: never;
+        Returns: {
+          total_upcoming_participants: number;
+          unpaid_fees_total: number;
+          upcoming_events_count: number;
+        }[];
+      };
       get_event_creator_name: {
         Args: { p_creator_id: string };
         Returns: string;
@@ -858,12 +891,14 @@ export type Database = {
           attendances_count: number;
           canceled_at: string;
           capacity: number;
+          created_by: string;
           date: string;
           description: string;
           fee: number;
           id: string;
           invite_token: string;
           location: string;
+          organizer_name: string;
           payment_deadline: string;
           payment_methods: Database["public"]["Enums"]["payment_method_enum"][];
           registration_deadline: string;
@@ -1047,6 +1082,9 @@ export type CompositeTypes<
     : never;
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {
       actor_type_enum: ["user", "guest", "system", "webhook", "service_role", "anonymous"],

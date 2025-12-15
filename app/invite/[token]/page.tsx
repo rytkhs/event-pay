@@ -140,7 +140,7 @@ export default async function InvitePage({ params }: InvitePageProps) {
     }
 
     return (
-      <div className="min-h-screen bg-muted/30">
+      <div className="bg-muted/30 flex-1">
         {/* メインコンテンツ */}
         <main className="container mx-auto px-4 py-6 sm:py-8 max-w-4xl">
           <InviteEventDetail
@@ -150,7 +150,7 @@ export default async function InvitePage({ params }: InvitePageProps) {
           />
           {/* 主催者の特商法リンク（到達容易性） */}
           {(() => {
-            const organizerId = (validationResult.event as any)?.created_by as string | undefined;
+            const organizerId = validationResult.event?.created_by;
             if (!organizerId) return null;
             return (
               <div className="mt-8 text-center">
@@ -159,7 +159,7 @@ export default async function InvitePage({ params }: InvitePageProps) {
                   className="text-xs underline text-muted-foreground hover:no-underline"
                   aria-label="主催者の特定商取引法に基づく表記を確認する"
                 >
-                  特定商取引法に基づく表記（主催者）
+                  特定商取引法に基づく表記（イベント）
                 </a>
               </div>
             );

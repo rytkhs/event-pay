@@ -4,14 +4,14 @@ import { memo, useMemo } from "react";
 
 import Link from "next/link";
 
-import { CalendarIcon, MapPinIcon, UsersIcon } from "lucide-react";
+import { MapPinIcon, UsersIcon, ArrowRight } from "lucide-react";
 
 import { EVENT_STATUS_LABELS } from "@core/types/enums";
 import { sanitizeForEventPay } from "@core/utils/sanitize";
-import { formatUtcToJstByType } from "@core/utils/timezone";
+import { formatUtcToJst } from "@core/utils/timezone";
 
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 
 import { Event } from "../types";
 
@@ -19,39 +19,70 @@ interface EventCardProps {
   event: Event;
 }
 
-// ステータスマッピングを外部で定義してメモ化
+// ステータス設定：色とラベル
 const STATUS_CONFIG = {
-  upcoming: { text: EVENT_STATUS_LABELS.upcoming, variant: "default" as const },
-  ongoing: { text: EVENT_STATUS_LABELS.ongoing, variant: "default" as const },
-  past: { text: EVENT_STATUS_LABELS.past, variant: "secondary" as const },
-  canceled: { text: EVENT_STATUS_LABELS.canceled, variant: "destructive" as const },
+  upcoming: {
+    text: EVENT_STATUS_LABELS.upcoming,
+    variant: "default" as const,
+    activeColor: "bg-primary",
+    borderColor: "border-primary",
+  },
+  ongoing: {
+    text: EVENT_STATUS_LABELS.ongoing,
+    variant: "default" as const,
+    activeColor: "bg-green-600",
+    borderColor: "border-green-600",
+  },
+  past: {
+    text: EVENT_STATUS_LABELS.past,
+    variant: "secondary" as const,
+    activeColor: "bg-muted",
+    borderColor: "border-muted",
+  },
+  canceled: {
+    text: EVENT_STATUS_LABELS.canceled,
+    variant: "destructive" as const,
+    activeColor: "bg-destructive",
+    borderColor: "border-destructive",
+  },
 } as const;
 
 export const EventCard = memo(function EventCard({ event }: EventCardProps) {
-  // 日付フォーマットをメモ化（date-fns-tz統一）
-  const formattedDate = useMemo(() => {
-    return formatUtcToJstByType(event.date, "japanese");
+  // 日付情報の抽出（JST考慮）
+  const dateInfo = useMemo(() => {
+    try {
+      return {
+        month: formatUtcToJst(event.date, "MMM"), // "Oct", "Jan" etc.
+        day: formatUtcToJst(event.date, "d"), // "24", "1" etc.
+        full: formatUtcToJst(event.date, "yyyy/MM/dd"),
+      };
+    } catch (e) {
+      return { month: "--", day: "--", full: "----/--/--" };
+    }
   }, [event.date]);
 
-  // ステータス情報をメモ化（型安全にキーを解決）
+  // ステータス情報の解決
   const statusInfo = useMemo(() => {
     const key = event.status as keyof typeof STATUS_CONFIG;
-    return STATUS_CONFIG[key] ?? { text: event.status, variant: "secondary" as const };
+    return (
+      STATUS_CONFIG[key] ?? {
+        text: event.status,
+        variant: "secondary" as const,
+        activeColor: "bg-gray-500",
+        borderColor: "border-gray-500",
+      }
+    );
   }, [event.status]);
 
-  // 料金表示をメモ化
   const formattedFee = useMemo(() => {
-    return event.fee === 0 ? "無料" : `${event.fee.toLocaleString()}円`;
+    return event.fee === 0 ? "無料" : `¥${event.fee.toLocaleString()}`;
   }, [event.fee]);
 
-  // 参加者数表示をメモ化
   const attendanceText = useMemo(() => {
     const count = event.attendances_count || 0;
-    // 定員がnullの場合は定員表示しない（無制限）
-    return event.capacity === null ? `${count}名` : `${count}/${event.capacity}名`;
+    return event.capacity === null ? `${count}名` : `${count}/${event.capacity}`;
   }, [event.attendances_count, event.capacity]);
 
-  // XSS対策: イベント名と場所をサニタイズ
   const sanitizedTitle = useMemo(() => {
     return sanitizeForEventPay(event.title);
   }, [event.title]);
@@ -61,51 +92,65 @@ export const EventCard = memo(function EventCard({ event }: EventCardProps) {
   }, [event.location]);
 
   return (
-    <Link href={`/events/${event.id}`} className="block">
+    <Link href={`/events/${event.id}`} className="block group h-full">
       <Card
         data-testid="event-card"
-        className="border border-border/50 hover:border-border hover:shadow-md transition-all duration-200 h-full overflow-hidden"
+        className={`
+          flex flex-row h-full overflow-hidden border-l-4 transition-all duration-300
+          hover:-translate-y-1 hover:shadow-lg
+          ${statusInfo.borderColor}
+        `}
       >
-        <CardHeader className="pb-4">
-          {/* ステータスバッジ - 上部に移動 */}
-          <div className="flex items-center justify-between mb-2">
-            <Badge variant={statusInfo.variant} className="text-xs">
-              {statusInfo.text}
-            </Badge>
-            <span className="text-xs text-muted-foreground font-medium">{formattedFee}</span>
+        {/* Date Block (Ticket Stub Style) */}
+        <div className="flex w-20 flex-col items-center justify-center bg-muted/30 p-2 text-center border-r border-dashed border-border/60">
+          <span className="text-xs font-bold uppercase text-muted-foreground tracking-wider">
+            {dateInfo.month}
+          </span>
+          <span className="text-2xl font-black tracking-tighter text-foreground">
+            {dateInfo.day}
+          </span>
+        </div>
+
+        {/* Main Content */}
+        <CardContent className="flex-1 p-4 flex flex-col justify-between gap-3">
+          <div className="space-y-2">
+            {/* Header: Status Badge & Fee */}
+            <div className="flex items-center justify-between">
+              <Badge variant={statusInfo.variant} className="text-[10px] px-1.5 h-5">
+                {statusInfo.text}
+              </Badge>
+              <span className="text-xs font-bold text-primary/80">{formattedFee}</span>
+            </div>
+
+            {/* Title */}
+            <h3
+              className="text-lg font-bold leading-snug line-clamp-2 group-hover:text-primary transition-colors"
+              data-testid="event-title"
+              title={sanitizedTitle}
+            >
+              {sanitizedTitle}
+            </h3>
           </div>
 
-          {/* イベント名 */}
-          <CardTitle
-            className="text-lg font-semibold leading-tight line-clamp-2 mb-0"
-            data-testid="event-title"
-          >
-            {sanitizedTitle}
-          </CardTitle>
-        </CardHeader>
-
-        <CardContent className="pt-0 space-y-4">
-          {/* 日時・場所（アイコン統一） */}
-          <div className="space-y-2">
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <CalendarIcon className="h-4 w-4 shrink-0" />
-              <span className="truncate">{formattedDate}</span>
-            </div>
+          {/* Footer Info */}
+          <div className="space-y-2 pt-2">
+            {/* Location */}
             {sanitizedLocation && (
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <MapPinIcon className="h-4 w-4 shrink-0" />
-                <span className="truncate">{sanitizedLocation}</span>
+              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <MapPinIcon className="h-3.5 w-3.5 shrink-0" />
+                <span className="truncate max-w-[180px]">{sanitizedLocation}</span>
               </div>
             )}
-          </div>
 
-          {/* 参加者数 */}
-          <div className="flex items-center justify-between pt-2 border-t border-border/50">
-            <div className="flex items-center gap-2 text-sm">
-              <UsersIcon className="h-4 w-4 text-muted-foreground" />
-              <span className="text-muted-foreground">参加者</span>
+            {/* Attendees & Arrow */}
+            <div className="flex items-center justify-between border-t border-border/40 pt-2 mt-auto">
+              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <UsersIcon className="h-3.5 w-3.5" />
+                <span>{attendanceText}</span>
+              </div>
+
+              <ArrowRight className="h-4 w-4 text-muted-foreground/50 opacity-0 -translate-x-2 transition-all duration-300 group-hover:opacity-100 group-hover:translate-x-0" />
             </div>
-            <span className="text-sm font-medium">{attendanceText}</span>
           </div>
         </CardContent>
       </Card>

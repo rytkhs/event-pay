@@ -3,6 +3,8 @@ import React, { Suspense } from "react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
+import { Plus } from "lucide-react";
+
 export const dynamic = "force-dynamic";
 
 import {
@@ -60,7 +62,7 @@ async function EventsContent({ searchParams }: EventsContentProps) {
     10
   );
   const limit = parseInt(
-    Array.isArray(searchParams.limit) ? searchParams.limit[0] : searchParams.limit || "10",
+    Array.isArray(searchParams.limit) ? searchParams.limit[0] : searchParams.limit || "24",
     10
   );
 
@@ -117,31 +119,27 @@ interface EventsPageProps {
 
 export default async function EventsPage({ searchParams }: EventsPageProps) {
   return (
-    <div data-testid="events-page-container" className="container mx-auto px-4 py-6">
-      {/* モダンヘッダー - 新規作成ボタン統合 */}
-      <div data-testid="events-page-header" className="mb-8">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">イベント一覧</h1>
-            <p className="text-muted-foreground mt-1">みんなの集金でイベントを管理しましょう</p>
+    <div data-testid="events-page-container" className="container mx-auto px-4 py-8 max-w-7xl">
+      {/* ヘッダー - 新規作成ボタン統合 */}
+      <div data-testid="events-page-header" className="mb-10 border-b border-border/40 pb-6">
+        <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-6">
+          <div className="space-y-1">
+            <h1 className="text-3xl font-extrabold tracking-tight text-foreground sm:text-4xl">
+              イベント一覧
+            </h1>
+            <p className="text-muted-foreground text-lg">
+              みんなの集金でイベントをスマートに管理しましょう
+            </p>
           </div>
           <Button
             asChild
-            size="default"
-            className="w-fit sm:w-auto"
+            size="lg"
+            className="w-full sm:w-auto shadow-md transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 font-semibold"
             data-testid="create-event-button"
           >
             <Link href="/events/create" className="inline-flex items-center gap-2">
-              <svg
-                className="h-4 w-4"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                strokeWidth={2}
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-              </svg>
-              新しいイベント
+              <Plus className="h-5 w-5" />
+              新しいイベントを作成
             </Link>
           </Button>
         </div>

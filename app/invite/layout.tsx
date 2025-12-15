@@ -17,10 +17,10 @@ import { GlobalHeader } from "@components/layout/GlobalHeader";
  */
 export default function InviteLayout({ children }: { children: ReactNode }): JSX.Element {
   return (
-    <>
+    <div className="flex flex-col min-h-screen">
       <GlobalHeader variant="guest" />
-      <main>{children}</main>
+      <div className="flex-1 flex flex-col">{children}</div>
       <GlobalFooter />
-    </>
+    </div>
   );
 }

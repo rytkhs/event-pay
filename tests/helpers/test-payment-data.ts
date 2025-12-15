@@ -953,10 +953,13 @@ export async function createAttendanceForDashboardStats(
   const randomId = Math.random().toString(36).substring(2, 12);
   const email = `test${randomId}@example.com`;
 
-  // guest_tokenを36文字以内に収める（gst_プレフィックス + 32文字のBase64）
-  const randomBytes =
-    Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
-  const guestToken = `gst_${randomBytes.substring(0, 32)}`;
+  // guest_tokenを36文字（gst_ + 32文字）に適合させる
+  const chars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+  let randomStr = "";
+  for (let i = 0; i < 32; i++) {
+    randomStr += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  const guestToken = `gst_${randomStr}`;
 
   const { data: attendance, error } = await adminClient
     .from("attendances")

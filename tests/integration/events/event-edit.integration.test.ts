@@ -303,7 +303,7 @@ describe("イベント編集 統合テスト", () => {
     expect(res.success).toBe(false);
     if (!res.success) expect(res.code).toBe("VALIDATION_ERROR");
 
-    // 猶予で最終期限>date+30d（エラー）
+    // 猶予で最終支払期限>date+30d（エラー）
     const regOk = getFutureDateTimeLocal(24);
     const payOk = getFutureDateTimeLocal(48); // date(48h後)の直前だが、graceで超過させる
     res = await updateEventAction(
@@ -313,7 +313,7 @@ describe("イベント編集 統合テスト", () => {
         registration_deadline: regOk,
         payment_deadline: payOk,
         allow_payment_after_deadline: true,
-        grace_period_days: "30", // 30日加算で上限超過
+        grace_period_days: "31", // 30日だと境界値で許容される場合があるため31日に設定
       })
     );
     expect(res.success).toBe(false);
@@ -326,6 +326,7 @@ describe("イベント編集 統合テスト", () => {
       payment_methods: ["stripe"],
       registration_deadline: new Date(Date.now() + 60 * 60 * 1000).toISOString(), // 1時間後
       payment_deadline: new Date(Date.now() + 120 * 60 * 1000).toISOString(), // 2時間後
+      date: new Date(Date.now() + 180 * 60 * 1000).toISOString(), // 3時間後（締切より後）
     });
     cleanupHelper.trackEvent(ev.id);
 
@@ -381,7 +382,7 @@ describe("イベント編集 統合テスト", () => {
     if (!res.success) expect(res.code).toBe("FORBIDDEN");
   });
 
-  test("挙動: 不正なIDは NOT_FOUND", async () => {
+  test("挙動: 不正なIDは FORBIDDEN", async () => {
     await mockSupabaseCreateClient(getUserA());
     const { updateEventAction } = await import("@/features/events/actions/update-event");
     const res = await updateEventAction(
@@ -389,7 +390,8 @@ describe("イベント編集 統合テスト", () => {
       buildFormData({ title: "x" })
     );
     expect(res.success).toBe(false);
-    if (!res.success) expect(res.code).toBe("NOT_FOUND");
+    // 存在しないイベントはセキュリティ上の理由でFORBIDDENを返す
+    if (!res.success) expect(res.code).toBe("FORBIDDEN");
   });
 
   test("制約: registration_deadlineの空文字列は拒否される", async () => {
@@ -401,6 +403,7 @@ describe("イベント編集 統合テスト", () => {
       title: "空文字列テスト用イベント",
       fee: 1000,
       payment_methods: ["cash"],
+      date: getFutureDateTimeLocal(72), // 締切(60h)より後の日付を設定
       registration_deadline: getFutureDateTimeLocal(60),
     });
     cleanupHelper.trackEvent(testEvent.id);

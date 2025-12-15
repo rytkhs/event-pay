@@ -3,7 +3,7 @@
 import React from "react";
 
 import type { ColumnDef } from "@tanstack/react-table";
-import { Check, RotateCcw, Shield } from "lucide-react";
+import { Banknote, Check, CreditCard, RotateCcw } from "lucide-react";
 
 import { hasPaymentId } from "@core/utils/data-guards";
 import {
@@ -19,7 +19,6 @@ import { Checkbox } from "@/components/ui/checkbox";
 
 export interface ActionsCellHandlers {
   onReceive: (paymentId: string) => void;
-  onWaive: (paymentId: string) => void;
   onCancel: (paymentId: string) => void;
   isUpdating?: boolean;
 }
@@ -115,9 +114,13 @@ export function buildParticipantsColumns(opts: {
         const className = isStripe
           ? "bg-purple-100 text-purple-800 border-purple-200"
           : "bg-orange-100 text-orange-800 border-orange-200";
+        const Icon = isStripe ? CreditCard : Banknote;
         return (
-          <Badge className={`${className} font-medium px-3 py-1 shadow-sm`}>
-            {isStripe ? "オンライン決済" : "現金"}
+          <Badge
+            className={`${className} font-medium px-3 py-1 shadow-sm flex items-center gap-1.5 w-fit`}
+          >
+            <Icon className="h-3.5 w-3.5" />
+            {isStripe ? "オンライン" : "現金"}
           </Badge>
         );
       },
@@ -158,7 +161,7 @@ export function buildParticipantsColumns(opts: {
         const p = row.original;
         const simple = toSimplePaymentStatus(p.payment_status as any);
         const isCashPayment = p.payment_method === "cash" && p.payment_id;
-        const { onReceive, onWaive, onCancel, isUpdating } = opts.handlers;
+        const { onReceive, onCancel, isUpdating } = opts.handlers;
         const canOperateCash =
           p.status === "attending" &&
           isCashPayment &&
@@ -176,18 +179,6 @@ export function buildParticipantsColumns(opts: {
                 title="受領済みにする"
               >
                 <Check className="h-4 w-4" />
-              </Button>
-            )}
-            {canOperateCash && (
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => hasPaymentId(p) && onWaive(p.payment_id)}
-                disabled={!!isUpdating}
-                className="bg-orange-50 border-orange-300 text-orange-700 hover:bg-orange-100 min-h-[36px] min-w-[36px] px-2 sm:px-3 shadow-sm hover:shadow-md"
-                title="支払いを免除"
-              >
-                <Shield className="h-4 w-4" />
               </Button>
             )}
             {p.status === "attending" &&

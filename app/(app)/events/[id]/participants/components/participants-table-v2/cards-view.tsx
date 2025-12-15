@@ -2,11 +2,11 @@
 
 import React from "react";
 
-import { Check, RotateCcw, Shield } from "lucide-react";
+import { Banknote, Check, CreditCard, MoreHorizontal, RotateCcw } from "lucide-react";
 
 import { hasPaymentId } from "@core/utils/data-guards";
 import {
-  isPaymentCompleted,
+  isPaymentUnpaid,
   getSimplePaymentStatusStyle,
   toSimplePaymentStatus,
   SIMPLE_PAYMENT_STATUS_LABELS,
@@ -15,8 +15,13 @@ import type { ParticipantView } from "@core/validation/participant-management";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 export interface BulkSelectionConfig {
   selectedPaymentIds: string[];
@@ -29,7 +34,6 @@ export interface CardsViewProps {
   eventFee: number;
   isUpdating?: boolean;
   onReceive: (paymentId: string) => void;
-  onWaive: (paymentId: string) => void;
   onCancel: (paymentId: string) => void;
   bulkSelection?: BulkSelectionConfig;
 }
@@ -39,44 +43,36 @@ export function CardsView({
   eventFee,
   isUpdating,
   onReceive,
-  onWaive,
   onCancel,
   bulkSelection,
 }: CardsViewProps) {
   const isFreeEvent = eventFee === 0;
 
-  const getAttendanceBadge = (status: string) => {
-    const label = status === "attending" ? "参加" : status === "not_attending" ? "不参加" : "未定";
-    const className =
-      status === "attending"
-        ? "bg-green-100 text-green-800 border-green-200"
-        : status === "not_attending"
-          ? "bg-red-100 text-red-800 border-red-200"
-          : "bg-yellow-100 text-yellow-800 border-yellow-300";
-    return <Badge className={`${className} font-medium px-3 py-1 shadow-sm`}>{label}</Badge>;
+  // コンパクトな参加状況ラベル
+  const getAttendanceLabel = (status: string) => {
+    if (status === "attending") return null;
+    return status === "not_attending" ? "不参加" : "未定";
   };
 
-  const getPaymentMethodBadge = (method: string | null) => {
-    if (!method) return <span className="text-gray-400 text-sm">-</span>;
-    const isStripe = method === "stripe";
-    const className = isStripe
-      ? "bg-purple-100 text-purple-800 border-purple-200"
-      : "bg-orange-100 text-orange-800 border-orange-200";
-    return (
-      <Badge className={`${className} font-medium px-3 py-1 shadow-sm`}>
-        {isStripe ? "オンライン決済" : "現金"}
-      </Badge>
+  // 決済方法アイコン
+  const getPaymentMethodIcon = (method: string | null) => {
+    if (!method) return null;
+    return method === "stripe" ? (
+      <CreditCard className="h-3.5 w-3.5 text-purple-600" aria-label="オンライン決済" />
+    ) : (
+      <Banknote className="h-3.5 w-3.5 text-orange-600" aria-label="現金" />
     );
   };
 
   return (
     <div
-      className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4"
+      className="flex flex-col border rounded-md divide-y divide-border bg-white"
       role="grid"
       aria-label="参加者一覧"
     >
       {participants.map((p) => {
-        const isPaid = !isFreeEvent && isPaymentCompleted(p.payment_status);
+        const isActionRequired =
+          !isFreeEvent && p.status === "attending" && isPaymentUnpaid(p.payment_status);
         const simple = toSimplePaymentStatus(p.payment_status as any);
         const isCanceledPayment = p.payment_status === "canceled";
         const isCashPayment = p.payment_method === "cash" && p.payment_id && !isCanceledPayment;
@@ -84,104 +80,133 @@ export function CardsView({
           p.status === "attending" &&
           isCashPayment &&
           (p.payment_status === "pending" || p.payment_status === "failed");
+        const canCancel =
+          p.status === "attending" && isCashPayment && (simple === "paid" || simple === "waived");
         const isSelected = bulkSelection?.selectedPaymentIds.includes(p.payment_id || "") || false;
 
+        // 選択モード中の挙動：
+        // bulkSelectionが存在する = 選択モードON
+        // ただし、チェックボックスを表示するのは isOperatable な項目のみ
+        const isSelectionMode = !!bulkSelection;
+        const showCheckbox = isSelectionMode && isOperatable && p.payment_id;
+        const attendanceLabel = getAttendanceLabel(p.status);
+
         return (
-          <Card
+          <div
             key={p.attendance_id}
-            className={`${isPaid ? "border-green-200 bg-green-50" : ""} transition-all duration-200`}
+            className={`
+              relative flex items-start gap-3 py-3 px-4
+              transition-all duration-200
+              ${isActionRequired ? "bg-red-50/30" : "bg-white"}
+              hover:bg-gray-50
+            `}
             role="gridcell"
-            tabIndex={0}
-            aria-label={`参加者: ${p.nickname}`}
           >
-            <CardContent className="p-4 sm:p-5">
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    {bulkSelection && isOperatable && p.payment_id && (
-                      <Checkbox
-                        checked={isSelected}
-                        onCheckedChange={(checked) => {
-                          const paymentId = p.payment_id;
-                          if (paymentId) {
-                            bulkSelection.onSelect(paymentId, checked === true);
-                          }
-                        }}
-                        disabled={bulkSelection.isDisabled}
-                        aria-label="選択"
-                      />
-                    )}
-                    <h4 className="font-semibold text-gray-900 text-lg">{p.nickname}</h4>
-                  </div>
-                  {isPaid && (
-                    <div className="flex items-center gap-1 text-green-600 text-sm font-medium">
-                      完了
-                    </div>
+            {/* Action Required Indicator (Left Border) */}
+            {isActionRequired && (
+              <div className="absolute left-0 top-0 bottom-0 w-1 bg-red-500 rounded-l-sm" />
+            )}
+
+            {/* Selection Checkbox (Slide-in effect logic handled by parent state presence) */}
+            {isSelectionMode && (
+              <div className="flex items-center self-center h-full mr-1">
+                {showCheckbox ? (
+                  <Checkbox
+                    checked={isSelected}
+                    onCheckedChange={(checked) => {
+                      const paymentId = p.payment_id;
+                      if (paymentId) {
+                        bulkSelection.onSelect(paymentId, checked === true);
+                      }
+                    }}
+                    disabled={bulkSelection.isDisabled}
+                    aria-label="選択"
+                    className="h-5 w-5"
+                  />
+                ) : (
+                  <div className="w-5 h-5" /> /* Placeholder alignment */
+                )}
+              </div>
+            )}
+
+            {/* Main Content Grid */}
+            <div className="flex-1 min-w-0 grid gap-1.5">
+              {/* Row 1: Name & Status */}
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="font-semibold text-gray-900 truncate">{p.nickname}</span>
+                  {attendanceLabel && (
+                    <span className="text-xs text-muted-foreground bg-gray-100 px-1.5 py-0.5 rounded">
+                      {attendanceLabel}
+                    </span>
                   )}
                 </div>
+              </div>
 
-                <div className="flex flex-wrap gap-2">
-                  {getAttendanceBadge(p.status)}
-                  {p.status !== "attending" || isCanceledPayment ? (
-                    <span className="text-gray-400 text-sm">-</span>
-                  ) : (
+              {/* Row 2: Payment Status & Actions */}
+              <div className="flex items-center justify-between gap-2 h-7">
+                {/* Status Badge */}
+                <div className="flex items-center gap-1.5">
+                  {p.status === "attending" && !isCanceledPayment ? (
                     <>
-                      {getPaymentMethodBadge(p.payment_method)}
-                      {!isFreeEvent && p.payment_status && p.status === "attending" && (
+                      {getPaymentMethodIcon(p.payment_method)}
+                      {!isFreeEvent && p.payment_status && (
                         <Badge
                           variant={getSimplePaymentStatusStyle(simple).variant}
-                          className={`${getSimplePaymentStatusStyle(simple).className} font-medium px-3 py-1 shadow-sm`}
+                          className={`${getSimplePaymentStatusStyle(simple).className} text-xs px-1.5 py-0 h-5 font-normal`}
                         >
                           {SIMPLE_PAYMENT_STATUS_LABELS[simple]}
                         </Badge>
                       )}
                     </>
+                  ) : (
+                    <span className="text-xs text-gray-300">-</span>
                   )}
                 </div>
 
-                <div className="flex flex-wrap gap-3 pt-2">
-                  {isOperatable && (
+                {/* Primary Action Button (Right aligned) */}
+                <div className="flex items-center gap-1">
+                  {isOperatable && !isSelectionMode && (
                     <Button
                       size="sm"
                       variant="outline"
                       onClick={() => hasPaymentId(p) && onReceive(p.payment_id)}
                       disabled={!!isUpdating}
-                      className="bg-green-50 border-green-300 text-green-700 hover:bg-green-100 min-h-[44px]"
+                      className="h-7 px-3 text-xs bg-green-50 border-green-200 text-green-700 hover:bg-green-100 hover:border-green-300 hover:text-green-800"
                     >
-                      <Check className="h-4 w-4 mr-2" />
+                      <Check className="h-3 w-3 mr-1" />
                       受領
                     </Button>
                   )}
-                  {isOperatable && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => hasPaymentId(p) && onWaive(p.payment_id)}
-                      disabled={!!isUpdating}
-                      className="bg-orange-50 border-orange-300 text-orange-700 hover:bg-orange-100 min-h-[44px]"
-                    >
-                      <Shield className="h-4 w-4 mr-2" />
-                      免除
-                    </Button>
+
+                  {/* Secondary Menu */}
+                  {canCancel && !isSelectionMode && (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-7 w-7 p-0 text-muted-foreground"
+                          disabled={!!isUpdating}
+                        >
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem
+                          onClick={() => hasPaymentId(p) && onCancel(p.payment_id)}
+                          className="text-gray-700"
+                        >
+                          <RotateCcw className="h-4 w-4 mr-2" />
+                          受領を取り消し
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   )}
-                  {p.status === "attending" &&
-                    isCashPayment &&
-                    (simple === "paid" || simple === "waived") && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => hasPaymentId(p) && onCancel(p.payment_id)}
-                        disabled={!!isUpdating}
-                        className="bg-gray-50 border-gray-300 text-gray-700 hover:bg-gray-100 min-h-[44px]"
-                      >
-                        <RotateCcw className="h-4 w-4 mr-2" />
-                        取り消し
-                      </Button>
-                    )}
                 </div>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         );
       })}
     </div>

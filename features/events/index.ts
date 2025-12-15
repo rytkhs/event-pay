@@ -6,7 +6,9 @@
 // Components
 export * from "./components/event-card";
 export * from "./components/modern-event-form";
-export * from "./components/modern-event-edit-form";
+export * from "./components/single-page-event-form";
+
+export * from "./components/single-page-event-edit-form";
 export * from "./components/event-list";
 export * from "./components/event-filters";
 export * from "./components/payment-status-alert";
@@ -37,8 +39,8 @@ export * from "./hooks/useEventFilter";
 export * from "./types";
 export * from "./validation";
 
-// Core Restrictions System
-export * from "./core/restrictions";
+// Core Restrictions System (deprecated: use @core/domain/event-edit-restrictions)
+// export * from "./core/restrictions";
 
 // Re-export filter/sort types from core for backward compatibility
 export type { SortBy, SortOrder, StatusFilter, PaymentFilter } from "@core/types/events";

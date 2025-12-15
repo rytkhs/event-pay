@@ -2,20 +2,16 @@ import type { ReactNode } from "react";
 
 import { createClient } from "@core/supabase/server";
 
-// import { GlobalFooter } from "@components/layout/GlobalFooter";
-import { GlobalHeader } from "@components/layout/GlobalHeader";
+import { AppSidebar } from "@components/layout/AppSidebar";
+import { Header } from "@components/layout/Header";
+
+import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 
 /**
  * アプリケーションレイアウト
  *
  * 認証済みユーザー向けアプリケーション領域のレイアウト。
- * 認証状態を取得してGlobalHeaderに渡します（動的レンダリング）。
- *
- * 使用コンポーネント:
- * - GlobalHeader: variant="app"でアプリヘッダーを表示
- * - GlobalFooter: 静的Server Componentとして実装されたフッター
- *
- * このレイアウトは動的レンダリングされ、ダッシュボード、イベント管理、設定ページなどで使用されます。
+ * アプリケーションサイドバー（AppSidebar）とメインコンテンツエリアを提供します。
  */
 export default async function AppLayout({ children }: { children: ReactNode }) {
   // 認証状態を取得（middlewareで認証済みであることが保証されている）
@@ -37,10 +33,12 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
     : null;
 
   return (
-    <>
-      <GlobalHeader user={currentUser} variant="app" />
-      <main>{children}</main>
-      {/* <GlobalFooter /> */}
-    </>
+    <SidebarProvider>
+      <AppSidebar user={currentUser} />
+      <SidebarInset>
+        <Header />
+        <main className="flex-1 flex flex-col p-4 w-full max-w-7xl mx-auto">{children}</main>
+      </SidebarInset>
+    </SidebarProvider>
   );
 }

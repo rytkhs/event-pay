@@ -566,6 +566,7 @@ export function useEventEditForm({
     restrictions: {
       isFieldRestricted,
       isFieldEditable,
+      details: unifiedRestrictions, // 全詳細情報へのアクセス
     },
 
     // === 変更検出 ===

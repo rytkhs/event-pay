@@ -6,8 +6,6 @@
 
 import { useCallback, useMemo, useState, useEffect, useDeferredValue, useRef } from "react";
 
-import { logger } from "@core/logging/app-logger";
-
 import {
   RestrictionContext,
   FormDataSnapshot,
@@ -18,8 +16,8 @@ import {
   RestrictionEngine,
   createRestrictionEngine,
   FieldRestrictionMap,
-} from "../core/restrictions";
-
+} from "@core/domain/event-edit-restrictions";
+import { logger } from "@core/logging/app-logger";
 // =============================================================================
 // Hook Types - フック専用型定義
 // =============================================================================
@@ -37,7 +35,7 @@ interface UseUnifiedRestrictionsOptions {
 }
 
 /** フック戻り値 */
-interface UseUnifiedRestrictionsResult {
+export interface UseUnifiedRestrictionsResult {
   // === 制限状態 ===
   /** 現在の制限状態 */
   restrictionState: RestrictionState;
@@ -107,10 +105,10 @@ export function useUnifiedRestrictions(
 
   // 制限エンジンのシングルトンインスタンス
   const engineRef = useRef<RestrictionEngine | null>(null);
+  const evaluationTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   if (!engineRef.current) {
     engineRef.current = createRestrictionEngine({
       debug,
-      evaluationThrottleMs: evaluationDelayMs,
       enableCache: true,
     });
   }
@@ -137,18 +135,9 @@ export function useUnifiedRestrictions(
   const deferredFormData = useDeferredValue(formData);
 
   // 依存配列の安定化
-  const stableContext = useMemo(
-    () => context,
-    [
-      context.hasAttendees,
-      context.attendeeCount,
-      context.hasStripePaid,
-      context.eventStatus,
-      JSON.stringify(context.originalEvent), // Deep comparison for nested object
-    ]
-  );
+  const stableContext = useMemo(() => context, [context]);
 
-  const stableFormData = useMemo(() => deferredFormData, [JSON.stringify(deferredFormData)]);
+  const stableFormData = useMemo(() => deferredFormData, [deferredFormData]);
 
   // ---------------------------------------------------------------------------
   // Restriction Evaluation
@@ -218,8 +207,13 @@ export function useUnifiedRestrictions(
   useEffect(() => {
     if (disableAutoUpdate) return;
 
-    // 初回評価
-    evaluateRestrictions();
+    if (evaluationTimeoutRef.current) {
+      clearTimeout(evaluationTimeoutRef.current);
+    }
+
+    evaluationTimeoutRef.current = setTimeout(() => {
+      void evaluateRestrictions();
+    }, evaluationDelayMs);
 
     // イベントリスナー設定
     const unsubscribeChange = engineRef.current?.onRestrictionChange(
@@ -244,10 +238,14 @@ export function useUnifiedRestrictions(
 
     // クリーンアップ
     return () => {
+      if (evaluationTimeoutRef.current) {
+        clearTimeout(evaluationTimeoutRef.current);
+        evaluationTimeoutRef.current = null;
+      }
       unsubscribeChange?.();
       unsubscribeError?.();
     };
-  }, [evaluateRestrictions, debug, disableAutoUpdate]);
+  }, [evaluateRestrictions, debug, disableAutoUpdate, evaluationDelayMs]);
 
   // ---------------------------------------------------------------------------
   // Helper Functions (Memoized)
@@ -441,30 +439,57 @@ export function useRestrictionContext(
   },
   eventStatus: "upcoming" | "ongoing" | "past" | "canceled" = "upcoming"
 ): RestrictionContext {
+  const { hasAttendees, attendeeCount, hasStripePaid } = attendanceInfo;
+  const {
+    fee,
+    capacity,
+    payment_methods,
+    title,
+    description,
+    location,
+    date,
+    registration_deadline,
+    payment_deadline,
+    allow_payment_after_deadline,
+    grace_period_days,
+  } = event;
+
   return useMemo(
     () => ({
-      ...attendanceInfo,
+      hasAttendees,
+      attendeeCount,
+      hasStripePaid,
       eventStatus,
       originalEvent: {
-        fee: event.fee ?? null,
-        capacity: event.capacity ?? null,
-        payment_methods: event.payment_methods ?? [],
-        title: event.title,
-        description: event.description,
-        location: event.location,
-        date: event.date,
-        registration_deadline: event.registration_deadline,
-        payment_deadline: event.payment_deadline,
-        allow_payment_after_deadline: event.allow_payment_after_deadline,
-        grace_period_days: event.grace_period_days,
+        fee: fee ?? null,
+        capacity: capacity ?? null,
+        payment_methods: payment_methods ?? [],
+        title,
+        description,
+        location,
+        date,
+        registration_deadline,
+        payment_deadline,
+        allow_payment_after_deadline,
+        grace_period_days,
       },
     }),
     [
-      attendanceInfo.hasAttendees,
-      attendanceInfo.attendeeCount,
-      attendanceInfo.hasStripePaid,
+      hasAttendees,
+      attendeeCount,
+      hasStripePaid,
       eventStatus,
-      JSON.stringify(event), // Deep comparison
+      fee,
+      capacity,
+      payment_methods,
+      title,
+      description,
+      location,
+      date,
+      registration_deadline,
+      payment_deadline,
+      allow_payment_after_deadline,
+      grace_period_days,
     ]
   );
 }
@@ -488,6 +513,6 @@ export function useFormDataSnapshot(formValues: Record<string, unknown>): FormDa
       grace_period_days: formValues.grace_period_days as string | number | undefined,
       ...formValues,
     }),
-    [JSON.stringify(formValues)]
+    [formValues]
   );
 }
