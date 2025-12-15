@@ -4,7 +4,7 @@ export interface Event {
   date: string;
   location: string;
   fee: number;
-  capacity: number;
+  capacity: number | null;
   status: "upcoming" | "ongoing" | "past" | "canceled";
   creator_name: string;
   // 実際のSupabaseクエリから取得される参加者数
