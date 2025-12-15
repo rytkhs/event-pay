@@ -124,10 +124,12 @@ export const ATTENDEE_PAYMENT_METHODS_RESTRICTION: RestrictionRule = {
   level: "structural",
   name: "参加者による決済方法制限",
   evaluate: (context: RestrictionContext, formData: FormDataSnapshot) => {
+    // 参加者がいなければ制限なし
     if (!context.hasAttendees) {
       return createEvaluation(false, "制限なし");
     }
 
+    // 1. まず実際の違反チェック（削除しようとしたか？）
     const original = new Set((context.originalEvent.payment_methods || []) as string[]);
     const next = new Set((formData.payment_methods || []) as string[]);
 
@@ -137,10 +139,17 @@ export const ATTENDEE_PAYMENT_METHODS_RESTRICTION: RestrictionRule = {
         return createEvaluation(
           true,
           "参加者がいるため、既存の決済方法は解除できません",
-          "参加者が登録済みのため、既存の決済方法の解除はできません。",
-          "決済方法を追加することは可能です。既存の方法を解除する場合は、参加者への対応が必要になります。"
+          "決済方法を追加することは可能です。"
         );
       }
+    }
+
+    // 2. 違反はしていないが、制限自体は存在することをユーザーに伝える（Warning）
+    if (original.size > 0) {
+      return createWarning(
+        "参加者がいるため、既存の決済方法は解除できません（追加は可能）",
+        "現在設定されている決済方法は、既に参加者がいるためオフにできません。"
+      );
     }
 
     return createEvaluation(false, "制限なし");
@@ -158,27 +167,29 @@ export const ATTENDEE_COUNT_CAPACITY_RESTRICTION: RestrictionRule = {
   level: "conditional",
   name: "参加者数による定員制限",
   evaluate: (context: RestrictionContext, formData: FormDataSnapshot) => {
+    // 参加者がいなければ制限なし
     if (!context.hasAttendees) {
       return createEvaluation(false, "制限なし");
     }
 
     const newCapacity = safeParseNumber(formData.capacity);
 
-    // 定員未設定（無制限）の場合は制限なし
-    if (newCapacity === null || newCapacity === 0) {
-      return createEvaluation(false, "制限なし（定員無制限）");
-    }
-
-    if (newCapacity < context.attendeeCount) {
+    // 1. 実際の違反チェック
+    if (newCapacity !== null && newCapacity > 0 && newCapacity < context.attendeeCount) {
       return createEvaluation(
         true,
         `現在${context.attendeeCount}名の参加者がいるため、定員を${context.attendeeCount}名未満には設定できません`,
         `定員を${newCapacity}名に変更しようとしていますが、既に${context.attendeeCount}名が参加中です。`,
-        `定員は${context.attendeeCount}名以上で設定するか、参加者を減らしてから定員を変更してください。`
+        `定員は${context.attendeeCount}名以上で設定してください。`
       );
     }
 
-    return createEvaluation(false, "制限なし");
+    // 2. 違反はしていないが、下限があることを事前に伝える（Warning）
+    // これにより、Conditionalセクションに常時条件が表示されます
+    return createWarning(
+      `現在の参加者数（${context.attendeeCount}名）未満への定員変更はできません`,
+      `既に参加者がいるため、定員を減らす場合は${context.attendeeCount}名が下限となります。`
+    );
   },
 };
 
@@ -287,7 +298,7 @@ export const DATE_CHANGE_ADVISORY: RestrictionRule = {
     // 等価性チェックを使用
     if (!areValuesEqual(currentDate, originalDate)) {
       return createWarning(
-        "イベント日時の変更は参加者に大きく影響します",
+        "開催日時の変更は参加者に大きく影響します",
         `現在${context.attendeeCount}名の参加者が登録済みです。日時の変更により参加できなくなる可能性があります。`
       );
     }

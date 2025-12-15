@@ -35,7 +35,7 @@ interface UseUnifiedRestrictionsOptions {
 }
 
 /** フック戻り値 */
-interface UseUnifiedRestrictionsResult {
+export interface UseUnifiedRestrictionsResult {
   // === 制限状態 ===
   /** 現在の制限状態 */
   restrictionState: RestrictionState;
