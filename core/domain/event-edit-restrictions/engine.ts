@@ -112,7 +112,9 @@ export class RestrictionEngine {
     });
 
     fieldGroups.forEach((restrictions, field) => {
-      const hasStructuralRestriction = restrictions.some((r) => r.rule.level === "structural");
+      const hasStructuralRestriction = restrictions.some(
+        (r) => r.rule.level === "structural" && r.evaluation.isRestricted
+      );
       const hasConditionalRestriction = restrictions.some(
         (r) => r.rule.level === "conditional" && r.evaluation.isRestricted
       );

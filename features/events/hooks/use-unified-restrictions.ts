@@ -262,11 +262,7 @@ export function useUnifiedRestrictions(
   const isFieldEditable = useCallback(
     (field: RestrictableField): boolean => {
       const summary = state.fieldRestrictions.get(field);
-      if (!summary) return true;
-      const hasStructuralRestriction = summary.activeRestrictions.some(
-        (r) => r.rule.level === "structural"
-      );
-      return !hasStructuralRestriction;
+      return summary?.isEditable ?? true;
     },
     [state.fieldRestrictions]
   );

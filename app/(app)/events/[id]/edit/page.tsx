@@ -141,15 +141,6 @@ export default async function EventEditPage({ params }: EventEditPageProps) {
             eventTitle={event.title}
             eventStatus={computedStatus}
           />
-
-          {/* 旧フォーム（バックアップ用にコメントアウト）
-          <EventEditForm
-            event={{ ...(event as any), status: computedStatus }}
-            attendeeCount={attendeeCount}
-            hasStripePaid={hasStripePaid}
-            canUseOnlinePayments={canUseOnlinePayments}
-          />
-          */}
         </div>
       </div>
     </div>

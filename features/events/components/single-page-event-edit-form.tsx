@@ -210,6 +210,7 @@ export function SinglePageEventEditForm({
       const restrictionLevel = r.getFieldRestrictionLevel(field);
 
       if (
+        r.isFieldRestricted(field) &&
         restrictionMessage &&
         (restrictionLevel === "structural" || restrictionLevel === "conditional")
       ) {
