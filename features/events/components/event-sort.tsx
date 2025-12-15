@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 
+import { ArrowDownWideNarrow, ArrowUpNarrowWide } from "lucide-react";
 import { z } from "zod";
 
 import {
@@ -57,6 +58,7 @@ export function EventSort({ sortBy, sortOrder, onSortChange, onOrderChange }: Ev
       onOrderChange(validation.data as SortOrder);
     }
   };
+
   return (
     <div data-testid="event-sort" className="flex items-center gap-2">
       {/* ソート条件 */}
@@ -79,10 +81,11 @@ export function EventSort({ sortBy, sortOrder, onSortChange, onOrderChange }: Ev
 
       {/* ソート順序ボタン */}
       <Button
-        variant="ghost"
-        size="sm"
+        variant="outline"
+        size="icon"
         onClick={() => handleOrderChange(sortOrder === "asc" ? "desc" : "asc")}
-        className="px-2 py-1 h-8"
+        className="h-10 w-10 shrink-0"
+        title={sortOrder === "asc" ? "昇順 (クリックで降順)" : "降順 (クリックで昇順)"}
         aria-label={
           sortOrder === "asc"
             ? "昇順でソート中（クリックで降順）"
@@ -90,13 +93,9 @@ export function EventSort({ sortBy, sortOrder, onSortChange, onOrderChange }: Ev
         }
       >
         {sortOrder === "asc" ? (
-          <span data-testid="sort-arrow-up" className="flex items-center">
-            ↑
-          </span>
+          <ArrowUpNarrowWide data-testid="sort-arrow-up" className="h-4 w-4" />
         ) : (
-          <span data-testid="sort-arrow-down" className="flex items-center">
-            ↓
-          </span>
+          <ArrowDownWideNarrow data-testid="sort-arrow-down" className="h-4 w-4" />
         )}
       </Button>
     </div>
