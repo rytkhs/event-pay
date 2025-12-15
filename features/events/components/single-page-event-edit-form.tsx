@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 
 import { format } from "date-fns";
 import {
@@ -22,6 +22,7 @@ import { Card, CardContent, CardTitle, CardDescription } from "@/components/ui/c
 import {
   ChangeConfirmationDialog,
   type ChangeItem,
+  type ValidationAnalysis,
 } from "@/components/ui/change-confirmation-dialog";
 import { DateTimePicker } from "@/components/ui/date-time-picker";
 import {
@@ -36,6 +37,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
+import type { RestrictableField } from "@/core/domain/event-edit-restrictions";
 
 import { useEventEditForm, type EventEditFormDataRHF } from "../hooks/use-event-edit-form";
 import { useRestrictionContext, useFormDataSnapshot } from "../hooks/use-unified-restrictions";
@@ -184,11 +186,57 @@ export function SinglePageEventEditForm({
     setShowConfirmDialog(true);
   };
 
-  const handleConfirmChanges = async (confirmedChanges: ChangeItem[]) => {
+  // 変更検出
+  const validationAnalysis = useMemo<ValidationAnalysis>(() => {
+    const blockingErrors: string[] = [];
+    const advisoryWarnings: string[] = [];
+    const secondaryChanges: ChangeItem[] = [];
+    const normalChanges: ChangeItem[] = [];
+    const r = restrictions.details; // Unified Restriction Result
+
+    pendingChanges.forEach((change) => {
+      // 1. 副次的変更の検出
+      if (
+        change.newValue.includes("（無料化により自動クリア）") ||
+        change.newValue.includes("（オンライン決済選択解除により自動クリア）")
+      ) {
+        secondaryChanges.push(change);
+        return;
+      }
+
+      // 2. 統一制限システムによるバリデーション
+      const field = change.field as RestrictableField;
+      const restrictionMessage = r.getFieldMessage(field);
+      const restrictionLevel = r.getFieldRestrictionLevel(field);
+
+      if (
+        restrictionMessage &&
+        (restrictionLevel === "structural" || restrictionLevel === "conditional")
+      ) {
+        blockingErrors.push(`${change.fieldName}: ${restrictionMessage}`);
+      } else if (restrictionMessage && restrictionLevel === "advisory") {
+        if (!advisoryWarnings.includes(restrictionMessage)) {
+          advisoryWarnings.push(restrictionMessage);
+        }
+      }
+
+      normalChanges.push(change);
+    });
+
+    return {
+      blockingErrors,
+      advisoryWarnings,
+      secondaryChanges,
+      normalChanges,
+      hasBlockingErrors: blockingErrors.length > 0,
+    };
+  }, [pendingChanges, restrictions.details]);
+
+  const handleConfirmChanges = async () => {
     setShowConfirmDialog(false);
     try {
       const formData = form.getValues();
-      await actions.submitFormWithChanges(formData, confirmedChanges);
+      await actions.submitFormWithChanges(formData, pendingChanges);
     } catch (_error) {
       form.setError("root", {
         type: "manual",
@@ -202,14 +250,21 @@ export function SinglePageEventEditForm({
 
   return (
     <>
+      <ChangeConfirmationDialog
+        isOpen={showConfirmDialog}
+        analysis={validationAnalysis}
+        attendeeCount={attendeeCount}
+        onConfirm={handleConfirmChanges}
+        onCancel={() => setShowConfirmDialog(false)}
+        isLoading={isPending}
+      />
       <div className="w-full max-w-7xl mx-auto pb-8">
         {/* 統合制限通知 */}
         <div className="mb-6">
           <UnifiedRestrictionNoticeV2
             restrictions={restrictionContext}
             formData={formDataSnapshot}
-            showLevels={["structural"]}
-            compact={true}
+            showLevels={["structural", "conditional"]}
           />
         </div>
 
@@ -924,14 +979,6 @@ export function SinglePageEventEditForm({
       </div>
 
       {/* 変更確認ダイアログ */}
-      <ChangeConfirmationDialog
-        isOpen={showConfirmDialog}
-        changes={pendingChanges}
-        onConfirm={handleConfirmChanges}
-        onCancel={() => setShowConfirmDialog(false)}
-        attendeeCount={attendeeCount}
-        hasStripePaid={hasStripePaid}
-      />
     </>
   );
 }
