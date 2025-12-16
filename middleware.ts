@@ -120,6 +120,12 @@ export async function middleware(request: NextRequest) {
     response.headers.set("x-nonce", nonce);
   }
 
+  // デモ環境の場合、noindex ヘッダーを付与
+  const isDemo = process.env.NEXT_PUBLIC_IS_DEMO === "true";
+  if (isDemo) {
+    response.headers.set("X-Robots-Tag", "noindex, nofollow, noarchive");
+  }
+
   // 本番のみ：動的に生成した CSP を付与（開発/プレビューは next.config 側の静的CSPを使用）
   if (process.env.NODE_ENV === "production") {
     const cspDirectives = isStatic
@@ -214,6 +220,9 @@ export async function middleware(request: NextRequest) {
     if (!isStatic && nonce) {
       redirectResponse.headers.set("x-nonce", nonce);
     }
+    if (isDemo) {
+      redirectResponse.headers.set("X-Robots-Tag", "noindex, nofollow, noarchive");
+    }
 
     return redirectResponse;
   }
@@ -232,6 +241,9 @@ export async function middleware(request: NextRequest) {
     redirectResponse.headers.set("x-request-id", requestId);
     if (!isStatic && nonce) {
       redirectResponse.headers.set("x-nonce", nonce);
+    }
+    if (isDemo) {
+      redirectResponse.headers.set("X-Robots-Tag", "noindex, nofollow, noarchive");
     }
 
     return redirectResponse;
