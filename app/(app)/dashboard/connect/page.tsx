@@ -27,7 +27,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export const metadata: Metadata = {
-  title: "売上受取設定 | みんなの集金",
+  title: "売上受取設定",
   description: "Stripeで売上の受け取り方法を設定します",
 };
 
