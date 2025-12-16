@@ -304,8 +304,14 @@ export function useEventEditForm({
     }
   }, [watchedPaymentMethods, form]);
 
-  // 現在のフォームデータを取得（EventFormData形式に変換、numeric フィールドの型安全性確保）
-  const getCurrentFormData = useCallback((): EventFormData => {
+  // フォーム値のシリアライズ（比較用）- 無限ループ防止のため
+  const serializedValues = JSON.stringify(watchedValues);
+
+  // 現在のフォームデータを取得（メモ化）
+  // NOTE: form.watch()が返すオブジェクトは毎回参照が変わる可能性があるため、
+  // 単純な依存配列に入れると無限ループの原因になります。
+  // JSON.stringifyで値の等価性をチェックすることで、値が変動した時のみ再計算されるようにします。
+  const currentFormData = useMemo((): EventFormData => {
     return {
       title: watchedValues.title || "",
       description: watchedValues.description || "",
@@ -319,10 +325,8 @@ export function useEventEditForm({
       allow_payment_after_deadline: watchedValues.allow_payment_after_deadline ?? false,
       grace_period_days: watchedValues.grace_period_days || "0",
     };
-  }, [watchedValues]);
-
-  // 現在のフォームデータをメモ化（変更検出のリアクティブ性確保）
-  const currentFormData = useMemo(() => getCurrentFormData(), [getCurrentFormData]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [serializedValues]);
 
   // 統一制限システムの初期化
   const restrictionContext = useRestrictionContext(
