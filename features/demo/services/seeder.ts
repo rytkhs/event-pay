@@ -6,6 +6,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 import type { Database } from "@/types/database";
 
+// --- 型定義 ---
 type AttendanceStatus = Database["public"]["Enums"]["attendance_status_enum"];
 type PaymentMethod = Database["public"]["Enums"]["payment_method_enum"];
 type PaymentStatus = Database["public"]["Enums"]["payment_status_enum"];
@@ -17,6 +18,51 @@ type AttendanceRow = Database["public"]["Tables"]["attendances"]["Row"];
 type AttendanceInsert = Database["public"]["Tables"]["attendances"]["Insert"];
 type PaymentInsert = Database["public"]["Tables"]["payments"]["Insert"];
 
+// --- 設定 ---
+const CONFIG = {
+  // DB操作設定
+  DB: {
+    CHUNK_SIZE: 500,
+    RETRY_WAIT_MS: 200,
+    RETRY_MAX_ATTEMPTS: 15,
+  },
+  // 生成数設定
+  COUNTS: {
+    ATTENDANCE: {
+      PRIMARY: { MIN: 45, MAX: 80 },
+      OTHERS: { MIN: 20, MAX: 100 },
+    },
+    PAYMENT_DATE_OFFSET: { MIN: 1, MAX: 25 }, // 支払日・作成日を現在から何日前まで分散させるか
+  },
+  // 確率設定 (閾値)
+  PROBABILITIES: {
+    ATTENDANCE: {
+      PRIMARY: {
+        ATTENDING: 0.65, // 0 ~ 0.65
+        MAYBE: 0.85, // 0.65 ~ 0.85
+        // 残りが not_attending
+      },
+      OTHERS: {
+        ATTENDING: 0.78,
+        MAYBE: 0.92,
+      },
+    },
+    PAYMENT: {
+      STRIPE: {
+        PAID: 0.85, // 85%
+        PENDING: 0.95, // 10% (0.85 ~ 0.95)
+        FAILED: 0.98, // 3% (0.95 ~ 0.98)
+        // 残り 2% が refunded
+      },
+      CASH: {
+        RECEIVED: 0.8, // 80%
+        // 残り 20% が pending
+      },
+    },
+  },
+};
+
+// --- 定数・ユーティリティ ---
 const DEMO_STRIPE_ACCOUNT_ID = process.env.DEMO_STRIPE_ACCOUNT_ID;
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -42,82 +88,206 @@ const shuffle = <T>(array: T[]) => {
   return array;
 };
 
-const makeGuestToken = () => {
-  const token = randomBytes(24).toString("base64url");
-  return `gst_${token}`;
+// トークン生成
+const makeToken = (prefix: string, bytes: number, encoding: "base64url" | "hex" = "base64url") =>
+  `${prefix}_${randomBytes(bytes).toString(encoding)}`;
+
+const tokens = {
+  guest: () => makeToken("gst", 24),
+  invite: () => makeToken("inv", 24),
+  stripePI: () => makeToken("pi", 12, "hex"),
+  stripeCS: () => `cs_test_${randomBytes(12).toString("hex")}`,
 };
-
-const makeInviteToken = () => {
-  const token = randomBytes(24).toString("base64url");
-  return `inv_${token}`;
-};
-const makeStripePI = () => `pi_${randomBytes(12).toString("hex")}`;
-const makeStripeCS = () => `cs_test_${randomBytes(12).toString("hex")}`;
-
-async function waitForPublicUserRow(client: SupabaseClient<Database>, userId: string) {
-  for (let i = 0; i < 15; i++) {
-    const { data, error } = await client.from("users").select("id").eq("id", userId).maybeSingle();
-    if (error) throw error;
-    if (data?.id) return;
-    await sleep(200);
-  }
-  throw new Error("public.users row was not created by trigger in time.");
-}
-
-function jpNickname() {
-  const name = faker.person.lastName() + faker.person.firstName();
-  return name.slice(0, 20);
-}
-
-function weightedStatusForPrimary(i: number, total: number): AttendanceStatus {
-  // primaryイベントは必ず混在（attending / maybe / not_attending）
-  // 例: attending 65%, maybe 20%, not_attending 15%
-  const ratio = i / total;
-  if (ratio < 0.65) return "attending";
-  if (ratio < 0.85) return "maybe";
-  return "not_attending";
-}
-
-function statusForOther(): AttendanceStatus {
-  // 他イベントは attending 多めだが maybe も少し入れる
-  const r = faker.number.float({ min: 0, max: 1 });
-  if (r < 0.78) return "attending";
-  if (r < 0.92) return "maybe";
-  return "not_attending";
-}
 
 function assertNonNull<T>(v: T | null | undefined, msg: string): T {
   if (v == null) throw new Error(msg);
   return v;
 }
 
-export async function seedDemoData(adminClient: SupabaseClient<Database>, userId: string) {
-  faker.seed(Number.parseInt(userId.replace(/\+/g, "-").slice(0, 8), 16));
+// --- データ生成 ---
 
-  const now = new Date();
+function getEventScenarios(userId: string, now: Date): EventInsert[] {
+  // ヘルパー
+  const day = (offset: number) => iso(addDays(now, offset));
 
-  // 0) public.users 同期（トリガー）待ち＋運営者プロフィール補完
-  await waitForPublicUserRow(adminClient, userId);
+  return [
+    {
+      // 1. 開催前（申込受付中・支払期限あり・stripe+cash）
+      created_by: userId,
+      title: "創立10周年記念 OB・OG交流会",
+      date: day(20),
+      location: "ホテルメトロポリタン宴会場「富士」",
+      fee: 5000,
+      capacity: 80,
+      description:
+        "サークル創立10周年を記念した立食パーティーです。Stripeと現金の両方に対応しています。",
+      registration_deadline: day(10),
+      payment_deadline: day(12),
+      payment_methods: ["stripe", "cash"],
+      invite_token: tokens.invite(),
+      allow_payment_after_deadline: true,
+      grace_period_days: 3,
+    },
+    {
+      // 2. 開催前（申込締切間近・capacity小さめ）
+      created_by: userId,
+      title: "【締切間近】秋季関東学生テニス選手権（予選）エントリー",
+      date: day(7),
+      location: "有明テニスの森公園",
+      fee: 3000,
+      capacity: 30,
+      description:
+        "秋の個人戦のエントリー費です。協会への振込期限の関係上、締切後の支払いは一切受け付けられませんのでご注意ください。",
+      registration_deadline: day(2),
+      payment_deadline: day(3),
+      payment_methods: ["stripe", "cash"],
+      invite_token: tokens.invite(),
+      allow_payment_after_deadline: false,
+      grace_period_days: 0,
+    },
+    {
+      // 3. 開催済み（売上が立っている：Stripe paid と cash received が混在）
+      created_by: userId,
+      title: "【終了】新入生歓迎 BBQ大会🍖",
+      date: day(-30),
+      location: "昭和記念公園 バーベキューガーデン",
+      fee: 4000,
+      capacity: 120,
+      description:
+        "（開催終了）新入生歓迎イベント。Stripe決済済みと、現地での現金回収（受領済み）のデータが混在している状態を確認できます。",
+      registration_deadline: day(-45),
+      payment_deadline: day(-40),
+      payment_methods: ["stripe", "cash"],
+      invite_token: tokens.invite(),
+      allow_payment_after_deadline: false,
+      grace_period_days: 0,
+      created_at: day(-50),
+      updated_at: day(-45),
+    },
+    {
+      // 4. 無料イベント
+      created_by: userId,
+      title: "【自由参加】早朝自主練（コート開放）",
+      date: day(14),
+      location: "大学テニスコート A・B面",
+      fee: 0,
+      capacity: 200,
+      description: "参加費無料の自主練です。決済フローが発生しないため、参加表明のみで完了します。",
+      registration_deadline: day(12),
+      payment_methods: [],
+      invite_token: tokens.invite(),
+      allow_payment_after_deadline: false,
+      grace_period_days: 0,
+    },
+    {
+      // 5. Stripeのみイベント
+      created_by: userId,
+      title: "2026年度 チームウェア購入（パーカー）",
+      date: day(10),
+      location: "オンライン（後日練習時に配布）",
+      fee: 6000,
+      capacity: 150,
+      description:
+        "チームパーカーの購入申し込みです。在庫管理と集金の手間を省くため、オンライン決済のみ受け付けます。",
+      registration_deadline: day(6),
+      payment_deadline: day(7),
+      payment_methods: ["stripe"],
+      invite_token: tokens.invite(),
+      allow_payment_after_deadline: true,
+      grace_period_days: 2,
+    },
+    {
+      // 6. 現金のみイベント
+      created_by: userId,
+      title: "定例練習 @大井ふ頭",
+      date: day(15),
+      location: "大井ふ頭中央海浜公園スポーツの森",
+      fee: 2000,
+      capacity: 60,
+      description:
+        "通常の練習会です。コート代とボール代を現地で集めます。現金のみの設定にしており、管理者が手動で「未受領」→「受領済み」に変更するフローを想定しています。",
+      registration_deadline: day(11),
+      payment_deadline: day(13),
+      payment_methods: ["cash"],
+      invite_token: tokens.invite(),
+      allow_payment_after_deadline: false,
+      grace_period_days: 0,
+    },
+    {
+      // 7. 中止イベント
+      created_by: userId,
+      title: "【雨天中止】お花見ミックスダブルス大会🌸",
+      date: day(11),
+      location: "井の頭恩賜公園",
+      fee: 3500,
+      capacity: 90,
+      description:
+        "雨天予報のため中止となりました。中止ステータス（canceled_at）の表示確認用データです。",
+      registration_deadline: day(4),
+      payment_deadline: day(4),
+      payment_methods: ["stripe", "cash"],
+      invite_token: tokens.invite(),
+      allow_payment_after_deadline: false,
+      grace_period_days: 0,
+      canceled_at: day(-1),
+      canceled_by: userId,
+    },
+  ];
+}
 
-  const { data: authUserRes, error: authUserErr } =
-    await adminClient.auth.admin.getUserById(userId);
+// --- ロジックヘルパー ---
+
+function jpNickname() {
+  return (faker.person.lastName() + faker.person.firstName()).slice(0, 20);
+}
+
+function determineAttendanceStatus(
+  isPrimary: boolean,
+  index: number,
+  total: number
+): AttendanceStatus {
+  if (isPrimary) {
+    const ratio = index / total;
+    if (ratio < CONFIG.PROBABILITIES.ATTENDANCE.PRIMARY.ATTENDING) return "attending";
+    if (ratio < CONFIG.PROBABILITIES.ATTENDANCE.PRIMARY.MAYBE) return "maybe";
+    return "not_attending";
+  }
+  const r = faker.number.float({ min: 0, max: 1 });
+  if (r < CONFIG.PROBABILITIES.ATTENDANCE.OTHERS.ATTENDING) return "attending";
+  if (r < CONFIG.PROBABILITIES.ATTENDANCE.OTHERS.MAYBE) return "maybe";
+  return "not_attending";
+}
+
+// --- DB 操作 ---
+
+async function waitForPublicUserRow(client: SupabaseClient<Database>, userId: string) {
+  for (let i = 0; i < CONFIG.DB.RETRY_MAX_ATTEMPTS; i++) {
+    const { data, error } = await client.from("users").select("id").eq("id", userId).maybeSingle();
+    if (error) throw error;
+    if (data?.id) return;
+    await sleep(CONFIG.DB.RETRY_WAIT_MS);
+  }
+  throw new Error("public.users row was not created by trigger in time.");
+}
+
+async function setupUserAndStripe(client: SupabaseClient<Database>, userId: string, now: Date) {
+  await waitForPublicUserRow(client, userId);
+
+  const { data: authUserRes, error: authUserErr } = await client.auth.admin.getUserById(userId);
   if (authUserErr) throw authUserErr;
 
-  const operatorEmail = authUserRes.user?.email ?? null;
-
-  const { error: userUpsertErr } = await adminClient.from("users").upsert(
+  const { error: userUpsertErr } = await client.from("users").upsert(
     {
       id: userId,
       name: "デモユーザー",
-      email: operatorEmail,
+      email: authUserRes.user?.email ?? null,
       updated_at: iso(now),
     },
     { onConflict: "id" }
   );
   if (userUpsertErr) throw userUpsertErr;
 
-  // 0) Stripe Connect
-  const { error } = await adminClient.from("stripe_connect_accounts").upsert(
+  const { error: stripeErr } = await client.from("stripe_connect_accounts").upsert(
     {
       user_id: userId,
       stripe_account_id: DEMO_STRIPE_ACCOUNT_ID ?? "",
@@ -127,469 +297,315 @@ export async function seedDemoData(adminClient: SupabaseClient<Database>, userId
     },
     { onConflict: "user_id" }
   );
-  if (error) throw new Error(`seed stripe_connect_accounts failed: ${error.message}`);
+  if (stripeErr) throw new Error(`seed stripe_connect_accounts failed: ${stripeErr.message}`);
+}
 
-  // 1) events（合計 7件：テニスサークル運用想定）
-  const events: EventInsert[] = [
-    // 1. 開催前（申込受付中・支払期限あり・stripe+cash）
-    // シナリオ：少し高めのイベント（OB会など）で、猶予期間を持たせている
-    {
-      created_by: userId,
-      title: "創立10周年記念 OB・OG交流会",
-      date: iso(addDays(now, 20)),
-      location: "ホテルメトロポリタン宴会場「富士」",
-      fee: 5000,
-      capacity: 80,
-      description:
-        "サークル創立10周年を記念した立食パーティーです。Stripeと現金の両方に対応しています。",
-      registration_deadline: iso(addDays(now, 10)),
-      payment_deadline: iso(addDays(now, 12)),
-      payment_methods: ["stripe", "cash"] as PaymentMethod[],
-      invite_token: makeInviteToken(),
-      allow_payment_after_deadline: true,
-      grace_period_days: 3,
-    },
-
-    // 2. 開催前（申込締切間近・capacity小さめ）
-    // シナリオ：大会エントリーや合宿の二次募集など、枠が少なく急ぎのもの
-    {
-      created_by: userId,
-      title: "【締切間近】秋季関東学生テニス選手権（予選）エントリー",
-      date: iso(addDays(now, 7)),
-      location: "有明テニスの森公園",
-      fee: 3000,
-      capacity: 30,
-      description:
-        "秋の個人戦のエントリー費です。協会への振込期限の関係上、締切後の支払いは一切受け付けられませんのでご注意ください。",
-      registration_deadline: iso(addDays(now, 2)),
-      payment_deadline: iso(addDays(now, 3)),
-      payment_methods: ["stripe", "cash"] as PaymentMethod[],
-      invite_token: makeInviteToken(),
-      allow_payment_after_deadline: false,
-      grace_period_days: 0,
-    },
-
-    // 3. 開催済み（売上が立っている：Stripe paid と cash received が混在）
-    // シナリオ：終わったイベントの収益確認用
-    {
-      created_by: userId,
-      title: "【終了】新入生歓迎 BBQ大会🍖",
-      date: iso(addDays(now, -30)),
-      location: "昭和記念公園 バーベキューガーデン",
-      fee: 4000,
-      capacity: 120,
-      description:
-        "（開催終了）新入生歓迎イベント。Stripe決済済みと、現地での現金回収（受領済み）のデータが混在している状態を確認できます。",
-      registration_deadline: iso(addDays(now, -45)),
-      payment_deadline: iso(addDays(now, -40)),
-      payment_methods: ["stripe", "cash"] as PaymentMethod[],
-      invite_token: makeInviteToken(),
-      allow_payment_after_deadline: false,
-      grace_period_days: 0,
-      created_at: iso(addDays(now, -50)),
-      updated_at: iso(addDays(now, -45)),
-    },
-
-    // 4. 無料イベント（fee=0：決済なし/waivedの説明用）
-    // シナリオ：自主練やミーティング
-    {
-      created_by: userId,
-      title: "【自由参加】早朝自主練（コート開放）",
-      date: iso(addDays(now, 14)),
-      location: "大学テニスコート A・B面",
-      fee: 0,
-      capacity: 200,
-      description: "参加費無料の自主練です。決済フローが発生しないため、参加表明のみで完了します。",
-      registration_deadline: iso(addDays(now, 12)),
-      payment_methods: [],
-      invite_token: makeInviteToken(),
-      allow_payment_after_deadline: false,
-      grace_period_days: 0,
-    },
-
-    // 5. Stripeのみイベント（オンライン完結）
-    // シナリオ：物品購入（ウェアなど）
-    {
-      created_by: userId,
-      title: "2026年度 チームウェア購入（パーカー）",
-      date: iso(addDays(now, 10)),
-      location: "オンライン（後日練習時に配布）",
-      fee: 6000,
-      capacity: 150,
-      description:
-        "チームパーカーの購入申し込みです。在庫管理と集金の手間を省くため、オンライン決済のみ受け付けます。",
-      registration_deadline: iso(addDays(now, 6)),
-      payment_deadline: iso(addDays(now, 7)),
-      payment_methods: ["stripe"] as PaymentMethod[],
-      invite_token: makeInviteToken(),
-      allow_payment_after_deadline: true,
-      grace_period_days: 2,
-    },
-
-    // 6. 現金のみイベント（従来運用の置き換え）
-    // シナリオ：いつもの練習（小銭集金）
-    {
-      created_by: userId,
-      title: "定例練習 @大井ふ頭",
-      date: iso(addDays(now, 15)),
-      location: "大井ふ頭中央海浜公園スポーツの森",
-      fee: 2000,
-      capacity: 60,
-      description:
-        "通常の練習会です。コート代とボール代を現地で集めます。現金のみの設定にしており、管理者が手動で「未受領」→「受領済み」に変更するフローを想定しています。",
-      registration_deadline: iso(addDays(now, 11)),
-      payment_deadline: iso(addDays(now, 13)),
-      payment_methods: ["cash"] as PaymentMethod[],
-      invite_token: makeInviteToken(),
-      allow_payment_after_deadline: false,
-      grace_period_days: 0,
-    },
-
-    // 7. 中止イベント
-    // シナリオ：雨天中止になりがちな屋外イベント
-    {
-      created_by: userId,
-      title: "【雨天中止】お花見ミックスダブルス大会🌸",
-      date: iso(addDays(now, 11)),
-      location: "井の頭恩賜公園",
-      fee: 3500,
-      capacity: 90,
-      description:
-        "雨天予報のため中止となりました。中止ステータス（canceled_at）の表示確認用データです。",
-      registration_deadline: iso(addDays(now, 4)),
-      payment_deadline: iso(addDays(now, 4)),
-      payment_methods: ["stripe", "cash"] as PaymentMethod[],
-      invite_token: makeInviteToken(),
-      allow_payment_after_deadline: false,
-      grace_period_days: 0,
-      canceled_at: iso(addDays(now, -1)),
-      canceled_by: userId,
-    },
-  ];
-
-  // insert 後に .select() をつけると挿入行を返せる（ID回収用）[web:18]
-  const { data: insertedEvents, error: eventsErr } = await adminClient
+async function insertEvents(client: SupabaseClient<Database>, userId: string, now: Date) {
+  const events = getEventScenarios(userId, now);
+  const { data: insertedEvents, error } = await client
     .from("events")
     .insert(events, { defaultToNull: false })
     .select("*");
-  if (eventsErr) throw eventsErr;
 
-  const eventByTitle = new Map<string, EventRow>();
-  for (const e of insertedEvents ?? []) eventByTitle.set(e.title, e);
+  if (error) throw error;
+  return insertedEvents ?? [];
+}
 
-  const primaryEvent = assertNonNull(
-    insertedEvents?.find((e) => e.title.includes("創立10周年記念")),
-    "Primary event not found"
-  );
-
-  // 2) attendances（各イベント20〜100件で分散、primary は混在必須）
+async function insertAttendances(
+  client: SupabaseClient<Database>,
+  events: EventRow[],
+  primaryEventId: string,
+  now: Date
+) {
   const allAttendancesToInsert: AttendanceInsert[] = [];
-  const attendanceCountByEventId = new Map<string, number>();
 
-  for (const ev of insertedEvents ?? []) {
-    let count = ev.id === primaryEvent.id ? int(45, 80) : int(20, 100);
+  for (const ev of events) {
+    const isPrimary = ev.id === primaryEventId;
+    const { MIN, MAX } = isPrimary
+      ? CONFIG.COUNTS.ATTENDANCE.PRIMARY
+      : CONFIG.COUNTS.ATTENDANCE.OTHERS;
 
-    // 定員オーバーエラー(P0001)回避：定員がある場合は上限を合わせる
+    let count = int(MIN, MAX);
     if (ev.capacity !== null && count > ev.capacity) {
       count = ev.capacity;
     }
-    attendanceCountByEventId.set(ev.id, count);
 
     for (let i = 0; i < count; i++) {
-      const status: AttendanceStatus =
-        ev.id === primaryEvent.id ? weightedStatusForPrimary(i, count) : statusForOther();
-
+      const status = determineAttendanceStatus(isPrimary, i, count);
       allAttendancesToInsert.push({
         event_id: ev.id,
         nickname: jpNickname(),
         email: faker.internet.email({ provider: "example.com" }).toLowerCase(),
         status,
-        guest_token: makeGuestToken(),
+        guest_token: tokens.guest(),
         created_at: iso(addDays(now, ev.date < iso(now) ? -int(10, 40) : -int(0, 5))),
         updated_at: iso(now),
       });
     }
   }
 
-  // 大量 insert になるので、ざっくり分割
+  const maybeTargetIndex = allAttendancesToInsert.findIndex(
+    (a) => a.event_id === primaryEventId && a.status === "maybe"
+  );
+  if (maybeTargetIndex !== -1) {
+    allAttendancesToInsert[maybeTargetIndex].status = "attending";
+  }
+
   const insertedAttendances: AttendanceRow[] = [];
-  const CHUNK = 500;
+  const CHUNK = CONFIG.DB.CHUNK_SIZE;
 
   for (let i = 0; i < allAttendancesToInsert.length; i += CHUNK) {
     const chunk = allAttendancesToInsert.slice(i, i + CHUNK);
-    const { data, error } = await adminClient.from("attendances").insert(chunk).select("*");
+    const { data, error } = await client.from("attendances").insert(chunk).select("*");
     if (error) throw error;
     insertedAttendances.push(...(data ?? []));
   }
 
-  // 主要イベントに「maybe→attending に変えた参加者」を作る（更新して updated_at も進める）
-  const maybeTarget = insertedAttendances.find(
-    (a) => a.event_id === primaryEvent.id && a.status === "maybe"
-  );
-  if (maybeTarget) {
-    const { error: updErr } = await adminClient
-      .from("attendances")
-      .update({ status: "attending" as AttendanceStatus, updated_at: iso(addHours(now, 1)) })
-      .eq("id", maybeTarget.id);
-    if (updErr) throw updErr;
-    maybeTarget.status = "attending";
-  }
+  return insertedAttendances;
+}
 
-  // ==== 3) payments（有料イベントかつ attending のみを対象） ====
+// --- 決済ロジック ---
 
-  const eventsById = new Map<string, EventRow>();
-  for (const ev of insertedEvents ?? []) eventsById.set(ev.id, ev);
+type PaymentCandidate = { attendance: AttendanceRow; event: EventRow };
 
-  // 有料イベント & attending だけを決済候補とする（作成ルールを順守）
-  const paidAttendancePool = insertedAttendances
+function createPaymentRecord(
+  method: "stripe" | "cash",
+  status: PaymentStatus,
+  candidate: PaymentCandidate,
+  now: Date,
+  overrides: Partial<PaymentInsert> = {}
+): PaymentInsert {
+  const amount = candidate.event.fee;
+  const isPaidOrRefunded = ["paid", "refunded", "received", "waived"].includes(status);
+  const isStripe = method === "stripe";
+  const { MIN, MAX } = CONFIG.COUNTS.PAYMENT_DATE_OFFSET;
+
+  // paid_at と ID のデフォルトロジック
+  const paid_at =
+    isPaidOrRefunded && status !== "waived" ? iso(addDays(now, -int(MIN, MAX))) : null;
+  const stripe_payment_intent_id = isStripe ? tokens.stripePI() : null;
+  const stripe_checkout_session_id = isStripe ? tokens.stripeCS() : null;
+
+  return {
+    attendance_id: candidate.attendance.id,
+    method,
+    amount,
+    status,
+    paid_at,
+    refunded_amount: status === "refunded" ? amount : 0,
+    updated_at: iso(now),
+    created_at: iso(addDays(now, -int(MIN, MAX))),
+    application_fee_amount: 0,
+    application_fee_tax_rate: 0,
+    application_fee_tax_amount: 0,
+    application_fee_excl_tax: 0,
+    tax_included: true,
+    version: 1,
+    checkout_key_revision: 0,
+    stripe_payment_intent_id,
+    stripe_checkout_session_id,
+    ...overrides,
+  };
+}
+
+function distributeCandidates(attendances: AttendanceRow[], events: EventRow[]) {
+  const eventsById = new Map(events.map((e) => [e.id, e]));
+  const pool = attendances
     .map((a) => {
       const ev = eventsById.get(a.event_id);
-      return ev ? { a, ev } : null;
+      return ev ? { attendance: a, event: ev } : null;
     })
-    .filter((x): x is { a: AttendanceRow; ev: EventRow } => !!x)
-    .filter(({ a, ev }) => ev.fee > 0 && a.status === "attending");
+    .filter((x): x is PaymentCandidate => !!x)
+    .filter(({ attendance, event }) => event.fee > 0 && attendance.status === "attending");
 
-  // 1. まずプール全体をシャッフルする
-  shuffle(paidAttendancePool);
+  shuffle(pool);
 
-  const stripeCandidates: { attendance: AttendanceRow; event: EventRow }[] = [];
-  const cashCandidates: { attendance: AttendanceRow; event: EventRow }[] = [];
+  const stripe: PaymentCandidate[] = [];
+  const cash: PaymentCandidate[] = [];
 
-  // 2. 1人ずつ取り出して、どちらのリストに入れるか決める（排他的に振り分け）
-  for (const item of paidAttendancePool) {
-    const methods = item.ev.payment_methods as PaymentMethod[];
+  for (const item of pool) {
+    const methods = item.event.payment_methods as PaymentMethod[];
     const canStripe = methods.includes("stripe");
     const canCash = methods.includes("cash");
 
     if (canStripe && canCash) {
-      // 両方できるなら、現在の手持ちが少ない方に回す（バランス調整）
-      if (stripeCandidates.length <= cashCandidates.length) {
-        stripeCandidates.push({ attendance: item.a, event: item.ev });
-      } else {
-        cashCandidates.push({ attendance: item.a, event: item.ev });
-      }
+      // 50/50 でバランスを取る
+      if (stripe.length <= cash.length) stripe.push(item);
+      else cash.push(item);
     } else if (canStripe) {
-      stripeCandidates.push({ attendance: item.a, event: item.ev });
+      stripe.push(item);
     } else if (canCash) {
-      cashCandidates.push({ attendance: item.a, event: item.ev });
+      cash.push(item);
     }
   }
 
-  // 同じ attendance_id に複数決済を付けない
-  const usedAttendanceIds = new Set<string>();
-  const take = (arr: { attendance: AttendanceRow; event: EventRow }[]) => {
-    while (arr.length) {
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-      const x = arr.pop()!;
-      if (!usedAttendanceIds.has(x.attendance.id)) {
-        usedAttendanceIds.add(x.attendance.id);
-        return x;
-      }
-    }
-    throw new Error("Not enough attendance candidates to create required payments.");
-  };
+  return { stripe, cash };
+}
 
+type AttendanceUpdate = { id: string; status: AttendanceStatus };
+
+function generatePaymentPlan(
+  attendances: AttendanceRow[],
+  events: EventRow[],
+  now: Date
+): { payments: PaymentInsert[]; attendanceUpdates: AttendanceUpdate[] } {
+  const { stripe: stripeCandidates, cash: cashCandidates } = distributeCandidates(
+    attendances,
+    events
+  );
   const payments: PaymentInsert[] = [];
 
-  const pushStripe = (
-    status: PaymentStatus,
-    x: { attendance: AttendanceRow; event: EventRow },
-    opts?: Partial<PaymentInsert>
-  ) => {
-    const amount = x.event.fee;
-    const base: PaymentInsert = {
-      attendance_id: x.attendance.id,
+  // 候補者を安全に取り出すためのヘルパー
+  const take = (list: PaymentCandidate[]) => {
+    const item = list.pop();
+    if (!item) throw new Error("Not enough candidates for mandatory payment scenarios.");
+    return item;
+  };
+
+  // 1. 必須シナリオの設定
+  const MANDATORY_SCENARIOS: Array<{
+    method: "stripe" | "cash";
+    status: PaymentStatus;
+    overrides?: Partial<PaymentInsert>;
+  }> = [
+    { method: "stripe", status: "paid" },
+    { method: "stripe", status: "pending", overrides: { paid_at: null } },
+    { method: "stripe", status: "failed", overrides: { paid_at: null } },
+    { method: "stripe", status: "refunded" },
+    {
       method: "stripe",
-      amount,
-      status,
-      stripe_payment_intent_id: makeStripePI(),
-      stripe_checkout_session_id: makeStripeCS(),
-      paid_at: status === "paid" || status === "refunded" ? iso(addDays(now, -int(1, 25))) : null,
-      refunded_amount: status === "refunded" ? amount : 0,
-      updated_at: iso(now),
-      created_at: iso(addDays(now, -int(1, 25))),
-      application_fee_amount: 0,
-      application_fee_tax_rate: 0,
-      application_fee_tax_amount: 0,
-      application_fee_excl_tax: 0,
-      tax_included: true,
-      version: 1,
-      checkout_key_revision: 0,
-      ...opts,
-    };
-    payments.push(base);
+      status: "waived",
+      overrides: { paid_at: null, refunded_amount: 0, stripe_checkout_session_id: null },
+    },
+    { method: "cash", status: "pending" },
+    { method: "cash", status: "received" },
+    { method: "cash", status: "canceled", overrides: { paid_at: null } },
+  ];
+
+  // 必須シナリオを適用
+  for (const scenario of MANDATORY_SCENARIOS) {
+    const list = scenario.method === "stripe" ? stripeCandidates : cashCandidates;
+    payments.push(
+      createPaymentRecord(scenario.method, scenario.status, take(list), now, scenario.overrides)
+    );
+  }
+
+  // 2. ランダムに補完
+  const getRandomStripeStatus = (): PaymentStatus => {
+    const r = faker.number.float({ min: 0, max: 1 });
+    const { PAID, PENDING, FAILED } = CONFIG.PROBABILITIES.PAYMENT.STRIPE;
+    if (r < PAID) return "paid";
+    if (r < PENDING) return "pending";
+    if (r < FAILED) return "failed";
+    return "refunded";
   };
 
-  const pushCash = (
-    status: PaymentStatus,
-    x: { attendance: AttendanceRow; event: EventRow },
-    opts?: Partial<PaymentInsert>
-  ) => {
-    const amount = x.event.fee;
-    const base: PaymentInsert = {
-      attendance_id: x.attendance.id,
-      method: "cash",
-      amount,
-      status,
-      paid_at: status === "received" ? iso(addDays(now, -int(1, 25))) : null,
-      refunded_amount: 0,
-      updated_at: iso(now),
-      created_at: iso(addDays(now, -int(1, 25))),
-      application_fee_amount: 0,
-      application_fee_tax_rate: 0,
-      application_fee_tax_amount: 0,
-      application_fee_excl_tax: 0,
-      tax_included: true,
-      version: 1,
-      checkout_key_revision: 0,
-      ...opts,
-    };
-    payments.push(base);
+  const getRandomCashStatus = (): PaymentStatus => {
+    const r = faker.number.float({ min: 0, max: 1 });
+    return r < CONFIG.PROBABILITIES.PAYMENT.CASH.RECEIVED ? "received" : "pending";
   };
-
-  // --- 必須ステータスを 1 件ずつ用意（すべて attending に紐づく） ---
-
-  // Stripe: paid / pending / failed / refunded / waived
-  pushStripe("paid", take(stripeCandidates));
-  pushStripe("pending", take(stripeCandidates), { paid_at: null });
-  pushStripe("failed", take(stripeCandidates), { paid_at: null });
-  pushStripe("refunded", take(stripeCandidates));
-  pushStripe("waived", take(stripeCandidates), {
-    paid_at: null,
-    refunded_amount: 0,
-    stripe_checkout_session_id: null,
-  });
-
-  // Cash: pending / received
-  pushCash("pending", take(cashCandidates));
-  pushCash("received", take(cashCandidates));
-
-  // 例外: attending + cash + canceled（キャンセル済みだが参加）
-  pushCash("canceled", take(cashCandidates), { paid_at: null });
-
-  // --- 残りをランダム生成（現実的な重み付け） ---
 
   while (stripeCandidates.length > 0 || cashCandidates.length > 0) {
-    // StripeとCashのどちらの候補を使うか（候補が残っている方を使う）
     const useStripe =
       stripeCandidates.length > 0 && (cashCandidates.length === 0 || faker.datatype.boolean());
 
     if (useStripe) {
-      const x = take(stripeCandidates);
-
-      // Stripe: 現実的な確率分布でステータスを決定
-      // 0.0 ~ 1.0 の乱数を生成
-      const r = faker.number.float({ min: 0, max: 1 });
-      let st: PaymentStatus;
-
-      if (r < 0.85) {
-        st = "paid"; // 85%
-      } else if (r < 0.95) {
-        st = "pending"; // 10%
-      } else if (r < 0.98) {
-        st = "failed"; // 3%
-      } else {
-        st = "refunded"; // 2%
+      const candidate = stripeCandidates.pop();
+      if (candidate) {
+        payments.push(createPaymentRecord("stripe", getRandomStripeStatus(), candidate, now));
       }
-
-      pushStripe(st, x, {
-        // paid/refunded なら支払日を入れる
-        paid_at: st === "paid" || st === "refunded" ? iso(addDays(now, -int(1, 20))) : null,
-        // refunded なら全額返金扱いにする
-        refunded_amount: st === "refunded" ? x.event.fee : 0,
-      });
     } else {
-      const x = take(cashCandidates);
-
-      // Cash: 現実的な確率分布でステータスを決定
-      const r = faker.number.float({ min: 0, max: 1 });
-      let st: PaymentStatus;
-
-      if (r < 0.8) {
-        st = "received"; // 80%
-      } else {
-        st = "pending"; // 20%
+      const candidate = cashCandidates.pop();
+      if (candidate) {
+        payments.push(createPaymentRecord("cash", getRandomCashStatus(), candidate, now));
       }
-
-      pushCash(st, x, {
-        // received なら受領日を入れる
-        paid_at: st === "received" ? iso(addDays(now, -int(1, 20))) : null,
-      });
     }
   }
 
-  // --- not_attending / maybe + canceled を作る ---
+  // 3. キャンセルの決定（後処理）
+  const attendanceUpdates: AttendanceUpdate[] = [];
 
-  type CanceledUpdate = { attendanceId: string; newStatus: AttendanceStatus };
-  const canceledUpdates: CanceledUpdate[] = [];
-
-  const markCanceled = (p: PaymentInsert | undefined, newStatus: AttendanceStatus) => {
-    if (!p) return;
-    // 確定済みは降格させない
-    if (
-      p.status === "paid" ||
-      p.status === "received" ||
-      p.status === "waived" ||
-      p.status === "refunded"
-    ) {
-      return;
-    }
+  const markCanceled = (p: PaymentInsert, newStatus: AttendanceStatus) => {
     p.status = "canceled";
-    canceledUpdates.push({ attendanceId: p.attendance_id, newStatus });
+    if (p.attendance_id) {
+      attendanceUpdates.push({ id: p.attendance_id, status: newStatus });
+    }
   };
 
   const stripeCancelable = payments.filter(
-    (p) => p.method === "stripe" && (p.status === "pending" || p.status === "failed")
+    (p) => p.method === "stripe" && p.status && ["pending", "failed"].includes(p.status)
   );
   const cashCancelable = payments.filter((p) => p.method === "cash" && p.status === "pending");
 
-  // not_attending + stripe + canceled
-  markCanceled(stripeCancelable[0], "not_attending");
-  // maybe + stripe + canceled
-  markCanceled(stripeCancelable[1], "maybe");
-  // not_attending + cash + canceled
-  markCanceled(cashCancelable[0], "not_attending");
-  // maybe + cash + canceled
-  markCanceled(cashCancelable[1], "maybe");
+  if (stripeCancelable[0]) markCanceled(stripeCancelable[0], "not_attending");
+  if (stripeCancelable[1]) markCanceled(stripeCancelable[1], "maybe");
+  if (cashCancelable[0]) markCanceled(cashCancelable[0], "not_attending");
+  if (cashCancelable[1]) markCanceled(cashCancelable[1], "maybe");
 
-  // --- DB へ insert / update ---
+  return { payments, attendanceUpdates };
+}
+
+async function processPaymentsAndCancellations(
+  client: SupabaseClient<Database>,
+  attendances: AttendanceRow[],
+  events: EventRow[],
+  now: Date
+) {
+  const { payments, attendanceUpdates } = generatePaymentPlan(attendances, events, now);
 
   if (payments.length > 0) {
-    const { error: payErr } = await adminClient
-      .from("payments")
-      .insert(payments, { defaultToNull: false });
-    if (payErr) throw payErr;
+    const { error } = await client.from("payments").insert(payments, { defaultToNull: false });
+    if (error) throw error;
   }
 
-  // 対象参加者のステータスを not_attending / maybe に変更（自動キャンセル後の状態を再現）
-  if (canceledUpdates.length) {
-    const notAttendingIds = canceledUpdates
-      .filter((c) => c.newStatus === "not_attending")
-      .map((c) => c.attendanceId);
-    const maybeIds = canceledUpdates
-      .filter((c) => c.newStatus === "maybe")
-      .map((c) => c.attendanceId);
+  if (attendanceUpdates.length > 0) {
+    const notAttendingIds = attendanceUpdates
+      .filter((u) => u.status === "not_attending")
+      .map((u) => u.id);
+    const maybeIds = attendanceUpdates.filter((u) => u.status === "maybe").map((u) => u.id);
+
+    const updateTime = iso(addHours(now, 2));
 
     if (notAttendingIds.length) {
-      const { error } = await adminClient
+      await client
         .from("attendances")
-        .update({
-          status: "not_attending" as AttendanceStatus,
-          updated_at: iso(addHours(now, 2)),
-        })
+        .update({ status: "not_attending", updated_at: updateTime })
         .in("id", notAttendingIds);
-      if (error) throw error;
     }
-
     if (maybeIds.length) {
-      const { error } = await adminClient
+      await client
         .from("attendances")
-        .update({
-          status: "maybe" as AttendanceStatus,
-          updated_at: iso(addHours(now, 2)),
-        })
+        .update({ status: "maybe", updated_at: updateTime })
         .in("id", maybeIds);
-      if (error) throw error;
     }
   }
+}
+
+// --- メイン関数 ---
+
+export async function seedDemoData(adminClient: SupabaseClient<Database>, userId: string) {
+  // シードの初期化
+  faker.seed(Number.parseInt(userId.replace(/\+/g, "-").slice(0, 8), 16));
+  const now = new Date();
+
+  // 1. ユーザー＆Stripeのセットアップ
+  await setupUserAndStripe(adminClient, userId, now);
+
+  // 2. イベント
+  const insertedEvents = await insertEvents(adminClient, userId, now);
+  const primaryEvent = assertNonNull(
+    insertedEvents.find((e) => e.title.includes("創立10周年記念")),
+    "Primary event not found"
+  );
+
+  // 3. 出欠参加データ
+  const insertedAttendances = await insertAttendances(
+    adminClient,
+    insertedEvents,
+    primaryEvent.id,
+    now
+  );
+
+  // 4. 決済＆キャンセル
+  await processPaymentsAndCancellations(adminClient, insertedAttendances, insertedEvents, now);
 }
