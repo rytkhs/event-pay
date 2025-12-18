@@ -48,10 +48,26 @@ export function CardsView({
 }: CardsViewProps) {
   const isFreeEvent = eventFee === 0;
 
-  // コンパクトな参加状況ラベル
-  const getAttendanceLabel = (status: string) => {
-    if (status === "attending") return null;
-    return status === "not_attending" ? "不参加" : "未定";
+  // ステータスバッジの取得（無料イベントでは「参加」も表示）
+  const getStatusBadge = (status: string) => {
+    if (status === "attending") {
+      if (!isFreeEvent) return null; // 有料イベントは決済情報でわかるので省略
+      return (
+        <Badge className="bg-green-100 text-green-800 border-green-200 hover:bg-green-100 shadow-none font-medium px-1.5 py-0.5 text-xs h-5">
+          参加
+        </Badge>
+      );
+    }
+    const label = status === "not_attending" ? "不参加" : "未定";
+    const className =
+      status === "not_attending"
+        ? "bg-red-100 text-red-800 border-red-200 hover:bg-red-100"
+        : "bg-yellow-100 text-yellow-800 border-yellow-300 hover:bg-yellow-100";
+    return (
+      <Badge className={`${className} shadow-none font-medium px-1.5 py-0.5 text-xs h-5`}>
+        {label}
+      </Badge>
+    );
   };
 
   // 決済方法アイコン
@@ -89,7 +105,6 @@ export function CardsView({
         // ただし、チェックボックスを表示するのは isOperatable な項目のみ
         const isSelectionMode = !!bulkSelection;
         const showCheckbox = isSelectionMode && isOperatable && p.payment_id;
-        const attendanceLabel = getAttendanceLabel(p.status);
 
         return (
           <div
@@ -135,11 +150,7 @@ export function CardsView({
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2 min-w-0">
                   <span className="font-semibold text-gray-900 truncate">{p.nickname}</span>
-                  {attendanceLabel && (
-                    <span className="text-xs text-muted-foreground bg-gray-100 px-1.5 py-0.5 rounded">
-                      {attendanceLabel}
-                    </span>
-                  )}
+                  {getStatusBadge(p.status)}
                 </div>
               </div>
 
