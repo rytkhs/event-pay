@@ -99,108 +99,116 @@ export function buildParticipantsColumns(opts: {
         return <Badge className={`${className} font-medium px-3 py-1 shadow-sm`}>{label}</Badge>;
       },
       enableSorting: true,
-    },
-    {
-      accessorKey: "payment_method",
-      header: "決済方法",
-      cell: ({ row }) => {
-        const p = row.original;
-        const showMethod = p.status === "attending" && p.payment_status !== "canceled";
-        if (!showMethod) return <span className="text-gray-400 text-sm">-</span>;
+    }
+  );
 
-        const method = row.original.payment_method;
-        if (!method) return <span className="text-gray-400 text-sm">-</span>;
-        const isStripe = method === "stripe";
-        const className = isStripe
-          ? "bg-purple-100 text-purple-800 border-purple-200"
-          : "bg-orange-100 text-orange-800 border-orange-200";
-        const Icon = isStripe ? CreditCard : Banknote;
-        return (
-          <Badge
-            className={`${className} font-medium px-3 py-1 shadow-sm flex items-center gap-1.5 w-fit`}
-          >
-            <Icon className="h-3.5 w-3.5" />
-            {isStripe ? "オンライン" : "現金"}
-          </Badge>
-        );
+  if (!isFreeEvent) {
+    columns.push(
+      {
+        accessorKey: "payment_method",
+        header: "決済方法",
+        cell: ({ row }) => {
+          const p = row.original;
+          const showMethod = p.status === "attending" && p.payment_status !== "canceled";
+          if (!showMethod) return <span className="text-gray-400 text-sm">-</span>;
+
+          const method = row.original.payment_method;
+          if (!method) return <span className="text-gray-400 text-sm">-</span>;
+          const isStripe = method === "stripe";
+          const className = isStripe
+            ? "bg-purple-100 text-purple-800 border-purple-200"
+            : "bg-orange-100 text-orange-800 border-orange-200";
+          const Icon = isStripe ? CreditCard : Banknote;
+          return (
+            <Badge
+              className={`${className} font-medium px-3 py-1 shadow-sm flex items-center gap-1.5 w-fit`}
+            >
+              <Icon className="h-3.5 w-3.5" />
+              {isStripe ? "オンライン" : "現金"}
+            </Badge>
+          );
+        },
+        enableSorting: false,
       },
-      enableSorting: false,
-    },
-    {
-      accessorKey: "payment_status",
-      header: "決済状況",
-      cell: ({ row }) => {
-        const p = row.original;
-        const status = p.payment_status;
-        const isCanceledPayment = status === "canceled";
-        const isNotAttending = p.status !== "attending";
-        if (isFreeEvent || !status || isCanceledPayment || isNotAttending)
-          return <span className="text-gray-400 text-xs sm:text-sm">-</span>;
-        const simple = toSimplePaymentStatus(status as any);
-        if (simple === "paid") {
+      {
+        accessorKey: "payment_status",
+        header: "決済状況",
+        cell: ({ row }) => {
+          const p = row.original;
+          const status = p.payment_status;
+          const isCanceledPayment = status === "canceled";
+          const isNotAttending = p.status !== "attending";
+          if (isFreeEvent || !status || isCanceledPayment || isNotAttending)
+            return <span className="text-gray-400 text-xs sm:text-sm">-</span>;
+          const simple = toSimplePaymentStatus(status as any);
+          if (simple === "paid") {
+            const s = getSimplePaymentStatusStyle(simple);
+            return (
+              <Badge
+                variant={s.variant}
+                className={`${s.className} font-medium px-3 py-1 shadow-sm`}
+              >
+                {SIMPLE_PAYMENT_STATUS_LABELS[simple]}
+              </Badge>
+            );
+          }
           const s = getSimplePaymentStatusStyle(simple);
           return (
             <Badge variant={s.variant} className={`${s.className} font-medium px-3 py-1 shadow-sm`}>
               {SIMPLE_PAYMENT_STATUS_LABELS[simple]}
             </Badge>
           );
-        }
-        const s = getSimplePaymentStatusStyle(simple);
-        return (
-          <Badge variant={s.variant} className={`${s.className} font-medium px-3 py-1 shadow-sm`}>
-            {SIMPLE_PAYMENT_STATUS_LABELS[simple]}
-          </Badge>
-        );
+        },
+        enableSorting: false,
       },
-      enableSorting: false,
-    },
-    {
-      id: "actions",
-      header: "アクション",
-      cell: ({ row }) => {
-        const p = row.original;
-        const simple = toSimplePaymentStatus(p.payment_status as any);
-        const isCashPayment = p.payment_method === "cash" && p.payment_id;
-        const { onReceive, onCancel, isUpdating } = opts.handlers;
-        const canOperateCash =
-          p.status === "attending" &&
-          isCashPayment &&
-          (p.payment_status === "pending" || p.payment_status === "failed");
+      {
+        id: "actions",
+        header: "アクション",
+        cell: ({ row }) => {
+          const p = row.original;
+          const simple = toSimplePaymentStatus(p.payment_status as any);
+          const isCashPayment = p.payment_method === "cash" && p.payment_id;
+          const { onReceive, onCancel, isUpdating } = opts.handlers;
+          const canOperateCash =
+            p.status === "attending" &&
+            isCashPayment &&
+            (p.payment_status === "pending" || p.payment_status === "failed");
 
-        return (
-          <div className="flex items-center gap-2">
-            {canOperateCash && (
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => hasPaymentId(p) && onReceive(p.payment_id)}
-                disabled={!!isUpdating}
-                className="bg-green-50 border-green-300 text-green-700 hover:bg-green-100 min-h-[36px] min-w-[36px] px-2 sm:px-3 shadow-sm hover:shadow-md"
-                title="受領済みにする"
-              >
-                <Check className="h-4 w-4" />
-              </Button>
-            )}
-            {p.status === "attending" &&
-              isCashPayment &&
-              (simple === "paid" || simple === "waived") && (
+          return (
+            <div className="flex items-center gap-2">
+              {canOperateCash && (
                 <Button
                   size="sm"
                   variant="outline"
-                  onClick={() => hasPaymentId(p) && onCancel(p.payment_id)}
+                  onClick={() => hasPaymentId(p) && onReceive(p.payment_id)}
                   disabled={!!isUpdating}
-                  className="bg-gray-50 border-gray-300 text-gray-700 hover:bg-gray-100 min-h-[36px] min-w-[36px] px-2 sm:px-3 shadow-sm hover:shadow-md"
-                  title="決済を取り消し"
+                  className="bg-green-50 border-green-300 text-green-700 hover:bg-green-100 min-h-[36px] min-w-[36px] px-2 sm:px-3 shadow-sm hover:shadow-md"
+                  title="受領済みにする"
                 >
-                  <RotateCcw className="h-4 w-4" />
+                  <Check className="h-4 w-4" />
                 </Button>
               )}
-          </div>
-        );
-      },
-      enableSorting: false,
-    }
-  );
+              {p.status === "attending" &&
+                isCashPayment &&
+                (simple === "paid" || simple === "waived") && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => hasPaymentId(p) && onCancel(p.payment_id)}
+                    disabled={!!isUpdating}
+                    className="bg-gray-50 border-gray-300 text-gray-700 hover:bg-gray-100 min-h-[36px] min-w-[36px] px-2 sm:px-3 shadow-sm hover:shadow-md"
+                    title="決済を取り消し"
+                  >
+                    <RotateCcw className="h-4 w-4" />
+                  </Button>
+                )}
+            </div>
+          );
+        },
+        enableSorting: false,
+      }
+    );
+  }
 
   return columns;
 }

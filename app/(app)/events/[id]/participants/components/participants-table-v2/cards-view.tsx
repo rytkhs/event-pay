@@ -144,67 +144,69 @@ export function CardsView({
               </div>
 
               {/* Row 2: Payment Status & Actions */}
-              <div className="flex items-center justify-between gap-2 h-7">
-                {/* Status Badge */}
-                <div className="flex items-center gap-1.5">
-                  {p.status === "attending" && !isCanceledPayment ? (
-                    <>
-                      {getPaymentMethodIcon(p.payment_method)}
-                      {!isFreeEvent && p.payment_status && (
-                        <Badge
-                          variant={getSimplePaymentStatusStyle(simple).variant}
-                          className={`${getSimplePaymentStatusStyle(simple).className} text-xs px-1.5 py-0 h-5 font-normal`}
-                        >
-                          {SIMPLE_PAYMENT_STATUS_LABELS[simple]}
-                        </Badge>
-                      )}
-                    </>
-                  ) : (
-                    <span className="text-xs text-gray-300">-</span>
-                  )}
-                </div>
+              {!isFreeEvent && (
+                <div className="flex items-center justify-between gap-2 h-7">
+                  {/* Status Badge */}
+                  <div className="flex items-center gap-1.5">
+                    {p.status === "attending" && !isCanceledPayment ? (
+                      <>
+                        {getPaymentMethodIcon(p.payment_method)}
+                        {p.payment_status && (
+                          <Badge
+                            variant={getSimplePaymentStatusStyle(simple).variant}
+                            className={`${getSimplePaymentStatusStyle(simple).className} text-xs px-1.5 py-0 h-5 font-normal`}
+                          >
+                            {SIMPLE_PAYMENT_STATUS_LABELS[simple]}
+                          </Badge>
+                        )}
+                      </>
+                    ) : (
+                      <span className="text-xs text-gray-300">-</span>
+                    )}
+                  </div>
 
-                {/* Primary Action Button (Right aligned) */}
-                <div className="flex items-center gap-1">
-                  {isOperatable && !isSelectionMode && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => hasPaymentId(p) && onReceive(p.payment_id)}
-                      disabled={!!isUpdating}
-                      className="h-7 px-3 text-xs bg-green-50 border-green-200 text-green-700 hover:bg-green-100 hover:border-green-300 hover:text-green-800"
-                    >
-                      <Check className="h-3 w-3 mr-1" />
-                      受領
-                    </Button>
-                  )}
+                  {/* Primary Action Button (Right aligned) */}
+                  <div className="flex items-center gap-1">
+                    {isOperatable && !isSelectionMode && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => hasPaymentId(p) && onReceive(p.payment_id)}
+                        disabled={!!isUpdating}
+                        className="h-7 px-3 text-xs bg-green-50 border-green-200 text-green-700 hover:bg-green-100 hover:border-green-300 hover:text-green-800"
+                      >
+                        <Check className="h-3 w-3 mr-1" />
+                        受領
+                      </Button>
+                    )}
 
-                  {/* Secondary Menu */}
-                  {canCancel && !isSelectionMode && (
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="h-7 w-7 p-0 text-muted-foreground"
-                          disabled={!!isUpdating}
-                        >
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem
-                          onClick={() => hasPaymentId(p) && onCancel(p.payment_id)}
-                          className="text-gray-700"
-                        >
-                          <RotateCcw className="h-4 w-4 mr-2" />
-                          受領を取り消し
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  )}
+                    {/* Secondary Menu */}
+                    {canCancel && !isSelectionMode && (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-7 w-7 p-0 text-muted-foreground"
+                            disabled={!!isUpdating}
+                          >
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem
+                            onClick={() => hasPaymentId(p) && onCancel(p.payment_id)}
+                            className="text-gray-700"
+                          >
+                            <RotateCcw className="h-4 w-4 mr-2" />
+                            受領を取り消し
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    )}
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           </div>
         );
