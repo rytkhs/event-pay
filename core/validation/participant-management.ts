@@ -71,7 +71,15 @@ export const ExportParticipantsCsvParamsSchema = z.object({
       ])
     )
     .optional()
-    .default(["nickname", "status", "payment_method", "payment_status", "paid_at"]),
+    .default([
+      "nickname",
+      "status",
+      "payment_method",
+      "payment_status",
+      "paid_at",
+      "created_at",
+      "updated_at",
+    ]),
 });
 
 export type ExportParticipantsCsvParams = z.infer<typeof ExportParticipantsCsvParamsSchema>;
