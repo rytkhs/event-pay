@@ -270,6 +270,12 @@ export const POLICIES: Record<string, RateLimitPolicy> = {
     window: "1 m",
     blockMs: 5 * 60 * 1000,
   },
+  "demo.create": {
+    scope: "demo.create",
+    limit: 10,
+    window: "1 h",
+    blockMs: 24 * 60 * 60 * 1000,
+  },
 };
 
 export * from "./types";

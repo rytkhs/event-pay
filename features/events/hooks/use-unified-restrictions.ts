@@ -498,6 +498,10 @@ export function useRestrictionContext(
  * フォームデータスナップショット - FormDataSnapshot の構築ヘルパー（フック版）
  */
 export function useFormDataSnapshot(formValues: Record<string, unknown>): FormDataSnapshot {
+  // フォーム値の等価性をチェックするためにシリアライズ
+  // これにより、参照が異なっていても値が同じなら再生成を防げます
+  const serialized = JSON.stringify(formValues);
+
   return useMemo(
     () => ({
       fee: formValues.fee as string | number | undefined,
@@ -513,6 +517,7 @@ export function useFormDataSnapshot(formValues: Record<string, unknown>): FormDa
       grace_period_days: formValues.grace_period_days as string | number | undefined,
       ...formValues,
     }),
-    [formValues]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [serialized]
   );
 }

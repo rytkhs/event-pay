@@ -32,28 +32,6 @@ const PaymentMethodFilterSchema = z.enum(["stripe", "cash"]).optional();
 // UI用決済ステータスフィルター（内部専用） - SimplePaymentStatus
 const SimplePaymentStatusFilterSchema = z.enum(["unpaid", "paid", "refunded", "waived"]).optional();
 
-// ソートフィールド（内部専用）
-const ParticipantSortFieldSchema = z
-  .enum([
-    "created_at",
-    "updated_at",
-    "nickname",
-    "email",
-    "status",
-    "payment_method",
-    "payment_status",
-    "paid_at",
-  ])
-  .default("updated_at");
-
-// ソート順序（内部専用）
-const SortOrderSchema = z.enum(["asc", "desc"]).default("desc");
-
-// ページネーション（内部専用）
-const PageSchema = z.number().int().min(1).default(1);
-
-const LimitSchema = z.number().int().min(1).max(200).default(100);
-
 // 検索クエリ（内部専用）
 const SearchQuerySchema = z
   .string()
@@ -61,17 +39,9 @@ const SearchQuerySchema = z
   .optional()
   .transform((val) => val?.trim() || undefined);
 
-// 参加者一覧取得パラメータ
+// 参加者一覧取得パラメータ（全件取得用 - フィルタ・ソート・ページネーションはクライアントサイドで処理）
 export const GetParticipantsParamsSchema = z.object({
   eventId: z.string().uuid(),
-  search: SearchQuerySchema,
-  attendanceStatus: AttendanceStatusFilterSchema,
-  paymentMethod: PaymentMethodFilterSchema,
-  paymentStatus: SimplePaymentStatusFilterSchema, // SimplePaymentStatusを使用
-  sortField: ParticipantSortFieldSchema,
-  sortOrder: SortOrderSchema,
-  page: PageSchema,
-  limit: LimitSchema,
 });
 
 export type GetParticipantsParams = z.infer<typeof GetParticipantsParamsSchema>;
@@ -101,7 +71,15 @@ export const ExportParticipantsCsvParamsSchema = z.object({
       ])
     )
     .optional()
-    .default(["nickname", "status", "payment_method", "payment_status", "paid_at"]),
+    .default([
+      "nickname",
+      "status",
+      "payment_method",
+      "payment_status",
+      "paid_at",
+      "created_at",
+      "updated_at",
+    ]),
 });
 
 export type ExportParticipantsCsvParams = z.infer<typeof ExportParticipantsCsvParamsSchema>;
@@ -172,27 +150,9 @@ const ParticipantViewSchema = z.object({
 
 export type ParticipantView = z.infer<typeof ParticipantViewSchema>;
 
-// レスポンス型
+// レスポンス型（全件取得 - ページネーション等はクライアントサイドで処理）
 export const GetParticipantsResponseSchema = z.object({
   participants: z.array(ParticipantViewSchema),
-  pagination: z.object({
-    page: z.number(),
-    limit: z.number(),
-    total: z.number(),
-    totalPages: z.number(),
-    hasNext: z.boolean(),
-    hasPrev: z.boolean(),
-  }),
-  filters: z.object({
-    search: z.string().optional(),
-    attendanceStatus: AttendanceStatusFilterSchema,
-    paymentMethod: PaymentMethodFilterSchema,
-    paymentStatus: SimplePaymentStatusFilterSchema, // SimplePaymentStatusを使用
-  }),
-  sort: z.object({
-    field: ParticipantSortFieldSchema,
-    order: SortOrderSchema,
-  }),
 });
 
 export type GetParticipantsResponse = z.infer<typeof GetParticipantsResponseSchema>;

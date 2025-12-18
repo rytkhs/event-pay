@@ -12,7 +12,7 @@ const AFTER_LOGIN_REDIRECT_PATH = "/dashboard";
 
 function isAuthPath(pathname: string): boolean {
   // 認証ページ: ログイン済みならダッシュボードへ誘導（パスワードリセット関連は例外）
-  if (pathname === "/login" || pathname === "/register") return true;
+  if (pathname === "/login" || pathname === "/register" || pathname === "/start-demo") return true;
   return false;
 }
 
@@ -31,6 +31,7 @@ function isPublicPath(pathname: string): boolean {
   // 明示的な公開ページ。その他はデフォルトで保護扱い
   const publicExact = [
     "/",
+    "/start-demo",
     "/login",
     "/register",
     "/reset-password",
@@ -83,6 +84,14 @@ export async function middleware(request: NextRequest) {
     });
   }
 
+  const isDemo = process.env.NEXT_PUBLIC_IS_DEMO === "true";
+  const productionUrl = process.env.NEXT_PUBLIC_PRODUCTION_URL || "https://minnano-shukin.com";
+
+  // デモ環境: ルートとログイン画面へのアクセスは本番LPへリダイレクト
+  if (isDemo && (pathname === "/" || pathname === "/login")) {
+    return NextResponse.redirect(productionUrl);
+  }
+
   // 静的ページかどうかを判定
   const isStatic = isStaticPage(pathname);
 
@@ -118,6 +127,11 @@ export async function middleware(request: NextRequest) {
   response.headers.set("x-request-id", requestId);
   if (!isStatic && nonce) {
     response.headers.set("x-nonce", nonce);
+  }
+
+  // デモ環境の場合、noindex ヘッダーを付与
+  if (isDemo) {
+    response.headers.set("X-Robots-Tag", "noindex, nofollow, noarchive");
   }
 
   // 本番のみ：動的に生成した CSP を付与（開発/プレビューは next.config 側の静的CSPを使用）
@@ -214,6 +228,9 @@ export async function middleware(request: NextRequest) {
     if (!isStatic && nonce) {
       redirectResponse.headers.set("x-nonce", nonce);
     }
+    if (isDemo) {
+      redirectResponse.headers.set("X-Robots-Tag", "noindex, nofollow, noarchive");
+    }
 
     return redirectResponse;
   }
@@ -232,6 +249,9 @@ export async function middleware(request: NextRequest) {
     redirectResponse.headers.set("x-request-id", requestId);
     if (!isStatic && nonce) {
       redirectResponse.headers.set("x-nonce", nonce);
+    }
+    if (isDemo) {
+      redirectResponse.headers.set("X-Robots-Tag", "noindex, nofollow, noarchive");
     }
 
     return redirectResponse;

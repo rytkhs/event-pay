@@ -6,6 +6,7 @@ import { AppSidebar } from "@components/layout/AppSidebar";
 import { Header } from "@components/layout/Header";
 
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
+import { DemoBanner } from "@/features/demo/components/demo-banner";
 
 /**
  * アプリケーションレイアウト
@@ -36,6 +37,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
     <SidebarProvider>
       <AppSidebar user={currentUser} />
       <SidebarInset>
+        <DemoBanner />
         <Header />
         <main className="flex-1 flex flex-col p-4 w-full max-w-7xl mx-auto">{children}</main>
       </SidebarInset>

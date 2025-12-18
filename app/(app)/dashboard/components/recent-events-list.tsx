@@ -73,7 +73,7 @@ export async function RecentEventsList() {
               最近のイベント
             </CardTitle>
             <p className="text-xs sm:text-sm text-muted-foreground hidden sm:block">
-              直近作成されたイベントの状況
+              開催日が近いイベントの状況
             </p>
           </div>
           <Button

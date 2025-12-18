@@ -70,52 +70,22 @@ export default async function EventDetailPage({
       redirect(`/events/${params.id}/forbidden`);
     }
 
-    // 検索パラメータの処理
-    const tab = typeof searchParams.tab === "string" ? searchParams.tab : "overview";
-    const page = searchParams.page ? parseInt(String(searchParams.page), 10) : 1;
-    const limit = searchParams.limit ? parseInt(String(searchParams.limit), 10) : 50;
-    const search = typeof searchParams.search === "string" ? searchParams.search : undefined;
-    const attendanceStatus =
-      typeof searchParams.attendance === "string" ? searchParams.attendance : undefined;
-    const paymentMethod =
-      typeof searchParams.payment_method === "string" ? searchParams.payment_method : undefined;
-    const paymentStatus =
-      typeof searchParams.payment_status === "string" ? searchParams.payment_status : undefined;
-
-    // sort logic
-    const isSmart = typeof searchParams.smart === "string";
-    const sortField = isSmart
-      ? ("updated_at" as const)
-      : typeof searchParams.sort === "string"
-        ? searchParams.sort
-        : "created_at";
-    const sortOrder = searchParams.order === "asc" ? "asc" : "desc";
+    // 検索パラメータの処理（タブのみ）
+    const _tab = typeof searchParams.tab === "string" ? searchParams.tab : "overview";
 
     // 必要なデータを並列取得
     // OverviewタブでもPaymentsとStatsは必要
-    // ParticipantsタブではParticipantsデータが必要
+    // 参加者データは常に全件取得（クライアントサイドでフィルタ・ソート・ページネーション）
 
     const promises: [
       Promise<any>, // Payments
       Promise<any>, // Stats
-      Promise<any>, // Participants
+      Promise<any>, // Participants (全件)
     ] = [
       cachedActions.getEventPayments(params.id),
       cachedActions.getEventStats(params.id),
-
-      tab === "participants"
-        ? cachedActions.getEventParticipants({
-            eventId: params.id,
-            page,
-            limit,
-            search,
-            attendanceStatus: attendanceStatus as any,
-            paymentMethod: paymentMethod as any,
-            paymentStatus: paymentStatus as any,
-            sortField: sortField as any,
-            sortOrder,
-          })
-        : Promise.resolve(null),
+      // 常に全件取得（タブに関係なく）
+      cachedActions.getEventParticipants({ eventId: params.id }),
     ];
 
     const [paymentsRes, statsRes, participantsRes] = await Promise.all(promises);

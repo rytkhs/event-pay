@@ -3,6 +3,8 @@ import type { ReactNode } from "react";
 import { GlobalFooter } from "@components/layout/GlobalFooter";
 import { GlobalHeader } from "@components/layout/GlobalHeader";
 
+import { DemoBanner } from "@/features/demo/components/demo-banner";
+
 /**
  * 招待ページレイアウト
  *
@@ -18,6 +20,7 @@ import { GlobalHeader } from "@components/layout/GlobalHeader";
 export default function InviteLayout({ children }: { children: ReactNode }): JSX.Element {
   return (
     <div className="flex flex-col min-h-screen">
+      <DemoBanner />
       <GlobalHeader variant="guest" />
       <div className="flex-1 flex flex-col">{children}</div>
       <GlobalFooter />

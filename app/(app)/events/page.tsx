@@ -124,7 +124,7 @@ export default async function EventsPage({ searchParams }: EventsPageProps) {
       <div data-testid="events-page-header" className="mb-10 border-b border-border/40 pb-6">
         <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-6">
           <div className="space-y-1">
-            <h1 className="text-3xl font-extrabold tracking-tight text-foreground sm:text-4xl">
+            <h1 className="text-2xl font-extrabold tracking-tight text-foreground sm:text-3xl">
               イベント一覧
             </h1>
             <p className="text-muted-foreground text-lg">

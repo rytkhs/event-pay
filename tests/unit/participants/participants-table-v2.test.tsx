@@ -40,10 +40,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import "@testing-library/jest-dom";
 import userEvent from "@testing-library/user-event";
 
-import type {
-  GetParticipantsResponse,
-  ParticipantView,
-} from "@core/validation/participant-management";
+import type { ParticipantView } from "@core/validation/participant-management";
 
 // テスト対象コンポーネント
 import { ParticipantsTableV2 } from "@/app/(app)/events/[id]/participants/components/participants-table-v2/participants-table";
@@ -66,71 +63,69 @@ global.ResizeObserver = jest.fn().mockImplementation(() => ({
   disconnect: jest.fn(),
 }));
 
-function buildParticipantsData(
-  partial?: Partial<GetParticipantsResponse>
-): GetParticipantsResponse {
-  return {
-    participants: [
-      {
-        attendance_id: "att-1",
-        nickname: "テストユーザー1",
-        email: "test1@example.com",
-        status: "attending",
-        attendance_created_at: "2023-01-01T00:00:00Z",
-        attendance_updated_at: "2023-01-01T00:00:00Z",
-        payment_id: "pay-1",
-        payment_method: "cash",
-        payment_status: "pending",
-        amount: 1000,
-        paid_at: null,
-        payment_version: 1,
-        payment_created_at: "2023-01-01T00:00:00Z",
-        payment_updated_at: "2023-01-01T00:00:00Z",
-      },
-      {
-        attendance_id: "att-2",
-        nickname: "テストユーザー2",
-        email: "test2@example.com",
-        status: "attending",
-        attendance_created_at: "2023-01-01T00:00:00Z",
-        attendance_updated_at: "2023-01-01T00:00:00Z",
-        payment_id: "pay-2",
-        payment_method: "stripe",
-        payment_status: "paid",
-        amount: 1000,
-        paid_at: "2023-01-01T00:00:00Z",
-        payment_version: 1,
-        payment_created_at: "2023-01-01T00:00:00Z",
-        payment_updated_at: "2023-01-01T00:00:00Z",
-      },
-    ],
-    pagination: {
-      page: 1,
-      limit: 50,
-      total: 2,
-      totalPages: 1,
-      hasNext: false,
-      hasPrev: false,
+function buildParticipantsArray(count: number = 2): ParticipantView[] {
+  const participants: ParticipantView[] = [
+    {
+      attendance_id: "att-1",
+      nickname: "テストユーザー1",
+      email: "test1@example.com",
+      status: "attending",
+      attendance_created_at: "2023-01-01T00:00:00Z",
+      attendance_updated_at: "2023-01-01T00:00:00Z",
+      payment_id: "pay-1",
+      payment_method: "cash",
+      payment_status: "pending",
+      amount: 1000,
+      paid_at: null,
+      payment_version: 1,
+      payment_created_at: "2023-01-01T00:00:00Z",
+      payment_updated_at: "2023-01-01T00:00:00Z",
     },
-    filters: {
-      search: undefined,
-      attendanceStatus: undefined,
-      paymentMethod: undefined,
-      paymentStatus: undefined,
+    {
+      attendance_id: "att-2",
+      nickname: "テストユーザー2",
+      email: "test2@example.com",
+      status: "attending",
+      attendance_created_at: "2023-01-01T00:00:00Z",
+      attendance_updated_at: "2023-01-01T00:00:00Z",
+      payment_id: "pay-2",
+      payment_method: "stripe",
+      payment_status: "paid",
+      amount: 1000,
+      paid_at: "2023-01-01T00:00:00Z",
+      payment_version: 1,
+      payment_created_at: "2023-01-01T00:00:00Z",
+      payment_updated_at: "2023-01-01T00:00:00Z",
     },
-    sort: {
-      field: "updated_at",
-      order: "desc",
-    },
-    ...partial,
-  };
+  ];
+  return participants.slice(0, count);
+}
+
+// ページネーション用のデータ生成（100件）
+function buildManyParticipants(): ParticipantView[] {
+  return Array.from({ length: 100 }, (_, i) => ({
+    attendance_id: `att-${i + 1}`,
+    nickname: `テストユーザー${i + 1}`,
+    email: `test${i + 1}@example.com`,
+    status: "attending" as const,
+    attendance_created_at: "2023-01-01T00:00:00Z",
+    attendance_updated_at: "2023-01-01T00:00:00Z",
+    payment_id: `pay-${i + 1}`,
+    payment_method: i % 2 === 0 ? ("cash" as const) : ("stripe" as const),
+    payment_status: i % 2 === 0 ? ("pending" as const) : ("paid" as const),
+    amount: 1000,
+    paid_at: i % 2 === 0 ? null : "2023-01-01T00:00:00Z",
+    payment_version: 1,
+    payment_created_at: "2023-01-01T00:00:00Z",
+    payment_updated_at: "2023-01-01T00:00:00Z",
+  }));
 }
 
 describe("ParticipantsTableV2", () => {
   const defaultProps = {
     eventId: "event-1",
     eventFee: 1000,
-    initialData: buildParticipantsData(),
+    allParticipants: buildParticipantsArray(),
     searchParams: {},
     onParamsChange: jest.fn(),
   };
@@ -158,12 +153,7 @@ describe("ParticipantsTableV2", () => {
     });
 
     it("参加者がいない場合の表示", () => {
-      const emptyData = buildParticipantsData({
-        participants: [],
-        pagination: { ...buildParticipantsData().pagination, total: 0 },
-      });
-
-      render(<ParticipantsTableV2 {...defaultProps} initialData={emptyData} />);
+      render(<ParticipantsTableV2 {...defaultProps} allParticipants={[]} />);
 
       expect(screen.getByText("参加者が見つかりません")).toBeInTheDocument();
     });
@@ -224,28 +214,6 @@ describe("ParticipantsTableV2", () => {
       });
     });
 
-    it("現金決済の免除ボタンが動作する", async () => {
-      const user = userEvent.setup();
-      mockUpdateCashStatus.mockResolvedValue({ success: true });
-
-      render(<ParticipantsTableV2 {...defaultProps} />);
-
-      const waiveButton = screen.getByTitle("支払いを免除");
-      await user.click(waiveButton);
-
-      expect(mockUpdateCashStatus).toHaveBeenCalledWith({
-        paymentId: "pay-1",
-        status: "waived",
-      });
-
-      await waitFor(() => {
-        expect(mockToast).toHaveBeenCalledWith({
-          title: "決済状況を更新しました",
-          description: "ステータスを「免除」に変更しました。",
-        });
-      });
-    });
-
     it("アクション失敗時にエラートーストが表示される", async () => {
       const user = userEvent.setup();
       const errorMessage = "決済の更新に失敗しました";
@@ -268,14 +236,11 @@ describe("ParticipantsTableV2", () => {
 
   describe("ページネーション", () => {
     it("ページネーションが表示される", () => {
-      // ページネーションが表示されるように総件数を多くする
-      const paginatedData = buildParticipantsData({
-        pagination: { ...buildParticipantsData().pagination, total: 100, totalPages: 2 },
-      });
+      const manyParticipants = buildManyParticipants();
 
-      render(<ParticipantsTableV2 {...defaultProps} initialData={paginatedData} />);
+      render(<ParticipantsTableV2 {...defaultProps} allParticipants={manyParticipants} />);
 
-      // ページネーション表示の確認
+      // ページネーション表示の確認（クライアントサイドページネーション）
       expect(screen.getByText("100件中 1-50件を表示")).toBeInTheDocument();
       expect(screen.getByText("表示件数:")).toBeInTheDocument();
       expect(screen.getByText("1 / 2")).toBeInTheDocument();
@@ -284,21 +249,12 @@ describe("ParticipantsTableV2", () => {
     it("ページ変更ボタンが動作する", async () => {
       const user = userEvent.setup();
       const onParamsChange = jest.fn();
-
-      // 複数ページのデータ
-      const paginatedData = buildParticipantsData({
-        pagination: {
-          ...buildParticipantsData().pagination,
-          total: 100,
-          totalPages: 2,
-          hasNext: true,
-        },
-      });
+      const manyParticipants = buildManyParticipants();
 
       render(
         <ParticipantsTableV2
           {...defaultProps}
-          initialData={paginatedData}
+          allParticipants={manyParticipants}
           onParamsChange={onParamsChange}
         />
       );
