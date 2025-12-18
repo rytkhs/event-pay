@@ -12,7 +12,7 @@ const AFTER_LOGIN_REDIRECT_PATH = "/dashboard";
 
 function isAuthPath(pathname: string): boolean {
   // 認証ページ: ログイン済みならダッシュボードへ誘導（パスワードリセット関連は例外）
-  if (pathname === "/login" || pathname === "/register") return true;
+  if (pathname === "/login" || pathname === "/register" || pathname === "/start-demo") return true;
   return false;
 }
 
@@ -31,6 +31,7 @@ function isPublicPath(pathname: string): boolean {
   // 明示的な公開ページ。その他はデフォルトで保護扱い
   const publicExact = [
     "/",
+    "/start-demo",
     "/login",
     "/register",
     "/reset-password",
@@ -83,6 +84,14 @@ export async function middleware(request: NextRequest) {
     });
   }
 
+  const isDemo = process.env.NEXT_PUBLIC_IS_DEMO === "true";
+  const productionUrl = process.env.NEXT_PUBLIC_PRODUCTION_URL || "https://minnano-shukin.com";
+
+  // デモ環境: ルートとログイン画面へのアクセスは本番LPへリダイレクト
+  if (isDemo && (pathname === "/" || pathname === "/login")) {
+    return NextResponse.redirect(productionUrl);
+  }
+
   // 静的ページかどうかを判定
   const isStatic = isStaticPage(pathname);
 
@@ -121,7 +130,6 @@ export async function middleware(request: NextRequest) {
   }
 
   // デモ環境の場合、noindex ヘッダーを付与
-  const isDemo = process.env.NEXT_PUBLIC_IS_DEMO === "true";
   if (isDemo) {
     response.headers.set("X-Robots-Tag", "noindex, nofollow, noarchive");
   }

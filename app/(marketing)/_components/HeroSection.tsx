@@ -3,7 +3,7 @@ import React from "react";
 import Image from "next/image";
 import Link from "next/link";
 
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, PlayCircle } from "lucide-react";
 
 import { AnimatedBadge } from "./ui/AnimatedBadge";
 import { FadeIn } from "./ui/FadeIn";
@@ -62,6 +62,17 @@ export const HeroSection: React.FC = () => {
                   今すぐ無料でイベントを作る
                   <ArrowRight size={20} aria-hidden="true" />
                 </Link>
+                <a
+                  href={`${process.env.NEXT_PUBLIC_DEMO_URL || "https://demo.minnano-shukin.com"}/start-demo`}
+                  className="w-full sm:w-auto bg-white hover:bg-primary/5 text-primary border-2 border-primary text-lg font-bold px-8 py-4 rounded-full transition-all flex items-center justify-center gap-2 group"
+                >
+                  <PlayCircle
+                    size={24}
+                    aria-hidden="true"
+                    className="opacity-90 group-hover:scale-110 transition-transform"
+                  />
+                  デモを試す
+                </a>
               </div>
               <p className="mt-4 text-slate-500 text-sm mb-6">
                 初期費用・月額料金 0円 / 現金集金なら完全無料
