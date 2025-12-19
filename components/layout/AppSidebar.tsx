@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect } from "react";
+
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -41,7 +43,14 @@ type AppSidebarProps = {
 
 export function AppSidebar({ user, ...props }: AppSidebarProps) {
   const pathname = usePathname();
-  const { isMobile } = useSidebar();
+  const { isMobile, setOpenMobile } = useSidebar();
+
+  // 画面遷移時にモバイル用サイドバーを自動的に閉じる
+  useEffect(() => {
+    if (isMobile) {
+      setOpenMobile(false);
+    }
+  }, [pathname, isMobile, setOpenMobile]);
 
   const handleLogout = async () => {
     await logoutAction();
