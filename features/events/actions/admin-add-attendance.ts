@@ -203,10 +203,7 @@ export async function adminAddAttendanceAction(
     const eligibility = canCreateStripeSession(attendanceForEligibility, eventForEligibility);
 
     // ゲストURL（/guest/gst_xxx）
-    const baseUrl =
-      process.env.NEXT_PUBLIC_APP_URL ||
-      process.env.NEXT_PUBLIC_SITE_URL ||
-      "http://localhost:3000";
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
     const guestUrl = `${baseUrl}/guest/${guestToken}`;
 
     // 監査ログ（RLSポリシーベース実装）

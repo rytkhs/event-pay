@@ -234,11 +234,7 @@ export class NotificationService implements INotificationService {
 
       // ゲストURLを構築
       const baseUrl =
-        process.env.NEXT_PUBLIC_APP_URL ||
-        process.env.NEXT_PUBLIC_SITE_URL ||
-        getEnv().APP_BASE_URL ||
-        getEnv().NEXTAUTH_URL ||
-        "http://localhost:3000";
+        process.env.NEXT_PUBLIC_APP_URL || getEnv().NEXT_PUBLIC_APP_URL || "http://localhost:3000";
       const guestUrl = `${baseUrl}/guest/${data.guestToken}`;
 
       const template: EmailTemplate = {

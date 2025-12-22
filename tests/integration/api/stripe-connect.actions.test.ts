@@ -49,8 +49,6 @@ jest.mock("@core/stripe/client", () => ({
 jest.mock("@core/utils/cloudflare-env", () => {
   const defaultEnv = {
     NEXT_PUBLIC_APP_URL: "http://localhost:3000",
-    NEXT_PUBLIC_SITE_URL: undefined,
-    VERCEL_URL: undefined,
     ALLOWED_ORIGINS: undefined,
     FORCE_SECURE_COOKIES: "false",
     NODE_ENV: "test",
@@ -84,8 +82,6 @@ describe("Stripe Connect actions", () => {
     setTestUserById("user_test", "u@example.com");
     getEnvMock.mockReturnValue({
       NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
-      NEXT_PUBLIC_SITE_URL: undefined,
-      VERCEL_URL: undefined,
       ALLOWED_ORIGINS: undefined,
       FORCE_SECURE_COOKIES: "false",
       NODE_ENV: process.env.NODE_ENV,
@@ -106,8 +102,6 @@ describe("Stripe Connect actions", () => {
     process.env.NEXT_PUBLIC_APP_URL = "https://example.com";
     getEnvMock.mockReturnValue({
       NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
-      NEXT_PUBLIC_SITE_URL: undefined,
-      VERCEL_URL: undefined,
       ALLOWED_ORIGINS: undefined,
       FORCE_SECURE_COOKIES: "true",
       NODE_ENV: process.env.NODE_ENV,
