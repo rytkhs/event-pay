@@ -38,11 +38,6 @@ declare namespace NodeJS {
     /** Stripe Webhook タイムスタンプ許容秒数（デフォルト: 300）。例: 300 */
     STRIPE_WEBHOOK_TIMESTAMP_TOLERANCE?: string;
 
-    /** Webhook結果ポーリングの最大待機ミリ秒（デフォルト: 2000） */
-    WEBHOOK_RESULT_POLL_MAX_MS?: string;
-    /** Webhook結果ポーリング間隔ミリ秒（デフォルト: 100） */
-    WEBHOOK_RESULT_POLL_INTERVAL_MS?: string;
-
     // ===========================
     // Resend API Configuration（必須）
     // ===========================
@@ -66,24 +61,6 @@ declare namespace NodeJS {
     UPSTASH_REDIS_REST_TOKEN?: string;
 
     // ===========================
-    // MCP Configuration（開発支援用、オプショナル）
-    // ===========================
-    /**
-     * GitHub Personal Access Token
-     * - Claude Code + GitHub MCPサーバー使用時に必要
-     * - Issue管理、PR作成、コードレビュー支援に使用
-     * - 権限: repo, issues, pull_requests
-     */
-    GITHUB_PERSONAL_ACCESS_TOKEN?: string;
-    /**
-     * PostgreSQL接続文字列（MCP用）
-     * - Claude Code + Postgres MCPサーバー使用時に必要
-     * - データベース直接操作、クエリ最適化に使用
-     * - 例: postgresql://postgres:password@db.xxx.supabase.co:5432/postgres
-     */
-    POSTGRES_CONNECTION_STRING?: string;
-
-    // ===========================
     // Node.js Environment
     // ===========================
     /** Node.js実行環境 */
@@ -104,6 +81,71 @@ declare namespace NodeJS {
     NEXT_PUBLIC_GA_MEASUREMENT_ID?: string;
     /** GA4 Measurement Protocol API Secret（サーバー側イベント送信用） */
     GA_API_SECRET?: string;
+
+    // ===========================
+    // App Mode / Flag Configuration
+    // ===========================
+    /** デモモード有効化フラグ */
+    NEXT_PUBLIC_IS_DEMO?: string;
+    /** 本番環境の公開URL */
+    NEXT_PUBLIC_PRODUCTION_URL?: string;
+
+    // ===========================
+    // Maintenance Configuration
+    // ===========================
+    /** メンテナンスモード有効化フラグ */
+    MAINTENANCE_MODE?: string;
+    /** メンテナンスモード回避用トークン */
+    MAINTENANCE_BYPASS_TOKEN?: string;
+
+    // ===========================
+    // Email Configuration
+    // ===========================
+    /** 送信元メールアドレス（必須） */
+    FROM_EMAIL: string;
+    /** 管理者メールアドレス */
+    ADMIN_EMAIL?: string;
+
+    // ===========================
+    // Security Secrets
+    // ===========================
+    /** レート制限/HMAC用シークレット（必須） */
+    RL_HMAC_SECRET: string;
+    /** Cronジョブ認証用シークレット */
+    CRON_SECRET?: string;
+
+    // ===========================
+    // QStash Configuration (Job Queue)
+    // ===========================
+    QSTASH_URL?: string;
+    QSTASH_TOKEN?: string;
+    QSTASH_CURRENT_SIGNING_KEY?: string;
+    QSTASH_NEXT_SIGNING_KEY?: string;
+
+    // ===========================
+    // LINE Login Configuration
+    // ===========================
+    NEXT_PUBLIC_LINE_CHANNEL_ID?: string;
+    LINE_CHANNEL_SECRET?: string;
+
+    // ===========================
+    // Other Integrations
+    // ===========================
+    /** Slack通知用Webhook URL */
+    SLACK_CONTACT_WEBHOOK_URL?: string;
+
+    // ===========================
+    // Demo Environment
+    // ===========================
+    DEMO_STRIPE_ACCOUNT_ID?: string;
+
+    // ===========================
+    // Testing & Development
+    // ===========================
+    /** テスト時のQStashスキップ（同期実行）設定 */
+    SKIP_QSTASH_IN_TEST?: string;
+    /** プラットフォーム残高の監視閾値 (JPY) */
+    PLATFORM_BALANCE_MIN_JPY?: string;
 
     // ===========================
     // Security - Webhook IP Control (Optional)
