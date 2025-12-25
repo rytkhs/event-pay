@@ -6,6 +6,7 @@ import {
   shouldShowMaintenancePage,
   getMaintenancePageHTML,
 } from "@core/maintenance/maintenance-page";
+import { buildCsp } from "@core/security/csp";
 import { getEnv } from "@core/utils/cloudflare-env";
 
 const AFTER_LOGIN_REDIRECT_PATH = "/dashboard";
@@ -60,13 +61,61 @@ function isPublicPath(pathname: string): boolean {
   return publicPrefixes.some((p) => pathname.startsWith(p));
 }
 
+/**
+ * nonce生成（動的ページ用）
+ */
+function generateNonce(fallbackId: string): string {
+  try {
+    if (typeof btoa !== "undefined" && typeof crypto?.randomUUID === "function") {
+      return btoa(crypto.randomUUID()).replace(/=+$/g, "");
+    }
+    const bytes = new Uint8Array(16);
+    crypto.getRandomValues(bytes);
+    let raw = "";
+    for (let i = 0; i < bytes.length; i++) raw += String.fromCharCode(bytes[i]);
+    return btoa(raw).replace(/=+$/g, "");
+  } catch {
+    return fallbackId.replace(/-/g, "");
+  }
+}
+
+/**
+ * レスポンスに共通ヘッダーを設定
+ */
+function applyCommonHeaders(
+  response: NextResponse,
+  options: {
+    requestId: string;
+    nonce: string | null;
+    isDemo: boolean;
+    csp: string | null;
+    reportUrl: string;
+  }
+): void {
+  response.headers.set("x-request-id", options.requestId);
+
+  if (options.nonce) {
+    response.headers.set("x-nonce", options.nonce);
+  }
+
+  if (options.isDemo) {
+    response.headers.set("X-Robots-Tag", "noindex, nofollow, noarchive");
+  }
+
+  if (options.csp) {
+    response.headers.set("Content-Security-Policy", options.csp);
+    response.headers.set("Reporting-Endpoints", `csp-endpoint="${options.reportUrl}"`);
+  }
+}
+
 export async function middleware(request: NextRequest) {
   const requestId = request.headers.get("x-request-id") ?? crypto.randomUUID();
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set("x-request-id", requestId);
   const pathname = request.nextUrl.pathname;
+  const reportUrl = new URL("/api/csp-report", request.url).toString();
 
-  // メンテナンスモードチェック（最優先）
+  // 1. メンテナンスモードチェック（最優先）
   const env = getEnv();
   const maintenanceMode = env.MAINTENANCE_MODE;
   const bypassToken = env.MAINTENANCE_BYPASS_TOKEN;
@@ -87,104 +136,57 @@ export async function middleware(request: NextRequest) {
   const isDemo = process.env.NEXT_PUBLIC_IS_DEMO === "true";
   const productionUrl = process.env.NEXT_PUBLIC_PRODUCTION_URL || "https://minnano-shukin.com";
 
-  // デモ環境: ルートとログイン画面へのアクセスは本番LPへリダイレクト
+  // 2. デモ環境: ルートとログイン画面へのアクセスは本番LPへリダイレクト
   if (isDemo && (pathname === "/" || pathname === "/login")) {
     return NextResponse.redirect(productionUrl);
   }
 
-  // 静的ページかどうかを判定
+  // 3. ページタイプ判定
   const isStatic = isStaticPage(pathname);
+  const isPublic = isPublicPath(pathname);
 
-  // CSP用のnonceを生成（静的ページでは生成しない）
-  const nonce = isStatic
-    ? null
-    : (() => {
-        try {
-          if (typeof btoa !== "undefined" && typeof crypto?.randomUUID === "function") {
-            return btoa(crypto.randomUUID()).replace(/=+$/g, "");
-          }
-          const bytes = new Uint8Array(16);
-          crypto.getRandomValues(bytes);
-          let raw = "";
-          for (let i = 0; i < bytes.length; i++) raw += String.fromCharCode(bytes[i]);
-          return btoa(raw).replace(/=+$/g, "");
-        } catch {
-          return requestId.replace(/-/g, "");
-        }
-      })();
+  // 4. nonce生成（動的ページのみ）
+  const nonce = isStatic ? null : generateNonce(requestId);
 
-  // 動的ページのみnonceをヘッダーに設定
-  if (!isStatic && nonce) {
+  if (nonce) {
     requestHeaders.set("x-nonce", nonce);
   }
 
-  // ベースレスポンス（ヘッダー伝播）
+  // 5. CSP生成（本番のみ）
+  // requestHeadersにもセットすることで、Next.jsがレンダリング時にnonceを読み取れるようにする
+  const csp =
+    process.env.NODE_ENV === "production"
+      ? buildCsp({
+          mode: isStatic ? "static" : "dynamic",
+          nonce,
+          isDev: false,
+        })
+      : null;
+
+  if (csp) {
+    requestHeaders.set("Content-Security-Policy", csp);
+  }
+
+  // 6. ベースレスポンス作成
   const response = NextResponse.next({
     request: {
       headers: requestHeaders,
     },
   });
-  response.headers.set("x-request-id", requestId);
-  if (!isStatic && nonce) {
-    response.headers.set("x-nonce", nonce);
+
+  // 共通ヘッダー適用
+  applyCommonHeaders(response, { requestId, nonce, isDemo, csp, reportUrl });
+
+  // 7. 認証ページ（/login, /register, /start-demo）は特別処理
+  // ログイン済みユーザーをダッシュボードへリダイレクトするため、認証チェックが必要
+  const isAuth = isAuthPath(pathname);
+
+  // 8. 公開ページかつ認証ページでない場合は早期リターン（Supabase認証スキップ）
+  if (isPublic && !isAuth) {
+    return response;
   }
 
-  // デモ環境の場合、noindex ヘッダーを付与
-  if (isDemo) {
-    response.headers.set("X-Robots-Tag", "noindex, nofollow, noarchive");
-  }
-
-  // 本番のみ：動的に生成した CSP を付与（開発/プレビューは next.config 側の静的CSPを使用）
-  if (process.env.NODE_ENV === "production") {
-    const cspDirectives = isStatic
-      ? // 静的ページ: nonceなし、'unsafe-inline'を許可（nonceがあると'unsafe-inline'が無視されるため）
-        [
-          "default-src 'self'",
-          "script-src 'self' 'unsafe-inline' https://js.stripe.com https://connect-js.stripe.com https://maps.googleapis.com https://*.googletagmanager.com https://static.cloudflareinsights.com",
-          "script-src-attr 'none'",
-          "style-src-elem 'self' 'unsafe-inline' https://fonts.googleapis.com",
-          "style-src-attr 'unsafe-inline'",
-          "img-src 'self' data: blob: https://maps.gstatic.com https://*.googleapis.com https://*.ggpht.com https://*.google-analytics.com https://*.googletagmanager.com",
-          "font-src 'self' https://fonts.gstatic.com",
-          "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.stripe.com https://checkout.stripe.com https://connect.stripe.com https://express.stripe.com https://dashboard.stripe.com https://connect-js.stripe.com https://m.stripe.network https://q.stripe.com https://maps.googleapis.com https://*.google-analytics.com https://*.analytics.google.com https://*.googletagmanager.com https://cloudflareinsights.com",
-          "frame-src 'self' https://hooks.stripe.com https://checkout.stripe.com https://js.stripe.com https://connect.stripe.com https://express.stripe.com",
-          "object-src 'none'",
-          "base-uri 'self'",
-          "form-action 'self' https://checkout.stripe.com",
-          "frame-ancestors 'none'",
-          "report-uri /api/csp-report",
-          "upgrade-insecure-requests",
-        ].join("; ")
-      : // 動的ページ: 従来通りnonce + 'strict-dynamic'を維持
-        [
-          "default-src 'self'",
-          // strict-dynamic を併用し、nonce 付きルートスクリプトからの信頼伝播を許可
-          `script-src 'self' 'nonce-${nonce}' https://js.stripe.com https://connect-js.stripe.com https://maps.googleapis.com https://*.googletagmanager.com https://static.cloudflareinsights.com 'strict-dynamic'`,
-          "script-src-attr 'none'",
-          // style は Level 3 の -elem/-attr で厳格化（属性インラインは許可）
-          `style-src-elem 'self' 'nonce-${nonce}' https://fonts.googleapis.com`,
-          "style-src-attr 'unsafe-inline'",
-          // 画像系は Maps 関連と data/blob を許可
-          "img-src 'self' data: blob: https://maps.gstatic.com https://*.googleapis.com https://*.ggpht.com https://*.google-analytics.com https://*.googletagmanager.com",
-          "font-src 'self' https://fonts.gstatic.com",
-          // Stripe/Supabase/Maps などへの接続を明示（開発環境ではローカルSupabaseも許可）
-          process.env.NODE_ENV !== "production"
-            ? "connect-src 'self' http://127.0.0.1:54321 https://*.supabase.co wss://*.supabase.co https://api.stripe.com https://checkout.stripe.com https://connect.stripe.com https://express.stripe.com https://dashboard.stripe.com https://connect-js.stripe.com https://m.stripe.network https://q.stripe.com https://maps.googleapis.com https://*.google-analytics.com https://*.analytics.google.com https://*.googletagmanager.com https://cloudflareinsights.com"
-            : "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.stripe.com https://checkout.stripe.com https://connect.stripe.com https://express.stripe.com https://dashboard.stripe.com https://connect-js.stripe.com https://m.stripe.network https://q.stripe.com https://maps.googleapis.com https://*.google-analytics.com https://*.analytics.google.com https://*.googletagmanager.com https://cloudflareinsights.com",
-          // Stripe 3DS/Checkout/Connect のために frame を許可
-          "frame-src 'self' https://hooks.stripe.com https://checkout.stripe.com https://js.stripe.com https://connect.stripe.com https://express.stripe.com",
-          // セキュリティ強化系
-          "object-src 'none'",
-          "base-uri 'self'",
-          "form-action 'self' https://checkout.stripe.com",
-          "frame-ancestors 'none'",
-          "report-uri /api/csp-report",
-          "upgrade-insecure-requests",
-        ].join("; ");
-    response.headers.set("Content-Security-Policy", cspDirectives);
-  }
-
-  // Supabase SSRクライアント（Cookieの双方向同期: getAll / setAll）
+  // 9. 認証が必要なページ: Supabase SSRクライアント
   const supabaseUrl = env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseKey = env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
@@ -210,50 +212,37 @@ export async function middleware(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  // トップページの認証リダイレクトはサーバーコンポーネント側で処理
+  // 10. 認証ガード: 未ログインはログイン画面へ
+  if (!user) {
+    // 公開ページ（/login 等）の場合はそのまま表示
+    if (isPublic) {
+      return response;
+    }
 
-  // 認証ガード: 公開以外はログイン必須
-  if (!isPublicPath(pathname) && !user) {
     const redirectUrl = new URL("/login", request.url);
     redirectUrl.searchParams.set("redirectTo", pathname);
     const redirectResponse = NextResponse.redirect(redirectUrl);
 
-    // 元のresponseからすべてのCookieをコピー（Cloudflare Workers環境での同期問題対策）
+    // Cookieをコピー（Cloudflare Workers環境での同期問題対策）
     response.cookies.getAll().forEach((cookie) => {
       redirectResponse.cookies.set(cookie);
     });
 
-    // その他のヘッダーもコピー
-    redirectResponse.headers.set("x-request-id", requestId);
-    if (!isStatic && nonce) {
-      redirectResponse.headers.set("x-nonce", nonce);
-    }
-    if (isDemo) {
-      redirectResponse.headers.set("X-Robots-Tag", "noindex, nofollow, noarchive");
-    }
-
+    applyCommonHeaders(redirectResponse, { requestId, nonce, isDemo, csp, reportUrl });
     return redirectResponse;
   }
 
-  // ログイン済みが認証ページへ来たらダッシュボードへ
-  if (isAuthPath(pathname) && user) {
+  // 11. ログイン済みが認証ページへ来たらダッシュボードへ
+  if (isAuth) {
     const dashboardUrl = new URL(AFTER_LOGIN_REDIRECT_PATH, request.url);
     const redirectResponse = NextResponse.redirect(dashboardUrl);
 
-    // 元のresponseからすべてのCookieをコピー（Cloudflare Workers環境での同期問題対策）
+    // Cookieをコピー（Cloudflare Workers環境での同期問題対策）
     response.cookies.getAll().forEach((cookie) => {
       redirectResponse.cookies.set(cookie);
     });
 
-    // その他のヘッダーもコピー
-    redirectResponse.headers.set("x-request-id", requestId);
-    if (!isStatic && nonce) {
-      redirectResponse.headers.set("x-nonce", nonce);
-    }
-    if (isDemo) {
-      redirectResponse.headers.set("X-Robots-Tag", "noindex, nofollow, noarchive");
-    }
-
+    applyCommonHeaders(redirectResponse, { requestId, nonce, isDemo, csp, reportUrl });
     return redirectResponse;
   }
 
@@ -262,6 +251,13 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/((?!api/webhooks|api/cron|api/csp-report|api/errors|api/health|healthz|readyz|_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml|manifest.webmanifest|.well-known|apple-app-site-association|assetlinks.json|sw.js|service-worker.js|images|.*\\.(?:svg|png|jpg|jpeg|gif|webp|json|css|js)$).*)",
+    {
+      source:
+        "/((?!api/webhooks|api/cron|api/csp-report|api/errors|api/health|healthz|readyz|_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml|manifest.webmanifest|.well-known|apple-app-site-association|assetlinks.json|sw.js|service-worker.js|images|.*\\.(?:svg|png|jpg|jpeg|gif|webp|json|css|js)$).*)",
+      missing: [
+        { type: "header", key: "next-router-prefetch" },
+        { type: "header", key: "purpose", value: "prefetch" },
+      ],
+    },
   ],
 };
