@@ -8,6 +8,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { logger } from "@core/logging/app-logger";
+import { logToSystemLogs } from "@core/logging/system-logger";
 import { sanitizeForEventPay } from "@core/utils/sanitize";
 import { isValidIsoDateTimeString } from "@core/utils/timezone";
 
@@ -102,7 +103,7 @@ export class RLSGuestTokenValidator implements IGuestTokenValidator {
   async validateToken(token: string): Promise<GuestValidationResult> {
     // 基本フォーマット検証
     if (!this.validateTokenFormat(token)) {
-      await this.safeLogGuestAccess(token, "VALIDATE_TOKEN", false, {
+      await this.safeLogGuestAccess(token, "guest.validate", false, {
         errorCode: GuestErrorCode.INVALID_FORMAT,
         tableName: "attendances",
         operationType: "SELECT",
@@ -125,7 +126,7 @@ export class RLSGuestTokenValidator implements IGuestTokenValidator {
         .single();
 
       if (error || !rpcRow) {
-        await this.safeLogGuestAccess(token, "VALIDATE_TOKEN_RPC_FAILED", false, {
+        await this.safeLogGuestAccess(token, "guest.validate", false, {
           errorCode: GuestErrorCode.TOKEN_NOT_FOUND,
           errorMessage: error?.message,
           tableName: "attendances",
@@ -152,7 +153,7 @@ export class RLSGuestTokenValidator implements IGuestTokenValidator {
       const canModify = this.checkCanModify(eventData);
 
       // 成功をログに記録
-      await this.safeLogGuestAccess(token, "VALIDATE_TOKEN_DETAILS", true, {
+      await this.safeLogGuestAccess(token, "guest.validate", true, {
         attendanceId: (rpcRow as any).attendance_id,
         eventId: eventData ? (eventData as any).id : "",
         tableName: "attendances",
@@ -168,7 +169,7 @@ export class RLSGuestTokenValidator implements IGuestTokenValidator {
       };
     } catch (error) {
       // データベースアクセスエラーやその他の例外
-      await this.safeLogGuestAccess(token, "VALIDATE_TOKEN_DETAILS", false, {
+      await this.safeLogGuestAccess(token, "guest.validate", false, {
         errorCode: GuestErrorCode.TOKEN_NOT_FOUND,
         errorMessage: String(error),
         tableName: "attendances",
@@ -192,7 +193,7 @@ export class RLSGuestTokenValidator implements IGuestTokenValidator {
   async validateGuestTokenWithDetails(token: string): Promise<RLSGuestTokenValidationResult> {
     // 基本フォーマット検証
     if (!this.validateTokenFormat(token)) {
-      await this.safeLogGuestAccess(token, "VALIDATE_TOKEN_DETAILS", false, {
+      await this.safeLogGuestAccess(token, "guest.read", false, {
         errorCode: GuestErrorCode.INVALID_FORMAT,
         tableName: "attendances",
         operationType: "SELECT",
@@ -215,7 +216,7 @@ export class RLSGuestTokenValidator implements IGuestTokenValidator {
         .single();
 
       if (error || !rpcRow) {
-        await this.safeLogGuestAccess(token, "VALIDATE_TOKEN_DETAILS", false, {
+        await this.safeLogGuestAccess(token, "guest.read", false, {
           errorCode: GuestErrorCode.TOKEN_NOT_FOUND,
           errorMessage: error?.message,
           tableName: "attendances",
@@ -251,7 +252,7 @@ export class RLSGuestTokenValidator implements IGuestTokenValidator {
       const canModify = this.checkCanModifyAttendance(eventData);
 
       // 成功をログに記録
-      await this.safeLogGuestAccess(token, "VALIDATE_TOKEN_DETAILS", true, {
+      await this.safeLogGuestAccess(token, "guest.read", true, {
         attendanceId: (rpcRow as any).attendance_id,
         eventId: eventData ? eventData.id : "",
         tableName: "attendances",
@@ -289,7 +290,7 @@ export class RLSGuestTokenValidator implements IGuestTokenValidator {
         canModify,
       };
     } catch (error) {
-      await this.safeLogGuestAccess(token, "VALIDATE_TOKEN_DETAILS", false, {
+      await this.safeLogGuestAccess(token, "guest.read", false, {
         errorCode: GuestErrorCode.TOKEN_NOT_FOUND,
         errorMessage: String(error),
         tableName: "attendances",
@@ -336,7 +337,7 @@ export class RLSGuestTokenValidator implements IGuestTokenValidator {
     }
 
     // セッション作成をログに記録
-    await this.safeLogGuestAccess(token, "CREATE_SESSION", true, {
+    await this.safeLogGuestAccess(token, "guest.access", true, {
       attendanceId: validationResult.attendanceId,
       eventId: validationResult.eventId,
       operationType: "SELECT",
@@ -494,7 +495,7 @@ export class RLSGuestTokenValidator implements IGuestTokenValidator {
    */
   private async safeLogGuestAccess(
     token: string,
-    action: string,
+    action: "guest.access" | "guest.validate" | "guest.update" | "guest.read",
     success: boolean,
     additionalInfo?: {
       attendanceId?: string;
@@ -507,17 +508,41 @@ export class RLSGuestTokenValidator implements IGuestTokenValidator {
     }
   ): Promise<void> {
     try {
-      // Audit context removed with security reporter
-      logger.info("Guest access logged", {
-        token: token.substring(0, 8),
+      // 監査ログの記録
+      await logToSystemLogs(
+        {
+          log_category: "security",
+          action,
+          actor_type: "guest",
+          actor_identifier: `${token.substring(0, 8)}...`, // マスクされたトークン
+          resource_type: additionalInfo?.tableName === "attendances" ? "attendance" : "event",
+          resource_id: additionalInfo?.attendanceId || additionalInfo?.eventId,
+          outcome: success ? "success" : "failure",
+          message: success
+            ? `Guest ${action} successful`
+            : `Guest ${action} failed: ${additionalInfo?.errorCode || "unknown error"}`,
+          error_code: additionalInfo?.errorCode,
+          error_message: additionalInfo?.errorMessage,
+          metadata: {
+            token_prefix: token.substring(0, 8),
+            attendance_id: additionalInfo?.attendanceId,
+            event_id: additionalInfo?.eventId,
+            operation_type: additionalInfo?.operationType,
+            result_count: additionalInfo?.resultCount,
+          },
+        },
+        {
+          alsoLogToPino: true,
+          throwOnError: false, // 失敗しても業務を継続
+        }
+      );
+    } catch (error) {
+      // ログ記録自体の失敗はフォールバックとしてシステムログに記録
+      logger.error("Critical fail: guest audit log recording failed", {
+        error: String(error),
+        token_prefix: token.substring(0, 8),
         action,
-        success,
-        additionalInfo,
       });
-    } catch (_auditError) {
-      // 監査ログの失敗をコンソールに記録するが、ビジネスロジックは継続
-      // 将来的には、監査ログ失敗の通知システムを実装することも検討
-      // 例: メトリクス送信、アラート送信など
     }
   }
 }

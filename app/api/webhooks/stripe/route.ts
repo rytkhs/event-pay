@@ -179,7 +179,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 本番環境: QStashに転送（完全なイベントデータを送信）
-    const workerUrl = `${getEnv().APP_BASE_URL || getEnv().NEXTAUTH_URL}/api/workers/stripe-webhook`;
+    const workerUrl = `${getEnv().NEXT_PUBLIC_APP_URL}/api/workers/stripe-webhook`;
 
     // 完全なイベントデータを送信（イベント再取得を不要にする）
     const qstashBody = {

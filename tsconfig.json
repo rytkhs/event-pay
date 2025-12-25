@@ -1,7 +1,7 @@
 {
   "compilerOptions": {
-    "target": "ES2017",
-    "lib": ["dom", "dom.iterable", "es6"],
+    "target": "ES2022",
+    "lib": ["dom", "dom.iterable", "esnext"],
     "allowJs": true,
     "skipLibCheck": true,
     "strict": true,
@@ -27,19 +27,9 @@
       "@features/*": ["./features/*"],
       "@components/*": ["./components/*"],
       "@/types/*": ["./types/*"],
-      "@tests/*": ["./tests/*"],
-      "server-only": ["./tests/mocks/server-only.js"]
+      "@tests/*": ["./tests/*"]
     }
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts", "types/**/*.ts"],
-  "exclude": [
-    "node_modules",
-    "__tests__",
-    "**/*.test.ts",
-    "**/*.test.tsx",
-    "supabase/functions/**"
-  ],
-  "ts-node": {
-    "esm": true
-  }
+  "exclude": ["node_modules", "tests/**", "**/*.test.ts", "**/*.test.tsx", "supabase/functions/**"]
 }

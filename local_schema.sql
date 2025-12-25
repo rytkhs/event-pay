@@ -1,5 +1,6 @@
 
 
+
 SET statement_timeout = 0;
 SET lock_timeout = 0;
 SET idle_in_transaction_session_timeout = 0;
@@ -785,6 +786,51 @@ $$;
 ALTER FUNCTION "public"."generate_settlement_report"("input_event_id" "uuid", "input_created_by" "uuid") OWNER TO "app_definer";
 
 
+CREATE OR REPLACE FUNCTION "public"."get_dashboard_stats"() RETURNS TABLE("upcoming_events_count" integer, "total_upcoming_participants" integer, "unpaid_fees_total" bigint)
+    LANGUAGE "plpgsql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'pg_catalog', 'public', 'pg_temp'
+    AS $$
+DECLARE
+  v_user_id uuid;
+BEGIN
+  v_user_id := auth.uid();
+
+  -- 未ログイン時はゼロを返す
+  IF v_user_id IS NULL THEN
+    RETURN QUERY SELECT 0, 0, 0::bigint;
+    RETURN;
+  END IF;
+
+  RETURN QUERY
+  SELECT
+    COUNT(DISTINCT e.id)::integer,
+    COUNT(DISTINCT a.id)::integer,
+    COALESCE(SUM(
+      CASE
+        WHEN a.id IS NOT NULL AND e.fee > 0 AND NOT EXISTS (
+          SELECT 1 FROM payments p
+          WHERE p.attendance_id = a.id
+          AND p.status IN ('paid', 'received')
+        ) THEN e.fee
+        ELSE 0
+      END
+    ), 0)::bigint
+  FROM events e
+  LEFT JOIN attendances a ON e.id = a.event_id AND a.status = 'attending'
+  WHERE e.created_by = v_user_id
+    AND e.date > now()
+    AND e.canceled_at IS NULL;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."get_dashboard_stats"() OWNER TO "postgres";
+
+
+COMMENT ON FUNCTION "public"."get_dashboard_stats"() IS 'ユーザーのダッシュボード統計を取得する関数';
+
+
+
 CREATE OR REPLACE FUNCTION "public"."get_event_creator_name"("p_creator_id" "uuid") RETURNS "text"
     LANGUAGE "plpgsql" STABLE SECURITY DEFINER
     SET "search_path" TO 'pg_catalog', 'public', 'pg_temp'
@@ -932,11 +978,12 @@ CREATE OR REPLACE FUNCTION "public"."handle_new_user"() RETURNS "trigger"
     SET "search_path" TO 'pg_catalog', 'public', 'pg_temp'
     AS $$
 BEGIN
-  -- auth.usersからのメタデータを使用してpublic.usersにプロファイルを作成
-  INSERT INTO public.users (id, name)
+  -- auth.usersからのメタデータとemailを使用してpublic.usersにプロファイルを作成
+  INSERT INTO public.users (id, name, email)
   VALUES (
     NEW.id,
-    COALESCE(NEW.raw_user_meta_data->>'name', 'ユーザー')
+    COALESCE(NEW.raw_user_meta_data->>'name', 'ユーザー'),
+    NEW.email
   );
   RETURN NEW;
 END;
@@ -1451,7 +1498,7 @@ $$;
 ALTER FUNCTION "public"."rpc_public_get_connect_account"("p_event_id" "uuid", "p_creator_id" "uuid") OWNER TO "app_definer";
 
 
-CREATE OR REPLACE FUNCTION "public"."rpc_public_get_event"("p_invite_token" "text") RETURNS TABLE("id" "uuid", "title" character varying, "date" timestamp with time zone, "location" character varying, "description" "text", "fee" integer, "capacity" integer, "payment_methods" "public"."payment_method_enum"[], "registration_deadline" timestamp with time zone, "payment_deadline" timestamp with time zone, "invite_token" character varying, "canceled_at" timestamp with time zone, "attendances_count" integer)
+CREATE OR REPLACE FUNCTION "public"."rpc_public_get_event"("p_invite_token" "text") RETURNS TABLE("id" "uuid", "created_by" "uuid", "organizer_name" character varying, "title" character varying, "date" timestamp with time zone, "location" character varying, "description" "text", "fee" integer, "capacity" integer, "payment_methods" "public"."payment_method_enum"[], "registration_deadline" timestamp with time zone, "payment_deadline" timestamp with time zone, "invite_token" character varying, "canceled_at" timestamp with time zone, "attendances_count" integer)
     LANGUAGE "plpgsql" STABLE SECURITY DEFINER
     SET "search_path" TO 'pg_catalog', 'public', 'pg_temp'
     AS $$
@@ -1459,6 +1506,8 @@ BEGIN
     RETURN QUERY
     SELECT
         e.id,
+        e.created_by,
+        COALESCE(u.name, '主催者') as organizer_name,
         e.title,
         e.date,
         e.location,
@@ -1476,14 +1525,17 @@ BEGIN
           WHERE a.event_id = e.id AND a.status = 'attending'
         ) AS attendances_count
     FROM public.events e
-    WHERE e.invite_token = p_invite_token
-      AND e.canceled_at IS NULL
-      AND e.date > NOW();
+    LEFT JOIN public.users u ON e.created_by = u.id
+    WHERE e.invite_token = p_invite_token;
 END;
 $$;
 
 
 ALTER FUNCTION "public"."rpc_public_get_event"("p_invite_token" "text") OWNER TO "app_definer";
+
+
+COMMENT ON FUNCTION "public"."rpc_public_get_event"("p_invite_token" "text") IS '招待トークンからイベント詳細を取得(公開RPC、主催者名・ID含む、ステータスフィルタなし)';
+
 
 
 CREATE OR REPLACE FUNCTION "public"."rpc_update_payment_status_safe"("p_payment_id" "uuid", "p_new_status" "public"."payment_status_enum", "p_expected_version" integer, "p_user_id" "uuid", "p_notes" "text" DEFAULT NULL::"text") RETURNS json
@@ -2162,6 +2214,26 @@ COMMENT ON COLUMN "public"."fee_config"."is_tax_included" IS 'Whether platform f
 
 
 
+CREATE TABLE IF NOT EXISTS "public"."line_accounts" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "auth_user_id" "uuid" NOT NULL,
+    "channel_id" "text" NOT NULL,
+    "line_sub" "text" NOT NULL,
+    "email" "text",
+    "display_name" "text",
+    "picture_url" "text",
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL
+);
+
+
+ALTER TABLE "public"."line_accounts" OWNER TO "postgres";
+
+
+COMMENT ON TABLE "public"."line_accounts" IS 'Supabaseユーザーに紐付くLINEアカウント情報を格納する';
+
+
+
 CREATE TABLE IF NOT EXISTS "public"."payment_disputes" (
     "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
     "payment_id" "uuid",
@@ -2322,6 +2394,7 @@ CREATE TABLE IF NOT EXISTS "public"."users" (
     "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
     "is_deleted" boolean DEFAULT false NOT NULL,
     "deleted_at" timestamp with time zone,
+    "email" character varying(255),
     CONSTRAINT "users_soft_delete_consistency" CHECK (("is_deleted" = ("deleted_at" IS NOT NULL)))
 );
 
@@ -2340,6 +2413,10 @@ COMMENT ON COLUMN "public"."users"."is_deleted" IS '論理削除フラグ（true
 
 
 COMMENT ON COLUMN "public"."users"."deleted_at" IS '論理削除の実行日時（タイムスタンプ）';
+
+
+
+COMMENT ON COLUMN "public"."users"."email" IS 'ユーザーのメールアドレス(auth.usersと同期)';
 
 
 
@@ -2636,6 +2713,16 @@ ALTER TABLE ONLY "public"."fee_config"
 
 
 
+ALTER TABLE ONLY "public"."line_accounts"
+    ADD CONSTRAINT "line_accounts_channel_id_line_sub_key" UNIQUE ("channel_id", "line_sub");
+
+
+
+ALTER TABLE ONLY "public"."line_accounts"
+    ADD CONSTRAINT "line_accounts_pkey" PRIMARY KEY ("id");
+
+
+
 ALTER TABLE ONLY "public"."payment_disputes"
     ADD CONSTRAINT "payment_disputes_pkey" PRIMARY KEY ("id");
 
@@ -2921,7 +3008,19 @@ CREATE INDEX "idx_system_logs_user_id" ON "public"."system_logs" USING "btree" (
 
 
 
+CREATE UNIQUE INDEX "idx_users_email_unique" ON "public"."users" USING "btree" ("lower"(("email")::"text")) WHERE ("email" IS NOT NULL);
+
+
+
 CREATE INDEX "idx_users_is_deleted" ON "public"."users" USING "btree" ("is_deleted") WHERE "is_deleted";
+
+
+
+CREATE INDEX "line_accounts_auth_user_id_idx" ON "public"."line_accounts" USING "btree" ("auth_user_id");
+
+
+
+CREATE INDEX "line_accounts_channel_id_line_sub_idx" ON "public"."line_accounts" USING "btree" ("channel_id", "line_sub");
 
 
 
@@ -2985,6 +3084,11 @@ ALTER TABLE ONLY "public"."events"
 
 ALTER TABLE ONLY "public"."events"
     ADD CONSTRAINT "events_created_by_fkey" FOREIGN KEY ("created_by") REFERENCES "public"."users"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."line_accounts"
+    ADD CONSTRAINT "line_accounts_auth_user_id_fkey" FOREIGN KEY ("auth_user_id") REFERENCES "auth"."users"("id") ON DELETE CASCADE;
 
 
 
@@ -3156,6 +3260,9 @@ CREATE POLICY "guest_token_can_view_own_payments" ON "public"."payments" FOR SEL
 
 COMMENT ON POLICY "guest_token_can_view_own_payments" ON "public"."payments" IS 'ゲストトークンを持つユーザーが自分の参加に関連する決済情報を閲覧できるポリシー。';
 
+
+
+ALTER TABLE "public"."line_accounts" ENABLE ROW LEVEL SECURITY;
 
 
 ALTER TABLE "public"."payment_disputes" ENABLE ROW LEVEL SECURITY;
@@ -3426,6 +3533,11 @@ GRANT ALL ON FUNCTION "public"."generate_settlement_report"("input_event_id" "uu
 
 
 
+GRANT ALL ON FUNCTION "public"."get_dashboard_stats"() TO "authenticated";
+GRANT ALL ON FUNCTION "public"."get_dashboard_stats"() TO "service_role";
+
+
+
 REVOKE ALL ON FUNCTION "public"."get_event_creator_name"("p_creator_id" "uuid") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."get_event_creator_name"("p_creator_id" "uuid") TO "anon";
 GRANT ALL ON FUNCTION "public"."get_event_creator_name"("p_creator_id" "uuid") TO "authenticated";
@@ -3519,9 +3631,9 @@ GRANT ALL ON FUNCTION "public"."rpc_public_get_connect_account"("p_event_id" "uu
 
 
 
-GRANT ALL ON FUNCTION "public"."rpc_public_get_event"("p_invite_token" "text") TO "anon";
 GRANT ALL ON FUNCTION "public"."rpc_public_get_event"("p_invite_token" "text") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."rpc_public_get_event"("p_invite_token" "text") TO "service_role";
+GRANT ALL ON FUNCTION "public"."rpc_public_get_event"("p_invite_token" "text") TO "anon";
 
 
 
@@ -3609,6 +3721,12 @@ GRANT SELECT ON TABLE "public"."fee_config" TO "authenticated";
 
 
 
+GRANT ALL ON TABLE "public"."line_accounts" TO "anon";
+GRANT ALL ON TABLE "public"."line_accounts" TO "authenticated";
+GRANT ALL ON TABLE "public"."line_accounts" TO "service_role";
+
+
+
 GRANT ALL ON TABLE "public"."payment_disputes" TO "anon";
 GRANT ALL ON TABLE "public"."payment_disputes" TO "authenticated";
 GRANT ALL ON TABLE "public"."payment_disputes" TO "service_role";
@@ -3693,6 +3811,7 @@ ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TAB
 ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TABLES TO "anon";
 ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TABLES TO "authenticated";
 ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TABLES TO "service_role";
+
 
 
 

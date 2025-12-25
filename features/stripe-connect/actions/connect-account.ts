@@ -68,14 +68,8 @@ function validateAndNormalizeRedirectUrls(formData: FormData): {
     if (env.NEXT_PUBLIC_APP_URL) {
       origins.push(env.NEXT_PUBLIC_APP_URL);
     }
-    if (env.NEXT_PUBLIC_SITE_URL) {
-      origins.push(env.NEXT_PUBLIC_SITE_URL);
-    }
     origins.push("http://localhost:3000");
     origins.push("https://localhost:3000");
-    if (env.VERCEL_URL) {
-      origins.push(`https://${env.VERCEL_URL}`);
-    }
     if (env.ALLOWED_ORIGINS) {
       origins.push(
         ...env.ALLOWED_ORIGINS.split(",")
@@ -612,8 +606,7 @@ export async function handleOnboardingRefreshAction(): Promise<void> {
     const user = await getAuthenticatedUser();
 
     // 2. 必要情報の準備（ベースURL → refresh/return URL）
-    const baseUrl =
-      getEnv().NEXT_PUBLIC_APP_URL || getEnv().NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+    const baseUrl = getEnv().NEXT_PUBLIC_APP_URL || "http://localhost:3000";
     const refreshUrl = `${baseUrl}${CONNECT_REFRESH_PATH}`;
     const returnUrl = `${baseUrl}${CONNECT_RETURN_PATH}`;
 
@@ -758,8 +751,7 @@ export async function startOnboardingAction(): Promise<void> {
     const user = await getAuthenticatedUser();
 
     // 2. 必要情報の準備（ベースURL → refresh/return URL）
-    const baseUrl =
-      getEnv().NEXT_PUBLIC_APP_URL || getEnv().NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+    const baseUrl = getEnv().NEXT_PUBLIC_APP_URL || "http://localhost:3000";
     const refreshUrl = `${baseUrl}${CONNECT_REFRESH_PATH}`;
     const returnUrl = `${baseUrl}${CONNECT_RETURN_PATH}`;
 

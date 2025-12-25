@@ -59,7 +59,7 @@ export async function POST(request: NextRequest) {
 
     // QStash署名検証
     // const url = request.nextUrl.toString();
-    const url = `${getEnv().APP_BASE_URL || getEnv().NEXTAUTH_URL}/api/workers/stripe-webhook`;
+    const url = `${getEnv().NEXT_PUBLIC_APP_URL}/api/workers/stripe-webhook`;
     const signature = request.headers.get("Upstash-Signature");
     const deliveryId = request.headers.get("Upstash-Delivery-Id");
     const rawBody = await request.text();

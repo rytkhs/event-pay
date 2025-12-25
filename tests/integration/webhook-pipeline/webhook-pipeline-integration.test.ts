@@ -86,7 +86,7 @@ describe("🔗 Webhook パイプライン 統合テスト", () => {
   beforeAll(() => {
     // テスト環境の基本設定
     process.env.NODE_ENV = "test";
-    process.env.APP_BASE_URL = "https://test.eventpay.com";
+    process.env.NEXT_PUBLIC_APP_URL = "https://test.eventpay.com";
     process.env.ENABLE_STRIPE_IP_CHECK = "false"; // IP制限を無効化（統合テスト用）
 
     // Stripe関連の環境変数（統合テスト用）

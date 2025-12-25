@@ -42,7 +42,7 @@ export async function POST(request: NextRequest) {
     // 署名検証
     const signature = request.headers.get("Upstash-Signature");
     const deliveryId = request.headers.get("Upstash-Delivery-Id");
-    const url = `${getEnv().APP_BASE_URL || getEnv().NEXTAUTH_URL}/api/workers/event-cancel`;
+    const url = `${getEnv().NEXT_PUBLIC_APP_URL}/api/workers/event-cancel`;
     const rawBody = await request.text();
 
     if (!signature) {

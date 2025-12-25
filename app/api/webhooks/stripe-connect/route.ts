@@ -183,7 +183,7 @@ export async function POST(request: NextRequest) {
     }
 
     // QStash に publish（完全なイベントデータを送信）
-    const workerUrl = `${getEnv().APP_BASE_URL || getEnv().NEXTAUTH_URL}/api/workers/stripe-connect-webhook`;
+    const workerUrl = `${getEnv().NEXT_PUBLIC_APP_URL}/api/workers/stripe-connect-webhook`;
     connectLogger.debug("Publishing Connect webhook to QStash", {
       worker_url: workerUrl,
       event_id: event.id,

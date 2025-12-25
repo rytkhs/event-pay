@@ -76,7 +76,7 @@ export async function cancelEventAction(
       if (!updatedRows || updatedRows.length === 0) {
         return createServerActionSuccess({ status: "canceled" as const }, "イベントを中止しました");
       }
-      const workerUrl = `${getEnv().APP_BASE_URL || getEnv().NEXTAUTH_URL}/api/workers/event-cancel`;
+      const workerUrl = `${getEnv().NEXT_PUBLIC_APP_URL}/api/workers/event-cancel`;
       const body = { eventId, message: params.message };
 
       const qstash = getQstashClient();
