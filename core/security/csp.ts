@@ -56,6 +56,9 @@ export const ALLOWED_ORIGINS = {
   /** Google Fonts */
   fonts: ["https://fonts.googleapis.com", "https://fonts.gstatic.com"],
 
+  /** 自社アプリケーションドメイン (クロスオリジン通信用) */
+  app: ["https://minnano-shukin.com", "https://demo.minnano-shukin.com"],
+
   /** ローカル開発用 */
   localDev: ["http://127.0.0.1:54321"],
 } as const;
@@ -113,6 +116,7 @@ export function buildCsp(params: BuildCspParams): string {
   // connect-src: API/WebSocket接続先
   const connectSrcBase = [
     "'self'",
+    ...ALLOWED_ORIGINS.app,
     ...ALLOWED_ORIGINS.supabase,
     ...ALLOWED_ORIGINS.stripeConnect,
     ALLOWED_ORIGINS.maps[0], // maps.googleapis.com
