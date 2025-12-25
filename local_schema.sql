@@ -2753,6 +2753,11 @@ ALTER TABLE ONLY "public"."stripe_connect_accounts"
 
 
 
+ALTER TABLE ONLY "public"."stripe_connect_accounts"
+    ADD CONSTRAINT "stripe_connect_accounts_stripe_account_id_key" UNIQUE ("stripe_account_id");
+
+
+
 ALTER TABLE ONLY "public"."system_logs"
     ADD CONSTRAINT "system_logs_pkey" PRIMARY KEY ("id");
 
