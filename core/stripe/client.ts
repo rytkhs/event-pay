@@ -20,7 +20,6 @@ export function getStripe(): Stripe {
     key_has_spaces: stripeSecretKey.includes(" "),
     key_has_tabs: stripeSecretKey.includes("\t"),
     node_env: env.NODE_ENV,
-    vercel_env: env.VERCEL_ENV,
   });
 
   const instance = new Stripe(stripeSecretKey, {
@@ -107,7 +106,7 @@ export function getStripe(): Stripe {
  */
 export const getWebhookSecrets = (): string[] => {
   const env = getEnv();
-  const isProd = env.NODE_ENV === "production" || env.VERCEL_ENV === "production";
+  const isProd = env.NODE_ENV === "production";
   const primary = isProd
     ? env.STRIPE_WEBHOOK_SECRET
     : (env.STRIPE_WEBHOOK_SECRET_TEST ?? env.STRIPE_WEBHOOK_SECRET);
@@ -132,7 +131,7 @@ export const getWebhookSecrets = (): string[] => {
  */
 export const getConnectWebhookSecrets = (): string[] => {
   const env = getEnv();
-  const isProd = env.NODE_ENV === "production" || env.VERCEL_ENV === "production";
+  const isProd = env.NODE_ENV === "production";
   const primary = isProd
     ? env.STRIPE_CONNECT_WEBHOOK_SECRET
     : (env.STRIPE_CONNECT_WEBHOOK_SECRET_TEST ?? env.STRIPE_CONNECT_WEBHOOK_SECRET);
