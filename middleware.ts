@@ -31,6 +31,7 @@ function isStaticPage(pathname: string): boolean {
     "/privacy", // プライバシーポリシー
     "/terms", // 利用規約
     "/tokushoho/platform", // 特定商取引法（プラットフォーム）
+    "/contact", // お問い合わせ
   ];
   return staticPages.includes(pathname);
 }
