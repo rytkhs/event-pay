@@ -70,9 +70,9 @@ export default async function InvitePage({ params }: InvitePageProps) {
             };
           case "EVENT_CANCELED":
             return {
-              title: "定員到達",
+              title: "イベントキャンセル",
               icon: "business" as const,
-              description: "このイベントはキャンセルされました。",
+              description: "主催者によりこのイベントは中止されました。",
             };
           case "REGISTRATION_DEADLINE_PASSED":
             return {
