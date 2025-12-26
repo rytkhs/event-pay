@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 
 import { createServerClient } from "@supabase/ssr";
 
+import { DEMO_ALLOWED_PREFIXES, DEMO_REDIRECT_PATHS } from "@core/constants/demo-config";
 import {
   shouldShowMaintenancePage,
   getMaintenancePageHTML,
@@ -10,6 +11,12 @@ import { buildCsp } from "@core/security/csp";
 import { getEnv } from "@core/utils/cloudflare-env";
 
 const AFTER_LOGIN_REDIRECT_PATH = "/dashboard";
+
+function getDemoAction(pathname: string): "redirect" | "allow" | "block" {
+  if (DEMO_REDIRECT_PATHS.includes(pathname)) return "redirect";
+  if (DEMO_ALLOWED_PREFIXES.some((p) => pathname === p || pathname.startsWith(p))) return "allow";
+  return "block";
+}
 
 function isAuthPath(pathname: string): boolean {
   // 認証ページ: ログイン済みならダッシュボードへ誘導（パスワードリセット関連は例外）
@@ -49,6 +56,7 @@ function isPublicPath(pathname: string): boolean {
     "/auth/callback/line",
     "/auth/line",
     "/auth/auth-code-error",
+    "/demo-redirect",
   ];
   if (publicExact.includes(pathname)) return true;
   const publicPrefixes = [
@@ -134,11 +142,23 @@ export async function middleware(request: NextRequest) {
   }
 
   const isDemo = process.env.NEXT_PUBLIC_IS_DEMO === "true";
-  const productionUrl = process.env.NEXT_PUBLIC_PRODUCTION_URL || "https://minnano-shukin.com";
 
-  // 2. デモ環境: ルートとログイン画面へのアクセスは本番LPへリダイレクト
-  if (isDemo && (pathname === "/" || pathname === "/login")) {
-    return NextResponse.redirect(productionUrl);
+  // 2. デモ環境: URLルーティング制御
+  if (isDemo) {
+    const action = getDemoAction(pathname);
+    if (action === "redirect") {
+      // クライアントサイドリダイレクト用の転送ページへ（CORSエラー回避）
+      // ブラウザURLを更新させてパラメータを確実に読み取らせるため redirect を使用
+      const redirectPageUrl = new URL("/demo-redirect", request.url);
+      redirectPageUrl.searchParams.set("to", pathname);
+      return NextResponse.redirect(redirectPageUrl);
+    }
+    if (action === "block") {
+      return new NextResponse("Not Found", {
+        status: 404,
+        headers: { "x-request-id": requestId },
+      });
+    }
   }
 
   // 3. ページタイプ判定
@@ -214,7 +234,16 @@ export async function middleware(request: NextRequest) {
 
   // 10. 認証ガード: 未ログインはログイン画面へ
   if (!user) {
-    // 公開ページ（/login 等）の場合はそのまま表示
+    // デモ環境かつログイン・登録ページの場合は、本番環境へリダイレクト
+    if (isDemo && (pathname === "/login" || pathname === "/register")) {
+      const redirectPageUrl = new URL("/demo-redirect", request.url);
+      redirectPageUrl.searchParams.set("to", pathname);
+      const redirectResponse = NextResponse.redirect(redirectPageUrl);
+      applyCommonHeaders(redirectResponse, { requestId, nonce, isDemo, csp, reportUrl });
+      return redirectResponse;
+    }
+
+    // 公開ページの場合はそのまま表示
     if (isPublic) {
       return response;
     }
