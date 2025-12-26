@@ -218,7 +218,7 @@ export function GuestPageClient({
       {/* Footer is simpler in client or page? Mock had footer component. */}
       {/* Footer */}
       <footer className="py-8 text-center text-gray-400 text-xs space-y-3">
-        {attendance.event.created_by && (
+        {attendance.event.created_by && process.env.NEXT_PUBLIC_IS_DEMO !== "true" && (
           <div className="flex justify-center gap-4">
             <a
               href={`/tokushoho/${attendance.event.created_by}`}

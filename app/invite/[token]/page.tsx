@@ -151,7 +151,8 @@ export default async function InvitePage({ params }: InvitePageProps) {
           {/* 主催者の特商法リンク（到達容易性） */}
           {(() => {
             const organizerId = validationResult.event?.created_by;
-            if (!organizerId) return null;
+            const isDemo = process.env.NEXT_PUBLIC_IS_DEMO === "true";
+            if (!organizerId || isDemo) return null;
             return (
               <div className="mt-8 text-center">
                 <a
