@@ -71,6 +71,7 @@ export const ALLOWED_HASHES = [
   "'sha256-47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU='", // vaul (Drawer)
   "'sha256-YIjArHm2rkb5J7hX9lUM1bnQ3Kp61MTfluMGkuyKwDw='", // vaul (Drawer)
   "'sha256-kAApudxpTi9mfjlC9lC8ZaS9xFHU9/NLLbB173MU7SU='", // vaul (Drawer)
+  "'sha256-nzTgYzXYDNe6BAHiiI7NNlfK8n/auuOAhh2t92YvuXo='", // Radix UI (Dropdown/Dialog scroll lock)
 ];
 
 /**
