@@ -1,15 +1,18 @@
 "use client";
 
 import { useState, useEffect, Suspense } from "react";
+
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
+
 import { zodResolver } from "@hookform/resolvers/zod";
+import { Loader2, CheckCircle2, AlertCircle, Mail, ArrowLeft, RefreshCw } from "lucide-react";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
-import { Loader2, CheckCircle2, AlertCircle, Mail, ArrowLeft, RefreshCw } from "lucide-react";
 
 import { verifyOtpAction, resendOtpAction } from "@core/actions/auth";
-import { cn } from "@core/utils";
+
+import { Alert, AlertDescription, AlertTitle } from "@components/ui/alert";
 import { Button } from "@components/ui/button";
 import {
   Card,
@@ -28,7 +31,6 @@ import {
   FormMessage,
 } from "@components/ui/form";
 import { InputOTP, InputOTPGroup, InputOTPSlot, InputOTPSeparator } from "@components/ui/input-otp";
-import { Alert, AlertDescription, AlertTitle } from "@components/ui/alert";
 
 export const dynamic = "force-dynamic";
 
