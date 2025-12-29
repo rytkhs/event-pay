@@ -1,18 +1,45 @@
 "use client";
 
-import { useState, useEffect, Suspense, useRef } from "react";
+import { useState, useEffect, Suspense } from "react";
+import Link from "next/link";
+import { useSearchParams, useRouter } from "next/navigation";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
+import * as z from "zod";
+import { Loader2, CheckCircle2, AlertCircle, Mail, ArrowLeft, RefreshCw } from "lucide-react";
+
+import { verifyOtpAction, resendOtpAction } from "@core/actions/auth";
+import { cn } from "@core/utils";
+import { Button } from "@components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@components/ui/card";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@components/ui/form";
+import { InputOTP, InputOTPGroup, InputOTPSlot, InputOTPSeparator } from "@components/ui/input-otp";
+import { Alert, AlertDescription, AlertTitle } from "@components/ui/alert";
 
 export const dynamic = "force-dynamic";
 
-import Link from "next/link";
-import { useSearchParams, useRouter } from "next/navigation";
-
-import { verifyOtpAction, resendOtpAction } from "@core/actions/auth";
+const FormSchema = z.object({
+  otp: z.string().min(6, {
+    message: "6桁の確認コードを入力してください。",
+  }),
+});
 
 function VerifyOtpContent() {
-  const [otp, setOtp] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const errorRef = useRef<HTMLDivElement | null>(null);
   const [loading, setLoading] = useState(false);
   const [resendLoading, setResendLoading] = useState(false);
   const [resendDisabled, setResendDisabled] = useState(false);
@@ -23,6 +50,13 @@ function VerifyOtpContent() {
   const router = useRouter();
   const email = searchParams.get("email");
   const type = searchParams.get("type") || "signup";
+
+  const form = useForm<z.infer<typeof FormSchema>>({
+    resolver: zodResolver(FormSchema),
+    defaultValues: {
+      otp: "",
+    },
+  });
 
   // カウントダウンタイマー
   useEffect(() => {
@@ -42,11 +76,8 @@ function VerifyOtpContent() {
     }
   }, [email, router, type]);
 
-  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (!email || !otp.trim()) {
-      return;
-    }
+  const onSubmit = async (data: z.infer<typeof FormSchema>) => {
+    if (!email) return;
 
     setLoading(true);
     setError(null);
@@ -54,16 +85,16 @@ function VerifyOtpContent() {
     try {
       const formData = new FormData();
       formData.append("email", email);
-      formData.append("otp", otp.trim());
+      formData.append("otp", data.otp);
       formData.append("type", type);
 
       const result = await verifyOtpAction(formData);
 
       if (result?.error) {
         setError(result.error);
+        form.setValue("otp", ""); // エラー時にOTPをクリア
       } else if (result?.success && result?.redirectUrl) {
         setSuccess(true);
-        // 成功時はセッション状態を更新してからダッシュボードにリダイレクト
         router.refresh(); // クライアント側のセッション状態を更新
         const redirectUrl = result.redirectUrl;
         if (redirectUrl) {
@@ -79,18 +110,8 @@ function VerifyOtpContent() {
     }
   };
 
-  // エラー発生時にスクロール＆フォーカス
-  useEffect(() => {
-    if (error && errorRef.current) {
-      errorRef.current.focus({ preventScroll: true });
-      errorRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
-    }
-  }, [error]);
-
   const handleResend = async () => {
-    if (!email || resendDisabled) {
-      return;
-    }
+    if (!email || resendDisabled) return;
 
     setResendLoading(true);
     setError(null);
@@ -116,165 +137,144 @@ function VerifyOtpContent() {
     }
   };
 
-  if (!email) {
-    return null; // リダイレクト中
-  }
+  if (!email) return null; // リダイレクト中
 
   if (success) {
     return (
-      <div className="w-full flex justify-center py-10 px-4 sm:px-6 lg:px-8">
-        <div className="w-full max-w-md bg-white p-8 rounded-lg shadow-md space-y-6">
-          <div className="text-center" role="status" aria-live="polite">
-            <div className="mx-auto w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mb-4">
-              <svg
-                className="w-6 h-6 text-green-600"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M5 13l4 4L19 7"
-                />
-              </svg>
+      <div className="flex items-center justify-center min-h-[60vh] px-4 py-12">
+        <Card className="w-full max-w-md shadow-lg border-green-100">
+          <CardContent className="pt-10 pb-10 text-center space-y-6">
+            <div className="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center animate-in zoom-in duration-300">
+              <CheckCircle2 className="w-8 h-8 text-green-600" />
             </div>
-            <h1 className="text-2xl font-bold text-gray-900 mb-2">認証完了</h1>
-            <p className="text-gray-600">メールアドレスが確認されました</p>
-            <p className="text-sm text-gray-500 mt-2">ダッシュボードに移動中...</p>
-          </div>
-        </div>
+            <div className="space-y-2">
+              <h2 className="text-2xl font-bold text-gray-900">認証完了</h2>
+              <p className="text-gray-500">メールアドレスが確認されました</p>
+            </div>
+            <div className="flex items-center justify-center gap-2 text-sm text-gray-500 animate-pulse">
+              <Loader2 className="w-4 h-4 animate-spin" />
+              <span>ダッシュボードに移動中...</span>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     );
   }
 
   return (
-    <div className="w-full flex justify-center py-10 px-4 sm:px-6 lg:px-8">
-      <div className="w-full max-w-md bg-white p-8 rounded-lg shadow-md space-y-6">
-        {/* ヘッダー */}
-        <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-900">
-            {type === "recovery" ? "パスワードリセット確認コード" : "確認コードを入力"}
-          </h1>
-          <p className="mt-2 text-gray-600">
-            <span className="font-mono text-sm">{email}</span>{" "}
-            {type === "recovery"
-              ? "に送信されたパスワードリセット用の確認コードを入力してください"
-              : "に送信された6桁のコードを入力してください"}
-          </p>
-        </div>
-
-        {/* フォーム */}
-        <div>
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div>
-              <label htmlFor="otp" className="sr-only">
-                確認コード
-              </label>
-              <input
-                id="otp"
-                type="text"
-                value={otp}
-                onChange={(e) => {
-                  const value = e.target.value.replace(/\D/g, "").slice(0, 6);
-                  setOtp(value);
-                }}
-                placeholder="123456"
-                maxLength={6}
-                className="w-full px-4 py-3 border border-gray-300 rounded-md text-center text-2xl font-mono tracking-widest focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                autoComplete="one-time-code"
-                required
-                disabled={loading}
+    <div className="flex items-center justify-center min-h-[60vh] px-4 py-12">
+      <Card className="w-full max-w-md shadow-lg">
+        <CardHeader className="space-y-1 text-center pb-2">
+          <CardTitle className="text-2xl font-bold">
+            {type === "recovery" ? "パスワードリセット" : "確認コードを入力"}
+          </CardTitle>
+          <CardDescription>
+            <span className="font-medium text-foreground">{email}</span>{" "}
+            に送信された6桁のコードを入力してください
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6 pt-6">
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+              <FormField
+                control={form.control}
+                name="otp"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="sr-only">確認コード</FormLabel>
+                    <FormControl>
+                      <div className="flex justify-center">
+                        <InputOTP maxLength={6} {...field} id="otp" disabled={loading}>
+                          <InputOTPGroup>
+                            <InputOTPSlot index={0} />
+                            <InputOTPSlot index={1} />
+                            <InputOTPSlot index={2} />
+                          </InputOTPGroup>
+                          <InputOTPSeparator />
+                          <InputOTPGroup>
+                            <InputOTPSlot index={3} />
+                            <InputOTPSlot index={4} />
+                            <InputOTPSlot index={5} />
+                          </InputOTPGroup>
+                        </InputOTP>
+                      </div>
+                    </FormControl>
+                    <FormMessage className="text-center" />
+                  </FormItem>
+                )}
               />
-              <p className="mt-1 text-xs text-gray-500">6桁の数字を入力してください</p>
-            </div>
 
-            {error && (
-              <div
-                className="p-3 rounded-md text-sm bg-red-50 text-red-800 border border-red-200"
-                role="alert"
-                aria-live="assertive"
-                ref={errorRef}
-                tabIndex={-1}
-              >
-                {error}
-              </div>
-            )}
-
-            <button
-              type="submit"
-              disabled={loading || otp.length !== 6}
-              className={`w-full p-3 rounded-md font-medium transition-colors ${
-                loading || otp.length !== 6
-                  ? "bg-gray-300 text-gray-500 cursor-not-allowed"
-                  : "bg-blue-600 text-white hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-              }`}
-            >
-              {loading ? (
-                <span className="flex items-center justify-center">
-                  <svg
-                    className="animate-spin -ml-1 mr-3 h-5 w-5 text-current"
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                  >
-                    <circle
-                      className="opacity-25"
-                      cx="12"
-                      cy="12"
-                      r="10"
-                      stroke="currentColor"
-                      strokeWidth="4"
-                    ></circle>
-                    <path
-                      className="opacity-75"
-                      fill="currentColor"
-                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                    ></path>
-                  </svg>
-                  認証中...
-                </span>
-              ) : (
-                "確認"
+              {error && (
+                <Alert variant="destructive" className="animate-in fade-in slide-in-from-top-2">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertTitle>エラー</AlertTitle>
+                  <AlertDescription>{error}</AlertDescription>
+                </Alert>
               )}
-            </button>
-          </form>
+
+              <Button type="submit" className="w-full" disabled={loading} size="lg">
+                {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                認証する
+              </Button>
+            </form>
+          </Form>
 
           {/* 再送信セクション */}
-          <div className="mt-6 text-center space-y-3">
-            <p className="text-sm text-gray-500">コードが届かない場合は？</p>
+          <div className="space-y-4 pt-4 border-t">
+            <div className="text-center space-y-2">
+              <p className="text-sm text-gray-500">コードが届かない場合</p>
+              <Button
+                variant="ghost"
+                size="sm"
+                type="button"
+                onClick={handleResend}
+                disabled={resendDisabled || resendLoading}
+                className="text-primary hover:text-primary/90 hover:bg-primary/5"
+              >
+                {resendLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+                    送信中...
+                  </>
+                ) : resendDisabled ? (
+                  <>
+                    <RefreshCw className="mr-2 h-3 w-3 opacity-50" />
+                    再送信まで {countdown}秒
+                  </>
+                ) : (
+                  <>
+                    <RefreshCw className="mr-2 h-3 w-3" />
+                    コードを再送信
+                  </>
+                )}
+              </Button>
+            </div>
 
-            <button
-              onClick={handleResend}
-              disabled={resendDisabled || resendLoading}
-              className={`text-sm ${
-                resendDisabled || resendLoading
-                  ? "text-gray-400 cursor-not-allowed"
-                  : "text-blue-600 hover:text-blue-800 underline"
-              }`}
-            >
-              {resendLoading
-                ? "送信中..."
-                : resendDisabled
-                  ? `再送信まで ${countdown}秒`
-                  : "コードを再送信"}
-            </button>
+            <div className="bg-muted/50 rounded-lg p-4 text-sm text-muted-foreground border">
+              <h4 className="font-medium text-foreground mb-2 flex items-center gap-2">
+                <Mail className="w-4 h-4 text-primary" />
+                メールが届かない場合
+              </h4>
+              <ul className="list-disc list-inside space-y-1 text-xs">
+                <li>迷惑メールフォルダをご確認ください</li>
+                <li>ドメイン受信設定をご確認ください</li>
+                <li>
+                  <span className="font-medium text-foreground">登録済みメールアドレス</span>
+                  でない場合、コードは送信されません
+                </li>
+              </ul>
+            </div>
           </div>
-        </div>
-
-        {/* フッター */}
-        <div className="text-center">
-          <div className="text-xs text-gray-400">
-            <Link
-              href={type === "recovery" ? "/reset-password" : "/login"}
-              className="hover:text-gray-600 underline"
-            >
+        </CardContent>
+        <CardFooter className="justify-center border-t py-4 bg-muted/20">
+          <Button variant="link" size="sm" asChild className="text-muted-foreground">
+            <Link href={type === "recovery" ? "/reset-password" : "/login"}>
+              <ArrowLeft className="mr-2 h-3 w-3" />
               {type === "recovery" ? "パスワードリセットに戻る" : "ログインページに戻る"}
             </Link>
-          </div>
-        </div>
-      </div>
+          </Button>
+        </CardFooter>
+      </Card>
     </div>
   );
 }
@@ -283,29 +283,13 @@ export default function VerifyOtpPage() {
   return (
     <Suspense
       fallback={
-        <div className="w-full flex justify-center py-10 px-4 sm:px-6 lg:px-8">
-          <div className="w-full max-w-md bg-white p-8 rounded-lg shadow-md space-y-6">
-            <div className="text-center">
-              <div className="mx-auto w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mb-4">
-                <svg className="animate-spin w-6 h-6 text-blue-600" fill="none" viewBox="0 0 24 24">
-                  <circle
-                    className="opacity-25"
-                    cx="12"
-                    cy="12"
-                    r="10"
-                    stroke="currentColor"
-                    strokeWidth="4"
-                  ></circle>
-                  <path
-                    className="opacity-75"
-                    fill="currentColor"
-                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                  ></path>
-                </svg>
-              </div>
-              <p className="text-gray-600">読み込み中...</p>
-            </div>
-          </div>
+        <div className="flex items-center justify-center min-h-[60vh] px-4 py-12">
+          <Card className="w-full max-w-md shadow-lg">
+            <CardContent className="pt-10 pb-10 text-center">
+              <Loader2 className="mx-auto h-8 w-8 animate-spin text-primary" />
+              <p className="mt-4 text-gray-500">読み込み中...</p>
+            </CardContent>
+          </Card>
         </div>
       }
     >

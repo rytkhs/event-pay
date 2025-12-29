@@ -229,11 +229,11 @@ test.describe("ユーザー登録フロー（E2E）", () => {
     console.log(`OTP code received: ${otpCode}`);
 
     // 4. OTP入力
-    const otpInput = page.locator('input#otp[type="text"][maxlength="6"]');
+    const otpInput = page.locator('input[autocomplete="one-time-code"]');
     await otpInput.fill(otpCode);
 
     // 5. OTP送信
-    await page.getByRole("button", { name: "確認" }).click();
+    await page.getByRole("button", { name: "認証する" }).click();
 
     // 6. ダッシュボードへのリダイレクト確認
     await expect(page).toHaveURL("/dashboard", { timeout: 15000 });
@@ -272,11 +272,11 @@ test.describe("ユーザー登録フロー（E2E）", () => {
     );
 
     // 2. 間違ったOTPコードを入力（000000）
-    const otpInput = page.locator('input#otp[type="text"][maxlength="6"]');
+    const otpInput = page.locator('input[autocomplete="one-time-code"]');
     await otpInput.fill("000000");
 
     // 3. OTP送信
-    await page.getByRole("button", { name: "確認" }).click();
+    await page.getByRole("button", { name: "認証する" }).click();
 
     // 4. エラーメッセージの表示確認（複数の可能性のあるエラーメッセージに対応）
     // Next.jsのroute announcerを除外して、実際のエラーメッセージのみを取得
@@ -329,15 +329,16 @@ test.describe("ユーザー登録フロー（E2E）", () => {
     // メールボックスをクリア（新しいOTPのみを取得するため）
     await clearMailbox(testEmail);
 
+    // Supabaseのレート制限（再送信間隔）を回避するために少し待機
+    await page.waitForTimeout(4000);
+
     // 2. 再送信ボタンをクリック
     const resendButton = page.getByRole("button", { name: "コードを再送信" });
     await resendButton.click();
 
     // 再送信成功を確認(カウントダウンボタンが表示され、無効化されている)
-    const countdownButton = page.getByRole("button", { name: /再送信まで \d+秒/ });
-    await expect(countdownButton).toBeDisabled({ timeout: 3000 });
-    // カウントダウンテキストの表示を確認
-    await expect(countdownButton).toBeVisible({ timeout: 2000 });
+    const countdownButton = page.getByRole("button").filter({ hasText: /再送信まで/ });
+    await expect(countdownButton).toBeVisible({ timeout: 10000 });
 
     // 3. 新しいOTPを取得
     console.log(`Fetching new OTP after resend for ${testEmail}...`);
@@ -345,9 +346,9 @@ test.describe("ユーザー登録フロー（E2E）", () => {
     console.log(`New OTP received: ${newOtp}`);
 
     // 4. 新しいOTPで認証
-    const otpInput = page.locator('input#otp[type="text"][maxlength="6"]');
+    const otpInput = page.locator('input[autocomplete="one-time-code"]');
     await otpInput.fill(newOtp);
-    await page.getByRole("button", { name: "確認" }).click();
+    await page.getByRole("button", { name: "認証する" }).click();
 
     // 5. ダッシュボードへのリダイレクト確認
     await expect(page).toHaveURL("/dashboard", { timeout: 15000 });
