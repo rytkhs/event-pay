@@ -25,6 +25,7 @@
  */
 
 import { test, expect } from "@playwright/test";
+import crypto from "crypto";
 
 import { getPaymentFromDB, sendStripeWebhook } from "../../helpers/payment-helpers";
 import { TestDataManager, TEST_IDS } from "../../helpers/test-data-setup";
@@ -80,7 +81,7 @@ test.describe("Stripe決済 ケース3-1: Webhook処理と決済完了確認", (
     const { createClient } = await import("@supabase/supabase-js");
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    const paymentId = `payment_${Date.now()}`;
+    const paymentId = crypto.randomUUID();
     const checkoutSessionId = `cs_test_${Date.now()}`;
     const paymentIntentId = `pi_test_${Date.now()}`;
 
@@ -121,7 +122,6 @@ test.describe("Stripe決済 ケース3-1: Webhook処理と決済完了確認", (
     };
 
     const response = await sendStripeWebhook("checkout.session.completed", sessionData);
-
     expect(response.ok).toBe(true);
     const responseData = (await response.json()) as {
       received: boolean;
@@ -193,7 +193,7 @@ test.describe("Stripe決済 ケース3-1: Webhook処理と決済完了確認", (
     const { createClient } = await import("@supabase/supabase-js");
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    const paymentId = `payment_${Date.now()}`;
+    const paymentId = crypto.randomUUID();
     const paymentIntentId = `pi_test_${Date.now()}`;
 
     const { error: paymentError } = await supabase.from("payments").insert({
@@ -288,7 +288,7 @@ test.describe("Stripe決済 ケース3-1: Webhook処理と決済完了確認", (
      *
      * 期待結果:
      * - `destination`フィールドが正しいConnect アカウントIDであることを確認
-     * - `application_fee_amount`が正しく設定されていることを確認（1.3%）
+     * - `application_fee_amount`が正しく設定されていることを確認（4.9%）
      * - Destination chargesが正しく機能
      */
 
@@ -311,7 +311,7 @@ test.describe("Stripe決済 ケース3-1: Webhook処理と決済完了確認", (
     const { createClient } = await import("@supabase/supabase-js");
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    const paymentId = `payment_${Date.now()}`;
+    const paymentId = crypto.randomUUID();
     const chargeId = `ch_test_${Date.now()}`;
     const paymentIntentId = `pi_test_${Date.now()}`;
 
@@ -323,7 +323,7 @@ test.describe("Stripe決済 ケース3-1: Webhook処理と決済完了確認", (
       method: "stripe",
       status: "pending",
       destination_account_id: TEST_IDS.CONNECT_ACCOUNT_ID,
-      application_fee_amount: Math.round(3000 * 0.013), // 1.3%
+      application_fee_amount: Math.round(3000 * 0.049), // 4.9%
       stripe_payment_intent_id: paymentIntentId,
     });
 
@@ -344,7 +344,7 @@ test.describe("Stripe決済 ケース3-1: Webhook処理と決済完了確認", (
       status: "succeeded",
       payment_intent: paymentIntentId,
       destination: TEST_IDS.CONNECT_ACCOUNT_ID, // Destination Charges
-      application_fee_amount: Math.round(3000 * 0.013), // 1.3%
+      application_fee_amount: Math.round(3000 * 0.049), // 4.9%
       transfer_data: {
         destination: TEST_IDS.CONNECT_ACCOUNT_ID,
       },
