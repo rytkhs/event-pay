@@ -84,11 +84,14 @@ export async function getEventDetailAction(
       // Creator name fetch error - continue with fallback
       // ログのみ（UXを阻害しない）
       logger.warn("Failed to fetch creator name", {
-        tag: "getEventDetail",
+        category: "event_management",
+        action: "get_event_detail",
+        actor_type: "user",
         event_id: eventDetail.id,
         creator_id: eventDetail.created_by,
         error_name: creatorError.code,
         error_message: creatorError.message,
+        outcome: "failure",
       });
     }
 

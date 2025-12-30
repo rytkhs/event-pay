@@ -440,9 +440,12 @@ export const useEventForm = (): {
           } catch (analyticsError) {
             // アナリティクスエラーはユーザー体験に影響を与えないようログのみ
             logger.warn("Failed to send event_created analytics", {
-              tag: "eventCreation",
-              error:
+              category: "event_management",
+              action: "event_creation_analytics",
+              actor_type: "user",
+              error_message:
                 analyticsError instanceof Error ? analyticsError.message : String(analyticsError),
+              outcome: "failure",
             });
           }
 
@@ -467,9 +470,12 @@ export const useEventForm = (): {
         }
       } catch (error) {
         logger.error("Event creation failed", {
-          tag: "eventCreation",
+          category: "event_management",
+          action: "event_creation",
+          actor_type: "user",
           error_name: error instanceof Error ? (error.name ?? "Unknown") : "Unknown",
           error_message: error instanceof Error ? (error.message ?? String(error)) : String(error),
+          outcome: "failure",
         });
         form.setError("root", {
           type: "server",

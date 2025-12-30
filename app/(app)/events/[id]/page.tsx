@@ -107,10 +107,13 @@ export default async function EventDetailPage({
     );
   } catch (error) {
     logger.error("Event management page error", {
-      tag: "event-management-page",
+      category: "event_management",
+      action: "event_page_view",
+      actor_type: "user",
       event_id: params?.id,
       error_name: error instanceof Error ? error.name : "Unknown",
       error_message: error instanceof Error ? error.message : String(error),
+      outcome: "failure",
     });
     throw error;
   }

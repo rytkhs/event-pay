@@ -63,6 +63,16 @@ export class StatusSyncService {
   }
 
   /**
+   * 構造化ロガー
+   */
+  private get logger() {
+    return logger.withContext({
+      category: "stripe_connect",
+      action: "status_sync",
+    });
+  }
+
+  /**
    * アカウントステータスを同期する
    * リトライロジックと指数バックオフを実装
    * @param userId ユーザーID
@@ -95,12 +105,12 @@ export class StatusSyncService {
           trigger: "ondemand",
         });
 
-        logger.info("Status sync successful", {
-          tag: "statusSyncSuccess",
+        this.logger.info("Status sync successful", {
           user_id: userId,
           account_id: accountId,
           status: accountInfo.status,
           attempt: attempt + 1,
+          outcome: "success",
         });
 
         return accountInfo.stripeAccount;
@@ -110,8 +120,7 @@ export class StatusSyncService {
         // エラーを分類
         const syncError = this.classifyError(error);
 
-        logger.warn("Status sync attempt failed", {
-          tag: "statusSyncAttemptFailed",
+        this.logger.warn("Status sync attempt failed", {
           user_id: userId,
           account_id: accountId,
           attempt: attempt + 1,
@@ -119,29 +128,30 @@ export class StatusSyncService {
           error_type: syncError.type,
           retryable: syncError.retryable,
           error_message: syncError.message,
+          outcome: "failure",
         });
 
         // リトライ不可能なエラーまたは最終試行の場合は例外をスロー
         if (!syncError.retryable || attempt === maxRetries - 1) {
-          logger.error("Status sync failed", {
-            tag: "statusSyncFailed",
+          this.logger.error("Status sync failed", {
             user_id: userId,
             account_id: accountId,
             total_attempts: attempt + 1,
             error_type: syncError.type,
             error_message: syncError.message,
+            outcome: "failure",
           });
           throw syncError;
         }
 
         // 指数バックオフで待機
         const backoffMs = initialBackoffMs * Math.pow(2, attempt);
-        logger.info("Status sync retry scheduled", {
-          tag: "statusSyncRetryScheduled",
+        this.logger.info("Status sync retry scheduled", {
           user_id: userId,
           account_id: accountId,
           attempt: attempt + 1,
           backoff_ms: backoffMs,
+          outcome: "success",
         });
 
         await new Promise((resolve) => setTimeout(resolve, backoffMs));

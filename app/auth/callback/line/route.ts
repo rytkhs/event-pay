@@ -20,11 +20,20 @@ export async function GET(request: Request) {
   const state = searchParams.get("state");
   const error = searchParams.get("error");
 
+  const authLogger = logger.withContext({
+    category: "authentication",
+    action: "line_auth_callback",
+    actor_type: "anonymous",
+  });
+
   const origin = buildOrigin();
 
   // 1. エラーハンドリングとCSRF検証
   if (error) {
-    logger.error(`LINE Login Error: ${error}`, { tag: "lineLoginError", error });
+    authLogger.error(`LINE Login Error: ${error}`, {
+      error,
+      outcome: "failure",
+    });
     return NextResponse.redirect(`${origin}/login?error=${LINE_ERROR_CODES.AUTH_FAILED}`);
   }
 
@@ -41,10 +50,10 @@ export async function GET(request: Request) {
   cookieStore.delete(LINE_OAUTH_COOKIES.NONCE);
 
   if (!code || !state || !storedState || state !== storedState || !storedNonce) {
-    logger.error("CSRF validation failed", {
-      tag: "lineLoginCsrfFailed",
+    authLogger.error("CSRF validation failed", {
       state,
       storedState,
+      outcome: "failure",
     });
     return NextResponse.redirect(`${origin}/login?error=${LINE_ERROR_CODES.STATE_MISMATCH}`);
   }
@@ -77,9 +86,9 @@ export async function GET(request: Request) {
     const lineData = (await tokenResponse.json()) as LineTokenResponse;
 
     if (!tokenResponse.ok || !lineData.id_token) {
-      logger.error("Failed to retrieve ID token from LINE", {
-        tag: "lineLoginTokenFailed",
+      authLogger.error("Failed to retrieve ID token from LINE", {
         lineData,
+        outcome: "failure",
       });
       return NextResponse.redirect(`${origin}/login?error=${LINE_ERROR_CODES.TOKEN_FAILED}`);
     }
@@ -100,7 +109,7 @@ export async function GET(request: Request) {
     const lineSub = profile.sub;
 
     if (!lineSub) {
-      logger.error("Subject (sub) not found in LINE profile", { tag: "lineLoginSubMissing" });
+      authLogger.error("Subject (sub) not found in LINE profile", { outcome: "failure" });
       return NextResponse.redirect(`${origin}/login?error=${LINE_ERROR_CODES.AUTH_FAILED}`);
     }
 
@@ -131,9 +140,9 @@ export async function GET(request: Request) {
 
     if (lineAccountError && lineAccountError.code !== "PGRST116") {
       // PGRST116 = no rows found (想定内のエラー)
-      logger.error("Failed to query line_accounts", {
-        tag: "lineAccountQueryError",
+      authLogger.error("Failed to query line_accounts", {
         error: lineAccountError,
+        outcome: "failure",
       });
       throw lineAccountError;
     }
@@ -155,9 +164,9 @@ export async function GET(request: Request) {
         .eq("line_sub", lineSub);
 
       if (updateError) {
-        logger.error("Failed to update line_accounts", {
-          tag: "lineAccountUpdateError",
+        authLogger.error("Failed to update line_accounts", {
           error: updateError,
+          outcome: "failure",
         });
         throw updateError;
       }
@@ -174,9 +183,9 @@ export async function GET(request: Request) {
 
         if (userQueryError && userQueryError.code !== "PGRST116") {
           // PGRST116 = no rows found (想定内のエラー)
-          logger.error("Failed to query users table", {
-            tag: "usersQueryError",
+          authLogger.error("Failed to query users table", {
             error: userQueryError,
+            outcome: "failure",
           });
           throw userQueryError;
         }
@@ -197,9 +206,9 @@ export async function GET(request: Request) {
         });
 
         if (insertError) {
-          logger.error("Failed to insert line_accounts for existing user", {
-            tag: "lineAccountInsertError",
+          authLogger.error("Failed to insert line_accounts for existing user", {
             error: insertError,
+            outcome: "failure",
           });
           throw insertError;
         }
@@ -207,8 +216,8 @@ export async function GET(request: Request) {
         // B-2. Emailも一致しない（完全新規 or Emailなし） -> 新規ユーザー作成
         if (!email) {
           // Emailがない場合はエラーにする
-          logger.error("Email not found in LINE profile for new user", {
-            tag: "lineLoginEmailMissing",
+          authLogger.error("Email not found in LINE profile for new user", {
+            outcome: "failure",
           });
           return NextResponse.redirect(`${origin}/login?error=${LINE_ERROR_CODES.EMAIL_REQUIRED}`);
         }
@@ -245,9 +254,9 @@ export async function GET(request: Request) {
         });
 
         if (insertError) {
-          logger.error("Failed to insert line_accounts for new user", {
-            tag: "lineAccountInsertError",
+          authLogger.error("Failed to insert line_accounts for new user", {
             error: insertError,
+            outcome: "failure",
           });
           throw insertError;
         }
@@ -309,8 +318,7 @@ export async function GET(request: Request) {
           undefined
         );
       } catch (error) {
-        logger.debug("[GA4] Failed to send LINE auth event", {
-          tag: "ga4LineEventFailed",
+        authLogger.debug("[GA4] Failed to send LINE auth event", {
           error_message: error instanceof Error ? error.message : String(error),
         });
       }
@@ -319,9 +327,9 @@ export async function GET(request: Request) {
     // 9. 完了後のリダイレクト
     return NextResponse.redirect(`${origin}${nextPath}`);
   } catch (error) {
-    logger.error("Unexpected error during LINE login callback", {
-      tag: "lineLoginCallbackError",
+    authLogger.error("Unexpected error during LINE login callback", {
       error,
+      outcome: "failure",
     });
     return NextResponse.redirect(`${origin}/login?error=${LINE_ERROR_CODES.SERVER_ERROR}`);
   }

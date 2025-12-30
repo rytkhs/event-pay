@@ -113,21 +113,24 @@ function createProblem(code: string, options: ProblemOptions = {}): ProblemDetai
   }
 
   // ログ出力（PII除外済みの想定）
-  const logPayload = {
-    tag: "api-error",
+  const logFields: any = {
+    category: "system",
+    action: "api_error",
+    actor_type: "anonymous",
     correlation_id: correlationId,
     request_id: correlationId,
     error_code: code,
-    status,
+    status_code: status,
     instance: problem.instance,
     retryable: problem.retryable,
+    outcome: status === 429 ? ("blocked" as any) : "failure",
     ...options.log_context,
-  } as const;
+  };
 
   if (status === 429) {
-    logger.warn(`API Error: ${code}`, logPayload);
+    logger.warn(`API Error: ${code}`, logFields);
   } else {
-    logger.error(`API Error: ${code}`, logPayload);
+    logger.error(`API Error: ${code}`, logFields);
   }
 
   return problem;

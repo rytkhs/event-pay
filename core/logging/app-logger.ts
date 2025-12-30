@@ -16,7 +16,7 @@ import type { Database } from "@/types/database";
 import { shouldLogError } from "./deduplication";
 
 /** ログレベル定義 */
-export type LogLevel = "debug" | "info" | "warn" | "error";
+export type LogLevel = Database["public"]["Enums"]["log_level_enum"];
 
 /** ログカテゴリ定義 */
 export type LogCategory = Database["public"]["Enums"]["log_category_enum"];
@@ -111,7 +111,7 @@ async function persistToSupabase(
 
     // フォールバックなしで直接使用
     await supabase.from("system_logs").insert({
-      log_level: level as Database["public"]["Enums"]["log_level_enum"],
+      log_level: level,
       log_category: fields.category,
       action: fields.action,
       message: msg,
@@ -168,16 +168,26 @@ export const logger = {
     waitUntil(persistToSupabase("error", msg, fields));
   },
 
+  critical(msg: string, fields: EventPayLogFields) {
+    // eslint-disable-next-line no-console
+    console.error(
+      JSON.stringify({ level: "critical", msg, timestamp: new Date().toISOString(), ...fields })
+    );
+    waitUntil(persistToSupabase("critical", msg, fields));
+  },
+
   withContext(context: Partial<EventPayLogFields>) {
     return {
-      debug: (msg: string, fields: EventPayLogFields) =>
+      debug: (msg: string, fields: Partial<EventPayLogFields> = {}) =>
         logger.debug(msg, { ...context, ...fields } as EventPayLogFields),
-      info: (msg: string, fields: EventPayLogFields) =>
+      info: (msg: string, fields: Partial<EventPayLogFields> = {}) =>
         logger.info(msg, { ...context, ...fields } as EventPayLogFields),
-      warn: (msg: string, fields: EventPayLogFields) =>
+      warn: (msg: string, fields: Partial<EventPayLogFields> = {}) =>
         logger.warn(msg, { ...context, ...fields } as EventPayLogFields),
-      error: (msg: string, fields: EventPayLogFields) =>
+      error: (msg: string, fields: Partial<EventPayLogFields> = {}) =>
         logger.error(msg, { ...context, ...fields } as EventPayLogFields),
+      critical: (msg: string, fields: Partial<EventPayLogFields> = {}) =>
+        logger.critical(msg, { ...context, ...fields } as EventPayLogFields),
     };
   },
 } as const;

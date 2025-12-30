@@ -16,8 +16,11 @@ export function getRequiredEnvVar(key: string): string {
   if (!value) {
     const errorMessage = `Missing required environment variable: ${key}`;
     logger.error(errorMessage, {
-      tag: "envVarMissing",
+      category: "system",
+      action: "env_validation",
+      actor_type: "system",
       variable_name: key,
+      outcome: "failure",
     });
     throw new Error(errorMessage);
   }
@@ -53,8 +56,11 @@ export function validateRequiredEnvVars(keys: string[]): Record<string, string> 
   if (missing.length > 0) {
     const errorMessage = `Missing required environment variables: ${missing.join(", ")}`;
     logger.error(errorMessage, {
-      tag: "envVarsValidationFailed",
+      category: "system",
+      action: "env_validation",
+      actor_type: "system",
       missing_variables: missing,
+      outcome: "failure",
     });
     throw new Error(errorMessage);
   }
@@ -70,9 +76,12 @@ export function warnIfMissingOptionalEnvVar(key: string, description?: string): 
   if (!(getEnv() as unknown as Record<string, string | undefined>)[key]) {
     const message = `Environment variable ${key} is not set${description ? ` - ${description}` : ""}`;
     logger.warn(message, {
-      tag: "envVarOptionalMissing",
+      category: "system",
+      action: "env_validation",
+      actor_type: "system",
       variable_name: key,
       description,
+      outcome: "failure",
     });
   }
 }

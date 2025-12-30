@@ -132,9 +132,13 @@ export async function exportParticipantsCsvAction(params: unknown): Promise<{
 
     if (queryError) {
       logger.error("Failed to fetch participants for CSV export", {
-        eventId: validatedEventId,
-        userId: user.id,
-        error: queryError,
+        category: "export",
+        action: "participants_csv_export",
+        actor_type: "user",
+        event_id: validatedEventId,
+        user_id: user.id,
+        error_message: queryError.message,
+        outcome: "failure",
       });
 
       return {
@@ -205,8 +209,12 @@ export async function exportParticipantsCsvAction(params: unknown): Promise<{
     };
   } catch (error) {
     logger.error("Participants CSV export failed", {
-      error: error instanceof Error ? error.message : "Unknown error",
-      params,
+      category: "export",
+      action: "participants_csv_export",
+      actor_type: "user",
+      error_message: error instanceof Error ? error.message : "Unknown error",
+      params: JSON.stringify(params),
+      outcome: "failure",
     });
 
     return {

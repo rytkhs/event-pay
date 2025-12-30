@@ -116,16 +116,24 @@ export async function getEventParticipantsAction(
     });
 
     logger.info("Event participants retrieved (all)", {
-      eventId: validatedEventId,
-      userId: user.id,
-      participantCount: participants.length,
+      category: "attendance",
+      action: "get_event_participants",
+      actor_type: "user",
+      event_id: validatedEventId,
+      user_id: user.id,
+      participant_count: participants.length,
+      outcome: "success",
     });
 
     return { participants };
   } catch (error) {
     logger.error("Failed to get event participants", {
-      error: error instanceof Error ? error.message : "Unknown error",
-      params,
+      category: "attendance",
+      action: "get_event_participants",
+      actor_type: "user",
+      error_message: error instanceof Error ? error.message : "Unknown error",
+      params: JSON.stringify(params),
+      outcome: "failure",
     });
 
     if (error instanceof Error) {

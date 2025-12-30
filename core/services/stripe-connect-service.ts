@@ -23,10 +23,13 @@ export function createStripeConnectService(): IStripeConnectService {
         return await port.updateAccountFromWebhook(accountId, status);
       } catch (error) {
         logger.error("Stripe Connect service error", {
-          tag: "stripe-connect-service",
+          category: "stripe_connect",
+          action: "service_operation",
+          actor_type: "system",
           account_id: accountId,
           error_name: error instanceof Error ? error.name : "Unknown",
           error_message: error instanceof Error ? error.message : String(error),
+          outcome: "failure",
         });
         throw error;
       }

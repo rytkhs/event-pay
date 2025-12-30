@@ -176,27 +176,34 @@ export class StripeConnectErrorHandler implements IStripeConnectErrorHandler {
     switch (level) {
       case "info":
         logger.info("StripeConnect Info", {
-          tag: "stripeConnectInfo",
-          service: "stripe-connect",
+          category: "stripe_connect",
+          action: "error_handling",
+          actor_type: "system",
           error_type: logData.errorType,
           message: logData.message,
+          outcome: "success",
         });
         break;
       case "warn":
         logger.warn("StripeConnect Warning", {
-          tag: "stripeConnectWarning",
-          service: "stripe-connect",
+          category: "stripe_connect",
+          action: "error_handling",
+          actor_type: "system",
           error_type: logData.errorType,
           message: logData.message,
+          outcome: "failure",
         });
         break;
       case "error":
+      case "critical":
         logger.error("StripeConnect Error", {
-          tag: "stripeConnectError",
-          service: "stripe-connect",
+          category: "stripe_connect",
+          action: "error_handling",
+          actor_type: "system",
           error_type: logData.errorType,
           message: logData.message,
           metadata: logData.metadata,
+          outcome: "failure",
         });
         break;
     }
@@ -208,11 +215,13 @@ export class StripeConnectErrorHandler implements IStripeConnectErrorHandler {
   private async notifyAdmin(error: StripeConnectError): Promise<void> {
     // ログ出力
     logger.error("Admin notification required for StripeConnect error", {
-      tag: "stripeConnectAdminNotification",
-      service: "stripe-connect",
+      category: "stripe_connect",
+      action: "admin_notification",
+      actor_type: "system",
       error_type: error.type,
       message: error.message,
       metadata: error.metadata,
+      outcome: "failure",
     });
 
     // Slack通知
@@ -231,17 +240,21 @@ export class StripeConnectErrorHandler implements IStripeConnectErrorHandler {
 
       if (!slackResult.success) {
         logger.warn("StripeConnect Slack notification failed", {
-          tag: "stripeConnectSlackFailed",
-          service: "stripe-connect",
+          category: "stripe_connect",
+          action: "admin_notification",
+          actor_type: "system",
           error_type: error.type,
           slack_error: slackResult.error,
+          outcome: "failure",
         });
       }
     } catch (error) {
       logger.error("StripeConnect Slack notification exception", {
-        tag: "stripeConnectSlackException",
-        service: "stripe-connect",
+        category: "stripe_connect",
+        action: "admin_notification",
+        actor_type: "system",
         error_message: error instanceof Error ? error.message : String(error),
+        outcome: "failure",
       });
     }
   }

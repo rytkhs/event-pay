@@ -108,10 +108,14 @@ export async function getEventPaymentsAction(eventId: string): Promise<GetEventP
   });
 
   logger.info("決済情報取得完了", {
-    eventId: validatedEventId,
-    userId: user.id,
-    paymentCount: cleanedPayments.length,
-    totalAmount: summary.totalAmount,
+    category: "payment",
+    action: "get_event_payments",
+    actor_type: "user",
+    event_id: validatedEventId,
+    user_id: user.id,
+    payment_count: cleanedPayments.length,
+    total_amount: summary.totalAmount,
+    outcome: "success",
   });
 
   return validatedResponse;

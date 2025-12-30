@@ -19,10 +19,13 @@ export function assertStripePayment(obj: any, context?: string): asserts obj is 
   if (!isValidStripePayment(obj)) {
     const errorMessage = `Invalid Stripe payment object${context ? ` in ${context}` : ""}`;
     logger.error(errorMessage, {
-      tag: "stripeObjectValidation",
+      category: "system",
+      action: "stripe_guard_check",
+      actor_type: "system",
       context,
       object_type: typeof obj,
       has_id: obj && typeof obj === "object" ? typeof obj.id : "missing",
+      outcome: "failure",
     });
     throw new Error(errorMessage);
   }
@@ -59,10 +62,13 @@ export function getStripeSessionMetadata(session: any, key: string): string {
   if (!hasStripeSessionMetadata(session, key)) {
     const errorMessage = `Missing or invalid metadata key '${key}' in Stripe session`;
     logger.error(errorMessage, {
-      tag: "stripeSessionMetadata",
+      category: "system",
+      action: "stripe_guard_check",
+      actor_type: "system",
       key,
       has_metadata: session?.metadata ? "yes" : "no",
       metadata_type: typeof session?.metadata,
+      outcome: "failure",
     });
     throw new Error(errorMessage);
   }
@@ -100,12 +106,15 @@ export function getRequiredProperty<T = string>(
       context ? ` in ${context}` : ""
     }`;
     logger.error(errorMessage, {
-      tag: "objectPropertyValidation",
+      category: "system",
+      action: "stripe_guard_check",
+      actor_type: "system",
       property,
       expected_type: expectedType,
       actual_type:
         obj && typeof obj === "object" && property in obj ? typeof obj[property] : "missing",
       context,
+      outcome: "failure",
     });
     throw new Error(errorMessage);
   }

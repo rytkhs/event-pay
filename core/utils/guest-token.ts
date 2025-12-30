@@ -1,3 +1,4 @@
+import { logger } from "@core/logging/app-logger";
 import { generateRandomBytes, toBase64UrlSafe } from "@core/security/crypto";
 import {
   validateGuestTokenRLS,
@@ -80,11 +81,13 @@ export async function validateGuestToken(guestToken: string): Promise<{
     };
   } catch (error) {
     if (process.env.NODE_ENV === "development") {
-      const { logger } = await import("@core/logging/app-logger");
       logger.error("ゲストトークン検証エラー", {
-        tag: "guestToken",
+        category: "authentication",
+        action: "guest_token_validation",
+        actor_type: "anonymous",
         error_name: error instanceof Error ? error.name : "Unknown",
         error_message: error instanceof Error ? error.message : String(error),
+        outcome: "failure",
       });
     }
     return {

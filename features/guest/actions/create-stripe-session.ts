@@ -24,9 +24,12 @@ async function ensurePaymentServiceRegistration() {
     await import("@features/payments/core-bindings");
   } catch (error) {
     logger.error("Failed to register PaymentService implementation", {
-      tag: "payment-service-init",
+      category: "payment",
+      action: "session_creation",
+      actor_type: "guest",
       error_name: error instanceof Error ? error.name : "Unknown",
       error_message: error instanceof Error ? error.message : String(error),
+      outcome: "failure",
     });
     throw new Error("PaymentService initialization failed");
   }

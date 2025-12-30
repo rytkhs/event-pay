@@ -51,11 +51,14 @@ class EventRegistry {
     results.forEach((result, index) => {
       if (result.status === "rejected") {
         logger.error("Payment event handler failed", {
-          tag: "payment-event",
+          category: "payment",
+          action: "event_dispatch",
+          actor_type: "system",
           handler_index: index,
           event_type: event.type,
           payment_id: event.paymentId,
           error_reason: String(result.reason),
+          outcome: "failure",
         });
       }
     });
@@ -68,11 +71,14 @@ class EventRegistry {
     results.forEach((result, index) => {
       if (result.status === "rejected") {
         logger.error("Stripe account event handler failed", {
-          tag: "stripe-account-event",
+          category: "stripe_connect",
+          action: "event_dispatch",
+          actor_type: "system",
           handler_index: index,
           event_type: event.type,
           account_id: event.accountId,
           error_reason: String(result.reason),
+          outcome: "failure",
         });
       }
     });

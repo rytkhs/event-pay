@@ -144,10 +144,13 @@ export function useEventSubmission({ eventId, onSubmit }: UseEventSubmissionProp
         }
       } catch (error) {
         logger.error("Event update failed", {
-          tag: "eventUpdate",
+          category: "event_management",
+          action: "event_update",
+          actor_type: "user",
           event_id: eventId,
           error_name: error instanceof Error ? error.name : "Unknown",
           error_message: error instanceof Error ? error.message : String(error),
+          outcome: "failure",
         });
         const errorMessage = "エラーが発生しました。もう一度お試しください。";
         setErrors({ general: errorMessage });
@@ -273,10 +276,13 @@ export function useEventSubmission({ eventId, onSubmit }: UseEventSubmissionProp
   const handleSubmissionError = useCallback(
     (error: any, setErrors: (errors: FormErrors) => void): SubmitResult => {
       logger.error("Event submission failed", {
-        tag: "eventSubmission",
+        category: "event_management",
+        action: "event_submission",
+        actor_type: "user",
         event_id: eventId,
         error_name: error instanceof Error ? error.name : "Unknown",
         error_message: error instanceof Error ? error.message : String(error),
+        outcome: "failure",
       });
       const errorMessage = "エラーが発生しました。もう一度お試しください。";
       setErrors({ general: errorMessage });

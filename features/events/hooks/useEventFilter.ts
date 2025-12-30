@@ -120,9 +120,12 @@ export function useEventFilter(options: UseEventFilterOptions = {}) {
         if (dateRange.end < dateRange.start) {
           if (process.env.NODE_ENV === "development") {
             logger.warn("Invalid date range provided, clearing date range", {
-              tag: "invalidDateRange",
-              start: dateRange.start,
-              end: dateRange.end,
+              category: "event_management",
+              action: "filter_validation_failed",
+              actor_type: "user",
+              start_date: dateRange.start,
+              end_date: dateRange.end,
+              outcome: "failure",
             });
           }
           dateRange = {};

@@ -52,9 +52,12 @@ export async function updatePasswordAction(formData: FormData): Promise<ActionRe
 
     if (signInError) {
       logger.warn("Password reauthentication failed", {
-        tag: "passwordReauthFailed",
+        category: "authentication",
+        action: "update_password",
+        actor_type: "user",
         user_id: user.id,
         error_message: signInError.message,
+        outcome: "failure",
       });
       return {
         success: false,
@@ -69,9 +72,12 @@ export async function updatePasswordAction(formData: FormData): Promise<ActionRe
 
     if (updateError) {
       logger.error("Password update failed", {
-        tag: "passwordUpdateFailed",
+        category: "authentication",
+        action: "update_password",
+        actor_type: "user",
         user_id: user.id,
         error_message: updateError.message,
+        outcome: "failure",
       });
       return {
         success: false,
@@ -80,8 +86,11 @@ export async function updatePasswordAction(formData: FormData): Promise<ActionRe
     }
 
     logger.info("Password updated successfully", {
-      tag: "passwordUpdated",
+      category: "authentication",
+      action: "update_password",
+      actor_type: "user",
       user_id: user.id,
+      outcome: "success",
     });
 
     return {
@@ -90,9 +99,12 @@ export async function updatePasswordAction(formData: FormData): Promise<ActionRe
     };
   } catch (error) {
     logger.error("Update password action error", {
-      tag: "updatePasswordActionError",
+      category: "authentication",
+      action: "update_password",
+      actor_type: "user",
       error_name: error instanceof Error ? error.name : "Unknown",
       error_message: error instanceof Error ? error.message : String(error),
+      outcome: "failure",
     });
 
     return {

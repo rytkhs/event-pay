@@ -125,9 +125,12 @@ export class NotificationService implements INotificationService {
       if (!adminAlertResult.success) {
         // email-service側で詳細なログは記録済みなので、ここでは簡潔に
         logger.warn("Admin alert failed for account restriction", {
-          tag: "notificationService",
+          category: "email",
+          action: "send_admin_alert",
+          actor_type: "system",
           user_id: data.userId,
           account_id: data.accountId,
+          outcome: "failure",
         });
       }
 

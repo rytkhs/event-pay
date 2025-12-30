@@ -118,10 +118,13 @@ export default async function GuestPage({ params, searchParams }: GuestPageProps
     if (process.env.NODE_ENV === "development") {
       const { logger } = await import("@core/logging/app-logger");
       logger.error("ゲストページでエラーが発生", {
-        tag: "guestPage",
+        category: "attendance",
+        action: "page_load_error",
+        actor_type: "anonymous",
         error_name: error instanceof Error ? error.name : "Unknown",
         error_message: error instanceof Error ? error.message : String(error),
         token_prefix: token.substring(0, 4),
+        outcome: "failure",
       });
     }
     // セキュリティログに記録（エラー詳細は記録しない）

@@ -101,10 +101,13 @@ export class AccountLockoutService {
 
         // セキュリティログ
         logger.warn("Account locked due to failed attempts", {
-          tag: "accountLocked",
+          category: "authentication",
+          action: "account_lockout",
+          actor_type: "user",
           sanitized_email: email.replace(/(.{2}).*(@.*)/, "$1***$2"),
           failed_attempts: newAttempts,
           lockout_expires_at: lockoutExpiresAt.toISOString(),
+          outcome: "failure",
         });
 
         return {
@@ -120,10 +123,13 @@ export class AccountLockoutService {
       };
     } catch (error) {
       logger.error("Failed to record failed attempt", {
-        tag: "lockoutRecordFailed",
+        category: "authentication",
+        action: "account_lockout",
+        actor_type: "user",
         sanitized_email: email.replace(/(.{2}).*(@.*)/, "$1***$2"),
         error_name: error instanceof Error ? error.name : "Unknown",
         error_message: error instanceof Error ? error.message : String(error),
+        outcome: "failure",
       });
       // フェイルオープン（エラー時は制限しない）
       return {
@@ -170,10 +176,13 @@ export class AccountLockoutService {
       };
     } catch (error) {
       logger.error("Failed to check lockout status", {
-        tag: "lockoutCheckFailed",
+        category: "authentication",
+        action: "lockout_check",
+        actor_type: "user",
         sanitized_email: email.replace(/(.{2}).*(@.*)/, "$1***$2"),
         error_name: error instanceof Error ? error.name : "Unknown",
         error_message: error instanceof Error ? error.message : String(error),
+        outcome: "failure",
       });
       // フェイルオープン（エラー時は制限しない）
       const config = this.getConfig();
@@ -197,10 +206,13 @@ export class AccountLockoutService {
       await Promise.all([redis.del(failedKey), redis.del(lockoutKey)]);
     } catch (error) {
       logger.error("Failed to clear failed attempts", {
-        tag: "lockoutClearFailed",
+        category: "authentication",
+        action: "lockout_reset",
+        actor_type: "user",
         sanitized_email: email.replace(/(.{2}).*(@.*)/, "$1***$2"),
         error_name: error instanceof Error ? error.name : "Unknown",
         error_message: error instanceof Error ? error.message : String(error),
+        outcome: "failure",
       });
       // エラーは記録するが、処理は継続
     }

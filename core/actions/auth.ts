@@ -163,7 +163,8 @@ export async function loginAction(formData: FormData): Promise<ActionResult<{ us
       }
     } catch (rateLimitError) {
       logger.warn("Rate limit check failed", {
-        tag: "rateLimitCheckFailed",
+        category: "security",
+        action: "rateLimitCheckFailed",
         error_name: rateLimitError instanceof Error ? rateLimitError.name : "Unknown",
         error_message:
           rateLimitError instanceof Error ? rateLimitError.message : String(rateLimitError),
@@ -202,7 +203,8 @@ export async function loginAction(formData: FormData): Promise<ActionResult<{ us
 
     if (signInError) {
       logger.error("Login authentication failed", {
-        tag: "loginFailed",
+        category: "authentication",
+        action: "loginFailed",
         error_message: (signInError as any)?.message ?? String(signInError),
         sanitized_email: sanitizedEmail.replace(/(.)(.*)(@.*)/, "$1***$3"),
       });
@@ -284,7 +286,8 @@ export async function loginAction(formData: FormData): Promise<ActionResult<{ us
       } catch (error) {
         // GA4送信エラーはログインの成功に影響しない
         logger.debug("[GA4] Failed to send login event", {
-          tag: "ga4LoginEventFailed",
+          category: "system",
+          action: "ga4LoginEventFailed",
           error_message: error instanceof Error ? error.message : String(error),
         });
       }
@@ -299,7 +302,8 @@ export async function loginAction(formData: FormData): Promise<ActionResult<{ us
     };
   } catch (error) {
     logger.error("Login action error", {
-      tag: "loginActionError",
+      category: "authentication",
+      action: "loginActionError",
       error_name: error instanceof Error ? error.name : "Unknown",
       error_message: error instanceof Error ? error.message : String(error),
     });
@@ -354,7 +358,8 @@ export async function registerAction(formData: FormData): Promise<ActionResult<{
       }
     } catch (rateLimitError) {
       logger.warn("Rate limit check failed during registration", {
-        tag: "rateLimitCheckFailed",
+        category: "security",
+        action: "rateLimitCheckFailed",
         error_name: rateLimitError instanceof Error ? rateLimitError.name : "Unknown",
         error_message:
           rateLimitError instanceof Error ? rateLimitError.message : String(rateLimitError),
@@ -389,7 +394,8 @@ export async function registerAction(formData: FormData): Promise<ActionResult<{
 
     if (signUpError) {
       logger.error("User registration failed", {
-        tag: "registrationFailed",
+        category: "authentication",
+        action: "registrationFailed",
         error_message: (signUpError as any)?.message ?? String(signUpError),
         sanitized_email: sanitizedEmail.replace(/(.)(.*)(@.*)/, "$1***$3"),
       });
@@ -446,7 +452,8 @@ export async function registerAction(formData: FormData): Promise<ActionResult<{
         );
       } catch (error) {
         logger.debug("[GA4] Failed to send sign_up event", {
-          tag: "ga4SignUpEventFailed",
+          category: "system",
+          action: "ga4SignUpEventFailed",
           error_message: error instanceof Error ? error.message : String(error),
         });
       }
@@ -466,13 +473,15 @@ export async function registerAction(formData: FormData): Promise<ActionResult<{
 
         if (!slackResult.success) {
           logger.warn("Account creation Slack notification failed", {
-            tag: "accountCreationSlackFailed",
+            category: "system",
+            action: "accountCreationSlackFailed",
             error: slackResult.error,
           });
         }
       } catch (error) {
         logger.error("Account creation Slack notification exception", {
-          tag: "accountCreationSlackException",
+          category: "system",
+          action: "accountCreationSlackException",
           error_message: error instanceof Error ? error.message : String(error),
         });
       }
@@ -488,7 +497,8 @@ export async function registerAction(formData: FormData): Promise<ActionResult<{
     };
   } catch (error) {
     logger.error("Register action error", {
-      tag: "registerActionError",
+      category: "authentication",
+      action: "registerActionError",
       error_name: error instanceof Error ? error.name : "Unknown",
       error_message: error instanceof Error ? error.message : String(error),
     });
@@ -527,7 +537,8 @@ export async function verifyOtpAction(formData: FormData): Promise<ActionResult>
 
     if (verifiedError) {
       logger.error("OTP verification failed", {
-        tag: "otpVerificationFailed",
+        category: "authentication",
+        action: "otpVerificationFailed",
         error_message: (verifiedError as any)?.message ?? String(verifiedError),
         sanitized_email: email.replace(/(.)(.*)(@.*)/, "$1***$3"),
       });
@@ -570,7 +581,8 @@ export async function verifyOtpAction(formData: FormData): Promise<ActionResult>
     };
   } catch (error) {
     logger.error("Verify OTP action error", {
-      tag: "verifyOtpActionError",
+      category: "authentication",
+      action: "verifyOtpActionError",
       error_name: error instanceof Error ? error.name : "Unknown",
       error_message: error instanceof Error ? error.message : String(error),
     });
@@ -614,7 +626,8 @@ export async function resendOtpAction(formData: FormData): Promise<ActionResult>
       }
     } catch (rateLimitError) {
       logger.warn("Rate limit check failed during email resend", {
-        tag: "rateLimitCheckFailed",
+        category: "security",
+        action: "rateLimitCheckFailed",
         error_name: rateLimitError instanceof Error ? rateLimitError.name : "Unknown",
         error_message:
           rateLimitError instanceof Error ? rateLimitError.message : String(rateLimitError),
@@ -644,7 +657,8 @@ export async function resendOtpAction(formData: FormData): Promise<ActionResult>
 
     if (error) {
       logger.error("Resend OTP failed", {
-        tag: "resendOtpFailed",
+        category: "authentication",
+        action: "resendOtpFailed",
         error_message: (error as any)?.message ?? String(error),
         sanitized_email: email.replace(/(.)(.*)(@.*)/, "$1***$3"),
       });
@@ -668,7 +682,8 @@ export async function resendOtpAction(formData: FormData): Promise<ActionResult>
     };
   } catch (error) {
     logger.error("Resend OTP action error", {
-      tag: "resendOtpActionError",
+      category: "authentication",
+      action: "resendOtpActionError",
       error_name: error instanceof Error ? error.name : "Unknown",
       error_message: error instanceof Error ? error.message : String(error),
     });
@@ -728,7 +743,8 @@ export async function resetPasswordAction(formData: FormData): Promise<ActionRes
       }
     } catch (rateLimitError) {
       logger.warn("Rate limit check failed during password reset", {
-        tag: "rateLimitCheckFailed",
+        category: "security",
+        action: "rateLimitCheckFailed",
         error_name: rateLimitError instanceof Error ? rateLimitError.name : "Unknown",
         error_message:
           rateLimitError instanceof Error ? rateLimitError.message : String(rateLimitError),
@@ -746,7 +762,8 @@ export async function resetPasswordAction(formData: FormData): Promise<ActionRes
     // エラーがあってもログに記録するだけで、ユーザーには同じメッセージを返す
     if (resetResult && (resetResult as any).error) {
       logger.error("Reset password OTP failed", {
-        tag: "resetPasswordOtpFailed",
+        category: "authentication",
+        action: "resetPasswordOtpFailed",
         error_message:
           ((resetResult as any).error as any)?.message ?? String((resetResult as any).error),
         sanitized_email: email.replace(/(.)(.*)(@.*)/, "$1***$3"),
@@ -762,7 +779,8 @@ export async function resetPasswordAction(formData: FormData): Promise<ActionRes
     };
   } catch (error) {
     logger.error("Reset password action error", {
-      tag: "resetPasswordActionError",
+      category: "authentication",
+      action: "resetPasswordActionError",
       error_name: (error as any)?.name ?? "Unknown",
       error_message: (error as any)?.message ?? String(error),
     });
@@ -809,7 +827,8 @@ export async function updatePasswordAction(formData: FormData): Promise<ActionRe
 
     if (error) {
       logger.error("Update password failed", {
-        tag: "updatePasswordFailed",
+        category: "authentication",
+        action: "updatePasswordFailed",
         error_message: (error as any)?.message ?? String(error),
       });
       return {
@@ -825,7 +844,8 @@ export async function updatePasswordAction(formData: FormData): Promise<ActionRe
     };
   } catch (error) {
     logger.error("Update password action error", {
-      tag: "updatePasswordActionError",
+      category: "authentication",
+      action: "updatePasswordActionError",
       error_name: error instanceof Error ? error.name : "Unknown",
       error_message: error instanceof Error ? error.message : String(error),
     });
@@ -859,7 +879,8 @@ export async function logoutAction(): Promise<ActionResult> {
 
     if (error) {
       logger.warn("Logout error (non-critical)", {
-        tag: "logoutError",
+        category: "authentication",
+        action: "logoutError",
         error_message: error.message,
       });
     }
@@ -886,14 +907,16 @@ export async function logoutAction(): Promise<ActionResult> {
         );
       } catch (error) {
         logger.debug("[GA4] Failed to send logout event", {
-          tag: "ga4LogoutEventFailed",
+          category: "system",
+          action: "ga4LogoutEventFailed",
           error_message: error instanceof Error ? error.message : String(error),
         });
       }
     });
   } catch (error) {
     logger.error("Logout action error", {
-      tag: "logoutActionError",
+      category: "authentication",
+      action: "logoutActionError",
       error_name: error instanceof Error ? error.name : "Unknown",
       error_message: error instanceof Error ? error.message : String(error),
     });

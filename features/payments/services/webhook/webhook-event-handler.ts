@@ -38,6 +38,17 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
     );
   }
 
+  /**
+   * 構造化ロガー
+   */
+  private get logger() {
+    return logger.withContext({
+      category: "stripe_webhook",
+      action: "webhook_event_handler",
+      actor_type: "webhook",
+    });
+  }
+
   async handleEvent(event: Stripe.Event): Promise<WebhookProcessingResult> {
     try {
       switch (event.type) {
@@ -169,11 +180,11 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
                   .single();
 
                 if (attendanceError || !attendance) {
-                  logger.warn("[GA4] Failed to fetch event info for purchase tracking", {
-                    tag: "ga4-webhook",
+                  this.logger.warn("[GA4] Failed to fetch event info for purchase tracking", {
                     payment_id: payment.id,
                     attendance_id: payment.attendance_id,
                     error_message: attendanceError?.message || "Attendance not found",
+                    outcome: "failure",
                   });
                 } else {
                   interface AttendanceWithEvent {
@@ -199,19 +210,19 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
                   });
                 }
               } else {
-                logger.debug("[GA4] No GA4 Client ID in checkout session metadata", {
-                  tag: "ga4-webhook",
+                this.logger.debug("[GA4] No GA4 Client ID in checkout session metadata", {
                   session_id: maskSessionId(sessionId),
                   payment_id: payment.id,
+                  outcome: "success",
                 });
               }
             } catch (gaError) {
               // GA4イベント送信の失敗はログのみ記録、webhook処理は継続
-              logger.warn("[GA4] Failed to send purchase event", {
-                tag: "ga4-webhook",
+              this.logger.warn("[GA4] Failed to send purchase event", {
                 payment_id: payment.id,
                 session_id: maskSessionId(sessionId),
                 error_message: gaError instanceof Error ? gaError.message : "Unknown error",
+                outcome: "failure",
               });
             }
 
@@ -655,11 +666,11 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
           .single();
 
         if (fetchError || !attendance) {
-          logger.warn("Failed to fetch attendance for payment notification", {
-            tag: "paymentNotification",
+          this.logger.warn("Failed to fetch attendance for payment notification", {
             paymentId: payment.id,
             attendanceId: payment.attendance_id,
             error_message: fetchError?.message || "Attendance not found",
+            outcome: "failure",
           });
           // 早期リターン: 通知失敗はwebhook処理を停止させない
         } else {
@@ -686,10 +697,10 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
         }
       } catch (error) {
         // 通知失敗はログのみ記録、webhook処理は継続
-        logger.warn("Failed to send payment completion notification", {
-          tag: "paymentNotification",
+        this.logger.warn("Failed to send payment completion notification", {
           paymentId: payment.id,
           error_message: error instanceof Error ? error.message : "Unknown error",
+          outcome: "failure",
         });
       }
 

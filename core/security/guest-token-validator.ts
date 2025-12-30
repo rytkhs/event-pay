@@ -539,9 +539,13 @@ export class RLSGuestTokenValidator implements IGuestTokenValidator {
     } catch (error) {
       // ログ記録自体の失敗はフォールバックとしてシステムログに記録
       logger.error("Critical fail: guest audit log recording failed", {
-        error: String(error),
+        category: "security",
+        action: "guest_audit_log_error",
+        actor_type: "system",
+        error_message: String(error),
         token_prefix: token.substring(0, 8),
-        action,
+        action_name: action,
+        outcome: "failure",
       });
     }
   }

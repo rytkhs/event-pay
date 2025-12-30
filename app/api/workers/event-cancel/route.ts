@@ -33,18 +33,20 @@ export async function POST(request: NextRequest) {
   const start = Date.now();
   const corr = `qstash_cancel_${generateSecureUuid()}`;
 
+  const cancelLogger = logger.withContext({
+    category: "event_management",
+    action: "event_cancel_worker",
+    actor_type: "webhook",
+    correlation_id: corr,
+  });
   try {
-    logger.info("QStash event-cancel worker received", {
-      tag: "event-cancel-worker",
-      correlation_id: corr,
-    });
-
     // 署名検証
     const signature = request.headers.get("Upstash-Signature");
     const deliveryId = request.headers.get("Upstash-Delivery-Id");
     const url = `${getEnv().NEXT_PUBLIC_APP_URL}/api/workers/event-cancel`;
     const rawBody = await request.text();
 
+    cancelLogger.info("QStash event-cancel worker received");
     if (!signature) {
       logSecurityEvent({
         type: "QSTASH_SIGNATURE_MISSING",
@@ -113,11 +115,10 @@ export async function POST(request: NextRequest) {
       .in("status", ["attending", "maybe"]);
 
     if (error) {
-      logger.error("Failed to fetch attendees for cancel worker", {
-        tag: "event-cancel-worker",
-        correlation_id: corr,
+      cancelLogger.error("Failed to fetch attendees for cancel worker", {
         event_id: eventId,
         error_message: error.message,
+        outcome: "failure",
       });
       // 致命的失敗はHTTP 500で返却し、QStashの再試行に委ねる
       return createProblemResponse("DATABASE_ERROR", {
@@ -156,19 +157,19 @@ export async function POST(request: NextRequest) {
         const slackResult = await sendSlackText(slackText);
 
         if (!slackResult.success) {
-          logger.warn("Event cancel Slack notification failed", {
-            tag: "eventCancelSlackFailed",
-            correlation_id: corr,
+          cancelLogger.warn("Event cancel Slack notification failed", {
+            action: "event_cancel_slack_fail",
             event_id: eventId,
             slack_error: slackResult.error,
+            outcome: "failure",
           });
         }
       } catch (error) {
-        logger.error("Event cancel Slack notification exception", {
-          tag: "eventCancelSlackException",
-          correlation_id: corr,
+        cancelLogger.error("Event cancel Slack notification exception", {
+          action: "event_cancel_slack_exception",
           event_id: eventId,
           error_message: error instanceof Error ? error.message : String(error),
+          outcome: "failure",
         });
       }
     }
@@ -177,19 +178,18 @@ export async function POST(request: NextRequest) {
     // const notification = new NotificationService(admin);
     // await notification.sendEventCanceledEmails({ eventId, emails, message });
 
-    logger.info("Event cancel worker processed", {
-      tag: "event-cancel-worker",
-      correlation_id: corr,
+    cancelLogger.info("Event cancel worker processed", {
       event_id: eventId,
       target_count: emails.length,
       note: message ? "custom_message_included" : "no_message",
+      outcome: "success",
     });
 
     return NextResponse.json({ received: true, deliveryId, emails: emails.length });
   } catch (error) {
-    logger.error("Event cancel worker failed", {
-      tag: "event-cancel-worker",
+    cancelLogger.error("Event cancel worker failed", {
       error_message: error instanceof Error ? error.message : String(error),
+      outcome: "failure",
     });
     // 失敗時は500 Problem Detailsで返し、QStashのリトライに委ねる
     return createProblemResponse("INTERNAL_ERROR", {
@@ -198,6 +198,6 @@ export async function POST(request: NextRequest) {
     });
   } finally {
     const ms = Date.now() - start;
-    logger.debug("Event cancel worker finished", { tag: "event-cancel-worker", duration_ms: ms });
+    cancelLogger.debug("Event cancel worker finished", { duration_ms: ms });
   }
 }

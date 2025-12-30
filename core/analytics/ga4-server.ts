@@ -31,6 +31,13 @@ export class GA4ServerService {
     return getGA4Config();
   }
 
+  private get logger() {
+    return logger.withContext({
+      category: "system",
+      action: "ga4_server_side",
+    });
+  }
+
   /**
    * コンストラクタ
    *
@@ -96,8 +103,7 @@ export class GA4ServerService {
     engagementTimeMsec?: number
   ): Promise<void> {
     if (!this.config.enabled || !this.config.apiSecret) {
-      logger.debug("[GA4] Server event skipped (disabled or no API secret)", {
-        tag: "ga4-server",
+      this.logger.debug("[GA4] Server event skipped (disabled or no API secret)", {
         event_name: event.name,
         client_id: clientId,
         user_id: userId,
@@ -114,8 +120,7 @@ export class GA4ServerService {
       if (validation.isValid) {
         validClientId = sanitizedClientId;
       } else if (this.config.debug) {
-        logger.debug("[GA4] Invalid client ID", {
-          tag: "ga4-server",
+        this.logger.debug("[GA4] Invalid client ID", {
           client_id: clientId,
           errors: validation.errors,
         });
@@ -124,8 +129,7 @@ export class GA4ServerService {
 
     // Client IDもUserIdもない場合は送信できない
     if (!validClientId && !userId) {
-      logger.warn("[GA4] Neither valid client ID nor user ID provided", {
-        tag: "ga4-server",
+      this.logger.warn("[GA4] Neither valid client ID nor user ID provided", {
         client_id: clientId,
         user_id: userId,
         event_name: event.name,
@@ -145,8 +149,7 @@ export class GA4ServerService {
       (Object.keys(event.params).length > 0 &&
         Object.keys(paramValidation.sanitizedParams).length === 0)
     ) {
-      logger.warn("[GA4] Event parameters validation failed", {
-        tag: "ga4-server",
+      this.logger.warn("[GA4] Event parameters validation failed", {
         event_name: event.name,
         original_param_count: Object.keys(event.params).length,
         sanitized_param_count: paramValidation.sanitizedParams
@@ -209,36 +212,34 @@ export class GA4ServerService {
         );
       }
 
-      logger.info("[GA4] Server event sent successfully", {
-        tag: "ga4-server",
+      this.logger.info("[GA4] Server event sent successfully", {
         event_name: event.name,
         client_id: validClientId,
         user_id: userId,
         session_id: sessionId,
+        outcome: "success",
       });
 
       if (this.config.debug) {
-        logger.debug("[GA4] Server event payload", {
-          tag: "ga4-server",
+        this.logger.debug("[GA4] Server event payload", {
           event_name: event.name,
           payload: JSON.stringify(payload),
         });
       }
     } catch (error) {
-      logger.error("[GA4] Failed to send server event", {
-        tag: "ga4-server",
+      this.logger.error("[GA4] Failed to send server event", {
         event_name: event.name,
         client_id: validClientId,
         user_id: userId,
         error: error instanceof GA4Error ? error.message : String(error),
         error_code: error instanceof GA4Error ? error.code : undefined,
         error_context: error instanceof GA4Error ? error.context : undefined,
+        outcome: "failure",
       });
 
       // エラーの詳細をデバッグログに出力
       if (this.config.debug) {
-        logger.debug("[GA4] Server event error details", {
-          tag: "ga4-server",
+        this.logger.debug("[GA4] Server event error details", {
           error_stack: error instanceof Error ? error.stack : undefined,
           payload: JSON.stringify(payload),
         });
@@ -270,8 +271,7 @@ export class GA4ServerService {
    */
   async sendEvents(events: GA4Event[], clientId: string): Promise<void> {
     if (!this.config.enabled || !this.config.apiSecret) {
-      logger.debug("[GA4] Server batch events skipped (disabled or no API secret)", {
-        tag: "ga4-server",
+      this.logger.debug("[GA4] Server batch events skipped (disabled or no API secret)", {
         event_count: events.length,
         client_id: clientId,
       });
@@ -283,8 +283,7 @@ export class GA4ServerService {
     const sanitizedClientId = GA4Validator.sanitizeClientId(clientId);
     const validation = GA4Validator.validateClientId(sanitizedClientId);
     if (!validation.isValid) {
-      logger.warn("[GA4] Invalid client ID for batch events", {
-        tag: "ga4-server",
+      this.logger.warn("[GA4] Invalid client ID for batch events", {
         client_id: clientId,
         errors: validation.errors,
         event_count: events.length,
@@ -316,8 +315,7 @@ export class GA4ServerService {
 
         // 無効なイベントをログに記録
         if (this.config.debug) {
-          logger.debug("[GA4] Skipping invalid event in batch", {
-            tag: "ga4-server",
+          this.logger.debug("[GA4] Skipping invalid event in batch", {
             event_name: event.name,
             original_param_count: Object.keys(event.params).length,
             sanitized_param_count: paramValidation.sanitizedParams
@@ -340,8 +338,7 @@ export class GA4ServerService {
 
     // 有効なイベントがない場合は送信しない
     if (validatedEvents.length === 0) {
-      logger.warn("[GA4] No valid events in batch after validation", {
-        tag: "ga4-server",
+      this.logger.warn("[GA4] No valid events in batch after validation", {
         original_count: events.length,
         client_id: clientId,
       });
@@ -354,8 +351,7 @@ export class GA4ServerService {
       batches.push(validatedEvents.slice(i, i + this.MAX_EVENTS_PER_BATCH));
     }
 
-    logger.info("[GA4] Starting batch processing", {
-      tag: "ga4-server",
+    this.logger.info("[GA4] Starting batch processing", {
       total_events: validatedEvents.length,
       total_batches: batches.length,
       max_events_per_batch: this.MAX_EVENTS_PER_BATCH,
@@ -372,21 +368,20 @@ export class GA4ServerService {
     const succeeded = results.filter((r) => r.status === "fulfilled").length;
     const failed = results.filter((r) => r.status === "rejected").length;
 
-    logger.info("[GA4] Batch processing completed", {
-      tag: "ga4-server",
+    this.logger.info("[GA4] Batch processing completed", {
       total_batches: batches.length,
       succeeded_batches: succeeded,
       failed_batches: failed,
       total_events: validatedEvents.length,
       client_id: clientId,
+      outcome: failed === 0 ? "success" : "failure",
     });
 
     // 失敗したバッチの詳細をログに記録
     if (failed > 0 && this.config.debug) {
       results.forEach((result, index) => {
         if (result.status === "rejected") {
-          logger.debug("[GA4] Batch failed", {
-            tag: "ga4-server",
+          this.logger.debug("[GA4] Batch failed", {
             batch_index: index,
             error: result.reason,
           });
@@ -419,8 +414,7 @@ export class GA4ServerService {
     };
 
     if (this.config.debug) {
-      logger.debug("[GA4] Sending batch", {
-        tag: "ga4-server",
+      this.logger.debug("[GA4] Sending batch", {
         batch_index: batchIndex,
         batch_size: batch.length,
         event_names: batch.map((e) => e.name).join(", "),
@@ -445,28 +439,27 @@ export class GA4ServerService {
         );
       }
 
-      logger.info("[GA4] Batch sent successfully", {
-        tag: "ga4-server",
+      this.logger.info("[GA4] Batch sent successfully", {
         batch_index: batchIndex,
         batch_size: batch.length,
         event_names: batch.map((e) => e.name).join(", "),
+        outcome: "success",
       });
 
       if (this.config.debug) {
-        logger.debug("[GA4] Batch payload", {
-          tag: "ga4-server",
+        this.logger.debug("[GA4] Batch payload", {
           batch_index: batchIndex,
           payload: JSON.stringify(payload),
         });
       }
     } catch (error) {
-      logger.error("[GA4] Failed to send batch", {
-        tag: "ga4-server",
+      this.logger.error("[GA4] Failed to send batch", {
         batch_index: batchIndex,
         batch_size: batch.length,
         error: error instanceof GA4Error ? error.message : String(error),
         error_code: error instanceof GA4Error ? error.code : undefined,
         error_context: error instanceof GA4Error ? error.context : undefined,
+        outcome: "failure",
       });
 
       // エラーを再スローして、Promise.allSettledで捕捉できるようにする
@@ -529,8 +522,7 @@ export class GA4ServerService {
           const delay = baseDelay + jitter;
 
           if (this.config.debug) {
-            logger.debug("[GA4] Retrying after error", {
-              tag: "ga4-server",
+            this.logger.debug("[GA4] Retrying after error", {
               attempt: attempt + 1,
               max_retries: maxRetries,
               delay_ms: Math.round(delay),

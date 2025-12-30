@@ -39,9 +39,10 @@ export async function POST(request: NextRequest) {
   const startTime = Date.now();
 
   logger.info("Webhook request received", {
+    category: "stripe_webhook",
+    action: "webhookRequestReceived",
     request_id: requestId,
     path: "/api/webhooks/stripe",
-    tag: "webhookProcessing",
   });
 
   try {
@@ -118,10 +119,11 @@ export async function POST(request: NextRequest) {
     const event = verificationResult.event;
 
     logger.info("Webhook signature verified", {
+      category: "stripe_webhook",
+      action: "signatureVerified",
       event_id: event.id,
       event_type: event.type,
       request_id: requestId,
-      tag: "webhookProcessing",
     });
 
     // テスト環境での同期処理モード（E2Eテスト用）
@@ -130,10 +132,11 @@ export async function POST(request: NextRequest) {
 
     if (shouldProcessSync) {
       logger.info("Test mode: Processing webhook synchronously (QStash skipped)", {
+        category: "stripe_webhook",
+        action: "processSynchronously",
         event_id: event.id,
         event_type: event.type,
         request_id: requestId,
-        tag: "webhook-test-mode",
       });
 
       try {
@@ -144,12 +147,13 @@ export async function POST(request: NextRequest) {
         const processingTime = Date.now() - startTime;
 
         logger.info("Webhook processed synchronously", {
+          category: "stripe_webhook",
+          action: "processedSynchronously",
           event_id: event.id,
           event_type: event.type,
           success: result.success,
           processing_time_ms: processingTime,
           request_id: requestId,
-          tag: "webhook-test-mode",
         });
 
         return NextResponse.json({
@@ -163,11 +167,12 @@ export async function POST(request: NextRequest) {
         });
       } catch (error) {
         logger.error("Webhook synchronous processing failed", {
+          category: "stripe_webhook",
+          action: "syncProcessingFailed",
           event_id: event.id,
           event_type: event.type,
           error: error instanceof Error ? error.message : "Unknown error",
           request_id: requestId,
-          tag: "webhook-test-mode",
         });
 
         return createProblemResponse("INTERNAL_ERROR", {
@@ -187,12 +192,13 @@ export async function POST(request: NextRequest) {
     };
 
     logger.debug("Publishing to QStash", {
+      category: "stripe_webhook",
+      action: "publishToQStash",
       event_id: event.id,
       event_type: event.type,
       worker_url: workerUrl,
       deduplication_id: event.id,
       request_id: requestId,
-      tag: "qstash-publish",
     });
 
     const qstash = getQstashClient();
@@ -211,7 +217,8 @@ export async function POST(request: NextRequest) {
     const processingTime = Date.now() - startTime;
 
     logger.info("Webhook successfully published to QStash", {
-      tag: "qstash-published",
+      category: "stripe_webhook",
+      action: "qstashPublished",
       event_id: event.id,
       event_type: event.type,
       qstash_message_id: qstashResult.messageId,
@@ -231,7 +238,8 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     const processingTime = Date.now() - startTime;
     const errorContext = {
-      tag: "webhook-error",
+      category: "stripe_webhook" as const,
+      action: "webhookError",
       error_name: error instanceof Error ? error.name : "Unknown",
       error_message: error instanceof Error ? error.message : String(error),
       processing_time_ms: processingTime,

@@ -345,12 +345,15 @@ export function logError(error: ErrorDetails, context?: ErrorContext): void {
     error.severity === "high" || error.severity === "critical" ? "error" : "warn";
 
   const fields = {
-    tag: "errorHandler",
+    category: "system",
+    action: context?.action ?? "error_handling",
+    actor_type: "system",
     error_code: error.code,
     severity: error.severity,
     user_id: context?.userId,
     event_id: context?.eventId,
-    action: context?.action,
+    outcome:
+      error.severity === "high" || error.severity === "critical" ? "failure" : ("success" as any),
     ...context?.additionalData,
   } as const;
 

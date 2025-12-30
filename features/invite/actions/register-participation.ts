@@ -654,9 +654,12 @@ export async function registerParticipationAction(
     } catch (error) {
       // 通知失敗はログのみ記録、本処理は継続
       logger.warn("Failed to send participation notification", {
-        tag: "participationNotification",
-        attendanceId: newAttendanceId,
+        category: "attendance",
+        action: "register_participation",
+        actor_type: "anonymous",
+        attendance_id: newAttendanceId,
         error_message: error instanceof Error ? error.message : "Unknown error",
+        outcome: "failure",
       });
     }
 

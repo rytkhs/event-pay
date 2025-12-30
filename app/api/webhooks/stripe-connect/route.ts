@@ -42,9 +42,11 @@ export async function POST(request: NextRequest) {
   const _clientIP = getClientIP(request);
   const requestId = request.headers.get("x-request-id") || generateSecureUuid();
   const connectLogger = logger.withContext({
+    category: "stripe_webhook",
+    action: "stripe_connect_webhook_receive",
+    actor_type: "webhook",
     request_id: requestId,
     path: request.nextUrl.pathname,
-    tag: "connectWebhookProcessing",
   });
 
   connectLogger.info("Connect webhook request received");
@@ -57,8 +59,12 @@ export async function POST(request: NextRequest) {
       if (!allowed) {
         // Security logging replaced with standard logger
         logger.warn("Webhook IP not allowed", {
+          category: "security",
+          action: "webhook_ip_check",
+          actor_type: "webhook",
           clientIp,
           userAgent: request.headers.get("user-agent") || undefined,
+          outcome: "failure",
         });
         return createProblemResponse("FORBIDDEN", {
           instance: "/api/webhooks/stripe-connect",
@@ -109,7 +115,6 @@ export async function POST(request: NextRequest) {
       connectLogger.info("Test mode: Processing connect webhook synchronously (QStash skipped)", {
         event_id: event.id,
         event_type: event.type,
-        tag: "connectWebhook-test-mode",
       });
 
       try {
@@ -158,7 +163,7 @@ export async function POST(request: NextRequest) {
           event_id: event.id,
           event_type: event.type,
           testMode: true,
-          tag: "connectWebhook-test-mode",
+          outcome: "success",
         });
 
         return NextResponse.json({
@@ -172,7 +177,7 @@ export async function POST(request: NextRequest) {
           event_id: event.id,
           event_type: event.type,
           error: error instanceof Error ? error.message : "Unknown error",
-          tag: "connectWebhook-test-mode",
+          outcome: "failure",
         });
 
         return createProblemResponse("INTERNAL_ERROR", {

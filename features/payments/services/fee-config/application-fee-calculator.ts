@@ -86,8 +86,9 @@ export class ApplicationFeeCalculator {
     const taxCalculation = this.calculateTax(calculation.afterMaximum, platform);
 
     logger.info("Application fee calculated", {
-      tag: "feeCalculated",
-      service: "ApplicationFeeCalculator",
+      category: "payment",
+      action: "fee_calculation",
+      actor_type: "system",
       amount,
       applicationFeeAmount: calculation.afterMaximum,
       rateFee: calculation.rateFee,
@@ -98,6 +99,7 @@ export class ApplicationFeeCalculator {
       feeExcludingTax: taxCalculation.feeExcludingTax,
       taxAmount: taxCalculation.taxAmount,
       isTaxIncluded: taxCalculation.isTaxIncluded,
+      outcome: "success",
     });
 
     return {
@@ -130,10 +132,12 @@ export class ApplicationFeeCalculator {
     const { platform } = await this.feeConfigService.getConfig(forceRefresh);
 
     logger.info("Application fee batch calculation started", {
-      tag: "batchCalculation",
-      service: "ApplicationFeeCalculator",
+      category: "payment",
+      action: "fee_calculation_batch",
+      actor_type: "system",
       batchSize: amounts.length,
       totalAmount: amounts.reduce((sum, amount) => sum + amount, 0),
+      outcome: "success",
     });
 
     // 各金額に対して計算実行
@@ -152,10 +156,12 @@ export class ApplicationFeeCalculator {
     const totalFeeAmount = results.reduce((sum, result) => sum + result.applicationFeeAmount, 0);
 
     logger.info("Application fee batch calculation completed", {
-      tag: "batchCalculationCompleted",
-      service: "ApplicationFeeCalculator",
+      category: "payment",
+      action: "fee_calculation_batch",
+      actor_type: "system",
       batchSize: amounts.length,
       totalFeeAmount,
+      outcome: "success",
     });
 
     return results;
@@ -286,16 +292,20 @@ export class ApplicationFeeCalculator {
 
     if (errors.length > 0) {
       logger.warn("Platform fee config validation failed", {
-        tag: "configValidationFailed",
-        service: "ApplicationFeeCalculator",
+        category: "payment",
+        action: "fee_config_validation",
+        actor_type: "system",
         errors,
         config: platform,
+        outcome: "failure",
       });
     } else {
       logger.debug("Platform fee config validation passed", {
-        tag: "configValidationPassed",
-        service: "ApplicationFeeCalculator",
+        category: "payment",
+        action: "fee_config_validation",
+        actor_type: "system",
         config: platform,
+        outcome: "success",
       });
     }
 

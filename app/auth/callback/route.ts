@@ -59,8 +59,11 @@ export async function GET(request: Request) {
           );
         } catch (error) {
           logger.debug("[GA4] Failed to send OAuth auth event", {
-            tag: "ga4OAuthEventFailed",
+            category: "authentication",
+            action: "oauth_callback",
+            actor_type: "user",
             error_message: error instanceof Error ? error.message : String(error),
+            outcome: "failure",
           });
         }
       });

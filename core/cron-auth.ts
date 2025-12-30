@@ -97,13 +97,16 @@ export function logCronActivity(
   _details?: Record<string, unknown>
 ): void {
   // _details は任意のメタ情報を付加するためのオブジェクト
-  const fields = { tag: "cronActivity", ...(_details || {}) } as Record<string, unknown>;
+  const fields = {
+    category: "system",
+    action: "cron_activity",
+    actor_type: "system",
+    outcome: (_type === "error" ? "failure" : "success") as any,
+    ...(_details || {}),
+  } as const;
 
   switch (_type) {
     case "success":
-      // 成功も info 扱いで記録
-      logger.info(_message, fields);
-      break;
     case "info":
       logger.info(_message, fields);
       break;

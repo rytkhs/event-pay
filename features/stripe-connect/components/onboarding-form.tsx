@@ -31,9 +31,12 @@ export function OnboardingForm({ onStartOnboarding }: OnboardingFormProps) {
       await onStartOnboarding();
     } catch (error) {
       logger.error("Simple onboarding start error", {
-        tag: "simpleOnboardingStartError",
+        category: "stripe_connect",
+        action: "onboarding_start",
+        actor_type: "user",
         error_name: error instanceof Error ? error.name : "Unknown",
         error_message: error instanceof Error ? error.message : String(error),
+        outcome: "failure",
       });
       setIsLoading(false);
     }

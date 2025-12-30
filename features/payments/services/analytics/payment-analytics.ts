@@ -45,20 +45,26 @@ export class PaymentAnalyticsService {
     // パラメータのバリデーション
     if (!clientId || !transactionId || !eventId || !eventTitle) {
       logger.warn("[Payment Analytics] Missing required parameters", {
-        tag: "payment-analytics",
+        category: "payment",
+        action: "payment_analytics",
+        actor_type: "system",
         has_client_id: !!clientId,
         has_transaction_id: !!transactionId,
         has_event_id: !!eventId,
         has_event_title: !!eventTitle,
+        outcome: "failure",
       });
       return;
     }
 
     if (amount <= 0) {
       logger.warn("[Payment Analytics] Invalid amount", {
-        tag: "payment-analytics",
+        category: "payment",
+        action: "payment_analytics",
+        actor_type: "system",
         amount,
         transaction_id: transactionId,
+        outcome: "failure",
       });
       return;
     }
@@ -84,18 +90,24 @@ export class PaymentAnalyticsService {
       await ga4Server.sendEvent({ name: "purchase", params: purchaseParams }, clientId);
 
       logger.info("[Payment Analytics] Purchase event tracked successfully", {
-        tag: "payment-analytics",
+        category: "payment",
+        action: "payment_analytics",
+        actor_type: "system",
         transaction_id: transactionId,
         event_id: eventId,
         amount,
+        outcome: "success",
       });
     } catch (error) {
       logger.error("[Payment Analytics] Failed to track purchase", {
-        tag: "payment-analytics",
+        category: "payment",
+        action: "payment_analytics",
+        actor_type: "system",
         transaction_id: transactionId,
         event_id: eventId,
         amount,
         error: error instanceof Error ? error.message : String(error),
+        outcome: "failure",
       });
 
       // エラーが発生してもwebhook処理は継続させる

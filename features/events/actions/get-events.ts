@@ -359,7 +359,13 @@ export async function getEventsAction(options: GetEventsOptions = {}): Promise<G
 
       // Supabase認証エラー
       if (errObj.message?.includes("JWT") || errObj.message?.includes("auth")) {
-        logger.warn("Authentication error in getEvents", errorContext);
+        logger.warn("Authentication error in getEvents", {
+          category: "event_management",
+          action: "get_events",
+          actor_type: "user",
+          ...errorContext,
+          outcome: "failure",
+        });
         return createServerActionError("UNAUTHORIZED", "認証が必要です", {
           retryable: false,
           correlationId: correlationId,
@@ -373,9 +379,13 @@ export async function getEventsAction(options: GetEventsOptions = {}): Promise<G
         errObj.message?.includes("postgres")
       ) {
         logger.error("Database error in getEvents", {
+          category: "event_management",
+          action: "get_events",
+          actor_type: "user",
           ...errorContext,
           db_error_code: errObj.code,
           severity: "high",
+          outcome: "failure",
         });
         return createServerActionError("DATABASE_ERROR", "データベースエラーが発生しました", {
           retryable: true,
@@ -389,7 +399,13 @@ export async function getEventsAction(options: GetEventsOptions = {}): Promise<G
         errObj.message?.includes("network") ||
         errObj.message?.includes("timeout")
       ) {
-        logger.warn("Network error in getEvents", errorContext);
+        logger.warn("Network error in getEvents", {
+          category: "event_management",
+          action: "get_events",
+          actor_type: "user",
+          ...errorContext,
+          outcome: "failure",
+        });
         return createServerActionError("EXTERNAL_SERVICE_ERROR", "接続エラーが発生しました", {
           retryable: true,
           correlationId: correlationId,
@@ -402,7 +418,13 @@ export async function getEventsAction(options: GetEventsOptions = {}): Promise<G
         errObj.message?.includes("invalid") ||
         errObj.name === "ValidationError"
       ) {
-        logger.info("Validation error in getEvents", errorContext);
+        logger.info("Validation error in getEvents", {
+          category: "event_management",
+          action: "get_events",
+          actor_type: "user",
+          ...errorContext,
+          outcome: "failure",
+        });
         return createServerActionError("VALIDATION_ERROR", "入力値が無効です", {
           retryable: false,
           correlationId: correlationId,
@@ -412,8 +434,12 @@ export async function getEventsAction(options: GetEventsOptions = {}): Promise<G
 
     // その他の予期しないエラー
     logger.error("Unexpected error in getEvents", {
+      category: "event_management",
+      action: "get_events",
+      actor_type: "user",
       ...errorContext,
       severity: "critical", // 予期しないエラーは重要度を上げる
+      outcome: "failure",
     });
 
     return createServerActionError("INTERNAL_ERROR", "予期しないエラーが発生しました", {

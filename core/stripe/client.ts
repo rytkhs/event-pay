@@ -12,7 +12,9 @@ export function getStripe(): Stripe {
 
   // デバッグログ: APIキーの詳細情報を出力
   logger.info("Stripe API Key Debug Info", {
-    tag: "stripeApiKeyDebug",
+    category: "system",
+    action: "client_creation",
+    actor_type: "system",
     key_length: stripeSecretKey.length,
     key_starts_with: stripeSecretKey.substring(0, 10),
     key_ends_with: stripeSecretKey.substring(stripeSecretKey.length - 10),
@@ -20,6 +22,7 @@ export function getStripe(): Stripe {
     key_has_spaces: stripeSecretKey.includes(" "),
     key_has_tabs: stripeSecretKey.includes("\t"),
     node_env: env.NODE_ENV,
+    outcome: "success",
   });
 
   const instance = new Stripe(stripeSecretKey, {
@@ -40,7 +43,13 @@ export function getStripe(): Stripe {
   if (!env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY) {
     logger.warn(
       "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY is not set – client-side Stripe.js may fail to initialize",
-      { tag: "stripeEnvCheck" }
+      {
+        category: "system",
+        action: "env_validation",
+        actor_type: "system",
+        variable_name: "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY",
+        outcome: "failure",
+      }
     );
   }
 
@@ -64,12 +73,15 @@ export function getStripe(): Stripe {
         }
       ).on("request", (req: Record<string, unknown>) => {
         logger.info("Stripe request initiated", {
-          tag: "stripeRequest",
+          category: "payment",
+          action: "payment_operation",
+          actor_type: "system",
           stripe_request_id: req.requestId as string | undefined,
           idempotency_key: req.idempotencyKey as string | undefined,
           method: req.method as string | undefined,
           path: req.path as string | undefined,
           stripe_account: req.stripeAccount as string | undefined,
+          outcome: "success",
         });
       });
 
@@ -82,13 +94,16 @@ export function getStripe(): Stripe {
         }
       ).on("response", (res: Record<string, unknown>) => {
         logger.info("Stripe response received", {
-          tag: "stripeResponse",
+          category: "payment",
+          action: "payment_operation",
+          actor_type: "system",
           stripe_request_id: res.requestId as string | undefined,
-          status: res.statusCode as number | undefined,
+          status_code: res.statusCode as number | undefined,
           latency_ms: res.elapsed as number | undefined,
           stripe_should_retry: (res.headers as Record<string, unknown> | undefined)?.[
             "stripe-should-retry"
           ] as string | undefined,
+          outcome: ((res.statusCode as number) < 400 ? "success" : "failure") as any,
         });
       });
     }

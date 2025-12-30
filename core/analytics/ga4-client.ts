@@ -26,6 +26,17 @@ export class GA4ClientService {
   }
 
   /**
+   * 構造化ログ用のロガー
+   */
+  private get logger() {
+    return logger.withContext({
+      category: "system",
+      action: "ga4_client_side",
+      actor_type: "user",
+    });
+  }
+
+  /**
    * カスタムイベントを送信する
    *
    * GA4が無効な場合は送信をスキップします。
@@ -47,10 +58,10 @@ export class GA4ClientService {
   sendEvent(event: GA4Event): void {
     if (!this.config.enabled) {
       if (this.config.debug) {
-        logger.debug("[GA4] Event skipped (disabled)", {
-          tag: "ga4-client",
+        this.logger.debug("[GA4] Event skipped (disabled)", {
           event_name: event.name,
           params: event.params,
+          outcome: "success",
         });
       }
       return;
@@ -60,17 +71,17 @@ export class GA4ClientService {
       sendGAEvent(event.name, event.params);
 
       if (this.config.debug) {
-        logger.debug("[GA4] Event sent", {
-          tag: "ga4-client",
+        this.logger.debug("[GA4] Event sent", {
           event_name: event.name,
           params: event.params,
+          outcome: "success",
         });
       }
     } catch (error) {
-      logger.error("[GA4] Failed to send event", {
-        tag: "ga4-client",
+      this.logger.error("[GA4] Failed to send event", {
         event_name: event.name,
-        error: error instanceof Error ? error.message : String(error),
+        error_message: error instanceof Error ? error.message : String(error),
+        outcome: "failure",
       });
     }
   }
@@ -101,7 +112,9 @@ export class GA4ClientService {
   async getClientId(timeoutMs: number = 1000): Promise<string | null> {
     if (!this.config.enabled) {
       if (this.config.debug) {
-        logger.debug("[GA4] Client ID request skipped (disabled)", { tag: "ga4-client" });
+        this.logger.debug("[GA4] Client ID request skipped (disabled)", {
+          outcome: "success",
+        });
       }
       return null;
     }
@@ -124,7 +137,9 @@ export class GA4ClientService {
       // タイムアウト設定
       timeoutId = setTimeout(() => {
         if (this.config.debug) {
-          logger.debug("[GA4] Client ID retrieval timed out", { tag: "ga4-client" });
+          this.logger.debug("[GA4] Client ID retrieval timed out", {
+            outcome: "failure",
+          });
         }
         safeResolve(null);
       }, timeoutMs);
@@ -140,11 +155,11 @@ export class GA4ClientService {
               const validation = GA4Validator.validateClientId(sanitizedClientId);
               if (!validation.isValid) {
                 if (this.config.debug) {
-                  logger.debug("[GA4] Invalid client ID received", {
-                    tag: "ga4-client",
+                  this.logger.debug("[GA4] Invalid client ID received", {
                     original_client_id: clientId,
                     sanitized_client_id: sanitizedClientId,
                     errors: validation.errors,
+                    outcome: "failure",
                   });
                 }
                 safeResolve(null);
@@ -152,18 +167,18 @@ export class GA4ClientService {
               }
 
               if (this.config.debug) {
-                logger.debug("[GA4] Client ID retrieved", {
-                  tag: "ga4-client",
+                this.logger.debug("[GA4] Client ID retrieved", {
                   original_client_id: clientId,
                   sanitized_client_id: sanitizedClientId,
+                  outcome: "success",
                 });
               }
               safeResolve(sanitizedClientId);
             });
           } catch (error) {
-            logger.error("[GA4] Failed to get client ID", {
-              tag: "ga4-client",
-              error: error instanceof Error ? error.message : String(error),
+            this.logger.error("[GA4] Failed to get client ID", {
+              error_message: error instanceof Error ? error.message : String(error),
+              outcome: "failure",
             });
             safeResolve(null);
           }
@@ -220,9 +235,9 @@ export class GA4ClientService {
   sendEventWithCallback(event: GA4Event, callback: () => void, timeoutMs: number = 2000): void {
     if (!this.config.enabled) {
       if (this.config.debug) {
-        logger.debug("[GA4] Event with callback skipped (disabled)", {
-          tag: "ga4-client",
+        this.logger.debug("[GA4] Event with callback skipped (disabled)", {
           event_name: event.name,
+          outcome: "success",
         });
       }
       // GA4が無効でも、コールバックは実行する
@@ -243,9 +258,9 @@ export class GA4ClientService {
     // タイムアウト設定
     const timeoutId: ReturnType<typeof setTimeout> = setTimeout(() => {
       if (this.config.debug) {
-        logger.debug("[GA4] Event callback timed out", {
-          tag: "ga4-client",
+        this.logger.debug("[GA4] Event callback timed out", {
           event_name: event.name,
+          outcome: "failure",
         });
       }
       safeCallback();
@@ -267,17 +282,17 @@ export class GA4ClientService {
       sendGAEvent(eventWithCallback.name, eventWithCallback.params);
 
       if (this.config.debug) {
-        logger.debug("[GA4] Event with callback sent", {
-          tag: "ga4-client",
+        this.logger.debug("[GA4] Event with callback sent", {
           event_name: event.name,
+          outcome: "success",
         });
       }
     } catch (error) {
       clearTimeout(timeoutId);
-      logger.error("[GA4] Failed to send event with callback", {
-        tag: "ga4-client",
+      this.logger.error("[GA4] Failed to send event with callback", {
         event_name: event.name,
-        error: error instanceof Error ? error.message : String(error),
+        error_message: error instanceof Error ? error.message : String(error),
+        outcome: "failure",
       });
       // エラーが発生してもコールバックは実行する
       safeCallback();

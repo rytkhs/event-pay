@@ -207,16 +207,21 @@ export async function adminAddAttendanceAction(
     const guestUrl = `${baseUrl}/guest/${guestToken}`;
 
     // 監査ログ（RLSポリシーベース実装）
+    // 監査ログ
     logger.info("ADMIN_ADD_ATTENDANCE", {
-      eventId,
-      attendanceId,
-      actorId: user.id,
-      bypassCapacity,
+      category: "attendance",
+      action: "admin_add",
+      actor_type: "user",
+      event_id: eventId,
+      attendance_id: attendanceId,
+      actor_id: user.id,
+      bypass_capacity: bypassCapacity,
       nickname,
       email: placeholderEmail.toLowerCase(),
-      canOnlinePay: eligibility.isEligible,
-      paymentId,
+      can_online_pay: eligibility.isEligible,
+      payment_id: paymentId,
       method: "RLS_POLICY_BASED", // RLSポリシーベースのアクセス制御使用
+      outcome: "success",
     });
 
     // DB監査ログ記録

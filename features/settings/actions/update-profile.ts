@@ -56,9 +56,12 @@ export async function updateProfileAction(formData: FormData): Promise<ActionRes
 
     if (updateError) {
       logger.error("Profile update failed", {
-        tag: "profileUpdateFailed",
+        category: "system",
+        action: "update_profile",
+        actor_type: "user",
         user_id: user.id,
         error_message: updateError.message,
+        outcome: "failure",
       });
       return {
         success: false,
@@ -71,8 +74,11 @@ export async function updateProfileAction(formData: FormData): Promise<ActionRes
     revalidatePath("/dashboard");
 
     logger.info("Profile updated successfully", {
-      tag: "profileUpdated",
+      category: "system",
+      action: "update_profile",
+      actor_type: "user",
       user_id: user.id,
+      outcome: "success",
     });
 
     return {
@@ -81,9 +87,12 @@ export async function updateProfileAction(formData: FormData): Promise<ActionRes
     };
   } catch (error) {
     logger.error("Update profile action error", {
-      tag: "updateProfileActionError",
+      category: "system",
+      action: "update_profile",
+      actor_type: "user",
       error_name: error instanceof Error ? error.name : "Unknown",
       error_message: error instanceof Error ? error.message : String(error),
+      outcome: "failure",
     });
 
     return {

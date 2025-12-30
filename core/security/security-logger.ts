@@ -61,22 +61,20 @@ export type SecuritySeverity = "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
 export function logSecurityEvent(event: SecurityEvent): void {
   const maskedIp = maskIP(event.ip);
   const logFields = {
-    // 統一タグ・セキュリティフィールド
-    tag: "securityEvent",
+    category: "security",
+    action: typeof event.type === "string" ? String(event.type).toLowerCase() : "security_event",
+    actor_type: event.userId ? "user" : "anonymous",
     security_type: event.type,
     security_severity: event.severity,
-    message: event.message,
     user_id: event.userId,
     event_id: event.eventId,
     user_agent: event.userAgent,
     ip: maskedIp,
-    // 標準化フィールド（ECS/OTel 互換）
-    event_category: "security",
-    event_action: typeof event.type === "string" ? String(event.type) : "security_event",
-    // 必要に応じて outcome を呼び出し側で追加
     timestamp: event.timestamp.toISOString(),
     details: event.details,
-  } as Record<string, unknown>;
+    outcome:
+      event.severity === "HIGH" || event.severity === "CRITICAL" ? "blocked" : ("success" as any),
+  };
 
   // 重要度に応じてログレベルを選択
   const level = ((): "info" | "warn" | "error" => {
@@ -94,9 +92,9 @@ export function logSecurityEvent(event: SecurityEvent): void {
   })();
 
   const logMessage = event.message || `Security event: ${event.type}`;
-  if (level === "info") logger.info(logMessage, logFields);
-  else if (level === "warn") logger.warn(logMessage, logFields);
-  else logger.error(logMessage, logFields);
+  if (level === "info") logger.info(logMessage, logFields as any);
+  else if (level === "warn") logger.warn(logMessage, logFields as any);
+  else logger.error(logMessage, logFields as any);
 
   // 重要度が高い場合はアラートを送信（waitUntilでバックグラウンド実行）
   if (event.severity === "HIGH" || event.severity === "CRITICAL") {
@@ -382,8 +380,10 @@ async function sendSecurityAlert(logEntry: Record<string, unknown>): Promise<voi
   const env = getEnv();
   if (env.NODE_ENV === "development") {
     logger.error("🚨 SECURITY ALERT", {
-      tag: "securityAlert",
+      category: "security",
+      action: "security_alert",
       alert_data: logEntry,
+      outcome: "success",
     });
   }
 

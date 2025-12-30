@@ -25,7 +25,12 @@ export async function GET(request: Request) {
   const channelId = env.NEXT_PUBLIC_LINE_CHANNEL_ID;
 
   if (!channelId) {
-    logger.error("LINE Channel ID is not configured", { tag: "lineLoginConfigError" });
+    logger.error("LINE Channel ID is not configured", {
+      category: "authentication",
+      action: "line_auth_init",
+      actor_type: "user",
+      outcome: "failure",
+    });
     return NextResponse.redirect(
       new URL(`/login?error=${LINE_ERROR_CODES.CONFIG_ERROR}`, request.url)
     );

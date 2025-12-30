@@ -164,9 +164,12 @@ export async function getDetailedAccountStatusAction(): Promise<{
     };
   } catch (error) {
     logger.error("Failed to check detailed account status", {
-      tag: "detailedAccountStatusCheckError",
+      category: "stripe_connect",
+      action: "account_status_check",
+      actor_type: "user",
       error_name: error instanceof Error ? error.name : "Unknown",
       error_message: error instanceof Error ? error.message : String(error),
+      outcome: "failure",
     });
 
     return {

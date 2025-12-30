@@ -99,11 +99,14 @@ export async function generateSettlementReportAction(
     }
 
     logger.info("Settlement report generated via action", {
-      tag: "settlementReportAction",
-      userId: user.id,
-      eventId: validatedData.eventId,
-      reportId: result.reportId,
-      alreadyExists: result.alreadyExists,
+      category: "settlement",
+      action: "generate_report",
+      actor_type: "user",
+      user_id: user.id,
+      event_id: validatedData.eventId,
+      report_id: result.reportId,
+      already_exists: result.alreadyExists,
+      outcome: "success",
     });
 
     return {
@@ -114,8 +117,11 @@ export async function generateSettlementReportAction(
     };
   } catch (error) {
     logger.error("Settlement report generation action failed", {
-      tag: "settlementReportActionError",
-      error: error instanceof Error ? error.message : String(error),
+      category: "settlement",
+      action: "generate_report",
+      actor_type: "user",
+      error_message: error instanceof Error ? error.message : String(error),
+      outcome: "failure",
     });
 
     return {
@@ -164,8 +170,11 @@ export async function getSettlementReportsAction(params: {
     };
   } catch (error) {
     logger.error("Get settlement reports action failed", {
-      tag: "getSettlementReportsActionError",
-      error: error instanceof Error ? error.message : String(error),
+      category: "settlement",
+      action: "get_reports",
+      actor_type: "user",
+      error_message: error instanceof Error ? error.message : String(error),
+      outcome: "failure",
     });
 
     return {
@@ -214,9 +223,12 @@ export async function exportSettlementReportsAction(params: {
     }
 
     logger.info("Settlement reports CSV export completed", {
-      tag: "settlementReportsCsvExport",
-      userId: user.id,
+      category: "settlement",
+      action: "export_csv",
+      actor_type: "user",
+      user_id: user.id,
       filename: result.filename,
+      outcome: "success",
     });
 
     if (!result.csvContent || !result.filename) {
@@ -234,8 +246,11 @@ export async function exportSettlementReportsAction(params: {
     };
   } catch (error) {
     logger.error("Settlement reports CSV export action failed", {
-      tag: "settlementReportsCsvExportActionError",
-      error: error instanceof Error ? error.message : String(error),
+      category: "settlement",
+      action: "export_csv",
+      actor_type: "user",
+      error_message: error instanceof Error ? error.message : String(error),
+      outcome: "failure",
     });
 
     return {
@@ -277,10 +292,13 @@ export async function regenerateAfterRefundAction(formData: FormData) {
     }
 
     logger.info("Settlement report regenerated after refund/dispute", {
-      tag: "settlementReportRegeneration",
-      userId: user.id,
-      eventId: validatedData.eventId,
-      reportId: result.reportId,
+      category: "settlement",
+      action: "regenerate_after_refund",
+      actor_type: "user",
+      user_id: user.id,
+      event_id: validatedData.eventId,
+      report_id: result.reportId,
+      outcome: "success",
     });
 
     return {
@@ -290,8 +308,11 @@ export async function regenerateAfterRefundAction(formData: FormData) {
     };
   } catch (error) {
     logger.error("Settlement report regeneration action failed", {
-      tag: "settlementReportRegenerationActionError",
-      error: error instanceof Error ? error.message : String(error),
+      category: "settlement",
+      action: "regenerate_after_refund",
+      actor_type: "user",
+      error_message: error instanceof Error ? error.message : String(error),
+      outcome: "failure",
     });
 
     return {

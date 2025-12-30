@@ -67,9 +67,12 @@ export async function requestAccountDeletionAction(formData: FormData): Promise<
     const { error: deleteError } = await admin.auth.admin.deleteUser(user.id, true);
     if (deleteError) {
       logger.error("Auth user soft delete failed", {
-        tag: "authUserSoftDeleteFailed",
+        category: "authentication",
+        action: "account_deletion",
+        actor_type: "user",
         user_id: user.id,
         error_message: (deleteError as any)?.message ?? String(deleteError),
+        outcome: "failure",
       });
       return { success: false, error: "アカウントの処理に失敗しました" };
     }
@@ -87,9 +90,12 @@ export async function requestAccountDeletionAction(formData: FormData): Promise<
       });
     } catch (e) {
       logger.warn("Stripe disable best-effort failed", {
-        tag: "accountDeletionStripeDisableWarn",
+        category: "authentication",
+        action: "account_deletion",
+        actor_type: "user",
         user_id: user.id,
         error_message: e instanceof Error ? e.message : String(e),
+        outcome: "failure",
       });
     }
 
@@ -106,9 +112,12 @@ export async function requestAccountDeletionAction(formData: FormData): Promise<
       .eq("id", user.id);
     if (anonError) {
       logger.error("Public user anonymization failed", {
-        tag: "publicUserAnonFailed",
+        category: "authentication",
+        action: "account_deletion",
+        actor_type: "user",
         user_id: user.id,
         error_message: anonError.message,
+        outcome: "failure",
       });
       return { success: false, error: "アカウントの処理に失敗しました" };
     }
@@ -120,9 +129,12 @@ export async function requestAccountDeletionAction(formData: FormData): Promise<
       .eq("auth_user_id", user.id);
     if (lineAccountError) {
       logger.error("LINE account deletion failed", {
-        tag: "lineAccountDeletionFailed",
+        category: "authentication",
+        action: "account_deletion",
+        actor_type: "user",
         user_id: user.id,
         error_message: lineAccountError.message,
+        outcome: "failure",
       });
       return { success: false, error: "アカウントの処理に失敗しました" };
     }
@@ -130,9 +142,12 @@ export async function requestAccountDeletionAction(formData: FormData): Promise<
     const { error: signOutError } = await supabase.auth.signOut();
     if (signOutError) {
       logger.warn("Account deletion sign-out failed", {
-        tag: "accountDeletionSignOutFailed",
+        category: "authentication",
+        action: "account_deletion",
+        actor_type: "user",
         user_id: user.id,
         error_message: signOutError.message,
+        outcome: "failure",
       });
     }
 
@@ -147,9 +162,12 @@ export async function requestAccountDeletionAction(formData: FormData): Promise<
     };
   } catch (error) {
     logger.error("Request account deletion action error", {
-      tag: "requestAccountDeletionActionError",
+      category: "authentication",
+      action: "account_deletion",
+      actor_type: "user",
       error_name: error instanceof Error ? error.name : "Unknown",
       error_message: error instanceof Error ? error.message : String(error),
+      outcome: "failure",
     });
     return { success: false, error: "処理中にエラーが発生しました" };
   }

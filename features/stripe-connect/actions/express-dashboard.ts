@@ -31,9 +31,12 @@ export async function createExpressDashboardLoginLinkAction(): Promise<void> {
 
     if (authError) {
       logger.error("Auth error in Express Dashboard login link creation", {
-        tag: "expressDashboardAuthError",
+        category: "stripe_connect",
+        action: "login_link_creation",
+        actor_type: "user",
         error_name: authError.name,
         error_message: authError.message,
+        outcome: "failure",
       });
       redirect("/dashboard?error=auth_failed");
       return;
@@ -41,7 +44,10 @@ export async function createExpressDashboardLoginLinkAction(): Promise<void> {
 
     if (!user) {
       logger.warn("Unauthenticated user attempted Express Dashboard access", {
-        tag: "expressDashboardUnauthenticated",
+        category: "stripe_connect",
+        action: "login_link_creation",
+        actor_type: "anonymous",
+        outcome: "failure",
       });
       redirect("/login?redirectTo=/dashboard");
       return;
@@ -55,8 +61,11 @@ export async function createExpressDashboardLoginLinkAction(): Promise<void> {
 
     if (!account) {
       logger.warn("No Stripe Connect account found for Express Dashboard access", {
-        tag: "expressDashboardNoAccount",
+        category: "stripe_connect",
+        action: "login_link_creation",
+        actor_type: "user",
         user_id: user.id,
+        outcome: "failure",
       });
       redirect("/dashboard/connect?message=account_required");
       return;
@@ -66,9 +75,12 @@ export async function createExpressDashboardLoginLinkAction(): Promise<void> {
     const loginLink = await stripeConnectService.createLoginLink(account.stripe_account_id);
 
     logger.info("Express Dashboard login link created successfully", {
-      tag: "expressDashboardLoginLinkCreated",
+      category: "stripe_connect",
+      action: "login_link_creation",
+      actor_type: "user",
       user_id: user.id,
       account_id: account.stripe_account_id,
+      outcome: "success",
     });
 
     // 6. ログインリンクにリダイレクト（Stripeのベストプラクティス）
@@ -80,9 +92,12 @@ export async function createExpressDashboardLoginLinkAction(): Promise<void> {
     }
 
     logger.error("Failed to create Express Dashboard login link", {
-      tag: "expressDashboardLoginLinkError",
+      category: "stripe_connect",
+      action: "login_link_creation",
+      actor_type: "user",
       error_name: error instanceof Error ? error.name : "Unknown",
       error_message: error instanceof Error ? error.message : String(error),
+      outcome: "failure",
     });
 
     // 失敗時は接続設定ページへ誘導
@@ -126,7 +141,9 @@ export async function checkExpressDashboardAccessAction(): Promise<ExpressDashbo
   } catch (error) {
     // デバッグログ: エラーの詳細情報を出力
     logger.error("Failed to check Express Dashboard access", {
-      tag: "expressDashboardAccessCheckError",
+      category: "stripe_connect",
+      action: "dashboard_access_check",
+      actor_type: "user",
       error_name: error instanceof Error ? error.name : "Unknown",
       error_message: error instanceof Error ? error.message : String(error),
       error_stack: error instanceof Error ? error.stack : undefined,
@@ -134,6 +151,7 @@ export async function checkExpressDashboardAccessAction(): Promise<ExpressDashbo
       error_code: error instanceof Stripe.errors.StripeError ? error.code : "Unknown",
       error_status_code: error instanceof Stripe.errors.StripeError ? error.statusCode : "Unknown",
       timestamp: new Date().toISOString(),
+      outcome: "failure",
     });
 
     return {

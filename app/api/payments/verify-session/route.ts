@@ -192,7 +192,8 @@ export async function GET(request: NextRequest) {
 
     if (dbError && (dbError as any).code !== "PGRST116") {
       logger.error("Database query failed during payment verification", {
-        tag: "payment-verify",
+        category: "payment",
+        action: "dbQueryFailed",
         attendance_id,
         error: (dbError as any).message,
       });
@@ -209,7 +210,8 @@ export async function GET(request: NextRequest) {
         });
       } catch (stripeError) {
         logger.warn("Stripe session retrieval failed (fallback)", {
-          tag: "payment-verify",
+          category: "payment",
+          action: "stripeSessionRetrievalFailedFallback",
           session_id: maskSessionId(session_id),
           error: stripeError instanceof Error ? stripeError.message : String(stripeError),
         });
@@ -341,7 +343,8 @@ export async function GET(request: NextRequest) {
         });
       } catch (stripeError) {
         logger.warn("Stripe session retrieval failed", {
-          tag: "payment-verify",
+          category: "payment",
+          action: "stripeSessionRetrievalFailed",
           session_id: maskSessionId(session_id), // セキュリティのため先頭8文字のみログ
           error: stripeError instanceof Error ? stripeError.message : String(stripeError),
         });
@@ -394,7 +397,8 @@ export async function GET(request: NextRequest) {
       if (!["paid", "received"].includes(dbStatus)) {
         // Webhook処理が遅延している可能性があるため、warning レベル
         logger.warn("Payment status mismatch between Stripe and DB", {
-          tag: "payment-verify",
+          category: "payment",
+          action: "paymentStatusMismatch",
           stripe_status: paymentStatus,
           db_status: dbStatus,
           session_id: maskSessionId(session_id),
@@ -413,7 +417,8 @@ export async function GET(request: NextRequest) {
     };
 
     logger.info("Payment session verification completed", {
-      tag: "payment-verify",
+      category: "payment",
+      action: "paymentVerificationCompleted",
       session_id: `${session_id.substring(0, 8)}...`,
       payment_status: paymentStatus,
       attendance_id,
@@ -423,7 +428,8 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     // Problem Details標準の相関ID生成に統一（req_xxxxxxxx形式）
     const errorContext = {
-      tag: "payment-verify",
+      category: "payment" as const,
+      action: "paymentVerificationError",
       error_name: error instanceof Error ? error.name : "Unknown",
       error_message: error instanceof Error ? error.message : String(error),
       stack: error instanceof Error ? error.stack : undefined,

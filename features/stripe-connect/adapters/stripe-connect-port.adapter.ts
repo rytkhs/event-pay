@@ -49,10 +49,13 @@ export function registerStripeConnectAdapters(): void {
         });
       } catch (error) {
         logger.error("Stripe Connect adapter error: updateAccountFromWebhook", {
-          tag: "stripe-connect-adapter",
+          category: "stripe_connect",
+          action: "adapter_operation",
+          actor_type: "system",
           account_id: accountId,
           error_name: error instanceof Error ? error.name : "Unknown",
           error_message: error instanceof Error ? error.message : String(error),
+          outcome: "failure",
         });
         throw error;
       }
@@ -76,10 +79,13 @@ export function registerStripeConnectAdapters(): void {
         return account ? { status: account.status as StripeAccountStatusLike } : null;
       } catch (error) {
         logger.error("Stripe Connect adapter error: getConnectAccountByUser", {
-          tag: "stripe-connect-adapter",
+          category: "stripe_connect",
+          action: "adapter_operation",
+          actor_type: "system",
           user_id: userId,
           error_name: error instanceof Error ? error.name : "Unknown",
           error_message: error instanceof Error ? error.message : String(error),
+          outcome: "failure",
         });
         throw error;
       }
@@ -115,10 +121,13 @@ export function registerStripeConnectAdapters(): void {
         };
       } catch (error) {
         logger.error("Stripe Connect adapter error: getAccountInfo", {
-          tag: "stripe-connect-adapter",
+          category: "stripe_connect",
+          action: "adapter_operation",
+          actor_type: "system",
           account_id: accountId,
           error_name: error instanceof Error ? error.name : "Unknown",
           error_message: error instanceof Error ? error.message : String(error),
+          outcome: "failure",
         });
         throw error;
       }
@@ -149,11 +158,14 @@ export function registerStripeConnectAdapters(): void {
         });
       } catch (error) {
         logger.error("Stripe Connect adapter error: updateAccountStatus", {
-          tag: "stripe-connect-adapter",
+          category: "stripe_connect",
+          action: "adapter_operation",
+          actor_type: "system",
           user_id: input.userId,
           stripe_account_id: input.stripeAccountId,
           error_name: error instanceof Error ? error.name : "Unknown",
           error_message: error instanceof Error ? error.message : String(error),
+          outcome: "failure",
         });
         throw error;
       }

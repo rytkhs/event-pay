@@ -45,9 +45,12 @@ export class SessionManager {
 
       if (error) {
         logger.warn("Session refresh failed", {
-          tag: "sessionRefreshFailed",
+          category: "authentication",
+          action: "session_refresh",
+          actor_type: "user",
           error_message: error.message,
           session_id: sessionId,
+          outcome: "failure",
         });
         return { updated: false, session: null };
       }
@@ -58,10 +61,13 @@ export class SessionManager {
       return { updated: true, session: data.session };
     } catch (error) {
       logger.error("Session refresh error", {
-        tag: "sessionRefreshException",
+        category: "authentication",
+        action: "session_refresh",
+        actor_type: "user",
         error_name: error instanceof Error ? error.name : "Unknown",
         error_message: error instanceof Error ? error.message : String(error),
         session_id: sessionId,
+        outcome: "failure",
       });
       return { updated: false, session: null };
     }
@@ -136,10 +142,14 @@ export class SessionManager {
     } catch (error) {
       // バックグラウンド処理なのでログのみ
       logger.warn("Background session refresh failed", {
-        tag: "backgroundSessionRefreshFailed",
+        category: "authentication",
+        action: "session_refresh",
+        actor_type: "user",
         error_name: error instanceof Error ? error.name : "Unknown",
         error_message: error instanceof Error ? error.message : String(error),
         session_id: sessionId,
+        phase: "background",
+        outcome: "failure",
       });
     }
   }

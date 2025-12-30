@@ -506,10 +506,13 @@ export function useEventEditForm({
             resolve(result);
           } catch (error) {
             logger.error("Event edit form submission with changes failed", {
-              tag: "eventEditForm",
+              category: "event_management",
+              action: "event_update_error",
+              actor_type: "user",
               event_id: event.id,
               error_name: error instanceof Error ? error.name : "Unknown",
               error_message: error instanceof Error ? error.message : String(error),
+              outcome: "failure",
             });
             form.setError("root", {
               type: "manual",

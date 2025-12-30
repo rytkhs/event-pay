@@ -61,9 +61,12 @@ export async function updateEmailAction(formData: FormData): Promise<ActionResul
 
     if (signInError) {
       logger.warn("Email change reauthentication failed", {
-        tag: "emailChangeReauthFailed",
+        category: "authentication",
+        action: "update_email",
+        actor_type: "user",
         user_id: user.id,
         error_message: signInError.message,
+        outcome: "failure",
       });
       return {
         success: false,
@@ -78,9 +81,12 @@ export async function updateEmailAction(formData: FormData): Promise<ActionResul
 
     if (updateError) {
       logger.error("Email update failed", {
-        tag: "emailUpdateFailed",
+        category: "authentication",
+        action: "update_email",
+        actor_type: "user",
         user_id: user.id,
         error_message: updateError.message,
+        outcome: "failure",
       });
       return {
         success: false,
@@ -89,10 +95,13 @@ export async function updateEmailAction(formData: FormData): Promise<ActionResul
     }
 
     logger.info("Email change initiated", {
-      tag: "emailChangeInitiated",
+      category: "authentication",
+      action: "update_email",
+      actor_type: "user",
       user_id: user.id,
       old_email: user.email,
       new_email: newEmail,
+      outcome: "success",
     });
 
     return {
@@ -101,9 +110,12 @@ export async function updateEmailAction(formData: FormData): Promise<ActionResul
     };
   } catch (error) {
     logger.error("Update email action error", {
-      tag: "updateEmailActionError",
+      category: "authentication",
+      action: "update_email",
+      actor_type: "user",
       error_name: error instanceof Error ? error.name : "Unknown",
       error_message: error instanceof Error ? error.message : String(error),
+      outcome: "failure",
     });
 
     return {

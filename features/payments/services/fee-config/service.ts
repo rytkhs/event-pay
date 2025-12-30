@@ -58,14 +58,24 @@ export class FeeConfigService {
     if (!forceRefresh) {
       const cached = this.cacheStrategy.get();
       if (cached) {
-        logger.debug("Fee config cache hit", { tag: "cacheHit", service: "FeeConfigService" });
+        logger.debug("Fee config cache hit", {
+          category: "payment",
+          action: "fee_config",
+          actor_type: "system",
+          outcome: "success",
+        });
         return {
           stripe: cached.stripe,
           platform: cached.platform,
           minPayoutAmount: cached.minPayoutAmount,
         };
       }
-      logger.debug("Fee config cache miss", { tag: "cacheMiss", service: "FeeConfigService" });
+      logger.debug("Fee config cache miss", {
+        category: "payment",
+        action: "fee_config",
+        actor_type: "system",
+        outcome: "success",
+      });
     }
 
     try {
@@ -76,8 +86,10 @@ export class FeeConfigService {
       this.cacheStrategy.set(result);
 
       logger.info("Fee config fetched from database and cached", {
-        tag: "fetchSuccess",
-        service: "FeeConfigService",
+        category: "payment",
+        action: "fee_config",
+        actor_type: "system",
+        outcome: "success",
       });
 
       return result;
@@ -86,9 +98,11 @@ export class FeeConfigService {
       const failsafeCache = this.cacheStrategy.get(true);
       if (failsafeCache) {
         logger.warn("Database fetch failed, using failsafe cache", {
-          tag: "fetchFailed",
-          service: "FeeConfigService",
+          category: "payment",
+          action: "fee_config",
+          actor_type: "system",
           error: error instanceof Error ? error.message : String(error),
+          outcome: "failure",
         });
         return {
           stripe: failsafeCache.stripe,

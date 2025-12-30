@@ -57,7 +57,13 @@ export class SecureSupabaseClientFactory implements ISecureSupabaseClientFactory
     if (!value) {
       const key = "NEXT_PUBLIC_SUPABASE_URL";
       const message = `Missing required environment variable: ${key}`;
-      logger.error(message, { tag: "envVarMissing", variable_name: key });
+      logger.error(message, {
+        category: "system",
+        action: "client_creation",
+        actor_type: "system",
+        variable_name: key,
+        outcome: "failure",
+      });
       throw new Error(message);
     }
     return value;
@@ -72,7 +78,13 @@ export class SecureSupabaseClientFactory implements ISecureSupabaseClientFactory
     if (!value) {
       const key = "NEXT_PUBLIC_SUPABASE_ANON_KEY";
       const message = `Missing required environment variable: ${key}`;
-      logger.error(message, { tag: "envVarMissing", variable_name: key });
+      logger.error(message, {
+        category: "system",
+        action: "client_creation",
+        actor_type: "system",
+        variable_name: key,
+        outcome: "failure",
+      });
       throw new Error(message);
     }
     return value;
@@ -87,7 +99,13 @@ export class SecureSupabaseClientFactory implements ISecureSupabaseClientFactory
     if (!value) {
       const key = "SUPABASE_SERVICE_ROLE_KEY";
       const message = `Missing required environment variable: ${key}`;
-      logger.error(message, { tag: "envVarMissing", variable_name: key });
+      logger.error(message, {
+        category: "system",
+        action: "client_creation",
+        actor_type: "system",
+        variable_name: key,
+        outcome: "failure",
+      });
       throw new Error(message);
     }
     return value;
@@ -265,7 +283,15 @@ export class SecureSupabaseClientFactory implements ISecureSupabaseClientFactory
         },
       };
 
-      logger.info("Admin access logged", { reason, context });
+      logger.info("Admin access logged", {
+        category: "security",
+        action: "admin_access",
+        actor_type: "service_role",
+        reason,
+        context,
+        user_id: auditContext?.userId,
+        outcome: "success",
+      });
 
       // DB監査ログへの記録
       // 注意: ここではまだクライアントを作成していないため、動的インポートで logToSystemLogs を使用

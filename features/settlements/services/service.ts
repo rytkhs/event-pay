@@ -38,6 +38,17 @@ export class SettlementReportService {
   }
 
   /**
+   * 構造化ロガー
+   */
+  private get logger() {
+    return logger.withContext({
+      category: "settlement",
+      action: "settlement_service",
+      actor_type: "system",
+    });
+  }
+
+  /**
    * イベント清算レポートを生成
    * 競合条件を回避するため、PL/pgSQL関数で一括処理
    * 同トランザクションで完全なレポートデータも返却
@@ -48,11 +59,11 @@ export class SettlementReportService {
     try {
       const { eventId, createdBy } = params;
 
-      logger.info("Settlement report generation started (RPC)", {
-        tag: "settlementReportGeneration",
+      this.logger.info("Settlement report generation started (RPC)", {
         service: "SettlementReportService",
         eventId,
         createdBy,
+        outcome: "success",
       });
 
       // RPC関数は管理者（service_role）クライアントで実行（権限整合）
@@ -69,10 +80,10 @@ export class SettlementReportService {
 
       // エラーハンドリング
       if (error) {
-        logger.error("RPC settlement report generation failed", {
-          tag: "settlementReportRpcError",
+        this.logger.error("RPC settlement report generation failed", {
           eventId,
           error: error.message,
+          outcome: "failure",
         });
         return {
           success: false,
@@ -85,9 +96,9 @@ export class SettlementReportService {
 
       // 何らかの理由でデータが取得できなかった場合はエラー扱い
       if (!resultRow?.report_id) {
-        logger.error("RPC returned no data", {
-          tag: "settlementReportRpcNoData",
+        this.logger.error("RPC returned no data", {
           eventId,
+          outcome: "failure",
         });
         return {
           success: false,
@@ -121,11 +132,11 @@ export class SettlementReportService {
 
       const alreadyExists = resultRow.already_exists ?? false;
 
-      logger.info("Settlement report generated successfully (RPC)", {
-        tag: "settlementReportGenerated",
+      this.logger.info("Settlement report generated successfully (RPC)", {
         eventId,
         reportId: resultRow.report_id,
         alreadyExists,
+        outcome: "success",
       });
 
       return {
@@ -135,10 +146,10 @@ export class SettlementReportService {
         alreadyExists,
       };
     } catch (error) {
-      logger.error("Settlement report generation failed", {
-        tag: "settlementReportGenerationError",
+      this.logger.error("Settlement report generation failed", {
         eventId: params.eventId,
         error: error instanceof Error ? error.message : String(error),
+        outcome: "failure",
       });
 
       return {
@@ -180,10 +191,10 @@ export class SettlementReportService {
       });
 
       if (error) {
-        logger.error("Failed to get settlement reports via RPC", {
-          tag: "getSettlementReportsRpcError",
+        this.logger.error("Failed to get settlement reports via RPC", {
           createdBy: params.createdBy,
           error: error?.message || "Unknown error",
+          outcome: "failure",
         });
         throw new Error(`Failed to get settlement reports: ${error?.message || "Unknown error"}`);
       }
@@ -225,10 +236,10 @@ export class SettlementReportService {
         })
       );
     } catch (error) {
-      logger.error("Settlement reports RPC call failed", {
-        tag: "getSettlementReportsRpcError",
+      this.logger.error("Settlement reports RPC call failed", {
         createdBy: params.createdBy,
         error: error instanceof Error ? error.message : String(error),
+        outcome: "failure",
       });
       throw error;
     }
@@ -337,10 +348,10 @@ export class SettlementReportService {
         truncated,
       };
     } catch (error) {
-      logger.error("CSV export failed", {
-        tag: "csvExportError",
+      this.logger.error("CSV export failed", {
         createdBy: params.createdBy,
         error: error instanceof Error ? error.message : String(error),
+        outcome: "failure",
       });
 
       return {
@@ -357,10 +368,10 @@ export class SettlementReportService {
     eventId: string,
     createdBy: string
   ): Promise<SettlementReportResult> {
-    logger.info("Regenerating settlement report after refund/dispute", {
-      tag: "settlementReportRegeneration",
+    this.logger.info("Regenerating settlement report after refund/dispute", {
       eventId,
       createdBy,
+      outcome: "success",
     });
 
     return this.generateSettlementReport({

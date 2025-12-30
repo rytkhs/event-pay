@@ -134,10 +134,14 @@ export async function getAllCashPaymentIdsAction(
     });
 
     logger.info("Collected cash payment ids", {
-      eventId: validatedEventId,
-      userId: user.id,
+      category: "payment",
+      action: "cash_payment_ids_collect",
+      actor_type: "user",
+      event_id: validatedEventId,
+      user_id: user.id,
       count: resultIds.length,
       truncated,
+      outcome: "success",
     });
 
     return {

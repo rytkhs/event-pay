@@ -39,9 +39,12 @@ export function useClipboard() {
       return false;
     } catch (error) {
       logger.error("Failed to copy text to clipboard", {
-        tag: "clipboardCopy",
+        category: "system",
+        action: "clipboard_copy",
+        actor_type: "user",
         error_name: error instanceof Error ? error.name : "Unknown",
         error_message: error instanceof Error ? error.message : String(error),
+        outcome: "failure",
       });
       return false;
     }

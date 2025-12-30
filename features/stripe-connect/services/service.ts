@@ -52,6 +52,16 @@ export class StripeConnectService implements IStripeConnectService {
   }
 
   /**
+   * 構造化ロガー
+   */
+  private get logger() {
+    return logger.withContext({
+      category: "stripe_connect",
+      action: "connect_account_service",
+    });
+  }
+
+  /**
    * Stripeクライアントを取得（遅延初期化）
    */
   private getStripeClient(): Stripe {
@@ -156,11 +166,11 @@ export class StripeConnectService implements IStripeConnectService {
       const existingAccount = await this.getConnectAccountByUser(userId);
       if (existingAccount) {
         // べき等性を確保: エラーではなく既存アカウント情報を返す
-        logger.info("Existing Stripe Connect account found, returning existing account", {
-          tag: "stripeConnectIdempotencyCheck",
+        this.logger.info("Existing Stripe Connect account found, returning existing account", {
           user_id: userId,
           existing_account_id: existingAccount.stripe_account_id,
           existing_status: existingAccount.status,
+          outcome: "success",
         });
 
         return {
@@ -188,11 +198,11 @@ export class StripeConnectService implements IStripeConnectService {
         }
       } catch (searchError) {
         // searchは補助的機能。失敗しても致命ではないため続行する
-        logger.debug("Stripe accounts.search failed, continue to create", {
-          tag: "stripeAccountSearchFailed",
+        this.logger.debug("Stripe accounts.search failed, continue to create", {
           user_id: userId,
           error_name: searchError instanceof Error ? searchError.name : "Unknown",
           error_message: searchError instanceof Error ? searchError.message : String(searchError),
+          outcome: "failure",
         });
       }
 
@@ -262,14 +272,14 @@ export class StripeConnectService implements IStripeConnectService {
             await stripe.accounts.del(stripeAccount.id);
           } catch (compensationError) {
             // 補償削除の失敗はログに残し、上位へはDBエラーとしてマッピングして伝搬
-            logger.error("Failed to compensate (delete) created Stripe account", {
-              tag: "stripeConnectCompensationFailed",
+            this.logger.error("Failed to compensate (delete) created Stripe account", {
               account_id: stripeAccount.id,
               error_name: compensationError instanceof Error ? compensationError.name : "Unknown",
               error_message:
                 compensationError instanceof Error
                   ? compensationError.message
                   : String(compensationError),
+              outcome: "failure",
             });
           }
         }
@@ -379,13 +389,11 @@ export class StripeConnectService implements IStripeConnectService {
       validateStripeAccountId(accountId);
 
       // デバッグログ: Stripe API呼び出し前の情報
-      logger.info("Stripe API Call Debug Info", {
-        tag: "stripeApiCallDebug",
-        operation: "get_account_info",
+      this.logger.info("Stripe API Call Debug Info", {
         account_id: accountId,
         account_id_length: accountId.length,
         account_id_starts_with: accountId.substring(0, 10),
-        timestamp: new Date().toISOString(),
+        outcome: "success",
       });
 
       // Stripeからアカウント情報を取得
@@ -399,8 +407,7 @@ export class StripeConnectService implements IStripeConnectService {
       const status = classificationResult.status;
 
       // ログ出力
-      logger.info("Account classified", {
-        tag: "accountStatusClassification",
+      this.logger.info("Account classified", {
         account_id: accountId,
         status: status,
         gate: classificationResult.metadata.gate,
@@ -408,6 +415,7 @@ export class StripeConnectService implements IStripeConnectService {
         details_submitted: account.details_submitted,
         payouts_enabled: account.payouts_enabled,
         disabled_reason: account.requirements?.disabled_reason || null,
+        outcome: "success",
       });
 
       // requirements と capabilities の整形（既存ロジック維持）
@@ -429,9 +437,7 @@ export class StripeConnectService implements IStripeConnectService {
       };
     } catch (error) {
       // デバッグログ: エラーの詳細情報を出力
-      logger.error("Stripe API Call Failed", {
-        tag: "stripeApiCallError",
-        operation: "get_account_info",
+      this.logger.error("Stripe API Call Failed", {
         account_id: accountId,
         error_name: error instanceof Error ? error.name : "Unknown",
         error_message: error instanceof Error ? error.message : String(error),
@@ -439,7 +445,7 @@ export class StripeConnectService implements IStripeConnectService {
         error_code: error instanceof Stripe.errors.StripeError ? error.code : "Unknown",
         error_status_code:
           error instanceof Stripe.errors.StripeError ? error.statusCode : "Unknown",
-        timestamp: new Date().toISOString(),
+        outcome: "failure",
       });
 
       if (error instanceof StripeConnectError) {
@@ -701,10 +707,10 @@ export class StripeConnectService implements IStripeConnectService {
         }
       );
 
-      logger.info("Business profile updated successfully", {
-        tag: "updateBusinessProfile",
+      this.logger.info("Business profile updated successfully", {
         account_id: accountId,
         updated_fields: updateFields,
+        outcome: "success",
       });
 
       return {
@@ -840,10 +846,10 @@ export class StripeConnectService implements IStripeConnectService {
       const stripe = this.getStripeClient();
       const loginLink = await stripe.accounts.createLoginLink(accountId);
 
-      logger.info("Login link created successfully", {
-        tag: "stripeConnectLoginLinkCreated",
+      this.logger.info("Login link created successfully", {
         account_id: accountId,
         url_length: loginLink.url.length,
+        outcome: "success",
       });
 
       return {
@@ -851,11 +857,11 @@ export class StripeConnectService implements IStripeConnectService {
         created: loginLink.created,
       };
     } catch (error) {
-      logger.error("Failed to create login link", {
-        tag: "stripeConnectLoginLinkError",
+      this.logger.error("Failed to create login link", {
         account_id: accountId,
         error_name: error instanceof Error ? error.name : "Unknown",
         error_message: error instanceof Error ? error.message : String(error),
+        outcome: "failure",
       });
 
       throw new StripeConnectError(
@@ -876,7 +882,10 @@ export class StripeConnectService implements IStripeConnectService {
     try {
       validateStripeAccountId(accountId);
 
-      logger.info("Stripe Connect残高取得を開始", { accountId });
+      this.logger.info("Stripe Connect残高取得を開始", {
+        account_id: accountId,
+        outcome: "success",
+      });
 
       // Stripe APIで残高を取得
       const stripe = this.getStripeClient();
@@ -892,18 +901,20 @@ export class StripeConnectService implements IStripeConnectService {
       const pendingAmount = pendingJpy ? pendingJpy.amount : 0;
       const totalAmount = availableAmount + pendingAmount;
 
-      logger.info("Stripe Connect残高取得完了", {
-        accountId,
+      this.logger.info("Stripe Connect残高取得完了", {
+        account_id: accountId,
         availableAmount,
         pendingAmount,
         totalAmount,
+        outcome: "success",
       });
 
       return totalAmount;
     } catch (error) {
-      logger.error("Stripe Connect残高取得エラー", {
-        accountId,
+      this.logger.error("Stripe Connect残高取得エラー", {
+        account_id: accountId,
         error: error instanceof Error ? error.message : String(error),
+        outcome: "failure",
       });
 
       throw new StripeConnectError(

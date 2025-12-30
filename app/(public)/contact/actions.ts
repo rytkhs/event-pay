@@ -80,9 +80,12 @@ export async function submitContact(input: ContactInput) {
   if (!rl.allowed) {
     const retryAfterSec = rl.retryAfter ?? Math.ceil(POLICIES["contact.submit"].blockMs / 1000);
     logger.warn("Contact form rate limited", {
-      tag: "contact_rate_limited",
+      category: "security",
+      action: "contact_rate_limited",
+      actor_type: "anonymous",
       ip_masked: ip ? `${ip.slice(0, 8)}...` : "unknown",
       retry_after: retryAfterSec,
+      outcome: "failure",
     });
     return createServerActionError(
       "RATE_LIMITED",
@@ -128,9 +131,12 @@ export async function submitContact(input: ContactInput) {
     // 重複エラー（ユニーク制約違反）
     if (insertError.code === "23505") {
       logger.warn("Contact duplicate submission blocked", {
-        tag: "contact_duplicate",
+        category: "security",
+        action: "contact_duplicate",
+        actor_type: "anonymous",
         email_masked: maskEmail(email),
         fingerprint_hash: fingerprintHash.slice(0, 16),
+        outcome: "failure",
       });
       return createServerActionError(
         "RESOURCE_CONFLICT",
@@ -141,10 +147,13 @@ export async function submitContact(input: ContactInput) {
 
     // その他のDBエラー
     logger.error("Contact DB insert error", {
-      tag: "contact_db_error",
+      category: "system",
+      action: "contact_db_error",
+      actor_type: "anonymous",
       error_code: insertError.code,
       error_message: insertError.message,
       email_masked: maskEmail(email),
+      outcome: "failure",
     });
     return createServerActionError(
       "INTERNAL_ERROR",
@@ -155,9 +164,12 @@ export async function submitContact(input: ContactInput) {
 
   // 7. 成功ログ
   logger.info("Contact submitted successfully", {
-    tag: "contact_created",
+    category: "system",
+    action: "contact_created",
+    actor_type: "anonymous",
     email_masked: maskEmail(email),
     fingerprint_hash: fingerprintHash.slice(0, 16),
+    outcome: "success",
   });
 
   // 8. 非同期通知（メール + Slack）
@@ -186,17 +198,23 @@ export async function submitContact(input: ContactInput) {
 
       if (!result.success) {
         logger.warn("Contact notification email failed", {
-          tag: "contact_notification_failed",
+          category: "email",
+          action: "contact_notification_failed",
+          actor_type: "system",
           email_masked: maskEmail(email),
           error: result.error,
           error_type: result.errorType,
+          outcome: "failure",
         });
       }
     } catch (error) {
       logger.error("Contact notification email exception", {
-        tag: "contact_notification_exception",
+        category: "email",
+        action: "contact_notification_exception",
+        actor_type: "system",
         email_masked: maskEmail(email),
         error_message: error instanceof Error ? error.message : String(error),
+        outcome: "failure",
       });
     }
 
@@ -209,14 +227,20 @@ export async function submitContact(input: ContactInput) {
 
         if (!slackResult.success) {
           logger.warn("Contact Slack notification failed", {
-            tag: "contact_slack_failed",
+            category: "system",
+            action: "contact_slack_failed",
+            actor_type: "system",
             error: slackResult.error,
+            outcome: "failure",
           });
         }
       } catch (error) {
         logger.error("Contact Slack notification exception", {
-          tag: "contact_slack_exception",
+          category: "system",
+          action: "contact_slack_exception",
+          actor_type: "system",
           error_message: error instanceof Error ? error.message : String(error),
+          outcome: "failure",
         });
       }
     }

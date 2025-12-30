@@ -46,6 +46,17 @@ export class ConnectWebhookHandler {
   }
 
   /**
+   * 構造化ロガー
+   */
+  private get logger() {
+    return logger.withContext({
+      category: "stripe_webhook",
+      action: "connect_webhook_handler",
+      actor_type: "webhook",
+    });
+  }
+
+  /**
    * 監査付きのWebhookハンドラーを作成
    */
   static async create(): Promise<ConnectWebhookHandler> {
@@ -69,9 +80,12 @@ export class ConnectWebhookHandler {
         registerStripeConnectAdapters();
       } catch (e) {
         logger.error("Failed to register StripeConnect adapters", {
-          tag: "stripeConnectAdapterRegisterError",
+          category: "stripe_webhook",
+          action: "connect_webhook_handler",
+          actor_type: "webhook",
           error_name: e instanceof Error ? e.name : "Unknown",
           error_message: e instanceof Error ? e.message : String(e),
+          outcome: "failure",
         });
         throw e;
       }
@@ -92,9 +106,9 @@ export class ConnectWebhookHandler {
       // メタデータからユーザーIDを取得（actor_idへ統一）
       const userId = (account.metadata as Record<string, string | undefined> | undefined)?.actor_id;
       if (!userId) {
-        logger.warn("Account missing actor_id in metadata", {
-          tag: "accountMissingUserId",
+        this.logger.warn("Account missing actor_id in metadata", {
           stripe_account_id: account.id,
+          outcome: "failure",
         });
         return;
       }
@@ -126,14 +140,14 @@ export class ConnectWebhookHandler {
         trigger: "webhook",
       });
 
-      logger.info("Account status updated via webhook", {
-        tag: "accountStatusUpdated",
+      this.logger.info("Account status updated via webhook", {
         user_id: userId,
         stripe_account_id: account.id,
         old_status: oldStatus,
         new_status: newStatus,
         classification_gate: classificationResult.metadata.gate,
         classification_reason: classificationResult.reason,
+        outcome: "success",
       });
 
       // 通知を送信
@@ -168,11 +182,11 @@ export class ConnectWebhookHandler {
           : undefined,
       });
     } catch (error) {
-      logger.error("Error handling account.updated event", {
-        tag: "accountUpdatedHandlerError",
+      this.logger.error("Error handling account.updated event", {
         stripe_account_id: account.id,
         error_name: error instanceof Error ? error.name : "Unknown",
         error_message: error instanceof Error ? error.message : String(error),
+        outcome: "failure",
       });
 
       // 管理者にエラー通知を送信
@@ -188,13 +202,13 @@ export class ConnectWebhookHandler {
           payoutsEnabled: false,
         });
       } catch (notificationError) {
-        logger.error("Failed to send error notification", {
-          tag: "errorNotificationFailed",
+        this.logger.error("Failed to send error notification", {
           error_name: notificationError instanceof Error ? notificationError.name : "Unknown",
           error_message:
             notificationError instanceof Error
               ? notificationError.message
               : String(notificationError),
+          outcome: "failure",
         });
       }
 
@@ -256,17 +270,17 @@ export class ConnectWebhookHandler {
         });
       }
 
-      logger.info("Processed account.application.deauthorized", {
-        tag: "accountDeauthorized",
+      this.logger.info("Processed account.application.deauthorized", {
         account_id: accountId,
         user_id: userId,
         application_id: application.id,
+        outcome: "success",
       });
     } catch (error) {
-      logger.error("Error handling account.application.deauthorized", {
-        tag: "accountDeauthorizedHandlerError",
+      this.logger.error("Error handling account.application.deauthorized", {
         error_name: error instanceof Error ? error.name : "Unknown",
         error_message: error instanceof Error ? error.message : String(error),
+        outcome: "failure",
       });
       throw error;
     }
@@ -275,18 +289,18 @@ export class ConnectWebhookHandler {
   async handlePayoutPaid(payout: Stripe.Payout): Promise<void> {
     try {
       // 参考表示向けのログのみ（会計確定は行わない）
-      logger.info("Payout paid received", {
-        tag: "payoutPaid",
+      this.logger.info("Payout paid received", {
         payout_id: payout.id,
         amount: payout.amount,
         currency: payout.currency,
+        outcome: "success",
       });
     } catch (error) {
-      logger.error("Error handling payout.paid event", {
-        tag: "payoutPaidHandlerError",
+      this.logger.error("Error handling payout.paid event", {
         payout_id: payout.id,
         error_name: error instanceof Error ? error.name : "Unknown",
         error_message: error instanceof Error ? error.message : String(error),
+        outcome: "failure",
       });
     }
   }
@@ -294,17 +308,17 @@ export class ConnectWebhookHandler {
   async handlePayoutFailed(payout: Stripe.Payout): Promise<void> {
     try {
       // 参考表示向けのログのみ（会計確定は行わない）
-      logger.warn("Payout failed received", {
-        tag: "payoutFailed",
+      this.logger.warn("Payout failed received", {
         payout_id: payout.id,
         failure_message: (payout as any).failure_message,
+        outcome: "failure",
       });
     } catch (error) {
-      logger.error("Error handling payout.failed event", {
-        tag: "payoutFailedHandlerError",
+      this.logger.error("Error handling payout.failed event", {
         payout_id: payout.id,
         error_name: error instanceof Error ? error.name : "Unknown",
         error_message: error instanceof Error ? error.message : String(error),
+        outcome: "failure",
       });
     }
   }
@@ -336,10 +350,10 @@ export class ConnectWebhookHandler {
       // アカウント認証完了の通知
       if (oldStatus !== "verified" && accountInfo.status === "verified") {
         await this.notificationService.sendAccountVerifiedNotification(baseNotificationData);
-        logger.info("Account verified notification sent", {
-          tag: "accountVerifiedNotificationSent",
+        this.logger.info("Account verified notification sent", {
           user_id: userId,
           stripe_account_id: baseNotificationData.accountId,
+          outcome: "success",
         });
       }
 
@@ -353,10 +367,10 @@ export class ConnectWebhookHandler {
         };
 
         await this.notificationService.sendAccountRestrictedNotification(restrictedNotification);
-        logger.info("Account restricted notification sent", {
-          tag: "accountRestrictedNotificationSent",
+        this.logger.info("Account restricted notification sent", {
           user_id: userId,
           stripe_account_id: restrictedNotification.accountId,
+          outcome: "success",
         });
       }
 
@@ -373,19 +387,19 @@ export class ConnectWebhookHandler {
         await this.notificationService.sendAccountStatusChangeNotification(
           statusChangeNotification
         );
-        logger.info("Account status change notification sent", {
-          tag: "accountStatusChangeNotificationSent",
+        this.logger.info("Account status change notification sent", {
           user_id: userId,
           stripe_account_id: statusChangeNotification.accountId,
           old_status: oldStatus,
           new_status: accountInfo.status,
+          outcome: "success",
         });
       }
     } catch (error) {
-      logger.error("Error sending notifications", {
-        tag: "notificationSendError",
+      this.logger.error("Error sending notifications", {
         error_name: error instanceof Error ? error.name : "Unknown",
         error_message: error instanceof Error ? error.message : String(error),
+        outcome: "failure",
       });
       // 通知エラーは処理を停止させない
     }
@@ -428,10 +442,10 @@ export class ConnectWebhookHandler {
         },
       });
     } catch (error) {
-      logger.error("Error logging account update", {
-        tag: "accountUpdateLogError",
+      this.logger.error("Error logging account update", {
         error_name: error instanceof Error ? error.name : "Unknown",
         error_message: error instanceof Error ? error.message : String(error),
+        outcome: "failure",
       });
       // ログエラーは処理を停止させない
     }

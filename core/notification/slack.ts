@@ -20,7 +20,10 @@ export async function sendSlackText(
   // Webhook URLが設定されていない場合はスキップ（正常終了）
   if (!url) {
     logger.debug("Slack webhook URL not configured, skipping notification", {
-      tag: "slack_notification",
+      category: "system",
+      action: "slack_notification",
+      actor_type: "system",
+      outcome: "success",
     });
     return { success: true };
   }
@@ -37,9 +40,12 @@ export async function sendSlackText(
     if (!response.ok) {
       const errorText = await response.text();
       logger.warn("Slack notification failed", {
-        tag: "slack_notification",
-        status: response.status,
-        error: errorText,
+        category: "system",
+        action: "slack_notification",
+        actor_type: "system",
+        status_code: response.status,
+        error_message: errorText,
+        outcome: "failure",
       });
       return {
         success: false,
@@ -48,14 +54,20 @@ export async function sendSlackText(
     }
 
     logger.info("Slack notification sent", {
-      tag: "slack_notification",
+      category: "system",
+      action: "slack_notification",
+      actor_type: "system",
+      outcome: "success",
     });
 
     return { success: true };
   } catch (error) {
     logger.error("Slack notification error", {
-      tag: "slack_notification",
+      category: "system",
+      action: "slack_notification",
+      actor_type: "system",
       error_message: error instanceof Error ? error.message : String(error),
+      outcome: "failure",
     });
     return {
       success: false,
