@@ -3,7 +3,17 @@
  * 統一的なエラーハンドリングとユーザーフレンドリーなメッセージ変換
  */
 
+import * as Sentry from "@sentry/cloudflare";
+
 import { logger, type LogLevel } from "@core/logging/app-logger";
+import { sendSlackText } from "@core/notification/slack";
+import { waitUntil } from "@core/utils/cloudflare-ctx";
+
+import type { Database } from "@/types/database";
+
+/** DB enum から型を取得 */
+type ActorType = Database["public"]["Enums"]["actor_type_enum"];
+type LogOutcome = Database["public"]["Enums"]["log_outcome_enum"];
 
 export interface ErrorDetails {
   code: string;
@@ -21,6 +31,10 @@ export interface ErrorContext {
   userId?: string;
   eventId?: string;
   action?: string;
+  /** アクター種別（操作主体） */
+  actorType?: ActorType;
+  /** 処理結果 */
+  outcome?: LogOutcome;
   additionalData?: Record<string, unknown>;
 }
 
@@ -118,6 +132,64 @@ const ERROR_MAPPINGS: Record<string, Omit<ErrorDetails, "code">> = {
   DUPLICATE_REGISTRATION: {
     message: "Duplicate registration attempt",
     userMessage: "このメールアドレスは既に登録されています。",
+    severity: "medium",
+    shouldLog: true,
+    shouldAlert: false,
+    retryable: false,
+  },
+
+  // 認証系（予期しないエラー - Sentry通知対象）
+  REGISTRATION_UNEXPECTED_ERROR: {
+    message: "User registration failed unexpectedly",
+    userMessage: "登録処理中にエラーが発生しました。",
+    severity: "high",
+    shouldLog: true,
+    shouldAlert: true,
+    retryable: true,
+  },
+  LOGIN_UNEXPECTED_ERROR: {
+    message: "Login failed unexpectedly",
+    userMessage: "ログイン処理中にエラーが発生しました。",
+    severity: "high",
+    shouldLog: true,
+    shouldAlert: true,
+    retryable: true,
+  },
+  OTP_UNEXPECTED_ERROR: {
+    message: "OTP verification failed unexpectedly",
+    userMessage: "確認処理中にエラーが発生しました。",
+    severity: "high",
+    shouldLog: true,
+    shouldAlert: true,
+    retryable: true,
+  },
+  RESEND_OTP_UNEXPECTED_ERROR: {
+    message: "OTP resend failed unexpectedly",
+    userMessage: "再送信処理中にエラーが発生しました。",
+    severity: "high",
+    shouldLog: true,
+    shouldAlert: true,
+    retryable: true,
+  },
+  RESET_PASSWORD_UNEXPECTED_ERROR: {
+    message: "Password reset request failed unexpectedly",
+    userMessage: "パスワードリセット処理中にエラーが発生しました。",
+    severity: "high",
+    shouldLog: true,
+    shouldAlert: true,
+    retryable: true,
+  },
+  UPDATE_PASSWORD_UNEXPECTED_ERROR: {
+    message: "Password update failed unexpectedly",
+    userMessage: "パスワード更新処理中にエラーが発生しました。",
+    severity: "high",
+    shouldLog: true,
+    shouldAlert: true,
+    retryable: true,
+  },
+  LOGOUT_UNEXPECTED_ERROR: {
+    message: "Logout failed unexpectedly",
+    userMessage: "ログアウト処理中にエラーが発生しました。",
     severity: "medium",
     shouldLog: true,
     shouldAlert: false,
@@ -333,35 +405,77 @@ export function getErrorDetails(code: string): ErrorDetails {
 }
 
 /**
+ * 通知が必要なエラーをSentry/Slackへ送信
+ * @param error エラー詳細
+ * @param context エラーコンテキスト
+ */
+export async function notifyError(error: ErrorDetails, context?: ErrorContext): Promise<void> {
+  if (!error.shouldAlert) return;
+
+  // Sentry へ送信
+  try {
+    Sentry.captureMessage(error.message, {
+      level: error.severity === "critical" ? "fatal" : "error",
+      tags: {
+        error_code: error.code,
+        severity: error.severity,
+        action: context?.action || "unknown",
+      },
+      extra: {
+        userMessage: error.userMessage,
+        userId: context?.userId,
+        eventId: context?.eventId,
+        ...context?.additionalData,
+      },
+    });
+  } catch (sentryError) {
+    // Sentry 送信失敗はログに記録するが、処理は継続
+    // eslint-disable-next-line no-console
+    console.error("[notifyError] Sentry send failed:", sentryError);
+  }
+
+  // critical レベルは Slack にも即時通知
+  if (error.severity === "critical") {
+    await sendSlackText(
+      `🚨 [CRITICAL] ${error.code}\n${error.message}\nAction: ${context?.action || "unknown"}`
+    );
+  }
+}
+
+/**
  * エラーをログに記録
  * @param error エラー詳細
  * @param context エラーコンテキスト
  */
 export function logError(error: ErrorDetails, context?: ErrorContext): void {
-  if (!error.shouldLog) return;
+  // ログ処理（shouldLog が true の場合のみ）
+  if (error.shouldLog) {
+    const logLevel: LogLevel =
+      error.severity === "high" || error.severity === "critical" ? "error" : "warn";
 
-  // すべて app-logger に集約
-  const logLevel: LogLevel =
-    error.severity === "high" || error.severity === "critical" ? "error" : "warn";
+    const fields = {
+      category: "system",
+      action: context?.action ?? "error_handling",
+      // actorType: 呼び出し側から指定可能、デフォルトは "system"
+      actor_type: context?.actorType ?? "system",
+      error_code: error.code,
+      severity: error.severity,
+      user_id: context?.userId,
+      event_id: context?.eventId,
+      // outcome: エラーログは基本的に "failure"、呼び出し側から上書き可能
+      outcome: context?.outcome ?? "failure",
+      ...context?.additionalData,
+    } as const;
 
-  const fields = {
-    category: "system",
-    action: context?.action ?? "error_handling",
-    actor_type: "system",
-    error_code: error.code,
-    severity: error.severity,
-    user_id: context?.userId,
-    event_id: context?.eventId,
-    outcome:
-      error.severity === "high" || error.severity === "critical" ? "failure" : ("success" as any),
-    ...context?.additionalData,
-  } as const;
-
-  if (logLevel === "error") {
-    logger.error(error.message, fields);
-  } else {
-    logger.warn(error.message, fields);
+    if (logLevel === "error") {
+      logger.error(error.message, fields);
+    } else {
+      logger.warn(error.message, fields);
+    }
   }
+
+  // 通知処理（shouldLog とは独立して実行）
+  waitUntil(notifyError(error, context));
 }
 
 /**
@@ -495,4 +609,54 @@ export function isRetryableError(error: ErrorDetails): boolean {
  */
 export function getErrorSeverity(error: ErrorDetails): "low" | "medium" | "high" | "critical" {
   return error.severity;
+}
+
+// ============================================================================
+// サーバ側統合ハンドラ
+// ============================================================================
+
+/**
+ * 各種エラーを ErrorDetails に正規化
+ * @param error 任意のエラーオブジェクト
+ * @returns 正規化されたエラー詳細
+ */
+export function normalizeToErrorDetails(error: unknown): ErrorDetails {
+  // 既知のエラーコード文字列
+  if (typeof error === "string") {
+    return getErrorDetails(error);
+  }
+
+  // code プロパティを持つオブジェクト
+  if (error && typeof error === "object" && "code" in error && typeof error.code === "string") {
+    return getErrorDetails(error.code);
+  }
+
+  // Supabase AuthError / 一般的なエラーオブジェクト
+  if (error && typeof error === "object" && "message" in error) {
+    const msg = (error as { message: string }).message;
+    if (msg.includes("already registered")) {
+      return getErrorDetails("DUPLICATE_REGISTRATION");
+    }
+    if (msg.includes("rate limit")) {
+      return getErrorDetails("RATE_LIMIT_EXCEEDED");
+    }
+    if (msg.includes("Email not confirmed")) {
+      return getErrorDetails("VALIDATION_ERROR");
+    }
+  }
+
+  // フォールバック
+  return getErrorDetails("INTERNAL_SERVER_ERROR");
+}
+
+/**
+ * サーバ側エラーを正規化・ログ・通知する統合ハンドラ
+ * @param error 任意のエラーオブジェクト
+ * @param context エラーコンテキスト
+ * @returns 正規化されたエラー詳細
+ */
+export function handleServerError(error: unknown, context?: ErrorContext): ErrorDetails {
+  const errorDetails = normalizeToErrorDetails(error);
+  logError(errorDetails, context);
+  return errorDetails;
 }
