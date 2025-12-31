@@ -7,6 +7,7 @@ import { z } from "zod";
 import { getCurrentUser } from "@core/auth/auth-utils";
 import { logger } from "@core/logging/app-logger";
 import { createClient } from "@core/supabase/server";
+import { handleServerError } from "@core/utils/error-handler.server";
 
 import { SettlementReportService } from "../services/service";
 
@@ -68,13 +69,13 @@ const getReportsSchema = z.object({
 export async function generateSettlementReportAction(
   formData: FormData
 ): Promise<GenerateSettlementReportResponse> {
-  try {
-    // 認証確認
-    const user = await getCurrentUser();
-    if (!user?.id) {
-      redirect("/login");
-    }
+  // 認証確認
+  const user = await getCurrentUser();
+  if (!user?.id) {
+    redirect("/login");
+  }
 
+  try {
     // 入力値検証
     const rawData = {
       eventId: formData.get("eventId")?.toString() || "",
@@ -99,11 +100,14 @@ export async function generateSettlementReportAction(
     }
 
     logger.info("Settlement report generated via action", {
-      tag: "settlementReportAction",
-      userId: user.id,
-      eventId: validatedData.eventId,
-      reportId: result.reportId,
-      alreadyExists: result.alreadyExists,
+      category: "settlement",
+      action: "generate_report",
+      actor_type: "user",
+      user_id: user.id,
+      event_id: validatedData.eventId,
+      report_id: result.reportId,
+      already_exists: result.alreadyExists,
+      outcome: "success",
     });
 
     return {
@@ -113,9 +117,10 @@ export async function generateSettlementReportAction(
       reportData: result.reportData,
     };
   } catch (error) {
-    logger.error("Settlement report generation action failed", {
-      tag: "settlementReportActionError",
-      error: error instanceof Error ? error.message : String(error),
+    handleServerError(error, {
+      category: "settlement",
+      action: "generate_report_failed",
+      userId: user.id,
     });
 
     return {
@@ -135,13 +140,13 @@ export async function getSettlementReportsAction(params: {
   limit?: number;
   offset?: number;
 }) {
-  try {
-    // 認証確認
-    const user = await getCurrentUser();
-    if (!user?.id) {
-      redirect("/login");
-    }
+  // 認証確認
+  const user = await getCurrentUser();
+  if (!user?.id) {
+    redirect("/login");
+  }
 
+  try {
     // 入力値検証
     const validatedParams = getReportsSchema.parse(params);
 
@@ -163,9 +168,10 @@ export async function getSettlementReportsAction(params: {
       reports,
     };
   } catch (error) {
-    logger.error("Get settlement reports action failed", {
-      tag: "getSettlementReportsActionError",
-      error: error instanceof Error ? error.message : String(error),
+    handleServerError(error, {
+      category: "settlement",
+      action: "get_reports_failed",
+      userId: user.id,
     });
 
     return {
@@ -184,13 +190,13 @@ export async function exportSettlementReportsAction(params: {
   fromDate?: string;
   toDate?: string;
 }): Promise<ExportSettlementReportsResponse> {
-  try {
-    // 認証確認
-    const user = await getCurrentUser();
-    if (!user?.id) {
-      redirect("/login");
-    }
+  // 認証確認
+  const user = await getCurrentUser();
+  if (!user?.id) {
+    redirect("/login");
+  }
 
+  try {
     // 入力値検証
     const validatedParams = getReportsSchema.parse({ ...params, limit: 1000 }); // CSVは最大1000件
 
@@ -214,9 +220,12 @@ export async function exportSettlementReportsAction(params: {
     }
 
     logger.info("Settlement reports CSV export completed", {
-      tag: "settlementReportsCsvExport",
-      userId: user.id,
+      category: "settlement",
+      action: "export_csv",
+      actor_type: "user",
+      user_id: user.id,
       filename: result.filename,
+      outcome: "success",
     });
 
     if (!result.csvContent || !result.filename) {
@@ -233,9 +242,10 @@ export async function exportSettlementReportsAction(params: {
       truncated: !!result.truncated,
     };
   } catch (error) {
-    logger.error("Settlement reports CSV export action failed", {
-      tag: "settlementReportsCsvExportActionError",
-      error: error instanceof Error ? error.message : String(error),
+    handleServerError(error, {
+      category: "settlement",
+      action: "export_csv_failed",
+      userId: user.id,
     });
 
     return {
@@ -249,13 +259,13 @@ export async function exportSettlementReportsAction(params: {
  * 返金・Dispute時の再集計
  */
 export async function regenerateAfterRefundAction(formData: FormData) {
-  try {
-    // 認証確認
-    const user = await getCurrentUser();
-    if (!user?.id) {
-      redirect("/login");
-    }
+  // 認証確認
+  const user = await getCurrentUser();
+  if (!user?.id) {
+    redirect("/login");
+  }
 
+  try {
     // 入力値検証
     const rawData = {
       eventId: formData.get("eventId")?.toString() || "",
@@ -277,10 +287,13 @@ export async function regenerateAfterRefundAction(formData: FormData) {
     }
 
     logger.info("Settlement report regenerated after refund/dispute", {
-      tag: "settlementReportRegeneration",
-      userId: user.id,
-      eventId: validatedData.eventId,
-      reportId: result.reportId,
+      category: "settlement",
+      action: "regenerate_after_refund",
+      actor_type: "user",
+      user_id: user.id,
+      event_id: validatedData.eventId,
+      report_id: result.reportId,
+      outcome: "success",
     });
 
     return {
@@ -289,9 +302,10 @@ export async function regenerateAfterRefundAction(formData: FormData) {
       reportData: result.reportData,
     };
   } catch (error) {
-    logger.error("Settlement report regeneration action failed", {
-      tag: "settlementReportRegenerationActionError",
-      error: error instanceof Error ? error.message : String(error),
+    handleServerError(error, {
+      category: "settlement",
+      action: "regenerate_after_refund_failed",
+      userId: user.id,
     });
 
     return {

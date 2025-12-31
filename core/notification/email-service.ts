@@ -10,6 +10,7 @@ import { Resend } from "resend";
 
 import { logger } from "@core/logging/app-logger";
 import { getEnv } from "@core/utils/cloudflare-env";
+import { handleServerError } from "@core/utils/error-handler.server";
 
 import {
   IEmailNotificationService,
@@ -177,24 +178,30 @@ function validateEmailConfig(): { fromEmail: string; fromName: string; adminEmai
   if (!fromEmail) {
     fromEmail = "noreply@eventpay.jp";
     logger.warn("FROM_EMAIL not set, using default", {
-      tag: "emailService",
+      category: "email",
+      action: "email_config_validation",
       default_value: fromEmail,
+      outcome: "success",
     });
   }
 
   if (!fromName) {
     fromName = "みんなの集金";
     logger.warn("FROM_NAME not set, using default", {
-      tag: "emailService",
+      category: "email",
+      action: "email_config_validation",
       default_value: fromName,
+      outcome: "success",
     });
   }
 
   if (!adminEmail) {
     adminEmail = "admin@eventpay.jp";
     logger.warn("ADMIN_EMAIL not set, using default", {
-      tag: "emailService",
+      category: "email",
+      action: "email_config_validation",
       default_value: adminEmail,
+      outcome: "success",
     });
   }
 
@@ -223,6 +230,17 @@ export class EmailNotificationService implements IEmailNotificationService {
     this.fromEmail = config.fromEmail;
     this.fromName = config.fromName;
     this.adminEmail = config.adminEmail;
+  }
+
+  /**
+   * 構造化ロガー
+   */
+  private get logger() {
+    return logger.withContext({
+      category: "email",
+      action: "email_service",
+      actor_type: "system",
+    });
   }
 
   /**
@@ -281,16 +299,20 @@ export class EmailNotificationService implements IEmailNotificationService {
         if (result.error) {
           const errorInfo = classifyResendError(result.error);
 
-          logger.error("Resend API returned error", {
-            tag: "emailService",
-            to: maskedTo,
-            subject: template.subject,
-            error_type: errorInfo.type,
-            error_message: errorInfo.message,
-            status_code: errorInfo.statusCode,
-            error_name: errorInfo.name,
-            attempt: attempt + 1,
-            max_retries: MAX_RETRIES,
+          handleServerError("EMAIL_SENDING_FAILED", {
+            category: "email",
+            action: "email_service",
+            actorType: "system",
+            additionalData: {
+              to: maskedTo,
+              subject: template.subject,
+              error_type: errorInfo.type,
+              error_message: errorInfo.message,
+              status_code: errorInfo.statusCode,
+              error_name: errorInfo.name,
+              attempt: attempt + 1,
+              max_retries: MAX_RETRIES,
+            },
           });
 
           // 恒久的エラーの場合はリトライしない
@@ -321,11 +343,11 @@ export class EmailNotificationService implements IEmailNotificationService {
               ? RATE_LIMIT_RETRY_DELAY_MS
               : INITIAL_RETRY_DELAY_MS * Math.pow(2, attempt);
 
-          logger.info("Retrying email send after delay", {
-            tag: "emailService",
+          this.logger.info("Retrying email send after delay", {
             to: maskedTo,
             attempt: attempt + 1,
             delay_ms: delay,
+            outcome: "success",
           });
 
           await sleep(delay);
@@ -333,12 +355,12 @@ export class EmailNotificationService implements IEmailNotificationService {
         }
 
         // 成功
-        logger.info("Email sent successfully", {
-          tag: "emailService",
+        this.logger.info("Email sent successfully", {
           to: maskedTo,
           subject: template.subject,
           message_id: result.data?.id,
           attempt: attempt + 1,
+          outcome: "success",
         });
 
         return {
@@ -349,16 +371,20 @@ export class EmailNotificationService implements IEmailNotificationService {
       } catch (error) {
         const errorInfo = classifyResendError(error);
 
-        logger.error("Email sending exception", {
-          tag: "emailService",
-          to: maskedTo,
-          subject: template.subject,
-          error_type: errorInfo.type,
-          error_name: error instanceof Error ? error.name : "Unknown",
-          error_message: error instanceof Error ? error.message : String(error),
-          status_code: errorInfo.statusCode,
-          attempt: attempt + 1,
-          max_retries: MAX_RETRIES,
+        handleServerError("EMAIL_SENDING_FAILED", {
+          category: "email",
+          action: "email_service",
+          actorType: "system",
+          additionalData: {
+            to: maskedTo,
+            subject: template.subject,
+            error_type: errorInfo.type,
+            error_name: error instanceof Error ? error.name : "Unknown",
+            error_message: error instanceof Error ? error.message : String(error),
+            status_code: errorInfo.statusCode,
+            attempt: attempt + 1,
+            max_retries: MAX_RETRIES,
+          },
         });
 
         // 恒久的エラーの場合はリトライしない
@@ -389,11 +415,11 @@ export class EmailNotificationService implements IEmailNotificationService {
             ? RATE_LIMIT_RETRY_DELAY_MS
             : INITIAL_RETRY_DELAY_MS * Math.pow(2, attempt);
 
-        logger.info("Retrying email send after error", {
-          tag: "emailService",
+        this.logger.info("Retrying email send after error", {
           to: maskedTo,
           attempt: attempt + 1,
           delay_ms: delay,
+          outcome: "success",
         });
 
         await sleep(delay);
@@ -454,25 +480,33 @@ export class EmailNotificationService implements IEmailNotificationService {
 
       // 管理者アラート送信に失敗した場合は詳細をログに記録
       if (!result.success) {
-        logger.error("Admin alert email failed", {
-          tag: "emailService",
-          subject,
-          error: result.error,
-          error_type: result.errorType,
-          status_code: result.statusCode,
-          retry_count: result.retryCount,
-          admin_email: maskEmail(this.adminEmail),
+        handleServerError("ADMIN_ALERT_FAILED", {
+          category: "email",
+          action: "sendAdminAlert",
+          actorType: "system",
+          additionalData: {
+            subject,
+            error: result.error,
+            error_type: result.errorType,
+            status_code: result.statusCode,
+            retry_count: result.retryCount,
+            admin_email: maskEmail(this.adminEmail),
+          },
         });
       }
 
       return result;
     } catch (error) {
       // テンプレート読み込みエラーなど、sendEmail以外でのエラー
-      logger.error("Admin alert email error", {
-        tag: "emailService",
-        error_name: error instanceof Error ? error.name : "Unknown",
-        error_message: error instanceof Error ? error.message : String(error),
-        admin_email: maskEmail(this.adminEmail),
+      handleServerError("ADMIN_ALERT_FAILED", {
+        category: "email",
+        action: "sendAdminAlert",
+        actorType: "system",
+        additionalData: {
+          error_name: error instanceof Error ? error.name : "Unknown",
+          error_message: error instanceof Error ? error.message : String(error),
+          admin_email: maskEmail(this.adminEmail),
+        },
       });
       return {
         success: false,

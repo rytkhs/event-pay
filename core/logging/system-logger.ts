@@ -225,9 +225,9 @@ export async function logToSystemLogs(
       if (error.code === "23505" && error.message?.includes("dedupe_key")) {
         if (alsoLogToPino) {
           logger.debug("Duplicate log entry detected, skipping", {
-            tag: "systemLog",
-            dedupe_key: entry.dedupe_key,
+            category: "system",
             action: entry.action,
+            dedupe_key: entry.dedupe_key,
           });
         }
         return; // 重複ログは無視して正常終了
@@ -240,8 +240,7 @@ export async function logToSystemLogs(
     if (alsoLogToPino) {
       const pinoLevel = mapLogLevelToPino(entry.log_level || "info");
       logger[pinoLevel](entry.message, {
-        tag: "systemLog",
-        log_category: entry.log_category,
+        category: entry.log_category,
         action: entry.action,
         outcome: entry.outcome,
         user_id: entry.user_id,
@@ -254,9 +253,11 @@ export async function logToSystemLogs(
   } catch (error) {
     // ログ記録失敗時のフォールバック
     logger.error("Failed to write to system_logs", {
-      tag: "systemLogError",
+      category: "system",
+      action: "system_log_write_error",
       error: error instanceof Error ? error.message : String(error),
       entry,
+      outcome: "failure",
     });
 
     if (throwOnError) {

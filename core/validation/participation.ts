@@ -166,13 +166,16 @@ export const validateParticipationField = (
       // バリデーション失敗をログに記録
       if (request) {
         logger.warn("Validation failed", {
-          tag: "validation",
-          field: String(name),
-          error: errorMessage,
-          inputLength: value?.length,
+          category: "system",
+          action: "validation_failed",
+          actor_type: "anonymous",
+          field_name: String(name),
+          error_message: errorMessage,
+          input_length: value?.length,
           user_agent: request.userAgent,
           ip: request.ip,
           event_id: request.eventId,
+          outcome: "failure",
         });
       }
     }
@@ -211,13 +214,16 @@ export const validateParticipationFormWithDuplicateCheck = async (
         if (request) {
           const fieldValue = formData[fieldPath];
           logger.warn("Validation failed", {
-            tag: "validation",
-            field: String(fieldPath),
-            error: errorMessage,
-            inputLength: typeof fieldValue === "string" ? fieldValue.length : undefined,
+            category: "system",
+            action: "validation_failed",
+            actor_type: "anonymous",
+            field_name: String(fieldPath),
+            error_message: errorMessage,
+            input_length: typeof fieldValue === "string" ? fieldValue.length : undefined,
             user_agent: request.userAgent,
             ip: request.ip,
             event_id: eventId,
+            outcome: "failure",
           });
         }
       });
@@ -261,13 +267,16 @@ export const sanitizeParticipationInput = {
     // サニタイゼーションログを記録
     if (request && trimmed !== sanitized) {
       logger.info("Sanitization applied", {
-        tag: "sanitization",
-        field: "nickname",
-        originalLength: trimmed.length,
-        sanitizedLength: sanitized.length,
+        category: "system",
+        action: "sanitization_applied",
+        actor_type: "anonymous",
+        field_name: "nickname",
+        original_length: trimmed.length,
+        sanitized_length: sanitized.length,
         user_agent: request.userAgent,
         ip: request.ip,
         event_id: request.eventId,
+        outcome: "success",
       });
     }
 
@@ -296,13 +305,16 @@ export const sanitizeParticipationInput = {
     // サニタイゼーションログを記録
     if (request && normalized !== sanitized) {
       logger.info("Sanitization applied", {
-        tag: "sanitization",
-        field: "email",
-        originalLength: normalized.length,
-        sanitizedLength: sanitized.length,
+        category: "system",
+        action: "sanitization_applied",
+        actor_type: "anonymous",
+        field_name: "email",
+        original_length: normalized.length,
+        sanitized_length: sanitized.length,
         user_agent: request.userAgent,
         ip: request.ip,
         event_id: request.eventId,
+        outcome: "success",
       });
     }
 

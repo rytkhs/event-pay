@@ -6,6 +6,7 @@ import type { ActionResult } from "@core/actions/auth";
 import { getCurrentUser } from "@core/auth/auth-utils";
 import { logger } from "@core/logging/app-logger";
 import { createClient } from "@core/supabase/server";
+import { handleServerError } from "@core/utils/error-handler.server";
 
 const updatePasswordSchema = z.object({
   currentPassword: z.string().min(1, "現在のパスワードを入力してください"),
@@ -52,9 +53,12 @@ export async function updatePasswordAction(formData: FormData): Promise<ActionRe
 
     if (signInError) {
       logger.warn("Password reauthentication failed", {
-        tag: "passwordReauthFailed",
+        category: "authentication",
+        action: "update_password",
+        actor_type: "user",
         user_id: user.id,
         error_message: signInError.message,
+        outcome: "failure",
       });
       return {
         success: false,
@@ -68,10 +72,11 @@ export async function updatePasswordAction(formData: FormData): Promise<ActionRe
     });
 
     if (updateError) {
-      logger.error("Password update failed", {
-        tag: "passwordUpdateFailed",
-        user_id: user.id,
-        error_message: updateError.message,
+      handleServerError(updateError, {
+        category: "authentication",
+        action: "update_password",
+        actorType: "user",
+        userId: user.id,
       });
       return {
         success: false,
@@ -80,8 +85,11 @@ export async function updatePasswordAction(formData: FormData): Promise<ActionRe
     }
 
     logger.info("Password updated successfully", {
-      tag: "passwordUpdated",
+      category: "authentication",
+      action: "update_password",
+      actor_type: "user",
       user_id: user.id,
+      outcome: "success",
     });
 
     return {
@@ -89,10 +97,14 @@ export async function updatePasswordAction(formData: FormData): Promise<ActionRe
       message: "パスワードを変更しました",
     };
   } catch (error) {
-    logger.error("Update password action error", {
-      tag: "updatePasswordActionError",
-      error_name: error instanceof Error ? error.name : "Unknown",
-      error_message: error instanceof Error ? error.message : String(error),
+    handleServerError("UPDATE_PASSWORD_UNEXPECTED_ERROR", {
+      category: "authentication",
+      action: "update_password",
+      actorType: "user",
+      additionalData: {
+        error_name: error instanceof Error ? error.name : "Unknown",
+        error_message: error instanceof Error ? error.message : String(error),
+      },
     });
 
     return {

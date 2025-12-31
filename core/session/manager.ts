@@ -1,6 +1,6 @@
 import { SupabaseClient, Session } from "@supabase/supabase-js";
 
-import { logger } from "@core/logging/app-logger";
+import { handleServerError } from "@core/utils/error-handler.server";
 
 import { SESSION_CONFIG, type SessionUpdatePriority } from "./config";
 
@@ -44,10 +44,10 @@ export class SessionManager {
       const { data, error } = await supabase.auth.refreshSession();
 
       if (error) {
-        logger.warn("Session refresh failed", {
-          tag: "sessionRefreshFailed",
-          error_message: error.message,
-          session_id: sessionId,
+        handleServerError(error, {
+          category: "authentication",
+          action: "session_refresh",
+          additionalData: { session_id: sessionId, phase: "refresh" },
         });
         return { updated: false, session: null };
       }
@@ -57,11 +57,11 @@ export class SessionManager {
 
       return { updated: true, session: data.session };
     } catch (error) {
-      logger.error("Session refresh error", {
-        tag: "sessionRefreshException",
-        error_name: error instanceof Error ? error.name : "Unknown",
-        error_message: error instanceof Error ? error.message : String(error),
-        session_id: sessionId,
+      handleServerError(error, {
+        category: "authentication",
+        action: "session_refresh",
+        userId: undefined, // セッションレベルのエラー
+        additionalData: { session_id: sessionId },
       });
       return { updated: false, session: null };
     }
@@ -134,12 +134,11 @@ export class SessionManager {
         await this.refreshSessionIfNeeded(supabase, sessionId);
       }
     } catch (error) {
-      // バックグラウンド処理なのでログのみ
-      logger.warn("Background session refresh failed", {
-        tag: "backgroundSessionRefreshFailed",
-        error_name: error instanceof Error ? error.name : "Unknown",
-        error_message: error instanceof Error ? error.message : String(error),
-        session_id: sessionId,
+      // バックグラウンド処理なのでログのみ（通知判定はhandleServerErrorに委譲）
+      handleServerError(error, {
+        category: "authentication",
+        action: "session_refresh",
+        additionalData: { session_id: sessionId, phase: "background" },
       });
     }
   }

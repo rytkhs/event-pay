@@ -9,7 +9,7 @@ import {
   isRetryableError,
   type ErrorDetails,
   type ErrorContext,
-} from "@core/utils/error-handler";
+} from "@core/utils/error-handler.client";
 
 interface UseErrorHandlerOptions {
   showToast?: boolean;

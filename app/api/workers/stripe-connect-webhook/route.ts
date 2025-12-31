@@ -14,6 +14,7 @@ import { createProblemResponse } from "@core/api/problem-details";
 import { logger } from "@core/logging/app-logger";
 import { generateSecureUuid } from "@core/security/crypto";
 import { getEnv } from "@core/utils/cloudflare-env";
+import { handleServerError } from "@core/utils/error-handler.server";
 import { getClientIP } from "@core/utils/ip-detection";
 
 import "@/app/_init/feature-registrations";
@@ -32,12 +33,16 @@ export async function POST(request: NextRequest) {
   const start = Date.now();
   const corr = `qstash_connect_${generateSecureUuid()}`;
 
+  const connectLogger = logger.withContext({
+    category: "stripe_webhook",
+    action: "stripe_connect_webhook_worker",
+    actor_type: "webhook",
+    correlation_id: corr,
+    request_id: corr,
+  });
+
   try {
-    logger.info("Connect QStash worker request received", {
-      tag: "connect-qstash",
-      correlation_id: corr,
-      request_id: corr,
-    });
+    connectLogger.info("Connect QStash worker request received");
 
     const signature = request.headers.get("Upstash-Signature");
     const deliveryId = request.headers.get("Upstash-Delivery-Id");
@@ -46,11 +51,9 @@ export async function POST(request: NextRequest) {
     const rawBody = await request.text();
 
     if (!signature) {
-      logger.warn("Missing QStash signature (connect)", {
-        tag: "connect-qstash",
-        correlation_id: corr,
-        request_id: corr,
+      connectLogger.warn("Missing QStash signature (connect)", {
         ip: getClientIP(request),
+        outcome: "failure",
       });
       return createProblemResponse("UNAUTHORIZED", {
         instance: "/api/workers/stripe-connect-webhook",
@@ -62,11 +65,9 @@ export async function POST(request: NextRequest) {
     const receiver = getQstashReceiver();
     const isValid = await receiver.verify({ signature, body: rawBody, url });
     if (!isValid) {
-      logger.warn("Invalid QStash signature (connect)", {
-        tag: "connect-qstash",
-        correlation_id: corr,
-        request_id: corr,
+      connectLogger.warn("Invalid QStash signature (connect)", {
         ip: getClientIP(request),
+        outcome: "failure",
       });
       return createProblemResponse("UNAUTHORIZED", {
         instance: "/api/workers/stripe-connect-webhook",
@@ -88,12 +89,11 @@ export async function POST(request: NextRequest) {
 
     const { event } = parsed;
     if (!event?.id || !event?.type) {
-      logger.warn("Missing or invalid event in Connect QStash webhook body", {
-        tag: "connect-qstash",
-        correlation_id: corr,
+      connectLogger.warn("Missing or invalid event in Connect QStash webhook body", {
         has_event: !!event,
         event_id: event?.id,
         event_type: event?.type,
+        outcome: "failure",
       });
       return createProblemResponse("INVALID_REQUEST", {
         instance: "/api/workers/stripe-connect-webhook",
@@ -102,10 +102,7 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    logger.debug("Processing received Connect event", {
-      tag: "connect-qstash",
-      correlation_id: corr,
-      request_id: corr,
+    connectLogger.debug("Processing received Connect event", {
       event_id: event.id,
       event_type: event.type,
     });
@@ -138,8 +135,7 @@ export async function POST(request: NextRequest) {
         break;
       }
       default: {
-        logger.info("Connect event ignored (unsupported type)", {
-          tag: "connect-qstash",
+        connectLogger.info("Connect event ignored (unsupported type)", {
           type: event.type,
           event_id: event.id,
         });
@@ -154,16 +150,18 @@ export async function POST(request: NextRequest) {
       (processingResult as any).terminal === true
     ) {
       const msTerminal = Date.now() - start;
-      logger.error("Connect QStash worker terminal failure", {
-        tag: "connect-qstash",
-        correlation_id: corr,
-        request_id: corr,
-        delivery_id: deliveryId,
-        event_id: event.id,
-        type: event.type,
-        ms: msTerminal,
-        reason: (processingResult as any).reason,
-        error: (processingResult as any).error,
+      handleServerError("CONNECT_WEBHOOK_UNEXPECTED_ERROR", {
+        category: "stripe_webhook",
+        action: "stripe_connect_worker_terminal_failure",
+        additionalData: {
+          delivery_id: deliveryId,
+          event_id: event.id,
+          type: event.type,
+          ms: msTerminal,
+          reason: (processingResult as any).reason,
+          error: (processingResult as any).error,
+          correlation_id: corr,
+        },
       });
       return createProblemResponse("INTERNAL_ERROR", {
         instance: "/api/workers/stripe-connect-webhook",
@@ -175,25 +173,25 @@ export async function POST(request: NextRequest) {
     }
 
     const ms = Date.now() - start;
-    logger.info("Connect QStash worker processed", {
-      tag: "connect-qstash",
-      correlation_id: corr,
-      request_id: corr,
+    connectLogger.info("Connect QStash worker processed", {
       delivery_id: deliveryId,
       event_id: event.id,
       type: event.type,
       ms,
+      outcome: "success",
     });
 
     return NextResponse.json({ success: true, eventId: event.id, type: event.type, ms });
   } catch (error) {
     const ms = Date.now() - start;
-    logger.error("Connect QStash worker error", {
-      tag: "connect-qstash",
-      correlation_id: corr,
-      request_id: corr,
-      error_message: error instanceof Error ? error.message : String(error),
-      ms,
+    handleServerError("CONNECT_WEBHOOK_UNEXPECTED_ERROR", {
+      category: "stripe_webhook",
+      action: "stripe_connect_worker_error",
+      additionalData: {
+        error_message: error instanceof Error ? error.message : String(error),
+        ms,
+        correlation_id: corr,
+      },
     });
     return createProblemResponse("INTERNAL_ERROR", {
       instance: "/api/workers/stripe-connect-webhook",

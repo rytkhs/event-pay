@@ -3,6 +3,7 @@
 import { verifyEventAccess, handleDatabaseError } from "@core/auth/event-authorization";
 import { logger } from "@core/logging/app-logger";
 import { createClient } from "@core/supabase/server";
+import { handleServerError } from "@core/utils/error-handler.server";
 import {
   GetParticipantsParamsSchema,
   type GetParticipantsResponse,
@@ -116,16 +117,24 @@ export async function getEventParticipantsAction(
     });
 
     logger.info("Event participants retrieved (all)", {
-      eventId: validatedEventId,
-      userId: user.id,
-      participantCount: participants.length,
+      category: "attendance",
+      action: "get_event_participants",
+      actor_type: "user",
+      event_id: validatedEventId,
+      user_id: user.id,
+      participant_count: participants.length,
+      outcome: "success",
     });
 
     return { participants };
   } catch (error) {
-    logger.error("Failed to get event participants", {
-      error: error instanceof Error ? error.message : "Unknown error",
-      params,
+    handleServerError(error, {
+      category: "attendance",
+      action: "get_event_participants",
+      actorType: "user",
+      additionalData: {
+        params: JSON.stringify(params),
+      },
     });
 
     if (error instanceof Error) {

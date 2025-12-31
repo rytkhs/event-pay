@@ -2,6 +2,8 @@ import { createHash } from "crypto";
 
 import { NextRequest } from "next/server";
 
+import { logger } from "@core/logging/app-logger";
+
 /**
  * ヘッダーアクセス用のインターフェース
  * NextRequest.headers、Web API Headers、Next.js ReadonlyHeaders すべてに対応
@@ -104,12 +106,13 @@ function normalizeIP(ip: string): string {
   if (!isValidIP(trimmedIP)) {
     // 本番環境では適切なログシステムに出力
     if (process.env.NODE_ENV === "development") {
-      import("@core/logging/app-logger").then(({ logger }) =>
-        logger.warn("Invalid IP address detected. Using fallback.", {
-          tag: "ipDetection",
-          ip,
-        })
-      );
+      logger.warn("Invalid IP address detected. Using fallback.", {
+        category: "system",
+        action: "ip_detection",
+        actor_type: "anonymous",
+        ip,
+        outcome: "failure",
+      });
     }
     return "127.0.0.1";
   }
@@ -248,13 +251,14 @@ export function getClientIP(requestOrHeaders: NextRequest | HeaderLike): string 
   if (selectedIP) {
     // セキュリティログ: 低信頼度ヘッダーの使用を警告
     if (selectedTrust === "low" && process.env.NODE_ENV === "development") {
-      import("@core/logging/app-logger").then(({ logger }) =>
-        logger.warn("Using low-trust IP header", {
-          tag: "ipDetection",
-          source: selectedSource || undefined,
-          ip: selectedIP,
-        })
-      );
+      logger.warn("Using low-trust IP header", {
+        category: "system",
+        action: "ip_detection",
+        actor_type: "anonymous",
+        source: selectedSource || undefined,
+        ip: selectedIP,
+        outcome: "success",
+      });
     }
     return selectedIP;
   }
@@ -271,13 +275,14 @@ export function getClientIP(requestOrHeaders: NextRequest | HeaderLike): string 
 
     // 本番環境では適切なログシステムに出力
     if (process.env.NODE_ENV === "production") {
-      import("@core/logging/app-logger").then(({ logger }) =>
-        logger.warn("No valid client IP found, using fallback identifier", {
-          tag: "ipDetection",
-          fallback_ip: fallbackIP,
-          user_agent: headers.get("user-agent") || undefined,
-        })
-      );
+      logger.warn("No valid client IP found, using fallback identifier", {
+        category: "system",
+        action: "ip_detection",
+        actor_type: "anonymous",
+        fallback_ip: fallbackIP,
+        user_agent: headers.get("user-agent") || undefined,
+        outcome: "failure",
+      });
     }
 
     return fallbackIP;
@@ -372,13 +377,14 @@ export function getClientIPFromHeaders(headersList: HeaderLike): string {
   if (selectedIP) {
     // セキュリティログ: 低信頼度ヘッダーの使用を警告
     if (selectedTrust === "low" && process.env.NODE_ENV === "development") {
-      import("@core/logging/app-logger").then(({ logger }) =>
-        logger.warn("[Server Component] Using low-trust IP header", {
-          tag: "ipDetection",
-          source: selectedSource || undefined,
-          ip: selectedIP,
-        })
-      );
+      logger.warn("[Server Component] Using low-trust IP header", {
+        category: "system",
+        action: "ip_detection",
+        actor_type: "anonymous",
+        source: selectedSource || undefined,
+        ip: selectedIP,
+        outcome: "success",
+      });
     }
     return selectedIP;
   }

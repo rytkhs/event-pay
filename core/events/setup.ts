@@ -25,7 +25,10 @@ export function initializeEventSystem(): void {
 export async function setupEventHandlers(): Promise<void> {
   // 空実装 - 実際のハンドラ登録は各feature層で行われる
   logger.info("Event registry initialized. Handlers will be registered by feature adapters.", {
-    tag: "event-setup",
+    category: "system",
+    action: "event_system_setup",
+    actor_type: "system",
+    outcome: "success",
   });
 }
 

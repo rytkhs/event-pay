@@ -6,7 +6,9 @@ import { buildOrigin } from "@core/auth/line-utils";
 import { logger } from "@core/logging/app-logger";
 import { getSecureClientFactory } from "@core/security/secure-client-factory.impl";
 import { AdminReason } from "@core/security/secure-client-factory.types";
+import { waitUntil } from "@core/utils/cloudflare-ctx";
 import { getEnv } from "@core/utils/cloudflare-env";
+import { handleServerError } from "@core/utils/error-handler.server";
 import { extractClientIdFromGaCookie } from "@core/utils/ga-cookie";
 
 import { LineTokenResponse, LineVerifyResponse } from "@/types/line";
@@ -20,11 +22,21 @@ export async function GET(request: Request) {
   const state = searchParams.get("state");
   const error = searchParams.get("error");
 
+  const authLogger = logger.withContext({
+    category: "authentication",
+    action: "line_auth_callback",
+    actor_type: "anonymous",
+  });
+
   const origin = buildOrigin();
 
   // 1. エラーハンドリングとCSRF検証
   if (error) {
-    logger.error(`LINE Login Error: ${error}`, { tag: "lineLoginError", error });
+    handleServerError("LINE_LOGIN_ERROR", {
+      category: "authentication",
+      action: "line_auth_callback_error_param",
+      additionalData: { error },
+    });
     return NextResponse.redirect(`${origin}/login?error=${LINE_ERROR_CODES.AUTH_FAILED}`);
   }
 
@@ -41,10 +53,10 @@ export async function GET(request: Request) {
   cookieStore.delete(LINE_OAUTH_COOKIES.NONCE);
 
   if (!code || !state || !storedState || state !== storedState || !storedNonce) {
-    logger.error("CSRF validation failed", {
-      tag: "lineLoginCsrfFailed",
-      state,
-      storedState,
+    handleServerError("LINE_CSRF_VALIDATION_FAILED", {
+      category: "authentication",
+      action: "line_auth_callback_csrf_fail",
+      additionalData: { state, storedState },
     });
     return NextResponse.redirect(`${origin}/login?error=${LINE_ERROR_CODES.STATE_MISMATCH}`);
   }
@@ -77,9 +89,10 @@ export async function GET(request: Request) {
     const lineData = (await tokenResponse.json()) as LineTokenResponse;
 
     if (!tokenResponse.ok || !lineData.id_token) {
-      logger.error("Failed to retrieve ID token from LINE", {
-        tag: "lineLoginTokenFailed",
-        lineData,
+      handleServerError("LINE_TOKEN_RETRIEVAL_FAILED", {
+        category: "authentication",
+        action: "line_auth_callback_token_retrieval_fail",
+        additionalData: { lineData },
       });
       return NextResponse.redirect(`${origin}/login?error=${LINE_ERROR_CODES.TOKEN_FAILED}`);
     }
@@ -100,7 +113,10 @@ export async function GET(request: Request) {
     const lineSub = profile.sub;
 
     if (!lineSub) {
-      logger.error("Subject (sub) not found in LINE profile", { tag: "lineLoginSubMissing" });
+      handleServerError("LINE_PROFILE_ERROR", {
+        category: "authentication",
+        action: "line_auth_callback_missing_sub",
+      });
       return NextResponse.redirect(`${origin}/login?error=${LINE_ERROR_CODES.AUTH_FAILED}`);
     }
 
@@ -131,9 +147,10 @@ export async function GET(request: Request) {
 
     if (lineAccountError && lineAccountError.code !== "PGRST116") {
       // PGRST116 = no rows found (想定内のエラー)
-      logger.error("Failed to query line_accounts", {
-        tag: "lineAccountQueryError",
-        error: lineAccountError,
+      handleServerError("LINE_LOGIN_ERROR", {
+        category: "authentication",
+        action: "line_auth_callback_query_accounts_fail",
+        additionalData: { error: lineAccountError },
       });
       throw lineAccountError;
     }
@@ -155,9 +172,10 @@ export async function GET(request: Request) {
         .eq("line_sub", lineSub);
 
       if (updateError) {
-        logger.error("Failed to update line_accounts", {
-          tag: "lineAccountUpdateError",
-          error: updateError,
+        handleServerError("LINE_LOGIN_ERROR", {
+          category: "authentication",
+          action: "line_auth_callback_update_account_fail",
+          additionalData: { error: updateError },
         });
         throw updateError;
       }
@@ -174,9 +192,10 @@ export async function GET(request: Request) {
 
         if (userQueryError && userQueryError.code !== "PGRST116") {
           // PGRST116 = no rows found (想定内のエラー)
-          logger.error("Failed to query users table", {
-            tag: "usersQueryError",
-            error: userQueryError,
+          handleServerError("LINE_LOGIN_ERROR", {
+            category: "authentication",
+            action: "line_auth_callback_query_users_fail",
+            additionalData: { error: userQueryError },
           });
           throw userQueryError;
         }
@@ -197,9 +216,10 @@ export async function GET(request: Request) {
         });
 
         if (insertError) {
-          logger.error("Failed to insert line_accounts for existing user", {
-            tag: "lineAccountInsertError",
-            error: insertError,
+          handleServerError("LINE_ACCOUNT_LINKING_FAILED", {
+            category: "authentication",
+            action: "line_auth_callback_insert_link_exist_user_fail",
+            additionalData: { error: insertError },
           });
           throw insertError;
         }
@@ -207,8 +227,10 @@ export async function GET(request: Request) {
         // B-2. Emailも一致しない（完全新規 or Emailなし） -> 新規ユーザー作成
         if (!email) {
           // Emailがない場合はエラーにする
-          logger.error("Email not found in LINE profile for new user", {
-            tag: "lineLoginEmailMissing",
+          handleServerError("LINE_LOGIN_ERROR", {
+            category: "authentication",
+            action: "line_auth_callback_email_missing",
+            severity: "medium", // メールなしは中重要度
           });
           return NextResponse.redirect(`${origin}/login?error=${LINE_ERROR_CODES.EMAIL_REQUIRED}`);
         }
@@ -245,9 +267,10 @@ export async function GET(request: Request) {
         });
 
         if (insertError) {
-          logger.error("Failed to insert line_accounts for new user", {
-            tag: "lineAccountInsertError",
-            error: insertError,
+          handleServerError("LINE_ACCOUNT_LINKING_FAILED", {
+            category: "authentication",
+            action: "line_auth_callback_insert_link_new_user_fail",
+            additionalData: { error: insertError },
           });
           throw insertError;
         }
@@ -286,42 +309,46 @@ export async function GET(request: Request) {
     }
 
     // 8. GA4送信
-    queueMicrotask(async () => {
-      try {
-        const { ga4Server } = await import("@core/analytics/ga4-server");
+    waitUntil(
+      (async () => {
+        try {
+          const { ga4Server } = await import("@core/analytics/ga4-server");
 
-        // _ga CookieからClient IDを取得
-        const cookieStore = cookies();
-        const gaCookie = cookieStore.get("_ga")?.value;
-        const clientId = extractClientIdFromGaCookie(gaCookie);
+          // _ga CookieからClient IDを取得
+          const cookieStore = cookies();
+          const gaCookie = cookieStore.get("_ga")?.value;
+          const clientId = extractClientIdFromGaCookie(gaCookie);
 
-        const eventName = isNewUser ? "sign_up" : "login";
-        await ga4Server.sendEvent(
-          {
-            name: eventName,
-            params: {
-              method: "line",
+          const eventName = isNewUser ? "sign_up" : "login";
+          await ga4Server.sendEvent(
+            {
+              name: eventName,
+              params: {
+                method: "line",
+              },
             },
-          },
-          clientId ?? undefined,
-          userId,
-          undefined,
-          undefined
-        );
-      } catch (error) {
-        logger.debug("[GA4] Failed to send LINE auth event", {
-          tag: "ga4LineEventFailed",
-          error_message: error instanceof Error ? error.message : String(error),
-        });
-      }
-    });
+            clientId ?? undefined,
+            userId,
+            undefined,
+            undefined
+          );
+        } catch (error) {
+          authLogger.debug("[GA4] Failed to send LINE auth event", {
+            error_message: error instanceof Error ? error.message : String(error),
+          });
+        }
+      })()
+    );
 
     // 9. 完了後のリダイレクト
     return NextResponse.redirect(`${origin}${nextPath}`);
   } catch (error) {
-    logger.error("Unexpected error during LINE login callback", {
-      tag: "lineLoginCallbackError",
-      error,
+    handleServerError("LINE_LOGIN_ERROR", {
+      category: "authentication",
+      action: "line_auth_callback_unexpected_error",
+      additionalData: {
+        error: error instanceof Error ? error.message : String(error),
+      },
     });
     return NextResponse.redirect(`${origin}/login?error=${LINE_ERROR_CODES.SERVER_ERROR}`);
   }

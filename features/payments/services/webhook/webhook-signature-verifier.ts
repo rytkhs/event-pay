@@ -2,6 +2,7 @@ import Stripe from "stripe";
 
 import { logger } from "@core/logging/app-logger";
 import { getEnv } from "@core/utils/cloudflare-env";
+import { handleServerError } from "@core/utils/error-handler.server";
 
 export interface WebhookSignatureVerifier {
   /**
@@ -22,6 +23,14 @@ export class StripeWebhookSignatureVerifier implements WebhookSignatureVerifier 
     getEnv().STRIPE_WEBHOOK_TIMESTAMP_TOLERANCE || "300",
     10
   );
+
+  private get logger() {
+    return logger.withContext({
+      category: "stripe_webhook",
+      action: "signature_verification",
+      actor_type: "webhook",
+    });
+  }
 
   constructor(stripe: Stripe, webhookSecretOrSecrets: string | string[]) {
     this.stripe = stripe;
@@ -62,10 +71,11 @@ export class StripeWebhookSignatureVerifier implements WebhookSignatureVerifier 
           );
 
           // 検証成功をログ
-          logger.info("Webhook signature verified", {
+          this.logger.info("Webhook signature verified", {
             eventType: event.type,
             eventId: event.id,
             timestamp: parsedTimestamp,
+            outcome: "success",
           });
 
           return {
@@ -91,27 +101,33 @@ export class StripeWebhookSignatureVerifier implements WebhookSignatureVerifier 
         if (isTimestampOutOfRange) {
           const nowSec = Math.floor(Date.now() / 1000);
           const deltaSec = Math.abs(nowSec - parsedTimestamp);
-          logger.warn("Webhook timestamp invalid", {
+          this.logger.warn("Webhook timestamp invalid", {
             error: "Timestamp outside tolerance",
             timestamp: parsedTimestamp,
             currentTime: nowSec,
             age: deltaSec,
             maxAge: this.maxTimestampAge,
             signatureProvided: !!signature,
+            outcome: "failure",
           });
         } else {
-          logger.warn("Webhook signature invalid", {
+          this.logger.warn("Webhook signature invalid", {
             error: message,
             timestamp: parsedTimestamp,
             signatureProvided: !!signature,
+            outcome: "failure",
           });
         }
       } else {
         // Stripe SDK 以外の予期しないエラー。分類を変更して冗長ログを防ぐ。
-        logger.error("Webhook processing error", {
-          error: message,
-          timestamp: parsedTimestamp,
-          signatureProvided: !!signature,
+        handleServerError("WEBHOOK_UNEXPECTED_ERROR", {
+          action: "signature_verification",
+          additionalData: {
+            category: "stripe_webhook",
+            error: message,
+            timestamp: parsedTimestamp,
+            signatureProvided: !!signature,
+          },
         });
       }
 

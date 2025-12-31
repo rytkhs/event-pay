@@ -18,7 +18,13 @@ import { StripeConnectService } from "../services/service";
 const getCachedBalance = (accountId: string) =>
   unstable_cache(
     async () => {
-      logger.info("Stripe Connect残高取得を開始 (Cached)", { accountId });
+      logger.info("Stripe Connect残高取得を開始 (Cached)", {
+        category: "stripe_connect",
+        action: "balance_retrieval",
+        actor_type: "system",
+        account_id: accountId,
+        outcome: "success",
+      });
 
       const stripe = getStripe();
       const balance = await stripe.balance.retrieve({
@@ -34,8 +40,12 @@ const getCachedBalance = (accountId: string) =>
       const totalAmount = availableAmount + pendingAmount;
 
       logger.info("Stripe Connect残高取得完了 (Cached)", {
-        accountId,
-        totalAmount,
+        category: "stripe_connect",
+        action: "balance_retrieval",
+        actor_type: "system",
+        account_id: accountId,
+        total_amount: totalAmount,
+        outcome: "success",
       });
 
       return totalAmount;

@@ -33,21 +33,27 @@ export async function getEnvAsync() {
     const { env } = await getCloudflareContext({ async: true });
     const envKeys = Object.keys(env);
     logger.debug("Cloudflare環境変数を使用（非同期）", {
-      tag: "envAccess",
+      category: "system",
+      action: "env_access",
+      actor_type: "system",
       source: "cloudflare",
       async: true,
-      envKeys: envKeys,
-      envCount: envKeys.length,
+      env_keys: envKeys,
+      env_count: envKeys.length,
+      outcome: "success",
     });
     return env;
   } catch {
     const envKeys = Object.keys(process.env);
     logger.debug("process.envをフォールバックとして使用（非同期）", {
-      tag: "envAccess",
+      category: "system",
+      action: "env_access",
+      actor_type: "system",
       source: "process",
       async: true,
-      envKeys: envKeys,
-      envCount: envKeys.length,
+      env_keys: envKeys,
+      env_count: envKeys.length,
+      outcome: "success",
     });
     return process.env as unknown as Record<string, string | undefined>;
   }

@@ -228,12 +228,15 @@ export class AccountStatusClassifier {
     };
 
     logger.info("Account status classified", {
-      tag: "accountStatusClassification",
+      category: "stripe_connect",
+      action: "account_status_classification",
+      actor_type: "system",
       account_id: account.id,
       status,
       gate,
       reason,
       metadata,
+      outcome: "success",
     });
 
     return {

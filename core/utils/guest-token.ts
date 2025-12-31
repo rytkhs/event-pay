@@ -3,6 +3,7 @@ import {
   validateGuestTokenRLS,
   type RLSGuestAttendanceData,
 } from "@core/security/guest-token-validator";
+import { handleServerError } from "@core/utils/error-handler.server";
 
 import type { Database } from "@/types/database";
 
@@ -79,14 +80,15 @@ export async function validateGuestToken(guestToken: string): Promise<{
       errorCode: rlsResult.errorCode,
     };
   } catch (error) {
-    if (process.env.NODE_ENV === "development") {
-      const { logger } = await import("@core/logging/app-logger");
-      logger.error("ゲストトークン検証エラー", {
-        tag: "guestToken",
+    handleServerError("GUEST_TOKEN_VALIDATION_FAILED", {
+      category: "authentication",
+      action: "guest_token_validation",
+      actorType: "anonymous",
+      additionalData: {
         error_name: error instanceof Error ? error.name : "Unknown",
         error_message: error instanceof Error ? error.message : String(error),
-      });
-    }
+      },
+    });
     return {
       isValid: false,
       errorMessage: "参加データの取得中にエラーが発生しました",

@@ -10,7 +10,7 @@ import Link from "next/link";
 
 import { Loader2, CreditCard, Shield, Zap, Globe, BookOpen, ExternalLink } from "lucide-react";
 
-import { logger } from "@core/logging/app-logger";
+import { handleClientError } from "@core/utils/error-handler.client";
 
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -30,10 +30,9 @@ export function OnboardingForm({ onStartOnboarding }: OnboardingFormProps) {
     try {
       await onStartOnboarding();
     } catch (error) {
-      logger.error("Simple onboarding start error", {
-        tag: "simpleOnboardingStartError",
-        error_name: error instanceof Error ? error.name : "Unknown",
-        error_message: error instanceof Error ? error.message : String(error),
+      handleClientError(error, {
+        category: "stripe_connect",
+        action: "onboarding_start_failed",
       });
       setIsLoading(false);
     }

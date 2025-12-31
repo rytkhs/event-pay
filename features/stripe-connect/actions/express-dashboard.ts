@@ -2,10 +2,9 @@
 
 import { redirect } from "next/navigation";
 
-import Stripe from "stripe";
-
 import { logger } from "@core/logging/app-logger";
 import { createClient } from "@core/supabase/server";
+import { handleServerError } from "@core/utils/error-handler.server";
 import { isNextRedirectError } from "@core/utils/next";
 
 import { createUserStripeConnectService } from "../services";
@@ -21,6 +20,7 @@ export interface ExpressDashboardResult {
  * ベストプラクティス: オンデマンドでログインリンクを生成し、プラットフォーム内からのみリダイレクト
  */
 export async function createExpressDashboardLoginLinkAction(): Promise<void> {
+  let userId: string | undefined;
   try {
     // 1. 認証チェック
     const supabase = createClient();
@@ -28,20 +28,24 @@ export async function createExpressDashboardLoginLinkAction(): Promise<void> {
       data: { user },
       error: authError,
     } = await supabase.auth.getUser();
+    userId = user?.id;
 
     if (authError) {
-      logger.error("Auth error in Express Dashboard login link creation", {
-        tag: "expressDashboardAuthError",
-        error_name: authError.name,
-        error_message: authError.message,
+      handleServerError(authError, {
+        category: "stripe_connect",
+        action: "create_express_dashboard_login_link_auth_failed",
+        userId,
       });
-      redirect("/dashboard?error=auth_failed");
+      redirect("/dashboard/connect?error=auth_failed");
       return;
     }
 
     if (!user) {
       logger.warn("Unauthenticated user attempted Express Dashboard access", {
-        tag: "expressDashboardUnauthenticated",
+        category: "stripe_connect",
+        action: "login_link_creation",
+        actor_type: "anonymous",
+        outcome: "failure",
       });
       redirect("/login?redirectTo=/dashboard");
       return;
@@ -55,8 +59,11 @@ export async function createExpressDashboardLoginLinkAction(): Promise<void> {
 
     if (!account) {
       logger.warn("No Stripe Connect account found for Express Dashboard access", {
-        tag: "expressDashboardNoAccount",
+        category: "stripe_connect",
+        action: "login_link_creation",
+        actor_type: "user",
         user_id: user.id,
+        outcome: "failure",
       });
       redirect("/dashboard/connect?message=account_required");
       return;
@@ -66,9 +73,12 @@ export async function createExpressDashboardLoginLinkAction(): Promise<void> {
     const loginLink = await stripeConnectService.createLoginLink(account.stripe_account_id);
 
     logger.info("Express Dashboard login link created successfully", {
-      tag: "expressDashboardLoginLinkCreated",
+      category: "stripe_connect",
+      action: "login_link_creation",
+      actor_type: "user",
       user_id: user.id,
       account_id: account.stripe_account_id,
+      outcome: "success",
     });
 
     // 6. ログインリンクにリダイレクト（Stripeのベストプラクティス）
@@ -79,10 +89,10 @@ export async function createExpressDashboardLoginLinkAction(): Promise<void> {
       throw error as Error;
     }
 
-    logger.error("Failed to create Express Dashboard login link", {
-      tag: "expressDashboardLoginLinkError",
-      error_name: error instanceof Error ? error.name : "Unknown",
-      error_message: error instanceof Error ? error.message : String(error),
+    handleServerError(error, {
+      category: "stripe_connect",
+      action: "create_express_dashboard_login_link_failed",
+      userId,
     });
 
     // 失敗時は接続設定ページへ誘導
@@ -94,6 +104,7 @@ export async function createExpressDashboardLoginLinkAction(): Promise<void> {
  * Express Dashboard アクセス可能状態をチェックするServer Action
  */
 export async function checkExpressDashboardAccessAction(): Promise<ExpressDashboardResult> {
+  let userId: string | undefined;
   try {
     // 1. 認証チェック
     const supabase = createClient();
@@ -101,6 +112,7 @@ export async function checkExpressDashboardAccessAction(): Promise<ExpressDashbo
       data: { user },
       error: authError,
     } = await supabase.auth.getUser();
+    userId = user?.id;
 
     if (authError || !user) {
       return {
@@ -125,15 +137,10 @@ export async function checkExpressDashboardAccessAction(): Promise<ExpressDashbo
     return { success: true };
   } catch (error) {
     // デバッグログ: エラーの詳細情報を出力
-    logger.error("Failed to check Express Dashboard access", {
-      tag: "expressDashboardAccessCheckError",
-      error_name: error instanceof Error ? error.name : "Unknown",
-      error_message: error instanceof Error ? error.message : String(error),
-      error_stack: error instanceof Error ? error.stack : undefined,
-      error_type: error instanceof Stripe.errors.StripeError ? error.type : "Unknown",
-      error_code: error instanceof Stripe.errors.StripeError ? error.code : "Unknown",
-      error_status_code: error instanceof Stripe.errors.StripeError ? error.statusCode : "Unknown",
-      timestamp: new Date().toISOString(),
+    handleServerError(error, {
+      category: "stripe_connect",
+      action: "check_express_dashboard_access_failed",
+      userId,
     });
 
     return {

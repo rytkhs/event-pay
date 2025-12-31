@@ -5,13 +5,13 @@
 
 import { createClient } from "@supabase/supabase-js";
 
-import { logger } from "@core/logging/app-logger";
 import {
   registerStripeConnectPort,
   type StripeAccountStatus,
   type StripeAccountStatusLike,
 } from "@core/ports/stripe-connect";
 import { getRequiredEnvVar } from "@core/utils/env-helper";
+import { handleServerError } from "@core/utils/error-handler.server";
 
 import { createStripeConnectServiceWithClient } from "../services";
 
@@ -48,11 +48,15 @@ export function registerStripeConnectAdapters(): void {
           stripeAccountId: accountId,
         });
       } catch (error) {
-        logger.error("Stripe Connect adapter error: updateAccountFromWebhook", {
-          tag: "stripe-connect-adapter",
-          account_id: accountId,
-          error_name: error instanceof Error ? error.name : "Unknown",
-          error_message: error instanceof Error ? error.message : String(error),
+        handleServerError("STRIPE_CONNECT_SERVICE_ERROR", {
+          category: "stripe_connect",
+          action: "adapter_updateAccountFromWebhook",
+          actorType: "system",
+          additionalData: {
+            account_id: accountId,
+            error_name: error instanceof Error ? error.name : "Unknown",
+            error_message: error instanceof Error ? error.message : String(error),
+          },
         });
         throw error;
       }
@@ -75,11 +79,15 @@ export function registerStripeConnectAdapters(): void {
         const account = await service.getConnectAccountByUser(userId);
         return account ? { status: account.status as StripeAccountStatusLike } : null;
       } catch (error) {
-        logger.error("Stripe Connect adapter error: getConnectAccountByUser", {
-          tag: "stripe-connect-adapter",
-          user_id: userId,
-          error_name: error instanceof Error ? error.name : "Unknown",
-          error_message: error instanceof Error ? error.message : String(error),
+        handleServerError("STRIPE_CONNECT_SERVICE_ERROR", {
+          category: "stripe_connect",
+          action: "adapter_getConnectAccountByUser",
+          actorType: "system",
+          additionalData: {
+            user_id: userId,
+            error_name: error instanceof Error ? error.name : "Unknown",
+            error_message: error instanceof Error ? error.message : String(error),
+          },
         });
         throw error;
       }
@@ -114,11 +122,15 @@ export function registerStripeConnectAdapters(): void {
           classificationMetadata: accountInfo.classificationMetadata,
         };
       } catch (error) {
-        logger.error("Stripe Connect adapter error: getAccountInfo", {
-          tag: "stripe-connect-adapter",
-          account_id: accountId,
-          error_name: error instanceof Error ? error.name : "Unknown",
-          error_message: error instanceof Error ? error.message : String(error),
+        handleServerError("STRIPE_CONNECT_SERVICE_ERROR", {
+          category: "stripe_connect",
+          action: "adapter_getAccountInfo",
+          actorType: "system",
+          additionalData: {
+            account_id: accountId,
+            error_name: error instanceof Error ? error.name : "Unknown",
+            error_message: error instanceof Error ? error.message : String(error),
+          },
         });
         throw error;
       }
@@ -148,12 +160,16 @@ export function registerStripeConnectAdapters(): void {
           trigger: input.trigger,
         });
       } catch (error) {
-        logger.error("Stripe Connect adapter error: updateAccountStatus", {
-          tag: "stripe-connect-adapter",
-          user_id: input.userId,
-          stripe_account_id: input.stripeAccountId,
-          error_name: error instanceof Error ? error.name : "Unknown",
-          error_message: error instanceof Error ? error.message : String(error),
+        handleServerError("STRIPE_CONNECT_SERVICE_ERROR", {
+          category: "stripe_connect",
+          action: "adapter_updateAccountStatus",
+          actorType: "system",
+          additionalData: {
+            user_id: input.userId,
+            stripe_account_id: input.stripeAccountId,
+            error_name: error instanceof Error ? error.name : "Unknown",
+            error_message: error instanceof Error ? error.message : String(error),
+          },
         });
         throw error;
       }

@@ -9,6 +9,7 @@ import { EmailNotificationService } from "@core/notification/email-service";
 import { ReminderService } from "@core/notification/reminder-service";
 import { getSecureClientFactory } from "@core/security/secure-client-factory.impl";
 import { AdminReason } from "@core/security/secure-client-factory.types";
+import { handleServerError } from "@core/utils/error-handler.server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -19,10 +20,20 @@ export const dynamic = "force-dynamic";
  * - 参加期限、決済期限、イベント開催の各リマインダーを送信
  */
 export async function GET(request: NextRequest) {
+  const cronLogger = logger.withContext({
+    category: "system",
+    action: "reminder_cron",
+    actor_type: "system",
+  });
+
   // 認証チェック
   const auth = validateCronSecret(request);
   if (!auth.isValid) {
-    logger.warn("Unauthorized cron request", { error: auth.error });
+    cronLogger.warn("Unauthorized cron request", {
+      action: "reminder_cron_auth_fail",
+      error: auth.error,
+      outcome: "failure",
+    });
     return createProblemResponse("UNAUTHORIZED", {
       instance: "/api/cron/send-reminders",
       detail: auth.error || "Unauthorized",
@@ -30,7 +41,7 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    logger.info("Starting reminder cron job");
+    cronLogger.info("Starting reminder cron job");
 
     // RLSを回避するため管理者クライアントを使用
     const clientFactory = getSecureClientFactory();
@@ -57,10 +68,11 @@ export async function GET(request: NextRequest) {
     const totalSent = summaries.reduce((sum, s) => sum + s.successCount, 0);
     const totalFailed = summaries.reduce((sum, s) => sum + s.failureCount, 0);
 
-    logger.info("Reminder cron job completed", {
+    cronLogger.info("Reminder cron job completed", {
       summaries,
       totalSent,
       totalFailed,
+      outcome: "success",
     });
 
     // 監査ログ記録
@@ -92,7 +104,9 @@ export async function GET(request: NextRequest) {
         },
       });
 
-      logger.warn("High failure rate detected, admin alert sent", {
+      cronLogger.warn("High failure rate detected, admin alert sent", {
+        category: "email",
+        action: "high_failure_rate_alert",
         failureRate: `${(failureRate * 100).toFixed(1)}%`,
       });
     }
@@ -104,7 +118,14 @@ export async function GET(request: NextRequest) {
       totalFailed,
     });
   } catch (error) {
-    logger.error("Reminder cron job failed", { error });
+    handleServerError("CRON_EXECUTION_ERROR", {
+      category: "system",
+      action: "reminder_cron_failed",
+      additionalData: {
+        error_name: error instanceof Error ? error.name : "Unknown",
+        error_message: error instanceof Error ? error.message : String(error),
+      },
+    });
     return createProblemResponse("INTERNAL_SERVER_ERROR", {
       instance: "/api/cron/send-reminders",
       detail: "Failed to send reminders",

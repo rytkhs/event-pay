@@ -3,7 +3,7 @@
  * Non-null assertionを排除し、適切な型チェックとエラーハンドリングを提供
  */
 
-import { logger } from "@core/logging/app-logger";
+import { handleServerError } from "@core/utils/error-handler.server";
 
 /**
  * Stripe Paymentオブジェクトの型ガード
@@ -18,11 +18,16 @@ export function isValidStripePayment(obj: any): obj is { id: string } {
 export function assertStripePayment(obj: any, context?: string): asserts obj is { id: string } {
   if (!isValidStripePayment(obj)) {
     const errorMessage = `Invalid Stripe payment object${context ? ` in ${context}` : ""}`;
-    logger.error(errorMessage, {
-      tag: "stripeObjectValidation",
-      context,
-      object_type: typeof obj,
-      has_id: obj && typeof obj === "object" ? typeof obj.id : "missing",
+    handleServerError("STRIPE_CONFIG_ERROR", {
+      category: "system",
+      action: "stripe_guard_check",
+      actorType: "system",
+      additionalData: {
+        errorMessage,
+        context,
+        object_type: typeof obj,
+        has_id: obj && typeof obj === "object" ? typeof obj.id : "missing",
+      },
     });
     throw new Error(errorMessage);
   }
@@ -58,11 +63,16 @@ export function hasStripeSessionMetadata(
 export function getStripeSessionMetadata(session: any, key: string): string {
   if (!hasStripeSessionMetadata(session, key)) {
     const errorMessage = `Missing or invalid metadata key '${key}' in Stripe session`;
-    logger.error(errorMessage, {
-      tag: "stripeSessionMetadata",
-      key,
-      has_metadata: session?.metadata ? "yes" : "no",
-      metadata_type: typeof session?.metadata,
+    handleServerError("STRIPE_CONFIG_ERROR", {
+      category: "system",
+      action: "stripe_guard_check",
+      actorType: "system",
+      additionalData: {
+        errorMessage,
+        key,
+        has_metadata: session?.metadata ? "yes" : "no",
+        metadata_type: typeof session?.metadata,
+      },
     });
     throw new Error(errorMessage);
   }
@@ -99,13 +109,18 @@ export function getRequiredProperty<T = string>(
     const errorMessage = `Missing or invalid property '${property}' (expected ${expectedType})${
       context ? ` in ${context}` : ""
     }`;
-    logger.error(errorMessage, {
-      tag: "objectPropertyValidation",
-      property,
-      expected_type: expectedType,
-      actual_type:
-        obj && typeof obj === "object" && property in obj ? typeof obj[property] : "missing",
-      context,
+    handleServerError("STRIPE_CONFIG_ERROR", {
+      category: "system",
+      action: "stripe_guard_check",
+      actorType: "system",
+      additionalData: {
+        errorMessage,
+        property,
+        expected_type: expectedType,
+        actual_type:
+          obj && typeof obj === "object" && property in obj ? typeof obj[property] : "missing",
+        context,
+      },
     });
     throw new Error(errorMessage);
   }

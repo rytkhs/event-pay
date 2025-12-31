@@ -23,7 +23,8 @@ import {
 } from "@core/ports/stripe-connect";
 import { SecureSupabaseClientFactory } from "@core/security/secure-client-factory.impl";
 import { AdminReason } from "@core/security/secure-client-factory.types";
-import type { StripeAccountStatus } from "@core/types/enums";
+import { type StripeAccountStatus } from "@core/types/enums";
+import { handleServerError } from "@core/utils/error-handler.server";
 
 // Removed @core/services dependency to break circular reference
 // Use ports instead of direct feature import to avoid boundaries violation
@@ -43,6 +44,17 @@ export class ConnectWebhookHandler {
   ) {
     this.supabase = supabase;
     this.notificationService = notificationService;
+  }
+
+  /**
+   * 構造化ロガー
+   */
+  private get logger() {
+    return logger.withContext({
+      category: "stripe_webhook",
+      action: "connect_webhook_handler",
+      actor_type: "webhook",
+    });
   }
 
   /**
@@ -68,10 +80,14 @@ export class ConnectWebhookHandler {
         );
         registerStripeConnectAdapters();
       } catch (e) {
-        logger.error("Failed to register StripeConnect adapters", {
-          tag: "stripeConnectAdapterRegisterError",
-          error_name: e instanceof Error ? e.name : "Unknown",
-          error_message: e instanceof Error ? e.message : String(e),
+        handleServerError("STRIPE_CONFIG_ERROR", {
+          action: "registerStripeConnectAdapters",
+          additionalData: {
+            category: "stripe_webhook",
+            actor_type: "webhook",
+            error_name: e instanceof Error ? e.name : "Unknown",
+            error_message: e instanceof Error ? e.message : String(e),
+          },
         });
         throw e;
       }
@@ -92,9 +108,9 @@ export class ConnectWebhookHandler {
       // メタデータからユーザーIDを取得（actor_idへ統一）
       const userId = (account.metadata as Record<string, string | undefined> | undefined)?.actor_id;
       if (!userId) {
-        logger.warn("Account missing actor_id in metadata", {
-          tag: "accountMissingUserId",
+        this.logger.warn("Account missing actor_id in metadata", {
           stripe_account_id: account.id,
+          outcome: "failure",
         });
         return;
       }
@@ -126,14 +142,14 @@ export class ConnectWebhookHandler {
         trigger: "webhook",
       });
 
-      logger.info("Account status updated via webhook", {
-        tag: "accountStatusUpdated",
+      this.logger.info("Account status updated via webhook", {
         user_id: userId,
         stripe_account_id: account.id,
         old_status: oldStatus,
         new_status: newStatus,
         classification_gate: classificationResult.metadata.gate,
         classification_reason: classificationResult.reason,
+        outcome: "success",
       });
 
       // 通知を送信
@@ -168,11 +184,14 @@ export class ConnectWebhookHandler {
           : undefined,
       });
     } catch (error) {
-      logger.error("Error handling account.updated event", {
-        tag: "accountUpdatedHandlerError",
-        stripe_account_id: account.id,
-        error_name: error instanceof Error ? error.name : "Unknown",
-        error_message: error instanceof Error ? error.message : String(error),
+      handleServerError("CONNECT_WEBHOOK_ACCOUNT_UPDATED_ERROR", {
+        action: "handleAccountUpdated",
+        additionalData: {
+          category: "stripe_webhook",
+          stripe_account_id: account.id,
+          error_name: error instanceof Error ? error.name : "Unknown",
+          error_message: error instanceof Error ? error.message : String(error),
+        },
       });
 
       // 管理者にエラー通知を送信
@@ -188,13 +207,16 @@ export class ConnectWebhookHandler {
           payoutsEnabled: false,
         });
       } catch (notificationError) {
-        logger.error("Failed to send error notification", {
-          tag: "errorNotificationFailed",
-          error_name: notificationError instanceof Error ? notificationError.name : "Unknown",
-          error_message:
-            notificationError instanceof Error
-              ? notificationError.message
-              : String(notificationError),
+        handleServerError("CONNECT_WEBHOOK_NOTIFICATION_ERROR", {
+          action: "sendErrorNotification",
+          additionalData: {
+            category: "stripe_webhook",
+            error_name: notificationError instanceof Error ? notificationError.name : "Unknown",
+            error_message:
+              notificationError instanceof Error
+                ? notificationError.message
+                : String(notificationError),
+          },
         });
       }
 
@@ -256,17 +278,20 @@ export class ConnectWebhookHandler {
         });
       }
 
-      logger.info("Processed account.application.deauthorized", {
-        tag: "accountDeauthorized",
+      this.logger.info("Processed account.application.deauthorized", {
         account_id: accountId,
         user_id: userId,
         application_id: application.id,
+        outcome: "success",
       });
     } catch (error) {
-      logger.error("Error handling account.application.deauthorized", {
-        tag: "accountDeauthorizedHandlerError",
-        error_name: error instanceof Error ? error.name : "Unknown",
-        error_message: error instanceof Error ? error.message : String(error),
+      handleServerError("CONNECT_WEBHOOK_DEAUTHORIZED_ERROR", {
+        action: "handleAccountApplicationDeauthorized",
+        additionalData: {
+          category: "stripe_webhook",
+          error_name: error instanceof Error ? error.name : "Unknown",
+          error_message: error instanceof Error ? error.message : String(error),
+        },
       });
       throw error;
     }
@@ -275,18 +300,21 @@ export class ConnectWebhookHandler {
   async handlePayoutPaid(payout: Stripe.Payout): Promise<void> {
     try {
       // 参考表示向けのログのみ（会計確定は行わない）
-      logger.info("Payout paid received", {
-        tag: "payoutPaid",
+      this.logger.info("Payout paid received", {
         payout_id: payout.id,
         amount: payout.amount,
         currency: payout.currency,
+        outcome: "success",
       });
     } catch (error) {
-      logger.error("Error handling payout.paid event", {
-        tag: "payoutPaidHandlerError",
-        payout_id: payout.id,
-        error_name: error instanceof Error ? error.name : "Unknown",
-        error_message: error instanceof Error ? error.message : String(error),
+      handleServerError("CONNECT_WEBHOOK_PAYOUT_ERROR", {
+        action: "handlePayoutPaid",
+        additionalData: {
+          category: "stripe_webhook",
+          payout_id: payout.id,
+          error_name: error instanceof Error ? error.name : "Unknown",
+          error_message: error instanceof Error ? error.message : String(error),
+        },
       });
     }
   }
@@ -294,17 +322,20 @@ export class ConnectWebhookHandler {
   async handlePayoutFailed(payout: Stripe.Payout): Promise<void> {
     try {
       // 参考表示向けのログのみ（会計確定は行わない）
-      logger.warn("Payout failed received", {
-        tag: "payoutFailed",
+      this.logger.warn("Payout failed received", {
         payout_id: payout.id,
         failure_message: (payout as any).failure_message,
+        outcome: "failure",
       });
     } catch (error) {
-      logger.error("Error handling payout.failed event", {
-        tag: "payoutFailedHandlerError",
-        payout_id: payout.id,
-        error_name: error instanceof Error ? error.name : "Unknown",
-        error_message: error instanceof Error ? error.message : String(error),
+      handleServerError("CONNECT_WEBHOOK_PAYOUT_ERROR", {
+        action: "handlePayoutFailed",
+        additionalData: {
+          category: "stripe_webhook",
+          payout_id: payout.id,
+          error_name: error instanceof Error ? error.name : "Unknown",
+          error_message: error instanceof Error ? error.message : String(error),
+        },
       });
     }
   }
@@ -336,10 +367,10 @@ export class ConnectWebhookHandler {
       // アカウント認証完了の通知
       if (oldStatus !== "verified" && accountInfo.status === "verified") {
         await this.notificationService.sendAccountVerifiedNotification(baseNotificationData);
-        logger.info("Account verified notification sent", {
-          tag: "accountVerifiedNotificationSent",
+        this.logger.info("Account verified notification sent", {
           user_id: userId,
           stripe_account_id: baseNotificationData.accountId,
+          outcome: "success",
         });
       }
 
@@ -353,10 +384,10 @@ export class ConnectWebhookHandler {
         };
 
         await this.notificationService.sendAccountRestrictedNotification(restrictedNotification);
-        logger.info("Account restricted notification sent", {
-          tag: "accountRestrictedNotificationSent",
+        this.logger.info("Account restricted notification sent", {
           user_id: userId,
           stripe_account_id: restrictedNotification.accountId,
+          outcome: "success",
         });
       }
 
@@ -373,19 +404,22 @@ export class ConnectWebhookHandler {
         await this.notificationService.sendAccountStatusChangeNotification(
           statusChangeNotification
         );
-        logger.info("Account status change notification sent", {
-          tag: "accountStatusChangeNotificationSent",
+        this.logger.info("Account status change notification sent", {
           user_id: userId,
           stripe_account_id: statusChangeNotification.accountId,
           old_status: oldStatus,
           new_status: accountInfo.status,
+          outcome: "success",
         });
       }
     } catch (error) {
-      logger.error("Error sending notifications", {
-        tag: "notificationSendError",
-        error_name: error instanceof Error ? error.name : "Unknown",
-        error_message: error instanceof Error ? error.message : String(error),
+      handleServerError("CONNECT_WEBHOOK_NOTIFICATION_ERROR", {
+        action: "sendNotifications",
+        additionalData: {
+          category: "stripe_webhook",
+          error_name: error instanceof Error ? error.name : "Unknown",
+          error_message: error instanceof Error ? error.message : String(error),
+        },
       });
       // 通知エラーは処理を停止させない
     }
@@ -428,10 +462,13 @@ export class ConnectWebhookHandler {
         },
       });
     } catch (error) {
-      logger.error("Error logging account update", {
-        tag: "accountUpdateLogError",
-        error_name: error instanceof Error ? error.name : "Unknown",
-        error_message: error instanceof Error ? error.message : String(error),
+      handleServerError("AUDIT_LOG_RECORDING_FAILED", {
+        action: "logAccountUpdate",
+        additionalData: {
+          category: "stripe_webhook",
+          error_name: error instanceof Error ? error.name : "Unknown",
+          error_message: error instanceof Error ? error.message : String(error),
+        },
       });
       // ログエラーは処理を停止させない
     }

@@ -95,7 +95,8 @@ export default async function GuestPage({ params, searchParams }: GuestPageProps
     );
   } catch (error) {
     // 予期しないエラーの場合は構造化ログを記録して404を返す
-    const { getErrorDetails, logError } = await import("@core/utils/error-handler");
+    const { logError } = await import("@core/utils/error-handler.server");
+    const { getErrorDetails } = await import("@core/utils/error-details");
 
     // リクエスト情報を取得（エラーハンドリング用）
     const errorHeadersList = headers();
@@ -115,15 +116,6 @@ export default async function GuestPage({ params, searchParams }: GuestPageProps
 
     logError(getErrorDetails("GUEST_TOKEN_VALIDATION_FAILED"), errorContext);
 
-    if (process.env.NODE_ENV === "development") {
-      const { logger } = await import("@core/logging/app-logger");
-      logger.error("ゲストページでエラーが発生", {
-        tag: "guestPage",
-        error_name: error instanceof Error ? error.name : "Unknown",
-        error_message: error instanceof Error ? error.message : String(error),
-        token_prefix: token.substring(0, 4),
-      });
-    }
     // セキュリティログに記録（エラー詳細は記録しない）
     logUnexpectedGuestPageError(token, error, { userAgent: errorUserAgent, ip: errorIp });
     notFound();

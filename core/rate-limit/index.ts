@@ -51,11 +51,14 @@ export async function enforceRateLimit(opts: EnforceOptions): Promise<EnforceRes
         policy.scope.startsWith("stripe.")
       );
       logger.warn("Rate limit penalty TTL read error", {
-        tag: "rate_limit_store_error",
+        category: "security",
+        action: "rate_limit_store_error",
+        actor_type: "system",
         scope: policy.scope,
         error_message: error instanceof Error ? error.message : String(error),
         phase: "read_penalty_ttl",
         fail_closed: failClosed,
+        outcome: "failure",
       });
       if (!allowIfStoreError || failClosed) {
         return { allowed: false, retryAfter: Math.ceil(policy.blockMs / 1000) };
@@ -92,11 +95,14 @@ export async function enforceRateLimit(opts: EnforceOptions): Promise<EnforceRes
                 policy.scope.startsWith("stripe.")
               );
               logger.warn("Rate limit penalty set error", {
-                tag: "rate_limit_store_error",
+                category: "security",
+                action: "rate_limit_store_error",
+                actor_type: "system",
                 scope: policy.scope,
                 error_message: error instanceof Error ? error.message : String(error),
                 phase: "set_penalty",
                 fail_closed: failClosed,
+                outcome: "failure",
               });
               if (!allowIfStoreError || failClosed) {
                 return { allowed: false, retryAfter };
@@ -120,10 +126,13 @@ export async function enforceRateLimit(opts: EnforceOptions): Promise<EnforceRes
       policy.scope.startsWith("stripe.")
     );
     logger.warn("Rate limit store error", {
-      tag: "rate_limit_store_error",
+      category: "security",
+      action: "rate_limit_store_error",
+      actor_type: "system",
       scope: policy.scope,
       error_message: error instanceof Error ? error.message : String(error),
       fail_closed: failClosed,
+      outcome: "failure",
     });
     if (!allowIfStoreError || failClosed) {
       return { allowed: false, retryAfter: Math.ceil(policy.blockMs / 1000) };
@@ -184,10 +193,13 @@ export function withRateLimit(
         return `${dimension}:${identifier}`;
       });
       logger.warn("rate limited", {
-        tag: "rate_limited",
+        category: "security",
+        action: "rate_limit_blocked",
+        actor_type: "anonymous",
         scope: policy.scope,
         retry_after: retryAfterSec,
         key_hint: keyHints,
+        outcome: "blocked" as any,
       });
       return res;
     }

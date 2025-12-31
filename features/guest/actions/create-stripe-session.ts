@@ -3,7 +3,6 @@
 import { z } from "zod";
 
 import type { ErrorCode } from "@core/api/problem-details";
-import { logger } from "@core/logging/app-logger";
 import { enforceRateLimit, buildKey, POLICIES } from "@core/rate-limit";
 import { SecureSupabaseClientFactory } from "@core/security/secure-client-factory.impl";
 import { getPaymentService } from "@core/services";
@@ -14,6 +13,7 @@ import {
   type ServerActionResult,
 } from "@core/types/server-actions";
 import { deriveEventStatus } from "@core/utils/derive-event-status";
+import { handleServerError } from "@core/utils/error-handler.server";
 import { validateGuestToken } from "@core/utils/guest-token";
 import { canCreateStripeSession } from "@core/validation/payment-eligibility";
 
@@ -23,10 +23,15 @@ async function ensurePaymentServiceRegistration() {
     // PaymentService実装を動的にインポートして登録
     await import("@features/payments/core-bindings");
   } catch (error) {
-    logger.error("Failed to register PaymentService implementation", {
-      tag: "payment-service-init",
-      error_name: error instanceof Error ? error.name : "Unknown",
-      error_message: error instanceof Error ? error.message : String(error),
+    handleServerError("PAYMENT_SESSION_REGISTRATION_FAILED", {
+      action: "ensurePaymentServiceRegistration",
+      additionalData: {
+        category: "payment",
+        action: "session_creation",
+        actor_type: "guest",
+        error_name: error instanceof Error ? error.name : "Unknown",
+        error_message: error instanceof Error ? error.message : String(error),
+      },
     });
     throw new Error("PaymentService initialization failed");
   }
@@ -230,8 +235,6 @@ export async function createGuestStripeSessionAction(
       sessionId: result.sessionId,
     });
   } catch (error) {
-    const { getErrorDetails, logError } = await import("@core/utils/error-handler");
-
     const errorContext = {
       action: "guest_stripe_session_creation",
       additionalData: {
@@ -258,13 +261,13 @@ export async function createGuestStripeSessionAction(
             }
           : {};
 
-      logError(getErrorDetails(errorCode), errorContext);
+      handleServerError(errorCode, errorContext);
 
       return createServerActionError(errorCode, error.message, additionalDetails);
     }
 
     // PaymentError以外の予期しないエラー
-    logError(getErrorDetails("PAYMENT_SESSION_CREATION_FAILED"), errorContext);
+    handleServerError("PAYMENT_SESSION_CREATION_FAILED", errorContext);
 
     const msg = error instanceof Error ? error.message : "Stripe セッション作成に失敗しました";
     return createServerActionError("INTERNAL_ERROR", msg);

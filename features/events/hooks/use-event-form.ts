@@ -12,6 +12,7 @@ import type { EventCreatedParams } from "@core/analytics/event-types";
 import { ga4Client } from "@core/analytics/ga4-client";
 import { useToast } from "@core/contexts/toast-context";
 import { logger } from "@core/logging/app-logger";
+import { handleClientError } from "@core/utils/error-handler.client";
 import { safeParseNumber, parseFee } from "@core/utils/number-parsers";
 import { convertDatetimeLocalToUtc } from "@core/utils/timezone";
 
@@ -440,9 +441,12 @@ export const useEventForm = (): {
           } catch (analyticsError) {
             // アナリティクスエラーはユーザー体験に影響を与えないようログのみ
             logger.warn("Failed to send event_created analytics", {
-              tag: "eventCreation",
-              error:
+              category: "event_management",
+              action: "event_creation_analytics",
+              actor_type: "user",
+              error_message:
                 analyticsError instanceof Error ? analyticsError.message : String(analyticsError),
+              outcome: "failure",
             });
           }
 
@@ -466,10 +470,9 @@ export const useEventForm = (): {
           });
         }
       } catch (error) {
-        logger.error("Event creation failed", {
-          tag: "eventCreation",
-          error_name: error instanceof Error ? (error.name ?? "Unknown") : "Unknown",
-          error_message: error instanceof Error ? (error.message ?? String(error)) : String(error),
+        handleClientError(error, {
+          category: "event_management",
+          action: "event_creation_failed",
         });
         form.setError("root", {
           type: "server",

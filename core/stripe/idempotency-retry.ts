@@ -36,10 +36,14 @@ export async function retryWithIdempotency<T>(
       }
 
       logger.warn("stripe_idempotency_retry", {
+        category: "system",
+        action: "stripe_idempotency_retry",
+        actor_type: "system",
         attempt: attempt + 1,
         delay_ms: delay,
-        message: err.message,
+        error_message: err.message,
         error_type: (err as any).type,
+        outcome: "failure",
       });
 
       await new Promise((res) => setTimeout(res, delay + Math.random() * 100));

@@ -1711,6 +1711,32 @@ COMMENT ON FUNCTION "public"."status_rank"("p" "public"."payment_status_enum") I
 
 
 
+CREATE OR REPLACE FUNCTION "public"."sync_auth_user_to_public"() RETURNS "trigger"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'pg_catalog', 'public', 'pg_temp'
+    AS $$
+BEGIN
+  -- auth.usersの変更をpublic.usersに反映
+  -- email または raw_user_meta_data->>'name' が変更された場合のみ更新
+  UPDATE public.users
+  SET
+    email = NEW.email,
+    name = COALESCE(NEW.raw_user_meta_data->>'name', name),
+    updated_at = now()
+  WHERE id = NEW.id;
+
+  RETURN NEW;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."sync_auth_user_to_public"() OWNER TO "app_definer";
+
+
+COMMENT ON FUNCTION "public"."sync_auth_user_to_public"() IS 'auth.usersテーブルが更新された際に、public.usersテーブルのemail/nameを同期する関数';
+
+
+
 CREATE OR REPLACE FUNCTION "public"."update_guest_attendance_with_payment"("p_attendance_id" "uuid", "p_guest_token" "text", "p_status" "public"."attendance_status_enum", "p_payment_method" "public"."payment_method_enum" DEFAULT NULL::"public"."payment_method_enum", "p_event_fee" integer DEFAULT 0) RETURNS "void"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'pg_catalog', 'public', 'pg_temp'
@@ -3651,6 +3677,13 @@ GRANT ALL ON FUNCTION "public"."status_rank"("p" "public"."payment_status_enum")
 
 
 
+REVOKE ALL ON FUNCTION "public"."sync_auth_user_to_public"() FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."sync_auth_user_to_public"() TO "authenticated";
+GRANT ALL ON FUNCTION "public"."sync_auth_user_to_public"() TO "service_role";
+GRANT ALL ON FUNCTION "public"."sync_auth_user_to_public"() TO "supabase_auth_admin";
+
+
+
 REVOKE ALL ON FUNCTION "public"."update_guest_attendance_with_payment"("p_attendance_id" "uuid", "p_guest_token" "text", "p_status" "public"."attendance_status_enum", "p_payment_method" "public"."payment_method_enum", "p_event_fee" integer) FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."update_guest_attendance_with_payment"("p_attendance_id" "uuid", "p_guest_token" "text", "p_status" "public"."attendance_status_enum", "p_payment_method" "public"."payment_method_enum", "p_event_fee" integer) TO "anon";
 GRANT ALL ON FUNCTION "public"."update_guest_attendance_with_payment"("p_attendance_id" "uuid", "p_guest_token" "text", "p_status" "public"."attendance_status_enum", "p_payment_method" "public"."payment_method_enum", "p_event_fee" integer) TO "authenticated";
@@ -3744,7 +3777,7 @@ GRANT SELECT ON TABLE "public"."payments" TO "authenticated";
 GRANT ALL ON TABLE "public"."users" TO "anon";
 GRANT ALL ON TABLE "public"."users" TO "authenticated";
 GRANT ALL ON TABLE "public"."users" TO "service_role";
-GRANT SELECT,INSERT ON TABLE "public"."users" TO "app_definer";
+GRANT SELECT,INSERT,UPDATE ON TABLE "public"."users" TO "app_definer";
 
 
 

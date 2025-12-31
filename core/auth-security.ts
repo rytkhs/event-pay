@@ -1,7 +1,7 @@
 import { Redis } from "@upstash/redis";
 
-import { logger } from "@core/logging/app-logger";
 import { getEnv } from "@core/utils/cloudflare-env";
+import { handleServerError } from "@core/utils/error-handler.server";
 
 // アカウントロックアウト設定
 export const ACCOUNT_LOCKOUT_CONFIG = {
@@ -99,12 +99,16 @@ export class AccountLockoutService {
           lockoutExpiresAt.toISOString()
         );
 
-        // セキュリティログ
-        logger.warn("Account locked due to failed attempts", {
-          tag: "accountLocked",
-          sanitized_email: email.replace(/(.{2}).*(@.*)/, "$1***$2"),
-          failed_attempts: newAttempts,
-          lockout_expires_at: lockoutExpiresAt.toISOString(),
+        // セキュリティログ（通知判定はhandleServerErrorに委譲）
+        handleServerError("ACCOUNT_LOCKED_OUT", {
+          category: "security",
+          action: "account_lockout",
+          actorType: "user",
+          additionalData: {
+            sanitized_email: email.replace(/(.{2}).*(@.*)/, "$1***$2"),
+            failed_attempts: newAttempts,
+            lockout_expires_at: lockoutExpiresAt.toISOString(),
+          },
         });
 
         return {
@@ -119,11 +123,16 @@ export class AccountLockoutService {
         isLocked: false,
       };
     } catch (error) {
-      logger.error("Failed to record failed attempt", {
-        tag: "lockoutRecordFailed",
-        sanitized_email: email.replace(/(.{2}).*(@.*)/, "$1***$2"),
-        error_name: error instanceof Error ? error.name : "Unknown",
-        error_message: error instanceof Error ? error.message : String(error),
+      handleServerError("ACCOUNT_LOCKOUT_SYSTEM_ERROR", {
+        category: "authentication",
+        action: "account_lockout",
+        actorType: "user",
+        // additionalData needs to be nested
+        additionalData: {
+          sanitized_email: email.replace(/(.{2}).*(@.*)/, "$1***$2"),
+          error_name: error instanceof Error ? error.name : "Unknown",
+          error_message: error instanceof Error ? error.message : String(error),
+        },
       });
       // フェイルオープン（エラー時は制限しない）
       return {
@@ -169,11 +178,15 @@ export class AccountLockoutService {
         remainingAttempts,
       };
     } catch (error) {
-      logger.error("Failed to check lockout status", {
-        tag: "lockoutCheckFailed",
-        sanitized_email: email.replace(/(.{2}).*(@.*)/, "$1***$2"),
-        error_name: error instanceof Error ? error.name : "Unknown",
-        error_message: error instanceof Error ? error.message : String(error),
+      handleServerError("ACCOUNT_LOCKOUT_SYSTEM_ERROR", {
+        category: "authentication",
+        action: "lockout_check",
+        actorType: "user",
+        additionalData: {
+          sanitized_email: email.replace(/(.{2}).*(@.*)/, "$1***$2"),
+          error_name: error instanceof Error ? error.name : "Unknown",
+          error_message: error instanceof Error ? error.message : String(error),
+        },
       });
       // フェイルオープン（エラー時は制限しない）
       const config = this.getConfig();
@@ -196,11 +209,15 @@ export class AccountLockoutService {
 
       await Promise.all([redis.del(failedKey), redis.del(lockoutKey)]);
     } catch (error) {
-      logger.error("Failed to clear failed attempts", {
-        tag: "lockoutClearFailed",
-        sanitized_email: email.replace(/(.{2}).*(@.*)/, "$1***$2"),
-        error_name: error instanceof Error ? error.name : "Unknown",
-        error_message: error instanceof Error ? error.message : String(error),
+      handleServerError("ACCOUNT_LOCKOUT_SYSTEM_ERROR", {
+        category: "authentication",
+        action: "lockout_reset",
+        actorType: "user",
+        additionalData: {
+          sanitized_email: email.replace(/(.{2}).*(@.*)/, "$1***$2"),
+          error_name: error instanceof Error ? error.name : "Unknown",
+          error_message: error instanceof Error ? error.message : String(error),
+        },
       });
       // エラーは記録するが、処理は継続
     }

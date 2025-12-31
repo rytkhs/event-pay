@@ -5,6 +5,9 @@ import { Ratelimit } from "@upstash/ratelimit";
 import { Redis } from "@upstash/redis";
 import { z } from "zod";
 
+import type { ErrorDetails } from "@core/utils/error-details";
+import { notifyError } from "@core/utils/error-handler.server";
+
 // レート制限設定
 const ratelimit =
   process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN
@@ -137,6 +140,41 @@ export async function POST(req: NextRequest) {
             "Cache-Control": "no-store",
           },
         }
+      );
+    }
+
+    // 6. 重要エラーの通知（Sentry/Slack）
+    // クライアント側で判断された severity を尊重する
+    const severity = (data.error.severity || "medium") as ErrorDetails["severity"];
+    const shouldAlert = severity === "high" || severity === "critical";
+
+    if (shouldAlert) {
+      // const { notifyError } = await import("@core/utils/error-handler.server");
+      const { waitUntil } = await import("@core/utils/cloudflare-ctx");
+
+      const errorDetails: ErrorDetails = {
+        code: data.error.code || "CLIENT_ERROR",
+        message: data.error.message,
+        userMessage: "エラーが発生しました", // 通知用なのでデフォルトでOK
+        severity,
+        shouldLog: false, // 既にDB保存済み
+        shouldAlert: true,
+        retryable: false,
+      };
+
+      waitUntil(
+        notifyError(errorDetails, {
+          action: "client_error_report",
+          // actorType: data.user?.id ? "user" : "anonymous",
+          userId: data.user?.id,
+          additionalData: {
+            userAgent: data.user?.userAgent,
+            page: data.page,
+            environment: data.environment,
+            stack: data.stackTrace,
+            breadcrumbs: data.breadcrumbs,
+          },
+        })
       );
     }
 

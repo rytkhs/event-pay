@@ -10,14 +10,21 @@ import { GA4ClientService } from "@core/analytics/ga4-client";
 import { GA4ServerService } from "@core/analytics/ga4-server";
 
 // ロガーのモック（ログ出力を抑制）
-jest.mock("@core/logging/app-logger", () => ({
-  logger: {
+// jest.mock は巻き上げられるため、モック内で直接定義する
+jest.mock("@core/logging/app-logger", () => {
+  const mockMethods = {
     info: jest.fn(),
     warn: jest.fn(),
     error: jest.fn(),
     debug: jest.fn(),
-  },
-}));
+  };
+  return {
+    logger: {
+      ...mockMethods,
+      withContext: jest.fn(() => mockMethods),
+    },
+  };
+});
 
 // GA4設定のモック（テスト環境でもGA4を有効化）
 jest.mock("@core/analytics/config", () => ({
@@ -29,6 +36,11 @@ jest.mock("@core/analytics/config", () => ({
   })),
   isGA4Enabled: jest.fn(() => true),
   isMeasurementProtocolAvailable: jest.fn(() => true),
+}));
+
+// handleServerErrorのモック（エラーハンドリング）
+jest.mock("@core/utils/error-handler.server", () => ({
+  handleServerError: jest.fn(),
 }));
 
 describe("GA4 Analytics - 統合テスト", () => {
@@ -221,12 +233,14 @@ describe("GA4 Analytics - 統合テスト", () => {
 
       // Assert - 最大リトライ回数（3回）呼ばれる
       expect(mockFetch).toHaveBeenCalledTimes(3);
-      // エラーログが記録される
-      expect(logger.error).toHaveBeenCalledWith(
-        expect.stringContaining("Failed to send server event"),
+      // handleServerError 経由でエラーが記録される（新形式）
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      const { handleServerError } = require("@core/utils/error-handler.server");
+      expect(handleServerError).toHaveBeenCalledWith(
+        "GA4_TRACKING_FAILED",
         expect.objectContaining({
-          tag: "ga4-server",
-          event_name: "test_event",
+          category: "system",
+          action: "ga4_send_event",
         })
       );
     });
@@ -499,7 +513,8 @@ describe("GA4 Analytics - 統合テスト", () => {
 
       // Assert
       expect(mockFetch).not.toHaveBeenCalled();
-      expect(logger.warn).toHaveBeenCalledWith(
+      // withContextで返されるロガーのwarnを確認
+      expect(logger.withContext().warn).toHaveBeenCalledWith(
         expect.stringContaining("Neither valid client ID nor user ID provided"),
         expect.any(Object)
       );
@@ -563,7 +578,8 @@ describe("GA4 Analytics - 統合テスト", () => {
 
       // Assert
       expect(mockFetch).not.toHaveBeenCalled();
-      expect(logger.warn).toHaveBeenCalledWith(
+      // withContextで返されるロガーのwarnを確認
+      expect(logger.withContext().warn).toHaveBeenCalledWith(
         expect.stringContaining("No valid events in batch after validation"),
         expect.any(Object)
       );

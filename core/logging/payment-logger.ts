@@ -3,6 +3,8 @@
  * Connect Account関連エラーを含む決済処理の詳細ログを管理
  */
 
+import { handleServerError } from "@core/utils/error-handler.server";
+
 import { logger, type EventPayLogFields } from "./app-logger";
 
 /** 決済エラーの分類 */
@@ -120,17 +122,18 @@ export function generateRecoverySuggestions(
 export class PaymentLogger {
   private baseContext: PaymentLogFields;
 
-  constructor(baseContext: PaymentLogFields = {}) {
+  constructor(baseContext: Partial<PaymentLogFields> = {}) {
     this.baseContext = {
-      tag: "payment",
+      category: "payment",
+      action: "payment_operation",
       ...baseContext,
-    };
+    } as PaymentLogFields;
   }
 
   /**
    * 決済操作の開始ログ
    */
-  startOperation(operation: PaymentOperation, context: PaymentLogFields = {}) {
+  startOperation(operation: PaymentOperation, context: Partial<PaymentLogFields> = {}) {
     const logContext = {
       ...this.baseContext,
       ...context,
@@ -138,27 +141,34 @@ export class PaymentLogger {
       operation,
     };
 
-    logger.info(`Payment operation started: ${operation}`, logContext);
+    logger.info(`Payment operation started: ${operation}`, logContext as PaymentLogFields);
   }
 
   /**
    * 決済操作の成功ログ
    */
-  operationSuccess(operation: PaymentOperation, context: PaymentLogFields = {}) {
+  operationSuccess(operation: PaymentOperation, context: Partial<PaymentLogFields> = {}) {
     const logContext = {
       ...this.baseContext,
       ...context,
       operation,
     };
 
-    logger.info(`Payment operation completed: ${operation}`, logContext);
+    logger.info(`Payment operation completed: ${operation}`, {
+      ...logContext,
+      outcome: "success",
+    } as PaymentLogFields);
   }
 
   /**
    * 決済エラーの詳細ログ
    * エラー分類と復旧提案を自動生成
    */
-  logPaymentError(operation: PaymentOperation, error: unknown, context: PaymentLogFields = {}) {
+  logPaymentError(
+    operation: PaymentOperation,
+    error: unknown,
+    context: Partial<PaymentLogFields> = {}
+  ) {
     const errorClassification = classifyPaymentError(error);
     const recoverySuggestions = generateRecoverySuggestions(errorClassification, {
       hasConnectAccount: !!context.connect_account_id,
@@ -179,17 +189,28 @@ export class PaymentLogger {
     // 分類に基づいてログレベルを調整
     const logLevel = errorClassification === "system_error" ? "error" : "warn";
 
+    const logMsg = `Payment operation failed: ${operation}`;
+    const finalContext = { ...logContext, outcome: "failure" as const } as PaymentLogFields;
+
     if (logLevel === "error") {
-      logger.error(`Payment operation failed: ${operation}`, logContext);
+      handleServerError(error, {
+        category: "payment",
+        action: operation,
+        additionalData: finalContext,
+      });
     } else {
-      logger.warn(`Payment operation failed: ${operation}`, logContext);
+      logger.warn(logMsg, finalContext);
     }
   }
 
   /**
    * Connect Account検証ログ
    */
-  logConnectAccountValidation(accountId: string, isValid: boolean, context: PaymentLogFields = {}) {
+  logConnectAccountValidation(
+    accountId: string,
+    isValid: boolean,
+    context: Partial<PaymentLogFields> = {}
+  ) {
     const logContext = {
       ...this.baseContext,
       ...context,
@@ -199,13 +220,17 @@ export class PaymentLogger {
     };
 
     if (isValid) {
-      logger.info("Connect Account validation passed", logContext);
+      logger.info("Connect Account validation passed", {
+        ...logContext,
+        outcome: "success",
+      } as PaymentLogFields);
     } else {
       logger.warn("Connect Account validation failed", {
         ...logContext,
         error_classification: "config_error" as const,
         recovery_suggestions: generateRecoverySuggestions("config_error"),
-      });
+        outcome: "failure",
+      } as PaymentLogFields);
     }
   }
 
@@ -214,10 +239,12 @@ export class PaymentLogger {
    */
   logSessionCreation(
     success: boolean,
-    context: PaymentLogFields & {
-      session_url?: string;
-      session_id?: string;
-    } = {}
+    context: Partial<
+      PaymentLogFields & {
+        session_url?: string;
+        session_id?: string;
+      }
+    > = {}
   ) {
     const logContext = {
       ...this.baseContext,
@@ -226,9 +253,16 @@ export class PaymentLogger {
     };
 
     if (success) {
-      logger.info("Payment session created successfully", logContext);
+      logger.info("Payment session created successfully", {
+        ...logContext,
+        outcome: "success",
+      } as PaymentLogFields);
     } else {
-      logger.error("Payment session creation failed", logContext);
+      handleServerError("STRIPE_SESSION_CREATION_FAILED", {
+        category: "payment",
+        action: "session_creation",
+        additionalData: logContext,
+      });
     }
   }
 
@@ -239,7 +273,7 @@ export class PaymentLogger {
     paymentId: string,
     oldStatus: string,
     newStatus: string,
-    context: PaymentLogFields = {}
+    context: Partial<PaymentLogFields> = {}
   ) {
     const logContext = {
       ...this.baseContext,
@@ -249,13 +283,20 @@ export class PaymentLogger {
       status_change: `${oldStatus} -> ${newStatus}`,
     };
 
-    logger.info("Payment status updated", logContext);
+    logger.info("Payment status updated", {
+      ...logContext,
+      outcome: "success",
+    } as PaymentLogFields);
   }
 
   /**
    * 一括ステータス更新ログ
    */
-  logBulkStatusUpdate(successCount: number, failureCount: number, context: PaymentLogFields = {}) {
+  logBulkStatusUpdate(
+    successCount: number,
+    failureCount: number,
+    context: Partial<PaymentLogFields> = {}
+  ) {
     const logContext = {
       ...this.baseContext,
       ...context,
@@ -264,16 +305,50 @@ export class PaymentLogger {
       bulk_update_failures: failureCount,
     };
 
-    logger.info(`Bulk payment status update completed`, logContext);
+    logger.info(`Bulk payment status update completed`, {
+      ...logContext,
+      outcome: failureCount === 0 ? "success" : "failure",
+    } as PaymentLogFields);
   }
 
   /**
    * コンテキスト付きの子ロガーを作成
    */
-  withContext(additionalContext: PaymentLogFields): PaymentLogger {
+  withContext(additionalContext: Partial<PaymentLogFields>): PaymentLogger {
     return new PaymentLogger({
       ...this.baseContext,
       ...additionalContext,
+    });
+  }
+
+  // --- 標準のログメソッド ---
+
+  debug(msg: string, context: Partial<PaymentLogFields> = {}) {
+    logger.debug(msg, { ...this.baseContext, ...context } as PaymentLogFields);
+  }
+
+  info(msg: string, context: Partial<PaymentLogFields> = {}) {
+    logger.info(msg, { ...this.baseContext, ...context } as PaymentLogFields);
+  }
+
+  warn(msg: string, context: Partial<PaymentLogFields> = {}) {
+    logger.warn(msg, { ...this.baseContext, ...context } as PaymentLogFields);
+  }
+
+  error(msg: string, context: Partial<PaymentLogFields> = {}) {
+    handleServerError(msg, {
+      category: "payment",
+      action: context.action || "payment_error",
+      additionalData: { ...this.baseContext, ...context },
+    });
+  }
+
+  critical(msg: string, context: Partial<PaymentLogFields> = {}) {
+    handleServerError(msg, {
+      category: "payment",
+      action: context.action || "payment_critical",
+      severity: "critical",
+      additionalData: { ...this.baseContext, ...context },
     });
   }
 }
@@ -286,6 +361,6 @@ export const paymentLogger = new PaymentLogger();
 /**
  * 決済操作用の便利関数
  */
-export function createPaymentLogger(context: PaymentLogFields): PaymentLogger {
+export function createPaymentLogger(context: Partial<PaymentLogFields>): PaymentLogger {
   return new PaymentLogger(context);
 }

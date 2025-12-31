@@ -18,6 +18,7 @@ import {
   FieldRestrictionMap,
 } from "@core/domain/event-edit-restrictions";
 import { logger } from "@core/logging/app-logger";
+import { handleClientError } from "@core/utils/error-handler.client";
 // =============================================================================
 // Hook Types - フック専用型定義
 // =============================================================================
@@ -164,11 +165,14 @@ export function useUnifiedRestrictions(
 
       if (debug) {
         logger.debug("Unified restrictions evaluation completed", {
-          tag: "use-unified-restrictions",
+          category: "event_management",
+          action: "restriction_evaluation",
+          actor_type: "user",
           structural_count: restrictionState.structural.length,
           conditional_count: restrictionState.conditional.length,
           advisory_count: restrictionState.advisory.length,
           field_restrictions_count: fieldRestrictions.size,
+          outcome: "success",
         });
       }
     } catch (error) {
@@ -191,10 +195,9 @@ export function useUnifiedRestrictions(
       }));
 
       if (debug) {
-        logger.error("Unified restrictions evaluation failed", {
-          tag: "use-unified-restrictions",
-          error_name: error instanceof Error ? error.name : "Unknown",
-          error_message: errorMessage,
+        handleClientError(error, {
+          category: "event_management",
+          action: "restriction_evaluation_error",
         });
       }
     }
@@ -220,10 +223,13 @@ export function useUnifiedRestrictions(
       (event: RestrictionChangeEvent) => {
         if (debug) {
           logger.debug("Restriction changed", {
-            tag: "use-unified-restrictions",
+            category: "event_management",
+            action: "restriction_change",
+            actor_type: "user",
             restriction_field: event.field,
             old_value: event.previousRestriction,
             new_value: event.restriction,
+            outcome: "success",
           });
         }
       }

@@ -10,6 +10,7 @@ import { randomBytes } from "crypto";
 import { NextResponse } from "next/server";
 
 import { logger } from "@core/logging/app-logger";
+import { handleServerError } from "@core/utils/error-handler.server";
 
 /**
  * RFC 7807 Problem Details の基本構造
@@ -113,21 +114,32 @@ function createProblem(code: string, options: ProblemOptions = {}): ProblemDetai
   }
 
   // ログ出力（PII除外済みの想定）
-  const logPayload = {
-    tag: "api-error",
+  const logFields: any = {
+    category: "system",
+    action: "api_error",
+    actor_type: "anonymous",
     correlation_id: correlationId,
     request_id: correlationId,
     error_code: code,
-    status,
+    status_code: status,
     instance: problem.instance,
     retryable: problem.retryable,
+    outcome: status === 429 ? ("blocked" as any) : "failure",
     ...options.log_context,
-  } as const;
+  };
 
   if (status === 429) {
-    logger.warn(`API Error: ${code}`, logPayload);
+    logger.warn(`API Error: ${code}`, logFields);
   } else {
-    logger.error(`API Error: ${code}`, logPayload);
+    handleServerError(code, {
+      category: "system",
+      action: "api_error",
+      actorType: "anonymous",
+      additionalData: {
+        ...logFields,
+        detail,
+      },
+    });
   }
 
   return problem;

@@ -35,6 +35,8 @@ jest.mock("@core/logging/app-logger", () => ({
     error: jest.fn(),
     debug: jest.fn(),
     info: jest.fn(),
+    warn: jest.fn(),
+    withContext: jest.fn().mockReturnThis(),
   },
 }));
 
@@ -68,7 +70,15 @@ jest.mock("@core/utils/ga-cookie", () => ({
   extractClientIdFromGaCookie: jest.fn(),
 }));
 
-// queueMicrotaskのモック
+// Cloudflare Contextのモック
+jest.mock("@core/utils/cloudflare-ctx", () => ({
+  waitUntil: jest.fn((promise: Promise<unknown>) => {
+    // テスト内では実行を完結させる必要がなければ何もしない
+    // 必要なら promise を await する
+  }),
+}));
+
+// queueMicrotaskのモック (念のため残すが、waitUntilに移行済み)
 global.queueMicrotask = jest.fn((fn) => {
   // テスト内では実行しない
 });

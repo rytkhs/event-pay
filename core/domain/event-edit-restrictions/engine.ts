@@ -62,11 +62,14 @@ export class RestrictionEngine {
       if (this.config.debug) {
         const duration = performance.now() - startTime;
         logger.debug(`Restriction evaluation completed in ${duration.toFixed(2)}ms`, {
-          tag: "restriction-engine",
+          category: "event_management",
+          action: "restriction_evaluation",
+          actor_type: "user",
           duration_ms: duration,
           has_structural: restrictionState.structural.length > 0,
           has_conditional: restrictionState.conditional.length > 0,
           has_advisory: restrictionState.advisory.length > 0,
+          outcome: "success",
         });
       }
 
@@ -272,35 +275,20 @@ export class RestrictionEngine {
       try {
         callback(event);
       } catch (error) {
-        logger.error("Error in restriction change callback", {
-          tag: "restriction-engine",
-          error_name: error instanceof Error ? error.name : "Unknown",
-          error_message: error instanceof Error ? error.message : String(error),
-        });
+        console.error("Restriction change callback error:", error);
       }
     });
   }
 
   /** エラーイベントの発火 */
   private emitError(event: RestrictionErrorEvent): void {
-    if (this.config.debug) {
-      logger.error("Restriction Engine error", {
-        tag: "restriction-engine",
-        error_type: event.type,
-        error_message: event.message,
-        field: event.field,
-      });
-    }
+    console.error(`[RestrictionEngine] ${event.message}`, event);
 
     this.listeners.onError.forEach((callback) => {
       try {
         callback(event);
       } catch (error) {
-        logger.error("Error in restriction error callback", {
-          tag: "restriction-engine",
-          error_name: error instanceof Error ? error.name : "Unknown",
-          error_message: error instanceof Error ? error.message : String(error),
-        });
+        console.error("Restriction error callback error:", error);
       }
     });
   }

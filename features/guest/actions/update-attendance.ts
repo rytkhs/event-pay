@@ -1,7 +1,7 @@
 "use server";
-
 import { headers } from "next/headers";
 
+import { logger } from "@core/logging/app-logger";
 import { validateGuestTokenFormat } from "@core/security/crypto";
 import { SecureSupabaseClientFactory } from "@core/security/secure-client-factory.impl";
 import {
@@ -13,6 +13,7 @@ import {
   createServerActionSuccess,
   type ServerActionResult,
 } from "@core/types/server-actions";
+import { handleServerError } from "@core/utils/error-handler.server";
 import { validateGuestToken } from "@core/utils/guest-token";
 import { getClientIPFromHeaders } from "@core/utils/ip-detection";
 import { attendanceStatusSchema, paymentMethodSchema } from "@core/validation/participation";
@@ -70,11 +71,13 @@ export async function updateGuestAttendanceAction(
 
       // 開発環境では詳細ログも出力
       if (process.env.NODE_ENV === "development") {
-        const { logger } = await import("@core/logging/app-logger");
         logger.warn("無効なゲストトークンによるアクセス", {
-          tag: "updateGuestAttendance",
+          category: "attendance",
+          action: "update_attendance",
+          actor_type: "guest",
           token_prefix: guestToken.substring(0, 4),
           error_message: tokenValidation.errorMessage,
+          outcome: "failure",
         });
       }
 
@@ -201,14 +204,17 @@ export async function updateGuestAttendanceAction(
 
       // 開発環境では詳細エラーログを出力
       if (process.env.NODE_ENV === "development") {
-        const { logger } = await import("@core/logging/app-logger");
-        logger.error("Guest attendance update error", {
-          tag: "updateGuestAttendance",
-          error_code: errorCode,
-          error_message: errorMessage,
-          attendanceId: attendance.id,
-          eventId: attendance.event.id,
-          isCapacityReached,
+        handleServerError("GUEST_ATTENDANCE_UPDATE_ERROR", {
+          action: "update_guest_attendance_rpc_error",
+          additionalData: {
+            category: "attendance",
+            actor_type: "guest",
+            error_code: errorCode,
+            error_message: errorMessage,
+            attendance_id: attendance.id,
+            event_id: attendance.event.id,
+            is_capacity_reached: isCapacityReached,
+          },
         });
       }
 
@@ -227,13 +233,15 @@ export async function updateGuestAttendanceAction(
 
     // 更新成功時のログ
     if (process.env.NODE_ENV === "development") {
-      const { logger } = await import("@core/logging/app-logger");
       logger.info("Guest attendance updated successfully", {
-        tag: "updateGuestAttendance",
-        attendanceId: attendance.id,
-        eventId: attendance.event.id,
-        newStatus: validatedStatus.data,
-        paymentMethod: validatedPaymentMethod,
+        category: "attendance",
+        action: "update_attendance",
+        actor_type: "guest",
+        attendance_id: attendance.id,
+        event_id: attendance.event.id,
+        new_status: validatedStatus.data,
+        payment_method: validatedPaymentMethod,
+        outcome: "success",
       });
     }
 
@@ -263,11 +271,14 @@ export async function updateGuestAttendanceAction(
 
     // 本番環境では適切なログシステムでエラーログを記録
     if (process.env.NODE_ENV === "production") {
-      const { logger } = await import("@core/logging/app-logger");
-      logger.error("Unexpected error in updateGuestAttendanceAction", {
-        tag: "updateGuestAttendance",
-        error: error instanceof Error ? error.message : String(error),
-        guestToken: guestToken?.substring(0, 4),
+      handleServerError("GUEST_ATTENDANCE_UPDATE_ERROR", {
+        action: "updateGuestAttendanceAction",
+        additionalData: {
+          category: "attendance",
+          actor_type: "guest",
+          error_message: error instanceof Error ? error.message : String(error),
+          guest_token_prefix: guestToken?.substring(0, 4),
+        },
       });
     }
 

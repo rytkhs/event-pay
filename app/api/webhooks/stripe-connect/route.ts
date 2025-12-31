@@ -25,6 +25,7 @@ import {
 } from "@core/security/stripe-ip-allowlist";
 import { getStripe, getConnectWebhookSecrets } from "@core/stripe/client";
 import { getEnv } from "@core/utils/cloudflare-env";
+import { handleServerError } from "@core/utils/error-handler.server";
 import { getClientIP } from "@core/utils/ip-detection";
 
 import { StripeWebhookSignatureVerifier } from "@features/payments/services/webhook/webhook-signature-verifier";
@@ -42,9 +43,11 @@ export async function POST(request: NextRequest) {
   const _clientIP = getClientIP(request);
   const requestId = request.headers.get("x-request-id") || generateSecureUuid();
   const connectLogger = logger.withContext({
+    category: "stripe_webhook",
+    action: "stripe_connect_webhook_receive",
+    actor_type: "webhook",
     request_id: requestId,
     path: request.nextUrl.pathname,
-    tag: "connectWebhookProcessing",
   });
 
   connectLogger.info("Connect webhook request received");
@@ -57,8 +60,12 @@ export async function POST(request: NextRequest) {
       if (!allowed) {
         // Security logging replaced with standard logger
         logger.warn("Webhook IP not allowed", {
+          category: "security",
+          action: "webhook_ip_check",
+          actor_type: "webhook",
           clientIp,
           userAgent: request.headers.get("user-agent") || undefined,
+          outcome: "failure",
         });
         return createProblemResponse("FORBIDDEN", {
           instance: "/api/webhooks/stripe-connect",
@@ -109,7 +116,6 @@ export async function POST(request: NextRequest) {
       connectLogger.info("Test mode: Processing connect webhook synchronously (QStash skipped)", {
         event_id: event.id,
         event_type: event.type,
-        tag: "connectWebhook-test-mode",
       });
 
       try {
@@ -158,7 +164,7 @@ export async function POST(request: NextRequest) {
           event_id: event.id,
           event_type: event.type,
           testMode: true,
-          tag: "connectWebhook-test-mode",
+          outcome: "success",
         });
 
         return NextResponse.json({
@@ -168,11 +174,15 @@ export async function POST(request: NextRequest) {
           testMode: true,
         });
       } catch (error) {
-        connectLogger.error("Connect webhook synchronous processing failed", {
-          event_id: event.id,
-          event_type: event.type,
-          error: error instanceof Error ? error.message : "Unknown error",
-          tag: "connectWebhook-test-mode",
+        handleServerError("CONNECT_WEBHOOK_UNEXPECTED_ERROR", {
+          category: "stripe_webhook",
+          action: "stripe_connect_webhook_sync_fail",
+          additionalData: {
+            event_id: event.id,
+            event_type: event.type,
+            error: error instanceof Error ? error.message : "Unknown error",
+            request_id: requestId,
+          },
         });
 
         return createProblemResponse("INTERNAL_ERROR", {
@@ -216,10 +226,15 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     // 詳細なエラー情報をログに出力
-    connectLogger.error("Connect webhook processing error", {
-      error_name: error instanceof Error ? error.name : "Unknown",
-      error_message: error instanceof Error ? error.message : String(error),
-      error_stack: error instanceof Error ? error.stack : undefined,
+    handleServerError("CONNECT_WEBHOOK_UNEXPECTED_ERROR", {
+      category: "stripe_webhook",
+      action: "stripe_connect_webhook_error",
+      additionalData: {
+        error_name: error instanceof Error ? error.name : "Unknown",
+        error_message: error instanceof Error ? error.message : String(error),
+        error_stack: error instanceof Error ? error.stack : undefined,
+        request_id: requestId,
+      },
     });
 
     // 失敗時は 500 を返し Stripe に再送してもらう

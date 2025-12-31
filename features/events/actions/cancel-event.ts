@@ -93,16 +93,22 @@ export async function cancelEventAction(
       });
 
       logger.info("Cancel event published to QStash", {
-        tag: "event-cancel",
+        category: "event_management",
+        action: "event_cancel",
+        actor_type: "user",
         event_id: eventId,
         qstash_message_id: publishRes.messageId,
+        outcome: "success",
       });
     } catch (e) {
       // 通知失敗は中止結果に影響させない（非機能要件）
       logger.warn("Failed to publish cancel event to QStash", {
-        tag: "event-cancel",
+        category: "event_management",
+        action: "event_cancel",
+        actor_type: "user",
         event_id: eventId,
         error_message: e instanceof Error ? e.message : String(e),
+        outcome: "failure",
       });
     }
 

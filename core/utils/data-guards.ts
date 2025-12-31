@@ -23,8 +23,11 @@ export function hasPaymentId(item: any): item is { payment_id: string } {
 export function extractValidPaymentIds(items: any[]): string[] {
   if (!Array.isArray(items)) {
     logger.warn("Invalid items array provided to extractValidPaymentIds", {
-      tag: "dataGuard",
+      category: "system",
+      action: "data_guard_check",
+      actor_type: "system",
       items_type: typeof items,
+      outcome: "failure",
     });
     return [];
   }
@@ -34,10 +37,13 @@ export function extractValidPaymentIds(items: any[]): string[] {
   const skippedCount = items.length - validIds.length;
   if (skippedCount > 0) {
     logger.warn(`Skipped ${skippedCount} items without valid payment_id`, {
-      tag: "dataGuard",
+      category: "system",
+      action: "data_guard_check",
+      actor_type: "system",
       total_items: items.length,
       valid_items: validIds.length,
       skipped_items: skippedCount,
+      outcome: "success",
     });
   }
 
@@ -98,9 +104,12 @@ export function safeFilter<T>(
 ): T[] {
   if (!Array.isArray(items)) {
     logger.warn(`Invalid array provided to safeFilter${context ? ` in ${context}` : ""}`, {
-      tag: "dataGuard",
+      category: "system",
+      action: "data_guard_check",
+      actor_type: "system",
       items_type: typeof items,
       context,
+      outcome: "failure",
     });
     return [];
   }

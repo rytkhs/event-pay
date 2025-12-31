@@ -5,8 +5,8 @@ import type { Metadata } from "next";
 export const dynamic = "force-dynamic";
 
 import { getCurrentUser } from "@core/auth/auth-utils";
-import { logger } from "@core/logging/app-logger";
 import { createCachedActions } from "@core/utils/cache-helpers";
+import { handleServerError } from "@core/utils/error-handler.server";
 
 import {
   getEventDetailAction,
@@ -106,11 +106,11 @@ export default async function EventDetailPage({
       />
     );
   } catch (error) {
-    logger.error("Event management page error", {
-      tag: "event-management-page",
-      event_id: params?.id,
-      error_name: error instanceof Error ? error.name : "Unknown",
-      error_message: error instanceof Error ? error.message : String(error),
+    handleServerError(error, {
+      category: "event_management",
+      action: "event_page_view",
+      actorType: "user",
+      eventId: params?.id,
     });
     throw error;
   }

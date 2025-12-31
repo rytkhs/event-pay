@@ -54,10 +54,13 @@ export async function getSafeHeaders(fallbackContext?: {
   } catch (error) {
     // headers()が利用できない場合（テスト環境など）
     logger.warn("next/headers not available, using fallback context", {
-      tag: "headersUnavailable",
+      category: "system",
+      action: "header_access",
+      actor_type: "system",
       error_message: error instanceof Error ? error.message : String(error),
       environment: getEnv().NODE_ENV,
       fallback: fallbackContext ? "provided" : "default",
+      outcome: "failure",
     });
 
     // headersList を null に設定

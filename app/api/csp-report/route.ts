@@ -13,6 +13,7 @@ import { enforceRateLimit, buildKey } from "@core/rate-limit";
 import { generateSecureUuid } from "@core/security/crypto";
 import type { CSPViolationReport } from "@core/security/csp-report-types";
 import { logSecurityEvent } from "@core/security/security-logger";
+import { handleServerError } from "@core/utils/error-handler.server";
 import { getClientIP } from "@core/utils/ip-detection";
 
 // CSPレポート用のレート制限ポリシー（1分間に200リクエスト）
@@ -48,8 +49,9 @@ export async function POST(request: NextRequest) {
 
     if (!rateLimitResult.allowed) {
       logger.warn("CSP report rate limited", {
+        category: "security",
+        action: "cspReportRateLimited",
         request_id: requestId,
-        tag: "cspReportRateLimited",
         ip: clientIP,
         retry_after: rateLimitResult.retryAfter,
       });
@@ -71,8 +73,9 @@ export async function POST(request: NextRequest) {
 
     if (!isCSPReportType && contentType !== "") {
       logger.warn("CSP report invalid content-type", {
+        category: "security",
+        action: "cspReportInvalidContentType",
         request_id: requestId,
-        tag: "cspReportInvalidContentType",
         content_type: contentType,
         ip: clientIP,
       });
@@ -83,8 +86,9 @@ export async function POST(request: NextRequest) {
     const contentLength = request.headers.get("content-length");
     if (contentLength && Number.parseInt(contentLength, 10) > MAX_PAYLOAD_SIZE) {
       logger.warn("CSP report payload too large", {
+        category: "security",
+        action: "cspReportPayloadTooLarge",
         request_id: requestId,
-        tag: "cspReportPayloadTooLarge",
         content_length: contentLength,
         max_size: MAX_PAYLOAD_SIZE,
         ip: clientIP,
@@ -103,8 +107,9 @@ export async function POST(request: NextRequest) {
     // ペイロードサイズの再確認（実際のサイズ）
     if (rawBody.length > MAX_PAYLOAD_SIZE) {
       logger.warn("CSP report payload too large (actual size)", {
+        category: "security",
+        action: "cspReportPayloadTooLarge",
         request_id: requestId,
-        tag: "cspReportPayloadTooLarge",
         actual_size: rawBody.length,
         max_size: MAX_PAYLOAD_SIZE,
         ip: clientIP,
@@ -123,8 +128,9 @@ export async function POST(request: NextRequest) {
       report = JSON.parse(rawBody) as CSPViolationReport;
     } catch (parseError) {
       logger.warn("CSP report JSON parse error", {
+        category: "security",
+        action: "cspReportParseError",
         request_id: requestId,
-        tag: "cspReportParseError",
         error: parseError instanceof Error ? parseError.message : String(parseError),
         ip: clientIP,
         body_preview: rawBody.substring(0, 200),
@@ -140,8 +146,9 @@ export async function POST(request: NextRequest) {
     // CSPレポートの検証
     if (!report["csp-report"]) {
       logger.warn("CSP report missing csp-report field", {
+        category: "security",
+        action: "cspReportInvalidFormat",
         request_id: requestId,
-        tag: "cspReportInvalidFormat",
         ip: clientIP,
       });
       return new NextResponse(null, {
@@ -187,13 +194,14 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (error) {
-    // 予期しないエラーをログに記録
-    logger.error("CSP report endpoint error", {
-      request_id: requestId,
-      tag: "cspReportEndpointError",
-      error: error instanceof Error ? error.message : String(error),
-      error_stack: error instanceof Error ? error.stack : undefined,
-      ip: clientIP,
+    // 予期しないエラーを正規化・通知
+    handleServerError(error, {
+      category: "security",
+      action: "cspReportEndpointError",
+      additionalData: {
+        request_id: requestId,
+        ip: clientIP,
+      },
     });
 
     // エラー時も204を返す（ブラウザ側のリトライを避けるため）

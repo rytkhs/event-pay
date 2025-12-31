@@ -15,8 +15,8 @@ import {
   generateCodeVerifier,
   generateCodeChallenge,
 } from "@core/auth/line-utils";
-import { logger } from "@core/logging/app-logger";
 import { getEnv } from "@core/utils/cloudflare-env";
+import { handleServerError } from "@core/utils/error-handler.server";
 
 export const dynamic = "force-dynamic";
 
@@ -25,7 +25,11 @@ export async function GET(request: Request) {
   const channelId = env.NEXT_PUBLIC_LINE_CHANNEL_ID;
 
   if (!channelId) {
-    logger.error("LINE Channel ID is not configured", { tag: "lineLoginConfigError" });
+    handleServerError("ENV_VAR_MISSING", {
+      category: "authentication",
+      action: "line_auth_init",
+      additionalData: { detail: "LINE Channel ID is missing" },
+    });
     return NextResponse.redirect(
       new URL(`/login?error=${LINE_ERROR_CODES.CONFIG_ERROR}`, request.url)
     );

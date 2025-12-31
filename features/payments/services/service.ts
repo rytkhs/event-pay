@@ -8,13 +8,14 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 // import type { PostgrestError } from "@supabase/supabase-js";
 import { PostgrestError } from "@supabase/supabase-js";
 
-import { logger } from "@core/logging/app-logger";
+// import { logger } from "@core/logging/app-logger";
 import { createPaymentLogger, type PaymentLogger } from "@core/logging/payment-logger";
 import { generateSecureUuid } from "@core/security/crypto";
 import { getStripe } from "@core/stripe/client";
 import * as DestinationCharges from "@core/stripe/destination-charges";
 import { convertStripeError } from "@core/stripe/error-handler";
 import { PaymentError, PaymentErrorType, ErrorHandlingResult } from "@core/types/payment-errors";
+import { handleServerError } from "@core/utils/error-handler.server";
 import { maskSessionId } from "@core/utils/mask";
 import { assertStripePayment } from "@core/utils/stripe-guards";
 
@@ -62,7 +63,7 @@ export class PaymentService implements IPaymentService {
     this.supabase = supabaseClient;
     this.errorHandler = errorHandler;
     this.applicationFeeCalculator = new ApplicationFeeCalculator(supabaseClient);
-    this.paymentLogger = createPaymentLogger({ service: "PaymentService" });
+    this.paymentLogger = createPaymentLogger({ category: "payment", action: "payment_service" });
   }
 
   /**
@@ -531,9 +532,7 @@ export class PaymentService implements IPaymentService {
         checkoutKeyRevisionToSave = (openPayment.checkout_key_revision ?? 0) + 1;
 
         // 簡素なデバッグログ（キーはマスクして出力）
-        logger.info("Idempotency key decision", {
-          tag: "idempotencyKeyDecision",
-          service: "PaymentService",
+        this.paymentLogger.info("Idempotency key decision", {
           attendance_id: params.attendanceId,
           has_open_payment: true,
           final_key: idempotencyKeyToUse.substring(0, 12) + "...",
@@ -609,9 +608,7 @@ export class PaymentService implements IPaymentService {
       }
 
       // 既存のログも残しつつ、構造化ログも追加
-      logger.info("Destination charges session created", {
-        tag: "destinationChargesCreated",
-        service: "PaymentService",
+      this.paymentLogger.info("Destination charges session created", {
         paymentId: targetPaymentId,
         sessionId: maskSessionId(session.id),
         amount: params.amount,
@@ -1238,10 +1235,10 @@ export class PaymentService implements IPaymentService {
 
       // 1. アカウントが制限されていないかチェック
       if (account.requirements?.disabled_reason) {
-        logger.warn("Connect Account is restricted", {
-          tag: "connectAccountRestricted",
-          account_id: accountId,
+        this.paymentLogger.warn("Connect Account is restricted", {
+          connect_account_id: accountId,
           disabled_reason: account.requirements.disabled_reason,
+          outcome: "failure",
         });
         throw new PaymentError(
           PaymentErrorType.CONNECT_ACCOUNT_RESTRICTED,
@@ -1252,10 +1249,10 @@ export class PaymentService implements IPaymentService {
 
       // 2. payouts_enabled がtrueかチェック
       if (!account.payouts_enabled) {
-        logger.warn("Connect Account payouts not enabled", {
-          tag: "connectAccountPayoutsDisabled",
-          account_id: accountId,
+        this.paymentLogger.warn("Connect Account payouts not enabled", {
+          connect_account_id: accountId,
           payouts_enabled: account.payouts_enabled,
+          outcome: "failure",
         });
         throw new PaymentError(
           PaymentErrorType.CONNECT_ACCOUNT_RESTRICTED,
@@ -1275,10 +1272,10 @@ export class PaymentService implements IPaymentService {
       })();
 
       if (!isTransfersActive) {
-        logger.warn("Connect Account transfers capability not active", {
-          tag: "connectAccountTransfersInactive",
-          account_id: accountId,
+        this.paymentLogger.warn("Connect Account transfers capability not active", {
+          connect_account_id: accountId,
           transfers_capability: transfersCap,
+          outcome: "failure",
         });
         throw new PaymentError(
           PaymentErrorType.CONNECT_ACCOUNT_RESTRICTED,
@@ -1287,11 +1284,11 @@ export class PaymentService implements IPaymentService {
         );
       }
 
-      logger.info("Connect Account validation passed", {
-        tag: "connectAccountValidated",
-        account_id: accountId,
+      this.paymentLogger.info("Connect Account validation passed", {
+        connect_account_id: accountId,
         payouts_enabled: account.payouts_enabled,
         transfers_capability: transfersCap,
+        outcome: "success",
       });
     } catch (error) {
       // PaymentErrorはそのまま再スロー
@@ -1308,10 +1305,13 @@ export class PaymentService implements IPaymentService {
           stripeError.message?.includes("No such account") ||
           stripeError.message?.includes("does not exist")
         ) {
-          logger.error("Connect Account not found", {
-            tag: "connectAccountNotFound",
-            account_id: accountId,
-            error_message: stripeError.message,
+          handleServerError("STRIPE_CONNECT_ACCOUNT_NOT_FOUND", {
+            category: "payment",
+            action: "validate_connect_account",
+            additionalData: {
+              connect_account_id: accountId,
+              error_message: stripeError.message,
+            },
           });
           throw new PaymentError(
             PaymentErrorType.CONNECT_ACCOUNT_NOT_FOUND,
@@ -1321,11 +1321,14 @@ export class PaymentService implements IPaymentService {
         }
 
         // その他のStripe APIエラー
-        logger.error("Connect Account validation failed - Stripe API error", {
-          tag: "connectAccountValidationStripeError",
-          account_id: accountId,
-          error_type: stripeError.type,
-          error_message: stripeError.message,
+        handleServerError("STRIPE_CONNECT_SERVICE_ERROR", {
+          category: "payment",
+          action: "validate_connect_account_stripe_error",
+          additionalData: {
+            connect_account_id: accountId,
+            error_type: stripeError.type,
+            error_message: stripeError.message,
+          },
         });
         throw new PaymentError(
           PaymentErrorType.STRIPE_CONFIG_ERROR,
@@ -1335,11 +1338,14 @@ export class PaymentService implements IPaymentService {
       }
 
       // その他の予期しないエラー
-      logger.error("Connect Account validation failed - unexpected error", {
-        tag: "connectAccountValidationUnexpectedError",
-        account_id: accountId,
-        error_name: error instanceof Error ? error.name : "Unknown",
-        error_message: error instanceof Error ? error.message : String(error),
+      handleServerError("STRIPE_CONNECT_SERVICE_ERROR", {
+        category: "payment",
+        action: "validate_connect_account_unexpected_error",
+        additionalData: {
+          connect_account_id: accountId,
+          error_name: error instanceof Error ? error.name : "Unknown",
+          error_message: error instanceof Error ? error.message : String(error),
+        },
       });
       throw new PaymentError(
         PaymentErrorType.STRIPE_CONFIG_ERROR,
@@ -1384,6 +1390,10 @@ export class PaymentErrorHandler implements IPaymentErrorHandler {
       context,
     };
 
-    logger.error("payment_error", logData);
+    handleServerError("PAYMENT_OPERATION_FAILED", {
+      category: "payment",
+      action: "payment_error_handler",
+      additionalData: logData,
+    });
   }
 }

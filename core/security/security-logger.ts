@@ -3,27 +3,11 @@
  * セキュリティ関連のイベントを統一的に記録・監視します
  */
 
-import { createClient } from "@supabase/supabase-js";
-import type { SupabaseClient } from "@supabase/supabase-js";
-
 import { getMaliciousPatternDetails } from "@core/constants/security-patterns";
 import { logger } from "@core/logging/app-logger";
 import { waitUntil } from "@core/utils/cloudflare-ctx";
 import { getEnv } from "@core/utils/cloudflare-env";
-
-function createSupabaseClient(): SupabaseClient | null {
-  const env = getEnv();
-  const supabaseUrl = env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseKey = env.SUPABASE_SERVICE_ROLE_KEY;
-
-  if (!supabaseUrl || !supabaseKey) {
-    return null;
-  }
-
-  return createClient(supabaseUrl, supabaseKey, {
-    auth: { persistSession: false },
-  });
-}
+import { handleServerError } from "@core/utils/error-handler.server";
 
 export interface SecurityEvent {
   type: SecurityEventType | string;
@@ -61,22 +45,20 @@ export type SecuritySeverity = "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
 export function logSecurityEvent(event: SecurityEvent): void {
   const maskedIp = maskIP(event.ip);
   const logFields = {
-    // 統一タグ・セキュリティフィールド
-    tag: "securityEvent",
+    category: "security",
+    action: typeof event.type === "string" ? String(event.type).toLowerCase() : "security_event",
+    actor_type: event.userId ? "user" : "anonymous",
     security_type: event.type,
     security_severity: event.severity,
-    message: event.message,
     user_id: event.userId,
     event_id: event.eventId,
     user_agent: event.userAgent,
     ip: maskedIp,
-    // 標準化フィールド（ECS/OTel 互換）
-    event_category: "security",
-    event_action: typeof event.type === "string" ? String(event.type) : "security_event",
-    // 必要に応じて outcome を呼び出し側で追加
     timestamp: event.timestamp.toISOString(),
     details: event.details,
-  } as Record<string, unknown>;
+    outcome:
+      event.severity === "HIGH" || event.severity === "CRITICAL" ? "blocked" : ("success" as any),
+  };
 
   // 重要度に応じてログレベルを選択
   const level = ((): "info" | "warn" | "error" => {
@@ -94,9 +76,22 @@ export function logSecurityEvent(event: SecurityEvent): void {
   })();
 
   const logMessage = event.message || `Security event: ${event.type}`;
-  if (level === "info") logger.info(logMessage, logFields);
-  else if (level === "warn") logger.warn(logMessage, logFields);
-  else logger.error(logMessage, logFields);
+  if (level === "info") logger.info(logMessage, logFields as any);
+  else if (level === "warn") logger.warn(logMessage, logFields as any);
+  else {
+    // 予期しないセキュリティイベントや重大なイベントはハンドルサーバーエラー経由で記録・通知
+    handleServerError("SECURITY_EVENT_DETECTED", {
+      category: "security",
+      action: logFields.action,
+      actorType: logFields.actor_type as any,
+      userId: event.userId,
+      eventId: event.eventId,
+      additionalData: {
+        ...logFields,
+        message: event.message,
+      },
+    });
+  }
 
   // 重要度が高い場合はアラートを送信（waitUntilでバックグラウンド実行）
   if (event.severity === "HIGH" || event.severity === "CRITICAL") {
@@ -107,50 +102,6 @@ export function logSecurityEvent(event: SecurityEvent): void {
       })
     );
   }
-}
-
-/**
- * Webhook用のセキュリティイベント簡易ロガー
- */
-export function logWebhookSecurityEvent(
-  type: string,
-  message: string,
-  details?: Record<string, unknown>,
-  request?: { userAgent?: string; ip?: string; eventId?: string },
-  severity: SecuritySeverity = "LOW"
-): void {
-  logSecurityEvent({
-    type,
-    severity,
-    message,
-    details,
-    userAgent: request?.userAgent,
-    ip: request?.ip,
-    eventId: request?.eventId,
-    timestamp: new Date(),
-  });
-}
-
-/**
- * QStash用のセキュリティイベント簡易ロガー
- */
-export function logQstashSecurityEvent(
-  type: string,
-  message: string,
-  details?: Record<string, unknown>,
-  request?: { userAgent?: string; ip?: string; eventId?: string },
-  severity: SecuritySeverity = "LOW"
-): void {
-  logSecurityEvent({
-    type,
-    severity,
-    message,
-    details,
-    userAgent: request?.userAgent,
-    ip: request?.ip,
-    eventId: request?.eventId,
-    timestamp: new Date(),
-  });
 }
 
 /**
@@ -381,33 +332,19 @@ async function sendSecurityAlert(logEntry: Record<string, unknown>): Promise<voi
   // 開発環境では警告を出力
   const env = getEnv();
   if (env.NODE_ENV === "development") {
-    logger.error("🚨 SECURITY ALERT", {
-      tag: "securityAlert",
-      alert_data: logEntry,
+    handleServerError("ADMIN_ALERT_FAILED", {
+      category: "security",
+      action: "security_alert",
+      actorType: "system",
+      additionalData: {
+        alert_data: logEntry,
+      },
     });
   }
 
   if (env.NODE_ENV === "production") {
     try {
-      // 1. Supabaseに保存
-      const supabase = createSupabaseClient();
-
-      if (supabase) {
-        await supabase.from("system_logs").insert({
-          log_level: "error",
-          log_category: "security",
-          actor_type: "unknown",
-          action: "security_event",
-          message: String(logEntry.message || "Security event"),
-          outcome: "blocked",
-          ip_address: logEntry.ip as string,
-          user_agent: logEntry.user_agent as string,
-          metadata: logEntry as any,
-          tags: ["securityAlert", String(logEntry.security_type || "unknown")],
-        });
-      }
-
-      // 2. メール通知 (HIGH/CRITICAL のみ)
+      // 1. メール通知 (HIGH/CRITICAL のみ)
       if (logEntry.security_severity === "HIGH" || logEntry.security_severity === "CRITICAL") {
         const { EmailNotificationService } = await import("@core/notification/email-service");
         const emailService = new EmailNotificationService();
@@ -429,12 +366,15 @@ async function sendSecurityAlert(logEntry: Record<string, unknown>): Promise<voi
         });
       }
     } catch (error) {
-      // アラート送信失敗をログに記録（循環参照を避けるためconsole.error使用）
-      // eslint-disable-next-line no-console
-      console.error("[SecurityAlert] Failed to save or notify:", {
-        error_name: error instanceof Error ? error.name : "Unknown",
-        error_message: error instanceof Error ? error.message : String(error),
-        security_type: logEntry.security_type,
+      // アラート送信失敗を handleServerError で記録
+      handleServerError("ADMIN_ALERT_FAILED", {
+        category: "security",
+        action: "security_alert",
+        actorType: "system",
+        additionalData: {
+          original_event_type: logEntry.security_type,
+          error_message: error instanceof Error ? error.message : String(error),
+        },
       });
     }
   }

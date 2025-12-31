@@ -6,6 +6,7 @@ import type { ActionResult } from "@core/actions/auth";
 import { getCurrentUser } from "@core/auth/auth-utils";
 import { logger } from "@core/logging/app-logger";
 import { createClient } from "@core/supabase/server";
+import { handleServerError } from "@core/utils/error-handler.server";
 
 const updateEmailSchema = z.object({
   newEmail: z
@@ -61,9 +62,12 @@ export async function updateEmailAction(formData: FormData): Promise<ActionResul
 
     if (signInError) {
       logger.warn("Email change reauthentication failed", {
-        tag: "emailChangeReauthFailed",
+        category: "authentication",
+        action: "update_email",
+        actor_type: "user",
         user_id: user.id,
         error_message: signInError.message,
+        outcome: "failure",
       });
       return {
         success: false,
@@ -77,10 +81,11 @@ export async function updateEmailAction(formData: FormData): Promise<ActionResul
     });
 
     if (updateError) {
-      logger.error("Email update failed", {
-        tag: "emailUpdateFailed",
-        user_id: user.id,
-        error_message: updateError.message,
+      handleServerError(updateError, {
+        category: "authentication",
+        action: "update_email",
+        actorType: "user",
+        userId: user.id,
       });
       return {
         success: false,
@@ -89,10 +94,13 @@ export async function updateEmailAction(formData: FormData): Promise<ActionResul
     }
 
     logger.info("Email change initiated", {
-      tag: "emailChangeInitiated",
+      category: "authentication",
+      action: "update_email",
+      actor_type: "user",
       user_id: user.id,
       old_email: user.email,
       new_email: newEmail,
+      outcome: "success",
     });
 
     return {
@@ -100,10 +108,14 @@ export async function updateEmailAction(formData: FormData): Promise<ActionResul
       message: "確認メールを送信しました。新しいメールアドレスで確認リンクをクリックしてください。",
     };
   } catch (error) {
-    logger.error("Update email action error", {
-      tag: "updateEmailActionError",
-      error_name: error instanceof Error ? error.name : "Unknown",
-      error_message: error instanceof Error ? error.message : String(error),
+    handleServerError("EMAIL_UPDATE_UNEXPECTED_ERROR", {
+      category: "authentication",
+      action: "update_email",
+      actorType: "user",
+      additionalData: {
+        error_name: error instanceof Error ? error.name : "Unknown",
+        error_message: error instanceof Error ? error.message : String(error),
+      },
     });
 
     return {

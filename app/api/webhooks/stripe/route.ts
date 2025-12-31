@@ -20,6 +20,7 @@ import {
 } from "@core/security/stripe-ip-allowlist";
 import { getWebhookSecrets, getStripe } from "@core/stripe/client";
 import { getEnv } from "@core/utils/cloudflare-env";
+import { handleServerError } from "@core/utils/error-handler.server";
 import { getClientIP } from "@core/utils/ip-detection";
 
 import { StripeWebhookEventHandler } from "@features/payments/services/webhook/webhook-event-handler";
@@ -39,9 +40,10 @@ export async function POST(request: NextRequest) {
   const startTime = Date.now();
 
   logger.info("Webhook request received", {
+    category: "stripe_webhook",
+    action: "webhookRequestReceived",
     request_id: requestId,
     path: "/api/webhooks/stripe",
-    tag: "webhookProcessing",
   });
 
   try {
@@ -118,10 +120,11 @@ export async function POST(request: NextRequest) {
     const event = verificationResult.event;
 
     logger.info("Webhook signature verified", {
+      category: "stripe_webhook",
+      action: "signatureVerified",
       event_id: event.id,
       event_type: event.type,
       request_id: requestId,
-      tag: "webhookProcessing",
     });
 
     // テスト環境での同期処理モード（E2Eテスト用）
@@ -130,10 +133,11 @@ export async function POST(request: NextRequest) {
 
     if (shouldProcessSync) {
       logger.info("Test mode: Processing webhook synchronously (QStash skipped)", {
+        category: "stripe_webhook",
+        action: "processSynchronously",
         event_id: event.id,
         event_type: event.type,
         request_id: requestId,
-        tag: "webhook-test-mode",
       });
 
       try {
@@ -144,12 +148,13 @@ export async function POST(request: NextRequest) {
         const processingTime = Date.now() - startTime;
 
         logger.info("Webhook processed synchronously", {
+          category: "stripe_webhook",
+          action: "processedSynchronously",
           event_id: event.id,
           event_type: event.type,
           success: result.success,
           processing_time_ms: processingTime,
           request_id: requestId,
-          tag: "webhook-test-mode",
         });
 
         return NextResponse.json({
@@ -162,12 +167,16 @@ export async function POST(request: NextRequest) {
           processingTimeMs: processingTime,
         });
       } catch (error) {
-        logger.error("Webhook synchronous processing failed", {
-          event_id: event.id,
-          event_type: event.type,
-          error: error instanceof Error ? error.message : "Unknown error",
-          request_id: requestId,
-          tag: "webhook-test-mode",
+        handleServerError("WEBHOOK_SYNC_PROCESSING_FAILED", {
+          action: "syncProcessingFailed",
+          additionalData: {
+            category: "stripe_webhook",
+            event_id: event.id,
+            event_type: event.type,
+            error_name: error instanceof Error ? error.name : "Unknown",
+            error_message: error instanceof Error ? error.message : String(error),
+            request_id: requestId,
+          },
         });
 
         return createProblemResponse("INTERNAL_ERROR", {
@@ -187,12 +196,13 @@ export async function POST(request: NextRequest) {
     };
 
     logger.debug("Publishing to QStash", {
+      category: "stripe_webhook",
+      action: "publishToQStash",
       event_id: event.id,
       event_type: event.type,
       worker_url: workerUrl,
       deduplication_id: event.id,
       request_id: requestId,
-      tag: "qstash-publish",
     });
 
     const qstash = getQstashClient();
@@ -211,7 +221,8 @@ export async function POST(request: NextRequest) {
     const processingTime = Date.now() - startTime;
 
     logger.info("Webhook successfully published to QStash", {
-      tag: "qstash-published",
+      category: "stripe_webhook",
+      action: "qstashPublished",
       event_id: event.id,
       event_type: event.type,
       qstash_message_id: qstashResult.messageId,
@@ -231,7 +242,8 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     const processingTime = Date.now() - startTime;
     const errorContext = {
-      tag: "webhook-error",
+      category: "stripe_webhook" as const,
+      action: "webhookError",
       error_name: error instanceof Error ? error.name : "Unknown",
       error_message: error instanceof Error ? error.message : String(error),
       processing_time_ms: processingTime,
@@ -267,11 +279,13 @@ export async function POST(request: NextRequest) {
         errObj.message?.includes("upstash") ||
         errObj.message?.includes("publish")
       ) {
-        logger.error("QStash forwarding failed", {
-          ...errorContext,
-          error_classification: "external_service_error",
-          severity: "critical", // webhook転送失敗は重大
-          qstash_error: true,
+        handleServerError("WEBHOOK_QSTASH_FORWARDING_FAILED", {
+          action: "qstashForwardingFailed",
+          additionalData: {
+            ...errorContext,
+            error_classification: "external_service_error",
+            qstash_error: true,
+          },
         });
         return createProblemResponse("EXTERNAL_SERVICE_ERROR", {
           instance: "/api/webhooks/stripe",
@@ -327,10 +341,12 @@ export async function POST(request: NextRequest) {
         errObj.message?.includes("environment") ||
         errObj.message?.includes("configuration")
       ) {
-        logger.error("Configuration error in webhook processing", {
-          ...errorContext,
-          error_classification: "config_error",
-          severity: "critical",
+        handleServerError("WEBHOOK_CONFIG_ERROR", {
+          action: "webhookConfigError",
+          additionalData: {
+            ...errorContext,
+            error_classification: "config_error",
+          },
         });
         return createProblemResponse("INTERNAL_ERROR", {
           instance: "/api/webhooks/stripe",
@@ -359,11 +375,13 @@ export async function POST(request: NextRequest) {
     }
 
     // その他の予期しないエラー（最も重大として扱う）
-    logger.error("Unexpected error in webhook processing", {
-      ...errorContext,
-      error_classification: "system_error",
-      severity: "critical",
-      requires_investigation: true,
+    handleServerError("WEBHOOK_UNEXPECTED_ERROR", {
+      action: "webhookUnexpectedError",
+      additionalData: {
+        ...errorContext,
+        error_classification: "system_error",
+        requires_investigation: true,
+      },
     });
 
     // 失敗時はProblem Detailsで500を返し、Stripeにリトライを促す

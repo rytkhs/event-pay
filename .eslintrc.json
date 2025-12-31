@@ -147,26 +147,8 @@
     "no-new-func": "error",
     "no-script-url": "error",
     "@typescript-eslint/no-non-null-assertion": "error",
-    "no-restricted-syntax": [
-      "off",
-      {
-        "selector": "CallExpression[callee.object.name='logger'][callee.property.name=/^(info|warn|error)$/] > Literal[value='Webhook security event']",
-        "message": "セキュリティイベントは security-logger のヘルパー（logSecurityEvent/logWebhookSecurityEvent/logQstashSecurityEvent）を使用してください。"
-      }
-    ],
-    "no-restricted-imports": [
-      "off",
-      {
-        "paths": [],
-        "patterns": [
-          {
-            "group": ["@core/logging/app-logger"],
-            "importNames": ["logger"],
-            "message": "features/payments/services/webhook 内のセキュリティログは security-logger 経由で出力してください。"
-          }
-        ]
-      }
-    ],
+    "no-restricted-syntax": "off",
+    "no-restricted-imports": "off",
 
     // ===== Next.js & React ベストプラクティス =====
     "react/react-in-jsx-scope": "off", // Next.js 13+では不要
@@ -254,6 +236,26 @@
             "target": "./components/ui/**/*",
             "from": "./core/**/*",
             "message": "components/ui は core への依存を禁止します（UIの独立性を維持）"
+          },
+          {
+            "target": "./**/*.client.ts",
+            "from": "./**/*.server.ts",
+            "message": "クライアント専用ファイル(*.client.ts)からサーバー専用ファイル(*.server.ts)はインポートできません"
+          },
+          {
+            "target": "./components/**/*.tsx",
+            "from": "./**/*.server.ts",
+            "message": "UIコンポーネントからサーバー専用ファイル(*.server.ts)はインポートできません"
+          },
+          {
+            "target": "./features/**/components/**/*.tsx",
+            "from": "./**/*.server.ts",
+            "message": "Featureコンポーネントからサーバー専用ファイル(*.server.ts)はインポートできません"
+          },
+          {
+            "target": "./core/hooks/**/*",
+            "from": "./**/*.server.ts",
+            "message": "Custom Hooksからサーバー専用ファイル(*.server.ts)はインポートできません"
           }
         ]
       }

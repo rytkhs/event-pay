@@ -9,6 +9,7 @@ import { logger } from "@core/logging/app-logger";
 import { COOKIE_CONFIG, AUTH_CONFIG, getCookieConfig } from "@core/security";
 import { getSessionManager } from "@core/session/manager";
 import { getEnv } from "@core/utils/cloudflare-env";
+import { handleServerError } from "@core/utils/error-handler.server";
 
 import type { Database } from "@/types/database";
 
@@ -28,7 +29,14 @@ export class SupabaseClientFactory {
     if (!value) {
       const key = "NEXT_PUBLIC_SUPABASE_URL";
       const message = `Missing required environment variable: ${key}`;
-      logger.error(message, { tag: "envVarMissing", variable_name: key });
+      handleServerError("ENV_VAR_MISSING", {
+        category: "system",
+        action: "client_creation",
+        actorType: "system",
+        additionalData: {
+          variable_name: key,
+        },
+      });
       throw new Error(message);
     }
     return value;
@@ -40,7 +48,14 @@ export class SupabaseClientFactory {
     if (!value) {
       const key = "NEXT_PUBLIC_SUPABASE_ANON_KEY";
       const message = `Missing required environment variable: ${key}`;
-      logger.error(message, { tag: "envVarMissing", variable_name: key });
+      handleServerError("ENV_VAR_MISSING", {
+        category: "system",
+        action: "client_creation",
+        actorType: "system",
+        additionalData: {
+          variable_name: key,
+        },
+      });
       throw new Error(message);
     }
     return value;
@@ -118,9 +133,12 @@ export class SupabaseClientFactory {
     } catch (error) {
       // next/headersが利用できない場合（テスト環境など）は、空のcookieStore実装を提供
       logger.warn("next/headers not available, using empty cookie store", {
-        tag: "cookieStoreUnavailable",
+        category: "system",
+        action: "client_creation",
+        actor_type: "system",
         error_message: error instanceof Error ? error.message : String(error),
         environment: getEnv().NODE_ENV,
+        outcome: "failure",
       });
 
       cookieStore = {
@@ -194,10 +212,13 @@ export class SupabaseClientFactory {
       return { client, sessionValid };
     } catch (error) {
       logger.warn("Failed to check session validity", {
-        tag: "sessionValidityCheckFailed",
+        category: "system",
+        action: "session_validation",
+        actor_type: "system",
         error_name: error instanceof Error ? error.name : "Unknown",
         error_message: error instanceof Error ? error.message : String(error),
         context,
+        outcome: "failure",
       });
       return { client, sessionValid: false };
     }

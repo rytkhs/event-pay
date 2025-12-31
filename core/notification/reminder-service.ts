@@ -7,6 +7,7 @@ import { addDays } from "date-fns";
 
 import { logger } from "@core/logging/app-logger";
 import { getEnv } from "@core/utils/cloudflare-env";
+import { handleServerError } from "@core/utils/error-handler.server";
 import {
   getCurrentJstTime,
   formatUtcToJst,
@@ -103,6 +104,17 @@ export class ReminderService {
   }
 
   /**
+   * 構造化ロガー
+   */
+  private get logger() {
+    return logger.withContext({
+      category: "email",
+      action: "reminder_service",
+      actor_type: "system",
+    });
+  }
+
+  /**
    * すべてのリマインダーを送信
    * 各リマインダー種別を並列実行して効率化
    */
@@ -121,7 +133,7 @@ export class ReminderService {
    * 参加期限リマインダーを送信
    */
   async sendResponseDeadlineReminders(): Promise<ReminderSummary> {
-    logger.info("Starting response deadline reminders");
+    this.logger.info("Starting response deadline reminders", { outcome: "success" });
 
     try {
       // 翌日のJST範囲を取得
@@ -151,7 +163,14 @@ export class ReminderService {
         .is("events.canceled_at", null);
 
       if (error) {
-        logger.error("Failed to fetch response deadline targets", { error });
+        handleServerError("DATABASE_ERROR", {
+          category: "email",
+          action: "sendResponseDeadlineReminders",
+          actorType: "system",
+          additionalData: {
+            error: error.message,
+          },
+        });
         return {
           reminderType: "response_deadline",
           totalTargets: 0,
@@ -163,8 +182,9 @@ export class ReminderService {
 
       const typedTargets = targets as unknown as ResponseDeadlineTarget[];
 
-      logger.info("Response deadline targets fetched", {
+      this.logger.info("Response deadline targets fetched", {
         totalTargets: typedTargets.length,
+        outcome: "success",
       });
 
       // バッチ送信
@@ -183,7 +203,14 @@ export class ReminderService {
         })),
       };
     } catch (error) {
-      logger.error("Response deadline reminders failed", { error });
+      handleServerError("CRON_EXECUTION_ERROR", {
+        category: "email",
+        action: "sendResponseDeadlineReminders",
+        actorType: "system",
+        additionalData: {
+          error: error instanceof Error ? error.message : String(error),
+        },
+      });
       return {
         reminderType: "response_deadline",
         totalTargets: 0,
@@ -203,7 +230,7 @@ export class ReminderService {
    * 決済期限リマインダーを送信
    */
   async sendPaymentDeadlineReminders(): Promise<ReminderSummary> {
-    logger.info("Starting payment deadline reminders");
+    this.logger.info("Starting payment deadline reminders", { outcome: "success" });
 
     try {
       // 翌日のJST範囲を取得
@@ -247,7 +274,14 @@ export class ReminderService {
         .limit(1, { foreignTable: "payments" });
 
       if (error) {
-        logger.error("Failed to fetch payment deadline targets", { error });
+        handleServerError("DATABASE_ERROR", {
+          category: "email",
+          action: "sendPaymentDeadlineReminders",
+          actorType: "system",
+          additionalData: {
+            error: error.message,
+          },
+        });
         return {
           reminderType: "payment_deadline",
           totalTargets: 0,
@@ -259,8 +293,9 @@ export class ReminderService {
 
       const typedTargets = targets as unknown as PaymentDeadlineTarget[];
 
-      logger.info("Payment deadline targets fetched", {
+      this.logger.info("Payment deadline targets fetched", {
         totalTargets: typedTargets.length,
+        outcome: "success",
       });
 
       // バッチ送信
@@ -279,7 +314,14 @@ export class ReminderService {
         })),
       };
     } catch (error) {
-      logger.error("Payment deadline reminders failed", { error });
+      handleServerError("CRON_EXECUTION_ERROR", {
+        category: "email",
+        action: "sendPaymentDeadlineReminders",
+        actorType: "system",
+        additionalData: {
+          error: error instanceof Error ? error.message : String(error),
+        },
+      });
       return {
         reminderType: "payment_deadline",
         totalTargets: 0,
@@ -299,7 +341,7 @@ export class ReminderService {
    * イベント開催リマインダーを送信
    */
   async sendEventStartReminders(): Promise<ReminderSummary> {
-    logger.info("Starting event start reminders");
+    this.logger.info("Starting event start reminders", { outcome: "success" });
 
     try {
       // 翌日のJST範囲を取得
@@ -339,7 +381,14 @@ export class ReminderService {
         .limit(1, { foreignTable: "payments" });
 
       if (error) {
-        logger.error("Failed to fetch event start targets", { error });
+        handleServerError("DATABASE_ERROR", {
+          category: "email",
+          action: "sendEventStartReminders",
+          actorType: "system",
+          additionalData: {
+            error: error.message,
+          },
+        });
         return {
           reminderType: "event_start",
           totalTargets: 0,
@@ -351,8 +400,9 @@ export class ReminderService {
 
       const typedTargets = targets as unknown as EventStartTarget[];
 
-      logger.info("Event start targets fetched", {
+      this.logger.info("Event start targets fetched", {
         totalTargets: typedTargets.length,
+        outcome: "success",
       });
 
       // バッチ送信
@@ -371,7 +421,14 @@ export class ReminderService {
         })),
       };
     } catch (error) {
-      logger.error("Event start reminders failed", { error });
+      handleServerError("CRON_EXECUTION_ERROR", {
+        category: "email",
+        action: "sendEventStartReminders",
+        actorType: "system",
+        additionalData: {
+          error: error instanceof Error ? error.message : String(error),
+        },
+      });
       return {
         reminderType: "event_start",
         totalTargets: 0,
@@ -510,17 +567,23 @@ export class ReminderService {
         try {
           await sendFn(target);
           successCount++;
-          logger.info("Reminder sent successfully", {
+          this.logger.info("Reminder sent successfully", {
             attendanceId: target.id,
             eventId: target.events.id,
+            outcome: "success",
           });
         } catch (error) {
           const errorMessage = error instanceof Error ? error.message : String(error);
           failures.push({ target, error: errorMessage });
-          logger.error("Failed to send reminder", {
-            attendanceId: target.id,
-            eventId: target.events.id,
-            error: errorMessage,
+          handleServerError("EMAIL_SENDING_FAILED", {
+            category: "email",
+            action: "sendBatch",
+            actorType: "system",
+            additionalData: {
+              attendanceId: target.id,
+              eventId: target.events.id,
+              error: errorMessage,
+            },
           });
         }
       }

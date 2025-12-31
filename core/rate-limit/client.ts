@@ -20,8 +20,11 @@ export function getRedisClient(): Redis | null {
     }
   } catch (error) {
     logger.warn("Failed to initialize Upstash Redis client", {
-      tag: "rate_limit_store_init_failed",
+      category: "security",
+      action: "rate_limit_store_error",
+      actor_type: "system",
       error_message: error instanceof Error ? error.message : String(error),
+      outcome: "failure",
     });
   }
   return null;

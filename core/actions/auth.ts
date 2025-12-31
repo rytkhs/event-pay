@@ -19,6 +19,8 @@ import { logger } from "@core/logging/app-logger";
 import { sendSlackText } from "@core/notification/slack";
 import { enforceRateLimit, buildKey, POLICIES } from "@core/rate-limit/index";
 import { createClient } from "@core/supabase/server";
+import { waitUntil } from "@core/utils/cloudflare-ctx";
+import { handleServerError } from "@core/utils/error-handler.server";
 import { extractClientIdFromGaCookie } from "@core/utils/ga-cookie";
 import { getClientIPFromHeaders } from "@core/utils/ip-detection";
 import { formatUtcToJst } from "@core/utils/timezone";
@@ -163,7 +165,8 @@ export async function loginAction(formData: FormData): Promise<ActionResult<{ us
       }
     } catch (rateLimitError) {
       logger.warn("Rate limit check failed", {
-        tag: "rateLimitCheckFailed",
+        category: "security",
+        action: "rateLimitCheckFailed",
         error_name: rateLimitError instanceof Error ? rateLimitError.name : "Unknown",
         error_message:
           rateLimitError instanceof Error ? rateLimitError.message : String(rateLimitError),
@@ -201,10 +204,12 @@ export async function loginAction(formData: FormData): Promise<ActionResult<{ us
     const { data: signInData, error: signInError } = authResult as AuthResponse;
 
     if (signInError) {
-      logger.error("Login authentication failed", {
-        tag: "loginFailed",
-        error_message: (signInError as any)?.message ?? String(signInError),
-        sanitized_email: sanitizedEmail.replace(/(.)(.*)(@.*)/, "$1***$3"),
+      handleServerError(signInError, {
+        category: "authentication",
+        action: "loginFailed",
+        additionalData: {
+          sanitized_email: sanitizedEmail.replace(/(.)(.*)(@.*)/, "$1***$3"),
+        },
       });
 
       // ログイン失敗をアカウントロックアウトに記録
@@ -257,38 +262,41 @@ export async function loginAction(formData: FormData): Promise<ActionResult<{ us
     await AccountLockoutService.clearFailedAttempts(sanitizedEmail);
 
     // GA4: ログインイベントを送信（非同期、エラーは無視）
-    queueMicrotask(async () => {
-      try {
-        const { ga4Server } = await import("@core/analytics/ga4-server");
+    waitUntil(
+      (async () => {
+        try {
+          const { ga4Server } = await import("@core/analytics/ga4-server");
 
-        // _ga CookieからClient IDを取得
-        const cookieStore = await cookies();
-        const gaCookie = cookieStore.get("_ga")?.value;
-        const clientId = extractClientIdFromGaCookie(gaCookie);
+          // _ga CookieからClient IDを取得
+          const cookieStore = await cookies();
+          const gaCookie = cookieStore.get("_ga")?.value;
+          const clientId = extractClientIdFromGaCookie(gaCookie);
 
-        // ユーザーIDを取得（Client IDがない場合のフォールバック）
-        const userId = signInData?.user?.id;
+          // ユーザーIDを取得（Client IDがない場合のフォールバック）
+          const userId = signInData?.user?.id;
 
-        await ga4Server.sendEvent(
-          {
-            name: "login",
-            params: {
-              method: "password",
+          await ga4Server.sendEvent(
+            {
+              name: "login",
+              params: {
+                method: "password",
+              },
             },
-          },
-          clientId ?? undefined,
-          userId,
-          undefined, // sessionId（現時点では未設定）
-          undefined // engagementTimeMsec（現時点では未設定）
-        );
-      } catch (error) {
-        // GA4送信エラーはログインの成功に影響しない
-        logger.debug("[GA4] Failed to send login event", {
-          tag: "ga4LoginEventFailed",
-          error_message: error instanceof Error ? error.message : String(error),
-        });
-      }
-    });
+            clientId ?? undefined,
+            userId,
+            undefined, // sessionId（現時点では未設定）
+            undefined // engagementTimeMsec（現時点では未設定）
+          );
+        } catch (error) {
+          // GA4送信エラーはログインの成功に影響しない
+          logger.debug("[GA4] Failed to send login event", {
+            category: "system",
+            action: "ga4LoginEventFailed",
+            error_message: error instanceof Error ? error.message : String(error),
+          });
+        }
+      })()
+    );
 
     // ログイン成功（メール確認済み）
     return {
@@ -298,10 +306,12 @@ export async function loginAction(formData: FormData): Promise<ActionResult<{ us
       redirectUrl: "/dashboard",
     };
   } catch (error) {
-    logger.error("Login action error", {
-      tag: "loginActionError",
-      error_name: error instanceof Error ? error.name : "Unknown",
-      error_message: error instanceof Error ? error.message : String(error),
+    handleServerError("LOGIN_UNEXPECTED_ERROR", {
+      action: "loginActionError",
+      additionalData: {
+        error_name: error instanceof Error ? error.name : "Unknown",
+        error_message: error instanceof Error ? error.message : String(error),
+      },
     });
     // タイミング攻撃対策: エラー時も一定時間確保
     await TimingAttackProtection.addConstantDelay();
@@ -354,7 +364,8 @@ export async function registerAction(formData: FormData): Promise<ActionResult<{
       }
     } catch (rateLimitError) {
       logger.warn("Rate limit check failed during registration", {
-        tag: "rateLimitCheckFailed",
+        category: "security",
+        action: "rateLimitCheckFailed",
         error_name: rateLimitError instanceof Error ? rateLimitError.name : "Unknown",
         error_message:
           rateLimitError instanceof Error ? rateLimitError.message : String(rateLimitError),
@@ -388,10 +399,12 @@ export async function registerAction(formData: FormData): Promise<ActionResult<{
     const { data: signUpData, error: signUpError } = registrationResult as AuthResponse;
 
     if (signUpError) {
-      logger.error("User registration failed", {
-        tag: "registrationFailed",
-        error_message: (signUpError as any)?.message ?? String(signUpError),
-        sanitized_email: sanitizedEmail.replace(/(.)(.*)(@.*)/, "$1***$3"),
+      handleServerError(signUpError, {
+        category: "authentication",
+        action: "registrationFailed",
+        additionalData: {
+          sanitized_email: sanitizedEmail.replace(/(.)(.*)(@.*)/, "$1***$3"),
+        },
       });
 
       // ユーザー列挙攻撃対策: 詳細なエラー情報を隠す
@@ -420,63 +433,73 @@ export async function registerAction(formData: FormData): Promise<ActionResult<{
     // Database Triggerがpublic.usersプロファイルを自動作成
 
     // GA4: サインアップイベントを送信（非同期、エラーは無視）
-    queueMicrotask(async () => {
-      try {
-        const { ga4Server } = await import("@core/analytics/ga4-server");
+    waitUntil(
+      (async () => {
+        try {
+          const { ga4Server } = await import("@core/analytics/ga4-server");
 
-        // _ga CookieからClient IDを取得
-        const cookieStore = await cookies();
-        const gaCookie = cookieStore.get("_ga")?.value;
-        const clientId = extractClientIdFromGaCookie(gaCookie);
+          // _ga CookieからClient IDを取得
+          const cookieStore = await cookies();
+          const gaCookie = cookieStore.get("_ga")?.value;
+          const clientId = extractClientIdFromGaCookie(gaCookie);
 
-        // ユーザーIDを取得（Client IDがない場合のフォールバック）
-        const userId = signUpData?.user?.id;
+          // ユーザーIDを取得（Client IDがない場合のフォールバック）
+          const userId = signUpData?.user?.id;
 
-        await ga4Server.sendEvent(
-          {
-            name: "sign_up",
-            params: {
-              method: "password",
+          await ga4Server.sendEvent(
+            {
+              name: "sign_up",
+              params: {
+                method: "password",
+              },
             },
-          },
-          clientId ?? undefined,
-          userId,
-          undefined, // sessionId（現時点では未設定）
-          undefined // engagementTimeMsec（現時点では未設定）
-        );
-      } catch (error) {
-        logger.debug("[GA4] Failed to send sign_up event", {
-          tag: "ga4SignUpEventFailed",
-          error_message: error instanceof Error ? error.message : String(error),
-        });
-      }
-    });
+            clientId ?? undefined,
+            userId,
+            undefined, // sessionId（現時点では未設定）
+            undefined // engagementTimeMsec（現時点では未設定）
+          );
+        } catch (error) {
+          logger.debug("[GA4] Failed to send sign_up event", {
+            category: "system",
+            action: "ga4SignUpEventFailed",
+            error_message: error instanceof Error ? error.message : String(error),
+          });
+        }
+      })()
+    );
 
     // Slack通知（新規アカウント作成）
-    queueMicrotask(async () => {
-      try {
-        const timestamp = new Date().toISOString();
-        const jstStr = formatUtcToJst(new Date(), "yyyy-MM-dd HH:mm 'JST'");
+    waitUntil(
+      (async () => {
+        try {
+          const timestamp = new Date().toISOString();
+          const jstStr = formatUtcToJst(new Date(), "yyyy-MM-dd HH:mm 'JST'");
 
-        const slackText = `[Account Created]
+          const slackText = `[Account Created]
 ユーザー: ${sanitizedName}
 登録時刻: ${jstStr} (${timestamp})`;
 
-        const slackResult = await sendSlackText(slackText);
+          const slackResult = await sendSlackText(slackText);
 
-        if (!slackResult.success) {
-          logger.warn("Account creation Slack notification failed", {
-            tag: "accountCreationSlackFailed",
-            error: slackResult.error,
+          if (!slackResult.success) {
+            logger.warn("Account creation Slack notification failed", {
+              category: "system",
+              action: "accountCreationSlackFailed",
+              error: slackResult.error,
+            });
+          }
+        } catch (error) {
+          handleServerError("ADMIN_ALERT_FAILED", {
+            category: "system",
+            action: "accountCreationSlackException",
+            actorType: "system",
+            additionalData: {
+              error_message: error instanceof Error ? error.message : String(error),
+            },
           });
         }
-      } catch (error) {
-        logger.error("Account creation Slack notification exception", {
-          tag: "accountCreationSlackException",
-          error_message: error instanceof Error ? error.message : String(error),
-        });
-      }
-    });
+      })()
+    );
 
     // 登録成功（メール確認が必要）
     return {
@@ -487,10 +510,12 @@ export async function registerAction(formData: FormData): Promise<ActionResult<{
       redirectUrl: `/verify-otp?email=${encodeURIComponent(sanitizedEmail)}`,
     };
   } catch (error) {
-    logger.error("Register action error", {
-      tag: "registerActionError",
-      error_name: error instanceof Error ? error.name : "Unknown",
-      error_message: error instanceof Error ? error.message : String(error),
+    handleServerError("REGISTRATION_UNEXPECTED_ERROR", {
+      action: "registerActionError",
+      additionalData: {
+        error_name: error instanceof Error ? error.name : "Unknown",
+        error_message: error instanceof Error ? error.message : String(error),
+      },
     });
     await TimingAttackProtection.addConstantDelay();
     return {
@@ -526,10 +551,12 @@ export async function verifyOtpAction(formData: FormData): Promise<ActionResult>
     });
 
     if (verifiedError) {
-      logger.error("OTP verification failed", {
-        tag: "otpVerificationFailed",
-        error_message: (verifiedError as any)?.message ?? String(verifiedError),
-        sanitized_email: email.replace(/(.)(.*)(@.*)/, "$1***$3"),
+      handleServerError(verifiedError, {
+        category: "authentication",
+        action: "otpVerificationFailed",
+        additionalData: {
+          sanitized_email: email.replace(/(.)(.*)(@.*)/, "$1***$3"),
+        },
       });
 
       let errorMessage = "確認コードが正しくありません";
@@ -569,10 +596,12 @@ export async function verifyOtpAction(formData: FormData): Promise<ActionResult>
       redirectUrl,
     };
   } catch (error) {
-    logger.error("Verify OTP action error", {
-      tag: "verifyOtpActionError",
-      error_name: error instanceof Error ? error.name : "Unknown",
-      error_message: error instanceof Error ? error.message : String(error),
+    handleServerError("OTP_UNEXPECTED_ERROR", {
+      action: "verifyOtpActionError",
+      additionalData: {
+        error_name: error instanceof Error ? error.name : "Unknown",
+        error_message: error instanceof Error ? error.message : String(error),
+      },
     });
     return {
       success: false,
@@ -614,7 +643,8 @@ export async function resendOtpAction(formData: FormData): Promise<ActionResult>
       }
     } catch (rateLimitError) {
       logger.warn("Rate limit check failed during email resend", {
-        tag: "rateLimitCheckFailed",
+        category: "security",
+        action: "rateLimitCheckFailed",
         error_name: rateLimitError instanceof Error ? rateLimitError.name : "Unknown",
         error_message:
           rateLimitError instanceof Error ? rateLimitError.message : String(rateLimitError),
@@ -643,10 +673,12 @@ export async function resendOtpAction(formData: FormData): Promise<ActionResult>
     const { error } = result;
 
     if (error) {
-      logger.error("Resend OTP failed", {
-        tag: "resendOtpFailed",
-        error_message: (error as any)?.message ?? String(error),
-        sanitized_email: email.replace(/(.)(.*)(@.*)/, "$1***$3"),
+      handleServerError(error, {
+        category: "authentication",
+        action: "resendOtpFailed",
+        additionalData: {
+          sanitized_email: email.replace(/(.)(.*)(@.*)/, "$1***$3"),
+        },
       });
 
       if ((error as any)?.message?.includes("rate limit")) {
@@ -667,10 +699,12 @@ export async function resendOtpAction(formData: FormData): Promise<ActionResult>
       message: "確認コードを再送信しました",
     };
   } catch (error) {
-    logger.error("Resend OTP action error", {
-      tag: "resendOtpActionError",
-      error_name: error instanceof Error ? error.name : "Unknown",
-      error_message: error instanceof Error ? error.message : String(error),
+    handleServerError("RESEND_OTP_UNEXPECTED_ERROR", {
+      action: "resendOtpActionError",
+      additionalData: {
+        error_name: error instanceof Error ? error.name : "Unknown",
+        error_message: error instanceof Error ? error.message : String(error),
+      },
     });
     return {
       success: false,
@@ -728,7 +762,8 @@ export async function resetPasswordAction(formData: FormData): Promise<ActionRes
       }
     } catch (rateLimitError) {
       logger.warn("Rate limit check failed during password reset", {
-        tag: "rateLimitCheckFailed",
+        category: "security",
+        action: "rateLimitCheckFailed",
         error_name: rateLimitError instanceof Error ? rateLimitError.name : "Unknown",
         error_message:
           rateLimitError instanceof Error ? rateLimitError.message : String(rateLimitError),
@@ -745,11 +780,12 @@ export async function resetPasswordAction(formData: FormData): Promise<ActionRes
     // セキュリティ上、成功・失敗に関わらず同じメッセージを返す（ユーザー列挙攻撃対策）
     // エラーがあってもログに記録するだけで、ユーザーには同じメッセージを返す
     if (resetResult && (resetResult as any).error) {
-      logger.error("Reset password OTP failed", {
-        tag: "resetPasswordOtpFailed",
-        error_message:
-          ((resetResult as any).error as any)?.message ?? String((resetResult as any).error),
-        sanitized_email: email.replace(/(.)(.*)(@.*)/, "$1***$3"),
+      handleServerError((resetResult as any).error, {
+        category: "authentication",
+        action: "resetPasswordOtpFailed",
+        additionalData: {
+          sanitized_email: email.replace(/(.)(.*)(@.*)/, "$1***$3"),
+        },
       });
     }
 
@@ -761,10 +797,12 @@ export async function resetPasswordAction(formData: FormData): Promise<ActionRes
       redirectUrl: `/verify-otp?email=${encodeURIComponent(email)}&type=recovery`,
     };
   } catch (error) {
-    logger.error("Reset password action error", {
-      tag: "resetPasswordActionError",
-      error_name: (error as any)?.name ?? "Unknown",
-      error_message: (error as any)?.message ?? String(error),
+    handleServerError("RESET_PASSWORD_UNEXPECTED_ERROR", {
+      action: "resetPasswordActionError",
+      additionalData: {
+        error_name: error instanceof Error ? error.name : "Unknown",
+        error_message: error instanceof Error ? error.message : String(error),
+      },
     });
     await TimingAttackProtection.addConstantDelay();
     return {
@@ -803,14 +841,15 @@ export async function updatePasswordAction(formData: FormData): Promise<ActionRe
       };
     }
 
-    const { error } = await supabase.auth.updateUser({
+    const { error: updateError } = await supabase.auth.updateUser({
       password,
     });
 
-    if (error) {
-      logger.error("Update password failed", {
-        tag: "updatePasswordFailed",
-        error_message: (error as any)?.message ?? String(error),
+    if (updateError) {
+      handleServerError(updateError, {
+        category: "authentication",
+        action: "updatePasswordFailed",
+        actorType: "user",
       });
       return {
         success: false,
@@ -824,10 +863,12 @@ export async function updatePasswordAction(formData: FormData): Promise<ActionRe
       redirectUrl: "/dashboard",
     };
   } catch (error) {
-    logger.error("Update password action error", {
-      tag: "updatePasswordActionError",
-      error_name: error instanceof Error ? error.name : "Unknown",
-      error_message: error instanceof Error ? error.message : String(error),
+    handleServerError("UPDATE_PASSWORD_UNEXPECTED_ERROR", {
+      action: "updatePasswordActionError",
+      additionalData: {
+        error_name: error instanceof Error ? error.name : "Unknown",
+        error_message: error instanceof Error ? error.message : String(error),
+      },
     });
     return {
       success: false,
@@ -859,43 +900,49 @@ export async function logoutAction(): Promise<ActionResult> {
 
     if (error) {
       logger.warn("Logout error (non-critical)", {
-        tag: "logoutError",
+        category: "authentication",
+        action: "logoutError",
         error_message: error.message,
       });
     }
 
     // GA4: ログアウトイベントを送信（非同期、エラーは無視）
-    queueMicrotask(async () => {
-      try {
-        const { ga4Server } = await import("@core/analytics/ga4-server");
+    waitUntil(
+      (async () => {
+        try {
+          const { ga4Server } = await import("@core/analytics/ga4-server");
 
-        // _ga CookieからClient IDを取得
-        const cookieStore = await cookies();
-        const gaCookie = cookieStore.get("_ga")?.value;
-        const clientId = extractClientIdFromGaCookie(gaCookie);
+          // _ga CookieからClient IDを取得
+          const cookieStore = await cookies();
+          const gaCookie = cookieStore.get("_ga")?.value;
+          const clientId = extractClientIdFromGaCookie(gaCookie);
 
-        await ga4Server.sendEvent(
-          {
-            name: "logout",
-            params: {},
-          },
-          clientId ?? undefined,
-          userId,
-          undefined, // sessionId（現時点では未設定）
-          undefined // engagementTimeMsec（現時点では未設定）
-        );
-      } catch (error) {
-        logger.debug("[GA4] Failed to send logout event", {
-          tag: "ga4LogoutEventFailed",
-          error_message: error instanceof Error ? error.message : String(error),
-        });
-      }
-    });
+          await ga4Server.sendEvent(
+            {
+              name: "logout",
+              params: {},
+            },
+            clientId ?? undefined,
+            userId,
+            undefined, // sessionId（現時点では未設定）
+            undefined // engagementTimeMsec（現時点では未設定）
+          );
+        } catch (error) {
+          logger.debug("[GA4] Failed to send logout event", {
+            category: "system",
+            action: "ga4LogoutEventFailed",
+            error_message: error instanceof Error ? error.message : String(error),
+          });
+        }
+      })()
+    );
   } catch (error) {
-    logger.error("Logout action error", {
-      tag: "logoutActionError",
-      error_name: error instanceof Error ? error.name : "Unknown",
-      error_message: error instanceof Error ? error.message : String(error),
+    handleServerError("LOGOUT_UNEXPECTED_ERROR", {
+      action: "logoutActionError",
+      additionalData: {
+        error_name: error instanceof Error ? error.name : "Unknown",
+        error_message: error instanceof Error ? error.message : String(error),
+      },
     });
     await TimingAttackProtection.addConstantDelay();
   }

@@ -5,6 +5,7 @@ import "server-only";
 import { AUTH_CONFIG } from "@core/constants/auth-config";
 import { logger } from "@core/logging/app-logger";
 import { getEnv } from "@core/utils/cloudflare-env";
+import { handleServerError } from "@core/utils/error-handler.server";
 
 interface AuthResult {
   isValid: boolean;
@@ -97,21 +98,34 @@ export function logCronActivity(
   _details?: Record<string, unknown>
 ): void {
   // _details は任意のメタ情報を付加するためのオブジェクト
-  const fields = { tag: "cronActivity", ...(_details || {}) } as Record<string, unknown>;
+  const fields = {
+    category: "system",
+    action: "cron_activity",
+    actor_type: "system",
+    outcome: (_type === "error" ? "failure" : "success") as any,
+    ...(_details || {}),
+  } as const;
+
+  if (_type === "error") {
+    handleServerError("CRON_EXECUTION_ERROR", {
+      category: "system",
+      action: "cron_activity",
+      actorType: "system",
+      additionalData: {
+        message: _message,
+        ...(_details || {}),
+      },
+    });
+    return;
+  }
 
   switch (_type) {
     case "success":
-      // 成功も info 扱いで記録
-      logger.info(_message, fields);
-      break;
     case "info":
       logger.info(_message, fields);
       break;
     case "warning":
       logger.warn(_message, fields);
-      break;
-    case "error":
-      logger.error(_message, fields);
       break;
     default:
       logger.debug(_message, fields);
