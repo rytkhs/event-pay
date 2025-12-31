@@ -48,7 +48,7 @@ export default function SettingsLayout({ children }: SettingsLayoutProps) {
   if (isSettingsRoot) {
     // 設定メニュー画面
     return (
-      <div className="container mx-auto py-4 px-4 max-w-4xl">
+      <div className="container mx-auto py-2 px-4 max-w-4xl">
         {/* 戻るボタン（モバイル重視） */}
         <div className="mb-4">
           <Button variant="ghost" size="sm" asChild className="text-muted-foreground">

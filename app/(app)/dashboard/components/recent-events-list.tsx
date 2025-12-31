@@ -11,7 +11,6 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-
 // 日本語通貨フォーマット
 function formatCurrency(amount: number): string {
   return new Intl.NumberFormat("ja-JP", {
@@ -119,7 +118,6 @@ export async function RecentEventsList() {
                 capacity > 0
                   ? Math.min(Math.round((event.attendances_count / capacity) * 100), 100)
                   : 0;
-
               return (
                 <Link
                   key={event.id}
