@@ -88,17 +88,6 @@ export function InviteLinkCard({ eventId, initialInviteToken }: InviteLinkCardPr
     }
   }, [inviteUrl, copyToClipboard, toast]);
 
-  const handleShareLine = () => {
-    if (inviteUrl) {
-      ga4Client.sendEvent({
-        name: "invite_shared",
-        params: { event_id: eventId },
-      });
-      const lineShareUrl = `https://social-plugins.line.me/lineit/share?url=${encodeURIComponent(inviteUrl)}`;
-      window.open(lineShareUrl, "_blank", "noopener,noreferrer");
-    }
-  };
-
   const handleNativeShare = () => {
     if (typeof navigator !== "undefined" && navigator.share && inviteUrl) {
       ga4Client.sendEvent({
@@ -132,10 +121,6 @@ export function InviteLinkCard({ eventId, initialInviteToken }: InviteLinkCardPr
     if (inviteUrl) {
       window.open(inviteUrl, "_blank");
     }
-  };
-
-  const handleUrlClick = () => {
-    handleCopy();
   };
 
   const handleUrlKeyDown = (e: React.KeyboardEvent<HTMLButtonElement>) => {
@@ -189,99 +174,84 @@ export function InviteLinkCard({ eventId, initialInviteToken }: InviteLinkCardPr
       <CardContent className="p-5">
         <div className="space-y-4">
           {/* ヘッダー */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="p-2.5 bg-blue-100 rounded-xl">
-                <Link className="h-5 w-5 text-blue-600" />
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2.5">
+              <div className="p-2 bg-blue-100 rounded-lg">
+                <Link className="h-4 w-4 text-blue-600" />
               </div>
               <div>
-                <h3 className="font-bold text-foreground">招待リンク</h3>
-                <p className="text-xs text-muted-foreground">リンクを共有して参加者を招待</p>
+                <h3 className="font-bold text-sm text-foreground leading-tight">招待リンク</h3>
+                <p className="text-[11px] text-muted-foreground">参加者をイベントに招待</p>
               </div>
             </div>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                  <MoreVertical className="h-4 w-4" />
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent align="end" className="w-48 p-2">
-                <div className="space-y-1">
+            <div className="flex items-center gap-1">
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-muted-foreground">
+                    <MoreVertical className="h-4 w-4" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent align="end" className="w-44 p-1">
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="w-full justify-start"
+                    className="w-full justify-start text-xs h-8"
                     onClick={handlePreview}
                   >
-                    <ExternalLink className="h-4 w-4 mr-2" />
+                    <ExternalLink className="h-3.5 w-3.5 mr-2" />
                     プレビュー
                   </Button>
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="w-full justify-start text-orange-600 hover:text-orange-700 hover:bg-orange-50"
+                    className="w-full justify-start text-xs h-8 text-orange-600 hover:text-orange-700 hover:bg-orange-50"
                     onClick={handleRegenerate}
                     disabled={isGenerating}
                   >
-                    <RefreshCw className={`h-4 w-4 mr-2 ${isGenerating ? "animate-spin" : ""}`} />
+                    <RefreshCw
+                      className={`h-3.5 w-3.5 mr-2 ${isGenerating ? "animate-spin" : ""}`}
+                    />
                     リンクを再生成
                   </Button>
-                </div>
-              </PopoverContent>
-            </Popover>
+                </PopoverContent>
+              </Popover>
+            </div>
           </div>
 
-          {/* URL表示（ボタンとして実装してアクセシビリティ対応） */}
-          <button
-            type="button"
-            className="flex items-center gap-2 px-3 py-2.5 bg-white rounded-lg border border-blue-100 cursor-pointer hover:bg-blue-50/50 transition-colors w-full text-left"
-            onClick={handleUrlClick}
-            onKeyDown={handleUrlKeyDown}
-          >
-            <code className="flex-1 text-xs text-muted-foreground truncate font-mono">
-              {inviteUrl}
-            </code>
-            <span className="h-7 px-2 flex-shrink-0 inline-flex items-center">
-              {isCopied ? (
-                <Check className="h-4 w-4 text-green-600" />
-              ) : (
-                <Copy className="h-4 w-4 text-muted-foreground" />
-              )}
-            </span>
-          </button>
-
-          {/* アクションボタン */}
-          <div className="grid grid-cols-3 gap-2">
-            <Button
+          {/* URL表示 & アクション */}
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              className="flex-1 flex items-center justify-between gap-2 pl-3 pr-2 py-2 bg-white rounded-xl border border-blue-100 hover:border-blue-200 hover:bg-white transition-all group overflow-hidden shadow-sm"
               onClick={handleCopy}
-              variant="outline"
-              className="h-11 bg-white hover:bg-gray-50 border-gray-200"
+              onKeyDown={handleUrlKeyDown}
             >
-              {isCopied ? (
-                <Check className="h-4 w-4 text-green-600" />
-              ) : (
-                <Copy className="h-4 w-4" />
-              )}
-              <span className="ml-1.5 text-sm">コピー</span>
-            </Button>
-
-            <Button
-              onClick={handleShareLine}
-              className="h-11 bg-[#06C755] hover:bg-[#05b34d] text-white border-0"
-            >
-              <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M19.365 9.863c.349 0 .63.285.63.631 0 .345-.281.63-.63.63H17.61v1.125h1.755c.349 0 .63.283.63.63 0 .344-.281.629-.63.629h-2.386c-.345 0-.627-.285-.627-.629V8.108c0-.345.282-.63.627-.63h2.386c.349 0 .63.285.63.63 0 .349-.281.63-.63.63H17.61v1.125h1.755zm-3.855 3.016c0 .27-.174.51-.432.596-.064.021-.133.031-.199.031-.211 0-.391-.09-.51-.25l-2.443-3.317v2.94c0 .344-.279.629-.631.629-.346 0-.626-.285-.626-.629V8.108c0-.27.173-.51.43-.595.06-.023.136-.033.194-.033.195 0 .375.104.495.254l2.462 3.33V8.108c0-.345.282-.63.63-.63.345 0 .63.285.63.63v4.771zm-5.741 0c0 .344-.282.629-.631.629-.345 0-.627-.285-.627-.629V8.108c0-.345.282-.63.627-.63.349 0 .631.285.631.63v4.771zm-2.466.629H4.917c-.345 0-.63-.285-.63-.629V8.108c0-.345.285-.63.63-.63.348 0 .63.285.63.63v4.141h1.756c.348 0 .629.283.629.63 0 .344-.282.629-.629.629M24 10.314C24 4.943 18.615.572 12 .572S0 4.943 0 10.314c0 4.811 4.27 8.842 10.035 9.608.391.082.923.258 1.058.59.12.301.079.766.038 1.08l-.164 1.02c-.045.301-.24 1.186 1.049.645 1.291-.539 6.916-4.078 9.436-6.975C23.176 14.393 24 12.458 24 10.314" />
-              </svg>
-              <span className="ml-1.5 text-sm">LINE</span>
-            </Button>
+              <code className="flex-1 text-[11px] text-muted-foreground truncate font-mono text-left">
+                {inviteUrl}
+              </code>
+              <div className="shrink-0 flex items-center gap-1 py-1 px-2 rounded-lg bg-blue-50 text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-colors">
+                {isCopied ? (
+                  <>
+                    <Check className="h-3 w-3" />
+                    <span className="text-[9px] font-bold">COPIED</span>
+                  </>
+                ) : (
+                  <>
+                    <Copy className="h-3 w-3" />
+                    <span className="text-[9px] font-bold uppercase">Copy</span>
+                  </>
+                )}
+              </div>
+            </button>
 
             <Button
               onClick={handleNativeShare}
               variant="outline"
-              className="h-11 bg-white hover:bg-gray-50 border-gray-200"
+              size="icon"
+              className="shrink-0 h-10 w-10 bg-white border-blue-100 text-blue-600 hover:bg-blue-600 hover:text-white hover:border-blue-600 rounded-xl shadow-sm transition-all"
+              title="リンクを共有"
             >
-              <Share2 className="h-4 w-4" />
-              <span className="ml-1.5 text-sm">共有</span>
+              <Share2 className="h-5 w-5" />
             </Button>
           </div>
         </div>
