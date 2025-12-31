@@ -11,7 +11,7 @@ import { logger } from "@core/logging/app-logger";
 import { getStripe, generateIdempotencyKey } from "@core/stripe/client";
 import { convertStripeError } from "@core/stripe/error-handler";
 import { getEnv } from "@core/utils/cloudflare-env";
-import { handleServerError } from "@core/utils/error-handler";
+import { handleServerError } from "@core/utils/error-handler.server";
 
 import { Database } from "@/types/database";
 

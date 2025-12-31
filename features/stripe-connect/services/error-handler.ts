@@ -7,7 +7,7 @@ import Stripe from "stripe";
 
 import { logger, type LogLevel } from "@core/logging/app-logger";
 import { sendSlackText } from "@core/notification/slack";
-import { handleServerError } from "@core/utils/error-handler";
+import { handleServerError } from "@core/utils/error-handler.server";
 
 import {
   ERROR_HANDLING_BY_TYPE,

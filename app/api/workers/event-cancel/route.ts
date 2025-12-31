@@ -12,7 +12,7 @@ import { SecureSupabaseClientFactory } from "@core/security/secure-client-factor
 import { AdminReason } from "@core/security/secure-client-factory.types";
 import { logSecurityEvent } from "@core/security/security-logger";
 import { getEnv } from "@core/utils/cloudflare-env";
-import { handleServerError } from "@core/utils/error-handler";
+import { handleServerError } from "@core/utils/error-handler.server";
 import { getClientIP } from "@core/utils/ip-detection";
 
 // 署名検証用Receiver

@@ -13,7 +13,7 @@ import {
   type ServerActionResult,
 } from "@core/types/server-actions";
 import { deriveEventStatus } from "@core/utils/derive-event-status";
-import { handleServerError } from "@core/utils/error-handler";
+import { handleServerError } from "@core/utils/error-handler.server";
 import { validateGuestToken } from "@core/utils/guest-token";
 import { canCreateStripeSession } from "@core/validation/payment-eligibility";
 

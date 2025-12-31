@@ -5,7 +5,7 @@
  */
 
 import { getStripeConnectPort, type StripeAccountStatus } from "@core/ports/stripe-connect";
-import { handleServerError } from "@core/utils/error-handler";
+import { handleServerError } from "@core/utils/error-handler.server";
 
 // 型エイリアス（後方互換性のため）
 export type StripeAccountStatusLike = StripeAccountStatus;

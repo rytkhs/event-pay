@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 
 import { logger } from "@core/logging/app-logger";
 import { createClient } from "@core/supabase/server";
-import { handleServerError } from "@core/utils/error-handler";
+import { handleServerError } from "@core/utils/error-handler.server";
 import { isNextRedirectError } from "@core/utils/next";
 
 import { createUserStripeConnectService } from "../services";

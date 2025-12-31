@@ -18,7 +18,7 @@ import {
   FieldRestrictionMap,
 } from "@core/domain/event-edit-restrictions";
 import { logger } from "@core/logging/app-logger";
-import { handleClientError } from "@core/utils/error-handler";
+import { handleClientError } from "@core/utils/error-handler.client";
 // =============================================================================
 // Hook Types - フック専用型定義
 // =============================================================================

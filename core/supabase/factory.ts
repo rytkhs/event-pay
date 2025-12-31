@@ -9,7 +9,7 @@ import { logger } from "@core/logging/app-logger";
 import { COOKIE_CONFIG, AUTH_CONFIG, getCookieConfig } from "@core/security";
 import { getSessionManager } from "@core/session/manager";
 import { getEnv } from "@core/utils/cloudflare-env";
-import { handleServerError } from "@core/utils/error-handler";
+import { handleServerError } from "@core/utils/error-handler.server";
 
 import type { Database } from "@/types/database";
 

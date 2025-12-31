@@ -1,19 +1,14 @@
 /**
- * EventPay エラーハンドリングユーティリティ
- * 統一的なエラーハンドリングとユーザーフレンドリーなメッセージ変換
+ * EventPay エラー詳細定義と共通ユーティリティ
+ * クライアント/サーバー両方で使用可能な純粋なTypeScriptコード
  */
-
-import * as Sentry from "@sentry/cloudflare";
-
-import { logger, type LogLevel, type LogCategory } from "@core/logging/app-logger";
-import { sendSlackText } from "@core/notification/slack";
-import { waitUntil } from "@core/utils/cloudflare-ctx";
 
 import type { Database } from "@/types/database";
 
 /** DB enum から型を取得 */
 type ActorType = Database["public"]["Enums"]["actor_type_enum"];
 type LogOutcome = Database["public"]["Enums"]["log_outcome_enum"];
+type LogCategory = Database["public"]["Enums"]["log_category_enum"];
 
 export interface ErrorDetails {
   code: string;
@@ -45,7 +40,7 @@ export interface ErrorContext {
 /**
  * エラーコードとユーザーメッセージのマッピング
  */
-const ERROR_MAPPINGS: Record<string, Omit<ErrorDetails, "code">> = {
+export const ERROR_MAPPINGS: Record<string, Omit<ErrorDetails, "code">> = {
   // 招待トークン関連エラー
   INVALID_TOKEN: {
     message: "Invalid invite token provided",
@@ -730,80 +725,6 @@ export function getErrorDetails(code: string): ErrorDetails {
 }
 
 /**
- * 通知が必要なエラーをSentry/Slackへ送信
- * @param error エラー詳細
- * @param context エラーコンテキスト
- */
-export async function notifyError(error: ErrorDetails, context?: ErrorContext): Promise<void> {
-  if (!error.shouldAlert) return;
-
-  // Sentry へ送信
-  try {
-    Sentry.captureMessage(error.message, {
-      level: error.severity === "critical" ? "fatal" : "error",
-      tags: {
-        error_code: error.code,
-        severity: error.severity,
-        action: context?.action || "unknown",
-      },
-      extra: {
-        userMessage: error.userMessage,
-        userId: context?.userId,
-        eventId: context?.eventId,
-        ...context?.additionalData,
-      },
-    });
-  } catch (sentryError) {
-    // Sentry 送信失敗はログに記録するが、処理は継続
-    // eslint-disable-next-line no-console
-    console.error("[notifyError] Sentry send failed:", sentryError);
-  }
-
-  // critical レベルは Slack にも即時通知
-  if (error.severity === "critical") {
-    await sendSlackText(
-      `🚨 [CRITICAL] ${error.code}\n${error.message}\nAction: ${context?.action || "unknown"}`
-    );
-  }
-}
-
-/**
- * エラーをログに記録
- * @param error エラー詳細
- * @param context エラーコンテキスト
- */
-export function logError(error: ErrorDetails, context?: ErrorContext): void {
-  // ログ処理（shouldLog が true の場合のみ）
-  if (error.shouldLog) {
-    const logLevel: LogLevel =
-      error.severity === "high" || error.severity === "critical" ? "error" : "warn";
-
-    const fields = {
-      category: context?.category ?? "system",
-      action: context?.action ?? "error_handling",
-      // actorType: 呼び出し側から指定可能、デフォルトは "system"
-      actor_type: context?.actorType ?? "system",
-      error_code: error.code,
-      severity: error.severity,
-      user_id: context?.userId,
-      event_id: context?.eventId,
-      // outcome: エラーログは基本的に "failure"、呼び出し側から上書き可能
-      outcome: context?.outcome ?? "failure",
-      ...context?.additionalData,
-    } as const;
-
-    if (logLevel === "error") {
-      logger.error(error.message, fields);
-    } else {
-      logger.warn(error.message, fields);
-    }
-  }
-
-  // 通知処理（shouldLog とは独立して実行）
-  waitUntil(notifyError(error, context));
-}
-
-/**
  * エラーからユーザーフレンドリーなメッセージを取得
  * @param error エラーオブジェクト
  * @param fallbackMessage フォールバックメッセージ
@@ -894,40 +815,6 @@ export async function handleApiError(response: Response): Promise<ErrorDetails> 
 }
 
 /**
- * クライアントサイドエラーハンドラー
- * @param error エラー
- * @param context エラーコンテキスト
- * @returns 処理されたエラー詳細
- */
-export function handleClientError(error: unknown, context?: ErrorContext): ErrorDetails {
-  let errorDetails: ErrorDetails;
-
-  if (error instanceof TypeError && error.message.includes("fetch")) {
-    errorDetails = getErrorDetails("NETWORK_ERROR");
-  } else if (typeof error === "string") {
-    errorDetails = getErrorDetails(error);
-  } else if (error && typeof error === "object" && "code" in error) {
-    errorDetails = getErrorDetails(error.code as string);
-  } else {
-    errorDetails = getErrorDetails("UNKNOWN_ERROR");
-  }
-
-  // 重要度の上書きがあれば適用
-  if (context?.severity) {
-    errorDetails.severity = context.severity;
-    // 重要度が high 以上に引き上げられた場合は、明示的な指定がない限りアラート対象にする
-    if (context.severity === "high" || context.severity === "critical") {
-      errorDetails.shouldAlert = true;
-    }
-  }
-
-  // エラーをログに記録
-  logError(errorDetails, context);
-
-  return errorDetails;
-}
-
-/**
  * エラーが再試行可能かどうかを判定
  * @param error エラー詳細
  * @returns 再試行可能かどうか
@@ -945,12 +832,9 @@ export function getErrorSeverity(error: ErrorDetails): "low" | "medium" | "high"
   return error.severity;
 }
 
-// ============================================================================
-// サーバ側統合ハンドラ
-// ============================================================================
-
 /**
- * 各種エラーを ErrorDetails に正規化
+ * 任意のエラーを ErrorDetails に正規化（共通ロジック）
+ * クライアント/サーバー両方で使用可能
  * @param error 任意のエラーオブジェクト
  * @returns 正規化されたエラー詳細
  */
@@ -983,26 +867,4 @@ export function normalizeToErrorDetails(error: unknown): ErrorDetails {
   }
 
   return getErrorDetails("UNKNOWN_ERROR");
-}
-
-/**
- * サーバ側エラーを正規化・ログ・通知する統合ハンドラ
- * @param error 任意のエラーオブジェクト
- * @param context エラーコンテキスト
- * @returns 正規化されたエラー詳細
- */
-export function handleServerError(error: unknown, context?: ErrorContext): ErrorDetails {
-  const errorDetails = normalizeToErrorDetails(error);
-
-  // 重要度の上書きがあれば適用
-  if (context?.severity) {
-    errorDetails.severity = context.severity;
-    // 重要度が high 以上に引き上げられた場合は、明示的な指定がない限りアラート対象にする
-    if (context.severity === "high" || context.severity === "critical") {
-      errorDetails.shouldAlert = true;
-    }
-  }
-
-  logError(errorDetails, context);
-  return errorDetails;
 }

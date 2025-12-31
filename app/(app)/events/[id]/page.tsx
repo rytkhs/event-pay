@@ -6,7 +6,7 @@ export const dynamic = "force-dynamic";
 
 import { getCurrentUser } from "@core/auth/auth-utils";
 import { createCachedActions } from "@core/utils/cache-helpers";
-import { handleServerError } from "@core/utils/error-handler";
+import { handleServerError } from "@core/utils/error-handler.server";
 
 import {
   getEventDetailAction,

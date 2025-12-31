@@ -25,7 +25,7 @@ import {
 } from "@core/security/stripe-ip-allowlist";
 import { getStripe, getConnectWebhookSecrets } from "@core/stripe/client";
 import { getEnv } from "@core/utils/cloudflare-env";
-import { handleServerError } from "@core/utils/error-handler";
+import { handleServerError } from "@core/utils/error-handler.server";
 import { getClientIP } from "@core/utils/ip-detection";
 
 import { StripeWebhookSignatureVerifier } from "@features/payments/services/webhook/webhook-signature-verifier";

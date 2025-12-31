@@ -8,7 +8,7 @@
 import "server-only";
 
 import { logger } from "@core/logging/app-logger";
-import { handleServerError } from "@core/utils/error-handler";
+import { handleServerError } from "@core/utils/error-handler.server";
 
 import { getGA4Config } from "./config";
 import type { GA4Event } from "./event-types";

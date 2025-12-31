@@ -4,7 +4,7 @@
  */
 
 import { logger } from "@core/logging/app-logger";
-import { handleServerError } from "@core/utils/error-handler";
+import { handleServerError } from "@core/utils/error-handler.server";
 
 import { getEnv } from "./cloudflare-env";
 

@@ -8,7 +8,7 @@ import { z } from "zod";
 
 import { useErrorHandler } from "@core/hooks/use-error-handler";
 import type { Event, EventFormData } from "@core/types/models";
-import { handleClientError } from "@core/utils/error-handler";
+import { handleClientError } from "@core/utils/error-handler.client";
 import { safeParseNumber, parseFee } from "@core/utils/number-parsers";
 import {
   convertDatetimeLocalToUtc,

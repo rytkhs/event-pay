@@ -2,7 +2,7 @@
 
 import { useState, useCallback } from "react";
 
-import { handleClientError } from "@core/utils/error-handler";
+import { handleClientError } from "@core/utils/error-handler.client";
 
 export function useClipboard() {
   const [isCopied, setIsCopied] = useState(false);

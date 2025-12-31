@@ -16,7 +16,7 @@ import {
   generateCodeChallenge,
 } from "@core/auth/line-utils";
 import { getEnv } from "@core/utils/cloudflare-env";
-import { handleServerError } from "@core/utils/error-handler";
+import { handleServerError } from "@core/utils/error-handler.server";
 
 export const dynamic = "force-dynamic";
 

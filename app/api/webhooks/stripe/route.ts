@@ -20,7 +20,7 @@ import {
 } from "@core/security/stripe-ip-allowlist";
 import { getWebhookSecrets, getStripe } from "@core/stripe/client";
 import { getEnv } from "@core/utils/cloudflare-env";
-import { handleServerError } from "@core/utils/error-handler";
+import { handleServerError } from "@core/utils/error-handler.server";
 import { getClientIP } from "@core/utils/ip-detection";
 
 import { StripeWebhookEventHandler } from "@features/payments/services/webhook/webhook-event-handler";

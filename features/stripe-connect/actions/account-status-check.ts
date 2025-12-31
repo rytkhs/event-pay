@@ -1,7 +1,7 @@
 "use server";
 
 import { createClient } from "@core/supabase/server";
-import { handleServerError } from "@core/utils/error-handler";
+import { handleServerError } from "@core/utils/error-handler.server";
 
 import { createUserStripeConnectService } from "../services";
 

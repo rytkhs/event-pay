@@ -11,7 +11,7 @@ import { logger } from "@core/logging/app-logger";
 import { getSecureClientFactory } from "@core/security/secure-client-factory.impl";
 import { AdminReason } from "@core/security/secure-client-factory.types";
 import { createClient } from "@core/supabase/server";
-import { handleServerError } from "@core/utils/error-handler";
+import { handleServerError } from "@core/utils/error-handler.server";
 
 // 入力検証: ユーザー同意/確認語句
 const deletionRequestSchema = z.object({

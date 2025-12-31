@@ -8,7 +8,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { logToSystemLogs } from "@core/logging/system-logger";
-import { handleServerError } from "@core/utils/error-handler";
+import { handleServerError } from "@core/utils/error-handler.server";
 import { sanitizeForEventPay } from "@core/utils/sanitize";
 import { isValidIsoDateTimeString } from "@core/utils/timezone";
 

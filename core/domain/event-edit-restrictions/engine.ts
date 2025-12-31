@@ -3,7 +3,6 @@
  */
 
 import { logger } from "@core/logging/app-logger";
-import { handleServerError } from "@core/utils/error-handler";
 
 import { ALL_RESTRICTION_RULES } from "./rules";
 import {
@@ -276,41 +275,20 @@ export class RestrictionEngine {
       try {
         callback(event);
       } catch (error) {
-        handleServerError(error, {
-          category: "event_management",
-          action: "restriction_change_callback_error",
-          additionalData: {
-            original_event: event,
-          },
-        });
+        console.error("Restriction change callback error:", error);
       }
     });
   }
 
   /** エラーイベントの発火 */
   private emitError(event: RestrictionErrorEvent): void {
-    handleServerError("EVENT_OPERATION_FAILED", {
-      category: "event_management",
-      action: "restriction_engine_error",
-      additionalData: {
-        error_type: event.type,
-        error_message: event.message,
-        field: event.field,
-        details: event.details,
-      },
-    });
+    console.error(`[RestrictionEngine] ${event.message}`, event);
 
     this.listeners.onError.forEach((callback) => {
       try {
         callback(event);
       } catch (error) {
-        handleServerError(error, {
-          category: "event_management",
-          action: "restriction_error_callback_error",
-          additionalData: {
-            original_event: event,
-          },
-        });
+        console.error("Restriction error callback error:", error);
       }
     });
   }

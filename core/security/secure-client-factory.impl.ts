@@ -16,7 +16,7 @@ import { createClient } from "@supabase/supabase-js";
 
 import { logger } from "@core/logging/app-logger";
 import { getEnv } from "@core/utils/cloudflare-env";
-import { handleServerError } from "@core/utils/error-handler";
+import { handleServerError } from "@core/utils/error-handler.server";
 
 import { COOKIE_CONFIG, AUTH_CONFIG, getCookieConfig } from "./config";
 import { validateGuestTokenFormat } from "./crypto";

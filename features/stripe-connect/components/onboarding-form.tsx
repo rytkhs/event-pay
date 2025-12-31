@@ -10,7 +10,7 @@ import Link from "next/link";
 
 import { Loader2, CreditCard, Shield, Zap, Globe, BookOpen, ExternalLink } from "lucide-react";
 
-import { handleClientError } from "@core/utils/error-handler";
+import { handleClientError } from "@core/utils/error-handler.client";
 
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";

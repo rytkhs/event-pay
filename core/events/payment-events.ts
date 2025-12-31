@@ -3,7 +3,7 @@
  * Webhook処理での境界違反を解消するためのEvent-Driven Architecture
  */
 
-import { handleServerError } from "@core/utils/error-handler";
+import { handleServerError } from "@core/utils/error-handler.server";
 
 // Event Types
 export interface PaymentWebhookEvent {

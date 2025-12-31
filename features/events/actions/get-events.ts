@@ -9,7 +9,7 @@ import {
   type ErrorCode,
 } from "@core/types/server-actions";
 import { deriveEventStatus } from "@core/utils/derive-event-status";
-import { handleServerError } from "@core/utils/error-handler";
+import { handleServerError } from "@core/utils/error-handler.server";
 import { convertJstDateToUtcRange } from "@core/utils/timezone";
 import { dateFilterSchema, type DateFilterInput } from "@core/validation/event";
 

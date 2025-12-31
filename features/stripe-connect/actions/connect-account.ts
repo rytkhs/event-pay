@@ -18,7 +18,7 @@ import {
 } from "@core/routes/stripe-connect";
 import { createClient } from "@core/supabase/server";
 import { getEnv } from "@core/utils/cloudflare-env";
-import { handleServerError } from "@core/utils/error-handler";
+import { handleServerError } from "@core/utils/error-handler.server";
 import { isNextRedirectError } from "@core/utils/next";
 
 import { createUserStripeConnectService } from "../services";

@@ -6,7 +6,7 @@ import { verifyEventAccess } from "@core/auth/event-authorization";
 import { logExport } from "@core/logging/system-logger";
 import { enforceRateLimit, buildKey, POLICIES } from "@core/rate-limit";
 import { createClient } from "@core/supabase/server";
-import { handleServerError } from "@core/utils/error-handler";
+import { handleServerError } from "@core/utils/error-handler.server";
 import {
   type SimplePaymentStatus,
   getPaymentStatusesFromSimple,

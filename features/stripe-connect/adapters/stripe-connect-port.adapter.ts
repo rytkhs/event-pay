@@ -11,7 +11,7 @@ import {
   type StripeAccountStatusLike,
 } from "@core/ports/stripe-connect";
 import { getRequiredEnvVar } from "@core/utils/env-helper";
-import { handleServerError } from "@core/utils/error-handler";
+import { handleServerError } from "@core/utils/error-handler.server";
 
 import { createStripeConnectServiceWithClient } from "../services";
 

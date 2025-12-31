@@ -10,7 +10,7 @@ import "server-only";
 import type { PurchaseParams } from "@core/analytics/event-types";
 import { ga4Server } from "@core/analytics/ga4-server";
 import { logger } from "@core/logging/app-logger";
-import { handleServerError } from "@core/utils/error-handler";
+import { handleServerError } from "@core/utils/error-handler.server";
 
 /**
  * 購入完了追跡のパラメータ

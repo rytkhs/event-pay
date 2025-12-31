@@ -6,7 +6,7 @@ import { NotificationService } from "@core/notification";
 import { getSettlementReportPort } from "@core/ports/settlements";
 import { getStripe } from "@core/stripe/client";
 import { getRequiredEnvVar } from "@core/utils/env-helper";
-import { handleServerError } from "@core/utils/error-handler";
+import { handleServerError } from "@core/utils/error-handler.server";
 import { maskSessionId } from "@core/utils/mask";
 import { canPromoteStatus } from "@core/utils/payments/status-rank";
 

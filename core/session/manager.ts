@@ -1,6 +1,6 @@
 import { SupabaseClient, Session } from "@supabase/supabase-js";
 
-import { handleServerError } from "@core/utils/error-handler";
+import { handleServerError } from "@core/utils/error-handler.server";
 
 import { SESSION_CONFIG, type SessionUpdatePriority } from "./config";
 

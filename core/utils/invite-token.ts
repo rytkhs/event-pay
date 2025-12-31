@@ -1,7 +1,7 @@
 import { generateRandomBytes, toBase64UrlSafe } from "@core/security/crypto";
 import { SecureSupabaseClientFactory } from "@core/security/secure-client-factory.impl";
 import { deriveEventStatus } from "@core/utils/derive-event-status";
-import { handleServerError } from "@core/utils/error-handler";
+import { handleServerError } from "@core/utils/error-handler.server";
 
 import type { Database } from "@/types/database";
 

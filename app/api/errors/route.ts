@@ -5,7 +5,8 @@ import { Ratelimit } from "@upstash/ratelimit";
 import { Redis } from "@upstash/redis";
 import { z } from "zod";
 
-import type { ErrorDetails } from "@core/utils/error-handler";
+import type { ErrorDetails } from "@core/utils/error-details";
+import { notifyError } from "@core/utils/error-handler.server";
 
 // レート制限設定
 const ratelimit =
@@ -148,7 +149,7 @@ export async function POST(req: NextRequest) {
     const shouldAlert = severity === "high" || severity === "critical";
 
     if (shouldAlert) {
-      const { notifyError } = await import("@core/utils/error-handler");
+      // const { notifyError } = await import("@core/utils/error-handler.server");
       const { waitUntil } = await import("@core/utils/cloudflare-ctx");
 
       const errorDetails: ErrorDetails = {

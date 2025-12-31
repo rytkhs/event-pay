@@ -1,7 +1,7 @@
 import { Redis } from "@upstash/redis";
 
 import { getEnv } from "@core/utils/cloudflare-env";
-import { handleServerError } from "@core/utils/error-handler";
+import { handleServerError } from "@core/utils/error-handler.server";
 
 // アカウントロックアウト設定
 export const ACCOUNT_LOCKOUT_CONFIG = {

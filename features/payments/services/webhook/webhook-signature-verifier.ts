@@ -2,7 +2,7 @@ import Stripe from "stripe";
 
 import { logger } from "@core/logging/app-logger";
 import { getEnv } from "@core/utils/cloudflare-env";
-import { handleServerError } from "@core/utils/error-handler";
+import { handleServerError } from "@core/utils/error-handler.server";
 
 export interface WebhookSignatureVerifier {
   /**

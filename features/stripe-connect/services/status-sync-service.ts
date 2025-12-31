@@ -9,7 +9,7 @@ import "server-only";
 import Stripe from "stripe";
 
 import { logger } from "@core/logging/app-logger";
-import { handleServerError } from "@core/utils/error-handler";
+import { handleServerError } from "@core/utils/error-handler.server";
 
 import type { IStripeConnectService } from "./interface";
 

@@ -7,7 +7,7 @@ import { getMaliciousPatternDetails } from "@core/constants/security-patterns";
 import { logger } from "@core/logging/app-logger";
 import { waitUntil } from "@core/utils/cloudflare-ctx";
 import { getEnv } from "@core/utils/cloudflare-env";
-import { handleServerError } from "@core/utils/error-handler";
+import { handleServerError } from "@core/utils/error-handler.server";
 
 export interface SecurityEvent {
   type: SecurityEventType | string;

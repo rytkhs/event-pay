@@ -3,7 +3,7 @@
  * Connect Account関連エラーを含む決済処理の詳細ログを管理
  */
 
-import { handleServerError } from "@core/utils/error-handler";
+import { handleServerError } from "@core/utils/error-handler.server";
 
 import { logger, type EventPayLogFields } from "./app-logger";
 

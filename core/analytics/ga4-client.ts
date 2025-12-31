@@ -10,7 +10,7 @@
 import { sendGAEvent } from "@next/third-parties/google";
 
 import { logger } from "@core/logging/app-logger";
-import { handleClientError } from "@core/utils/error-handler";
+import { handleClientError } from "@core/utils/error-handler.client";
 
 import { getGA4Config } from "./config";
 import type { GA4Event } from "./event-types";

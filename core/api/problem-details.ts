@@ -10,7 +10,7 @@ import { randomBytes } from "crypto";
 import { NextResponse } from "next/server";
 
 import { logger } from "@core/logging/app-logger";
-import { handleServerError } from "@core/utils/error-handler";
+import { handleServerError } from "@core/utils/error-handler.server";
 
 /**
  * RFC 7807 Problem Details の基本構造

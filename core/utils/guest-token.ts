@@ -3,7 +3,7 @@ import {
   validateGuestTokenRLS,
   type RLSGuestAttendanceData,
 } from "@core/security/guest-token-validator";
-import { handleServerError } from "@core/utils/error-handler";
+import { handleServerError } from "@core/utils/error-handler.server";
 
 import type { Database } from "@/types/database";
 

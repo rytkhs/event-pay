@@ -15,7 +15,7 @@ import { getStripe } from "@core/stripe/client";
 import * as DestinationCharges from "@core/stripe/destination-charges";
 import { convertStripeError } from "@core/stripe/error-handler";
 import { PaymentError, PaymentErrorType, ErrorHandlingResult } from "@core/types/payment-errors";
-import { handleServerError } from "@core/utils/error-handler";
+import { handleServerError } from "@core/utils/error-handler.server";
 import { maskSessionId } from "@core/utils/mask";
 import { assertStripePayment } from "@core/utils/stripe-guards";
 

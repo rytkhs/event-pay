@@ -17,7 +17,7 @@ import {
   createServerActionSuccess,
   zodErrorToServerActionResponse,
 } from "@core/types/server-actions";
-import { handleServerError } from "@core/utils/error-handler";
+import { handleServerError } from "@core/utils/error-handler.server";
 import { extractEventCreateFormData } from "@core/utils/form-data-extractors";
 import { generateInviteToken } from "@core/utils/invite-token";
 import { convertDatetimeLocalToUtc } from "@core/utils/timezone";

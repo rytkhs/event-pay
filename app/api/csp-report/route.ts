@@ -13,7 +13,7 @@ import { enforceRateLimit, buildKey } from "@core/rate-limit";
 import { generateSecureUuid } from "@core/security/crypto";
 import type { CSPViolationReport } from "@core/security/csp-report-types";
 import { logSecurityEvent } from "@core/security/security-logger";
-import { handleServerError } from "@core/utils/error-handler";
+import { handleServerError } from "@core/utils/error-handler.server";
 import { getClientIP } from "@core/utils/ip-detection";
 
 // CSPレポート用のレート制限ポリシー（1分間に200リクエスト）

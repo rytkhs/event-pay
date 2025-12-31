@@ -95,7 +95,8 @@ export default async function GuestPage({ params, searchParams }: GuestPageProps
     );
   } catch (error) {
     // 予期しないエラーの場合は構造化ログを記録して404を返す
-    const { getErrorDetails, logError } = await import("@core/utils/error-handler");
+    const { logError } = await import("@core/utils/error-handler.server");
+    const { getErrorDetails } = await import("@core/utils/error-details");
 
     // リクエスト情報を取得（エラーハンドリング用）
     const errorHeadersList = headers();

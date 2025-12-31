@@ -39,7 +39,7 @@ jest.mock("@core/analytics/config", () => ({
 }));
 
 // handleServerErrorのモック（エラーハンドリング）
-jest.mock("@core/utils/error-handler", () => ({
+jest.mock("@core/utils/error-handler.server", () => ({
   handleServerError: jest.fn(),
 }));
 
@@ -235,7 +235,7 @@ describe("GA4 Analytics - 統合テスト", () => {
       expect(mockFetch).toHaveBeenCalledTimes(3);
       // handleServerError 経由でエラーが記録される（新形式）
       // eslint-disable-next-line @typescript-eslint/no-var-requires
-      const { handleServerError } = require("@core/utils/error-handler");
+      const { handleServerError } = require("@core/utils/error-handler.server");
       expect(handleServerError).toHaveBeenCalledWith(
         "GA4_TRACKING_FAILED",
         expect.objectContaining({

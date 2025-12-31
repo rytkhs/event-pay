@@ -5,7 +5,7 @@ import "server-only";
 import { AUTH_CONFIG } from "@core/constants/auth-config";
 import { logger } from "@core/logging/app-logger";
 import { getEnv } from "@core/utils/cloudflare-env";
-import { handleServerError } from "@core/utils/error-handler";
+import { handleServerError } from "@core/utils/error-handler.server";
 
 interface AuthResult {
   isValid: boolean;

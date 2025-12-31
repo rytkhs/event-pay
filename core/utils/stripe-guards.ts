@@ -3,7 +3,7 @@
  * Non-null assertionを排除し、適切な型チェックとエラーハンドリングを提供
  */
 
-import { handleServerError } from "@core/utils/error-handler";
+import { handleServerError } from "@core/utils/error-handler.server";
 
 /**
  * Stripe Paymentオブジェクトの型ガード

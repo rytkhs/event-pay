@@ -17,8 +17,9 @@ import {
   createServerActionError,
   createServerActionSuccess,
 } from "@core/types/server-actions";
+import { waitUntil } from "@core/utils/cloudflare-ctx";
 import { getEnv } from "@core/utils/cloudflare-env";
-import { handleServerError } from "@core/utils/error-handler";
+import { handleServerError } from "@core/utils/error-handler.server";
 import { getClientIPFromHeaders } from "@core/utils/ip-detection";
 import { sanitizeForEventPay } from "@core/utils/sanitize";
 import { formatUtcToJst, formatDateToJstYmd } from "@core/utils/timezone";
@@ -170,72 +171,74 @@ export async function submitContact(input: ContactInput) {
   });
 
   // 8. 非同期通知（メール + Slack）
-  queueMicrotask(async () => {
-    const excerpt = normalizedMessage.slice(0, 500);
-    const receivedAt = new Date();
+  waitUntil(
+    (async () => {
+      const excerpt = normalizedMessage.slice(0, 500);
+      const receivedAt = new Date();
 
-    // メール通知
-    try {
-      // EmailNotificationService.sendEmailの型に合わせるため動的インポート
-      const { EmailNotificationService } = await import("@core/notification/email-service");
-      const emailService = new EmailNotificationService();
-
-      const result = await emailService.sendEmail({
-        to: getEnv().ADMIN_EMAIL || "admin@eventpay.jp",
-        template: {
-          subject: "【みんなの集金】新しいお問い合わせが届きました",
-          react: React.createElement(AdminContactNotice, {
-            name: nameSanitized,
-            email,
-            messageExcerpt: excerpt,
-            receivedAt,
-          }),
-        },
-      });
-
-      if (!result.success) {
-        logger.warn("Contact notification email failed", {
-          category: "email",
-          action: "contact_notification_failed",
-          actor_type: "system",
-          email_masked: maskEmail(email),
-          error: result.error,
-          error_type: result.errorType,
-          outcome: "failure",
-        });
-      }
-    } catch (error) {
-      handleServerError(error, {
-        category: "email",
-        action: "contact_notification_exception",
-        additionalData: { email_masked: maskEmail(email) },
-      });
-    }
-
-    // Slack通知（任意）
-    if (getEnv().SLACK_CONTACT_WEBHOOK_URL) {
+      // メール通知
       try {
-        const jstStr = formatUtcToJst(receivedAt, "yyyy-MM-dd HH:mm 'JST'");
-        const slackText = `[Contact] ${nameSanitized} <${email}>\n受信: ${jstStr}\n\n${excerpt}`;
-        const slackResult = await sendSlackText(slackText);
+        // EmailNotificationService.sendEmailの型に合わせるため動的インポート
+        const { EmailNotificationService } = await import("@core/notification/email-service");
+        const emailService = new EmailNotificationService();
 
-        if (!slackResult.success) {
-          logger.warn("Contact Slack notification failed", {
-            category: "system",
-            action: "contact_slack_failed",
+        const result = await emailService.sendEmail({
+          to: getEnv().ADMIN_EMAIL || "admin@eventpay.jp",
+          template: {
+            subject: "【みんなの集金】新しいお問い合わせが届きました",
+            react: React.createElement(AdminContactNotice, {
+              name: nameSanitized,
+              email,
+              messageExcerpt: excerpt,
+              receivedAt,
+            }),
+          },
+        });
+
+        if (!result.success) {
+          logger.warn("Contact notification email failed", {
+            category: "email",
+            action: "contact_notification_failed",
             actor_type: "system",
-            error: slackResult.error,
+            email_masked: maskEmail(email),
+            error: result.error,
+            error_type: result.errorType,
             outcome: "failure",
           });
         }
       } catch (error) {
         handleServerError(error, {
-          category: "system",
-          action: "contact_slack_exception",
+          category: "email",
+          action: "contact_notification_exception",
+          additionalData: { email_masked: maskEmail(email) },
         });
       }
-    }
-  });
+
+      // Slack通知（任意）
+      if (getEnv().SLACK_CONTACT_WEBHOOK_URL) {
+        try {
+          const jstStr = formatUtcToJst(receivedAt, "yyyy-MM-dd HH:mm 'JST'");
+          const slackText = `[Contact] ${nameSanitized} <${email}>\n受信: ${jstStr}\n\n${excerpt}`;
+          const slackResult = await sendSlackText(slackText);
+
+          if (!slackResult.success) {
+            logger.warn("Contact Slack notification failed", {
+              category: "system",
+              action: "contact_slack_failed",
+              actor_type: "system",
+              error: slackResult.error,
+              outcome: "failure",
+            });
+          }
+        } catch (error) {
+          handleServerError(error, {
+            category: "system",
+            action: "contact_slack_exception",
+          });
+        }
+      }
+    })()
+  );
 
   // 9. 成功レスポンス（通知の成否に関わらず）
   return createServerActionSuccess({ ok: true });

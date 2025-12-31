@@ -6,8 +6,9 @@ import { buildOrigin } from "@core/auth/line-utils";
 import { logger } from "@core/logging/app-logger";
 import { getSecureClientFactory } from "@core/security/secure-client-factory.impl";
 import { AdminReason } from "@core/security/secure-client-factory.types";
+import { waitUntil } from "@core/utils/cloudflare-ctx";
 import { getEnv } from "@core/utils/cloudflare-env";
-import { handleServerError } from "@core/utils/error-handler";
+import { handleServerError } from "@core/utils/error-handler.server";
 import { extractClientIdFromGaCookie } from "@core/utils/ga-cookie";
 
 import { LineTokenResponse, LineVerifyResponse } from "@/types/line";
@@ -308,34 +309,36 @@ export async function GET(request: Request) {
     }
 
     // 8. GA4送信
-    queueMicrotask(async () => {
-      try {
-        const { ga4Server } = await import("@core/analytics/ga4-server");
+    waitUntil(
+      (async () => {
+        try {
+          const { ga4Server } = await import("@core/analytics/ga4-server");
 
-        // _ga CookieからClient IDを取得
-        const cookieStore = cookies();
-        const gaCookie = cookieStore.get("_ga")?.value;
-        const clientId = extractClientIdFromGaCookie(gaCookie);
+          // _ga CookieからClient IDを取得
+          const cookieStore = cookies();
+          const gaCookie = cookieStore.get("_ga")?.value;
+          const clientId = extractClientIdFromGaCookie(gaCookie);
 
-        const eventName = isNewUser ? "sign_up" : "login";
-        await ga4Server.sendEvent(
-          {
-            name: eventName,
-            params: {
-              method: "line",
+          const eventName = isNewUser ? "sign_up" : "login";
+          await ga4Server.sendEvent(
+            {
+              name: eventName,
+              params: {
+                method: "line",
+              },
             },
-          },
-          clientId ?? undefined,
-          userId,
-          undefined,
-          undefined
-        );
-      } catch (error) {
-        authLogger.debug("[GA4] Failed to send LINE auth event", {
-          error_message: error instanceof Error ? error.message : String(error),
-        });
-      }
-    });
+            clientId ?? undefined,
+            userId,
+            undefined,
+            undefined
+          );
+        } catch (error) {
+          authLogger.debug("[GA4] Failed to send LINE auth event", {
+            error_message: error instanceof Error ? error.message : String(error),
+          });
+        }
+      })()
+    );
 
     // 9. 完了後のリダイレクト
     return NextResponse.redirect(`${origin}${nextPath}`);

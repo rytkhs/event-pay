@@ -9,7 +9,7 @@ import { EmailNotificationService } from "@core/notification/email-service";
 import { ReminderService } from "@core/notification/reminder-service";
 import { getSecureClientFactory } from "@core/security/secure-client-factory.impl";
 import { AdminReason } from "@core/security/secure-client-factory.types";
-import { handleServerError } from "@core/utils/error-handler";
+import { handleServerError } from "@core/utils/error-handler.server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
