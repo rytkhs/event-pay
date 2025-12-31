@@ -78,3 +78,33 @@ export interface CSPViolationReportDetails {
    */
   disposition?: string;
 }
+
+/**
+ * Reporting API (v3) 形式のレポート
+ * Content-Type: application/reports+json の場合
+ */
+export interface ReportingAPIReport {
+  type: string;
+  age?: number;
+  url?: string;
+  user_agent?: string;
+  body: ReportingAPICSPBody;
+}
+
+/**
+ * Reporting API形式のCSP違反ボディ
+ * キャメルケースを使用
+ */
+export interface ReportingAPICSPBody {
+  blockedURL?: string;
+  disposition?: string;
+  documentURL?: string;
+  effectiveDirective?: string;
+  lineNumber?: number;
+  columnNumber?: number;
+  originalPolicy?: string;
+  referrer?: string;
+  sample?: string;
+  statusCode?: number;
+  sourceFile?: string;
+}

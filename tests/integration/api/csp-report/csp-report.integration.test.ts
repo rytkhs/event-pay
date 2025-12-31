@@ -148,6 +148,71 @@ describe("CSPレポートAPI統合テスト (/api/csp-report)", () => {
   });
 
   /**
+   * I-C-04: Reporting API (v3) 形式 - 正常系
+   */
+  test("I-C-04: Reporting API (v3) 形式 - 配列形式のCSPレポートが正しく処理される", async () => {
+    // Reporting API ペイロード
+    const reports = [
+      {
+        type: "csp-violation",
+        age: 10,
+        url: "https://example.com/vulnerable-page",
+        user_agent: "Mozilla/5.0",
+        body: {
+          blockedURL: "http://evil.com/script.js",
+          disposition: "enforce",
+          documentURL: "https://example.com/page",
+          effectiveDirective: "script-src",
+          lineNumber: 15,
+          originalPolicy: "script-src 'self'",
+          referrer: "https://example.com",
+          sample: "",
+          statusCode: 200,
+          sourceFile: "https://example.com/page",
+        },
+      },
+    ];
+
+    // リクエスト作成
+    const request = new NextRequest("https://example.com/api/csp-report", {
+      method: "POST",
+      headers: {
+        "content-type": "application/reports+json",
+        "x-forwarded-for": "203.0.113.1",
+      },
+      body: JSON.stringify(reports),
+    });
+
+    // APIハンドラー実行
+    const response = await cspReportHandler(request);
+
+    // レスポンス検証
+    expect(response.status).toBe(204);
+
+    // logSecurityEvent が呼ばれたことを検証
+    expect(mockLogSecurityEvent).toHaveBeenCalledTimes(1);
+    const logArgs = mockLogSecurityEvent.mock.calls[0][0];
+
+    // ログ引数を検証
+    expect(logArgs).toMatchObject({
+      type: "CSP_VIOLATION",
+      severity: "MEDIUM",
+      message: "CSP violation detected",
+      details: {
+        blocked_uri: "http://evil.com/script.js",
+        effective_directive: "script-src",
+        violated_directive: "script-src", // Reporting APIからの変換ロジックでeffectiveDirectiveが入る
+        document_uri: "https://example.com/page",
+        referrer: "https://example.com",
+        line_number: 15,
+        original_policy: "script-src 'self'",
+        disposition: "enforce",
+      },
+      ip: "203.0.113.1",
+    });
+  });
+
+  /**
    * I-C-02: 不正なContent-Type
    */
   test("I-C-02: 不正なContent-Type - 警告ログを出力して204を返す", async () => {
@@ -181,7 +246,8 @@ describe("CSPレポートAPI統合テスト (/api/csp-report)", () => {
     expect(mockLogger.warn).toHaveBeenCalledWith(
       "CSP report invalid content-type",
       expect.objectContaining({
-        tag: "cspReportInvalidContentType",
+        category: "security",
+        action: "cspReportInvalidContentType",
         content_type: "text/plain",
         ip: "203.0.113.1",
       })
@@ -228,7 +294,8 @@ describe("CSPレポートAPI統合テスト (/api/csp-report)", () => {
     expect(mockLogger.warn).toHaveBeenCalledWith(
       "CSP report payload too large",
       expect.objectContaining({
-        tag: "cspReportPayloadTooLarge",
+        category: "security",
+        action: "cspReportPayloadTooLarge",
         max_size: 10 * 1024,
       })
     );
@@ -277,7 +344,8 @@ describe("CSPレポートAPI統合テスト (/api/csp-report)", () => {
     expect(mockLogger.warn).toHaveBeenCalledWith(
       "CSP report rate limited",
       expect.objectContaining({
-        tag: "cspReportRateLimited",
+        category: "security",
+        action: "cspReportRateLimited",
         ip: "203.0.113.1",
         retry_after: 60,
       })
@@ -315,7 +383,8 @@ describe("CSPレポートAPI統合テスト (/api/csp-report)", () => {
     expect(mockLogger.warn).toHaveBeenCalledWith(
       "CSP report JSON parse error",
       expect.objectContaining({
-        tag: "cspReportParseError",
+        category: "security",
+        action: "cspReportParseError",
         ip: "203.0.113.1",
       })
     );
@@ -354,9 +423,10 @@ describe("CSPレポートAPI統合テスト (/api/csp-report)", () => {
 
     // 警告ログが出力されたことを検証
     expect(mockLogger.warn).toHaveBeenCalledWith(
-      "CSP report missing csp-report field",
+      "CSP report missing csp-report field or invalid format",
       expect.objectContaining({
-        tag: "cspReportInvalidFormat",
+        category: "security",
+        action: "cspReportInvalidFormat",
         ip: "203.0.113.1",
       })
     );
