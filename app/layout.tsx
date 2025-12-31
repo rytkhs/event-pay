@@ -20,15 +20,12 @@ import { JsonLd } from "@components/seo/JsonLd";
 import { Toaster } from "@/components/ui/toast";
 import { TooltipProvider } from "@/components/ui/tooltip";
 
-// Noto Sans JPの可変フォント最適化
-// weight配列を指定しないことで、可変フォントの全ウェイト範囲を単一ファイルでカバー
 const notoSansJp = Noto_Sans_JP({
   subsets: ["latin"],
   display: "swap",
   variable: "--font-noto-sans-jp",
 });
 
-// 環境に応じたベースURLを取得
 const getBaseUrl = () => {
   return process.env.NEXT_PUBLIC_APP_URL || "https://minnano-shukin.com";
 };

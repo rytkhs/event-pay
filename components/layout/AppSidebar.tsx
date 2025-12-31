@@ -1,12 +1,12 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useTransition } from "react";
 
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-import { LogOut, ChevronsUpDown } from "lucide-react";
+import { LogOut, ChevronsUpDown, CreditCard, Loader2 } from "lucide-react";
 
 import { logoutAction } from "@core/actions/auth";
 
@@ -31,6 +31,7 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar";
+import { createExpressDashboardLoginLinkAction } from "@/features/stripe-connect/actions/express-dashboard";
 
 import { navigationConfig, userMenuItems } from "./GlobalHeader/navigation-config";
 
@@ -45,6 +46,8 @@ export function AppSidebar({ user, ...props }: AppSidebarProps) {
   const pathname = usePathname();
   const { isMobile, setOpenMobile } = useSidebar();
 
+  const [isPending, startTransition] = useTransition();
+
   // 画面遷移時にモバイル用サイドバーを自動的に閉じる
   useEffect(() => {
     if (isMobile) {
@@ -54,6 +57,13 @@ export function AppSidebar({ user, ...props }: AppSidebarProps) {
 
   const handleLogout = async () => {
     await logoutAction();
+  };
+
+  // クリック時のハンドラ
+  const handleStripeDashboard = () => {
+    startTransition(async () => {
+      await createExpressDashboardLoginLinkAction();
+    });
   };
 
   const userName = user?.name || user?.email || "Guest";
@@ -106,11 +116,20 @@ export function AppSidebar({ user, ...props }: AppSidebarProps) {
         </SidebarGroup>
 
         <SidebarGroup className="mt-auto">
-          {/* Mobile only items if needed, or put them in main menu for mobile?
-               Usually sidebar items are same for mobile/desktop but collapsible.
-               Original mobile config had "Create Event". Let's add it if helpful.
-           */}
-          {/* For now keeping standard app navigation */}
+          <SidebarGroupContent>
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  onClick={handleStripeDashboard}
+                  disabled={isPending}
+                  tooltip="決済ダッシュボード"
+                >
+                  {isPending ? <Loader2 className="animate-spin" /> : <CreditCard />}
+                  <span>決済ダッシュボード</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            </SidebarMenu>
+          </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
 

@@ -11,7 +11,11 @@ import { NextResponse } from "next/server";
 import { logger } from "@core/logging/app-logger";
 import { enforceRateLimit, buildKey } from "@core/rate-limit";
 import { generateSecureUuid } from "@core/security/crypto";
-import type { CSPViolationReport } from "@core/security/csp-report-types";
+import type {
+  CSPViolationReport,
+  CSPViolationReportDetails,
+  ReportingAPICSPBody,
+} from "@core/security/csp-report-types";
 import { logSecurityEvent } from "@core/security/security-logger";
 import { handleServerError } from "@core/utils/error-handler.server";
 import { getClientIP } from "@core/utils/ip-detection";
@@ -123,9 +127,9 @@ export async function POST(request: NextRequest) {
     }
 
     // JSONパース
-    let report: CSPViolationReport;
+    let rawData: unknown;
     try {
-      report = JSON.parse(rawBody) as CSPViolationReport;
+      rawData = JSON.parse(rawBody);
     } catch (parseError) {
       logger.warn("CSP report JSON parse error", {
         category: "security",
@@ -143,13 +147,56 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // CSPレポートの検証
-    if (!report["csp-report"]) {
-      logger.warn("CSP report missing csp-report field", {
+    // レポートの抽出と正規化
+    const violations: CSPViolationReportDetails[] = [];
+
+    if (Array.isArray(rawData)) {
+      // Reporting API v3 format (array)
+      for (const item of rawData) {
+        // CSP違反レポートのみを対象とする
+        if (item.type === "csp-violation" && item.body) {
+          const body = item.body as ReportingAPICSPBody;
+          violations.push({
+            "blocked-uri": body.blockedURL,
+            "document-uri": body.documentURL,
+            "effective-directive": body.effectiveDirective,
+            "original-policy": body.originalPolicy,
+            referrer: body.referrer,
+            "line-number": body.lineNumber,
+            "column-number": body.columnNumber,
+            "source-file": body.sourceFile,
+            "status-code": body.statusCode,
+            sample: body.sample,
+            disposition: body.disposition,
+            // Reporting APIではviolated-directiveは通常effectiveDirectiveと同じかマッピングされる
+            "violated-directive": body.effectiveDirective,
+          });
+        }
+      }
+
+      // 配列だが有効なCSPレポートが含まれていない場合
+      if (violations.length === 0 && rawData.length > 0) {
+        logger.info("CSP report array received but no csp-violation types found", {
+          category: "security",
+          action: "cspReportIgnoredTypes",
+          request_id: requestId,
+          types: rawData.map((d: any) => d.type),
+          ip: clientIP,
+        });
+        // エラーにはせず正常終了
+      }
+    } else if (rawData && typeof rawData === "object" && "csp-report" in rawData) {
+      // Legacy format (csp-report property)
+      const report = rawData as CSPViolationReport;
+      violations.push(report["csp-report"]);
+    } else {
+      // 無効なフォーマット
+      logger.warn("CSP report missing csp-report field or invalid format", {
         category: "security",
         action: "cspReportInvalidFormat",
         request_id: requestId,
         ip: clientIP,
+        body_preview: rawBody.substring(0, 500),
       });
       return new NextResponse(null, {
         status: 400,
@@ -159,31 +206,32 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    const violation = report["csp-report"];
-
-    // CSP違反をセキュリティログに記録(fire and forget)
-    logSecurityEvent({
-      type: "CSP_VIOLATION",
-      severity: "MEDIUM",
-      message: "CSP violation detected",
-      details: {
-        blocked_uri: violation["blocked-uri"],
-        violated_directive: violation["violated-directive"],
-        effective_directive: violation["effective-directive"],
-        document_uri: violation["document-uri"],
-        referrer: violation["referrer"],
-        line_number: violation["line-number"],
-        column_number: violation["column-number"],
-        source_file: violation["source-file"],
-        status_code: violation["status-code"],
-        sample: violation["sample"],
-        original_policy: violation["original-policy"],
-        request_id: requestId,
-      },
-      userAgent: request.headers.get("user-agent") || undefined,
-      ip: clientIP,
-      timestamp: new Date(),
-    });
+    // 各違反をセキュリティログに記録
+    for (const violation of violations) {
+      logSecurityEvent({
+        type: "CSP_VIOLATION",
+        severity: "MEDIUM",
+        message: "CSP violation detected",
+        details: {
+          blocked_uri: violation["blocked-uri"],
+          violated_directive: violation["violated-directive"],
+          effective_directive: violation["effective-directive"],
+          document_uri: violation["document-uri"],
+          referrer: violation["referrer"],
+          line_number: violation["line-number"],
+          column_number: violation["column-number"],
+          source_file: violation["source-file"],
+          status_code: violation["status-code"],
+          sample: violation["sample"],
+          original_policy: violation["original-policy"],
+          disposition: violation.disposition,
+          request_id: requestId,
+        },
+        userAgent: request.headers.get("user-agent") || undefined,
+        ip: clientIP,
+        timestamp: new Date(),
+      });
+    }
 
     // 204 No Content で返答（軽量）
     return new NextResponse(null, {
