@@ -40,16 +40,15 @@ export const HeroSection: React.FC = () => {
               <br />
               出欠確認は、これひとつ。
               <br />
-              <span className="text-primary">キャッシュレス派も現金派も。</span>
             </h1>
 
             <FadeIn delay={0.3}>
               <p className="text-lg md:text-xl text-slate-600 mb-8 leading-relaxed">
-                アプリ不要、ログイン不要。招待リンクを送るだけで、
+                招待リンクを送るだけで出欠確認 ～ 集金まで完了。
                 <br className="hidden md:block" />
-                面倒なExcel管理や小銭のやり取りから解放されます。
-                <br className="hidden md:block" />
-                幹事の負担を劇的に減らす、新しいスタンダード。
+                幹事の負担を劇的に減らす、新しいイベント管理 & 集金ツールです。
+                <br className="block" />
+                いつもの集金を、キャッシュレスにしませんか?
               </p>
             </FadeIn>
 
