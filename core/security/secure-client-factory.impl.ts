@@ -16,6 +16,7 @@ import { createClient } from "@supabase/supabase-js";
 
 import { logger } from "@core/logging/app-logger";
 import { getEnv } from "@core/utils/cloudflare-env";
+import { handleServerError } from "@core/utils/error-handler";
 
 import { COOKIE_CONFIG, AUTH_CONFIG, getCookieConfig } from "./config";
 import { validateGuestTokenFormat } from "./crypto";
@@ -57,12 +58,13 @@ export class SecureSupabaseClientFactory implements ISecureSupabaseClientFactory
     if (!value) {
       const key = "NEXT_PUBLIC_SUPABASE_URL";
       const message = `Missing required environment variable: ${key}`;
-      logger.error(message, {
+      handleServerError("ENV_VAR_MISSING", {
         category: "system",
         action: "client_creation",
-        actor_type: "system",
-        variable_name: key,
-        outcome: "failure",
+        actorType: "system",
+        additionalData: {
+          variable_name: key,
+        },
       });
       throw new Error(message);
     }
@@ -78,12 +80,13 @@ export class SecureSupabaseClientFactory implements ISecureSupabaseClientFactory
     if (!value) {
       const key = "NEXT_PUBLIC_SUPABASE_ANON_KEY";
       const message = `Missing required environment variable: ${key}`;
-      logger.error(message, {
+      handleServerError("ENV_VAR_MISSING", {
         category: "system",
         action: "client_creation",
-        actor_type: "system",
-        variable_name: key,
-        outcome: "failure",
+        actorType: "system",
+        additionalData: {
+          variable_name: key,
+        },
       });
       throw new Error(message);
     }
@@ -99,12 +102,13 @@ export class SecureSupabaseClientFactory implements ISecureSupabaseClientFactory
     if (!value) {
       const key = "SUPABASE_SERVICE_ROLE_KEY";
       const message = `Missing required environment variable: ${key}`;
-      logger.error(message, {
+      handleServerError("ENV_VAR_MISSING", {
         category: "system",
         action: "client_creation",
-        actor_type: "system",
-        variable_name: key,
-        outcome: "failure",
+        actorType: "system",
+        additionalData: {
+          variable_name: key,
+        },
       });
       throw new Error(message);
     }

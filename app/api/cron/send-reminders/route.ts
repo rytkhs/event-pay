@@ -9,6 +9,7 @@ import { EmailNotificationService } from "@core/notification/email-service";
 import { ReminderService } from "@core/notification/reminder-service";
 import { getSecureClientFactory } from "@core/security/secure-client-factory.impl";
 import { AdminReason } from "@core/security/secure-client-factory.types";
+import { handleServerError } from "@core/utils/error-handler";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -117,9 +118,13 @@ export async function GET(request: NextRequest) {
       totalFailed,
     });
   } catch (error) {
-    cronLogger.error("Reminder cron job failed", {
-      error,
-      outcome: "failure",
+    handleServerError("CRON_EXECUTION_ERROR", {
+      category: "system",
+      action: "reminder_cron_failed",
+      additionalData: {
+        error_name: error instanceof Error ? error.name : "Unknown",
+        error_message: error instanceof Error ? error.message : String(error),
+      },
     });
     return createProblemResponse("INTERNAL_SERVER_ERROR", {
       instance: "/api/cron/send-reminders",

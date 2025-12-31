@@ -4,23 +4,34 @@
 
 import { describe, test, expect, beforeAll, afterAll } from "@jest/globals";
 
-import { logger } from "../../../../../core/logging/app-logger";
 import { StripeWebhookEventHandler } from "../../../../../features/payments/services/webhook/webhook-event-handler";
 import {
   createTestAttendance,
   createPendingTestPayment,
 } from "../../../../helpers/test-payment-data";
-import { setupLoggerMocks } from "../../../../setup/common-mocks";
 import { createWebhookTestSetup, type WebhookTestSetup } from "../../../../setup/common-test-setup";
 import { createTestWebhookEvent } from "../../../../setup/stripe-test-helpers";
 
 // 外部依存のモック（統合テストなので最小限）
-jest.mock("../../../../../core/logging/app-logger", () => ({
-  logger: {
+// jest.mock は巻き上げられるため、モック内で直接定義する
+jest.mock("../../../../../core/logging/app-logger", () => {
+  const mockMethods = {
     info: jest.fn(),
     warn: jest.fn(),
     error: jest.fn(),
-  },
+    debug: jest.fn(),
+  };
+  return {
+    logger: {
+      ...mockMethods,
+      withContext: jest.fn(() => mockMethods),
+    },
+  };
+});
+
+// handleServerErrorのモック
+jest.mock("../../../../../core/utils/error-handler", () => ({
+  handleServerError: jest.fn(),
 }));
 
 /**
@@ -43,12 +54,8 @@ function createCheckoutExpiredEvent(
 
 describe("🔍 ログ出力仕様検証", () => {
   let setup: WebhookTestSetup;
-  let mockLogger: jest.Mocked<typeof logger>;
 
   beforeAll(async () => {
-    // ロガーモックを設定
-    mockLogger = setupLoggerMocks();
-
     // 共通Webhookテストセットアップを使用（QStash環境変数も設定される）
     setup = await createWebhookTestSetup({
       testName: `checkout-expired-logging-test-${Date.now()}`,
@@ -67,23 +74,46 @@ describe("🔍 ログ出力仕様検証", () => {
   });
 
   test("全ログタイプのメッセージ形式検証", async () => {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { handleServerError } = require("../../../../../core/utils/error-handler");
+    const mockHandleServerError = handleServerError as jest.MockedFunction<
+      typeof handleServerError
+    >;
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { logger } = require("../../../../../core/logging/app-logger");
+
     const testCases = [
       {
         name: "決済レコード未発見",
-        logType: "webhook_checkout_expired_no_payment",
+        // 決済レコードがない場合は handleServerError("WEBHOOK_PAYMENT_NOT_FOUND") が呼ばれる
+        verifyFn: async (data: any) => {
+          expect(mockHandleServerError).toHaveBeenCalledWith(
+            "WEBHOOK_PAYMENT_NOT_FOUND",
+            expect.objectContaining({
+              action: "processCheckoutSessionExpired",
+            })
+          );
+        },
         setupFn: async () => {
           const sessionId = "cs_test_log_no_payment_" + Date.now();
           const event = createCheckoutExpiredEvent(sessionId);
           return { event, sessionId };
         },
-        expectedDetails: (data: any) => ({
-          eventId: data.event.id,
-          sessionId: data.sessionId,
-        }),
       },
       {
         name: "重複処理防止",
-        logType: "webhook_duplicate_processing_prevented",
+        // 既に処理済みの場合は logger.info("Duplicate webhook event preventing double processing") が呼ばれる
+        verifyFn: async (data: any) => {
+          expect(logger.withContext().info).toHaveBeenCalledWith(
+            "Duplicate webhook event preventing double processing",
+            expect.objectContaining({
+              event_id: data.event.id,
+              payment_id: data.payment.id,
+              current_status: "received",
+              outcome: "success",
+            })
+          );
+        },
         setupFn: async () => {
           const sessionId = "cs_test_log_duplicate_" + Date.now();
 
@@ -110,15 +140,20 @@ describe("🔍 ログ出力仕様検証", () => {
           const event = createCheckoutExpiredEvent(sessionId);
           return { event, sessionId, payment };
         },
-        expectedDetails: (data: any) => ({
-          eventId: data.event.id,
-          paymentId: data.payment.id,
-          currentStatus: "received",
-        }),
       },
       {
         name: "正常処理完了",
-        logType: "webhook_checkout_expired_processed",
+        // 正常処理の場合は logger.info("Checkout session expiration processed") が呼ばれる
+        verifyFn: async (data: any) => {
+          expect(logger.withContext().info).toHaveBeenCalledWith(
+            "Checkout session expiration processed",
+            expect.objectContaining({
+              event_id: data.event.id,
+              payment_id: data.payment.id,
+              outcome: "success",
+            })
+          );
+        },
         setupFn: async () => {
           const sessionId = "cs_test_log_success_" + Date.now();
           const paymentIntentId = "pi_test_log_" + Date.now();
@@ -145,16 +180,13 @@ describe("🔍 ログ出力仕様検証", () => {
           });
           return { event, sessionId, payment, paymentIntentId };
         },
-        expectedDetails: (data: any) => ({
-          eventId: data.event.id,
-          paymentId: data.payment.id,
-          sessionId: data.sessionId,
-          paymentIntentId: data.paymentIntentId,
-        }),
       },
     ];
 
     for (const testCase of testCases) {
+      // 各テストケース前にモックをリセット
+      jest.clearAllMocks();
+
       // サブテストとして実行
       const data = await testCase.setupFn();
 
@@ -162,20 +194,16 @@ describe("🔍 ログ出力仕様検証", () => {
       await handler.handleEvent(data.event);
 
       // ログ出力検証
-      expect(mockLogger.info).toHaveBeenCalledWith(
-        "Webhook security event",
-        expect.objectContaining({
-          event_action: testCase.logType,
-          details: expect.objectContaining(testCase.expectedDetails(data)),
-        })
-      );
+      await testCase.verifyFn(data);
     }
   });
 
   test("ログレベルは常に info", async () => {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { logger } = require("../../../../../core/logging/app-logger");
     // すべてのケースでlogger.infoが呼ばれることを確認
-    expect(mockLogger.info).toBeDefined();
-    expect(mockLogger.error).toBeDefined();
+    expect(logger.withContext().info).toBeDefined();
+    expect(logger.withContext().error).toBeDefined();
 
     // infoレベルのみが使用されることを間接的に確認
     // （他のテストケースでerrorが呼ばれていないことで確認される）

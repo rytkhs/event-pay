@@ -8,6 +8,7 @@
 import "server-only";
 
 import { logger } from "@core/logging/app-logger";
+import { handleServerError } from "@core/utils/error-handler";
 
 import { getGA4Config } from "./config";
 import type { GA4Event } from "./event-types";
@@ -227,14 +228,17 @@ export class GA4ServerService {
         });
       }
     } catch (error) {
-      this.logger.error("[GA4] Failed to send server event", {
-        event_name: event.name,
-        client_id: validClientId,
-        user_id: userId,
-        error: error instanceof GA4Error ? error.message : String(error),
-        error_code: error instanceof GA4Error ? error.code : undefined,
-        error_context: error instanceof GA4Error ? error.context : undefined,
-        outcome: "failure",
+      handleServerError("GA4_TRACKING_FAILED", {
+        category: "system",
+        action: "ga4_send_event",
+        actorType: "system",
+        additionalData: {
+          event_name: event.name,
+          client_id: validClientId,
+          user_id: userId,
+          error: error instanceof GA4Error ? error.message : String(error),
+          error_code: error instanceof GA4Error ? error.code : undefined,
+        },
       });
 
       // エラーの詳細をデバッグログに出力
@@ -453,13 +457,16 @@ export class GA4ServerService {
         });
       }
     } catch (error) {
-      this.logger.error("[GA4] Failed to send batch", {
-        batch_index: batchIndex,
-        batch_size: batch.length,
-        error: error instanceof GA4Error ? error.message : String(error),
-        error_code: error instanceof GA4Error ? error.code : undefined,
-        error_context: error instanceof GA4Error ? error.context : undefined,
-        outcome: "failure",
+      handleServerError("GA4_TRACKING_FAILED", {
+        category: "system",
+        action: "ga4_send_batch",
+        actorType: "system",
+        additionalData: {
+          batch_index: batchIndex,
+          batch_size: batch.length,
+          error: error instanceof GA4Error ? error.message : String(error),
+          error_code: error instanceof GA4Error ? error.code : undefined,
+        },
       });
 
       // エラーを再スローして、Promise.allSettledで捕捉できるようにする

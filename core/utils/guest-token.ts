@@ -1,9 +1,9 @@
-import { logger } from "@core/logging/app-logger";
 import { generateRandomBytes, toBase64UrlSafe } from "@core/security/crypto";
 import {
   validateGuestTokenRLS,
   type RLSGuestAttendanceData,
 } from "@core/security/guest-token-validator";
+import { handleServerError } from "@core/utils/error-handler";
 
 import type { Database } from "@/types/database";
 
@@ -80,16 +80,15 @@ export async function validateGuestToken(guestToken: string): Promise<{
       errorCode: rlsResult.errorCode,
     };
   } catch (error) {
-    if (process.env.NODE_ENV === "development") {
-      logger.error("ゲストトークン検証エラー", {
-        category: "authentication",
-        action: "guest_token_validation",
-        actor_type: "anonymous",
+    handleServerError("GUEST_TOKEN_VALIDATION_FAILED", {
+      category: "authentication",
+      action: "guest_token_validation",
+      actorType: "anonymous",
+      additionalData: {
         error_name: error instanceof Error ? error.name : "Unknown",
         error_message: error instanceof Error ? error.message : String(error),
-        outcome: "failure",
-      });
-    }
+      },
+    });
     return {
       isValid: false,
       errorMessage: "参加データの取得中にエラーが発生しました",

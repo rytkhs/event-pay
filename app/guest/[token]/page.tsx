@@ -115,18 +115,6 @@ export default async function GuestPage({ params, searchParams }: GuestPageProps
 
     logError(getErrorDetails("GUEST_TOKEN_VALIDATION_FAILED"), errorContext);
 
-    if (process.env.NODE_ENV === "development") {
-      const { logger } = await import("@core/logging/app-logger");
-      logger.error("ゲストページでエラーが発生", {
-        category: "attendance",
-        action: "page_load_error",
-        actor_type: "anonymous",
-        error_name: error instanceof Error ? error.name : "Unknown",
-        error_message: error instanceof Error ? error.message : String(error),
-        token_prefix: token.substring(0, 4),
-        outcome: "failure",
-      });
-    }
     // セキュリティログに記録（エラー詳細は記録しない）
     logUnexpectedGuestPageError(token, error, { userAgent: errorUserAgent, ip: errorIp });
     notFound();

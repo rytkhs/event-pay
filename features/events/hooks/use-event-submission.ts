@@ -4,9 +4,9 @@ import { useCallback } from "react";
 
 import { useRouter } from "next/navigation";
 
-import { logger } from "@core/logging/app-logger";
 import type { Event, EventFormData } from "@core/types/models";
 import { deriveEventStatus } from "@core/utils/derive-event-status";
+import { handleClientError } from "@core/utils/error-handler";
 
 import { ChangeItem } from "@/components/ui/change-confirmation-dialog";
 
@@ -143,14 +143,10 @@ export function useEventSubmission({ eventId, onSubmit }: UseEventSubmissionProp
           return { success: false, error: errorMessage };
         }
       } catch (error) {
-        logger.error("Event update failed", {
+        handleClientError(error, {
           category: "event_management",
-          action: "event_update",
-          actor_type: "user",
-          event_id: eventId,
-          error_name: error instanceof Error ? error.name : "Unknown",
-          error_message: error instanceof Error ? error.message : String(error),
-          outcome: "failure",
+          action: "event_update_failed",
+          eventId,
         });
         const errorMessage = "エラーが発生しました。もう一度お試しください。";
         setErrors({ general: errorMessage });
@@ -275,14 +271,10 @@ export function useEventSubmission({ eventId, onSubmit }: UseEventSubmissionProp
   // エラーハンドリング
   const handleSubmissionError = useCallback(
     (error: any, setErrors: (errors: FormErrors) => void): SubmitResult => {
-      logger.error("Event submission failed", {
+      handleClientError(error, {
         category: "event_management",
-        action: "event_submission",
-        actor_type: "user",
-        event_id: eventId,
-        error_name: error instanceof Error ? error.name : "Unknown",
-        error_message: error instanceof Error ? error.message : String(error),
-        outcome: "failure",
+        action: "event_submission_failed",
+        eventId,
       });
       const errorMessage = "エラーが発生しました。もう一度お試しください。";
       setErrors({ general: errorMessage });

@@ -185,10 +185,10 @@ describe("error-handler", () => {
       expect(result.code).toBe("RATE_LIMIT_EXCEEDED");
     });
 
-    it("不明なエラーは INTERNAL_SERVER_ERROR にフォールバックする", () => {
+    it("不明なエラーは UNKNOWN_ERROR にフォールバックする", () => {
       const result = normalizeToErrorDetails({ unknown: "error" });
 
-      expect(result.code).toBe("INTERNAL_SERVER_ERROR");
+      expect(result.code).toBe("UNKNOWN_ERROR");
     });
   });
 
@@ -209,6 +209,13 @@ describe("error-handler", () => {
       const result = getErrorDetails("INTERNAL_ERROR");
 
       expect(result.code).toBe("INTERNAL_ERROR");
+      expect(result.severity).toBe("high");
+      expect(result.shouldAlert).toBe(true);
+    });
+
+    it("WEBHOOK_SYNC_PROCESSING_FAILED を正しく取得できる", () => {
+      const result = getErrorDetails("WEBHOOK_SYNC_PROCESSING_FAILED");
+      expect(result.code).toBe("WEBHOOK_SYNC_PROCESSING_FAILED");
       expect(result.severity).toBe("high");
       expect(result.shouldAlert).toBe(true);
     });

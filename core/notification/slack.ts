@@ -39,10 +39,9 @@ export async function sendSlackText(
 
     if (!response.ok) {
       const errorText = await response.text();
-      logger.warn("Slack notification failed", {
+      logger.error(`Slack notification failed (${response.status})`, {
         category: "system",
         action: "slack_notification",
-        actor_type: "system",
         status_code: response.status,
         error_message: errorText,
         outcome: "failure",
@@ -62,10 +61,9 @@ export async function sendSlackText(
 
     return { success: true };
   } catch (error) {
-    logger.error("Slack notification error", {
+    logger.error("Unexpected error in Slack notification", {
       category: "system",
       action: "slack_notification",
-      actor_type: "system",
       error_message: error instanceof Error ? error.message : String(error),
       outcome: "failure",
     });

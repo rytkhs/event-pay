@@ -13,6 +13,7 @@ import { enforceRateLimit, buildKey } from "@core/rate-limit";
 import { generateSecureUuid } from "@core/security/crypto";
 import type { CSPViolationReport } from "@core/security/csp-report-types";
 import { logSecurityEvent } from "@core/security/security-logger";
+import { handleServerError } from "@core/utils/error-handler";
 import { getClientIP } from "@core/utils/ip-detection";
 
 // CSPレポート用のレート制限ポリシー（1分間に200リクエスト）
@@ -193,14 +194,14 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (error) {
-    // 予期しないエラーをログに記録
-    logger.error("CSP report endpoint error", {
+    // 予期しないエラーを正規化・通知
+    handleServerError(error, {
       category: "security",
       action: "cspReportEndpointError",
-      request_id: requestId,
-      error: error instanceof Error ? error.message : String(error),
-      error_stack: error instanceof Error ? error.stack : undefined,
-      ip: clientIP,
+      additionalData: {
+        request_id: requestId,
+        ip: clientIP,
+      },
     });
 
     // エラー時も204を返す（ブラウザ側のリトライを避けるため）

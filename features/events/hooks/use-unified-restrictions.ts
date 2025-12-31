@@ -18,6 +18,7 @@ import {
   FieldRestrictionMap,
 } from "@core/domain/event-edit-restrictions";
 import { logger } from "@core/logging/app-logger";
+import { handleClientError } from "@core/utils/error-handler";
 // =============================================================================
 // Hook Types - フック専用型定義
 // =============================================================================
@@ -194,13 +195,9 @@ export function useUnifiedRestrictions(
       }));
 
       if (debug) {
-        logger.error("Unified restrictions evaluation failed", {
+        handleClientError(error, {
           category: "event_management",
           action: "restriction_evaluation_error",
-          actor_type: "user",
-          error_name: error instanceof Error ? error.name : "Unknown",
-          error_message: errorMessage,
-          outcome: "failure",
         });
       }
     }

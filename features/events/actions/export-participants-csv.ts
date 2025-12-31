@@ -3,10 +3,10 @@
 import { headers } from "next/headers";
 
 import { verifyEventAccess } from "@core/auth/event-authorization";
-import { logger } from "@core/logging/app-logger";
 import { logExport } from "@core/logging/system-logger";
 import { enforceRateLimit, buildKey, POLICIES } from "@core/rate-limit";
 import { createClient } from "@core/supabase/server";
+import { handleServerError } from "@core/utils/error-handler";
 import {
   type SimplePaymentStatus,
   getPaymentStatusesFromSimple,
@@ -131,14 +131,14 @@ export async function exportParticipantsCsvAction(params: unknown): Promise<{
     const { data: participants, error: queryError } = await query;
 
     if (queryError) {
-      logger.error("Failed to fetch participants for CSV export", {
+      handleServerError("EVENT_OPERATION_FAILED", {
         category: "export",
-        action: "participants_csv_export",
-        actor_type: "user",
-        event_id: validatedEventId,
-        user_id: user.id,
-        error_message: queryError.message,
-        outcome: "failure",
+        action: "participants_csv_export_fetch_failed",
+        userId: user.id,
+        additionalData: {
+          event_id: validatedEventId,
+          error_message: queryError.message,
+        },
       });
 
       return {
@@ -208,13 +208,12 @@ export async function exportParticipantsCsvAction(params: unknown): Promise<{
       truncated,
     };
   } catch (error) {
-    logger.error("Participants CSV export failed", {
+    handleServerError(error, {
       category: "export",
-      action: "participants_csv_export",
-      actor_type: "user",
-      error_message: error instanceof Error ? error.message : "Unknown error",
-      params: JSON.stringify(params),
-      outcome: "failure",
+      action: "participants_csv_export_failed",
+      additionalData: {
+        params: JSON.stringify(params),
+      },
     });
 
     return {

@@ -10,6 +10,7 @@
 import { sendGAEvent } from "@next/third-parties/google";
 
 import { logger } from "@core/logging/app-logger";
+import { handleClientError } from "@core/utils/error-handler";
 
 import { getGA4Config } from "./config";
 import type { GA4Event } from "./event-types";
@@ -78,10 +79,14 @@ export class GA4ClientService {
         });
       }
     } catch (error) {
-      this.logger.error("[GA4] Failed to send event", {
-        event_name: event.name,
-        error_message: error instanceof Error ? error.message : String(error),
-        outcome: "failure",
+      handleClientError("GA4_TRACKING_FAILED", {
+        category: "system",
+        action: "ga4_send_event",
+        actorType: "user",
+        additionalData: {
+          event_name: event.name,
+          error_message: error instanceof Error ? error.message : String(error),
+        },
       });
     }
   }
@@ -176,9 +181,13 @@ export class GA4ClientService {
               safeResolve(sanitizedClientId);
             });
           } catch (error) {
-            this.logger.error("[GA4] Failed to get client ID", {
-              error_message: error instanceof Error ? error.message : String(error),
-              outcome: "failure",
+            handleClientError("GA4_TRACKING_FAILED", {
+              category: "system",
+              action: "ga4_get_client_id",
+              actorType: "user",
+              additionalData: {
+                error_message: error instanceof Error ? error.message : String(error),
+              },
             });
             safeResolve(null);
           }
@@ -289,10 +298,14 @@ export class GA4ClientService {
       }
     } catch (error) {
       clearTimeout(timeoutId);
-      this.logger.error("[GA4] Failed to send event with callback", {
-        event_name: event.name,
-        error_message: error instanceof Error ? error.message : String(error),
-        outcome: "failure",
+      handleClientError("GA4_TRACKING_FAILED", {
+        category: "system",
+        action: "ga4_send_event_callback",
+        actorType: "user",
+        additionalData: {
+          event_name: event.name,
+          error_message: error instanceof Error ? error.message : String(error),
+        },
       });
       // エラーが発生してもコールバックは実行する
       safeCallback();

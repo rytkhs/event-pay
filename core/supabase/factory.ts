@@ -9,6 +9,7 @@ import { logger } from "@core/logging/app-logger";
 import { COOKIE_CONFIG, AUTH_CONFIG, getCookieConfig } from "@core/security";
 import { getSessionManager } from "@core/session/manager";
 import { getEnv } from "@core/utils/cloudflare-env";
+import { handleServerError } from "@core/utils/error-handler";
 
 import type { Database } from "@/types/database";
 
@@ -28,12 +29,13 @@ export class SupabaseClientFactory {
     if (!value) {
       const key = "NEXT_PUBLIC_SUPABASE_URL";
       const message = `Missing required environment variable: ${key}`;
-      logger.error(message, {
+      handleServerError("ENV_VAR_MISSING", {
         category: "system",
         action: "client_creation",
-        actor_type: "system",
-        variable_name: key,
-        outcome: "failure",
+        actorType: "system",
+        additionalData: {
+          variable_name: key,
+        },
       });
       throw new Error(message);
     }
@@ -46,12 +48,13 @@ export class SupabaseClientFactory {
     if (!value) {
       const key = "NEXT_PUBLIC_SUPABASE_ANON_KEY";
       const message = `Missing required environment variable: ${key}`;
-      logger.error(message, {
+      handleServerError("ENV_VAR_MISSING", {
         category: "system",
         action: "client_creation",
-        actor_type: "system",
-        variable_name: key,
-        outcome: "failure",
+        actorType: "system",
+        additionalData: {
+          variable_name: key,
+        },
       });
       throw new Error(message);
     }

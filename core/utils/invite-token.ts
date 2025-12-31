@@ -1,8 +1,7 @@
-import { logger } from "@core/logging/app-logger";
 import { generateRandomBytes, toBase64UrlSafe } from "@core/security/crypto";
 import { SecureSupabaseClientFactory } from "@core/security/secure-client-factory.impl";
-import { getEnv } from "@core/utils/cloudflare-env";
 import { deriveEventStatus } from "@core/utils/derive-event-status";
+import { handleServerError } from "@core/utils/error-handler";
 
 import type { Database } from "@/types/database";
 
@@ -168,17 +167,15 @@ export async function validateInviteToken(token: string): Promise<InviteValidati
       canRegister: true,
     };
   } catch (error) {
-    const env = getEnv();
-    if (env.NODE_ENV === "development") {
-      logger.error("Failed to validate invite token", {
-        category: "authentication",
-        action: "invite_token_validation",
-        actor_type: "anonymous",
+    handleServerError("UNKNOWN_ERROR", {
+      category: "authentication",
+      action: "invite_token_validation",
+      actorType: "anonymous",
+      additionalData: {
         error_name: error instanceof Error ? error.name : "Unknown",
         error_message: error instanceof Error ? error.message : String(error),
-        outcome: "failure",
-      });
-    }
+      },
+    });
     return {
       isValid: false,
       canRegister: false,
@@ -213,36 +210,32 @@ export async function checkEventCapacity(
     });
 
     if (error) {
-      const env = getEnv();
-      if (env.NODE_ENV === "development") {
-        logger.error("Failed to check event capacity", {
-          category: "authentication",
-          action: "invite_token_validation",
-          actor_type: "anonymous",
+      handleServerError("DATABASE_ERROR", {
+        category: "authentication",
+        action: "invite_token_validation",
+        actorType: "anonymous",
+        additionalData: {
           error_name: (error as any)?.name ?? "Unknown",
           error_message: (error as any)?.message ?? String(error),
           event_id: eventId,
-          outcome: "failure",
-        });
-      }
+        },
+      });
       return true; // 安全のため、エラー時は定員超過とみなす
     }
 
     const count = Number(data) || 0;
     return count >= capacity;
   } catch (error) {
-    const env = getEnv();
-    if (env.NODE_ENV === "development") {
-      logger.error("Failed to check event capacity", {
-        category: "authentication",
-        action: "invite_token_validation",
-        actor_type: "anonymous",
+    handleServerError("DATABASE_ERROR", {
+      category: "authentication",
+      action: "invite_token_validation",
+      actorType: "anonymous",
+      additionalData: {
         error_name: error instanceof Error ? error.name : "Unknown",
         error_message: error instanceof Error ? error.message : String(error),
         event_id: eventId,
-        outcome: "failure",
-      });
-    }
+      },
+    });
     return true; // 安全のため、エラー時は定員超過とみなす
   }
 }
@@ -273,18 +266,16 @@ export async function checkDuplicateEmail(
     });
 
     if (error) {
-      const env = getEnv();
-      if (env.NODE_ENV === "development") {
-        logger.error("Failed to check email duplication", {
-          category: "authentication",
-          action: "invite_token_validation",
-          actor_type: "anonymous",
+      handleServerError("DATABASE_ERROR", {
+        category: "authentication",
+        action: "invite_token_validation",
+        actorType: "anonymous",
+        additionalData: {
           error_name: (error as any)?.name ?? "Unknown",
           error_message: (error as any)?.message ?? String(error),
           event_id: eventId,
-          outcome: "failure",
-        });
-      }
+        },
+      });
       return true; // 安全のため、エラー時は重複とみなす
     }
 

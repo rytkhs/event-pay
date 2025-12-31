@@ -5,7 +5,7 @@
 
 import * as Sentry from "@sentry/cloudflare";
 
-import { logger, type LogLevel } from "@core/logging/app-logger";
+import { logger, type LogLevel, type LogCategory } from "@core/logging/app-logger";
 import { sendSlackText } from "@core/notification/slack";
 import { waitUntil } from "@core/utils/cloudflare-ctx";
 
@@ -35,6 +35,10 @@ export interface ErrorContext {
   actorType?: ActorType;
   /** 処理結果 */
   outcome?: LogOutcome;
+  /** ログカテゴリ */
+  category?: LogCategory;
+  /** 重要度の明示的な指定（オプション） */
+  severity?: "low" | "medium" | "high" | "critical";
   additionalData?: Record<string, unknown>;
 }
 
@@ -155,6 +159,14 @@ const ERROR_MAPPINGS: Record<string, Omit<ErrorDetails, "code">> = {
     shouldAlert: true,
     retryable: true,
   },
+  LOGIN_FAILED: {
+    message: "Login failed (invalid credentials)",
+    userMessage: "メールアドレスまたはパスワードが正しくありません。",
+    severity: "medium",
+    shouldLog: true,
+    shouldAlert: false,
+    retryable: false,
+  },
   OTP_UNEXPECTED_ERROR: {
     message: "OTP verification failed unexpectedly",
     userMessage: "確認処理中にエラーが発生しました。",
@@ -194,6 +206,30 @@ const ERROR_MAPPINGS: Record<string, Omit<ErrorDetails, "code">> = {
     shouldLog: true,
     shouldAlert: false,
     retryable: false,
+  },
+  PROFILE_UPDATE_UNEXPECTED_ERROR: {
+    message: "Profile update failed unexpectedly",
+    userMessage: "プロフィールの更新中にエラーが発生しました。",
+    severity: "high",
+    shouldLog: true,
+    shouldAlert: true,
+    retryable: true,
+  },
+  EMAIL_UPDATE_UNEXPECTED_ERROR: {
+    message: "Email update failed unexpectedly",
+    userMessage: "メールアドレスの更新中にエラーが発生しました。",
+    severity: "high",
+    shouldLog: true,
+    shouldAlert: true,
+    retryable: true,
+  },
+  ACCOUNT_DELETION_UNEXPECTED_ERROR: {
+    message: "Account deletion failed unexpectedly",
+    userMessage: "退会処理中にエラーが発生しました。",
+    severity: "high",
+    shouldLog: true,
+    shouldAlert: true,
+    retryable: true,
   },
   VALIDATION_ERROR: {
     message: "Input validation failed",
@@ -377,6 +413,295 @@ const ERROR_MAPPINGS: Record<string, Omit<ErrorDetails, "code">> = {
     shouldAlert: true,
     retryable: true,
   },
+
+  // Webhook処理系エラー
+  WEBHOOK_SYNC_PROCESSING_FAILED: {
+    message: "Webhook synchronous processing failed",
+    userMessage: "Webhook処理に失敗しました。",
+    severity: "high",
+    shouldLog: true,
+    shouldAlert: true,
+    retryable: true,
+  },
+  WEBHOOK_QSTASH_FORWARDING_FAILED: {
+    message: "QStash forwarding failed - webhook may be lost",
+    userMessage: "Webhook転送に失敗しました。",
+    severity: "critical",
+    shouldLog: true,
+    shouldAlert: true,
+    retryable: true,
+  },
+  WEBHOOK_CONFIG_ERROR: {
+    message: "Webhook configuration error",
+    userMessage: "Webhook設定エラーが発生しました。",
+    severity: "critical",
+    shouldLog: true,
+    shouldAlert: true,
+    retryable: false,
+  },
+  WEBHOOK_UNEXPECTED_ERROR: {
+    message: "Unexpected error in webhook processing",
+    userMessage: "Webhook処理中に予期しないエラーが発生しました。",
+    severity: "critical",
+    shouldLog: true,
+    shouldAlert: true,
+    retryable: true,
+  },
+  WEBHOOK_PAYMENT_NOT_FOUND: {
+    message: "Payment record not found for webhook event",
+    userMessage: "決済レコードが見つかりません。",
+    severity: "high",
+    shouldLog: true,
+    shouldAlert: true,
+    retryable: false,
+  },
+  WEBHOOK_INVALID_PAYLOAD: {
+    message: "Invalid webhook payload",
+    userMessage: "Webhookペイロードが不正です。",
+    severity: "medium",
+    shouldLog: true,
+    shouldAlert: false,
+    retryable: false,
+  },
+  WEBHOOK_DUPLICATE_EVENT: {
+    message: "Duplicate webhook event detected",
+    userMessage: "重複したWebhookイベントです。",
+    severity: "low",
+    shouldLog: true,
+    shouldAlert: false,
+    retryable: false,
+  },
+  SETTLEMENT_REGENERATE_FAILED: {
+    message: "Failed to regenerate settlement report",
+    userMessage: "精算レポートの再生成に失敗しました。",
+    severity: "high",
+    shouldLog: true,
+    shouldAlert: true,
+    retryable: true,
+  },
+  GA4_TRACKING_FAILED: {
+    message: "Failed to send GA4 event",
+    userMessage: "GA4イベント送信に失敗しました。",
+    severity: "medium",
+    shouldLog: true,
+    shouldAlert: false,
+    retryable: false,
+  },
+
+  // LINEログイン関連エラー
+  LINE_LOGIN_ERROR: {
+    message: "LINE login failed unexpectedly",
+    userMessage: "LINEログイン処理中にエラーが発生しました。",
+    severity: "high",
+    shouldLog: true,
+    shouldAlert: true,
+    retryable: true,
+  },
+  LINE_CSRF_VALIDATION_FAILED: {
+    message: "LINE login CSRF validation failed",
+    userMessage: "認証セッションが正しくありません。最初からやり直してください。",
+    severity: "medium",
+    shouldLog: true,
+    shouldAlert: false,
+    retryable: false,
+  },
+  LINE_TOKEN_RETRIEVAL_FAILED: {
+    message: "Failed to retrieve ID token from LINE",
+    userMessage: "LINEからの認証情報の取得に失敗しました。",
+    severity: "high",
+    shouldLog: true,
+    shouldAlert: true,
+    retryable: true,
+  },
+  LINE_PROFILE_ERROR: {
+    message: "Failed to retrieve user profile from LINE",
+    userMessage: "LINEのプロフィール情報の取得に失敗しました。",
+    severity: "high",
+    shouldLog: true,
+    shouldAlert: true,
+    retryable: true,
+  },
+  LINE_ACCOUNT_LINKING_FAILED: {
+    message: "Failed to link LINE account",
+    userMessage: "LINEアカウントの連携に失敗しました。",
+    severity: "high",
+    shouldLog: true,
+    shouldAlert: true,
+    retryable: true,
+  },
+
+  // Connect Webhookエラー
+  CONNECT_WEBHOOK_ACCOUNT_UPDATED_ERROR: {
+    message: "Error handling Connect account.updated event",
+    userMessage: "Connectアカウント更新処理に失敗しました。",
+    severity: "high",
+    shouldLog: true,
+    shouldAlert: true,
+    retryable: true,
+  },
+  CONNECT_WEBHOOK_DEAUTHORIZED_ERROR: {
+    message: "Error handling Connect account deauthorization",
+    userMessage: "Connect連携解除処理に失敗しました。",
+    severity: "high",
+    shouldLog: true,
+    shouldAlert: true,
+    retryable: true,
+  },
+  CONNECT_WEBHOOK_PAYOUT_ERROR: {
+    message: "Error handling Connect payout event",
+    userMessage: "振込イベント処理に失敗しました。",
+    severity: "high",
+    shouldLog: true,
+    shouldAlert: true,
+    retryable: true,
+  },
+  CONNECT_WEBHOOK_NOTIFICATION_ERROR: {
+    message: "Error sending Connect webhook notification",
+    userMessage: "通知送信に失敗しました。",
+    severity: "medium",
+    shouldLog: true,
+    shouldAlert: false, // 通知自体の失敗はアラートしない（ループ防止）
+    retryable: true,
+  },
+  AUDIT_LOG_RECORDING_FAILED: {
+    message: "Failed to record audit log",
+    userMessage: "監査ログの記録に失敗しました。",
+    severity: "medium",
+    shouldLog: true,
+    shouldAlert: false,
+    retryable: true,
+  },
+
+  // 決済セッション関連
+  PAYMENT_SESSION_REGISTRATION_FAILED: {
+    message: "PaymentService registration failed",
+    userMessage: "決済サービスの初期化に失敗しました。",
+    severity: "critical",
+    shouldLog: true,
+    shouldAlert: true,
+    retryable: true,
+  },
+
+  // ゲストアクション
+  GUEST_ATTENDANCE_UPDATE_ERROR: {
+    message: "Guest attendance update failed unexpectedly",
+    userMessage: "参加情報の更新中にエラーが発生しました。",
+    severity: "high",
+    shouldLog: true,
+    shouldAlert: true,
+    retryable: true,
+  },
+
+  PAYMENT_COMPLETION_NOTIFICATION_FAILED: {
+    message: "Failed to send payment completion notification",
+    userMessage: "決済完了通知の送信に失敗しました。",
+    severity: "high",
+    shouldLog: true,
+    shouldAlert: true,
+    retryable: true,
+  },
+  STRIPE_CHECKOUT_SESSION_EXPIRED_UPDATE_FAILED: {
+    message: "Failed to update payment on checkout.session.expired",
+    userMessage: "セッション期限切れ処理に失敗しました。",
+    severity: "high",
+    shouldLog: true,
+    shouldAlert: true,
+    retryable: true,
+  },
+
+  // インフラ・設定関連エラー
+  ENV_VAR_MISSING: {
+    message: "Required environment variable is missing",
+    userMessage: "システム設定エラーが発生しました。",
+    severity: "critical",
+    shouldLog: true,
+    shouldAlert: true,
+    retryable: false,
+  },
+  CRON_EXECUTION_ERROR: {
+    message: "Cron job execution failed",
+    userMessage: "定期実行ジョブでエラーが発生しました。",
+    severity: "medium",
+    shouldLog: true,
+    shouldAlert: true,
+    retryable: true,
+  },
+
+  // セキュリティシステムエラー
+  ACCOUNT_LOCKOUT_SYSTEM_ERROR: {
+    message: "Account lockout system failed (Redis/DB)",
+    userMessage: "アカウントロックアウトシステムでエラーが発生しました。",
+    severity: "high",
+    shouldLog: true,
+    shouldAlert: true,
+    retryable: true,
+  },
+
+  // 通知関連エラー
+  EMAIL_SENDING_FAILED: {
+    message: "Failed to send email",
+    userMessage: "メール送信に失敗しました。",
+    severity: "medium",
+    shouldLog: true,
+    shouldAlert: false, // 再試行済みまたは一時的エラーの場合は通知しない
+    retryable: true,
+  },
+  ADMIN_ALERT_FAILED: {
+    message: "Failed to send admin alert",
+    userMessage: "管理者への通知に失敗しました。",
+    severity: "high",
+    shouldLog: true,
+    shouldAlert: true,
+    retryable: true,
+  },
+  EVENT_DISPATCH_ERROR: {
+    message: "Internal event dispatch failed",
+    userMessage: "システム内イベントの配信に失敗しました。",
+    severity: "high",
+    shouldLog: true,
+    shouldAlert: true,
+    retryable: true,
+  },
+  STRIPE_CONNECT_SERVICE_ERROR: {
+    message: "Stripe Connect service operation failed",
+    userMessage: "Stripe Connect連携処理でエラーが発生しました。",
+    severity: "high",
+    shouldLog: true,
+    shouldAlert: true,
+    retryable: true,
+  },
+  STRIPE_CONNECT_ACCOUNT_NOT_FOUND: {
+    message: "Stripe Connect account not found",
+    userMessage: "Stripe Connectアカウントが見つかりません。",
+    severity: "high",
+    shouldLog: true,
+    shouldAlert: true,
+    retryable: false,
+  },
+  SETTLEMENT_REPORT_FAILED: {
+    message: "Settlement report generation or export failed",
+    userMessage: "清算レポートの生成またはエクスポートに失敗しました。",
+    severity: "high",
+    shouldLog: true,
+    shouldAlert: true,
+    retryable: true,
+  },
+  EVENT_OPERATION_FAILED: {
+    message: "Event-related operation failed",
+    userMessage: "イベント関連の処理でエラーが発生しました。",
+    severity: "high",
+    shouldLog: true,
+    shouldAlert: true,
+    retryable: true,
+  },
+  SECURITY_EVENT_DETECTED: {
+    message: "Security event detected",
+    userMessage: "セキュリティイベントが検出されました。",
+    severity: "high",
+    shouldLog: true,
+    shouldAlert: true,
+    retryable: false,
+  },
 };
 
 /**
@@ -454,7 +779,7 @@ export function logError(error: ErrorDetails, context?: ErrorContext): void {
       error.severity === "high" || error.severity === "critical" ? "error" : "warn";
 
     const fields = {
-      category: "system",
+      category: context?.category ?? "system",
       action: context?.action ?? "error_handling",
       // actorType: 呼び出し側から指定可能、デフォルトは "system"
       actor_type: context?.actorType ?? "system",
@@ -587,6 +912,15 @@ export function handleClientError(error: unknown, context?: ErrorContext): Error
     errorDetails = getErrorDetails("UNKNOWN_ERROR");
   }
 
+  // 重要度の上書きがあれば適用
+  if (context?.severity) {
+    errorDetails.severity = context.severity;
+    // 重要度が high 以上に引き上げられた場合は、明示的な指定がない限りアラート対象にする
+    if (context.severity === "high" || context.severity === "critical") {
+      errorDetails.shouldAlert = true;
+    }
+  }
+
   // エラーをログに記録
   logError(errorDetails, context);
 
@@ -643,10 +977,12 @@ export function normalizeToErrorDetails(error: unknown): ErrorDetails {
     if (msg.includes("Email not confirmed")) {
       return getErrorDetails("VALIDATION_ERROR");
     }
+    if (msg.includes("Invalid login credentials")) {
+      return getErrorDetails("LOGIN_FAILED");
+    }
   }
 
-  // フォールバック
-  return getErrorDetails("INTERNAL_SERVER_ERROR");
+  return getErrorDetails("UNKNOWN_ERROR");
 }
 
 /**
@@ -657,6 +993,16 @@ export function normalizeToErrorDetails(error: unknown): ErrorDetails {
  */
 export function handleServerError(error: unknown, context?: ErrorContext): ErrorDetails {
   const errorDetails = normalizeToErrorDetails(error);
+
+  // 重要度の上書きがあれば適用
+  if (context?.severity) {
+    errorDetails.severity = context.severity;
+    // 重要度が high 以上に引き上げられた場合は、明示的な指定がない限りアラート対象にする
+    if (context.severity === "high" || context.severity === "critical") {
+      errorDetails.shouldAlert = true;
+    }
+  }
+
   logError(errorDetails, context);
   return errorDetails;
 }

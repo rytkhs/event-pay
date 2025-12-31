@@ -2,7 +2,7 @@
 
 import { useState, useCallback } from "react";
 
-import { logger } from "@core/logging/app-logger";
+import { handleClientError } from "@core/utils/error-handler";
 
 export function useClipboard() {
   const [isCopied, setIsCopied] = useState(false);
@@ -38,13 +38,12 @@ export function useClipboard() {
 
       return false;
     } catch (error) {
-      logger.error("Failed to copy text to clipboard", {
+      handleClientError(error, {
         category: "system",
         action: "clipboard_copy",
-        actor_type: "user",
-        error_name: error instanceof Error ? error.name : "Unknown",
-        error_message: error instanceof Error ? error.message : String(error),
-        outcome: "failure",
+        additionalData: {
+          error_message: error instanceof Error ? error.message : String(error),
+        },
       });
       return false;
     }

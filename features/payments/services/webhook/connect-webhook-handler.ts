@@ -23,7 +23,8 @@ import {
 } from "@core/ports/stripe-connect";
 import { SecureSupabaseClientFactory } from "@core/security/secure-client-factory.impl";
 import { AdminReason } from "@core/security/secure-client-factory.types";
-import type { StripeAccountStatus } from "@core/types/enums";
+import { type StripeAccountStatus } from "@core/types/enums";
+import { handleServerError } from "@core/utils/error-handler";
 
 // Removed @core/services dependency to break circular reference
 // Use ports instead of direct feature import to avoid boundaries violation
@@ -79,13 +80,14 @@ export class ConnectWebhookHandler {
         );
         registerStripeConnectAdapters();
       } catch (e) {
-        logger.error("Failed to register StripeConnect adapters", {
-          category: "stripe_webhook",
-          action: "connect_webhook_handler",
-          actor_type: "webhook",
-          error_name: e instanceof Error ? e.name : "Unknown",
-          error_message: e instanceof Error ? e.message : String(e),
-          outcome: "failure",
+        handleServerError("STRIPE_CONFIG_ERROR", {
+          action: "registerStripeConnectAdapters",
+          additionalData: {
+            category: "stripe_webhook",
+            actor_type: "webhook",
+            error_name: e instanceof Error ? e.name : "Unknown",
+            error_message: e instanceof Error ? e.message : String(e),
+          },
         });
         throw e;
       }
@@ -182,11 +184,14 @@ export class ConnectWebhookHandler {
           : undefined,
       });
     } catch (error) {
-      this.logger.error("Error handling account.updated event", {
-        stripe_account_id: account.id,
-        error_name: error instanceof Error ? error.name : "Unknown",
-        error_message: error instanceof Error ? error.message : String(error),
-        outcome: "failure",
+      handleServerError("CONNECT_WEBHOOK_ACCOUNT_UPDATED_ERROR", {
+        action: "handleAccountUpdated",
+        additionalData: {
+          category: "stripe_webhook",
+          stripe_account_id: account.id,
+          error_name: error instanceof Error ? error.name : "Unknown",
+          error_message: error instanceof Error ? error.message : String(error),
+        },
       });
 
       // 管理者にエラー通知を送信
@@ -202,13 +207,16 @@ export class ConnectWebhookHandler {
           payoutsEnabled: false,
         });
       } catch (notificationError) {
-        this.logger.error("Failed to send error notification", {
-          error_name: notificationError instanceof Error ? notificationError.name : "Unknown",
-          error_message:
-            notificationError instanceof Error
-              ? notificationError.message
-              : String(notificationError),
-          outcome: "failure",
+        handleServerError("CONNECT_WEBHOOK_NOTIFICATION_ERROR", {
+          action: "sendErrorNotification",
+          additionalData: {
+            category: "stripe_webhook",
+            error_name: notificationError instanceof Error ? notificationError.name : "Unknown",
+            error_message:
+              notificationError instanceof Error
+                ? notificationError.message
+                : String(notificationError),
+          },
         });
       }
 
@@ -277,10 +285,13 @@ export class ConnectWebhookHandler {
         outcome: "success",
       });
     } catch (error) {
-      this.logger.error("Error handling account.application.deauthorized", {
-        error_name: error instanceof Error ? error.name : "Unknown",
-        error_message: error instanceof Error ? error.message : String(error),
-        outcome: "failure",
+      handleServerError("CONNECT_WEBHOOK_DEAUTHORIZED_ERROR", {
+        action: "handleAccountApplicationDeauthorized",
+        additionalData: {
+          category: "stripe_webhook",
+          error_name: error instanceof Error ? error.name : "Unknown",
+          error_message: error instanceof Error ? error.message : String(error),
+        },
       });
       throw error;
     }
@@ -296,11 +307,14 @@ export class ConnectWebhookHandler {
         outcome: "success",
       });
     } catch (error) {
-      this.logger.error("Error handling payout.paid event", {
-        payout_id: payout.id,
-        error_name: error instanceof Error ? error.name : "Unknown",
-        error_message: error instanceof Error ? error.message : String(error),
-        outcome: "failure",
+      handleServerError("CONNECT_WEBHOOK_PAYOUT_ERROR", {
+        action: "handlePayoutPaid",
+        additionalData: {
+          category: "stripe_webhook",
+          payout_id: payout.id,
+          error_name: error instanceof Error ? error.name : "Unknown",
+          error_message: error instanceof Error ? error.message : String(error),
+        },
       });
     }
   }
@@ -314,11 +328,14 @@ export class ConnectWebhookHandler {
         outcome: "failure",
       });
     } catch (error) {
-      this.logger.error("Error handling payout.failed event", {
-        payout_id: payout.id,
-        error_name: error instanceof Error ? error.name : "Unknown",
-        error_message: error instanceof Error ? error.message : String(error),
-        outcome: "failure",
+      handleServerError("CONNECT_WEBHOOK_PAYOUT_ERROR", {
+        action: "handlePayoutFailed",
+        additionalData: {
+          category: "stripe_webhook",
+          payout_id: payout.id,
+          error_name: error instanceof Error ? error.name : "Unknown",
+          error_message: error instanceof Error ? error.message : String(error),
+        },
       });
     }
   }
@@ -396,10 +413,13 @@ export class ConnectWebhookHandler {
         });
       }
     } catch (error) {
-      this.logger.error("Error sending notifications", {
-        error_name: error instanceof Error ? error.name : "Unknown",
-        error_message: error instanceof Error ? error.message : String(error),
-        outcome: "failure",
+      handleServerError("CONNECT_WEBHOOK_NOTIFICATION_ERROR", {
+        action: "sendNotifications",
+        additionalData: {
+          category: "stripe_webhook",
+          error_name: error instanceof Error ? error.name : "Unknown",
+          error_message: error instanceof Error ? error.message : String(error),
+        },
       });
       // 通知エラーは処理を停止させない
     }
@@ -442,10 +462,13 @@ export class ConnectWebhookHandler {
         },
       });
     } catch (error) {
-      this.logger.error("Error logging account update", {
-        error_name: error instanceof Error ? error.name : "Unknown",
-        error_message: error instanceof Error ? error.message : String(error),
-        outcome: "failure",
+      handleServerError("AUDIT_LOG_RECORDING_FAILED", {
+        action: "logAccountUpdate",
+        additionalData: {
+          category: "stripe_webhook",
+          error_name: error instanceof Error ? error.name : "Unknown",
+          error_message: error instanceof Error ? error.message : String(error),
+        },
       });
       // ログエラーは処理を停止させない
     }

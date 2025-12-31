@@ -21,6 +21,7 @@ import { logger } from "@core/logging/app-logger";
 import { generateSecureUuid } from "@core/security/crypto";
 import { logSecurityEvent } from "@core/security/security-logger";
 import { getEnv } from "@core/utils/cloudflare-env";
+import { handleServerError } from "@core/utils/error-handler";
 import { getClientIP } from "@core/utils/ip-detection";
 
 import "@/app/_init/feature-registrations";
@@ -127,10 +128,14 @@ export async function POST(request: NextRequest) {
     try {
       webhookBody = JSON.parse(rawBody);
     } catch (error) {
-      qstashLogger.error("Failed to parse QStash webhook body", {
-        error: error instanceof Error ? error.message : "Unknown error",
-        body_preview: rawBody.substring(0, 100),
-        outcome: "failure",
+      handleServerError("WEBHOOK_INVALID_PAYLOAD", {
+        category: "stripe_webhook",
+        action: "qstash_worker_parse_body",
+        additionalData: {
+          error: error instanceof Error ? error.message : "Unknown error",
+          body_preview: rawBody.substring(0, 100),
+          correlation_id: correlationId,
+        },
       });
       return createProblemResponse("INVALID_REQUEST", {
         instance: "/api/workers/stripe-webhook",
@@ -142,11 +147,15 @@ export async function POST(request: NextRequest) {
     const { event: stripeEvent } = webhookBody;
 
     if (!stripeEvent?.id || !stripeEvent?.type) {
-      qstashLogger.error("Missing or invalid event in QStash webhook body", {
-        has_event: !!stripeEvent,
-        event_id: stripeEvent?.id,
-        event_type: stripeEvent?.type,
-        outcome: "failure",
+      handleServerError("WEBHOOK_INVALID_PAYLOAD", {
+        category: "stripe_webhook",
+        action: "qstash_worker_invalid_event",
+        additionalData: {
+          has_event: !!stripeEvent,
+          event_id: stripeEvent?.id,
+          event_type: stripeEvent?.type,
+          correlation_id: correlationId,
+        },
       });
       return createProblemResponse("INVALID_REQUEST", {
         instance: "/api/workers/stripe-webhook",
@@ -174,14 +183,18 @@ export async function POST(request: NextRequest) {
     ) {
       // 終端エラー（terminal: true）の場合
       if ((processingResult as any).terminal === true) {
-        qstashLogger.error("QStash webhook processing terminal failure", {
-          event_id: stripeEvent.id,
-          event_type: stripeEvent.type,
-          delivery_id: deliveryId,
-          processing_time_ms: processingTime,
-          reason: (processingResult as any).reason,
-          error: (processingResult as any).error,
-          outcome: "failure",
+        handleServerError("WEBHOOK_UNEXPECTED_ERROR", {
+          category: "stripe_webhook",
+          action: "qstash_worker_terminal_failure",
+          additionalData: {
+            event_id: stripeEvent.id,
+            event_type: stripeEvent.type,
+            delivery_id: deliveryId,
+            processing_time_ms: processingTime,
+            reason: (processingResult as any).reason,
+            error: (processingResult as any).error,
+            correlation_id: correlationId,
+          },
         });
 
         return createProblemResponse("INTERNAL_ERROR", {
@@ -193,15 +206,19 @@ export async function POST(request: NextRequest) {
       }
 
       // 非終端エラー（terminal: false または undefined）の場合
-      qstashLogger.error("QStash webhook processing retryable failure", {
-        event_id: stripeEvent.id,
-        event_type: stripeEvent.type,
-        delivery_id: deliveryId,
-        processing_time_ms: processingTime,
-        reason: (processingResult as any).reason,
-        error: (processingResult as any).error,
-        terminal: false,
-        outcome: "failure",
+      handleServerError("WEBHOOK_UNEXPECTED_ERROR", {
+        category: "stripe_webhook",
+        action: "qstash_worker_retryable_failure",
+        additionalData: {
+          event_id: stripeEvent.id,
+          event_type: stripeEvent.type,
+          delivery_id: deliveryId,
+          processing_time_ms: processingTime,
+          reason: (processingResult as any).reason,
+          error: (processingResult as any).error,
+          terminal: false,
+          correlation_id: correlationId,
+        },
       });
 
       return createProblemResponse("INTERNAL_ERROR", {
@@ -236,12 +253,16 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     const processingTime = Date.now() - startTime;
 
-    qstashLogger.error("QStash webhook processing error", {
-      error_name: error instanceof Error ? error.name : "Unknown",
-      error_message: error instanceof Error ? error.message : String(error),
-      processing_time_ms: processingTime,
-      stack: error instanceof Error ? error.stack : undefined,
-      outcome: "failure",
+    handleServerError("WEBHOOK_UNEXPECTED_ERROR", {
+      category: "stripe_webhook",
+      action: "qstash_worker_error",
+      additionalData: {
+        error_name: error instanceof Error ? error.name : "Unknown",
+        error_message: error instanceof Error ? error.message : String(error),
+        processing_time_ms: processingTime,
+        stack: error instanceof Error ? error.stack : undefined,
+        correlation_id: correlationId,
+      },
     });
 
     return createProblemResponse("INTERNAL_ERROR", {

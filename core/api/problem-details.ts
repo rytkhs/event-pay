@@ -10,6 +10,7 @@ import { randomBytes } from "crypto";
 import { NextResponse } from "next/server";
 
 import { logger } from "@core/logging/app-logger";
+import { handleServerError } from "@core/utils/error-handler";
 
 /**
  * RFC 7807 Problem Details の基本構造
@@ -130,7 +131,15 @@ function createProblem(code: string, options: ProblemOptions = {}): ProblemDetai
   if (status === 429) {
     logger.warn(`API Error: ${code}`, logFields);
   } else {
-    logger.error(`API Error: ${code}`, logFields);
+    handleServerError(code, {
+      category: "system",
+      action: "api_error",
+      actorType: "anonymous",
+      additionalData: {
+        ...logFields,
+        detail,
+      },
+    });
   }
 
   return problem;

@@ -7,8 +7,8 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 
 import { useErrorHandler } from "@core/hooks/use-error-handler";
-import { logger } from "@core/logging/app-logger";
 import type { Event, EventFormData } from "@core/types/models";
+import { handleClientError } from "@core/utils/error-handler";
 import { safeParseNumber, parseFee } from "@core/utils/number-parsers";
 import {
   convertDatetimeLocalToUtc,
@@ -505,14 +505,10 @@ export function useEventEditForm({
 
             resolve(result);
           } catch (error) {
-            logger.error("Event edit form submission with changes failed", {
+            handleClientError(error, {
               category: "event_management",
               action: "event_update_error",
-              actor_type: "user",
-              event_id: event.id,
-              error_name: error instanceof Error ? error.name : "Unknown",
-              error_message: error instanceof Error ? error.message : String(error),
-              outcome: "failure",
+              eventId: event.id,
             });
             form.setError("root", {
               type: "manual",

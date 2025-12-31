@@ -17,6 +17,7 @@ import {
   createServerActionSuccess,
   zodErrorToServerActionResponse,
 } from "@core/types/server-actions";
+import { handleServerError } from "@core/utils/error-handler";
 import { extractEventCreateFormData } from "@core/utils/form-data-extractors";
 import { generateInviteToken } from "@core/utils/invite-token";
 import { convertDatetimeLocalToUtc } from "@core/utils/timezone";
@@ -98,10 +99,14 @@ export async function createEventAction(formData: FormData): Promise<CreateEvent
         });
         return zodErrorToServerActionResponse(validationError);
       }
-      actionLogger.error("Event creation validation encountered unexpected error", {
-        user_id: user.id,
-        error: validationError instanceof Error ? validationError.message : validationError,
-        outcome: "failure",
+      handleServerError("EVENT_OPERATION_FAILED", {
+        category: "event_management",
+        action: "create_event_validation_error",
+        userId: user.id,
+        additionalData: {
+          error: validationError instanceof Error ? validationError.message : validationError,
+          request_id: requestId,
+        },
       });
       return createServerActionError("VALIDATION_ERROR", "入力が不正です");
     }
@@ -178,14 +183,16 @@ export async function createEventAction(formData: FormData): Promise<CreateEvent
       .single();
 
     if (dbError) {
-      actionLogger.error("Event creation failed at database insert", {
-        user_id: user.id,
-        error_code: dbError.code,
-        error_message: dbError.message,
-        hint: dbError.hint,
-        details: dbError.details,
-        rls_suspected: dbError.code === "42501",
-        outcome: "failure",
+      handleServerError("DATABASE_ERROR", {
+        category: "event_management",
+        action: "create_event_db_insert_fail",
+        userId: user.id,
+        additionalData: {
+          error_code: dbError.code,
+          error_message: dbError.message,
+          hint: dbError.hint,
+          request_id: requestId,
+        },
       });
       return createServerActionError("DATABASE_ERROR", "イベントの作成に失敗しました", {
         retryable: true,
@@ -194,9 +201,11 @@ export async function createEventAction(formData: FormData): Promise<CreateEvent
     }
 
     if (!createdEvent) {
-      actionLogger.error("Event creation did not return created event", {
-        user_id: user.id,
-        outcome: "failure",
+      handleServerError("DATABASE_ERROR", {
+        category: "event_management",
+        action: "create_event_no_result",
+        userId: user.id,
+        additionalData: { request_id: requestId },
       });
       return createServerActionError("DATABASE_ERROR", "イベントの作成に失敗しました", {
         retryable: true,
@@ -226,16 +235,20 @@ export async function createEventAction(formData: FormData): Promise<CreateEvent
     return createServerActionSuccess(createdEvent);
   } catch (error) {
     if (error instanceof z.ZodError) {
-      actionLogger.error("Event creation caught ZodError in catch", {
-        issues: error.issues,
-        outcome: "failure",
+      handleServerError("EVENT_OPERATION_FAILED", {
+        category: "event_management",
+        action: "create_event_zod_error_catch",
+        additionalData: { issues: error.issues, request_id: requestId },
       });
       return zodErrorToServerActionResponse(error);
     }
-    actionLogger.error("Event creation action threw unexpected error", {
-      error_message: error instanceof Error ? error.message : String(error),
-      error_stack: error instanceof Error ? error.stack : undefined,
-      outcome: "failure",
+    handleServerError("EVENT_OPERATION_FAILED", {
+      category: "event_management",
+      action: "create_event_unexpected_error",
+      additionalData: {
+        error_message: error instanceof Error ? error.message : String(error),
+        request_id: requestId,
+      },
     });
     return createServerActionError("INTERNAL_ERROR", "予期しないエラーが発生しました", {
       retryable: true,

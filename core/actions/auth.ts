@@ -19,6 +19,7 @@ import { logger } from "@core/logging/app-logger";
 import { sendSlackText } from "@core/notification/slack";
 import { enforceRateLimit, buildKey, POLICIES } from "@core/rate-limit/index";
 import { createClient } from "@core/supabase/server";
+import { handleServerError } from "@core/utils/error-handler";
 import { extractClientIdFromGaCookie } from "@core/utils/ga-cookie";
 import { getClientIPFromHeaders } from "@core/utils/ip-detection";
 import { formatUtcToJst } from "@core/utils/timezone";
@@ -202,11 +203,12 @@ export async function loginAction(formData: FormData): Promise<ActionResult<{ us
     const { data: signInData, error: signInError } = authResult as AuthResponse;
 
     if (signInError) {
-      logger.error("Login authentication failed", {
+      handleServerError(signInError, {
         category: "authentication",
         action: "loginFailed",
-        error_message: (signInError as any)?.message ?? String(signInError),
-        sanitized_email: sanitizedEmail.replace(/(.)(.*)(@.*)/, "$1***$3"),
+        additionalData: {
+          sanitized_email: sanitizedEmail.replace(/(.)(.*)(@.*)/, "$1***$3"),
+        },
       });
 
       // ログイン失敗をアカウントロックアウトに記録
@@ -301,11 +303,12 @@ export async function loginAction(formData: FormData): Promise<ActionResult<{ us
       redirectUrl: "/dashboard",
     };
   } catch (error) {
-    logger.error("Login action error", {
-      category: "authentication",
+    handleServerError("LOGIN_UNEXPECTED_ERROR", {
       action: "loginActionError",
-      error_name: error instanceof Error ? error.name : "Unknown",
-      error_message: error instanceof Error ? error.message : String(error),
+      additionalData: {
+        error_name: error instanceof Error ? error.name : "Unknown",
+        error_message: error instanceof Error ? error.message : String(error),
+      },
     });
     // タイミング攻撃対策: エラー時も一定時間確保
     await TimingAttackProtection.addConstantDelay();
@@ -393,11 +396,12 @@ export async function registerAction(formData: FormData): Promise<ActionResult<{
     const { data: signUpData, error: signUpError } = registrationResult as AuthResponse;
 
     if (signUpError) {
-      logger.error("User registration failed", {
+      handleServerError(signUpError, {
         category: "authentication",
         action: "registrationFailed",
-        error_message: (signUpError as any)?.message ?? String(signUpError),
-        sanitized_email: sanitizedEmail.replace(/(.)(.*)(@.*)/, "$1***$3"),
+        additionalData: {
+          sanitized_email: sanitizedEmail.replace(/(.)(.*)(@.*)/, "$1***$3"),
+        },
       });
 
       // ユーザー列挙攻撃対策: 詳細なエラー情報を隠す
@@ -479,10 +483,13 @@ export async function registerAction(formData: FormData): Promise<ActionResult<{
           });
         }
       } catch (error) {
-        logger.error("Account creation Slack notification exception", {
+        handleServerError("ADMIN_ALERT_FAILED", {
           category: "system",
           action: "accountCreationSlackException",
-          error_message: error instanceof Error ? error.message : String(error),
+          actorType: "system",
+          additionalData: {
+            error_message: error instanceof Error ? error.message : String(error),
+          },
         });
       }
     });
@@ -496,11 +503,12 @@ export async function registerAction(formData: FormData): Promise<ActionResult<{
       redirectUrl: `/verify-otp?email=${encodeURIComponent(sanitizedEmail)}`,
     };
   } catch (error) {
-    logger.error("Register action error", {
-      category: "authentication",
+    handleServerError("REGISTRATION_UNEXPECTED_ERROR", {
       action: "registerActionError",
-      error_name: error instanceof Error ? error.name : "Unknown",
-      error_message: error instanceof Error ? error.message : String(error),
+      additionalData: {
+        error_name: error instanceof Error ? error.name : "Unknown",
+        error_message: error instanceof Error ? error.message : String(error),
+      },
     });
     await TimingAttackProtection.addConstantDelay();
     return {
@@ -536,11 +544,12 @@ export async function verifyOtpAction(formData: FormData): Promise<ActionResult>
     });
 
     if (verifiedError) {
-      logger.error("OTP verification failed", {
+      handleServerError(verifiedError, {
         category: "authentication",
         action: "otpVerificationFailed",
-        error_message: (verifiedError as any)?.message ?? String(verifiedError),
-        sanitized_email: email.replace(/(.)(.*)(@.*)/, "$1***$3"),
+        additionalData: {
+          sanitized_email: email.replace(/(.)(.*)(@.*)/, "$1***$3"),
+        },
       });
 
       let errorMessage = "確認コードが正しくありません";
@@ -580,11 +589,12 @@ export async function verifyOtpAction(formData: FormData): Promise<ActionResult>
       redirectUrl,
     };
   } catch (error) {
-    logger.error("Verify OTP action error", {
-      category: "authentication",
+    handleServerError("OTP_UNEXPECTED_ERROR", {
       action: "verifyOtpActionError",
-      error_name: error instanceof Error ? error.name : "Unknown",
-      error_message: error instanceof Error ? error.message : String(error),
+      additionalData: {
+        error_name: error instanceof Error ? error.name : "Unknown",
+        error_message: error instanceof Error ? error.message : String(error),
+      },
     });
     return {
       success: false,
@@ -656,11 +666,12 @@ export async function resendOtpAction(formData: FormData): Promise<ActionResult>
     const { error } = result;
 
     if (error) {
-      logger.error("Resend OTP failed", {
+      handleServerError(error, {
         category: "authentication",
         action: "resendOtpFailed",
-        error_message: (error as any)?.message ?? String(error),
-        sanitized_email: email.replace(/(.)(.*)(@.*)/, "$1***$3"),
+        additionalData: {
+          sanitized_email: email.replace(/(.)(.*)(@.*)/, "$1***$3"),
+        },
       });
 
       if ((error as any)?.message?.includes("rate limit")) {
@@ -681,11 +692,12 @@ export async function resendOtpAction(formData: FormData): Promise<ActionResult>
       message: "確認コードを再送信しました",
     };
   } catch (error) {
-    logger.error("Resend OTP action error", {
-      category: "authentication",
+    handleServerError("RESEND_OTP_UNEXPECTED_ERROR", {
       action: "resendOtpActionError",
-      error_name: error instanceof Error ? error.name : "Unknown",
-      error_message: error instanceof Error ? error.message : String(error),
+      additionalData: {
+        error_name: error instanceof Error ? error.name : "Unknown",
+        error_message: error instanceof Error ? error.message : String(error),
+      },
     });
     return {
       success: false,
@@ -761,12 +773,12 @@ export async function resetPasswordAction(formData: FormData): Promise<ActionRes
     // セキュリティ上、成功・失敗に関わらず同じメッセージを返す（ユーザー列挙攻撃対策）
     // エラーがあってもログに記録するだけで、ユーザーには同じメッセージを返す
     if (resetResult && (resetResult as any).error) {
-      logger.error("Reset password OTP failed", {
+      handleServerError((resetResult as any).error, {
         category: "authentication",
         action: "resetPasswordOtpFailed",
-        error_message:
-          ((resetResult as any).error as any)?.message ?? String((resetResult as any).error),
-        sanitized_email: email.replace(/(.)(.*)(@.*)/, "$1***$3"),
+        additionalData: {
+          sanitized_email: email.replace(/(.)(.*)(@.*)/, "$1***$3"),
+        },
       });
     }
 
@@ -778,11 +790,12 @@ export async function resetPasswordAction(formData: FormData): Promise<ActionRes
       redirectUrl: `/verify-otp?email=${encodeURIComponent(email)}&type=recovery`,
     };
   } catch (error) {
-    logger.error("Reset password action error", {
-      category: "authentication",
+    handleServerError("RESET_PASSWORD_UNEXPECTED_ERROR", {
       action: "resetPasswordActionError",
-      error_name: (error as any)?.name ?? "Unknown",
-      error_message: (error as any)?.message ?? String(error),
+      additionalData: {
+        error_name: error instanceof Error ? error.name : "Unknown",
+        error_message: error instanceof Error ? error.message : String(error),
+      },
     });
     await TimingAttackProtection.addConstantDelay();
     return {
@@ -821,15 +834,15 @@ export async function updatePasswordAction(formData: FormData): Promise<ActionRe
       };
     }
 
-    const { error } = await supabase.auth.updateUser({
+    const { error: updateError } = await supabase.auth.updateUser({
       password,
     });
 
-    if (error) {
-      logger.error("Update password failed", {
+    if (updateError) {
+      handleServerError(updateError, {
         category: "authentication",
         action: "updatePasswordFailed",
-        error_message: (error as any)?.message ?? String(error),
+        actorType: "user",
       });
       return {
         success: false,
@@ -843,11 +856,12 @@ export async function updatePasswordAction(formData: FormData): Promise<ActionRe
       redirectUrl: "/dashboard",
     };
   } catch (error) {
-    logger.error("Update password action error", {
-      category: "authentication",
+    handleServerError("UPDATE_PASSWORD_UNEXPECTED_ERROR", {
       action: "updatePasswordActionError",
-      error_name: error instanceof Error ? error.name : "Unknown",
-      error_message: error instanceof Error ? error.message : String(error),
+      additionalData: {
+        error_name: error instanceof Error ? error.name : "Unknown",
+        error_message: error instanceof Error ? error.message : String(error),
+      },
     });
     return {
       success: false,
@@ -914,11 +928,12 @@ export async function logoutAction(): Promise<ActionResult> {
       }
     });
   } catch (error) {
-    logger.error("Logout action error", {
-      category: "authentication",
+    handleServerError("LOGOUT_UNEXPECTED_ERROR", {
       action: "logoutActionError",
-      error_name: error instanceof Error ? error.name : "Unknown",
-      error_message: error instanceof Error ? error.message : String(error),
+      additionalData: {
+        error_name: error instanceof Error ? error.name : "Unknown",
+        error_message: error instanceof Error ? error.message : String(error),
+      },
     });
     await TimingAttackProtection.addConstantDelay();
   }

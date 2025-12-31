@@ -6,6 +6,7 @@ import type { ActionResult } from "@core/actions/auth";
 import { getCurrentUser } from "@core/auth/auth-utils";
 import { logger } from "@core/logging/app-logger";
 import { createClient } from "@core/supabase/server";
+import { handleServerError } from "@core/utils/error-handler";
 
 const updateEmailSchema = z.object({
   newEmail: z
@@ -80,13 +81,11 @@ export async function updateEmailAction(formData: FormData): Promise<ActionResul
     });
 
     if (updateError) {
-      logger.error("Email update failed", {
+      handleServerError(updateError, {
         category: "authentication",
         action: "update_email",
-        actor_type: "user",
-        user_id: user.id,
-        error_message: updateError.message,
-        outcome: "failure",
+        actorType: "user",
+        userId: user.id,
       });
       return {
         success: false,
@@ -109,13 +108,14 @@ export async function updateEmailAction(formData: FormData): Promise<ActionResul
       message: "確認メールを送信しました。新しいメールアドレスで確認リンクをクリックしてください。",
     };
   } catch (error) {
-    logger.error("Update email action error", {
+    handleServerError("EMAIL_UPDATE_UNEXPECTED_ERROR", {
       category: "authentication",
       action: "update_email",
-      actor_type: "user",
-      error_name: error instanceof Error ? error.name : "Unknown",
-      error_message: error instanceof Error ? error.message : String(error),
-      outcome: "failure",
+      actorType: "user",
+      additionalData: {
+        error_name: error instanceof Error ? error.name : "Unknown",
+        error_message: error instanceof Error ? error.message : String(error),
+      },
     });
 
     return {

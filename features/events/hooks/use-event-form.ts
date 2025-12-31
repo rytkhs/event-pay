@@ -12,6 +12,7 @@ import type { EventCreatedParams } from "@core/analytics/event-types";
 import { ga4Client } from "@core/analytics/ga4-client";
 import { useToast } from "@core/contexts/toast-context";
 import { logger } from "@core/logging/app-logger";
+import { handleClientError } from "@core/utils/error-handler";
 import { safeParseNumber, parseFee } from "@core/utils/number-parsers";
 import { convertDatetimeLocalToUtc } from "@core/utils/timezone";
 
@@ -469,13 +470,9 @@ export const useEventForm = (): {
           });
         }
       } catch (error) {
-        logger.error("Event creation failed", {
+        handleClientError(error, {
           category: "event_management",
-          action: "event_creation",
-          actor_type: "user",
-          error_name: error instanceof Error ? (error.name ?? "Unknown") : "Unknown",
-          error_message: error instanceof Error ? (error.message ?? String(error)) : String(error),
-          outcome: "failure",
+          action: "event_creation_failed",
         });
         form.setError("root", {
           type: "server",

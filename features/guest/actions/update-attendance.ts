@@ -13,6 +13,7 @@ import {
   createServerActionSuccess,
   type ServerActionResult,
 } from "@core/types/server-actions";
+import { handleServerError } from "@core/utils/error-handler";
 import { validateGuestToken } from "@core/utils/guest-token";
 import { getClientIPFromHeaders } from "@core/utils/ip-detection";
 import { attendanceStatusSchema, paymentMethodSchema } from "@core/validation/participation";
@@ -203,16 +204,17 @@ export async function updateGuestAttendanceAction(
 
       // 開発環境では詳細エラーログを出力
       if (process.env.NODE_ENV === "development") {
-        logger.error("Guest attendance update error", {
-          category: "attendance",
-          action: "update_attendance",
-          actor_type: "guest",
-          error_code: errorCode,
-          error_message: errorMessage,
-          attendance_id: attendance.id,
-          event_id: attendance.event.id,
-          is_capacity_reached: isCapacityReached,
-          outcome: "failure",
+        handleServerError("GUEST_ATTENDANCE_UPDATE_ERROR", {
+          action: "update_guest_attendance_rpc_error",
+          additionalData: {
+            category: "attendance",
+            actor_type: "guest",
+            error_code: errorCode,
+            error_message: errorMessage,
+            attendance_id: attendance.id,
+            event_id: attendance.event.id,
+            is_capacity_reached: isCapacityReached,
+          },
         });
       }
 
@@ -269,13 +271,14 @@ export async function updateGuestAttendanceAction(
 
     // 本番環境では適切なログシステムでエラーログを記録
     if (process.env.NODE_ENV === "production") {
-      logger.error("Unexpected error in updateGuestAttendanceAction", {
-        category: "attendance",
-        action: "update_attendance",
-        actor_type: "guest",
-        error_message: error instanceof Error ? error.message : String(error),
-        guest_token_prefix: guestToken?.substring(0, 4),
-        outcome: "failure",
+      handleServerError("GUEST_ATTENDANCE_UPDATE_ERROR", {
+        action: "updateGuestAttendanceAction",
+        additionalData: {
+          category: "attendance",
+          actor_type: "guest",
+          error_message: error instanceof Error ? error.message : String(error),
+          guest_token_prefix: guestToken?.substring(0, 4),
+        },
       });
     }
 

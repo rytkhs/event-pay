@@ -1,7 +1,7 @@
 "use server";
 
-import { logger } from "@core/logging/app-logger";
 import { createClient } from "@core/supabase/server";
+import { handleServerError } from "@core/utils/error-handler";
 
 import { createUserStripeConnectService } from "../services";
 
@@ -42,6 +42,7 @@ export async function getDetailedAccountStatusAction(): Promise<{
   status?: DetailedAccountStatus;
   error?: string;
 }> {
+  let userId: string | undefined;
   try {
     // 1. 認証チェック
     const supabase = createClient();
@@ -49,6 +50,7 @@ export async function getDetailedAccountStatusAction(): Promise<{
       data: { user },
       error: authError,
     } = await supabase.auth.getUser();
+    userId = user?.id;
 
     if (authError || !user) {
       return {
@@ -163,13 +165,10 @@ export async function getDetailedAccountStatusAction(): Promise<{
       status: undefined, // ready状態 = CTA非表示
     };
   } catch (error) {
-    logger.error("Failed to check detailed account status", {
+    handleServerError(error, {
       category: "stripe_connect",
-      action: "account_status_check",
-      actor_type: "user",
-      error_name: error instanceof Error ? error.name : "Unknown",
-      error_message: error instanceof Error ? error.message : String(error),
-      outcome: "failure",
+      action: "get_detailed_account_status_failed",
+      userId,
     });
 
     return {

@@ -1,6 +1,6 @@
 import { SupabaseClient, Session } from "@supabase/supabase-js";
 
-import { logger } from "@core/logging/app-logger";
+import { handleServerError } from "@core/utils/error-handler";
 
 import { SESSION_CONFIG, type SessionUpdatePriority } from "./config";
 
@@ -44,13 +44,10 @@ export class SessionManager {
       const { data, error } = await supabase.auth.refreshSession();
 
       if (error) {
-        logger.warn("Session refresh failed", {
+        handleServerError(error, {
           category: "authentication",
           action: "session_refresh",
-          actor_type: "user",
-          error_message: error.message,
-          session_id: sessionId,
-          outcome: "failure",
+          additionalData: { session_id: sessionId, phase: "refresh" },
         });
         return { updated: false, session: null };
       }
@@ -60,14 +57,11 @@ export class SessionManager {
 
       return { updated: true, session: data.session };
     } catch (error) {
-      logger.error("Session refresh error", {
+      handleServerError(error, {
         category: "authentication",
         action: "session_refresh",
-        actor_type: "user",
-        error_name: error instanceof Error ? error.name : "Unknown",
-        error_message: error instanceof Error ? error.message : String(error),
-        session_id: sessionId,
-        outcome: "failure",
+        userId: undefined, // セッションレベルのエラー
+        additionalData: { session_id: sessionId },
       });
       return { updated: false, session: null };
     }
@@ -140,16 +134,11 @@ export class SessionManager {
         await this.refreshSessionIfNeeded(supabase, sessionId);
       }
     } catch (error) {
-      // バックグラウンド処理なのでログのみ
-      logger.warn("Background session refresh failed", {
+      // バックグラウンド処理なのでログのみ（通知判定はhandleServerErrorに委譲）
+      handleServerError(error, {
         category: "authentication",
         action: "session_refresh",
-        actor_type: "user",
-        error_name: error instanceof Error ? error.name : "Unknown",
-        error_message: error instanceof Error ? error.message : String(error),
-        session_id: sessionId,
-        phase: "background",
-        outcome: "failure",
+        additionalData: { session_id: sessionId, phase: "background" },
       });
     }
   }

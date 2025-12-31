@@ -3,6 +3,8 @@
  * Connect Account関連エラーを含む決済処理の詳細ログを管理
  */
 
+import { handleServerError } from "@core/utils/error-handler";
+
 import { logger, type EventPayLogFields } from "./app-logger";
 
 /** 決済エラーの分類 */
@@ -191,7 +193,11 @@ export class PaymentLogger {
     const finalContext = { ...logContext, outcome: "failure" as const } as PaymentLogFields;
 
     if (logLevel === "error") {
-      logger.error(logMsg, finalContext);
+      handleServerError(error, {
+        category: "payment",
+        action: operation,
+        additionalData: finalContext,
+      });
     } else {
       logger.warn(logMsg, finalContext);
     }
@@ -252,10 +258,11 @@ export class PaymentLogger {
         outcome: "success",
       } as PaymentLogFields);
     } else {
-      logger.error("Payment session creation failed", {
-        ...logContext,
-        outcome: "failure",
-      } as PaymentLogFields);
+      handleServerError("STRIPE_SESSION_CREATION_FAILED", {
+        category: "payment",
+        action: "session_creation",
+        additionalData: logContext,
+      });
     }
   }
 
@@ -329,11 +336,20 @@ export class PaymentLogger {
   }
 
   error(msg: string, context: Partial<PaymentLogFields> = {}) {
-    logger.error(msg, { ...this.baseContext, ...context } as PaymentLogFields);
+    handleServerError(msg, {
+      category: "payment",
+      action: context.action || "payment_error",
+      additionalData: { ...this.baseContext, ...context },
+    });
   }
 
   critical(msg: string, context: Partial<PaymentLogFields> = {}) {
-    logger.critical(msg, { ...this.baseContext, ...context } as PaymentLogFields);
+    handleServerError(msg, {
+      category: "payment",
+      action: context.action || "payment_critical",
+      severity: "critical",
+      additionalData: { ...this.baseContext, ...context },
+    });
   }
 }
 

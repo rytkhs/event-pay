@@ -18,6 +18,7 @@ import {
   createServerActionSuccess,
 } from "@core/types/server-actions";
 import { getEnv } from "@core/utils/cloudflare-env";
+import { handleServerError } from "@core/utils/error-handler";
 import { getClientIPFromHeaders } from "@core/utils/ip-detection";
 import { sanitizeForEventPay } from "@core/utils/sanitize";
 import { formatUtcToJst, formatDateToJstYmd } from "@core/utils/timezone";
@@ -146,14 +147,10 @@ export async function submitContact(input: ContactInput) {
     }
 
     // その他のDBエラー
-    logger.error("Contact DB insert error", {
+    handleServerError(insertError, {
       category: "system",
       action: "contact_db_error",
-      actor_type: "anonymous",
-      error_code: insertError.code,
-      error_message: insertError.message,
-      email_masked: maskEmail(email),
-      outcome: "failure",
+      additionalData: { email_masked: maskEmail(email) },
     });
     return createServerActionError(
       "INTERNAL_ERROR",
@@ -208,13 +205,10 @@ export async function submitContact(input: ContactInput) {
         });
       }
     } catch (error) {
-      logger.error("Contact notification email exception", {
+      handleServerError(error, {
         category: "email",
         action: "contact_notification_exception",
-        actor_type: "system",
-        email_masked: maskEmail(email),
-        error_message: error instanceof Error ? error.message : String(error),
-        outcome: "failure",
+        additionalData: { email_masked: maskEmail(email) },
       });
     }
 
@@ -235,12 +229,9 @@ export async function submitContact(input: ContactInput) {
           });
         }
       } catch (error) {
-        logger.error("Contact Slack notification exception", {
+        handleServerError(error, {
           category: "system",
           action: "contact_slack_exception",
-          actor_type: "system",
-          error_message: error instanceof Error ? error.message : String(error),
-          outcome: "failure",
         });
       }
     }

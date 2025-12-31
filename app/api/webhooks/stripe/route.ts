@@ -20,6 +20,7 @@ import {
 } from "@core/security/stripe-ip-allowlist";
 import { getWebhookSecrets, getStripe } from "@core/stripe/client";
 import { getEnv } from "@core/utils/cloudflare-env";
+import { handleServerError } from "@core/utils/error-handler";
 import { getClientIP } from "@core/utils/ip-detection";
 
 import { StripeWebhookEventHandler } from "@features/payments/services/webhook/webhook-event-handler";
@@ -166,13 +167,16 @@ export async function POST(request: NextRequest) {
           processingTimeMs: processingTime,
         });
       } catch (error) {
-        logger.error("Webhook synchronous processing failed", {
-          category: "stripe_webhook",
+        handleServerError("WEBHOOK_SYNC_PROCESSING_FAILED", {
           action: "syncProcessingFailed",
-          event_id: event.id,
-          event_type: event.type,
-          error: error instanceof Error ? error.message : "Unknown error",
-          request_id: requestId,
+          additionalData: {
+            category: "stripe_webhook",
+            event_id: event.id,
+            event_type: event.type,
+            error_name: error instanceof Error ? error.name : "Unknown",
+            error_message: error instanceof Error ? error.message : String(error),
+            request_id: requestId,
+          },
         });
 
         return createProblemResponse("INTERNAL_ERROR", {
@@ -275,11 +279,13 @@ export async function POST(request: NextRequest) {
         errObj.message?.includes("upstash") ||
         errObj.message?.includes("publish")
       ) {
-        logger.error("QStash forwarding failed", {
-          ...errorContext,
-          error_classification: "external_service_error",
-          severity: "critical", // webhook転送失敗は重大
-          qstash_error: true,
+        handleServerError("WEBHOOK_QSTASH_FORWARDING_FAILED", {
+          action: "qstashForwardingFailed",
+          additionalData: {
+            ...errorContext,
+            error_classification: "external_service_error",
+            qstash_error: true,
+          },
         });
         return createProblemResponse("EXTERNAL_SERVICE_ERROR", {
           instance: "/api/webhooks/stripe",
@@ -335,10 +341,12 @@ export async function POST(request: NextRequest) {
         errObj.message?.includes("environment") ||
         errObj.message?.includes("configuration")
       ) {
-        logger.error("Configuration error in webhook processing", {
-          ...errorContext,
-          error_classification: "config_error",
-          severity: "critical",
+        handleServerError("WEBHOOK_CONFIG_ERROR", {
+          action: "webhookConfigError",
+          additionalData: {
+            ...errorContext,
+            error_classification: "config_error",
+          },
         });
         return createProblemResponse("INTERNAL_ERROR", {
           instance: "/api/webhooks/stripe",
@@ -367,11 +375,13 @@ export async function POST(request: NextRequest) {
     }
 
     // その他の予期しないエラー（最も重大として扱う）
-    logger.error("Unexpected error in webhook processing", {
-      ...errorContext,
-      error_classification: "system_error",
-      severity: "critical",
-      requires_investigation: true,
+    handleServerError("WEBHOOK_UNEXPECTED_ERROR", {
+      action: "webhookUnexpectedError",
+      additionalData: {
+        ...errorContext,
+        error_classification: "system_error",
+        requires_investigation: true,
+      },
     });
 
     // 失敗時はProblem Detailsで500を返し、Stripeにリトライを促す

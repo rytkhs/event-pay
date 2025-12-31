@@ -7,6 +7,7 @@ import { SecureSupabaseClientFactory } from "@core/security/secure-client-factor
 import { AdminReason } from "@core/security/secure-client-factory.types";
 import { createClient } from "@core/supabase/server";
 import { toCsvCell } from "@core/utils/csv";
+import { handleServerError } from "@core/utils/error-handler";
 import {
   formatDateToJstYmd,
   getCurrentJstTime,
@@ -80,10 +81,10 @@ export class SettlementReportService {
 
       // エラーハンドリング
       if (error) {
-        this.logger.error("RPC settlement report generation failed", {
-          eventId,
-          error: error.message,
-          outcome: "failure",
+        handleServerError(error, {
+          category: "settlement",
+          action: "generate_report_rpc_failed",
+          additionalData: { eventId },
         });
         return {
           success: false,
@@ -96,9 +97,10 @@ export class SettlementReportService {
 
       // 何らかの理由でデータが取得できなかった場合はエラー扱い
       if (!resultRow?.report_id) {
-        this.logger.error("RPC returned no data", {
-          eventId,
-          outcome: "failure",
+        handleServerError("SETTLEMENT_REPORT_FAILED", {
+          category: "settlement",
+          action: "generate_report_no_data",
+          additionalData: { eventId },
         });
         return {
           success: false,
@@ -146,10 +148,10 @@ export class SettlementReportService {
         alreadyExists,
       };
     } catch (error) {
-      this.logger.error("Settlement report generation failed", {
-        eventId: params.eventId,
-        error: error instanceof Error ? error.message : String(error),
-        outcome: "failure",
+      handleServerError(error, {
+        category: "settlement",
+        action: "generate_report_failed",
+        additionalData: { eventId: params.eventId },
       });
 
       return {
@@ -191,10 +193,10 @@ export class SettlementReportService {
       });
 
       if (error) {
-        this.logger.error("Failed to get settlement reports via RPC", {
-          createdBy: params.createdBy,
-          error: error?.message || "Unknown error",
-          outcome: "failure",
+        handleServerError(error, {
+          category: "settlement",
+          action: "get_reports_rpc_failed",
+          userId: params.createdBy,
         });
         throw new Error(`Failed to get settlement reports: ${error?.message || "Unknown error"}`);
       }
@@ -236,10 +238,10 @@ export class SettlementReportService {
         })
       );
     } catch (error) {
-      this.logger.error("Settlement reports RPC call failed", {
-        createdBy: params.createdBy,
-        error: error instanceof Error ? error.message : String(error),
-        outcome: "failure",
+      handleServerError(error, {
+        category: "settlement",
+        action: "get_reports_failed",
+        userId: params.createdBy,
       });
       throw error;
     }
@@ -348,10 +350,10 @@ export class SettlementReportService {
         truncated,
       };
     } catch (error) {
-      this.logger.error("CSV export failed", {
-        createdBy: params.createdBy,
-        error: error instanceof Error ? error.message : String(error),
-        outcome: "failure",
+      handleServerError(error, {
+        category: "settlement",
+        action: "export_csv_failed",
+        userId: params.createdBy,
       });
 
       return {

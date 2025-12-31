@@ -3,7 +3,7 @@
  * Webhook処理での境界違反を解消するためのEvent-Driven Architecture
  */
 
-import { logger } from "@core/logging/app-logger";
+import { handleServerError } from "@core/utils/error-handler";
 
 // Event Types
 export interface PaymentWebhookEvent {
@@ -50,15 +50,16 @@ class EventRegistry {
     // Log failures but don't throw (fail-soft approach)
     results.forEach((result, index) => {
       if (result.status === "rejected") {
-        logger.error("Payment event handler failed", {
+        handleServerError("EVENT_DISPATCH_ERROR", {
           category: "payment",
           action: "event_dispatch",
-          actor_type: "system",
-          handler_index: index,
-          event_type: event.type,
-          payment_id: event.paymentId,
-          error_reason: String(result.reason),
-          outcome: "failure",
+          actorType: "system",
+          additionalData: {
+            handler_index: index,
+            event_type: event.type,
+            payment_id: event.paymentId,
+            error_reason: String(result.reason),
+          },
         });
       }
     });
@@ -70,15 +71,16 @@ class EventRegistry {
     // Log failures but don't throw (fail-soft approach)
     results.forEach((result, index) => {
       if (result.status === "rejected") {
-        logger.error("Stripe account event handler failed", {
+        handleServerError("EVENT_DISPATCH_ERROR", {
           category: "stripe_connect",
           action: "event_dispatch",
-          actor_type: "system",
-          handler_index: index,
-          event_type: event.type,
-          account_id: event.accountId,
-          error_reason: String(result.reason),
-          outcome: "failure",
+          actorType: "system",
+          additionalData: {
+            handler_index: index,
+            event_type: event.type,
+            account_id: event.accountId,
+            error_reason: String(result.reason),
+          },
         });
       }
     });

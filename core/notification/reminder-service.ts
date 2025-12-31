@@ -7,6 +7,7 @@ import { addDays } from "date-fns";
 
 import { logger } from "@core/logging/app-logger";
 import { getEnv } from "@core/utils/cloudflare-env";
+import { handleServerError } from "@core/utils/error-handler";
 import {
   getCurrentJstTime,
   formatUtcToJst,
@@ -162,9 +163,13 @@ export class ReminderService {
         .is("events.canceled_at", null);
 
       if (error) {
-        this.logger.error("Failed to fetch response deadline targets", {
-          error: error.message,
-          outcome: "failure",
+        handleServerError("DATABASE_ERROR", {
+          category: "email",
+          action: "sendResponseDeadlineReminders",
+          actorType: "system",
+          additionalData: {
+            error: error.message,
+          },
         });
         return {
           reminderType: "response_deadline",
@@ -198,9 +203,13 @@ export class ReminderService {
         })),
       };
     } catch (error) {
-      this.logger.error("Response deadline reminders failed", {
-        error: error instanceof Error ? error.message : String(error),
-        outcome: "failure",
+      handleServerError("CRON_EXECUTION_ERROR", {
+        category: "email",
+        action: "sendResponseDeadlineReminders",
+        actorType: "system",
+        additionalData: {
+          error: error instanceof Error ? error.message : String(error),
+        },
       });
       return {
         reminderType: "response_deadline",
@@ -265,9 +274,13 @@ export class ReminderService {
         .limit(1, { foreignTable: "payments" });
 
       if (error) {
-        this.logger.error("Failed to fetch payment deadline targets", {
-          error: error.message,
-          outcome: "failure",
+        handleServerError("DATABASE_ERROR", {
+          category: "email",
+          action: "sendPaymentDeadlineReminders",
+          actorType: "system",
+          additionalData: {
+            error: error.message,
+          },
         });
         return {
           reminderType: "payment_deadline",
@@ -301,9 +314,13 @@ export class ReminderService {
         })),
       };
     } catch (error) {
-      this.logger.error("Payment deadline reminders failed", {
-        error: error instanceof Error ? error.message : String(error),
-        outcome: "failure",
+      handleServerError("CRON_EXECUTION_ERROR", {
+        category: "email",
+        action: "sendPaymentDeadlineReminders",
+        actorType: "system",
+        additionalData: {
+          error: error instanceof Error ? error.message : String(error),
+        },
       });
       return {
         reminderType: "payment_deadline",
@@ -364,9 +381,13 @@ export class ReminderService {
         .limit(1, { foreignTable: "payments" });
 
       if (error) {
-        this.logger.error("Failed to fetch event start targets", {
-          error: error.message,
-          outcome: "failure",
+        handleServerError("DATABASE_ERROR", {
+          category: "email",
+          action: "sendEventStartReminders",
+          actorType: "system",
+          additionalData: {
+            error: error.message,
+          },
         });
         return {
           reminderType: "event_start",
@@ -400,9 +421,13 @@ export class ReminderService {
         })),
       };
     } catch (error) {
-      this.logger.error("Event start reminders failed", {
-        error: error instanceof Error ? error.message : String(error),
-        outcome: "failure",
+      handleServerError("CRON_EXECUTION_ERROR", {
+        category: "email",
+        action: "sendEventStartReminders",
+        actorType: "system",
+        additionalData: {
+          error: error instanceof Error ? error.message : String(error),
+        },
       });
       return {
         reminderType: "event_start",
@@ -550,11 +575,15 @@ export class ReminderService {
         } catch (error) {
           const errorMessage = error instanceof Error ? error.message : String(error);
           failures.push({ target, error: errorMessage });
-          this.logger.error("Failed to send reminder", {
-            attendanceId: target.id,
-            eventId: target.events.id,
-            error: errorMessage,
-            outcome: "failure",
+          handleServerError("EMAIL_SENDING_FAILED", {
+            category: "email",
+            action: "sendBatch",
+            actorType: "system",
+            additionalData: {
+              attendanceId: target.id,
+              eventId: target.events.id,
+              error: errorMessage,
+            },
           });
         }
       }

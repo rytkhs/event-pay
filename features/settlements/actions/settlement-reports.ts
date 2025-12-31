@@ -7,6 +7,7 @@ import { z } from "zod";
 import { getCurrentUser } from "@core/auth/auth-utils";
 import { logger } from "@core/logging/app-logger";
 import { createClient } from "@core/supabase/server";
+import { handleServerError } from "@core/utils/error-handler";
 
 import { SettlementReportService } from "../services/service";
 
@@ -68,13 +69,13 @@ const getReportsSchema = z.object({
 export async function generateSettlementReportAction(
   formData: FormData
 ): Promise<GenerateSettlementReportResponse> {
-  try {
-    // 認証確認
-    const user = await getCurrentUser();
-    if (!user?.id) {
-      redirect("/login");
-    }
+  // 認証確認
+  const user = await getCurrentUser();
+  if (!user?.id) {
+    redirect("/login");
+  }
 
+  try {
     // 入力値検証
     const rawData = {
       eventId: formData.get("eventId")?.toString() || "",
@@ -116,12 +117,10 @@ export async function generateSettlementReportAction(
       reportData: result.reportData,
     };
   } catch (error) {
-    logger.error("Settlement report generation action failed", {
+    handleServerError(error, {
       category: "settlement",
-      action: "generate_report",
-      actor_type: "user",
-      error_message: error instanceof Error ? error.message : String(error),
-      outcome: "failure",
+      action: "generate_report_failed",
+      userId: user.id,
     });
 
     return {
@@ -141,13 +140,13 @@ export async function getSettlementReportsAction(params: {
   limit?: number;
   offset?: number;
 }) {
-  try {
-    // 認証確認
-    const user = await getCurrentUser();
-    if (!user?.id) {
-      redirect("/login");
-    }
+  // 認証確認
+  const user = await getCurrentUser();
+  if (!user?.id) {
+    redirect("/login");
+  }
 
+  try {
     // 入力値検証
     const validatedParams = getReportsSchema.parse(params);
 
@@ -169,12 +168,10 @@ export async function getSettlementReportsAction(params: {
       reports,
     };
   } catch (error) {
-    logger.error("Get settlement reports action failed", {
+    handleServerError(error, {
       category: "settlement",
-      action: "get_reports",
-      actor_type: "user",
-      error_message: error instanceof Error ? error.message : String(error),
-      outcome: "failure",
+      action: "get_reports_failed",
+      userId: user.id,
     });
 
     return {
@@ -193,13 +190,13 @@ export async function exportSettlementReportsAction(params: {
   fromDate?: string;
   toDate?: string;
 }): Promise<ExportSettlementReportsResponse> {
-  try {
-    // 認証確認
-    const user = await getCurrentUser();
-    if (!user?.id) {
-      redirect("/login");
-    }
+  // 認証確認
+  const user = await getCurrentUser();
+  if (!user?.id) {
+    redirect("/login");
+  }
 
+  try {
     // 入力値検証
     const validatedParams = getReportsSchema.parse({ ...params, limit: 1000 }); // CSVは最大1000件
 
@@ -245,12 +242,10 @@ export async function exportSettlementReportsAction(params: {
       truncated: !!result.truncated,
     };
   } catch (error) {
-    logger.error("Settlement reports CSV export action failed", {
+    handleServerError(error, {
       category: "settlement",
-      action: "export_csv",
-      actor_type: "user",
-      error_message: error instanceof Error ? error.message : String(error),
-      outcome: "failure",
+      action: "export_csv_failed",
+      userId: user.id,
     });
 
     return {
@@ -264,13 +259,13 @@ export async function exportSettlementReportsAction(params: {
  * 返金・Dispute時の再集計
  */
 export async function regenerateAfterRefundAction(formData: FormData) {
-  try {
-    // 認証確認
-    const user = await getCurrentUser();
-    if (!user?.id) {
-      redirect("/login");
-    }
+  // 認証確認
+  const user = await getCurrentUser();
+  if (!user?.id) {
+    redirect("/login");
+  }
 
+  try {
     // 入力値検証
     const rawData = {
       eventId: formData.get("eventId")?.toString() || "",
@@ -307,12 +302,10 @@ export async function regenerateAfterRefundAction(formData: FormData) {
       reportData: result.reportData,
     };
   } catch (error) {
-    logger.error("Settlement report regeneration action failed", {
+    handleServerError(error, {
       category: "settlement",
-      action: "regenerate_after_refund",
-      actor_type: "user",
-      error_message: error instanceof Error ? error.message : String(error),
-      outcome: "failure",
+      action: "regenerate_after_refund_failed",
+      userId: user.id,
     });
 
     return {

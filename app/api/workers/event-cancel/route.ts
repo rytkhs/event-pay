@@ -12,6 +12,7 @@ import { SecureSupabaseClientFactory } from "@core/security/secure-client-factor
 import { AdminReason } from "@core/security/secure-client-factory.types";
 import { logSecurityEvent } from "@core/security/security-logger";
 import { getEnv } from "@core/utils/cloudflare-env";
+import { handleServerError } from "@core/utils/error-handler";
 import { getClientIP } from "@core/utils/ip-detection";
 
 // 署名検証用Receiver
@@ -115,10 +116,14 @@ export async function POST(request: NextRequest) {
       .in("status", ["attending", "maybe"]);
 
     if (error) {
-      cancelLogger.error("Failed to fetch attendees for cancel worker", {
-        event_id: eventId,
-        error_message: error.message,
-        outcome: "failure",
+      handleServerError("DATABASE_ERROR", {
+        category: "event_management",
+        action: "event_cancel_worker_fetch_attendees",
+        eventId: eventId,
+        additionalData: {
+          error_message: error.message,
+          correlation_id: corr,
+        },
       });
       // 致命的失敗はHTTP 500で返却し、QStashの再試行に委ねる
       return createProblemResponse("DATABASE_ERROR", {
@@ -165,11 +170,14 @@ export async function POST(request: NextRequest) {
           });
         }
       } catch (error) {
-        cancelLogger.error("Event cancel Slack notification exception", {
+        handleServerError("EVENT_OPERATION_FAILED", {
+          category: "event_management",
           action: "event_cancel_slack_exception",
-          event_id: eventId,
-          error_message: error instanceof Error ? error.message : String(error),
-          outcome: "failure",
+          eventId: eventId,
+          additionalData: {
+            error_message: error instanceof Error ? error.message : String(error),
+            correlation_id: corr,
+          },
         });
       }
     }
@@ -187,9 +195,13 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ received: true, deliveryId, emails: emails.length });
   } catch (error) {
-    cancelLogger.error("Event cancel worker failed", {
-      error_message: error instanceof Error ? error.message : String(error),
-      outcome: "failure",
+    handleServerError("EVENT_OPERATION_FAILED", {
+      category: "event_management",
+      action: "event_cancel_worker_failed",
+      additionalData: {
+        error_message: error instanceof Error ? error.message : String(error),
+        correlation_id: corr,
+      },
     });
     // 失敗時は500 Problem Detailsで返し、QStashのリトライに委ねる
     return createProblemResponse("INTERNAL_ERROR", {

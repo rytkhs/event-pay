@@ -11,6 +11,7 @@ import { logger } from "@core/logging/app-logger";
 import { getStripe, generateIdempotencyKey } from "@core/stripe/client";
 import { convertStripeError } from "@core/stripe/error-handler";
 import { getEnv } from "@core/utils/cloudflare-env";
+import { handleServerError } from "@core/utils/error-handler";
 
 import { Database } from "@/types/database";
 
@@ -272,14 +273,16 @@ export class StripeConnectService implements IStripeConnectService {
             await stripe.accounts.del(stripeAccount.id);
           } catch (compensationError) {
             // 補償削除の失敗はログに残し、上位へはDBエラーとしてマッピングして伝搬
-            this.logger.error("Failed to compensate (delete) created Stripe account", {
-              account_id: stripeAccount.id,
-              error_name: compensationError instanceof Error ? compensationError.name : "Unknown",
-              error_message:
-                compensationError instanceof Error
-                  ? compensationError.message
-                  : String(compensationError),
-              outcome: "failure",
+            handleServerError("STRIPE_CONNECT_SERVICE_ERROR", {
+              action: "compensate_account_creation_failure",
+              additionalData: {
+                account_id: stripeAccount.id,
+                error_name: compensationError instanceof Error ? compensationError.name : "Unknown",
+                error_message:
+                  compensationError instanceof Error
+                    ? compensationError.message
+                    : String(compensationError),
+              },
             });
           }
         }
@@ -437,15 +440,17 @@ export class StripeConnectService implements IStripeConnectService {
       };
     } catch (error) {
       // デバッグログ: エラーの詳細情報を出力
-      this.logger.error("Stripe API Call Failed", {
-        account_id: accountId,
-        error_name: error instanceof Error ? error.name : "Unknown",
-        error_message: error instanceof Error ? error.message : String(error),
-        error_type: error instanceof Stripe.errors.StripeError ? error.type : "Unknown",
-        error_code: error instanceof Stripe.errors.StripeError ? error.code : "Unknown",
-        error_status_code:
-          error instanceof Stripe.errors.StripeError ? error.statusCode : "Unknown",
-        outcome: "failure",
+      handleServerError("STRIPE_CONNECT_SERVICE_ERROR", {
+        action: "get_account_info_failed",
+        additionalData: {
+          account_id: accountId,
+          error_name: error instanceof Error ? error.name : "Unknown",
+          error_message: error instanceof Error ? error.message : String(error),
+          error_type: error instanceof Stripe.errors.StripeError ? error.type : "Unknown",
+          error_code: error instanceof Stripe.errors.StripeError ? error.code : "Unknown",
+          error_status_code:
+            error instanceof Stripe.errors.StripeError ? error.statusCode : "Unknown",
+        },
       });
 
       if (error instanceof StripeConnectError) {
@@ -857,11 +862,13 @@ export class StripeConnectService implements IStripeConnectService {
         created: loginLink.created,
       };
     } catch (error) {
-      this.logger.error("Failed to create login link", {
-        account_id: accountId,
-        error_name: error instanceof Error ? error.name : "Unknown",
-        error_message: error instanceof Error ? error.message : String(error),
-        outcome: "failure",
+      handleServerError("STRIPE_CONNECT_SERVICE_ERROR", {
+        action: "create_login_link_failed",
+        additionalData: {
+          account_id: accountId,
+          error_name: error instanceof Error ? error.name : "Unknown",
+          error_message: error instanceof Error ? error.message : String(error),
+        },
       });
 
       throw new StripeConnectError(
@@ -911,10 +918,12 @@ export class StripeConnectService implements IStripeConnectService {
 
       return totalAmount;
     } catch (error) {
-      this.logger.error("Stripe Connect残高取得エラー", {
-        account_id: accountId,
-        error: error instanceof Error ? error.message : String(error),
-        outcome: "failure",
+      handleServerError("STRIPE_CONNECT_SERVICE_ERROR", {
+        action: "get_account_balance_failed",
+        additionalData: {
+          account_id: accountId,
+          error: error instanceof Error ? error.message : String(error),
+        },
       });
 
       throw new StripeConnectError(

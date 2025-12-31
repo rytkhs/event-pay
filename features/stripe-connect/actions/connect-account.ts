@@ -18,6 +18,7 @@ import {
 } from "@core/routes/stripe-connect";
 import { createClient } from "@core/supabase/server";
 import { getEnv } from "@core/utils/cloudflare-env";
+import { handleServerError } from "@core/utils/error-handler";
 import { isNextRedirectError } from "@core/utils/next";
 
 import { createUserStripeConnectService } from "../services";
@@ -159,6 +160,7 @@ export async function createConnectAccountAction(formData: FormData): Promise<vo
     actor_type: "user",
   });
 
+  let userId: string | undefined;
   try {
     // 1. 認証チェック
     const supabase = createClient();
@@ -166,12 +168,13 @@ export async function createConnectAccountAction(formData: FormData): Promise<vo
       data: { user },
       error: authError,
     } = await supabase.auth.getUser();
+    userId = user?.id;
 
     if (authError) {
-      actionLogger.error("Stripe Connect account creation auth error", {
-        error_name: authError.name,
-        error_message: authError.message,
-        outcome: "failure",
+      handleServerError(authError, {
+        category: "stripe_connect",
+        action: "create_connect_account_auth_failed",
+        userId,
       });
       throw new Error("認証に失敗しました");
     }
@@ -184,9 +187,10 @@ export async function createConnectAccountAction(formData: FormData): Promise<vo
     }
 
     if (!user.email) {
-      actionLogger.error("User has no email address for Connect account", {
-        user_id: user.id,
-        outcome: "failure",
+      handleServerError("STRIPE_CONNECT_SERVICE_ERROR", {
+        category: "stripe_connect",
+        action: "create_connect_account_no_email",
+        userId: user.id,
       });
       throw new Error("メールアドレスが設定されていません");
     }
@@ -216,9 +220,10 @@ export async function createConnectAccountAction(formData: FormData): Promise<vo
       // 作成後に再取得
       existingAccount = await stripeConnectService.getConnectAccountByUser(user.id);
       if (!existingAccount) {
-        actionLogger.error("Failed to fetch account after creation", {
-          user_id: user.id,
-          outcome: "failure",
+        handleServerError("STRIPE_CONNECT_SERVICE_ERROR", {
+          category: "stripe_connect",
+          action: "create_connect_account_fetch_after_creation_failed",
+          userId: user.id,
         });
         throw new Error("アカウント作成後の取得に失敗しました");
       }
@@ -244,10 +249,10 @@ export async function createConnectAccountAction(formData: FormData): Promise<vo
     }
 
     // 構造化ログ
-    actionLogger.error("Stripe Connect Account Link generation error", {
-      error_name: error instanceof Error ? error.name : "Unknown",
-      error_message: error instanceof Error ? error.message : String(error),
-      outcome: "failure",
+    handleServerError(error, {
+      category: "stripe_connect",
+      action: "create_connect_account_failed",
+      userId,
     });
 
     // 入力検証に起因するエラーはテスト容易性と一貫性のため再スロー（リダイレクトしない）
@@ -281,6 +286,7 @@ export async function getConnectAccountStatusAction(): Promise<ConnectAccountSta
     actor_type: "user",
   });
 
+  let userId: string | undefined;
   try {
     // 1. 認証チェック
     const supabase = createClient();
@@ -288,12 +294,12 @@ export async function getConnectAccountStatusAction(): Promise<ConnectAccountSta
       data: { user },
       error: authError,
     } = await supabase.auth.getUser();
+    userId = user?.id;
 
     if (authError) {
-      actionLogger.error("Auth error in Connect account status check", {
-        error_name: authError.name,
-        error_message: authError.message,
-        outcome: "failure",
+      handleServerError(authError, {
+        category: "stripe_connect",
+        action: "get_connect_account_status_auth_failed",
       });
       return {
         success: false,
@@ -437,10 +443,10 @@ export async function getConnectAccountStatusAction(): Promise<ConnectAccountSta
       },
     };
   } catch (error) {
-    actionLogger.error("Stripe Connect account status fetch error", {
-      error_name: error instanceof Error ? error.name : "Unknown",
-      error_message: error instanceof Error ? error.message : String(error),
-      outcome: "failure",
+    handleServerError(error, {
+      category: "stripe_connect",
+      action: "get_connect_account_status_failed",
+      userId,
     });
 
     return {
@@ -464,13 +470,9 @@ async function getAuthenticatedUser() {
   } = await supabase.auth.getUser();
 
   if (authError) {
-    logger.error("Auth error in onboarding complete", {
+    handleServerError(authError, {
       category: "stripe_connect",
-      action: "onboarding_complete_auth",
-      actor_type: "user",
-      error_name: authError.name,
-      error_message: authError.message,
-      outcome: "failure",
+      action: "onboarding_complete_auth_failed",
     });
     throw new Error("認証に失敗しました");
   }
@@ -503,9 +505,11 @@ export async function handleOnboardingReturnAction(): Promise<void> {
     actor_type: "user",
   });
 
+  let userId: string | undefined;
   try {
     // 1. 認証チェック
     const user = await getAuthenticatedUser();
+    userId = user.id;
 
     // 2. StripeConnectServiceを初期化（ユーザーセッション使用、RLS適用）
     const stripeConnectService = createUserStripeConnectService();
@@ -582,10 +586,13 @@ Payouts Enabled: ${accountInfo.payoutsEnabled ? "Yes" : "No"}
           });
         }
       } catch (error) {
-        actionLogger.error("Connect onboarding Slack notification exception", {
-          user_id: user.id,
-          error_message: error instanceof Error ? error.message : String(error),
-          outcome: "failure",
+        handleServerError("STRIPE_CONNECT_SERVICE_ERROR", {
+          category: "stripe_connect",
+          action: "onboarding_complete_slack_notification_failed",
+          userId: user.id,
+          additionalData: {
+            error_message: error instanceof Error ? error.message : String(error),
+          },
         });
       }
     } else {
@@ -601,10 +608,10 @@ Payouts Enabled: ${accountInfo.payoutsEnabled ? "Yes" : "No"}
     if (isNextRedirectError(error)) {
       throw error as Error;
     }
-    actionLogger.error("Onboarding complete processing error", {
-      error_name: error instanceof Error ? error.name : "Unknown",
-      error_message: error instanceof Error ? error.message : String(error),
-      outcome: "failure",
+    handleServerError(error, {
+      category: "stripe_connect",
+      action: "onboarding_complete_failed",
+      userId,
     });
 
     if (error instanceof Error && error.message === "認証が必要です") {
@@ -624,15 +631,11 @@ Payouts Enabled: ${accountInfo.payoutsEnabled ? "Yes" : "No"}
  * 認証・認可チェックを強化し、詳細なログ出力を実装
  */
 export async function handleOnboardingRefreshAction(): Promise<void> {
-  const actionLogger = logger.withContext({
-    category: "stripe_connect",
-    action: "handle_onboarding_refresh",
-    actor_type: "user",
-  });
-
+  let userId: string | undefined;
   try {
     // 1. 認証チェック
     const user = await getAuthenticatedUser();
+    userId = user.id;
 
     // 2. 必要情報の準備（ベースURL → refresh/return URL）
     const baseUrl = getEnv().NEXT_PUBLIC_APP_URL || "http://localhost:3000";
@@ -674,10 +677,10 @@ export async function handleOnboardingRefreshAction(): Promise<void> {
     if (isNextRedirectError(error)) {
       throw error as Error;
     }
-    actionLogger.error("Onboarding refresh processing error", {
-      error_name: error instanceof Error ? error.name : "Unknown",
-      error_message: error instanceof Error ? error.message : String(error),
-      outcome: "failure",
+    handleServerError(error, {
+      category: "stripe_connect",
+      action: "onboarding_refresh_failed",
+      userId,
     });
 
     if (error instanceof Error && error.message === "認証が必要です") {
@@ -708,15 +711,11 @@ export async function checkConnectPermissionsAction(): Promise<{
     restrictions?: string[];
   };
 }> {
-  const actionLogger = logger.withContext({
-    category: "stripe_connect",
-    action: "check_connect_permissions",
-    actor_type: "user",
-  });
-
+  let userId: string | undefined;
   try {
     // 1. 認証チェック
     const user = await getAuthenticatedUser();
+    userId = user.id;
 
     // 2. StripeConnectServiceを初期化（ユーザーセッション使用、RLS適用）
     const stripeConnectService = createUserStripeConnectService();
@@ -760,10 +759,10 @@ export async function checkConnectPermissionsAction(): Promise<{
       },
     };
   } catch (error) {
-    actionLogger.error("Stripe Connect permission check error", {
-      error_name: error instanceof Error ? error.name : "Unknown",
-      error_message: error instanceof Error ? error.message : String(error),
-      outcome: "failure",
+    handleServerError(error, {
+      category: "stripe_connect",
+      action: "check_connect_permissions_failed",
+      userId,
     });
 
     return {
@@ -787,9 +786,11 @@ export async function startOnboardingAction(): Promise<void> {
     actor_type: "user",
   });
 
+  let userId: string | undefined;
   try {
     // 1. 認証チェック
     const user = await getAuthenticatedUser();
+    userId = user.id;
 
     // 2. 必要情報の準備（ベースURL → refresh/return URL）
     const baseUrl = getEnv().NEXT_PUBLIC_APP_URL || "http://localhost:3000";
@@ -842,10 +843,10 @@ export async function startOnboardingAction(): Promise<void> {
     }
 
     // 構造化ログ
-    actionLogger.error("Simple onboarding error", {
-      error_name: error instanceof Error ? error.name : "Unknown",
-      error_message: error instanceof Error ? error.message : String(error),
-      outcome: "failure",
+    handleServerError(error, {
+      category: "stripe_connect",
+      action: "start_onboarding_failed",
+      userId,
     });
 
     // StripeConnectErrorによるエラーページリダイレクト

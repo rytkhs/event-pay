@@ -9,6 +9,7 @@ import "server-only";
 import Stripe from "stripe";
 
 import { logger } from "@core/logging/app-logger";
+import { handleServerError } from "@core/utils/error-handler";
 
 import type { IStripeConnectService } from "./interface";
 
@@ -133,13 +134,16 @@ export class StatusSyncService {
 
         // リトライ不可能なエラーまたは最終試行の場合は例外をスロー
         if (!syncError.retryable || attempt === maxRetries - 1) {
-          this.logger.error("Status sync failed", {
-            user_id: userId,
-            account_id: accountId,
-            total_attempts: attempt + 1,
-            error_type: syncError.type,
-            error_message: syncError.message,
-            outcome: "failure",
+          handleServerError("STRIPE_CONNECT_SERVICE_ERROR", {
+            category: "stripe_connect",
+            action: "status_sync_failed",
+            userId,
+            additionalData: {
+              account_id: accountId,
+              total_attempts: attempt + 1,
+              error_type: syncError.type,
+              error_message: syncError.message,
+            },
           });
           throw syncError;
         }

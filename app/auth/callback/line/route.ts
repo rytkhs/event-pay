@@ -7,6 +7,7 @@ import { logger } from "@core/logging/app-logger";
 import { getSecureClientFactory } from "@core/security/secure-client-factory.impl";
 import { AdminReason } from "@core/security/secure-client-factory.types";
 import { getEnv } from "@core/utils/cloudflare-env";
+import { handleServerError } from "@core/utils/error-handler";
 import { extractClientIdFromGaCookie } from "@core/utils/ga-cookie";
 
 import { LineTokenResponse, LineVerifyResponse } from "@/types/line";
@@ -30,9 +31,10 @@ export async function GET(request: Request) {
 
   // 1. エラーハンドリングとCSRF検証
   if (error) {
-    authLogger.error(`LINE Login Error: ${error}`, {
-      error,
-      outcome: "failure",
+    handleServerError("LINE_LOGIN_ERROR", {
+      category: "authentication",
+      action: "line_auth_callback_error_param",
+      additionalData: { error },
     });
     return NextResponse.redirect(`${origin}/login?error=${LINE_ERROR_CODES.AUTH_FAILED}`);
   }
@@ -50,10 +52,10 @@ export async function GET(request: Request) {
   cookieStore.delete(LINE_OAUTH_COOKIES.NONCE);
 
   if (!code || !state || !storedState || state !== storedState || !storedNonce) {
-    authLogger.error("CSRF validation failed", {
-      state,
-      storedState,
-      outcome: "failure",
+    handleServerError("LINE_CSRF_VALIDATION_FAILED", {
+      category: "authentication",
+      action: "line_auth_callback_csrf_fail",
+      additionalData: { state, storedState },
     });
     return NextResponse.redirect(`${origin}/login?error=${LINE_ERROR_CODES.STATE_MISMATCH}`);
   }
@@ -86,9 +88,10 @@ export async function GET(request: Request) {
     const lineData = (await tokenResponse.json()) as LineTokenResponse;
 
     if (!tokenResponse.ok || !lineData.id_token) {
-      authLogger.error("Failed to retrieve ID token from LINE", {
-        lineData,
-        outcome: "failure",
+      handleServerError("LINE_TOKEN_RETRIEVAL_FAILED", {
+        category: "authentication",
+        action: "line_auth_callback_token_retrieval_fail",
+        additionalData: { lineData },
       });
       return NextResponse.redirect(`${origin}/login?error=${LINE_ERROR_CODES.TOKEN_FAILED}`);
     }
@@ -109,7 +112,10 @@ export async function GET(request: Request) {
     const lineSub = profile.sub;
 
     if (!lineSub) {
-      authLogger.error("Subject (sub) not found in LINE profile", { outcome: "failure" });
+      handleServerError("LINE_PROFILE_ERROR", {
+        category: "authentication",
+        action: "line_auth_callback_missing_sub",
+      });
       return NextResponse.redirect(`${origin}/login?error=${LINE_ERROR_CODES.AUTH_FAILED}`);
     }
 
@@ -140,9 +146,10 @@ export async function GET(request: Request) {
 
     if (lineAccountError && lineAccountError.code !== "PGRST116") {
       // PGRST116 = no rows found (想定内のエラー)
-      authLogger.error("Failed to query line_accounts", {
-        error: lineAccountError,
-        outcome: "failure",
+      handleServerError("LINE_LOGIN_ERROR", {
+        category: "authentication",
+        action: "line_auth_callback_query_accounts_fail",
+        additionalData: { error: lineAccountError },
       });
       throw lineAccountError;
     }
@@ -164,9 +171,10 @@ export async function GET(request: Request) {
         .eq("line_sub", lineSub);
 
       if (updateError) {
-        authLogger.error("Failed to update line_accounts", {
-          error: updateError,
-          outcome: "failure",
+        handleServerError("LINE_LOGIN_ERROR", {
+          category: "authentication",
+          action: "line_auth_callback_update_account_fail",
+          additionalData: { error: updateError },
         });
         throw updateError;
       }
@@ -183,9 +191,10 @@ export async function GET(request: Request) {
 
         if (userQueryError && userQueryError.code !== "PGRST116") {
           // PGRST116 = no rows found (想定内のエラー)
-          authLogger.error("Failed to query users table", {
-            error: userQueryError,
-            outcome: "failure",
+          handleServerError("LINE_LOGIN_ERROR", {
+            category: "authentication",
+            action: "line_auth_callback_query_users_fail",
+            additionalData: { error: userQueryError },
           });
           throw userQueryError;
         }
@@ -206,9 +215,10 @@ export async function GET(request: Request) {
         });
 
         if (insertError) {
-          authLogger.error("Failed to insert line_accounts for existing user", {
-            error: insertError,
-            outcome: "failure",
+          handleServerError("LINE_ACCOUNT_LINKING_FAILED", {
+            category: "authentication",
+            action: "line_auth_callback_insert_link_exist_user_fail",
+            additionalData: { error: insertError },
           });
           throw insertError;
         }
@@ -216,8 +226,10 @@ export async function GET(request: Request) {
         // B-2. Emailも一致しない（完全新規 or Emailなし） -> 新規ユーザー作成
         if (!email) {
           // Emailがない場合はエラーにする
-          authLogger.error("Email not found in LINE profile for new user", {
-            outcome: "failure",
+          handleServerError("LINE_LOGIN_ERROR", {
+            category: "authentication",
+            action: "line_auth_callback_email_missing",
+            severity: "medium", // メールなしは中重要度
           });
           return NextResponse.redirect(`${origin}/login?error=${LINE_ERROR_CODES.EMAIL_REQUIRED}`);
         }
@@ -254,9 +266,10 @@ export async function GET(request: Request) {
         });
 
         if (insertError) {
-          authLogger.error("Failed to insert line_accounts for new user", {
-            error: insertError,
-            outcome: "failure",
+          handleServerError("LINE_ACCOUNT_LINKING_FAILED", {
+            category: "authentication",
+            action: "line_auth_callback_insert_link_new_user_fail",
+            additionalData: { error: insertError },
           });
           throw insertError;
         }
@@ -327,9 +340,12 @@ export async function GET(request: Request) {
     // 9. 完了後のリダイレクト
     return NextResponse.redirect(`${origin}${nextPath}`);
   } catch (error) {
-    authLogger.error("Unexpected error during LINE login callback", {
-      error,
-      outcome: "failure",
+    handleServerError("LINE_LOGIN_ERROR", {
+      category: "authentication",
+      action: "line_auth_callback_unexpected_error",
+      additionalData: {
+        error: error instanceof Error ? error.message : String(error),
+      },
     });
     return NextResponse.redirect(`${origin}/login?error=${LINE_ERROR_CODES.SERVER_ERROR}`);
   }

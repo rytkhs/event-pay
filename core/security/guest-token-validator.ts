@@ -7,8 +7,8 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-import { logger } from "@core/logging/app-logger";
 import { logToSystemLogs } from "@core/logging/system-logger";
+import { handleServerError } from "@core/utils/error-handler";
 import { sanitizeForEventPay } from "@core/utils/sanitize";
 import { isValidIsoDateTimeString } from "@core/utils/timezone";
 
@@ -538,14 +538,15 @@ export class RLSGuestTokenValidator implements IGuestTokenValidator {
       );
     } catch (error) {
       // ログ記録自体の失敗はフォールバックとしてシステムログに記録
-      logger.error("Critical fail: guest audit log recording failed", {
+      handleServerError("AUDIT_LOG_RECORDING_FAILED", {
         category: "security",
         action: "guest_audit_log_error",
-        actor_type: "system",
-        error_message: String(error),
-        token_prefix: token.substring(0, 8),
-        action_name: action,
-        outcome: "failure",
+        actorType: "system",
+        additionalData: {
+          error_message: String(error),
+          token_prefix: token.substring(0, 8),
+          action_name: action,
+        },
       });
     }
   }

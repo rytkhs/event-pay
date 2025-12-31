@@ -7,6 +7,7 @@ import Stripe from "stripe";
 
 import { logger, type LogLevel } from "@core/logging/app-logger";
 import { sendSlackText } from "@core/notification/slack";
+import { handleServerError } from "@core/utils/error-handler";
 
 import {
   ERROR_HANDLING_BY_TYPE,
@@ -196,14 +197,15 @@ export class StripeConnectErrorHandler implements IStripeConnectErrorHandler {
         break;
       case "error":
       case "critical":
-        logger.error("StripeConnect Error", {
+        handleServerError("STRIPE_CONNECT_SERVICE_ERROR", {
           category: "stripe_connect",
           action: "error_handling",
-          actor_type: "system",
-          error_type: logData.errorType,
-          message: logData.message,
-          metadata: logData.metadata,
-          outcome: "failure",
+          actorType: "system",
+          additionalData: {
+            error_type: logData.errorType,
+            message: logData.message,
+            metadata: logData.metadata,
+          },
         });
         break;
     }
@@ -213,15 +215,17 @@ export class StripeConnectErrorHandler implements IStripeConnectErrorHandler {
    * 管理者に通知する
    */
   private async notifyAdmin(error: StripeConnectError): Promise<void> {
-    // ログ出力
-    logger.error("Admin notification required for StripeConnect error", {
+    // 監査ログ記録（通知は handleServerError が行うが、こちらでも必要な情報を残す）
+    handleServerError("STRIPE_CONNECT_SERVICE_ERROR", {
       category: "stripe_connect",
       action: "admin_notification",
-      actor_type: "system",
-      error_type: error.type,
-      message: error.message,
-      metadata: error.metadata,
-      outcome: "failure",
+      actorType: "system",
+      additionalData: {
+        error_type: error.type,
+        message: error.message,
+        metadata: error.metadata,
+        is_admin_notification: true,
+      },
     });
 
     // Slack通知
@@ -249,12 +253,13 @@ export class StripeConnectErrorHandler implements IStripeConnectErrorHandler {
         });
       }
     } catch (error) {
-      logger.error("StripeConnect Slack notification exception", {
+      handleServerError("STRIPE_CONNECT_SERVICE_ERROR", {
         category: "stripe_connect",
-        action: "admin_notification",
-        actor_type: "system",
-        error_message: error instanceof Error ? error.message : String(error),
-        outcome: "failure",
+        action: "admin_notification_exception",
+        actorType: "system",
+        additionalData: {
+          error_message: error instanceof Error ? error.message : String(error),
+        },
       });
     }
   }

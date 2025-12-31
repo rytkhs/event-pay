@@ -3,6 +3,7 @@
  */
 
 import { logger } from "@core/logging/app-logger";
+import { handleServerError } from "@core/utils/error-handler";
 
 import { ALL_RESTRICTION_RULES } from "./rules";
 import {
@@ -275,13 +276,12 @@ export class RestrictionEngine {
       try {
         callback(event);
       } catch (error) {
-        logger.error("Error in restriction change callback", {
+        handleServerError(error, {
           category: "event_management",
-          action: "restriction_error",
-          actor_type: "user",
-          error_name: error instanceof Error ? error.name : "Unknown",
-          error_message: error instanceof Error ? error.message : String(error),
-          outcome: "failure",
+          action: "restriction_change_callback_error",
+          additionalData: {
+            original_event: event,
+          },
         });
       }
     });
@@ -289,29 +289,27 @@ export class RestrictionEngine {
 
   /** エラーイベントの発火 */
   private emitError(event: RestrictionErrorEvent): void {
-    if (this.config.debug) {
-      logger.error("Restriction Engine error", {
-        category: "event_management",
-        action: "restriction_error",
-        actor_type: "user",
+    handleServerError("EVENT_OPERATION_FAILED", {
+      category: "event_management",
+      action: "restriction_engine_error",
+      additionalData: {
         error_type: event.type,
         error_message: event.message,
         field: event.field,
-        outcome: "failure",
-      });
-    }
+        details: event.details,
+      },
+    });
 
     this.listeners.onError.forEach((callback) => {
       try {
         callback(event);
       } catch (error) {
-        logger.error("Error in restriction error callback", {
+        handleServerError(error, {
           category: "event_management",
-          action: "restriction_error",
-          actor_type: "user",
-          error_name: error instanceof Error ? error.name : "Unknown",
-          error_message: error instanceof Error ? error.message : String(error),
-          outcome: "failure",
+          action: "restriction_error_callback_error",
+          additionalData: {
+            original_event: event,
+          },
         });
       }
     });

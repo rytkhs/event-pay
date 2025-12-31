@@ -25,6 +25,7 @@ import {
 } from "@core/security/stripe-ip-allowlist";
 import { getStripe, getConnectWebhookSecrets } from "@core/stripe/client";
 import { getEnv } from "@core/utils/cloudflare-env";
+import { handleServerError } from "@core/utils/error-handler";
 import { getClientIP } from "@core/utils/ip-detection";
 
 import { StripeWebhookSignatureVerifier } from "@features/payments/services/webhook/webhook-signature-verifier";
@@ -173,11 +174,15 @@ export async function POST(request: NextRequest) {
           testMode: true,
         });
       } catch (error) {
-        connectLogger.error("Connect webhook synchronous processing failed", {
-          event_id: event.id,
-          event_type: event.type,
-          error: error instanceof Error ? error.message : "Unknown error",
-          outcome: "failure",
+        handleServerError("CONNECT_WEBHOOK_UNEXPECTED_ERROR", {
+          category: "stripe_webhook",
+          action: "stripe_connect_webhook_sync_fail",
+          additionalData: {
+            event_id: event.id,
+            event_type: event.type,
+            error: error instanceof Error ? error.message : "Unknown error",
+            request_id: requestId,
+          },
         });
 
         return createProblemResponse("INTERNAL_ERROR", {
@@ -221,10 +226,15 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     // 詳細なエラー情報をログに出力
-    connectLogger.error("Connect webhook processing error", {
-      error_name: error instanceof Error ? error.name : "Unknown",
-      error_message: error instanceof Error ? error.message : String(error),
-      error_stack: error instanceof Error ? error.stack : undefined,
+    handleServerError("CONNECT_WEBHOOK_UNEXPECTED_ERROR", {
+      category: "stripe_webhook",
+      action: "stripe_connect_webhook_error",
+      additionalData: {
+        error_name: error instanceof Error ? error.name : "Unknown",
+        error_message: error instanceof Error ? error.message : String(error),
+        error_stack: error instanceof Error ? error.stack : undefined,
+        request_id: requestId,
+      },
     });
 
     // 失敗時は 500 を返し Stripe に再送してもらう

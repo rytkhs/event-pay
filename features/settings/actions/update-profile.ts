@@ -8,6 +8,7 @@ import type { ActionResult } from "@core/actions/auth";
 import { getCurrentUser } from "@core/auth/auth-utils";
 import { logger } from "@core/logging/app-logger";
 import { createClient } from "@core/supabase/server";
+import { handleServerError } from "@core/utils/error-handler";
 
 const updateProfileSchema = z.object({
   name: z
@@ -55,13 +56,11 @@ export async function updateProfileAction(formData: FormData): Promise<ActionRes
       .eq("id", user.id);
 
     if (updateError) {
-      logger.error("Profile update failed", {
-        category: "system",
+      handleServerError(updateError, {
+        category: "authentication",
         action: "update_profile",
-        actor_type: "user",
-        user_id: user.id,
-        error_message: updateError.message,
-        outcome: "failure",
+        actorType: "user",
+        userId: user.id,
       });
       return {
         success: false,
@@ -74,7 +73,7 @@ export async function updateProfileAction(formData: FormData): Promise<ActionRes
     revalidatePath("/dashboard");
 
     logger.info("Profile updated successfully", {
-      category: "system",
+      category: "authentication",
       action: "update_profile",
       actor_type: "user",
       user_id: user.id,
@@ -86,13 +85,14 @@ export async function updateProfileAction(formData: FormData): Promise<ActionRes
       message: "プロフィールを更新しました",
     };
   } catch (error) {
-    logger.error("Update profile action error", {
-      category: "system",
+    handleServerError("PROFILE_UPDATE_UNEXPECTED_ERROR", {
+      category: "authentication",
       action: "update_profile",
-      actor_type: "user",
-      error_name: error instanceof Error ? error.name : "Unknown",
-      error_message: error instanceof Error ? error.message : String(error),
-      outcome: "failure",
+      actorType: "user",
+      additionalData: {
+        error_name: error instanceof Error ? error.name : "Unknown",
+        error_message: error instanceof Error ? error.message : String(error),
+      },
     });
 
     return {

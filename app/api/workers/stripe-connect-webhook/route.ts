@@ -14,6 +14,7 @@ import { createProblemResponse } from "@core/api/problem-details";
 import { logger } from "@core/logging/app-logger";
 import { generateSecureUuid } from "@core/security/crypto";
 import { getEnv } from "@core/utils/cloudflare-env";
+import { handleServerError } from "@core/utils/error-handler";
 import { getClientIP } from "@core/utils/ip-detection";
 
 import "@/app/_init/feature-registrations";
@@ -149,14 +150,18 @@ export async function POST(request: NextRequest) {
       (processingResult as any).terminal === true
     ) {
       const msTerminal = Date.now() - start;
-      connectLogger.error("Connect QStash worker terminal failure", {
-        delivery_id: deliveryId,
-        event_id: event.id,
-        type: event.type,
-        ms: msTerminal,
-        reason: (processingResult as any).reason,
-        error: (processingResult as any).error,
-        outcome: "failure",
+      handleServerError("CONNECT_WEBHOOK_UNEXPECTED_ERROR", {
+        category: "stripe_webhook",
+        action: "stripe_connect_worker_terminal_failure",
+        additionalData: {
+          delivery_id: deliveryId,
+          event_id: event.id,
+          type: event.type,
+          ms: msTerminal,
+          reason: (processingResult as any).reason,
+          error: (processingResult as any).error,
+          correlation_id: corr,
+        },
       });
       return createProblemResponse("INTERNAL_ERROR", {
         instance: "/api/workers/stripe-connect-webhook",
@@ -179,10 +184,14 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: true, eventId: event.id, type: event.type, ms });
   } catch (error) {
     const ms = Date.now() - start;
-    connectLogger.error("Connect QStash worker error", {
-      error_message: error instanceof Error ? error.message : String(error),
-      ms,
-      outcome: "failure",
+    handleServerError("CONNECT_WEBHOOK_UNEXPECTED_ERROR", {
+      category: "stripe_webhook",
+      action: "stripe_connect_worker_error",
+      additionalData: {
+        error_message: error instanceof Error ? error.message : String(error),
+        ms,
+        correlation_id: corr,
+      },
     });
     return createProblemResponse("INTERNAL_ERROR", {
       instance: "/api/workers/stripe-connect-webhook",

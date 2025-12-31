@@ -2,6 +2,7 @@ import Stripe from "stripe";
 
 import { logger } from "@core/logging/app-logger";
 import { getEnv } from "@core/utils/cloudflare-env";
+import { handleServerError } from "@core/utils/error-handler";
 
 export interface WebhookSignatureVerifier {
   /**
@@ -119,11 +120,14 @@ export class StripeWebhookSignatureVerifier implements WebhookSignatureVerifier 
         }
       } else {
         // Stripe SDK 以外の予期しないエラー。分類を変更して冗長ログを防ぐ。
-        this.logger.error("Webhook processing error", {
-          error: message,
-          timestamp: parsedTimestamp,
-          signatureProvided: !!signature,
-          outcome: "failure",
+        handleServerError("WEBHOOK_UNEXPECTED_ERROR", {
+          action: "signature_verification",
+          additionalData: {
+            category: "stripe_webhook",
+            error: message,
+            timestamp: parsedTimestamp,
+            signatureProvided: !!signature,
+          },
         });
       }
 

@@ -17,6 +17,7 @@ import { SecureSupabaseClientFactory } from "@core/security/secure-client-factor
 import { AdminReason } from "@core/security/secure-client-factory.types";
 import { logSecurityEvent } from "@core/security/security-logger";
 import { getStripe } from "@core/stripe/client";
+import { handleServerError } from "@core/utils/error-handler";
 import { getClientIP } from "@core/utils/ip-detection";
 import { maskSessionId } from "@core/utils/mask";
 
@@ -191,11 +192,10 @@ export async function GET(request: NextRequest) {
     }
 
     if (dbError && (dbError as any).code !== "PGRST116") {
-      logger.error("Database query failed during payment verification", {
+      handleServerError(dbError, {
         category: "payment",
         action: "dbQueryFailed",
-        attendance_id,
-        error: (dbError as any).message,
+        additionalData: { attendance_id },
       });
     }
 
@@ -441,12 +441,14 @@ export async function GET(request: NextRequest) {
 
       // Stripe API関連エラー
       if (errObj.type || errObj.message?.includes("stripe") || errObj.name?.includes("Stripe")) {
-        logger.error("Stripe API error during payment verification", {
-          ...errorContext,
-          error_classification: "stripe_error",
-          severity: "high",
-          stripe_error_type: errObj.type,
-          stripe_error_code: errObj.code,
+        handleServerError("STRIPE_CONFIG_ERROR", {
+          category: "payment",
+          action: "paymentVerificationError",
+          additionalData: {
+            ...errorContext,
+            stripe_error_type: errObj.type,
+            stripe_error_code: errObj.code,
+          },
         });
         return createProblemResponse("EXTERNAL_SERVICE_ERROR", {
           instance: "/api/payments/verify-session",
@@ -461,11 +463,13 @@ export async function GET(request: NextRequest) {
         errObj.message?.includes("database") ||
         errObj.message?.includes("postgres")
       ) {
-        logger.error("Database error in payment verification", {
-          ...errorContext,
-          error_classification: "database_error",
-          severity: "critical",
-          db_error_code: errObj.code,
+        handleServerError("DATABASE_ERROR", {
+          category: "payment",
+          action: "paymentVerificationError",
+          additionalData: {
+            ...errorContext,
+            db_error_code: errObj.code,
+          },
         });
         return createProblemResponse("DATABASE_ERROR", {
           instance: "/api/payments/verify-session",
@@ -561,11 +565,13 @@ export async function GET(request: NextRequest) {
     }
 
     // その他の予期しないエラー（最も重大として扱う）
-    logger.error("Unexpected error in payment verification", {
-      ...errorContext,
-      error_classification: "system_error",
-      severity: "critical",
-      requires_investigation: true,
+    handleServerError("INTERNAL_SERVER_ERROR", {
+      category: "payment",
+      action: "paymentVerificationError",
+      additionalData: {
+        ...errorContext,
+        requires_investigation: true,
+      },
     });
 
     return createProblemResponse("INTERNAL_ERROR", {

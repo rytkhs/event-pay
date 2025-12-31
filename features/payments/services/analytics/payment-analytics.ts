@@ -10,6 +10,7 @@ import "server-only";
 import type { PurchaseParams } from "@core/analytics/event-types";
 import { ga4Server } from "@core/analytics/ga4-server";
 import { logger } from "@core/logging/app-logger";
+import { handleServerError } from "@core/utils/error-handler";
 
 /**
  * 購入完了追跡のパラメータ
@@ -99,15 +100,14 @@ export class PaymentAnalyticsService {
         outcome: "success",
       });
     } catch (error) {
-      logger.error("[Payment Analytics] Failed to track purchase", {
+      handleServerError("GA4_TRACKING_FAILED", {
         category: "payment",
-        action: "payment_analytics",
-        actor_type: "system",
-        transaction_id: transactionId,
-        event_id: eventId,
-        amount,
-        error: error instanceof Error ? error.message : String(error),
-        outcome: "failure",
+        action: "track_purchase_completion",
+        additionalData: {
+          transaction_id: transactionId,
+          event_id: eventId,
+          amount,
+        },
       });
 
       // エラーが発生してもwebhook処理は継続させる

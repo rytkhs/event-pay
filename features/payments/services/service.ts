@@ -15,6 +15,7 @@ import { getStripe } from "@core/stripe/client";
 import * as DestinationCharges from "@core/stripe/destination-charges";
 import { convertStripeError } from "@core/stripe/error-handler";
 import { PaymentError, PaymentErrorType, ErrorHandlingResult } from "@core/types/payment-errors";
+import { handleServerError } from "@core/utils/error-handler";
 import { maskSessionId } from "@core/utils/mask";
 import { assertStripePayment } from "@core/utils/stripe-guards";
 
@@ -1304,10 +1305,13 @@ export class PaymentService implements IPaymentService {
           stripeError.message?.includes("No such account") ||
           stripeError.message?.includes("does not exist")
         ) {
-          this.paymentLogger.error("Connect Account not found", {
-            connect_account_id: accountId,
-            error_message: stripeError.message,
-            outcome: "failure",
+          handleServerError("STRIPE_CONNECT_ACCOUNT_NOT_FOUND", {
+            category: "payment",
+            action: "validate_connect_account",
+            additionalData: {
+              connect_account_id: accountId,
+              error_message: stripeError.message,
+            },
           });
           throw new PaymentError(
             PaymentErrorType.CONNECT_ACCOUNT_NOT_FOUND,
@@ -1317,11 +1321,14 @@ export class PaymentService implements IPaymentService {
         }
 
         // その他のStripe APIエラー
-        this.paymentLogger.error("Connect Account validation failed - Stripe API error", {
-          connect_account_id: accountId,
-          error_type: stripeError.type,
-          error_message: stripeError.message,
-          outcome: "failure",
+        handleServerError("STRIPE_CONNECT_SERVICE_ERROR", {
+          category: "payment",
+          action: "validate_connect_account_stripe_error",
+          additionalData: {
+            connect_account_id: accountId,
+            error_type: stripeError.type,
+            error_message: stripeError.message,
+          },
         });
         throw new PaymentError(
           PaymentErrorType.STRIPE_CONFIG_ERROR,
@@ -1331,11 +1338,14 @@ export class PaymentService implements IPaymentService {
       }
 
       // その他の予期しないエラー
-      this.paymentLogger.error("Connect Account validation failed - unexpected error", {
-        connect_account_id: accountId,
-        error_name: error instanceof Error ? error.name : "Unknown",
-        error_message: error instanceof Error ? error.message : String(error),
-        outcome: "failure",
+      handleServerError("STRIPE_CONNECT_SERVICE_ERROR", {
+        category: "payment",
+        action: "validate_connect_account_unexpected_error",
+        additionalData: {
+          connect_account_id: accountId,
+          error_name: error instanceof Error ? error.name : "Unknown",
+          error_message: error instanceof Error ? error.message : String(error),
+        },
       });
       throw new PaymentError(
         PaymentErrorType.STRIPE_CONFIG_ERROR,
@@ -1380,7 +1390,10 @@ export class PaymentErrorHandler implements IPaymentErrorHandler {
       context,
     };
 
-    const paymentServiceLogger = createPaymentLogger({ action: "payment_error_handler" });
-    paymentServiceLogger.error("Payment error occurred", { ...logData, outcome: "failure" });
+    handleServerError("PAYMENT_OPERATION_FAILED", {
+      category: "payment",
+      action: "payment_error_handler",
+      additionalData: logData,
+    });
   }
 }

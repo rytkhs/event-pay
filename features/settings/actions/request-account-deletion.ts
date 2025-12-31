@@ -11,6 +11,7 @@ import { logger } from "@core/logging/app-logger";
 import { getSecureClientFactory } from "@core/security/secure-client-factory.impl";
 import { AdminReason } from "@core/security/secure-client-factory.types";
 import { createClient } from "@core/supabase/server";
+import { handleServerError } from "@core/utils/error-handler";
 
 // 入力検証: ユーザー同意/確認語句
 const deletionRequestSchema = z.object({
@@ -66,13 +67,11 @@ export async function requestAccountDeletionAction(formData: FormData): Promise<
 
     const { error: deleteError } = await admin.auth.admin.deleteUser(user.id, true);
     if (deleteError) {
-      logger.error("Auth user soft delete failed", {
+      handleServerError(deleteError, {
         category: "authentication",
         action: "account_deletion",
-        actor_type: "user",
-        user_id: user.id,
-        error_message: (deleteError as any)?.message ?? String(deleteError),
-        outcome: "failure",
+        actorType: "user",
+        userId: user.id,
       });
       return { success: false, error: "アカウントの処理に失敗しました" };
     }
@@ -111,13 +110,11 @@ export async function requestAccountDeletionAction(formData: FormData): Promise<
       })
       .eq("id", user.id);
     if (anonError) {
-      logger.error("Public user anonymization failed", {
+      handleServerError(anonError, {
         category: "authentication",
         action: "account_deletion",
-        actor_type: "user",
-        user_id: user.id,
-        error_message: anonError.message,
-        outcome: "failure",
+        actorType: "user",
+        userId: user.id,
       });
       return { success: false, error: "アカウントの処理に失敗しました" };
     }
@@ -128,13 +125,11 @@ export async function requestAccountDeletionAction(formData: FormData): Promise<
       .delete()
       .eq("auth_user_id", user.id);
     if (lineAccountError) {
-      logger.error("LINE account deletion failed", {
+      handleServerError(lineAccountError, {
         category: "authentication",
         action: "account_deletion",
-        actor_type: "user",
-        user_id: user.id,
-        error_message: lineAccountError.message,
-        outcome: "failure",
+        actorType: "user",
+        userId: user.id,
       });
       return { success: false, error: "アカウントの処理に失敗しました" };
     }
@@ -161,13 +156,14 @@ export async function requestAccountDeletionAction(formData: FormData): Promise<
       redirectUrl: "/login",
     };
   } catch (error) {
-    logger.error("Request account deletion action error", {
+    handleServerError("ACCOUNT_DELETION_UNEXPECTED_ERROR", {
       category: "authentication",
       action: "account_deletion",
-      actor_type: "user",
-      error_name: error instanceof Error ? error.name : "Unknown",
-      error_message: error instanceof Error ? error.message : String(error),
-      outcome: "failure",
+      actorType: "user",
+      additionalData: {
+        error_name: error instanceof Error ? error.name : "Unknown",
+        error_message: error instanceof Error ? error.message : String(error),
+      },
     });
     return { success: false, error: "処理中にエラーが発生しました" };
   }

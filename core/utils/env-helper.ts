@@ -4,6 +4,7 @@
  */
 
 import { logger } from "@core/logging/app-logger";
+import { handleServerError } from "@core/utils/error-handler";
 
 import { getEnv } from "./cloudflare-env";
 
@@ -15,12 +16,13 @@ export function getRequiredEnvVar(key: string): string {
   const value = (getEnv() as unknown as Record<string, string | undefined>)[key];
   if (!value) {
     const errorMessage = `Missing required environment variable: ${key}`;
-    logger.error(errorMessage, {
+    handleServerError("ENV_VAR_MISSING", {
       category: "system",
       action: "env_validation",
-      actor_type: "system",
-      variable_name: key,
-      outcome: "failure",
+      actorType: "system",
+      additionalData: {
+        variable_name: key,
+      },
     });
     throw new Error(errorMessage);
   }
@@ -55,12 +57,13 @@ export function validateRequiredEnvVars(keys: string[]): Record<string, string> 
 
   if (missing.length > 0) {
     const errorMessage = `Missing required environment variables: ${missing.join(", ")}`;
-    logger.error(errorMessage, {
+    handleServerError("ENV_VAR_MISSING", {
       category: "system",
       action: "env_validation",
-      actor_type: "system",
-      missing_variables: missing,
-      outcome: "failure",
+      actorType: "system",
+      additionalData: {
+        missing_variables: missing,
+      },
     });
     throw new Error(errorMessage);
   }

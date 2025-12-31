@@ -6,6 +6,7 @@ import type { ActionResult } from "@core/actions/auth";
 import { getCurrentUser } from "@core/auth/auth-utils";
 import { logger } from "@core/logging/app-logger";
 import { createClient } from "@core/supabase/server";
+import { handleServerError } from "@core/utils/error-handler";
 
 const updatePasswordSchema = z.object({
   currentPassword: z.string().min(1, "現在のパスワードを入力してください"),
@@ -71,13 +72,11 @@ export async function updatePasswordAction(formData: FormData): Promise<ActionRe
     });
 
     if (updateError) {
-      logger.error("Password update failed", {
+      handleServerError(updateError, {
         category: "authentication",
         action: "update_password",
-        actor_type: "user",
-        user_id: user.id,
-        error_message: updateError.message,
-        outcome: "failure",
+        actorType: "user",
+        userId: user.id,
       });
       return {
         success: false,
@@ -98,13 +97,14 @@ export async function updatePasswordAction(formData: FormData): Promise<ActionRe
       message: "パスワードを変更しました",
     };
   } catch (error) {
-    logger.error("Update password action error", {
+    handleServerError("UPDATE_PASSWORD_UNEXPECTED_ERROR", {
       category: "authentication",
       action: "update_password",
-      actor_type: "user",
-      error_name: error instanceof Error ? error.name : "Unknown",
-      error_message: error instanceof Error ? error.message : String(error),
-      outcome: "failure",
+      actorType: "user",
+      additionalData: {
+        error_name: error instanceof Error ? error.name : "Unknown",
+        error_message: error instanceof Error ? error.message : String(error),
+      },
     });
 
     return {
