@@ -119,7 +119,7 @@ interface EventsPageProps {
 
 export default async function EventsPage({ searchParams }: EventsPageProps) {
   return (
-    <div data-testid="events-page-container" className="container mx-auto px-4 py-4 max-w-7xl">
+    <div data-testid="events-page-container" className="container mx-auto max-w-7xl">
       {/* ヘッダー - 新規作成ボタン統合 */}
       <div data-testid="events-page-header" className="mb-6 border-b border-border/40 pb-4">
         <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-6">

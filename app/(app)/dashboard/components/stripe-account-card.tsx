@@ -16,17 +16,20 @@ export async function StripeAccountCard() {
   const balance = balanceResult.success ? balanceResult.data : 0;
 
   return (
-    <Card className="border-0 shadow-sm">
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 sm:pb-3">
-        <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground leading-tight">
-          アカウント残高
-        </CardTitle>
-        <Landmark className="h-4 w-4 sm:h-5 sm:w-5 text-success flex-shrink-0" />
+    <Card className="relative overflow-hidden border-0 bg-green-50/30 shadow-sm">
+      <CardHeader className="relative flex flex-row items-center justify-between space-y-0 pb-3">
+        <div className="flex items-center gap-2">
+          <div className="rounded-lg bg-green-100 p-2">
+            <Landmark className="h-4 w-4 text-green-600" />
+          </div>
+          <CardTitle className="text-sm font-semibold text-gray-700">残高</CardTitle>
+        </div>
       </CardHeader>
-      <CardContent className="pt-0">
-        <div className="text-lg sm:text-2xl lg:text-3xl font-bold text-success leading-tight">
+      <CardContent className="relative pt-0">
+        <div className="text-xl font-bold text-gray-900 leading-tight">
           {formatCurrency(balance)}
         </div>
+        <div className="mt-2 text-xs text-gray-500">Stripe残高</div>
       </CardContent>
     </Card>
   );

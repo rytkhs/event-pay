@@ -122,10 +122,10 @@ export function AppSidebar({ user, ...props }: AppSidebarProps) {
                 <SidebarMenuButton
                   onClick={handleStripeDashboard}
                   disabled={isPending}
-                  tooltip="決済ダッシュボード"
+                  tooltip="Stripeダッシュボード"
                 >
                   {isPending ? <Loader2 className="animate-spin" /> : <CreditCard />}
-                  <span>決済ダッシュボード</span>
+                  <span>Stripeダッシュボード</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
             </SidebarMenu>

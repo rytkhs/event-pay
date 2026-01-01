@@ -47,45 +47,56 @@ function StatsCardsContent({
 }) {
   return (
     <>
-      <Card className="border-0 shadow-sm">
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 sm:pb-3">
-          <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground leading-tight">
-            開催予定イベント
-          </CardTitle>
-          <CalendarDays className="h-4 w-4 sm:h-5 sm:w-5 text-primary flex-shrink-0" />
-        </CardHeader>
-        <CardContent className="pt-0">
-          <div className="text-2xl sm:text-3xl font-bold text-primary mb-1">
-            {upcomingEventsCount}
+      <Card className="relative overflow-hidden border-0 bg-blue-50/30 shadow-sm">
+        <CardHeader className="relative flex flex-row items-center justify-between space-y-0 pb-3">
+          <div className="flex items-center gap-2">
+            <div className="rounded-lg bg-blue-100 p-2">
+              <CalendarDays className="h-4 w-4 text-blue-600" />
+            </div>
+            <CardTitle className="text-sm font-semibold text-gray-700">開催予定</CardTitle>
           </div>
+        </CardHeader>
+        <CardContent className="relative pt-0">
+          <div className="flex items-baseline gap-2">
+            <div className="text-xl font-bold text-gray-900">{upcomingEventsCount}</div>
+            <div className="text-sm text-gray-500">件</div>
+          </div>
+          <div className="mt-2 text-xs text-gray-500">今後のイベント数</div>
         </CardContent>
       </Card>
 
-      <Card className="border-0 shadow-sm">
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 sm:pb-3">
-          <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground leading-tight">
-            参加予定者
-          </CardTitle>
-          <Users className="h-4 w-4 sm:h-5 sm:w-5 text-secondary flex-shrink-0" />
-        </CardHeader>
-        <CardContent className="pt-0">
-          <div className="text-2xl sm:text-3xl font-bold text-secondary mb-1">
-            {totalUpcomingParticipants}
+      <Card className="relative overflow-hidden border-0 bg-purple-50/30 shadow-sm">
+        <CardHeader className="relative flex flex-row items-center justify-between space-y-0 pb-3">
+          <div className="flex items-center gap-2">
+            <div className="rounded-lg bg-purple-100 p-2">
+              <Users className="h-4 w-4 text-purple-600" />
+            </div>
+            <CardTitle className="text-sm font-semibold text-gray-700">参加予定</CardTitle>
           </div>
+        </CardHeader>
+        <CardContent className="relative pt-0">
+          <div className="flex items-baseline gap-2">
+            <div className="text-xl font-bold text-gray-900">{totalUpcomingParticipants}</div>
+            <div className="text-sm text-gray-500">名</div>
+          </div>
+          <div className="mt-2 text-xs text-gray-500">今後の参加予定者</div>
         </CardContent>
       </Card>
 
-      <Card className="border-0 shadow-sm">
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 sm:pb-3">
-          <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground leading-tight">
-            未集金の参加費
-          </CardTitle>
-          <DollarSign className="h-4 w-4 sm:h-5 sm:w-5 text-warning flex-shrink-0" />
+      <Card className="relative overflow-hidden border-0 bg-amber-50/30 shadow-sm">
+        <CardHeader className="relative flex flex-row items-center justify-between space-y-0 pb-3">
+          <div className="flex items-center gap-2">
+            <div className="rounded-lg bg-amber-100 p-2">
+              <DollarSign className="h-4 w-4 text-amber-600" />
+            </div>
+            <CardTitle className="text-sm font-semibold text-gray-700">未集金</CardTitle>
+          </div>
         </CardHeader>
-        <CardContent className="pt-0">
-          <div className="text-lg sm:text-2xl lg:text-3xl font-bold text-warning mb-1 leading-tight">
+        <CardContent className="relative pt-0">
+          <div className="text-xl font-bold text-gray-900 leading-tight">
             {formatCurrency(unpaidFeesTotal)}
           </div>
+          <div className="mt-2 text-xs text-gray-500">集金待ちの金額</div>
         </CardContent>
       </Card>
     </>

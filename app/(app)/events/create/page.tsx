@@ -35,8 +35,8 @@ export default async function CreateEventPage() {
   const canUseOnlinePayments = detailedStatus.success && !detailedStatus.status;
 
   return (
-    <div className="min-h-screen bg-slate-50/50 py-12">
-      <div className="container mx-auto px-4">
+    <div className="min-h-screen ">
+      <div className="container mx-auto">
         <SinglePageEventForm
           canUseOnlinePayments={canUseOnlinePayments}
           connectStatus={detailedStatus.status}
