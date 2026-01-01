@@ -1,5 +1,3 @@
-import { randomBytes, createHash, timingSafeEqual } from "crypto";
-
 /**
  * Web Crypto API使用の暗号学的に安全なランダムバイト生成
  * Edge runtimeとNode.js両方で動作
@@ -7,16 +5,11 @@ import { randomBytes, createHash, timingSafeEqual } from "crypto";
  * @returns Uint8Array
  */
 export function generateRandomBytes(length: number): Uint8Array {
-  // Web Crypto APIが利用可能かチェック
+  // Web Crypto APIが利用可能かチェック (Node.js 18+ / Browser / Edge)
   if (typeof crypto !== "undefined" && crypto.getRandomValues) {
     const bytes = new Uint8Array(length);
     crypto.getRandomValues(bytes);
     return bytes;
-  }
-
-  // フォールバック: Node.js crypto.randomBytes
-  if (typeof randomBytes === "function") {
-    return new Uint8Array(randomBytes(length));
   }
 
   throw new Error("No secure random number generator available");
@@ -40,8 +33,12 @@ export function toBase64UrlSafe(bytes: Uint8Array): string {
  * @param token 元のトークン
  * @returns SHA-256ハッシュ
  */
-export function hashToken(token: string): string {
-  return createHash("sha256").update(token).digest("hex");
+export async function hashToken(token: string): Promise<string> {
+  const msgUint8 = new TextEncoder().encode(token);
+  const hashBuffer = await crypto.subtle.digest("SHA-256", msgUint8);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  const hashHex = hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
+  return hashHex;
 }
 
 /**
@@ -51,17 +48,18 @@ export function hashToken(token: string): string {
  * @returns 一致するかどうか
  */
 export function constantTimeCompare(a: string, b: string): boolean {
-  try {
-    // 長さが異なる場合も定数時間で比較するため、同じ長さにパディング
-    const maxLength = Math.max(a.length, b.length);
-    const bufferA = Buffer.from(a.padEnd(maxLength, "\0"));
-    const bufferB = Buffer.from(b.padEnd(maxLength, "\0"));
+  // 長さが異なる場合も、最長の方に合わせて比較を継続することで
+  // 長さに関する情報の漏洩を最小限に抑える
+  const maxLength = Math.max(a.length, b.length);
+  let result = 0;
 
-    return timingSafeEqual(bufferA, bufferB) && a.length === b.length;
-  } catch {
-    // エラーが発生した場合は必ずfalseを返す
-    return false;
+  for (let i = 0; i < maxLength; i++) {
+    const charA = i < a.length ? a.charCodeAt(i) : 0;
+    const charB = i < b.length ? b.charCodeAt(i) : 0;
+    result |= charA ^ charB;
   }
+
+  return result === 0 && a.length === b.length;
 }
 
 /**

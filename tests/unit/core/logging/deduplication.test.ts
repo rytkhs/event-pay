@@ -1,5 +1,6 @@
-import { shouldLogError } from "@/core/logging/deduplication";
 import { Redis } from "@upstash/redis";
+
+import { shouldLogError } from "@/core/logging/deduplication";
 import { hashToken } from "@/core/security/crypto";
 
 // Mock crypto dependency
@@ -37,7 +38,7 @@ describe("shouldLogError", () => {
   it("U-D-01: 同じメッセージとスタックに対して、一貫したハッシュを生成する", async () => {
     const message = "Error message";
     const stack = "Error: message\n    at func1 (file.ts:1:1)\n    at func2 (file.ts:2:2)";
-    mockHashToken.mockReturnValue("mock-hash");
+    mockHashToken.mockResolvedValue("mock-hash");
     (mockRedis.get as jest.Mock).mockResolvedValue(null);
 
     await shouldLogError(message, stack);
@@ -50,7 +51,7 @@ describe("shouldLogError", () => {
   it("U-D-02: スタックトレースの最初の3行のみを使用する", async () => {
     const message = "Error message";
     const longStack = Array.from({ length: 100 }, (_, i) => `at line ${i}`).join("\n");
-    mockHashToken.mockReturnValue("mock-hash");
+    mockHashToken.mockResolvedValue("mock-hash");
     (mockRedis.get as jest.Mock).mockResolvedValue(null);
 
     await shouldLogError(message, longStack);
@@ -62,7 +63,7 @@ describe("shouldLogError", () => {
   it("U-D-03: 新しいエラーの場合、trueを返し、キーを設定する", async () => {
     const message = "New Error";
     const stack = "stack";
-    mockHashToken.mockReturnValue("new-hash");
+    mockHashToken.mockResolvedValue("new-hash");
     (mockRedis.get as jest.Mock).mockResolvedValue(null);
 
     const result = await shouldLogError(message, stack);
@@ -76,7 +77,7 @@ describe("shouldLogError", () => {
   it("U-D-04: 重複するエラーの場合、falseを返し、カウンターを増加させる", async () => {
     const message = "Duplicate Error";
     const stack = "stack";
-    mockHashToken.mockReturnValue("dup-hash");
+    mockHashToken.mockResolvedValue("dup-hash");
     (mockRedis.get as jest.Mock).mockImplementation((k) => {
       console.log("DEBUG: mockRedis.get called with:", k);
       return Promise.resolve("1");
@@ -94,7 +95,7 @@ describe("shouldLogError", () => {
   it("U-D-05: Redisがエラーを返す場合、trueを返し、コンソールに出力する", async () => {
     const message = "Redis Error";
     const stack = "stack";
-    mockHashToken.mockReturnValue("redis-err-hash");
+    mockHashToken.mockResolvedValue("redis-err-hash");
     (mockRedis.get as jest.Mock).mockRejectedValue(new Error("Redis connection failed"));
 
     const consoleSpy = jest.spyOn(console, "error").mockImplementation(() => {});
