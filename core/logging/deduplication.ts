@@ -31,7 +31,7 @@ export async function shouldLogError(
     // 行番号の変更でハッシュが変わるのを防ぐ
     const stackLines = stack?.split("\n").slice(0, 3).join("\n") || "";
 
-    const hash = hashToken(message + stackLines);
+    const hash = await hashToken(message + stackLines);
 
     const key = `error_dedupe:${hash}`;
 
