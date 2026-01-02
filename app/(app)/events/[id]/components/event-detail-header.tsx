@@ -72,9 +72,9 @@ export function EventDetailHeader({ eventDetail, activeTab, onTabChange }: Event
   };
 
   return (
-    <div className="bg-white border-b border-border/50 sticky top-12 z-10 shadow-sm">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="py-4">
+    <div className="bg-white border-b border-border/50 sticky top-12 z-10">
+      <div className="max-w-7xl mx-auto">
+        <div className="py-2">
           <div className="flex items-center gap-3">
             <Button
               onClick={handleBackToEvents}
@@ -116,7 +116,7 @@ export function EventDetailHeader({ eventDetail, activeTab, onTabChange }: Event
                 disabled={!canEdit}
                 className={`flex-shrink-0 h-9 px-3 transition-all duration-200 ${
                   canEdit
-                    ? "hover:bg-orange-50 hover:border-orange-300 border-orange-200"
+                    ? "border-orange-200 bg-orange-50/50 text-orange-700 hover:bg-orange-100 hover:border-orange-300 hover:text-orange-800"
                     : "opacity-50 cursor-not-allowed"
                 }`}
                 title={canEdit ? "イベント設定を編集" : "編集不可"}

@@ -381,7 +381,7 @@ test.describe("現金決済フロー (CASH-PAYMENT-E2E-001)", () => {
     await expect(page.getByText("E2Eテスト参加者")).toBeVisible();
 
     // 受領済みの場合、「取消」ボタンが表示される
-    const cancelButton = page.getByRole("button", { name: "決済を取り消し" }).first();
+    const cancelButton = page.getByRole("button", { name: "受領を取り消し" }).first();
     await expect(cancelButton).toBeVisible();
 
     console.log("✓ ページリフレッシュ後もステータスが維持されている");
@@ -557,7 +557,7 @@ test.describe("現金決済フロー (CASH-PAYMENT-E2E-001)", () => {
     await expect(page.getByText("E2Eテスト参加者")).toBeVisible();
 
     // 免除済みの場合、「取消」ボタンが表示される
-    const cancelButton = page.getByRole("button", { name: "決済を取り消し" }).first();
+    const cancelButton = page.getByRole("button", { name: "受領を取り消し" }).first();
     await expect(cancelButton).toBeVisible();
 
     console.log("✓ ページリフレッシュ後もステータスが維持されている");

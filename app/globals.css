@@ -20,7 +20,7 @@
     --muted: 210 40% 98%; /* 背景色 #f8fafc */
     --muted-foreground: 217 19% 35%; /* サブテキスト #475569 */
     --accent: 186 67% 43%; /* ターコイズティール（アクセント） */
-    --accent-foreground: 221 59% 9%; /* ダークテキスト */
+    --accent-foreground: 210 40% 98%; /* ライトテキスト（背景がターコイズティールのため） */
     --destructive: 0 84% 60%; /* エラー色 #ef4444 */
     --destructive-foreground: 210 40% 98%;
 
@@ -65,7 +65,15 @@
     --destructive-foreground: 210 40% 98%;
     --border: 221 39% 25%; /* ダークモードの枠線 */
     --input: 221 39% 25%; /* ダークモードの入力フィールド */
-    --ring: 186 67% 50%; /* フォーカスリング */ --sidebar-background: 240 5.9% 10%; --sidebar-foreground: 240 4.8% 95.9%; --sidebar-primary: 224.3 76.3% 48%; --sidebar-primary-foreground: 0 0% 100%; --sidebar-accent: 240 3.7% 15.9%; --sidebar-accent-foreground: 240 4.8% 95.9%; --sidebar-border: 240 3.7% 15.9%; --sidebar-ring: 217.2 91.2% 59.8%;
+    --ring: 186 67% 50%; /* フォーカスリング */
+    --sidebar-background: 240 5.9% 10%;
+    --sidebar-foreground: 240 4.8% 95.9%;
+    --sidebar-primary: 224.3 76.3% 48%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 240 3.7% 15.9%;
+    --sidebar-accent-foreground: 240 4.8% 95.9%;
+    --sidebar-border: 240 3.7% 15.9%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
   }
 }
 

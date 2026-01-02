@@ -172,7 +172,7 @@ describe("buildParticipantsColumns", () => {
       const paidParticipant = { ...mockParticipant, payment_status: "received" as const };
       render(<TestTableRow participant={paidParticipant} eventFee={1000} />);
 
-      const cancelButton = screen.getByTitle("決済を取り消し");
+      const cancelButton = screen.getByTitle("受領を取り消し");
       await user.click(cancelButton);
 
       expect(mockHandlers.onCancel).toHaveBeenCalledWith("pay-1");

@@ -2,7 +2,7 @@
 
 import { useState, type ReactNode } from "react";
 
-import { Plus, Download, RefreshCw, Search, X, ListTodo, MoreVertical } from "lucide-react";
+import { Plus, Download, Search, X, ListTodo, MoreVertical } from "lucide-react";
 
 import { useToast } from "@core/contexts/toast-context";
 import type { Event } from "@core/types/models";
@@ -194,10 +194,6 @@ export function ParticipantsActionBarV2({
     }
   };
 
-  const handleRefresh = () => {
-    window.location.reload();
-  };
-
   const smartActive = searchParams.smart !== "0";
 
   const handleToggleSmartSort = (checked: boolean) => {
@@ -316,7 +312,11 @@ export function ParticipantsActionBarV2({
                   variant={isSelectionMode ? "secondary" : "ghost"}
                   size="sm"
                   onClick={onToggleSelectionMode}
-                  className={cn("h-9 w-9 p-0", isSelectionMode && "bg-gray-100 text-primary")}
+                  className={cn(
+                    "h-9 w-9 p-0 transition-colors",
+                    isSelectionMode &&
+                      "bg-primary/10 text-primary hover:bg-primary/20 hover:text-primary"
+                  )}
                   title={isSelectionMode ? "選択モード終了" : "選択モード (一括操作)"}
                 >
                   <ListTodo className="h-5 w-5" />
@@ -349,10 +349,6 @@ export function ParticipantsActionBarV2({
                       <Download className="h-4 w-4 mr-2" />
                       CSVエクスポート
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={handleRefresh}>
-                      <RefreshCw className="h-4 w-4 mr-2" />
-                      更新
-                    </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
               </div>
@@ -375,10 +371,6 @@ export function ParticipantsActionBarV2({
                 >
                   <Download className="h-4 w-4" />
                   <span className="hidden lg:inline">CSV</span>
-                </Button>
-
-                <Button variant="outline" size="sm" onClick={handleRefresh} className="h-9 w-9 p-0">
-                  <RefreshCw className="h-4 w-4" />
                 </Button>
               </div>
             </div>

@@ -212,7 +212,7 @@ export const HeroSection: React.FC = () => {
                       </div>
 
                       <div className="w-full mt-6 bg-primary text-primary-foreground font-bold py-3 rounded-lg text-sm shadow-lg text-center">
-                        参加を確定する
+                        登録する
                       </div>
                     </div>
                   </div>
