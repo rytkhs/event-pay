@@ -71,7 +71,7 @@ export function BulkActionBar({
               variant="outline"
               onClick={onBulkWaive}
               disabled={isProcessing}
-              className="border-orange-300 text-orange-700 hover:bg-orange-50 gap-2"
+              className="border-orange-200 bg-orange-50/50 text-orange-700 hover:bg-orange-100 hover:border-orange-300 hover:text-orange-800 gap-2"
             >
               <Shield className="h-4 w-4" />
               <span className="hidden sm:inline">一括</span>免除

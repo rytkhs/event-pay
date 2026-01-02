@@ -365,7 +365,7 @@ export function ParticipantsTableV2({
         });
         if (result.success) {
           toast({
-            title: "決済を取り消しました",
+            title: "受領を取り消しました",
             description: "ステータスを「未決済」に戻しました。",
           });
           startTransition(() => router.refresh());
@@ -472,7 +472,7 @@ export function ParticipantsTableV2({
           </ToggleGroup>
         </div>
       </CardHeader>
-      <CardContent>
+      <CardContent className="px-3">
         <div
           className={`transition-opacity duration-200 ${isTransitioning ? "opacity-50" : "opacity-100"}`}
         >

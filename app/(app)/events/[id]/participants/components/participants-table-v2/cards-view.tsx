@@ -156,7 +156,7 @@ export function CardsView({
 
               {/* Row 2: Payment Status & Actions */}
               {!isFreeEvent && (
-                <div className="flex items-center justify-between gap-2 h-7">
+                <div className="flex items-center justify-between gap-2 min-h-10">
                   {/* Status Badge */}
                   <div className="flex items-center gap-1.5">
                     {p.status === "attending" && !isCanceledPayment ? (
@@ -180,13 +180,13 @@ export function CardsView({
                   <div className="flex items-center gap-1">
                     {isOperatable && !isSelectionMode && (
                       <Button
-                        size="sm"
+                        // size="sm"
                         variant="outline"
                         onClick={() => hasPaymentId(p) && onReceive(p.payment_id)}
                         disabled={!!isUpdating}
-                        className="h-7 px-3 text-xs bg-green-50 border-green-200 text-green-700 hover:bg-green-100 hover:border-green-300 hover:text-green-800"
+                        className="h-9 px-2 py-3 text-sm font-medium border-green-200 bg-green-50 text-green-700 hover:bg-green-100 hover:border-green-300 hover:text-green-800 shadow-sm"
                       >
-                        <Check className="h-3 w-3 mr-1" />
+                        <Check className="h-5 w-5 mr-0" />
                         受領
                       </Button>
                     )}

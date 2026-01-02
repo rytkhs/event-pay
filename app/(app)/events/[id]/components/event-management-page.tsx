@@ -49,8 +49,6 @@ export function EventManagementPage({
     const params = new URLSearchParams(window.location.search);
     params.set("tab", value);
 
-    // タブ切り替え時はページネーションなどをリセットした方が自然かもしれないが
-    // 参加者管理に戻った時に状態を維持したい場合はそのままにする
     // ここではタブ切り替えだけを行う
     router.push(`/events/${eventId}?${params.toString()}`);
   };
@@ -79,7 +77,7 @@ export function EventManagementPage({
   };
 
   return (
-    <div className="min-h-screen bg-gray-50/50">
+    <div className="min-h-screen">
       <EventDetailHeader
         eventDetail={eventDetail}
         activeTab={activeTab}

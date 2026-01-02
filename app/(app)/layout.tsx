@@ -39,7 +39,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
       <SidebarInset>
         <DemoBanner />
         <Header />
-        <main className="flex-1 flex flex-col p-4 w-full max-w-7xl mx-auto">{children}</main>
+        <main className="flex-1 flex flex-col p-2 sm:p-4 w-full max-w-7xl mx-auto">{children}</main>
       </SidebarInset>
     </SidebarProvider>
   );
