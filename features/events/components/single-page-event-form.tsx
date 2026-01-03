@@ -665,7 +665,7 @@ function SinglePageEventForm({
           )}
 
           {/* Footer Actions */}
-          <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/90 backdrop-blur-md border-t border-slate-200 z-50">
+          <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/90 backdrop-blur-md border-t border-slate-200 z-50 md:left-[var(--sidebar-width)]">
             <div className="max-w-7xl mx-auto flex items-center justify-end gap-4">
               <Button
                 type="button"
@@ -679,7 +679,7 @@ function SinglePageEventForm({
               <Button
                 type="submit"
                 disabled={isPending}
-                className="h-12 px-8 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-lg shadow-blue-500/20 text-sm md:text-base font-semibold transition-all hover:scale-[1.02] active:scale-[0.98]"
+                className="h-12 px-8 rounded-xl bg-secondary text-white hover:bg-secondary/90 shadow-lg shadow-blue-500/20 text-sm md:text-base font-semibold transition-all hover:scale-[1.02] active:scale-[0.98]"
               >
                 {isPending ? (
                   <>
