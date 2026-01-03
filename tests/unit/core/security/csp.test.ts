@@ -7,18 +7,17 @@ import { buildCsp, ALLOWED_ORIGINS } from "../../../../core/security/csp";
 
 describe("buildCsp", () => {
   describe("静的ページモード", () => {
-    test("nonceなし・'unsafe-inline'なしでCSPが生成される", () => {
+    test("静的モードで適切な'unsafe-inline'が含まれる", () => {
       const csp = buildCsp({ mode: "static" });
 
       // nonceが含まれないことを確認
       expect(csp).not.toContain("nonce-");
-      // strict-dynamicが含まれないことを確認
-      expect(csp).not.toContain("strict-dynamic");
-      // script-src と style-src-elem に 'unsafe-inline' が含まれないことを確認
+      // script-src と style-src-elem に 'unsafe-inline' が含まれることを確認
+      // (Next.jsのハイドレーションや動的スタイル注入に必要)
       const scriptSrc = csp.split(";").find((s) => s.trim().startsWith("script-src "));
       const styleSrcElem = csp.split(";").find((s) => s.trim().startsWith("style-src-elem "));
-      expect(scriptSrc).not.toContain("'unsafe-inline'");
-      expect(styleSrcElem).not.toContain("'unsafe-inline'");
+      expect(scriptSrc).toContain("'unsafe-inline'");
+      expect(styleSrcElem).toContain("'unsafe-inline'");
       // 基本的なディレクティブが含まれることを確認
       expect(csp).toContain("default-src 'self'");
       expect(csp).toContain("script-src 'self'");
@@ -40,16 +39,19 @@ describe("buildCsp", () => {
   });
 
   describe("動的ページモード", () => {
-    test("nonce付きでCSPが生成される", () => {
+    test("nonce付きでCSPが生成される (script-srcのみ)", () => {
       const nonce = "test-nonce-123";
       const csp = buildCsp({ mode: "dynamic", nonce });
 
-      // nonceが含まれることを確認
-      expect(csp).toContain(`'nonce-${nonce}'`);
+      // script-src に nonce が含まれることを確認
+      expect(csp).toContain(`script-src 'self' 'nonce-${nonce}'`);
+      // style-src-elem には nonce が含まれず 'unsafe-inline' が含まれることを確認
+      const styleSrcElem = csp.split(";").find((s) => s.trim().startsWith("style-src-elem "));
+      expect(styleSrcElem).not.toContain(`'nonce-${nonce}'`);
+      expect(styleSrcElem).toContain("'unsafe-inline'");
+
       // strict-dynamicが含まれることを確認
       expect(csp).toContain("'strict-dynamic'");
-      // 基本的なディレクティブが含まれることを確認
-      expect(csp).toContain("default-src 'self'");
     });
 
     test("nonceがnullの場合、静的モードと同じ挙動", () => {

@@ -64,17 +64,6 @@ export const ALLOWED_ORIGINS = {
 } as const;
 
 /**
- * 許可するインラインスタイルのHash
- * ライブラリ（vaulなど）が注入するCSSを許可するために使用
- */
-export const ALLOWED_HASHES = [
-  "'sha256-47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU='", // vaul (Drawer)
-  "'sha256-YIjArHm2rkb5J7hX9lUM1bnQ3Kp61MTfluMGkuyKwDw='", // vaul (Drawer)
-  "'sha256-kAApudxpTi9mfjlC9lC8ZaS9xFHU9/NLLbB173MU7SU='", // vaul (Drawer)
-  "'sha256-nzTgYzXYDNe6BAHiiI7NNlfK8n/auuOAhh2t92YvuXo='", // Radix UI (Dropdown/Dialog scroll lock)
-];
-
-/**
  * スペース区切りで結合
  */
 function joinSrc(list: readonly string[]): string {
@@ -139,12 +128,9 @@ export function buildCsp(params: BuildCspParams): string {
     isDev ? [...ALLOWED_ORIGINS.localDev, ...connectSrcBase] : connectSrcBase
   )}`;
 
-  // style-src-elem: 動的ページはnonce、静的ページは'unsafe-inline'を許可（Next.jsハイドレーション用）
-  // 特定のライブラリ（vaul等）のためにハッシュも許可
-  const styleElem =
-    mode === "dynamic" && nonce
-      ? `style-src-elem 'self' 'nonce-${nonce}' ${ALLOWED_ORIGINS.fonts[0]} ${joinSrc(ALLOWED_HASHES)}`
-      : `style-src-elem 'self' 'unsafe-inline' ${ALLOWED_ORIGINS.fonts[0]}`;
+  // style-src-elem: すべてのページで 'unsafe-inline' を許可
+  // vaul などのライブラリが動的にインラインスタイルを注入するため
+  const styleElem = `style-src-elem 'self' 'unsafe-inline' ${ALLOWED_ORIGINS.fonts[0]}`;
 
   // img-src: 画像ソース
   const imgSrc = `img-src 'self' data: blob: ${joinSrc([
