@@ -53,7 +53,7 @@ export function EventFilters({
   onSearchQueryChange,
 }: EventFiltersProps) {
   const [dateError, setDateError] = useState<string>("");
-  const [isOpen, setIsOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState(false); // デフォルトで閉じた状態
   const startDateRef = useRef<HTMLInputElement>(null);
   const endDateRef = useRef<HTMLInputElement>(null);
 
@@ -129,7 +129,7 @@ export function EventFilters({
   };
 
   return (
-    <div data-testid="event-filters" className="w-full space-y-4">
+    <div data-testid="event-filters" className="w-full space-y-3">
       {/* メイン検索バー - 主役 */}
       <div className="relative">
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -138,43 +138,53 @@ export function EventFilters({
           placeholder="イベント名・場所で検索..."
           value={searchQuery}
           onChange={(e) => onSearchQueryChange?.(e.target.value)}
-          className="pl-10 h-12 text-base"
+          className="pl-10 h-11 text-base"
           data-testid="search-input"
         />
       </div>
 
-      {/* クイックフィルター & アクティブフィルター表示 */}
-      <div className="flex flex-wrap items-center gap-2">
-        {/* アクティブフィルター表示 */}
-        {statusFilter !== "all" && (
-          <Badge variant="secondary" className="text-xs">
-            {STATUS_FILTER_LABELS[statusFilter]}
-          </Badge>
-        )}
-        {paymentFilter !== "all" && (
-          <Badge variant="secondary" className="text-xs">
-            {PAYMENT_FILTER_LABELS[paymentFilter]}
-          </Badge>
-        )}
-        {(dateFilter.start || dateFilter.end) && (
-          <Badge variant="secondary" className="text-xs">
-            {dateFilter.start || "---"} 〜 {dateFilter.end || "---"}
-          </Badge>
-        )}
-        {isFiltered && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleClearFilters}
-            className="h-6 px-2 text-xs"
-            aria-label="フィルターをクリア"
-          >
-            すべてクリア
-          </Button>
-        )}
-      </div>
+      {/* アクティブフィルター表示のみ - クイックフィルターは削除 */}
+      {(isFiltered ||
+        statusFilter !== "all" ||
+        paymentFilter !== "all" ||
+        dateFilter.start ||
+        dateFilter.end) && (
+        <div className="flex flex-wrap items-center gap-2">
+          {/* アクティブフィルター表示 */}
+          {statusFilter !== "all" && (
+            <Badge variant="secondary" className="text-xs">
+              {STATUS_FILTER_LABELS[statusFilter]}
+            </Badge>
+          )}
+          {paymentFilter !== "all" && (
+            <Badge variant="secondary" className="text-xs">
+              {PAYMENT_FILTER_LABELS[paymentFilter]}
+            </Badge>
+          )}
+          {(dateFilter.start || dateFilter.end) && (
+            <Badge variant="secondary" className="text-xs">
+              {dateFilter.start || "---"} 〜 {dateFilter.end || "---"}
+            </Badge>
+          )}
+          {(isFiltered ||
+            statusFilter !== "all" ||
+            paymentFilter !== "all" ||
+            dateFilter.start ||
+            dateFilter.end) && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleClearFilters}
+              className="h-6 px-2 text-xs"
+              aria-label="フィルターをクリア"
+            >
+              すべてクリア
+            </Button>
+          )}
+        </div>
+      )}
 
-      {/* 詳細フィルター（収折式） */}
+      {/* 詳細フィルター（収折式） - よりコンパクトに */}
       <Collapsible open={isOpen} onOpenChange={setIsOpen}>
         <CollapsibleTrigger asChild>
           <Button
@@ -193,8 +203,8 @@ export function EventFilters({
           </Button>
         </CollapsibleTrigger>
 
-        <CollapsibleContent className="space-y-4 pt-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 p-4 bg-muted/30 rounded-lg">
+        <CollapsibleContent className="space-y-3 pt-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 p-3 bg-muted/30 rounded-lg">
             {/* ステータス */}
             <div className="space-y-2">
               <label htmlFor="status-filter" className="text-sm font-medium">

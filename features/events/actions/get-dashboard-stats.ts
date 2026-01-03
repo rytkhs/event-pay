@@ -22,11 +22,12 @@ export interface RecentEvent {
   fee: number;
   attendances_count: number;
   capacity: number | null;
+  location: string | null;
 }
 
 type EventForRecent = Pick<
   Database["public"]["Tables"]["events"]["Row"],
-  "id" | "title" | "date" | "fee" | "capacity" | "canceled_at"
+  "id" | "title" | "date" | "fee" | "capacity" | "canceled_at" | "location"
 > & {
   attendances: Pick<Database["public"]["Tables"]["attendances"]["Row"], "status">[];
 };
@@ -97,6 +98,7 @@ export async function getRecentEventsAction(): Promise<ServerActionResult<Recent
         fee,
         capacity,
         canceled_at,
+        location,
         attendances (status)
       `
       )
@@ -121,6 +123,7 @@ export async function getRecentEventsAction(): Promise<ServerActionResult<Recent
         fee: event.fee,
         attendances_count,
         capacity: event.capacity,
+        location: event.location,
       };
     });
 
