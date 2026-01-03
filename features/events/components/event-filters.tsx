@@ -184,7 +184,7 @@ export function EventFilters({
         </div>
       )}
 
-      {/* 詳細フィルター（収折式） - よりコンパクトに */}
+      {/* フィルター（収折式） - よりコンパクトに */}
       <Collapsible open={isOpen} onOpenChange={setIsOpen}>
         <CollapsibleTrigger asChild>
           <Button
@@ -194,7 +194,7 @@ export function EventFilters({
             data-testid="toggle-filters"
           >
             <Filter className="mr-2 h-4 w-4" />
-            詳細フィルター
+            フィルター
             {isOpen ? (
               <ChevronUp className="ml-2 h-4 w-4" />
             ) : (
