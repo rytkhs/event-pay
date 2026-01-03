@@ -120,23 +120,22 @@ interface EventsPageProps {
 export default async function EventsPage({ searchParams }: EventsPageProps) {
   return (
     <div data-testid="events-page-container" className="container mx-auto max-w-7xl">
-      {/* ヘッダー - 新規作成ボタン統合 */}
-      <div data-testid="events-page-header" className="mb-6 border-b border-border/40 pb-4">
-        <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-6">
-          <div className="space-y-1">
-            <h1 className="text-2xl font-extrabold tracking-tight text-foreground sm:text-3xl">
-              イベント一覧
-            </h1>
-          </div>
+      {/* ヘッダー - コンパクト化 */}
+      <div data-testid="events-page-header" className="mb-4 border-b border-border/40 pb-3">
+        <div className="flex items-center justify-between gap-4">
+          <h1 className="text-xl font-bold tracking-tight text-foreground sm:text-2xl">
+            イベント一覧
+          </h1>
           <Button
             asChild
-            size="lg"
-            className="w-full sm:w-auto shadow-md transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 font-semibold"
+            size="sm"
+            className="shadow-md transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 font-semibold whitespace-nowrap"
             data-testid="create-event-button"
           >
             <Link href="/events/create" className="inline-flex items-center gap-2">
-              <Plus className="h-5 w-5" />
-              新しいイベントを作成
+              <Plus className="h-4 w-4" />
+              <span className="hidden sm:inline">新しいイベントを作成</span>
+              <span className="sm:hidden">作成</span>
             </Link>
           </Button>
         </div>

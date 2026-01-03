@@ -177,9 +177,9 @@ export function EventListWithFilters({
   const isDisplayLoading = isPending || initialLoading;
 
   return (
-    <div className="space-y-6" data-testid="event-list-with-filters">
+    <div className="space-y-4" data-testid="event-list-with-filters">
       {/* 検索・フィルターセクション */}
-      <div className="space-y-4">
+      <div className="space-y-3">
         <EventFilters
           statusFilter={filters.status}
           dateFilter={filters.dateRange}
@@ -194,7 +194,7 @@ export function EventListWithFilters({
         />
 
         {/* 結果数・ソート */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 py-2">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 py-1">
           <div className="text-sm text-muted-foreground">{totalCount}件のイベント</div>
           <EventSort
             sortBy={sortBy}
@@ -206,7 +206,7 @@ export function EventListWithFilters({
       </div>
 
       {/* メインコンテンツ */}
-      <div className="space-y-6">
+      <div className="space-y-4">
         {/* イベント一覧 */}
         <EventList events={displayEvents} isLoading={isDisplayLoading} isFiltered={isFiltered} />
 
