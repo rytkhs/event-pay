@@ -8,6 +8,8 @@ export const dynamic = "force-dynamic";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
+import * as Sentry from "@sentry/cloudflare";
+
 import { logger } from "@core/logging/app-logger";
 import { enforceRateLimit, buildKey } from "@core/rate-limit";
 import { generateSecureUuid } from "@core/security/crypto";
@@ -231,6 +233,47 @@ export async function POST(request: NextRequest) {
         ip: clientIP,
         timestamp: new Date(),
       });
+
+      // SentryにもCSP違反を送信
+      try {
+        Sentry.captureMessage("CSP Violation", {
+          level: "warning",
+          tags: {
+            security_event: "CSP_VIOLATION",
+            violated_directive: violation["violated-directive"] || "unknown",
+            effective_directive: violation["effective-directive"] || "unknown",
+          },
+          extra: {
+            blocked_uri: violation["blocked-uri"],
+            document_uri: violation["document-uri"],
+            referrer: violation["referrer"],
+            line_number: violation["line-number"],
+            column_number: violation["column-number"],
+            source_file: violation["source-file"],
+            status_code: violation["status-code"],
+            sample: violation["sample"],
+            original_policy: violation["original-policy"],
+            disposition: violation.disposition,
+            request_id: requestId,
+            user_agent: request.headers.get("user-agent") || undefined,
+            ip_address: clientIP,
+          },
+          fingerprint: [
+            "csp-violation",
+            violation["violated-directive"] || "unknown",
+            violation["blocked-uri"] || "unknown",
+          ],
+        });
+      } catch (sentryError) {
+        // Sentry送信エラーは処理に影響させない
+        logger.warn("Failed to send CSP violation to Sentry", {
+          category: "security",
+          action: "cspReportSentryError",
+          request_id: requestId,
+          error: sentryError instanceof Error ? sentryError.message : String(sentryError),
+          ip: clientIP,
+        });
+      }
     }
 
     // 204 No Content で返答（軽量）
