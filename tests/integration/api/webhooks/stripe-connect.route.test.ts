@@ -10,10 +10,28 @@ jest.mock("@upstash/qstash", () => ({
 }));
 
 const mockVerifySignature = jest.fn();
-jest.mock("@features/payments/services/webhook/webhook-signature-verifier", () => ({
+jest.mock("@core/stripe/webhook-signature-verifier", () => ({
   StripeWebhookSignatureVerifier: jest.fn().mockImplementation(() => ({
     verifySignature: (...args: unknown[]) => mockVerifySignature(...args),
   })),
+}));
+
+const handleAccountUpdated = jest.fn();
+const handleAccountApplicationDeauthorized = jest.fn();
+const handlePayoutPaid = jest.fn();
+const handlePayoutFailed = jest.fn();
+const mockConnectHandlerCreate = jest.fn().mockResolvedValue({
+  handleAccountUpdated: (...args: unknown[]) => handleAccountUpdated(...args),
+  handleAccountApplicationDeauthorized: (...args: unknown[]) =>
+    handleAccountApplicationDeauthorized(...args),
+  handlePayoutPaid: (...args: unknown[]) => handlePayoutPaid(...args),
+  handlePayoutFailed: (...args: unknown[]) => handlePayoutFailed(...args),
+});
+
+jest.mock("@features/stripe-connect/server", () => ({
+  ConnectWebhookHandler: {
+    create: (...args: unknown[]) => mockConnectHandlerCreate(...args),
+  },
 }));
 
 describe("/api/webhooks/stripe-connect (receiver)", () => {
@@ -24,6 +42,15 @@ describe("/api/webhooks/stripe-connect (receiver)", () => {
     delete process.env.SKIP_QSTASH_IN_TEST;
     mockVerifySignature.mockClear();
     mockPublishJSON.mockClear();
+    mockConnectHandlerCreate.mockClear();
+    handleAccountUpdated.mockClear();
+    handleAccountApplicationDeauthorized.mockClear();
+    handlePayoutPaid.mockClear();
+    handlePayoutFailed.mockClear();
+  });
+
+  afterEach(() => {
+    delete process.env.SKIP_QSTASH_IN_TEST;
   });
 
   function createRequest(payload: string, headersInit?: Record<string, string>) {
@@ -169,6 +196,58 @@ describe("/api/webhooks/stripe-connect (receiver)", () => {
       expect(call.url).toContain("/api/workers/stripe-connect-webhook");
       expect(call.deduplicationId).toBe(fakeConnectEvent.id);
       expect(call.body).toEqual({ event: fakeConnectEvent });
+    });
+
+    it("SKIP_QSTASH_IN_TEST=true の場合は同期処理される", async () => {
+      process.env.SKIP_QSTASH_IN_TEST = "true";
+
+      const fakeConnectEvent = {
+        id: "evt_connect_sync_123",
+        type: "account.updated",
+        object: "event",
+        account: "acct_test_sync_123",
+        data: {
+          object: {
+            id: "acct_test_sync_123",
+            object: "account",
+            metadata: {
+              actor_id: "test_user_id",
+            },
+          } as any,
+        },
+        created: Math.floor(Date.now() / 1000),
+        livemode: false,
+        pending_webhooks: 1,
+        request: {
+          id: null,
+          idempotency_key: null,
+        },
+      } as any;
+
+      mockVerifySignature.mockResolvedValueOnce({
+        isValid: true,
+        event: fakeConnectEvent,
+      });
+
+      const req = createRequest(JSON.stringify({ account: "acct_test_sync_123" }), {
+        "stripe-signature": "t=1700000000,v1=valid_connect_signature",
+      });
+
+      const res = await ConnectWebhookPOST(req);
+      expect(res.status).toBe(200);
+      const json = await res.json();
+      expect(json).toEqual(
+        expect.objectContaining({
+          received: true,
+          eventId: fakeConnectEvent.id,
+          eventType: fakeConnectEvent.type,
+          testMode: true,
+        })
+      );
+
+      expect(mockPublishJSON).not.toHaveBeenCalled();
+      expect(mockConnectHandlerCreate).toHaveBeenCalledTimes(1);
+      expect(handleAccountUpdated).toHaveBeenCalledTimes(1);
     });
   });
 });

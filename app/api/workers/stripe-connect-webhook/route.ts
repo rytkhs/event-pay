@@ -18,7 +18,7 @@ import { handleServerError } from "@core/utils/error-handler.server";
 import { getClientIP } from "@core/utils/ip-detection";
 
 import "@/app/_init/feature-registrations";
-import { ConnectWebhookHandler } from "@features/payments/services/webhook/connect-webhook-handler";
+import { ConnectWebhookHandler } from "@features/stripe-connect/server";
 
 const getQstashReceiver = () => {
   const currentKey = getEnv().QSTASH_CURRENT_SIGNING_KEY;

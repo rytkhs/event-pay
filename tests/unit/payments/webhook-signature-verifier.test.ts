@@ -17,7 +17,7 @@ import crypto from "crypto";
 import Stripe from "stripe";
 
 import { logger } from "../../../core/logging/app-logger";
-import { StripeWebhookSignatureVerifier } from "../../../features/payments/services/webhook/webhook-signature-verifier";
+import { StripeWebhookSignatureVerifier } from "../../../core/stripe/webhook-signature-verifier";
 import { createMockStripeClient } from "../../setup/stripe-mock";
 import { generateTestWebhookSignature } from "../../setup/stripe-test-helpers";
 
@@ -408,9 +408,10 @@ describe("StripeWebhookSignatureVerifier", () => {
 
       // エラーログが正しく出力されることを確認
       expect(loggerSpy).toHaveBeenCalledWith(
-        "Webhook processing error",
+        "Unexpected error in webhook processing",
         expect.objectContaining({
           error: "Invalid signature",
+          error_code: "WEBHOOK_UNEXPECTED_ERROR",
           timestamp: expect.any(Number),
           signatureProvided: true,
         })
