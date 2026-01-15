@@ -19,12 +19,12 @@ import {
   isStripeWebhookIpAllowed,
 } from "@core/security/stripe-ip-allowlist";
 import { getWebhookSecrets, getStripe } from "@core/stripe/client";
+import { StripeWebhookSignatureVerifier } from "@core/stripe/webhook-signature-verifier";
 import { getEnv } from "@core/utils/cloudflare-env";
 import { handleServerError } from "@core/utils/error-handler.server";
 import { getClientIP } from "@core/utils/ip-detection";
 
 import { StripeWebhookEventHandler } from "@features/payments/services/webhook/webhook-event-handler";
-import { StripeWebhookSignatureVerifier } from "@features/payments/services/webhook/webhook-signature-verifier";
 
 // QStashクライアント初期化
 const getQstashClient = () => {

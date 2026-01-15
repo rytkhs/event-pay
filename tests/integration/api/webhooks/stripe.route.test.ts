@@ -10,7 +10,7 @@ jest.mock("@upstash/qstash", () => ({
 }));
 
 const mockVerifySignature = jest.fn();
-jest.mock("@features/payments/services/webhook/webhook-signature-verifier", () => ({
+jest.mock("@core/stripe/webhook-signature-verifier", () => ({
   StripeWebhookSignatureVerifier: jest.fn().mockImplementation(() => ({
     verifySignature: (...args: unknown[]) => mockVerifySignature(...args),
   })),

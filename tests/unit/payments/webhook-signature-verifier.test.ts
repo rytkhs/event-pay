@@ -17,7 +17,7 @@ import crypto from "crypto";
 import Stripe from "stripe";
 
 import { logger } from "../../../core/logging/app-logger";
-import { StripeWebhookSignatureVerifier } from "../../../features/payments/services/webhook/webhook-signature-verifier";
+import { StripeWebhookSignatureVerifier } from "../../../core/stripe/webhook-signature-verifier";
 import { createMockStripeClient } from "../../setup/stripe-mock";
 import { generateTestWebhookSignature } from "../../setup/stripe-test-helpers";
 
