@@ -24,11 +24,10 @@ import {
   isStripeWebhookIpAllowed,
 } from "@core/security/stripe-ip-allowlist";
 import { getStripe, getConnectWebhookSecrets } from "@core/stripe/client";
+import { StripeWebhookSignatureVerifier } from "@core/stripe/webhook-signature-verifier";
 import { getEnv } from "@core/utils/cloudflare-env";
 import { handleServerError } from "@core/utils/error-handler.server";
 import { getClientIP } from "@core/utils/ip-detection";
-
-import { StripeWebhookSignatureVerifier } from "@features/payments/services/webhook/webhook-signature-verifier";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic"; // Webhookは常に動的処理
@@ -120,9 +119,7 @@ export async function POST(request: NextRequest) {
 
       try {
         // workerの処理を直接実行
-        const { ConnectWebhookHandler } = await import(
-          "@features/payments/services/webhook/connect-webhook-handler"
-        );
+        const { ConnectWebhookHandler } = await import("@features/stripe-connect/server");
         const handler = await ConnectWebhookHandler.create();
 
         let _result: any = { success: true };

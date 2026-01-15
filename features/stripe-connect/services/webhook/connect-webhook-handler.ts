@@ -76,7 +76,7 @@ export class ConnectWebhookHandler {
     if (!isStripeConnectPortRegistered()) {
       try {
         const { registerStripeConnectAdapters } = await import(
-          "@features/stripe-connect/adapters/stripe-connect-port.adapter"
+          "../../adapters/stripe-connect-port.adapter"
         );
         registerStripeConnectAdapters();
       } catch (e) {
@@ -120,9 +120,7 @@ export class ConnectWebhookHandler {
       const currentAccount = await stripeConnectPort.getConnectAccountByUser(userId);
 
       // AccountStatusClassifierを使用してステータスを分類
-      const { AccountStatusClassifier } = await import(
-        "@features/stripe-connect/services/account-status-classifier"
-      );
+      const { AccountStatusClassifier } = await import("../account-status-classifier");
       const classifier = new AccountStatusClassifier();
       const classificationResult = classifier.classify(account);
 
