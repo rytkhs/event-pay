@@ -68,4 +68,4 @@ Next.js App Router の `app/api/**` や worker（server-only 実行環境）か�
 
 - `ARCHITECTURE_RULES.md`
 - `.eslintrc.json`（`boundaries/entry-point`）
-- Supersedes: ADR-0007（entry-point制約の「index.tsのみ」部分）
+- Supersedes: ADR-0007（entry-point制約の「index.tsのみ」部分。相互依存禁止やレイヤ境界の方針は継続）

@@ -3,6 +3,7 @@
 - Status: Superseded
 - Date: 2025-12-21
 - Superseded by: ADR-0011
+- Note: 本ADRのうち **entry-point制約（index.tsのみ許可）** の方針は ADR-0011 により置き換え。Feature間相互依存禁止／レイヤ境界／ESLint強制の方針は引き続き有効。
 
 ## Context and Problem Statement
 
