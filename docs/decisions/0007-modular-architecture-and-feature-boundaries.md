@@ -1,7 +1,8 @@
 # ADR-0007: Feature間の相互依存禁止とindex.ts公開API制約
 
-- Status: Accepted
+- Status: Superseded
 - Date: 2025-12-21
+- Superseded by: ADR-0011
 
 ## Context and Problem Statement
 
@@ -137,3 +138,4 @@ components/ui/ (UI部品層・最下位)
 
 - ESLint設定: `.eslintrc.json` - boundaries/element-typesとboundaries/entry-pointルール
 - 参考: eslint-plugin-boundaries公式ドキュメント
+- ADR-0011: Featureのserver-only公開エントリ（server.ts）の導入
