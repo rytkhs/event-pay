@@ -408,9 +408,10 @@ describe("StripeWebhookSignatureVerifier", () => {
 
       // エラーログが正しく出力されることを確認
       expect(loggerSpy).toHaveBeenCalledWith(
-        "Webhook processing error",
+        "Unexpected error in webhook processing",
         expect.objectContaining({
           error: "Invalid signature",
+          error_code: "WEBHOOK_UNEXPECTED_ERROR",
           timestamp: expect.any(Number),
           signatureProvided: true,
         })

@@ -9,10 +9,20 @@
 
 import type Stripe from "stripe";
 
-import { ConnectWebhookHandler } from "@features/payments/services/webhook/connect-webhook-handler";
+import { ConnectWebhookHandler } from "@features/stripe-connect/services/webhook/connect-webhook-handler";
 
 // モック設定
-jest.mock("@core/logging/app-logger");
+jest.mock("@core/logging/app-logger", () => {
+  const mockLogger = {
+    info: jest.fn(),
+    warn: jest.fn(),
+    error: jest.fn(),
+    debug: jest.fn(),
+    withContext: jest.fn(),
+  };
+  mockLogger.withContext.mockReturnValue(mockLogger);
+  return { logger: mockLogger };
+});
 jest.mock("@core/notification");
 jest.mock("@core/ports/stripe-connect");
 jest.mock("@core/security/secure-client-factory.impl");
