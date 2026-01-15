@@ -111,7 +111,7 @@
         "rules": [
           {
             "target": "features",
-            "allow": "index.{js,ts,tsx}"
+            "allow": ["index.{js,ts,tsx}", "server.{js,ts,tsx}"]
           }
         ]
       }
