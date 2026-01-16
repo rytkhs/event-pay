@@ -23,9 +23,6 @@ import type {
 } from "../../helpers/test-payment-data";
 import { createPaymentTestSetup, type PaymentTestSetup } from "../../setup/common-test-setup";
 
-// PaymentService実装の確実な登録
-import "@features/payments/core-bindings";
-
 describe("🚨 決済完了済みガード 仕様書適合性検証", () => {
   let setup: PaymentTestSetup;
   let testUser: TestPaymentUser;

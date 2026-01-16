@@ -10,9 +10,6 @@ import { statusRank } from "@core/utils/payments/status-rank";
 
 import { CreateStripeSessionParams } from "@features/payments/types";
 
-// PaymentService実装の確実な登録
-import "@features/payments/core-bindings";
-
 import { createPaymentTestSetup, type PaymentTestSetup } from "@tests/setup/common-test-setup";
 
 // 仕様書から抽出した期待値

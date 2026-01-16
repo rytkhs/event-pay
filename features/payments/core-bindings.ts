@@ -104,6 +104,3 @@ export function registerPaymentImplementations(): void {
   paymentRegistry.registerPaymentService(paymentServiceImpl);
   paymentRegistry.registerPaymentErrorHandler(paymentErrorHandlerImpl);
 }
-
-// Auto-registration (called when this module is imported)
-registerPaymentImplementations();
