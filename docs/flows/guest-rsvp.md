@@ -26,7 +26,7 @@
 9. 可能なら登録完了通知メールを送信します（失敗しても登録自体は成功扱いにする、など運用方針に従う）。
 
 ### 初回登録のシーケンス図（概略）
-```
+```mermaid
 sequenceDiagram
   participant G as Guest
   participant UI as RSVP UI

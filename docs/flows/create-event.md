@@ -45,7 +45,7 @@
 具体的な制限ルールは `event-edit-restrictions` のドメイン実装/READMEを正とする。
 
 ## シーケンス図（概略）
-```
+```mermaid
 sequenceDiagram
   participant U as Organizer
   participant UI as Create Event UI
