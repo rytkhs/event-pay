@@ -1,3 +1,4 @@
+import "@/app/_init/feature-registrations";
 import { Noto_Sans_JP } from "next/font/google";
 import { headers } from "next/headers";
 

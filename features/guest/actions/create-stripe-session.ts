@@ -1,5 +1,7 @@
 "use server";
 
+import { registerAllFeatures } from "@/app/_init/feature-registrations";
+
 import { z } from "zod";
 
 import type { ErrorCode } from "@core/api/problem-details";
@@ -17,25 +19,7 @@ import { handleServerError } from "@core/utils/error-handler.server";
 import { validateGuestToken } from "@core/utils/guest-token";
 import { canCreateStripeSession } from "@core/validation/payment-eligibility";
 
-// Server Action内でPaymentService実装の登録を確保
-async function ensurePaymentServiceRegistration() {
-  try {
-    // PaymentService実装を動的にインポートして登録
-    await import("@features/payments/core-bindings");
-  } catch (error) {
-    handleServerError("PAYMENT_SESSION_REGISTRATION_FAILED", {
-      action: "ensurePaymentServiceRegistration",
-      additionalData: {
-        category: "payment",
-        action: "session_creation",
-        actor_type: "guest",
-        error_name: error instanceof Error ? error.name : "Unknown",
-        error_message: error instanceof Error ? error.message : String(error),
-      },
-    });
-    throw new Error("PaymentService initialization failed");
-  }
-}
+registerAllFeatures();
 
 /**
  * PaymentErrorTypeをproblem-details.tsのErrorCodeにマッピング
@@ -174,8 +158,7 @@ export async function createGuestStripeSessionAction(
   const factory = SecureSupabaseClientFactory.create();
   const guestClient = factory.createGuestClient(guestToken);
 
-  // PaymentService実装の登録を確実に実行
-  await ensurePaymentServiceRegistration();
+  // PaymentServiceの登録は "@/app/_init/feature-registrations" で保証される
   const paymentService = getPaymentService();
 
   // 5.1 既存の決済レコードがあれば金額は payments.amount を優先する

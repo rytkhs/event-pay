@@ -28,6 +28,7 @@ import { CreateStripeSessionParams, CreateStripeSessionResult } from "@features/
 import { createPaymentTestSetup } from "@tests/setup/common-test-setup";
 
 import type { Database } from "@/types/database";
+import { registerAllFeatures } from "@/app/_init/feature-registrations";
 
 import {
   cleanupTestPaymentData,
@@ -85,7 +86,7 @@ export class PaymentSessionIdempotencyTestHelper {
     console.log(`🚀 決済セッション冪等性テストセットアップ開始: ${scenarioName}`);
 
     // PaymentService実装を確実に登録
-    await import("@features/payments/core-bindings");
+    registerAllFeatures();
     const paymentService = getPaymentService();
 
     // 共通決済テストセットアップを使用

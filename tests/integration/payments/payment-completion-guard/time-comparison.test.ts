@@ -8,9 +8,6 @@ import { getPaymentService } from "@core/services";
 import { PaymentErrorType } from "@core/types/payment-errors";
 import { CreateStripeSessionParams } from "@features/payments/types";
 
-// PaymentService実装の確実な登録
-import "@features/payments/core-bindings";
-
 import { createPaymentTestSetup, type PaymentTestSetup } from "@tests/setup/common-test-setup";
 
 describe("時間比較ロジック", () => {

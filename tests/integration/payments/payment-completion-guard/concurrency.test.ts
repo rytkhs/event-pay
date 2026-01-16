@@ -7,9 +7,6 @@ import { describe, test, expect, beforeAll, afterAll, beforeEach } from "@jest/g
 import { getPaymentService } from "@core/services";
 import { CreateStripeSessionParams } from "@features/payments/types";
 
-// PaymentService実装の確実な登録
-import "@features/payments/core-bindings";
-
 import { createPaymentTestSetup, type PaymentTestSetup } from "@tests/setup/common-test-setup";
 
 describe("並行処理・競合対策", () => {

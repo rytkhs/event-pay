@@ -19,10 +19,6 @@ import { createStripeConnectServiceWithClient } from "../services";
  * Stripe Connect機能のアダプタを登録
  */
 export function registerStripeConnectAdapters(): void {
-  if ((globalThis as any).__stripe_connect_registered) {
-    return;
-  }
-
   registerStripeConnectPort({
     async updateAccountFromWebhook(accountId: string, status: StripeAccountStatus) {
       try {
@@ -175,6 +171,4 @@ export function registerStripeConnectAdapters(): void {
       }
     },
   });
-
-  (globalThis as any).__stripe_connect_registered = true;
 }

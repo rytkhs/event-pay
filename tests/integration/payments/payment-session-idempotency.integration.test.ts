@@ -34,9 +34,6 @@ import {
   type IdempotencyTestSetup,
 } from "../../helpers/test-payment-session-idempotency";
 
-// PaymentService実装の確実な登録
-import "@features/payments/core-bindings";
-
 describe("決済セッション作成冪等性・並行制御統合テスト", () => {
   let testHelper: PaymentSessionIdempotencyTestHelper;
   let testSetup: IdempotencyTestSetup;

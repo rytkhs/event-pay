@@ -14,7 +14,7 @@ import { NextResponse } from "next/server";
 import { Client } from "@upstash/qstash";
 import type Stripe from "stripe";
 
-// Feature adapters initialization (ensure core ports are registered)
+import { registerAllFeatures } from "@/app/_init/feature-registrations";
 
 import { createProblemResponse } from "@core/api/problem-details";
 import { logger } from "@core/logging/app-logger";
@@ -28,6 +28,8 @@ import { StripeWebhookSignatureVerifier } from "@core/stripe/webhook-signature-v
 import { getEnv } from "@core/utils/cloudflare-env";
 import { handleServerError } from "@core/utils/error-handler.server";
 import { getClientIP } from "@core/utils/ip-detection";
+
+registerAllFeatures();
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic"; // Webhookは常に動的処理

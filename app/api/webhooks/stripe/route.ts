@@ -3,12 +3,12 @@
  * 決済関連のWebhookイベントを受信し、QStashに転送する
  */
 
-export const dynamic = "force-dynamic";
-
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
 import { Client } from "@upstash/qstash";
+
+import { registerAllFeatures } from "@/app/_init/feature-registrations";
 
 import { createProblemResponse } from "@core/api/problem-details";
 import { logger } from "@core/logging/app-logger";
@@ -25,6 +25,10 @@ import { handleServerError } from "@core/utils/error-handler.server";
 import { getClientIP } from "@core/utils/ip-detection";
 
 import { StripeWebhookEventHandler } from "@features/payments";
+
+registerAllFeatures();
+
+export const dynamic = "force-dynamic";
 
 // QStashクライアント初期化
 const getQstashClient = () => {

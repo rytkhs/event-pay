@@ -14,10 +14,6 @@ import { SettlementReportService } from "../services/service";
  * Settlements機能のアダプタを登録
  */
 export function registerSettlementsAdapters(): void {
-  if ((globalThis as any).__settlements_registered) {
-    return;
-  }
-
   registerSettlementReportPort({
     async regenerateAfterRefundOrDispute(eventId: string, createdBy: string) {
       try {
@@ -43,6 +39,4 @@ export function registerSettlementsAdapters(): void {
       }
     },
   });
-
-  (globalThis as any).__settlements_registered = true;
 }
