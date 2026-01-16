@@ -24,7 +24,7 @@ import { getEnv } from "@core/utils/cloudflare-env";
 import { handleServerError } from "@core/utils/error-handler.server";
 import { getClientIP } from "@core/utils/ip-detection";
 
-import { StripeWebhookEventHandler } from "@features/payments/services/webhook/webhook-event-handler";
+import { StripeWebhookEventHandler } from "@features/payments";
 
 // QStashクライアント初期化
 const getQstashClient = () => {

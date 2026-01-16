@@ -10,7 +10,7 @@ import { deriveEventStatus } from "@core/utils/derive-event-status";
 import { calculateAttendeeCount } from "@core/utils/event-calculations";
 import { validateEventId } from "@core/validation/event-id";
 
-import { SinglePageEventEditForm } from "@features/events/components/single-page-event-edit-form";
+import { SinglePageEventEditForm } from "@features/events";
 import { getDetailedAccountStatusAction } from "@features/stripe-connect";
 
 import { EventDangerZone } from "./components/event-danger-zone";

@@ -1,6 +1,6 @@
 import { CalendarDays, DollarSign, Users } from "lucide-react";
 
-import { getDashboardStatsAction } from "@features/events/actions/get-dashboard-stats";
+import { getDashboardStatsAction } from "@features/events";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 

@@ -3,8 +3,8 @@
  * 全てのfeature層のアダプタを登録する初期化コード
  */
 
-import { registerSettlementsAdapters } from "@features/settlements/adapters/settlement-port.adapter";
-import { registerStripeConnectAdapters } from "@features/stripe-connect/adapters/stripe-connect-port.adapter";
+import { registerSettlementsAdapters } from "@features/settlements/server";
+import { registerStripeConnectAdapters } from "@features/stripe-connect/server";
 
 /**
  * 全てのfeature層アダプタを登録

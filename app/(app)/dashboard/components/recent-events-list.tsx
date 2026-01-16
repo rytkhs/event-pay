@@ -2,8 +2,7 @@ import Link from "next/link";
 
 import { ArrowRight, Calendar } from "lucide-react";
 
-import { getRecentEventsAction } from "@features/events/actions/get-dashboard-stats";
-import { EventCard } from "@features/events/components/event-card";
+import { getRecentEventsAction, EventCard } from "@features/events";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";

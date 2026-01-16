@@ -7,7 +7,7 @@ export { getEventDetailAction } from "./get-event-detail";
 export { getEventParticipantsAction } from "./get-event-participants";
 export { getEventPaymentsAction } from "./get-event-payments";
 export { validateInviteTokenAction } from "./validate-invite-token";
-// generateInviteTokenAction moved to @core/actions to resolve boundary violations
 export { exportParticipantsCsvAction } from "./export-participants-csv";
 export { cancelEventAction } from "./cancel-event";
 export { getEventStatsAction } from "./get-event-stats";
+export { getDashboardStatsAction, getRecentEventsAction } from "./get-dashboard-stats";

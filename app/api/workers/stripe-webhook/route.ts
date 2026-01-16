@@ -25,7 +25,7 @@ import { handleServerError } from "@core/utils/error-handler.server";
 import { getClientIP } from "@core/utils/ip-detection";
 
 import "@/app/_init/feature-registrations";
-import { StripeWebhookEventHandler } from "@features/payments/services/webhook/webhook-event-handler";
+import { StripeWebhookEventHandler } from "@features/payments";
 
 // QStash署名検証用のReceiver初期化
 const getQstashReceiver = () => {
