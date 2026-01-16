@@ -1,6 +1,4 @@
 "use server";
-// eslint-disable-next-line
-import "@/app/_init/feature-registrations";
 import { revalidatePath } from "next/cache";
 
 import { z } from "zod";

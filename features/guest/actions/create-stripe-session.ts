@@ -1,7 +1,5 @@
 "use server";
 
-import { registerAllFeatures } from "@/app/_init/feature-registrations";
-
 import { z } from "zod";
 
 import type { ErrorCode } from "@core/api/problem-details";
@@ -18,8 +16,6 @@ import { deriveEventStatus } from "@core/utils/derive-event-status";
 import { handleServerError } from "@core/utils/error-handler.server";
 import { validateGuestToken } from "@core/utils/guest-token";
 import { canCreateStripeSession } from "@core/validation/payment-eligibility";
-
-registerAllFeatures();
 
 /**
  * PaymentErrorTypeをproblem-details.tsのErrorCodeにマッピング
@@ -158,7 +154,7 @@ export async function createGuestStripeSessionAction(
   const factory = SecureSupabaseClientFactory.create();
   const guestClient = factory.createGuestClient(guestToken);
 
-  // PaymentServiceの登録は "@/app/_init/feature-registrations" で保証される
+  // PaymentService の登録は app 側の初期化（feature-registrations）で保証される
   const paymentService = getPaymentService();
 
   // 5.1 既存の決済レコードがあれば金額は payments.amount を優先する

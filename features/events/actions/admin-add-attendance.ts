@@ -2,8 +2,6 @@
 
 import { z } from "zod";
 
-import { registerAllFeatures } from "@/app/_init/feature-registrations";
-
 import { verifyEventAccess } from "@core/auth/event-authorization";
 import { logger } from "@core/logging/app-logger";
 import { logAttendance } from "@core/logging/system-logger";
@@ -18,8 +16,6 @@ import {
 import { deriveEventStatus } from "@core/utils/derive-event-status";
 import { generateGuestToken } from "@core/utils/guest-token";
 import { canCreateStripeSession } from "@core/validation/payment-eligibility";
-
-registerAllFeatures();
 
 // 入力検証
 const AddAttendanceInputSchema = z
