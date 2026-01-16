@@ -14,8 +14,6 @@ import { NextResponse } from "next/server";
 import { Client } from "@upstash/qstash";
 import type Stripe from "stripe";
 
-import { registerAllFeatures } from "@/app/_init/feature-registrations";
-
 import { createProblemResponse } from "@core/api/problem-details";
 import { logger } from "@core/logging/app-logger";
 import { generateSecureUuid } from "@core/security/crypto";
@@ -28,6 +26,8 @@ import { StripeWebhookSignatureVerifier } from "@core/stripe/webhook-signature-v
 import { getEnv } from "@core/utils/cloudflare-env";
 import { handleServerError } from "@core/utils/error-handler.server";
 import { getClientIP } from "@core/utils/ip-detection";
+
+import { registerAllFeatures } from "@/app/_init/feature-registrations";
 
 registerAllFeatures();
 

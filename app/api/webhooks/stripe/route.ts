@@ -8,8 +8,6 @@ import { NextResponse } from "next/server";
 
 import { Client } from "@upstash/qstash";
 
-import { registerAllFeatures } from "@/app/_init/feature-registrations";
-
 import { createProblemResponse } from "@core/api/problem-details";
 import { logger } from "@core/logging/app-logger";
 import { generateSecureUuid } from "@core/security/crypto";
@@ -25,6 +23,8 @@ import { handleServerError } from "@core/utils/error-handler.server";
 import { getClientIP } from "@core/utils/ip-detection";
 
 import { StripeWebhookEventHandler } from "@features/payments";
+
+import { registerAllFeatures } from "@/app/_init/feature-registrations";
 
 registerAllFeatures();
 
