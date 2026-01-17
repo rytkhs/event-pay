@@ -4,10 +4,11 @@ import { useState, useEffect, useCallback } from "react";
 
 import { Copy, ExternalLink, RefreshCw, Link, Share2, Check, MoreVertical } from "lucide-react";
 
-import { generateInviteTokenAction } from "@core/actions";
 import { ga4Client } from "@core/analytics/ga4-client";
 import { useToast } from "@core/contexts/toast-context";
 import { useClipboard } from "@core/hooks/use-clipboard";
+
+import { generateInviteTokenAction } from "@features/events";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";

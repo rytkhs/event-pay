@@ -6,6 +6,7 @@ export { getEventAttendancesAction } from "./get-event-attendances";
 export { getEventDetailAction } from "./get-event-detail";
 export { getEventParticipantsAction } from "./get-event-participants";
 export { getEventPaymentsAction } from "./get-event-payments";
+export { generateInviteTokenAction } from "./generate-invite-token";
 export { validateInviteTokenAction } from "./validate-invite-token";
 export { exportParticipantsCsvAction } from "./export-participants-csv";
 export { cancelEventAction } from "./cancel-event";
