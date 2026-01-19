@@ -4,6 +4,8 @@
 
 import { describe, test, expect, beforeAll, afterAll } from "@jest/globals";
 
+import "@/app/_init/feature-registrations";
+
 import { createGuestStripeSessionAction } from "@features/guest/actions/create-stripe-session";
 import { updateGuestAttendanceAction } from "@features/guest/actions/update-attendance";
 import { setupRLSTest, type RLSTestSetup } from "./rls-test-setup";

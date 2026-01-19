@@ -4,10 +4,12 @@
 
 import { describe, test, expect, beforeAll, afterAll, beforeEach } from "@jest/globals";
 
-import { getPaymentService } from "@core/services";
-import { CreateStripeSessionParams } from "@features/payments/types";
-
-import { createPaymentTestSetup, type PaymentTestSetup } from "@tests/setup/common-test-setup";
+import { getPaymentService } from "../../../../core/services";
+import { CreateStripeSessionParams } from "../../../../features/payments/types";
+import {
+  createPaymentTestSetup,
+  type PaymentTestSetup,
+} from "../../../../tests/setup/common-test-setup";
 
 describe("完了済みガード基本動作", () => {
   let setup: PaymentTestSetup;

@@ -176,10 +176,12 @@ ${
       console.log("✅ waived決済による完了済みガード作動を確認しました。");
     });
 
-    test("waived決済の存在下での時間比較ロジック", async () => {
+    test("waived決済が存在する場合は時間比較せずブロックされる", async () => {
       /**
-       * waived決済とオープン決済の時間比較テスト
-       * 仕様書通りならば、時間比較ロジックも正常に動作するはず
+       * ドメイン定義上、waived は終端（waived --> [*]）であり再課金フローは定義されていない。
+       * よって、DBに open（例: pending）が併存していても、終端が存在する時点で新規決済開始は拒否されるべき。
+       *
+       * これは「時間比較ロジック」の検証ではなく、混在状態でも fail-close することの回帰テスト。
        */
 
       const now = new Date();
@@ -199,28 +201,11 @@ ${
         updatedAt: newerTime,
       });
 
-      try {
-        const result = await paymentService.createStripeSession(baseSessionParams);
-
-        // 成功した場合、時間比較が正しく動作していることを確認
-        expect(result.sessionUrl).toMatch(/^https:\/\/checkout\.stripe\.com/);
-        console.log("✅ waived決済との時間比較で、新しいpending決済が優先されました");
-      } catch (error) {
-        if (
-          error instanceof PaymentError &&
-          error.type === PaymentErrorType.PAYMENT_ALREADY_EXISTS
-        ) {
-          // waived が終端系として扱われた場合のログ
-          console.log(
-            "ℹ️ waived決済により完了済みガードが作動しました（実装が修正された場合の想定動作）"
-          );
-
-          // この場合は時間比較で古いwaived < 新しいpendingのはずなので、
-          // 本来は決済セッション作成が許可されるべき
-          console.warn("⚠️ 時間比較ロジックに問題がある可能性があります");
-        }
-        throw error;
-      }
+      await expect(paymentService.createStripeSession(baseSessionParams)).rejects.toThrow(
+        expect.objectContaining({
+          type: PaymentErrorType.PAYMENT_ALREADY_EXISTS,
+        })
+      );
     });
   });
 
