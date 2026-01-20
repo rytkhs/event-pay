@@ -34,8 +34,6 @@ describe("🚨 決済完了済みガード 仕様書適合性検証", () => {
   beforeAll(async () => {
     console.log("🔧 仕様書適合性検証テスト用データセットアップ開始");
 
-    paymentService = getPaymentService();
-
     // 共通決済テストセットアップを使用
     setup = await createPaymentTestSetup({
       testName: `spec-compliance-test-${Date.now()}`,
@@ -48,6 +46,8 @@ describe("🚨 決済完了済みガード 仕様書適合性検証", () => {
         "public.fee_config",
       ],
     });
+
+    paymentService = getPaymentService();
 
     testUser = setup.testUser;
     testEvent = setup.testEvent;

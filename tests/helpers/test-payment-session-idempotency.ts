@@ -18,8 +18,6 @@
 
 import { jest } from "@jest/globals";
 
-import { SecureSupabaseClientFactory } from "@core/security/secure-client-factory.impl";
-import { AdminReason } from "@core/security/secure-client-factory.types";
 import { getPaymentService } from "@core/services";
 import { PaymentError, PaymentErrorType } from "@core/types/payment-errors";
 
@@ -27,7 +25,6 @@ import { CreateStripeSessionParams, CreateStripeSessionResult } from "@features/
 
 import { createPaymentTestSetup } from "@tests/setup/common-test-setup";
 
-import { registerAllFeatures } from "@/app/_init/feature-registrations";
 import type { Database } from "@/types/database";
 
 import {
@@ -85,10 +82,6 @@ export class PaymentSessionIdempotencyTestHelper {
     // eslint-disable-next-line no-console
     console.log(`🚀 決済セッション冪等性テストセットアップ開始: ${scenarioName}`);
 
-    // PaymentService実装を確実に登録
-    registerAllFeatures();
-    const paymentService = getPaymentService();
-
     // 共通決済テストセットアップを使用
     const paymentSetup = await createPaymentTestSetup({
       testName: scenarioName,
@@ -96,6 +89,8 @@ export class PaymentSessionIdempotencyTestHelper {
       paymentMethods: ["stripe"],
       accessedTables: ["public.payments", "public.attendances", "public.events"],
     });
+
+    const paymentService = getPaymentService();
 
     const user = paymentSetup.testUser;
     const event = paymentSetup.testEvent;
