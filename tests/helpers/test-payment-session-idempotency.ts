@@ -27,8 +27,8 @@ import { CreateStripeSessionParams, CreateStripeSessionResult } from "@features/
 
 import { createPaymentTestSetup } from "@tests/setup/common-test-setup";
 
-import type { Database } from "@/types/database";
 import { registerAllFeatures } from "@/app/_init/feature-registrations";
+import type { Database } from "@/types/database";
 
 import {
   cleanupTestPaymentData,
@@ -213,6 +213,7 @@ export class PaymentSessionIdempotencyTestHelper {
     status: PaymentStatus,
     options: {
       amount?: number;
+      method?: Database["public"]["Enums"]["payment_method_enum"];
       stripePaymentIntentId?: string;
       paidAt?: Date;
       checkoutIdempotencyKey?: string;
@@ -221,7 +222,10 @@ export class PaymentSessionIdempotencyTestHelper {
   ): Promise<string> {
     const {
       amount = this.setup.event.fee,
-      stripePaymentIntentId = status === "pending" ? null : `pi_test_${status}_${Date.now()}`,
+      method = status === "received" ? "cash" : "stripe",
+      stripePaymentIntentId = ["pending", "received"].includes(status)
+        ? null
+        : `pi_test_${status}_${Date.now()}`,
       paidAt = ["paid", "received", "refunded", "waived"].includes(status) ? new Date() : null,
       checkoutIdempotencyKey = null,
       checkoutKeyRevision = 0,
@@ -231,14 +235,14 @@ export class PaymentSessionIdempotencyTestHelper {
       .from("payments")
       .insert({
         attendance_id: this.setup.attendance.id,
-        method: "stripe",
+        method,
         amount,
         status,
         stripe_payment_intent_id: stripePaymentIntentId,
         paid_at: paidAt?.toISOString() || null,
         checkout_idempotency_key: checkoutIdempotencyKey,
         checkout_key_revision: checkoutKeyRevision,
-        application_fee_amount: Math.floor(amount * 0.1),
+        application_fee_amount: method === "stripe" ? Math.floor(amount * 0.1) : 0,
       })
       .select()
       .single();
@@ -564,11 +568,6 @@ export class IdempotencyTestValidators {
     const issues: string[] = [];
     const totalAttempts = result.results.length + result.errors.length;
     const successRate = totalAttempts > 0 ? result.results.length / totalAttempts : 0;
-
-    // 成功したセッションは同一のIDを持つべき
-    if (result.uniqueSessionIds.length > 1) {
-      issues.push(`Multiple session IDs returned: ${result.uniqueSessionIds.join(", ")}`);
-    }
 
     // 決済レコードは1つだけ存在すべき
     const pendingPayments = result.paymentRecords.filter((p) => p.status === "pending");

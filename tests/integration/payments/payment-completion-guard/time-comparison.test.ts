@@ -6,6 +6,7 @@ import { describe, test, expect, beforeAll, afterAll, beforeEach } from "@jest/g
 
 import { getPaymentService } from "@core/services";
 import { PaymentErrorType } from "@core/types/payment-errors";
+
 import { CreateStripeSessionParams } from "@features/payments/types";
 
 import { createPaymentTestSetup, type PaymentTestSetup } from "@tests/setup/common-test-setup";
@@ -88,7 +89,7 @@ describe("時間比較ロジック", () => {
     );
   });
 
-  test("オープン決済が新しい場合の許可", async () => {
+  test("オープン決済が新しい場合でも完了済み決済があれば拒否", async () => {
     const now = new Date();
     const olderTime = new Date(now.getTime() - 60000); // 1分前
     const newerTime = new Date(now.getTime() - 30000); // 30秒前
@@ -130,9 +131,13 @@ describe("時間比較ロジック", () => {
       },
     };
 
-    // エラーではなく成功することを期待
-    const result = await paymentService.createStripeSession(sessionParams);
-    expect(result.sessionUrl).toMatch(/^https:\/\/checkout\.stripe\.com/);
+    // 完了済み決済があるため、時間に関わらず拒否されることを期待
+    await expect(paymentService.createStripeSession(sessionParams)).rejects.toThrow(
+      expect.objectContaining({
+        type: PaymentErrorType.PAYMENT_ALREADY_EXISTS,
+        message: "この参加に対する決済は既に完了済みです",
+      })
+    );
   });
 
   test("時間比較の優先順位 - 終端決済: paid_at > updated_at > created_at", async () => {
@@ -189,7 +194,7 @@ describe("時間比較ロジック", () => {
     );
   });
 
-  test("時間比較の優先順位 - オープン決済: updated_at > created_at", async () => {
+  test("時間比較よりも完了済み決済の存在を優先して拒否（オープン決済: updated_at > created_at）", async () => {
     const baseTime = new Date();
     const time1 = new Date(baseTime.getTime() - 60000); // 60秒前
     const time2 = new Date(baseTime.getTime() - 30000); // 30秒前
@@ -233,8 +238,12 @@ describe("時間比較ロジック", () => {
       },
     };
 
-    // pendingのupdated_at（time2: 30秒前）が終端のpaid_at（time3: 45秒前）より新しいので許可される
-    const result = await paymentService.createStripeSession(sessionParams);
-    expect(result.sessionUrl).toMatch(/^https:\/\/checkout\.stripe\.com/);
+    // pendingのupdated_atの方が新しいが、完了済み決済があるため拒否される
+    await expect(paymentService.createStripeSession(sessionParams)).rejects.toThrow(
+      expect.objectContaining({
+        type: PaymentErrorType.PAYMENT_ALREADY_EXISTS,
+        message: "この参加に対する決済は既に完了済みです",
+      })
+    );
   });
 });

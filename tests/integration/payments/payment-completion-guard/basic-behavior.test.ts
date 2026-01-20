@@ -117,12 +117,17 @@ describe("完了済みガード基本動作", () => {
 
   test("failed決済存在時の新規pending作成", async () => {
     // failed決済を事前作成
-    await setup.adminClient.from("payments").insert({
+    const { error: insertError } = await setup.adminClient.from("payments").insert({
       attendance_id: setup.testAttendance.id,
       method: "stripe",
       amount: setup.testEvent.fee,
       status: "failed",
+      stripe_payment_intent_id: "pi_test_dummy_failed",
     });
+
+    if (insertError) {
+      throw new Error(`Failed to create setup payment: ${insertError.message}`);
+    }
 
     const sessionParams: CreateStripeSessionParams = {
       attendanceId: setup.testAttendance.id,
