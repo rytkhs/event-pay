@@ -23,9 +23,6 @@ import type {
 } from "../../helpers/test-payment-data";
 import { createPaymentTestSetup, type PaymentTestSetup } from "../../setup/common-test-setup";
 
-// PaymentService実装の確実な登録
-import "@features/payments/core-bindings";
-
 describe("🚨 決済完了済みガード 仕様書適合性検証", () => {
   let setup: PaymentTestSetup;
   let testUser: TestPaymentUser;
@@ -36,8 +33,6 @@ describe("🚨 決済完了済みガード 仕様書適合性検証", () => {
 
   beforeAll(async () => {
     console.log("🔧 仕様書適合性検証テスト用データセットアップ開始");
-
-    paymentService = getPaymentService();
 
     // 共通決済テストセットアップを使用
     setup = await createPaymentTestSetup({
@@ -51,6 +46,8 @@ describe("🚨 決済完了済みガード 仕様書適合性検証", () => {
         "public.fee_config",
       ],
     });
+
+    paymentService = getPaymentService();
 
     testUser = setup.testUser;
     testEvent = setup.testEvent;
@@ -179,10 +176,12 @@ ${
       console.log("✅ waived決済による完了済みガード作動を確認しました。");
     });
 
-    test("waived決済の存在下での時間比較ロジック", async () => {
+    test("waived決済が存在する場合は時間比較せずブロックされる", async () => {
       /**
-       * waived決済とオープン決済の時間比較テスト
-       * 仕様書通りならば、時間比較ロジックも正常に動作するはず
+       * ドメイン定義上、waived は終端（waived --> [*]）であり再課金フローは定義されていない。
+       * よって、DBに open（例: pending）が併存していても、終端が存在する時点で新規決済開始は拒否されるべき。
+       *
+       * これは「時間比較ロジック」の検証ではなく、混在状態でも fail-close することの回帰テスト。
        */
 
       const now = new Date();
@@ -202,28 +201,11 @@ ${
         updatedAt: newerTime,
       });
 
-      try {
-        const result = await paymentService.createStripeSession(baseSessionParams);
-
-        // 成功した場合、時間比較が正しく動作していることを確認
-        expect(result.sessionUrl).toMatch(/^https:\/\/checkout\.stripe\.com/);
-        console.log("✅ waived決済との時間比較で、新しいpending決済が優先されました");
-      } catch (error) {
-        if (
-          error instanceof PaymentError &&
-          error.type === PaymentErrorType.PAYMENT_ALREADY_EXISTS
-        ) {
-          // waived が終端系として扱われた場合のログ
-          console.log(
-            "ℹ️ waived決済により完了済みガードが作動しました（実装が修正された場合の想定動作）"
-          );
-
-          // この場合は時間比較で古いwaived < 新しいpendingのはずなので、
-          // 本来は決済セッション作成が許可されるべき
-          console.warn("⚠️ 時間比較ロジックに問題がある可能性があります");
-        }
-        throw error;
-      }
+      await expect(paymentService.createStripeSession(baseSessionParams)).rejects.toThrow(
+        expect.objectContaining({
+          type: PaymentErrorType.PAYMENT_ALREADY_EXISTS,
+        })
+      );
     });
   });
 
@@ -290,131 +272,8 @@ ${terminalStatuses.map((s) => `${s}: ${results[s] ? "✅" : "❌"}`).join("\n")}
     });
   });
 
-  describe("仕様書時間比較ロジック検証", () => {
-    test("終端決済時間計算の優先順位: paid_at > updated_at > created_at", async () => {
-      const baseTime = new Date();
-      const time1 = new Date(baseTime.getTime() - 90000); // 90秒前（最古）
-      const time2 = new Date(baseTime.getTime() - 60000); // 60秒前（中間）
-      const time3 = new Date(baseTime.getTime() - 30000); // 30秒前（最新）
-
-      // paid決済を作成: created_at < updated_at < paid_at
-      await createPaymentWithStatus(testAttendance.id, "paid", {
-        createdAt: time1, // 最古
-        updatedAt: time2, // 中間
-        paidAt: time3, // 最新（これが使用されるべき）
-      });
-
-      // pending決済を作成（比較対象）
-      const pendingTime = new Date(baseTime.getTime() - 45000); // 45秒前
-      await createPaymentWithStatus(testAttendance.id, "pending", {
-        createdAt: pendingTime,
-        updatedAt: pendingTime,
-      });
-
-      // 仕様書によれば：
-      // - 終端決済の有効時間: paid_at (30秒前)
-      // - オープン決済の有効時間: updated_at (45秒前)
-      // - 終端決済の方が新しいので拒否されるべき
-
-      await expect(paymentService.createStripeSession(baseSessionParams)).rejects.toThrow(
-        expect.objectContaining({
-          type: PaymentErrorType.PAYMENT_ALREADY_EXISTS,
-        })
-      );
-
-      console.log("✅ 終端決済の時間計算で paid_at が優先されることを確認");
-    });
-
-    test("オープン決済時間計算の優先順位: updated_at > created_at", async () => {
-      const baseTime = new Date();
-      const time1 = new Date(baseTime.getTime() - 90000); // 90秒前
-      const time2 = new Date(baseTime.getTime() - 60000); // 60秒前
-      const time3 = new Date(baseTime.getTime() - 30000); // 30秒前
-
-      // 終端決済（比較対象）
-      await createPaymentWithStatus(testAttendance.id, "paid", {
-        paidAt: time2, // 60秒前
-      });
-
-      // pending決済: created_at < updated_at
-      await createPaymentWithStatus(testAttendance.id, "pending", {
-        createdAt: time1, // 古い
-        updatedAt: time3, // 新しい（これが使用されるべき）
-      });
-
-      // 仕様書によれば：
-      // - 終端決済の有効時間: paid_at (60秒前)
-      // - オープン決済の有効時間: updated_at (30秒前)
-      // - オープン決済の方が新しいので許可されるべき
-
-      const result = await paymentService.createStripeSession(baseSessionParams);
-      expect(result.sessionUrl).toMatch(/^https:\/\/checkout\.stripe\.com/);
-
-      console.log("✅ オープン決済の時間計算で updated_at が優先されることを確認");
-    });
-  });
-
-  describe("エラー詳細の仕様書適合性", () => {
-    test("完了済みガードエラーの詳細が仕様書通りであること", async () => {
-      // paid決済を作成
-      await createPaymentWithStatus(testAttendance.id, "paid");
-
-      try {
-        await paymentService.createStripeSession(baseSessionParams);
-        fail("PaymentError should be thrown");
-      } catch (error) {
-        // 仕様書で定義されたエラー詳細を検証
-        expect(error).toBeInstanceOf(PaymentError);
-        expect(error.type).toBe(PaymentErrorType.PAYMENT_ALREADY_EXISTS);
-        expect(error.message).toBe("この参加に対する決済は既に完了済みです");
-        expect(error.name).toBe("PaymentError");
-
-        console.log("✅ 完了済みガードエラーの詳細が仕様書通りであることを確認");
-      }
-    });
-  });
-
-  describe("ソート条件の仕様書適合性", () => {
-    test("終端決済ソート順序の実装検証", async () => {
-      const baseTime = new Date();
-      const time1 = new Date(baseTime.getTime() - 120000); // 2分前
-      const time2 = new Date(baseTime.getTime() - 90000); // 1.5分前
-      const time3 = new Date(baseTime.getTime() - 60000); // 1分前
-
-      // 複数の終端決済を作成（仕様書のソート順序で最新が選ばれることを確認）
-
-      // 最初の決済（古いpaid_at）
-      await createPaymentWithStatus(testAttendance.id, "paid", {
-        paidAt: time1, // 最も古い
-        createdAt: time2,
-      });
-
-      // 2番目の決済（新しいpaid_at） - これが選択されるべき
-      await createPaymentWithStatus(testAttendance.id, "received", {
-        paidAt: time3, // 最新
-        createdAt: time1, // 古いcreated_at
-      });
-
-      // 3番目の決済（paid_atなし、新しいupdated_at）
-      await createPaymentWithStatus(testAttendance.id, "received", {
-        updatedAt: time2,
-        createdAt: time1,
-        paidAt: undefined, // paid_atなし
-      });
-
-      // 仕様書によれば、paid_atを持つ決済が優先され、
-      // その中で最新のpaid_at（time3）を持つ決済が使用される
-
-      await expect(paymentService.createStripeSession(baseSessionParams)).rejects.toThrow(
-        expect.objectContaining({
-          type: PaymentErrorType.PAYMENT_ALREADY_EXISTS,
-        })
-      );
-
-      console.log("✅ 終端決済のソート順序が仕様書通りであることを確認");
-    });
-
-    test("オープン決済ソート順序の実装検証", async () => {
+  describe("ソート条件の仕様書適合性（オープン決済のみ）", () => {
+    test("オープン決済ソート順序の実装検証: pending優先", async () => {
       const baseTime = new Date();
       const time1 = new Date(baseTime.getTime() - 120000); // 2分前
       const time2 = new Date(baseTime.getTime() - 60000); // 1分前

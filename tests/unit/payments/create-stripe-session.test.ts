@@ -39,7 +39,7 @@ describe("PaymentService - Stripe Checkout セッション作成", () => {
 
   // テスト用の固定データ
   const testData = {
-    connectAccountId: "acct_1S95RCEJRRCbin0V",
+    connectAccountId: "acct_1SNbjmCtoNNhKnPZ",
     amount: 1000,
     eventId: "event_test_123",
     attendanceId: "attendance_test_456",

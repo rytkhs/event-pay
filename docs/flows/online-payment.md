@@ -25,7 +25,7 @@
 5. QStashがWorker（`/api/workers/stripe-webhook`）を呼び出し、WorkerがDBの `payments.status` を `paid` に更新する。
 
 ### シーケンス図（概略）
-```
+```mermaid
 sequenceDiagram
   participant G as Guest
   participant App as EventPay (Next.js)

@@ -9,6 +9,8 @@ import { AccountDeleteDangerZone } from "@/features/settings/components/account-
 import { EmailChangeForm } from "@/features/settings/components/email-change-form";
 import { ProfileForm } from "@/features/settings/components/profile-form";
 
+import { requestAccountDeletionAction } from "./actions";
+
 export default async function ProfileSettingsPage() {
   const supabase = createClient();
   const {
@@ -52,7 +54,7 @@ export default async function ProfileSettingsPage() {
       </Card>
 
       {/* アカウント削除（デンジャーゾーン） */}
-      <AccountDeleteDangerZone />
+      <AccountDeleteDangerZone requestAccountDeletionAction={requestAccountDeletionAction} />
     </div>
   );
 }

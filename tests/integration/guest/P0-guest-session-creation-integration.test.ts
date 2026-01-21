@@ -19,6 +19,8 @@
  * - 外部システムの実際の応答を検証する
  */
 
+import "@/app/_init/feature-registrations";
+
 import { enforceRateLimit, buildKey, POLICIES } from "../../../core/rate-limit";
 import { validateGuestToken } from "../../../core/utils/guest-token";
 import { canCreateStripeSession } from "../../../core/validation/payment-eligibility";

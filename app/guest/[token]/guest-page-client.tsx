@@ -19,12 +19,12 @@ import {
   GuestEventSummary,
   GuestSettingsArea,
   GuestStatusEditModal,
-  createGuestStripeSessionAction,
   GuestScenario,
 } from "@features/guest";
 
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 
+import { createGuestStripeSessionAction } from "./actions";
 interface GuestPageClientProps {
   attendance: GuestAttendanceData;
   canModify: boolean;

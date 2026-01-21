@@ -25,8 +25,9 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { adminAddAttendanceAction } from "@/features/events/actions/admin-add-attendance";
 import { exportParticipantsCsvAction } from "@/features/events/actions/export-participants-csv";
+
+import { adminAddAttendanceAction } from "../actions";
 
 import { SmartSortToggle } from "./smart-sort-toggle";
 

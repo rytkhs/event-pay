@@ -19,6 +19,7 @@ import {
 } from "@tests/helpers/test-payment-data";
 import { createTestUser, deleteTestUser, type TestUser } from "@tests/helpers/test-user";
 
+import { registerAllFeatures } from "@/app/_init/feature-registrations";
 import type { Database } from "@/types/database";
 
 /**
@@ -225,6 +226,7 @@ export interface CommonTestSetupOptions {
  * });
  * ```
  */
+
 export async function createCommonTestSetup(
   options: CommonTestSetupOptions = {}
 ): Promise<CommonTestSetup> {
@@ -236,6 +238,9 @@ export async function createCommonTestSetup(
     customUserOptions,
     skipCleanup = false,
   } = options;
+
+  // 機能レジストリを初期化（テスト環境での依存解決を保証）
+  registerAllFeatures();
 
   // テストユーザーを作成
   const testUser = withConnect
@@ -392,6 +397,9 @@ async function setupFeeConfigForIntegrationTest(adminClient: any): Promise<void>
 export async function createPaymentTestSetup(
   options: PaymentTestSetupOptions = {}
 ): Promise<PaymentTestSetup> {
+  // 機能レジストリを初期化（決済/ポートの依存解決を保証）
+  registerAllFeatures();
+
   const {
     testName = `payment-test-${Date.now()}`,
     eventFee = 1500,

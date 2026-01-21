@@ -216,12 +216,15 @@ export class PaymentService implements IPaymentService {
         }
       }
 
-      // 終端決済を全件取得してアプリケーション側で正確にソート
-      const { data: terminalPayments, error: terminalFindError } = await this.supabase
+      // 支払完了系が存在するか確認（存在すれば無条件で受付不可）
+      // 意図: 完了済み決済が1つでも存在すれば、新規決済は受け付けない（重複課金防止）
+      const { data: existingTerminal, error: terminalFindError } = await this.supabase
         .from("payments")
-        .select("id, status, paid_at, created_at, updated_at")
+        .select("id")
         .eq("attendance_id", params.attendanceId)
-        .in("status", TERMINAL_PAYMENT_STATUSES);
+        .in("status", TERMINAL_PAYMENT_STATUSES)
+        .limit(1)
+        .maybeSingle();
 
       if (terminalFindError) {
         throw new PaymentError(
@@ -231,10 +234,7 @@ export class PaymentService implements IPaymentService {
         );
       }
 
-      const latestTerminal = this.findLatestPaymentByEffectiveTime(terminalPayments);
-
-      // 支払完了系が存在する場合は無条件で受付不可（重複課金防止）
-      if (latestTerminal) {
+      if (existingTerminal) {
         throw new PaymentError(
           PaymentErrorType.PAYMENT_ALREADY_EXISTS,
           "この参加に対する決済は既に完了済みです"

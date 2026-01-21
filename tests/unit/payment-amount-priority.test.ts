@@ -96,7 +96,7 @@ describe("既存payments.amount優先ロジック検証", () => {
         platformFeeAmount: Math.floor(testAmount * 0.049), // 4.9%手数料想定
         eventId: "event_123",
         eventTitle: "Test Event",
-        destinationAccountId: "acct_1S95RCEJRRCbin0V",
+        destinationAccountId: "acct_1SNbjmCtoNNhKnPZ",
         metadata: {
           payment_id: "payment_123",
           attendance_id: "attendance_123",

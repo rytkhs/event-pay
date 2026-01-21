@@ -4,15 +4,23 @@ import { useState, useTransition } from "react";
 
 import { AlertTriangle, Loader2 } from "lucide-react";
 
+import type { ActionResult } from "@core/actions/auth";
+
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/core/contexts/toast-context";
-import { requestAccountDeletionAction } from "@/features/settings/actions/request-account-deletion";
+import { requestAccountDeletionAction as defaultRequestAccountDeletionAction } from "@/features/settings/actions/request-account-deletion";
 
-export function AccountDeleteDangerZone(): JSX.Element {
+type AccountDeleteDangerZoneProps = {
+  requestAccountDeletionAction?: (formData: FormData) => Promise<ActionResult>;
+};
+
+export function AccountDeleteDangerZone({
+  requestAccountDeletionAction = defaultRequestAccountDeletionAction,
+}: AccountDeleteDangerZoneProps): JSX.Element {
   const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
 
