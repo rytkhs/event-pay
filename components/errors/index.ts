@@ -7,18 +7,18 @@
 export type * from "./error-types";
 
 // コアコンポーネント
-export { ErrorLayout } from "./error-layout";
+export { ErrorLayout } from "./ErrorLayout";
 export {
   ErrorBoundary,
   ParticipationErrorBoundary,
   PaymentErrorBoundary,
   PageErrorBoundary,
   GlobalErrorBoundary,
-} from "./error-boundary";
+} from "./ErrorBoundary";
 
 // UIコンポーネント
-export { ErrorCard, InlineErrorCard, NotificationErrorCard } from "./ui/error-card";
-export { ErrorIcon, getErrorIcon, getErrorColor } from "./ui/error-icon";
+export { ErrorCard, InlineErrorCard, NotificationErrorCard } from "./ui/ErrorCard";
+export { ErrorIcon, getErrorIcon, getErrorColor } from "./ui/ErrorIcon";
 export {
   ErrorActions,
   SingleActionButton,
@@ -26,7 +26,7 @@ export {
   RetryButton,
   HomeButton,
   BackButton,
-} from "./ui/error-actions";
+} from "./ui/ErrorActions";
 
 // 専用レイアウト
 export {
@@ -36,7 +36,7 @@ export {
   RateLimitErrorLayout,
   PaymentErrorLayout,
   MaintenanceLayout,
-} from "./error-layout";
+} from "./ErrorLayout";
 
 // エラーロガー
 export {
@@ -57,4 +57,4 @@ export {
   PaymentErrorIcon,
   SecurityErrorIcon,
   BusinessErrorIcon,
-} from "./ui/error-icon";
+} from "./ui/ErrorIcon";

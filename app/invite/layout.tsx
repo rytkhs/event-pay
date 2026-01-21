@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import { GlobalFooter } from "@components/layout/GlobalFooter";
 import { GlobalHeader } from "@components/layout/GlobalHeader";
 
-import { DemoBanner } from "@/features/demo/components/demo-banner";
+import { DemoBanner } from "@/features/demo/components/DemoBanner";
 
 /**
  * 招待ページレイアウト

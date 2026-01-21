@@ -43,7 +43,7 @@ import userEvent from "@testing-library/user-event";
 import type { ParticipantView } from "@core/validation/participant-management";
 
 // テスト対象コンポーネント
-import { ParticipantsTableV2 } from "@/app/(app)/events/[id]/participants/components/participants-table-v2/participants-table";
+import { ParticipantsTableV2 } from "@/app/(app)/events/[id]/participants/components/participants-table-v2/ParticipantsTableV2";
 
 // LocalStorage をモック
 const mockLocalStorage = {

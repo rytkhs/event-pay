@@ -3,9 +3,9 @@
 import type { Event } from "@core/types/models";
 import type { GetEventPaymentsResponse } from "@core/validation/participant-management";
 
-import { EventInfo } from "./overview/event-info";
-import { InviteLinkCard } from "./overview/invite-link-card";
-import { KpiCardsGrid } from "./overview/kpi-cards-grid";
+import { EventInfo } from "./overview/EventInfo";
+import { InviteLinkCard } from "./overview/InviteLinkCard";
+import { KpiCardsGrid } from "./overview/KpiCardsGrid";
 
 interface EventOverviewTabProps {
   eventId: string;

@@ -36,7 +36,7 @@ import { Textarea } from "@/components/ui/textarea";
 
 import { useEventForm } from "../hooks/use-event-form";
 
-import { EventFormTimeline } from "./event-form-timeline";
+import { EventFormTimeline } from "./EventFormTimeline";
 
 type FormSectionProps = {
   title: string;

@@ -1,3 +1,3 @@
-export { SettlementReportCard } from "./settlement-report-card";
-export { SettlementReportList } from "./settlement-report-list";
-export { SettlementReportGenerator } from "./settlement-report-generator";
+export { SettlementReportCard } from "./SettlementReportCard";
+export { SettlementReportList } from "./SettlementReportList";
+export { SettlementReportGenerator } from "./SettlementReportGenerator";

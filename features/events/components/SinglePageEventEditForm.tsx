@@ -42,9 +42,9 @@ import type { RestrictableField } from "@/core/domain/event-edit-restrictions";
 import { useEventEditForm, type EventEditFormDataRHF } from "../hooks/use-event-edit-form";
 import { useRestrictionContext, useFormDataSnapshot } from "../hooks/use-unified-restrictions";
 
-import { EventFormTimeline } from "./event-form-timeline";
-import { FeeCalculatorDisplay } from "./fee-calculator-display";
-import { UnifiedRestrictionNoticeV2 } from "./unified-restriction-notice-v2";
+import { EventFormTimeline } from "./EventFormTimeline";
+import { FeeCalculatorDisplay } from "./FeeCalculatorDisplay";
+import { UnifiedRestrictionNoticeV2 } from "./UnifiedRestrictionNoticeV2";
 
 type FormSectionProps = {
   title: string;

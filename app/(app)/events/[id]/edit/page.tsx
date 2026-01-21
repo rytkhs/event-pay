@@ -13,7 +13,7 @@ import { validateEventId } from "@core/validation/event-id";
 import { SinglePageEventEditForm } from "@features/events";
 import { getDetailedAccountStatusAction } from "@features/stripe-connect";
 
-import { EventDangerZone } from "./components/event-danger-zone";
+import { EventDangerZone } from "./components/EventDangerZone";
 
 interface EventEditPageProps {
   params: {

@@ -29,7 +29,7 @@ import type { RestrictableField } from "@/core/domain/event-edit-restrictions";
 import { useEventEditForm, type EventEditFormDataRHF } from "../hooks/use-event-edit-form";
 import { useRestrictionContext, useFormDataSnapshot } from "../hooks/use-unified-restrictions";
 
-import { UnifiedRestrictionNoticeV2 } from "./unified-restriction-notice-v2";
+import { UnifiedRestrictionNoticeV2 } from "./UnifiedRestrictionNoticeV2";
 
 interface EventEditFormProps {
   event: Event;

@@ -12,9 +12,9 @@ import type {
 
 import { Tabs, TabsContent } from "@/components/ui/tabs";
 
-import { EventDetailHeader } from "./event-detail-header";
-import { EventOverviewTab } from "./event-overview-tab";
-import { EventParticipantsTab } from "./event-participants-tab";
+import { EventDetailHeader } from "./EventDetailHeader";
+import { EventOverviewTab } from "./EventOverviewTab";
+import { EventParticipantsTab } from "./EventParticipantsTab";
 
 interface EventManagementPageProps {
   eventId: string;

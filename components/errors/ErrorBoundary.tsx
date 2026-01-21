@@ -1,6 +1,6 @@
 /**
  * 統一されたReact Error Boundaryコンポーネント
- * 既存のerror-boundary.tsxを完全に置き換える
+ * 既存のError Boundary実装を完全に置き換える
  */
 
 "use client";
@@ -8,9 +8,9 @@
 import type { ReactNode } from "react";
 import { Component } from "react";
 
-import { ErrorLayout } from "./error-layout";
 import { logError, addBreadcrumb } from "./error-logger";
 import type { ErrorBoundaryProps, ErrorFallbackProps } from "./error-types";
+import { ErrorLayout } from "./ErrorLayout";
 
 interface ErrorBoundaryState {
   hasError: boolean;

@@ -12,8 +12,8 @@ import { Card } from "@/components/ui/card";
 
 import type { ErrorPageProps } from "../error-types";
 
-import { ErrorActions } from "./error-actions";
-import { ErrorIcon } from "./error-icon";
+import { ErrorActions } from "./ErrorActions";
+import { ErrorIcon } from "./ErrorIcon";
 
 interface ErrorCardProps extends ErrorPageProps {
   size?: "sm" | "md" | "lg";

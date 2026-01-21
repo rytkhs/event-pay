@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 
 import { Metadata } from "next";
 
-import { DemoEntryPage } from "@/features/demo/components/demo-entry-page";
+import { DemoEntryPage } from "@/features/demo/components/DemoEntryPage";
 
 export const metadata: Metadata = {
   title: "デモ環境を構築中...",

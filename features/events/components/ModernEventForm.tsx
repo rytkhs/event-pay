@@ -28,8 +28,8 @@ import { Textarea } from "@/components/ui/textarea";
 
 import { useEventForm } from "../hooks/use-event-form";
 
-import { EventConfirmationSummary } from "./event-confirmation-summary";
-import { EventFormTimeline } from "./event-form-timeline";
+import { EventConfirmationSummary } from "./EventConfirmationSummary";
+import { EventFormTimeline } from "./EventFormTimeline";
 
 // ステップの定義
 const STEPS = [

@@ -5,7 +5,7 @@ import { createClient } from "@core/supabase/server";
 export const dynamic = "force-dynamic";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { PasswordChangeForm } from "@/features/settings/components/password-change-form";
+import { PasswordChangeForm } from "@/features/settings/components/PasswordChangeForm";
 
 export default async function SecuritySettingsPage() {
   const supabase = createClient();

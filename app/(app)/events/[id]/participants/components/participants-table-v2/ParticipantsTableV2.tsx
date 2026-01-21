@@ -25,10 +25,10 @@ import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { bulkUpdateCashStatusAction } from "@/features/payments/actions/bulk-update-cash-status";
 import { updateCashStatusAction } from "@/features/payments/actions/update-cash-status";
 
-import { BulkActionBar } from "./bulk-action-bar";
-import { CardsView } from "./cards-view";
-import { buildParticipantsColumns } from "./columns";
-import { DataTable } from "./data-table";
+import { BulkActionBar } from "./BulkActionBar";
+import { CardsView } from "./CardsView";
+import { DataTable } from "./DataTable";
+import { buildParticipantsColumns } from "./participants-columns";
 
 export interface ParticipantsTableV2Props {
   eventId: string;

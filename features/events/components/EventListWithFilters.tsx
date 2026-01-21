@@ -18,10 +18,10 @@ import type {
 import { useEventFilter, Filters } from "../hooks/useEventFilter";
 import { Event } from "../types";
 
-import { EventFilters } from "./event-filters";
-import { EventList } from "./event-list";
-import { EventSort } from "./event-sort";
-import { Pagination } from "./pagination";
+import { EventFilters } from "./EventFilters";
+import { EventList } from "./EventList";
+import { EventSort } from "./EventSort";
+import { Pagination } from "./Pagination";
 
 interface EventListWithFiltersProps {
   events: Event[];
@@ -167,8 +167,7 @@ export function EventListWithFilters({
     const query = searchQuery.toLowerCase().trim();
     return events.filter((event) => {
       return (
-        event.title.toLowerCase().includes(query) ||
-        (event.location && event.location.toLowerCase().includes(query))
+        event.title.toLowerCase().includes(query) || event.location?.toLowerCase().includes(query)
       );
     });
   }, [events, searchQuery]);

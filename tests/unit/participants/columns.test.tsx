@@ -11,7 +11,7 @@ import type { ParticipantView } from "@core/validation/participant-management";
 import {
   buildParticipantsColumns,
   type ActionsCellHandlers,
-} from "@/app/(app)/events/[id]/participants/components/participants-table-v2/columns";
+} from "@/app/(app)/events/[id]/participants/components/participants-table-v2/participants-columns";
 
 // モックハンドラー（現在の実装に合わせた型）
 const mockHandlers: ActionsCellHandlers = {

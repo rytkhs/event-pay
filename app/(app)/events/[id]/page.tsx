@@ -15,7 +15,7 @@ import {
   getEventStatsAction,
 } from "@features/events";
 
-import { EventManagementPage } from "./components/event-management-page";
+import { EventManagementPage } from "./components/EventManagementPage";
 
 interface EventDetailPageProps {
   params: {

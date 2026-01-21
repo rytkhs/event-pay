@@ -14,7 +14,7 @@ import {
   generateSoftwareApplicationSchema,
 } from "@core/seo/jsonld-schemas";
 
-import { GlobalErrorListener } from "@components/errors/global-error-listener";
+import { GlobalErrorListener } from "@components/errors/GlobalErrorListener";
 import { JsonLd } from "@components/seo/JsonLd";
 
 import { registerAllFeatures } from "@/app/_init/feature-registrations";
