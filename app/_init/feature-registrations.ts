@@ -3,6 +3,8 @@
  * 全てのfeature層のアダプタを登録する初期化コード
  */
 
+import "server-only";
+
 import { isSettlementReportPortRegistered } from "@core/ports/settlements";
 import { isStripeConnectPortRegistered } from "@core/ports/stripe-connect";
 import paymentRegistry from "@core/services/payment-registry";
