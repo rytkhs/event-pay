@@ -5,10 +5,10 @@ import { useMemo, useState } from "react";
 import type { Event } from "@core/types/models";
 import type { GetParticipantsResponse } from "@core/validation/participant-management";
 
-import { ParticipantsActionBarV2 } from "../participants/components/participants-action-bar-v2";
-import { ParticipantsFilterSheet } from "../participants/components/participants-filter-sheet";
-import { ParticipantsStatusTabs } from "../participants/components/participants-status-tabs";
-import { ParticipantsTableV2 } from "../participants/components/participants-table-v2/participants-table";
+import { ParticipantsTableV2 } from "../participants/components/participants-table-v2/ParticipantsTableV2";
+import { ParticipantsActionBarV2 } from "../participants/components/ParticipantsActionBarV2";
+import { ParticipantsFilterSheet } from "../participants/components/ParticipantsFilterSheet";
+import { ParticipantsStatusTabs } from "../participants/components/ParticipantsStatusTabs";
 
 interface EventParticipantsTabProps {
   eventId: string;

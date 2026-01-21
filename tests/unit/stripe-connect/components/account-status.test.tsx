@@ -5,7 +5,7 @@ import React from "react";
 import { render, screen } from "@testing-library/react";
 import "@testing-library/jest-dom";
 
-import { AccountStatus } from "@/features/stripe-connect/components/account-status";
+import { AccountStatus } from "@/features/stripe-connect/components/AccountStatus";
 import type { AccountStatusData } from "@/features/stripe-connect/types/status-classification";
 
 describe("AccountStatus Component", () => {

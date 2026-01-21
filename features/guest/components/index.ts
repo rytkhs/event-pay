@@ -3,12 +3,12 @@
  * ゲスト機能コンポーネントの公開エクスポート
  */
 
-export { GuestManagementForm } from "./guest-management-form";
-export { GuestStatusOverview } from "./guest-status-overview";
-export { GuestEventDetails } from "./guest-event-details";
+export { GuestManagementForm } from "./GuestManagementForm";
+export { GuestStatusOverview } from "./GuestStatusOverview";
+export { GuestEventDetails } from "./GuestEventDetails";
 
-export { GuestStatusCard } from "./guest-status-card";
-export { GuestActionArea } from "./guest-action-area";
-export { GuestEventSummary } from "./guest-event-summary";
-export { GuestSettingsArea } from "./guest-settings-area";
-export { GuestStatusEditModal } from "./guest-status-edit-modal";
+export { GuestStatusCard } from "./GuestStatusCard";
+export { GuestActionArea } from "./GuestActionArea";
+export { GuestEventSummary } from "./GuestEventSummary";
+export { GuestSettingsArea } from "./GuestSettingsArea";
+export { GuestStatusEditModal } from "./GuestStatusEditModal";

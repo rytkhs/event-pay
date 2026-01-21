@@ -9,16 +9,16 @@ import { createClient } from "@core/supabase/server";
 
 import { Button } from "@/components/ui/button";
 
-import { ConnectAccountCtaWrapper } from "./components/connect-account-cta-wrapper";
-import { DashboardStatsCards } from "./components/dashboard-stats-cards";
-import { RecentEventsList } from "./components/recent-events-list";
+import { ConnectAccountCtaWrapper } from "./components/ConnectAccountCtaWrapper";
+import { DashboardStatsCards } from "./components/DashboardStatsCards";
+import { RecentEventsList } from "./components/RecentEventsList";
 import {
   DashboardStatsSkeleton,
   StripeAccountSkeleton,
   RecentEventsSkeleton,
   ConnectAccountCtaSkeleton,
-} from "./components/skeletons";
-import { StripeAccountCard } from "./components/stripe-account-card";
+} from "./components/Skeletons";
+import { StripeAccountCard } from "./components/StripeAccountCard";
 
 export default async function DashboardPage() {
   // 認証状態チェック

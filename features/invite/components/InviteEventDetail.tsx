@@ -14,9 +14,9 @@ import {
   type RegisterParticipationData,
 } from "../actions/register-participation";
 
-import { EventDetailView } from "./event-detail-view";
-import { RsvpForm } from "./rsvp-form";
-import { SuccessView } from "./success-view";
+import { EventDetailView } from "./EventDetailView";
+import { RsvpForm } from "./RsvpForm";
+import { SuccessView } from "./SuccessView";
 
 interface InviteEventDetailProps {
   event: EventDetail;

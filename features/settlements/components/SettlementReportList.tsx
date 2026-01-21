@@ -22,7 +22,7 @@ import {
 
 import { SettlementReportData } from "../services/types";
 
-import { SettlementReportCard } from "./settlement-report-card";
+import { SettlementReportCard } from "./SettlementReportCard";
 
 interface SettlementReportListProps {
   initialReports?: SettlementReportData[];

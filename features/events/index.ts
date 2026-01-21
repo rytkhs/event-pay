@@ -4,19 +4,19 @@
  */
 
 // Components
-export * from "./components/event-card";
-export * from "./components/modern-event-form";
-export * from "./components/single-page-event-form";
+export * from "./components/EventCard";
+export * from "./components/ModernEventForm";
+export * from "./components/SinglePageEventForm";
 
-export * from "./components/single-page-event-edit-form";
-export * from "./components/event-list";
-export * from "./components/event-filters";
-export * from "./components/payment-status-alert";
-export * from "./components/event-list-with-filters";
-export * from "./components/event-loading";
-export * from "./components/event-edit-form";
-export * from "./components/unified-restriction-notice-v2";
-export * from "./components/fee-calculator-display";
+export * from "./components/SinglePageEventEditForm";
+export * from "./components/EventList";
+export * from "./components/EventFilters";
+export * from "./components/PaymentStatusAlert";
+export * from "./components/EventListWithFilters";
+export * from "./components/EventLoading";
+export * from "./components/EventEditForm";
+export * from "./components/UnifiedRestrictionNoticeV2";
+export * from "./components/FeeCalculatorDisplay";
 
 // Actions
 export * from "./actions";

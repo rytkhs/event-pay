@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 
 import { Event } from "../types";
 
-import { EventCard } from "./event-card";
+import { EventCard } from "./EventCard";
 
 interface EventListProps {
   events: Event[];

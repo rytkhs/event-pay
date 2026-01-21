@@ -6,7 +6,7 @@ import { AppSidebar } from "@components/layout/AppSidebar";
 import { Header } from "@components/layout/Header";
 
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
-import { DemoBanner } from "@/features/demo/components/demo-banner";
+import { DemoBanner } from "@/features/demo/components/DemoBanner";
 
 /**
  * アプリケーションレイアウト

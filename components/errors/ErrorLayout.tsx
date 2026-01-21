@@ -10,7 +10,7 @@ import { useEffect } from "react";
 
 import { logError, addBreadcrumb } from "./error-logger";
 import type { ErrorPageProps } from "./error-types";
-import { ErrorCard } from "./ui/error-card";
+import { ErrorCard } from "./ui/ErrorCard";
 
 interface ErrorLayoutProps extends ErrorPageProps {
   children?: ReactNode;

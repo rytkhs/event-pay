@@ -29,7 +29,7 @@ import { exportParticipantsCsvAction } from "@/features/events/actions/export-pa
 
 import { adminAddAttendanceAction } from "../actions";
 
-import { SmartSortToggle } from "./smart-sort-toggle";
+import { SmartSortToggle } from "./SmartSortToggle";
 
 interface ParticipantsActionBarV2Props {
   eventId: string;

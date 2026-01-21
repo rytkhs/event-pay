@@ -5,9 +5,9 @@ import { createClient } from "@core/supabase/server";
 export const dynamic = "force-dynamic";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { AccountDeleteDangerZone } from "@/features/settings/components/account-delete-danger-zone";
-import { EmailChangeForm } from "@/features/settings/components/email-change-form";
-import { ProfileForm } from "@/features/settings/components/profile-form";
+import { AccountDeleteDangerZone } from "@/features/settings/components/AccountDeleteDangerZone";
+import { EmailChangeForm } from "@/features/settings/components/EmailChangeForm";
+import { ProfileForm } from "@/features/settings/components/ProfileForm";
 
 import { requestAccountDeletionAction } from "./actions";
 

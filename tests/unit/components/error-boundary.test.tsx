@@ -6,7 +6,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import React from "react";
 
-import { ErrorBoundary } from "@/components/errors/error-boundary";
+import { ErrorBoundary } from "@/components/errors/ErrorBoundary";
 import * as errorLogger from "@/components/errors/error-logger";
 
 // error-loggerのモック
