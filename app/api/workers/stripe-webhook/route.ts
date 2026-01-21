@@ -24,7 +24,7 @@ import { getEnv } from "@core/utils/cloudflare-env";
 import { handleServerError } from "@core/utils/error-handler.server";
 import { getClientIP } from "@core/utils/ip-detection";
 
-import { StripeWebhookEventHandler } from "@features/payments";
+import { StripeWebhookEventHandler } from "@features/payments/server";
 
 import { registerAllFeatures } from "@/app/_init/feature-registrations";
 
