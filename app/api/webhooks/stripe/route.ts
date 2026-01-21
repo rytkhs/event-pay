@@ -26,8 +26,6 @@ import { StripeWebhookEventHandler } from "@features/payments";
 
 import { registerAllFeatures } from "@/app/_init/feature-registrations";
 
-registerAllFeatures();
-
 export const dynamic = "force-dynamic";
 
 // QStashクライアント初期化
@@ -40,6 +38,8 @@ const getQstashClient = () => {
 };
 
 export async function POST(request: NextRequest) {
+  registerAllFeatures();
+
   const requestId = request.headers.get("x-request-id") || generateSecureUuid();
   const startTime = Date.now();
 

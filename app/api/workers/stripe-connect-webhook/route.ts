@@ -17,8 +17,9 @@ import { getEnv } from "@core/utils/cloudflare-env";
 import { handleServerError } from "@core/utils/error-handler.server";
 import { getClientIP } from "@core/utils/ip-detection";
 
-import "@/app/_init/feature-registrations";
 import { ConnectWebhookHandler } from "@features/stripe-connect/server";
+
+import { registerAllFeatures } from "@/app/_init/feature-registrations";
 
 const getQstashReceiver = () => {
   const currentKey = getEnv().QSTASH_CURRENT_SIGNING_KEY;
@@ -30,6 +31,7 @@ const getQstashReceiver = () => {
 };
 
 export async function POST(request: NextRequest) {
+  registerAllFeatures();
   const start = Date.now();
   const corr = `qstash_connect_${generateSecureUuid()}`;
 

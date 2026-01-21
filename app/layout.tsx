@@ -1,4 +1,3 @@
-import "@/app/_init/feature-registrations";
 import { Noto_Sans_JP } from "next/font/google";
 import { headers } from "next/headers";
 
@@ -18,6 +17,7 @@ import {
 import { GlobalErrorListener } from "@components/errors/global-error-listener";
 import { JsonLd } from "@components/seo/JsonLd";
 
+import { registerAllFeatures } from "@/app/_init/feature-registrations";
 import { Toaster } from "@/components/ui/toast";
 import { TooltipProvider } from "@/components/ui/tooltip";
 
@@ -78,6 +78,7 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>): JSX.Element {
+  registerAllFeatures();
   const ga4Config = getGA4Config();
   const nonce = headers().get("x-nonce") ?? undefined;
 

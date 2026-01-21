@@ -1,9 +1,10 @@
 "use server";
 
-import "@/app/_init/feature-registrations";
-
 import { adminAddAttendanceAction as adminAddAttendanceActionImpl } from "@features/events/actions/admin-add-attendance";
 
+import { registerAllFeatures } from "@/app/_init/feature-registrations";
+
 export async function adminAddAttendanceAction(input: unknown) {
+  registerAllFeatures();
   return adminAddAttendanceActionImpl(input);
 }

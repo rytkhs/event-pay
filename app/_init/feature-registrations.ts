@@ -32,8 +32,3 @@ export function registerAllFeatures(): void {
     registerStripeConnectAdapters();
   }
 }
-
-// サーバーサイドでの自動初期化（副作用import対応）
-if (typeof window === "undefined") {
-  registerAllFeatures();
-}

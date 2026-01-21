@@ -29,8 +29,6 @@ import { getClientIP } from "@core/utils/ip-detection";
 
 import { registerAllFeatures } from "@/app/_init/feature-registrations";
 
-registerAllFeatures();
-
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic"; // Webhookは常に動的処理
 
@@ -41,6 +39,8 @@ const getQstashClient = () => {
 };
 
 export async function POST(request: NextRequest) {
+  registerAllFeatures();
+
   const _clientIP = getClientIP(request);
   const requestId = request.headers.get("x-request-id") || generateSecureUuid();
   const connectLogger = logger.withContext({
