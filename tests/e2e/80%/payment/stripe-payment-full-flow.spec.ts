@@ -65,6 +65,8 @@ import {
   cleanupTestData,
 } from "../../helpers/payment-helpers";
 
+test.use({ viewport: { width: 1280, height: 1200 } });
+
 test.describe("Stripe決済 完全フロー", () => {
   let eventId: string;
   let attendanceId: string;
@@ -87,96 +89,101 @@ test.describe("Stripe決済 完全フロー", () => {
       throw new Error("Missing Supabase environment variables");
     }
 
-    // === 1. イベント作成（マルチステップフォーム） ===
+    // === 1. イベント作成（単一ページフォーム） ===
     await page.goto("/dashboard");
     await page.getByRole("link", { name: "新しいイベント" }).click();
 
-    // ステップ1: 基本情報
+    // 基本情報
     await page.fill('[name="title"]', "E2Eテスト：Stripe決済フローテスト");
 
-    // 日時を未来の日付に設定（DateTimePickerコンポーネント）
-    // 今月内の未来の日付を選択（月をまたぐ必要がないようにする）
-    const futureDate = new Date();
-    const today = futureDate.getDate();
-    const daysInMonth = new Date(futureDate.getFullYear(), futureDate.getMonth() + 1, 0).getDate();
+    // 日時を未来の日付に設定
+    const eventDate = new Date();
+    eventDate.setDate(eventDate.getDate() + 7); // 1週間後
+    const regDeadline = new Date();
+    regDeadline.setDate(regDeadline.getDate() + 5); // 5日後
+    const payDeadline = new Date();
+    payDeadline.setDate(payDeadline.getDate() + 6); // 6日後
 
-    // 今月内で3日後を選択（月末近くの場合は15日に設定）
-    if (today + 3 <= daysInMonth) {
-      futureDate.setDate(today + 3);
-    } else {
-      // 次の月の15日に設定
-      futureDate.setMonth(futureDate.getMonth() + 1);
-      futureDate.setDate(15);
-    }
+    // 共通の日時入力ヘルパー
+    const fillDateTimePicker = async (placeholder: string, date: Date, hour: string) => {
+      // 1. Popoverを開く
+      const labelText = placeholder.replace("を選択", "");
+      const trigger = page
+        .locator("div")
+        .filter({ has: page.locator("label", { hasText: labelText }) })
+        .last()
+        .getByRole("button")
+        .first();
 
-    // DateTimePickerを操作
-    // 1. Popoverを開く
-    await page
-      .getByRole("button", { name: /日時を選択|開催日時/ })
-      .first()
-      .click();
+      // ボタンを画面上部にスクロールして、ポップオーバーが下に表示されるスペースを確保
+      await trigger.scrollIntoViewIfNeeded();
+      await trigger.evaluate((el) => el.scrollIntoView({ block: "start" }));
+      await trigger.click();
 
-    // 2. 必要に応じて次の月に移動
-    if (today + 3 > daysInMonth) {
-      // 次の月に移動するボタンをクリック
-      await page.getByRole("button", { name: "Go to next month" }).click();
-    }
+      // 2. ダイアログ（PopoverContent）を特定 (表示されているものを取得)
+      const dialog = page.getByRole("dialog").filter({ visible: true }).last();
+      await expect(dialog).toBeVisible();
 
-    // 3. カレンダーから未来の日付を選択
-    await page.waitForTimeout(500); // カレンダーの表示を待つ
+      // 3. 日付の選択 (カレンダー内のボタン)
+      const day = date.getDate();
+      const month = date.getMonth() + 1;
+      const year = date.getFullYear();
+      const datePattern = `${year}年${month}月${day}日`;
+      const dayButton = dialog.getByRole("button", { name: new RegExp(datePattern) });
 
-    // 完全な日付文字列でボタンを探す（例: "2025年10月7日火曜日"）
-    const year = futureDate.getFullYear();
-    const month = futureDate.getMonth() + 1;
-    const day = futureDate.getDate();
-    const datePattern = `${year}年${month}月${day}日`;
+      // ダイアログ内の日付ボタンをクリック
+      // 既に選択されていない場合のみクリック（トグル解除を防止）
+      const isSelected =
+        (await dayButton.getAttribute("aria-selected")) === "true" ||
+        (await dayButton.getAttribute("data-selected-single")) === "true";
+      if (!isSelected) {
+        await dayButton.click();
+      }
 
-    await page.getByRole("button", { name: new RegExp(datePattern) }).click();
+      // 4. 時刻の選択（日付選択により有効化されるのを待機）
+      const hourSelect = dialog.getByRole("combobox").nth(0);
+      await expect(hourSelect).toBeEnabled({ timeout: 7000 });
 
-    // 4. 時刻を選択（18時を選択）
-    await page.waitForTimeout(500); // 時刻選択UIの表示を待つ
+      // 時刻選択の要素までスクロール
+      await hourSelect.scrollIntoViewIfNeeded();
 
-    // 時のドロップダウンを開く
-    await page.getByRole("combobox").first().click();
-    await page.getByRole("option", { name: "18時" }).click();
+      await hourSelect.click();
+      await page.getByRole("option", { name: `${hour}時` }).click();
 
-    // 5. 分のドロップダウンを開く（00分を選択）
-    await page.getByRole("combobox").last().click();
-    await page.getByRole("option", { name: "00分" }).click();
+      const minuteSelect = dialog.getByRole("combobox").nth(1);
+      await minuteSelect.click();
+      await page.getByRole("option", { name: "00分" }).click();
 
-    // 6. 完了ボタンをクリック
-    await page.getByRole("button", { name: "完了" }).click();
+      // 5. 完了
+      await dialog.getByRole("button", { name: "完了" }).click();
+      await expect(dialog).toBeHidden();
+    };
+
+    // 開催日時
+    await fillDateTimePicker("開催日時を選択", eventDate, "18");
+    // 参加申込締切
+    await fillDateTimePicker("参加申込締切を選択", regDeadline, "23");
 
     // 参加費を設定（1,000円）
     await page.fill('[name="fee"]', "1000");
 
-    // ステップ2へ進む
-    await page.getByRole("button", { name: "次へ進む" }).click();
+    // オンライン決済を選択 (data-testid を活用)
+    const onlinePaymentLabel = page.locator("label", { hasText: "オンライン決済" });
+    await onlinePaymentLabel.click();
 
-    // ステップ2: 受付・決済設定
-    // オンライン決済のチェックボックスを選択
-    await page.getByRole("checkbox", { name: /オンライン決済/ }).check();
+    // オンライン決済締切 (オンライン決済選択後に表示される)
+    await fillDateTimePicker("オンライン決済締切を選択", payDeadline, "23");
 
-    // 参加申込締切は自動設定されるので、ここでは変更しない（または必要なら操作を追加）
-    // DateTimePickerでの操作が必要な場合は、開催日時と同様の手順で操作します
-
-    // ステップ3へ進む
-    await page.getByRole("button", { name: "次へ進む" }).click();
-
-    // ステップ3: 詳細情報（任意）
+    // 詳細情報
     await page.fill('[name="location"]', "テスト会場");
 
-    // ステップ4（確認）へ進む
-    await page.getByRole("button", { name: "次へ進む" }).click();
-
-    // ステップ4: 確認・送信
+    // 送信
     await page.getByRole("button", { name: "イベントを作成" }).click();
 
     // イベント詳細ページに遷移したことを確認
-    // 注意: /events/create からの遷移なので、UUID形式を確実にマッチさせる
     await expect(page).toHaveURL(
       /\/events\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/,
-      { timeout: 10000 }
+      { timeout: 15000 }
     );
 
     // URLからeventIdを取得
@@ -208,7 +215,7 @@ test.describe("Stripe決済 完全フロー", () => {
       throw new Error("Failed to fetch event creator");
     }
 
-    const testStripeAccountId = "acct_1SBSRtEKxiavaL3B";
+    const testStripeAccountId = "acct_1SNbjmCtoNNhKnPZ";
 
     const { error: upsertError } = await supabase.from("stripe_connect_accounts").upsert(
       {
@@ -230,17 +237,17 @@ test.describe("Stripe決済 完全フロー", () => {
     console.log("✓ Stripe Connectアカウント設定完了");
 
     // === 2. 招待リンクを取得 ===
-    // 招待リンクをコピーボタンをクリック
-    await page.getByRole("button", { name: "招待リンク" }).click();
+    // 招待リンクが表示されていることを確認（新しいUIに対応）
+    const inviteLinkCode = page
+      .locator("code")
+      .filter({ hasText: /\/invite\// })
+      .first();
+    await expect(inviteLinkCode).toBeVisible({ timeout: 10000 });
+    const inviteUrl = (await inviteLinkCode.textContent())?.trim();
 
-    // Popoverが開くまで待機
-    await page.waitForTimeout(500);
-
-    // 招待URLをinputフィールドから取得
-    const inviteUrlInput = page.locator('[data-testid="invite-url-input"]').first();
-    await expect(inviteUrlInput).toBeVisible({ timeout: 5000 });
-
-    const inviteUrl = await inviteUrlInput.inputValue();
+    if (!inviteUrl) {
+      throw new Error("Failed to get invite URL from the page");
+    }
 
     console.log("✓ 招待URL取得:", inviteUrl);
 
@@ -248,32 +255,21 @@ test.describe("Stripe決済 完全フロー", () => {
     // 招待リンクにアクセス
     await page.goto(inviteUrl, { timeout: 60000 });
 
-    // イベント詳細が表示されるまで待機
-    await page.waitForTimeout(1000);
-
-    // 「参加申し込みをする」ボタンをクリックしてフォームを表示
-    await page.getByRole("button", { name: "参加申し込みをする" }).click();
-
-    // フォームが表示されるまで待機
-    await page.waitForTimeout(500);
-
-    // 参加表明フォームを入力
+    // 参加表明フォームの入力を開始
     await page.fill('[name="nickname"]', "テストユーザー");
     await page.fill('[name="email"]', "e2e-test@example.com");
 
-    // 「参加」を選択
-    await page.locator('[role="radio"][value="attending"]').check();
+    // 「参加」を選択 (ボタン形式)
+    await page.getByRole("button", { name: "参加", exact: true }).click();
 
-    // オンライン決済を選択
-    await page
-      .getByRole("radio", { name: /オンライン決済.*クレジットカード、Apple Pay、Google Payなど/ })
-      .check();
+    // オンライン決済を選択 (ラジオボタン形式)
+    await page.getByLabel("オンライン決済").check();
 
-    // 参加表明を送信
-    await page.getByRole("button", { name: "参加申し込みを完了する" }).click();
+    // 参加表明を送信 ("登録する" ボタン)
+    await page.getByRole("button", { name: "登録する" }).click();
 
-    // 確認ページへの遷移を待つ
-    await page.waitForTimeout(5000);
+    // 完了ページへの遷移を待つ (SuccessViewが表示される)
+    await page.waitForSelector('text="登録完了"', { timeout: 10000 });
 
     console.log("✓ 参加表明完了");
 
@@ -300,19 +296,6 @@ test.describe("Stripe決済 完全フロー", () => {
     console.log("✓ 参加ID取得:", attendanceId);
     console.log("✓ ゲストトークン:", guestToken);
 
-    // === DBの参加データを確認（デバッグ） ===
-    const { data: attendanceCheck, error: checkError } = await supabase2
-      .from("attendances")
-      .select("id, guest_token, status, event_id")
-      .eq("id", attendanceId)
-      .single();
-
-    console.log("✓ DB参加データ確認:", {
-      found: !!attendanceCheck,
-      error: checkError?.message,
-      data: attendanceCheck,
-    });
-
     // === 4. ゲストページにアクセスして決済 ===
     const guestPageUrl = `${page.url().split("/invite")[0]}/guest/${guestToken}`;
     await page.goto(guestPageUrl, { timeout: 60000 });
@@ -321,18 +304,9 @@ test.describe("Stripe決済 完全フロー", () => {
 
     // ページが読み込まれるまで待機
     await page.waitForLoadState("networkidle");
-    await page.waitForTimeout(1000);
 
-    // エラーメッセージがないことを確認
-    const errorAlert = page.locator('text="決済エラー"');
-    if (await errorAlert.isVisible()) {
-      const errorText = await page.locator('div[role="alert"]').textContent();
-      console.log("⚠️ 決済エラーが表示されています:", errorText);
-      throw new Error(`Payment error displayed: ${errorText}`);
-    }
-
-    // 「決済を完了する」ボタンをクリックしてStripe Checkoutへのリダイレクトを待つ
-    await page.getByRole("button", { name: "決済を完了する" }).click();
+    // 「オンライン決済へ進む」ボタンをクリックしてStripe Checkoutへのリダイレクトを待つ
+    await page.getByRole("button", { name: "オンライン決済へ進む" }).click();
 
     // Stripe Checkoutページまたはエラーメッセージのいずれかまで待機
     await Promise.race([
@@ -341,6 +315,7 @@ test.describe("Stripe決済 完全フロー", () => {
     ]);
 
     // エラーが表示されていないか確認
+    const errorAlert = page.locator('text="決済エラー"');
     if (await errorAlert.isVisible()) {
       const errorText = await page.locator('div[role="alert"]').textContent();
       throw new Error(`Payment error after button click: ${errorText}`);

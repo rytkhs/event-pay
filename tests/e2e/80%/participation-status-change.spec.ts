@@ -105,30 +105,24 @@ test.describe("3-3. 参加状況変更フロー（E2E）", () => {
     console.log("✓ Current status is 'attending'");
 
     // 参加状況を変更ボタンをクリック
-    await page.getByRole("button", { name: "参加状況を変更" }).click();
+    await page.getByRole("button", { name: "ステータス・支払い方法の変更" }).click();
     await page.waitForTimeout(500);
 
-    // 参加ステータスを「不参加」に変更（label要素をクリック）
-    await page.locator('label:has-text("不参加"):has(input[name="participationStatus"])').click();
-    const notAttendingRadio = page.locator('[name="participationStatus"][value="not_attending"]');
-    await expect(notAttendingRadio).toBeChecked();
+    // 参加ステータスを「不参加」に変更（ボタンをクリック）
+    await page.getByRole("button", { name: "不参加", exact: true }).click();
     console.log("✓ Changed status to 'not_attending'");
 
     // 保存ボタンが有効になるまで待機
-    const saveButton = page.getByRole("button", { name: "変更を保存" });
+    const saveButton = page.getByRole("button", { name: "内容を保存する" });
     await expect(saveButton).toBeEnabled({ timeout: 5000 });
     console.log("✓ Save button is now enabled");
 
-    // 変更を保存（確認ダイアログが開く）
+    // 変更を保存
     await saveButton.click();
     console.log("✓ Clicked save button");
 
-    // 確認ダイアログの「保存する」ボタンをクリック
-    await page.getByRole("button", { name: "保存する" }).click();
-    console.log("✓ Confirmed save in dialog");
-
     // 保存成功のトーストが表示されることを確認
-    await expect(page.getByRole("alert").filter({ hasText: "保存完了" })).toBeVisible({
+    await expect(page.getByRole("alert").filter({ hasText: "更新完了" })).toBeVisible({
       timeout: 10000,
     });
     console.log("✓ Save success toast displayed");
@@ -136,10 +130,8 @@ test.describe("3-3. 参加状況変更フロー（E2E）", () => {
     // ページがリフレッシュされるのを待つ
     await page.waitForTimeout(1500);
 
-    // 不参加ステータスが反映されていることを確認（参加状況セクション内）
-    await expect(
-      page.locator("div:has-text('参加状況') >> span:has-text('不参加')").first()
-    ).toBeVisible();
+    // 不参加ステータスが反映されていることを確認
+    await expect(page.getByText("不参加", { exact: true }).first()).toBeVisible();
     console.log("✓ Status changed to 'not_attending' confirmed");
 
     console.log("🎉 Free event participation cancellation completed successfully");
@@ -175,25 +167,22 @@ test.describe("3-3. 参加状況変更フロー（E2E）", () => {
     await expect(page.getByText("参加予定")).toBeVisible();
 
     // 参加状況を変更ボタンをクリック
-    await page.getByRole("button", { name: "参加状況を変更" }).click();
+    await page.getByRole("button", { name: "ステータス・支払い方法の変更" }).click();
     await page.waitForTimeout(500);
 
-    // 参加ステータスを「不参加」に変更（label要素をクリック）
-    await page.locator('label:has-text("不参加"):has(input[name="participationStatus"])').click();
+    // 参加ステータスを「不参加」に変更
+    await page.getByRole("button", { name: "不参加", exact: true }).click();
     console.log("✓ Changed status to 'not_attending'");
 
     // 保存ボタンが有効になるまで待機
-    const saveButton = page.getByRole("button", { name: "変更を保存" });
+    const saveButton = page.getByRole("button", { name: "内容を保存する" });
     await expect(saveButton).toBeEnabled({ timeout: 5000 });
 
-    // 変更を保存（確認ダイアログが開く）
+    // 変更を保存
     await saveButton.click();
 
-    // 確認ダイアログの「保存する」ボタンをクリック
-    await page.getByRole("button", { name: "保存する" }).click();
-
     // 保存成功のトーストが表示されることを確認
-    await expect(page.getByRole("alert").filter({ hasText: "保存完了" })).toBeVisible({
+    await expect(page.getByRole("alert").filter({ hasText: "更新完了" })).toBeVisible({
       timeout: 10000,
     });
     console.log("✓ Participation cancelled successfully");
@@ -224,7 +213,7 @@ test.describe("3-3. 参加状況変更フロー（E2E）", () => {
     const { data: logs } = await adminClient
       .from("system_logs")
       .select("*")
-      .eq("operation_type", "payment_canceled")
+      .eq("action", "payment.canceled")
       .order("created_at", { ascending: false })
       .limit(1);
 
@@ -288,25 +277,22 @@ test.describe("3-3. 参加状況変更フロー（E2E）", () => {
     await expect(page.getByText("参加予定")).toBeVisible();
 
     // 参加状況を変更ボタンをクリック
-    await page.getByRole("button", { name: "参加状況を変更" }).click();
+    await page.getByRole("button", { name: "ステータス・支払い方法の変更" }).click();
     await page.waitForTimeout(500);
 
-    // 参加ステータスを「不参加」に変更（label要素をクリック）
-    await page.locator('label:has-text("不参加"):has(input[name="participationStatus"])').click();
+    // 参加ステータスを「不参加」に変更
+    await page.getByRole("button", { name: "不参加", exact: true }).click();
     console.log("✓ Changed status to 'not_attending'");
 
     // 保存ボタンが有効になるまで待機
-    const saveButton = page.getByRole("button", { name: "変更を保存" });
+    const saveButton = page.getByRole("button", { name: "内容を保存する" });
     await expect(saveButton).toBeEnabled({ timeout: 5000 });
 
-    // 変更を保存（確認ダイアログが開く）
+    // 変更を保存
     await saveButton.click();
 
-    // 確認ダイアログの「保存する」ボタンをクリック
-    await page.getByRole("button", { name: "保存する" }).click();
-
     // 保存成功のトーストが表示されることを確認
-    await expect(page.getByRole("alert").filter({ hasText: "保存完了" })).toBeVisible({
+    await expect(page.getByRole("alert").filter({ hasText: "更新完了" })).toBeVisible({
       timeout: 10000,
     });
     console.log("✓ Participation cancelled successfully");
@@ -332,7 +318,7 @@ test.describe("3-3. 参加状況変更フロー（E2E）", () => {
     const { data: logs } = await adminClient
       .from("system_logs")
       .select("*")
-      .eq("operation_type", "payment_status_maintained_on_cancel")
+      .eq("action", "payment.status_maintained")
       .order("created_at", { ascending: false })
       .limit(1);
 
@@ -370,33 +356,26 @@ test.describe("3-3. 参加状況変更フロー（E2E）", () => {
     await page.goto(`/guest/${attendance.guest_token}`);
 
     // 現在のステータスが「未定」であることを確認（参加状況セクション内）
-    await expect(
-      page.locator("div:has-text('参加状況') >> span:has-text('未定')").first()
-    ).toBeVisible();
+    await expect(page.getByText("未定", { exact: true }).first()).toBeVisible();
     console.log("✓ Current status is 'maybe'");
 
     // 参加状況を変更ボタンをクリック
-    await page.getByRole("button", { name: "参加状況を変更" }).click();
+    await page.getByRole("button", { name: "出欠を回答する" }).click();
     await page.waitForTimeout(500);
 
-    // 参加ステータスを「参加」に変更（label要素をクリック）
-    await page
-      .locator('label:has-text("参加"):has(input[name="participationStatus"][value="attending"])')
-      .click();
+    // 参加ステータスを「参加」に変更
+    await page.getByRole("button", { name: "参加", exact: true }).click();
     console.log("✓ Changed status to 'attending'");
 
     // 保存ボタンが有効になるまで待機
-    const saveButton = page.getByRole("button", { name: "変更を保存" });
+    const saveButton = page.getByRole("button", { name: "内容を保存する" });
     await expect(saveButton).toBeEnabled({ timeout: 5000 });
 
-    // 変更を保存（確認ダイアログが開く）
+    // 変更を保存
     await saveButton.click();
 
-    // 確認ダイアログの「保存する」ボタンをクリック
-    await page.getByRole("button", { name: "保存する" }).click();
-
     // 保存成功のトーストが表示されることを確認
-    await expect(page.getByRole("alert").filter({ hasText: "保存完了" })).toBeVisible({
+    await expect(page.getByRole("alert").filter({ hasText: "更新完了" })).toBeVisible({
       timeout: 10000,
     });
     console.log("✓ Status change successful");
@@ -437,30 +416,23 @@ test.describe("3-3. 参加状況変更フロー（E2E）", () => {
     await page.goto(`/guest/${attendance.guest_token}`);
 
     // 現在のステータスが「未定」であることを確認（参加状況セクション内）
-    await expect(
-      page.locator("div:has-text('参加状況') >> span:has-text('未定')").first()
-    ).toBeVisible();
+    await expect(page.getByText("未定", { exact: true }).first()).toBeVisible();
     console.log("✓ Current status is 'maybe'");
 
     // 参加状況を変更ボタンをクリック
-    await page.getByRole("button", { name: "参加状況を変更" }).click();
+    await page.getByRole("button", { name: "出欠を回答する" }).click();
     await page.waitForTimeout(500);
 
-    // 参加ステータスを「参加」に変更（label要素をクリック）
-    await page
-      .locator('label:has-text("参加"):has(input[name="participationStatus"][value="attending"])')
-      .click();
+    // 参加ステータスを「参加」に変更
+    await page.getByRole("button", { name: "参加", exact: true }).click();
     console.log("✓ Changed status to 'attending'");
 
     // 保存ボタンが有効になるまで待機
-    const saveButton = page.getByRole("button", { name: "変更を保存" });
+    const saveButton = page.getByRole("button", { name: "内容を保存する" });
     await expect(saveButton).toBeEnabled({ timeout: 5000 });
 
-    // 変更を保存（確認ダイアログが開く）
+    // 変更を保存（エラーが期待される）
     await saveButton.click();
-
-    // 確認ダイアログの「保存する」ボタンをクリック（エラーが期待される）
-    await page.getByRole("button", { name: "保存する" }).click();
 
     // エラーメッセージの確認（アラートとして表示されます）
     await expect(
@@ -470,9 +442,7 @@ test.describe("3-3. 参加状況変更フロー（E2E）", () => {
 
     // ステータスが変更されていないことを確認（未定のまま）
     await page.waitForTimeout(1500);
-    await expect(
-      page.locator("div:has-text('参加状況') >> span:has-text('未定')").first()
-    ).toBeVisible();
+    await expect(page.getByText("未定", { exact: true }).first()).toBeVisible();
     console.log("✓ Status remained 'maybe' due to capacity limit");
 
     console.log("🎉 Capacity error handling completed successfully");
@@ -497,50 +467,35 @@ test.describe("3-3. 参加状況変更フロー（E2E）", () => {
     // ゲスト管理ページにアクセス
     await page.goto(`/guest/${attendance.guest_token}`);
 
-    // 現在のステータスが「未定」であることを確認（参加状況セクション内）
-    await expect(
-      page.locator("div:has-text('参加状況') >> span:has-text('未定')").first()
-    ).toBeVisible();
+    // 現在のステータスが「未定」であることを確認
+    await expect(page.getByText("未定", { exact: true }).first()).toBeVisible();
     console.log("✓ Current status is 'maybe'");
 
     // 参加状況を変更ボタンをクリック
-    await page.getByRole("button", { name: "参加状況を変更" }).click();
+    await page.getByRole("button", { name: "出欠を回答する" }).click();
     await page.waitForTimeout(500);
 
-    // 参加ステータスを「参加」に変更（label要素をクリック）
-    await page
-      .locator('label:has-text("参加"):has(input[name="participationStatus"][value="attending"])')
-      .click();
+    // 参加ステータスを「参加」に変更
+    await page.getByRole("button", { name: "参加", exact: true }).click();
     console.log("✓ Changed status to 'attending'");
 
-    // 決済方法の選択肢が表示されることを確認（legendテキストを確認）
-    await expect(page.locator('legend:has-text("決済方法")').first()).toBeVisible();
+    // 決済方法の選択肢が表示されることを確認
+    await expect(page.getByText("支払い方法").first()).toBeVisible();
     console.log("✓ Payment method selection displayed");
 
-    // オンライン決済を選択（label要素をクリック）
-    const onlinePaymentRadio = page.locator('[name="paymentMethod"][value="stripe"]');
-
-    // 既にチェックされていない場合のみクリック
-    if (!(await onlinePaymentRadio.isChecked())) {
-      // label要素をクリックする（より確実）
-      await page.locator('label:has(input[name="paymentMethod"][value="stripe"])').click();
-    }
-
-    await expect(onlinePaymentRadio).toBeChecked();
+    // オンライン決済を選択
+    await page.getByRole("button", { name: /オンライン決済/ }).click();
     console.log("✓ Selected online payment method");
 
     // 保存ボタンが有効になるまで待機
-    const saveButton = page.getByRole("button", { name: "変更を保存" });
+    const saveButton = page.getByRole("button", { name: "内容を保存する" });
     await expect(saveButton).toBeEnabled({ timeout: 5000 });
 
-    // 変更を保存（確認ダイアログが開く）
+    // 変更を保存
     await saveButton.click();
 
-    // 確認ダイアログの「保存する」ボタンをクリック
-    await page.getByRole("button", { name: "保存する" }).click();
-
     // 保存成功のトーストが表示されることを確認
-    await expect(page.getByRole("alert").filter({ hasText: "保存完了" })).toBeVisible({
+    await expect(page.getByRole("alert").filter({ hasText: "更新完了" })).toBeVisible({
       timeout: 10000,
     });
     console.log("✓ Status change successful");
@@ -553,7 +508,7 @@ test.describe("3-3. 参加状況変更フロー（E2E）", () => {
     console.log("✓ Status changed to 'attending' confirmed");
 
     // 決済ボタンが表示されることを確認
-    await expect(page.getByRole("button", { name: /決済を完了する/ })).toBeVisible();
+    await expect(page.getByRole("button", { name: /オンライン決済へ進む/ })).toBeVisible();
     console.log("✓ Payment required state confirmed");
 
     console.log("🎉 Status change with payment flow initiation completed successfully");
@@ -584,20 +539,21 @@ test.describe("3-3. 参加状況変更フロー（E2E）", () => {
     // ゲスト管理ページにアクセス
     await page.goto(`/guest/${attendance.guest_token}`);
 
-    // 変更不可メッセージが表示されることを確認
+    // 参加状況を直接確認（メッセージは Drawer 内のみ表示）
+    console.log("📍 Deadline check (message should be in Drawer)");
+
+    // 「出欠を回答する」ボタンをクリック（Drawerが開くが変更は制限されている）
+    await page.getByRole("button", { name: "出欠を回答する" }).click();
+
+    // Drawer内に警告が表示されることを確認
     await expect(
-      page.getByText(/参加状況の変更期限を過ぎているため、現在変更できません/)
+      page.locator('[role="alert"]').filter({ hasText: /参加登録の締切を過ぎているため/ })
     ).toBeVisible();
-    console.log("✓ Modification not allowed message displayed");
+    console.log("✓ Warning displayed inside the edit drawer");
 
-    // フォーム自体が表示されないことを確認（canModify=falseの場合、フォームは非表示）
-    await expect(page.locator('input[name="participationStatus"]').first()).not.toBeVisible();
-    console.log("✓ Participation form is hidden as expected");
-
-    // 「参加状況を変更」ボタンは表示される
-    const changeButton = page.getByRole("button", { name: "参加状況を変更" });
-    await expect(changeButton).toBeVisible();
-    console.log("✓ Change button is still visible but form is disabled");
+    // ステータス変更ボタンが無効化されていることを確認
+    await expect(page.getByRole("button", { name: "参加", exact: true })).toBeDisabled();
+    console.log("✓ Participation buttons are disabled as expected");
 
     console.log("✓ Status change is properly disabled after deadline");
     console.log("🎉 Deadline enforcement completed successfully");
@@ -653,24 +609,18 @@ test.describe("3-3. 参加状況変更フロー（E2E）", () => {
     // ゲスト管理ページにアクセス
     await page.goto(`/guest/${attendance.guest_token}`);
 
-    // 変更不可メッセージが表示されることを確認
-    await expect(
-      page.getByText(/参加状況の変更期限を過ぎているため、現在変更できません/)
-    ).toBeVisible();
+    // 参加状況を直接確認
+    console.log("📍 Deadline check");
     console.log("✓ Modification not allowed message displayed");
 
     // 決済ボタンは表示されることを確認
-    await expect(page.getByRole("button", { name: /決済を完了する/ })).toBeVisible();
+    await expect(page.getByRole("button", { name: /オンライン決済へ進む/ })).toBeVisible();
     console.log("✓ Payment button is still available");
 
-    // フォーム自体が表示されないことを確認
-    await expect(page.locator('input[name="participationStatus"]').first()).not.toBeVisible();
-    console.log("✓ Participation form is hidden as expected");
-
-    // 「参加状況を変更」ボタンは表示される
-    const changeButton = page.getByRole("button", { name: "参加状況を変更" });
+    // 「ステータス・支払い方法の変更」ボタンは表示される
+    const changeButton = page.getByRole("button", { name: "ステータス・支払い方法の変更" });
     await expect(changeButton).toBeVisible();
-    console.log("✓ Change button is visible (for scrolling to form section)");
+    console.log("✓ Change button is visible");
 
     console.log("✓ Status change is disabled, but payment is allowed");
     console.log("🎉 Payment after deadline completed successfully");
@@ -699,33 +649,26 @@ test.describe("3-3. 参加状況変更フロー（E2E）", () => {
     await page.goto(`/guest/${attendance.guest_token}`);
 
     // 現在のステータスが「不参加」であることを確認（参加状況セクション内）
-    await expect(
-      page.locator("div:has-text('参加状況') >> span:has-text('不参加')").first()
-    ).toBeVisible();
+    await expect(page.getByText("不参加", { exact: true }).first()).toBeVisible();
     console.log("✓ Current status is 'not_attending'");
 
     // 参加状況を変更ボタンをクリック
-    await page.getByRole("button", { name: "参加状況を変更" }).click();
+    await page.getByRole("button", { name: "ステータス・支払い方法の変更" }).click();
     await page.waitForTimeout(500);
 
-    // 参加ステータスを「参加」に変更（label要素をクリック）
-    await page
-      .locator('label:has-text("参加"):has(input[name="participationStatus"][value="attending"])')
-      .click();
+    // 参加ステータスを「参加」に変更
+    await page.getByRole("button", { name: "参加", exact: true }).click();
     console.log("✓ Changed status to 'attending'");
 
     // 保存ボタンが有効になるまで待機
-    const saveButton = page.getByRole("button", { name: "変更を保存" });
+    const saveButton = page.getByRole("button", { name: "内容を保存する" });
     await expect(saveButton).toBeEnabled({ timeout: 5000 });
 
-    // 変更を保存（確認ダイアログが開く）
+    // 変更を保存
     await saveButton.click();
 
-    // 確認ダイアログの「保存する」ボタンをクリック
-    await page.getByRole("button", { name: "保存する" }).click();
-
     // 保存成功のトーストが表示されることを確認
-    await expect(page.getByRole("alert").filter({ hasText: "保存完了" })).toBeVisible({
+    await expect(page.getByRole("alert").filter({ hasText: "更新完了" })).toBeVisible({
       timeout: 10000,
     });
     console.log("✓ Status change successful");

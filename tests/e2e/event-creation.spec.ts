@@ -9,15 +9,19 @@ test.use({ viewport: { width: 1280, height: 1200 } });
  */
 async function fillDateTimePicker(
   page: import("@playwright/test").Page,
-  placeholder: string,
+  labelText: string,
   dateString: string
 ) {
-  // ページ上部にスクロールしてDateTimePickerが表示されるようにする
+  // ページ上部にスクロール
   await page.evaluate(() => window.scrollTo(0, 0));
   await page.waitForTimeout(100);
 
-  // DateTimePickerのボタンをクリックしてPopoverを開く
-  const pickerButton = page.getByRole("button", { name: new RegExp(placeholder) });
+  // ラベルを含むコンテナから、日付選択ボタン（「選択」または年号を含む）を特定する
+  const container = page.locator("div").filter({
+    has: page.locator("label", { hasText: labelText }),
+  });
+  const pickerButton = container.getByRole("button", { name: /選択|20[2-3]/ }).first();
+
   await pickerButton.scrollIntoViewIfNeeded();
   await pickerButton.click();
 
@@ -30,8 +34,8 @@ async function fillDateTimePicker(
   const calendarSlot = page.locator('[data-slot="calendar"]');
   await expect(calendarSlot).toBeVisible();
 
-  // 目標の月まで移動（最大24回）
-  for (let i = 0; i < 24; i++) {
+  // 目標の月まで移動（最大36回）
+  for (let i = 0; i < 36; i++) {
     // 現在表示されているキャプションを取得
     const captionLabel = page.locator(".rdp-caption_label, [class*='caption_label']").first();
     const headerText = await captionLabel.textContent();
@@ -81,6 +85,8 @@ async function fillDateTimePicker(
 
   // 時間を選択 - Popover内のcomboboxを探す
   const hourSelect = page.locator('button[role="combobox"]').first();
+  await hourSelect.scrollIntoViewIfNeeded();
+
   await hourSelect.click();
   await page.waitForTimeout(150);
   await page.getByRole("option", { name: `${hour.toString().padStart(2, "0")}時` }).click();
@@ -116,14 +122,14 @@ test.describe("イベント作成（E2E）", () => {
 
     // ページが正常に表示されることを確認
     await expect(page).toHaveURL("/events/create");
-    await expect(page.getByText("イベント作成")).toBeVisible();
+    await expect(page.getByRole("heading", { name: "新しいイベントを作成" })).toBeVisible();
   });
 
   test("正常系：有効な情報でイベントを作成し、詳細ページに遷移する", async ({ page }) => {
     // 将来の日時を生成（確実に未来になるよう十分な時間差を設定）
-    const futureDateString = "2025-12-25T15:00"; // 確実に未来の日時
-    const registrationDeadline = "2025-12-24T23:45"; // 申込締切
-    const paymentDeadline = "2025-12-24T20:00"; // 決済締切
+    const futureDateString = "2027-12-25T15:00"; // 開催日：25日
+    const registrationDeadline = "2027-12-22T23:45"; // 申込締切：22日（余裕を持たせる）
+    const paymentDeadline = "2027-12-24T23:45"; // 決済締切：24日（申込締切の翌々日）
 
     // 基本情報セクション
     await page.getByPlaceholder("例：勉強会、夏合宿、会費の集金など").fill("テスト勉強会");
@@ -134,8 +140,8 @@ test.describe("イベント作成（E2E）", () => {
     await page.getByPlaceholder("例：50").fill("30");
 
     // 日時・締め切りセクション - DateTimePickerを使用
-    await fillDateTimePicker(page, "開催日時を選択", futureDateString);
-    await fillDateTimePicker(page, "参加申込締切を選択", registrationDeadline);
+    await fillDateTimePicker(page, "開催日時", futureDateString);
+    await fillDateTimePicker(page, "参加申込締切", registrationDeadline);
 
     // 参加費・決済セクション
     await page.getByPlaceholder("0（無料）または100以上").fill("1000");
@@ -143,21 +149,29 @@ test.describe("イベント作成（E2E）", () => {
     // 決済方法を選択（有料なので表示されるはず）
     await expect(page.getByTestId("payment-methods")).toBeVisible();
 
-    // オンライン決済のラベルを取得（チェックボックスはsr-onlyなのでラベルをクリック）
+    // オンライン決済のラベルを取得
     const paymentMethodsContainer = page.getByTestId("payment-methods");
-
-    // オンライン決済がdisabledかどうかをチェック（opacity-60クラスで判定）
     const onlinePaymentLabel = paymentMethodsContainer.locator("label").filter({
       hasText: "オンライン決済",
     });
+
+    // オンライン決済が有効な場合のフロー
     const onlinePaymentClass = await onlinePaymentLabel.getAttribute("class");
     const isOnlinePaymentDisabled = onlinePaymentClass?.includes("opacity-60") ?? false;
 
     if (!isOnlinePaymentDisabled) {
       // オンライン決済を選択
       await onlinePaymentLabel.click();
+
+      // オンライン決済締切設定が表示されるのを待機（ラベルを特定）
+      await expect(page.locator("label", { hasText: "オンライン決済締切" }).first()).toBeVisible();
+
       // オンライン決済締切を設定
-      await fillDateTimePicker(page, "オンライン決済締切を選択", paymentDeadline);
+      await fillDateTimePicker(page, "オンライン決済締切", paymentDeadline);
+
+      // 締切後決済許可（猶予期間）のテスト
+      await page.getByLabel("締切後も決済を許可").click();
+      await page.getByPlaceholder("7").fill("3"); // 3日間の猶予
     } else {
       // オンライン決済が無効な場合は現金を選択
       const cashPaymentLabel = paymentMethodsContainer.locator("label").filter({
@@ -172,13 +186,10 @@ test.describe("イベント作成（E2E）", () => {
     });
     await page.getByRole("button", { name: "イベントを作成" }).click();
 
-    // ローディング状態を確認（「作成中...」テキストが表示される）
-    // Spinner + テキストの組み合わせなので、テキストで確認
+    // ローディング状態を確認
     await expect(page.getByText("作成中..."))
       .toBeVisible({ timeout: 3000 })
-      .catch(() => {
-        // 高速なネットワークではローディングが一瞬で終わることがある
-      });
+      .catch(() => {});
 
     // 詳細ページへのリダイレクトを待機
     await expect(page).toHaveURL(/\/events\/[0-9a-f-]+/, { timeout: 15000 });
@@ -190,8 +201,8 @@ test.describe("イベント作成（E2E）", () => {
 
   test("正常系：無料イベントを作成し、決済方法の選択が不要であることを確認", async ({ page }) => {
     // 将来の日時を生成（確実に未来の日時）
-    const futureDateString = "2025-12-26T10:00";
-    const registrationDeadline = "2025-12-25T23:45"; // 申込締切
+    const futureDateString = "2027-12-26T10:00";
+    const registrationDeadline = "2027-12-25T23:45"; // 申込締切
 
     // 基本情報セクション
     await page.getByPlaceholder("例：勉強会、夏合宿、会費の集金など").fill("無料勉強会");
@@ -200,8 +211,8 @@ test.describe("イベント作成（E2E）", () => {
       .fill("無料で参加できる勉強会です。");
 
     // 日時・締め切りセクション
-    await fillDateTimePicker(page, "開催日時を選択", futureDateString);
-    await fillDateTimePicker(page, "参加申込締切を選択", registrationDeadline);
+    await fillDateTimePicker(page, "開催日時", futureDateString);
+    await fillDateTimePicker(page, "参加申込締切", registrationDeadline);
 
     // 参加費・決済セクション（無料）
     await page.getByPlaceholder("0（無料）または100以上").fill("0");
