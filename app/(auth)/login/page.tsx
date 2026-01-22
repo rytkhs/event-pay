@@ -7,11 +7,11 @@ import { useSearchParams } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 
-import { loginAction } from "@core/actions/auth";
 import { LINE_ERROR_MESSAGES } from "@core/auth/line-error-messages";
 
 import { useLoginFormRHF } from "@features/auth";
 
+import { loginAction } from "@/app/(auth)/actions";
 import { GoogleLoginButton, LINELoginButton } from "@/components/auth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";

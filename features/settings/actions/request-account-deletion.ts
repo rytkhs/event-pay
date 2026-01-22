@@ -3,13 +3,14 @@ import { revalidatePath } from "next/cache";
 
 import { z } from "zod";
 
-import type { ActionResult } from "@core/actions/auth";
 import { getCurrentUser } from "@core/auth/auth-utils";
 import { logger } from "@core/logging/app-logger";
 import { getSecureClientFactory } from "@core/security/secure-client-factory.impl";
 import { AdminReason } from "@core/security/secure-client-factory.types";
 import { createClient } from "@core/supabase/server";
 import { handleServerError } from "@core/utils/error-handler.server";
+
+import type { ActionResult } from "@/types/action-result";
 
 // 入力検証: ユーザー同意/確認語句
 const deletionRequestSchema = z.object({

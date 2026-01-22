@@ -2,6 +2,7 @@ import React from "react";
 
 import { type User as SupabaseUser } from "@supabase/supabase-js";
 
+import type { ActionResult } from "@/types/action-result";
 /**
  * 拡張されたユーザー型（nameプロパティを含む）
  */
@@ -20,6 +21,8 @@ export type HeaderVariant = "marketing" | "app" | "guest" | "minimal";
 export interface GlobalHeaderProps {
   /** 認証ユーザー情報 */
   user?: User | null;
+  /** ログアウトアクション */
+  logoutAction?: () => Promise<ActionResult>;
   /** ヘッダーの種類 */
   variant?: HeaderVariant;
   /** スクロール時の非表示制御 */
@@ -52,6 +55,8 @@ export interface NavLinkProps {
 export interface UserMenuProps {
   /** 認証ユーザー情報 */
   user: User;
+  /** ログアウトアクション */
+  logoutAction?: () => Promise<ActionResult>;
   /** カスタムクラス名 */
   className?: string;
 }
@@ -84,6 +89,8 @@ export interface MarketingHeaderProps {
 export interface AppHeaderProps {
   /** 認証ユーザー情報 */
   user: User;
+  /** ログアウトアクション */
+  logoutAction?: () => Promise<ActionResult>;
   /** カスタムクラス名 */
   className?: string;
 }
