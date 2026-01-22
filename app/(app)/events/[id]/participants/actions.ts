@@ -2,9 +2,9 @@
 
 import { adminAddAttendanceAction as adminAddAttendanceActionImpl } from "@features/events/actions/admin-add-attendance";
 
-import { registerAllFeatures } from "@/app/_init/feature-registrations";
+import { ensureFeaturesRegistered } from "@/app/_init/feature-registrations";
 
 export async function adminAddAttendanceAction(input: unknown) {
-  registerAllFeatures();
+  ensureFeaturesRegistered();
   return adminAddAttendanceActionImpl(input);
 }

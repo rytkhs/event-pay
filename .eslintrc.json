@@ -323,7 +323,13 @@
           {
             "patterns": [
               {
-                "group": ["@features/*"],
+                "group": [
+                  "@features/*",
+                  "!@features/*/",
+                  "@features/*/*",
+                  "!@features/*/server",
+                  "!@features/*/server/**"
+                ],
                 "message": "app/api では @features/*/server を使用してください（@features/* は禁止）"
               }
             ]

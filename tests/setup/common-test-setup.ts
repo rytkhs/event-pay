@@ -19,7 +19,7 @@ import {
 } from "@tests/helpers/test-payment-data";
 import { createTestUser, deleteTestUser, type TestUser } from "@tests/helpers/test-user";
 
-import { registerAllFeatures } from "@/app/_init/feature-registrations";
+import { ensureFeaturesRegistered } from "@/app/_init/feature-registrations";
 import type { Database } from "@/types/database";
 
 /**
@@ -240,7 +240,7 @@ export async function createCommonTestSetup(
   } = options;
 
   // 機能レジストリを初期化（テスト環境での依存解決を保証）
-  registerAllFeatures();
+  ensureFeaturesRegistered();
 
   // テストユーザーを作成
   const testUser = withConnect
@@ -398,7 +398,7 @@ export async function createPaymentTestSetup(
   options: PaymentTestSetupOptions = {}
 ): Promise<PaymentTestSetup> {
   // 機能レジストリを初期化（決済/ポートの依存解決を保証）
-  registerAllFeatures();
+  ensureFeaturesRegistered();
 
   const {
     testName = `payment-test-${Date.now()}`,

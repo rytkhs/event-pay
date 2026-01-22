@@ -7,7 +7,7 @@ import { describe, test, expect, beforeAll, afterAll } from "@jest/globals";
 import { createGuestStripeSessionAction } from "@features/guest/actions/create-stripe-session";
 import { updateGuestAttendanceAction } from "@features/guest/actions/update-attendance";
 
-import { registerAllFeatures } from "@/app/_init/feature-registrations";
+import { ensureFeaturesRegistered } from "@/app/_init/feature-registrations";
 
 import { setupRLSTest, type RLSTestSetup } from "./rls-test-setup";
 
@@ -15,7 +15,7 @@ describe("Stripe Session Creation Access Control", () => {
   let setup: RLSTestSetup;
 
   beforeAll(async () => {
-    registerAllFeatures();
+    ensureFeaturesRegistered();
     setup = await setupRLSTest();
   });
 

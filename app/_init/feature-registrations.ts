@@ -34,3 +34,11 @@ export function registerAllFeatures(): void {
     registerStripeConnectAdapters();
   }
 }
+
+/**
+ * server entrypoint で呼び出す単一入口
+ * 明示的・冪等に feature 登録を保証する
+ */
+export function ensureFeaturesRegistered(): void {
+  registerAllFeatures();
+}

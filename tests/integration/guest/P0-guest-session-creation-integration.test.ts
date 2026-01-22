@@ -19,7 +19,7 @@
  * - 外部システムの実際の応答を検証する
  */
 
-import { registerAllFeatures } from "@/app/_init/feature-registrations";
+import { ensureFeaturesRegistered } from "@/app/_init/feature-registrations";
 
 import { enforceRateLimit, buildKey, POLICIES } from "../../../core/rate-limit";
 import { validateGuestToken } from "../../../core/utils/guest-token";
@@ -38,7 +38,7 @@ describe("P0決済セッション作成 真の統合テスト", () => {
   let setup: GuestSessionCreationTestSetup;
 
   beforeAll(async () => {
-    registerAllFeatures();
+    ensureFeaturesRegistered();
     setup = await setupGuestSessionCreationTest();
   });
 

@@ -2,9 +2,9 @@
 
 import { requestAccountDeletionAction as requestAccountDeletionActionImpl } from "@features/settings/actions/request-account-deletion";
 
-import { registerAllFeatures } from "@/app/_init/feature-registrations";
+import { ensureFeaturesRegistered } from "@/app/_init/feature-registrations";
 
 export async function requestAccountDeletionAction(formData: FormData) {
-  registerAllFeatures();
+  ensureFeaturesRegistered();
   return requestAccountDeletionActionImpl(formData);
 }

@@ -13,7 +13,7 @@
    - `createPaymentTestSetup`: 決済テスト用のセットアップ
    - `createWebhookTestSetup`: Webhookテスト用のセットアップ
    - `createMultiUserTestSetup`: 複数ユーザーテスト用のセットアップ
-   - 決済/Portの初期化が必要な場合は `registerAllFeatures` を使用し、`@features/payments/core-bindings` を登録目的で import しないこと
+   - 決済/Portの初期化が必要な場合は `ensureFeaturesRegistered` を使用し、`@features/payments/core-bindings` を登録目的で import しないこと
 
 2. **個別セットアップの禁止**: `createTestUserWithConnect`や`createPaidTestEvent`を直接呼び出すことは避け、共通関数を使用すること
 

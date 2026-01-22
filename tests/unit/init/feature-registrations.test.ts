@@ -2,11 +2,11 @@ import { isSettlementReportPortRegistered } from "@core/ports/settlements";
 import { isStripeConnectPortRegistered } from "@core/ports/stripe-connect";
 import paymentRegistry from "@core/services/payment-registry";
 
-import { registerAllFeatures } from "@/app/_init/feature-registrations";
+import { ensureFeaturesRegistered } from "@/app/_init/feature-registrations";
 
 describe("Feature Registrations", () => {
   it("should register payment and ports", () => {
-    registerAllFeatures();
+    ensureFeaturesRegistered();
 
     expect(paymentRegistry.isRegistered()).toBe(true);
     expect(isSettlementReportPortRegistered()).toBe(true);
@@ -15,8 +15,8 @@ describe("Feature Registrations", () => {
 
   it("should be idempotent", () => {
     expect(() => {
-      registerAllFeatures();
-      registerAllFeatures();
+      ensureFeaturesRegistered();
+      ensureFeaturesRegistered();
     }).not.toThrow();
 
     expect(paymentRegistry.isRegistered()).toBe(true);
