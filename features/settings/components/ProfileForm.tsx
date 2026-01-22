@@ -20,7 +20,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { updateProfileAction } from "@/features/settings/actions/update-profile";
+import type { ActionResult } from "@/types/action-result";
 
 const profileSchema = z.object({
   name: z
@@ -34,9 +34,12 @@ type ProfileFormData = z.infer<typeof profileSchema>;
 
 interface ProfileFormProps {
   currentName: string;
+  updateProfileAction: UpdateProfileAction;
 }
 
-export function ProfileForm({ currentName }: ProfileFormProps) {
+type UpdateProfileAction = (formData: FormData) => Promise<ActionResult>;
+
+export function ProfileForm({ currentName, updateProfileAction }: ProfileFormProps) {
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
 

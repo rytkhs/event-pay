@@ -18,7 +18,7 @@ import {
 import { PAYMENT_METHOD_LABELS } from "@core/constants/payment-methods";
 import { useClipboard } from "@core/hooks/use-clipboard";
 import { ATTENDANCE_STATUS_LABELS } from "@core/types/enums";
-import { EventDetail } from "@core/utils/invite-token";
+import type { EventDetail } from "@core/utils/invite-token";
 import { sanitizeForEventPay } from "@core/utils/sanitize";
 import { formatUtcToJstByType } from "@core/utils/timezone";
 
@@ -27,23 +27,19 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { dismissInviteSuccessAction } from "@/features/invite/actions/invite-success-cookie";
 
-import { type RegisterParticipationData } from "../actions/register-participation";
+import type { RegisterParticipationData } from "../types";
 
 interface ParticipationConfirmationProps {
   registrationData: RegisterParticipationData;
   event: EventDetail;
-  inviteToken?: string;
 }
 
 export function ParticipationConfirmation({
   registrationData,
   event,
-  inviteToken,
 }: ParticipationConfirmationProps) {
   const [showGuestUrl, setShowGuestUrl] = useState(false);
-  const [dismissed, setDismissed] = useState(false);
   const { copyToClipboard, isCopied } = useClipboard();
 
   // アクセシビリティ用のID生成
@@ -95,16 +91,6 @@ export function ParticipationConfirmation({
   const handleOpenGuestUrl = () => {
     window.open(guestManagementUrl, "_blank");
   };
-
-  const _handleDismiss = async () => {
-    if (!inviteToken) return;
-    await dismissInviteSuccessAction(inviteToken);
-    setDismissed(true);
-  };
-
-  if (dismissed) {
-    return null;
-  }
 
   return (
     <div

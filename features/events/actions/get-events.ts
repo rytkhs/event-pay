@@ -2,7 +2,7 @@
 
 import { generateSecureUuid } from "@core/security/crypto";
 import { createClient } from "@core/supabase/server";
-import { SortBy, SortOrder, StatusFilter, PaymentFilter } from "@core/types/events";
+import { SortBy, SortOrder, StatusFilter, PaymentFilter, DateFilter } from "@core/types/events";
 import {
   createServerActionError,
   type ServerActionResult,
@@ -11,10 +11,7 @@ import {
 import { deriveEventStatus } from "@core/utils/derive-event-status";
 import { handleServerError } from "@core/utils/error-handler.server";
 import { convertJstDateToUtcRange } from "@core/utils/timezone";
-import { dateFilterSchema, type DateFilterInput } from "@core/validation/event";
-
-// Re-export types for component usage
-export type { SortBy, SortOrder, StatusFilter, PaymentFilter };
+import { dateFilterSchema } from "@core/validation/event";
 
 import type { Database } from "@/types/database";
 
@@ -26,8 +23,6 @@ type EventWithAttendancesCount = EventRow & {
   attendances?: { status: string }[];
   public_profiles?: { name: string } | null;
 };
-
-export type DateFilter = DateFilterInput;
 
 // 型安全なフィルター条件の定義
 interface FilterCondition {

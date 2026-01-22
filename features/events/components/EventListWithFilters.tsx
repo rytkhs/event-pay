@@ -7,14 +7,14 @@ import { useRouter } from "next/navigation";
 import { z } from "zod";
 
 import { usePagination } from "@core/hooks/usePagination";
-
 import type {
   SortBy,
   SortOrder,
   StatusFilter,
   PaymentFilter,
   DateFilter,
-} from "../actions/get-events";
+} from "@core/types/events";
+
 import { useEventFilter, Filters } from "../hooks/useEventFilter";
 import { Event } from "../types";
 

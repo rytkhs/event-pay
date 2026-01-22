@@ -30,6 +30,3 @@ export * from "./hooks/useEventFilter";
 // Types & Validation
 export * from "./types";
 export * from "./validation";
-
-// Re-export filter/sort types from core for backward compatibility
-export type { SortBy, SortOrder, StatusFilter, PaymentFilter } from "@core/types/events";

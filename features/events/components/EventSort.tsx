@@ -11,6 +11,7 @@ import {
   isValidSortBy,
   isValidSortOrder,
 } from "@core/constants/event-filters";
+import type { SortBy, SortOrder } from "@core/types/events";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -20,8 +21,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-
-import { SortBy, SortOrder } from "../actions/get-events";
 
 interface EventSortProps {
   sortBy: SortBy;

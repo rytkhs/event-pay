@@ -11,6 +11,7 @@ import {
   STATUS_FILTER_LABELS,
   PAYMENT_FILTER_LABELS,
 } from "@core/constants/event-filters";
+import type { StatusFilter, PaymentFilter, DateFilter } from "@core/types/events";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -23,8 +24,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-
-import { StatusFilter, PaymentFilter, DateFilter } from "../actions/get-events";
 
 interface EventFiltersProps {
   statusFilter: StatusFilter;

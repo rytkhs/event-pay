@@ -9,7 +9,7 @@ import type { ServerActionResult } from "@core/types/server-actions";
 import type { ParticipationFormData } from "@core/validation/participation";
 
 import { registerParticipationAction } from "@features/invite/actions/register-participation";
-import type { RegisterParticipationData } from "@features/invite/actions/register-participation";
+import type { RegisterParticipationData } from "@features/invite/types";
 
 export interface ConcurrentRequestOptions {
   delayMs?: number;

@@ -4,15 +4,13 @@ import { useState, useEffect } from "react";
 
 import { AlertCircle, XCircle, Users, Clock } from "lucide-react";
 
-import { EventDetail } from "@core/utils/invite-token";
+import type { ServerActionResult } from "@core/types/server-actions";
+import type { EventDetail } from "@core/utils/invite-token";
 import { type ParticipationFormData } from "@core/validation/participation";
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
-import {
-  registerParticipationAction,
-  type RegisterParticipationData,
-} from "../actions/register-participation";
+import type { RegisterParticipationData } from "../types";
 
 import { EventDetailView } from "./EventDetailView";
 import { RsvpForm } from "./RsvpForm";
@@ -22,12 +20,18 @@ interface InviteEventDetailProps {
   event: EventDetail;
   inviteToken: string;
   initialRegistrationData?: RegisterParticipationData | null;
+  registerParticipationAction: RegisterParticipationAction;
 }
+
+type RegisterParticipationAction = (
+  formData: FormData
+) => Promise<ServerActionResult<RegisterParticipationData>>;
 
 export function InviteEventDetail({
   event,
   inviteToken,
   initialRegistrationData,
+  registerParticipationAction,
 }: InviteEventDetailProps): JSX.Element {
   const [registrationData, setRegistrationData] = useState<RegisterParticipationData | null>(
     initialRegistrationData ?? null
@@ -66,10 +70,14 @@ export function InviteEventDetail({
     const result = await registerParticipationAction(formData);
 
     if (result.success) {
+      if (!result.data) {
+        throw { code: "UNKNOWN_ERROR", message: "参加登録に失敗しました。" };
+      }
       setRegistrationData(result.data);
-    } else {
-      throw { code: result.code ?? "UNKNOWN_ERROR", message: result.error };
+      return;
     }
+
+    throw { code: result.code ?? "UNKNOWN_ERROR", message: result.error };
   };
 
   if (registrationData) {

@@ -5,12 +5,12 @@ import { useCallback } from "react";
 import { useRouter } from "next/navigation";
 
 import type { Event, EventFormData } from "@core/types/models";
+import type { ServerActionResult } from "@core/types/server-actions";
 import { deriveEventStatus } from "@core/utils/derive-event-status";
 import { handleClientError } from "@core/utils/error-handler.client";
 
 import { ChangeItem } from "@/components/ui/change-confirmation-dialog";
-
-import { updateEventAction } from "../actions/update-event";
+import type { Database } from "@/types/database";
 
 // 型安全なSubmitResult
 interface SubmitResult {
@@ -19,9 +19,17 @@ interface SubmitResult {
   error?: string;
 }
 
+type EventRow = Database["public"]["Tables"]["events"]["Row"];
+
+export type UpdateEventAction = (
+  eventId: string,
+  formData: FormData
+) => Promise<ServerActionResult<EventRow>>;
+
 interface UseEventSubmissionProps {
   eventId: string;
   onSubmit?: (data: Event) => void;
+  updateEventAction: UpdateEventAction;
 }
 
 interface FormErrors {
@@ -39,7 +47,11 @@ interface FormErrors {
   general?: string;
 }
 
-export function useEventSubmission({ eventId, onSubmit }: UseEventSubmissionProps) {
+export function useEventSubmission({
+  eventId,
+  onSubmit,
+  updateEventAction,
+}: UseEventSubmissionProps) {
   const router = useRouter();
 
   // フォーム送信処理（型安全）
@@ -82,13 +94,11 @@ export function useEventSubmission({ eventId, onSubmit }: UseEventSubmissionProp
         const result = await updateEventAction(eventId, formDataObj);
 
         if (result.success && result.data) {
+          const updatedEvent = result.data;
           // ステータス算出を付与
           const dataWithStatus: Event = {
-            ...(result.data as any),
-            status: deriveEventStatus(
-              (result.data as any).date,
-              (result.data as any).canceled_at ?? null
-            ),
+            ...updatedEvent,
+            status: deriveEventStatus(updatedEvent.date, updatedEvent.canceled_at ?? null),
           };
           // 成功時の処理
           if (onSubmit) {
@@ -153,7 +163,7 @@ export function useEventSubmission({ eventId, onSubmit }: UseEventSubmissionProp
         return { success: false, error: errorMessage };
       }
     },
-    [eventId, onSubmit, router]
+    [eventId, onSubmit, router, updateEventAction]
   );
 
   // 送信前のデータ準備（バリデーション済みデータの変換）

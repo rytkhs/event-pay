@@ -39,7 +39,11 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import type { RestrictableField } from "@/core/domain/event-edit-restrictions";
 
-import { useEventEditForm, type EventEditFormDataRHF } from "../hooks/use-event-edit-form";
+import {
+  useEventEditForm,
+  type EventEditFormDataRHF,
+  type UpdateEventAction,
+} from "../hooks/use-event-edit-form";
 import { useRestrictionContext, useFormDataSnapshot } from "../hooks/use-unified-restrictions";
 
 import { EventFormTimeline } from "./EventFormTimeline";
@@ -93,6 +97,7 @@ type SinglePageEventEditFormProps = {
   onSubmit?: (data: Event) => void;
   hasStripePaid?: boolean;
   canUseOnlinePayments?: boolean;
+  updateEventAction: UpdateEventAction;
 };
 
 export function SinglePageEventEditForm({
@@ -101,6 +106,7 @@ export function SinglePageEventEditForm({
   onSubmit,
   hasStripePaid = false,
   canUseOnlinePayments = false,
+  updateEventAction,
 }: SinglePageEventEditFormProps): JSX.Element {
   const { form, isPending, hasAttendees, changes, actions, restrictions, isFreeEvent } =
     useEventEditForm({
@@ -108,6 +114,7 @@ export function SinglePageEventEditForm({
       attendeeCount,
       onSubmit,
       hasStripePaid,
+      updateEventAction,
     });
 
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);

@@ -13,6 +13,7 @@ import { validateEventId } from "@core/validation/event-id";
 import { SinglePageEventEditForm } from "@features/events";
 import { getDetailedAccountStatusAction } from "@features/stripe-connect";
 
+import { updateEventAction } from "./actions";
 import { EventDangerZone } from "./components/EventDangerZone";
 
 interface EventEditPageProps {
@@ -133,6 +134,7 @@ export default async function EventEditPage({ params }: EventEditPageProps) {
             attendeeCount={attendeeCount}
             hasStripePaid={hasStripePaid}
             canUseOnlinePayments={canUseOnlinePayments}
+            updateEventAction={updateEventAction}
           />
 
           {/* 危険な操作（削除・中止） */}

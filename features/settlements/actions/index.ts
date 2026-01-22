@@ -3,10 +3,13 @@ export {
   getSettlementReportsAction,
   exportSettlementReportsAction,
   regenerateAfterRefundAction,
-  type ExportSettlementReportsResponse,
-  type ExportSettlementReportsSuccess,
-  type ExportSettlementReportsFailure,
-  type GenerateSettlementReportResponse,
-  type GenerateSettlementReportSuccess,
-  type GenerateSettlementReportFailure,
 } from "./settlement-reports";
+
+export type {
+  ExportSettlementReportsResponse,
+  ExportSettlementReportsSuccess,
+  ExportSettlementReportsFailure,
+  GenerateSettlementReportResponse,
+  GenerateSettlementReportSuccess,
+  GenerateSettlementReportFailure,
+} from "../types";

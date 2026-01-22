@@ -6,7 +6,7 @@ import { CheckCircle, Copy, ExternalLink } from "lucide-react";
 
 import { useToast } from "@/core/contexts/toast-context";
 
-import type { RegisterParticipationData } from "../actions/register-participation";
+import type { RegisterParticipationData } from "../types";
 
 interface SuccessViewProps {
   data: RegisterParticipationData;

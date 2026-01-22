@@ -8,6 +8,35 @@ import type { LogLevel } from "@core/logging/app-logger";
 
 import { Database } from "@/types/database";
 
+/**
+ * UI表示用のStripe Connectアカウントステータス
+ *
+ * NOTE: これはDB用のenum（unverified, onboarding, verified, restricted）とは
+ *      役割が異なるUI専用の派生ステータス
+ *
+ * DB用enum → UI用ステータスのマッピング:
+ * - アカウント未存在 → no_account
+ * - unverified → unverified
+ * - onboarding/verified (要件不備あり) → requirements_due
+ * - verified (要件なし) → ready (ただしCTA非表示のためundefinedで返却)
+ * - restricted → requirements_due
+ */
+export type ConnectAccountStatusType =
+  | "no_account" // アカウント未作成
+  | "unverified" // アカウント作成済みだが未認証
+  | "requirements_due" // 認証済みだが要件不備
+  | "pending_review" // 提出済み情報の審査待ち
+  | "ready"; // 全て完了
+
+export interface DetailedAccountStatus {
+  statusType: ConnectAccountStatusType;
+  title: string;
+  description: string;
+  actionText: string;
+  actionUrl: string;
+  severity: "info" | "warning" | "error";
+}
+
 // 新しい型定義をエクスポート
 export * from "./types/status-classification";
 export * from "./types/audit-log";

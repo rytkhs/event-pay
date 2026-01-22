@@ -4,6 +4,8 @@ import { Metadata } from "next";
 
 import { DemoEntryPage } from "@/features/demo/components/DemoEntryPage";
 
+import { startDemoSession } from "./actions";
+
 export const metadata: Metadata = {
   title: "デモ環境を構築中...",
   robots: "noindex, nofollow, noarchive",
@@ -18,5 +20,5 @@ export default function StartDemoPage() {
     redirect(productionUrl);
   }
 
-  return <DemoEntryPage />;
+  return <DemoEntryPage startDemoSession={startDemoSession} />;
 }
