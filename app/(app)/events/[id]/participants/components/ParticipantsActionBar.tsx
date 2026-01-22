@@ -19,9 +19,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { exportParticipantsCsvAction } from "@/features/events/actions/export-participants-csv";
 
-import { adminAddAttendanceAction } from "../actions";
+import { adminAddAttendanceAction, exportParticipantsCsvAction } from "../actions";
 
 interface ParticipantsActionBarProps {
   eventId: string;

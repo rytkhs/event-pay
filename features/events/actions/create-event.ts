@@ -1,5 +1,3 @@
-"use server";
-
 import { randomUUID } from "crypto";
 
 import { headers } from "next/headers";

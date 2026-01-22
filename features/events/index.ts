@@ -18,9 +18,6 @@ export * from "./components/EventEditForm";
 export * from "./components/UnifiedRestrictionNoticeV2";
 export * from "./components/FeeCalculatorDisplay";
 
-// Actions
-export * from "./actions";
-
 // Hooks
 export * from "./hooks/use-event-form";
 export * from "./hooks/use-event-edit-form";

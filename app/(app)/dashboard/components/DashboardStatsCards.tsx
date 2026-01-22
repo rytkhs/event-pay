@@ -1,7 +1,6 @@
 import { CalendarDays, DollarSign, Users } from "lucide-react";
 
-import { getDashboardStatsAction } from "@features/events";
-
+import { getDashboardStatsAction } from "@/app/(app)/events/actions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 function formatCurrency(amount: number): string {

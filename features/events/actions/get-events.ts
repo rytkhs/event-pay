@@ -1,5 +1,3 @@
-"use server";
-
 import { generateSecureUuid } from "@core/security/crypto";
 import { createClient } from "@core/supabase/server";
 import { SortBy, SortOrder, StatusFilter, PaymentFilter, DateFilter } from "@core/types/events";

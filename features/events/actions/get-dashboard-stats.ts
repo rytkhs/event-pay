@@ -1,5 +1,3 @@
-"use server";
-
 import { getCurrentUser } from "@core/auth/auth-utils";
 import { createClient } from "@core/supabase/server";
 import { createServerActionError, type ServerActionResult } from "@core/types/server-actions";

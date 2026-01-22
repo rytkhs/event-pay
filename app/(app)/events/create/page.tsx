@@ -7,6 +7,8 @@ export const dynamic = "force-dynamic";
 import { SinglePageEventForm } from "@features/events";
 import { getDetailedAccountStatusAction } from "@features/stripe-connect";
 
+import { createEventAction } from "./actions";
+
 export default async function CreateEventPage() {
   const supabase = await createClient();
 
@@ -40,6 +42,7 @@ export default async function CreateEventPage() {
         <SinglePageEventForm
           canUseOnlinePayments={canUseOnlinePayments}
           connectStatus={detailedStatus.status}
+          createEventAction={createEventAction}
         />
       </div>
     </div>

@@ -13,8 +13,7 @@ import {
   getEventParticipantsAction,
   getEventPaymentsAction,
   getEventStatsAction,
-} from "@features/events";
-
+} from "./actions";
 import { EventManagementPage } from "./components/EventManagementPage";
 
 interface EventDetailPageProps {

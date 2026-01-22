@@ -26,7 +26,7 @@ import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 
-import { useEventForm } from "../hooks/use-event-form";
+import { useEventForm, type CreateEventAction } from "../hooks/use-event-form";
 
 import { EventConfirmationSummary } from "./EventConfirmationSummary";
 import { EventFormTimeline } from "./EventFormTimeline";
@@ -69,13 +69,15 @@ type ModernEventFormProps = {
   connectStatus?: {
     actionUrl?: string;
   };
+  createEventAction: CreateEventAction;
 };
 
 function ModernEventForm({
   canUseOnlinePayments = false,
   connectStatus,
+  createEventAction,
 }: ModernEventFormProps): JSX.Element {
-  const { form, onSubmit, isPending, isFreeEvent } = useEventForm();
+  const { form, onSubmit, isPending, isFreeEvent } = useEventForm({ createEventAction });
   const [currentStep, setCurrentStep] = useState<StepId>("basic");
   const [completedSteps, setCompletedSteps] = useState<Set<StepId>>(new Set());
 

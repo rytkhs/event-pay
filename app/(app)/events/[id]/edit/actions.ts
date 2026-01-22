@@ -1,6 +1,6 @@
 "use server";
 
-import { updateEventAction as updateEventActionImpl } from "@features/events/actions/update-event";
+import { updateEventAction as updateEventActionImpl } from "@features/events/server";
 
 import { ensureFeaturesRegistered } from "@/app/_init/feature-registrations";
 
