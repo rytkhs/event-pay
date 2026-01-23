@@ -1,7 +1,9 @@
 //
 
-import { createConnectAccountAction } from "@features/stripe-connect/actions/connect-account";
-import { getStripeBalanceAction } from "@features/stripe-connect/actions/get-balance";
+import {
+  createConnectAccountAction,
+  getStripeBalanceAction,
+} from "@features/stripe-connect/server";
 
 import { setupSupabaseClientMocks } from "../../setup/common-mocks";
 import { createMockSupabaseClient, setTestUserById } from "../../setup/supabase-auth-mock";

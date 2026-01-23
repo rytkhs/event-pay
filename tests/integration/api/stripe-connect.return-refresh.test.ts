@@ -1,7 +1,7 @@
 import {
   handleOnboardingReturnAction,
   handleOnboardingRefreshAction,
-} from "@features/stripe-connect/actions/connect-account";
+} from "@features/stripe-connect/server";
 
 import { setupSupabaseClientMocks } from "../../setup/common-mocks";
 import { setupStripeConnectServiceMock } from "../../setup/stripe-connect-mock";
@@ -14,7 +14,7 @@ jest.mock("@core/supabase/server", () => ({
 
 // Stripe Connect サービスのモック（共通モックを使用）
 jest.mock("@features/stripe-connect/services", () => {
-  const actual = jest.requireActual("@features/stripe-connect/services");
+  const { setupStripeConnectServiceMock } = require("../../setup/stripe-connect-mock");
   return setupStripeConnectServiceMock({
     getAccountInfo: {
       accountId: "acct_test",

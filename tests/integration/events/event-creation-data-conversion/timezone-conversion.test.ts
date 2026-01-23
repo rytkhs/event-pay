@@ -4,7 +4,7 @@
 
 import { describe, test, expect, beforeAll, afterAll, beforeEach, afterEach } from "@jest/globals";
 
-import { createEventAction } from "@features/events/actions/create-event";
+import { createEventAction } from "@/app/(app)/events/create/actions";
 
 import {
   setupEventCreationDataConversionTest,

@@ -1,6 +1,6 @@
-import { createGuestStripeSessionAction } from "@features/guest/actions/create-stripe-session";
-
 import { setupRateLimitMocks } from "@tests/setup/common-mocks";
+
+import { createGuestStripeSessionAction } from "@/app/guest/[token]/actions";
 
 // モック: ゲストトークン検証は常に有効な参加データを返す
 jest.mock("@core/utils/guest-token", () => ({
