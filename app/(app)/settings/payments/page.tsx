@@ -7,16 +7,17 @@ export const dynamic = "force-dynamic";
 import { CONNECT_REFRESH_PATH } from "@core/routes/stripe-connect";
 import { createClient } from "@core/supabase/server";
 
+import { AccountStatus, OnboardingForm } from "@features/stripe-connect";
 import {
-  AccountStatus,
-  OnboardingForm,
-  createUserStripeConnectService,
-  startOnboardingAction,
-  getConnectAccountStatusAction,
   checkExpressDashboardAccessAction,
-  createExpressDashboardLoginLinkAction,
-} from "@features/stripe-connect";
+  createUserStripeConnectService,
+  getConnectAccountStatusAction,
+} from "@features/stripe-connect/server";
 
+import {
+  createExpressDashboardLoginLinkAction,
+  startOnboardingAction,
+} from "@/app/_actions/stripe-connect/actions";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -38,9 +39,7 @@ async function PaymentSettingsContent() {
   const existingAccount = await stripeConnectService.getConnectAccountByUser(user.id);
 
   // リダイレクトURL設定
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL;
-  const refreshUrl = `${baseUrl}${CONNECT_REFRESH_PATH}`;
-  const returnUrl = `${baseUrl}/settings/payments`; // 設定ページに戻る
+  const refreshUrl = CONNECT_REFRESH_PATH;
 
   return (
     <div className="space-y-6">
@@ -55,11 +54,7 @@ async function PaymentSettingsContent() {
 
       {/* アカウントが存在しない場合はオンボーディングフォーム */}
       {!existingAccount ? (
-        <OnboardingForm
-          refreshUrl={refreshUrl}
-          returnUrl={returnUrl}
-          onStartOnboarding={startOnboardingAction}
-        />
+        <OnboardingForm onStartOnboarding={startOnboardingAction} />
       ) : (
         <AccountStatus
           refreshUrl={refreshUrl}

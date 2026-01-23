@@ -1,7 +1,6 @@
 /**
  * Stripe Connect関連のServer Actions
  */
-"use server";
 
 import { redirect } from "next/navigation";
 
@@ -414,7 +413,7 @@ export async function getConnectAccountStatusAction(): Promise<ConnectAccountSta
     const hasPendingVerification = (requirements.pending_verification?.length ?? 0) > 0;
     const hasPendingCapabilities = Boolean(
       capabilities &&
-        (capabilities.card_payments === "pending" || capabilities.transfers === "pending")
+      (capabilities.card_payments === "pending" || capabilities.transfers === "pending")
     );
 
     let reviewStatus: "pending_review" | "requirements_due" | "none" = "none";

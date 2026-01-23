@@ -29,7 +29,6 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { createExpressDashboardLoginLinkAction } from "@/features/stripe-connect/actions/express-dashboard";
 import type { ActionResult } from "@/types/action-result";
 
 import { navigationConfig, userMenuItems } from "./GlobalHeader/navigation-config";
@@ -40,9 +39,15 @@ type AppSidebarProps = {
     email?: string | null;
   } | null;
   logoutAction: () => Promise<ActionResult>;
+  createExpressDashboardLoginLinkAction: () => Promise<void>;
 } & React.ComponentProps<typeof Sidebar>;
 
-export function AppSidebar({ user, logoutAction, ...props }: AppSidebarProps) {
+export function AppSidebar({
+  user,
+  logoutAction,
+  createExpressDashboardLoginLinkAction,
+  ...props
+}: AppSidebarProps) {
   const pathname = usePathname();
   const { isMobile, setOpenMobile } = useSidebar();
 

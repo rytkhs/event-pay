@@ -5,7 +5,10 @@ import { useMemo, useState } from "react";
 import type { Event } from "@core/types/models";
 import type { GetParticipantsResponse } from "@core/validation/participant-management";
 
-import { ParticipantsTableV2 } from "../participants/components/participants-table-v2/ParticipantsTableV2";
+import {
+  ParticipantsTableV2,
+  type ParticipantsTableV2Props,
+} from "../participants/components/participants-table-v2/ParticipantsTableV2";
 import { ParticipantsActionBarV2 } from "../participants/components/ParticipantsActionBarV2";
 import { ParticipantsFilterSheet } from "../participants/components/ParticipantsFilterSheet";
 import { ParticipantsStatusTabs } from "../participants/components/ParticipantsStatusTabs";
@@ -16,6 +19,8 @@ interface EventParticipantsTabProps {
   participantsData: GetParticipantsResponse;
   searchParams: { [key: string]: string | string[] | undefined };
   onUpdateFilters: (newParams: Record<string, string | undefined>) => void;
+  updateCashStatusAction: ParticipantsTableV2Props["updateCashStatusAction"];
+  bulkUpdateCashStatusAction: ParticipantsTableV2Props["bulkUpdateCashStatusAction"];
 }
 
 export function EventParticipantsTab({
@@ -24,6 +29,8 @@ export function EventParticipantsTab({
   participantsData,
   searchParams,
   onUpdateFilters,
+  updateCashStatusAction,
+  bulkUpdateCashStatusAction,
 }: EventParticipantsTabProps) {
   const isFreeEvent = eventDetail.fee === 0;
 
@@ -89,6 +96,8 @@ export function EventParticipantsTab({
             allParticipants={allParticipants}
             searchParams={searchParams}
             onParamsChange={onUpdateFilters}
+            updateCashStatusAction={updateCashStatusAction}
+            bulkUpdateCashStatusAction={bulkUpdateCashStatusAction}
             isSelectionMode={isSelectionMode}
             onSelectionModeChange={setIsSelectionMode}
           />

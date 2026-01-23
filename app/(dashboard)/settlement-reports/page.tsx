@@ -8,15 +8,14 @@ import { getCurrentUser } from "@core/auth/auth-utils";
 import { createClient } from "@core/supabase/server";
 import { deriveEventStatus } from "@core/utils/derive-event-status";
 
+import { SettlementReportGenerator, SettlementReportList } from "@features/settlements";
+
 import {
-  SettlementReportList,
-  SettlementReportGenerator,
   exportSettlementReportsAction,
   generateSettlementReportAction,
   getSettlementReportsAction,
   regenerateAfterRefundAction,
-} from "@features/settlements";
-
+} from "@/app/_actions/settlement-reports/actions";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default async function SettlementReportsPage() {

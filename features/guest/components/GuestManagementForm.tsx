@@ -11,6 +11,7 @@ import { PAYMENT_METHOD_LABELS } from "@core/constants/payment-methods";
 import { useToast } from "@core/contexts/toast-context";
 import { useErrorHandler } from "@core/hooks/use-error-handler";
 import { ATTENDANCE_STATUS_LABELS } from "@core/types/enums";
+import type { ServerActionResult } from "@core/types/server-actions";
 import { deriveEventStatus } from "@core/utils/derive-event-status";
 import { getModificationRestrictionReason } from "@core/utils/guest-restrictions";
 import { type GuestAttendanceData } from "@core/utils/guest-token";
@@ -31,12 +32,17 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 
-import { updateGuestAttendanceAction } from "../actions";
+import type { UpdateGuestAttendanceData } from "../types";
 
 interface GuestManagementFormProps {
   attendance: GuestAttendanceData;
   canModify: boolean;
+  updateGuestAttendanceAction: UpdateGuestAttendanceAction;
 }
+
+type UpdateGuestAttendanceAction = (
+  formData: FormData
+) => Promise<ServerActionResult<UpdateGuestAttendanceData>>;
 
 /**
  * Connect Account関連エラーの詳細メッセージを取得
@@ -69,7 +75,11 @@ function getModificationRestrictionMessage(attendance: GuestAttendanceData): str
   return "参加状況の変更期限を過ぎているため、現在変更できません。";
 }
 
-export function GuestManagementForm({ attendance, canModify }: GuestManagementFormProps) {
+export function GuestManagementForm({
+  attendance,
+  canModify,
+  updateGuestAttendanceAction,
+}: GuestManagementFormProps) {
   const router = useRouter();
   const { toast } = useToast();
   const { handleError } = useErrorHandler();

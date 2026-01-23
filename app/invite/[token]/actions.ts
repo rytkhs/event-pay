@@ -1,6 +1,6 @@
 "use server";
 
-import { registerParticipationAction as registerParticipationActionImpl } from "@features/invite/actions/register-participation";
+import { registerParticipationAction as registerParticipationActionImpl } from "@features/invite/server";
 
 import { ensureFeaturesRegistered } from "@/app/_init/feature-registrations";
 

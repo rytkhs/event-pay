@@ -5,7 +5,7 @@ import { createClient } from "@core/supabase/server";
 export const dynamic = "force-dynamic";
 
 import { SinglePageEventForm } from "@features/events";
-import { getDetailedAccountStatusAction } from "@features/stripe-connect";
+import { getDetailedAccountStatusAction } from "@features/stripe-connect/server";
 
 import { createEventAction } from "./actions";
 

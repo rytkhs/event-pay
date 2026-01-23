@@ -19,6 +19,7 @@ import {
 import { ga4Client } from "@core/analytics/ga4-client";
 import { useToast } from "@core/contexts/toast-context";
 import { useErrorHandler } from "@core/hooks/use-error-handler";
+import type { ServerActionResult } from "@core/types/server-actions";
 import { getModificationRestrictionReason } from "@core/utils/guest-restrictions";
 import { type GuestAttendanceData } from "@core/utils/guest-token";
 
@@ -34,15 +35,23 @@ import {
   DrawerTitle,
 } from "@/components/ui/drawer";
 
-import { updateGuestAttendanceAction } from "../actions";
-import { type AttendanceStatus, type PaymentMethod } from "../types";
+import {
+  type AttendanceStatus,
+  type PaymentMethod,
+  type UpdateGuestAttendanceData,
+} from "../types";
 
 interface GuestStatusEditModalProps {
   isOpen: boolean;
   onClose: () => void;
   attendance: GuestAttendanceData;
   canModify: boolean;
+  updateGuestAttendanceAction: UpdateGuestAttendanceAction;
 }
+
+type UpdateGuestAttendanceAction = (
+  formData: FormData
+) => Promise<ServerActionResult<UpdateGuestAttendanceData>>;
 
 /**
  * 変更不可の理由に応じたメッセージを取得
@@ -80,6 +89,7 @@ export const GuestStatusEditModal: React.FC<GuestStatusEditModalProps> = ({
   onClose,
   attendance,
   canModify,
+  updateGuestAttendanceAction,
 }) => {
   const router = useRouter();
   const { toast } = useToast();

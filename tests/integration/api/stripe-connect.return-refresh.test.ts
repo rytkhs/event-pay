@@ -1,11 +1,11 @@
-import { setupSupabaseClientMocks } from "../../setup/common-mocks";
-import { setupStripeConnectServiceMock } from "../../setup/stripe-connect-mock";
-import { createMockSupabaseClient, setTestUserById } from "../../setup/supabase-auth-mock";
-
 import {
   handleOnboardingReturnAction,
   handleOnboardingRefreshAction,
 } from "@features/stripe-connect/actions/connect-account";
+
+import { setupSupabaseClientMocks } from "../../setup/common-mocks";
+import { setupStripeConnectServiceMock } from "../../setup/stripe-connect-mock";
+import { createMockSupabaseClient, setTestUserById } from "../../setup/supabase-auth-mock";
 
 // Supabase 認証モック（共通モックを使用）
 jest.mock("@core/supabase/server", () => ({

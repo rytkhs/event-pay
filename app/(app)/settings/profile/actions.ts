@@ -1,8 +1,10 @@
 "use server";
 
-import { requestAccountDeletionAction as requestAccountDeletionActionImpl } from "@features/settings/actions/request-account-deletion";
-import { updateEmailAction as updateEmailActionImpl } from "@features/settings/actions/update-email";
-import { updateProfileAction as updateProfileActionImpl } from "@features/settings/actions/update-profile";
+import {
+  requestAccountDeletionAction as requestAccountDeletionActionImpl,
+  updateEmailAction as updateEmailActionImpl,
+  updateProfileAction as updateProfileActionImpl,
+} from "@features/settings/server";
 
 import { ensureFeaturesRegistered } from "@/app/_init/feature-registrations";
 

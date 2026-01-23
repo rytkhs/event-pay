@@ -11,7 +11,7 @@ import { calculateAttendeeCount } from "@core/utils/event-calculations";
 import { validateEventId } from "@core/validation/event-id";
 
 import { SinglePageEventEditForm } from "@features/events";
-import { getDetailedAccountStatusAction } from "@features/stripe-connect";
+import { getDetailedAccountStatusAction } from "@features/stripe-connect/server";
 
 import { updateEventAction } from "./actions";
 import { EventDangerZone } from "./components/EventDangerZone";

@@ -1,5 +1,3 @@
-"use server";
-
 import { z } from "zod";
 
 import { getCurrentUser } from "@core/auth/auth-utils";

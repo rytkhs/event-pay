@@ -8,6 +8,7 @@ import { SortingState, Row } from "@tanstack/react-table";
 import { ChevronLeft, ChevronRight, LayoutGridIcon, TableIcon } from "lucide-react";
 
 import { useToast } from "@core/contexts/toast-context";
+import type { ServerActionResult } from "@core/types/server-actions";
 import { conditionalSmartSort } from "@core/utils/participant-smart-sort";
 import { isPaymentUnpaid, toSimplePaymentStatus } from "@core/utils/payment-status-mapper";
 import type { ParticipantView } from "@core/validation/participant-management";
@@ -22,13 +23,41 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { bulkUpdateCashStatusAction } from "@/features/payments/actions/bulk-update-cash-status";
-import { updateCashStatusAction } from "@/features/payments/actions/update-cash-status";
 
 import { BulkActionBar } from "./BulkActionBar";
 import { CardsView } from "./CardsView";
 import { DataTable } from "./DataTable";
 import { buildParticipantsColumns } from "./participants-columns";
+
+type UpdateCashStatusInput = {
+  paymentId: string;
+  status: "received" | "waived" | "pending";
+  notes?: string;
+  isCancel?: boolean;
+};
+
+type BulkUpdateCashStatusInput = {
+  paymentIds: string[];
+  status: "received" | "waived";
+  notes?: string;
+};
+
+type BulkUpdateResult = {
+  successCount: number;
+  failedCount: number;
+  failures: Array<{
+    paymentId: string;
+    error: string;
+  }>;
+};
+
+type UpdateCashStatusAction = (
+  input: UpdateCashStatusInput
+) => Promise<ServerActionResult<{ paymentId: string; status: "received" | "waived" | "pending" }>>;
+
+type BulkUpdateCashStatusAction = (
+  input: BulkUpdateCashStatusInput
+) => Promise<ServerActionResult<BulkUpdateResult>>;
 
 export interface ParticipantsTableV2Props {
   eventId: string;
@@ -36,6 +65,8 @@ export interface ParticipantsTableV2Props {
   allParticipants: ParticipantView[];
   searchParams: { [key: string]: string | string[] | undefined };
   onParamsChange: (params: Record<string, string | undefined>) => void;
+  updateCashStatusAction: UpdateCashStatusAction;
+  bulkUpdateCashStatusAction: BulkUpdateCashStatusAction;
   isSelectionMode?: boolean;
   onSelectionModeChange?: (isSelectionMode: boolean) => void;
 }
@@ -46,6 +77,8 @@ export function ParticipantsTableV2({
   allParticipants,
   searchParams,
   onParamsChange,
+  updateCashStatusAction,
+  bulkUpdateCashStatusAction,
   isSelectionMode = false,
   onSelectionModeChange,
 }: ParticipantsTableV2Props) {
@@ -242,7 +275,7 @@ export function ParticipantsTableV2({
         setIsUpdating(false);
       }
     },
-    [toast, router, localParticipants, applyLocal]
+    [toast, router, localParticipants, applyLocal, updateCashStatusAction]
   );
 
   const handleBulkReceive = useCallback(async () => {
@@ -293,7 +326,7 @@ export function ParticipantsTableV2({
     } finally {
       setIsBulkUpdating(false);
     }
-  }, [validSelectedPaymentIds, localParticipants, toast, router]);
+  }, [validSelectedPaymentIds, localParticipants, toast, router, bulkUpdateCashStatusAction]);
 
   const handleBulkWaive = useCallback(async () => {
     if (validSelectedPaymentIds.length === 0) {
@@ -343,7 +376,7 @@ export function ParticipantsTableV2({
     } finally {
       setIsBulkUpdating(false);
     }
-  }, [validSelectedPaymentIds, localParticipants, toast, router]);
+  }, [validSelectedPaymentIds, localParticipants, toast, router, bulkUpdateCashStatusAction]);
 
   const handleSelectPayment = useCallback((paymentId: string, checked: boolean) => {
     setSelectedPaymentIds((prev) =>
@@ -383,7 +416,7 @@ export function ParticipantsTableV2({
         setIsUpdating(false);
       }
     },
-    [toast, router, localParticipants, applyLocal]
+    [toast, router, localParticipants, applyLocal, updateCashStatusAction]
   );
 
   // columns

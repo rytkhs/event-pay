@@ -1,6 +1,6 @@
 "use server";
 
-import { updatePasswordAction as updatePasswordActionImpl } from "@features/settings/actions/update-password";
+import { updatePasswordAction as updatePasswordActionImpl } from "@features/settings/server";
 
 import { ensureFeaturesRegistered } from "@/app/_init/feature-registrations";
 

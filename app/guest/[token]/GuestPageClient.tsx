@@ -24,7 +24,7 @@ import {
 
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 
-import { createGuestStripeSessionAction } from "./actions";
+import { createGuestStripeSessionAction, updateGuestAttendanceAction } from "./actions";
 interface GuestPageClientProps {
   attendance: GuestAttendanceData;
   canModify: boolean;
@@ -239,6 +239,7 @@ export function GuestPageClient({
         onClose={() => setIsModalOpen(false)}
         attendance={attendance}
         canModify={canModify}
+        updateGuestAttendanceAction={updateGuestAttendanceAction}
       />
     </div>
   );

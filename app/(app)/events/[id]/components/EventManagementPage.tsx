@@ -12,6 +12,8 @@ import type {
 
 import { Tabs, TabsContent } from "@/components/ui/tabs";
 
+import type { ParticipantsTableV2Props } from "../participants/components/participants-table-v2/ParticipantsTableV2";
+
 import { EventDetailHeader } from "./EventDetailHeader";
 import { EventOverviewTab } from "./EventOverviewTab";
 import { EventParticipantsTab } from "./EventParticipantsTab";
@@ -23,6 +25,8 @@ interface EventManagementPageProps {
   overviewStats: { attending_count: number; maybe_count: number } | null;
   participantsData: GetParticipantsResponse | null;
   searchParams: { [key: string]: string | string[] | undefined };
+  updateCashStatusAction: ParticipantsTableV2Props["updateCashStatusAction"];
+  bulkUpdateCashStatusAction: ParticipantsTableV2Props["bulkUpdateCashStatusAction"];
 }
 
 export function EventManagementPage({
@@ -32,6 +36,8 @@ export function EventManagementPage({
   overviewStats,
   participantsData,
   searchParams,
+  updateCashStatusAction,
+  bulkUpdateCashStatusAction,
 }: EventManagementPageProps) {
   const router = useRouter();
   const currentTab = typeof searchParams.tab === "string" ? searchParams.tab : "overview";
@@ -104,6 +110,8 @@ export function EventManagementPage({
               participantsData={participantsData}
               searchParams={searchParams}
               onUpdateFilters={handleParticipantsFilterUpdate}
+              updateCashStatusAction={updateCashStatusAction}
+              bulkUpdateCashStatusAction={bulkUpdateCashStatusAction}
             />
           ) : (
             <div className="p-8 text-center text-muted-foreground">読み込み中...</div>
