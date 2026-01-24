@@ -62,18 +62,83 @@ afterAll(() => {
 
 // Supabase認証モックを設定
 import { resetAuthMock } from "./supabase-auth-mock";
+import {
+  getAuthenticatedTestClient,
+  clearAuthenticatedTestClient,
+} from "./authenticated-client-mock";
 
 // getCurrentUser関数のみをモック化（統合テストでは実際のSupabaseクライアントを使用）
 jest.mock("@core/auth/auth-utils", () => ({
   getCurrentUser: jest.fn(),
 }));
 
+// SecureSupabaseClientFactoryのモック
+// createAuthenticatedClientがテスト用の認証済みクライアントを返すようにする
+jest.mock("@core/security/secure-client-factory.impl", () => {
+  const actual = jest.requireActual("@core/security/secure-client-factory.impl");
+
+  return {
+    ...actual,
+    SecureSupabaseClientFactory: {
+      ...actual.SecureSupabaseClientFactory,
+      create: () => {
+        const originalFactory = new actual.SecureSupabaseClientFactory();
+
+        return {
+          ...originalFactory,
+          // createAuthenticatedClientをオーバーライド
+          createAuthenticatedClient: (options?: any) => {
+            // テスト用の認証済みクライアントが設定されていれば使用
+            const testClient = getAuthenticatedTestClient();
+            if (testClient) {
+              return testClient;
+            }
+            // 設定されていない場合は元のメソッドを呼び出す
+            return originalFactory.createAuthenticatedClient(options);
+          },
+          // 他のメソッドは元の実装を使用
+          createAuditedAdminClient: originalFactory.createAuditedAdminClient.bind(originalFactory),
+          createGuestClient: originalFactory.createGuestClient.bind(originalFactory),
+          createReadOnlyClient: originalFactory.createReadOnlyClient.bind(originalFactory),
+          createMiddlewareClient: originalFactory.createMiddlewareClient.bind(originalFactory),
+          createBrowserClient: originalFactory.createBrowserClient.bind(originalFactory),
+        };
+      },
+    },
+    getSecureClientFactory: () => {
+      const actual = jest.requireActual("@core/security/secure-client-factory.impl");
+      const originalFactory = new actual.SecureSupabaseClientFactory();
+
+      return {
+        ...originalFactory,
+        createAuthenticatedClient: (options?: any) => {
+          const testClient = getAuthenticatedTestClient();
+          if (testClient) {
+            return testClient;
+          }
+          return originalFactory.createAuthenticatedClient(options);
+        },
+        createAuditedAdminClient: originalFactory.createAuditedAdminClient.bind(originalFactory),
+        createGuestClient: originalFactory.createGuestClient.bind(originalFactory),
+        createReadOnlyClient: originalFactory.createReadOnlyClient.bind(originalFactory),
+        createMiddlewareClient: originalFactory.createMiddlewareClient.bind(originalFactory),
+        createBrowserClient: originalFactory.createBrowserClient.bind(originalFactory),
+      };
+    },
+  };
+});
+
 // 各テスト後にモックをリセット
-afterEach(() => {
+afterEach(async () => {
   jest.clearAllMocks();
   jest.restoreAllMocks();
   // Supabase認証モックもリセット
   resetAuthMock();
+});
+
+// 全テスト終了後に認証済みクライアントをクリア
+afterAll(async () => {
+  await clearAuthenticatedTestClient();
 });
 
 export {};

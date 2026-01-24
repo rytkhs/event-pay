@@ -1,12 +1,11 @@
-"use server";
-
 import { z } from "zod";
 
-import type { ActionResult } from "@core/actions/auth";
 import { getCurrentUser } from "@core/auth/auth-utils";
 import { logger } from "@core/logging/app-logger";
 import { createClient } from "@core/supabase/server";
 import { handleServerError } from "@core/utils/error-handler.server";
+
+import type { ActionResult } from "@/types/action-result";
 
 const updateEmailSchema = z.object({
   newEmail: z

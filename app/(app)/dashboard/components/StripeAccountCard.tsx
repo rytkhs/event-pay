@@ -1,6 +1,6 @@
 import { Landmark } from "lucide-react";
 
-import { getStripeBalanceAction } from "@features/stripe-connect";
+import { getStripeBalanceAction } from "@features/stripe-connect/server";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 

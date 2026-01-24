@@ -1,5 +1,3 @@
-"use server";
-
 import { headers } from "next/headers";
 
 import { verifyEventAccess } from "@core/auth/event-authorization";

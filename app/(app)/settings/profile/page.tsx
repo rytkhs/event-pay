@@ -9,7 +9,7 @@ import { AccountDeleteDangerZone } from "@/features/settings/components/AccountD
 import { EmailChangeForm } from "@/features/settings/components/EmailChangeForm";
 import { ProfileForm } from "@/features/settings/components/ProfileForm";
 
-import { requestAccountDeletionAction } from "./actions";
+import { requestAccountDeletionAction, updateEmailAction, updateProfileAction } from "./actions";
 
 export default async function ProfileSettingsPage() {
   const supabase = createClient();
@@ -38,7 +38,10 @@ export default async function ProfileSettingsPage() {
           <CardDescription>イベント作成時に表示される情報を設定します</CardDescription>
         </CardHeader>
         <CardContent>
-          <ProfileForm currentName={profile?.name || ""} />
+          <ProfileForm
+            currentName={profile?.name || ""}
+            updateProfileAction={updateProfileAction}
+          />
         </CardContent>
       </Card>
 
@@ -49,7 +52,7 @@ export default async function ProfileSettingsPage() {
           <CardDescription>ログインとお知らせの受信に使用されます</CardDescription>
         </CardHeader>
         <CardContent>
-          <EmailChangeForm currentEmail={user.email || ""} />
+          <EmailChangeForm currentEmail={user.email || ""} updateEmailAction={updateEmailAction} />
         </CardContent>
       </Card>
 

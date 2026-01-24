@@ -4,7 +4,7 @@
 
 import { describe, test, expect, beforeAll, afterAll, beforeEach, afterEach } from "@jest/globals";
 
-import { createEventAction } from "@features/events/actions/create-event";
+import { createEventAction } from "@/app/(app)/events/create/actions";
 
 import {
   setupEventCreationDataConversionTest,
@@ -20,7 +20,8 @@ describe("1.2.3 決済方法配列の重複除去と正規化", () => {
   let context: EventCreationDataConversionTestContext;
 
   beforeAll(async () => {
-    context = await setupEventCreationDataConversionTest();
+    // stripe決済をテストするため、Stripe Connect設定付きでセットアップ
+    context = await setupEventCreationDataConversionTest({ withConnect: true });
   });
 
   afterAll(async () => {

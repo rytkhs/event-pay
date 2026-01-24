@@ -1,5 +1,3 @@
-"use server";
-
 import { verifyEventAccess, handleDatabaseError } from "@core/auth/event-authorization";
 import { logger } from "@core/logging/app-logger";
 import { createClient } from "@core/supabase/server";

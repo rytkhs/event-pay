@@ -26,7 +26,11 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import type { RestrictableField } from "@/core/domain/event-edit-restrictions";
 
-import { useEventEditForm, type EventEditFormDataRHF } from "../hooks/use-event-edit-form";
+import {
+  useEventEditForm,
+  type EventEditFormDataRHF,
+  type UpdateEventAction,
+} from "../hooks/use-event-edit-form";
 import { useRestrictionContext, useFormDataSnapshot } from "../hooks/use-unified-restrictions";
 
 import { UnifiedRestrictionNoticeV2 } from "./UnifiedRestrictionNoticeV2";
@@ -38,6 +42,7 @@ interface EventEditFormProps {
   serverError?: string;
   hasStripePaid?: boolean;
   canUseOnlinePayments?: boolean;
+  updateEventAction: UpdateEventAction;
 }
 
 export function EventEditForm({
@@ -47,6 +52,7 @@ export function EventEditForm({
   serverError,
   hasStripePaid = false,
   canUseOnlinePayments = false,
+  updateEventAction,
 }: EventEditFormProps) {
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [pendingChanges, setPendingChanges] = useState<ChangeItem[]>([]);
@@ -65,6 +71,7 @@ export function EventEditForm({
     attendeeCount,
     onSubmit,
     hasStripePaid,
+    updateEventAction,
   });
 
   // 統一制限システム用のデータ（V2表示コンポーネント用）

@@ -1,5 +1,3 @@
-"use server";
-
 import { unstable_cache } from "next/cache";
 
 import { logger } from "@core/logging/app-logger";

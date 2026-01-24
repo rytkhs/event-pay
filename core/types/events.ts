@@ -26,3 +26,11 @@ export type SortBy = "date" | "created_at" | "attendances_count" | "fee";
  * ソート順序型
  */
 export type SortOrder = "asc" | "desc";
+
+/**
+ * イベント日付フィルタ型（YYYY-MM-DD）
+ */
+export type DateFilter = {
+  start?: string;
+  end?: string;
+};

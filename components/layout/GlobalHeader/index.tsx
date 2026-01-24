@@ -21,6 +21,7 @@ import { GlobalHeaderProps, HeaderVariant } from "./types";
  */
 export function GlobalHeader({
   user,
+  logoutAction,
   variant,
   hideOnScroll: _hideOnScroll = false,
   className,
@@ -54,7 +55,7 @@ export function GlobalHeader({
           // フォールバック（通常は発生しない）
           return <MarketingHeader className={className} />;
         }
-        return <AppHeader user={user} className={className} />;
+        return <AppHeader user={user} logoutAction={logoutAction} className={className} />;
       case "marketing":
         return <MarketingHeader className={className} />;
     }
@@ -118,7 +119,7 @@ export function GlobalHeader({
 
   // アプリケーションヘッダー（認証済みユーザー）
   if (currentVariant === "app" && user) {
-    return <AppHeader user={user} className={className} />;
+    return <AppHeader user={user} logoutAction={logoutAction} className={className} />;
   }
 
   // マーケティングヘッダー（デフォルト）

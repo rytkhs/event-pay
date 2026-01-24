@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/dialog";
 import { useToast } from "@/core/contexts/toast-context";
 
-import { cancelEventAction, deleteEventAction } from "../../../actions";
+import { cancelEventAction, deleteEventAction } from "../../actions";
 
 interface EventDangerZoneProps {
   eventId: string;

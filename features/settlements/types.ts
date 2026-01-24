@@ -89,6 +89,41 @@ export interface SettlementReportResult {
 }
 
 /**
+ * Actionレスポンス型
+ */
+export type ExportSettlementReportsSuccess = {
+  success: true;
+  csvContent: string;
+  filename: string;
+  truncated: boolean;
+};
+
+export type ExportSettlementReportsFailure = {
+  success: false;
+  error: string;
+};
+
+export type ExportSettlementReportsResponse =
+  | ExportSettlementReportsSuccess
+  | ExportSettlementReportsFailure;
+
+export type GenerateSettlementReportSuccess = {
+  success: true;
+  reportId?: string;
+  alreadyExists?: boolean;
+  reportData?: SettlementReportData;
+};
+
+export type GenerateSettlementReportFailure = {
+  success: false;
+  error: string;
+};
+
+export type GenerateSettlementReportResponse =
+  | GenerateSettlementReportSuccess
+  | GenerateSettlementReportFailure;
+
+/**
  * CSV エクスポート結果
  * Note: 実際の使用はapp/actions/settlement-report-actions.tsの型定義を参照
  */

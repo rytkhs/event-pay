@@ -4,7 +4,7 @@
 
 import { jest } from "@jest/globals";
 
-import { loginAction } from "../../../core/actions/auth";
+import { loginAction } from "@/app/(auth)/actions";
 import { setupNextHeadersMocks } from "../../setup/common-mocks";
 import { createMockSupabaseClient } from "../../setup/supabase-auth-mock";
 

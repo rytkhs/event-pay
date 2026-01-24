@@ -34,7 +34,7 @@ import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 
-import { useEventForm } from "../hooks/use-event-form";
+import { useEventForm, type CreateEventAction } from "../hooks/use-event-form";
 
 import { EventFormTimeline } from "./EventFormTimeline";
 
@@ -84,13 +84,15 @@ type SinglePageEventFormProps = {
   connectStatus?: {
     actionUrl?: string;
   };
+  createEventAction: CreateEventAction;
 };
 
 function SinglePageEventForm({
   canUseOnlinePayments = false,
   connectStatus,
+  createEventAction,
 }: SinglePageEventFormProps): JSX.Element {
-  const { form, onSubmit, isPending, isFreeEvent } = useEventForm();
+  const { form, onSubmit, isPending, isFreeEvent } = useEventForm({ createEventAction });
 
   // 決済方法の選択状態
   const paymentMethods = form.watch("payment_methods");

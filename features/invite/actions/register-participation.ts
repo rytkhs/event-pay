@@ -1,5 +1,3 @@
-"use server";
-
 import { cookies } from "next/headers";
 
 import type { PostgrestError } from "@supabase/supabase-js";
@@ -33,19 +31,7 @@ import {
   sanitizeParticipationInput,
 } from "@core/validation/participation";
 
-import type { Database } from "@/types/database";
-
-// 参加登録結果の型定義
-export interface RegisterParticipationData {
-  attendanceId: string;
-  guestToken: string;
-  requiresAdditionalPayment: boolean;
-  eventTitle: string;
-  participantNickname: string;
-  participantEmail: string;
-  attendanceStatus: Database["public"]["Enums"]["attendance_status_enum"];
-  paymentMethod?: Database["public"]["Enums"]["payment_method_enum"];
-}
+import type { RegisterParticipationData } from "../types";
 
 // 内部処理用のデータ型定義
 interface ProcessedFormData {

@@ -1,4 +1,5 @@
-import { ConnectAccountCta, getDetailedAccountStatusAction } from "@features/stripe-connect";
+import { ConnectAccountCta } from "@features/stripe-connect";
+import { getDetailedAccountStatusAction } from "@features/stripe-connect/server";
 
 export async function ConnectAccountCtaWrapper() {
   const result = await getDetailedAccountStatusAction();

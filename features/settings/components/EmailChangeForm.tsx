@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { PasswordInput } from "@/components/ui/password-input";
-import { updateEmailAction } from "@/features/settings/actions/update-email";
+import type { ActionResult } from "@/types/action-result";
 
 const emailChangeSchema = z.object({
   newEmail: z
@@ -35,9 +35,12 @@ type EmailChangeFormData = z.infer<typeof emailChangeSchema>;
 
 interface EmailChangeFormProps {
   currentEmail: string;
+  updateEmailAction: UpdateEmailAction;
 }
 
-export function EmailChangeForm({ currentEmail }: EmailChangeFormProps) {
+type UpdateEmailAction = (formData: FormData) => Promise<ActionResult>;
+
+export function EmailChangeForm({ currentEmail, updateEmailAction }: EmailChangeFormProps) {
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
 

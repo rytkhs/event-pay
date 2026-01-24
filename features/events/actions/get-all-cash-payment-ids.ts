@@ -1,5 +1,3 @@
-"use server";
-
 import { verifyEventAccess, handleDatabaseError } from "@core/auth/event-authorization";
 import { logger } from "@core/logging/app-logger";
 import { logPayment } from "@core/logging/system-logger";

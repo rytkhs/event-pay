@@ -1,5 +1,3 @@
-"use server";
-
 import type { z } from "zod";
 
 import { verifyEventAccess, handleDatabaseError } from "@core/auth/event-authorization";

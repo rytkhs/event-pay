@@ -6,7 +6,7 @@ import { describe, test, expect, beforeAll, afterAll } from "@jest/globals";
 
 import { SecureSupabaseClientFactory } from "@core/security/secure-client-factory.impl";
 import { AdminReason } from "@core/security/secure-client-factory.types";
-import { updateGuestAttendanceAction } from "@features/guest/actions/update-attendance";
+import { updateGuestAttendanceAction } from "@/app/guest/[token]/actions";
 import { setupRLSTest, type RLSTestSetup } from "./rls-test-setup";
 
 describe("Event Closure Guards", () => {

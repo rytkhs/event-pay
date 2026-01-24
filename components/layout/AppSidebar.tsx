@@ -8,8 +8,6 @@ import { usePathname } from "next/navigation";
 
 import { LogOut, ChevronsUpDown, CreditCard, Loader2 } from "lucide-react";
 
-import { logoutAction } from "@core/actions/auth";
-
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -31,7 +29,7 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { createExpressDashboardLoginLinkAction } from "@/features/stripe-connect/actions/express-dashboard";
+import type { ActionResult } from "@/types/action-result";
 
 import { navigationConfig, userMenuItems } from "./GlobalHeader/navigation-config";
 
@@ -40,9 +38,16 @@ type AppSidebarProps = {
     name?: string | null;
     email?: string | null;
   } | null;
+  logoutAction: () => Promise<ActionResult>;
+  createExpressDashboardLoginLinkAction: () => Promise<void>;
 } & React.ComponentProps<typeof Sidebar>;
 
-export function AppSidebar({ user, ...props }: AppSidebarProps) {
+export function AppSidebar({
+  user,
+  logoutAction,
+  createExpressDashboardLoginLinkAction,
+  ...props
+}: AppSidebarProps) {
   const pathname = usePathname();
   const { isMobile, setOpenMobile } = useSidebar();
 

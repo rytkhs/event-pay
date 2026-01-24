@@ -4,20 +4,12 @@ import { useState, useRef, useEffect } from "react";
 
 import { LogOut, User, ChevronDown, ChevronRight } from "lucide-react";
 
-import { logoutAction } from "@core/actions/auth";
 import { cn } from "@core/utils";
 
 import { Separator } from "@components/ui/separator";
 
 import { userMenuItems } from "./navigation-config";
 import { UserMenuProps } from "./types";
-
-/**
- * ログアウト処理関数
- */
-const performLogout = async () => {
-  await logoutAction();
-};
 
 /**
  * ユーザーメニューコンポーネント
@@ -27,6 +19,7 @@ export function UserMenu({
   user,
   className,
   isMobile = false,
+  logoutAction,
   onItemClick,
 }: UserMenuProps & {
   isMobile?: boolean;
@@ -78,7 +71,11 @@ export function UserMenu({
   const handleLogoutClick = async () => {
     setIsLoggingOut(true);
     try {
-      await performLogout();
+      if (logoutAction) {
+        await logoutAction();
+      } else {
+        window.location.href = "/login";
+      }
       // リダイレクトが実行されるため、以降の処理は不要
     } catch (error) {
       console.error("Logout failed:", error);

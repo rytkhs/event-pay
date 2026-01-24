@@ -8,10 +8,9 @@ import { useSearchParams } from "next/navigation";
 
 import { Lock } from "lucide-react";
 
-import { registerAction } from "@core/actions/auth";
-
 import { useRegisterFormRHF } from "@features/auth";
 
+import { registerAction } from "@/app/(auth)/actions";
 import { GoogleLoginButton, LINELoginButton } from "@/components/auth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";

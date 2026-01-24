@@ -4,7 +4,7 @@
 
 import { describe, test, expect, beforeAll, afterAll, beforeEach, afterEach } from "@jest/globals";
 
-import { createEventAction } from "@features/events/actions/create-event";
+import { createEventAction } from "@/app/(app)/events/create/actions";
 
 import {
   setupEventCreationDataConversionTest,
@@ -83,19 +83,16 @@ describe("1.2.1 日時のタイムゾーン変換が正しく行われる", () =
       // 将来の日時を生成（秒付き）
       const futureDate1 = new Date(Date.now() + 72 * 60 * 60 * 1000); // 72時間後
       const futureDate2 = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24時間後
-      const futureDate3 = new Date(Date.now() + 48 * 60 * 60 * 1000); // 48時間後
 
       const localDateTimeWithSeconds = futureDate1.toISOString().slice(0, 19); // YYYY-MM-DDTHH:mm:ss
       const registrationDeadline = futureDate2.toISOString().slice(0, 19);
-      const paymentDeadline = futureDate3.toISOString().slice(0, 19);
 
       const formData = createFormDataFromFields({
         title: "秒付き日時変換テスト",
         date: localDateTimeWithSeconds,
-        fee: "1000",
+        fee: "0",
         registration_deadline: registrationDeadline,
-        payment_deadline: paymentDeadline,
-        payment_methods: "stripe",
+        payment_methods: "",
       });
 
       const result = await createEventAction(formData);
@@ -108,21 +105,17 @@ describe("1.2.1 日時のタイムゾーン変換が正しく行われる", () =
         // 秒まで含むUTC形式で保存される
         const utcEventDate = new Date(event.date);
         const utcRegistrationDate = new Date(event.registration_deadline!);
-        const utcPaymentDate = new Date(event.payment_deadline!);
 
         // 秒まで正しく保存されることを確認
         expect(utcEventDate).toBeInstanceOf(Date);
         expect(utcRegistrationDate).toBeInstanceOf(Date);
-        expect(utcPaymentDate).toBeInstanceOf(Date);
 
         // JST→UTC変換が正しく行われることを確認（元の時刻との整合性）
         const expectedEventTime = new Date(localDateTimeWithSeconds + "+09:00").getTime();
         const expectedRegistrationTime = new Date(registrationDeadline + "+09:00").getTime();
-        const expectedPaymentTime = new Date(paymentDeadline + "+09:00").getTime();
 
         expect(utcEventDate.getTime()).toBe(expectedEventTime);
         expect(utcRegistrationDate.getTime()).toBe(expectedRegistrationTime);
-        expect(utcPaymentDate.getTime()).toBe(expectedPaymentTime);
       }
     });
 

@@ -1,5 +1,3 @@
-"use server";
-
 import { z } from "zod";
 
 import { enforceRateLimit, buildKey, POLICIES } from "@core/rate-limit";

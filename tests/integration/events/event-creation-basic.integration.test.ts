@@ -13,8 +13,7 @@ import { getCurrentUser } from "@core/auth/auth-utils";
 import { SecureSupabaseClientFactory } from "@core/security/secure-client-factory.impl";
 import { AdminReason } from "@core/security/secure-client-factory.types";
 
-import { createEventAction } from "@features/events/actions/create-event";
-
+import { createEventAction } from "@/app/(app)/events/create/actions";
 import { getFutureDateTimeLocal } from "@/tests/helpers/test-datetime";
 import { createFormDataFromEvent } from "@/tests/helpers/test-form-data";
 import {

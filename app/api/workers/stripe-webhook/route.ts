@@ -24,9 +24,9 @@ import { getEnv } from "@core/utils/cloudflare-env";
 import { handleServerError } from "@core/utils/error-handler.server";
 import { getClientIP } from "@core/utils/ip-detection";
 
-import { StripeWebhookEventHandler } from "@features/payments";
+import { StripeWebhookEventHandler } from "@features/payments/server";
 
-import { registerAllFeatures } from "@/app/_init/feature-registrations";
+import { ensureFeaturesRegistered } from "@/app/_init/feature-registrations";
 
 // QStash署名検証用のReceiver初期化
 const getQstashReceiver = () => {
@@ -48,7 +48,7 @@ interface QStashWebhookBody {
 }
 
 export async function POST(request: NextRequest) {
-  registerAllFeatures();
+  ensureFeaturesRegistered();
   const startTime = Date.now();
   const correlationId = `qstash_${generateSecureUuid()}`;
 

@@ -10,19 +10,20 @@ import { redirect } from "next/navigation";
 
 import type { Metadata } from "next";
 
-import { CONNECT_REFRESH_PATH, CONNECT_RETURN_PATH } from "@core/routes/stripe-connect";
+import { CONNECT_REFRESH_PATH } from "@core/routes/stripe-connect";
 import { createClient } from "@core/supabase/server";
 
+import { AccountStatus, OnboardingForm } from "@features/stripe-connect";
 import {
-  AccountStatus,
-  OnboardingForm,
-  createUserStripeConnectService,
-  startOnboardingAction,
-  getConnectAccountStatusAction,
   checkExpressDashboardAccessAction,
-  createExpressDashboardLoginLinkAction,
-} from "@features/stripe-connect";
+  createUserStripeConnectService,
+  getConnectAccountStatusAction,
+} from "@features/stripe-connect/server";
 
+import {
+  createExpressDashboardLoginLinkAction,
+  startOnboardingAction,
+} from "@/app/_actions/stripe-connect/actions";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -56,9 +57,7 @@ async function ConnectContent({ searchParams }: ConnectPageProps) {
   const existingAccount = await stripeConnectService.getConnectAccountByUser(user.id);
 
   // リダイレクトURL設定
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL;
-  const refreshUrl = `${baseUrl}${CONNECT_REFRESH_PATH}`;
-  const returnUrl = `${baseUrl}${CONNECT_RETURN_PATH}`;
+  const refreshUrl = CONNECT_REFRESH_PATH;
 
   return (
     <div className="container mx-auto py-8 px-4">
@@ -87,11 +86,7 @@ async function ConnectContent({ searchParams }: ConnectPageProps) {
 
         {/* アカウントが存在しない場合はオンボーディングフォーム */}
         {!existingAccount ? (
-          <OnboardingForm
-            refreshUrl={refreshUrl}
-            returnUrl={returnUrl}
-            onStartOnboarding={startOnboardingAction}
-          />
+          <OnboardingForm onStartOnboarding={startOnboardingAction} />
         ) : (
           <AccountStatus
             refreshUrl={refreshUrl}

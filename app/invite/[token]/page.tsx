@@ -10,9 +10,11 @@ import { getClientIPFromHeaders } from "@core/utils/ip-detection";
 import { sanitizeEventDescription } from "@core/utils/sanitize";
 
 import { InviteEventDetail } from "@features/invite";
+import type { RegisterParticipationData } from "@features/invite/types";
 
 import { ErrorLayout } from "@/components/errors";
-import type { RegisterParticipationData } from "@/features/invite/actions/register-participation";
+
+import { registerParticipationAction } from "./actions";
 
 interface InvitePageProps {
   params: {
@@ -147,6 +149,7 @@ export default async function InvitePage({ params }: InvitePageProps) {
             event={validationResult.event}
             inviteToken={params.token}
             initialRegistrationData={initialRegistrationData}
+            registerParticipationAction={registerParticipationAction}
           />
           {/* 主催者の特商法リンク（到達容易性） */}
           {(() => {

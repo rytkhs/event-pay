@@ -4,7 +4,7 @@
 
 import { describe, test, expect, beforeAll, afterAll, beforeEach, afterEach } from "@jest/globals";
 
-import { createEventAction } from "@features/events/actions/create-event";
+import { createEventAction } from "@/app/(app)/events/create/actions";
 
 import {
   setupEventCreationDataConversionTest,
@@ -206,6 +206,9 @@ URL: https://example.com
 改行も含まれています。`,
       };
 
+      // sanitize-htmlはデフォルトで特殊文字をHTMLエンティティに変換する
+      const expectedDescription = normalData.description.replace("&", "&amp;");
+
       const formData = createFormDataFromFields({
         title: normalData.title,
         date: getFutureDateTime(72),
@@ -223,10 +226,10 @@ URL: https://example.com
         const event = result.data;
         context.createdEventIds.push(event.id);
 
-        // 通常のテキストは変更されない
+        // 通常のテキストは変更されない（特殊文字のエンティティ化は除く）
         expect(event.title).toBe(normalData.title);
         expect(event.location).toBe(normalData.location);
-        expect(event.description).toBe(normalData.description);
+        expect(event.description).toBe(expectedDescription);
       }
     });
   });

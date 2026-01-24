@@ -17,7 +17,7 @@ import { UserMenu } from "./UserMenu";
  * アプリケーション用ヘッダーコンポーネント
  * 認証済みユーザー向けの管理画面で使用
  */
-export function AppHeader({ user, className }: AppHeaderProps) {
+export function AppHeader({ user, logoutAction, className }: AppHeaderProps) {
   return (
     <>
       {/* メインヘッダー */}
@@ -58,7 +58,7 @@ export function AppHeader({ user, className }: AppHeaderProps) {
             <div className="flex items-center space-x-4">
               {/* ユーザーメニュー（デスクトップ） */}
               <div className="hidden md:block">
-                <UserMenu user={user} />
+                <UserMenu user={user} logoutAction={logoutAction} />
               </div>
 
               {/* モバイルメニュー（Sheet） */}
@@ -144,7 +144,7 @@ export function AppHeader({ user, className }: AppHeaderProps) {
                         <Separator className="my-4" />
 
                         {/* ログアウトセクション */}
-                        <UserMenu user={user} isMobile={true} />
+                        <UserMenu user={user} isMobile={true} logoutAction={logoutAction} />
                       </div>
                     </div>
                   </div>

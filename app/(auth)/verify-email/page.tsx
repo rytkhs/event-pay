@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
 
-import { resendOtpAction } from "@core/actions/auth";
+import { resendOtpAction } from "@/app/(auth)/actions";
 
 function VerifyEmailContent() {
   const [resendLoading, setResendLoading] = useState(false);

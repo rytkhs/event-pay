@@ -18,10 +18,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-import type {
-  GenerateSettlementReportSuccess,
-  GenerateSettlementReportFailure,
-} from "../actions/settlement-reports";
+import type { GenerateSettlementReportSuccess, GenerateSettlementReportFailure } from "../types";
 
 interface SettlementReportGeneratorProps {
   availableEvents?: {

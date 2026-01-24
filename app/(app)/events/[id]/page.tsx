@@ -13,9 +13,9 @@ import {
   getEventParticipantsAction,
   getEventPaymentsAction,
   getEventStatsAction,
-} from "@features/events";
-
+} from "./actions";
 import { EventManagementPage } from "./components/EventManagementPage";
+import { bulkUpdateCashStatusAction, updateCashStatusAction } from "./participants/actions";
 
 interface EventDetailPageProps {
   params: {
@@ -103,6 +103,8 @@ export default async function EventDetailPage({
         overviewStats={stats}
         participantsData={participantsRes}
         searchParams={searchParams}
+        updateCashStatusAction={updateCashStatusAction}
+        bulkUpdateCashStatusAction={bulkUpdateCashStatusAction}
       />
     );
   } catch (error) {

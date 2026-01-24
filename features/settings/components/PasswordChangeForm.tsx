@@ -20,7 +20,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { PasswordInput } from "@/components/ui/password-input";
-import { updatePasswordAction } from "@/features/settings/actions/update-password";
+import type { ActionResult } from "@/types/action-result";
 
 const passwordSchema = z
   .object({
@@ -38,7 +38,13 @@ const passwordSchema = z
 
 type PasswordFormData = z.infer<typeof passwordSchema>;
 
-export function PasswordChangeForm() {
+type UpdatePasswordAction = (formData: FormData) => Promise<ActionResult>;
+
+interface PasswordChangeFormProps {
+  updatePasswordAction: UpdatePasswordAction;
+}
+
+export function PasswordChangeForm({ updatePasswordAction }: PasswordChangeFormProps) {
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
 

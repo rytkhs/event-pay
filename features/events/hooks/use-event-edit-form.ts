@@ -19,7 +19,7 @@ import {
 import type { ChangeItem } from "@/components/ui/change-confirmation-dialog";
 
 import { useEventChanges } from "./use-event-changes";
-import { useEventSubmission } from "./use-event-submission";
+import { useEventSubmission, type UpdateEventAction } from "./use-event-submission";
 import {
   useUnifiedRestrictions,
   useRestrictionContext,
@@ -31,7 +31,10 @@ interface UseEventEditFormProps {
   attendeeCount: number;
   onSubmit?: (data: Event) => void;
   hasStripePaid: boolean;
+  updateEventAction: UpdateEventAction;
 }
+
+export type { UpdateEventAction };
 
 // react-hook-form用のスキーマ（フォーム入力値をそのまま扱う）
 const eventEditFormSchemaBase = z
@@ -213,6 +216,7 @@ export function useEventEditForm({
   attendeeCount,
   onSubmit,
   hasStripePaid,
+  updateEventAction,
 }: UseEventEditFormProps) {
   const hasAttendees = attendeeCount > 0;
   const [isPending, startTransition] = useTransition();
@@ -358,7 +362,7 @@ export function useEventEditForm({
     hasValidationErrors: !form.formState.isValid,
     isFieldEditable: (field: string) => unifiedRestrictions.isFieldEditable(field as any),
   });
-  const submission = useEventSubmission({ eventId: event.id, onSubmit });
+  const submission = useEventSubmission({ eventId: event.id, onSubmit, updateEventAction });
 
   // フォームリセット
   const resetForm = useCallback(() => {

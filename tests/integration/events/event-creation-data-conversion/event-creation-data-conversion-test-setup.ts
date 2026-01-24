@@ -6,9 +6,9 @@ import { getCurrentUser } from "@core/auth/auth-utils";
 
 import { getFutureDateTimeLocal } from "@/tests/helpers/test-datetime";
 import type { TestUser } from "@/tests/helpers/test-user";
+import { cleanupTestData } from "@/tests/setup/common-cleanup";
 import { setupAuthMocks } from "@/tests/setup/common-mocks";
 import { createCommonTestSetup } from "@/tests/setup/common-test-setup";
-import { cleanupTestData } from "@/tests/setup/common-cleanup";
 
 export interface EventCreationDataConversionTestContext {
   testUser: TestUser;
@@ -17,11 +17,29 @@ export interface EventCreationDataConversionTestContext {
   cleanup: () => Promise<void>;
 }
 
-export async function setupEventCreationDataConversionTest(): Promise<EventCreationDataConversionTestContext> {
+export interface EventCreationDataConversionTestOptions {
+  /**
+   * Stripe Connect設定を含めるか（stripe決済をテストする場合に必要）
+   */
+  withConnect?: boolean;
+}
+
+export async function setupEventCreationDataConversionTest(
+  options: EventCreationDataConversionTestOptions = {}
+): Promise<EventCreationDataConversionTestContext> {
+  const { withConnect = false } = options;
+
   // 共通セットアップ関数を使用
   const commonSetup = await createCommonTestSetup({
     testName: `data-conversion-test-${Date.now()}`,
-    withConnect: false,
+    withConnect,
+    // Stripe Connect設定オプション
+    ...(withConnect && {
+      customUserOptions: {
+        payoutsEnabled: true,
+        chargesEnabled: true,
+      },
+    }),
   });
 
   // 認証モックを設定

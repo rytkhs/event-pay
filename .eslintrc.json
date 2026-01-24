@@ -317,7 +317,36 @@
     {
       "files": ["app/api/**/*"],
       "rules": {
-        "@typescript-eslint/explicit-function-return-type": "off"
+        "@typescript-eslint/explicit-function-return-type": "off",
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": [
+                  "@features/*",
+                  "!@features/*/",
+                  "@features/*/*",
+                  "!@features/*/server",
+                  "!@features/*/server/**"
+                ],
+                "message": "app/api では @features/*/server を使用してください（@features/* は禁止）"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": ["features/**/*", "core/**/*"],
+      "rules": {
+        "no-restricted-syntax": [
+          "warn",
+          {
+            "selector": "ExpressionStatement[expression.value='use server']",
+            "message": "\"use server\" は app/** に移動してください"
+          }
+        ]
       }
     },
     // Feature自己参照の禁止

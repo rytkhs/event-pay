@@ -15,7 +15,7 @@ jest.mock("next/navigation", () => ({
 }));
 
 // Server Actionのモック
-jest.mock("@core/actions/auth", () => ({
+jest.mock("@/app/(auth)/actions", () => ({
   loginAction: jest.fn(),
 }));
 

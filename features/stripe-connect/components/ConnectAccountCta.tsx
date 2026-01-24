@@ -5,7 +5,7 @@ import { AlertCircle, CreditCard, RefreshCw, Clock } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 
-import type { DetailedAccountStatus } from "../actions/account-status-check";
+import type { DetailedAccountStatus } from "../types";
 
 interface ConnectAccountCtaProps {
   status: DetailedAccountStatus;

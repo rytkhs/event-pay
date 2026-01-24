@@ -16,16 +16,12 @@
  * これにより、認証以外の実際のビジネスロジックとDB操作をテストします。
  */
 
+import { createClient as createSupabaseClient } from "@supabase/supabase-js";
+
 import { getCurrentUser } from "@core/auth/auth-utils";
 import { SecureSupabaseClientFactory } from "@core/security/secure-client-factory.impl";
 import { AdminReason } from "@core/security/secure-client-factory.types";
 import { createClient } from "@core/supabase/server";
-import { createClient as createSupabaseClient } from "@supabase/supabase-js";
-
-import {
-  getDashboardStatsAction,
-  getRecentEventsAction,
-} from "@features/events/actions/get-dashboard-stats";
 
 import { setupAuthMocks } from "@tests/setup/common-mocks";
 import {
@@ -34,6 +30,7 @@ import {
   type CommonTestSetup,
 } from "@tests/setup/common-test-setup";
 
+import { getDashboardStatsAction, getRecentEventsAction } from "@/app/(app)/events/actions";
 import { getFutureDateTime } from "@/tests/helpers/test-datetime";
 import {
   createEventForDashboardStats,

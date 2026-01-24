@@ -1,38 +1,8 @@
-"use server";
-
 import { createClient } from "@core/supabase/server";
 import { handleServerError } from "@core/utils/error-handler.server";
 
 import { createUserStripeConnectService } from "../services";
-
-/**
- * UI表示用のStripe Connectアカウントステータス
- *
- * NOTE: これはDB用のenum（unverified, onboarding, verified, restricted）とは
- *      役割が異なるUI専用の派生ステータス
- *
- * DB用enum → UI用ステータスのマッピング:
- * - アカウント未存在 → no_account
- * - unverified → unverified
- * - onboarding/verified (要件不備あり) → requirements_due
- * - verified (要件なし) → ready (ただしCTA非表示のためundefinedで返却)
- * - restricted → requirements_due
- */
-export type ConnectAccountStatusType =
-  | "no_account" // アカウント未作成
-  | "unverified" // アカウント作成済みだが未認証
-  | "requirements_due" // 認証済みだが要件不備
-  | "pending_review" // 提出済み情報の審査待ち
-  | "ready"; // 全て完了
-
-export interface DetailedAccountStatus {
-  statusType: ConnectAccountStatusType;
-  title: string;
-  description: string;
-  actionText: string;
-  actionUrl: string;
-  severity: "info" | "warning" | "error";
-}
+import type { DetailedAccountStatus } from "../types";
 
 /**
  * Stripe Connectアカウントの詳細状態をチェックするServer Action
@@ -96,8 +66,8 @@ export async function getDetailedAccountStatusAction(): Promise<{
     const hasPendingVerification = (requirements.pending_verification?.length ?? 0) > 0;
     const hasPendingCapabilities = Boolean(
       accountInfo.capabilities &&
-        (accountInfo.capabilities.card_payments === "pending" ||
-          accountInfo.capabilities.transfers === "pending")
+      (accountInfo.capabilities.card_payments === "pending" ||
+        accountInfo.capabilities.transfers === "pending")
     );
 
     // 5. ステータス別の判定

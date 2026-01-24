@@ -6,9 +6,11 @@ import { Loader2, RefreshCcw } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 
-import { startDemoSession } from "../actions/start-demo";
+interface DemoEntryPageProps {
+  startDemoSession: () => Promise<void>;
+}
 
-export function DemoEntryPage() {
+export function DemoEntryPage({ startDemoSession }: DemoEntryPageProps) {
   const [error, setError] = useState<string | null>(null);
   const initialized = useRef(false);
   const productionUrl = process.env.NEXT_PUBLIC_PRODUCTION_URL || "https://minnano-shukin.com";
@@ -31,7 +33,7 @@ export function DemoEntryPage() {
       }
     };
     init();
-  }, []);
+  }, [startDemoSession]);
 
   if (error) {
     return (

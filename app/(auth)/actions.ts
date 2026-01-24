@@ -25,6 +25,8 @@ import { extractClientIdFromGaCookie } from "@core/utils/ga-cookie";
 import { getClientIPFromHeaders } from "@core/utils/ip-detection";
 import { formatUtcToJst } from "@core/utils/timezone";
 
+import type { ActionResult } from "@/types/action-result";
+
 // バリデーションスキーマ
 const loginSchema = z.object({
   email: z.string().email("有効なメールアドレスを入力してください").max(254),
@@ -91,17 +93,6 @@ const updatePasswordSchema = z
     message: "パスワードが一致しません",
     path: ["passwordConfirm"],
   });
-
-// 共通結果型
-export type ActionResult<T = unknown> = {
-  success: boolean;
-  data?: T;
-  error?: string;
-  fieldErrors?: Record<string, string[]>;
-  message?: string;
-  redirectUrl?: string;
-  needsVerification?: boolean;
-};
 
 // FormDataをオブジェクトに変換
 function formDataToObject(formData: FormData): Record<string, string> {
