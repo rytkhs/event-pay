@@ -1,7 +1,6 @@
 import "server-only";
 
 export {
-  createConnectAccountAction,
   getConnectAccountStatusAction,
   handleOnboardingRefreshAction,
   handleOnboardingReturnAction,

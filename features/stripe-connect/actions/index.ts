@@ -1,5 +1,4 @@
 export {
-  createConnectAccountAction,
   getConnectAccountStatusAction,
   handleOnboardingReturnAction,
   handleOnboardingRefreshAction,
