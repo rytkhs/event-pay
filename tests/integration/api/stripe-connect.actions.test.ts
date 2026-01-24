@@ -1,12 +1,15 @@
 //
 
-import {
-  createConnectAccountAction,
-  getStripeBalanceAction,
-} from "@features/stripe-connect/server";
+import { startOnboardingAction, getStripeBalanceAction } from "@features/stripe-connect/server";
 
+import { redirect } from "next/navigation";
 import { setupSupabaseClientMocks } from "../../setup/common-mocks";
 import { createMockSupabaseClient, setTestUserById } from "../../setup/supabase-auth-mock";
+
+// Mock next/navigation
+jest.mock("next/navigation", () => ({
+  redirect: jest.fn(),
+}));
 
 // Stripe Connect サービスのモック（共通モックを使用）
 jest.mock("@features/stripe-connect/services", () => {
@@ -15,7 +18,15 @@ jest.mock("@features/stripe-connect/services", () => {
   >("../../setup/stripe-connect-mock");
 
   return setupStripeConnectServiceMock({
-    getConnectAccountByUser: null,
+    getConnectAccountByUser: {
+      stripe_account_id: "acct_test",
+      user_id: "user_test",
+      status: "unverified",
+      charges_enabled: false,
+      payouts_enabled: false,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    },
     createExpressAccount: {
       accountId: "acct_test",
       status: "unverified",
@@ -90,35 +101,14 @@ describe("Stripe Connect actions", () => {
       NODE_ENV: process.env.NODE_ENV,
       COOKIE_DOMAIN: undefined,
     });
+    (redirect as unknown as jest.Mock).mockClear();
   });
 
-  it("URL不正でエラーを投げる (refresh/return のパス不一致)", async () => {
-    const fd = new FormData();
-    fd.set("refreshUrl", "http://localhost:3000/invalid");
-    fd.set("returnUrl", "http://localhost:3000/also-invalid");
-
-    await expect(createConnectAccountAction(fd)).rejects.toThrow();
-  });
-
-  it("本番環境ではHTTPのURLを拒否する", async () => {
-    process.env.NODE_ENV = "production";
-    process.env.NEXT_PUBLIC_APP_URL = "https://example.com";
-    getEnvMock.mockReturnValue({
-      NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
-      ALLOWED_ORIGINS: undefined,
-      FORCE_SECURE_COOKIES: "true",
-      NODE_ENV: process.env.NODE_ENV,
-      COOKIE_DOMAIN: "example.com",
+  describe("startOnboardingAction", () => {
+    it("正常にオンボーディングを開始してリダイレクトする", async () => {
+      await startOnboardingAction();
+      expect(redirect).toHaveBeenCalledWith(expect.stringContaining("https://connect.stripe.com"));
     });
-    const fd = new FormData();
-    // 故意に http を指定
-    fd.set("refreshUrl", "http://example.com/dashboard/connect/refresh");
-    fd.set("returnUrl", "http://example.com/dashboard/connect/return");
-
-    await expect(createConnectAccountAction(fd)).rejects.toThrow(/HTTPS/);
-
-    // 後片付け
-    process.env.NODE_ENV = "test";
   });
 
   describe("getStripeBalanceAction", () => {

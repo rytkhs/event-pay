@@ -30,7 +30,7 @@ jest.mock("../../../../../core/logging/app-logger", () => {
 });
 
 // handleServerErrorのモック
-jest.mock("../../../../../core/utils/error-handler", () => ({
+jest.mock("../../../../../core/utils/error-handler.server", () => ({
   handleServerError: jest.fn(),
 }));
 
@@ -75,7 +75,7 @@ describe("🔍 ログ出力仕様検証", () => {
 
   test("全ログタイプのメッセージ形式検証", async () => {
     // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const { handleServerError } = require("../../../../../core/utils/error-handler");
+    const { handleServerError } = require("../../../../../core/utils/error-handler.server");
     const mockHandleServerError = handleServerError as jest.MockedFunction<
       typeof handleServerError
     >;

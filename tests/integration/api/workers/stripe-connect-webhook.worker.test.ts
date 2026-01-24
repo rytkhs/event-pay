@@ -21,6 +21,7 @@ jest.mock("@features/stripe-connect/server", () => ({
       handlePayoutFailed: jest.fn(),
     }),
   },
+  registerStripeConnectAdapters: jest.fn(),
 }));
 
 function createRequest(body: unknown, headersInit?: Record<string, string>) {

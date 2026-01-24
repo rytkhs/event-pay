@@ -32,6 +32,7 @@ jest.mock("@features/stripe-connect/server", () => ({
   ConnectWebhookHandler: {
     create: (...args: unknown[]) => mockConnectHandlerCreate(...args),
   },
+  registerStripeConnectAdapters: jest.fn(),
 }));
 
 describe("/api/webhooks/stripe-connect (receiver)", () => {
