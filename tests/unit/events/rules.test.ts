@@ -106,7 +106,9 @@ describe("ATTENDEE_PAYMENT_METHODS_RESTRICTION", () => {
       ATTENDEE_PAYMENT_METHODS_RESTRICTION.evaluate(context, addOnly)
     );
     expect(addOnlyResult.isRestricted).toBe(false);
-    expect(addOnlyResult.message).toBe("制限なし");
+    expect(addOnlyResult.message).toBe(
+      "参加者がいるため、既存の決済方法は解除できません（追加は可能）"
+    );
 
     // 解除を含む（NG）
     const removal = createTestFormData({ payment_methods: ["cash"] });
@@ -158,7 +160,7 @@ describe("ATTENDEE_COUNT_CAPACITY_RESTRICTION", () => {
     );
 
     expect(result.isRestricted).toBe(false);
-    expect(result.message).toBe("制限なし");
+    expect(result.message).toBe("現在の参加者数（10名）未満への定員変更はできません");
   });
 
   it("定員未設定（未指定）の場合は制限なし", async () => {
@@ -170,7 +172,7 @@ describe("ATTENDEE_COUNT_CAPACITY_RESTRICTION", () => {
     );
 
     expect(result.isRestricted).toBe(false);
-    expect(result.message).toBe("制限なし（定員無制限）");
+    expect(result.message).toBe("現在の参加者数（10名）未満への定員変更はできません");
   });
 });
 

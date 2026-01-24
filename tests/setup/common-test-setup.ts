@@ -242,11 +242,14 @@ export async function createCommonTestSetup(
   // 機能レジストリを初期化（テスト環境での依存解決を保証）
   ensureFeaturesRegistered();
 
+  const password = "TestPassword123!";
+  const email = `${testName}@example.com`;
+
   // テストユーザーを作成
   const testUser = withConnect
     ? await createTestUserWithConnect(
-        `${testName}@example.com`,
-        "TestPassword123!",
+        email,
+        password,
         customUserOptions
           ? {
               payoutsEnabled: customUserOptions.payoutsEnabled,
@@ -256,8 +259,8 @@ export async function createCommonTestSetup(
           : {}
       )
     : await createTestUser(
-        `${testName}@example.com`,
-        "TestPassword123!",
+        email,
+        password,
         customUserOptions
           ? {
               maxRetries: customUserOptions.maxRetries,
@@ -266,6 +269,11 @@ export async function createCommonTestSetup(
             }
           : {}
       );
+
+  // 認証済みクライアントをセットアップ（RLSが正しく適用されるようにする）
+  const { setupAuthenticatedTestClient, clearAuthenticatedTestClient } =
+    await import("./authenticated-client-mock");
+  await setupAuthenticatedTestClient(email, password, testUser.id);
 
   // Supabaseクライアント取得（オプションでスキップ可能）
   let adminClient: any;
@@ -284,6 +292,8 @@ export async function createCommonTestSetup(
 
   // クリーンアップ関数
   const cleanup = async () => {
+    // 認証済みクライアントをクリア
+    await clearAuthenticatedTestClient();
     if (!skipCleanup) {
       await deleteTestUser(testUser.email);
     }

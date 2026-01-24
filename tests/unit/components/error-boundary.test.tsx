@@ -2,12 +2,13 @@
  * @jest-environment jsdom
  */
 import "@testing-library/jest-dom";
-import { render, screen } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
 import React from "react";
 
-import { ErrorBoundary } from "@/components/errors/ErrorBoundary";
+import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+
 import * as errorLogger from "@/components/errors/error-logger";
+import { ErrorBoundary } from "@/components/errors/ErrorBoundary";
 
 // error-loggerのモック
 jest.mock("@/components/errors/error-logger", () => ({
@@ -16,7 +17,7 @@ jest.mock("@/components/errors/error-logger", () => ({
 }));
 
 // ErrorLayoutのモック
-jest.mock("@/components/errors/error-layout", () => ({
+jest.mock("@/components/errors/ErrorLayout", () => ({
   ErrorLayout: ({ title, message, onRetry, error }: any) => (
     <div data-testid="error-layout">
       <h1>{title}</h1>

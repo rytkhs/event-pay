@@ -80,17 +80,20 @@ export function logSecurityEvent(event: SecurityEvent): void {
   else if (level === "warn") logger.warn(logMessage, logFields as any);
   else {
     // 予期しないセキュリティイベントや重大なイベントはハンドルサーバーエラー経由で記録・通知
-    handleServerError("SECURITY_EVENT_DETECTED", {
-      category: "security",
-      action: logFields.action,
-      actorType: logFields.actor_type as any,
-      userId: event.userId,
-      eventId: event.eventId,
-      additionalData: {
-        ...logFields,
-        message: event.message,
+    handleServerError(
+      {
+        code: "SECURITY_EVENT_DETECTED",
+        message: logMessage,
       },
-    });
+      {
+        category: "security",
+        action: logFields.action,
+        actorType: logFields.actor_type as any,
+        userId: event.userId,
+        eventId: event.eventId,
+        additionalData: logFields,
+      }
+    );
   }
 
   // 重要度が高い場合はアラートを送信（waitUntilでバックグラウンド実行）

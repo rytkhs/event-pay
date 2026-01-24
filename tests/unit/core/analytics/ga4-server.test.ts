@@ -12,6 +12,12 @@ jest.mock("@core/logging/app-logger", () => ({
     info: jest.fn(),
     warn: jest.fn(),
     error: jest.fn(),
+    withContext: jest.fn().mockReturnValue({
+      debug: jest.fn(),
+      info: jest.fn(),
+      warn: jest.fn(),
+      error: jest.fn(),
+    }),
   },
 }));
 

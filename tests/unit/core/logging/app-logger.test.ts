@@ -1,6 +1,9 @@
+import { createClient } from "@supabase/supabase-js";
+
+import { waitUntil } from "@core/utils/cloudflare-ctx";
+
 import { logger } from "@/core/logging/app-logger";
 import { shouldLogError } from "@/core/logging/deduplication";
-import { createClient } from "@supabase/supabase-js";
 
 // Mock dependencies
 jest.mock("@/core/logging/deduplication", () => ({
@@ -9,6 +12,10 @@ jest.mock("@/core/logging/deduplication", () => ({
 
 jest.mock("@supabase/supabase-js", () => ({
   createClient: jest.fn(),
+}));
+
+jest.mock("@core/utils/cloudflare-ctx", () => ({
+  waitUntil: jest.fn((p) => p),
 }));
 
 describe("AppLogger", () => {
@@ -21,8 +28,8 @@ describe("AppLogger", () => {
   let mockSupabaseFrom: jest.Mock;
 
   beforeEach(() => {
-    jest.resetModules();
     process.env = { ...originalEnv };
+    jest.clearAllMocks();
 
     // Reset console spies
     consoleDebugSpy = jest.spyOn(console, "debug").mockImplementation(() => {});
@@ -111,7 +118,7 @@ describe("AppLogger", () => {
       // We rely on the fact that the mock is called.
       // In a real unit test for a fire-and-forget function, we might need to sleep or spy on the internal function if possible.
       // But here we can just wait a tick.
-      await new Promise((resolve) => setTimeout(resolve, 10));
+      await new Promise((resolve) => setTimeout(resolve, 50));
 
       expect(createClient).toHaveBeenCalledWith(
         "https://example.supabase.co",
@@ -147,15 +154,19 @@ describe("AppLogger", () => {
       // Console should happen immediately
       expect(consoleErrorSpy).toHaveBeenCalled();
 
-      // DB insert should have been called (initiated)
-      await new Promise((resolve) => setTimeout(resolve, 0));
+      // Get the promise passed to waitUntil
+      const persistPromise = (waitUntil as jest.Mock).mock.results[0].value;
+
+      // We need to wait for the first part of persistPromise (up to shouldLogError await)
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
       expect(mockSupabaseFrom).toHaveBeenCalled();
 
       // Resolve the insert
       resolveInsert!({ error: null });
 
       // Wait for promise chain
-      await new Promise((resolve) => setTimeout(resolve, 0));
+      await persistPromise;
     });
   });
 

@@ -50,13 +50,9 @@ describe("1.2.2 FormDataの適切な抽出と型変換", () => {
           date: getFutureDateTime(72), // 72時間後
           fee: testCase.input,
           registration_deadline: getFutureDateTime(24), // 24時間後
-          payment_methods: testCase.expected > 0 ? "stripe" : "",
+          // 有料イベントはcash決済を使用（Stripe Connect設定不要）
+          payment_methods: testCase.expected > 0 ? "cash" : "",
         });
-
-        // オンライン決済の場合は決済締切も追加
-        if (testCase.expected > 0) {
-          formData.append("payment_deadline", getFutureDateTime(48)); // 48時間後
-        }
 
         const result = await createEventAction(formData);
 
@@ -125,8 +121,8 @@ describe("1.2.2 FormDataの適切な抽出と型変換", () => {
           grace_period_days: testCase.input,
           allow_payment_after_deadline: "true",
           registration_deadline: getFutureDateTime(24),
-          payment_deadline: getFutureDateTime(48),
-          payment_methods: "stripe",
+          // cash決済を使用（Stripe Connect設定不要）
+          payment_methods: "cash",
         });
 
         const result = await createEventAction(formData);
@@ -152,8 +148,8 @@ describe("1.2.2 FormDataの適切な抽出と型変換", () => {
         grace_period_days: "7",
         allow_payment_after_deadline: "true",
         registration_deadline: getFutureDateTime(24),
-        payment_deadline: getFutureDateTime(48),
-        payment_methods: "stripe,cash",
+        // cash決済を使用（Stripe Connect設定不要）
+        payment_methods: "cash",
       });
 
       const result = await createEventAction(formData);
