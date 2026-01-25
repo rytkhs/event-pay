@@ -5,7 +5,6 @@
 
 import {
   registerStripeConnectPort,
-  type StripeAccountStatus,
   type StripeAccountStatusLike,
 } from "@core/ports/stripe-connect";
 import { SecureSupabaseClientFactory } from "@core/security/secure-client-factory.impl";
@@ -19,38 +18,6 @@ import { createStripeConnectServiceWithClient } from "../services";
  */
 export function registerStripeConnectAdapters(): void {
   registerStripeConnectPort({
-    async updateAccountFromWebhook(accountId: string, status: StripeAccountStatus) {
-      try {
-        const factory = SecureSupabaseClientFactory.create();
-        const supabaseClient = await factory.createAuditedAdminClient(
-          AdminReason.PAYMENT_PROCESSING,
-          `features/stripe-connect/adapters/stripe-connect-port.adapter updateAccountFromWebhook accountId=${accountId}`
-        );
-
-        const service = createStripeConnectServiceWithClient(supabaseClient);
-        // Convert StripeAccountStatus interface to UpdateAccountStatusParams
-        await service.updateAccountStatus({
-          userId: "webhook-user", // This should be derived from the accountId
-          status: status.status as any,
-          chargesEnabled: status.charges_enabled,
-          payoutsEnabled: status.payouts_enabled,
-          stripeAccountId: accountId,
-        });
-      } catch (error) {
-        handleServerError("STRIPE_CONNECT_SERVICE_ERROR", {
-          category: "stripe_connect",
-          action: "adapter_updateAccountFromWebhook",
-          actorType: "system",
-          additionalData: {
-            account_id: accountId,
-            error_name: error instanceof Error ? error.name : "Unknown",
-            error_message: error instanceof Error ? error.message : String(error),
-          },
-        });
-        throw error;
-      }
-    },
-
     async getConnectAccountByUser(userId: string) {
       try {
         const factory = SecureSupabaseClientFactory.create();

@@ -3,7 +3,7 @@
  * Core層からStripe Connect機能にアクセスするためのポートインターフェース
  */
 
-// Stripe Account Status Type (features層から移動・拡張)
+// Stripe Account Status Type
 export type StripeAccountStatusLike =
   | "unknown"
   | "unverified"
@@ -11,17 +11,8 @@ export type StripeAccountStatusLike =
   | "verified"
   | "restricted";
 
-export interface StripeAccountStatus {
-  status: string;
-  details_submitted: boolean;
-  charges_enabled: boolean;
-  payouts_enabled: boolean;
-}
-
 export interface StripeConnectPort {
-  updateAccountFromWebhook(accountId: string, status: StripeAccountStatus): Promise<void>;
-
-  // 拡張: webhook処理で必要なメソッド群
+  // webhook処理で必要なメソッド群
   getConnectAccountByUser(userId: string): Promise<{ status: StripeAccountStatusLike } | null>;
 
   getAccountInfo(accountId: string): Promise<{

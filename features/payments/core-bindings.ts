@@ -42,24 +42,15 @@ const paymentServiceImpl = {
   },
 
   async updatePaymentStatus(params: any) {
-    try {
-      // 決済ステータス更新は管理者（service_role）クライアントで実行
-      const factory = SecureSupabaseClientFactory.create();
-      const adminClient = await factory.createAuditedAdminClient(
-        AdminReason.PAYMENT_PROCESSING,
-        "features/payments/core-bindings updatePaymentStatus"
-      );
-      const errorHandler = new PaymentErrorHandler();
-      const paymentService = new PaymentService(adminClient, errorHandler);
-      await paymentService.updatePaymentStatus(params);
-      return { success: true as const, data: null };
-    } catch (error: any) {
-      return {
-        success: false as const,
-        error: error.message || "Unknown error",
-        code: "INTERNAL_ERROR" as any,
-      };
-    }
+    // 決済ステータス更新は管理者（service_role）クライアントで実行
+    const factory = SecureSupabaseClientFactory.create();
+    const adminClient = await factory.createAuditedAdminClient(
+      AdminReason.PAYMENT_PROCESSING,
+      "features/payments/core-bindings updatePaymentStatus"
+    );
+    const errorHandler = new PaymentErrorHandler();
+    const paymentService = new PaymentService(adminClient, errorHandler);
+    await paymentService.updatePaymentStatus(params);
   },
 };
 
