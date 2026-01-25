@@ -1,11 +1,31 @@
 /**
- * Core Payment Service Abstraction
- * features間の境界違反を解消するための決済サービス抽象化層
+ * Payments Port Interface
+ * Core層からPayments機能にアクセスするためのポートインターフェース
  */
 
-import { getPaymentPort } from "@core/ports/payments";
+import type { ServerActionResult } from "@core/types/server-actions";
 
-// Dynamic import用の型定義（to avoid circular dependencies）
+export interface UpdateCashStatusParams {
+  paymentId: string;
+  status: "received" | "waived";
+  notes?: string;
+}
+
+export interface BulkUpdateCashStatusParams {
+  paymentIds: string[];
+  status: "received" | "waived";
+  notes?: string;
+}
+
+export interface BulkUpdateResult {
+  successCount: number;
+  failedCount: number;
+  failures: Array<{
+    paymentId: string;
+    error: string;
+  }>;
+}
+
 export interface CreateStripeSessionParams {
   attendanceId: string;
   amount: number;
@@ -14,9 +34,9 @@ export interface CreateStripeSessionParams {
   eventTitle: string;
   successUrl: string;
   cancelUrl: string;
-  transferGroup?: string;
   /** GA4 Client ID（アナリティクス追跡用） */
   gaClientId?: string;
+  transferGroup?: string;
   /**
    * Destination charges用パラメータ
    */
@@ -79,67 +99,34 @@ export enum PaymentErrorType {
   UNKNOWN_ERROR = "UNKNOWN_ERROR",
 }
 
-// PaymentService インターフェースの抽象化
-export interface PaymentServicePort {
+export interface PaymentPort {
+  updateCashStatus(params: UpdateCashStatusParams): Promise<ServerActionResult<any>>;
+  bulkUpdateCashStatus(
+    params: BulkUpdateCashStatusParams
+  ): Promise<ServerActionResult<BulkUpdateResult>>;
+
   createStripeSession(params: CreateStripeSessionParams): Promise<CreateStripeSessionResult>;
   createCashPayment(params: CreateCashPaymentParams): Promise<CreateCashPaymentResult>;
   updatePaymentStatus(params: UpdatePaymentStatusParams): Promise<void>;
-}
 
-// PaymentErrorHandler インターフェースの抽象化
-export interface PaymentErrorHandlerPort {
   handleError(error: unknown): ErrorHandlingResult;
   mapToUserFriendlyMessage(error: unknown): string;
 }
 
-// Factory functions - uses port instead of dynamic imports
-export function createPaymentService(): PaymentServicePort {
-  return {
-    async createStripeSession(params: CreateStripeSessionParams) {
-      const port = getPaymentPort();
-      return port.createStripeSession(params);
-    },
+// Port Registration System
+let paymentPort: PaymentPort | null = null;
 
-    async createCashPayment(params: CreateCashPaymentParams) {
-      const port = getPaymentPort();
-      return port.createCashPayment(params);
-    },
-
-    async updatePaymentStatus(params: UpdatePaymentStatusParams): Promise<void> {
-      const port = getPaymentPort();
-      await port.updatePaymentStatus(params);
-    },
-  };
+export function registerPaymentPort(impl: PaymentPort): void {
+  paymentPort = impl;
 }
 
-export function createPaymentErrorHandler(): PaymentErrorHandlerPort {
-  return {
-    handleError(error: unknown) {
-      const port = getPaymentPort();
-      return port.handleError(error);
-    },
-
-    mapToUserFriendlyMessage(error: unknown) {
-      const port = getPaymentPort();
-      return port.mapToUserFriendlyMessage(error);
-    },
-  };
-}
-
-// Singleton instances
-let paymentServiceInstance: PaymentServicePort | null = null;
-let paymentErrorHandlerInstance: PaymentErrorHandlerPort | null = null;
-
-export function getPaymentService(): PaymentServicePort {
-  if (!paymentServiceInstance) {
-    paymentServiceInstance = createPaymentService();
+export function getPaymentPort(): PaymentPort {
+  if (!paymentPort) {
+    throw new Error("PaymentPort not registered. Please register payments adapter first.");
   }
-  return paymentServiceInstance;
+  return paymentPort;
 }
 
-export function getPaymentErrorHandler(): PaymentErrorHandlerPort {
-  if (!paymentErrorHandlerInstance) {
-    paymentErrorHandlerInstance = createPaymentErrorHandler();
-  }
-  return paymentErrorHandlerInstance;
+export function isPaymentPortRegistered(): boolean {
+  return paymentPort !== null;
 }

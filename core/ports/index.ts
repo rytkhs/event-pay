@@ -5,3 +5,4 @@
 
 export * from "./settlements";
 export * from "./stripe-connect";
+export * from "./payments";
