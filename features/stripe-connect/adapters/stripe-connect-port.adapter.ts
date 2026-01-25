@@ -3,14 +3,13 @@
  * Core層のポートインターフェースにStripe Connect機能を提供するアダプタ
  */
 
-import { createClient } from "@supabase/supabase-js";
-
 import {
   registerStripeConnectPort,
   type StripeAccountStatus,
   type StripeAccountStatusLike,
 } from "@core/ports/stripe-connect";
-import { getRequiredEnvVar } from "@core/utils/env-helper";
+import { SecureSupabaseClientFactory } from "@core/security/secure-client-factory.impl";
+import { AdminReason } from "@core/security/secure-client-factory.types";
 import { handleServerError } from "@core/utils/error-handler.server";
 
 import { createStripeConnectServiceWithClient } from "../services";
@@ -22,16 +21,10 @@ export function registerStripeConnectAdapters(): void {
   registerStripeConnectPort({
     async updateAccountFromWebhook(accountId: string, status: StripeAccountStatus) {
       try {
-        // Supabase service role client を作成
-        const supabaseClient = createClient(
-          getRequiredEnvVar("NEXT_PUBLIC_SUPABASE_URL"),
-          getRequiredEnvVar("SUPABASE_SERVICE_ROLE_KEY"),
-          {
-            auth: {
-              autoRefreshToken: false,
-              persistSession: false,
-            },
-          }
+        const factory = SecureSupabaseClientFactory.create();
+        const supabaseClient = await factory.createAuditedAdminClient(
+          AdminReason.PAYMENT_PROCESSING,
+          `features/stripe-connect/adapters/stripe-connect-port.adapter updateAccountFromWebhook accountId=${accountId}`
         );
 
         const service = createStripeConnectServiceWithClient(supabaseClient);
@@ -60,15 +53,11 @@ export function registerStripeConnectAdapters(): void {
 
     async getConnectAccountByUser(userId: string) {
       try {
-        const supabaseClient = createClient(
-          getRequiredEnvVar("NEXT_PUBLIC_SUPABASE_URL"),
-          getRequiredEnvVar("SUPABASE_SERVICE_ROLE_KEY"),
-          {
-            auth: {
-              autoRefreshToken: false,
-              persistSession: false,
-            },
-          }
+        const factory = SecureSupabaseClientFactory.create();
+        const supabaseClient = await factory.createAuditedAdminClient(
+          AdminReason.PAYMENT_PROCESSING,
+          `features/stripe-connect/adapters/stripe-connect-port.adapter getConnectAccountByUser userId=${userId}`,
+          { userId }
         );
 
         const service = createStripeConnectServiceWithClient(supabaseClient);
@@ -91,15 +80,10 @@ export function registerStripeConnectAdapters(): void {
 
     async getAccountInfo(accountId: string) {
       try {
-        const supabaseClient = createClient(
-          getRequiredEnvVar("NEXT_PUBLIC_SUPABASE_URL"),
-          getRequiredEnvVar("SUPABASE_SERVICE_ROLE_KEY"),
-          {
-            auth: {
-              autoRefreshToken: false,
-              persistSession: false,
-            },
-          }
+        const factory = SecureSupabaseClientFactory.create();
+        const supabaseClient = await factory.createAuditedAdminClient(
+          AdminReason.PAYMENT_PROCESSING,
+          `features/stripe-connect/adapters/stripe-connect-port.adapter getAccountInfo accountId=${accountId}`
         );
 
         const service = createStripeConnectServiceWithClient(supabaseClient);
@@ -134,14 +118,13 @@ export function registerStripeConnectAdapters(): void {
 
     async updateAccountStatus(input) {
       try {
-        const supabaseClient = createClient(
-          getRequiredEnvVar("NEXT_PUBLIC_SUPABASE_URL"),
-          getRequiredEnvVar("SUPABASE_SERVICE_ROLE_KEY"),
+        const factory = SecureSupabaseClientFactory.create();
+        const supabaseClient = await factory.createAuditedAdminClient(
+          AdminReason.PAYMENT_PROCESSING,
+          `features/stripe-connect/adapters/stripe-connect-port.adapter updateAccountStatus userId=${input.userId}`,
           {
-            auth: {
-              autoRefreshToken: false,
-              persistSession: false,
-            },
+            userId: input.userId,
+            additionalInfo: { stripeAccountId: input.stripeAccountId },
           }
         );
 
