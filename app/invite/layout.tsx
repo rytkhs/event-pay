@@ -1,9 +1,9 @@
 import type { ReactNode } from "react";
 
+import { DemoBanner } from "@features/demo";
+
 import { GlobalFooter } from "@components/layout/GlobalFooter";
 import { GlobalHeader } from "@components/layout/GlobalHeader";
-
-import { DemoBanner } from "@/features/demo/components/DemoBanner";
 
 /**
  * 招待ページレイアウト

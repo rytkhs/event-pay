@@ -4,8 +4,9 @@ import { createClient } from "@core/supabase/server";
 
 export const dynamic = "force-dynamic";
 
+import { PasswordChangeForm } from "@features/settings";
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { PasswordChangeForm } from "@/features/settings/components/PasswordChangeForm";
 
 import { updatePasswordAction } from "./actions";
 

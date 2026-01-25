@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 
 import { Metadata } from "next";
 
-import { DemoEntryPage } from "@/features/demo/components/DemoEntryPage";
+import { DemoEntryPage } from "@features/demo";
 
 import { startDemoSession } from "./actions";
 

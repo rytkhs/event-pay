@@ -4,10 +4,9 @@ import { createClient } from "@core/supabase/server";
 
 export const dynamic = "force-dynamic";
 
+import { AccountDeleteDangerZone, EmailChangeForm, ProfileForm } from "@features/settings";
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { AccountDeleteDangerZone } from "@/features/settings/components/AccountDeleteDangerZone";
-import { EmailChangeForm } from "@/features/settings/components/EmailChangeForm";
-import { ProfileForm } from "@/features/settings/components/ProfileForm";
 
 import { requestAccountDeletionAction, updateEmailAction, updateProfileAction } from "./actions";
 

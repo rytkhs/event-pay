@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 
-import { DemoBanner } from "@/features/demo/components/DemoBanner";
+import { DemoBanner } from "@features/demo";
 
 /**
  * ゲストページレイアウト
