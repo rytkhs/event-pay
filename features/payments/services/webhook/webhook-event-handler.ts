@@ -198,9 +198,7 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
                     : typedAttendance.event;
 
                   // PaymentAnalyticsServiceを使用してGA4購入イベントを送信
-                  const { paymentAnalytics } = await import(
-                    "@features/payments/services/analytics/payment-analytics"
-                  );
+                  const { paymentAnalytics } = await import("../analytics/payment-analytics");
 
                   await paymentAnalytics.trackPurchaseCompletion({
                     clientId: gaClientId,

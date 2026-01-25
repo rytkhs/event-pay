@@ -148,7 +148,21 @@
     "no-script-url": "error",
     "@typescript-eslint/no-non-null-assertion": "error",
     "no-restricted-syntax": "off",
-    "no-restricted-imports": "off",
+    "no-restricted-imports": [
+      "error",
+      {
+        "patterns": [
+          {
+            "group": ["@/features/**"],
+            "message": "@features/* を使用してください（@/features は禁止）"
+          },
+          {
+            "group": ["@features/*/*", "!@features/*/server", "!@features/*/server/**"],
+            "message": "features の deep import は禁止です。@features/<name> か @features/<name>/server を使用してください"
+          }
+        ]
+      }
+    ],
 
     // ===== Next.js & React ベストプラクティス =====
     "react/react-in-jsx-scope": "off", // Next.js 13+では不要
@@ -323,6 +337,10 @@
           {
             "patterns": [
               {
+                "group": ["@/features/**"],
+                "message": "@features/* を使用してください（@/features は禁止）"
+              },
+              {
                 "group": [
                   "@features/*",
                   "!@features/*/",
@@ -358,6 +376,14 @@
           {
             "patterns": [
               {
+                "group": ["@/features/**"],
+                "message": "@features/* を使用してください（@/features は禁止）"
+              },
+              {
+                "group": ["@features/*/*", "!@features/*/server", "!@features/*/server/**"],
+                "message": "features の deep import は禁止です。@features/<name> か @features/<name>/server を使用してください"
+              },
+              {
                 "group": ["@features/events/**"],
                 "message": "同一feature内では相対パスを使用してください（@features/events → ../...）"
               }
@@ -373,6 +399,14 @@
           "error",
           {
             "patterns": [
+              {
+                "group": ["@/features/**"],
+                "message": "@features/* を使用してください（@/features は禁止）"
+              },
+              {
+                "group": ["@features/*/*", "!@features/*/server", "!@features/*/server/**"],
+                "message": "features の deep import は禁止です。@features/<name> か @features/<name>/server を使用してください"
+              },
               {
                 "group": ["@features/auth/**"],
                 "message": "同一feature内では相対パスを使用してください（@features/auth → ../...）"
@@ -390,6 +424,14 @@
           {
             "patterns": [
               {
+                "group": ["@/features/**"],
+                "message": "@features/* を使用してください（@/features は禁止）"
+              },
+              {
+                "group": ["@features/*/*", "!@features/*/server", "!@features/*/server/**"],
+                "message": "features の deep import は禁止です。@features/<name> か @features/<name>/server を使用してください"
+              },
+              {
                 "group": ["@features/payments/**"],
                 "message": "同一feature内では相対パスを使用してください（@features/payments → ../...）"
               }
@@ -405,6 +447,14 @@
           "error",
           {
             "patterns": [
+              {
+                "group": ["@/features/**"],
+                "message": "@features/* を使用してください（@/features は禁止）"
+              },
+              {
+                "group": ["@features/*/*", "!@features/*/server", "!@features/*/server/**"],
+                "message": "features の deep import は禁止です。@features/<name> か @features/<name>/server を使用してください"
+              },
               {
                 "group": ["@features/settlements/**"],
                 "message": "同一feature内では相対パスを使用してください（@features/settlements → ../...）"
