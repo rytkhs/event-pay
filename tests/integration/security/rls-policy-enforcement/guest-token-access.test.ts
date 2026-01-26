@@ -5,7 +5,9 @@
 import { describe, test, expect, beforeAll, afterAll } from "@jest/globals";
 
 import { validateGuestToken } from "@core/utils/guest-token";
-import { updateGuestAttendanceAction } from "@features/guest/actions/update-attendance";
+
+import { updateGuestAttendanceAction } from "@/app/guest/[token]/actions";
+
 import { setupRLSTest, type RLSTestSetup } from "./rls-test-setup";
 
 describe("Guest Token Access Control", () => {
@@ -56,9 +58,8 @@ describe("Guest Token Access Control", () => {
 
   test("ゲストクライアントで参加状況を更新できる", async () => {
     // RPCを直接呼び出してエラーの詳細を確認
-    const { SecureSupabaseClientFactory } = await import(
-      "@core/security/secure-client-factory.impl"
-    );
+    const { SecureSupabaseClientFactory } =
+      await import("@core/security/secure-client-factory.impl");
     const factory = SecureSupabaseClientFactory.create();
     const guestClient = factory.createGuestClient(setup.testGuestToken);
 
@@ -108,7 +109,7 @@ describe("Guest Token Access Control", () => {
 
     expect(result.success).toBe(false);
     if (!result.success) {
-      const errorCode = (result.error as any).code || "UNKNOWN";
+      const errorCode = result.code || "UNKNOWN";
       // UNAUTHORIZEDまたはUNKNOWN（エラーハンドラーのマッピング次第）を許容
       expect(["UNAUTHORIZED", "UNKNOWN"]).toContain(errorCode);
     }

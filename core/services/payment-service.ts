@@ -3,7 +3,7 @@
  * features間の境界違反を解消するための決済サービス抽象化層
  */
 
-import registry from "./payment-registry";
+import { getPaymentPort } from "@core/ports/payments";
 
 // Dynamic import用の型定義（to avoid circular dependencies）
 export interface CreateStripeSessionParams {
@@ -92,22 +92,22 @@ export interface PaymentErrorHandlerPort {
   mapToUserFriendlyMessage(error: unknown): string;
 }
 
-// Factory functions - uses registry instead of dynamic imports
+// Factory functions - uses port instead of dynamic imports
 export function createPaymentService(): PaymentServicePort {
   return {
     async createStripeSession(params: CreateStripeSessionParams) {
-      const impl = registry.getPaymentService();
-      return impl.createStripeSession(params);
+      const port = getPaymentPort();
+      return port.createStripeSession(params);
     },
 
     async createCashPayment(params: CreateCashPaymentParams) {
-      const impl = registry.getPaymentService();
-      return impl.createCashPayment(params);
+      const port = getPaymentPort();
+      return port.createCashPayment(params);
     },
 
     async updatePaymentStatus(params: UpdatePaymentStatusParams): Promise<void> {
-      const impl = registry.getPaymentService();
-      await impl.updatePaymentStatus(params);
+      const port = getPaymentPort();
+      await port.updatePaymentStatus(params);
     },
   };
 }
@@ -115,13 +115,13 @@ export function createPaymentService(): PaymentServicePort {
 export function createPaymentErrorHandler(): PaymentErrorHandlerPort {
   return {
     handleError(error: unknown) {
-      const impl = registry.getPaymentErrorHandler();
-      return impl.handleError(error);
+      const port = getPaymentPort();
+      return port.handleError(error);
     },
 
     mapToUserFriendlyMessage(error: unknown) {
-      const impl = registry.getPaymentErrorHandler();
-      return impl.mapToUserFriendlyMessage(error);
+      const port = getPaymentPort();
+      return port.mapToUserFriendlyMessage(error);
     },
   };
 }

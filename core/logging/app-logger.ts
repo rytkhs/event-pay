@@ -90,7 +90,7 @@ function createSupabaseClient(): SupabaseClient<Database> | null {
 async function persistToSupabase(
   level: LogLevel,
   msg: string,
-  fields: EventPayLogFields
+  fields: Partial<EventPayLogFields> = {}
 ): Promise<void> {
   // 本番環境かつ warn 以上のみ DB 保存 (不要なトラフィック抑制)
   if (process.env.NODE_ENV !== "production" || (level !== "error" && level !== "warn")) {
@@ -112,8 +112,8 @@ async function persistToSupabase(
     // フォールバックなしで直接使用
     await supabase.from("system_logs").insert({
       log_level: level,
-      log_category: fields.category,
-      action: fields.action,
+      log_category: fields.category || "system",
+      action: fields.action || "log",
       message: msg,
       outcome: fields.outcome || "success",
       actor_type: fields.actor_type || "system",
@@ -128,7 +128,7 @@ async function persistToSupabase(
       metadata: fields as any,
     });
   } catch (e) {
-    console.error("[AppLogger] Failed to persist log to Supabase:", e);
+    console.error("[AppLogger] Failed to persist to Supabase:", e);
   }
 }
 
@@ -136,42 +136,72 @@ async function persistToSupabase(
  * EventPay 専用ロガー
  */
 export const logger = {
-  debug(msg: string, fields: EventPayLogFields) {
+  debug(msg: string, fields: Partial<EventPayLogFields> = {}) {
     if (process.env.NODE_ENV === "development") {
       // eslint-disable-next-line no-console
       console.debug(
-        JSON.stringify({ level: "debug", msg, timestamp: new Date().toISOString(), ...fields })
+        JSON.stringify({
+          level: "debug",
+          msg,
+          env: process.env.NODE_ENV,
+          timestamp: new Date().toISOString(),
+          ...fields,
+        })
       );
     }
   },
 
-  info(msg: string, fields: EventPayLogFields) {
+  info(msg: string, fields: Partial<EventPayLogFields> = {}) {
     // eslint-disable-next-line no-console
     console.info(
-      JSON.stringify({ level: "info", msg, timestamp: new Date().toISOString(), ...fields })
+      JSON.stringify({
+        level: "info",
+        msg,
+        env: process.env.NODE_ENV,
+        timestamp: new Date().toISOString(),
+        ...fields,
+      })
     );
   },
 
-  warn(msg: string, fields: EventPayLogFields) {
+  warn(msg: string, fields: Partial<EventPayLogFields> = {}) {
     // eslint-disable-next-line no-console
     console.warn(
-      JSON.stringify({ level: "warn", msg, timestamp: new Date().toISOString(), ...fields })
+      JSON.stringify({
+        level: "warn",
+        msg,
+        env: process.env.NODE_ENV,
+        timestamp: new Date().toISOString(),
+        ...fields,
+      })
     );
     waitUntil(persistToSupabase("warn", msg, fields));
   },
 
-  error(msg: string, fields: EventPayLogFields) {
+  error(msg: string, fields: Partial<EventPayLogFields> = {}) {
     // eslint-disable-next-line no-console
     console.error(
-      JSON.stringify({ level: "error", msg, timestamp: new Date().toISOString(), ...fields })
+      JSON.stringify({
+        level: "error",
+        msg,
+        env: process.env.NODE_ENV,
+        timestamp: new Date().toISOString(),
+        ...fields,
+      })
     );
     waitUntil(persistToSupabase("error", msg, fields));
   },
 
-  critical(msg: string, fields: EventPayLogFields) {
+  critical(msg: string, fields: Partial<EventPayLogFields> = {}) {
     // eslint-disable-next-line no-console
     console.error(
-      JSON.stringify({ level: "critical", msg, timestamp: new Date().toISOString(), ...fields })
+      JSON.stringify({
+        level: "critical",
+        msg,
+        env: process.env.NODE_ENV,
+        timestamp: new Date().toISOString(),
+        ...fields,
+      })
     );
     waitUntil(persistToSupabase("critical", msg, fields));
   },
@@ -179,15 +209,15 @@ export const logger = {
   withContext(context: Partial<EventPayLogFields>) {
     return {
       debug: (msg: string, fields: Partial<EventPayLogFields> = {}) =>
-        logger.debug(msg, { ...context, ...fields } as EventPayLogFields),
+        logger.debug(msg, { ...context, ...fields }),
       info: (msg: string, fields: Partial<EventPayLogFields> = {}) =>
-        logger.info(msg, { ...context, ...fields } as EventPayLogFields),
+        logger.info(msg, { ...context, ...fields }),
       warn: (msg: string, fields: Partial<EventPayLogFields> = {}) =>
-        logger.warn(msg, { ...context, ...fields } as EventPayLogFields),
+        logger.warn(msg, { ...context, ...fields }),
       error: (msg: string, fields: Partial<EventPayLogFields> = {}) =>
-        logger.error(msg, { ...context, ...fields } as EventPayLogFields),
+        logger.error(msg, { ...context, ...fields }),
       critical: (msg: string, fields: Partial<EventPayLogFields> = {}) =>
-        logger.critical(msg, { ...context, ...fields } as EventPayLogFields),
+        logger.critical(msg, { ...context, ...fields }),
     };
   },
 } as const;

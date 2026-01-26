@@ -14,8 +14,6 @@ import { NextResponse } from "next/server";
 import { Client } from "@upstash/qstash";
 import type Stripe from "stripe";
 
-// Feature adapters initialization (ensure core ports are registered)
-
 import { createProblemResponse } from "@core/api/problem-details";
 import { logger } from "@core/logging/app-logger";
 import { generateSecureUuid } from "@core/security/crypto";
@@ -24,11 +22,12 @@ import {
   isStripeWebhookIpAllowed,
 } from "@core/security/stripe-ip-allowlist";
 import { getStripe, getConnectWebhookSecrets } from "@core/stripe/client";
+import { StripeWebhookSignatureVerifier } from "@core/stripe/webhook-signature-verifier";
 import { getEnv } from "@core/utils/cloudflare-env";
 import { handleServerError } from "@core/utils/error-handler.server";
 import { getClientIP } from "@core/utils/ip-detection";
 
-import { StripeWebhookSignatureVerifier } from "@features/payments/services/webhook/webhook-signature-verifier";
+import { ensureFeaturesRegistered } from "@/app/_init/feature-registrations";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic"; // Webhookは常に動的処理
@@ -40,6 +39,8 @@ const getQstashClient = () => {
 };
 
 export async function POST(request: NextRequest) {
+  ensureFeaturesRegistered();
+
   const _clientIP = getClientIP(request);
   const requestId = request.headers.get("x-request-id") || generateSecureUuid();
   const connectLogger = logger.withContext({
@@ -120,9 +121,7 @@ export async function POST(request: NextRequest) {
 
       try {
         // workerの処理を直接実行
-        const { ConnectWebhookHandler } = await import(
-          "@features/payments/services/webhook/connect-webhook-handler"
-        );
+        const { ConnectWebhookHandler } = await import("@features/stripe-connect/server");
         const handler = await ConnectWebhookHandler.create();
 
         let _result: any = { success: true };

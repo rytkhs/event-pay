@@ -1,5 +1,3 @@
-"use server";
-
 import { redirect } from "next/navigation";
 
 import { z } from "zod";
@@ -10,38 +8,7 @@ import { createClient } from "@core/supabase/server";
 import { handleServerError } from "@core/utils/error-handler.server";
 
 import { SettlementReportService } from "../services/service";
-
-export type ExportSettlementReportsSuccess = {
-  success: true;
-  csvContent: string;
-  filename: string;
-  truncated: boolean;
-};
-
-export type ExportSettlementReportsFailure = {
-  success: false;
-  error: string;
-};
-
-export type ExportSettlementReportsResponse =
-  | ExportSettlementReportsSuccess
-  | ExportSettlementReportsFailure;
-
-export type GenerateSettlementReportSuccess = {
-  success: true;
-  reportId?: string;
-  alreadyExists?: boolean;
-  reportData?: any; // TODO: 適切な型定義が必要
-};
-
-export type GenerateSettlementReportFailure = {
-  success: false;
-  error: string;
-};
-
-export type GenerateSettlementReportResponse =
-  | GenerateSettlementReportSuccess
-  | GenerateSettlementReportFailure;
+import type { ExportSettlementReportsResponse, GenerateSettlementReportResponse } from "../types";
 
 // バリデーションスキーマ
 const generateReportSchema = z.object({

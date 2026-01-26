@@ -11,7 +11,7 @@ import { validateGuestToken } from "@core/utils/guest-token";
 import { getClientIPFromHeaders } from "@core/utils/ip-detection";
 import { sanitizeForEventPay } from "@core/utils/sanitize";
 
-import { GuestPageClient } from "./guest-page-client";
+import { GuestPageClient } from "./GuestPageClient";
 
 /* no-op */
 

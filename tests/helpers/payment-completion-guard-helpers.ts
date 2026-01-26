@@ -28,14 +28,9 @@ export async function createPaymentWithStatus(
     stripePaymentIntentId?: string | null;
   } = {}
 ): Promise<{ id: string; created_at: string; updated_at: string; paid_at: string | null }> {
-  const {
-    amount = 1000,
-    method = "stripe",
-    paidAt,
-    createdAt,
-    updatedAt,
-    stripePaymentIntentId = null,
-  } = options;
+  const { amount = 1000, paidAt, createdAt, updatedAt, stripePaymentIntentId = null } = options;
+
+  const method = options.method ?? (status === "received" ? "cash" : "stripe");
 
   const secureFactory = SecureSupabaseClientFactory.create();
   const adminClient = await secureFactory.createAuditedAdminClient(

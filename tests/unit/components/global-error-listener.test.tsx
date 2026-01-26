@@ -5,7 +5,7 @@ import "@testing-library/jest-dom";
 import { render, waitFor } from "@testing-library/react";
 import React from "react";
 
-import { GlobalErrorListener } from "@/components/errors/global-error-listener";
+import { GlobalErrorListener } from "@/components/errors/GlobalErrorListener";
 import * as errorLogger from "@/components/errors/error-logger";
 
 // PromiseRejectionEventのポリフィル（JSDOMには存在しないため）

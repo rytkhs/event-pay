@@ -16,7 +16,7 @@ export interface PaymentActionsImpl {
 export interface PaymentServiceImpl {
   createStripeSession(params: CreateStripeSessionParams): Promise<CreateStripeSessionResult>;
   createCashPayment(params: CreateCashPaymentParams): Promise<CreateCashPaymentResult>;
-  updatePaymentStatus(params: UpdatePaymentStatusParams): Promise<ServerActionResult<any>>;
+  updatePaymentStatus(params: UpdatePaymentStatusParams): Promise<void>;
 }
 
 export interface PaymentErrorHandlerImpl {

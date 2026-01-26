@@ -27,8 +27,17 @@ export interface EventDetail {
   invite_token: string | null;
 }
 
-// 参加登録結果データ - actionsから直接エクスポート
-// export interface RegisterParticipationData は actions/register-participation.ts で定義
+// 参加登録結果データ
+export interface RegisterParticipationData {
+  attendanceId: string;
+  guestToken: string;
+  requiresAdditionalPayment: boolean;
+  eventTitle: string;
+  participantNickname: string;
+  participantEmail: string;
+  attendanceStatus: AttendanceStatus;
+  paymentMethod?: PaymentMethod;
+}
 
 // 招待トークン生成オプション
 export interface GenerateInviteTokenOptions {

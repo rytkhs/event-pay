@@ -1,11 +1,6 @@
-// Webhook署名検証
-export type { WebhookSignatureVerifier } from "./webhook-signature-verifier";
-export { StripeWebhookSignatureVerifier } from "./webhook-signature-verifier";
-
 // Webhookイベントハンドラー
 export type { WebhookEventHandler } from "./webhook-event-handler";
 export { StripeWebhookEventHandler } from "./webhook-event-handler";
-export { ConnectWebhookHandler } from "./connect-webhook-handler";
 
 // 旧Webhook冪等性保証モジュールはQStash移行に伴い廃止
 

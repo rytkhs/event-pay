@@ -9,7 +9,7 @@ import { Suspense } from "react";
 import { Loader2 } from "lucide-react";
 import type { Metadata } from "next";
 
-import { handleOnboardingRefreshAction } from "@features/stripe-connect";
+import { handleOnboardingRefreshAction } from "@features/stripe-connect/server";
 
 import { Card, CardContent } from "@/components/ui/card";
 

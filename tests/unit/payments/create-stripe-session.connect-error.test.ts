@@ -1,6 +1,6 @@
-import { createGuestStripeSessionAction } from "@features/guest/actions/create-stripe-session";
-
 import { setupRateLimitMocks } from "@tests/setup/common-mocks";
+
+import { createGuestStripeSessionAction } from "@/app/guest/[token]/actions";
 
 // モック: ゲストトークン検証は常に有効な参加データを返す
 jest.mock("@core/utils/guest-token", () => ({
@@ -139,7 +139,7 @@ describe("createGuestStripeSessionAction - Connectアカウント未設定/無�
 
   it("payouts_enabled=false時はRESOURCE_CONFLICTエラーを返す", async () => {
     connectAccountResponse = {
-      data: { stripe_account_id: "acct_1S95RCEJRRCbin0V", payouts_enabled: false },
+      data: { stripe_account_id: "acct_1SNbjmCtoNNhKnPZ", payouts_enabled: false },
       error: null,
     };
 

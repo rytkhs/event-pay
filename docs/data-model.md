@@ -11,9 +11,9 @@
 
 ```mermaid
 erDiagram
-    auth.users ||--o{ users : "has"
-    auth.users ||--o{ line_accounts : "has"
-    auth.users ||--o{ system_logs : "has"
+    auth_users ||--o{ users : "has"
+    auth_users ||--o{ line_accounts : "has"
+    auth_users ||--o{ system_logs : "has"
 
     users ||--o{ events : "creates"
     users ||--o{ events : "cancels (optional)"

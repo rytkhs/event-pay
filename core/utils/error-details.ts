@@ -846,7 +846,11 @@ export function normalizeToErrorDetails(error: unknown): ErrorDetails {
 
   // code プロパティを持つオブジェクト
   if (error && typeof error === "object" && "code" in error && typeof error.code === "string") {
-    return getErrorDetails(error.code);
+    const details = getErrorDetails(error.code);
+    if ("message" in error && typeof error.message === "string") {
+      details.message = error.message;
+    }
+    return details;
   }
 
   // Supabase AuthError / 一般的なエラーオブジェクト

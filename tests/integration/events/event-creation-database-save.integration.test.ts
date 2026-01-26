@@ -14,12 +14,11 @@ import { SecureSupabaseClientFactory } from "@core/security/secure-client-factor
 import { AdminReason } from "@core/security/secure-client-factory.types";
 import { validateInviteToken } from "@core/utils/invite-token";
 
-import { createEventAction } from "@features/events/actions/create-event";
-
+import { createEventAction } from "@/app/(app)/events/create/actions";
 import { getFutureDateTimeLocal } from "@/tests/helpers/test-datetime";
 import { createFormDataFromEvent as createFormDataFromEventHelper } from "@/tests/helpers/test-form-data";
-import { createTestUser, deleteTestUser, type TestUser } from "@/tests/helpers/test-user";
 import { cleanupTestPaymentData } from "@/tests/helpers/test-payment-data";
+import { createTestUser, deleteTestUser, type TestUser } from "@/tests/helpers/test-user";
 import type { Database } from "@/types/database";
 
 type EventRow = Database["public"]["Tables"]["events"]["Row"];

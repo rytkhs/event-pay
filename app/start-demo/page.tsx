@@ -2,7 +2,9 @@ import { redirect } from "next/navigation";
 
 import { Metadata } from "next";
 
-import { DemoEntryPage } from "@/features/demo/components/demo-entry-page";
+import { DemoEntryPage } from "@features/demo";
+
+import { startDemoSession } from "./actions";
 
 export const metadata: Metadata = {
   title: "デモ環境を構築中...",
@@ -18,5 +20,5 @@ export default function StartDemoPage() {
     redirect(productionUrl);
   }
 
-  return <DemoEntryPage />;
+  return <DemoEntryPage startDemoSession={startDemoSession} />;
 }

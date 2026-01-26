@@ -2,12 +2,9 @@
 
 // モック定義（importより前に配置）
 const mockUpdateCashStatus = jest.fn();
+const mockBulkUpdateCashStatus = jest.fn();
 const mockToast = jest.fn();
 const mockConditionalSmartSort = jest.fn((participants) => participants);
-
-jest.mock("@/features/payments/actions/update-cash-status", () => ({
-  updateCashStatusAction: mockUpdateCashStatus,
-}));
 
 jest.mock("@core/contexts/toast-context", () => ({
   useToast: () => ({
@@ -43,7 +40,7 @@ import userEvent from "@testing-library/user-event";
 import type { ParticipantView } from "@core/validation/participant-management";
 
 // テスト対象コンポーネント
-import { ParticipantsTableV2 } from "@/app/(app)/events/[id]/participants/components/participants-table-v2/participants-table";
+import { ParticipantsTableV2 } from "@/app/(app)/events/[id]/participants/components/participants-table-v2/ParticipantsTableV2";
 
 // LocalStorage をモック
 const mockLocalStorage = {
@@ -128,6 +125,8 @@ describe("ParticipantsTableV2", () => {
     allParticipants: buildParticipantsArray(),
     searchParams: {},
     onParamsChange: jest.fn(),
+    updateCashStatusAction: mockUpdateCashStatus,
+    bulkUpdateCashStatusAction: mockBulkUpdateCashStatus,
   };
 
   beforeEach(() => {
@@ -238,7 +237,13 @@ describe("ParticipantsTableV2", () => {
     it("ページネーションが表示される", () => {
       const manyParticipants = buildManyParticipants();
 
-      render(<ParticipantsTableV2 {...defaultProps} allParticipants={manyParticipants} />);
+      render(
+        <ParticipantsTableV2
+          {...defaultProps}
+          allParticipants={manyParticipants}
+          searchParams={{ limit: "50" }}
+        />
+      );
 
       // ページネーション表示の確認（クライアントサイドページネーション）
       expect(screen.getByText("100件中 1-50件を表示")).toBeInTheDocument();
@@ -256,6 +261,7 @@ describe("ParticipantsTableV2", () => {
           {...defaultProps}
           allParticipants={manyParticipants}
           onParamsChange={onParamsChange}
+          searchParams={{ limit: "50" }}
         />
       );
 
@@ -296,12 +302,8 @@ describe("ParticipantsTableV2", () => {
     it("無料イベントでは決済関連の列が表示されない", () => {
       render(<ParticipantsTableV2 {...defaultProps} eventFee={0} />);
 
-      expect(screen.getByText("決済方法")).toBeInTheDocument();
-      expect(screen.getByText("決済状況")).toBeInTheDocument();
-
-      // 無料イベントでは決済状況は "-" で表示される
-      const statusCells = screen.getAllByText("-");
-      expect(statusCells.length).toBeGreaterThan(0);
+      expect(screen.queryByText("決済方法")).not.toBeInTheDocument();
+      expect(screen.queryByText("決済状況")).not.toBeInTheDocument();
     });
   });
 });

@@ -1,5 +1,3 @@
-"use server";
-
 import { verifyEventAccess, handleDatabaseError } from "@core/auth/event-authorization";
 import { createClient } from "@core/supabase/server";
 

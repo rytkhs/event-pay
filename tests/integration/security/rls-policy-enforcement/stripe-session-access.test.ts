@@ -4,8 +4,11 @@
 
 import { describe, test, expect, beforeAll, afterAll } from "@jest/globals";
 
-import { createGuestStripeSessionAction } from "@features/guest/actions/create-stripe-session";
-import { updateGuestAttendanceAction } from "@features/guest/actions/update-attendance";
+import {
+  createGuestStripeSessionAction,
+  updateGuestAttendanceAction,
+} from "@/app/guest/[token]/actions";
+
 import { setupRLSTest, type RLSTestSetup } from "./rls-test-setup";
 
 describe("Stripe Session Creation Access Control", () => {
@@ -39,7 +42,7 @@ describe("Stripe Session Creation Access Control", () => {
     // Stripeセッション作成に必要なデータ（Stripe Connectアカウント等）にアクセスできることを確認
     if (!result.success) {
       // エラーメッセージでRLS関連でないことを確認
-      const errorMessage = (result.error as any).message || String(result.error);
+      const errorMessage = result.error;
       expect(errorMessage).not.toContain("permission denied");
       expect(errorMessage).not.toContain("access denied");
       expect(errorMessage).not.toContain("RLS");
@@ -57,7 +60,7 @@ describe("Stripe Session Creation Access Control", () => {
 
     expect(result.success).toBe(false);
     if (!result.success) {
-      const errorCode = (result.error as any).code || "UNKNOWN";
+      const errorCode = result.code || "UNKNOWN";
       // UNAUTHORIZEDまたはUNKNOWN（エラーハンドラーのマッピング次第）を許容
       expect(["UNAUTHORIZED", "UNKNOWN"]).toContain(errorCode);
     }

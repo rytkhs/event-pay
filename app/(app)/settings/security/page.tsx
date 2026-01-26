@@ -4,8 +4,11 @@ import { createClient } from "@core/supabase/server";
 
 export const dynamic = "force-dynamic";
 
+import { PasswordChangeForm } from "@features/settings";
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { PasswordChangeForm } from "@/features/settings/components/password-change-form";
+
+import { updatePasswordAction } from "./actions";
 
 export default async function SecuritySettingsPage() {
   const supabase = createClient();
@@ -26,7 +29,7 @@ export default async function SecuritySettingsPage() {
           <CardDescription>アカウントのログインパスワードを変更できます</CardDescription>
         </CardHeader>
         <CardContent>
-          <PasswordChangeForm />
+          <PasswordChangeForm updatePasswordAction={updatePasswordAction} />
         </CardContent>
       </Card>
     </div>

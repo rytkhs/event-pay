@@ -1,5 +1,4 @@
 export {
-  createConnectAccountAction,
   getConnectAccountStatusAction,
   handleOnboardingReturnAction,
   handleOnboardingRefreshAction,
@@ -14,4 +13,3 @@ export {
 } from "./express-dashboard";
 
 export { getDetailedAccountStatusAction } from "./account-status-check";
-export type { DetailedAccountStatus, ConnectAccountStatusType } from "./account-status-check";

@@ -7,7 +7,7 @@ import "@testing-library/jest-dom";
 import userEvent from "@testing-library/user-event";
 import { ColumnDef } from "@tanstack/react-table";
 
-import { DataTable } from "@/app/(app)/events/[id]/participants/components/participants-table-v2/data-table";
+import { DataTable } from "@/app/(app)/events/[id]/participants/components/participants-table-v2/DataTable";
 
 interface TestData {
   id: string;

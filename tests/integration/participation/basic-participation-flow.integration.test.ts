@@ -11,14 +11,13 @@
 
 import { describe, it, expect, beforeEach, afterEach } from "@jest/globals";
 
-import { registerParticipationAction } from "@features/invite/actions/register-participation";
-
 import {
   createPaidTestEvent,
   cleanupTestPaymentData,
   type TestPaymentEvent,
 } from "@tests/helpers/test-payment-data";
 
+import { registerParticipationAction } from "@/app/invite/[token]/actions";
 import type { Database } from "@/types/database";
 
 import {
@@ -239,9 +238,8 @@ describe("P0-1: 基本参加登録フロー統合テスト", () => {
       await DatabaseAssertions.verifyNoPaymentCreated(attendance.id);
 
       // 定員カウントに含まれないことを確認（管理者権限）
-      const { SecureSupabaseClientFactory } = await import(
-        "@core/security/secure-client-factory.impl"
-      );
+      const { SecureSupabaseClientFactory } =
+        await import("@core/security/secure-client-factory.impl");
       const { AdminReason } = await import("@core/security/secure-client-factory.types");
       const clientFactory = SecureSupabaseClientFactory.create();
       const adminClient = await clientFactory.createAuditedAdminClient(
@@ -279,9 +277,8 @@ class DatabaseAssertions {
     expectedStatus: AttendanceStatus
   ): Promise<any> {
     // 管理者権限でRLSを迂回してデータ検証を行う
-    const { SecureSupabaseClientFactory } = await import(
-      "@core/security/secure-client-factory.impl"
-    );
+    const { SecureSupabaseClientFactory } =
+      await import("@core/security/secure-client-factory.impl");
     const { AdminReason } = await import("@core/security/secure-client-factory.types");
     const clientFactory = SecureSupabaseClientFactory.create();
     const adminClient = await clientFactory.createAuditedAdminClient(
@@ -314,9 +311,8 @@ class DatabaseAssertions {
     expectedMethod: PaymentMethod
   ): Promise<any> {
     // 管理者権限でRLSを迂回してデータ検証を行う
-    const { SecureSupabaseClientFactory } = await import(
-      "@core/security/secure-client-factory.impl"
-    );
+    const { SecureSupabaseClientFactory } =
+      await import("@core/security/secure-client-factory.impl");
     const { AdminReason } = await import("@core/security/secure-client-factory.types");
     const clientFactory = SecureSupabaseClientFactory.create();
     const adminClient = await clientFactory.createAuditedAdminClient(
@@ -346,9 +342,8 @@ class DatabaseAssertions {
 
   static async verifyNoPaymentCreated(attendanceId: string): Promise<void> {
     // 管理者権限でRLSを迂回してデータ検証を行う
-    const { SecureSupabaseClientFactory } = await import(
-      "@core/security/secure-client-factory.impl"
-    );
+    const { SecureSupabaseClientFactory } =
+      await import("@core/security/secure-client-factory.impl");
     const { AdminReason } = await import("@core/security/secure-client-factory.types");
     const clientFactory = SecureSupabaseClientFactory.create();
     const adminClient = await clientFactory.createAuditedAdminClient(

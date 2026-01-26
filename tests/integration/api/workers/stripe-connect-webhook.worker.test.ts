@@ -12,7 +12,7 @@ jest.mock("@upstash/qstash", () => ({
 
 // ConnectWebhookHandler をスパイ
 const handleAccountUpdated = jest.fn();
-jest.mock("@features/payments/services/webhook/connect-webhook-handler", () => ({
+jest.mock("@features/stripe-connect/server", () => ({
   ConnectWebhookHandler: {
     create: jest.fn().mockResolvedValue({
       handleAccountUpdated: (...args: unknown[]) => handleAccountUpdated(...args),
@@ -21,6 +21,7 @@ jest.mock("@features/payments/services/webhook/connect-webhook-handler", () => (
       handlePayoutFailed: jest.fn(),
     }),
   },
+  registerStripeConnectAdapters: jest.fn(),
 }));
 
 function createRequest(body: unknown, headersInit?: Record<string, string>) {

@@ -9,9 +9,9 @@ import {
   isValidPaymentFilter,
 } from "@core/constants/event-filters";
 import { logger } from "@core/logging/app-logger";
+import type { StatusFilter, PaymentFilter, DateFilter } from "@core/types/events";
 import { convertJstDateToUtcRange } from "@core/utils/timezone";
 
-import { StatusFilter, PaymentFilter, DateFilter } from "../actions/get-events";
 import { Event } from "../types";
 
 export interface Filters {

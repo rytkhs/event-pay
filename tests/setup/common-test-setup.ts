@@ -19,6 +19,7 @@ import {
 } from "@tests/helpers/test-payment-data";
 import { createTestUser, deleteTestUser, type TestUser } from "@tests/helpers/test-user";
 
+import { ensureFeaturesRegistered } from "@/app/_init/feature-registrations";
 import type { Database } from "@/types/database";
 
 /**
@@ -225,6 +226,7 @@ export interface CommonTestSetupOptions {
  * });
  * ```
  */
+
 export async function createCommonTestSetup(
   options: CommonTestSetupOptions = {}
 ): Promise<CommonTestSetup> {
@@ -237,11 +239,17 @@ export async function createCommonTestSetup(
     skipCleanup = false,
   } = options;
 
+  // 機能レジストリを初期化（テスト環境での依存解決を保証）
+  ensureFeaturesRegistered();
+
+  const password = "TestPassword123!";
+  const email = `${testName}@example.com`;
+
   // テストユーザーを作成
   const testUser = withConnect
     ? await createTestUserWithConnect(
-        `${testName}@example.com`,
-        "TestPassword123!",
+        email,
+        password,
         customUserOptions
           ? {
               payoutsEnabled: customUserOptions.payoutsEnabled,
@@ -251,8 +259,8 @@ export async function createCommonTestSetup(
           : {}
       )
     : await createTestUser(
-        `${testName}@example.com`,
-        "TestPassword123!",
+        email,
+        password,
         customUserOptions
           ? {
               maxRetries: customUserOptions.maxRetries,
@@ -261,6 +269,11 @@ export async function createCommonTestSetup(
             }
           : {}
       );
+
+  // 認証済みクライアントをセットアップ（RLSが正しく適用されるようにする）
+  const { setupAuthenticatedTestClient, clearAuthenticatedTestClient } =
+    await import("./authenticated-client-mock");
+  await setupAuthenticatedTestClient(email, password, testUser.id);
 
   // Supabaseクライアント取得（オプションでスキップ可能）
   let adminClient: any;
@@ -279,6 +292,8 @@ export async function createCommonTestSetup(
 
   // クリーンアップ関数
   const cleanup = async () => {
+    // 認証済みクライアントをクリア
+    await clearAuthenticatedTestClient();
     if (!skipCleanup) {
       await deleteTestUser(testUser.email);
     }
@@ -392,6 +407,9 @@ async function setupFeeConfigForIntegrationTest(adminClient: any): Promise<void>
 export async function createPaymentTestSetup(
   options: PaymentTestSetupOptions = {}
 ): Promise<PaymentTestSetup> {
+  // 機能レジストリを初期化（決済/ポートの依存解決を保証）
+  ensureFeaturesRegistered();
+
   const {
     testName = `payment-test-${Date.now()}`,
     eventFee = 1500,

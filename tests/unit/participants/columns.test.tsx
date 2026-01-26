@@ -11,7 +11,7 @@ import type { ParticipantView } from "@core/validation/participant-management";
 import {
   buildParticipantsColumns,
   type ActionsCellHandlers,
-} from "@/app/(app)/events/[id]/participants/components/participants-table-v2/columns";
+} from "@/app/(app)/events/[id]/participants/components/participants-table-v2/participants-columns";
 
 // モックハンドラー（現在の実装に合わせた型）
 const mockHandlers: ActionsCellHandlers = {
@@ -132,7 +132,7 @@ describe("buildParticipantsColumns", () => {
 
     it("無料イベントでは決済状況が表示されない", () => {
       render(<TestTableRow participant={mockParticipant} eventFee={0} />);
-      expect(screen.getByText("-")).toBeInTheDocument();
+      expect(screen.queryByText("-")).not.toBeInTheDocument();
     });
   });
 
@@ -147,7 +147,7 @@ describe("buildParticipantsColumns", () => {
       const paidParticipant = { ...mockParticipant, payment_status: "received" as const };
       render(<TestTableRow participant={paidParticipant} eventFee={1000} />);
 
-      expect(screen.getByTitle("決済を取り消し")).toBeInTheDocument();
+      expect(screen.getByTitle("受領を取り消し")).toBeInTheDocument();
     });
 
     it("オンライン決済の場合、アクションボタンが表示されない", () => {

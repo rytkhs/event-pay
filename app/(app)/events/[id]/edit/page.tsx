@@ -10,10 +10,11 @@ import { deriveEventStatus } from "@core/utils/derive-event-status";
 import { calculateAttendeeCount } from "@core/utils/event-calculations";
 import { validateEventId } from "@core/validation/event-id";
 
-import { SinglePageEventEditForm } from "@features/events/components/single-page-event-edit-form";
-import { getDetailedAccountStatusAction } from "@features/stripe-connect";
+import { SinglePageEventEditForm } from "@features/events";
+import { getDetailedAccountStatusAction } from "@features/stripe-connect/server";
 
-import { EventDangerZone } from "./components/event-danger-zone";
+import { updateEventAction } from "./actions";
+import { EventDangerZone } from "./components/EventDangerZone";
 
 interface EventEditPageProps {
   params: {
@@ -133,6 +134,7 @@ export default async function EventEditPage({ params }: EventEditPageProps) {
             attendeeCount={attendeeCount}
             hasStripePaid={hasStripePaid}
             canUseOnlinePayments={canUseOnlinePayments}
+            updateEventAction={updateEventAction}
           />
 
           {/* 危険な操作（削除・中止） */}

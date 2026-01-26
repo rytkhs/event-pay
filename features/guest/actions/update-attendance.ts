@@ -1,4 +1,3 @@
-"use server";
 import { headers } from "next/headers";
 
 import { logger } from "@core/logging/app-logger";

@@ -2,11 +2,14 @@ import type { ReactNode } from "react";
 
 import { createClient } from "@core/supabase/server";
 
+import { DemoBanner } from "@features/demo";
+
 import { AppSidebar } from "@components/layout/AppSidebar";
 import { Header } from "@components/layout/Header";
 
+import { logoutAction } from "@/app/(auth)/actions";
+import { createExpressDashboardLoginLinkAction } from "@/app/_actions/stripe-connect/actions";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
-import { DemoBanner } from "@/features/demo/components/demo-banner";
 
 /**
  * アプリケーションレイアウト
@@ -35,7 +38,11 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
 
   return (
     <SidebarProvider>
-      <AppSidebar user={currentUser} />
+      <AppSidebar
+        user={currentUser}
+        logoutAction={logoutAction}
+        createExpressDashboardLoginLinkAction={createExpressDashboardLoginLinkAction}
+      />
       <SidebarInset>
         <DemoBanner />
         <Header />

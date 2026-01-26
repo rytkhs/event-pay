@@ -10,7 +10,7 @@ jest.mock("@upstash/qstash", () => ({
 }));
 
 const mockVerifySignature = jest.fn();
-jest.mock("@features/payments/services/webhook/webhook-signature-verifier", () => ({
+jest.mock("@core/stripe/webhook-signature-verifier", () => ({
   StripeWebhookSignatureVerifier: jest.fn().mockImplementation(() => ({
     verifySignature: (...args: unknown[]) => mockVerifySignature(...args),
   })),
@@ -20,6 +20,7 @@ describe("/api/webhooks/stripe (receiver)", () => {
   beforeEach(() => {
     process.env.QSTASH_TOKEN = "test_qstash_token";
     process.env.NODE_ENV = "test";
+    delete process.env.SKIP_QSTASH_IN_TEST;
   });
 
   function createRequest(payload: string, headersInit?: Record<string, string>) {
@@ -130,7 +131,7 @@ describe("/api/webhooks/stripe (receiver)", () => {
   });
 
   describe("正常系テスト", () => {
-    it.skip("正常時にQStashへpublishされ200を返す", async () => {
+    it("正常時にQStashへpublishされ200を返す", async () => {
       const fakeEvent = { id: "evt_test_123", type: "payment_intent.succeeded" };
       mockVerifySignature.mockResolvedValueOnce({ isValid: true, event: fakeEvent });
       mockPublishJSON.mockResolvedValueOnce({ messageId: "msg_test_123" });

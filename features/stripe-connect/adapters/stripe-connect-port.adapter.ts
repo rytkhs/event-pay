@@ -3,14 +3,12 @@
  * Core層のポートインターフェースにStripe Connect機能を提供するアダプタ
  */
 
-import { createClient } from "@supabase/supabase-js";
-
 import {
   registerStripeConnectPort,
-  type StripeAccountStatus,
   type StripeAccountStatusLike,
 } from "@core/ports/stripe-connect";
-import { getRequiredEnvVar } from "@core/utils/env-helper";
+import { SecureSupabaseClientFactory } from "@core/security/secure-client-factory.impl";
+import { AdminReason } from "@core/security/secure-client-factory.types";
 import { handleServerError } from "@core/utils/error-handler.server";
 
 import { createStripeConnectServiceWithClient } from "../services";
@@ -19,60 +17,14 @@ import { createStripeConnectServiceWithClient } from "../services";
  * Stripe Connect機能のアダプタを登録
  */
 export function registerStripeConnectAdapters(): void {
-  if ((globalThis as any).__stripe_connect_registered) {
-    return;
-  }
-
   registerStripeConnectPort({
-    async updateAccountFromWebhook(accountId: string, status: StripeAccountStatus) {
-      try {
-        // Supabase service role client を作成
-        const supabaseClient = createClient(
-          getRequiredEnvVar("NEXT_PUBLIC_SUPABASE_URL"),
-          getRequiredEnvVar("SUPABASE_SERVICE_ROLE_KEY"),
-          {
-            auth: {
-              autoRefreshToken: false,
-              persistSession: false,
-            },
-          }
-        );
-
-        const service = createStripeConnectServiceWithClient(supabaseClient);
-        // Convert StripeAccountStatus interface to UpdateAccountStatusParams
-        await service.updateAccountStatus({
-          userId: "webhook-user", // This should be derived from the accountId
-          status: status.status as any,
-          chargesEnabled: status.charges_enabled,
-          payoutsEnabled: status.payouts_enabled,
-          stripeAccountId: accountId,
-        });
-      } catch (error) {
-        handleServerError("STRIPE_CONNECT_SERVICE_ERROR", {
-          category: "stripe_connect",
-          action: "adapter_updateAccountFromWebhook",
-          actorType: "system",
-          additionalData: {
-            account_id: accountId,
-            error_name: error instanceof Error ? error.name : "Unknown",
-            error_message: error instanceof Error ? error.message : String(error),
-          },
-        });
-        throw error;
-      }
-    },
-
     async getConnectAccountByUser(userId: string) {
       try {
-        const supabaseClient = createClient(
-          getRequiredEnvVar("NEXT_PUBLIC_SUPABASE_URL"),
-          getRequiredEnvVar("SUPABASE_SERVICE_ROLE_KEY"),
-          {
-            auth: {
-              autoRefreshToken: false,
-              persistSession: false,
-            },
-          }
+        const factory = SecureSupabaseClientFactory.create();
+        const supabaseClient = await factory.createAuditedAdminClient(
+          AdminReason.PAYMENT_PROCESSING,
+          `features/stripe-connect/adapters/stripe-connect-port.adapter getConnectAccountByUser userId=${userId}`,
+          { userId }
         );
 
         const service = createStripeConnectServiceWithClient(supabaseClient);
@@ -95,15 +47,10 @@ export function registerStripeConnectAdapters(): void {
 
     async getAccountInfo(accountId: string) {
       try {
-        const supabaseClient = createClient(
-          getRequiredEnvVar("NEXT_PUBLIC_SUPABASE_URL"),
-          getRequiredEnvVar("SUPABASE_SERVICE_ROLE_KEY"),
-          {
-            auth: {
-              autoRefreshToken: false,
-              persistSession: false,
-            },
-          }
+        const factory = SecureSupabaseClientFactory.create();
+        const supabaseClient = await factory.createAuditedAdminClient(
+          AdminReason.PAYMENT_PROCESSING,
+          `features/stripe-connect/adapters/stripe-connect-port.adapter getAccountInfo accountId=${accountId}`
         );
 
         const service = createStripeConnectServiceWithClient(supabaseClient);
@@ -138,14 +85,13 @@ export function registerStripeConnectAdapters(): void {
 
     async updateAccountStatus(input) {
       try {
-        const supabaseClient = createClient(
-          getRequiredEnvVar("NEXT_PUBLIC_SUPABASE_URL"),
-          getRequiredEnvVar("SUPABASE_SERVICE_ROLE_KEY"),
+        const factory = SecureSupabaseClientFactory.create();
+        const supabaseClient = await factory.createAuditedAdminClient(
+          AdminReason.PAYMENT_PROCESSING,
+          `features/stripe-connect/adapters/stripe-connect-port.adapter updateAccountStatus userId=${input.userId}`,
           {
-            auth: {
-              autoRefreshToken: false,
-              persistSession: false,
-            },
+            userId: input.userId,
+            additionalInfo: { stripeAccountId: input.stripeAccountId },
           }
         );
 
@@ -175,6 +121,4 @@ export function registerStripeConnectAdapters(): void {
       }
     },
   });
-
-  (globalThis as any).__stripe_connect_registered = true;
 }

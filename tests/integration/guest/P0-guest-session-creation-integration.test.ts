@@ -19,10 +19,11 @@
  * - 外部システムの実際の応答を検証する
  */
 
+import { createGuestStripeSessionAction } from "@/app/guest/[token]/actions";
+
 import { enforceRateLimit, buildKey, POLICIES } from "../../../core/rate-limit";
 import { validateGuestToken } from "../../../core/utils/guest-token";
 import { canCreateStripeSession } from "../../../core/validation/payment-eligibility";
-import { createGuestStripeSessionAction } from "../../../features/guest/actions/create-stripe-session";
 
 import {
   setupGuestSessionCreationTest,

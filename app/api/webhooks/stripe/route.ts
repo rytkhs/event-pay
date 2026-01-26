@@ -3,8 +3,6 @@
  * 決済関連のWebhookイベントを受信し、QStashに転送する
  */
 
-export const dynamic = "force-dynamic";
-
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
@@ -19,12 +17,16 @@ import {
   isStripeWebhookIpAllowed,
 } from "@core/security/stripe-ip-allowlist";
 import { getWebhookSecrets, getStripe } from "@core/stripe/client";
+import { StripeWebhookSignatureVerifier } from "@core/stripe/webhook-signature-verifier";
 import { getEnv } from "@core/utils/cloudflare-env";
 import { handleServerError } from "@core/utils/error-handler.server";
 import { getClientIP } from "@core/utils/ip-detection";
 
-import { StripeWebhookEventHandler } from "@features/payments/services/webhook/webhook-event-handler";
-import { StripeWebhookSignatureVerifier } from "@features/payments/services/webhook/webhook-signature-verifier";
+import { StripeWebhookEventHandler } from "@features/payments/server";
+
+import { ensureFeaturesRegistered } from "@/app/_init/feature-registrations";
+
+export const dynamic = "force-dynamic";
 
 // QStashクライアント初期化
 const getQstashClient = () => {
@@ -36,6 +38,8 @@ const getQstashClient = () => {
 };
 
 export async function POST(request: NextRequest) {
+  ensureFeaturesRegistered();
+
   const requestId = request.headers.get("x-request-id") || generateSecureUuid();
   const startTime = Date.now();
 

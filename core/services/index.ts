@@ -41,10 +41,3 @@ export {
   createSettlementService,
   getSettlementService,
 } from "./settlement-service";
-
-// Stripe Connect Service抽象化
-export {
-  type StripeAccountStatusLike,
-  type IStripeConnectService,
-  createStripeConnectService,
-} from "./stripe-connect-service";

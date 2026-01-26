@@ -10,8 +10,6 @@ import { Loader2, CheckCircle2, AlertCircle, Mail, ArrowLeft, RefreshCw } from "
 import { useForm } from "react-hook-form";
 import * as z from "zod";
 
-import { verifyOtpAction, resendOtpAction } from "@core/actions/auth";
-
 import { Alert, AlertDescription, AlertTitle } from "@components/ui/alert";
 import { Button } from "@components/ui/button";
 import {
@@ -31,6 +29,8 @@ import {
   FormMessage,
 } from "@components/ui/form";
 import { InputOTP, InputOTPGroup, InputOTPSlot, InputOTPSeparator } from "@components/ui/input-otp";
+
+import { verifyOtpAction, resendOtpAction } from "@/app/(auth)/actions";
 
 export const dynamic = "force-dynamic";
 

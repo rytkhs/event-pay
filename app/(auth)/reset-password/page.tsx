@@ -4,10 +4,9 @@ import Link from "next/link";
 
 export const dynamic = "force-dynamic";
 
-import { resetPasswordAction } from "@core/actions/auth";
-
 import { useAuthForm, AuthFormWrapper, AuthEmailField, AuthSubmitButton } from "@features/auth";
 
+import { resetPasswordAction } from "@/app/(auth)/actions";
 export default function ResetPasswordPage() {
   const { state, formAction, isPending } = useAuthForm(resetPasswordAction, {
     redirectOnSuccess: true, // OTP送信成功時はverify-otpページにリダイレクト
