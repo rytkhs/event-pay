@@ -1,9 +1,10 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
-import { createClient } from "@supabase/supabase-js";
+import { SupabaseClient } from "@supabase/supabase-js";
 
 import { buildKey, enforceRateLimit, POLICIES } from "@core/rate-limit";
+import { AdminReason, createSecureSupabaseClient } from "@core/security";
 import { createClient as createServerClient } from "@core/supabase/server";
 import { getClientIPFromHeaders } from "@core/utils/ip-detection";
 
@@ -31,24 +32,12 @@ export async function startDemoSession() {
     );
   }
 
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-  if (!supabaseUrl || !serviceRoleKey) {
-    console.error("Missing Supabase configuration", {
-      url: !!supabaseUrl,
-      key: !!serviceRoleKey,
-    });
-    throw new Error("Missing Supabase Admin configuration.");
-  }
-
   // 1. Create User (Admin Client)
-  const adminClient = createClient<Database>(supabaseUrl, serviceRoleKey, {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false,
-    },
-  });
+  const factory = createSecureSupabaseClient();
+  const adminClient = (await factory.createAuditedAdminClient(
+    AdminReason.DEMO_SETUP,
+    "Demo Session Creation"
+  )) as SupabaseClient<Database>;
 
   const email = `demo-${crypto.randomUUID().split("-")[0]}@example.com`;
   const password = `demo-pass-${crypto.randomUUID()}`;

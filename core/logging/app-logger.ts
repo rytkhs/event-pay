@@ -79,6 +79,7 @@ function createSupabaseClient(): SupabaseClient<Database> | null {
     return null;
   }
 
+  // 循環依存回避のため、監査なしの直接クライアントを使用
   return createClient<Database>(supabaseUrl, supabaseKey, {
     auth: { persistSession: false },
   });

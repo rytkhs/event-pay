@@ -17,6 +17,8 @@ export enum AdminReason {
   LOGGING = "logging",
   ACCOUNT_DELETION = "account_deletion",
   LINE_LOGIN = "line_login",
+  DEMO_SETUP = "demo_setup",
+  ERROR_COLLECTION = "error_collection",
 }
 
 // エラーハンドリングは専用ファイルから再エクスポート
