@@ -101,4 +101,19 @@ export const ERROR_HANDLING_BY_TYPE: Record<PaymentErrorType, ErrorHandlingResul
     shouldRetry: true,
     logLevel: "error",
   },
+  [PaymentErrorType.NOT_FOUND]: {
+    userMessage: "対象が見つかりません。",
+    shouldRetry: false,
+    logLevel: "warn",
+  },
+  [PaymentErrorType.RATE_LIMIT_EXCEEDED]: {
+    userMessage: "リクエストが多すぎます。しばらく待ってから再度お試しください。",
+    shouldRetry: true,
+    logLevel: "warn",
+  },
+  [PaymentErrorType.UNKNOWN_ERROR]: {
+    userMessage: "予期しないエラーが発生しました。",
+    shouldRetry: false,
+    logLevel: "error",
+  },
 };

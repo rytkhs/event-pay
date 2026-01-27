@@ -29,7 +29,6 @@ jest.mock("../../../../core/validation/payment-eligibility");
 jest.mock("../../../../core/rate-limit");
 jest.mock("../../../../core/stripe/destination-charges");
 jest.mock("../../../../features/payments/services/fee-config/application-fee-calculator");
-jest.mock("../../../../features/payments/core-bindings");
 
 export interface GuestSessionCreationTestContext {
   testUser: TestPaymentUser;
