@@ -57,6 +57,7 @@ declare namespace Cloudflare {
     SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_SECRET: string;
     NEXT_PUBLIC_LINE_CHANNEL_ID: string;
     LINE_CHANNEL_SECRET: string;
+    SKIP_RATE_LIMIT: string;
     SENTRY_DSN: string;
     NEXT_PUBLIC_IS_DEMO: string;
     NEXT_PUBLIC_PRODUCTION_URL: string;
@@ -73,68 +74,68 @@ type StringifyValues<EnvType extends Record<string, unknown>> = {
   [Binding in keyof EnvType]: EnvType[Binding] extends string ? EnvType[Binding] : string;
 };
 declare namespace NodeJS {
-  interface ProcessEnv
-    extends StringifyValues<
-      Pick<
-        Cloudflare.Env,
-        | "NEXTJS_ENV"
-        | "NEXT_PUBLIC_SUPABASE_URL"
-        | "NEXT_PUBLIC_SUPABASE_ANON_KEY"
-        | "SUPABASE_SERVICE_ROLE_KEY"
-        | "STRIPE_SECRET_KEY"
-        | "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY"
-        | "STRIPE_CONNECT_WEBHOOK_SECRET"
-        | "STRIPE_WEBHOOK_SECRET"
-        | "ENABLE_STRIPE_IP_CHECK"
-        | "NEXT_PUBLIC_APP_URL"
-        | "NODE_ENV"
-        | "AFTER_LOGIN_REDIRECT_PATH"
-        | "UPSTASH_REDIS_REST_URL"
-        | "UPSTASH_REDIS_REST_TOKEN"
-        | "LOG_LEVEL"
-        | "CRON_SECRET"
-        | "RESEND_API_KEY"
-        | "FROM_EMAIL"
-        | "ADMIN_EMAIL"
-        | "QSTASH_URL"
-        | "QSTASH_TOKEN"
-        | "QSTASH_CURRENT_SIGNING_KEY"
-        | "QSTASH_NEXT_SIGNING_KEY"
-        | "SKIP_QSTASH_IN_TEST"
-        | "RL_FAIL_CLOSED"
-        | "INVOICE_REGISTRATION_NUMBER"
-        | "STRIPE_API_VERSION"
-        | "STRIPE_LOG_VERBOSE"
-        | "STRIPE_CONNECT_WEBHOOK_SECRET_TEST"
-        | "STRIPE_WEBHOOK_SECRET_TEST"
-        | "STRIPE_WEBHOOK_SECRET_SECONDARY"
-        | "STRIPE_CONNECT_WEBHOOK_SECRET_SECONDARY"
-        | "STRIPE_WEBHOOK_SECRET_TEST_SECONDARY"
-        | "STRIPE_CONNECT_WEBHOOK_SECRET_TEST_SECONDARY"
-        | "STRIPE_WEBHOOK_TIMESTAMP_TOLERANCE"
-        | "ALLOWED_ORIGINS"
-        | "RL_HMAC_SECRET"
-        | "SLACK_CONTACT_WEBHOOK_URL"
-        | "PLATFORM_BALANCE_MIN_JPY"
-        | "RL_FAIL_CLOSED_PUBLIC"
-        | "STRIPE_WEBHOOK_ALLOWED_IPS_EXTRA"
-        | "PINO_LOG_LEVEL"
-        | "FORCE_SECURE_COOKIES"
-        | "COOKIE_DOMAIN"
-        | "FROM_NAME"
-        | "MAINTENANCE_MODE"
-        | "MAINTENANCE_BYPASS_TOKEN"
-        | "SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID"
-        | "SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_SECRET"
-        | "NEXT_PUBLIC_LINE_CHANNEL_ID"
-        | "LINE_CHANNEL_SECRET"
-        | "SENTRY_DSN"
-        | "NEXT_PUBLIC_IS_DEMO"
-        | "NEXT_PUBLIC_PRODUCTION_URL"
-        | "NEXT_PUBLIC_DEMO_URL"
-        | "DEMO_STRIPE_ACCOUNT_ID"
-      >
-    > {}
+  interface ProcessEnv extends StringifyValues<
+    Pick<
+      Cloudflare.Env,
+      | "NEXTJS_ENV"
+      | "NEXT_PUBLIC_SUPABASE_URL"
+      | "NEXT_PUBLIC_SUPABASE_ANON_KEY"
+      | "SUPABASE_SERVICE_ROLE_KEY"
+      | "STRIPE_SECRET_KEY"
+      | "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY"
+      | "STRIPE_CONNECT_WEBHOOK_SECRET"
+      | "STRIPE_WEBHOOK_SECRET"
+      | "ENABLE_STRIPE_IP_CHECK"
+      | "NEXT_PUBLIC_APP_URL"
+      | "NODE_ENV"
+      | "AFTER_LOGIN_REDIRECT_PATH"
+      | "UPSTASH_REDIS_REST_URL"
+      | "UPSTASH_REDIS_REST_TOKEN"
+      | "LOG_LEVEL"
+      | "CRON_SECRET"
+      | "RESEND_API_KEY"
+      | "FROM_EMAIL"
+      | "ADMIN_EMAIL"
+      | "QSTASH_URL"
+      | "QSTASH_TOKEN"
+      | "QSTASH_CURRENT_SIGNING_KEY"
+      | "QSTASH_NEXT_SIGNING_KEY"
+      | "SKIP_QSTASH_IN_TEST"
+      | "RL_FAIL_CLOSED"
+      | "INVOICE_REGISTRATION_NUMBER"
+      | "STRIPE_API_VERSION"
+      | "STRIPE_LOG_VERBOSE"
+      | "STRIPE_CONNECT_WEBHOOK_SECRET_TEST"
+      | "STRIPE_WEBHOOK_SECRET_TEST"
+      | "STRIPE_WEBHOOK_SECRET_SECONDARY"
+      | "STRIPE_CONNECT_WEBHOOK_SECRET_SECONDARY"
+      | "STRIPE_WEBHOOK_SECRET_TEST_SECONDARY"
+      | "STRIPE_CONNECT_WEBHOOK_SECRET_TEST_SECONDARY"
+      | "STRIPE_WEBHOOK_TIMESTAMP_TOLERANCE"
+      | "ALLOWED_ORIGINS"
+      | "RL_HMAC_SECRET"
+      | "SLACK_CONTACT_WEBHOOK_URL"
+      | "PLATFORM_BALANCE_MIN_JPY"
+      | "RL_FAIL_CLOSED_PUBLIC"
+      | "STRIPE_WEBHOOK_ALLOWED_IPS_EXTRA"
+      | "PINO_LOG_LEVEL"
+      | "FORCE_SECURE_COOKIES"
+      | "COOKIE_DOMAIN"
+      | "FROM_NAME"
+      | "MAINTENANCE_MODE"
+      | "MAINTENANCE_BYPASS_TOKEN"
+      | "SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID"
+      | "SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_SECRET"
+      | "NEXT_PUBLIC_LINE_CHANNEL_ID"
+      | "LINE_CHANNEL_SECRET"
+      | "SKIP_RATE_LIMIT"
+      | "SENTRY_DSN"
+      | "NEXT_PUBLIC_IS_DEMO"
+      | "NEXT_PUBLIC_PRODUCTION_URL"
+      | "NEXT_PUBLIC_DEMO_URL"
+      | "DEMO_STRIPE_ACCOUNT_ID"
+    >
+  > {}
 }
 
 // Begin runtime types
@@ -8025,8 +8026,7 @@ interface IncomingRequestCfPropertiesBotManagement {
    */
   clientTrustScore: number;
 }
-interface IncomingRequestCfPropertiesBotManagementEnterprise
-  extends IncomingRequestCfPropertiesBotManagement {
+interface IncomingRequestCfPropertiesBotManagementEnterprise extends IncomingRequestCfPropertiesBotManagement {
   /**
    * Results of Cloudflare's Bot Management analysis
    */
@@ -9267,18 +9267,18 @@ declare namespace Rpc {
   // Recursively rewrite all `Stubable` types with `Stub`s
   // prettier-ignore
   type Stubify<T> = T extends Stubable ? Stub<T> : T extends Map<infer K, infer V> ? Map<Stubify<K>, Stubify<V>> : T extends Set<infer V> ? Set<Stubify<V>> : T extends Array<infer V> ? Array<Stubify<V>> : T extends ReadonlyArray<infer V> ? ReadonlyArray<Stubify<V>> : T extends BaseType ? T : T extends {
-        [key: string | number]: any;
-    } ? {
-        [K in keyof T]: Stubify<T[K]>;
+    [key: string | number]: any;
+  } ? {
+      [K in keyof T]: Stubify<T[K]>;
     } : T;
   // Recursively rewrite all `Stub<T>`s with the corresponding `T`s.
   // Note we use `StubBase` instead of `Stub` here to avoid circular dependencies:
   // `Stub` depends on `Provider`, which depends on `Unstubify`, which would depend on `Stub`.
   // prettier-ignore
   type Unstubify<T> = T extends StubBase<infer V> ? V : T extends Map<infer K, infer V> ? Map<Unstubify<K>, Unstubify<V>> : T extends Set<infer V> ? Set<Unstubify<V>> : T extends Array<infer V> ? Array<Unstubify<V>> : T extends ReadonlyArray<infer V> ? ReadonlyArray<Unstubify<V>> : T extends BaseType ? T : T extends {
-        [key: string | number]: unknown;
-    } ? {
-        [K in keyof T]: Unstubify<T[K]>;
+    [key: string | number]: unknown;
+  } ? {
+      [K in keyof T]: Unstubify<T[K]>;
     } : T;
   type UnstubifyAll<A extends any[]> = {
     [I in keyof A]: Unstubify<A[I]>;
@@ -9462,7 +9462,8 @@ declare namespace CloudflareWorkersModule {
   export abstract class WorkflowEntrypoint<
     Env = unknown,
     T extends Rpc.Serializable<T> | unknown = unknown,
-  > implements Rpc.WorkflowEntrypointBranded
+  >
+    implements Rpc.WorkflowEntrypointBranded
   {
     [Rpc.__WORKFLOW_ENTRYPOINT_BRAND]: never;
     protected ctx: ExecutionContext;

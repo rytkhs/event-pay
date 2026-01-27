@@ -29,6 +29,12 @@ function shouldFailClosed(globalFailClosed: boolean, isPublicPaymentScope: boole
 
 export async function enforceRateLimit(opts: EnforceOptions): Promise<EnforceResult> {
   const { keys, policy } = opts;
+
+  // E2Eテストのバイパス用
+  if (getEnv().SKIP_RATE_LIMIT === "true") {
+    return { allowed: true };
+  }
+
   const allowIfStoreError = opts.allowIfStoreError ?? getEnv().RL_FAIL_CLOSED !== "true";
 
   // ペナルティ優先
