@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { createClient } from "@supabase/supabase-js";
 import { Ratelimit } from "@upstash/ratelimit";
 import { Redis } from "@upstash/redis";
 import { z } from "zod";
 
+import { AdminReason, createSecureSupabaseClient } from "@core/security";
 import type { ErrorDetails } from "@core/utils/error-details";
 import { notifyError } from "@core/utils/error-handler.server";
 
@@ -82,19 +82,11 @@ export async function POST(req: NextRequest) {
 
     const { data } = validation;
 
-    // 3. 環境変数チェック
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-    if (!supabaseUrl || !supabaseServiceKey) {
-      // eslint-disable-next-line no-console
-      console.error("Supabase credentials missing");
-      return NextResponse.json({ error: "Configuration error" }, { status: 500 });
-    }
-
-    const supabase = createClient(supabaseUrl, supabaseServiceKey, {
-      auth: { persistSession: false },
-    });
+    const factory = createSecureSupabaseClient();
+    const supabase = await factory.createAuditedAdminClient(
+      AdminReason.ERROR_COLLECTION,
+      "Client Error Collection"
+    );
 
     // 4. 重複チェック
     const { shouldLogError } = await import("@core/logging/deduplication");

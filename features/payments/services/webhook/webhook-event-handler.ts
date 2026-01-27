@@ -1,11 +1,11 @@
-import { createClient } from "@supabase/supabase-js";
+import { SupabaseClient } from "@supabase/supabase-js";
 import Stripe from "stripe";
 
 import { logger } from "@core/logging/app-logger";
 import { NotificationService } from "@core/notification";
 import { getSettlementReportPort } from "@core/ports/settlements";
+import { AdminReason, createSecureSupabaseClient } from "@core/security";
 import { getStripe } from "@core/stripe/client";
-import { getRequiredEnvVar } from "@core/utils/env-helper";
 import { handleServerError } from "@core/utils/error-handler.server";
 import { maskSessionId } from "@core/utils/mask";
 import { canPromoteStatus } from "@core/utils/payments/status-rank";
@@ -19,19 +19,20 @@ export interface WebhookEventHandler {
 }
 
 export class StripeWebhookEventHandler implements WebhookEventHandler {
-  private readonly supabase;
+  private supabase!: SupabaseClient<Database>;
 
-  constructor() {
-    this.supabase = createClient<Database>(
-      getRequiredEnvVar("NEXT_PUBLIC_SUPABASE_URL"),
-      getRequiredEnvVar("SUPABASE_SERVICE_ROLE_KEY"),
-      {
-        auth: {
-          autoRefreshToken: false,
-          persistSession: false,
-        },
-      }
-    );
+  constructor() {}
+
+  /**
+   * Supabaseクライアントの初期化を確実に行う
+   */
+  private async ensureInitialized() {
+    if (this.supabase) return;
+    const factory = createSecureSupabaseClient();
+    this.supabase = (await factory.createAuditedAdminClient(
+      AdminReason.PAYMENT_PROCESSING,
+      "Stripe Webhook Event Handling"
+    )) as SupabaseClient<Database>;
   }
 
   /**
@@ -46,6 +47,7 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
   }
 
   async handleEvent(event: Stripe.Event): Promise<WebhookProcessingResult> {
+    await this.ensureInitialized();
     try {
       switch (event.type) {
         case "payment_intent.succeeded": {

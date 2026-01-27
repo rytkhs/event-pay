@@ -26,6 +26,18 @@ jest.mock("@supabase/supabase-js", () => ({
   })),
 }));
 
+// @core/security をモック化
+jest.mock("@core/security", () => ({
+  AdminReason: {
+    ERROR_COLLECTION: "error_collection",
+  },
+  createSecureSupabaseClient: jest.fn(() => ({
+    createAuditedAdminClient: jest.fn().mockResolvedValue({
+      from: mockSupabaseFrom,
+    }),
+  })),
+}));
+
 describe("エラー収集API統合テスト (/api/errors)", () => {
   // モック関数をテストスコープで定義
   let mockLimit: jest.MockedFunction<any>;
