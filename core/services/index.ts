@@ -3,9 +3,6 @@
  * features間の境界違反を解消するための抽象化層
  */
 
-// Payment Registry (DI container)
-export { default as paymentRegistry } from "./payment-registry";
-
 // Payment Actions抽象化
 export {
   type PaymentActionsPort,

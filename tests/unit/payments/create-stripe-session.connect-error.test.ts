@@ -101,12 +101,6 @@ jest.mock("@core/services", () => ({
   })),
 }));
 
-// モック: core-bindings（PaymentServiceの登録を回避）
-jest.mock("@features/payments/core-bindings", () => ({
-  __esModule: true,
-  registerPaymentImplementations: jest.fn(),
-}));
-
 describe("createGuestStripeSessionAction - Connectアカウント未設定/無効化", () => {
   const validInput = {
     guestToken: "gst_12345678901234567890123456789012",
@@ -131,9 +125,7 @@ describe("createGuestStripeSessionAction - Connectアカウント未設定/無�
     const result = await createGuestStripeSessionAction(validInput as any);
 
     expect(result.success).toBe(false);
-    // @ts-expect-error jest 実行時の型は緩く扱う
     expect(result.code).toBe("RESOURCE_CONFLICT");
-    // @ts-expect-error 同上
     expect(result.error).toContain("決済の準備ができません");
   });
 
@@ -146,9 +138,7 @@ describe("createGuestStripeSessionAction - Connectアカウント未設定/無�
     const result = await createGuestStripeSessionAction(validInput as any);
 
     expect(result.success).toBe(false);
-    // @ts-expect-error jest 実行時の型は緩く扱う
     expect(result.code).toBe("RESOURCE_CONFLICT");
-    // @ts-expect-error 同上
     expect(result.error).toContain("主催者のお支払い受付が一時的に制限されています");
   });
 });
