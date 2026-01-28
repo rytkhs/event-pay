@@ -165,25 +165,56 @@ export const createMockSupabaseClientForPayments = (options?: { paymentId?: stri
   // payments テーブル用のクエリビルダーモックを設定
   (baseClient.from as jest.Mock).mockImplementation((table: string) => {
     if (table === "payments") {
-      return {
-        select: jest.fn().mockReturnThis(),
+      let lastSelectColumns: string | undefined;
+      let lastUpdatePayload: Record<string, unknown> | undefined;
+
+      const builder: any = {
+        select: jest.fn().mockImplementation((columns?: string) => {
+          lastSelectColumns = columns;
+          return builder;
+        }),
         eq: jest.fn().mockReturnThis(),
+        or: jest.fn().mockReturnThis(),
         in: jest.fn().mockReturnThis(),
         order: jest.fn().mockReturnThis(),
         limit: jest.fn().mockReturnThis(),
-        maybeSingle: jest.fn().mockResolvedValue({ data: null, error: null }),
+        maybeSingle: jest.fn().mockImplementation(async () => {
+          // Destination charges保存（updateWithRetries）や、pending再利用時の予約更新（reusePendingPayment）で
+          // select + maybeSingle を行うため、最低限の「更新が成功した」データを返す。
+          if (lastSelectColumns?.includes("checkout_idempotency_key") && lastUpdatePayload) {
+            return {
+              data: {
+                id: paymentId,
+                checkout_idempotency_key:
+                  (lastUpdatePayload.checkout_idempotency_key as string | undefined) ??
+                  "checkout_mock_key",
+                checkout_key_revision:
+                  (lastUpdatePayload.checkout_key_revision as number | undefined) ?? 0,
+              },
+              error: null,
+            };
+          }
+
+          return { data: null, error: null };
+        }),
         insert: jest.fn().mockReturnThis(),
-        update: jest.fn().mockReturnThis(),
+        update: jest.fn().mockImplementation((payload: Record<string, unknown>) => {
+          lastUpdatePayload = payload;
+          return builder;
+        }),
         single: jest.fn().mockResolvedValue({
           data: { id: paymentId },
           error: null,
         }),
       };
+
+      return builder;
     }
     // その他のテーブル用のデフォルト設定
     return {
       select: jest.fn().mockReturnThis(),
       eq: jest.fn().mockReturnThis(),
+      or: jest.fn().mockReturnThis(),
       in: jest.fn().mockReturnThis(),
       order: jest.fn().mockReturnThis(),
       limit: jest.fn().mockReturnThis(),

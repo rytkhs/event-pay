@@ -1,8 +1,6 @@
 /**
  * 決済セッション作成冪等性テスト専用ヘルパー
  *
- * 仕様書: docs/spec/test/stripe/payment-session-idempotency.md
- *
  * 目的：
  * PaymentService.createStripeSession の冪等性・並行制御を厳密に検証するための
  * 統合テスト用ヘルパー関数を提供

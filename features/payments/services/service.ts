@@ -5,23 +5,19 @@
 import "server-only";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
-// import type { PostgrestError } from "@supabase/supabase-js";
-import { PostgrestError } from "@supabase/supabase-js";
 
-// import { logger } from "@core/logging/app-logger";
 import { createPaymentLogger, type PaymentLogger } from "@core/logging/payment-logger";
 import { generateSecureUuid } from "@core/security/crypto";
-import { getStripe } from "@core/stripe/client";
+import { getStripe, generateIdempotencyKey } from "@core/stripe/client";
 import * as DestinationCharges from "@core/stripe/destination-charges";
 import { convertStripeError } from "@core/stripe/error-handler";
-import { PaymentError, PaymentErrorType, ErrorHandlingResult } from "@core/types/payment-errors";
+import { PaymentError, PaymentErrorType } from "@core/types/payment-errors";
 import { handleServerError } from "@core/utils/error-handler.server";
 import { maskSessionId } from "@core/utils/mask";
 import { assertStripePayment } from "@core/utils/stripe-guards";
 
 import { Database } from "@/types/database";
 
-import { ERROR_HANDLING_BY_TYPE } from "./error-mapping";
 import { ApplicationFeeCalculator } from "./fee-config/application-fee-calculator";
 import { IPaymentService, IPaymentErrorHandler } from "./interface";
 import {
@@ -34,6 +30,8 @@ import {
   CreateCashPaymentResult,
   UpdatePaymentStatusParams,
 } from "./types";
+import { findLatestPaymentByEffectiveTime } from "./utils/payment-effective-time";
+import { updateWithRetries } from "./utils/supabase-retry";
 
 /**
  * 終端決済状態の定義（決済完了系の状態）
@@ -45,6 +43,39 @@ const TERMINAL_PAYMENT_STATUSES = ["paid", "received", "refunded", "waived"] as 
  * オープン決済状態の定義（処理継続可能な状態）
  */
 const OPEN_PAYMENT_STATUSES = ["pending", "failed"] as const;
+
+type TerminalPaymentStatus = (typeof TERMINAL_PAYMENT_STATUSES)[number];
+type OpenPaymentStatus = (typeof OPEN_PAYMENT_STATUSES)[number];
+
+const isTerminalPaymentStatus = (status: PaymentStatus): status is TerminalPaymentStatus => {
+  return (TERMINAL_PAYMENT_STATUSES as readonly PaymentStatus[]).includes(status);
+};
+
+const isOpenPaymentStatus = (status: PaymentStatus): status is OpenPaymentStatus => {
+  return (OPEN_PAYMENT_STATUSES as readonly PaymentStatus[]).includes(status);
+};
+
+const OPEN_PAYMENT_SELECT_COLUMNS =
+  "id, status, method, amount, checkout_idempotency_key, checkout_key_revision, stripe_payment_intent_id, paid_at, created_at, updated_at";
+
+type OpenPaymentRow = {
+  id: string;
+  status: PaymentStatus;
+  method: PaymentMethod;
+  amount: number;
+  checkout_idempotency_key: string | null;
+  checkout_key_revision: number;
+  stripe_payment_intent_id: string | null;
+  paid_at: string | null;
+  created_at: string | null;
+  updated_at: string | null;
+};
+
+type EnsurePaymentRecordResult = {
+  paymentId: string;
+  idempotencyKey: string;
+  checkoutKeyRevision: number;
+};
 
 /**
  * PaymentServiceの実装クラス
@@ -69,56 +100,438 @@ export class PaymentService implements IPaymentService {
   /**
    * 決済レコードの有効時間を計算（状態別優先順位適用）
    */
-  private calculateEffectiveTime(
-    status: PaymentStatus,
-    paid_at: string | null,
-    updated_at: string | null,
-    created_at: string | null
-  ): string | null {
-    // 決済完了状態: paid_at > updated_at > created_at
-    if (TERMINAL_PAYMENT_STATUSES.includes(status as any)) {
-      return paid_at ?? updated_at ?? created_at;
+
+  private normalizeOpenPaymentRow(row: Record<string, unknown>): OpenPaymentRow | null {
+    if (!row || typeof row.id !== "string") return null;
+
+    const checkoutKeyRevisionRaw = row.checkout_key_revision;
+    const checkoutKeyRevision =
+      typeof checkoutKeyRevisionRaw === "number"
+        ? checkoutKeyRevisionRaw
+        : typeof checkoutKeyRevisionRaw === "string" && /^\d+$/.test(checkoutKeyRevisionRaw)
+          ? Number.parseInt(checkoutKeyRevisionRaw, 10)
+          : 0;
+
+    if (
+      checkoutKeyRevisionRaw !== null &&
+      checkoutKeyRevisionRaw !== undefined &&
+      typeof checkoutKeyRevisionRaw !== "number"
+    ) {
+      this.paymentLogger.warn("checkout_key_revision is not a number; coercing to 0", {
+        payment_id: row.id,
+        checkout_key_revision_raw: checkoutKeyRevisionRaw,
+      });
     }
 
-    // 未完了状態（pending/failed/canceled）: updated_at > created_at
-    return updated_at ?? created_at;
+    return {
+      id: row.id,
+      status: row.status as PaymentStatus,
+      method: row.method as PaymentMethod,
+      amount: typeof row.amount === "number" ? row.amount : 0,
+      checkout_idempotency_key:
+        typeof row.checkout_idempotency_key === "string" ? row.checkout_idempotency_key : null,
+      checkout_key_revision: checkoutKeyRevision,
+      stripe_payment_intent_id:
+        typeof row.stripe_payment_intent_id === "string" ? row.stripe_payment_intent_id : null,
+      paid_at: typeof row.paid_at === "string" ? row.paid_at : null,
+      created_at: typeof row.created_at === "string" ? row.created_at : null,
+      updated_at: typeof row.updated_at === "string" ? row.updated_at : null,
+    };
   }
 
-  /**
-   * 決済レコード配列から最新のものを1つ選定（有効時間ベース）
-   */
-  private findLatestPaymentByEffectiveTime<
-    T extends {
-      status: string;
-      paid_at: string | null;
-      updated_at: string | null;
-      created_at: string | null;
-    },
-  >(payments: T[]): T | null {
-    if (!payments?.length) return null;
+  private async ensureStripePaymentRecord(
+    params: CreateStripeSessionParams
+  ): Promise<EnsurePaymentRecordResult> {
+    const { data: openPayments, error: openPaymentsError } = await this.supabase
+      .from("payments")
+      .select(OPEN_PAYMENT_SELECT_COLUMNS)
+      .eq("attendance_id", params.attendanceId)
+      .in("status", OPEN_PAYMENT_STATUSES);
 
-    return payments
-      .map((payment) => ({
-        ...payment,
-        effectiveTime: this.calculateEffectiveTime(
-          payment.status as PaymentStatus,
-          payment.paid_at,
-          payment.updated_at,
-          payment.created_at
-        ),
-      }))
-      .filter((payment) => payment.effectiveTime) // 有効時間がnullのものを除外
-      .sort((a, b) => {
-        const timeA = new Date(a.effectiveTime || a.created_at || 0).getTime();
-        const timeB = new Date(b.effectiveTime || b.created_at || 0).getTime();
-        if (timeA !== timeB) {
-          return timeB - timeA; // 降順（新しい順）
+    if (openPaymentsError) {
+      throw new PaymentError(
+        PaymentErrorType.DATABASE_ERROR,
+        `決済レコード（open）の検索に失敗しました: ${openPaymentsError.message}`,
+        openPaymentsError
+      );
+    }
+
+    const normalizedOpenPayments = (openPayments ?? [])
+      .map((payment) => this.normalizeOpenPaymentRow(payment as unknown as Record<string, unknown>))
+      .filter((payment): payment is OpenPaymentRow => payment !== null);
+
+    const selectPreferredOpenPayment = (payments: OpenPaymentRow[]): OpenPaymentRow | null => {
+      if (!payments.length) return null;
+      const pendingPayments = payments.filter((payment) => payment.status === "pending");
+      if (pendingPayments.length > 0) {
+        return findLatestPaymentByEffectiveTime(pendingPayments, TERMINAL_PAYMENT_STATUSES);
+      }
+      return findLatestPaymentByEffectiveTime(payments, TERMINAL_PAYMENT_STATUSES);
+    };
+
+    const openPayment = selectPreferredOpenPayment(normalizedOpenPayments);
+
+    const { data: existingTerminal, error: terminalFindError } = await this.supabase
+      .from("payments")
+      .select("id")
+      .eq("attendance_id", params.attendanceId)
+      .in("status", TERMINAL_PAYMENT_STATUSES)
+      .limit(1)
+      .maybeSingle();
+
+    if (terminalFindError) {
+      throw new PaymentError(
+        PaymentErrorType.DATABASE_ERROR,
+        `決済レコード（終端）の検索に失敗しました: ${terminalFindError.message}`,
+        terminalFindError
+      );
+    }
+
+    if (existingTerminal) {
+      throw new PaymentError(
+        PaymentErrorType.PAYMENT_ALREADY_EXISTS,
+        "この参加に対する決済は既に完了済みです"
+      );
+    }
+
+    const buildIdempotencyKey = () => generateIdempotencyKey("checkout");
+
+    const fetchOpenPaymentById = async (paymentId: string): Promise<OpenPaymentRow | null> => {
+      const { data: currentOpen, error: fetchError } = await this.supabase
+        .from("payments")
+        .select(OPEN_PAYMENT_SELECT_COLUMNS)
+        .eq("id", paymentId)
+        .maybeSingle();
+
+      if (fetchError) {
+        throw new PaymentError(
+          PaymentErrorType.DATABASE_ERROR,
+          `決済レコードの再取得に失敗しました: ${fetchError.message}`,
+          fetchError
+        );
+      }
+
+      const normalized = currentOpen
+        ? this.normalizeOpenPaymentRow(currentOpen as Record<string, unknown>)
+        : null;
+
+      if (!normalized) {
+        return null;
+      }
+
+      if (isTerminalPaymentStatus(normalized.status)) {
+        throw new PaymentError(
+          PaymentErrorType.PAYMENT_ALREADY_EXISTS,
+          "この参加に対する決済は既に完了済みです"
+        );
+      }
+
+      if (!isOpenPaymentStatus(normalized.status)) {
+        throw new PaymentError(
+          PaymentErrorType.CONCURRENT_UPDATE,
+          "決済情報が更新されています。再試行してください。"
+        );
+      }
+
+      return normalized;
+    };
+
+    const reusePendingPayment = async (
+      pendingPayment: OpenPaymentRow
+    ): Promise<EnsurePaymentRecordResult> => {
+      const currentRevision = pendingPayment.checkout_key_revision;
+      const idempotencyKey = buildIdempotencyKey();
+      const checkoutKeyRevision = currentRevision + 1;
+
+      const { data: reserved, error: reserveError } = await this.supabase
+        .from("payments")
+        .update({
+          amount: params.amount,
+          stripe_payment_intent_id: null,
+          stripe_checkout_session_id: null,
+          checkout_idempotency_key: idempotencyKey,
+          checkout_key_revision: checkoutKeyRevision,
+        })
+        .eq("id", pendingPayment.id)
+        .eq("checkout_key_revision", currentRevision)
+        .select(OPEN_PAYMENT_SELECT_COLUMNS)
+        .maybeSingle();
+
+      if (reserveError) {
+        throw new PaymentError(
+          PaymentErrorType.DATABASE_ERROR,
+          `既存決済の更新に失敗しました: ${reserveError.message}`,
+          reserveError
+        );
+      }
+
+      const normalizedReserved = reserved
+        ? this.normalizeOpenPaymentRow(reserved as Record<string, unknown>)
+        : null;
+
+      if (normalizedReserved?.checkout_idempotency_key === idempotencyKey) {
+        this.paymentLogger.info("Idempotency key reserved", {
+          attendance_id: params.attendanceId,
+          has_open_payment: true,
+          final_key: idempotencyKey.substring(0, 12) + "...",
+          final_revision: checkoutKeyRevision,
+        });
+
+        return {
+          paymentId: pendingPayment.id,
+          idempotencyKey,
+          checkoutKeyRevision,
+        };
+      }
+
+      const latestOpen = await fetchOpenPaymentById(pendingPayment.id);
+
+      if (!latestOpen) {
+        this.paymentLogger.warn("Idempotency key reservation returned no row; fallback", {
+          attendance_id: params.attendanceId,
+          payment_id: pendingPayment.id,
+          final_key: idempotencyKey.substring(0, 12) + "...",
+          final_revision: checkoutKeyRevision,
+        });
+
+        return {
+          paymentId: pendingPayment.id,
+          idempotencyKey,
+          checkoutKeyRevision,
+        };
+      }
+
+      if (latestOpen.checkout_idempotency_key) {
+        if (latestOpen.amount !== params.amount) {
+          this.paymentLogger.warn("Concurrent checkout reserved with different amount", {
+            attendance_id: params.attendanceId,
+            payment_id: latestOpen.id,
+            requested_amount: params.amount,
+            reserved_amount: latestOpen.amount,
+            reserved_revision: latestOpen.checkout_key_revision,
+          });
+          throw new PaymentError(
+            PaymentErrorType.CONCURRENT_UPDATE,
+            "決済情報が更新されています。再試行してください。"
+          );
         }
-        // 時間が同じ場合はcreated_atで比較
-        const createdA = new Date(a.created_at || 0).getTime();
-        const createdB = new Date(b.created_at || 0).getTime();
-        return createdB - createdA;
-      })[0];
+
+        this.paymentLogger.info("Idempotency key reused after concurrent reservation", {
+          attendance_id: params.attendanceId,
+          payment_id: latestOpen.id,
+          final_key: latestOpen.checkout_idempotency_key.substring(0, 12) + "...",
+          final_revision: latestOpen.checkout_key_revision,
+        });
+
+        return {
+          paymentId: latestOpen.id,
+          idempotencyKey: latestOpen.checkout_idempotency_key,
+          checkoutKeyRevision: latestOpen.checkout_key_revision,
+        };
+      }
+
+      this.paymentLogger.warn("Idempotency key reservation missing after update; fallback", {
+        attendance_id: params.attendanceId,
+        payment_id: latestOpen.id,
+        final_key: idempotencyKey.substring(0, 12) + "...",
+        final_revision: checkoutKeyRevision,
+      });
+
+      return {
+        paymentId: pendingPayment.id,
+        idempotencyKey,
+        checkoutKeyRevision,
+      };
+    };
+
+    const fetchConcurrentOpenPayments = async (): Promise<OpenPaymentRow[]> => {
+      const { data: concurrentOpen, error: refetchOpenError } = await this.supabase
+        .from("payments")
+        .select(OPEN_PAYMENT_SELECT_COLUMNS)
+        .eq("attendance_id", params.attendanceId)
+        .in("status", OPEN_PAYMENT_STATUSES);
+
+      if (refetchOpenError) {
+        throw new PaymentError(
+          PaymentErrorType.DATABASE_ERROR,
+          `既存open決済の再取得に失敗しました: ${refetchOpenError.message}`,
+          refetchOpenError
+        );
+      }
+
+      return (concurrentOpen ?? [])
+        .map((payment) => this.normalizeOpenPaymentRow(payment as Record<string, unknown>))
+        .filter((payment): payment is OpenPaymentRow => payment !== null);
+    };
+
+    const fetchConcurrentOpenPreferPending = async (): Promise<OpenPaymentRow | null> => {
+      const concurrentOpen = await fetchConcurrentOpenPayments();
+      return selectPreferredOpenPayment(concurrentOpen);
+    };
+
+    const fetchConcurrentOpenLatest = async (): Promise<OpenPaymentRow | null> => {
+      const concurrentOpen = await fetchConcurrentOpenPayments();
+      return findLatestPaymentByEffectiveTime(concurrentOpen, TERMINAL_PAYMENT_STATUSES);
+    };
+
+    if (openPayment) {
+      if (openPayment.status === "pending") {
+        return await reusePendingPayment(openPayment);
+      }
+
+      const newIdempotencyKey = buildIdempotencyKey();
+      const { data: payment, error: insertError } = await this.supabase
+        .from("payments")
+        .insert({
+          attendance_id: params.attendanceId,
+          method: "stripe",
+          amount: params.amount,
+          status: "pending",
+          checkout_idempotency_key: newIdempotencyKey,
+          checkout_key_revision: 0,
+        })
+        .select()
+        .single();
+
+      if (insertError) {
+        if (insertError.code === "23505") {
+          const concurrentOpen = await fetchConcurrentOpenPreferPending();
+
+          if (concurrentOpen) {
+            if (concurrentOpen.status === "pending") {
+              return await reusePendingPayment(concurrentOpen);
+            }
+
+            const { data: terminalAfterRace } = await this.supabase
+              .from("payments")
+              .select("id")
+              .eq("attendance_id", params.attendanceId)
+              .in("status", TERMINAL_PAYMENT_STATUSES)
+              .order("paid_at", { ascending: false, nullsFirst: false })
+              .limit(1)
+              .maybeSingle();
+
+            if (terminalAfterRace) {
+              throw new PaymentError(
+                PaymentErrorType.PAYMENT_ALREADY_EXISTS,
+                "この参加に対する決済は既に完了済みです",
+                insertError
+              );
+            }
+
+            throw new PaymentError(
+              PaymentErrorType.DATABASE_ERROR,
+              "決済レコードの作成に失敗しました（再試行してください）",
+              insertError
+            );
+          }
+
+          const { data: terminalAfterRace } = await this.supabase
+            .from("payments")
+            .select("id")
+            .eq("attendance_id", params.attendanceId)
+            .in("status", TERMINAL_PAYMENT_STATUSES)
+            .order("paid_at", { ascending: false, nullsFirst: false })
+            .limit(1)
+            .maybeSingle();
+
+          if (terminalAfterRace) {
+            throw new PaymentError(
+              PaymentErrorType.PAYMENT_ALREADY_EXISTS,
+              "この参加に対する決済は既に完了済みです",
+              insertError
+            );
+          }
+
+          throw new PaymentError(
+            PaymentErrorType.DATABASE_ERROR,
+            `決済レコードの作成に失敗しました: ${insertError.message}`,
+            insertError
+          );
+        }
+
+        throw new PaymentError(
+          PaymentErrorType.DATABASE_ERROR,
+          `決済レコードの作成に失敗しました: ${insertError.message}`,
+          insertError
+        );
+      }
+
+      assertStripePayment(payment, "payment lookup");
+      return {
+        paymentId: payment.id,
+        idempotencyKey: newIdempotencyKey,
+        checkoutKeyRevision: 0,
+      };
+    }
+
+    const newIdempotencyKey = buildIdempotencyKey();
+    const { data: payment, error: insertError } = await this.supabase
+      .from("payments")
+      .insert({
+        attendance_id: params.attendanceId,
+        method: "stripe",
+        amount: params.amount,
+        status: "pending",
+        checkout_idempotency_key: newIdempotencyKey,
+        checkout_key_revision: 0,
+      })
+      .select()
+      .single();
+
+    if (insertError) {
+      if (insertError.code === "23505") {
+        const concurrentOpen = await fetchConcurrentOpenLatest();
+
+        if (concurrentOpen) {
+          if (concurrentOpen.status === "pending") {
+            return await reusePendingPayment(concurrentOpen);
+          }
+
+          throw new PaymentError(
+            PaymentErrorType.DATABASE_ERROR,
+            "決済レコードの作成に失敗しました（再試行してください）",
+            insertError
+          );
+        }
+
+        const { data: terminalAfterRace } = await this.supabase
+          .from("payments")
+          .select("id")
+          .eq("attendance_id", params.attendanceId)
+          .in("status", TERMINAL_PAYMENT_STATUSES)
+          .order("paid_at", { ascending: false, nullsFirst: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (terminalAfterRace) {
+          throw new PaymentError(
+            PaymentErrorType.PAYMENT_ALREADY_EXISTS,
+            "この参加に対する決済は既に完了済みです",
+            insertError
+          );
+        }
+
+        throw new PaymentError(
+          PaymentErrorType.DATABASE_ERROR,
+          `決済レコードの作成に失敗しました: ${insertError.message}`,
+          insertError
+        );
+      }
+
+      throw new PaymentError(
+        PaymentErrorType.DATABASE_ERROR,
+        `決済レコードの作成に失敗しました: ${insertError.message}`,
+        insertError
+      );
+    }
+
+    assertStripePayment(payment, "payment lookup");
+    return {
+      paymentId: payment.id,
+      idempotencyKey: newIdempotencyKey,
+      checkoutKeyRevision: 0,
+    };
   }
 
   /**
@@ -155,329 +568,11 @@ export class PaymentService implements IPaymentService {
     });
 
     try {
-      // 既存決済の状態を履歴化設計に合わせて取得（open優先・履歴は無視）
-      let targetPaymentId: string;
-
-      // openは pending を最優先、無ければ failed を参照
-      type OpenPaymentRow = {
-        id: string;
-        status: PaymentStatus;
-        method: PaymentMethod;
-        amount: number;
-        checkout_idempotency_key: string | null;
-        checkout_key_revision: number;
-        stripe_payment_intent_id: string | null;
-        paid_at: string | null;
-        created_at: string | null;
-        updated_at: string | null;
-      };
-      let openPayment: OpenPaymentRow | null = null;
-
-      const { data: openPayments, error: openPaymentsError } = await this.supabase
-        .from("payments")
-        .select(
-          "id, status, method, amount, checkout_idempotency_key, checkout_key_revision, stripe_payment_intent_id, paid_at, created_at, updated_at"
-        )
-        .eq("attendance_id", params.attendanceId)
-        .in("status", OPEN_PAYMENT_STATUSES);
-
-      if (openPaymentsError) {
-        throw new PaymentError(
-          PaymentErrorType.DATABASE_ERROR,
-          `決済レコード（open）の検索に失敗しました: ${openPaymentsError.message}`,
-          openPaymentsError
-        );
-      }
-      // オープン決済の最新選定（統一されたソートロジック使用）
-      if (openPayments && openPayments.length > 0) {
-        const latestOpen = this.findLatestPaymentByEffectiveTime(openPayments);
-
-        if (latestOpen) {
-          openPayment = {
-            id: latestOpen.id,
-            status: latestOpen.status as PaymentStatus,
-            method: latestOpen.method as PaymentMethod,
-            // hydrate additional fields for idempotency handling
-            amount: latestOpen.amount as number,
-            // 🔧 型安全な値取得に修正
-            checkout_idempotency_key:
-              typeof latestOpen.checkout_idempotency_key === "string"
-                ? latestOpen.checkout_idempotency_key
-                : null,
-            checkout_key_revision:
-              typeof latestOpen.checkout_key_revision === "number"
-                ? latestOpen.checkout_key_revision
-                : 0,
-            stripe_payment_intent_id: latestOpen.stripe_payment_intent_id,
-            paid_at: latestOpen.paid_at ?? null,
-            created_at: latestOpen.created_at ?? null,
-            updated_at: latestOpen.updated_at ?? null,
-          } as any;
-        }
-      }
-
-      // 支払完了系が存在するか確認（存在すれば無条件で受付不可）
-      // 意図: 完了済み決済が1つでも存在すれば、新規決済は受け付けない（重複課金防止）
-      const { data: existingTerminal, error: terminalFindError } = await this.supabase
-        .from("payments")
-        .select("id")
-        .eq("attendance_id", params.attendanceId)
-        .in("status", TERMINAL_PAYMENT_STATUSES)
-        .limit(1)
-        .maybeSingle();
-
-      if (terminalFindError) {
-        throw new PaymentError(
-          PaymentErrorType.DATABASE_ERROR,
-          `決済レコード（終端）の検索に失敗しました: ${terminalFindError.message}`,
-          terminalFindError
-        );
-      }
-
-      if (existingTerminal) {
-        throw new PaymentError(
-          PaymentErrorType.PAYMENT_ALREADY_EXISTS,
-          "この参加に対する決済は既に完了済みです"
-        );
-      }
-
-      // Idempotency 管理用の変数（後続分岐で必ず設定する）
-      let idempotencyKeyToUse!: string; // definite assignment
-      let checkoutKeyRevisionToSave: number = 0;
-
-      if (openPayment) {
-        if ((openPayment.status as PaymentStatus) === "pending") {
-          // 再試行: pending は再利用（Stripe識別子のリセットと金額更新）
-          const { error: reuseError } = await this.supabase
-            .from("payments")
-            .update({
-              amount: params.amount,
-              // status はすでに pending のため変更しない
-              stripe_payment_intent_id: null,
-              stripe_checkout_session_id: null,
-            })
-            .eq("id", openPayment.id);
-
-          if (reuseError) {
-            throw new PaymentError(
-              PaymentErrorType.DATABASE_ERROR,
-              `既存決済の更新に失敗しました: ${reuseError.message}`,
-              reuseError
-            );
-          }
-
-          // メモリ上のopenPaymentオブジェクトも新しい金額に同期
-          openPayment = {
-            ...openPayment,
-            amount: params.amount,
-          } as OpenPaymentRow;
-
-          targetPaymentId = openPayment.id as string;
-        } else {
-          // open が failed の場合は新規 pending を作成（降格禁止ルールに従う）
-          // 🔧 最初からIdempotency Key情報を含めて作成
-          const { generateIdempotencyKey } = await import("@core/stripe/client");
-          const newIdempotencyKey = generateIdempotencyKey("checkout");
-
-          const { data: payment, error: insertError } = await this.supabase
-            .from("payments")
-            .insert({
-              attendance_id: params.attendanceId,
-              method: "stripe",
-              amount: params.amount,
-              status: "pending",
-              checkout_idempotency_key: newIdempotencyKey,
-              checkout_key_revision: 0,
-            })
-            .select()
-            .single();
-
-          if (insertError) {
-            if (insertError.code === "23505") {
-              // 並行作成: 直近の open を再利用
-              const { data: concurrentOpen, error: refetchOpenError } = await this.supabase
-                .from("payments")
-                .select("id, status, updated_at, created_at")
-                .eq("attendance_id", params.attendanceId)
-                .in("status", OPEN_PAYMENT_STATUSES)
-                .order("status", { ascending: true }) // pending(10) < failed(15)
-                .order("updated_at", { ascending: false, nullsFirst: false })
-                .order("created_at", { ascending: false })
-                .limit(1)
-                .maybeSingle();
-
-              if (refetchOpenError) {
-                throw new PaymentError(
-                  PaymentErrorType.DATABASE_ERROR,
-                  `既存open決済の再取得に失敗しました: ${refetchOpenError.message}`,
-                  refetchOpenError
-                );
-              }
-
-              if (concurrentOpen) {
-                // pending の場合のみ再利用、failed の場合は再試行を促す
-                if ((concurrentOpen.status as PaymentStatus) === "pending") {
-                  const { error: dupReuseError } = await this.supabase
-                    .from("payments")
-                    .update({
-                      amount: params.amount,
-                      stripe_payment_intent_id: null,
-                      stripe_checkout_session_id: null,
-                    })
-                    .eq("id", concurrentOpen.id as string);
-
-                  if (dupReuseError) {
-                    throw new PaymentError(
-                      PaymentErrorType.DATABASE_ERROR,
-                      `既存決済の更新に失敗しました: ${dupReuseError.message}`,
-                      dupReuseError
-                    );
-                  }
-
-                  targetPaymentId = concurrentOpen.id as string;
-                  // 同時実行で既存pendingを再利用する場合も新しいキー&リビジョン+1
-                  {
-                    const { generateIdempotencyKey } = await import("@core/stripe/client");
-                    idempotencyKeyToUse = generateIdempotencyKey("checkout");
-                    checkoutKeyRevisionToSave =
-                      ((concurrentOpen as any).checkout_key_revision ?? 0) + 1;
-                  }
-                } else {
-                  throw new PaymentError(
-                    PaymentErrorType.DATABASE_ERROR,
-                    "決済レコードの作成に失敗しました（再試行してください）",
-                    insertError
-                  );
-                }
-              } else {
-                throw new PaymentError(
-                  PaymentErrorType.DATABASE_ERROR,
-                  `決済レコードの作成に失敗しました: ${insertError.message}`,
-                  insertError
-                );
-              }
-            } else {
-              throw new PaymentError(
-                PaymentErrorType.DATABASE_ERROR,
-                `決済レコードの作成に失敗しました: ${insertError.message}`,
-                insertError
-              );
-            }
-          } else {
-            assertStripePayment(payment, "payment lookup");
-            targetPaymentId = payment.id;
-            // 新規作成（failed->pending）：作成時に付与したキーを使用、rev=0
-            idempotencyKeyToUse = newIdempotencyKey;
-            checkoutKeyRevisionToSave = 0;
-          }
-        }
-      } else {
-        // openが無ければ新規作成
-        // 🔧 最初からIdempotency Key情報を含めて作成
-        const { generateIdempotencyKey } = await import("@core/stripe/client");
-        const newIdempotencyKey = generateIdempotencyKey("checkout");
-
-        const { data: payment, error: insertError } = await this.supabase
-          .from("payments")
-          .insert({
-            attendance_id: params.attendanceId,
-            method: "stripe",
-            amount: params.amount,
-            status: "pending",
-            checkout_idempotency_key: newIdempotencyKey,
-            checkout_key_revision: 0,
-          })
-          .select()
-          .single();
-
-        if (insertError) {
-          if (insertError.code === "23505") {
-            // 同時実行: openが作られたのでopenを再取得して再利用
-            const { data: concurrentOpen, error: refetchOpenError } = await this.supabase
-              .from("payments")
-              .select("id, status, updated_at, created_at")
-              .eq("attendance_id", params.attendanceId)
-              .in("status", OPEN_PAYMENT_STATUSES)
-              .order("updated_at", { ascending: false, nullsFirst: false })
-              .order("created_at", { ascending: false })
-              .limit(1)
-              .maybeSingle();
-
-            if (refetchOpenError) {
-              throw new PaymentError(
-                PaymentErrorType.DATABASE_ERROR,
-                `既存open決済の再取得に失敗しました: ${refetchOpenError.message}`,
-                refetchOpenError
-              );
-            }
-
-            if (concurrentOpen) {
-              if ((concurrentOpen.status as PaymentStatus) === "pending") {
-                const { error: dupReuseError } = await this.supabase
-                  .from("payments")
-                  .update({
-                    amount: params.amount,
-                    stripe_payment_intent_id: null,
-                    stripe_checkout_session_id: null,
-                  })
-                  .eq("id", concurrentOpen.id as string);
-
-                if (dupReuseError) {
-                  throw new PaymentError(
-                    PaymentErrorType.DATABASE_ERROR,
-                    `既存決済の更新に失敗しました: ${dupReuseError.message}`,
-                    dupReuseError
-                  );
-                }
-
-                targetPaymentId = concurrentOpen.id as string;
-              } else {
-                throw new PaymentError(
-                  PaymentErrorType.DATABASE_ERROR,
-                  "決済レコードの作成に失敗しました（再試行してください）",
-                  insertError
-                );
-              }
-            } else {
-              // openが無いのに23505 → 直近で終端化された可能性
-              const { data: terminalAfterRace } = await this.supabase
-                .from("payments")
-                .select("id")
-                .eq("attendance_id", params.attendanceId)
-                .in("status", TERMINAL_PAYMENT_STATUSES)
-                .order("paid_at", { ascending: false, nullsFirst: false })
-                .limit(1)
-                .maybeSingle();
-
-              if (terminalAfterRace) {
-                throw new PaymentError(
-                  PaymentErrorType.PAYMENT_ALREADY_EXISTS,
-                  "この参加に対する決済は既に完了済みです",
-                  insertError
-                );
-              }
-
-              throw new PaymentError(
-                PaymentErrorType.DATABASE_ERROR,
-                `決済レコードの作成に失敗しました: ${insertError.message}`,
-                insertError
-              );
-            }
-          } else {
-            throw new PaymentError(
-              PaymentErrorType.DATABASE_ERROR,
-              `決済レコードの作成に失敗しました: ${insertError.message}`,
-              insertError
-            );
-          }
-        } else {
-          assertStripePayment(payment, "payment lookup");
-          targetPaymentId = payment.id;
-          // 新規作成（openなし->pending）：作成時に付与したキーを使用、rev=0
-          idempotencyKeyToUse = newIdempotencyKey;
-          checkoutKeyRevisionToSave = 0;
-        }
-      }
+      const {
+        paymentId: targetPaymentId,
+        idempotencyKey: idempotencyKeyToUse,
+        checkoutKeyRevision: checkoutKeyRevisionToSave,
+      } = await this.ensureStripePaymentRecord(params);
 
       // Stripe Checkout Sessionを作成（Destination chargesに統一）
       if (!params.destinationCharges) {
@@ -524,24 +619,7 @@ export class PaymentService implements IPaymentService {
       }
 
       // Destination charges用のCheckout Session作成
-      // Idempotency-Key: 常に新規発行（パラメータ差分によるStripeエラーを根絶）
-      if (openPayment && openPayment.status === "pending") {
-        // pending再利用時も毎回キーを回転し、リビジョンを+1する
-        const { generateIdempotencyKey } = await import("@core/stripe/client");
-        idempotencyKeyToUse = generateIdempotencyKey("checkout");
-        checkoutKeyRevisionToSave = (openPayment.checkout_key_revision ?? 0) + 1;
-
-        // 簡素なデバッグログ（キーはマスクして出力）
-        this.paymentLogger.info("Idempotency key decision", {
-          attendance_id: params.attendanceId,
-          has_open_payment: true,
-          final_key: idempotencyKeyToUse.substring(0, 12) + "...",
-          final_revision: checkoutKeyRevisionToSave,
-        });
-      }
-
-      // 新規/failed または同時実行で新規openを再利用する場合のキー設定は、
-      // それぞれの分岐で明示的に行う（下記のinsert/concurrent分岐内）。
+      // Idempotency-Key: 基本は新規発行（並行復帰時は確保済みキーを再利用する場合あり）
       const session = await DestinationCharges.createDestinationCheckoutSession({
         eventId: params.eventId,
         eventTitle: params.eventTitle,
@@ -573,28 +651,26 @@ export class PaymentService implements IPaymentService {
         checkout_key_revision: checkoutKeyRevisionToSave,
       } as const;
 
-      const MAX_DB_UPDATE_RETRIES = 3;
-      let lastDbError: PostgrestError | null = null;
-      for (let i = 0; i < MAX_DB_UPDATE_RETRIES; i++) {
-        const { error: updateErr } = await this.supabase
-          .from("payments")
-          .update(updateDestinationPayload)
-          .eq("id", targetPaymentId);
+      const { data: updatedPayment, error: lastDbError } = await updateWithRetries({
+        attempt: async () => {
+          const { data, error } = await this.supabase
+            .from("payments")
+            .update(updateDestinationPayload)
+            .eq("id", targetPaymentId)
+            .select("id, checkout_idempotency_key, checkout_key_revision")
+            .maybeSingle();
+          return { data, error };
+        },
+        isSuccess: ({ data, error }) => !error && !!data,
+      });
 
-        if (!updateErr) {
-          lastDbError = null;
-          break; // success
-        }
-        lastDbError = updateErr;
-        // 短い間隔で再試行 (指数バックオフ不要な軽量処理)
-        await new Promise((r) => setTimeout(r, 100 * (i + 1)));
-      }
-
-      if (lastDbError) {
+      if (lastDbError || !updatedPayment) {
         const dbError = new PaymentError(
           PaymentErrorType.DATABASE_ERROR,
-          `Failed to update payment record with destination charges data after retries: ${lastDbError.message}`,
-          lastDbError as unknown as Error
+          `Failed to update payment record with destination charges data after retries: ${
+            lastDbError?.message ?? "no rows updated"
+          }`,
+          (lastDbError ?? undefined) as unknown as Error
         );
         await this.errorHandler.logError(dbError, {
           operation: "updateDestinationChargesData",
@@ -1060,7 +1136,10 @@ export class PaymentService implements IPaymentService {
         );
       }
 
-      const latestOpenPayment = this.findLatestPaymentByEffectiveTime(openPayments || []);
+      const latestOpenPayment = findLatestPaymentByEffectiveTime(
+        openPayments || [],
+        TERMINAL_PAYMENT_STATUSES
+      );
       if (latestOpenPayment) return latestOpenPayment as Payment;
 
       // openが無い場合は、最新の決済完了系（paid/received/refunded/waived）を返す（統一されたソート使用）
@@ -1078,7 +1157,10 @@ export class PaymentService implements IPaymentService {
         );
       }
 
-      const latestTerminalPayment = this.findLatestPaymentByEffectiveTime(terminalPayments || []);
+      const latestTerminalPayment = findLatestPaymentByEffectiveTime(
+        terminalPayments || [],
+        TERMINAL_PAYMENT_STATUSES
+      );
       if (!latestTerminalPayment) return null;
       return latestTerminalPayment as Payment;
     } catch (error) {
@@ -1353,47 +1435,5 @@ export class PaymentService implements IPaymentService {
         error as Error
       );
     }
-  }
-}
-
-/**
- * PaymentErrorHandlerの実装クラス
- */
-export class PaymentErrorHandler implements IPaymentErrorHandler {
-  /**
-   * 決済エラーを処理し、適切な対応を決定する
-   */
-  async handlePaymentError(error: PaymentError): Promise<ErrorHandlingResult> {
-    return (
-      ERROR_HANDLING_BY_TYPE[error.type] ?? {
-        userMessage: "予期しないエラーが発生しました。管理者にお問い合わせください。",
-        shouldRetry: false,
-        logLevel: "error",
-      }
-    );
-  }
-
-  /**
-   * エラーをログに記録する
-   */
-  async logError(error: PaymentError, context?: Record<string, unknown>): Promise<void> {
-    const stripeRequestId =
-      error.cause && typeof error.cause === "object" && "requestId" in error.cause
-        ? (error.cause as { requestId?: string }).requestId
-        : undefined;
-
-    const logData = {
-      error_type: error.type,
-      message: error.message,
-      stack: error.stack,
-      stripe_request_id: stripeRequestId,
-      context,
-    };
-
-    handleServerError("PAYMENT_OPERATION_FAILED", {
-      category: "payment",
-      action: "payment_error_handler",
-      additionalData: logData,
-    });
   }
 }
