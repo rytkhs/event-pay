@@ -7,12 +7,10 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { createPaymentLogger, type PaymentLogger } from "@core/logging/payment-logger";
-import { getStripe } from "@core/stripe/client";
 
 import { Database } from "@/types/database";
 
 import { createCashPayment as createCashPaymentFn } from "./cash-payment";
-import { validateConnectAccount as validateConnectAccountFn } from "./connect-account";
 import { deletePayment as deletePaymentFn } from "./delete-payment";
 import { ApplicationFeeCalculator } from "./fee-config/application-fee-calculator";
 import { IPaymentService, IPaymentErrorHandler } from "./interface";
@@ -37,7 +35,6 @@ import {
  */
 export class PaymentService implements IPaymentService {
   private supabase: SupabaseClient<Database, "public">;
-  private stripe = getStripe();
   private errorHandler: IPaymentErrorHandler;
   private applicationFeeCalculator: ApplicationFeeCalculator;
   private paymentLogger: PaymentLogger;
@@ -142,14 +139,5 @@ export class PaymentService implements IPaymentService {
    */
   async deletePayment(paymentId: string): Promise<void> {
     return deletePaymentFn(paymentId, this.supabase);
-  }
-
-  /**
-   * Connect Account の事前検証を行う
-   * @param accountId Stripe Connect Account ID
-   * @throws PaymentError Connect Account に問題がある場合
-   */
-  private async validateConnectAccount(accountId: string): Promise<void> {
-    return validateConnectAccountFn(accountId, this.stripe, this.paymentLogger);
   }
 }

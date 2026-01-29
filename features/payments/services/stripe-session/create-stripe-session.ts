@@ -11,9 +11,6 @@ import { maskSessionId } from "@core/utils/mask";
 
 import { Database } from "@/types/database";
 
-// connect-account モジュールからインポート（TODOで使用）
-// import { validateConnectAccount } from "../connect-account";
-
 import { ApplicationFeeCalculator } from "../fee-config/application-fee-calculator";
 import { IPaymentErrorHandler } from "../interface";
 import type { CreateStripeSessionParams, CreateStripeSessionResult } from "../types";
@@ -72,16 +69,13 @@ export async function createStripeSession(
     const { destinationAccountId, userEmail, userName, setupFutureUsage } =
       params.destinationCharges;
 
-    // Connect Account情報をログに記録
-    contextLogger.logConnectAccountValidation(destinationAccountId, true, {
+    // Connect Account情報をログに記録（検証は別経路で実施済み）
+    contextLogger.info("Connect Account validation skipped (handled upstream)", {
+      connect_account_id: destinationAccountId,
       user_email: userEmail,
       user_name: userName,
       payment_id: targetPaymentId,
     });
-
-    // TODO: Connect Account の事前検証（別タスクで実装予定）
-    // await validateConnectAccount(destinationAccountId, stripe, paymentLogger);
-    // Note: stripe client is not currently passed to this function, needs to be added if validation is enabled
 
     // Application fee計算
     const feeCalculation = await applicationFeeCalculator.calculateApplicationFee(params.amount);
