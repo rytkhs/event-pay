@@ -176,15 +176,27 @@ export async function createGuestStripeSessionAction(
 
   if (connectError || !connectAccount) {
     return createServerActionError(
-      "RESOURCE_CONFLICT",
-      "決済の準備ができません。主催者のお支払い受付設定に不備があります。現金決済をご利用いただくか、主催者にお問い合わせください。"
+      "CONNECT_ACCOUNT_NOT_FOUND",
+      "オンライン決済の準備ができていません。現金決済をご利用いただくか、しばらく時間をおいて再度お試しください。",
+      {
+        details: {
+          connectAccountIssue: true,
+          alternativePaymentSuggested: true,
+        },
+      }
     );
   }
 
   if (!connectAccount.payouts_enabled) {
     return createServerActionError(
-      "RESOURCE_CONFLICT",
-      "主催者のお支払い受付が一時的に制限されています。現金決済をご利用いただくか、主催者にお問い合わせください。"
+      "CONNECT_ACCOUNT_RESTRICTED",
+      "現在オンライン決済がご利用いただけません。現金決済をご利用いただくか、しばらく時間をおいて再度お試しください。",
+      {
+        details: {
+          connectAccountIssue: true,
+          alternativePaymentSuggested: true,
+        },
+      }
     );
   }
 

@@ -384,7 +384,7 @@ export const ERROR_MAPPINGS: Record<string, Omit<ErrorDetails, "code">> = {
   CONNECT_ACCOUNT_NOT_FOUND: {
     message: "Stripe Connect Account not found",
     userMessage:
-      "決済の準備ができません。主催者のお支払い受付設定に不備があります。現金決済をご利用いただくか、主催者にお問い合わせください。",
+      "オンライン決済の準備ができていません。現金決済をご利用いただくか、しばらく時間をおいて再度お試しください。",
     severity: "critical",
     shouldLog: true,
     shouldAlert: true,
@@ -393,7 +393,7 @@ export const ERROR_MAPPINGS: Record<string, Omit<ErrorDetails, "code">> = {
   CONNECT_ACCOUNT_RESTRICTED: {
     message: "Stripe Connect Account is restricted",
     userMessage:
-      "主催者のお支払い受付が一時的に制限されています。現金決済をご利用いただくか、主催者にお問い合わせください。",
+      "現在オンライン決済がご利用いただけません。現金決済をご利用いただくか、しばらく時間をおいて再度お試しください。",
     severity: "high",
     shouldLog: true,
     shouldAlert: true,
