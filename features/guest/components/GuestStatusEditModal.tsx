@@ -74,13 +74,13 @@ function getModificationRestrictionMessage(attendance: GuestAttendanceData): str
 function getConnectAccountErrorMessage(errorCode?: string): string {
   switch (errorCode) {
     case "CONNECT_ACCOUNT_NOT_FOUND":
-      return "決済の準備ができません。主催者のお支払い受付設定に不備があります。現金決済をご利用いただくか、主催者にお問い合わせください。";
+      return "オンライン決済の準備ができていません。現金決済をご利用いただくか、しばらく時間をおいて再度お試しください。";
     case "CONNECT_ACCOUNT_RESTRICTED":
-      return "主催者のお支払い受付が一時的に制限されています。現金決済をご利用いただくか、主催者にお問い合わせください。";
+      return "現在オンライン決済がご利用いただけません。現金決済をご利用いただくか、しばらく時間をおいて再度お試しください。";
     case "STRIPE_CONFIG_ERROR":
       return "決済システムに一時的な問題が発生しています。現金決済をご利用いただくか、しばらく時間をおいて再度お試しください。";
     default:
-      return "オンライン決済に問題が発生しました。現金決済をご利用いただくか、主催者にお問い合わせください。";
+      return "オンライン決済に問題が発生しました。現金決済をご利用いただくか、しばらく時間をおいて再度お試しください。";
   }
 }
 
@@ -303,7 +303,7 @@ export const GuestStatusEditModal: React.FC<GuestStatusEditModalProps> = ({
                 <Alert variant="destructive">
                   <AlertCircle className="h-4 w-4" />
                   <AlertDescription>
-                    利用可能な決済方法がありません。主催者にお問い合わせください。
+                    利用可能な決済方法がありません。しばらく経ってから再度お試しください。
                   </AlertDescription>
                 </Alert>
               ) : (

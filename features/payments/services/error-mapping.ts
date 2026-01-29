@@ -85,15 +85,15 @@ export const ERROR_HANDLING_BY_TYPE: Record<PaymentErrorType, ErrorHandlingResul
   },
   [PaymentErrorType.CONNECT_ACCOUNT_NOT_FOUND]: {
     userMessage:
-      "決済の準備ができません。主催者のお支払い受付設定に不備があります。現金決済をご利用いただくか、主催者にお問い合わせください。",
+      "オンライン決済の準備ができていません。現金決済をご利用いただくか、しばらく時間をおいて再度お試しください。",
     shouldRetry: false,
-    logLevel: "error",
+    logLevel: "error" as const,
   },
   [PaymentErrorType.CONNECT_ACCOUNT_RESTRICTED]: {
     userMessage:
-      "主催者のお支払い受付が一時的に制限されています。現金決済をご利用いただくか、主催者にお問い合わせください。",
+      "現在オンライン決済がご利用いただけません。現金決済をご利用いただくか、しばらく時間をおいて再度お試しください。",
     shouldRetry: false,
-    logLevel: "error",
+    logLevel: "error" as const,
   },
   [PaymentErrorType.STRIPE_CONFIG_ERROR]: {
     userMessage:

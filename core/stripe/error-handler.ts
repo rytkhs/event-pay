@@ -235,11 +235,7 @@ function generateResolutionHints(
   switch (classification) {
     case "config_error":
       if (paymentErrorType === PaymentErrorType.CONNECT_ACCOUNT_NOT_FOUND) {
-        return [
-          "主催者のStripeアカウント設定を確認",
-          "アカウントの存在確認",
-          "現金決済への切り替えを案内",
-        ];
+        return ["Stripeアカウント設定を確認", "アカウントの存在確認", "現金決済への切り替えを案内"];
       }
       if (paymentErrorType === PaymentErrorType.CONNECT_ACCOUNT_RESTRICTED) {
         return [
@@ -278,13 +274,13 @@ function generateUserMessage(
 ): string {
   switch (paymentErrorType) {
     case PaymentErrorType.CONNECT_ACCOUNT_NOT_FOUND:
-      return "決済の準備ができていません。主催者のお支払い受付設定に不備があります。現金決済をご利用いただくか、主催者にお問い合わせください。";
+      return "オンライン決済の準備ができていません。現金決済をご利用いただくか、しばらく時間をおいて再度お試しください。";
 
     case PaymentErrorType.CONNECT_ACCOUNT_RESTRICTED:
-      return "現在オンライン決済がご利用いただけません。現金決済をご利用いただくか、主催者にお問い合わせください。";
+      return "現在オンライン決済がご利用いただけません。現金決済をご利用いただくか、しばらく時間をおいて再度お試しください。";
 
     case PaymentErrorType.STRIPE_CONFIG_ERROR:
-      return "決済システムの設定に問題があります。現金決済をご利用いただくか、主催者にお問い合わせください。";
+      return "決済システムの設定に問題があります。現金決済をご利用いただくか、しばらく時間をおいて再度お試しください。";
 
     case PaymentErrorType.CARD_DECLINED:
       return "カードが拒否されました。別のカードをお試しいただくか、現金決済をご利用ください。";
@@ -297,7 +293,7 @@ function generateUserMessage(
 
     case PaymentErrorType.UNAUTHORIZED:
     case PaymentErrorType.FORBIDDEN:
-      return "アクセス権限に問題があります。主催者にお問い合わせください。";
+      return "アクセス権限に問題があります。しばらく時間をおいて再度お試しください。";
 
     case PaymentErrorType.STRIPE_API_ERROR:
       if (classification === "stripe_error") {
