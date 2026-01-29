@@ -7,8 +7,9 @@
  */
 
 import * as DestinationCharges from "../../../core/stripe/destination-charges";
+import { PaymentErrorType } from "../../../core/types/payment-errors";
 import { ApplicationFeeCalculator } from "../../../features/payments/services/fee-config/application-fee-calculator";
-import { PaymentService, PaymentErrorHandler } from "../../../features/payments/services/service";
+import { PaymentService, PaymentErrorHandler } from "../../../features/payments/services";
 import {
   createMockStripeClient,
   createMockApplicationFeeCalculator,
@@ -589,6 +590,187 @@ describe("PaymentService - Stripe Checkout セッション作成", () => {
           })
         ).rejects.toThrow("Stripe session URL is not available");
       });
+    });
+  });
+
+  describe("回帰: 23505回復パスのキー整合", () => {
+    it("23505回復で checkout_idempotency_key と Stripe セッション作成キーが一致すること", async () => {
+      const insertError = {
+        code: "23505",
+        message: "duplicate key value violates unique constraint",
+      };
+      const concurrentPaymentId = "payment_concurrent_23505";
+      const concurrentOpen = {
+        id: concurrentPaymentId,
+        status: "pending",
+        method: "stripe",
+        amount: testData.amount,
+        checkout_idempotency_key: "checkout_existing_key",
+        checkout_key_revision: 1,
+        stripe_payment_intent_id: null,
+        paid_at: null,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+
+      const updatePayloads: Array<Record<string, unknown>> = [];
+      let openStatusInCallCount = 0;
+
+      const builder: any = {
+        select: jest.fn().mockReturnThis(),
+        eq: jest.fn().mockReturnThis(),
+        or: jest.fn().mockReturnThis(),
+        in: jest.fn().mockImplementation((_col: string, values: string[]) => {
+          if (values.includes("pending") || values.includes("failed")) {
+            openStatusInCallCount += 1;
+            if (openStatusInCallCount === 1) {
+              return Promise.resolve({ data: [], error: null });
+            }
+            if (openStatusInCallCount === 2) {
+              return Promise.resolve({ data: [concurrentOpen], error: null });
+            }
+            return builder;
+          }
+          return builder;
+        }),
+        order: jest.fn().mockReturnThis(),
+        limit: jest.fn().mockReturnThis(),
+        maybeSingle: jest
+          .fn()
+          .mockResolvedValueOnce({ data: null, error: null }) // terminal check
+          .mockResolvedValueOnce({ data: null, error: null }) // reservation update select
+          .mockResolvedValueOnce({ data: concurrentOpen, error: null }) // fetchOpenPaymentById
+          .mockResolvedValueOnce({
+            data: {
+              id: concurrentPaymentId,
+              checkout_idempotency_key: "checkout_destination_saved",
+              checkout_key_revision: 2,
+            },
+            error: null,
+          }), // destination charges update select
+        insert: jest.fn().mockReturnThis(),
+        update: jest.fn().mockImplementation((payload: Record<string, unknown>) => {
+          updatePayloads.push(payload);
+          return builder;
+        }),
+        single: jest.fn().mockResolvedValue({ data: null, error: insertError }),
+      };
+
+      const mockSupabase = {
+        from: jest.fn().mockReturnValue(builder),
+      };
+
+      const localPaymentService = new PaymentService(
+        mockSupabase as any,
+        new PaymentErrorHandler()
+      );
+      (localPaymentService as any).applicationFeeCalculator = mockApplicationFeeCalculator;
+
+      mockCreateDestinationCheckoutSession.mockResolvedValue({
+        id: testData.mockSessionId,
+        url: "https://checkout.stripe.com/c/pay/cs_test_1234567890",
+        object: "checkout.session",
+      } as any);
+
+      await localPaymentService.createStripeSession({
+        attendanceId: testData.attendanceId,
+        amount: testData.amount,
+        eventId: testData.eventId,
+        actorId: testData.actorId,
+        eventTitle: testData.eventTitle,
+        successUrl: testData.successUrl,
+        cancelUrl: testData.cancelUrl,
+        destinationCharges: {
+          destinationAccountId: testData.connectAccountId,
+        },
+      });
+
+      const callArgs = mockCreateDestinationCheckoutSession.mock.calls.at(-1)?.[0];
+      const idempotencyKeyUsed = callArgs?.idempotencyKey;
+      expect(typeof idempotencyKeyUsed).toBe("string");
+
+      const updateDestinationPayload = updatePayloads.find(
+        (payload) =>
+          payload.stripe_checkout_session_id &&
+          Object.prototype.hasOwnProperty.call(payload, "checkout_idempotency_key")
+      );
+
+      expect(updateDestinationPayload?.checkout_idempotency_key).toBe(idempotencyKeyUsed);
+      expect(updateDestinationPayload?.checkout_key_revision).toBeGreaterThanOrEqual(1);
+    });
+  });
+
+  describe("並行予約の競合", () => {
+    it("予約済みの金額が異なる場合はCONCURRENT_UPDATEになること", async () => {
+      mockCreateDestinationCheckoutSession.mockClear();
+
+      const pendingPayment = {
+        id: "payment_pending_amount",
+        status: "pending",
+        method: "stripe",
+        amount: testData.amount,
+        checkout_idempotency_key: null,
+        checkout_key_revision: 0,
+        stripe_payment_intent_id: null,
+        paid_at: null,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+
+      const concurrentReserved = {
+        ...pendingPayment,
+        checkout_idempotency_key: "checkout_reserved_other",
+        checkout_key_revision: 1,
+      };
+
+      const builder: any = {
+        select: jest.fn().mockReturnThis(),
+        eq: jest.fn().mockReturnThis(),
+        or: jest.fn().mockReturnThis(),
+        in: jest.fn().mockImplementation((_col: string, values: string[]) => {
+          if (values.includes("pending") || values.includes("failed")) {
+            return Promise.resolve({ data: [pendingPayment], error: null });
+          }
+          return builder;
+        }),
+        order: jest.fn().mockReturnThis(),
+        limit: jest.fn().mockReturnThis(),
+        maybeSingle: jest
+          .fn()
+          .mockResolvedValueOnce({ data: null, error: null }) // terminal check
+          .mockResolvedValueOnce({ data: null, error: null }) // reservation update select
+          .mockResolvedValueOnce({ data: concurrentReserved, error: null }), // fetchOpenPaymentById
+        insert: jest.fn().mockReturnThis(),
+        update: jest.fn().mockReturnThis(),
+        single: jest.fn().mockResolvedValue({ data: { id: pendingPayment.id }, error: null }),
+      };
+
+      const mockSupabase = {
+        from: jest.fn().mockReturnValue(builder),
+      };
+
+      const localPaymentService = new PaymentService(
+        mockSupabase as any,
+        new PaymentErrorHandler()
+      );
+      (localPaymentService as any).applicationFeeCalculator = mockApplicationFeeCalculator;
+
+      await expect(
+        localPaymentService.createStripeSession({
+          attendanceId: testData.attendanceId,
+          amount: testData.amount - 100,
+          eventId: testData.eventId,
+          actorId: testData.actorId,
+          eventTitle: testData.eventTitle,
+          successUrl: testData.successUrl,
+          cancelUrl: testData.cancelUrl,
+          destinationCharges: {
+            destinationAccountId: testData.connectAccountId,
+          },
+        })
+      ).rejects.toMatchObject({ type: PaymentErrorType.CONCURRENT_UPDATE });
+
+      expect(mockCreateDestinationCheckoutSession).not.toHaveBeenCalled();
     });
   });
 });

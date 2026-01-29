@@ -1,8 +1,6 @@
 /**
  * 決済セッション作成の冪等性・並行制御統合テスト
  *
- * 仕様書: docs/spec/test/stripe/payment-session-idempotency.md
- *
  * 目的：
  * PaymentService.createStripeSession の冪等性と並行制御が仕様書通りに
  * 完璧に動作することを厳密に検証する。
@@ -40,6 +38,14 @@ describe("決済セッション作成冪等性・並行制御統合テスト", (
 
   // Stripe API モック
   let mockCreateDestinationCheckoutSession: jest.MockedFunction<any>;
+  let sessionIdempotencyMap: Map<string, string>;
+
+  const findIdempotencyKeyForSessionId = (sessionId: string): string | null => {
+    for (const [key, value] of sessionIdempotencyMap.entries()) {
+      if (value === sessionId) return key;
+    }
+    return null;
+  };
 
   beforeAll(async () => {
     console.log("🔧 決済セッション冪等性統合テスト用データセットアップ開始");
@@ -60,7 +66,7 @@ describe("決済セッション作成冪等性・並行制御統合テスト", (
     await testHelper.cleanupPaymentData();
 
     // Idempotency Key に基づく決定的セッション生成のモック設計
-    const sessionIdempotencyMap = new Map<string, string>();
+    sessionIdempotencyMap = new Map<string, string>();
     let callCount = 0;
 
     mockCreateDestinationCheckoutSession = jest
@@ -87,6 +93,10 @@ describe("決済セッション作成冪等性・並行制御統合テスト", (
           status: "open",
         });
       });
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
   });
 
   afterAll(async () => {
@@ -160,6 +170,23 @@ describe("決済セッション作成冪等性・並行制御統合テスト", (
         `✓ Idempotency Key回転確認完了 - Old Key: ${firstKey}, New Key: ${secondKey}, Revision: ${firstRevision} -> ${secondRevision}`
       );
     });
+
+    test("成功時にcheckout_idempotency_key/checkout_key_revisionが必ず保存される", async () => {
+      const result = await testSetup.paymentService.createStripeSession(
+        testSetup.createSessionParams
+      );
+
+      const paymentState = await testHelper.getCurrentPaymentState();
+      const latestPayment = paymentState.latestPayment;
+
+      expect(latestPayment?.checkout_idempotency_key).toBeTruthy();
+      expect(typeof latestPayment?.checkout_idempotency_key).toBe("string");
+      expect(typeof latestPayment?.checkout_key_revision).toBe("number");
+      expect(latestPayment?.checkout_key_revision).toBeGreaterThanOrEqual(0);
+
+      const usedKey = findIdempotencyKeyForSessionId(result.sessionId);
+      expect(usedKey).toBe(latestPayment?.checkout_idempotency_key);
+    });
   });
 
   describe("2. 並行制御テスト", () => {
@@ -201,6 +228,10 @@ describe("決済セッション作成冪等性・並行制御統合テスト", (
       const paymentState = await testHelper.getCurrentPaymentState();
       expect(paymentState.pendingCount).toBe(1);
       expect(paymentState.latestPayment?.status).toBe("pending");
+      expect(paymentState.latestPayment?.checkout_idempotency_key).toBeTruthy();
+
+      const usedKey = findIdempotencyKeyForSessionId(result.finalResult.sessionId);
+      expect(usedKey).toBe(paymentState.latestPayment?.checkout_idempotency_key);
 
       console.log(`✓ DB制約違反回復テスト完了 - Session: ${result.finalResult.sessionId}`);
     });
@@ -369,9 +400,9 @@ describe("決済セッション作成冪等性・並行制御統合テスト", (
        * 実装では終端系に含まれていない可能性がある。
        *
        * このテストが失敗した場合:
-       * features/payments/services/service.ts:160行目を確認し、
-       * .in("status", ["paid", "received", "refunded", "waived"])
-       * にwaivedを追加する必要がある。
+       * features/payments/services/stripe-session/types.ts の
+       * TERMINAL_PAYMENT_STATUSES に "waived" が含まれているか確認し、
+       * ensure-payment-record の終端検索ロジックがそれを参照しているか確認すること。
        */
       const result = await testHelper.testTerminalStateGuard("waived");
 

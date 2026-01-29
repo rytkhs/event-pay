@@ -118,10 +118,10 @@ export async function createTestUserWithConnect(
     status: payoutsEnabled && chargesEnabled ? "verified" : "onboarding",
   };
 
-  // 重複回避：stripe_account_id での upsert（既存があれば更新）
+  // 重複回避：user_id での upsert（既存があれば更新）
   const { data: connectAccount, error } = await adminClient
     .from("stripe_connect_accounts")
-    .upsert(connectAccountData, { onConflict: "stripe_account_id" })
+    .upsert(connectAccountData, { onConflict: "user_id" })
     .select()
     .single();
 
