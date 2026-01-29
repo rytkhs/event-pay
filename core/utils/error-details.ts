@@ -302,14 +302,7 @@ export const ERROR_MAPPINGS: Record<string, Omit<ErrorDetails, "code">> = {
     shouldAlert: true,
     retryable: true,
   },
-  INTERNAL_SERVER_ERROR: {
-    message: "Internal server error occurred",
-    userMessage: "サーバーエラーが発生しました。しばらく時間をおいて再度お試しください。",
-    severity: "high",
-    shouldLog: true,
-    shouldAlert: true,
-    retryable: true,
-  },
+
   NETWORK_ERROR: {
     message: "Network connection failed",
     userMessage: "ネットワークエラーが発生しました。インターネット接続をご確認ください。",
@@ -320,14 +313,7 @@ export const ERROR_MAPPINGS: Record<string, Omit<ErrorDetails, "code">> = {
   },
 
   // セキュリティ関連エラー
-  RATE_LIMIT_EXCEEDED: {
-    message: "Rate limit exceeded",
-    userMessage: "アクセス頻度が高すぎます。しばらく時間をおいて再度お試しください。",
-    severity: "medium",
-    shouldLog: true,
-    shouldAlert: false,
-    retryable: true,
-  },
+
   SUSPICIOUS_ACTIVITY: {
     message: "Suspicious activity detected",
     userMessage: "不正なアクセスが検出されました。",
@@ -346,7 +332,7 @@ export const ERROR_MAPPINGS: Record<string, Omit<ErrorDetails, "code">> = {
   },
 
   // ゲストトークン関連エラー
-  INVALID_GUEST_TOKEN: {
+  GUEST_TOKEN_INVALID: {
     message: "Invalid guest token provided",
     userMessage: "無効なアクセスです。正しいリンクをご確認ください。",
     severity: "medium",
@@ -665,14 +651,7 @@ export const ERROR_MAPPINGS: Record<string, Omit<ErrorDetails, "code">> = {
     shouldAlert: true,
     retryable: true,
   },
-  STRIPE_CONNECT_ACCOUNT_NOT_FOUND: {
-    message: "Stripe Connect account not found",
-    userMessage: "Stripe Connectアカウントが見つかりません。",
-    severity: "high",
-    shouldLog: true,
-    shouldAlert: true,
-    retryable: false,
-  },
+
   SETTLEMENT_REPORT_FAILED: {
     message: "Settlement report generation or export failed",
     userMessage: "清算レポートの生成またはエクスポートに失敗しました。",
@@ -860,7 +839,7 @@ export function normalizeToErrorDetails(error: unknown): ErrorDetails {
       return getErrorDetails("DUPLICATE_REGISTRATION");
     }
     if (msg.includes("rate limit")) {
-      return getErrorDetails("RATE_LIMIT_EXCEEDED");
+      return getErrorDetails("RATE_LIMITED");
     }
     if (msg.includes("Email not confirmed")) {
       return getErrorDetails("VALIDATION_ERROR");

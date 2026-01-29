@@ -62,7 +62,7 @@ const codeIconMap: Partial<Record<ErrorCode, LucideIcon>> = {
   EVENT_FULL: Users,
   REGISTRATION_CLOSED: Clock,
   DUPLICATE_REGISTRATION: Ban,
-  INVALID_INVITE: XCircle,
+  INVITE_TOKEN_INVALID: XCircle,
   PAYMENT_FAILED: CreditCard,
   RATE_LIMITED: Shield,
   MAINTENANCE: Wrench,

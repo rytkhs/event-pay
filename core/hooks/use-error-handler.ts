@@ -30,9 +30,9 @@ function mapProblemCodeToErrorCode(problemCode: string | undefined): string {
   if (!problemCode) return "UNKNOWN_ERROR";
   switch (problemCode) {
     case "RATE_LIMITED":
-      return "RATE_LIMIT_EXCEEDED";
+      return "RATE_LIMITED";
     case "INTERNAL_ERROR":
-      return "INTERNAL_SERVER_ERROR";
+      return "INTERNAL_ERROR";
     default:
       return problemCode;
   }

@@ -565,7 +565,7 @@ export async function GET(request: NextRequest) {
     }
 
     // その他の予期しないエラー（最も重大として扱う）
-    handleServerError("INTERNAL_SERVER_ERROR", {
+    handleServerError("INTERNAL_ERROR", {
       category: "payment",
       action: "paymentVerificationError",
       additionalData: {

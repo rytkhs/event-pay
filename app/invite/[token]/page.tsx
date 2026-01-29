@@ -42,7 +42,7 @@ export default async function InvitePage({ params }: InvitePageProps) {
 
       return (
         <ErrorLayout
-          code="INVALID_INVITE"
+          code="INVITE_TOKEN_INVALID"
           category="business"
           severity="medium"
           title="無効な招待リンク"

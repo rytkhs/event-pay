@@ -34,7 +34,7 @@ export enum PaymentErrorType {
 
   // 汎用エラー（Ports/Legacy互換）
   NOT_FOUND = "NOT_FOUND",
-  RATE_LIMIT_EXCEEDED = "RATE_LIMIT_EXCEEDED",
+  RATE_LIMITED = "RATE_LIMITED",
   UNKNOWN_ERROR = "UNKNOWN_ERROR",
 }
 

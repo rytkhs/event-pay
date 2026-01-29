@@ -126,7 +126,7 @@ export async function GET(request: NextRequest) {
         error_message: error instanceof Error ? error.message : String(error),
       },
     });
-    return createProblemResponse("INTERNAL_SERVER_ERROR", {
+    return createProblemResponse("INTERNAL_ERROR", {
       instance: "/api/cron/send-reminders",
       detail: "Failed to send reminders",
     });

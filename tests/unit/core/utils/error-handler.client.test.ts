@@ -196,7 +196,7 @@ describe("error-handler.client", () => {
         { input: "RESOURCE_CONFLICT", expected: "409" },
         { input: "RATE_LIMITED", expected: "429" },
         { input: "INTERNAL_ERROR", expected: "500" },
-        { input: "INTERNAL_SERVER_ERROR", expected: "500" },
+        { input: "INTERNAL_ERROR", expected: "500" },
         { input: "DATABASE_ERROR", expected: "500" },
       ];
 
@@ -221,9 +221,9 @@ describe("error-handler.client", () => {
         { input: "ATTENDANCE_CAPACITY_REACHED", expected: "EVENT_FULL" },
         { input: "REGISTRATION_DEADLINE_PASSED", expected: "REGISTRATION_CLOSED" },
         { input: "DUPLICATE_REGISTRATION", expected: "DUPLICATE_REGISTRATION" },
-        { input: "INVALID_TOKEN", expected: "INVALID_INVITE" },
-        { input: "TOKEN_NOT_FOUND", expected: "INVALID_INVITE" },
-        { input: "TOKEN_EXPIRED", expected: "INVALID_INVITE" },
+        { input: "INVALID_TOKEN", expected: "INVITE_TOKEN_INVALID" },
+        { input: "TOKEN_NOT_FOUND", expected: "INVITE_TOKEN_INVALID" },
+        { input: "TOKEN_EXPIRED", expected: "INVITE_TOKEN_INVALID" },
         { input: "PAYMENT_SESSION_CREATION_FAILED", expected: "PAYMENT_FAILED" },
       ];
 

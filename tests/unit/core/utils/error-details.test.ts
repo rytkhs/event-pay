@@ -153,7 +153,7 @@ describe("error-details", () => {
     it("既知のエラーメッセージパターンを正規化", () => {
       const testCases = [
         { message: "already registered", expected: "DUPLICATE_REGISTRATION" },
-        { message: "rate limit", expected: "RATE_LIMIT_EXCEEDED" },
+        { message: "rate limit", expected: "RATE_LIMITED" },
         { message: "Email not confirmed", expected: "VALIDATION_ERROR" },
         { message: "Invalid login credentials", expected: "LOGIN_FAILED" },
       ];
