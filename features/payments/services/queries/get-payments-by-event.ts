@@ -17,7 +17,30 @@ export async function getPaymentsByEvent(
   supabase: SupabaseClient<Database, "public">
 ): Promise<Payment[]> {
   try {
-    // イベントの主催者権限をチェックしつつ決済情報を取得
+    // まずイベントの存在と主催者権限を確認
+    const { data: event, error: eventError } = await supabase
+      .from("events")
+      .select("id, created_by")
+      .eq("id", eventId)
+      .maybeSingle();
+
+    if (eventError) {
+      throw new PaymentError(
+        PaymentErrorType.DATABASE_ERROR,
+        `イベント情報の取得に失敗しました: ${eventError.message}`,
+        eventError
+      );
+    }
+
+    if (!event) {
+      throw new PaymentError(PaymentErrorType.EVENT_NOT_FOUND, "イベントが見つかりません");
+    }
+
+    if (event.created_by !== userId) {
+      throw new PaymentError(PaymentErrorType.FORBIDDEN, "この操作を実行する権限がありません。");
+    }
+
+    // 決済情報を取得
     const { data, error } = await supabase
       .from("payments")
       .select(
@@ -25,15 +48,11 @@ export async function getPaymentsByEvent(
         *,
         attendances!inner (
           id,
-          events!inner (
-            id,
-            created_by
-          )
+          event_id
         )
       `
       )
-      .eq("attendances.events.id", eventId)
-      .eq("attendances.events.created_by", userId);
+      .eq("attendances.event_id", eventId);
 
     if (error) {
       throw new PaymentError(

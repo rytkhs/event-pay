@@ -18,7 +18,7 @@ import { assertStripePayment } from "@core/utils/stripe-guards";
 
 import { Database } from "@/types/database";
 
-import type { CreateStripeSessionParams, PaymentStatus } from "../types";
+import type { CreateStripeSessionParams, PaymentMethod, PaymentStatus } from "../types";
 import { findLatestPaymentByEffectiveTime } from "../utils/payment-effective-time";
 
 import {
@@ -62,7 +62,7 @@ export function normalizeOpenPaymentRow(
   return {
     id: row.id,
     status: row.status as PaymentStatus,
-    method: row.method as "stripe" | "cash",
+    method: row.method as PaymentMethod,
     amount: typeof row.amount === "number" ? row.amount : 0,
     checkout_idempotency_key:
       typeof row.checkout_idempotency_key === "string" ? row.checkout_idempotency_key : null,

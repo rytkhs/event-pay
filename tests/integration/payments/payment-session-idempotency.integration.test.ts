@@ -400,9 +400,9 @@ describe("決済セッション作成冪等性・並行制御統合テスト", (
        * 実装では終端系に含まれていない可能性がある。
        *
        * このテストが失敗した場合:
-       * features/payments/services/service.ts:160行目を確認し、
-       * .in("status", ["paid", "received", "refunded", "waived"])
-       * にwaivedを追加する必要がある。
+       * features/payments/services/stripe-session/types.ts の
+       * TERMINAL_PAYMENT_STATUSES に "waived" が含まれているか確認し、
+       * ensure-payment-record の終端検索ロジックがそれを参照しているか確認すること。
        */
       const result = await testHelper.testTerminalStateGuard("waived");
 

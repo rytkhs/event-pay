@@ -253,9 +253,9 @@ ${
 ${violations.map((v) => `- ${v}`).join("\n")}
 
 【修正が必要な箇所】
-features/payments/services/service.ts:176行目
-現在: .in("status", ["paid", "received", "refunded"])
-修正: .in("status", ["paid", "received", "refunded", "waived"])
+features/payments/services/stripe-session/types.ts の TERMINAL_PAYMENT_STATUSES
+および ensure-payment-record の終端検索ロジック
+（"waived" を含める）
 
 【すべての終端系ステータスの結果】
 ${terminalStatuses.map((s) => `${s}: ${results[s] ? "✅" : "❌"}`).join("\n")}

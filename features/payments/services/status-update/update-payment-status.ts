@@ -17,7 +17,7 @@ export async function updatePaymentStatusSafe(
   supabase: SupabaseClient<Database, "public">
 ): Promise<void> {
   try {
-    if (!params.expectedVersion) {
+    if (params.expectedVersion === undefined) {
       throw new PaymentError(
         PaymentErrorType.VALIDATION_ERROR,
         "Expected version is required for safe status update"

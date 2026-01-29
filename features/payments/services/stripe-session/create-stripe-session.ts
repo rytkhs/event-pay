@@ -52,7 +52,7 @@ export async function createStripeSession(
       paymentId: targetPaymentId,
       idempotencyKey: idempotencyKeyToUse,
       checkoutKeyRevision: checkoutKeyRevisionToSave,
-    } = await ensureStripePaymentRecord(params, supabase, paymentLogger);
+    } = await ensureStripePaymentRecord(params, supabase, contextLogger);
 
     // Stripe Checkout Sessionを作成（Destination chargesに統一）
     if (!params.destinationCharges) {
