@@ -56,8 +56,9 @@ export type ErrorCode =
   | "LINE_PROFILE_ERROR"
   | "LINE_ACCOUNT_LINKING_FAILED"
 
-  // --- 入力・リクエスト (400/422) ---
+  // --- 入力・リクエスト (400/405/422) ---
   | "INVALID_REQUEST" // 不正なリクエスト
+  | "METHOD_NOT_ALLOWED" // 許可されていないメソッド (405)
   | "VALIDATION_ERROR" // 入力バリデーションエラー
   | "MISSING_PARAMETER" // 必須パラメータ不足
   | "INVALID_FORMAT" // フォーマット不正

@@ -4,6 +4,7 @@ import { Ratelimit } from "@upstash/ratelimit";
 import { Redis } from "@upstash/redis";
 import { z } from "zod";
 
+import { respondWithCode, respondWithProblem } from "@core/errors/server";
 import { AdminReason, createSecureSupabaseClient } from "@core/security";
 import type { ErrorDetails } from "@core/utils/error-details";
 import { notifyError } from "@core/utils/error-handler.server";
@@ -48,6 +49,8 @@ const errorReportSchema = z.object({
 
 export async function POST(req: NextRequest) {
   try {
+    const baseLogContext = { category: "system" as const, actorType: "system" as const };
+
     // 1. レート制限チェック
     if (ratelimit) {
       const forwarded = req.headers.get("x-forwarded-for");
@@ -57,18 +60,14 @@ export async function POST(req: NextRequest) {
       const { success: rateLimitOk, remaining } = await ratelimit.limit(`error_log_${ip}`);
 
       if (!rateLimitOk) {
-        // eslint-disable-next-line no-console
-        console.warn("[ErrorAPI] Rate limit exceeded", { ip, remaining });
-        return NextResponse.json(
-          { error: "Too many requests" },
-          {
-            status: 429,
-            headers: {
-              "Retry-After": "60",
-              "X-RateLimit-Remaining": String(remaining),
-            },
-          }
-        );
+        return respondWithCode("RATE_LIMITED", {
+          instance: "/api/errors",
+          detail: "Too many requests",
+          logContext: { ...baseLogContext, action: "error_collection_rate_limited" },
+          headers: {
+            "X-RateLimit-Remaining": String(remaining),
+          },
+        });
       }
     }
 
@@ -77,7 +76,11 @@ export async function POST(req: NextRequest) {
     const validation = errorReportSchema.safeParse(body);
 
     if (!validation.success) {
-      return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
+      return respondWithCode("VALIDATION_ERROR", {
+        instance: "/api/errors",
+        detail: "Invalid request body",
+        logContext: { ...baseLogContext, action: "error_collection_invalid_request" },
+      });
     }
 
     const { data } = validation;
@@ -122,17 +125,12 @@ export async function POST(req: NextRequest) {
     });
 
     if (insertError) {
-      // eslint-disable-next-line no-console
-      console.error("[ErrorAPI] Failed to insert log:", insertError);
-      return NextResponse.json(
-        { error: "Failed to save log" },
-        {
-          status: 500,
-          headers: {
-            "Cache-Control": "no-store",
-          },
-        }
-      );
+      return respondWithProblem(insertError, {
+        instance: "/api/errors",
+        detail: "Failed to save log",
+        defaultCode: "DATABASE_ERROR",
+        logContext: { ...baseLogContext, action: "error_collection_insert_failed" },
+      });
     }
 
     // 6. 重要エラーの通知（Sentry/Slack）
@@ -180,16 +178,11 @@ export async function POST(req: NextRequest) {
       }
     );
   } catch (error) {
-    // eslint-disable-next-line no-console
-    console.error("[ErrorAPI] Unhandled error:", error);
-    return NextResponse.json(
-      { error: "Internal Server Error" },
-      {
-        status: 500,
-        headers: {
-          "Cache-Control": "no-store",
-        },
-      }
-    );
+    return respondWithProblem(error, {
+      instance: "/api/errors",
+      detail: "Internal Server Error",
+      defaultCode: "INTERNAL_ERROR",
+      logContext: { category: "system", actorType: "system", action: "error_collection_unhandled" },
+    });
   }
 }

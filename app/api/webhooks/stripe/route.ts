@@ -8,7 +8,7 @@ import { NextResponse } from "next/server";
 
 import { Client } from "@upstash/qstash";
 
-import { createProblemResponse } from "@core/api/problem-details";
+import { respondWithCode, respondWithProblem } from "@core/errors/server";
 import { logger } from "@core/logging/app-logger";
 import { generateSecureUuid } from "@core/security/crypto";
 import { logSecurityEvent } from "@core/security/security-logger";
@@ -19,7 +19,6 @@ import {
 import { getWebhookSecrets, getStripe } from "@core/stripe/client";
 import { StripeWebhookSignatureVerifier } from "@core/stripe/webhook-signature-verifier";
 import { getEnv } from "@core/utils/cloudflare-env";
-import { handleServerError } from "@core/utils/error-handler.server";
 import { getClientIP } from "@core/utils/ip-detection";
 
 import { StripeWebhookEventHandler } from "@features/payments/server";
@@ -42,6 +41,7 @@ export async function POST(request: NextRequest) {
 
   const requestId = request.headers.get("x-request-id") || generateSecureUuid();
   const startTime = Date.now();
+  const baseLogContext = { category: "stripe_webhook" as const, actorType: "webhook" as const };
 
   logger.info("Webhook request received", {
     category: "stripe_webhook",
@@ -69,10 +69,11 @@ export async function POST(request: NextRequest) {
           ip: clientIP,
           timestamp: new Date(),
         });
-        return createProblemResponse("FORBIDDEN", {
+        return respondWithCode("FORBIDDEN", {
           instance: "/api/webhooks/stripe",
           detail: "IP address not authorized for webhook access",
-          correlation_id: requestId,
+          correlationId: requestId,
+          logContext: { ...baseLogContext, action: "webhook_ip_rejected" },
         });
       }
     }
@@ -90,10 +91,11 @@ export async function POST(request: NextRequest) {
         ip: clientIP,
         timestamp: new Date(),
       });
-      return createProblemResponse("INVALID_REQUEST", {
+      return respondWithCode("INVALID_REQUEST", {
         instance: "/api/webhooks/stripe",
         detail: "Missing Stripe signature",
-        correlation_id: requestId,
+        correlationId: requestId,
+        logContext: { ...baseLogContext, action: "signature_missing" },
       });
     }
 
@@ -114,10 +116,11 @@ export async function POST(request: NextRequest) {
         ip: clientIP,
         timestamp: new Date(),
       });
-      return createProblemResponse("INVALID_REQUEST", {
+      return respondWithCode("INVALID_REQUEST", {
         instance: "/api/webhooks/stripe",
         detail: "Invalid webhook signature",
-        correlation_id: requestId,
+        correlationId: requestId,
+        logContext: { ...baseLogContext, action: "signature_invalid" },
       });
     }
 
@@ -171,22 +174,15 @@ export async function POST(request: NextRequest) {
           processingTimeMs: processingTime,
         });
       } catch (error) {
-        handleServerError("WEBHOOK_SYNC_PROCESSING_FAILED", {
-          action: "syncProcessingFailed",
-          additionalData: {
-            category: "stripe_webhook",
-            event_id: event.id,
-            event_type: event.type,
-            error_name: error instanceof Error ? error.name : "Unknown",
-            error_message: error instanceof Error ? error.message : String(error),
-            request_id: requestId,
-          },
-        });
-
-        return createProblemResponse("INTERNAL_ERROR", {
+        return respondWithProblem(error, {
           instance: "/api/webhooks/stripe",
           detail: "Webhook processing failed in test mode",
-          correlation_id: requestId,
+          correlationId: requestId,
+          defaultCode: "WEBHOOK_SYNC_PROCESSING_FAILED",
+          logContext: {
+            ...baseLogContext,
+            action: "sync_processing_failed",
+          },
         });
       }
     }
@@ -268,12 +264,19 @@ export async function POST(request: NextRequest) {
         logger.warn("Stripe signature verification failed", {
           ...errorContext,
           error_classification: "security_error",
-          severity: "high",
+          severity: "medium",
         });
-        return createProblemResponse("INVALID_REQUEST", {
+        return respondWithProblem(error, {
           instance: "/api/webhooks/stripe",
           detail: "Webhook signature verification failed",
-          correlation_id: requestId,
+          correlationId: requestId,
+          defaultCode: "WEBHOOK_SIGNATURE_VERIFICATION_FAILED",
+          logContext: {
+            category: "stripe_webhook",
+            actorType: "webhook",
+            action: "signatureVerificationFailed",
+            additionalData: errorContext,
+          },
         });
       }
 
@@ -283,19 +286,15 @@ export async function POST(request: NextRequest) {
         errObj.message?.includes("upstash") ||
         errObj.message?.includes("publish")
       ) {
-        handleServerError("WEBHOOK_QSTASH_FORWARDING_FAILED", {
-          action: "qstashForwardingFailed",
-          additionalData: {
-            ...errorContext,
-            error_classification: "external_service_error",
-            qstash_error: true,
-          },
-        });
-        return createProblemResponse("EXTERNAL_SERVICE_ERROR", {
+        return respondWithProblem(error, {
           instance: "/api/webhooks/stripe",
           detail: "Webhook forwarding to queue failed",
-          correlation_id: requestId,
-          retryable: true,
+          correlationId: requestId,
+          defaultCode: "WEBHOOK_QSTASH_FORWARDING_FAILED",
+          logContext: {
+            ...baseLogContext,
+            action: "qstashForwardingFailed",
+          },
         });
       }
 
@@ -313,11 +312,12 @@ export async function POST(request: NextRequest) {
           severity: "medium",
           network_error_code: errObj.code,
         });
-        return createProblemResponse("EXTERNAL_SERVICE_ERROR", {
+        return respondWithProblem(error, {
           instance: "/api/webhooks/stripe",
           detail: "Network connection failed",
-          correlation_id: requestId,
-          retryable: true,
+          correlationId: requestId,
+          defaultCode: "EXTERNAL_SERVICE_ERROR",
+          logContext: { ...baseLogContext, action: "network_error" },
         });
       }
 
@@ -332,10 +332,12 @@ export async function POST(request: NextRequest) {
           error_classification: "client_error",
           severity: "low",
         });
-        return createProblemResponse("INVALID_REQUEST", {
+        return respondWithProblem(error, {
           instance: "/api/webhooks/stripe",
           detail: "Invalid JSON payload",
-          correlation_id: requestId,
+          correlationId: requestId,
+          defaultCode: "INVALID_REQUEST",
+          logContext: { ...baseLogContext, action: "invalid_json" },
         });
       }
 
@@ -345,17 +347,16 @@ export async function POST(request: NextRequest) {
         errObj.message?.includes("environment") ||
         errObj.message?.includes("configuration")
       ) {
-        handleServerError("WEBHOOK_CONFIG_ERROR", {
-          action: "webhookConfigError",
-          additionalData: {
-            ...errorContext,
-            error_classification: "config_error",
-          },
-        });
-        return createProblemResponse("INTERNAL_ERROR", {
+        return respondWithProblem(error, {
           instance: "/api/webhooks/stripe",
           detail: "Configuration error",
-          correlation_id: requestId,
+          correlationId: requestId,
+          defaultCode: "WEBHOOK_CONFIG_ERROR",
+          logContext: {
+            category: "stripe_webhook",
+            actorType: "webhook",
+            action: "webhookConfigError",
+          },
         });
       }
 
@@ -370,30 +371,40 @@ export async function POST(request: NextRequest) {
           error_classification: "security_error",
           severity: "medium",
         });
-        return createProblemResponse("FORBIDDEN", {
+        return respondWithProblem(error, {
           instance: "/api/webhooks/stripe",
           detail: "Access denied",
-          correlation_id: requestId,
+          correlationId: requestId,
+          defaultCode: "FORBIDDEN",
+          logContext: { ...baseLogContext, action: "access_denied" },
         });
       }
     }
 
     // その他の予期しないエラー（最も重大として扱う）
-    handleServerError("WEBHOOK_UNEXPECTED_ERROR", {
-      action: "webhookUnexpectedError",
-      additionalData: {
-        ...errorContext,
-        error_classification: "system_error",
-        requires_investigation: true,
-      },
-    });
-
-    // 失敗時はProblem Detailsで500を返し、Stripeにリトライを促す
-    return createProblemResponse("INTERNAL_ERROR", {
+    return respondWithProblem(error, {
       instance: "/api/webhooks/stripe",
       detail: "Unexpected webhook processing failure",
-      correlation_id: requestId,
-      retryable: true,
+      correlationId: requestId,
+      defaultCode: "WEBHOOK_UNEXPECTED_ERROR",
+      logContext: {
+        category: "stripe_webhook",
+        actorType: "webhook",
+        action: "webhookUnexpectedError",
+      },
     });
   }
+}
+
+// GETメソッドは許可しない
+export async function GET() {
+  return respondWithCode("METHOD_NOT_ALLOWED", {
+    instance: "/api/webhooks/stripe",
+    detail: "Method not allowed",
+    logContext: {
+      category: "stripe_webhook",
+      actorType: "anonymous",
+      action: "method_not_allowed",
+    },
+  });
 }

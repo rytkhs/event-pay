@@ -48,7 +48,7 @@ export async function cancelEventAction(
       .select("id");
 
     if (updateError) {
-      return createServerActionError("EVENT_CANCEL_FAILED", "イベントの中止に失敗しました");
+      return createServerActionError("EVENT_OPERATION_FAILED", "イベントの中止に失敗しました");
     }
 
     // 監査ログ記録

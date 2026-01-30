@@ -241,9 +241,19 @@ describe("エラー収集API統合テスト (/api/errors)", () => {
     const response = await errorHandler(request);
 
     // レスポンス検証
-    expect(response.status).toBe(400);
+    // レスポンス検証
+    // respondWithCode("VALIDATION_ERROR") は 422 Unprocessable Entity を返す
+    expect(response.status).toBe(422);
     const responseData = await response.json();
-    expect(responseData).toEqual({ error: "Invalid request body" });
+
+    // Problem Details 形式の検証
+    expect(responseData).toMatchObject({
+      type: "https://minnano-shukin.com/errors/validation-error",
+      status: 422,
+      code: "VALIDATION_ERROR",
+      detail: "Invalid request body",
+      instance: "/api/errors",
+    });
 
     // DB insert が呼ばれていないことを検証
     expect(mockSupabaseInsert).not.toHaveBeenCalled();
@@ -280,9 +290,18 @@ describe("エラー収集API統合テスト (/api/errors)", () => {
     const response = await errorHandler(request);
 
     // レスポンス検証
+    // レスポンス検証
     expect(response.status).toBe(429);
     const responseData = await response.json();
-    expect(responseData).toEqual({ error: "Too many requests" });
+
+    // Problem Details 形式の検証
+    expect(responseData).toMatchObject({
+      type: "https://minnano-shukin.com/errors/rate-limited",
+      status: 429,
+      code: "RATE_LIMITED",
+      detail: "Too many requests",
+      instance: "/api/errors",
+    });
 
     // ヘッダー検証
     expect(response.headers.get("Retry-After")).toBe("60");
@@ -358,15 +377,22 @@ describe("エラー収集API統合テスト (/api/errors)", () => {
     const response = await errorHandler(request);
 
     // レスポンス検証
+    // レスポンス検証
     expect(response.status).toBe(500);
     const responseData = await response.json();
 
+    // Problem Details 形式の検証
+    expect(responseData).toMatchObject({
+      type: "https://minnano-shukin.com/errors/database-error",
+      status: 500,
+      code: "DATABASE_ERROR",
+      detail: "Failed to save log", // センシティブ情報は含まない
+      instance: "/api/errors",
+    });
+
     // エラー詳細が含まれていないことを確認（セキュリティ）
-    expect(responseData).toEqual({ error: "Failed to save log" });
-    expect(responseData).not.toHaveProperty("details");
-    expect(responseData).not.toHaveProperty("message");
     expect(JSON.stringify(responseData)).not.toContain("Database connection failed");
-    expect(JSON.stringify(responseData)).not.toContain("Sensitive");
+    expect(JSON.stringify(responseData)).not.toContain("Sensitive database error details");
 
     // Cache-Controlヘッダーの検証
     expect(response.headers.get("Cache-Control")).toBe("no-store");

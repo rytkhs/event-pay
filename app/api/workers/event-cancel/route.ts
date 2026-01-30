@@ -4,7 +4,7 @@ import { type NextRequest, NextResponse } from "next/server";
 
 import { Receiver } from "@upstash/qstash";
 
-import { createProblemResponse } from "@core/api/problem-details";
+import { respondWithCode, respondWithProblem } from "@core/errors/server";
 import { logger } from "@core/logging/app-logger";
 import { sendSlackText } from "@core/notification/slack";
 import { generateSecureUuid } from "@core/security/crypto";
@@ -12,7 +12,6 @@ import { SecureSupabaseClientFactory } from "@core/security/secure-client-factor
 import { AdminReason } from "@core/security/secure-client-factory.types";
 import { logSecurityEvent } from "@core/security/security-logger";
 import { getEnv } from "@core/utils/cloudflare-env";
-import { handleServerError } from "@core/utils/error-handler.server";
 import { getClientIP } from "@core/utils/ip-detection";
 
 // 署名検証用Receiver
@@ -33,6 +32,7 @@ interface CancelWorkerBody {
 export async function POST(request: NextRequest) {
   const start = Date.now();
   const corr = `qstash_cancel_${generateSecureUuid()}`;
+  const baseLogContext = { category: "event_management" as const, actorType: "webhook" as const };
 
   const cancelLogger = logger.withContext({
     category: "event_management",
@@ -40,10 +40,13 @@ export async function POST(request: NextRequest) {
     actor_type: "webhook",
     correlation_id: corr,
   });
+  let deliveryId: string | null = null;
+  let parsed: CancelWorkerBody | undefined;
+
   try {
     // 署名検証
     const signature = request.headers.get("Upstash-Signature");
-    const deliveryId = request.headers.get("Upstash-Delivery-Id");
+    deliveryId = request.headers.get("Upstash-Delivery-Id");
     const url = `${getEnv().NEXT_PUBLIC_APP_URL}/api/workers/event-cancel`;
     const rawBody = await request.text();
 
@@ -58,9 +61,11 @@ export async function POST(request: NextRequest) {
         ip: getClientIP(request),
         timestamp: new Date(),
       });
-      return createProblemResponse("UNAUTHORIZED", {
+      return respondWithCode("UNAUTHORIZED", {
         instance: "/api/workers/event-cancel",
         detail: "Missing QStash signature",
+        correlationId: corr,
+        logContext: { ...baseLogContext, action: "qstash_signature_missing" },
       });
     }
 
@@ -76,28 +81,42 @@ export async function POST(request: NextRequest) {
         ip: getClientIP(request),
         timestamp: new Date(),
       });
-      return createProblemResponse("UNAUTHORIZED", {
+      return respondWithCode("UNAUTHORIZED", {
         instance: "/api/workers/event-cancel",
         detail: "Invalid QStash signature",
+        correlationId: corr,
+        logContext: { ...baseLogContext, action: "qstash_signature_invalid" },
       });
     }
 
     // JSON パース
-    let parsed: CancelWorkerBody;
     try {
       parsed = JSON.parse(rawBody);
     } catch {
-      return createProblemResponse("INVALID_REQUEST", {
+      return respondWithCode("INVALID_REQUEST", {
         instance: "/api/workers/event-cancel",
         detail: "Invalid JSON body",
+        correlationId: corr,
+        logContext: { ...baseLogContext, action: "invalid_json" },
+      });
+    }
+
+    if (!parsed) {
+      return respondWithCode("INVALID_REQUEST", {
+        instance: "/api/workers/event-cancel",
+        detail: "Invalid JSON body",
+        correlationId: corr,
+        logContext: { ...baseLogContext, action: "invalid_json" },
       });
     }
 
     const { eventId, message } = parsed;
     if (!eventId) {
-      return createProblemResponse("MISSING_PARAMETER", {
+      return respondWithCode("MISSING_PARAMETER", {
         instance: "/api/workers/event-cancel",
         detail: "Missing eventId",
+        correlationId: corr,
+        logContext: { ...baseLogContext, action: "missing_event_id" },
       });
     }
 
@@ -116,19 +135,17 @@ export async function POST(request: NextRequest) {
       .in("status", ["attending", "maybe"]);
 
     if (error) {
-      handleServerError("DATABASE_ERROR", {
-        category: "event_management",
-        action: "event_cancel_worker_fetch_attendees",
-        eventId: eventId,
-        additionalData: {
-          error_message: error.message,
-          correlation_id: corr,
-        },
-      });
-      // 致命的失敗はHTTP 500で返却し、QStashの再試行に委ねる
-      return createProblemResponse("DATABASE_ERROR", {
+      return respondWithProblem(error, {
         instance: "/api/workers/event-cancel",
         detail: "Failed to fetch attendees for cancel worker",
+        correlationId: corr,
+        defaultCode: "DATABASE_ERROR",
+        logContext: {
+          category: "event_management",
+          actorType: "webhook",
+          action: "event_cancel_worker_fetch_attendees",
+          eventId: eventId,
+        },
       });
     }
 
@@ -170,14 +187,11 @@ export async function POST(request: NextRequest) {
           });
         }
       } catch (error) {
-        handleServerError("EVENT_OPERATION_FAILED", {
-          category: "event_management",
+        cancelLogger.error("Event cancel Slack notification threw exception", {
           action: "event_cancel_slack_exception",
-          eventId: eventId,
-          additionalData: {
-            error_message: error instanceof Error ? error.message : String(error),
-            correlation_id: corr,
-          },
+          event_id: eventId,
+          error: error instanceof Error ? error.message : String(error),
+          outcome: "failure",
         });
       }
     }
@@ -195,18 +209,20 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ received: true, deliveryId, emails: emails.length });
   } catch (error) {
-    handleServerError("EVENT_OPERATION_FAILED", {
-      category: "event_management",
-      action: "event_cancel_worker_failed",
-      additionalData: {
-        error_message: error instanceof Error ? error.message : String(error),
-        correlation_id: corr,
-      },
-    });
-    // 失敗時は500 Problem Detailsで返し、QStashのリトライに委ねる
-    return createProblemResponse("INTERNAL_ERROR", {
+    return respondWithProblem(error, {
       instance: "/api/workers/event-cancel",
       detail: "Event cancel worker failed",
+      correlationId: corr,
+      defaultCode: "EVENT_OPERATION_FAILED",
+      logContext: {
+        category: "event_management",
+        actorType: "webhook",
+        action: "event_cancel_worker_failed",
+        additionalData: {
+          delivery_id: deliveryId,
+          event_id: parsed?.eventId,
+        },
+      },
     });
   } finally {
     const ms = Date.now() - start;

@@ -1,15 +1,14 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
-import { createProblemResponse } from "@core/api/problem-details";
 import { validateCronSecret } from "@core/cron-auth";
+import { respondWithCode, respondWithProblem } from "@core/errors/server";
 import { logger } from "@core/logging/app-logger";
 import { logEmail } from "@core/logging/system-logger";
 import { EmailNotificationService } from "@core/notification/email-service";
 import { ReminderService } from "@core/notification/reminder-service";
 import { getSecureClientFactory } from "@core/security/secure-client-factory.impl";
 import { AdminReason } from "@core/security/secure-client-factory.types";
-import { handleServerError } from "@core/utils/error-handler.server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -34,9 +33,14 @@ export async function GET(request: NextRequest) {
       error: auth.error,
       outcome: "failure",
     });
-    return createProblemResponse("UNAUTHORIZED", {
+    return respondWithCode("UNAUTHORIZED", {
       instance: "/api/cron/send-reminders",
       detail: auth.error || "Unauthorized",
+      logContext: {
+        category: "system",
+        actorType: "system",
+        action: "reminder_cron_auth_fail",
+      },
     });
   }
 
@@ -118,17 +122,21 @@ export async function GET(request: NextRequest) {
       totalFailed,
     });
   } catch (error) {
-    handleServerError("CRON_EXECUTION_ERROR", {
-      category: "system",
-      action: "reminder_cron_failed",
-      additionalData: {
-        error_name: error instanceof Error ? error.name : "Unknown",
-        error_message: error instanceof Error ? error.message : String(error),
-      },
-    });
-    return createProblemResponse("INTERNAL_ERROR", {
+    const errorName = error instanceof Error ? error.name : "Unknown";
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    return respondWithProblem(error, {
       instance: "/api/cron/send-reminders",
       detail: "Failed to send reminders",
+      defaultCode: "CRON_EXECUTION_ERROR",
+      logContext: {
+        category: "system",
+        actorType: "system",
+        action: "reminder_cron_failed",
+        additionalData: {
+          error_name: errorName,
+          error_message: errorMessage,
+        },
+      },
     });
   }
 }
