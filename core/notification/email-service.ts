@@ -281,6 +281,22 @@ export class EmailNotificationService implements IEmailNotificationService {
     // fromフィールドの構築
     const fromField = this.buildFromField(template);
 
+    // 開発・テスト環境では実際の送信をスキップ
+    const isDev = process.env.NODE_ENV === "development" || process.env.NODE_ENV === "test";
+    if (isDev) {
+      this.logger.info("Email send skipped in development/test environment", {
+        to: maskedTo,
+        subject: template.subject,
+        outcome: "success",
+        mocked: true,
+      });
+      return {
+        success: true,
+        messageId: `mock-${randomUUID()}`,
+        retryCount: 0,
+      };
+    }
+
     for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
       try {
         // タイムアウト付きでメール送信を実行
