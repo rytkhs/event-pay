@@ -16,6 +16,7 @@ import { PasswordStatusIcon } from "@/components/ui/PasswordStatusIcon";
 export default function UpdatePasswordPage() {
   // 共通認証フォームフック
   const { state, formAction, isPending } = useAuthForm(updatePasswordAction);
+  const error = state.success ? undefined : state.error;
 
   // パスワード確認カスタムフック
   const passwordConfirmation = usePasswordConfirmation();
@@ -56,7 +57,7 @@ export default function UpdatePasswordPage() {
         onChange={(e) => passwordConfirmation.actions.setPassword(e.target.value)}
         autoComplete="new-password"
         disabled={isPending}
-        fieldErrors={state.fieldErrors?.password}
+        fieldErrors={error?.fieldErrors?.password}
         required
       />
 
@@ -74,7 +75,7 @@ export default function UpdatePasswordPage() {
           error={
             passwordConfirmation.validation.hasError
               ? passwordConfirmation.state.error
-              : state.fieldErrors?.passwordConfirm?.[0]
+              : error?.fieldErrors?.passwordConfirm?.[0]
           }
           required
         />

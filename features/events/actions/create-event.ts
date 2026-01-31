@@ -5,16 +5,11 @@ import { headers } from "next/headers";
 import { z } from "zod";
 
 import { getCurrentUser } from "@core/auth/auth-utils";
+import { type ActionResult, fail, ok, zodFail } from "@core/errors/adapters/server-actions";
 import { logger } from "@core/logging/app-logger";
 import { logEventManagement } from "@core/logging/system-logger";
 import { SecureSupabaseClientFactory } from "@core/security/secure-client-factory.impl";
 import { logSecurityEvent } from "@core/security/security-logger";
-import {
-  type ServerActionResult,
-  createServerActionError,
-  createServerActionSuccess,
-  zodErrorToServerActionResponse,
-} from "@core/types/server-actions";
 import { handleServerError } from "@core/utils/error-handler.server";
 import { extractEventCreateFormData } from "@core/utils/form-data-extractors";
 import { generateInviteToken } from "@core/utils/invite-token";
@@ -25,7 +20,7 @@ import type { Database } from "@/types/database";
 
 type EventRow = Database["public"]["Tables"]["events"]["Row"];
 
-type CreateEventResult = ServerActionResult<EventRow>;
+type CreateEventResult = ActionResult<EventRow>;
 
 type FormDataFields = {
   title: string;
@@ -75,7 +70,8 @@ export async function createEventAction(formData: FormData): Promise<CreateEvent
         },
       });
 
-      return createServerActionError("UNAUTHORIZED", "認証が必要です", {
+      return fail("UNAUTHORIZED", {
+        userMessage: "認証が必要です",
         details: {
           timestamp: new Date().toISOString(),
           action: "create_event",
@@ -95,7 +91,7 @@ export async function createEventAction(formData: FormData): Promise<CreateEvent
           issues: validationError.issues,
           outcome: "failure",
         });
-        return zodErrorToServerActionResponse(validationError);
+        return zodFail(validationError, { userMessage: "入力が不正です" });
       }
       handleServerError("EVENT_OPERATION_FAILED", {
         category: "event_management",
@@ -106,7 +102,7 @@ export async function createEventAction(formData: FormData): Promise<CreateEvent
           request_id: requestId,
         },
       });
-      return createServerActionError("VALIDATION_ERROR", "入力が不正です");
+      return fail("VALIDATION_ERROR", { userMessage: "入力が不正です" });
     }
 
     // オンライン決済の準備状態（Stripe Connect）のサーバー側チェック
@@ -141,20 +137,12 @@ export async function createEventAction(formData: FormData): Promise<CreateEvent
             connect_payouts_enabled: connectAccount?.payouts_enabled,
             outcome: "failure",
           });
-          return createServerActionError(
-            "VALIDATION_ERROR",
-            "オンライン決済を利用するにはStripe Connectの設定完了が必要です",
-            {
-              details: {
-                fieldErrors: [
-                  {
-                    field: "payment_methods",
-                    message: "Stripe Connectの設定を完了してください（本人確認と入金有効化）",
-                  },
-                ],
-              },
-            }
-          );
+          return fail("VALIDATION_ERROR", {
+            userMessage: "オンライン決済を利用するにはStripe Connectの設定完了が必要です",
+            fieldErrors: {
+              payment_methods: ["Stripe Connectの設定を完了してください（本人確認と入金有効化）"],
+            },
+          });
         }
       }
     }
@@ -192,7 +180,8 @@ export async function createEventAction(formData: FormData): Promise<CreateEvent
           request_id: requestId,
         },
       });
-      return createServerActionError("DATABASE_ERROR", "イベントの作成に失敗しました", {
+      return fail("DATABASE_ERROR", {
+        userMessage: "イベントの作成に失敗しました",
         retryable: true,
         details: { dbError },
       });
@@ -205,7 +194,8 @@ export async function createEventAction(formData: FormData): Promise<CreateEvent
         userId: user.id,
         additionalData: { request_id: requestId },
       });
-      return createServerActionError("DATABASE_ERROR", "イベントの作成に失敗しました", {
+      return fail("DATABASE_ERROR", {
+        userMessage: "イベントの作成に失敗しました",
         retryable: true,
       });
     }
@@ -230,7 +220,7 @@ export async function createEventAction(formData: FormData): Promise<CreateEvent
       },
     });
 
-    return createServerActionSuccess(createdEvent);
+    return ok(createdEvent);
   } catch (error) {
     if (error instanceof z.ZodError) {
       handleServerError("EVENT_OPERATION_FAILED", {
@@ -238,7 +228,7 @@ export async function createEventAction(formData: FormData): Promise<CreateEvent
         action: "create_event_zod_error_catch",
         additionalData: { issues: error.issues, request_id: requestId },
       });
-      return zodErrorToServerActionResponse(error);
+      return zodFail(error, { userMessage: "入力が不正です" });
     }
     handleServerError("EVENT_OPERATION_FAILED", {
       category: "event_management",
@@ -248,7 +238,8 @@ export async function createEventAction(formData: FormData): Promise<CreateEvent
         request_id: requestId,
       },
     });
-    return createServerActionError("INTERNAL_ERROR", "予期しないエラーが発生しました", {
+    return fail("INTERNAL_ERROR", {
+      userMessage: "予期しないエラーが発生しました",
       retryable: true,
       details: { originalError: error },
     });

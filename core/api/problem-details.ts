@@ -8,13 +8,12 @@
  *             このモジュールは後方互換のために維持されています。
  */
 
-import { randomBytes } from "crypto";
-
 import { NextResponse } from "next/server";
 
 import { logger } from "@core/logging/app-logger";
 import { handleServerError } from "@core/utils/error-handler.server";
 
+import { generateCorrelationId } from "../errors/correlation-id";
 import { ERROR_REGISTRY } from "../errors/registry";
 import type { ErrorCode } from "../errors/types";
 
@@ -81,19 +80,13 @@ interface ProblemOptions {
 }
 
 /**
- * 相関IDを生成
- */
-function generateCorrelationId(): string {
-  return `req_${randomBytes(8).toString("hex")}`;
-}
-
-/**
  * RFC 7807 準拠の Problem Details オブジェクトを作成
  */
 function createProblem(code: ErrorCode, options: ProblemOptions = {}): ProblemDetails {
   const errorDef = ERROR_REGISTRY[code];
 
-  const correlationId = options.correlation_id || generateCorrelationId();
+  const correlationId =
+    options.correlation_id || generateCorrelationId({ prefix: "req", length: 16 });
   const status = options.status || errorDef.httpStatus;
   const detail =
     options.detail ||

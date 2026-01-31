@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import type { PostgrestError } from "@supabase/supabase-js";
 import { z } from "zod";
 
+import { type ActionResult, fail, ok, zodFail } from "@core/errors/adapters/server-actions";
 import { logger } from "@core/logging/app-logger";
 import { NotificationService } from "@core/notification";
 import { SecureSupabaseClientFactory } from "@core/security/secure-client-factory.impl";
@@ -11,12 +12,6 @@ import {
   logInvalidTokenAccess,
 } from "@core/security/security-logger";
 import { createClient } from "@core/supabase/server";
-import {
-  type ServerActionResult,
-  createServerActionError,
-  createServerActionSuccess,
-  zodErrorToServerActionResponse,
-} from "@core/types/server-actions";
 import { generateGuestToken } from "@core/utils/guest-token";
 import {
   validateInviteToken,
@@ -79,9 +74,9 @@ async function extractAndValidateFormData(
         },
         securityContext
       );
-      throw zodErrorToServerActionResponse(error);
+      throw zodFail(error);
     }
-    throw createServerActionError("VALIDATION_ERROR", "入力データが無効です");
+    throw fail("VALIDATION_ERROR", { userMessage: "入力データが無効です" });
   }
 }
 
@@ -97,10 +92,9 @@ async function validateInviteAndEvent(
   if (!inviteValidation.isValid || !inviteValidation.event) {
     // 無効なトークンアクセスをログに記録
     logInvalidTokenAccess(participationData.inviteToken, "invite", securityContext);
-    throw createServerActionError(
-      "NOT_FOUND",
-      inviteValidation.errorMessage ?? "無効な招待リンクです"
-    );
+    throw fail("NOT_FOUND", {
+      userMessage: inviteValidation.errorMessage ?? "無効な招待リンクです",
+    });
   }
 
   if (!inviteValidation.canRegister) {
@@ -116,10 +110,9 @@ async function validateInviteAndEvent(
       { ...securityContext, eventId: inviteValidation.event?.id }
     );
 
-    throw createServerActionError(
-      "RESOURCE_CONFLICT",
-      inviteValidation.errorMessage ?? "このイベントには参加登録できません"
-    );
+    throw fail("RESOURCE_CONFLICT", {
+      userMessage: inviteValidation.errorMessage ?? "このイベントには参加登録できません",
+    });
   }
 
   return {
@@ -155,9 +148,9 @@ async function validateFormDataWithEventFee(
         },
         { ...securityContext, eventId: event.id }
       );
-      throw zodErrorToServerActionResponse(error);
+      throw zodFail(error);
     }
-    throw createServerActionError("VALIDATION_ERROR", "入力データが無効です");
+    throw fail("VALIDATION_ERROR", { userMessage: "入力データが無効です" });
   }
 }
 
@@ -189,7 +182,7 @@ async function validateCapacity(
         { ...securityContext, eventId: event.id }
       );
 
-      throw createServerActionError("RESOURCE_CONFLICT", "このイベントは定員に達しています");
+      throw fail("RESOURCE_CONFLICT", { userMessage: "このイベントは定員に達しています" });
     }
   }
 }
@@ -213,10 +206,9 @@ async function validateEmailDuplication(
       { ...securityContext, eventId: event.id }
     );
 
-    throw createServerActionError(
-      "DUPLICATE_REGISTRATION",
-      "このメールアドレスは既にこのイベントに登録されています"
-    );
+    throw fail("DUPLICATE_REGISTRATION", {
+      userMessage: "このメールアドレスは既にこのイベントに登録されています",
+    });
   }
 }
 
@@ -363,7 +355,7 @@ async function executeRegistration(
         { ...securityContext, eventId: event.id }
       );
 
-      throw createServerActionError("RESOURCE_CONFLICT", "このイベントは定員に達しています");
+      throw fail("RESOURCE_CONFLICT", { userMessage: "このイベントは定員に達しています" });
     }
 
     // 【更新】データベース修正後のゲストトークン重複エラーを適切にハンドリング（極稀なケース）
@@ -391,10 +383,9 @@ async function executeRegistration(
         { ...securityContext, eventId: event.id }
       );
 
-      throw createServerActionError(
-        "INTERNAL_ERROR",
-        "システムエラーが発生しました。恐れ入りますが、再度お試しください"
-      );
+      throw fail("INTERNAL_ERROR", {
+        userMessage: "システムエラーが発生しました。恐れ入りますが、再度お試しください",
+      });
     }
 
     // 【更新】データベース修正後のメール重複エラーを適切にハンドリング
@@ -425,12 +416,11 @@ async function executeRegistration(
 
       // レースコンディション解決後の定員超過 vs 真のメール重複を適切に区別
       if (isRaceConditionResolved) {
-        throw createServerActionError("RESOURCE_CONFLICT", "このイベントは定員に達しています");
+        throw fail("RESOURCE_CONFLICT", { userMessage: "このイベントは定員に達しています" });
       } else {
-        throw createServerActionError(
-          "DUPLICATE_REGISTRATION",
-          "このメールアドレスは既にこのイベントに登録されています"
-        );
+        throw fail("DUPLICATE_REGISTRATION", {
+          userMessage: "このメールアドレスは既にこのイベントに登録されています",
+        });
       }
     }
 
@@ -449,7 +439,7 @@ async function executeRegistration(
       { ...securityContext, eventId: event.id }
     );
 
-    throw createServerActionError("DATABASE_ERROR", "参加登録の処理中にエラーが発生しました");
+    throw fail("DATABASE_ERROR", { userMessage: "参加登録の処理中にエラーが発生しました" });
   }
 
   // ゲストトークンが正しく保存されたかを検証
@@ -567,7 +557,7 @@ async function verifyGuestTokenStorage(
  */
 export async function registerParticipationAction(
   formData: FormData
-): Promise<ServerActionResult<RegisterParticipationData>> {
+): Promise<ActionResult<RegisterParticipationData>> {
   // リクエスト情報を取得（テスト環境でも安全）
   const { context: securityContext } = await getSafeHeaders();
 
@@ -649,11 +639,11 @@ export async function registerParticipationAction(
       });
     }
 
-    return createServerActionSuccess(responseData, "参加登録が完了しました");
+    return ok(responseData, { message: "参加登録が完了しました" });
   } catch (error) {
-    // エラーが既にServerActionResultの場合はそのまま返す
+    // エラーが既にActionResultの場合はそのまま返す
     if (error && typeof error === "object" && "success" in error) {
-      return error as ServerActionResult<RegisterParticipationData>;
+      return error as ActionResult<RegisterParticipationData>;
     }
 
     // 予期しないエラーをセキュリティログに記録
@@ -666,7 +656,7 @@ export async function registerParticipationAction(
       securityContext
     );
 
-    return createServerActionError("INTERNAL_ERROR", "参加登録の処理中にエラーが発生しました");
+    return fail("INTERNAL_ERROR", { userMessage: "参加登録の処理中にエラーが発生しました" });
   }
 }
 
@@ -676,7 +666,7 @@ export async function registerParticipationAction(
  */
 export async function registerParticipationDirectAction(
   participationData: ParticipationFormData
-): Promise<ServerActionResult<RegisterParticipationData>> {
+): Promise<ActionResult<RegisterParticipationData>> {
   try {
     // FormDataを模擬してメインの処理を再利用
     const formData = new FormData();
@@ -700,6 +690,6 @@ export async function registerParticipationDirectAction(
       { userAgent: "direct-action", ip: "internal" }
     );
 
-    return createServerActionError("INTERNAL_ERROR", "参加登録の処理中にエラーが発生しました");
+    return fail("INTERNAL_ERROR", { userMessage: "参加登録の処理中にエラーが発生しました" });
   }
 }

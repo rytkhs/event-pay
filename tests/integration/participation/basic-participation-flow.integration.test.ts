@@ -59,7 +59,7 @@ describe("P0-1: 基本参加登録フロー統合テスト", () => {
       expect(result.success).toBe(true);
 
       if (!result.success) {
-        throw new Error(`Expected success but got error: ${result.error}`);
+        throw new Error(`Expected success but got error: ${result.error?.message ?? "unknown"}`);
       }
 
       expect(result.data).toBeDefined();
@@ -134,7 +134,7 @@ describe("P0-1: 基本参加登録フロー統合テスト", () => {
       expect(result.success).toBe(true);
 
       if (!result.success) {
-        throw new Error(`Expected success but got error: ${result.error}`);
+        throw new Error(`Expected success but got error: ${result.error?.message ?? "unknown"}`);
       }
 
       expect(result.data).toBeDefined();
@@ -208,7 +208,7 @@ describe("P0-1: 基本参加登録フロー統合テスト", () => {
       expect(result.success).toBe(true);
 
       if (!result.success) {
-        throw new Error(`Expected success but got error: ${result.error}`);
+        throw new Error(`Expected success but got error: ${result.error?.message ?? "unknown"}`);
       }
 
       expect(result.data).toBeDefined();

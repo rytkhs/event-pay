@@ -39,19 +39,23 @@ describe("入力検証", () => {
 
     expect(result).toEqual({
       success: false,
-      code: "VALIDATION_ERROR",
-      error: "入力データが無効です。",
-      details: {
-        zodErrors: expect.arrayContaining([
-          expect.objectContaining({
-            path: ["guestToken"],
-            message: "ゲストトークンが無効です",
-          }),
-        ]),
+      error: {
+        code: "VALIDATION_ERROR",
+        message: "入力データが無効です。",
+        details: {
+          zodErrors: expect.arrayContaining([
+            expect.objectContaining({
+              path: ["guestToken"],
+              message: "ゲストトークンが無効です",
+            }),
+          ]),
+        },
+        correlationId: expect.any(String),
+        fieldErrors: undefined,
+        retryable: false,
       },
-      correlationId: expect.any(String),
-      fieldErrors: undefined,
-      retryable: false,
+      needsVerification: undefined,
+      redirectUrl: undefined,
     });
   });
 
@@ -66,20 +70,24 @@ describe("入力検証", () => {
 
     expect(result).toEqual({
       success: false,
-      code: "VALIDATION_ERROR",
-      error: "入力データが無効です。",
-      details: {
-        zodErrors: expect.arrayContaining([
-          expect.objectContaining({
-            path: ["successUrl"],
-            code: "invalid_string",
-            validation: "url",
-          }),
-        ]),
+      error: {
+        code: "VALIDATION_ERROR",
+        message: "入力データが無効です。",
+        details: {
+          zodErrors: expect.arrayContaining([
+            expect.objectContaining({
+              path: ["successUrl"],
+              code: "invalid_string",
+              validation: "url",
+            }),
+          ]),
+        },
+        correlationId: expect.any(String),
+        fieldErrors: undefined,
+        retryable: false,
       },
-      correlationId: expect.any(String),
-      fieldErrors: undefined,
-      retryable: false,
+      needsVerification: undefined,
+      redirectUrl: undefined,
     });
   });
 
@@ -94,20 +102,24 @@ describe("入力検証", () => {
 
     expect(result).toEqual({
       success: false,
-      code: "VALIDATION_ERROR",
-      error: "入力データが無効です。",
-      details: {
-        zodErrors: expect.arrayContaining([
-          expect.objectContaining({
-            path: ["cancelUrl"],
-            code: "invalid_string",
-            validation: "url",
-          }),
-        ]),
+      error: {
+        code: "VALIDATION_ERROR",
+        message: "入力データが無効です。",
+        details: {
+          zodErrors: expect.arrayContaining([
+            expect.objectContaining({
+              path: ["cancelUrl"],
+              code: "invalid_string",
+              validation: "url",
+            }),
+          ]),
+        },
+        correlationId: expect.any(String),
+        fieldErrors: undefined,
+        retryable: false,
       },
-      correlationId: expect.any(String),
-      fieldErrors: undefined,
-      retryable: false,
+      needsVerification: undefined,
+      redirectUrl: undefined,
     });
   });
 });

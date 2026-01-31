@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 
 import { AlertCircle, XCircle, Users, Clock } from "lucide-react";
 
-import type { ServerActionResult } from "@core/types/server-actions";
+import type { ActionResult } from "@core/errors/adapters/server-actions";
 import type { EventDetail } from "@core/utils/invite-token";
 import { type ParticipationFormData } from "@core/validation/participation";
 
@@ -25,7 +25,7 @@ interface InviteEventDetailProps {
 
 type RegisterParticipationAction = (
   formData: FormData
-) => Promise<ServerActionResult<RegisterParticipationData>>;
+) => Promise<ActionResult<RegisterParticipationData>>;
 
 export function InviteEventDetail({
   event,
@@ -77,7 +77,7 @@ export function InviteEventDetail({
       return;
     }
 
-    throw { code: result.code ?? "UNKNOWN_ERROR", message: result.error };
+    throw { code: result.error?.code ?? "UNKNOWN_ERROR", message: result.error?.userMessage };
   };
 
   if (registrationData) {

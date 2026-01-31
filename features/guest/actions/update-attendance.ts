@@ -1,5 +1,6 @@
 import { headers } from "next/headers";
 
+import { type ActionResult, fail, ok } from "@core/errors/adapters/server-actions";
 import { logger } from "@core/logging/app-logger";
 import { validateGuestTokenFormat } from "@core/security/crypto";
 import { SecureSupabaseClientFactory } from "@core/security/secure-client-factory.impl";
@@ -7,11 +8,6 @@ import {
   logInvalidTokenAccess,
   logParticipationSecurityEvent,
 } from "@core/security/security-logger";
-import {
-  createServerActionError,
-  createServerActionSuccess,
-  type ServerActionResult,
-} from "@core/types/server-actions";
 import { handleServerError } from "@core/utils/error-handler.server";
 import { validateGuestToken } from "@core/utils/guest-token";
 import { getClientIPFromHeaders } from "@core/utils/ip-detection";
@@ -30,7 +26,7 @@ import type { UpdateGuestAttendanceData } from "../types";
  */
 export async function updateGuestAttendanceAction(
   formData: FormData
-): Promise<ServerActionResult<UpdateGuestAttendanceData>> {
+): Promise<ActionResult<UpdateGuestAttendanceData>> {
   // テスト環境ではheaders()が利用できないため、安全に取得
   let securityContext: { userAgent?: string; ip?: string } = {};
   try {
@@ -55,12 +51,12 @@ export async function updateGuestAttendanceAction(
   try {
     // 基本検証
     if (!guestToken || typeof guestToken !== "string") {
-      return createServerActionError("MISSING_PARAMETER", "ゲストトークンが必要です");
+      return fail("MISSING_PARAMETER", { userMessage: "ゲストトークンが必要です" });
     }
 
     // トークン形式の基本チェック
     if (!validateGuestTokenFormat(guestToken)) {
-      return createServerActionError("VALIDATION_ERROR", "無効なゲストトークンの形式です");
+      return fail("VALIDATION_ERROR", { userMessage: "無効なゲストトークンの形式です" });
     }
 
     // ゲストトークンの検証と参加データの取得
@@ -80,18 +76,16 @@ export async function updateGuestAttendanceAction(
         });
       }
 
-      return createServerActionError(
-        "UNAUTHORIZED",
-        tokenValidation.errorMessage || "無効なゲストトークンです"
-      );
+      return fail("UNAUTHORIZED", {
+        userMessage: tokenValidation.errorMessage || "無効なゲストトークンです",
+      });
     }
 
     // 変更可能かどうかの確認
     if (!tokenValidation.canModify) {
-      return createServerActionError(
-        "ATTENDANCE_DEADLINE_PASSED",
-        "参加登録の期限が過ぎているため、変更できません"
-      );
+      return fail("ATTENDANCE_DEADLINE_PASSED", {
+        userMessage: "参加登録の期限が過ぎているため、変更できません",
+      });
     }
 
     const attendance = tokenValidation.attendance;
@@ -99,7 +93,7 @@ export async function updateGuestAttendanceAction(
     // 参加状況の検証
     const validatedStatus = attendanceStatusSchema.safeParse(attendanceStatus);
     if (!validatedStatus.success) {
-      return createServerActionError("VALIDATION_ERROR", "無効な参加状況です");
+      return fail("VALIDATION_ERROR", { userMessage: "無効な参加状況です" });
     }
 
     // 決済方法の検証（有料イベントで参加する場合のみ）
@@ -107,15 +101,14 @@ export async function updateGuestAttendanceAction(
 
     if (validatedStatus.data === "attending" && attendance.event.fee > 0) {
       if (!paymentMethod) {
-        return createServerActionError(
-          "VALIDATION_ERROR",
-          "参加費が必要なため、決済方法を選択してください"
-        );
+        return fail("VALIDATION_ERROR", {
+          userMessage: "参加費が必要なため、決済方法を選択してください",
+        });
       }
 
       const paymentValidation = paymentMethodSchema.safeParse(paymentMethod);
       if (!paymentValidation.success) {
-        return createServerActionError("VALIDATION_ERROR", "無効な決済方法です");
+        return fail("VALIDATION_ERROR", { userMessage: "無効な決済方法です" });
       }
 
       validatedPaymentMethod =
@@ -124,10 +117,9 @@ export async function updateGuestAttendanceAction(
       // イベントで許可されている決済方法かチェック
       const allowedPaymentMethods = attendance.event.payment_methods || [];
       if (!allowedPaymentMethods.includes(validatedPaymentMethod)) {
-        return createServerActionError(
-          "VALIDATION_ERROR",
-          "このイベントでは選択された決済方法は利用できません"
-        );
+        return fail("VALIDATION_ERROR", {
+          userMessage: "このイベントでは選択された決済方法は利用できません",
+        });
       }
     }
 
@@ -167,10 +159,9 @@ export async function updateGuestAttendanceAction(
           securityContext
         );
 
-        return createServerActionError(
-          "RESOURCE_CONFLICT",
-          "支払が確定しているため、決済方法を変更できません"
-        );
+        return fail("RESOURCE_CONFLICT", {
+          userMessage: "支払が確定しているため、決済方法を変更できません",
+        });
       }
     }
 
@@ -218,16 +209,14 @@ export async function updateGuestAttendanceAction(
       }
 
       if (isCapacityReached) {
-        return createServerActionError(
-          "ATTENDANCE_CAPACITY_REACHED",
-          "申し訳ございませんが、定員に達したため参加登録できませんでした"
-        );
+        return fail("ATTENDANCE_CAPACITY_REACHED", {
+          userMessage: "申し訳ございませんが、定員に達したため参加登録できませんでした",
+        });
       }
 
-      return createServerActionError(
-        "DATABASE_ERROR",
-        "参加状況の更新中にエラーが発生しました。しばらく経ってから再度お試しください"
-      );
+      return fail("DATABASE_ERROR", {
+        userMessage: "参加状況の更新中にエラーが発生しました。しばらく経ってから再度お試しください",
+      });
     }
 
     // 更新成功時のログ
@@ -251,7 +240,7 @@ export async function updateGuestAttendanceAction(
       attendance.event.fee > 0 &&
       validatedPaymentMethod === "stripe";
 
-    return createServerActionSuccess({
+    return ok({
       attendanceId: attendance.id,
       status: validatedStatus.data,
       paymentMethod: validatedPaymentMethod,
@@ -281,10 +270,9 @@ export async function updateGuestAttendanceAction(
       });
     }
 
-    return createServerActionError(
-      "INTERNAL_ERROR",
-      "システムエラーが発生しました。しばらく経ってから再度お試しください",
-      { retryable: true }
-    );
+    return fail("INTERNAL_ERROR", {
+      userMessage: "システムエラーが発生しました。しばらく経ってから再度お試しください",
+      retryable: true,
+    });
   }
 }

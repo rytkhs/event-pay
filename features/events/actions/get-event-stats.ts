@@ -1,19 +1,13 @@
 import { verifyEventAccess, handleDatabaseError } from "@core/auth/event-authorization";
+import { type ActionResult, fail, ok } from "@core/errors/adapters/server-actions";
 import { createClient } from "@core/supabase/server";
-import {
-  createServerActionError,
-  createServerActionSuccess,
-  type ServerActionResult,
-} from "@core/types/server-actions";
 
 type EventStats = {
   attending_count: number;
   maybe_count: number;
 };
 
-export async function getEventStatsAction(
-  eventId: string
-): Promise<ServerActionResult<EventStats>> {
+export async function getEventStatsAction(eventId: string): Promise<ActionResult<EventStats>> {
   try {
     const { eventId: validatedEventId } = await verifyEventAccess(eventId);
 
@@ -31,10 +25,8 @@ export async function getEventStatsAction(
     const attending_count = (attendances || []).filter((a) => a.status === "attending").length;
     const maybe_count = (attendances || []).filter((a) => a.status === "maybe").length;
 
-    return createServerActionSuccess({ attending_count, maybe_count });
+    return ok({ attending_count, maybe_count });
   } catch (e) {
-    return createServerActionError("INTERNAL_ERROR", "統計の取得に失敗しました", {
-      retryable: false,
-    });
+    return fail("INTERNAL_ERROR", { userMessage: "統計の取得に失敗しました", retryable: false });
   }
 }

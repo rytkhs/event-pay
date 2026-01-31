@@ -8,6 +8,7 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 
 import { useToast } from "@core/contexts/toast-context";
+import type { ActionResult } from "@core/errors/adapters/server-actions";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -21,7 +22,6 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { PasswordInput } from "@/components/ui/password-input";
-import type { ActionResult } from "@/types/action-result";
 
 const emailChangeSchema = z.object({
   newEmail: z
@@ -70,7 +70,7 @@ export function EmailChangeForm({ currentEmail, updateEmailAction }: EmailChange
         } else {
           toast({
             title: "エラー",
-            description: result.error,
+            description: result.error?.userMessage,
             variant: "destructive",
           });
         }

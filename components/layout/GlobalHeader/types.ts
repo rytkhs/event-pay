@@ -2,7 +2,7 @@ import React from "react";
 
 import { type User as SupabaseUser } from "@supabase/supabase-js";
 
-import type { ActionResult } from "@/types/action-result";
+import type { ActionResult } from "@core/errors/adapters/server-actions";
 /**
  * 拡張されたユーザー型（nameプロパティを含む）
  */

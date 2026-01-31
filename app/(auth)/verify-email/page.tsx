@@ -53,8 +53,8 @@ function VerifyEmailContent() {
 
       const result = await resendOtpAction(formData);
 
-      if (result.error) {
-        setError(result.error);
+      if (!result.success) {
+        setError(result.error.userMessage);
       } else {
         setMessage("確認メールを再送信しました");
         setResendDisabled(true);

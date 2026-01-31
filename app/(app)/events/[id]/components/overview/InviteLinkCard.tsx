@@ -39,9 +39,13 @@ export function InviteLinkCard({ eventId, initialInviteToken }: InviteLinkCardPr
     try {
       const result = await generateInviteTokenAction(eventId, { forceRegenerate });
 
-      if (result.success && result.token) {
-        setInviteToken(result.token);
-        setInviteUrl(`${process.env.NEXT_PUBLIC_APP_URL}/invite/${result.token}`);
+      if (result.success) {
+        const token = result.data?.token;
+        if (!token) {
+          throw new Error("招待リンクの生成結果が不正です");
+        }
+        setInviteToken(token);
+        setInviteUrl(`${process.env.NEXT_PUBLIC_APP_URL}/invite/${token}`);
 
         const message = forceRegenerate
           ? "新しい招待リンクを生成しました"
@@ -54,7 +58,7 @@ export function InviteLinkCard({ eventId, initialInviteToken }: InviteLinkCardPr
       } else {
         toast({
           title: "エラー",
-          description: result.error || "招待リンクの生成に失敗しました",
+          description: result.error.userMessage || "招待リンクの生成に失敗しました",
           variant: "destructive",
         });
       }

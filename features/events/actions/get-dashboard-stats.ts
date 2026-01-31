@@ -1,6 +1,6 @@
 import { getCurrentUser } from "@core/auth/auth-utils";
+import { fail, ok, type ActionResult } from "@core/errors/adapters/server-actions";
 import { createClient } from "@core/supabase/server";
-import { createServerActionError, type ServerActionResult } from "@core/types/server-actions";
 import { deriveEventStatus } from "@core/utils/derive-event-status";
 
 import type { Database } from "@/types/database";
@@ -33,11 +33,11 @@ type EventForRecent = Pick<
 /**
  * ダッシュボード統計情報を取得する（RPC版）
  */
-export async function getDashboardStatsAction(): Promise<ServerActionResult<DashboardStats>> {
+export async function getDashboardStatsAction(): Promise<ActionResult<DashboardStats>> {
   try {
     const user = await getCurrentUser();
     if (!user) {
-      return createServerActionError("UNAUTHORIZED", "認証が必要です");
+      return fail("UNAUTHORIZED", { userMessage: "認証が必要です" });
     }
 
     const supabase = createClient();
@@ -56,17 +56,15 @@ export async function getDashboardStatsAction(): Promise<ServerActionResult<Dash
       unpaid_fees_total: 0,
     };
 
-    return {
-      success: true,
-      data: {
-        upcomingEventsCount: statsRow.upcoming_events_count,
-        totalUpcomingParticipants: statsRow.total_upcoming_participants,
-        unpaidFeesTotal: Number(statsRow.unpaid_fees_total),
-        stripeAccountBalance: 0, // Stripe fetch is handled separately
-      },
-    };
+    return ok({
+      upcomingEventsCount: statsRow.upcoming_events_count,
+      totalUpcomingParticipants: statsRow.total_upcoming_participants,
+      unpaidFeesTotal: Number(statsRow.unpaid_fees_total),
+      stripeAccountBalance: 0, // Stripe fetch is handled separately
+    });
   } catch (error) {
-    return createServerActionError("INTERNAL_ERROR", "ダッシュボード統計の取得に失敗しました", {
+    return fail("INTERNAL_ERROR", {
+      userMessage: "ダッシュボード統計の取得に失敗しました",
       retryable: true,
       details: { originalError: error },
     });
@@ -76,11 +74,11 @@ export async function getDashboardStatsAction(): Promise<ServerActionResult<Dash
 /**
  * 最近のイベントを取得する
  */
-export async function getRecentEventsAction(): Promise<ServerActionResult<RecentEvent[]>> {
+export async function getRecentEventsAction(): Promise<ActionResult<RecentEvent[]>> {
   try {
     const user = await getCurrentUser();
     if (!user) {
-      return createServerActionError("UNAUTHORIZED", "認証が必要です");
+      return fail("UNAUTHORIZED", { userMessage: "認証が必要です" });
     }
 
     const supabase = createClient();
@@ -125,12 +123,10 @@ export async function getRecentEventsAction(): Promise<ServerActionResult<Recent
       };
     });
 
-    return {
-      success: true,
-      data: recentEvents,
-    };
+    return ok(recentEvents);
   } catch (error) {
-    return createServerActionError("INTERNAL_ERROR", "最近のイベント取得に失敗しました", {
+    return fail("INTERNAL_ERROR", {
+      userMessage: "最近のイベント取得に失敗しました",
       retryable: true,
       details: { originalError: error },
     });

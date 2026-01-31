@@ -1,9 +1,9 @@
 import { unstable_cache } from "next/cache";
 
+import { fail, ok, type ActionResult } from "@core/errors/adapters/server-actions";
 import { logger } from "@core/logging/app-logger";
 import { getStripe } from "@core/stripe/client";
 import { createClient } from "@core/supabase/server";
-import { createServerActionError, type ServerActionResult } from "@core/types/server-actions";
 
 import { StripeConnectErrorHandler } from "../services/error-handler";
 import { StripeConnectService } from "../services/service";
@@ -59,7 +59,7 @@ const getCachedBalance = (accountId: string) =>
  * ユーザーのStripe Connectアカウント残高を取得する
  * @returns アカウント残高（JPY）
  */
-export async function getStripeBalanceAction(): Promise<ServerActionResult<number>> {
+export async function getStripeBalanceAction(): Promise<ActionResult<number>> {
   try {
     const supabase = createClient();
 
@@ -70,7 +70,7 @@ export async function getStripeBalanceAction(): Promise<ServerActionResult<numbe
     } = await supabase.auth.getUser();
 
     if (authError || !user) {
-      return createServerActionError("UNAUTHORIZED", "認証が必要です");
+      return fail("UNAUTHORIZED", { userMessage: "認証が必要です" });
     }
 
     // Stripe Connectサービスを初期化
@@ -82,22 +82,17 @@ export async function getStripeBalanceAction(): Promise<ServerActionResult<numbe
 
     if (!connectAccount) {
       // アカウントが設定されていない場合は0を返す
-      return {
-        success: true,
-        data: 0,
-      };
+      return ok(0);
     }
 
     // 残高を取得
     // 残高を取得 (キャッシュを使用)
     const balance = await getCachedBalance(connectAccount.stripe_account_id);
 
-    return {
-      success: true,
-      data: balance,
-    };
+    return ok(balance);
   } catch (error) {
-    return createServerActionError("INTERNAL_ERROR", "Stripe残高の取得に失敗しました", {
+    return fail("INTERNAL_ERROR", {
+      userMessage: "Stripe残高の取得に失敗しました",
       retryable: true,
       details: { originalError: error },
     });

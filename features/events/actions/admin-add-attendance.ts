@@ -1,16 +1,12 @@
 import { z } from "zod";
 
 import { verifyEventAccess } from "@core/auth/event-authorization";
+import { type ActionResult, fail, ok, zodFail } from "@core/errors/adapters/server-actions";
 import { logger } from "@core/logging/app-logger";
 import { logAttendance } from "@core/logging/system-logger";
 import { SecureSupabaseClientFactory } from "@core/security/secure-client-factory.impl";
 import { getPaymentService } from "@core/services/payment-service";
 import { PaymentError } from "@core/types/payment-errors";
-import {
-  createServerActionError,
-  createServerActionSuccess,
-  type ServerActionResult,
-} from "@core/types/server-actions";
 import { deriveEventStatus } from "@core/utils/derive-event-status";
 import { generateGuestToken } from "@core/utils/guest-token";
 import { canCreateStripeSession } from "@core/validation/payment-eligibility";
@@ -63,7 +59,7 @@ export interface AddAttendanceResult {
 export async function adminAddAttendanceAction(
   input: unknown
 ): Promise<
-  ServerActionResult<
+  ActionResult<
     AddAttendanceResult | { confirmRequired: true; capacity?: number | null; current?: number }
   >
 > {
@@ -112,7 +108,7 @@ export async function adminAddAttendanceAction(
           if (capacityMatch) {
             const capacity = parseInt(capacityMatch[1], 10);
             const current = parseInt(capacityMatch[2], 10);
-            return createServerActionSuccess({
+            return ok({
               confirmRequired: true,
               capacity,
               current,
@@ -120,15 +116,14 @@ export async function adminAddAttendanceAction(
           }
         }
 
-        return createServerActionError(
-          "DATABASE_ERROR",
-          rpcError?.message || "参加者の追加に失敗しました"
-        );
+        return fail("DATABASE_ERROR", {
+          userMessage: rpcError?.message || "参加者の追加に失敗しました",
+        });
       }
 
       attendanceId = rpcResult;
     } catch (error) {
-      return createServerActionError("INTERNAL_ERROR", "参加者追加処理でエラーが発生しました");
+      return fail("INTERNAL_ERROR", { userMessage: "参加者追加処理でエラーが発生しました" });
     }
 
     // イベント情報取得（決済可否判定用）
@@ -141,7 +136,7 @@ export async function adminAddAttendanceAction(
       .single();
 
     if (eventErr || !eventRow) {
-      return createServerActionError("NOT_FOUND", "イベント情報の取得に失敗しました");
+      return fail("NOT_FOUND", { userMessage: "イベント情報の取得に失敗しました" });
     }
 
     // 有料イベントでattending状態の場合、決済方法の検証と決済レコード作成
@@ -149,10 +144,9 @@ export async function adminAddAttendanceAction(
     if (status === "attending" && eventRow.fee > 0) {
       // 決済方法が指定されていない場合はエラー
       if (!paymentMethod) {
-        return createServerActionError(
-          "VALIDATION_ERROR",
-          "有料イベントの参加には決済方法の選択が必要です"
-        );
+        return fail("VALIDATION_ERROR", {
+          userMessage: "有料イベントの参加には決済方法の選択が必要です",
+        });
       }
 
       // PaymentServiceを使用して現金決済レコードを作成
@@ -170,16 +164,14 @@ export async function adminAddAttendanceAction(
 
         // PaymentErrorの場合は適切なエラーコードを返す
         if (error instanceof PaymentError) {
-          return createServerActionError(
-            "DATABASE_ERROR",
-            `決済レコードの作成に失敗しました: ${error.message}`
-          );
+          return fail("DATABASE_ERROR", {
+            userMessage: `決済レコードの作成に失敗しました: ${error.message}`,
+          });
         }
 
-        return createServerActionError(
-          "DATABASE_ERROR",
-          "決済レコード作成処理でエラーが発生しました"
-        );
+        return fail("DATABASE_ERROR", {
+          userMessage: "決済レコード作成処理でエラーが発生しました",
+        });
       }
     }
 
@@ -240,7 +232,7 @@ export async function adminAddAttendanceAction(
       },
     });
 
-    return createServerActionSuccess<AddAttendanceResult>({
+    return ok<AddAttendanceResult>({
       attendanceId,
       guestToken,
       guestUrl,
@@ -250,14 +242,8 @@ export async function adminAddAttendanceAction(
     });
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return createServerActionError(
-        "VALIDATION_ERROR",
-        error.errors?.[0]?.message || "入力が不正です",
-        {
-          details: { zodErrors: error.errors },
-        }
-      );
+      return zodFail(error, { userMessage: error.errors?.[0]?.message || "入力が不正です" });
     }
-    return createServerActionError("INTERNAL_ERROR", "参加者の追加処理でエラーが発生しました");
+    return fail("INTERNAL_ERROR", { userMessage: "参加者の追加処理でエラーが発生しました" });
   }
 }

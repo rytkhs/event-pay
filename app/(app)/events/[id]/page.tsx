@@ -47,19 +47,22 @@ export default async function EventDetailPage({
     const eventDetailResult = await cachedActions.getEventDetail(params.id);
 
     if (!eventDetailResult.success) {
-      if (eventDetailResult.code === "EVENT_NOT_FOUND") {
+      if (eventDetailResult.error.code === "EVENT_NOT_FOUND") {
         notFound();
       }
-      if (eventDetailResult.code === "EVENT_ACCESS_DENIED") {
+      if (eventDetailResult.error.code === "EVENT_ACCESS_DENIED") {
         redirect(`/events/${params.id}/forbidden`);
       }
-      if (eventDetailResult.code === "EVENT_INVALID_ID") {
+      if (eventDetailResult.error.code === "EVENT_INVALID_ID") {
         notFound();
       }
-      throw new Error(eventDetailResult.error);
+      throw new Error(eventDetailResult.error.userMessage);
     }
 
     const eventDetail = eventDetailResult.data;
+    if (!eventDetail) {
+      throw new Error("イベント詳細の取得に失敗しました");
+    }
 
     // 現在のユーザーを取得して主催者かどうか判定
     const currentUser = await getCurrentUser();
@@ -140,6 +143,22 @@ export async function generateMetadata({ params }: EventDetailPageProps): Promis
     }
 
     const eventDetail = eventDetailResult.data;
+    if (!eventDetail) {
+      return {
+        title: "イベント詳細",
+        description: "イベントの詳細情報",
+        openGraph: {
+          title: "イベント詳細",
+          description: "イベントの詳細情報",
+          type: "website",
+        },
+        twitter: {
+          card: "summary_large_image",
+          title: "イベント詳細",
+          description: "イベントの詳細情報",
+        },
+      };
+    }
     const ogImageUrl = "/og/event-default.png";
 
     return {

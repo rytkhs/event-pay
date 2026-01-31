@@ -3,14 +3,10 @@ import { revalidatePath } from "next/cache";
 import { Client } from "@upstash/qstash";
 
 import { verifyEventAccess } from "@core/auth/event-authorization";
+import { type ActionResult, fail, ok } from "@core/errors/adapters/server-actions";
 import { logger } from "@core/logging/app-logger";
 import { logEventManagement } from "@core/logging/system-logger";
 import { createClient } from "@core/supabase/server";
-import {
-  createServerActionError,
-  createServerActionSuccess,
-  type ServerActionResult,
-} from "@core/types/server-actions";
 import { getEnv } from "@core/utils/cloudflare-env";
 
 type CancelEventInput = {
@@ -28,10 +24,10 @@ function getQstashClient() {
 
 export async function cancelEventAction(
   params: CancelEventInput
-): Promise<ServerActionResult<{ status: "canceled" }>> {
+): Promise<ActionResult<{ status: "canceled" }>> {
   try {
     if (!params?.eventId || typeof params.eventId !== "string") {
-      return createServerActionError("EVENT_INVALID_ID", "無効なイベントID形式です");
+      return fail("EVENT_INVALID_ID", { userMessage: "無効なイベントID形式です" });
     }
 
     // 認証・権限（作成者のみ）
@@ -48,7 +44,7 @@ export async function cancelEventAction(
       .select("id");
 
     if (updateError) {
-      return createServerActionError("EVENT_OPERATION_FAILED", "イベントの中止に失敗しました");
+      return fail("EVENT_OPERATION_FAILED", { userMessage: "イベントの中止に失敗しました" });
     }
 
     // 監査ログ記録
@@ -72,7 +68,7 @@ export async function cancelEventAction(
     try {
       // 更新が発生していない（既に canceled）場合は通知をスキップ
       if (!updatedRows || updatedRows.length === 0) {
-        return createServerActionSuccess({ status: "canceled" as const }, "イベントを中止しました");
+        return ok({ status: "canceled" as const }, { message: "イベントを中止しました" });
       }
       const workerUrl = `${getEnv().NEXT_PUBLIC_APP_URL}/api/workers/event-cancel`;
       const body = { eventId, message: params.message };
@@ -110,9 +106,10 @@ export async function cancelEventAction(
       });
     }
 
-    return createServerActionSuccess({ status: "canceled" as const }, "イベントを中止しました");
+    return ok({ status: "canceled" as const }, { message: "イベントを中止しました" });
   } catch (_error) {
-    return createServerActionError("INTERNAL_ERROR", "予期しないエラーが発生しました", {
+    return fail("INTERNAL_ERROR", {
+      userMessage: "予期しないエラーが発生しました",
       retryable: true,
     });
   }

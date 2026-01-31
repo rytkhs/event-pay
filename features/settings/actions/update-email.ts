@@ -1,11 +1,11 @@
 import { z } from "zod";
 
 import { getCurrentUser } from "@core/auth/auth-utils";
+import { fail, ok } from "@core/errors/adapters/server-actions";
+import type { ActionResult } from "@core/errors/adapters/server-actions";
 import { logger } from "@core/logging/app-logger";
 import { createClient } from "@core/supabase/server";
 import { handleServerError } from "@core/utils/error-handler.server";
-
-import type { ActionResult } from "@/types/action-result";
 
 const updateEmailSchema = z.object({
   newEmail: z
@@ -20,10 +20,7 @@ export async function updateEmailAction(formData: FormData): Promise<ActionResul
     // 認証チェック
     const user = await getCurrentUser();
     if (!user) {
-      return {
-        success: false,
-        error: "認証が必要です",
-      };
+      return fail("UNAUTHORIZED", { userMessage: "認証が必要です" });
     }
 
     // 入力値検証
@@ -35,20 +32,14 @@ export async function updateEmailAction(formData: FormData): Promise<ActionResul
     const validationResult = updateEmailSchema.safeParse(rawData);
     if (!validationResult.success) {
       const errors = validationResult.error.errors.map((err) => err.message).join(", ");
-      return {
-        success: false,
-        error: errors,
-      };
+      return fail("VALIDATION_ERROR", { userMessage: errors });
     }
 
     const { newEmail, currentPassword } = validationResult.data;
 
     // 現在のメールアドレスと同じかチェック
     if (user.email === newEmail) {
-      return {
-        success: false,
-        error: "現在のメールアドレスと同じです",
-      };
+      return fail("RESOURCE_CONFLICT", { userMessage: "現在のメールアドレスと同じです" });
     }
 
     const supabase = createClient();
@@ -68,10 +59,7 @@ export async function updateEmailAction(formData: FormData): Promise<ActionResul
         error_message: signInError.message,
         outcome: "failure",
       });
-      return {
-        success: false,
-        error: "現在のパスワードが正しくありません",
-      };
+      return fail("FORBIDDEN", { userMessage: "現在のパスワードが正しくありません" });
     }
 
     // メールアドレス更新（確認メール送信）
@@ -86,10 +74,9 @@ export async function updateEmailAction(formData: FormData): Promise<ActionResul
         actorType: "user",
         userId: user.id,
       });
-      return {
-        success: false,
-        error: "メールアドレスの更新に失敗しました",
-      };
+      return fail("EMAIL_UPDATE_UNEXPECTED_ERROR", {
+        userMessage: "メールアドレスの更新に失敗しました",
+      });
     }
 
     logger.info("Email change initiated", {
@@ -102,10 +89,9 @@ export async function updateEmailAction(formData: FormData): Promise<ActionResul
       outcome: "success",
     });
 
-    return {
-      success: true,
+    return ok(undefined, {
       message: "確認メールを送信しました。新しいメールアドレスで確認リンクをクリックしてください。",
-    };
+    });
   } catch (error) {
     handleServerError("EMAIL_UPDATE_UNEXPECTED_ERROR", {
       category: "authentication",
@@ -117,9 +103,8 @@ export async function updateEmailAction(formData: FormData): Promise<ActionResul
       },
     });
 
-    return {
-      success: false,
-      error: "メールアドレスの変更中にエラーが発生しました",
-    };
+    return fail("EMAIL_UPDATE_UNEXPECTED_ERROR", {
+      userMessage: "メールアドレスの変更中にエラーが発生しました",
+    });
   }
 }

@@ -7,14 +7,13 @@
 
 import "server-only";
 
-import { randomBytes } from "crypto";
-
 import { NextResponse } from "next/server";
 
 import { logger } from "@core/logging/app-logger";
 import { handleServerError, type ErrorContext } from "@core/utils/error-handler.server";
 
 import { AppError } from "../app-error";
+import { generateCorrelationId } from "../correlation-id";
 import { normalizeError } from "../normalize";
 import { ERROR_REGISTRY } from "../registry";
 import type { ErrorCode } from "../types";
@@ -84,17 +83,13 @@ export interface ProblemOptions {
 }
 
 /**
- * 相関IDを生成
- */
-export function generateCorrelationId(): string {
-  return `req_${randomBytes(8).toString("hex")}`;
-}
-
-/**
  * AppError を RFC 7807 Problem Details オブジェクトに変換
  */
 export function toProblemDetails(error: AppError, options: ProblemOptions = {}): ProblemDetails {
-  const correlationId = options.correlationId || error.correlationId || generateCorrelationId();
+  const correlationId =
+    options.correlationId ||
+    error.correlationId ||
+    generateCorrelationId({ prefix: "req", length: 16 });
   const def = ERROR_REGISTRY[error.code];
 
   const problem: ProblemDetails = {
@@ -237,3 +232,5 @@ export function respondWithCode(
     headers: options.headers,
   });
 }
+
+export { generateCorrelationId };
