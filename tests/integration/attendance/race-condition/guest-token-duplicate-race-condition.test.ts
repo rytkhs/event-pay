@@ -105,7 +105,7 @@ describe("TC-RC-003: ゲストトークン重複レースコンディション�
 
         // 【期待結果検証3】エラーメッセージがユーザーフレンドリーであることを確認
         concurrentResult.failureResults.forEach((failureResult) => {
-          expect(failureResult.error?.message).toBe(
+          expect(failureResult.error?.userMessage).toBe(
             "システムエラーが発生しました。恐れ入りますが、再度お試しください"
           );
         });
@@ -301,15 +301,15 @@ describe("TC-RC-003: ゲストトークン重複レースコンディション�
       if (concurrentResult.failureCount > 0) {
         const failedResult = concurrentResult.failureResults[0];
         expect(failedResult.error?.type).toBe("INTERNAL_ERROR");
-        expect(failedResult.error?.message).toBe(
+        expect(failedResult.error?.userMessage).toBe(
           "システムエラーが発生しました。恐れ入りますが、再度お試しください"
         );
 
         // データベース情報の漏洩がないことを確認（セキュリティ要件）
-        expect(failedResult.error?.message).not.toContain("token");
-        expect(failedResult.error?.message).not.toContain("duplicate");
-        expect(failedResult.error?.message).not.toContain("constraint");
-        expect(failedResult.error?.message).not.toContain("violation");
+        expect(failedResult.error?.userMessage).not.toContain("token");
+        expect(failedResult.error?.userMessage).not.toContain("duplicate");
+        expect(failedResult.error?.userMessage).not.toContain("constraint");
+        expect(failedResult.error?.userMessage).not.toContain("violation");
       }
     } finally {
       teardown();

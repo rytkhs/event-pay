@@ -26,7 +26,7 @@ export interface ConcurrentRequestResult<T> {
     reason: unknown;
     error?: {
       type: string;
-      message: string;
+      userMessage: string;
     };
   }>;
 }
@@ -102,7 +102,7 @@ export class ConcurrentRequestHelper {
     const successResults: T[] = [];
     const failureResults: Array<{
       reason: unknown;
-      error?: { type: string; message: string };
+      error?: { type: string; userMessage: string };
     }> = [];
 
     for (const result of results) {
@@ -115,13 +115,12 @@ export class ConcurrentRequestHelper {
             successResults.push(result.value);
           } else {
             // ActionResult で失敗の場合（success: false）
-            // ServerActionError型の場合のプロパティアクセス
-            const errorResult = actionResult as { success: false; code?: string; error?: string };
+            const errorResult = actionResult as Extract<ActionResult, { success: false }>;
             failureResults.push({
               reason: actionResult,
               error: {
-                type: errorResult.code || "UNKNOWN",
-                message: errorResult.error || "Unknown error",
+                type: errorResult.error.code || "UNKNOWN",
+                userMessage: errorResult.error.userMessage || "Unknown error",
               },
             });
           }
@@ -136,8 +135,8 @@ export class ConcurrentRequestHelper {
           failureResults.push({
             reason,
             error: {
-              type: reason.error?.type || "UNKNOWN",
-              message: reason.error?.message || "Unknown error",
+              type: reason.error?.code || "UNKNOWN",
+              userMessage: reason.error?.userMessage || "Unknown error",
             },
           });
         } else {
@@ -241,7 +240,7 @@ export class ConcurrentRequestHelper {
   static verifyExpectedErrors(
     failureResults: Array<{
       reason: unknown;
-      error?: { type: string; message: string };
+      error?: { type: string; userMessage: string };
     }>,
     expectedErrorType: string,
     expectedErrorMessage?: string
@@ -254,7 +253,7 @@ export class ConcurrentRequestHelper {
 
     for (const failure of failureResults) {
       const errorType = failure.error?.type;
-      const errorMessage = failure.error?.message;
+      const errorMessage = failure.error?.userMessage;
 
       if (errorType === expectedErrorType) {
         if (!expectedErrorMessage || errorMessage?.includes(expectedErrorMessage)) {
