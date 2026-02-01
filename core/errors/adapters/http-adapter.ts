@@ -83,6 +83,7 @@ export function toProblemDetails(error: AppError, options: ProblemOptions = {}):
  */
 function createProblemResponse(
   problem: ProblemDetails,
+  error: AppError,
   options: { logContext?: ErrorContext; headers?: Record<string, string> } = {}
 ): NextResponse<ProblemDetails> {
   // logContext から category/action/actorType を取得（デフォルト値はフォールバック）
@@ -115,7 +116,7 @@ function createProblemResponse(
     });
   } else {
     // handleServerError に ErrorContext の正式フィールドを渡す
-    handleServerError(problem.code, {
+    handleServerError(error, {
       category,
       action,
       actorType,
@@ -164,7 +165,7 @@ export function respondWithProblem(
 ): NextResponse<ProblemDetails> {
   const appError = normalizeError(error, options.defaultCode || "INTERNAL_ERROR");
   const problem = toProblemDetails(appError, options);
-  return createProblemResponse(problem, {
+  return createProblemResponse(problem, appError, {
     logContext: options.logContext,
     headers: options.headers,
   });
@@ -186,7 +187,7 @@ export function respondWithCode(
     correlationId: options.correlationId,
   });
   const problem = toProblemDetails(appError, options);
-  return createProblemResponse(problem, {
+  return createProblemResponse(problem, appError, {
     logContext: options.logContext,
     headers: options.headers,
   });
