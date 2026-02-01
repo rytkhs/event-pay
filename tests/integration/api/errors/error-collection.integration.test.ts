@@ -156,14 +156,14 @@ describe("エラー収集API統合テスト (/api/errors)", () => {
     // insert の引数を検証
     expect(insertArgs).toMatchObject({
       log_level: "error",
-      log_category: "client_error",
+      log_category: "system",
       actor_type: "user",
       actor_identifier: "test@example.com",
       user_id: "test-user-id",
       action: "client_error",
       message: "This is a test error message",
       outcome: "failure",
-      error_code: "TEST_ERROR",
+      error_code: "UNKNOWN_ERROR",
       error_message: "This is a test error message",
       error_stack: "Error: Test\n    at test.ts:10:5",
     });
@@ -173,8 +173,8 @@ describe("エラー収集API統合テスト (/api/errors)", () => {
       breadcrumbs: [],
       environment: "test",
     });
-    expect(insertArgs.tags).toContain("client_error");
-    expect(insertArgs.tags).toContain("severity:error");
+    expect(insertArgs.tags).toContain("system");
+    expect(insertArgs.tags).toContain("severity:medium");
   });
 
   /**

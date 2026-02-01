@@ -7,8 +7,8 @@ import {
   handleClientError,
   getUserErrorMessage,
   isRetryableError,
-  type ErrorDetails,
   type ErrorContext,
+  type AppError,
 } from "@core/utils/error-handler.client";
 
 interface UseErrorHandlerOptions {
@@ -17,35 +17,9 @@ interface UseErrorHandlerOptions {
 }
 
 interface ErrorState {
-  error: ErrorDetails | null;
+  error: AppError | null;
   isError: boolean;
   isRetryable: boolean;
-}
-
-/**
- * Problem Details のコードを ErrorDetails マッピングで使用しているコードへ変換
- * 既存のユーザーメッセージマッピングに合わせるための最低限のブリッジ
- */
-function mapProblemCodeToErrorCode(problemCode: string | undefined): string {
-  if (!problemCode) return "UNKNOWN_ERROR";
-  switch (problemCode) {
-    case "RATE_LIMITED":
-      return "RATE_LIMITED";
-    case "INTERNAL_ERROR":
-      return "INTERNAL_ERROR";
-    default:
-      return problemCode;
-  }
-}
-
-function looksLikeProblemDetails(body: unknown): boolean {
-  if (!body || typeof body !== "object") return false;
-  const anyBody = body as Record<string, unknown>;
-  return (
-    typeof anyBody["type"] === "string" &&
-    typeof anyBody["detail"] === "string" &&
-    (typeof anyBody["code"] === "string" || typeof anyBody["status"] === "number")
-  );
 }
 
 /**
@@ -99,6 +73,17 @@ export function useErrorHandler(options: UseErrorHandlerOptions = {}) {
    */
   const handleApiError = useCallback(
     async (response: Response, context?: Partial<ErrorContext>) => {
+      const fullContext = {
+        ...defaultContext,
+        ...context,
+        additionalData: {
+          ...defaultContext?.additionalData,
+          ...context?.additionalData,
+          status: response.status,
+          url: response.url,
+        },
+      };
+
       try {
         const contentType = response.headers.get("content-type") || "";
 
@@ -110,20 +95,23 @@ export function useErrorHandler(options: UseErrorHandlerOptions = {}) {
           body = null;
         }
 
-        // RFC7807: application/problem+json または それに準ずる構造
-        if (contentType.includes("application/problem+json") || looksLikeProblemDetails(body)) {
-          const problem = (body || {}) as { code?: string; detail?: string };
-          const mappedCode = mapProblemCodeToErrorCode(problem.code);
-          return handleError({ code: mappedCode }, context);
+        // JSON / Problem Details はそのまま正規化へ
+        if (
+          contentType.includes("application/problem+json") ||
+          contentType.includes("application/json")
+        ) {
+          if (body) {
+            return handleError(body, fullContext);
+          }
         }
 
-        // Problem Details 以外は想定外エラーとして扱う
-        return handleError("UNKNOWN_ERROR", context);
+        // JSONが取れない場合は想定外エラーとして扱う
+        return handleError("UNKNOWN_ERROR", fullContext);
       } catch {
-        return handleError("NETWORK_ERROR", context);
+        return handleError("NETWORK_ERROR", fullContext);
       }
     },
-    [handleError]
+    [defaultContext, handleError]
   );
 
   /**
@@ -166,7 +154,7 @@ export function useErrorHandler(options: UseErrorHandlerOptions = {}) {
     async <T>(
       submitFn: () => Promise<T>,
       context?: Partial<ErrorContext>
-    ): Promise<{ success: boolean; data?: T; error?: ErrorDetails }> => {
+    ): Promise<{ success: boolean; data?: T; error?: AppError }> => {
       try {
         clearError();
         const data = await submitFn();

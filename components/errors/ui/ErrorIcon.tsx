@@ -19,9 +19,8 @@ import {
   HelpCircle,
 } from "lucide-react";
 
+import type { ErrorCategory, ErrorCode } from "@core/errors/types";
 import { cn } from "@core/utils";
-
-import type { ErrorCategory, ErrorCode } from "../error-types";
 
 interface ErrorIconProps {
   category?: ErrorCategory;
@@ -34,14 +33,13 @@ interface ErrorIconProps {
  * エラーカテゴリに応じたアイコンマッピング
  */
 const categoryIconMap: Record<ErrorCategory, LucideIcon> = {
-  network: Wifi,
+  system: Server,
+  external: Wifi,
   auth: Lock,
   validation: AlertTriangle,
   business: Ban,
-  server: Server,
-  client: AlertTriangle,
-  security: Shield,
   payment: CreditCard,
+  security: Shield,
   "not-found": FileQuestion,
   unknown: HelpCircle,
 };
@@ -50,36 +48,40 @@ const categoryIconMap: Record<ErrorCategory, LucideIcon> = {
  * エラーコードに応じたアイコンマッピング（カテゴリより優先）
  */
 const codeIconMap: Partial<Record<ErrorCode, LucideIcon>> = {
-  "401": Lock,
-  "403": Shield,
-  "404": FileQuestion,
-  "429": Shield,
-  "500": Server,
-  "502": Server,
-  "503": Wrench,
-  "504": Server,
+  UNAUTHORIZED: Lock,
+  FORBIDDEN: Shield,
+  NOT_FOUND: FileQuestion,
+  RATE_LIMITED: Shield,
+  INTERNAL_ERROR: Server,
+  DATABASE_ERROR: Server,
+  EXTERNAL_SERVICE_ERROR: Wifi,
+  MAINTENANCE: Wrench,
+  NETWORK_ERROR: Wifi,
+  TIMEOUT_ERROR: Clock,
   EVENT_ENDED: Clock,
   EVENT_FULL: Users,
   REGISTRATION_CLOSED: Clock,
   DUPLICATE_REGISTRATION: Ban,
   INVITE_TOKEN_INVALID: XCircle,
   PAYMENT_FAILED: CreditCard,
-  RATE_LIMITED: Shield,
-  MAINTENANCE: Wrench,
+  PAYMENT_PROCESSING_ERROR: CreditCard,
+  PAYMENT_SESSION_CREATION_FAILED: CreditCard,
+  CONNECT_ACCOUNT_NOT_FOUND: CreditCard,
+  CONNECT_ACCOUNT_RESTRICTED: CreditCard,
+  STRIPE_CONFIG_ERROR: CreditCard,
 };
 
 /**
  * エラーカテゴリに応じた色クラスマッピング
  */
 const categoryColorMap: Record<ErrorCategory, string> = {
-  network: "text-destructive",
+  system: "text-destructive",
+  external: "text-warning",
   auth: "text-warning",
   validation: "text-warning",
   business: "text-info",
-  server: "text-destructive",
-  client: "text-warning",
-  security: "text-destructive",
   payment: "text-destructive",
+  security: "text-destructive",
   "not-found": "text-muted-foreground",
   unknown: "text-muted-foreground",
 };
@@ -130,7 +132,7 @@ export function getErrorColor(category: ErrorCategory): string {
  * プリセットエラーアイコンコンポーネント
  */
 export const NetworkErrorIcon = ({ size = "xl", className }: Omit<ErrorIconProps, "category">) => (
-  <ErrorIcon category="network" size={size} className={className} />
+  <ErrorIcon code="NETWORK_ERROR" size={size} className={className} />
 );
 
 export const AuthErrorIcon = ({ size = "xl", className }: Omit<ErrorIconProps, "category">) => (
@@ -138,15 +140,15 @@ export const AuthErrorIcon = ({ size = "xl", className }: Omit<ErrorIconProps, "
 );
 
 export const ServerErrorIcon = ({ size = "xl", className }: Omit<ErrorIconProps, "category">) => (
-  <ErrorIcon category="server" size={size} className={className} />
+  <ErrorIcon code="INTERNAL_ERROR" size={size} className={className} />
 );
 
 export const NotFoundIcon = ({ size = "xl", className }: Omit<ErrorIconProps, "category">) => (
-  <ErrorIcon category="not-found" size={size} className={className} />
+  <ErrorIcon code="NOT_FOUND" size={size} className={className} />
 );
 
 export const PaymentErrorIcon = ({ size = "xl", className }: Omit<ErrorIconProps, "category">) => (
-  <ErrorIcon category="payment" size={size} className={className} />
+  <ErrorIcon code="PAYMENT_FAILED" size={size} className={className} />
 );
 
 export const SecurityErrorIcon = ({ size = "xl", className }: Omit<ErrorIconProps, "category">) => (

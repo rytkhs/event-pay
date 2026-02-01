@@ -18,7 +18,7 @@ interface DashboardErrorPageProps {
 export default function DashboardErrorPage({ error, reset }: DashboardErrorPageProps) {
   return (
     <ErrorLayout
-      code="500"
+      code="INTERNAL_ERROR"
       category="business"
       severity="medium"
       title="ダッシュボードエラー"

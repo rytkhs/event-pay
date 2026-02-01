@@ -126,7 +126,7 @@ describe("createGuestStripeSessionAction - Connectアカウント未設定/無�
 
     expect(result.success).toBe(false);
     expect(result.error?.code).toBe("CONNECT_ACCOUNT_NOT_FOUND");
-    expect(result.error?.message).toContain("オンライン決済の準備ができていません");
+    expect(result.error?.userMessage).toContain("オンライン決済の準備ができていません");
   });
 
   it("payouts_enabled=false時はCONNECT_ACCOUNT_RESTRICTEDエラーを返す", async () => {
@@ -139,6 +139,6 @@ describe("createGuestStripeSessionAction - Connectアカウント未設定/無�
 
     expect(result.success).toBe(false);
     expect(result.error?.code).toBe("CONNECT_ACCOUNT_RESTRICTED");
-    expect(result.error?.message).toContain("現在オンライン決済がご利用いただけません");
+    expect(result.error?.userMessage).toContain("現在オンライン決済がご利用いただけません");
   });
 });

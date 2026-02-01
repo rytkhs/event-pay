@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { fail, ok, type ActionResult } from "@core/errors/adapters/server-actions";
+import { fail, ok, type ActionResult, zodFail } from "@core/errors/adapters/server-actions";
 import type { ErrorCode } from "@core/errors/types";
 import { enforceRateLimit, buildKey, POLICIES } from "@core/rate-limit";
 import { SecureSupabaseClientFactory } from "@core/security/secure-client-factory.impl";
@@ -83,9 +83,8 @@ export async function createGuestStripeSessionAction(
   // 1. 入力検証
   const parsed = guestStripeSessionSchema.safeParse(input);
   if (!parsed.success) {
-    return fail("VALIDATION_ERROR", {
+    return zodFail(parsed.error, {
       userMessage: "入力データが無効です。",
-      details: { zodErrors: parsed.error.errors },
     });
   }
   const { guestToken, successUrl, cancelUrl, gaClientId } = parsed.data;

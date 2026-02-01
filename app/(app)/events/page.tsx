@@ -88,7 +88,7 @@ async function EventsContent({ searchParams }: EventsContentProps) {
     // その他のエラー
     return (
       <InlineErrorCard
-        code="500"
+        code="INTERNAL_ERROR"
         category="business"
         severity="medium"
         title="イベントの読み込みエラー"

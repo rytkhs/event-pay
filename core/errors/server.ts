@@ -1,4 +1,4 @@
 import "server-only";
 
 export * from "./index";
-export * from "./adapters";
+export { respondWithCode, respondWithProblem } from "./adapters/http-adapter";

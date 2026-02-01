@@ -9,8 +9,8 @@ export function GlobalErrorListener() {
     const handleError = (event: ErrorEvent) => {
       logError(
         {
-          code: "500",
-          category: "client",
+          code: "INTERNAL_ERROR",
+          category: "system",
           severity: "high",
           title: "Uncaught Error",
           message: event.message,
@@ -22,8 +22,8 @@ export function GlobalErrorListener() {
     const handleRejection = (event: PromiseRejectionEvent) => {
       logError(
         {
-          code: "500",
-          category: "client",
+          code: "INTERNAL_ERROR",
+          category: "system",
           severity: "high",
           title: "Unhandled Promise Rejection",
           message: String(event.reason),

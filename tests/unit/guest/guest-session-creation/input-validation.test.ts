@@ -41,17 +41,12 @@ describe("入力検証", () => {
       success: false,
       error: {
         code: "VALIDATION_ERROR",
-        message: "入力データが無効です。",
-        details: {
-          zodErrors: expect.arrayContaining([
-            expect.objectContaining({
-              path: ["guestToken"],
-              message: "ゲストトークンが無効です",
-            }),
-          ]),
-        },
+        userMessage: "入力データが無効です。",
+        details: undefined,
         correlationId: expect.any(String),
-        fieldErrors: undefined,
+        fieldErrors: {
+          guestToken: ["ゲストトークンが無効です"],
+        },
         retryable: false,
       },
       needsVerification: undefined,
@@ -72,18 +67,12 @@ describe("入力検証", () => {
       success: false,
       error: {
         code: "VALIDATION_ERROR",
-        message: "入力データが無効です。",
-        details: {
-          zodErrors: expect.arrayContaining([
-            expect.objectContaining({
-              path: ["successUrl"],
-              code: "invalid_string",
-              validation: "url",
-            }),
-          ]),
-        },
+        userMessage: "入力データが無効です。",
+        details: undefined,
         correlationId: expect.any(String),
-        fieldErrors: undefined,
+        fieldErrors: {
+          successUrl: expect.arrayContaining([expect.any(String)]),
+        },
         retryable: false,
       },
       needsVerification: undefined,
@@ -104,18 +93,12 @@ describe("入力検証", () => {
       success: false,
       error: {
         code: "VALIDATION_ERROR",
-        message: "入力データが無効です。",
-        details: {
-          zodErrors: expect.arrayContaining([
-            expect.objectContaining({
-              path: ["cancelUrl"],
-              code: "invalid_string",
-              validation: "url",
-            }),
-          ]),
-        },
+        userMessage: "入力データが無効です。",
+        details: undefined,
         correlationId: expect.any(String),
-        fieldErrors: undefined,
+        fieldErrors: {
+          cancelUrl: expect.arrayContaining([expect.any(String)]),
+        },
         retryable: false,
       },
       needsVerification: undefined,

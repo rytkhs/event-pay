@@ -18,7 +18,7 @@ interface PayoutErrorPageProps {
 export default function PayoutErrorPage({ error, reset }: PayoutErrorPageProps) {
   return (
     <ErrorLayout
-      code="500"
+      code="INTERNAL_ERROR"
       category="payment"
       severity="high"
       title="ペイアウトエラー"

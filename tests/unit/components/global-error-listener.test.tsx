@@ -66,8 +66,8 @@ describe("GlobalErrorListener", () => {
       const [errorInfo, originalError] = mockLogError.mock.calls[0];
 
       expect(errorInfo).toMatchObject({
-        code: "500",
-        category: "client",
+        code: "INTERNAL_ERROR",
+        category: "system",
         severity: "high",
         title: "Uncaught Error",
         message: "Test error message",
@@ -80,7 +80,7 @@ describe("GlobalErrorListener", () => {
       unmount();
     });
 
-    it("カテゴリが'client'であること", async () => {
+    it("カテゴリが'system'であること", async () => {
       render(<GlobalErrorListener />);
 
       const errorEvent = new ErrorEvent("error", {
@@ -95,7 +95,7 @@ describe("GlobalErrorListener", () => {
       });
 
       const [errorInfo] = mockLogError.mock.calls[0];
-      expect(errorInfo.category).toBe("client");
+      expect(errorInfo.category).toBe("system");
     });
 
     it("複数のエラーイベントが発生した場合、それぞれ記録されること", async () => {
@@ -149,8 +149,8 @@ describe("GlobalErrorListener", () => {
       const [errorInfo, originalError] = mockLogError.mock.calls[0];
 
       expect(errorInfo).toMatchObject({
-        code: "500",
-        category: "client",
+        code: "INTERNAL_ERROR",
+        category: "system",
         severity: "high",
         title: "Unhandled Promise Rejection",
       });

@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 
 import type { Metadata } from "next";
 
+import { isErrorCode } from "@core/errors";
 import { logInvalidTokenAccess } from "@core/security/security-logger";
 import { validateGuestToken } from "@core/utils/guest-token";
 import { validateInviteToken } from "@core/utils/invite-token";
@@ -93,10 +94,11 @@ export default async function InvitePage({ params }: InvitePageProps) {
       };
 
       const config = getErrorConfig();
+      const resolvedCode = isErrorCode(errorCode) ? errorCode : "REGISTRATION_CLOSED";
 
       return (
         <ErrorLayout
-          code="409"
+          code={resolvedCode}
           category={config.icon}
           severity="medium"
           title={config.title}
@@ -174,8 +176,7 @@ export default async function InvitePage({ params }: InvitePageProps) {
     // 予期しないエラーは詳細なログ記録を避ける（セキュリティ上の理由）
     return (
       <ErrorLayout
-        code="500"
-        category="server"
+        code="INTERNAL_ERROR"
         severity="high"
         title="サーバーエラー"
         message="招待リンクの処理中にエラーが発生しました"

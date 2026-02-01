@@ -5,6 +5,7 @@
 import { jest } from "@jest/globals";
 
 import { loginAction } from "@/app/(auth)/actions";
+
 import { setupNextHeadersMocks } from "../../setup/common-mocks";
 import { createMockSupabaseClient } from "../../setup/supabase-auth-mock";
 
@@ -75,7 +76,7 @@ describe("loginAction", () => {
 
       expect(result.success).toBe(false);
       // バリデーションエラー時は汎用的なエラーメッセージが返される
-      expect(result.error?.message).toBe("入力内容を確認してください");
+      expect(result.error?.userMessage).toBe("入力内容を確認してください");
       // 詳細なエラーはfieldErrorsに含まれる
       expect(result.error?.fieldErrors?.email?.[0]).toContain("有効なメールアドレス");
     });
@@ -89,7 +90,7 @@ describe("loginAction", () => {
 
       expect(result.success).toBe(false);
       // バリデーションエラー時は汎用的なエラーメッセージが返される
-      expect(result.error?.message).toBe("入力内容を確認してください");
+      expect(result.error?.userMessage).toBe("入力内容を確認してください");
       // 詳細なエラーはfieldErrorsに含まれる
       expect(result.error?.fieldErrors?.password?.[0]).toBe("パスワードを入力してください");
     });
@@ -128,7 +129,7 @@ describe("loginAction", () => {
 
       expect(result.success).toBe(false);
       // ユーザー列挙攻撃対策により、統一されたエラーメッセージが返される
-      expect(result.error?.message).toBe("メールアドレスまたはパスワードが正しくありません");
+      expect(result.error?.userMessage).toBe("メールアドレスまたはパスワードが正しくありません");
     });
 
     it("Supabaseの予期しないエラーは適切に処理される", async () => {
