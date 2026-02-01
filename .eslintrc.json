@@ -93,10 +93,10 @@
             "from": "components-ui",
             "allow": ["types"]
           },
-          // components/errors層はtypesのみ
+          // components/errors層はtypesとcoreのみ
           {
             "from": "components-errors",
-            "allow": ["types"]
+            "allow": ["types", "core"]
           }
         ]
       }

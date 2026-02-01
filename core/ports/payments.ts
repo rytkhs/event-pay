@@ -3,8 +3,8 @@
  * Core層からPayments機能にアクセスするためのポートインターフェース
  */
 
+import type { ActionResult } from "@core/errors/adapters/server-actions";
 import { PaymentErrorType, PaymentError as SharedPaymentError } from "@core/types/payment-errors";
-import type { ServerActionResult } from "@core/types/server-actions";
 
 export const PAYMENT_STATUS_VALUES = [
   "pending",
@@ -100,10 +100,8 @@ export interface ErrorHandlingResult {
 export { SharedPaymentError as PaymentError, PaymentErrorType };
 
 export interface PaymentPort {
-  updateCashStatus(params: UpdateCashStatusParams): Promise<ServerActionResult<any>>;
-  bulkUpdateCashStatus(
-    params: BulkUpdateCashStatusParams
-  ): Promise<ServerActionResult<BulkUpdateResult>>;
+  updateCashStatus(params: UpdateCashStatusParams): Promise<ActionResult<any>>;
+  bulkUpdateCashStatus(params: BulkUpdateCashStatusParams): Promise<ActionResult<BulkUpdateResult>>;
 
   createStripeSession(params: CreateStripeSessionParams): Promise<CreateStripeSessionResult>;
   createCashPayment(params: CreateCashPaymentParams): Promise<CreateCashPaymentResult>;

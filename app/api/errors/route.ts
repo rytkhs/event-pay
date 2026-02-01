@@ -4,9 +4,13 @@ import { Ratelimit } from "@upstash/ratelimit";
 import { Redis } from "@upstash/redis";
 import { z } from "zod";
 
+import { AppError, isErrorCode } from "@core/errors";
+import { respondWithCode, respondWithProblem } from "@core/errors/server";
+import type { ErrorCategory, ErrorCode } from "@core/errors/types";
 import { AdminReason, createSecureSupabaseClient } from "@core/security";
-import type { ErrorDetails } from "@core/utils/error-details";
 import { notifyError } from "@core/utils/error-handler.server";
+
+import type { Database } from "@/types/database";
 
 // レート制限設定
 const ratelimit =
@@ -26,6 +30,10 @@ const errorReportSchema = z.object({
     severity: z.string().optional(),
     title: z.string().optional(),
     message: z.string(),
+    userMessage: z.string().optional(),
+    retryable: z.boolean().optional(),
+    correlationId: z.string().optional(),
+    context: z.record(z.any()).optional(),
   }),
   stackTrace: z.string().optional(),
   user: z
@@ -46,8 +54,77 @@ const errorReportSchema = z.object({
   environment: z.string().optional(),
 });
 
+type LogCategory = Database["public"]["Enums"]["log_category_enum"];
+
+const LOG_CATEGORY_VALUES: LogCategory[] = [
+  "authentication",
+  "authorization",
+  "event_management",
+  "attendance",
+  "payment",
+  "settlement",
+  "stripe_webhook",
+  "stripe_connect",
+  "email",
+  "export",
+  "security",
+  "system",
+];
+
+const ERROR_CATEGORY_VALUES: ErrorCategory[] = [
+  "system",
+  "business",
+  "validation",
+  "auth",
+  "payment",
+  "external",
+  "not-found",
+  "security",
+  "unknown",
+];
+
+const ERROR_CATEGORY_TO_LOG_CATEGORY: Record<ErrorCategory, LogCategory> = {
+  system: "system",
+  external: "system",
+  auth: "authentication",
+  validation: "event_management",
+  business: "event_management",
+  payment: "payment",
+  "not-found": "event_management",
+  security: "security",
+  unknown: "system",
+};
+
+function isLogCategory(value: string): value is LogCategory {
+  return LOG_CATEGORY_VALUES.includes(value as LogCategory);
+}
+
+function isErrorCategory(value: string): value is ErrorCategory {
+  return ERROR_CATEGORY_VALUES.includes(value as ErrorCategory);
+}
+
+function resolveLogCategory(raw: unknown, fallback: ErrorCategory): LogCategory {
+  if (typeof raw === "string") {
+    if (isLogCategory(raw)) {
+      return raw;
+    }
+    if (isErrorCategory(raw)) {
+      return ERROR_CATEGORY_TO_LOG_CATEGORY[raw];
+    }
+  }
+  return ERROR_CATEGORY_TO_LOG_CATEGORY[fallback];
+}
+
+const MAX_CLIENT_MESSAGE_LENGTH = 200;
+
+function sanitizeClientMessage(message: string): string {
+  return message.replace(/[\r\n]+/g, " ").slice(0, MAX_CLIENT_MESSAGE_LENGTH);
+}
+
 export async function POST(req: NextRequest) {
   try {
+    const baseLogContext = { category: "system" as const, actorType: "system" as const };
+
     // 1. レート制限チェック
     if (ratelimit) {
       const forwarded = req.headers.get("x-forwarded-for");
@@ -57,18 +134,14 @@ export async function POST(req: NextRequest) {
       const { success: rateLimitOk, remaining } = await ratelimit.limit(`error_log_${ip}`);
 
       if (!rateLimitOk) {
-        // eslint-disable-next-line no-console
-        console.warn("[ErrorAPI] Rate limit exceeded", { ip, remaining });
-        return NextResponse.json(
-          { error: "Too many requests" },
-          {
-            status: 429,
-            headers: {
-              "Retry-After": "60",
-              "X-RateLimit-Remaining": String(remaining),
-            },
-          }
-        );
+        return respondWithCode("RATE_LIMITED", {
+          instance: "/api/errors",
+          detail: "Too many requests",
+          logContext: { ...baseLogContext, action: "error_collection_rate_limited" },
+          headers: {
+            "X-RateLimit-Remaining": String(remaining),
+          },
+        });
       }
     }
 
@@ -77,10 +150,38 @@ export async function POST(req: NextRequest) {
     const validation = errorReportSchema.safeParse(body);
 
     if (!validation.success) {
-      return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
+      return respondWithCode("VALIDATION_ERROR", {
+        instance: "/api/errors",
+        detail: "Invalid request body",
+        logContext: { ...baseLogContext, action: "error_collection_invalid_request" },
+      });
     }
 
     const { data } = validation;
+    const rawContext = (data.error.context ?? {}) as Record<string, unknown>;
+    const rawLogCategory =
+      (typeof rawContext.logCategory === "string" && rawContext.logCategory) ||
+      (typeof rawContext.category === "string" && rawContext.category) ||
+      data.error.category;
+    const action = (typeof rawContext.action === "string" && rawContext.action) || "client_error";
+    const resolvedCode: ErrorCode =
+      data.error.code && isErrorCode(data.error.code) ? data.error.code : "UNKNOWN_ERROR";
+    const sanitizedMessage = sanitizeClientMessage(data.error.message);
+    const sanitizedUserMessage = data.error.userMessage
+      ? sanitizeClientMessage(data.error.userMessage)
+      : undefined;
+    const appError = new AppError(resolvedCode, {
+      message: `Client error reported: ${resolvedCode}`,
+      retryable: data.error.retryable,
+      correlationId: data.error.correlationId,
+      details: {
+        title: data.error.title,
+        context: rawContext,
+        clientMessage: sanitizedMessage,
+        clientUserMessage: sanitizedUserMessage,
+      },
+    });
+    const logCategory = resolveLogCategory(rawLogCategory, appError.category);
 
     const factory = createSecureSupabaseClient();
     const supabase = await factory.createAuditedAdminClient(
@@ -99,67 +200,61 @@ export async function POST(req: NextRequest) {
     // 5. DB保存
     const { error: insertError } = await supabase.from("system_logs").insert({
       log_level: "error",
-      log_category: data.error.category || "client_error",
+      log_category: logCategory,
       actor_type: data.user?.id ? "user" : "anonymous",
       actor_identifier: data.user?.email,
       user_id: data.user?.id,
-      action: "client_error",
+      action,
       message: data.error.message,
       outcome: "failure",
       ip_address:
         req.headers.get("cf-connecting-ip") || req.headers.get("x-forwarded-for") || undefined,
       user_agent: data.user?.userAgent || req.headers.get("user-agent") || undefined,
-      error_code: data.error.code,
+      error_code: appError.code,
       error_message: data.error.message,
       error_stack: data.stackTrace,
       metadata: {
         error_info: data.error,
+        resolved_error: {
+          code: appError.code,
+          severity: appError.severity,
+          retryable: appError.retryable,
+          correlationId: appError.correlationId,
+          category: appError.category,
+        },
         page: data.page,
         breadcrumbs: data.breadcrumbs,
         environment: data.environment,
       },
-      tags: [data.error.category || "client", `severity:${data.error.severity || "unknown"}`],
+      tags: [logCategory, `severity:${appError.severity}`],
     });
 
     if (insertError) {
-      // eslint-disable-next-line no-console
-      console.error("[ErrorAPI] Failed to insert log:", insertError);
-      return NextResponse.json(
-        { error: "Failed to save log" },
-        {
-          status: 500,
-          headers: {
-            "Cache-Control": "no-store",
-          },
-        }
-      );
+      return respondWithProblem(insertError, {
+        instance: "/api/errors",
+        detail: "Failed to save log",
+        defaultCode: "DATABASE_ERROR",
+        logContext: { ...baseLogContext, action: "error_collection_insert_failed" },
+      });
     }
 
     // 6. 重要エラーの通知（Sentry/Slack）
-    // クライアント側で判断された severity を尊重する
-    const severity = (data.error.severity || "medium") as ErrorDetails["severity"];
+    // Registry 由来の severity を使用する
+    const severity = appError.severity;
     const shouldAlert = severity === "high" || severity === "critical";
 
     if (shouldAlert) {
       // const { notifyError } = await import("@core/utils/error-handler.server");
       const { waitUntil } = await import("@core/utils/cloudflare-ctx");
 
-      const errorDetails: ErrorDetails = {
-        code: data.error.code || "CLIENT_ERROR",
-        message: data.error.message,
-        userMessage: "エラーが発生しました", // 通知用なのでデフォルトでOK
-        severity,
-        shouldLog: false, // 既にDB保存済み
-        shouldAlert: true,
-        retryable: false,
-      };
-
       waitUntil(
-        notifyError(errorDetails, {
+        notifyError(appError, {
           action: "client_error_report",
           // actorType: data.user?.id ? "user" : "anonymous",
           userId: data.user?.id,
           additionalData: {
+            clientMessage: sanitizedMessage,
+            clientUserMessage: sanitizedUserMessage,
             userAgent: data.user?.userAgent,
             page: data.page,
             environment: data.environment,
@@ -180,16 +275,11 @@ export async function POST(req: NextRequest) {
       }
     );
   } catch (error) {
-    // eslint-disable-next-line no-console
-    console.error("[ErrorAPI] Unhandled error:", error);
-    return NextResponse.json(
-      { error: "Internal Server Error" },
-      {
-        status: 500,
-        headers: {
-          "Cache-Control": "no-store",
-        },
-      }
-    );
+    return respondWithProblem(error, {
+      instance: "/api/errors",
+      detail: "Internal Server Error",
+      defaultCode: "INTERNAL_ERROR",
+      logContext: { category: "system", actorType: "system", action: "error_collection_unhandled" },
+    });
   }
 }

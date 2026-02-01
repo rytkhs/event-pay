@@ -1,11 +1,11 @@
 import { z } from "zod";
 
 import { getCurrentUser } from "@core/auth/auth-utils";
+import { fail, ok } from "@core/errors/adapters/server-actions";
+import type { ActionResult } from "@core/errors/adapters/server-actions";
 import { logger } from "@core/logging/app-logger";
 import { createClient } from "@core/supabase/server";
 import { handleServerError } from "@core/utils/error-handler.server";
-
-import type { ActionResult } from "@/types/action-result";
 
 const updatePasswordSchema = z.object({
   currentPassword: z.string().min(1, "現在のパスワードを入力してください"),
@@ -20,10 +20,7 @@ export async function updatePasswordAction(formData: FormData): Promise<ActionRe
     // 認証チェック
     const user = await getCurrentUser();
     if (!user) {
-      return {
-        success: false,
-        error: "認証が必要です",
-      };
+      return fail("UNAUTHORIZED", { userMessage: "認証が必要です" });
     }
 
     // 入力値検証
@@ -35,10 +32,7 @@ export async function updatePasswordAction(formData: FormData): Promise<ActionRe
     const validationResult = updatePasswordSchema.safeParse(rawData);
     if (!validationResult.success) {
       const errors = validationResult.error.errors.map((err) => err.message).join(", ");
-      return {
-        success: false,
-        error: errors,
-      };
+      return fail("VALIDATION_ERROR", { userMessage: errors });
     }
 
     const { currentPassword, newPassword } = validationResult.data;
@@ -59,10 +53,7 @@ export async function updatePasswordAction(formData: FormData): Promise<ActionRe
         error_message: signInError.message,
         outcome: "failure",
       });
-      return {
-        success: false,
-        error: "現在のパスワードが正しくありません",
-      };
+      return fail("FORBIDDEN", { userMessage: "現在のパスワードが正しくありません" });
     }
 
     // パスワード更新
@@ -77,10 +68,9 @@ export async function updatePasswordAction(formData: FormData): Promise<ActionRe
         actorType: "user",
         userId: user.id,
       });
-      return {
-        success: false,
-        error: "パスワードの更新に失敗しました",
-      };
+      return fail("UPDATE_PASSWORD_UNEXPECTED_ERROR", {
+        userMessage: "パスワードの更新に失敗しました",
+      });
     }
 
     logger.info("Password updated successfully", {
@@ -91,10 +81,7 @@ export async function updatePasswordAction(formData: FormData): Promise<ActionRe
       outcome: "success",
     });
 
-    return {
-      success: true,
-      message: "パスワードを変更しました",
-    };
+    return ok(undefined, { message: "パスワードを変更しました" });
   } catch (error) {
     handleServerError("UPDATE_PASSWORD_UNEXPECTED_ERROR", {
       category: "authentication",
@@ -106,9 +93,8 @@ export async function updatePasswordAction(formData: FormData): Promise<ActionRe
       },
     });
 
-    return {
-      success: false,
-      error: "パスワードの変更中にエラーが発生しました",
-    };
+    return fail("UPDATE_PASSWORD_UNEXPECTED_ERROR", {
+      userMessage: "パスワードの変更中にエラーが発生しました",
+    });
   }
 }

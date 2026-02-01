@@ -95,7 +95,7 @@ export function ParticipantsActionBar({
         }
         toast({
           title: "追加に失敗しました",
-          description: result.error || "参加者の追加に失敗しました",
+          description: result.error?.userMessage || "参加者の追加に失敗しました",
           variant: "destructive",
         });
         return;

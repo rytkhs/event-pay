@@ -96,7 +96,7 @@ export default async function GuestPage({ params, searchParams }: GuestPageProps
   } catch (error) {
     // 予期しないエラーの場合は構造化ログを記録して404を返す
     const { logError } = await import("@core/utils/error-handler.server");
-    const { getErrorDetails } = await import("@core/utils/error-details");
+    const { AppError } = await import("@core/errors");
 
     // リクエスト情報を取得（エラーハンドリング用）
     const errorHeadersList = headers();
@@ -114,7 +114,7 @@ export default async function GuestPage({ params, searchParams }: GuestPageProps
       },
     };
 
-    logError(getErrorDetails("GUEST_TOKEN_VALIDATION_FAILED"), errorContext);
+    logError(new AppError("GUEST_TOKEN_VALIDATION_FAILED"), errorContext);
 
     // セキュリティログに記録（エラー詳細は記録しない）
     logUnexpectedGuestPageError(token, error, { userAgent: errorUserAgent, ip: errorIp });

@@ -4,7 +4,7 @@
  */
 
 // 型定義
-export type * from "./error-types";
+export type * from "./types";
 
 // コアコンポーネント
 export { ErrorLayout } from "./ErrorLayout";

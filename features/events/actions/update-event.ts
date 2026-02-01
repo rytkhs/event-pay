@@ -7,14 +7,9 @@ import {
   createFormDataSnapshot,
   evaluateEventEditViolations,
 } from "@core/domain/event-edit-restrictions";
+import { type ActionResult, fail, ok, zodFail } from "@core/errors/adapters/server-actions";
 import { logEventManagement } from "@core/logging/system-logger";
 import { createClient } from "@core/supabase/server";
-import {
-  type ServerActionResult,
-  createServerActionError,
-  createServerActionSuccess,
-  zodErrorToServerActionResponse,
-} from "@core/types/server-actions";
 import { deriveEventStatus } from "@core/utils/derive-event-status";
 import { calculateAttendeeCount } from "@core/utils/event-calculations";
 import { extractEventUpdateFormData } from "@core/utils/form-data-extractors";
@@ -25,7 +20,7 @@ import { validateEventId } from "@core/validation/event-id";
 import type { Database } from "@/types/database";
 
 type EventRow = Database["public"]["Tables"]["events"]["Row"];
-type UpdateEventResult = ServerActionResult<EventRow>;
+type UpdateEventResult = ActionResult<EventRow>;
 
 // UpdateEventInputを使用（Zodスキーマから自動生成）
 
@@ -39,10 +34,9 @@ export async function updateEventAction(
     // イベントIDのバリデーション（UUID形式）
     const eventIdValidation = validateEventId(eventId);
     if (!eventIdValidation.success) {
-      return createServerActionError(
-        "VALIDATION_ERROR",
-        eventIdValidation.error?.message || "無効なイベントIDです"
-      );
+      return fail("VALIDATION_ERROR", {
+        userMessage: eventIdValidation.error?.userMessage || "無効なイベントIDです",
+      });
     }
 
     // 認証チェック
@@ -52,7 +46,7 @@ export async function updateEventAction(
     } = await supabase.auth.getUser();
 
     if (authError || !user) {
-      return createServerActionError("UNAUTHORIZED", "認証が必要です");
+      return fail("UNAUTHORIZED", { userMessage: "認証が必要です" });
     }
 
     // イベントの存在確認と権限チェック
@@ -65,18 +59,18 @@ export async function updateEventAction(
 
     // RLSフィルターにより、存在しないイベントまたは権限のないイベントは取得不可
     if (eventError?.code === "PGRST301" || eventError?.code === "PGRST116" || !existingEvent) {
-      return createServerActionError("FORBIDDEN", "このイベントを編集する権限がありません");
+      return fail("FORBIDDEN", { userMessage: "このイベントを編集する権限がありません" });
     }
 
     // ステータスベースの編集禁止チェック
     const eventStatus = deriveEventStatus(existingEvent.date, existingEvent.canceled_at);
 
     if (eventStatus === "past") {
-      return createServerActionError("FORBIDDEN", "開催済みのイベントは編集できません");
+      return fail("FORBIDDEN", { userMessage: "開催済みのイベントは編集できません" });
     }
 
     if (eventStatus === "canceled") {
-      return createServerActionError("FORBIDDEN", "キャンセル済みのイベントは編集できません");
+      return fail("FORBIDDEN", { userMessage: "キャンセル済みのイベントは編集できません" });
     }
 
     // フォームデータの抽出
@@ -89,7 +83,7 @@ export async function updateEventAction(
     } catch (error) {
       if (error instanceof z.ZodError) {
         // フィールド別エラーを含む統一形式でレスポンス
-        return zodErrorToServerActionResponse(error);
+        return zodFail(error);
       }
       throw error;
     }
@@ -117,20 +111,18 @@ export async function updateEventAction(
     // 参加申込締切: registration_deadline ≤ date
     if (effectiveRegDeadlineIso) {
       if (new Date(effectiveRegDeadlineIso) > new Date(effectiveDateIso)) {
-        return createServerActionError(
-          "VALIDATION_ERROR",
-          "参加申込締切は開催日時以前に設定してください"
-        );
+        return fail("VALIDATION_ERROR", {
+          userMessage: "参加申込締切は開催日時以前に設定してください",
+        });
       }
     }
 
     // 決済締切: registration_deadline ≤ payment_deadline（regがある場合）
     if (effectivePayDeadlineIso && effectiveRegDeadlineIso) {
       if (new Date(effectivePayDeadlineIso) < new Date(effectiveRegDeadlineIso)) {
-        return createServerActionError(
-          "VALIDATION_ERROR",
-          "決済締切は参加申込締切以降に設定してください"
-        );
+        return fail("VALIDATION_ERROR", {
+          userMessage: "決済締切は参加申込締切以降に設定してください",
+        });
       }
     }
 
@@ -140,10 +132,9 @@ export async function updateEventAction(
         new Date(effectiveDateIso).getTime() + 30 * 24 * 60 * 60 * 1000
       );
       if (new Date(effectivePayDeadlineIso) > eventPlus30d) {
-        return createServerActionError(
-          "VALIDATION_ERROR",
-          "オンライン決済締切は開催日時から30日以内に設定してください"
-        );
+        return fail("VALIDATION_ERROR", {
+          userMessage: "オンライン決済締切は開催日時から30日以内に設定してください",
+        });
       }
     }
 
@@ -168,10 +159,9 @@ export async function updateEventAction(
         new Date(effectiveDateIso).getTime() + 30 * 24 * 60 * 60 * 1000
       );
       if (finalCandidate > eventPlus30d) {
-        return createServerActionError(
-          "VALIDATION_ERROR",
-          "猶予を含む最終支払期限は開催日時から30日以内にしてください"
-        );
+        return fail("VALIDATION_ERROR", {
+          userMessage: "猶予を含む最終支払期限は開催日時から30日以内にしてください",
+        });
       }
     }
 
@@ -193,20 +183,12 @@ export async function updateEventAction(
 
     // 有料イベント時の決済方法必須チェック（effective値での検証）
     if (effectiveFee > 0 && effectivePaymentMethods.length === 0) {
-      return createServerActionError(
-        "VALIDATION_ERROR",
-        "有料イベントでは決済方法の選択が必要です",
-        {
-          details: {
-            fieldErrors: [
-              {
-                field: "payment_methods",
-                message: "有料イベントでは決済方法の選択が必要です",
-              },
-            ],
-          },
-        }
-      );
+      return fail("VALIDATION_ERROR", {
+        userMessage: "有料イベントでは決済方法の選択が必要です",
+        fieldErrors: {
+          payment_methods: ["有料イベントでは決済方法の選択が必要です"],
+        },
+      });
     }
 
     // Stripe決済締切必須関係の差分送信時取りこぼし防止
@@ -218,21 +200,14 @@ export async function updateEventAction(
           : existingEvent.payment_deadline;
 
       if (!effectivePaymentDeadline) {
-        return createServerActionError(
-          "VALIDATION_ERROR",
-          "オンライン決済を選択した場合、決済締切の設定が必要です。既存のイベントでオンライン決済締切が未設定の場合は、編集画面で締切日時を入力してください。",
-          {
-            details: {
-              fieldErrors: [
-                {
-                  field: "payment_deadline",
-                  message:
-                    "オンライン決済を選択した場合、決済締切の設定が必要です。既存のイベントでオンライン決済締切が未設定の場合は、編集画面で締切日時を入力してください。",
-                },
-              ],
-            },
-          }
-        );
+        const message =
+          "オンライン決済を選択した場合、決済締切の設定が必要です。既存のイベントでオンライン決済締切が未設定の場合は、編集画面で締切日時を入力してください。";
+        return fail("VALIDATION_ERROR", {
+          userMessage: message,
+          fieldErrors: {
+            payment_deadline: [message],
+          },
+        });
       }
     }
 
@@ -254,20 +229,12 @@ export async function updateEventAction(
           (connectAccount as any).payouts_enabled === true;
 
         if (connectError || !isReady) {
-          return createServerActionError(
-            "VALIDATION_ERROR",
-            "オンライン決済を追加するにはStripe Connectの設定完了が必要です",
-            {
-              details: {
-                fieldErrors: [
-                  {
-                    field: "payment_methods",
-                    message: "Stripe Connectの設定を完了してください（本人確認と入金有効化）",
-                  },
-                ],
-              },
-            }
-          );
+          return fail("VALIDATION_ERROR", {
+            userMessage: "オンライン決済を追加するにはStripe Connectの設定完了が必要です",
+            fieldErrors: {
+              payment_methods: ["Stripe Connectの設定を完了してください（本人確認と入金有効化）"],
+            },
+          });
         }
       }
     }
@@ -352,7 +319,8 @@ export async function updateEventAction(
     });
 
     if (fieldViolations.length > 0) {
-      return createServerActionError("RESOURCE_CONFLICT", "編集制限により変更できません", {
+      return fail("RESOURCE_CONFLICT", {
+        userMessage: "編集制限により変更できません",
         details: {
           violations: fieldViolations.map((violation) => ({
             field: violation.field,
@@ -372,17 +340,16 @@ export async function updateEventAction(
         .eq("status", "attending");
 
       if (attendanceError) {
-        return createServerActionError("DATABASE_ERROR", "参加者数の確認に失敗しました");
+        return fail("DATABASE_ERROR", { userMessage: "参加者数の確認に失敗しました" });
       }
 
       const currentAttendeeCount = latestAttendances?.length || 0;
 
       // 定員が設定されており、現在の参加者数より少ない場合はエラー
       if (validatedData.capacity !== null && validatedData.capacity < currentAttendeeCount) {
-        return createServerActionError(
-          "VALIDATION_ERROR",
-          `定員は現在の参加者数（${currentAttendeeCount}名）以上で設定してください`
-        );
+        return fail("VALIDATION_ERROR", {
+          userMessage: `定員は現在の参加者数（${currentAttendeeCount}名）以上で設定してください`,
+        });
       }
     }
 
@@ -391,7 +358,7 @@ export async function updateEventAction(
 
     // 更新データが空の場合は既存データを返す（変更なし）
     if (Object.keys(updateData).length === 0) {
-      return createServerActionSuccess(existingEvent, "変更はありませんでした");
+      return ok(existingEvent, { message: "変更はありませんでした" });
     }
 
     // データベース更新
@@ -403,13 +370,14 @@ export async function updateEventAction(
       .single();
 
     if (updateError) {
-      return createServerActionError("DATABASE_ERROR", "イベントの更新に失敗しました", {
+      return fail("DATABASE_ERROR", {
+        userMessage: "イベントの更新に失敗しました",
         details: { databaseError: updateError },
       });
     }
 
     if (!updatedEvent) {
-      return createServerActionError("DATABASE_ERROR", "イベントの更新に失敗しました");
+      return fail("DATABASE_ERROR", { userMessage: "イベントの更新に失敗しました" });
     }
 
     // 監査ログ記録
@@ -430,13 +398,14 @@ export async function updateEventAction(
     revalidatePath("/events");
     revalidatePath(`/events/${eventId}`);
 
-    return createServerActionSuccess(updatedEvent, "イベントが正常に更新されました");
+    return ok(updatedEvent, { message: "イベントが正常に更新されました" });
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return zodErrorToServerActionResponse(error);
+      return zodFail(error);
     }
 
-    return createServerActionError("INTERNAL_ERROR", "予期しないエラーが発生しました", {
+    return fail("INTERNAL_ERROR", {
+      userMessage: "予期しないエラーが発生しました",
       details: { originalError: error },
     });
   }

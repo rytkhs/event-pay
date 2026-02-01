@@ -8,6 +8,7 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 
 import { useToast } from "@core/contexts/toast-context";
+import type { ActionResult } from "@core/errors/adapters/server-actions";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -20,7 +21,6 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import type { ActionResult } from "@/types/action-result";
 
 const profileSchema = z.object({
   name: z
@@ -66,7 +66,7 @@ export function ProfileForm({ currentName, updateProfileAction }: ProfileFormPro
         } else {
           toast({
             title: "エラー",
-            description: result.error,
+            description: result.error?.userMessage,
             variant: "destructive",
           });
         }

@@ -10,11 +10,10 @@ import { NextResponse } from "next/server";
 import { Receiver } from "@upstash/qstash";
 import Stripe from "stripe";
 
-import { createProblemResponse } from "@core/api/problem-details";
+import { respondWithCode, respondWithProblem } from "@core/errors/server";
 import { logger } from "@core/logging/app-logger";
 import { generateSecureUuid } from "@core/security/crypto";
 import { getEnv } from "@core/utils/cloudflare-env";
-import { handleServerError } from "@core/utils/error-handler.server";
 import { getClientIP } from "@core/utils/ip-detection";
 
 import { ConnectWebhookHandler } from "@features/stripe-connect/server";
@@ -34,6 +33,7 @@ export async function POST(request: NextRequest) {
   ensureFeaturesRegistered();
   const start = Date.now();
   const corr = `qstash_connect_${generateSecureUuid()}`;
+  const baseLogContext = { category: "stripe_webhook" as const, actorType: "webhook" as const };
 
   const connectLogger = logger.withContext({
     category: "stripe_webhook",
@@ -57,10 +57,11 @@ export async function POST(request: NextRequest) {
         ip: getClientIP(request),
         outcome: "failure",
       });
-      return createProblemResponse("UNAUTHORIZED", {
+      return respondWithCode("UNAUTHORIZED", {
         instance: "/api/workers/stripe-connect-webhook",
         detail: "Missing QStash signature",
-        correlation_id: corr,
+        correlationId: corr,
+        logContext: { ...baseLogContext, action: "qstash_signature_missing" },
       });
     }
 
@@ -71,10 +72,11 @@ export async function POST(request: NextRequest) {
         ip: getClientIP(request),
         outcome: "failure",
       });
-      return createProblemResponse("UNAUTHORIZED", {
+      return respondWithCode("UNAUTHORIZED", {
         instance: "/api/workers/stripe-connect-webhook",
         detail: "Invalid QStash signature",
-        correlation_id: corr,
+        correlationId: corr,
+        logContext: { ...baseLogContext, action: "qstash_signature_invalid" },
       });
     }
 
@@ -82,10 +84,11 @@ export async function POST(request: NextRequest) {
     try {
       parsed = JSON.parse(rawBody);
     } catch (e) {
-      return createProblemResponse("INVALID_REQUEST", {
+      return respondWithCode("INVALID_REQUEST", {
         instance: "/api/workers/stripe-connect-webhook",
         detail: "Invalid JSON body",
-        correlation_id: corr,
+        correlationId: corr,
+        logContext: { ...baseLogContext, action: "invalid_json" },
       });
     }
 
@@ -97,10 +100,11 @@ export async function POST(request: NextRequest) {
         event_type: event?.type,
         outcome: "failure",
       });
-      return createProblemResponse("INVALID_REQUEST", {
+      return respondWithCode("INVALID_REQUEST", {
         instance: "/api/workers/stripe-connect-webhook",
         detail: "Missing or invalid event data",
-        correlation_id: corr,
+        correlationId: corr,
+        logContext: { ...baseLogContext, action: "invalid_event_data" },
       });
     }
 
@@ -151,27 +155,28 @@ export async function POST(request: NextRequest) {
       (processingResult as any).success === false &&
       (processingResult as any).terminal === true
     ) {
-      const msTerminal = Date.now() - start;
-      handleServerError("CONNECT_WEBHOOK_UNEXPECTED_ERROR", {
-        category: "stripe_webhook",
-        action: "stripe_connect_worker_terminal_failure",
-        additionalData: {
-          delivery_id: deliveryId,
-          event_id: event.id,
-          type: event.type,
-          ms: msTerminal,
-          reason: (processingResult as any).reason,
-          error: (processingResult as any).error,
-          correlation_id: corr,
-        },
-      });
-      return createProblemResponse("INTERNAL_ERROR", {
-        instance: "/api/workers/stripe-connect-webhook",
-        detail:
-          (processingResult as any).error ||
-          "Worker failed with terminal error. QStash should retry.",
-        correlation_id: corr,
-      });
+      const ms = Date.now() - start;
+      return respondWithProblem(
+        (processingResult as any).error || "Worker failed with terminal error",
+        {
+          instance: "/api/workers/stripe-connect-webhook",
+          correlationId: corr,
+          defaultCode: "WEBHOOK_UNEXPECTED_ERROR",
+          logContext: {
+            category: "stripe_webhook",
+            actorType: "webhook",
+            action: "stripe_connect_worker_terminal_failure",
+            additionalData: {
+              delivery_id: deliveryId,
+              event_id: event.id,
+              type: event.type,
+              reason: (processingResult as any).reason,
+              error: (processingResult as any).error,
+              ms,
+            },
+          },
+        }
+      );
     }
 
     const ms = Date.now() - start;
@@ -186,19 +191,17 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: true, eventId: event.id, type: event.type, ms });
   } catch (error) {
     const ms = Date.now() - start;
-    handleServerError("CONNECT_WEBHOOK_UNEXPECTED_ERROR", {
-      category: "stripe_webhook",
-      action: "stripe_connect_worker_error",
-      additionalData: {
-        error_message: error instanceof Error ? error.message : String(error),
-        ms,
-        correlation_id: corr,
-      },
-    });
-    return createProblemResponse("INTERNAL_ERROR", {
+    return respondWithProblem(error, {
       instance: "/api/workers/stripe-connect-webhook",
       detail: "Worker failed to process connect event",
-      correlation_id: corr,
+      correlationId: corr,
+      defaultCode: "WEBHOOK_UNEXPECTED_ERROR",
+      logContext: {
+        category: "stripe_webhook",
+        actorType: "webhook",
+        action: "stripe_connect_worker_error",
+        additionalData: { ms },
+      },
     });
   }
 }

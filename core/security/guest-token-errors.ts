@@ -32,7 +32,7 @@ export enum GuestErrorCode {
   PAYMENT_NOT_FOUND = "PAYMENT_NOT_FOUND",
 
   // 制限エラー
-  RATE_LIMIT_EXCEEDED = "RATE_LIMIT_EXCEEDED",
+  RATE_LIMITED = "RATE_LIMITED",
   CONCURRENT_ACCESS_LIMIT = "CONCURRENT_ACCESS_LIMIT",
 
   // システムエラー
@@ -196,7 +196,7 @@ export class GuestTokenError extends Error {
 
       case GuestErrorCode.TOKEN_REVOKED:
       case GuestErrorCode.INSUFFICIENT_PERMISSIONS:
-      case GuestErrorCode.RATE_LIMIT_EXCEEDED:
+      case GuestErrorCode.RATE_LIMITED:
       case GuestErrorCode.RLS_POLICY_VIOLATION:
         return ErrorSeverity.HIGH;
 
@@ -234,7 +234,7 @@ export class GuestTokenError extends Error {
         return false;
 
       // 条件付き再試行可能
-      case GuestErrorCode.RATE_LIMIT_EXCEEDED:
+      case GuestErrorCode.RATE_LIMITED:
       case GuestErrorCode.CONCURRENT_ACCESS_LIMIT:
         return true; // 時間をおいて再試行可能
 
@@ -281,7 +281,7 @@ export class GuestTokenError extends Error {
       case GuestErrorCode.PAYMENT_NOT_FOUND:
         return "支払い情報が見つかりません。";
 
-      case GuestErrorCode.RATE_LIMIT_EXCEEDED:
+      case GuestErrorCode.RATE_LIMITED:
         return "アクセス頻度が高すぎます。しばらく時間をおいてから再度お試しください。";
 
       case GuestErrorCode.CONCURRENT_ACCESS_LIMIT:
@@ -344,7 +344,7 @@ export class GuestTokenErrorFactory {
    * レート制限エラーを作成
    */
   static rateLimitExceeded(ipAddress?: string, retryAfter?: number): GuestTokenError {
-    return new GuestTokenError(GuestErrorCode.RATE_LIMIT_EXCEEDED, "Rate limit exceeded", {
+    return new GuestTokenError(GuestErrorCode.RATE_LIMITED, "Rate limit exceeded", {
       ipAddress,
       additionalInfo: { retryAfter },
     });
@@ -479,7 +479,7 @@ export class GuestTokenErrorHandler {
       case GuestErrorCode.PAYMENT_NOT_FOUND:
         return 404; // Not Found
 
-      case GuestErrorCode.RATE_LIMIT_EXCEEDED:
+      case GuestErrorCode.RATE_LIMITED:
       case GuestErrorCode.CONCURRENT_ACCESS_LIMIT:
         return 429; // Too Many Requests
 

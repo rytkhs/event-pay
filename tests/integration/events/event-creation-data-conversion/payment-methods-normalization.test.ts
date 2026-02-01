@@ -135,15 +135,11 @@ describe("1.2.3 決済方法配列の重複除去と正規化", () => {
 
     // 実際にはバリデーションエラーになるかもしれないので、両方のケースを対応
     if (!result.success) {
-      expect(result.code).toBe("VALIDATION_ERROR");
+      expect(result.error?.code).toBe("VALIDATION_ERROR");
       // 不正な決済方法によるバリデーションエラーメッセージを確認
-      expect(result.fieldErrors).toBeDefined();
-      if (result.fieldErrors) {
-        const paymentMethodsError = result.fieldErrors.find(
-          (err) => err.field === "payment_methods"
-        );
-        expect(paymentMethodsError).toBeDefined();
-      }
+      const fieldErrors = result.error?.fieldErrors;
+      expect(fieldErrors).toBeDefined();
+      expect(fieldErrors?.payment_methods?.[0]).toBeDefined();
     } else {
       // もしくは正規化されて成功する場合
       const event = result.data;

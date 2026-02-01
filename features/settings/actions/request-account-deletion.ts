@@ -3,13 +3,13 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
 import { getCurrentUser } from "@core/auth/auth-utils";
+import { fail, ok } from "@core/errors/adapters/server-actions";
+import type { ActionResult } from "@core/errors/adapters/server-actions";
 import { logger } from "@core/logging/app-logger";
 import { getSecureClientFactory } from "@core/security/secure-client-factory.impl";
 import { AdminReason } from "@core/security/secure-client-factory.types";
 import { createClient } from "@core/supabase/server";
 import { handleServerError } from "@core/utils/error-handler.server";
-
-import type { ActionResult } from "@/types/action-result";
 
 // 入力検証: ユーザー同意/確認語句
 const deletionRequestSchema = z.object({
@@ -34,7 +34,7 @@ export async function requestAccountDeletionAction(formData: FormData): Promise<
     // 認証
     const user = await getCurrentUser();
     if (!user) {
-      return { success: false, error: "認証が必要です" };
+      return fail("UNAUTHORIZED", { userMessage: "認証が必要です" });
     }
 
     // 入力検証
@@ -46,7 +46,9 @@ export async function requestAccountDeletionAction(formData: FormData): Promise<
     };
     const parsed = deletionRequestSchema.safeParse(raw);
     if (!parsed.success) {
-      return { success: false, error: parsed.error.errors.map((e) => e.message).join(", ") };
+      return fail("VALIDATION_ERROR", {
+        userMessage: parsed.error.errors.map((e) => e.message).join(", "),
+      });
     }
 
     const supabase = createClient();
@@ -71,7 +73,9 @@ export async function requestAccountDeletionAction(formData: FormData): Promise<
         actorType: "user",
         userId: user.id,
       });
-      return { success: false, error: "アカウントの処理に失敗しました" };
+      return fail("ACCOUNT_DELETION_UNEXPECTED_ERROR", {
+        userMessage: "アカウントの処理に失敗しました",
+      });
     }
 
     // 2. Stripe Connect 無効化（可能範囲）: DB上の状態を未検証でも無効化（best-effort）
@@ -114,7 +118,9 @@ export async function requestAccountDeletionAction(formData: FormData): Promise<
         actorType: "user",
         userId: user.id,
       });
-      return { success: false, error: "アカウントの処理に失敗しました" };
+      return fail("ACCOUNT_DELETION_UNEXPECTED_ERROR", {
+        userMessage: "アカウントの処理に失敗しました",
+      });
     }
 
     // 4. 物理削除: line_accounts の個人情報を完全削除
@@ -129,7 +135,9 @@ export async function requestAccountDeletionAction(formData: FormData): Promise<
         actorType: "user",
         userId: user.id,
       });
-      return { success: false, error: "アカウントの処理に失敗しました" };
+      return fail("ACCOUNT_DELETION_UNEXPECTED_ERROR", {
+        userMessage: "アカウントの処理に失敗しました",
+      });
     }
 
     const { error: signOutError } = await supabase.auth.signOut();
@@ -148,11 +156,10 @@ export async function requestAccountDeletionAction(formData: FormData): Promise<
     revalidatePath("/settings/profile");
     revalidatePath("/dashboard");
 
-    return {
-      success: true,
+    return ok(undefined, {
       message: "アカウントの削除処理が完了しました。ログインページに移動します。",
       redirectUrl: "/login",
-    };
+    });
   } catch (error) {
     handleServerError("ACCOUNT_DELETION_UNEXPECTED_ERROR", {
       category: "authentication",
@@ -163,6 +170,8 @@ export async function requestAccountDeletionAction(formData: FormData): Promise<
         error_message: error instanceof Error ? error.message : String(error),
       },
     });
-    return { success: false, error: "処理中にエラーが発生しました" };
+    return fail("ACCOUNT_DELETION_UNEXPECTED_ERROR", {
+      userMessage: "処理中にエラーが発生しました",
+    });
   }
 }

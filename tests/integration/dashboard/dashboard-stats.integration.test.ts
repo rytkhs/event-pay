@@ -121,8 +121,8 @@ describe("ダッシュボード統計情報 統合テスト", () => {
 
       expect(result.success).toBe(false);
       if (!result.success) {
-        expect(result.code).toBe("UNAUTHORIZED");
-        expect(result.error).toBe("認証が必要です");
+        expect(result.error?.code).toBe("UNAUTHORIZED");
+        expect(result.error?.userMessage).toBe("認証が必要です");
       }
     });
   });

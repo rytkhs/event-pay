@@ -603,7 +603,7 @@ describe("イベント作成統合テスト - 基本的なイベント作成", (
   });
 
   describe("レスポンス形式の確認", () => {
-    test("成功時の適切なServerActionResult構造", async () => {
+    test("成功時の適切なActionResult構造", async () => {
       const eventDate = getFutureDateTime(48);
       const registrationDeadline = getFutureDateTime(24);
       const paymentDeadline = getFutureDateTime(36);
@@ -619,7 +619,7 @@ describe("イベント作成統合テスト - 基本的なイベント作成", (
 
       const result = await createEventAction(formData);
 
-      // ServerActionResultの構造確認
+      // ActionResultの構造確認
       expect(result).toHaveProperty("success");
       expect(result.success).toBe(true);
 

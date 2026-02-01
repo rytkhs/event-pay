@@ -1,14 +1,10 @@
 import { z } from "zod";
 
+import { type ActionResult, fail, ok } from "@core/errors/adapters/server-actions";
+import type { ErrorCode } from "@core/errors/types";
 import { enforceRateLimit, buildKey, POLICIES } from "@core/rate-limit";
 import { SecureSupabaseClientFactory } from "@core/security/secure-client-factory.impl";
 import { PaymentError, PaymentErrorType } from "@core/types/payment-errors";
-import {
-  type ServerActionResult,
-  createServerActionError,
-  createServerActionSuccess,
-  type ErrorCode,
-} from "@core/types/server-actions";
 
 import { PaymentValidator } from "../validation";
 
@@ -50,11 +46,12 @@ function mapPaymentError(type: PaymentErrorType): ErrorCode {
 
 export async function updateCashStatusAction(
   input: unknown
-): Promise<ServerActionResult<{ paymentId: string; status: "received" | "waived" | "pending" }>> {
+): Promise<ActionResult<{ paymentId: string; status: "received" | "waived" | "pending" }>> {
   try {
     const parsed = inputSchema.safeParse(input);
     if (!parsed.success) {
-      return createServerActionError("VALIDATION_ERROR", "入力データが無効です。", {
+      return fail("VALIDATION_ERROR", {
+        userMessage: "入力データが無効です。",
         details: { zodErrors: parsed.error.errors },
       });
     }
@@ -67,7 +64,7 @@ export async function updateCashStatusAction(
       error: authError,
     } = await supabase.auth.getUser();
     if (authError || !user) {
-      return createServerActionError("UNAUTHORIZED", "認証が必要です。");
+      return fail("UNAUTHORIZED", { userMessage: "認証が必要です。" });
     }
 
     // レート制限（ユーザー単位）
@@ -78,13 +75,11 @@ export async function updateCashStatusAction(
         policy: POLICIES["payment.statusUpdate"],
       });
       if (!rl.allowed) {
-        return createServerActionError(
-          "RATE_LIMITED",
-          "レート制限に達しました。しばらく待ってから再試行してください。",
-          rl.retryAfter
-            ? { retryable: true, details: { retryAfter: rl.retryAfter } }
-            : { retryable: true }
-        );
+        return fail("RATE_LIMITED", {
+          userMessage: "レート制限に達しました。しばらく待ってから再試行してください。",
+          retryable: true,
+          details: rl.retryAfter ? { retryAfter: rl.retryAfter } : undefined,
+        });
       }
     } catch {
       // レート制限でのストア初期化失敗時はスキップ（安全側）
@@ -113,7 +108,7 @@ export async function updateCashStatusAction(
       .single();
 
     if (fetchError || !payment) {
-      return createServerActionError("NOT_FOUND", "決済レコードが見つかりません。");
+      return fail("NOT_FOUND", { userMessage: "決済レコードが見つかりません。" });
     }
 
     // 基本的な権限チェック（RPC関数内でも再チェックされる）
@@ -126,12 +121,12 @@ export async function updateCashStatusAction(
     const event = Array.isArray(attendance.events) ? attendance.events[0] : attendance.events;
 
     if (event.created_by !== user.id) {
-      return createServerActionError("FORBIDDEN", "この操作を実行する権限がありません。");
+      return fail("FORBIDDEN", { userMessage: "この操作を実行する権限がありません。" });
     }
 
     // 現金決済のみ
     if (payment.method !== "cash") {
-      return createServerActionError("RESOURCE_CONFLICT", "現金決済以外は手動更新できません。");
+      return fail("RESOURCE_CONFLICT", { userMessage: "現金決済以外は手動更新できません。" });
     }
 
     // ステータス遷移などのビジネスルール検証
@@ -145,15 +140,13 @@ export async function updateCashStatusAction(
       );
     } catch (validationError) {
       if (validationError instanceof PaymentError) {
-        return createServerActionError(
-          mapPaymentError(validationError.type),
-          validationError.message
-        );
+        return fail(mapPaymentError(validationError.type), {
+          userMessage: validationError.message,
+        });
       }
-      return createServerActionError(
-        "INTERNAL_ERROR",
-        "ステータス検証中に予期しないエラーが発生しました。"
-      );
+      return fail("INTERNAL_ERROR", {
+        userMessage: "ステータス検証中に予期しないエラーが発生しました。",
+      });
     }
 
     const { data: _rpcResult, error: rpcError } = await supabase.rpc(
@@ -170,24 +163,24 @@ export async function updateCashStatusAction(
     if (rpcError) {
       // 楽観的ロック競合の場合
       if (rpcError.code === "40001") {
-        return createServerActionError(
-          "RESOURCE_CONFLICT",
-          "他のユーザーによって同時に更新されました。最新の状態を確認してから再試行してください。"
-        );
+        return fail("RESOURCE_CONFLICT", {
+          userMessage:
+            "他のユーザーによって同時に更新されました。最新の状態を確認してから再試行してください。",
+        });
       }
 
-      return createServerActionError(
-        "DATABASE_ERROR",
-        `決済ステータスの更新に失敗しました: ${rpcError.message}`
-      );
+      return fail("DATABASE_ERROR", {
+        userMessage: `決済ステータスの更新に失敗しました: ${rpcError.message}`,
+      });
     }
 
-    return createServerActionSuccess({ paymentId, status });
+    return ok({ paymentId, status });
   } catch (error) {
     if (error instanceof PaymentError) {
-      return createServerActionError(mapPaymentError(error.type), error.message);
+      return fail(mapPaymentError(error.type), { userMessage: error.message });
     }
-    return createServerActionError("INTERNAL_ERROR", "予期しないエラーが発生しました", {
+    return fail("INTERNAL_ERROR", {
+      userMessage: "予期しないエラーが発生しました",
       details: { originalError: error },
     });
   }

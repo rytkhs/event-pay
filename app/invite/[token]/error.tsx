@@ -18,7 +18,7 @@ interface InviteErrorPageProps {
 export default function InviteErrorPage({ error, reset }: InviteErrorPageProps) {
   return (
     <ErrorLayout
-      code="500"
+      code="INTERNAL_ERROR"
       category="business"
       severity="medium"
       title="招待リンクの処理エラー"

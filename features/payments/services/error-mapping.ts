@@ -106,7 +106,7 @@ export const ERROR_HANDLING_BY_TYPE: Record<PaymentErrorType, ErrorHandlingResul
     shouldRetry: false,
     logLevel: "warn",
   },
-  [PaymentErrorType.RATE_LIMIT_EXCEEDED]: {
+  [PaymentErrorType.RATE_LIMITED]: {
     userMessage: "リクエストが多すぎます。しばらく待ってから再度お試しください。",
     shouldRetry: true,
     logLevel: "warn",

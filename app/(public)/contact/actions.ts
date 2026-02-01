@@ -7,16 +7,12 @@ import { headers } from "next/headers";
 import { z } from "zod";
 
 import { InputSanitizer } from "@core/auth-security";
+import { zodFail, fail, ok } from "@core/errors/adapters/server-actions";
 import { logger } from "@core/logging/app-logger";
 import { sendSlackText } from "@core/notification/slack";
 import { enforceRateLimit, buildKey, POLICIES } from "@core/rate-limit";
 import { hmacSha256Hex } from "@core/rate-limit/hash";
 import { createClient } from "@core/supabase/server";
-import {
-  zodErrorToServerActionResponse,
-  createServerActionError,
-  createServerActionSuccess,
-} from "@core/types/server-actions";
 import { waitUntil } from "@core/utils/cloudflare-ctx";
 import { getEnv } from "@core/utils/cloudflare-env";
 import { handleServerError } from "@core/utils/error-handler.server";
@@ -65,7 +61,7 @@ export async function submitContact(input: ContactInput) {
   // 1. Zod検証
   const parsed = ContactInputSchema.safeParse(input);
   if (!parsed.success) {
-    return zodErrorToServerActionResponse(parsed.error);
+    return zodFail(parsed.error);
   }
 
   const h = headers();
@@ -89,11 +85,11 @@ export async function submitContact(input: ContactInput) {
       retry_after: retryAfterSec,
       outcome: "failure",
     });
-    return createServerActionError(
-      "RATE_LIMITED",
-      "リクエスト回数の上限に達しました。しばらく待ってから再試行してください",
-      { retryable: true, details: { retryAfterSec } }
-    );
+    return fail("RATE_LIMITED", {
+      userMessage: "リクエスト回数の上限に達しました。しばらく待ってから再試行してください",
+      retryable: true,
+      details: { retryAfterSec },
+    });
   }
 
   // 3. サニタイズ・正規化
@@ -101,8 +97,11 @@ export async function submitContact(input: ContactInput) {
   try {
     email = InputSanitizer.sanitizeEmail(parsed.data.email);
   } catch {
-    return createServerActionError("VALIDATION_ERROR", "有効なメールアドレスを入力してください", {
-      fieldErrors: [{ field: "email", code: "invalid", message: "メールアドレスが不正です" }],
+    return fail("VALIDATION_ERROR", {
+      userMessage: "有効なメールアドレスを入力してください",
+      fieldErrors: {
+        email: ["メールアドレスが不正です"],
+      },
     });
   }
   const messageSanitized = sanitizeForEventPay(parsed.data.message);
@@ -140,11 +139,10 @@ export async function submitContact(input: ContactInput) {
         fingerprint_hash: fingerprintHash.slice(0, 16),
         outcome: "failure",
       });
-      return createServerActionError(
-        "RESOURCE_CONFLICT",
-        "同一内容の短時間での再送は制限しています",
-        { retryable: true }
-      );
+      return fail("RESOURCE_CONFLICT", {
+        userMessage: "同一内容の短時間での再送は制限しています",
+        retryable: true,
+      });
     }
 
     // その他のDBエラー
@@ -153,11 +151,10 @@ export async function submitContact(input: ContactInput) {
       action: "contact_db_error",
       additionalData: { email_masked: maskEmail(email) },
     });
-    return createServerActionError(
-      "INTERNAL_ERROR",
-      "お問い合わせの送信に失敗しました。しばらく待ってから再度お試しください。",
-      { retryable: true }
-    );
+    return fail("INTERNAL_ERROR", {
+      userMessage: "お問い合わせの送信に失敗しました。しばらく待ってから再度お試しください。",
+      retryable: true,
+    });
   }
 
   // 7. 成功ログ
@@ -241,5 +238,5 @@ export async function submitContact(input: ContactInput) {
   );
 
   // 9. 成功レスポンス（通知の成否に関わらず）
-  return createServerActionSuccess({ ok: true });
+  return ok({ ok: true });
 }

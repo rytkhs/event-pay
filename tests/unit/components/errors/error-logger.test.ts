@@ -4,7 +4,7 @@
  */
 
 import { ErrorLogger } from "@/components/errors/error-logger";
-import type { ErrorInfo, ErrorReportingConfig } from "@/components/errors/error-types";
+import type { ErrorInfo, ErrorReportingConfig } from "@/components/errors/error-logger";
 
 describe("ErrorLogger", () => {
   let logger: ErrorLogger;
@@ -22,8 +22,8 @@ describe("ErrorLogger", () => {
   };
 
   const mockErrorInfo: ErrorInfo = {
-    code: "500",
-    category: "server",
+    code: "INTERNAL_ERROR",
+    category: "system",
     severity: "high",
     title: "Test Error",
     message: "This is a test error",

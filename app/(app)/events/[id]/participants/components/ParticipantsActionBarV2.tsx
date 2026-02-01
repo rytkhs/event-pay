@@ -111,7 +111,7 @@ export function ParticipantsActionBarV2({
         }
         toast({
           title: "追加に失敗しました",
-          description: result.error || "参加者の追加に失敗しました",
+          description: result.error?.userMessage || "参加者の追加に失敗しました",
           variant: "destructive",
         });
         return;
@@ -232,7 +232,6 @@ export function ParticipantsActionBarV2({
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-                    autoFocus
                     className="pl-9 pr-8 h-9 text-base md:text-sm"
                   />
                   {searchQuery && (

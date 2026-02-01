@@ -11,7 +11,7 @@ import { ErrorLayout } from "@/components/errors";
 export default function GuestNotFoundPage() {
   return (
     <ErrorLayout
-      code="404"
+      code="NOT_FOUND"
       category="security"
       severity="medium"
       title="アクセスできません"

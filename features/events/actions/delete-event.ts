@@ -1,15 +1,11 @@
 import { revalidatePath } from "next/cache";
 
 import { verifyEventAccess } from "@core/auth/event-authorization";
+import { type ActionResult, fail, ok } from "@core/errors/adapters/server-actions";
 import { logEventManagement } from "@core/logging/system-logger";
 import { createClient } from "@core/supabase/server";
-import {
-  createServerActionError,
-  createServerActionSuccess,
-  type ServerActionResult,
-} from "@core/types/server-actions";
 
-export async function deleteEventAction(eventId: string): Promise<ServerActionResult<void>> {
+export async function deleteEventAction(eventId: string): Promise<ActionResult<void>> {
   try {
     // 認証・権限（作成者のみ）+ イベントID検証
     const { eventId: validatedEventId, user } = await verifyEventAccess(eventId);
@@ -24,7 +20,7 @@ export async function deleteEventAction(eventId: string): Promise<ServerActionRe
       .in("status", ["attending", "maybe"]);
 
     if (attendanceCountError) {
-      return createServerActionError("DATABASE_ERROR", "参加者情報の取得に失敗しました");
+      return fail("DATABASE_ERROR", { userMessage: "参加者情報の取得に失敗しました" });
     }
 
     // 支払いレコードの存在チェック（当該イベントの参加者に紐づく決済）
@@ -34,7 +30,7 @@ export async function deleteEventAction(eventId: string): Promise<ServerActionRe
       .eq("attendances.event_id", validatedEventId);
 
     if (paymentCountError) {
-      return createServerActionError("DATABASE_ERROR", "決済情報の取得に失敗しました");
+      return fail("DATABASE_ERROR", { userMessage: "決済情報の取得に失敗しました" });
     }
 
     const attendingOrMaybeCount = participantCount ?? 0;
@@ -42,11 +38,10 @@ export async function deleteEventAction(eventId: string): Promise<ServerActionRe
 
     // ケースAのみ許可（参加表明者が0件 かつ 支払いレコードが0件の場合）
     if (attendingOrMaybeCount > 0 || hasPayments) {
-      return createServerActionError(
-        "EVENT_DELETE_RESTRICTED",
-        `参加表明者が${attendingOrMaybeCount}名、または支払いレコードが存在するため、このイベントは削除できません。イベントを中止してください。`,
-        { details: { attendingOrMaybeCount, paymentCount: paymentCount ?? 0 } }
-      );
+      return fail("EVENT_DELETE_RESTRICTED", {
+        userMessage: `参加表明者が${attendingOrMaybeCount}名、または支払いレコードが存在するため、このイベントは削除できません。イベントを中止してください。`,
+        details: { attendingOrMaybeCount, paymentCount: paymentCount ?? 0 },
+      });
     }
 
     // イベント削除（RLSで自分のイベントのみ削除可能）
@@ -58,12 +53,11 @@ export async function deleteEventAction(eventId: string): Promise<ServerActionRe
 
     if (error) {
       if ((error as any).code === "23503") {
-        return createServerActionError(
-          "EVENT_DELETE_RESTRICTED",
-          "関連データが存在するためイベントを削除できません"
-        );
+        return fail("EVENT_DELETE_RESTRICTED", {
+          userMessage: "関連データが存在するためイベントを削除できません",
+        });
       }
-      return createServerActionError("EVENT_DELETE_FAILED", "イベントの削除に失敗しました");
+      return fail("EVENT_DELETE_FAILED", { userMessage: "イベントの削除に失敗しました" });
     }
 
     // 監査ログ記録
@@ -79,9 +73,10 @@ export async function deleteEventAction(eventId: string): Promise<ServerActionRe
     revalidatePath("/events");
     revalidatePath(`/events/${validatedEventId}`);
 
-    return createServerActionSuccess(undefined, "イベントが正常に削除されました");
+    return ok(undefined, { message: "イベントが正常に削除されました" });
   } catch (_error) {
-    return createServerActionError("INTERNAL_ERROR", "予期しないエラーが発生しました", {
+    return fail("INTERNAL_ERROR", {
+      userMessage: "予期しないエラーが発生しました",
       retryable: true,
     });
   }

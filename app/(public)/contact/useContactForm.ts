@@ -6,7 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
-import type { ServerActionResult } from "@core/types/server-actions";
+import type { ActionResult } from "@core/errors/adapters/server-actions";
 
 import { submitContact } from "./actions";
 
@@ -51,29 +51,30 @@ export function useContactForm() {
   const onSubmit = form.handleSubmit((data) => {
     startTransition(async () => {
       try {
-        const result = (await submitContact(data)) as ServerActionResult<{ ok: boolean }>;
+        const result = (await submitContact(data)) as ActionResult<{ ok: boolean }>;
 
-        if (result && (result as any).success === true) {
+        if (result.success) {
           // 成功
           setIsSuccess(true);
           form.reset();
         } else {
           // エラーハンドリング（ServerActionError 準拠）
-          const error = result as any;
+          const error = result.error;
 
-          if (error?.fieldErrors) {
-            error.fieldErrors.forEach(
-              (fieldError: { field: string; code: string; message: string }) => {
-                form.setError(fieldError.field as keyof ContactInput, {
+          if (error.fieldErrors) {
+            Object.entries(error.fieldErrors).forEach(([field, messages]) => {
+              if (messages && messages.length > 0) {
+                form.setError(field as keyof ContactInput, {
                   type: "server",
-                  message: fieldError.message,
+                  message: messages[0],
                 });
               }
-            );
+            });
           }
 
-          const baseMessage = error?.error || error?.detail || error?.title || "送信に失敗しました";
-          const retryAfterSec = error?.details?.retryAfterSec;
+          const baseMessage = error.userMessage || "送信に失敗しました";
+          const retryAfterSec = (error.details as { retryAfterSec?: number } | undefined)
+            ?.retryAfterSec;
           const composed =
             typeof retryAfterSec === "number"
               ? `${baseMessage}（約${retryAfterSec}秒後に再度お試しください）`

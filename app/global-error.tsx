@@ -60,8 +60,7 @@ export default function GlobalError({ error, reset }: GlobalErrorProps) {
       </head>
       <body>
         <ErrorLayout
-          code="500"
-          category="server"
+          code="INTERNAL_ERROR"
           severity="critical"
           title="アプリケーションエラー"
           message="みんなの集金で重大なエラーが発生しました"

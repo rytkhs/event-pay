@@ -8,7 +8,7 @@ import { SortingState, Row } from "@tanstack/react-table";
 import { ChevronLeft, ChevronRight, LayoutGridIcon, TableIcon } from "lucide-react";
 
 import { useToast } from "@core/contexts/toast-context";
-import type { ServerActionResult } from "@core/types/server-actions";
+import type { ActionResult } from "@core/errors/adapters/server-actions";
 import { conditionalSmartSort } from "@core/utils/participant-smart-sort";
 import { isPaymentUnpaid, toSimplePaymentStatus } from "@core/utils/payment-status-mapper";
 import type { ParticipantView } from "@core/validation/participant-management";
@@ -53,11 +53,11 @@ type BulkUpdateResult = {
 
 type UpdateCashStatusAction = (
   input: UpdateCashStatusInput
-) => Promise<ServerActionResult<{ paymentId: string; status: "received" | "waived" | "pending" }>>;
+) => Promise<ActionResult<{ paymentId: string; status: "received" | "waived" | "pending" }>>;
 
 type BulkUpdateCashStatusAction = (
   input: BulkUpdateCashStatusInput
-) => Promise<ServerActionResult<BulkUpdateResult>>;
+) => Promise<ActionResult<BulkUpdateResult>>;
 
 export interface ParticipantsTableV2Props {
   eventId: string;
@@ -260,7 +260,7 @@ export function ParticipantsTableV2({
           });
           startTransition(() => router.refresh());
         } else {
-          throw new Error(result.error);
+          throw new Error(result.error?.userMessage || "更新に失敗しました");
         }
       } catch (error) {
         setLocalParticipants(prev);
@@ -305,7 +305,7 @@ export function ParticipantsTableV2({
       });
 
       if (result.success) {
-        const { successCount, failedCount } = result.data;
+        const { successCount, failedCount } = result.data ?? { successCount: 0, failedCount: 0 };
         toast({
           title: "一括受領が完了しました",
           description: `${successCount}件受領、${failedCount > 0 ? `${failedCount}件失敗` : "全て成功"}`,
@@ -313,7 +313,7 @@ export function ParticipantsTableV2({
         setSelectedPaymentIds([]);
         startTransition(() => router.refresh());
       } else {
-        throw new Error(result.error);
+        throw new Error(result.error?.userMessage || "一括更新に失敗しました");
       }
     } catch (error) {
       setLocalParticipants(prev);
@@ -355,7 +355,7 @@ export function ParticipantsTableV2({
       });
 
       if (result.success) {
-        const { successCount, failedCount } = result.data;
+        const { successCount, failedCount } = result.data ?? { successCount: 0, failedCount: 0 };
         toast({
           title: "一括免除が完了しました",
           description: `${successCount}件免除、${failedCount > 0 ? `${failedCount}件失敗` : "全て成功"}`,
@@ -363,7 +363,7 @@ export function ParticipantsTableV2({
         setSelectedPaymentIds([]);
         startTransition(() => router.refresh());
       } else {
-        throw new Error(result.error);
+        throw new Error(result.error?.userMessage || "一括更新に失敗しました");
       }
     } catch (error) {
       setLocalParticipants(prev);
@@ -403,7 +403,7 @@ export function ParticipantsTableV2({
           });
           startTransition(() => router.refresh());
         } else {
-          throw new Error(result.error);
+          throw new Error(result.error?.userMessage || "更新に失敗しました");
         }
       } catch {
         setLocalParticipants(prev);

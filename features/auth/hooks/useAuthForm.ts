@@ -9,23 +9,11 @@ import { useFormState } from "react-dom";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
+import type { ActionResult } from "@core/errors/adapters/server-actions";
 import { useFocusManagement } from "@core/hooks/useFocusManagement";
 
-// Server Action結果の共通型（既存と同じ）
-export interface ServerActionResult<T = unknown> {
-  success: boolean;
-  data?: T;
-  error?: string;
-  fieldErrors?: Record<string, string[]>;
-  message?: string;
-  redirectUrl?: string;
-  needsEmailConfirmation?: boolean;
-}
-
-// 旧useAuthForm実装（パスワードリセット等で使用）
-
 // useAuthFormのオプション型
-interface UseAuthFormOptions<T extends ServerActionResult> {
+interface UseAuthFormOptions<T extends ActionResult> {
   onSuccess?: (result: T) => void;
   redirectOnSuccess?: boolean;
   initialState?: Partial<T>;
@@ -41,7 +29,7 @@ interface UseAuthFormOptions<T extends ServerActionResult> {
  * @param options - フック動作のオプション
  * @returns フォーム状態とアクション、ペンディング状態、フォーカス管理関数
  */
-export function useAuthForm<T extends ServerActionResult>(
+export function useAuthForm<T extends ActionResult>(
   action: (formData: FormData) => Promise<T>,
   options: UseAuthFormOptions<T> = {}
 ) {
@@ -52,7 +40,6 @@ export function useAuthForm<T extends ServerActionResult>(
   // デフォルト初期状態
   const defaultInitialState = {
     success: false,
-    error: "",
     ...options.initialState,
   } as T;
 
@@ -63,6 +50,7 @@ export function useAuthForm<T extends ServerActionResult>(
     },
     defaultInitialState as Awaited<T>
   );
+  const error = state.success ? undefined : state.error;
 
   // 成功時・リダイレクト必要時の処理
   useEffect(() => {
@@ -84,16 +72,13 @@ export function useAuthForm<T extends ServerActionResult>(
 
   // フォーカス管理（オプション有効時）
   useEffect(() => {
-    if (
-      options.enableFocusManagement !== false &&
-      !state.success &&
-      state.fieldErrors &&
-      Object.keys(state.fieldErrors).length > 0
-    ) {
-      const errorFields = Object.keys(state.fieldErrors);
-      focusFirstError(errorFields);
+    if (options.enableFocusManagement !== false && !state.success) {
+      const fieldErrors = error?.fieldErrors;
+      if (fieldErrors && Object.keys(fieldErrors).length > 0) {
+        focusFirstError(Object.keys(fieldErrors));
+      }
     }
-  }, [state.fieldErrors, state.success, focusFirstError, options.enableFocusManagement]);
+  }, [error?.fieldErrors, state.success, focusFirstError, options.enableFocusManagement]);
 
   // ペンディング状態付きフォームアクション
   const enhancedFormAction = (formData: FormData) => {
@@ -140,7 +125,7 @@ interface UseAuthFormRHFOptions<T> {
 }
 
 // ログインフォーム用react-hook-formフック
-export function useLoginFormRHF<T extends ServerActionResult>(
+export function useLoginFormRHF<T extends ActionResult>(
   action: (formData: FormData) => Promise<T>,
   options: UseAuthFormRHFOptions<T> = {}
 ) {
@@ -181,8 +166,8 @@ export function useLoginFormRHF<T extends ServerActionResult>(
           }
 
           // 通常のエラー処理
-          if (result.fieldErrors) {
-            Object.entries(result.fieldErrors).forEach(([field, errors]) => {
+          if (result.error?.fieldErrors) {
+            Object.entries(result.error.fieldErrors).forEach(([field, errors]) => {
               if (errors && errors.length > 0) {
                 form.setError(field as keyof LoginFormDataRHF, {
                   type: "server",
@@ -192,14 +177,14 @@ export function useLoginFormRHF<T extends ServerActionResult>(
             });
           }
 
-          if (result.error) {
+          if (result.error?.userMessage) {
             form.setError("root", {
               type: "server",
-              message: result.error,
+              message: result.error.userMessage,
             });
 
             if (options.onError) {
-              options.onError(result.error);
+              options.onError(result.error.userMessage);
             }
           }
         }
@@ -220,7 +205,7 @@ export function useLoginFormRHF<T extends ServerActionResult>(
 }
 
 // 会員登録フォーム用react-hook-formフック
-export function useRegisterFormRHF<T extends ServerActionResult>(
+export function useRegisterFormRHF<T extends ActionResult>(
   action: (formData: FormData) => Promise<T>,
   options: UseAuthFormRHFOptions<T> = {}
 ) {
@@ -254,7 +239,7 @@ export function useRegisterFormRHF<T extends ServerActionResult>(
             options.onSuccess(result);
           }
 
-          if (result.needsEmailConfirmation) {
+          if (result.needsVerification) {
             router.push("/auth/verify-email");
           } else {
             const redirectUrl = result.redirectUrl || "/dashboard";
@@ -262,8 +247,8 @@ export function useRegisterFormRHF<T extends ServerActionResult>(
           }
         } else {
           // サーバーエラーをフォームエラーとして設定
-          if (result.fieldErrors) {
-            Object.entries(result.fieldErrors).forEach(([field, errors]) => {
+          if (result.error?.fieldErrors) {
+            Object.entries(result.error.fieldErrors).forEach(([field, errors]) => {
               if (errors && errors.length > 0) {
                 form.setError(field as keyof RegisterFormDataRHF, {
                   type: "server",
@@ -273,14 +258,14 @@ export function useRegisterFormRHF<T extends ServerActionResult>(
             });
           }
 
-          if (result.error) {
+          if (result.error?.userMessage) {
             form.setError("root", {
               type: "server",
-              message: result.error,
+              message: result.error.userMessage,
             });
 
             if (options.onError) {
-              options.onError(result.error);
+              options.onError(result.error.userMessage);
             }
           }
         }

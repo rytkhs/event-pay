@@ -8,8 +8,10 @@
 import type { ReactNode } from "react";
 import { useEffect } from "react";
 
+import { ERROR_REGISTRY } from "@core/errors";
+
 import { logError, addBreadcrumb } from "./error-logger";
-import type { ErrorPageProps } from "./error-types";
+import type { ErrorPageProps } from "./types";
 import { ErrorCard } from "./ui/ErrorCard";
 
 interface ErrorLayoutProps extends ErrorPageProps {
@@ -25,7 +27,7 @@ interface ErrorLayoutProps extends ErrorPageProps {
 export function ErrorLayout({
   code,
   category,
-  severity = "medium",
+  severity,
   title,
   message,
   description,
@@ -45,20 +47,30 @@ export function ErrorLayout({
   children,
   ...props
 }: ErrorLayoutProps) {
+  const registry = ERROR_REGISTRY[code];
+  const resolvedCategory = category ?? registry.category;
+  const resolvedSeverity = severity ?? registry.severity;
+  const resolvedTitle = title ?? registry.userMessage ?? registry.message;
+  const resolvedMessage = message ?? registry.userMessage ?? registry.message;
+
   // エラーロギング
   useEffect(() => {
     if (enableLogging && error) {
       // パンくずリスト追加
-      addBreadcrumb("error", `Error occurred: ${title}`, "error", { code, category, severity });
+      addBreadcrumb("error", `Error occurred: ${resolvedTitle}`, "error", {
+        code,
+        category: resolvedCategory,
+        severity: resolvedSeverity,
+      });
 
       // エラーログ記録
       logError(
         {
           code,
-          category,
-          severity,
-          title,
-          message,
+          category: resolvedCategory,
+          severity: resolvedSeverity,
+          title: resolvedTitle,
+          message: resolvedMessage,
           description,
           timestamp: new Date(),
         },
@@ -71,15 +83,24 @@ export function ErrorLayout({
         }
       );
     }
-  }, [error, code, category, severity, title, message, description, enableLogging]);
+  }, [
+    error,
+    code,
+    resolvedCategory,
+    resolvedSeverity,
+    resolvedTitle,
+    resolvedMessage,
+    description,
+    enableLogging,
+  ]);
 
   return (
     <ErrorCard
       code={code}
-      category={category}
-      severity={severity}
-      title={title}
-      message={message}
+      category={resolvedCategory}
+      severity={resolvedSeverity}
+      title={resolvedTitle}
+      message={resolvedMessage}
       description={description}
       icon={icon}
       showRetry={showRetry}
@@ -111,7 +132,7 @@ export function NotFoundLayout({
 }: Partial<ErrorLayoutProps>) {
   return (
     <ErrorLayout
-      code="404"
+      code="NOT_FOUND"
       category="not-found"
       severity="low"
       title={title}
@@ -139,8 +160,7 @@ export function ServerErrorLayout({
 }: Partial<ErrorLayoutProps>) {
   return (
     <ErrorLayout
-      code="500"
-      category="server"
+      code="INTERNAL_ERROR"
       severity="high"
       title={title}
       message={message}
@@ -167,7 +187,7 @@ export function AuthErrorLayout({
 
   return (
     <ErrorLayout
-      code="401"
+      code="UNAUTHORIZED"
       category="auth"
       severity="medium"
       title={title}
@@ -194,7 +214,7 @@ export function RateLimitErrorLayout({
 }: Partial<ErrorLayoutProps>) {
   return (
     <ErrorLayout
-      code="429"
+      code="RATE_LIMITED"
       category="security"
       severity="medium"
       title={title}
@@ -252,8 +272,7 @@ export function MaintenanceLayout({
 }: Partial<ErrorLayoutProps>) {
   return (
     <ErrorLayout
-      code="503"
-      category="server"
+      code="MAINTENANCE"
       severity="medium"
       title={title}
       message={message}

@@ -3,7 +3,7 @@
  * RFC 7807 Problem Details 対応
  */
 
-import { type ProblemDetails } from "@core/api/problem-details";
+import { type ProblemDetails } from "@core/errors/problem-details.types";
 
 /**
  * API エラークラス
@@ -27,7 +27,7 @@ export class ApiError extends Error {
    */
   static fromProblemDetails(problem: ProblemDetails): ApiError {
     const validationErrors = problem.errors?.map((err) => ({
-      field: err.pointer.replace(/^\/(?:query|body)\//, ""),
+      field: err.pointer.replace(/^\/(?:query|body)(?:\/|$)/, ""),
       code: err.code,
       message: err.message,
     }));

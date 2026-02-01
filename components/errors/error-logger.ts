@@ -3,7 +3,62 @@
  * 開発環境、本番環境でのエラー追跡とレポート機能
  */
 
-import type { ErrorInfo, ErrorLogEntry, ErrorReportingConfig } from "./error-types";
+import type { LucideIcon } from "lucide-react";
+
+import type { ErrorCategory, ErrorCode, ErrorSeverity } from "@core/errors/types";
+
+export interface ErrorInfo {
+  code: ErrorCode;
+  category: ErrorCategory;
+  severity: ErrorSeverity;
+  title?: string;
+  message: string;
+  userMessage?: string;
+  description?: string;
+  icon?: LucideIcon;
+  timestamp?: Date;
+  digest?: string;
+  retryable?: boolean;
+  correlationId?: string;
+  context?: Record<string, unknown>;
+}
+
+export interface ErrorLogEntry {
+  id: string;
+  timestamp: Date;
+  error: ErrorInfo;
+  user?: {
+    id?: string;
+    email?: string;
+    userAgent?: string;
+    ip?: string;
+  };
+  page?: {
+    url: string;
+    pathname: string;
+    referrer?: string;
+  };
+  environment: "development" | "preview" | "production";
+  stackTrace?: string;
+  breadcrumbs?: Array<{
+    timestamp: Date;
+    category: string;
+    message: string;
+    level: "info" | "warning" | "error";
+    data?: Record<string, unknown>;
+  }>;
+}
+
+export interface ErrorReportingConfig {
+  enabled: boolean;
+  environment: "development" | "preview" | "production";
+  apiEndpoint?: string;
+  apiKey?: string;
+  sampleRate?: number;
+  includeStackTrace?: boolean;
+  includeUserInfo?: boolean;
+  includeBreadcrumbs?: boolean;
+}
 
 /**
  * 簡単なID生成関数
@@ -71,7 +126,7 @@ class ErrorLogger {
     // 開発環境ではコンソールに出力
     if (this.config.environment === "development") {
       // eslint-disable-next-line no-console
-      console.group(`🚨 Error: ${errorInfo.title}`);
+      console.group(`🚨 Error: ${errorInfo.title || errorInfo.code}`);
       // eslint-disable-next-line no-console
       console.error("Error Info:", errorInfo);
       // eslint-disable-next-line no-console
