@@ -290,7 +290,8 @@ sequenceDiagram
 - **リマインダー重複防止**: DB記録で送信済みフラグ管理
 
 ### エラーハンドリング
-- **Problem Details形式**: RFC 7807準拠のエラーレスポンス
+- **統一エラーモデル**: `AppError` クラスと `ERROR_REGISTRY` による単一ソース管理
+- **Problem Details形式**: RFC 7807準拠のHTTPエラーレスポンス（Adapter経由）
 - **Sentry**: Cloudflare Workers統合（`@sentry/cloudflare`）
 
 ## 変更時に更新すべき章のチェックリスト

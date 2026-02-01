@@ -8,7 +8,6 @@ import { AppError, isErrorCode } from "@core/errors";
 import { respondWithCode, respondWithProblem } from "@core/errors/server";
 import type { ErrorCategory, ErrorCode } from "@core/errors/types";
 import { AdminReason, createSecureSupabaseClient } from "@core/security";
-import type { ErrorDetails } from "@core/utils/error-details";
 import { notifyError } from "@core/utils/error-handler.server";
 
 import type { Database } from "@/types/database";
@@ -116,6 +115,12 @@ function resolveLogCategory(raw: unknown, fallback: ErrorCategory): LogCategory 
   return ERROR_CATEGORY_TO_LOG_CATEGORY[fallback];
 }
 
+const MAX_CLIENT_MESSAGE_LENGTH = 200;
+
+function sanitizeClientMessage(message: string): string {
+  return message.replace(/[\r\n]+/g, " ").slice(0, MAX_CLIENT_MESSAGE_LENGTH);
+}
+
 export async function POST(req: NextRequest) {
   try {
     const baseLogContext = { category: "system" as const, actorType: "system" as const };
@@ -161,16 +166,20 @@ export async function POST(req: NextRequest) {
     const action = (typeof rawContext.action === "string" && rawContext.action) || "client_error";
     const resolvedCode: ErrorCode =
       data.error.code && isErrorCode(data.error.code) ? data.error.code : "UNKNOWN_ERROR";
+    const sanitizedMessage = sanitizeClientMessage(data.error.message);
+    const sanitizedUserMessage = data.error.userMessage
+      ? sanitizeClientMessage(data.error.userMessage)
+      : undefined;
     const appError = new AppError(resolvedCode, {
-      message: data.error.message,
-      userMessage: data.error.userMessage,
+      message: `Client error reported: ${resolvedCode}`,
       retryable: data.error.retryable,
       correlationId: data.error.correlationId,
       details: {
         title: data.error.title,
         context: rawContext,
+        clientMessage: sanitizedMessage,
+        clientUserMessage: sanitizedUserMessage,
       },
-      cause: data.error,
     });
     const logCategory = resolveLogCategory(rawLogCategory, appError.category);
 
@@ -231,29 +240,21 @@ export async function POST(req: NextRequest) {
 
     // 6. 重要エラーの通知（Sentry/Slack）
     // Registry 由来の severity を使用する
-    const severity = appError.severity as ErrorDetails["severity"];
+    const severity = appError.severity;
     const shouldAlert = severity === "high" || severity === "critical";
 
     if (shouldAlert) {
       // const { notifyError } = await import("@core/utils/error-handler.server");
       const { waitUntil } = await import("@core/utils/cloudflare-ctx");
 
-      const errorDetails: ErrorDetails = {
-        code: appError.code,
-        message: appError.message,
-        userMessage: "エラーが発生しました", // 通知用なのでデフォルトでOK
-        severity,
-        shouldLog: false, // 既にDB保存済み
-        shouldAlert: true,
-        retryable: appError.retryable,
-      };
-
       waitUntil(
-        notifyError(errorDetails, {
+        notifyError(appError, {
           action: "client_error_report",
           // actorType: data.user?.id ? "user" : "anonymous",
           userId: data.user?.id,
           additionalData: {
+            clientMessage: sanitizedMessage,
+            clientUserMessage: sanitizedUserMessage,
             userAgent: data.user?.userAgent,
             page: data.page,
             environment: data.environment,

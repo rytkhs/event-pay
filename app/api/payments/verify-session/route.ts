@@ -10,7 +10,6 @@ import { NextResponse } from "next/server";
 
 import { z } from "zod";
 
-import { createQueryValidationError } from "@core/api/problem-details";
 import { respondWithCode, respondWithProblem } from "@core/errors/server";
 import { logger } from "@core/logging/app-logger";
 import { withRateLimit, buildKey, POLICIES } from "@core/rate-limit";
@@ -106,9 +105,14 @@ export async function GET(request: NextRequest) {
     });
 
     if (!validationResult.success) {
-      const errors = validationResult.error.errors.map((err) =>
-        createQueryValidationError(err.path[0] as string, "VALIDATION_ERROR", err.message)
-      );
+      const errors = validationResult.error.errors.map((err) => {
+        const path = err.path.map(String).join("/");
+        return {
+          pointer: path ? `/query/${path}` : "/query",
+          code: "VALIDATION_ERROR",
+          message: err.message,
+        };
+      });
 
       return respondWithCode("VALIDATION_ERROR", {
         instance: "/api/payments/verify-session",

@@ -2,11 +2,12 @@
  * @jest-environment jsdom
  */
 import "@testing-library/jest-dom";
-import { render, waitFor } from "@testing-library/react";
 import React from "react";
 
-import { GlobalErrorListener } from "@/components/errors/GlobalErrorListener";
+import { render, waitFor } from "@testing-library/react";
+
 import * as errorLogger from "@/components/errors/error-logger";
+import { GlobalErrorListener } from "@/components/errors/GlobalErrorListener";
 
 // PromiseRejectionEventのポリフィル（JSDOMには存在しないため）
 class MockPromiseRejectionEvent extends Event {
