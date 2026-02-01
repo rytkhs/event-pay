@@ -258,19 +258,23 @@ export function useEventSubmission({
 
   // レスポンス処理
   const handleSubmissionResponse = useCallback(
-    (result: any, setErrors: (errors: FormErrors) => void): SubmitResult => {
+    (result: ActionResult<EventRow>, setErrors: (errors: FormErrors) => void): SubmitResult => {
       if (result.success && result.data) {
+        const updatedEvent = result.data;
+        const dataWithStatus: Event = {
+          ...updatedEvent,
+          status: deriveEventStatus(updatedEvent.date, updatedEvent.canceled_at ?? null),
+        };
         if (onSubmit) {
-          onSubmit(result.data);
+          onSubmit(dataWithStatus);
         } else {
           router.push(`/events/${eventId}`);
         }
-        return { success: true, data: result.data };
+        return { success: true, data: dataWithStatus };
       } else {
         const errorMessage =
           result.success === false
-            ? result.error?.message ||
-              (typeof result.error === "string" ? result.error : "エラーが発生しました")
+            ? result.error?.userMessage || "エラーが発生しました"
             : "エラーが発生しました";
         setErrors({ general: errorMessage });
         return { success: false, error: errorMessage };
