@@ -62,7 +62,10 @@ export function AppSidebar({
   }, [pathname, isMobile, setOpenMobile]);
 
   const handleLogout = async () => {
-    await logoutAction();
+    const result = await logoutAction();
+    // ActionResult の redirectUrl を使用してリダイレクト
+    const redirectUrl = result.redirectUrl || "/login";
+    window.location.href = redirectUrl;
   };
 
   // クリック時のハンドラ

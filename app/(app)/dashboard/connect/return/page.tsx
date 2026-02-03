@@ -28,7 +28,7 @@ async function ReturnContent() {
     redirect(result.data.redirectUrl);
   } else if (!result.success) {
     // エラー時は指定されたURLへリダイレクト、なければデフォルトのエラーページへ
-    const errorRedirectUrl = (result.error as any).redirectUrl || "/dashboard/connect/error";
+    const errorRedirectUrl = result.redirectUrl || "/dashboard/connect/error";
     redirect(errorRedirectUrl);
   } else {
     // 成功だがURLがない場合（フォールバック）

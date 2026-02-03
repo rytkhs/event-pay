@@ -2,7 +2,6 @@
 
 import { revalidatePath } from "next/cache";
 import { cookies, headers } from "next/headers";
-import { redirect } from "next/navigation";
 
 import type { EmailOtpType, AuthResponse } from "@supabase/supabase-js";
 import { z } from "zod";
@@ -882,6 +881,8 @@ export async function logoutAction(): Promise<ActionResult> {
         }
       })()
     );
+
+    return ok(undefined, { message: "ログアウトしました", redirectUrl: "/login" });
   } catch (error) {
     handleServerError("LOGOUT_UNEXPECTED_ERROR", {
       action: "logoutActionError",
@@ -891,6 +892,9 @@ export async function logoutAction(): Promise<ActionResult> {
       },
     });
     await TimingAttackProtection.addConstantDelay();
+    return fail("LOGOUT_UNEXPECTED_ERROR", {
+      userMessage: "ログアウト処理中にエラーが発生しました。再度お試しください。",
+      redirectUrl: "/login",
+    });
   }
-  redirect("/login");
 }
