@@ -6,6 +6,8 @@ export const dynamic = "force-dynamic";
 
 import { Suspense } from "react";
 
+import { redirect } from "next/navigation";
+
 import { Loader2 } from "lucide-react";
 import type { Metadata } from "next";
 
@@ -19,10 +21,20 @@ export const metadata: Metadata = {
 };
 
 async function ReturnContent() {
-  // オンボーディング完了処理を実行（リダイレクトが発生）
-  await handleOnboardingReturnAction();
+  // オンボーディング完了処理を実行
+  const result = await handleOnboardingReturnAction();
 
-  // この部分は通常実行されない（リダイレクトが発生するため）
+  if (result.success && result.data?.redirectUrl) {
+    redirect(result.data.redirectUrl);
+  } else if (!result.success) {
+    // エラー時は指定されたURLへリダイレクト、なければデフォルトのエラーページへ
+    const errorRedirectUrl = (result.error as any).redirectUrl || "/dashboard/connect/error";
+    redirect(errorRedirectUrl);
+  } else {
+    // 成功だがURLがない場合（フォールバック）
+    redirect("/dashboard");
+  }
+
   return null;
 }
 

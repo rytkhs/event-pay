@@ -4,6 +4,7 @@
 
 import { redirect } from "next/navigation";
 
+import { fail, ok, type ActionResult } from "@core/errors/adapters/server-actions";
 import { logger } from "@core/logging/app-logger";
 import { sendSlackText } from "@core/notification/slack";
 import { CONNECT_REFRESH_PATH, CONNECT_RETURN_PATH } from "@core/routes/stripe-connect";
@@ -267,7 +268,9 @@ async function getAuthenticatedUser() {
  * エラーハンドリングを強化
  * キャッシュされたステータスを使用してフォールバック
  */
-export async function handleOnboardingReturnAction(): Promise<void> {
+export async function handleOnboardingReturnAction(): Promise<
+  ActionResult<{ redirectUrl: string }>
+> {
   const actionLogger = logger.withContext({
     category: "stripe_connect",
     action: "handle_onboarding_return",
@@ -371,12 +374,9 @@ Payouts Enabled: ${accountInfo.payoutsEnabled ? "Yes" : "No"}
       });
     }
 
-    // 設定ページにリダイレクト（成功メッセージ付き）
-    redirect("/settings/payments?connect=success");
+    // 設定ページにリダイレクト用のURLを返す
+    return ok({ redirectUrl: "/settings/payments?connect=success" });
   } catch (error) {
-    if (isNextRedirectError(error)) {
-      throw error as Error;
-    }
     handleServerError(error, {
       category: "stripe_connect",
       action: "onboarding_complete_failed",
@@ -384,14 +384,21 @@ Payouts Enabled: ${accountInfo.payoutsEnabled ? "Yes" : "No"}
     });
 
     if (error instanceof Error && error.message === "認証が必要です") {
-      redirect("/login");
+      return fail("UNAUTHORIZED", {
+        userMessage: "認証が必要です",
+        redirectUrl: "/login",
+      });
     }
 
-    // エラーページにリダイレクト
+    // エラーページ用URL生成
     const errorMessage = encodeURIComponent(
       error instanceof Error ? error.message : "アカウント設定の完了処理中にエラーが発生しました"
     );
-    redirect(`/dashboard/connect/error?message=${errorMessage}`);
+    return fail("STRIPE_CONNECT_SERVICE_ERROR", {
+      userMessage:
+        error instanceof Error ? error.message : "アカウント設定の完了処理中にエラーが発生しました",
+      redirectUrl: `/dashboard/connect/error?message=${errorMessage}`,
+    });
   }
 }
 
