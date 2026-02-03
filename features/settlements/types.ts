@@ -22,10 +22,6 @@ export interface SettlementReportData {
   totalRefundedAmount: number; // 返金額合計
   disputeCount: number; // Dispute件数
   totalDisputedAmount: number; // Dispute金額合計
-
-  // 設定
-  // settlementMode は削除済み（常に'destination_charge'だったため不要）
-  // status は削除済み（常に'completed'だったため不要）
 }
 
 /**
@@ -89,44 +85,28 @@ export interface SettlementReportResult {
 }
 
 /**
- * Actionレスポンス型
+ * ActionResult Payloads
  */
-export type ExportSettlementReportsSuccess = {
-  success: true;
-  csvContent: string;
-  filename: string;
-  truncated: boolean;
-};
-
-export type ExportSettlementReportsFailure = {
-  success: false;
-  error: string;
-};
-
-export type ExportSettlementReportsResponse =
-  | ExportSettlementReportsSuccess
-  | ExportSettlementReportsFailure;
-
-export type GenerateSettlementReportSuccess = {
-  success: true;
+export interface GenerateSettlementReportPayload {
   reportId?: string;
   alreadyExists?: boolean;
   reportData?: SettlementReportData;
-};
+}
 
-export type GenerateSettlementReportFailure = {
-  success: false;
-  error: string;
-};
+export interface GetSettlementReportsPayload {
+  reports: SettlementReportData[];
+}
 
-export type GenerateSettlementReportResponse =
-  | GenerateSettlementReportSuccess
-  | GenerateSettlementReportFailure;
+export interface ExportSettlementReportsPayload {
+  csvContent: string;
+  filename: string;
+  truncated: boolean;
+}
 
-/**
- * CSV エクスポート結果
- * Note: 実際の使用はapp/actions/settlement-report-actions.tsの型定義を参照
- */
+export interface RegenerateSettlementReportPayload {
+  reportId?: string;
+  reportData?: SettlementReportData;
+}
 
 export interface RpcSettlementReportRow {
   event_id: string;
@@ -144,7 +124,6 @@ export interface RpcSettlementReportRow {
   payment_count: number;
   refunded_count: number;
   total_refunded_amount: number;
-  // settlement_mode と status は削除済み（常に'destination_charge', 'completed'だったため不要）
 }
 
 /**

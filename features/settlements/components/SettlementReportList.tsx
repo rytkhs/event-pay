@@ -5,6 +5,7 @@ import React, { useState } from "react";
 import { FileDownIcon, RefreshCwIcon, SearchIcon } from "lucide-react";
 
 import { useToast } from "@core/contexts/toast-context";
+import type { ActionResult } from "@core/errors/adapters/server-actions";
 import { formatUtcToJstByType } from "@core/utils/timezone";
 
 // Actions are now injected via props to avoid circular dependency
@@ -21,6 +22,11 @@ import {
 } from "@/components/ui/select";
 
 import { SettlementReportData } from "../services/types";
+import type {
+  ExportSettlementReportsPayload,
+  GetSettlementReportsPayload,
+  RegenerateSettlementReportPayload,
+} from "../types";
 
 import { SettlementReportCard } from "./SettlementReportCard";
 
@@ -33,19 +39,15 @@ interface SettlementReportListProps {
     toDate?: string;
     limit: number;
     offset: number;
-  }) => Promise<{ success: boolean; reports: SettlementReportData[]; error?: string }>;
+  }) => Promise<ActionResult<GetSettlementReportsPayload>>;
   onExportReports: (params: {
     eventIds?: string[];
     fromDate?: string;
     toDate?: string;
-  }) => Promise<{
-    success: boolean;
-    csvContent?: string;
-    filename?: string;
-    truncated?: boolean;
-    error?: string;
-  }>;
-  onRegenerateReport: (formData: FormData) => Promise<{ success: boolean; error?: string }>;
+  }) => Promise<ActionResult<ExportSettlementReportsPayload>>;
+  onRegenerateReport: (
+    formData: FormData
+  ) => Promise<ActionResult<RegenerateSettlementReportPayload>>;
 }
 
 export function SettlementReportList({
@@ -87,11 +89,11 @@ export function SettlementReportList({
       const result = await onGetReports(params);
 
       if (result.success) {
-        setReports(result.reports);
+        setReports(result.data?.reports || []);
       } else {
         toast({
           title: "検索エラー",
-          description: result.error,
+          description: result.error.userMessage,
           variant: "destructive",
         });
       }
@@ -121,14 +123,17 @@ export function SettlementReportList({
       if (!result.success) {
         toast({
           title: "エクスポートエラー",
-          description: result.error,
+          description: result.error.userMessage,
           variant: "destructive",
         });
         return;
       }
 
       // CSV ダウンロード（成功時）
-      if (!result.csvContent || !result.filename) {
+      const csvContent = result.data?.csvContent;
+      const filename = result.data?.filename;
+
+      if (!csvContent || !filename) {
         toast({
           title: "エクスポートエラー",
           description: "CSVデータまたはファイル名が取得できませんでした",
@@ -137,11 +142,11 @@ export function SettlementReportList({
         return;
       }
 
-      const blob = new Blob([result.csvContent], { type: "text/csv;charset=utf-8;" });
+      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
       const link = document.createElement("a");
       const url = URL.createObjectURL(blob);
       link.setAttribute("href", url);
-      link.setAttribute("download", result.filename);
+      link.setAttribute("download", filename);
       link.style.visibility = "hidden";
       document.body.appendChild(link);
       link.click();
@@ -149,10 +154,10 @@ export function SettlementReportList({
 
       toast({
         title: "エクスポート完了",
-        description: `${result.filename} をダウンロードしました`,
+        description: `${filename} をダウンロードしました`,
       });
 
-      if (result.truncated) {
+      if (result.data?.truncated) {
         toast({
           title: "注意: 一部データを省略",
           description:
@@ -191,7 +196,7 @@ export function SettlementReportList({
       } else {
         toast({
           title: "再集計エラー",
-          description: result.error,
+          description: result.error.userMessage,
           variant: "destructive",
         });
       }

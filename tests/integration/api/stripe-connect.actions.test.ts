@@ -1,8 +1,9 @@
 //
 
+import { redirect } from "next/navigation";
+
 import { startOnboardingAction, getStripeBalanceAction } from "@features/stripe-connect/server";
 
-import { redirect } from "next/navigation";
 import { setupSupabaseClientMocks } from "../../setup/common-mocks";
 import { createMockSupabaseClient, setTestUserById } from "../../setup/supabase-auth-mock";
 
