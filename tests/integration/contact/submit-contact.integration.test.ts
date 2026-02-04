@@ -154,10 +154,8 @@ describe("submitContact Server Action - 統合テスト", () => {
       const result = await submitContact(validInput);
 
       // Assert
-      expect(result).toEqual({
-        success: true,
-        data: { ok: true },
-      });
+      expect(result).toMatchObject({ success: true });
+      expect(result).not.toHaveProperty("error");
     });
 
     test("サニタイズ処理が正しく適用される", async () => {
@@ -181,10 +179,8 @@ describe("submitContact Server Action - 統合テスト", () => {
       const result = await submitContact(inputWithHtml);
 
       // Assert
-      expect(result).toEqual({
-        success: true,
-        data: { ok: true },
-      });
+      expect(result).toMatchObject({ success: true });
+      expect(result).not.toHaveProperty("error");
       // DBに保存されたデータにHTMLタグが含まれていないことを確認
       expect(insertedData).toBeTruthy();
       expect(insertedData.name).not.toContain("<script>");
@@ -211,8 +207,8 @@ describe("submitContact Server Action - 統合テスト", () => {
       const result = await submitContact(invalidInput);
 
       // Assert
-      expect(result).toHaveProperty("success", false);
-      expect(result).toHaveProperty("code", "VALIDATION_ERROR");
+      expect(result).toMatchObject({ success: false });
+      expect(result.error.code).toBe("VALIDATION_ERROR");
     });
 
     test("メールアドレスが不正な場合エラーを返す", async () => {
@@ -228,8 +224,8 @@ describe("submitContact Server Action - 統合テスト", () => {
       const result = await submitContact(invalidInput);
 
       // Assert
-      expect(result).toHaveProperty("success", false);
-      expect(result).toHaveProperty("code", "VALIDATION_ERROR");
+      expect(result).toMatchObject({ success: false });
+      expect(result.error.code).toBe("VALIDATION_ERROR");
     });
 
     test("メッセージが10文字未満の場合エラーを返す", async () => {
@@ -245,8 +241,8 @@ describe("submitContact Server Action - 統合テスト", () => {
       const result = await submitContact(invalidInput);
 
       // Assert
-      expect(result).toHaveProperty("success", false);
-      expect(result).toHaveProperty("code", "VALIDATION_ERROR");
+      expect(result).toMatchObject({ success: false });
+      expect(result.error.code).toBe("VALIDATION_ERROR");
     });
 
     test("consentがfalseの場合エラーを返す", async () => {
@@ -262,8 +258,8 @@ describe("submitContact Server Action - 統合テスト", () => {
       const result = await submitContact(invalidInput);
 
       // Assert
-      expect(result).toHaveProperty("success", false);
-      expect(result).toHaveProperty("code", "VALIDATION_ERROR");
+      expect(result).toMatchObject({ success: false });
+      expect(result.error.code).toBe("VALIDATION_ERROR");
     });
   });
 
@@ -302,13 +298,11 @@ describe("submitContact Server Action - 統合テスト", () => {
       const result2 = await submitContact(input);
 
       // Assert
-      expect(result1).toEqual({
-        success: true,
-        data: { ok: true },
-      });
-      expect(result2).toHaveProperty("success", false);
-      expect(result2).toHaveProperty("code", "RESOURCE_CONFLICT");
-      expect(result2).toHaveProperty("error", expect.stringContaining("同一内容の短時間での再送"));
+      expect(result1).toMatchObject({ success: true });
+      expect(result1).not.toHaveProperty("error");
+      expect(result2).toMatchObject({ success: false });
+      expect(result2.error.code).toBe("RESOURCE_CONFLICT");
+      expect(result2.error.userMessage).toContain("同一内容の短時間での再送");
     });
   });
 
@@ -347,16 +341,14 @@ describe("submitContact Server Action - 統合テスト", () => {
 
       // Assert - 6回目はレート制限される
       const lastResult = results[results.length - 1];
-      expect(lastResult).toHaveProperty("success", false);
-      expect(lastResult).toHaveProperty("code", "RATE_LIMITED");
-      expect(lastResult).toHaveProperty("details");
-      expect((lastResult as any).details).toHaveProperty("retryAfterSec", 60);
+      expect(lastResult).toMatchObject({ success: false });
+      expect(lastResult.error.code).toBe("RATE_LIMITED");
+      expect(lastResult.error.details).toBeDefined();
+      expect(lastResult.error.details as any).toHaveProperty("retryAfterSec", 60);
       // 1-5回目は成功
       for (let i = 0; i < 5; i++) {
-        expect(results[i]).toEqual({
-          success: true,
-          data: { ok: true },
-        });
+        expect(results[i]).toMatchObject({ success: true });
+        expect(results[i]).not.toHaveProperty("error");
       }
     });
   });

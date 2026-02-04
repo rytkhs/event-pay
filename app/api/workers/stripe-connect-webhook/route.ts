@@ -188,7 +188,7 @@ export async function POST(request: NextRequest) {
       outcome: "success",
     });
 
-    return NextResponse.json({ success: true, eventId: event.id, type: event.type, ms });
+    return new NextResponse(null, { status: 204 });
   } catch (error) {
     const ms = Date.now() - start;
     return respondWithProblem(error, {

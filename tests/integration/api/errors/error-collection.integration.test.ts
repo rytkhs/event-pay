@@ -145,9 +145,7 @@ describe("エラー収集API統合テスト (/api/errors)", () => {
     const response = await errorHandler(request);
 
     // レスポンス検証
-    expect(response.status).toBe(200);
-    const responseData = await response.json();
-    expect(responseData).toEqual({ success: true });
+    expect(response.status).toBe(204);
 
     // DB insert が呼ばれたことを検証
     expect(mockSupabaseInsert).toHaveBeenCalledTimes(1);
@@ -207,9 +205,7 @@ describe("エラー収集API統合テスト (/api/errors)", () => {
     const response = await errorHandler(request);
 
     // レスポンス検証
-    expect(response.status).toBe(200);
-    const responseData = await response.json();
-    expect(responseData).toEqual({ success: true, deduplicated: true });
+    expect(response.status).toBe(204);
 
     // DB insert が呼ばれていないことを検証
     expect(mockSupabaseInsert).not.toHaveBeenCalled();

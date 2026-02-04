@@ -55,7 +55,7 @@ function maskEmail(email: string): string {
 }
 
 /**
- * お問い合わせ送信 Server Action
+ * お問い合わせ送信
  */
 export async function submitContact(input: ContactInput) {
   // 1. Zod検証
@@ -238,5 +238,5 @@ export async function submitContact(input: ContactInput) {
   );
 
   // 9. 成功レスポンス（通知の成否に関わらず）
-  return ok({ ok: true });
+  return ok();
 }
