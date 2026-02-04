@@ -14,33 +14,11 @@ import { handleServerError } from "@core/utils/error-handler.server";
 import { isNextRedirectError } from "@core/utils/next";
 
 import { createUserStripeConnectService } from "../services";
-import { StripeConnectError } from "../types";
-
-// レスポンス型定義
-interface ConnectAccountStatusResult {
-  success: boolean;
-  error?: string;
-  data?: {
-    hasAccount: boolean;
-    accountId?: string;
-    dbStatus?: string; // Database Status (unverified/onboarding/verified/restricted)
-    uiStatus: string; // UI Status (no_account/unverified/requirements_due/ready/restricted)
-    status?: string; // 後方互換性のため維持
-    chargesEnabled: boolean;
-    payoutsEnabled: boolean;
-    reviewStatus?: "pending_review" | "requirements_due" | "none";
-    requirements?: {
-      currently_due: string[];
-      eventually_due: string[];
-      past_due: string[];
-      pending_verification: string[];
-    };
-    capabilities?: {
-      card_payments?: "active" | "inactive" | "pending";
-      transfers?: "active" | "inactive" | "pending";
-    };
-  };
-}
+import {
+  type ConnectAccountStatusPayload,
+  type ConnectPermissionsPayload,
+  StripeConnectError,
+} from "../types";
 
 /**
  * Stripe Connect アカウントステータスを取得するServer Action
@@ -49,7 +27,9 @@ interface ConnectAccountStatusResult {
  * UIStatusMapperを使用してUI Statusを計算
  * StatusSyncServiceを使用してステータス同期を実行
  */
-export async function getConnectAccountStatusAction(): Promise<ConnectAccountStatusResult> {
+export async function getConnectAccountStatusAction(): Promise<
+  ActionResult<ConnectAccountStatusPayload>
+> {
   const actionLogger = logger.withContext({
     category: "stripe_connect",
     action: "get_connect_account_status",
@@ -71,20 +51,14 @@ export async function getConnectAccountStatusAction(): Promise<ConnectAccountSta
         category: "stripe_connect",
         action: "get_connect_account_status_auth_failed",
       });
-      return {
-        success: false,
-        error: "認証に失敗しました",
-      };
+      return fail("UNAUTHORIZED", { userMessage: "認証に失敗しました" });
     }
 
     if (!user) {
       actionLogger.warn("Unauthenticated user attempted Connect account status check", {
         outcome: "failure",
       });
-      return {
-        success: false,
-        error: "認証が必要です",
-      };
+      return fail("UNAUTHORIZED", { userMessage: "認証が必要です" });
     }
 
     // 2. StripeConnectServiceを初期化（ユーザーセッション使用、RLS適用）
@@ -99,15 +73,12 @@ export async function getConnectAccountStatusAction(): Promise<ConnectAccountSta
       const mapper = new UIStatusMapper();
       const uiStatus = mapper.mapToUIStatus(null);
 
-      return {
-        success: true,
-        data: {
-          hasAccount: false,
-          uiStatus,
-          chargesEnabled: false,
-          payoutsEnabled: false,
-        },
-      };
+      return ok({
+        hasAccount: false,
+        uiStatus,
+        chargesEnabled: false,
+        payoutsEnabled: false,
+      });
     }
 
     // 4. StatusSyncServiceを使用してステータス同期を実行
@@ -197,35 +168,34 @@ export async function getConnectAccountStatusAction(): Promise<ConnectAccountSta
       reviewStatus = "pending_review";
     }
 
-    return {
-      success: true,
-      data: {
-        hasAccount: true,
-        accountId: updatedAccount.stripe_account_id,
-        dbStatus: updatedAccount.status,
-        uiStatus,
-        status: updatedAccount.status, // 後方互換性のため
-        chargesEnabled: updatedAccount.charges_enabled,
-        payoutsEnabled: updatedAccount.payouts_enabled,
-        reviewStatus,
-        requirements,
-        capabilities,
-      },
-    };
+    return ok({
+      hasAccount: true,
+      accountId: updatedAccount.stripe_account_id,
+      dbStatus: updatedAccount.status,
+      uiStatus,
+      status: updatedAccount.status, // 後方互換性のため
+      chargesEnabled: updatedAccount.charges_enabled,
+      payoutsEnabled: updatedAccount.payouts_enabled,
+      reviewStatus,
+      requirements,
+      capabilities,
+    });
   } catch (error) {
+    if (isNextRedirectError(error)) {
+      throw error;
+    }
     handleServerError(error, {
       category: "stripe_connect",
       action: "get_connect_account_status_failed",
       userId,
     });
 
-    return {
-      success: false,
-      error:
+    return fail("INTERNAL_ERROR", {
+      userMessage:
         error instanceof StripeConnectError
           ? error.message
           : "アカウント情報の取得中にエラーが発生しました",
-    };
+    });
   }
 }
 
@@ -477,16 +447,9 @@ export async function handleOnboardingRefreshAction(): Promise<void> {
  * Stripe Connectアカウントの権限チェックを行うServer Action
  * 特定の操作（決済受取、送金）が可能かどうかを確認
  */
-export async function checkConnectPermissionsAction(): Promise<{
-  success: boolean;
-  error?: string;
-  data?: {
-    canReceivePayments: boolean;
-    canReceivePayouts: boolean;
-    isVerified: boolean;
-    restrictions?: string[];
-  };
-}> {
+export async function checkConnectPermissionsAction(): Promise<
+  ActionResult<ConnectPermissionsPayload>
+> {
   let userId: string | undefined;
   try {
     // 1. 認証チェック
@@ -525,29 +488,28 @@ export async function checkConnectPermissionsAction(): Promise<{
 
     const canReceivePayments = isVerified && canReceivePayouts;
 
-    return {
-      success: true,
-      data: {
-        canReceivePayments,
-        canReceivePayouts,
-        isVerified,
-        restrictions: restrictions.length > 0 ? restrictions : undefined,
-      },
-    };
+    return ok({
+      canReceivePayments,
+      canReceivePayouts,
+      isVerified,
+      restrictions: restrictions.length > 0 ? restrictions : undefined,
+    });
   } catch (error) {
+    if (isNextRedirectError(error)) {
+      throw error;
+    }
     handleServerError(error, {
       category: "stripe_connect",
       action: "check_connect_permissions_failed",
       userId,
     });
 
-    return {
-      success: false,
-      error:
+    return fail("INTERNAL_ERROR", {
+      userMessage:
         error instanceof StripeConnectError
           ? error.message
           : "権限チェック中にエラーが発生しました",
-    };
+    });
   }
 }
 

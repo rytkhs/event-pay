@@ -45,6 +45,19 @@ export const createMockStripeConnectService = (options?: {
       status: "onboarding",
       chargesEnabled: false,
       payoutsEnabled: false,
+      stripeAccount: {
+        id: "acct_test",
+        requirements: {
+          currently_due: [],
+          eventually_due: [],
+          past_due: [],
+          pending_verification: [],
+        },
+        capabilities: {
+          card_payments: "inactive",
+          transfers: "inactive",
+        },
+      } as any,
     },
     createAccountLink = {
       url: "https://connect.stripe.com/setup/e/acct_test/session_token",

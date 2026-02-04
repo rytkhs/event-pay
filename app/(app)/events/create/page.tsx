@@ -34,14 +34,15 @@ export default async function CreateEventPage() {
    * したがって、status === undefined が「ready」状態を意味する
    *
    */
-  const canUseOnlinePayments = detailedStatus.success && !detailedStatus.status;
+  const canUseOnlinePayments = detailedStatus.success && !detailedStatus.data?.status;
+  const connectStatus = detailedStatus.success ? detailedStatus.data?.status : undefined;
 
   return (
     <div className="min-h-screen ">
       <div className="container mx-auto">
         <SinglePageEventForm
           canUseOnlinePayments={canUseOnlinePayments}
-          connectStatus={detailedStatus.status}
+          connectStatus={connectStatus}
           createEventAction={createEventAction}
         />
       </div>

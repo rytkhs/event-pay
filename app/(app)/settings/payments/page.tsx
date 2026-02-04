@@ -61,6 +61,17 @@ async function PaymentSettingsContent() {
           status={await (async () => {
             const r = await getConnectAccountStatusAction();
             const expressAccess = await checkExpressDashboardAccessAction();
+
+            if (!r.success) {
+              return {
+                hasAccount: false,
+                uiStatus: "no_account" as const,
+                chargesEnabled: false,
+                payoutsEnabled: false,
+                expressDashboardAvailable: false,
+              };
+            }
+
             return {
               hasAccount: true,
               accountId: r.data?.accountId,
@@ -80,7 +91,7 @@ async function PaymentSettingsContent() {
               payoutsEnabled: r.data?.payoutsEnabled ?? false,
               requirements: r.data?.requirements,
               capabilities: r.data?.capabilities,
-              expressDashboardAvailable: expressAccess.success,
+              expressDashboardAvailable: expressAccess.success && !!expressAccess.data?.hasAccount,
             };
           })()}
           expressDashboardAction={createExpressDashboardLoginLinkAction}

@@ -229,3 +229,57 @@ export interface ErrorHandlingResult {
   logLevel: LogLevel;
   shouldNotifyAdmin: boolean;
 }
+
+/**
+ * getConnectAccountStatusAction の ActionResult ペイロード
+ */
+export interface ConnectAccountStatusPayload {
+  hasAccount: boolean;
+  accountId?: string;
+  dbStatus?: StripeAccountStatus; // Database Status (unverified/onboarding/verified/restricted)
+  uiStatus: string; // UI Status (no_account/unverified/requirements_due/ready/restricted)
+  status?: StripeAccountStatus; // 後方互換性のため維持
+  chargesEnabled: boolean;
+  payoutsEnabled: boolean;
+  reviewStatus?: "pending_review" | "requirements_due" | "none";
+  requirements?: {
+    currently_due: string[];
+    eventually_due: string[];
+    past_due: string[];
+    pending_verification: string[];
+  };
+  capabilities?: {
+    card_payments?: "active" | "inactive" | "pending";
+    transfers?: "active" | "inactive" | "pending";
+  };
+}
+
+/**
+ * checkConnectPermissionsAction の ActionResult ペイロード
+ */
+export interface ConnectPermissionsPayload {
+  /** 支払い受付が可能か */
+  canReceivePayments: boolean;
+  /** 振込が可能か */
+  canReceivePayouts: boolean;
+  /** 認証済みか */
+  isVerified: boolean;
+  /** 制限事項 */
+  restrictions?: string[];
+}
+
+/**
+ * getDetailedAccountStatusAction の ActionResult ペイロード
+ * status が undefined の場合は「ready」状態を意味する（CTA非表示）
+ */
+export interface DetailedAccountStatusPayload {
+  status?: DetailedAccountStatus;
+}
+
+/**
+ * checkExpressDashboardAccessAction の ActionResult ペイロード
+ */
+export interface ExpressDashboardAccessPayload {
+  hasAccount: boolean;
+  accountId?: string;
+}

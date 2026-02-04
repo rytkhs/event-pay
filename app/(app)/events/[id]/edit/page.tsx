@@ -111,7 +111,7 @@ export default async function EventEditPage({ params }: EventEditPageProps) {
    *
    * したがって、status === undefined が「ready」状態を意味する
    */
-  const canUseOnlinePayments = detailedStatus.success && !detailedStatus.status;
+  const canUseOnlinePayments = detailedStatus.success && !detailedStatus.data?.status;
 
   return (
     <div className="min-h-screen bg-muted/30 py-8">
