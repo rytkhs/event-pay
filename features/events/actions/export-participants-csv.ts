@@ -1,6 +1,7 @@
 import { headers } from "next/headers";
 
 import { verifyEventAccess } from "@core/auth/event-authorization";
+import { type ActionResult, ok, fail } from "@core/errors/adapters/server-actions";
 import { logExport } from "@core/logging/system-logger";
 import { enforceRateLimit, buildKey, POLICIES } from "@core/rate-limit";
 import { createClient } from "@core/supabase/server";
@@ -10,7 +11,10 @@ import {
   getPaymentStatusesFromSimple,
 } from "@core/utils/payment-status-mapper";
 import { formatUtcToJstSafe } from "@core/utils/timezone";
-import { ExportParticipantsCsvParamsSchema } from "@core/validation/participant-management";
+import {
+  ExportParticipantsCsvParamsSchema,
+  type ExportParticipantsCsvResult,
+} from "@core/validation/participant-management";
 
 /**
  * 参加者データCSVエクスポート
@@ -18,14 +22,9 @@ import { ExportParticipantsCsvParamsSchema } from "@core/validation/participant-
  *
  * attendancesとpaymentsを結合してCSVファイルを生成
  */
-export async function exportParticipantsCsvAction(params: unknown): Promise<{
-  success: boolean;
-  csvContent?: string;
-  filename?: string;
-  /** 取得件数が上限(1000件)に達し切り捨てが発生した場合 true */
-  truncated?: boolean;
-  error?: string;
-}> {
+export async function exportParticipantsCsvAction(
+  params: unknown
+): Promise<ActionResult<ExportParticipantsCsvResult>> {
   try {
     // パラメータバリデーション
     const validatedParams = ExportParticipantsCsvParamsSchema.parse(params);
@@ -47,11 +46,10 @@ export async function exportParticipantsCsvAction(params: unknown): Promise<{
     });
 
     if (!rateLimitResult.allowed) {
-      return {
-        success: false,
-        error:
+      return fail("RATE_LIMITED", {
+        userMessage:
           "レート制限: CSVエクスポートの実行回数が上限に達しました。しばらく待ってから再度お試しください。",
-      };
+      });
     }
 
     const supabase = createClient();
@@ -139,10 +137,9 @@ export async function exportParticipantsCsvAction(params: unknown): Promise<{
         },
       });
 
-      return {
-        success: false,
-        error: "参加者データの取得に失敗しました。",
-      };
+      return fail("EVENT_OPERATION_FAILED", {
+        userMessage: "参加者データの取得に失敗しました。",
+      });
     }
 
     if (!participants || participants.length === 0) {
@@ -159,11 +156,11 @@ export async function exportParticipantsCsvAction(params: unknown): Promise<{
       // ヘッダーのみの CSV 文字列を生成
       const csvContent = generateCsvContent([], columns);
 
-      return {
-        success: true,
+      return ok({
         csvContent,
         filename,
-      };
+        truncated: false,
+      });
     }
 
     // 切り捨て判定 (+1 行オーバーフェッチ方式)
@@ -199,12 +196,11 @@ export async function exportParticipantsCsvAction(params: unknown): Promise<{
       },
     });
 
-    return {
-      success: true,
+    return ok({
       csvContent,
       filename,
       truncated,
-    };
+    });
   } catch (error) {
     handleServerError(error, {
       category: "export",
@@ -214,10 +210,9 @@ export async function exportParticipantsCsvAction(params: unknown): Promise<{
       },
     });
 
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : "CSVエクスポートに失敗しました。",
-    };
+    return fail("EVENT_OPERATION_FAILED", {
+      userMessage: error instanceof Error ? error.message : "CSVエクスポートに失敗しました。",
+    });
   }
 }
 

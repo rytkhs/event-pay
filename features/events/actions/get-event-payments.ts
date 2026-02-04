@@ -1,8 +1,11 @@
 import type { z } from "zod";
 
 import { verifyEventAccess, handleDatabaseError } from "@core/auth/event-authorization";
+import { type ActionResult, ok, fail } from "@core/errors/adapters/server-actions";
 import { logger } from "@core/logging/app-logger";
 import { createClient } from "@core/supabase/server";
+import { handleServerError } from "@core/utils/error-handler.server";
+import { isNextRedirectError } from "@core/utils/next";
 import {
   PaymentStatusEnum,
   GetEventPaymentsResponseSchema,
@@ -19,104 +22,123 @@ type PaymentStatus = z.infer<typeof PaymentStatusEnum>;
  * イベント決済情報取得（集計付き）
  * MANAGE-002: 決済状況確認/集計
  */
-export async function getEventPaymentsAction(eventId: string): Promise<GetEventPaymentsResponse> {
-  // 認可チェック
-  const { user, eventId: validatedEventId } = await verifyEventAccess(eventId);
+export async function getEventPaymentsAction(
+  eventId: string
+): Promise<ActionResult<GetEventPaymentsResponse>> {
+  try {
+    // 認可チェック
+    const { user, eventId: validatedEventId } = await verifyEventAccess(eventId);
 
-  const supabase = createClient();
+    const supabase = createClient();
 
-  // 決済データ取得（attendance.statusも含める）
-  const { data: payments, error } = await supabase
-    .from("payments")
-    .select(
+    // 決済データ取得（attendance.statusも含める）
+    const { data: payments, error } = await supabase
+      .from("payments")
+      .select(
+        `
+        id,
+        method,
+        amount,
+        status,
+        attendance_id,
+        paid_at,
+        created_at,
+        updated_at,
+        attendances!inner(event_id, status)
       `
-      id,
-      method,
-      amount,
-      status,
-      attendance_id,
-      paid_at,
-      created_at,
-      updated_at,
-      attendances!inner(event_id, status)
-    `
-    )
-    .eq("attendances.event_id", validatedEventId);
+      )
+      .eq("attendances.event_id", validatedEventId);
 
-  if (error) {
-    handleDatabaseError(error, { eventId: validatedEventId, userId: user.id });
+    if (error) {
+      handleDatabaseError(error, { eventId: validatedEventId, userId: user.id });
+    }
+
+    const cleanedPayments = (payments || []).map((payment) => ({
+      id: payment.id,
+      method: payment.method,
+      amount: payment.amount,
+      status: payment.status,
+      attendance_id: payment.attendance_id,
+      attendance_status: payment.attendances.status,
+      paid_at: payment.paid_at,
+      created_at: payment.created_at,
+      updated_at: payment.updated_at,
+    }));
+
+    // 各参加者(attendance_id)につき最新の決済1件のみを抽出
+    // paid_at DESC NULLS LAST → created_at DESC → updated_at DESC 相当のロジック
+    const latestPaymentsMap = new Map<string, (typeof cleanedPayments)[number]>();
+    cleanedPayments.forEach((payment) => {
+      const existing = latestPaymentsMap.get(payment.attendance_id);
+      if (!existing) {
+        latestPaymentsMap.set(payment.attendance_id, payment);
+        return;
+      }
+      // 比較関数：paid_at (null は最古扱い), その後 created_at, updated_at
+      // ISO 文字列ではなく Date オブジェクトのタイムスタンプで比較
+      const paidAtA = payment.paid_at ? new Date(payment.paid_at).getTime() : -Infinity; // null は最古扱い
+      const paidAtB = existing.paid_at ? new Date(existing.paid_at).getTime() : -Infinity;
+
+      if (paidAtA !== paidAtB) {
+        if (paidAtA > paidAtB) {
+          latestPaymentsMap.set(payment.attendance_id, payment);
+        }
+        return;
+      }
+
+      const createdAtA = new Date(payment.created_at).getTime();
+      const createdAtB = new Date(existing.created_at).getTime();
+      if (createdAtA !== createdAtB) {
+        if (createdAtA > createdAtB) {
+          latestPaymentsMap.set(payment.attendance_id, payment);
+        }
+        return;
+      }
+
+      const updatedAtA = new Date(payment.updated_at).getTime();
+      const updatedAtB = new Date(existing.updated_at).getTime();
+      if (updatedAtA > updatedAtB) {
+        latestPaymentsMap.set(payment.attendance_id, payment);
+      }
+    });
+
+    const latestPayments = Array.from(latestPaymentsMap.values());
+
+    const summary = calculatePaymentSummary(latestPayments);
+
+    const validatedResponse = GetEventPaymentsResponseSchema.parse({
+      payments: latestPayments,
+      summary,
+    });
+
+    logger.info("決済情報取得完了", {
+      category: "payment",
+      action: "get_event_payments",
+      actor_type: "user",
+      event_id: validatedEventId,
+      user_id: user.id,
+      payment_count: cleanedPayments.length,
+      total_amount: summary.totalAmount,
+      outcome: "success",
+    });
+
+    return ok(validatedResponse);
+  } catch (error) {
+    if (isNextRedirectError(error)) {
+      throw error;
+    }
+
+    handleServerError(error, {
+      category: "payment",
+      action: "get_event_payments",
+      actorType: "user",
+      eventId,
+    });
+
+    return fail("INTERNAL_ERROR", {
+      userMessage: "決済情報の取得中にエラーが発生しました",
+    });
   }
-
-  const cleanedPayments = (payments || []).map((payment) => ({
-    id: payment.id,
-    method: payment.method,
-    amount: payment.amount,
-    status: payment.status,
-    attendance_id: payment.attendance_id,
-    attendance_status: payment.attendances.status,
-    paid_at: payment.paid_at,
-    created_at: payment.created_at,
-    updated_at: payment.updated_at,
-  }));
-
-  // 各参加者(attendance_id)につき最新の決済1件のみを抽出
-  // paid_at DESC NULLS LAST → created_at DESC → updated_at DESC 相当のロジック
-  const latestPaymentsMap = new Map<string, (typeof cleanedPayments)[number]>();
-  cleanedPayments.forEach((payment) => {
-    const existing = latestPaymentsMap.get(payment.attendance_id);
-    if (!existing) {
-      latestPaymentsMap.set(payment.attendance_id, payment);
-      return;
-    }
-    // 比較関数：paid_at (null は最古扱い), その後 created_at, updated_at
-    // ISO 文字列ではなく Date オブジェクトのタイムスタンプで比較
-    const paidAtA = payment.paid_at ? new Date(payment.paid_at).getTime() : -Infinity; // null は最古扱い
-    const paidAtB = existing.paid_at ? new Date(existing.paid_at).getTime() : -Infinity;
-
-    if (paidAtA !== paidAtB) {
-      if (paidAtA > paidAtB) {
-        latestPaymentsMap.set(payment.attendance_id, payment);
-      }
-      return;
-    }
-
-    const createdAtA = new Date(payment.created_at).getTime();
-    const createdAtB = new Date(existing.created_at).getTime();
-    if (createdAtA !== createdAtB) {
-      if (createdAtA > createdAtB) {
-        latestPaymentsMap.set(payment.attendance_id, payment);
-      }
-      return;
-    }
-
-    const updatedAtA = new Date(payment.updated_at).getTime();
-    const updatedAtB = new Date(existing.updated_at).getTime();
-    if (updatedAtA > updatedAtB) {
-      latestPaymentsMap.set(payment.attendance_id, payment);
-    }
-  });
-
-  const latestPayments = Array.from(latestPaymentsMap.values());
-
-  const summary = calculatePaymentSummary(latestPayments);
-
-  const validatedResponse = GetEventPaymentsResponseSchema.parse({
-    payments: latestPayments,
-    summary,
-  });
-
-  logger.info("決済情報取得完了", {
-    category: "payment",
-    action: "get_event_payments",
-    actor_type: "user",
-    event_id: validatedEventId,
-    user_id: user.id,
-    payment_count: cleanedPayments.length,
-    total_amount: summary.totalAmount,
-    outcome: "success",
-  });
-
-  return validatedResponse;
 }
 
 /**
