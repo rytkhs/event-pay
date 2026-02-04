@@ -149,34 +149,13 @@ export async function getConnectAccountStatusAction(): Promise<
         }
       : undefined;
 
-    // 9. 後方互換性のためのreviewStatus計算
-    const hasDueRequirements =
-      (requirements.currently_due?.length ?? 0) > 0 || (requirements.past_due?.length ?? 0) > 0;
-    const hasPendingVerification = (requirements.pending_verification?.length ?? 0) > 0;
-    const hasPendingCapabilities = Boolean(
-      capabilities &&
-      (capabilities.card_payments === "pending" || capabilities.transfers === "pending")
-    );
-
-    let reviewStatus: "pending_review" | "requirements_due" | "none" = "none";
-    if (hasDueRequirements) {
-      reviewStatus = "requirements_due";
-    } else if (
-      updatedAccount.status === "onboarding" &&
-      (hasPendingVerification || hasPendingCapabilities)
-    ) {
-      reviewStatus = "pending_review";
-    }
-
     return ok({
       hasAccount: true,
       accountId: updatedAccount.stripe_account_id,
       dbStatus: updatedAccount.status,
       uiStatus,
-      status: updatedAccount.status, // 後方互換性のため
       chargesEnabled: updatedAccount.charges_enabled,
       payoutsEnabled: updatedAccount.payouts_enabled,
-      reviewStatus,
       requirements,
       capabilities,
     });

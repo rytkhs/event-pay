@@ -21,6 +21,7 @@ import {
   NoAccountView,
   UnverifiedView,
   RequirementsDueView,
+  PendingReviewView,
   RestrictedView,
   ReadyView,
 } from "./status-views";
@@ -56,6 +57,8 @@ export function AccountStatus({ refreshUrl, status, expressDashboardAction }: Ac
             expressDashboardAvailable={status.expressDashboardAvailable}
           />
         );
+      case "pending_review":
+        return <PendingReviewView />;
       case "restricted":
         return <RestrictedView />;
       case "ready":
@@ -80,6 +83,8 @@ export function AccountStatus({ refreshUrl, status, expressDashboardAction }: Ac
         return <Badge variant="outline">未認証</Badge>;
       case "requirements_due":
         return <Badge variant="secondary">設定中</Badge>;
+      case "pending_review":
+        return <Badge variant="secondary">審査中</Badge>;
       case "restricted":
         return <Badge variant="destructive">制限あり</Badge>;
       case "ready":

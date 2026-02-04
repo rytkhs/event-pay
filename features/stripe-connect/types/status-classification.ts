@@ -15,7 +15,13 @@ export type DatabaseStatus = "unverified" | "onboarding" | "verified" | "restric
  * UI Status (5状態)
  * UI層で表示される派生ステータス
  */
-export type UIStatus = "no_account" | "unverified" | "requirements_due" | "ready" | "restricted";
+export type UIStatus =
+  | "no_account"
+  | "unverified"
+  | "requirements_due"
+  | "pending_review"
+  | "ready"
+  | "restricted";
 
 /**
  * Classification Result

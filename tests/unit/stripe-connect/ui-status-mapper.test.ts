@@ -3,10 +3,11 @@
  * 各UI Statusへのマッピングとエッジケースを検証
  *
  * 要件:
- * - 2.1: UI Statusとして no_account、unverified、requirements_due、ready、restricted の5つの値を返す
+ * - 2.1: UI Statusとして no_account、unverified、requirements_due、pending_review、ready、restricted の6つの値を返す
  * - 2.2: Connect Account が存在しないとき、UI Status として no_account を返す
  * - 2.3: Database Status が unverified であるとき、UI Status として unverified を返す
  * - 2.4: Account Object の currently_due、past_due、または eventually_due が非空であるとき、UI Status として requirements_due を返す
+ * - 2.4.1: onboarding 状態で pending_verification があり due 項目がない場合は pending_review を返す
  * - 2.5: Database Status が restricted であるとき、UI Status として restricted を返し、requirements_due に統合しない
  * - 2.6: Database Status が verified かつ Account Object の due配列が空かつ disabled_reason が null であるとき、UI Status として ready を返す
  */
@@ -319,6 +320,69 @@ describe("UIStatusMapper", () => {
     });
   });
 
+  describe("要件 2.4.1: pending_review - 審査中", () => {
+    it("onboardingステータスでpending_verificationがある場合はpending_reviewを返す", () => {
+      const account = createMockAccount({
+        requirements: {
+          alternatives: [],
+          current_deadline: null,
+          currently_due: [],
+          disabled_reason: null,
+          errors: [],
+          eventually_due: [],
+          past_due: [],
+          pending_verification: ["individual.verification.document"],
+        },
+      });
+
+      const uiStatus = mapper.mapToUIStatus("onboarding", account);
+
+      expect(uiStatus).toBe("pending_review");
+    });
+
+    it("capabilityがpendingの場合はpending_reviewを返す", () => {
+      const account = createMockAccount({
+        capabilities: {
+          card_payments: "pending",
+          transfers: "active",
+        },
+        requirements: {
+          alternatives: [],
+          current_deadline: null,
+          currently_due: [],
+          disabled_reason: null,
+          errors: [],
+          eventually_due: [],
+          past_due: [],
+          pending_verification: [],
+        },
+      });
+
+      const uiStatus = mapper.mapToUIStatus("onboarding", account);
+
+      expect(uiStatus).toBe("pending_review");
+    });
+
+    it("pending_verificationがあってもdue項目がある場合はrequirements_dueを優先する", () => {
+      const account = createMockAccount({
+        requirements: {
+          alternatives: [],
+          current_deadline: null,
+          currently_due: ["individual.verification.document"],
+          disabled_reason: null,
+          errors: [],
+          eventually_due: [],
+          past_due: [],
+          pending_verification: ["individual.verification.document"],
+        },
+      });
+
+      const uiStatus = mapper.mapToUIStatus("onboarding", account);
+
+      expect(uiStatus).toBe("requirements_due");
+    });
+  });
+
   describe("要件 2.6: ready - 設定完了", () => {
     it("dbStatusがverifiedでdue配列が空の場合はreadyを返す", () => {
       const account = createMockAccount({
@@ -520,15 +584,33 @@ describe("UIStatusMapper", () => {
       const uiStatus = mapper.mapToUIStatus("restricted");
       expect(uiStatus).toBe("restricted");
     });
+
+    it("pending_reviewが返される", () => {
+      const account = createMockAccount({
+        requirements: {
+          alternatives: [],
+          current_deadline: null,
+          currently_due: [],
+          disabled_reason: null,
+          errors: [],
+          eventually_due: [],
+          past_due: [],
+          pending_verification: ["individual.verification.document"],
+        },
+      });
+      const uiStatus = mapper.mapToUIStatus("onboarding", account);
+      expect(uiStatus).toBe("pending_review");
+    });
   });
 
   describe("型の整合性", () => {
     it("返り値がUIStatus型である", () => {
       const uiStatus = mapper.mapToUIStatus("verified");
-      const validStatuses: DatabaseStatus[] = [
+      const validStatuses: string[] = [
         "no_account",
         "unverified",
         "requirements_due",
+        "pending_review",
         "ready",
         "restricted",
       ];

@@ -108,18 +108,8 @@ async function ConnectContent({ searchParams }: ConnectPageProps) {
               return {
                 hasAccount: true,
                 accountId: r.data?.accountId,
-                dbStatus: r.data?.dbStatus as
-                  | "unverified"
-                  | "onboarding"
-                  | "verified"
-                  | "restricted"
-                  | undefined,
-                uiStatus: (r.data?.uiStatus ?? "no_account") as
-                  | "no_account"
-                  | "unverified"
-                  | "requirements_due"
-                  | "ready"
-                  | "restricted",
+                dbStatus: r.data?.dbStatus,
+                uiStatus: r.data?.uiStatus ?? "no_account",
                 chargesEnabled: r.data?.chargesEnabled ?? false,
                 payoutsEnabled: r.data?.payoutsEnabled ?? false,
                 requirements: r.data?.requirements,
