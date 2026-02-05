@@ -55,7 +55,7 @@ describe("/api/workers/stripe-connect-webhook (worker)", () => {
 
     const req = createRequest({ event: evt });
     const res = await ConnectWorkerPOST(req);
-    expect(res.status).toBe(200);
+    expect(res.status).toBe(204);
     expect(handleAccountUpdated).toHaveBeenCalledTimes(1);
   });
 });

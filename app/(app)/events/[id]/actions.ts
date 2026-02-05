@@ -13,7 +13,7 @@ import {
 import { ensureFeaturesRegistered } from "@/app/_init/feature-registrations";
 
 type GenerateInviteTokenOptions = Parameters<typeof generateInviteTokenActionImpl>[1];
-type GetEventParticipantsParams = Parameters<typeof getEventParticipantsActionImpl>[0];
+export type GetEventParticipantsParams = Parameters<typeof getEventParticipantsActionImpl>[0];
 
 export async function getEventDetailAction(eventId: string) {
   ensureFeaturesRegistered();

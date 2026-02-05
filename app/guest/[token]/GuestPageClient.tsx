@@ -140,7 +140,9 @@ export function GuestPageClient({
       } else {
         toast({
           title: "決済エラー",
-          description: !result.success ? result.error : "決済セッションの作成に失敗しました。",
+          description: !result.success
+            ? result.error?.userMessage || "決済セッションの作成に失敗しました。"
+            : "決済セッションの作成に失敗しました。",
           variant: "destructive",
         });
         setIsProcessingPayment(false);

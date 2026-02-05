@@ -8,6 +8,8 @@ import { usePathname } from "next/navigation";
 
 import { LogOut, ChevronsUpDown, CreditCard, Loader2 } from "lucide-react";
 
+import type { ActionResult } from "@core/errors/adapters/server-actions";
+
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -29,7 +31,6 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar";
-import type { ActionResult } from "@/types/action-result";
 
 import { navigationConfig, userMenuItems } from "./GlobalHeader/navigation-config";
 
@@ -61,7 +62,10 @@ export function AppSidebar({
   }, [pathname, isMobile, setOpenMobile]);
 
   const handleLogout = async () => {
-    await logoutAction();
+    const result = await logoutAction();
+    // ActionResult の redirectUrl を使用してリダイレクト
+    const redirectUrl = result.redirectUrl || "/login";
+    window.location.href = redirectUrl;
   };
 
   // クリック時のハンドラ

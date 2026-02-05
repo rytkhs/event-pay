@@ -405,7 +405,6 @@ await helper.runScenario({
   sessionId: "cs_test_123",
   paymentStatus: "pending",
   expectedResult: {
-    success: true,
     payment_status: "pending",
   },
 });

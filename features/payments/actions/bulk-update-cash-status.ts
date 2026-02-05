@@ -1,14 +1,10 @@
 import { z } from "zod";
 
+import { type ActionResult, fail, ok } from "@core/errors/adapters/server-actions";
+import type { ErrorCode } from "@core/errors/types";
 import { enforceRateLimit, buildKey, POLICIES } from "@core/rate-limit";
 import { SecureSupabaseClientFactory } from "@core/security/secure-client-factory.impl";
 import { PaymentError, PaymentErrorType } from "@core/types/payment-errors";
-import {
-  type ServerActionResult,
-  createServerActionError,
-  createServerActionSuccess,
-  type ErrorCode,
-} from "@core/types/server-actions";
 
 import { PaymentValidator } from "../validation";
 
@@ -57,11 +53,12 @@ function mapPaymentError(type: PaymentErrorType): ErrorCode {
 
 export async function bulkUpdateCashStatusAction(
   input: unknown
-): Promise<ServerActionResult<BulkUpdateResult>> {
+): Promise<ActionResult<BulkUpdateResult>> {
   try {
     const parsed = inputSchema.safeParse(input);
     if (!parsed.success) {
-      return createServerActionError("VALIDATION_ERROR", "入力データが無効です。", {
+      return fail("VALIDATION_ERROR", {
+        userMessage: "入力データが無効です。",
         details: { zodErrors: parsed.error.errors },
       });
     }
@@ -74,7 +71,7 @@ export async function bulkUpdateCashStatusAction(
       error: authError,
     } = await supabase.auth.getUser();
     if (authError || !user) {
-      return createServerActionError("UNAUTHORIZED", "認証が必要です。");
+      return fail("UNAUTHORIZED", { userMessage: "認証が必要です。" });
     }
 
     // レート制限（ユーザー単位、一括更新用の制限）
@@ -85,13 +82,11 @@ export async function bulkUpdateCashStatusAction(
         policy: POLICIES["payment.statusUpdate"],
       });
       if (!rl.allowed) {
-        return createServerActionError(
-          "RATE_LIMITED",
-          "レート制限に達しました。しばらく待ってから再試行してください。",
-          rl.retryAfter
-            ? { retryable: true, details: { retryAfter: rl.retryAfter } }
-            : { retryable: true }
-        );
+        return fail("RATE_LIMITED", {
+          userMessage: "レート制限に達しました。しばらく待ってから再試行してください。",
+          retryable: true,
+          details: rl.retryAfter ? { retryAfter: rl.retryAfter } : undefined,
+        });
       }
     } catch {
       // レート制限でのストア初期化失敗時はスキップ（安全側）
@@ -120,11 +115,11 @@ export async function bulkUpdateCashStatusAction(
       .in("id", paymentIds);
 
     if (fetchError) {
-      return createServerActionError("DATABASE_ERROR", "決済レコードの取得に失敗しました。");
+      return fail("DATABASE_ERROR", { userMessage: "決済レコードの取得に失敗しました。" });
     }
 
     if (!paymentsWithEvent || paymentsWithEvent.length === 0) {
-      return createServerActionError("NOT_FOUND", "決済レコードが見つかりません。");
+      return fail("NOT_FOUND", { userMessage: "決済レコードが見つかりません。" });
     }
 
     // 権限チェック：すべての決済が同じユーザーのイベントに属していることを確認
@@ -137,7 +132,7 @@ export async function bulkUpdateCashStatusAction(
     });
 
     if (unauthorizedPayments.length > 0) {
-      return createServerActionError("FORBIDDEN", "この操作を実行する権限がありません。");
+      return fail("FORBIDDEN", { userMessage: "この操作を実行する権限がありません。" });
     }
 
     // 現金決済以外のフィルタリング
@@ -153,7 +148,7 @@ export async function bulkUpdateCashStatusAction(
     const cashPayments = paymentsWithEvent.filter((p) => p.method === "cash");
 
     if (cashPayments.length === 0) {
-      return createServerActionSuccess({
+      return ok({
         successCount: 0,
         failedCount: initialFailures.length,
         failures: initialFailures,
@@ -186,10 +181,9 @@ export async function bulkUpdateCashStatusAction(
     );
 
     if (rpcError) {
-      return createServerActionError(
-        "DATABASE_ERROR",
-        `一括決済ステータス更新に失敗しました: ${rpcError.message}`
-      );
+      return fail("DATABASE_ERROR", {
+        userMessage: `一括決済ステータス更新に失敗しました: ${rpcError.message}`,
+      });
     }
 
     // RPC結果をレスポンス形式に変換
@@ -206,12 +200,13 @@ export async function bulkUpdateCashStatusAction(
       failures: [...initialFailures, ...rpcFailures],
     };
 
-    return createServerActionSuccess(result);
+    return ok(result);
   } catch (error) {
     if (error instanceof PaymentError) {
-      return createServerActionError(mapPaymentError(error.type), error.message);
+      return fail(mapPaymentError(error.type), { userMessage: error.message });
     }
-    return createServerActionError("INTERNAL_ERROR", "予期しないエラーが発生しました", {
+    return fail("INTERNAL_ERROR", {
+      userMessage: "予期しないエラーが発生しました",
       details: { originalError: error },
     });
   }

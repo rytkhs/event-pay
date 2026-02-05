@@ -11,7 +11,7 @@ import { RefreshCw, Home, ArrowLeft, MessageCircle, ExternalLink } from "lucide-
 
 import { Button } from "@/components/ui/button";
 
-import type { ErrorActionConfig } from "../error-types";
+import type { ErrorActionConfig } from "../types";
 
 interface ErrorActionsProps extends ErrorActionConfig {
   className?: string;

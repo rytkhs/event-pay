@@ -2,7 +2,6 @@
 
 import { revalidatePath } from "next/cache";
 import { cookies, headers } from "next/headers";
-import { redirect } from "next/navigation";
 
 import type { EmailOtpType, AuthResponse } from "@supabase/supabase-js";
 import { z } from "zod";
@@ -15,6 +14,7 @@ import {
   type LockoutResult,
   type LockoutStatus,
 } from "@core/auth-security";
+import { fail, ok, type ActionResult } from "@core/errors/adapters/server-actions";
 import { logger } from "@core/logging/app-logger";
 import { sendSlackText } from "@core/notification/slack";
 import { enforceRateLimit, buildKey, POLICIES } from "@core/rate-limit/index";
@@ -24,8 +24,6 @@ import { handleServerError } from "@core/utils/error-handler.server";
 import { extractClientIdFromGaCookie } from "@core/utils/ga-cookie";
 import { getClientIPFromHeaders } from "@core/utils/ip-detection";
 import { formatUtcToJst } from "@core/utils/timezone";
-
-import type { ActionResult } from "@/types/action-result";
 
 // バリデーションスキーマ
 const loginSchema = z.object({
@@ -114,11 +112,10 @@ export async function loginAction(formData: FormData): Promise<ActionResult<{ us
     if (!result.success) {
       // タイミング攻撃対策: バリデーションエラー時も一定時間待機
       await TimingAttackProtection.addConstantDelay();
-      return {
-        success: false,
+      return fail("VALIDATION_ERROR", {
+        userMessage: "入力内容を確認してください",
         fieldErrors: result.error.flatten().fieldErrors,
-        error: "入力内容を確認してください",
-      };
+      });
     }
 
     const { email, password } = result.data;
@@ -132,10 +129,7 @@ export async function loginAction(formData: FormData): Promise<ActionResult<{ us
     } catch {
       // sanitizeError
       await TimingAttackProtection.addConstantDelay();
-      return {
-        success: false,
-        error: "入力内容を確認してください",
-      };
+      return fail("VALIDATION_ERROR", { userMessage: "入力内容を確認してください" });
     }
 
     // レート制限チェック（ip + emailHash の AND）
@@ -149,10 +143,10 @@ export async function loginAction(formData: FormData): Promise<ActionResult<{ us
       });
       if (!rateLimitResult.allowed) {
         await TimingAttackProtection.addConstantDelay();
-        return {
-          success: false,
-          error: "ログイン試行回数が上限に達しました。しばらく時間をおいてからお試しください",
-        };
+        return fail("RATE_LIMITED", {
+          userMessage: "ログイン試行回数が上限に達しました。しばらく時間をおいてからお試しください",
+          retryable: true,
+        });
       }
     } catch (rateLimitError) {
       logger.warn("Rate limit check failed", {
@@ -169,10 +163,9 @@ export async function loginAction(formData: FormData): Promise<ActionResult<{ us
       await AccountLockoutService.checkLockoutStatus(sanitizedEmail);
     if (lockoutStatus.isLocked) {
       await TimingAttackProtection.normalizeResponseTime(async () => {}, 300);
-      return {
-        success: false,
-        error: `アカウントがロックされています。${lockoutStatus.lockoutExpiresAt ? formatUtcToJst(lockoutStatus.lockoutExpiresAt, "HH:mm") : ""}頃に再試行してください。`,
-      };
+      return fail("FORBIDDEN", {
+        userMessage: `アカウントがロックされています。${lockoutStatus.lockoutExpiresAt ? formatUtcToJst(lockoutStatus.lockoutExpiresAt, "HH:mm") : ""}頃に再試行してください。`,
+      });
     }
     const supabase = createClient();
 
@@ -187,10 +180,9 @@ export async function loginAction(formData: FormData): Promise<ActionResult<{ us
 
     if (!authResult) {
       await TimingAttackProtection.addConstantDelay();
-      return {
-        success: false,
-        error: "ログイン処理中にエラーが発生しました",
-      };
+      return fail("LOGIN_UNEXPECTED_ERROR", {
+        userMessage: "ログイン処理中にエラーが発生しました",
+      });
     }
     const { data: signInData, error: signInError } = authResult as AuthResponse;
 
@@ -210,10 +202,9 @@ export async function loginAction(formData: FormData): Promise<ActionResult<{ us
       // アカウントロックアウトが発生した場合
       if (lockoutResult.isLocked) {
         await TimingAttackProtection.addConstantDelay();
-        return {
-          success: false,
-          error: `アカウントがロックされました。しばらく時間をおいてからお試しください。`,
-        };
+        return fail("FORBIDDEN", {
+          userMessage: "アカウントがロックされました。しばらく時間をおいてからお試しください。",
+        });
       }
 
       // 未確認メールエラーの特別処理
@@ -224,11 +215,11 @@ export async function loginAction(formData: FormData): Promise<ActionResult<{ us
         typeof (signInError as any).message === "string" &&
         (signInError as any).message === "Email not confirmed"
       ) {
-        return {
-          success: false,
-          error: "メールアドレスの確認が必要です。",
+        return fail("LOGIN_FAILED", {
+          userMessage: "メールアドレスの確認が必要です。",
           redirectUrl: `/verify-email?email=${encodeURIComponent(sanitizedEmail)}`,
-        };
+          needsVerification: true,
+        });
       }
 
       // ユーザー列挙攻撃対策: 統一されたエラーメッセージ
@@ -243,10 +234,7 @@ export async function loginAction(formData: FormData): Promise<ActionResult<{ us
         errorMessage += ` (残り${remaining}回の試行でアカウントがロックされます)`;
       }
 
-      return {
-        success: false,
-        error: errorMessage,
-      };
+      return fail("LOGIN_FAILED", { userMessage: errorMessage });
     }
 
     // ログイン成功: 失敗回数とロックをクリア
@@ -290,12 +278,10 @@ export async function loginAction(formData: FormData): Promise<ActionResult<{ us
     );
 
     // ログイン成功（メール確認済み）
-    return {
-      success: true,
-      data: { user: signInData?.user },
-      message: "ログインしました",
-      redirectUrl: "/dashboard",
-    };
+    return ok(
+      { user: signInData?.user },
+      { message: "ログインしました", redirectUrl: "/dashboard" }
+    );
   } catch (error) {
     handleServerError("LOGIN_UNEXPECTED_ERROR", {
       action: "loginActionError",
@@ -306,10 +292,7 @@ export async function loginAction(formData: FormData): Promise<ActionResult<{ us
     });
     // タイミング攻撃対策: エラー時も一定時間確保
     await TimingAttackProtection.addConstantDelay();
-    return {
-      success: false,
-      error: "ログイン処理中にエラーが発生しました",
-    };
+    return fail("LOGIN_UNEXPECTED_ERROR", { userMessage: "ログイン処理中にエラーが発生しました" });
   }
 }
 
@@ -323,11 +306,10 @@ export async function registerAction(formData: FormData): Promise<ActionResult<{
 
     if (!result.success) {
       await TimingAttackProtection.addConstantDelay();
-      return {
-        success: false,
+      return fail("VALIDATION_ERROR", {
+        userMessage: "入力内容を確認してください",
         fieldErrors: result.error.flatten().fieldErrors,
-        error: "入力内容を確認してください",
-      };
+      });
     }
 
     const { name, email, password } = result.data;
@@ -348,10 +330,10 @@ export async function registerAction(formData: FormData): Promise<ActionResult<{
       });
       if (!rateLimitResult.allowed) {
         await TimingAttackProtection.addConstantDelay();
-        return {
-          success: false,
-          error: "登録試行回数が上限に達しました。しばらく時間をおいてからお試しください",
-        };
+        return fail("RATE_LIMITED", {
+          userMessage: "登録試行回数が上限に達しました。しばらく時間をおいてからお試しください",
+          retryable: true,
+        });
       }
     } catch (rateLimitError) {
       logger.warn("Rate limit check failed during registration", {
@@ -382,10 +364,9 @@ export async function registerAction(formData: FormData): Promise<ActionResult<{
     }, 400);
 
     if (!registrationResult) {
-      return {
-        success: false,
-        error: "登録処理中にエラーが発生しました",
-      };
+      return fail("REGISTRATION_UNEXPECTED_ERROR", {
+        userMessage: "登録処理中にエラーが発生しました",
+      });
     }
     const { data: signUpData, error: signUpError } = registrationResult as AuthResponse;
 
@@ -400,6 +381,8 @@ export async function registerAction(formData: FormData): Promise<ActionResult<{
 
       // ユーザー列挙攻撃対策: 詳細なエラー情報を隠す
       let errorMessage = "登録処理中にエラーが発生しました";
+      let errorCode: "ALREADY_EXISTS" | "RATE_LIMITED" | "REGISTRATION_UNEXPECTED_ERROR" =
+        "REGISTRATION_UNEXPECTED_ERROR";
 
       if (
         typeof (signUpError as unknown) === "object" &&
@@ -410,15 +393,17 @@ export async function registerAction(formData: FormData): Promise<ActionResult<{
         if ((signUpError as any).message.includes("already registered")) {
           // 既存ユーザー情報の漏洩を防ぐため、統一されたメッセージ
           errorMessage = "このメールアドレスは既に登録されています";
+          errorCode = "ALREADY_EXISTS";
         } else if ((signUpError as any).message.includes("rate limit")) {
           errorMessage = "送信回数の上限に達しました。しばらく時間をおいてからお試しください";
+          errorCode = "RATE_LIMITED";
         }
       }
 
-      return {
-        success: false,
-        error: errorMessage,
-      };
+      return fail(errorCode, {
+        userMessage: errorMessage,
+        retryable: errorCode === "RATE_LIMITED",
+      });
     }
 
     // Database Triggerがpublic.usersプロファイルを自動作成
@@ -493,13 +478,14 @@ export async function registerAction(formData: FormData): Promise<ActionResult<{
     );
 
     // 登録成功（メール確認が必要）
-    return {
-      success: true,
-      data: { user: signUpData?.user },
-      needsVerification: true,
-      message: "登録が完了しました。確認メールを送信しました。",
-      redirectUrl: `/verify-otp?email=${encodeURIComponent(sanitizedEmail)}`,
-    };
+    return ok(
+      { user: signUpData?.user },
+      {
+        needsVerification: true,
+        message: "登録が完了しました。確認メールを送信しました。",
+        redirectUrl: `/verify-otp?email=${encodeURIComponent(sanitizedEmail)}`,
+      }
+    );
   } catch (error) {
     handleServerError("REGISTRATION_UNEXPECTED_ERROR", {
       action: "registerActionError",
@@ -509,10 +495,9 @@ export async function registerAction(formData: FormData): Promise<ActionResult<{
       },
     });
     await TimingAttackProtection.addConstantDelay();
-    return {
-      success: false,
-      error: "登録処理中にエラーが発生しました",
-    };
+    return fail("REGISTRATION_UNEXPECTED_ERROR", {
+      userMessage: "登録処理中にエラーが発生しました",
+    });
   }
 }
 
@@ -525,11 +510,10 @@ export async function verifyOtpAction(formData: FormData): Promise<ActionResult>
     const result = verifyOtpSchema.safeParse(rawData);
 
     if (!result.success) {
-      return {
-        success: false,
+      return fail("VALIDATION_ERROR", {
+        userMessage: "入力内容を確認してください",
         fieldErrors: result.error.flatten().fieldErrors,
-        error: "入力内容を確認してください",
-      };
+      });
     }
 
     const { email, otp, type } = result.data;
@@ -551,16 +535,16 @@ export async function verifyOtpAction(formData: FormData): Promise<ActionResult>
       });
 
       let errorMessage = "確認コードが正しくありません";
+      let errorCode: "OTP_INVALID" | "OTP_EXPIRED" = "OTP_INVALID";
       if ((verifiedError as any)?.message?.includes("expired")) {
         errorMessage = "確認コードが無効、もしくは有効期限が切れています";
+        errorCode = "OTP_EXPIRED";
       } else if ((verifiedError as any)?.message?.includes("invalid")) {
         errorMessage = "無効な確認コードです";
+        errorCode = "OTP_INVALID";
       }
 
-      return {
-        success: false,
-        error: errorMessage,
-      };
+      return fail(errorCode, { userMessage: errorMessage });
     }
 
     // タイプに応じてリダイレクト先を決定
@@ -581,11 +565,7 @@ export async function verifyOtpAction(formData: FormData): Promise<ActionResult>
       message = "アカウント登録が完了しました";
     }
 
-    return {
-      success: true,
-      message,
-      redirectUrl,
-    };
+    return ok(undefined, { message, redirectUrl });
   } catch (error) {
     handleServerError("OTP_UNEXPECTED_ERROR", {
       action: "verifyOtpActionError",
@@ -594,10 +574,7 @@ export async function verifyOtpAction(formData: FormData): Promise<ActionResult>
         error_message: error instanceof Error ? error.message : String(error),
       },
     });
-    return {
-      success: false,
-      error: "確認処理中にエラーが発生しました",
-    };
+    return fail("OTP_UNEXPECTED_ERROR", { userMessage: "確認処理中にエラーが発生しました" });
   }
 }
 
@@ -610,10 +587,7 @@ export async function resendOtpAction(formData: FormData): Promise<ActionResult>
     const type = formData.get("type")?.toString() || "signup";
 
     if (!email || !z.string().email().safeParse(email).success) {
-      return {
-        success: false,
-        error: "有効なメールアドレスを入力してください",
-      };
+      return fail("VALIDATION_ERROR", { userMessage: "有効なメールアドレスを入力してください" });
     }
 
     // レート制限チェック（ip + emailHash の AND）
@@ -627,10 +601,10 @@ export async function resendOtpAction(formData: FormData): Promise<ActionResult>
         policy: POLICIES["auth.emailResend"],
       });
       if (!rateLimitResult.allowed) {
-        return {
-          success: false,
-          error: "送信回数の上限に達しました。しばらく時間をおいてからお試しください",
-        };
+        return fail("RATE_LIMITED", {
+          userMessage: "送信回数の上限に達しました。しばらく時間をおいてからお試しください",
+          retryable: true,
+        });
       }
     } catch (rateLimitError) {
       logger.warn("Rate limit check failed during email resend", {
@@ -655,10 +629,9 @@ export async function resendOtpAction(formData: FormData): Promise<ActionResult>
       });
     } else {
       // phone_change, sms などは現在サポートしていない
-      return {
-        success: false,
-        error: "このタイプの再送信は現在サポートしていません",
-      };
+      return fail("INVALID_REQUEST", {
+        userMessage: "このタイプの再送信は現在サポートしていません",
+      });
     }
 
     const { error } = result;
@@ -673,22 +646,18 @@ export async function resendOtpAction(formData: FormData): Promise<ActionResult>
       });
 
       if ((error as any)?.message?.includes("rate limit")) {
-        return {
-          success: false,
-          error: "送信回数の上限に達しました。しばらく時間をおいてからお試しください",
-        };
+        return fail("RATE_LIMITED", {
+          userMessage: "送信回数の上限に達しました。しばらく時間をおいてからお試しください",
+          retryable: true,
+        });
       }
 
-      return {
-        success: false,
-        error: "再送信中にエラーが発生しました",
-      };
+      return fail("RESEND_OTP_UNEXPECTED_ERROR", {
+        userMessage: "再送信中にエラーが発生しました",
+      });
     }
 
-    return {
-      success: true,
-      message: "確認コードを再送信しました",
-    };
+    return ok(undefined, { message: "確認コードを再送信しました" });
   } catch (error) {
     handleServerError("RESEND_OTP_UNEXPECTED_ERROR", {
       action: "resendOtpActionError",
@@ -697,10 +666,9 @@ export async function resendOtpAction(formData: FormData): Promise<ActionResult>
         error_message: error instanceof Error ? error.message : String(error),
       },
     });
-    return {
-      success: false,
-      error: "再送信中にエラーが発生しました",
-    };
+    return fail("RESEND_OTP_UNEXPECTED_ERROR", {
+      userMessage: "再送信中にエラーが発生しました",
+    });
   }
 }
 
@@ -714,11 +682,10 @@ export async function resetPasswordAction(formData: FormData): Promise<ActionRes
 
     if (!result.success) {
       await TimingAttackProtection.addConstantDelay();
-      return {
-        success: false,
+      return fail("VALIDATION_ERROR", {
+        userMessage: "有効なメールアドレスを入力してください",
         fieldErrors: result.error.flatten().fieldErrors,
-        error: "有効なメールアドレスを入力してください",
-      };
+      });
     }
 
     let { email } = result.data;
@@ -729,10 +696,7 @@ export async function resetPasswordAction(formData: FormData): Promise<ActionRes
     } catch {
       // sanitizeError
       await TimingAttackProtection.addConstantDelay();
-      return {
-        success: false,
-        error: "有効なメールアドレスを入力してください",
-      };
+      return fail("VALIDATION_ERROR", { userMessage: "有効なメールアドレスを入力してください" });
     }
     // レート制限チェック（ip + emailHash の AND）
     try {
@@ -745,11 +709,11 @@ export async function resetPasswordAction(formData: FormData): Promise<ActionRes
       });
       if (!rateLimitResult.allowed) {
         await TimingAttackProtection.addConstantDelay();
-        return {
-          success: false,
-          error:
+        return fail("RATE_LIMITED", {
+          userMessage:
             "パスワードリセット試行回数が上限に達しました。しばらく時間をおいてからお試しください",
-        };
+          retryable: true,
+        });
       }
     } catch (rateLimitError) {
       logger.warn("Rate limit check failed during password reset", {
@@ -781,12 +745,11 @@ export async function resetPasswordAction(formData: FormData): Promise<ActionRes
     }
 
     // セキュリティ上、成功・失敗に関わらず同じメッセージを返す（ユーザー列挙攻撃対策）
-    return {
-      success: true,
+    return ok(undefined, {
       message: "パスワードリセット用の確認コードを送信しました（登録済みのアドレスの場合）",
       needsVerification: true,
       redirectUrl: `/verify-otp?email=${encodeURIComponent(email)}&type=recovery`,
-    };
+    });
   } catch (error) {
     handleServerError("RESET_PASSWORD_UNEXPECTED_ERROR", {
       action: "resetPasswordActionError",
@@ -796,10 +759,9 @@ export async function resetPasswordAction(formData: FormData): Promise<ActionRes
       },
     });
     await TimingAttackProtection.addConstantDelay();
-    return {
-      success: false,
-      error: "処理中にエラーが発生しました",
-    };
+    return fail("RESET_PASSWORD_UNEXPECTED_ERROR", {
+      userMessage: "処理中にエラーが発生しました",
+    });
   }
 }
 
@@ -812,11 +774,10 @@ export async function updatePasswordAction(formData: FormData): Promise<ActionRe
     const result = updatePasswordSchema.safeParse(rawData);
 
     if (!result.success) {
-      return {
-        success: false,
+      return fail("VALIDATION_ERROR", {
+        userMessage: "入力内容を確認してください",
         fieldErrors: result.error.flatten().fieldErrors,
-        error: "入力内容を確認してください",
-      };
+      });
     }
 
     const { password } = result.data;
@@ -825,11 +786,10 @@ export async function updatePasswordAction(formData: FormData): Promise<ActionRe
     // セッション存在チェック
     const { data: userData } = await supabase.auth.getUser();
     if (!userData?.user) {
-      return {
-        success: false,
-        error: "セッションが期限切れです。確認コードを再入力してください",
+      return fail("TOKEN_EXPIRED", {
+        userMessage: "セッションが期限切れです。確認コードを再入力してください",
         redirectUrl: "/verify-otp",
-      };
+      });
     }
 
     const { error: updateError } = await supabase.auth.updateUser({
@@ -842,17 +802,12 @@ export async function updatePasswordAction(formData: FormData): Promise<ActionRe
         action: "updatePasswordFailed",
         actorType: "user",
       });
-      return {
-        success: false,
-        error: "パスワードの更新に失敗しました",
-      };
+      return fail("UPDATE_PASSWORD_UNEXPECTED_ERROR", {
+        userMessage: "パスワードの更新に失敗しました",
+      });
     }
 
-    return {
-      success: true,
-      message: "パスワードが更新されました",
-      redirectUrl: "/dashboard",
-    };
+    return ok(undefined, { message: "パスワードが更新されました", redirectUrl: "/dashboard" });
   } catch (error) {
     handleServerError("UPDATE_PASSWORD_UNEXPECTED_ERROR", {
       action: "updatePasswordActionError",
@@ -861,10 +816,9 @@ export async function updatePasswordAction(formData: FormData): Promise<ActionRe
         error_message: error instanceof Error ? error.message : String(error),
       },
     });
-    return {
-      success: false,
-      error: "処理中にエラーが発生しました",
-    };
+    return fail("UPDATE_PASSWORD_UNEXPECTED_ERROR", {
+      userMessage: "処理中にエラーが発生しました",
+    });
   }
 }
 
@@ -927,6 +881,8 @@ export async function logoutAction(): Promise<ActionResult> {
         }
       })()
     );
+
+    return ok(undefined, { message: "ログアウトしました", redirectUrl: "/login" });
   } catch (error) {
     handleServerError("LOGOUT_UNEXPECTED_ERROR", {
       action: "logoutActionError",
@@ -936,6 +892,9 @@ export async function logoutAction(): Promise<ActionResult> {
       },
     });
     await TimingAttackProtection.addConstantDelay();
+    return fail("LOGOUT_UNEXPECTED_ERROR", {
+      userMessage: "ログアウト処理中にエラーが発生しました。再度お試しください。",
+      redirectUrl: "/login",
+    });
   }
-  redirect("/login");
 }

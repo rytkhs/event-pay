@@ -3,12 +3,23 @@
  * Core層のポートインターフェースにPayments機能を提供するアダプタ
  */
 
-import { registerPaymentPort } from "@core/ports/payments";
+import {
+  registerPaymentPort,
+  PaymentPort,
+  CreateStripeSessionParams as CoreCreateStripeSessionParams,
+  CreateCashPaymentParams as CoreCreateCashPaymentParams,
+  UpdatePaymentStatusParams as CoreUpdatePaymentStatusParams,
+  PaymentError as CorePaymentError,
+  PaymentErrorType,
+  ErrorHandlingResult as CoreErrorHandlingResult,
+} from "@core/ports/payments";
 import { SecureSupabaseClientFactory } from "@core/security/secure-client-factory.impl";
 import { AdminReason } from "@core/security/secure-client-factory.types";
 
 import { updateCashStatusAction, bulkUpdateCashStatusAction } from "../actions";
 import { PaymentService, PaymentErrorHandler } from "../services";
+import { ERROR_HANDLING_BY_TYPE } from "../services/error-mapping";
+import { isPaymentStatus } from "../types";
 
 // Payment Actions Implementation
 const paymentActionsImpl = {
@@ -16,8 +27,11 @@ const paymentActionsImpl = {
   bulkUpdateCashStatus: bulkUpdateCashStatusAction,
 };
 
-const paymentServiceImpl = {
-  async createStripeSession(params: any) {
+const paymentServiceImpl: Pick<
+  PaymentPort,
+  "createStripeSession" | "createCashPayment" | "updatePaymentStatus"
+> = {
+  async createStripeSession(params: CoreCreateStripeSessionParams) {
     // Stripe決済セッション作成時はAdminクライアントを使用（RLS回避のため）
     const factory = SecureSupabaseClientFactory.create();
     const adminClient = await factory.createAuditedAdminClient(
@@ -29,7 +43,7 @@ const paymentServiceImpl = {
     return paymentService.createStripeSession(params);
   },
 
-  async createCashPayment(params: any) {
+  async createCashPayment(params: CoreCreateCashPaymentParams) {
     // 現金決済レコード作成は管理者（service_role）クライアントで実行
     const factory = SecureSupabaseClientFactory.create();
     const adminClient = await factory.createAuditedAdminClient(
@@ -41,7 +55,23 @@ const paymentServiceImpl = {
     return paymentService.createCashPayment(params);
   },
 
-  async updatePaymentStatus(params: any) {
+  async updatePaymentStatus(params: CoreUpdatePaymentStatusParams) {
+    // Validate status
+    if (!isPaymentStatus(params.status)) {
+      throw new CorePaymentError(
+        PaymentErrorType.VALIDATION_ERROR,
+        `Invalid payment status: ${params.status}`
+      );
+    }
+
+    const paidAt = params.paidAt ? new Date(params.paidAt) : undefined;
+    if (paidAt && Number.isNaN(paidAt.getTime())) {
+      throw new CorePaymentError(
+        PaymentErrorType.VALIDATION_ERROR,
+        `Invalid paidAt: ${params.paidAt}`
+      );
+    }
+
     // 決済ステータス更新は管理者（service_role）クライアントで実行
     const factory = SecureSupabaseClientFactory.create();
     const adminClient = await factory.createAuditedAdminClient(
@@ -50,7 +80,17 @@ const paymentServiceImpl = {
     );
     const errorHandler = new PaymentErrorHandler();
     const paymentService = new PaymentService(adminClient, errorHandler);
-    await paymentService.updatePaymentStatus(params);
+
+    // Convert Core params (Primitives) to Feature params (Domain Objects)
+    await paymentService.updatePaymentStatus({
+      paymentId: params.paymentId,
+      status: params.status,
+      paidAt,
+      stripePaymentIntentId: params.stripePaymentIntentId,
+      expectedVersion: params.expectedVersion,
+      userId: params.userId,
+      notes: params.notes,
+    });
   },
 };
 
@@ -58,26 +98,46 @@ const paymentServiceImpl = {
 let paymentErrorHandlerInstance: PaymentErrorHandler | null = null;
 
 const paymentErrorHandlerImpl = {
-  handleError(error: unknown) {
+  handleError(error: unknown): CoreErrorHandlingResult {
     if (!paymentErrorHandlerInstance) {
       paymentErrorHandlerInstance = new PaymentErrorHandler();
     }
-    // Convert PaymentError to ErrorHandlingResult
-    const paymentError =
-      error && typeof error === "object" && "type" in error
-        ? (error as any)
-        : {
-            type: "UNKNOWN_ERROR",
-            message: error instanceof Error ? error.message : "Unknown error",
-            details: error,
-          };
+
+    let paymentError: CorePaymentError;
+
+    if (error instanceof CorePaymentError) {
+      paymentError = error;
+    } else if (
+      error &&
+      typeof error === "object" &&
+      "type" in error &&
+      typeof (error as any).type === "string"
+    ) {
+      // Reconstitute CorePaymentError from structured object
+      paymentError = new CorePaymentError(
+        (error as any).type,
+        (error as any).message || "Unknown error",
+        (error as any).cause ?? (error as any).details ?? error
+      );
+    } else {
+      // Fallback for unknown errors
+      paymentError = new CorePaymentError(
+        PaymentErrorType.UNKNOWN_ERROR,
+        error instanceof Error ? error.message : "Unknown error",
+        error
+      );
+    }
+
+    // Determine user message
+    const userMessage =
+      ERROR_HANDLING_BY_TYPE[paymentError.type]?.userMessage ??
+      (error instanceof CorePaymentError || (error && typeof error === "object" && "type" in error)
+        ? "お支払い処理中にエラーが発生しました。"
+        : "予期しないエラーが発生しました。");
 
     return {
       error: paymentError,
-      userMessage:
-        error && typeof error === "object" && "type" in error
-          ? "お支払い処理中にエラーが発生しました。"
-          : "予期しないエラーが発生しました。",
+      userMessage,
     };
   },
 

@@ -26,6 +26,18 @@ jest.mock("@supabase/supabase-js", () => ({
   })),
 }));
 
+// @core/security をモック化
+jest.mock("@core/security", () => ({
+  AdminReason: {
+    ERROR_COLLECTION: "error_collection",
+  },
+  createSecureSupabaseClient: jest.fn(() => ({
+    createAuditedAdminClient: jest.fn().mockResolvedValue({
+      from: mockSupabaseFrom,
+    }),
+  })),
+}));
+
 describe("エラー収集API統合テスト (/api/errors)", () => {
   // モック関数をテストスコープで定義
   let mockLimit: jest.MockedFunction<any>;
@@ -133,9 +145,7 @@ describe("エラー収集API統合テスト (/api/errors)", () => {
     const response = await errorHandler(request);
 
     // レスポンス検証
-    expect(response.status).toBe(200);
-    const responseData = await response.json();
-    expect(responseData).toEqual({ success: true });
+    expect(response.status).toBe(204);
 
     // DB insert が呼ばれたことを検証
     expect(mockSupabaseInsert).toHaveBeenCalledTimes(1);
@@ -144,14 +154,14 @@ describe("エラー収集API統合テスト (/api/errors)", () => {
     // insert の引数を検証
     expect(insertArgs).toMatchObject({
       log_level: "error",
-      log_category: "client_error",
+      log_category: "system",
       actor_type: "user",
       actor_identifier: "test@example.com",
       user_id: "test-user-id",
       action: "client_error",
       message: "This is a test error message",
       outcome: "failure",
-      error_code: "TEST_ERROR",
+      error_code: "UNKNOWN_ERROR",
       error_message: "This is a test error message",
       error_stack: "Error: Test\n    at test.ts:10:5",
     });
@@ -161,8 +171,8 @@ describe("エラー収集API統合テスト (/api/errors)", () => {
       breadcrumbs: [],
       environment: "test",
     });
-    expect(insertArgs.tags).toContain("client_error");
-    expect(insertArgs.tags).toContain("severity:error");
+    expect(insertArgs.tags).toContain("system");
+    expect(insertArgs.tags).toContain("severity:medium");
   });
 
   /**
@@ -195,9 +205,7 @@ describe("エラー収集API統合テスト (/api/errors)", () => {
     const response = await errorHandler(request);
 
     // レスポンス検証
-    expect(response.status).toBe(200);
-    const responseData = await response.json();
-    expect(responseData).toEqual({ success: true, deduplicated: true });
+    expect(response.status).toBe(204);
 
     // DB insert が呼ばれていないことを検証
     expect(mockSupabaseInsert).not.toHaveBeenCalled();
@@ -229,9 +237,19 @@ describe("エラー収集API統合テスト (/api/errors)", () => {
     const response = await errorHandler(request);
 
     // レスポンス検証
-    expect(response.status).toBe(400);
+    // レスポンス検証
+    // respondWithCode("VALIDATION_ERROR") は 422 Unprocessable Entity を返す
+    expect(response.status).toBe(422);
     const responseData = await response.json();
-    expect(responseData).toEqual({ error: "Invalid request body" });
+
+    // Problem Details 形式の検証
+    expect(responseData).toMatchObject({
+      type: "https://minnano-shukin.com/errors/validation-error",
+      status: 422,
+      code: "VALIDATION_ERROR",
+      detail: "Invalid request body",
+      instance: "/api/errors",
+    });
 
     // DB insert が呼ばれていないことを検証
     expect(mockSupabaseInsert).not.toHaveBeenCalled();
@@ -268,9 +286,18 @@ describe("エラー収集API統合テスト (/api/errors)", () => {
     const response = await errorHandler(request);
 
     // レスポンス検証
+    // レスポンス検証
     expect(response.status).toBe(429);
     const responseData = await response.json();
-    expect(responseData).toEqual({ error: "Too many requests" });
+
+    // Problem Details 形式の検証
+    expect(responseData).toMatchObject({
+      type: "https://minnano-shukin.com/errors/rate-limited",
+      status: 429,
+      code: "RATE_LIMITED",
+      detail: "Too many requests",
+      instance: "/api/errors",
+    });
 
     // ヘッダー検証
     expect(response.headers.get("Retry-After")).toBe("60");
@@ -346,15 +373,22 @@ describe("エラー収集API統合テスト (/api/errors)", () => {
     const response = await errorHandler(request);
 
     // レスポンス検証
+    // レスポンス検証
     expect(response.status).toBe(500);
     const responseData = await response.json();
 
+    // Problem Details 形式の検証
+    expect(responseData).toMatchObject({
+      type: "https://minnano-shukin.com/errors/database-error",
+      status: 500,
+      code: "DATABASE_ERROR",
+      detail: "Failed to save log", // センシティブ情報は含まない
+      instance: "/api/errors",
+    });
+
     // エラー詳細が含まれていないことを確認（セキュリティ）
-    expect(responseData).toEqual({ error: "Failed to save log" });
-    expect(responseData).not.toHaveProperty("details");
-    expect(responseData).not.toHaveProperty("message");
     expect(JSON.stringify(responseData)).not.toContain("Database connection failed");
-    expect(JSON.stringify(responseData)).not.toContain("Sensitive");
+    expect(JSON.stringify(responseData)).not.toContain("Sensitive database error details");
 
     // Cache-Controlヘッダーの検証
     expect(response.headers.get("Cache-Control")).toBe("no-store");

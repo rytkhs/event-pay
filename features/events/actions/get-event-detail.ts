@@ -1,24 +1,18 @@
 import { redirect } from "next/navigation";
 
+import { type ActionResult, fail, ok } from "@core/errors/adapters/server-actions";
 import { logger } from "@core/logging/app-logger";
 import { createClient } from "@core/supabase/server";
 import type { EventDetail as DetailType } from "@core/types/models";
-import {
-  createServerActionError,
-  createServerActionSuccess,
-  type ServerActionResult,
-} from "@core/types/server-actions";
 import { deriveEventStatus } from "@core/utils/derive-event-status";
 import { validateEventId } from "@core/validation/event-id";
 
-export async function getEventDetailAction(
-  eventId: string
-): Promise<ServerActionResult<DetailType>> {
+export async function getEventDetailAction(eventId: string): Promise<ActionResult<DetailType>> {
   try {
     // イベントIDのバリデーション
     const validation = validateEventId(eventId);
     if (!validation.success) {
-      return createServerActionError("EVENT_INVALID_ID", "無効なイベントID形式です");
+      return fail("EVENT_INVALID_ID", { userMessage: "無効なイベントID形式です" });
     }
 
     const supabase = createClient();
@@ -60,16 +54,15 @@ export async function getEventDetailAction(
 
     if (error) {
       if (error.code === "PGRST301") {
-        return createServerActionError(
-          "EVENT_ACCESS_DENIED",
-          "このイベントへのアクセス権限がありません"
-        );
+        return fail("EVENT_ACCESS_DENIED", {
+          userMessage: "このイベントへのアクセス権限がありません",
+        });
       }
-      return createServerActionError("DATABASE_ERROR", "データベースエラーが発生しました");
+      return fail("DATABASE_ERROR", { userMessage: "データベースエラーが発生しました" });
     }
 
     if (!eventDetail) {
-      return createServerActionError("EVENT_NOT_FOUND", "イベントが見つかりません");
+      return fail("EVENT_NOT_FOUND", { userMessage: "イベントが見つかりません" });
     }
 
     // セキュリティ強化：get_event_creator_name()関数を使用してcreator_nameを取得
@@ -105,9 +98,10 @@ export async function getEventDetailAction(
       creator_name: creatorName || "Unknown User",
     };
 
-    return createServerActionSuccess(result);
+    return ok(result);
   } catch (_error) {
-    return createServerActionError("INTERNAL_ERROR", "予期しないエラーが発生しました", {
+    return fail("INTERNAL_ERROR", {
+      userMessage: "予期しないエラーが発生しました",
       retryable: true,
     });
   }

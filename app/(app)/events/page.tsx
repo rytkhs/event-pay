@@ -81,18 +81,18 @@ async function EventsContent({ searchParams }: EventsContentProps) {
 
   if (!result.success) {
     // 認証エラーの場合はログインページにリダイレクト
-    if (result.error.includes("認証")) {
+    if (result.error?.userMessage?.includes("認証")) {
       redirect("/login");
     }
 
     // その他のエラー
     return (
       <InlineErrorCard
-        code="500"
+        code="INTERNAL_ERROR"
         category="business"
         severity="medium"
         title="イベントの読み込みエラー"
-        message={result.error}
+        message={result.error?.userMessage}
         description="イベント一覧の取得に失敗しました。ページを再読み込みしてください。"
         showRetry={true}
         compact={false}
@@ -102,8 +102,8 @@ async function EventsContent({ searchParams }: EventsContentProps) {
 
   return (
     <EventListWithFilters
-      events={result.data}
-      totalCount={result.totalCount ?? 0}
+      events={result.data?.items ?? []}
+      totalCount={result.data?.totalCount ?? 0}
       initialSortBy={sortBy}
       initialSortOrder={sortOrder}
       initialStatusFilter={statusFilter}

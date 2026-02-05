@@ -4,9 +4,9 @@ import { getDetailedAccountStatusAction } from "@features/stripe-connect/server"
 export async function ConnectAccountCtaWrapper() {
   const result = await getDetailedAccountStatusAction();
 
-  if (!result.success || !result.status) {
+  if (!result.success || !result.data?.status) {
     return null;
   }
 
-  return <ConnectAccountCta status={result.status} />;
+  return <ConnectAccountCta status={result.data.status} />;
 }

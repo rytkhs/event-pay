@@ -101,12 +101,6 @@ jest.mock("@core/services", () => ({
   })),
 }));
 
-// モック: core-bindings（PaymentServiceの登録を回避）
-jest.mock("@features/payments/core-bindings", () => ({
-  __esModule: true,
-  registerPaymentImplementations: jest.fn(),
-}));
-
 describe("createGuestStripeSessionAction - Connectアカウント未設定/無効化", () => {
   const validInput = {
     guestToken: "gst_12345678901234567890123456789012",
@@ -125,19 +119,17 @@ describe("createGuestStripeSessionAction - Connectアカウント未設定/無�
     latestPaymentResponse = { data: null, error: null };
   });
 
-  it("Connectアカウント未設定時はRESOURCE_CONFLICTエラーを返す", async () => {
+  it("Connectアカウント未設定時はCONNECT_ACCOUNT_NOT_FOUNDエラーを返す", async () => {
     connectAccountResponse = { data: null, error: null };
 
     const result = await createGuestStripeSessionAction(validInput as any);
 
     expect(result.success).toBe(false);
-    // @ts-expect-error jest 実行時の型は緩く扱う
-    expect(result.code).toBe("RESOURCE_CONFLICT");
-    // @ts-expect-error 同上
-    expect(result.error).toContain("決済の準備ができません");
+    expect(result.error?.code).toBe("CONNECT_ACCOUNT_NOT_FOUND");
+    expect(result.error?.userMessage).toContain("オンライン決済の準備ができていません");
   });
 
-  it("payouts_enabled=false時はRESOURCE_CONFLICTエラーを返す", async () => {
+  it("payouts_enabled=false時はCONNECT_ACCOUNT_RESTRICTEDエラーを返す", async () => {
     connectAccountResponse = {
       data: { stripe_account_id: "acct_1SNbjmCtoNNhKnPZ", payouts_enabled: false },
       error: null,
@@ -146,9 +138,7 @@ describe("createGuestStripeSessionAction - Connectアカウント未設定/無�
     const result = await createGuestStripeSessionAction(validInput as any);
 
     expect(result.success).toBe(false);
-    // @ts-expect-error jest 実行時の型は緩く扱う
-    expect(result.code).toBe("RESOURCE_CONFLICT");
-    // @ts-expect-error 同上
-    expect(result.error).toContain("主催者のお支払い受付が一時的に制限されています");
+    expect(result.error?.code).toBe("CONNECT_ACCOUNT_RESTRICTED");
+    expect(result.error?.userMessage).toContain("現在オンライン決済がご利用いただけません");
   });
 });

@@ -4,6 +4,9 @@
  *
  */
 
+import { jest } from "@jest/globals";
+
+import * as DestinationChargesModule from "@core/stripe/destination-charges";
 import { SecureSupabaseClientFactory } from "@core/security/secure-client-factory.impl";
 import { AdminReason } from "@core/security/secure-client-factory.types";
 import { getPaymentService } from "@core/services";
@@ -102,6 +105,23 @@ describe("🚨 決済完了済みガード 仕様書適合性検証", () => {
 
   beforeEach(async () => {
     await resetPaymentState(testAttendance.id);
+
+    // Stripe API モック
+    jest
+      .spyOn(DestinationChargesModule, "createDestinationCheckoutSession")
+      .mockImplementation(async (params: any) => {
+        const sessionId = `cs_test_mock_${Date.now()}`;
+        return {
+          id: sessionId,
+          url: `https://checkout.stripe.com/c/pay/${sessionId}`,
+          payment_status: "unpaid",
+          status: "open",
+        };
+      });
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
   });
 
   describe("waived ステータスの終端系扱い検証", () => {
@@ -137,31 +157,7 @@ describe("🚨 決済完了済みガード 仕様書適合性検証", () => {
       if (!testPassed) {
         // 仕様書違反の詳細報告
         console.error(`
-🚨🚨🚨 SPECIFICATION VIOLATION DETECTED 🚨🚨🚨
 
-【検出された問題】
-waived ステータスの決済が存在するにも関わらず、完了済みガードが作動しませんでした。
-
-【仕様書の要求】
-- waived は終端系ステータス（ランク: 28）として定義
-- 終端系ステータスの決済が存在する場合、新規決済セッション作成を拒否
-- エラータイプ: PaymentErrorType.PAYMENT_ALREADY_EXISTS
-- エラーメッセージ: "この参加に対する決済は既に完了済みです"
-
-【実装の問題箇所】
-ファイル: features/payments/services/service.ts
-行: 176
-現在の実装: .in("status", ["paid", "received", "refunded"])
-
-【必要な修正】
-.in("status", ["paid", "received", "refunded", "waived"])
-
-【修正理由】
-仕様書では waived は決済が免除された状態として終端系に分類されており、
-これ以上の決済処理は不要であることを示します。
-したがって、waived の決済が存在する場合も完了済みガードが作動すべきです。
-
-【実際の結果】
 ${
   actualError
     ? `予期しないエラー: ${actualError.name} - ${actualError.message}`
@@ -257,9 +253,9 @@ ${
 ${violations.map((v) => `- ${v}`).join("\n")}
 
 【修正が必要な箇所】
-features/payments/services/service.ts:176行目
-現在: .in("status", ["paid", "received", "refunded"])
-修正: .in("status", ["paid", "received", "refunded", "waived"])
+features/payments/services/stripe-session/types.ts の TERMINAL_PAYMENT_STATUSES
+および ensure-payment-record の終端検索ロジック
+（"waived" を含める）
 
 【すべての終端系ステータスの結果】
 ${terminalStatuses.map((s) => `${s}: ${results[s] ? "✅" : "❌"}`).join("\n")}

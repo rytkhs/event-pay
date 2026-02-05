@@ -14,7 +14,7 @@ import { NextResponse } from "next/server";
 import { Client } from "@upstash/qstash";
 import type Stripe from "stripe";
 
-import { createProblemResponse } from "@core/api/problem-details";
+import { respondWithCode, respondWithProblem } from "@core/errors/server";
 import { logger } from "@core/logging/app-logger";
 import { generateSecureUuid } from "@core/security/crypto";
 import {
@@ -24,7 +24,6 @@ import {
 import { getStripe, getConnectWebhookSecrets } from "@core/stripe/client";
 import { StripeWebhookSignatureVerifier } from "@core/stripe/webhook-signature-verifier";
 import { getEnv } from "@core/utils/cloudflare-env";
-import { handleServerError } from "@core/utils/error-handler.server";
 import { getClientIP } from "@core/utils/ip-detection";
 
 import { ensureFeaturesRegistered } from "@/app/_init/feature-registrations";
@@ -43,6 +42,7 @@ export async function POST(request: NextRequest) {
 
   const _clientIP = getClientIP(request);
   const requestId = request.headers.get("x-request-id") || generateSecureUuid();
+  const baseLogContext = { category: "stripe_webhook" as const, actorType: "webhook" as const };
   const connectLogger = logger.withContext({
     category: "stripe_webhook",
     action: "stripe_connect_webhook_receive",
@@ -68,9 +68,11 @@ export async function POST(request: NextRequest) {
           userAgent: request.headers.get("user-agent") || undefined,
           outcome: "failure",
         });
-        return createProblemResponse("FORBIDDEN", {
+        return respondWithCode("FORBIDDEN", {
           instance: "/api/webhooks/stripe-connect",
           detail: "IP not allowed",
+          correlationId: requestId,
+          logContext: { ...baseLogContext, action: "webhook_ip_rejected" },
         });
       }
     }
@@ -80,9 +82,11 @@ export async function POST(request: NextRequest) {
 
     if (!signature) {
       connectLogger.warn("Connect webhook signature missing");
-      return createProblemResponse("MISSING_PARAMETER", {
+      return respondWithCode("MISSING_PARAMETER", {
         instance: "/api/webhooks/stripe-connect",
         detail: "Missing signature",
+        correlationId: requestId,
+        logContext: { ...baseLogContext, action: "signature_missing" },
       });
     }
 
@@ -97,9 +101,11 @@ export async function POST(request: NextRequest) {
     const verification = await verifier.verifySignature({ payload, signature });
     if (!verification.isValid || !verification.event) {
       connectLogger.warn("Connect webhook signature verification failed");
-      return createProblemResponse("INVALID_REQUEST", {
+      return respondWithCode("INVALID_REQUEST", {
         instance: "/api/webhooks/stripe-connect",
         detail: "Invalid signature",
+        correlationId: requestId,
+        logContext: { ...baseLogContext, action: "signature_invalid" },
       });
     }
     const event: Stripe.Event = verification.event;
@@ -173,20 +179,15 @@ export async function POST(request: NextRequest) {
           testMode: true,
         });
       } catch (error) {
-        handleServerError("CONNECT_WEBHOOK_UNEXPECTED_ERROR", {
-          category: "stripe_webhook",
-          action: "stripe_connect_webhook_sync_fail",
-          additionalData: {
-            event_id: event.id,
-            event_type: event.type,
-            error: error instanceof Error ? error.message : "Unknown error",
-            request_id: requestId,
-          },
-        });
-
-        return createProblemResponse("INTERNAL_ERROR", {
+        return respondWithProblem(error, {
           instance: "/api/webhooks/stripe-connect",
           detail: "Connect webhook processing failed in test mode",
+          correlationId: requestId,
+          defaultCode: "WEBHOOK_UNEXPECTED_ERROR",
+          logContext: {
+            ...baseLogContext,
+            action: "stripe_connect_webhook_sync_fail",
+          },
         });
       }
     }
@@ -225,30 +226,29 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     // 詳細なエラー情報をログに出力
-    handleServerError("CONNECT_WEBHOOK_UNEXPECTED_ERROR", {
-      category: "stripe_webhook",
-      action: "stripe_connect_webhook_error",
-      additionalData: {
-        error_name: error instanceof Error ? error.name : "Unknown",
-        error_message: error instanceof Error ? error.message : String(error),
-        error_stack: error instanceof Error ? error.stack : undefined,
-        request_id: requestId,
-      },
-    });
-
-    // 失敗時は 500 を返し Stripe に再送してもらう
-    return createProblemResponse("INTERNAL_ERROR", {
+    return respondWithProblem(error, {
       instance: "/api/webhooks/stripe-connect",
       detail: "Connect webhook handler failed",
+      correlationId: requestId,
+      defaultCode: "WEBHOOK_UNEXPECTED_ERROR",
+      logContext: {
+        category: "stripe_webhook",
+        actorType: "webhook",
+        action: "stripe_connect_webhook_error",
+      },
     });
   }
 }
 
 // GETメソッドは許可しない
 export async function GET() {
-  return createProblemResponse("INVALID_REQUEST", {
+  return respondWithCode("METHOD_NOT_ALLOWED", {
     instance: "/api/webhooks/stripe-connect",
     detail: "Method not allowed",
-    status: 405,
+    logContext: {
+      category: "stripe_webhook",
+      actorType: "anonymous",
+      action: "method_not_allowed",
+    },
   });
 }

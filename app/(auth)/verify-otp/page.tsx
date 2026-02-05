@@ -92,10 +92,10 @@ function VerifyOtpContent() {
 
       const result = await verifyOtpAction(formData);
 
-      if (result?.error) {
-        setError(result.error);
+      if (!result.success) {
+        setError(result.error.userMessage);
         form.setValue("otp", ""); // エラー時にOTPをクリア
-      } else if (result?.success && result?.redirectUrl) {
+      } else if (result.redirectUrl) {
         setSuccess(true);
         router.refresh(); // クライアント側のセッション状態を更新
         const redirectUrl = result.redirectUrl;
@@ -125,8 +125,8 @@ function VerifyOtpContent() {
 
       const result = await resendOtpAction(formData);
 
-      if (result.error) {
-        setError(result.error);
+      if (!result.success) {
+        setError(result.error.userMessage);
       } else {
         setResendDisabled(true);
         setCountdown(60);

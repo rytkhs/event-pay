@@ -10,7 +10,7 @@ import { cn } from "@core/utils";
 
 import { Card } from "@/components/ui/card";
 
-import type { ErrorPageProps } from "../error-types";
+import type { ErrorPageProps } from "../types";
 
 import { ErrorActions } from "./ErrorActions";
 import { ErrorIcon } from "./ErrorIcon";
@@ -186,7 +186,7 @@ export function NotificationErrorCard({
   return (
     <Card className={cn("p-4 border-destructive/20 bg-destructive/10", className)}>
       <div className="flex items-start space-x-3">
-        <ErrorIcon category="client" size="sm" className="flex-shrink-0 mt-0.5" />
+        <ErrorIcon category="system" size="sm" className="flex-shrink-0 mt-0.5" />
         <div className="flex-1 min-w-0">
           <h3 className="text-sm font-medium text-destructive mb-1">{title}</h3>
           <p className="text-sm text-destructive/80 mb-3">{message}</p>

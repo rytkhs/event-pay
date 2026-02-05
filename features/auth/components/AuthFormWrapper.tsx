@@ -2,18 +2,17 @@
 
 import { ReactNode, useEffect, useRef } from "react";
 
+import type { ActionResult } from "@core/errors/adapters/server-actions";
 import { useFocusManagement } from "@core/hooks/useFocusManagement";
 
 import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
-
-import { ServerActionResult } from "../hooks/useAuthForm";
 
 import { AuthFormMessages } from "./AuthFormMessages";
 
 interface AuthFormWrapperProps {
   title: string;
   subtitle?: string;
-  state: ServerActionResult;
+  state: ActionResult;
   isPending: boolean;
   children: ReactNode;
   action?: string | ((formData: FormData) => void | Promise<void>);
@@ -41,6 +40,7 @@ export function AuthFormWrapper({
   const formRef = useRef<HTMLFormElement>(null);
   const { focusFirstError, restoreFocus } = useFocusManagement();
   const previousActiveElement = useRef<HTMLElement | null>(null);
+  const error = state.success ? undefined : state.error;
 
   // フォーム送信前に現在のフォーカス要素を保存
   useEffect(() => {
@@ -51,22 +51,22 @@ export function AuthFormWrapper({
 
   // エラー発生時に最初のエラーフィールドにフォーカス
   useEffect(() => {
-    if (!state.success && state.fieldErrors && Object.keys(state.fieldErrors).length > 0) {
-      const errorFields = Object.keys(state.fieldErrors);
+    if (error?.fieldErrors) {
+      const errorFields = Object.keys(error.fieldErrors);
       focusFirstError(errorFields);
     }
-  }, [state.fieldErrors, state.success, focusFirstError]);
+  }, [error?.fieldErrors, focusFirstError]);
 
   // フォーム送信完了後のフォーカス復元
   useEffect(() => {
     if (!isPending && previousActiveElement.current) {
       // 送信が完了し、エラーがない場合はフォーカスを復元
-      if (state.success || !state.fieldErrors) {
+      if (state.success || !error?.fieldErrors) {
         restoreFocus(previousActiveElement.current);
       }
       previousActiveElement.current = null;
     }
-  }, [isPending, state.success, state.fieldErrors, restoreFocus]);
+  }, [isPending, state.success, error?.fieldErrors, restoreFocus]);
   // 最大幅のスタイル
   const maxWidthStyles = {
     sm: "max-w-sm",
@@ -101,7 +101,7 @@ export function AuthFormWrapper({
                 }
                 className={`space-y-4 md:space-y-6 ${className}`}
                 noValidate
-                aria-describedby={state.error ? "form-error" : undefined}
+                aria-describedby={error?.userMessage ? "form-error" : undefined}
                 data-testid={testId}
               >
                 <AuthFormMessages state={state} />

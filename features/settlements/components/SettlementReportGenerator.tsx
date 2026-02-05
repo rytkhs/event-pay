@@ -5,6 +5,7 @@ import React, { useState } from "react";
 import { CalculatorIcon, FileTextIcon, AlertTriangleIcon } from "lucide-react";
 
 import { useToast } from "@core/contexts/toast-context";
+import type { ActionResult } from "@core/errors/adapters/server-actions";
 import { formatUtcToJstByType } from "@core/utils/timezone";
 
 import { Button } from "@/components/ui/button";
@@ -18,7 +19,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-import type { GenerateSettlementReportSuccess, GenerateSettlementReportFailure } from "../types";
+import type { GenerateSettlementReportPayload } from "../types";
 
 interface SettlementReportGeneratorProps {
   availableEvents?: {
@@ -29,9 +30,7 @@ interface SettlementReportGeneratorProps {
     hasExistingReport?: boolean;
   }[];
   onReportGenerated?: (reportId: string) => void;
-  onGenerateReport: (
-    formData: FormData
-  ) => Promise<GenerateSettlementReportSuccess | GenerateSettlementReportFailure>;
+  onGenerateReport: (formData: FormData) => Promise<ActionResult<GenerateSettlementReportPayload>>;
 }
 
 export function SettlementReportGenerator({
@@ -65,8 +64,8 @@ export function SettlementReportGenerator({
       const result = await onGenerateReport(formData);
 
       if (result.success) {
-        // alreadyExistsプロパティは通常のアクションでのみ存在する
-        const hasAlreadyExists = "alreadyExists" in result && result.alreadyExists === true;
+        // alreadyExistsプロパティは通常のアクションでのみデータ内に存在する
+        const hasAlreadyExists = result.data?.alreadyExists === true;
         if (hasAlreadyExists) {
           toast({
             title: "レポート生成完了",
@@ -80,8 +79,8 @@ export function SettlementReportGenerator({
         }
 
         // 生成完了コールバック
-        if (onReportGenerated && result.reportId) {
-          onReportGenerated(result.reportId);
+        if (onReportGenerated && result.data?.reportId) {
+          onReportGenerated(result.data.reportId);
         }
 
         // フォームリセット
@@ -89,7 +88,7 @@ export function SettlementReportGenerator({
       } else {
         toast({
           title: "レポート生成エラー",
-          description: result.error,
+          description: result.error.userMessage,
           variant: "destructive",
         });
       }

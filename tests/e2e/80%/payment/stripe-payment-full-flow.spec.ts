@@ -2,7 +2,7 @@
  * Stripe決済の完全フロー E2Eテスト（Stripe CLI統合版）
  *
  * このテストは以下の完全なフローを検証します：
- * 1. イベント作成（マルチステップフォーム）
+ * 1. イベント作成
  * 2. 招待リンクの取得
  * 3. ゲストとして参加表明
  * 4. Checkout Session作成とURLへの遷移
@@ -124,10 +124,27 @@ test.describe("Stripe決済 完全フロー", () => {
       const dialog = page.getByRole("dialog").filter({ visible: true }).last();
       await expect(dialog).toBeVisible();
 
-      // 3. 日付の選択 (カレンダー内のボタン)
-      const day = date.getDate();
-      const month = date.getMonth() + 1;
+      // 3. 正しい月まで移動
       const year = date.getFullYear();
+      const month = date.getMonth() + 1;
+      const day = date.getDate();
+      const targetMonthYear = `${year}年${month}月`;
+
+      for (let i = 0; i < 12; i++) {
+        const currentText = await dialog.getByRole("status").textContent();
+        if (currentText?.includes(targetMonthYear)) {
+          break;
+        }
+        const nextButton = dialog.getByRole("button", { name: /次|Next/i });
+        if (await nextButton.isVisible()) {
+          await nextButton.click();
+          await page.waitForTimeout(300);
+        } else {
+          break;
+        }
+      }
+
+      // 4. 日付の選択 (カレンダー内のボタン)
       const datePattern = `${year}年${month}月${day}日`;
       const dayButton = dialog.getByRole("button", { name: new RegExp(datePattern) });
 

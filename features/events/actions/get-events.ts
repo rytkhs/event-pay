@@ -1,11 +1,8 @@
+import { fail, ok, type ActionResult } from "@core/errors/adapters/server-actions";
+import type { ErrorCode } from "@core/errors/types";
 import { generateSecureUuid } from "@core/security/crypto";
 import { createClient } from "@core/supabase/server";
 import { SortBy, SortOrder, StatusFilter, PaymentFilter, DateFilter } from "@core/types/events";
-import {
-  createServerActionError,
-  type ServerActionResult,
-  type ErrorCode,
-} from "@core/types/server-actions";
 import { deriveEventStatus } from "@core/utils/derive-event-status";
 import { handleServerError } from "@core/utils/error-handler.server";
 import { convertJstDateToUtcRange } from "@core/utils/timezone";
@@ -43,7 +40,11 @@ type GetEventsOptions = {
   sortOrder?: SortOrder;
 };
 
-type GetEventsResult = ServerActionResult<Event[]> & { totalCount?: number; hasMore?: boolean };
+type GetEventsResult = ActionResult<{
+  items: Event[];
+  totalCount: number;
+  hasMore: boolean;
+}>;
 
 // ソート項目をSupabaseのカラム名にマッピング
 function getOrderColumn(sortBy: SortBy): string | null {
@@ -77,34 +78,32 @@ export async function getEventsAction(options: GetEventsOptions = {}): Promise<G
 
     // パラメータバリデーション
     if (sortOrder && !["asc", "desc"].includes(sortOrder)) {
-      return createServerActionError(
-        "VALIDATION_ERROR",
-        "sortOrderは'asc'または'desc'である必要があります"
-      );
+      return fail("VALIDATION_ERROR", {
+        userMessage: "sortOrderは'asc'または'desc'である必要があります",
+      });
     }
 
     if (sortBy && !["date", "created_at", "attendances_count", "fee"].includes(sortBy)) {
-      return createServerActionError(
-        "VALIDATION_ERROR",
-        "sortByは'date', 'created_at', 'attendances_count', 'fee'のいずれかである必要があります"
-      );
+      return fail("VALIDATION_ERROR", {
+        userMessage:
+          "sortByは'date', 'created_at', 'attendances_count', 'fee'のいずれかである必要があります",
+      });
     }
 
     if (
       statusFilter &&
       !["all", "upcoming", "ongoing", "past", "canceled"].includes(statusFilter)
     ) {
-      return createServerActionError(
-        "VALIDATION_ERROR",
-        "statusFilterは'all', 'upcoming', 'ongoing', 'past', 'canceled'のいずれかである必要があります"
-      );
+      return fail("VALIDATION_ERROR", {
+        userMessage:
+          "statusFilterは'all', 'upcoming', 'ongoing', 'past', 'canceled'のいずれかである必要があります",
+      });
     }
 
     if (paymentFilter && !["all", "free", "paid"].includes(paymentFilter)) {
-      return createServerActionError(
-        "VALIDATION_ERROR",
-        "paymentFilterは'all', 'free', 'paid'のいずれかである必要があります"
-      );
+      return fail("VALIDATION_ERROR", {
+        userMessage: "paymentFilterは'all', 'free', 'paid'のいずれかである必要があります",
+      });
     }
 
     // 日付フィルターのバリデーション
@@ -113,7 +112,7 @@ export async function getEventsAction(options: GetEventsOptions = {}): Promise<G
       if (!dateValidation.success) {
         const errorMessage =
           dateValidation.error.errors[0]?.message || "日付フィルターの形式が正しくありません";
-        return createServerActionError("VALIDATION_ERROR", errorMessage);
+        return fail("VALIDATION_ERROR", { userMessage: errorMessage });
       }
     }
 
@@ -123,11 +122,11 @@ export async function getEventsAction(options: GetEventsOptions = {}): Promise<G
     } = await supabase.auth.getUser();
 
     if (authError) {
-      return createServerActionError("UNAUTHORIZED", "認証が必要です");
+      return fail("UNAUTHORIZED", { userMessage: "認証が必要です" });
     }
 
     if (!user) {
-      return createServerActionError("UNAUTHORIZED", "認証が必要です");
+      return fail("UNAUTHORIZED", { userMessage: "認証が必要です" });
     }
 
     // 型安全なフィルター条件を構築
@@ -321,12 +320,11 @@ export async function getEventsAction(options: GetEventsOptions = {}): Promise<G
 
     const hasMore = totalCount ? offset + limit < totalCount : false;
 
-    return {
-      success: true,
-      data: eventsData,
+    return ok({
+      items: eventsData,
       totalCount: totalCount || 0,
       hasMore,
-    };
+    });
   } catch (error) {
     const errorDetails = handleServerError(error, {
       category: "event_management",
@@ -338,7 +336,8 @@ export async function getEventsAction(options: GetEventsOptions = {}): Promise<G
       },
     });
 
-    return createServerActionError(errorDetails.code as ErrorCode, errorDetails.userMessage, {
+    return fail(errorDetails.code as ErrorCode, {
+      userMessage: errorDetails.userMessage,
       correlationId,
       retryable: errorDetails.retryable,
     });

@@ -1,17 +1,13 @@
 import { redirect } from "next/navigation";
 
+import { type ActionResult, fail, ok } from "@core/errors/adapters/server-actions";
 import { logger } from "@core/logging/app-logger";
 import { createClient } from "@core/supabase/server";
 import { handleServerError } from "@core/utils/error-handler.server";
 import { isNextRedirectError } from "@core/utils/next";
 
 import { createUserStripeConnectService } from "../services";
-
-export interface ExpressDashboardResult {
-  success: boolean;
-  error?: string;
-  loginUrl?: string;
-}
+import type { ExpressDashboardAccessPayload } from "../types";
 
 /**
  * Stripe Express Dashboard ログインリンクを生成するServer Action
@@ -101,7 +97,9 @@ export async function createExpressDashboardLoginLinkAction(): Promise<void> {
 /**
  * Express Dashboard アクセス可能状態をチェックするServer Action
  */
-export async function checkExpressDashboardAccessAction(): Promise<ExpressDashboardResult> {
+export async function checkExpressDashboardAccessAction(): Promise<
+  ActionResult<ExpressDashboardAccessPayload>
+> {
   let userId: string | undefined;
   try {
     // 1. 認証チェック
@@ -113,10 +111,7 @@ export async function checkExpressDashboardAccessAction(): Promise<ExpressDashbo
     userId = user?.id;
 
     if (authError || !user) {
-      return {
-        success: false,
-        error: "認証が必要です",
-      };
+      return fail("UNAUTHORIZED", { userMessage: "認証が必要です" });
     }
 
     // 2. StripeConnectServiceを初期化
@@ -126,14 +121,19 @@ export async function checkExpressDashboardAccessAction(): Promise<ExpressDashbo
     const account = await stripeConnectService.getConnectAccountByUser(user.id);
 
     if (!account) {
-      return {
-        success: false,
-        error: "Stripe Connectアカウントが設定されていません",
-      };
+      return ok({
+        hasAccount: false,
+      });
     }
 
-    return { success: true };
+    return ok({
+      hasAccount: true,
+      accountId: account.stripe_account_id,
+    });
   } catch (error) {
+    if (isNextRedirectError(error)) {
+      throw error;
+    }
     // デバッグログ: エラーの詳細情報を出力
     handleServerError(error, {
       category: "stripe_connect",
@@ -141,9 +141,8 @@ export async function checkExpressDashboardAccessAction(): Promise<ExpressDashbo
       userId,
     });
 
-    return {
-      success: false,
-      error: "アクセス状態の確認に失敗しました",
-    };
+    return fail("INTERNAL_ERROR", {
+      userMessage: "アクセス状態の確認に失敗しました",
+    });
   }
 }

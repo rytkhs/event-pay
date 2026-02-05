@@ -9,9 +9,9 @@ import { Loader2, Save, CreditCard, AlertCircle, CheckCircle } from "lucide-reac
 import { ga4Client } from "@core/analytics/ga4-client";
 import { PAYMENT_METHOD_LABELS } from "@core/constants/payment-methods";
 import { useToast } from "@core/contexts/toast-context";
+import type { ActionResult } from "@core/errors/adapters/server-actions";
 import { useErrorHandler } from "@core/hooks/use-error-handler";
 import { ATTENDANCE_STATUS_LABELS } from "@core/types/enums";
-import type { ServerActionResult } from "@core/types/server-actions";
 import { deriveEventStatus } from "@core/utils/derive-event-status";
 import { getModificationRestrictionReason } from "@core/utils/guest-restrictions";
 import { type GuestAttendanceData } from "@core/utils/guest-token";
@@ -42,7 +42,7 @@ interface GuestManagementFormProps {
 
 type UpdateGuestAttendanceAction = (
   formData: FormData
-) => Promise<ServerActionResult<UpdateGuestAttendanceData>>;
+) => Promise<ActionResult<UpdateGuestAttendanceData>>;
 
 /**
  * Connect Account関連エラーの詳細メッセージを取得
@@ -50,13 +50,13 @@ type UpdateGuestAttendanceAction = (
 function getConnectAccountErrorMessage(errorCode?: string): string {
   switch (errorCode) {
     case "CONNECT_ACCOUNT_NOT_FOUND":
-      return "決済の準備ができません。主催者のお支払い受付設定に不備があります。現金決済をご利用いただくか、主催者にお問い合わせください。";
+      return "オンライン決済の準備ができていません。現金決済をご利用いただくか、しばらく時間をおいて再度お試しください。";
     case "CONNECT_ACCOUNT_RESTRICTED":
-      return "主催者のお支払い受付が一時的に制限されています。現金決済をご利用いただくか、主催者にお問い合わせください。";
+      return "現在オンライン決済がご利用いただけません。現金決済をご利用いただくか、しばらく時間をおいて再度お試しください。";
     case "STRIPE_CONFIG_ERROR":
       return "決済システムに一時的な問題が発生しています。現金決済をご利用いただくか、しばらく時間をおいて再度お試しください。";
     default:
-      return "オンライン決済に問題が発生しました。現金決済をご利用いただくか、主催者にお問い合わせください。";
+      return "オンライン決済に問題が発生しました。現金決済をご利用いただくか、しばらく時間をおいて再度お試しください。";
   }
 }
 
@@ -189,14 +189,15 @@ export function GuestManagementForm({
       } else {
         // Connect Account関連エラーかどうかを判定
         const isConnectAccountError =
-          result.code === "CONNECT_ACCOUNT_NOT_FOUND" ||
-          result.code === "CONNECT_ACCOUNT_RESTRICTED" ||
-          result.code === "STRIPE_CONFIG_ERROR" ||
-          (result.details as any)?.connectAccountIssue === true;
+          result.error?.code === "CONNECT_ACCOUNT_NOT_FOUND" ||
+          result.error?.code === "CONNECT_ACCOUNT_RESTRICTED" ||
+          result.error?.code === "STRIPE_CONFIG_ERROR" ||
+          (result.error?.details as { connectAccountIssue?: boolean } | undefined)
+            ?.connectAccountIssue === true;
 
         if (isConnectAccountError) {
           // Connect Account問題時は詳細メッセージと代替案を表示
-          const connectErrorMessage = getConnectAccountErrorMessage(result.code);
+          const connectErrorMessage = getConnectAccountErrorMessage(result.error?.code);
           setError(connectErrorMessage);
 
           // 自動的に現金決済に切り替える提案
@@ -213,7 +214,9 @@ export function GuestManagementForm({
             }, 1000);
           }
         } else {
-          setError(result.error || "参加状況の更新に失敗しました。もう一度お試しください。");
+          setError(
+            result.error?.userMessage || "参加状況の更新に失敗しました。もう一度お試しください。"
+          );
         }
       }
     } catch (error) {
@@ -267,7 +270,7 @@ export function GuestManagementForm({
               </span>
               {getModificationRestrictionMessage(attendance)}
               <br />
-              ご質問やご不明点がある場合は、主催者にお問い合わせください。
+              ご質問やご不明点がある場合は、しばらく経ってから再度お試しいただくか、サポート窓口までご連絡ください。
             </AlertDescription>
           </Alert>
 
@@ -485,7 +488,7 @@ export function GuestManagementForm({
                             <Alert className="border-orange-200 bg-orange-50" role="alert">
                               <AlertCircle className="h-4 w-4 text-orange-600" aria-hidden="true" />
                               <AlertDescription>
-                                このイベントでは決済方法が設定されていません。主催者にお問い合わせください。
+                                このイベントでは決済方法が設定されていません。しばらく経ってから再度お試しください。
                               </AlertDescription>
                             </Alert>
                           );

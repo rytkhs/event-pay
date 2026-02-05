@@ -1,8 +1,8 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
-import { createProblemResponse } from "@core/api/problem-details";
 import { validateCronSecret, logCronActivity } from "@core/cron-auth";
+import { respondWithCode, respondWithProblem } from "@core/errors/server";
 import { EmailNotificationService } from "@core/notification/email-service";
 import { getStripe } from "@core/stripe/client";
 import { getEnv } from "@core/utils/cloudflare-env";
@@ -18,9 +18,14 @@ export const dynamic = "force-dynamic";
 export async function GET(request: NextRequest) {
   const auth = validateCronSecret(request);
   if (!auth.isValid) {
-    return createProblemResponse("UNAUTHORIZED", {
+    return respondWithCode("UNAUTHORIZED", {
       instance: "/api/cron/monitor-platform-balance",
       detail: auth.error || "Unauthorized",
+      logContext: {
+        category: "system",
+        actorType: "system",
+        action: "monitor_platform_balance_auth_fail",
+      },
     });
   }
 
@@ -70,12 +75,23 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ ok: true, belowThreshold: isBelowThreshold, ...details });
   } catch (e) {
+    const errorName = e instanceof Error ? e.name : "Unknown";
+    const errorMessage = e instanceof Error ? e.message : String(e);
     logCronActivity("error", "Failed to retrieve platform balance", {
       error: e instanceof Error ? e.message : String(e),
     });
-    return createProblemResponse("INTERNAL_ERROR", {
+    return respondWithProblem(e, {
       instance: "/api/cron/monitor-platform-balance",
       detail: "Failed to retrieve platform balance",
+      logContext: {
+        category: "system",
+        actorType: "system",
+        action: "monitor_platform_balance_failed",
+        additionalData: {
+          error_name: errorName,
+          error_message: errorMessage,
+        },
+      },
     });
   }
 }

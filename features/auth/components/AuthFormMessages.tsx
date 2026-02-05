@@ -1,7 +1,7 @@
-import { ServerActionResult } from "../hooks/useAuthForm";
+import type { ActionResult } from "@core/errors/adapters/server-actions";
 
 interface AuthFormMessagesProps {
-  state: ServerActionResult;
+  state: ActionResult;
   className?: string;
 }
 
@@ -13,33 +13,22 @@ export function AuthFormMessages({ state, className = "" }: AuthFormMessagesProp
   return (
     <div className={`space-y-2 ${className}`}>
       {/* エラーメッセージ */}
-      {state.error && (
+      {!state.success && state.error?.userMessage && (
         <div
           data-testid="error-message"
           className="text-red-600 text-sm bg-red-50 p-3 rounded border border-red-200"
           role="alert"
           aria-live="polite"
         >
-          {state.error}
+          {state.error.userMessage}
         </div>
       )}
 
       {/* 成功メッセージ */}
-      {state.message && state.success && (
+      {state.success && state.message && (
         <div
           data-testid="success-message"
           className="text-green-600 text-sm bg-green-50 p-3 rounded border border-green-200"
-          role="status"
-          aria-live="polite"
-        >
-          {state.message}
-        </div>
-      )}
-
-      {/* 情報メッセージ（成功していないが表示すべきメッセージ） */}
-      {state.message && !state.success && !state.error && (
-        <div
-          className="text-blue-600 text-sm bg-blue-50 p-3 rounded border border-blue-200"
           role="status"
           aria-live="polite"
         >

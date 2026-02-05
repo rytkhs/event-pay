@@ -11,7 +11,7 @@ import { ErrorLayout } from "@/components/errors";
 export default function InviteNotFoundPage() {
   return (
     <ErrorLayout
-      code="INVALID_INVITE"
+      code="INVITE_TOKEN_INVALID"
       category="business"
       severity="medium"
       title="無効な招待リンク"

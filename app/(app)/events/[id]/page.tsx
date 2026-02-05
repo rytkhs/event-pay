@@ -5,8 +5,13 @@ import type { Metadata } from "next";
 export const dynamic = "force-dynamic";
 
 import { getCurrentUser } from "@core/auth/auth-utils";
+import type { ActionResult } from "@core/errors/adapters/server-actions";
 import { createCachedActions } from "@core/utils/cache-helpers";
 import { handleServerError } from "@core/utils/error-handler.server";
+import type {
+  GetParticipantsResponse,
+  GetEventPaymentsResponse,
+} from "@core/validation/participant-management";
 
 import {
   getEventDetailAction,
@@ -47,19 +52,22 @@ export default async function EventDetailPage({
     const eventDetailResult = await cachedActions.getEventDetail(params.id);
 
     if (!eventDetailResult.success) {
-      if (eventDetailResult.code === "EVENT_NOT_FOUND") {
+      if (eventDetailResult.error.code === "EVENT_NOT_FOUND") {
         notFound();
       }
-      if (eventDetailResult.code === "EVENT_ACCESS_DENIED") {
+      if (eventDetailResult.error.code === "EVENT_ACCESS_DENIED") {
         redirect(`/events/${params.id}/forbidden`);
       }
-      if (eventDetailResult.code === "EVENT_INVALID_ID") {
+      if (eventDetailResult.error.code === "EVENT_INVALID_ID") {
         notFound();
       }
-      throw new Error(eventDetailResult.error);
+      throw new Error(eventDetailResult.error.userMessage);
     }
 
     const eventDetail = eventDetailResult.data;
+    if (!eventDetail) {
+      throw new Error("イベント詳細の取得に失敗しました");
+    }
 
     // 現在のユーザーを取得して主催者かどうか判定
     const currentUser = await getCurrentUser();
@@ -88,20 +96,34 @@ export default async function EventDetailPage({
       cachedActions.getEventParticipants({ eventId: params.id }),
     ];
 
-    const [paymentsRes, statsRes, participantsRes] = await Promise.all(promises);
+    const [paymentsRes, statsRes, participantsRes]: [
+      ActionResult<GetEventPaymentsResponse>,
+      ActionResult<{ attending_count: number; maybe_count: number }>,
+      ActionResult<GetParticipantsResponse>,
+    ] = await Promise.all(promises);
 
     let stats: { attending_count: number; maybe_count: number } | null = null;
-    if (statsRes?.success) {
-      stats = statsRes.data;
+    if (statsRes.success) {
+      stats = statsRes.data ?? null;
+    }
+
+    let paymentsData: GetEventPaymentsResponse | null = null;
+    if (paymentsRes.success) {
+      paymentsData = paymentsRes.data ?? null;
+    }
+
+    let participantsData: GetParticipantsResponse | null = null;
+    if (participantsRes.success) {
+      participantsData = participantsRes.data ?? null;
     }
 
     return (
       <EventManagementPage
         eventId={params.id}
         eventDetail={eventDetail}
-        paymentsData={paymentsRes}
+        paymentsData={paymentsData}
         overviewStats={stats}
-        participantsData={participantsRes}
+        participantsData={participantsData}
         searchParams={searchParams}
         updateCashStatusAction={updateCashStatusAction}
         bulkUpdateCashStatusAction={bulkUpdateCashStatusAction}
@@ -140,6 +162,22 @@ export async function generateMetadata({ params }: EventDetailPageProps): Promis
     }
 
     const eventDetail = eventDetailResult.data;
+    if (!eventDetail) {
+      return {
+        title: "イベント詳細",
+        description: "イベントの詳細情報",
+        openGraph: {
+          title: "イベント詳細",
+          description: "イベントの詳細情報",
+          type: "website",
+        },
+        twitter: {
+          card: "summary_large_image",
+          title: "イベント詳細",
+          description: "イベントの詳細情報",
+        },
+      };
+    }
     const ogImageUrl = "/og/event-default.png";
 
     return {

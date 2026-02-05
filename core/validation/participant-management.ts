@@ -84,6 +84,14 @@ export const ExportParticipantsCsvParamsSchema = z.object({
 
 export type ExportParticipantsCsvParams = z.infer<typeof ExportParticipantsCsvParamsSchema>;
 
+export const ExportParticipantsCsvResultSchema = z.object({
+  csvContent: z.string(),
+  filename: z.string(),
+  truncated: z.boolean(),
+});
+
+export type ExportParticipantsCsvResult = z.infer<typeof ExportParticipantsCsvResultSchema>;
+
 // 全件選択用（現金決済の最新レコードに限定）パラメータ
 export const GetAllCashPaymentIdsParamsSchema = z.object({
   eventId: z.string().uuid(),
@@ -101,22 +109,14 @@ export const GetAllCashPaymentIdsParamsSchema = z.object({
 
 export type GetAllCashPaymentIdsParams = z.infer<typeof GetAllCashPaymentIdsParamsSchema>;
 
-export const GetAllCashPaymentIdsResponseSchema = z
-  .object({
-    success: z.literal(true),
-    paymentIds: z.array(z.string().uuid()),
-    total: z.number().int().min(0),
-    matchedTotal: z.number().int().min(0).optional(),
-    truncated: z.boolean().optional(),
-  })
-  .or(
-    z.object({
-      success: z.literal(false),
-      error: z.string(),
-    })
-  );
+export const GetAllCashPaymentIdsResultSchema = z.object({
+  paymentIds: z.array(z.string().uuid()),
+  total: z.number().int().min(0),
+  matchedTotal: z.number().int().min(0).optional(),
+  truncated: z.boolean().optional(),
+});
 
-export type GetAllCashPaymentIdsResponse = z.infer<typeof GetAllCashPaymentIdsResponseSchema>;
+export type GetAllCashPaymentIdsResult = z.infer<typeof GetAllCashPaymentIdsResultSchema>;
 
 // 一括現金ステータス更新パラメータ
 export const BulkUpdateCashStatusParamsSchema = z.object({

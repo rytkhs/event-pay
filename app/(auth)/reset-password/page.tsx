@@ -11,6 +11,7 @@ export default function ResetPasswordPage() {
   const { state, formAction, isPending } = useAuthForm(resetPasswordAction, {
     redirectOnSuccess: true, // OTP送信成功時はverify-otpページにリダイレクト
   });
+  const error = state.success ? undefined : state.error;
 
   return (
     <AuthFormWrapper
@@ -25,7 +26,7 @@ export default function ResetPasswordPage() {
         name="email"
         label="メールアドレス"
         placeholder="登録されたメールアドレスを入力"
-        fieldErrors={state.fieldErrors?.email}
+        fieldErrors={error?.fieldErrors?.email}
         required
       />
 

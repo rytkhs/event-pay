@@ -5,7 +5,6 @@ export { createEventAction } from "./create-event";
 export { updateEventAction } from "./update-event";
 export { deleteEventAction } from "./delete-event";
 export { cancelEventAction } from "./cancel-event";
-export { getEventAttendancesAction } from "./get-event-attendances";
 export { getEventDetailAction } from "./get-event-detail";
 export { getEventParticipantsAction } from "./get-event-participants";
 export { getEventPaymentsAction } from "./get-event-payments";

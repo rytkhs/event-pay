@@ -49,7 +49,7 @@ export function EventDangerZone({ eventId, eventTitle, eventStatus }: EventDange
       } else {
         toast({
           title: "中止に失敗しました",
-          description: result.error ?? "時間をおいて再度お試しください",
+          description: result.error?.userMessage ?? "時間をおいて再度お試しください",
           variant: "destructive",
         });
       }
@@ -70,7 +70,8 @@ export function EventDangerZone({ eventId, eventTitle, eventStatus }: EventDange
       } else {
         toast({
           title: "削除に失敗しました",
-          description: result.error ?? "参加者または決済情報が存在する可能性があります",
+          description:
+            result.error?.userMessage ?? "参加者または決済情報が存在する可能性があります",
           variant: "destructive",
         });
       }

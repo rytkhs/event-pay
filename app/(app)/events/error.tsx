@@ -18,7 +18,7 @@ interface EventsErrorPageProps {
 export default function EventsErrorPage({ error, reset }: EventsErrorPageProps) {
   return (
     <ErrorLayout
-      code="500"
+      code="INTERNAL_ERROR"
       category="business"
       severity="medium"
       title="イベントの読み込みに失敗しました"

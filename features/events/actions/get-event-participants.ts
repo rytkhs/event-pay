@@ -1,7 +1,11 @@
+import { z } from "zod";
+
 import { verifyEventAccess, handleDatabaseError } from "@core/auth/event-authorization";
+import { type ActionResult, ok, fail, zodFail } from "@core/errors/adapters/server-actions";
 import { logger } from "@core/logging/app-logger";
 import { createClient } from "@core/supabase/server";
 import { handleServerError } from "@core/utils/error-handler.server";
+import { isNextRedirectError } from "@core/utils/next";
 import {
   GetParticipantsParamsSchema,
   type GetParticipantsResponse,
@@ -17,13 +21,16 @@ import {
  */
 export async function getEventParticipantsAction(
   params: unknown
-): Promise<GetParticipantsResponse> {
+): Promise<ActionResult<GetParticipantsResponse>> {
   try {
     // パラメータバリデーション（eventIdのみ）
-    const validatedParams = GetParticipantsParamsSchema.parse(params);
-    const { eventId } = validatedParams;
+    const parseResult = GetParticipantsParamsSchema.safeParse(params);
+    if (!parseResult.success) {
+      return zodFail(parseResult.error);
+    }
+    const { eventId } = parseResult.data;
 
-    // 共通の認証・権限確認処理
+    // 共通の認可・権限確認処理
     const { user, eventId: validatedEventId } = await verifyEventAccess(eventId);
 
     const supabase = createClient();
@@ -124,8 +131,15 @@ export async function getEventParticipantsAction(
       outcome: "success",
     });
 
-    return { participants };
+    return ok({ participants });
   } catch (error) {
+    if (isNextRedirectError(error)) {
+      throw error;
+    }
+    if (error instanceof z.ZodError) {
+      return zodFail(error);
+    }
+
     handleServerError(error, {
       category: "attendance",
       action: "get_event_participants",
@@ -135,9 +149,8 @@ export async function getEventParticipantsAction(
       },
     });
 
-    if (error instanceof Error) {
-      throw error;
-    }
-    throw new Error("Failed to get event participants");
+    return fail("INTERNAL_ERROR", {
+      userMessage: "参加者の取得中にエラーが発生しました",
+    });
   }
 }

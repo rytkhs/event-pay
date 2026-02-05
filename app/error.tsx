@@ -34,8 +34,7 @@ export default function RootErrorPage({ error, reset }: ErrorPageProps) {
 
   return (
     <ErrorLayout
-      code="500"
-      category="server"
+      code="INTERNAL_ERROR"
       severity="high"
       title="エラーが発生しました"
       message="申し訳ございません。予期しないエラーが発生しました"

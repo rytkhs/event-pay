@@ -11,8 +11,8 @@ import { z } from "zod";
 import type { EventCreatedParams } from "@core/analytics/event-types";
 import { ga4Client } from "@core/analytics/ga4-client";
 import { useToast } from "@core/contexts/toast-context";
+import type { ActionResult } from "@core/errors/adapters/server-actions";
 import { logger } from "@core/logging/app-logger";
-import type { ServerActionResult } from "@core/types/server-actions";
 import { handleClientError } from "@core/utils/error-handler.client";
 import { safeParseNumber, parseFee } from "@core/utils/number-parsers";
 import { convertDatetimeLocalToUtc } from "@core/utils/timezone";
@@ -242,7 +242,7 @@ function toDatetimeLocalString(date: Date): string {
  */
 type EventRow = Database["public"]["Tables"]["events"]["Row"];
 
-export type CreateEventAction = (formData: FormData) => Promise<ServerActionResult<EventRow>>;
+export type CreateEventAction = (formData: FormData) => Promise<ActionResult<EventRow>>;
 
 type UseEventFormParams = {
   createEventAction: CreateEventAction;
@@ -435,10 +435,14 @@ export const useEventForm = ({
         const result = await createEventAction(formData);
 
         if (result.success) {
+          const createdEvent = result.data;
+          if (!createdEvent) {
+            throw new Error("イベント作成のレスポンスが不正です");
+          }
           // GA4イベント送信: event_created
           try {
             const eventCreatedParams: EventCreatedParams = {
-              event_id: result.data.id,
+              event_id: createdEvent.id,
               event_title: data.title,
               event_date: data.date,
               amount: parseFee(data.fee),
@@ -471,13 +475,13 @@ export const useEventForm = ({
 
           // ユーザーが成功を認識できるよう、短いディレイ後にリダイレクト
           setTimeout(() => {
-            router.push(`/events/${result.data.id}`);
+            router.push(`/events/${createdEvent.id}`);
           }, 500);
         } else {
           // エラー時はフォームにエラーを設定
           form.setError("root", {
             type: "server",
-            message: result.error || "エラーが発生しました。もう一度お試しください。",
+            message: result.error?.userMessage || "エラーが発生しました。もう一度お試しください。",
           });
         }
       } catch (error) {

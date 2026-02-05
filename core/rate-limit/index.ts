@@ -2,7 +2,7 @@ import "server-only";
 
 import { NextRequest, NextResponse } from "next/server";
 
-import { createProblemResponse } from "@core/api/problem-details";
+import { respondWithCode } from "@core/errors/server";
 import { logger } from "@core/logging/app-logger";
 import { getEnv } from "@core/utils/cloudflare-env";
 
@@ -29,6 +29,12 @@ function shouldFailClosed(globalFailClosed: boolean, isPublicPaymentScope: boole
 
 export async function enforceRateLimit(opts: EnforceOptions): Promise<EnforceResult> {
   const { keys, policy } = opts;
+
+  // E2Eテストのバイパス用
+  if (getEnv().SKIP_RATE_LIMIT === "true") {
+    return { allowed: true };
+  }
+
   const allowIfStoreError = opts.allowIfStoreError ?? getEnv().RL_FAIL_CLOSED !== "true";
 
   // ペナルティ優先
@@ -177,13 +183,8 @@ export function withRateLimit(
     const keys = Array.isArray(keyInput) ? keyInput : [keyInput];
     const result = await enforceRateLimit({ keys, policy });
     if (!result.allowed) {
-      const res = createProblemResponse("RATE_LIMITED", {
-        instance: req.nextUrl.pathname,
-        retryable: true,
-      });
       // Retry-After は必ず付与（わからない場合は policy.blockMs を採用）
       const retryAfterSec = result.retryAfter ?? Math.ceil(policy.blockMs / 1000);
-      res.headers.set("Retry-After", String(retryAfterSec));
       // ログ: key_hint（識別子を短縮表示）
       const keyHints = keys.map((k) => {
         const parts = k.split(":");
@@ -192,15 +193,22 @@ export function withRateLimit(
         const identifier = parts[3] || k.slice(-8);
         return `${dimension}:${identifier}`;
       });
-      logger.warn("rate limited", {
-        category: "security",
-        action: "rate_limit_blocked",
-        actor_type: "anonymous",
-        scope: policy.scope,
-        retry_after: retryAfterSec,
-        key_hint: keyHints,
-        outcome: "blocked" as any,
+      const res = respondWithCode("RATE_LIMITED", {
+        instance: req.nextUrl.pathname,
+        logContext: {
+          category: "security",
+          action: "rate_limit_blocked",
+          actorType: "anonymous",
+          outcome: "failure",
+          additionalData: {
+            blocked: true,
+            scope: policy.scope,
+            retry_after: retryAfterSec,
+            key_hint: keyHints,
+          },
+        },
       });
+      res.headers.set("Retry-After", String(retryAfterSec));
       return res;
     }
     return null;

@@ -8,6 +8,7 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 
 import { useToast } from "@core/contexts/toast-context";
+import type { ActionResult } from "@core/errors/adapters/server-actions";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -20,7 +21,6 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { PasswordInput } from "@/components/ui/password-input";
-import type { ActionResult } from "@/types/action-result";
 
 const passwordSchema = z
   .object({
@@ -75,7 +75,7 @@ export function PasswordChangeForm({ updatePasswordAction }: PasswordChangeFormP
         } else {
           toast({
             title: "エラー",
-            description: result.error,
+            description: result.error?.userMessage,
             variant: "destructive",
           });
         }

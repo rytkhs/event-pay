@@ -120,8 +120,8 @@ test.describe("Stripe決済 ケース1-1: 初回決済フロー", () => {
     await page.waitForTimeout(1000);
 
     // === 3. 決済を開始 ===
-    // 「決済を完了する」ボタンをクリック
-    const paymentButton = page.getByRole("button", { name: "決済を完了する" });
+    // 「オンライン決済へ進む」ボタンをクリック
+    const paymentButton = page.getByRole("button", { name: "オンライン決済へ進む" });
     await expect(paymentButton).toBeVisible({ timeout: 5000 });
 
     await paymentButton.click();
@@ -222,8 +222,8 @@ test.describe("Stripe決済 ケース1-1: 初回決済フロー", () => {
     // Destination charges関連の検証
     expect(payment.destination_account_id).toBeTruthy();
     expect(payment.destination_account_id).toBe(TEST_IDS.CONNECT_ACCOUNT_ID);
-    // プラットフォーム手数料は1.3%
-    const expectedFee = Math.round(1000 * 0.013); // 13円
+    // プラットフォーム手数料は4.9% (Stripe 3.6% + platform profit 1.3%)
+    const expectedFee = Math.round(payment.amount * 0.049);
     expect(payment.application_fee_amount).toBe(expectedFee);
     expect(typeof payment.application_fee_amount).toBe("number");
 
@@ -315,7 +315,7 @@ test.describe("Stripe決済 ケース1-1: 初回決済フロー", () => {
     console.log("✓ ゲストページに遷移");
 
     // === 3. 決済ボタンが表示されることを確認 ===
-    const paymentButton = page.getByRole("button", { name: "決済を完了する" });
+    const paymentButton = page.getByRole("button", { name: "オンライン決済へ進む" });
     await expect(paymentButton).toBeVisible({ timeout: 5000 });
 
     console.log("✓ 決済ボタンが表示されている");
@@ -418,7 +418,7 @@ test.describe("Stripe決済 ケース1-1: 初回決済フロー", () => {
     console.log("✓ ゲストページに遷移");
 
     // 決済ボタンをクリック
-    const paymentButton = page.getByRole("button", { name: "決済を完了する" });
+    const paymentButton = page.getByRole("button", { name: "オンライン決済へ進む" });
     await expect(paymentButton).toBeVisible({ timeout: 5000 });
     await paymentButton.click();
 

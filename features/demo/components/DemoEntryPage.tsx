@@ -2,15 +2,20 @@
 
 import { useEffect, useRef, useState } from "react";
 
+import { useRouter } from "next/navigation";
+
 import { Loader2, RefreshCcw } from "lucide-react";
+
+import type { ActionResult } from "@core/errors/adapters/server-actions";
 
 import { Button } from "@/components/ui/button";
 
 interface DemoEntryPageProps {
-  startDemoSession: () => Promise<void>;
+  startDemoSession: () => Promise<ActionResult<{ redirectUrl: string }>>;
 }
 
 export function DemoEntryPage({ startDemoSession }: DemoEntryPageProps) {
+  const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const initialized = useRef(false);
   const productionUrl = process.env.NEXT_PUBLIC_PRODUCTION_URL || "https://minnano-shukin.com";
@@ -20,20 +25,20 @@ export function DemoEntryPage({ startDemoSession }: DemoEntryPageProps) {
     initialized.current = true;
 
     const init = async () => {
-      try {
-        await startDemoSession();
-      } catch (e: any) {
-        // NEXT_REDIRECT エラーは正常なリダイレクト動作なので再スローする
-        if (e.message === "NEXT_REDIRECT" || e.digest?.startsWith("NEXT_REDIRECT")) {
-          throw e;
-        }
+      const result = await startDemoSession();
 
-        setError("デモ環境の構築に失敗しました。");
-        console.error(e);
+      if (!result.success) {
+        setError(result.error.userMessage);
+        return;
+      }
+
+      // 成功時: クライアント側でリダイレクト
+      if (result.data?.redirectUrl) {
+        router.push(result.data.redirectUrl);
       }
     };
     init();
-  }, [startDemoSession]);
+  }, [startDemoSession, router]);
 
   if (error) {
     return (

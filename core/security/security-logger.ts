@@ -24,7 +24,7 @@ export interface SecurityEvent {
 export type SecurityEventType =
   | "XSS_ATTEMPT"
   | "DUPLICATE_REGISTRATION"
-  | "RATE_LIMIT_EXCEEDED"
+  | "RATE_LIMITED"
   | "INVALID_TOKEN"
   | "MALICIOUS_INPUT"
   | "CAPACITY_BYPASS_ATTEMPT"
@@ -271,7 +271,7 @@ function getSeverityForEventType(type: SecurityEventType): SecuritySeverity {
     case "DEADLINE_BYPASS_ATTEMPT":
     case "PAYMENT_METHOD_CHANGE_AFTER_FINALIZED_ATTEMPT":
       return "MEDIUM";
-    case "RATE_LIMIT_EXCEEDED":
+    case "RATE_LIMITED":
     case "INVALID_TOKEN":
     case "SUSPICIOUS_ACTIVITY":
       return "MEDIUM";

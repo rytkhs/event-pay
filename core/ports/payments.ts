@@ -3,7 +3,20 @@
  * Core層からPayments機能にアクセスするためのポートインターフェース
  */
 
-import type { ServerActionResult } from "@core/types/server-actions";
+import type { ActionResult } from "@core/errors/adapters/server-actions";
+import { PaymentErrorType, PaymentError as SharedPaymentError } from "@core/types/payment-errors";
+
+export const PAYMENT_STATUS_VALUES = [
+  "pending",
+  "paid",
+  "failed",
+  "canceled",
+  "refunded",
+  "received",
+  "waived",
+] as const;
+
+export type PaymentStatusValue = (typeof PAYMENT_STATUS_VALUES)[number];
 
 export interface UpdateCashStatusParams {
   paymentId: string;
@@ -71,39 +84,24 @@ export interface CreateCashPaymentResult {
 
 export interface UpdatePaymentStatusParams {
   paymentId: string;
-  status: string;
+  status: PaymentStatusValue;
   paidAt?: string;
   stripePaymentIntentId?: string;
+  expectedVersion?: number;
+  userId?: string;
+  notes?: string;
 }
 
 export interface ErrorHandlingResult {
-  error: PaymentError;
+  error: SharedPaymentError;
   userMessage: string;
 }
 
-export interface PaymentError {
-  type: PaymentErrorType;
-  message: string;
-  details?: unknown;
-}
-
-export enum PaymentErrorType {
-  VALIDATION_ERROR = "VALIDATION_ERROR",
-  UNAUTHORIZED = "UNAUTHORIZED",
-  FORBIDDEN = "FORBIDDEN",
-  NOT_FOUND = "NOT_FOUND",
-  PAYMENT_ALREADY_EXISTS = "PAYMENT_ALREADY_EXISTS",
-  STRIPE_ERROR = "STRIPE_ERROR",
-  DATABASE_ERROR = "DATABASE_ERROR",
-  RATE_LIMIT_EXCEEDED = "RATE_LIMIT_EXCEEDED",
-  UNKNOWN_ERROR = "UNKNOWN_ERROR",
-}
+export { SharedPaymentError as PaymentError, PaymentErrorType };
 
 export interface PaymentPort {
-  updateCashStatus(params: UpdateCashStatusParams): Promise<ServerActionResult<any>>;
-  bulkUpdateCashStatus(
-    params: BulkUpdateCashStatusParams
-  ): Promise<ServerActionResult<BulkUpdateResult>>;
+  updateCashStatus(params: UpdateCashStatusParams): Promise<ActionResult<any>>;
+  bulkUpdateCashStatus(params: BulkUpdateCashStatusParams): Promise<ActionResult<BulkUpdateResult>>;
 
   createStripeSession(params: CreateStripeSessionParams): Promise<CreateStripeSessionResult>;
   createCashPayment(params: CreateCashPaymentParams): Promise<CreateCashPaymentResult>;

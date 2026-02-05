@@ -1,8 +1,6 @@
 /**
  * system_logs テーブルへのログ記録ヘルパー
  *
- * 業界標準（ECS、OpenTelemetry、OWASP）に準拠した監査ログを記録します。
- *
  * @module core/logging/system-logger
  */
 

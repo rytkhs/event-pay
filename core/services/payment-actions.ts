@@ -3,20 +3,18 @@
  * features間の境界違反を解消するための決済アクション抽象化層
  */
 
+import type { ActionResult } from "@core/errors/adapters/server-actions";
 import {
   getPaymentPort,
   type UpdateCashStatusParams,
   type BulkUpdateCashStatusParams,
   type BulkUpdateResult,
 } from "@core/ports/payments";
-import type { ServerActionResult } from "@core/types/server-actions";
 
 // Payment Actions の抽象化インターフェース
 export interface PaymentActionsPort {
-  updateCashStatus(params: UpdateCashStatusParams): Promise<ServerActionResult<any>>;
-  bulkUpdateCashStatus(
-    params: BulkUpdateCashStatusParams
-  ): Promise<ServerActionResult<BulkUpdateResult>>;
+  updateCashStatus(params: UpdateCashStatusParams): Promise<ActionResult<any>>;
+  bulkUpdateCashStatus(params: BulkUpdateCashStatusParams): Promise<ActionResult<BulkUpdateResult>>;
 }
 
 // Re-export types from ports

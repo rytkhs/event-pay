@@ -44,7 +44,6 @@ export interface VerifySessionScenario {
   paymentStatus?: Database["public"]["Enums"]["payment_status_enum"];
   stripeResponse?: any;
   expectedResult?: {
-    success: boolean;
     payment_status?: string;
     payment_required?: boolean;
     status?: number;
@@ -512,10 +511,10 @@ export class VerifySessionTestHelper {
     });
 
     const response = await verifySessionHandler(request);
-    const result = (await response.json()) as { success: boolean; payment_status: string };
+    const result = (await response.json()) as { payment_status: string };
 
     // フォールバック成功の検証（実際のStripe APIでは作成直後はpending）
-    expect(result.success).toBe(true);
+    expect(response.ok).toBe(true);
     expect(result.payment_status).toBe("pending"); // 実際のStripe API状態に合わせる
 
     // セキュリティログの検証
@@ -614,7 +613,6 @@ export const COMMON_VERIFY_SESSION_SCENARIOS = {
     stripeResponse: { payment_status: "paid" },
     shouldCreatePayment: true,
     expectedResult: {
-      success: true,
       payment_status: "success",
       payment_required: true,
     },
@@ -628,7 +626,6 @@ export const COMMON_VERIFY_SESSION_SCENARIOS = {
       amount_total: 0,
     },
     expectedResult: {
-      success: true,
       payment_status: "success",
       payment_required: false,
     },

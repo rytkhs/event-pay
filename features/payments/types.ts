@@ -2,6 +2,8 @@
  * 決済サービス関連の型定義
  */
 
+import { PAYMENT_STATUS_VALUES } from "@core/ports/payments";
+
 import { Database } from "@/types/database";
 
 // 決済方法の型（データベースのenumに合わせる）
@@ -9,6 +11,12 @@ export type PaymentMethod = Database["public"]["Enums"]["payment_method_enum"];
 
 // 決済ステータスの型（データベースのenumに合わせる）
 export type PaymentStatus = Database["public"]["Enums"]["payment_status_enum"];
+
+// 決済ステータスのType Guard
+// [WARNING] DBのenum (payment_status_enum) が変更された場合、ここも必ず更新してください
+export function isPaymentStatus(value: unknown): value is PaymentStatus {
+  return typeof value === "string" && PAYMENT_STATUS_VALUES.includes(value as PaymentStatus);
+}
 
 // 決済レコードの型（データベーススキーマに合わせる）
 export interface Payment {

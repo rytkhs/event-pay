@@ -3,11 +3,11 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
 import { getCurrentUser } from "@core/auth/auth-utils";
+import { fail, ok } from "@core/errors/adapters/server-actions";
+import type { ActionResult } from "@core/errors/adapters/server-actions";
 import { logger } from "@core/logging/app-logger";
 import { createClient } from "@core/supabase/server";
 import { handleServerError } from "@core/utils/error-handler.server";
-
-import type { ActionResult } from "@/types/action-result";
 
 const updateProfileSchema = z.object({
   name: z
@@ -22,10 +22,7 @@ export async function updateProfileAction(formData: FormData): Promise<ActionRes
     // 認証チェック
     const user = await getCurrentUser();
     if (!user) {
-      return {
-        success: false,
-        error: "認証が必要です",
-      };
+      return fail("UNAUTHORIZED", { userMessage: "認証が必要です" });
     }
 
     // 入力値検証
@@ -36,10 +33,7 @@ export async function updateProfileAction(formData: FormData): Promise<ActionRes
     const validationResult = updateProfileSchema.safeParse(rawData);
     if (!validationResult.success) {
       const errors = validationResult.error.errors.map((err) => err.message).join(", ");
-      return {
-        success: false,
-        error: errors,
-      };
+      return fail("VALIDATION_ERROR", { userMessage: errors });
     }
 
     const { name } = validationResult.data;
@@ -61,10 +55,7 @@ export async function updateProfileAction(formData: FormData): Promise<ActionRes
         actorType: "user",
         userId: user.id,
       });
-      return {
-        success: false,
-        error: "プロフィールの更新に失敗しました",
-      };
+      return fail("DATABASE_ERROR", { userMessage: "プロフィールの更新に失敗しました" });
     }
 
     // キャッシュ無効化
@@ -79,10 +70,7 @@ export async function updateProfileAction(formData: FormData): Promise<ActionRes
       outcome: "success",
     });
 
-    return {
-      success: true,
-      message: "プロフィールを更新しました",
-    };
+    return ok(undefined, { message: "プロフィールを更新しました" });
   } catch (error) {
     handleServerError("PROFILE_UPDATE_UNEXPECTED_ERROR", {
       category: "authentication",
@@ -94,9 +82,8 @@ export async function updateProfileAction(formData: FormData): Promise<ActionRes
       },
     });
 
-    return {
-      success: false,
-      error: "プロフィールの更新中にエラーが発生しました",
-    };
+    return fail("PROFILE_UPDATE_UNEXPECTED_ERROR", {
+      userMessage: "プロフィールの更新中にエラーが発生しました",
+    });
   }
 }

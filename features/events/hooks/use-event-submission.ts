@@ -4,8 +4,8 @@ import { useCallback } from "react";
 
 import { useRouter } from "next/navigation";
 
+import type { ActionResult } from "@core/errors/adapters/server-actions";
 import type { Event, EventFormData } from "@core/types/models";
-import type { ServerActionResult } from "@core/types/server-actions";
 import { deriveEventStatus } from "@core/utils/derive-event-status";
 import { handleClientError } from "@core/utils/error-handler.client";
 
@@ -24,7 +24,7 @@ type EventRow = Database["public"]["Tables"]["events"]["Row"];
 export type UpdateEventAction = (
   eventId: string,
   formData: FormData
-) => Promise<ServerActionResult<EventRow>>;
+) => Promise<ActionResult<EventRow>>;
 
 interface UseEventSubmissionProps {
   eventId: string;
@@ -109,34 +109,31 @@ export function useEventSubmission({
           return { success: true, data: dataWithStatus };
         } else {
           // 失敗時の処理 - 詳細なエラー情報を解析してフィールド別エラーを設定
-          const errorMessage = result.success === false ? result.error : "エラーが発生しました";
+          const errorMessage =
+            result.success === false
+              ? result.error?.userMessage || "エラーが発生しました"
+              : "エラーが発生しました";
 
           // サーバーエラーの詳細を解析してフィールド別エラーを設定
           const errors: FormErrors = {};
 
           // result.successがfalseの場合のみfieldErrorsやdetailsにアクセス可能
           if (!result.success) {
-            // fieldErrorsがある場合（Zodバリデーションエラー）
-            if (result.fieldErrors && Array.isArray(result.fieldErrors)) {
-              result.fieldErrors.forEach((fieldError) => {
-                if (fieldError.field && fieldError.message) {
-                  errors[fieldError.field as keyof FormErrors] = fieldError.message;
-                }
-              });
-            }
-
-            // details内のfieldErrorsがある場合（カスタムバリデーションエラー）
-            if (result.details?.fieldErrors && Array.isArray(result.details.fieldErrors)) {
-              result.details.fieldErrors.forEach((fieldError: any) => {
-                if (fieldError.field && fieldError.message) {
-                  errors[fieldError.field as keyof FormErrors] = fieldError.message;
+            const fieldErrors = result.error?.fieldErrors;
+            if (fieldErrors) {
+              Object.entries(fieldErrors).forEach(([field, messages]) => {
+                if (messages && messages.length > 0) {
+                  errors[field as keyof FormErrors] = messages[0];
                 }
               });
             }
 
             // violationsがある場合（制限違反エラー）
-            if (result.details?.violations && Array.isArray(result.details.violations)) {
-              result.details.violations.forEach((violation: any) => {
+            const details = result.error?.details as
+              | { violations?: Array<{ field?: string; reason?: string }> }
+              | undefined;
+            if (details?.violations && Array.isArray(details.violations)) {
+              details.violations.forEach((violation) => {
                 if (violation.field && violation.reason) {
                   errors[violation.field as keyof FormErrors] = violation.reason;
                 }
@@ -261,16 +258,24 @@ export function useEventSubmission({
 
   // レスポンス処理
   const handleSubmissionResponse = useCallback(
-    (result: any, setErrors: (errors: FormErrors) => void): SubmitResult => {
+    (result: ActionResult<EventRow>, setErrors: (errors: FormErrors) => void): SubmitResult => {
       if (result.success && result.data) {
+        const updatedEvent = result.data;
+        const dataWithStatus: Event = {
+          ...updatedEvent,
+          status: deriveEventStatus(updatedEvent.date, updatedEvent.canceled_at ?? null),
+        };
         if (onSubmit) {
-          onSubmit(result.data);
+          onSubmit(dataWithStatus);
         } else {
           router.push(`/events/${eventId}`);
         }
-        return { success: true, data: result.data };
+        return { success: true, data: dataWithStatus };
       } else {
-        const errorMessage = result.success === false ? result.error : "エラーが発生しました";
+        const errorMessage =
+          result.success === false
+            ? result.error?.userMessage || "エラーが発生しました"
+            : "エラーが発生しました";
         setErrors({ general: errorMessage });
         return { success: false, error: errorMessage };
       }

@@ -68,7 +68,6 @@ describe("🔧 フォールバック機能テスト", () => {
         console.error(`❌ Fallback scenario ${index + 1} failed:`, result.error);
       }
       expect(result.error).toBeUndefined();
-      expect(result.result.success).toBe(true);
       expect(result.result.payment_status).toBe("pending"); // 実際のStripe APIでは作成直後はpending
       console.log(`✅ Fallback scenario ${index + 1} completed`);
     });

@@ -10,12 +10,12 @@ export function validateEventId(eventId: unknown) {
     if (error instanceof z.ZodError) {
       return {
         success: false,
-        error: { message: error.errors[0]?.message || "Invalid UUID format" },
+        error: { userMessage: error.errors[0]?.message || "Invalid UUID format" },
       };
     }
     return {
       success: false,
-      error: { message: "Invalid UUID format" },
+      error: { userMessage: "Invalid UUID format" },
     };
   }
 }

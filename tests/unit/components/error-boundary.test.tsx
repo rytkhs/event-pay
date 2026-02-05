@@ -116,8 +116,8 @@ describe("ErrorBoundary", () => {
       const [errorInfo, originalError, context] = mockLogError.mock.calls[0];
 
       expect(errorInfo).toMatchObject({
-        code: "500",
-        category: "client",
+        code: "INTERNAL_ERROR",
+        category: "system",
         severity: "high",
         title: "コンポーネントでエラーが発生しました",
         message: "Test error",

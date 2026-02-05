@@ -5,7 +5,7 @@
  * 仕様書: P0-3_race_condition_specification.md 5.2節実装
  */
 
-import type { ServerActionResult } from "@core/types/server-actions";
+import type { ActionResult } from "@core/errors/adapters/server-actions";
 import type { ParticipationFormData } from "@core/validation/participation";
 
 import type { RegisterParticipationData } from "@features/invite/types";
@@ -26,7 +26,7 @@ export interface ConcurrentRequestResult<T> {
     reason: unknown;
     error?: {
       type: string;
-      message: string;
+      userMessage: string;
     };
   }>;
 }
@@ -102,31 +102,30 @@ export class ConcurrentRequestHelper {
     const successResults: T[] = [];
     const failureResults: Array<{
       reason: unknown;
-      error?: { type: string; message: string };
+      error?: { type: string; userMessage: string };
     }> = [];
 
     for (const result of results) {
       if (result.status === "fulfilled") {
-        // 【修正】ServerActionResultの success フィールドをチェック
+        // 【修正】ActionResultの success フィールドをチェック
         const actionResult = result.value;
         if (actionResult && typeof actionResult === "object" && "success" in actionResult) {
           if (actionResult.success === true) {
-            // ServerActionResult で成功の場合
+            // ActionResult で成功の場合
             successResults.push(result.value);
           } else {
-            // ServerActionResult で失敗の場合（success: false）
-            // ServerActionError型の場合のプロパティアクセス
-            const errorResult = actionResult as { success: false; code?: string; error?: string };
+            // ActionResult で失敗の場合（success: false）
+            const errorResult = actionResult as Extract<ActionResult, { success: false }>;
             failureResults.push({
               reason: actionResult,
               error: {
-                type: errorResult.code || "UNKNOWN",
-                message: errorResult.error || "Unknown error",
+                type: errorResult.error.code || "UNKNOWN",
+                userMessage: errorResult.error.userMessage || "Unknown error",
               },
             });
           }
         } else {
-          // ServerActionResult 以外の形式の場合は成功として扱う
+          // ActionResult 以外の形式の場合は成功として扱う
           successResults.push(result.value);
         }
       } else {
@@ -136,8 +135,8 @@ export class ConcurrentRequestHelper {
           failureResults.push({
             reason,
             error: {
-              type: reason.error?.type || "UNKNOWN",
-              message: reason.error?.message || "Unknown error",
+              type: reason.error?.code || "UNKNOWN",
+              userMessage: reason.error?.userMessage || "Unknown error",
             },
           });
         } else {
@@ -202,7 +201,7 @@ export class ConcurrentRequestHelper {
   static async executeParticipationRequests(
     participationDataArray: ParticipationFormData[],
     options: ConcurrentRequestOptions = {}
-  ): Promise<ConcurrentRequestResult<ServerActionResult<RegisterParticipationData>>> {
+  ): Promise<ConcurrentRequestResult<ActionResult<RegisterParticipationData>>> {
     const requests = participationDataArray.map((data) => () => {
       const formData = this.createFormDataFromParticipationData(data);
       return registerParticipationAction(formData);
@@ -241,7 +240,7 @@ export class ConcurrentRequestHelper {
   static verifyExpectedErrors(
     failureResults: Array<{
       reason: unknown;
-      error?: { type: string; message: string };
+      error?: { type: string; userMessage: string };
     }>,
     expectedErrorType: string,
     expectedErrorMessage?: string
@@ -254,7 +253,7 @@ export class ConcurrentRequestHelper {
 
     for (const failure of failureResults) {
       const errorType = failure.error?.type;
-      const errorMessage = failure.error?.message;
+      const errorMessage = failure.error?.userMessage;
 
       if (errorType === expectedErrorType) {
         if (!expectedErrorMessage || errorMessage?.includes(expectedErrorMessage)) {

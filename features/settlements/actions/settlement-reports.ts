@@ -1,14 +1,18 @@
-import { redirect } from "next/navigation";
-
 import { z } from "zod";
 
 import { getCurrentUser } from "@core/auth/auth-utils";
+import { type ActionResult, fail, ok } from "@core/errors/adapters/server-actions";
 import { logger } from "@core/logging/app-logger";
 import { createClient } from "@core/supabase/server";
 import { handleServerError } from "@core/utils/error-handler.server";
 
 import { SettlementReportService } from "../services/service";
-import type { ExportSettlementReportsResponse, GenerateSettlementReportResponse } from "../types";
+import type {
+  ExportSettlementReportsPayload,
+  GenerateSettlementReportPayload,
+  GetSettlementReportsPayload,
+  RegenerateSettlementReportPayload,
+} from "../types";
 
 // バリデーションスキーマ
 const generateReportSchema = z.object({
@@ -35,11 +39,11 @@ const getReportsSchema = z.object({
  */
 export async function generateSettlementReportAction(
   formData: FormData
-): Promise<GenerateSettlementReportResponse> {
+): Promise<ActionResult<GenerateSettlementReportPayload>> {
   // 認証確認
   const user = await getCurrentUser();
   if (!user?.id) {
-    redirect("/login");
+    return fail("UNAUTHORIZED", { userMessage: "ログインが必要です" });
   }
 
   try {
@@ -48,22 +52,27 @@ export async function generateSettlementReportAction(
       eventId: formData.get("eventId")?.toString() || "",
     };
 
-    const validatedData = generateReportSchema.parse(rawData);
+    const validatedData = generateReportSchema.safeParse(rawData);
+    if (!validatedData.success) {
+      return fail("VALIDATION_ERROR", {
+        userMessage: "入力データが無効です",
+        details: { zodErrors: validatedData.error.errors },
+      });
+    }
 
     // サービス実行
     const supabase = createClient();
     const service = new SettlementReportService(supabase);
 
     const result = await service.generateSettlementReport({
-      eventId: validatedData.eventId,
+      eventId: validatedData.data.eventId,
       createdBy: user.id,
     });
 
     if (!result.success) {
-      return {
-        success: false,
-        error: result.error || "レポート生成に失敗しました",
-      };
+      return fail("INTERNAL_ERROR", {
+        userMessage: result.error || "レポート生成に失敗しました",
+      });
     }
 
     logger.info("Settlement report generated via action", {
@@ -71,29 +80,30 @@ export async function generateSettlementReportAction(
       action: "generate_report",
       actor_type: "user",
       user_id: user.id,
-      event_id: validatedData.eventId,
+      event_id: validatedData.data.eventId,
       report_id: result.reportId,
       already_exists: result.alreadyExists,
       outcome: "success",
     });
 
-    return {
-      success: true,
+    return ok({
       reportId: result.reportId,
       alreadyExists: result.alreadyExists,
       reportData: result.reportData,
-    };
+    });
   } catch (error) {
+    if (error instanceof Error && error.message.includes("NEXT_REDIRECT")) {
+      throw error;
+    }
     handleServerError(error, {
       category: "settlement",
       action: "generate_report_failed",
       userId: user.id,
     });
 
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : "予期しないエラーが発生しました",
-    };
+    return fail("INTERNAL_ERROR", {
+      userMessage: "予期しないエラーが発生しました",
+    });
   }
 }
 
@@ -106,16 +116,22 @@ export async function getSettlementReportsAction(params: {
   toDate?: string;
   limit?: number;
   offset?: number;
-}) {
+}): Promise<ActionResult<GetSettlementReportsPayload>> {
   // 認証確認
   const user = await getCurrentUser();
   if (!user?.id) {
-    redirect("/login");
+    return fail("UNAUTHORIZED", { userMessage: "ログインが必要です" });
   }
 
   try {
     // 入力値検証
-    const validatedParams = getReportsSchema.parse(params);
+    const validatedParams = getReportsSchema.safeParse(params);
+    if (!validatedParams.success) {
+      return fail("VALIDATION_ERROR", {
+        userMessage: "入力データが無効です",
+        details: { zodErrors: validatedParams.error.errors },
+      });
+    }
 
     // サービス実行
     const supabase = createClient();
@@ -123,29 +139,29 @@ export async function getSettlementReportsAction(params: {
 
     const reports = await service.getSettlementReports({
       createdBy: user.id,
-      eventIds: validatedParams.eventIds,
-      fromDate: validatedParams.fromDate ? new Date(validatedParams.fromDate) : undefined,
-      toDate: validatedParams.toDate ? new Date(validatedParams.toDate) : undefined,
-      limit: validatedParams.limit,
-      offset: validatedParams.offset,
+      eventIds: validatedParams.data.eventIds,
+      fromDate: validatedParams.data.fromDate ? new Date(validatedParams.data.fromDate) : undefined,
+      toDate: validatedParams.data.toDate ? new Date(validatedParams.data.toDate) : undefined,
+      limit: validatedParams.data.limit,
+      offset: validatedParams.data.offset,
     });
 
-    return {
-      success: true,
+    return ok({
       reports,
-    };
+    });
   } catch (error) {
+    if (error instanceof Error && error.message.includes("NEXT_REDIRECT")) {
+      throw error;
+    }
     handleServerError(error, {
       category: "settlement",
       action: "get_reports_failed",
       userId: user.id,
     });
 
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : "予期しないエラーが発生しました",
-      reports: [],
-    };
+    return fail("INTERNAL_ERROR", {
+      userMessage: "予期しないエラーが発生しました",
+    });
   }
 }
 
@@ -156,16 +172,22 @@ export async function exportSettlementReportsAction(params: {
   eventIds?: string[];
   fromDate?: string;
   toDate?: string;
-}): Promise<ExportSettlementReportsResponse> {
+}): Promise<ActionResult<ExportSettlementReportsPayload>> {
   // 認証確認
   const user = await getCurrentUser();
   if (!user?.id) {
-    redirect("/login");
+    return fail("UNAUTHORIZED", { userMessage: "ログインが必要です" });
   }
 
   try {
     // 入力値検証
-    const validatedParams = getReportsSchema.parse({ ...params, limit: 1000 }); // CSVは最大1000件
+    const validatedParams = getReportsSchema.safeParse({ ...params, limit: 1000 }); // CSVは最大1000件
+    if (!validatedParams.success) {
+      return fail("VALIDATION_ERROR", {
+        userMessage: "入力データが無効です",
+        details: { zodErrors: validatedParams.error.errors },
+      });
+    }
 
     // サービス実行
     const supabase = createClient();
@@ -173,17 +195,16 @@ export async function exportSettlementReportsAction(params: {
 
     const result = await service.exportToCsv({
       createdBy: user.id,
-      eventIds: validatedParams.eventIds,
-      fromDate: validatedParams.fromDate ? new Date(validatedParams.fromDate) : undefined,
-      toDate: validatedParams.toDate ? new Date(validatedParams.toDate) : undefined,
+      eventIds: validatedParams.data.eventIds,
+      fromDate: validatedParams.data.fromDate ? new Date(validatedParams.data.fromDate) : undefined,
+      toDate: validatedParams.data.toDate ? new Date(validatedParams.data.toDate) : undefined,
       limit: 1000,
     });
 
     if (!result.success) {
-      return {
-        success: false,
-        error: result.error || "CSV エクスポートに失敗しました",
-      };
+      return fail("INTERNAL_ERROR", {
+        userMessage: result.error || "CSV エクスポートに失敗しました",
+      });
     }
 
     logger.info("Settlement reports CSV export completed", {
@@ -196,40 +217,42 @@ export async function exportSettlementReportsAction(params: {
     });
 
     if (!result.csvContent || !result.filename) {
-      return {
-        success: false,
-        error: "CSVの生成に失敗しました",
-      };
+      return fail("INTERNAL_ERROR", {
+        userMessage: "CSVの生成に失敗しました",
+      });
     }
 
-    return {
-      success: true,
+    return ok({
       csvContent: result.csvContent,
       filename: result.filename,
       truncated: !!result.truncated,
-    };
+    });
   } catch (error) {
+    if (error instanceof Error && error.message.includes("NEXT_REDIRECT")) {
+      throw error;
+    }
     handleServerError(error, {
       category: "settlement",
       action: "export_csv_failed",
       userId: user.id,
     });
 
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : "予期しないエラーが発生しました",
-    };
+    return fail("INTERNAL_ERROR", {
+      userMessage: "予期しないエラーが発生しました",
+    });
   }
 }
 
 /**
  * 返金・Dispute時の再集計
  */
-export async function regenerateAfterRefundAction(formData: FormData) {
+export async function regenerateAfterRefundAction(
+  formData: FormData
+): Promise<ActionResult<RegenerateSettlementReportPayload>> {
   // 認証確認
   const user = await getCurrentUser();
   if (!user?.id) {
-    redirect("/login");
+    return fail("UNAUTHORIZED", { userMessage: "ログインが必要です" });
   }
 
   try {
@@ -238,19 +261,27 @@ export async function regenerateAfterRefundAction(formData: FormData) {
       eventId: formData.get("eventId")?.toString() || "",
     };
 
-    const validatedData = generateReportSchema.parse({ ...rawData, forceRegenerate: true });
+    const validatedData = generateReportSchema.safeParse(rawData);
+    if (!validatedData.success) {
+      return fail("VALIDATION_ERROR", {
+        userMessage: "入力データが無効です",
+        details: { zodErrors: validatedData.error.errors },
+      });
+    }
 
     // サービス実行
     const supabase = createClient();
     const service = new SettlementReportService(supabase);
 
-    const result = await service.regenerateAfterRefundOrDispute(validatedData.eventId, user.id);
+    const result = await service.regenerateAfterRefundOrDispute(
+      validatedData.data.eventId,
+      user.id
+    );
 
     if (!result.success) {
-      return {
-        success: false,
-        error: result.error || "再集計に失敗しました",
-      };
+      return fail("INTERNAL_ERROR", {
+        userMessage: result.error || "再集計に失敗しました",
+      });
     }
 
     logger.info("Settlement report regenerated after refund/dispute", {
@@ -258,26 +289,27 @@ export async function regenerateAfterRefundAction(formData: FormData) {
       action: "regenerate_after_refund",
       actor_type: "user",
       user_id: user.id,
-      event_id: validatedData.eventId,
+      event_id: validatedData.data.eventId,
       report_id: result.reportId,
       outcome: "success",
     });
 
-    return {
-      success: true,
+    return ok({
       reportId: result.reportId,
       reportData: result.reportData,
-    };
+    });
   } catch (error) {
+    if (error instanceof Error && error.message.includes("NEXT_REDIRECT")) {
+      throw error;
+    }
     handleServerError(error, {
       category: "settlement",
       action: "regenerate_after_refund_failed",
       userId: user.id,
     });
 
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : "予期しないエラーが発生しました",
-    };
+    return fail("INTERNAL_ERROR", {
+      userMessage: "予期しないエラーが発生しました",
+    });
   }
 }

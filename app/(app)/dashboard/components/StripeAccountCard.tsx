@@ -13,7 +13,7 @@ function formatCurrency(amount: number): string {
 
 export async function StripeAccountCard() {
   const balanceResult = await getStripeBalanceAction();
-  const balance = balanceResult.success ? balanceResult.data : 0;
+  const balance = balanceResult.success ? (balanceResult.data ?? 0) : 0;
 
   return (
     <Card className="relative overflow-hidden border-0 bg-green-50/30 shadow-sm">

@@ -18,8 +18,8 @@ import {
 
 import { ga4Client } from "@core/analytics/ga4-client";
 import { useToast } from "@core/contexts/toast-context";
+import type { ActionResult } from "@core/errors/adapters/server-actions";
 import { useErrorHandler } from "@core/hooks/use-error-handler";
-import type { ServerActionResult } from "@core/types/server-actions";
 import { getModificationRestrictionReason } from "@core/utils/guest-restrictions";
 import { type GuestAttendanceData } from "@core/utils/guest-token";
 
@@ -51,7 +51,7 @@ interface GuestStatusEditModalProps {
 
 type UpdateGuestAttendanceAction = (
   formData: FormData
-) => Promise<ServerActionResult<UpdateGuestAttendanceData>>;
+) => Promise<ActionResult<UpdateGuestAttendanceData>>;
 
 /**
  * 変更不可の理由に応じたメッセージを取得
@@ -74,13 +74,13 @@ function getModificationRestrictionMessage(attendance: GuestAttendanceData): str
 function getConnectAccountErrorMessage(errorCode?: string): string {
   switch (errorCode) {
     case "CONNECT_ACCOUNT_NOT_FOUND":
-      return "決済の準備ができません。主催者のお支払い受付設定に不備があります。現金決済をご利用いただくか、主催者にお問い合わせください。";
+      return "オンライン決済の準備ができていません。現金決済をご利用いただくか、しばらく時間をおいて再度お試しください。";
     case "CONNECT_ACCOUNT_RESTRICTED":
-      return "主催者のお支払い受付が一時的に制限されています。現金決済をご利用いただくか、主催者にお問い合わせください。";
+      return "現在オンライン決済がご利用いただけません。現金決済をご利用いただくか、しばらく時間をおいて再度お試しください。";
     case "STRIPE_CONFIG_ERROR":
       return "決済システムに一時的な問題が発生しています。現金決済をご利用いただくか、しばらく時間をおいて再度お試しください。";
     default:
-      return "オンライン決済に問題が発生しました。現金決済をご利用いただくか、主催者にお問い合わせください。";
+      return "オンライン決済に問題が発生しました。現金決済をご利用いただくか、しばらく時間をおいて再度お試しください。";
   }
 }
 
@@ -168,16 +168,17 @@ export const GuestStatusEditModal: React.FC<GuestStatusEditModalProps> = ({
       } else {
         // Handle Errors (Connect Account logic)
         const isConnectAccountError =
-          result.code === "CONNECT_ACCOUNT_NOT_FOUND" ||
-          result.code === "CONNECT_ACCOUNT_RESTRICTED" ||
-          result.code === "STRIPE_CONFIG_ERROR" ||
-          (result.details as any)?.connectAccountIssue === true;
+          result.error?.code === "CONNECT_ACCOUNT_NOT_FOUND" ||
+          result.error?.code === "CONNECT_ACCOUNT_RESTRICTED" ||
+          result.error?.code === "STRIPE_CONFIG_ERROR" ||
+          (result.error?.details as { connectAccountIssue?: boolean } | undefined)
+            ?.connectAccountIssue === true;
 
         if (isConnectAccountError) {
-          const connectErrorMessage = getConnectAccountErrorMessage(result.code);
+          const connectErrorMessage = getConnectAccountErrorMessage(result.error?.code);
           setError(connectErrorMessage);
         } else {
-          setError(result.error || "更新に失敗しました。");
+          setError(result.error?.userMessage || "更新に失敗しました。");
         }
       }
     } catch (err) {
@@ -303,7 +304,7 @@ export const GuestStatusEditModal: React.FC<GuestStatusEditModalProps> = ({
                 <Alert variant="destructive">
                   <AlertCircle className="h-4 w-4" />
                   <AlertDescription>
-                    利用可能な決済方法がありません。主催者にお問い合わせください。
+                    利用可能な決済方法がありません。しばらく経ってから再度お試しください。
                   </AlertDescription>
                 </Alert>
               ) : (

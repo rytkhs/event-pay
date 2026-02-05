@@ -111,7 +111,7 @@ export function ParticipantsActionBarV2({
         }
         toast({
           title: "追加に失敗しました",
-          description: result.error || "参加者の追加に失敗しました",
+          description: result.error?.userMessage || "参加者の追加に失敗しました",
           variant: "destructive",
         });
         return;
@@ -159,13 +159,23 @@ export function ParticipantsActionBarV2({
         filters: {},
       });
 
-      if (result.success && result.csvContent) {
-        const blob = new Blob([result.csvContent], { type: "text/csv;charset=utf-8;" });
+      if (!result.success) {
+        toast({
+          title: "エクスポート失敗",
+          description: result.error.userMessage || "CSVエクスポートに失敗しました。",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (result.data?.csvContent) {
+        const { csvContent, filename } = result.data;
+        const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
         const link = document.createElement("a");
         const url = URL.createObjectURL(blob);
 
         link.setAttribute("href", url);
-        link.setAttribute("download", result.filename ?? "participants.csv");
+        link.setAttribute("download", filename);
         link.style.visibility = "hidden";
         document.body.appendChild(link);
         link.click();
@@ -174,13 +184,7 @@ export function ParticipantsActionBarV2({
 
         toast({
           title: "エクスポート完了",
-          description: `${result.filename ?? "participants.csv"} をダウンロードしました。`,
-        });
-      } else {
-        toast({
-          title: "エクスポート失敗",
-          description: result.error || "CSVエクスポートに失敗しました。",
-          variant: "destructive",
+          description: `${filename} をダウンロードしました。`,
         });
       }
     } catch (error) {
@@ -232,7 +236,6 @@ export function ParticipantsActionBarV2({
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-                    autoFocus
                     className="pl-9 pr-8 h-9 text-base md:text-sm"
                   />
                   {searchQuery && (

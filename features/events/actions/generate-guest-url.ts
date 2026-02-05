@@ -1,12 +1,8 @@
 import { z } from "zod";
 
 import { verifyEventAccess } from "@core/auth/event-authorization";
+import { type ActionResult, fail, ok, zodFail } from "@core/errors/adapters/server-actions";
 import { SecureSupabaseClientFactory } from "@core/security/secure-client-factory.impl";
-import {
-  createServerActionError,
-  createServerActionSuccess,
-  type ServerActionResult,
-} from "@core/types/server-actions";
 import { canCreateStripeSession } from "@core/validation/payment-eligibility";
 
 const InputSchema = z.object({
@@ -15,7 +11,7 @@ const InputSchema = z.object({
 });
 
 export async function generateGuestUrlAction(input: unknown): Promise<
-  ServerActionResult<{
+  ActionResult<{
     guestUrl: string;
     canOnlinePay: boolean;
     reason?: string;
@@ -41,12 +37,12 @@ export async function generateGuestUrlAction(input: unknown): Promise<
       .single();
 
     if (attErr || !attendance) {
-      return createServerActionError("NOT_FOUND", "参加レコードが見つかりません");
+      return fail("NOT_FOUND", { userMessage: "参加レコードが見つかりません" });
     }
 
     const guestToken: string | null = attendance.guest_token as unknown as string | null;
     if (!guestToken) {
-      return createServerActionError("RESOURCE_CONFLICT", "ゲストトークンが未発行です");
+      return fail("RESOURCE_CONFLICT", { userMessage: "ゲストトークンが未発行です" });
     }
 
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
@@ -71,21 +67,15 @@ export async function generateGuestUrlAction(input: unknown): Promise<
       }
     );
 
-    return createServerActionSuccess({
+    return ok({
       guestUrl,
       canOnlinePay: eligibility.isEligible,
       reason: eligibility.reason,
     });
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return createServerActionError(
-        "VALIDATION_ERROR",
-        error.errors?.[0]?.message || "入力が不正です",
-        {
-          details: { zodErrors: error.errors },
-        }
-      );
+      return zodFail(error, { userMessage: error.errors?.[0]?.message || "入力が不正です" });
     }
-    return createServerActionError("INTERNAL_ERROR", "ゲストURLの生成でエラーが発生しました");
+    return fail("INTERNAL_ERROR", { userMessage: "ゲストURLの生成でエラーが発生しました" });
   }
 }

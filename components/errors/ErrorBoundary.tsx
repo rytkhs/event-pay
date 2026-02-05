@@ -9,8 +9,8 @@ import type { ReactNode } from "react";
 import { Component } from "react";
 
 import { logError, addBreadcrumb } from "./error-logger";
-import type { ErrorBoundaryProps, ErrorFallbackProps } from "./error-types";
 import { ErrorLayout } from "./ErrorLayout";
+import type { ErrorBoundaryProps, ErrorFallbackProps } from "./types";
 
 interface ErrorBoundaryState {
   hasError: boolean;
@@ -59,8 +59,8 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
     // エラーログ記録
     logError(
       {
-        code: "500",
-        category: "client",
+        code: "INTERNAL_ERROR",
+        category: "system",
         severity: this.props.level === "global" ? "critical" : "high",
         title: `${this.props.level === "global" ? "アプリケーション" : "コンポーネント"}でエラーが発生しました`,
         message: error.message || "予期しないエラーが発生しました",
@@ -152,8 +152,7 @@ function DefaultErrorFallback({ error, resetError, level = "component" }: ErrorF
 
   return (
     <ErrorLayout
-      code="500"
-      category="client"
+      code="INTERNAL_ERROR"
       severity={config.severity}
       title={config.title}
       message={config.message}
@@ -185,7 +184,7 @@ export function ParticipationErrorBoundary({ children }: { children: ReactNode }
 function ParticipationErrorFallback({ error, resetError }: ErrorFallbackProps) {
   return (
     <ErrorLayout
-      code="500"
+      code="INTERNAL_ERROR"
       category="business"
       severity="medium"
       title="参加申し込みエラー"
@@ -219,7 +218,6 @@ function PaymentErrorFallback({ error, resetError }: ErrorFallbackProps) {
   return (
     <ErrorLayout
       code="PAYMENT_FAILED"
-      category="payment"
       severity="high"
       title="決済エラー"
       message="決済処理中にエラーが発生しました"
