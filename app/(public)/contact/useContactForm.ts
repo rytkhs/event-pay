@@ -51,7 +51,7 @@ export function useContactForm() {
   const onSubmit = form.handleSubmit((data) => {
     startTransition(async () => {
       try {
-        const result = (await submitContact(data)) as ActionResult<{ ok: boolean }>;
+        const result = (await submitContact(data)) as ActionResult;
 
         if (result.success) {
           // 成功

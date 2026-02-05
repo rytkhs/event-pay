@@ -72,11 +72,13 @@ export function UserMenu({
     setIsLoggingOut(true);
     try {
       if (logoutAction) {
-        await logoutAction();
+        const result = await logoutAction();
+        // ActionResult の redirectUrl を使用してリダイレクト
+        const redirectUrl = result.redirectUrl || "/login";
+        window.location.href = redirectUrl;
       } else {
         window.location.href = "/login";
       }
-      // リダイレクトが実行されるため、以降の処理は不要
     } catch (error) {
       console.error("Logout failed:", error);
       // エラー時も強制的にログインページへリダイレクト

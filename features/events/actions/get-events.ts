@@ -1,4 +1,4 @@
-import { fail, type ActionResult } from "@core/errors/adapters/server-actions";
+import { fail, ok, type ActionResult } from "@core/errors/adapters/server-actions";
 import type { ErrorCode } from "@core/errors/types";
 import { generateSecureUuid } from "@core/security/crypto";
 import { createClient } from "@core/supabase/server";
@@ -40,7 +40,11 @@ type GetEventsOptions = {
   sortOrder?: SortOrder;
 };
 
-type GetEventsResult = ActionResult<Event[]> & { totalCount?: number; hasMore?: boolean };
+type GetEventsResult = ActionResult<{
+  items: Event[];
+  totalCount: number;
+  hasMore: boolean;
+}>;
 
 // ソート項目をSupabaseのカラム名にマッピング
 function getOrderColumn(sortBy: SortBy): string | null {
@@ -316,12 +320,11 @@ export async function getEventsAction(options: GetEventsOptions = {}): Promise<G
 
     const hasMore = totalCount ? offset + limit < totalCount : false;
 
-    return {
-      success: true,
-      data: eventsData,
+    return ok({
+      items: eventsData,
       totalCount: totalCount || 0,
       hasMore,
-    };
+    });
   } catch (error) {
     const errorDetails = handleServerError(error, {
       category: "event_management",

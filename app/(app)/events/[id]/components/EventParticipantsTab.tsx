@@ -16,7 +16,7 @@ import { ParticipantsStatusTabs } from "../participants/components/ParticipantsS
 interface EventParticipantsTabProps {
   eventId: string;
   eventDetail: Event;
-  participantsData: GetParticipantsResponse;
+  participantsData: GetParticipantsResponse | null;
   searchParams: { [key: string]: string | string[] | undefined };
   onUpdateFilters: (newParams: Record<string, string | undefined>) => void;
   updateCashStatusAction: ParticipantsTableV2Props["updateCashStatusAction"];
@@ -38,9 +38,9 @@ export function EventParticipantsTab({
   const [isSelectionMode, setIsSelectionMode] = useState(false);
 
   // 全参加者データ
-  const allParticipants = participantsData.participants;
+  const allParticipants = useMemo(() => participantsData?.participants ?? [], [participantsData]);
 
-  // 参加状況の集計（全参加者から計算 - フィルタ前のデータを使用）
+  // 参加状況の集計（全参加者から計算 - フィルター前のデータを使用）
   const statusCounts = useMemo(() => {
     return {
       all: allParticipants.length,

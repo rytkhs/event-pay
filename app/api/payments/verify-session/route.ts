@@ -36,22 +36,16 @@ const VerifySessionSchema = z.object({
     .uuid("有効な参加IDを入力してください"),
 });
 
-// レスポンス型
+// 成功時レスポンス型（失敗時は Problem Details を返す）
 interface VerificationResult {
-  success: boolean;
   /**
    * 決済ステータス
-   *
-   * success フラグが true の場合のみ必ず含まれる。
-   * リクエストエラー時（success: false）のレスポンスでは省略される。
    */
-  payment_status?: "success" | "failed" | "canceled" | "processing" | "pending";
+  payment_status: "success" | "failed" | "canceled" | "processing" | "pending";
   /**
    * このセッションで支払いが必要か（無料・全額割引は false）
-   * success フラグが true の場合に付与され得る。
    */
-  payment_required?: boolean;
-  error?: string;
+  payment_required: boolean;
 }
 
 export async function GET(request: NextRequest) {
@@ -431,7 +425,6 @@ export async function GET(request: NextRequest) {
     }
 
     const result: VerificationResult = {
-      success: true,
       payment_status: paymentStatus,
       payment_required: !isNoPaymentRequired,
     };
@@ -444,7 +437,12 @@ export async function GET(request: NextRequest) {
       attendance_id,
     });
 
-    return NextResponse.json(result);
+    return NextResponse.json(result, {
+      headers: {
+        "Cache-Control": "no-store, no-cache, must-revalidate",
+        "X-Content-Type-Options": "nosniff",
+      },
+    });
   } catch (error) {
     const url = new URL(request.url);
     const logContext = {

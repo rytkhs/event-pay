@@ -61,26 +61,27 @@ async function PaymentSettingsContent() {
           status={await (async () => {
             const r = await getConnectAccountStatusAction();
             const expressAccess = await checkExpressDashboardAccessAction();
+
+            if (!r.success) {
+              return {
+                hasAccount: false,
+                uiStatus: "no_account" as const,
+                chargesEnabled: false,
+                payoutsEnabled: false,
+                expressDashboardAvailable: false,
+              };
+            }
+
             return {
               hasAccount: true,
               accountId: r.data?.accountId,
-              dbStatus: r.data?.dbStatus as
-                | "unverified"
-                | "onboarding"
-                | "verified"
-                | "restricted"
-                | undefined,
-              uiStatus: (r.data?.uiStatus ?? "no_account") as
-                | "no_account"
-                | "unverified"
-                | "requirements_due"
-                | "ready"
-                | "restricted",
+              dbStatus: r.data?.dbStatus,
+              uiStatus: r.data?.uiStatus ?? "no_account",
               chargesEnabled: r.data?.chargesEnabled ?? false,
               payoutsEnabled: r.data?.payoutsEnabled ?? false,
               requirements: r.data?.requirements,
               capabilities: r.data?.capabilities,
-              expressDashboardAvailable: expressAccess.success,
+              expressDashboardAvailable: expressAccess.success && !!expressAccess.data?.hasAccount,
             };
           })()}
           expressDashboardAction={createExpressDashboardLoginLinkAction}

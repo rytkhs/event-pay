@@ -124,6 +124,10 @@ function sanitizeClientMessage(message: string): string {
 export async function POST(req: NextRequest) {
   try {
     const baseLogContext = { category: "system" as const, actorType: "system" as const };
+    const successHeaders = {
+      "Cache-Control": "no-store, no-cache, must-revalidate",
+      "X-Content-Type-Options": "nosniff",
+    };
 
     // 1. レート制限チェック
     if (ratelimit) {
@@ -194,7 +198,7 @@ export async function POST(req: NextRequest) {
     const shouldLog = await shouldLogError(data.error.message, data.stackTrace);
 
     if (!shouldLog) {
-      return NextResponse.json({ success: true, deduplicated: true });
+      return new NextResponse(null, { status: 204, headers: successHeaders });
     }
 
     // 5. DB保存
@@ -265,15 +269,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    return NextResponse.json(
-      { success: true },
-      {
-        headers: {
-          "Cache-Control": "no-store, no-cache, must-revalidate",
-          "X-Content-Type-Options": "nosniff",
-        },
-      }
-    );
+    return new NextResponse(null, { status: 204, headers: successHeaders });
   } catch (error) {
     return respondWithProblem(error, {
       instance: "/api/errors",

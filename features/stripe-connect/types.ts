@@ -8,28 +8,10 @@ import type { LogLevel } from "@core/logging/app-logger";
 
 import { Database } from "@/types/database";
 
-/**
- * UI表示用のStripe Connectアカウントステータス
- *
- * NOTE: これはDB用のenum（unverified, onboarding, verified, restricted）とは
- *      役割が異なるUI専用の派生ステータス
- *
- * DB用enum → UI用ステータスのマッピング:
- * - アカウント未存在 → no_account
- * - unverified → unverified
- * - onboarding/verified (要件不備あり) → requirements_due
- * - verified (要件なし) → ready (ただしCTA非表示のためundefinedで返却)
- * - restricted → requirements_due
- */
-export type ConnectAccountStatusType =
-  | "no_account" // アカウント未作成
-  | "unverified" // アカウント作成済みだが未認証
-  | "requirements_due" // 認証済みだが要件不備
-  | "pending_review" // 提出済み情報の審査待ち
-  | "ready"; // 全て完了
+import type { UIStatus } from "./types/status-classification";
 
 export interface DetailedAccountStatus {
-  statusType: ConnectAccountStatusType;
+  statusType: UIStatus;
   title: string;
   description: string;
   actionText: string;
@@ -37,17 +19,16 @@ export interface DetailedAccountStatus {
   severity: "info" | "warning" | "error";
 }
 
-// 新しい型定義をエクスポート
 export * from "./types/status-classification";
 export * from "./types/audit-log";
 
-// Stripe Connectアカウントステータスの型（データベースのenumに合わせる）
+// Stripe Connectアカウントステータスの型
 export type StripeAccountStatus = Database["public"]["Enums"]["stripe_account_status_enum"];
 
 // Webhook処理や通知経路では一時的に enum 外の状態が入ることがあるための拡張型
 export type StripeAccountStatusLike = StripeAccountStatus | "unknown" | "error";
 
-// Stripe Connectアカウント情報の型（データベーススキーマに合わせる）
+// Stripe Connectアカウント情報の型
 export interface StripeConnectAccount {
   user_id: string;
   stripe_account_id: string;
@@ -228,4 +209,56 @@ export interface ErrorHandlingResult {
   shouldRetry: boolean;
   logLevel: LogLevel;
   shouldNotifyAdmin: boolean;
+}
+
+/**
+ * getConnectAccountStatusAction の ActionResult ペイロード
+ */
+export interface ConnectAccountStatusPayload {
+  hasAccount: boolean;
+  accountId?: string;
+  dbStatus?: StripeAccountStatus; // Database Status (unverified/onboarding/verified/restricted)
+  uiStatus: UIStatus; // UI Status (no_account/unverified/requirements_due/pending_review/ready/restricted)
+  chargesEnabled: boolean;
+  payoutsEnabled: boolean;
+  requirements?: {
+    currently_due: string[];
+    eventually_due: string[];
+    past_due: string[];
+    pending_verification: string[];
+  };
+  capabilities?: {
+    card_payments?: "active" | "inactive" | "pending";
+    transfers?: "active" | "inactive" | "pending";
+  };
+}
+
+/**
+ * checkConnectPermissionsAction の ActionResult ペイロード
+ */
+export interface ConnectPermissionsPayload {
+  /** 支払い受付が可能か */
+  canReceivePayments: boolean;
+  /** 振込が可能か */
+  canReceivePayouts: boolean;
+  /** 認証済みか */
+  isVerified: boolean;
+  /** 制限事項 */
+  restrictions?: string[];
+}
+
+/**
+ * getDetailedAccountStatusAction の ActionResult ペイロード
+ * status が undefined の場合は「ready」状態を意味する（CTA非表示）
+ */
+export interface DetailedAccountStatusPayload {
+  status?: DetailedAccountStatus;
+}
+
+/**
+ * checkExpressDashboardAccessAction の ActionResult ペイロード
+ */
+export interface ExpressDashboardAccessPayload {
+  hasAccount: boolean;
+  accountId?: string;
 }

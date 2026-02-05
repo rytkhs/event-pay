@@ -1,8 +1,9 @@
 //
 
+import { redirect } from "next/navigation";
+
 import { startOnboardingAction, getStripeBalanceAction } from "@features/stripe-connect/server";
 
-import { redirect } from "next/navigation";
 import { setupSupabaseClientMocks } from "../../setup/common-mocks";
 import { createMockSupabaseClient, setTestUserById } from "../../setup/supabase-auth-mock";
 
@@ -54,6 +55,21 @@ jest.mock("@core/stripe/client", () => ({
       retrieve: jest.fn().mockResolvedValue({
         available: [{ currency: "jpy", amount: 1000 }],
         pending: [{ currency: "jpy", amount: 500 }],
+      }),
+    },
+    accounts: {
+      retrieve: jest.fn().mockResolvedValue({
+        id: "acct_test",
+        requirements: {
+          currently_due: [],
+          eventually_due: [],
+          past_due: [],
+          pending_verification: [],
+        },
+        capabilities: {
+          card_payments: "inactive",
+          transfers: "inactive",
+        },
       }),
     },
   })),
@@ -142,6 +158,34 @@ describe("Stripe Connect actions", () => {
       if (result.success) {
         // 1000 + 500 = 1500
         expect(result.data).toBe(1500);
+      }
+    });
+  });
+
+  describe("getConnectAccountStatusAction", () => {
+    it("should return account status when account exists", async () => {
+      const { getConnectAccountStatusAction } = require("@features/stripe-connect/server");
+      const result = await getConnectAccountStatusAction();
+
+      // Based on mock data in jest.mock above
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.hasAccount).toBe(true);
+        expect(result.data.accountId).toBe("acct_test");
+        expect(result.data.dbStatus).toBe("unverified");
+      }
+    });
+  });
+
+  describe("checkExpressDashboardAccessAction", () => {
+    it("should return hasAccount: true when account exists", async () => {
+      const { checkExpressDashboardAccessAction } = require("@features/stripe-connect/server");
+      const result = await checkExpressDashboardAccessAction();
+
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.hasAccount).toBe(true);
+        expect(result.data.accountId).toBe("acct_test");
       }
     });
   });

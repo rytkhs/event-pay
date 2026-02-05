@@ -1,17 +1,17 @@
+import { type ActionResult, fail, ok } from "@core/errors/adapters/server-actions";
 import { createClient } from "@core/supabase/server";
 import { handleServerError } from "@core/utils/error-handler.server";
+import { isNextRedirectError } from "@core/utils/next";
 
 import { createUserStripeConnectService } from "../services";
-import type { DetailedAccountStatus } from "../types";
+import type { DetailedAccountStatusPayload } from "../types";
 
 /**
  * Stripe Connectアカウントの詳細状態をチェックするServer Action
  */
-export async function getDetailedAccountStatusAction(): Promise<{
-  success: boolean;
-  status?: DetailedAccountStatus;
-  error?: string;
-}> {
+export async function getDetailedAccountStatusAction(): Promise<
+  ActionResult<DetailedAccountStatusPayload>
+> {
   let userId: string | undefined;
   try {
     // 1. 認証チェック
@@ -23,10 +23,7 @@ export async function getDetailedAccountStatusAction(): Promise<{
     userId = user?.id;
 
     if (authError || !user) {
-      return {
-        success: false,
-        error: "認証が必要です",
-      };
+      return fail("UNAUTHORIZED", { userMessage: "認証が必要です" });
     }
 
     // 2. StripeConnectServiceを初期化
@@ -36,8 +33,7 @@ export async function getDetailedAccountStatusAction(): Promise<{
     const account = await stripeConnectService.getConnectAccountByUser(user.id);
 
     if (!account) {
-      return {
-        success: true,
+      return ok({
         status: {
           statusType: "no_account",
           title: "決済機能を有効にしましょう",
@@ -47,7 +43,7 @@ export async function getDetailedAccountStatusAction(): Promise<{
           actionUrl: "/dashboard/connect",
           severity: "info",
         },
-      };
+      });
     }
 
     // 4. アカウント詳細情報を取得
@@ -72,8 +68,7 @@ export async function getDetailedAccountStatusAction(): Promise<{
 
     // 5. ステータス別の判定
     if (accountInfo.status === "unverified") {
-      return {
-        success: true,
+      return ok({
         status: {
           statusType: "unverified",
           title: "アカウント認証を完了してください",
@@ -83,13 +78,12 @@ export async function getDetailedAccountStatusAction(): Promise<{
           actionUrl: "/dashboard/connect?action=complete",
           severity: "warning",
         },
-      };
+      });
     }
 
     // 6. 要件チェック（認証済みだが追加情報が必要）
     if (hasPastDue || hasCurrentlyDue || hasEventuallyDue) {
-      return {
-        success: true,
+      return ok({
         status: {
           statusType: "requirements_due",
           title: hasPastDue
@@ -104,12 +98,11 @@ export async function getDetailedAccountStatusAction(): Promise<{
           actionUrl: "/dashboard/connect?action=update",
           severity: hasPastDue ? "error" : hasCurrentlyDue ? "warning" : "info",
         },
-      };
+      });
     }
 
     if (accountInfo.status === "onboarding" && (hasPendingVerification || hasPendingCapabilities)) {
-      return {
-        success: true,
+      return ok({
         status: {
           statusType: "pending_review",
           title: "Stripeが審査中です",
@@ -119,7 +112,7 @@ export async function getDetailedAccountStatusAction(): Promise<{
           actionUrl: "/settings/payments",
           severity: "info",
         },
-      };
+      });
     }
 
     // 7. 全て正常（CTAを表示しない）
@@ -130,20 +123,21 @@ export async function getDetailedAccountStatusAction(): Promise<{
      * - 判定側では !status の条件で「ready」状態を検出する
      * - statusType: "ready" を明示的に返すと、CTAコンポーネントが表示されてしまう
      */
-    return {
-      success: true,
+    return ok({
       status: undefined, // ready状態 = CTA非表示
-    };
+    });
   } catch (error) {
+    if (isNextRedirectError(error)) {
+      throw error;
+    }
     handleServerError(error, {
       category: "stripe_connect",
       action: "get_detailed_account_status_failed",
       userId,
     });
 
-    return {
-      success: false,
-      error: "アカウント状態の確認に失敗しました",
-    };
+    return fail("INTERNAL_ERROR", {
+      userMessage: "アカウント状態の確認に失敗しました",
+    });
   }
 }

@@ -59,17 +59,16 @@ describe("🔍 仕様書の実装差異検出テスト", () => {
     );
 
     // 仕様書更新後のレスポンス型定義確認
-    expect(result).toHaveProperty("success");
     expect(result).toHaveProperty("payment_status");
     expect(result).toHaveProperty("payment_required");
 
     // 型の正確性
-    expect(typeof result.success).toBe("boolean");
     expect(typeof result.payment_status).toBe("string");
     expect(typeof result.payment_required).toBe("boolean");
 
-    // 成功時はerrorフィールドは省略される
+    // 成功時はProblem Details以外のエラー情報は含めない
     expect(result).not.toHaveProperty("error");
+    expect(result).not.toHaveProperty("success");
   });
 
   test("【重要】レート制限設定の仕様書準拠性", async () => {

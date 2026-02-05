@@ -3,10 +3,11 @@
  * Database StatusとStripe Account ObjectからUI Statusを派生するクラス
  *
  * 要件:
- * - 2.1: UI Statusとして no_account、unverified、requirements_due、ready、restricted の5つの値を返す
+ * - 2.1: UI Statusとして no_account、unverified、requirements_due、pending_review、ready、restricted の6つの値を返す
  * - 2.2: Connect Account が存在しないとき、UI Status として no_account を返す
  * - 2.3: Database Status が unverified であるとき、UI Status として unverified を返す
  * - 2.4: Account Object の currently_due、past_due、または eventually_due が非空であるとき、UI Status として requirements_due を返す
+ * - 2.4.1: onboarding 状態で pending_verification があり due 項目がない場合は pending_review を返す
  * - 2.5: Database Status が restricted であるとき、UI Status として restricted を返し、requirements_due に統合しない
  * - 2.6: Database Status が verified かつ Account Object の due配列が空かつ disabled_reason が null であるとき、UI Status として ready を返す
  */
@@ -39,6 +40,11 @@ export class UIStatusMapper {
       return "unverified";
     }
 
+    // 要件 2.4.1: pending_review - onboarding 状態で審査待ち
+    if (dbStatus === "onboarding" && account && this.isPendingReview(account)) {
+      return "pending_review";
+    }
+
     // 要件 2.4: requirements_due - due配列が非空または disabled_reason あり
     if (account && this.hasPendingRequirements(account)) {
       return "requirements_due";
@@ -49,8 +55,38 @@ export class UIStatusMapper {
       return "ready";
     }
 
-    // onboarding: デフォルト（審査中など）
+    // onboarding かつ上記条件に該当しない: requirements_due
     return "requirements_due";
+  }
+
+  /**
+   * 審査待ち状態かどうかをチェック
+   *
+   * pending_verification があり、かつ due 項目がない場合は審査待ち
+   *
+   * @param account Stripe Account Object
+   * @returns 審査待ち状態の場合 true
+   */
+  private isPendingReview(account: Stripe.Account): boolean {
+    const reqs = account.requirements;
+    if (!reqs) {
+      return false;
+    }
+
+    const hasPendingVerification = (reqs.pending_verification?.length ?? 0) > 0;
+    const hasNoDueItems =
+      (reqs.currently_due?.length ?? 0) === 0 &&
+      (reqs.past_due?.length ?? 0) === 0 &&
+      (reqs.eventually_due?.length ?? 0) === 0;
+
+    // Capability が pending の場合も審査待ちとみなす
+    const capabilities = account.capabilities;
+    const hasPendingCapabilities = Boolean(
+      capabilities &&
+      (capabilities.card_payments === "pending" || capabilities.transfers === "pending")
+    );
+
+    return (hasPendingVerification || hasPendingCapabilities) && hasNoDueItems;
   }
 
   /**

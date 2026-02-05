@@ -51,7 +51,7 @@ describe("🎯 エッジケース・境界値テスト", () => {
         },
         shouldCreatePayment: true,
         paymentOverrides: { amount: 0 },
-        expectedResult: { success: true, payment_required: false },
+        expectedResult: { payment_required: false },
         useIndependentAttendance: true,
       },
       {
@@ -64,7 +64,7 @@ describe("🎯 エッジケース・境界値テスト", () => {
         },
         shouldCreatePayment: true,
         paymentOverrides: { amount: 50 },
-        expectedResult: { success: true, payment_required: true },
+        expectedResult: { payment_required: true },
         useIndependentAttendance: true,
       },
       {
@@ -77,7 +77,7 @@ describe("🎯 エッジケース・境界値テスト", () => {
         },
         shouldCreatePayment: true,
         paymentOverrides: { amount: 10_000_000 },
-        expectedResult: { success: true, payment_required: true },
+        expectedResult: { payment_required: true },
         useIndependentAttendance: true,
       },
     ];
@@ -105,7 +105,7 @@ describe("🎯 エッジケース・境界値テスト", () => {
       paymentOverrides: {
         stripe_payment_intent_id: `pi_test_unicode_${Date.now()}`,
       },
-      expectedResult: { success: true },
+      expectedResult: { payment_required: true },
       useIndependentAttendance: true,
     };
 
@@ -113,7 +113,7 @@ describe("🎯 エッジケース・境界値テスト", () => {
       unicodeScenario,
       verifySessionHandler
     );
-    expect(result.success).toBe(true);
+    expect(result.payment_status).toBeDefined();
 
     // 制御文字を含む入力の安全な処理
     const maliciousSessionId = "cs_test\x00\x01\x1f";

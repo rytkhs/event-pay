@@ -51,7 +51,6 @@ describe("🎯 正常系テスト - 共通シナリオ活用", () => {
           stripe_payment_intent_id: "pi_test_real_123",
         },
         expectedResult: {
-          success: true,
           payment_status: "pending", // 実際のStripe APIの作成直後状態
           payment_required: true,
         },
@@ -63,7 +62,6 @@ describe("🎯 正常系テスト - 共通シナリオ活用", () => {
         paymentStatus: "pending",
         shouldCreatePayment: true,
         expectedResult: {
-          success: true,
           payment_status: "pending", // 実際のStripe APIでは作成直後は pending
           payment_required: true,
         },
@@ -79,7 +77,6 @@ describe("🎯 正常系テスト - 共通シナリオ活用", () => {
         },
         shouldCreatePayment: true,
         expectedResult: {
-          success: true,
           payment_status: "pending",
           payment_required: true,
         },
@@ -95,7 +92,6 @@ describe("🎯 正常系テスト - 共通シナリオ活用", () => {
         },
         stripeResponse: { amount_total: 0 }, // 無料セッション作成
         expectedResult: {
-          success: true,
           payment_status: "pending", // 実際のStripe APIでは作成直後はpending
           payment_required: false,
         },
@@ -109,7 +105,6 @@ describe("🎯 正常系テスト - 共通シナリオ活用", () => {
         paymentOverrides: { amount: 0 },
         stripeResponse: { amount_total: 0 }, // 無料セッション作成
         expectedResult: {
-          success: true,
           payment_status: "pending", // 実際のAPIでは作成直後は未完了
           payment_required: false, // ただし支払い不要
         },
@@ -121,7 +116,6 @@ describe("🎯 正常系テスト - 共通シナリオ活用", () => {
         paymentStatus: "pending",
         shouldCreatePayment: true,
         expectedResult: {
-          success: true,
           payment_status: "pending", // 実際のStripe APIでは作成直後はpending
           payment_required: true,
         },
@@ -155,7 +149,7 @@ describe("🎯 正常系テスト - 共通シナリオ活用", () => {
         },
         shouldCreatePayment: true,
         paymentOverrides: { amount: 0 },
-        expectedResult: { success: true, payment_required: false },
+        expectedResult: { payment_required: false },
         useIndependentAttendance: true,
       },
       {
@@ -168,7 +162,7 @@ describe("🎯 正常系テスト - 共通シナリオ活用", () => {
         },
         shouldCreatePayment: true,
         paymentOverrides: { amount: 1000 },
-        expectedResult: { success: true, payment_required: false },
+        expectedResult: { payment_required: false },
         useIndependentAttendance: true,
       },
       {
@@ -181,7 +175,7 @@ describe("🎯 正常系テスト - 共通シナリオ活用", () => {
         },
         shouldCreatePayment: true,
         paymentOverrides: { amount: 1000 },
-        expectedResult: { success: true, payment_required: true },
+        expectedResult: { payment_required: true },
         useIndependentAttendance: true,
       },
     ];
@@ -205,7 +199,6 @@ describe("🎯 正常系テスト - 共通シナリオ活用", () => {
         paymentStatus: "pending",
         shouldCreatePayment: true,
         expectedResult: {
-          success: true,
           payment_status: "pending", // 実際のStripe APIの動作に合わせる
           payment_required: true,
         },
@@ -217,7 +210,6 @@ describe("🎯 正常系テスト - 共通シナリオ活用", () => {
         paymentStatus: "paid", // DBは完了状態
         shouldCreatePayment: true,
         expectedResult: {
-          success: true,
           payment_status: "pending", // Stripeが未完了なので実際の状態を返す
           payment_required: true,
         },

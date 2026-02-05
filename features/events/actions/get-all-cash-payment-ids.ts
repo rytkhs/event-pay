@@ -1,4 +1,5 @@
 import { verifyEventAccess, handleDatabaseError } from "@core/auth/event-authorization";
+import { type ActionResult, ok, fail } from "@core/errors/adapters/server-actions";
 import { logger } from "@core/logging/app-logger";
 import { logPayment } from "@core/logging/system-logger";
 import { createClient } from "@core/supabase/server";
@@ -8,7 +9,7 @@ import {
 } from "@core/utils/payment-status-mapper";
 import {
   GetAllCashPaymentIdsParamsSchema,
-  type GetAllCashPaymentIdsResponse,
+  type GetAllCashPaymentIdsResult,
 } from "@core/validation/participant-management";
 
 /**
@@ -19,7 +20,7 @@ import {
  */
 export async function getAllCashPaymentIdsAction(
   params: unknown
-): Promise<GetAllCashPaymentIdsResponse> {
+): Promise<ActionResult<GetAllCashPaymentIdsResult>> {
   try {
     const validated = GetAllCashPaymentIdsParamsSchema.parse(params);
     const { eventId, filters, max } = validated;
@@ -142,14 +143,15 @@ export async function getAllCashPaymentIdsAction(
       outcome: "success",
     });
 
-    return {
-      success: true,
+    return ok({
       paymentIds: resultIds,
       total: paymentIds.length,
       matchedTotal: matchedTotal ?? paymentIds.length,
       truncated,
-    };
+    });
   } catch (error) {
-    return { success: false, error: error instanceof Error ? error.message : "取得に失敗しました" };
+    return fail("INTERNAL_ERROR", {
+      userMessage: error instanceof Error ? error.message : "取得に失敗しました",
+    });
   }
 }

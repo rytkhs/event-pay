@@ -1,11 +1,13 @@
 import { cookies } from "next/headers";
 
+import { type ActionResult, ok } from "@core/errors/adapters/server-actions";
+
 /**
  * 申込成功状態を示す HttpOnly クッキーを削除するサーバーアクション
  * - 対象パスは特定の招待トークンページに限定
  * - クッキー値自体は扱わず、同名・同パスで期限切れを上書き
  */
-export async function dismissInviteSuccessAction(inviteToken: string): Promise<{ ok: true }> {
+export async function dismissInviteSuccessAction(inviteToken: string): Promise<ActionResult> {
   const cookieStore = cookies();
   try {
     cookieStore.set("invite_success", "", {
@@ -18,5 +20,5 @@ export async function dismissInviteSuccessAction(inviteToken: string): Promise<{
   } catch {
     // 失敗してもUX優先でエラーは返さない（サイレント）
   }
-  return { ok: true };
+  return ok(undefined);
 }
