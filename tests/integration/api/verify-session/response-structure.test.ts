@@ -59,7 +59,6 @@ describe("📋 レスポンス構造検証", () => {
 
     // 実際のStripe APIレスポンスに基づくフィールド
     expect(result).toEqual({
-      success: true,
       payment_status: "pending", // 実際のStripe Sessionは作成直後はpending
       payment_required: true,
     });
@@ -68,5 +67,6 @@ describe("📋 レスポンス構造検証", () => {
     expect(result).not.toHaveProperty("error");
     expect(result).not.toHaveProperty("message");
     expect(result).not.toHaveProperty("data");
+    expect(result).not.toHaveProperty("success");
   });
 });

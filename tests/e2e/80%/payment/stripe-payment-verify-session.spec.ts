@@ -188,7 +188,6 @@ test.describe("Stripe決済 ケース3-2: セッション検証API", () => {
     console.log("✓ verify-session APIレスポンス:", verifyResult);
 
     // === 5. レスポンスの検証 ===
-    expect(verifyResult.success).toBe(true);
     expect(verifyResult.payment_status).toBeDefined();
 
     // 決済完了している場合は"success"または"processing"
