@@ -136,7 +136,8 @@ export async function setupChargeRefundedTest(): Promise<ChargeRefundedTestSetup
     const url = new URL("http://localhost/api/workers/stripe-webhook");
     const headers = new Headers({
       "Upstash-Signature": "sig_test",
-      "Upstash-Delivery-Id": `deliv_test_${Date.now()}`,
+      "Upstash-Message-Id": `msg_test_${Date.now()}`,
+      "Upstash-Retried": "0",
       ...headersInit,
     });
     return new NextRequest(url, {

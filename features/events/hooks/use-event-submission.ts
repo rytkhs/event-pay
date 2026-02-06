@@ -4,7 +4,12 @@ import { useCallback } from "react";
 
 import { useRouter } from "next/navigation";
 
-import type { ActionResult } from "@core/errors/adapters/server-actions";
+import { AppError } from "@core/errors";
+import {
+  toAppResultFromActionResult,
+  type ActionResult,
+} from "@core/errors/adapters/server-actions";
+import { errResult, okResult, type AppResult } from "@core/errors/app-result";
 import type { Event, EventFormData } from "@core/types/models";
 import { deriveEventStatus } from "@core/utils/derive-event-status";
 import { handleClientError } from "@core/utils/error-handler.client";
@@ -12,14 +17,13 @@ import { handleClientError } from "@core/utils/error-handler.client";
 import { ChangeItem } from "@/components/ui/change-confirmation-dialog";
 import type { Database } from "@/types/database";
 
-// 型安全なSubmitResult
-interface SubmitResult {
-  success: boolean;
-  data?: Event;
-  error?: string;
-}
-
 type EventRow = Database["public"]["Tables"]["events"]["Row"];
+type SubmissionActionMeta = {
+  message?: string;
+  redirectUrl?: string;
+  needsVerification?: boolean;
+};
+type SubmissionActionResult = AppResult<EventRow, SubmissionActionMeta>;
 
 export type UpdateEventAction = (
   eventId: string,
@@ -54,113 +58,148 @@ export function useEventSubmission({
 }: UseEventSubmissionProps) {
   const router = useRouter();
 
+  const extractFormErrorsFromAppError = useCallback((error: AppError): FormErrors => {
+    const errors: FormErrors = {};
+    const details = error.details as Record<string, unknown> | undefined;
+
+    if (!details) {
+      return errors;
+    }
+
+    const fields: Array<keyof FormErrors> = [
+      "title",
+      "description",
+      "location",
+      "date",
+      "fee",
+      "capacity",
+      "payment_methods",
+      "registration_deadline",
+      "payment_deadline",
+      "allow_payment_after_deadline",
+      "grace_period_days",
+    ];
+    const fieldSet = new Set(fields);
+
+    for (const [field, value] of Object.entries(details)) {
+      if (field === "_form" && Array.isArray(value) && typeof value[0] === "string") {
+        errors.general = value[0];
+        continue;
+      }
+
+      if (!fieldSet.has(field as keyof FormErrors)) {
+        continue;
+      }
+
+      if (Array.isArray(value) && typeof value[0] === "string") {
+        errors[field as keyof FormErrors] = value[0];
+      }
+    }
+
+    return errors;
+  }, []);
+
+  const processSubmissionResult = useCallback(
+    (result: SubmissionActionResult, setErrors: (errors: FormErrors) => void): AppResult<Event> => {
+      if (result.success) {
+        if (!result.data) {
+          const appError = new AppError("INTERNAL_ERROR", {
+            userMessage: "エラーが発生しました。もう一度お試しください。",
+          });
+          setErrors({ general: appError.userMessage });
+          return errResult(appError);
+        }
+
+        const updatedEvent = result.data;
+        const dataWithStatus: Event = {
+          ...updatedEvent,
+          status: deriveEventStatus(updatedEvent.date, updatedEvent.canceled_at ?? null),
+        };
+        if (onSubmit) {
+          onSubmit(dataWithStatus);
+        } else {
+          router.push(`/events/${eventId}`);
+        }
+        return okResult(dataWithStatus);
+      }
+
+      const errorMessage = result.error.userMessage || "エラーが発生しました";
+      const errors = extractFormErrorsFromAppError(result.error);
+
+      if (Object.keys(errors).length === 0) {
+        errors.general = errorMessage;
+      }
+
+      setErrors(errors);
+      return errResult(result.error);
+    },
+    [eventId, extractFormErrorsFromAppError, onSubmit, router]
+  );
+
+  const createFormDataFromSubmission = useCallback(
+    (data: EventFormData | Partial<EventFormData>): FormData => {
+      const formDataObj = new FormData();
+      const clearable = new Set([
+        "location",
+        "description",
+        "capacity",
+        "payment_deadline",
+        "payment_methods",
+      ]);
+
+      Object.entries(data).forEach(([key, value]) => {
+        if (value == null) {
+          return;
+        }
+
+        if (Array.isArray(value)) {
+          if (value.length === 0 && clearable.has(key)) {
+            // 空配列はクリア意図として空文字を1つ送る
+            formDataObj.append(key, "");
+          } else {
+            value.forEach((v) => formDataObj.append(key, v));
+          }
+        } else if (typeof value === "boolean") {
+          formDataObj.append(key, String(value));
+        } else if (value === "" && clearable.has(key)) {
+          // 空文字でも明示的に送る（クリア）
+          formDataObj.append(key, "");
+        } else if (value !== "") {
+          formDataObj.append(key, String(value));
+        }
+      });
+
+      return formDataObj;
+    },
+    []
+  );
+
   // フォーム送信処理（型安全）
   const submitForm = useCallback(
     async (
       formData: EventFormData | Partial<EventFormData>,
-      changes: ChangeItem[],
       setErrors: (errors: FormErrors) => void
-    ): Promise<SubmitResult> => {
+    ): Promise<AppResult<Event>> => {
       try {
-        // FormDataオブジェクトの構築（clearable項目は空文字も送信してクリア意図を伝える）
-        const formDataObj = new FormData();
-        const clearable = new Set([
-          "location",
-          "description",
-          "capacity",
-          "payment_deadline",
-          "payment_methods",
-        ]);
-
-        Object.entries(formData).forEach(([key, value]) => {
-          if (Array.isArray(value)) {
-            if (value.length === 0 && clearable.has(key)) {
-              // 空配列はクリア意図として空文字を1つ送る
-              formDataObj.append(key, "");
-            } else {
-              value.forEach((v) => formDataObj.append(key, v));
-            }
-          } else if (typeof value === "boolean") {
-            formDataObj.append(key, String(value));
-          } else if (value === "" && clearable.has(key)) {
-            // 空文字でも明示的に送る（クリア）
-            formDataObj.append(key, "");
-          } else if (value !== "") {
-            formDataObj.append(key, value);
-          }
-        });
+        const formDataObj = createFormDataFromSubmission(formData);
 
         // サーバーアクション実行
         const result = await updateEventAction(eventId, formDataObj);
-
-        if (result.success && result.data) {
-          const updatedEvent = result.data;
-          // ステータス算出を付与
-          const dataWithStatus: Event = {
-            ...updatedEvent,
-            status: deriveEventStatus(updatedEvent.date, updatedEvent.canceled_at ?? null),
-          };
-          // 成功時の処理
-          if (onSubmit) {
-            onSubmit(dataWithStatus);
-          } else {
-            router.push(`/events/${eventId}`);
-          }
-          return { success: true, data: dataWithStatus };
-        } else {
-          // 失敗時の処理 - 詳細なエラー情報を解析してフィールド別エラーを設定
-          const errorMessage =
-            result.success === false
-              ? result.error?.userMessage || "エラーが発生しました"
-              : "エラーが発生しました";
-
-          // サーバーエラーの詳細を解析してフィールド別エラーを設定
-          const errors: FormErrors = {};
-
-          // result.successがfalseの場合のみfieldErrorsやdetailsにアクセス可能
-          if (!result.success) {
-            const fieldErrors = result.error?.fieldErrors;
-            if (fieldErrors) {
-              Object.entries(fieldErrors).forEach(([field, messages]) => {
-                if (messages && messages.length > 0) {
-                  errors[field as keyof FormErrors] = messages[0];
-                }
-              });
-            }
-
-            // violationsがある場合（制限違反エラー）
-            const details = result.error?.details as
-              | { violations?: Array<{ field?: string; reason?: string }> }
-              | undefined;
-            if (details?.violations && Array.isArray(details.violations)) {
-              details.violations.forEach((violation) => {
-                if (violation.field && violation.reason) {
-                  errors[violation.field as keyof FormErrors] = violation.reason;
-                }
-              });
-            }
-          }
-
-          // フィールド別エラーが設定されていない場合はgeneralエラーを設定
-          if (Object.keys(errors).length === 0) {
-            errors.general = errorMessage;
-          }
-
-          setErrors(errors);
-          return { success: false, error: errorMessage };
-        }
+        const appResult = toAppResultFromActionResult(result);
+        return processSubmissionResult(appResult, setErrors);
       } catch (error) {
-        handleClientError(error, {
+        const appError = handleClientError(error, {
           category: "event_management",
           action: "event_update_failed",
           eventId,
         });
-        const errorMessage = "エラーが発生しました。もう一度お試しください。";
-        setErrors({ general: errorMessage });
-        return { success: false, error: errorMessage };
+        setErrors({
+          general: appError.userMessage || "エラーが発生しました。もう一度お試しください。",
+        });
+        return errResult(appError);
       }
     },
-    [eventId, onSubmit, router, updateEventAction]
+    [createFormDataFromSubmission, eventId, processSubmissionResult, updateEventAction]
   );
 
   // 送信前のデータ準備（バリデーション済みデータの変換）
@@ -227,85 +266,44 @@ export function useEventSubmission({
   }, []);
 
   // FormDataオブジェクトの構築
-  const buildFormData = useCallback((data: EventFormData): FormData => {
-    const formDataObj = new FormData();
-    const clearable = new Set([
-      "location",
-      "description",
-      "capacity",
-      "payment_deadline",
-      "payment_methods",
-    ]);
-
-    Object.entries(data).forEach(([key, value]) => {
-      if (Array.isArray(value)) {
-        if (value.length === 0 && clearable.has(key)) {
-          formDataObj.append(key, "");
-        } else {
-          value.forEach((v) => formDataObj.append(key, v));
-        }
-      } else if (typeof value === "boolean") {
-        formDataObj.append(key, String(value));
-      } else if (value === "" && clearable.has(key)) {
-        formDataObj.append(key, "");
-      } else if (value !== "") {
-        formDataObj.append(key, value);
-      }
-    });
-
-    return formDataObj;
-  }, []);
+  const buildFormData = useCallback(
+    (data: EventFormData): FormData => {
+      return createFormDataFromSubmission(data);
+    },
+    [createFormDataFromSubmission]
+  );
 
   // レスポンス処理
   const handleSubmissionResponse = useCallback(
-    (result: ActionResult<EventRow>, setErrors: (errors: FormErrors) => void): SubmitResult => {
-      if (result.success && result.data) {
-        const updatedEvent = result.data;
-        const dataWithStatus: Event = {
-          ...updatedEvent,
-          status: deriveEventStatus(updatedEvent.date, updatedEvent.canceled_at ?? null),
-        };
-        if (onSubmit) {
-          onSubmit(dataWithStatus);
-        } else {
-          router.push(`/events/${eventId}`);
-        }
-        return { success: true, data: dataWithStatus };
-      } else {
-        const errorMessage =
-          result.success === false
-            ? result.error?.userMessage || "エラーが発生しました"
-            : "エラーが発生しました";
-        setErrors({ general: errorMessage });
-        return { success: false, error: errorMessage };
-      }
-    },
-    [eventId, onSubmit, router]
+    (result: SubmissionActionResult, setErrors: (errors: FormErrors) => void): AppResult<Event> =>
+      processSubmissionResult(result, setErrors),
+    [processSubmissionResult]
   );
 
   // エラーハンドリング
   const handleSubmissionError = useCallback(
-    (error: any, setErrors: (errors: FormErrors) => void): SubmitResult => {
-      handleClientError(error, {
+    (error: unknown, setErrors: (errors: FormErrors) => void): AppResult<Event> => {
+      const appError = handleClientError(error, {
         category: "event_management",
         action: "event_submission_failed",
         eventId,
       });
-      const errorMessage = "エラーが発生しました。もう一度お試しください。";
-      setErrors({ general: errorMessage });
-      return { success: false, error: errorMessage };
+      setErrors({
+        general: appError.userMessage || "エラーが発生しました。もう一度お試しください。",
+      });
+      return errResult(appError);
     },
     [eventId]
   );
 
   // 送信状況の監視
-  const getSubmissionStatus = useCallback((result: SubmitResult) => {
+  const getSubmissionStatus = useCallback((result: AppResult<Event>) => {
     return {
       isLoading: false, // 実際の実装では状態管理が必要
       isSuccess: result.success,
       isError: !result.success,
-      errorMessage: result.error,
-      data: result.data,
+      errorMessage: result.success ? undefined : result.error.userMessage,
+      data: result.success ? result.data : undefined,
     };
   }, []);
 

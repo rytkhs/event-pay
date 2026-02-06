@@ -1,5 +1,7 @@
 import type { ZodError } from "zod";
 
+import type { AppResult } from "../app-result";
+import { errResult, okResult } from "../app-result";
 import { AppError } from "../app-error";
 import { generateCorrelationId } from "../correlation-id";
 import { normalizeError } from "../normalize";
@@ -182,5 +184,68 @@ export function zodFail(
     ...options,
     fieldErrors: Object.keys(fieldErrors).length > 0 ? fieldErrors : undefined,
     retryable: false,
+  });
+}
+
+export function toActionResultFromAppResult<T>(
+  result: AppResult<T>,
+  options: ActionFailOptions & ActionOkOptions = {}
+): ActionResult<T> {
+  // NOTE: AppResult.meta は内部専用。UI境界向けの情報は options で明示的に渡す。
+  if (result.success) {
+    return ok(result.data, {
+      message: options.message,
+      redirectUrl: options.redirectUrl,
+      needsVerification: options.needsVerification,
+    });
+  }
+
+  const actionError = toActionError(result.error, {
+    userMessage: options.userMessage,
+    correlationId: options.correlationId,
+    retryable: options.retryable,
+    fieldErrors: options.fieldErrors,
+    details: options.details,
+  });
+
+  return {
+    success: false,
+    error: actionError,
+    redirectUrl: options.redirectUrl,
+    needsVerification: options.needsVerification,
+  };
+}
+
+export function toAppResultFromActionResult<T>(result: ActionResult<T>): AppResult<
+  T,
+  {
+    message?: string;
+    redirectUrl?: string;
+    needsVerification?: boolean;
+  }
+> {
+  if (result.success) {
+    return okResult(result.data, {
+      message: result.message,
+      redirectUrl: result.redirectUrl,
+      needsVerification: result.needsVerification,
+    });
+  }
+
+  const details = {
+    ...(result.error.details ?? {}),
+    ...(result.error.fieldErrors ?? {}),
+  };
+
+  const appError = new AppError(result.error.code, {
+    userMessage: result.error.userMessage,
+    correlationId: result.error.correlationId,
+    retryable: result.error.retryable,
+    details,
+  });
+
+  return errResult(appError, {
+    redirectUrl: result.redirectUrl,
+    needsVerification: result.needsVerification,
   });
 }

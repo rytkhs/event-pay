@@ -51,7 +51,7 @@ const createMockAccountEvent = (accountData: Partial<any>) => ({
       charges_enabled: false,
       payouts_enabled: false,
       metadata: {
-        actor_id: "test_user_id",
+        actor_id: "00000000-0000-4000-8000-000000000000",
       },
       requirements: {
         currently_due: [],
@@ -182,10 +182,8 @@ describe("🔗 Connect Webhook パイプライン 統合テスト", () => {
 
       const response = await ConnectWebhookPOST(request);
 
-      expect(response.status).toBe(200);
-      const body = await response.json();
-      expect(body.received).toBe(true);
-      expect(body.eventId).toBe(event.id);
+      expect(response.status).toBe(204);
+      expect(response.headers.get("X-Event-Id")).toBe(event.id);
     });
   });
 
@@ -216,10 +214,8 @@ describe("🔗 Connect Webhook パイプライン 統合テスト", () => {
 
       const response = await ConnectWebhookPOST(request);
 
-      expect(response.status).toBe(200);
-      const body = await response.json();
-      expect(body.received).toBe(true);
-      expect(body.eventType).toBe("account.updated");
+      expect(response.status).toBe(204);
+      expect(response.headers.get("X-Event-Type")).toBe("account.updated");
     });
 
     test("verified状態のアカウントを正しく処理する", async () => {
@@ -254,9 +250,7 @@ describe("🔗 Connect Webhook パイプライン 統合テスト", () => {
 
       const response = await ConnectWebhookPOST(request);
 
-      expect(response.status).toBe(200);
-      const body = await response.json();
-      expect(body.received).toBe(true);
+      expect(response.status).toBe(204);
     });
 
     test("restricted状態のアカウントを正しく処理する", async () => {
@@ -291,9 +285,7 @@ describe("🔗 Connect Webhook パイプライン 統合テスト", () => {
 
       const response = await ConnectWebhookPOST(request);
 
-      expect(response.status).toBe(200);
-      const body = await response.json();
-      expect(body.received).toBe(true);
+      expect(response.status).toBe(204);
     });
 
     test("under_review状態のアカウントを正しく処理する", async () => {
@@ -328,14 +320,12 @@ describe("🔗 Connect Webhook パイプライン 統合テスト", () => {
 
       const response = await ConnectWebhookPOST(request);
 
-      expect(response.status).toBe(200);
-      const body = await response.json();
-      expect(body.received).toBe(true);
+      expect(response.status).toBe(204);
     });
   });
 
   describe("🔧 QStash Worker エンドポイント", () => {
-    test("QStash署名なしでは401エラーを返す", async () => {
+    test("QStash署名なしでは489エラーを返す", async () => {
       const event = createMockAccountEvent({});
       const payload = JSON.stringify({ event });
 
@@ -344,18 +334,19 @@ describe("🔗 Connect Webhook パイプライン 統合テスト", () => {
         {
           method: "POST",
           headers: {
-            "Upstash-Delivery-Id": "deliv_test_no_sig",
+            "Upstash-Message-Id": "msg_test_no_sig",
+            "Upstash-Retried": "0",
           },
           body: payload,
         }
       );
 
       const response = await ConnectWorkerPOST(request);
-      const body = await response.json();
+      const text = await response.text();
 
-      expect(response.status).toBe(401);
-      expect(body.code).toBe("UNAUTHORIZED");
-      expect(body.detail).toBe("Missing QStash signature");
+      expect(response.status).toBe(489);
+      expect(response.headers.get("Upstash-NonRetryable-Error")).toBe("true");
+      expect(text).toContain("Missing QStash signature");
     });
   });
 

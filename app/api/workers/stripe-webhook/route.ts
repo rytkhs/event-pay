@@ -3,9 +3,13 @@
  *
  * このエンドポイントは：
  * 1. QStashからの署名を検証
- * 2. StripeイベントIDを受信
- * 3. Stripe APIからイベントデータを再取得
- * 4. 既存のWebhookハンドラーで処理
+ * 2. Stripeイベントのペイロードを受信（直接利用）
+ * 3. 既存のWebhookハンドラーで処理
+ *
+ * QStash リトライ動作:
+ * - 2xx: 成功（リトライなし）
+ * - 489 + Upstash-NonRetryable-Error: リトライ不要、DLQへ送信
+ * - その他: リトライ継続
  */
 
 export const dynamic = "force-dynamic";
@@ -15,7 +19,6 @@ import { type NextRequest, NextResponse } from "next/server";
 import { Receiver } from "@upstash/qstash";
 import type Stripe from "stripe";
 
-import { respondWithCode, respondWithProblem } from "@core/errors/server";
 import { logger } from "@core/logging/app-logger";
 import { generateSecureUuid } from "@core/security/crypto";
 import { logSecurityEvent } from "@core/security/security-logger";
@@ -41,6 +44,30 @@ const getQstashReceiver = () => {
   });
 };
 
+/**
+ * QStash向け非リトライエラーレスポンス
+ * 489 + Upstash-NonRetryable-Error ヘッダーでDLQへ送信
+ */
+function nonRetryableError(message: string, correlationId?: string): NextResponse {
+  return new NextResponse(message, {
+    status: 489,
+    headers: {
+      "Upstash-NonRetryable-Error": "true",
+      ...(correlationId ? { "X-Correlation-ID": correlationId } : {}),
+    },
+  });
+}
+
+/**
+ * QStash向けリトライ可能エラーレスポンス
+ */
+function retryableError(message: string, correlationId?: string): NextResponse {
+  return new NextResponse(message, {
+    status: 500,
+    headers: correlationId ? { "X-Correlation-ID": correlationId } : {},
+  });
+}
+
 interface QStashWebhookBody {
   event: Stripe.Event;
 }
@@ -49,7 +76,11 @@ export async function POST(request: NextRequest) {
   ensureFeaturesRegistered();
   const startTime = Date.now();
   const correlationId = `qstash_${generateSecureUuid()}`;
-  const baseLogContext = { category: "stripe_webhook" as const, actorType: "webhook" as const };
+
+  // 公式ヘッダーを取得
+  const messageId = request.headers.get("Upstash-Message-Id");
+  const retried = request.headers.get("Upstash-Retried");
+  const retriedCount = retried ? parseInt(retried, 10) : 0;
 
   const qstashLogger = logger.withContext({
     category: "stripe_webhook",
@@ -58,18 +89,21 @@ export async function POST(request: NextRequest) {
     correlation_id: correlationId,
     request_id: correlationId,
     path: "/api/workers/stripe-webhook",
+    message_id: messageId,
+    retried: retriedCount,
   });
 
-  let deliveryId: string | null = null;
   let stripeEvent: Stripe.Event | undefined;
 
   try {
-    qstashLogger.info("QStash worker request received");
+    qstashLogger.info("QStash worker request received", {
+      message_id: messageId,
+      retried: retriedCount,
+    });
 
     // QStash署名検証
     const url = `${getEnv().NEXT_PUBLIC_APP_URL}/api/workers/stripe-webhook`;
     const signature = request.headers.get("Upstash-Signature");
-    deliveryId = request.headers.get("Upstash-Delivery-Id");
     const rawBody = await request.text();
 
     if (!signature) {
@@ -80,18 +114,19 @@ export async function POST(request: NextRequest) {
         details: {
           correlation_id: correlationId,
           request_id: correlationId,
+          message_id: messageId,
           path: "/api/workers/stripe-webhook",
         },
         userAgent: request.headers.get("user-agent") || undefined,
         ip: getClientIP(request),
         timestamp: new Date(),
       });
-      return respondWithCode("UNAUTHORIZED", {
-        instance: "/api/workers/stripe-webhook",
-        detail: "Missing QStash signature",
-        correlationId,
-        logContext: { ...baseLogContext, action: "qstash_signature_missing" },
+      qstashLogger.warn("Missing QStash signature - non-retryable", {
+        message_id: messageId,
+        outcome: "failure",
       });
+      // 署名不正は再送しても治らないため 489 (DLQへ)
+      return nonRetryableError("Missing QStash signature", correlationId);
     }
 
     const receiver = getQstashReceiver();
@@ -109,6 +144,7 @@ export async function POST(request: NextRequest) {
         details: {
           correlation_id: correlationId,
           request_id: correlationId,
+          message_id: messageId,
           signature_preview: signature.substring(0, 20) + "...",
           path: "/api/workers/stripe-webhook",
         },
@@ -116,50 +152,49 @@ export async function POST(request: NextRequest) {
         ip: getClientIP(request),
         timestamp: new Date(),
       });
-      return respondWithCode("UNAUTHORIZED", {
-        instance: "/api/workers/stripe-webhook",
-        detail: "Invalid QStash signature",
-        correlationId,
-        logContext: { ...baseLogContext, action: "qstash_signature_invalid" },
+      qstashLogger.warn("Invalid QStash signature - non-retryable", {
+        message_id: messageId,
+        outcome: "failure",
       });
+      // 署名不正は再送しても治らないため 489 (DLQへ)
+      return nonRetryableError("Invalid QStash signature", correlationId);
     }
 
     qstashLogger.info("QStash signature verified", {
-      delivery_id: deliveryId,
+      message_id: messageId,
     });
 
     // リクエストボディのパース
     let webhookBody: QStashWebhookBody;
     try {
       webhookBody = JSON.parse(rawBody);
-    } catch (error) {
-      return respondWithProblem(error, {
-        instance: "/api/workers/stripe-webhook",
-        detail: "Invalid JSON body",
-        correlationId,
-        defaultCode: "WEBHOOK_INVALID_PAYLOAD",
-        logContext: {
-          category: "stripe_webhook",
-          actorType: "webhook",
-          action: "qstash_worker_parse_body",
-        },
+    } catch {
+      qstashLogger.warn("Invalid JSON body - non-retryable", {
+        message_id: messageId,
+        outcome: "failure",
       });
+      // JSONパースエラーは再送しても治らないため 489 (DLQへ)
+      return nonRetryableError("Invalid JSON body", correlationId);
     }
 
     stripeEvent = webhookBody.event;
 
     if (!stripeEvent?.id || !stripeEvent?.type) {
-      return respondWithCode("INVALID_REQUEST", {
-        instance: "/api/workers/stripe-webhook",
-        detail: "Missing or invalid event data",
-        correlationId,
-        logContext: { ...baseLogContext, action: "invalid_event_data" },
+      qstashLogger.warn("Missing or invalid event data - non-retryable", {
+        message_id: messageId,
+        has_event: !!stripeEvent,
+        event_id: stripeEvent?.id,
+        event_type: stripeEvent?.type,
+        outcome: "failure",
       });
+      // ペイロード不正は再送しても治らないため 489 (DLQへ)
+      return nonRetryableError("Missing or invalid event data", correlationId);
     }
 
     qstashLogger.debug("Processing received Stripe event", {
       event_id: stripeEvent.id,
       event_type: stripeEvent.type,
+      message_id: messageId,
     });
 
     // 既存のWebhookハンドラーで処理
@@ -170,68 +205,74 @@ export async function POST(request: NextRequest) {
 
     // ハンドラが失敗を返した場合の処理
     if (processingResult && processingResult.success === false) {
-      return respondWithProblem(
-        (processingResult as any).error || "Worker failed with internal error",
-        {
-          instance: "/api/workers/stripe-webhook",
-          correlationId,
-          defaultCode: "WEBHOOK_UNEXPECTED_ERROR",
-          logContext: {
-            category: "stripe_webhook",
-            actorType: "webhook",
-            action: (processingResult as any).terminal
-              ? "qstash_worker_terminal_failure"
-              : "qstash_worker_retryable_failure",
-            additionalData: {
-              delivery_id: deliveryId,
-              event_id: stripeEvent?.id,
-              event_type: stripeEvent?.type,
-              processing_time_ms: processingTime,
-              reason: (processingResult as any).reason,
-              error: (processingResult as any).error,
-            },
-          },
-        }
-      );
+      const isTerminal = processingResult.meta?.terminal ?? !processingResult.error.retryable;
+      const reason = processingResult.meta?.reason;
+      const error = processingResult.error.userMessage || processingResult.error.message;
+      const errorCode = processingResult.error.code;
+      const retryable = processingResult.error.retryable;
+
+      if (isTerminal) {
+        qstashLogger.warn("Terminal webhook processing failure", {
+          message_id: messageId,
+          event_id: stripeEvent?.id,
+          event_type: stripeEvent?.type,
+          processing_time_ms: processingTime,
+          reason,
+          error,
+          error_code: errorCode,
+          retryable,
+          retried: retriedCount,
+          action: "send_to_dlq",
+          outcome: "failure",
+        });
+
+        // 恒久的な失敗は再試行せずDLQへ
+        return nonRetryableError(`Terminal failure: ${reason || error}`, correlationId);
+      }
+
+      // retryable (再試行させる): 500 を返す
+      qstashLogger.warn("Retryable webhook processing failure", {
+        message_id: messageId,
+        event_id: stripeEvent?.id,
+        event_type: stripeEvent?.type,
+        processing_time_ms: processingTime,
+        reason,
+        error,
+        error_code: errorCode,
+        retryable,
+        retried: retriedCount,
+        outcome: "failure",
+      });
+      return retryableError(`Processing failed: ${error}`, correlationId);
     }
 
     qstashLogger.info("QStash webhook processing completed", {
       event_id: stripeEvent.id,
       event_type: stripeEvent.type,
-      delivery_id: deliveryId,
-      success: processingResult.success,
+      message_id: messageId,
+      success: processingResult?.success ?? true,
       processing_time_ms: processingTime,
-      payment_id: (processingResult as any)?.paymentId || undefined,
-      result: processingResult,
+      payment_id: processingResult.meta?.paymentId || undefined,
+      retried: retriedCount,
       outcome: "success",
     });
 
-    return NextResponse.json({
-      success: true,
-      eventId: stripeEvent.id,
-      type: stripeEvent.type,
-      processingResult,
-      correlationId,
-      deliveryId,
-      processingTimeMs: processingTime,
+    return new NextResponse(null, {
+      status: 204,
+      headers: { "X-Correlation-ID": correlationId },
     });
   } catch (error) {
     const processingTime = Date.now() - startTime;
-    return respondWithProblem(error, {
-      instance: "/api/workers/stripe-webhook",
-      detail: "Worker failed to process event",
-      correlationId: correlationId,
-      defaultCode: "WEBHOOK_UNEXPECTED_ERROR",
-      logContext: {
-        category: "stripe_webhook",
-        actorType: "webhook",
-        action: "qstash_worker_error",
-        additionalData: {
-          correlationId,
-          delivery_id: deliveryId,
-          processing_time_ms: processingTime,
-        },
-      },
+    qstashLogger.error("QStash worker unexpected error - retryable", {
+      message_id: messageId,
+      event_id: stripeEvent?.id,
+      event_type: stripeEvent?.type,
+      processing_time_ms: processingTime,
+      retried: retriedCount,
+      error: error instanceof Error ? error.message : String(error),
+      outcome: "failure",
     });
+    // 予期しないエラーはリトライ可能として 500
+    return retryableError("Worker failed to process event", correlationId);
   }
 }

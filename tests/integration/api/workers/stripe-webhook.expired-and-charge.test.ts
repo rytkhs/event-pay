@@ -15,7 +15,8 @@ function createRequest(body: unknown, headersInit?: Record<string, string>) {
   const url = new URL("http://localhost/api/workers/stripe-webhook");
   const headers = new Headers({
     "Upstash-Signature": "sig_test",
-    "Upstash-Delivery-Id": "deliv_test_456",
+    "Upstash-Message-Id": "msg_test_456",
+    "Upstash-Retried": "0",
     ...headersInit,
   });
   return new NextRequest(url, {
@@ -32,17 +33,17 @@ describe("/api/workers/stripe-webhook (expired & charge)", () => {
     mockVerify.mockResolvedValue(true);
   });
 
-  it("checkout.session.expired は 200 を返す（failed 昇格パスを実行）", async () => {
+  it("checkout.session.expired は 204 を返す（failed 昇格パスを実行）", async () => {
     const evt = {
       ...webhookEventFixtures.checkoutCompleted(),
       type: "checkout.session.expired",
     } as any;
     const req = createRequest({ event: evt });
     const res = await WorkerPOST(req);
-    expect(res.status).toBe(200);
+    expect(res.status).toBe(204);
   });
 
-  it("charge.succeeded/failed/refunded の最小パスが200を返す", async () => {
+  it("charge.succeeded/failed/refunded の最小パスが204を返す", async () => {
     for (const type of ["charge.succeeded", "charge.failed", "charge.refunded"]) {
       const evt = {
         ...webhookEventFixtures.paymentIntentSucceeded(),
@@ -58,7 +59,7 @@ describe("/api/workers/stripe-webhook (expired & charge)", () => {
       } as any;
       const req = createRequest({ event: evt });
       const res = await WorkerPOST(req);
-      expect(res.status).toBe(200);
+      expect(res.status).toBe(204);
     }
   });
 });

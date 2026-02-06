@@ -124,18 +124,9 @@ test.describe("Stripe決済 ケース3-1: Webhook処理と決済完了確認", (
 
     const response = await sendStripeWebhook("checkout.session.completed", sessionData);
     expect(response.ok).toBe(true);
-    const responseData = (await response.json()) as {
-      received: boolean;
-      eventType: string;
-      testMode: boolean;
-      processed: boolean;
-    };
-    expect(responseData.received).toBe(true);
-    expect(responseData.eventType).toBe("checkout.session.completed");
-    expect(responseData.testMode).toBe(true);
-    expect(responseData.processed).toBe(true);
+    expect(response.status).toBe(204);
 
-    console.log("✓ Webhook送信完了:", responseData);
+    console.log("✓ Webhook送信完了: status", response.status);
 
     // === 3. DBの更新確認 ===
     console.log("⏳ DB更新を確認中...");
@@ -242,18 +233,9 @@ test.describe("Stripe決済 ケース3-1: Webhook処理と決済完了確認", (
     const response = await sendStripeWebhook("payment_intent.succeeded", paymentIntentData);
 
     expect(response.ok).toBe(true);
-    const responseData = (await response.json()) as {
-      received: boolean;
-      eventType: string;
-      testMode: boolean;
-      processed: boolean;
-    };
-    expect(responseData.received).toBe(true);
-    expect(responseData.eventType).toBe("payment_intent.succeeded");
-    expect(responseData.testMode).toBe(true);
-    expect(responseData.processed).toBe(true);
+    expect(response.status).toBe(204);
 
-    console.log("✓ Webhook送信完了:", responseData);
+    console.log("✓ Webhook送信完了: status", response.status);
 
     // === 3. DBの更新確認 ===
     console.log("⏳ DB更新を確認中...");
@@ -359,18 +341,9 @@ test.describe("Stripe決済 ケース3-1: Webhook処理と決済完了確認", (
     const response = await sendStripeWebhook("charge.succeeded", chargeData);
 
     expect(response.ok).toBe(true);
-    const responseData = (await response.json()) as {
-      received: boolean;
-      eventType: string;
-      testMode: boolean;
-      processed: boolean;
-    };
-    expect(responseData.received).toBe(true);
-    expect(responseData.eventType).toBe("charge.succeeded");
-    expect(responseData.testMode).toBe(true);
-    expect(responseData.processed).toBe(true);
+    expect(response.status).toBe(204);
 
-    console.log("✓ Webhook送信完了:", responseData);
+    console.log("✓ Webhook送信完了: status", response.status);
 
     // === 3. DBとペイロードの検証 ===
     console.log("⏳ Destination Charges設定を検証中...");

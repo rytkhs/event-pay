@@ -28,7 +28,8 @@ function createRequest(body: unknown, headersInit?: Record<string, string>) {
   const url = new URL("http://localhost/api/workers/stripe-connect-webhook");
   const headers = new Headers({
     "Upstash-Signature": "sig_test",
-    "Upstash-Delivery-Id": "deliv_test_789",
+    "Upstash-Message-Id": "msg_test_789",
+    "Upstash-Retried": "0",
     ...headersInit,
   });
   return new NextRequest(url, {

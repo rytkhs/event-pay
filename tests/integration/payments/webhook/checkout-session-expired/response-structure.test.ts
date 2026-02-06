@@ -81,18 +81,20 @@ describe("📊 レスポンス構造検証", () => {
     // Assert: WebhookProcessingResult型に準拠
     expect(result).toMatchObject({
       success: true,
-      eventId: expect.any(String),
-      paymentId: expect.any(String),
+      meta: {
+        eventId: expect.any(String),
+        paymentId: expect.any(String),
+      },
     });
 
     // Assert: 仕様書記載の具体的な値
-    expect(result.eventId).toBe(event.id);
-    expect(result.paymentId).toBe(payment.id);
+    expect(result.meta?.eventId).toBe(event.id);
+    expect(result.meta?.paymentId).toBe(payment.id);
 
     // Assert: 不要なフィールドが含まれていない
     expect(result.error).toBeUndefined();
-    expect(result.terminal).toBeUndefined();
-    expect(result.reason).toBeUndefined();
+    expect(result.meta?.terminal).toBeUndefined();
+    expect(result.meta?.reason).toBeUndefined();
   });
 
   test("決済レコード未発見時のレスポンス構造", async () => {
@@ -110,8 +112,8 @@ describe("📊 レスポンス構造検証", () => {
     });
 
     // Assert: 不要なフィールドが含まれていない
-    expect(result.eventId).toBeUndefined();
-    expect(result.paymentId).toBeUndefined();
+    expect(result.meta?.eventId).toBeUndefined();
+    expect(result.meta?.paymentId).toBeUndefined();
   });
 
   test("重複処理防止時のレスポンス構造", async () => {
@@ -149,7 +151,7 @@ describe("📊 レスポンス構造検証", () => {
     });
 
     // Assert: 不要なフィールドが含まれていない
-    expect(result.eventId).toBeUndefined();
-    expect(result.paymentId).toBeUndefined();
+    expect(result.meta?.eventId).toBeUndefined();
+    expect(result.meta?.paymentId).toBeUndefined();
   });
 });

@@ -1,6 +1,4 @@
-/** @type {import('jest').Config} */
-const config = {
-  testMatch: ["<rootDir>/tests/**/?(*.)+(spec|test).[tj]s?(x)"],
+const baseConfig = {
   testPathIgnorePatterns: ["/node_modules/", "/tests/e2e/"],
   setupFilesAfterEnv: ["<rootDir>/tests/setup/jest-setup.ts"],
   transform: {
@@ -36,8 +34,6 @@ const config = {
   },
   transformIgnorePatterns: ["node_modules/(?!(@opennextjs/cloudflare|@upstash|uncrypto)/)"],
   testEnvironment: "node",
-  collectCoverage: false,
-  coverageProvider: "v8",
   collectCoverageFrom: [
     "core/**/*.{ts,tsx}",
     "features/**/*.{ts,tsx}",
@@ -46,7 +42,6 @@ const config = {
     "!**/node_modules/**",
   ],
   coverageDirectory: "tmp/test-artifacts/jest-coverage",
-  coverageReporters: ["text", "text-summary", "html", "lcov", "json"],
   coveragePathIgnorePatterns: [
     "/node_modules/",
     "/tests/",
@@ -54,11 +49,30 @@ const config = {
     "/*.config.{js,mjs,ts}",
     "/types/",
   ],
+};
+
+/** @type {import('jest').Config} */
+const config = {
+  collectCoverage: false,
+  coverageProvider: "v8",
+  coverageReporters: ["text", "text-summary", "html", "lcov", "json"],
   reporters: [
     "default",
     ["jest-junit", { outputDirectory: "tmp/test-artifacts", outputName: "junit.xml" }],
   ],
   verbose: true,
+  projects: [
+    {
+      displayName: "unit",
+      ...baseConfig,
+      testMatch: ["<rootDir>/tests/unit/**/?(*.)+(spec|test).[tj]s?(x)"],
+    },
+    {
+      displayName: "integration",
+      ...baseConfig,
+      testMatch: ["<rootDir>/tests/integration/**/?(*.)+(spec|test).[tj]s?(x)"],
+    },
+  ],
 };
 
 export default config;

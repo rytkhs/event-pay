@@ -258,7 +258,7 @@ export async function createTestAttendance(
   };
 
   const {
-    email = `test-participant-${Date.now()}@example.com`,
+    email = `test-participant-${Date.now()}-${Math.random().toString(36).substring(2, 7)}@example.com`,
     nickname = `テスト参加者_${Math.random().toString(36).substring(2, 8)}`,
     status = "attending",
     guestToken = generateGuestToken(),

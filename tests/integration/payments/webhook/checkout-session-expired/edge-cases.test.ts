@@ -15,13 +15,18 @@ import { createWebhookTestSetup, type WebhookTestSetup } from "../../../../setup
 import { createTestWebhookEvent } from "../../../../setup/stripe-test-helpers";
 
 // 外部依存のモック（統合テストなので最小限）
-jest.mock("../../../../../core/logging/app-logger", () => ({
-  logger: {
+jest.mock("../../../../../core/logging/app-logger", () => {
+  const m = {
     info: jest.fn(),
     warn: jest.fn(),
     error: jest.fn(),
-  },
-}));
+    debug: jest.fn(),
+    critical: jest.fn(),
+    withContext: jest.fn(),
+  };
+  m.withContext.mockReturnValue(m);
+  return { logger: m };
+});
 
 /**
  * Checkout Session Expired イベントを作成
@@ -97,7 +102,9 @@ describe("🎯 境界値・エッジケース", () => {
 
     // Assert: データベース制約違反によりエラー
     expect(result.success).toBe(false);
-    expect(result.error).toContain("payments_stripe_intent_required");
+    if (!result.success) {
+      expect(result.error.message).toContain("payments_stripe_intent_required");
+    }
   });
 
   test("metadata.payment_id が空文字の場合は無視", async () => {
@@ -116,11 +123,13 @@ describe("🎯 境界値・エッジケース", () => {
       success: true,
     });
 
-    expect(mockLogger.info).toHaveBeenCalledWith(
-      "Webhook security event",
+    // Assert: ログ出力
+    expect(mockLogger.error).toHaveBeenCalledWith(
+      "Payment record not found for webhook",
       expect.objectContaining({
-        event_action: "webhook_checkout_expired_no_payment",
-        details: expect.objectContaining({ eventId: event.id, sessionId }),
+        error_code: "WEBHOOK_PAYMENT_NOT_FOUND",
+        action: "processCheckoutSessionExpired",
+        eventId: event.id,
       })
     );
   });
@@ -141,11 +150,13 @@ describe("🎯 境界値・エッジケース", () => {
       success: true,
     });
 
-    expect(mockLogger.info).toHaveBeenCalledWith(
-      "Webhook security event",
+    // Assert: ログ出力
+    expect(mockLogger.error).toHaveBeenCalledWith(
+      "Payment record not found for webhook",
       expect.objectContaining({
-        event_action: "webhook_checkout_expired_no_payment",
-        details: expect.objectContaining({ eventId: event.id, sessionId }),
+        error_code: "WEBHOOK_PAYMENT_NOT_FOUND",
+        action: "processCheckoutSessionExpired",
+        eventId: event.id,
       })
     );
   });
@@ -181,6 +192,8 @@ describe("🎯 境界値・エッジケース", () => {
 
     // Assert: データベース制約違反によりエラー
     expect(result.success).toBe(false);
-    expect(result.error).toContain("payments_stripe_intent_required");
+    if (!result.success) {
+      expect(result.error.message).toContain("payments_stripe_intent_required");
+    }
   });
 });

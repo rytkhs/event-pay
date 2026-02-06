@@ -448,9 +448,8 @@ export class ReminderService {
    * 参加期限リマインダーメールを送信
    */
   private async sendResponseDeadlineEmail(target: ResponseDeadlineTarget): Promise<void> {
-    const { default: ResponseDeadlineReminderEmail } = await import(
-      "@/emails/reminders/ResponseDeadlineReminderEmail"
-    );
+    const { default: ResponseDeadlineReminderEmail } =
+      await import("@/emails/reminders/ResponseDeadlineReminderEmail");
 
     const guestUrl = this.generateGuestUrl(target.events.id, target.guest_token);
 
@@ -470,7 +469,7 @@ export class ReminderService {
     });
 
     if (!result.success) {
-      throw new Error(result.error || "Failed to send email");
+      throw result.error;
     }
   }
 
@@ -478,9 +477,8 @@ export class ReminderService {
    * 決済期限リマインダーメールを送信
    */
   private async sendPaymentDeadlineEmail(target: PaymentDeadlineTarget): Promise<void> {
-    const { default: PaymentDeadlineReminderEmail } = await import(
-      "@/emails/reminders/PaymentDeadlineReminderEmail"
-    );
+    const { default: PaymentDeadlineReminderEmail } =
+      await import("@/emails/reminders/PaymentDeadlineReminderEmail");
 
     const guestUrl = this.generateGuestUrl(target.events.id, target.guest_token);
 
@@ -501,7 +499,7 @@ export class ReminderService {
     });
 
     if (!result.success) {
-      throw new Error(result.error || "Failed to send email");
+      throw result.error;
     }
   }
 
@@ -509,9 +507,8 @@ export class ReminderService {
    * イベント開催リマインダーメールを送信
    */
   private async sendEventStartEmail(target: EventStartTarget): Promise<void> {
-    const { default: EventStartReminderEmail } = await import(
-      "@/emails/reminders/EventStartReminderEmail"
-    );
+    const { default: EventStartReminderEmail } =
+      await import("@/emails/reminders/EventStartReminderEmail");
 
     const guestUrl = this.generateGuestUrl(target.events.id, target.guest_token);
 
@@ -531,7 +528,7 @@ export class ReminderService {
     });
 
     if (!result.success) {
-      throw new Error(result.error || "Failed to send email");
+      throw result.error;
     }
   }
 

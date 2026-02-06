@@ -73,7 +73,7 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    return NextResponse.json({ ok: true, belowThreshold: isBelowThreshold, ...details });
+    return NextResponse.json({ belowThreshold: isBelowThreshold, ...details });
   } catch (e) {
     const errorName = e instanceof Error ? e.name : "Unknown";
     const errorMessage = e instanceof Error ? e.message : String(e);

@@ -44,12 +44,12 @@ describe("/api/workers/stripe-webhook (worker)", () => {
 
     const req1 = setup.createRequest({ event: evt });
     const res1 = await WorkerPOST(req1);
-    expect(res1.status).toBe(200);
+    expect(res1.status).toBe(204);
 
     // 冪等再送
     const req2 = setup.createRequest({ event: evt });
     const res2 = await WorkerPOST(req2);
-    expect(res2.status).toBe(200);
+    expect(res2.status).toBe(204);
   });
 
   it("checkout.session.completed で stripe_checkout_session_id を保存", async () => {
@@ -70,6 +70,6 @@ describe("/api/workers/stripe-webhook (worker)", () => {
 
     const req = setup.createRequest({ event: evt });
     const res = await WorkerPOST(req);
-    expect(res.status).toBe(200);
+    expect(res.status).toBe(204);
   });
 });

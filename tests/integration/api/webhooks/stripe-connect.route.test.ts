@@ -180,16 +180,10 @@ describe("/api/webhooks/stripe-connect (receiver)", () => {
       });
 
       const res = await ConnectWebhookPOST(req);
-      expect(res.status).toBe(200);
-      const json = await res.json();
-      expect(json).toEqual(
-        expect.objectContaining({
-          received: true,
-          eventId: fakeConnectEvent.id,
-          eventType: fakeConnectEvent.type,
-          qstashMessageId: "msg_connect_123",
-        })
-      );
+      expect(res.status).toBe(204);
+      expect(res.headers.get("X-Event-Id")).toBe(fakeConnectEvent.id);
+      expect(res.headers.get("X-Event-Type")).toBe(fakeConnectEvent.type);
+      expect(res.headers.get("X-QStash-Message-Id")).toBe("msg_connect_123");
 
       // publishJSON の引数検証
       expect(mockPublishJSON).toHaveBeenCalledTimes(1);
@@ -235,16 +229,10 @@ describe("/api/webhooks/stripe-connect (receiver)", () => {
       });
 
       const res = await ConnectWebhookPOST(req);
-      expect(res.status).toBe(200);
-      const json = await res.json();
-      expect(json).toEqual(
-        expect.objectContaining({
-          received: true,
-          eventId: fakeConnectEvent.id,
-          eventType: fakeConnectEvent.type,
-          testMode: true,
-        })
-      );
+      expect(res.status).toBe(204);
+      expect(res.headers.get("X-Event-Id")).toBe(fakeConnectEvent.id);
+      expect(res.headers.get("X-Event-Type")).toBe(fakeConnectEvent.type);
+      expect(res.headers.get("X-Test-Mode")).toBe("true");
 
       expect(mockPublishJSON).not.toHaveBeenCalled();
       expect(mockConnectHandlerCreate).toHaveBeenCalledTimes(1);

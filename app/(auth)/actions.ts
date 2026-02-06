@@ -461,7 +461,10 @@ export async function registerAction(formData: FormData): Promise<ActionResult<{
             logger.warn("Account creation Slack notification failed", {
               category: "system",
               action: "accountCreationSlackFailed",
-              error: slackResult.error,
+              error_message: slackResult.error.message,
+              error_code: slackResult.error.code,
+              retryable: slackResult.error.retryable,
+              error_details: slackResult.error.details,
             });
           }
         } catch (error) {

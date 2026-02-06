@@ -3,6 +3,7 @@
  * Core層のポートインターフェースにSettlement機能を提供するアダプタ
  */
 
+import { errFrom, mapResult } from "@core/errors";
 import { registerSettlementReportPort } from "@core/ports/settlements";
 import { SecureSupabaseClientFactory } from "@core/security/secure-client-factory.impl";
 import { AdminReason } from "@core/security/secure-client-factory.types";
@@ -24,12 +25,14 @@ export function registerSettlementsAdapters(): void {
         );
 
         const service = new SettlementReportService(supabaseClient);
-        return await service.regenerateAfterRefundOrDispute(eventId, createdBy);
+        const result = await service.regenerateAfterRefundOrDispute(eventId, createdBy);
+        return mapResult(result, (data) => ({
+          reportId: data.reportId,
+        }));
       } catch (error) {
-        return {
-          success: false,
-          error: error instanceof Error ? error.message : "Unknown error in settlement processing",
-        };
+        return errFrom(error, {
+          defaultCode: "SETTLEMENT_REGENERATE_FAILED",
+        });
       }
     },
   });

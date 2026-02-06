@@ -4,20 +4,32 @@
 
 import * as React from "react";
 
+import type { AppResult } from "@core/errors";
+
+/**
+ * Resendエラータイプ
+ */
+export type ResendErrorType = "transient" | "permanent";
+
+/**
+ * 通知結果メタデータ
+ */
+export interface NotificationMeta {
+  providerMessageId?: string;
+  /** エラータイプ（一時的または恒久的） */
+  errorType?: ResendErrorType;
+  /** リトライ回数 */
+  retryCount?: number;
+  /** ResendやWebhook先のステータスコード */
+  statusCode?: number;
+  /** 通知処理をスキップしたか */
+  skipped?: boolean;
+}
+
 /**
  * 通知結果
  */
-export interface NotificationResult {
-  success: boolean;
-  messageId?: string;
-  error?: string;
-  /** エラータイプ（一時的または恒久的） */
-  errorType?: "transient" | "permanent";
-  /** リトライ回数 */
-  retryCount?: number;
-  /** Resendのステータスコード */
-  statusCode?: number;
-}
+export type NotificationResult = AppResult<void, NotificationMeta>;
 
 /**
  * React Emailコンポーネントを使用したメールテンプレート
@@ -136,14 +148,9 @@ export interface IEmailNotificationService {
   sendAdminAlert(params: {
     subject: string;
     message: string;
-    details?: Record<string, any>;
+    details?: Record<string, unknown>;
   }): Promise<NotificationResult>;
 }
-
-/**
- * Resendエラータイプ
- */
-export type ResendErrorType = "transient" | "permanent";
 
 /**
  * Resendエラー情報

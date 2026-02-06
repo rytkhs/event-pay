@@ -65,6 +65,8 @@ export async function POST(request: NextRequest) {
         instance: "/api/workers/event-cancel",
         detail: "Missing QStash signature",
         correlationId: corr,
+        status: 489,
+        headers: { "Upstash-NonRetryable-Error": "true" },
         logContext: { ...baseLogContext, action: "qstash_signature_missing" },
       });
     }
@@ -85,6 +87,8 @@ export async function POST(request: NextRequest) {
         instance: "/api/workers/event-cancel",
         detail: "Invalid QStash signature",
         correlationId: corr,
+        status: 489,
+        headers: { "Upstash-NonRetryable-Error": "true" },
         logContext: { ...baseLogContext, action: "qstash_signature_invalid" },
       });
     }
@@ -97,6 +101,8 @@ export async function POST(request: NextRequest) {
         instance: "/api/workers/event-cancel",
         detail: "Invalid JSON body",
         correlationId: corr,
+        status: 489,
+        headers: { "Upstash-NonRetryable-Error": "true" },
         logContext: { ...baseLogContext, action: "invalid_json" },
       });
     }
@@ -106,6 +112,8 @@ export async function POST(request: NextRequest) {
         instance: "/api/workers/event-cancel",
         detail: "Invalid JSON body",
         correlationId: corr,
+        status: 489,
+        headers: { "Upstash-NonRetryable-Error": "true" },
         logContext: { ...baseLogContext, action: "invalid_json" },
       });
     }
@@ -116,6 +124,8 @@ export async function POST(request: NextRequest) {
         instance: "/api/workers/event-cancel",
         detail: "Missing eventId",
         correlationId: corr,
+        status: 489,
+        headers: { "Upstash-NonRetryable-Error": "true" },
         logContext: { ...baseLogContext, action: "missing_event_id" },
       });
     }
@@ -182,7 +192,10 @@ export async function POST(request: NextRequest) {
           cancelLogger.warn("Event cancel Slack notification failed", {
             action: "event_cancel_slack_fail",
             event_id: eventId,
-            slack_error: slackResult.error,
+            slack_error_message: slackResult.error.message,
+            slack_error_code: slackResult.error.code,
+            retryable: slackResult.error.retryable,
+            slack_error_details: slackResult.error.details,
             outcome: "failure",
           });
         }
@@ -207,7 +220,13 @@ export async function POST(request: NextRequest) {
       outcome: "success",
     });
 
-    return NextResponse.json({ received: true, deliveryId, emails: emails.length });
+    return new NextResponse(null, {
+      status: 204,
+      headers: {
+        "X-Correlation-ID": corr,
+        ...(deliveryId ? { "X-Upstash-Delivery-Id": deliveryId } : {}),
+      },
+    });
   } catch (error) {
     return respondWithProblem(error, {
       instance: "/api/workers/event-cancel",

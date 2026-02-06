@@ -3,6 +3,7 @@
 import { useState, useCallback } from "react";
 
 import { useToast } from "@core/contexts/toast-context";
+import { errResult, okResult, type AppResult } from "@core/errors/app-result";
 import {
   handleClientError,
   getUserErrorMessage,
@@ -132,13 +133,17 @@ export function useErrorHandler(options: UseErrorHandlerOptions = {}) {
    * @returns 実行結果
    */
   const executeWithErrorHandling = useCallback(
-    async <T>(asyncFn: () => Promise<T>, context?: Partial<ErrorContext>): Promise<T | null> => {
+    async <T>(
+      asyncFn: () => Promise<T>,
+      context?: Partial<ErrorContext>
+    ): Promise<AppResult<T>> => {
       try {
         clearError();
-        return await asyncFn();
+        const data = await asyncFn();
+        return okResult(data);
       } catch (error) {
-        handleError(error, context);
-        return null;
+        const errorDetails = handleError(error, context);
+        return errResult(errorDetails);
       }
     },
     [handleError, clearError]
@@ -154,14 +159,14 @@ export function useErrorHandler(options: UseErrorHandlerOptions = {}) {
     async <T>(
       submitFn: () => Promise<T>,
       context?: Partial<ErrorContext>
-    ): Promise<{ success: boolean; data?: T; error?: AppError }> => {
+    ): Promise<AppResult<T>> => {
       try {
         clearError();
         const data = await submitFn();
-        return { success: true, data };
+        return okResult(data);
       } catch (error) {
         const errorDetails = handleError(error, { ...context, action: "form_submit" });
-        return { success: false, error: errorDetails };
+        return errResult(errorDetails);
       }
     },
     [handleError, clearError]
@@ -181,7 +186,7 @@ export function useErrorHandler(options: UseErrorHandlerOptions = {}) {
     submitWithErrorHandling,
 
     // ヘルパー関数
-    getUserErrorMessage: (error: unknown) => getUserErrorMessage(error),
+    getUserErrorMessage,
   };
 }
 

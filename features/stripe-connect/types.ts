@@ -4,6 +4,7 @@
 
 import type { PostgrestError } from "@supabase/supabase-js";
 
+import type { AppResult } from "@core/errors";
 import type { LogLevel } from "@core/logging/app-logger";
 
 import { Database } from "@/types/database";
@@ -157,11 +158,10 @@ export interface UpdateBusinessProfileParams {
 }
 
 // ビジネスプロファイル更新結果
-export interface UpdateBusinessProfileResult {
-  success: boolean;
+export type UpdateBusinessProfileResult = AppResult<{
   accountId: string;
   updatedFields: string[];
-}
+}>;
 
 // StripeConnect関連のエラー型
 export enum StripeConnectErrorType {

@@ -63,11 +63,17 @@ describe("📋 仕様書準拠性検証", () => {
       const req = setup.createRequest({ event: evt });
       const res = await WorkerPOST(req);
 
-      expect(res.status).toBe(200);
-      const json = await res.json();
-      expect(json.success).toBe(true);
-      // stripe_payment_intent_id で特定された決済IDが返されること
-      expect(json.processingResult.paymentId).toBe(payment.id);
+      expect(res.status).toBe(204);
+
+      // stripe_payment_intent_id が最優先で適用され、対象決済が更新されること
+      const { data: updatedPayment } = await setup.supabase
+        .from("payments")
+        .select("status, webhook_event_id, stripe_payment_intent_id")
+        .eq("id", payment.id)
+        .single();
+      expect(updatedPayment.status).toBe("paid");
+      expect(updatedPayment.webhook_event_id).toBe(evt.id);
+      expect(updatedPayment.stripe_payment_intent_id).toBe(paymentIntentId);
     });
 
     it("metadata.payment_idによるフォールバック検索が機能すること", async () => {
@@ -93,10 +99,7 @@ describe("📋 仕様書準拠性検証", () => {
       const req = setup.createRequest({ event: evt });
       const res = await WorkerPOST(req);
 
-      expect(res.status).toBe(200);
-      const json = await res.json();
-      expect(json.success).toBe(true);
-      expect(json.processingResult.paymentId).toBe(payment.id);
+      expect(res.status).toBe(204);
 
       // stripe_payment_intent_id が更新されていること
       const { data: updatedPayment } = await setup.supabase
@@ -209,9 +212,8 @@ describe("📋 仕様書準拠性検証", () => {
        * - Webhook処理の実装ファイルが存在すること
        * - ステータスランク処理の実装ファイルが存在すること
        */
-      const webhookHandler = await import(
-        "@/features/payments/services/webhook/webhook-event-handler"
-      );
+      const webhookHandler =
+        await import("@/features/payments/services/webhook/webhook-event-handler");
       expect(webhookHandler.StripeWebhookEventHandler).toBeDefined();
 
       const statusRank = await import("@/core/utils/payments/status-rank");
@@ -259,10 +261,8 @@ describe("📋 仕様書準拠性検証", () => {
       const req = setup.createRequest({ event: evt });
       const res = await WorkerPOST(req);
 
-      // エラーレスポンスが返されること
-      expect(res.status).toBeGreaterThanOrEqual(400);
-      const json = await res.json();
-      expect(json.success).toBe(false);
+      // 決済レコード未発見でもACKして再試行を止める（冪等性）
+      expect(res.status).toBe(204);
     });
   });
 });
