@@ -191,11 +191,6 @@ export async function POST(request: NextRequest) {
       const retryable = processingResult.error.retryable;
 
       if (isTerminal) {
-        // terminal=true の場合、reasonで区別
-        // - "duplicate" / "already_processed" → 正常系として 204 ACK
-        // - その他 → 要調査なので 489 (DLQへ)
-        const isDuplicateOrProcessed = reason === "duplicate" || reason === "already_processed";
-
         connectLogger.warn("Terminal connect webhook processing failure", {
           message_id: messageId,
           event_id: event.id,
@@ -206,19 +201,11 @@ export async function POST(request: NextRequest) {
           retryable,
           ms,
           retried: retriedCount,
-          action: isDuplicateOrProcessed ? "ack_duplicate" : "send_to_dlq",
+          action: "send_to_dlq",
           outcome: "failure",
         });
 
-        if (isDuplicateOrProcessed) {
-          // 重複/処理済みは正常終了扱い
-          return new NextResponse(null, {
-            status: 204,
-            headers: { "X-Correlation-ID": corr },
-          });
-        }
-
-        // 要調査の失敗はDLQへ
+        // 恒久的な失敗は再試行せずDLQへ
         return nonRetryableError(`Terminal failure: ${reason || error}`, corr);
       }
 
