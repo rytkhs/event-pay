@@ -65,6 +65,8 @@ export async function POST(request: NextRequest) {
         instance: "/api/workers/event-cancel",
         detail: "Missing QStash signature",
         correlationId: corr,
+        status: 489,
+        headers: { "Upstash-NonRetryable-Error": "true" },
         logContext: { ...baseLogContext, action: "qstash_signature_missing" },
       });
     }
@@ -85,6 +87,8 @@ export async function POST(request: NextRequest) {
         instance: "/api/workers/event-cancel",
         detail: "Invalid QStash signature",
         correlationId: corr,
+        status: 489,
+        headers: { "Upstash-NonRetryable-Error": "true" },
         logContext: { ...baseLogContext, action: "qstash_signature_invalid" },
       });
     }
@@ -97,6 +101,8 @@ export async function POST(request: NextRequest) {
         instance: "/api/workers/event-cancel",
         detail: "Invalid JSON body",
         correlationId: corr,
+        status: 489,
+        headers: { "Upstash-NonRetryable-Error": "true" },
         logContext: { ...baseLogContext, action: "invalid_json" },
       });
     }
@@ -106,6 +112,8 @@ export async function POST(request: NextRequest) {
         instance: "/api/workers/event-cancel",
         detail: "Invalid JSON body",
         correlationId: corr,
+        status: 489,
+        headers: { "Upstash-NonRetryable-Error": "true" },
         logContext: { ...baseLogContext, action: "invalid_json" },
       });
     }
@@ -116,6 +124,8 @@ export async function POST(request: NextRequest) {
         instance: "/api/workers/event-cancel",
         detail: "Missing eventId",
         correlationId: corr,
+        status: 489,
+        headers: { "Upstash-NonRetryable-Error": "true" },
         logContext: { ...baseLogContext, action: "missing_event_id" },
       });
     }

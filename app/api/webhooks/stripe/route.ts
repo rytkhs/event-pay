@@ -163,6 +163,20 @@ export async function POST(request: NextRequest) {
           request_id: requestId,
         });
 
+        // ハンドラーが失敗を返した場合はエラーレスポンスを返す
+        if (!result.success) {
+          return respondWithProblem(result.error, {
+            instance: "/api/webhooks/stripe",
+            detail: "Webhook processing failed in test mode",
+            correlationId: requestId,
+            defaultCode: "WEBHOOK_SYNC_PROCESSING_FAILED",
+            logContext: {
+              ...baseLogContext,
+              action: "sync_processing_failed",
+            },
+          });
+        }
+
         return new Response(null, {
           status: 204,
           headers: {

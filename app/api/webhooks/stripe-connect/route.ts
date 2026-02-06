@@ -130,15 +130,16 @@ export async function POST(request: NextRequest) {
         const handler = await ConnectWebhookHandler.create();
 
         // イベントタイプに応じて処理
+        let result: { success: boolean; error?: unknown } = { success: true };
         switch (event.type) {
           case "account.updated": {
             const accountObj = event.data.object as Stripe.Account;
-            await handler.handleAccountUpdated(accountObj);
+            result = await handler.handleAccountUpdated(accountObj);
             break;
           }
           case "account.application.deauthorized": {
             const applicationObj = event.data.object as Stripe.Application;
-            await handler.handleAccountApplicationDeauthorized(
+            result = await handler.handleAccountApplicationDeauthorized(
               applicationObj,
               (event as any).account
             );
@@ -146,12 +147,12 @@ export async function POST(request: NextRequest) {
           }
           case "payout.paid": {
             const payout = event.data.object as Stripe.Payout;
-            await handler.handlePayoutPaid(payout);
+            result = await handler.handlePayoutPaid(payout);
             break;
           }
           case "payout.failed": {
             const payout = event.data.object as Stripe.Payout;
-            await handler.handlePayoutFailed(payout);
+            result = await handler.handlePayoutFailed(payout);
             break;
           }
           default: {
@@ -160,6 +161,20 @@ export async function POST(request: NextRequest) {
               event_id: event.id,
             });
           }
+        }
+
+        // ハンドラーが失敗を返した場合はエラーレスポンスを返す
+        if (!result.success) {
+          return respondWithProblem(result.error, {
+            instance: "/api/webhooks/stripe-connect",
+            detail: "Connect webhook processing failed in test mode",
+            correlationId: requestId,
+            defaultCode: "WEBHOOK_SYNC_PROCESSING_FAILED",
+            logContext: {
+              ...baseLogContext,
+              action: "stripe_connect_webhook_sync_fail",
+            },
+          });
         }
 
         connectLogger.info("Connect webhook processed synchronously", {

@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 import { getCurrentUser } from "@core/auth/auth-utils";
-import { type ActionResult, fail, ok } from "@core/errors/adapters/server-actions";
+import { type ActionResult, fail, ok, zodFail } from "@core/errors/adapters/server-actions";
 import { logger } from "@core/logging/app-logger";
 import { createClient } from "@core/supabase/server";
 import { handleServerError } from "@core/utils/error-handler.server";
@@ -54,9 +54,8 @@ export async function generateSettlementReportAction(
 
     const validatedData = generateReportSchema.safeParse(rawData);
     if (!validatedData.success) {
-      return fail("VALIDATION_ERROR", {
+      return zodFail(validatedData.error, {
         userMessage: "入力データが無効です",
-        details: { zodErrors: validatedData.error.errors },
       });
     }
 
@@ -134,9 +133,8 @@ export async function getSettlementReportsAction(params: {
     // 入力値検証
     const validatedParams = getReportsSchema.safeParse(params);
     if (!validatedParams.success) {
-      return fail("VALIDATION_ERROR", {
+      return zodFail(validatedParams.error, {
         userMessage: "入力データが無効です",
-        details: { zodErrors: validatedParams.error.errors },
       });
     }
 
@@ -190,9 +188,8 @@ export async function exportSettlementReportsAction(params: {
     // 入力値検証
     const validatedParams = getReportsSchema.safeParse({ ...params, limit: 1000 }); // CSVは最大1000件
     if (!validatedParams.success) {
-      return fail("VALIDATION_ERROR", {
+      return zodFail(validatedParams.error, {
         userMessage: "入力データが無効です",
-        details: { zodErrors: validatedParams.error.errors },
       });
     }
 
@@ -277,9 +274,8 @@ export async function regenerateAfterRefundAction(
 
     const validatedData = generateReportSchema.safeParse(rawData);
     if (!validatedData.success) {
-      return fail("VALIDATION_ERROR", {
+      return zodFail(validatedData.error, {
         userMessage: "入力データが無効です",
-        details: { zodErrors: validatedData.error.errors },
       });
     }
 
