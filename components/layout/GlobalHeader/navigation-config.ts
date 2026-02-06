@@ -86,7 +86,7 @@ export const marketingCTA = {
 export const userMenuItems = [
   // {
   //   label: "精算レポート",
-  //   href: "/settlement-reports",
+  //   href: "/dashboard/settlement-reports",
   //   icon: createElement(FileText),
   // },
   {
