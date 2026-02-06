@@ -1,0 +1,50 @@
+{
+  "$schema": "https://unpkg.com/knip@5/schema.json",
+  "entry": [
+    "sentry-worker.ts",
+    "open-next.config.ts",
+    "emails/**/*.{ts,tsx}",
+    "tests/e2e/auth.setup.ts",
+    "tests/setup/**/*.ts",
+    "tests/integration/**/*-setup.ts"
+  ],
+  "project": ["**/*.{ts,tsx,js,jsx,mjs,cjs}"],
+  "ignore": [
+    "**/*.d.ts",
+    ".next/**",
+    ".open-next/**",
+    "dist/**",
+    "out/**",
+    "node_modules/**",
+    "tmp/**",
+    "coverage/**",
+    "public/**",
+    "scripts/**"
+  ],
+  "ignoreDependencies": [
+    "wrangler",
+    "shadcn",
+    "eslint-plugin-react",
+    "eslint-plugin-react-hooks",
+    "postcss-load-config",
+    "globals",
+    "jest-environment-jsdom",
+    "remark",
+    "remark-frontmatter",
+    "server-only",
+    "@react-email/preview-server",
+    "@react-email/render"
+  ],
+  "ignoreIssues": {
+    "components/ui/**": ["exports", "types"]
+  },
+  "ignoreBinaries": ["stripe"],
+  "next": true,
+  "playwright": true,
+  "jest": true,
+  "postcss": true,
+  "eslint": true,
+  "prettier": true,
+  "husky": true,
+  "lint-staged": true
+}
