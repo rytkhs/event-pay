@@ -205,9 +205,11 @@ export async function POST(request: NextRequest) {
 
     // ハンドラが失敗を返した場合の処理
     if (processingResult && processingResult.success === false) {
-      const isTerminal = (processingResult as any).terminal === true;
-      const reason = (processingResult as any).reason;
-      const error = (processingResult as any).error || "Worker failed with internal error";
+      const isTerminal = processingResult.meta?.terminal ?? !processingResult.error.retryable;
+      const reason = processingResult.meta?.reason;
+      const error = processingResult.error.userMessage || processingResult.error.message;
+      const errorCode = processingResult.error.code;
+      const retryable = processingResult.error.retryable;
 
       if (isTerminal) {
         // terminal=true の場合、reasonで区別
@@ -222,6 +224,8 @@ export async function POST(request: NextRequest) {
           processing_time_ms: processingTime,
           reason,
           error,
+          error_code: errorCode,
+          retryable,
           retried: retriedCount,
           action: isDuplicateOrProcessed ? "ack_duplicate" : "send_to_dlq",
           outcome: "failure",
@@ -247,6 +251,8 @@ export async function POST(request: NextRequest) {
         processing_time_ms: processingTime,
         reason,
         error,
+        error_code: errorCode,
+        retryable,
         retried: retriedCount,
         outcome: "failure",
       });
@@ -259,7 +265,7 @@ export async function POST(request: NextRequest) {
       message_id: messageId,
       success: processingResult?.success ?? true,
       processing_time_ms: processingTime,
-      payment_id: (processingResult as any)?.paymentId || undefined,
+      payment_id: processingResult.meta?.paymentId || undefined,
       retried: retriedCount,
       outcome: "success",
     });

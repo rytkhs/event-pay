@@ -182,7 +182,10 @@ export async function POST(request: NextRequest) {
           cancelLogger.warn("Event cancel Slack notification failed", {
             action: "event_cancel_slack_fail",
             event_id: eventId,
-            slack_error: slackResult.error,
+            slack_error_message: slackResult.error.message,
+            slack_error_code: slackResult.error.code,
+            retryable: slackResult.error.retryable,
+            slack_error_details: slackResult.error.details,
             outcome: "failure",
           });
         }

@@ -8,6 +8,7 @@ export type {
   INotificationService,
   IEmailNotificationService,
   EmailTemplate,
+  NotificationMeta,
   NotificationResult,
   StripeConnectNotificationData,
   AccountStatusChangeNotification,

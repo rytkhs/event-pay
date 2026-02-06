@@ -8,6 +8,7 @@ import * as React from "react";
 
 import { Resend } from "resend";
 
+import { AppError, errResult, okResult } from "@core/errors";
 import { logger } from "@core/logging/app-logger";
 import { getEnv } from "@core/utils/cloudflare-env";
 import { handleServerError } from "@core/utils/error-handler.server";
@@ -17,6 +18,7 @@ import {
   EmailTemplate,
   NotificationResult,
   ResendErrorInfo,
+  ResendErrorType,
 } from "./types";
 
 // タイムアウト設定（ミリ秒）
@@ -147,6 +149,25 @@ function classifyResendError(error: any): ResendErrorInfo {
  */
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function buildEmailErrorResult(options: {
+  message: string;
+  errorType: ResendErrorType;
+  retryCount: number;
+  statusCode?: number;
+}): NotificationResult {
+  const appError = new AppError("EMAIL_SENDING_FAILED", {
+    message: options.message,
+    userMessage: "メール送信に失敗しました",
+    retryable: options.errorType === "transient",
+  });
+
+  return errResult(appError, {
+    errorType: options.errorType,
+    retryCount: options.retryCount,
+    statusCode: options.statusCode,
+  });
 }
 
 /**
@@ -290,11 +311,10 @@ export class EmailNotificationService implements IEmailNotificationService {
         outcome: "success",
         mocked: true,
       });
-      return {
-        success: true,
-        messageId: `mock-${randomUUID()}`,
+      return okResult(undefined, {
+        providerMessageId: `mock-${randomUUID()}`,
         retryCount: 0,
-      };
+      });
     }
 
     for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
@@ -333,24 +353,22 @@ export class EmailNotificationService implements IEmailNotificationService {
 
           // 恒久的エラーの場合はリトライしない
           if (errorInfo.type === "permanent") {
-            return {
-              success: false,
-              error: errorInfo.message,
+            return buildEmailErrorResult({
+              message: errorInfo.message,
               errorType: "permanent",
               statusCode: errorInfo.statusCode,
               retryCount: attempt,
-            };
+            });
           }
 
           // 一時的エラーで最後のリトライの場合
           if (attempt === MAX_RETRIES) {
-            return {
-              success: false,
-              error: errorInfo.message,
+            return buildEmailErrorResult({
+              message: errorInfo.message,
               errorType: "transient",
               statusCode: errorInfo.statusCode,
               retryCount: attempt,
-            };
+            });
           }
 
           // リトライ待機
@@ -379,11 +397,10 @@ export class EmailNotificationService implements IEmailNotificationService {
           outcome: "success",
         });
 
-        return {
-          success: true,
-          messageId: result.data?.id,
+        return okResult(undefined, {
+          providerMessageId: result.data?.id,
           retryCount: attempt,
-        };
+        });
       } catch (error) {
         const errorInfo = classifyResendError(error);
 
@@ -405,24 +422,22 @@ export class EmailNotificationService implements IEmailNotificationService {
 
         // 恒久的エラーの場合はリトライしない
         if (errorInfo.type === "permanent") {
-          return {
-            success: false,
-            error: errorInfo.message,
+          return buildEmailErrorResult({
+            message: errorInfo.message,
             errorType: "permanent",
             statusCode: errorInfo.statusCode,
             retryCount: attempt,
-          };
+          });
         }
 
         // 最後のリトライの場合
         if (attempt === MAX_RETRIES) {
-          return {
-            success: false,
-            error: errorInfo.message,
+          return buildEmailErrorResult({
+            message: errorInfo.message,
             errorType: "transient",
             statusCode: errorInfo.statusCode,
             retryCount: attempt,
-          };
+          });
         }
 
         // リトライ待機
@@ -443,12 +458,11 @@ export class EmailNotificationService implements IEmailNotificationService {
     }
 
     // ここには到達しないはずだが、念のため
-    return {
-      success: false,
-      error: "メール送信中に予期しないエラーが発生しました",
+    return buildEmailErrorResult({
+      message: "メール送信中に予期しないエラーが発生しました",
       errorType: "transient",
       retryCount: MAX_RETRIES,
-    };
+    });
   }
 
   /**
@@ -502,10 +516,10 @@ export class EmailNotificationService implements IEmailNotificationService {
           actorType: "system",
           additionalData: {
             subject,
-            error: result.error,
-            error_type: result.errorType,
-            status_code: result.statusCode,
-            retry_count: result.retryCount,
+            error: result.error.message,
+            error_type: result.meta?.errorType,
+            status_code: result.meta?.statusCode,
+            retry_count: result.meta?.retryCount,
             admin_email: maskEmail(this.adminEmail),
           },
         });
@@ -524,12 +538,16 @@ export class EmailNotificationService implements IEmailNotificationService {
           admin_email: maskEmail(this.adminEmail),
         },
       });
-      return {
-        success: false,
-        error:
-          error instanceof Error ? error.message : "管理者アラート送信中にエラーが発生しました",
-        errorType: "permanent",
-      };
+      return errResult(
+        new AppError("ADMIN_ALERT_FAILED", {
+          message: error instanceof Error ? error.message : "Unexpected admin alert error",
+          userMessage: "管理者アラート送信中にエラーが発生しました",
+          retryable: false,
+        }),
+        {
+          errorType: "permanent",
+        }
+      );
     }
   }
 }

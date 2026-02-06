@@ -4,17 +4,15 @@
  * Portsパターンによる依存関係の逆転
  */
 
+import { errFrom } from "@core/errors";
+import type { AppResult } from "@core/errors";
 import { getSettlementReportPort } from "@core/ports/settlements";
 
 export interface SettlementServicePort {
   regenerateAfterRefundOrDispute(
     eventId: string,
     createdBy: string
-  ): Promise<{
-    success: boolean;
-    error?: string;
-    reportId?: string;
-  }>;
+  ): Promise<AppResult<{ reportId?: string }>>;
 }
 
 // Factory function using port
@@ -25,10 +23,9 @@ export function createSettlementService(): SettlementServicePort {
         const port = getSettlementReportPort();
         return await port.regenerateAfterRefundOrDispute(eventId, createdBy);
       } catch (error) {
-        return {
-          success: false,
-          error: error instanceof Error ? error.message : "Unknown error",
-        };
+        return errFrom(error, {
+          defaultCode: "SETTLEMENT_REGENERATE_FAILED",
+        });
       }
     },
   };

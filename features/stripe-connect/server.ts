@@ -19,3 +19,7 @@ export {
 } from "./services";
 export { registerStripeConnectAdapters } from "./adapters/stripe-connect-port.adapter";
 export { ConnectWebhookHandler } from "./services/webhook/connect-webhook-handler";
+export type {
+  ConnectWebhookMeta,
+  ConnectWebhookResult,
+} from "./services/webhook/connect-webhook.types";

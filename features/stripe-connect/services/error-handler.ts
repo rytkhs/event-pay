@@ -248,7 +248,10 @@ export class StripeConnectErrorHandler implements IStripeConnectErrorHandler {
           action: "admin_notification",
           actor_type: "system",
           error_type: error.type,
-          slack_error: slackResult.error,
+          slack_error_message: slackResult.error.message,
+          slack_error_code: slackResult.error.code,
+          retryable: slackResult.error.retryable,
+          slack_error_details: slackResult.error.details,
           outcome: "failure",
         });
       }

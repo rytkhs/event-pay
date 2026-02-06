@@ -302,7 +302,10 @@ Payouts Enabled: ${accountInfo.payoutsEnabled ? "Yes" : "No"}
         if (!slackResult.success) {
           actionLogger.warn("Connect onboarding Slack notification failed", {
             user_id: user.id,
-            slack_error: slackResult.error,
+            slack_error_message: slackResult.error.message,
+            slack_error_code: slackResult.error.code,
+            retryable: slackResult.error.retryable,
+            slack_error_details: slackResult.error.details,
             outcome: "failure",
           });
         }

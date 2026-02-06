@@ -2,6 +2,7 @@
  * Stripe Connectアカウントステータス同期の型定義
  * エラーハンドリング、リトライ、レート制限に関する型定義
  */
+import type { AppResult } from "@core/errors";
 
 /**
  * Status Sync Options
@@ -22,16 +23,12 @@ export interface StatusSyncOptions {
  * Status Sync Result
  * ステータス同期の結果
  */
-export interface StatusSyncResult {
-  /** 同期が成功したか */
-  success: boolean;
+export type StatusSyncResult = AppResult<{
   /** 試行回数 */
   attempts: number;
-  /** エラー情報（失敗時） */
-  error?: Error;
   /** 同期にかかった時間（ミリ秒） */
   durationMs: number;
-}
+}>;
 
 /**
  * Rate Limit Config
@@ -67,11 +64,9 @@ export type WebhookEventType = "account.updated";
  * Webhook Processing Result
  * Webhook処理の結果
  */
-export interface WebhookProcessingResult {
+export type WebhookProcessingResult = AppResult<{
   /** 処理が成功したか */
   processed: boolean;
   /** スキップされたか */
   skipped?: boolean;
-  /** エラー情報（失敗時） */
-  error?: string;
-}
+}>;

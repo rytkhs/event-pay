@@ -7,6 +7,7 @@ import "server-only";
 import { type SupabaseClient } from "@supabase/supabase-js";
 import Stripe from "stripe";
 
+import { errFrom, okResult } from "@core/errors";
 import { logger } from "@core/logging/app-logger";
 import { getStripe, generateIdempotencyKey } from "@core/stripe/client";
 import { convertStripeError } from "@core/stripe/error-handler";
@@ -691,11 +692,10 @@ export class StripeConnectService implements IStripeConnectService {
 
       if (updateFields.length === 0) {
         // 更新する項目がない場合は成功として扱う
-        return {
-          success: true,
+        return okResult({
           accountId,
           updatedFields: [],
-        };
+        });
       }
 
       // Stripe APIでビジネスプロファイルを更新
@@ -718,33 +718,25 @@ export class StripeConnectService implements IStripeConnectService {
         outcome: "success",
       });
 
-      return {
-        success: true,
+      return okResult({
         accountId,
         updatedFields: updateFields,
-      };
+      });
     } catch (error) {
-      if (error instanceof StripeConnectError) {
-        throw error;
-      }
+      const normalizedError =
+        error && typeof error === "object" && "type" in error
+          ? convertStripeError(error as Stripe.errors.StripeError, {
+              operation: "update_business_profile",
+              connectAccountId: params.accountId,
+              additionalData: {
+                updated_fields: Object.keys(params.businessProfile),
+              },
+            })
+          : error;
 
-      // Stripeエラーの場合は汎用ハンドラーで処理
-      if (error && typeof error === "object" && "type" in error) {
-        throw convertStripeError(error as Stripe.errors.StripeError, {
-          operation: "update_business_profile",
-          connectAccountId: params.accountId,
-          additionalData: {
-            updated_fields: Object.keys(params.businessProfile),
-          },
-        });
-      }
-
-      throw new StripeConnectError(
-        StripeConnectErrorType.UNKNOWN_ERROR,
-        "ビジネスプロファイル更新中に予期しないエラーが発生しました",
-        error as Error,
-        { accountId: params.accountId }
-      );
+      return errFrom(normalizedError, {
+        defaultCode: "EXTERNAL_SERVICE_ERROR",
+      });
     }
   }
 

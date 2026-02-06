@@ -13,13 +13,18 @@ import { createWebhookTestSetup, type WebhookTestSetup } from "../../../../setup
 import { createTestWebhookEvent } from "../../../../setup/stripe-test-helpers";
 
 // 外部依存のモック（統合テストなので最小限）
-jest.mock("../../../../../core/logging/app-logger", () => ({
-  logger: {
+jest.mock("../../../../../core/logging/app-logger", () => {
+  const m = {
     info: jest.fn(),
     warn: jest.fn(),
     error: jest.fn(),
-  },
-}));
+    debug: jest.fn(),
+    critical: jest.fn(),
+    withContext: jest.fn(),
+  };
+  m.withContext.mockReturnValue(m);
+  return { logger: m };
+});
 
 /**
  * Checkout Session Expired イベントを作成
@@ -79,11 +84,12 @@ describe("⚠️ 異常系: 決済レコード未発見", () => {
     });
 
     // Assert: セキュリティログ出力
-    expect(mockLogger.info).toHaveBeenCalledWith(
-      "Webhook security event",
+    expect(mockLogger.error).toHaveBeenCalledWith(
+      "Payment record not found for webhook",
       expect.objectContaining({
-        event_action: "webhook_checkout_expired_no_payment",
-        details: expect.objectContaining({ eventId: event.id, sessionId: nonExistentSessionId }),
+        error_code: "WEBHOOK_PAYMENT_NOT_FOUND",
+        action: "processCheckoutSessionExpired",
+        eventId: event.id,
       })
     );
   });
@@ -106,12 +112,13 @@ describe("⚠️ 異常系: 決済レコード未発見", () => {
       success: true,
     });
 
-    // Assert: セキュリティログ出力
-    expect(mockLogger.info).toHaveBeenCalledWith(
-      "Webhook security event",
+    // Assert: ログ出力
+    expect(mockLogger.error).toHaveBeenCalledWith(
+      "Payment record not found for webhook",
       expect.objectContaining({
-        event_action: "webhook_checkout_expired_no_payment",
-        details: expect.objectContaining({ eventId: event.id, sessionId }),
+        error_code: "WEBHOOK_PAYMENT_NOT_FOUND",
+        action: "processCheckoutSessionExpired",
+        eventId: event.id,
       })
     );
   });
@@ -132,12 +139,13 @@ describe("⚠️ 異常系: 決済レコード未発見", () => {
       success: true,
     });
 
-    // Assert: セキュリティログ出力
-    expect(mockLogger.info).toHaveBeenCalledWith(
-      "Webhook security event",
+    // Assert: ログ出力
+    expect(mockLogger.error).toHaveBeenCalledWith(
+      "Payment record not found for webhook",
       expect.objectContaining({
-        event_action: "webhook_checkout_expired_no_payment",
-        details: expect.objectContaining({ eventId: event.id, sessionId }),
+        error_code: "WEBHOOK_PAYMENT_NOT_FOUND",
+        action: "processCheckoutSessionExpired",
+        eventId: event.id,
       })
     );
   });

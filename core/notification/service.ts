@@ -5,6 +5,7 @@ import * as React from "react";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+import { AppError, errFrom, errResult, okResult } from "@core/errors";
 import { logger } from "@core/logging/app-logger";
 import { getEnv } from "@core/utils/cloudflare-env";
 
@@ -45,15 +46,17 @@ export class NotificationService implements INotificationService {
       // ユーザー情報を取得
       const userInfo = await this.getUserInfo(data.userId);
       if (!userInfo) {
-        return {
-          success: false,
-          error: "ユーザー情報が見つかりません",
-        };
+        return errResult(
+          new AppError("NOT_FOUND", {
+            userMessage: "ユーザー情報が見つかりません",
+            retryable: false,
+            details: { userId: data.userId },
+          })
+        );
       }
 
-      const { default: AccountVerifiedEmail } = await import(
-        "@/emails/connect/AccountVerifiedEmail"
-      );
+      const { default: AccountVerifiedEmail } =
+        await import("@/emails/connect/AccountVerifiedEmail");
 
       const template: EmailTemplate = {
         subject: "Stripeアカウントの認証が完了しました",
@@ -67,10 +70,9 @@ export class NotificationService implements INotificationService {
         template,
       });
     } catch (error) {
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : "通知送信中にエラーが発生しました",
-      };
+      return errFrom(error, {
+        defaultCode: "EMAIL_SENDING_FAILED",
+      });
     }
   }
 
@@ -84,15 +86,17 @@ export class NotificationService implements INotificationService {
       // ユーザー情報を取得
       const userInfo = await this.getUserInfo(data.userId);
       if (!userInfo) {
-        return {
-          success: false,
-          error: "ユーザー情報が見つかりません",
-        };
+        return errResult(
+          new AppError("NOT_FOUND", {
+            userMessage: "ユーザー情報が見つかりません",
+            retryable: false,
+            details: { userId: data.userId },
+          })
+        );
       }
 
-      const { default: AccountRestrictedEmail } = await import(
-        "@/emails/connect/AccountRestrictedEmail"
-      );
+      const { default: AccountRestrictedEmail } =
+        await import("@/emails/connect/AccountRestrictedEmail");
 
       const template: EmailTemplate = {
         subject: "Stripeアカウントに制限が設定されました",
@@ -136,10 +140,9 @@ export class NotificationService implements INotificationService {
 
       return result;
     } catch (error) {
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : "通知送信中にエラーが発生しました",
-      };
+      return errFrom(error, {
+        defaultCode: "EMAIL_SENDING_FAILED",
+      });
     }
   }
 
@@ -155,15 +158,17 @@ export class NotificationService implements INotificationService {
         // ユーザー情報を取得
         const userInfo = await this.getUserInfo(data.userId);
         if (!userInfo) {
-          return {
-            success: false,
-            error: "ユーザー情報が見つかりません",
-          };
+          return errResult(
+            new AppError("NOT_FOUND", {
+              userMessage: "ユーザー情報が見つかりません",
+              retryable: false,
+              details: { userId: data.userId },
+            })
+          );
         }
 
-        const { default: AccountStatusChangedEmail } = await import(
-          "@/emails/connect/AccountStatusChangedEmail"
-        );
+        const { default: AccountStatusChangedEmail } =
+          await import("@/emails/connect/AccountStatusChangedEmail");
 
         const template: EmailTemplate = {
           subject: "Stripeアカウントの状態が更新されました",
@@ -182,12 +187,11 @@ export class NotificationService implements INotificationService {
         });
       }
 
-      return { success: true };
+      return okResult(undefined, { skipped: true });
     } catch (error) {
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : "通知送信中にエラーが発生しました",
-      };
+      return errFrom(error, {
+        defaultCode: "EMAIL_SENDING_FAILED",
+      });
     }
   }
 
@@ -231,9 +235,8 @@ export class NotificationService implements INotificationService {
     data: ParticipationRegisteredNotification
   ): Promise<NotificationResult> {
     try {
-      const { default: ParticipationRegisteredEmail } = await import(
-        "@/emails/participation/ParticipationRegisteredEmail"
-      );
+      const { default: ParticipationRegisteredEmail } =
+        await import("@/emails/participation/ParticipationRegisteredEmail");
 
       // ゲストURLを構築
       const baseUrl =
@@ -256,10 +259,9 @@ export class NotificationService implements INotificationService {
         template,
       });
     } catch (error) {
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : "通知送信中にエラーが発生しました",
-      };
+      return errFrom(error, {
+        defaultCode: "EMAIL_SENDING_FAILED",
+      });
     }
   }
 
@@ -270,9 +272,8 @@ export class NotificationService implements INotificationService {
     data: PaymentCompletedNotification
   ): Promise<NotificationResult> {
     try {
-      const { default: PaymentCompletedEmail } = await import(
-        "@/emails/payment/PaymentCompletedEmail"
-      );
+      const { default: PaymentCompletedEmail } =
+        await import("@/emails/payment/PaymentCompletedEmail");
 
       const template: EmailTemplate = {
         subject: `【みんなの集金】${data.eventTitle} - お支払い完了`,
@@ -290,10 +291,9 @@ export class NotificationService implements INotificationService {
         template,
       });
     } catch (error) {
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : "通知送信中にエラーが発生しました",
-      };
+      return errFrom(error, {
+        defaultCode: "EMAIL_SENDING_FAILED",
+      });
     }
   }
 

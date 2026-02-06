@@ -15,12 +15,14 @@ import { NextResponse } from "next/server";
 import { Receiver } from "@upstash/qstash";
 import Stripe from "stripe";
 
+import { okResult } from "@core/errors";
 import { logger } from "@core/logging/app-logger";
 import { generateSecureUuid } from "@core/security/crypto";
 import { getEnv } from "@core/utils/cloudflare-env";
 import { getClientIP } from "@core/utils/ip-detection";
 
 import { ConnectWebhookHandler } from "@features/stripe-connect/server";
+import type { ConnectWebhookResult } from "@features/stripe-connect/server";
 
 import { ensureFeaturesRegistered } from "@/app/_init/feature-registrations";
 
@@ -145,7 +147,7 @@ export async function POST(request: NextRequest) {
 
     // 既存Connectハンドラに委譲
     const handler = await ConnectWebhookHandler.create();
-    let processingResult: unknown = { success: true };
+    let processingResult: ConnectWebhookResult = okResult();
     switch (event.type) {
       case "account.updated": {
         const accountObj = event.data.object as Stripe.Account;
@@ -176,18 +178,17 @@ export async function POST(request: NextRequest) {
           event_id: event.id,
           message_id: messageId,
         });
+        processingResult = okResult(undefined, { reason: "unsupported_event" });
       }
     }
 
-    if (
-      processingResult &&
-      typeof processingResult === "object" &&
-      (processingResult as any).success === false
-    ) {
+    if (!processingResult.success) {
       const ms = Date.now() - start;
-      const isTerminal = (processingResult as any).terminal === true;
-      const reason = (processingResult as any).reason;
-      const error = (processingResult as any).error || "Worker failed";
+      const isTerminal = processingResult.meta?.terminal ?? !processingResult.error.retryable;
+      const reason = processingResult.meta?.reason;
+      const error = processingResult.error.userMessage || processingResult.error.message;
+      const errorCode = processingResult.error.code;
+      const retryable = processingResult.error.retryable;
 
       if (isTerminal) {
         // terminal=true の場合、reasonで区別
@@ -201,6 +202,8 @@ export async function POST(request: NextRequest) {
           type: event.type,
           reason,
           error,
+          error_code: errorCode,
+          retryable,
           ms,
           retried: retriedCount,
           action: isDuplicateOrProcessed ? "ack_duplicate" : "send_to_dlq",
@@ -226,6 +229,8 @@ export async function POST(request: NextRequest) {
         type: event.type,
         reason,
         error,
+        error_code: errorCode,
+        retryable,
         ms,
         retried: retriedCount,
         outcome: "failure",

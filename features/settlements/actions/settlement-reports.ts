@@ -71,7 +71,14 @@ export async function generateSettlementReportAction(
 
     if (!result.success) {
       return fail("INTERNAL_ERROR", {
-        userMessage: result.error || "レポート生成に失敗しました",
+        userMessage: result.error.userMessage || "レポート生成に失敗しました",
+      });
+    }
+
+    const payload = result.data;
+    if (!payload) {
+      return fail("INTERNAL_ERROR", {
+        userMessage: "レポート生成結果が不正です",
       });
     }
 
@@ -81,15 +88,15 @@ export async function generateSettlementReportAction(
       actor_type: "user",
       user_id: user.id,
       event_id: validatedData.data.eventId,
-      report_id: result.reportId,
-      already_exists: result.alreadyExists,
+      report_id: payload.reportId,
+      already_exists: payload.alreadyExists,
       outcome: "success",
     });
 
     return ok({
-      reportId: result.reportId,
-      alreadyExists: result.alreadyExists,
-      reportData: result.reportData,
+      reportId: payload.reportId,
+      alreadyExists: payload.alreadyExists,
+      reportData: payload.reportData,
     });
   } catch (error) {
     if (error instanceof Error && error.message.includes("NEXT_REDIRECT")) {
@@ -203,7 +210,14 @@ export async function exportSettlementReportsAction(params: {
 
     if (!result.success) {
       return fail("INTERNAL_ERROR", {
-        userMessage: result.error || "CSV エクスポートに失敗しました",
+        userMessage: result.error.userMessage || "CSV エクスポートに失敗しました",
+      });
+    }
+
+    const payload = result.data;
+    if (!payload) {
+      return fail("INTERNAL_ERROR", {
+        userMessage: "CSV生成結果が不正です",
       });
     }
 
@@ -212,20 +226,20 @@ export async function exportSettlementReportsAction(params: {
       action: "export_csv",
       actor_type: "user",
       user_id: user.id,
-      filename: result.filename,
+      filename: payload.filename,
       outcome: "success",
     });
 
-    if (!result.csvContent || !result.filename) {
+    if (payload.csvContent === undefined || !payload.filename) {
       return fail("INTERNAL_ERROR", {
         userMessage: "CSVの生成に失敗しました",
       });
     }
 
     return ok({
-      csvContent: result.csvContent,
-      filename: result.filename,
-      truncated: !!result.truncated,
+      csvContent: payload.csvContent,
+      filename: payload.filename,
+      truncated: !!payload.truncated,
     });
   } catch (error) {
     if (error instanceof Error && error.message.includes("NEXT_REDIRECT")) {
@@ -280,7 +294,14 @@ export async function regenerateAfterRefundAction(
 
     if (!result.success) {
       return fail("INTERNAL_ERROR", {
-        userMessage: result.error || "再集計に失敗しました",
+        userMessage: result.error.userMessage || "再集計に失敗しました",
+      });
+    }
+
+    const payload = result.data;
+    if (!payload) {
+      return fail("INTERNAL_ERROR", {
+        userMessage: "再集計結果が不正です",
       });
     }
 
@@ -290,13 +311,13 @@ export async function regenerateAfterRefundAction(
       actor_type: "user",
       user_id: user.id,
       event_id: validatedData.data.eventId,
-      report_id: result.reportId,
+      report_id: payload.reportId,
       outcome: "success",
     });
 
     return ok({
-      reportId: result.reportId,
-      reportData: result.reportData,
+      reportId: payload.reportId,
+      reportData: payload.reportData,
     });
   } catch (error) {
     if (error instanceof Error && error.message.includes("NEXT_REDIRECT")) {
