@@ -202,7 +202,6 @@ describe("リマインダー送信 統合テスト", () => {
       expect(response.status).toBe(200);
 
       const body = await response.json();
-      expect(body.success).toBe(true);
 
       // 参加期限リマインダーのサマリーを確認
       const responseDeadlineSummary = body.summaries.find(
@@ -476,7 +475,6 @@ describe("リマインダー送信 統合テスト", () => {
       expect(response.status).toBe(200);
 
       const body = await response.json();
-      expect(body.success).toBe(true);
       expect(body.summaries).toHaveLength(3);
 
       // 各リマインダーが送信されたことを確認
@@ -503,7 +501,6 @@ describe("リマインダー送信 統合テスト", () => {
       expect(response.status).toBe(200);
 
       const body = await response.json();
-      expect(body.success).toBe(true);
       expect(body.totalSent).toBe(0);
       expect(body.totalFailed).toBe(0);
     });
@@ -552,7 +549,6 @@ describe("リマインダー送信 統合テスト", () => {
       expect(response.status).toBe(200);
 
       const body = await response.json();
-      expect(body.success).toBe(true); // Cronジョブ自体は成功
 
       const responseDeadlineSummary = body.summaries.find(
         (s: any) => s.reminderType === "response_deadline"

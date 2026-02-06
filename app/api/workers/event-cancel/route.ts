@@ -210,7 +210,13 @@ export async function POST(request: NextRequest) {
       outcome: "success",
     });
 
-    return NextResponse.json({ received: true, deliveryId, emails: emails.length });
+    return new NextResponse(null, {
+      status: 204,
+      headers: {
+        "X-Correlation-ID": corr,
+        ...(deliveryId ? { "X-Upstash-Delivery-Id": deliveryId } : {}),
+      },
+    });
   } catch (error) {
     return respondWithProblem(error, {
       instance: "/api/workers/event-cancel",

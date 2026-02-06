@@ -4,7 +4,6 @@
  */
 
 import type { NextRequest } from "next/server";
-import { NextResponse } from "next/server";
 
 import { Client } from "@upstash/qstash";
 
@@ -164,14 +163,14 @@ export async function POST(request: NextRequest) {
           request_id: requestId,
         });
 
-        return NextResponse.json({
-          received: true,
-          eventId: event.id,
-          eventType: event.type,
-          processed: result.success,
-          testMode: true,
-          requestId,
-          processingTimeMs: processingTime,
+        return new Response(null, {
+          status: 204,
+          headers: {
+            "X-Request-Id": requestId,
+            "X-Event-Id": event.id,
+            "X-Event-Type": event.type,
+            "X-Processing-Time-Ms": String(processingTime),
+          },
         });
       } catch (error) {
         return respondWithProblem(error, {
@@ -231,13 +230,15 @@ export async function POST(request: NextRequest) {
     });
 
     // Stripeに即座に200を返す（QStashが非同期処理を担当）
-    return NextResponse.json({
-      received: true,
-      eventId: event.id,
-      eventType: event.type,
-      qstashMessageId: qstashResult.messageId,
-      requestId,
-      processingTimeMs: processingTime,
+    return new Response(null, {
+      status: 204,
+      headers: {
+        "X-Request-Id": requestId,
+        "X-Event-Id": event.id,
+        "X-Event-Type": event.type,
+        "X-QStash-Message-Id": qstashResult.messageId,
+        "X-Processing-Time-Ms": String(processingTime),
+      },
     });
   } catch (error) {
     const processingTime = Date.now() - startTime;

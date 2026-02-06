@@ -105,6 +105,7 @@ export async function createTestEvent(
     canceled_at: eventOptions.canceled_at ?? null,
     invite_token: inviteToken,
     created_by: createdBy,
+    created_at: new Date().toISOString(),
   };
 
   // データベースにイベントを作成

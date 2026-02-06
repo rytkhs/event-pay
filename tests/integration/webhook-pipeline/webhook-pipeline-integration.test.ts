@@ -30,9 +30,13 @@ import { POST as StripeWorkerPOST } from "../../../app/api/workers/stripe-webhoo
 
 // QStash モック（外部サービスはモック化）
 const mockPublishJSON = jest.fn();
+const mockVerify = jest.fn().mockResolvedValue(true);
 jest.mock("@upstash/qstash", () => ({
   Client: jest.fn().mockImplementation(() => ({
     publishJSON: mockPublishJSON,
+  })),
+  Receiver: jest.fn().mockImplementation(() => ({
+    verify: mockVerify,
   })),
 }));
 
@@ -50,8 +54,8 @@ const MOCK_STRIPE_EVENT = {
       amount: 1500,
       currency: "jpy",
       metadata: {
-        payment_id: "test_payment_id",
-        attendance_id: "test_attendance_id",
+        payment_id: "00000000-0000-4000-8000-000000000001",
+        attendance_id: "00000000-0000-4000-8000-000000000002",
         event_title: "Test Event",
       },
     },
@@ -167,10 +171,8 @@ describe("🔗 Webhook パイプライン 統合テスト", () => {
       const response = await StripeWebhookPOST(request);
 
       // 統合テストでは正常なフローを検証する
-      expect(response.status).toBe(200);
-      const body = await response.json();
-      expect(body.received).toBe(true);
-      expect(body.eventId).toBe(MOCK_STRIPE_EVENT.id);
+      expect(response.status).toBe(204);
+      expect(response.headers.get("X-Event-Id")).toBe(MOCK_STRIPE_EVENT.id);
     });
   });
 
@@ -197,6 +199,7 @@ describe("🔗 Webhook パイプライン 統合テスト", () => {
 
     test("無効なQStash署名では489エラーを返す", async () => {
       const payload = JSON.stringify({ event: MOCK_STRIPE_EVENT });
+      mockVerify.mockResolvedValueOnce(false);
 
       const request = new NextRequest("https://test.eventpay.com/api/workers/stripe-webhook", {
         method: "POST",
@@ -236,10 +239,8 @@ describe("🔗 Webhook パイプライン 統合テスト", () => {
       const webhookResponse = await StripeWebhookPOST(webhookRequest);
 
       // 統合テストでは正常なフローを検証
-      expect(webhookResponse.status).toBe(200);
-      const webhookBody = await webhookResponse.json();
-      expect(webhookBody.received).toBe(true);
-      expect(webhookBody.eventId).toBe(MOCK_STRIPE_EVENT.id);
+      expect(webhookResponse.status).toBe(204);
+      expect(webhookResponse.headers.get("X-Event-Id")).toBe(MOCK_STRIPE_EVENT.id);
 
       // Step 2: Worker エンドポイント（QStash署名なしなので489を確認）
       const workerPayload = JSON.stringify({ event: MOCK_STRIPE_EVENT });
