@@ -175,41 +175,43 @@ describe("🔗 Webhook パイプライン 統合テスト", () => {
   });
 
   describe("🔧 QStash Worker エンドポイント", () => {
-    test("QStash署名なしでは401エラーを返す", async () => {
+    test("QStash署名なしでは489エラーを返す", async () => {
       const payload = JSON.stringify({ event: MOCK_STRIPE_EVENT });
 
       const request = new NextRequest("https://test.eventpay.com/api/workers/stripe-webhook", {
         method: "POST",
         headers: {
-          "Upstash-Delivery-Id": "deliv_test_no_sig",
+          "Upstash-Message-Id": "msg_test_no_sig",
+          "Upstash-Retried": "0",
         },
         body: payload,
       });
 
       const response = await StripeWorkerPOST(request);
-      const body = await response.json();
+      const text = await response.text();
 
-      expect(response.status).toBe(401);
-      expect(body.code).toBe("UNAUTHORIZED");
-      expect(body.detail).toBe("Missing QStash signature");
+      expect(response.status).toBe(489);
+      expect(response.headers.get("Upstash-NonRetryable-Error")).toBe("true");
+      expect(text).toContain("Missing QStash signature");
     });
 
-    test("無効なQStash署名では署名検証エラーを返す", async () => {
+    test("無効なQStash署名では489エラーを返す", async () => {
       const payload = JSON.stringify({ event: MOCK_STRIPE_EVENT });
 
       const request = new NextRequest("https://test.eventpay.com/api/workers/stripe-webhook", {
         method: "POST",
         headers: {
           "Upstash-Signature": "invalid_signature",
-          "Upstash-Delivery-Id": "deliv_test_invalid",
+          "Upstash-Message-Id": "msg_test_invalid",
+          "Upstash-Retried": "0",
         },
         body: payload,
       });
 
       const response = await StripeWorkerPOST(request);
 
-      // QStash署名検証失敗により500エラーまたは401エラーが期待される
-      expect([401, 500]).toContain(response.status);
+      expect(response.status).toBe(489);
+      expect(response.headers.get("Upstash-NonRetryable-Error")).toBe("true");
     });
   });
 
@@ -239,24 +241,25 @@ describe("🔗 Webhook パイプライン 統合テスト", () => {
       expect(webhookBody.received).toBe(true);
       expect(webhookBody.eventId).toBe(MOCK_STRIPE_EVENT.id);
 
-      // Step 2: Worker エンドポイント（QStash署名なしなので401を確認）
+      // Step 2: Worker エンドポイント（QStash署名なしなので489を確認）
       const workerPayload = JSON.stringify({ event: MOCK_STRIPE_EVENT });
       const workerRequest = new NextRequest(
         "https://test.eventpay.com/api/workers/stripe-webhook",
         {
           method: "POST",
           headers: {
-            "Upstash-Delivery-Id": "deliv_test_flow",
+            "Upstash-Message-Id": "msg_test_flow",
+            "Upstash-Retried": "0",
           },
           body: workerPayload,
         }
       );
 
       const workerResponse = await StripeWorkerPOST(workerRequest);
-      expect(workerResponse.status).toBe(401); // QStash署名なしで認証エラー（期待される動作）
+      expect(workerResponse.status).toBe(489); // QStash署名なしで非リトライエラー（期待される動作）
 
-      const workerBody = await workerResponse.json();
-      expect(workerBody.code).toBe("UNAUTHORIZED");
+      const text = await workerResponse.text();
+      expect(text).toContain("Missing QStash signature");
     });
   });
 

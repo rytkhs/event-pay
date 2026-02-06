@@ -38,7 +38,8 @@ function createRequest(body: unknown, headersInit?: Record<string, string>): Nex
   const url = new URL("http://localhost/api/workers/stripe-webhook");
   const headers = new Headers({
     "Upstash-Signature": "sig_test",
-    "Upstash-Delivery-Id": "deliv_test_123",
+    "Upstash-Message-Id": "msg_test_123",
+    "Upstash-Retried": "0",
     ...headersInit,
   });
   return new NextRequest(url, {
@@ -123,10 +124,7 @@ describe("正常系テスト", () => {
       const req = createRequest({ event: evt });
       const res = await WorkerPOST(req);
 
-      expect(res.status).toBe(200);
-      const json = await res.json();
-      expect(json.success).toBe(true);
-      expect(json.processingResult.paymentId).toBe(payment.id);
+      expect(res.status).toBe(204);
 
       // 決済が paid に更新されているか確認
       const { data: updatedPayment } = await setup.adminClient
@@ -161,10 +159,7 @@ describe("正常系テスト", () => {
       const req = createRequest({ event: evt });
       const res = await WorkerPOST(req);
 
-      expect(res.status).toBe(200);
-      const json = await res.json();
-      expect(json.success).toBe(true);
-      expect(json.processingResult.paymentId).toBe(payment.id);
+      expect(res.status).toBe(204);
 
       // stripe_payment_intent_idが更新されているか確認
       const { data: updatedPayment } = await setup.adminClient
@@ -194,9 +189,7 @@ describe("正常系テスト", () => {
       const req = createRequest({ event: evt });
       const res = await WorkerPOST(req);
 
-      expect(res.status).toBe(200);
-      const json = await res.json();
-      expect(json.success).toBe(true);
+      expect(res.status).toBe(204);
     });
 
     it("テスト環境では金額が省略されても処理される", async () => {
@@ -215,9 +208,7 @@ describe("正常系テスト", () => {
       const req = createRequest({ event: evt });
       const res = await WorkerPOST(req);
 
-      expect(res.status).toBe(200);
-      const json = await res.json();
-      expect(json.success).toBe(true);
+      expect(res.status).toBe(204);
     });
   });
 
@@ -236,12 +227,12 @@ describe("正常系テスト", () => {
 
       const req1 = setup.createRequest({ event: evt });
       const res1 = await WorkerPOST(req1);
-      expect(res1.status).toBe(200);
+      expect(res1.status).toBe(204);
 
       // 2回目の処理（重複）
       const req2 = setup.createRequest({ event: evt });
       const res2 = await WorkerPOST(req2);
-      expect(res2.status).toBe(200);
+      expect(res2.status).toBe(204);
 
       // 重複処理防止ログが出力されているか確認
       expect(mockLogger.info).toHaveBeenCalledWith(
@@ -281,7 +272,7 @@ describe("正常系テスト", () => {
 
       // すべて成功
       results.forEach((res) => {
-        expect(res.status).toBe(200);
+        expect(res.status).toBe(204);
       });
 
       // 決済は1つだけpaid状態（専用attendanceで検索）
@@ -311,7 +302,7 @@ describe("正常系テスト", () => {
       const req = createRequest({ event: evt });
       const res = await WorkerPOST(req);
 
-      expect(res.status).toBe(200);
+      expect(res.status).toBe(204);
 
       // 統合テストでは実際のRPC関数が呼び出されることを確認
       // （具体的な呼び出し検証はログやDB状態で行う）
@@ -332,9 +323,7 @@ describe("正常系テスト", () => {
       const res = await WorkerPOST(req);
 
       // 決済処理は成功（実際のRPC関数が呼ばれても成功する）
-      expect(res.status).toBe(200);
-      const json = await res.json();
-      expect(json.success).toBe(true);
+      expect(res.status).toBe(204);
 
       // 決済はpaidに更新されている
       const { data: updatedPayment } = await setup.adminClient

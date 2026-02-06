@@ -55,7 +55,8 @@ export async function setupStripeWebhookWorkerTest(): Promise<StripeWebhookWorke
     const url = new URL("http://localhost/api/workers/stripe-webhook");
     const headers = new Headers({
       "Upstash-Signature": "sig_test",
-      "Upstash-Delivery-Id": "deliv_test_123",
+      "Upstash-Message-Id": "msg_test_123",
+      "Upstash-Retried": "0",
       ...headersInit,
     });
     return new NextRequest(url, {

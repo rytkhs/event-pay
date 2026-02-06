@@ -335,7 +335,7 @@ describe("🔗 Connect Webhook パイプライン 統合テスト", () => {
   });
 
   describe("🔧 QStash Worker エンドポイント", () => {
-    test("QStash署名なしでは401エラーを返す", async () => {
+    test("QStash署名なしでは489エラーを返す", async () => {
       const event = createMockAccountEvent({});
       const payload = JSON.stringify({ event });
 
@@ -344,18 +344,19 @@ describe("🔗 Connect Webhook パイプライン 統合テスト", () => {
         {
           method: "POST",
           headers: {
-            "Upstash-Delivery-Id": "deliv_test_no_sig",
+            "Upstash-Message-Id": "msg_test_no_sig",
+            "Upstash-Retried": "0",
           },
           body: payload,
         }
       );
 
       const response = await ConnectWorkerPOST(request);
-      const body = await response.json();
+      const text = await response.text();
 
-      expect(response.status).toBe(401);
-      expect(body.code).toBe("UNAUTHORIZED");
-      expect(body.detail).toBe("Missing QStash signature");
+      expect(response.status).toBe(489);
+      expect(response.headers.get("Upstash-NonRetryable-Error")).toBe("true");
+      expect(text).toContain("Missing QStash signature");
     });
   });
 
