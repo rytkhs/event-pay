@@ -198,15 +198,8 @@ export function EventEditForm({
   const handleConfirmChanges = async () => {
     setShowConfirmDialog(false);
 
-    try {
-      const formData = form.getValues();
-      await actions.submitFormWithChanges(formData, pendingChanges);
-    } catch (_error) {
-      form.setError("root", {
-        type: "manual",
-        message: "更新に失敗しました。もう一度お試しください。",
-      });
-    }
+    const formData = form.getValues();
+    await actions.submitFormWithChanges(formData, pendingChanges);
   };
 
   const handleResetForm = () => {
