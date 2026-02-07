@@ -23,10 +23,8 @@ import { AdminReason } from "@core/security/secure-client-factory.types";
 import { type StripeAccountStatus } from "@core/types/enums";
 import { handleServerError } from "@core/utils/error-handler.server";
 
-// Removed @core/services dependency to break circular reference
-// Use ports instead of direct feature import to avoid boundaries violation
-
 import { Database } from "@/types/database";
+
 import type { ConnectWebhookResult } from "./connect-webhook.types";
 
 /**

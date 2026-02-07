@@ -3,6 +3,7 @@
  * UI/API間の条件整合性を保つために、決済関連の判定ロジックを一元化する
  */
 
+import { TIME_CONSTANTS } from "@core/constants/event-config";
 import { AttendanceStatus, PaymentStatus, EventStatus } from "@core/types/enums";
 import {
   deriveEffectiveDeadlines,
@@ -251,5 +252,5 @@ export function getDaysUntilPaymentDeadline(
   } as FinalLimitOptions & { effectivePaymentDeadline: Date; eventDate: Date });
 
   const diffMs = finalPaymentLimit.getTime() - currentTime.getTime();
-  return Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+  return Math.ceil(diffMs / TIME_CONSTANTS.MS_TO_DAYS);
 }

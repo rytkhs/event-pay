@@ -1,8 +1,8 @@
 import type { ZodError } from "zod";
 
+import { AppError } from "../app-error";
 import type { AppResult } from "../app-result";
 import { errResult, okResult } from "../app-result";
-import { AppError } from "../app-error";
 import { generateCorrelationId } from "../correlation-id";
 import { normalizeError } from "../normalize";
 import type { ErrorCode, ErrorContext } from "../types";
