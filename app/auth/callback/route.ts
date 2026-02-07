@@ -2,10 +2,9 @@ import { cookies, headers } from "next/headers";
 import { NextResponse } from "next/server";
 
 import { logger } from "@core/logging/app-logger";
+import { getSecureClientFactory } from "@core/security/secure-client-factory.impl";
 import { waitUntil } from "@core/utils/cloudflare-ctx";
 import { extractClientIdFromGaCookie } from "@core/utils/ga-cookie";
-
-import { getSecureClientFactory } from "@/core/security/secure-client-factory.impl";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
