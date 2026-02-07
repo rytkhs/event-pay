@@ -14,7 +14,7 @@ import { InviteEventDetail, type RegisterParticipationData } from "@features/inv
 
 import { ErrorLayout } from "@/components/errors";
 
-import { registerParticipationAction } from "./actions";
+import { dismissInviteSuccessAction, registerParticipationAction } from "./actions";
 
 interface InvitePageProps {
   params: {
@@ -151,8 +151,9 @@ export default async function InvitePage({ params }: InvitePageProps) {
             inviteToken={params.token}
             initialRegistrationData={initialRegistrationData}
             registerParticipationAction={registerParticipationAction}
+            dismissInviteSuccessAction={dismissInviteSuccessAction}
           />
-          {/* 主催者の特商法リンク（到達容易性） */}
+          {/* 主催者の特商法リンク */}
           {(() => {
             const organizerId = validationResult.event?.created_by;
             const isDemo = process.env.NEXT_PUBLIC_IS_DEMO === "true";
