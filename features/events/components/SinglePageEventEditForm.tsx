@@ -13,6 +13,7 @@ import {
   AlignLeftIcon,
 } from "lucide-react";
 
+import type { RestrictableField } from "@core/domain/event-edit-restrictions";
 import type { Event } from "@core/types/models";
 
 import { cn } from "@/components/ui/_lib/cn";
@@ -37,7 +38,6 @@ import {
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
-import type { RestrictableField } from "@/core/domain/event-edit-restrictions";
 
 import {
   useEventEditForm,

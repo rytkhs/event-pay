@@ -1,3 +1,3 @@
 import "server-only";
 
-export * from "./actions";
+export { registerParticipationAction } from "./actions/register-participation";

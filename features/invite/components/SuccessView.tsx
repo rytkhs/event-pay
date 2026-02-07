@@ -4,7 +4,7 @@ import React from "react";
 
 import { CheckCircle, Copy, ExternalLink } from "lucide-react";
 
-import { useToast } from "@/core/contexts/toast-context";
+import { useToast } from "@core/contexts/toast-context";
 
 import type { RegisterParticipationData } from "../types";
 

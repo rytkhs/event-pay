@@ -4,14 +4,13 @@
  */
 
 // Components
-export * from "./components";
+export { AuthEmailField, AuthFormField } from "./components/AuthFormField";
+export { AuthFormWrapper } from "./components/AuthFormWrapper";
+export { AuthSubmitButton } from "./components/AuthSubmitButton";
 
 // Hooks
 export * from "./hooks/useAuthForm";
 export * from "./hooks/usePasswordConfirmation";
-
-// Services (将来的な拡張用)
-// export * from "./services";
 
 // Types & Validation
 export * from "./types";
