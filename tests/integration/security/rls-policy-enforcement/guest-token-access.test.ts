@@ -58,8 +58,9 @@ describe("Guest Token Access Control", () => {
 
   test("ゲストクライアントで参加状況を更新できる", async () => {
     // RPCを直接呼び出してエラーの詳細を確認
-    const { SecureSupabaseClientFactory } =
-      await import("@core/security/secure-client-factory.impl");
+    const { SecureSupabaseClientFactory } = await import(
+      "@core/security/secure-client-factory.impl"
+    );
     const factory = SecureSupabaseClientFactory.create();
     const guestClient = factory.createGuestClient(setup.testGuestToken);
 
@@ -109,7 +110,7 @@ describe("Guest Token Access Control", () => {
 
     expect(result.success).toBe(false);
     if (!result.success) {
-      const errorCode = result.code || "UNKNOWN";
+      const errorCode = result.error.code || "UNKNOWN";
       // UNAUTHORIZEDまたはUNKNOWN（エラーハンドラーのマッピング次第）を許容
       expect(["UNAUTHORIZED", "UNKNOWN"]).toContain(errorCode);
     }

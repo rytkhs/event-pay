@@ -43,6 +43,19 @@ jest.mock("@core/utils/error-handler.server", () => ({
   handleServerError: jest.fn(),
 }));
 
+type LooseGA4Event = {
+  name: string;
+  params: Record<string, unknown>;
+};
+
+function asGA4Event(event: LooseGA4Event): GA4Event {
+  return event as unknown as GA4Event;
+}
+
+function asGA4Events(events: LooseGA4Event[]): GA4Event[] {
+  return events as unknown as GA4Event[];
+}
+
 describe("GA4 Analytics - 統合テスト", () => {
   let mockFetch: jest.MockedFunction<typeof fetch>;
   let ga4Server: GA4ServerService;
@@ -195,12 +208,12 @@ describe("GA4 Analytics - 統合テスト", () => {
         } as Response;
       });
 
-      const testEvent: GA4Event = {
+      const testEvent: GA4Event = asGA4Event({
         name: "test_event",
         params: {
           test_param: "test_value",
         },
-      };
+      });
 
       // Act
       await ga4Server.sendEvent(testEvent, "1234567890.0987654321");
@@ -218,12 +231,12 @@ describe("GA4 Analytics - 統合テスト", () => {
         statusText: "Internal Server Error",
       } as Response);
 
-      const testEvent: GA4Event = {
+      const testEvent: GA4Event = asGA4Event({
         name: "test_event",
         params: {
           test_param: "test_value",
         },
-      };
+      });
 
       // eslint-disable-next-line @typescript-eslint/no-var-requires
       const { logger } = require("@core/logging/app-logger");
@@ -253,12 +266,12 @@ describe("GA4 Analytics - 統合テスト", () => {
         statusText: "Bad Request",
       } as Response);
 
-      const testEvent: GA4Event = {
+      const testEvent: GA4Event = asGA4Event({
         name: "test_event",
         params: {
           test_param: "test_value",
         },
-      };
+      });
 
       // Act
       await ga4Server.sendEvent(testEvent, "1234567890.0987654321");
@@ -271,13 +284,15 @@ describe("GA4 Analytics - 統合テスト", () => {
   describe("大量イベントのバッチ処理テスト", () => {
     test("25イベント以下の場合、1回のリクエストで送信される", async () => {
       // Arrange
-      const events: GA4Event[] = Array.from({ length: 20 }, (_, i) => ({
-        name: "test_event",
-        params: {
-          event_index: i,
-          test_param: `value_${i}`,
-        },
-      }));
+      const events: GA4Event[] = asGA4Events(
+        Array.from({ length: 20 }, (_, i) => ({
+          name: "test_event",
+          params: {
+            event_index: i,
+            test_param: `value_${i}`,
+          },
+        }))
+      );
 
       // Act
       await ga4Server.sendEvents(events, "1234567890.0987654321");
@@ -293,13 +308,15 @@ describe("GA4 Analytics - 統合テスト", () => {
 
     test("26イベント以上の場合、25イベントずつに分割して送信される", async () => {
       // Arrange
-      const events: GA4Event[] = Array.from({ length: 60 }, (_, i) => ({
-        name: "test_event",
-        params: {
-          event_index: i,
-          test_param: `value_${i}`,
-        },
-      }));
+      const events: GA4Event[] = asGA4Events(
+        Array.from({ length: 60 }, (_, i) => ({
+          name: "test_event",
+          params: {
+            event_index: i,
+            test_param: `value_${i}`,
+          },
+        }))
+      );
 
       // Act
       await ga4Server.sendEvents(events, "1234567890.0987654321");
@@ -341,12 +358,14 @@ describe("GA4 Analytics - 統合テスト", () => {
         } as Response;
       });
 
-      const events: GA4Event[] = Array.from({ length: 60 }, (_, i) => ({
-        name: "test_event",
-        params: {
-          event_index: i,
-        },
-      }));
+      const events: GA4Event[] = asGA4Events(
+        Array.from({ length: 60 }, (_, i) => ({
+          name: "test_event",
+          params: {
+            event_index: i,
+          },
+        }))
+      );
 
       // eslint-disable-next-line @typescript-eslint/no-var-requires
       const { logger } = require("@core/logging/app-logger");
@@ -377,7 +396,7 @@ describe("GA4 Analytics - 統合テスト", () => {
 
     test("無効なパラメータを含むイベントはフィルタリングされる", async () => {
       // Arrange
-      const events: GA4Event[] = [
+      const events: GA4Event[] = asGA4Events([
         {
           name: "valid_event",
           params: {
@@ -396,7 +415,7 @@ describe("GA4 Analytics - 統合テスト", () => {
             another_param: "another_value",
           },
         },
-      ];
+      ]);
 
       // Act
       await ga4Server.sendEvents(events, "1234567890.0987654321");
@@ -417,12 +436,12 @@ describe("GA4 Analytics - 統合テスト", () => {
     test("長すぎる文字列パラメータは100文字に切り詰められる", async () => {
       // Arrange
       const longString = "a".repeat(150);
-      const testEvent: GA4Event = {
+      const testEvent: GA4Event = asGA4Event({
         name: "test_event",
         params: {
           long_param: longString,
         },
-      };
+      });
 
       // Act
       await ga4Server.sendEvent(testEvent, "1234567890.0987654321");
@@ -437,14 +456,14 @@ describe("GA4 Analytics - 統合テスト", () => {
 
     test("無効なパラメータ名は除外される", async () => {
       // Arrange
-      const testEvent: GA4Event = {
+      const testEvent: GA4Event = asGA4Event({
         name: "test_event",
         params: {
           valid_param: "valid",
           "invalid-param": "invalid", // ハイフンは無効
           another_valid: "valid",
         },
-      };
+      });
 
       // Act
       await ga4Server.sendEvent(testEvent, "1234567890.0987654321");
@@ -463,12 +482,12 @@ describe("GA4 Analytics - 統合テスト", () => {
 
     test("セッションIDとエンゲージメント時間が正しく追加される", async () => {
       // Arrange
-      const testEvent: GA4Event = {
+      const testEvent: GA4Event = asGA4Event({
         name: "test_event",
         params: {
           test_param: "test_value",
         },
-      };
+      });
 
       const sessionId = 1234567890;
       const engagementTimeMsec = 5000;
@@ -498,12 +517,12 @@ describe("GA4 Analytics - 統合テスト", () => {
   describe("エラーハンドリング", () => {
     test("Client IDもUser IDもない場合、送信をスキップする", async () => {
       // Arrange
-      const testEvent: GA4Event = {
+      const testEvent: GA4Event = asGA4Event({
         name: "test_event",
         params: {
           test_param: "test_value",
         },
-      };
+      });
 
       // eslint-disable-next-line @typescript-eslint/no-var-requires
       const { logger } = require("@core/logging/app-logger");
@@ -522,12 +541,12 @@ describe("GA4 Analytics - 統合テスト", () => {
 
     test("User IDのみでイベントを送信できる", async () => {
       // Arrange
-      const testEvent: GA4Event = {
+      const testEvent: GA4Event = asGA4Event({
         name: "test_event",
         params: {
           test_param: "test_value",
         },
-      };
+      });
 
       const userId = "user123";
 
@@ -555,7 +574,7 @@ describe("GA4 Analytics - 統合テスト", () => {
 
     test("全てのイベントが無効な場合、バッチ送信をスキップする", async () => {
       // Arrange
-      const events: GA4Event[] = [
+      const events: GA4Event[] = asGA4Events([
         {
           name: "invalid_event_1",
           params: {
@@ -568,7 +587,7 @@ describe("GA4 Analytics - 統合テスト", () => {
             "another-invalid": "value",
           },
         },
-      ];
+      ]);
 
       // eslint-disable-next-line @typescript-eslint/no-var-requires
       const { logger } = require("@core/logging/app-logger");

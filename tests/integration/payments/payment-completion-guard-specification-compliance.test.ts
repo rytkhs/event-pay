@@ -116,7 +116,7 @@ describe("🚨 決済完了済みガード 仕様書適合性検証", () => {
           url: `https://checkout.stripe.com/c/pay/${sessionId}`,
           payment_status: "unpaid",
           status: "open",
-        };
+        } as any;
       });
   });
 

@@ -21,7 +21,7 @@ export interface ActionError {
 export type ActionResult<T = unknown> =
   | {
       success: true;
-      data?: T;
+      data: T;
       message?: string;
       redirectUrl?: string;
       needsVerification?: boolean;
@@ -130,10 +130,12 @@ export function toActionError(
   };
 }
 
-export function ok<T>(data?: T, options: ActionOkOptions = {}): ActionResult<T> {
+export function ok(): ActionResult<undefined>;
+export function ok<T>(data: T, options?: ActionOkOptions): ActionResult<T>;
+export function ok<T>(data?: T, options: ActionOkOptions = {}): ActionResult<T | undefined> {
   return {
     success: true,
-    data,
+    data: data as T | undefined,
     message: options.message,
     redirectUrl: options.redirectUrl,
     needsVerification: options.needsVerification,
@@ -193,7 +195,7 @@ export function toActionResultFromAppResult<T>(
 ): ActionResult<T> {
   // NOTE: AppResult.meta は内部専用。UI境界向けの情報は options で明示的に渡す。
   if (result.success) {
-    return ok(result.data, {
+    return ok(result.data as T, {
       message: options.message,
       redirectUrl: options.redirectUrl,
       needsVerification: options.needsVerification,

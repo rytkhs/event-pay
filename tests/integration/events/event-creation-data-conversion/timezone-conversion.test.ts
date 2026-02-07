@@ -52,7 +52,7 @@ describe("1.2.1 日時のタイムゾーン変換が正しく行われる", () =
 
       expect(result.success).toBe(true);
       if (result.success) {
-        const event = result.data;
+        const event = result.data!;
         context.createdEventIds.push(event.id);
 
         // UTC形式のISO文字列として保存される（Z形式または+00:00形式）
@@ -99,7 +99,7 @@ describe("1.2.1 日時のタイムゾーン変換が正しく行われる", () =
 
       expect(result.success).toBe(true);
       if (result.success) {
-        const event = result.data;
+        const event = result.data!;
         context.createdEventIds.push(event.id);
 
         // 秒まで含むUTC形式で保存される
@@ -137,7 +137,7 @@ describe("1.2.1 日時のタイムゾーン変換が正しく行われる", () =
 
       expect(result.success).toBe(true);
       if (result.success) {
-        const event = result.data;
+        const event = result.data!;
         context.createdEventIds.push(event.id);
 
         const utcEventDate = new Date(event.date);

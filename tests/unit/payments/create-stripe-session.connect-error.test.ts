@@ -1,4 +1,5 @@
 import { setupRateLimitMocks } from "@tests/setup/common-mocks";
+import { expectActionFailure } from "@tests/helpers/assert-result";
 
 import { createGuestStripeSessionAction } from "@/app/guest/[token]/actions";
 
@@ -125,8 +126,9 @@ describe("createGuestStripeSessionAction - Connectアカウント未設定/無�
     const result = await createGuestStripeSessionAction(validInput as any);
 
     expect(result.success).toBe(false);
-    expect(result.error?.code).toBe("CONNECT_ACCOUNT_NOT_FOUND");
-    expect(result.error?.userMessage).toContain("オンライン決済の準備ができていません");
+    const error = expectActionFailure(result);
+    expect(error.code).toBe("CONNECT_ACCOUNT_NOT_FOUND");
+    expect(error.userMessage).toContain("オンライン決済の準備ができていません");
   });
 
   it("payouts_enabled=false時はCONNECT_ACCOUNT_RESTRICTEDエラーを返す", async () => {
@@ -138,7 +140,8 @@ describe("createGuestStripeSessionAction - Connectアカウント未設定/無�
     const result = await createGuestStripeSessionAction(validInput as any);
 
     expect(result.success).toBe(false);
-    expect(result.error?.code).toBe("CONNECT_ACCOUNT_RESTRICTED");
-    expect(result.error?.userMessage).toContain("現在オンライン決済がご利用いただけません");
+    const error = expectActionFailure(result);
+    expect(error.code).toBe("CONNECT_ACCOUNT_RESTRICTED");
+    expect(error.userMessage).toContain("現在オンライン決済がご利用いただけません");
   });
 });

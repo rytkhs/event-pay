@@ -92,7 +92,7 @@ describe("📊 レスポンス構造検証", () => {
     expect(result.meta?.paymentId).toBe(payment.id);
 
     // Assert: 不要なフィールドが含まれていない
-    expect(result.error).toBeUndefined();
+    expect((result as { error?: unknown }).error).toBeUndefined();
     expect(result.meta?.terminal).toBeUndefined();
     expect(result.meta?.reason).toBeUndefined();
   });

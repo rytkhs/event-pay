@@ -86,9 +86,9 @@ describe("TC-RC-001: 定員超過レースコンディション対応テスト",
     const successResult = oneSuccessVerification.successResult;
     expect(successResult).toBeDefined();
     expect(successResult!.success).toBe(true);
-    expect(successResult!.data?.attendanceId).toBeDefined();
-    expect(successResult!.data?.guestToken).toBeDefined();
-    expect(successResult!.data?.requiresAdditionalPayment).toBe(true);
+    expect((successResult as any).data?.attendanceId).toBeDefined();
+    expect((successResult as any).data?.guestToken).toBeDefined();
+    expect((successResult as any).data?.requiresAdditionalPayment).toBe(true);
 
     // 【期待結果検証3】失敗リクエストのエラー検証
     const errorVerification = ConcurrentRequestHelper.verifyExpectedErrors(
@@ -209,7 +209,7 @@ describe("TC-RC-001: 定員超過レースコンディション対応テスト",
       title: "定員制限なしレースコンディション対照テスト",
       capacity: null, // 定員制限なし
       fee: 1000,
-      payment_methods: ["stripe"] as PaymentMethod[],
+      paymentMethods: ["stripe"] as PaymentMethod[],
     });
 
     const participants: ParticipationFormData[] = [

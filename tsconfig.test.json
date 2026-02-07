@@ -5,6 +5,9 @@
     "jsx": "react-jsx"
   },
   "include": [
+    "next-env.d.ts",
+    "env.d.ts",
+    "cloudflare-env.d.ts",
     "tests/**/*.ts",
     "tests/**/*.tsx",
     "app/**/*.ts",

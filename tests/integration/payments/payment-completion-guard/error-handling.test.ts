@@ -68,10 +68,11 @@ describe("エラーハンドリング", () => {
       await paymentService.createStripeSession(sessionParams);
       fail("PaymentError should be thrown");
     } catch (error) {
-      expect(error).toBeInstanceOf(PaymentError);
-      expect(error.type).toBe(PaymentErrorType.PAYMENT_ALREADY_EXISTS);
-      expect(error.message).toBe("この参加に対する決済は既に完了済みです");
-      expect(error.name).toBe("PaymentError");
+      const paymentError = error as PaymentError;
+      expect(paymentError).toBeInstanceOf(PaymentError);
+      expect(paymentError.type).toBe(PaymentErrorType.PAYMENT_ALREADY_EXISTS);
+      expect(paymentError.message).toBe("この参加に対する決済は既に完了済みです");
+      expect(paymentError.name).toBe("PaymentError");
     }
   });
 });

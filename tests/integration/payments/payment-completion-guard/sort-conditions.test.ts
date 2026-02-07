@@ -172,7 +172,7 @@ describe("ソート条件の検証", () => {
     expect(payments[0].status).toBe("pending");
 
     // pending決済のStripe識別子が更新されていることを確認（再利用され、新しいセッションIDになっている）
-    const updatedPending = payments.find((p) => p.id === pendingPayment.id);
+    const updatedPending = payments.find((p: any) => p.id === pendingPayment.id);
     expect(updatedPending).toBeDefined();
 
     if (!updatedPending) {

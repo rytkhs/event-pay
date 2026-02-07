@@ -55,7 +55,7 @@ describe("AppLogger", () => {
 
   describe("U-L-01: Development Environment Behavior", () => {
     it("should only log to console and not persist to DB when NODE_ENV is development", async () => {
-      process.env.NODE_ENV = "development";
+      (process.env as Record<string, string | undefined>).NODE_ENV = "development";
 
       // Execute
       logger.error("Test error message");
@@ -80,7 +80,7 @@ describe("AppLogger", () => {
 
   describe("U-L-02: Production Environment - Info Level", () => {
     it("should only log to console and not persist to DB for info level logs", async () => {
-      process.env.NODE_ENV = "production";
+      (process.env as Record<string, string | undefined>).NODE_ENV = "production";
 
       // Execute
       logger.info("Test info message");
@@ -101,7 +101,7 @@ describe("AppLogger", () => {
 
   describe("U-L-03: Production Environment - Error Level", () => {
     it("should log to console AND persist to DB for error level logs", async () => {
-      process.env.NODE_ENV = "production";
+      (process.env as Record<string, string | undefined>).NODE_ENV = "production";
       process.env.NEXT_PUBLIC_SUPABASE_URL = "https://example.supabase.co";
       process.env.SUPABASE_SERVICE_ROLE_KEY = "service-role-key";
 
@@ -138,7 +138,7 @@ describe("AppLogger", () => {
 
   describe("U-L-04: Async Behavior", () => {
     it("should await DB persistence internally (verified via spy/mock timing)", async () => {
-      process.env.NODE_ENV = "production";
+      (process.env as Record<string, string | undefined>).NODE_ENV = "production";
       process.env.NEXT_PUBLIC_SUPABASE_URL = "https://example.supabase.co";
       process.env.SUPABASE_SERVICE_ROLE_KEY = "service-role-key";
 
@@ -172,7 +172,7 @@ describe("AppLogger", () => {
 
   describe("U-L-05: DB Save Error Handling", () => {
     it("should handle DB save errors gracefully without crashing", async () => {
-      process.env.NODE_ENV = "production";
+      (process.env as Record<string, string | undefined>).NODE_ENV = "production";
       process.env.NEXT_PUBLIC_SUPABASE_URL = "https://example.supabase.co";
       process.env.SUPABASE_SERVICE_ROLE_KEY = "service-role-key";
 

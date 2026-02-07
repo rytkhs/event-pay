@@ -60,7 +60,7 @@ describe("Stripe Session Creation Access Control", () => {
 
     expect(result.success).toBe(false);
     if (!result.success) {
-      const errorCode = result.code || "UNKNOWN";
+      const errorCode = result.error.code || "UNKNOWN";
       // UNAUTHORIZEDまたはUNKNOWN（エラーハンドラーのマッピング次第）を許容
       expect(["UNAUTHORIZED", "UNKNOWN"]).toContain(errorCode);
     }

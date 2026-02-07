@@ -387,7 +387,7 @@ describe("GA4 Event Type Definitions", () => {
         value: 100,
       };
 
-      const eventParams: GA4EventParams = baseParams;
+      const eventParams = baseParams as unknown as GA4EventParams;
 
       expect(eventParams.event_category).toBe("test");
       expect(eventParams.value).toBe(100);

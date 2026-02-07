@@ -50,7 +50,7 @@ describe("1.2.3 決済方法配列の重複除去と正規化", () => {
 
     expect(result.success).toBe(true);
     if (result.success) {
-      const event = result.data;
+      const event = result.data!;
       context.createdEventIds.push(event.id);
 
       // 重複が除去されて2つの方法のみが保存される
@@ -88,7 +88,7 @@ describe("1.2.3 決済方法配列の重複除去と正規化", () => {
 
       expect(result.success).toBe(true);
       if (result.success) {
-        const event = result.data;
+        const event = result.data!;
         context.createdEventIds.push(event.id);
 
         expect(Array.isArray(event.payment_methods)).toBe(true);
@@ -111,7 +111,7 @@ describe("1.2.3 決済方法配列の重複除去と正規化", () => {
 
     expect(result.success).toBe(true);
     if (result.success) {
-      const event = result.data;
+      const event = result.data!;
       context.createdEventIds.push(event.id);
 
       expect(Array.isArray(event.payment_methods)).toBe(true);
@@ -142,7 +142,7 @@ describe("1.2.3 決済方法配列の重複除去と正規化", () => {
       expect(fieldErrors?.payment_methods?.[0]).toBeDefined();
     } else {
       // もしくは正規化されて成功する場合
-      const event = result.data;
+      const event = result.data!;
       context.createdEventIds.push(event.id);
 
       // 有効な決済方法のみが保存される
@@ -171,7 +171,7 @@ describe("1.2.3 決済方法配列の重複除去と正規化", () => {
     }
     expect(result.success).toBe(true);
     if (result.success) {
-      const event = result.data;
+      const event = result.data!;
       context.createdEventIds.push(event.id);
 
       // 無料イベントでは決済方法が強制的に空配列になる

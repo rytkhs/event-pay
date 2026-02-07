@@ -45,6 +45,7 @@ export interface TestPaymentData {
   method: Database["public"]["Enums"]["payment_method_enum"];
   attendance_id: string;
   application_fee_amount: number;
+  paid_at?: string | null;
   stripe_account_id?: string;
 }
 

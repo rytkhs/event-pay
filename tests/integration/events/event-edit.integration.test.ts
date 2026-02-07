@@ -218,12 +218,12 @@ describe("イベント編集 統合テスト", () => {
     // 参加費の変更は不可
     const resFee = await updateEventAction(ev.id, buildFormData({ fee: "2000" }));
     expect(resFee.success).toBe(false);
-    if (!resFee.success) expect(resFee.code).toBe("RESOURCE_CONFLICT");
+    if (!resFee.success) expect(resFee.error.code).toBe("RESOURCE_CONFLICT");
 
     // 決済方法の変更も不可
     const resPm = await updateEventAction(ev.id, buildFormData({ payment_methods: ["cash"] }));
     expect(resPm.success).toBe(false);
-    if (!resPm.success) expect(resPm.code).toBe("RESOURCE_CONFLICT");
+    if (!resPm.success) expect(resPm.error.code).toBe("RESOURCE_CONFLICT");
   });
 
   test("制約: Stripe選択時はpayment_deadline必須（更新時も作成時と同様）", async () => {
@@ -247,8 +247,8 @@ describe("イベント編集 統合テスト", () => {
 
     expect(res.success).toBe(false);
     if (!res.success) {
-      expect(res.code).toBe("VALIDATION_ERROR");
-      expect(res.error).toContain("オンライン決済を選択した場合、決済締切は必須です");
+      expect(res.error.code).toBe("VALIDATION_ERROR");
+      expect(res.error.userMessage).toContain("オンライン決済を選択した場合、決済締切は必須です");
     }
   });
 
@@ -261,7 +261,7 @@ describe("イベント編集 統合テスト", () => {
 
     const res = await updateEventAction(ev.id, buildFormData({ capacity: "1" }));
     expect(res.success).toBe(false);
-    if (!res.success) expect(res.code).toBe("RESOURCE_CONFLICT");
+    if (!res.success) expect(res.error.code).toBe("RESOURCE_CONFLICT");
   });
 
   test("制約: 締切相関/上限のバリデーション（reg>date, pay<reg, pay>date+30d, grace超過）", async () => {
@@ -280,7 +280,7 @@ describe("イベント編集 統合テスト", () => {
       buildFormData({ date: newDate, registration_deadline: getFutureDateTimeLocal(72) })
     );
     expect(res.success).toBe(false);
-    if (!res.success) expect(res.code).toBe("VALIDATION_ERROR");
+    if (!res.success) expect(res.error.code).toBe("VALIDATION_ERROR");
 
     // pay < reg（エラー）
     res = await updateEventAction(
@@ -292,7 +292,7 @@ describe("イベント編集 統合テスト", () => {
       })
     );
     expect(res.success).toBe(false);
-    if (!res.success) expect(res.code).toBe("VALIDATION_ERROR");
+    if (!res.success) expect(res.error.code).toBe("VALIDATION_ERROR");
 
     // pay > date + 30d（エラー）
     const over30d = getFutureDateTimeLocal(60 * 24); // 約60日後相当（十分に超過）
@@ -301,7 +301,7 @@ describe("イベント編集 統合テスト", () => {
       buildFormData({ date: newDate, payment_deadline: over30d })
     );
     expect(res.success).toBe(false);
-    if (!res.success) expect(res.code).toBe("VALIDATION_ERROR");
+    if (!res.success) expect(res.error.code).toBe("VALIDATION_ERROR");
 
     // 猶予で最終支払期限>date+30d（エラー）
     const regOk = getFutureDateTimeLocal(24);
@@ -317,7 +317,7 @@ describe("イベント編集 統合テスト", () => {
       })
     );
     expect(res.success).toBe(false);
-    if (!res.success) expect(res.code).toBe("VALIDATION_ERROR");
+    if (!res.success) expect(res.error.code).toBe("VALIDATION_ERROR");
   });
 
   test("制約: registration_deadline と payment_deadline の相関バリデーション", async () => {
@@ -347,8 +347,8 @@ describe("イベント編集 統合テスト", () => {
 
     expect(res.success).toBe(false);
     if (!res.success) {
-      expect(res.code).toBe("VALIDATION_ERROR");
-      expect(res.error).toContain("決済締切は参加申込締切以降に設定してください");
+      expect(res.error.code).toBe("VALIDATION_ERROR");
+      expect(res.error.userMessage).toContain("決済締切は参加申込締切以降に設定してください");
     }
   });
 
@@ -368,7 +368,7 @@ describe("イベント編集 統合テスト", () => {
     const { updateEventAction } = await import("@/features/events/actions/update-event");
     const res = await updateEventAction(ev.id, buildFormData({ title: "x" }));
     expect(res.success).toBe(false);
-    if (!res.success) expect(res.code).toBe("UNAUTHORIZED");
+    if (!res.success) expect(res.error.code).toBe("UNAUTHORIZED");
   });
 
   test("挙動: 作成者以外は FORBIDDEN", async () => {
@@ -379,7 +379,7 @@ describe("イベント編集 統合テスト", () => {
     const { updateEventAction } = await import("@/features/events/actions/update-event");
     const res = await updateEventAction(ev.id, buildFormData({ title: "他人が更新" }));
     expect(res.success).toBe(false);
-    if (!res.success) expect(res.code).toBe("FORBIDDEN");
+    if (!res.success) expect(res.error.code).toBe("FORBIDDEN");
   });
 
   test("挙動: 不正なIDは FORBIDDEN", async () => {
@@ -391,7 +391,7 @@ describe("イベント編集 統合テスト", () => {
     );
     expect(res.success).toBe(false);
     // 存在しないイベントはセキュリティ上の理由でFORBIDDENを返す
-    if (!res.success) expect(res.code).toBe("FORBIDDEN");
+    if (!res.success) expect(res.error.code).toBe("FORBIDDEN");
   });
 
   test("制約: registration_deadlineの空文字列は拒否される", async () => {

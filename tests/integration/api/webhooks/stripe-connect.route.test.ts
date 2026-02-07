@@ -38,7 +38,7 @@ jest.mock("@features/stripe-connect/server", () => ({
 describe("/api/webhooks/stripe-connect (receiver)", () => {
   beforeEach(() => {
     process.env.QSTASH_TOKEN = "test_qstash_token";
-    process.env.NODE_ENV = "test";
+    (process.env as Record<string, string | undefined>).NODE_ENV = "test";
     // QStashへのpublishをテストするため、SKIP_QSTASH_IN_TESTを未設定にする
     delete process.env.SKIP_QSTASH_IN_TEST;
     mockVerifySignature.mockClear();

@@ -91,7 +91,7 @@ describe("決済セッション作成冪等性・並行制御統合テスト", (
           url: `https://checkout.stripe.com/c/pay/${sessionId}`,
           payment_status: "unpaid",
           status: "open",
-        });
+        } as any);
       });
   });
 

@@ -225,12 +225,12 @@ describe("正常系テスト", () => {
         metadata: { payment_id: payment.id },
       });
 
-      const req1 = setup.createRequest({ event: evt });
+      const req1 = createRequest({ event: evt });
       const res1 = await WorkerPOST(req1);
       expect(res1.status).toBe(204);
 
       // 2回目の処理（重複）
-      const req2 = setup.createRequest({ event: evt });
+      const req2 = createRequest({ event: evt });
       const res2 = await WorkerPOST(req2);
       expect(res2.status).toBe(204);
 
@@ -276,7 +276,7 @@ describe("正常系テスト", () => {
       });
 
       // 決済は1つだけpaid状態（専用attendanceで検索）
-      const { data: payments } = await setup.supabase
+      const { data: payments } = await setup.adminClient
         .from("payments")
         .select("*")
         .eq("attendance_id", dedicatedAttendance.id)

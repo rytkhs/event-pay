@@ -68,7 +68,9 @@ describe("SuccessView", () => {
 
     expect(button).toBeDisabled();
 
-    resolvePromise?.();
+    if (resolvePromise) {
+      (resolvePromise as () => void)();
+    }
 
     await waitFor(() => {
       expect(button).not.toBeDisabled();

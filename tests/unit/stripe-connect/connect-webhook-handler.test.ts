@@ -166,9 +166,13 @@ describe("ConnectWebhookHandler", () => {
           card_payments: "active",
         },
         requirements: {
+          alternatives: [],
+          current_deadline: null,
           currently_due: [],
           past_due: [],
           eventually_due: [],
+          errors: [],
+          pending_verification: [],
           disabled_reason: null,
         },
       });
@@ -205,9 +209,13 @@ describe("ConnectWebhookHandler", () => {
         details_submitted: true,
         payouts_enabled: false,
         requirements: {
+          alternatives: [],
+          current_deadline: null,
           currently_due: [],
           past_due: [],
           eventually_due: [],
+          errors: [],
+          pending_verification: [],
           disabled_reason: "platform_paused",
         },
         capabilities: {
@@ -245,9 +253,13 @@ describe("ConnectWebhookHandler", () => {
         details_submitted: true,
         payouts_enabled: false,
         requirements: {
+          alternatives: [],
+          current_deadline: null,
           currently_due: [],
           past_due: [],
           eventually_due: [],
+          errors: [],
+          pending_verification: [],
           disabled_reason: "under_review",
         },
         capabilities: {

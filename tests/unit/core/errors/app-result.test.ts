@@ -25,6 +25,7 @@ describe("core/errors/app-result", () => {
     const error = new AppError("NOT_FOUND");
     const result = errResult(error, { trace: "t2" });
     expect(result.success).toBe(false);
+    if (!isErrResult(result)) throw new Error("expected error result");
     expect(result.error).toBe(error);
     expect(result.meta).toEqual({ trace: "t2" });
     expect(isErrResult(result)).toBe(true);
@@ -34,6 +35,7 @@ describe("core/errors/app-result", () => {
   it("errFrom normalizes unknown error", () => {
     const result = errFrom("boom", { defaultCode: "NOT_FOUND" });
     expect(result.success).toBe(false);
+    if (!isErrResult(result)) throw new Error("expected error result");
     expect(result.error.code).toBe("NOT_FOUND");
   });
 
@@ -48,8 +50,8 @@ describe("core/errors/app-result", () => {
   });
 
   it("mapResult skips mapper when data is undefined", () => {
-    const result = okResult<number>(undefined, { trace: "t3b" });
-    const mapped = mapResult(result, (value) => value * 2);
+    const result = okResult<number | undefined, { trace: string }>(undefined, { trace: "t3b" });
+    const mapped = mapResult(result, (value) => (value ?? 0) * 2);
     expect(mapped).toEqual({
       success: true,
       data: undefined,

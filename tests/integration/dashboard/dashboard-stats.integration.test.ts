@@ -148,7 +148,7 @@ describe("ダッシュボード統計情報 統合テスト", () => {
 
       expect(result.success).toBe(true);
       if (result.success) {
-        expect(result.data.upcomingEventsCount).toBe(2);
+        expect(result.data!.upcomingEventsCount).toBe(2);
       }
     });
 
@@ -173,7 +173,7 @@ describe("ダッシュボード統計情報 統合テスト", () => {
 
       expect(result.success).toBe(true);
       if (result.success) {
-        expect(result.data.upcomingEventsCount).toBe(1);
+        expect(result.data!.upcomingEventsCount).toBe(1);
       }
     });
   });
@@ -240,7 +240,7 @@ describe("ダッシュボード統計情報 統合テスト", () => {
 
       expect(result.success).toBe(true);
       if (result.success) {
-        expect(result.data.totalUpcomingParticipants).toBe(5);
+        expect(result.data!.totalUpcomingParticipants).toBe(5);
       }
     });
 
@@ -289,7 +289,7 @@ describe("ダッシュボード統計情報 統合テスト", () => {
 
       expect(result.success).toBe(true);
       if (result.success) {
-        expect(result.data.totalUpcomingParticipants).toBe(2);
+        expect(result.data!.totalUpcomingParticipants).toBe(2);
       }
     });
   });
@@ -365,7 +365,7 @@ describe("ダッシュボード統計情報 統合テスト", () => {
       expect(result.success).toBe(true);
       if (result.success) {
         // 未払いはB + C = 6000円
-        expect(result.data.unpaidFeesTotal).toBe(6000);
+        expect(result.data!.unpaidFeesTotal).toBe(6000);
       }
     });
 
@@ -406,7 +406,7 @@ describe("ダッシュボード統計情報 統合テスト", () => {
 
       expect(result.success).toBe(true);
       if (result.success) {
-        expect(result.data.unpaidFeesTotal).toBe(0);
+        expect(result.data!.unpaidFeesTotal).toBe(0);
       }
     });
 
@@ -461,7 +461,7 @@ describe("ダッシュボード統計情報 統合テスト", () => {
       expect(result.success).toBe(true);
       if (result.success) {
         // 未回収はBのみ = 2000円
-        expect(result.data.unpaidFeesTotal).toBe(2000);
+        expect(result.data!.unpaidFeesTotal).toBe(2000);
       }
     });
 
@@ -488,7 +488,7 @@ describe("ダッシュボード統計情報 統合テスト", () => {
       expect(result.success).toBe(true);
       if (result.success) {
         // 決済レコードがないので未回収 = 5000円
-        expect(result.data.unpaidFeesTotal).toBe(5000);
+        expect(result.data!.unpaidFeesTotal).toBe(5000);
       }
     });
   });
@@ -511,7 +511,7 @@ describe("ダッシュボード統計情報 統合テスト", () => {
 
       expect(result.success).toBe(true);
       if (result.success) {
-        expect(result.data.length).toBe(5);
+        expect(result.data!.length).toBe(5);
       }
     });
 
@@ -560,7 +560,7 @@ describe("ダッシュボード統計情報 統合テスト", () => {
 
       expect(result.success).toBe(true);
       if (result.success) {
-        const recentEvent = result.data.find((e: any) => e.id === event.id);
+        const recentEvent = result.data!.find((e: any) => e.id === event.id);
         expect(recentEvent).toBeDefined();
         expect(recentEvent?.attendances_count).toBe(3);
       }
@@ -598,8 +598,8 @@ describe("ダッシュボード統計情報 統合テスト", () => {
 
       expect(result.success).toBe(true);
       if (result.success) {
-        const futureEventResult = result.data.find((e: any) => e.id === futureEvent.id);
-        const canceledEventResult = result.data.find((e: any) => e.id === canceledEvent.id);
+        const futureEventResult = result.data!.find((e: any) => e.id === futureEvent.id);
+        const canceledEventResult = result.data!.find((e: any) => e.id === canceledEvent.id);
 
         expect(futureEventResult?.status).toBe("upcoming");
         expect(canceledEventResult?.status).toBe("canceled");
@@ -642,10 +642,10 @@ describe("ダッシュボード統計情報 統合テスト", () => {
         expect(recentResult.success).toBe(true);
 
         if (statsResult.success) {
-          expect(statsResult.data.upcomingEventsCount).toBe(0);
-          expect(statsResult.data.totalUpcomingParticipants).toBe(0);
-          expect(statsResult.data.unpaidFeesTotal).toBe(0);
-          expect(statsResult.data.stripeAccountBalance).toBe(0);
+          expect(statsResult.data!.upcomingEventsCount).toBe(0);
+          expect(statsResult.data!.totalUpcomingParticipants).toBe(0);
+          expect(statsResult.data!.unpaidFeesTotal).toBe(0);
+          expect(statsResult.data!.stripeAccountBalance).toBe(0);
         }
 
         if (recentResult.success) {
@@ -694,12 +694,12 @@ describe("ダッシュボード統計情報 統合テスト", () => {
 
       if (statsResult.success) {
         // キャンセル済みイベントは開催予定にカウントされない
-        expect(statsResult.data.upcomingEventsCount).toBe(0);
+        expect(statsResult.data!.upcomingEventsCount).toBe(0);
       }
 
       if (recentResult.success) {
         // ただし recentEvents には含まれる
-        expect(recentResult.data.length).toBeGreaterThan(0);
+        expect(recentResult.data!.length).toBeGreaterThan(0);
       }
     });
   });
@@ -788,13 +788,13 @@ describe("ダッシュボード統計情報 統合テスト", () => {
       expect(result.success).toBe(true);
       if (result.success) {
         // 開催予定イベント: 無料イベント + 有料イベント = 2件
-        expect(result.data.upcomingEventsCount).toBe(2);
+        expect(result.data!.upcomingEventsCount).toBe(2);
 
         // 参加予定者: 無料2名 + 有料2名 = 4名
-        expect(result.data.totalUpcomingParticipants).toBe(4);
+        expect(result.data!.totalUpcomingParticipants).toBe(4);
 
         // 未回収参加費: 有料イベントの未払い1名のみ = 2000円
-        expect(result.data.unpaidFeesTotal).toBe(2000);
+        expect(result.data!.unpaidFeesTotal).toBe(2000);
       }
     });
   });

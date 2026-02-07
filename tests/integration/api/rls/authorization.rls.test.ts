@@ -9,8 +9,9 @@ import {
 } from "../../../setup/common-test-setup";
 
 import { generateGuestToken } from "@core/utils/guest-token";
-import type { Database } from "../../../types/database";
-import type { TestUser } from "../../helpers/test-user";
+import type { TestUser } from "@tests/helpers/test-user";
+
+import type { Database } from "@/types/database";
 
 /**
  * RLS 認可 準統合テスト

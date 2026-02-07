@@ -36,7 +36,7 @@ describe("app/invite/[token]/actions", () => {
   it("registerParticipationAction: 初期化後にfeature actionを呼び出す", async () => {
     const formData = new FormData();
     formData.append("inviteToken", "inv_12345678901234567890123456789012");
-    const expected = { success: true } as const;
+    const expected = { success: true, data: undefined as any } as const;
     mockRegisterParticipationActionImpl.mockResolvedValue(expected);
 
     const result = await registerParticipationAction(formData);
@@ -48,7 +48,7 @@ describe("app/invite/[token]/actions", () => {
 
   it("dismissInviteSuccessAction: 初期化後にfeature actionを呼び出す", async () => {
     const inviteToken = "inv_12345678901234567890123456789012";
-    const expected = { success: true } as const;
+    const expected = { success: true, data: undefined as any } as const;
     mockDismissInviteSuccessActionImpl.mockResolvedValue(expected);
 
     const result = await dismissInviteSuccessAction(inviteToken);

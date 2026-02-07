@@ -41,7 +41,7 @@ describe("Stripe Connect return/refresh actions", () => {
   });
 
   beforeEach(() => {
-    process.env.NODE_ENV = "test";
+    (process.env as Record<string, string | undefined>).NODE_ENV = "test";
     process.env.NEXT_PUBLIC_APP_URL = "http://localhost:3000";
     // afterEachでSupabase認証モックがリセットされるため毎回ユーザーを再設定
     setTestUserById("user_test", "u@example.com");

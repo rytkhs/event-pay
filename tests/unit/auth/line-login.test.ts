@@ -79,7 +79,7 @@ jest.mock("@core/utils/cloudflare-ctx", () => ({
 }));
 
 // queueMicrotaskのモック (念のため残すが、waitUntilに移行済み)
-global.queueMicrotask = jest.fn((fn) => {
+(global.queueMicrotask as any) = jest.fn((fn: () => void) => {
   // テスト内では実行しない
 });
 

@@ -14,6 +14,8 @@ import type { EventDetail } from "@core/utils/invite-token";
 import type { RegisterParticipationData } from "@features/invite/types";
 import { InviteEventDetail } from "@features/invite/components/InviteEventDetail";
 
+type DismissInviteSuccessAction = (inviteToken: string) => Promise<ActionResult>;
+
 jest.mock("@features/invite/components/EventDetailView", () => ({
   EventDetailView: () => <div data-testid="mock-event-detail" />,
 }));
@@ -63,14 +65,18 @@ describe("InviteEventDetail", () => {
   const createRegisterAction = (): ((
     formData: FormData
   ) => Promise<ActionResult<RegisterParticipationData>>) => {
-    return jest.fn(async () => ({
-      success: true,
-      data: mockInitialRegistration,
-    }));
+    return jest.fn(
+      async (): Promise<ActionResult<RegisterParticipationData>> => ({
+        success: true,
+        data: mockInitialRegistration,
+      })
+    );
   };
 
   it("初期登録データがある場合は成功画面を表示する", () => {
-    const dismissInviteSuccessAction = jest.fn(async () => ({ success: true }));
+    const dismissInviteSuccessAction: DismissInviteSuccessAction = jest.fn(
+      async (): Promise<ActionResult> => ({ success: true, data: undefined })
+    );
 
     render(
       <InviteEventDetail
@@ -88,7 +94,9 @@ describe("InviteEventDetail", () => {
 
   it("別参加者登録を押すとクッキー削除Actionを呼び、フォームに戻る", async () => {
     const user = userEvent.setup();
-    const dismissInviteSuccessAction = jest.fn(async () => ({ success: true }));
+    const dismissInviteSuccessAction: DismissInviteSuccessAction = jest.fn(
+      async (): Promise<ActionResult> => ({ success: true, data: undefined })
+    );
 
     render(
       <InviteEventDetail

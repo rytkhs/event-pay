@@ -63,8 +63,8 @@ describe("P0決済セッション作成 真の統合テスト", () => {
       // 統合テスト: 実際のシステムの挙動を検証
       // テスト用Stripe Connectアカウントが存在しないためエラーが期待される
       expect(result.success).toBe(false);
-      expect(result.code).toBe("EXTERNAL_SERVICE_ERROR");
-      expect(result.retryable).toBe(false);
+      expect((result as any).error.code).toBe("EXTERNAL_SERVICE_ERROR");
+      expect((result as any).error.retryable).toBe(false);
 
       // 実際のシステムとして、連携が動作していることを確認
       // 1. ゲストトークン検証が成功
@@ -95,7 +95,7 @@ describe("P0決済セッション作成 真の統合テスト", () => {
 
         lastResult = await createGuestStripeSessionAction(input);
 
-        if (!lastResult.success && lastResult.code === "RATE_LIMITED") {
+        if (!lastResult.success && (lastResult as any).error.code === "RATE_LIMITED") {
           console.log(`⏰ ${attempts}回目でレート制限に到達`);
           break;
         }
@@ -112,9 +112,9 @@ describe("P0決済セッション作成 真の統合テスト", () => {
         const overLimitResult = await createGuestStripeSessionAction(input);
 
         expect(overLimitResult.success).toBe(false);
-        expect(overLimitResult.code).toBe("RATE_LIMITED");
-        expect(overLimitResult.retryable).toBe(true);
-        expect(overLimitResult.details?.retryAfter).toBeGreaterThan(0);
+        expect((overLimitResult as any).error.code).toBe("RATE_LIMITED");
+        expect((overLimitResult as any).error.retryable).toBe(true);
+        expect((overLimitResult as any).error.details?.retryAfter).toBeGreaterThan(0);
 
         console.log("🛡️ 統合テスト: 実際のレート制限動作を確認済み");
       }
@@ -146,7 +146,7 @@ describe("P0決済セッション作成 真の統合テスト", () => {
 
       const eligibilityResult = canCreateStripeSession(tokenResult.attendance, {
         ...tokenResult.attendance.event,
-        status: "active" as const, // 統合テストなので有効なイベント
+        status: "upcoming" as const, // 統合テストなので有効なイベント
       });
 
       expect(eligibilityResult.isEligible).toBe(true);
@@ -170,8 +170,8 @@ describe("P0決済セッション作成 真の統合テスト", () => {
       const result = await createGuestStripeSessionAction(input);
 
       expect(result.success).toBe(false);
-      expect(result.code).toBe("UNAUTHORIZED");
-      expect(result.retryable).toBe(false);
+      expect((result as any).error.code).toBe("UNAUTHORIZED");
+      expect((result as any).error.retryable).toBe(false);
 
       console.log("✅ 統合テスト: 無効トークンでの実際のエラー確認済み");
     });
@@ -186,8 +186,8 @@ describe("P0決済セッション作成 真の統合テスト", () => {
       const result = await createGuestStripeSessionAction(input);
 
       expect(result.success).toBe(false);
-      expect(result.code).toBe("VALIDATION_ERROR");
-      expect(result.details?.zodErrors).toBeDefined();
+      expect((result as any).error.code).toBe("VALIDATION_ERROR");
+      expect((result as any).error.details?.zodErrors).toBeDefined();
 
       console.log("✅ 統合テスト: 不正URL形式での実際のバリデーションエラー確認済み");
     });
@@ -257,7 +257,7 @@ describe("P0決済セッション作成 真の統合テスト", () => {
 
       // レート制限が統合テストで作動する場合は RATE_LIMITED となる
       const expectedErrorCodes = ["EXTERNAL_SERVICE_ERROR", "RATE_LIMITED"];
-      expect(expectedErrorCodes).toContain(result.code);
+      expect(expectedErrorCodes).toContain((result as any).error.code);
 
       // 実際の統合コンポーネント連携が動作していることを確認
       // 1. ゲストトークン検証成功

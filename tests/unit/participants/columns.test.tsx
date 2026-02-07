@@ -54,14 +54,17 @@ function TestTableRow({
     <table>
       <tbody>
         <tr>
-          {columns.map((column, index) => (
-            <td key={index}>
-              {column.cell?.({
-                row: { original: participant },
-                getValue: () => participant[column.accessorKey as keyof ParticipantView],
-              } as any)}
-            </td>
-          ))}
+          {columns.map((column, index) => {
+            const typedColumn = column as any;
+            return (
+              <td key={index}>
+                {typedColumn.cell?.({
+                  row: { original: participant },
+                  getValue: () => participant[typedColumn.accessorKey as keyof ParticipantView],
+                } as any)}
+              </td>
+            );
+          })}
         </tr>
       </tbody>
     </table>
@@ -190,7 +193,7 @@ describe("buildParticipantsColumns", () => {
           <tbody>
             <tr>
               <td>
-                {columns[4].cell?.({
+                {(columns[4] as any).cell?.({
                   row: { original: mockParticipant },
                   getValue: () => undefined,
                 } as any)}
