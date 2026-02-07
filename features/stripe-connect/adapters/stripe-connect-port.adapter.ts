@@ -11,7 +11,7 @@ import { SecureSupabaseClientFactory } from "@core/security/secure-client-factor
 import { AdminReason } from "@core/security/secure-client-factory.types";
 import { handleServerError } from "@core/utils/error-handler.server";
 
-import { createStripeConnectServiceWithClient } from "../services";
+import { createStripeConnectServiceWithClient } from "../services/factories";
 
 /**
  * Stripe Connect機能のアダプタを登録

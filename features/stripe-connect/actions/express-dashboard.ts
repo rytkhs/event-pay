@@ -6,7 +6,7 @@ import { createClient } from "@core/supabase/server";
 import { handleServerError } from "@core/utils/error-handler.server";
 import { isNextRedirectError } from "@core/utils/next";
 
-import { createUserStripeConnectService } from "../services";
+import { createUserStripeConnectService } from "../services/factories";
 import type { ExpressDashboardAccessPayload } from "../types";
 
 /**

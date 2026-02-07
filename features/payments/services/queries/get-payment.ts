@@ -6,7 +6,7 @@ import { PaymentError, PaymentErrorType } from "@core/types/payment-errors";
 
 import { Database } from "@/types/database";
 
-import { OPEN_PAYMENT_STATUSES, TERMINAL_PAYMENT_STATUSES } from "../stripe-session";
+import { OPEN_PAYMENT_STATUSES, TERMINAL_PAYMENT_STATUSES } from "../stripe-session/types";
 import type { Payment } from "../types";
 import { findLatestPaymentByEffectiveTime } from "../utils/payment-effective-time";
 

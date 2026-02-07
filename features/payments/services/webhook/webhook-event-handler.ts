@@ -13,7 +13,7 @@ import { canPromoteStatus } from "@core/utils/payments/status-rank";
 
 import { Database } from "@/types/database";
 
-import type { WebhookProcessingResult } from "./index";
+import type { WebhookProcessingResult } from "./types";
 
 export interface WebhookEventHandler {
   handleEvent(event: Stripe.Event): Promise<WebhookProcessingResult>;

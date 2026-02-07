@@ -13,7 +13,7 @@ import { getEnv } from "@core/utils/cloudflare-env";
 import { handleServerError } from "@core/utils/error-handler.server";
 import { isNextRedirectError } from "@core/utils/next";
 
-import { createUserStripeConnectService } from "../services";
+import { createUserStripeConnectService } from "../services/factories";
 import {
   type ConnectAccountStatusPayload,
   type ConnectPermissionsPayload,

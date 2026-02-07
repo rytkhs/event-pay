@@ -3,7 +3,7 @@ import { createClient } from "@core/supabase/server";
 import { handleServerError } from "@core/utils/error-handler.server";
 import { isNextRedirectError } from "@core/utils/next";
 
-import { createUserStripeConnectService } from "../services";
+import { createUserStripeConnectService } from "../services/factories";
 import type { DetailedAccountStatusPayload } from "../types";
 
 /**
@@ -62,8 +62,8 @@ export async function getDetailedAccountStatusAction(): Promise<
     const hasPendingVerification = (requirements.pending_verification?.length ?? 0) > 0;
     const hasPendingCapabilities = Boolean(
       accountInfo.capabilities &&
-      (accountInfo.capabilities.card_payments === "pending" ||
-        accountInfo.capabilities.transfers === "pending")
+        (accountInfo.capabilities.card_payments === "pending" ||
+          accountInfo.capabilities.transfers === "pending")
     );
 
     // 5. ステータス別の判定

@@ -17,14 +17,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 
 import type { AccountStatusData } from "../types/status-classification";
 
-import {
-  NoAccountView,
-  UnverifiedView,
-  RequirementsDueView,
-  PendingReviewView,
-  RestrictedView,
-  ReadyView,
-} from "./status-views";
+import { NoAccountView } from "./status-views/NoAccountView";
+import { PendingReviewView } from "./status-views/PendingReviewView";
+import { ReadyView } from "./status-views/ReadyView";
+import { RequirementsDueView } from "./status-views/RequirementsDueView";
+import { RestrictedView } from "./status-views/RestrictedView";
+import { UnverifiedView } from "./status-views/UnverifiedView";
 
 interface AccountStatusProps {
   refreshUrl: string;

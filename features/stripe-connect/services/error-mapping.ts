@@ -2,7 +2,7 @@
  * StripeConnect エラーマッピング設定
  */
 
-import { StripeConnectErrorType, ErrorHandlingResult } from "./types";
+import { StripeConnectErrorType, ErrorHandlingResult } from "../types";
 
 /**
  * エラータイプ別のハンドリング設定
