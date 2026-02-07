@@ -22,7 +22,6 @@
     "scripts/**"
   ],
   "ignoreDependencies": [
-    "wrangler",
     "shadcn",
     "eslint-plugin-react",
     "eslint-plugin-react-hooks",

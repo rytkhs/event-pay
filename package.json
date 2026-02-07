@@ -19,6 +19,8 @@
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\"",
     "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md}\"",
     "typecheck": "tsc --noEmit",
+    "typecheck:test": "tsc -p tsconfig.test.json --noEmit",
+    "typecheck:all": "npm run typecheck && npm run typecheck:test",
     "check:enum-consistency": "tsx scripts/check-enum-consistency.ts",
     "check:all": "npm run lint && npm run typecheck && npm run test:unit",
     "prepare": "husky",
