@@ -10,7 +10,7 @@ export interface AdminAlertEmailProps {
   details?: Record<string, any>;
 }
 
-export const AdminAlertEmail = ({ subject, message, details }: AdminAlertEmailProps) => {
+const AdminAlertEmail = ({ subject, message, details }: AdminAlertEmailProps) => {
   // 値を安全に文字列化
   const toDisplay = (v: any) => {
     if (v === null || v === undefined) return "-";

@@ -15,7 +15,7 @@ export interface PaymentDeadlineReminderEmailProps {
   paymentUrl: string;
 }
 
-export const PaymentDeadlineReminderEmail = ({
+const PaymentDeadlineReminderEmail = ({
   nickname,
   eventTitle,
   eventDate,

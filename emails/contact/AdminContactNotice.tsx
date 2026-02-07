@@ -11,7 +11,7 @@ export interface AdminContactNoticeProps {
   receivedAt: Date;
 }
 
-export const AdminContactNotice = ({
+const AdminContactNotice = ({
   name,
   email,
   messageExcerpt,

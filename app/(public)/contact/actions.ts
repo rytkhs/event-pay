@@ -20,7 +20,7 @@ import { getClientIPFromHeaders } from "@core/utils/ip-detection";
 import { sanitizeForEventPay } from "@core/utils/sanitize";
 import { formatUtcToJst, formatDateToJstYmd } from "@core/utils/timezone";
 
-import { AdminContactNotice } from "@/emails/contact/AdminContactNotice";
+import AdminContactNotice from "@/emails/contact/AdminContactNotice";
 
 /**
  * お問い合わせ入力スキーマ（サーバー用）

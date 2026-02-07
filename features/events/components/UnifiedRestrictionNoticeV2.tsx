@@ -421,5 +421,3 @@ export function AdvisoryRestrictionsOnly(
 export function CompactRestrictionNotice(props: Omit<UnifiedRestrictionNoticeV2Props, "compact">) {
   return <UnifiedRestrictionNoticeV2 {...props} compact={true} />;
 }
-
-export default UnifiedRestrictionNoticeV2;

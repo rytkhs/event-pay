@@ -120,5 +120,3 @@ export const EmailLayout = ({ preheader, children }: EmailLayoutProps) => {
     </Html>
   );
 };
-
-export default EmailLayout;
