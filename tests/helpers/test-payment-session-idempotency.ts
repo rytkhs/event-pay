@@ -19,7 +19,7 @@ import { jest } from "@jest/globals";
 import { getPaymentService } from "@core/services";
 import { PaymentError, PaymentErrorType } from "@core/types/payment-errors";
 
-import { CreateStripeSessionParams, CreateStripeSessionResult } from "@features/payments/types";
+import { CreateStripeSessionParams, CreateStripeSessionResult } from "@features/payments";
 
 import { createPaymentTestSetup } from "@tests/setup/common-test-setup";
 

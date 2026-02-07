@@ -14,8 +14,8 @@
 
 import type Stripe from "stripe";
 
-import { UIStatusMapper } from "@features/stripe-connect/services/ui-status-mapper";
-import type { DatabaseStatus } from "@features/stripe-connect/types/status-classification";
+import { UIStatusMapper } from "@features/stripe-connect/server";
+import type { DatabaseStatus } from "@features/stripe-connect";
 
 /**
  * モックStripe Accountオブジェクトを生成するヘルパー関数

@@ -5,8 +5,8 @@ import React from "react";
 import { render, screen } from "@testing-library/react";
 import "@testing-library/jest-dom";
 
-import { AccountStatus } from "@/features/stripe-connect/components/AccountStatus";
-import type { AccountStatusData } from "@/features/stripe-connect/types/status-classification";
+import { AccountStatus } from "@features/stripe-connect";
+import type { AccountStatusData } from "@features/stripe-connect";
 
 describe("AccountStatus Component", () => {
   const mockRefreshUrl = "/dashboard/connect/refresh";

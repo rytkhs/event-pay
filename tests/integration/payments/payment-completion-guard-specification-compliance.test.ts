@@ -12,7 +12,7 @@ import { AdminReason } from "@core/security/secure-client-factory.types";
 import { getPaymentService } from "@core/services";
 import { PaymentError, PaymentErrorType } from "@core/types/payment-errors";
 
-import { CreateStripeSessionParams } from "@features/payments/types";
+import { CreateStripeSessionParams } from "@features/payments";
 
 import {
   createPaymentWithStatus,

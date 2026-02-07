@@ -7,7 +7,7 @@
 import { SecureSupabaseClientFactory } from "@core/security/secure-client-factory.impl";
 import { AdminReason } from "@core/security/secure-client-factory.types";
 
-import { PaymentStatus } from "@features/payments/types";
+import { PaymentStatus } from "@features/payments";
 
 import type { Database } from "@/types/database";
 

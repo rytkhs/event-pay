@@ -7,7 +7,7 @@ import { NextRequest } from "next/server";
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from "@jest/globals";
 
 import { POST as WorkerPOST } from "@/app/api/workers/stripe-webhook/route";
-import { logger } from "@/core/logging/app-logger";
+import { logger } from "@core/logging/app-logger";
 import { webhookEventFixtures } from "@/tests/fixtures/payment-test-fixtures";
 import { createPendingTestPayment } from "@/tests/helpers/test-payment-data";
 import { setupLoggerMocks } from "@/tests/setup/common-mocks";

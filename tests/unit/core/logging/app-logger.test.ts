@@ -2,11 +2,11 @@ import { createClient } from "@supabase/supabase-js";
 
 import { waitUntil } from "@core/utils/cloudflare-ctx";
 
-import { logger } from "@/core/logging/app-logger";
-import { shouldLogError } from "@/core/logging/deduplication";
+import { logger } from "@core/logging/app-logger";
+import { shouldLogError } from "@core/logging/deduplication";
 
 // Mock dependencies
-jest.mock("@/core/logging/deduplication", () => ({
+jest.mock("@core/logging/deduplication", () => ({
   shouldLogError: jest.fn(),
 }));
 

@@ -8,7 +8,7 @@
 import type { ActionResult } from "@core/errors/adapters/server-actions";
 import type { ParticipationFormData } from "@core/validation/participation";
 
-import type { RegisterParticipationData } from "@features/invite/types";
+import type { RegisterParticipationData } from "@features/invite";
 
 import { registerParticipationAction } from "@/app/invite/[token]/actions";
 

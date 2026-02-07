@@ -13,7 +13,7 @@ jest.mock("@core/supabase/server", () => ({
 }));
 
 // Stripe Connect サービスのモック（共通モックを使用）
-jest.mock("@features/stripe-connect/services", () => {
+jest.mock("@features/stripe-connect/server", () => {
   const { setupStripeConnectServiceMock } = require("../../setup/stripe-connect-mock");
   return setupStripeConnectServiceMock({
     getAccountInfo: {
@@ -48,7 +48,7 @@ describe("Stripe Connect return/refresh actions", () => {
   });
 
   it("return action: 既存アカウント同期を実行する", async () => {
-    const { __mockFns } = jest.requireMock("@features/stripe-connect/services");
+    const { __mockFns } = jest.requireMock("@features/stripe-connect/server");
     __mockFns.getConnectAccountByUser.mockResolvedValue({
       user_id: "user_test",
       stripe_account_id: "acct_test",
@@ -64,7 +64,7 @@ describe("Stripe Connect return/refresh actions", () => {
   });
 
   it("refresh action: アカウントリンクを再生成してリダイレクトする", async () => {
-    const { __mockFns } = jest.requireMock("@features/stripe-connect/services");
+    const { __mockFns } = jest.requireMock("@features/stripe-connect/server");
     __mockFns.getConnectAccountByUser.mockResolvedValue({
       user_id: "user_test",
       stripe_account_id: "acct_test",

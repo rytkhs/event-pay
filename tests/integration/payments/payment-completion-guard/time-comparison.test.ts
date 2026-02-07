@@ -7,7 +7,7 @@ import { describe, test, expect, beforeAll, afterAll, beforeEach } from "@jest/g
 import { getPaymentService } from "@core/services";
 import { PaymentErrorType } from "@core/types/payment-errors";
 
-import { CreateStripeSessionParams } from "@features/payments/types";
+import { CreateStripeSessionParams } from "@features/payments";
 
 import { createPaymentTestSetup, type PaymentTestSetup } from "@tests/setup/common-test-setup";
 

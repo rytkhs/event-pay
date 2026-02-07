@@ -11,8 +11,8 @@ import {
   RequirementsDueView,
   RestrictedView,
   ReadyView,
-} from "@/features/stripe-connect/components/status-views";
-import type { AccountStatusData } from "@/features/stripe-connect/types/status-classification";
+} from "@features/stripe-connect";
+import type { AccountStatusData } from "@features/stripe-connect";
 
 describe("Status View Components", () => {
   const mockRefreshUrl = "/dashboard/connect/refresh";
