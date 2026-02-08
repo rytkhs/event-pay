@@ -4,8 +4,8 @@
  */
 
 import type { ActionResult } from "@core/errors/adapters/server-actions";
-import type { PaymentStatus } from "@core/types/statuses";
 import { PaymentErrorType, PaymentError as SharedPaymentError } from "@core/types/payment-errors";
+import type { PaymentStatus } from "@core/types/statuses";
 
 export type PaymentStatusValue = PaymentStatus;
 

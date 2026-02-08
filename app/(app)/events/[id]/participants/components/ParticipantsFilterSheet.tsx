@@ -5,7 +5,8 @@ import { useState, useEffect } from "react";
 import { Filter, X, Search, SlidersHorizontal } from "lucide-react";
 
 import { type SimplePaymentStatus } from "@core/utils/payment-status-mapper";
-import { SIMPLE_PAYMENT_STATUS_LABELS } from "@features/events/constants/simple-payment-status-ui";
+
+import { SIMPLE_PAYMENT_STATUS_LABELS } from "@features/events";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
