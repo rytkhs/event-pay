@@ -4,7 +4,7 @@
 
 import { describe, test, expect, beforeAll, afterAll, beforeEach } from "@jest/globals";
 
-import { getPaymentService } from "@core/services";
+import { getPaymentPort, type PaymentPort } from "@core/ports/payments";
 import { PaymentErrorType } from "@core/types/payment-errors";
 import { statusRank } from "@core/utils/payments/status-rank";
 
@@ -24,7 +24,7 @@ const SPEC_STATUS_RANKS = {
 
 describe("仕様書適合性検証", () => {
   let setup: PaymentTestSetup;
-  let paymentService: ReturnType<typeof getPaymentService>;
+  let paymentPort: PaymentPort;
 
   beforeAll(async () => {
     const paymentSetup = await createPaymentTestSetup({
@@ -33,7 +33,7 @@ describe("仕様書適合性検証", () => {
       accessedTables: ["public.users", "public.events", "public.attendances", "public.payments"],
     });
     setup = paymentSetup;
-    paymentService = getPaymentService();
+    paymentPort = getPaymentPort();
   });
 
   afterAll(async () => {
@@ -92,7 +92,7 @@ describe("仕様書適合性検証", () => {
     };
 
     // 仕様書によれば、waivedは終端系なので完了済みガードが作動すべき
-    await expect(paymentService.createStripeSession(sessionParams)).rejects.toThrow(
+    await expect(paymentPort.createStripeSession(sessionParams)).rejects.toThrow(
       expect.objectContaining({
         type: PaymentErrorType.PAYMENT_ALREADY_EXISTS,
         message: "この参加に対する決済は既に完了済みです",

@@ -3,7 +3,7 @@
  * アプリケーション全体のNot Foundエラー
  */
 
-import { NotFoundLayout } from "@/components/errors";
+import { NotFoundLayout } from "@/components/errors/ErrorLayout";
 
 export const dynamic = "force-dynamic";
 

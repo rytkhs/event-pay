@@ -5,7 +5,7 @@
 
 "use client";
 
-import { PaymentErrorLayout } from "@/components/errors";
+import { PaymentErrorLayout } from "@/components/errors/ErrorLayout";
 
 interface PaymentErrorPageProps {
   error: Error & { digest?: string };

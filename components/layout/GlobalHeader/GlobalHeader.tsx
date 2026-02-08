@@ -125,21 +125,3 @@ export function GlobalHeader({
   // マーケティングヘッダー（デフォルト）
   return <MarketingHeader className={className} />;
 }
-
-// 各ヘッダーコンポーネントの再エクスポート
-export { MarketingHeader } from "./MarketingHeader";
-export { AppHeader } from "./AppHeader";
-export { GuestHeader } from "./GuestHeader";
-export { UserMenu } from "./UserMenu";
-export { NavLink, MobileNavLink } from "./NavLink";
-
-// 型定義の再エクスポート
-export type {
-  GlobalHeaderProps,
-  HeaderVariant,
-  NavLinkProps,
-  UserMenuProps,
-  MarketingHeaderProps,
-  AppHeaderProps,
-  GuestHeaderProps,
-} from "./types";

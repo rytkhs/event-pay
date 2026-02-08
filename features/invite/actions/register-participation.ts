@@ -5,7 +5,7 @@ import { z } from "zod";
 
 import { type ActionResult, fail, ok, zodFail } from "@core/errors/adapters/server-actions";
 import { logger } from "@core/logging/app-logger";
-import { NotificationService } from "@core/notification";
+import { NotificationService } from "@core/notification/service";
 import { SecureSupabaseClientFactory } from "@core/security/secure-client-factory.impl";
 import {
   logParticipationSecurityEvent,

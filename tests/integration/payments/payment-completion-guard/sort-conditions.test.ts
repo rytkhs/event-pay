@@ -4,7 +4,7 @@
 
 import { describe, test, expect, beforeAll, afterAll, beforeEach } from "@jest/globals";
 
-import { getPaymentService } from "@core/services";
+import { getPaymentPort, type PaymentPort } from "@core/ports/payments";
 import { PaymentErrorType } from "@core/types/payment-errors";
 
 import { CreateStripeSessionParams } from "@features/payments";
@@ -13,7 +13,7 @@ import { createPaymentTestSetup, type PaymentTestSetup } from "@tests/setup/comm
 
 describe("ソート条件の検証", () => {
   let setup: PaymentTestSetup;
-  let paymentService: ReturnType<typeof getPaymentService>;
+  let paymentPort: PaymentPort;
 
   beforeAll(async () => {
     const paymentSetup = await createPaymentTestSetup({
@@ -22,7 +22,7 @@ describe("ソート条件の検証", () => {
       accessedTables: ["public.users", "public.events", "public.attendances", "public.payments"],
     });
     setup = paymentSetup;
-    paymentService = getPaymentService();
+    paymentPort = getPaymentPort();
   });
 
   afterAll(async () => {
@@ -84,7 +84,7 @@ describe("ソート条件の検証", () => {
     };
 
     // 最新のpaid_atを持つ決済が使用されるため拒否される
-    await expect(paymentService.createStripeSession(sessionParams)).rejects.toThrow(
+    await expect(paymentPort.createStripeSession(sessionParams)).rejects.toThrow(
       expect.objectContaining({
         type: PaymentErrorType.PAYMENT_ALREADY_EXISTS,
       })
@@ -154,7 +154,7 @@ describe("ソート条件の検証", () => {
     };
 
     // pending決済（最新）が優先的に再利用される
-    const result = await paymentService.createStripeSession(sessionParams);
+    const result = await paymentPort.createStripeSession(sessionParams);
     expect(result.sessionUrl).toMatch(/^https:\/\/checkout\.stripe\.com/);
 
     // pendingが再利用され、failedは触れられていないことを確認

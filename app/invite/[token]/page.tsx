@@ -12,7 +12,7 @@ import { sanitizeEventDescription } from "@core/utils/sanitize";
 
 import { InviteEventDetail, type RegisterParticipationData } from "@features/invite";
 
-import { ErrorLayout } from "@/components/errors";
+import { ErrorLayout } from "@/components/errors/ErrorLayout";
 
 import { dismissInviteSuccessAction, registerParticipationAction } from "./actions";
 

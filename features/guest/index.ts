@@ -5,13 +5,10 @@
 
 // Components
 export { GuestActionArea } from "./components/GuestActionArea";
-export { GuestEventDetails } from "./components/GuestEventDetails";
 export { GuestEventSummary } from "./components/GuestEventSummary";
-export { GuestManagementForm } from "./components/GuestManagementForm";
 export { GuestSettingsArea } from "./components/GuestSettingsArea";
 export { GuestStatusCard } from "./components/GuestStatusCard";
 export { GuestStatusEditModal } from "./components/GuestStatusEditModal";
-export { GuestStatusOverview } from "./components/GuestStatusOverview";
 
 // Types & Validation
 export * from "./types";

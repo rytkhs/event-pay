@@ -2,9 +2,9 @@ import { z } from "zod";
 
 import { fail, ok, type ActionResult, zodFail } from "@core/errors/adapters/server-actions";
 import type { ErrorCode } from "@core/errors/types";
+import { getPaymentPort } from "@core/ports/payments";
 import { enforceRateLimit, buildKey, POLICIES } from "@core/rate-limit";
 import { SecureSupabaseClientFactory } from "@core/security/secure-client-factory.impl";
-import { getPaymentService } from "@core/services";
 import { PaymentError, PaymentErrorType } from "@core/types/payment-errors";
 import { deriveEventStatus } from "@core/utils/derive-event-status";
 import { handleServerError } from "@core/utils/error-handler.server";
@@ -145,7 +145,7 @@ export async function createGuestStripeSessionAction(
   const guestClient = factory.createGuestClient(guestToken);
 
   // PaymentService の登録は app 側の初期化（feature-registrations）で保証される
-  const paymentService = getPaymentService();
+  const paymentPort = getPaymentPort();
 
   // 5.1 既存の決済レコードがあれば金額は payments.amount を優先する
   const { data: latestAmountRpc } = await (guestClient as any)
@@ -195,7 +195,7 @@ export async function createGuestStripeSessionAction(
   } as const;
 
   try {
-    const result = await paymentService.createStripeSession({
+    const result = await paymentPort.createStripeSession({
       attendanceId: attendance.id,
       amount: amountToCharge,
       eventId: event.id,

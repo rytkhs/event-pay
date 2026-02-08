@@ -11,7 +11,7 @@ import Stripe from "stripe";
 
 import { errFrom, okResult } from "@core/errors";
 import { logger } from "@core/logging/app-logger";
-import { NotificationService } from "@core/notification";
+import { NotificationService } from "@core/notification/service";
 import type {
   AccountStatusChangeNotification,
   AccountRestrictedNotification,

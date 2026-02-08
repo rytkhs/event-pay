@@ -3,7 +3,7 @@ import Stripe from "stripe";
 
 import { AppError, errResult, okResult } from "@core/errors";
 import { logger } from "@core/logging/app-logger";
-import { NotificationService } from "@core/notification";
+import { NotificationService } from "@core/notification/service";
 import { getSettlementReportPort } from "@core/ports/settlements";
 import { AdminReason } from "@core/security/secure-client-factory.types";
 import { createSecureSupabaseClient } from "@core/security/system-factory";

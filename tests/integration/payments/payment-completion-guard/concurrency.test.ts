@@ -4,14 +4,15 @@
 
 import { describe, test, expect, beforeAll, afterAll, beforeEach } from "@jest/globals";
 
-import { getPaymentService } from "@core/services";
+import { getPaymentPort, type PaymentPort } from "@core/ports/payments";
+
 import { CreateStripeSessionParams } from "@features/payments";
 
 import { createPaymentTestSetup, type PaymentTestSetup } from "@tests/setup/common-test-setup";
 
 describe("並行処理・競合対策", () => {
   let setup: PaymentTestSetup;
-  let paymentService: ReturnType<typeof getPaymentService>;
+  let paymentPort: PaymentPort;
 
   beforeAll(async () => {
     const paymentSetup = await createPaymentTestSetup({
@@ -20,7 +21,7 @@ describe("並行処理・競合対策", () => {
       accessedTables: ["public.users", "public.events", "public.attendances", "public.payments"],
     });
     setup = paymentSetup;
-    paymentService = getPaymentService();
+    paymentPort = getPaymentPort();
   });
 
   afterAll(async () => {
@@ -65,7 +66,7 @@ describe("並行処理・競合対策", () => {
     };
 
     // 2回目の呼び出しでも成功する（既存のpending決済を再利用）
-    const result = await paymentService.createStripeSession(sessionParams);
+    const result = await paymentPort.createStripeSession(sessionParams);
     expect(result.sessionUrl).toMatch(/^https:\/\/checkout\.stripe\.com/);
 
     // 決済レコードは1つのままであることを確認

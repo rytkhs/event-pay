@@ -4,15 +4,16 @@
 
 import { describe, test, expect, beforeAll, afterAll, beforeEach } from "@jest/globals";
 
-import { getPaymentService } from "@core/services";
+import { getPaymentPort, type PaymentPort } from "@core/ports/payments";
 import { PaymentError, PaymentErrorType } from "@core/types/payment-errors";
+
 import { CreateStripeSessionParams } from "@features/payments";
 
 import { createPaymentTestSetup, type PaymentTestSetup } from "@tests/setup/common-test-setup";
 
 describe("エラーハンドリング", () => {
   let setup: PaymentTestSetup;
-  let paymentService: ReturnType<typeof getPaymentService>;
+  let paymentPort: PaymentPort;
 
   beforeAll(async () => {
     const paymentSetup = await createPaymentTestSetup({
@@ -21,7 +22,7 @@ describe("エラーハンドリング", () => {
       accessedTables: ["public.users", "public.events", "public.attendances", "public.payments"],
     });
     setup = paymentSetup;
-    paymentService = getPaymentService();
+    paymentPort = getPaymentPort();
   });
 
   afterAll(async () => {
@@ -65,7 +66,7 @@ describe("エラーハンドリング", () => {
     };
 
     try {
-      await paymentService.createStripeSession(sessionParams);
+      await paymentPort.createStripeSession(sessionParams);
       fail("PaymentError should be thrown");
     } catch (error) {
       const paymentError = error as PaymentError;

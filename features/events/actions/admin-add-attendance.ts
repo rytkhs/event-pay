@@ -4,8 +4,8 @@ import { verifyEventAccess } from "@core/auth/event-authorization";
 import { type ActionResult, fail, ok, zodFail } from "@core/errors/adapters/server-actions";
 import { logger } from "@core/logging/app-logger";
 import { logAttendance } from "@core/logging/system-logger";
+import { getPaymentPort } from "@core/ports/payments";
 import { SecureSupabaseClientFactory } from "@core/security/secure-client-factory.impl";
-import { getPaymentService } from "@core/services/payment-service";
 import { PaymentError } from "@core/types/payment-errors";
 import { deriveEventStatus } from "@core/utils/derive-event-status";
 import { generateGuestToken } from "@core/utils/guest-token";
@@ -151,8 +151,8 @@ export async function adminAddAttendanceAction(
 
       // PaymentServiceを使用して現金決済レコードを作成
       try {
-        const paymentService = getPaymentService();
-        const result = await paymentService.createCashPayment({
+        const paymentPort = getPaymentPort();
+        const result = await paymentPort.createCashPayment({
           attendanceId,
           amount: eventRow.fee,
         });

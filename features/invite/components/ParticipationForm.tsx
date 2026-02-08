@@ -13,7 +13,7 @@ import {
   type ParticipationFormData,
 } from "@core/validation/participation";
 
-import { ParticipationErrorBoundary } from "@/components/errors";
+import { ParticipationErrorBoundary } from "@/components/errors/ErrorBoundary";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import {
