@@ -23,7 +23,7 @@ jest.mock("@core/logging/app-logger", () => {
   mockLogger.withContext.mockReturnValue(mockLogger);
   return { logger: mockLogger };
 });
-jest.mock("@core/notification");
+jest.mock("@core/notification/service");
 jest.mock("@core/ports/stripe-connect");
 jest.mock("@core/security/secure-client-factory.impl");
 
@@ -43,7 +43,7 @@ jest.mock("@core/ports/stripe-connect", () => ({
 }));
 
 // NotificationServiceのモック
-jest.mock("@core/notification", () => ({
+jest.mock("@core/notification/service", () => ({
   NotificationService: jest.fn().mockImplementation(() => ({
     sendAccountVerifiedNotification: mockSendNotification,
     sendAccountRestrictedNotification: mockSendNotification,

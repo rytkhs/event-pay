@@ -5,8 +5,6 @@
 
 // Components
 export { InviteEventDetail } from "./components/InviteEventDetail";
-export { ParticipationConfirmation } from "./components/ParticipationConfirmation";
-export { ParticipationForm } from "./components/ParticipationForm";
 
 // Types & Validation
 export * from "./types";
