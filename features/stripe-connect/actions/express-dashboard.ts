@@ -30,7 +30,7 @@ export async function createExpressDashboardLoginLinkAction(): Promise<void> {
         action: "create_express_dashboard_login_link_auth_failed",
         userId,
       });
-      redirect("/dashboard/connect?error=auth_failed");
+      redirect("/settings/payments?error=auth_failed");
       return;
     }
 
@@ -59,7 +59,7 @@ export async function createExpressDashboardLoginLinkAction(): Promise<void> {
         user_id: user.id,
         outcome: "failure",
       });
-      redirect("/dashboard/connect?message=account_required");
+      redirect("/settings/payments?message=account_required");
       return;
     }
 
@@ -90,7 +90,7 @@ export async function createExpressDashboardLoginLinkAction(): Promise<void> {
     });
 
     // 失敗時は接続設定ページへ誘導
-    redirect("/dashboard/connect?message=express_dashboard_failed");
+    redirect("/settings/payments?message=express_dashboard_failed");
   }
 }
 

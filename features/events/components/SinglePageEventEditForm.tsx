@@ -744,7 +744,7 @@ export function SinglePageEventEditForm({
                           {!canUseOnlinePayments && (
                             <p className="text-xs text-muted-foreground mt-2">
                               オンライン決済を利用するにはStripeアカウントの設定が必要です。
-                              <a href="/dashboard/connect" className="underline ml-1">
+                              <a href="/settings/payments" className="underline ml-1">
                                 設定に進む
                               </a>
                             </p>

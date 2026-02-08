@@ -7,12 +7,12 @@ import { redirect } from "next/navigation";
 import { fail, ok, type ActionResult } from "@core/errors/adapters/server-actions";
 import { logger } from "@core/logging/app-logger";
 import { sendSlackText } from "@core/notification/slack";
-import { CONNECT_REFRESH_PATH, CONNECT_RETURN_PATH } from "@core/routes/stripe-connect";
 import { createClient } from "@core/supabase/server";
 import { getEnv } from "@core/utils/cloudflare-env";
 import { handleServerError } from "@core/utils/error-handler.server";
 import { isNextRedirectError } from "@core/utils/next";
 
+import { CONNECT_REFRESH_PATH, CONNECT_RETURN_PATH } from "../constants/routes";
 import { createUserStripeConnectService } from "../services/factories";
 import {
   type ConnectAccountStatusPayload,
@@ -349,7 +349,7 @@ Payouts Enabled: ${accountInfo.payoutsEnabled ? "Yes" : "No"}
     return fail("STRIPE_CONNECT_SERVICE_ERROR", {
       userMessage:
         error instanceof Error ? error.message : "アカウント設定の完了処理中にエラーが発生しました",
-      redirectUrl: `/dashboard/connect/error?message=${errorMessage}`,
+      redirectUrl: `/settings/payments/error?message=${errorMessage}`,
     });
   }
 }
@@ -421,7 +421,7 @@ export async function handleOnboardingRefreshAction(): Promise<void> {
         ? error.message
         : "アカウント設定のリフレッシュ中にエラーが発生しました"
     );
-    redirect(`/dashboard/connect/error?message=${errorMessage}`);
+    redirect(`/settings/payments/error?message=${errorMessage}`);
   }
 }
 
@@ -572,13 +572,13 @@ export async function startOnboardingAction(): Promise<void> {
     // StripeConnectErrorによるエラーページリダイレクト
     if (error instanceof StripeConnectError) {
       const errorMessage = encodeURIComponent(error.message);
-      redirect(`/dashboard/connect/error?message=${errorMessage}&type=${error.type}`);
+      redirect(`/settings/payments/error?message=${errorMessage}&type=${error.type}`);
     }
 
     // その他のエラー
     const errorMessage = encodeURIComponent(
       error instanceof Error ? error.message : "オンボーディング開始中にエラーが発生しました"
     );
-    redirect(`/dashboard/connect/error?message=${errorMessage}`);
+    redirect(`/settings/payments/error?message=${errorMessage}`);
   }
 }

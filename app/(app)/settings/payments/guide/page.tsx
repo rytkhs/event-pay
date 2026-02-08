@@ -63,7 +63,7 @@ export default function OnboardingGuidePage() {
       <div className="space-y-6 sm:space-y-8">
         {/* ヘッダー */}
         <div className="space-y-2">
-          <Link href="/dashboard/connect">
+          <Link href="/settings/payments">
             <Button variant="ghost" size="sm" className="mb-4">
               <ArrowLeft className="h-4 w-4 mr-2" />
               売上受取設定に戻る

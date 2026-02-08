@@ -454,7 +454,7 @@ function ModernEventForm({
                                 <p className="text-xs text-muted-foreground mt-2">
                                   オンライン決済を利用するにはStripeアカウントの設定が必要です。
                                   <a
-                                    href={connectStatus?.actionUrl ?? "/dashboard/connect"}
+                                    href={connectStatus?.actionUrl ?? "/settings/payments"}
                                     className="underline ml-1"
                                   >
                                     設定に進む

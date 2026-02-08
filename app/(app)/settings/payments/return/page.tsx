@@ -28,11 +28,11 @@ async function ReturnContent() {
     redirect(result.data.redirectUrl);
   } else if (!result.success) {
     // エラー時は指定されたURLへリダイレクト、なければデフォルトのエラーページへ
-    const errorRedirectUrl = result.redirectUrl || "/dashboard/connect/error";
+    const errorRedirectUrl = result.redirectUrl || "/settings/payments/error";
     redirect(errorRedirectUrl);
   } else {
     // 成功だがURLがない場合（フォールバック）
-    redirect("/dashboard");
+    redirect("/settings/payments");
   }
 
   return null;
@@ -60,7 +60,7 @@ function LoadingContent() {
   );
 }
 
-export default function ConnectReturnPage() {
+export default function PaymentSettingsReturnPage() {
   return (
     <Suspense fallback={<LoadingContent />}>
       <ReturnContent />

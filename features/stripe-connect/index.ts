@@ -17,3 +17,6 @@ export { UnverifiedView } from "./components/status-views/UnverifiedView";
 // Types & Validation
 export * from "./types";
 export * from "./validation";
+
+// Routes
+export * from "./constants/routes";

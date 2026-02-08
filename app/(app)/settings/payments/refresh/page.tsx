@@ -48,7 +48,7 @@ function LoadingContent() {
   );
 }
 
-export default function ConnectRefreshPage() {
+export default function PaymentSettingsRefreshPage() {
   return (
     <Suspense fallback={<LoadingContent />}>
       <RefreshContent />

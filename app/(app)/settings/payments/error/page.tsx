@@ -50,7 +50,7 @@ function ErrorContent({ searchParams }: ErrorPageProps) {
 
             <div className="space-y-2">
               <Button asChild className="w-full">
-                <Link href="/dashboard/connect">
+                <Link href="/settings/payments">
                   <RefreshCw className="mr-2 h-4 w-4" />
                   設定を再試行
                 </Link>
@@ -82,7 +82,7 @@ function ErrorContent({ searchParams }: ErrorPageProps) {
   );
 }
 
-export default function ConnectErrorPage(props: ErrorPageProps) {
+export default function PaymentSettingsErrorPage(props: ErrorPageProps) {
   return (
     <Suspense fallback={<div>Loading...</div>}>
       <ErrorContent {...props} />

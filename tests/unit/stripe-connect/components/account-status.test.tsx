@@ -9,7 +9,7 @@ import { AccountStatus } from "@features/stripe-connect";
 import type { AccountStatusData } from "@features/stripe-connect";
 
 describe("AccountStatus Component", () => {
-  const mockRefreshUrl = "/dashboard/connect/refresh";
+  const mockRefreshUrl = "/settings/payments/refresh";
   const mockExpressDashboardAction = jest.fn();
 
   describe("UI Status Rendering", () => {
@@ -142,7 +142,7 @@ describe("AccountStatus Component", () => {
 
       const guideLink = screen.getByRole("link", { name: /設定回答の参考ページを見る/i });
       expect(guideLink).toBeInTheDocument();
-      expect(guideLink).toHaveAttribute("href", "/dashboard/connect/guide");
+      expect(guideLink).toHaveAttribute("href", "/settings/payments/guide");
     });
 
     it("should display refresh button", () => {

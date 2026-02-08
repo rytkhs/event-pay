@@ -448,7 +448,7 @@ export function EventEditForm({
                                     アカウントの設定を完了してください。
                                   </p>
                                   <a
-                                    href="/dashboard/connect"
+                                    href="/settings/payments"
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     className="inline-flex items-center text-amber-700 hover:text-amber-800 underline text-xs mt-1"

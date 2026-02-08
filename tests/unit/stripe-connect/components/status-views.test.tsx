@@ -15,7 +15,7 @@ import {
 import type { AccountStatusData } from "@features/stripe-connect";
 
 describe("Status View Components", () => {
-  const mockRefreshUrl = "/dashboard/connect/refresh";
+  const mockRefreshUrl = "/settings/payments/refresh";
   const mockExpressDashboardAction = jest.fn();
 
   describe("NoAccountView", () => {

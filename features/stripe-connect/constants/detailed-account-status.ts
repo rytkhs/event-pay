@@ -6,7 +6,7 @@ export const NO_ACCOUNT_STATUS: DetailedAccountStatus = {
   description:
     "オンライン決済を有効化するために、Stripeアカウントの設定が必要です。設定は約3〜5分で完了します。",
   actionText: "アカウント設定を開始",
-  actionUrl: "/dashboard/connect",
+  actionUrl: "/settings/payments",
   severity: "info",
 };
 
@@ -16,7 +16,7 @@ export const UNVERIFIED_STATUS: DetailedAccountStatus = {
   description:
     "Stripeアカウントの認証が完了していません。認証を完了することで決済を受け取れるようになります。",
   actionText: "認証を完了する",
-  actionUrl: "/dashboard/connect?action=complete",
+  actionUrl: "/settings/payments?action=complete",
   severity: "warning",
 };
 
@@ -35,7 +35,7 @@ export const RESTRICTED_STATUS: DetailedAccountStatus = {
   description:
     "Stripeアカウントに制限がかかっています。表示される案内に従って情報を更新してください。",
   actionText: "Stripeで状況を確認",
-  actionUrl: "/dashboard/connect?action=update",
+  actionUrl: "/settings/payments?action=update",
   severity: "error",
 };
 
@@ -54,7 +54,7 @@ export function buildRequirementsDueStatus(input: {
         ? "決済を継続するために追加の情報提供が必要です。"
         : "将来的に必要となる情報があります。早めの対応をお勧めします。",
     actionText: "情報を更新する",
-    actionUrl: "/dashboard/connect?action=update",
+    actionUrl: "/settings/payments?action=update",
     severity: input.hasPastDue ? "error" : input.hasCurrentlyDue ? "warning" : "info",
   };
 }
