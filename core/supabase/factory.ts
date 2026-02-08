@@ -6,7 +6,7 @@ import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { logger } from "@core/logging/app-logger";
-import { COOKIE_CONFIG, AUTH_CONFIG, getCookieConfig } from "@core/security";
+import { COOKIE_CONFIG, AUTH_CONFIG, getCookieConfig } from "@core/security/config";
 import { getSessionManager } from "@core/session/manager";
 import { getEnv } from "@core/utils/cloudflare-env";
 import { handleServerError } from "@core/utils/error-handler.server";

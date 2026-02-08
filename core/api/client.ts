@@ -351,10 +351,3 @@ export const apiClient = new ApiClient();
 export function isApiError(error: unknown): error is ApiError {
   return error instanceof ApiError;
 }
-
-/**
- * 便利関数: リトライ可能なエラーかどうかを判定
- */
-export function isRetryableError(error: unknown): boolean {
-  return isApiError(error) && error.retryable;
-}

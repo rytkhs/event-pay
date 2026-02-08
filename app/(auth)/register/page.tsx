@@ -11,7 +11,8 @@ import { Lock } from "lucide-react";
 import { useRegisterFormRHF } from "@features/auth";
 
 import { registerAction } from "@/app/(auth)/actions";
-import { GoogleLoginButton, LINELoginButton } from "@/components/auth";
+import { GoogleLoginButton } from "@/components/auth/GoogleLoginButton";
+import { LINELoginButton } from "@/components/auth/LINELoginButton";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import {

@@ -7,7 +7,8 @@ import { z } from "zod";
 import { AppError, isErrorCode } from "@core/errors";
 import { respondWithCode, respondWithProblem } from "@core/errors/server";
 import type { ErrorCategory, ErrorCode } from "@core/errors/types";
-import { AdminReason, createSecureSupabaseClient } from "@core/security";
+import { AdminReason } from "@core/security/secure-client-factory.types";
+import { createSecureSupabaseClient } from "@core/security/system-factory";
 import { notifyError } from "@core/utils/error-handler.server";
 
 import type { Database } from "@/types/database";

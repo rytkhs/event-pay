@@ -5,7 +5,8 @@ import { SupabaseClient } from "@supabase/supabase-js";
 import { type ActionResult, fail, ok } from "@core/errors/adapters/server-actions";
 import { logger } from "@core/logging/app-logger";
 import { buildKey, enforceRateLimit, POLICIES } from "@core/rate-limit";
-import { AdminReason, createSecureSupabaseClient } from "@core/security";
+import { AdminReason } from "@core/security/secure-client-factory.types";
+import { createSecureSupabaseClient } from "@core/security/system-factory";
 import { createClient as createServerClient } from "@core/supabase/server";
 import { getClientIPFromHeaders } from "@core/utils/ip-detection";
 

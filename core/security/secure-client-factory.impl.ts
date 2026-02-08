@@ -7,7 +7,6 @@
 
 import "server-only";
 
-// next/headers は テスト環境では利用できないため動的インポート
 import type { NextRequest, NextResponse } from "next/server";
 
 import { createServerClient, createBrowserClient } from "@supabase/ssr";
@@ -35,11 +34,8 @@ import {
  * セキュアSupabaseクライアントファクトリーの実装
  */
 export class SecureSupabaseClientFactory implements ISecureSupabaseClientFactory {
-  // Security auditor removed
-
   constructor() {
     // 環境変数はメソッド内で動的に取得するため、コンストラクタでは初期化しない
-    // Security auditor removed
   }
 
   /**
