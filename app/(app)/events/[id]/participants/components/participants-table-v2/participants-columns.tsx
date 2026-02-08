@@ -6,11 +6,11 @@ import type { ColumnDef } from "@tanstack/react-table";
 import { Banknote, Check, CreditCard, RotateCcw } from "lucide-react";
 
 import { hasPaymentId } from "@core/utils/data-guards";
+import { toSimplePaymentStatus } from "@core/utils/payment-status-mapper";
 import {
   SIMPLE_PAYMENT_STATUS_LABELS,
   getSimplePaymentStatusStyle,
-  toSimplePaymentStatus,
-} from "@core/utils/payment-status-mapper";
+} from "@features/events/constants/simple-payment-status-ui";
 import type { ParticipantView } from "@core/validation/participant-management";
 
 import { Badge } from "@/components/ui/badge";

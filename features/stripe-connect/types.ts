@@ -6,8 +6,7 @@ import type { PostgrestError } from "@supabase/supabase-js";
 
 import type { AppResult } from "@core/errors";
 import type { LogLevel } from "@core/logging/app-logger";
-
-import { Database } from "@/types/database";
+import type { StripeAccountStatus } from "@core/types/statuses";
 
 import type { UIStatus } from "./types/status-classification";
 
@@ -22,9 +21,6 @@ export interface DetailedAccountStatus {
 
 export * from "./types/status-classification";
 export * from "./types/audit-log";
-
-// Stripe Connectアカウントステータスの型
-export type StripeAccountStatus = Database["public"]["Enums"]["stripe_account_status_enum"];
 
 // Webhook処理や通知経路では一時的に enum 外の状態が入ることがあるための拡張型
 export type StripeAccountStatusLike = StripeAccountStatus | "unknown" | "error";

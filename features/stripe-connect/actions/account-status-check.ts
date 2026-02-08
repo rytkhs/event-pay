@@ -3,6 +3,13 @@ import { createClient } from "@core/supabase/server";
 import { handleServerError } from "@core/utils/error-handler.server";
 import { isNextRedirectError } from "@core/utils/next";
 
+import {
+  buildRequirementsDueStatus,
+  NO_ACCOUNT_STATUS,
+  PENDING_REVIEW_STATUS,
+  RESTRICTED_STATUS,
+  UNVERIFIED_STATUS,
+} from "../constants/detailed-account-status";
 import { createUserStripeConnectService } from "../services/factories";
 import type { DetailedAccountStatusPayload } from "../types";
 
@@ -33,17 +40,7 @@ export async function getDetailedAccountStatusAction(): Promise<
     const account = await stripeConnectService.getConnectAccountByUser(user.id);
 
     if (!account) {
-      return ok({
-        status: {
-          statusType: "no_account",
-          title: "決済機能を有効にしましょう",
-          description:
-            "オンライン決済を有効化するために、Stripeアカウントの設定が必要です。設定は約3〜5分で完了します。",
-          actionText: "アカウント設定を開始",
-          actionUrl: "/dashboard/connect",
-          severity: "info",
-        },
-      });
+      return ok({ status: NO_ACCOUNT_STATUS });
     }
 
     // 4. アカウント詳細情報を取得
@@ -68,51 +65,20 @@ export async function getDetailedAccountStatusAction(): Promise<
 
     // 5. ステータス別の判定
     if (accountInfo.status === "unverified") {
-      return ok({
-        status: {
-          statusType: "unverified",
-          title: "アカウント認証を完了してください",
-          description:
-            "Stripeアカウントの認証が完了していません。認証を完了することで決済を受け取れるようになります。",
-          actionText: "認証を完了する",
-          actionUrl: "/dashboard/connect?action=complete",
-          severity: "warning",
-        },
-      });
+      return ok({ status: UNVERIFIED_STATUS });
+    }
+
+    if (accountInfo.status === "restricted") {
+      return ok({ status: RESTRICTED_STATUS });
     }
 
     // 6. 要件チェック（認証済みだが追加情報が必要）
     if (hasPastDue || hasCurrentlyDue || hasEventuallyDue) {
-      return ok({
-        status: {
-          statusType: "requirements_due",
-          title: hasPastDue
-            ? "⚠️ 至急：アカウント情報の更新が必要です"
-            : "アカウント情報の更新をお願いします",
-          description: hasPastDue
-            ? "期限を過ぎた必要書類があります。決済機能が制限される場合があります。"
-            : hasCurrentlyDue
-              ? "決済を継続するために追加の情報提供が必要です。"
-              : "将来的に必要となる情報があります。早めの対応をお勧めします。",
-          actionText: "情報を更新する",
-          actionUrl: "/dashboard/connect?action=update",
-          severity: hasPastDue ? "error" : hasCurrentlyDue ? "warning" : "info",
-        },
-      });
+      return ok({ status: buildRequirementsDueStatus({ hasPastDue, hasCurrentlyDue }) });
     }
 
     if (accountInfo.status === "onboarding" && (hasPendingVerification || hasPendingCapabilities)) {
-      return ok({
-        status: {
-          statusType: "pending_review",
-          title: "Stripeが審査中です",
-          description:
-            "提出いただいた情報をStripeが確認しています。審査完了までしばらくお待ちください。",
-          actionText: "提出内容を確認",
-          actionUrl: "/settings/payments",
-          severity: "info",
-        },
-      });
+      return ok({ status: PENDING_REVIEW_STATUS });
     }
 
     // 7. 全て正常（CTAを表示しない）

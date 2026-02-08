@@ -5,12 +5,11 @@ import React from "react";
 import { Banknote, Check, CreditCard, MoreHorizontal, RotateCcw } from "lucide-react";
 
 import { hasPaymentId } from "@core/utils/data-guards";
+import { isPaymentUnpaid, toSimplePaymentStatus } from "@core/utils/payment-status-mapper";
 import {
-  isPaymentUnpaid,
-  getSimplePaymentStatusStyle,
-  toSimplePaymentStatus,
   SIMPLE_PAYMENT_STATUS_LABELS,
-} from "@core/utils/payment-status-mapper";
+  getSimplePaymentStatusStyle,
+} from "@features/events/constants/simple-payment-status-ui";
 import type { ParticipantView } from "@core/validation/participant-management";
 
 import { Badge } from "@/components/ui/badge";

@@ -5,11 +5,13 @@
 
 import type Stripe from "stripe";
 
+import type { StripeAccountStatus } from "@core/types/statuses";
+
 /**
  * Database Status (4状態)
  * データベース層で管理される技術的なステータス
  */
-export type DatabaseStatus = "unverified" | "onboarding" | "verified" | "restricted";
+export type DatabaseStatus = StripeAccountStatus;
 
 /**
  * UI Status (5状態)

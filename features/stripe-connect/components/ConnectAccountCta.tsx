@@ -22,6 +22,7 @@ export function ConnectAccountCta({ status }: ConnectAccountCtaProps) {
       case "unverified":
         return <RefreshCw className="h-5 w-5" />;
       case "requirements_due":
+      case "restricted":
         return <AlertCircle className="h-5 w-5" />;
       case "pending_review":
         return <Clock className="h-5 w-5" />;
