@@ -20,7 +20,7 @@ import type {
 import { getStripeConnectPort, type StripeAccountStatusLike } from "@core/ports/stripe-connect";
 import { SecureSupabaseClientFactory } from "@core/security/secure-client-factory.impl";
 import { AdminReason } from "@core/security/secure-client-factory.types";
-import { type StripeAccountStatus } from "@core/types/enums";
+import type { StripeAccountStatus } from "@core/types/statuses";
 import { handleServerError } from "@core/utils/error-handler.server";
 
 import { Database } from "@/types/database";

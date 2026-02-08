@@ -5,6 +5,7 @@
 import * as React from "react";
 
 import type { AppResult } from "@core/errors";
+import type { StripeAccountStatus } from "@core/types/statuses";
 
 /**
  * Resendエラータイプ
@@ -56,8 +57,8 @@ export interface StripeConnectNotificationData {
  * アカウント状態変更通知データ
  */
 export interface AccountStatusChangeNotification extends StripeConnectNotificationData {
-  oldStatus: import("@core/types/enums").StripeAccountStatus;
-  newStatus: import("@core/types/enums").StripeAccountStatus;
+  oldStatus: StripeAccountStatus;
+  newStatus: StripeAccountStatus;
   chargesEnabled: boolean;
   payoutsEnabled: boolean;
 }

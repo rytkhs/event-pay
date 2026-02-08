@@ -20,9 +20,6 @@ export const PaymentStatusEnum = z.enum([
   "canceled",
 ]);
 
-// 利便性のために値配列をエクスポート（runtime 用）
-export const PAYMENT_STATUS_VALUES = PaymentStatusEnum.options;
-
 // 参加ステータスフィルター（内部専用）
 const AttendanceStatusFilterSchema = z.enum(["attending", "not_attending", "maybe"]).optional();
 

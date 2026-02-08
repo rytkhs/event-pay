@@ -1,22 +1,18 @@
-import type { z } from "zod";
-
+import { PAYMENT_STATUS_VALUES } from "@core/constants/statuses";
 import { verifyEventAccess, handleDatabaseError } from "@core/auth/event-authorization";
 import { type ActionResult, ok, fail } from "@core/errors/adapters/server-actions";
 import { logger } from "@core/logging/app-logger";
 import { createClient } from "@core/supabase/server";
+import type { PaymentStatus } from "@core/types/statuses";
 import { handleServerError } from "@core/utils/error-handler.server";
 import { isNextRedirectError } from "@core/utils/next";
 import {
-  PaymentStatusEnum,
   GetEventPaymentsResponseSchema,
-  PAYMENT_STATUS_VALUES,
   type GetEventPaymentsResponse,
   type PaymentMethodSummary,
   type PaymentStatusSummary,
   type PaymentSummary,
 } from "@core/validation/participant-management";
-
-type PaymentStatus = z.infer<typeof PaymentStatusEnum>;
 
 /**
  * イベント決済情報取得（集計付き）

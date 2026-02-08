@@ -1,13 +1,12 @@
 import { EVENT_CONFIG, TIME_CONSTANTS } from "@core/constants/event-config";
-
-export type DerivedEventStatus = "upcoming" | "ongoing" | "past" | "canceled";
+import type { EventStatus } from "@core/types/statuses";
 
 export function deriveEventStatus(
   dateIso: string,
   canceledAt: string | null,
   now: Date = new Date(),
   autoEndHours: number = EVENT_CONFIG.AUTO_END_HOURS
-): DerivedEventStatus {
+): EventStatus {
   if (canceledAt) return "canceled";
   const startMs = new Date(dateIso).getTime();
   const t = now.getTime();

@@ -2,7 +2,7 @@
 
 import { Calendar, MapPin, Banknote, Clock, CreditCard, Info, Users, Tag } from "lucide-react";
 
-import { PAYMENT_METHOD_LABELS } from "@core/constants/payment-methods";
+import { PAYMENT_METHOD_LABELS } from "@core/constants/status-labels";
 import type { Event } from "@core/types/models";
 import { sanitizeEventDescription, sanitizeForEventPay } from "@core/utils/sanitize";
 import { formatUtcToJstByType } from "@core/utils/timezone";

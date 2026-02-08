@@ -4,19 +4,10 @@
  */
 
 import type { ActionResult } from "@core/errors/adapters/server-actions";
+import type { PaymentStatus } from "@core/types/statuses";
 import { PaymentErrorType, PaymentError as SharedPaymentError } from "@core/types/payment-errors";
 
-export const PAYMENT_STATUS_VALUES = [
-  "pending",
-  "paid",
-  "failed",
-  "canceled",
-  "refunded",
-  "received",
-  "waived",
-] as const;
-
-export type PaymentStatusValue = (typeof PAYMENT_STATUS_VALUES)[number];
+export type PaymentStatusValue = PaymentStatus;
 
 export interface UpdateCashStatusParams {
   paymentId: string;

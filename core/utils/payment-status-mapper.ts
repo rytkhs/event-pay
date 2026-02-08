@@ -4,7 +4,7 @@
  * バックエンドの詳細な PaymentStatus を UI 表示用のシンプルな形式にマッピング
  */
 
-import type { PaymentStatus } from "@core/types/enums";
+import type { PaymentStatus } from "@core/types/statuses";
 
 /**
  * UI 表示用の簡略化された決済ステータス

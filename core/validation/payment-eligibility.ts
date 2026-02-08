@@ -4,7 +4,7 @@
  */
 
 import { TIME_CONSTANTS } from "@core/constants/event-config";
-import { AttendanceStatus, PaymentStatus, EventStatus } from "@core/types/enums";
+import type { AttendanceStatus, PaymentStatus, EventStatus } from "@core/types/statuses";
 import {
   deriveEffectiveDeadlines,
   deriveFinalPaymentLimit,
