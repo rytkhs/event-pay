@@ -5,8 +5,7 @@ import React from "react";
 import type { ColumnDef } from "@tanstack/react-table";
 import { Banknote, Check, CreditCard, RotateCcw } from "lucide-react";
 
-import { hasPaymentId } from "@core/utils/data-guards";
-import { toSimplePaymentStatus } from "@core/utils/payment-status-mapper";
+import { hasPaymentId, toSimplePaymentStatus } from "@core/utils/payment-status-mapper";
 import type { ParticipantView } from "@core/validation/participant-management";
 
 import { SIMPLE_PAYMENT_STATUS_LABELS, getSimplePaymentStatusStyle } from "@features/events";

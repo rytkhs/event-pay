@@ -4,7 +4,7 @@
 
 import { describe, test, expect, beforeAll, afterAll } from "@jest/globals";
 
-import { SecureSupabaseClientFactory } from "@core/security/secure-client-factory.impl";
+import { getSecureClientFactory } from "@core/security/secure-client-factory.impl";
 import { AdminReason } from "@core/security/secure-client-factory.types";
 
 import { updateGuestAttendanceAction } from "@/app/guest/[token]/actions";
@@ -23,7 +23,7 @@ describe("Unique Pending Payments", () => {
   });
 
   test("同一参加に対し未確定(pending)決済は1件に抑止される", async () => {
-    const factory = SecureSupabaseClientFactory.create();
+    const factory = getSecureClientFactory();
     const admin = await factory.createAuditedAdminClient(
       AdminReason.TEST_DATA_SETUP,
       "setup unique pending test"

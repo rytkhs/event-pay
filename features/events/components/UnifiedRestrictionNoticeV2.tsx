@@ -401,23 +401,3 @@ export function UnifiedRestrictionNoticeV2({
     />
   );
 }
-
-// =============================================================================
-// Preset Components
-// =============================================================================
-
-export function StructuralRestrictionsOnly(
-  props: Omit<UnifiedRestrictionNoticeV2Props, "showLevels">
-) {
-  return <UnifiedRestrictionNoticeV2 {...props} showLevels={["structural"]} />;
-}
-
-export function AdvisoryRestrictionsOnly(
-  props: Omit<UnifiedRestrictionNoticeV2Props, "showLevels">
-) {
-  return <UnifiedRestrictionNoticeV2 {...props} showLevels={["advisory"]} />;
-}
-
-export function CompactRestrictionNotice(props: Omit<UnifiedRestrictionNoticeV2Props, "compact">) {
-  return <UnifiedRestrictionNoticeV2 {...props} compact={true} />;
-}

@@ -8,6 +8,5 @@ export { SettlementReportCard } from "./components/SettlementReportCard";
 export { SettlementReportGenerator } from "./components/SettlementReportGenerator";
 export { SettlementReportList } from "./components/SettlementReportList";
 
-// Types & Validation
+// Types
 export * from "./types";
-export * from "./validation";

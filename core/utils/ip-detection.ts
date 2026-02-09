@@ -392,34 +392,3 @@ export function getClientIPFromHeaders(headersList: HeaderLike): string {
   // 全てのプロキシヘッダーが存在しない場合は開発環境想定のlocalhostを返す
   return "127.0.0.1";
 }
-
-/**
- * クライアント識別子を取得する（レート制限用）
- * IPアドレスベースの識別に加えて、より堅牢な識別を提供
- */
-export function getClientIdentifier(request: NextRequest, userId?: string): string {
-  // 認証済みユーザーの場合はユーザーIDを使用
-  if (userId?.trim()) {
-    return `user_${userId.trim().replace(/[^a-zA-Z0-9_-]/g, "")}`;
-  }
-
-  // IPアドレスベースの識別
-  const clientIP = getClientIP(request);
-  return `ip_${clientIP}`;
-}
-
-/**
- * セキュリティログ用のクライアント情報を取得する
- */
-export function getClientInfo(request: NextRequest) {
-  return {
-    ip: getClientIP(request),
-    userAgent: request.headers.get("user-agent") || "unknown",
-    acceptLanguage: request.headers.get("accept-language") || "unknown",
-    referer: request.headers.get("referer") || "none",
-    xForwardedFor: request.headers.get("x-forwarded-for") || "none",
-    xRealIp: request.headers.get("x-real-ip") || "none",
-    cfConnectingIp: request.headers.get("cf-connecting-ip") || "none",
-    timestamp: new Date().toISOString(),
-  };
-}

@@ -5,9 +5,10 @@ import { AppError, errResult, okResult } from "@core/errors";
 import { logger } from "@core/logging/app-logger";
 import { NotificationService } from "@core/notification/service";
 import { getSettlementReportPort } from "@core/ports/settlements";
+import { getSecureClientFactory } from "@core/security/secure-client-factory.impl";
 import { AdminReason } from "@core/security/secure-client-factory.types";
-import { createSecureSupabaseClient } from "@core/security/system-factory";
 import { getStripe } from "@core/stripe/client";
+import { getMetadata, getPaymentIntentId } from "@core/stripe/guards";
 import { handleServerError } from "@core/utils/error-handler.server";
 import { maskSessionId } from "@core/utils/mask";
 import { canPromoteStatus } from "@core/utils/payments/status-rank";
@@ -41,7 +42,7 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
    */
   private async ensureInitialized() {
     if (this.supabase) return;
-    const factory = createSecureSupabaseClient();
+    const factory = getSecureClientFactory();
     this.supabase = (await factory.createAuditedAdminClient(
       AdminReason.PAYMENT_PROCESSING,
       "Stripe Webhook Event Handling"
@@ -104,16 +105,9 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
           // 支払い確定は PaymentIntent/Charge のイベントで行う。ここでは突合用IDを保存する。
           try {
             const sessionId: string = session.id;
-            const rawPi = (session as unknown as { payment_intent?: unknown }).payment_intent;
-            const paymentIntentId: string | null =
-              typeof rawPi === "string" && rawPi.length > 0 ? rawPi : null;
-            const paymentIdFromMetadata: string | null = ((): string | null => {
-              const md =
-                (session as unknown as { metadata?: Record<string, unknown> | null })?.metadata ??
-                null;
-              const raw = md && (md as Record<string, unknown>)["payment_id"];
-              return typeof raw === "string" && raw.length > 0 ? raw : null;
-            })();
+            const paymentIntentId = getPaymentIntentId(session);
+            const metadata = getMetadata(session);
+            const paymentIdFromMetadata = metadata?.["payment_id"] || null;
 
             if (!paymentIdFromMetadata) {
               handleServerError("WEBHOOK_INVALID_PAYLOAD", {
@@ -206,12 +200,8 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
             // GA4購入イベントの送信（失敗してもwebhook処理は継続）
             try {
               // メタデータからGA4 Client IDを取得
-              const metadata = (session as unknown as { metadata?: Record<string, unknown> | null })
-                ?.metadata;
-              const gaClientId: string | null =
-                metadata && typeof metadata["ga_client_id"] === "string"
-                  ? metadata["ga_client_id"]
-                  : null;
+              const metadata = getMetadata(session);
+              const gaClientId = metadata?.["ga_client_id"] || null;
 
               if (gaClientId) {
                 // attendanceからイベント情報を取得
@@ -297,13 +287,8 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
               payment = data ?? null;
             }
             if (!payment) {
-              const paymentIdFromMetadata: string | null = ((): string | null => {
-                const md =
-                  (session as unknown as { metadata?: Record<string, unknown> | null })?.metadata ??
-                  null;
-                const raw = md && (md as Record<string, unknown>)["payment_id"];
-                return typeof raw === "string" && raw.length > 0 ? raw : null;
-              })();
+              const metadata = getMetadata(session);
+              const paymentIdFromMetadata = metadata?.["payment_id"] || null;
               if (paymentIdFromMetadata) {
                 const { data } = await this.supabase
                   .from("payments")
@@ -570,8 +555,7 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
       }
 
       // DBの payments を特定（stripe_payment_intent_id or charge_id のいずれか）
-      const stripePaymentIntentId: string | null =
-        (charge as { payment_intent?: string | null }).payment_intent ?? null;
+      const stripePaymentIntentId = getPaymentIntentId(charge);
       const { data: paymentByPi } = stripePaymentIntentId
         ? await this.supabase
             .from("payments")
@@ -593,12 +577,8 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
 
       if (!payment) {
         // フォールバック: metadata.payment_id で突合
-        const paymentIdFromMetadata: string | null = ((): string | null => {
-          const md =
-            (charge as unknown as { metadata?: Record<string, unknown> | null })?.metadata ?? null;
-          const raw = md && (md as Record<string, unknown>)["payment_id"];
-          return typeof raw === "string" && raw.length > 0 ? raw : null;
-        })();
+        const metadata = getMetadata(charge);
+        const paymentIdFromMetadata = metadata?.["payment_id"] || null;
 
         if (paymentIdFromMetadata) {
           const { data: byId } = await this.supabase

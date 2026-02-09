@@ -43,13 +43,6 @@ export class SecureSupabaseClientFactory implements ISecureSupabaseClientFactory
   }
 
   /**
-   * 新しいインスタンスを作成
-   */
-  public static create(): SecureSupabaseClientFactory {
-    return new SecureSupabaseClientFactory();
-  }
-
-  /**
    * Supabase URLを取得
    */
   private getSupabaseUrl(): string {
@@ -441,5 +434,5 @@ export class SecureSupabaseClientFactory implements ISecureSupabaseClientFactory
  * セキュアクライアントファクトリーのインスタンスを取得
  */
 export function getSecureClientFactory(): SecureSupabaseClientFactory {
-  return SecureSupabaseClientFactory.create();
+  return new SecureSupabaseClientFactory();
 }

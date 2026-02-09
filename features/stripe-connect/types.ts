@@ -230,20 +230,6 @@ export interface ConnectAccountStatusPayload {
 }
 
 /**
- * checkConnectPermissionsAction の ActionResult ペイロード
- */
-export interface ConnectPermissionsPayload {
-  /** 支払い受付が可能か */
-  canReceivePayments: boolean;
-  /** 振込が可能か */
-  canReceivePayouts: boolean;
-  /** 認証済みか */
-  isVerified: boolean;
-  /** 制限事項 */
-  restrictions?: string[];
-}
-
-/**
  * getDetailedAccountStatusAction の ActionResult ペイロード
  * status が undefined の場合は「ready」状態を意味する（CTA非表示）
  */

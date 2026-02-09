@@ -6,8 +6,8 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { addDays } from "date-fns";
 
 import { logger } from "@core/logging/app-logger";
-import { getEnv } from "@core/utils/cloudflare-env";
 import { handleServerError } from "@core/utils/error-handler.server";
+import { buildGuestUrl } from "@core/utils/guest-token";
 import {
   getCurrentJstTime,
   formatUtcToJst,
@@ -448,10 +448,11 @@ export class ReminderService {
    * 参加期限リマインダーメールを送信
    */
   private async sendResponseDeadlineEmail(target: ResponseDeadlineTarget): Promise<void> {
-    const { default: ResponseDeadlineReminderEmail } =
-      await import("@/emails/reminders/ResponseDeadlineReminderEmail");
+    const { default: ResponseDeadlineReminderEmail } = await import(
+      "@/emails/reminders/ResponseDeadlineReminderEmail"
+    );
 
-    const guestUrl = this.generateGuestUrl(target.events.id, target.guest_token);
+    const guestUrl = buildGuestUrl(target.guest_token);
 
     const result = await this.emailService.sendEmail({
       to: target.email,
@@ -477,10 +478,11 @@ export class ReminderService {
    * 決済期限リマインダーメールを送信
    */
   private async sendPaymentDeadlineEmail(target: PaymentDeadlineTarget): Promise<void> {
-    const { default: PaymentDeadlineReminderEmail } =
-      await import("@/emails/reminders/PaymentDeadlineReminderEmail");
+    const { default: PaymentDeadlineReminderEmail } = await import(
+      "@/emails/reminders/PaymentDeadlineReminderEmail"
+    );
 
-    const guestUrl = this.generateGuestUrl(target.events.id, target.guest_token);
+    const guestUrl = buildGuestUrl(target.guest_token);
 
     const result = await this.emailService.sendEmail({
       to: target.email,
@@ -507,10 +509,11 @@ export class ReminderService {
    * イベント開催リマインダーメールを送信
    */
   private async sendEventStartEmail(target: EventStartTarget): Promise<void> {
-    const { default: EventStartReminderEmail } =
-      await import("@/emails/reminders/EventStartReminderEmail");
+    const { default: EventStartReminderEmail } = await import(
+      "@/emails/reminders/EventStartReminderEmail"
+    );
 
-    const guestUrl = this.generateGuestUrl(target.events.id, target.guest_token);
+    const guestUrl = buildGuestUrl(target.guest_token);
 
     const result = await this.emailService.sendEmail({
       to: target.email,
@@ -592,13 +595,5 @@ export class ReminderService {
     }
 
     return { successCount, failures };
-  }
-
-  /**
-   * ゲスト用URLを生成
-   */
-  private generateGuestUrl(_eventId: string, guestToken: string): string {
-    const baseUrl = getEnv().NEXT_PUBLIC_APP_URL || "https://minnano-shukin.com";
-    return `${baseUrl}/guest/${guestToken}`;
   }
 }

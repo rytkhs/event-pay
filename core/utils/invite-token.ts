@@ -1,5 +1,5 @@
 import { generateRandomBytes, toBase64UrlSafe } from "@core/security/crypto";
-import { SecureSupabaseClientFactory } from "@core/security/secure-client-factory.impl";
+import { getSecureClientFactory } from "@core/security/secure-client-factory.impl";
 import { deriveEventStatus } from "@core/utils/derive-event-status";
 import { handleServerError } from "@core/utils/error-handler.server";
 
@@ -92,7 +92,7 @@ export async function validateInviteToken(token: string): Promise<InviteValidati
 
   try {
     // 読み取り専用クライアント（匿名ロール） + 招待トークンヘッダー
-    const secureFactory = SecureSupabaseClientFactory.create();
+    const secureFactory = getSecureClientFactory();
     const anonClient = secureFactory.createReadOnlyClient({
       headers: { "x-invite-token": token },
     });
@@ -201,7 +201,7 @@ export async function checkEventCapacity(
   }
 
   try {
-    const secureFactory = SecureSupabaseClientFactory.create();
+    const secureFactory = getSecureClientFactory();
     const client = secureFactory.createReadOnlyClient();
 
     const { data, error } = await (client as any).rpc("rpc_public_attending_count", {
@@ -254,7 +254,7 @@ export async function checkDuplicateEmail(
   try {
     // 招待トークンヘッダーが必要なため、呼び出し側でvalidateInviteToken済み前提
     // ここでは匿名RPCに委譲
-    const secureFactory = SecureSupabaseClientFactory.create();
+    const secureFactory = getSecureClientFactory();
     const client = secureFactory.createReadOnlyClient({
       headers: inviteToken ? { "x-invite-token": inviteToken } : {},
     });

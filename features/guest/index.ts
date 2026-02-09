@@ -12,4 +12,3 @@ export { GuestStatusEditModal } from "./components/GuestStatusEditModal";
 
 // Types & Validation
 export * from "./types";
-export * from "./validation";

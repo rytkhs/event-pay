@@ -8,7 +8,7 @@ import { getCurrentUser } from "@core/auth/auth-utils";
 import { type ActionResult, fail, ok, zodFail } from "@core/errors/adapters/server-actions";
 import { logger } from "@core/logging/app-logger";
 import { logEventManagement } from "@core/logging/system-logger";
-import { SecureSupabaseClientFactory } from "@core/security/secure-client-factory.impl";
+import { getSecureClientFactory } from "@core/security/secure-client-factory.impl";
 import { logSecurityEvent } from "@core/security/security-logger";
 import { handleServerError } from "@core/utils/error-handler.server";
 import { extractEventCreateFormData } from "@core/utils/form-data-extractors";
@@ -115,7 +115,7 @@ export async function createEventAction(formData: FormData): Promise<CreateEvent
         : false;
 
       if (fee > 0 && wantsStripe) {
-        const factory = SecureSupabaseClientFactory.create();
+        const factory = getSecureClientFactory();
         const authenticatedClient = factory.createAuthenticatedClient();
 
         const { data: connectAccount, error: connectError } = await authenticatedClient
@@ -151,7 +151,7 @@ export async function createEventAction(formData: FormData): Promise<CreateEvent
     const eventData = buildEventData(validatedData, user.id, inviteToken);
 
     // 認証済みクライアントを使用（RLSポリシーで自分のイベント作成を許可）
-    const secureFactory = SecureSupabaseClientFactory.create();
+    const secureFactory = getSecureClientFactory();
     const authenticatedClient = secureFactory.createAuthenticatedClient();
 
     actionLogger.info("Attempting to insert event", {

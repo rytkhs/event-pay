@@ -6,7 +6,7 @@ import "server-only";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-import { createPaymentLogger, type PaymentLogger } from "@core/logging/payment-logger";
+import { PaymentLogger } from "@core/logging/payment-logger";
 
 import { Database } from "@/types/database";
 
@@ -45,7 +45,7 @@ export class PaymentService implements IPaymentService {
     this.supabase = supabaseClient;
     this.errorHandler = errorHandler;
     this.applicationFeeCalculator = new ApplicationFeeCalculator(supabaseClient);
-    this.paymentLogger = createPaymentLogger({ category: "payment", action: "payment_service" });
+    this.paymentLogger = new PaymentLogger({ category: "payment", action: "payment_service" });
   }
 
   /**

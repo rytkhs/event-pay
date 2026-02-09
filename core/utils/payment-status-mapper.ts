@@ -42,14 +42,6 @@ export const toSimplePaymentStatus = (
 };
 
 /**
- * 決済完了ステータス（支払い完了とみなす）かどうかの判定
- */
-export const isPaymentCompleted = (status: PaymentStatus | null | undefined): boolean => {
-  const simpleStatus = toSimplePaymentStatus(status);
-  return simpleStatus === "paid" || simpleStatus === "waived";
-};
-
-/**
  * 未決済ステータス（ハイライト表示対象）かどうかの判定
  * canceled/refunded は会計上の終端であり、未収金ではないため false を返す
  */
@@ -76,3 +68,13 @@ export const getPaymentStatusesFromSimple = (simple: SimplePaymentStatus): Payme
       return ["waived"];
   }
 };
+
+/**
+ * Payment IDを持つオブジェクトの型ガード
+ */
+export function hasPaymentId(item: unknown): item is { payment_id: string } {
+  if (typeof item !== "object" || item === null) return false;
+
+  const payment_id = (item as { payment_id?: unknown }).payment_id;
+  return typeof payment_id === "string" && payment_id.length > 0;
+}

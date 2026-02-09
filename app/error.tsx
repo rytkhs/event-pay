@@ -1,8 +1,3 @@
-/**
- * Next.js App Router ルートエラーページ
- * アプリケーションレベルのエラーをキャッチ
- */
-
 "use client";
 
 import { useEffect } from "react";
@@ -18,7 +13,6 @@ interface ErrorPageProps {
 
 /**
  * ルートレベルのエラーページ
- * layout.tsx以下の全てのページでエラーが発生した際に表示される
  */
 export default function RootErrorPage({ error, reset }: ErrorPageProps) {
   // エラー発生時にGA4にexceptionイベントを送信

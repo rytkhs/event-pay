@@ -8,7 +8,7 @@ import { respondWithCode, respondWithProblem } from "@core/errors/server";
 import { logger } from "@core/logging/app-logger";
 import { sendSlackText } from "@core/notification/slack";
 import { generateSecureUuid } from "@core/security/crypto";
-import { SecureSupabaseClientFactory } from "@core/security/secure-client-factory.impl";
+import { getSecureClientFactory } from "@core/security/secure-client-factory.impl";
 import { AdminReason } from "@core/security/secure-client-factory.types";
 import { logSecurityEvent } from "@core/security/security-logger";
 import { getEnv } from "@core/utils/cloudflare-env";
@@ -131,7 +131,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 管理者クライアント（Service Role）で参加者メールを取得
-    const secureFactory = SecureSupabaseClientFactory.create();
+    const secureFactory = getSecureClientFactory();
     const admin = await secureFactory.createAuditedAdminClient(
       AdminReason.NOTIFICATION_PROCESSING,
       "event-cancel-worker",

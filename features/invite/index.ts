@@ -8,4 +8,3 @@ export { InviteEventDetail } from "./components/InviteEventDetail";
 
 // Types & Validation
 export * from "./types";
-export * from "./validation";

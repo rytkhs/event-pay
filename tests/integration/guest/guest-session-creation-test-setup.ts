@@ -11,7 +11,7 @@
  * - データ作成処理は統合テスト用の特別な設定が必要なため、個別実装を維持
  */
 
-import { SecureSupabaseClientFactory } from "@core/security/secure-client-factory.impl";
+import { getSecureClientFactory } from "@core/security/secure-client-factory.impl";
 import { AdminReason } from "@core/security/secure-client-factory.types";
 
 import {
@@ -36,7 +36,7 @@ export interface GuestSessionCreationTestSetup {
  * 決済機能の統合テストに必要な最低限の手数料設定を挿入
  */
 async function setupFeeConfigForIntegrationTest(): Promise<void> {
-  const secureFactory = SecureSupabaseClientFactory.create();
+  const secureFactory = getSecureClientFactory();
   const adminClient = await secureFactory.createAuditedAdminClient(
     AdminReason.TEST_DATA_SETUP,
     "Setup fee_config for integration tests",

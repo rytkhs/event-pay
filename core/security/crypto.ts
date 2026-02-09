@@ -42,37 +42,6 @@ export async function hashToken(token: string): Promise<string> {
 }
 
 /**
- * 定数時間での文字列比較（タイミング攻撃防止）
- * @param a 比較対象の文字列A
- * @param b 比較対象の文字列B
- * @returns 一致するかどうか
- */
-export function constantTimeCompare(a: string, b: string): boolean {
-  // 長さが異なる場合も、最長の方に合わせて比較を継続することで
-  // 長さに関する情報の漏洩を最小限に抑える
-  const maxLength = Math.max(a.length, b.length);
-  let result = 0;
-
-  for (let i = 0; i < maxLength; i++) {
-    const charA = i < a.length ? a.charCodeAt(i) : 0;
-    const charB = i < b.length ? b.charCodeAt(i) : 0;
-    result |= charA ^ charB;
-  }
-
-  return result === 0 && a.length === b.length;
-}
-
-/**
- * ランダムな遅延を追加（タイミング正規化）
- * @param minMs 最小遅延時間（ミリ秒）
- * @param maxMs 最大遅延時間（ミリ秒）
- */
-export async function randomDelay(minMs: number = 100, maxMs: number = 500): Promise<void> {
-  const delay = Math.random() * (maxMs - minMs) + minMs;
-  return new Promise((resolve) => setTimeout(resolve, delay));
-}
-
-/**
  * CSPRNGベースのUUID v4生成
  * @returns UUID v4文字列
  */

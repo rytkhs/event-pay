@@ -7,6 +7,7 @@ import { describe, test, expect, beforeAll, afterAll } from "@jest/globals";
 import { validateGuestToken } from "@core/utils/guest-token";
 
 import { updateGuestAttendanceAction } from "@/app/guest/[token]/actions";
+import { getSecureClientFactory } from "@/core/security/secure-client-factory.impl";
 
 import { setupRLSTest, type RLSTestSetup } from "./rls-test-setup";
 
@@ -58,10 +59,7 @@ describe("Guest Token Access Control", () => {
 
   test("ゲストクライアントで参加状況を更新できる", async () => {
     // RPCを直接呼び出してエラーの詳細を確認
-    const { SecureSupabaseClientFactory } = await import(
-      "@core/security/secure-client-factory.impl"
-    );
-    const factory = SecureSupabaseClientFactory.create();
+    const factory = getSecureClientFactory();
     const guestClient = factory.createGuestClient(setup.testGuestToken);
 
     const { error: rpcError } = await guestClient.rpc("update_guest_attendance_with_payment", {

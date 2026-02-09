@@ -5,10 +5,10 @@ import { type ActionResult, fail, ok, zodFail } from "@core/errors/adapters/serv
 import { logger } from "@core/logging/app-logger";
 import { logAttendance } from "@core/logging/system-logger";
 import { getPaymentPort } from "@core/ports/payments";
-import { SecureSupabaseClientFactory } from "@core/security/secure-client-factory.impl";
+import { getSecureClientFactory } from "@core/security/secure-client-factory.impl";
 import { PaymentError } from "@core/types/payment-errors";
 import { deriveEventStatus } from "@core/utils/derive-event-status";
-import { generateGuestToken } from "@core/utils/guest-token";
+import { buildGuestUrl, generateGuestToken } from "@core/utils/guest-token";
 import { canCreateStripeSession } from "@core/validation/payment-eligibility";
 
 // 入力検証
@@ -71,7 +71,7 @@ export async function adminAddAttendanceAction(
     const { user } = await verifyEventAccess(eventId);
 
     // 認証済みクライアント（RLSポリシーベースのアクセス制御）
-    const secureFactory = SecureSupabaseClientFactory.create();
+    const secureFactory = getSecureClientFactory();
     const authenticatedClient = secureFactory.createAuthenticatedClient();
 
     // ゲストトークン生成
@@ -192,9 +192,7 @@ export async function adminAddAttendanceAction(
     };
     const eligibility = canCreateStripeSession(attendanceForEligibility, eventForEligibility);
 
-    // ゲストURL（/guest/gst_xxx）
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-    const guestUrl = `${baseUrl}/guest/${guestToken}`;
+    const guestUrl = buildGuestUrl(guestToken);
 
     // 監査ログ（RLSポリシーベース実装）
     // 監査ログ

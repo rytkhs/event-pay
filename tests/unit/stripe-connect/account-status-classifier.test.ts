@@ -6,7 +6,7 @@
 import type Stripe from "stripe";
 
 import { AccountStatusClassifier } from "@features/stripe-connect/server";
-import type { DatabaseStatus } from "@features/stripe-connect";
+import type { DatabaseStatus } from "@features/stripe-connect/types/status-classification";
 
 /**
  * モックStripe Accountオブジェクトを生成するヘルパー関数

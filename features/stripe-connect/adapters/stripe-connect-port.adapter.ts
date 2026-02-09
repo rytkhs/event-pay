@@ -7,7 +7,7 @@ import {
   registerStripeConnectPort,
   type StripeAccountStatusLike,
 } from "@core/ports/stripe-connect";
-import { SecureSupabaseClientFactory } from "@core/security/secure-client-factory.impl";
+import { getSecureClientFactory } from "@core/security/secure-client-factory.impl";
 import { AdminReason } from "@core/security/secure-client-factory.types";
 import { handleServerError } from "@core/utils/error-handler.server";
 
@@ -20,7 +20,7 @@ export function registerStripeConnectAdapters(): void {
   registerStripeConnectPort({
     async getConnectAccountByUser(userId: string) {
       try {
-        const factory = SecureSupabaseClientFactory.create();
+        const factory = getSecureClientFactory();
         const supabaseClient = await factory.createAuditedAdminClient(
           AdminReason.PAYMENT_PROCESSING,
           `features/stripe-connect/adapters/stripe-connect-port.adapter getConnectAccountByUser userId=${userId}`,
@@ -47,7 +47,7 @@ export function registerStripeConnectAdapters(): void {
 
     async getAccountInfo(accountId: string) {
       try {
-        const factory = SecureSupabaseClientFactory.create();
+        const factory = getSecureClientFactory();
         const supabaseClient = await factory.createAuditedAdminClient(
           AdminReason.PAYMENT_PROCESSING,
           `features/stripe-connect/adapters/stripe-connect-port.adapter getAccountInfo accountId=${accountId}`
@@ -85,7 +85,7 @@ export function registerStripeConnectAdapters(): void {
 
     async updateAccountStatus(input) {
       try {
-        const factory = SecureSupabaseClientFactory.create();
+        const factory = getSecureClientFactory();
         const supabaseClient = await factory.createAuditedAdminClient(
           AdminReason.PAYMENT_PROCESSING,
           `features/stripe-connect/adapters/stripe-connect-port.adapter updateAccountStatus userId=${input.userId}`,

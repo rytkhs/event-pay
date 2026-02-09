@@ -15,7 +15,7 @@ import { NextRequest } from "next/server";
 
 import { jest } from "@jest/globals";
 
-import { SecureSupabaseClientFactory } from "@core/security/secure-client-factory.impl";
+import { getSecureClientFactory } from "@core/security/secure-client-factory.impl";
 import { AdminReason } from "@core/security/secure-client-factory.types";
 import { getStripe } from "@core/stripe/client";
 
@@ -290,7 +290,7 @@ export class VerifySessionTestHelper {
     await this.cleanupAttendancePayments(attendanceId);
 
     // 制約を満たすペイメントデータを作成
-    const factory = SecureSupabaseClientFactory.create();
+    const factory = getSecureClientFactory();
     const adminClient = await factory.createAuditedAdminClient(
       AdminReason.TEST_DATA_SETUP,
       "Creating constraint-safe payment",
@@ -341,7 +341,7 @@ export class VerifySessionTestHelper {
    * attendanceに紐づく全paymentを削除
    */
   async cleanupAttendancePayments(attendanceId: string): Promise<void> {
-    const factory = SecureSupabaseClientFactory.create();
+    const factory = getSecureClientFactory();
     const adminClient = await factory.createAuditedAdminClient(
       AdminReason.TEST_DATA_CLEANUP,
       "Cleaning up attendance payments",
@@ -358,7 +358,7 @@ export class VerifySessionTestHelper {
    * PaymentレコードのStripeセッションIDを更新
    */
   async updatePaymentStripeSessionId(paymentId: string, stripeSessionId: string): Promise<void> {
-    const factory = SecureSupabaseClientFactory.create();
+    const factory = getSecureClientFactory();
     const adminClient = await factory.createAuditedAdminClient(
       AdminReason.TEST_DATA_SETUP,
       "Updating payment stripe session ID",

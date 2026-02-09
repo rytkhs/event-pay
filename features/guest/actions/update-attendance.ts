@@ -3,7 +3,7 @@ import { headers } from "next/headers";
 import { type ActionResult, fail, ok } from "@core/errors/adapters/server-actions";
 import { logger } from "@core/logging/app-logger";
 import { validateGuestTokenFormat } from "@core/security/crypto";
-import { SecureSupabaseClientFactory } from "@core/security/secure-client-factory.impl";
+import { getSecureClientFactory } from "@core/security/secure-client-factory.impl";
 import {
   logInvalidTokenAccess,
   logParticipationSecurityEvent,
@@ -166,7 +166,7 @@ export async function updateGuestAttendanceAction(
     }
 
     // ゲストクライアントを取得してRLSポリシーを適用
-    const secureFactory = SecureSupabaseClientFactory.create();
+    const secureFactory = getSecureClientFactory();
     const guestClient = secureFactory.createGuestClient(guestToken);
 
     // データベース更新の実行（定員チェックはRPC関数内で実行される）

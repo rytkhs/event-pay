@@ -22,7 +22,7 @@ export interface FinalLimitOptions {
 /**
  * ISO文字列をDateに変換（不正値はInvalid Dateのまま返す）
  */
-export function toDate(value: string | null | undefined): Date | null {
+function toDate(value: string | null | undefined): Date | null {
   if (!value) return null;
   const d = new Date(value);
   return Number.isNaN(d.getTime()) ? null : d;

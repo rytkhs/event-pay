@@ -12,6 +12,5 @@ export { AuthSubmitButton } from "./components/AuthSubmitButton";
 export * from "./hooks/useAuthForm";
 export * from "./hooks/usePasswordConfirmation";
 
-// Types & Validation
+// Types
 export * from "./types";
-export * from "./validation";

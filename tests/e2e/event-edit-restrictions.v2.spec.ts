@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 
-import { SecureSupabaseClientFactory } from "@core/security/secure-client-factory.impl";
+import { getSecureClientFactory } from "@core/security/secure-client-factory.impl";
 import { AdminReason } from "@core/security/secure-client-factory.types";
 
 import type { Database } from "@/types/database";
@@ -74,7 +74,7 @@ test.describe("イベント編集 V2（E2E）", () => {
     // 参加者作成 + payments に paid を1件作る
     const attendance = await createTestAttendance(event.id, {});
 
-    const adminClient = await SecureSupabaseClientFactory.create().createAuditedAdminClient(
+    const adminClient = await getSecureClientFactory().createAuditedAdminClient(
       AdminReason.TEST_DATA_SETUP,
       `Insert paid payment for event ${event.id}`,
       {

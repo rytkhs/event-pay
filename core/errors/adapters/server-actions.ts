@@ -99,7 +99,7 @@ function sanitizeDetails(details?: ErrorContext): ErrorContext | undefined {
   return Object.keys(sanitized).length > 0 ? sanitized : undefined;
 }
 
-export function toActionError(
+function toActionError(
   appError: AppError,
   options: Pick<
     ActionFailOptions,

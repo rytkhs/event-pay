@@ -19,7 +19,7 @@
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 
 import { getCurrentUser } from "@core/auth/auth-utils";
-import { SecureSupabaseClientFactory } from "@core/security/secure-client-factory.impl";
+import { getSecureClientFactory } from "@core/security/secure-client-factory.impl";
 import { AdminReason } from "@core/security/secure-client-factory.types";
 import { createClient } from "@core/supabase/server";
 
@@ -625,7 +625,7 @@ describe("ダッシュボード統計情報 統合テスト", () => {
         } as any);
 
         // 新しいユーザー用のadminクライアントを設定
-        const secureFactory = SecureSupabaseClientFactory.create();
+        const secureFactory = getSecureClientFactory();
         const newUserAdminClient = await secureFactory.createAuditedAdminClient(
           AdminReason.TEST_DATA_SETUP,
           "Mock Supabase client for new user test",

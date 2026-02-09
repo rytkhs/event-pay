@@ -14,11 +14,7 @@ import { isNextRedirectError } from "@core/utils/next";
 
 import { CONNECT_REFRESH_PATH, CONNECT_RETURN_PATH } from "../constants/routes";
 import { createUserStripeConnectService } from "../services/factories";
-import {
-  type ConnectAccountStatusPayload,
-  type ConnectPermissionsPayload,
-  StripeConnectError,
-} from "../types";
+import { type ConnectAccountStatusPayload, StripeConnectError } from "../types";
 
 /**
  * Stripe Connect アカウントステータスを取得するServer Action
@@ -422,76 +418,6 @@ export async function handleOnboardingRefreshAction(): Promise<void> {
         : "アカウント設定のリフレッシュ中にエラーが発生しました"
     );
     redirect(`/settings/payments/error?message=${errorMessage}`);
-  }
-}
-
-/**
- * Stripe Connectアカウントの権限チェックを行うServer Action
- * 特定の操作（決済受取、送金）が可能かどうかを確認
- */
-export async function checkConnectPermissionsAction(): Promise<
-  ActionResult<ConnectPermissionsPayload>
-> {
-  let userId: string | undefined;
-  try {
-    // 1. 認証チェック
-    const user = await getAuthenticatedUser();
-    userId = user.id;
-
-    // 2. StripeConnectServiceを初期化（ユーザーセッション使用、RLS適用）
-    const stripeConnectService = createUserStripeConnectService();
-
-    // 3. 各権限をチェック（MVP: destination charges 前提のため、
-    //    canReceivePayments は接続アカウントのcharges_enabledに依存させない）
-    const [canReceivePayouts, isVerified] = await Promise.all([
-      stripeConnectService.isPayoutsEnabled(user.id),
-      stripeConnectService.isAccountVerified(user.id),
-    ]);
-
-    // 4. アカウント情報を取得して制限事項を確認
-    const account = await stripeConnectService.getConnectAccountByUser(user.id);
-    const restrictions: string[] = [];
-
-    if (account) {
-      const accountInfo = await stripeConnectService.getAccountInfo(account.stripe_account_id);
-
-      // 制限事項を抽出
-      if (
-        accountInfo.requirements?.currently_due &&
-        accountInfo.requirements.currently_due.length > 0
-      ) {
-        restrictions.push(`必要な情報: ${accountInfo.requirements.currently_due.join(", ")}`);
-      }
-
-      if (accountInfo.requirements?.past_due && accountInfo.requirements.past_due.length > 0) {
-        restrictions.push(`期限切れ情報: ${accountInfo.requirements.past_due.join(", ")}`);
-      }
-    }
-
-    const canReceivePayments = isVerified && canReceivePayouts;
-
-    return ok({
-      canReceivePayments,
-      canReceivePayouts,
-      isVerified,
-      restrictions: restrictions.length > 0 ? restrictions : undefined,
-    });
-  } catch (error) {
-    if (isNextRedirectError(error)) {
-      throw error;
-    }
-    handleServerError(error, {
-      category: "stripe_connect",
-      action: "check_connect_permissions_failed",
-      userId,
-    });
-
-    return fail("INTERNAL_ERROR", {
-      userMessage:
-        error instanceof StripeConnectError
-          ? error.message
-          : "権限チェック中にエラーが発生しました",
-    });
   }
 }
 

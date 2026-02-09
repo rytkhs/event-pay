@@ -4,10 +4,7 @@
 
 "use client";
 
-import Link from "next/link";
-
-import type { LucideIcon } from "lucide-react";
-import { RefreshCw, Home, ArrowLeft, MessageCircle, ExternalLink } from "lucide-react";
+import { RefreshCw, Home, ArrowLeft, MessageCircle } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 
@@ -126,107 +123,3 @@ export function ErrorActions({
 
   return <div className={`space-y-3 ${className}`}>{actions}</div>;
 }
-
-/**
- * 単一のアクションボタン
- */
-interface SingleActionButtonProps {
-  label: string;
-  onClick: () => void;
-  variant?: "default" | "outline" | "destructive" | "secondary";
-  icon?: LucideIcon;
-  className?: string;
-  disabled?: boolean;
-  loading?: boolean;
-}
-
-export function SingleActionButton({
-  label,
-  onClick,
-  variant = "default",
-  icon: Icon,
-  className = "",
-  disabled = false,
-  loading = false,
-}: SingleActionButtonProps) {
-  return (
-    <Button
-      onClick={onClick}
-      variant={variant}
-      disabled={disabled || loading}
-      className={`w-full ${className}`}
-    >
-      {loading ? (
-        <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-      ) : Icon ? (
-        <Icon className="h-4 w-4 mr-2" />
-      ) : null}
-      {label}
-    </Button>
-  );
-}
-
-/**
- * リンクベースのアクションボタン
- */
-interface LinkActionButtonProps {
-  href: string;
-  label: string;
-  variant?: "default" | "outline" | "destructive" | "secondary";
-  icon?: LucideIcon;
-  external?: boolean;
-  className?: string;
-}
-
-export function LinkActionButton({
-  href,
-  label,
-  variant = "default",
-  icon: Icon,
-  external = false,
-  className = "",
-}: LinkActionButtonProps) {
-  if (external) {
-    return (
-      <Button asChild variant={variant} className={`w-full ${className}`}>
-        <a href={href} target="_blank" rel="noopener noreferrer">
-          {Icon && <Icon className="h-4 w-4 mr-2" />}
-          {label}
-          <ExternalLink className="h-4 w-4 ml-2" />
-        </a>
-      </Button>
-    );
-  }
-
-  return (
-    <Button asChild variant={variant} className={`w-full ${className}`}>
-      <Link href={href}>
-        {Icon && <Icon className="h-4 w-4 mr-2" />}
-        {label}
-      </Link>
-    </Button>
-  );
-}
-
-/**
- * よく使われるアクションボタンのプリセット
- */
-export const RetryButton = ({
-  onRetry,
-  label = "再試行",
-}: {
-  onRetry: () => void;
-  label?: string;
-}) => <SingleActionButton label={label} onClick={onRetry} icon={RefreshCw} variant="default" />;
-
-export const HomeButton = ({ variant = "outline" }: { variant?: "default" | "outline" }) => (
-  <LinkActionButton href="/" label="ホームに戻る" icon={Home} variant={variant} />
-);
-
-export const BackButton = ({ onClick }: { onClick?: () => void }) => {
-  const handleBack = onClick || (() => window.history.back());
-
-  return (
-    <SingleActionButton label="戻る" onClick={handleBack} icon={ArrowLeft} variant="outline" />
-  );
-};

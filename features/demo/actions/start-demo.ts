@@ -5,8 +5,8 @@ import { SupabaseClient } from "@supabase/supabase-js";
 import { type ActionResult, fail, ok } from "@core/errors/adapters/server-actions";
 import { logger } from "@core/logging/app-logger";
 import { buildKey, enforceRateLimit, POLICIES } from "@core/rate-limit";
+import { getSecureClientFactory } from "@core/security/secure-client-factory.impl";
 import { AdminReason } from "@core/security/secure-client-factory.types";
-import { createSecureSupabaseClient } from "@core/security/system-factory";
 import { createClient as createServerClient } from "@core/supabase/server";
 import { getClientIPFromHeaders } from "@core/utils/ip-detection";
 
@@ -45,7 +45,7 @@ export async function startDemoSession(): Promise<ActionResult<{ redirectUrl: st
   }
 
   // 1. Create User (Admin Client)
-  const factory = createSecureSupabaseClient();
+  const factory = getSecureClientFactory();
   const adminClient = (await factory.createAuditedAdminClient(
     AdminReason.DEMO_SETUP,
     "Demo Session Creation"
