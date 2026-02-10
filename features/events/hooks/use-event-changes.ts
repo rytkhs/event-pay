@@ -152,7 +152,7 @@ export function useEventChanges({
     const changes: ChangeItem[] = [];
 
     // 型安全なフィールド比較関数
-    const isFieldChanged = (field: string, oldValue: any, newValue: any): boolean => {
+    const isFieldChanged = (field: string, oldValue: unknown, newValue: unknown): boolean => {
       switch (field) {
         case "fee":
           // 数値として比較（サーバーサイドと統一）
@@ -254,14 +254,14 @@ export function useEventChanges({
       },
       {
         field: "allow_payment_after_deadline",
-        oldValue: (event as any).allow_payment_after_deadline ?? false,
-        newValue: (formData as any).allow_payment_after_deadline ?? false,
+        oldValue: event.allow_payment_after_deadline ?? false,
+        newValue: formData.allow_payment_after_deadline ?? false,
         fieldName: "締切後もオンライン決済を許可",
       },
       {
         field: "grace_period_days",
-        oldValue: ((event as any).grace_period_days ?? 0) as number,
-        newValue: (formData as any).grace_period_days ?? "0",
+        oldValue: event.grace_period_days ?? 0,
+        newValue: formData.grace_period_days ?? "0",
         fieldName: "猶予（日）",
       },
     ];

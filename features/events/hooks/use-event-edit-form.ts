@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useTransition } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 
+import type { RestrictableField } from "@core/domain/event-edit-restrictions";
 import { AppError } from "@core/errors";
 import { errResult, okResult, type AppResult } from "@core/errors/app-result";
 import { useErrorHandler } from "@core/hooks/use-error-handler";
@@ -35,6 +36,24 @@ interface UseEventEditFormProps {
 
 export type { UpdateEventAction, EventEditFormDataRHF };
 
+const RESTRICTABLE_FIELDS = new Set<RestrictableField>([
+  "fee",
+  "payment_methods",
+  "capacity",
+  "title",
+  "description",
+  "location",
+  "date",
+  "registration_deadline",
+  "payment_deadline",
+  "allow_payment_after_deadline",
+  "grace_period_days",
+]);
+
+const isRestrictableField = (field: string): field is RestrictableField => {
+  return RESTRICTABLE_FIELDS.has(field as RestrictableField);
+};
+
 export function useEventEditForm({
   event,
   attendeeCount,
@@ -59,8 +78,8 @@ export function useEventEditForm({
       payment_methods: event.payment_methods || [],
       registration_deadline: formatUtcToDatetimeLocal(event.registration_deadline),
       payment_deadline: formatUtcToDatetimeLocal(event.payment_deadline || ""),
-      allow_payment_after_deadline: (event as any).allow_payment_after_deadline ?? false,
-      grace_period_days: ((event as any).grace_period_days ?? 0).toString(),
+      allow_payment_after_deadline: event.allow_payment_after_deadline ?? false,
+      grace_period_days: (event.grace_period_days ?? 0).toString(),
     }),
     [event]
   );
@@ -173,9 +192,7 @@ export function useEventEditForm({
     { hasAttendees, attendeeCount, hasStripePaid },
     event.status ?? "upcoming"
   );
-  const formDataSnapshot = useFormDataSnapshot(
-    currentFormData as unknown as Record<string, unknown>
-  );
+  const formDataSnapshot = useFormDataSnapshot({ ...currentFormData });
   const unifiedRestrictions = useUnifiedRestrictions(restrictionContext, formDataSnapshot);
 
   // 分割されたフックの初期化
@@ -183,7 +200,8 @@ export function useEventEditForm({
     event,
     formData: currentFormData,
     hasValidationErrors: !form.formState.isValid,
-    isFieldEditable: (field: string) => unifiedRestrictions.isFieldEditable(field as any),
+    isFieldEditable: (field: string) =>
+      isRestrictableField(field) ? unifiedRestrictions.isFieldEditable(field) : true,
   });
   const submission = useEventSubmission({ eventId: event.id, onSubmit, updateEventAction });
 
@@ -342,7 +360,7 @@ export function useEventEditForm({
   // フィールド制限チェック
   const isFieldRestricted = useCallback(
     (field: string): boolean => {
-      return unifiedRestrictions.isFieldRestricted(field as any);
+      return isRestrictableField(field) ? unifiedRestrictions.isFieldRestricted(field) : false;
     },
     [unifiedRestrictions]
   );
@@ -350,7 +368,7 @@ export function useEventEditForm({
   // フィールド編集可能チェック
   const isFieldEditable = useCallback(
     (field: string): boolean => {
-      return unifiedRestrictions.isFieldEditable(field as any);
+      return isRestrictableField(field) ? unifiedRestrictions.isFieldEditable(field) : true;
     },
     [unifiedRestrictions]
   );
