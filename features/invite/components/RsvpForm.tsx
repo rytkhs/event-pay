@@ -13,14 +13,15 @@ import {
 import { useForm, SubmitHandler, Resolver } from "react-hook-form";
 
 import { useParticipationErrorHandler } from "@core/hooks/use-error-handler";
-import type { EventDetail } from "@core/utils/invite-token";
 import {
   createParticipationFormSchema,
   ParticipationFormData,
 } from "@core/validation/participation";
 
+import type { InviteEventDetail } from "../types";
+
 interface RsvpFormProps {
-  event: EventDetail;
+  event: InviteEventDetail;
   inviteToken: string;
   onSubmit: (data: ParticipationFormData) => Promise<void>;
   isSubmitting?: boolean;
