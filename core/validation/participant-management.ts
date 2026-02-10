@@ -169,3 +169,41 @@ export const GetEventPaymentsResponseSchema = z.object({
 });
 
 export type GetEventPaymentsResponse = z.infer<typeof GetEventPaymentsResponseSchema>;
+
+// ====================================================================
+// 管理者による参加者追加関連スキーマ（admin-add-attendance.ts）
+// ====================================================================
+
+// 管理者による参加者追加の入力スキーマ
+export const AdminAddAttendanceInputSchema = z
+  .object({
+    eventId: z.string().uuid(),
+    nickname: z.string().min(1, "ニックネームは必須です").max(50),
+    status: z.enum(["attending", "maybe", "not_attending"]).default("attending"),
+    bypassCapacity: z.boolean().optional().default(false),
+    paymentMethod: z.enum(["cash"]).optional(),
+  })
+  .refine(
+    (data) => {
+      if (data.status === "attending" && data.paymentMethod !== undefined) {
+        return data.paymentMethod === "cash";
+      }
+      return true;
+    },
+    {
+      message: "手動追加では現金決済のみ選択可能です",
+      path: ["paymentMethod"],
+    }
+  );
+
+export type AdminAddAttendanceInput = z.infer<typeof AdminAddAttendanceInputSchema>;
+
+// 管理者による参加者追加の結果型
+export interface AdminAddAttendanceResult {
+  attendanceId: string;
+  guestToken: string;
+  guestUrl: string;
+  canOnlinePay: boolean;
+  reason?: string;
+  paymentId?: string;
+}

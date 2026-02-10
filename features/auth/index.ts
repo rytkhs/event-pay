@@ -11,6 +11,3 @@ export { AuthSubmitButton } from "./components/AuthSubmitButton";
 // Hooks
 export * from "./hooks/useAuthForm";
 export * from "./hooks/usePasswordConfirmation";
-
-// Types
-export * from "./types";

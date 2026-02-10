@@ -38,6 +38,3 @@ export const SUPABASE_AUTH_COOKIE_CONFIG = {
     session: "sb-auth-token",
   },
 } as const;
-
-export type SupabaseCookieConfig = typeof SUPABASE_COOKIE_CONFIG;
-export type SupabaseAuthCookieConfig = typeof SUPABASE_AUTH_COOKIE_CONFIG;

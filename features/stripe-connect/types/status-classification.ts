@@ -3,8 +3,6 @@
  * 2層構造（Database Status / UI Status）の型定義とインターフェース
  */
 
-import type Stripe from "stripe";
-
 import type { StripeAccountStatus } from "@core/types/statuses";
 
 /**
@@ -60,23 +58,6 @@ export interface ClassificationMetadata {
 }
 
 /**
- * UI Status Result
- * UIStatusMapperのマッピング結果
- */
-export interface UIStatusResult {
-  /** UI Status */
-  uiStatus: UIStatus;
-  /** ユーザーに表示するメッセージ */
-  message: string;
-  /** アクションが必要か */
-  actionRequired: boolean;
-  /** CTAボタンのテキスト */
-  ctaText?: string;
-  /** CTAボタンのURL */
-  ctaUrl?: string;
-}
-
-/**
  * Account Status Data
  * UIコンポーネントに渡すアカウントステータスデータ
  */
@@ -110,18 +91,6 @@ export interface AccountStatusData {
   /** Express Dashboardへのアクセスが可能か */
   expressDashboardAvailable?: boolean;
 }
-
-/**
- * Stripe Account Object型
- * Stripe APIから取得されるアカウント情報
- */
-export type StripeAccountObject = Stripe.Account;
-
-/**
- * Capability Status型
- * Stripe APIのcapabilityステータス
- */
-export type CapabilityStatus = "active" | "inactive" | "pending";
 
 /**
  * Capability型
