@@ -276,7 +276,7 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
           const session = event.data.object as Stripe.Checkout.Session;
           try {
             const sessionId: string = session.id;
-            const rawPi = (session as unknown as { payment_intent?: unknown }).payment_intent;
+            const rawPi = session.payment_intent;
             const paymentIntentId: string | null =
               typeof rawPi === "string" && rawPi.length > 0 ? rawPi : null;
 
@@ -1551,10 +1551,7 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
 
       if (!payment) {
         const paymentIdFromMetadata: string | null = ((): string | null => {
-          const md =
-            (paymentIntent as unknown as { metadata?: Record<string, unknown> | null })?.metadata ??
-            null;
-          const raw = md && (md as Record<string, unknown>)["payment_id"];
+          const raw = paymentIntent.metadata?.["payment_id"];
           return typeof raw === "string" && raw.length > 0 ? raw : null;
         })();
 
@@ -1767,10 +1764,7 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
       }
       if (!payment) {
         const paymentIdFromMetadata: string | null = ((): string | null => {
-          const md =
-            (paymentIntent as unknown as { metadata?: Record<string, unknown> | null })?.metadata ??
-            null;
-          const raw = md && (md as Record<string, unknown>)["payment_id"];
+          const raw = paymentIntent.metadata?.["payment_id"];
           return typeof raw === "string" && raw.length > 0 ? raw : null;
         })();
         if (paymentIdFromMetadata) {
@@ -1890,10 +1884,7 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
 
       if (!payment) {
         const paymentIdFromMetadata: string | null = ((): string | null => {
-          const md =
-            (paymentIntent as unknown as { metadata?: Record<string, unknown> | null })?.metadata ??
-            null;
-          const raw = md && (md as Record<string, unknown>)["payment_id"];
+          const raw = paymentIntent.metadata?.["payment_id"];
           return typeof raw === "string" && raw.length > 0 ? raw : null;
         })();
         if (paymentIdFromMetadata) {
