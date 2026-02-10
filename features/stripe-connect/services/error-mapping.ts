@@ -2,12 +2,15 @@
  * StripeConnect エラーマッピング設定
  */
 
-import { StripeConnectErrorType, ErrorHandlingResult } from "../types";
+import { StripeConnectErrorType, StripeConnectErrorHandlingResult } from "../types";
 
 /**
  * エラータイプ別のハンドリング設定
  */
-export const ERROR_HANDLING_BY_TYPE: Record<StripeConnectErrorType, ErrorHandlingResult> = {
+export const ERROR_HANDLING_BY_TYPE: Record<
+  StripeConnectErrorType,
+  StripeConnectErrorHandlingResult
+> = {
   // ユーザーエラー
   [StripeConnectErrorType.ACCOUNT_ALREADY_EXISTS]: {
     userMessage: "既にStripeアカウントが存在します。",

@@ -11,10 +11,10 @@ import {
   UpdatePaymentStatusParams as CoreUpdatePaymentStatusParams,
   PaymentError as CorePaymentError,
   PaymentErrorType,
-  ErrorHandlingResult as CoreErrorHandlingResult,
 } from "@core/ports/payments";
 import { getSecureClientFactory } from "@core/security/secure-client-factory.impl";
 import { AdminReason } from "@core/security/secure-client-factory.types";
+import type { PaymentErrorHandlingResult } from "@core/types/payment-errors";
 
 import { bulkUpdateCashStatusAction } from "../actions/bulk-update-cash-status";
 import { updateCashStatusAction } from "../actions/update-cash-status";
@@ -100,7 +100,7 @@ const paymentServiceImpl: Pick<
 let paymentErrorHandlerInstance: PaymentErrorHandler | null = null;
 
 const paymentErrorHandlerImpl = {
-  handleError(error: unknown): CoreErrorHandlingResult {
+  handleError(error: unknown): PaymentErrorHandlingResult {
     if (!paymentErrorHandlerInstance) {
       paymentErrorHandlerInstance = new PaymentErrorHandler();
     }
@@ -130,17 +130,21 @@ const paymentErrorHandlerImpl = {
       );
     }
 
-    // Determine user message
-    const userMessage =
-      ERROR_HANDLING_BY_TYPE[paymentError.type]?.userMessage ??
+    const handling =
+      ERROR_HANDLING_BY_TYPE[paymentError.type] ??
       (error instanceof CorePaymentError || (error && typeof error === "object" && "type" in error)
-        ? "お支払い処理中にエラーが発生しました。"
-        : "予期しないエラーが発生しました。");
+        ? {
+            userMessage: "お支払い処理中にエラーが発生しました。",
+            shouldRetry: false,
+            logLevel: "error",
+          }
+        : {
+            userMessage: "予期しないエラーが発生しました。",
+            shouldRetry: false,
+            logLevel: "error",
+          });
 
-    return {
-      error: paymentError,
-      userMessage,
-    };
+    return handling;
   },
 
   mapToUserFriendlyMessage(error: unknown): string {

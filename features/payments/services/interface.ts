@@ -2,7 +2,7 @@
  * PaymentServiceのインターフェース定義
  */
 
-import { PaymentError, ErrorHandlingResult } from "@core/types/payment-errors";
+import { PaymentError, PaymentErrorHandlingResult } from "@core/types/payment-errors";
 
 import {
   Payment,
@@ -108,7 +108,7 @@ export interface IPaymentErrorHandler {
    * @param error 発生したエラー
    * @returns エラーハンドリング結果
    */
-  handlePaymentError(error: PaymentError): Promise<ErrorHandlingResult>;
+  handlePaymentError(error: PaymentError): Promise<PaymentErrorHandlingResult>;
 
   /**
    * エラーをログに記録する

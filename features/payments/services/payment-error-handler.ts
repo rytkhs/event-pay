@@ -1,6 +1,6 @@
 import "server-only";
 
-import { PaymentError, ErrorHandlingResult } from "@core/types/payment-errors";
+import { PaymentError, PaymentErrorHandlingResult } from "@core/types/payment-errors";
 import { handleServerError } from "@core/utils/error-handler.server";
 
 import { ERROR_HANDLING_BY_TYPE } from "./error-mapping";
@@ -13,7 +13,7 @@ export class PaymentErrorHandler implements IPaymentErrorHandler {
   /**
    * 決済エラーを処理し、適切な対応を決定する
    */
-  async handlePaymentError(error: PaymentError): Promise<ErrorHandlingResult> {
+  async handlePaymentError(error: PaymentError): Promise<PaymentErrorHandlingResult> {
     return (
       ERROR_HANDLING_BY_TYPE[error.type] ?? {
         userMessage: "予期しないエラーが発生しました。管理者にお問い合わせください。",

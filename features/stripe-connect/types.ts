@@ -200,7 +200,7 @@ export class StripeConnectError extends Error {
 }
 
 // エラーハンドリング結果
-export interface ErrorHandlingResult {
+export interface StripeConnectErrorHandlingResult {
   userMessage: string;
   shouldRetry: boolean;
   logLevel: LogLevel;
