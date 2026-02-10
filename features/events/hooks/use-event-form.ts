@@ -6,7 +6,6 @@ import { useRouter } from "next/navigation";
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { z } from "zod";
 
 import type { EventCreatedParams } from "@core/analytics/event-types";
 import { ga4Client } from "@core/analytics/ga4-client";
@@ -15,200 +14,13 @@ import type { ActionResult } from "@core/errors/adapters/server-actions";
 import { logger } from "@core/logging/app-logger";
 import { handleClientError } from "@core/utils/error-handler.client";
 import { safeParseNumber, parseFee } from "@core/utils/number-parsers";
-import { convertDatetimeLocalToUtc } from "@core/utils/timezone";
 import type { EventFormData } from "@core/validation/event";
 
 import type { Database } from "@/types/database";
 
-// フロントエンド専用バリデーションスキーマ
-const eventFormSchema = z
-  .object({
-    title: z
-      .string()
-      .trim()
-      .min(1, "イベント名は必須です")
-      .max(100, "イベント名は100文字以内で入力してください"),
-    date: z
-      .string()
-      .min(1, "開催日時は必須です")
-      .refine((val) => {
-        if (!val) return false;
-        try {
-          const eventUtc = convertDatetimeLocalToUtc(val);
-          return eventUtc > new Date();
-        } catch {
-          return false;
-        }
-      }, "開催日時は現在時刻より後である必要があります"),
-    fee: z
-      .string()
-      .trim()
-      .min(1, "参加費は必須です")
-      .refine((val) => {
-        const num = parseFee(val);
-        return num === 0 || (num >= 100 && num <= 1000000);
-      }, "参加費は0円(無料)または100円以上である必要があります"),
-    payment_methods: z.array(z.enum(["stripe", "cash"])),
-    location: z.string().trim().max(200, "場所は200文字以内で入力してください"),
-    description: z.string().trim().max(1000, "説明は1000文字以内で入力してください"),
-    capacity: z.string().refine((val) => {
-      if (!val || val.trim() === "") return true;
-      const num = safeParseNumber(val);
-      return num >= 1 && num <= 10000;
-    }, "定員は1以上10000以下である必要があります"),
-    registration_deadline: z.string().min(1, "参加申込締切は必須です"),
-    payment_deadline: z.string(),
-    allow_payment_after_deadline: z.boolean().optional(),
-    grace_period_days: z.string().optional(),
-  })
-  .superRefine((data, ctx) => {
-    // 参加費に基づく決済方法バリデーション
-    const fee = parseFee(data.fee);
-    if (fee > 0) {
-      if (!Array.isArray(data.payment_methods) || data.payment_methods.length === 0) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: "有料イベントでは決済方法の選択が必要です",
-          path: ["payment_methods"],
-        });
-      }
-    }
-  })
-  .superRefine((data, ctx) => {
-    // オンライン決済を選択した場合は決済締切を必須にする
-    const fee = parseFee(data.fee);
-    const hasStripe = Array.isArray(data.payment_methods)
-      ? data.payment_methods.includes("stripe")
-      : false;
-    if (fee > 0 && hasStripe) {
-      if (!data.payment_deadline || data.payment_deadline.trim() === "") {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: "オンライン決済締切は必須です",
-          path: ["payment_deadline"],
-        });
-      }
-    }
-  })
-  .refine(
-    (data) => {
-      // 参加申込締切が開催日時以前であることを確認（空文字列は無視）
-      if (data.registration_deadline && data.registration_deadline.trim() !== "" && data.date) {
-        try {
-          const regUtc = convertDatetimeLocalToUtc(data.registration_deadline);
-          const eventUtc = convertDatetimeLocalToUtc(data.date);
-          return regUtc <= eventUtc;
-        } catch {
-          return false;
-        }
-      }
-      return true;
-    },
-    {
-      message: "参加申込締切は開催日時以前に設定してください",
-      path: ["registration_deadline"],
-    }
-  )
-  .refine(
-    (data) => {
-      // オンライン決済を選択した場合のみ、決済締切が必須
-      const fee = parseFee(data.fee);
-      const hasOnline = Array.isArray(data.payment_methods)
-        ? data.payment_methods.includes("stripe")
-        : false;
-      if (fee > 0 && hasOnline) {
-        return data.payment_deadline && data.payment_deadline.trim() !== "";
-      }
-      return true;
-    },
-    {
-      message: "オンライン決済を選択した場合、決済締切は必須です",
-      path: ["payment_deadline"],
-    }
-  )
-  .refine(
-    (data) => {
-      // オンライン決済が選択されている場合のみ、決済締切 ≤ 開催日時 + 30日
-      const hasStripe = Array.isArray(data.payment_methods)
-        ? data.payment_methods.includes("stripe")
-        : false;
+import { createEventFormSchema, type CreateEventFormData } from "../validation";
 
-      if (hasStripe && data.payment_deadline && data.payment_deadline.trim() !== "" && data.date) {
-        try {
-          const payUtc = convertDatetimeLocalToUtc(data.payment_deadline);
-          const eventUtc = convertDatetimeLocalToUtc(data.date);
-          const maxUtc = new Date(eventUtc.getTime() + 30 * 24 * 60 * 60 * 1000);
-          return payUtc <= maxUtc;
-        } catch {
-          return false;
-        }
-      }
-      return true;
-    },
-    {
-      message: "オンライン決済締切は開催日時から30日以内に設定してください",
-      path: ["payment_deadline"],
-    }
-  )
-  .refine(
-    (data) => {
-      // オンライン決済が選択されている場合のみ、決済締切が参加申込締切以降であることを確認
-      const hasStripe = Array.isArray(data.payment_methods)
-        ? data.payment_methods.includes("stripe")
-        : false;
-
-      if (
-        hasStripe &&
-        data.registration_deadline &&
-        data.registration_deadline.trim() !== "" &&
-        data.payment_deadline &&
-        data.payment_deadline.trim() !== ""
-      ) {
-        try {
-          const payUtc = convertDatetimeLocalToUtc(data.payment_deadline);
-          const regUtc = convertDatetimeLocalToUtc(data.registration_deadline);
-          return payUtc >= regUtc;
-        } catch {
-          return false;
-        }
-      }
-      return true;
-    },
-    {
-      message: "決済締切は参加申込締切以降に設定してください",
-      path: ["payment_deadline"],
-    }
-  )
-  .refine(
-    (data) => {
-      // オンライン決済が選択されている場合のみ、最終支払期限（payment_deadline + 猶予日） ≤ 開催日時 + 30日
-      const hasStripe = Array.isArray(data.payment_methods)
-        ? data.payment_methods.includes("stripe")
-        : false;
-
-      if (!hasStripe) return true;
-      if (!data.date) return true;
-      if (!data.allow_payment_after_deadline) return true;
-      if (!data.payment_deadline || data.payment_deadline.trim() === "") return true;
-      try {
-        const payUtc = convertDatetimeLocalToUtc(data.payment_deadline);
-        const eventUtc = convertDatetimeLocalToUtc(data.date);
-        const grace = Number(data.grace_period_days ?? "0");
-        if (!Number.isInteger(grace) || grace < 0 || grace > 30) return false;
-        const finalDue = new Date(payUtc.getTime() + grace * 24 * 60 * 60 * 1000);
-        const maxUtc = new Date(eventUtc.getTime() + 30 * 24 * 60 * 60 * 1000);
-        return finalDue <= maxUtc;
-      } catch {
-        return false;
-      }
-    },
-    {
-      message: "最終支払期限は開催日時から30日以内に設定してください",
-      path: ["grace_period_days"],
-    }
-  );
-
-type EventFormSchemaData = z.infer<typeof eventFormSchema>;
+type EventFormSchemaData = CreateEventFormData;
 
 // react-hook-form用のデフォルト値
 const defaultValues: EventFormSchemaData = {
@@ -264,7 +76,7 @@ export const useEventForm = ({
 
   // react-hook-formの初期化
   const form = useForm<EventFormSchemaData>({
-    resolver: zodResolver(eventFormSchema),
+    resolver: zodResolver(createEventFormSchema),
     defaultValues,
     mode: "onChange", // 入力時にバリデーション（UX重視）
     reValidateMode: "onChange",
