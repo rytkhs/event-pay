@@ -10,3 +10,7 @@ export type WebhookProcessingMeta = {
 } & { [key: string]: Json | undefined };
 
 export type WebhookProcessingResult = AppResult<void, WebhookProcessingMeta>;
+
+export type RefundCreatedCompatibleEventType = "refund.created" | "charge.refund.created";
+export type RefundUpdatedCompatibleEventType = "refund.updated" | "charge.refund.updated";
+export type RefundFailedCompatibleEventType = "refund.failed";

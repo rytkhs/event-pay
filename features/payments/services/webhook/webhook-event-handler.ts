@@ -16,6 +16,12 @@ import { canPromoteStatus } from "@core/utils/payments/status-rank";
 import { Database } from "@/types/database";
 
 import type { WebhookProcessingResult } from "./types";
+import {
+  getRefundFromWebhookEvent,
+  isRefundCreatedCompatibleEventType,
+  isRefundFailedCompatibleEventType,
+  isRefundUpdatedCompatibleEventType,
+} from "./webhook-event-guards";
 
 export interface WebhookEventHandler {
   handleEvent(event: Stripe.Event): Promise<WebhookProcessingResult>;
@@ -63,6 +69,18 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
   async handleEvent(event: Stripe.Event): Promise<WebhookProcessingResult> {
     await this.ensureInitialized();
     try {
+      if (isRefundCreatedCompatibleEventType(event.type)) {
+        return await this.handleRefundCreated(event);
+      }
+
+      if (isRefundUpdatedCompatibleEventType(event.type)) {
+        return await this.handleRefundUpdated(event);
+      }
+
+      if (isRefundFailedCompatibleEventType(event.type)) {
+        return await this.handleRefundFailed(event);
+      }
+
       switch (event.type) {
         case "payment_intent.succeeded": {
           // 一次処理: PaymentIntent で決済成功を確定し、DB更新や集計を行う
@@ -87,18 +105,6 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
 
         case "charge.refunded":
           return await this.handleChargeRefunded(event as Stripe.ChargeRefundedEvent);
-
-        case "refund.created":
-          return await this.handleRefundCreated(event as Stripe.RefundCreatedEvent);
-
-        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-        // @ts-expect-error Stripe typings may not yet include this literal
-        case "charge.refund.created":
-          return await this.handleRefundCreated(event as unknown as Stripe.RefundCreatedEvent);
-
-        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-        case "refund.failed":
-          return await this.handleRefundFailed(event as unknown as Stripe.Event);
 
         case "checkout.session.completed": {
           const session = event.data.object as Stripe.Checkout.Session;
@@ -390,14 +396,6 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
           });
           return okResult();
         }
-        case "refund.updated":
-          return await this.handleRefundUpdated(event as Stripe.RefundUpdatedEvent);
-
-        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-        // @ts-ignore Stripe typings may not yet include this literal
-        case "charge.refund.updated":
-          return await this.handleRefundUpdated(event as unknown as Stripe.RefundUpdatedEvent);
-
         case "application_fee.refunded":
         case "application_fee.refund.updated":
           return await this.handleApplicationFeeRefunded(event as Stripe.Event);
@@ -1094,10 +1092,16 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
     }
   }
 
-  private async handleRefundCreated(
-    event: Stripe.RefundCreatedEvent
-  ): Promise<WebhookProcessingResult> {
-    const refund = event.data.object as Stripe.Refund;
+  private async handleRefundCreated(event: Stripe.Event): Promise<WebhookProcessingResult> {
+    const refund = getRefundFromWebhookEvent(event);
+    if (!refund) {
+      handleServerError("WEBHOOK_INVALID_PAYLOAD", {
+        action: "handleRefundCreated",
+        additionalData: { eventId: event.id, detail: "Invalid refund object" },
+      });
+      return okResult();
+    }
+
     this.logger.info("Refund created event received", {
       event_id: event.id,
       refund_id: refund.id,
@@ -1107,10 +1111,16 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
     return okResult();
   }
 
-  private async handleRefundUpdated(
-    event: Stripe.RefundUpdatedEvent
-  ): Promise<WebhookProcessingResult> {
-    const refund = event.data.object as Stripe.Refund;
+  private async handleRefundUpdated(event: Stripe.Event): Promise<WebhookProcessingResult> {
+    const refund = getRefundFromWebhookEvent(event);
+    if (!refund) {
+      handleServerError("WEBHOOK_INVALID_PAYLOAD", {
+        action: "handleRefundUpdated",
+        additionalData: { eventId: event.id, detail: "Invalid refund object" },
+      });
+      return okResult();
+    }
+
     const status: string | undefined = (refund as { status?: string }).status;
 
     // ログは常に記録
@@ -1141,13 +1151,11 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
 
   // refund.failed を受け、返金集計を再同期（必要ならステータスの巻き戻しを許可）
   private async handleRefundFailed(event: Stripe.Event): Promise<WebhookProcessingResult> {
-    const refund = (event as { data?: { object?: unknown } }).data?.object as
-      | Stripe.Refund
-      | undefined;
+    const refund = getRefundFromWebhookEvent(event);
     if (!refund) {
       handleServerError("WEBHOOK_INVALID_PAYLOAD", {
         action: "handleRefundFailed",
-        additionalData: { eventId: event.id },
+        additionalData: { eventId: event.id, detail: "Invalid refund object" },
       });
       return okResult();
     }
