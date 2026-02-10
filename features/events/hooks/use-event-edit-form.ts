@@ -9,13 +9,14 @@ import { z } from "zod";
 import { AppError } from "@core/errors";
 import { errResult, okResult, type AppResult } from "@core/errors/app-result";
 import { useErrorHandler } from "@core/hooks/use-error-handler";
-import type { Event, EventFormData } from "@core/types/models";
+import type { Event } from "@core/types/models";
 import { safeParseNumber, parseFee } from "@core/utils/number-parsers";
 import {
   convertDatetimeLocalToUtc,
   formatUtcToDatetimeLocal,
   isUtcDateFuture,
 } from "@core/utils/timezone";
+import type { EventFormData } from "@core/validation/event";
 
 import type { ChangeItem } from "@/components/ui/change-confirmation-dialog";
 

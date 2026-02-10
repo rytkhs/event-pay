@@ -16,6 +16,7 @@ import { logger } from "@core/logging/app-logger";
 import { handleClientError } from "@core/utils/error-handler.client";
 import { safeParseNumber, parseFee } from "@core/utils/number-parsers";
 import { convertDatetimeLocalToUtc } from "@core/utils/timezone";
+import type { EventFormData } from "@core/validation/event";
 
 import type { Database } from "@/types/database";
 
@@ -207,11 +208,10 @@ const eventFormSchema = z
     }
   );
 
-// Zodスキーマの推論型をフォーム型として使用（resolverとの互換性のため）
-export type EventFormData = z.infer<typeof eventFormSchema>;
+type EventFormSchemaData = z.infer<typeof eventFormSchema>;
 
 // react-hook-form用のデフォルト値
-const defaultValues: EventFormData = {
+const defaultValues: EventFormSchemaData = {
   title: "",
   description: "",
   location: "",
@@ -251,7 +251,7 @@ type UseEventFormParams = {
 export const useEventForm = ({
   createEventAction,
 }: UseEventFormParams): {
-  form: ReturnType<typeof useForm<EventFormData>>;
+  form: ReturnType<typeof useForm<EventFormSchemaData>>;
   onSubmit: () => void;
   isPending: boolean;
   hasErrors: boolean;
@@ -263,7 +263,7 @@ export const useEventForm = ({
   const { toast } = useToast();
 
   // react-hook-formの初期化
-  const form = useForm<EventFormData>({
+  const form = useForm<EventFormSchemaData>({
     resolver: zodResolver(eventFormSchema),
     defaultValues,
     mode: "onChange", // 入力時にバリデーション（UX重視）
@@ -388,47 +388,48 @@ export const useEventForm = ({
   }, [watchedDate, form]);
 
   // フォーム送信処理
-  const onSubmit = async (data: EventFormData): Promise<void> => {
+  const onSubmit = async (data: EventFormSchemaData): Promise<void> => {
     startTransition(async () => {
       try {
+        const submissionData: EventFormData = data;
         // フォームデータをFormDataオブジェクトに変換
         const formData = new FormData();
 
         // 基本フィールドの設定
-        formData.append("title", data.title);
-        formData.append("date", data.date);
-        formData.append("fee", data.fee);
+        formData.append("title", submissionData.title);
+        formData.append("date", submissionData.date);
+        formData.append("fee", submissionData.fee);
 
         // 決済方法の設定（配列から文字列に変換）
-        const paymentMethodsString = Array.isArray(data.payment_methods)
-          ? data.payment_methods.join(",")
+        const paymentMethodsString = Array.isArray(submissionData.payment_methods)
+          ? submissionData.payment_methods.join(",")
           : "";
         formData.append("payment_methods", paymentMethodsString);
 
         // オプショナルフィールドの設定
-        if (data.location) {
-          formData.append("location", data.location);
+        if (submissionData.location) {
+          formData.append("location", submissionData.location);
         }
-        if (data.description) {
-          formData.append("description", data.description);
+        if (submissionData.description) {
+          formData.append("description", submissionData.description);
         }
-        if (data.capacity) {
-          formData.append("capacity", data.capacity);
+        if (submissionData.capacity) {
+          formData.append("capacity", submissionData.capacity);
         }
-        if (data.registration_deadline) {
-          formData.append("registration_deadline", data.registration_deadline);
+        if (submissionData.registration_deadline) {
+          formData.append("registration_deadline", submissionData.registration_deadline);
         }
-        if (data.payment_deadline) {
-          formData.append("payment_deadline", data.payment_deadline);
+        if (submissionData.payment_deadline) {
+          formData.append("payment_deadline", submissionData.payment_deadline);
         }
-        if (data.allow_payment_after_deadline) {
+        if (submissionData.allow_payment_after_deadline) {
           formData.append(
             "allow_payment_after_deadline",
-            String(data.allow_payment_after_deadline)
+            String(submissionData.allow_payment_after_deadline)
           );
         }
-        if (data.grace_period_days) {
-          formData.append("grace_period_days", data.grace_period_days);
+        if (submissionData.grace_period_days) {
+          formData.append("grace_period_days", submissionData.grace_period_days);
         }
 
         // Server Actionの実行
@@ -443,9 +444,9 @@ export const useEventForm = ({
           try {
             const eventCreatedParams: EventCreatedParams = {
               event_id: createdEvent.id,
-              event_title: data.title,
-              event_date: data.date,
-              amount: parseFee(data.fee),
+              event_title: submissionData.title,
+              event_date: submissionData.date,
+              amount: parseFee(submissionData.fee),
               currency: "JPY",
             };
 

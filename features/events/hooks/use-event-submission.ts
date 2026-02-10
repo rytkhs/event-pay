@@ -10,9 +10,10 @@ import {
   type ActionResult,
 } from "@core/errors/adapters/server-actions";
 import { errResult, okResult, type AppResult } from "@core/errors/app-result";
-import type { Event, EventFormData } from "@core/types/models";
+import type { Event } from "@core/types/models";
 import { deriveEventStatus } from "@core/utils/derive-event-status";
 import { handleClientError } from "@core/utils/error-handler.client";
+import type { EventFormData } from "@core/validation/event";
 
 import { ChangeItem } from "@/components/ui/change-confirmation-dialog";
 import type { Database } from "@/types/database";

@@ -2,8 +2,9 @@
 
 import { useCallback, useMemo } from "react";
 
-import type { Event, EventFormData } from "@core/types/models";
+import type { Event } from "@core/types/models";
 import { formatUtcToDatetimeLocal } from "@core/utils/timezone";
+import type { EventFormData } from "@core/validation/event";
 
 import { ChangeItem } from "@/components/ui/change-confirmation-dialog";
 
