@@ -59,7 +59,7 @@ export class GA4Validator {
     // Remove "GAx.x." prefix if present
     // Example: GA1.1.1234567890.1234567890 -> 1234567890.1234567890
     const prefixMatch = clientId.match(/^GA\d+\.\d+\.(.+)$/);
-    if (prefixMatch && prefixMatch[1]) {
+    if (prefixMatch?.[1]) {
       return prefixMatch[1];
     }
 
@@ -138,6 +138,7 @@ export class GA4Validator {
       if (!this.PARAM_NAME_PATTERN.test(key)) {
         errors.push(`Invalid parameter name: ${key}`);
         if (debug) {
+          // eslint-disable-next-line no-console
           console.log(`[GA4] Skipping invalid parameter name: ${key}`);
         }
         continue;
@@ -148,6 +149,7 @@ export class GA4Validator {
         if (value.length > this.MAX_STRING_LENGTH) {
           sanitizedParams[key] = value.substring(0, this.MAX_STRING_LENGTH);
           if (debug) {
+            // eslint-disable-next-line no-console
             console.log(
               `[GA4] Truncated parameter ${key} from ${value.length} to ${this.MAX_STRING_LENGTH} characters`
             );
