@@ -22,9 +22,6 @@ export interface DetailedAccountStatus {
 export * from "./types/status-classification";
 export * from "./types/audit-log";
 
-// Webhook処理や通知経路では一時的に enum 外の状態が入ることがあるための拡張型
-export type StripeAccountStatusLike = StripeAccountStatus | "unknown" | "error";
-
 // Stripe Connectアカウント情報の型
 export interface StripeConnectAccount {
   user_id: string;
