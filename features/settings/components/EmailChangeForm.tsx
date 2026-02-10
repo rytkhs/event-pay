@@ -5,10 +5,10 @@ import { useTransition } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2, Mail } from "lucide-react";
 import { useForm } from "react-hook-form";
-import { z } from "zod";
 
 import { useToast } from "@core/contexts/toast-context";
 import type { ActionResult } from "@core/errors/adapters/server-actions";
+import { updateEmailInputSchema, type UpdateEmailInput } from "@core/validation/settings";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -23,16 +23,6 @@ import {
 import { Input } from "@/components/ui/input";
 import { PasswordInput } from "@/components/ui/password-input";
 
-const emailChangeSchema = z.object({
-  newEmail: z
-    .string()
-    .min(1, "新しいメールアドレスを入力してください")
-    .email("有効なメールアドレスを入力してください"),
-  currentPassword: z.string().min(1, "現在のパスワードを入力してください"),
-});
-
-type EmailChangeFormData = z.infer<typeof emailChangeSchema>;
-
 interface EmailChangeFormProps {
   currentEmail: string;
   updateEmailAction: UpdateEmailAction;
@@ -44,15 +34,15 @@ export function EmailChangeForm({ currentEmail, updateEmailAction }: EmailChange
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
 
-  const form = useForm<EmailChangeFormData>({
-    resolver: zodResolver(emailChangeSchema),
+  const form = useForm<UpdateEmailInput>({
+    resolver: zodResolver(updateEmailInputSchema),
     defaultValues: {
       newEmail: "",
       currentPassword: "",
     },
   });
 
-  const onSubmit = (data: EmailChangeFormData) => {
+  const onSubmit = (data: UpdateEmailInput) => {
     startTransition(async () => {
       try {
         const formData = new FormData();

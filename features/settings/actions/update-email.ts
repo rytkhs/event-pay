@@ -1,19 +1,10 @@
-import { z } from "zod";
-
 import { getCurrentUser } from "@core/auth/auth-utils";
 import { fail, ok } from "@core/errors/adapters/server-actions";
 import type { ActionResult } from "@core/errors/adapters/server-actions";
 import { logger } from "@core/logging/app-logger";
 import { createClient } from "@core/supabase/server";
 import { handleServerError } from "@core/utils/error-handler.server";
-
-const updateEmailSchema = z.object({
-  newEmail: z
-    .string()
-    .min(1, "新しいメールアドレスを入力してください")
-    .email("有効なメールアドレスを入力してください"),
-  currentPassword: z.string().min(1, "現在のパスワードを入力してください"),
-});
+import { updateEmailInputSchema } from "@core/validation/settings";
 
 export async function updateEmailAction(formData: FormData): Promise<ActionResult> {
   try {
@@ -29,7 +20,7 @@ export async function updateEmailAction(formData: FormData): Promise<ActionResul
       currentPassword: formData.get("currentPassword") as string,
     };
 
-    const validationResult = updateEmailSchema.safeParse(rawData);
+    const validationResult = updateEmailInputSchema.safeParse(rawData);
     if (!validationResult.success) {
       const errors = validationResult.error.errors.map((err) => err.message).join(", ");
       return fail("VALIDATION_ERROR", { userMessage: errors });

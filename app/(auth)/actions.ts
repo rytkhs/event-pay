@@ -24,51 +24,9 @@ import { handleServerError } from "@core/utils/error-handler.server";
 import { extractClientIdFromGaCookie } from "@core/utils/ga-cookie";
 import { getClientIPFromHeaders } from "@core/utils/ip-detection";
 import { formatUtcToJst } from "@core/utils/timezone";
+import { loginInputSchema, registerInputSchema } from "@core/validation/auth";
 
 // バリデーションスキーマ
-const loginSchema = z.object({
-  email: z.string().email("有効なメールアドレスを入力してください").max(254),
-  password: z.string().min(1, "パスワードを入力してください").max(128),
-});
-
-const registerSchema = z.object({
-  name: z
-    .string()
-    .transform((str) => str.trim()) // 最初にトリム
-    .refine((trimmed) => trimmed.length >= 1, {
-      message: "表示名を入力してください",
-    })
-    .refine((trimmed) => trimmed.length <= 100, {
-      message: "名前は100文字以内で入力してください",
-    })
-    .refine(
-      (trimmed) => {
-        // NULL文字やcontrol文字のチェック
-        if (trimmed.includes("\0") || trimmed.includes("\x1a")) {
-          return false;
-        }
-        // 危険な特殊文字のチェック（アポストロフィと引用符は許可）
-        if (/[;&|`$(){}[\]<>\\]/.test(trimmed)) {
-          return false;
-        }
-        // コマンドインジェクション対策（完全なコマンド形式のみ拒否）
-        if (
-          /^\s*(rm|cat|echo|whoami|id|ls|pwd|sudo|su|curl|wget|nc|nmap|chmod|chown|kill|ps|top|netstat|find|grep|awk|sed|tail|head|sort|uniq)\s+/.test(
-            trimmed
-          )
-        ) {
-          return false;
-        }
-        return true;
-      },
-      {
-        message: "名前に無効な文字が含まれています",
-      }
-    ),
-  email: z.string().email("有効なメールアドレスを入力してください").max(254),
-  password: z.string().min(8, "パスワードは8文字以上で入力してください").max(128),
-});
-
 const resetPasswordSchema = z.object({
   email: z.string().email("有効なメールアドレスを入力してください").max(254),
 });
@@ -107,7 +65,7 @@ function formDataToObject(formData: FormData): Record<string, string> {
 export async function loginAction(formData: FormData): Promise<ActionResult<{ user: unknown }>> {
   try {
     const rawData = formDataToObject(formData);
-    const result = loginSchema.safeParse(rawData);
+    const result = loginInputSchema.safeParse(rawData);
 
     if (!result.success) {
       // タイミング攻撃対策: バリデーションエラー時も一定時間待機
@@ -302,7 +260,7 @@ export async function loginAction(formData: FormData): Promise<ActionResult<{ us
 export async function registerAction(formData: FormData): Promise<ActionResult<{ user: unknown }>> {
   try {
     const rawData = formDataToObject(formData);
-    const result = registerSchema.safeParse(rawData);
+    const result = registerInputSchema.safeParse(rawData);
 
     if (!result.success) {
       await TimingAttackProtection.addConstantDelay();
