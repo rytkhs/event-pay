@@ -21,7 +21,6 @@ import { useToast } from "@core/contexts/toast-context";
 import type { ActionResult } from "@core/errors/adapters/server-actions";
 import { useErrorHandler } from "@core/hooks/use-error-handler";
 import { getModificationRestrictionReason } from "@core/utils/guest-restrictions";
-import { type GuestAttendanceData } from "@core/utils/guest-token";
 
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -39,6 +38,7 @@ import {
   type AttendanceStatus,
   type PaymentMethod,
   type UpdateGuestAttendanceData,
+  type GuestAttendanceData,
 } from "../types";
 
 interface GuestStatusEditModalProps {

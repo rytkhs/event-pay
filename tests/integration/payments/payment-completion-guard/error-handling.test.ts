@@ -4,15 +4,16 @@
 
 import { describe, test, expect, beforeAll, afterAll, beforeEach } from "@jest/globals";
 
-import { getPaymentService } from "@core/services";
+import { getPaymentPort, type PaymentPort } from "@core/ports/payments";
 import { PaymentError, PaymentErrorType } from "@core/types/payment-errors";
-import { CreateStripeSessionParams } from "@features/payments/types";
+
+import { CreateStripeSessionParams } from "@features/payments";
 
 import { createPaymentTestSetup, type PaymentTestSetup } from "@tests/setup/common-test-setup";
 
 describe("エラーハンドリング", () => {
   let setup: PaymentTestSetup;
-  let paymentService: ReturnType<typeof getPaymentService>;
+  let paymentPort: PaymentPort;
 
   beforeAll(async () => {
     const paymentSetup = await createPaymentTestSetup({
@@ -21,7 +22,7 @@ describe("エラーハンドリング", () => {
       accessedTables: ["public.users", "public.events", "public.attendances", "public.payments"],
     });
     setup = paymentSetup;
-    paymentService = getPaymentService();
+    paymentPort = getPaymentPort();
   });
 
   afterAll(async () => {
@@ -65,13 +66,14 @@ describe("エラーハンドリング", () => {
     };
 
     try {
-      await paymentService.createStripeSession(sessionParams);
+      await paymentPort.createStripeSession(sessionParams);
       fail("PaymentError should be thrown");
     } catch (error) {
-      expect(error).toBeInstanceOf(PaymentError);
-      expect(error.type).toBe(PaymentErrorType.PAYMENT_ALREADY_EXISTS);
-      expect(error.message).toBe("この参加に対する決済は既に完了済みです");
-      expect(error.name).toBe("PaymentError");
+      const paymentError = error as PaymentError;
+      expect(paymentError).toBeInstanceOf(PaymentError);
+      expect(paymentError.type).toBe(PaymentErrorType.PAYMENT_ALREADY_EXISTS);
+      expect(paymentError.message).toBe("この参加に対する決済は既に完了済みです");
+      expect(paymentError.name).toBe("PaymentError");
     }
   });
 });

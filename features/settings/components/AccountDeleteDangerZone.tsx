@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 
 import { AlertTriangle, Loader2 } from "lucide-react";
 
+import { useToast } from "@core/contexts/toast-context";
 import type { ActionResult } from "@core/errors/adapters/server-actions";
 
 import { Button } from "@/components/ui/button";
@@ -11,7 +12,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useToast } from "@/core/contexts/toast-context";
 
 type AccountDeleteDangerZoneProps = {
   requestAccountDeletionAction: (formData: FormData) => Promise<ActionResult>;

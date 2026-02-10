@@ -9,7 +9,7 @@
 import * as DestinationCharges from "../../../core/stripe/destination-charges";
 import { PaymentErrorType } from "../../../core/types/payment-errors";
 import { ApplicationFeeCalculator } from "../../../features/payments/services/fee-config/application-fee-calculator";
-import { PaymentService, PaymentErrorHandler } from "../../../features/payments/services";
+import { PaymentService, PaymentErrorHandler } from "../../../features/payments/server";
 import {
   createMockStripeClient,
   createMockApplicationFeeCalculator,

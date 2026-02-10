@@ -16,10 +16,10 @@
 
 import { jest } from "@jest/globals";
 
-import { getPaymentService } from "@core/services";
+import { getPaymentPort, type PaymentPort } from "@core/ports/payments";
 import { PaymentError, PaymentErrorType } from "@core/types/payment-errors";
 
-import { CreateStripeSessionParams, CreateStripeSessionResult } from "@features/payments/types";
+import { CreateStripeSessionParams, CreateStripeSessionResult } from "@features/payments";
 
 import { createPaymentTestSetup } from "@tests/setup/common-test-setup";
 
@@ -38,7 +38,7 @@ export interface IdempotencyTestSetup {
   user: TestPaymentUser;
   event: TestPaymentEvent;
   attendance: TestAttendanceData;
-  paymentService: ReturnType<typeof getPaymentService>;
+  paymentPort: PaymentPort;
   adminClient: any;
   createSessionParams: CreateStripeSessionParams;
   cleanup: () => Promise<void>;
@@ -88,7 +88,7 @@ export class PaymentSessionIdempotencyTestHelper {
       accessedTables: ["public.payments", "public.attendances", "public.events"],
     });
 
-    const paymentService = getPaymentService();
+    const paymentPort = getPaymentPort();
 
     const user = paymentSetup.testUser;
     const event = paymentSetup.testEvent;
@@ -118,7 +118,7 @@ export class PaymentSessionIdempotencyTestHelper {
       user,
       event,
       attendance,
-      paymentService,
+      paymentPort,
       adminClient,
       createSessionParams,
       cleanup: paymentSetup.cleanup,
@@ -261,7 +261,7 @@ export class PaymentSessionIdempotencyTestHelper {
 
     for (let i = 0; i < repetitions; i++) {
       const startTime = Date.now();
-      const result = await this.setup.paymentService.createStripeSession(
+      const result = await this.setup.paymentPort.createStripeSession(
         this.setup.createSessionParams
       );
       const executionTime = Date.now() - startTime;
@@ -295,7 +295,7 @@ export class PaymentSessionIdempotencyTestHelper {
   ): Promise<IdempotencyKeyTestResult> {
     // 1. 初回実行
     const initialParams = { ...this.setup.createSessionParams, amount: initialAmount };
-    const initialResult = await this.setup.paymentService.createStripeSession(initialParams);
+    const initialResult = await this.setup.paymentPort.createStripeSession(initialParams);
 
     // 初回実行後のIdempotency Key情報を取得
     const { latestPayment: initialPayment } = await this.getCurrentPaymentState();
@@ -303,7 +303,7 @@ export class PaymentSessionIdempotencyTestHelper {
 
     // 2. 金額変更して再実行
     const changedParams = { ...this.setup.createSessionParams, amount: changedAmount };
-    const repeatedResult = await this.setup.paymentService.createStripeSession(changedParams);
+    const repeatedResult = await this.setup.paymentPort.createStripeSession(changedParams);
 
     // 変更後のIdempotency Key情報を取得
     const { latestPayment: changedPayment } = await this.getCurrentPaymentState();
@@ -338,7 +338,7 @@ export class PaymentSessionIdempotencyTestHelper {
         ? { ...this.setup.createSessionParams, amount: this.setup.createSessionParams.amount + i }
         : this.setup.createSessionParams;
 
-      const promise = this.setup.paymentService
+      const promise = this.setup.paymentPort
         .createStripeSession(params)
         .catch((error: Error) => error);
 
@@ -397,7 +397,7 @@ export class PaymentSessionIdempotencyTestHelper {
 
     try {
       // セッション作成を試行（エラーが発生すべき）
-      await this.setup.paymentService.createStripeSession(this.setup.createSessionParams);
+      await this.setup.paymentPort.createStripeSession(this.setup.createSessionParams);
     } catch (error) {
       errorThrown = true;
       if (error instanceof PaymentError) {
@@ -430,7 +430,7 @@ export class PaymentSessionIdempotencyTestHelper {
     const failedPaymentId = await this.createPaymentWithStatus("failed");
 
     // セッション作成を実行
-    const sessionResult = await this.setup.paymentService.createStripeSession(
+    const sessionResult = await this.setup.paymentPort.createStripeSession(
       this.setup.createSessionParams
     );
 
@@ -466,7 +466,7 @@ export class PaymentSessionIdempotencyTestHelper {
 
     try {
       // セッション作成を試行（制約違反が発生する可能性があるが、回復すべき）
-      finalResult = await this.setup.paymentService.createStripeSession(
+      finalResult = await this.setup.paymentPort.createStripeSession(
         this.setup.createSessionParams
       );
       recoverySuccessful = true;

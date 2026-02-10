@@ -7,7 +7,6 @@
 
 import "server-only";
 
-// next/headers は テスト環境では利用できないため動的インポート
 import type { NextRequest, NextResponse } from "next/server";
 
 import { createServerClient, createBrowserClient } from "@supabase/ssr";
@@ -15,10 +14,14 @@ import type { CookieOptions } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
 
 import { logger } from "@core/logging/app-logger";
+import {
+  SUPABASE_COOKIE_CONFIG,
+  SUPABASE_AUTH_COOKIE_CONFIG,
+  getSupabaseCookieConfig,
+} from "@core/supabase/config";
 import { getEnv } from "@core/utils/cloudflare-env";
 import { handleServerError } from "@core/utils/error-handler.server";
 
-import { COOKIE_CONFIG, AUTH_CONFIG, getCookieConfig } from "./config";
 import { validateGuestTokenFormat } from "./crypto";
 import { ISecureSupabaseClientFactory } from "./secure-client-factory.interface";
 import {
@@ -35,18 +38,8 @@ import {
  * セキュアSupabaseクライアントファクトリーの実装
  */
 export class SecureSupabaseClientFactory implements ISecureSupabaseClientFactory {
-  // Security auditor removed
-
   constructor() {
     // 環境変数はメソッド内で動的に取得するため、コンストラクタでは初期化しない
-    // Security auditor removed
-  }
-
-  /**
-   * 新しいインスタンスを作成
-   */
-  public static create(): SecureSupabaseClientFactory {
-    return new SecureSupabaseClientFactory();
   }
 
   /**
@@ -163,10 +156,10 @@ export class SecureSupabaseClientFactory implements ISecureSupabaseClientFactory
         set(name: string, value: string, cookieOptions: CookieOptions) {
           cookieStore.set(name, value, {
             ...cookieOptions,
-            ...COOKIE_CONFIG,
+            ...SUPABASE_COOKIE_CONFIG,
             maxAge:
-              name === AUTH_CONFIG.cookieNames.session
-                ? AUTH_CONFIG.session.maxAge
+              name === SUPABASE_AUTH_COOKIE_CONFIG.cookieNames.session
+                ? SUPABASE_AUTH_COOKIE_CONFIG.session.maxAge
                 : cookieOptions.maxAge != null
                   ? cookieOptions.maxAge
                   : undefined,
@@ -385,7 +378,7 @@ export class SecureSupabaseClientFactory implements ISecureSupabaseClientFactory
     const isHttps =
       request.url.startsWith("https://") || request.headers.get("x-forwarded-proto") === "https";
 
-    const cookieConfig = getCookieConfig(isHttps);
+    const cookieConfig = getSupabaseCookieConfig(isHttps);
 
     return createServerClient(supabaseUrl, anonKey, {
       cookies: {
@@ -441,5 +434,5 @@ export class SecureSupabaseClientFactory implements ISecureSupabaseClientFactory
  * セキュアクライアントファクトリーのインスタンスを取得
  */
 export function getSecureClientFactory(): SecureSupabaseClientFactory {
-  return SecureSupabaseClientFactory.create();
+  return new SecureSupabaseClientFactory();
 }

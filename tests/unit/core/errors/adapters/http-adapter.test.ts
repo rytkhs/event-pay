@@ -76,25 +76,25 @@ describe("core/errors/adapters/http-adapter", () => {
 
     it("should include debug info when NODE_ENV is development", () => {
       const originalEnv = process.env.NODE_ENV;
-      process.env.NODE_ENV = "development";
+      (process.env as Record<string, string | undefined>).NODE_ENV = "development";
       try {
         const error = new AppError("INTERNAL_ERROR", { message: "Detailed DB error" });
         const problem = toProblemDetails(error);
         expect(problem.debug).toBe("Detailed DB error");
       } finally {
-        process.env.NODE_ENV = originalEnv;
+        (process.env as Record<string, string | undefined>).NODE_ENV = originalEnv;
       }
     });
 
     it("should not include debug info when NODE_ENV is not development", () => {
       const originalEnv = process.env.NODE_ENV;
-      process.env.NODE_ENV = "production";
+      (process.env as Record<string, string | undefined>).NODE_ENV = "production";
       try {
         const error = new AppError("INTERNAL_ERROR", { message: "Detailed DB error" });
         const problem = toProblemDetails(error);
         expect(problem.debug).toBeUndefined();
       } finally {
-        process.env.NODE_ENV = originalEnv;
+        (process.env as Record<string, string | undefined>).NODE_ENV = originalEnv;
       }
     });
   });

@@ -96,7 +96,7 @@ describe("🔗 Connect Webhook パイプライン 統合テスト", () => {
 
   beforeAll(() => {
     // テスト環境の基本設定
-    process.env.NODE_ENV = "test";
+    (process.env as Record<string, string | undefined>).NODE_ENV = "test";
     process.env.NEXT_PUBLIC_APP_URL = "https://test.eventpay.com";
     process.env.ENABLE_STRIPE_IP_CHECK = "false"; // IP制限を無効化
 
@@ -134,7 +134,7 @@ describe("🔗 Connect Webhook パイプライン 統合テスト", () => {
       });
 
       const response = await ConnectWebhookPOST(request);
-      const body = await response.json();
+      const body = (await response.json()) as any;
 
       expect(response.status).toBe(400);
       expect(body.code).toBe("MISSING_PARAMETER");
@@ -156,7 +156,7 @@ describe("🔗 Connect Webhook パイプライン 統合テスト", () => {
       });
 
       const response = await ConnectWebhookPOST(request);
-      const body = await response.json();
+      const body = (await response.json()) as any;
 
       expect(response.status).toBe(400);
       expect(body.code).toBe("INVALID_REQUEST");

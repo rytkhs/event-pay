@@ -14,7 +14,7 @@ export interface EventStartReminderEmailProps {
   guestUrl: string;
 }
 
-export const EventStartReminderEmail = ({
+const EventStartReminderEmail = ({
   nickname,
   eventTitle,
   eventDate,

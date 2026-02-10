@@ -14,7 +14,7 @@ export interface ResponseDeadlineReminderEmailProps {
   guestUrl: string;
 }
 
-export const ResponseDeadlineReminderEmail = ({
+const ResponseDeadlineReminderEmail = ({
   nickname,
   eventTitle,
   eventDate,

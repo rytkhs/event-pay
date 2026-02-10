@@ -17,7 +17,7 @@ import type { SortBy, SortOrder, StatusFilter, PaymentFilter } from "@core/types
 
 import { EventListWithFilters, EventLoading } from "@features/events";
 
-import { InlineErrorCard } from "@/components/errors";
+import { InlineErrorCard } from "@/components/errors/ui/ErrorCard";
 import { Button } from "@/components/ui/button";
 
 import { getEventsAction } from "./actions";

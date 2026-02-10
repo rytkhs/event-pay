@@ -10,8 +10,9 @@
 
 import { describe, test, expect, beforeAll, afterAll } from "@jest/globals";
 
-import { SecureSupabaseClientFactory } from "@core/security/secure-client-factory.impl";
+import { getSecureClientFactory } from "@core/security/secure-client-factory.impl";
 import { AdminReason } from "@core/security/secure-client-factory.types";
+
 import { setupRLSTest, type RLSTestSetup } from "./rls-test-setup";
 
 describe("Invite Header Requirement", () => {
@@ -26,7 +27,7 @@ describe("Invite Header Requirement", () => {
   });
 
   test("ヘッダー未設定ではrpc_public_get_eventは返らない", async () => {
-    const factory = SecureSupabaseClientFactory.create();
+    const factory = getSecureClientFactory();
     const anon = factory.createReadOnlyClient();
 
     const { data: events, error } = await (anon as any).rpc("rpc_public_get_event", {
@@ -51,7 +52,7 @@ describe("Public Attending Count RPC", () => {
   });
 
   test("invite header required; with header returns correct count", async () => {
-    const factory = SecureSupabaseClientFactory.create();
+    const factory = getSecureClientFactory();
     const admin = await factory.createAuditedAdminClient(
       AdminReason.TEST_DATA_SETUP,
       "setup event for attending count"
@@ -140,7 +141,7 @@ describe("Public Connect Account RPC", () => {
   });
 
   test("guest can fetch minimal connect account info for event organizer", async () => {
-    const factory = SecureSupabaseClientFactory.create();
+    const factory = getSecureClientFactory();
     const anonWithHeader = factory.createReadOnlyClient({
       headers: { "x-invite-token": setup.testInviteToken },
     });
@@ -160,7 +161,7 @@ describe("Public Connect Account RPC", () => {
   });
 
   test("mismatched creator_id returns empty", async () => {
-    const factory = SecureSupabaseClientFactory.create();
+    const factory = getSecureClientFactory();
     const anonWithHeader = factory.createReadOnlyClient({
       headers: { "x-invite-token": setup.testInviteToken },
     });
@@ -188,7 +189,7 @@ describe("Latest payment via RPC", () => {
   });
 
   test("rpc_guest_get_latest_payment returns most recently created amount", async () => {
-    const factory = SecureSupabaseClientFactory.create();
+    const factory = getSecureClientFactory();
     const admin = await factory.createAuditedAdminClient(
       AdminReason.TEST_DATA_SETUP,
       "setup payments for latest payment rpc"

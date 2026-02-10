@@ -6,6 +6,7 @@
  *     ? min(effective_payment_deadline + grace_days, date + 30d)
  *     : effective_payment_deadline
  */
+import { TIME_CONSTANTS } from "@core/constants/event-config";
 
 export interface EventDeadlineLike {
   date: string; // ISO (UTC保管)
@@ -18,12 +19,10 @@ export interface FinalLimitOptions {
   grace_period_days?: number | null; // 0-30
 }
 
-const ONE_DAY_MS = 24 * 60 * 60 * 1000;
-
 /**
  * ISO文字列をDateに変換（不正値はInvalid Dateのまま返す）
  */
-export function toDate(value: string | null | undefined): Date | null {
+function toDate(value: string | null | undefined): Date | null {
   if (!value) return null;
   const d = new Date(value);
   return Number.isNaN(d.getTime()) ? null : d;
@@ -63,7 +62,9 @@ export function deriveFinalPaymentLimit(
   if (!allow) return effectivePaymentDeadline;
 
   const graceDays = Math.max(0, Math.min(30, Number(args.grace_period_days ?? 0)));
-  const candidate = new Date(effectivePaymentDeadline.getTime() + graceDays * ONE_DAY_MS);
-  const eventPlus30d = new Date(eventDate.getTime() + 30 * ONE_DAY_MS);
+  const candidate = new Date(
+    effectivePaymentDeadline.getTime() + graceDays * TIME_CONSTANTS.MS_TO_DAYS
+  );
+  const eventPlus30d = new Date(eventDate.getTime() + 30 * TIME_CONSTANTS.MS_TO_DAYS);
   return new Date(Math.min(candidate.getTime(), eventPlus30d.getTime()));
 }

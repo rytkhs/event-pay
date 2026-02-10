@@ -19,7 +19,7 @@ jest.mock("@core/stripe/webhook-signature-verifier", () => ({
 describe("/api/webhooks/stripe (receiver)", () => {
   beforeEach(() => {
     process.env.QSTASH_TOKEN = "test_qstash_token";
-    process.env.NODE_ENV = "test";
+    (process.env as Record<string, string | undefined>).NODE_ENV = "test";
     delete process.env.SKIP_QSTASH_IN_TEST;
   });
 

@@ -38,8 +38,7 @@ describe("updateEventAction", () => {
     const captured = { updateData: undefined as any };
 
     // single: 1回目: 既存, 2回目: 更新後
-    const singleMock = jest
-      .fn()
+    const singleMock = (jest.fn() as any)
       .mockResolvedValueOnce({ data: options.existingEvent, error: null })
       .mockResolvedValueOnce({
         data: options.updatedEvent ?? options.existingEvent,
@@ -75,7 +74,7 @@ describe("updateEventAction", () => {
 
     const mockSupabase = {
       auth: {
-        getUser: jest.fn().mockResolvedValue({
+        getUser: (jest.fn() as any).mockResolvedValue({
           data: { user: { id: "00000000-0000-0000-0000-000000000001" } },
           error: null,
         }) as any,

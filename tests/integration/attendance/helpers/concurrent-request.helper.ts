@@ -8,7 +8,7 @@
 import type { ActionResult } from "@core/errors/adapters/server-actions";
 import type { ParticipationFormData } from "@core/validation/participation";
 
-import type { RegisterParticipationData } from "@features/invite/types";
+import type { RegisterParticipationData } from "@features/invite";
 
 import { registerParticipationAction } from "@/app/invite/[token]/actions";
 
@@ -115,7 +115,10 @@ export class ConcurrentRequestHelper {
             successResults.push(result.value);
           } else {
             // ActionResult で失敗の場合（success: false）
-            const errorResult = actionResult as Extract<ActionResult, { success: false }>;
+            const errorResult = actionResult as unknown as Extract<
+              ActionResult,
+              { success: false }
+            >;
             failureResults.push({
               reason: actionResult,
               error: {

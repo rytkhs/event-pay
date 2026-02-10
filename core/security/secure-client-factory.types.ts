@@ -22,13 +22,7 @@ export enum AdminReason {
 }
 
 // エラーハンドリングは専用ファイルから再エクスポート
-export {
-  GuestErrorCode,
-  GuestTokenError,
-  GuestTokenErrorFactory,
-  GuestTokenErrorHandler,
-  ErrorSeverity,
-} from "./guest-token-errors";
+export { GuestErrorCode, GuestTokenError, GuestTokenErrorFactory } from "./guest-token-errors";
 
 /**
  * 管理者アクセスエラーコード

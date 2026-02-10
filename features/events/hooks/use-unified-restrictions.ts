@@ -356,68 +356,6 @@ export function useUnifiedRestrictions(
 }
 
 // =============================================================================
-// Specialized Hooks - 特化型フック
-// =============================================================================
-
-/**
- * フィールド制限専用フック - 特定フィールドの制限状態のみを管理
- */
-export function useFieldRestriction(
-  field: RestrictableField,
-  context: RestrictionContext,
-  formData: FormDataSnapshot,
-  options?: UseUnifiedRestrictionsOptions
-) {
-  const {
-    isFieldRestricted,
-    isFieldEditable,
-    getFieldMessage,
-    getFieldRestrictionLevel,
-    isLoading,
-    error,
-  } = useUnifiedRestrictions(context, formData, options);
-
-  return useMemo(
-    () => ({
-      isRestricted: isFieldRestricted(field),
-      isEditable: isFieldEditable(field),
-      message: getFieldMessage(field),
-      restrictionLevel: getFieldRestrictionLevel(field),
-      isLoading,
-      error,
-    }),
-    [
-      field,
-      isFieldRestricted,
-      isFieldEditable,
-      getFieldMessage,
-      getFieldRestrictionLevel,
-      isLoading,
-      error,
-    ]
-  );
-}
-
-/**
- * 制限状態監視フック - 制限状態の変化を監視
- */
-export function useRestrictionStateMonitor(
-  context: RestrictionContext,
-  formData: FormDataSnapshot,
-  onRestrictionChange?: (restrictionState: RestrictionState) => void
-) {
-  const { restrictionState, isLoading } = useUnifiedRestrictions(context, formData);
-
-  useEffect(() => {
-    if (!isLoading && onRestrictionChange) {
-      onRestrictionChange(restrictionState);
-    }
-  }, [restrictionState, isLoading, onRestrictionChange]);
-
-  return restrictionState;
-}
-
-// =============================================================================
 // Hook Utilities - フックユーティリティ
 // =============================================================================
 

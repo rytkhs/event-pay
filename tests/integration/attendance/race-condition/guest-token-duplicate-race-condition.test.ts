@@ -333,8 +333,8 @@ describe("TC-RC-003: ゲストトークン重複レースコンディション�
 
     expect(concurrentResult.successCount).toBe(1);
     const successResult = concurrentResult.successResults[0];
-    const attendanceId = successResult.data?.attendanceId;
-    const guestToken = successResult.data?.guestToken;
+    const attendanceId = (successResult as any).data?.attendanceId;
+    const guestToken = (successResult as any).data?.guestToken;
 
     expect(attendanceId).toBeDefined();
     expect(guestToken).toBeDefined();

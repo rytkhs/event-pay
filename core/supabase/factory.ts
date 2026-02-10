@@ -6,8 +6,12 @@ import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { logger } from "@core/logging/app-logger";
-import { COOKIE_CONFIG, AUTH_CONFIG, getCookieConfig } from "@core/security";
 import { getSessionManager } from "@core/session/manager";
+import {
+  SUPABASE_COOKIE_CONFIG,
+  SUPABASE_AUTH_COOKIE_CONFIG,
+  getSupabaseCookieConfig,
+} from "@core/supabase/config";
 import { getEnv } from "@core/utils/cloudflare-env";
 import { handleServerError } from "@core/utils/error-handler.server";
 
@@ -95,7 +99,7 @@ export class SupabaseClientFactory {
     const isHttps =
       request.url.startsWith("https://") || request.headers.get("x-forwarded-proto") === "https";
 
-    const cookieConfig = getCookieConfig(isHttps);
+    const cookieConfig = getSupabaseCookieConfig(isHttps);
 
     return createServerClient<Database>(this.getURL(), this.getAnonKey(), {
       cookies: {
@@ -161,10 +165,13 @@ export class SupabaseClientFactory {
         setAll(cookiesToSet: { name: string; value: string; options: CookieOptions }[]) {
           try {
             cookiesToSet.forEach(({ name, value, options }) => {
-              const mergedOptions: CookieOptions = { ...options, ...COOKIE_CONFIG };
+              const mergedOptions: CookieOptions = { ...options, ...SUPABASE_COOKIE_CONFIG };
               // 明示的なmaxAgeが無い場合のみ、セッションクッキーのmaxAgeを上書き
-              if (options.maxAge == null && name === AUTH_CONFIG.cookieNames.session) {
-                mergedOptions.maxAge = AUTH_CONFIG.session.maxAge;
+              if (
+                options.maxAge == null &&
+                name === SUPABASE_AUTH_COOKIE_CONFIG.cookieNames.session
+              ) {
+                mergedOptions.maxAge = SUPABASE_AUTH_COOKIE_CONFIG.session.maxAge;
               }
               cookieStore.set(name, value, mergedOptions);
             });

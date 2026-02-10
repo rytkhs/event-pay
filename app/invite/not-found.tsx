@@ -3,7 +3,7 @@
  * 無効または存在しない招待リンクへのアクセス
  */
 
-import { ErrorLayout } from "@/components/errors";
+import { ErrorLayout } from "@/components/errors/ErrorLayout";
 
 /**
  * 無効な招待リンクの404ページ

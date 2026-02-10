@@ -9,9 +9,9 @@ import {
   StatusSyncService,
   StatusSyncError,
   StatusSyncErrorType,
-} from "@features/stripe-connect/services";
-import type { IStripeConnectService } from "@features/stripe-connect/services";
-import type { AccountInfo } from "@features/stripe-connect/types";
+} from "@features/stripe-connect/server";
+import type { IStripeConnectService } from "@features/stripe-connect/server";
+import type { AccountInfo } from "@features/stripe-connect";
 
 /**
  * モックStripeConnectServiceを作成

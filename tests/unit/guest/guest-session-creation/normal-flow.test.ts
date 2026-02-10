@@ -60,6 +60,7 @@ describe("仕様書通りの正常系フロー", () => {
           capacity: null,
           registration_deadline: null,
           payment_deadline: context.testEvent.date,
+          payment_methods: ["stripe"],
           allow_payment_after_deadline: false,
           grace_period_days: 0,
           created_by: context.testUser.id,

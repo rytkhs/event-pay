@@ -6,6 +6,8 @@ import { useRouter } from "next/navigation";
 
 import { Trash2, AlertTriangle } from "lucide-react";
 
+import { useToast } from "@core/contexts/toast-context";
+
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -17,7 +19,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { useToast } from "@/core/contexts/toast-context";
 
 import { cancelEventAction, deleteEventAction } from "../../actions";
 

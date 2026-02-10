@@ -13,7 +13,7 @@ jest.mock("@core/supabase/server", () => ({
 }));
 
 // Stripe Connect サービスのモック（共通モックを使用）
-jest.mock("@features/stripe-connect/services", () => {
+jest.mock("@features/stripe-connect/server", () => {
   const { setupStripeConnectServiceMock } = require("../../setup/stripe-connect-mock");
   return setupStripeConnectServiceMock({
     getAccountInfo: {
@@ -41,14 +41,14 @@ describe("Stripe Connect return/refresh actions", () => {
   });
 
   beforeEach(() => {
-    process.env.NODE_ENV = "test";
+    (process.env as Record<string, string | undefined>).NODE_ENV = "test";
     process.env.NEXT_PUBLIC_APP_URL = "http://localhost:3000";
     // afterEachでSupabase認証モックがリセットされるため毎回ユーザーを再設定
     setTestUserById("user_test", "u@example.com");
   });
 
   it("return action: 既存アカウント同期を実行する", async () => {
-    const { __mockFns } = jest.requireMock("@features/stripe-connect/services");
+    const { __mockFns } = jest.requireMock("@features/stripe-connect/server");
     __mockFns.getConnectAccountByUser.mockResolvedValue({
       user_id: "user_test",
       stripe_account_id: "acct_test",
@@ -64,7 +64,7 @@ describe("Stripe Connect return/refresh actions", () => {
   });
 
   it("refresh action: アカウントリンクを再生成してリダイレクトする", async () => {
-    const { __mockFns } = jest.requireMock("@features/stripe-connect/services");
+    const { __mockFns } = jest.requireMock("@features/stripe-connect/server");
     __mockFns.getConnectAccountByUser.mockResolvedValue({
       user_id: "user_test",
       stripe_account_id: "acct_test",

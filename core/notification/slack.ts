@@ -5,8 +5,8 @@
 
 import { AppError, errResult, okResult } from "@core/errors";
 import { logger } from "@core/logging/app-logger";
-import { getEnv } from "@core/utils/cloudflare-env";
 import type { NotificationResult } from "@core/notification/types";
+import { getEnv } from "@core/utils/cloudflare-env";
 
 type SlackErrorClassification = {
   retryable: boolean;

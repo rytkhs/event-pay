@@ -1,0 +1,57 @@
+/**
+ * Stripe Connect オンボーディングリフレッシュページ
+ */
+
+export const dynamic = "force-dynamic";
+
+import { Suspense } from "react";
+
+import { Loader2 } from "lucide-react";
+import type { Metadata } from "next";
+
+import { handleOnboardingRefreshAction } from "@features/stripe-connect/server";
+
+import { Card, CardContent } from "@/components/ui/card";
+
+export const metadata: Metadata = {
+  title: "設定を再開",
+  description: "Stripeアカウント設定を再開しています",
+};
+
+async function RefreshContent() {
+  // オンボーディングリフレッシュ処理を実行（リダイレクトが発生）
+  await handleOnboardingRefreshAction();
+
+  // この部分は通常実行されない（リダイレクトが発生するため）
+  return null;
+}
+
+function LoadingContent() {
+  return (
+    <div className="container mx-auto py-16 px-4">
+      <div className="max-w-md mx-auto">
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center py-12 space-y-4">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            <div className="text-center space-y-2">
+              <h2 className="text-lg font-semibold">設定を再開しています</h2>
+              <p className="text-sm text-muted-foreground">
+                Stripeアカウントの設定画面に戻ります。
+                <br />
+                しばらくお待ちください...
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+export default function PaymentSettingsRefreshPage() {
+  return (
+    <Suspense fallback={<LoadingContent />}>
+      <RefreshContent />
+    </Suspense>
+  );
+}

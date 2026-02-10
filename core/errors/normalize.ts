@@ -1,7 +1,5 @@
 import { ZodError } from "zod";
 
-import { ApiError } from "@core/api/client";
-
 import { AppError } from "./app-error";
 import { isErrorCode } from "./guards";
 import type { ErrorCode } from "./types";
@@ -66,23 +64,6 @@ export function normalizeError(
   if (isFetchTypeError(error)) {
     return new AppError("NETWORK_ERROR", {
       message: error.message,
-      cause: error,
-    });
-  }
-
-  if (error instanceof ApiError) {
-    const code = isErrorCode(error.code) ? error.code : defaultCode;
-    return new AppError(code, {
-      message: error.message,
-      userMessage: error.detail,
-      retryable: error.retryable,
-      correlationId: error.correlation_id,
-      details: {
-        status: error.status,
-        detail: error.detail,
-        validationErrors: error.validationErrors,
-        source: "api",
-      },
       cause: error,
     });
   }

@@ -13,8 +13,8 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 import type { PaymentLogger } from "@core/logging/payment-logger";
 import { generateIdempotencyKey } from "@core/stripe/client";
+import { assertStripePayment } from "@core/stripe/guards";
 import { PaymentError, PaymentErrorType } from "@core/types/payment-errors";
-import { assertStripePayment } from "@core/utils/stripe-guards";
 
 import { Database } from "@/types/database";
 

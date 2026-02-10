@@ -88,9 +88,9 @@ describe("TC-RC-002: メール重複レースコンディション対応テス�
     const successResult = oneSuccessVerification.successResult;
     expect(successResult).toBeDefined();
     expect(successResult!.success).toBe(true);
-    expect(successResult!.data?.attendanceId).toBeDefined();
-    expect(successResult!.data?.guestToken).toBeDefined();
-    expect(successResult!.data?.requiresAdditionalPayment).toBe(false); // 無料イベント
+    expect((successResult as any).data?.attendanceId).toBeDefined();
+    expect((successResult as any).data?.guestToken).toBeDefined();
+    expect((successResult as any).data?.requiresAdditionalPayment).toBe(false); // 無料イベント
 
     // 【期待結果検証3】失敗リクエストのエラー検証（仕様書準拠）
     const errorVerification = ConcurrentRequestHelper.verifyExpectedErrors(
@@ -225,7 +225,7 @@ describe("TC-RC-002: メール重複レースコンディション対応テス�
 
     // 成功リクエストで決済が必要なことを確認
     const successResult = verification.successResult;
-    expect(successResult!.data?.requiresAdditionalPayment).toBe(true);
+    expect((successResult as any).data?.requiresAdditionalPayment).toBe(true);
 
     // データベース整合性確認（決済レコードも含む）
     const dbStateVerification = await DatabaseStateHelper.verifyDatabaseState({

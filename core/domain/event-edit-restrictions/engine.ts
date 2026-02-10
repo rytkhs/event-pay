@@ -314,12 +314,3 @@ export class RestrictionEngine {
 export const createRestrictionEngine = (config?: RestrictionEngineConfig): RestrictionEngine => {
   return new RestrictionEngine(config);
 };
-
-/** デバッグモードの制限エンジンを作成 */
-export const createDebugRestrictionEngine = (): RestrictionEngine => {
-  return new RestrictionEngine({
-    debug: true,
-    evaluationThrottleMs: 0,
-    enableCache: false,
-  });
-};

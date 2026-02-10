@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import type { Metadata } from "next";
 
 import { GlobalFooter } from "@components/layout/GlobalFooter";
-import { GlobalHeader } from "@components/layout/GlobalHeader";
+import { GlobalHeader } from "@components/layout/GlobalHeader/GlobalHeader";
 
 export const metadata: Metadata = {
   robots: {

@@ -1,19 +1,25 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
+
+import Link from "next/link";
 
 import { CheckCircle, Copy, ExternalLink } from "lucide-react";
 
-import { useToast } from "@/core/contexts/toast-context";
+import { useToast } from "@core/contexts/toast-context";
+
+import { Button } from "@/components/ui/button";
 
 import type { RegisterParticipationData } from "../types";
 
 interface SuccessViewProps {
   data: RegisterParticipationData;
+  onRegisterAnother: () => void | Promise<void>;
 }
 
-export const SuccessView: React.FC<SuccessViewProps> = ({ data }) => {
+export const SuccessView: React.FC<SuccessViewProps> = ({ data, onRegisterAnother }) => {
   const { toast } = useToast();
+  const [isResetting, setIsResetting] = useState(false);
   const baseUrl =
     process.env.NEXT_PUBLIC_APP_URL ??
     (typeof window !== "undefined" ? window.location.origin : "");
@@ -25,6 +31,18 @@ export const SuccessView: React.FC<SuccessViewProps> = ({ data }) => {
       title: "リンクをコピーしました",
       variant: "success",
     });
+  };
+
+  const handleRegisterAnother = async () => {
+    if (isResetting) return;
+    setIsResetting(true);
+    try {
+      await onRegisterAnother();
+    } catch {
+      // 呼び出し側でサイレント継続するためここでも握りつぶす
+    } finally {
+      setIsResetting(false);
+    }
   };
 
   return (
@@ -51,7 +69,7 @@ export const SuccessView: React.FC<SuccessViewProps> = ({ data }) => {
               参加者マイページ
             </h3>
             <p className="text-sm text-slate-600 mb-4">
-              以下のリンクから、いつでも出欠状況の変更や支払い状況の確認が可能です。
+              以下のリンクから、いつでもステータスの変更や支払い状況の確認が可能です。
               <br />
               確認メールからもアクセスできます。
             </p>
@@ -63,19 +81,26 @@ export const SuccessView: React.FC<SuccessViewProps> = ({ data }) => {
                 value={derivedGuestUrl}
                 className="flex-1 bg-slate-50 border border-slate-200 text-slate-600 text-sm rounded-lg p-3 focus:outline-none"
               />
-              <button
+              <Button
                 onClick={copyToClipboard}
-                className="bg-slate-800 hover:bg-slate-900 text-white p-3 rounded-lg transition-colors flex items-center"
+                size="icon"
+                variant="secondary"
+                className="bg-slate-800 hover:bg-slate-900 text-white rounded-lg"
               >
                 <Copy className="w-5 h-5" />
-              </button>
+              </Button>
             </div>
-            <a
-              href={derivedGuestUrl}
-              className="mt-4 block text-center text-primary font-medium hover:underline text-sm"
+            <Button asChild className="mt-4 w-full" size="lg">
+              <Link href={derivedGuestUrl}>参加者マイページに移動する &rarr;</Link>
+            </Button>
+            <Button
+              variant="outline"
+              onClick={handleRegisterAnother}
+              disabled={isResetting}
+              className="mt-4 w-full border-slate-300 text-slate-700 hover:bg-slate-50"
             >
-              参加者マイページに移動する &rarr;
-            </a>
+              登録フォームに戻る
+            </Button>
           </div>
         </div>
       </div>

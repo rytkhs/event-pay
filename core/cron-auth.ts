@@ -2,10 +2,12 @@
 
 import "server-only";
 
-import { AUTH_CONFIG } from "@core/constants/auth-config";
 import { logger } from "@core/logging/app-logger";
 import { getEnv } from "@core/utils/cloudflare-env";
 import { handleServerError } from "@core/utils/error-handler.server";
+
+const BEARER_PREFIX = "Bearer ";
+const BEARER_PREFIX_LENGTH = BEARER_PREFIX.length;
 
 interface AuthResult {
   isValid: boolean;
@@ -40,13 +42,13 @@ export function validateCronSecret(request: RequestWithHeaders): AuthResult {
   // 1) Authorization: Bearer <token>
   const authHeader = request.headers.get("authorization");
   if (authHeader) {
-    if (!authHeader.startsWith(AUTH_CONFIG.BEARER_PREFIX)) {
+    if (!authHeader.startsWith(BEARER_PREFIX)) {
       return {
         isValid: false,
         error: "Invalid Authorization format (expected Bearer token)",
       };
     }
-    token = authHeader.slice(AUTH_CONFIG.BEARER_PREFIX_LENGTH);
+    token = authHeader.slice(BEARER_PREFIX_LENGTH);
   }
 
   // 2) X-Cron-Secret: <token>

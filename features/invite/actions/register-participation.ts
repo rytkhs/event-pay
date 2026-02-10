@@ -5,8 +5,8 @@ import { z } from "zod";
 
 import { type ActionResult, fail, ok, zodFail } from "@core/errors/adapters/server-actions";
 import { logger } from "@core/logging/app-logger";
-import { NotificationService } from "@core/notification";
-import { SecureSupabaseClientFactory } from "@core/security/secure-client-factory.impl";
+import { NotificationService } from "@core/notification/service";
+import { getSecureClientFactory } from "@core/security/secure-client-factory.impl";
 import {
   logParticipationSecurityEvent,
   logInvalidTokenAccess,
@@ -463,7 +463,7 @@ async function verifyGuestTokenStorage(
   securityContext: { userAgent?: string; ip?: string }
 ): Promise<void> {
   try {
-    const secureClientFactory = SecureSupabaseClientFactory.create();
+    const secureClientFactory = getSecureClientFactory();
     const supabase = await secureClientFactory.createGuestClient(expectedGuestToken);
 
     const { data: rpcRow, error: verifyError } = await (supabase as any)

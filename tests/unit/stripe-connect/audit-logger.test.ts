@@ -4,8 +4,8 @@
  * @module tests/unit/stripe-connect/audit-logger.test
  */
 
-import { logStatusChange } from "@features/stripe-connect/services/audit-logger";
-import type { StatusChangeLog } from "@features/stripe-connect/types/audit-log";
+import { logStatusChange } from "@features/stripe-connect/server";
+import type { StatusChangeLog } from "@features/stripe-connect/server";
 
 // system-loggerのモック
 jest.mock("@core/logging/system-logger", () => ({

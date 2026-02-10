@@ -6,6 +6,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
 
 import { PaymentError, PaymentErrorType } from "@core/types/payment-errors";
+import { PaymentStatusSchema } from "@core/validation/payment-status";
 
 import { Database } from "@/types/database";
 
@@ -17,9 +18,6 @@ import {
   PaymentMethod,
   PaymentStatus,
 } from "./types";
-
-// Zodスキーマ定義（内部使用専用）
-const paymentStatusSchema = z.enum(["pending", "paid", "received", "failed", "refunded", "waived"]);
 
 // サービス層（Stripeに渡す直前の最終パラメータ）用スキーマ（内部使用専用）
 const createStripeSessionParamsSchema = z.object({
@@ -49,7 +47,7 @@ const createCashPaymentParamsSchema = z.object({
 // 決済ステータス更新用スキーマ（内部使用専用）
 const updatePaymentStatusParamsSchema = z.object({
   paymentId: z.string().uuid("決済IDは有効なUUIDである必要があります"),
-  status: paymentStatusSchema,
+  status: PaymentStatusSchema,
   paidAt: z.date().optional(),
   stripePaymentIntentId: z.string().optional(),
 });

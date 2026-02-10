@@ -4,6 +4,8 @@
 
 import { jest } from "@jest/globals";
 
+import { expectActionFailure } from "@tests/helpers/assert-result";
+
 import { loginAction } from "@/app/(auth)/actions";
 
 import { setupNextHeadersMocks } from "../../setup/common-mocks";
@@ -75,10 +77,11 @@ describe("loginAction", () => {
       const result = await loginAction(formData);
 
       expect(result.success).toBe(false);
+      const error = expectActionFailure(result);
       // バリデーションエラー時は汎用的なエラーメッセージが返される
-      expect(result.error?.userMessage).toBe("入力内容を確認してください");
+      expect(error.userMessage).toBe("入力内容を確認してください");
       // 詳細なエラーはfieldErrorsに含まれる
-      expect(result.error?.fieldErrors?.email?.[0]).toContain("有効なメールアドレス");
+      expect(error.fieldErrors?.email?.[0]).toContain("有効なメールアドレス");
     });
 
     it("パスワードが空の場合は拒否される", async () => {
@@ -89,10 +92,11 @@ describe("loginAction", () => {
       const result = await loginAction(formData);
 
       expect(result.success).toBe(false);
+      const error = expectActionFailure(result);
       // バリデーションエラー時は汎用的なエラーメッセージが返される
-      expect(result.error?.userMessage).toBe("入力内容を確認してください");
+      expect(error.userMessage).toBe("入力内容を確認してください");
       // 詳細なエラーはfieldErrorsに含まれる
-      expect(result.error?.fieldErrors?.password?.[0]).toBe("パスワードを入力してください");
+      expect(error.fieldErrors?.password?.[0]).toBe("パスワードを入力してください");
     });
 
     it("必須フィールドが不足している場合は拒否される", async () => {
@@ -128,8 +132,9 @@ describe("loginAction", () => {
       const result = await loginAction(formData);
 
       expect(result.success).toBe(false);
+      const error = expectActionFailure(result);
       // ユーザー列挙攻撃対策により、統一されたエラーメッセージが返される
-      expect(result.error?.userMessage).toBe("メールアドレスまたはパスワードが正しくありません");
+      expect(error.userMessage).toBe("メールアドレスまたはパスワードが正しくありません");
     });
 
     it("Supabaseの予期しないエラーは適切に処理される", async () => {

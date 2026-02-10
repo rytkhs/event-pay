@@ -4,9 +4,11 @@
 
 import { describe, test, expect, beforeAll, afterAll } from "@jest/globals";
 
-import { SecureSupabaseClientFactory } from "@core/security/secure-client-factory.impl";
 import { AdminReason } from "@core/security/secure-client-factory.types";
+
 import { updateGuestAttendanceAction } from "@/app/guest/[token]/actions";
+import { getSecureClientFactory } from "@/core/security/secure-client-factory.impl";
+
 import { setupRLSTest, type RLSTestSetup } from "./rls-test-setup";
 
 describe("Event Closure Guards", () => {
@@ -21,7 +23,7 @@ describe("Event Closure Guards", () => {
   });
 
   test("登録締切後はゲスト更新が拒否される", async () => {
-    const factory = SecureSupabaseClientFactory.create();
+    const factory = getSecureClientFactory();
     const admin = await factory.createAuditedAdminClient(
       AdminReason.TEST_DATA_SETUP,
       "setup event closure guard test"
@@ -68,7 +70,7 @@ describe("Event Closure Guards", () => {
     // アプリロジックの期待: 更新は拒否される
     expect(result.success).toBe(false);
     // スキーマの期待: ステータスは変更されていない（not_attendingのまま）
-    const verifyFactory = SecureSupabaseClientFactory.create();
+    const verifyFactory = getSecureClientFactory();
     const adminVerify = await verifyFactory.createAuditedAdminClient(
       AdminReason.TEST_DATA_SETUP,
       "verify closure guard"

@@ -178,7 +178,7 @@ describe("GA4ClientService", () => {
         // タイムアウト後にコールバックを実行
         await new Promise((resolve) => setTimeout(resolve, 150));
         if (delayedCallback) {
-          delayedCallback(validClientId);
+          (delayedCallback as (id: string) => void)(validClientId);
         }
 
         const result = await resultPromise;

@@ -7,7 +7,6 @@ import {
   type RestrictionContext,
   type FormDataSnapshot,
   type RestrictionEvaluation,
-  type RestrictableField,
 } from "./types";
 
 // =============================================================================
@@ -198,7 +197,7 @@ export const ATTENDEE_COUNT_CAPACITY_RESTRICTION: RestrictionRule = {
 // =============================================================================
 
 /** 参加者への影響に関する注意喚起 */
-export const ATTENDEE_IMPACT_ADVISORY: RestrictionRule = {
+const ATTENDEE_IMPACT_ADVISORY: RestrictionRule = {
   id: "attendee_impact_advisory",
   field: "title",
   level: "advisory",
@@ -278,7 +277,7 @@ export const PAID_EVENT_PAYMENT_REQUIRED_ADVISORY: RestrictionRule = {
 };
 
 /** 日時変更の注意 */
-export const DATE_CHANGE_ADVISORY: RestrictionRule = {
+const DATE_CHANGE_ADVISORY: RestrictionRule = {
   id: "date_change_advisory",
   field: "date",
   level: "advisory",
@@ -308,7 +307,7 @@ export const DATE_CHANGE_ADVISORY: RestrictionRule = {
 };
 
 /** 定員削減の注意 */
-export const CAPACITY_REDUCTION_ADVISORY: RestrictionRule = {
+const CAPACITY_REDUCTION_ADVISORY: RestrictionRule = {
   id: "capacity_reduction_advisory",
   field: "capacity",
   level: "advisory",
@@ -352,39 +351,3 @@ export const ALL_RESTRICTION_RULES: RestrictionRule[] = [
   DATE_CHANGE_ADVISORY,
   CAPACITY_REDUCTION_ADVISORY,
 ];
-
-/** 制限レベル別ルール */
-export const RESTRICTION_RULES_BY_LEVEL = {
-  structural: ALL_RESTRICTION_RULES.filter((rule) => rule.level === "structural"),
-  conditional: ALL_RESTRICTION_RULES.filter((rule) => rule.level === "conditional"),
-  advisory: ALL_RESTRICTION_RULES.filter((rule) => rule.level === "advisory"),
-};
-
-/** フィールド別ルール */
-export const RESTRICTION_RULES_BY_FIELD = ALL_RESTRICTION_RULES.reduce(
-  (acc, rule) => {
-    if (!acc[rule.field]) {
-      acc[rule.field] = [];
-    }
-    acc[rule.field].push(rule);
-    return acc;
-  },
-  {} as Record<RestrictableField, RestrictionRule[]>
-);
-
-/** ルールIDでルールを取得 */
-export const getRuleById = (id: string): RestrictionRule | undefined => {
-  return ALL_RESTRICTION_RULES.find((rule) => rule.id === id);
-};
-
-/** フィールドに適用されるルールを取得 */
-export const getRulesForField = (field: RestrictableField): RestrictionRule[] => {
-  return RESTRICTION_RULES_BY_FIELD[field] || [];
-};
-
-/** 制限レベルのルールを取得 */
-export const getRulesByLevel = (
-  level: "structural" | "conditional" | "advisory"
-): RestrictionRule[] => {
-  return RESTRICTION_RULES_BY_LEVEL[level];
-};

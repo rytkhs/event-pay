@@ -5,7 +5,7 @@
 
 "use client";
 
-import { AuthErrorLayout } from "@/components/errors";
+import { AuthErrorLayout } from "@/components/errors/ErrorLayout";
 
 interface AuthErrorPageProps {
   error: Error & { digest?: string };

@@ -187,7 +187,7 @@ describe("📋 仕様書準拠性検証", () => {
        * - 各ステータスにランク値が定義されている
        * - 実装が仕様書のランク値と一致していること
        */
-      const { statusRank } = await import("@/core/utils/payments/status-rank");
+      const { statusRank } = await import("@core/utils/payments/status-rank");
 
       const expectedRanks = {
         pending: 10,
@@ -212,11 +212,12 @@ describe("📋 仕様書準拠性検証", () => {
        * - Webhook処理の実装ファイルが存在すること
        * - ステータスランク処理の実装ファイルが存在すること
        */
-      const webhookHandler =
-        await import("@/features/payments/services/webhook/webhook-event-handler");
+      const webhookHandler = await import(
+        "@/features/payments/services/webhook/webhook-event-handler"
+      );
       expect(webhookHandler.StripeWebhookEventHandler).toBeDefined();
 
-      const statusRank = await import("@/core/utils/payments/status-rank");
+      const statusRank = await import("@core/utils/payments/status-rank");
       expect(statusRank.statusRank).toBeDefined();
       expect(statusRank.canPromoteStatus).toBeDefined();
     });

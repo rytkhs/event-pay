@@ -5,7 +5,7 @@
  * 既存のヘルパー関数を活用し、よく使われるパターンを共通化
  */
 
-import { SecureSupabaseClientFactory } from "@core/security/secure-client-factory.impl";
+import { getSecureClientFactory } from "@core/security/secure-client-factory.impl";
 import { AdminReason } from "@core/security/secure-client-factory.types";
 
 import {
@@ -271,14 +271,15 @@ export async function createCommonTestSetup(
       );
 
   // 認証済みクライアントをセットアップ（RLSが正しく適用されるようにする）
-  const { setupAuthenticatedTestClient, clearAuthenticatedTestClient } =
-    await import("./authenticated-client-mock");
+  const { setupAuthenticatedTestClient, clearAuthenticatedTestClient } = await import(
+    "./authenticated-client-mock"
+  );
   await setupAuthenticatedTestClient(email, password, testUser.id);
 
   // Supabaseクライアント取得（オプションでスキップ可能）
   let adminClient: any;
   if (withAdminClient) {
-    const factory = SecureSupabaseClientFactory.create();
+    const factory = getSecureClientFactory();
     adminClient = await factory.createAuditedAdminClient(
       AdminReason.TEST_DATA_SETUP,
       `${testName} test setup`,
@@ -437,7 +438,7 @@ export async function createPaymentTestSetup(
   const testAttendance = await createTestAttendance(testEvent.id);
 
   // Supabaseクライアント取得
-  const factory = SecureSupabaseClientFactory.create();
+  const factory = getSecureClientFactory();
   const adminClient = await factory.createAuditedAdminClient(
     AdminReason.TEST_DATA_SETUP,
     `${testName} payment test setup`,
@@ -589,7 +590,7 @@ export async function createMultiUserTestSetup(
   }
 
   // Supabaseクライアント取得
-  const factory = SecureSupabaseClientFactory.create();
+  const factory = getSecureClientFactory();
   const adminClient = await factory.createAuditedAdminClient(
     AdminReason.TEST_DATA_SETUP,
     `${testName} multi-user test setup`,

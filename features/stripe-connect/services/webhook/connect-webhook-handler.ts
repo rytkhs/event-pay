@@ -11,22 +11,20 @@ import Stripe from "stripe";
 
 import { errFrom, okResult } from "@core/errors";
 import { logger } from "@core/logging/app-logger";
-import { NotificationService } from "@core/notification";
+import { NotificationService } from "@core/notification/service";
 import type {
   AccountStatusChangeNotification,
   AccountRestrictedNotification,
   StripeConnectNotificationData,
 } from "@core/notification/types";
 import { getStripeConnectPort, type StripeAccountStatusLike } from "@core/ports/stripe-connect";
-import { SecureSupabaseClientFactory } from "@core/security/secure-client-factory.impl";
+import { getSecureClientFactory } from "@core/security/secure-client-factory.impl";
 import { AdminReason } from "@core/security/secure-client-factory.types";
-import { type StripeAccountStatus } from "@core/types/enums";
+import type { StripeAccountStatus } from "@core/types/statuses";
 import { handleServerError } from "@core/utils/error-handler.server";
 
-// Removed @core/services dependency to break circular reference
-// Use ports instead of direct feature import to avoid boundaries violation
-
 import { Database } from "@/types/database";
+
 import type { ConnectWebhookResult } from "./connect-webhook.types";
 
 /**
@@ -59,7 +57,7 @@ export class ConnectWebhookHandler {
    * 監査付きのWebhookハンドラーを作成
    */
   static async create(): Promise<ConnectWebhookHandler> {
-    const secureFactory = SecureSupabaseClientFactory.create();
+    const secureFactory = getSecureClientFactory();
     const adminClient = await secureFactory.createAuditedAdminClient(
       AdminReason.PAYMENT_PROCESSING,
       "Stripe Connect webhook processing"

@@ -19,8 +19,10 @@
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\"",
     "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md}\"",
     "typecheck": "tsc --noEmit",
+    "typecheck:test": "tsc -p tsconfig.test.json --noEmit",
+    "typecheck:all": "npm run typecheck && npm run typecheck:test",
     "check:enum-consistency": "tsx scripts/check-enum-consistency.ts",
-    "check:all": "npm run lint && npm run typecheck && npm run test:unit",
+    "check:all": "npm run lint && npm run typecheck:all && npm run test:unit",
     "prepare": "husky",
     "db:reset": "npx supabase db reset",
     "db:migrate": "npx supabase migration up",
@@ -97,6 +99,7 @@
     "stripe": "^19.1.0",
     "tailwind-merge": "^3.3.1",
     "tailwindcss-animate": "^1.0.7",
+    "unified": "^11.0.5",
     "vaul": "^1.1.2",
     "zod": "^3.25.67"
   },
@@ -110,6 +113,7 @@
     ]
   },
   "devDependencies": {
+    "@jest/globals": "^30.2.0",
     "@jest/transform": "^30.1.2",
     "@next/bundle-analyzer": "^15.5.6",
     "@playwright/test": "^1.47.2",
@@ -126,6 +130,7 @@
     "@types/sanitize-html": "^2.16.0",
     "@typescript-eslint/eslint-plugin": "^7.18.0",
     "@typescript-eslint/parser": "^7.18.0",
+    "autoprefixer": "^10.4.24",
     "dotenv": "^17.2.2",
     "eslint": "^8.57.1",
     "eslint-config-next": "^15.5.2",
@@ -142,6 +147,8 @@
     "jest-environment-jsdom": "^30.1.2",
     "jest-junit": "^16.0.0",
     "jest-util": "^30.0.5",
+    "jsdom": "^28.0.0",
+    "knip": "^5.83.0",
     "lint-staged": "^16.1.6",
     "postcss": "^8",
     "postcss-load-config": "^6.0.1",
@@ -158,7 +165,9 @@
     "supabase": "^2.58.5",
     "tailwindcss": "^3.4.1",
     "ts-jest": "^29.4.1",
-    "typescript": "^5",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3",
+    "undici": "^7.21.0",
     "wrangler": "^4.43.0"
   }
 }

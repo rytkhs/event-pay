@@ -4,7 +4,7 @@ import { SupabaseClient } from "@supabase/supabase-js";
 
 import { AppError, errFrom, errResult, okResult } from "@core/errors";
 import { logger } from "@core/logging/app-logger";
-import { SecureSupabaseClientFactory } from "@core/security/secure-client-factory.impl";
+import { getSecureClientFactory } from "@core/security/secure-client-factory.impl";
 import { AdminReason } from "@core/security/secure-client-factory.types";
 import { createClient } from "@core/supabase/server";
 import { toCsvCell } from "@core/utils/csv";
@@ -70,7 +70,7 @@ export class SettlementReportService {
       });
 
       // RPC関数は管理者（service_role）クライアントで実行（権限整合）
-      const factory = SecureSupabaseClientFactory.create();
+      const factory = getSecureClientFactory();
       const adminClient = await factory.createAuditedAdminClient(
         AdminReason.PAYMENT_PROCESSING,
         "features/settlements/services/service generateSettlementReport"

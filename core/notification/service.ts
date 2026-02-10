@@ -7,7 +7,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { AppError, errFrom, errResult, okResult } from "@core/errors";
 import { logger } from "@core/logging/app-logger";
-import { getEnv } from "@core/utils/cloudflare-env";
+import { buildGuestUrl } from "@core/utils/guest-token";
 
 import { Database } from "@/types/database";
 
@@ -55,8 +55,9 @@ export class NotificationService implements INotificationService {
         );
       }
 
-      const { default: AccountVerifiedEmail } =
-        await import("@/emails/connect/AccountVerifiedEmail");
+      const { default: AccountVerifiedEmail } = await import(
+        "@/emails/connect/AccountVerifiedEmail"
+      );
 
       const template: EmailTemplate = {
         subject: "Stripeアカウントの認証が完了しました",
@@ -95,8 +96,9 @@ export class NotificationService implements INotificationService {
         );
       }
 
-      const { default: AccountRestrictedEmail } =
-        await import("@/emails/connect/AccountRestrictedEmail");
+      const { default: AccountRestrictedEmail } = await import(
+        "@/emails/connect/AccountRestrictedEmail"
+      );
 
       const template: EmailTemplate = {
         subject: "Stripeアカウントに制限が設定されました",
@@ -167,8 +169,9 @@ export class NotificationService implements INotificationService {
           );
         }
 
-        const { default: AccountStatusChangedEmail } =
-          await import("@/emails/connect/AccountStatusChangedEmail");
+        const { default: AccountStatusChangedEmail } = await import(
+          "@/emails/connect/AccountStatusChangedEmail"
+        );
 
         const template: EmailTemplate = {
           subject: "Stripeアカウントの状態が更新されました",
@@ -235,13 +238,11 @@ export class NotificationService implements INotificationService {
     data: ParticipationRegisteredNotification
   ): Promise<NotificationResult> {
     try {
-      const { default: ParticipationRegisteredEmail } =
-        await import("@/emails/participation/ParticipationRegisteredEmail");
+      const { default: ParticipationRegisteredEmail } = await import(
+        "@/emails/participation/ParticipationRegisteredEmail"
+      );
 
-      // ゲストURLを構築
-      const baseUrl =
-        process.env.NEXT_PUBLIC_APP_URL || getEnv().NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-      const guestUrl = `${baseUrl}/guest/${data.guestToken}`;
+      const guestUrl = buildGuestUrl(data.guestToken);
 
       const template: EmailTemplate = {
         subject: `【みんなの集金】${data.eventTitle} - 参加登録完了`,
@@ -272,8 +273,9 @@ export class NotificationService implements INotificationService {
     data: PaymentCompletedNotification
   ): Promise<NotificationResult> {
     try {
-      const { default: PaymentCompletedEmail } =
-        await import("@/emails/payment/PaymentCompletedEmail");
+      const { default: PaymentCompletedEmail } = await import(
+        "@/emails/payment/PaymentCompletedEmail"
+      );
 
       const template: EmailTemplate = {
         subject: `【みんなの集金】${data.eventTitle} - お支払い完了`,

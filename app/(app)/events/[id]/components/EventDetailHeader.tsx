@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 
 import { ArrowLeft, Calendar, Edit, MapPin } from "lucide-react";
 
-import { EVENT_STATUS_LABELS } from "@core/types/enums";
+import { EVENT_STATUS_LABELS } from "@core/constants/status-labels";
 import type { Event } from "@core/types/models";
 import { sanitizeForEventPay } from "@core/utils/sanitize";
 import { formatUtcToJstByType } from "@core/utils/timezone";

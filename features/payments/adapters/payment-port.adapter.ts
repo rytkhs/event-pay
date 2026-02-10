@@ -13,12 +13,14 @@ import {
   PaymentErrorType,
   ErrorHandlingResult as CoreErrorHandlingResult,
 } from "@core/ports/payments";
-import { SecureSupabaseClientFactory } from "@core/security/secure-client-factory.impl";
+import { getSecureClientFactory } from "@core/security/secure-client-factory.impl";
 import { AdminReason } from "@core/security/secure-client-factory.types";
 
-import { updateCashStatusAction, bulkUpdateCashStatusAction } from "../actions";
-import { PaymentService, PaymentErrorHandler } from "../services";
+import { bulkUpdateCashStatusAction } from "../actions/bulk-update-cash-status";
+import { updateCashStatusAction } from "../actions/update-cash-status";
 import { ERROR_HANDLING_BY_TYPE } from "../services/error-mapping";
+import { PaymentErrorHandler } from "../services/payment-error-handler";
+import { PaymentService } from "../services/service";
 import { isPaymentStatus } from "../types";
 
 // Payment Actions Implementation
@@ -33,7 +35,7 @@ const paymentServiceImpl: Pick<
 > = {
   async createStripeSession(params: CoreCreateStripeSessionParams) {
     // Stripe決済セッション作成時はAdminクライアントを使用（RLS回避のため）
-    const factory = SecureSupabaseClientFactory.create();
+    const factory = getSecureClientFactory();
     const adminClient = await factory.createAuditedAdminClient(
       AdminReason.PAYMENT_PROCESSING,
       "features/payments/adapters/payment-port.adapter createStripeSession"
@@ -45,7 +47,7 @@ const paymentServiceImpl: Pick<
 
   async createCashPayment(params: CoreCreateCashPaymentParams) {
     // 現金決済レコード作成は管理者（service_role）クライアントで実行
-    const factory = SecureSupabaseClientFactory.create();
+    const factory = getSecureClientFactory();
     const adminClient = await factory.createAuditedAdminClient(
       AdminReason.PAYMENT_PROCESSING,
       "features/payments/adapters/payment-port.adapter createCashPayment"
@@ -73,7 +75,7 @@ const paymentServiceImpl: Pick<
     }
 
     // 決済ステータス更新は管理者（service_role）クライアントで実行
-    const factory = SecureSupabaseClientFactory.create();
+    const factory = getSecureClientFactory();
     const adminClient = await factory.createAuditedAdminClient(
       AdminReason.PAYMENT_PROCESSING,
       "features/payments/adapters/payment-port.adapter updatePaymentStatus"

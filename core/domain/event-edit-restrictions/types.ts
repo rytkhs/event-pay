@@ -169,13 +169,5 @@ export interface RestrictionEngineConfig {
   customRules?: RestrictionRule[];
 }
 
-/** 制限レベルでフィルターされた制限状態 */
-export type RestrictionsOfLevel<T extends RestrictionLevel> = {
-  [K in keyof RestrictionState]: K extends T ? ActiveRestriction[] : never;
-}[keyof RestrictionState];
-
 /** フィールド別制限マップ */
 export type FieldRestrictionMap = Map<RestrictableField, FieldRestrictionSummary>;
-
-/** 制限ルール辞書 */
-export type RestrictionRuleDictionary = Record<string, RestrictionRule>;

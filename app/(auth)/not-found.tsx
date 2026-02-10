@@ -5,7 +5,7 @@
 
 "use client";
 
-import { NotFoundLayout } from "@/components/errors";
+import { NotFoundLayout } from "@/components/errors/ErrorLayout";
 
 /**
  * 認証関連ページの404エラー

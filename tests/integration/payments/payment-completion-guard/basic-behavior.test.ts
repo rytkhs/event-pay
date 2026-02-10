@@ -4,16 +4,15 @@
 
 import { describe, test, expect, beforeAll, afterAll, beforeEach } from "@jest/globals";
 
-import { getPaymentService } from "../../../../core/services";
-import { CreateStripeSessionParams } from "../../../../features/payments/types";
-import {
-  createPaymentTestSetup,
-  type PaymentTestSetup,
-} from "../../../../tests/setup/common-test-setup";
+import { getPaymentPort, type PaymentPort } from "@core/ports/payments";
+
+import { CreateStripeSessionParams } from "@features/payments";
+
+import { createPaymentTestSetup, type PaymentTestSetup } from "@tests/setup/common-test-setup";
 
 describe("完了済みガード基本動作", () => {
   let setup: PaymentTestSetup;
-  let paymentService: ReturnType<typeof getPaymentService>;
+  let paymentPort: PaymentPort;
 
   beforeAll(async () => {
     const paymentSetup = await createPaymentTestSetup({
@@ -22,7 +21,7 @@ describe("完了済みガード基本動作", () => {
       accessedTables: ["public.users", "public.events", "public.attendances", "public.payments"],
     });
     setup = paymentSetup;
-    paymentService = getPaymentService();
+    paymentPort = getPaymentPort();
   });
 
   afterAll(async () => {
@@ -55,7 +54,7 @@ describe("完了済みガード基本動作", () => {
       },
     };
 
-    const result = await paymentService.createStripeSession(sessionParams);
+    const result = await paymentPort.createStripeSession(sessionParams);
 
     expect(result).toHaveProperty("sessionUrl");
     expect(result).toHaveProperty("sessionId");
@@ -100,7 +99,7 @@ describe("完了済みガード基本動作", () => {
       },
     };
 
-    const result = await paymentService.createStripeSession(sessionParams);
+    const result = await paymentPort.createStripeSession(sessionParams);
 
     expect(result.sessionUrl).toMatch(/^https:\/\/checkout\.stripe\.com/);
 
@@ -144,7 +143,7 @@ describe("完了済みガード基本動作", () => {
       },
     };
 
-    const result = await paymentService.createStripeSession(sessionParams);
+    const result = await paymentPort.createStripeSession(sessionParams);
 
     expect(result.sessionUrl).toMatch(/^https:\/\/checkout\.stripe\.com/);
 

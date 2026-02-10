@@ -7,7 +7,7 @@
  * - datetime-local入力値はJSTとして解釈してUTCに変換
  */
 
-import { parseISO, differenceInCalendarDays } from "date-fns";
+import { parseISO } from "date-fns";
 import { fromZonedTime, toZonedTime, format } from "date-fns-tz";
 
 const JST_TIMEZONE = "Asia/Tokyo";
@@ -115,18 +115,6 @@ export function getCurrentJstTime(): Date {
 }
 
 /**
- * datetime-local入力の最小値を生成（現在時刻+1時間のJST）
- */
-export function getMinDatetimeLocal(): string {
-  const now = getCurrentJstTime();
-  // 1時間後
-  now.setHours(now.getHours() + 1);
-
-  // 'YYYY-MM-DDTHH:mm'形式に変換
-  return format(now, "yyyy-MM-dd'T'HH:mm", { timeZone: JST_TIMEZONE });
-}
-
-/**
  * UTC日時がJSTの現在時刻より未来かどうかを判定
  */
 export function isUtcDateFuture(utcDate: Date | string): boolean {
@@ -158,21 +146,6 @@ export function formatUtcToDatetimeLocal(dateString: string): string {
     const date = new Date(dateString);
     if (isNaN(date.getTime())) return "";
     return formatUtcToJst(date, "yyyy-MM-dd'T'HH:mm");
-  } catch {
-    return "";
-  }
-}
-
-/**
- * UTC日時文字列を日本語表示形式のJST文字列に変換
- * UI表示での使用を想定
- */
-export function formatUtcToJapaneseDisplay(dateString: string): string {
-  if (!dateString) return "";
-  try {
-    const date = new Date(dateString);
-    if (isNaN(date.getTime())) return "";
-    return formatUtcToJst(date, "yyyy年MM月dd日 HH:mm");
   } catch {
     return "";
   }
@@ -231,14 +204,4 @@ export function formatDateToJstYmd(date: Date | string): string {
   const d = typeof date === "string" ? new Date(date) : date;
   const jst = toZonedTime(d, JST_TIMEZONE);
   return format(jst, "yyyy-MM-dd", { timeZone: JST_TIMEZONE });
-}
-
-/**
- * JSTにおける暦日差（now - since）を返す
- */
-export function getElapsedCalendarDaysInJst(since: Date | string, now: Date = new Date()): number {
-  const sinceDate = typeof since === "string" ? new Date(since) : since;
-  const sinceJst = toZonedTime(sinceDate, JST_TIMEZONE);
-  const nowJst = toZonedTime(now, JST_TIMEZONE);
-  return differenceInCalendarDays(nowJst, sinceJst);
 }

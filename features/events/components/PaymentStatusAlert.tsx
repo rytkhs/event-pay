@@ -6,7 +6,6 @@ import { useRouter } from "next/navigation";
 
 import { CheckCircle, XCircle, AlertCircle, X, Loader2 } from "lucide-react";
 
-import { apiClient, isApiError } from "@core/api/client";
 import { sanitizeForEventPay } from "@core/utils/sanitize";
 
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -23,6 +22,26 @@ interface PaymentStatusAlertProps {
 interface VerificationSuccessResult {
   payment_status: "success" | "failed" | "canceled" | "processing" | "pending";
   payment_required: boolean;
+}
+
+interface VerificationApiError {
+  status: number;
+  detail?: string;
+  retryable: boolean;
+}
+
+function isVerificationApiError(error: unknown): error is VerificationApiError {
+  if (!error || typeof error !== "object") {
+    return false;
+  }
+  const candidate = error as Record<string, unknown>;
+  return (
+    typeof candidate.status === "number" &&
+    typeof candidate.retryable === "boolean" &&
+    ("detail" in candidate
+      ? typeof candidate.detail === "string" || candidate.detail == null
+      : true)
+  );
 }
 
 export function PaymentStatusAlert({
@@ -75,16 +94,48 @@ export function PaymentStatusAlert({
         attendance_id: attendanceId,
       });
 
-      // apiClientを使用してJSONレスポンスを取得
-      const result = await apiClient.get<VerificationSuccessResult>(
-        `/api/payments/verify-session?${params}`,
-        {
-          headers: {
-            "x-guest-token": guestToken,
-          },
-          signal: controller.signal,
+      const response = await fetch(`/api/payments/verify-session?${params}`, {
+        method: "GET",
+        credentials: "same-origin",
+        headers: {
+          Accept: "application/json",
+          "x-guest-token": guestToken,
+        },
+        signal: controller.signal,
+      });
+
+      if (!response.ok) {
+        const contentType = response.headers.get("content-type") || "";
+        let detail: string | undefined;
+        let retryable = response.status === 429 || response.status >= 500;
+
+        if (
+          contentType.includes("application/problem+json") ||
+          contentType.includes("application/json")
+        ) {
+          const body = (await response.json()) as Record<string, unknown>;
+          detail =
+            typeof body.detail === "string"
+              ? body.detail
+              : typeof body.message === "string"
+                ? body.message
+                : undefined;
+          if (typeof body.retryable === "boolean") {
+            retryable = body.retryable;
+          }
+        } else {
+          const text = await response.text();
+          detail = text || undefined;
         }
-      );
+
+        throw {
+          status: response.status,
+          detail,
+          retryable,
+        } satisfies VerificationApiError;
+      }
+
+      const result = (await response.json()) as VerificationSuccessResult;
 
       // 成功時の処理
       setVerifiedStatus(result.payment_status ?? null);
@@ -107,8 +158,8 @@ export function PaymentStatusAlert({
         return;
       }
 
-      // ApiErrorの場合は詳細なエラーハンドリング
-      if (isApiError(error)) {
+      // APIエラーの場合は詳細なエラーハンドリング
+      if (isVerificationApiError(error)) {
         // エラー分類
         // - 致命（即表示）: 401/403/404（認証・認可・不整合）→ 明示エラーを表示
         // - 一時（再試行）: 429/5xx/ネットワーク/ retryable:true → processingへフォールバック

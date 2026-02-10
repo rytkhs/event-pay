@@ -6,13 +6,13 @@
 
 import { jest } from "@jest/globals";
 
-import * as DestinationChargesModule from "@core/stripe/destination-charges";
-import { SecureSupabaseClientFactory } from "@core/security/secure-client-factory.impl";
+import { getPaymentPort, type PaymentPort } from "@core/ports/payments";
+import { getSecureClientFactory } from "@core/security/secure-client-factory.impl";
 import { AdminReason } from "@core/security/secure-client-factory.types";
-import { getPaymentService } from "@core/services";
+import * as DestinationChargesModule from "@core/stripe/destination-charges";
 import { PaymentError, PaymentErrorType } from "@core/types/payment-errors";
 
-import { CreateStripeSessionParams } from "@features/payments/types";
+import { CreateStripeSessionParams } from "@features/payments";
 
 import {
   createPaymentWithStatus,
@@ -31,7 +31,7 @@ describe("🚨 決済完了済みガード 仕様書適合性検証", () => {
   let testUser: TestPaymentUser;
   let testEvent: TestPaymentEvent;
   let testAttendance: TestAttendanceData;
-  let paymentService: ReturnType<typeof getPaymentService>;
+  let paymentPort: PaymentPort;
   let baseSessionParams: CreateStripeSessionParams;
 
   beforeAll(async () => {
@@ -50,14 +50,14 @@ describe("🚨 決済完了済みガード 仕様書適合性検証", () => {
       ],
     });
 
-    paymentService = getPaymentService();
+    paymentPort = getPaymentPort();
 
     testUser = setup.testUser;
     testEvent = setup.testEvent;
     testAttendance = setup.testAttendance;
 
     // fee_configのテストデータをセットアップ（共通セットアップで設定されていない場合のフォールバック）
-    const secureFactory = SecureSupabaseClientFactory.create();
+    const secureFactory = getSecureClientFactory();
     const adminClient = await secureFactory.createAuditedAdminClient(
       AdminReason.TEST_DATA_SETUP,
       "Setting up fee config for payment completion guard test",
@@ -116,7 +116,7 @@ describe("🚨 決済完了済みガード 仕様書適合性検証", () => {
           url: `https://checkout.stripe.com/c/pay/${sessionId}`,
           payment_status: "unpaid",
           status: "open",
-        };
+        } as any;
       });
   });
 
@@ -139,7 +139,7 @@ describe("🚨 決済完了済みガード 仕様書適合性検証", () => {
       let actualError: any = null;
 
       try {
-        await paymentService.createStripeSession(baseSessionParams);
+        await paymentPort.createStripeSession(baseSessionParams);
         // ここに到達した場合、仕様書違反（完了済みガードが作動していない）
         testPassed = false;
       } catch (error) {
@@ -197,7 +197,7 @@ ${
         updatedAt: newerTime,
       });
 
-      await expect(paymentService.createStripeSession(baseSessionParams)).rejects.toThrow(
+      await expect(paymentPort.createStripeSession(baseSessionParams)).rejects.toThrow(
         expect.objectContaining({
           type: PaymentErrorType.PAYMENT_ALREADY_EXISTS,
         })
@@ -222,7 +222,7 @@ ${
 
         let guardTriggered = false;
         try {
-          await paymentService.createStripeSession(baseSessionParams);
+          await paymentPort.createStripeSession(baseSessionParams);
           guardTriggered = false;
         } catch (error) {
           if (
@@ -288,7 +288,7 @@ ${terminalStatuses.map((s) => `${s}: ${results[s] ? "✅" : "❌"}`).join("\n")}
 
       // 仕様書によれば、pendingはfailedより優先される
 
-      const result = await paymentService.createStripeSession(baseSessionParams);
+      const result = await paymentPort.createStripeSession(baseSessionParams);
       expect(result.sessionUrl).toMatch(/^https:\/\/checkout\.stripe\.com/);
 
       console.log("✅ オープン決済でpendingが優先されることを確認");

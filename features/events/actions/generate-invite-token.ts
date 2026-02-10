@@ -2,7 +2,7 @@ import { z } from "zod";
 
 import { getCurrentUser } from "@core/auth/auth-utils";
 import { fail, ok, type ActionResult } from "@core/errors/adapters/server-actions";
-import { SecureSupabaseClientFactory } from "@core/security/secure-client-factory.impl";
+import { getSecureClientFactory } from "@core/security/secure-client-factory.impl";
 import { generateInviteToken } from "@core/utils/invite-token";
 
 const generateInviteTokenSchema = z.string().uuid("Invalid event ID format");
@@ -26,7 +26,7 @@ export async function generateInviteTokenAction(
       return fail("UNAUTHORIZED", { userMessage: "Authentication required" });
     }
 
-    const factory = SecureSupabaseClientFactory.create();
+    const factory = getSecureClientFactory();
     const client = await factory.createAuthenticatedClient();
 
     const { data: event, error: eventError } = await client

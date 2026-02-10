@@ -61,7 +61,7 @@ describe("1.2.2 FormDataの適切な抽出と型変換", () => {
         }
         expect(result.success).toBe(true);
         if (result.success) {
-          const event = result.data;
+          const event = result.data!;
           context.createdEventIds.push(event.id);
 
           expect(typeof event.fee).toBe("number");
@@ -94,7 +94,7 @@ describe("1.2.2 FormDataの適切な抽出と型変換", () => {
 
         expect(result.success).toBe(true);
         if (result.success) {
-          const event = result.data;
+          const event = result.data!;
           context.createdEventIds.push(event.id);
 
           expect(typeof event.capacity).toBe("number");
@@ -129,7 +129,7 @@ describe("1.2.2 FormDataの適切な抽出と型変換", () => {
 
         expect(result.success).toBe(true);
         if (result.success) {
-          const event = result.data;
+          const event = result.data!;
           context.createdEventIds.push(event.id);
 
           expect(typeof event.grace_period_days).toBe("number");
@@ -159,7 +159,7 @@ describe("1.2.2 FormDataの適切な抽出と型変換", () => {
       }
       expect(result.success).toBe(true);
       if (result.success) {
-        const event = result.data;
+        const event = result.data!;
         context.createdEventIds.push(event.id);
 
         // 全ての数値項目が正しく変換される
@@ -196,7 +196,7 @@ describe("1.2.2 FormDataの適切な抽出と型変換", () => {
       }
       expect(result.success).toBe(true);
       if (result.success) {
-        const event = result.data;
+        const event = result.data!;
         context.createdEventIds.push(event.id);
 
         // 定員が空文字列の場合はnullになる

@@ -1,4 +1,4 @@
-import { SecureSupabaseClientFactory } from "@core/security/secure-client-factory.impl";
+import { getSecureClientFactory } from "@core/security/secure-client-factory.impl";
 import { AdminReason } from "@core/security/secure-client-factory.types";
 
 import { cleanupTestData } from "@tests/setup/common-cleanup";
@@ -222,7 +222,7 @@ describe("清算レポート生成（返金・争議シナリオ）", () => {
   const createdPaymentIds: string[] = [];
   const createdDisputeIds: string[] = [];
   let setup: Awaited<ReturnType<typeof createPaymentTestSetup>>;
-  const secureFactory = SecureSupabaseClientFactory.create();
+  const secureFactory = getSecureClientFactory();
 
   beforeAll(async () => {
     // Use payment test setup (includes event and attendance)

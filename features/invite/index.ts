@@ -4,14 +4,7 @@
  */
 
 // Components
-export * from "./components";
-
-// Hooks (将来的な拡張用)
-// export * from "./hooks";
-
-// Services (将来的な拡張用)
-// export * from "./services";
+export { InviteEventDetail } from "./components/InviteEventDetail";
 
 // Types & Validation
 export * from "./types";
-export * from "./validation";

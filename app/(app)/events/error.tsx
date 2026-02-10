@@ -5,7 +5,7 @@
 
 "use client";
 
-import { ErrorLayout } from "@/components/errors";
+import { ErrorLayout } from "@/components/errors/ErrorLayout";
 
 interface EventsErrorPageProps {
   error: Error & { digest?: string };

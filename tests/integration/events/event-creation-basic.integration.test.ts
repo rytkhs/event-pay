@@ -184,7 +184,7 @@ describe("イベント作成統合テスト - 基本的なイベント作成", (
 
       expect(result.success).toBe(true);
       if (result.success) {
-        const event = result.data;
+        const event = result.data!;
         createdEventIds.push(event.id);
 
         validateCreatedEvent(event, {
@@ -228,7 +228,7 @@ describe("イベント作成統合テスト - 基本的なイベント作成", (
 
       expect(result.success).toBe(true);
       if (result.success) {
-        const event = result.data;
+        const event = result.data!;
         createdEventIds.push(event.id);
 
         // 無料イベントの場合、決済関連の設定はすべてリセットされる
@@ -266,7 +266,7 @@ describe("イベント作成統合テスト - 基本的なイベント作成", (
 
       expect(result.success).toBe(true);
       if (result.success) {
-        const event = result.data;
+        const event = result.data!;
         createdEventIds.push(event.id);
 
         validateCreatedEvent(event, {
@@ -313,7 +313,7 @@ describe("イベント作成統合テスト - 基本的なイベント作成", (
 
       expect(result.success).toBe(true);
       if (result.success) {
-        const event = result.data;
+        const event = result.data!;
         createdEventIds.push(event.id);
 
         validateCreatedEvent(event, {
@@ -352,7 +352,7 @@ describe("イベント作成統合テスト - 基本的なイベント作成", (
 
       expect(result.success).toBe(true);
       if (result.success) {
-        const event = result.data;
+        const event = result.data!;
         createdEventIds.push(event.id);
 
         validateCreatedEvent(event, {
@@ -398,7 +398,7 @@ describe("イベント作成統合テスト - 基本的なイベント作成", (
 
       expect(result.success).toBe(true);
       if (result.success) {
-        const event = result.data;
+        const event = result.data!;
         createdEventIds.push(event.id);
 
         validateCreatedEvent(event, {
@@ -443,7 +443,7 @@ describe("イベント作成統合テスト - 基本的なイベント作成", (
 
       expect(result.success).toBe(true);
       if (result.success) {
-        const event = result.data;
+        const event = result.data!;
         createdEventIds.push(event.id);
 
         // 重複が除去されて2つの方法のみが保存される
@@ -472,7 +472,7 @@ describe("イベント作成統合テスト - 基本的なイベント作成", (
 
       expect(result.success).toBe(true);
       if (result.success) {
-        const event = result.data;
+        const event = result.data!;
         createdEventIds.push(event.id);
 
         // UTC形式のISO文字列として保存される（+00:00またはZ形式）
@@ -512,7 +512,7 @@ describe("イベント作成統合テスト - 基本的なイベント作成", (
 
       expect(result.success).toBe(true);
       if (result.success) {
-        const event = result.data;
+        const event = result.data!;
         createdEventIds.push(event.id);
 
         // 文字列が適切に数値に変換される
@@ -548,7 +548,7 @@ describe("イベント作成統合テスト - 基本的なイベント作成", (
 
       expect(result.success).toBe(true);
       if (result.success) {
-        const event = result.data;
+        const event = result.data!;
         createdEventIds.push(event.id);
 
         // 招待トークンが生成される
@@ -579,7 +579,7 @@ describe("イベント作成統合テスト - 基本的なイベント作成", (
 
       expect(result.success).toBe(true);
       if (result.success) {
-        const event = result.data;
+        const event = result.data!;
         createdEventIds.push(event.id);
 
         // 作成者IDが正しく設定される
@@ -628,7 +628,7 @@ describe("イベント作成統合テスト - 基本的なイベント作成", (
         expect(result.data).toBeDefined();
         expect(typeof result.data).toBe("object");
 
-        const event = result.data;
+        const event = result.data!;
         createdEventIds.push(event.id);
 
         // 必須フィールドの存在確認

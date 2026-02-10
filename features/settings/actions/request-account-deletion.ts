@@ -81,7 +81,7 @@ export async function requestAccountDeletionAction(formData: FormData): Promise<
     // 2. Stripe Connect 無効化（可能範囲）: DB上の状態を未検証でも無効化（best-effort）
     try {
       // features adaptersの自動登録はサーバ環境で副作用import済み
-      const { getStripeConnectPort } = await import("@/core/ports/stripe-connect");
+      const { getStripeConnectPort } = await import("@core/ports/stripe-connect");
       const port = getStripeConnectPort();
       await port.updateAccountStatus({
         userId: user.id,
