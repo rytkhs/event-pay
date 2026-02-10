@@ -1,6 +1,4 @@
-import type { Database } from "@/types/database";
-
-export type PaymentStatus = Database["public"]["Enums"]["payment_status_enum"];
+import type { PaymentStatus } from "@core/types/statuses";
 
 // アプリ側の簡易ランク（DBの status_rank と一致させる）
 export function statusRank(status: PaymentStatus): number {

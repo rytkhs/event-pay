@@ -3,11 +3,9 @@
  * 招待機能関連の型定義
  */
 
-import { Database } from "@/types/database";
+import type { AttendanceStatus, PaymentMethod } from "@core/types/statuses";
 
-// Database型から必要な型を抽出
-export type AttendanceStatus = Database["public"]["Enums"]["attendance_status_enum"];
-export type PaymentMethod = Database["public"]["Enums"]["payment_method_enum"];
+export type { AttendanceStatus, PaymentMethod } from "@core/types/statuses";
 export type EventStatus = "upcoming" | "ongoing" | "past" | "canceled"; // 算出値
 
 // イベント詳細情報（core/utils/invite-token.tsから参照）
