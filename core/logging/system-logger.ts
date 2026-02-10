@@ -287,50 +287,6 @@ function mapLogLevelToPino(level: LogLevel): "debug" | "info" | "warn" | "error"
   }
 }
 
-// ============================================================================
-// 便利なショートカット関数
-// ============================================================================
-
-/**
- * 認証ログを記録
- */
-export async function logAuthentication(params: {
-  action: string;
-  message: string;
-  user_id?: string;
-  outcome?: LogOutcome;
-  ip_address?: string;
-  user_agent?: string;
-  metadata?: unknown;
-  dedupe_key?: string;
-}): Promise<void> {
-  await logToSystemLogs({
-    log_category: "authentication",
-    actor_type: params.user_id ? "user" : "anonymous",
-    ...params,
-  });
-}
-
-/**
- * 認可ログを記録
- */
-export async function logAuthorization(params: {
-  action: string;
-  message: string;
-  user_id?: string;
-  outcome?: LogOutcome;
-  resource_type?: string;
-  resource_id?: string;
-  metadata?: unknown;
-  dedupe_key?: string;
-}): Promise<void> {
-  await logToSystemLogs({
-    log_category: "authorization",
-    actor_type: "user",
-    ...params,
-  });
-}
-
 /**
  * 決済ログを記録
  */
@@ -352,52 +308,6 @@ export async function logPayment(params: {
     resource_type: "payment",
     actor_type: params.user_id ? "user" : "system",
     log_level: params.outcome === "failure" ? "error" : "info",
-    ...params,
-  });
-}
-
-/**
- * Webhookログを記録
- *
- * @param params.dedupe_key - 重複防止キー（推奨: `webhook:${stripe_event_id}`）
- */
-export async function logWebhook(params: {
-  action: string;
-  message: string;
-  stripe_event_id?: string;
-  stripe_request_id?: string;
-  outcome?: LogOutcome;
-  metadata?: unknown;
-  error_code?: string;
-  error_message?: string;
-  dedupe_key?: string;
-}): Promise<void> {
-  await logToSystemLogs({
-    log_category: "stripe_webhook",
-    actor_type: "webhook",
-    log_level: params.outcome === "failure" ? "error" : "info",
-    ...params,
-  });
-}
-
-/**
- * セキュリティログを記録
- */
-export async function logSecurity(params: {
-  action: string;
-  message: string;
-  log_level?: LogLevel;
-  user_id?: string;
-  ip_address?: string;
-  user_agent?: string;
-  outcome?: LogOutcome;
-  metadata?: unknown;
-  dedupe_key?: string;
-}): Promise<void> {
-  await logToSystemLogs({
-    log_category: "security",
-    log_level: params.log_level || "warn",
-    actor_type: params.user_id ? "user" : "anonymous",
     ...params,
   });
 }

@@ -65,7 +65,6 @@ export interface IStripeConnectService {
    * Stripe Connectアカウントのビジネスプロファイルを更新する
    * @param params ビジネスプロファイル更新パラメータ
    * @returns 更新結果
-   * @throws StripeConnectError 更新に失敗した場合
    */
   updateBusinessProfile(params: UpdateBusinessProfileParams): Promise<UpdateBusinessProfileResult>;
 

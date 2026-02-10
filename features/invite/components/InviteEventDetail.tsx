@@ -21,17 +21,20 @@ interface InviteEventDetailProps {
   inviteToken: string;
   initialRegistrationData?: RegisterParticipationData | null;
   registerParticipationAction: RegisterParticipationAction;
+  dismissInviteSuccessAction: DismissInviteSuccessAction;
 }
 
 type RegisterParticipationAction = (
   formData: FormData
 ) => Promise<ActionResult<RegisterParticipationData>>;
+type DismissInviteSuccessAction = (inviteToken: string) => Promise<ActionResult>;
 
 export function InviteEventDetail({
   event,
   inviteToken,
   initialRegistrationData,
   registerParticipationAction,
+  dismissInviteSuccessAction,
 }: InviteEventDetailProps): JSX.Element {
   const [registrationData, setRegistrationData] = useState<RegisterParticipationData | null>(
     initialRegistrationData ?? null
@@ -80,8 +83,17 @@ export function InviteEventDetail({
     throw { code: result.error?.code ?? "UNKNOWN_ERROR", message: result.error?.userMessage };
   };
 
+  const handleRegisterAnother = async (): Promise<void> => {
+    try {
+      await dismissInviteSuccessAction(inviteToken);
+    } catch {
+      // クッキー削除失敗時もUX優先でフォーム表示へ戻す
+    }
+    setRegistrationData(null);
+  };
+
   if (registrationData) {
-    return <SuccessView data={registrationData} />;
+    return <SuccessView data={registrationData} onRegisterAnother={handleRegisterAnother} />;
   }
 
   return (

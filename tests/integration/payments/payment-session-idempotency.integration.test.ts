@@ -91,7 +91,7 @@ describe("決済セッション作成冪等性・並行制御統合テスト", (
           url: `https://checkout.stripe.com/c/pay/${sessionId}`,
           payment_status: "unpaid",
           status: "open",
-        });
+        } as any);
       });
   });
 
@@ -138,7 +138,7 @@ describe("決済セッション作成冪等性・並行制御統合テスト", (
 
     test("同一セッション作成時のIdempotency Key再利用", async () => {
       // 初回実行
-      const firstResult = await testSetup.paymentService.createStripeSession(
+      const firstResult = await testSetup.paymentPort.createStripeSession(
         testSetup.createSessionParams
       );
 
@@ -148,7 +148,7 @@ describe("決済セッション作成冪等性・並行制御統合テスト", (
       const firstRevision = firstPayment?.checkout_key_revision || 0;
 
       // 同一パラメータで再実行
-      const secondResult = await testSetup.paymentService.createStripeSession(
+      const secondResult = await testSetup.paymentPort.createStripeSession(
         testSetup.createSessionParams
       );
 
@@ -172,9 +172,7 @@ describe("決済セッション作成冪等性・並行制御統合テスト", (
     });
 
     test("成功時にcheckout_idempotency_key/checkout_key_revisionが必ず保存される", async () => {
-      const result = await testSetup.paymentService.createStripeSession(
-        testSetup.createSessionParams
-      );
+      const result = await testSetup.paymentPort.createStripeSession(testSetup.createSessionParams);
 
       const paymentState = await testHelper.getCurrentPaymentState();
       const latestPayment = paymentState.latestPayment;
@@ -267,7 +265,7 @@ describe("決済セッション作成冪等性・並行制御統合テスト", (
       const changedAmount = 1200;
 
       // 初回実行
-      await testSetup.paymentService.createStripeSession({
+      await testSetup.paymentPort.createStripeSession({
         ...testSetup.createSessionParams,
         amount: initialAmount,
       });
@@ -276,7 +274,7 @@ describe("決済セッション作成冪等性・並行制御統合テスト", (
       expect(initialPayment?.amount).toBe(initialAmount);
 
       // 金額変更して再実行
-      await testSetup.paymentService.createStripeSession({
+      await testSetup.paymentPort.createStripeSession({
         ...testSetup.createSessionParams,
         amount: changedAmount,
       });
@@ -300,9 +298,7 @@ describe("決済セッション作成冪等性・並行制御統合テスト", (
       });
 
       // セッション作成を実行（制約違反が発生するが回復すべき）
-      const result = await testSetup.paymentService.createStripeSession(
-        testSetup.createSessionParams
-      );
+      const result = await testSetup.paymentPort.createStripeSession(testSetup.createSessionParams);
 
       // 検証
       expect(result.sessionUrl).toMatch(/^https:\/\/checkout\.stripe\.com/);
@@ -327,9 +323,7 @@ describe("決済セッション作成冪等性・並行制御統合テスト", (
       const failedId = await testHelper.createPaymentWithStatus("failed");
 
       // セッション作成を実行（新規pending作成）
-      const result = await testSetup.paymentService.createStripeSession(
-        testSetup.createSessionParams
-      );
+      const result = await testSetup.paymentPort.createStripeSession(testSetup.createSessionParams);
 
       // 検証
       expect(result.sessionUrl).toMatch(/^https:\/\/checkout\.stripe\.com/);
@@ -339,7 +333,7 @@ describe("決済セッション作成冪等性・並行制御統合テスト", (
 
       // 【テストクリーンアップ問題】前テストからのデータ残存により期待値調整
       const pendingCount = paymentState.pendingCount;
-      const failedCount = paymentState.payments.filter((p) => p.status === "failed").length;
+      const failedCount = paymentState.payments.filter((p: any) => p.status === "failed").length;
 
       console.log(
         `🔍 決済状態: pending=${pendingCount}, failed=${failedCount}, total=${paymentState.payments.length}`
@@ -350,7 +344,7 @@ describe("決済セッション作成冪等性・並行制御統合テスト", (
       expect(failedCount).toBeGreaterThanOrEqual(1); // 既存のfailed決済
 
       // pending決済がfailedとは異なることを確認
-      const pendingPayment = paymentState.payments.find((p) => p.status === "pending");
+      const pendingPayment = paymentState.payments.find((p: any) => p.status === "pending");
       expect(pendingPayment?.id).not.toBe(failedId);
 
       console.log(`✓ failed決済存在時の制約違反回復テスト完了 - 新規pending作成成功`);
@@ -427,8 +421,8 @@ describe("決済セッション作成冪等性・並行制御統合テスト", (
 
       // 新規pending決済の検証
       const paymentState = await testHelper.getCurrentPaymentState();
-      const pendingPayments = paymentState.payments.filter((p) => p.status === "pending");
-      const failedPayments = paymentState.payments.filter((p) => p.status === "failed");
+      const pendingPayments = paymentState.payments.filter((p: any) => p.status === "pending");
+      const failedPayments = paymentState.payments.filter((p: any) => p.status === "failed");
 
       expect(pendingPayments).toHaveLength(1);
       expect(failedPayments).toHaveLength(1);
@@ -453,9 +447,7 @@ describe("決済セッション作成冪等性・並行制御統合テスト", (
       });
 
       // セッション作成を実行
-      const result = await testSetup.paymentService.createStripeSession(
-        testSetup.createSessionParams
-      );
+      const result = await testSetup.paymentPort.createStripeSession(testSetup.createSessionParams);
 
       // 検証
       expect(result.sessionUrl).toMatch(/^https:\/\/checkout\.stripe\.com/);
@@ -488,7 +480,7 @@ describe("決済セッション作成冪等性・並行制御統合テスト", (
         // セッション作成を試行（拒否されるべき）
         let errorOccurred = false;
         try {
-          await testSetup.paymentService.createStripeSession(testSetup.createSessionParams);
+          await testSetup.paymentPort.createStripeSession(testSetup.createSessionParams);
         } catch (error) {
           errorOccurred = true;
           expect(error).toBeInstanceOf(PaymentError);
@@ -520,7 +512,7 @@ describe("決済セッション作成冪等性・並行制御統合テスト", (
       // セッション作成を試行（重複課金防止により拒否されるべき）
       let errorOccurred = false;
       try {
-        await testSetup.paymentService.createStripeSession(testSetup.createSessionParams);
+        await testSetup.paymentPort.createStripeSession(testSetup.createSessionParams);
       } catch (error) {
         errorOccurred = true;
         expect(error).toBeInstanceOf(PaymentError);
@@ -588,7 +580,7 @@ describe("決済セッション作成冪等性・並行制御統合テスト", (
       // セッション作成を試行（拒否されるべき）
       let errorOccurred = false;
       try {
-        await testSetup.paymentService.createStripeSession(testSetup.createSessionParams);
+        await testSetup.paymentPort.createStripeSession(testSetup.createSessionParams);
       } catch (error) {
         errorOccurred = true;
         expect(error).toBeInstanceOf(PaymentError);
@@ -619,7 +611,9 @@ describe("決済セッション作成冪等性・並行制御統合テスト", (
       amounts.forEach((amount) => {
         const params = { ...testSetup.createSessionParams, amount };
         promises.push(
-          testSetup.paymentService.createStripeSession(params).catch((error) => ({ error, amount }))
+          testSetup.paymentPort
+            .createStripeSession(params)
+            .catch((error: unknown) => ({ error, amount }))
         );
       });
 
@@ -646,7 +640,7 @@ describe("決済セッション作成冪等性・並行制御統合テスト", (
 
       // 金額を変更してセッション作成（Key回転が発生）
       const changedParams = { ...testSetup.createSessionParams, amount: 1500 };
-      const result = await testSetup.paymentService.createStripeSession(changedParams);
+      const result = await testSetup.paymentPort.createStripeSession(changedParams);
 
       // 検証
       expect(result.sessionUrl).toMatch(/^https:\/\/checkout\.stripe\.com/);

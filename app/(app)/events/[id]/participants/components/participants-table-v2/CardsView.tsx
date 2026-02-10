@@ -4,14 +4,14 @@ import React from "react";
 
 import { Banknote, Check, CreditCard, MoreHorizontal, RotateCcw } from "lucide-react";
 
-import { hasPaymentId } from "@core/utils/data-guards";
 import {
+  hasPaymentId,
   isPaymentUnpaid,
-  getSimplePaymentStatusStyle,
   toSimplePaymentStatus,
-  SIMPLE_PAYMENT_STATUS_LABELS,
 } from "@core/utils/payment-status-mapper";
 import type { ParticipantView } from "@core/validation/participant-management";
+
+import { SIMPLE_PAYMENT_STATUS_LABELS, getSimplePaymentStatusStyle } from "@features/events";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";

@@ -53,7 +53,7 @@ describe("1.2.4 サニタイズ処理が適用される", () => {
 
       expect(result.success).toBe(true);
       if (result.success) {
-        const event = result.data;
+        const event = result.data!;
         context.createdEventIds.push(event.id);
 
         expect(event.title).toBe(expectedTitle);
@@ -82,7 +82,7 @@ describe("1.2.4 サニタイズ処理が適用される", () => {
 
       expect(result.success).toBe(true);
       if (result.success) {
-        const event = result.data;
+        const event = result.data!;
         context.createdEventIds.push(event.id);
 
         expect(event.location).toBe(expectedLocation);
@@ -121,7 +121,7 @@ describe("1.2.4 サニタイズ処理が適用される", () => {
 
       expect(result.success).toBe(true);
       if (result.success) {
-        const event = result.data;
+        const event = result.data!;
         context.createdEventIds.push(event.id);
 
         expect(event.description).toBe(expectedDescription);
@@ -170,7 +170,7 @@ describe("1.2.4 サニタイズ処理が適用される", () => {
 
       expect(result.success).toBe(true);
       if (result.success) {
-        const event = result.data;
+        const event = result.data!;
         context.createdEventIds.push(event.id);
 
         // 全フィールドが適切にサニタイズされる
@@ -223,7 +223,7 @@ URL: https://example.com
 
       expect(result.success).toBe(true);
       if (result.success) {
-        const event = result.data;
+        const event = result.data!;
         context.createdEventIds.push(event.id);
 
         // 通常のテキストは変更されない（特殊文字のエンティティ化は除く）

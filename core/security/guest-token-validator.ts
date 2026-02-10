@@ -8,14 +8,13 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { logToSystemLogs } from "@core/logging/system-logger";
+import { type GuestAttendanceData as GlobalGuestAttendanceData } from "@core/types/guest";
 import { handleServerError } from "@core/utils/error-handler.server";
 import { sanitizeForEventPay } from "@core/utils/sanitize";
 import { isValidIsoDateTimeString } from "@core/utils/timezone";
 
-import type { Database } from "@/types/database";
-
 import { validateGuestTokenFormat } from "./crypto";
-import { SecureSupabaseClientFactory } from "./secure-client-factory.impl";
+import { getSecureClientFactory } from "./secure-client-factory.impl";
 import { IGuestTokenValidator } from "./secure-client-factory.interface";
 import {
   GuestErrorCode,
@@ -27,47 +26,11 @@ import {
 } from "./secure-client-factory.types";
 
 /**
- * ゲスト参加データの型定義（RLSベース）
- */
-export interface RLSGuestAttendanceData {
-  id: string;
-  nickname: string;
-  email: string;
-  status: Database["public"]["Enums"]["attendance_status_enum"];
-  guest_token: string;
-  created_at: string;
-  updated_at: string;
-  event: {
-    id: string;
-    title: string;
-    description: string | null;
-    date: string;
-    location: string | null;
-    fee: number;
-    capacity: number | null;
-    registration_deadline: string | null;
-    payment_deadline: string | null;
-    payment_methods: Database["public"]["Enums"]["payment_method_enum"][];
-    allow_payment_after_deadline?: boolean;
-    grace_period_days?: number | null;
-    created_by: string;
-    canceled_at?: string | null;
-  };
-  payment?: {
-    id: string;
-    amount: number;
-    method: Database["public"]["Enums"]["payment_method_enum"];
-    status: Database["public"]["Enums"]["payment_status_enum"];
-    created_at: string;
-  } | null;
-}
-
-/**
  * RLSベースゲストトークン検証結果
  */
 export interface RLSGuestTokenValidationResult {
   isValid: boolean;
-  attendance?: RLSGuestAttendanceData;
+  attendance?: GlobalGuestAttendanceData;
   errorMessage?: string;
   canModify: boolean;
   errorCode?: GuestErrorCode;
@@ -84,7 +47,7 @@ export interface RLSGuestTokenValidationResult {
  * - エラーハンドリングの強化
  */
 export class RLSGuestTokenValidator implements IGuestTokenValidator {
-  private readonly clientFactory = SecureSupabaseClientFactory.create();
+  private readonly clientFactory = getSecureClientFactory();
   // Security auditor removed
 
   constructor() {
@@ -286,7 +249,7 @@ export class RLSGuestTokenValidator implements IGuestTokenValidator {
             title: sanitizeForEventPay((rpcRow as any).event_title),
           },
           payment,
-        } as RLSGuestAttendanceData,
+        } as GlobalGuestAttendanceData,
         canModify,
       };
     } catch (error) {
@@ -464,7 +427,7 @@ export class RLSGuestTokenValidator implements IGuestTokenValidator {
   /**
    * 参加状況を変更可能かどうかを判定する（従来互換）
    */
-  private checkCanModifyAttendance(event: RLSGuestAttendanceData["event"]): boolean {
+  private checkCanModifyAttendance(event: GlobalGuestAttendanceData["event"]): boolean {
     const now = new Date();
 
     // キャンセル済みイベントは変更不可
@@ -550,25 +513,4 @@ export class RLSGuestTokenValidator implements IGuestTokenValidator {
       });
     }
   }
-}
-
-/**
- * RLSベースゲストトークンバリデーターのシングルトンインスタンスを取得
- */
-export function getRLSGuestTokenValidator(): IGuestTokenValidator {
-  return new RLSGuestTokenValidator();
-}
-
-/**
- * 従来のvalidateGuestToken関数の互換実装
- * 既存コードとの互換性を保つためのラッパー関数
- *
- * @param guestToken ゲストトークン
- * @returns 検証結果と参加データ
- */
-export async function validateGuestTokenRLS(
-  guestToken: string
-): Promise<RLSGuestTokenValidationResult> {
-  const validator = getRLSGuestTokenValidator() as RLSGuestTokenValidator;
-  return validator.validateGuestTokenWithDetails(guestToken);
 }

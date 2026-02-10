@@ -5,7 +5,6 @@
  * - 追加許可 IP は環境変数で上書き可能
  */
 
-import { apiClient } from "@core/api/client";
 import { getEnv } from "@core/utils/cloudflare-env";
 
 const STRIPE_IPS_JSON_URL = "https://stripe.com/files/ips/ips_webhooks.json";
@@ -77,15 +76,18 @@ async function getStripeWebhookAllowedIPs(options?: { ttlMs?: number }): Promise
 
   // フェッチ
   try {
-    const json = await apiClient.get<StripeIpsResponse>(STRIPE_IPS_JSON_URL, {
-      cache: "no-store",
-      timeout: 10000, // 10秒タイムアウト
-      maxRetries: 2, // 2回リトライ
-    });
-    const ips = new Set<string>([
-      ...((json.WEBHOOKS ?? json.webhooks ?? []) as string[]),
-      ...parseExtraIpsFromEnv(),
-    ]);
+    const response = await fetch(STRIPE_IPS_JSON_URL, { cache: "no-store" });
+    if (!response.ok) {
+      throw new Error(`Failed to fetch Stripe IP list: HTTP ${response.status}`);
+    }
+
+    const payload = (await response.json()) as StripeIpsResponse;
+    const webhookIps = Array.isArray(payload.WEBHOOKS)
+      ? payload.WEBHOOKS
+      : Array.isArray(payload.webhooks)
+        ? payload.webhooks
+        : [];
+    const ips = new Set<string>([...webhookIps, ...parseExtraIpsFromEnv()]);
 
     cachedIps = { set: ips, fetchedAt: now(), ttlMs };
     return new Set([...ips]);

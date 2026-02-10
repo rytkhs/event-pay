@@ -6,6 +6,10 @@ import { Plus, Download, Search, X, ListTodo, MoreVertical } from "lucide-react"
 
 import { useToast } from "@core/contexts/toast-context";
 import type { Event } from "@core/types/models";
+import type {
+  ExportParticipantsCsvResult,
+  AdminAddAttendanceResult,
+} from "@core/validation/participant-management";
 
 import { cn } from "@/components/ui/_lib/cn";
 import { Button } from "@/components/ui/button";
@@ -104,11 +108,6 @@ export function ParticipantsActionBarV2({
       });
 
       if (!result.success) {
-        if ((result as any).data?.confirmRequired || (result as any).confirmRequired) {
-          const payload = (result as any).data || result;
-          setConfirmOverCapacity({ capacity: payload.capacity, current: payload.current });
-          return;
-        }
         toast({
           title: "追加に失敗しました",
           description: result.error?.userMessage || "参加者の追加に失敗しました",
@@ -117,7 +116,14 @@ export function ParticipantsActionBarV2({
         return;
       }
 
-      const data = result.data as any;
+      // confirmRequired の特殊ケース（成功として返される）
+      if ("confirmRequired" in result.data && result.data.confirmRequired) {
+        const payload = result.data;
+        setConfirmOverCapacity({ capacity: payload.capacity, current: payload.current });
+        return;
+      }
+
+      const data = result.data as AdminAddAttendanceResult;
       const successDescription = isPayingEvent
         ? "参加者を追加しました。現金決済（未払い）として記録されました。"
         : data.canOnlinePay
@@ -169,7 +175,7 @@ export function ParticipantsActionBarV2({
       }
 
       if (result.data?.csvContent) {
-        const { csvContent, filename } = result.data;
+        const { csvContent, filename } = result.data as ExportParticipantsCsvResult;
         const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
         const link = document.createElement("a");
         const url = URL.createObjectURL(blob);

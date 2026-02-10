@@ -13,7 +13,7 @@ jest.mock("next/navigation", () => ({
 }));
 
 // Stripe Connect サービスのモック（共通モックを使用）
-jest.mock("@features/stripe-connect/services", () => {
+jest.mock("@features/stripe-connect/server", () => {
   const { setupStripeConnectServiceMock } = jest.requireActual<
     typeof import("../../setup/stripe-connect-mock")
   >("../../setup/stripe-connect-mock");
@@ -107,7 +107,7 @@ describe("Stripe Connect actions", () => {
   });
 
   beforeEach(() => {
-    process.env.NODE_ENV = "test";
+    (process.env as Record<string, string | undefined>).NODE_ENV = "test";
     process.env.NEXT_PUBLIC_APP_URL = "http://localhost:3000";
     setTestUserById("user_test", "u@example.com");
     getEnvMock.mockReturnValue({

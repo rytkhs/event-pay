@@ -86,9 +86,9 @@ export default async function EventDetailPage({
     // 参加者データは常に全件取得（クライアントサイドでフィルタ・ソート・ページネーション）
 
     const promises: [
-      Promise<any>, // Payments
-      Promise<any>, // Stats
-      Promise<any>, // Participants (全件)
+      Promise<ActionResult<GetEventPaymentsResponse>>,
+      Promise<ActionResult<{ attending_count: number; maybe_count: number }>>,
+      Promise<ActionResult<GetParticipantsResponse>>,
     ] = [
       cachedActions.getEventPayments(params.id),
       cachedActions.getEventStats(params.id),

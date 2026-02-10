@@ -2,12 +2,14 @@ import { Suspense } from "react";
 
 import { redirect } from "next/navigation";
 
+import { CheckCircle2, AlertCircle } from "lucide-react";
+import type { Metadata } from "next";
+
 export const dynamic = "force-dynamic";
 
-import { CONNECT_REFRESH_PATH } from "@core/routes/stripe-connect";
 import { createClient } from "@core/supabase/server";
 
-import { AccountStatus, OnboardingForm } from "@features/stripe-connect";
+import { AccountStatus, CONNECT_REFRESH_PATH, OnboardingForm } from "@features/stripe-connect";
 import {
   checkExpressDashboardAccessAction,
   createUserStripeConnectService,
@@ -18,10 +20,23 @@ import {
   createExpressDashboardLoginLinkAction,
   startOnboardingAction,
 } from "@/app/_actions/stripe-connect/actions";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 
-async function PaymentSettingsContent() {
+export const metadata: Metadata = {
+  title: "支払い設定",
+  description: "Stripeで売上の受け取り方法を設定します",
+};
+
+interface PaymentSettingsPageProps {
+  searchParams: {
+    refresh?: string;
+    connect?: string;
+  };
+}
+
+async function PaymentSettingsContent({ searchParams }: PaymentSettingsPageProps) {
   const supabase = createClient();
   const {
     data: { user },
@@ -43,6 +58,27 @@ async function PaymentSettingsContent() {
 
   return (
     <div className="space-y-6">
+      {/* メッセージ表示 */}
+      {searchParams.connect === "success" && (
+        <Alert className="bg-green-50 border-green-200 text-green-800">
+          <CheckCircle2 className="h-4 w-4 text-green-600" />
+          <AlertTitle>設定が完了しました</AlertTitle>
+          <AlertDescription>
+            Stripeアカウントの連携が正常に完了しました。売上の受け取りが可能になりました。
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {searchParams.refresh && (
+        <Alert className="bg-blue-50 border-blue-200 text-blue-800">
+          <AlertCircle className="h-4 w-4 text-blue-600" />
+          <AlertTitle>設定を再開してください</AlertTitle>
+          <AlertDescription>
+            セッションがタイムアウトしたか、リンクが期限切れになりました。再度「設定を始める」ボタンから手続きを続行してください。
+          </AlertDescription>
+        </Alert>
+      )}
+
       <div className="bg-muted/40 border border-muted/60 rounded-lg p-4 text-sm text-muted-foreground space-y-1">
         <p className="text-muted-foreground">
           売上を受け取るために、Stripeの設定画面で入金設定を行います。
@@ -109,10 +145,10 @@ function LoadingSkeleton() {
   );
 }
 
-export default function PaymentSettingsPage() {
+export default function PaymentSettingsPage(props: PaymentSettingsPageProps) {
   return (
     <Suspense fallback={<LoadingSkeleton />}>
-      <PaymentSettingsContent />
+      <PaymentSettingsContent {...props} />
     </Suspense>
   );
 }

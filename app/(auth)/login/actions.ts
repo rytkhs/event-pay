@@ -3,7 +3,7 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
-import { getSecureClientFactory } from "@/core/security/secure-client-factory.impl";
+import { getSecureClientFactory } from "@core/security/secure-client-factory.impl";
 
 export async function startGoogleOAuth(formData: FormData) {
   const nextParam = (formData.get("next") as string) || "/";

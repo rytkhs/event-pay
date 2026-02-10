@@ -4,11 +4,25 @@ import Stripe from "stripe";
 
 import { logger } from "@core/logging/app-logger";
 import { getEnv } from "@core/utils/cloudflare-env";
-import { getRequiredEnvVar } from "@core/utils/env-helper";
+import { handleServerError } from "@core/utils/error-handler.server";
 
 export function getStripe(): Stripe {
   const env = getEnv();
-  const stripeSecretKey = getRequiredEnvVar("STRIPE_SECRET_KEY");
+  const stripeSecretKey = env.STRIPE_SECRET_KEY;
+
+  if (!stripeSecretKey) {
+    const key = "STRIPE_SECRET_KEY";
+    const errorMessage = `Missing required environment variable: ${key}`;
+    handleServerError("ENV_VAR_MISSING", {
+      category: "system",
+      action: "env_validation",
+      actorType: "system",
+      additionalData: {
+        variable_name: key,
+      },
+    });
+    throw new Error(errorMessage);
+  }
 
   // デバッグログ: APIキーの詳細情報を出力
   logger.info("Stripe API Key Debug Info", {

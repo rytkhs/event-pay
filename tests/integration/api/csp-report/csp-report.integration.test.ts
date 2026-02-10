@@ -28,21 +28,21 @@ describe("CSPレポートAPI統合テスト (/api/csp-report)", () => {
     }));
 
     // Rate Limit Mock
-    mockEnforceRateLimit = jest.fn().mockResolvedValue({ allowed: true });
+    mockEnforceRateLimit = jest.fn(() => Promise.resolve({ allowed: true })) as any;
     jest.doMock("@core/rate-limit", () => ({
       enforceRateLimit: mockEnforceRateLimit,
       buildKey: jest.fn(() => "test-key"),
     }));
 
     // Security Logger Mock
-    mockLogSecurityEvent = jest.fn().mockResolvedValue(undefined);
+    mockLogSecurityEvent = jest.fn(() => Promise.resolve(undefined)) as any;
     jest.doMock("@core/security/security-logger", () => ({
       logSecurityEvent: mockLogSecurityEvent,
     }));
 
     // Next Server Mock
     jest.doMock("next/server", () => {
-      const actual = jest.requireActual("next/server");
+      const actual = jest.requireActual("next/server") as any;
       return {
         ...actual,
         NextResponse: class {
@@ -121,7 +121,7 @@ describe("CSPレポートAPI統合テスト (/api/csp-report)", () => {
 
     // logSecurityEvent が呼ばれたことを検証
     expect(mockLogSecurityEvent).toHaveBeenCalledTimes(1);
-    const logArgs = mockLogSecurityEvent.mock.calls[0][0];
+    const logArgs: any = mockLogSecurityEvent.mock.calls[0][0];
 
     // ログ引数を検証
     expect(logArgs).toMatchObject({
@@ -191,7 +191,7 @@ describe("CSPレポートAPI統合テスト (/api/csp-report)", () => {
 
     // logSecurityEvent が呼ばれたことを検証
     expect(mockLogSecurityEvent).toHaveBeenCalledTimes(1);
-    const logArgs = mockLogSecurityEvent.mock.calls[0][0];
+    const logArgs: any = mockLogSecurityEvent.mock.calls[0][0];
 
     // ログ引数を検証
     expect(logArgs).toMatchObject({
@@ -309,10 +309,12 @@ describe("CSPレポートAPI統合テスト (/api/csp-report)", () => {
    */
   test("追加: レート制限発動 - 429エラーとRetry-Afterヘッダー", async () => {
     // レート制限モックの設定（制限超過）
-    mockEnforceRateLimit.mockResolvedValue({
-      allowed: false,
-      retryAfter: 60,
-    });
+    mockEnforceRateLimit.mockImplementation(() =>
+      Promise.resolve({
+        allowed: false,
+        retryAfter: 60,
+      })
+    );
 
     // CSPレポートペイロード
     const cspReport = {

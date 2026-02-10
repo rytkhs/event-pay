@@ -8,13 +8,13 @@
  * - テスト間でモック状態をリセット可能
  */
 
-import type { IStripeConnectService } from "@features/stripe-connect/services/interface";
+import type { IStripeConnectService } from "@features/stripe-connect/server";
 import type {
   CreateExpressAccountResult,
   CreateAccountLinkResult,
   AccountInfo,
   StripeConnectAccount,
-} from "@features/stripe-connect/types";
+} from "@features/stripe-connect";
 
 /**
  * Stripe Connect サービスのモック関数群
@@ -102,7 +102,7 @@ export const createMockStripeConnectService = (options?: {
 /**
  * jest.mock用のモック設定ヘルパー
  *
- * @features/stripe-connect/services モジュールをモックする際に使用
+ * @features/stripe-connect/server モジュールをモックする際に使用
  */
 export const setupStripeConnectServiceMock = (options?: {
   getConnectAccountByUser?: StripeConnectAccount | null;
@@ -110,7 +110,7 @@ export const setupStripeConnectServiceMock = (options?: {
   createAccountLink?: CreateAccountLinkResult;
   createExpressAccount?: CreateExpressAccountResult;
 }) => {
-  const actual = jest.requireActual("@features/stripe-connect/services");
+  const actual = jest.requireActual("@features/stripe-connect/server");
   const mockService = createMockStripeConnectService(options);
 
   return {

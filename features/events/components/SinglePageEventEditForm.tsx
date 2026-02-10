@@ -13,6 +13,7 @@ import {
   AlignLeftIcon,
 } from "lucide-react";
 
+import type { RestrictableField } from "@core/domain/event-edit-restrictions";
 import type { Event } from "@core/types/models";
 
 import { cn } from "@/components/ui/_lib/cn";
@@ -37,7 +38,6 @@ import {
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
-import type { RestrictableField } from "@/core/domain/event-edit-restrictions";
 
 import {
   useEventEditForm,
@@ -242,15 +242,8 @@ export function SinglePageEventEditForm({
 
   const handleConfirmChanges = async () => {
     setShowConfirmDialog(false);
-    try {
-      const formData = form.getValues();
-      await actions.submitFormWithChanges(formData, pendingChanges);
-    } catch (_error) {
-      form.setError("root", {
-        type: "manual",
-        message: "更新に失敗しました。もう一度お試しください。",
-      });
-    }
+    const formData = form.getValues();
+    await actions.submitFormWithChanges(formData, pendingChanges);
   };
 
   // 変更検知ヘルパー
@@ -751,7 +744,7 @@ export function SinglePageEventEditForm({
                           {!canUseOnlinePayments && (
                             <p className="text-xs text-muted-foreground mt-2">
                               オンライン決済を利用するにはStripeアカウントの設定が必要です。
-                              <a href="/dashboard/connect" className="underline ml-1">
+                              <a href="/settings/payments" className="underline ml-1">
                                 設定に進む
                               </a>
                             </p>

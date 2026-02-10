@@ -9,12 +9,6 @@ export const ACCOUNT_LOCKOUT_CONFIG = {
   lockoutDurationMs: 30 * 60 * 1000, // 30分
 } as const;
 
-// テスト専用アカウントロックアウト設定
-export const TEST_ACCOUNT_LOCKOUT_CONFIG = {
-  maxFailedAttempts: 20, // テスト用に緩和
-  lockoutDurationMs: 5 * 60 * 1000, // 5分に短縮
-} as const;
-
 // 型定義
 export interface LockoutResult {
   failedAttempts: number;
@@ -65,11 +59,6 @@ export class AccountLockoutService {
     return `auth_lockout:${email.toLowerCase()}`;
   }
 
-  private static getConfig() {
-    const env = getEnv();
-    return env.NODE_ENV === "test" ? TEST_ACCOUNT_LOCKOUT_CONFIG : ACCOUNT_LOCKOUT_CONFIG;
-  }
-
   /**
    * ログイン失敗を記録し、必要に応じてアカウントをロック
    * @param email ユーザーのメールアドレス
@@ -80,7 +69,7 @@ export class AccountLockoutService {
       const redis = getRedisInstance();
       const failedKey = this.getFailedAttemptsKey(email);
       const lockoutKey = this.getLockoutKey(email);
-      const config = this.getConfig();
+      const config = ACCOUNT_LOCKOUT_CONFIG;
 
       // 現在の失敗回数を取得
       const rawAttempts = await redis.get<number>(failedKey);
@@ -170,7 +159,7 @@ export class AccountLockoutService {
       // 現在の失敗回数を確認
       const rawAttempts = await redis.get<number>(failedKey);
       const failedAttempts = rawAttempts || 0;
-      const config = this.getConfig();
+      const config = ACCOUNT_LOCKOUT_CONFIG;
       const remainingAttempts = Math.max(0, config.maxFailedAttempts - failedAttempts);
 
       return {
@@ -189,7 +178,7 @@ export class AccountLockoutService {
         },
       });
       // フェイルオープン（エラー時は制限しない）
-      const config = this.getConfig();
+      const config = ACCOUNT_LOCKOUT_CONFIG;
       return {
         isLocked: false,
         remainingAttempts: config.maxFailedAttempts,

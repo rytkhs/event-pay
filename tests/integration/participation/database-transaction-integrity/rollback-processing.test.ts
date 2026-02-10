@@ -6,8 +6,9 @@
 
 import { describe, it, expect, beforeAll, afterAll } from "@jest/globals";
 
-import { SecureSupabaseClientFactory } from "@core/security/secure-client-factory.impl";
+import { getSecureClientFactory } from "@core/security/secure-client-factory.impl";
 import { AdminReason } from "@core/security/secure-client-factory.types";
+
 import { cleanupTestPaymentData } from "@tests/helpers/test-payment-data";
 
 import {
@@ -76,7 +77,7 @@ describe("カテゴリB: ロールバック処理テスト（実DB版）", () =>
       });
 
       // 5. paymentレコードも存在しないことを確認
-      const clientFactory = SecureSupabaseClientFactory.create();
+      const clientFactory = getSecureClientFactory();
       const adminClient = await clientFactory.createAuditedAdminClient(
         AdminReason.TEST_DATA_SETUP,
         "P0-2_PAYMENT_ROLLBACK_VERIFICATION"

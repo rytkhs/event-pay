@@ -4,49 +4,16 @@ import { verifyEventAccess } from "@core/auth/event-authorization";
 import { type ActionResult, fail, ok, zodFail } from "@core/errors/adapters/server-actions";
 import { logger } from "@core/logging/app-logger";
 import { logAttendance } from "@core/logging/system-logger";
-import { SecureSupabaseClientFactory } from "@core/security/secure-client-factory.impl";
-import { getPaymentService } from "@core/services/payment-service";
+import { getPaymentPort } from "@core/ports/payments";
+import { getSecureClientFactory } from "@core/security/secure-client-factory.impl";
 import { PaymentError } from "@core/types/payment-errors";
 import { deriveEventStatus } from "@core/utils/derive-event-status";
-import { generateGuestToken } from "@core/utils/guest-token";
+import { buildGuestUrl, generateGuestToken } from "@core/utils/guest-token";
+import {
+  type AdminAddAttendanceResult,
+  AdminAddAttendanceInputSchema,
+} from "@core/validation/participant-management";
 import { canCreateStripeSession } from "@core/validation/payment-eligibility";
-
-// 入力検証
-const AddAttendanceInputSchema = z
-  .object({
-    eventId: z.string().uuid(),
-    nickname: z.string().min(1, "ニックネームは必須です").max(50),
-    // MVPではメールを入力しない（将来の通知機能のためにschemaからは削除）
-    status: z.enum(["attending", "maybe", "not_attending"]).default("attending"),
-    bypassCapacity: z.boolean().optional().default(false),
-    // 手動追加では現金決済のみ
-    paymentMethod: z.enum(["cash"]).optional(),
-  })
-  .refine(
-    (data) => {
-      // attending状態の場合のみ決済方法の基本検証
-      // 実際の有料判定はサーバー側で行うため、ここでは条件付き検証のみ
-      if (data.status === "attending" && data.paymentMethod !== undefined) {
-        return data.paymentMethod === "cash";
-      }
-      return true;
-    },
-    {
-      message: "手動追加では現金決済のみ選択可能です",
-      path: ["paymentMethod"],
-    }
-  );
-
-export type AddAttendanceInput = z.infer<typeof AddAttendanceInputSchema>;
-
-export interface AddAttendanceResult {
-  attendanceId: string;
-  guestToken: string;
-  guestUrl: string;
-  canOnlinePay: boolean;
-  reason?: string;
-  paymentId?: string; // 決済レコードが作成された場合のID
-}
 
 /**
  * 主催者が手動で参加者を追加する（締切制約なし、定員は上書き可能）
@@ -60,18 +27,18 @@ export async function adminAddAttendanceAction(
   input: unknown
 ): Promise<
   ActionResult<
-    AddAttendanceResult | { confirmRequired: true; capacity?: number | null; current?: number }
+    AdminAddAttendanceResult | { confirmRequired: true; capacity?: number | null; current?: number }
   >
 > {
   try {
     const { eventId, nickname, status, bypassCapacity, paymentMethod } =
-      AddAttendanceInputSchema.parse(input);
+      AdminAddAttendanceInputSchema.parse(input);
 
     // 認証・主催者権限確認（イベント所有者）
     const { user } = await verifyEventAccess(eventId);
 
     // 認証済みクライアント（RLSポリシーベースのアクセス制御）
-    const secureFactory = SecureSupabaseClientFactory.create();
+    const secureFactory = getSecureClientFactory();
     const authenticatedClient = secureFactory.createAuthenticatedClient();
 
     // ゲストトークン生成
@@ -151,8 +118,8 @@ export async function adminAddAttendanceAction(
 
       // PaymentServiceを使用して現金決済レコードを作成
       try {
-        const paymentService = getPaymentService();
-        const result = await paymentService.createCashPayment({
+        const paymentPort = getPaymentPort();
+        const result = await paymentPort.createCashPayment({
           attendanceId,
           amount: eventRow.fee,
         });
@@ -192,9 +159,7 @@ export async function adminAddAttendanceAction(
     };
     const eligibility = canCreateStripeSession(attendanceForEligibility, eventForEligibility);
 
-    // ゲストURL（/guest/gst_xxx）
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-    const guestUrl = `${baseUrl}/guest/${guestToken}`;
+    const guestUrl = buildGuestUrl(guestToken);
 
     // 監査ログ（RLSポリシーベース実装）
     // 監査ログ
@@ -232,7 +197,7 @@ export async function adminAddAttendanceAction(
       },
     });
 
-    return ok<AddAttendanceResult>({
+    return ok<AdminAddAttendanceResult>({
       attendanceId,
       guestToken,
       guestUrl,

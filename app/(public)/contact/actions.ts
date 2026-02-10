@@ -20,7 +20,7 @@ import { getClientIPFromHeaders } from "@core/utils/ip-detection";
 import { sanitizeForEventPay } from "@core/utils/sanitize";
 import { formatUtcToJst, formatDateToJstYmd } from "@core/utils/timezone";
 
-import { AdminContactNotice } from "@/emails/contact/AdminContactNotice";
+import AdminContactNotice from "@/emails/contact/AdminContactNotice";
 
 /**
  * お問い合わせ入力スキーマ（サーバー用）
@@ -198,8 +198,11 @@ export async function submitContact(input: ContactInput) {
             action: "contact_notification_failed",
             actor_type: "system",
             email_masked: maskEmail(email),
-            error: result.error,
-            error_type: result.errorType,
+            error_message: result.error.message,
+            error_code: result.error.code,
+            retryable: result.error.retryable,
+            error_details: result.error.details,
+            error_type: result.meta?.errorType,
             outcome: "failure",
           });
         }
@@ -223,7 +226,10 @@ export async function submitContact(input: ContactInput) {
               category: "system",
               action: "contact_slack_failed",
               actor_type: "system",
-              error: slackResult.error,
+              error_message: slackResult.error.message,
+              error_code: slackResult.error.code,
+              retryable: slackResult.error.retryable,
+              error_details: slackResult.error.details,
               outcome: "failure",
             });
           }

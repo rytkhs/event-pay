@@ -70,7 +70,7 @@ class MockResponse {
   }
 }
 
-class NextResponse {
+class NextResponse extends MockResponse {
   static json(body, init = {}) {
     return new MockResponse(body, {
       ...init,

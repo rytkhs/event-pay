@@ -52,7 +52,7 @@ export type PaymentOperation =
 /**
  * 決済エラーの分類を自動判定
  */
-export function classifyPaymentError(error: unknown): PaymentErrorClassification {
+function classifyPaymentError(error: unknown): PaymentErrorClassification {
   const errorMessage = error instanceof Error ? error.message : String(error);
   const lowerMessage = errorMessage.toLowerCase();
 
@@ -91,7 +91,7 @@ export function classifyPaymentError(error: unknown): PaymentErrorClassification
 /**
  * エラー分類に基づく復旧提案を生成
  */
-export function generateRecoverySuggestions(
+function generateRecoverySuggestions(
   classification: PaymentErrorClassification,
   _context?: { hasConnectAccount?: boolean; paymentMethod?: string }
 ): string[] {
@@ -169,11 +169,13 @@ export class PaymentLogger {
     error: unknown,
     context: Partial<PaymentLogFields> = {}
   ) {
-    const errorClassification = classifyPaymentError(error);
-    const recoverySuggestions = generateRecoverySuggestions(errorClassification, {
-      hasConnectAccount: !!context.connect_account_id,
-      paymentMethod: context.payment_method,
-    });
+    const errorClassification = context.error_classification || classifyPaymentError(error);
+    const recoverySuggestions =
+      context.recovery_suggestions ||
+      generateRecoverySuggestions(errorClassification, {
+        hasConnectAccount: !!context.connect_account_id,
+        paymentMethod: context.payment_method,
+      });
 
     const logContext = {
       ...this.baseContext,
@@ -351,16 +353,4 @@ export class PaymentLogger {
       additionalData: { ...this.baseContext, ...context },
     });
   }
-}
-
-/**
- * デフォルト決済ロガーインスタンス
- */
-export const paymentLogger = new PaymentLogger();
-
-/**
- * 決済操作用の便利関数
- */
-export function createPaymentLogger(context: Partial<PaymentLogFields>): PaymentLogger {
-  return new PaymentLogger(context);
 }

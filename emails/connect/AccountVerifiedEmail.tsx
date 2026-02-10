@@ -8,7 +8,7 @@ export interface AccountVerifiedEmailProps {
   userName: string;
 }
 
-export const AccountVerifiedEmail = ({ userName }: AccountVerifiedEmailProps) => {
+const AccountVerifiedEmail = ({ userName }: AccountVerifiedEmailProps) => {
   return (
     <EmailLayout preheader="Stripeアカウントの認証が完了しました">
       {/* 挨拶 */}

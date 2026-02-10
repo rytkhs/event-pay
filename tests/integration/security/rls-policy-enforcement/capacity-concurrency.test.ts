@@ -4,8 +4,9 @@
 
 import { describe, test, expect, beforeAll, afterAll } from "@jest/globals";
 
-import { SecureSupabaseClientFactory } from "@core/security/secure-client-factory.impl";
+import { getSecureClientFactory } from "@core/security/secure-client-factory.impl";
 import { AdminReason } from "@core/security/secure-client-factory.types";
+
 import { setupRLSTest, type RLSTestSetup } from "./rls-test-setup";
 
 describe("Capacity and Concurrency", () => {
@@ -20,7 +21,7 @@ describe("Capacity and Concurrency", () => {
   });
 
   test("容量1のイベントで同時参加リクエストの一方が拒否される", async () => {
-    const factory = SecureSupabaseClientFactory.create();
+    const factory = getSecureClientFactory();
     const admin = await factory.createAuditedAdminClient(
       AdminReason.TEST_DATA_SETUP,
       "setup capacity race test"

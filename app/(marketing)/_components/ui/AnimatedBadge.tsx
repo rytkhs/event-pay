@@ -4,7 +4,7 @@ import React, { useEffect, useState } from "react";
 
 import { CheckCircle2 } from "lucide-react";
 
-import { cn } from "@/core/utils";
+import { cn } from "@core/utils";
 
 interface AnimatedBadgeProps {
   className?: string;

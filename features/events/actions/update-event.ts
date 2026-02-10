@@ -2,6 +2,7 @@ import { revalidatePath } from "next/cache";
 
 import { z } from "zod";
 
+import { EVENT_CONFIG, TIME_CONSTANTS } from "@core/constants/event-config";
 import {
   buildRestrictionContext,
   createFormDataSnapshot,
@@ -65,12 +66,9 @@ export async function updateEventAction(
     // ステータスベースの編集禁止チェック
     const eventStatus = deriveEventStatus(existingEvent.date, existingEvent.canceled_at);
 
-    if (eventStatus === "past") {
-      return fail("FORBIDDEN", { userMessage: "開催済みのイベントは編集できません" });
-    }
-
-    if (eventStatus === "canceled") {
-      return fail("FORBIDDEN", { userMessage: "キャンセル済みのイベントは編集できません" });
+    if (!EVENT_CONFIG.UPDATABLE_STATUSES.includes(eventStatus as any)) {
+      const statusLabel = eventStatus === "past" ? "開催済み" : "キャンセル済み";
+      return fail("FORBIDDEN", { userMessage: `${statusLabel}のイベントは編集できません` });
     }
 
     // フォームデータの抽出
@@ -129,7 +127,7 @@ export async function updateEventAction(
     // 決済締切: payment_deadline ≤ date + 30日
     if (effectivePayDeadlineIso) {
       const eventPlus30d = new Date(
-        new Date(effectiveDateIso).getTime() + 30 * 24 * 60 * 60 * 1000
+        new Date(effectiveDateIso).getTime() + 30 * TIME_CONSTANTS.MS_TO_DAYS
       );
       if (new Date(effectivePayDeadlineIso) > eventPlus30d) {
         return fail("VALIDATION_ERROR", {
@@ -153,10 +151,10 @@ export async function updateEventAction(
             : ((existingEvent as any).grace_period_days ?? 0)
         ) || 0;
       const finalCandidate = new Date(
-        new Date(baseIso).getTime() + graceDays * 24 * 60 * 60 * 1000
+        new Date(baseIso).getTime() + graceDays * TIME_CONSTANTS.MS_TO_DAYS
       );
       const eventPlus30d = new Date(
-        new Date(effectiveDateIso).getTime() + 30 * 24 * 60 * 60 * 1000
+        new Date(effectiveDateIso).getTime() + 30 * TIME_CONSTANTS.MS_TO_DAYS
       );
       if (finalCandidate > eventPlus30d) {
         return fail("VALIDATION_ERROR", {

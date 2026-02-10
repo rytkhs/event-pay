@@ -5,8 +5,9 @@ import * as React from "react";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+import { AppError, errFrom, errResult, okResult } from "@core/errors";
 import { logger } from "@core/logging/app-logger";
-import { getEnv } from "@core/utils/cloudflare-env";
+import { buildGuestUrl } from "@core/utils/guest-token";
 
 import { Database } from "@/types/database";
 
@@ -45,10 +46,13 @@ export class NotificationService implements INotificationService {
       // ユーザー情報を取得
       const userInfo = await this.getUserInfo(data.userId);
       if (!userInfo) {
-        return {
-          success: false,
-          error: "ユーザー情報が見つかりません",
-        };
+        return errResult(
+          new AppError("NOT_FOUND", {
+            userMessage: "ユーザー情報が見つかりません",
+            retryable: false,
+            details: { userId: data.userId },
+          })
+        );
       }
 
       const { default: AccountVerifiedEmail } = await import(
@@ -67,10 +71,9 @@ export class NotificationService implements INotificationService {
         template,
       });
     } catch (error) {
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : "通知送信中にエラーが発生しました",
-      };
+      return errFrom(error, {
+        defaultCode: "EMAIL_SENDING_FAILED",
+      });
     }
   }
 
@@ -84,10 +87,13 @@ export class NotificationService implements INotificationService {
       // ユーザー情報を取得
       const userInfo = await this.getUserInfo(data.userId);
       if (!userInfo) {
-        return {
-          success: false,
-          error: "ユーザー情報が見つかりません",
-        };
+        return errResult(
+          new AppError("NOT_FOUND", {
+            userMessage: "ユーザー情報が見つかりません",
+            retryable: false,
+            details: { userId: data.userId },
+          })
+        );
       }
 
       const { default: AccountRestrictedEmail } = await import(
@@ -136,10 +142,9 @@ export class NotificationService implements INotificationService {
 
       return result;
     } catch (error) {
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : "通知送信中にエラーが発生しました",
-      };
+      return errFrom(error, {
+        defaultCode: "EMAIL_SENDING_FAILED",
+      });
     }
   }
 
@@ -155,10 +160,13 @@ export class NotificationService implements INotificationService {
         // ユーザー情報を取得
         const userInfo = await this.getUserInfo(data.userId);
         if (!userInfo) {
-          return {
-            success: false,
-            error: "ユーザー情報が見つかりません",
-          };
+          return errResult(
+            new AppError("NOT_FOUND", {
+              userMessage: "ユーザー情報が見つかりません",
+              retryable: false,
+              details: { userId: data.userId },
+            })
+          );
         }
 
         const { default: AccountStatusChangedEmail } = await import(
@@ -182,12 +190,11 @@ export class NotificationService implements INotificationService {
         });
       }
 
-      return { success: true };
+      return okResult(undefined, { skipped: true });
     } catch (error) {
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : "通知送信中にエラーが発生しました",
-      };
+      return errFrom(error, {
+        defaultCode: "EMAIL_SENDING_FAILED",
+      });
     }
   }
 
@@ -235,10 +242,7 @@ export class NotificationService implements INotificationService {
         "@/emails/participation/ParticipationRegisteredEmail"
       );
 
-      // ゲストURLを構築
-      const baseUrl =
-        process.env.NEXT_PUBLIC_APP_URL || getEnv().NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-      const guestUrl = `${baseUrl}/guest/${data.guestToken}`;
+      const guestUrl = buildGuestUrl(data.guestToken);
 
       const template: EmailTemplate = {
         subject: `【みんなの集金】${data.eventTitle} - 参加登録完了`,
@@ -256,10 +260,9 @@ export class NotificationService implements INotificationService {
         template,
       });
     } catch (error) {
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : "通知送信中にエラーが発生しました",
-      };
+      return errFrom(error, {
+        defaultCode: "EMAIL_SENDING_FAILED",
+      });
     }
   }
 
@@ -290,10 +293,9 @@ export class NotificationService implements INotificationService {
         template,
       });
     } catch (error) {
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : "通知送信中にエラーが発生しました",
-      };
+      return errFrom(error, {
+        defaultCode: "EMAIL_SENDING_FAILED",
+      });
     }
   }
 

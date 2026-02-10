@@ -39,9 +39,7 @@ describe("異常系テスト", () => {
       const req = setup.createRequest({ event: evt });
       const res = await WorkerPOST(req);
 
-      expect(res.status).toBe(200);
-      const json = await res.json();
-      expect(json.success).toBe(true);
+      expect(res.status).toBe(204);
 
       // セキュリティログが出力されているか確認
       expect(mockLoggerInfo).toHaveBeenCalledWith(
@@ -65,11 +63,7 @@ describe("異常系テスト", () => {
       const req = setup.createRequest({ event: evt });
       const res = await WorkerPOST(req);
 
-      expect(res.status).toBe(200);
-      const json = await res.json();
-      expect(json.success).toBe(true);
-      // paymentIdは含まれない
-      expect(json.processingResult.paymentId).toBeUndefined();
+      expect(res.status).toBe(204);
     });
   });
 
@@ -90,8 +84,9 @@ describe("異常系テスト", () => {
       const req = setup.createRequest({ event: evt });
       const res = await WorkerPOST(req);
 
-      // 終端エラー（terminal: true）により500エラー
-      expect(res.status).toBe(500);
+      // 非リトライエラ（terminal: true）かつ重複でない場合は 489
+      expect(res.status).toBe(489);
+      expect(res.headers.get("Upstash-NonRetryable-Error")).toBe("true");
 
       // セキュリティログが出力されている
       expect(mockLoggerInfo).toHaveBeenCalledWith(
@@ -126,8 +121,9 @@ describe("異常系テスト", () => {
       const req = setup.createRequest({ event: evt });
       const res = await WorkerPOST(req);
 
-      // 終端エラーにより500エラー
-      expect(res.status).toBe(500);
+      // 非リトライエラー（terminal: true）かつ重複でない場合は 489
+      expect(res.status).toBe(489);
+      expect(res.headers.get("Upstash-NonRetryable-Error")).toBe("true");
 
       // セキュリティログが出力されている
       expect(mockLoggerInfo).toHaveBeenCalledWith(
@@ -160,7 +156,8 @@ describe("異常系テスト", () => {
       const req = setup.createRequest({ event: evt });
       const res = await WorkerPOST(req);
 
-      expect(res.status).toBe(500);
+      expect(res.status).toBe(489);
+      expect(res.headers.get("Upstash-NonRetryable-Error")).toBe("true");
 
       expect(mockLoggerInfo).toHaveBeenCalledWith(
         "Webhook security event",
@@ -213,9 +210,7 @@ describe("異常系テスト", () => {
       const res = await WorkerPOST(req);
 
       // 決済処理は成功
-      expect(res.status).toBe(200);
-      const json = await res.json();
-      expect(json.success).toBe(true);
+      expect(res.status).toBe(204);
 
       // 決済は正常にpaidに更新されている
       const { data: updatedPayment } = await setup.supabase

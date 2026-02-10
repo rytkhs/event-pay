@@ -148,32 +148,6 @@ export function NotFoundLayout({
 }
 
 /**
- * 500エラー専用レイアウト
- */
-export function ServerErrorLayout({
-  title = "サーバーエラーが発生しました",
-  message = "申し訳ございません。サーバーで問題が発生しました。",
-  description = "しばらく時間をおいて再度お試しください。問題が続く場合はサポートにお問い合わせください。",
-  showRetry = true,
-  showSupport = true,
-  ...props
-}: Partial<ErrorLayoutProps>) {
-  return (
-    <ErrorLayout
-      code="INTERNAL_ERROR"
-      severity="high"
-      title={title}
-      message={message}
-      description={description}
-      showRetry={showRetry}
-      showHome={true}
-      showSupport={showSupport}
-      {...props}
-    />
-  );
-}
-
-/**
  * 認証エラー専用レイアウト
  */
 export function AuthErrorLayout({
@@ -202,37 +176,6 @@ export function AuthErrorLayout({
 }
 
 /**
- * レート制限エラー専用レイアウト
- */
-export function RateLimitErrorLayout({
-  title = "アクセス制限",
-  message = "アクセス頻度が高すぎます。",
-  description = "セキュリティのため、短時間での連続アクセスを制限しています。5分程度お待ちください。",
-  showRetry = true,
-  retryLabel = "再試行",
-  ...props
-}: Partial<ErrorLayoutProps>) {
-  return (
-    <ErrorLayout
-      code="RATE_LIMITED"
-      category="security"
-      severity="medium"
-      title={title}
-      message={message}
-      description={description}
-      showRetry={showRetry}
-      showHome={true}
-      retryLabel={retryLabel}
-      {...props}
-    >
-      <div className="mb-6 p-4 bg-orange-50 border border-orange-200 rounded-lg">
-        <p className="text-sm text-orange-700">{description}</p>
-      </div>
-    </ErrorLayout>
-  );
-}
-
-/**
  * 決済エラー専用レイアウト
  */
 export function PaymentErrorLayout({
@@ -254,32 +197,6 @@ export function PaymentErrorLayout({
       showRetry={showRetry}
       showHome={true}
       showSupport={showSupport}
-      {...props}
-    />
-  );
-}
-
-/**
- * メンテナンス中専用レイアウト
- */
-export function MaintenanceLayout({
-  title = "メンテナンス中",
-  message = "現在、システムメンテナンスを実施しています。",
-  description = "ご迷惑をおかけして申し訳ございません。しばらくお待ちください。",
-  showRetry = true,
-  retryLabel = "再確認",
-  ...props
-}: Partial<ErrorLayoutProps>) {
-  return (
-    <ErrorLayout
-      code="MAINTENANCE"
-      severity="medium"
-      title={title}
-      message={message}
-      description={description}
-      showRetry={showRetry}
-      showHome={false}
-      retryLabel={retryLabel}
       {...props}
     />
   );

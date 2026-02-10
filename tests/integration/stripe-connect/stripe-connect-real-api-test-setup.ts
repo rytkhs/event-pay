@@ -4,7 +4,7 @@
 
 import { logger } from "@core/logging/app-logger";
 
-import { StripeConnectService } from "@features/stripe-connect/services/service";
+import { StripeConnectErrorHandler, StripeConnectService } from "@features/stripe-connect/server";
 
 import type { TestUser } from "@tests/helpers/test-user";
 import { createCommonTestSetup } from "@tests/setup/common-test-setup";
@@ -30,9 +30,6 @@ export async function setupStripeConnectRealApiTest(): Promise<StripeConnectReal
   });
 
   // StripeConnectServiceを作成（実Supabaseクライアントを使用）
-  const { StripeConnectErrorHandler } = await import(
-    "@features/stripe-connect/services/error-handler"
-  );
   const errorHandler = new StripeConnectErrorHandler();
   const service = new StripeConnectService(commonSetup.adminClient, errorHandler);
 

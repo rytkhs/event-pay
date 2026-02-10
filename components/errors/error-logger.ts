@@ -148,9 +148,6 @@ class ErrorLogger {
         console.error("Failed to send error report:", reportError);
       }
     }
-
-    // ローカルストレージに保存（デバッグ用）
-    // this.saveToLocalStorage(logEntry);
   }
 
   /**
@@ -214,67 +211,6 @@ class ErrorLogger {
       throw new Error(`Failed to send error report: ${response.status}`);
     }
   }
-
-  /**
-   * ローカルストレージに保存（デバッグ用）
-   */
-  private saveToLocalStorage(logEntry: ErrorLogEntry): void {
-    if (typeof window === "undefined") {
-      return;
-    }
-
-    try {
-      const key = `eventpay_error_log`;
-      const existingLogs = JSON.parse(localStorage.getItem(key) || "[]");
-      const maxLogs = 10;
-
-      existingLogs.push({
-        ...logEntry,
-        timestamp: logEntry.timestamp.toISOString(),
-      });
-
-      // 最大数を超えた場合は古いものを削除
-      if (existingLogs.length > maxLogs) {
-        existingLogs.splice(0, existingLogs.length - maxLogs);
-      }
-
-      localStorage.setItem(key, JSON.stringify(existingLogs));
-    } catch (error) {
-      // eslint-disable-next-line no-console
-      console.warn("Failed to save error to localStorage:", error);
-    }
-  }
-
-  /**
-   * ローカルストレージからエラーログを取得
-   */
-  getLocalLogs(): ErrorLogEntry[] {
-    if (typeof window === "undefined") {
-      return [];
-    }
-
-    try {
-      const logs = JSON.parse(localStorage.getItem("eventpay_error_log") || "[]");
-      return logs.map((log: ErrorLogEntry & { timestamp: string }) => ({
-        ...log,
-        timestamp: new Date(log.timestamp),
-      }));
-    } catch (error) {
-      // eslint-disable-next-line no-console
-      console.warn("Failed to get error logs from localStorage:", error);
-      return [];
-    }
-  }
-
-  /**
-   * ローカルストレージのエラーログをクリア
-   */
-  clearLocalLogs(): void {
-    if (typeof window === "undefined") {
-      return;
-    }
-    localStorage.removeItem("eventpay_error_log");
-  }
 }
 
 /**
@@ -297,5 +233,3 @@ export { ErrorLogger, errorLogger };
  */
 export const logError = errorLogger.logError.bind(errorLogger);
 export const addBreadcrumb = errorLogger.addBreadcrumb.bind(errorLogger);
-export const getLocalLogs = errorLogger.getLocalLogs.bind(errorLogger);
-export const clearLocalLogs = errorLogger.clearLocalLogs.bind(errorLogger);

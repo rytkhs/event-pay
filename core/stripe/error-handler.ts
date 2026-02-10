@@ -7,11 +7,11 @@ import "server-only";
 
 import Stripe from "stripe";
 
-import { type PaymentErrorClassification, createPaymentLogger } from "@core/logging/payment-logger";
+import { type PaymentErrorClassification, PaymentLogger } from "@core/logging/payment-logger";
 import { PaymentError, PaymentErrorType } from "@core/types/payment-errors";
 
 /** Stripeエラー分析結果 */
-export interface StripeErrorAnalysis {
+interface StripeErrorAnalysis {
   /** 元のStripeエラー */
   originalError: Stripe.errors.StripeError;
   /** 分類されたPaymentErrorType */
@@ -310,8 +310,8 @@ function generateUserMessage(
  * 汎用Stripeエラーハンドラー
  * issue107で指摘された問題を解決する中核機能
  */
-export class StripeErrorHandler {
-  private paymentLogger = createPaymentLogger({ service: "StripeErrorHandler" });
+class StripeErrorHandler {
+  private paymentLogger = new PaymentLogger({ service: "StripeErrorHandler" });
 
   /**
    * StripeエラーをPaymentErrorに変換し、詳細分析を実行
@@ -350,7 +350,7 @@ export class StripeErrorHandler {
   /**
    * Stripeエラーの詳細分析
    */
-  analyzeStripeError(
+  private analyzeStripeError(
     error: Stripe.errors.StripeError,
     context?: StripeErrorContext
   ): StripeErrorAnalysis {
@@ -372,40 +372,12 @@ export class StripeErrorHandler {
       severity: classification.severity,
     };
   }
-
-  /**
-   * Connect Account関連エラーかどうかを判定
-   */
-  isConnectAccountError(error: Stripe.errors.StripeError): boolean {
-    const message = error.message?.toLowerCase() || "";
-    return (
-      message.includes("no such on_behalf_of") ||
-      message.includes("connect account") ||
-      message.includes("account is restricted") ||
-      message.includes("payouts_enabled") ||
-      error.code === "account_restricted"
-    );
-  }
-
-  /**
-   * リトライ可能なエラーかどうかを判定
-   */
-  isRetryable(error: Stripe.errors.StripeError): boolean {
-    return classifyStripeError(error).retryable;
-  }
-
-  /**
-   * エラーの重要度を判定
-   */
-  getSeverity(error: Stripe.errors.StripeError): "low" | "medium" | "high" | "critical" {
-    return classifyStripeError(error).severity;
-  }
 }
 
 /**
  * デフォルトエラーハンドラーインスタンス
  */
-export const stripeErrorHandler = new StripeErrorHandler();
+const stripeErrorHandler = new StripeErrorHandler();
 
 /**
  * 便利関数: StripeエラーをPaymentErrorに変換
@@ -415,13 +387,4 @@ export function convertStripeError(
   context?: StripeErrorContext
 ): PaymentError {
   return stripeErrorHandler.handleStripeError(error, context);
-}
-
-/**
- * 便利関数: Connect Account関連エラーかどうかを判定
- */
-export function isConnectAccountError(error: unknown): boolean {
-  return (
-    error instanceof Stripe.errors.StripeError && stripeErrorHandler.isConnectAccountError(error)
-  );
 }

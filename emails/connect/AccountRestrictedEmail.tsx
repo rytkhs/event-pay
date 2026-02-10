@@ -12,7 +12,7 @@ export interface AccountRestrictedEmailProps {
   dashboardUrl?: string;
 }
 
-export const AccountRestrictedEmail = ({
+const AccountRestrictedEmail = ({
   userName,
   restrictionReason,
   requiredActions,

@@ -22,8 +22,8 @@ describe("既存payments.amount優先ロジック検証", () => {
       expect(amount1).toBe(1500);
 
       // 既存paymentが存在しない場合
-      const existingPayment2 = null;
-      const amount2 = existingPayment2?.amount ?? event.fee;
+      const existingPayment2: { amount: number } | null = null;
+      const amount2 = (existingPayment2 as { amount: number } | null)?.amount ?? event.fee;
       expect(amount2).toBe(1000);
 
       // 既存paymentのamountがnullの場合

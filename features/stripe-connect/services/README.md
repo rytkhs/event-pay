@@ -7,7 +7,7 @@ EventPayアプリケーション用のStripe Connect APIとの連携を行うサ
 StripeConnectServiceは以下の機能を提供します：
 
 - Stripe Express Accountの作成
--nk（オンボーディング用URL）の生成
+-（オンボーディング用URL）の生成
 - アカウント情報の取得と管理
 - アカウントステータスの更新
 - 決済・送金機能の有効性チェック
@@ -16,14 +16,27 @@ StripeConnectServiceは以下の機能を提供します：
 
 ### サービスインスタンスの作成
 
+**ユーザー認証済みコンテキストの場合:**
+
 ```typescript
-import { createAdminStripeConnectService } from "@features/stripe-connect/services";
+import { createUserStripeConnectService } from "@features/stripe-connect/server";
+
+const stripeConnectService = createUserStripeConnectService();
+```
+
+**管理者権限が必要な場合（adapterなど内部実装）:**
+
+```typescript
+import { getSecureClientFactory } from "@core/security/secure-client-factory.impl";
+import { createStripeConnectServiceWithClient } from "@features/stripe-connect/services/factories";
 import { AdminReason } from "@core/security/secure-client-factory.types";
 
-const stripeConnectService = await createAdminStripeConnectService(
+const factory = getSecureClientFactory();
+const adminClient = await factory.createAuditedAdminClient(
   AdminReason.PAYMENT_PROCESSING,
-  "docs: stripe-connect service example"
+  "context description"
 );
+const stripeConnectService = createStripeConnectServiceWithClient(adminClient);
 ```
 
 ### Express Accountの作成

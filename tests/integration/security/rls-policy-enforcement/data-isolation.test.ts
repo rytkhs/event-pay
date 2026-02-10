@@ -4,7 +4,7 @@
 
 import { describe, test, expect, beforeAll, afterAll } from "@jest/globals";
 
-import { SecureSupabaseClientFactory } from "@core/security/secure-client-factory.impl";
+import { getSecureClientFactory } from "@core/security/secure-client-factory.impl";
 import { setupRLSTest, type RLSTestSetup } from "./rls-test-setup";
 
 describe("Data Isolation Verification", () => {
@@ -19,7 +19,7 @@ describe("Data Isolation Verification", () => {
   });
 
   test("ゲストトークンによるデータアクセスが正しく分離されている", async () => {
-    const factory = SecureSupabaseClientFactory.create();
+    const factory = getSecureClientFactory();
 
     // 正しいゲストトークンを使用したクライアント
     const guestClient = factory.createGuestClient(setup.testGuestToken);
@@ -38,7 +38,7 @@ describe("Data Isolation Verification", () => {
   });
 
   test("無効なゲストトークンでは何のデータも取得できない", async () => {
-    const factory = SecureSupabaseClientFactory.create();
+    const factory = getSecureClientFactory();
 
     // 無効なゲストトークンを使用したクライアント（存在しないが形式は正しい）
     const invalidGuestClient = factory.createGuestClient("gst_nonexistent_token_12345678901234");
@@ -52,7 +52,7 @@ describe("Data Isolation Verification", () => {
   });
 
   test("招待トークンによるイベントアクセスが正しく分離されている", async () => {
-    const factory = SecureSupabaseClientFactory.create();
+    const factory = getSecureClientFactory();
     // 招待トークンヘッダーを設定した読み取り専用クライアント
     const anonClient = factory.createReadOnlyClient({
       headers: {

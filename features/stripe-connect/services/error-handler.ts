@@ -9,13 +9,14 @@ import { logger, type LogLevel } from "@core/logging/app-logger";
 import { sendSlackText } from "@core/notification/slack";
 import { handleServerError } from "@core/utils/error-handler.server";
 
+import { StripeConnectError, StripeConnectErrorType, ErrorHandlingResult } from "../types";
+
 import {
   ERROR_HANDLING_BY_TYPE,
   STRIPE_ERROR_CODE_MAPPING,
   POSTGRES_ERROR_CODE_MAPPING,
 } from "./error-mapping";
 import { IStripeConnectErrorHandler } from "./interface";
-import { StripeConnectError, StripeConnectErrorType, ErrorHandlingResult } from "./types";
 
 /**
  * StripeConnect エラーハンドラーの実装クラス
@@ -248,7 +249,10 @@ export class StripeConnectErrorHandler implements IStripeConnectErrorHandler {
           action: "admin_notification",
           actor_type: "system",
           error_type: error.type,
-          slack_error: slackResult.error,
+          slack_error_message: slackResult.error.message,
+          slack_error_code: slackResult.error.code,
+          retryable: slackResult.error.retryable,
+          slack_error_details: slackResult.error.details,
           outcome: "failure",
         });
       }

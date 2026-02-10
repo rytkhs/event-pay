@@ -47,7 +47,7 @@ describe("エッジケース", () => {
       const req = setup.createRequest({ event: evt });
       const res = await WorkerPOST(req);
 
-      expect(res.status).toBe(200);
+      expect(res.status).toBe(204);
 
       // paid に更新されているか確認
       const { data: updatedPayment } = await setup.supabase
@@ -92,7 +92,7 @@ describe("エッジケース", () => {
       const req = setup.createRequest({ event: evt });
       const res = await WorkerPOST(req);
 
-      expect(res.status).toBe(200);
+      expect(res.status).toBe(204);
 
       // ステータスは変更されていない（received のまま）
       const { data: unchangedPayment } = await setup.supabase
@@ -181,7 +181,7 @@ describe("エッジケース", () => {
 
       // すべて成功することを確認
       results.forEach((res: Response) => {
-        expect(res.status).toBe(200);
+        expect(res.status).toBe(204);
       });
 
       // 統合テストでは実際のRPC関数が呼ばれることを確認
@@ -200,9 +200,7 @@ describe("エッジケース", () => {
       const req = setup.createRequest({ event: evt });
       const res = await WorkerPOST(req);
 
-      expect(res.status).toBe(200);
-      const json = await res.json();
-      expect(json.success).toBe(true);
+      expect(res.status).toBe(204);
 
       // 決済レコード未発見ログが出力されている
       expect(mockLoggerInfo).toHaveBeenCalledWith(
@@ -226,9 +224,7 @@ describe("エッジケース", () => {
       const req = setup.createRequest({ event: evt });
       const res = await WorkerPOST(req);
 
-      expect(res.status).toBe(200);
-      const json = await res.json();
-      expect(json.success).toBe(true);
+      expect(res.status).toBe(204);
     });
   });
 });

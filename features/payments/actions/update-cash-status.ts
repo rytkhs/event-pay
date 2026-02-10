@@ -3,7 +3,7 @@ import { z } from "zod";
 import { type ActionResult, fail, ok } from "@core/errors/adapters/server-actions";
 import type { ErrorCode } from "@core/errors/types";
 import { enforceRateLimit, buildKey, POLICIES } from "@core/rate-limit";
-import { SecureSupabaseClientFactory } from "@core/security/secure-client-factory.impl";
+import { getSecureClientFactory } from "@core/security/secure-client-factory.impl";
 import { PaymentError, PaymentErrorType } from "@core/types/payment-errors";
 
 import { PaymentValidator } from "../validation";
@@ -57,7 +57,7 @@ export async function updateCashStatusAction(
     }
     const { paymentId, status, notes, isCancel } = parsed.data;
 
-    const factory = SecureSupabaseClientFactory.create();
+    const factory = getSecureClientFactory();
     const supabase = await factory.createAuthenticatedClient();
     const {
       data: { user },

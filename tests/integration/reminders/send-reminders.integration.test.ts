@@ -201,8 +201,7 @@ describe("リマインダー送信 統合テスト", () => {
 
       expect(response.status).toBe(200);
 
-      const body = await response.json();
-      expect(body.success).toBe(true);
+      const body = (await response.json()) as any;
 
       // 参加期限リマインダーのサマリーを確認
       const responseDeadlineSummary = body.summaries.find(
@@ -238,7 +237,7 @@ describe("リマインダー送信 統合テスト", () => {
 
       expect(response.status).toBe(200);
 
-      const body = await response.json();
+      const body = (await response.json()) as any;
       const responseDeadlineSummary = body.summaries.find(
         (s: any) => s.reminderType === "response_deadline"
       );
@@ -291,7 +290,7 @@ describe("リマインダー送信 統合テスト", () => {
 
       expect(response.status).toBe(200);
 
-      const body = await response.json();
+      const body = (await response.json()) as any;
       const paymentDeadlineSummary = body.summaries.find(
         (s: any) => s.reminderType === "payment_deadline"
       );
@@ -332,7 +331,7 @@ describe("リマインダー送信 統合テスト", () => {
 
       expect(response.status).toBe(200);
 
-      const body = await response.json();
+      const body = (await response.json()) as any;
       const paymentDeadlineSummary = body.summaries.find(
         (s: any) => s.reminderType === "payment_deadline"
       );
@@ -375,7 +374,7 @@ describe("リマインダー送信 統合テスト", () => {
 
       expect(response.status).toBe(200);
 
-      const body = await response.json();
+      const body = (await response.json()) as any;
       const eventStartSummary = body.summaries.find((s: any) => s.reminderType === "event_start");
       expect(eventStartSummary).toBeDefined();
       expect(eventStartSummary.totalTargets).toBe(2);
@@ -406,7 +405,7 @@ describe("リマインダー送信 統合テスト", () => {
 
       expect(response.status).toBe(200);
 
-      const body = await response.json();
+      const body = (await response.json()) as any;
       const eventStartSummary = body.summaries.find((s: any) => s.reminderType === "event_start");
       expect(eventStartSummary.totalTargets).toBe(0);
     });
@@ -475,8 +474,7 @@ describe("リマインダー送信 統合テスト", () => {
 
       expect(response.status).toBe(200);
 
-      const body = await response.json();
-      expect(body.success).toBe(true);
+      const body = (await response.json()) as any;
       expect(body.summaries).toHaveLength(3);
 
       // 各リマインダーが送信されたことを確認
@@ -502,8 +500,7 @@ describe("リマインダー送信 統合テスト", () => {
 
       expect(response.status).toBe(200);
 
-      const body = await response.json();
-      expect(body.success).toBe(true);
+      const body = (await response.json()) as any;
       expect(body.totalSent).toBe(0);
       expect(body.totalFailed).toBe(0);
     });
@@ -520,12 +517,12 @@ describe("リマインダー送信 統合テスト", () => {
             success: false,
             error: "送信失敗",
             errorType: "transient",
-          } as NotificationResult),
+          } as unknown as NotificationResult),
           sendAdminAlert: jest.fn().mockResolvedValue({
             success: true,
             messageId: "test-admin-alert-id",
             retryCount: 0,
-          } as NotificationResult),
+          } as unknown as NotificationResult),
         };
       });
 
@@ -551,8 +548,7 @@ describe("リマインダー送信 統合テスト", () => {
 
       expect(response.status).toBe(200);
 
-      const body = await response.json();
-      expect(body.success).toBe(true); // Cronジョブ自体は成功
+      const body = (await response.json()) as any;
 
       const responseDeadlineSummary = body.summaries.find(
         (s: any) => s.reminderType === "response_deadline"

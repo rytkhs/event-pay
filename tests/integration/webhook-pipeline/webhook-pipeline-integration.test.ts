@@ -30,9 +30,13 @@ import { POST as StripeWorkerPOST } from "../../../app/api/workers/stripe-webhoo
 
 // QStash モック（外部サービスはモック化）
 const mockPublishJSON = jest.fn();
+const mockVerify = jest.fn().mockResolvedValue(true);
 jest.mock("@upstash/qstash", () => ({
   Client: jest.fn().mockImplementation(() => ({
     publishJSON: mockPublishJSON,
+  })),
+  Receiver: jest.fn().mockImplementation(() => ({
+    verify: mockVerify,
   })),
 }));
 
@@ -50,8 +54,8 @@ const MOCK_STRIPE_EVENT = {
       amount: 1500,
       currency: "jpy",
       metadata: {
-        payment_id: "test_payment_id",
-        attendance_id: "test_attendance_id",
+        payment_id: "00000000-0000-4000-8000-000000000001",
+        attendance_id: "00000000-0000-4000-8000-000000000002",
         event_title: "Test Event",
       },
     },
@@ -85,7 +89,7 @@ describe("🔗 Webhook パイプライン 統合テスト", () => {
 
   beforeAll(() => {
     // テスト環境の基本設定
-    process.env.NODE_ENV = "test";
+    (process.env as Record<string, string | undefined>).NODE_ENV = "test";
     process.env.NEXT_PUBLIC_APP_URL = "https://test.eventpay.com";
     process.env.ENABLE_STRIPE_IP_CHECK = "false"; // IP制限を無効化（統合テスト用）
 
@@ -119,7 +123,7 @@ describe("🔗 Webhook パイプライン 統合テスト", () => {
       });
 
       const response = await StripeWebhookPOST(request);
-      const body = await response.json();
+      const body = (await response.json()) as any;
 
       expect(response.status).toBe(400);
       expect(body.code).toBe("INVALID_REQUEST");
@@ -140,7 +144,7 @@ describe("🔗 Webhook パイプライン 統合テスト", () => {
       });
 
       const response = await StripeWebhookPOST(request);
-      const body = await response.json();
+      const body = (await response.json()) as any;
 
       expect(response.status).toBe(400);
       expect(body.code).toBe("INVALID_REQUEST");
@@ -167,49 +171,50 @@ describe("🔗 Webhook パイプライン 統合テスト", () => {
       const response = await StripeWebhookPOST(request);
 
       // 統合テストでは正常なフローを検証する
-      expect(response.status).toBe(200);
-      const body = await response.json();
-      expect(body.received).toBe(true);
-      expect(body.eventId).toBe(MOCK_STRIPE_EVENT.id);
+      expect(response.status).toBe(204);
+      expect(response.headers.get("X-Event-Id")).toBe(MOCK_STRIPE_EVENT.id);
     });
   });
 
   describe("🔧 QStash Worker エンドポイント", () => {
-    test("QStash署名なしでは401エラーを返す", async () => {
+    test("QStash署名なしでは489エラーを返す", async () => {
       const payload = JSON.stringify({ event: MOCK_STRIPE_EVENT });
 
       const request = new NextRequest("https://test.eventpay.com/api/workers/stripe-webhook", {
         method: "POST",
         headers: {
-          "Upstash-Delivery-Id": "deliv_test_no_sig",
+          "Upstash-Message-Id": "msg_test_no_sig",
+          "Upstash-Retried": "0",
         },
         body: payload,
       });
 
       const response = await StripeWorkerPOST(request);
-      const body = await response.json();
+      const text = await response.text();
 
-      expect(response.status).toBe(401);
-      expect(body.code).toBe("UNAUTHORIZED");
-      expect(body.detail).toBe("Missing QStash signature");
+      expect(response.status).toBe(489);
+      expect(response.headers.get("Upstash-NonRetryable-Error")).toBe("true");
+      expect(text).toContain("Missing QStash signature");
     });
 
-    test("無効なQStash署名では署名検証エラーを返す", async () => {
+    test("無効なQStash署名では489エラーを返す", async () => {
       const payload = JSON.stringify({ event: MOCK_STRIPE_EVENT });
+      mockVerify.mockResolvedValueOnce(false);
 
       const request = new NextRequest("https://test.eventpay.com/api/workers/stripe-webhook", {
         method: "POST",
         headers: {
           "Upstash-Signature": "invalid_signature",
-          "Upstash-Delivery-Id": "deliv_test_invalid",
+          "Upstash-Message-Id": "msg_test_invalid",
+          "Upstash-Retried": "0",
         },
         body: payload,
       });
 
       const response = await StripeWorkerPOST(request);
 
-      // QStash署名検証失敗により500エラーまたは401エラーが期待される
-      expect([401, 500]).toContain(response.status);
+      expect(response.status).toBe(489);
+      expect(response.headers.get("Upstash-NonRetryable-Error")).toBe("true");
     });
   });
 
@@ -234,29 +239,28 @@ describe("🔗 Webhook パイプライン 統合テスト", () => {
       const webhookResponse = await StripeWebhookPOST(webhookRequest);
 
       // 統合テストでは正常なフローを検証
-      expect(webhookResponse.status).toBe(200);
-      const webhookBody = await webhookResponse.json();
-      expect(webhookBody.received).toBe(true);
-      expect(webhookBody.eventId).toBe(MOCK_STRIPE_EVENT.id);
+      expect(webhookResponse.status).toBe(204);
+      expect(webhookResponse.headers.get("X-Event-Id")).toBe(MOCK_STRIPE_EVENT.id);
 
-      // Step 2: Worker エンドポイント（QStash署名なしなので401を確認）
+      // Step 2: Worker エンドポイント（QStash署名なしなので489を確認）
       const workerPayload = JSON.stringify({ event: MOCK_STRIPE_EVENT });
       const workerRequest = new NextRequest(
         "https://test.eventpay.com/api/workers/stripe-webhook",
         {
           method: "POST",
           headers: {
-            "Upstash-Delivery-Id": "deliv_test_flow",
+            "Upstash-Message-Id": "msg_test_flow",
+            "Upstash-Retried": "0",
           },
           body: workerPayload,
         }
       );
 
       const workerResponse = await StripeWorkerPOST(workerRequest);
-      expect(workerResponse.status).toBe(401); // QStash署名なしで認証エラー（期待される動作）
+      expect(workerResponse.status).toBe(489); // QStash署名なしで非リトライエラー（期待される動作）
 
-      const workerBody = await workerResponse.json();
-      expect(workerBody.code).toBe("UNAUTHORIZED");
+      const text = await workerResponse.text();
+      expect(text).toContain("Missing QStash signature");
     });
   });
 

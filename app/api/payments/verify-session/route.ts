@@ -13,7 +13,7 @@ import { z } from "zod";
 import { respondWithCode, respondWithProblem } from "@core/errors/server";
 import { logger } from "@core/logging/app-logger";
 import { withRateLimit, buildKey, POLICIES } from "@core/rate-limit";
-import { SecureSupabaseClientFactory } from "@core/security/secure-client-factory.impl";
+import { getSecureClientFactory } from "@core/security/secure-client-factory.impl";
 import { AdminReason } from "@core/security/secure-client-factory.types";
 import { logSecurityEvent } from "@core/security/security-logger";
 import { getStripe } from "@core/stripe/client";
@@ -120,7 +120,7 @@ export async function GET(request: NextRequest) {
 
     // attendances テーブル経由で payment 情報を取得（サービスロールでRLSをバイパス）
     // ゲストトークンでの権限確認は事前に実施済み（APIレベルでヘッダー検証）
-    const secureClientFactory = SecureSupabaseClientFactory.create();
+    const secureClientFactory = getSecureClientFactory();
     const supabase = await secureClientFactory.createAuditedAdminClient(
       AdminReason.PAYMENT_PROCESSING,
       "PAYMENT_SESSION_VERIFICATION",

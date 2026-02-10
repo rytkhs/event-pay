@@ -3,7 +3,7 @@
  * 無効な管理URLへのアクセス
  */
 
-import { ErrorLayout } from "@/components/errors";
+import { ErrorLayout } from "@/components/errors/ErrorLayout";
 
 /**
  * ゲスト管理URLの404ページ

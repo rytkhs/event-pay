@@ -11,12 +11,12 @@ import { logger } from "@core/logging/app-logger";
  * Cloudflare環境変数にアクセスするためのヘルパー関数
  * @returns Cloudflare環境変数オブジェクト
  */
-export function getEnv() {
+export function getEnv(): NodeJS.ProcessEnv {
   try {
-    return process.env as unknown as Record<string, string | undefined>;
+    return process.env;
   } catch {
     const env = getCloudflareContext().env;
-    return env;
+    return env as unknown as NodeJS.ProcessEnv;
   }
 }
 
@@ -28,7 +28,7 @@ export function getEnv() {
  * - モジュールのトップレベルでは呼び出さず、必ず関数スコープ内で `await` してください。
  * - 一般的なリクエスト（動的ルート・API・Middleware 等）では同期版の `getEnv()` を使用できます。
  */
-export async function getEnvAsync() {
+export async function getEnvAsync(): Promise<NodeJS.ProcessEnv> {
   try {
     const { env } = await getCloudflareContext({ async: true });
     const envKeys = Object.keys(env);
@@ -42,7 +42,7 @@ export async function getEnvAsync() {
       env_count: envKeys.length,
       outcome: "success",
     });
-    return env;
+    return env as unknown as NodeJS.ProcessEnv;
   } catch {
     const envKeys = Object.keys(process.env);
     logger.debug("process.envをフォールバックとして使用（非同期）", {
@@ -55,6 +55,6 @@ export async function getEnvAsync() {
       env_count: envKeys.length,
       outcome: "success",
     });
-    return process.env as unknown as Record<string, string | undefined>;
+    return process.env;
   }
 }

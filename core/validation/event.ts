@@ -1,20 +1,9 @@
 import { z } from "zod";
 
+import { isValidPaymentMethod } from "@core/constants/statuses";
 import { parseFee } from "@core/utils/number-parsers";
 import { sanitizeForEventPay } from "@core/utils/sanitize";
 import { isUtcDateFuture, convertDatetimeLocalToUtc } from "@core/utils/timezone";
-
-import type { Database } from "@/types/database";
-
-// 決済方法の定数（無料イベントは参加費0円で判定）
-const PAYMENT_METHODS: Database["public"]["Enums"]["payment_method_enum"][] = ["stripe", "cash"];
-
-// 型ガード関数（型安全性強化）
-function isValidPaymentMethod(
-  method: string
-): method is Database["public"]["Enums"]["payment_method_enum"] {
-  return PAYMENT_METHODS.includes(method as Database["public"]["Enums"]["payment_method_enum"]);
-}
 
 // 強化されたバリデーション用のヘルパー関数（date-fns-tz統一）
 const validateFutureDate = (val: string) => {

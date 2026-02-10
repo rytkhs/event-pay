@@ -1,7 +1,7 @@
 /**
  * 認証済みSupabaseクライアントモック
  *
- * テスト環境で SecureSupabaseClientFactory.createAuthenticatedClient() が
+ * テスト環境で getSecureClientFactoryAuthenticatedClient() が
  * 実際に認証されたクライアントを返すようにするためのモジュール
  */
 

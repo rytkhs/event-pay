@@ -10,6 +10,7 @@ import {
   setupSupabaseClientMocks,
   type CommonMocks,
 } from "@tests/setup/common-mocks";
+import { expectActionFailure } from "@tests/helpers/assert-result";
 
 import { submitContact } from "@/app/(public)/contact/actions";
 import { ContactInputSchema } from "@/app/(public)/contact/useContactForm";
@@ -27,7 +28,7 @@ jest.mock("@core/supabase/server", () => ({
 
 // レート制限のモック（POLICIESも保持）
 jest.mock("@core/rate-limit", () => {
-  const actual = jest.requireActual("@core/rate-limit");
+  const actual = jest.requireActual("@core/rate-limit") as any;
   return {
     ...actual,
     enforceRateLimit: jest.fn(),
@@ -132,7 +133,7 @@ describe("submitContact Server Action - 統合テスト", () => {
 
     // Supabaseのinsertをリセット
     (mockSupabase.from as jest.Mock).mockReturnValue({
-      insert: jest.fn().mockResolvedValue({ data: null, error: null }),
+      insert: jest.fn(() => Promise.resolve({ data: null, error: null } as any)),
     });
   });
 
@@ -208,7 +209,7 @@ describe("submitContact Server Action - 統合テスト", () => {
 
       // Assert
       expect(result).toMatchObject({ success: false });
-      expect(result.error.code).toBe("VALIDATION_ERROR");
+      expect(expectActionFailure(result).code).toBe("VALIDATION_ERROR");
     });
 
     test("メールアドレスが不正な場合エラーを返す", async () => {
@@ -225,7 +226,7 @@ describe("submitContact Server Action - 統合テスト", () => {
 
       // Assert
       expect(result).toMatchObject({ success: false });
-      expect(result.error.code).toBe("VALIDATION_ERROR");
+      expect(expectActionFailure(result).code).toBe("VALIDATION_ERROR");
     });
 
     test("メッセージが10文字未満の場合エラーを返す", async () => {
@@ -242,7 +243,7 @@ describe("submitContact Server Action - 統合テスト", () => {
 
       // Assert
       expect(result).toMatchObject({ success: false });
-      expect(result.error.code).toBe("VALIDATION_ERROR");
+      expect(expectActionFailure(result).code).toBe("VALIDATION_ERROR");
     });
 
     test("consentがfalseの場合エラーを返す", async () => {
@@ -259,7 +260,7 @@ describe("submitContact Server Action - 統合テスト", () => {
 
       // Assert
       expect(result).toMatchObject({ success: false });
-      expect(result.error.code).toBe("VALIDATION_ERROR");
+      expect(expectActionFailure(result).code).toBe("VALIDATION_ERROR");
     });
   });
 
@@ -301,8 +302,9 @@ describe("submitContact Server Action - 統合テスト", () => {
       expect(result1).toMatchObject({ success: true });
       expect(result1).not.toHaveProperty("error");
       expect(result2).toMatchObject({ success: false });
-      expect(result2.error.code).toBe("RESOURCE_CONFLICT");
-      expect(result2.error.userMessage).toContain("同一内容の短時間での再送");
+      const result2Error = expectActionFailure(result2);
+      expect(result2Error.code).toBe("RESOURCE_CONFLICT");
+      expect(result2Error.userMessage).toContain("同一内容の短時間での再送");
     });
   });
 
@@ -342,9 +344,10 @@ describe("submitContact Server Action - 統合テスト", () => {
       // Assert - 6回目はレート制限される
       const lastResult = results[results.length - 1];
       expect(lastResult).toMatchObject({ success: false });
-      expect(lastResult.error.code).toBe("RATE_LIMITED");
-      expect(lastResult.error.details).toBeDefined();
-      expect(lastResult.error.details as any).toHaveProperty("retryAfterSec", 60);
+      const lastError = expectActionFailure(lastResult);
+      expect(lastError.code).toBe("RATE_LIMITED");
+      expect(lastError.details).toBeDefined();
+      expect(lastError.details as any).toHaveProperty("retryAfterSec", 60);
       // 1-5回目は成功
       for (let i = 0; i < 5; i++) {
         expect(results[i]).toMatchObject({ success: true });

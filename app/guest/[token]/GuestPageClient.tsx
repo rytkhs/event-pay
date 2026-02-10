@@ -9,7 +9,6 @@ import { ga4Client } from "@core/analytics/ga4-client";
 import { useToast } from "@core/contexts/toast-context";
 import { useErrorHandler } from "@core/hooks/use-error-handler";
 import { getPaymentDeadlineStatus } from "@core/utils/guest-restrictions";
-import { type GuestAttendanceData } from "@core/utils/guest-token";
 import { canCreateStripeSession } from "@core/validation/payment-eligibility";
 
 import { PaymentStatusAlert } from "@features/events";
@@ -20,6 +19,7 @@ import {
   GuestSettingsArea,
   GuestStatusEditModal,
   GuestScenario,
+  type GuestAttendanceData,
 } from "@features/guest";
 
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";

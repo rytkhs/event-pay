@@ -38,7 +38,7 @@ jest.mock("@features/stripe-connect/server", () => ({
 describe("/api/webhooks/stripe-connect (receiver)", () => {
   beforeEach(() => {
     process.env.QSTASH_TOKEN = "test_qstash_token";
-    process.env.NODE_ENV = "test";
+    (process.env as Record<string, string | undefined>).NODE_ENV = "test";
     // QStashへのpublishをテストするため、SKIP_QSTASH_IN_TESTを未設定にする
     delete process.env.SKIP_QSTASH_IN_TEST;
     mockVerifySignature.mockClear();
@@ -180,16 +180,10 @@ describe("/api/webhooks/stripe-connect (receiver)", () => {
       });
 
       const res = await ConnectWebhookPOST(req);
-      expect(res.status).toBe(200);
-      const json = await res.json();
-      expect(json).toEqual(
-        expect.objectContaining({
-          received: true,
-          eventId: fakeConnectEvent.id,
-          eventType: fakeConnectEvent.type,
-          qstashMessageId: "msg_connect_123",
-        })
-      );
+      expect(res.status).toBe(204);
+      expect(res.headers.get("X-Event-Id")).toBe(fakeConnectEvent.id);
+      expect(res.headers.get("X-Event-Type")).toBe(fakeConnectEvent.type);
+      expect(res.headers.get("X-QStash-Message-Id")).toBe("msg_connect_123");
 
       // publishJSON の引数検証
       expect(mockPublishJSON).toHaveBeenCalledTimes(1);
@@ -235,16 +229,10 @@ describe("/api/webhooks/stripe-connect (receiver)", () => {
       });
 
       const res = await ConnectWebhookPOST(req);
-      expect(res.status).toBe(200);
-      const json = await res.json();
-      expect(json).toEqual(
-        expect.objectContaining({
-          received: true,
-          eventId: fakeConnectEvent.id,
-          eventType: fakeConnectEvent.type,
-          testMode: true,
-        })
-      );
+      expect(res.status).toBe(204);
+      expect(res.headers.get("X-Event-Id")).toBe(fakeConnectEvent.id);
+      expect(res.headers.get("X-Event-Type")).toBe(fakeConnectEvent.type);
+      expect(res.headers.get("X-Test-Mode")).toBe("true");
 
       expect(mockPublishJSON).not.toHaveBeenCalled();
       expect(mockConnectHandlerCreate).toHaveBeenCalledTimes(1);

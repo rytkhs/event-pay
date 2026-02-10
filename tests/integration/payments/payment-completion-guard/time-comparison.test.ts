@@ -4,16 +4,16 @@
 
 import { describe, test, expect, beforeAll, afterAll, beforeEach } from "@jest/globals";
 
-import { getPaymentService } from "@core/services";
+import { getPaymentPort, type PaymentPort } from "@core/ports/payments";
 import { PaymentErrorType } from "@core/types/payment-errors";
 
-import { CreateStripeSessionParams } from "@features/payments/types";
+import { CreateStripeSessionParams } from "@features/payments";
 
 import { createPaymentTestSetup, type PaymentTestSetup } from "@tests/setup/common-test-setup";
 
 describe("時間比較ロジック", () => {
   let setup: PaymentTestSetup;
-  let paymentService: ReturnType<typeof getPaymentService>;
+  let paymentPort: PaymentPort;
 
   beforeAll(async () => {
     const paymentSetup = await createPaymentTestSetup({
@@ -22,7 +22,7 @@ describe("時間比較ロジック", () => {
       accessedTables: ["public.users", "public.events", "public.attendances", "public.payments"],
     });
     setup = paymentSetup;
-    paymentService = getPaymentService();
+    paymentPort = getPaymentPort();
   });
 
   afterAll(async () => {
@@ -81,7 +81,7 @@ describe("時間比較ロジック", () => {
       },
     };
 
-    await expect(paymentService.createStripeSession(sessionParams)).rejects.toThrow(
+    await expect(paymentPort.createStripeSession(sessionParams)).rejects.toThrow(
       expect.objectContaining({
         type: PaymentErrorType.PAYMENT_ALREADY_EXISTS,
         message: "この参加に対する決済は既に完了済みです",
@@ -132,7 +132,7 @@ describe("時間比較ロジック", () => {
     };
 
     // 完了済み決済があるため、時間に関わらず拒否されることを期待
-    await expect(paymentService.createStripeSession(sessionParams)).rejects.toThrow(
+    await expect(paymentPort.createStripeSession(sessionParams)).rejects.toThrow(
       expect.objectContaining({
         type: PaymentErrorType.PAYMENT_ALREADY_EXISTS,
         message: "この参加に対する決済は既に完了済みです",
@@ -186,7 +186,7 @@ describe("時間比較ロジック", () => {
     };
 
     // paid_at（time4）がpendingのupdated_at（time2）より新しいので拒否される
-    await expect(paymentService.createStripeSession(sessionParams)).rejects.toThrow(
+    await expect(paymentPort.createStripeSession(sessionParams)).rejects.toThrow(
       expect.objectContaining({
         type: PaymentErrorType.PAYMENT_ALREADY_EXISTS,
         message: "この参加に対する決済は既に完了済みです",
@@ -239,7 +239,7 @@ describe("時間比較ロジック", () => {
     };
 
     // pendingのupdated_atの方が新しいが、完了済み決済があるため拒否される
-    await expect(paymentService.createStripeSession(sessionParams)).rejects.toThrow(
+    await expect(paymentPort.createStripeSession(sessionParams)).rejects.toThrow(
       expect.objectContaining({
         type: PaymentErrorType.PAYMENT_ALREADY_EXISTS,
         message: "この参加に対する決済は既に完了済みです",

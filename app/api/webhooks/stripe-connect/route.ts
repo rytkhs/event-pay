@@ -9,7 +9,6 @@
  */
 
 import type { NextRequest } from "next/server";
-import { NextResponse } from "next/server";
 
 import { Client } from "@upstash/qstash";
 import type Stripe from "stripe";
@@ -130,18 +129,17 @@ export async function POST(request: NextRequest) {
         const { ConnectWebhookHandler } = await import("@features/stripe-connect/server");
         const handler = await ConnectWebhookHandler.create();
 
-        let _result: any = { success: true };
-
         // イベントタイプに応じて処理
+        let result: { success: boolean; error?: unknown } = { success: true };
         switch (event.type) {
           case "account.updated": {
             const accountObj = event.data.object as Stripe.Account;
-            _result = await handler.handleAccountUpdated(accountObj);
+            result = await handler.handleAccountUpdated(accountObj);
             break;
           }
           case "account.application.deauthorized": {
             const applicationObj = event.data.object as Stripe.Application;
-            _result = await handler.handleAccountApplicationDeauthorized(
+            result = await handler.handleAccountApplicationDeauthorized(
               applicationObj,
               (event as any).account
             );
@@ -149,12 +147,12 @@ export async function POST(request: NextRequest) {
           }
           case "payout.paid": {
             const payout = event.data.object as Stripe.Payout;
-            _result = await handler.handlePayoutPaid(payout);
+            result = await handler.handlePayoutPaid(payout);
             break;
           }
           case "payout.failed": {
             const payout = event.data.object as Stripe.Payout;
-            _result = await handler.handlePayoutFailed(payout);
+            result = await handler.handlePayoutFailed(payout);
             break;
           }
           default: {
@@ -165,6 +163,20 @@ export async function POST(request: NextRequest) {
           }
         }
 
+        // ハンドラーが失敗を返した場合はエラーレスポンスを返す
+        if (!result.success) {
+          return respondWithProblem(result.error, {
+            instance: "/api/webhooks/stripe-connect",
+            detail: "Connect webhook processing failed in test mode",
+            correlationId: requestId,
+            defaultCode: "WEBHOOK_SYNC_PROCESSING_FAILED",
+            logContext: {
+              ...baseLogContext,
+              action: "stripe_connect_webhook_sync_fail",
+            },
+          });
+        }
+
         connectLogger.info("Connect webhook processed synchronously", {
           event_id: event.id,
           event_type: event.type,
@@ -172,11 +184,14 @@ export async function POST(request: NextRequest) {
           outcome: "success",
         });
 
-        return NextResponse.json({
-          received: true,
-          eventId: event.id,
-          eventType: event.type,
-          testMode: true,
+        return new Response(null, {
+          status: 204,
+          headers: {
+            "X-Request-Id": requestId,
+            "X-Event-Id": event.id,
+            "X-Event-Type": event.type,
+            "X-Test-Mode": "true",
+          },
         });
       } catch (error) {
         return respondWithProblem(error, {
@@ -218,11 +233,14 @@ export async function POST(request: NextRequest) {
       qstash_message_id: publishRes.messageId,
     });
 
-    return NextResponse.json({
-      received: true,
-      eventId: event.id,
-      eventType: event.type,
-      qstashMessageId: publishRes.messageId,
+    return new Response(null, {
+      status: 204,
+      headers: {
+        "X-Request-Id": requestId,
+        "X-Event-Id": event.id,
+        "X-Event-Type": event.type,
+        "X-QStash-Message-Id": publishRes.messageId,
+      },
     });
   } catch (error) {
     // 詳細なエラー情報をログに出力

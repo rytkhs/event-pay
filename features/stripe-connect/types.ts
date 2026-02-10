@@ -4,9 +4,9 @@
 
 import type { PostgrestError } from "@supabase/supabase-js";
 
+import type { AppResult } from "@core/errors";
 import type { LogLevel } from "@core/logging/app-logger";
-
-import { Database } from "@/types/database";
+import type { StripeAccountStatus } from "@core/types/statuses";
 
 import type { UIStatus } from "./types/status-classification";
 
@@ -21,9 +21,6 @@ export interface DetailedAccountStatus {
 
 export * from "./types/status-classification";
 export * from "./types/audit-log";
-
-// Stripe Connectアカウントステータスの型
-export type StripeAccountStatus = Database["public"]["Enums"]["stripe_account_status_enum"];
 
 // Webhook処理や通知経路では一時的に enum 外の状態が入ることがあるための拡張型
 export type StripeAccountStatusLike = StripeAccountStatus | "unknown" | "error";
@@ -157,11 +154,10 @@ export interface UpdateBusinessProfileParams {
 }
 
 // ビジネスプロファイル更新結果
-export interface UpdateBusinessProfileResult {
-  success: boolean;
+export type UpdateBusinessProfileResult = AppResult<{
   accountId: string;
   updatedFields: string[];
-}
+}>;
 
 // StripeConnect関連のエラー型
 export enum StripeConnectErrorType {
@@ -231,20 +227,6 @@ export interface ConnectAccountStatusPayload {
     card_payments?: "active" | "inactive" | "pending";
     transfers?: "active" | "inactive" | "pending";
   };
-}
-
-/**
- * checkConnectPermissionsAction の ActionResult ペイロード
- */
-export interface ConnectPermissionsPayload {
-  /** 支払い受付が可能か */
-  canReceivePayments: boolean;
-  /** 振込が可能か */
-  canReceivePayouts: boolean;
-  /** 認証済みか */
-  isVerified: boolean;
-  /** 制限事項 */
-  restrictions?: string[];
 }
 
 /**

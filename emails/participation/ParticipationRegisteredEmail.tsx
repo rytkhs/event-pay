@@ -30,7 +30,7 @@ const statusTheme = (status: "attending" | "maybe" | "not_attending") => {
   }
 };
 
-export const ParticipationRegisteredEmail = ({
+const ParticipationRegisteredEmail = ({
   nickname,
   eventTitle,
   eventDate,

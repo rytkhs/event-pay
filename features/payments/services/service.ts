@@ -6,20 +6,19 @@ import "server-only";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-import { createPaymentLogger, type PaymentLogger } from "@core/logging/payment-logger";
+import { PaymentLogger } from "@core/logging/payment-logger";
 
 import { Database } from "@/types/database";
 
-import { createCashPayment as createCashPaymentFn } from "./cash-payment";
-import { deletePayment as deletePaymentFn } from "./delete-payment";
+import { createCashPayment as createCashPaymentFn } from "./cash-payment/create-cash-payment";
+import { deletePayment as deletePaymentFn } from "./delete-payment/delete-payment";
 import { ApplicationFeeCalculator } from "./fee-config/application-fee-calculator";
 import { IPaymentService, IPaymentErrorHandler } from "./interface";
-import { getPaymentByAttendance, getPaymentById, getPaymentsByEvent } from "./queries";
-import {
-  bulkUpdatePaymentStatus as bulkUpdatePaymentStatusFn,
-  updatePaymentStatus as updatePaymentStatusFn,
-} from "./status-update";
-import { createStripeSession as createStripeSessionFn } from "./stripe-session";
+import { getPaymentByAttendance, getPaymentById } from "./queries/get-payment";
+import { getPaymentsByEvent } from "./queries/get-payments-by-event";
+import { bulkUpdatePaymentStatus as bulkUpdatePaymentStatusFn } from "./status-update/bulk-update-payment-status";
+import { updatePaymentStatus as updatePaymentStatusFn } from "./status-update/update-payment-status";
+import { createStripeSession as createStripeSessionFn } from "./stripe-session/create-stripe-session";
 import {
   Payment,
   PaymentStatus,
@@ -46,7 +45,7 @@ export class PaymentService implements IPaymentService {
     this.supabase = supabaseClient;
     this.errorHandler = errorHandler;
     this.applicationFeeCalculator = new ApplicationFeeCalculator(supabaseClient);
-    this.paymentLogger = createPaymentLogger({ category: "payment", action: "payment_service" });
+    this.paymentLogger = new PaymentLogger({ category: "payment", action: "payment_service" });
   }
 
   /**

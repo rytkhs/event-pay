@@ -1,3 +1,5 @@
+import type { AppResult } from "@core/errors";
+
 /**
  * イベント清算レポートの基本情報
  */
@@ -76,13 +78,8 @@ export interface GetSettlementReportsParams {
 /**
  * レポート生成結果
  */
-export interface SettlementReportResult {
-  success: boolean;
-  reportId?: string;
-  reportData?: SettlementReportData;
-  error?: string;
-  alreadyExists?: boolean;
-}
+export type SettlementReportResult = AppResult<GenerateSettlementReportPayload>;
+export type ExportSettlementReportResult = AppResult<ExportSettlementReportsPayload>;
 
 /**
  * ActionResult Payloads

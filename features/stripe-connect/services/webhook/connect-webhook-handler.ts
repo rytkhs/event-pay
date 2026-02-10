@@ -9,23 +9,23 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import Stripe from "stripe";
 
+import { errFrom, okResult } from "@core/errors";
 import { logger } from "@core/logging/app-logger";
-import { NotificationService } from "@core/notification";
+import { NotificationService } from "@core/notification/service";
 import type {
   AccountStatusChangeNotification,
   AccountRestrictedNotification,
   StripeConnectNotificationData,
 } from "@core/notification/types";
 import { getStripeConnectPort, type StripeAccountStatusLike } from "@core/ports/stripe-connect";
-import { SecureSupabaseClientFactory } from "@core/security/secure-client-factory.impl";
+import { getSecureClientFactory } from "@core/security/secure-client-factory.impl";
 import { AdminReason } from "@core/security/secure-client-factory.types";
-import { type StripeAccountStatus } from "@core/types/enums";
+import type { StripeAccountStatus } from "@core/types/statuses";
 import { handleServerError } from "@core/utils/error-handler.server";
 
-// Removed @core/services dependency to break circular reference
-// Use ports instead of direct feature import to avoid boundaries violation
-
 import { Database } from "@/types/database";
+
+import type { ConnectWebhookResult } from "./connect-webhook.types";
 
 /**
  * Connect Webhook イベントハンドラー
@@ -57,7 +57,7 @@ export class ConnectWebhookHandler {
    * 監査付きのWebhookハンドラーを作成
    */
   static async create(): Promise<ConnectWebhookHandler> {
-    const secureFactory = SecureSupabaseClientFactory.create();
+    const secureFactory = getSecureClientFactory();
     const adminClient = await secureFactory.createAuditedAdminClient(
       AdminReason.PAYMENT_PROCESSING,
       "Stripe Connect webhook processing"
@@ -78,7 +78,7 @@ export class ConnectWebhookHandler {
    * capabilities.* の status または requirements が変化したとき、Status Synchronizationを実行する
    * payouts_enabled または charges_enabled が変化したとき、Status Synchronizationを実行する
    */
-  async handleAccountUpdated(account: Stripe.Account): Promise<void> {
+  async handleAccountUpdated(account: Stripe.Account): Promise<ConnectWebhookResult> {
     try {
       // メタデータからユーザーIDを取得（actor_idへ統一）
       const userId = (account.metadata as Record<string, string | undefined> | undefined)?.actor_id;
@@ -87,7 +87,10 @@ export class ConnectWebhookHandler {
           stripe_account_id: account.id,
           outcome: "failure",
         });
-        return;
+        return okResult(undefined, {
+          reason: "missing_actor_id",
+          accountId: account.id,
+        });
       }
 
       // 現在のアカウント状態を取得（存在しない場合でも処理継続し、挿入で追従）
@@ -156,6 +159,12 @@ export class ConnectWebhookHandler {
             }
           : undefined,
       });
+
+      return okResult(undefined, {
+        reason: "account_updated_processed",
+        accountId: account.id,
+        userId,
+      });
     } catch (error) {
       handleServerError("CONNECT_WEBHOOK_ACCOUNT_UPDATED_ERROR", {
         action: "handleAccountUpdated",
@@ -193,7 +202,14 @@ export class ConnectWebhookHandler {
         });
       }
 
-      throw error;
+      return errFrom(error, {
+        defaultCode: "CONNECT_WEBHOOK_ACCOUNT_UPDATED_ERROR",
+        meta: {
+          reason: "account_updated_failed",
+          accountId: account.id,
+          userId: (account.metadata as Record<string, string | undefined> | undefined)?.actor_id,
+        },
+      });
     }
   }
 
@@ -205,7 +221,7 @@ export class ConnectWebhookHandler {
   async handleAccountApplicationDeauthorized(
     application: Stripe.Application,
     connectedAccountId?: string | null
-  ): Promise<void> {
+  ): Promise<ConnectWebhookResult> {
     try {
       const accountId = connectedAccountId || undefined;
 
@@ -257,6 +273,12 @@ export class ConnectWebhookHandler {
         application_id: application.id,
         outcome: "success",
       });
+
+      return okResult(undefined, {
+        reason: userId ? "account_deauthorized_processed" : "account_deauthorized_without_user",
+        accountId,
+        userId,
+      });
     } catch (error) {
       handleServerError("CONNECT_WEBHOOK_DEAUTHORIZED_ERROR", {
         action: "handleAccountApplicationDeauthorized",
@@ -266,11 +288,17 @@ export class ConnectWebhookHandler {
           error_message: error instanceof Error ? error.message : String(error),
         },
       });
-      throw error;
+      return errFrom(error, {
+        defaultCode: "CONNECT_WEBHOOK_DEAUTHORIZED_ERROR",
+        meta: {
+          reason: "account_deauthorized_failed",
+          accountId: connectedAccountId ?? undefined,
+        },
+      });
     }
   }
 
-  async handlePayoutPaid(payout: Stripe.Payout): Promise<void> {
+  async handlePayoutPaid(payout: Stripe.Payout): Promise<ConnectWebhookResult> {
     try {
       // 参考表示向けのログのみ（会計確定は行わない）
       this.logger.info("Payout paid received", {
@@ -278,6 +306,10 @@ export class ConnectWebhookHandler {
         amount: payout.amount,
         currency: payout.currency,
         outcome: "success",
+      });
+      return okResult(undefined, {
+        reason: "payout_paid_processed",
+        payoutId: payout.id,
       });
     } catch (error) {
       handleServerError("CONNECT_WEBHOOK_PAYOUT_ERROR", {
@@ -289,16 +321,27 @@ export class ConnectWebhookHandler {
           error_message: error instanceof Error ? error.message : String(error),
         },
       });
+      return errFrom(error, {
+        defaultCode: "CONNECT_WEBHOOK_PAYOUT_ERROR",
+        meta: {
+          reason: "payout_paid_failed",
+          payoutId: payout.id,
+        },
+      });
     }
   }
 
-  async handlePayoutFailed(payout: Stripe.Payout): Promise<void> {
+  async handlePayoutFailed(payout: Stripe.Payout): Promise<ConnectWebhookResult> {
     try {
       // 参考表示向けのログのみ（会計確定は行わない）
       this.logger.warn("Payout failed received", {
         payout_id: payout.id,
         failure_message: (payout as any).failure_message,
         outcome: "failure",
+      });
+      return okResult(undefined, {
+        reason: "payout_failed_processed",
+        payoutId: payout.id,
       });
     } catch (error) {
       handleServerError("CONNECT_WEBHOOK_PAYOUT_ERROR", {
@@ -308,6 +351,13 @@ export class ConnectWebhookHandler {
           payout_id: payout.id,
           error_name: error instanceof Error ? error.name : "Unknown",
           error_message: error instanceof Error ? error.message : String(error),
+        },
+      });
+      return errFrom(error, {
+        defaultCode: "CONNECT_WEBHOOK_PAYOUT_ERROR",
+        meta: {
+          reason: "payout_failed_handler_error",
+          payoutId: payout.id,
         },
       });
     }

@@ -57,9 +57,7 @@ describe("charge.refunded Webhook統合テスト", () => {
       const req = setup.createRequest({ event: evt });
       const res = await WorkerPOST(req);
 
-      expect(res.status).toBe(200);
-      const json = await res.json();
-      expect(json.success).toBe(true);
+      expect(res.status).toBe(204);
 
       // 決済ステータスが refunded に更新されているか確認
       const { data: afterPayment } = await setup.supabase
@@ -92,7 +90,7 @@ describe("charge.refunded Webhook統合テスト", () => {
       const req = setup.createRequest({ event: evt });
       const res = await WorkerPOST(req);
 
-      expect(res.status).toBe(200);
+      expect(res.status).toBe(204);
 
       // ステータスは paid のまま維持され、refunded_amount が更新される
       const { data: afterPayment } = await setup.supabase
@@ -127,7 +125,7 @@ describe("charge.refunded Webhook統合テスト", () => {
       const req = setup.createRequest({ event: evt });
       const res = await WorkerPOST(req);
 
-      expect(res.status).toBe(200);
+      expect(res.status).toBe(204);
 
       // application_fee_refund の情報が記録されているか確認
       const { data: afterPayment } = await setup.supabase
@@ -162,7 +160,7 @@ describe("charge.refunded Webhook統合テスト", () => {
 
       const req1 = setup.createRequest({ event: evt });
       const res1 = await WorkerPOST(req1);
-      expect(res1.status).toBe(200);
+      expect(res1.status).toBe(204);
 
       // 決済ステータス確認
       const { data: payment1 } = await setup.supabase
@@ -181,7 +179,7 @@ describe("charge.refunded Webhook統合テスト", () => {
       });
       const req2 = setup.createRequest({ event: evt2 });
       const res2 = await WorkerPOST(req2);
-      expect(res2.status).toBe(200); // 成功として処理
+      expect(res2.status).toBe(204); // 成功として処理
 
       // ステータスは変わらず、refunded のまま（冪等性）
       const { data: payment2 } = await setup.supabase
@@ -195,7 +193,7 @@ describe("charge.refunded Webhook統合テスト", () => {
   });
 
   describe("異常系: 決済レコードが見つからない場合", () => {
-    it("該当する決済レコードがない場合でも200を返す（冪等性）", async () => {
+    it("該当する決済レコードがない場合でも204を返す（冪等性）", async () => {
       const evt = setup.createChargeRefundedEvent("ch_nonexistent_charge", {
         amount: 1500,
         amountRefunded: 1500,
@@ -205,8 +203,8 @@ describe("charge.refunded Webhook統合テスト", () => {
       const req = setup.createRequest({ event: evt });
       const res = await WorkerPOST(req);
 
-      // 決済レコードが見つからなくても200を返す（Stripeには成功応答）
-      expect(res.status).toBe(200);
+      // 決済レコードが見つからなくても204を返す（Stripeには成功応答）
+      expect(res.status).toBe(204);
     });
   });
 

@@ -1,6 +1,6 @@
 import { Redis } from "@upstash/redis";
 
-import { hashToken } from "@/core/security/crypto";
+import { hashToken } from "@core/security/crypto";
 
 // 認証情報がある場合にのみ Redis クライアントを初期化する
 const redis =

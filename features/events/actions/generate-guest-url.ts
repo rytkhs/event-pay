@@ -2,7 +2,7 @@ import { z } from "zod";
 
 import { verifyEventAccess } from "@core/auth/event-authorization";
 import { type ActionResult, fail, ok, zodFail } from "@core/errors/adapters/server-actions";
-import { SecureSupabaseClientFactory } from "@core/security/secure-client-factory.impl";
+import { getSecureClientFactory } from "@core/security/secure-client-factory.impl";
 import { canCreateStripeSession } from "@core/validation/payment-eligibility";
 
 const InputSchema = z.object({
@@ -23,7 +23,7 @@ export async function generateGuestUrlAction(input: unknown): Promise<
     // 主催者権限確認
     await verifyEventAccess(eventId);
 
-    const factory = SecureSupabaseClientFactory.create();
+    const factory = getSecureClientFactory();
     const authenticatedClient = factory.createAuthenticatedClient();
 
     // attendance と event を取得（guest_token, 決済可否判定用）

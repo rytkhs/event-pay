@@ -19,7 +19,7 @@ jest.mock("@core/stripe/webhook-signature-verifier", () => ({
 describe("/api/webhooks/stripe (receiver)", () => {
   beforeEach(() => {
     process.env.QSTASH_TOKEN = "test_qstash_token";
-    process.env.NODE_ENV = "test";
+    (process.env as Record<string, string | undefined>).NODE_ENV = "test";
     delete process.env.SKIP_QSTASH_IN_TEST;
   });
 
@@ -131,7 +131,7 @@ describe("/api/webhooks/stripe (receiver)", () => {
   });
 
   describe("正常系テスト", () => {
-    it("正常時にQStashへpublishされ200を返す", async () => {
+    it("正常時にQStashへpublishされ204を返す", async () => {
       const fakeEvent = { id: "evt_test_123", type: "payment_intent.succeeded" };
       mockVerifySignature.mockResolvedValueOnce({ isValid: true, event: fakeEvent });
       mockPublishJSON.mockResolvedValueOnce({ messageId: "msg_test_123" });
@@ -142,16 +142,10 @@ describe("/api/webhooks/stripe (receiver)", () => {
       });
 
       const res = await StripeWebhookPOST(req);
-      expect(res.status).toBe(200);
-      const json = await res.json();
-      expect(json).toEqual(
-        expect.objectContaining({
-          received: true,
-          eventId: fakeEvent.id,
-          eventType: fakeEvent.type,
-          qstashMessageId: "msg_test_123",
-        })
-      );
+      expect(res.status).toBe(204);
+      expect(res.headers.get("X-Event-Id")).toBe(fakeEvent.id);
+      expect(res.headers.get("X-Event-Type")).toBe(fakeEvent.type);
+      expect(res.headers.get("X-QStash-Message-Id")).toBe("msg_test_123");
 
       // publishJSON の引数検証
       expect(mockPublishJSON).toHaveBeenCalledTimes(1);

@@ -1,11 +1,9 @@
 import { generateRandomBytes, toBase64UrlSafe } from "@core/security/crypto";
-import {
-  validateGuestTokenRLS,
-  type RLSGuestAttendanceData,
-} from "@core/security/guest-token-validator";
+import { RLSGuestTokenValidator } from "@core/security/guest-token-validator";
+import { type GuestAttendanceData } from "@core/types/guest";
 import { handleServerError } from "@core/utils/error-handler.server";
 
-import type { Database } from "@/types/database";
+export type { GuestAttendanceData };
 
 /**
  * ゲスト管理機能のためのユーティリティ関数
@@ -15,41 +13,6 @@ import type { Database } from "@/types/database";
  * - 参加データの取得・整形
  * - 参加状況変更可能性の判定
  */
-
-/**
- * ゲスト参加データの型定義
- */
-export interface GuestAttendanceData {
-  id: string;
-  nickname: string;
-  email: string;
-  status: Database["public"]["Enums"]["attendance_status_enum"];
-  guest_token: string;
-  created_at: string;
-  updated_at: string;
-  event: {
-    id: string;
-    title: string;
-    description: string | null;
-    date: string;
-    location: string | null;
-    fee: number;
-    capacity: number | null;
-    registration_deadline: string | null;
-    payment_deadline: string | null;
-    payment_methods: Database["public"]["Enums"]["payment_method_enum"][];
-    allow_payment_after_deadline?: boolean;
-    grace_period_days?: number | null;
-    created_by: string;
-  };
-  payment?: {
-    id: string;
-    amount: number;
-    method: Database["public"]["Enums"]["payment_method_enum"];
-    status: Database["public"]["Enums"]["payment_status_enum"];
-    created_at: string;
-  } | null;
-}
 
 /**
  * ゲストトークンを検証し、参加データを取得する
@@ -69,7 +32,8 @@ export async function validateGuestToken(guestToken: string): Promise<{
 }> {
   try {
     // 新しいRLSベースのバリデーターを使用
-    const rlsResult = await validateGuestTokenRLS(guestToken);
+    const validator = new RLSGuestTokenValidator();
+    const rlsResult = await validator.validateGuestTokenWithDetails(guestToken);
 
     // 従来の形式に変換
     return {
@@ -106,7 +70,7 @@ export async function validateGuestToken(guestToken: string): Promise<{
  * .limit(1)を指定していても配列で返されることがあります。
  * そのため、eventとpaymentの両方で配列→オブジェクトへの変換を行っています。
  */
-function convertToLegacyFormat(rlsData: RLSGuestAttendanceData): GuestAttendanceData {
+function convertToLegacyFormat(rlsData: GuestAttendanceData): GuestAttendanceData {
   // event と payment は配列またはオブジェクトの可能性があるため、正規化
   const event = Array.isArray(rlsData.event) ? rlsData.event[0] : rlsData.event;
   const payment = Array.isArray(rlsData.payment) ? rlsData.payment[0] : rlsData.payment;
@@ -133,20 +97,13 @@ export function generateGuestToken(): string {
   return `gst_${baseToken}`;
 }
 
-// ====================================================================
-// マイグレーション情報
-// ====================================================================
-
 /**
- * このファイルは段階的にRLSベースの新しいシステムに移行されています。
+ * ゲストトークンからゲストURLを生成
  *
- * 移行状況:
- * ✅ validateGuestToken() - RLSベースの実装に移行済み
- * ✅ generateGuestToken() - 変更なし（既に安全）
- *
- * 新しいコードでの推奨事項:
- * - getRLSGuestTokenValidator()を使用してバリデーターを取得
- * - 直接RLSベースのメソッドを使用
- * - 新しいエラーハンドリングシステムを活用
- *
+ * @param guestToken - ゲストトークン
+ * @returns ゲストURL (/guest/{guestToken})
  */
+export function buildGuestUrl(guestToken: string): string {
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+  return `${baseUrl}/guest/${guestToken}`;
+}

@@ -6,8 +6,8 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { addDays } from "date-fns";
 
 import { logger } from "@core/logging/app-logger";
-import { getEnv } from "@core/utils/cloudflare-env";
 import { handleServerError } from "@core/utils/error-handler.server";
+import { buildGuestUrl } from "@core/utils/guest-token";
 import {
   getCurrentJstTime,
   formatUtcToJst,
@@ -452,7 +452,7 @@ export class ReminderService {
       "@/emails/reminders/ResponseDeadlineReminderEmail"
     );
 
-    const guestUrl = this.generateGuestUrl(target.events.id, target.guest_token);
+    const guestUrl = buildGuestUrl(target.guest_token);
 
     const result = await this.emailService.sendEmail({
       to: target.email,
@@ -470,7 +470,7 @@ export class ReminderService {
     });
 
     if (!result.success) {
-      throw new Error(result.error || "Failed to send email");
+      throw result.error;
     }
   }
 
@@ -482,7 +482,7 @@ export class ReminderService {
       "@/emails/reminders/PaymentDeadlineReminderEmail"
     );
 
-    const guestUrl = this.generateGuestUrl(target.events.id, target.guest_token);
+    const guestUrl = buildGuestUrl(target.guest_token);
 
     const result = await this.emailService.sendEmail({
       to: target.email,
@@ -501,7 +501,7 @@ export class ReminderService {
     });
 
     if (!result.success) {
-      throw new Error(result.error || "Failed to send email");
+      throw result.error;
     }
   }
 
@@ -513,7 +513,7 @@ export class ReminderService {
       "@/emails/reminders/EventStartReminderEmail"
     );
 
-    const guestUrl = this.generateGuestUrl(target.events.id, target.guest_token);
+    const guestUrl = buildGuestUrl(target.guest_token);
 
     const result = await this.emailService.sendEmail({
       to: target.email,
@@ -531,7 +531,7 @@ export class ReminderService {
     });
 
     if (!result.success) {
-      throw new Error(result.error || "Failed to send email");
+      throw result.error;
     }
   }
 
@@ -595,13 +595,5 @@ export class ReminderService {
     }
 
     return { successCount, failures };
-  }
-
-  /**
-   * ゲスト用URLを生成
-   */
-  private generateGuestUrl(_eventId: string, guestToken: string): string {
-    const baseUrl = getEnv().NEXT_PUBLIC_APP_URL || "https://minnano-shukin.com";
-    return `${baseUrl}/guest/${guestToken}`;
   }
 }

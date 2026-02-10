@@ -164,7 +164,7 @@ describe("イベント作成統合テスト - 1.3 データベース保存の確
 
       expect(result.success).toBe(true);
       if (result.success) {
-        const event = result.data;
+        const event = result.data!;
         createdEventIds.push(event.id);
 
         // 招待トークンが生成されていることを確認
@@ -242,7 +242,7 @@ describe("イベント作成統合テスト - 1.3 データベース保存の確
 
       expect(result.success).toBe(true);
       if (result.success) {
-        const event = result.data;
+        const event = result.data!;
         createdEventIds.push(event.id);
 
         expect(event.invite_token).toBeDefined();
@@ -284,7 +284,7 @@ describe("イベント作成統合テスト - 1.3 データベース保存の確
 
       expect(result.success).toBe(true);
       if (result.success) {
-        const event = result.data;
+        const event = result.data!;
         createdEventIds.push(event.id);
 
         // 作成者IDが認証済みユーザーのIDと一致することを確認
@@ -352,7 +352,7 @@ describe("イベント作成統合テスト - 1.3 データベース保存の確
 
       expect(result.success).toBe(true);
       if (result.success) {
-        const event = result.data;
+        const event = result.data!;
         createdEventIds.push(event.id);
 
         // created_atとupdated_atが存在することを確認
@@ -407,7 +407,7 @@ describe("イベント作成統合テスト - 1.3 データベース保存の確
 
       expect(result.success).toBe(true);
       if (result.success) {
-        const event = result.data;
+        const event = result.data!;
         createdEventIds.push(event.id);
 
         // データベースの自動タイムスタンプが適用されていることを確認
@@ -447,7 +447,7 @@ describe("イベント作成統合テスト - 1.3 データベース保存の確
 
       expect(result.success).toBe(true);
       if (result.success) {
-        const event = result.data;
+        const event = result.data!;
         createdEventIds.push(event.id);
 
         // 参加費が0円であることを確認
@@ -481,7 +481,7 @@ describe("イベント作成統合テスト - 1.3 データベース保存の確
 
       expect(result.success).toBe(true);
       if (result.success) {
-        const event = result.data;
+        const event = result.data!;
         createdEventIds.push(event.id);
 
         // 無料イベントの特性を確認
@@ -517,7 +517,7 @@ describe("イベント作成統合テスト - 1.3 データベース保存の確
 
       expect(result.success).toBe(true);
       if (result.success) {
-        const event = result.data;
+        const event = result.data!;
         createdEventIds.push(event.id);
 
         // 文字列 "0" が数値 0 に変換されていることを確認
@@ -550,7 +550,7 @@ describe("イベント作成統合テスト - 1.3 データベース保存の確
 
       expect(result.success).toBe(true);
       if (result.success) {
-        const event = result.data;
+        const event = result.data!;
         createdEventIds.push(event.id);
 
         // イベントが正常に作成されていることを確認
@@ -610,7 +610,7 @@ describe("イベント作成統合テスト - 1.3 データベース保存の確
 
       expect(result.success).toBe(true);
       if (result.success) {
-        const event = result.data;
+        const event = result.data!;
         createdEventIds.push(event.id);
 
         // 認証済みクライアント（adminClient）で作成されたイベントにアクセス可能であることを確認
@@ -651,7 +651,7 @@ describe("イベント作成統合テスト - 1.3 データベース保存の確
 
       expect(result.success).toBe(true);
       if (result.success) {
-        const event = result.data;
+        const event = result.data!;
         createdEventIds.push(event.id);
 
         // イベントが正常に作成されていることを確認

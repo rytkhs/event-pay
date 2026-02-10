@@ -1,27 +1,11 @@
 /**
  * 参加者管理機能 バリデーションスキーマ
- * MANAGE-001: 参加者一覧表示（検索/フィルター/ページング）
+ * 参加者一覧表示（検索/フィルター/ページング）
  */
 
 import { z } from "zod";
 
-// ====================================================================
-// 決済ステータス ENUM（集中定義）- 先頭で定義して他から参照可能にする
-// ====================================================================
-
-// 決済ステータス ENUM（集中定義）
-export const PaymentStatusEnum = z.enum([
-  "pending",
-  "paid",
-  "failed",
-  "received",
-  "refunded",
-  "waived",
-  "canceled",
-]);
-
-// 利便性のために値配列をエクスポート（runtime 用）
-export const PAYMENT_STATUS_VALUES = PaymentStatusEnum.options;
+import { PaymentStatusSchema, SimplePaymentStatusSchema } from "./payment-status";
 
 // 参加ステータスフィルター（内部専用）
 const AttendanceStatusFilterSchema = z.enum(["attending", "not_attending", "maybe"]).optional();
@@ -30,7 +14,7 @@ const AttendanceStatusFilterSchema = z.enum(["attending", "not_attending", "mayb
 const PaymentMethodFilterSchema = z.enum(["stripe", "cash"]).optional();
 
 // UI用決済ステータスフィルター（内部専用） - SimplePaymentStatus
-const SimplePaymentStatusFilterSchema = z.enum(["unpaid", "paid", "refunded", "waived"]).optional();
+const SimplePaymentStatusFilterSchema = SimplePaymentStatusSchema.optional();
 
 // 検索クエリ（内部専用）
 const SearchQuerySchema = z
@@ -92,41 +76,6 @@ export const ExportParticipantsCsvResultSchema = z.object({
 
 export type ExportParticipantsCsvResult = z.infer<typeof ExportParticipantsCsvResultSchema>;
 
-// 全件選択用（現金決済の最新レコードに限定）パラメータ
-export const GetAllCashPaymentIdsParamsSchema = z.object({
-  eventId: z.string().uuid(),
-  filters: z
-    .object({
-      search: SearchQuerySchema,
-      attendanceStatus: AttendanceStatusFilterSchema,
-      // paymentMethod はサーバー側で cash を強制するため受け取らない
-      paymentStatus: SimplePaymentStatusFilterSchema, // SimplePaymentStatusを使用
-    })
-    .optional(),
-  // 取得上限（+1 で打ち切り判定に利用）。過度なメモリ消費を避けるため 5000 に制限
-  max: z.number().int().min(1).max(5000).default(5000),
-});
-
-export type GetAllCashPaymentIdsParams = z.infer<typeof GetAllCashPaymentIdsParamsSchema>;
-
-export const GetAllCashPaymentIdsResultSchema = z.object({
-  paymentIds: z.array(z.string().uuid()),
-  total: z.number().int().min(0),
-  matchedTotal: z.number().int().min(0).optional(),
-  truncated: z.boolean().optional(),
-});
-
-export type GetAllCashPaymentIdsResult = z.infer<typeof GetAllCashPaymentIdsResultSchema>;
-
-// 一括現金ステータス更新パラメータ
-export const BulkUpdateCashStatusParamsSchema = z.object({
-  paymentIds: z.array(z.string().uuid()).min(1).max(50), // 一度に最大50件
-  status: z.enum(["received", "waived"]),
-  notes: z.string().max(500).optional(),
-});
-
-export type BulkUpdateCashStatusParams = z.infer<typeof BulkUpdateCashStatusParamsSchema>;
-
 // 参加者詳細表示用型（内部専用 - attendances + payments結合）
 const ParticipantViewSchema = z.object({
   // attendance fields
@@ -140,7 +89,7 @@ const ParticipantViewSchema = z.object({
   // payment fields (nullable - 決済情報がない場合もある)
   payment_id: z.string().nullable(),
   payment_method: z.enum(["stripe", "cash"]).nullable(),
-  payment_status: PaymentStatusEnum.nullable(),
+  payment_status: PaymentStatusSchema.nullable(),
   amount: z.number().nullable(),
   paid_at: z.string().nullable(),
   payment_version: z.number().nullable(), // 楽観的ロック用
@@ -172,7 +121,7 @@ export type PaymentMethodSummary = z.infer<typeof PaymentMethodSummarySchema>;
 
 // 決済ステータス別集計（内部専用）
 const PaymentStatusSummarySchema = z.object({
-  status: PaymentStatusEnum,
+  status: PaymentStatusSchema,
   count: z.number().int().min(0),
   totalAmount: z.number().int().min(0),
 });
@@ -209,7 +158,7 @@ export const GetEventPaymentsResponseSchema = z.object({
       id: z.string(),
       method: z.enum(["stripe", "cash"]),
       amount: z.number().int(),
-      status: PaymentStatusEnum,
+      status: PaymentStatusSchema,
       attendance_id: z.string(),
       paid_at: z.string().nullable(),
       created_at: z.string(),
@@ -220,3 +169,41 @@ export const GetEventPaymentsResponseSchema = z.object({
 });
 
 export type GetEventPaymentsResponse = z.infer<typeof GetEventPaymentsResponseSchema>;
+
+// ====================================================================
+// 管理者による参加者追加関連スキーマ（admin-add-attendance.ts）
+// ====================================================================
+
+// 管理者による参加者追加の入力スキーマ
+export const AdminAddAttendanceInputSchema = z
+  .object({
+    eventId: z.string().uuid(),
+    nickname: z.string().min(1, "ニックネームは必須です").max(50),
+    status: z.enum(["attending", "maybe", "not_attending"]).default("attending"),
+    bypassCapacity: z.boolean().optional().default(false),
+    paymentMethod: z.enum(["cash"]).optional(),
+  })
+  .refine(
+    (data) => {
+      if (data.status === "attending" && data.paymentMethod !== undefined) {
+        return data.paymentMethod === "cash";
+      }
+      return true;
+    },
+    {
+      message: "手動追加では現金決済のみ選択可能です",
+      path: ["paymentMethod"],
+    }
+  );
+
+export type AdminAddAttendanceInput = z.infer<typeof AdminAddAttendanceInputSchema>;
+
+// 管理者による参加者追加の結果型
+export interface AdminAddAttendanceResult {
+  attendanceId: string;
+  guestToken: string;
+  guestUrl: string;
+  canOnlinePay: boolean;
+  reason?: string;
+  paymentId?: string;
+}

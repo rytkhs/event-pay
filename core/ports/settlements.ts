@@ -2,16 +2,13 @@
  * Settlement Report Port Interface
  * Core層からSettlement機能にアクセスするためのポートインターフェース
  */
+import type { AppResult } from "@core/errors";
 
 export interface SettlementReportPort {
   regenerateAfterRefundOrDispute(
     eventId: string,
     createdBy: string
-  ): Promise<{
-    success: boolean;
-    error?: string;
-    reportId?: string;
-  }>;
+  ): Promise<AppResult<{ reportId?: string }>>;
 }
 
 // Port Registration System

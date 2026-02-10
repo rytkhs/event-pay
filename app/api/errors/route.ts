@@ -7,7 +7,8 @@ import { z } from "zod";
 import { AppError, isErrorCode } from "@core/errors";
 import { respondWithCode, respondWithProblem } from "@core/errors/server";
 import type { ErrorCategory, ErrorCode } from "@core/errors/types";
-import { AdminReason, createSecureSupabaseClient } from "@core/security";
+import { getSecureClientFactory } from "@core/security/secure-client-factory.impl";
+import { AdminReason } from "@core/security/secure-client-factory.types";
 import { notifyError } from "@core/utils/error-handler.server";
 
 import type { Database } from "@/types/database";
@@ -187,7 +188,7 @@ export async function POST(req: NextRequest) {
     });
     const logCategory = resolveLogCategory(rawLogCategory, appError.category);
 
-    const factory = createSecureSupabaseClient();
+    const factory = getSecureClientFactory();
     const supabase = await factory.createAuditedAdminClient(
       AdminReason.ERROR_COLLECTION,
       "Client Error Collection"

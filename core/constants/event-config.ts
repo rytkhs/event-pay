@@ -17,4 +17,7 @@ export const EVENT_CONFIG = {
 export const TIME_CONSTANTS = {
   /** ミリ秒から時間への変換係数 */
   MS_TO_HOURS: 1000 * 60 * 60,
+
+  /** ミリ秒から日への変換係数 */
+  MS_TO_DAYS: 1000 * 60 * 60 * 24,
 } as const;

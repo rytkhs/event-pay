@@ -1,15 +1,10 @@
-/**
- * Next.js App Router ルートエラーページ
- * アプリケーションレベルのエラーをキャッチ
- */
-
 "use client";
 
 import { useEffect } from "react";
 
 import { ga4Client } from "@core/analytics/ga4-client";
 
-import { ErrorLayout } from "@/components/errors";
+import { ErrorLayout } from "@/components/errors/ErrorLayout";
 
 interface ErrorPageProps {
   error: Error & { digest?: string };
@@ -18,7 +13,6 @@ interface ErrorPageProps {
 
 /**
  * ルートレベルのエラーページ
- * layout.tsx以下の全てのページでエラーが発生した際に表示される
  */
 export default function RootErrorPage({ error, reset }: ErrorPageProps) {
   // エラー発生時にGA4にexceptionイベントを送信

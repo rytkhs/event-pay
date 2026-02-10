@@ -6,7 +6,10 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-import { SecureSupabaseClientFactory } from "@core/security/secure-client-factory.impl";
+import {
+  getSecureClientFactory,
+  SecureSupabaseClientFactory,
+} from "@core/security/secure-client-factory.impl";
 import { AdminReason } from "@core/security/secure-client-factory.types";
 import { generateInviteToken } from "@core/utils/invite-token";
 
@@ -45,6 +48,7 @@ export interface TestPaymentData {
   method: Database["public"]["Enums"]["payment_method_enum"];
   attendance_id: string;
   application_fee_amount: number;
+  paid_at?: string | null;
   stripe_account_id?: string;
 }
 
@@ -94,7 +98,7 @@ export async function createTestUserWithConnect(
 
   const user = await createTestUser(email, password);
 
-  const secureFactory = SecureSupabaseClientFactory.create();
+  const secureFactory = getSecureClientFactory();
   const adminClient = await secureFactory.createAuditedAdminClient(
     AdminReason.TEST_DATA_SETUP,
     `Creating Stripe Connect account for test user: ${email}`,
@@ -173,7 +177,7 @@ export async function createPaidTestEvent(
     paymentMethods = ["stripe"],
   } = options;
 
-  const secureFactory = SecureSupabaseClientFactory.create();
+  const secureFactory = getSecureClientFactory();
   const adminClient = await secureFactory.createAuditedAdminClient(
     AdminReason.TEST_DATA_SETUP,
     `Creating paid test event for payment tests`,
@@ -258,13 +262,13 @@ export async function createTestAttendance(
   };
 
   const {
-    email = `test-participant-${Date.now()}@example.com`,
+    email = `test-participant-${Date.now()}-${Math.random().toString(36).substring(2, 7)}@example.com`,
     nickname = `テスト参加者_${Math.random().toString(36).substring(2, 8)}`,
     status = "attending",
     guestToken = generateGuestToken(),
   } = options;
 
-  const secureFactory = SecureSupabaseClientFactory.create();
+  const secureFactory = getSecureClientFactory();
   const adminClient = await secureFactory.createAuditedAdminClient(
     AdminReason.TEST_DATA_SETUP,
     `Creating test attendance for event: ${eventId}`,
@@ -329,7 +333,7 @@ export async function createPendingTestPayment(
     applicationFeeAmount = Math.floor(amount * 0.1), // デフォルト10%
   } = options;
 
-  const secureFactory = SecureSupabaseClientFactory.create();
+  const secureFactory = getSecureClientFactory();
   const adminClient = await secureFactory.createAuditedAdminClient(
     AdminReason.TEST_DATA_SETUP,
     `Creating pending test payment for attendance: ${attendanceId}`,
@@ -496,7 +500,7 @@ export async function cleanupTestPaymentData(dataIds: {
   eventIds?: string[];
   userIds?: string[];
 }): Promise<void> {
-  const secureFactory = SecureSupabaseClientFactory.create();
+  const secureFactory = getSecureClientFactory();
   const adminClient = await secureFactory.createAuditedAdminClient(
     AdminReason.TEST_DATA_CLEANUP,
     "Cleaning up payment test data",
@@ -606,7 +610,7 @@ export async function createPaidStripePayment(
     paymentIntentId = `pi_test_${Math.random().toString(36).slice(2)}`,
   } = options;
 
-  const secureFactory = SecureSupabaseClientFactory.create();
+  const secureFactory = getSecureClientFactory();
   const adminClient = await secureFactory.createAuditedAdminClient(
     AdminReason.TEST_DATA_SETUP,
     `Creating PAID stripe payment for attendance: ${attendanceId}`,
@@ -670,7 +674,7 @@ export async function addRefundToPayment(
     applicationFeeRefundedAmount?: number;
   }
 ): Promise<void> {
-  const adminClient = await SecureSupabaseClientFactory.create().createAuditedAdminClient(
+  const adminClient = await getSecureClientFactory().createAuditedAdminClient(
     AdminReason.TEST_DATA_SETUP,
     "Add refund to test payment",
     { accessedTables: ["public.payments"] }
@@ -708,7 +712,7 @@ export async function createPaymentDispute(
     stripeAccountId?: string;
   } = { amount: 0 }
 ): Promise<{ id: string; dispute_id: string; amount: number; status: string }> {
-  const adminClient = await SecureSupabaseClientFactory.create().createAuditedAdminClient(
+  const adminClient = await getSecureClientFactory().createAuditedAdminClient(
     AdminReason.TEST_DATA_SETUP,
     "Create payment dispute for test",
     { accessedTables: ["public.payment_disputes"] }
@@ -768,7 +772,7 @@ export async function createTestPaymentWithStatus(
       : null,
   } = options;
 
-  const secureFactory = SecureSupabaseClientFactory.create();
+  const secureFactory = getSecureClientFactory();
   const adminClient = await secureFactory.createAuditedAdminClient(
     AdminReason.TEST_DATA_SETUP,
     `Creating test payment with status ${status} for attendance: ${attendanceId}`,
@@ -863,7 +867,7 @@ export async function createRefundedStripePayment(
     tax_included: false,
   };
 
-  const adminClient = await SecureSupabaseClientFactory.create().createAuditedAdminClient(
+  const adminClient = await getSecureClientFactory().createAuditedAdminClient(
     AdminReason.TEST_DATA_SETUP,
     "Create refunded payment for test",
     { accessedTables: ["public.payments"] }

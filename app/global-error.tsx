@@ -10,7 +10,7 @@ import { useEffect } from "react";
 
 import { ga4Client } from "@core/analytics/ga4-client";
 
-import { ErrorLayout } from "@/components/errors";
+import { ErrorLayout } from "@/components/errors/ErrorLayout";
 
 interface GlobalErrorProps {
   error: Error & { digest?: string };

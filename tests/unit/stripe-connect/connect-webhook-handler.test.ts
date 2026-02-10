@@ -9,7 +9,7 @@
 
 import type Stripe from "stripe";
 
-import { ConnectWebhookHandler } from "@features/stripe-connect/services/webhook/connect-webhook-handler";
+import { ConnectWebhookHandler } from "@features/stripe-connect/server";
 
 // モック設定
 jest.mock("@core/logging/app-logger", () => {
@@ -23,15 +23,13 @@ jest.mock("@core/logging/app-logger", () => {
   mockLogger.withContext.mockReturnValue(mockLogger);
   return { logger: mockLogger };
 });
-jest.mock("@core/notification");
+jest.mock("@core/notification/service");
 jest.mock("@core/ports/stripe-connect");
 jest.mock("@core/security/secure-client-factory.impl");
-jest.mock("@features/stripe-connect/services/account-status-classifier");
 
 const mockGetConnectAccountByUser = jest.fn();
 const mockGetAccountInfo = jest.fn();
 const mockUpdateAccountStatus = jest.fn();
-const mockClassify = jest.fn();
 const mockSendNotification = jest.fn();
 
 // ポートのモック
@@ -44,15 +42,8 @@ jest.mock("@core/ports/stripe-connect", () => ({
   isStripeConnectPortRegistered: jest.fn(() => true),
 }));
 
-// AccountStatusClassifierのモック
-jest.mock("@features/stripe-connect/services/account-status-classifier", () => ({
-  AccountStatusClassifier: jest.fn().mockImplementation(() => ({
-    classify: mockClassify,
-  })),
-}));
-
 // NotificationServiceのモック
-jest.mock("@core/notification", () => ({
+jest.mock("@core/notification/service", () => ({
   NotificationService: jest.fn().mockImplementation(() => ({
     sendAccountVerifiedNotification: mockSendNotification,
     sendAccountRestrictedNotification: mockSendNotification,
@@ -149,22 +140,8 @@ describe("ConnectWebhookHandler", () => {
         payouts_enabled: false,
       });
 
-      mockClassify.mockReturnValue({
-        status: "unverified",
-        reason: "Details not submitted",
-        metadata: {
-          gate: 5,
-          details_submitted: false,
-          payouts_enabled: false,
-          transfers_active: false,
-          card_payments_active: false,
-          has_due_requirements: false,
-        },
-      });
-
       await handler.handleAccountUpdated(account);
 
-      expect(mockClassify).toHaveBeenCalledWith(account);
       expect(mockUpdateAccountStatus).toHaveBeenCalledWith({
         userId: "test_user_id",
         status: "unverified",
@@ -172,7 +149,7 @@ describe("ConnectWebhookHandler", () => {
         payoutsEnabled: false,
         stripeAccountId: "acct_test_123",
         classificationMetadata: expect.objectContaining({
-          gate: 5,
+          gate: 3,
           details_submitted: false,
         }),
         trigger: "webhook",
@@ -189,9 +166,13 @@ describe("ConnectWebhookHandler", () => {
           card_payments: "active",
         },
         requirements: {
+          alternatives: [],
+          current_deadline: null,
           currently_due: [],
           past_due: [],
           eventually_due: [],
+          errors: [],
+          pending_verification: [],
           disabled_reason: null,
         },
       });
@@ -204,22 +185,8 @@ describe("ConnectWebhookHandler", () => {
         payouts_enabled: false,
       });
 
-      mockClassify.mockReturnValue({
-        status: "verified",
-        reason: "All conditions met",
-        metadata: {
-          gate: 5,
-          details_submitted: true,
-          payouts_enabled: true,
-          transfers_active: true,
-          card_payments_active: true,
-          has_due_requirements: false,
-        },
-      });
-
       await handler.handleAccountUpdated(account);
 
-      expect(mockClassify).toHaveBeenCalledWith(account);
       expect(mockUpdateAccountStatus).toHaveBeenCalledWith({
         userId: "test_user_id",
         status: "verified",
@@ -242,9 +209,13 @@ describe("ConnectWebhookHandler", () => {
         details_submitted: true,
         payouts_enabled: false,
         requirements: {
+          alternatives: [],
+          current_deadline: null,
           currently_due: [],
           past_due: [],
           eventually_due: [],
+          errors: [],
+          pending_verification: [],
           disabled_reason: "platform_paused",
         },
         capabilities: {
@@ -261,23 +232,8 @@ describe("ConnectWebhookHandler", () => {
         payouts_enabled: true,
       });
 
-      mockClassify.mockReturnValue({
-        status: "restricted",
-        reason: "Hard restriction detected",
-        metadata: {
-          gate: 1,
-          details_submitted: true,
-          payouts_enabled: false,
-          transfers_active: false,
-          card_payments_active: false,
-          has_due_requirements: false,
-          disabled_reason: "platform_paused",
-        },
-      });
-
       await handler.handleAccountUpdated(account);
 
-      expect(mockClassify).toHaveBeenCalledWith(account);
       expect(mockUpdateAccountStatus).toHaveBeenCalledWith({
         userId: "test_user_id",
         status: "restricted",
@@ -297,9 +253,13 @@ describe("ConnectWebhookHandler", () => {
         details_submitted: true,
         payouts_enabled: false,
         requirements: {
+          alternatives: [],
+          current_deadline: null,
           currently_due: [],
           past_due: [],
           eventually_due: [],
+          errors: [],
+          pending_verification: [],
           disabled_reason: "under_review",
         },
         capabilities: {
@@ -310,23 +270,8 @@ describe("ConnectWebhookHandler", () => {
 
       mockGetConnectAccountByUser.mockResolvedValue(null);
 
-      mockClassify.mockReturnValue({
-        status: "onboarding",
-        reason: "Under review or pending verification",
-        metadata: {
-          gate: 2,
-          details_submitted: true,
-          payouts_enabled: false,
-          transfers_active: false,
-          card_payments_active: false,
-          has_due_requirements: false,
-          disabled_reason: "under_review",
-        },
-      });
-
       await handler.handleAccountUpdated(account);
 
-      expect(mockClassify).toHaveBeenCalledWith(account);
       expect(mockUpdateAccountStatus).toHaveBeenCalledWith({
         userId: "test_user_id",
         status: "onboarding",
@@ -341,12 +286,13 @@ describe("ConnectWebhookHandler", () => {
       });
     });
 
-    test("エラー発生時は例外をスローする", async () => {
+    test("エラー発生時は失敗結果を返す", async () => {
       const account = createMockAccount();
 
       mockGetConnectAccountByUser.mockRejectedValue(new Error("Database error"));
 
-      await expect(handler.handleAccountUpdated(account)).rejects.toThrow("Database error");
+      const result = await handler.handleAccountUpdated(account);
+      expect(result.success).toBe(false);
     });
   });
 

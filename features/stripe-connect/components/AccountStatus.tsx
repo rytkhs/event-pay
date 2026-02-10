@@ -17,14 +17,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 
 import type { AccountStatusData } from "../types/status-classification";
 
-import {
-  NoAccountView,
-  UnverifiedView,
-  RequirementsDueView,
-  PendingReviewView,
-  RestrictedView,
-  ReadyView,
-} from "./status-views";
+import { NoAccountView } from "./status-views/NoAccountView";
+import { PendingReviewView } from "./status-views/PendingReviewView";
+import { ReadyView } from "./status-views/ReadyView";
+import { RequirementsDueView } from "./status-views/RequirementsDueView";
+import { RestrictedView } from "./status-views/RestrictedView";
+import { UnverifiedView } from "./status-views/UnverifiedView";
 
 interface AccountStatusProps {
   refreshUrl: string;
@@ -108,7 +106,7 @@ export function AccountStatus({ refreshUrl, status, expressDashboardAction }: Ac
             </CardDescription>
             <div className="pt-2">
               <Link
-                href="/dashboard/connect/guide"
+                href="/settings/payments/guide"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-1 text-md text-blue-600 hover:text-blue-800 hover:underline"

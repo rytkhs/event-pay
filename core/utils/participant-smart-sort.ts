@@ -21,7 +21,7 @@ const toTimestamp = (dateString: string | null | undefined): number => {
  * @param isFreeEvent 無料イベントかどうか
  * @returns 重み（小さいほど上位）
  */
-export function getAttendanceWeight(status: string, isFreeEvent: boolean): number {
+function getAttendanceWeight(status: string, isFreeEvent: boolean): number {
   if (isFreeEvent) {
     // 無料イベント：参加者を最優先
     return status === "attending" ? 0 : status === "maybe" ? 1 : 2;
@@ -35,7 +35,7 @@ export function getAttendanceWeight(status: string, isFreeEvent: boolean): numbe
  * @param paymentStatus 決済ステータス
  * @returns 重み（小さいほど上位）
  */
-export function getPaymentStatusWeight(paymentStatus: string | null): number {
+function getPaymentStatusWeight(paymentStatus: string | null): number {
   const simple = toSimplePaymentStatus(paymentStatus as any);
   switch (simple) {
     case "unpaid":
@@ -56,7 +56,7 @@ export function getPaymentStatusWeight(paymentStatus: string | null): number {
  * @param method 決済方法
  * @returns 重み（小さいほど上位）
  */
-export function getPaymentMethodWeight(method: string | null | undefined): number {
+function getPaymentMethodWeight(method: string | null | undefined): number {
   if (!method) return 0.5; // 不明
   return method === "cash" ? 0 : method === "stripe" ? 1 : 0.5;
 }
@@ -67,10 +67,7 @@ export function getPaymentMethodWeight(method: string | null | undefined): numbe
  * @param isFreeEvent 無料イベントかどうか
  * @returns ソート済み参加者データ
  */
-export function applySmartSort(
-  participants: ParticipantView[],
-  isFreeEvent: boolean
-): ParticipantView[] {
+function applySmartSort(participants: ParticipantView[], isFreeEvent: boolean): ParticipantView[] {
   const sorted = [...participants];
 
   sorted.sort((a, b) => {

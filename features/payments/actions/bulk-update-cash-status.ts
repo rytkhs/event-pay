@@ -3,14 +3,15 @@ import { z } from "zod";
 import { type ActionResult, fail, ok } from "@core/errors/adapters/server-actions";
 import type { ErrorCode } from "@core/errors/types";
 import { enforceRateLimit, buildKey, POLICIES } from "@core/rate-limit";
-import { SecureSupabaseClientFactory } from "@core/security/secure-client-factory.impl";
+import { getSecureClientFactory } from "@core/security/secure-client-factory.impl";
 import { PaymentError, PaymentErrorType } from "@core/types/payment-errors";
+import { CashUpdateStatusSchema } from "@core/validation/payment-status";
 
 import { PaymentValidator } from "../validation";
 
 const inputSchema = z.object({
   paymentIds: z.array(z.string().uuid()).min(1).max(50), // 最大50件まで
-  status: z.enum(["received", "waived"]),
+  status: CashUpdateStatusSchema,
   notes: z.string().max(1000).optional(),
 });
 
@@ -64,7 +65,7 @@ export async function bulkUpdateCashStatusAction(
     }
     const { paymentIds, status, notes } = parsed.data;
 
-    const factory = SecureSupabaseClientFactory.create();
+    const factory = getSecureClientFactory();
     const supabase = await factory.createAuthenticatedClient();
     const {
       data: { user },

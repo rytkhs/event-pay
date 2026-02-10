@@ -2,8 +2,9 @@ import "server-only";
 
 import { SupabaseClient } from "@supabase/supabase-js";
 
+import { AppError, errFrom, errResult, okResult } from "@core/errors";
 import { logger } from "@core/logging/app-logger";
-import { SecureSupabaseClientFactory } from "@core/security/secure-client-factory.impl";
+import { getSecureClientFactory } from "@core/security/secure-client-factory.impl";
 import { AdminReason } from "@core/security/secure-client-factory.types";
 import { createClient } from "@core/supabase/server";
 import { toCsvCell } from "@core/utils/csv";
@@ -22,6 +23,7 @@ import {
   SettlementReportCsvRow,
   GenerateSettlementReportParams,
   GetSettlementReportsParams,
+  ExportSettlementReportResult,
   SettlementReportResult,
   RpcSettlementReportRow,
   GenerateSettlementReportRpcRow,
@@ -68,7 +70,7 @@ export class SettlementReportService {
       });
 
       // RPC関数は管理者（service_role）クライアントで実行（権限整合）
-      const factory = SecureSupabaseClientFactory.create();
+      const factory = getSecureClientFactory();
       const adminClient = await factory.createAuditedAdminClient(
         AdminReason.PAYMENT_PROCESSING,
         "features/settlements/services/service generateSettlementReport"
@@ -86,10 +88,14 @@ export class SettlementReportService {
           action: "generate_report_rpc_failed",
           additionalData: { eventId },
         });
-        return {
-          success: false,
-          error: `RPC呼び出しに失敗しました: ${error.message}`,
-        };
+        return errResult(
+          new AppError("SETTLEMENT_REPORT_FAILED", {
+            message: `RPC呼び出しに失敗しました: ${error.message}`,
+            userMessage: "レポート生成に失敗しました",
+            retryable: true,
+            details: { eventId },
+          })
+        );
       }
 
       // 配列の最初の要素を取得（RPC関数は常に1行を返す）
@@ -102,10 +108,14 @@ export class SettlementReportService {
           action: "generate_report_no_data",
           additionalData: { eventId },
         });
-        return {
-          success: false,
-          error: "レポートデータが取得できませんでした",
-        };
+        return errResult(
+          new AppError("SETTLEMENT_REPORT_FAILED", {
+            message: "レポートデータが取得できませんでした",
+            userMessage: "レポート生成に失敗しました",
+            retryable: false,
+            details: { eventId },
+          })
+        );
       }
 
       // レスポンスデータを構築
@@ -141,12 +151,11 @@ export class SettlementReportService {
         outcome: "success",
       });
 
-      return {
-        success: true,
+      return okResult({
         reportId: resultRow.report_id,
         reportData,
         alreadyExists,
-      };
+      });
     } catch (error) {
       handleServerError(error, {
         category: "settlement",
@@ -154,10 +163,9 @@ export class SettlementReportService {
         additionalData: { eventId: params.eventId },
       });
 
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : "Unknown error",
-      };
+      return errFrom(error, {
+        defaultCode: "SETTLEMENT_REPORT_FAILED",
+      });
     }
   }
 
@@ -250,13 +258,7 @@ export class SettlementReportService {
   /**
    * CSV エクスポート
    */
-  async exportToCsv(params: GetSettlementReportsParams): Promise<{
-    success: boolean;
-    csvContent?: string;
-    filename?: string;
-    truncated?: boolean;
-    error?: string;
-  }> {
+  async exportToCsv(params: GetSettlementReportsParams): Promise<ExportSettlementReportResult> {
     try {
       // 1,001 件取得して切り捨て判定
       const limit = params.limit && params.limit > 0 ? params.limit : 1000;
@@ -264,12 +266,11 @@ export class SettlementReportService {
       const reports = await this.getSettlementReports(overfetchParams);
 
       if (reports.length === 0) {
-        return {
-          success: true,
+        return okResult({
           csvContent: "",
           filename: `settlement-reports-${formatDateToJstYmd(getCurrentJstTime())}.csv`,
           truncated: false,
-        };
+        });
       }
 
       const truncated = reports.length > limit;
@@ -343,12 +344,11 @@ export class SettlementReportService {
       const csvContent = csvLines.join("\n");
       const filename = `settlement-reports-${formatDateToJstYmd(getCurrentJstTime())}.csv`;
 
-      return {
-        success: true,
+      return okResult({
         csvContent,
         filename,
         truncated,
-      };
+      });
     } catch (error) {
       handleServerError(error, {
         category: "settlement",
@@ -356,10 +356,9 @@ export class SettlementReportService {
         userId: params.createdBy,
       });
 
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : "Unknown error",
-      };
+      return errFrom(error, {
+        defaultCode: "SETTLEMENT_REPORT_FAILED",
+      });
     }
   }
 

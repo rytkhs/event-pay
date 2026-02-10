@@ -13,7 +13,7 @@ export interface PaymentCompletedEmailProps {
   receiptUrl?: string;
 }
 
-export const PaymentCompletedEmail = ({
+const PaymentCompletedEmail = ({
   nickname,
   eventTitle,
   amount,

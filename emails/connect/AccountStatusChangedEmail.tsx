@@ -20,7 +20,7 @@ const statusMap: Record<string, string> = {
   restricted: "制限中",
 };
 
-export const AccountStatusChangedEmail = ({
+const AccountStatusChangedEmail = ({
   userName,
   oldStatus,
   newStatus,

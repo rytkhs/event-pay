@@ -12,7 +12,8 @@ import { LINE_ERROR_MESSAGES } from "@core/auth/line-error-messages";
 import { useLoginFormRHF } from "@features/auth";
 
 import { loginAction } from "@/app/(auth)/actions";
-import { GoogleLoginButton, LINELoginButton } from "@/components/auth";
+import { GoogleLoginButton } from "@/components/auth/GoogleLoginButton";
+import { LINELoginButton } from "@/components/auth/LINELoginButton";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import {

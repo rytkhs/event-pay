@@ -1,10 +1,10 @@
 import { Redis } from "@upstash/redis";
 
-import { shouldLogError } from "@/core/logging/deduplication";
-import { hashToken } from "@/core/security/crypto";
+import { shouldLogError } from "@core/logging/deduplication";
+import { hashToken } from "@core/security/crypto";
 
 // Mock crypto dependency
-jest.mock("@/core/security/crypto", () => ({
+jest.mock("@core/security/crypto", () => ({
   hashToken: jest.fn(),
 }));
 
@@ -23,10 +23,10 @@ describe("shouldLogError", () => {
     const redisModule = require("@upstash/redis");
     mockRedis = redisModule.Redis.fromEnv();
 
-    const cryptoModule = require("@/core/security/crypto");
+    const cryptoModule = require("@core/security/crypto");
     mockHashToken = cryptoModule.hashToken;
 
-    const dedupeModule = require("@/core/logging/deduplication");
+    const dedupeModule = require("@core/logging/deduplication");
     shouldLogError = dedupeModule.shouldLogError;
   });
 

@@ -4,14 +4,11 @@
  */
 
 // Components
-export * from "./components";
-
-// Hooks (将来的な拡張用)
-// export * from "./hooks";
-
-// Services (将来的な拡張用)
-// export * from "./services";
+export { GuestActionArea } from "./components/GuestActionArea";
+export { GuestEventSummary } from "./components/GuestEventSummary";
+export { GuestSettingsArea } from "./components/GuestSettingsArea";
+export { GuestStatusCard } from "./components/GuestStatusCard";
+export { GuestStatusEditModal } from "./components/GuestStatusEditModal";
 
 // Types & Validation
 export * from "./types";
-export * from "./validation";

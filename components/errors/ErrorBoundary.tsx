@@ -5,7 +5,6 @@
 
 "use client";
 
-import type { ReactNode } from "react";
 import { Component } from "react";
 
 import { logError, addBreadcrumb } from "./error-logger";
@@ -165,82 +164,4 @@ function DefaultErrorFallback({ error, resetError, level = "component" }: ErrorF
       size={level === "component" ? "sm" : "md"}
     />
   );
-}
-
-/**
- * 参加フォーム専用のError Boundary
- */
-export function ParticipationErrorBoundary({ children }: { children: ReactNode }) {
-  return (
-    <ErrorBoundary level="component" fallback={ParticipationErrorFallback}>
-      {children}
-    </ErrorBoundary>
-  );
-}
-
-/**
- * 参加フォーム専用のエラーフォールバック
- */
-function ParticipationErrorFallback({ error, resetError }: ErrorFallbackProps) {
-  return (
-    <ErrorLayout
-      code="INTERNAL_ERROR"
-      category="business"
-      severity="medium"
-      title="参加申し込みエラー"
-      message="参加申し込み処理中にエラーが発生しました"
-      description="しばらく時間をおいて再度お試しください。"
-      showRetry={true}
-      showHome={false}
-      showBack={false}
-      onRetry={resetError}
-      error={error}
-      size="sm"
-    />
-  );
-}
-
-/**
- * 決済処理専用のError Boundary
- */
-export function PaymentErrorBoundary({ children }: { children: ReactNode }) {
-  return (
-    <ErrorBoundary level="component" fallback={PaymentErrorFallback}>
-      {children}
-    </ErrorBoundary>
-  );
-}
-
-/**
- * 決済処理専用のエラーフォールバック
- */
-function PaymentErrorFallback({ error, resetError }: ErrorFallbackProps) {
-  return (
-    <ErrorLayout
-      code="PAYMENT_FAILED"
-      severity="high"
-      title="決済エラー"
-      message="決済処理中にエラーが発生しました"
-      description="カード情報をご確認の上、再度お試しください。"
-      showRetry={true}
-      showSupport={true}
-      onRetry={resetError}
-      error={error}
-      size="sm"
-    />
-  );
-}
-
-/**
- * ページレベルError Boundary
- */
-export function PageErrorBoundary({ children }: { children: ReactNode }) {
-  return <ErrorBoundary level="page">{children}</ErrorBoundary>;
-}
-
-/**
- * グローバルレベルError Boundary
- */
-export function GlobalErrorBoundary({ children }: { children: ReactNode }) {
-  return <ErrorBoundary level="global">{children}</ErrorBoundary>;
 }

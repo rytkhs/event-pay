@@ -4,8 +4,9 @@
  * ゲストページでの変更可否や決済期限状態の判定を提供します。
  */
 
+import { type GuestAttendanceData } from "@core/types/guest";
+
 import { deriveEffectiveDeadlines, deriveFinalPaymentLimit } from "./deadlines";
-import type { GuestAttendanceData } from "./guest-token";
 
 /**
  * 変更不可の理由
