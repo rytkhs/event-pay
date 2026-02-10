@@ -14,7 +14,7 @@ import { IPaymentValidator } from "./services/interface";
 import {
   CreateStripeSessionParams,
   CreateCashPaymentParams,
-  UpdatePaymentStatusParams,
+  ServiceUpdatePaymentStatusParams,
   PaymentMethod,
   PaymentStatus,
 } from "./types";
@@ -111,7 +111,7 @@ export class PaymentValidator implements IPaymentValidator {
   }
 
   async validateUpdatePaymentStatusParams(
-    params: UpdatePaymentStatusParams,
+    params: ServiceUpdatePaymentStatusParams,
     isCancel?: boolean
   ): Promise<void> {
     try {

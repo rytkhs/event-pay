@@ -26,7 +26,7 @@ import {
   CreateStripeSessionResult,
   CreateCashPaymentParams,
   CreateCashPaymentResult,
-  UpdatePaymentStatusParams,
+  ServiceUpdatePaymentStatusParams,
 } from "./types";
 
 /**
@@ -84,7 +84,7 @@ export class PaymentService implements IPaymentService {
   /**
    * 決済ステータスを更新する
    */
-  async updatePaymentStatus(params: UpdatePaymentStatusParams): Promise<void> {
+  async updatePaymentStatus(params: ServiceUpdatePaymentStatusParams): Promise<void> {
     return updatePaymentStatusFn(params, this.supabase, this.paymentLogger);
   }
 

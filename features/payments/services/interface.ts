@@ -11,7 +11,7 @@ import {
   CreateStripeSessionResult,
   CreateCashPaymentParams,
   CreateCashPaymentResult,
-  UpdatePaymentStatusParams,
+  ServiceUpdatePaymentStatusParams,
 } from "./types";
 
 /**
@@ -39,7 +39,7 @@ export interface IPaymentService {
    * @param params 決済ステータス更新パラメータ
    * @throws PaymentError 決済ステータス更新に失敗した場合
    */
-  updatePaymentStatus(params: UpdatePaymentStatusParams): Promise<void>;
+  updatePaymentStatus(params: ServiceUpdatePaymentStatusParams): Promise<void>;
 
   /**
    * 複数の決済ステータスを一括更新する（楽観的ロック対応）
@@ -144,7 +144,7 @@ export interface IPaymentValidator {
    * @param params 検証対象のパラメータ
    * @throws PaymentError バリデーションに失敗した場合
    */
-  validateUpdatePaymentStatusParams(params: UpdatePaymentStatusParams): Promise<void>;
+  validateUpdatePaymentStatusParams(params: ServiceUpdatePaymentStatusParams): Promise<void>;
 
   /**
    * 参加記録の存在と権限を検証する
