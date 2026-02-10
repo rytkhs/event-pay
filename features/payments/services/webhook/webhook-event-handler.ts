@@ -13,7 +13,7 @@ import { handleServerError } from "@core/utils/error-handler.server";
 import { maskSessionId } from "@core/utils/mask";
 import { canPromoteStatus } from "@core/utils/payments/status-rank";
 
-import { Database } from "@/types/database";
+import { Database, Json } from "@/types/database";
 
 import type { WebhookProcessingResult } from "./types";
 import {
@@ -25,6 +25,91 @@ import {
 
 export interface WebhookEventHandler {
   handleEvent(event: Stripe.Event): Promise<WebhookProcessingResult>;
+}
+
+function isNonEmptyString(value: unknown): value is string {
+  return typeof value === "string" && value.length > 0;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function getExpandableId(value: string | { id: string } | null | undefined): string | null {
+  if (isNonEmptyString(value)) {
+    return value;
+  }
+
+  if (value && typeof value === "object" && isNonEmptyString(value.id)) {
+    return value.id;
+  }
+
+  return null;
+}
+
+function getPaymentIdFromMetadata(source: unknown): string | null {
+  const metadata = getMetadata(source);
+  const paymentId = metadata?.["payment_id"];
+  return isNonEmptyString(paymentId) ? paymentId : null;
+}
+
+function toStripeFeeDetailsJson(
+  feeDetails: Stripe.BalanceTransaction.FeeDetail[] | null
+): Json | null {
+  if (!feeDetails) {
+    return null;
+  }
+
+  return feeDetails.map((detail) => ({
+    amount: detail.amount,
+    currency: detail.currency,
+    type: detail.type,
+  }));
+}
+
+function getEventObjectFromRelation(value: unknown): Record<string, unknown> | null {
+  const candidate = Array.isArray(value) ? value[0] : value;
+  return isRecord(candidate) ? candidate : null;
+}
+
+function extractGa4EventDataFromAttendance(
+  attendance: unknown
+): { id: string; title: string } | null {
+  if (!isRecord(attendance)) {
+    return null;
+  }
+
+  const eventObject = getEventObjectFromRelation(attendance.event);
+  if (!eventObject) {
+    return null;
+  }
+
+  const id = eventObject.id;
+  const title = eventObject.title;
+  if (!isNonEmptyString(id) || !isNonEmptyString(title)) {
+    return null;
+  }
+
+  return { id, title };
+}
+
+function extractPaymentNotificationDataFromAttendance(
+  attendance: unknown
+): { email: string; nickname: string; eventTitle: string } | null {
+  if (!isRecord(attendance)) {
+    return null;
+  }
+
+  const email = attendance.email;
+  const nickname = attendance.nickname;
+  const eventObject = getEventObjectFromRelation(attendance.event);
+  const eventTitle = eventObject?.title;
+
+  if (!isNonEmptyString(email) || !isNonEmptyString(nickname) || !isNonEmptyString(eventTitle)) {
+    return null;
+  }
+
+  return { email, nickname, eventTitle };
 }
 
 export class StripeWebhookEventHandler implements WebhookEventHandler {
@@ -227,14 +312,18 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
                     },
                   });
                 } else {
-                  interface AttendanceWithEvent {
-                    event: { id: string; title: string } | { id: string; title: string }[];
+                  const eventData = extractGa4EventDataFromAttendance(attendance);
+                  if (!eventData) {
+                    handleServerError("GA4_TRACKING_FAILED", {
+                      action: "fetchEventInfoForGa4",
+                      additionalData: {
+                        payment_id: payment.id,
+                        attendance_id: payment.attendance_id,
+                        error_message: "Invalid attendance event payload",
+                      },
+                    });
+                    return okResult();
                   }
-
-                  const typedAttendance = attendance as unknown as AttendanceWithEvent;
-                  const eventData = Array.isArray(typedAttendance.event)
-                    ? typedAttendance.event[0]
-                    : typedAttendance.event;
 
                   // PaymentAnalyticsServiceを使用してGA4購入イベントを送信
                   const { paymentAnalytics } = await import("../analytics/payment-analytics");
@@ -530,13 +619,13 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
     const charge = event.data.object;
     // PaymentIntent拡張/charges.retrieveでbalance_tx/transferを取得
     try {
-      let piOrCharge: Stripe.PaymentIntent | Stripe.Charge = charge as unknown as Stripe.Charge;
-      if ((charge as { payment_intent?: string | null }).payment_intent) {
+      const stripePaymentIntentId = getPaymentIntentId(charge);
+      let piOrCharge: Stripe.PaymentIntent | Stripe.Charge = charge;
+      if (stripePaymentIntentId) {
         try {
-          const expanded = await getStripe().paymentIntents.retrieve(
-            (charge as { payment_intent: string }).payment_intent,
-            { expand: ["latest_charge.balance_transaction", "latest_charge.transfer"] }
-          );
+          const expanded = await getStripe().paymentIntents.retrieve(stripePaymentIntentId, {
+            expand: ["latest_charge.balance_transaction", "latest_charge.transfer"],
+          });
           piOrCharge = expanded;
         } catch {
           // フォールバックで charge を使用
@@ -553,7 +642,6 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
       }
 
       // DBの payments を特定（stripe_payment_intent_id or charge_id のいずれか）
-      const stripePaymentIntentId = getPaymentIntentId(charge);
       const { data: paymentByPi } = stripePaymentIntentId
         ? await this.supabase
             .from("payments")
@@ -621,29 +709,25 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
       }
 
       // balance_transaction / transfer / application_fee を拾う
-      const chargeObj: Stripe.Charge =
-        ((piOrCharge as Stripe.PaymentIntent).latest_charge as Stripe.Charge | undefined) ??
-        (piOrCharge as Stripe.Charge);
+      const chargeObj =
+        "latest_charge" in piOrCharge
+          ? piOrCharge.latest_charge && typeof piOrCharge.latest_charge === "object"
+            ? piOrCharge.latest_charge
+            : charge
+          : piOrCharge;
       const btObj = ((): {
         id: string | null;
         fee: number | null;
         net: number | null;
-        fee_details: Array<{ amount?: number; currency?: string; type?: string }> | null;
+        fee_details: Stripe.BalanceTransaction.FeeDetail[] | null;
       } => {
-        const raw = chargeObj?.balance_transaction as unknown;
+        const raw = chargeObj.balance_transaction;
         if (raw && typeof raw === "object") {
-          const tx = raw as Stripe.BalanceTransaction;
           return {
-            id: tx.id,
-            fee: typeof tx.fee === "number" ? tx.fee : null,
-            net: typeof tx.net === "number" ? tx.net : null,
-            fee_details: Array.isArray(tx.fee_details)
-              ? tx.fee_details.map((fd) => ({
-                  amount: fd.amount,
-                  currency: (fd as any).currency,
-                  type: (fd as any).type,
-                }))
-              : null,
+            id: raw.id,
+            fee: typeof raw.fee === "number" ? raw.fee : null,
+            net: typeof raw.net === "number" ? raw.net : null,
+            fee_details: Array.isArray(raw.fee_details) ? raw.fee_details : null,
           };
         }
         if (typeof raw === "string") {
@@ -652,14 +736,8 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
         return { id: null, fee: null, net: null, fee_details: null };
       })();
       const balanceTxnId: string | null = btObj.id;
-      const transferId: string | null =
-        chargeObj?.transfer && typeof chargeObj.transfer === "object"
-          ? (chargeObj.transfer as Stripe.Transfer).id
-          : typeof chargeObj?.transfer === "string"
-            ? chargeObj.transfer
-            : null;
-      const applicationFeeId: string | null =
-        typeof chargeObj?.application_fee === "string" ? chargeObj.application_fee : null;
+      const transferId = getExpandableId(chargeObj.transfer);
+      const applicationFeeId = getExpandableId(chargeObj.application_fee);
 
       const { error: updateError } = await this.supabase
         .from("payments")
@@ -670,7 +748,7 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
           stripe_balance_transaction_id: balanceTxnId,
           stripe_balance_transaction_fee: btObj.fee,
           stripe_balance_transaction_net: btObj.net,
-          stripe_fee_details: btObj.fee_details as unknown as import("@/types/database").Json,
+          stripe_fee_details: toStripeFeeDetailsJson(btObj.fee_details),
           stripe_transfer_id: transferId,
           application_fee_id: applicationFeeId,
           webhook_event_id: event.id,
@@ -764,29 +842,27 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
           });
           // 早期リターン: 通知失敗はwebhook処理を停止させない
         } else {
-          interface AttendanceWithEvent {
-            email: string;
-            nickname: string;
-            event: { title: string } | { title: string }[];
+          const notificationData = extractPaymentNotificationDataFromAttendance(attendance);
+          if (!notificationData) {
+            this.logger.warn("Invalid attendance payload for payment notification", {
+              paymentId: payment.id,
+              attendanceId: payment.attendance_id,
+              outcome: "failure",
+            });
+            return okResult(undefined, { eventId: event.id, paymentId: payment.id });
           }
-
-          const typedAttendance = attendance as unknown as AttendanceWithEvent;
-          const eventData = Array.isArray(typedAttendance.event)
-            ? typedAttendance.event[0]
-            : typedAttendance.event;
 
           const notificationService = new NotificationService(this.supabase);
           await notificationService.sendPaymentCompletedNotification({
-            email: typedAttendance.email,
-            nickname: typedAttendance.nickname,
-            eventTitle: eventData.title,
+            email: notificationData.email,
+            nickname: notificationData.nickname,
+            eventTitle: notificationData.eventTitle,
             amount: payment.amount,
             paidAt: new Date().toISOString(),
             receiptUrl: charge.receipt_url ?? undefined,
           });
         }
       } catch (error) {
-        // 通知失敗はログのみ記録、webhook処理は継続
         // 通知失敗はログのみ記録、webhook処理は継続
         handleServerError("PAYMENT_COMPLETION_NOTIFICATION_FAILED", {
           action: "sendPaymentCompletedNotification",
@@ -807,8 +883,7 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
     event: Stripe.ChargeFailedEvent
   ): Promise<WebhookProcessingResult> {
     const charge = event.data.object;
-    const stripePaymentIntentId: string | null =
-      (charge as { payment_intent?: string | null }).payment_intent ?? null;
+    const stripePaymentIntentId = getPaymentIntentId(charge);
     try {
       let payment: Database["public"]["Tables"]["payments"]["Row"] | null = null;
       {
@@ -830,12 +905,7 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
       }
       if (!payment) {
         // フォールバック: metadata.payment_id
-        const paymentIdFromMetadata: string | null = ((): string | null => {
-          const md =
-            (charge as unknown as { metadata?: Record<string, unknown> | null })?.metadata ?? null;
-          const raw = md && (md as Record<string, unknown>)["payment_id"];
-          return typeof raw === "string" && raw.length > 0 ? raw : null;
-        })();
+        const paymentIdFromMetadata = getPaymentIdFromMetadata(charge);
         if (paymentIdFromMetadata) {
           const { data: byId } = await this.supabase
             .from("payments")
@@ -877,7 +947,7 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
           webhook_processed_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
           ...(stripePaymentIntentId ? { stripe_payment_intent_id: stripePaymentIntentId } : {}),
-          stripe_charge_id: (charge as { id: string }).id,
+          stripe_charge_id: charge.id,
         })
         .eq("id", payment.id);
       if (updateError) {
@@ -928,12 +998,11 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
   private async handleChargeRefunded(
     event: Stripe.ChargeRefundedEvent
   ): Promise<WebhookProcessingResult> {
-    const charge = event.data.object as Stripe.Charge;
+    const charge = event.data.object;
     // 累積返金額とアプリ手数料返金の保存
     try {
       // 支払レコードの特定
-      const stripePaymentIntentId: string | null =
-        (charge as { payment_intent?: string | null }).payment_intent ?? null;
+      const stripePaymentIntentId = getPaymentIntentId(charge);
       let payment: Database["public"]["Tables"]["payments"]["Row"] | null = null;
       {
         const { data } = stripePaymentIntentId
@@ -951,12 +1020,7 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
       }
       if (!payment) {
         // フォールバック: metadata.payment_id
-        const paymentIdFromMetadata: string | null = ((): string | null => {
-          const md =
-            (charge as unknown as { metadata?: Record<string, unknown> | null })?.metadata ?? null;
-          const raw = md && (md as Record<string, unknown>)["payment_id"];
-          return typeof raw === "string" && raw.length > 0 ? raw : null;
-        })();
+        const paymentIdFromMetadata = getPaymentIdFromMetadata(charge);
         if (paymentIdFromMetadata) {
           const { data: byId } = await this.supabase
             .from("payments")
@@ -984,10 +1048,9 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
       let applicationFeeRefundId: string | null = null;
       try {
         // application_fee_id が保存されていれば合計返金額と最新の返金IDを取得
-        const paymentWithFee = payment as unknown as { application_fee_id?: string | null };
-        if (paymentWithFee?.application_fee_id) {
+        if (payment.application_fee_id) {
           const afrList = await getStripe().applicationFees.listRefunds(
-            paymentWithFee.application_fee_id,
+            payment.application_fee_id,
             { limit: 100 }
           );
           const items = afrList.data ?? [];
@@ -1121,7 +1184,7 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
       return okResult();
     }
 
-    const status: string | undefined = (refund as { status?: string }).status;
+    const status = refund.status;
 
     // ログは常に記録
     this.logger.info("Refund updated event received", {
@@ -1133,8 +1196,8 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
 
     // 返金がキャンセル/失敗に遷移した場合は、集計値を同期し直す（巻き戻しを許可）
     if (status === "canceled" || status === "failed") {
-      const chargeId = (refund as { charge?: string | null })?.charge ?? null;
-      if (typeof chargeId === "string" && chargeId.length > 0) {
+      const chargeId = getExpandableId(refund.charge);
+      if (chargeId) {
         try {
           await this.syncRefundAggregateByChargeId(chargeId, event.id, /*allowDemotion*/ true);
         } catch (e) {
@@ -1160,7 +1223,7 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
       return okResult();
     }
 
-    const chargeId = (refund as { charge?: string | null })?.charge ?? null;
+    const chargeId = getExpandableId(refund.charge);
     this.logger.warn("Refund failed event received", {
       event_id: event.id,
       refund_id: refund.id,
@@ -1168,7 +1231,7 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
       outcome: "success",
     });
 
-    if (typeof chargeId === "string" && chargeId.length > 0) {
+    if (chargeId) {
       await this.syncRefundAggregateByChargeId(chargeId, event.id, /*allowDemotion*/ true);
     }
     return okResult();
@@ -1183,7 +1246,7 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
   ): Promise<void> {
     // 最新のChargeを取得
     const charge = await getStripe().charges.retrieve(chargeId);
-    await this.applyRefundAggregateFromCharge(charge as Stripe.Charge, eventId, allowDemotion);
+    await this.applyRefundAggregateFromCharge(charge, eventId, allowDemotion);
   }
 
   // Chargeスナップショットから返金集計をDBへ反映
@@ -1192,8 +1255,7 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
     eventId: string,
     allowDemotion = false
   ): Promise<void> {
-    const stripePaymentIntentId: string | null =
-      (charge as { payment_intent?: string | null }).payment_intent ?? null;
+    const stripePaymentIntentId = getPaymentIntentId(charge);
     let payment: Database["public"]["Tables"]["payments"]["Row"] | null = null;
     {
       const { data } = stripePaymentIntentId
@@ -1223,12 +1285,10 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
     let applicationFeeRefundedAmount = 0;
     let applicationFeeRefundId: string | null = null;
     try {
-      const paymentWithFee = payment as unknown as { application_fee_id?: string | null };
-      if (paymentWithFee?.application_fee_id) {
-        const afrList = await getStripe().applicationFees.listRefunds(
-          paymentWithFee.application_fee_id,
-          { limit: 100 }
-        );
+      if (payment.application_fee_id) {
+        const afrList = await getStripe().applicationFees.listRefunds(payment.application_fee_id, {
+          limit: 100,
+        });
         const items = (afrList.data ?? []) as Stripe.FeeRefund[];
         applicationFeeRefundedAmount = items.reduce(
           (sum: number, cur: Stripe.FeeRefund) => sum + (cur.amount ?? 0),
@@ -1434,16 +1494,10 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
     });
     // Dispute 対象の支払を推定し、DB保存/更新 + 必要に応じてTransferリバーサル/再転送を実行
     try {
-      const chargeId: string | null = ((): string | null => {
-        const raw = (dispute as unknown as { charge?: unknown }).charge;
-        return typeof raw === "string" && raw.length > 0 ? raw : null;
-      })();
-      const piId: string | null = ((): string | null => {
-        const raw = (dispute as unknown as { payment_intent?: unknown }).payment_intent;
-        return typeof raw === "string" && raw.length > 0 ? raw : null;
-      })();
+      const chargeId = getExpandableId(dispute.charge);
+      const piId = getExpandableId(dispute.payment_intent);
 
-      let payment: unknown | null = null;
+      let payment: Database["public"]["Tables"]["payments"]["Row"] | null = null;
       let paymentId: string | null = null;
       if (piId) {
         const { data } = await this.supabase
@@ -1452,7 +1506,7 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
           .eq("stripe_payment_intent_id", piId)
           .maybeSingle();
         payment = data ?? null;
-        paymentId = (data as { id?: string } | null)?.id ?? null;
+        paymentId = data?.id ?? null;
       }
       if (!payment && chargeId) {
         const { data } = await this.supabase
@@ -1461,30 +1515,28 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
           .eq("stripe_charge_id", chargeId)
           .maybeSingle();
         payment = data ?? null;
-        paymentId = (data as { id?: string } | null)?.id ?? null;
+        paymentId = data?.id ?? null;
       }
 
       // Dispute記録を保存/更新
       try {
-        const currency: string | undefined = (dispute as unknown as { currency?: string }).currency;
-        const reason: string | undefined = (dispute as unknown as { reason?: string }).reason;
-        const evidenceDueByUnix: number | undefined = (
-          dispute as unknown as { evidence_details?: { due_by?: number } }
-        )?.evidence_details?.due_by as unknown as number | undefined;
+        const currency = dispute.currency;
+        const reason = dispute.reason;
+        const evidenceDueByUnix = dispute.evidence_details?.due_by ?? null;
 
         const disputeUpsert: Database["public"]["Tables"]["payment_disputes"]["Insert"] = {
           payment_id: paymentId ?? null,
           stripe_dispute_id: dispute.id,
           charge_id: chargeId ?? null,
           payment_intent_id: piId ?? null,
-          amount: (dispute as { amount?: number }).amount ?? 0,
+          amount: dispute.amount ?? 0,
           currency: (currency || "jpy").toLowerCase(),
           reason: reason ?? null,
-          status: (dispute as { status?: string }).status || "needs_response",
+          status: dispute.status || "needs_response",
           evidence_due_by: evidenceDueByUnix
             ? new Date(evidenceDueByUnix * 1000).toISOString()
             : null,
-          stripe_account_id: (event as unknown as { account?: string | null }).account ?? null,
+          stripe_account_id: event.account ?? null,
           updated_at: new Date().toISOString(),
           closed_at: event.type === "charge.dispute.closed" ? new Date().toISOString() : null,
         };
