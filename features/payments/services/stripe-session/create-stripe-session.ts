@@ -211,8 +211,8 @@ export async function createStripeSession(
     });
 
     return {
-      sessionUrl: session.url,
       sessionId: session.id,
+      sessionUrl: session.url,
     };
   } catch (error) {
     if (error instanceof PaymentError) {

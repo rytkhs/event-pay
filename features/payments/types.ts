@@ -10,6 +10,9 @@ import type {
 } from "@core/ports/payments";
 import type { PaymentMethod, PaymentStatus } from "@core/types/statuses";
 
+// Port層の型を再エクスポート
+export type { CreateStripeSessionResult, CreateCashPaymentResult } from "@core/ports/payments";
+
 export type { PaymentMethod, PaymentStatus };
 export type { CreateStripeSessionParams, CreateCashPaymentParams, UpdatePaymentStatusParams };
 
@@ -32,17 +35,6 @@ export interface Payment {
   paid_at?: string | null;
   created_at: string;
   updated_at: string;
-}
-
-// Stripe決済セッション作成結果
-export interface CreateStripeSessionResult {
-  sessionUrl: string;
-  sessionId: string;
-}
-
-// 現金決済作成結果
-export interface CreateCashPaymentResult {
-  paymentId: string;
 }
 
 // Port契約（paidAt: string）とService内部処理（paidAt: Date）の境界を明示する内部型
