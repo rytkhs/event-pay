@@ -1,5 +1,3 @@
-import { z } from "zod";
-
 import { fail, ok, type ActionResult, zodFail } from "@core/errors/adapters/server-actions";
 import type { ErrorCode } from "@core/errors/types";
 import { getPaymentPort } from "@core/ports/payments";
@@ -10,6 +8,8 @@ import { deriveEventStatus } from "@core/utils/derive-event-status";
 import { handleServerError } from "@core/utils/error-handler.server";
 import { validateGuestToken } from "@core/utils/guest-token";
 import { canCreateStripeSession } from "@core/validation/payment-eligibility";
+
+import { guestStripeSessionInputSchema } from "../validation";
 
 /**
  * PaymentErrorTypeをproblem-details.tsのErrorCodeにマッピング
@@ -70,18 +70,11 @@ function mapPaymentErrorToErrorCode(paymentErrorType: PaymentErrorType): ErrorCo
  * ゲスト用 Stripe Checkout セッション作成アクション
  * ゲストトークンで本人性を検証し、Admin クライアントで決済セッションを生成する。
  */
-const guestStripeSessionSchema = z.object({
-  guestToken: z.string().min(36, "ゲストトークンが無効です"),
-  successUrl: z.string().url(),
-  cancelUrl: z.string().url(),
-  gaClientId: z.string().optional(), // GA4 Client ID（アナリティクス追跡用）
-});
-
 export async function createGuestStripeSessionAction(
   input: unknown
 ): Promise<ActionResult<{ sessionUrl: string; sessionId: string }>> {
   // 1. 入力検証
-  const parsed = guestStripeSessionSchema.safeParse(input);
+  const parsed = guestStripeSessionInputSchema.safeParse(input);
   if (!parsed.success) {
     return zodFail(parsed.error, {
       userMessage: "入力データが無効です。",

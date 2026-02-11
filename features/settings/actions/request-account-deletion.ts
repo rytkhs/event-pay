@@ -1,7 +1,5 @@
 import { revalidatePath } from "next/cache";
 
-import { z } from "zod";
-
 import { getCurrentUser } from "@core/auth/auth-utils";
 import { fail, ok } from "@core/errors/adapters/server-actions";
 import type { ActionResult } from "@core/errors/adapters/server-actions";
@@ -10,18 +8,7 @@ import { getSecureClientFactory } from "@core/security/secure-client-factory.imp
 import { AdminReason } from "@core/security/secure-client-factory.types";
 import { createClient } from "@core/supabase/server";
 import { handleServerError } from "@core/utils/error-handler.server";
-
-// 入力検証: ユーザー同意/確認語句
-const deletionRequestSchema = z.object({
-  confirmText: z
-    .string()
-    .min(1)
-    .refine((v) => v.trim().toLowerCase() === "削除します" || v.trim().toLowerCase() === "delete", {
-      message: "確認語句が一致しません",
-    }),
-  agreeIrreversible: z.literal("on"),
-  agreeStripeDisable: z.literal("on"),
-});
+import { accountDeletionRequestSchema } from "@core/validation/settings";
 
 /**
  * アカウント削除（Supabase Authのソフトデリート機能を使用）
@@ -44,7 +31,7 @@ export async function requestAccountDeletionAction(formData: FormData): Promise<
       agreeFinanceRetention: formData.get("agreeFinanceRetention")?.toString() as "on" | undefined,
       agreeStripeDisable: formData.get("agreeStripeDisable")?.toString() as "on" | undefined,
     };
-    const parsed = deletionRequestSchema.safeParse(raw);
+    const parsed = accountDeletionRequestSchema.safeParse(raw);
     if (!parsed.success) {
       return fail("VALIDATION_ERROR", {
         userMessage: parsed.error.errors.map((e) => e.message).join(", "),

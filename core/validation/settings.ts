@@ -33,7 +33,20 @@ export const updatePasswordFormSchema = updatePasswordInputSchema
     path: ["confirmPassword"],
   });
 
+export const accountDeletionRequestSchema = z.object({
+  confirmText: z
+    .string()
+    .min(1)
+    .refine((value) => {
+      const normalized = value.trim().toLowerCase();
+      return normalized === "削除します" || normalized === "delete";
+    }, "確認語句が一致しません"),
+  agreeIrreversible: z.literal("on"),
+  agreeStripeDisable: z.literal("on"),
+});
+
 export type UpdateProfileInput = z.infer<typeof updateProfileInputSchema>;
 export type UpdateEmailInput = z.infer<typeof updateEmailInputSchema>;
 export type UpdatePasswordInput = z.infer<typeof updatePasswordInputSchema>;
 export type UpdatePasswordFormInput = z.infer<typeof updatePasswordFormSchema>;
+export type AccountDeletionRequestInput = z.infer<typeof accountDeletionRequestSchema>;

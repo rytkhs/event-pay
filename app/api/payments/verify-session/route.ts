@@ -8,8 +8,6 @@ export const dynamic = "force-dynamic";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
-import { z } from "zod";
-
 import { respondWithCode, respondWithProblem } from "@core/errors/server";
 import { logger } from "@core/logging/app-logger";
 import { withRateLimit, buildKey, POLICIES } from "@core/rate-limit";
@@ -20,21 +18,7 @@ import { getStripe } from "@core/stripe/client";
 import { getClientIP } from "@core/utils/ip-detection";
 import { maskSessionId } from "@core/utils/mask";
 
-// リクエストバリデーションスキーマ
-const VerifySessionSchema = z.object({
-  session_id: z
-    .string({
-      required_error: "セッションIDは必須です",
-      invalid_type_error: "セッションIDは必須です",
-    })
-    .min(1, "セッションIDは必須です"),
-  attendance_id: z
-    .string({
-      required_error: "有効な参加IDを入力してください",
-      invalid_type_error: "有効な参加IDを入力してください",
-    })
-    .uuid("有効な参加IDを入力してください"),
-});
+import { verifySessionQuerySchema } from "@features/payments/server";
 
 // 成功時レスポンス型（失敗時は Problem Details を返す）
 interface VerificationResult {
@@ -93,7 +77,7 @@ export async function GET(request: NextRequest) {
     const attendanceId = attendanceParam === "unknown" ? null : attendanceParam;
 
     // バリデーション
-    const validationResult = VerifySessionSchema.safeParse({
+    const validationResult = verifySessionQuerySchema.safeParse({
       session_id: sessionId,
       attendance_id: attendanceId,
     });

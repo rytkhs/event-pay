@@ -1,11 +1,9 @@
-import { z } from "zod";
-
 import { getCurrentUser } from "@core/auth/auth-utils";
 import { fail, ok, type ActionResult } from "@core/errors/adapters/server-actions";
 import { getSecureClientFactory } from "@core/security/secure-client-factory.impl";
 import { generateInviteToken } from "@core/utils/invite-token";
 
-const generateInviteTokenSchema = z.string().uuid("Invalid event ID format");
+import { generateInviteTokenEventIdSchema } from "../validation";
 
 interface GenerateInviteTokenOptions {
   forceRegenerate?: boolean;
@@ -19,7 +17,7 @@ export async function generateInviteTokenAction(
   options: GenerateInviteTokenOptions = {}
 ): Promise<ActionResult<{ token: string }>> {
   try {
-    const validatedEventId = generateInviteTokenSchema.parse(eventId);
+    const validatedEventId = generateInviteTokenEventIdSchema.parse(eventId);
 
     const user = await getCurrentUser();
     if (!user) {

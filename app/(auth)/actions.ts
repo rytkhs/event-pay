@@ -4,7 +4,6 @@ import { revalidatePath } from "next/cache";
 import { cookies, headers } from "next/headers";
 
 import type { EmailOtpType } from "@supabase/supabase-js";
-import { z } from "zod";
 
 import {
   AccountLockoutService,
@@ -25,31 +24,14 @@ import { handleServerError } from "@core/utils/error-handler.server";
 import { extractClientIdFromGaCookie } from "@core/utils/ga-cookie";
 import { getClientIPFromHeaders } from "@core/utils/ip-detection";
 import { formatUtcToJst } from "@core/utils/timezone";
-import { loginInputSchema, registerInputSchema } from "@core/validation/auth";
-
-// バリデーションスキーマ
-const resetPasswordSchema = z.object({
-  email: z.string().email("有効なメールアドレスを入力してください").max(254),
-});
-
-const verifyOtpSchema = z.object({
-  email: z.string().email("有効なメールアドレスを入力してください"),
-  otp: z.string().regex(/^\d{6}$/, "6桁の数字を入力してください"),
-  type: z.enum(["email", "recovery", "email_change", "signup"]),
-});
-
-const updatePasswordSchema = z
-  .object({
-    password: z
-      .string()
-      .min(8, "パスワードは8文字以上で入力してください")
-      .max(128, "パスワードは128文字以内で入力してください"),
-    passwordConfirm: z.string(),
-  })
-  .refine((data) => data.password === data.passwordConfirm, {
-    message: "パスワードが一致しません",
-    path: ["passwordConfirm"],
-  });
+import {
+  emailCheckSchema,
+  loginInputSchema,
+  registerInputSchema,
+  resetPasswordInputSchema,
+  updatePasswordInputSchema,
+  verifyOtpInputSchema,
+} from "@core/validation/auth";
 
 // FormDataをオブジェクトに変換
 function formDataToObject(formData: FormData): Record<string, string> {
@@ -447,7 +429,7 @@ export async function registerAction(formData: FormData): Promise<ActionResult<{
 export async function verifyOtpAction(formData: FormData): Promise<ActionResult> {
   try {
     const rawData = formDataToObject(formData);
-    const result = verifyOtpSchema.safeParse(rawData);
+    const result = verifyOtpInputSchema.safeParse(rawData);
 
     if (!result.success) {
       return fail("VALIDATION_ERROR", {
@@ -526,7 +508,7 @@ export async function resendOtpAction(formData: FormData): Promise<ActionResult>
     const email = formData.get("email")?.toString();
     const type = formData.get("type")?.toString() || "signup";
 
-    if (!email || !z.string().email().safeParse(email).success) {
+    if (!email || !emailCheckSchema.safeParse(email).success) {
       return fail("VALIDATION_ERROR", { userMessage: "有効なメールアドレスを入力してください" });
     }
 
@@ -618,7 +600,7 @@ export async function resendOtpAction(formData: FormData): Promise<ActionResult>
 export async function resetPasswordAction(formData: FormData): Promise<ActionResult> {
   try {
     const rawData = formDataToObject(formData);
-    const result = resetPasswordSchema.safeParse(rawData);
+    const result = resetPasswordInputSchema.safeParse(rawData);
 
     if (!result.success) {
       await TimingAttackProtection.addConstantDelay();
@@ -711,7 +693,7 @@ export async function resetPasswordAction(formData: FormData): Promise<ActionRes
 export async function updatePasswordAction(formData: FormData): Promise<ActionResult> {
   try {
     const rawData = formDataToObject(formData);
-    const result = updatePasswordSchema.safeParse(rawData);
+    const result = updatePasswordInputSchema.safeParse(rawData);
 
     if (!result.success) {
       return fail("VALIDATION_ERROR", {

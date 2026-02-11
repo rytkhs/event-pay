@@ -1,14 +1,11 @@
-import { z } from "zod";
+import { ZodError } from "zod";
 
 import { verifyEventAccess } from "@core/auth/event-authorization";
 import { type ActionResult, fail, ok, zodFail } from "@core/errors/adapters/server-actions";
 import { getSecureClientFactory } from "@core/security/secure-client-factory.impl";
 import { canCreateStripeSession } from "@core/validation/payment-eligibility";
 
-const InputSchema = z.object({
-  eventId: z.string().uuid(),
-  attendanceId: z.string().uuid(),
-});
+import { generateGuestUrlInputSchema } from "../validation";
 
 export async function generateGuestUrlAction(input: unknown): Promise<
   ActionResult<{
@@ -18,7 +15,7 @@ export async function generateGuestUrlAction(input: unknown): Promise<
   }>
 > {
   try {
-    const { eventId, attendanceId } = InputSchema.parse(input);
+    const { eventId, attendanceId } = generateGuestUrlInputSchema.parse(input);
 
     // 主催者権限確認
     await verifyEventAccess(eventId);
@@ -73,7 +70,7 @@ export async function generateGuestUrlAction(input: unknown): Promise<
       reason: eligibility.reason,
     });
   } catch (error) {
-    if (error instanceof z.ZodError) {
+    if (error instanceof ZodError) {
       return zodFail(error, { userMessage: error.errors?.[0]?.message || "入力が不正です" });
     }
     return fail("INTERNAL_ERROR", { userMessage: "ゲストURLの生成でエラーが発生しました" });

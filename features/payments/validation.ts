@@ -6,7 +6,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
 
 import { PaymentError, PaymentErrorType } from "@core/types/payment-errors";
-import { PaymentStatusSchema } from "@core/validation/payment-status";
+import { CashUpdateStatusSchema, PaymentStatusSchema } from "@core/validation/payment-status";
 
 import { Database } from "@/types/database";
 
@@ -51,6 +51,37 @@ const updatePaymentStatusParamsSchema = z.object({
   paidAt: z.date().optional(),
   stripePaymentIntentId: z.string().optional(),
 });
+
+export const updateCashStatusActionInputSchema = z.object({
+  paymentId: z.string().uuid(),
+  status: z.enum(["received", "waived", "pending"]),
+  notes: z.string().max(1000).optional(),
+  isCancel: z.boolean().optional(),
+});
+
+export const bulkUpdateCashStatusActionInputSchema = z.object({
+  paymentIds: z.array(z.string().uuid()).min(1).max(50), // 最大50件まで
+  status: CashUpdateStatusSchema,
+  notes: z.string().max(1000).optional(),
+});
+
+// Stripeセッション検証用スキーマ（ゲスト用決済画面）
+export const verifySessionQuerySchema = z.object({
+  session_id: z
+    .string({
+      required_error: "セッションIDは必須です",
+      invalid_type_error: "セッションIDは必須です",
+    })
+    .min(1, "セッションIDは必須です"),
+  attendance_id: z
+    .string({
+      required_error: "有効な参加IDを入力してください",
+      invalid_type_error: "有効な参加IDを入力してください",
+    })
+    .uuid("有効な参加IDを入力してください"),
+});
+
+export type VerifySessionQueryInput = z.infer<typeof verifySessionQuerySchema>;
 
 export class PaymentValidator implements IPaymentValidator {
   private supabase: SupabaseClient<Database, "public">;
