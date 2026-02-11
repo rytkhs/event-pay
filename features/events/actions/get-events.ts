@@ -3,20 +3,16 @@ import type { ErrorCode } from "@core/errors/types";
 import { generateSecureUuid } from "@core/security/crypto";
 import { createClient } from "@core/supabase/server";
 import { SortBy, SortOrder, StatusFilter, PaymentFilter, DateFilter } from "@core/types/events";
+import type { EventRow } from "@core/types/models";
 import { deriveEventStatus } from "@core/utils/derive-event-status";
 import { handleServerError } from "@core/utils/error-handler.server";
 import { convertJstDateToUtcRange } from "@core/utils/timezone";
 import { dateFilterSchema } from "@core/validation/event";
 
-import type { Database } from "@/types/database";
-
-import type { Event } from "../types";
-
-type EventRow = Database["public"]["Tables"]["events"]["Row"];
+import type { EventListItem } from "../types";
 
 type EventWithAttendancesCount = EventRow & {
   attendances?: { status: string }[];
-  public_profiles?: { name: string } | null;
 };
 
 // 型安全なフィルター条件の定義
@@ -41,7 +37,7 @@ type GetEventsOptions = {
 };
 
 type GetEventsResult = ActionResult<{
-  items: Event[];
+  items: EventListItem[];
   totalCount: number;
   hasMore: boolean;
 }>;
@@ -248,7 +244,6 @@ export async function getEventsAction(options: GetEventsOptions = {}): Promise<G
       created_by,
       created_at,
       canceled_at,
-      public_profiles!events_created_by_fkey(name),
       attendances!left(status)
     `)
     );
@@ -282,9 +277,7 @@ export async function getEventsAction(options: GetEventsOptions = {}): Promise<G
       throw dbError;
     }
 
-    // JOINで取得した作成者名を使用（N+1問題を解決）
     let eventsData = (events || []).map((event: EventWithAttendancesCount) => {
-      const creator_name = event.public_profiles?.name || "不明";
       const computedStatus = deriveEventStatus(event.date, (event as any).canceled_at ?? null);
 
       // status = 'attending' の参加者のみをカウント
@@ -296,11 +289,10 @@ export async function getEventsAction(options: GetEventsOptions = {}): Promise<G
         id: event.id,
         title: event.title,
         date: event.date,
-        location: event.location || "",
+        location: event.location,
         fee: event.fee,
         capacity: event.capacity,
         status: computedStatus,
-        creator_name,
         attendances_count,
         created_at: event.created_at,
       };
@@ -308,7 +300,7 @@ export async function getEventsAction(options: GetEventsOptions = {}): Promise<G
 
     // 参加者数ソートの場合はクライアントサイドでソートとページネーション
     if (sortBy === "attendances_count") {
-      eventsData = eventsData.sort((a: Event, b: Event) => {
+      eventsData = eventsData.sort((a: EventListItem, b: EventListItem) => {
         const aCount = a.attendances_count || 0;
         const bCount = b.attendances_count || 0;
         return sortOrder === "asc" ? aCount - bCount : bCount - aCount;

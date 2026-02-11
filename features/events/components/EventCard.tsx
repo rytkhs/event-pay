@@ -187,13 +187,11 @@ export const EventCard = memo(function EventCard({ event, mode = "compact" }: Ev
 
           {/* 4. 場所・金額列 */}
           <div className="hidden lg:flex flex-col justify-center gap-1">
-            {event.location ? (
+            {event.location && (
               <div className="flex items-center gap-1.5 text-xs text-muted-foreground truncate">
                 <MapPin className="h-3 w-3 flex-shrink-0" />
                 <span className="truncate">{event.location}</span>
               </div>
-            ) : (
-              <div className="text-xs text-muted-foreground/40 italic">場所未設定</div>
             )}
             {event.fee > 0 ? (
               <div className="flex items-center gap-1.5 text-xs font-semibold">

@@ -11,6 +11,7 @@ import {
 import { type ActionResult, fail, ok, zodFail } from "@core/errors/adapters/server-actions";
 import { logEventManagement } from "@core/logging/system-logger";
 import { createClient } from "@core/supabase/server";
+import type { EventRow } from "@core/types/models";
 import { deriveEventStatus } from "@core/utils/derive-event-status";
 import { calculateAttendeeCount } from "@core/utils/event-calculations";
 import { extractEventUpdateFormData } from "@core/utils/form-data-extractors";
@@ -20,7 +21,6 @@ import { validateEventId } from "@core/validation/event-id";
 
 import type { Database } from "@/types/database";
 
-type EventRow = Database["public"]["Tables"]["events"]["Row"];
 type UpdateEventResult = ActionResult<EventRow>;
 
 // UpdateEventInputを使用（Zodスキーマから自動生成）

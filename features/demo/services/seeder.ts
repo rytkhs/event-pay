@@ -4,6 +4,8 @@ import { randomBytes } from "crypto";
 import { fakerJA as faker } from "@faker-js/faker";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+import type { EventRow, EventInsert } from "@core/types/models";
+
 import type { Database } from "@/types/database";
 
 // --- 型定義 ---
@@ -12,8 +14,6 @@ type PaymentMethod = Database["public"]["Enums"]["payment_method_enum"];
 type PaymentStatus = Database["public"]["Enums"]["payment_status_enum"];
 type StripeAccountStatus = Database["public"]["Enums"]["stripe_account_status_enum"];
 
-type EventRow = Database["public"]["Tables"]["events"]["Row"];
-type EventInsert = Database["public"]["Tables"]["events"]["Insert"];
 type AttendanceRow = Database["public"]["Tables"]["attendances"]["Row"];
 type AttendanceInsert = Database["public"]["Tables"]["attendances"]["Insert"];
 type PaymentInsert = Database["public"]["Tables"]["payments"]["Insert"];

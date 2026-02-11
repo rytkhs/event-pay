@@ -10,6 +10,7 @@ import { logger } from "@core/logging/app-logger";
 import { logEventManagement } from "@core/logging/system-logger";
 import { getSecureClientFactory } from "@core/security/secure-client-factory.impl";
 import { logSecurityEvent } from "@core/security/security-logger";
+import type { EventRow } from "@core/types/models";
 import { handleServerError } from "@core/utils/error-handler.server";
 import { extractEventCreateFormData } from "@core/utils/form-data-extractors";
 import { generateInviteToken } from "@core/utils/invite-token";
@@ -17,8 +18,6 @@ import { convertDatetimeLocalToUtc } from "@core/utils/timezone";
 import { createEventSchema, type CreateEventInput } from "@core/validation/event";
 
 import type { Database } from "@/types/database";
-
-type EventRow = Database["public"]["Tables"]["events"]["Row"];
 
 type CreateEventResult = ActionResult<EventRow>;
 

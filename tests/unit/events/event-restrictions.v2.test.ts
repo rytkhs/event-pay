@@ -4,9 +4,9 @@ import {
   evaluateEventEditViolations,
 } from "../../../core/domain/event-edit-restrictions";
 import type { FieldViolation } from "../../../core/domain/event-edit-restrictions";
+import type { EventRow } from "../../../core/types/models";
 import type { Database } from "../../../types/database";
 
-type EventRow = Database["public"]["Tables"]["events"]["Row"];
 type AttendanceRow = Database["public"]["Tables"]["attendances"]["Row"];
 
 function createEvent(

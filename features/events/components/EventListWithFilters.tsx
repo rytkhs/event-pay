@@ -16,7 +16,7 @@ import type {
 } from "@core/types/events";
 
 import { useEventFilter, Filters } from "../hooks/useEventFilter";
-import { Event } from "../types";
+import { EventListItem } from "../types";
 
 import { EventFilters } from "./EventFilters";
 import { EventList } from "./EventList";
@@ -24,7 +24,7 @@ import { EventSort } from "./EventSort";
 import { Pagination } from "./Pagination";
 
 interface EventListWithFiltersProps {
-  events: Event[];
+  events: EventListItem[];
   totalCount: number;
   isLoading?: boolean;
   initialSortBy?: SortBy;
@@ -167,7 +167,8 @@ export function EventListWithFilters({
     const query = searchQuery.toLowerCase().trim();
     return events.filter((event) => {
       return (
-        event.title.toLowerCase().includes(query) || event.location?.toLowerCase().includes(query)
+        event.title.toLowerCase().includes(query) ||
+        (event.location ?? "").toLowerCase().includes(query)
       );
     });
   }, [events, searchQuery]);

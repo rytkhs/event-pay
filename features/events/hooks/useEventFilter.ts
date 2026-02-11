@@ -12,7 +12,7 @@ import { logger } from "@core/logging/app-logger";
 import type { StatusFilter, PaymentFilter, DateFilter } from "@core/types/events";
 import { convertJstDateToUtcRange } from "@core/utils/timezone";
 
-import { Event } from "../types";
+import { EventListItem } from "../types";
 
 export interface Filters {
   status: StatusFilter;
@@ -21,7 +21,7 @@ export interface Filters {
 }
 
 interface UseEventFilterOptions {
-  events?: Event[];
+  events?: EventListItem[];
   onFiltersChange?: (filters: Filters) => void;
   enableClientSideFiltering?: boolean;
   initialFilters?: Partial<Filters>;
