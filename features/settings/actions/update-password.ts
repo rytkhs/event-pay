@@ -1,19 +1,10 @@
-import { z } from "zod";
-
 import { getCurrentUser } from "@core/auth/auth-utils";
 import { fail, ok } from "@core/errors/adapters/server-actions";
 import type { ActionResult } from "@core/errors/adapters/server-actions";
 import { logger } from "@core/logging/app-logger";
 import { createClient } from "@core/supabase/server";
 import { handleServerError } from "@core/utils/error-handler.server";
-
-const updatePasswordSchema = z.object({
-  currentPassword: z.string().min(1, "現在のパスワードを入力してください"),
-  newPassword: z
-    .string()
-    .min(8, "パスワードは8文字以上で入力してください")
-    .max(128, "パスワードは128文字以内で入力してください"),
-});
+import { updatePasswordInputSchema } from "@core/validation/settings";
 
 export async function updatePasswordAction(formData: FormData): Promise<ActionResult> {
   try {
@@ -29,7 +20,7 @@ export async function updatePasswordAction(formData: FormData): Promise<ActionRe
       newPassword: formData.get("newPassword") as string,
     };
 
-    const validationResult = updatePasswordSchema.safeParse(rawData);
+    const validationResult = updatePasswordInputSchema.safeParse(rawData);
     if (!validationResult.success) {
       const errors = validationResult.error.errors.map((err) => err.message).join(", ");
       return fail("VALIDATION_ERROR", { userMessage: errors });

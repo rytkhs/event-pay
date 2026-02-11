@@ -7,4 +7,13 @@
 export { InviteEventDetail } from "./components/InviteEventDetail";
 
 // Types & Validation
-export * from "./types";
+export type {
+  InviteValidationResult,
+  AttendanceStatus,
+  EventStatus,
+  PaymentMethod,
+  RegisterParticipationData,
+  GenerateInviteTokenOptions,
+  GenerateInviteTokenResult,
+} from "./types";
+export { InviteErrorType, InviteError } from "./types";

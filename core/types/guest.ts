@@ -2,11 +2,9 @@
  * ゲスト機能共通型定義
  */
 
-import type { Database } from "@/types/database";
+import type { AttendanceStatus, PaymentMethod, PaymentStatus } from "@core/types/statuses";
 
-export type AttendanceStatus = Database["public"]["Enums"]["attendance_status_enum"];
-export type PaymentMethod = Database["public"]["Enums"]["payment_method_enum"];
-export type PaymentStatus = Database["public"]["Enums"]["payment_status_enum"];
+export type { AttendanceStatus, PaymentMethod, PaymentStatus } from "@core/types/statuses";
 
 /**
  * ゲスト参加情報詳細

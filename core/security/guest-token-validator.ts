@@ -9,9 +9,12 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { logToSystemLogs } from "@core/logging/system-logger";
 import { type GuestAttendanceData as GlobalGuestAttendanceData } from "@core/types/guest";
+import type { RpcGuestGetAttendanceRow } from "@core/types/invite";
 import { handleServerError } from "@core/utils/error-handler.server";
 import { sanitizeForEventPay } from "@core/utils/sanitize";
 import { isValidIsoDateTimeString } from "@core/utils/timezone";
+
+import type { Database } from "@/types/database";
 
 import { validateGuestTokenFormat } from "./crypto";
 import { getSecureClientFactory } from "./secure-client-factory.impl";
@@ -81,10 +84,10 @@ export class RLSGuestTokenValidator implements IGuestTokenValidator {
 
     try {
       // ゲストクライアントを使用してRLSポリシーを有効化
-      const guestClient = this.clientFactory.createGuestClient(token);
+      const guestClient = this.clientFactory.createGuestClient(token) as SupabaseClient<Database>;
 
       // 公開RPCに置換（最小列）
-      const { data: rpcRow, error } = await (guestClient as any)
+      const { data: rpcRow, error } = await guestClient
         .rpc("rpc_guest_get_attendance", { p_guest_token: token })
         .single();
 
@@ -105,20 +108,13 @@ export class RLSGuestTokenValidator implements IGuestTokenValidator {
       }
 
       // RPCの最小列からイベント情報を正規化
-      const eventData = {
-        id: (rpcRow as any).event_id,
-        date: (rpcRow as any).event_date,
-        registration_deadline: (rpcRow as any).registration_deadline,
-        payment_deadline: (rpcRow as any).payment_deadline,
-        payment_methods: (rpcRow as any).event_payment_methods || [],
-        canceled_at: (rpcRow as any).canceled_at,
-      } as any;
+      const eventData = this.buildEventInfoFromRpcRow(rpcRow);
       const canModify = this.checkCanModify(eventData);
 
       // 成功をログに記録
       await this.safeLogGuestAccess(token, "guest.validate", true, {
-        attendanceId: (rpcRow as any).attendance_id,
-        eventId: eventData ? (eventData as any).id : "",
+        attendanceId: rpcRow.attendance_id,
+        eventId: eventData.id,
         tableName: "attendances",
         operationType: "SELECT",
         resultCount: 1,
@@ -126,8 +122,8 @@ export class RLSGuestTokenValidator implements IGuestTokenValidator {
 
       return {
         isValid: true,
-        attendanceId: (rpcRow as any).attendance_id,
-        eventId: eventData ? (eventData as any).id : "",
+        attendanceId: rpcRow.attendance_id,
+        eventId: eventData.id,
         canModify,
       };
     } catch (error) {
@@ -171,10 +167,10 @@ export class RLSGuestTokenValidator implements IGuestTokenValidator {
     }
 
     try {
-      const guestClient = this.clientFactory.createGuestClient(token);
+      const guestClient = this.clientFactory.createGuestClient(token) as SupabaseClient<Database>;
 
       // 詳細な参加データを取得（最新支払い1件を含む）
-      const { data: rpcRow, error } = await (guestClient as any)
+      const { data: rpcRow, error } = await guestClient
         .rpc("rpc_guest_get_attendance", { p_guest_token: token })
         .single();
 
@@ -195,61 +191,37 @@ export class RLSGuestTokenValidator implements IGuestTokenValidator {
         };
       }
 
-      const eventData = {
-        id: (rpcRow as any).event_id,
-        title: (rpcRow as any).event_title,
-        date: (rpcRow as any).event_date,
-        location: (rpcRow as any).event_location,
-        fee: (rpcRow as any).event_fee,
-        capacity: (rpcRow as any).event_capacity,
-        description: (rpcRow as any).event_description,
-        payment_methods: (rpcRow as any).event_payment_methods,
-        allow_payment_after_deadline: (rpcRow as any).event_allow_payment_after_deadline,
-        grace_period_days: (rpcRow as any).event_grace_period_days,
-        registration_deadline: (rpcRow as any).registration_deadline,
-        payment_deadline: (rpcRow as any).payment_deadline,
-        created_by: (rpcRow as any).created_by,
-        canceled_at: (rpcRow as any).canceled_at,
-      } as any;
+      const eventData = this.buildGuestEventFromRpcRow(rpcRow);
 
       const canModify = this.checkCanModifyAttendance(eventData);
 
       // 成功をログに記録
       await this.safeLogGuestAccess(token, "guest.read", true, {
-        attendanceId: (rpcRow as any).attendance_id,
-        eventId: eventData ? eventData.id : "",
+        attendanceId: rpcRow.attendance_id,
+        eventId: eventData.id,
         tableName: "attendances",
         operationType: "SELECT",
         resultCount: 1,
       });
 
-      // 支払い情報を整形（存在する場合のみ）
-      const payment = (rpcRow as any).payment_id
-        ? {
-            id: (rpcRow as any).payment_id as string,
-            amount: Number((rpcRow as any).payment_amount),
-            method: (rpcRow as any).payment_method,
-            status: (rpcRow as any).payment_status,
-            created_at: (rpcRow as any).payment_created_at,
-          }
-        : null;
+      const payment = this.buildGuestPaymentFromRpcRow(rpcRow);
 
       return {
         isValid: true,
         attendance: {
-          id: (rpcRow as any).attendance_id,
-          nickname: (rpcRow as any).nickname,
-          email: (rpcRow as any).email,
-          status: (rpcRow as any).status,
-          guest_token: (rpcRow as any).guest_token,
-          created_at: (rpcRow as any).attendance_created_at,
-          updated_at: (rpcRow as any).attendance_updated_at,
+          id: rpcRow.attendance_id,
+          nickname: rpcRow.nickname,
+          email: rpcRow.email,
+          status: rpcRow.status,
+          guest_token: rpcRow.guest_token,
+          created_at: rpcRow.attendance_created_at,
+          updated_at: rpcRow.attendance_updated_at,
           event: {
             ...eventData,
-            title: sanitizeForEventPay((rpcRow as any).event_title),
+            title: sanitizeForEventPay(rpcRow.event_title),
           },
           payment,
-        } as GlobalGuestAttendanceData,
+        },
         canModify,
       };
     } catch (error) {
@@ -362,43 +334,62 @@ export class RLSGuestTokenValidator implements IGuestTokenValidator {
   // ====================================================================
 
   /**
-   * イベント情報の型ガード
-   */
-  private isValidEventInfo(event: unknown): event is EventInfo {
-    return (
-      typeof event === "object" &&
-      event !== null &&
-      "id" in event &&
-      "date" in event &&
-      typeof (event as EventInfo).id === "string" &&
-      typeof (event as EventInfo).date === "string" &&
-      ("canceled_at" in (event as any)
-        ? (event as any).canceled_at === null || typeof (event as any).canceled_at === "string"
-        : true) &&
-      // registration_deadlineはオプショナル
-      ("registration_deadline" in event
-        ? (event as EventInfo).registration_deadline === null ||
-          typeof (event as EventInfo).registration_deadline === "string"
-        : true)
-    );
-  }
-
-  /**
    * 日付文字列の有効性をチェック
    */
   private isValidDateString(dateStr: string): boolean {
     return isValidIsoDateTimeString(dateStr);
   }
 
+  private buildEventInfoFromRpcRow(rpcRow: RpcGuestGetAttendanceRow): EventInfo {
+    return {
+      id: rpcRow.event_id,
+      date: rpcRow.event_date,
+      registration_deadline: rpcRow.registration_deadline ?? null,
+      canceled_at: rpcRow.canceled_at ?? null,
+    };
+  }
+
+  private buildGuestEventFromRpcRow(
+    rpcRow: RpcGuestGetAttendanceRow
+  ): GlobalGuestAttendanceData["event"] {
+    return {
+      id: rpcRow.event_id,
+      title: rpcRow.event_title,
+      date: rpcRow.event_date,
+      location: rpcRow.event_location,
+      fee: rpcRow.event_fee,
+      capacity: rpcRow.event_capacity,
+      description: rpcRow.event_description,
+      payment_methods: rpcRow.event_payment_methods,
+      allow_payment_after_deadline: rpcRow.event_allow_payment_after_deadline,
+      grace_period_days: rpcRow.event_grace_period_days,
+      registration_deadline: rpcRow.registration_deadline ?? null,
+      payment_deadline: rpcRow.payment_deadline ?? null,
+      created_by: rpcRow.created_by,
+      canceled_at: rpcRow.canceled_at ?? null,
+    };
+  }
+
+  private buildGuestPaymentFromRpcRow(
+    rpcRow: RpcGuestGetAttendanceRow
+  ): GlobalGuestAttendanceData["payment"] {
+    if (!rpcRow.payment_id) {
+      return null;
+    }
+
+    return {
+      id: rpcRow.payment_id,
+      amount: Number(rpcRow.payment_amount),
+      method: rpcRow.payment_method,
+      status: rpcRow.payment_status,
+      created_at: rpcRow.payment_created_at,
+    };
+  }
+
   /**
    * イベント情報から変更可能性を判定
    */
-  private checkCanModify(event: unknown): boolean {
-    // 型ガードでイベント情報の妥当性をチェック
-    if (!this.isValidEventInfo(event)) {
-      return false; // 無効なイベント情報の場合は変更不可
-    }
-
+  private checkCanModify(event: EventInfo): boolean {
     // 日付の妥当性をチェック
     if (!this.isValidDateString(event.date)) {
       return false;
@@ -419,7 +410,7 @@ export class RLSGuestTokenValidator implements IGuestTokenValidator {
     // イベント開始前かつ登録締切前かつアクティブ状態
     const isBeforeEventStart = eventDate > now;
     const isBeforeDeadline = registrationDeadline === null || registrationDeadline > now;
-    const notCanceled = !(event as any).canceled_at;
+    const notCanceled = !event.canceled_at;
 
     return isBeforeEventStart && isBeforeDeadline && notCanceled;
   }
@@ -431,7 +422,7 @@ export class RLSGuestTokenValidator implements IGuestTokenValidator {
     const now = new Date();
 
     // キャンセル済みイベントは変更不可
-    if ((event as any).canceled_at) {
+    if (event.canceled_at) {
       return false;
     }
 

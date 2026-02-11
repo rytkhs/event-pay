@@ -3,29 +3,10 @@
  * 招待機能関連の型定義
  */
 
-import { Database } from "@/types/database";
+import type { AttendanceStatus, PaymentMethod } from "@core/types/statuses";
 
-// Database型から必要な型を抽出
-export type AttendanceStatus = Database["public"]["Enums"]["attendance_status_enum"];
-export type PaymentMethod = Database["public"]["Enums"]["payment_method_enum"];
-export type EventStatus = "upcoming" | "ongoing" | "past" | "canceled"; // 算出値
-
-// イベント詳細情報（core/utils/invite-token.tsから参照）
-export interface EventDetail {
-  id: string;
-  title: string;
-  description: string | null;
-  event_date: string;
-  fee: number;
-  status: EventStatus;
-  registration_deadline: string | null;
-  capacity: number | null;
-  attendances_count: number;
-  created_by: string;
-  created_at: string;
-  updated_at: string;
-  invite_token: string | null;
-}
+export type { InviteEventDetail, InviteValidationResult } from "@core/types/invite";
+export type { AttendanceStatus, EventStatus, PaymentMethod } from "@core/types/statuses";
 
 // 参加登録結果データ
 export interface RegisterParticipationData {
@@ -48,14 +29,6 @@ export interface GenerateInviteTokenOptions {
 export interface GenerateInviteTokenResult {
   inviteToken: string;
   inviteUrl: string;
-}
-
-// 招待トークン検証結果
-export interface InviteValidationResult {
-  isValid: boolean;
-  canRegister: boolean;
-  event?: EventDetail;
-  errorMessage?: string;
 }
 
 // 招待関連エラー種別

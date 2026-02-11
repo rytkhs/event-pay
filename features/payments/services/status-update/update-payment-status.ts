@@ -7,13 +7,13 @@ import { PaymentError, PaymentErrorType } from "@core/types/payment-errors";
 
 import { Database } from "@/types/database";
 
-import type { PaymentStatus, UpdatePaymentStatusParams } from "../types";
+import type { PaymentStatus, ServiceUpdatePaymentStatusParams } from "../types";
 
 /**
  * 楽観的ロック付きの決済ステータス更新（現金決済用）
  */
 export async function updatePaymentStatusSafe(
-  params: UpdatePaymentStatusParams,
+  params: ServiceUpdatePaymentStatusParams,
   supabase: SupabaseClient<Database, "public">
 ): Promise<void> {
   try {
@@ -88,7 +88,7 @@ export async function updatePaymentStatusSafe(
  * 従来の決済ステータス更新（Stripe決済用など）
  */
 export async function updatePaymentStatusLegacy(
-  params: UpdatePaymentStatusParams,
+  params: ServiceUpdatePaymentStatusParams,
   supabase: SupabaseClient<Database, "public">
 ): Promise<void> {
   const updateData: {
@@ -148,7 +148,7 @@ export async function updatePaymentStatusLegacy(
  * 決済ステータスを更新する
  */
 export async function updatePaymentStatus(
-  params: UpdatePaymentStatusParams,
+  params: ServiceUpdatePaymentStatusParams,
   supabase: SupabaseClient<Database, "public">,
   logger: PaymentLogger
 ): Promise<void> {

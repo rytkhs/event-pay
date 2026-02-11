@@ -1,7 +1,7 @@
-import { ErrorHandlingResult, PaymentErrorType } from "@core/types/payment-errors";
+import { PaymentErrorHandlingResult, PaymentErrorType } from "@core/types/payment-errors";
 
 // PaymentErrorType -> ユーザー向けハンドリングの集約マップ（網羅必須）
-export const ERROR_HANDLING_BY_TYPE: Record<PaymentErrorType, ErrorHandlingResult> = {
+export const ERROR_HANDLING_BY_TYPE: Record<PaymentErrorType, PaymentErrorHandlingResult> = {
   [PaymentErrorType.VALIDATION_ERROR]: {
     userMessage: "入力データが無効です。",
     shouldRetry: false,

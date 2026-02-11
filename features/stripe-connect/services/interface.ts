@@ -15,7 +15,7 @@ import {
   UpdateBusinessProfileParams,
   UpdateBusinessProfileResult,
   StripeConnectError,
-  ErrorHandlingResult,
+  StripeConnectErrorHandlingResult,
 } from "../types";
 
 /**
@@ -124,7 +124,7 @@ export interface IStripeConnectErrorHandler {
    * @param error StripeConnectError
    * @returns エラーハンドリング結果
    */
-  handleError(error: StripeConnectError): Promise<ErrorHandlingResult>;
+  handleError(error: StripeConnectError): Promise<StripeConnectErrorHandlingResult>;
 
   /**
    * Stripe APIエラーをStripeConnectErrorにマッピングする

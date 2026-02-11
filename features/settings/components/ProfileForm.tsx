@@ -5,10 +5,10 @@ import { useTransition } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2 } from "lucide-react";
 import { useForm } from "react-hook-form";
-import { z } from "zod";
 
 import { useToast } from "@core/contexts/toast-context";
 import type { ActionResult } from "@core/errors/adapters/server-actions";
+import { updateProfileInputSchema, type UpdateProfileInput } from "@core/validation/settings";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -22,16 +22,6 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 
-const profileSchema = z.object({
-  name: z
-    .string()
-    .min(1, "表示名は必須です")
-    .max(255, "表示名は255文字以内で入力してください")
-    .trim(),
-});
-
-type ProfileFormData = z.infer<typeof profileSchema>;
-
 interface ProfileFormProps {
   currentName: string;
   updateProfileAction: UpdateProfileAction;
@@ -43,14 +33,14 @@ export function ProfileForm({ currentName, updateProfileAction }: ProfileFormPro
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
 
-  const form = useForm<ProfileFormData>({
-    resolver: zodResolver(profileSchema),
+  const form = useForm<UpdateProfileInput>({
+    resolver: zodResolver(updateProfileInputSchema),
     defaultValues: {
       name: currentName,
     },
   });
 
-  const onSubmit = (data: ProfileFormData) => {
+  const onSubmit = (data: UpdateProfileInput) => {
     startTransition(async () => {
       try {
         const formData = new FormData();
