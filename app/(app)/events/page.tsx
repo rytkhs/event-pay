@@ -13,7 +13,7 @@ import {
   DEFAULT_STATUS_FILTER,
   DEFAULT_PAYMENT_FILTER,
 } from "@core/constants/event-filters";
-import type { SortBy, SortOrder, StatusFilter, PaymentFilter } from "@core/types/events";
+import type { SortBy, SortOrder, StatusFilter, PaymentFilter } from "@core/types/event-query";
 
 import { EventListWithFilters, EventLoading } from "@features/events";
 

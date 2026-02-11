@@ -10,7 +10,7 @@ import {
   STATUS_FILTER_LABELS,
   PAYMENT_FILTER_LABELS,
 } from "@core/constants/event-filters";
-import type { StatusFilter, PaymentFilter, DateFilter } from "@core/types/events";
+import type { StatusFilter, PaymentFilter, DateFilter } from "@core/types/event-query";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";

@@ -10,7 +10,7 @@ import {
   isValidSortBy,
   isValidSortOrder,
 } from "@core/constants/event-filters";
-import type { SortBy, SortOrder } from "@core/types/events";
+import type { SortBy, SortOrder } from "@core/types/event-query";
 
 import { Button } from "@/components/ui/button";
 import {

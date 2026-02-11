@@ -12,7 +12,7 @@ import type {
   StatusFilter,
   PaymentFilter,
   DateFilter,
-} from "@core/types/events";
+} from "@core/types/event-query";
 
 import { useEventFilter, Filters } from "../hooks/useEventFilter";
 import { EventListItem } from "../types";
