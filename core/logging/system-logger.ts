@@ -10,31 +10,13 @@ import { createClient } from "@supabase/supabase-js";
 
 import { getEnv } from "@core/utils/cloudflare-env";
 
-import { logger } from "./app-logger";
-
-// ============================================================================
-// 型定義
-// ============================================================================
-
-export type LogLevel = "debug" | "info" | "warn" | "error" | "critical";
-
-export type LogCategory =
-  | "authentication"
-  | "authorization"
-  | "event_management"
-  | "attendance"
-  | "payment"
-  | "settlement"
-  | "stripe_webhook"
-  | "stripe_connect"
-  | "email"
-  | "export"
-  | "security"
-  | "system";
-
-export type LogOutcome = "success" | "failure" | "unknown";
-
-export type ActorType = "user" | "guest" | "system" | "webhook" | "service_role" | "anonymous";
+import {
+  logger,
+  type LogLevel,
+  type LogCategory,
+  type LogOutcome,
+  type ActorType,
+} from "./app-logger";
 
 /**
  * システムログエントリ（必須フィールド）
