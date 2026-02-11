@@ -11,7 +11,7 @@ import {
 import { type ActionResult, fail, ok, zodFail } from "@core/errors/adapters/server-actions";
 import { logEventManagement } from "@core/logging/system-logger";
 import { createClient } from "@core/supabase/server";
-import type { EventRow } from "@core/types/models";
+import type { EventRow } from "@core/types/event";
 import { deriveEventStatus } from "@core/utils/derive-event-status";
 import { calculateAttendeeCount } from "@core/utils/event-calculations";
 import { extractEventUpdateFormData } from "@core/utils/form-data-extractors";

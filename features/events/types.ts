@@ -1,8 +1,8 @@
-import type { Event } from "@core/types/models";
+import type { Event } from "@core/types/event";
 
 /**
  * イベント一覧表示用の軽量型
- * core/types/models.ts の Event から必要なフィールドのみを抽出し、
+ * core/types/event.ts の Event から必要なフィールドのみを抽出し、
  * 一覧表示に特化した型に変換して使用する。
  */
 export type EventListItem = Pick<

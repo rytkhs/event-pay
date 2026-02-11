@@ -4,7 +4,7 @@ import { randomBytes } from "crypto";
 import { fakerJA as faker } from "@faker-js/faker";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-import type { EventRow, EventInsert } from "@core/types/models";
+import type { EventRow, EventInsert } from "@core/types/event";
 
 import type { Database } from "@/types/database";
 

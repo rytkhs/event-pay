@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import type { Event } from "@core/types/models";
+import type { Event } from "@core/types/event";
 import { parseFee, safeParseNumber } from "@core/utils/number-parsers";
 import { convertDatetimeLocalToUtc, isUtcDateFuture } from "@core/utils/timezone";
 

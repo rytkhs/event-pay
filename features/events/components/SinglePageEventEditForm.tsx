@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 
 import type { RestrictableField } from "@core/domain/event-edit-restrictions";
-import type { Event } from "@core/types/models";
+import type { Event } from "@core/types/event";
 
 import { cn } from "@/components/ui/_lib/cn";
 import { Badge } from "@/components/ui/badge";

@@ -2,10 +2,11 @@ import {
   buildRestrictionContext,
   createFormDataSnapshot,
   evaluateEventEditViolations,
-} from "../../../core/domain/event-edit-restrictions";
-import type { FieldViolation } from "../../../core/domain/event-edit-restrictions";
-import type { EventRow } from "../../../core/types/models";
-import type { Database } from "../../../types/database";
+} from "@core/domain/event-edit-restrictions";
+import type { FieldViolation } from "@core/domain/event-edit-restrictions";
+import type { EventRow } from "@core/types/event";
+
+import type { Database } from "@/types/database";
 
 type AttendanceRow = Database["public"]["Tables"]["attendances"]["Row"];
 

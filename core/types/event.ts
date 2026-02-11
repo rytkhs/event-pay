@@ -1,6 +1,6 @@
 /**
- * EventPay 統一型定義
- * アプリケーション全体で使用される共通の型定義を集約
+ * Event ドメインの共有契約型
+ * Layer 2 SoT: app/features から参照されるイベント関連型を集約
  */
 
 import type { Database } from "@/types/database";
@@ -15,6 +15,9 @@ export type EventRow = Database["public"]["Tables"]["events"]["Row"];
 /** eventsテーブルの挿入型（INSERT用） */
 export type EventInsert = Database["public"]["Tables"]["events"]["Insert"];
 
+/** eventsテーブルの更新型（UPDATE用） */
+export type EventUpdate = Database["public"]["Tables"]["events"]["Update"];
+
 // ====================================================================
 // Event関連のアプリケーション型定義
 // ====================================================================
@@ -23,7 +26,7 @@ export type EventInsert = Database["public"]["Tables"]["events"]["Insert"];
  * イベント基本情報型
  * データベースのeventsテーブルに対応
  */
-export interface Event {
+export interface EventBase {
   id: string;
   title: string;
   description: string | null;
@@ -52,7 +55,11 @@ export interface Event {
  * イベント詳細表示用型
  * UIコンポーネントで使用される拡張された型
  */
-export interface EventDetail extends Event {
+export interface EventDetailProjection extends EventBase {
   creator_name: string; // 必須
   attendances_count: number; // 必須
 }
+
+// Phase 1互換エイリアス（利用側の段階移行用）
+export type Event = EventBase;
+export type EventDetail = EventDetailProjection;

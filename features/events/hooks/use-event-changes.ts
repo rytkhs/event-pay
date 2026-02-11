@@ -2,7 +2,7 @@
 
 import { useCallback, useMemo } from "react";
 
-import type { Event } from "@core/types/models";
+import type { Event } from "@core/types/event";
 import { formatUtcToDatetimeLocal } from "@core/utils/timezone";
 import type { EventFormData } from "@core/validation/event";
 

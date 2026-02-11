@@ -10,7 +10,7 @@ import {
   type ActionResult,
 } from "@core/errors/adapters/server-actions";
 import { errResult, okResult, type AppResult } from "@core/errors/app-result";
-import type { Event, EventRow } from "@core/types/models";
+import type { Event, EventRow } from "@core/types/event";
 import { deriveEventStatus } from "@core/utils/derive-event-status";
 import { handleClientError } from "@core/utils/error-handler.client";
 import type { EventFormData } from "@core/validation/event";

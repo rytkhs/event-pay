@@ -9,7 +9,7 @@ import type { RestrictableField } from "@core/domain/event-edit-restrictions";
 import { AppError } from "@core/errors";
 import { errResult, okResult, type AppResult } from "@core/errors/app-result";
 import { useErrorHandler } from "@core/hooks/use-error-handler";
-import type { Event } from "@core/types/models";
+import type { Event } from "@core/types/event";
 import { safeParseNumber } from "@core/utils/number-parsers";
 import { formatUtcToDatetimeLocal } from "@core/utils/timezone";
 import type { EventFormData } from "@core/validation/event";

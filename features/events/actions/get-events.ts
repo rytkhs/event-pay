@@ -2,8 +2,8 @@ import { fail, ok, type ActionResult } from "@core/errors/adapters/server-action
 import type { ErrorCode } from "@core/errors/types";
 import { generateSecureUuid } from "@core/security/crypto";
 import { createClient } from "@core/supabase/server";
+import type { EventRow } from "@core/types/event";
 import { SortBy, SortOrder, StatusFilter, PaymentFilter, DateFilter } from "@core/types/events";
-import type { EventRow } from "@core/types/models";
 import { deriveEventStatus } from "@core/utils/derive-event-status";
 import { handleServerError } from "@core/utils/error-handler.server";
 import { convertJstDateToUtcRange } from "@core/utils/timezone";

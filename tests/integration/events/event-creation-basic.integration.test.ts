@@ -12,7 +12,7 @@
 import { getCurrentUser } from "@core/auth/auth-utils";
 import { SecureSupabaseClientFactory } from "@core/security/secure-client-factory.impl";
 import { AdminReason } from "@core/security/secure-client-factory.types";
-import type { EventRow } from "@core/types/models";
+import type { EventRow } from "@core/types/event";
 
 import { createEventAction } from "@/app/(app)/events/create/actions";
 import { getFutureDateTimeLocal } from "@/tests/helpers/test-datetime";

@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { type ActionResult, fail, ok } from "@core/errors/adapters/server-actions";
 import { logger } from "@core/logging/app-logger";
 import { createClient } from "@core/supabase/server";
-import type { EventDetail as DetailType } from "@core/types/models";
+import type { EventDetail as DetailType } from "@core/types/event";
 import { deriveEventStatus } from "@core/utils/derive-event-status";
 import { validateEventId } from "@core/validation/event-id";
 
