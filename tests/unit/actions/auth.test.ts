@@ -29,8 +29,8 @@ jest.mock("../../../core/auth-security", () => ({
     addConstantDelay: jest.fn(async (_baseDelayMs?: number) => {
       // モックでは何もしない
     }),
-    normalizeResponseTime: jest.fn(async (fn: () => Promise<any>) => {
-      await fn();
+    normalizeResponseTime: jest.fn(async <T>(fn: () => Promise<T>): Promise<T> => {
+      return await fn();
     }),
   },
   InputSanitizer: {
@@ -135,6 +135,33 @@ describe("loginAction", () => {
       const error = expectActionFailure(result);
       // ユーザー列挙攻撃対策により、統一されたエラーメッセージが返される
       expect(error.userMessage).toBe("メールアドレスまたはパスワードが正しくありません");
+    });
+
+    it("メール未確認エラーは適切に処理される", async () => {
+      (mockSupabase.auth.signInWithPassword as jest.MockedFunction<any>).mockResolvedValue({
+        data: { user: null },
+        error: {
+          message: "Email not confirmed",
+          name: "AuthApiError",
+          status: 400,
+          code: "email_not_confirmed",
+          __isAuthError: true,
+        },
+      });
+
+      const formData = new FormData();
+      formData.append("email", "unconfirmed@example.com");
+      formData.append("password", "validpassword");
+
+      const result = await loginAction(formData);
+
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.needsVerification).toBe(true);
+      }
+      const error = expectActionFailure(result);
+      expect(error.code).toBe("LOGIN_FAILED");
+      expect(error.userMessage).toBe("メールアドレスの確認が必要です。");
     });
 
     it("Supabaseの予期しないエラーは適切に処理される", async () => {
