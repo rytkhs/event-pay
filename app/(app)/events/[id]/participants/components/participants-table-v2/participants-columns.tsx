@@ -137,7 +137,7 @@ export function buildParticipantsColumns(opts: {
           const isNotAttending = p.status !== "attending";
           if (isFreeEvent || !status || isCanceledPayment || isNotAttending)
             return <span className="text-gray-400 text-xs sm:text-sm">-</span>;
-          const simple = toSimplePaymentStatus(status as any);
+          const simple = toSimplePaymentStatus(status);
           if (simple === "paid") {
             const s = getSimplePaymentStatusStyle(simple);
             return (
@@ -163,7 +163,7 @@ export function buildParticipantsColumns(opts: {
         header: "アクション",
         cell: ({ row }) => {
           const p = row.original;
-          const simple = toSimplePaymentStatus(p.payment_status as any);
+          const simple = toSimplePaymentStatus(p.payment_status);
           const isCashPayment = p.payment_method === "cash" && p.payment_id;
           const { onReceive, onCancel, isUpdating } = opts.handlers;
           const canOperateCash =

@@ -6,6 +6,8 @@ export const dynamic = "force-dynamic";
 import { ArrowLeft } from "lucide-react";
 
 import { createClient } from "@core/supabase/server";
+import type { Event, EventRow } from "@core/types/event";
+import type { AttendanceStatus } from "@core/types/statuses";
 import { deriveEventStatus } from "@core/utils/derive-event-status";
 import { calculateAttendeeCount } from "@core/utils/event-calculations";
 import { validateEventId } from "@core/validation/event-id";
@@ -21,6 +23,29 @@ interface EventEditPageProps {
     id: string;
   };
 }
+
+type EventEditQueryRow = Pick<
+  EventRow,
+  | "id"
+  | "title"
+  | "description"
+  | "location"
+  | "date"
+  | "fee"
+  | "capacity"
+  | "payment_methods"
+  | "registration_deadline"
+  | "payment_deadline"
+  | "allow_payment_after_deadline"
+  | "grace_period_days"
+  | "created_at"
+  | "updated_at"
+  | "created_by"
+  | "invite_token"
+  | "canceled_at"
+> & {
+  attendances: Array<{ id: string; status: AttendanceStatus }>;
+};
 
 export default async function EventEditPage({ params }: EventEditPageProps) {
   const supabase = createClient();
@@ -41,7 +66,7 @@ export default async function EventEditPage({ params }: EventEditPageProps) {
   }
 
   // イベントの取得（RLSで他人イベントは0件として見える）
-  const { data: event, error: eventError } = await supabase
+  const { data: eventData, error: eventError } = await supabase
     .from("events")
     .select(
       `
@@ -66,12 +91,14 @@ export default async function EventEditPage({ params }: EventEditPageProps) {
     `
     )
     .eq("id", params.id)
-    .single();
+    .single()
+    .overrideTypes<EventEditQueryRow, { merge: false }>();
 
   // アクセス拒否は403へ（PGRST301=RLS拒否 / PGRST116=0件）
-  if (eventError?.code === "PGRST301" || eventError?.code === "PGRST116" || !event) {
+  if (eventError?.code === "PGRST301" || eventError?.code === "PGRST116" || !eventData) {
     redirect(`/events/${params.id}/forbidden`);
   }
+  const event = eventData;
 
   // 編集権限チェック
   if (event.created_by !== user.id) {
@@ -92,7 +119,8 @@ export default async function EventEditPage({ params }: EventEditPageProps) {
   // 取得エラー時はフェイルクローズ（true 扱い）
   const hasStripePaid = stripePaidError ? true : (stripePaid?.length ?? 0) > 0;
   // 算出ステータスを付与
-  const computedStatus = deriveEventStatus(event.date, (event as any).canceled_at ?? null);
+  const computedStatus = deriveEventStatus(event.date, event.canceled_at ?? null);
+  const eventForForm: Event = { ...event, status: computedStatus };
 
   // 開催済み・キャンセル済みイベントの編集禁止チェック
   if (computedStatus === "past" || computedStatus === "canceled") {
@@ -130,7 +158,7 @@ export default async function EventEditPage({ params }: EventEditPageProps) {
 
           {/* 編集フォーム（シングルページ版） */}
           <SinglePageEventEditForm
-            event={{ ...(event as any), status: computedStatus }}
+            event={eventForForm}
             attendeeCount={attendeeCount}
             hasStripePaid={hasStripePaid}
             canUseOnlinePayments={canUseOnlinePayments}
