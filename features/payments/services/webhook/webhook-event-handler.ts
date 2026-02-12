@@ -11,10 +11,10 @@ import { getMetadata, getPaymentIntentId } from "@core/stripe/guards";
 import type {
   PaymentDisputeInsert,
   PaymentRow,
-  PaymentStatus,
   PaymentUpdate,
   PaymentWebhookMetaJson,
 } from "@core/types/payment";
+import type { PaymentStatus } from "@core/types/statuses";
 import type { AppSupabaseClient } from "@core/types/supabase";
 import { handleServerError } from "@core/utils/error-handler.server";
 import { maskSessionId } from "@core/utils/mask";
