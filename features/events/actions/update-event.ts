@@ -65,7 +65,8 @@ export async function updateEventAction(
     // ステータスベースの編集禁止チェック
     const eventStatus = deriveEventStatus(existingEvent.date, existingEvent.canceled_at);
 
-    if (!EVENT_CONFIG.UPDATABLE_STATUSES.includes(eventStatus as any)) {
+    const updatableStatuses = new Set<string>(EVENT_CONFIG.UPDATABLE_STATUSES);
+    if (!updatableStatuses.has(eventStatus)) {
       const statusLabel = eventStatus === "past" ? "開催済み" : "キャンセル済み";
       return fail("FORBIDDEN", { userMessage: `${statusLabel}のイベントは編集できません` });
     }
@@ -221,9 +222,7 @@ export async function updateEventAction(
           .maybeSingle();
 
         const isReady =
-          !!connectAccount &&
-          (connectAccount as any).status === "verified" &&
-          (connectAccount as any).payouts_enabled === true;
+          connectAccount?.status === "verified" && connectAccount?.payouts_enabled === true;
 
         if (connectError || !isReady) {
           return fail("VALIDATION_ERROR", {

@@ -10,6 +10,7 @@ import {
   PaymentFilter,
   DateFilter,
 } from "@core/types/event-query";
+import type { AttendanceStatus } from "@core/types/statuses";
 import { deriveEventStatus } from "@core/utils/derive-event-status";
 import { handleServerError } from "@core/utils/error-handler.server";
 import { convertJstDateToUtcRange } from "@core/utils/timezone";
@@ -17,8 +18,19 @@ import { dateFilterSchema } from "@core/validation/event";
 
 import type { EventListItem } from "../types";
 
-type EventWithAttendancesCount = EventRow & {
-  attendances?: { status: string }[];
+type EventWithAttendancesCount = Pick<
+  EventRow,
+  | "id"
+  | "title"
+  | "date"
+  | "location"
+  | "fee"
+  | "capacity"
+  | "created_by"
+  | "created_at"
+  | "canceled_at"
+> & {
+  attendances?: { status: AttendanceStatus }[];
 };
 
 // 型安全なフィルター条件の定義
@@ -30,6 +42,16 @@ interface FilterCondition {
 
 interface EqualityFilter {
   [key: string]: string | number | boolean | null | "upcoming" | "ongoing" | "past" | "canceled";
+}
+
+interface FilterableQuery<T> {
+  eq(column: string, value: unknown): T;
+  neq(column: string, value: unknown): T;
+  is(column: string, value: null): T;
+  not(column: string, operator: string, value: unknown): T;
+  gt(column: string, value: unknown): T;
+  gte(column: string, value: unknown): T;
+  lte(column: string, value: unknown): T;
 }
 
 type GetEventsOptions = {
@@ -188,8 +210,7 @@ export async function getEventsAction(options: GetEventsOptions = {}): Promise<G
     }
 
     // 型安全なフィルター条件を適用する関数
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const applyFilters = (query: any) => {
+    const applyFilters = <T extends FilterableQuery<T>>(query: T): T => {
       let result = query;
 
       // 等価フィルターを適用
@@ -284,11 +305,11 @@ export async function getEventsAction(options: GetEventsOptions = {}): Promise<G
     }
 
     let eventsData = (events || []).map((event: EventWithAttendancesCount) => {
-      const computedStatus = deriveEventStatus(event.date, (event as any).canceled_at ?? null);
+      const computedStatus = deriveEventStatus(event.date, event.canceled_at ?? null);
 
       // status = 'attending' の参加者のみをカウント
       const attendances_count = event.attendances
-        ? event.attendances.filter((attendance: any) => attendance.status === "attending").length
+        ? event.attendances.filter((attendance) => attendance.status === "attending").length
         : 0;
 
       return {

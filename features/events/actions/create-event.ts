@@ -108,9 +108,7 @@ export async function createEventAction(formData: FormData): Promise<CreateEvent
     // - features間の直接依存は避け、DBのアカウント状態で軽量判定する
     {
       const fee = Number(rawData.fee);
-      const wantsStripe = Array.isArray((rawData as any).payment_methods)
-        ? ((rawData as any).payment_methods as string[]).includes("stripe")
-        : false;
+      const wantsStripe = rawData.payment_methods.includes("stripe");
 
       if (fee > 0 && wantsStripe) {
         const factory = getSecureClientFactory();
@@ -123,9 +121,7 @@ export async function createEventAction(formData: FormData): Promise<CreateEvent
           .maybeSingle();
 
         const isReady =
-          !!connectAccount &&
-          (connectAccount as any).status === "verified" &&
-          (connectAccount as any).payouts_enabled === true;
+          connectAccount?.status === "verified" && connectAccount?.payouts_enabled === true;
 
         if (connectError || !isReady) {
           actionLogger.warn("Stripe Connect not ready for paid event creation", {

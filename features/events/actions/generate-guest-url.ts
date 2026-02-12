@@ -3,9 +3,32 @@ import { ZodError } from "zod";
 import { verifyEventAccess } from "@core/auth/event-authorization";
 import { type ActionResult, fail, ok, zodFail } from "@core/errors/adapters/server-actions";
 import { getSecureClientFactory } from "@core/security/secure-client-factory.impl";
-import { canCreateStripeSession } from "@core/validation/payment-eligibility";
+import type { AttendanceStatus } from "@core/types/statuses";
+import { deriveEventStatus } from "@core/utils/derive-event-status";
+import {
+  canCreateStripeSession,
+  type PaymentEligibilityAttendance,
+  type PaymentEligibilityEvent,
+} from "@core/validation/payment-eligibility";
 
 import { generateGuestUrlInputSchema } from "../validation";
+
+type EventRelationRow = {
+  id: string;
+  date: string;
+  fee: number;
+  payment_deadline: string | null;
+  allow_payment_after_deadline: boolean | null;
+  grace_period_days: number | null;
+  canceled_at: string | null;
+};
+
+type AttendanceWithEventRow = {
+  id: string;
+  status: AttendanceStatus;
+  guest_token: string | null;
+  event: EventRelationRow | EventRelationRow[] | null;
+};
 
 export async function generateGuestUrlAction(input: unknown): Promise<
   ActionResult<{
@@ -37,7 +60,8 @@ export async function generateGuestUrlAction(input: unknown): Promise<
       return fail("NOT_FOUND", { userMessage: "参加レコードが見つかりません" });
     }
 
-    const guestToken: string | null = attendance.guest_token as unknown as string | null;
+    const attendanceRow = attendance as AttendanceWithEventRow;
+    const guestToken = attendanceRow.guest_token;
     if (!guestToken) {
       return fail("RESOURCE_CONFLICT", { userMessage: "ゲストトークンが未発行です" });
     }
@@ -45,24 +69,28 @@ export async function generateGuestUrlAction(input: unknown): Promise<
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
     const guestUrl = `${baseUrl}/guest/${guestToken}`;
 
-    const eventRel: unknown = (attendance as any).event;
-    const ev = Array.isArray(eventRel) ? (eventRel[0] as any) : (eventRel as any);
+    const eventRel = attendanceRow.event;
+    const eventRow = Array.isArray(eventRel) ? eventRel[0] : eventRel;
+    if (!eventRow) {
+      return fail("NOT_FOUND", { userMessage: "イベント情報が見つかりません" });
+    }
 
-    // イベントの状態をcanceled_atから判定
-    const eventStatus = (ev as any).canceled_at ? "canceled" : "active";
+    const attendanceForEligibility: PaymentEligibilityAttendance = {
+      id: attendanceRow.id,
+      status: attendanceRow.status,
+      payment: null,
+    };
+    const eventForEligibility: PaymentEligibilityEvent = {
+      id: eventRow.id,
+      status: deriveEventStatus(eventRow.date, eventRow.canceled_at),
+      fee: eventRow.fee,
+      date: eventRow.date,
+      payment_deadline: eventRow.payment_deadline,
+      allow_payment_after_deadline: eventRow.allow_payment_after_deadline ?? false,
+      grace_period_days: eventRow.grace_period_days ?? 0,
+    };
 
-    const eligibility = canCreateStripeSession(
-      { id: attendance.id, status: attendance.status as any, payment: null },
-      {
-        id: ev.id as string,
-        status: eventStatus as any,
-        fee: ev.fee as number,
-        date: ev.date as string,
-        payment_deadline: (ev as any).payment_deadline ?? null,
-        allow_payment_after_deadline: (ev as any).allow_payment_after_deadline ?? false,
-        grace_period_days: (ev as any).grace_period_days ?? 0,
-      }
-    );
+    const eligibility = canCreateStripeSession(attendanceForEligibility, eventForEligibility);
 
     return ok({
       guestUrl,

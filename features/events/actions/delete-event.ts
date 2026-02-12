@@ -3,6 +3,7 @@ import { revalidatePath } from "next/cache";
 import { verifyEventAccess } from "@core/auth/event-authorization";
 import { type ActionResult, fail, ok } from "@core/errors/adapters/server-actions";
 import { logEventManagement } from "@core/logging/system-logger";
+import { hasPostgrestCode } from "@core/supabase/postgrest-error-guards";
 import { createClient } from "@core/supabase/server";
 
 export async function deleteEventAction(eventId: string): Promise<ActionResult<void>> {
@@ -52,7 +53,7 @@ export async function deleteEventAction(eventId: string): Promise<ActionResult<v
       .eq("created_by", user.id);
 
     if (error) {
-      if ((error as any).code === "23503") {
+      if (hasPostgrestCode(error, "23503")) {
         return fail("EVENT_DELETE_RESTRICTED", {
           userMessage: "関連データが存在するためイベントを削除できません",
         });
