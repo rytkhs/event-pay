@@ -2,9 +2,10 @@ import React from "react";
 
 import { CheckCircle2, AlertTriangle, HelpCircle, XCircle, Wallet } from "lucide-react";
 
+import type { GuestAttendanceData } from "@core/types/guest";
 import { maskEmail } from "@core/utils/mask";
 
-import { type GuestAttendanceData, GuestScenario } from "../types";
+import { GuestScenario } from "../types";
 
 interface GuestStatusCardProps {
   scenario: GuestScenario;

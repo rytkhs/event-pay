@@ -2,9 +2,8 @@ import React from "react";
 
 import { Calendar, MapPin, Users, Clock, Info, Banknote, AlertCircle } from "lucide-react";
 
+import type { InviteEventDetail } from "@core/types/invite";
 import { formatUtcToJst, formatUtcToJstByType } from "@core/utils/timezone";
-
-import type { InviteEventDetail } from "../types";
 
 interface EventDetailViewProps {
   event: InviteEventDetail;

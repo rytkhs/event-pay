@@ -32,7 +32,7 @@ export type AttendanceInsert = Database["public"]["Tables"]["attendances"]["Inse
  * イベント基本情報型
  * データベースのeventsテーブルに対応
  */
-export interface EventBase {
+export interface Event {
   id: string;
   title: string;
   description: string | null;
@@ -61,11 +61,7 @@ export interface EventBase {
  * イベント詳細表示用型
  * UIコンポーネントで使用される拡張された型
  */
-export interface EventDetailProjection extends EventBase {
+export interface EventDetail extends Event {
   creator_name: string; // 必須
   attendances_count: number; // 必須
 }
-
-// Phase 1互換エイリアス（利用側の段階移行用）
-export type Event = EventBase;
-export type EventDetail = EventDetailProjection;

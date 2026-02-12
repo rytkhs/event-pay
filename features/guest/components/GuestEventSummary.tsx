@@ -2,6 +2,7 @@ import React from "react";
 
 import { MapPin, Calendar, Users, Clock, AlignLeft } from "lucide-react";
 
+import type { GuestAttendanceData } from "@core/types/guest";
 import { sanitizeForEventPay } from "@core/utils/sanitize";
 import { formatUtcToJstByType } from "@core/utils/timezone";
 
@@ -11,8 +12,6 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-
-import { type GuestAttendanceData } from "../types";
 
 interface GuestEventSummaryProps {
   attendance: GuestAttendanceData;

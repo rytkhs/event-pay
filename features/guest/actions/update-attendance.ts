@@ -8,15 +8,12 @@ import {
   logInvalidTokenAccess,
   logParticipationSecurityEvent,
 } from "@core/security/security-logger";
+import type { UpdateGuestAttendanceData } from "@core/types/guest";
 import type { PaymentMethod, PaymentStatus } from "@core/types/statuses";
 import { handleServerError } from "@core/utils/error-handler.server";
 import { validateGuestToken } from "@core/utils/guest-token";
 import { getClientIPFromHeaders } from "@core/utils/ip-detection";
 import { attendanceStatusSchema, paymentMethodSchema } from "@core/validation/participation";
-
-import type { UpdateGuestAttendanceData } from "../types";
-
-// 型定義は features/guest/types.ts に統一
 
 /**
  * ゲスト参加状況を更新するサーバーアクション

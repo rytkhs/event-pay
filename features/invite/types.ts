@@ -5,9 +5,6 @@
 
 import type { AttendanceStatus, PaymentMethod } from "@core/types/statuses";
 
-export type { InviteEventDetail, InviteValidationResult } from "@core/types/invite";
-export type { AttendanceStatus, EventStatus, PaymentMethod } from "@core/types/statuses";
-
 // 参加登録結果データ
 export interface RegisterParticipationData {
   attendanceId: string;

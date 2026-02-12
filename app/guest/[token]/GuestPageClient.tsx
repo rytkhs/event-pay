@@ -8,6 +8,7 @@ import type { BeginCheckoutParams } from "@core/analytics/event-types";
 import { ga4Client } from "@core/analytics/ga4-client";
 import { useToast } from "@core/contexts/toast-context";
 import { useErrorHandler } from "@core/hooks/use-error-handler";
+import type { GuestAttendanceData } from "@core/types/guest";
 import { getPaymentDeadlineStatus } from "@core/utils/guest-restrictions";
 import { canCreateStripeSession } from "@core/validation/payment-eligibility";
 
@@ -19,7 +20,6 @@ import {
   GuestSettingsArea,
   GuestStatusEditModal,
   GuestScenario,
-  type GuestAttendanceData,
 } from "@features/guest";
 
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";

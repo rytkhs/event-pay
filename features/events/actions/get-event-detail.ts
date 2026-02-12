@@ -3,11 +3,11 @@ import { redirect } from "next/navigation";
 import { type ActionResult, fail, ok } from "@core/errors/adapters/server-actions";
 import { logger } from "@core/logging/app-logger";
 import { createClient } from "@core/supabase/server";
-import type { EventDetail as DetailType } from "@core/types/event";
+import type { EventDetail } from "@core/types/event";
 import { deriveEventStatus } from "@core/utils/derive-event-status";
 import { validateEventId } from "@core/validation/event-id";
 
-export async function getEventDetailAction(eventId: string): Promise<ActionResult<DetailType>> {
+export async function getEventDetailAction(eventId: string): Promise<ActionResult<EventDetail>> {
   try {
     // イベントIDのバリデーション
     const validation = validateEventId(eventId);
@@ -50,7 +50,7 @@ export async function getEventDetailAction(eventId: string): Promise<ActionResul
       )
       .eq("id", validation.data as string)
       .eq("created_by", user.id)
-      .maybeSingle<DetailType>();
+      .maybeSingle<EventDetail>();
 
     if (error) {
       if (error.code === "PGRST301") {
@@ -91,7 +91,7 @@ export async function getEventDetailAction(eventId: string): Promise<ActionResul
       (eventDetail as any).canceled_at ?? null
     );
 
-    const result: DetailType = {
+    const result: EventDetail = {
       ...eventDetail,
       // 型の都合上、statusは算出値を設定（DBカラムではない）
       status: computedStatus as any,

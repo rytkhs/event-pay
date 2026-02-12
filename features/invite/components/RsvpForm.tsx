@@ -13,12 +13,11 @@ import {
 import { useForm, SubmitHandler, Resolver } from "react-hook-form";
 
 import { useParticipationErrorHandler } from "@core/hooks/use-error-handler";
+import type { InviteEventDetail } from "@core/types/invite";
 import {
   createParticipationFormSchema,
   ParticipationFormData,
 } from "@core/validation/participation";
-
-import type { InviteEventDetail } from "../types";
 
 interface RsvpFormProps {
   event: InviteEventDetail;

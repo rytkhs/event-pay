@@ -5,14 +5,12 @@ import { useState, useEffect } from "react";
 import { AlertCircle, XCircle, Users, Clock } from "lucide-react";
 
 import type { ActionResult } from "@core/errors/adapters/server-actions";
+import type { InviteEventDetail as InviteEventDetailType } from "@core/types/invite";
 import { type ParticipationFormData } from "@core/validation/participation";
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
-import type {
-  InviteEventDetail as InviteEventDetailType,
-  RegisterParticipationData,
-} from "../types";
+import type { RegisterParticipationData } from "../types";
 
 import { EventDetailView } from "./EventDetailView";
 import { RsvpForm } from "./RsvpForm";

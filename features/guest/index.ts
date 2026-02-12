@@ -11,4 +11,4 @@ export { GuestStatusCard } from "./components/GuestStatusCard";
 export { GuestStatusEditModal } from "./components/GuestStatusEditModal";
 
 // Types & Validation
-export * from "./types";
+export { GuestScenario } from "./types";
