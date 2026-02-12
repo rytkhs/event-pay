@@ -29,7 +29,7 @@ import {
   loginInputSchema,
   registerInputSchema,
   resetPasswordInputSchema,
-  updatePasswordInputSchema,
+  completePasswordResetInputSchema,
   verifyOtpInputSchema,
 } from "@core/validation/auth";
 
@@ -690,10 +690,10 @@ export async function resetPasswordAction(formData: FormData): Promise<ActionRes
 /**
  * パスワード更新（リセット後）
  */
-export async function updatePasswordAction(formData: FormData): Promise<ActionResult> {
+export async function completePasswordResetAction(formData: FormData): Promise<ActionResult> {
   try {
     const rawData = formDataToObject(formData);
-    const result = updatePasswordInputSchema.safeParse(rawData);
+    const result = completePasswordResetInputSchema.safeParse(rawData);
 
     if (!result.success) {
       return fail("VALIDATION_ERROR", {

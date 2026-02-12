@@ -53,7 +53,7 @@ export const verifyOtpInputSchema = z.object({
   type: z.enum(["email", "recovery", "email_change", "signup"]),
 });
 
-export const updatePasswordInputSchema = z
+export const completePasswordResetInputSchema = z
   .object({
     password: z
       .string()
@@ -76,5 +76,5 @@ export type LoginInput = z.infer<typeof loginInputSchema>;
 export type RegisterInput = z.infer<typeof registerInputSchema>;
 export type ResetPasswordInput = z.infer<typeof resetPasswordInputSchema>;
 export type VerifyOtpInput = z.infer<typeof verifyOtpInputSchema>;
-export type UpdatePasswordInput = z.infer<typeof updatePasswordInputSchema>;
+export type CompletePasswordResetInput = z.infer<typeof completePasswordResetInputSchema>;
 export type OtpCodeFormInput = z.infer<typeof otpCodeFormSchema>;
