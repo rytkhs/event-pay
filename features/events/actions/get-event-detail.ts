@@ -3,9 +3,30 @@ import { redirect } from "next/navigation";
 import { type ActionResult, fail, ok } from "@core/errors/adapters/server-actions";
 import { logger } from "@core/logging/app-logger";
 import { createClient } from "@core/supabase/server";
-import type { EventDetail } from "@core/types/event";
+import type { EventDetail, EventRow } from "@core/types/event";
 import { deriveEventStatus } from "@core/utils/derive-event-status";
 import { validateEventId } from "@core/validation/event-id";
+
+type EventDetailQueryRow = Pick<
+  EventRow,
+  | "id"
+  | "title"
+  | "date"
+  | "location"
+  | "fee"
+  | "capacity"
+  | "description"
+  | "registration_deadline"
+  | "payment_deadline"
+  | "payment_methods"
+  | "allow_payment_after_deadline"
+  | "grace_period_days"
+  | "created_at"
+  | "updated_at"
+  | "created_by"
+  | "invite_token"
+  | "canceled_at"
+>;
 
 export async function getEventDetailAction(eventId: string): Promise<ActionResult<EventDetail>> {
   try {
@@ -41,6 +62,8 @@ export async function getEventDetailAction(eventId: string): Promise<ActionResul
         registration_deadline,
         payment_deadline,
         payment_methods,
+        allow_payment_after_deadline,
+        grace_period_days,
         created_at,
         updated_at,
         created_by,
@@ -50,7 +73,7 @@ export async function getEventDetailAction(eventId: string): Promise<ActionResul
       )
       .eq("id", validation.data as string)
       .eq("created_by", user.id)
-      .maybeSingle<EventDetail>();
+      .maybeSingle<EventDetailQueryRow>();
 
     if (error) {
       if (error.code === "PGRST301") {
@@ -63,6 +86,25 @@ export async function getEventDetailAction(eventId: string): Promise<ActionResul
 
     if (!eventDetail) {
       return fail("EVENT_NOT_FOUND", { userMessage: "イベントが見つかりません" });
+    }
+
+    if (
+      typeof eventDetail.allow_payment_after_deadline !== "boolean" ||
+      typeof eventDetail.grace_period_days !== "number"
+    ) {
+      return fail("DATABASE_ERROR", {
+        userMessage: "イベント詳細の取得結果が不正です",
+      });
+    }
+
+    const { count: attendancesCount, error: attendancesCountError } = await supabase
+      .from("attendances")
+      .select("id", { count: "exact", head: true })
+      .eq("event_id", eventDetail.id)
+      .eq("status", "attending");
+
+    if (attendancesCountError) {
+      return fail("DATABASE_ERROR", { userMessage: "データベースエラーが発生しました" });
     }
 
     // セキュリティ強化：get_event_creator_name()関数を使用してcreator_nameを取得
@@ -86,16 +128,29 @@ export async function getEventDetailAction(eventId: string): Promise<ActionResul
       });
     }
 
-    const computedStatus = deriveEventStatus(
-      eventDetail.date,
-      (eventDetail as any).canceled_at ?? null
-    );
+    const computedStatus = deriveEventStatus(eventDetail.date, eventDetail.canceled_at);
 
     const result: EventDetail = {
-      ...eventDetail,
-      // 型の都合上、statusは算出値を設定（DBカラムではない）
-      status: computedStatus as any,
+      id: eventDetail.id,
+      title: eventDetail.title,
+      description: eventDetail.description,
+      location: eventDetail.location,
+      date: eventDetail.date,
+      fee: eventDetail.fee,
+      capacity: eventDetail.capacity,
+      status: computedStatus,
+      payment_methods: eventDetail.payment_methods,
+      registration_deadline: eventDetail.registration_deadline,
+      payment_deadline: eventDetail.payment_deadline,
+      allow_payment_after_deadline: eventDetail.allow_payment_after_deadline,
+      grace_period_days: eventDetail.grace_period_days,
+      created_at: eventDetail.created_at,
+      updated_at: eventDetail.updated_at,
+      created_by: eventDetail.created_by,
+      invite_token: eventDetail.invite_token,
+      canceled_at: eventDetail.canceled_at,
       creator_name: creatorName || "Unknown User",
+      attendances_count: attendancesCount ?? 0,
     };
 
     return ok(result);
