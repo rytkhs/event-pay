@@ -2,13 +2,11 @@
  * 決済データ検証ロジック（feature ルート）
  */
 
-import type { SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
 
 import { PaymentError, PaymentErrorType } from "@core/types/payment-errors";
+import type { AppSupabaseClient } from "@core/types/supabase";
 import { CashUpdateStatusSchema, PaymentStatusSchema } from "@core/validation/payment-status";
-
-import { Database } from "@/types/database";
 
 import { IPaymentValidator } from "./services/interface";
 import {
@@ -84,9 +82,9 @@ export const verifySessionQuerySchema = z.object({
 export type VerifySessionQueryInput = z.infer<typeof verifySessionQuerySchema>;
 
 export class PaymentValidator implements IPaymentValidator {
-  private supabase: SupabaseClient<Database, "public">;
+  private supabase: AppSupabaseClient<"public">;
 
-  constructor(supabaseClient: SupabaseClient<Database, "public">) {
+  constructor(supabaseClient: AppSupabaseClient<"public">) {
     this.supabase = supabaseClient;
   }
 

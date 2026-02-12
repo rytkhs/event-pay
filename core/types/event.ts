@@ -18,6 +18,12 @@ export type EventInsert = Database["public"]["Tables"]["events"]["Insert"];
 /** eventsテーブルの更新型（UPDATE用） */
 export type EventUpdate = Database["public"]["Tables"]["events"]["Update"];
 
+/** attendancesテーブルの行型（JOIN結果用） */
+export type AttendanceRow = Database["public"]["Tables"]["attendances"]["Row"];
+
+/** attendancesテーブルの挿入型（INSERT用） */
+export type AttendanceInsert = Database["public"]["Tables"]["attendances"]["Insert"];
+
 // ====================================================================
 // Event関連のアプリケーション型定義
 // ====================================================================

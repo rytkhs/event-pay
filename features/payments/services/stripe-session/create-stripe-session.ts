@@ -1,15 +1,12 @@
 import "server-only";
 
-import type { SupabaseClient } from "@supabase/supabase-js";
-
 import type { PaymentLogger } from "@core/logging/payment-logger";
 import { generateSecureUuid } from "@core/security/crypto";
 import * as DestinationCharges from "@core/stripe/destination-charges";
 import { convertStripeError } from "@core/stripe/error-handler";
 import { PaymentError, PaymentErrorType } from "@core/types/payment-errors";
+import type { AppSupabaseClient } from "@core/types/supabase";
 import { maskSessionId } from "@core/utils/mask";
-
-import { Database } from "@/types/database";
 
 import { ApplicationFeeCalculator } from "../fee-config/application-fee-calculator";
 import { IPaymentErrorHandler } from "../interface";
@@ -24,7 +21,7 @@ import { ensureStripePaymentRecord } from "./ensure-payment-record";
 export async function createStripeSession(
   params: CreateStripeSessionParams,
   dependencies: {
-    supabase: SupabaseClient<Database, "public">;
+    supabase: AppSupabaseClient<"public">;
     paymentLogger: PaymentLogger;
     applicationFeeCalculator: ApplicationFeeCalculator;
     errorHandler: IPaymentErrorHandler;

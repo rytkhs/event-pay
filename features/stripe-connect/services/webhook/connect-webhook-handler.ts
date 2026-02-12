@@ -6,7 +6,6 @@
  * payouts_enabled または charges_enabled が変化したとき、Status Synchronizationを実行する
  */
 
-import type { SupabaseClient } from "@supabase/supabase-js";
 import Stripe from "stripe";
 
 import { errFrom, okResult } from "@core/errors";
@@ -21,9 +20,8 @@ import { getStripeConnectPort, type StripeAccountStatusLike } from "@core/ports/
 import { getSecureClientFactory } from "@core/security/secure-client-factory.impl";
 import { AdminReason } from "@core/security/secure-client-factory.types";
 import type { StripeAccountStatus } from "@core/types/statuses";
+import type { AppSupabaseClient } from "@core/types/supabase";
 import { handleServerError } from "@core/utils/error-handler.server";
-
-import { Database } from "@/types/database";
 
 import type { ConnectWebhookResult } from "./connect-webhook.types";
 
@@ -31,13 +29,10 @@ import type { ConnectWebhookResult } from "./connect-webhook.types";
  * Connect Webhook イベントハンドラー
  */
 export class ConnectWebhookHandler {
-  private supabase: SupabaseClient<Database, "public">;
+  private supabase: AppSupabaseClient<"public">;
   private notificationService: NotificationService;
 
-  private constructor(
-    supabase: SupabaseClient<Database>,
-    notificationService: NotificationService
-  ) {
+  private constructor(supabase: AppSupabaseClient, notificationService: NotificationService) {
     this.supabase = supabase;
     this.notificationService = notificationService;
   }
@@ -64,11 +59,9 @@ export class ConnectWebhookHandler {
     );
 
     // NotificationServiceも監査付きクライアントを使用
-    const notificationService = new NotificationService(
-      adminClient as SupabaseClient<Database, "public">
-    );
+    const notificationService = new NotificationService(adminClient as AppSupabaseClient<"public">);
 
-    return new ConnectWebhookHandler(adminClient as SupabaseClient<Database>, notificationService);
+    return new ConnectWebhookHandler(adminClient as AppSupabaseClient, notificationService);
   }
 
   /**

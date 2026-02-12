@@ -2,21 +2,12 @@ import "server-only";
 import { randomBytes } from "crypto";
 
 import { fakerJA as faker } from "@faker-js/faker";
-import type { SupabaseClient } from "@supabase/supabase-js";
 
-import type { EventRow, EventInsert } from "@core/types/event";
-
-import type { Database } from "@/types/database";
-
-// --- 型定義 ---
-type AttendanceStatus = Database["public"]["Enums"]["attendance_status_enum"];
-type PaymentMethod = Database["public"]["Enums"]["payment_method_enum"];
-type PaymentStatus = Database["public"]["Enums"]["payment_status_enum"];
-type StripeAccountStatus = Database["public"]["Enums"]["stripe_account_status_enum"];
-
-type AttendanceRow = Database["public"]["Tables"]["attendances"]["Row"];
-type AttendanceInsert = Database["public"]["Tables"]["attendances"]["Insert"];
-type PaymentInsert = Database["public"]["Tables"]["payments"]["Insert"];
+import type { AttendanceInsert, AttendanceRow, EventInsert, EventRow } from "@core/types/event";
+import type { PaymentInsert } from "@core/types/payment";
+import type { AttendanceStatus, PaymentMethod, PaymentStatus } from "@core/types/statuses";
+import type { StripeAccountStatus } from "@core/types/stripe-connect";
+import type { AppSupabaseClient } from "@core/types/supabase";
 
 // --- 設定 ---
 const CONFIG = {
@@ -260,7 +251,7 @@ function determineAttendanceStatus(
 
 // --- DB 操作 ---
 
-async function waitForPublicUserRow(client: SupabaseClient<Database>, userId: string) {
+async function waitForPublicUserRow(client: AppSupabaseClient, userId: string) {
   for (let i = 0; i < CONFIG.DB.RETRY_MAX_ATTEMPTS; i++) {
     const { data, error } = await client.from("users").select("id").eq("id", userId).maybeSingle();
     if (error) throw error;
@@ -270,7 +261,7 @@ async function waitForPublicUserRow(client: SupabaseClient<Database>, userId: st
   throw new Error("public.users row was not created by trigger in time.");
 }
 
-async function setupUserAndStripe(client: SupabaseClient<Database>, userId: string, now: Date) {
+async function setupUserAndStripe(client: AppSupabaseClient, userId: string, now: Date) {
   await waitForPublicUserRow(client, userId);
 
   const { data: authUserRes, error: authUserErr } = await client.auth.admin.getUserById(userId);
@@ -300,7 +291,7 @@ async function setupUserAndStripe(client: SupabaseClient<Database>, userId: stri
   if (stripeErr) throw new Error(`seed stripe_connect_accounts failed: ${stripeErr.message}`);
 }
 
-async function insertEvents(client: SupabaseClient<Database>, userId: string, now: Date) {
+async function insertEvents(client: AppSupabaseClient, userId: string, now: Date) {
   const events = getEventScenarios(userId, now);
   const { data: insertedEvents, error } = await client
     .from("events")
@@ -312,7 +303,7 @@ async function insertEvents(client: SupabaseClient<Database>, userId: string, no
 }
 
 async function insertAttendances(
-  client: SupabaseClient<Database>,
+  client: AppSupabaseClient,
   events: EventRow[],
   primaryEventId: string,
   now: Date
@@ -546,7 +537,7 @@ function generatePaymentPlan(
 }
 
 async function processPaymentsAndCancellations(
-  client: SupabaseClient<Database>,
+  client: AppSupabaseClient,
   attendances: AttendanceRow[],
   events: EventRow[],
   now: Date
@@ -583,7 +574,7 @@ async function processPaymentsAndCancellations(
 
 // --- メイン関数 ---
 
-export async function seedDemoData(adminClient: SupabaseClient<Database>, userId: string) {
+export async function seedDemoData(adminClient: AppSupabaseClient, userId: string) {
   // シードの初期化
   faker.seed(Number.parseInt(userId.replace(/\+/g, "-").slice(0, 8), 16));
   const now = new Date();

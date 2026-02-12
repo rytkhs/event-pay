@@ -4,17 +4,16 @@
 
 import "server-only";
 
-import { type SupabaseClient } from "@supabase/supabase-js";
 import Stripe from "stripe";
 
 import { errFrom, okResult } from "@core/errors";
 import { logger } from "@core/logging/app-logger";
 import { getStripe, generateIdempotencyKey } from "@core/stripe/client";
 import { convertStripeError } from "@core/stripe/error-handler";
+import type { StripeConnectAccountUpdate } from "@core/types/stripe-connect";
+import type { AppSupabaseClient } from "@core/types/supabase";
 import { getEnv } from "@core/utils/cloudflare-env";
 import { handleServerError } from "@core/utils/error-handler.server";
-
-import { Database } from "@/types/database";
 
 import {
   StripeConnectAccount,
@@ -42,11 +41,11 @@ import {
  * StripeConnectServiceの実装クラス
  */
 export class StripeConnectService implements IStripeConnectService {
-  private supabase: SupabaseClient<Database, "public">;
+  private supabase: AppSupabaseClient<"public">;
   private errorHandler: IStripeConnectErrorHandler;
 
   constructor(
-    supabaseClient: SupabaseClient<Database, "public">,
+    supabaseClient: AppSupabaseClient<"public">,
     errorHandler: IStripeConnectErrorHandler
   ) {
     this.supabase = supabaseClient;
@@ -540,7 +539,7 @@ export class StripeConnectService implements IStripeConnectService {
       const previousStatus = currentAccount?.status || null;
       const accountId = stripeAccountId || currentAccount?.stripe_account_id || "";
 
-      const updateData: Database["public"]["Tables"]["stripe_connect_accounts"]["Update"] = {
+      const updateData: StripeConnectAccountUpdate = {
         status: status,
         charges_enabled: chargesEnabled,
         payouts_enabled: payoutsEnabled,

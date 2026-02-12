@@ -1,4 +1,3 @@
-import { SupabaseClient } from "@supabase/supabase-js";
 import Stripe from "stripe";
 
 import { AppError, errResult, okResult } from "@core/errors";
@@ -9,11 +8,17 @@ import { getSecureClientFactory } from "@core/security/secure-client-factory.imp
 import { AdminReason } from "@core/security/secure-client-factory.types";
 import { getStripe } from "@core/stripe/client";
 import { getMetadata, getPaymentIntentId } from "@core/stripe/guards";
+import type {
+  PaymentDisputeInsert,
+  PaymentRow,
+  PaymentStatus,
+  PaymentUpdate,
+  PaymentWebhookMetaJson,
+} from "@core/types/payment";
+import type { AppSupabaseClient } from "@core/types/supabase";
 import { handleServerError } from "@core/utils/error-handler.server";
 import { maskSessionId } from "@core/utils/mask";
 import { canPromoteStatus } from "@core/utils/payments/status-rank";
-
-import { Database, Json } from "@/types/database";
 
 import type { WebhookProcessingResult } from "./types";
 import {
@@ -55,7 +60,7 @@ function getPaymentIdFromMetadata(source: unknown): string | null {
 
 function toStripeFeeDetailsJson(
   feeDetails: Stripe.BalanceTransaction.FeeDetail[] | null
-): Json | null {
+): PaymentWebhookMetaJson | null {
   if (!feeDetails) {
     return null;
   }
@@ -113,7 +118,7 @@ function extractPaymentNotificationDataFromAttendance(
 }
 
 export class StripeWebhookEventHandler implements WebhookEventHandler {
-  private supabase!: SupabaseClient<Database>;
+  private supabase!: AppSupabaseClient;
 
   constructor() {}
 
@@ -137,7 +142,7 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
     this.supabase = (await factory.createAuditedAdminClient(
       AdminReason.PAYMENT_PROCESSING,
       "Stripe Webhook Event Handling"
-    )) as SupabaseClient<Database>;
+    )) as AppSupabaseClient;
   }
 
   /**
@@ -236,7 +241,7 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
               return okResult();
             }
 
-            const updatePayload: Partial<Database["public"]["Tables"]["payments"]["Update"]> = {
+            const updatePayload: Partial<PaymentUpdate> = {
               stripe_checkout_session_id: sessionId,
               updated_at: new Date().toISOString(),
               ...(paymentIntentId ? { stripe_payment_intent_id: paymentIntentId } : {}),
@@ -372,7 +377,7 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
             // 突合順序:
             // 1) stripe_checkout_session_id（Destination charges）
             // 2) metadata.payment_id フォールバック
-            let payment: Database["public"]["Tables"]["payments"]["Row"] | null = null;
+            let payment: PaymentRow | null = null;
             {
               const { data } = await this.supabase
                 .from("payments")
@@ -403,12 +408,7 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
             }
 
             // 既に failed 以上（paid/refunded等も含む）なら冪等的にスキップ
-            if (
-              !canPromoteStatus(
-                payment.status as Database["public"]["Enums"]["payment_status_enum"],
-                "failed"
-              )
-            ) {
+            if (!canPromoteStatus(payment.status as PaymentStatus, "failed")) {
               this.logger.info("Duplicate webhook event preventing double processing", {
                 event_id: event.id,
                 payment_id: payment.id,
@@ -418,7 +418,7 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
               return okResult();
             }
 
-            const updatePayload: Partial<Database["public"]["Tables"]["payments"]["Update"]> = {
+            const updatePayload: Partial<PaymentUpdate> = {
               status: "failed",
               webhook_event_id: event.id,
               webhook_processed_at: new Date().toISOString(),
@@ -693,12 +693,7 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
       }
 
       // 既に同等以上の状態なら冪等
-      if (
-        !canPromoteStatus(
-          payment.status as Database["public"]["Enums"]["payment_status_enum"],
-          "paid"
-        )
-      ) {
+      if (!canPromoteStatus(payment.status as PaymentStatus, "paid")) {
         this.logger.info("Duplicate webhook event preventing double processing", {
           event_id: event.id,
           payment_id: payment.id,
@@ -885,7 +880,7 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
     const charge = event.data.object;
     const stripePaymentIntentId = getPaymentIntentId(charge);
     try {
-      let payment: Database["public"]["Tables"]["payments"]["Row"] | null = null;
+      let payment: PaymentRow | null = null;
       {
         const { data, error: fetchError } = stripePaymentIntentId
           ? await this.supabase
@@ -925,12 +920,7 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
         });
         return okResult();
       }
-      if (
-        !canPromoteStatus(
-          payment.status as Database["public"]["Enums"]["payment_status_enum"],
-          "failed"
-        )
-      ) {
+      if (!canPromoteStatus(payment.status as PaymentStatus, "failed")) {
         this.logger.info("Duplicate webhook event preventing double processing", {
           event_id: event.id,
           payment_id: payment.id,
@@ -1003,7 +993,7 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
     try {
       // 支払レコードの特定
       const stripePaymentIntentId = getPaymentIntentId(charge);
-      let payment: Database["public"]["Tables"]["payments"]["Row"] | null = null;
+      let payment: PaymentRow | null = null;
       {
         const { data } = stripePaymentIntentId
           ? await this.supabase
@@ -1064,12 +1054,7 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
       // ステータス: 全額返金なら refunded、部分返金は paid のまま refunded_amount 更新
       const targetStatus = totalRefunded >= payment.amount ? "refunded" : payment.status;
       // 巻き戻し防止: current >= target の場合は no-op
-      if (
-        !canPromoteStatus(
-          payment.status as Database["public"]["Enums"]["payment_status_enum"],
-          targetStatus as Database["public"]["Enums"]["payment_status_enum"]
-        )
-      ) {
+      if (!canPromoteStatus(payment.status as PaymentStatus, targetStatus as PaymentStatus)) {
         this.logger.info("Duplicate webhook event preventing double processing", {
           event_id: event.id,
           payment_id: payment.id,
@@ -1256,7 +1241,7 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
     allowDemotion = false
   ): Promise<void> {
     const stripePaymentIntentId = getPaymentIntentId(charge);
-    let payment: Database["public"]["Tables"]["payments"]["Row"] | null = null;
+    let payment: PaymentRow | null = null;
     {
       const { data } = stripePaymentIntentId
         ? await this.supabase
@@ -1301,12 +1286,12 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
     }
 
     // 目標ステータス: 全額返金であれば refunded。未満なら現状維持。ただし allowDemotion=true かつ現状refundedなら paid に戻す
-    let targetStatus = payment.status as Database["public"]["Enums"]["payment_status_enum"];
+    let targetStatus = payment.status as PaymentStatus;
     if (totalRefunded >= payment.amount) {
-      targetStatus = "refunded" as Database["public"]["Enums"]["payment_status_enum"];
+      targetStatus = "refunded" as PaymentStatus;
     } else if (allowDemotion && targetStatus === "refunded") {
       // もともと全額返金扱いだったが、失敗/取消で全額でなくなったケースを巻き戻す
-      targetStatus = "paid" as Database["public"]["Enums"]["payment_status_enum"];
+      targetStatus = "paid" as PaymentStatus;
     }
 
     const { error } = await this.supabase
@@ -1497,7 +1482,7 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
       const chargeId = getExpandableId(dispute.charge);
       const piId = getExpandableId(dispute.payment_intent);
 
-      let payment: Database["public"]["Tables"]["payments"]["Row"] | null = null;
+      let payment: PaymentRow | null = null;
       let paymentId: string | null = null;
       if (piId) {
         const { data } = await this.supabase
@@ -1524,7 +1509,7 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
         const reason = dispute.reason;
         const evidenceDueByUnix = dispute.evidence_details?.due_by ?? null;
 
-        const disputeUpsert: Database["public"]["Tables"]["payment_disputes"]["Insert"] = {
+        const disputeUpsert: PaymentDisputeInsert = {
           payment_id: paymentId ?? null,
           stripe_dispute_id: dispute.id,
           charge_id: chargeId ?? null,
@@ -1588,7 +1573,7 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
 
     try {
       // 決済レコードを検索（PI → metadata.payment_id フォールバック）
-      let payment: Database["public"]["Tables"]["payments"]["Row"] | null = null;
+      let payment: PaymentRow | null = null;
       {
         const { data, error: fetchError } = await this.supabase
           .from("payments")
@@ -1677,12 +1662,7 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
       }
 
       // 既に処理済みかチェック（ステータスランクによる昇格可能性チェック）
-      if (
-        !canPromoteStatus(
-          payment.status as Database["public"]["Enums"]["payment_status_enum"],
-          "paid"
-        )
-      ) {
+      if (!canPromoteStatus(payment.status as PaymentStatus, "paid")) {
         this.logger.info("Duplicate webhook event preventing double processing", {
           event_id: event.id,
           payment_id: payment.id,
@@ -1802,7 +1782,7 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
 
     try {
       // 決済レコードを検索（PI → metadata.payment_id フォールバック）
-      let payment: Database["public"]["Tables"]["payments"]["Row"] | null = null;
+      let payment: PaymentRow | null = null;
       {
         const { data, error: fetchError } = await this.supabase
           .from("payments")
@@ -1837,12 +1817,7 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
       }
 
       // 既に同等以上の状態なら冪等（failed 以上＝paid/refunded等は降格させない）
-      if (
-        !canPromoteStatus(
-          payment.status as Database["public"]["Enums"]["payment_status_enum"],
-          "failed"
-        )
-      ) {
+      if (!canPromoteStatus(payment.status as PaymentStatus, "failed")) {
         this.logger.info("Duplicate webhook event preventing double processing", {
           event_id: event.id,
           payment_id: payment.id,
@@ -1922,7 +1897,7 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
     const paymentIntent = event.data.object;
     const stripePaymentIntentId = paymentIntent.id;
     try {
-      let payment: Database["public"]["Tables"]["payments"]["Row"] | null = null;
+      let payment: PaymentRow | null = null;
       const { data: byPi, error: fetchError } = await this.supabase
         .from("payments")
         .select("*")
@@ -1957,12 +1932,7 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
         return okResult();
       }
 
-      if (
-        canPromoteStatus(
-          payment.status as Database["public"]["Enums"]["payment_status_enum"],
-          "failed"
-        )
-      ) {
+      if (canPromoteStatus(payment.status as PaymentStatus, "failed")) {
         const { error: updateError } = await this.supabase
           .from("payments")
           .update({

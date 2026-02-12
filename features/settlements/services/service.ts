@@ -1,12 +1,11 @@
 import "server-only";
 
-import { SupabaseClient } from "@supabase/supabase-js";
-
 import { AppError, errFrom, errResult, okResult } from "@core/errors";
 import { logger } from "@core/logging/app-logger";
 import { getSecureClientFactory } from "@core/security/secure-client-factory.impl";
 import { AdminReason } from "@core/security/secure-client-factory.types";
 import { createClient } from "@core/supabase/server";
+import type { AppSupabaseClient } from "@core/types/supabase";
 import { toCsvCell } from "@core/utils/csv";
 import { handleServerError } from "@core/utils/error-handler.server";
 import {
@@ -15,8 +14,6 @@ import {
   formatUtcToJst,
   convertJstDateToUtcRange,
 } from "@core/utils/timezone";
-
-import { Database } from "@/types/database";
 
 import {
   SettlementReportData,
@@ -34,9 +31,9 @@ import {
  * Destination charges での集計スナップショット生成・管理
  */
 export class SettlementReportService {
-  private supabase: SupabaseClient<Database, "public">;
+  private supabase: AppSupabaseClient<"public">;
 
-  constructor(supabaseClient?: SupabaseClient<Database, "public">) {
+  constructor(supabaseClient?: AppSupabaseClient<"public">) {
     this.supabase = supabaseClient || createClient();
   }
 
@@ -138,8 +135,6 @@ export class SettlementReportService {
         totalRefundedAmount: resultRow.total_refunded_amount,
         disputeCount: resultRow.dispute_count,
         totalDisputedAmount: resultRow.total_disputed_amount,
-
-        // settlementMode と status は削除済み（常に'destination_charge', 'completed'だったため不要）
       };
 
       const alreadyExists = resultRow.already_exists ?? false;
@@ -241,8 +236,6 @@ export class SettlementReportService {
           totalRefundedAmount: row.total_refunded_amount,
           disputeCount: row.dispute_count,
           totalDisputedAmount: row.total_disputed_amount,
-
-          // settlementMode と status は削除済み（常に'destination_charge', 'completed'だったため不要）
         })
       );
     } catch (error) {

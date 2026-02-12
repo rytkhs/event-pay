@@ -12,14 +12,13 @@ import { type ActionResult, fail, ok, zodFail } from "@core/errors/adapters/serv
 import { logEventManagement } from "@core/logging/system-logger";
 import { createClient } from "@core/supabase/server";
 import type { EventRow } from "@core/types/event";
+import type { PaymentMethod } from "@core/types/statuses";
 import { deriveEventStatus } from "@core/utils/derive-event-status";
 import { calculateAttendeeCount } from "@core/utils/event-calculations";
 import { extractEventUpdateFormData } from "@core/utils/form-data-extractors";
 import { convertDatetimeLocalToUtc } from "@core/utils/timezone";
 import { updateEventSchema, type UpdateEventFormData } from "@core/validation/event";
 import { validateEventId } from "@core/validation/event-id";
-
-import type { Database } from "@/types/database";
 
 type UpdateEventResult = ActionResult<EventRow>;
 
@@ -456,8 +455,7 @@ function buildUpdateData(
   if (validatedData.payment_methods !== undefined) {
     // 配列の深い比較を実装（順序に依存しない比較）
     const existingMethods = existingEvent.payment_methods || [];
-    let newMethods =
-      validatedData.payment_methods as Database["public"]["Enums"]["payment_method_enum"][];
+    let newMethods = validatedData.payment_methods as PaymentMethod[];
 
     // 無料イベント（fee=0）の場合は決済方法を空配列に設定
     const newFee =
@@ -530,7 +528,7 @@ function buildUpdateData(
 
     if (effectiveFee === 0) {
       // payloadの有無に関わらず、fee=0の場合は確実にpayment_methodsを空配列にする
-      updateData.payment_methods = [] as Database["public"]["Enums"]["payment_method_enum"][];
+      updateData.payment_methods = [] as PaymentMethod[];
     }
   }
 

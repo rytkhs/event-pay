@@ -1,8 +1,5 @@
-import type { SupabaseClient } from "@supabase/supabase-js";
-
 import { getSecureClientFactory } from "@core/security/secure-client-factory.impl";
-
-import type { Database } from "@/types/database";
+import type { AppSupabaseClient } from "@core/types/supabase";
 
 import { StripeConnectErrorHandler } from "./error-handler";
 import type { IStripeConnectService } from "./interface";
@@ -12,12 +9,12 @@ export const createUserStripeConnectService = (): IStripeConnectService => {
   const secureFactory = getSecureClientFactory();
   const userClient = secureFactory.createAuthenticatedClient();
   const errorHandler = new StripeConnectErrorHandler();
-  return new StripeConnectService(userClient as SupabaseClient<Database>, errorHandler);
+  return new StripeConnectService(userClient as AppSupabaseClient, errorHandler);
 };
 
 export const createStripeConnectServiceWithClient = (
-  adminClient: SupabaseClient<Database>
+  adminClient: AppSupabaseClient
 ): IStripeConnectService => {
   const errorHandler = new StripeConnectErrorHandler();
-  return new StripeConnectService(adminClient as SupabaseClient<Database>, errorHandler);
+  return new StripeConnectService(adminClient as AppSupabaseClient, errorHandler);
 };

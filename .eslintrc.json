@@ -367,6 +367,18 @@
         ]
       }
     },
+    {
+      "files": ["features/**/*"],
+      "rules": {
+        "no-restricted-syntax": [
+          "error",
+          {
+            "selector": "ImportDeclaration[source.value='@/types/database']",
+            "message": "features層では@/types/databaseを直接importせず、@core/types/* を使用してください"
+          }
+        ]
+      }
+    },
     // Feature自己参照の禁止
     {
       "files": ["features/events/**/*"],
@@ -434,6 +446,30 @@
               {
                 "group": ["@features/payments/**"],
                 "message": "同一feature内では相対パスを使用してください（@features/payments → ../...）"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": ["features/stripe-connect/**/*"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": ["@/features/**"],
+                "message": "@features/* を使用してください（@/features は禁止）"
+              },
+              {
+                "group": ["@features/*/*", "!@features/*/server", "!@features/*/server/**"],
+                "message": "features の deep import は禁止です。@features/<name> か @features/<name>/server を使用してください"
+              },
+              {
+                "group": ["@features/stripe-connect/**"],
+                "message": "同一feature内では相対パスを使用してください（@features/stripe-connect → ../...）"
               }
             ]
           }

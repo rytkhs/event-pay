@@ -11,13 +11,12 @@ import { logEventManagement } from "@core/logging/system-logger";
 import { getSecureClientFactory } from "@core/security/secure-client-factory.impl";
 import { logSecurityEvent } from "@core/security/security-logger";
 import type { EventRow } from "@core/types/event";
+import type { PaymentMethod } from "@core/types/statuses";
 import { handleServerError } from "@core/utils/error-handler.server";
 import { extractEventCreateFormData } from "@core/utils/form-data-extractors";
 import { generateInviteToken } from "@core/utils/invite-token";
 import { convertDatetimeLocalToUtc } from "@core/utils/timezone";
 import { createEventSchema, type CreateEventInput } from "@core/validation/event";
-
-import type { Database } from "@/types/database";
 
 type CreateEventResult = ActionResult<EventRow>;
 
@@ -298,7 +297,7 @@ function buildEventData(
   title: string;
   date: string;
   fee: number;
-  payment_methods: Database["public"]["Enums"]["payment_method_enum"][] | [];
+  payment_methods: PaymentMethod[] | [];
   location: string | null;
   description: string | null;
   capacity: number | null;
@@ -316,10 +315,7 @@ function buildEventData(
     date: convertDatetimeLocalToIso(validatedData.date),
     fee,
     // 無料イベント（fee=0）の場合は空配列を明示的に設定
-    payment_methods:
-      fee === 0
-        ? []
-        : (validatedData.payment_methods as Database["public"]["Enums"]["payment_method_enum"][]),
+    payment_methods: fee === 0 ? [] : (validatedData.payment_methods as PaymentMethod[]),
     location: validatedData.location ?? null,
     description: validatedData.description ?? null,
     capacity: parseCapacityLocal(validatedData.capacity),

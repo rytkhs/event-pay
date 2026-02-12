@@ -8,12 +8,11 @@ import {
   logInvalidTokenAccess,
   logParticipationSecurityEvent,
 } from "@core/security/security-logger";
+import type { PaymentMethod, PaymentStatus } from "@core/types/statuses";
 import { handleServerError } from "@core/utils/error-handler.server";
 import { validateGuestToken } from "@core/utils/guest-token";
 import { getClientIPFromHeaders } from "@core/utils/ip-detection";
 import { attendanceStatusSchema, paymentMethodSchema } from "@core/validation/participation";
-
-import type { Database } from "@/types/database";
 
 import type { UpdateGuestAttendanceData } from "../types";
 
@@ -97,7 +96,7 @@ export async function updateGuestAttendanceAction(
     }
 
     // 決済方法の検証（有料イベントで参加する場合のみ）
-    let validatedPaymentMethod: Database["public"]["Enums"]["payment_method_enum"] | null = null;
+    let validatedPaymentMethod: PaymentMethod | null = null;
 
     if (validatedStatus.data === "attending" && attendance.event.fee > 0) {
       if (!paymentMethod) {
@@ -111,8 +110,7 @@ export async function updateGuestAttendanceAction(
         return fail("VALIDATION_ERROR", { userMessage: "無効な決済方法です" });
       }
 
-      validatedPaymentMethod =
-        paymentValidation.data as Database["public"]["Enums"]["payment_method_enum"];
+      validatedPaymentMethod = paymentValidation.data as PaymentMethod;
 
       // イベントで許可されている決済方法かチェック
       const allowedPaymentMethods = attendance.event.payment_methods || [];
@@ -125,12 +123,7 @@ export async function updateGuestAttendanceAction(
 
     // 決済確定後の決済方法変更を防ぐチェック
     // finalized: 決済が確定し、返金等の処理が必要になる状態
-    const finalizedPaymentStatuses: Array<Database["public"]["Enums"]["payment_status_enum"]> = [
-      "paid",
-      "received",
-      "waived",
-      "refunded",
-    ];
+    const finalizedPaymentStatuses: PaymentStatus[] = ["paid", "received", "waived", "refunded"];
 
     // finalized 後の決済方法変更をサーバ側でも明示的に拒否
     // 条件: 参加ステータスは変えず（既に attending）、決済方法のみ変更、かつ現在の支払いが finalized
