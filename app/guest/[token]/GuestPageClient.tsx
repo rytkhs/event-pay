@@ -9,8 +9,12 @@ import { ga4Client } from "@core/analytics/ga4-client";
 import { useToast } from "@core/contexts/toast-context";
 import { useErrorHandler } from "@core/hooks/use-error-handler";
 import type { GuestAttendanceData } from "@core/types/guest";
+import { deriveEventStatus } from "@core/utils/derive-event-status";
 import { getPaymentDeadlineStatus } from "@core/utils/guest-restrictions";
-import { canCreateStripeSession } from "@core/validation/payment-eligibility";
+import {
+  canCreateStripeSession,
+  type PaymentEligibilityEvent,
+} from "@core/validation/payment-eligibility";
 
 import { PaymentStatusAlert } from "@features/events";
 import {
@@ -45,13 +49,19 @@ export function GuestPageClient({
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  // --- Validation Logic Restoration ---
-
-  // 1. Payment Eligibility (Deadline, Capacity, etc.)
-  // Note: canCreateStripeSession takes (attendance, event). Casting might be needed if types mismatch strictly,
-  // but GuestAttendanceData usually matches or extends what's needed.
-  // In GuestStatusOverview it was: canCreateStripeSession(attendance as any, attendance.event as any)
-  const eligibility = canCreateStripeSession(attendance as any, attendance.event as any);
+  const eligibilityEvent = useMemo<PaymentEligibilityEvent>(
+    () => ({
+      id: attendance.event.id,
+      status: deriveEventStatus(attendance.event.date, attendance.event.canceled_at ?? null),
+      fee: attendance.event.fee,
+      date: attendance.event.date,
+      payment_deadline: attendance.event.payment_deadline,
+      allow_payment_after_deadline: attendance.event.allow_payment_after_deadline ?? false,
+      grace_period_days: attendance.event.grace_period_days ?? 0,
+    }),
+    [attendance.event]
+  );
+  const eligibility = canCreateStripeSession(attendance, eligibilityEvent);
 
   // 2. Grace Period Status
   const deadlineStatus = getPaymentDeadlineStatus(attendance);
@@ -163,7 +173,7 @@ export function GuestPageClient({
   return (
     <div className="space-y-6">
       {/* Canceled Event Alert */}
-      {(attendance.event as any).canceled_at && (
+      {attendance.event.canceled_at && (
         <Alert variant="destructive">
           <AlertCircle className="h-5 w-5" />
           <AlertTitle>イベントは中止されました</AlertTitle>

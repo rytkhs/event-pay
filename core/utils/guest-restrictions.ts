@@ -38,7 +38,7 @@ export function getModificationRestrictionReason(
   const event = attendance.event;
 
   // 1. イベント中止チェック
-  if ((event as any).canceled_at) {
+  if (event.canceled_at) {
     return "canceled";
   }
 
@@ -79,8 +79,8 @@ export function getPaymentDeadlineStatus(
   }
 
   // 猶予期間の設定がある場合、最終支払上限を計算
-  const allowPaymentAfterDeadline = (event as any).allow_payment_after_deadline ?? false;
-  const gracePeriodDays = (event as any).grace_period_days ?? 0;
+  const allowPaymentAfterDeadline = event.allow_payment_after_deadline ?? false;
+  const gracePeriodDays = event.grace_period_days ?? 0;
 
   if (allowPaymentAfterDeadline && gracePeriodDays > 0) {
     const finalPaymentLimit = deriveFinalPaymentLimit({
