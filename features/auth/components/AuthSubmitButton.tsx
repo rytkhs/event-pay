@@ -4,7 +4,6 @@ import { ReactNode, useEffect, useState } from "react";
 
 import { Loader2 } from "lucide-react";
 
-import { useReducedMotion, useIsMobile } from "@core/hooks/useMediaQuery";
 import { cn } from "@core/utils";
 
 import { Button } from "@/components/ui/button";
@@ -90,25 +89,16 @@ export function AuthSubmitButton({
     }
   }, [isPending, timeoutMs, onTimeout]);
 
-  // reduce-motionの検出
-  const prefersReducedMotion = useReducedMotion();
-
-  // モバイル画面の検出
-  const isMobile = useIsMobile();
-
   const safeProgress = Math.max(0, Math.min(100, progress || 0));
   const safeLoadingVariant = ["spinner", "dots", "pulse"].includes(loadingVariant)
     ? loadingVariant
     : "spinner";
 
   const buttonClasses = cn(
-    `w-full h-12 min-h-12`,
-    {
-      [`auth-submit-button--${safeLoadingVariant}`]: isPending,
-      "auth-submit-button--reduced-motion": prefersReducedMotion,
-      "auth-submit-button--mobile": responsive && isMobile,
-      "auth-submit-button--desktop": responsive && !isMobile,
-    },
+    "w-full",
+    responsive
+      ? "h-11 min-h-11 px-3 text-sm sm:h-12 sm:min-h-12 sm:px-4 sm:text-base"
+      : "h-12 min-h-12",
     className
   );
 
@@ -117,6 +107,38 @@ export function AuthSubmitButton({
     showProgress && typeof progress === "number"
       ? `${loadingText}進捗: ${safeProgress}%`
       : loadingText;
+  const loadingIndicator = (() => {
+    if (safeLoadingVariant === "dots") {
+      return (
+        <span className="mr-2 inline-flex items-center gap-1" aria-hidden="true">
+          <span className="h-1.5 w-1.5 rounded-full bg-current animate-bounce motion-reduce:animate-none" />
+          <span
+            className="h-1.5 w-1.5 rounded-full bg-current animate-bounce motion-reduce:animate-none"
+            style={{ animationDelay: "120ms" }}
+          />
+          <span
+            className="h-1.5 w-1.5 rounded-full bg-current animate-bounce motion-reduce:animate-none"
+            style={{ animationDelay: "240ms" }}
+          />
+        </span>
+      );
+    }
+
+    if (safeLoadingVariant === "pulse") {
+      return (
+        <span className="mr-2 inline-flex h-4 w-4 items-center justify-center" aria-hidden="true">
+          <span className="h-2.5 w-2.5 rounded-full bg-current animate-pulse motion-reduce:animate-none" />
+        </span>
+      );
+    }
+
+    return (
+      <Loader2
+        className="mr-2 h-4 w-4 animate-spin motion-reduce:animate-none"
+        aria-hidden="true"
+      />
+    );
+  })();
 
   return (
     <div className="relative">
@@ -132,7 +154,7 @@ export function AuthSubmitButton({
       >
         {isPending ? (
           <>
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" role="status" aria-hidden="true" />
+            {loadingIndicator}
             <span>{loadingText}</span>
           </>
         ) : (
@@ -147,7 +169,7 @@ export function AuthSubmitButton({
           aria-valuenow={safeProgress}
           aria-valuemin={0}
           aria-valuemax={100}
-          className="absolute bottom-0 left-0 h-1 bg-blue-500 transition-all duration-300"
+          className="absolute bottom-0 left-0 h-1 bg-blue-500 transition-all duration-300 motion-reduce:transition-none"
           style={{ width: `${safeProgress}%` }}
         />
       )}
