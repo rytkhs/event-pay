@@ -43,8 +43,8 @@ import {
   useEventEditForm,
   type EventEditFormDataRHF,
   type UpdateEventAction,
-} from "../hooks/use-event-edit-form";
-import { useRestrictionContext, useFormDataSnapshot } from "../hooks/use-unified-restrictions";
+} from "../hooks/useEventEditForm";
+import { useRestrictionContext, useFormDataSnapshot } from "../hooks/useUnifiedRestrictions";
 
 import { EventFormTimeline } from "./EventFormTimeline";
 import { FeeCalculatorDisplay } from "./FeeCalculatorDisplay";

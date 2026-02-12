@@ -17,9 +17,9 @@ export * from "./components/UnifiedRestrictionNoticeV2";
 export * from "./components/FeeCalculatorDisplay";
 
 // Hooks
-export * from "./hooks/use-event-form";
-export * from "./hooks/use-event-edit-form";
-export * from "./hooks/use-unified-restrictions";
+export * from "./hooks/useEventForm";
+export * from "./hooks/useEventEditForm";
+export * from "./hooks/useUnifiedRestrictions";
 export * from "./hooks/useEventFilter";
 
 // Types & Validation

@@ -19,7 +19,6 @@ import {
 import { ga4Client } from "@core/analytics/ga4-client";
 import { useToast } from "@core/contexts/toast-context";
 import type { ActionResult } from "@core/errors/adapters/server-actions";
-import { useErrorHandler } from "@core/hooks/use-error-handler";
 import type { GuestAttendanceData, UpdateGuestAttendanceData } from "@core/types/guest";
 import type { AttendanceStatus, PaymentMethod } from "@core/types/statuses";
 import { getModificationRestrictionReason } from "@core/utils/guest-restrictions";
@@ -35,6 +34,7 @@ import {
   DrawerHeader,
   DrawerTitle,
 } from "@/components/ui/drawer";
+import { useErrorHandler } from "@/core/hooks/useErrorHandler";
 
 interface GuestStatusEditModalProps {
   isOpen: boolean;

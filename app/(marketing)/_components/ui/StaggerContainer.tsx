@@ -4,7 +4,7 @@ import React, { Children, cloneElement, isValidElement, Fragment } from "react";
 
 import { cn } from "@core/utils";
 
-import { useInView } from "@/hooks/use-in-view";
+import { useInView } from "@/core/hooks/useInView";
 
 interface StaggerContainerProps {
   children: React.ReactNode;

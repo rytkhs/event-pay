@@ -7,7 +7,6 @@ import { AlertCircle } from "lucide-react";
 import type { BeginCheckoutParams } from "@core/analytics/event-types";
 import { ga4Client } from "@core/analytics/ga4-client";
 import { useToast } from "@core/contexts/toast-context";
-import { useErrorHandler } from "@core/hooks/use-error-handler";
 import type { GuestAttendanceData } from "@core/types/guest";
 import { deriveEventStatus } from "@core/utils/derive-event-status";
 import { getPaymentDeadlineStatus } from "@core/utils/guest-restrictions";
@@ -27,6 +26,7 @@ import {
 } from "@features/guest";
 
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
+import { useErrorHandler } from "@/core/hooks/useErrorHandler";
 
 import { createGuestStripeSessionAction, updateGuestAttendanceAction } from "./actions";
 interface GuestPageClientProps {
