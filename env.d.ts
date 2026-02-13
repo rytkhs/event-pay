@@ -33,8 +33,6 @@ declare namespace NodeJS {
     STRIPE_CONNECT_WEBHOOK_SECRET_TEST_SECONDARY?: string;
     /** Stripe パブリッシャブルキー（フロントエンド用、pk_test_xxx または pk_live_xxx） */
     NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: string;
-    /** Stripe API バージョン（例: 2024-06-20）。未設定時はSDKデフォルトを使用 */
-    STRIPE_API_VERSION?: string;
     /** Stripe Webhook タイムスタンプ許容秒数（デフォルト: 300）。例: 300 */
     STRIPE_WEBHOOK_TIMESTAMP_TOLERANCE?: string;
 
