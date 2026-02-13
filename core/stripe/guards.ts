@@ -51,7 +51,7 @@ export function getMetadata(obj: unknown): Stripe.Metadata | null {
 /**
  * Stripe Paymentオブジェクトのアサーション
  */
-export function assertStripePayment(obj: any, context?: string): asserts obj is { id: string } {
+export function assertStripePayment(obj: unknown, context?: string): asserts obj is { id: string } {
   if (!isStripeObject(obj)) {
     const errorMessage = `Invalid Stripe payment object${context ? ` in ${context}` : ""}`;
     handleServerError("STRIPE_CONFIG_ERROR", {
@@ -62,7 +62,7 @@ export function assertStripePayment(obj: any, context?: string): asserts obj is 
         errorMessage,
         context,
         object_type: typeof obj,
-        has_id: obj && typeof obj === "object" ? (obj as any).id : "missing",
+        has_id: obj && typeof obj === "object" ? (obj as { id?: unknown }).id : "missing",
       },
     });
     throw new Error(errorMessage);

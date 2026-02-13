@@ -1,4 +1,5 @@
 import { logger } from "@core/logging/app-logger";
+import { toErrorLike } from "@core/utils/type-guards";
 
 /**
  * Execute a Stripe request with automatic handling of `idempotency_key_in_use` (HTTP 409).
@@ -21,13 +22,12 @@ export async function retryWithIdempotency<T>(
     try {
       return await fn();
     } catch (error: unknown) {
-      const err = error as { code?: string; statusCode?: number; message?: string };
+      const err = toErrorLike(error);
       const isIdempo409 = err.code === "idempotency_key_in_use" || err.statusCode === 409;
 
       // ネットワーク切断・TLS reset など Stripe SDK が返す ConnectionError 系
       // 例) StripeConnectionError, StripeConnectionTimeoutError, StripeAPIConnectionError
-      const isConnectionErr =
-        typeof (err as any).type === "string" && (err as any).type.endsWith("ConnectionError");
+      const isConnectionErr = typeof err.type === "string" && err.type.endsWith("ConnectionError");
 
       const shouldRetry = isIdempo409 || isConnectionErr;
 
@@ -42,7 +42,7 @@ export async function retryWithIdempotency<T>(
         attempt: attempt + 1,
         delay_ms: delay,
         error_message: err.message,
-        error_type: (err as any).type,
+        error_type: err.type,
         outcome: "failure",
       });
 

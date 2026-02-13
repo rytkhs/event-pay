@@ -4,7 +4,12 @@
  */
 
 import { getMaliciousPatternDetails } from "@core/constants/security-patterns";
-import { logger } from "@core/logging/app-logger";
+import {
+  logger,
+  type ActorType,
+  type EventPayLogFields,
+  type LogOutcome,
+} from "@core/logging/app-logger";
 import { waitUntil } from "@core/utils/cloudflare-ctx";
 import { getEnv } from "@core/utils/cloudflare-env";
 import { handleServerError } from "@core/utils/error-handler.server";
@@ -44,10 +49,16 @@ export type SecuritySeverity = "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
  */
 export function logSecurityEvent(event: SecurityEvent): void {
   const maskedIp = maskIP(event.ip);
-  const logFields = {
+  const actorType: ActorType = event.userId ? "user" : "anonymous";
+  const logFields: Partial<EventPayLogFields> & {
+    category: "security";
+    action: string;
+    actor_type: ActorType;
+    outcome: LogOutcome;
+  } = {
     category: "security",
     action: typeof event.type === "string" ? String(event.type).toLowerCase() : "security_event",
-    actor_type: event.userId ? "user" : "anonymous",
+    actor_type: actorType,
     security_type: event.type,
     security_severity: event.severity,
     user_id: event.userId,
@@ -56,8 +67,9 @@ export function logSecurityEvent(event: SecurityEvent): void {
     ip: maskedIp,
     timestamp: event.timestamp.toISOString(),
     details: event.details,
-    outcome:
-      event.severity === "HIGH" || event.severity === "CRITICAL" ? "blocked" : ("success" as any),
+    outcome: (event.severity === "HIGH" || event.severity === "CRITICAL"
+      ? "failure"
+      : "success") as LogOutcome,
   };
 
   // 重要度に応じてログレベルを選択
@@ -76,8 +88,8 @@ export function logSecurityEvent(event: SecurityEvent): void {
   })();
 
   const logMessage = event.message || `Security event: ${event.type}`;
-  if (level === "info") logger.info(logMessage, logFields as any);
-  else if (level === "warn") logger.warn(logMessage, logFields as any);
+  if (level === "info") logger.info(logMessage, logFields);
+  else if (level === "warn") logger.warn(logMessage, logFields);
   else {
     // 予期しないセキュリティイベントや重大なイベントはハンドルサーバーエラー経由で記録・通知
     handleServerError(
@@ -88,7 +100,7 @@ export function logSecurityEvent(event: SecurityEvent): void {
       {
         category: "security",
         action: logFields.action,
-        actorType: logFields.actor_type as any,
+        actorType,
         userId: event.userId,
         eventId: event.eventId,
         additionalData: logFields,

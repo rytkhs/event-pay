@@ -104,7 +104,7 @@ export function logCronActivity(
     category: "system",
     action: "cron_activity",
     actor_type: "system",
-    outcome: (_type === "error" ? "failure" : "success") as any,
+    outcome: _type === "error" ? "failure" : "success",
     ...(_details || {}),
   } as const;
 

@@ -130,10 +130,20 @@ export class SecureSupabaseClientFactory implements ISecureSupabaseClientFactory
     }
 
     // 動的にnext/headersをインポート
-    let cookieStore;
+    let cookieStore: {
+      get: (name: string) => { value?: string } | undefined;
+      set: (name: string, value: string, options?: CookieOptions) => void;
+      delete: (name: string) => void;
+    };
     try {
       // eslint-disable-next-line @typescript-eslint/no-var-requires
-      const { cookies } = require("next/headers");
+      const { cookies } = require("next/headers") as {
+        cookies: () => {
+          get: (name: string) => { value?: string } | undefined;
+          set: (name: string, value: string, options?: CookieOptions) => void;
+          delete: (name: string) => void;
+        };
+      };
       cookieStore = cookies();
     } catch (error) {
       // next/headersが利用できない場合はブラウザクライアントを作成

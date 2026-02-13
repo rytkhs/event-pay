@@ -100,7 +100,7 @@ export function getStripe(): Stripe {
         stripe_request_id: res.request_id,
         status_code: res.status,
         latency_ms: res.elapsed,
-        outcome: (res.status < 400 ? "success" : "failure") as any,
+        outcome: res.status < 400 ? "success" : "failure",
       });
     });
   }

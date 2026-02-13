@@ -1,5 +1,7 @@
 import "server-only";
 
+import type { PostgrestError } from "@supabase/supabase-js";
+
 import { AppError, errFrom, errResult, okResult } from "@core/errors";
 import { logger } from "@core/logging/app-logger";
 import { getSecureClientFactory } from "@core/security/secure-client-factory.impl";
@@ -76,7 +78,7 @@ export class SettlementReportService {
       const { data, error } = (await adminClient.rpc("generate_settlement_report", {
         input_event_id: eventId,
         input_created_by: createdBy,
-      })) as { data: GenerateSettlementReportRpcRow[] | null; error: any };
+      })) as { data: GenerateSettlementReportRpcRow[] | null; error: PostgrestError | null };
 
       // エラーハンドリング
       if (error) {
@@ -204,11 +206,11 @@ export class SettlementReportService {
         throw new Error(`Failed to get settlement reports: ${error?.message || "Unknown error"}`);
       }
 
-      const rows = (data || []).map((row) => ({
+      const rows = ((data || []) as RpcSettlementReportRow[]).map((row) => ({
         ...row,
         // これらのフィールドがRPCから返されない場合のデフォルト値を設定
-        total_disputed_amount: (row as any).total_disputed_amount ?? 0,
-        dispute_count: (row as any).dispute_count ?? 0,
+        total_disputed_amount: row.total_disputed_amount ?? 0,
+        dispute_count: row.dispute_count ?? 0,
       })) as Array<
         RpcSettlementReportRow & {
           total_disputed_amount: number;

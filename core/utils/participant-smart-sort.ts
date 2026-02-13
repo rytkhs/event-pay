@@ -4,6 +4,7 @@
  * 参加状況・決済状況・決済方法・日時を総合的に考慮した優先度ベースソート
  */
 
+import type { PaymentStatus } from "@core/types/statuses";
 import type { ParticipantView } from "@core/validation/participant-management";
 
 import { toSimplePaymentStatus } from "./payment-status-mapper";
@@ -35,8 +36,8 @@ function getAttendanceWeight(status: string, isFreeEvent: boolean): number {
  * @param paymentStatus 決済ステータス
  * @returns 重み（小さいほど上位）
  */
-function getPaymentStatusWeight(paymentStatus: string | null): number {
-  const simple = toSimplePaymentStatus(paymentStatus as any);
+function getPaymentStatusWeight(paymentStatus: PaymentStatus | null): number {
+  const simple = toSimplePaymentStatus(paymentStatus);
   switch (simple) {
     case "unpaid":
       return 0; // 未決済を最優先（要対応）

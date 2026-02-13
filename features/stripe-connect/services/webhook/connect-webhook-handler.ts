@@ -329,7 +329,7 @@ export class ConnectWebhookHandler {
       // 参考表示向けのログのみ（会計確定は行わない）
       this.logger.warn("Payout failed received", {
         payout_id: payout.id,
-        failure_message: (payout as any).failure_message,
+        failure_message: payout.failure_message,
         outcome: "failure",
       });
       return okResult(undefined, {

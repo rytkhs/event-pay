@@ -15,6 +15,7 @@ import {
 import { getSecureClientFactory } from "@core/security/secure-client-factory.impl";
 import { AdminReason } from "@core/security/secure-client-factory.types";
 import type { PaymentErrorHandlingResult } from "@core/types/payment-errors";
+import { toErrorLike } from "@core/utils/type-guards";
 
 import { bulkUpdateCashStatusAction } from "../actions/bulk-update-cash-status";
 import { updateCashStatusAction } from "../actions/update-cash-status";
@@ -109,25 +110,29 @@ const paymentErrorHandlerImpl = {
 
     if (error instanceof CorePaymentError) {
       paymentError = error;
-    } else if (
-      error &&
-      typeof error === "object" &&
-      "type" in error &&
-      typeof (error as any).type === "string"
-    ) {
-      // Reconstitute CorePaymentError from structured object
-      paymentError = new CorePaymentError(
-        (error as any).type,
-        (error as any).message || "Unknown error",
-        (error as any).cause ?? (error as any).details ?? error
-      );
     } else {
-      // Fallback for unknown errors
-      paymentError = new CorePaymentError(
-        PaymentErrorType.UNKNOWN_ERROR,
-        error instanceof Error ? error.message : "Unknown error",
-        error
-      );
+      const errorLike = toErrorLike(error);
+      const normalizedType =
+        errorLike.type &&
+        Object.values(PaymentErrorType).includes(errorLike.type as PaymentErrorType)
+          ? (errorLike.type as PaymentErrorType)
+          : undefined;
+
+      if (normalizedType) {
+        // Reconstitute CorePaymentError from structured object
+        paymentError = new CorePaymentError(
+          normalizedType,
+          errorLike.message || "Unknown error",
+          errorLike.cause ?? errorLike.details ?? error
+        );
+      } else {
+        // Fallback for unknown errors
+        paymentError = new CorePaymentError(
+          PaymentErrorType.UNKNOWN_ERROR,
+          error instanceof Error ? error.message : "Unknown error",
+          error
+        );
+      }
     }
 
     const handling =

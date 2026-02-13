@@ -17,6 +17,7 @@ import { logSecurityEvent } from "@core/security/security-logger";
 import { getStripe } from "@core/stripe/client";
 import { getClientIP } from "@core/utils/ip-detection";
 import { maskSessionId } from "@core/utils/mask";
+import { toErrorLike } from "@core/utils/type-guards";
 
 import { verifySessionQuerySchema } from "@features/payments/server";
 
@@ -183,13 +184,18 @@ export async function GET(request: NextRequest) {
     }
 
     // DBエラーログ（以前は handleServerError で直接記録していたが、ここでは続行）
-    if (dbError && (dbError as any).code !== "PGRST116") {
-      logger.error("Database query failed during verification", {
-        category: "payment",
-        action: "dbQueryFailed",
-        error: (dbError as any).message,
-        attendance_id,
-      });
+    if (dbError) {
+      const dbErrorLike = toErrorLike(dbError);
+      if (dbErrorLike.code === "PGRST116") {
+        // 単一取得で行が見つからない場合は想定内
+      } else {
+        logger.error("Database query failed during verification", {
+          category: "payment",
+          action: "dbQueryFailed",
+          error: dbErrorLike.message,
+          attendance_id,
+        });
+      }
     }
 
     // Stripe Checkout Session 情報（フォールバック突合でも利用）
@@ -318,7 +324,7 @@ export async function GET(request: NextRequest) {
             attendanceId: attendance_id,
             sessionId: maskSessionId(session_id),
             hasGuestToken: !!guestToken,
-            dbErrorCode: dbError ? (dbError as any).code : undefined,
+            dbErrorCode: dbError ? toErrorLike(dbError).code : undefined,
           },
           ip: getClientIP(request),
           timestamp: new Date(),
@@ -441,96 +447,94 @@ export async function GET(request: NextRequest) {
 
     // Problem Details標準の相関ID生成に統一（req_xxxxxxxx形式）
     // エラーの種類による詳細分類とレスポンス生成
-    if (error && typeof error === "object") {
-      const errObj = error as any;
+    const errObj = toErrorLike(error);
 
-      // Stripe API関連エラー
-      if (errObj.type || errObj.message?.includes("stripe") || errObj.name?.includes("Stripe")) {
-        return respondWithProblem(error, {
-          instance: "/api/payments/verify-session",
-          detail: "決済サービスとの通信でエラーが発生しました",
-          defaultCode: "STRIPE_CONFIG_ERROR",
-          logContext,
-        });
-      }
+    // Stripe API関連エラー
+    if (errObj.type || errObj.message?.includes("stripe") || errObj.name?.includes("Stripe")) {
+      return respondWithProblem(error, {
+        instance: "/api/payments/verify-session",
+        detail: "決済サービスとの通信でエラーが発生しました",
+        defaultCode: "STRIPE_CONFIG_ERROR",
+        logContext,
+      });
+    }
 
-      // データベースエラー
-      if (
-        errObj.code ||
-        errObj.message?.includes("database") ||
-        errObj.message?.includes("postgres")
-      ) {
-        return respondWithProblem(error, {
-          instance: "/api/payments/verify-session",
-          detail: "データベースエラーが発生しました",
-          defaultCode: "DATABASE_ERROR",
-          logContext,
-        });
-      }
+    // データベースエラー
+    if (
+      errObj.code ||
+      errObj.message?.includes("database") ||
+      errObj.message?.includes("postgres")
+    ) {
+      return respondWithProblem(error, {
+        instance: "/api/payments/verify-session",
+        detail: "データベースエラーが発生しました",
+        defaultCode: "DATABASE_ERROR",
+        logContext,
+      });
+    }
 
-      // レート制限エラー
-      if (errObj.message?.includes("rate limit") || errObj.message?.includes("too many requests")) {
-        return respondWithCode("RATE_LIMITED", {
-          instance: "/api/payments/verify-session",
-          detail: "リクエスト頻度が高すぎます",
-          logContext,
-        });
-      }
+    // レート制限エラー
+    if (errObj.message?.includes("rate limit") || errObj.message?.includes("too many requests")) {
+      return respondWithCode("RATE_LIMITED", {
+        instance: "/api/payments/verify-session",
+        detail: "リクエスト頻度が高すぎます",
+        logContext,
+      });
+    }
 
-      // 認証・権限エラー
-      if (
-        errObj.message?.includes("auth") ||
-        errObj.message?.includes("token") ||
-        errObj.message?.includes("permission")
-      ) {
-        return respondWithCode("UNAUTHORIZED", {
-          instance: "/api/payments/verify-session",
-          detail: "認証エラーが発生しました",
-          logContext,
-        });
-      }
+    // 認証・権限エラー
+    if (
+      errObj.message?.includes("auth") ||
+      errObj.message?.includes("token") ||
+      errObj.message?.includes("permission")
+    ) {
+      return respondWithCode("UNAUTHORIZED", {
+        instance: "/api/payments/verify-session",
+        detail: "認証エラーが発生しました",
+        logContext,
+      });
+    }
 
-      // ネットワーク・接続エラー
-      if (
-        errObj.message?.includes("fetch") ||
-        errObj.message?.includes("network") ||
-        errObj.message?.includes("timeout") ||
-        errObj.code === "ENOTFOUND" ||
-        errObj.code === "ECONNRESET"
-      ) {
-        return respondWithProblem(error, {
-          instance: "/api/payments/verify-session",
-          detail: "ネットワーク接続エラーが発生しました",
-          defaultCode: "EXTERNAL_SERVICE_ERROR",
-          logContext,
-        });
-      }
+    // ネットワーク・接続エラー
+    if (
+      errObj.message?.includes("fetch") ||
+      errObj.message?.includes("network") ||
+      errObj.message?.includes("timeout") ||
+      errObj.code === "ENOTFOUND" ||
+      errObj.code === "ECONNRESET"
+    ) {
+      return respondWithProblem(error, {
+        instance: "/api/payments/verify-session",
+        detail: "ネットワーク接続エラーが発生しました",
+        defaultCode: "EXTERNAL_SERVICE_ERROR",
+        logContext,
+      });
+    }
 
-      // JSON解析エラー
-      if (
-        errObj instanceof SyntaxError ||
-        errObj.message?.includes("JSON") ||
-        errObj.name === "SyntaxError"
-      ) {
-        return respondWithCode("INVALID_REQUEST", {
-          instance: "/api/payments/verify-session",
-          detail: "リクエスト形式が正しくありません",
-          logContext,
-        });
-      }
+    // JSON解析エラー
+    if (
+      error instanceof SyntaxError ||
+      errObj.message?.includes("JSON") ||
+      errObj.name === "SyntaxError"
+    ) {
+      return respondWithCode("INVALID_REQUEST", {
+        instance: "/api/payments/verify-session",
+        detail: "リクエスト形式が正しくありません",
+        logContext,
+      });
+    }
 
-      // バリデーションエラー
-      if (
-        errObj.message?.includes("validation") ||
-        errObj.message?.includes("invalid") ||
-        errObj.name === "ValidationError"
-      ) {
-        return respondWithCode("VALIDATION_ERROR", {
-          instance: "/api/payments/verify-session",
-          detail: "入力値が無効です",
-          logContext,
-        });
-      }
+    // バリデーションエラー
+    if (
+      errObj.message?.includes("validation") ||
+      errObj.message?.includes("invalid") ||
+      errObj.name === "ValidationError"
+    ) {
+      return respondWithCode("VALIDATION_ERROR", {
+        instance: "/api/payments/verify-session",
+        detail: "入力値が無効です",
+        logContext,
+      });
     }
 
     // その他の予期しないエラー

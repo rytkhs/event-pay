@@ -14,6 +14,11 @@ interface StaggerContainerProps {
   once?: boolean;
 }
 
+type StaggerInjectedProps = {
+  isInView?: boolean;
+  delay?: number;
+};
+
 export const StaggerContainer: React.FC<StaggerContainerProps> = ({
   children,
   delay = 0,
@@ -37,7 +42,7 @@ export const StaggerContainer: React.FC<StaggerContainerProps> = ({
           return child;
         }
 
-        return cloneElement(child as React.ReactElement<any>, {
+        return cloneElement(child as React.ReactElement<StaggerInjectedProps>, {
           isInView,
           delay: delay + index * staggerDelay,
         });

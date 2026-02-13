@@ -24,6 +24,11 @@ interface MiddlewareSupabaseConfig {
   response: NextResponse;
 }
 
+interface CookieStoreLike {
+  getAll(): Array<{ name: string; value: string }>;
+  set(name: string, value: string, options?: CookieOptions): void;
+}
+
 export class SupabaseClientFactory {
   private static sessionManager = getSessionManager();
 
@@ -129,10 +134,12 @@ export class SupabaseClientFactory {
 
   private static createApiServerClient(): SupabaseClient<Database> {
     // テスト環境での dynamic import 対応
-    let cookieStore: any;
+    let cookieStore: CookieStoreLike;
     try {
       // eslint-disable-next-line @typescript-eslint/no-var-requires
-      const nextHeaders = require("next/headers");
+      const nextHeaders = require("next/headers") as {
+        cookies: () => CookieStoreLike;
+      };
       cookieStore = nextHeaders.cookies();
     } catch (error) {
       // next/headersが利用できない場合（テスト環境など）は、空のcookieStore実装を提供
@@ -146,10 +153,8 @@ export class SupabaseClientFactory {
       });
 
       cookieStore = {
-        get: () => undefined,
         getAll: () => [] as { name: string; value: string }[],
         set: () => {},
-        delete: () => {},
       };
     }
 
